@@ -37,7 +37,8 @@ static void banner(void)
 	printf("# commands: h=help p=printf-cost g=gpio-cost f=fault\n");
 	printf("#           r=read a0/a1  s=dac sweep  x=crosstalk\n");
 	printf("#           t=trigger-rate sweep (TC+ADC+PDC)\n");
-	printf("#           1..5=stream 50k/100k/200k/400k/488372 Hz\n");
+	printf("#           1..5=stream 50k/100k/200k/400k Hz, 5=max in-spec (%lu)\n",
+	       (unsigned long)((SystemCoreClock / 2u) / ACQ_MIN_RC));
 	printf("#           0=stop stream   ?=stream stats\n");
 	printf("#           w=stream over UART   u=usb registers\n");
 	printf("#           F=flood IN  R=sink OUT  X=duplex  B=bench stats\n");
@@ -461,6 +462,20 @@ int main(void)
 		stream_service();
 		diag_service();
 
+		/*
+		 * Keep bulk OUT drained when nothing is consuming it. A CDC
+		 * device that lets the pipe NAK indefinitely wedges the host:
+		 * macOS's close() waits for in-flight write URBs to complete,
+		 * and tcflush cannot recall a URB already at the controller,
+		 * so the host process hangs in close() holding the port.
+		 */
+		if (!play_active() && !stream_out_in_use()) {
+			static uint8_t scrap[512];
+			for (int b = 0; b < 4; b++)
+				if (usb_cdc_read(scrap, sizeof(scrap)) == 0)
+					break;
+		}
+
 		int c = uart_getc();
 		switch (c) {
 		case 'h': banner();         break;
@@ -475,7 +490,13 @@ int main(void)
 		case '2': cmd_stream(100000); break;
 		case '3': cmd_stream(200000); break;
 		case '4': cmd_stream(400000); break;
-		case '5': cmd_stream(488372); break;
+		/*
+		 * Max in-spec rate, derived from the running clock exactly as
+		 * Track A does. A hardcoded 488372 Hz lingered here from the
+		 * MCK=84 MHz era and was silently refused by the ACQ_MIN_RC
+		 * guard at 78 MHz - the guard doing its job on a stale preset.
+		 */
+		case '5': cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC); break;
 		case '0': stream_stop(); play_stop();
 		          printf("# stream stopped\n"); uart_flush(); break;
 		case '?': stream_report();  break;
