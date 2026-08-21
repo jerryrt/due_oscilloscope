@@ -53,12 +53,14 @@ def native_port(wait=10.0):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["in", "out", "duplex"])
+    ap.add_argument("mode", choices=["in", "out", "duplex",
+                                     "in-dma", "out-dma", "duplex-dma"])
     ap.add_argument("--seconds", type=float, default=5.0)
     ap.add_argument("--block", type=int, default=16384)
     args = ap.parse_args()
 
-    cmd = {"in": b"F", "out": b"R", "duplex": b"X"}[args.mode]
+    cmd = {"in": b"F", "out": b"R", "duplex": b"X",
+           "in-dma": b"G", "out-dma": b"T", "duplex-dma": b"Y"}[args.mode]
 
     CTL, NATIVE = find_ports()
     if not CTL:
@@ -73,8 +75,8 @@ def main():
 
     block = bytes(range(256)) * (args.block // 256)
     rx = tx = 0
-    want_rx = args.mode in ("in", "duplex")
-    want_tx = args.mode in ("out", "duplex")
+    want_rx = args.mode in ("in", "duplex", "in-dma", "duplex-dma")
+    want_tx = args.mode in ("out", "duplex", "out-dma", "duplex-dma")
 
     t0 = time.time()
     while time.time() - t0 < args.seconds:
