@@ -148,6 +148,29 @@ gap cannot be avoided, it is reported:
 | ADC conversion overrun | `ADC_ISR.GOVRE` | `overrun_count`, flag bit 0 |
 | Host fell behind | `seq` gap at host | Host-side error |
 | Frame corrupted | `header_crc32` mismatch | Host resyncs on next `magic` |
+| **Trigger faster than the ADC** | **none - see below** | **must be prevented, not detected** |
+
+### The one failure no status bit reports
+
+Measured: with a trigger period below the ADC's conversion time, the part
+**silently ignores every other trigger**. `GOVRE` and `RXBUFF` both stay
+at zero. The result is a clean 2:1 decimation that is indistinguishable
+from correctly acquired data at half the rate - the samples are valid,
+there is no gap, and `seq` stays continuous.
+
+This is the most dangerous failure mode in the system, because every
+other one announces itself. A host doing an FFT on such a stream gets
+frequencies wrong by exactly 2x with nothing to suggest anything is
+amiss.
+
+Two defences, and both are needed:
+
+- **Firmware refuses** a trigger period below the measured floor. On
+  this board the floor is 976,744 sps aggregate, i.e. `TC_RC >= 86` at
+  `TIMER_CLOCK1`, divided by the number of enabled channels.
+- **Host verifies** the rate independently: `n_samples` against
+  `timestamp_us` deltas between consecutive frames must agree with
+  `sample_rate_hz`. A steady 2x discrepancy is this bug.
 
 A visible gap is a bug report. A silent splice is corrupted data that
 will be mistaken for a physical signal.

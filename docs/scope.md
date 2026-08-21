@@ -81,9 +81,9 @@ Derived in `docs/architecture.md`; summarised here.
 
 ```
 MCK                     84 MHz
-ADCClock (PRESCAL=1)    21 MHz          (datasheet max ~22 MHz)
-Conversion              ~20 ADC clocks  (minimal TRACKTIM)
-Aggregate rate          ~1.05 Msps
+ADCClock (PRESCAL=1)    21 MHz            (datasheet max ~22 MHz)
+Conversion              ~21.5 ADC clocks  (measured, minimal TRACKTIM)
+Aggregate rate          976,744 sps       (measured ceiling, not 1 Msps)
 ```
 
 The SAM3X8E has **one** ADC behind a 16:1 multiplexer, not twelve ADCs.
@@ -92,14 +92,17 @@ rate rather than multiplying throughput.
 
 | Channels | Per-channel | Nyquist | Realistic usable BW |
 |---|---|---|---|
-| 1 | 1.05 Msps | 525 kHz | ~150 kHz |
-| 2 | 525 ksps | 262 kHz | ~80 kHz |
-| 12 | 87.5 ksps | 43.7 kHz | ~20–30 kHz |
+| 1 | 976 ksps | 488 kHz | ~150 kHz |
+| 2 | 488 ksps | 244 kHz | ~80 kHz |
+| 12 | 81.4 ksps | 40.7 kHz | ~20-30 kHz |
 
-**Aggregate data rate is 2.1 MB/s regardless of channel count**
-(1.05 Msps x 2 bytes). Twelve channels costs no extra USB bandwidth; it
+Per-channel figures are the measured 976,744 sps aggregate divided by
+channel count. The 2-channel row is confirmed on hardware.
+
+**Aggregate data rate is 1.95 MB/s regardless of channel count**
+(976,744 sps x 2 bytes). Twelve channels costs no extra USB bandwidth; it
 costs per-channel sample rate. 12-bit packing would reduce this to
-1.58 MB/s at the cost of the channel tag.
+1.47 MB/s at the cost of the channel tag.
 
 Expect the practical per-channel rate to land lower than the table —
 raising `TRACKTIM` to suppress multiplexer crosstalk on high-impedance

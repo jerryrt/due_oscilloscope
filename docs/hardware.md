@@ -90,18 +90,49 @@ directly rather than build on the core's CDC. See `docs/architecture.md`.
 | Resolution | 12-bit |
 | Converters | **One**, behind a 16:1 input multiplexer |
 | Channels on Due headers | 12 (A0–A11) |
-| Aggregate rate | ~1 Msps *(check exact cycle count)* |
+| Aggregate rate | **976,744 sps** *(measured, see below)* |
 | Max ADC clock | ~22 MHz *(check)* |
 | Input range | 0 V to ADVREF (3.3 V). No negative, no overvoltage |
 
 ```
 ADCClock = MCK / ((PRESCAL + 1) x 2)
 PRESCAL = 1  ->  84 MHz / 4 = 21 MHz     (just under the ~22 MHz max)
-21 MHz / ~20 cycles per conversion = ~1.05 Msps aggregate
 ```
 
+### Measured ceiling *(this board)*
+
+Swept the TC compare value with two channels enabled, counting completed
+PDC buffers against a synchronised microsecond window:
+
+| TC RC | Trigger Hz | Aggregate sps | Ratio |
+|---|---|---|---|
+| 88 | 477,272 | 954,544 | 1.000 |
+| 87 | 482,758 | 965,516 | 1.000 |
+| **86** | **488,372** | **976,744** | **1.000** |
+| 85 | 494,117 | 988,234 | **0.500** |
+| 84 | 500,000 | 1,000,000 | **0.500** |
+
+**Maximum aggregate is 976,744 sps**, not the nominal 1 Msps - about
+2.3% short. Per conversion that is 1.024 us, or ~21.5 ADC clocks at
+21 MHz, against the ~20 usually quoted.
+
+Settings used: `PRESCAL=1`, `TRACKTIM=0`, `SETTLING=0`, `TRANSFER=1`.
+Relaxing tracking to suppress crosstalk lowers this further.
+
+### Trigger overrun is silent
+
+**`ADC_ISR.GOVRE` and `RXBUFF` both read zero while half the triggers are
+being dropped.** When a trigger arrives before the ADC is ready it is
+simply ignored: no flag, no counter, no error. The failure is a clean 2:1
+decimation that looks like correctly acquired data at half the rate.
+
+The only way to detect it is to compare the measured conversion rate
+against the configured one. Firmware must therefore refuse a trigger
+period below the measured floor rather than trusting status bits, and
+the host should verify the rate independently. See `docs/protocol.md`.
+
 Channels convert **round-robin, not simultaneously**. Consecutive
-conversions are ~0.95 us apart, so in a 12-channel sequence A11 lags A0
+conversions are ~1.02 us apart (measured), so in a 12-channel sequence A11 lags A0
 by roughly 10.5 us. The skew is deterministic and correctable in host
 DSP, but this is not simultaneous sampling and must not be treated as
 such for phase measurements.
