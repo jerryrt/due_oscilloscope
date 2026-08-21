@@ -119,6 +119,20 @@ def main():
     # reset re-enumerates the native CDC, invalidating any fd opened
     # before it. So: control first, start the stream, then find and open
     # the native port.
+    # Resolve ports before anything opens them: the --send block below
+    # used to run first and crash on a None control port whenever
+    # --control was not given explicitly.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from ports import find_ports
+    if args.control is None or (args.port is None and not args.uart):
+        _ctl, _nat = find_ports()
+        if args.control is None:
+            args.control = _ctl
+        if args.port is None and not args.uart:
+            args.port = _nat
+    if args.control is None:
+        sys.exit("no control port found")
+
     cfd = None
     if args.send and not args.uart:
         cfd = open_raw(args.control, baud=115200)
@@ -139,19 +153,15 @@ def main():
             if line.strip():
                 print("# ctl> " + line.strip())
 
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from ports import find_ports
-    _ctl, _nat = find_ports()
-    if args.control is None:
-        args.control = _ctl or "/dev/cu.usbmodem141301"
-    if args.port is None and not args.uart:
-        args.port = _nat
-
     if args.uart:
         dev = args.control
         print(f"# uart transport, single port: {dev}")
     else:
-        dev = args.port or find_native_port()
+        # The board resets when the control port opens, so the native
+        # node may still be re-enumerating; find_native_port waits for
+        # it, excluding the discovered control port rather than any
+        # hardcoded name.
+        dev = args.port or find_native_port(programming=args.control)
         print(f"# native port: {dev}")
     # Force a non-1200 line coding. The Arduino CDC arms an auto-reset
     # when the port is closed while its stored rate is 1200, so leaving a
@@ -193,6 +203,10 @@ def main():
                 os.read(fd, 262144)
             except OSError:
                 break
+
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import rt
+    print(f"# capture thread: {rt.promote(period_ms=5.0, computation_ms=0.5, constraint_ms=2.5)}")
 
     chunks = []
     t0 = time.time()
