@@ -116,7 +116,12 @@ void gen_stop(void)
 	NVIC_DisableIRQ(DACC_IRQn);
 }
 
-void DACC_Handler(void)
+/*
+ * Called from the single DACC_Handler in play.c. Two modules want the
+ * end-of-transmit event, and only one of them can own the vector, so the
+ * owner dispatches on which source is active.
+ */
+void gen_endtx(void)
 {
 	if (DACC->DACC_ISR & DACC_ISR_ENDTX) {
 		DACC->DACC_TNPR = (uint32_t)gen_table;

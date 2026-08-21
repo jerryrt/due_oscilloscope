@@ -22,6 +22,7 @@
 #include "acq.h"
 #include "gen.h"
 #include "stream.h"
+#include "play.h"
 #include "usb_cdc.h"
 
 #define LED_MASK (1u << 27)
@@ -40,6 +41,8 @@ static void banner(void)
 	printf("#           0=stop stream   ?=stream stats\n");
 	printf("#           w=stream over UART   u=usb registers\n");
 	printf("#           F=flood IN  R=sink OUT  X=duplex  B=bench stats\n");
+	printf("#           G/T/Y = same three via DMA\n");
+	printf("#           L=full loop HOST->DAC->ADC->HOST\n");
 	printf("#\n");
 }
 
@@ -355,6 +358,7 @@ int main(void)
 		}
 
 		usb_cdc_poll();
+		play_service();
 		stream_service();
 
 		int c = uart_getc();
@@ -372,7 +376,7 @@ int main(void)
 		case '3': cmd_stream(200000); break;
 		case '4': cmd_stream(400000); break;
 		case '5': cmd_stream(488372); break;
-		case '0': stream_stop();
+		case '0': stream_stop(); play_stop();
 		          printf("# stream stopped\n"); uart_flush(); break;
 		case '?': stream_report();  break;
 		case 'u': usb_cdc_dump();   break;
@@ -382,7 +386,48 @@ int main(void)
 		          printf("# sink: OUT only\n"); uart_flush(); break;
 		case 'X': stream_duplex_start();
 		          printf("# duplex: IN and OUT together\n"); uart_flush(); break;
-		case 'B': stream_bench_report(); break;
+		case 'G': stream_flood_dma_start();
+		          printf("# flood: IN via DMA\n"); uart_flush(); break;
+		case 'T': stream_sink_dma_start();
+		          printf("# sink: OUT via DMA\n"); uart_flush(); break;
+		case 'Y': stream_duplex_dma_start();
+		          printf("# duplex: IN+OUT via DMA\n"); uart_flush(); break;
+		/*
+		 * The complete loop: the host supplies the waveform, the DAC
+		 * emits it, the jumper carries it to the ADC, and the capture
+		 * comes back over the same USB pipe. Both directions run at
+		 * once, which is the target configuration.
+		 */
+		case 'L':
+			if (!play_start(200000u)) {
+				printf("# loop: DAC rate refused\n");
+				uart_flush();
+				break;
+			}
+			stream_start_capture_only(200000u);
+			printf("# loop: DAC 200000 sps from USB, ADC 200000 Hz/ch\n");
+			printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
+			uart_flush();
+			break;
+		/* Playback with NO capture stream, to separate a fault in the
+		 * DAC path from an interaction between the two service loops. */
+		case 'P':
+			if (play_start(200000u))
+				printf("# play only: DAC 200000 sps from USB, no capture\n");
+			else
+				printf("# play only: refused\n");
+			uart_flush();
+			break;
+		case 'V': play_dump(); break;
+		case 'B': stream_bench_report();
+		          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu\n",
+		                 (unsigned long)play_bytes_in,
+		                 (unsigned long)play_produced,
+		                 (unsigned long)play_consumed,
+		                 (unsigned long)play_underruns,
+		                 (unsigned long)play_isr_calls,
+		                 (unsigned long)play_endtx_seen);
+		          uart_flush(); break;
 		case 'w': cmd_stream_uart(2000); break;
 		default:                    break;
 		}

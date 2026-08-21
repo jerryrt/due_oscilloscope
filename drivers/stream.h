@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 bool stream_start(uint32_t trigger_hz);
+bool stream_start_capture_only(uint32_t trigger_hz);
 bool stream_start_uart(uint32_t trigger_hz);
 void stream_stop(void);
 void stream_service(void);
@@ -14,5 +15,8 @@ void stream_report(void);
 void stream_flood_start(void);   /* IN  : device -> host */
 void stream_sink_start(void);    /* OUT : host -> device */
 void stream_duplex_start(void);  /* both at once, the real target */
+void stream_flood_dma_start(void);
+void stream_sink_dma_start(void);
+void stream_duplex_dma_start(void);
 void stream_bench_report(void);
 #endif

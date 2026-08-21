@@ -39,6 +39,26 @@ size_t usb_cdc_write(const uint8_t *data, size_t len);
  */
 size_t usb_cdc_read(uint8_t *dst, size_t max);
 
+/*
+ * DMA transfers on the bulk endpoints.
+ *
+ * The UOTGHS has a DMA channel per endpoint, so the controller can read
+ * straight out of a caller's buffer with the processor never touching
+ * the bytes. That is what the architecture asks for: the ADC's PDC
+ * writes a buffer and the USB DMA reads the same buffer, no copy in
+ * between.
+ *
+ * Start returns false if a transfer is already in flight. The buffer
+ * must stay valid and unmodified until busy() reads false.
+ */
+bool   usb_dma_in_start(const void *buf, uint32_t len);
+bool   usb_dma_in_busy(void);
+uint32_t usb_dma_in_residue(void);
+
+bool   usb_dma_out_start(void *buf, uint32_t len);
+bool   usb_dma_out_busy(void);
+uint32_t usb_dma_out_received(uint32_t requested);
+
 extern volatile uint32_t usb_reset_count;
 extern volatile uint32_t usb_setup_count;
 extern volatile uint32_t usb_stall_count;

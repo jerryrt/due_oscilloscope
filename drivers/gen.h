@@ -11,4 +11,6 @@ void     gen_stop(void);
 uint32_t gen_sine_hz(uint32_t trigger_hz);
 
 extern volatile uint32_t gen_endtx_count;
+
+void gen_endtx(void);   /* dispatched from DACC_Handler */
 #endif

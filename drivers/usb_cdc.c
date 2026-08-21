@@ -364,6 +364,82 @@ size_t usb_cdc_read(uint8_t *dst, size_t max)
 	return n;
 }
 
+/* ------------------------------------------------------------------ */
+/* Endpoint DMA                                                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * UOTGHS_DEVDMA is indexed from endpoint 1, so endpoint n uses index
+ * n-1. Endpoint 0 has no DMA channel, which is fine: control transfers
+ * are tiny and rare.
+ */
+#define DMA_IN_CH   (EP_IN  - 1u)
+#define DMA_OUT_CH  (EP_OUT - 1u)
+
+bool usb_dma_in_busy(void)
+{
+	return (UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMASTATUS
+	        & UOTGHS_DEVDMASTATUS_CHANN_ENB) != 0;
+}
+
+uint32_t usb_dma_in_residue(void)
+{
+	return (UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMASTATUS
+	        & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
+	       >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
+}
+
+bool usb_dma_in_start(const void *buf, uint32_t len)
+{
+	if (!usb_cdc_ready() || len == 0)
+		return false;
+	if (usb_dma_in_busy())
+		return false;
+
+	UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMAADDRESS = (uint32_t)buf;
+	UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMACONTROL =
+		  UOTGHS_DEVDMACONTROL_BUFF_LENGTH(len)
+		/* END_B_EN releases the final, possibly short, packet rather
+		 * than leaving it sitting in a bank. */
+		| UOTGHS_DEVDMACONTROL_END_B_EN
+		| UOTGHS_DEVDMACONTROL_END_BUFFIT
+		| UOTGHS_DEVDMACONTROL_CHANN_ENB;
+	return true;
+}
+
+bool usb_dma_out_busy(void)
+{
+	return (UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS
+	        & UOTGHS_DEVDMASTATUS_CHANN_ENB) != 0;
+}
+
+uint32_t usb_dma_out_received(uint32_t requested)
+{
+	uint32_t left = (UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS
+	                 & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
+	                >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
+	return requested > left ? requested - left : 0;
+}
+
+bool usb_dma_out_start(void *buf, uint32_t len)
+{
+	if (!usb_cdc_ready() || len == 0)
+		return false;
+	if (usb_dma_out_busy())
+		return false;
+
+	UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMAADDRESS = (uint32_t)buf;
+	UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMACONTROL =
+		  UOTGHS_DEVDMACONTROL_BUFF_LENGTH(len)
+		/* END_TR_EN stops on a short packet, which is how a host
+		 * signals the end of a transfer smaller than the buffer. */
+		| UOTGHS_DEVDMACONTROL_END_TR_EN
+		| UOTGHS_DEVDMACONTROL_END_B_EN
+		| UOTGHS_DEVDMACONTROL_END_BUFFIT
+		| UOTGHS_DEVDMACONTROL_CHANN_ENB;
+	return true;
+}
+
 bool usb_cdc_ready(void)
 {
 	return usb_configured != 0 && (usb_line_state & 0x01) != 0;

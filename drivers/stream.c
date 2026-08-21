@@ -38,7 +38,8 @@ uint32_t frame_crc32(const uint8_t *data, size_t len)
  */
 typedef enum { XPORT_USB, XPORT_UART } xport_t;
 static xport_t  xport;
-enum bench_mode { BENCH_OFF, BENCH_FLOOD, BENCH_SINK, BENCH_DUPLEX };
+enum bench_mode { BENCH_OFF, BENCH_FLOOD, BENCH_SINK, BENCH_DUPLEX,
+                  BENCH_FLOOD_DMA, BENCH_SINK_DMA, BENCH_DUPLEX_DMA };
 static enum bench_mode bench;
 static uint32_t bench_in_bytes, bench_out_bytes, bench_t0;
 static uint32_t bench_resets;
@@ -56,6 +57,7 @@ static size_t         tx_off;
 static frame_header_t tx_hdr;
 
 static bool stream_start_common(uint32_t trigger_hz);
+static bool stream_start_common_nogen(uint32_t trigger_hz);
 
 static size_t xport_write(const uint8_t *p, size_t n)
 {
@@ -82,6 +84,32 @@ bool stream_start(uint32_t trigger_hz)
 {
 	xport = XPORT_USB;
 	return stream_start_common(trigger_hz);
+}
+
+/*
+ * Capture only, leaving the DACC alone so play.c can drive it from the
+ * host. This is what makes the full loop possible: generation and
+ * capture come from different sources on independent timebases.
+ */
+bool stream_start_capture_only(uint32_t trigger_hz)
+{
+	xport = XPORT_USB;
+	return stream_start_common_nogen(trigger_hz);
+}
+
+static bool stream_start_common_nogen(uint32_t trigger_hz)
+{
+	acq_init();
+	seq = frames_sent = bytes_sent = 0;
+	pending_overrun = resync_count = refused = 0;
+	tx_phase = TX_IDLE;
+	tx_off = 0;
+	rate_hz = trigger_hz;
+	if (!acq_start(trigger_hz, 2))
+		return false;
+	started_us = micros();
+	active = true;
+	return true;
 }
 
 static bool stream_start_common(uint32_t trigger_hz)
@@ -331,8 +359,12 @@ static void bench_pull_out(uint32_t byte_budget)
 	}
 }
 
+void stream_bench_dma_service(void);
+
 void stream_bench_service(void)
 {
+	stream_bench_dma_service();
+
 	switch (bench) {
 	case BENCH_FLOOD:
 		bench_push_in(8u * BENCH_FRAME_BYTES);
@@ -372,9 +404,120 @@ void stream_bench_report(void)
 	printf("# bench=%s  IN %lu B   OUT %lu B\n",
 	       bench == BENCH_FLOOD  ? "flood"  :
 	       bench == BENCH_SINK   ? "sink"   :
-	       bench == BENCH_DUPLEX ? "duplex" : "off",
+	       bench == BENCH_DUPLEX ? "duplex" :
+	       bench == BENCH_FLOOD_DMA ? "flood-dma" :
+	       bench == BENCH_SINK_DMA ? "sink-dma" :
+	       bench == BENCH_DUPLEX_DMA ? "duplex-dma" : "off",
 	       (unsigned long)bench_in_bytes,
 	       (unsigned long)bench_out_bytes);
 	uart_flush();
 }
 
+
+/* ------------------------------------------------------------------ */
+/* DMA benchmarks                                                      */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Double-buffered so nothing blocks: one frame is in flight under DMA
+ * while the next is being prepared. The processor writes only the
+ * 32-byte header; the 4064-byte payload is never touched by it, which
+ * is the property the architecture actually asks for.
+ */
+#define DMA_FRAME_BYTES  (32u + ACQ_BUF_SAMPLES * 2u)
+
+static uint8_t dma_tx[2][DMA_FRAME_BYTES] __attribute__((aligned(4)));
+static uint8_t dma_rx[2][2048]            __attribute__((aligned(4)));
+static uint8_t dma_tx_slot, dma_rx_slot;
+static uint32_t dma_in_inflight, dma_out_inflight;
+
+static void dma_build_frame(uint8_t *dst)
+{
+	frame_header_t *h = (frame_header_t *)dst;
+
+	h->magic[0] = FRAME_MAGIC0; h->magic[1] = FRAME_MAGIC1;
+	h->magic[2] = FRAME_MAGIC2; h->magic[3] = FRAME_MAGIC3;
+	h->version         = FRAME_VERSION;
+	h->flags           = FRAME_FLAG_CONTINUOUS;
+	h->bits_per_sample = 12;
+	h->packing         = 0;
+	h->seq             = seq++;
+	h->sample_rate_hz  = 0;
+	h->n_samples       = ACQ_BUF_SAMPLES;
+	h->channel_mask    = (1u << 7) | (1u << 6);
+	h->timestamp_us    = micros();
+	h->overrun_count   = 0;
+	h->header_crc32    = frame_crc32(dst, sizeof(*h) - sizeof(uint32_t));
+}
+
+static void dma_seed_payloads(void)
+{
+	for (int s = 0; s < 2; s++) {
+		uint16_t *p = (uint16_t *)(dma_tx[s] + 32u);
+		for (unsigned i = 0; i < ACQ_BUF_SAMPLES; i++)
+			p[i] = (uint16_t)((((i & 1u) ? 6u : 7u) << 12)
+			                  | (i & 0x0fffu));
+	}
+}
+
+static void dma_push_in(void)
+{
+	if (usb_dma_in_busy())
+		return;
+	if (dma_in_inflight) {
+		bench_in_bytes += dma_in_inflight - usb_dma_in_residue();
+		dma_in_inflight = 0;
+	}
+	dma_build_frame(dma_tx[dma_tx_slot]);
+	if (usb_dma_in_start(dma_tx[dma_tx_slot], DMA_FRAME_BYTES)) {
+		dma_in_inflight = DMA_FRAME_BYTES;
+		dma_tx_slot ^= 1u;
+	}
+}
+
+static void dma_pull_out(void)
+{
+	if (usb_dma_out_busy())
+		return;
+	if (dma_out_inflight) {
+		bench_out_bytes += usb_dma_out_received(dma_out_inflight);
+		dma_out_inflight = 0;
+	}
+	if (usb_dma_out_start(dma_rx[dma_rx_slot], sizeof(dma_rx[0]))) {
+		dma_out_inflight = sizeof(dma_rx[0]);
+		dma_rx_slot ^= 1u;
+	}
+}
+
+void stream_flood_dma_start(void)
+{
+	bench_reset(BENCH_FLOOD_DMA);
+	dma_seed_payloads();
+	dma_tx_slot = dma_rx_slot = 0;
+	dma_in_inflight = dma_out_inflight = 0;
+}
+
+void stream_sink_dma_start(void)
+{
+	bench_reset(BENCH_SINK_DMA);
+	dma_tx_slot = dma_rx_slot = 0;
+	dma_in_inflight = dma_out_inflight = 0;
+}
+
+void stream_duplex_dma_start(void)
+{
+	bench_reset(BENCH_DUPLEX_DMA);
+	dma_seed_payloads();
+	dma_tx_slot = dma_rx_slot = 0;
+	dma_in_inflight = dma_out_inflight = 0;
+}
+
+void stream_bench_dma_service(void)
+{
+	switch (bench) {
+	case BENCH_FLOOD_DMA:  dma_push_in();  break;
+	case BENCH_SINK_DMA:   dma_pull_out(); break;
+	case BENCH_DUPLEX_DMA: dma_push_in(); dma_pull_out(); break;
+	default: break;
+	}
+}

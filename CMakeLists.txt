@@ -45,6 +45,7 @@ add_executable(baremetal_bringup
     drivers/adc.c
     drivers/acq.c
     drivers/gen.c
+    drivers/play.c
     drivers/usb_cdc.c
     drivers/stream.c
     ${DEVICE}/source/system_sam3xa.c
