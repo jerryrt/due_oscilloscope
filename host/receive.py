@@ -156,17 +156,35 @@ def main():
     else:
         fd = open_raw(dev, baud=115200, dtr=True)
 
-    buf = bytearray()
-    frames = payload_bytes = 0
-    seq_prev = None
-    seq_gaps = dropped_frames = crc_bad = 0
-    overrun_frames = 0
-    first_overrun_count = last_overrun_count = None
-    per_ch = {}
-    rate_hz = None
-    ts_first = ts_last = None
-    keep = {}
+    # ------------------------------------------------------------------
+    # Capture phase: do nothing but read.
+    #
+    # An earlier version parsed each frame inline, including a per-sample
+    # Python loop. At ~0.9 MB/s that is far too slow, so the port stopped
+    # being drained, the kernel buffer overflowed, and bytes were lost.
+    # The symptom looked exactly like a firmware framing bug: samples
+    # attributed to channels that were not enabled, and sequence jumps.
+    # It was the receiver all along.
+    # ------------------------------------------------------------------
+    # Drop anything queued from a previous run before the clock starts.
+    # The device restarts its sequence numbering at zero on stream
+    # start, so stale bytes appear as one enormous sequence jump and
+    # inflate the sample count with data from the last capture.
+    time.sleep(0.3)
+    try:
+        termios.tcflush(fd, termios.TCIFLUSH)
+    except OSError:
+        pass
+    drain_end = time.time() + 0.2
+    while time.time() < drain_end:
+        r, _, _ = select.select([fd], [], [], 0.05)
+        if r:
+            try:
+                os.read(fd, 262144)
+            except OSError:
+                break
 
+    chunks = []
     t0 = time.time()
     t_end_capture = None
     deadline = t0 + args.seconds
@@ -176,90 +194,25 @@ def main():
             if not r:
                 continue
             try:
-                chunk = os.read(fd, 65536)
+                chunk = os.read(fd, 262144)
             except OSError as e:
-                # ENXIO shows up while the CDC interface is still
-                # settling after enumeration; retry rather than abort.
                 if e.errno in (errno.ENXIO, errno.EAGAIN):
-                    time.sleep(0.05)
+                    time.sleep(0.02)
                     continue
                 raise
-            if not chunk:
-                continue
-            buf += chunk
-
-            while True:
-                i = buf.find(MAGIC)
-                if i < 0:
-                    del buf[:max(0, len(buf) - 3)]
-                    break
-                if i:
-                    del buf[:i]
-                if len(buf) < HDR_LEN:
-                    break
-
-                hdr = bytes(buf[:HDR_LEN])
-                (_m, ver, flags, bits, packing, seq, rate, nsamp,
-                 chmask, ts, overruns, crc) = struct.unpack(HDR_FMT, hdr)
-
-                if zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF != crc:
-                    crc_bad += 1
-                    del buf[:4]
-                    continue
-
-                need = HDR_LEN + nsamp * 2
-                if len(buf) < need:
-                    break
-
-                body = bytes(buf[HDR_LEN:need])
-                del buf[:need]
-
-                frames += 1
-                payload_bytes += len(body)
-                rate_hz = rate
-                if ts_first is None:
-                    ts_first = ts
-                ts_last = ts
-
-                if flags & FLAG_OVERRUN:
-                    overrun_frames += 1
-                if first_overrun_count is None:
-                    first_overrun_count = overruns
-                last_overrun_count = overruns
-
-                if seq_prev is not None and seq != seq_prev + 1:
-                    seq_gaps += 1
-                    dropped_frames += (seq - seq_prev - 1) & 0xFFFFFFFF
-                seq_prev = seq
-
-                for off in range(0, len(body), 2):
-                    v = body[off] | (body[off + 1] << 8)
-                    ch = (v >> 12) & 0xF
-                    val = v & 0xFFF
-                    st = per_ch.setdefault(ch, [0, 4095, 0, 0])
-                    st[0] += 1
-                    st[1] = min(st[1], val)
-                    st[2] = max(st[2], val)
-                    st[3] += val
-                    keep.setdefault(ch, [])
-                    if len(keep[ch]) < 4096:
-                        keep[ch].append(val)
+            if chunk:
+                chunks.append(chunk)
     finally:
-        # Stop the clock before draining, or the drain time is charged
-        # against throughput.
         t_end_capture = time.time()
         if cfd is not None:
             try:
                 os.write(cfd, args.stop.encode())
-                # The device may be blocked inside a CDC write. It cannot
-                # process the stop command until that write completes, so
-                # keep draining the data port or the board wedges.
-                t_end = time.time() + 1.0
-                while time.time() < t_end:
+                t_drain = time.time() + 1.0
+                while time.time() < t_drain:
                     r, _, _ = select.select([fd], [], [], 0.1)
                     if r:
                         try:
-                            os.read(fd, 65536)
+                            os.read(fd, 262144)
                         except OSError:
                             break
             finally:
@@ -267,11 +220,86 @@ def main():
                     os.close(cfd)
         os.close(fd)
 
+    # ------------------------------------------------------------------
+    # Parse phase
+    # ------------------------------------------------------------------
+    buf = bytearray(b"".join(chunks))
+    captured_bytes = len(buf)
+    frames = payload_bytes = 0
+    seq_prev = None
+    seq_gaps = dropped_frames = crc_bad = 0
+    overrun_frames = 0
+    first_overrun_count = last_overrun_count = None
+    per_ch = {}
+    rate_hz = None
+    n_ch_declared = 2
+    ts_first = ts_last = None
+    keep = {}
+    pos = 0
+
+    while True:
+        i = buf.find(MAGIC, pos)
+        if i < 0:
+            break
+        if len(buf) - i < HDR_LEN:
+            break
+
+        hdr = bytes(buf[i:i + HDR_LEN])
+        (_m, ver, flags, bits, packing, seq, rate, nsamp,
+         chmask, ts, overruns, crc) = struct.unpack(HDR_FMT, hdr)
+
+        if zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF != crc:
+            crc_bad += 1
+            pos = i + 4
+            continue
+
+        need = HDR_LEN + nsamp * 2
+        if len(buf) - i < need:
+            break
+
+        body = bytes(buf[i + HDR_LEN:i + need])
+        pos = i + need
+
+        frames += 1
+        payload_bytes += len(body)
+        rate_hz = rate
+        n_ch_declared = max(1, bin(chmask).count("1"))
+        if ts_first is None:
+            ts_first = ts
+        ts_last = ts
+
+        if flags & FLAG_OVERRUN:
+            overrun_frames += 1
+        if first_overrun_count is None:
+            first_overrun_count = overruns
+        last_overrun_count = overruns
+
+        if seq_prev is not None and seq != seq_prev + 1:
+            seq_gaps += 1
+            dropped_frames += (seq - seq_prev - 1) & 0xFFFFFFFF
+        seq_prev = seq
+
+        vals = struct.unpack("<%dH" % nsamp, body)
+        for v in vals:
+            ch = (v >> 12) & 0xF
+            val = v & 0xFFF
+            st = per_ch.setdefault(ch, [0, 4095, 0, 0])
+            st[0] += 1
+            if val < st[1]:
+                st[1] = val
+            if val > st[2]:
+                st[2] = val
+            st[3] += val
+            k = keep.setdefault(ch, [])
+            if len(k) < 8192:
+                k.append(val)
+
     elapsed = (t_end_capture or time.time()) - t0
     print(f"# elapsed          {elapsed:.2f} s")
     print(f"# frames           {frames}")
-    print(f"# payload          {payload_bytes} bytes"
-          f"  ({payload_bytes / elapsed / 1e6:.3f} MB/s)")
+    print(f"# captured         {captured_bytes} bytes"
+          f"  ({captured_bytes / elapsed / 1e6:.3f} MB/s)")
+    print(f"# payload          {payload_bytes} bytes in frames")
     print(f"# header CRC bad   {crc_bad}")
     print(f"# seq gaps         {seq_gaps}  (frames lost: {dropped_frames})")
     print(f"# frames flagged   {overrun_frames}")
@@ -282,8 +310,10 @@ def main():
         span_us = (ts_last - ts_first) & 0xFFFFFFFF
         total = sum(st[0] for st in per_ch.values())
         # last frame's samples arrived after ts_last, so use frames-1
-        n_ch = max(1, len(per_ch))
-        eff = (total - total / max(frames, 1)) * 1e6 / span_us / n_ch
+        # Use the declared channel count, not the observed one: a
+        # single corrupt sample would otherwise invent a channel and
+        # skew the rate.
+        eff = (total - total / max(frames, 1)) * 1e6 / span_us / n_ch_declared
         print(f"# declared rate    {rate_hz} Hz per channel")
         print(f"# measured rate    {eff:.0f} Hz per channel"
               f"   ratio {eff / rate_hz:.3f}" if rate_hz else "")
