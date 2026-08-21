@@ -14,6 +14,8 @@ Updated after full-rate streaming was achieved on Track B.
 | USB CDC device | Arduino core | **own bare-metal stack** |
 | Framed binary streaming | yes | yes |
 | Host deframe / demux / tone check | yes | yes, same receiver |
+| Host-fed DAC playback over bulk OUT | no | yes |
+| Full loop: host waveform out, capture back, simultaneously | no | **yes** |
 
 ## Headline result: both tracks reach the full ADC rate
 
@@ -119,6 +121,50 @@ needs to be fast.
 Why the interrupt never re-fires is still unexplained and worth
 returning to, but it no longer blocks anything.
 
+## The full loop works; the "frozen DAC" was the receiver's own bug
+
+The complete chain - host-authored 1 kHz sine over bulk OUT, DAC0,
+jumper, A0, ADC, bulk IN - runs simultaneously in both directions:
+1024 frames in 5 s with zero sequence gaps, zero CRC errors, zero
+overruns, Goertzel amplitude 1371 codes on A0 against a theoretical
+maximum of ~1370, and A1 flat at 0.1 codes. DAC consumption at 200 ksps
+and capture at 400 ksps aggregate, about 1.24 MB/s combined.
+
+A full session was previously spent on a defect described as "playback
+works, capture works, together the analog output freezes at mid scale".
+That freeze never existed on the device. A stream from an earlier run
+keeps flowing into the kernel's input buffer after the run ends; the
+next run's receiver read ~800 kB of those stale frames first - the flat
+mid-scale startup of an *old* capture - and the "1 sequence gap" it
+reported on every run was the splice between the stale epoch and the
+live one. Frame timestamps proved it: the capture contained one epoch at
+device time ~0 s and a second at device time ~52 s, inside a 5-second
+run. The device-side counters said all along that playback was
+consuming host data on schedule, and they were right.
+
+This is the *same* stale-buffer failure mode already recorded below
+under "Two host-side bugs that looked like firmware bugs" - it bit
+twice because a one-shot `tcflush` at open does not empty a buffer the
+device is still refilling. `host/loopback.py` now drains the native
+port until it stays silent for a full second, refuses to trust a
+capture whose first frame is not near sequence zero, and reports tone
+amplitude windowed against device timestamps so a late or intermittent
+tone shows as what it is.
+
+Two real firmware fixes came out of the same investigation, verified
+independently: `usb_cdc_read()` used to discard the undrained tail of
+an OUT bank after a clipped read (one short packet then byte-shifts the
+whole sample stream), and the DACC + TIOA1 trigger path was exonerated
+on hardware by command `M`, which plays gen's sine through play's exact
+configuration with capture running and no USB involved.
+
+Residual imperfection, honestly counted: the host's non-blocking feed
+delivers ~0.396 MB/s against the 0.400 MB/s the DAC consumes, so a few
+underruns per second repeat a buffer and dent the tone amplitude in
+those windows (`under=26` in a 5 s run). The defect is host scheduling,
+it is counted on the device and visible in the windowed amplitude, and
+deepening the ring or feeding with larger writes are both open options.
+
 ## Two host-side bugs that looked like firmware bugs
 
 Both produced symptoms that pointed convincingly at the device, and both
@@ -152,6 +198,7 @@ than the source can produce is describing its own bug.**
 | Multiplexer crosstalk | +/-1 code at slow tracking |
 | USB, Arduino CDC | 0.8 MB/s gapless, ~0.95 MB/s ceiling |
 | USB, bare-metal CDC | **1.97 MB/s gapless at full ADC rate** |
+| Full loop, duplex | 200 ksps DAC + 400 ksps ADC, tone 1371/1370 codes |
 | printf, 40-char line | 3600 us |
 | GPIO set+clear pair | 138.3 ns (Track A) / 71.5 ns (Track B) |
 
