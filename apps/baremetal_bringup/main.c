@@ -348,6 +348,7 @@ int main(void)
 			heartbeat_at = now;
 		}
 
+		usb_cdc_poll();
 		stream_service();
 
 		int c = uart_getc();

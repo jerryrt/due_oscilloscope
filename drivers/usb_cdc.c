@@ -57,6 +57,7 @@ volatile uint32_t usb_devier_snap;
 static uint8_t  pending_address;
 static const uint8_t *ctrl_src;
 static uint32_t ctrl_remaining;
+static bool ctrl_active;
 
 /* CDC line coding: 115200 8N1. Content is irrelevant to a CDC data path
  * but the host asks for it and expects seven sane bytes back. */
@@ -134,6 +135,7 @@ static void ctrl_send(const uint8_t *data, uint32_t len, uint32_t wlen)
 {
 	ctrl_src = data;
 	ctrl_remaining = len < wlen ? len : wlen;
+	ctrl_active = true;
 	ctrl_send_chunk();
 }
 
@@ -141,6 +143,7 @@ static void ctrl_send_zlp(void)
 {
 	ctrl_src = 0;
 	ctrl_remaining = 0;
+	ctrl_active = true;
 	UOTGHS->UOTGHS_DEVEPTICR[EP_CTRL] = UOTGHS_DEVEPTICR_TXINIC;
 }
 
@@ -315,9 +318,6 @@ size_t usb_cdc_write(const uint8_t *data, size_t len)
 		 */
 		if (!(UOTGHS->UOTGHS_DEVEPTISR[EP_IN] & UOTGHS_DEVEPTISR_TXINI))
 			break;
-		if (!(UOTGHS->UOTGHS_DEVEPTISR[EP_IN] & UOTGHS_DEVEPTISR_RWALL) &&
-		    done)
-			break;
 
 		n = len - done;
 		if (n > EPX_SIZE)
@@ -343,6 +343,72 @@ bool usb_cdc_ready(void)
 /* ------------------------------------------------------------------ */
 /* Interrupt and init                                                  */
 /* ------------------------------------------------------------------ */
+
+/*
+ * Poll the same events the interrupt handles.
+ *
+ * Diagnostic first: if enumeration succeeds when polled but not when
+ * interrupt-driven, then SETUP packets are arriving and the NVIC path is
+ * at fault, which is a completely different bug from the device never
+ * being addressed at all.
+ *
+ * It is also a legitimate implementation. Control transfers happen a few
+ * dozen times at enumeration and essentially never afterwards, so
+ * servicing them from the main loop costs nothing. Only the bulk path
+ * needs to be fast.
+ */
+void usb_cdc_poll(void)
+{
+	uint32_t isr = UOTGHS->UOTGHS_DEVISR;
+
+	if (isr & UOTGHS_DEVISR_EORST) {
+		UOTGHS->UOTGHS_DEVICR = UOTGHS_DEVICR_EORSTC;
+		usb_reset_count++;
+		usb_configured = 0;
+		usb_line_state = 0;
+		pending_address = 0;
+
+		/* A bus reset clears the endpoint configuration, so EP0 has to
+		 * be rebuilt every time rather than only once. */
+		ep_configure(EP_CTRL, 0u, 0u, EP0_SIZE, 1u);
+	}
+
+	if (!(UOTGHS->UOTGHS_DEVEPT & UOTGHS_DEVEPT_EPEN0))
+		return;
+
+	{
+		uint32_t st = UOTGHS->UOTGHS_DEVEPTISR[EP_CTRL];
+
+		if (st & UOTGHS_DEVEPTISR_RXSTPI) {
+			handle_setup();
+			return;
+		}
+		if ((st & UOTGHS_DEVEPTISR_TXINI) && ctrl_active) {
+			if (ctrl_remaining) {
+				ctrl_send_chunk();
+			} else {
+				ctrl_active = false;
+				UOTGHS->UOTGHS_DEVEPTICR[EP_CTRL] =
+					UOTGHS_DEVEPTICR_TXINIC;
+				if (pending_address) {
+					UOTGHS->UOTGHS_DEVCTRL =
+						(UOTGHS->UOTGHS_DEVCTRL &
+						 ~UOTGHS_DEVCTRL_UADD_Msk) |
+						UOTGHS_DEVCTRL_UADD(pending_address) |
+						UOTGHS_DEVCTRL_ADDEN;
+					pending_address = 0;
+				}
+			}
+			return;
+		}
+		if (st & UOTGHS_DEVEPTISR_RXOUTI) {
+			UOTGHS->UOTGHS_DEVEPTICR[EP_CTRL] =
+				UOTGHS_DEVEPTICR_RXOUTIC;
+			UOTGHS->UOTGHS_DEVEPTIDR[EP_CTRL] =
+				UOTGHS_DEVEPTIDR_FIFOCONC;
+		}
+	}
+}
 
 void UOTGHS_Handler(void)
 {
@@ -439,14 +505,12 @@ void usb_cdc_init(void)
 		| UOTGHS_DEVCTRL_SPDCONF_NORMAL;
 #endif
 
-	NVIC_SetPriority(UOTGHS_IRQn, 2);   /* below ADC and DACC */
-	NVIC_EnableIRQ(UOTGHS_IRQn);
+	/* Polled for now; see usb_cdc_poll. */
 
 	while (!(UOTGHS->UOTGHS_SR & UOTGHS_SR_CLKUSABLE))
 		{ }
 
 	UOTGHS->UOTGHS_DEVCTRL &= ~UOTGHS_DEVCTRL_DETACH;   /* attach */
-	UOTGHS->UOTGHS_DEVIER = UOTGHS_DEVIER_EORSTES;
 }
 
 /*

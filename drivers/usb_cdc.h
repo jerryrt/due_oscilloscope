@@ -16,6 +16,7 @@
 
 void   usb_cdc_init(void);
 void   usb_cdc_dump(void);
+void   usb_cdc_poll(void);
 
 /* True once the host has configured the device and raised DTR. */
 bool   usb_cdc_ready(void);
