@@ -18,10 +18,12 @@ import select
 import struct
 import sys
 import termios
+import threading
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ports import find_ports
+import rt
 
 
 def op(dev, baud=None, dtr=False):
@@ -40,10 +42,12 @@ def op(dev, baud=None, dtr=False):
     return fd
 
 
-def native_port(wait=10.0):
+def native_port(ctl, wait=10.0):
+    """Whichever usbmodem node is not the discovered control port. Never
+    a hardcoded path: node names change with every cable move."""
     end = time.time() + wait
     while True:
-        c = [p for p in glob.glob("/dev/cu.usbmodem*") if "141301" not in p]
+        c = [p for p in glob.glob("/dev/cu.usbmodem*") if p != ctl]
         if c:
             return sorted(c)[0]
         if time.time() >= end:
@@ -70,31 +74,83 @@ def main():
     os.write(ctl, cmd)
     time.sleep(0.4)
 
-    nfd = op(NATIVE or native_port(), 115200, dtr=True)
+    # Opening the control port resets the board over NRSTB, so the
+    # native CDC re-enumerates and its node may briefly not accept an
+    # open. Retry rather than racing it.
+    nfd = None
+    give_up = time.time() + 10.0
+    while nfd is None:
+        try:
+            nfd = op(native_port(CTL), 115200, dtr=True)
+        except OSError:
+            if time.time() >= give_up:
+                sys.exit("native port did not come back after reset")
+            time.sleep(0.5)
     termios.tcflush(nfd, termios.TCIFLUSH)
 
     block = bytes(range(256)) * (args.block // 256)
-    rx = tx = 0
     want_rx = args.mode in ("in", "duplex", "in-dma", "duplex-dma")
     want_tx = args.mode in ("out", "duplex", "out-dma", "duplex-dma")
 
+    # One thread per direction, and blocking writes. The earlier loop
+    # interleaved reads and writes on one thread behind a select()
+    # timeout, so each direction stalled while the other's syscall ran
+    # and whenever the poll interval overshot - a ceiling made by the
+    # host's scheduling, not by the transport, which is the same trap
+    # this project already hit once with unequal budgets on the device.
+    # With a blocking write the kernel wakes the writer the moment the
+    # output queue has room; VMIN=0 keeps reads non-blocking, so
+    # clearing O_NONBLOCK affects only the write side. os.read/os.write
+    # release the GIL, so the directions genuinely overlap.
+    fl = fcntl.fcntl(nfd, fcntl.F_GETFL)
+    fcntl.fcntl(nfd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
+
+    rx_n = [0]
+    tx_n = [0]
+    rt_notes = {}
+    stop = threading.Event()
+
+    def reader():
+        # At ~4 MB/s a 5 ms scheduling hole is 20 kB of kernel buffer;
+        # the real-time band keeps the drain ahead of it.
+        rt_notes["reader"] = rt.promote(period_ms=5.0, computation_ms=0.5,
+                                        constraint_ms=2.5)
+        while not stop.is_set():
+            r, _, _ = select.select([nfd], [], [], 0.05)
+            if r:
+                try:
+                    rx_n[0] += len(os.read(nfd, 262144))
+                except OSError:
+                    return
+
+    def writer():
+        rt_notes["writer"] = rt.promote(period_ms=5.0, computation_ms=0.5,
+                                        constraint_ms=2.5)
+        while not stop.is_set():
+            try:
+                tx_n[0] += os.write(nfd, block)
+            except OSError:
+                return
+
+    threads = []
+    if want_rx:
+        threads.append(threading.Thread(target=reader, daemon=True))
+    if want_tx:
+        threads.append(threading.Thread(target=writer, daemon=True))
     t0 = time.time()
-    while time.time() - t0 < args.seconds:
-        r, w, _ = select.select([nfd] if want_rx else [],
-                                [nfd] if want_tx else [], [], 0.1)
-        # Symmetric budgets: an unequal read/write size here biases the
-        # duplex result just as much as an unequal budget on the device.
-        if r:
-            try:
-                rx += len(os.read(nfd, len(block)))
-            except OSError:
-                pass
-        if w:
-            try:
-                tx += os.write(nfd, block)
-            except OSError:
-                pass
+    for th in threads:
+        th.start()
+    time.sleep(args.seconds)
     el = time.time() - t0
+    stop.set()
+    for th in threads:
+        th.join(2.0)
+    if any(th.is_alive() for th in threads):
+        # A writer wedged on a queue the device stopped draining.
+        termios.tcflush(nfd, termios.TCOFLUSH)
+        for th in threads:
+            th.join(1.0)
+    rx, tx = rx_n[0], tx_n[0]
 
     time.sleep(0.3)
     os.write(ctl, b"B")
@@ -112,10 +168,19 @@ def main():
             except OSError:
                 pass
     os.write(ctl, b"0")
+    # close() on a tty drains the output queue first, and once '0' stops
+    # the device from reading bulk OUT a saturated queue never drains:
+    # without this flush the process hangs in close() holding the port.
+    try:
+        termios.tcflush(nfd, termios.TCIOFLUSH)
+    except OSError:
+        pass
     os.close(nfd)
     os.close(ctl)
 
     print(f"# mode={args.mode} block={args.block} elapsed={el:.2f}s")
+    for role in sorted(rt_notes):
+        print(f"#   {role} thread: {rt_notes[role]}")
     if want_rx:
         print(f"#   host read    {rx:10d} B = {rx/el/1e6:6.3f} MB/s")
     if want_tx:
