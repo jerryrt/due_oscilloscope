@@ -101,7 +101,7 @@ def main():
     ap.add_argument("--seconds", type=float, default=5.0)
     ap.add_argument("--expect-hz", type=float, default=None,
                     help="expected DAC0 tone, for the Goertzel check")
-    ap.add_argument("--control", default="/dev/cu.usbmodem141301",
+    ap.add_argument("--control", default=None,
                     help="programming port, for the start command")
     ap.add_argument("--send", default=None,
                     help="command to send on the control port before reading")
@@ -138,6 +138,14 @@ def main():
         for line in reply.decode("utf-8", "replace").splitlines():
             if line.strip():
                 print("# ctl> " + line.strip())
+
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from ports import find_ports
+    _ctl, _nat = find_ports()
+    if args.control is None:
+        args.control = _ctl or "/dev/cu.usbmodem141301"
+    if args.port is None and not args.uart:
+        args.port = _nat
 
     if args.uart:
         dev = args.control

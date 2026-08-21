@@ -40,14 +40,20 @@ def open_port(dev, baud):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("port")
+    p.add_argument("port", nargs="?", default="auto")
     p.add_argument("--baud", type=int, default=115200)
     p.add_argument("--send", default="")
     p.add_argument("--seconds", type=float, default=3.0)
     p.add_argument("--settle", type=float, default=0.3)
     args = p.parse_args()
 
-    fd = open_port(args.port, args.baud)
+    dev = args.port
+    if dev == "auto":
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "..", "host"))
+        from ports import find_ports
+        dev = find_ports()[0] or sys.exit("no control port found")
+    fd = open_port(dev, args.baud)
     try:
         time.sleep(args.settle)
         if args.send:

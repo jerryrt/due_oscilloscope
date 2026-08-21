@@ -66,6 +66,7 @@ static void banner(void)
 	Serial.println("#           0=stop stream   ?=stream stats");
 	Serial.println("#           d=DAC max update-rate sweep");
 	Serial.println("#           F=flood USB IN   R=sink USB OUT   B=bench stats");
+	Serial.println("#           z=software reset (tests GPBR retention)");
 	Serial.println("#           j/k=DAC 1.5M/3.0M indep + capture 200k");
 	Serial.println("#");
 }
@@ -494,6 +495,14 @@ void loop()
 		case 'R': stream_sink_start(); state_log("bench=sink(OUT)");
 		          Serial.println("# sinking USB OUT, send data now");
 		          Serial.flush(); break;
+		/*
+		 * A software reset must not clear the backup domain. If the
+		 * boot counter still reads 1 afterwards, the counter itself is
+		 * not retaining and cannot be used as evidence about resets.
+		 */
+		case 'z': Serial.println("# software reset now"); Serial.flush();
+		          RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
+		          break;
 		case 'B': { char b[160]; stream_bench_report(b, sizeof(b));
 		            Serial.println(b); Serial.flush(); } break;
 		default:                     break;

@@ -20,7 +20,8 @@ import sys
 import termios
 import time
 
-CTL = "/dev/cu.usbmodem141301"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ports import find_ports
 
 
 def op(dev, baud=None, dtr=False):
@@ -59,12 +60,15 @@ def main():
 
     cmd = {"in": b"F", "out": b"R", "duplex": b"X"}[args.mode]
 
+    CTL, NATIVE = find_ports()
+    if not CTL:
+        sys.exit('no control port found')
     ctl = op(CTL, 115200)
     time.sleep(0.3)
     os.write(ctl, cmd)
     time.sleep(0.4)
 
-    nfd = op(native_port(), 115200, dtr=True)
+    nfd = op(NATIVE or native_port(), 115200, dtr=True)
     termios.tcflush(nfd, termios.TCIFLUSH)
 
     block = bytes(range(256)) * (args.block // 256)

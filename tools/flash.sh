@@ -15,7 +15,23 @@
 set -euo pipefail
 
 BIN="${1:-build/baremetal_bringup.bin}"
-PORT="${2:-/dev/cu.usbmodem141301}"
+# Device nodes are named from USB location, so they move when a cable
+# does. Discover the port that actually answers rather than assuming.
+if [ -n "${2:-}" ]; then
+    PORT="$2"
+else
+    PORT="$(python3 "$(dirname "$0")/../host/ports.py" 2>/dev/null \
+            | awk '/^control/ {print $3}')"
+    # ports.py prints "None" when nothing answered. Refuse rather than
+    # falling back to a guess: the 1200-baud touch erases whatever port
+    # it lands on, and aiming it at the wrong one wipes the flash
+    # without writing anything. That has happened once already.
+    if [ -z "$PORT" ] || [ "$PORT" = "None" ]; then
+        echo "could not identify the control port; pass it explicitly" >&2
+        echo "  usage: tools/flash.sh <bin> /dev/cu.usbmodemXXXX" >&2
+        exit 1
+    fi
+fi
 BOSSAC="${BOSSAC:-$HOME/Library/Arduino15/packages/arduino/tools/bossac/1.6.1-arduino/bossac}"
 
 [ -f "$BIN" ]     || { echo "no such binary: $BIN" >&2; exit 1; }
