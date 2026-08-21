@@ -16,11 +16,13 @@ a tone appearing on A1 means the tags are being read wrong.
 """
 
 import argparse
+import glob
 import math
 import os
 import select
 import struct
 import sys
+import termios
 import time
 import zlib
 
@@ -82,7 +84,7 @@ def main():
     args = ap.parse_args()
 
     ctl, nat = find_ports()
-    if not ctl or not nat:
+    if not ctl:
         sys.exit(f"ports not found (control={ctl} native={nat})")
     print(f"# control={ctl}  native={nat}")
 
@@ -97,14 +99,41 @@ def main():
     print(f"# waveform: {len(wave)} B block, DAC0 tone {tone:.2f} Hz "
           f"at {args.dac_sps} sps (single channel)")
 
+    # Opening the control port resets the board over NRSTB, which also
+    # re-enumerates the native port: open control first, keep it open,
+    # and only then look for the native node, whose name may have changed.
     cfd = open_raw(ctl, 115200)
-    time.sleep(0.3)
-    os.write(cfd, b"L")
-    time.sleep(0.5)
-
+    time.sleep(3.0)
+    nats = [n for n in glob.glob("/dev/cu.usbmodem*") if n != ctl]
+    if not nats:
+        sys.exit("native port did not re-enumerate after reset")
+    if nats[0] != nat:
+        print(f"# native re-enumerated as {nats[0]}")
+    nat = nats[0]
     fd = open_raw(nat, 115200, dtr=True)
-    import termios
-    termios.tcflush(fd, termios.TCIFLUSH)
+
+    # Drain until the native port has been silent for a full second. A
+    # stream from a previous run keeps flowing into the kernel's input
+    # buffer long after the run ends, and analysing those stale frames is
+    # exactly how a working loop was once diagnosed as "frozen at mid
+    # scale": the flat startup of an old capture, read as live data. One
+    # tcflush is not enough; the buffer refills as long as the device is
+    # still streaming.
+    stale = 0
+    quiet = time.time()
+    while time.time() - quiet < 1.0:
+        r, _, _ = select.select([fd], [], [], 0.1)
+        if r:
+            try:
+                stale += len(os.read(fd, 65536))
+                quiet = time.time()
+            except OSError:
+                pass
+    if stale:
+        print(f"# drained {stale} stale bytes from the native port")
+
+    os.write(cfd, b"L")
+    time.sleep(0.2)
 
     chunks = []
     ctl_out = b""
@@ -160,11 +189,8 @@ def main():
 
     # ---- parse ----
     buf = b"".join(chunks)
-    frames = crc_bad = gaps = 0
-    prev = None
-    per_ch = {}
-    keep = {}
-    rate = None
+    flist = []
+    crc_bad = 0
     p = 0
     while True:
         i = buf.find(MAGIC, p)
@@ -179,20 +205,31 @@ def main():
         need = HDR_LEN + ns * 2
         if len(buf) - i < need:
             break
-        body = bytes(buf[i + HDR_LEN:i + need])
+        flist.append((seq, ts, ov, rt,
+                      struct.unpack("<%dH" % ns, buf[i + HDR_LEN:i + need])))
         p = i + need
-        frames += 1
-        rate = rt
-        # Skip the opening frames. The DAC emits silence until the ring
-        # is primed and the host's stream has reached it, so analysing
-        # the first samples measures the start-up gap rather than the
-        # waveform. Everything is retained for min/max; only the
-        # spectral window skips ahead.
-        settled = frames > 120
-        if prev is not None and seq != prev + 1:
-            gaps += 1
-        prev = seq
-        for v in struct.unpack("<%dH" % ns, body):
+
+    if not flist:
+        sys.exit("no frames received")
+
+    # A fresh stream starts at seq 0. A capture that begins far from it
+    # is stale data from an earlier run still sitting in the kernel
+    # buffer, and everything computed from it would describe the past.
+    if flist[0][0] > 10:
+        print(f"# WARNING: capture starts at seq {flist[0][0]}, not 0 - "
+              f"stale data from a previous stream; results are unreliable")
+    gaps = sum(1 for a, b in zip(flist, flist[1:]) if b[0] != a[0] + 1)
+    frames = len(flist)
+    rate = flist[0][3]
+    ts0 = flist[0][1]
+    dev_span = (flist[-1][1] - ts0) / 1e6
+
+    per_ch = {}
+    keep = {}
+    keep_t0 = ts0 + 1_000_000     # spectral window: from 1 s of device time
+    for (seq, ts, ov, rt, body) in flist:
+        settled = ts >= keep_t0
+        for v in body:
             ch = (v >> 12) & 0xF
             val = v & 0xFFF
             st = per_ch.setdefault(ch, [0, 4095, 0, 0])
@@ -207,7 +244,9 @@ def main():
     print(f"# host  -> DAC   {tx} B = {tx/el/1e6:.3f} MB/s")
     print(f"# ADC   -> host  {len(buf)} B = {len(buf)/el/1e6:.3f} MB/s")
     print(f"#   combined     {(tx+len(buf))/el/1e6:.3f} MB/s")
-    print(f"# frames {frames}  crc_bad {crc_bad}  seq gaps {gaps}")
+    print(f"# frames {frames}  seq {flist[0][0]}..{flist[-1][0]}  "
+          f"crc_bad {crc_bad}  seq gaps {gaps}  "
+          f"device span {dev_span:.2f} s  max overrun {max(f[2] for f in flist)}")
     for l in rep.decode("utf-8", "replace").splitlines():
         if "play:" in l or "bench=" in l:
             print("#", l.strip().lstrip("# "))
@@ -228,6 +267,20 @@ def main():
             m = goertzel(keep[ch], rate, tone)
             print(f"#   AD{ch} {lab}  amplitude {m:8.1f} codes")
         print("#   A0 should carry the tone the host sent; A1 should be flat")
+        # Amplitude against device time, so a late or intermittent tone
+        # shows as what it is instead of averaging into a small number.
+        a0t = [(ts, v & 0xFFF)
+               for (seq, ts, ov, rt, body) in flist
+               for v in body if (v >> 12) & 0xF == 7]
+        W = 8192
+        if len(a0t) > W:
+            print("# A0 amplitude by device time:")
+            rows = []
+            for s in range(0, len(a0t) - W, W * 3):
+                w = [v for _, v in a0t[s:s + W]]
+                rows.append(f"{(a0t[s][0]-ts0)/1e6:5.2f}s:{goertzel(w, rate, tone):6.1f}")
+            for j in range(0, len(rows), 5):
+                print("#   " + "  ".join(rows[j:j + 5]))
         for ch in (7, 6):
             if ch in keep and len(keep[ch]) >= 40:
                 lab = {7: "A0", 6: "A1"}[ch]
