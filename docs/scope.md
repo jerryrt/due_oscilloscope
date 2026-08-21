@@ -124,9 +124,9 @@ guess.
 1. Sustained USB CDC throughput on this host — unknown until measured.
    Community reports scatter across 0.5–2 MB/s, which straddles the
    2.1 MB/s target.
-2. CDC bulk endpoint `wMaxPacketSize` (64 vs 512). macOS does not expose
-   endpoint descriptors in the IORegistry; read it from the SAM core
-   source or via libusb.
+2. ~~CDC bulk endpoint `wMaxPacketSize`.~~ **Resolved**: 512 bytes,
+   2-bank, read from `arduino:sam@1.6.12` source. Already optimal; no
+   tuning available. See `docs/hardware.md`.
 3. Whether SRAM bank 0 and bank 1 sit on separate bus-matrix slaves.
    Determines whether bank placement removes DMA contention.
 4. Exact ADC conversion cycle count under the chosen `TRACKTIM` and

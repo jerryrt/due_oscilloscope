@@ -54,6 +54,11 @@ Check here before reasoning from general Arduino knowledge.
 - **Cortex-M3 has no data cache**, so DMA buffers need no cache
   maintenance. Advice written for Cortex-M7 parts does not apply.
 - **Pin 13 is PB27** and carries no SPI conflict on the Due.
+- **The Arduino CDC stack does not use DMA.** `UDD_Send()` copies into
+  the endpoint FIFO a byte at a time and spins on `TXINI`. `SerialUSB`
+  therefore cannot carry the sample path without breaking invariant 1.
+  Endpoints are already 512-byte and 2-bank, so there is nothing to tune
+  there either. Verified from core source; see `docs/hardware.md`.
 
 ## Ports on the development host
 

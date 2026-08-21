@@ -45,11 +45,43 @@ it; the native port does not report one.
 Always use `/dev/cu.*`, never `/dev/tty.*`, for host-side serial clients
 on macOS. The native port ignores baud rate entirely (CDC).
 
-### Unverified
+### CDC endpoint configuration *(verified from core source)*
 
-CDC bulk endpoint `wMaxPacketSize` (64 vs 512) could not be read: macOS
-publishes no endpoint descriptors in the IORegistry. Read it from the SAM
-core descriptor tables or via libusb.
+Read from `arduino:sam@1.6.12`. The endpoints are **already optimally
+sized and banked**; there is no gain available from reconfiguring them.
+
+| Item | Value | Source |
+|---|---|---|
+| `EPX_SIZE` | **512** | `system/libsam/include/uotghs_device.h:37` |
+| `EP0_SIZE` | 64 | `uotghs_device.h:36` |
+| Bulk IN / OUT packet size | **512 bytes** | `EP_TYPE_BULK_IN/OUT`, `uotghs_device.h` |
+| Bulk IN / OUT banking | **2 banks** (double-buffered) | `UOTGHS_DEVEPTCFG_EPBK_2_BANK` |
+| Descriptor (HS config) | 512 | `CDC.cpp:75-76`, `_cdcInterface` |
+| Descriptor (other-speed) | 64 | `CDC.cpp:92-93`, `_cdcOtherInterface` |
+
+The 64-byte figures belong to `_cdcOtherInterface`, the
+`other_speed_configuration` descriptor reported for the Full-Speed
+fallback. The active High-Speed configuration uses 512 throughout.
+
+### The Arduino CDC path does not use DMA *(verified)*
+
+`UDD_Send()` in `system/libsam/source/uotghs_device.c` spins on `TXINI`
+and then copies into the endpoint FIFO **one byte at a time**:
+
+```c
+while (UOTGHS_DEVEPTISR_TXINI != (UOTGHS->UOTGHS_DEVEPTISR[ep] & ...)) {}
+for (i = 0, ptr_dest += ul_send_fifo_ptr[ep]; i < len; ++i)
+        *ptr_dest++ = *ptr_src++;
+```
+
+The only references to the UOTGHS DMA registers in the whole core are two
+lines in `USBCore.cpp` that zero `UOTGHS_DEVDMACONTROL`. **The built-in
+USB DMA is never used.**
+
+Consequence: `SerialUSB` makes the CPU touch every sample byte, with a
+blocking spin-wait per packet. That is incompatible with this project's
+zero-copy invariant, so the Track B data path must drive UOTGHS DMA
+directly rather than build on the core's CDC. See `docs/architecture.md`.
 
 ## ADC
 

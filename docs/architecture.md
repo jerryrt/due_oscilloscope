@@ -104,6 +104,33 @@ far worse than a reported gap** — the host must be able to distinguish
   Short packets mid-stream waste a transaction slot and confuse framing.
 - Circular UOTGHS descriptor chain for continuous shipping.
 
+## Why the data path cannot be built on the Arduino CDC
+
+*(verified against `arduino:sam@1.6.12`)*
+
+The core's `UDD_Send()` spins on `TXINI` and copies into the endpoint
+FIFO one byte at a time, and the core never touches the UOTGHS DMA
+registers except to zero them. So `SerialUSB` makes the CPU read every
+sample byte, with a blocking wait per packet.
+
+That violates the invariant at the top of this document. It is not a
+performance detail to be optimised later; it is the wrong shape.
+
+What this rules out, and what it does not:
+
+- **Ruled out**: `SerialUSB` as the Track B sample transport.
+- **Still fine**: `SerialUSB` in Track A sketches, and CDC on the
+  *programming* port for the ASCII control channel, where throughput is
+  irrelevant.
+- **Not a gain**: reconfiguring endpoint size or banking. Both are
+  already optimal at 512 bytes and 2 banks. Nothing is left on the table
+  there.
+
+The Track B data path therefore drives the UOTGHS DMA directly with a
+vendor-class bulk IN endpoint, and the host uses libusb rather than a
+serial device node. Add Microsoft OS 2.0 (WCID) descriptors so Windows
+binds WinUSB without a manual driver install.
+
 ## The hard problem: producer/consumer mismatch
 
 The ADC produces at a rigid 2.1 MB/s. USB drains at a **variable** rate
