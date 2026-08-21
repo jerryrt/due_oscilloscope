@@ -16,6 +16,7 @@ a tone appearing on A1 means the tags are being read wrong.
 """
 
 import argparse
+import fcntl
 import glob
 import math
 import os
@@ -23,11 +24,13 @@ import select
 import struct
 import sys
 import termios
+import threading
 import time
 import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ports import find_ports, open_raw
+import rt
 
 HDR = "<4sBBBBIIHHIII"
 HDR_LEN = struct.calcsize(HDR)
@@ -135,11 +138,73 @@ def main():
     os.write(cfd, b"L")
     time.sleep(0.2)
 
+    # Feed from a dedicated real-time thread, gated on tty writability.
+    #
+    # Three simpler policies were each tried and measured before this
+    # one; the failures are worth keeping because every one of them
+    # looked plausible:
+    #
+    #   - select()-paced writes in the shared main loop starved on loop
+    #     granularity: ~1% rate shortfall, a few underruns per second.
+    #   - free-running blocking writes from a thread saturated the
+    #     queue, and macOS's CDC-ACM output path then silently dropped
+    #     ~128-byte chunks that write() had already counted: ~75 clean
+    #     phase jumps per second on the DAC, every counter green.
+    #   - clock-paced writes at the exact byte rate still dropped, at
+    #     any tested lead: the loss tracks writing into a queue that is
+    #     actively draining, not queue depth as such.
+    #
+    # The only policy measured clean is the writability gate: select()
+    # reports a tty writable when its output queue falls below the
+    # low-water mark, so every write lands in a nearly empty queue and
+    # the burst is what rides out scheduling gaps. What the original
+    # main-loop version got wrong was latency, not policy - and the
+    # real-time band fixes the latency, waking this thread within the
+    # millisecond of low-water instead of on the next 50 ms poll. The
+    # device's own 8 KB ring covers 20 ms, so the cadence has margin.
+    # os.write releases the GIL, so the reader is never held up.
+    tx_count = [0]
+    rt_note = [None]
+    stop = threading.Event()
+
+    byte_rate = args.dac_sps * 2
+
+    def feeder():
+        rt_note[0] = rt.promote(period_ms=10.0, computation_ms=1.0,
+                                constraint_ms=5.0)
+        pos = 0
+        while not stop.is_set():
+            # Write only when TIOCOUTQ reports the queue truly empty,
+            # not merely below low-water: the residual glitches at the
+            # low-water gate (~1.6/s) vanish when every burst lands in
+            # an empty queue. The device's 8 KB ring covers ~20 ms, so
+            # sleeping half the remaining drain time and re-polling
+            # never lets the far end starve.
+            try:
+                q = struct.unpack("i", fcntl.ioctl(
+                    fd, termios.TIOCOUTQ, b"\0\0\0\0"))[0]
+            except OSError:
+                return
+            if q > 0:
+                time.sleep(max(0.001, q / byte_rate / 2))
+                continue
+            block = wave[pos:pos + 16384]
+            if len(block) < 16384:
+                block += wave[:16384 - len(block)]
+            try:
+                n = os.write(fd, block)
+            except OSError:
+                return
+            if n > 0:
+                tx_count[0] += n
+                pos = (pos + n) % len(wave)
+
+    th = threading.Thread(target=feeder, daemon=True)
+    th.start()
+
     chunks = []
     ctl_out = b""
     diag_sent = False
-    tx = 0
-    pos = 0
     t0 = time.time()
     while time.time() - t0 < args.seconds:
         # The diagnostic must sample while both directions are live, so it
@@ -147,7 +212,7 @@ def main():
         if args.diag and not diag_sent and time.time() - t0 > 1.5:
             os.write(cfd, b"D")
             diag_sent = True
-        r, w, _ = select.select([fd, cfd], [fd], [], 0.1)
+        r, _, _ = select.select([fd, cfd], [], [], 0.05)
         if cfd in r:
             try:
                 ctl_out += os.read(cfd, 65536)
@@ -155,20 +220,20 @@ def main():
                 pass
         if fd in r:
             try:
-                chunks.append(os.read(fd, 65536))
-            except OSError:
-                pass
-        if w:
-            block = wave[pos:pos + 16384]
-            if len(block) < 16384:
-                block += wave[:16384 - len(block)]
-            try:
-                n = os.write(fd, block)
-                tx += n
-                pos = (pos + n) % len(wave)
+                chunks.append(os.read(fd, 262144))
             except OSError:
                 pass
     el = time.time() - t0
+
+    # The device keeps consuming until '0' below, so a final blocking
+    # write completes on its own; the flush is only a backstop against a
+    # writer wedged on a queue nobody is draining.
+    stop.set()
+    th.join(2.0)
+    if th.is_alive():
+        termios.tcflush(fd, termios.TCOFLUSH)
+        th.join(1.0)
+    tx = tx_count[0]
 
     os.write(cfd, b"B")
     time.sleep(0.5)
@@ -184,6 +249,15 @@ def main():
             except OSError:
                 pass
     os.write(cfd, b"0")
+    # '0' stops the device from draining bulk OUT, so any bytes still in
+    # the kernel's output queue can never leave - and close() on a tty
+    # drains that queue before returning. Without this flush the process
+    # hangs in close() forever, holding the port and leaving the board
+    # streaming into the void for the next run to trip over.
+    try:
+        termios.tcflush(fd, termios.TCIOFLUSH)
+    except OSError:
+        pass
     os.close(fd)
     os.close(cfd)
 
@@ -197,7 +271,7 @@ def main():
         if i < 0 or len(buf) - i < HDR_LEN:
             break
         h = bytes(buf[i:i + HDR_LEN])
-        (_m, ver, fl, bits, pk, seq, rt, ns, cm, ts, ov, crc) = struct.unpack(HDR, h)
+        (_m, ver, fl, bits, pk, seq, srate, ns, cm, ts, ov, crc) = struct.unpack(HDR, h)
         if zlib.crc32(h[:HDR_LEN - 4]) & 0xFFFFFFFF != crc:
             crc_bad += 1
             p = i + 4
@@ -205,7 +279,7 @@ def main():
         need = HDR_LEN + ns * 2
         if len(buf) - i < need:
             break
-        flist.append((seq, ts, ov, rt,
+        flist.append((seq, ts, ov, srate,
                       struct.unpack("<%dH" % ns, buf[i + HDR_LEN:i + need])))
         p = i + need
 
@@ -227,7 +301,7 @@ def main():
     per_ch = {}
     keep = {}
     keep_t0 = ts0 + 1_000_000     # spectral window: from 1 s of device time
-    for (seq, ts, ov, rt, body) in flist:
+    for (seq, ts, ov, srate, body) in flist:
         settled = ts >= keep_t0
         for v in body:
             ch = (v >> 12) & 0xF
@@ -241,6 +315,7 @@ def main():
                     k.append(val)
 
     print(f"# elapsed        {el:.2f} s")
+    print(f"# feeder thread  {rt_note[0]}")
     print(f"# host  -> DAC   {tx} B = {tx/el/1e6:.3f} MB/s")
     print(f"# ADC   -> host  {len(buf)} B = {len(buf)/el/1e6:.3f} MB/s")
     print(f"#   combined     {(tx+len(buf))/el/1e6:.3f} MB/s")
@@ -270,7 +345,7 @@ def main():
         # Amplitude against device time, so a late or intermittent tone
         # shows as what it is instead of averaging into a small number.
         a0t = [(ts, v & 0xFFF)
-               for (seq, ts, ov, rt, body) in flist
+               for (seq, ts, ov, srate, body) in flist
                for v in body if (v >> 12) & 0xF == 7]
         W = 8192
         if len(a0t) > W:
