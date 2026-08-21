@@ -42,6 +42,12 @@ void acq_init(void)
 	PMC->PMC_PCER1 = (1u << (ID_ADC - 32));
 	ADC->ADC_CR = ADC_CR_SWRST;
 
+	/*
+	 * ADCClock = MCK / ((PRESCAL+1) * 2) = 84/4 = 21 MHz, which is ABOVE
+	 * the 20 MHz maximum in datasheet Table 46-28. The prescaler is
+	 * coarse: PRESCAL=2 gives 14 MHz and is in spec, at roughly 650 ksps
+	 * aggregate instead of 976,744. Deliberate; see docs/hardware.md.
+	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)
 	            | ADC_MR_TRACKTIM(0)

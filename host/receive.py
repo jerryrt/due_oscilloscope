@@ -111,6 +111,8 @@ def main():
                     help="single-port mode: frames arrive on the control "
                          "port itself, as Track B does over UART")
     ap.add_argument("--uart-baud", type=int, default=115200)
+    ap.add_argument("--scan-hz", default=None,
+                    help="comma-separated frequencies to test with Goertzel")
     args = ap.parse_args()
 
     # Order matters. Opening the control port can reset the board, and a
@@ -323,6 +325,16 @@ def main():
         n, lo, hi, tot = per_ch[ch]
         label = {7: "A0", 6: "A1"}.get(ch, "?")
         print(f"#   AD{ch} {label}  {n:8d}  {lo:5d} {hi:5d}  {tot / n:7.1f}")
+
+    if args.scan_hz and rate_hz:
+        cands = [float(x) for x in args.scan_hz.split(",")]
+        print(f"# Goertzel scan (fs = {rate_hz} Hz/ch)")
+        for ch in sorted(keep):
+            label = {7: "A0", 6: "A1"}.get(ch, "?")
+            row = "  ".join(
+                f"{f:8.1f}Hz={goertzel(keep[ch], rate_hz, f):7.1f}"
+                for f in cands)
+            print(f"#   AD{ch} {label}  {row}")
 
     if args.expect_hz and rate_hz:
         print(f"# Goertzel at {args.expect_hz:.2f} Hz (fs = {rate_hz} Hz/ch)")
