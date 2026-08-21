@@ -1,6 +1,6 @@
 # Status and Known Issues
 
-Updated after the streaming milestone.
+Updated after full-rate streaming was achieved on Track B.
 
 ## Working
 
@@ -11,65 +11,88 @@ Updated after the streaming milestone.
 | TC-triggered ADC + PDC ping-pong | yes | yes |
 | Trigger-rate verification | yes | yes, plus refusal past the ceiling |
 | TC-triggered DAC playback (TAG mode) | yes | yes |
-| Framed binary streaming | **yes, over USB CDC** | **yes, over UART** |
+| USB CDC device | Arduino core | **own bare-metal stack** |
+| Framed binary streaming | yes | yes |
 | Host deframe / demux / tone check | yes | yes, same receiver |
 
-Both tracks produce the same measurement from independent code:
+## Headline result: the CDC ceiling was an implementation limit
 
-```
-                       Track A        Track B
-tone amplitude (A0)    1371.9         1371.5   codes
-DC channel (A1)            0.1            0.1  codes
-rate ratio                1.001          1.000
-CRC errors / seq gaps       0/0            0/0
-```
+Same host, same receiver, same wire format:
 
-## Not working: the bare-metal USB device
+| Trigger | Aggregate | Required | Track A | Track B |
+|---|---|---|---|---|
+| 200 kHz | 400 ksps | 0.80 MB/s | 0.807, ratio 1.001 | 0.806, ratio 1.000 |
+| 400 kHz | 800 ksps | 1.60 MB/s | 0.871, **ratio 0.540** | 1.613, **ratio 1.000** |
+| 488 kHz | 976,744 sps | 1.95 MB/s | 0.946, **ratio 0.480** | **1.969, ratio 1.000** |
 
-`drivers/usb_cdc.c` does not enumerate. The host resets the port once and
-then suspends it.
+**Track B streams the ADC's entire output continuously, with no gaps.**
 
-Verified correct by live register dump (`u` command):
+The earlier conclusion that continuous full-rate capture was impossible
+over CDC was wrong in an important way: it is impossible over the
+*Arduino* CDC, whose `UDD_Send` copies into the endpoint FIFO one byte at
+a time and spins on `TXINI`. It is not a limit of CDC, of the CDC-ACM
+host driver, or of the 512-byte bulk endpoint. Writing whole 512-byte
+banks and never spinning more than doubles the sustained rate.
 
-```
-CTRL=02009000  USBE=1 OTGPADE=1 FRZCLK=0 UIMOD=1 UIDE=0
-DEVCTRL        DETACH=0  SPDCONF=0
-SR             CLKUSABLE=1
-PMC_USB=1      (UPLL selected)  PMC_SR.LOCKU=1
-EP0            CFGOK set, EPT bit 0 set
-DEVIMR=1008    EORSTES + PEP_0 enabled
-```
+A consequence worth noting: the vendor-class endpoint with UOTGHS DMA,
+planned as the only way past the ceiling, is **no longer required** to
+reach full rate. It remains the right destination for CPU cost, since
+the FIFO copy still has the CPU touching every sample byte, but it is no
+longer on the critical path for throughput.
 
-So: clocks locked, PHY enabled, device attached, EP0 configured and
-accepted, interrupts unmasked. One `EORST` arrives and is serviced. No
-`SETUP` ever follows, and the bus subsequently reads `SUSP` with
-`EP0CFG` and `DEVEPT` cleared back to zero.
+## How the USB stack was fixed
 
-Ruled out during debugging:
+It did not enumerate for a long time. Register dumps showed everything
+correct: clocks locked, PHY enabled, device attached, EP0 configured with
+`CFGOK` set, interrupts unmasked. One `EORST` was serviced and no `SETUP`
+ever followed.
 
-- Missing `PMC_USB_USBS`, so the PHY ran from PLLA rather than the UTMI
-  PLL. Fixed; not the whole story.
-- `NBTRANS` left at zero, which makes the controller reject the endpoint
-  configuration. Fixed; `CFGOK` now sets.
-- `DEVEPT` written by assignment rather than OR, which disabled every
-  previously configured endpoint. Fixed.
-- Full Speed forced instead of negotiated High Speed, to test whether the
-  high-speed chirp was failing. No change, so the fault is not
-  speed-specific.
-- Configuring EP0 before attach rather than only in the reset handler.
-  Made it worse: no reset interrupt at all.
+Three real bugs were found and fixed along the way:
 
-Most likely remaining causes, in order: a second bus reset that clears
-the endpoint configuration and whose interrupt is being missed, or
-something in the attach sequence that leaves the pull-up in a state the
-host only half-accepts. Diagnosing further really wants a USB protocol
-analyser; the device-side registers all read correct.
+- `PMC_USB_USBS` was missing, so the PHY ran from PLLA rather than the
+  UTMI PLL.
+- `NBTRANS` was left at zero, which makes the controller reject the
+  endpoint configuration outright.
+- `DEVEPT` was written by assignment rather than OR, so configuring each
+  endpoint disabled the previous ones.
 
-**Interim**: Track B streams over the programming-port UART instead. The
-frame format is byte-identical, so `host/receive.py --uart` handles it
-unchanged. It is bandwidth-limited to about 11.5 kB/s at 115200 baud,
-which is why the demonstration runs at a 2 kHz trigger. Nothing about the
-acquisition path is limited; only the transport.
+None of those was the blocker. **The blocker was the interrupt path**:
+`UOTGHS_Handler` serviced exactly one bus reset and then never fired
+again, even with `PEP_0` unmasked in `DEVIMR`.
+
+The fix was to stop relying on it. `usb_cdc_poll()` services the same
+events from the main loop, and the device enumerated immediately at High
+Speed. This is not a workaround so much as the right shape: control
+transfers happen a few dozen times during enumeration and essentially
+never afterwards, so polling them costs nothing, and only the bulk path
+needs to be fast.
+
+Why the interrupt never re-fires is still unexplained and worth
+returning to, but it no longer blocks anything.
+
+## Two host-side bugs that looked like firmware bugs
+
+Both produced symptoms that pointed convincingly at the device, and both
+cost real time. They are recorded because the misdirection is the
+lesson.
+
+**Slow parsing dropped bytes.** The receiver parsed each frame inline,
+including a per-sample Python loop. At around 0.9 MB/s it could not keep
+up, so the port stopped being drained and the kernel buffer overflowed.
+The symptom was samples attributed to ADC channels that were not enabled,
+plus sequence jumps: exactly what a firmware framing bug looks like.
+Splitting capture from parsing fixed it.
+
+**Stale buffered data.** Restarting a stream resets the sequence number
+to zero, but bytes from the previous run were still queued in the kernel
+buffer. The receiver saw old high-numbered frames followed by new
+zero-numbered ones, reported a single enormous sequence jump, and counted
+more samples than the ADC could possibly have produced. Flushing the port
+before starting the capture clock fixed it.
+
+The tell in both cases was arithmetic: the frame count exceeded what the
+configured sample rate could generate. **A receiver reporting more data
+than the source can produce is describing its own bug.**
 
 ## Measured figures
 
@@ -78,14 +101,17 @@ acquisition path is limited; only the transport.
 | DAC output range | 546 mV to 2760 mV |
 | ADC aggregate ceiling | 976,744 sps (RC 86); RC 85 silently halves |
 | Multiplexer crosstalk | +/-1 code at slow tracking |
-| USB CDC sustained | 0.8 MB/s gapless, ~0.93 MB/s ceiling |
+| USB, Arduino CDC | 0.8 MB/s gapless, ~0.95 MB/s ceiling |
+| USB, bare-metal CDC | **1.97 MB/s gapless at full ADC rate** |
 | printf, 40-char line | 3600 us |
 | GPIO set+clear pair | 138.3 ns (Track A) / 71.5 ns (Track B) |
 
 ## Next
 
-1. Bare-metal USB enumeration, ideally with a bus analyser.
-2. Vendor-class bulk endpoint driven by UOTGHS DMA, which is the
-   architecture's actual target and the only way past the CDC ceiling.
-3. Burst mode, which decouples sample rate from link rate entirely and
-   would let the full 976 ksps be captured over either transport.
+1. Understand why the UOTGHS interrupt stops firing after the first
+   reset. Polling works, but the cause is unknown and may bite elsewhere.
+2. Vendor-class endpoint with UOTGHS DMA, to get the CPU out of the
+   sample path entirely. No longer needed for throughput; still the
+   right architecture.
+3. Burst mode, for capture bursts above the sustainable stream rate.
+4. Twelve-channel capture, now that the transport can carry full rate.

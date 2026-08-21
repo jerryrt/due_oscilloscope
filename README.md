@@ -24,21 +24,18 @@ missing FPU on the Cortex-M3 stops mattering.
 
 ## Status
 
-**Both tracks stream end to end.** See [docs/status.md](docs/status.md).
-
-| | Track A | Track B |
-|---|---|---|
-| Toolchain | arduino-cli 1.5.1, gcc 4.8.3 | CMake 4.4.2, xPack gcc 15.2.1 |
-| Transport | USB CDC, 0.8 MB/s gapless | UART (bare-metal USB not enumerating yet) |
-| Tone measured | 1371.9 codes | 1371.5 codes |
-
-Independent implementations agreeing to 0.03% is the point of keeping two
-tracks.
-
-Known issue: the bare-metal UOTGHS stack does not enumerate. Every
-device-side register reads correct and one bus reset is serviced, but no
-SETUP follows. Details and what has been ruled out are in
+**Both tracks stream end to end over USB.** See
 [docs/status.md](docs/status.md).
+
+| Trigger | Aggregate | Track A (Arduino CDC) | Track B (bare-metal CDC) |
+|---|---|---|---|
+| 200 kHz | 400 ksps | 0.807 MB/s, ratio 1.001 | 0.806 MB/s, ratio 1.000 |
+| 400 kHz | 800 ksps | 0.871 MB/s, ratio 0.540 | 1.613 MB/s, ratio 1.000 |
+| 488 kHz | 976,744 sps | 0.946 MB/s, ratio 0.480 | **1.969 MB/s, ratio 1.000** |
+
+Track B carries the ADC's entire output continuously with no gaps. The
+CDC ceiling turned out to be an implementation limit in the Arduino
+core's byte-at-a-time FIFO copy, not a property of CDC.
 
 ## Design in one paragraph
 
