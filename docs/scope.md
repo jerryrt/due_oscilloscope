@@ -70,6 +70,48 @@ Only after the digital path is proven:
   plus a reconstruction filter
 - Anti-aliasing filters — one per active channel
 
+### Phase 3.5 — Arbitrary waveform generator (host to device)
+
+Turn the board into a signal generator as well as a scope: the host
+generates a waveform and streams it down to the DAC, instead of the DAC
+replaying a table baked into firmware.
+
+This is the mirror image of the capture path and reuses its shape: a ring
+of buffers, PDC moving samples without the CPU in the data path, and an
+explicit failure counter. The failure mode is the dual of overrun -
+**underrun**, where the DAC needs a buffer the host has not supplied yet.
+Underrun must be counted and reported, never concealed by silently
+repeating the previous buffer.
+
+Targets, from measurements already taken:
+
+| Quantity | Measured | Implied data rate |
+|---|---|---|
+| DACC ceiling | 1,539,700 conv/s | 3.08 MB/s inbound |
+| DAC matched to ADC | 976,744 conv/s | 1.95 MB/s inbound |
+| ADC ceiling | 976,744 sps | 1.95 MB/s outbound |
+
+So a symmetric full-duplex instrument needs about **3.9 MB/s combined**,
+and pushing the DAC to its own ceiling while capturing needs about
+**5.0 MB/s**. Measured transport capability is 1.969 MB/s in one
+direction, with the FIFO copy itself benchmarked near 8.9 MB/s, so
+whether both directions can run at once is an open question to be
+measured rather than assumed.
+
+Deliverables:
+
+- [ ] Bulk OUT path read on the device; playback ring fed from it
+- [ ] DACC driven by PDC from that ring, with underrun counted
+- [ ] Host sender streaming a generated waveform
+- [ ] Maximum sustained playback rate, measured
+- [ ] Full duplex: capture and playback simultaneously, both rates measured
+- [ ] End-to-end proof through the loopback: the captured signal matches
+      the waveform the host sent
+
+The loopback makes this self-checking. The host knows exactly what it
+sent, so comparing it against what comes back validates both directions
+at once.
+
 ### Phase 4 — RTOS variant
 
 The same drivers linked against a FreeRTOS application, to compare
@@ -81,7 +123,7 @@ Derived in `docs/architecture.md`; summarised here.
 
 ```
 MCK                     84 MHz
-ADCClock (PRESCAL=1)    21 MHz            (datasheet max ~22 MHz)
+ADCClock (PRESCAL=1)    21 MHz            (datasheet max 20 MHz - OVER)
 Conversion              ~21.5 ADC clocks  (measured, minimal TRACKTIM)
 Aggregate rate          976,744 sps       (measured ceiling, not 1 Msps)
 ```

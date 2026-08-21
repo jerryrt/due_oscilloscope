@@ -91,12 +91,12 @@ directly rather than build on the core's CDC. See `docs/architecture.md`.
 | Converters | **One**, behind a 16:1 input multiplexer |
 | Channels on Due headers | 12 (A0–A11) |
 | Aggregate rate | **976,744 sps** *(measured, see below)* |
-| Max ADC clock | ~22 MHz *(check)* |
+| Max ADC clock | **20 MHz** *(datasheet Table 46-28)* |
 | Input range | 0 V to ADVREF (3.3 V). No negative, no overvoltage |
 
 ```
 ADCClock = MCK / ((PRESCAL + 1) x 2)
-PRESCAL = 1  ->  84 MHz / 4 = 21 MHz     (just under the ~22 MHz max)
+PRESCAL = 1  ->  84 MHz / 4 = 21 MHz     (ABOVE the 20 MHz datasheet max)
 ```
 
 ### Measured ceiling *(this board)*
@@ -118,6 +118,62 @@ PDC buffers against a synchronised microsecond window:
 
 Settings used: `PRESCAL=1`, `TRACKTIM=0`, `SETTLING=0`, `TRANSFER=1`.
 Relaxing tracking to suppress crosstalk lowers this further.
+
+### Measured against the datasheet
+
+Checked against `docs/datasheets/Atmel-SAM3X-SAM3A-Series-Datasheet.pdf`
+(11057B, 28-May-12).
+
+| Parameter | Datasheet | Measured / used | Verdict |
+|---|---|---|---|
+| ADC `fS` sampling frequency | 0.05 to **1 MHz** (Table 46-28) | 976,744 sps | within spec, 97.7% |
+| ADC `fADC` clock frequency | 1 to **20 MHz** (Table 46-28) | **21 MHz** | **out of spec by 5%** |
+| ADC `IBCTL` | "00 below 500 kHz, **01 between 500 kHz and 1 MHz**" (§46.7) | never set (00) | **not per datasheet** |
+| Feature summary | "16-channel 12-bit 1Msps ADC" | - | consistent |
+
+**Two problems, both ours.**
+
+The ADC clock is over the maximum. `PRESCAL = 1` gives
+`84 MHz / 4 = 21 MHz`, and the datasheet ceiling is 20 MHz. An earlier
+version of this document said "~22 MHz max", which was wrong and is what
+justified the choice. The prescaler is coarse:
+`ADCClock = MCK / ((PRESCAL+1) x 2)`, so the options either side are
+21 MHz (`PRESCAL=1`, out of spec) and **14 MHz** (`PRESCAL=2`, in spec).
+
+Running fully in spec therefore caps the aggregate near **650 ksps**, not
+976,744. The measured ceiling is real and reproducible, but it is
+achieved 5% outside the guaranteed operating range, and that has to be a
+deliberate decision rather than an accident.
+
+`IBCTL` (in `ADC_ACR`) is also left at reset. The datasheet directs
+`IBCTL = 01` for sampling above 500 kHz, which is where this project
+operates. Not setting it does not stop conversions, and the loopback
+linearity looks clean, but it is outside the documented configuration.
+
+### DAC: the datasheet says very little
+
+| Source | Statement |
+|---|---|
+| Feature summary | "One 2-channel 12-bit **1MSPS** DAC" |
+| §45.2 DACC Embedded Characteristics | resolution, channels, triggers, PDC, FIFO - **no conversion rate** |
+| §46.9 12-bit DAC Characteristics | startup time, output impedance 30 ohm, current - **no maximum sampling rate** |
+
+So the only rate figure for the DAC anywhere is the headline 1 MSPS, and
+it is not qualified as per-channel or aggregate, nor backed by an entry
+in the electrical tables.
+
+Measured here: **1,539,704 conversions/s aggregate**, which is 154% of
+that headline. In TAG mode conversions alternate between channels, so
+per channel it is 770 ksps - comfortably under 1 MSPS. The most likely
+reading is that the headline figure is per channel and that the shared
+conversion engine saturates near 1.54 Msps, but the datasheet does not
+say so.
+
+The measurement itself is independently confirmed: driven at a 3 MHz
+trigger, the emitted tone appears at 3007 Hz, and 1,539,704 / 512 =
+3007.2 Hz exactly. A tone at the trigger rate would have been 5859 Hz,
+which measured 2.2 codes against 860.6. So the saturation is real and
+`ENDTX` was counting genuine conversions, not merely PDC transfers.
 
 ### Trigger overrun is silent
 

@@ -21,7 +21,8 @@ void adc_init(void)
 	ADC->ADC_CR = ADC_CR_SWRST;
 
 	/* ADCClock = MCK / ((PRESCAL + 1) * 2) = 84 MHz / 4 = 21 MHz,
-	 * just under the ~22 MHz maximum. */
+	 * ABOVE the 20 MHz datasheet maximum (Table 46-28); see
+	 * docs/hardware.md. PRESCAL=2 would give 14 MHz and be in spec. */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)
 	            | ADC_MR_TRACKTIM(15)

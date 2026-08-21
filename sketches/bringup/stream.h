@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 void stream_start(uint32_t trigger_hz);
+void stream_start_capture_only(uint32_t trigger_hz);
 void stream_stop(void);
 bool stream_active(void);
 void stream_service(void);

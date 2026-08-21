@@ -41,10 +41,29 @@ static uint32_t resync_count;
 static uint32_t usb_us;
 static uint32_t usb_bytes;
 
+static void stream_start_common(uint32_t trigger_hz, bool with_gen);
+
+/*
+ * Capture without touching the DAC, so the DACC can be left running on
+ * its own independent timebase. This is what makes it possible to check
+ * the measured DAC ceiling against the frequency actually produced,
+ * rather than trusting a count of PDC completions.
+ */
+void stream_start_capture_only(uint32_t trigger_hz)
+{
+	stream_start_common(trigger_hz, false);
+}
+
 void stream_start(uint32_t trigger_hz)
 {
+	stream_start_common(trigger_hz, true);
+}
+
+static void stream_start_common(uint32_t trigger_hz, bool with_gen)
+{
 	acq_init();
-	gen_init();
+	if (with_gen)
+		gen_init();
 
 	seq = 0;
 	frames_sent = 0;
@@ -57,7 +76,8 @@ void stream_start(uint32_t trigger_hz)
 	usb_bytes = 0;
 	rate_hz = trigger_hz;
 
-	gen_start();
+	if (with_gen)
+		gen_start();
 	acq_start(trigger_hz);
 
 	started_us = micros();

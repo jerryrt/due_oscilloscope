@@ -60,7 +60,8 @@ void acq_init(void)
 	ADC->ADC_CR = ADC_CR_SWRST;
 
 	/* ADCClock = MCK / ((PRESCAL+1) * 2) = 84/4 = 21 MHz, under the
-	 * ~22 MHz maximum. Minimal tracking: this is the fast path, and the
+	 * ABOVE the 20 MHz datasheet maximum (Table 46-28); see
+	 * docs/hardware.md. Minimal tracking: this is the fast path, and the
 	 * crosstalk cost of that is a thing to be measured, not avoided. */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)

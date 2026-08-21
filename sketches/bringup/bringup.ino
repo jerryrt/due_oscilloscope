@@ -52,6 +52,7 @@ static void banner(void)
 	Serial.println("#           1..5=stream 50k/100k/200k/400k/488372 Hz");
 	Serial.println("#           0=stop stream   ?=stream stats");
 	Serial.println("#           d=DAC max update-rate sweep");
+	Serial.println("#           j/k=DAC 1.5M/3.0M indep + capture 200k");
 	Serial.println("#");
 }
 
@@ -368,6 +369,39 @@ static void cmd_dac_sweep(void)
 }
 
 /*
+ * Cross-check the DAC ceiling against the frequency it actually emits.
+ *
+ * ENDTX counts PDC completions, which equal conversions only if the DACC
+ * back-pressures the PDC when it cannot keep up. Driving the DAC on its
+ * own timebase and capturing the result gives an independent measure: a
+ * 512-entry table played at R conversions per second must produce a tone
+ * at R/512, whatever the trigger was set to.
+ */
+static void cmd_dac_crosscheck(uint32_t dac_hz)
+{
+	char buf[144];
+
+	gen_init();
+	if (!gen_start_independent(dac_hz)) {
+		Serial.println("# refused");
+		Serial.flush();
+		return;
+	}
+	stream_start_capture_only(200000);
+
+	snprintf(buf, sizeof(buf),
+	         "# DAC indep %lu Hz (RC %lu), capture 200000 Hz",
+	         (unsigned long)dac_hz, (unsigned long)gen_configured_rc());
+	Serial.println(buf);
+	snprintf(buf, sizeof(buf),
+	         "# if the DAC truly runs at the trigger, tone = %lu Hz",
+	         (unsigned long)(dac_hz / GEN_TABLE_LEN));
+	Serial.println(buf);
+	Serial.println("# if it saturates near 1539700, tone = 3007 Hz instead");
+	Serial.flush();
+}
+
+/*
  * Branch to an even address. The Cortex-M3 requires the Thumb bit set in
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
@@ -421,6 +455,8 @@ void loop()
 		case 'x': cmd_crosstalk();   break;
 		case 't': cmd_rate_sweep();  break;
 		case 'd': cmd_dac_sweep();   break;
+		case 'j': cmd_dac_crosscheck(1500000); break;
+		case 'k': cmd_dac_crosscheck(3000000); break;
 		case '1': cmd_stream(50000);   break;
 		case '2': cmd_stream(100000);  break;
 		case '3': cmd_stream(200000);  break;
