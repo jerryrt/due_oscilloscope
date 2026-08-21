@@ -1,6 +1,7 @@
 # Build output
 build/
 build-*/
+build-sketch/
 *.o
 *.a
 *.elf
