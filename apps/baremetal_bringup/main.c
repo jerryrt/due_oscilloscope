@@ -18,6 +18,10 @@
 #include "sam.h"
 #include "bsp.h"
 #include "analog.h"
+#include "acq.h"
+#include "gen.h"
+#include "stream.h"
+#include "usb_cdc.h"
 
 #define LED_MASK (1u << 27)
 
@@ -29,6 +33,10 @@ static void banner(void)
 	printf("# SystemCoreClock = %lu\n", (unsigned long)SystemCoreClock);
 	printf("# commands: h=help p=printf-cost g=gpio-cost f=fault\n");
 	printf("#           r=read a0/a1  s=dac sweep  x=crosstalk\n");
+	printf("#           t=trigger-rate sweep (TC+ADC+PDC)\n");
+	printf("#           1..5=stream 50k/100k/200k/400k/488372 Hz\n");
+	printf("#           0=stop stream   ?=stream stats\n");
+	printf("#           w=stream over UART   u=usb registers\n");
 	printf("#\n");
 }
 
@@ -191,6 +199,105 @@ static void cmd_crosstalk(void)
 }
 
 /*
+ * Verify that the ADC converts at the rate the timer was told to
+ * produce. Everything downstream is sized against this, and the failure
+ * mode is silent: an over-fast trigger is ignored with no status bit
+ * set, which looks exactly like clean data at half the rate.
+ */
+static void cmd_rate_sweep(void)
+{
+	static const uint32_t rates[] = {
+		100000, 400000,
+		466666, 471910, 477272, 482758, 488372,
+		494117, 500000
+	};
+	const uint32_t nbuf_target = 8;
+
+	acq_init();
+
+	printf("# TC->ADC->PDC rate sweep, 2 channels (A0=AD7, A1=AD6)\n");
+	printf("#   want      RC   TCexact   measured    ratio  RXBUFF GOVRE\n");
+	uart_flush();
+
+	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
+		if (!acq_start(rates[i], 2)) {
+			printf("# %7lu       -         -    REFUSED (below ACQ_MIN_RC)\n",
+			       (unsigned long)rates[i]);
+			uart_flush();
+			continue;
+		}
+
+		uint32_t sync = acq_buffers_done;
+		uint32_t guard = micros();
+		while (acq_buffers_done == sync && (micros() - guard) < 2000000u)
+			{ }
+
+		uint32_t t0 = micros();
+		uint32_t b0 = acq_buffers_done;
+		while (acq_buffers_done - b0 < nbuf_target &&
+		       (micros() - t0) < 2000000u)
+			{ }
+		uint32_t t1 = micros();
+		uint32_t got = acq_buffers_done - b0;
+
+		acq_stop();
+
+		uint32_t rc      = acq_configured_rc();
+		uint32_t tcexact = (SystemCoreClock / 2u) / rc;
+		uint32_t us      = t1 - t0;
+		uint64_t samples = (uint64_t)got * ACQ_BUF_SAMPLES;
+		uint32_t agg     = us ? (uint32_t)((samples * 1000000ull) / us) : 0;
+		uint32_t measured = agg / 2u;
+		uint32_t ratio_x1000 = tcexact ?
+			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
+
+		printf("# %7lu %7lu %9lu %10lu   %2lu.%03lu %7lu %5lu\n",
+		       (unsigned long)rates[i], (unsigned long)rc,
+		       (unsigned long)tcexact, (unsigned long)measured,
+		       (unsigned long)(ratio_x1000 / 1000u),
+		       (unsigned long)(ratio_x1000 % 1000u),
+		       (unsigned long)acq_rxbuff_overruns,
+		       (unsigned long)acq_govre);
+		uart_flush();
+	}
+	printf("# rates past the measured ceiling are refused, not attempted\n");
+	uart_flush();
+}
+
+/*
+ * Stream over the programming-port UART. Bandwidth-limited: 115200 baud
+ * carries about 11.5 kB/s, so 2 kHz of trigger (2 channels, 2 bytes)
+ * at 8 kB/s fits with margin. ASCII output must stay silent while this
+ * runs, since frames and logs share the one port here.
+ */
+static void cmd_stream_uart(uint32_t trigger_hz)
+{
+	if (!stream_start_uart(trigger_hz)) {
+		printf("# refused\n");
+		uart_flush();
+		return;
+	}
+	printf("# uart-stream: trigger %lu Hz, sine %lu Hz - binary follows\n",
+	       (unsigned long)trigger_hz, (unsigned long)gen_sine_hz(trigger_hz));
+	uart_flush();
+}
+
+static void cmd_stream(uint32_t trigger_hz)
+{
+	if (!stream_start(trigger_hz)) {
+		printf("# refused: %lu Hz is past the measured ADC ceiling\n",
+		       (unsigned long)trigger_hz);
+		uart_flush();
+		return;
+	}
+	printf("# streaming: trigger %lu Hz, %lu sps aggregate, sine %lu Hz\n",
+	       (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
+	       (unsigned long)gen_sine_hz(trigger_hz));
+	printf("# DAC1 holds mid scale: A1 must read flat, or demux is wrong\n");
+	uart_flush();
+}
+
+/*
  * Branch to an even address. Cortex-M3 requires the Thumb bit set in
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
@@ -220,6 +327,7 @@ int main(void)
 	systick_init();
 	dac_init();
 	adc_init();
+	usb_cdc_init();
 
 	/* Unbuffered, so output appears as it is produced rather than at
 	 * flush points that would distort the printf measurement. */
@@ -240,6 +348,8 @@ int main(void)
 			heartbeat_at = now;
 		}
 
+		stream_service();
+
 		int c = uart_getc();
 		switch (c) {
 		case 'h': banner();         break;
@@ -249,6 +359,17 @@ int main(void)
 		case 'r': cmd_read();       break;
 		case 's': cmd_sweep();      break;
 		case 'x': cmd_crosstalk();  break;
+		case 't': cmd_rate_sweep(); break;
+		case '1': cmd_stream(50000);  break;
+		case '2': cmd_stream(100000); break;
+		case '3': cmd_stream(200000); break;
+		case '4': cmd_stream(400000); break;
+		case '5': cmd_stream(488372); break;
+		case '0': stream_stop();
+		          printf("# stream stopped\n"); uart_flush(); break;
+		case '?': stream_report();  break;
+		case 'u': usb_cdc_dump();   break;
+		case 'w': cmd_stream_uart(2000); break;
 		default:                    break;
 		}
 	}
