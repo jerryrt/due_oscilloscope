@@ -19,9 +19,12 @@
  *   r  read A0/A1 once
  *   s  DAC sweep, both channels
  *   x  crosstalk probe
+ *   t  TC/ADC/PDC trigger-rate sweep
  *
  * Loopback wiring: DAC0 -> A0, DAC1 -> A1.
  */
+
+#include "acq.h"
 
 #define LED_MASK (1u << 27)   /* pin 13 = PB27 */
 
@@ -40,6 +43,7 @@ static void banner(void)
 	Serial.println(SystemCoreClock);
 	Serial.println("# commands: h=help p=printf-cost g=gpio-cost f=fault");
 	Serial.println("#           r=read a0/a1  s=dac sweep  x=crosstalk");
+	Serial.println("#           t=trigger-rate sweep (TC+ADC+PDC)");
 	Serial.println("#");
 }
 
@@ -191,6 +195,79 @@ static void cmd_crosstalk(void)
 }
 
 /*
+ * Verify that the ADC actually converts at the rate the TC was told to
+ * produce. Everything downstream is sized against this number, and a
+ * wrong trigger rate corrupts every later measurement while presenting
+ * as an analog fault, so it is checked before anything is built on it.
+ *
+ * Two channels are enabled, so each trigger yields two conversions and
+ * the aggregate rate is twice the trigger rate.
+ */
+static void cmd_rate_sweep(void)
+{
+	/* Chosen so integer division lands on consecutive RC values 90 down
+	 * to 82, which is where the ADC ceiling sits. */
+	static const uint32_t rates[] = {
+		100000, 400000,
+		466666, 471910, 477272, 482758, 488372,
+		494117, 500000, 506024, 512195
+	};
+	const uint32_t nbuf_target = 8;
+	char buf[160];
+
+	acq_init();
+
+	Serial.println("# TC->ADC->PDC rate sweep, 2 channels (A0=AD7, A1=AD6)");
+	Serial.println("#   want      RC   TCexact   measured    ratio  RXBUFF GOVRE");
+	Serial.flush();
+
+	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
+		acq_start(rates[i]);
+
+		/* Synchronise to a buffer boundary before timing, so the
+		 * measurement is not quantised by where the window happened to
+		 * start. Precision then depends only on ISR latency. */
+		uint32_t sync = acq_buffers_done;
+		uint32_t guard = micros();
+		while (acq_buffers_done == sync && (micros() - guard) < 2000000u)
+			{ }
+
+		uint32_t t0 = micros();
+		uint32_t b0 = acq_buffers_done;
+		while (acq_buffers_done - b0 < nbuf_target &&
+		       (micros() - t0) < 2000000u)
+			{ }
+		uint32_t t1 = micros();
+		uint32_t got = acq_buffers_done - b0;
+
+		acq_stop();
+
+		uint32_t rc      = acq_configured_rc();
+		uint32_t tcexact = TC_CLOCK1_HZ / rc;
+		uint32_t us      = t1 - t0;
+
+		uint64_t samples   = (uint64_t)got * ACQ_BUF_SAMPLES;
+		uint32_t aggregate = us ? (uint32_t)((samples * 1000000ull) / us) : 0;
+		uint32_t measured  = aggregate / 2u;   /* 2 conversions per trigger */
+		uint32_t ratio_x1000 = tcexact ?
+			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
+
+		snprintf(buf, sizeof(buf),
+		         "# %7lu %7lu %9lu %10lu   %2lu.%03lu %7lu %5lu",
+		         (unsigned long)rates[i], (unsigned long)rc,
+		         (unsigned long)tcexact, (unsigned long)measured,
+		         (unsigned long)(ratio_x1000 / 1000u),
+		         (unsigned long)(ratio_x1000 % 1000u),
+		         (unsigned long)acq_rxbuff_overruns,
+		         (unsigned long)acq_govre);
+		Serial.println(buf);
+		Serial.flush();
+	}
+	Serial.println("# ratio 1.000 means every trigger produced a conversion pair");
+	Serial.flush();
+}
+
+/*
  * Branch to an even address. The Cortex-M3 requires the Thumb bit set in
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
@@ -239,6 +316,7 @@ void loop()
 		case 'r': cmd_read();        break;
 		case 's': cmd_sweep();       break;
 		case 'x': cmd_crosstalk();   break;
+		case 't': cmd_rate_sweep();  break;
 		default:                     break;
 		}
 	}
