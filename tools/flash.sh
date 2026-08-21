@@ -51,3 +51,27 @@ PY
 
 echo "==> bossac: writing $BIN"
 "$BOSSAC" -i -d --port="$(basename "$PORT")" -U false -e -w -v -b "$BIN" -R
+
+# Restore a sane line coding. macOS remembers the port's termios, so if
+# it is left at 1200 the NEXT open of this port re-triggers the 16U2
+# erase-and-reset before any program can change the speed. That presents
+# as the board mysteriously restarting whenever a tool attaches.
+echo "==> restoring 115200 line coding"
+python3 - "$PORT" <<'PY'
+import os, sys, termios, time
+dev = sys.argv[1]
+for _ in range(40):
+    if os.path.exists(dev):
+        break
+    time.sleep(0.1)
+try:
+    fd = os.open(dev, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+except OSError:
+    sys.exit(0)
+try:
+    a = termios.tcgetattr(fd)
+    a[4] = a[5] = termios.B115200
+    termios.tcsetattr(fd, termios.TCSANOW, a)
+finally:
+    os.close(fd)
+PY
