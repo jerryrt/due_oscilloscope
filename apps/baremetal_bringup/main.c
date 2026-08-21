@@ -17,6 +17,7 @@
 
 #include "sam.h"
 #include "bsp.h"
+#include "clock.h"
 #include "analog.h"
 #include "acq.h"
 #include "gen.h"
@@ -30,13 +31,15 @@ static void banner(void)
 	printf("#\n");
 	printf("# due_oscilloscope :: Track B bare-metal bring-up\n");
 	printf("# built %s %s\n", __DATE__, __TIME__);
-	printf("# SystemCoreClock = %lu\n", (unsigned long)SystemCoreClock);
+	printf("# SystemCoreClock = %lu  ADC clk = %lu (max 20000000)\n",
+	       (unsigned long)SystemCoreClock, (unsigned long)(SystemCoreClock / 4u));
 	printf("# commands: h=help p=printf-cost g=gpio-cost f=fault\n");
 	printf("#           r=read a0/a1  s=dac sweep  x=crosstalk\n");
 	printf("#           t=trigger-rate sweep (TC+ADC+PDC)\n");
 	printf("#           1..5=stream 50k/100k/200k/400k/488372 Hz\n");
 	printf("#           0=stop stream   ?=stream stats\n");
 	printf("#           w=stream over UART   u=usb registers\n");
+	printf("#           F=flood IN  R=sink OUT  X=duplex  B=bench stats\n");
 	printf("#\n");
 }
 
@@ -322,6 +325,9 @@ int main(void)
 	 * roughly every 15 s if not serviced. Nothing here services it. */
 	WDT->WDT_MR = WDT_MR_WDDIS;
 
+	/* Before anything derives a rate from it. */
+	clock_set_mck(MCK_MULA_DEFAULT);
+
 	led_init();
 	uart_init(115200);
 	systick_init();
@@ -370,6 +376,13 @@ int main(void)
 		          printf("# stream stopped\n"); uart_flush(); break;
 		case '?': stream_report();  break;
 		case 'u': usb_cdc_dump();   break;
+		case 'F': stream_flood_start();
+		          printf("# flood: IN only\n"); uart_flush(); break;
+		case 'R': stream_sink_start();
+		          printf("# sink: OUT only\n"); uart_flush(); break;
+		case 'X': stream_duplex_start();
+		          printf("# duplex: IN and OUT together\n"); uart_flush(); break;
+		case 'B': stream_bench_report(); break;
 		case 'w': cmd_stream_uart(2000); break;
 		default:                    break;
 		}

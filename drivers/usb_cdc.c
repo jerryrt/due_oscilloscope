@@ -335,6 +335,35 @@ size_t usb_cdc_write(const uint8_t *data, size_t len)
 	return done;
 }
 
+size_t usb_cdc_read(uint8_t *dst, size_t max)
+{
+	uint32_t st = UOTGHS->UOTGHS_DEVEPTISR[EP_OUT];
+	uint32_t n;
+	volatile uint8_t *fifo;
+
+	if (!(st & UOTGHS_DEVEPTISR_RXOUTI))
+		return 0;
+
+	n = (st & UOTGHS_DEVEPTISR_BYCT_Msk) >> UOTGHS_DEVEPTISR_BYCT_Pos;
+	if (n == 0) {
+		/* Zero-length packet: release the bank and move on. */
+		UOTGHS->UOTGHS_DEVEPTICR[EP_OUT] = UOTGHS_DEVEPTICR_RXOUTIC;
+		UOTGHS->UOTGHS_DEVEPTIDR[EP_OUT] = UOTGHS_DEVEPTIDR_FIFOCONC;
+		return 0;
+	}
+	if (n > max)
+		n = max;          /* caller must drain the rest next call */
+
+	fifo = FIFO(EP_OUT);
+	for (uint32_t i = 0; i < n; i++)
+		dst[i] = fifo[i];
+
+	/* Acknowledge, then hand the bank back to the controller. */
+	UOTGHS->UOTGHS_DEVEPTICR[EP_OUT] = UOTGHS_DEVEPTICR_RXOUTIC;
+	UOTGHS->UOTGHS_DEVEPTIDR[EP_OUT] = UOTGHS_DEVEPTIDR_FIFOCONC;
+	return n;
+}
+
 bool usb_cdc_ready(void)
 {
 	return usb_configured != 0 && (usb_line_state & 0x01) != 0;

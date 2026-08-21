@@ -29,6 +29,16 @@ bool   usb_cdc_ready(void);
  */
 size_t usb_cdc_write(const uint8_t *data, size_t len);
 
+/*
+ * Read whole banks from the bulk OUT endpoint.
+ *
+ * The Arduino core's equivalent calls accept() once per byte, which
+ * refills its entire ring each time and costs several hundred cycles per
+ * byte. This copies up to one 512-byte bank per call and releases it,
+ * which is what the endpoint is designed for.
+ */
+size_t usb_cdc_read(uint8_t *dst, size_t max);
+
 extern volatile uint32_t usb_reset_count;
 extern volatile uint32_t usb_setup_count;
 extern volatile uint32_t usb_stall_count;

@@ -38,6 +38,14 @@ uint32_t frame_crc32(const uint8_t *data, size_t len)
  */
 typedef enum { XPORT_USB, XPORT_UART } xport_t;
 static xport_t  xport;
+enum bench_mode { BENCH_OFF, BENCH_FLOOD, BENCH_SINK, BENCH_DUPLEX };
+static enum bench_mode bench;
+static uint32_t bench_in_bytes, bench_out_bytes, bench_t0;
+static uint32_t bench_resets;
+static uint32_t bench_turn;
+static uint16_t bench_payload[ACQ_BUF_SAMPLES];
+static uint8_t  bench_scratch[512];
+
 static bool     active;
 static uint32_t seq, rate_hz, frames_sent, bytes_sent, started_us;
 static uint32_t pending_overrun, resync_count, refused;
@@ -99,12 +107,17 @@ static bool stream_start_common(uint32_t trigger_hz)
 void stream_stop(void)
 {
 	active = false;
+	bench = BENCH_OFF;
 	acq_stop();
 	gen_stop();
 }
 
+void stream_bench_service(void);
+
 void stream_service(void)
 {
+	stream_bench_service();
+
 	if (!active)
 		return;
 
@@ -235,3 +248,133 @@ void stream_report(void)
 	       (unsigned long)usb_last_ep0isr, (unsigned long)usb_devier_snap);
 	uart_flush();
 }
+
+/* ------------------------------------------------------------------ */
+/* Transport benchmarks                                                */
+/* ------------------------------------------------------------------ */
+
+static void bench_reset(enum bench_mode m)
+{
+	stream_stop();
+	for (unsigned i = 0; i < ACQ_BUF_SAMPLES; i++)
+		bench_payload[i] = (uint16_t)((((i & 1u) ? 6u : 7u) << 12)
+		                              | (i & 0x0fffu));
+	seq = 0;
+	bench_in_bytes = 0;
+	bench_out_bytes = 0;
+	bench_t0 = micros();
+	bench_resets++;
+	bench = m;
+}
+
+void stream_flood_start(void)  { bench_reset(BENCH_FLOOD); }
+void stream_sink_start(void)   { bench_reset(BENCH_SINK); }
+void stream_duplex_start(void) { bench_reset(BENCH_DUPLEX); }
+
+/*
+ * Budgets are expressed in bytes and kept equal between directions.
+ *
+ * The first duplex measurement gave 2.85 MB/s in and 0.85 out, and that
+ * 3.4:1 ratio was very close to the 4:1 ratio of the budgets these two
+ * loops were given. An asymmetry produced by the scheduler is not a
+ * property of the transport, so the budgets are now matched and the
+ * order alternates.
+ */
+#define BENCH_FRAME_BYTES  (32u + ACQ_BUF_SAMPLES * 2u)
+
+static void bench_push_in(uint32_t byte_budget)
+{
+	uint32_t sent = 0;
+
+	while (sent < byte_budget) {
+		frame_header_t h;
+		size_t w1, w2;
+
+		h.magic[0] = FRAME_MAGIC0; h.magic[1] = FRAME_MAGIC1;
+		h.magic[2] = FRAME_MAGIC2; h.magic[3] = FRAME_MAGIC3;
+		h.version         = FRAME_VERSION;
+		h.flags           = FRAME_FLAG_CONTINUOUS;
+		h.bits_per_sample = 12;
+		h.packing         = 0;
+		h.seq             = seq;
+		h.sample_rate_hz  = 0;        /* synthetic, not acquired */
+		h.n_samples       = ACQ_BUF_SAMPLES;
+		h.channel_mask    = (1u << 7) | (1u << 6);
+		h.timestamp_us    = micros();
+		h.overrun_count   = 0;
+		h.header_crc32 = frame_crc32((const uint8_t *)&h,
+		                             sizeof(h) - sizeof(uint32_t));
+
+		w1 = usb_cdc_write((const uint8_t *)&h, sizeof(h));
+		if (w1 != sizeof(h))
+			return;               /* bank full; resume next call */
+		w2 = usb_cdc_write((const uint8_t *)bench_payload,
+		                   sizeof(bench_payload));
+		bench_in_bytes += w1 + w2;
+		sent += (uint32_t)(w1 + w2);
+		seq++;
+		if (w2 != sizeof(bench_payload))
+			return;
+	}
+}
+
+static void bench_pull_out(uint32_t byte_budget)
+{
+	uint32_t got_total = 0;
+
+	while (got_total < byte_budget) {
+		size_t n = usb_cdc_read(bench_scratch, sizeof(bench_scratch));
+		if (n == 0)
+			return;
+		bench_out_bytes += n;
+		got_total += (uint32_t)n;
+	}
+}
+
+void stream_bench_service(void)
+{
+	switch (bench) {
+	case BENCH_FLOOD:
+		bench_push_in(8u * BENCH_FRAME_BYTES);
+		break;
+	case BENCH_SINK:
+		bench_pull_out(8u * BENCH_FRAME_BYTES);
+		break;
+	case BENCH_DUPLEX:
+		/* Equal byte budgets, and alternate which goes first so
+		 * neither direction is systematically favoured. */
+		if (bench_turn++ & 1u) {
+			bench_push_in(BENCH_FRAME_BYTES);
+			bench_pull_out(BENCH_FRAME_BYTES);
+		} else {
+			bench_pull_out(BENCH_FRAME_BYTES);
+			bench_push_in(BENCH_FRAME_BYTES);
+		}
+		break;
+	default: break;
+	}
+}
+
+void stream_bench_report(void)
+{
+	/*
+	 * Report byte counts only, never a rate.
+	 *
+	 * The device cannot time its own benchmark reliably: opening the
+	 * control port resets the board, so the window start is not related
+	 * to when the host began measuring. An earlier version divided by
+	 * that bogus window and reported 0.27 MB/s for a transfer the host
+	 * had clocked at 3.05 MB/s, with both agreeing on the byte count.
+	 *
+	 * The byte counts are trustworthy and are what the host needs; it
+	 * has its own clock.
+	 */
+	printf("# bench=%s  IN %lu B   OUT %lu B\n",
+	       bench == BENCH_FLOOD  ? "flood"  :
+	       bench == BENCH_SINK   ? "sink"   :
+	       bench == BENCH_DUPLEX ? "duplex" : "off",
+	       (unsigned long)bench_in_bytes,
+	       (unsigned long)bench_out_bytes);
+	uart_flush();
+}
+
