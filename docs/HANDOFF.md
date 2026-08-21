@@ -51,28 +51,53 @@ Real fixes that came out of the investigation:
   bypassing ring, framer and USB) while everything runs, printing only
   afterwards. `loopback.py --diag` triggers it mid-run.
 
-## Known imperfection, counted and visible
+## Feed margin: closed (2026-08-21, second pass)
 
-The host's non-blocking feed sustains ~0.396 MB/s against the
-0.400 MB/s the DAC consumes, so a few underruns per second repeat a
-buffer and dent the tone in those windows (`under=26` per 5 s run;
-visible in `loopback.py`'s windowed amplitude). Host scheduling, not
-firmware. Options: larger/earlier writes host-side, or a deeper ring.
+The loop is now solid to spec: **zero underruns, zero gaps, 1371 +/- 2
+codes in every 40 ms window** (theoretical 1370.5), reproducible at
+multiple tones. Getting there uncovered a macOS behaviour that must
+not be relearned: **a pressured CDC-ACM output queue silently drops
+~128-byte chunks that write() already counted.** Blocking writes that
+saturate the queue produced ~75 clean phase jumps per second on the
+DAC with every counter green; clock-paced writes dropped at every
+tested lead. The only measured-clean policy is in `host/loopback.py`:
+a real-time thread (see `host/rt.py`: QoS + Mach time-constraint band;
+XNU has no core pinning) polls TIOCOUTQ and bursts 16 KB only into a
+truly empty queue, while the device's 8 KB ring covers the latency.
+
+Related firmware fact: the device now drains bulk OUT whenever nothing
+consumes it, because macOS's close() waits on in-flight write URBs
+that a NAKing pipe never completes - host processes used to hang in
+close() holding the port.
+
+Transport ceilings remeasured with per-direction real-time threads
+(the old numbers were partly the host's own scheduling): IN 5.20 MB/s,
+OUT 5.03 MB/s byte-perfect, duplex 2.77 + 2.47 = 5.25 MB/s combined.
+
+Also fixed while verifying every working feature against spec: preset
+`5` hardcoded the MCK-84 ceiling (488372 Hz) and was silently refused
+at MCK 78; it now derives 453488 Hz from the running clock like Track
+A, and full-rate capture measures ratio 1.000, 1.83 MB/s gapless.
 
 ## Next objectives, in order
 
-1. **Feed margin.** Close the ~1% OUT shortfall so a 5 s run counts
-   zero underruns.
-2. **Push the single pair toward the ADC ceiling**: 453 ksps per
-   channel at 906,738 sps aggregate. `L` currently hardcodes
-   200 kHz / 200 kHz; parameterize it.
-3. **The second pair.** Budget for two pairs is ~2.85 MB/s OUT plus
-   ~1.81 MB/s IN against a measured duplex best of ~4.96 MB/s. Viable
-   but tight; bias the direction budgets toward OUT.
-4. **Endpoint DMA.** Restores the invariant that the CPU never touches
-   sample data. The primitives in `drivers/usb_cdc.c`
-   (`usb_dma_in_start`, `usb_dma_out_start`) stall after one transfer;
-   status-register handling is the likely culprit.
+1. **Push the single pair toward the ADC ceiling**: 453,488 Hz per
+   channel, 906,976 sps aggregate. `L` currently hardcodes
+   200 kHz / 200 kHz; parameterize it. Capture alone at that rate is
+   verified; the loop needs DAC-rate and budget choices.
+2. **The second pair.** Two pairs need ~2.85 MB/s OUT + ~1.81 MB/s IN.
+   Symmetric duplex measures OUT at 2.47 MB/s - short of 2.85 - so
+   this needs the direction balance biased toward OUT, or endpoint
+   DMA. Do not size against the IN-only/OUT-only numbers.
+3. **Endpoint DMA.** Restores the invariant that the CPU never touches
+   sample data, and is the honest fix for objective 2. The primitives
+   in `drivers/usb_cdc.c` (`usb_dma_in_start`, `usb_dma_out_start`)
+   stall after one transfer; status-register handling is the likely
+   culprit.
+4. **`usb_cdc_write` bank clobbering at flood rates** (see
+   `docs/status.md` "Next" item 0): the no-spin TXINI guard admits far
+   more bytes than the wire carries when the host lags. Harmless below
+   the wire ceiling, meaningless flood counters, latent risk above.
 
 ## Hard-won facts the next session must not rediscover
 

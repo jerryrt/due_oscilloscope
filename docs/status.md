@@ -158,12 +158,33 @@ whole sample stream), and the DACC + TIOA1 trigger path was exonerated
 on hardware by command `M`, which plays gen's sine through play's exact
 configuration with capture running and no USB involved.
 
-Residual imperfection, honestly counted: the host's non-blocking feed
-delivers ~0.396 MB/s against the 0.400 MB/s the DAC consumes, so a few
-underruns per second repeat a buffer and dent the tone amplitude in
-those windows (`under=26` in a 5 s run). The defect is host scheduling,
-it is counted on the device and visible in the windowed amplitude, and
-deepening the ring or feeding with larger writes are both open options.
+The feed-margin problem was then closed for good, and the path there
+uncovered a macOS behaviour worth its own record. Four feed policies
+were measured: select()-paced writes in a shared loop starve on poll
+granularity (~1% shortfall, underruns); free-running blocking writes
+saturate the queue, and **a pressured macOS CDC-ACM output path
+silently drops ~128-byte chunks that write() has already counted** -
+measured as ~75 clean phase jumps per second on the DAC with every
+counter on both sides green, and confirmed by byte conservation
+(host-written minus device-received ~= jumps x 128 B); clock pacing at
+the exact byte rate still dropped at every tested lead. The clean
+policy, now in `host/loopback.py`: a real-time thread polls TIOCOUTQ
+and bursts 16 KB only into a *truly empty* queue. Result: zero
+underruns, zero gaps, 1371 +/- 2 codes in every 40 ms window of a run,
+reproducible across tones.
+
+The host threads use `host/rt.py`: macOS's QoS class plus the Mach
+THREAD_TIME_CONSTRAINT real-time band (the CoreAudio I/O policy),
+stdlib-only via ctypes. There is no thread-to-core pinning on XNU;
+the real-time band is the mechanism that exists, and it measurably
+suffices.
+
+One firmware lesson came out of the same investigation: a CDC device
+must keep accepting bulk OUT even when nothing consumes it, because
+macOS's close() waits for in-flight write URBs that a NAKing pipe
+never completes, wedging the host process in close() while it holds
+the port. The main loop now drains and discards OUT when neither
+playback nor a bench sink owns it.
 
 ## Two host-side bugs that looked like firmware bugs
 
@@ -194,16 +215,26 @@ than the source can produce is describing its own bug.**
 | Quantity | Value |
 |---|---|
 | DAC output range | 546 mV to 2760 mV |
-| ADC aggregate ceiling | 976,744 sps (RC 86); RC 85 silently halves |
+| ADC aggregate ceiling | RC 86; RC 85 silently halves. 906,976 sps at MCK 78 (976,744 at the old MCK 84) |
 | Multiplexer crosstalk | +/-1 code at slow tracking |
 | USB, Arduino CDC | 0.8 MB/s gapless, ~0.95 MB/s ceiling |
-| USB, bare-metal CDC | **1.97 MB/s gapless at full ADC rate** |
-| Full loop, duplex | 200 ksps DAC + 400 ksps ADC, tone 1371/1370 codes |
+| USB, bare-metal CDC | **1.83 MB/s gapless at full in-spec ADC rate** |
+| Capture at max in-spec (MCK 78) | 453,488 Hz/ch declared, 453,489 measured, ratio 1.000 |
+| Full loop, duplex | 200 ksps DAC + 400 ksps ADC, tone 1371+/-2 in every window |
+| USB IN only (RT threaded host) | 5.20 MB/s |
+| USB OUT only (RT threaded host) | 5.03 MB/s, byte-perfect vs device counter |
+| USB duplex (RT threaded host) | 2.77 in + 2.47 out = 5.25 MB/s combined |
 | printf, 40-char line | 3600 us |
 | GPIO set+clear pair | 138.3 ns (Track A) / 71.5 ns (Track B) |
 
 ## Next
 
+0. `usb_cdc_write` clobbers IN banks when producing faster than the
+   host drains: the flood benchmark's device-side counter reads far
+   above the wire rate while the host receives a fraction of it. The
+   streaming path never outruns the wire so frames are verifiedly
+   intact, but the no-spin guard is not doing what it claims and the
+   flood counter is meaningless until this is understood.
 1. Understand why the UOTGHS interrupt stops firing after the first
    reset. Polling works, but the cause is unknown and may bite elsewhere.
 2. Vendor-class endpoint with UOTGHS DMA, to get the CPU out of the
