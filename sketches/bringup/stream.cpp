@@ -28,6 +28,11 @@ uint32_t frame_crc32(const uint8_t *data, size_t len)
 	return ~c;
 }
 
+enum bench_mode { BENCH_OFF, BENCH_FLOOD, BENCH_SINK };
+static bench_mode bench;
+static uint32_t bench_bytes, bench_t0, bench_frames;
+static uint16_t bench_payload[ACQ_BUF_SAMPLES];
+
 static bool     active;
 static uint32_t seq;
 static uint32_t rate_hz;
@@ -84,9 +89,12 @@ static void stream_start_common(uint32_t trigger_hz, bool with_gen)
 	active = true;
 }
 
+void stream_bench_service(void);
+
 void stream_stop(void)
 {
 	active = false;
+	bench = BENCH_OFF;
 	acq_stop();
 	gen_stop();
 }
@@ -102,6 +110,8 @@ bool stream_active(void)
  */
 void stream_service(void)
 {
+	stream_bench_service();
+
 	if (!active)
 		return;
 
@@ -208,4 +218,88 @@ void stream_report(char *buf, size_t n)
 	         (unsigned long)resync_count, (int)(bool)SerialUSB,
 	         (unsigned long)(usb_us ? ((uint64_t)usb_bytes * 1000ull / usb_us) / 1000u : 0),
 	         (unsigned long)(usb_us ? ((uint64_t)usb_bytes * 1000ull / usb_us) % 1000u : 0));
+}
+
+/* ------------------------------------------------------------------ */
+/* Transport benchmarks                                                */
+/* ------------------------------------------------------------------ */
+
+void stream_flood_start(void)
+{
+	stream_stop();
+	/* A recognisable ramp, so a desynchronised host is obvious. */
+	for (unsigned i = 0; i < ACQ_BUF_SAMPLES; i++)
+		bench_payload[i] = (uint16_t)(((i & 1u) ? 6u : 7u) << 12) | (i & 0x0fffu);
+	seq = 0;
+	bench_bytes = 0;
+	bench_frames = 0;
+	bench_t0 = micros();
+	bench = BENCH_FLOOD;
+}
+
+void stream_sink_start(void)
+{
+	stream_stop();
+	bench_bytes = 0;
+	bench_frames = 0;
+	bench_t0 = micros();
+	bench = BENCH_SINK;
+}
+
+void stream_bench_service(void)
+{
+	if (bench == BENCH_FLOOD) {
+		for (int budget = 0; budget < 8; budget++) {
+			frame_header_t h;
+
+			h.magic[0] = FRAME_MAGIC0; h.magic[1] = FRAME_MAGIC1;
+			h.magic[2] = FRAME_MAGIC2; h.magic[3] = FRAME_MAGIC3;
+			h.version         = FRAME_VERSION;
+			h.flags           = FRAME_FLAG_CONTINUOUS;
+			h.bits_per_sample = 12;
+			h.packing         = 0;
+			h.seq             = seq++;
+			h.sample_rate_hz  = 0;          /* synthetic, not acquired */
+			h.n_samples       = ACQ_BUF_SAMPLES;
+			h.channel_mask    = (1u << 7) | (1u << 6);
+			h.timestamp_us    = micros();
+			h.overrun_count   = 0;
+			h.header_crc32 = frame_crc32((const uint8_t *)&h,
+			                             sizeof(h) - sizeof(uint32_t));
+
+			size_t w1 = SerialUSB.write((const uint8_t *)&h, sizeof(h));
+			if (w1 != sizeof(h))
+				break;
+			size_t w2 = SerialUSB.write((const uint8_t *)bench_payload,
+			                            sizeof(bench_payload));
+			bench_bytes += w1 + w2;
+			bench_frames++;
+			if (w2 != sizeof(bench_payload))
+				break;
+		}
+	} else if (bench == BENCH_SINK) {
+		uint8_t tmp[512];
+		for (int budget = 0; budget < 16; budget++) {
+			int avail = SerialUSB.available();
+			if (avail <= 0)
+				break;
+			int n = avail > (int)sizeof(tmp) ? (int)sizeof(tmp) : avail;
+			int got = SerialUSB.readBytes((char *)tmp, n);
+			if (got <= 0)
+				break;
+			bench_bytes += (uint32_t)got;
+		}
+	}
+}
+
+void stream_bench_report(char *buf, size_t n)
+{
+	uint32_t us = micros() - bench_t0;
+	uint32_t kbps = us ? (uint32_t)(((uint64_t)bench_bytes * 1000ull) / us) : 0;
+
+	snprintf(buf, n, "# bench=%s bytes=%lu frames=%lu %lu.%03lu MB/s",
+	         bench == BENCH_FLOOD ? "flood(IN)" :
+	         bench == BENCH_SINK  ? "sink(OUT)" : "off",
+	         (unsigned long)bench_bytes, (unsigned long)bench_frames,
+	         (unsigned long)(kbps / 1000u), (unsigned long)(kbps % 1000u));
 }
