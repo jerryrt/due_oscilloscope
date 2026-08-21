@@ -17,6 +17,12 @@
 
 void     gen_init(void);
 void     gen_start(void);
+/*
+ * Drive the DACC from TC0 channel 1 (TIOA1) instead of the ADC's TIOA0,
+ * so the DAC update rate can be swept independently of acquisition.
+ */
+bool     gen_start_independent(uint32_t dac_hz);
+uint32_t gen_configured_rc(void);
 void     gen_stop(void);
 uint32_t gen_sine_hz(uint32_t trigger_hz);        /* trigger_hz / GEN_TABLE_LEN */
 

@@ -51,6 +51,7 @@ static void banner(void)
 	Serial.println("#           t=trigger-rate sweep (TC+ADC+PDC)");
 	Serial.println("#           1..5=stream 50k/100k/200k/400k/488372 Hz");
 	Serial.println("#           0=stop stream   ?=stream stats");
+	Serial.println("#           d=DAC max update-rate sweep");
 	Serial.println("#");
 }
 
@@ -303,6 +304,70 @@ static void cmd_stream_stats(void)
 }
 
 /*
+ * Find the DACC's maximum update rate.
+ *
+ * In TAG mode one trigger produces one conversion, so the achieved rate
+ * is table length times ENDTX count over elapsed time. Counting the
+ * peripheral's own completions avoids needing the ADC to observe the
+ * output, and gives the same kind of hard number the ADC sweep produced.
+ */
+static void cmd_dac_sweep(void)
+{
+	static const uint32_t rates[] = {
+		 100000,  500000,  800000, 1000000, 1200000,
+		1500000, 1750000, 2000000, 2500000, 3000000
+	};
+	char buf[144];
+
+	gen_init();
+	Serial.println("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode");
+	Serial.println("#     want      RC   TCexact    measured    ratio");
+	Serial.flush();
+
+	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
+		if (!gen_start_independent(rates[i])) {
+			snprintf(buf, sizeof(buf), "# %8lu       -         -    REFUSED",
+			         (unsigned long)rates[i]);
+			Serial.println(buf);
+			Serial.flush();
+			continue;
+		}
+
+		uint32_t sync = gen_endtx_count;
+		uint32_t guard = micros();
+		while (gen_endtx_count == sync && (micros() - guard) < 500000u)
+			{ }
+
+		uint32_t t0 = micros();
+		uint32_t e0 = gen_endtx_count;
+		while (gen_endtx_count - e0 < 64u && (micros() - t0) < 1000000u)
+			{ }
+		uint32_t t1 = micros();
+		uint32_t got = gen_endtx_count - e0;
+
+		gen_stop();
+
+		uint32_t rc      = gen_configured_rc();
+		uint32_t tcexact = (SystemCoreClock / 2u) / rc;
+		uint32_t us      = t1 - t0;
+		uint64_t convs   = (uint64_t)got * GEN_TABLE_LEN;
+		uint32_t measured = us ? (uint32_t)((convs * 1000000ull) / us) : 0;
+		uint32_t ratio_x1000 = tcexact ?
+			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
+
+		snprintf(buf, sizeof(buf), "# %8lu %7lu %9lu %11lu   %2lu.%03lu",
+		         (unsigned long)rates[i], (unsigned long)rc,
+		         (unsigned long)tcexact, (unsigned long)measured,
+		         (unsigned long)(ratio_x1000 / 1000u),
+		         (unsigned long)(ratio_x1000 % 1000u));
+		Serial.println(buf);
+		Serial.flush();
+	}
+	Serial.println("# ratio 1.000 means every trigger produced a DAC update");
+	Serial.flush();
+}
+
+/*
  * Branch to an even address. The Cortex-M3 requires the Thumb bit set in
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
@@ -355,6 +420,7 @@ void loop()
 		case 's': cmd_sweep();       break;
 		case 'x': cmd_crosstalk();   break;
 		case 't': cmd_rate_sweep();  break;
+		case 'd': cmd_dac_sweep();   break;
 		case '1': cmd_stream(50000);   break;
 		case '2': cmd_stream(100000);  break;
 		case '3': cmd_stream(200000);  break;

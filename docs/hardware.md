@@ -234,6 +234,34 @@ to within a couple of codes across the whole range. So the part matches
 the 1/6-to-5/6 rule closely, and any output stage can be designed against
 these numbers rather than against the datasheet's typicals.
 
+### Measured update-rate ceiling *(this board)*
+
+Swept with the DACC on its own timebase (TC0 channel 1, TIOA1) and the
+achieved rate counted from `ENDTX` completions, which needs no help from
+the capture path:
+
+| TC RC | Trigger Hz | Measured conv/s | Ratio |
+|---|---|---|---|
+| 28 | 1,500,000 | 1,500,022 | **1.000** |
+| 24 | 1,750,000 | 1,533,364 | 0.876 |
+| 21 | 2,000,000 | 1,539,704 | 0.769 |
+| 14 | 3,000,000 | 1,539,704 | 0.513 |
+
+**The DACC saturates at about 1,539,700 conversions per second.** Beyond
+that the measured rate is flat regardless of trigger frequency, so it is
+a hard ceiling rather than a gradual degradation.
+
+In TAG mode one trigger yields one conversion, so that figure is the
+total across both channels: 1.54 Msps on a single channel, or 770 ksps
+each when both are driven.
+
+Note it is **57% higher than the ADC's 976,744 sps ceiling**. Generation
+is not the bottleneck in a loopback.
+
+Caution when adding a second TC channel: each channel has its own
+peripheral ID. `ID_TC0` is TC0 channel 0 and `ID_TC1` is TC0 channel 1,
+so clocking only `ID_TC0` leaves channel 1 dead and TIOA1 never toggles.
+
 Two efficiency features worth using:
 
 - `DACC_MR.WORD` — PDC transfers 32-bit words carrying two samples,

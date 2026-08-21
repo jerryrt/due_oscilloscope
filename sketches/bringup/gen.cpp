@@ -3,6 +3,10 @@
 #include "acq.h"
 #include "gen.h"
 
+#define TRGSEL_TIOA1 (2u << 1)   /* DACC_MR.TRGSEL: 2 = TIOA1 */
+
+static uint32_t dac_rc;
+
 /* DAC1 held at mid scale; A1 should read a flat ~1.65 V equivalent. */
 #define DC_CODE  2048u
 
@@ -65,12 +69,75 @@ void gen_start(void)
 	DACC->DACC_MR |= DACC_MR_TRGEN | TRGSEL_TIOA0;
 }
 
+uint32_t gen_configured_rc(void)
+{
+	return dac_rc;
+}
+
+/*
+ * Independent DAC timebase on TC0 channel 1.
+ *
+ * In TAG mode each trigger converts exactly one sample, whichever
+ * channel its tag names, so DAC conversions per second equals the
+ * trigger rate. One ENDTX marks a whole table pass, which makes the
+ * achieved rate directly countable: table length times ENDTX count over
+ * elapsed time. That is the same technique used to find the ADC ceiling,
+ * and it needs no help from the capture path.
+ */
+bool gen_start_independent(uint32_t dac_hz)
+{
+	uint32_t tc_clock = SystemCoreClock / 2u;
+
+	if (dac_hz == 0)
+		return false;
+	dac_rc = tc_clock / dac_hz;
+	if (dac_rc < 2u)
+		return false;
+
+	gen_stop();
+	gen_endtx_count = 0;
+
+	/* Each TC channel has its own peripheral ID: ID_TC0 is TC0 channel
+	 * 0, ID_TC1 is TC0 channel 1. Clocking only ID_TC0 leaves channel 1
+	 * dead, and TIOA1 never toggles. */
+	PMC->PMC_PCER0 = (1u << ID_TC1);
+	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
+	TC0->TC_CHANNEL[1].TC_IDR = 0xffffffff;
+	TC0->TC_CHANNEL[1].TC_CMR = TCCLKS_TIMER_CLOCK1
+	                          | TC_CMR_WAVE
+	                          | WAVSEL_UP_RC
+	                          | ACPA_CLEAR
+	                          | ACPC_SET;
+	TC0->TC_CHANNEL[1].TC_RA = dac_rc / 2u;
+	TC0->TC_CHANNEL[1].TC_RC = dac_rc;
+
+	DACC->DACC_TPR  = (uint32_t)gen_table;
+	DACC->DACC_TCR  = GEN_TABLE_LEN;
+	DACC->DACC_TNPR = (uint32_t)gen_table;
+	DACC->DACC_TNCR = GEN_TABLE_LEN;
+
+	(void)DACC->DACC_ISR;
+	DACC->DACC_IDR = 0xffffffff;
+	DACC->DACC_IER = DACC_IER_ENDTX;
+	NVIC_ClearPendingIRQ(DACC_IRQn);
+	NVIC_SetPriority(DACC_IRQn, 1);
+	NVIC_EnableIRQ(DACC_IRQn);
+
+	DACC->DACC_PTCR = DACC_PTCR_TXTEN;
+	DACC->DACC_MR &= ~DACC_MR_TRGSEL_Msk;
+	DACC->DACC_MR |= DACC_MR_TRGEN | TRGSEL_TIOA1;
+
+	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+	return true;
+}
+
 void gen_stop(void)
 {
 	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);
 	DACC->DACC_PTCR = DACC_PTCR_TXTDIS;
 	DACC->DACC_IDR = 0xffffffff;
 	NVIC_DisableIRQ(DACC_IRQn);
+	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
 }
 
 /*
