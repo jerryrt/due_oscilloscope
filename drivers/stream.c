@@ -140,6 +140,19 @@ void stream_stop(void)
 	gen_stop();
 }
 
+/*
+ * Whether a bench mode is consuming bulk OUT. The main loop drains the
+ * endpoint when nothing does: a CDC device that stops accepting OUT
+ * data wedges the host, because macOS's close() waits for in-flight
+ * write URBs that a NAKing pipe never completes - and tcflush cannot
+ * recall a URB already handed to the controller.
+ */
+bool stream_out_in_use(void)
+{
+	return bench == BENCH_SINK || bench == BENCH_DUPLEX ||
+	       bench == BENCH_SINK_DMA || bench == BENCH_DUPLEX_DMA;
+}
+
 void stream_bench_service(void);
 
 void stream_service(void)
