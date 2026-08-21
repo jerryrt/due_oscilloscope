@@ -20,11 +20,16 @@
  *   s  DAC sweep, both channels
  *   x  crosstalk probe
  *   t  TC/ADC/PDC trigger-rate sweep
+ *   1-5 start streaming at a preset trigger rate
+ *   0  stop streaming
+ *   ?  streaming statistics
  *
  * Loopback wiring: DAC0 -> A0, DAC1 -> A1.
  */
 
 #include "acq.h"
+#include "gen.h"
+#include "stream.h"
 
 #define LED_MASK (1u << 27)   /* pin 13 = PB27 */
 
@@ -44,6 +49,8 @@ static void banner(void)
 	Serial.println("# commands: h=help p=printf-cost g=gpio-cost f=fault");
 	Serial.println("#           r=read a0/a1  s=dac sweep  x=crosstalk");
 	Serial.println("#           t=trigger-rate sweep (TC+ADC+PDC)");
+	Serial.println("#           1..5=stream 50k/100k/200k/400k/488372 Hz");
+	Serial.println("#           0=stop stream   ?=stream stats");
 	Serial.println("#");
 }
 
@@ -268,6 +275,34 @@ static void cmd_rate_sweep(void)
 }
 
 /*
+ * 488372 Hz is the measured ceiling for two channels: one step faster
+ * and the ADC silently drops every other trigger with no status bit set.
+ * See docs/hardware.md.
+ */
+static void cmd_stream(uint32_t trigger_hz)
+{
+	char buf[128];
+
+	stream_start(trigger_hz);
+	snprintf(buf, sizeof(buf),
+	         "# streaming: trigger %lu Hz, %lu sps aggregate, sine %lu Hz on DAC0",
+	         (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
+	         (unsigned long)gen_sine_hz(trigger_hz));
+	Serial.println(buf);
+	Serial.println("# DAC1 holds mid scale: A1 must read flat, or demux is wrong");
+	Serial.flush();
+}
+
+static void cmd_stream_stats(void)
+{
+	char buf[192];
+
+	stream_report(buf, sizeof(buf));
+	Serial.println(buf);
+	Serial.flush();
+}
+
+/*
  * Branch to an even address. The Cortex-M3 requires the Thumb bit set in
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
@@ -289,6 +324,7 @@ void setup()
 	analogWriteResolution(12);
 	analogReadResolution(12);
 	Serial.begin(115200);
+	SerialUSB.begin(0);          /* native port; CDC ignores baud */
 	while (!Serial && millis() < 2000) { }
 	banner();
 	heartbeat_at = millis();
@@ -307,6 +343,8 @@ void loop()
 		heartbeat_at = now;
 	}
 
+	stream_service();
+
 	if (Serial.available()) {
 		switch (Serial.read()) {
 		case 'h': banner();          break;
@@ -317,6 +355,14 @@ void loop()
 		case 's': cmd_sweep();       break;
 		case 'x': cmd_crosstalk();   break;
 		case 't': cmd_rate_sweep();  break;
+		case '1': cmd_stream(50000);   break;
+		case '2': cmd_stream(100000);  break;
+		case '3': cmd_stream(200000);  break;
+		case '4': cmd_stream(400000);  break;
+		case '5': cmd_stream(488372);  break;
+		case '0': stream_stop(); Serial.println("# stream stopped");
+		          Serial.flush();      break;
+		case '?': cmd_stream_stats();  break;
 		default:                     break;
 		}
 	}

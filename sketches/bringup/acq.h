@@ -38,4 +38,31 @@ extern volatile uint32_t acq_buffers_done;
 extern volatile uint32_t acq_rxbuff_overruns;
 extern volatile uint32_t acq_govre;
 
+/*
+ * Producer/consumer ring. acq_produced is written only by the ISR and
+ * acq_consumed only by the main loop, so 32-bit aligned reads make the
+ * pair safe without disabling interrupts.
+ *
+ * acq_ring_overflow counts the case that matters: the ISR lapping the
+ * consumer, i.e. samples overwritten before they were sent.
+ */
+extern volatile uint32_t acq_produced;
+extern volatile uint32_t acq_consumed;
+extern volatile uint32_t acq_ring_overflow;
+
+static inline bool acq_frame_available(void)
+{
+	return acq_produced != acq_consumed;
+}
+
+static inline const uint16_t *acq_frame_data(void)
+{
+	return acq_buf[acq_consumed % ACQ_NBUF];
+}
+
+static inline void acq_frame_release(void)
+{
+	acq_consumed++;
+}
+
 #endif /* ACQ_H */

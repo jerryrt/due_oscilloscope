@@ -14,6 +14,9 @@ uint16_t acq_buf[ACQ_NBUF][ACQ_BUF_SAMPLES];
 volatile uint32_t acq_buffers_done;
 volatile uint32_t acq_rxbuff_overruns;
 volatile uint32_t acq_govre;
+volatile uint32_t acq_produced;
+volatile uint32_t acq_consumed;
+volatile uint32_t acq_ring_overflow;
 
 static volatile uint32_t filling;     /* index currently in PDC RPR */
 static uint32_t configured_rc;
@@ -77,6 +80,9 @@ void acq_start(uint32_t trigger_hz)
 	acq_buffers_done = 0;
 	acq_rxbuff_overruns = 0;
 	acq_govre = 0;
+	acq_produced = 0;
+	acq_consumed = 0;
+	acq_ring_overflow = 0;
 	filling = 0;
 
 	tc_init(trigger_hz);
@@ -137,5 +143,12 @@ void ADC_Handler(void)
 		ADC->ADC_RNPR = (uint32_t)acq_buf[(filling + 1u) % ACQ_NBUF];
 		ADC->ADC_RNCR = ACQ_BUF_SAMPLES;
 		acq_buffers_done++;
+
+		/* Lapping the consumer means samples were overwritten before
+		 * they were sent. Distinct from RXBUFF, which means the PDC
+		 * itself ran dry. */
+		if (acq_produced - acq_consumed >= ACQ_NBUF - 1u)
+			acq_ring_overflow++;
+		acq_produced++;
 	}
 }
