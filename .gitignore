@@ -25,6 +25,7 @@ sketches/**/build/
 # Vendored toolchains / SDKs (fetched, not committed)
 tools/toolchain/
 tools/arm-gnu-toolchain-*/
+tools/xpack-*/
 
 # Host tooling
 __pycache__/
