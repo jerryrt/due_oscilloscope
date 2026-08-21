@@ -64,6 +64,14 @@ Do not re-investigate these. Each was checked directly, not inferred.
   and the one latched in `TNPR`, and a `__DMB()` before publishing.
   That fixed a real underrun storm. It did **not** fix the freeze.
 - **Not wire propagation delay.** Picoseconds on a two-inch jumper.
+- **Not the trigger path, the DACC, or the ADC interaction.** Measured
+  2026-08-21 with command `M`: gen's flash sine played through play's
+  exact DACC + TIOA1 + TC1 configuration, capture running at 200 kHz,
+  start ordering matched to `L`. Live `ADC_CDR[7]` swung the full DAC
+  range (686 / 3330 / 1261 / 2084 / ...) while `ADC_CDR[6]` held mid
+  scale. This kills remaining suspects 3 and 4 below. **The freeze
+  needs USB duplex traffic to manifest.** Suspects 1 and 2 are what is
+  left.
 
 ## Remaining suspects, in order
 
@@ -84,17 +92,40 @@ Do not re-investigate these. Each was checked directly, not inferred.
 
 ## The next diagnostic to run
 
-Do not iterate blind; this session lost a lot of time doing that.
+**Implemented 2026-08-21 as command `D`** (and
+`host/loopback.py --diag`, which triggers it mid-run). It snapshots to
+memory while both loops run and prints only afterwards:
 
-Log, sampled while **both** loops run:
+- `play_produced` / `play_consumed` / `play_endtx_seen` /
+  `play_svc_calls` over time
+- the live `DACC_TPR` decomposed into ring slot + offset, plus
+  `DACC_TCR`/`TNPR` and the half-word the PDC will fetch next
+- `ADC_CDR[7]` / `ADC_CDR[6]`: the converter's live last A0/A1 result,
+  bypassing the ring, the framer and USB entirely
+- `acq_produced` / `acq_consumed`
 
-- `play_produced` and `play_consumed` over time
-- the actual `DACC_TPR` / `DACC_TCR` the PDC is reading
-- a counter of `play_service()` entries per second
+One run distinguishes "ring stalls" from "PDC on a stale address" from
+"service starvation" from "capture path serving stale data while the
+pin actually moves".
 
-That single run distinguishes "ring stalls" from "PDC reading a stale
-address" from "service starvation", which is three hypotheses collapsed
-into one measurement.
+**It has not yet run under `L`, because the native port is physically
+absent** (see Environment). Run
+`python3 host/loopback.py --diag --seconds 5` the moment the port is
+back. If `cdr7` swings while the frames show a frozen A0, the capture
+data path is lying; if `cdr7` is frozen too, watch whether `tpr` walks
+the slots host data lands in.
+
+Note the freeze table only ever tested DC under `P`; a sine under `P`
+has still never been tried. With the port back, a `P` + sine run
+(playback and USB OUT active, no capture, no USB IN) is the cheapest
+next bisection after the `L` diagnostic.
+
+Also fixed while blocked: `usb_cdc_read()` used to release an OUT bank
+after a clipped read, discarding the tail; any short packet from the
+host then shifted the sample stream and scrambled channel tags. It now
+resumes at an offset and releases the bank only when drained. This is
+on the play path but predicts garble, not a clean mid-scale freeze, so
+the freeze is probably still there - retest under `L` regardless.
 
 ## Hard-won facts the next session must not rediscover
 
@@ -140,6 +171,16 @@ into one measurement.
 - Use the **xPack** ARM toolchain. ARM's own macOS build links `cc1`
   against Homebrew's zstd and cannot run here.
 - Wiring: **DAC0 -> A0**, DAC1 -> A1 (second pair currently unused).
+- **The native port is physically disconnected as of 2026-08-21.** The
+  firmware sees VBUS and asserts attach (`u`: DETACH=0, CLKUSABLE=1,
+  SR bit 11 set), but macOS never sends a bus reset and
+  `system_profiler` lists only the programming port. The USB topology
+  also changed since the last session (prog port moved from
+  `usbmodem141301` to `usbmodem14201`), so cables were re-plugged. The
+  native cable is powered but not data-connected to the Mac: re-seat it
+  into the Mac (not a charger, not a power-only hub port) and check
+  with `python3 host/ports.py`. Nothing in firmware changed on the
+  attach path; do not debug it in software.
 
 ## Track B command reference
 
@@ -156,6 +197,8 @@ into one measurement.
 | `L` | full loop: playback + capture (**the failing case**) |
 | `P` | playback only (**works**) |
 | `V` | dump playback ring + DACC registers |
+| `D` | loop diagnostic: 12 snapshots at 150 ms, printed afterwards |
+| `M` | mimic loop without USB: gen sine on TIOA1 + capture (**works**) |
 | `u` | dump USB registers |
 | `z` | software reset |
 
