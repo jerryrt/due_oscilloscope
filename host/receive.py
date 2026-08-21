@@ -107,6 +107,10 @@ def main():
                     help="command to send on the control port before reading")
     ap.add_argument("--stop", default="0",
                     help="command to send on the control port afterwards")
+    ap.add_argument("--uart", action="store_true",
+                    help="single-port mode: frames arrive on the control "
+                         "port itself, as Track B does over UART")
+    ap.add_argument("--uart-baud", type=int, default=115200)
     args = ap.parse_args()
 
     # Order matters. Opening the control port can reset the board, and a
@@ -114,7 +118,7 @@ def main():
     # before it. So: control first, start the stream, then find and open
     # the native port.
     cfd = None
-    if args.send:
+    if args.send and not args.uart:
         cfd = open_raw(args.control, baud=115200)
         time.sleep(0.2)
         os.write(cfd, args.send.encode())
@@ -133,12 +137,24 @@ def main():
             if line.strip():
                 print("# ctl> " + line.strip())
 
-    dev = args.port or find_native_port()
-    print(f"# native port: {dev}")
+    if args.uart:
+        dev = args.control
+        print(f"# uart transport, single port: {dev}")
+    else:
+        dev = args.port or find_native_port()
+        print(f"# native port: {dev}")
     # Force a non-1200 line coding. The Arduino CDC arms an auto-reset
     # when the port is closed while its stored rate is 1200, so leaving a
     # stale 1200 here makes the board reset at the end of every run.
-    fd = open_raw(dev, baud=115200, dtr=True)
+    if args.uart:
+        # One port carries both the command and the frames.
+        fd = open_raw(dev, baud=args.uart_baud)
+        time.sleep(0.2)
+        if args.send:
+            os.write(fd, args.send.encode())
+        cfd = fd
+    else:
+        fd = open_raw(dev, baud=115200, dtr=True)
 
     buf = bytearray()
     frames = payload_bytes = 0
@@ -247,7 +263,8 @@ def main():
                         except OSError:
                             break
             finally:
-                os.close(cfd)
+                if cfd is not fd:
+                    os.close(cfd)
         os.close(fd)
 
     elapsed = (t_end_capture or time.time()) - t0

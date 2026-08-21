@@ -24,25 +24,21 @@ missing FPU on the Cortex-M3 stops mattering.
 
 ## Status
 
-**Both tracks verified end to end on hardware**, feature-equivalent, on
-macOS 12.7.6 Intel x86_64.
+**Both tracks stream end to end.** See [docs/status.md](docs/status.md).
 
 | | Track A | Track B |
 |---|---|---|
-| Toolchain | arduino-cli 1.5.1, arduino:sam 1.6.12, gcc 4.8.3 | CMake 4.4.2, xPack gcc 15.2.1 |
-| BSP | Arduino core | `bsp/`: startup, clock, UART, LED, SysTick, faults, newlib |
-| Verified | banner, printf, GPIO timing, HardFault, LED | same |
-| Size | 15868 B | 7256 B text |
+| Toolchain | arduino-cli 1.5.1, gcc 4.8.3 | CMake 4.4.2, xPack gcc 15.2.1 |
+| Transport | USB CDC, 0.8 MB/s gapless | UART (bare-metal USB not enumerating yet) |
+| Tone measured | 1371.9 codes | 1371.5 codes |
 
-Next step is the acquisition path: TC-triggered ADC with PDC ping-pong,
-verified against the configured trigger rate before anything else is
-built on it.
+Independent implementations agreeing to 0.03% is the point of keeping two
+tracks.
 
-One design decision was settled by reading the core source rather than
-guessing: the Arduino CDC stack copies into the endpoint FIFO a byte at a
-time and never uses the UOTGHS DMA, so `SerialUSB` cannot carry the
-sample path. Track B drives the USB DMA directly. See
-`docs/architecture.md`.
+Known issue: the bare-metal UOTGHS stack does not enumerate. Every
+device-side register reads correct and one bus reset is serviced, but no
+SETUP follows. Details and what has been ruled out are in
+[docs/status.md](docs/status.md).
 
 ## Design in one paragraph
 
