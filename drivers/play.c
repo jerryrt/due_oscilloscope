@@ -15,6 +15,7 @@ volatile uint32_t play_underruns;
 volatile uint32_t play_bytes_in;
 volatile uint32_t play_isr_calls;
 volatile uint32_t play_endtx_seen;
+volatile uint32_t play_svc_calls;
 
 static uint32_t fill_off;            /* byte offset into the filling buffer */
 static bool     active;
@@ -23,6 +24,8 @@ static bool     primed;
 #define PLAY_PRIME_BUFS 4u
 
 bool play_active(void) { return active; }
+
+const uint8_t *play_ring_base(void) { return (const uint8_t *)play_buf; }
 
 static void dac_tc_init(uint32_t rc)
 {
@@ -57,6 +60,7 @@ bool play_start(uint32_t dac_hz)
 	play_consumed = 0;
 	play_underruns = 0;
 	play_bytes_in = 0;
+	play_svc_calls = 0;
 	fill_off = 0;
 
 	/* Silence until the host supplies something: mid scale on both. */
@@ -124,6 +128,8 @@ void play_service(void)
 {
 	if (!active)
 		return;
+
+	play_svc_calls++;
 
 	for (int budget = 0; budget < 16; budget++) {
 		uint8_t *dst;

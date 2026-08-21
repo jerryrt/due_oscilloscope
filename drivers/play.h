@@ -28,6 +28,7 @@ void play_stop(void);
 bool play_active(void);
 void play_service(void);          /* drain USB OUT into the ring */
 void play_dump(void);
+const uint8_t *play_ring_base(void);   /* for mapping DACC_TPR to a slot */
 
 extern volatile uint32_t play_produced;    /* buffers filled from USB */
 extern volatile uint32_t play_consumed;    /* buffers handed to the PDC */
@@ -35,5 +36,6 @@ extern volatile uint32_t play_underruns;
 extern volatile uint32_t play_bytes_in;
 extern volatile uint32_t play_isr_calls;
 extern volatile uint32_t play_endtx_seen;
+extern volatile uint32_t play_svc_calls;   /* play_service entries while active */
 
 #endif /* PLAY_H */

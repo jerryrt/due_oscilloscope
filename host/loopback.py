@@ -77,6 +77,8 @@ def main():
                     help="send a constant DAC0 code instead of a tone")
     ap.add_argument("--scan", action="store_true",
                     help="sweep candidate frequencies to find the energy")
+    ap.add_argument("--diag", action="store_true",
+                    help="trigger the firmware's snapshot diagnostic mid-run")
     args = ap.parse_args()
 
     ctl, nat = find_ports()
@@ -105,12 +107,24 @@ def main():
     termios.tcflush(fd, termios.TCIFLUSH)
 
     chunks = []
+    ctl_out = b""
+    diag_sent = False
     tx = 0
     pos = 0
     t0 = time.time()
     while time.time() - t0 < args.seconds:
-        r, w, _ = select.select([fd], [fd], [], 0.1)
-        if r:
+        # The diagnostic must sample while both directions are live, so it
+        # is triggered mid-run, not before or after.
+        if args.diag and not diag_sent and time.time() - t0 > 1.5:
+            os.write(cfd, b"D")
+            diag_sent = True
+        r, w, _ = select.select([fd, cfd], [fd], [], 0.1)
+        if cfd in r:
+            try:
+                ctl_out += os.read(cfd, 65536)
+            except OSError:
+                pass
+        if fd in r:
             try:
                 chunks.append(os.read(fd, 65536))
             except OSError:
@@ -197,6 +211,11 @@ def main():
     for l in rep.decode("utf-8", "replace").splitlines():
         if "play:" in l or "bench=" in l:
             print("#", l.strip().lstrip("# "))
+    if ctl_out:
+        print("# --- control port during run ---")
+        for l in ctl_out.decode("utf-8", "replace").splitlines():
+            if l.strip():
+                print(l if l.startswith("#") else "# " + l)
     print("# channel   n        min   max   mean")
     for ch in sorted(per_ch):
         n, lo, hi, tot = per_ch[ch]

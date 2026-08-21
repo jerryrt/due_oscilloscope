@@ -43,6 +43,7 @@ static void banner(void)
 	printf("#           F=flood IN  R=sink OUT  X=duplex  B=bench stats\n");
 	printf("#           G/T/Y = same three via DMA\n");
 	printf("#           L=full loop HOST->DAC->ADC->HOST\n");
+	printf("#           P=play only  V=ring dump  D=loop diagnostic\n");
 	printf("#\n");
 }
 
@@ -304,6 +305,103 @@ static void cmd_stream(uint32_t trigger_hz)
 }
 
 /*
+ * Loop diagnostic: periodic snapshots taken while both service loops run.
+ *
+ * One run separates four hypotheses that the aggregate counters cannot
+ * tell apart: a stalled ring (prod/cons stop), a PDC reading a stale
+ * address (tpr stops walking the slots), a starved service loop (svc
+ * stops advancing), and a capture path serving stale data while the DAC
+ * output actually moves (cdr7 is the ADC's live last A0 conversion, read
+ * straight from the register and bypassing the ring, the framer and USB).
+ *
+ * Snapshots go to memory and print only after the last one, because a
+ * printf mid-run would stall the very loops being observed. The reads
+ * are registers and counters, not the sample stream; `next` peeks one
+ * half-word at DACC_TPR to see what the PDC is about to fetch, which is
+ * a diagnostic exception to the no-CPU-on-samples rule, not a data path.
+ */
+#define DIAG_N 12u
+#define DIAG_INTERVAL_MS 150u
+
+struct diag_snap {
+	uint32_t ms, prod, cons, endtx, svc;
+	uint32_t tpr, tcr, tnpr;
+	uint16_t next, cdr7, cdr6;
+	uint32_t aprod, acons;
+};
+
+static struct diag_snap diag[DIAG_N];
+static unsigned diag_count;
+static uint32_t diag_next_ms;
+static bool     diag_run;
+
+static void diag_start(void)
+{
+	diag_count = 0;
+	diag_next_ms = millis();
+	diag_run = true;
+}
+
+static void diag_service(void)
+{
+	if (!diag_run)
+		return;
+
+	if (diag_count < DIAG_N) {
+		uint32_t now = millis();
+		struct diag_snap *s;
+
+		if ((int32_t)(now - diag_next_ms) < 0)
+			return;
+
+		s = &diag[diag_count++];
+		s->ms    = now;
+		s->prod  = play_produced;
+		s->cons  = play_consumed;
+		s->endtx = play_endtx_seen;
+		s->svc   = play_svc_calls;
+		s->tpr   = DACC->DACC_TPR;
+		s->tcr   = DACC->DACC_TCR;
+		s->tnpr  = DACC->DACC_TNPR;
+		s->next  = *(volatile uint16_t *)s->tpr;
+		s->cdr7  = (uint16_t)ADC->ADC_CDR[7];
+		s->cdr6  = (uint16_t)ADC->ADC_CDR[6];
+		s->aprod = acq_produced;
+		s->acons = acq_consumed;
+		diag_next_ms = now + DIAG_INTERVAL_MS;
+		return;
+	}
+
+	diag_run = false;
+
+	{
+		uint32_t base = (uint32_t)play_ring_base();
+
+		printf("# diag: play ring base=%08lx slot=%u B nslots=%u\n",
+		       (unsigned long)base, PLAY_BUF_BYTES, PLAY_NBUF);
+		printf("#    ms  prod  cons endtx    svc  tpr=slot+off  tcr"
+		       "  next(tag,code)  cdr7 cdr6  aprod acons\n");
+		for (unsigned i = 0; i < DIAG_N; i++) {
+			struct diag_snap *s = &diag[i];
+			uint32_t off = s->tpr - base;
+
+			printf("# %5lu %5lu %5lu %5lu %6lu  %lu+%-4lu %4lu"
+			       "  %04x(t%u,%4u)  %4u %4u  %5lu %5lu\n",
+			       (unsigned long)(s->ms - diag[0].ms),
+			       (unsigned long)s->prod, (unsigned long)s->cons,
+			       (unsigned long)s->endtx, (unsigned long)s->svc,
+			       (unsigned long)(off / PLAY_BUF_BYTES),
+			       (unsigned long)(off % PLAY_BUF_BYTES),
+			       (unsigned long)s->tcr,
+			       s->next, (s->next >> 12) & 3u, s->next & 0x0fffu,
+			       s->cdr7 & 0x0fffu, s->cdr6 & 0x0fffu,
+			       (unsigned long)s->aprod, (unsigned long)s->acons);
+		}
+		uart_flush();
+	}
+}
+
+/*
  * Branch to an even address. Cortex-M3 requires the Thumb bit set in
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
@@ -360,6 +458,7 @@ int main(void)
 		usb_cdc_poll();
 		play_service();
 		stream_service();
+		diag_service();
 
 		int c = uart_getc();
 		switch (c) {
@@ -419,6 +518,7 @@ int main(void)
 			uart_flush();
 			break;
 		case 'V': play_dump(); break;
+		case 'D': diag_start(); break;
 		case 'B': stream_bench_report();
 		          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu\n",
 		                 (unsigned long)play_bytes_in,
