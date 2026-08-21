@@ -1,0 +1,133 @@
+# Project Scope
+
+## Goal
+
+Turn an Arduino Due into a usable dual-purpose instrument:
+
+- **Signal capture** — multi-channel 12-bit acquisition, DMA-driven,
+  streamed to a host over USB.
+- **Signal generation** — 12-bit DAC output, DMA-driven, phase-coherent
+  with the capture timebase.
+
+All FFT/DSP and visualisation runs on the host (macOS/PC). The firmware's
+only job is to move samples in and out of the SAM3X8E as efficiently as
+the silicon allows, and to report honestly when it cannot keep up.
+
+## Division of labour
+
+| Side | Responsibility |
+|---|---|
+| Due (SAM3X8E) | Timebase, ADC sequencing, DAC playback, DMA, framing, drop detection |
+| Host | Deframing, continuity checking, FFT/DSP, triggering UI, visualisation |
+
+The Cortex-M3 has no FPU. Any on-target DSP would be integer-only and
+slow, while the host has numpy/scipy for free. This split is deliberate
+and should not erode.
+
+## Phases
+
+### Phase 1 — Loopback bring-up (current target)
+
+A jumper from **DAC0 to A0** closes the loop. The board generates a
+waveform it already knows and captures it back, so each half validates
+the other with no front-end hardware at all.
+
+Safe by construction: the DAC tops out around 2.75 V, comfortably inside
+the ADC's 0–3.3 V window. Nothing on that wire can overvoltage anything.
+
+Deliverables:
+
+- BSP: clock init, UART printf, LED heartbeat, HardFault reporting
+- TC-triggered ADC with PDC ping-pong
+- TC-triggered DAC playback
+- Measured: real DAC endpoints on this board, ADC offset/linearity,
+  end-to-end latency, actual trigger rate, dropped-sample count
+
+What Phase 1 deliberately does **not** prove: noise, loading, or cable
+effects. A two-inch jumper with a shared ground hides all of those. They
+belong to Phase 3.
+
+### Phase 2 — Host streaming
+
+- USB bulk streaming of capture buffers (see `docs/protocol.md`)
+- **Measure actual sustained USB throughput** — this is the single
+  unknown that determines whether continuous capture is viable
+- Host application: deframe, verify sequence continuity, FFT, live plot
+- Burst (scope) mode first; continuous (spectrum) mode second
+
+### Phase 3 — Analog front end
+
+Only after the digital path is proven:
+
+- Input: protection clamps, switchable attenuator, mid-rail bias for
+  bipolar signals, buffer op-amp per channel
+- Output: op-amp stage to rescale the awkward 0.55–2.75 V DAC window,
+  plus a reconstruction filter
+- Anti-aliasing filters — one per active channel
+
+### Phase 4 — RTOS variant
+
+The same drivers linked against a FreeRTOS application, to compare
+against the bare-metal build. See `docs/rtos.md`.
+
+## Performance targets
+
+Derived in `docs/architecture.md`; summarised here.
+
+```
+MCK                     84 MHz
+ADCClock (PRESCAL=1)    21 MHz          (datasheet max ~22 MHz)
+Conversion              ~20 ADC clocks  (minimal TRACKTIM)
+Aggregate rate          ~1.05 Msps
+```
+
+The SAM3X8E has **one** ADC behind a 16:1 multiplexer, not twelve ADCs.
+Channels are sampled round-robin, so channel count divides the aggregate
+rate rather than multiplying throughput.
+
+| Channels | Per-channel | Nyquist | Realistic usable BW |
+|---|---|---|---|
+| 1 | 1.05 Msps | 525 kHz | ~150 kHz |
+| 2 | 525 ksps | 262 kHz | ~80 kHz |
+| 12 | 87.5 ksps | 43.7 kHz | ~20–30 kHz |
+
+**Aggregate data rate is 2.1 MB/s regardless of channel count**
+(1.05 Msps x 2 bytes). Twelve channels costs no extra USB bandwidth; it
+costs per-channel sample rate. 12-bit packing would reduce this to
+1.58 MB/s at the cost of the channel tag.
+
+Expect the practical per-channel rate to land lower than the table —
+raising `TRACKTIM` to suppress multiplexer crosstalk on high-impedance
+sources cuts aggregate throughput. Plan for **50–85 ksps/channel** in a
+12-channel configuration.
+
+## Success criteria
+
+Phase 1 is complete when the host can plot a DAC-generated waveform
+captured through A0, with a reported dropped-sample count of zero over a
+sustained run, and a measured figure for DAC range and USB throughput.
+
+## Non-goals
+
+- On-target FFT or filtering
+- Simultaneous (non-multiplexed) sampling — the silicon cannot do it
+- Matching commercial scope bandwidth; ~100–200 kHz single-shot is the
+  realistic ceiling for this hardware
+- 5 V tolerance anywhere — the SAM3X8E has none
+- Sharing source between the arduino-cli and CMake tracks
+
+## Open questions
+
+Carried forward; each needs measurement or a datasheet check, not a
+guess.
+
+1. Sustained USB CDC throughput on this host — unknown until measured.
+   Community reports scatter across 0.5–2 MB/s, which straddles the
+   2.1 MB/s target.
+2. CDC bulk endpoint `wMaxPacketSize` (64 vs 512). macOS does not expose
+   endpoint descriptors in the IORegistry; read it from the SAM core
+   source or via libusb.
+3. Whether SRAM bank 0 and bank 1 sit on separate bus-matrix slaves.
+   Determines whether bank placement removes DMA contention.
+4. Exact ADC conversion cycle count under the chosen `TRACKTIM` and
+   `SETTLING` values.
