@@ -133,6 +133,30 @@ What this rules out, and what it does not:
   already optimal at 512 bytes and 2 banks. Nothing is left on the table
   there.
 
+### Measured on this host
+
+The Track A stream was run end to end at increasing trigger rates:
+
+| Aggregate | Data rate | Result |
+|---|---|---|
+| 200 ksps | 0.40 MB/s | gapless |
+| 400 ksps | 0.80 MB/s | **gapless** |
+| 800 ksps | 1.60 MB/s | fails, ~0.93 MB/s delivered |
+| 976 ksps | 1.95 MB/s | fails, ~0.89 MB/s delivered |
+
+**CDC sustains 0.8 MB/s; the ceiling is ~0.93 MB/s.** Continuous capture
+over CDC is therefore capped near 400 ksps aggregate: 200 ksps per
+channel with two channels, or roughly 33 ksps per channel across twelve.
+Full-rate continuous needs the vendor-class DMA path. Burst mode is
+unaffected, since it decouples sample rate from link rate.
+
+One further CDC hazard, found the hard way: `Serial_::write` spins on
+`TXINI` once the host has set the line state, and `availableForWrite()`
+returns a constant rather than real space. If the host stops draining
+mid-write, **the board wedges** with no way for firmware to detect or
+escape it. Recovery needs the 1200-baud touch, which is a hardware path
+through the 16U2 and works even with the CPU hung.
+
 The Track B data path therefore drives the UOTGHS DMA directly with a
 vendor-class bulk IN endpoint, and the host uses libusb rather than a
 serial device node. Add Microsoft OS 2.0 (WCID) descriptors so Windows
@@ -140,7 +164,7 @@ binds WinUSB without a manual driver install.
 
 ## The hard problem: producer/consumer mismatch
 
-The ADC produces at a rigid 2.1 MB/s. USB drains at a **variable** rate
+The ADC produces at a rigid 1.95 MB/s. USB drains at a **variable** rate
 set by the host. That mismatch is the actual design challenge, not
 bandwidth.
 
@@ -175,7 +199,7 @@ Two supporting facts:
 - Align buffers to 4 bytes: PDC requires half-word alignment, UOTGHS DMA
   prefers word.
 
-Sizing example: two 16 KB ping-pong buffers fill in ~7.8 ms at 2.1 MB/s.
+Sizing example: two 16 KB ping-pong buffers fill in ~8.4 ms at 1.95 MB/s.
 That interval is the USB deadline per buffer.
 
 ## Interrupt priorities
@@ -206,9 +230,9 @@ main / task:    nothing in the data path
 With 8 KB buffers that is roughly 128 interrupts/sec.
 
 ```
-ADC -> SRAM via PDC       2.1 MB/s
-SRAM -> USB via DMA       2.1 MB/s
-combined SRAM load        4.2 MB/s
+ADC -> SRAM via PDC      1.95 MB/s
+SRAM -> USB via DMA      1.95 MB/s
+combined SRAM load       3.90 MB/s
 32-bit bus @ 84 MHz    ~336 MB/s theoretical
                        -> ~1% utilisation
 ```

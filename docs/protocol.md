@@ -174,3 +174,29 @@ Two defences, and both are needed:
 
 A visible gap is a bug report. A silent splice is corrupted data that
 will be mistaken for a physical signal.
+
+### Ring overflow tears payloads, and no header field can see it
+
+Found during bring-up. When the transport falls behind, the PDC keeps
+writing and eventually overwrites a buffer **while it is being
+transmitted**. The resulting frame passes its header CRC and carries a
+correct sequence number, but its payload is spliced from two different
+points in time.
+
+It shows up at once on a channel that should be constant: a DC channel
+reading 2051..2059 when healthy read 104..3663 while overrunning.
+
+No header field detects this, because the header is written before the
+payload is read out. The producer must prevent it:
+
+- Before sending, compare `produced - consumed` against the ring depth.
+  If the writer has lapped the reader, **skip forward to the newest safe
+  buffer** and count the discontinuity rather than transmitting a torn
+  one.
+- The skip is reported through `overrun_count`, so the loss stays
+  visible while the delivered samples stay trustworthy.
+
+After the fix the same overload produced zero lost frames, a DC channel
+holding 2043..2060, and an overrun count climbing honestly from 59 to
+781. The host additionally sees measured rate over declared rate fall to
+0.54, which is the independent check that catches it.

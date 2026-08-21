@@ -129,9 +129,22 @@ sustained run, and a measured figure for DAC range and USB throughput.
 Carried forward; each needs measurement or a datasheet check, not a
 guess.
 
-1. Sustained USB CDC throughput on this host — unknown until measured.
-   Community reports scatter across 0.5–2 MB/s, which straddles the
-   2.1 MB/s target.
+1. ~~Sustained USB CDC throughput.~~ **Resolved by measurement**:
+   **0.8 MB/s sustains gaplessly; the ceiling is ~0.93 MB/s.** Measured
+   end to end with the framed binary stream over `SerialUSB`:
+
+   | Trigger | Required | Delivered | Seq gaps |
+   |---|---|---|---|
+   | 100 kHz | 0.400 MB/s | 0.399 | 0 |
+   | 200 kHz | 0.800 MB/s | 0.796 | 0 |
+   | 400 kHz | 1.600 MB/s | 0.93 | many |
+   | 488 kHz | 1.953 MB/s | 0.89 | many |
+
+   Against the 1.95 MB/s that full-rate two-channel capture needs, CDC
+   delivers under half. Continuous full-rate streaming over the Arduino
+   CDC is therefore impossible, as the byte-at-a-time FIFO copy
+   predicted. Burst mode and the vendor-class DMA path remain the ways
+   forward.
 2. ~~CDC bulk endpoint `wMaxPacketSize`.~~ **Resolved**: 512 bytes,
    2-bank, read from `arduino:sam@1.6.12` source. Already optimal; no
    tuning available. See `docs/hardware.md`.
