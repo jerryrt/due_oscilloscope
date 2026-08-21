@@ -19,8 +19,9 @@
 #define ACPA_CLEAR            (2u << 16)
 #define ACPC_SET              (1u << 18)
 
-/* ADC_MR / DACC_MR trigger select: 1 = TIOA0. */
+/* ADC_MR / DACC_MR trigger select: 1 = TIOA0, 2 = TIOA1. */
 #define TRGSEL_TIOA0          (1u << 1)
+#define TRGSEL_TIOA1          (2u << 1)
 
 #define ACQ_NBUF              4
 #define ACQ_BUF_SAMPLES       2032   /* 4064 B payload + 32 B header = 8 x 512 */

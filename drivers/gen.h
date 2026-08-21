@@ -7,6 +7,8 @@
 
 void     gen_init(void);
 void     gen_start(void);
+void     gen_prepare_tioa1(uint32_t dac_hz);  /* DACC + TC1 config, clock off */
+void     gen_go_tioa1(void);                  /* start the TC1 clock */
 void     gen_stop(void);
 uint32_t gen_sine_hz(uint32_t trigger_hz);
 

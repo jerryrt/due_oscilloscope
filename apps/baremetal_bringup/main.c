@@ -44,6 +44,7 @@ static void banner(void)
 	printf("#           G/T/Y = same three via DMA\n");
 	printf("#           L=full loop HOST->DAC->ADC->HOST\n");
 	printf("#           P=play only  V=ring dump  D=loop diagnostic\n");
+	printf("#           M=mimic loop without USB (gen sine on TIOA1 + capture)\n");
 	printf("#\n");
 }
 
@@ -519,6 +520,23 @@ int main(void)
 			break;
 		case 'V': play_dump(); break;
 		case 'D': diag_start(); break;
+		/*
+		 * The loop's timing skeleton with no USB in it: gen's flash sine
+		 * through play's exact DACC + TIOA1 configuration, capture
+		 * running, ordering matched to what L does once the ring primes.
+		 * Observe with D: if cdr7 swings, the fault needs USB to appear;
+		 * if it freezes, the trigger/DACC/ADC interaction is the fault.
+		 */
+		case 'M':
+			play_stop();
+			gen_init();
+			gen_prepare_tioa1(200000u);
+			stream_start_capture_only(200000u);
+			gen_go_tioa1();
+			printf("# mimic loop: gen sine on TIOA1 at 200000 sps, capture 200000 Hz\n");
+			printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
+			uart_flush();
+			break;
 		case 'B': stream_bench_report();
 		          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu\n",
 		                 (unsigned long)play_bytes_in,

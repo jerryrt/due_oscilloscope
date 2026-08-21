@@ -108,6 +108,59 @@ void gen_start(void)
 	DACC->DACC_MR |= DACC_MR_TRGEN | TRGSEL_TIOA0;
 }
 
+/*
+ * The playback configuration with gen's data source: DACC triggered by
+ * TIOA1 and playing the flash sine table, no USB involved.
+ *
+ * This exists to split the full-loop freeze in two. play.c differs from
+ * the known-good gen path in exactly two ways at once: its data arrives
+ * over USB, and its trigger is TIOA1 instead of the ADC's TIOA0. If this
+ * variant freezes under capture too, the trigger/DACC/ADC interaction is
+ * at fault and USB is exonerated; if it plays cleanly, the fault is in
+ * the USB duplex path. Config and start are split so the caller can
+ * reproduce the loop's ordering: DACC and timer first, capture second,
+ * clock last, exactly as play_service does once its ring is primed.
+ */
+void gen_prepare_tioa1(uint32_t dac_hz)
+{
+	uint32_t rc = (SystemCoreClock / 2u) / dac_hz;
+
+	gen_stop();
+	gen_endtx_count = 0;
+
+	PMC->PMC_PCER0 = (1u << ID_TC1);
+	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
+	TC0->TC_CHANNEL[1].TC_IDR = 0xffffffff;
+	TC0->TC_CHANNEL[1].TC_CMR = TCCLKS_TIMER_CLOCK1
+	                          | TC_CMR_WAVE
+	                          | WAVSEL_UP_RC
+	                          | ACPA_CLEAR
+	                          | ACPC_SET;
+	TC0->TC_CHANNEL[1].TC_RA = rc / 2u;
+	TC0->TC_CHANNEL[1].TC_RC = rc;
+
+	DACC->DACC_TPR  = (uint32_t)gen_table;
+	DACC->DACC_TCR  = GEN_TABLE_LEN;
+	DACC->DACC_TNPR = (uint32_t)gen_table;
+	DACC->DACC_TNCR = GEN_TABLE_LEN;
+
+	(void)DACC->DACC_ISR;
+	DACC->DACC_IDR = 0xffffffff;
+	DACC->DACC_IER = DACC_IER_ENDTX;
+
+	NVIC_ClearPendingIRQ(DACC_IRQn);
+	NVIC_SetPriority(DACC_IRQn, 1);
+	NVIC_EnableIRQ(DACC_IRQn);
+
+	DACC->DACC_PTCR = DACC_PTCR_TXTEN;
+	DACC->DACC_MR |= DACC_MR_TRGEN | TRGSEL_TIOA1;
+}
+
+void gen_go_tioa1(void)
+{
+	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+}
+
 void gen_stop(void)
 {
 	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);
