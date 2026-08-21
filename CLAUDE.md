@@ -54,6 +54,10 @@ Check here before reasoning from general Arduino knowledge.
 - **Cortex-M3 has no data cache**, so DMA buffers need no cache
   maintenance. Advice written for Cortex-M7 parts does not apply.
 - **Pin 13 is PB27** and carries no SPI conflict on the Due.
+- **MCK is 78 MHz here, not 84.** Chosen so the ADC clock is 19.5 MHz,
+  inside the 20 MHz datasheet limit. Costs 7.2% of sample rate. Track A
+  must be built with `--build-property build.f_cpu=78000000L` or
+  `micros()` is silently wrong.
 - **`A0` is ADC channel 7, not 0.** The Arduino A0..A7 labels map to
   AD7..AD0, descending. A8..A11 then map to AD10..AD13 ascending. Code
   assuming `A0 == AD0` reads the wrong pin, and sequencer conversion
@@ -122,7 +126,9 @@ cmake --build build -j
 tools/flash.sh build/baremetal_bringup.bin
 
 # Track A: reference oracle
-arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg sketches/bringup
+# build.f_cpu MUST match the runtime clock: micros() divides by it.
+arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg \\
+                    --build-property build.f_cpu=78000000L sketches/bringup
 arduino-cli upload  --fqbn arduino:sam:arduino_due_x_dbg \
                     -p /dev/cu.usbmodem141301 sketches/bringup
 

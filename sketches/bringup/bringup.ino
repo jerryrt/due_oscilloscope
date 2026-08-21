@@ -27,6 +27,7 @@
  * Loopback wiring: DAC0 -> A0, DAC1 -> A1.
  */
 
+#include "clock.h"
 #include "acq.h"
 #include "gen.h"
 #include "stream.h"
@@ -45,11 +46,22 @@ static void banner(void)
 	Serial.print(" ");
 	Serial.println(__TIME__);
 	Serial.print("# SystemCoreClock = ");
-	Serial.println(SystemCoreClock);
+	Serial.print(SystemCoreClock);
+	Serial.print("  F_CPU = ");
+	Serial.println((uint32_t)F_CPU);
+	if ((uint32_t)F_CPU != SystemCoreClock) {
+		/* micros() divides by the compile-time F_CPU, so a mismatch
+		 * silently skews every timing measurement. Build with
+		 * --build-property build.f_cpu=<SystemCoreClock>L. */
+		Serial.println("# WARNING: F_CPU != SystemCoreClock, micros() is wrong");
+	}
+	Serial.print("# ADC clock = ");
+	Serial.print(SystemCoreClock / 4u);
+	Serial.println(" Hz (PRESCAL=1); datasheet max 20000000");
 	Serial.println("# commands: h=help p=printf-cost g=gpio-cost f=fault");
 	Serial.println("#           r=read a0/a1  s=dac sweep  x=crosstalk");
 	Serial.println("#           t=trigger-rate sweep (TC+ADC+PDC)");
-	Serial.println("#           1..5=stream 50k/100k/200k/400k/488372 Hz");
+	Serial.println("#           1..5=stream 50k/100k/200k/400k/max Hz");
 	Serial.println("#           0=stop stream   ?=stream stats");
 	Serial.println("#           d=DAC max update-rate sweep");
 	Serial.println("#           j/k=DAC 1.5M/3.0M indep + capture 200k");
@@ -214,28 +226,33 @@ static void cmd_crosstalk(void)
  */
 static void cmd_rate_sweep(void)
 {
-	/* Chosen so integer division lands on consecutive RC values 90 down
-	 * to 82, which is where the ADC ceiling sits. */
-	static const uint32_t rates[] = {
-		100000, 400000,
-		466666, 471910, 477272, 482758, 488372,
-		494117, 500000, 506024, 512195
+	/*
+	 * Sweep the timer compare value rather than a frequency, so the test
+	 * is independent of the master clock. An earlier version listed
+	 * fixed frequencies chosen for a 42 MHz timer clock, and silently
+	 * lost resolution around the cliff once MCK changed.
+	 */
+	static const uint32_t rcs[] = {
+		390, 100, 96, 92, 90, 88, 87, 86, 85, 84, 83, 82, 80, 78
 	};
 	const uint32_t nbuf_target = 8;
+	uint32_t tc_clock = SystemCoreClock / 2u;
 	char buf[160];
 
 	acq_init();
 
-	Serial.println("# TC->ADC->PDC rate sweep, 2 channels (A0=AD7, A1=AD6)");
-	Serial.println("#   want      RC   TCexact   measured    ratio  RXBUFF GOVRE");
+	snprintf(buf, sizeof(buf),
+	         "# TC->ADC->PDC sweep, 2 ch, MCK %lu Hz, ADC clk %lu Hz",
+	         (unsigned long)SystemCoreClock, (unsigned long)(SystemCoreClock / 4u));
+	Serial.println(buf);
+	Serial.println("#     RC   trigger   aggregate    ratio  RXBUFF GOVRE");
 	Serial.flush();
 
-	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
-		acq_start(rates[i]);
+	for (unsigned i = 0; i < sizeof(rcs) / sizeof(rcs[0]); i++) {
+		uint32_t hz = tc_clock / rcs[i];
 
-		/* Synchronise to a buffer boundary before timing, so the
-		 * measurement is not quantised by where the window happened to
-		 * start. Precision then depends only on ISR latency. */
+		acq_start(hz);
+
 		uint32_t sync = acq_buffers_done;
 		uint32_t guard = micros();
 		while (acq_buffers_done == sync && (micros() - guard) < 2000000u)
@@ -251,20 +268,17 @@ static void cmd_rate_sweep(void)
 
 		acq_stop();
 
-		uint32_t rc      = acq_configured_rc();
-		uint32_t tcexact = TC_CLOCK1_HZ / rc;
-		uint32_t us      = t1 - t0;
-
-		uint64_t samples   = (uint64_t)got * ACQ_BUF_SAMPLES;
-		uint32_t aggregate = us ? (uint32_t)((samples * 1000000ull) / us) : 0;
-		uint32_t measured  = aggregate / 2u;   /* 2 conversions per trigger */
-		uint32_t ratio_x1000 = tcexact ?
-			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
+		uint32_t us = t1 - t0;
+		uint64_t samples = (uint64_t)got * ACQ_BUF_SAMPLES;
+		uint32_t agg = us ? (uint32_t)((samples * 1000000ull) / us) : 0;
+		uint32_t expect = hz * 2u;      /* 2 conversions per trigger */
+		uint32_t ratio_x1000 = expect ?
+			(uint32_t)(((uint64_t)agg * 1000ull) / expect) : 0;
 
 		snprintf(buf, sizeof(buf),
-		         "# %7lu %7lu %9lu %10lu   %2lu.%03lu %7lu %5lu",
-		         (unsigned long)rates[i], (unsigned long)rc,
-		         (unsigned long)tcexact, (unsigned long)measured,
+		         "# %6lu %9lu %11lu   %2lu.%03lu %7lu %5lu",
+		         (unsigned long)rcs[i], (unsigned long)hz,
+		         (unsigned long)agg,
 		         (unsigned long)(ratio_x1000 / 1000u),
 		         (unsigned long)(ratio_x1000 % 1000u),
 		         (unsigned long)acq_rxbuff_overruns,
@@ -272,14 +286,14 @@ static void cmd_rate_sweep(void)
 		Serial.println(buf);
 		Serial.flush();
 	}
-	Serial.println("# ratio 1.000 means every trigger produced a conversion pair");
+	Serial.println("# ratio 1.000 = every trigger produced a conversion pair");
 	Serial.flush();
 }
 
 /*
- * 488372 Hz is the measured ceiling for two channels: one step faster
- * and the ADC silently drops every other trigger with no status bit set.
- * See docs/hardware.md.
+ * The ceiling for two channels is TC compare value 86, whatever the
+ * master clock: one step faster and the ADC silently drops every other
+ * trigger with no status bit set. See docs/hardware.md.
  */
 static void cmd_stream(uint32_t trigger_hz)
 {
@@ -419,6 +433,9 @@ static void trigger_fault(void)
 
 void setup()
 {
+	/* Before anything derives a rate from it. */
+	clock_set_mck(MCK_MULA_DEFAULT);
+
 	pinMode(LED_BUILTIN, OUTPUT);
 	analogWriteResolution(12);
 	analogReadResolution(12);
@@ -461,7 +478,10 @@ void loop()
 		case '2': cmd_stream(100000);  break;
 		case '3': cmd_stream(200000);  break;
 		case '4': cmd_stream(400000);  break;
-		case '5': cmd_stream(488372);  break;
+		/* Highest rate the ADC sustains, derived from the measured
+		 * cliff at RC 86. That compare value holds across master clock
+		 * settings, because the timer and ADC clocks scale together. */
+		case '5': cmd_stream((SystemCoreClock / 2u) / 86u); break;
 		case '0': stream_stop(); Serial.println("# stream stopped");
 		          Serial.flush();      break;
 		case '?': cmd_stream_stats();  break;

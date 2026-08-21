@@ -119,6 +119,65 @@ PDC buffers against a synchronised microsecond window:
 Settings used: `PRESCAL=1`, `TRACKTIM=0`, `SETTLING=0`, `TRANSFER=1`.
 Relaxing tracking to suppress crosstalk lowers this further.
 
+### Operating point: MCK 78 MHz, fully in spec
+
+The project runs the master clock at **78 MHz**, not the Due's usual 84,
+so that the ADC clock lands inside its datasheet limit.
+
+The crystal and Table 46-22 leave very little choice. `FIN` must be
+8-16 MHz, so with a 12 MHz crystal `DIVA` can only be 1, making
+`PLLA = 12 MHz x (MULA+1)` a multiple of 12 within 96-192 MHz. With the
+master clock prescaler at /2, MCK is therefore a multiple of 6:
+
+| MULA | PLLA | MCK | ADC clk (/4) | Verdict |
+|---|---|---|---|---|
+| 12 | 156 MHz | **78** | **19.5 MHz** | **in spec** |
+| 13 | 168 MHz | 84 | 21.0 MHz | 5% over |
+| 14 | 180 MHz | 90 | 22.5 MHz | 12.5% over, MCK over rated 84 |
+
+80 MHz, which would give exactly 20.0 MHz, is unreachable: it needs
+`DIVA = 3` and an `FIN` of 4 MHz, below the 8 MHz minimum.
+
+### What the in-spec clock costs, measured
+
+| Quantity | MCK 84 (out of spec) | **MCK 78 (in spec)** | Ratio |
+|---|---|---|---|
+| ADC clock | 21.0 MHz | 19.5 MHz | 0.929 |
+| ADC aggregate ceiling | 976,744 sps | **906,738 sps** | 0.928 |
+| DACC ceiling | 1,539,704 conv/s | **1,423,890 conv/s** | 0.925 |
+| GPIO set+clear pair | 107.29 ns | 115.87 ns | 1.080 |
+
+**Spec compliance costs 7.2% of sample rate.** That is far cheaper than
+the alternative of keeping MCK at 84 and dividing harder: `PRESCAL = 2`
+gives a 14 MHz ADC clock and drops the aggregate near 650 ksps, a third
+of the rate.
+
+Both converters scale linearly with MCK, which settles what limits them:
+
+- ADC: 21.5 clocks per conversion at both clocks, so it is ADC-clock
+  limited.
+- DACC: 54.6 MCK cycles per conversion at 84 MHz and 54.8 at 78, so it
+  is **MCK-limited rather than analog-limited**. Its rate can be traded
+  directly against master clock.
+
+The trigger compare value at the cliff is **RC 86 at either clock**,
+because the timer clock and the ADC clock scale together. `ACQ_MIN_RC`
+is therefore correct without reference to MCK.
+
+### Build requirement
+
+`micros()` in the Arduino core divides by `F_CPU`, a compile-time
+constant, so a clock change that the build does not know about silently
+skews every timing measurement. Track A must be built with:
+
+```sh
+arduino-cli compile --build-property build.f_cpu=78000000L ...
+```
+
+The firmware prints both values at start-up and warns if they disagree,
+so a stale build property is caught immediately rather than corrupting
+results quietly.
+
 ### Measured against the datasheet
 
 Checked against `docs/datasheets/Atmel-SAM3X-SAM3A-Series-Datasheet.pdf`
