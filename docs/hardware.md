@@ -106,6 +106,32 @@ by roughly 10.5 us. The skew is deterministic and correctable in host
 DSP, but this is not simultaneous sampling and must not be treated as
 such for phase measurements.
 
+### Channel numbering *(verified from the device header)*
+
+**The Arduino `A0..A7` labels map to ADC channels in DESCENDING order.**
+Bare-metal code assuming `A0 == AD0` reads the wrong pin.
+
+| Label | Pin | Channel | | Label | Pin | Channel |
+|---|---|---|---|---|---|---|
+| A0 | PA16 | **AD7** | | A6 | PA3 | AD1 |
+| A1 | PA24 | **AD6** | | A7 | PA2 | AD0 |
+| A2 | PA23 | AD5 | | A8 | PB17 | AD10 |
+| A3 | PA22 | AD4 | | A9 | PB18 | AD11 |
+| A4 | PA6 | AD3 | | A10 | PB19 | AD12 |
+| A5 | PA4 | AD2 | | A11 | PB20 | AD13 |
+
+`AD14` is PB21 (digital pin 52). `AD8`/`AD9` are PB12/PB13, not broken
+out as analog labels.
+
+This also affects skew correction. The sequencer converts enabled
+channels in ascending *channel index* order, so a full sweep runs
+`A7, A6, ... A0, A8, A9, A10, A11` - **not** label order.
+
+Also note: `DAC0` (PB15) and `DAC1` (PB16) have **no ADC channel**. The
+Arduino `variant.cpp` lists `ADC12`/`ADC13` on those rows, which is
+misleading; the device header puts AD12 on PB19 and AD13 on PB20. The
+CMSIS device header is authoritative.
+
 Useful register bits:
 
 - `ADC_EMR.TAG` — puts the channel index in `ADC_LCDR[15:12]`, making the
@@ -131,18 +157,51 @@ about 700 ksps, i.e. ~58 ksps/channel across twelve channels.
 This tradeoff, not USB bandwidth, is the most likely determinant of the
 real per-channel rate.
 
+**Measured baseline** (DAC0->A0, DAC1->A1 loopback, one channel held at
+mid scale while the other swings full range):
+
+| Case | Bleed |
+|---|---|
+| DAC1 held, DAC0 swung full range | **+/-1 code** |
+| DAC0 held, DAC1 swung full range | **+/-1 code** |
+
+Against a 2747-code full swing that is about 0.04%, indistinguishable
+from LSB dither, and both tracks agree.
+
+**This does not retire the crosstalk risk.** The measurement was taken
+under the most favourable conditions available: maximum `TRACKTIM` and
+`SETTLING`, software-triggered single conversions with milliseconds
+between them, and a DAC output driving the pin directly, which is a
+low-impedance source. Crosstalk bites when tracking time is short and the
+source impedance is high. What this establishes is a clean baseline and
+the absence of any gross wiring or analog fault - not that the fast
+configuration will behave.
+
 ## DAC
 
 | Item | Value |
 |---|---|
 | Resolution | 12-bit |
 | Channels | 2 (DAC0, DAC1) |
-| Output range | **~1/6 to ~5/6 of ADVREF, i.e. ~0.55 V to ~2.75 V** *(check on this board)* |
+| Output range | **546 mV to 2760 mV** *(measured on this board)* |
 | Drive | High output impedance; needs a buffer op-amp for any real load |
 
 The non-rail-to-rail output surprises everyone. `analogWrite(DAC0, 0)`
-produces roughly 0.55 V, not ground. Measuring the true endpoints on this
-specific board is a Phase 1 deliverable.
+produces 546 mV on this board, not ground.
+
+Measured through the DAC0->A0 loopback, both tracks agreeing to within
++/-2 ADC codes:
+
+| DAC code | Measured |
+|---|---|
+| 0 | **546 mV** (theory: 1/6 x 3.3 V = 550 mV) |
+| 4095 | **2760 mV** (theory: 5/6 x 3.3 V = 2750 mV) |
+| Usable span | 2214 mV, i.e. 2747 ADC codes |
+
+Linearity is excellent: 171-172 ADC codes per 256 DAC codes, consistent
+to within a couple of codes across the whole range. So the part matches
+the 1/6-to-5/6 rule closely, and any output stage can be designed against
+these numbers rather than against the datasheet's typicals.
 
 Two efficiency features worth using:
 

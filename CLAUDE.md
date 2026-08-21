@@ -54,6 +54,14 @@ Check here before reasoning from general Arduino knowledge.
 - **Cortex-M3 has no data cache**, so DMA buffers need no cache
   maintenance. Advice written for Cortex-M7 parts does not apply.
 - **Pin 13 is PB27** and carries no SPI conflict on the Due.
+- **`A0` is ADC channel 7, not 0.** The Arduino A0..A7 labels map to
+  AD7..AD0, descending. A8..A11 then map to AD10..AD13 ascending. Code
+  assuming `A0 == AD0` reads the wrong pin, and sequencer conversion
+  order follows channel index, so it is not label order either.
+- **`DAC0`/`DAC1` pins have no ADC channel.** Arduino's `variant.cpp`
+  lists `ADC12`/`ADC13` against them, which is misleading; the device
+  header assigns those to PB19/PB20 (A10/A11). Trust the CMSIS device
+  header over the Arduino variant table.
 - **The Arduino CDC stack does not use DMA.** `UDD_Send()` copies into
   the endpoint FIFO a byte at a time and spins on `TXINI`. `SerialUSB`
   therefore cannot carry the sample path without breaking invariant 1.

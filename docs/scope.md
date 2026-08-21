@@ -26,9 +26,11 @@ and should not erode.
 
 ## Phases
 
-### Phase 1 — Loopback bring-up (current target)
+### Phase 1 — Loopback bring-up (in progress)
 
-A jumper from **DAC0 to A0** closes the loop. The board generates a
+Jumpers from **DAC0 to A0** and **DAC1 to A1** close the loop. The
+second channel is not decorative: it is what makes multiplexer crosstalk
+and inter-channel skew measurable at all. The board generates a
 waveform it already knows and captures it back, so each half validates
 the other with no front-end hardware at all.
 
@@ -37,11 +39,14 @@ the ADC's 0–3.3 V window. Nothing on that wire can overvoltage anything.
 
 Deliverables:
 
-- BSP: clock init, UART printf, LED heartbeat, HardFault reporting
-- TC-triggered ADC with PDC ping-pong
-- TC-triggered DAC playback
-- Measured: real DAC endpoints on this board, ADC offset/linearity,
-  end-to-end latency, actual trigger rate, dropped-sample count
+- [x] BSP: clock init, UART printf, LED heartbeat, HardFault reporting
+- [x] Loopback proven on both channels, both tracks agreeing to +/-2 codes
+- [x] Real DAC endpoints measured: **546 mV to 2760 mV**
+- [x] ADC linearity: 171-172 codes per 256 DAC codes, flat across range
+- [x] Multiplexer crosstalk baseline: +/-1 code at slow tracking
+- [ ] TC-triggered ADC with PDC ping-pong
+- [ ] TC-triggered DAC playback
+- [ ] End-to-end latency, actual trigger rate, dropped-sample count
 
 What Phase 1 deliberately does **not** prove: noise, loading, or cable
 effects. A two-inch jumper with a shared ground hides all of those. They
