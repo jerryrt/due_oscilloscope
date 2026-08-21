@@ -20,7 +20,7 @@ add_compile_options(
 # include, which is where SystemInit and SystemCoreClock are declared.
 add_compile_definitions(__SAM3X8E__)
 
-include_directories(bsp)
+include_directories(bsp drivers)
 
 # SYSTEM: vendor headers are not ours to fix, and -Wall -Wextra otherwise
 # buries real diagnostics under warnings from the CMSIS pack.
@@ -40,6 +40,8 @@ add_executable(baremetal_bringup
     bsp/systick.c
     bsp/fault.c
     bsp/syscalls.c
+    drivers/dac.c
+    drivers/adc.c
     ${DEVICE}/source/system_sam3xa.c
 )
 
