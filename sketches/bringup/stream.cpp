@@ -38,6 +38,8 @@ static uint32_t pending_overrun;
 static uint32_t write_fail;
 static uint32_t short_write;
 static uint32_t resync_count;
+static uint32_t usb_us;
+static uint32_t usb_bytes;
 
 void stream_start(uint32_t trigger_hz)
 {
@@ -51,6 +53,8 @@ void stream_start(uint32_t trigger_hz)
 	write_fail = 0;
 	short_write = 0;
 	resync_count = 0;
+	usb_us = 0;
+	usb_bytes = 0;
 	rate_hz = trigger_hz;
 
 	gen_start();
@@ -82,24 +86,19 @@ void stream_service(void)
 		return;
 
 	/*
-	 * The core's CDC write spins on TXINI once lineState is set, and
-	 * availableForWrite() is a constant, so there is no flow-control
-	 * signal to test. If the host has closed the port, writing would
-	 * block forever and wedge the board. Checking the connection is the
-	 * only guard available.
+	 * Do NOT test (bool)SerialUSB here.
 	 *
-	 * It does not cover a host that holds the port open but stops
-	 * reading; nothing in this API can. That is a property of the CDC
-	 * path, and one more reason the real transport drives the USB DMA
-	 * directly.
+	 * Serial_::operator bool() ends with delay(10). Calling it once per
+	 * service pass costs ten milliseconds of pure sleep and was, by
+	 * itself, the reason this path appeared to cap at about half the
+	 * link rate. Time spent inside the write corresponded to nearly
+	 * 9 MB/s; the ceiling was the guard, not the transport.
+	 *
+	 * It was never needed either. Serial_::write returns 0 without
+	 * blocking when the host has not set lineState, so a closed port is
+	 * already handled. The genuine hazard is a host that holds the port
+	 * open and stops reading, and no API here detects that.
 	 */
-	if (!(bool)SerialUSB) {
-		/* Keep the ring from filling while nobody is listening. */
-		while (acq_frame_available())
-			acq_frame_release();
-		return;
-	}
-
 	for (int budget = 0; budget < 4 && acq_frame_available(); budget++) {
 		frame_header_t h;
 
@@ -148,9 +147,15 @@ void stream_service(void)
 		 * lineState, and write() then returns 0. Counting attempts
 		 * rather than accepted bytes would report a stream that is not
 		 * actually leaving the board. */
+		/* Time spent inside the transport only, so the effective rate
+		 * of the write path can be separated from everything else the
+		 * loop does. */
+		uint32_t t_in = micros();
 		size_t w1 = SerialUSB.write((const uint8_t *)&h, sizeof(h));
 		size_t w2 = SerialUSB.write(payload,
 		                            ACQ_BUF_SAMPLES * sizeof(uint16_t));
+		usb_us += micros() - t_in;
+		usb_bytes += w1 + w2;
 
 		if (w1 == 0 && w2 == 0)
 			write_fail++;
@@ -171,7 +176,7 @@ void stream_report(char *buf, size_t n)
 	snprintf(buf, n,
 	         "# frames=%lu accepted=%lu %lu.%03lu MB/s prod=%lu cons=%lu "
 	         "ringovf=%lu rxbuff=%lu govre=%lu endtx=%lu "
-	         "wfail=%lu wshort=%lu resync=%lu usb=%d",
+	         "wfail=%lu wshort=%lu resync=%lu usb=%d inwrite=%lu.%03lu MB/s",
 	         (unsigned long)frames_sent, (unsigned long)bytes_sent,
 	         (unsigned long)(kbps / 1000u), (unsigned long)(kbps % 1000u),
 	         (unsigned long)acq_produced, (unsigned long)acq_consumed,
@@ -180,5 +185,7 @@ void stream_report(char *buf, size_t n)
 	         (unsigned long)acq_govre,
 	         (unsigned long)gen_endtx_count,
 	         (unsigned long)write_fail, (unsigned long)short_write,
-	         (unsigned long)resync_count, (int)(bool)SerialUSB);
+	         (unsigned long)resync_count, (int)(bool)SerialUSB,
+	         (unsigned long)(usb_us ? ((uint64_t)usb_bytes * 1000ull / usb_us) / 1000u : 0),
+	         (unsigned long)(usb_us ? ((uint64_t)usb_bytes * 1000ull / usb_us) % 1000u : 0));
 }
