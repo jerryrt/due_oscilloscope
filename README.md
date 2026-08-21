@@ -24,12 +24,20 @@ missing FPU on the Cortex-M3 stops mattering.
 
 ## Status
 
-Pre-implementation. Documentation captures the design agreed during
-pre-flight discussion; no firmware has been written yet.
+**Track A verified end to end.** `arduino-cli` 1.5.1, `arduino:sam`
+1.6.12, gcc 4.8.3 and bossac 1.6.1 are installed and confirmed running on
+this host (macOS 12.7.6, Intel x86_64). `sketches/blink` compiles,
+uploads over the programming port, and runs on the board.
 
-Next step is toolchain installation (see `docs/toolchain.md`), then BSP
-bring-up: UART printf, LED heartbeat, and the HardFault handler, before
-any ADC code.
+Track B (CMake + modern arm-gcc) is not yet set up. Next step is the BSP:
+UART printf, LED heartbeat, and the HardFault handler, before any ADC
+code.
+
+One design decision was settled by reading the core source rather than
+guessing: the Arduino CDC stack copies into the endpoint FIFO a byte at a
+time and never uses the UOTGHS DMA, so `SerialUSB` cannot carry the
+sample path. Track B drives the USB DMA directly. See
+`docs/architecture.md`.
 
 ## Design in one paragraph
 

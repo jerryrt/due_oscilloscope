@@ -18,6 +18,26 @@ Track A also bootstraps Track B (see below), so it is not pure overhead.
 
 ---
 
+## Installed on this host *(verified)*
+
+| Component | Version | Architecture | Runs on macOS 12.7.6 x86_64 |
+|---|---|---|---|
+| `arduino-cli` | 1.5.1 | Mach-O x86_64 | yes, at `~/.local/bin/arduino-cli` |
+| `arduino:sam` core | 1.6.12 | - | yes |
+| `arm-none-eabi-gcc` | 4.8.3-2014q1 | Mach-O x86_64 | yes |
+| `bossac` | 1.6.1-arduino | universal i386 + x86_64 | yes, x86_64 slice |
+
+The age of these binaries is the risk on this host, but inverted from the
+usual direction: macOS 12 removed 32-bit support entirely, so an i386-only
+tool would not launch. Both checked. `gcc` is x86_64-only and runs;
+`bossac` is a universal binary and macOS selects its x86_64 slice.
+
+`~/.local/bin` must be on `PATH`.
+
+End-to-end flash verified: `sketches/blink` compiles (10692 bytes) and
+uploads over the programming port. `bossac` reports Atmel SMART device
+`0x285e0a60`, writes 47 pages, sets the boot flash flag and resets.
+
 ## Track A — arduino-cli
 
 ### Install
