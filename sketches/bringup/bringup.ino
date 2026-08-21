@@ -28,6 +28,7 @@
  */
 
 #include "clock.h"
+#include "bootlog.h"
 #include "acq.h"
 #include "gen.h"
 #include "stream.h"
@@ -64,6 +65,7 @@ static void banner(void)
 	Serial.println("#           1..5=stream 50k/100k/200k/400k/max Hz");
 	Serial.println("#           0=stop stream   ?=stream stats");
 	Serial.println("#           d=DAC max update-rate sweep");
+	Serial.println("#           F=flood USB IN   R=sink USB OUT   B=bench stats");
 	Serial.println("#           j/k=DAC 1.5M/3.0M indep + capture 200k");
 	Serial.println("#");
 }
@@ -442,6 +444,7 @@ void setup()
 	Serial.begin(115200);
 	SerialUSB.begin(0);          /* native port; CDC ignores baud */
 	while (!Serial && millis() < 2000) { }
+	boot_log();
 	banner();
 	heartbeat_at = millis();
 }
@@ -485,6 +488,14 @@ void loop()
 		case '0': stream_stop(); Serial.println("# stream stopped");
 		          Serial.flush();      break;
 		case '?': cmd_stream_stats();  break;
+		case 'F': stream_flood_start(); state_log("bench=flood(IN)");
+		          Serial.println("# flooding USB IN with synthetic frames");
+		          Serial.flush(); break;
+		case 'R': stream_sink_start(); state_log("bench=sink(OUT)");
+		          Serial.println("# sinking USB OUT, send data now");
+		          Serial.flush(); break;
+		case 'B': { char b[160]; stream_bench_report(b, sizeof(b));
+		            Serial.println(b); Serial.flush(); } break;
 		default:                     break;
 		}
 	}
