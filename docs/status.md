@@ -15,30 +15,79 @@ Updated after full-rate streaming was achieved on Track B.
 | Framed binary streaming | yes | yes |
 | Host deframe / demux / tone check | yes | yes, same receiver |
 
-## Headline result: the CDC ceiling was an implementation limit
+## Headline result: both tracks reach the full ADC rate
 
 Same host, same receiver, same wire format:
 
 | Trigger | Aggregate | Required | Track A | Track B |
 |---|---|---|---|---|
-| 200 kHz | 400 ksps | 0.80 MB/s | 0.807, ratio 1.001 | 0.806, ratio 1.000 |
-| 400 kHz | 800 ksps | 1.60 MB/s | 0.871, **ratio 0.540** | 1.613, **ratio 1.000** |
-| 488 kHz | 976,744 sps | 1.95 MB/s | 0.946, **ratio 0.480** | **1.969, ratio 1.000** |
+| 200 kHz | 400 ksps | 0.80 MB/s | 0.806, ratio 1.000 | 0.806, ratio 1.000 |
+| 400 kHz | 800 ksps | 1.60 MB/s | 1.613, ratio 1.000 | 1.613, ratio 1.000 |
+| 488 kHz | 976,744 sps | 1.95 MB/s | **1.969, ratio 1.000** | **1.969, ratio 1.000** |
 
-**Track B streams the ADC's entire output continuously, with no gaps.**
+**Both tracks stream the ADC's entire output continuously, with no gaps**,
+over ordinary USB CDC. Over eight seconds each delivers 3845 frames and
+about 15.75 MB with zero sequence gaps, zero CRC errors, and a
+measured-to-declared rate ratio of exactly one.
 
-The earlier conclusion that continuous full-rate capture was impossible
-over CDC was wrong in an important way: it is impossible over the
-*Arduino* CDC, whose `UDD_Send` copies into the endpoint FIFO one byte at
-a time and spins on `TXINI`. It is not a limit of CDC, of the CDC-ACM
-host driver, or of the 512-byte bulk endpoint. Writing whole 512-byte
-banks and never spinning more than doubles the sustained rate.
+### A conclusion that was wrong twice
 
-A consequence worth noting: the vendor-class endpoint with UOTGHS DMA,
-planned as the only way past the ceiling, is **no longer required** to
-reach full rate. It remains the right destination for CPU cost, since
-the FIFO copy still has the CPU touching every sample byte, but it is no
-longer on the critical path for throughput.
+An earlier version of this document reported that the Arduino CDC capped
+near 0.95 MB/s and that the bare-metal stack was roughly twice as fast.
+Both the number and the explanation were wrong, and the sequence is worth
+recording because the reasoning failed in two different ways.
+
+**First error: blaming the transport.** The 0.95 MB/s ceiling was real
+but self-inflicted. `stream_service()` tested `(bool)SerialUSB` on every
+pass, and `Serial_::operator bool()` ends with `delay(10)`. Ten
+milliseconds of pure sleep per service call was the entire ceiling. The
+guard was also unnecessary: `Serial_::write` already returns zero without
+blocking when the host has not set `lineState`. Deleting it took Track A
+from 0.946 MB/s to 1.969 MB/s with no other change.
+
+**Second error: blaming the compiler.** Before finding that, the gap was
+attributed to gcc 4.8.3 versus gcc 15.2.1, on the strength of a measured
+1.93x difference in a tight GPIO loop against a 2.07x difference in
+throughput. Two experiments killed it:
+
+- Rebuilding Track A with gcc 15.2.1 via
+  `arduino-cli --build-property compiler.path=...` made the GPIO loop
+  1.93x faster (138.3 ns to 71.5 ns) and left USB throughput **exactly
+  unchanged** at 0.946 MB/s. That alone showed the write path was not the
+  limit. `UDD_Send` also lives in the prebuilt
+  `libsam_sam3x8e_gcc_rel.a`, so the new compiler never touched it.
+- Compiling identical source with both compilers and comparing
+  disassembly showed the difference is marginal, not 2x:
+
+  ```
+  copy_ptr  gcc 4.8.3   cmp / beq / ldrb / strb / adds / b    (6 per byte)
+  copy_ptr  gcc 15.2.1  cmp / bne / ldrb.w+ / strb.w+ / b     (5 per byte)
+  copy_idx  gcc 4.8.3   identical to gcc 15.2.1, instruction for instruction
+  ```
+
+  Track B's writer uses the indexed form, which both compilers compile
+  the same way. The GPIO result simply did not generalise to a
+  byte-copy loop.
+
+**What actually settled it** was measuring instead of arguing. Timing
+only the region inside `SerialUSB.write` gave an effective 8.925 MB/s,
+about nine times the achieved rate. That located the cost outside the
+transport immediately, and the `delay(10)` was found within minutes.
+
+The transferable lesson: a throughput number is a property of the whole
+loop, not of the call you suspect. Instrument the suspect region before
+attributing anything to it.
+
+### What survives about the DMA plan
+
+The zero-copy argument is unaffected: `UDD_Send` still has the processor
+copying every sample byte into the endpoint FIFO, which contradicts the
+architecture's central rule. A vendor-class endpoint driven by UOTGHS
+DMA remains the right destination on CPU-cost grounds.
+
+But the throughput argument for it is gone. At full rate the write
+occupies roughly a fifth of wall time, so about 80% of the processor is
+still idle. DMA is now an efficiency improvement, not an enabler.
 
 ## How the USB stack was fixed
 

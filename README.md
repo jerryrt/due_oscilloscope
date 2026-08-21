@@ -24,18 +24,19 @@ missing FPU on the Cortex-M3 stops mattering.
 
 ## Status
 
-**Both tracks stream end to end over USB.** See
+**Both tracks stream the ADC's full output over USB.** See
 [docs/status.md](docs/status.md).
 
-| Trigger | Aggregate | Track A (Arduino CDC) | Track B (bare-metal CDC) |
+| Trigger | Aggregate | Track A | Track B |
 |---|---|---|---|
-| 200 kHz | 400 ksps | 0.807 MB/s, ratio 1.001 | 0.806 MB/s, ratio 1.000 |
-| 400 kHz | 800 ksps | 0.871 MB/s, ratio 0.540 | 1.613 MB/s, ratio 1.000 |
-| 488 kHz | 976,744 sps | 0.946 MB/s, ratio 0.480 | **1.969 MB/s, ratio 1.000** |
+| 200 kHz | 400 ksps | 0.806 MB/s, ratio 1.000 | 0.806 MB/s, ratio 1.000 |
+| 400 kHz | 800 ksps | 1.613 MB/s, ratio 1.000 | 1.613 MB/s, ratio 1.000 |
+| 488 kHz | 976,744 sps | **1.969 MB/s, ratio 1.000** | **1.969 MB/s, ratio 1.000** |
 
-Track B carries the ADC's entire output continuously with no gaps. The
-CDC ceiling turned out to be an implementation limit in the Arduino
-core's byte-at-a-time FIFO copy, not a property of CDC.
+Continuous, gapless, at the ADC's measured ceiling. Track A uses the
+Arduino core's CDC; Track B uses its own bare-metal UOTGHS stack. They
+perform identically, which is the useful result: the transport was never
+the limit.
 
 ## Design in one paragraph
 

@@ -104,7 +104,7 @@ far worse than a reported gap** — the host must be able to distinguish
   Short packets mid-stream waste a transaction slot and confuse framing.
 - Circular UOTGHS descriptor chain for continuous shipping.
 
-## Why the data path cannot be built on the Arduino CDC
+## The Arduino CDC and the zero-copy rule
 
 *(verified against `arduino:sam@1.6.12`)*
 
@@ -135,32 +135,38 @@ What this rules out, and what it does not:
 
 ### Measured on this host
 
-The Track A stream was run end to end at increasing trigger rates:
+Both tracks were run end to end at increasing trigger rates:
 
-| Aggregate | Data rate | Result |
-|---|---|---|
-| 200 ksps | 0.40 MB/s | gapless |
-| 400 ksps | 0.80 MB/s | **gapless** |
-| 800 ksps | 1.60 MB/s | fails, ~0.93 MB/s delivered |
-| 976 ksps | 1.95 MB/s | fails, ~0.89 MB/s delivered |
+| Aggregate | Data rate | Track A | Track B |
+|---|---|---|---|
+| 400 ksps | 0.80 MB/s | gapless | gapless |
+| 800 ksps | 1.60 MB/s | gapless | gapless |
+| 976 ksps | 1.95 MB/s | **gapless** | **gapless** |
 
-**CDC sustains 0.8 MB/s; the ceiling is ~0.93 MB/s.** Continuous capture
-over CDC is therefore capped near 400 ksps aggregate: 200 ksps per
-channel with two channels, or roughly 33 ksps per channel across twelve.
-Full-rate continuous needs the vendor-class DMA path. Burst mode is
-unaffected, since it decouples sample rate from link rate.
+**CDC carries the ADC's entire output.** An earlier version of this
+section reported a 0.93 MB/s ceiling and concluded that continuous
+full-rate capture over CDC was impossible. The ceiling was an artefact of
+calling `(bool)SerialUSB` in the service loop, since
+`Serial_::operator bool()` ends with `delay(10)`. Removing that call
+took Track A from 0.946 to 1.969 MB/s unchanged in every other respect.
 
-One further CDC hazard, found the hard way: `Serial_::write` spins on
+Timing only the region inside `SerialUSB.write` gives an effective
+8.9 MB/s, so at full rate the transport occupies roughly a fifth of wall
+time and about 80% of the processor remains idle.
+
+What still argues for the DMA path is the invariant at the top of this
+document, not throughput. `UDD_Send` copies every sample byte with the
+processor, which is the one thing the architecture forbids. A
+vendor-class endpoint driven by UOTGHS DMA is therefore still the right
+destination, but it is now an efficiency improvement rather than the
+only way to reach full rate.
+
+One CDC hazard remains, found the hard way: `Serial_::write` spins on
 `TXINI` once the host has set the line state, and `availableForWrite()`
 returns a constant rather than real space. If the host stops draining
 mid-write, **the board wedges** with no way for firmware to detect or
 escape it. Recovery needs the 1200-baud touch, which is a hardware path
 through the 16U2 and works even with the CPU hung.
-
-The Track B data path therefore drives the UOTGHS DMA directly with a
-vendor-class bulk IN endpoint, and the host uses libusb rather than a
-serial device node. Add Microsoft OS 2.0 (WCID) descriptors so Windows
-binds WinUSB without a manual driver install.
 
 ## The hard problem: producer/consumer mismatch
 

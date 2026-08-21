@@ -130,21 +130,22 @@ Carried forward; each needs measurement or a datasheet check, not a
 guess.
 
 1. ~~Sustained USB CDC throughput.~~ **Resolved by measurement**:
-   **0.8 MB/s sustains gaplessly; the ceiling is ~0.93 MB/s.** Measured
-   end to end with the framed binary stream over `SerialUSB`:
+   **1.969 MB/s, gapless, at the ADC's full 976,744 sps.** Both tracks
+   reach it, over ordinary CDC:
 
-   | Trigger | Required | Delivered | Seq gaps |
+   | Trigger | Required | Track A | Track B |
    |---|---|---|---|
-   | 100 kHz | 0.400 MB/s | 0.399 | 0 |
-   | 200 kHz | 0.800 MB/s | 0.796 | 0 |
-   | 400 kHz | 1.600 MB/s | 0.93 | many |
-   | 488 kHz | 1.953 MB/s | 0.89 | many |
+   | 200 kHz | 0.80 MB/s | 0.806, ratio 1.000 | 0.806, ratio 1.000 |
+   | 400 kHz | 1.60 MB/s | 1.613, ratio 1.000 | 1.613, ratio 1.000 |
+   | 488 kHz | 1.95 MB/s | 1.969, ratio 1.000 | 1.969, ratio 1.000 |
 
-   Against the 1.95 MB/s that full-rate two-channel capture needs, CDC
-   delivers under half. Continuous full-rate streaming over the Arduino
-   CDC is therefore impossible, as the byte-at-a-time FIFO copy
-   predicted. Burst mode and the vendor-class DMA path remain the ways
-   forward.
+   An earlier answer here put the ceiling at 0.93 MB/s and concluded that
+   continuous full-rate capture over CDC was impossible. That was wrong.
+   The cap came from calling `(bool)SerialUSB` in the service loop, and
+   `Serial_::operator bool()` ends with `delay(10)`. Time measured inside
+   the write itself corresponds to about 8.9 MB/s. See
+   `docs/status.md`.
+
 2. ~~CDC bulk endpoint `wMaxPacketSize`.~~ **Resolved**: 512 bytes,
    2-bank, read from `arduino:sam@1.6.12` source. Already optimal; no
    tuning available. See `docs/hardware.md`.
