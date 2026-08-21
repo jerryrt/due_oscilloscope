@@ -3,11 +3,33 @@
 No JTAG/SWD probe is in use. Diagnostics are built from three independent
 mechanisms, chosen because they fail for different reasons.
 
-| Mechanism | Cost | Works when |
+| Mechanism | Cost *(measured)* | Works when |
 |---|---|---|
-| LED / GPIO | ~1–2 cycles (12–24 ns) | Always, including pre-init and in fault handlers |
-| UART printf | ~3.5 ms per 40-char line at 115200 | After clock and UART init, outside real-time paths |
+| Direct PIO write | **~69 ns** | Always, including pre-init and in fault handlers |
+| UART printf | **3600 us** per 40-char line at 115200 | After clock and UART init, outside real-time paths |
 | Host-side counters | zero on target | Whenever frames are flowing |
+
+### Measured on this board
+
+Figures from `sketches/bringup` at 84 MHz, not estimates.
+
+| Operation | Measured | Per call |
+|---|---|---|
+| `Serial.println()`, 40 chars, flushed to the wire | 3600 us | 3.6 ms |
+| Direct PIO set + clear pair | 138.3 ns | ~69 ns (~5.8 cycles, incl. loop overhead) |
+| `digitalWrite()` set + clear pair | 4328 ns | ~2164 ns |
+
+Three conclusions follow, and all three are load-bearing:
+
+- **printf costs ~26000x a PIO toggle pair.** That ratio, not the
+  absolute numbers, is why acquisition instrumentation uses GPIO.
+- **`digitalWrite()` costs ~31x a direct register write.** Never use it
+  for instrumentation; go straight to `PIO_SODR` / `PIO_CODR`.
+- An earlier estimate here put a GPIO write at 12-24 ns (1-2 cycles).
+  The measured figure is roughly 69 ns, since the APB bridge and loop
+  overhead dominate the store itself. Still negligible against a 950 ns
+  conversion interval, and utterly negligible against a buffer-completion
+  ISR that fires every few thousand conversions.
 
 The three are layers, not alternatives. Build all of them before writing
 any ADC code.

@@ -221,10 +221,13 @@ front end are.
 Required from the first commit of driver code, because there is no debug
 probe:
 
-- **GPIO toggle at ISR entry/exit** — one to two cycles, ~12–24 ns at
-  84 MHz. Cheap enough to sit inside the ADC ISR without perturbing the
-  timing being measured, and observable externally. A printf in that
-  handler would change the system; a pin toggle does not.
+- **GPIO toggle at ISR entry/exit** — **measured at ~69 ns** per direct
+  `PIO_SODR`/`PIO_CODR` write on this board (138.3 ns for a set+clear
+  pair). Cheap enough to sit inside the ADC ISR without perturbing the
+  timing being measured, and observable externally. printf measures
+  3600 us for one 40-char line, roughly 26000x more: it would change the
+  system, a pin toggle does not. Use direct register writes, not
+  `digitalWrite()`, which measures ~31x slower. See `docs/debugging.md`.
 - **`GOVRE` / `RXBUFF` / sequence counters** carried in every frame
   header, giving the host dropped-sample detection with no real-time
   cost.
