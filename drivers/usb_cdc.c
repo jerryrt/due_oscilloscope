@@ -335,32 +335,50 @@ size_t usb_cdc_write(const uint8_t *data, size_t len)
 	return done;
 }
 
+/*
+ * Bytes already taken from the bank currently held. The bank is a RAM
+ * window, not a popping FIFO, and BYCT is fixed while the bank is held,
+ * so a partial read can resume at an offset. Releasing the bank on a
+ * partial read - as an earlier version did - silently discards the tail,
+ * and one short packet from the host then shifts every later sample by
+ * an odd byte count, which scrambles the playback channel tags.
+ */
+static uint32_t out_rd_off;
+
 size_t usb_cdc_read(uint8_t *dst, size_t max)
 {
 	uint32_t st = UOTGHS->UOTGHS_DEVEPTISR[EP_OUT];
-	uint32_t n;
+	uint32_t byct, n;
 	volatile uint8_t *fifo;
 
 	if (!(st & UOTGHS_DEVEPTISR_RXOUTI))
 		return 0;
 
-	n = (st & UOTGHS_DEVEPTISR_BYCT_Msk) >> UOTGHS_DEVEPTISR_BYCT_Pos;
-	if (n == 0) {
-		/* Zero-length packet: release the bank and move on. */
+	byct = (st & UOTGHS_DEVEPTISR_BYCT_Msk) >> UOTGHS_DEVEPTISR_BYCT_Pos;
+	if (byct <= out_rd_off) {
+		/* Zero-length packet, or a bank already fully drained:
+		 * release it and move on. */
+		out_rd_off = 0;
 		UOTGHS->UOTGHS_DEVEPTICR[EP_OUT] = UOTGHS_DEVEPTICR_RXOUTIC;
 		UOTGHS->UOTGHS_DEVEPTIDR[EP_OUT] = UOTGHS_DEVEPTIDR_FIFOCONC;
 		return 0;
 	}
+
+	n = byct - out_rd_off;
 	if (n > max)
-		n = max;          /* caller must drain the rest next call */
+		n = max;
 
 	fifo = FIFO(EP_OUT);
 	for (uint32_t i = 0; i < n; i++)
-		dst[i] = fifo[i];
+		dst[i] = fifo[out_rd_off + i];
+	out_rd_off += n;
 
-	/* Acknowledge, then hand the bank back to the controller. */
-	UOTGHS->UOTGHS_DEVEPTICR[EP_OUT] = UOTGHS_DEVEPTICR_RXOUTIC;
-	UOTGHS->UOTGHS_DEVEPTIDR[EP_OUT] = UOTGHS_DEVEPTIDR_FIFOCONC;
+	/* Hand the bank back only once every byte in it has been taken. */
+	if (out_rd_off >= byct) {
+		out_rd_off = 0;
+		UOTGHS->UOTGHS_DEVEPTICR[EP_OUT] = UOTGHS_DEVEPTICR_RXOUTIC;
+		UOTGHS->UOTGHS_DEVEPTIDR[EP_OUT] = UOTGHS_DEVEPTIDR_FIFOCONC;
+	}
 	return n;
 }
 
@@ -472,6 +490,7 @@ void usb_cdc_poll(void)
 		usb_configured = 0;
 		usb_line_state = 0;
 		pending_address = 0;
+		out_rd_off = 0;
 
 		/* A bus reset clears the endpoint configuration, so EP0 has to
 		 * be rebuilt every time rather than only once. */
@@ -529,6 +548,7 @@ void UOTGHS_Handler(void)
 		usb_configured = 0;
 		usb_line_state = 0;
 		pending_address = 0;
+		out_rd_off = 0;
 
 		/* EP0 must be reconfigured after every bus reset. */
 		ep_configure(EP_CTRL, 0u, 0u, EP0_SIZE, 1u);
