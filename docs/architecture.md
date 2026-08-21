@@ -118,7 +118,14 @@ performance detail to be optimised later; it is the wrong shape.
 
 What this rules out, and what it does not:
 
-- **Ruled out**: `SerialUSB` as the Track B sample transport.
+- **Ruled out**: `SerialUSB` for *continuous* streaming. There the copy
+  is deadline-bound and competes with acquisition.
+- **Viable as an interim step**: `SerialUSB` for *burst* mode. Capture
+  is already finished when the transfer starts, so the copy costs CPU
+  but misses no deadline — roughly 1–2 ms per 8 KB frame. This is a
+  reasonable way to reach a working end-to-end loopback before the
+  vendor-class path exists, and it should be treated as scaffolding
+  rather than the destination.
 - **Still fine**: `SerialUSB` in Track A sketches, and CDC on the
   *programming* port for the ASCII control channel, where throughput is
   irrelevant.
