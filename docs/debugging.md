@@ -5,7 +5,7 @@ mechanisms, chosen because they fail for different reasons.
 
 | Mechanism | Cost *(measured)* | Works when |
 |---|---|---|
-| Direct PIO write | **~69 ns** | Always, including pre-init and in fault handlers |
+| Direct PIO write | **~36-69 ns** (track-dependent) | Always, including pre-init and in fault handlers |
 | UART printf | **3600 us** per 40-char line at 115200 | After clock and UART init, outside real-time paths |
 | Host-side counters | zero on target | Whenever frames are flowing |
 
@@ -13,11 +13,20 @@ mechanisms, chosen because they fail for different reasons.
 
 Figures from `sketches/bringup` at 84 MHz, not estimates.
 
-| Operation | Measured | Per call |
+Both tracks run the same measurements, from `sketches/bringup` and
+`apps/baremetal_bringup`.
+
+| Operation | Track A (Arduino, gcc 4.8.3) | Track B (bare metal, gcc 15.2.1) |
 |---|---|---|
-| `Serial.println()`, 40 chars, flushed to the wire | 3600 us | 3.6 ms |
-| Direct PIO set + clear pair | 138.3 ns | ~69 ns (~5.8 cycles, incl. loop overhead) |
-| `digitalWrite()` set + clear pair | 4328 ns | ~2164 ns |
+| printf, 40-char line, on the wire | **3600 us** | **3600 us** |
+| Direct PIO set + clear pair | 138.3 ns | **71.5 ns** |
+| Same via an abstraction | 4328 ns (`digitalWrite`) | 536 ns (`led_on`/`led_off`) |
+| Flash used | 15868 B | 7256 B text + 100 B data |
+
+printf is identical because it is wire-bound: at 115200 baud a 40-char
+line takes 3.6 ms regardless of who formats it. Everything else differs,
+and the gap is the eleven-year compiler difference plus the absence of
+the Arduino abstraction layer.
 
 Three conclusions follow, and all three are load-bearing:
 
@@ -26,10 +35,13 @@ Three conclusions follow, and all three are load-bearing:
 - **`digitalWrite()` costs ~31x a direct register write.** Never use it
   for instrumentation; go straight to `PIO_SODR` / `PIO_CODR`.
 - An earlier estimate here put a GPIO write at 12-24 ns (1-2 cycles).
-  The measured figure is roughly 69 ns, since the APB bridge and loop
-  overhead dominate the store itself. Still negligible against a 950 ns
-  conversion interval, and utterly negligible against a buffer-completion
-  ISR that fires every few thousand conversions.
+  Measured, a set+clear pair costs 71.5 ns bare metal and 138.3 ns under
+  the Arduino toolchain, so a single write is roughly 36-69 ns depending
+  on track. The APB bridge and loop overhead dominate the store itself.
+  Either figure is negligible against a 950 ns conversion interval, and
+  utterly negligible against a buffer-completion ISR firing every few
+  thousand conversions. **Quote the per-track number, not a single
+  figure**: it is toolchain-dependent.
 
 The three are layers, not alternatives. Build all of them before writing
 any ADC code.

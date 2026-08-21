@@ -26,6 +26,9 @@ Track A also bootstraps Track B (see below), so it is not pure overhead.
 | `arduino:sam` core | 1.6.12 | - | yes |
 | `arm-none-eabi-gcc` | 4.8.3-2014q1 | Mach-O x86_64 | yes |
 | `bossac` | 1.6.1-arduino | universal i386 + x86_64 | yes, x86_64 slice |
+| `arm-none-eabi-gcc` (xPack) | 15.2.1 | Mach-O x86_64 | yes, Track B compiler |
+| `cmake` | 4.4.2 | universal | yes, at `~/.local/bin/cmake` |
+| `arm-gnu-toolchain` (ARM official) | 14.2.rel1 | Mach-O x86_64 | **no** - `cc1` needs Homebrew zstd |
 
 The age of these binaries is the risk on this host, but inverted from the
 usual direction: macOS 12 removed 32-bit support entirely, so an i386-only
@@ -100,21 +103,49 @@ coexisting is normal and intentional.
 
 ### Install the ARM toolchain
 
-Download the **ARM GNU Toolchain** (14.x) for `darwin-x86_64` from ARM's
-developer site and unpack it under `tools/`. It is gitignored.
-
-macOS 12.6 will quarantine the downloaded binaries; clear it or every
-invocation is blocked by Gatekeeper:
+Use the **xPack** distribution, not ARM's own build. Unpack under
+`tools/`; it is gitignored.
 
 ```sh
-xattr -dr com.apple.quarantine tools/arm-gnu-toolchain-*/
+# xpack-arm-none-eabi-gcc-15.2.1-1.1-darwin-x64.tar.gz
+tar xzf xpack-arm-none-eabi-gcc-*-darwin-x64.tar.gz -C tools/
+xattr -cr tools/xpack-*/
+tools/xpack-*/bin/arm-none-eabi-gcc --version
 ```
 
-Verify:
+#### Why not ARM's official build *(found the hard way)*
+
+ARM's `arm-gnu-toolchain-14.2.rel1-darwin-x86_64` **does not run on a Mac
+without Homebrew.** `cc1` is linked against Homebrew's zstd at an
+absolute path:
+
+```
+dyld[34442]: Library not loaded: '/usr/local/opt/zstd/lib/libzstd.1.dylib'
+  Referenced from: .../libexec/gcc/arm-none-eabi/14.2.1/cc1
+arm-none-eabi-gcc: internal compiler error: Abort trap: 6
+```
+
+The failure is deceptive: `arm-none-eabi-gcc --version` succeeds, because
+the *driver* has no such dependency. Only `cc1` dies, and only once you
+actually compile something. CMake reports it as "compiler is broken".
+
+The xPack build bundles its dependencies through `@rpath`, including its
+own `libzstd.1.dylib`, and is genuinely self-contained. Verify with
+`otool -L` on `cc1` if in doubt.
+
+### Install CMake
+
+Not present on this host either, and there is no package manager. Use
+Kitware's universal binary:
 
 ```sh
-tools/arm-gnu-toolchain-*/bin/arm-none-eabi-gcc --version
+tar xzf cmake-4.4.2-macos-universal.tar.gz
+cp -R cmake-*/CMake.app ~/.local/opt/
+ln -sf ~/.local/opt/CMake.app/Contents/bin/cmake ~/.local/bin/cmake
 ```
+
+`make` is already available from the Command Line Tools at
+`/usr/bin/make`, so the default Unix Makefiles generator works.
 
 ### CMake toolchain file
 
@@ -193,6 +224,34 @@ bossac --port=cu.usbmodem141301 -U false -e -w -v -b build/firmware.bin -R
 
 Note `bossac` wants the port name **without** the `/dev/` prefix, and
 `-U false` selects the programming port rather than the native one.
+
+## Track parity
+
+The tracks are kept **feature-equivalent on purpose**. Every capability
+that exists in one exists in the other, with the same commands and the
+same output format, so that a difference in behaviour is a real finding
+rather than an artefact of two different harnesses.
+
+| Feature | Track A | Track B |
+|---|---|---|
+| Entry point | `sketches/bringup/bringup.ino` | `apps/baremetal_bringup/main.c` |
+| UART printf | `Serial` (interrupt + ring buffer) | `bsp/uart.c` (polled) + newlib retarget |
+| LED heartbeat | `PIO_SODR`/`PIO_CODR` | `bsp/led.c` |
+| HardFault report | `sketches/bringup/fault.cpp` | `bsp/fault.c` |
+| Commands | `h` `p` `g` `f` | `h` `p` `g` `f` |
+| Build | `arduino-cli compile` | `cmake --build build` |
+| Flash | `arduino-cli upload` | `tools/flash.sh` |
+
+Track A was implemented and verified on hardware **first**, then Track B
+was written against it. With no debug probe, having a known-good
+reference for each mechanism is what makes the bare-metal version
+debuggable at all.
+
+Note the deliberate asymmetry in the UART: Track A's `Serial` is
+interrupt-driven and buffered, while Track B's is polled. Polled output
+is slower but works with interrupts disabled and from fault context,
+which is precisely when diagnostics matter. Both report identical
+measurements because the path is wire-bound either way.
 
 ## Repository layout
 

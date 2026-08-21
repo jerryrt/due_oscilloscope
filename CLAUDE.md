@@ -103,16 +103,32 @@ One logical change per commit. Every commit should build.
 
 ## Build
 
-Not yet implemented. Intended shape:
+Both tracks work. `~/.local/bin` must be on `PATH` (holds `arduino-cli`
+and `cmake`).
 
 ```sh
-# Track B
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake
+# Track B: bare metal
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
+tools/flash.sh build/baremetal_bringup.bin
 
-# Track A
-arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg sketches/<name>
+# Track A: reference oracle
+arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg sketches/bringup
+arduino-cli upload  --fqbn arduino:sam:arduino_due_x_dbg \
+                    -p /dev/cu.usbmodem141301 sketches/bringup
+
+# Talk to either
+python3 tools/serial_probe.py /dev/cu.usbmodem141301 --send h --seconds 3
 ```
+
+**Use the xPack toolchain, not ARM's official macOS build.** ARM's links
+`cc1` against Homebrew's zstd at an absolute path and cannot run on this
+host; the driver still reports a version, so the failure only appears
+when something is actually compiled. See `docs/toolchain.md`.
+
+Keep the tracks feature-equivalent. Anything added to one gets added to
+the other, with the same commands and output format.
 
 ## Bring-up order
 

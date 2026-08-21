@@ -24,14 +24,19 @@ missing FPU on the Cortex-M3 stops mattering.
 
 ## Status
 
-**Track A verified end to end.** `arduino-cli` 1.5.1, `arduino:sam`
-1.6.12, gcc 4.8.3 and bossac 1.6.1 are installed and confirmed running on
-this host (macOS 12.7.6, Intel x86_64). `sketches/blink` compiles,
-uploads over the programming port, and runs on the board.
+**Both tracks verified end to end on hardware**, feature-equivalent, on
+macOS 12.7.6 Intel x86_64.
 
-Track B (CMake + modern arm-gcc) is not yet set up. Next step is the BSP:
-UART printf, LED heartbeat, and the HardFault handler, before any ADC
-code.
+| | Track A | Track B |
+|---|---|---|
+| Toolchain | arduino-cli 1.5.1, arduino:sam 1.6.12, gcc 4.8.3 | CMake 4.4.2, xPack gcc 15.2.1 |
+| BSP | Arduino core | `bsp/`: startup, clock, UART, LED, SysTick, faults, newlib |
+| Verified | banner, printf, GPIO timing, HardFault, LED | same |
+| Size | 15868 B | 7256 B text |
+
+Next step is the acquisition path: TC-triggered ADC with PDC ping-pong,
+verified against the configured trigger rate before anything else is
+built on it.
 
 One design decision was settled by reading the core source rather than
 guessing: the Arduino CDC stack copies into the endpoint FIFO a byte at a

@@ -128,6 +128,13 @@ guess.
    2-bank, read from `arduino:sam@1.6.12` source. Already optimal; no
    tuning available. See `docs/hardware.md`.
 3. Whether SRAM bank 0 and bank 1 sit on separate bus-matrix slaves.
-   Determines whether bank placement removes DMA contention.
+   **Partially answered**: the memory map is confirmed from Atmel's
+   linker script. Bank 0 is 64 KB and bank 1 is 32 KB, made contiguous
+   by an alias at `0x20070000`; bank 0 is also visible at `0x20000000`.
+   `linker/sam3x8e_flash.ld` now exposes them as separate regions with a
+   `.sram1` section for explicit placement. Whether they are distinct
+   bus-matrix *slaves*, and therefore whether placement actually removes
+   contention, still needs the datasheet's bus matrix chapter and a
+   measurement.
 4. Exact ADC conversion cycle count under the chosen `TRACKTIM` and
    `SETTLING` values.
