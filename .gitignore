@@ -1,0 +1,41 @@
+# Build output
+build/
+build-*/
+*.o
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.su
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# arduino-cli
+sketches/**/build/
+*.ino.bin
+*.ino.elf
+*.ino.map
+
+# Vendored toolchains / SDKs (fetched, not committed)
+tools/toolchain/
+tools/arm-gnu-toolchain-*/
+
+# Host tooling
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Captures and scratch data
+captures/
+*.npy
+*.raw
+
+# macOS
+.DS_Store
