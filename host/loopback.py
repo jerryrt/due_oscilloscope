@@ -82,6 +82,8 @@ def main():
                     help="send a constant DAC0 code instead of a tone")
     ap.add_argument("--scan", action="store_true",
                     help="sweep candidate frequencies to find the energy")
+    ap.add_argument("--burst", type=int, default=16384,
+                    help="bytes written per empty-queue event")
     ap.add_argument("--diag", action="store_true",
                     help="trigger the firmware's snapshot diagnostic mid-run")
     args = ap.parse_args()
@@ -107,13 +109,22 @@ def main():
     # and only then look for the native node, whose name may have changed.
     cfd = open_raw(ctl, 115200)
     time.sleep(3.0)
-    nats = [n for n in glob.glob("/dev/cu.usbmodem*") if n != ctl]
-    if not nats:
-        sys.exit("native port did not re-enumerate after reset")
+    fd = None
+    give_up = time.time() + 12.0
+    while fd is None:
+        nats = [n for n in glob.glob("/dev/cu.usbmodem*") if n != ctl]
+        try:
+            if nats:
+                fd = open_raw(nats[0], 115200, dtr=True)
+        except OSError:
+            pass
+        if fd is None:
+            if time.time() >= give_up:
+                sys.exit("native port did not re-enumerate after reset")
+            time.sleep(0.5)
     if nats[0] != nat:
         print(f"# native re-enumerated as {nats[0]}")
     nat = nats[0]
-    fd = open_raw(nat, 115200, dtr=True)
 
     # Drain until the native port has been silent for a full second. A
     # stream from a previous run keeps flowing into the kernel's input
@@ -135,7 +146,7 @@ def main():
     if stale:
         print(f"# drained {stale} stale bytes from the native port")
 
-    os.write(cfd, b"L")
+    os.write(cfd, f"={args.dac_sps},{args.adc_hz}L".encode())
     time.sleep(0.2)
 
     # Feed from a dedicated real-time thread, gated on tty writability.
@@ -188,9 +199,9 @@ def main():
             if q > 0:
                 time.sleep(max(0.001, q / byte_rate / 2))
                 continue
-            block = wave[pos:pos + 16384]
-            if len(block) < 16384:
-                block += wave[:16384 - len(block)]
+            block = wave[pos:pos + args.burst]
+            while len(block) < args.burst:
+                block += wave[:args.burst - len(block)]
             try:
                 n = os.write(fd, block)
             except OSError:
