@@ -45,8 +45,49 @@
 
 #define LED_MASK (1u << 27)   /* pin 13 = PB27 */
 
+/*
+ * The Due's two other SAM3X-driven LEDs: TXL on PA21 (pin 73) and RXL on
+ * PC30 (pin 72), both active low. Repurposed as USB activity indicators
+ * exactly as Track B does - TXL for the IN direction, RXL for OUT -
+ * since nothing here drives the UART lines they were named after. The
+ * Arduino variant only declares these pins; it never drives them.
+ *
+ * Direct PIO writes rather than digitalWrite: ~69 ns against ~2164 ns,
+ * and the same rule that governs ISR instrumentation applies to
+ * anything called from the service loop.
+ */
+#define TXL_MASK (1u << 21)   /* PA21 */
+#define RXL_MASK (1u << 30)   /* PC30 */
+
 static uint32_t heartbeat_at;
 static bool led_on;
+
+static void led_aux_init(void)
+{
+	PMC->PMC_PCER0 = (1u << ID_PIOA) | (1u << ID_PIOC);
+	PIOA->PIO_PER  = TXL_MASK;
+	PIOA->PIO_OER  = TXL_MASK;
+	PIOA->PIO_SODR = TXL_MASK;   /* active low: start off */
+	PIOC->PIO_PER  = RXL_MASK;
+	PIOC->PIO_OER  = RXL_MASK;
+	PIOC->PIO_SODR = RXL_MASK;
+}
+
+static void led_tx(int on)
+{
+	if (on)
+		PIOA->PIO_CODR = TXL_MASK;
+	else
+		PIOA->PIO_SODR = TXL_MASK;
+}
+
+static void led_rx(int on)
+{
+	if (on)
+		PIOC->PIO_CODR = RXL_MASK;
+	else
+		PIOC->PIO_SODR = RXL_MASK;
+}
 
 static void banner(void)
 {
@@ -659,6 +700,23 @@ static void cmd_usb_dump(void)
 	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMACONTROL,
 	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMASTATUS);
 	Serial.println(buf);
+
+	/*
+	 * The activity LEDs, so a dark indicator can be told apart from a
+	 * pin the sketch never took control of. PSR bit set means PIO owns
+	 * it, OSR set means it is an output, ODSR is the driven level -
+	 * and these are active low, so 0 is lit.
+	 */
+	snprintf(buf, sizeof(buf),
+	         "# leds TXL(PA21) pio=%d out=%d lit=%d   RXL(PC30) pio=%d out=%d lit=%d",
+	         (int)!!(PIOA->PIO_PSR & TXL_MASK),
+	         (int)!!(PIOA->PIO_OSR & TXL_MASK),
+	         (int)!(PIOA->PIO_ODSR & TXL_MASK),
+	         (int)!!(PIOC->PIO_PSR & RXL_MASK),
+	         (int)!!(PIOC->PIO_OSR & RXL_MASK),
+	         (int)!(PIOC->PIO_ODSR & RXL_MASK));
+	Serial.println(buf);
+
 	usbdma_dump();
 	Serial.flush();
 }
@@ -685,6 +743,7 @@ void setup()
 	clock_set_mck(MCK_MULA_DEFAULT);
 
 	pinMode(LED_BUILTIN, OUTPUT);
+	led_aux_init();
 	analogWriteResolution(12);
 	analogReadResolution(12);
 	Serial.begin(115200);
@@ -700,6 +759,8 @@ void loop()
 	static uint32_t rate_arg[2];
 	static unsigned rate_idx;
 	static bool     rate_entry;
+	static uint32_t led_usb_at;
+	static uint32_t led_in_last, led_out_last;
 	char buf[192];
 
 	/* Heartbeat: if this stops, the board hung or faulted. */
@@ -711,6 +772,20 @@ void loop()
 		else
 			PIOB->PIO_CODR = LED_MASK;
 		heartbeat_at = now;
+	}
+
+	/*
+	 * USB activity on the two spare LEDs: TXL lights while the IN
+	 * direction moves data, RXL while OUT does. Driven from the byte
+	 * and DMA-arm counters the transport already bumps, sampled at
+	 * 50 ms so even a slow trickle reads as a visible flicker.
+	 */
+	if (now - led_usb_at >= 50u) {
+		led_tx(usb_in_activity != led_in_last);
+		led_rx(usb_out_activity != led_out_last);
+		led_in_last = usb_in_activity;
+		led_out_last = usb_out_activity;
+		led_usb_at = now;
 	}
 
 	play_service();
@@ -897,7 +972,8 @@ void loop()
 	          Serial.println(buf);
 	          snprintf(buf, sizeof(buf),
 	                   "# play: in=%lu produced=%lu consumed=%lu under=%lu "
-	                   "isr=%lu endtx=%lu svc=%lu rebuilds=%lu",
+	                   "isr=%lu endtx=%lu svc=%lu rebuilds=%lu "
+	                   "act-in=%lu act-out=%lu",
 	                   (unsigned long)play_bytes_in,
 	                   (unsigned long)play_produced,
 	                   (unsigned long)play_consumed,
@@ -905,7 +981,9 @@ void loop()
 	                   (unsigned long)play_isr_calls,
 	                   (unsigned long)play_endtx_seen,
 	                   (unsigned long)play_svc_calls,
-	                   (unsigned long)usbdma_rebuilds);
+	                   (unsigned long)usbdma_rebuilds,
+	                   (unsigned long)usb_in_activity,
+	                   (unsigned long)usb_out_activity);
 	          Serial.println(buf); Serial.flush(); break;
 	default:                     break;
 	}

@@ -193,6 +193,10 @@ void play_service(void)
 			__DMB();
 			play_produced += slots_done - dma_published;
 			dma_published = slots_done;
+			/* A multi-slot span is armed once but lands over many
+			 * milliseconds; bump here too or the indicator goes
+			 * dark during the busiest part of a transfer. */
+			usb_out_activity++;
 		}
 		if (usbdma_out_busy())
 			goto prime;

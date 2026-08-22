@@ -149,8 +149,10 @@ publishing.
 - Wiring: **DAC0 -> A0**, DAC1 -> A1.
 - Remote: `origin` = https://github.com/jerryrt/due_oscilloscope.git,
   push via `gh` credential helper (already configured).
-- LEDs: amber = heartbeat; TXL flickers with USB IN traffic, RXL with
-  OUT.
+- LEDs: amber = heartbeat; TXL (PA21) flickers with USB IN traffic, RXL
+  (PC30) with OUT. Both tracks, same pins, same 50 ms sampling. Track
+  A's `u` prints the pin state and `B` prints the activity counters, so
+  a dark indicator can be told apart from a pin nothing ever drove.
 
 ## Track A command reference
 

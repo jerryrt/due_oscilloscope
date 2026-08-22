@@ -15,6 +15,8 @@
 #define DMA_IN_CH   (CDC_TX - 1u)
 
 volatile uint32_t usbdma_rebuilds;
+volatile uint32_t usb_in_activity;
+volatile uint32_t usb_out_activity;
 
 static bool mode_in, mode_out;
 
@@ -187,6 +189,7 @@ static bool dma_out_start_ctl(void *buf, uint32_t len, uint32_t extra)
 		| UOTGHS_DEVDMACONTROL_END_B_EN
 		| UOTGHS_DEVDMACONTROL_END_BUFFIT
 		| UOTGHS_DEVDMACONTROL_CHANN_ENB;
+	usb_out_activity++;
 	return true;
 }
 
@@ -241,6 +244,7 @@ bool usbdma_in_start(const void *buf, uint32_t len)
 		| UOTGHS_DEVDMACONTROL_END_B_EN
 		| UOTGHS_DEVDMACONTROL_END_BUFFIT
 		| UOTGHS_DEVDMACONTROL_CHANN_ENB;
+	usb_in_activity++;
 	return true;
 }
 

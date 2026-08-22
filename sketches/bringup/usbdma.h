@@ -42,6 +42,15 @@ bool     usbdma_in_busy(void);
 uint32_t usbdma_in_residue(void);
 bool     usbdma_in_start(const void *buf, uint32_t len);
 
+/*
+ * Activity counters for the front-panel LEDs: any byte moved or DMA
+ * armed bumps one of these, and the main loop samples them to decide
+ * whether the indicator should be lit. Counters rather than flags so a
+ * sampler that misses an interval still sees that something happened.
+ */
+extern volatile uint32_t usb_in_activity;    /* device -> host */
+extern volatile uint32_t usb_out_activity;   /* host -> device */
+
 /* How often the core rebuilt the endpoint out from under us. Normal at
  * enumeration; climbing during a run means the link is resetting. */
 extern volatile uint32_t usbdma_rebuilds;

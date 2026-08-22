@@ -80,7 +80,13 @@ static size_t xport_write(const uint8_t *p, size_t n)
 		Serial.write(p, n);
 		return n;
 	}
-	return SerialUSB.write(p, n);
+	{
+		size_t w = SerialUSB.write(p, n);
+
+		if (w)
+			usb_in_activity++;
+		return w;
+	}
 }
 
 /*
@@ -443,6 +449,8 @@ static void bench_pull_out(uint32_t byte_budget)
 				break;
 			bench_scratch[i] = (uint8_t)c;
 		}
+		if (i)
+			usb_out_activity++;
 		bench_out_bytes += (uint32_t)i;
 		got_total += (uint32_t)i;
 		if (i < n)
