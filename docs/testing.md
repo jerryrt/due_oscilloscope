@@ -17,16 +17,29 @@ board, ports and build environment.
 
 ### What building it found
 
-Four defects, none of which the manual runs had shown, three fixed and
-one open. They are written up in `docs/status.md`; briefly: the native
-port took 51 s to open because `SET_LINE_CODING` was answered before
-its data stage, the console silently dropped commands sent while it was
+Four defects, none of which the manual runs had shown, all four now
+fixed. They are written up in `docs/status.md`; briefly: the native port
+took 51 s to open because `SET_LINE_CODING` was answered before its
+data stage, the console silently dropped commands sent while it was
 printing, the frame header declared the requested rate rather than the
-one the hardware makes, and - still open - host-fed playback loses
-samples that no counter on either side sees.
+one the hardware makes, and host-fed playback lost samples that no
+counter on either side saw.
 
-The open one is why the suite exists. `seq_gaps=0 crc_bad=0 under=0`
-was true for every one of those runs.
+The fourth is why the suite exists. `seq_gaps=0 crc_bad=0 under=0`
+was true for every one of those runs, and the DAC was still skipping
+forward a few times a second. It took a ramp - a waveform where every
+sample encodes its own position - to turn "the output jumped" into "313
+bytes never arrived", and the fact that every loss was smaller than one
+ring slot to name the cause: two reads of a DMA status register where
+there should have been one. The instrument that found it,
+`measure.build_ramp` / `ramp_discontinuities`, is worth reaching for
+again the next time a counter says everything is fine.
+
+It also left the suite able to say *which side* lost data. With the
+device's byte accounting exact, an arbitrary-sized forward jump is the
+device and a whole 128-byte chunk is macOS's output path, so
+`test_host_fed_ramp_loses_no_samples` fails outright for the first and
+reports an xfail naming the host for the second.
 
 ### One rule added while building it
 

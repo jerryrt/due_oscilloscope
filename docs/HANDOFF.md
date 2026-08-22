@@ -33,8 +33,8 @@ regime is validated by the tone-amplitude oracle (theoretical maximum
 
 | Regime | State | Evidence |
 |---|---|---|
-| Matched loop up to 453,488 sps each way (ADC in-spec ceiling) | under=0, gaps=0, median window 1371 | but a few samples per second are lost silently on the way to the DAC: objective 0 |
-| AWG play-only up to 1.393 Msps (DACC hardware ceiling, RC 28) | **runs; not reliably clean** | 5 runs each: RC 195/98/44/39 are 5/5 under=0, RC 65 is 0/5, RC 32 and 28 are 1/5. See objective 0 |
+| Matched loop up to 453,488 sps each way (ADC in-spec ceiling) | under=0, gaps=0, median window 1371 | at 200 ksps the loop is now byte-exact end to end: `play_bytes_in` equals the host's `write()` count and a host-fed ramp has no discontinuities |
+| AWG play-only up to 1.393 Msps (DACC hardware ceiling, RC 28) | **runs; not reliably clean** | 5 runs each: RC 195/98/44/39 are 5/5 under=0, RC 65 is 0/5, RC 32 is 3/5, RC 28 is 1/5. See objective 0 |
 | Full-rate pair: DAC 906,976 + capture 906,976 aggregate | **runs, under=0**, both tracks | windows 1074-1345 (B), 1028-1338 (A) |
 | Transport via endpoint DMA | measured | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s |
 | Two-channel DAC (tag-interleaved) | routing verified | purity open, see objective 4 |
@@ -68,23 +68,59 @@ publishing.
 
 ## Next objectives, in order
 
-0. **Host-fed playback loses samples.** New, and ahead of everything
-   else because it breaks invariant 5 with every counter clean. At
-   200 ksps a host-fed run drops 6-185 DAC samples a few times a
-   second; the device's own generator through the same path is
-   perfectly clean, and **both tracks lose samples identically** -
-   two USB device stacks sharing no source, which points at the host
-   rather than at either firmware. Not yet proven, because the byte
-   accounting on the device side under-reports by a varying amount. Full write-up, including what was
-   tried and did not work, under "Found by the test suite" in
-   `docs/status.md`. The instruments are built: `M` for the control,
-   `measure.build_ramp` / `ramp_discontinuities` for counting the lost
-   samples, and four xfail tests that turn green by themselves.
+0. **Playback starves at RC 65, 32 and 28** while the rates either side
+   of them are clean. A feed-policy problem, not a bandwidth ceiling:
+   during starvation the host's tty output queue is empty (median 0 B),
+   so the device drains everything written the moment it is written and
+   the host is simply never far enough ahead. The feeder's 20 KB lead
+   is spent once at startup and never rebuilt, and whether a run keeps
+   a cushion is decided in its first milliseconds and holds for the
+   whole run. Larger leads (24 and 28 KB), a single-write opening
+   burst, and a larger device prime threshold (4 -> 16 buffers) each
+   changed nothing.
 
-   Related and probably the same mechanism: playback starves at RC 65,
-   32 and 28 while the rates either side of them are clean.
+   The `spans` counter added with the lost-sample fix is a new handle
+   on it: a starving run arms few, large DMA spans (RC 32, failing: 464
+   in 3 s) and a healthy one arms many small ones (RC 32, clean:
+   6,610). Tracked as `STARVES` in `tests/test_rates.py`, xfail and
+   non-strict, so it reports on every run and turns green by itself.
 
-0b. **The pytest suite** - built. `docs/testing.md` is the design and
+0b. **macOS drops 128-byte chunks from the tty output queue** under
+   load, having counted them in `write()`. Long documented in
+   `docs/usb.md` as a hazard; now *measured*, because the device's byte
+   accounting is exact: a run that skips is short by whole multiples of
+   128 bytes and the device never received them. Roughly one 3 s run in
+   eight with a build or the suite running alongside, none in 22 runs on
+   a quiet machine. Reported by `test_host_fed_ramp_loses_no_samples` as
+   an xfail that names the host; an arbitrary-sized jump fails the same
+   test outright, because that would be the device losing data again.
+
+0c. **The suite wedged once in `close()` after the duplex DMA bench**,
+   on 2026-08-22, and it is unexplained. All 134 tests reported and
+   none failed; the session then hung in `close()` on the native port
+   for 50 minutes with the board's heartbeat still flashing and both
+   USB activity LEDs dark - the device had stopped draining bulk OUT,
+   which is the hazard `docs/usb.md` describes: macOS's `close()` waits
+   for in-flight write URBs and `tcflush` cannot recall them.
+
+   **Not reproduced**: eight consecutive duplex-dma and out-dma benches
+   afterwards closed in 0.00 s each. So this is a candidate, not a
+   cause - but a specific one. `usb_cdc_dma_mode()` stops both DMA
+   channels and flips AUTOSW and **never issues `EPRST`**, while the
+   fact recorded below says stopping the channel is not enough and the
+   endpoint must be reset too. Track A implements exactly that
+   (`ep_reset_fifo()` in `sketches/bringup/usbdma.cpp`); Track B has no
+   `EPRST` anywhere. A DMA stopped mid-bank leaves a bank nothing
+   frees, and the endpoint then NAKs for good.
+
+   Deliberately not "fixed" on that reasoning alone: `EPRST` also
+   clears the data toggle, and `usb_cdc_dma_mode()` runs at every
+   playback and bench start and stop, so a wrong guess here breaks the
+   link everywhere. Reproduce it first - a long soak of bench mode
+   switches is the obvious way - then fix it against a failure that can
+   be seen to go away.
+
+0d. **The pytest suite** - built. `docs/testing.md` is the design and
    now also records what building it found. 63 tests, about 5 minutes
    per track.
 
@@ -151,6 +187,21 @@ publishing.
   partially filled and never validated, so the next transfer stalls the
   same way. `EPRST` the endpoint too. This presented as an intermittent
   one-transfer stall, about one run in two.
+- **Read `DEVDMASTATUS` once and decode it, never twice.** Byte count
+  and channel-enabled share the register, so two reads ask two
+  different instants whether the transfer finished and how far it got.
+  They disagree exactly when it finishes between them, and the playback
+  ring then resumed its next span behind data already in SRAM and
+  overwrote it: samples lost, always forward, always less than one
+  slot, with every counter on both sides clean. It cost a fortnight and
+  was blamed on macOS. `play_partial` counts the impossible case and
+  the suite asserts it is zero.
+- **Two transliterations of one algorithm are not two implementations.**
+  Track A's `play.cpp` is deliberately identical to Track B's `play.c`,
+  so "both tracks fail the same way, and they share no source" argued
+  for a host fault when it was evidence of a design fault. Before
+  reasoning from a cross-track agreement, check what the tracks
+  actually share.
 - **Never arm bulk OUT with `END_TR_EN` for streaming.** It ends the
   transfer on any short packet, host pacing produces those constantly,
   and a 2048-byte buffer then absorbs ~347 bytes per arm. It cost ~30%

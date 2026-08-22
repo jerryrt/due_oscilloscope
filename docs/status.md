@@ -373,80 +373,144 @@ The tell in both cases was arithmetic: the frame count exceeded what the
 configured sample rate could generate. **A receiver reporting more data
 than the source can produce is describing its own bug.**
 
-## Found by the test suite: host-fed playback loses samples
+## Found by the test suite: host-fed playback lost samples
 
-**Open. This is the most serious thing on this page.** Samples the host
-writes do not all reach the DAC, and nothing on either side notices.
+**Fixed.** Samples the host wrote did not all reach the DAC, and nothing
+on either side noticed. The cause was one register read too many.
 
-At 200 ksps, three consecutive 3 s runs showed 4, 5 and 4
-discontinuities, each losing 6 to 185 DAC samples (12 to 370 bytes),
-always forward - data missing, never repeated - with `under=0`,
-`seq_gaps=0`, `crc_bad=0`, `resync=0`, `ringovf=0` and the DAC's own
-underrun counter reading zero throughout. In a captured 1 kHz sine it
-shows as steps of 1000-2500 codes where the largest legitimate step is
-43, a few times a second.
+`play_service()` asked the OUT DMA channel two questions - how far have
+you got, and have you finished - and each question was a separate read
+of `UOTGHS_DEVDMASTATUS`. `usb_dma_out_received()` read `BUFF_COUNT`;
+`usb_dma_out_busy()`, a few hundred nanoseconds later, read `CHANN_ENB`
+out of the same register. When the transfer completed between the two
+reads, the byte count belonged to an earlier instant than the verdict
+that the span was over:
 
-How it was localised, in order:
+- `done` came back short by whatever the controller had landed in
+  between - tens to a few hundred bytes,
+- `fill_off` was therefore computed as a non-zero offset into a slot
+  that was in fact complete,
+- the next span was armed at that offset, *behind* data already in
+  SRAM, and the bytes arriving next overwrote samples that had arrived
+  but had not yet been played.
 
-1. **The capture path is not at fault.** `M` drives the DAC from the
-   device's own flash sine through the identical DACC, PDC, trigger,
-   ADC, framing and USB IN path with the host removed from the DAC
-   side. Three runs, maximum step 38-43 codes against an analytic 17,
-   zero discontinuities. Whatever is wrong is in host -> DAC.
-2. **A ramp says how much, not just that.** Feeding a sawtooth that
-   rises 8 DAC codes per sample makes every sample encode its own
-   position, so a discontinuity divides straight into a sample count.
-   That is what produced the 6-185 figure and showed the loss is always
-   forward. `measure.build_ramp` and `measure.ramp_discontinuities`.
-3. **Both tracks lose samples identically.** The suite run against
-   Track A produces the same xfails as Track B, with the same counts:
-   62 passed, 5 xfailed, 2 xpassed on each. Track A enumerates through
-   the Arduino core with its bulk endpoints on UOTGHS DMA; Track B is a
-   bare-metal stack sharing no source with it. Two independent device
-   implementations losing samples the same way points hard at the host
-   side rather than at either firmware, which is the strongest single
-   piece of evidence available without a protocol analyser.
-4. **Byte accounting is suggestive but not conclusive.** Over 20 s at
-   200 ksps the host's `write()` counted 8,020,480 B and the device's
-   `play_bytes_in` reported 7,995,392 - a 25,088 B deficit against an
-   in-flight span of 8192. But `play_bytes_in` only advances when a DMA
-   span completes, so it under-reports by a varying amount, and the
-   same comparison against the OUT sink benchmark gave deltas from 2 KB
-   to 280 KB depending on write size and pacing. **Not clean enough on
-   its own to place the loss**, though point 3 above already points away
-   from the device.
+Overwritten, not dropped: the output skipped forward, always forward,
+by less than one slot, with the ring's own counters describing a
+perfectly healthy transfer. `play_bytes_in` under-reported by exactly
+the same amount, which is why the byte accounting never closed.
 
-Where to start next: instrument the device side to count bytes at the
-endpoint rather than at DMA-span completion, so the accounting stops
-under-reporting by a varying amount, then compare against `write()`
-over a long run. If the device confirms it received everything the host
-wrote, the loss is in macOS's tty path and the fix is the feed policy;
-if not, it is in the OUT DMA arming and objective 1's work will touch
-the same code.
+Every number lines up. The window is one iteration's worth of
+arithmetic between two loads, against a service loop measured on Track
+A at 247,000 passes in 3 s, about 12 us apart; spans complete about 50
+times a second at 200 ksps,
+so a few percent of them land in the window - 3 to 13 events per 3 s
+run, observed. The loss per event is bounded by what the DMA can land
+in that window, which is why every one of the sixty-odd measured
+events was smaller than a 1024-byte slot: 12 to 370 bytes.
 
-What was tried and did not fix it: capping the host's write size at one
-512-byte packet, raising the feeder's lead to 24 and 28 KB, issuing the
-opening lead as a single write, and raising `PLAY_PRIME_BUFS` from 4 to
-16. An early run suggested loss scaled with write size (2 KB lost at
-512 B writes against 41 KB at 16384 B) but that did not reproduce, and
-the write-size cap was reverted rather than shipped unproven.
+The fix is one read, decoded twice (`usb_dma_out_status()`, and
+`usbdma_out_status()` on Track A). After it, at 200 ksps:
 
-Related and probably the same mechanism: **playback starves at some
-rates.** RC 65 (600,000 sps) fails 5 runs out of 5 with about 17
-underruns per 3 s; RC 32 and RC 28 fail 4 out of 5; RC 195, 98, 44 and
-39 are 5/5 clean. RC 65 sitting between two clean rates rules out a
-bandwidth ceiling. During starvation the host's tty output queue is
-empty (median 0 B, max 1024), so the device drains everything written
-the moment it is written and the host is simply never far enough ahead:
-the feeder's 20 KB lead is spent once at startup and never rebuilt, and
-whether a run keeps a cushion is decided in its first milliseconds and
-then holds for its whole length.
+| | Before | After |
+|---|---|---|
+| Ramp discontinuities, 3 s | 3-13 | 0 (5 runs B, 4 runs A) |
+| `host_tx - play_bytes_in` over 3 s | 1,536-9,216 B | 0 B, every run but one (384 B) |
+| Spans ending off a slot edge | 6-14 per run | 0 |
 
-Both are tracked as xfail in the suite - `test_host_fed_ramp_loses_no_samples`,
-`test_no_sample_step_exceeds_the_waveform_slope`,
-`test_every_window_reaches_the_amplitude_floor` and the `STARVES`
-entries in the rate ladders - so they are reported on every run and
-turn green by themselves when this is fixed.
+`play_partial` is that last row, and it stays in the firmware as a
+tripwire: the arithmetic says a stream span cannot end anywhere but on
+a slot edge, so a non-zero count is this defect or its next relative.
+`assert_spans_whole()` checks it on every measurement that touches
+playback.
+
+### The evidence that pointed at the host was the wrong kind
+
+The earlier write-up reasoned that because both tracks lost samples
+identically, and Track A and Track B share no source, the fault had to
+be on the host. That inference does not hold, and it cost time.
+
+`sketches/bringup/play.cpp` says in its own header comment that it is
+deliberately identical to `drivers/play.c` "down to the trigger source,
+the ring geometry, the prime threshold and the multi-slot DMA spans".
+The tracks share no *file*; they share the *algorithm*, line for line,
+including both reads of `DEVDMASTATUS`. Two transliterations of one
+design failing the same way is evidence for a design fault, not against
+it. Independence of implementation is what would have made that
+argument work, and there was none.
+
+The same review found that Track A was still latching the next playback
+slot at `play_produced - play_consumed >= 2u`, the guard Track B fixed
+in ebd90d5 - so the cross-check that "reproduced" the defect on Track A
+was run against firmware carrying a second, known, uncorrected source
+of exactly this symptom. Track A now has the guard too. Keeping the
+tracks feature-equivalent is an instruction in `CLAUDE.md`; this is what
+it is for.
+
+### What was suspected and cleared
+
+**`END_B_EN` on the receiving channel.** On a DMA channel that receives,
+that bit lets the endpoint discard whatever is left in the current bank
+when the DMA buffer runs out - a plausible mechanism for a silent,
+sub-packet, always-forward loss. It was tested by making the bit
+switchable at runtime and alternating it within one session, one
+firmware image, one cable: 6-13 events with it set, 5-11 with it clear.
+Not the cause. The arm keeps the bit, and the toggle was removed again.
+
+### What is left is the host's, and it has a different fingerprint
+
+The fix does not make the loop perfect, and the residue is worth
+knowing apart from what it replaced. On a loaded machine a 3 s run
+still occasionally skips - roughly one run in eight while the suite or
+a build is running alongside, and not once in 22 runs on a quiet one.
+
+The two are told apart by the size of the loss:
+
+| | Device-side, fixed | Host-side, open |
+|---|---|---|
+| Loss sizes measured | 12, 20, 22, 24, 32, 62, 64, ... 336, 352, 356, 360, 366 B - arbitrary, no common factor | 128, 128, 128, 128, 256, 128 B - **every one a multiple of 128** |
+| `play_partial` | 6-14 per run | 0 |
+| Rate | 3-13 per 3 s run, always | 0-4 per 3 s run, only under load |
+
+An arbitrary size is what a race window produces, because the amount
+lost is however much DMA landed inside it. A fixed quantum is what a
+chunked copy produces, and 128 bytes is the size `docs/usb.md` already
+records macOS's CDC-ACM output path discarding from a pressured tty
+queue with `write()` having counted them.
+
+The byte accounting agrees: on runs that skip, `host_tx - play_bytes_in`
+exceeds the ramp's loss by the same 256-384 B of end-of-run residue that
+clean runs show, so the missing bytes never reached the device at all.
+That is the comparison the previous session wanted and could not make,
+because `play_bytes_in` under-reported by a varying amount; it does not
+any more.
+
+`test_host_fed_ramp_loses_no_samples` encodes the distinction: an
+arbitrary forward jump fails the test outright, a whole 128-byte chunk
+reports as an xfail naming the host, and a quiet machine passes it.
+
+### Playback still starves at RC 65, 32 and 28
+
+Recorded here as "related and probably the same mechanism". It is not.
+Measured after the fix, five play-only runs each, underruns per 3 s:
+
+| RC | sps | Before | After |
+|---|---|---|---|
+| 195 | 200,000 | 5/5 clean | 5/5 clean, 0 underruns |
+| 98 | 397,959 | 5/5 clean | 5/5 clean, 0 underruns |
+| **65** | 600,000 | 0/5 clean, ~17 | **0/5 clean, 9-13** |
+| 44 | 886,363 | 5/5 clean | 5/5 clean, 0 underruns |
+| 39 | 1,000,000 | 5/5 clean | 5/5 clean, 0 underruns |
+| **32** | 1,218,750 | 1/5 clean | **3/5 clean, 35-36 when it fails** |
+| **28** | 1,392,857 | 1/5 clean | **1/5 clean, 38-39 when it fails** |
+
+Unchanged, and `partial` is zero in all of them. It is a feed-policy
+problem, tracked on its own in `docs/HANDOFF.md`.
+
+The new `spans` counter says something useful about it: a run that
+starves arms *few, large* spans (RC 32, failing: 464 spans in 3 s) and a
+run that does not arms many small ones (RC 32, clean: 6,610). The two
+outcomes are visible from the first milliseconds and hold for the whole
+run, which matches what the host-side queue measurements already said.
 
 ## Found by the test suite: three defects, fixed
 
@@ -481,7 +545,9 @@ already moved TNPR into TPR, so the slot being queued is
 guard checked for 2. Found while investigating the lost samples above -
 it is a real latent defect but **it did not change that symptom**, and
 is fixed on its own merits: it turns a silently emitted unfilled buffer
-into a counted underrun.
+into a counted underrun. Fixed on Track B at the time and on Track A
+only later, which mattered: see "The evidence that pointed at the host
+was the wrong kind" above.
 
 ## Measured figures
 
@@ -502,6 +568,7 @@ into a counted underrun.
 | Asymmetric loop (AWG + 200 kHz monitor) | solid to 600 ksps DAC; 650 k = 4 underruns/5 s |
 | USB via endpoint DMA (playback path converted) | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s (single runs) |
 | USB endpoint DMA, **run-to-run spread** | **35-59%, not the ~5% recorded before**: five 4 s runs give IN 19.8-30.5, OUT 17.9-28.2, duplex 8.2-20.0 MB/s. Suite floors are set from the minima, not the typical figure |
+| Host-fed playback, 200 ksps | **byte-exact**: `play_bytes_in` equals the host's `write()` count, 0 ramp discontinuities, 0 partial spans |
 | **Full-rate pair (DAC 907 k + ADC 907 k aggregate)** | runs with **under=0** on DMA playback; purity 90-95% pending IN-side DMA and a cable swap |
 | ~1.7 MB/s "gated OUT" cap | explained: DMA re-arm/service latency x transfer granularity, not FIFO interleave; removed by multi-slot spans |
 | printf, 40-char line | 3600 us |
