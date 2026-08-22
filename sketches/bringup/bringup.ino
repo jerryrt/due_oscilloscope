@@ -41,6 +41,7 @@
 #include "gen.h"
 #include "stream.h"
 #include "play.h"
+#include "usbdma.h"
 
 #define LED_MASK (1u << 27)   /* pin 13 = PB27 */
 
@@ -77,7 +78,7 @@ static void banner(void)
 	Serial.println("#           0=stop everything   ?=stream stats");
 	Serial.println("#           w=stream over UART   u=usb registers");
 	Serial.println("#           F=flood IN  R=sink OUT  X=duplex  B=bench stats");
-	Serial.println("#           G/T/Y = the same three via DMA: not on Track A");
+	Serial.println("#           G/T/Y = the same three via endpoint DMA");
 	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
 	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
 	Serial.println("#           =<dac>[,<adc>] before L or P sets rates in Hz");
@@ -649,8 +650,8 @@ static void cmd_usb_dump(void)
 	         (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[3]);
 	Serial.println(buf);
 
-	/* No DMA channel is ever armed here; printed so the contrast with
-	 * Track B's identical dump is visible rather than assumed. */
+	/* The core never arms these; usbdma.cpp does. Printed in the same
+	 * layout as Track B's dump so the two can be read side by side. */
 	snprintf(buf, sizeof(buf),
 	         "# dma ch1(OUT) CTRL=%08lx ST=%08lx  ch2(IN) CTRL=%08lx ST=%08lx",
 	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMACONTROL,
@@ -658,6 +659,7 @@ static void cmd_usb_dump(void)
 	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMACONTROL,
 	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMASTATUS);
 	Serial.println(buf);
+	usbdma_dump();
 	Serial.flush();
 }
 
@@ -723,7 +725,7 @@ void loop()
 	 * hangs in close() holding the port. The core's receive ring is only
 	 * 512 bytes, so it stops accepting as soon as nothing reads it.
 	 */
-	if (!play_active() && !stream_out_in_use()) {
+	if (!play_active() && !stream_out_in_use() && !usbdma_out_claimed()) {
 		for (int b = 0; b < 512 && SerialUSB.available() > 0; b++)
 			(void)SerialUSB.read();
 	}
@@ -792,14 +794,21 @@ void loop()
 	          Serial.println("# duplex: IN and OUT together");
 	          Serial.flush(); break;
 	/*
-	 * Track B runs the same three over endpoint DMA. Track A cannot, and
-	 * says so instead of quietly running the manual-FIFO benchmark under
-	 * a DMA name: the difference between the two answers is the entire
-	 * argument for the bare-metal stack.
+	 * The same three over UOTGHS endpoint DMA. The Arduino core never
+	 * programs a DMA channel itself; these take the bulk endpoints away
+	 * from it and drive the controller directly, which is what makes
+	 * the two tracks comparable on the transport as well as the
+	 * converters.
 	 */
-	case 'G': case 'T': case 'Y':
-	          stream_dma_unavailable(buf, sizeof(buf));
-	          Serial.println(buf); Serial.flush(); break;
+	case 'G': stream_flood_dma_start(); state_log("bench=flood-dma");
+	          Serial.println("# flood: IN via DMA");
+	          Serial.flush(); break;
+	case 'T': stream_sink_dma_start(); state_log("bench=sink-dma");
+	          Serial.println("# sink: OUT via DMA, send data now");
+	          Serial.flush(); break;
+	case 'Y': stream_duplex_dma_start(); state_log("bench=duplex-dma");
+	          Serial.println("# duplex: IN+OUT via DMA");
+	          Serial.flush(); break;
 	/*
 	 * The complete loop: the host supplies the waveform, the DAC emits
 	 * it, the jumper carries it to the ADC, and the capture comes back
@@ -888,14 +897,15 @@ void loop()
 	          Serial.println(buf);
 	          snprintf(buf, sizeof(buf),
 	                   "# play: in=%lu produced=%lu consumed=%lu under=%lu "
-	                   "isr=%lu endtx=%lu svc=%lu",
+	                   "isr=%lu endtx=%lu svc=%lu rebuilds=%lu",
 	                   (unsigned long)play_bytes_in,
 	                   (unsigned long)play_produced,
 	                   (unsigned long)play_consumed,
 	                   (unsigned long)play_underruns,
 	                   (unsigned long)play_isr_calls,
 	                   (unsigned long)play_endtx_seen,
-	                   (unsigned long)play_svc_calls);
+	                   (unsigned long)play_svc_calls,
+	                   (unsigned long)usbdma_rebuilds);
 	          Serial.println(buf); Serial.flush(); break;
 	default:                     break;
 	}

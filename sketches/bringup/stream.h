@@ -26,12 +26,12 @@ void stream_duplex_start(void);     /* both at once, the real target */
 void stream_bench_report(char *buf, size_t n);
 
 /*
- * Track B's G/T/Y run the same three over endpoint DMA. Track A cannot:
- * the Arduino CDC stack copies into the endpoint FIFO a byte at a time
- * and never programs a UOTGHS DMA channel. The counterparts exist so
- * the key still answers, and say so rather than silently doing the
- * manual-FIFO thing under a DMA name.
+ * The same three over UOTGHS endpoint DMA. The Arduino core never
+ * programs a DMA channel itself, so these drive the controller directly
+ * while leaving enumeration to the core; see usbdma.h.
  */
-void stream_dma_unavailable(char *buf, size_t n);
+void stream_flood_dma_start(void);
+void stream_sink_dma_start(void);
+void stream_duplex_dma_start(void);
 
 #endif /* STREAM_H */

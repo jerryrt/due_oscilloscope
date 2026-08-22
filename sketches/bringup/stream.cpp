@@ -16,6 +16,7 @@
 #include "gen.h"
 #include "frame.h"
 #include "stream.h"
+#include "usbdma.h"
 
 uint32_t frame_crc32(const uint8_t *data, size_t len)
 {
@@ -39,7 +40,8 @@ uint32_t frame_crc32(const uint8_t *data, size_t len)
 typedef enum { XPORT_USB, XPORT_UART } xport_t;
 static xport_t xport;
 
-enum bench_mode { BENCH_OFF, BENCH_FLOOD, BENCH_SINK, BENCH_DUPLEX };
+enum bench_mode { BENCH_OFF, BENCH_FLOOD, BENCH_SINK, BENCH_DUPLEX,
+                  BENCH_FLOOD_DMA, BENCH_SINK_DMA, BENCH_DUPLEX_DMA };
 static bench_mode bench;
 static uint32_t bench_in_bytes, bench_out_bytes, bench_t0, bench_turn;
 static uint16_t bench_payload[ACQ_BUF_SAMPLES];
@@ -154,6 +156,9 @@ void stream_bench_service(void);
 void stream_stop(void)
 {
 	active = false;
+	if (bench == BENCH_FLOOD_DMA || bench == BENCH_SINK_DMA ||
+	    bench == BENCH_DUPLEX_DMA)
+		usbdma_mode(false, false);
 	bench = BENCH_OFF;
 	acq_stop();
 	gen_stop();
@@ -172,7 +177,8 @@ bool stream_active(void)
  */
 bool stream_out_in_use(void)
 {
-	return bench == BENCH_SINK || bench == BENCH_DUPLEX;
+	return bench == BENCH_SINK || bench == BENCH_DUPLEX ||
+	       bench == BENCH_SINK_DMA || bench == BENCH_DUPLEX_DMA;
 }
 
 /*
@@ -444,8 +450,12 @@ static void bench_pull_out(uint32_t byte_budget)
 	}
 }
 
+void stream_bench_dma_service(void);
+
 void stream_bench_service(void)
 {
+	stream_bench_dma_service();
+
 	switch (bench) {
 	case BENCH_FLOOD:
 		bench_push_in(8u * BENCH_FRAME_BYTES);
@@ -484,15 +494,123 @@ void stream_bench_report(char *buf, size_t n)
 	snprintf(buf, n, "# bench=%s  IN %lu B   OUT %lu B",
 	         bench == BENCH_FLOOD  ? "flood"  :
 	         bench == BENCH_SINK   ? "sink"   :
-	         bench == BENCH_DUPLEX ? "duplex" : "off",
+	         bench == BENCH_DUPLEX ? "duplex" :
+	         bench == BENCH_FLOOD_DMA  ? "flood-dma"  :
+	         bench == BENCH_SINK_DMA   ? "sink-dma"   :
+	         bench == BENCH_DUPLEX_DMA ? "duplex-dma" : "off",
 	         (unsigned long)bench_in_bytes,
 	         (unsigned long)bench_out_bytes);
 }
 
-void stream_dma_unavailable(char *buf, size_t n)
+/* ------------------------------------------------------------------ */
+/* DMA benchmarks                                                      */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Double-buffered so nothing blocks: one frame is in flight under DMA
+ * while the next is being prepared. The processor writes only the
+ * 32-byte header; the 4064-byte payload is never touched by it, which
+ * is the property the architecture actually asks for - and the one the
+ * core's byte-at-a-time FIFO copy cannot provide at any rate.
+ */
+#define DMA_FRAME_BYTES  (32u + ACQ_BUF_SAMPLES * 2u)
+
+static uint8_t dma_tx[2][DMA_FRAME_BYTES] __attribute__((aligned(4)));
+static uint8_t dma_rx[2][2048]            __attribute__((aligned(4)));
+static uint8_t dma_tx_slot, dma_rx_slot;
+static uint32_t dma_in_inflight, dma_out_inflight;
+
+static void dma_build_frame(uint8_t *dst)
 {
-	snprintf(buf, n,
-	         "# no DMA transport in Track A: the Arduino CDC stack copies\n"
-	         "# into the endpoint FIFO a byte at a time and never programs\n"
-	         "# a UOTGHS DMA channel. Use F/R/X here and G/T/Y on Track B.");
+	frame_header_t *h = (frame_header_t *)dst;
+
+	h->magic[0] = FRAME_MAGIC0; h->magic[1] = FRAME_MAGIC1;
+	h->magic[2] = FRAME_MAGIC2; h->magic[3] = FRAME_MAGIC3;
+	h->version         = FRAME_VERSION;
+	h->flags           = FRAME_FLAG_CONTINUOUS;
+	h->bits_per_sample = 12;
+	h->packing         = 0;
+	h->seq             = seq++;
+	h->sample_rate_hz  = 0;
+	h->n_samples       = ACQ_BUF_SAMPLES;
+	h->channel_mask    = (1u << 7) | (1u << 6);
+	h->timestamp_us    = micros();
+	h->overrun_count   = 0;
+	h->header_crc32    = frame_crc32(dst, sizeof(*h) - sizeof(uint32_t));
+}
+
+static void dma_seed_payloads(void)
+{
+	for (int s = 0; s < 2; s++) {
+		uint16_t *p = (uint16_t *)(dma_tx[s] + 32u);
+
+		for (unsigned i = 0; i < ACQ_BUF_SAMPLES; i++)
+			p[i] = (uint16_t)((((i & 1u) ? 6u : 7u) << 12)
+			                  | (i & 0x0fffu));
+	}
+}
+
+static void dma_push_in(void)
+{
+	if (usbdma_in_busy())
+		return;
+	if (dma_in_inflight) {
+		bench_in_bytes += dma_in_inflight - usbdma_in_residue();
+		dma_in_inflight = 0;
+	}
+	dma_build_frame(dma_tx[dma_tx_slot]);
+	if (usbdma_in_start(dma_tx[dma_tx_slot], DMA_FRAME_BYTES)) {
+		dma_in_inflight = DMA_FRAME_BYTES;
+		dma_tx_slot ^= 1u;
+	}
+}
+
+static void dma_pull_out(void)
+{
+	if (usbdma_out_busy())
+		return;
+	if (dma_out_inflight) {
+		bench_out_bytes += usbdma_out_received(dma_out_inflight);
+		dma_out_inflight = 0;
+	}
+	if (usbdma_out_start(dma_rx[dma_rx_slot], sizeof(dma_rx[0]))) {
+		dma_out_inflight = sizeof(dma_rx[0]);
+		dma_rx_slot ^= 1u;
+	}
+}
+
+static void dma_bench_reset(bench_mode m, bool in_dma, bool out_dma)
+{
+	bench_reset(m);
+	usbdma_mode(in_dma, out_dma);
+	if (in_dma)
+		dma_seed_payloads();
+	dma_tx_slot = dma_rx_slot = 0;
+	dma_in_inflight = dma_out_inflight = 0;
+}
+
+void stream_flood_dma_start(void)
+{
+	dma_bench_reset(BENCH_FLOOD_DMA, true, false);
+}
+
+void stream_sink_dma_start(void)
+{
+	dma_bench_reset(BENCH_SINK_DMA, false, true);
+}
+
+void stream_duplex_dma_start(void)
+{
+	dma_bench_reset(BENCH_DUPLEX_DMA, true, true);
+}
+
+void stream_bench_dma_service(void)
+{
+	switch (bench) {
+	case BENCH_FLOOD_DMA:  usbdma_keepalive(); dma_push_in();  break;
+	case BENCH_SINK_DMA:   usbdma_keepalive(); dma_pull_out(); break;
+	case BENCH_DUPLEX_DMA: usbdma_keepalive();
+	                       dma_push_in(); dma_pull_out(); break;
+	default: break;
+	}
 }
