@@ -106,15 +106,20 @@
   },
   "playback": {
     "_comment": [
-      "Underruns tolerated per ladder run while objective 0 is open.",
+      "Underruns tolerated per ladder run.",
       "Zero is the requirement and nothing else is acceptable in the end.",
       "But host-fed playback sporadically underruns at rates that are",
       "otherwise clean - 2 and 3 in a both-track run at RC 86 and RC 50,",
       "which pass 5/5 on their own - while the rates that genuinely",
-      "starve give 15 to 50. A tolerance of 5 separates the open defect's",
-      "tail from a real collapse, so the ladders stay usable as a",
-      "regression gate instead of failing at random. Remove it when",
-      "objective 0 closes."
+      "starve give 15 to 50. A tolerance of 5 separates that tail from a",
+      "real collapse, so the ladders stay usable as a regression gate",
+      "instead of failing at random.",
+      "This used to say to remove it when objective 0 closed. Objective 0",
+      "was the lost-sample defect and it has closed, but this is not its",
+      "tail: an underrun is the ring running dry, not data going missing.",
+      "It belongs to the feed policy in objective 0a, which is open.",
+      "Whether it is still needed has not been retested since the fix -",
+      "measure before removing it."
     ],
     "ladder_underrun_tolerance": 5
   }
