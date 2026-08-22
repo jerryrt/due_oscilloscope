@@ -18,6 +18,15 @@
 void     gen_init(void);
 void     gen_start(void);
 /*
+ * The playback configuration with gen's data source: DACC triggered by
+ * TIOA1 and playing the flash sine table, no USB involved. Config and
+ * start are split so the caller can reproduce the full loop's ordering
+ * - DACC and timer first, capture second, clock last - which is what
+ * makes the mimic command a control for the USB path.
+ */
+void     gen_prepare_tioa1(uint32_t dac_hz);  /* DACC + TC1 config, clock off */
+void     gen_go_tioa1(void);                  /* start the TC1 clock */
+/*
  * Drive the DACC from TC0 channel 1 (TIOA1) instead of the ADC's TIOA0,
  * so the DAC update rate can be swept independently of acquisition.
  */

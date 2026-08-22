@@ -141,6 +141,55 @@ void gen_stop(void)
 }
 
 /*
+ * The DACC driven from TIOA1 by gen's own table, with the clock left
+ * stopped. play.cpp differs from this known-good path in exactly two
+ * ways at once: its data arrives over USB, and its trigger is TIOA1
+ * rather than the ADC's TIOA0. Splitting config from start lets the
+ * caller match the loop's ordering exactly, so a fault that survives
+ * here is in the trigger path and one that does not is in USB.
+ */
+void gen_prepare_tioa1(uint32_t dac_hz)
+{
+	uint32_t rc = (SystemCoreClock / 2u) / dac_hz;
+
+	gen_stop();
+	gen_endtx_count = 0;
+	dac_rc = rc;
+
+	PMC->PMC_PCER0 = (1u << ID_TC1);
+	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
+	TC0->TC_CHANNEL[1].TC_IDR = 0xffffffff;
+	TC0->TC_CHANNEL[1].TC_CMR = TCCLKS_TIMER_CLOCK1
+	                          | TC_CMR_WAVE
+	                          | WAVSEL_UP_RC
+	                          | ACPA_CLEAR
+	                          | ACPC_SET;
+	TC0->TC_CHANNEL[1].TC_RA = rc / 2u;
+	TC0->TC_CHANNEL[1].TC_RC = rc;
+
+	DACC->DACC_TPR  = (uint32_t)gen_table;
+	DACC->DACC_TCR  = GEN_TABLE_LEN;
+	DACC->DACC_TNPR = (uint32_t)gen_table;
+	DACC->DACC_TNCR = GEN_TABLE_LEN;
+
+	(void)DACC->DACC_ISR;
+	DACC->DACC_IDR = 0xffffffff;
+	DACC->DACC_IER = DACC_IER_ENDTX;
+	NVIC_ClearPendingIRQ(DACC_IRQn);
+	NVIC_SetPriority(DACC_IRQn, 1);
+	NVIC_EnableIRQ(DACC_IRQn);
+
+	DACC->DACC_PTCR = DACC_PTCR_TXTEN;
+	DACC->DACC_MR &= ~DACC_MR_TRGSEL_Msk;
+	DACC->DACC_MR |= DACC_MR_TRGEN | TRGSEL_TIOA1;
+}
+
+void gen_go_tioa1(void)
+{
+	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+}
+
+/*
  * Re-arm the next-pointer at the same table, so playback loops forever
  * with no CPU involvement beyond two register writes per table pass.
  */
