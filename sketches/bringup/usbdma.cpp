@@ -1,0 +1,267 @@
+#include <Arduino.h>
+#include "USB/USBDesc.h"          /* CDC_RX, CDC_TX */
+#include "usbdma.h"
+
+/*
+ * UOTGHS_DEVDMA is indexed from endpoint 1, so endpoint n uses index
+ * n-1. Endpoint 0 has no DMA channel, which is fine: control transfers
+ * are tiny, rare, and stay with the core.
+ *
+ * The Arduino CDC puts bulk OUT on endpoint 2 and bulk IN on endpoint 3,
+ * so the channels differ from Track B's by one. Everything else about
+ * the controller is identical.
+ */
+#define DMA_OUT_CH  (CDC_RX - 1u)
+#define DMA_IN_CH   (CDC_TX - 1u)
+
+volatile uint32_t usbdma_rebuilds;
+
+static bool mode_in, mode_out;
+
+bool usbdma_out_claimed(void) { return mode_out; }
+
+bool usbdma_ready(void)
+{
+	return SerialUSB.dtr();
+}
+
+/*
+ * DMA needs AUTOSW: with it the controller frees a drained OUT bank (and
+ * validates a filled IN bank) by itself, which is what lets one transfer
+ * span many packets. Without it the DMA drains the first bank and then
+ * waits forever for a bank switch that never comes.
+ *
+ * The write must happen with the endpoint ENABLED. Measured on this
+ * part by Track B: a DEVEPTCFG write while EPEN is clear is silently
+ * ignored, so a disable-write-enable sequence reads back without AUTOSW
+ * and recreates the stall. The live write sticks and CFGOK stays set.
+ */
+static void ep_apply_autosw(uint32_t ep, bool on)
+{
+	uint32_t cfg = UOTGHS->UOTGHS_DEVEPTCFG[ep];
+
+	if (on)
+		cfg |= UOTGHS_DEVEPTCFG_AUTOSW;
+	else
+		cfg &= ~UOTGHS_DEVEPTCFG_AUTOSW;
+
+	UOTGHS->UOTGHS_DEVEPTCFG[ep] = cfg;
+}
+
+/*
+ * Take the endpoint away from the core's interrupt handler.
+ *
+ * USBCore's ISR answers a CDC_RX endpoint interrupt by calling
+ * Serial_::accept(), which drains the FIFO into its 512-byte ring one
+ * byte at a time. That is the path this whole file exists to replace,
+ * and it must not run: bytes it steals are bytes the DMA will never
+ * see, and the sample stream would silently lose its alignment.
+ */
+static void ep_take(uint32_t ep)
+{
+	UOTGHS->UOTGHS_DEVEPTIDR[ep] = UOTGHS_DEVEPTIDR_RXOUTEC;
+	UOTGHS->UOTGHS_DEVIDR = UOTGHS_DEVIDR_PEP_0 << ep;
+}
+
+static void ep_give_back(uint32_t ep)
+{
+	UOTGHS->UOTGHS_DEVEPTIER[ep] = UOTGHS_DEVEPTIER_RXOUTES;
+	UOTGHS->UOTGHS_DEVIER = UOTGHS_DEVIER_PEP_0 << ep;
+}
+
+static void dma_channel_stop(uint32_t ch)
+{
+	if (!(UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMASTATUS
+	      & UOTGHS_DEVDMASTATUS_CHANN_ENB))
+		return;
+	UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMACONTROL = 0;
+	/* The controller stops at the next packet boundary. */
+	for (uint32_t spin = 0; spin < 100000u; spin++)
+		if (!(UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMASTATUS
+		      & UOTGHS_DEVDMASTATUS_CHANN_ENB))
+			break;
+}
+
+void usbdma_mode(bool in_dma, bool out_dma)
+{
+	dma_channel_stop(DMA_OUT_CH);
+	dma_channel_stop(DMA_IN_CH);
+
+	mode_out = out_dma;
+	mode_in  = in_dma;
+
+	if (out_dma)
+		ep_take(CDC_RX);
+	else
+		ep_give_back(CDC_RX);
+
+	ep_apply_autosw(CDC_RX, out_dma);
+	ep_apply_autosw(CDC_TX, in_dma);
+}
+
+/*
+ * Put the endpoint back the way we need it after the core rebuilt it.
+ *
+ * UDD_InitEP runs on every bus reset and again on SET_CONFIGURATION,
+ * and it writes DEVEPTCFG without AUTOSW and re-enables its own receive
+ * interrupt. There is no callback to hook, so this is polled from the
+ * main loop: two register reads when nothing has changed, which is
+ * cheap enough to run unconditionally.
+ *
+ * The rebuild counter is the diagnostic that matters. Nonzero right
+ * after enumeration is normal; climbing during a run means the link is
+ * resetting underneath, which looks like data corruption if you do not
+ * know to check.
+ */
+void usbdma_keepalive(void)
+{
+	bool clobbered = false;
+
+	/*
+	 * Only meaningful once the host has the port open. With the
+	 * endpoint disabled a DEVEPTCFG write is silently ignored on this
+	 * part, so before that this would count a "rebuild" on every pass
+	 * and bury the one signal the counter exists to give. Nothing is
+	 * armed while the port is closed either, so there is nothing to
+	 * protect yet.
+	 */
+	if (!usbdma_ready())
+		return;
+
+	if (mode_out) {
+		if (!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX] & UOTGHS_DEVEPTCFG_AUTOSW)) {
+			ep_apply_autosw(CDC_RX, true);
+			clobbered = true;
+		}
+		if (UOTGHS->UOTGHS_DEVIMR & (UOTGHS_DEVIMR_PEP_0 << CDC_RX)) {
+			ep_take(CDC_RX);
+			clobbered = true;
+		}
+	}
+	if (mode_in &&
+	    !(UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX] & UOTGHS_DEVEPTCFG_AUTOSW)) {
+		ep_apply_autosw(CDC_TX, true);
+		clobbered = true;
+	}
+
+	if (clobbered)
+		usbdma_rebuilds++;
+}
+
+/* ------------------------------------------------------------------ */
+/* OUT: host -> device                                                 */
+/* ------------------------------------------------------------------ */
+
+bool usbdma_out_busy(void)
+{
+	return (UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS
+	        & UOTGHS_DEVDMASTATUS_CHANN_ENB) != 0;
+}
+
+/*
+ * BUFF_COUNT counts down as the controller lands bytes, so this reports
+ * progress mid-transfer, not only at the end. A multi-slot span takes
+ * milliseconds to complete and a consumer that only learned of new data
+ * at completion would drain the ring against a frozen counter.
+ */
+uint32_t usbdma_out_received(uint32_t requested)
+{
+	uint32_t left = (UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS
+	                 & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
+	                >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
+
+	return left > requested ? 0 : requested - left;
+}
+
+static bool dma_out_start_ctl(void *buf, uint32_t len, uint32_t extra)
+{
+	if (!mode_out || !usbdma_ready() || len == 0)
+		return false;
+	if (usbdma_out_busy())
+		return false;
+
+	UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMAADDRESS = (uint32_t)buf;
+	UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMACONTROL =
+		  UOTGHS_DEVDMACONTROL_BUFF_LENGTH(len)
+		| extra
+		| UOTGHS_DEVDMACONTROL_END_B_EN
+		| UOTGHS_DEVDMACONTROL_END_BUFFIT
+		| UOTGHS_DEVDMACONTROL_CHANN_ENB;
+	return true;
+}
+
+bool usbdma_out_start(void *buf, uint32_t len)
+{
+	/* END_TR_EN stops on a short packet, which is how a host signals
+	 * the end of a transfer smaller than the buffer. Right for
+	 * request/response traffic like the benches. */
+	return dma_out_start_ctl(buf, len, UOTGHS_DEVDMACONTROL_END_TR_EN);
+}
+
+bool usbdma_out_start_stream(void *buf, uint32_t len)
+{
+	/*
+	 * No END_TR_EN: a continuous sample stream never legitimately ends,
+	 * and a short packet - which host-side pacing produces whenever a
+	 * write is not a multiple of 512 - must not terminate the transfer.
+	 * Ending it there forces a re-arm through the main loop every
+	 * couple of kilobytes, and that re-arm latency was a measured
+	 * throughput ceiling on Track B.
+	 */
+	return dma_out_start_ctl(buf, len, 0);
+}
+
+/* ------------------------------------------------------------------ */
+/* IN: device -> host                                                  */
+/* ------------------------------------------------------------------ */
+
+bool usbdma_in_busy(void)
+{
+	return (UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMASTATUS
+	        & UOTGHS_DEVDMASTATUS_CHANN_ENB) != 0;
+}
+
+uint32_t usbdma_in_residue(void)
+{
+	return (UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMASTATUS
+	        & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
+	       >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
+}
+
+bool usbdma_in_start(const void *buf, uint32_t len)
+{
+	if (!mode_in || !usbdma_ready() || len == 0)
+		return false;
+	if (usbdma_in_busy())
+		return false;
+
+	UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMAADDRESS = (uint32_t)buf;
+	UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMACONTROL =
+		  UOTGHS_DEVDMACONTROL_BUFF_LENGTH(len)
+		| UOTGHS_DEVDMACONTROL_END_B_EN
+		| UOTGHS_DEVDMACONTROL_END_BUFFIT
+		| UOTGHS_DEVDMACONTROL_CHANN_ENB;
+	return true;
+}
+
+void usbdma_dump(void)
+{
+	char buf[176];
+
+	snprintf(buf, sizeof(buf),
+	         "# usbdma mode in=%d out=%d rebuilds=%lu dtr=%d",
+	         (int)mode_in, (int)mode_out,
+	         (unsigned long)usbdma_rebuilds, (int)SerialUSB.dtr());
+	Serial.println(buf);
+	snprintf(buf, sizeof(buf),
+	         "# ep%u(OUT) CFG=%08lx AUTOSW=%d  ep%u(IN) CFG=%08lx AUTOSW=%d  DEVIMR=%08lx",
+	         (unsigned)CDC_RX,
+	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX],
+	         (int)!!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX] & UOTGHS_DEVEPTCFG_AUTOSW),
+	         (unsigned)CDC_TX,
+	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX],
+	         (int)!!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX] & UOTGHS_DEVEPTCFG_AUTOSW),
+	         (unsigned long)UOTGHS->UOTGHS_DEVIMR);
+	Serial.println(buf);
+	Serial.flush();
+}
