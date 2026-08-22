@@ -251,7 +251,24 @@ static void play_endtx(void)
 	 * addressing is derived from play_consumed alone, so the buffer the
 	 * guard protects is by construction the buffer the PDC reads.
 	 */
-	if (play_produced - play_consumed >= 2u) {
+	/*
+	 * Three, not two.
+	 *
+	 * ENDTX fires once the PDC has already latched TNPR into TPR, so
+	 * at this point the buffer just finished is play_consumed, the one
+	 * now being emitted is play_consumed + 1, and TNPR has to be
+	 * loaded with play_consumed + 2. Filled slots are those below
+	 * play_produced, so latching that buffer needs play_produced to be
+	 * at least play_consumed + 3.
+	 *
+	 * At two it latched a slot the DMA was still filling and the DAC
+	 * emitted whatever the previous lap of the ring had left there - a
+	 * phase jump with no underrun counted, which is precisely the
+	 * discontinuity invariant 5 exists to make impossible. Falling one
+	 * short now counts an underrun and repeats, which is the honest
+	 * outcome: a repeated buffer is flagged, unfilled memory is not.
+	 */
+	if (play_produced - play_consumed >= 3u) {
 		play_consumed++;
 		__DMB();
 		DACC->DACC_TNPR =
