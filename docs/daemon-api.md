@@ -63,7 +63,8 @@ limit rather than saying no.
 |---|---|---|
 | `hello` | no | `{role: "control"\|"observer"}`. Returns the role granted, `granted`, the protocol version and the device |
 | `ping` | no | `pong` |
-| `status` | no | Everything below under [Status](#status) |
+| `status` | no | Everything below under [Status](#status). Host-side only; safe to poll |
+| `counters` | no | The device's own counters, over the console |
 | `caps` | no | Rate limits, modes, device description |
 | `rate` | no | Snap `adc_hz`/`dac_sps` without touching the device |
 | `subscribe` | no | `{frames: bool}` - start or stop receiving `FRAME` |
@@ -164,6 +165,21 @@ and not itself a measurement.
 `discarded_bytes` counts bytes thrown away while looking for a frame
 magic. Anything beyond one frame's worth means framing is not locking
 on, which reads downstream as data corruption.
+
+### Status asks the device nothing
+
+Poll it as often as you like. That is a property worth stating because
+it was not free: the description used to be fetched per call, which
+meant asking the board for its banner, and a banner print stalls the
+main loop long enough for the DAC to drain its ring - **eleven
+underruns per call, measured, every run**. The description is now asked
+for once and cached, the track being unable to change without a
+reflash.
+
+`counters` is the op that does touch the device, which is why it is
+separate. `B` is a short report and measures clean mid-stream, but a
+client that wants numbers during playback should still prefer taking
+them after the stop.
 
 ## Versioning
 

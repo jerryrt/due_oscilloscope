@@ -598,6 +598,49 @@ Worth noting for the next reader: **a threshold that has only ever run
 under an xfail has not been tested**. When an xfail is removed, the
 numbers it was hiding need re-deriving, not inheriting.
 
+## Found by testing the daemon: the banner costs eleven underruns
+
+The daemon's `status` reply included the device description, and the
+description was found by asking the board which track it runs - which
+means asking for the banner. Playback through the daemon then underran
+**exactly 11 times per run, three runs out of three**, where
+`measure.run_loop` on the same rates gives none.
+
+Isolated by elimination rather than argued about:
+
+| Variant | Underruns |
+|---|---|
+| `run_loop`, no daemon | 0, 0, 0 |
+| daemon, subscriber, status polled mid-stream | 11, 12, 11 |
+| daemon, subscriber, counters read after stop | 0, 0 |
+| daemon, no subscriber | 0, 0 |
+| mid-stream: host reads the console for 1 s, sends nothing | 0, 0 |
+| mid-stream: `B`, the short counters report | 0, 0 |
+| mid-stream: `which_track` (sends `h`) | 11, 11 |
+| mid-stream: `h` alone | 11, 11 |
+
+So it is not the daemon's fan-out competing for the GIL, and not the
+host reading a port. It is the **device** printing: the banner is a
+long console print, the main loop is inside it, and `play_service()`
+does not run while it is. The ring drains and the DAC repeats a buffer,
+which is exactly what the underrun counter is for. `B` is short enough
+not to matter; the banner is not.
+
+That is the same arithmetic as the rule already in `CLAUDE.md` - a
+printf costs about 3.5 ms against a 0.95 us conversion - arriving from
+the other direction: not an ISR this time, but a main loop that owes
+the DAC a buffer every few hundred microseconds.
+
+**Consequences, now built into the daemon.** `status` is answerable
+from the host alone and touches nothing; the device description is
+asked for once and cached, since the track cannot change without a
+reflash; counters are a separate op a client asks for deliberately. A
+front end polling status twice a second would otherwise have corrupted
+every playback it watched, and every counter would have said the host
+was at fault.
+
+**The rule this leaves:** on a poll path, ask the device nothing.
+
 ## Measured figures
 
 | Quantity | Value |

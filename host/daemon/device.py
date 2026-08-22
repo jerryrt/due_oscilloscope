@@ -62,6 +62,18 @@ class Device:
         return ""
 
     def counters(self):
+        """Counters from the device. May cost a console round trip, so
+        it is never called on a status poll - see `stats`."""
+        return {}
+
+    def stats(self):
+        """What the host knows without asking the device anything.
+
+        The distinction is not tidiness. Asking the board for its banner
+        while it is playing costs eleven underruns, every run, because
+        the console print holds up the main loop while the DAC drains
+        its ring. Anything on a poll path must be answerable from here.
+        """
         return {}
 
     def close(self):
@@ -203,6 +215,10 @@ class FakeDevice(Device):
             return {"frames": self._sent_frames, "awg_bytes": self._awg_bytes,
                     "underruns": 0, "overruns": 0, "seq_gaps": 0}
 
+    def stats(self):
+        with self._lock:
+            return {"frames": self._sent_frames, "awg_bytes": self._awg_bytes}
+
 
 class BoardDevice(Device):
     """The real board, driven through `host/measure.py`.
@@ -223,6 +239,7 @@ class BoardDevice(Device):
             import measure as measure_mod
         self.m = measure_mod
         self.board = board
+        self._described = None
         self.fd = None
         self.feeder = None
         self.running = False
@@ -230,14 +247,29 @@ class BoardDevice(Device):
         self.rates = None
         self._rx = 0
 
-    def describe(self):
+    def describe(self, refresh=False):
+        """Cached, and cached for a measured reason.
+
+        Finding the track means asking for the banner, and the banner is
+        a long console print: eleven underruns per call, every call,
+        while playback is running. The track cannot change without a
+        reflash, which the daemon does not do, so it is asked once -
+        and, if the device is busy, not even then.
+        """
+        if self._described is not None and not refresh:
+            return dict(self._described)
         info = {"kind": "board", "frame_bytes": self.m.FRAME_BYTES,
                 "samples_per_frame": self.m.FRAME_SAMPLES}
+        if self.running and not refresh:
+            info["track"] = None
+            info["track_note"] = "not asked: the banner costs underruns "
+            return info
         try:
             info["track"] = self.m.which_track(self.board)
         except Exception as e:                      # noqa: BLE001
             info["track"] = None
             info["track_error"] = str(e)
+        self._described = dict(info)
         return info
 
     def start(self, mode, *, dac_sps=None, adc_hz=None, channels=2,
@@ -259,20 +291,31 @@ class BoardDevice(Device):
             # from the frame headers, which is the only honest source.
             self.board.cmd(preset or "1")
         else:
-            self.board.cmd(f"={dac_sps},{adc_hz or dac_sps},{channels}")
-            self.board.cmd("P" if mode == "play" else "L")
+            # One command string, not two: this is the form run_loop
+            # uses, and the console has dropped commands sent while it
+            # was printing before now.
+            self.board.cmd(f"={dac_sps},{adc_hz or dac_sps},{channels}"
+                           f"{'P' if mode == 'play' else 'L'}")
+            time.sleep(0.2)
 
-        text = self.board.drain_console(0.6)
-        if "refused" in text:
-            self._teardown()
-            raise DeviceError(text.strip() or "the device refused the rate")
-
+        # The feeder starts before the console is read, not after.
+        # Reading first cost 0.6 s of a DAC already draining its ring at
+        # the requested rate, and the ring ran dry: exactly 11 underruns
+        # per run, three runs out of three, where `run_loop` on the same
+        # rates gives none. The device is playing from the moment the
+        # command lands, so anything between that and the first write is
+        # silence the counters are right to complain about.
         if mode in ("play", "loop"):
             if not waveform:
                 self._teardown()
                 raise DeviceError("play needs a waveform")
             self.feeder = self.m.Feeder(self.fd, waveform, (dac_sps or 0) * 2)
             self.feeder.start()
+
+        text = self.board.drain_console(0.3)
+        if "refused" in text:
+            self._teardown()
+            raise DeviceError(text.strip() or "the device refused the rate")
 
         self.running = True
         self.mode = mode
@@ -298,12 +341,22 @@ class BoardDevice(Device):
         return self.board.poll_console()
 
     def counters(self):
+        """The device's own counters, over the console.
+
+        `B` is a short report and measures clean - zero underruns across
+        repeated mid-stream calls - unlike the banner. It still costs a
+        console round trip, so it is an explicit request rather than
+        something a status poll drags in.
+        """
         try:
             play = self.m.parse_play(self.board.ask("B", secs=1.0))
             return {"underruns": play.underruns, "spans": play.spans,
                     "partial": play.partial, "rx_bytes": self._rx}
         except Exception:                            # noqa: BLE001
             return {"rx_bytes": self._rx}
+
+    def stats(self):
+        return {"rx_bytes": self._rx}
 
     def stop(self):
         if not self.running:

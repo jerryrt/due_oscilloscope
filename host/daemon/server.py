@@ -261,6 +261,7 @@ class Server:
         # The waveform a client uploaded, held for the next play. The
         # device loops it; the daemon does not generate signals.
         self.waveform = b""
+        self._description = None
 
     # -- lifecycle ---------------------------------------------------
     def start(self):
@@ -402,17 +403,31 @@ class Server:
             session.event("error", code="not_control",
                           message="waveform upload needs control")
             return
-        n = getattr(self.device, "write_awg", None)
-        if n is None:
-            session.event("error", code="unsupported",
-                          message="this device takes no waveform")
-            return
+        # The daemon holds the waveform; the device is handed it when
+        # playback starts. Writing it to the port on arrival would put
+        # samples on the wire before the DAC was armed to consume them.
+        #
         # Replace rather than append: a client uploading a waveform is
         # describing what to play, not adding to a queue.
         self.waveform = body
-        session.event("awg_ok", bytes=n(body), held=len(self.waveform))
+        sink = getattr(self.device, "write_awg", None)
+        if sink is not None:
+            sink(body)
+        session.event("awg_ok", bytes=len(body), held=len(self.waveform))
 
     # -- state -------------------------------------------------------
+    def description(self):
+        """The device description, asked for once.
+
+        It is cached because finding the track means asking for the
+        banner, and the banner is a long console print that costs
+        eleven underruns while playback runs. Nothing on a poll path may
+        pay that, and the answer cannot change without a reflash.
+        """
+        if self._description is None:
+            self._description = self.device.describe()
+        return dict(self._description)
+
     def status(self):
         with self._lock:
             sessions = [s.status() for s in self.sessions]
@@ -421,7 +436,7 @@ class Server:
         return {
             "protocol": proto.PROTOCOL_VERSION,
             "uptime_s": round(time.time() - (self.started_unix or time.time()), 3),
-            "device": self.device.describe(),
+            "device": self.description(),
             "running": bool(getattr(self.device, "running", False)),
             "mode": getattr(self.device, "mode", None),
             "rates": getattr(self.device, "rates", None),
@@ -431,7 +446,7 @@ class Server:
             "clients": sessions,
             "recording": rec,
             "waveform_bytes": len(self.waveform),
-            "counters": self.device.counters(),
+            "stats": self.device.stats(),
         }
 
 
@@ -458,7 +473,7 @@ def _op_hello(srv, ses, msg):
     return {"event": "hello", "role": ses.role,
             "protocol": proto.PROTOCOL_VERSION,
             "granted": ses.role == want,
-            "device": srv.device.describe()}
+            "device": srv.description()}
 
 
 def _op_ping(srv, ses, msg):
@@ -469,9 +484,19 @@ def _op_status(srv, ses, msg):
     return {"event": "status", "status": srv.status()}
 
 
+def _op_counters(srv, ses, msg):
+    """The device's own counters, asked for explicitly.
+
+    Not folded into `status`, because status is a poll path and this
+    costs a console round trip. `status` is answerable from the host
+    alone and stays free.
+    """
+    return {"event": "counters", "counters": srv.device.counters()}
+
+
 def _op_caps(srv, ses, msg):
     return {"event": "caps", "rates": ratemod.describe(),
-            "device": srv.device.describe(),
+            "device": srv.description(),
             "modes": list(devmod.MODES)}
 
 
@@ -530,7 +555,7 @@ def _op_record_start(srv, ses, msg):
         if srv.recorder is not None:
             raise devmod.DeviceError(
                 f"already recording to {srv.recorder.path}")
-        meta = {"device": srv.device.describe(),
+        meta = {"device": srv.description(),
                 "rates": getattr(srv.device, "rates", None),
                 "mode": getattr(srv.device, "mode", None),
                 "frame_bytes": devmod.FRAME_BYTES,
@@ -568,6 +593,7 @@ OPS = {
     "hello": _op_hello,
     "ping": _op_ping,
     "status": _op_status,
+    "counters": _op_counters,
     "caps": _op_caps,
     "rate": _op_rate,
     "subscribe": _op_subscribe,

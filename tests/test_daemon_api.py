@@ -455,8 +455,31 @@ def test_an_internal_failure_is_reported_not_swallowed(srv, connect):
 
     srv.device = Broken()
     with pytest.raises(clientmod.Refused) as e:
-        connect().call("status")
+        connect().call("counters")
     assert e.value.code == "internal" and "ZeroDivisionError" in e.value.message
+
+
+def test_status_never_asks_the_device_anything(srv, connect):
+    """Status is a poll path. Asking the board for its banner while it
+    plays costs eleven underruns, every call - measured - so anything a
+    client may poll must be answerable from the host alone."""
+    class Loud(devmod.FakeDevice):
+        def counters(self):
+            raise AssertionError("status must not ask the device")
+
+        def describe(self, *a, **kw):
+            raise AssertionError("status must not ask the device")
+
+    c = connect("observer")             # hello caches the description
+    srv.device = Loud()
+    st = c.call("status")["status"]
+    assert "stats" in st
+    assert st["device"]["kind"] == "fake"
+
+
+def test_counters_are_available_when_asked_for(connect):
+    got = connect().call("counters")["counters"]
+    assert "underruns" in got
 
 
 # -- lifecycle --------------------------------------------------------
