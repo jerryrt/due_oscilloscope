@@ -79,21 +79,39 @@ Also fixed while verifying every working feature against spec: preset
 at MCK 78; it now derives 453488 Hz from the running clock like Track
 A, and full-rate capture measures ratio 1.000, 1.83 MB/s gapless.
 
+## Ceilings measured (2026-08-21, third pass)
+
+`L`/`P` now take rates ("=<dac>[,<adc>]" before the letter;
+`loopback.py --dac-sps/--adc-hz/--burst`), and the ladder was measured
+with the tone-amplitude oracle validating fidelity at every point:
+
+| Regime | Solid ceiling | Evidence |
+|---|---|---|
+| Matched loop (DAC = ADC/ch) | **453,488 sps - the ADC's in-spec limit** | under=0, gaps=0, 1372-1377 codes |
+| AWG, play-only | **1.383 Msps - the DACC's hardware limit** (RC 28) | under=0 at 2.81 MB/s feed; needed the 32-slot ring |
+| Asymmetric loop (AWG + 200 kHz capture) | **600 ksps DAC** | under=0, 1372 codes; 650 k shows 4 underruns/5 s |
+
+The asymmetric regime exposed the next real bound: **queue-gated OUT
+while capture streams caps near 1.7 MB/s.** It is not host-side (burst
+size 16-64 KB changes nothing; GIL switch interval changes nothing;
+play-only reaches 2.81 MB/s with the identical feed policy) - it is
+the device's FIFO-copy interleave between play_service ingest and
+stream_service egress. Free-running writes reach 2.47 MB/s but drop on
+the macOS side, so they are not an option.
+
 ## Next objectives, in order
 
-1. **Push the single pair toward the ADC ceiling**: 453,488 Hz per
-   channel, 906,976 sps aggregate. `L` currently hardcodes
-   200 kHz / 200 kHz; parameterize it. Capture alone at that rate is
-   verified; the loop needs DAC-rate and budget choices.
+1. **Endpoint DMA** - now the binding constraint for everything below,
+   not just an invariant repair: it is what lifts gated duplex OUT past
+   1.7 MB/s. The primitives in `drivers/usb_cdc.c` stall after one
+   transfer; status-register handling is the likely culprit.
 2. **The second pair.** Two pairs need ~2.85 MB/s OUT + ~1.81 MB/s IN.
-   Symmetric duplex measures OUT at 2.47 MB/s - short of 2.85 - so
-   this needs the direction balance biased toward OUT, or endpoint
-   DMA. Do not size against the IN-only/OUT-only numbers.
-3. **Endpoint DMA.** Restores the invariant that the CPU never touches
-   sample data, and is the honest fix for objective 2. The primitives
-   in `drivers/usb_cdc.c` (`usb_dma_in_start`, `usb_dma_out_start`)
-   stall after one transfer; status-register handling is the likely
-   culprit.
+   Blocked on objective 1 by the 1.7 MB/s gated-OUT cap.
+3. **Equivalent-time reconstruction** (sampling-scope trick): DAC and
+   ADC dividers are coprime and share MCK, so a host-side reorder gives
+   a 25.6 ns-resolution view of the DAC waveform through the slow ADC.
+   All firmware pieces exist; needs a capture-single-channel mode and a
+   host script.
 4. **`usb_cdc_write` bank clobbering at flood rates** (see
    `docs/status.md` "Next" item 0): the no-spin TXINI guard admits far
    more bytes than the wire carries when the host lags. Harmless below

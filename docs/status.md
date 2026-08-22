@@ -224,6 +224,10 @@ than the source can produce is describing its own bug.**
 | USB IN only (RT threaded host) | 5.20 MB/s |
 | USB OUT only (RT threaded host) | 5.03 MB/s, byte-perfect vs device counter |
 | USB duplex (RT threaded host) | 2.77 in + 2.47 out = 5.25 MB/s combined |
+| **Matched loop ceiling** | **453,488 sps DAC + 906,976 sps capture, solid** (under=0, gaps=0, 1372 codes) |
+| **AWG (play-only) ceiling** | **1.383 Msps solid** (RC 28, under=0, 2.81 MB/s feed); DACC saturates ~1.41 M over-triggered |
+| Asymmetric loop (AWG + 200 kHz monitor) | solid to 600 ksps DAC; 650 k = 4 underruns/5 s |
+| Gated OUT while capture streams | ~1.7 MB/s cap (device FIFO interleave; burst size and host GIL ruled out) |
 | printf, 40-char line | 3600 us |
 | GPIO set+clear pair | 138.3 ns (Track A) / 71.5 ns (Track B) |
 
