@@ -20,6 +20,9 @@ void led_on(void);
 void led_off(void);
 void led_toggle(void);
 void led_blink_forever(int count);      /* fault codes; no SysTick needed */
+void led_aux_init(void);                /* TXL (PA21) + RXL (PC30), active low */
+void led_tx(int on);                    /* TXL: USB IN activity */
+void led_rx(int on);                    /* RXL: USB OUT activity */
 
 /* Timebase. */
 void     systick_init(void);

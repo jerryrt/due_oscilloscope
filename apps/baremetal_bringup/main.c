@@ -424,6 +424,8 @@ int main(void)
 {
 	uint32_t heartbeat_at;
 	int led_state = 0;
+	uint32_t led_usb_at = 0;
+	uint32_t led_in_last = 0, led_out_last = 0;
 	uint32_t rate_arg[2] = { 0, 0 };
 	unsigned rate_idx = 0;
 	bool rate_entry = false;
@@ -436,6 +438,7 @@ int main(void)
 	clock_set_mck(MCK_MULA_DEFAULT);
 
 	led_init();
+	led_aux_init();
 	uart_init(115200);
 	systick_init();
 	dac_init();
@@ -459,6 +462,20 @@ int main(void)
 			else
 				led_off();
 			heartbeat_at = now;
+		}
+
+		/*
+		 * USB activity on the two spare LEDs: TXL lights while the IN
+		 * direction moves data, RXL while OUT does. Driven from byte
+		 * and DMA-start counters the driver already bumps, sampled at
+		 * 50 ms so even a slow trickle reads as a visible flicker.
+		 */
+		if (now - led_usb_at >= 50u) {
+			led_tx(usb_in_activity != led_in_last);
+			led_rx(usb_out_activity != led_out_last);
+			led_in_last = usb_in_activity;
+			led_out_last = usb_out_activity;
+			led_usb_at = now;
 		}
 
 		usb_cdc_poll();
