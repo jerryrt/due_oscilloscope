@@ -115,6 +115,31 @@ count. It never splices. Invariant 5 in `CLAUDE.md` is that
 discontinuous data is never presented as continuous, and it applies to
 the display exactly as it applies to the device.
 
+### Network exposure
+
+**Decided: the daemon listens on all interfaces with no
+authentication.** It is to be used on a trusted network only, and that
+assumption is the security model - written down here so it is revisited
+deliberately rather than forgotten.
+
+What it means in practice, stated plainly rather than as a warning:
+anyone who can reach the port can drive the DAC, start and stop
+captures, and read the sample stream. Nothing on the far side of the
+socket is authenticated, so the network is doing the authenticating.
+The board itself cannot be damaged through it - the DAC drives its own
+pin into a jumper - but the instrument can be taken over mid-measurement
+by anything that can open a socket.
+
+Two consequences to build in rather than discover:
+
+- **Make the bind address a setting, defaulting to all interfaces.**
+  One line now, and the day this runs somewhere less trusted it is a
+  config change instead of a rewrite.
+- **One control owner at a time.** Additional clients may attach and
+  watch, but only one may command the board. Two front ends issuing
+  rate changes into the same device console is a class of confusion
+  worth designing out at the start.
+
 ## Portability: the work is not in the GUI
 
 Every line of `host/` is POSIX-only. `host/ports.py` opens with
@@ -218,9 +243,22 @@ count, capture presets.
 7. **Track B's missing DAC update-rate sweep.** Track A has `d` and
    `j`/`k` and Track B has never had them; `CLAUDE.md` requires the
    tracks stay feature-equivalent, so this is owed regardless.
-8. **Saved setups and stored calibration.** A host-side file is enough
-   to start. A device-side flash page only if calibration should follow
-   the board rather than the machine.
+8. **Calibration constants in device flash.** Decided: they live on
+   the board, not in a host file, so calibration follows the board
+   between machines and a front end on a fresh install is correct
+   immediately. The device reports them through item 1's capability
+   report, which means the GUI never carries a second copy.
+
+   The SAM3X has no EEPROM, so this is an EEFC page write, and two
+   things need checking before it is designed: whether a page can be
+   written while code executes from the same flash bank on this part
+   *(check the datasheet and errata)*, and where the page sits so a
+   firmware update does not erase it. It must also never be written
+   while streaming - an erase-write stalls the real-time path, and the
+   one thing the sample stream cannot absorb is the CPU disappearing.
+
+   Saved *setups* are a separate matter and stay host-side: they are
+   the user's workspace, not a property of the board.
 
 Every firmware item costs double. The tracks share no source by design
 and must stay feature-equivalent, so each lands twice with the same
@@ -387,6 +425,3 @@ having no dependencies, because it covers the GUI too.
   package manager that means a python.org installer. Worth settling
   early: it decides whether the front end is developed here or only on
   the other two platforms.
-- Whether the daemon binds loopback only, or offers remote operation -
-  and if remote, what authenticates the connection.
-- Where calibration constants live: host file, or device flash.
