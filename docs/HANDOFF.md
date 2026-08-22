@@ -31,11 +31,19 @@ with it, and they are objectives 0a to 0c below: the rate starvation is
 a different mechanism, what is left of the sample loss is the host's,
 and the suite wedged once in `close()`.
 
-**The clean two-track pass is recorded.** `pytest --track=both -q` on
-2026-08-22 gave **129 passed, 1 skipped, 5 xfailed, 3 xpassed in
-10:54**, exit 0, and closed without wedging. That was the loose end
-left by the run before it, which had reported every test and then hung
-in teardown; 0c did not reproduce.
+**The clean two-track pass is recorded.** The suite now runs on Python
+3.14.6 from MacPorts and carries the daemon's own tests: `pytest
+--track=both -q` gave **211 passed, 1 skipped, 7 xfailed, 2 xpassed in
+10:54**, closing without wedging. That was the loose end left by the
+run that had reported every test and then hung in teardown; 0c has not
+reproduced since.
+
+**The daemon exists.** `host/daemon/` serves the sample stream and the
+device console over a socket - see `docs/daemon-api.md` for the wire
+protocol and `docs/frontend.md` for why it is a separate process. 81 of
+its tests need no board and run in three seconds; one hardware case
+runs last. `python3 -m daemon --fake` runs it with no hardware at all,
+which is what GUI work should be built against.
 
 Track A is level with Track B: same command letters, same output format,
 same refusals, the same transport mechanism, and now the same
@@ -173,6 +181,22 @@ before and is now separate, with its own evidence.
    It did not recur in the 2026-08-22 two-track pass, which ran the
    same benches on both tracks and closed in the usual time. Still
    unreproduced, so the reasoning above stands unchanged.
+
+0e. **One gross ramp failure on Track A, seen once, unexplained.** On
+   2026-08-22 `test_host_fed_ramp_loses_no_samples[a]` failed with
+   73,314 losses of **exactly 10 bytes each** - not the host's 128-byte
+   signature, and far too many to be the beat in 0f. Every loss being
+   the same size says something systematic, not noise. It has since
+   passed 9 runs on Track A, one of them xfailing with the ordinary
+   host signature, so it is not reproducible on demand. Recorded rather
+   than dismissed: if it returns, capture the run's raw stream before
+   anything else, because the pattern is the whole evidence.
+
+0f. **The slew alarm was the sampling beat, and the margin was wrong.**
+   Closed, and written up in `docs/status.md`. Kept here for the rule
+   it produced: **a threshold that has only ever run under an xfail has
+   not been tested.** When the xfail comes off, the numbers it was
+   hiding need re-deriving rather than inheriting.
 
 0d. **The pytest suite** - built, and it is the instrument that found
    all four defects on this page. `docs/testing.md` is the design and
