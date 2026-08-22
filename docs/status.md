@@ -54,27 +54,70 @@ Track B's own DMA work, apply here with an extra twist:
 
 ### Transport, measured host-side
 
-| Direction | Track A via the core | Track A via DMA | Track B |
-|---|---|---|---|
-| OUT | 0.126 MB/s | **19.72 MB/s** | 26.6 MB/s |
-| IN | 7.81 MB/s | **31.10 MB/s** | 32.0 MB/s |
-| Duplex | - | **15.58 MB/s** | 16.95 MB/s |
+Both tracks, same host, same cable, same session. Run-to-run spread is
+about 5%, so treat differences smaller than that as noise.
 
-OUT is byte-perfect in every mode: 78,905,344 bytes sent by the host and
-78,905,344 counted by the device. The IN flood counters read far above
-the wire on both tracks, which is the bank overcommit standing as
-objective 6 in `docs/HANDOFF.md` - a property of the controller, not of
-either driver.
+| Direction | Track A | Track B |
+|---|---|---|
+| OUT | 27.33 MB/s | 26.92 MB/s |
+| IN | 31.02 MB/s | 32.12 MB/s |
+| Duplex | 15.19 MB/s | 16.25 MB/s |
+
+Getting there took one fix that applied to both, and it was not where it
+looked. Track A's OUT read 19.7 against Track B's 24.0, which invited
+the conclusion that the Arduino stack was the problem. It was not:
+
+- **Per-call costs are near identical** between the tracks -
+  `stream_service()` 1690 ns on A against 1731 on B. Both are -Os with
+  no LTO. The `Q` command on either track prints the whole table.
+- **The decisive number was bytes per DMA arm: 347 against a 2048-byte
+  buffer, the same on both.** The sink bench armed OUT with `END_TR_EN`,
+  which ends a transfer on any short packet, and host pacing produces
+  those constantly. What the OUT number measured was re-arm latency;
+  Track A was slower only because its loop is 1.43x slower.
+- Removing `END_TR_EN` took each arm to the full 2048 bytes and both
+  tracks to ~27 MB/s. The playback ring had known this since the
+  multi-slot span work; the bench had not.
+- An 8192-byte buffer changed nothing (28.03 against 28.16), so the wire
+  is now the limit and the 12 KB stays free.
+- Two frames per IN transfer was tried and measured **worse** on Track A
+  (28.7-29.7 against 30.2-31.2): a second header costs more per arm than
+  the re-arm gap it removes. `DMA_FRAMES_PER_XFER` is kept at 1.
+
+Two traps for whoever measures next. Loop rate must be measured with the
+bench armed and **no traffic** - under load the arming path is skipped
+whenever a channel is busy, and the loop reads far faster than it is.
+And the IN flood counters read far above the wire on both tracks, which
+is the bank overcommit standing as objective 6 in `docs/HANDOFF.md`.
+
+### The DMA endpoints must be recovered after a rebuild
+
+Track A's IN direction stalled intermittently after exactly one short
+transfer - roughly one run in two, which reads as flakiness rather than
+a bug. Opening the control port resets the board, so enumeration lands
+just after the bench arms its first transfer; `SET_CONFIGURATION` then
+rebuilds the endpoint and clears AUTOSW under a transfer already in
+flight. That transfer can never complete, and every caller polls "is the
+channel still busy" before re-arming, so one stalled channel wedges the
+direction for good.
+
+Stopping the channel is necessary and **not sufficient**. A stopped IN
+DMA leaves a bank partially filled and never validated; nothing frees
+it, so the next transfer waits for a free bank that cannot arrive and
+stalls identically. `EPRST` clears the banks and the data toggle. Both
+tracks now do this; Track B owns enumeration so its timing never exposed
+the bug, but its code was equally capable of it.
 
 ### The loop, measured per window
 
 Theoretical maximum for a full-scale sine is ~1370.5 codes.
 
-| Loop rate, each way | Underruns | Windows | Capture |
+| Loop rate, each way | Track | Underruns | Windows |
 |---|---|---|---|
-| 200,000 sps | 0 | 1373.1 | 0 gaps, 0 CRC bad |
-| 453,488 sps | 7-9 | mostly 1365-1377 | 0 gaps, 0 CRC bad |
-| DAC 906,976 + capture 453,488 | 0 | 1100-1340 | 0 gaps, 0 CRC bad |
+| 200,000 sps | A | 0 | 1373.1 |
+| 453,488 sps | A | 7-9 | mostly 1365-1377 |
+| DAC 906,976 + capture 453,488 | A | 0 | 1028-1338 |
+| DAC 906,976 + capture 453,488 | B | 0 | 1074-1345 |
 
 **Read these per window, never per run.** The whole-run Goertzel at
 453,488 sps reads 232 codes while nearly every window reads above 1360,
@@ -82,6 +125,27 @@ because a phase discontinuity cancels the average across five seconds.
 That is the trap this document has warned about since the trigger-path
 work, and it still nearly produced a report of a collapse that was not
 happening.
+
+### The 900 ksps loop
+
+`DAC 906,976 + capture 453,488 Hz per channel` **is** the 900 ksps loop:
+two channels convert round-robin, so 453,488 Hz of trigger is 906,976
+conversions per second, the ADC's full in-spec output. Both tracks run
+it with `under=0`, zero sequence gaps and zero CRC failures.
+
+A **matched** `906,976` on both sides is refused, and correctly: that
+would be 906,976 Hz of trigger, RC 43, half the `ACQ_MIN_RC` floor of
+86. Capturing 906,976 sps on a *single* channel would be legal at RC 43
+but needs a single-channel capture mode, which does not exist yet - it
+is the same prerequisite as objective 5.
+
+One real difference remains at this rate. Capture resyncs over six
+seconds: **Track A 1241, Track B 21.** Both are honestly flagged in the
+frame header, so neither is silent corruption, but they are real
+discontinuities. Track A's capture IN still goes through the core's
+blocking `USBD_Send`, which stalls the service loop long enough for the
+capture ring to lap; Track B's CPU FIFO copy never blocks. Moving
+capture IN to endpoint DMA is objective 1 and would fix both.
 
 Capture alone is unchanged and still matches Track B at the in-spec
 ceiling: 453,488 Hz per channel, 1.831 MB/s, 0 CRC failures, 0 sequence

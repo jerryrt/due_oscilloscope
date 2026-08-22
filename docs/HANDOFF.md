@@ -7,11 +7,16 @@ policy).
 ## Where the work stands (2026-08-22)
 
 Track A is level with Track B: same command letters, same output format,
-same refusals, and now the same transport mechanism. Its bulk endpoints
-were taken away from the Arduino core and put on UOTGHS DMA, which moved
-host-fed playback from 0.126 to 19.72 MB/s and let the oracle run the
-full-rate pair too. The core still enumerates. See "Track A parity" in
-`docs/status.md`.
+same refusals, the same transport mechanism, and now the same
+throughput. Its bulk endpoints were taken away from the Arduino core and
+put on UOTGHS DMA; the core still enumerates. Both tracks measure
+OUT ~27, IN ~31-32, duplex ~15-16 MB/s, within a ~5% run-to-run spread.
+See "Track A parity" in `docs/status.md`.
+
+The 900 ksps loop runs on both: `--dac-sps 906976 --adc-hz 453488` is
+906,976 conversions per second, because two channels convert
+round-robin. A matched 906,976 on both sides is refused and should be -
+that is RC 43 against an `ACQ_MIN_RC` of 86.
 
 Track B runs the complete instrument loop on one channel pair:
 
@@ -28,7 +33,7 @@ regime is validated by the tone-amplitude oracle (theoretical maximum
 |---|---|---|
 | Matched loop up to 453,488 sps each way (ADC in-spec ceiling) | **solid** | under=0, gaps=0, 1371 +/- 2 every window |
 | AWG play-only up to 1.383 Msps (DACC hardware ceiling, RC 28) | **solid** | under=0 at 2.81 MB/s feed |
-| Full-rate pair: DAC 906,976 + capture 906,976 aggregate | **runs, under=0** | purity 90-95%, see objectives 1-2 |
+| Full-rate pair: DAC 906,976 + capture 906,976 aggregate | **runs, under=0**, both tracks | windows 1074-1345 (B), 1028-1338 (A) |
 | Transport via endpoint DMA | measured | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s |
 | Two-channel DAC (tag-interleaved) | routing verified | purity open, see objective 4 |
 
@@ -104,6 +109,18 @@ publishing.
 - **macOS `close()` on a tty waits for in-flight write URBs.** The
   device must always drain bulk OUT when nothing consumes it (the main
   loop does), or host processes hang in `close()` holding the port.
+- **A DMA transfer in flight when its endpoint is rebuilt is dead**, and
+  stopping the channel is not enough: a stopped IN DMA leaves a bank
+  partially filled and never validated, so the next transfer stalls the
+  same way. `EPRST` the endpoint too. This presented as an intermittent
+  one-transfer stall, about one run in two.
+- **Never arm bulk OUT with `END_TR_EN` for streaming.** It ends the
+  transfer on any short packet, host pacing produces those constantly,
+  and a 2048-byte buffer then absorbs ~347 bytes per arm. It cost ~30%
+  of OUT throughput on both tracks and looked like a Track A problem.
+- **Measure loop rate with no traffic.** Under load the arming path is
+  skipped whenever a channel is busy, so the loop counter reads up to
+  17x faster than the loop really is, and points at the wrong culprit.
 - **UOTGHS DMA needs AUTOSW**; a `DEVEPTCFG` write while EPEN is clear
   is silently ignored on this part; endpoint config is rebuilt on
   every bus reset and SET_CONFIGURATION so the driver must reapply the
