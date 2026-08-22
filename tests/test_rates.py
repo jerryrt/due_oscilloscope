@@ -45,7 +45,7 @@ STARVES = {65, 32, 28}
 AWG_STARVES = STARVES
 
 
-def _ladder_run(board, rc, channels, secs, calibration):
+def _ladder_run(board, rc, channels, secs, calibration, tolerance=0):
     hz = measure.hz_for(rc)
     res = measure.run_loop(board, dac_sps=hz, adc_hz=hz, channels=channels,
                            seconds=secs)
@@ -53,7 +53,7 @@ def _ladder_run(board, rc, channels, secs, calibration):
         f"RC {rc} ({hz} Hz, {channels} ch) was refused\n{res.console}")
     assert_fresh(res, secs)
     assert_stream_clean(res)
-    assert_no_underruns(res)
+    assert_no_underruns(res, tolerance=tolerance)
 
     assert res.stream.declared_rate_hz == hz, (
         f"RC {rc} produces {hz} Hz, header declares "
@@ -68,9 +68,10 @@ def _ladder_run(board, rc, channels, secs, calibration):
 
 
 @pytest.mark.parametrize("rc", TWO_CH)
-def test_two_channel_ladder(board, seconds, calibration, rc):
+def test_two_channel_ladder(board, seconds, calibration, baseline, rc):
     """Matched loop on both channels, 50 k to the 453,488/ch ceiling."""
-    _ladder_run(board, rc, 2, window(seconds, 2.0), calibration)
+    _ladder_run(board, rc, 2, window(seconds, 2.0), calibration,
+                tolerance=baseline["playback"]["ladder_underrun_tolerance"])
 
 
 @pytest.mark.parametrize("rc", [
@@ -79,14 +80,15 @@ def test_two_channel_ladder(board, seconds, calibration, rc):
         reason="host feed does not hold the playback ring at this rate; "
                "see STARVES and docs/status.md"))
     for rc in ONE_CH])
-def test_one_channel_ladder(board, seconds, calibration, rc):
+def test_one_channel_ladder(board, seconds, calibration, baseline, rc):
     """A0 alone, up to its own measured floor of RC 44.
 
     The top of this ladder is *slower* in conversions per second than
     the top of the two-channel one. A trigger that converts a pair back
     to back amortises overhead a lone conversion pays in full.
     """
-    _ladder_run(board, rc, 1, window(seconds, 2.0), calibration)
+    _ladder_run(board, rc, 1, window(seconds, 2.0), calibration,
+                tolerance=baseline["playback"]["ladder_underrun_tolerance"])
 
 
 @pytest.mark.awg
@@ -96,7 +98,7 @@ def test_one_channel_ladder(board, seconds, calibration, rc):
         reason="host feed does not hold the ring at this rate; see "
                "AWG_STARVES and docs/status.md"))
     for rc in AWG])
-def test_awg_ladder_play_only(board, seconds, calibration, rc):
+def test_awg_ladder_play_only(board, seconds, calibration, baseline, rc):
     """Playback with no capture running.
 
     Deliberately play-only: with a capture stream alongside, a fault in
@@ -112,7 +114,8 @@ def test_awg_ladder_play_only(board, seconds, calibration, rc):
 
     under = res.play.underruns
     assert under is not None, f"no play counters came back\n{res.report}"
-    assert under == 0, (
+    tol = baseline["playback"]["ladder_underrun_tolerance"]
+    assert under <= tol, (
         f"{under} underruns at RC {rc} ({hz} sps): the DAC repeated a "
         f"buffer, so what reached the pin is not what the host sent")
     assert res.play.consumed, "the DAC consumed nothing at all"

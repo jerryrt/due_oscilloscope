@@ -72,7 +72,7 @@ suite, not style preferences.
 | Express rates as **RC**, not Hz | Rates that do not divide 39 MHz truncate in RC and shift every derived frequency. |
 | Never scale a measured ceiling arithmetically | Halving the two-channel RC 86 gives 43, which is off the cliff. The measured one-channel floor is 44. |
 | Assert **refusals**, not only successes | An over-fast trigger is silently halved with no status bit set. The guard is the only thing between that and corrupt data presented as clean. |
-| Tolerances come from **measured spread** | Throughput varies ~5% run to run. A tolerance tighter than the spread is a flaky test; one much looser is not a test. |
+| Tolerances come from **measured spread** | Measure the spread, do not assume it. The ~5% recorded here was wrong: five runs per mode give 35-59% on the DMA benchmarks, so the floors come from the minima and are justified by what they must catch, not by how close they sit to the typical figure. |
 
 ## 1. Constants the tests need
 

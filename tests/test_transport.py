@@ -6,10 +6,14 @@ and no ring involved, which is what makes them the reference the other
 domains are read against: if the loop is short of rate and the transport
 is at its usual figure, the transport is not the reason.
 
-Tolerances are floors rather than bands, taken from the measured
-run-to-run spread of about 5% with a wide margin below it. What these
-have to catch is a collapse - the ~1.7 MB/s gated-OUT regime that once
-blocked full-rate duplex - not a few percent of drift.
+Tolerances are floors rather than bands, and they sit well below the
+typical figure on purpose. Five 4 s runs per mode measured in-dma at
+19.8-30.5, out-dma at 17.9-28.2 and duplex-dma at 8.2-20.0 MB/s: a
+run-to-run spread of 35 to 59%, not the ~5% this project's notes
+previously recorded. A floor near the typical figure would be a flaky
+test rather than a strict one. What these have to catch is a collapse -
+the ~1.7 MB/s gated-OUT regime that once blocked full-rate duplex - and
+they still catch it by a factor of three or more.
 """
 
 import pytest

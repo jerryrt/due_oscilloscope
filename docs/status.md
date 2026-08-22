@@ -500,7 +500,8 @@ into a counted underrun.
 | **Matched loop ceiling** | **453,488 sps DAC + 906,976 sps capture, solid** (under=0, gaps=0, 1372 codes) |
 | **AWG (play-only) ceiling** | **1.383 Msps solid** (RC 28, under=0, 2.81 MB/s feed); DACC saturates ~1.41 M over-triggered |
 | Asymmetric loop (AWG + 200 kHz monitor) | solid to 600 ksps DAC; 650 k = 4 underruns/5 s |
-| USB via endpoint DMA (playback path converted) | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s |
+| USB via endpoint DMA (playback path converted) | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s (single runs) |
+| USB endpoint DMA, **run-to-run spread** | **35-59%, not the ~5% recorded before**: five 4 s runs give IN 19.8-30.5, OUT 17.9-28.2, duplex 8.2-20.0 MB/s. Suite floors are set from the minima, not the typical figure |
 | **Full-rate pair (DAC 907 k + ADC 907 k aggregate)** | runs with **under=0** on DMA playback; purity 90-95% pending IN-side DMA and a cable swap |
 | ~1.7 MB/s "gated OUT" cap | explained: DMA re-arm/service latency x transfer granularity, not FIFO interleave; removed by multi-slot spans |
 | printf, 40-char line | 3600 us |
