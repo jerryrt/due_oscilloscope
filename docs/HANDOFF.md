@@ -22,9 +22,9 @@ host's `write()` count, a host-fed ramp has no discontinuities, and
 `play_partial` - a new counter for the case the arithmetic says cannot
 happen - stays at zero.
 
-Work is committed on the branch `fix/out-dma-status-race`, seven
-commits, **not merged to `main`**. Both tracks build from it. The board
-was last flashed with Track B.
+Work is **merged to `main`**; the branch it was built on,
+`fix/out-dma-status-race`, is gone. Both tracks build from it. The
+board was last flashed with Track B.
 
 Three things were separated out of that objective rather than fixed
 with it, and they are objectives 0a to 0c below: the rate starvation is
