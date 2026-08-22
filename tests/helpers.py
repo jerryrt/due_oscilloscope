@@ -11,6 +11,8 @@ import statistics
 
 import pytest
 
+import measure
+
 # Default streaming window. Long enough for the settled second that the
 # ring priming costs, plus something to judge.
 RUN_SECONDS = 3.0
@@ -18,6 +20,17 @@ RUN_SECONDS = 3.0
 
 def window(seconds_opt, default=RUN_SECONDS):
     return default if seconds_opt is None else seconds_opt
+
+
+def loop_cmd(adc_hz, channels=2, dac_sps=200000):
+    """The console command that starts a capture at an arbitrary rate.
+
+    `L` is the only command that takes one; the numbered presets are
+    fixed. It starts playback too, which underruns with no host feeding
+    it - harmless here, and counted rather than concealed, which is the
+    point of the underrun counter.
+    """
+    return f"={dac_sps},{adc_hz},{channels}L"
 
 
 def assert_fresh(res, seconds=None):
@@ -65,8 +78,9 @@ def window_purity(res, tag, size=8192):
     reads above 1360, because one phase discontinuity cancels the
     average - a per-run number reports collapses that are not happening.
     """
-    amps = [a for _, a in res.stream.window_amplitudes(tag, res.tone_hz,
-                                                       size=size)]
+    amps = [a for _, a in res.stream.window_amplitudes(
+                              tag, res.tone_hz, size=size,
+                              from_us=measure.SETTLE_US)]
     if not amps:
         return 0.0, []
     return statistics.median(amps), amps
@@ -87,20 +101,28 @@ def assert_tone(res, tag, floor, fraction=0.90, size=8192):
     return median
 
 
-def assert_slew(res, tag, tone_hz, amplitude, fs_hz, margin=1.6):
+def assert_slew(res, tag, tone_hz, amplitude, fs_hz, margin=3.0):
     """No step larger than a clean sine of this amplitude can take.
 
     This is invariant 5 tested directly and without any spectral
     analysis: data spliced across two points in time still passes its
     header CRC, and shows up here as a step no derivative allows.
+
+    The margin is 3x rather than something tight because the DAC clock
+    and the ADC trigger are separate TC channels at the same rate but
+    free running against each other, so two DAC updates can fall between
+    consecutive samples of one channel. The device-generated control
+    measures 39 codes against an analytic 17 for exactly that reason.
+    A splice is three orders of magnitude clear of this, not a few
+    percent.
     """
-    from measure import slew_limit
-    limit = slew_limit(tone_hz, amplitude, fs_hz) * margin
-    got = res.stream.max_slew(tag)
+    limit = measure.slew_limit(tone_hz, amplitude, fs_hz) * margin
+    got = res.stream.max_slew(tag, from_us=measure.SETTLE_US)
     assert got <= limit, (
         f"largest step on tag {tag} is {got} codes against an analytic "
-        f"limit of {limit:.0f} ({margin}x {slew_limit(tone_hz, amplitude, fs_hz):.0f}): "
-        f"the samples are spliced from two points in time")
+        f"limit of {limit:.0f} ({margin}x "
+        f"{measure.slew_limit(tone_hz, amplitude, fs_hz):.0f}): the samples "
+        f"are spliced from two points in time")
     return got
 
 
