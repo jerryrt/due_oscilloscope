@@ -1,6 +1,6 @@
 # Status and Known Issues
 
-Updated after Track A was brought level with Track B's command set.
+Updated after Track A's bulk path was moved onto endpoint DMA.
 
 ## Working
 
@@ -11,56 +11,81 @@ Updated after Track A was brought level with Track B's command set.
 | TC-triggered ADC + PDC ping-pong | yes | yes |
 | Trigger-rate verification | yes, plus refusal past the ceiling | yes, plus refusal past the ceiling |
 | TC-triggered DAC playback (TAG mode) | yes | yes |
-| USB CDC device | Arduino core | **own bare-metal stack** |
+| USB CDC device | Arduino core, bulk endpoints on own DMA | **own bare-metal stack** |
 | Framed binary streaming | yes, resumable | yes, resumable |
 | Host deframe / demux / tone check | yes | yes, same receiver |
-| Host-fed DAC playback over bulk OUT | yes, to ~62 ksps | yes, to the DACC ceiling |
-| Full loop: host waveform out, capture back, simultaneously | yes, to 50 ksps | **yes, to 906,976 sps** |
-| Transport benchmarks via endpoint DMA | **impossible**, see below | yes |
+| Host-fed DAC playback over bulk OUT | yes, by endpoint DMA | yes, by endpoint DMA |
+| Full loop: host waveform out, capture back, simultaneously | **yes, to the full-rate pair** | **yes, to the full-rate pair** |
+| Transport benchmarks via endpoint DMA | yes | yes |
 
-## Track A parity, and the one thing it cannot have
+## Track A parity
 
-The oracle now answers every key Track B does, with the same letters and
-the same output format: rate arguments, the full loop, playback alone,
-the ring dump, the snapshot diagnostic, the USB-free mimic loop, the
-duplex bench, the UART transport and the register dump.
+The oracle answers every key Track B does, with the same letters and the
+same output format: rate arguments, the full loop, playback alone, the
+ring dump, the snapshot diagnostic, the USB-free mimic loop, the duplex
+bench, the UART transport, the register dump and the three DMA
+benchmarks.
 
-`G`, `T` and `Y` are the exception and always will be. They run the
-transport benchmarks over endpoint DMA, and the Arduino CDC stack never
-programs a UOTGHS DMA channel - its ISR copies the endpoint FIFO a byte
-at a time. Track A's `u` prints the DMA channel registers alongside
-everything else so that this reads as observed rather than asserted:
-they are zero while the port is streaming. The keys answer with that
-explanation instead of quietly running the manual-FIFO benchmark under a
-DMA name.
+### The bulk path no longer goes through the core
 
-### What the oracle measures that Track B cannot
+Track A used to starve above roughly 62 ksps of host-fed playback, and
+the reason was on the record: `Serial_::read()` calls `accept()` once
+per byte and each call refills the whole 512-byte receive ring, which
+the OUT benchmark had independently clocked at 0.126 MB/s (see
+`docs/usb.md`).
 
-Track A's host-fed playback plateaus near **125 kB/s, about 62 ksps**,
-and the reason was already on the record: `Serial_::read()` calls
-`accept()` once per byte and each call refills the whole 512-byte
-receive ring, which the OUT benchmark had independently clocked at
-0.126 MB/s (see `docs/usb.md`). The playback path hits the same wall
-from the other direction, which is a useful confirmation that the
-ceiling is the core's receive path and not the DAC ring, the trigger or
-the link.
+The fix keeps the Arduino core for enumeration, descriptors, control
+transfers and the 1200-baud erase, and takes only the two bulk endpoints
+away from it, programming the UOTGHS DMA channels directly. See
+`sketches/bringup/usbdma.cpp`. Two hazards, both already recorded from
+Track B's own DMA work, apply here with an extra twist:
 
-Measured with the existing host tools, all timing host-side:
+- **AUTOSW must be written with the endpoint enabled.** A `DEVEPTCFG`
+  write while `EPEN` is clear is silently ignored on this part. Before
+  the host opens the port the endpoint is not enabled at all, so the
+  mode cannot be applied yet and the keepalive deliberately does
+  nothing there.
+- **The core rebuilds endpoint configuration** on every bus reset and
+  `SET_CONFIGURATION`, clearing AUTOSW and re-enabling its own receive
+  interrupt. A sketch gets no hook into either event, so the mode is
+  re-asserted by polling. `B` reports the rebuild count; it is zero
+  through a normal run, and climbing means the link is resetting
+  underneath rather than the data being wrong.
 
-| Loop rate, each way | Underruns | Tone amplitude | Capture |
+### Transport, measured host-side
+
+| Direction | Track A via the core | Track A via DMA | Track B |
 |---|---|---|---|
-| 50,000 sps | 0 | 1372.4 codes | 0 gaps, 0 CRC bad |
-| 75,000 sps | 76 | 353.8 codes | 0 gaps, 0 CRC bad |
-| 200,000 sps | 1386 | 299.3 codes | 0 gaps, 0 CRC bad |
+| OUT | 0.126 MB/s | **19.72 MB/s** | 26.6 MB/s |
+| IN | 7.81 MB/s | **31.10 MB/s** | 32.0 MB/s |
+| Duplex | - | **15.58 MB/s** | 16.95 MB/s |
 
-Theoretical maximum for a full-scale sine is ~1370.5 codes, so the
-50 ksps row is the loop running exactly as well as Track B's does - just
-at a twentieth of the rate. **The capture direction stays clean at every
-row**: the plateau is entirely in the host-to-DAC direction.
+OUT is byte-perfect in every mode: 78,905,344 bytes sent by the host and
+78,905,344 counted by the device. The IN flood counters read far above
+the wire on both tracks, which is the bank overcommit standing as
+objective 6 in `docs/HANDOFF.md` - a property of the controller, not of
+either driver.
 
-Track A's capture alone is unaffected and still matches Track B at the
-in-spec ceiling: 453,488 Hz per channel, 2235 frames in 5 s, 1.831 MB/s,
-0 CRC failures, 0 sequence gaps, ratio 1.000, tone at 1372.4 codes.
+### The loop, measured per window
+
+Theoretical maximum for a full-scale sine is ~1370.5 codes.
+
+| Loop rate, each way | Underruns | Windows | Capture |
+|---|---|---|---|
+| 200,000 sps | 0 | 1373.1 | 0 gaps, 0 CRC bad |
+| 453,488 sps | 7-9 | mostly 1365-1377 | 0 gaps, 0 CRC bad |
+| DAC 906,976 + capture 453,488 | 0 | 1100-1340 | 0 gaps, 0 CRC bad |
+
+**Read these per window, never per run.** The whole-run Goertzel at
+453,488 sps reads 232 codes while nearly every window reads above 1360,
+because a phase discontinuity cancels the average across five seconds.
+That is the trap this document has warned about since the trigger-path
+work, and it still nearly produced a report of a collapse that was not
+happening.
+
+Capture alone is unchanged and still matches Track B at the in-spec
+ceiling: 453,488 Hz per channel, 1.831 MB/s, 0 CRC failures, 0 sequence
+gaps, ratio 1.000, tone at 1372.4 codes.
 
 ## Headline result: both tracks reach the full ADC rate
 

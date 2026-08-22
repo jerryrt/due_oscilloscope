@@ -81,6 +81,24 @@ came out of this, both implemented:
 - Host tools still `tcflush` before closing the native port, as a
   belt-and-braces against queued-but-not-submitted bytes.
 
+## Track A's bulk path now bypasses the core
+
+The asymmetry described below was the state of things while Track A used
+`SerialUSB` for bulk data. It no longer does: the two bulk endpoints are
+taken away from the core and driven by UOTGHS DMA
+(`sketches/bringup/usbdma.cpp`), with enumeration and control transfers
+left where they were. Measured host-side on the same board:
+
+| Direction | Via the core | Via endpoint DMA |
+|---|---|---|
+| OUT | 0.126 MB/s | **19.72 MB/s**, byte-perfect |
+| IN | 7.81 MB/s | **31.10 MB/s** |
+| Duplex | - | **15.58 MB/s** (7.90 in + 7.68 out) |
+
+The section below stays because it explains *why* that was necessary,
+and because the per-byte `accept()` cost is a live trap for anyone who
+reaches for `Serial_::read()` on a data path.
+
 ## The 62x asymmetry was a firmware path, not USB
 
 Track A reads at 0.126 MB/s because `Serial_::read()` calls `accept()`

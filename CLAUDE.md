@@ -12,11 +12,10 @@ host does all DSP and visualisation.
 Status: **full loop working and solid.** Both tracks stream the ADC's
 complete in-spec output gaplessly, and both run host-fed DAC playback
 with simultaneous capture (HOST -> DAC0 -> A0 -> HOST) at zero
-underruns and tone amplitude at the theoretical maximum. They differ
-only in ceiling: Track B holds that to 906,976 sps each way on endpoint
-DMA, Track A to 50,000 sps because the Arduino CDC stack reads bulk OUT
-a byte at a time. See `docs/status.md` for numbers and `docs/HANDOFF.md`
-for the current objectives.
+underruns and tone amplitude at the theoretical maximum. Both now move
+bulk data by UOTGHS endpoint DMA and reach the full-rate pair; Track A
+keeps the Arduino core for enumeration only. See `docs/status.md` for
+numbers and `docs/HANDOFF.md` for the current objectives.
 
 ## Invariants
 
@@ -74,10 +73,16 @@ Check here before reasoning from general Arduino knowledge.
   header assigns those to PB19/PB20 (A10/A11). Trust the CMSIS device
   header over the Arduino variant table.
 - **The Arduino CDC stack does not use DMA.** `UDD_Send()` copies into
-  the endpoint FIFO a byte at a time and spins on `TXINI`. `SerialUSB`
-  therefore cannot carry the sample path without breaking invariant 1.
-  Endpoints are already 512-byte and 2-bank, so there is nothing to tune
-  there either. Verified from core source; see `docs/hardware.md`.
+  the endpoint FIFO a byte at a time and spins on `TXINI`, and the RX
+  ISR does the same in reverse. `SerialUSB` therefore cannot carry the
+  sample path without breaking invariant 1. Endpoints are already
+  512-byte and 2-bank, so there is nothing to tune there either.
+  Verified from core source; see `docs/hardware.md`. **Track A no longer
+  routes samples through it**: `sketches/bringup/usbdma.cpp` takes the
+  two bulk endpoints away from the core and programs the UOTGHS DMA
+  channels, leaving enumeration and control transfers with the core.
+  The fact above is why that file exists, not a description of what
+  Track A does now.
 - **macOS's CDC-ACM output path drops ~128-byte chunks under pressure**,
   silently, with `write()` having counted them and every counter on
   both sides green. Never free-run writes into saturation. The safe

@@ -6,12 +6,12 @@ policy).
 
 ## Where the work stands (2026-08-22)
 
-Track A has been brought level with Track B: same command letters, same
-output format, same refusals. It now runs the full loop too, at its own
-much lower ceiling, and that ceiling is the measurement it exists to
-produce - see "Track A parity" in `docs/status.md`. The one thing it
-cannot have is `G`/`T`/`Y`, the endpoint-DMA benchmarks; those keys
-answer with why.
+Track A is level with Track B: same command letters, same output format,
+same refusals, and now the same transport mechanism. Its bulk endpoints
+were taken away from the Arduino core and put on UOTGHS DMA, which moved
+host-fed playback from 0.126 to 19.72 MB/s and let the oracle run the
+full-rate pair too. The core still enumerates. See "Track A parity" in
+`docs/status.md`.
 
 Track B runs the complete instrument loop on one channel pair:
 
@@ -107,7 +107,14 @@ publishing.
 - **UOTGHS DMA needs AUTOSW**; a `DEVEPTCFG` write while EPEN is clear
   is silently ignored on this part; endpoint config is rebuilt on
   every bus reset and SET_CONFIGURATION so the driver must reapply the
-  mode. Each of these alone recreates the one-transfer stall.
+  mode. Each of these alone recreates the one-transfer stall. All three
+  apply to Track A's DMA layer too, where the core does the rebuilding
+  and there is no hook to catch it - hence the polled keepalive.
+- **Judge loop purity per window, never per run.** The whole-run
+  Goertzel at 453,488 sps reads 232 codes against a theoretical 1370.5
+  while nearly every 50 ms window reads above 1360: a phase
+  discontinuity cancels the average. A per-run number is the wrong
+  instrument and will report a collapse that is not happening.
 - **The board resets whenever the programming port is opened** (NRSTB),
   which also re-enumerates the native port under a possibly new name:
   open control first, keep it open, re-glob and retry the native open.
@@ -148,13 +155,18 @@ publishing.
 ## Track A command reference
 
 Same letters, same output. Track A adds `d` (DAC update-rate sweep) and
-`j`/`k` (independent-DAC cross-check), which Track B has never had, and
-answers `G`/`T`/`Y` with the reason it has no DMA transport.
+`j`/`k` (independent-DAC cross-check), which Track B has never had.
 
-Its measured ceilings: full loop clean to **50,000 sps each way**
-(under=0, tone at the theoretical maximum), starving above roughly
-62 ksps where the host-fed byte rate plateaus near 125 kB/s. Capture
-alone still matches Track B at 453,488 Hz per channel.
+Its bulk endpoints run on UOTGHS DMA under the core's enumeration
+(`sketches/bringup/usbdma.cpp`). Measured: OUT 19.72 MB/s byte-perfect,
+IN 31.10, duplex 15.58; full loop at 200,000 sps each way with under=0
+and the tone at the theoretical maximum; full-rate pair (DAC 906,976 +
+capture 453,488) with under=0.
+
+`B` reports `rebuilds`, the number of times the core rebuilt endpoint
+configuration out from under the DMA mode. Zero through a normal run.
+Climbing means the link is resetting, which otherwise reads as data
+corruption.
 
 ```sh
 arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg \
