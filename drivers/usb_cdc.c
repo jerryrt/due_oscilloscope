@@ -59,7 +59,33 @@ volatile uint32_t usb_last_devisr;
 volatile uint32_t usb_last_ep0isr;
 volatile uint32_t usb_devier_snap;
 
+/*
+ * The last few SETUP packets, for `u`.
+ *
+ * Opening this port from macOS costs about 25 s in open() and another
+ * 25 s in tcsetattr(), during which the host issues SETUP after SETUP
+ * and the device answers every one without stalling. Track A does not
+ * do this on the same cable and the same host, so it is this stack.
+ * Counting SETUPs was not enough to say which request is being retried,
+ * and instrumenting the suspect region beats reasoning about it.
+ */
+#define SETUP_LOG_N 16u
+static struct {
+	uint8_t  bm, req;
+	uint16_t val, idx, len;
+} setup_log[SETUP_LOG_N];
+static uint32_t setup_log_at;
+
 static uint8_t  pending_address;
+/*
+ * Bytes of a control-OUT data stage still owed by the host.
+ *
+ * A control write is SETUP, then the host's data, then a zero-length IN
+ * from the device as the status stage - in that order. Answering the
+ * SETUP with the status ZLP straight away leaves the data stage
+ * unaccepted, the transfer never completes, and the host retries.
+ */
+static uint32_t ctrl_out_expect;
 static const uint8_t *ctrl_src;
 static uint32_t ctrl_remaining;
 static bool ctrl_active;
@@ -134,6 +160,36 @@ static void ctrl_send_chunk(void)
 	ctrl_remaining -= n;
 
 	UOTGHS->UOTGHS_DEVEPTICR[EP_CTRL] = UOTGHS_DEVEPTICR_TXINIC;
+}
+
+static void ctrl_send_zlp(void);
+
+/*
+ * EP0 OUT: either the data stage of a control write, or the status
+ * stage of a control read. Only the first has anything to keep.
+ */
+static void ctrl_handle_out(void)
+{
+	volatile uint8_t *fifo = FIFO(EP_CTRL);
+	bool was_data = ctrl_out_expect != 0;
+
+	if (was_data) {
+		uint32_t n = (UOTGHS->UOTGHS_DEVEPTISR[EP_CTRL] &
+		              UOTGHS_DEVEPTISR_BYCT_Msk)
+		           >> UOTGHS_DEVEPTISR_BYCT_Pos;
+
+		if (n > sizeof(line_coding))
+			n = sizeof(line_coding);
+		for (uint32_t i = 0; i < n; i++)
+			line_coding[i] = fifo[i];
+		ctrl_out_expect = 0;
+	}
+
+	UOTGHS->UOTGHS_DEVEPTICR[EP_CTRL] = UOTGHS_DEVEPTICR_RXOUTIC;
+	UOTGHS->UOTGHS_DEVEPTIDR[EP_CTRL] = UOTGHS_DEVEPTIDR_FIFOCONC;
+
+	if (was_data)
+		ctrl_send_zlp();
 }
 
 static void ctrl_send(const uint8_t *data, uint32_t len, uint32_t wlen)
@@ -246,6 +302,15 @@ static void handle_setup(void)
 
 	(void)wIndex;
 	usb_setup_count++;
+	{
+		unsigned i = setup_log_at++ % SETUP_LOG_N;
+
+		setup_log[i].bm  = bmRequestType;
+		setup_log[i].req = bRequest;
+		setup_log[i].val = wValue;
+		setup_log[i].idx = wIndex;
+		setup_log[i].len = wLength;
+	}
 	UOTGHS->UOTGHS_DEVEPTICR[EP_CTRL] = UOTGHS_DEVEPTICR_RXSTPIC;
 
 	/* Standard device requests */
@@ -314,8 +379,10 @@ static void handle_setup(void)
 	/* CDC class requests on the communication interface */
 	if ((bmRequestType & 0x60) == 0x20) {
 		switch (bRequest) {
-		case 0x20:  /* SET_LINE_CODING: accept the OUT data stage */
-			ctrl_send_zlp();
+		case 0x20:  /* SET_LINE_CODING: the data stage comes next */
+			ctrl_out_expect = wLength;
+			if (!ctrl_out_expect)
+				ctrl_send_zlp();
 			return;
 		case 0x21:  /* GET_LINE_CODING */
 			ctrl_send(line_coding, sizeof(line_coding), wLength);
@@ -634,12 +701,8 @@ void usb_cdc_poll(void)
 			}
 			return;
 		}
-		if (st & UOTGHS_DEVEPTISR_RXOUTI) {
-			UOTGHS->UOTGHS_DEVEPTICR[EP_CTRL] =
-				UOTGHS_DEVEPTICR_RXOUTIC;
-			UOTGHS->UOTGHS_DEVEPTIDR[EP_CTRL] =
-				UOTGHS_DEVEPTIDR_FIFOCONC;
-		}
+		if (st & UOTGHS_DEVEPTISR_RXOUTI)
+			ctrl_handle_out();
 	}
 }
 
@@ -696,11 +759,9 @@ void UOTGHS_Handler(void)
 			return;
 		}
 		if (st & UOTGHS_DEVEPTISR_RXOUTI) {
-			/* Status stage or SET_LINE_CODING payload; discard. */
-			UOTGHS->UOTGHS_DEVEPTICR[EP_CTRL] =
-				UOTGHS_DEVEPTICR_RXOUTIC;
-			UOTGHS->UOTGHS_DEVEPTIDR[EP_CTRL] =
-				UOTGHS_DEVEPTIDR_FIFOCONC;
+			/* Data stage of a control write, or the status
+			 * stage of a control read. */
+			ctrl_handle_out();
 			return;
 		}
 	}
@@ -754,6 +815,23 @@ void usb_cdc_init(void)
  */
 void usb_cdc_dump(void)
 {
+	{
+		unsigned n = setup_log_at < SETUP_LOG_N
+		           ? setup_log_at : SETUP_LOG_N;
+
+		printf("# setup log, oldest first (%lu total)\n",
+		       (unsigned long)setup_log_at);
+		for (unsigned k = 0; k < n; k++) {
+			unsigned i = (setup_log_at - n + k) % SETUP_LOG_N;
+
+			printf("#   bm=%02x req=%02x val=%04x idx=%04x len=%u\n",
+			       setup_log[i].bm, setup_log[i].req,
+			       setup_log[i].val, setup_log[i].idx,
+			       setup_log[i].len);
+		}
+		uart_flush();
+	}
+
 	uint32_t ctrl = UOTGHS->UOTGHS_CTRL;
 	uint32_t dctl = UOTGHS->UOTGHS_DEVCTRL;
 	uint32_t sr   = UOTGHS->UOTGHS_SR;
