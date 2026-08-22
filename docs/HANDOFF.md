@@ -99,6 +99,28 @@ the device's FIFO-copy interleave between play_service ingest and
 stream_service egress. Free-running writes reach 2.47 MB/s but drop on
 the macOS side, so they are not an option.
 
+## Two-channel DAC: routing verified, purity open
+
+Retested with trustworthy measurement (tag-interleaved 975 Hz on DAC0
++ 1500 Hz on DAC1, 97.5 ksps per channel, capture 97.5 ksps per
+channel): **tag routing works** - each tone appears only on its own
+channel (cross-terms ~2% of signal), refuting the old "both samples
+reached channel 0" note in `host/loopback.py`, which dates from the
+stale-buffer era. The raw waveforms are locally pristine sines.
+
+Open: spectral purity is poor in dual mode only. A0 shows ~5 phase
+jumps/s aligned to ring-slot boundaries (index mod 256 constant), A1
+shows dense steps at an exact 32-sample period - with `under=0`, zero
+gaps, zero overruns, byte counts exact, and the single-channel control
+at identical rates measuring a perfect 1370.7. Two distinct signatures,
+both tag-alternation-specific, neither explained. Reproduce with
+`scratchpad`-style interleaved feed; the analysis prints jump indices.
+
+Also measured on request: DAC0 at 906,976 sps with capture at the full
+ADC rate needs 1.81 MB/s of gated OUT against the ~1.7 MB/s duplex cap
+and is not clean (under=1037/5 s, tone 376 codes) - the exact
+configuration objective 1 unblocks.
+
 ## Next objectives, in order
 
 1. **Endpoint DMA** - now the binding constraint for everything below,
