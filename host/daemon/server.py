@@ -1,0 +1,583 @@
+"""The daemon: one device, many clients, one owner.
+
+Responsibilities, in the order they matter:
+
+1. **Keep the device drained.** A CDC device must keep draining bulk
+   OUT even when nothing consumes it, or macOS's `close()` waits on
+   write URBs that never complete and the host process hangs holding
+   the port. The reader thread runs whether or not a client is
+   listening, and dropping a frame is always preferred to blocking.
+2. **Never let a client stall the stream.** Each client has a bounded
+   outbound queue and its own sender thread. A client that stops reading
+   loses frames, counted and reported; it does not slow the device, the
+   recorder, or anyone else.
+3. **One owner at a time.** Two front ends issuing rate changes into one
+   device console is a confusion designed out here rather than debugged
+   later. Others may attach and watch.
+
+Recording is the daemon's job for the same reason as (1): a capture has
+to survive the front end. See `docs/frontend.md`.
+"""
+
+from __future__ import annotations
+
+import collections
+import json
+import os
+import socket
+import threading
+import time
+
+from . import device as devmod
+from . import protocol as proto
+from . import rates as ratemod
+
+DEFAULT_PORT = 45454
+
+# Frames held per client before the oldest are dropped. 64 frames is
+# 256 KB, about a third of a second at the full rate - long enough to
+# ride out a repaint, short enough that a wedged client is obvious.
+CLIENT_QUEUE_FRAMES = 64
+
+# The recorder's queue is deeper: its stall is an fsync or an indexer,
+# which is bursty rather than sustained.
+RECORD_QUEUE_FRAMES = 512
+
+
+class _Session(threading.Thread):
+    """One connected client: a receive loop here, a sender thread, and a
+    bounded queue between them."""
+
+    def __init__(self, server, conn, addr):
+        super().__init__(daemon=True, name=f"session-{addr}")
+        self.server = server
+        self.conn = conn
+        self.addr = addr
+        self.role = "observer"
+        self.subscribed = False
+        self.dropped = 0
+        self.sent_frames = 0
+        self.hello = False
+        self._q = collections.deque()
+        self._cv = threading.Condition()
+        self._stop = threading.Event()
+        self._sender = threading.Thread(target=self._send_loop, daemon=True,
+                                        name=f"sender-{addr}")
+
+    # -- outbound ----------------------------------------------------
+    def put(self, mtype, body):
+        """Queue a message. Frames are droppable; events are not.
+
+        Dropping the *oldest* frames rather than the newest is
+        deliberate: a client that fell behind wants to catch up with
+        what is happening now, not to replay what it missed.
+        """
+        with self._cv:
+            if self._stop.is_set():
+                return
+            if mtype == proto.T_FRAME:
+                frames = sum(1 for t, _ in self._q if t == proto.T_FRAME)
+                while frames >= self.server.client_queue_frames:
+                    for i, (t, _) in enumerate(self._q):
+                        if t == proto.T_FRAME:
+                            del self._q[i]
+                            break
+                    frames -= 1
+                    self.dropped += 1
+            self._q.append((mtype, body))
+            self._cv.notify()
+
+    def event(self, name, **kw):
+        obj = dict(kw)
+        obj["event"] = name
+        self.put(proto.T_EVT, proto.encode_json(proto.T_EVT, obj))
+
+    def _send_loop(self):
+        while not self._stop.is_set():
+            with self._cv:
+                while not self._q and not self._stop.is_set():
+                    self._cv.wait(0.2)
+                if self._stop.is_set():
+                    return
+                mtype, body = self._q.popleft()
+            try:
+                self.conn.sendall(body)
+                if mtype == proto.T_FRAME:
+                    self.sent_frames += 1
+            except OSError:
+                self.close()
+                return
+
+    # -- inbound -----------------------------------------------------
+    def run(self):
+        self._sender.start()
+        dec = proto.Decoder()
+        try:
+            while not self._stop.is_set():
+                try:
+                    data = self.conn.recv(65536)
+                except OSError:
+                    break
+                if not data:
+                    break
+                try:
+                    msgs = dec.feed(data)
+                except proto.ProtocolError as e:
+                    # Framing is gone; there is nothing to recover to.
+                    self.event("error", code="protocol", message=str(e))
+                    time.sleep(0.05)
+                    break
+                for mtype, body in msgs:
+                    self.server.handle(self, mtype, body)
+        finally:
+            self.close()
+            self.server.forget(self)
+
+    def close(self):
+        if self._stop.is_set():
+            return
+        self._stop.set()
+        with self._cv:
+            self._cv.notify_all()
+        try:
+            self.conn.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        try:
+            self.conn.close()
+        except OSError:
+            pass
+
+    def status(self):
+        return {"addr": f"{self.addr[0]}:{self.addr[1]}", "role": self.role,
+                "subscribed": self.subscribed, "dropped": self.dropped,
+                "frames_sent": self.sent_frames}
+
+
+class _Recorder:
+    """Frames to disk, verbatim, behind a bounded queue.
+
+    The queue is what keeps a disk stall off the USB path: if the writer
+    cannot keep up, frames are dropped from the *record* and counted.
+    A recording with a hole in it says so - in the sidecar and in every
+    status reply - because a file that quietly omits a frame is data
+    that will later be read as continuous.
+    """
+
+    def __init__(self, path, meta, maxlen=RECORD_QUEUE_FRAMES):
+        self.path = path
+        self.meta = meta
+        self.frames = 0
+        self.bytes = 0
+        self.dropped = 0
+        self.error = None
+        self._q = collections.deque(maxlen=None)
+        self._max = maxlen
+        self._cv = threading.Condition()
+        self._stop = threading.Event()
+        self._fh = open(path, "wb")
+        self._t0 = time.time()
+        self._th = threading.Thread(target=self._run, daemon=True,
+                                    name="recorder")
+        self._th.start()
+
+    def put(self, frame):
+        with self._cv:
+            if self._stop.is_set():
+                return
+            if len(self._q) >= self._max:
+                self._q.popleft()
+                self.dropped += 1
+            self._q.append(frame)
+            self._cv.notify()
+
+    def _run(self):
+        while True:
+            with self._cv:
+                while not self._q and not self._stop.is_set():
+                    self._cv.wait(0.2)
+                if not self._q and self._stop.is_set():
+                    return
+                frame = self._q.popleft()
+            try:
+                self._fh.write(frame)
+                self.frames += 1
+                self.bytes += len(frame)
+            except OSError as e:
+                self.error = str(e)
+                return
+
+    def stop(self):
+        self._stop.set()
+        with self._cv:
+            self._cv.notify_all()
+        self._th.join(5.0)
+        try:
+            self._fh.flush()
+            os.fsync(self._fh.fileno())
+        except OSError:
+            pass
+        self._fh.close()
+        side = dict(self.meta)
+        side.update({"frames": self.frames, "bytes": self.bytes,
+                     "dropped": self.dropped, "error": self.error,
+                     "started_unix": self._t0, "stopped_unix": time.time(),
+                     "path": os.path.basename(self.path)})
+        with open(self.path + ".json", "w") as f:
+            json.dump(side, f, indent=2, sort_keys=True)
+        return side
+
+    def status(self):
+        return {"path": self.path, "frames": self.frames, "bytes": self.bytes,
+                "dropped": self.dropped, "error": self.error}
+
+
+class Server:
+    """The daemon proper.
+
+    Binds all interfaces by default, with no authentication, on the
+    stated assumption of a trusted network (`docs/frontend.md`). The
+    address is a parameter precisely so that assumption can be revisited
+    with a config change rather than a rewrite.
+    """
+
+    def __init__(self, device, host="0.0.0.0", port=DEFAULT_PORT, *,
+                 client_queue_frames=CLIENT_QUEUE_FRAMES):
+        self.device = device
+        self.host = host
+        self.port = port
+        self.client_queue_frames = client_queue_frames
+        self.sessions = []
+        self.controller = None
+        self.recorder = None
+        self._lock = threading.RLock()
+        self._sock = None
+        self._stop = threading.Event()
+        self._accept = None
+        self._reader = None
+        self._splitter = devmod.FrameSplitter()
+        self.frames_read = 0
+        self.started_unix = None
+        # The waveform a client uploaded, held for the next play. The
+        # device loops it; the daemon does not generate signals.
+        self.waveform = b""
+
+    # -- lifecycle ---------------------------------------------------
+    def start(self):
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._sock.bind((self.host, self.port))
+        self._sock.listen(8)
+        self.port = self._sock.getsockname()[1]
+        self.started_unix = time.time()
+        self._accept = threading.Thread(target=self._accept_loop, daemon=True,
+                                        name="accept")
+        self._reader = threading.Thread(target=self._read_loop, daemon=True,
+                                        name="device-reader")
+        self._accept.start()
+        self._reader.start()
+        return self
+
+    @property
+    def address(self):
+        return (self.host, self.port)
+
+    def stop(self):
+        self._stop.set()
+        try:
+            if self._sock:
+                self._sock.close()
+        except OSError:
+            pass
+        with self._lock:
+            sessions = list(self.sessions)
+            rec = self.recorder
+            self.recorder = None
+        for s in sessions:
+            s.close()
+        if rec:
+            rec.stop()
+        for th in (self._accept, self._reader):
+            if th and th.is_alive():
+                th.join(3.0)
+        try:
+            self.device.close()
+        except Exception:                            # noqa: BLE001
+            pass
+
+    def __enter__(self):
+        return self.start()
+
+    def __exit__(self, *exc):
+        self.stop()
+
+    # -- plumbing ----------------------------------------------------
+    def _accept_loop(self):
+        while not self._stop.is_set():
+            try:
+                conn, addr = self._sock.accept()
+            except OSError:
+                return
+            conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            s = _Session(self, conn, addr)
+            with self._lock:
+                self.sessions.append(s)
+            s.start()
+
+    def _read_loop(self):
+        """Drain the device forever, whoever is or is not listening."""
+        while not self._stop.is_set():
+            try:
+                data = self.device.read(timeout=0.2)
+            except Exception as e:                   # noqa: BLE001
+                self.broadcast_event("device_error", message=str(e))
+                time.sleep(0.2)
+                continue
+            if not data:
+                continue
+            for frame in self._splitter.feed(data):
+                self.frames_read += 1
+                msg = proto.encode(proto.T_FRAME, frame)
+                with self._lock:
+                    targets = [s for s in self.sessions if s.subscribed]
+                    rec = self.recorder
+                for s in targets:
+                    s.put(proto.T_FRAME, msg)
+                if rec is not None:
+                    rec.put(frame)
+
+    def forget(self, session):
+        with self._lock:
+            if session in self.sessions:
+                self.sessions.remove(session)
+            if self.controller is session:
+                self.controller = None
+
+    def broadcast_event(self, name, **kw):
+        with self._lock:
+            targets = list(self.sessions)
+        for s in targets:
+            s.event(name, **kw)
+
+    # -- dispatch ----------------------------------------------------
+    def handle(self, session, mtype, body):
+        if mtype == proto.T_AWG:
+            return self._handle_awg(session, body)
+        if mtype != proto.T_CMD:
+            session.event("error", code="bad_type",
+                          message=f"clients may not send "
+                                  f"{proto.TYPE_NAMES.get(mtype, mtype)}")
+            return
+        try:
+            msg = proto.decode_json(body)
+        except proto.ProtocolError as e:
+            session.event("error", code="bad_json", message=str(e))
+            return
+        op = msg.get("op")
+        rid = msg.get("id")
+        fn = OPS.get(op)
+        if fn is None:
+            session.event("error", id=rid, code="unknown_op",
+                          message=f"no such op {op!r}")
+            return
+        if op in MUTATING and session is not self.controller:
+            session.event("error", id=rid, code="not_control",
+                          message=f"{op} needs control; another client holds "
+                                  f"it" if self.controller else
+                                  f"{op} needs control; ask for it in hello")
+            return
+        try:
+            result = fn(self, session, msg) or {}
+        except (ratemod.RateError, devmod.DeviceError) as e:
+            session.event("error", id=rid, code="refused", message=str(e))
+            return
+        except Exception as e:                       # noqa: BLE001
+            session.event("error", id=rid, code="internal",
+                          message=f"{type(e).__name__}: {e}")
+            return
+        session.event(result.pop("event", "ok"), id=rid, **result)
+
+    def _handle_awg(self, session, body):
+        if session is not self.controller:
+            session.event("error", code="not_control",
+                          message="waveform upload needs control")
+            return
+        n = getattr(self.device, "write_awg", None)
+        if n is None:
+            session.event("error", code="unsupported",
+                          message="this device takes no waveform")
+            return
+        # Replace rather than append: a client uploading a waveform is
+        # describing what to play, not adding to a queue.
+        self.waveform = body
+        session.event("awg_ok", bytes=n(body), held=len(self.waveform))
+
+    # -- state -------------------------------------------------------
+    def status(self):
+        with self._lock:
+            sessions = [s.status() for s in self.sessions]
+            rec = self.recorder.status() if self.recorder else None
+            ctl = self.controller.status()["addr"] if self.controller else None
+        return {
+            "protocol": proto.PROTOCOL_VERSION,
+            "uptime_s": round(time.time() - (self.started_unix or time.time()), 3),
+            "device": self.device.describe(),
+            "running": bool(getattr(self.device, "running", False)),
+            "mode": getattr(self.device, "mode", None),
+            "rates": getattr(self.device, "rates", None),
+            "frames_read": self.frames_read,
+            "discarded_bytes": self._splitter.discarded,
+            "controller": ctl,
+            "clients": sessions,
+            "recording": rec,
+            "waveform_bytes": len(self.waveform),
+            "counters": self.device.counters(),
+        }
+
+
+# -- operations ------------------------------------------------------
+# Each takes (server, session, msg) and returns a dict of reply fields.
+# Anything in MUTATING requires control.
+
+def _op_hello(srv, ses, msg):
+    want = msg.get("role", "observer")
+    if want not in ("control", "observer"):
+        raise devmod.DeviceError(f"unknown role {want!r}")
+    with srv._lock:
+        if want == "control":
+            if srv.controller is None:
+                srv.controller = ses
+                ses.role = "control"
+            elif srv.controller is ses:
+                pass
+            else:
+                ses.role = "observer"
+        else:
+            ses.role = "observer"
+    ses.hello = True
+    return {"event": "hello", "role": ses.role,
+            "protocol": proto.PROTOCOL_VERSION,
+            "granted": ses.role == want,
+            "device": srv.device.describe()}
+
+
+def _op_ping(srv, ses, msg):
+    return {"event": "pong", "t": time.time()}
+
+
+def _op_status(srv, ses, msg):
+    return {"event": "status", "status": srv.status()}
+
+
+def _op_caps(srv, ses, msg):
+    return {"event": "caps", "rates": ratemod.describe(),
+            "device": srv.device.describe(),
+            "modes": list(devmod.MODES)}
+
+
+def _op_rate(srv, ses, msg):
+    """Snap without touching the device: what would this rate become?"""
+    out = {"event": "rate"}
+    if "adc_hz" in msg:
+        rc, hz = ratemod.check_capture(msg["adc_hz"],
+                                       int(msg.get("channels", 2)))
+        out["adc"] = {"requested": msg["adc_hz"], "rc": rc, "actual_hz": hz}
+    if "dac_sps" in msg:
+        rc, hz = ratemod.check_dac(msg["dac_sps"])
+        out["dac"] = {"requested": msg["dac_sps"], "rc": rc, "actual_hz": hz}
+    return out
+
+
+def _op_subscribe(srv, ses, msg):
+    ses.subscribed = bool(msg.get("frames", True))
+    return {"event": "subscribed", "frames": ses.subscribed}
+
+
+def _op_start(srv, ses, msg):
+    mode = msg.get("mode", "capture")
+    channels = int(msg.get("channels", 2))
+    adc_hz = msg.get("adc_hz")
+    dac_sps = msg.get("dac_sps")
+    actual = {}
+    if mode in ("capture", "loop") and adc_hz:
+        rc, hz = ratemod.check_capture(adc_hz, channels)
+        actual["adc"] = {"rc": rc, "actual_hz": hz}
+        adc_hz = hz
+    if mode in ("play", "loop") and dac_sps:
+        rc, hz = ratemod.check_dac(dac_sps)
+        actual["dac"] = {"rc": rc, "actual_hz": hz}
+        dac_sps = hz
+    waveform = None
+    if mode in ("play", "loop"):
+        waveform = srv.waveform or None
+    srv.device.start(mode, dac_sps=dac_sps, adc_hz=adc_hz, channels=channels,
+                     waveform=waveform, preset=msg.get("preset"))
+    srv.broadcast_event("started", mode=mode, rates=actual)
+    return {"event": "started", "mode": mode, "rates": actual}
+
+
+def _op_stop(srv, ses, msg):
+    srv.device.stop()
+    srv.broadcast_event("stopped")
+    return {"event": "stopped"}
+
+
+def _op_record_start(srv, ses, msg):
+    path = msg.get("path")
+    if not path:
+        raise devmod.DeviceError("record.start needs a path")
+    with srv._lock:
+        if srv.recorder is not None:
+            raise devmod.DeviceError(
+                f"already recording to {srv.recorder.path}")
+        meta = {"device": srv.device.describe(),
+                "rates": getattr(srv.device, "rates", None),
+                "mode": getattr(srv.device, "mode", None),
+                "frame_bytes": devmod.FRAME_BYTES,
+                "protocol": proto.PROTOCOL_VERSION,
+                "note": "frames are stored exactly as the device sent them"}
+        srv.recorder = _Recorder(path, meta)
+    srv.broadcast_event("recording", path=path)
+    return {"event": "recording", "path": path}
+
+
+def _op_record_stop(srv, ses, msg):
+    with srv._lock:
+        rec = srv.recorder
+        srv.recorder = None
+    if rec is None:
+        raise devmod.DeviceError("not recording")
+    side = rec.stop()
+    srv.broadcast_event("recorded", **{k: side[k] for k in
+                                       ("frames", "bytes", "dropped")})
+    return {"event": "recorded", "sidecar": side}
+
+
+def _op_console(srv, ses, msg):
+    text = msg.get("text")
+    if not text:
+        raise devmod.DeviceError("console needs text")
+    board = getattr(srv.device, "board", None)
+    if board is None:
+        raise devmod.DeviceError("this device has no console")
+    board.cmd(text)
+    return {"event": "console", "sent": text}
+
+
+OPS = {
+    "hello": _op_hello,
+    "ping": _op_ping,
+    "status": _op_status,
+    "caps": _op_caps,
+    "rate": _op_rate,
+    "subscribe": _op_subscribe,
+    "start": _op_start,
+    "stop": _op_stop,
+    "record.start": _op_record_start,
+    "record.stop": _op_record_stop,
+    "console": _op_console,
+}
+
+# Ops that change the device or the daemon's state. Everything else is
+# readable by any observer.
+MUTATING = {"start", "stop", "record.start", "record.stop", "console"}

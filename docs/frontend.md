@@ -95,6 +95,9 @@ lives in the GUI process while the daemon stays stdlib.
 
 ## Wire protocol between daemon and GUI
 
+**Implemented; the reference is `docs/daemon-api.md`.** What follows is
+the design it was built from.
+
 One TCP connection on the loopback interface. An 8-byte header - magic,
 type, length - then the body.
 
