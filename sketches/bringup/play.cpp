@@ -3,15 +3,17 @@
  * ring; this file is the Arduino-stack half of it.
  *
  * Register configuration is deliberately identical to drivers/play.c,
- * down to the trigger source and the prime threshold, so that a
- * difference in measured behaviour between the tracks means a real
- * difference in the transport and not a different DACC setup.
+ * down to the trigger source, the ring geometry, the prime threshold
+ * and the multi-slot DMA spans, so that a difference in measured
+ * behaviour between the tracks means a real difference and not a
+ * different setup. The only thing that differs is who enumerates.
  */
 
 #include <Arduino.h>
 #include "acq.h"          /* TCCLKS_/WAVSEL_/ACPA_/ACPC_ */
 #include "gen.h"
 #include "play.h"
+#include "usbdma.h"
 
 #define TRGSEL_TIOA1 (2u << 1)   /* DACC_MR.TRGSEL: 2 = TIOA1 */
 
@@ -30,21 +32,14 @@ static uint32_t fill_off;            /* byte offset into the filling buffer */
 static uint32_t dac_rc;
 static bool     active;
 static bool     primed;
+static bool     dma_inflight;        /* an OUT-endpoint DMA is running */
+static uint32_t dma_asked;           /* bytes requested of that transfer */
+static uint32_t dma_start_off;       /* fill_off when it started */
+static uint32_t dma_published;       /* slots already published from it */
 
 /* Enough queued to ride out host scheduling jitter before the first
  * conversion, so priming never emits a burst of stale repeats. */
 #define PLAY_PRIME_BUFS 4u
-
-/*
- * Bytes moved out of the core's receive ring per service call.
- *
- * The core drains the endpoint FIFO into a 512-byte ring inside the USB
- * ISR, one byte at a time, and this loop drains that ring the same way.
- * The budget bounds how long a single pass can hold off the capture
- * service and the command interface; it is not a throughput knob, since
- * the ring never holds more than 512 bytes anyway.
- */
-#define PLAY_DRAIN_BUDGET 512u
 
 bool play_active(void) { return active; }
 
@@ -90,6 +85,11 @@ bool play_start(uint32_t dac_hz)
 	play_svc_calls = 0;
 	fill_off = 0;
 	dac_rc = rc;
+	dma_inflight = false;
+
+	/* The ring is fed by endpoint DMA; capture IN stays with the core's
+	 * blocking writer, which is already the faster of the two. */
+	usbdma_mode(false, true);
 
 	/* Silence until the host supplies something: mid scale on both,
 	 * with the channel tag alternating so the DACC sees a well-formed
@@ -138,8 +138,11 @@ bool play_start(uint32_t dac_hz)
 
 void play_stop(void)
 {
+	if (active)
+		usbdma_mode(false, false);
 	active = false;
 	primed = false;
+	dma_inflight = false;
 	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
 	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);
 	DACC->DACC_PTCR = DACC_PTCR_TXTDIS;
@@ -148,61 +151,75 @@ void play_stop(void)
 }
 
 /*
- * Fill the ring from bulk OUT.
+ * Fill the ring by endpoint DMA: bulk OUT data moves from the FIFO into
+ * the playback buffers with no CPU copy at all, which is the invariant
+ * the architecture rests on and the one this path used to break.
  *
- * Reads go through Serial_::read rather than readBytes: Stream's
- * readBytes calls millis() per byte through timedRead, which would make
- * this a measurement of the timeout helper instead of the transport.
+ * One transfer is in flight at a time, aimed at as many contiguous free
+ * slots as the ring allows. Single-slot transfers cap throughput at
+ * roughly slot-size over service latency, because a new transfer can
+ * only start on a main-loop pass; a multi-slot span keeps the
+ * controller busy across many passes.
  *
  * The reservation stays two slots short of the reader because the PDC
  * owns both the buffer it is emitting and the one latched in TNPR.
  */
 void play_service(void)
 {
-	uint32_t moved = 0;
-
 	if (!active)
 		return;
 
 	play_svc_calls++;
 
-	while (moved < PLAY_DRAIN_BUDGET &&
-	       play_produced - play_consumed < PLAY_NBUF - 2u) {
-		uint8_t *dst = (uint8_t *)play_buf[play_produced % PLAY_NBUF];
-		int avail = SerialUSB.available();
-		uint32_t room = PLAY_BUF_BYTES - fill_off;
-		uint32_t want;
+	/* The core rebuilds endpoint configuration on bus reset and
+	 * SET_CONFIGURATION, clearing AUTOSW and re-enabling its own
+	 * receive interrupt. Put it back before relying on either. */
+	usbdma_keepalive();
 
-		if (avail <= 0)
-			break;
+	if (dma_inflight) {
+		/*
+		 * Publish progress while the transfer runs, not just at its
+		 * end: a multi-slot span takes many milliseconds to complete,
+		 * and a consumer that only learned of new data at completion
+		 * would drain the ring against a frozen counter and underrun
+		 * with the bytes already in SRAM. BUFF_COUNT counts down as
+		 * the DMA lands bytes, so completed slots can be published
+		 * incrementally and exactly.
+		 */
+		uint32_t done = usbdma_out_received(dma_asked);
+		uint32_t slots_done = (dma_start_off + done) / PLAY_BUF_BYTES;
 
-		want = (uint32_t)avail < room ? (uint32_t)avail : room;
-		if (want > PLAY_DRAIN_BUDGET - moved)
-			want = PLAY_DRAIN_BUDGET - moved;
-
-		for (uint32_t i = 0; i < want; i++) {
-			int c = SerialUSB.read();
-
-			if (c < 0) {
-				want = i;
-				break;
-			}
-			dst[fill_off + i] = (uint8_t)c;
-		}
-
-		fill_off += want;
-		moved += want;
-		play_bytes_in += want;
-
-		if (fill_off == PLAY_BUF_BYTES) {
-			fill_off = 0;
+		if (slots_done > dma_published) {
 			__DMB();
-			play_produced++;
+			play_produced += slots_done - dma_published;
+			dma_published = slots_done;
 		}
-		if (want == 0)
-			break;
+		if (usbdma_out_busy())
+			goto prime;
+
+		dma_inflight = false;
+		play_bytes_in += done;
+		fill_off = (dma_start_off + done) % PLAY_BUF_BYTES;
 	}
 
+	if (!dma_inflight &&
+	    play_produced - play_consumed < PLAY_NBUF - 2u) {
+		uint32_t slot = play_produced % PLAY_NBUF;
+		uint32_t free_slots = (PLAY_NBUF - 2u)
+		                    - (play_produced - play_consumed);
+		uint32_t until_wrap = PLAY_NBUF - slot;
+		uint32_t span = free_slots < until_wrap ? free_slots
+		                                        : until_wrap;
+		uint8_t *dst = (uint8_t *)play_buf[slot] + fill_off;
+
+		dma_asked = span * PLAY_BUF_BYTES - fill_off;
+		dma_start_off = fill_off;
+		dma_published = 0;
+		if (usbdma_out_start_stream(dst, dma_asked))
+			dma_inflight = true;
+	}
+
+prime:
 	if (!primed && play_produced >= PLAY_PRIME_BUFS) {
 		primed = true;
 		TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;

@@ -5,12 +5,11 @@
  * with the DACC channel tag already in bits [13:12], the PDC feeds them
  * to the DACC, and the CPU only moves indices.
  *
- * Except here it also moves the bytes. Track B fills this ring by
- * endpoint DMA and never touches a sample; the Arduino CDC stack has no
- * DMA path at all, so Track A copies out of the core's receive ring one
- * byte at a time. That is the whole point of the oracle: it says what
- * the stock stack can sustain, and the difference against Track B is
- * the value of driving the controller directly.
+ * The ring is filled by UOTGHS endpoint DMA, the same mechanism Track B
+ * uses, so the processor never touches a sample here either. The
+ * Arduino core keeps enumeration and control transfers; only the bulk
+ * data path is taken over. See usbdma.h for how that coexists with a
+ * stack that rebuilds its endpoints behind your back.
  *
  * The failure mode is underrun, the dual of capture overrun: the DAC
  * needs a buffer the host has not supplied yet. It is counted and
