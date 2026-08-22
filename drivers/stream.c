@@ -135,6 +135,9 @@ static bool stream_start_common(uint32_t trigger_hz)
 void stream_stop(void)
 {
 	active = false;
+	if (bench == BENCH_FLOOD_DMA || bench == BENCH_SINK_DMA ||
+	    bench == BENCH_DUPLEX_DMA)
+		usb_cdc_dma_mode(false, false);
 	bench = BENCH_OFF;
 	acq_stop();
 	gen_stop();
@@ -505,6 +508,7 @@ static void dma_pull_out(void)
 void stream_flood_dma_start(void)
 {
 	bench_reset(BENCH_FLOOD_DMA);
+	usb_cdc_dma_mode(true, false);
 	dma_seed_payloads();
 	dma_tx_slot = dma_rx_slot = 0;
 	dma_in_inflight = dma_out_inflight = 0;
@@ -513,6 +517,7 @@ void stream_flood_dma_start(void)
 void stream_sink_dma_start(void)
 {
 	bench_reset(BENCH_SINK_DMA);
+	usb_cdc_dma_mode(false, true);
 	dma_tx_slot = dma_rx_slot = 0;
 	dma_in_inflight = dma_out_inflight = 0;
 }
@@ -520,6 +525,7 @@ void stream_sink_dma_start(void)
 void stream_duplex_dma_start(void)
 {
 	bench_reset(BENCH_DUPLEX_DMA);
+	usb_cdc_dma_mode(true, true);
 	dma_seed_payloads();
 	dma_tx_slot = dma_rx_slot = 0;
 	dma_in_inflight = dma_out_inflight = 0;

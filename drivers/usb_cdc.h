@@ -51,6 +51,11 @@ size_t usb_cdc_read(uint8_t *dst, size_t max);
  * Start returns false if a transfer is already in flight. The buffer
  * must stay valid and unmodified until busy() reads false.
  */
+/* Switch endpoints between manual-FIFO and DMA (AUTOSW) operation.
+ * Never mix the two on one endpoint: the FIFO path owns FIFOCON by
+ * hand, DMA needs the hardware to switch banks itself. */
+void   usb_cdc_dma_mode(bool in_dma, bool out_dma);
+
 bool   usb_dma_in_start(const void *buf, uint32_t len);
 bool   usb_dma_in_busy(void);
 uint32_t usb_dma_in_residue(void);

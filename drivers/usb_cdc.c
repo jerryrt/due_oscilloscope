@@ -184,12 +184,25 @@ static bool ep_configure(uint32_t ep, uint32_t type, uint32_t dir_in,
 	return true;
 }
 
+/*
+ * Whether each bulk endpoint runs in DMA (AUTOSW) or manual-FIFO mode.
+ * Owned here rather than in the caller because endpoint configuration
+ * is rebuilt on every bus reset and SET_CONFIGURATION, and a rebuild
+ * that forgot the mode would silently recreate the one-transfer DMA
+ * stall this flag exists to prevent.
+ */
+static bool dma_mode_in, dma_mode_out;
+
+static void ep_apply_autosw(uint32_t ep, bool on);
+
 static void configure_data_endpoints(void)
 {
 	/* type: 0 control, 1 isochronous, 2 bulk, 3 interrupt */
 	ep_configure(EP_ACM, 3u, 1u, 64u,      2u);
 	ep_configure(EP_OUT, 2u, 0u, EPX_SIZE, 2u);
 	ep_configure(EP_IN,  2u, 1u, EPX_SIZE, 2u);
+	ep_apply_autosw(EP_OUT, dma_mode_out);
+	ep_apply_autosw(EP_IN, dma_mode_in);
 }
 
 /* ------------------------------------------------------------------ */
@@ -393,6 +406,60 @@ size_t usb_cdc_read(uint8_t *dst, size_t max)
  */
 #define DMA_IN_CH   (EP_IN  - 1u)
 #define DMA_OUT_CH  (EP_OUT - 1u)
+
+/*
+ * DMA needs AUTOSW: with it, the controller validates a filled IN bank
+ * (and frees a drained OUT bank) by itself, which is what lets one DMA
+ * transfer span many packets. Without it the DMA fills or drains the
+ * first bank and then waits forever for a bank switch that never
+ * comes - the exact one-transfer stall the primitives used to exhibit.
+ * The manual FIFO path needs the opposite: AUTOSW off and explicit
+ * FIFOCON handling. The two are per-endpoint modes, so switch
+ * explicitly and never mix them on the same endpoint at the same time.
+ */
+static void ep_apply_autosw(uint32_t ep, bool on)
+{
+	uint32_t cfg = UOTGHS->UOTGHS_DEVEPTCFG[ep];
+
+	if (on)
+		cfg |= UOTGHS_DEVEPTCFG_AUTOSW;
+	else
+		cfg &= ~UOTGHS_DEVEPTCFG_AUTOSW;
+
+	/*
+	 * Write with the endpoint ENABLED. Measured on this part: a
+	 * DEVEPTCFG write while EPEN is clear is silently ignored - a
+	 * disable-write-enable sequence read back without AUTOSW and
+	 * recreated the one-transfer stall. The live write sticks and
+	 * CFGOK stays set.
+	 */
+	UOTGHS->UOTGHS_DEVEPTCFG[ep] = cfg;
+	if (!(UOTGHS->UOTGHS_DEVEPTISR[ep] & UOTGHS_DEVEPTISR_CFGOK))
+		usb_cfg_fail++;
+}
+
+static void dma_channel_stop(uint32_t ch)
+{
+	if (!(UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMASTATUS
+	      & UOTGHS_DEVDMASTATUS_CHANN_ENB))
+		return;
+	UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMACONTROL = 0;
+	/* The controller stops at the next packet boundary. */
+	for (uint32_t spin = 0; spin < 100000u; spin++)
+		if (!(UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMASTATUS
+		      & UOTGHS_DEVDMASTATUS_CHANN_ENB))
+			break;
+}
+
+void usb_cdc_dma_mode(bool in_dma, bool out_dma)
+{
+	dma_channel_stop(DMA_IN_CH);
+	dma_channel_stop(DMA_OUT_CH);
+	dma_mode_in = in_dma;
+	dma_mode_out = out_dma;
+	ep_apply_autosw(EP_IN, in_dma);
+	ep_apply_autosw(EP_OUT, out_dma);
+}
 
 bool usb_dma_in_busy(void)
 {
@@ -673,5 +740,17 @@ void usb_cdc_dump(void)
 	       (unsigned long)PMC->PMC_USB,
 	       (int)!!(PMC->PMC_SR & PMC_SR_LOCKU),
 	       (unsigned long)PMC->PMC_SCSR);
+	printf("# ep2(OUT) CFG=%08lx ISR=%08lx  ep3(IN) CFG=%08lx ISR=%08lx\n",
+	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
+	       (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[2],
+	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3],
+	       (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[3]);
+	printf("# dma ch1(OUT) ADDR=%08lx CTRL=%08lx ST=%08lx  ch2(IN) ADDR=%08lx CTRL=%08lx ST=%08lx\n",
+	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMAADDRESS,
+	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMACONTROL,
+	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMASTATUS,
+	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMAADDRESS,
+	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMACONTROL,
+	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMASTATUS);
 	uart_flush();
 }
