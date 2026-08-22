@@ -179,31 +179,45 @@ def main():
     stop = threading.Event()
 
     byte_rate = args.dac_sps * 2
+    # Blocking writes: without this a full queue raises EAGAIN and a
+    # naive writer dies silently. VMIN=0 keeps reads non-blocking.
+    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
 
     def feeder():
         rt_note[0] = rt.promote(period_ms=10.0, computation_ms=1.0,
                                 constraint_ms=5.0)
+        # Clock-paced at the DAC's byte rate with a bounded lead. The
+        # empty-queue gate that the manual-FIFO device needed caps near
+        # 1.7 MB/s when IN traffic runs, because waiting for TIOCOUTQ==0
+        # loses a millisecond per burst to driver scheduling. With the
+        # device ingesting by endpoint DMA into a 30 KB ring, the tty
+        # queue stays shallow as long as the lead is smaller than the
+        # ring, so the macOS pressure-drop condition cannot form and
+        # pacing by the clock is safe again - and measurably clean.
+        LEAD = 20480
         pos = 0
+        t0 = time.monotonic()
         while not stop.is_set():
-            # Write only when TIOCOUTQ reports the queue truly empty,
-            # not merely below low-water: the residual glitches at the
-            # low-water gate (~1.6/s) vanish when every burst lands in
-            # an empty queue. The device's 8 KB ring covers ~20 ms, so
-            # sleeping half the remaining drain time and re-polling
-            # never lets the far end starve.
-            try:
-                q = struct.unpack("i", fcntl.ioctl(
-                    fd, termios.TIOCOUTQ, b"\0\0\0\0"))[0]
-            except OSError:
-                return
-            if q > 0:
-                time.sleep(max(0.001, q / byte_rate / 2))
+            due = int((time.monotonic() - t0) * byte_rate) + LEAD - tx_count[0]
+            if due <= 0:
+                time.sleep(min(0.005, -due / byte_rate + 0.001))
                 continue
-            block = wave[pos:pos + args.burst]
-            while len(block) < args.burst:
-                block += wave[:args.burst - len(block)]
+            # Whole 512-byte packets only: a short packet on the wire
+            # would end the device's stream DMA span early on older
+            # firmware and fragments transfers on any firmware.
+            due = min(due, 16384) & ~511
+            if due == 0:
+                time.sleep(0.001)
+                continue
+            block = wave[pos:pos + due]
+            while len(block) < due:
+                block += wave[:due - len(block)]
             try:
                 n = os.write(fd, block)
+            except BlockingIOError:
+                time.sleep(0.001)
+                continue
             except OSError:
                 return
             if n > 0:
