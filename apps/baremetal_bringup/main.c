@@ -45,6 +45,7 @@ static void banner(void)
 	printf("#           G/T/Y = same three via DMA\n");
 	printf("#           L=full loop HOST->DAC->ADC->HOST\n");
 	printf("#           P=play only  V=ring dump  D=loop diagnostic\n");
+	printf("#           =<dac>[,<adc>] before L or P sets rates in Hz\n");
 	printf("#           M=mimic loop without USB (gen sine on TIOA1 + capture)\n");
 	printf("#\n");
 }
@@ -423,6 +424,9 @@ int main(void)
 {
 	uint32_t heartbeat_at;
 	int led_state = 0;
+	uint32_t rate_arg[2] = { 0, 0 };
+	unsigned rate_idx = 0;
+	bool rate_entry = false;
 
 	/* WDT is enabled out of reset on this part and will reset the board
 	 * roughly every 15 s if not serviced. Nothing here services it. */
@@ -477,6 +481,30 @@ int main(void)
 		}
 
 		int c = uart_getc();
+
+		/*
+		 * Rate arguments: "=<dac>[,<adc>]" typed before a command
+		 * letter. The '=' introducer keeps bare digits working as the
+		 * stream presets; while an entry is open, digits and one comma
+		 * are argument text. The next command letter consumes the
+		 * arguments and closes the entry.
+		 */
+		if (c == '=') {
+			rate_arg[0] = rate_arg[1] = 0;
+			rate_idx = 0;
+			rate_entry = true;
+			c = -1;
+		} else if (rate_entry && c >= '0' && c <= '9') {
+			rate_arg[rate_idx] = rate_arg[rate_idx] * 10u
+			                   + (uint32_t)(c - '0');
+			c = -1;
+		} else if (rate_entry && c == ',' && rate_idx == 0) {
+			rate_idx = 1;
+			c = -1;
+		} else if (c >= 0) {
+			rate_entry = false;
+		}
+
 		switch (c) {
 		case 'h': banner();         break;
 		case 'p': measure_printf(); break;
@@ -519,26 +547,45 @@ int main(void)
 		 * comes back over the same USB pipe. Both directions run at
 		 * once, which is the target configuration.
 		 */
-		case 'L':
-			if (!play_start(200000u)) {
-				printf("# loop: DAC rate refused\n");
+		case 'L': {
+			/* "=<dac>[,<adc>]L"; one number sets both, none = 200k. */
+			uint32_t dac_hz = rate_arg[0] ? rate_arg[0] : 200000u;
+			uint32_t adc_hz = rate_arg[1] ? rate_arg[1] : dac_hz;
+
+			if (!play_start(dac_hz)) {
+				printf("# loop: DAC %lu sps refused\n",
+				       (unsigned long)dac_hz);
 				uart_flush();
 				break;
 			}
-			stream_start_capture_only(200000u);
-			printf("# loop: DAC 200000 sps from USB, ADC 200000 Hz/ch\n");
+			if (!stream_start_capture_only(adc_hz)) {
+				play_stop();
+				printf("# loop: ADC %lu Hz refused (max %lu)\n",
+				       (unsigned long)adc_hz,
+				       (unsigned long)((SystemCoreClock / 2u) / ACQ_MIN_RC));
+				uart_flush();
+				break;
+			}
+			printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch\n",
+			       (unsigned long)dac_hz, (unsigned long)adc_hz);
 			printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
 			uart_flush();
 			break;
+		}
 		/* Playback with NO capture stream, to separate a fault in the
 		 * DAC path from an interaction between the two service loops. */
-		case 'P':
-			if (play_start(200000u))
-				printf("# play only: DAC 200000 sps from USB, no capture\n");
+		case 'P': {
+			uint32_t dac_hz = rate_arg[0] ? rate_arg[0] : 200000u;
+
+			if (play_start(dac_hz))
+				printf("# play only: DAC %lu sps from USB, no capture\n",
+				       (unsigned long)dac_hz);
 			else
-				printf("# play only: refused\n");
+				printf("# play only: %lu sps refused\n",
+				       (unsigned long)dac_hz);
 			uart_flush();
 			break;
+		}
 		case 'V': play_dump(); break;
 		case 'D': diag_start(); break;
 		/*
@@ -569,6 +616,12 @@ int main(void)
 		          uart_flush(); break;
 		case 'w': cmd_stream_uart(2000); break;
 		default:                    break;
+		}
+
+		/* A dispatched command consumes any rate arguments. */
+		if (c >= 0) {
+			rate_arg[0] = rate_arg[1] = 0;
+			rate_idx = 0;
 		}
 	}
 }
