@@ -78,6 +78,9 @@ def main():
     ap.add_argument("--tone", type=float, default=1000.0)
     ap.add_argument("--dac-sps", type=int, default=200000)
     ap.add_argument("--adc-hz", type=int, default=200000)
+    ap.add_argument("--adc-channels", type=int, default=2, choices=(1, 2),
+                    help="ADC channels to capture; 1 = A0 alone at the "
+                         "full single-channel conversion rate")
     ap.add_argument("--dc", type=int, default=None,
                     help="send a constant DAC0 code instead of a tone")
     ap.add_argument("--scan", action="store_true",
@@ -146,7 +149,8 @@ def main():
     if stale:
         print(f"# drained {stale} stale bytes from the native port")
 
-    os.write(cfd, f"={args.dac_sps},{args.adc_hz}L".encode())
+    os.write(cfd,
+             f"={args.dac_sps},{args.adc_hz},{args.adc_channels}L".encode())
     time.sleep(0.2)
 
     # Feed from a dedicated real-time thread, gated on tty writability.

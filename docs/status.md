@@ -126,26 +126,47 @@ That is the trap this document has warned about since the trigger-path
 work, and it still nearly produced a report of a collapse that was not
 happening.
 
-### The 900 ksps loop
+### The 900 ksps loop, and single-channel capture
 
-`DAC 906,976 + capture 453,488 Hz per channel` **is** the 900 ksps loop:
-two channels convert round-robin, so 453,488 Hz of trigger is 906,976
-conversions per second, the ADC's full in-spec output. Both tracks run
-it with `under=0`, zero sequence gaps and zero CRC failures.
+There are two ways to ask for ~900 ksps and they are not the same rate.
 
-A **matched** `906,976` on both sides is refused, and correctly: that
-would be 906,976 Hz of trigger, RC 43, half the `ACQ_MIN_RC` floor of
-86. Capturing 906,976 sps on a *single* channel would be legal at RC 43
-but needs a single-channel capture mode, which does not exist yet - it
-is the same prerequisite as objective 5.
+**Two channels.** `DAC 906,976 + capture 453,488 Hz per channel` is
+906,976 conversions per second, the ADC's full in-spec output: two
+channels convert round-robin off one trigger. Both tracks run it with
+`under=0`, zero sequence gaps and zero CRC failures.
 
-One real difference remains at this rate. Capture resyncs over six
-seconds: **Track A 1241, Track B 21.** Both are honestly flagged in the
-frame header, so neither is silent corruption, but they are real
-discontinuities. Track A's capture IN still goes through the core's
-blocking `USBD_Send`, which stalls the service loop long enough for the
-capture ring to lap; Track B's CPU FIFO copy never blocks. Moving
-capture IN to endpoint DMA is objective 1 and would fix both.
+**One channel.** `--adc-channels 1` captures A0 alone, and the ceiling
+is **886,363 sps at RC 44** - measured, and *lower* in conversions per
+second than the two-channel figure. Both tracks run a matched loop
+there, DAC and ADC both at 886,363 sps:
+
+| Track | Underruns | Gaps | CRC bad | Windows |
+|---|---|---|---|---|
+| A | 0 | 0 | 0 | 1103-1383 |
+| B | 0 | 0 | 0 | 1157-1379 |
+
+A **matched** `906,976` on both sides is refused on either track, and
+correctly so.
+
+### The single-channel floor is measured, not scaled
+
+RC 44 gives ratio 1.000; RC 43 gives **0.500** - every other trigger
+dropped, RXBUFF and GOVRE both clear. The same silent cliff as the
+two-channel case, in the same shape.
+
+It is **not** half of 86. The obvious arithmetic - one channel does half
+the conversions, so halve the compare value - yields 43 and walks
+straight off the cliff, which is exactly what the first version of this
+guard did and what the sweep caught. `ACQ_MIN_RC_FOR()` is therefore a
+table of measured values, not a formula.
+
+The reason one channel is *slower* per conversion: a two-channel trigger
+converts its pair back to back and amortises the per-trigger overhead,
+while a single conversion pays it in full. So two channels reach 906,976
+conversions per second and one reaches 886,363.
+
+Both tracks measure the identical cliff, which is the whole point of
+keeping the oracle: `=0,0,1t` runs the sweep at one channel on either.
 
 Capture alone is unchanged and still matches Track B at the in-spec
 ceiling: 453,488 Hz per channel, 1.831 MB/s, 0 CRC failures, 0 sequence

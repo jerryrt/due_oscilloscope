@@ -45,7 +45,7 @@ static void banner(void)
 	printf("#           G/T/Y = same three via DMA\n");
 	printf("#           L=full loop HOST->DAC->ADC->HOST\n");
 	printf("#           P=play only  V=ring dump  D=loop diagnostic\n");
-	printf("#           =<dac>[,<adc>] before L or P sets rates in Hz\n");
+	printf("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels\n");
 	printf("#           M=mimic loop without USB (gen sine on TIOA1 + capture)\n");
 	printf("#\n");
 }
@@ -214,25 +214,36 @@ static void cmd_crosstalk(void)
  * mode is silent: an over-fast trigger is ignored with no status bit
  * set, which looks exactly like clean data at half the rate.
  */
-static void cmd_rate_sweep(void)
+static void cmd_rate_sweep(unsigned n_channels)
 {
 	static const uint32_t rates[] = {
 		100000, 400000,
 		466666, 471910, 477272, 482758, 488372,
 		494117, 500000
 	};
+	/* RC 48 down to 43, to bracket the single-channel cliff. */
+	static const uint32_t rates1[] = {
+		200000, 780000, 795918, 812500, 829787,
+		847826, 866666, 886363, 906976
+	};
+	const uint32_t *list = (n_channels == 1) ? rates1 : rates;
+	unsigned n_list = (n_channels == 1)
+	                ? sizeof(rates1) / sizeof(rates1[0])
+	                : sizeof(rates) / sizeof(rates[0]);
 	const uint32_t nbuf_target = 8;
 
 	acq_init();
 
-	printf("# TC->ADC->PDC rate sweep, 2 channels (A0=AD7, A1=AD6)\n");
+	printf("# TC->ADC->PDC rate sweep, %u channel%s, min RC %lu\n",
+	       n_channels, n_channels == 1 ? " (A0=AD7)" : "s (A0=AD7, A1=AD6)",
+	       (unsigned long)ACQ_MIN_RC_FOR(n_channels));
 	printf("#   want      RC   TCexact   measured    ratio  RXBUFF GOVRE\n");
 	uart_flush();
 
-	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
-		if (!acq_start(rates[i], 2)) {
+	for (unsigned i = 0; i < n_list; i++) {
+		if (!acq_start(list[i], n_channels)) {
 			printf("# %7lu       -         -    REFUSED (below ACQ_MIN_RC)\n",
-			       (unsigned long)rates[i]);
+			       (unsigned long)list[i]);
 			uart_flush();
 			continue;
 		}
@@ -257,12 +268,12 @@ static void cmd_rate_sweep(void)
 		uint32_t us      = t1 - t0;
 		uint64_t samples = (uint64_t)got * ACQ_BUF_SAMPLES;
 		uint32_t agg     = us ? (uint32_t)((samples * 1000000ull) / us) : 0;
-		uint32_t measured = agg / 2u;
+		uint32_t measured = agg / n_channels;
 		uint32_t ratio_x1000 = tcexact ?
 			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
 
 		printf("# %7lu %7lu %9lu %10lu   %2lu.%03lu %7lu %5lu\n",
-		       (unsigned long)rates[i], (unsigned long)rc,
+		       (unsigned long)list[i], (unsigned long)rc,
 		       (unsigned long)tcexact, (unsigned long)measured,
 		       (unsigned long)(ratio_x1000 / 1000u),
 		       (unsigned long)(ratio_x1000 % 1000u),
@@ -470,7 +481,7 @@ int main(void)
 	int led_state = 0;
 	uint32_t led_usb_at = 0;
 	uint32_t led_in_last = 0, led_out_last = 0;
-	uint32_t rate_arg[2] = { 0, 0 };
+	uint32_t rate_arg[3] = { 0, 0, 0 };
 	unsigned rate_idx = 0;
 	bool rate_entry = false;
 
@@ -553,7 +564,7 @@ int main(void)
 		 * arguments and closes the entry.
 		 */
 		if (c == '=') {
-			rate_arg[0] = rate_arg[1] = 0;
+			rate_arg[0] = rate_arg[1] = rate_arg[2] = 0;
 			rate_idx = 0;
 			rate_entry = true;
 			c = -1;
@@ -561,8 +572,8 @@ int main(void)
 			rate_arg[rate_idx] = rate_arg[rate_idx] * 10u
 			                   + (uint32_t)(c - '0');
 			c = -1;
-		} else if (rate_entry && c == ',' && rate_idx == 0) {
-			rate_idx = 1;
+		} else if (rate_entry && c == ',' && rate_idx < 2) {
+			rate_idx++;
 			c = -1;
 		} else if (c >= 0) {
 			rate_entry = false;
@@ -576,7 +587,7 @@ int main(void)
 		case 'r': cmd_read();       break;
 		case 's': cmd_sweep();      break;
 		case 'x': cmd_crosstalk();  break;
-		case 't': cmd_rate_sweep(); break;
+		case 't': cmd_rate_sweep(rate_arg[2] ? rate_arg[2] : 2u); break;
 		case '1': cmd_stream(50000);  break;
 		case '2': cmd_stream(100000); break;
 		case '3': cmd_stream(200000); break;
@@ -614,6 +625,7 @@ int main(void)
 			/* "=<dac>[,<adc>]L"; one number sets both, none = 200k. */
 			uint32_t dac_hz = rate_arg[0] ? rate_arg[0] : 200000u;
 			uint32_t adc_hz = rate_arg[1] ? rate_arg[1] : dac_hz;
+			unsigned nch    = rate_arg[2] ? rate_arg[2] : 2u;
 
 			if (!play_start(dac_hz)) {
 				printf("# loop: DAC %lu sps refused\n",
@@ -621,16 +633,17 @@ int main(void)
 				uart_flush();
 				break;
 			}
-			if (!stream_start_capture_only(adc_hz)) {
+			if (!stream_start_capture_only(adc_hz, nch)) {
 				play_stop();
-				printf("# loop: ADC %lu Hz refused (max %lu)\n",
-				       (unsigned long)adc_hz,
-				       (unsigned long)((SystemCoreClock / 2u) / ACQ_MIN_RC));
+				printf("# loop: ADC %lu Hz x%u ch refused (max %lu)\n",
+				       (unsigned long)adc_hz, nch,
+				       (unsigned long)((SystemCoreClock / 2u)
+				                       / ACQ_MIN_RC_FOR(nch)));
 				uart_flush();
 				break;
 			}
-			printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch\n",
-			       (unsigned long)dac_hz, (unsigned long)adc_hz);
+			printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch\n",
+			       (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
 			printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
 			uart_flush();
 			break;
@@ -663,7 +676,7 @@ int main(void)
 			play_stop();
 			gen_init();
 			gen_prepare_tioa1(200000u);
-			stream_start_capture_only(200000u);
+			stream_start_capture_only(200000u, 2);
 			gen_go_tioa1();
 			printf("# mimic loop: gen sine on TIOA1 at 200000 sps, capture 200000 Hz\n");
 			printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
@@ -684,7 +697,7 @@ int main(void)
 
 		/* A dispatched command consumes any rate arguments. */
 		if (c >= 0) {
-			rate_arg[0] = rate_arg[1] = 0;
+			rate_arg[0] = rate_arg[1] = rate_arg[2] = 0;
 			rate_idx = 0;
 		}
 	}

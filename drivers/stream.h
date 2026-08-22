@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 bool stream_start(uint32_t trigger_hz);
-bool stream_start_capture_only(uint32_t trigger_hz);
+bool stream_start_capture_only(uint32_t trigger_hz, unsigned n_channels);
 bool stream_start_uart(uint32_t trigger_hz);
 void stream_stop(void);
 bool stream_out_in_use(void);   /* a bench mode is consuming bulk OUT */

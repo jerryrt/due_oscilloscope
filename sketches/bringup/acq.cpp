@@ -20,6 +20,7 @@ volatile uint32_t acq_ring_overflow;
 
 static volatile uint32_t filling;     /* index currently in PDC RPR */
 static uint32_t configured_rc;
+static uint16_t configured_mask;
 
 /*
  * A0 is AD7 and A1 is AD6. The sequencer converts enabled channels in
@@ -53,6 +54,11 @@ uint32_t acq_configured_rc(void)
 	return configured_rc;
 }
 
+uint16_t acq_channel_mask(void)
+{
+	return configured_mask;
+}
+
 void acq_init(void)
 {
 	PMC->PMC_PCER1 = (1u << (ID_ADC - 32));
@@ -71,7 +77,8 @@ void acq_init(void)
 
 	ADC->ADC_EMR = ADC_EMR_TAG;      /* channel index in LCDR[15:12] */
 	ADC->ADC_CHDR = 0xffffu;
-	ADC->ADC_CHER = (1u << CH_A0) | (1u << CH_A1);
+	configured_mask = (uint16_t)((1u << CH_A0) | (1u << CH_A1));
+	ADC->ADC_CHER = configured_mask;
 }
 
 bool acq_start(uint32_t trigger_hz, unsigned n_channels)
@@ -88,11 +95,28 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	 * sets no flag when it does, so an over-fast rate reads as clean
 	 * data at half the frequency. Refuse it here; nothing downstream
 	 * can tell the difference later.
+	 *
+	 * The floor is per channel count and measured for each, not scaled:
+	 * see ACQ_MIN_RC_1CH.
 	 */
-	if (rc < ACQ_MIN_RC * (n_channels / 2u ? n_channels / 2u : 1u))
+	if (n_channels == 0 || n_channels > 2)
+		return false;
+	if (rc < ACQ_MIN_RC_FOR(n_channels))
 		return false;
 
 	acq_stop();
+
+	/*
+	 * Single channel captures A0 alone at the full single-channel
+	 * conversion rate. The sequencer converts enabled channels in
+	 * ascending index order and each sample carries its channel tag,
+	 * so the host demultiplexes without being told which mode this is.
+	 */
+	configured_mask = (n_channels == 1)
+	                ? (uint16_t)(1u << CH_A0)
+	                : (uint16_t)((1u << CH_A0) | (1u << CH_A1));
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = configured_mask;
 
 	acq_buffers_done = 0;
 	acq_rxbuff_overruns = 0;

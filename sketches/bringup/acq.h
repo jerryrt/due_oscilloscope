@@ -36,12 +36,29 @@
  */
 #define ACQ_MIN_RC            86u
 
+/*
+ * And measured again for one channel: RC 44 gives ratio 1.000, RC 43
+ * gives 0.500 - every other trigger dropped, no status bit set.
+ *
+ * Note it is NOT half of 86. One channel tops out at 886,363
+ * conversions per second against 906,976 for two, because a two-channel
+ * trigger converts its pair back to back and amortises the per-trigger
+ * overhead that a single conversion pays in full. Scaling the
+ * two-channel floor arithmetically gives 43 and walks straight off the
+ * cliff.
+ */
+#define ACQ_MIN_RC_1CH        44u
+
+/* Minimum compare value for a given channel count. Measured, not derived. */
+#define ACQ_MIN_RC_FOR(n)     ((n) == 1u ? ACQ_MIN_RC_1CH : ACQ_MIN_RC)
+
 extern uint16_t acq_buf[ACQ_NBUF][ACQ_BUF_SAMPLES];
 
 void     acq_init(void);
 bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
 void     acq_stop(void);
 uint32_t acq_configured_rc(void);
+uint16_t acq_channel_mask(void);   /* ADC channel indices now enabled */
 
 /* Counters, all updated from the ADC ISR. */
 extern volatile uint32_t acq_buffers_done;

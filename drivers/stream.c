@@ -60,7 +60,8 @@ static size_t         tx_off;
 static frame_header_t tx_hdr;
 
 static bool stream_start_common(uint32_t trigger_hz);
-static bool stream_start_common_nogen(uint32_t trigger_hz);
+static bool stream_start_common_nogen(uint32_t trigger_hz,
+                                      unsigned n_channels);
 
 static size_t xport_write(const uint8_t *p, size_t n)
 {
@@ -94,13 +95,14 @@ bool stream_start(uint32_t trigger_hz)
  * host. This is what makes the full loop possible: generation and
  * capture come from different sources on independent timebases.
  */
-bool stream_start_capture_only(uint32_t trigger_hz)
+bool stream_start_capture_only(uint32_t trigger_hz, unsigned n_channels)
 {
 	xport = XPORT_USB;
-	return stream_start_common_nogen(trigger_hz);
+	return stream_start_common_nogen(trigger_hz, n_channels);
 }
 
-static bool stream_start_common_nogen(uint32_t trigger_hz)
+static bool stream_start_common_nogen(uint32_t trigger_hz,
+                                      unsigned n_channels)
 {
 	acq_init();
 	seq = frames_sent = bytes_sent = 0;
@@ -108,7 +110,7 @@ static bool stream_start_common_nogen(uint32_t trigger_hz)
 	tx_phase = TX_IDLE;
 	tx_off = 0;
 	rate_hz = trigger_hz;
-	if (!acq_start(trigger_hz, 2))
+	if (!acq_start(trigger_hz, n_channels))
 		return false;
 	started_us = micros();
 	active = true;
@@ -222,7 +224,7 @@ void stream_service(void)
 			tx_hdr.seq             = seq;
 			tx_hdr.sample_rate_hz  = rate_hz;
 			tx_hdr.n_samples       = ACQ_BUF_SAMPLES;
-			tx_hdr.channel_mask    = (1u << 7) | (1u << 6);
+			tx_hdr.channel_mask    = acq_channel_mask();
 			tx_hdr.timestamp_us    = micros();
 			tx_hdr.overrun_count   = overruns;
 

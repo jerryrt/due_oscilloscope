@@ -13,6 +13,7 @@ volatile uint32_t acq_ring_overflow;
 
 static volatile uint32_t filling;
 static uint32_t configured_rc;
+static uint16_t configured_mask = (1u << ADC_CH_A0) | (1u << ADC_CH_A1);
 
 static void tc_init(uint32_t rc)
 {
@@ -35,6 +36,11 @@ static void tc_init(uint32_t rc)
 uint32_t acq_configured_rc(void)
 {
 	return configured_rc;
+}
+
+uint16_t acq_channel_mask(void)
+{
+	return configured_mask;
 }
 
 void acq_init(void)
@@ -74,11 +80,29 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	 * no flag when it does, so an over-fast rate looks like clean data
 	 * at half the frequency. Refuse it here; it cannot be detected
 	 * later.
+	 *
+	 * The floor scales with channel count because the constraint is
+	 * conversions per second, not triggers: one channel may be
+	 * triggered twice as fast as two for the same converter load.
 	 */
-	if (rc < ACQ_MIN_RC * (n_channels / 2u ? n_channels / 2u : 1u))
+	if (n_channels == 0 || n_channels > 2)
+		return false;
+	if (rc < ACQ_MIN_RC_FOR(n_channels))
 		return false;
 
 	acq_stop();
+
+	/*
+	 * Single channel captures A0 alone at the full conversion rate.
+	 * The sequencer converts enabled channels in ascending index
+	 * order, and the tag in each sample names the channel, so the host
+	 * demultiplexes without being told which mode this is.
+	 */
+	configured_mask = (n_channels == 1)
+	                ? (uint16_t)(1u << ADC_CH_A0)
+	                : (uint16_t)((1u << ADC_CH_A0) | (1u << ADC_CH_A1));
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = configured_mask;
 
 	acq_buffers_done = 0;
 	acq_rxbuff_overruns = 0;

@@ -122,7 +122,7 @@ static void banner(void)
 	Serial.println("#           G/T/Y = the same three via endpoint DMA");
 	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
 	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
-	Serial.println("#           =<dac>[,<adc>] before L or P sets rates in Hz");
+	Serial.println("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels");
 	Serial.println("#           M=mimic loop without USB (gen sine on TIOA1 + capture)");
 	Serial.println("#           d=DAC max update-rate sweep");
 	Serial.println("#           j/k=DAC 1.5M/3.0M indep + capture 200k");
@@ -286,7 +286,7 @@ static void cmd_crosstalk(void)
  * Two channels are enabled, so each trigger yields two conversions and
  * the aggregate rate is twice the trigger rate.
  */
-static void cmd_rate_sweep(void)
+static void cmd_rate_sweep(unsigned n_channels)
 {
 	/*
 	 * Sweep the timer compare value rather than a frequency, so the test
@@ -294,9 +294,18 @@ static void cmd_rate_sweep(void)
 	 * fixed frequencies chosen for a 42 MHz timer clock, and silently
 	 * lost resolution around the cliff once MCK changed.
 	 */
-	static const uint32_t rcs[] = {
+	static const uint32_t rcs2[] = {
 		390, 100, 96, 92, 90, 88, 87, 86, 85, 84, 83, 82, 80, 78
 	};
+	/* One channel converts once per trigger, so its cliff sits near
+	 * half the compare value. Bracketed rather than assumed. */
+	static const uint32_t rcs1[] = {
+		195, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40
+	};
+	const uint32_t *rcs = (n_channels == 1) ? rcs1 : rcs2;
+	const unsigned n_rcs = (n_channels == 1)
+	                     ? sizeof(rcs1) / sizeof(rcs1[0])
+	                     : sizeof(rcs2) / sizeof(rcs2[0]);
 	const uint32_t nbuf_target = 8;
 	uint32_t tc_clock = SystemCoreClock / 2u;
 	char buf[160];
@@ -304,13 +313,15 @@ static void cmd_rate_sweep(void)
 	acq_init();
 
 	snprintf(buf, sizeof(buf),
-	         "# TC->ADC->PDC sweep, 2 ch, MCK %lu Hz, ADC clk %lu Hz",
-	         (unsigned long)SystemCoreClock, (unsigned long)(SystemCoreClock / 4u));
+	         "# TC->ADC->PDC sweep, %u ch, MCK %lu Hz, ADC clk %lu Hz, min RC %lu",
+	         n_channels,
+	         (unsigned long)SystemCoreClock, (unsigned long)(SystemCoreClock / 4u),
+	         (unsigned long)ACQ_MIN_RC_FOR(n_channels));
 	Serial.println(buf);
 	Serial.println("#     RC   trigger   aggregate    ratio  RXBUFF GOVRE");
 	Serial.flush();
 
-	for (unsigned i = 0; i < sizeof(rcs) / sizeof(rcs[0]); i++) {
+	for (unsigned i = 0; i < n_rcs; i++) {
 		uint32_t hz = tc_clock / rcs[i];
 
 		/*
@@ -320,12 +331,12 @@ static void cmd_rate_sweep(void)
 		 * The cliff itself was found before the guard existed and is
 		 * recorded in docs/hardware.md.
 		 */
-		if (!acq_start(hz, 2)) {
+		if (!acq_start(hz, n_channels)) {
 			snprintf(buf, sizeof(buf),
 			         "# %6lu %9lu           -        -       -     -"
 			         "   REFUSED (RC < %lu)",
 			         (unsigned long)rcs[i], (unsigned long)hz,
-			         (unsigned long)ACQ_MIN_RC);
+			         (unsigned long)ACQ_MIN_RC_FOR(n_channels));
 			Serial.println(buf);
 			Serial.flush();
 			continue;
@@ -349,7 +360,7 @@ static void cmd_rate_sweep(void)
 		uint32_t us = t1 - t0;
 		uint64_t samples = (uint64_t)got * ACQ_BUF_SAMPLES;
 		uint32_t agg = us ? (uint32_t)((samples * 1000000ull) / us) : 0;
-		uint32_t expect = hz * 2u;      /* 2 conversions per trigger */
+		uint32_t expect = hz * n_channels;   /* one per enabled channel */
 		uint32_t ratio_x1000 = expect ?
 			(uint32_t)(((uint64_t)agg * 1000ull) / expect) : 0;
 
@@ -509,7 +520,7 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 		Serial.flush();
 		return;
 	}
-	if (!stream_start_capture_only(200000)) {
+	if (!stream_start_capture_only(200000, 2)) {
 		Serial.println("# capture refused");
 		Serial.flush();
 		return;
@@ -804,7 +815,7 @@ void setup()
 
 void loop()
 {
-	static uint32_t rate_arg[2];
+	static uint32_t rate_arg[3];
 	static unsigned rate_idx;
 	static bool     rate_entry;
 	static uint32_t led_usb_at;
@@ -868,7 +879,7 @@ void loop()
 	 * closes the entry.
 	 */
 	if (c == '=') {
-		rate_arg[0] = rate_arg[1] = 0;
+		rate_arg[0] = rate_arg[1] = rate_arg[2] = 0;
 		rate_idx = 0;
 		rate_entry = true;
 		return;
@@ -877,8 +888,8 @@ void loop()
 		rate_arg[rate_idx] = rate_arg[rate_idx] * 10u + (uint32_t)(c - '0');
 		return;
 	}
-	if (rate_entry && c == ',' && rate_idx == 0) {
-		rate_idx = 1;
+	if (rate_entry && c == ',' && rate_idx < 2) {
+		rate_idx++;
 		return;
 	}
 	rate_entry = false;
@@ -891,7 +902,7 @@ void loop()
 	case 'r': cmd_read();        break;
 	case 's': cmd_sweep();       break;
 	case 'x': cmd_crosstalk();   break;
-	case 't': cmd_rate_sweep();  break;
+	case 't': cmd_rate_sweep(rate_arg[2] ? rate_arg[2] : 2u); break;
 	case 'd': cmd_dac_sweep();   break;
 	case 'j': cmd_dac_crosscheck(1500000); break;
 	case 'k': cmd_dac_crosscheck(3000000); break;
@@ -945,6 +956,7 @@ void loop()
 	case 'L': {
 		uint32_t dac_hz = rate_arg[0] ? rate_arg[0] : 200000u;
 		uint32_t adc_hz = rate_arg[1] ? rate_arg[1] : dac_hz;
+		unsigned nch    = rate_arg[2] ? rate_arg[2] : 2u;
 
 		if (!play_start(dac_hz)) {
 			snprintf(buf, sizeof(buf), "# loop: DAC %lu sps refused",
@@ -953,19 +965,20 @@ void loop()
 			Serial.flush();
 			break;
 		}
-		if (!stream_start_capture_only(adc_hz)) {
+		if (!stream_start_capture_only(adc_hz, nch)) {
 			play_stop();
 			snprintf(buf, sizeof(buf),
-			         "# loop: ADC %lu Hz refused (max %lu)",
-			         (unsigned long)adc_hz,
-			         (unsigned long)((SystemCoreClock / 2u) / ACQ_MIN_RC));
+			         "# loop: ADC %lu Hz x%u ch refused (max %lu)",
+			         (unsigned long)adc_hz, nch,
+			         (unsigned long)((SystemCoreClock / 2u)
+			                         / ACQ_MIN_RC_FOR(nch)));
 			Serial.println(buf);
 			Serial.flush();
 			break;
 		}
 		snprintf(buf, sizeof(buf),
-		         "# loop: DAC %lu sps from USB, ADC %lu Hz/ch",
-		         (unsigned long)dac_hz, (unsigned long)adc_hz);
+		         "# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch",
+		         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
 		Serial.println(buf);
 		Serial.println("# DAC0 carries the waveform, DAC1 holds mid scale");
 		Serial.flush();
@@ -1001,7 +1014,7 @@ void loop()
 		play_stop();
 		gen_init();
 		gen_prepare_tioa1(200000u);
-		if (!stream_start_capture_only(200000u)) {
+		if (!stream_start_capture_only(200000u, 2)) {
 			Serial.println("# mimic: capture refused");
 			Serial.flush();
 			break;
@@ -1040,6 +1053,6 @@ void loop()
 	}
 
 	/* A dispatched command consumes any rate arguments. */
-	rate_arg[0] = rate_arg[1] = 0;
+	rate_arg[0] = rate_arg[1] = rate_arg[2] = 0;
 	rate_idx = 0;
 }

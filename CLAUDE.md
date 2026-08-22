@@ -45,7 +45,10 @@ Check here before reasoning from general Arduino knowledge.
 - **One ADC, not twelve.** A single converter behind a 16:1 multiplexer.
   Channels sample round-robin, so channel count *divides* the aggregate:
   ~907 ksps at MCK 78 (RC 86). Twelve channels means ~75 ksps each, not
-  12 Msps.
+  12 Msps. One channel alone reaches only 886,363 sps (RC 44), *less*
+  than the two-channel aggregate - a multi-channel trigger converts back
+  to back and amortises overhead a lone conversion pays in full. The
+  per-channel-count floors are measured, never scaled.
 - **Aggregate data rate is ~1.81 MB/s regardless of channel count.**
   More channels cost per-channel rate, not USB bandwidth.
 - **Not simultaneous sampling.** Consecutive conversions are ~0.95 us

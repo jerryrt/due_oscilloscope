@@ -15,8 +15,9 @@ See "Track A parity" in `docs/status.md`.
 
 The 900 ksps loop runs on both: `--dac-sps 906976 --adc-hz 453488` is
 906,976 conversions per second, because two channels convert
-round-robin. A matched 906,976 on both sides is refused and should be -
-that is RC 43 against an `ACQ_MIN_RC` of 86.
+round-robin. Single-channel capture now exists too (`--adc-channels 1`,
+or `=<dac>,<adc>,1` on the console) and both tracks run a matched loop
+at its ceiling of 886,363 sps each way with `under=0`.
 
 Track B runs the complete instrument loop on one channel pair:
 
@@ -88,8 +89,8 @@ publishing.
 5. **Equivalent-time reconstruction**: DAC and ADC dividers share MCK,
    so coprime RC values walk the ADC's sample phase through the DAC
    waveform in 25.6 ns steps - a sampling-scope view of the DAC
-   through the slow ADC. Needs a single-channel capture mode and a
-   host reorder script.
+   through the slow ADC. The single-channel capture mode it needed now
+   exists; what remains is the host reorder script.
 6. **`usb_cdc_write`/DMA bank overcommit when the host stops
    draining** (status.md "Next" item 0): flood counters read far above
    the wire; harmless in normal operation, meaningless benches.
@@ -138,6 +139,13 @@ publishing.
   The device cannot time its own benchmarks; the host keeps the clock.
 - **Discover ports, never hardcode them** (`host/ports.py`); a stale
   path once aimed the 1200-baud erase at the wrong port.
+- **The single-channel trigger floor is RC 44, not 43.** One channel
+  reaches 886,363 conversions per second, two reach 906,976: a
+  two-channel trigger converts its pair back to back and amortises the
+  per-trigger overhead a lone conversion pays in full. Halving the
+  two-channel compare value is the obvious move and it is wrong - RC 43
+  measures ratio 0.500 with every status bit clear. `ACQ_MIN_RC_FOR()`
+  is a table of measured values for that reason.
 - **Trigger overrun is silent** (`ACQ_MIN_RC` 86, valid at any MCK).
   **`A0` is AD7, not AD0** (labels map descending). **The DAC is not
   rail to rail** (546-2760 mV), and a DACC channel that never converted

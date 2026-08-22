@@ -27,11 +27,34 @@
 #define ACQ_BUF_SAMPLES       2032   /* 4064 B payload + 32 B header = 8 x 512 */
 
 /*
- * Measured on this board: RC 86 works, RC 85 drops every other trigger
- * with no status bit set. Refuse anything faster rather than trusting
- * flags that stay clear. See docs/hardware.md.
+ * Measured on this board: with two channels enabled, RC 86 works and
+ * RC 85 drops every other trigger with no status bit set. Refuse
+ * anything faster rather than trusting flags that stay clear. See
+ * docs/hardware.md.
+ *
+ * The real limit is the conversion rate, not the trigger rate: each
+ * trigger converts every enabled channel back to back, so the floor
+ * scales with channel count. ACQ_MIN_RC is the two-channel value, and
+ * acq_start scales it - one channel may trigger twice as fast for the
+ * same 906,976 conversions per second.
  */
 #define ACQ_MIN_RC            86u
+
+/*
+ * And measured again for one channel: RC 44 gives ratio 1.000, RC 43
+ * gives 0.500 - every other trigger dropped, no status bit set.
+ *
+ * Note it is NOT half of 86. One channel tops out at 886,363
+ * conversions per second against 906,976 for two, because a two-channel
+ * trigger converts its pair back to back and amortises the per-trigger
+ * overhead that a single conversion pays in full. Scaling the
+ * two-channel floor arithmetically gives 43 and walks straight off the
+ * cliff, which is what the first version of this did.
+ */
+#define ACQ_MIN_RC_1CH        44u
+
+/* Minimum compare value for a given channel count. Measured, not derived. */
+#define ACQ_MIN_RC_FOR(n)     ((n) == 1u ? ACQ_MIN_RC_1CH : ACQ_MIN_RC)
 
 extern uint16_t acq_buf[ACQ_NBUF][ACQ_BUF_SAMPLES];
 
@@ -39,6 +62,7 @@ void     acq_init(void);
 bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
 void     acq_stop(void);
 uint32_t acq_configured_rc(void);
+uint16_t acq_channel_mask(void);   /* ADC channel indices now enabled */
 
 extern volatile uint32_t acq_buffers_done;
 extern volatile uint32_t acq_rxbuff_overruns;
