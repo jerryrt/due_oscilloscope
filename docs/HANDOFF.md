@@ -22,7 +22,7 @@ host's `write()` count, a host-fed ramp has no discontinuities, and
 `play_partial` - a new counter for the case the arithmetic says cannot
 happen - stays at zero.
 
-Work is committed on the branch `fix/out-dma-status-race`, five
+Work is committed on the branch `fix/out-dma-status-race`, seven
 commits, **not merged to `main`**. Both tracks build from it. The board
 was last flashed with Track B.
 
@@ -31,9 +31,11 @@ with it, and they are objectives 0a to 0c below: the rate starvation is
 a different mechanism, what is left of the sample loss is the host's,
 and the suite wedged once in `close()`.
 
-**One loose end**: the last full two-track run reported all 134 tests
-with zero failures but then wedged in teardown, so it never printed a
-summary line. A clean recorded pass is still owed - start there.
+**The clean two-track pass is recorded.** `pytest --track=both -q` on
+2026-08-22 gave **129 passed, 1 skipped, 5 xfailed, 3 xpassed in
+10:54**, exit 0, and closed without wedging. That was the loose end
+left by the run before it, which had reported every test and then hung
+in teardown; 0c did not reproduce.
 
 Track A is level with Track B: same command letters, same output format,
 same refusals, the same transport mechanism, and now the same
@@ -104,9 +106,9 @@ publishing.
 
 ## Next objectives, in order
 
-**Start here**: re-run `pytest --track=both` to the summary line. The
-last attempt reported every test with no failures and then wedged in
-teardown (0c), so the pass is believed but not recorded.
+**Start here**: objective 0a. The recorded two-track pass that used to
+head this list is done (see above), so the starvation is now the oldest
+thing still open.
 
 Objectives 0a to 0c are what came out of the lost-sample defect when it
 was taken apart. None of them is that defect; each was folded into it
@@ -128,6 +130,10 @@ before and is now separate, with its own evidence.
    in 3 s) and a healthy one arms many small ones (RC 32, clean:
    6,610). Tracked as `STARVES` in `tests/test_rates.py`, xfail and
    non-strict, so it reports on every run and turns green by itself.
+   The 2026-08-22 pass xpassed RC 65 on three of the four ladder
+   entries that carry it - Track A one-channel and AWG, Track B AWG -
+   and still xfailed Track B one-channel. That is the intermittency
+   this objective describes, not a change in it.
 
 0b. **macOS drops 128-byte chunks from the tty output queue** under
    load, having counted them in `write()`. Long documented in
@@ -163,6 +169,10 @@ before and is now separate, with its own evidence.
    link everywhere. Reproduce it first - a long soak of bench mode
    switches is the obvious way - then fix it against a failure that can
    be seen to go away.
+
+   It did not recur in the 2026-08-22 two-track pass, which ran the
+   same benches on both tracks and closed in the usual time. Still
+   unreproduced, so the reasoning above stands unchanged.
 
 0d. **The pytest suite** - built, and it is the instrument that found
    all four defects on this page. `docs/testing.md` is the design and
