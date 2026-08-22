@@ -6,6 +6,13 @@ policy).
 
 ## Where the work stands (2026-08-22)
 
+Track A has been brought level with Track B: same command letters, same
+output format, same refusals. It now runs the full loop too, at its own
+much lower ceiling, and that ceiling is the measurement it exists to
+produce - see "Track A parity" in `docs/status.md`. The one thing it
+cannot have is `G`/`T`/`Y`, the endpoint-DMA benchmarks; those keys
+answer with why.
+
 Track B runs the complete instrument loop on one channel pair:
 
 ```
@@ -137,6 +144,30 @@ publishing.
   push via `gh` credential helper (already configured).
 - LEDs: amber = heartbeat; TXL flickers with USB IN traffic, RXL with
   OUT.
+
+## Track A command reference
+
+Same letters, same output. Track A adds `d` (DAC update-rate sweep) and
+`j`/`k` (independent-DAC cross-check), which Track B has never had, and
+answers `G`/`T`/`Y` with the reason it has no DMA transport.
+
+Its measured ceilings: full loop clean to **50,000 sps each way**
+(under=0, tone at the theoretical maximum), starving above roughly
+62 ksps where the host-fed byte rate plateaus near 125 kB/s. Capture
+alone still matches Track B at 453,488 Hz per channel.
+
+```sh
+arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg \
+                    --build-property build.f_cpu=78000000L sketches/bringup
+arduino-cli upload  --fqbn arduino:sam:arduino_due_x_dbg \
+                    -p "$(python3 host/ports.py | awk '/control/{print $3}')" \
+                    sketches/bringup
+```
+
+The host tools below work against either track unchanged; the wire
+format is byte-identical. `loopback.py`'s clock-paced feed is tuned for
+the DMA-fed device, so against Track A it simply overruns the plateau -
+which is what the underrun counter is for.
 
 ## Track B command reference
 

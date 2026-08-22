@@ -1,6 +1,6 @@
 # Status and Known Issues
 
-Updated after full-rate streaming was achieved on Track B.
+Updated after Track A was brought level with Track B's command set.
 
 ## Working
 
@@ -9,13 +9,58 @@ Updated after full-rate streaming was achieved on Track B.
 | UART printf, LED, HardFault report | yes | yes |
 | DAC/ADC loopback, sweep, crosstalk | yes | yes |
 | TC-triggered ADC + PDC ping-pong | yes | yes |
-| Trigger-rate verification | yes | yes, plus refusal past the ceiling |
+| Trigger-rate verification | yes, plus refusal past the ceiling | yes, plus refusal past the ceiling |
 | TC-triggered DAC playback (TAG mode) | yes | yes |
 | USB CDC device | Arduino core | **own bare-metal stack** |
-| Framed binary streaming | yes | yes |
+| Framed binary streaming | yes, resumable | yes, resumable |
 | Host deframe / demux / tone check | yes | yes, same receiver |
-| Host-fed DAC playback over bulk OUT | no | yes |
-| Full loop: host waveform out, capture back, simultaneously | no | **yes** |
+| Host-fed DAC playback over bulk OUT | yes, to ~62 ksps | yes, to the DACC ceiling |
+| Full loop: host waveform out, capture back, simultaneously | yes, to 50 ksps | **yes, to 906,976 sps** |
+| Transport benchmarks via endpoint DMA | **impossible**, see below | yes |
+
+## Track A parity, and the one thing it cannot have
+
+The oracle now answers every key Track B does, with the same letters and
+the same output format: rate arguments, the full loop, playback alone,
+the ring dump, the snapshot diagnostic, the USB-free mimic loop, the
+duplex bench, the UART transport and the register dump.
+
+`G`, `T` and `Y` are the exception and always will be. They run the
+transport benchmarks over endpoint DMA, and the Arduino CDC stack never
+programs a UOTGHS DMA channel - its ISR copies the endpoint FIFO a byte
+at a time. Track A's `u` prints the DMA channel registers alongside
+everything else so that this reads as observed rather than asserted:
+they are zero while the port is streaming. The keys answer with that
+explanation instead of quietly running the manual-FIFO benchmark under a
+DMA name.
+
+### What the oracle measures that Track B cannot
+
+Track A's host-fed playback plateaus near **125 kB/s, about 62 ksps**,
+and the reason was already on the record: `Serial_::read()` calls
+`accept()` once per byte and each call refills the whole 512-byte
+receive ring, which the OUT benchmark had independently clocked at
+0.126 MB/s (see `docs/usb.md`). The playback path hits the same wall
+from the other direction, which is a useful confirmation that the
+ceiling is the core's receive path and not the DAC ring, the trigger or
+the link.
+
+Measured with the existing host tools, all timing host-side:
+
+| Loop rate, each way | Underruns | Tone amplitude | Capture |
+|---|---|---|---|
+| 50,000 sps | 0 | 1372.4 codes | 0 gaps, 0 CRC bad |
+| 75,000 sps | 76 | 353.8 codes | 0 gaps, 0 CRC bad |
+| 200,000 sps | 1386 | 299.3 codes | 0 gaps, 0 CRC bad |
+
+Theoretical maximum for a full-scale sine is ~1370.5 codes, so the
+50 ksps row is the loop running exactly as well as Track B's does - just
+at a twentieth of the rate. **The capture direction stays clean at every
+row**: the plateau is entirely in the host-to-DAC direction.
+
+Track A's capture alone is unaffected and still matches Track B at the
+in-spec ceiling: 453,488 Hz per channel, 2235 frames in 5 s, 1.831 MB/s,
+0 CRC failures, 0 sequence gaps, ratio 1.000, tone at 1372.4 codes.
 
 ## Headline result: both tracks reach the full ADC rate
 

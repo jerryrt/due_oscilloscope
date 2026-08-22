@@ -10,11 +10,13 @@ A 12-bit oscilloscope and signal generator on the Arduino Due
 host does all DSP and visualisation.
 
 Status: **full loop working and solid.** Both tracks stream the ADC's
-complete in-spec output gaplessly; Track B additionally runs host-fed
-DAC playback and simultaneous capture (HOST -> DAC0 -> A0 -> HOST) with
-zero underruns and tone amplitude at the theoretical maximum in every
-measurement window. See `docs/status.md` for numbers and
-`docs/HANDOFF.md` for the current objectives.
+complete in-spec output gaplessly, and both run host-fed DAC playback
+with simultaneous capture (HOST -> DAC0 -> A0 -> HOST) at zero
+underruns and tone amplitude at the theoretical maximum. They differ
+only in ceiling: Track B holds that to 906,976 sps each way on endpoint
+DMA, Track A to 50,000 sps because the Arduino CDC stack reads bulk OUT
+a byte at a time. See `docs/status.md` for numbers and `docs/HANDOFF.md`
+for the current objectives.
 
 ## Invariants
 
