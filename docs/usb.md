@@ -67,6 +67,20 @@ device side:
 that feeds the DAC must keep whichever policy matches the device it
 talks to, and must never free-run writes into saturation.
 
+**It has not gone away, and it is now measurable.** The clock-paced
+feed against the DMA-fed ring made it rare rather than absent: on a
+machine also running a build or the test suite, roughly one 3 s run in
+eight at 200 ksps loses one to four chunks; on a quiet machine, none in
+22 runs. What changed is that it can now be *attributed* rather than
+suspected. `play_bytes_in` follows the OUT DMA's `BUFF_COUNT`
+continuously, so the device's byte count is exact, and on a run that
+skips it is short by exactly the bytes that went missing - they never
+reached the device. The quantum is the fingerprint: every such loss is
+a whole multiple of 128 bytes, where the device-side defect this was
+confused with for a fortnight lost arbitrary amounts (12 to 370 bytes,
+no common factor). `test_host_fed_ramp_loses_no_samples` separates them
+on exactly that basis.
+
 ## close() hangs unless the device always drains OUT
 
 macOS's `close()` on a tty waits for in-flight write URBs to complete.
@@ -80,6 +94,23 @@ came out of this, both implemented:
   consumer owns it** (correct CDC behaviour anyway).
 - Host tools still `tcflush` before closing the native port, as a
   belt-and-braces against queued-but-not-submitted bytes.
+
+**It happened again on 2026-08-22 and is not fully explained.** The
+test suite hung 50 minutes in `close()` after the duplex DMA
+benchmark, board heartbeat still flashing and both USB activity LEDs
+dark. It did not reproduce in eight further benches. The candidate is
+`usb_cdc_dma_mode()`, which stops both DMA channels and flips AUTOSW
+but never issues `EPRST` - a DMA stopped mid-bank leaves a bank
+nothing frees, and the endpoint NAKs for good. Track A does reset the
+endpoint (`ep_reset_fifo()`); Track B has no `EPRST` anywhere. See
+objective 0c in `docs/HANDOFF.md` before changing it: `EPRST` also
+clears the data toggle.
+
+Diagnosing it from the outside: a host tool making no progress while
+the board's heartbeat still flashes and both activity LEDs stay dark
+is this and not a dead board. `sample <pid> 2 -mayDie | grep close`
+confirms it in one line. `tcflush` will not help and neither will
+waiting; kill the process.
 
 ## Track A's bulk path now bypasses the core
 

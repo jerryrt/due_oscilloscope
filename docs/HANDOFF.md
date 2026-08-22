@@ -5,14 +5,45 @@ recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
 policy). If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
-## Where the work stands (2026-08-22)
+## Where the work stands (2026-08-22, end of session)
+
+**This session closed the lost-sample defect** that had been objective
+0 since the test suite was built. `play_service()` read
+`UOTGHS_DEVDMASTATUS` twice - byte count from one read, "has it
+finished" from another - and when a DMA span completed between the two,
+the ring resumed the next span behind data already in SRAM and
+overwrote samples that had arrived but not yet played. Both tracks
+carried it, because Track A's `play.cpp` is a transliteration of Track
+B's `play.c`. One read, decoded twice, on both. Full write-up in
+`docs/status.md`; the short version is in "Hard-won facts" below.
+
+The loop at 200 ksps is now **byte-exact**: `play_bytes_in` equals the
+host's `write()` count, a host-fed ramp has no discontinuities, and
+`play_partial` - a new counter for the case the arithmetic says cannot
+happen - stays at zero.
+
+Work is committed on the branch `fix/out-dma-status-race`, five
+commits, **not merged to `main`**. Both tracks build from it. The board
+was last flashed with Track B.
+
+Three things were separated out of that objective rather than fixed
+with it, and they are objectives 0a to 0c below: the rate starvation is
+a different mechanism, what is left of the sample loss is the host's,
+and the suite wedged once in `close()`.
+
+**One loose end**: the last full two-track run reported all 134 tests
+with zero failures but then wedged in teardown, so it never printed a
+summary line. A clean recorded pass is still owed - start there.
 
 Track A is level with Track B: same command letters, same output format,
 same refusals, the same transport mechanism, and now the same
 throughput. Its bulk endpoints were taken away from the Arduino core and
-put on UOTGHS DMA; the core still enumerates. Both tracks measure
-OUT ~27, IN ~31-32, duplex ~15-16 MB/s, within a ~5% run-to-run spread.
-See "Track A parity" in `docs/status.md`.
+put on UOTGHS DMA; the core still enumerates. Typical figures are
+OUT ~27, IN ~31-32, duplex ~15-16 MB/s, but **the run-to-run spread is
+35-59%, not the ~5% this file used to claim**: five 4 s runs per mode
+gave IN 19.8-30.5, OUT 17.9-28.2, duplex 8.2-20.0. The suite's floors
+are set from the minima for that reason, and a single benchmark run is
+not evidence of a change. See "Track A parity" in `docs/status.md`.
 
 The 900 ksps loop runs on both: `--dac-sps 906976 --adc-hz 453488` is
 906,976 conversions per second, because two channels convert
@@ -34,7 +65,7 @@ regime is validated by the tone-amplitude oracle (theoretical maximum
 | Regime | State | Evidence |
 |---|---|---|
 | Matched loop up to 453,488 sps each way (ADC in-spec ceiling) | under=0, gaps=0, median window 1371 | at 200 ksps the loop is now byte-exact end to end: `play_bytes_in` equals the host's `write()` count and a host-fed ramp has no discontinuities |
-| AWG play-only up to 1.393 Msps (DACC hardware ceiling, RC 28) | **runs; not reliably clean** | 5 runs each: RC 195/98/44/39 are 5/5 under=0, RC 65 is 0/5, RC 32 is 3/5, RC 28 is 1/5. See objective 0 |
+| AWG play-only up to 1.393 Msps (DACC hardware ceiling, RC 28) | **runs; not reliably clean** | 5 runs each: RC 195/98/44/39 are 5/5 under=0, RC 65 is 0/5, RC 32 is 3/5, RC 28 is 1/5. See objective 0a |
 | Full-rate pair: DAC 906,976 + capture 906,976 aggregate | **runs, under=0**, both tracks | windows 1074-1345 (B), 1028-1338 (A) |
 | Transport via endpoint DMA | measured | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s |
 | Two-channel DAC (tag-interleaved) | routing verified | purity open, see objective 4 |
@@ -51,7 +82,12 @@ publishing.
   (multi-slot spans, `BUFF_COUNT` progress publishing, stream variant
   without END_TR so short packets never fragment a span); DACC + PDC
   drain it at TIOA1's rate; underrun repeats a buffer and is counted,
-  never concealed.
+  never concealed. Progress is read from **one** snapshot of
+  `DEVDMASTATUS` per pass - byte count and channel-enabled both come
+  out of that single read, and `play_bytes_in` follows it continuously
+  so it can be compared against the host's `write()` count byte for
+  byte. `play_partial` counts spans that ended off a slot edge and
+  must stay zero.
 - **Capture**: TIOA0-triggered ADC, PDC ping-pong into a 4-buffer ring,
   frames (32 B header + 2032 samples = 4096 B) sent by CPU FIFO copy -
   the one remaining CPU touch of sample data (objective 1).
@@ -68,7 +104,15 @@ publishing.
 
 ## Next objectives, in order
 
-0. **Playback starves at RC 65, 32 and 28** while the rates either side
+**Start here**: re-run `pytest --track=both` to the summary line. The
+last attempt reported every test with no failures and then wedged in
+teardown (0c), so the pass is believed but not recorded.
+
+Objectives 0a to 0c are what came out of the lost-sample defect when it
+was taken apart. None of them is that defect; each was folded into it
+before and is now separate, with its own evidence.
+
+0a. **Playback starves at RC 65, 32 and 28** while the rates either side
    of them are clean. A feed-policy problem, not a bandwidth ceiling:
    during starvation the host's tty output queue is empty (median 0 B),
    so the device drains everything written the moment it is written and
@@ -120,9 +164,11 @@ publishing.
    switches is the obvious way - then fix it against a failure that can
    be seen to go away.
 
-0d. **The pytest suite** - built. `docs/testing.md` is the design and
-   now also records what building it found. 63 tests, about 5 minutes
-   per track.
+0d. **The pytest suite** - built, and it is the instrument that found
+   all four defects on this page. `docs/testing.md` is the design and
+   records what building it found. About 5 minutes per track, ~138
+   tests for both. `--track=a|b|both`, `--reflash` to force a flash,
+   `-m smoke` for a ~2 minute iteration pass.
 
 1. **Capture IN over endpoint DMA.** The remaining CPU copy, the
    remaining invariant violation, and the source of the capture
@@ -226,6 +272,12 @@ publishing.
   The device cannot time its own benchmarks; the host keeps the clock.
 - **Discover ports, never hardcode them** (`host/ports.py`); a stale
   path once aimed the 1200-baud erase at the wrong port.
+- **Give the board time to re-enumerate before opening the native
+  port.** `measure.Board(settle=3.0)` is what the suite uses and it is
+  not decoration: opening the control port resets the board, and a
+  native node opened too soon after that belongs to the instance going
+  away. It opens successfully and then every write fails ENXIO, which
+  reads as a dead device rather than a race.
 - **The single-channel trigger floor is RC 44, not 43.** One channel
   reaches 886,363 conversions per second, two reach 906,976: a
   two-channel trigger converts its pair back to back and amortises the
@@ -265,6 +317,15 @@ publishing.
   (PC30) with OUT. Both tracks, same pins, same 50 ms sampling. Track
   A's `u` prints the pin state and `B` prints the activity counters, so
   a dark indicator can be told apart from a pin nothing ever drove.
+  **Heartbeat alive with both activity LEDs dark, while a host tool
+  sits there making no progress, means the host is stuck in `close()`
+  waiting for write URBs the device is not draining** - that is how
+  objective 0c was spotted. Confirm with
+  `sample <pid> 2 -mayDie | grep close`, then kill the process; the
+  board itself is fine.
+- Scratch scripts written this session are under the session scratchpad
+  and are not part of the repo. Anything worth keeping was folded into
+  `host/measure.py` or `tests/`.
 
 ## Track A command reference
 
@@ -277,8 +338,17 @@ IN 31.10, duplex 15.58; full loop at 200,000 sps each way with under=0
 and the tone at the theoretical maximum; full-rate pair (DAC 906,976 +
 capture 453,488) with under=0.
 
-`B` reports `rebuilds`, the number of times the core rebuilt endpoint
-configuration out from under the DMA mode. Zero through a normal run.
+`B` reports `spans` and `partial` on both tracks: OUT DMA transfers
+armed, and the ones that ended anywhere but on a slot edge. `partial`
+must be zero - a stream span is armed to land exactly on a slot
+boundary and nothing may end it early, so a non-zero count is the
+lost-sample defect or its next relative, and the suite asserts it.
+`spans` is also the handle on the starvation in objective 0a: a
+starving run arms few large spans, a healthy one many small ones.
+
+Track A's `B` additionally reports `rebuilds`, the number of times the
+core rebuilt endpoint configuration out from under the DMA mode. Zero
+through a normal run.
 Climbing means the link is resetting, which otherwise reads as data
 corruption.
 

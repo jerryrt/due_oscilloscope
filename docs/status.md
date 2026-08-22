@@ -1,6 +1,9 @@
 # Status and Known Issues
 
-Updated after Track A's bulk path was moved onto endpoint DMA.
+Updated after the host-fed playback loss was root-caused and fixed on
+both tracks: `play_service()` read the OUT DMA's status register twice
+where it needed one read. See "Found by the test suite: host-fed
+playback lost samples".
 
 ## Working
 
