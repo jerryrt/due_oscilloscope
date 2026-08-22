@@ -53,6 +53,12 @@ FLAG_BURST_FIRST = 1 << 1
 FLAG_BURST_LAST  = 1 << 2
 FLAG_CONTINUOUS  = 1 << 3
 
+# The ring primes and the DAC's first buffer plays before the signal is
+# representative, so everything that judges the waveform starts a second
+# into device time. It is the same offset loopback.py has always used
+# for its settled sample window.
+SETTLE_US = 1_000_000
+
 FRAME_SAMPLES = 2032
 FRAME_BYTES = HDR_LEN + FRAME_SAMPLES * 2
 
@@ -191,7 +197,20 @@ class ParsedStream:
         nch = max(1, self.n_channels)
         return (total - total / self.frames) * 1e6 / span_us / nch
 
-    def window_amplitudes(self, tag, tone_hz, size=8192, stride=None):
+    def _index_at(self, tag, from_us):
+        """First sample index at or after `from_us` of device time."""
+        if not from_us or self.ts_first is None:
+            return 0
+        want = (self.ts_first + from_us) & 0xFFFFFFFF
+        idx = 0
+        for i, ts in self.marks.get(tag, ()):
+            if ts >= want:
+                return idx
+            idx = i
+        return idx
+
+    def window_amplitudes(self, tag, tone_hz, size=8192, stride=None,
+                          from_us=0):
         """Tone amplitude per window against device time.
 
         Judged per window, never over the whole run: at 453,488 sps a
@@ -207,7 +226,8 @@ class ParsedStream:
         marks = self.marks.get(tag) or [(0, self.ts_first or 0)]
         out = []
         mi = 0
-        for s in range(0, len(vals) - size, stride):
+        start = self._index_at(tag, from_us)
+        for s in range(start, len(vals) - size, stride):
             while mi + 1 < len(marks) and marks[mi + 1][0] <= s:
                 mi += 1
             t = ((marks[mi][1] - self.ts_first) & 0xFFFFFFFF) / 1e6
@@ -215,13 +235,23 @@ class ParsedStream:
                                     tone_hz)))
         return out
 
-    def max_slew(self, tag):
+    def max_slew(self, tag, from_us=0):
         """Largest absolute step between consecutive samples of one
-        channel, over the whole run."""
+        channel.
+
+        `from_us` skips the head of the run. Playback starts from a ring
+        primed with mid-scale silence and the host's waveform joins it
+        mid-cycle, so the first transition is a genuine discontinuity
+        and an expected one - it is the start, not a splice.
+        """
         vals = self.series.get(tag)
         if not vals or len(vals) < 2:
             return 0
-        return max(abs(b - a) for a, b in zip(vals, vals[1:]))
+        start = self._index_at(tag, from_us)
+        sl = vals[start:]
+        if len(sl) < 2:
+            return 0
+        return max(abs(b - a) for a, b in zip(sl, sl[1:]))
 
 
 def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
@@ -655,6 +685,77 @@ def build_waveform(tone_hz, dac_total_sps, cycles=20):
     return bytes(out), dac_total_sps / per_cycle
 
 
+# DAC codes per sample in the ramp instrument.
+#
+# The DAC's span reaches the ADC at about 0.67 codes per DAC code, and
+# the ADC's own noise is a few codes, so a ramp rising one DAC code per
+# sample puts a single-sample offset below the noise floor. Eight puts
+# it at about 5.4 ADC codes, which is unambiguous.
+RAMP_STEP = 8
+
+
+def build_ramp(step=RAMP_STEP, period=None):
+    """A waveform where every sample encodes its own position.
+
+    A sine tells you that the output jumped; a ramp tells you by how
+    many samples. Any discontinuity in the captured ramp divides by the
+    DAC-code-per-sample step to give the exact number of samples skipped
+    or repeated, which is the difference between "the signal is wrong"
+    and "313 bytes never arrived".
+    """
+    period = period or (4096 // step)
+    out = bytearray()
+    for i in range(period):
+        out += struct.pack("<H", (0 << 12) | ((i * step) % 4096))
+    return bytes(out), 0.0
+
+
+def ramp_discontinuities(ps, tag=CH_A0, step=RAMP_STEP, period=None,
+                         from_us=SETTLE_US, tolerance=3):
+    """Sample offsets where a captured ramp did not advance by one step.
+
+    Returns a list of (index, samples) - positive means the output
+    skipped forward, so those samples never reached the DAC; negative
+    means it repeated. The ADC's own noise is a few codes, so the
+    tolerance is in samples and scaled by the measured slope.
+    """
+    vals = ps.series.get(tag)
+    if not vals:
+        return []
+    start = ps._index_at(tag, from_us)
+    tail = vals[start:]
+    if len(tail) < 2:
+        return []
+    period = period or (4096 // step)
+    lo, hi = min(tail), max(tail)
+    span = hi - lo
+    if span <= 0:
+        return []
+    # ADC codes per DAC code, measured from the ramp's own extent rather
+    # than assumed: the DAC is not rail to rail.
+    slope = span / float((period - 1) * step)
+    # The sawtooth's own wrap is a full-scale analog step, and the DAC
+    # and the ADC's sample-and-hold need a sample or two either side of
+    # it to settle. Those samples say nothing about continuity, so the
+    # wrap and its neighbours are excluded rather than corrected - an
+    # earlier version corrected them and manufactured a matched pair of
+    # +152/-152 sample "discontinuities" at every wrap, one per ramp
+    # period, which is 390 of them a second at 200 ksps.
+    skip = set()
+    for i in range(1, len(tail)):
+        if tail[i] - tail[i - 1] < -span * 0.4:
+            skip.update((i - 2, i - 1, i, i + 1, i + 2))
+
+    out = []
+    for i in range(1, len(tail)):
+        if i in skip:
+            continue
+        n = (tail[i] - tail[i - 1]) / slope / step
+        if abs(n - 1.0) > tolerance:
+            out.append((start + i, int(round(n - 1.0))))
+    return out
+
+
 def build_dc(code):
     """A constant on DAC0. If A0 does not move to the matching level the
     DAC is not consuming host data at all, which separates a data-path
@@ -690,6 +791,8 @@ class Feeder:
 
     LEAD = 20480
 
+    MAX_WRITE = 16384
+
     def __init__(self, fd, wave, byte_rate):
         self.fd = fd
         self.wave = wave
@@ -716,7 +819,7 @@ class Feeder:
                 continue
             # Whole 512-byte packets only: a short packet fragments the
             # device's stream DMA span, and on older firmware ended it.
-            due = min(due, 16384) & ~511
+            due = min(due, self.MAX_WRITE) & ~511
             if due == 0:
                 time.sleep(0.001)
                 continue
@@ -786,7 +889,8 @@ class LoopResult:
     def windows(self):
         """tag -> [(device time, amplitude)], every window, no overlap."""
         if getattr(self, "_win", None) is None:
-            self._win = {tag: self.stream.window_amplitudes(tag, self.tone_hz)
+            self._win = {tag: self.stream.window_amplitudes(
+                                  tag, self.tone_hz, from_us=SETTLE_US)
                          for tag in self.stream.series}
         return self._win
 
@@ -808,15 +912,17 @@ class LoopResult:
 
 
 def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
-             tone=1000.0, seconds=3.0, dc=None, diag=False, drain=True,
-             notify=None):
+             tone=1000.0, seconds=3.0, dc=None, ramp=None, diag=False,
+             drain=True, notify=None):
     """The complete loop: HOST -> USB -> DAC -> wire -> ADC -> USB -> HOST.
 
     Because the host authored the signal, any discrepancy in what comes
     back is a fault in the path rather than an unknown property of a
     signal.
     """
-    if dc is not None:
+    if ramp is not None:
+        wave, tone_hz = build_ramp(step=ramp)
+    elif dc is not None:
         wave, tone_hz = build_dc(dc)
     else:
         wave, tone_hz = build_waveform(tone, dac_sps)
@@ -877,7 +983,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     buf = b"".join(chunks)
     # Settled window starts one second into device time: the ring primes
     # and the DAC's first buffer plays before the tone is representative.
-    ps = _finish(parse_frames(buf, settle_us=1_000_000, settle_cap=16384))
+    ps = _finish(parse_frames(buf, settle_us=SETTLE_US, settle_cap=16384))
 
     text = console.decode("utf-8", "replace")
     rep = report.decode("utf-8", "replace")
@@ -956,10 +1062,15 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None):
     elapsed = time.time() - t0
     tx = feeder.stop()
 
-    board.cmd("B")
-    time.sleep(0.5)
-    report = board.drain_console(1.5)
+    # Stop the device before reading its counters. Playback keeps
+    # running after the feeder stops, so counters read afterwards
+    # include the underruns of the shutdown rather than the run - which
+    # is measuring the wrong thing and reads as a fault in the feed.
     board.cmd("0")
+    time.sleep(0.2)
+    board.cmd("B")
+    time.sleep(0.4)
+    report = board.drain_console(1.2)
     board.close_native(fd)
 
     return PlayResult(elapsed_s=elapsed, host_tx_bytes=tx, dac_sps=dac_sps,
