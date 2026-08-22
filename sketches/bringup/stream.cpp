@@ -46,7 +46,7 @@ static uint32_t resync_count;
 static uint32_t usb_us;
 static uint32_t usb_bytes;
 
-static void stream_start_common(uint32_t trigger_hz, bool with_gen);
+static bool stream_start_common(uint32_t trigger_hz, bool with_gen);
 
 /*
  * Capture without touching the DAC, so the DACC can be left running on
@@ -54,17 +54,17 @@ static void stream_start_common(uint32_t trigger_hz, bool with_gen);
  * the measured DAC ceiling against the frequency actually produced,
  * rather than trusting a count of PDC completions.
  */
-void stream_start_capture_only(uint32_t trigger_hz)
+bool stream_start_capture_only(uint32_t trigger_hz)
 {
-	stream_start_common(trigger_hz, false);
+	return stream_start_common(trigger_hz, false);
 }
 
-void stream_start(uint32_t trigger_hz)
+bool stream_start(uint32_t trigger_hz)
 {
-	stream_start_common(trigger_hz, true);
+	return stream_start_common(trigger_hz, true);
 }
 
-static void stream_start_common(uint32_t trigger_hz, bool with_gen)
+static bool stream_start_common(uint32_t trigger_hz, bool with_gen)
 {
 	acq_init();
 	if (with_gen)
@@ -81,12 +81,15 @@ static void stream_start_common(uint32_t trigger_hz, bool with_gen)
 	usb_bytes = 0;
 	rate_hz = trigger_hz;
 
+	if (!acq_start(trigger_hz, 2))
+		return false;
+
 	if (with_gen)
 		gen_start();
-	acq_start(trigger_hz);
 
 	started_us = micros();
 	active = true;
+	return true;
 }
 
 void stream_bench_service(void);

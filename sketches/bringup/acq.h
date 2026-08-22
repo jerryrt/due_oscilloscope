@@ -26,10 +26,20 @@
 #define ACQ_NBUF              4
 #define ACQ_BUF_SAMPLES       2032        /* 4064 B payload + 32 B header = 8 x 512 */
 
+/*
+ * Measured on this board: RC 86 works, RC 85 drops every other trigger
+ * with no status bit set. The compare value holds across master clock
+ * settings, because the timer and ADC clocks scale together. Refuse
+ * anything faster rather than trusting flags that stay clear; an
+ * over-fast trigger cannot be detected after the fact. See
+ * docs/hardware.md.
+ */
+#define ACQ_MIN_RC            86u
+
 extern uint16_t acq_buf[ACQ_NBUF][ACQ_BUF_SAMPLES];
 
 void     acq_init(void);
-void     acq_start(uint32_t trigger_hz);
+bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
 void     acq_stop(void);
 uint32_t acq_configured_rc(void);
 

@@ -62,7 +62,9 @@ static void banner(void)
 	Serial.println("# commands: h=help p=printf-cost g=gpio-cost f=fault");
 	Serial.println("#           r=read a0/a1  s=dac sweep  x=crosstalk");
 	Serial.println("#           t=trigger-rate sweep (TC+ADC+PDC)");
-	Serial.println("#           1..5=stream 50k/100k/200k/400k/max Hz");
+	Serial.print("#           1..5=stream 50k/100k/200k/400k Hz, 5=max in-spec (");
+	Serial.print((SystemCoreClock / 2u) / ACQ_MIN_RC);
+	Serial.println(")");
 	Serial.println("#           0=stop stream   ?=stream stats");
 	Serial.println("#           d=DAC max update-rate sweep");
 	Serial.println("#           F=flood USB IN   R=sink USB OUT   B=bench stats");
@@ -254,7 +256,23 @@ static void cmd_rate_sweep(void)
 	for (unsigned i = 0; i < sizeof(rcs) / sizeof(rcs[0]); i++) {
 		uint32_t hz = tc_clock / rcs[i];
 
-		acq_start(hz);
+		/*
+		 * Rates past the measured cliff are refused rather than
+		 * attempted: the ADC drops those triggers with no status bit
+		 * set, so the sweep would report clean data at half the rate.
+		 * The cliff itself was found before the guard existed and is
+		 * recorded in docs/hardware.md.
+		 */
+		if (!acq_start(hz, 2)) {
+			snprintf(buf, sizeof(buf),
+			         "# %6lu %9lu           -        -       -     -"
+			         "   REFUSED (RC < %lu)",
+			         (unsigned long)rcs[i], (unsigned long)hz,
+			         (unsigned long)ACQ_MIN_RC);
+			Serial.println(buf);
+			Serial.flush();
+			continue;
+		}
 
 		uint32_t sync = acq_buffers_done;
 		uint32_t guard = micros();
@@ -302,7 +320,14 @@ static void cmd_stream(uint32_t trigger_hz)
 {
 	char buf[128];
 
-	stream_start(trigger_hz);
+	if (!stream_start(trigger_hz)) {
+		snprintf(buf, sizeof(buf),
+		         "# refused: %lu Hz is past the measured ADC ceiling",
+		         (unsigned long)trigger_hz);
+		Serial.println(buf);
+		Serial.flush();
+		return;
+	}
 	snprintf(buf, sizeof(buf),
 	         "# streaming: trigger %lu Hz, %lu sps aggregate, sine %lu Hz on DAC0",
 	         (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
@@ -404,7 +429,11 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 		Serial.flush();
 		return;
 	}
-	stream_start_capture_only(200000);
+	if (!stream_start_capture_only(200000)) {
+		Serial.println("# capture refused");
+		Serial.flush();
+		return;
+	}
 
 	snprintf(buf, sizeof(buf),
 	         "# DAC indep %lu Hz (RC %lu), capture 200000 Hz",
@@ -485,7 +514,7 @@ void loop()
 		/* Highest rate the ADC sustains, derived from the measured
 		 * cliff at RC 86. That compare value holds across master clock
 		 * settings, because the timer and ADC clocks scale together. */
-		case '5': cmd_stream((SystemCoreClock / 2u) / 86u); break;
+		case '5': cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC); break;
 		case '0': stream_stop(); Serial.println("# stream stopped");
 		          Serial.flush();      break;
 		case '?': cmd_stream_stats();  break;

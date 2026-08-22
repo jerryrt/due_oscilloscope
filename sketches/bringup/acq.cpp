@@ -30,7 +30,7 @@ static uint32_t configured_rc;
 #define CH_A0 7u
 #define CH_A1 6u
 
-static void tc_init(uint32_t trigger_hz)
+static void tc_init(uint32_t rc)
 {
 	PMC->PMC_PCER0 = (1u << ID_TC0);
 
@@ -43,9 +43,9 @@ static void tc_init(uint32_t trigger_hz)
 	                          | ACPA_CLEAR
 	                          | ACPC_SET;
 
-	configured_rc = TC_CLOCK1_HZ / trigger_hz;
-	TC0->TC_CHANNEL[0].TC_RA = configured_rc / 2u;   /* 50% duty */
-	TC0->TC_CHANNEL[0].TC_RC = configured_rc;
+	configured_rc = rc;
+	TC0->TC_CHANNEL[0].TC_RA = rc / 2u;              /* 50% duty */
+	TC0->TC_CHANNEL[0].TC_RC = rc;
 }
 
 uint32_t acq_configured_rc(void)
@@ -74,8 +74,24 @@ void acq_init(void)
 	ADC->ADC_CHER = (1u << CH_A0) | (1u << CH_A1);
 }
 
-void acq_start(uint32_t trigger_hz)
+bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 {
+	uint32_t rc;
+
+	if (trigger_hz == 0)
+		return false;
+
+	rc = TC_CLOCK1_HZ / trigger_hz;
+
+	/*
+	 * The ADC ignores a trigger that arrives before it is ready and
+	 * sets no flag when it does, so an over-fast rate reads as clean
+	 * data at half the frequency. Refuse it here; nothing downstream
+	 * can tell the difference later.
+	 */
+	if (rc < ACQ_MIN_RC * (n_channels / 2u ? n_channels / 2u : 1u))
+		return false;
+
 	acq_stop();
 
 	acq_buffers_done = 0;
@@ -86,7 +102,7 @@ void acq_start(uint32_t trigger_hz)
 	acq_ring_overflow = 0;
 	filling = 0;
 
-	tc_init(trigger_hz);
+	tc_init(rc);
 
 	/* Prime the PDC: current buffer plus the next one. */
 	ADC->ADC_RPR  = (uint32_t)acq_buf[0];
@@ -109,6 +125,7 @@ void acq_start(uint32_t trigger_hz)
 	ADC->ADC_MR |= ADC_MR_TRGEN | TRGSEL_TIOA0;
 
 	TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+	return true;
 }
 
 void acq_stop(void)
