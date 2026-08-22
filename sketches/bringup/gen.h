@@ -37,4 +37,11 @@ uint32_t gen_sine_hz(uint32_t trigger_hz);        /* trigger_hz / GEN_TABLE_LEN 
 
 extern volatile uint32_t gen_endtx_count;
 
+/*
+ * Dispatched from the single DACC_Handler, which play.cpp owns: two
+ * modules want the end-of-transmit event and only one can own the
+ * vector, so the owner dispatches on which source is active.
+ */
+void     gen_endtx(void);
+
 #endif /* GEN_H */

@@ -192,8 +192,12 @@ void gen_go_tioa1(void)
 /*
  * Re-arm the next-pointer at the same table, so playback loops forever
  * with no CPU involvement beyond two register writes per table pass.
+ *
+ * Called from the single DACC_Handler in play.cpp rather than owning
+ * the vector: play.cpp wants the same event for the host-fed ring, and
+ * only one definition of the handler can exist.
  */
-void DACC_Handler(void)
+void gen_endtx(void)
 {
 	if (DACC->DACC_ISR & DACC_ISR_ENDTX) {
 		DACC->DACC_TNPR = (uint32_t)gen_table;
