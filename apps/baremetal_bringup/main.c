@@ -696,13 +696,15 @@ int main(void)
 			uart_flush();
 			break;
 		case 'B': stream_bench_report();
-		          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu\n",
+		          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu\n",
 		                 (unsigned long)play_bytes_in,
 		                 (unsigned long)play_produced,
 		                 (unsigned long)play_consumed,
 		                 (unsigned long)play_underruns,
 		                 (unsigned long)play_isr_calls,
-		                 (unsigned long)play_endtx_seen);
+		                 (unsigned long)play_endtx_seen,
+		                 (unsigned long)play_spans,
+		                 (unsigned long)play_partial);
 		          uart_flush(); break;
 		case 'w': cmd_stream_uart(2000); break;
 		default:                    break;

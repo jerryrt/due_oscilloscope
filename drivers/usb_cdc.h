@@ -64,8 +64,9 @@ uint32_t usb_dma_in_residue(void);
 
 bool   usb_dma_out_start(void *buf, uint32_t len);
 bool   usb_dma_out_start_stream(void *buf, uint32_t len);  /* no END_TR */
+
 bool   usb_dma_out_busy(void);
-uint32_t usb_dma_out_received(uint32_t requested);
+uint32_t usb_dma_out_status(void);   /* raw DEVDMASTATUS, read once */
 
 extern volatile uint32_t usb_reset_count;
 extern volatile uint32_t usb_setup_count;

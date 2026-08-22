@@ -586,12 +586,18 @@ bool usb_dma_out_busy(void)
 	        & UOTGHS_DEVDMASTATUS_CHANN_ENB) != 0;
 }
 
-uint32_t usb_dma_out_received(uint32_t requested)
+/*
+ * One read of DEVDMASTATUS, decoded by the caller.
+ *
+ * Byte count and channel-enabled live in the same register, and reading
+ * it twice asks two different instants whether the transfer finished
+ * and how far it got. The answers disagree exactly when the transfer
+ * ends between them, which is the moment the caller most needs them to
+ * agree.
+ */
+uint32_t usb_dma_out_status(void)
 {
-	uint32_t left = (UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS
-	                 & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
-	                >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
-	return requested > left ? requested - left : 0;
+	return UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS;
 }
 
 static bool dma_out_start_ctl(void *buf, uint32_t len, uint32_t extra)

@@ -45,5 +45,8 @@ extern volatile uint32_t play_bytes_in;
 extern volatile uint32_t play_isr_calls;
 extern volatile uint32_t play_endtx_seen;
 extern volatile uint32_t play_svc_calls;   /* play_service entries while active */
+extern volatile uint32_t play_spans;       /* OUT DMA transfers armed */
+extern volatile uint32_t play_partial;     /* spans that ended off a slot edge */
+
 
 #endif /* PLAY_H */

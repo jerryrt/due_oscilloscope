@@ -540,10 +540,18 @@ static void dma_push_in(void)
 
 static void dma_pull_out(void)
 {
-	if (usb_dma_out_busy())
+	/* One read: byte count and channel-enabled share the register, and
+	 * two reads ask two different instants. See drivers/play.c. */
+	uint32_t st = usb_dma_out_status();
+
+	if (st & UOTGHS_DEVDMASTATUS_CHANN_ENB)
 		return;
 	if (dma_out_inflight) {
-		bench_out_bytes += usb_dma_out_received(dma_out_inflight);
+		uint32_t left = (st & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
+		                >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
+
+		bench_out_bytes += dma_out_inflight > left
+		                 ? dma_out_inflight - left : 0;
 		dma_out_inflight = 0;
 	}
 	/*

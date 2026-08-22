@@ -423,6 +423,8 @@ class PlayCounters:
     isr        = property(lambda s: s._g("isr"))
     endtx      = property(lambda s: s._g("endtx"))
     svc        = property(lambda s: s._g("svc"))
+    spans      = property(lambda s: s._g("spans"))
+    partial    = property(lambda s: s._g("partial"))
     rebuilds   = property(lambda s: s._g("rebuilds"))
     act_in     = property(lambda s: s._g("act-in"))
     act_out    = property(lambda s: s._g("act-out"))
@@ -619,7 +621,11 @@ class Board:
         # streaming into the void for the next run to trip over.
         try:
             termios.tcflush(fd, termios.TCIOFLUSH)
-        except OSError:
+        except (OSError, termios.error):
+            # termios.error is not an OSError - it derives straight from
+            # Exception - so `except OSError` never caught it, and a port
+            # that had gone away (ENXIO) aborted the whole measurement
+            # from inside the cleanup.
             pass
         os.close(fd)
 
