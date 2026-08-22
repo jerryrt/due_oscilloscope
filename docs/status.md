@@ -398,15 +398,31 @@ How it was localised, in order:
    position, so a discontinuity divides straight into a sample count.
    That is what produced the 6-185 figure and showed the loss is always
    forward. `measure.build_ramp` and `measure.ramp_discontinuities`.
-3. **Byte accounting is suggestive but not conclusive.** Over 20 s at
+3. **Both tracks lose samples identically.** The suite run against
+   Track A produces the same xfails as Track B, with the same counts:
+   62 passed, 5 xfailed, 2 xpassed on each. Track A enumerates through
+   the Arduino core with its bulk endpoints on UOTGHS DMA; Track B is a
+   bare-metal stack sharing no source with it. Two independent device
+   implementations losing samples the same way points hard at the host
+   side rather than at either firmware, which is the strongest single
+   piece of evidence available without a protocol analyser.
+4. **Byte accounting is suggestive but not conclusive.** Over 20 s at
    200 ksps the host's `write()` counted 8,020,480 B and the device's
    `play_bytes_in` reported 7,995,392 - a 25,088 B deficit against an
    in-flight span of 8192. But `play_bytes_in` only advances when a DMA
    span completes, so it under-reports by a varying amount, and the
    same comparison against the OUT sink benchmark gave deltas from 2 KB
-   to 280 KB depending on write size and pacing. **Not clean enough to
-   say whether the bytes are lost in macOS's tty layer or in the
-   device's OUT DMA path.** That is the open question.
+   to 280 KB depending on write size and pacing. **Not clean enough on
+   its own to place the loss**, though point 3 above already points away
+   from the device.
+
+Where to start next: instrument the device side to count bytes at the
+endpoint rather than at DMA-span completion, so the accounting stops
+under-reporting by a varying amount, then compare against `write()`
+over a long run. If the device confirms it received everything the host
+wrote, the loss is in macOS's tty path and the fix is the feed policy;
+if not, it is in the OUT DMA arming and objective 1's work will touch
+the same code.
 
 What was tried and did not fix it: capping the host's write size at one
 512-byte packet, raising the feeder's lead to 24 and 28 KB, issuing the

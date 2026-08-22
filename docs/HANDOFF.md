@@ -72,9 +72,10 @@ publishing.
    else because it breaks invariant 5 with every counter clean. At
    200 ksps a host-fed run drops 6-185 DAC samples a few times a
    second; the device's own generator through the same path is
-   perfectly clean. Localised to host -> DAC, but not yet split between
-   macOS's tty layer and the device's OUT DMA - the byte accounting on
-   both sides is too coarse to say. Full write-up, including what was
+   perfectly clean, and **both tracks lose samples identically** -
+   two USB device stacks sharing no source, which points at the host
+   rather than at either firmware. Not yet proven, because the byte
+   accounting on the device side under-reports by a varying amount. Full write-up, including what was
    tried and did not work, under "Found by the test suite" in
    `docs/status.md`. The instruments are built: `M` for the control,
    `measure.build_ramp` / `ramp_discontinuities` for counting the lost

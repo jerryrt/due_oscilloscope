@@ -111,13 +111,15 @@ def test_core_did_not_rebuild_endpoints(board, track):
     """
     if track != "a":
         pytest.skip("Track A only")
-    before, _ = measure.stream_stats(board)
-    if before.get("rebuilds") is None:
+    # rebuilds is reported by `B`, the bench report, not by `?`.
+    before = measure.parse_bench(board.ask("B", secs=1.2))
+    if before.rebuilds is None:
         pytest.skip("this build does not report rebuilds")
     res = measure.run_capture(board, preset="1", seconds=2.0)
     assert res.stream.frames > 0
-    after, text = measure.stream_stats(board)
-    grew = after["rebuilds"] - before["rebuilds"]
+    after = measure.parse_bench(board.ask("B", secs=1.2))
+    text = after.raw
+    grew = after.rebuilds - before.rebuilds
     assert grew == 0, (
         f"the core rebuilt endpoint configuration {grew} times during the "
         f"capture, which reads downstream as data corruption\n{text}")
