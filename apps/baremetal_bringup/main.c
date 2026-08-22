@@ -47,6 +47,7 @@ static void banner(void)
 	printf("#           P=play only  V=ring dump  D=loop diagnostic\n");
 	printf("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels\n");
 	printf("#           M=mimic loop without USB (gen sine on TIOA1 + capture)\n");
+	printf("#           Q=main-loop profile  z=software reset\n");
 	printf("#\n");
 }
 
@@ -663,6 +664,18 @@ int main(void)
 			break;
 		}
 		case 'Q': cmd_profile(); break;
+		/*
+		 * Software reset. The test suite holds the control port open
+		 * for a whole session, because opening it asserts NRSTB and
+		 * costs a reset plus a native-port re-glob every time; this is
+		 * how it recovers a wedged device without giving that up.
+		 * Track A has always had it and docs/HANDOFF.md has always
+		 * listed it here, so this closes a documented parity gap
+		 * rather than adding a feature.
+		 */
+		case 'z': printf("# software reset now\n"); uart_flush();
+		          RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
+		          break;
 		case 'V': play_dump(); break;
 		case 'D': diag_start(); break;
 		/*

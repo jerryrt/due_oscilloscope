@@ -515,12 +515,17 @@ class Board:
     def stop(self):
         self.cmd("0")
 
-    def reset(self):
-        """Software reset over the console. Does not reopen the control
-        port, so the held fd survives - which is the whole point."""
-        self.cmd("z")
-        time.sleep(2.5)
+    def reset(self, wait=10.0):
+        """Software reset over the console.
+
+        Does not reopen the control port, so the held fd survives -
+        which is the whole point. Waits for the banner rather than a
+        fixed delay, because the native port re-enumerates behind it and
+        anything opened before the banner is aimed at a dead node.
+        """
         self.poll_console()
+        self.cmd("z")
+        return self.drain_console(0, quiet=1.0, cap=wait)
 
     # -- native port -------------------------------------------------
     def open_native(self, wait=12.0, dtr=True, blocking_writes=False,
