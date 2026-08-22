@@ -72,8 +72,23 @@ def test_no_sample_step_exceeds_the_waveform_slope(board, seconds, baseline,
 
     amplitude = baseline["amplitude"]["full_scale_codes"]
     fs = res.stream.declared_rate_hz
+    # 3.0, the helper's documented default, not the 1.6 this carried
+    # while it was an xfail and the margin was never exercised. The
+    # measurement is bimodal, not noisy: 49-51 codes when the DAC update
+    # clock and the ADC trigger stay locked, 88-92 when they beat. The
+    # beat looks like this around the largest step
+    #
+    #   d=-42  d=+1  d=-88  d=-43
+    #
+    # - one sample repeats, the next spans two DAC updates, and the pair
+    # sums to the two-update slope with the sine's phase intact either
+    # side. Nothing is lost; ~700 of them appear in a 3 s run when the
+    # beat is present and none when it is not. The device-only control
+    # above measures the same thing with the host removed (38-43 against
+    # an analytic 17) and has always used 3.0. A splice is orders of
+    # magnitude clear of either line.
     got = assert_slew(res, measure.CH_A0, res.tone_hz, amplitude, fs,
-                      margin=1.6)
+                      margin=3.0)
     record(calibration, "slew_a0", {
         "max_step": got,
         "analytic": round(measure.slew_limit(res.tone_hz, amplitude, fs), 1)})

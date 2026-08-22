@@ -552,6 +552,52 @@ into a counted underrun. Fixed on Track B at the time and on Track A
 only later, which mattered: see "The evidence that pointed at the host
 was the wrong kind" above.
 
+## The slew alarm that was the sampling beat
+
+`test_no_sample_step_exceeds_the_waveform_slope` failed about one run
+in three, reporting a 91-code step against its 69-code limit - the
+invariant-5 alarm, which reads as samples spliced from two points in
+time. It first appeared after the test venv moved to Python 3.14, and
+it is not the interpreter: a venv rebuilt on the old 3.9.6 failed it 2
+runs in 6 as well. It was there before, and the recorded two-track pass
+of 2026-08-22 got past it by luck.
+
+The measurement is **bimodal, not noisy**: 49-51 codes or 88-92, never
+between. That is the signature of a fixed phase relationship decided at
+start, not of random corruption. Instrumenting the largest step and
+printing its neighbourhood shows what it is:
+
+```
+ d=-42   d=-42   d=+1   d=-88   d=-43   d=-42
+```
+
+One sample repeats, the next step spans two DAC updates, and the pair
+sums to -87 - exactly the two-update slope - with the sine's phase
+intact either side. Nothing is lost and nothing is spliced: the DAC
+update clock and the ADC trigger are separate TC channels at the same
+nominal rate, free running against each other, and when they beat, one
+ADC sample lands inside a DAC update it has already seen. About 700 of
+these appear in a 3 s run when the beat is present and none when it is
+not, which is the bimodality.
+
+**The threshold was wrong, not the device.** The helper's documented
+default margin is 3.0. The device-only control - `M`, the host removed
+from the DAC side entirely - has always used 3.0 and measures 38-43
+codes against an analytic 17, which is 2.2-2.5x by itself. The host-fed
+test carried 1.6 only because it was an xfail while the lost-sample
+defect was open, so the margin was never exercised against clean
+behaviour; when the defect closed and the xfail came off, the number
+came with it unexamined. Raised to 3.0. Five runs since pass while
+still showing both modes (92, 49, 92, 49, 49).
+
+A splice is orders of magnitude clear of either line, so the test still
+catches what it was written for. What the suite has for real sample
+loss is the ramp, which is byte-exact and stayed green throughout.
+
+Worth noting for the next reader: **a threshold that has only ever run
+under an xfail has not been tested**. When an xfail is removed, the
+numbers it was hiding need re-deriving, not inheriting.
+
 ## Measured figures
 
 | Quantity | Value |
