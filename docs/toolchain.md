@@ -140,8 +140,10 @@ own `libzstd.1.dylib`, and is genuinely self-contained. Verify with
 
 ### Install CMake
 
-Not present on this host either, and there is no package manager. Use
-Kitware's universal binary:
+Not present on this host either. MacPorts is installed and could
+supply it, but the toolchain here is kept as self-contained binaries
+under `~/.local` so a port upgrade cannot move it. Use Kitware's
+universal binary:
 
 ```sh
 tar xzf cmake-4.4.2-macos-universal.tar.gz

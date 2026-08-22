@@ -311,8 +311,10 @@ before and is now separate, with its own evidence.
 
 ## Environment
 
-- macOS 12.7.6, Intel x86_64, no Homebrew; `~/.local/bin` on `PATH`
-  (holds `arduino-cli`, `cmake`, `gh`).
+- macOS 12.7.6, Intel x86_64, no Homebrew - but **MacPorts is
+  installed** at `/opt/local`, with `python314` 3.14.6 active, which is
+  what `.venv` is built on. `/usr/bin/python3` is the Xcode CLT 3.9.6.
+  `~/.local/bin` on `PATH` (holds `arduino-cli`, `cmake`, `gh`).
 - Track B: `cmake --build build -j`, flash with
   `tools/flash.sh build/baremetal_bringup.bin` (discovers the port; an
   interrupted flash leaves SAM-BA enumerated and the banner silent -

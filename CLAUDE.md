@@ -185,21 +185,30 @@ python3 -m venv .venv
 .venv/bin/python -m pytest --track=b -q
 ```
 
-**Host CLI tools under `host/` stay stdlib only**, so bring-up needs no
-install step at all - this machine has no package manager, and the
-tools you reach for when you do not yet know whether the board is alive
-must not depend on one. Note what that rule is and is not: `python3 -m
-venv` works offline, so a venv is not the hazard, `pip install` is. Any
-of these tools may be run from a venv; keeping them import-clean simply
-means they also run when the venv is the broken thing.
+**Providing a usable, modern Python is the OS user's job**, not the
+project's. The repository declares what it needs and builds a venv from
+it; it does not work around an old interpreter.
 
-So this is a property of `host/` to preserve, not a rule to extend. It
-already holds, so it costs nothing to keep, and the tools are written
-around it - `termios` and `fcntl` instead of pyserial, a Goertzel
-instead of an FFT library, `zlib.crc32` instead of a checksum package.
-The system interpreter here is Python 3.9, which is the version those
-files target. New code with real dependencies does not inherit the
-rule; it gets a venv.
+On this machine that is already satisfied. **MacPorts is installed** at
+`/opt/local` (`port` 2.12.5) with `python314` 3.14.6 active, and the
+venv is built on `/opt/local/bin/python3.14`. There is no *Homebrew* -
+which is all "no package manager" ever meant in this file, and it was
+wrong as written. `/usr/bin/python3` is the Xcode Command Line Tools
+3.9.6 and is no longer what anything is built on.
+
+`host/` currently imports only stdlib - `termios` and `fcntl` rather
+than pyserial, a Goertzel rather than an FFT library, `zlib.crc32`
+rather than a checksum package - and there is no reason to churn
+working code. Treat that as a fact about the code, not a rule new code
+inherits: everything runs from the venv now, and anything that needs a
+dependency may take one.
+
+**The GUI needs an older interpreter than the tests do.** PySide6 6.9.3
+is `cp39-abi3` and declares `>=3.9,<3.14`, so it will not install on
+3.14; its macOS wheel is `macosx_12_0_universal2`, which this host
+(12.7.6, x86_64) satisfies. numpy ships a cp314 x86_64 wheel and is
+fine either way. So the GUI venv wants 3.13 - `sudo port install
+python313` - while the test venv is happy on 3.14.
 
 **Use the xPack toolchain, not ARM's official macOS build.** ARM's links
 `cc1` against Homebrew's zstd at an absolute path and cannot run on this

@@ -48,11 +48,12 @@ writes in flight hangs the host process in `close()` holding the port -
 that is the hazard in `docs/usb.md` and it is objective 0c in
 `docs/HANDOFF.md`, seen once in the wild.
 
-The dependency rule stays satisfiable. `CLAUDE.md` requires `host/` to
-be stdlib only and to run from the system interpreter, because
-bring-up must not need a package manager. The GUI needs numpy and Qt.
-The process boundary is what lets both be true at once, without either
-rule being weakened.
+The two halves want different interpreters, and that is not a
+hypothetical: PySide6 6.9.3 declares `>=3.9,<3.14` while the test venv
+here runs 3.14.6. A process boundary makes that a non-issue - two
+venvs, two Pythons, one socket between them - where a single process
+would force the whole project onto whichever interpreter Qt supports
+this year.
 
 ### The two alternatives, and why not
 
@@ -412,16 +413,18 @@ pip install -e .[gui]       # PySide6, pyqtgraph, numpy, scipy
 pip install -e .[dev]       # pytest
 ```
 
+**Which interpreter, checked rather than assumed.** PySide6 6.9.3 is
+`cp39-abi3` and declares `>=3.9,<3.14`, so the GUI venv must be 3.13 or
+older; its macOS wheel is `macosx_12_0_universal2`, which this host
+(12.7.6, Intel) satisfies, so the front end can be developed here.
+numpy ships a cp314 x86_64 wheel and constrains nothing. The test venv
+runs 3.14.6 from MacPorts today; the GUI wants `sudo port install
+python313`. Providing the interpreter is the OS user's job - the
+project declares what it needs and does not work around an old one.
+
 For a machine with no package manager, vendor the wheels and install
 with `--no-index --find-links`. That is a better offline story than
 having no dependencies, because it covers the GUI too.
 
 ## Open questions
 
-- Whether the GUI can run on this machine at all. The system
-  interpreter is Python 3.9.6 and recent numpy and PySide6 releases
-  have moved past 3.9 *(check the current wheels)*. If they have, the
-  GUI venv needs an interpreter this machine does not have, and with no
-  package manager that means a python.org installer. Worth settling
-  early: it decides whether the front end is developed here or only on
-  the other two platforms.
