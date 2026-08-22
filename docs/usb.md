@@ -5,17 +5,26 @@ device reports byte counts only, for reasons in a later section.
 
 ## Ceilings
 
-Current figures, measured with `host/usbbench.py` running one
-real-time thread per direction (see `host/rt.py`):
+Current figures via **endpoint DMA** (`usbbench.py in-dma/out-dma/
+duplex-dma`), with the CPU-FIFO figures kept for comparison. Host side
+runs one real-time thread per direction (see `host/rt.py`):
 
-| Direction | Track B (bare metal) |
-|---|---|
-| IN, device to host | **5.20 MB/s** |
-| OUT, host to device | **5.03 MB/s**, byte-perfect against the device counter |
-| Duplex, equal contention | 2.77 in + 2.47 out = **5.25 MB/s** |
+| Direction | Endpoint DMA | CPU FIFO copies |
+|---|---|---|
+| IN, device to host | **32.0 MB/s** | 5.20 MB/s |
+| OUT, host to device | **26.6 MB/s, byte-perfect** | 5.03 MB/s, byte-perfect |
+| Duplex, equal contention | 8.55 + 8.40 = **16.95 MB/s** | 2.77 + 2.47 = 5.25 MB/s |
+
+Getting DMA to work took three findings, recorded in the `usb_cdc.c`
+history: AUTOSW is required (manual FIFOCON and automatic bank
+switching cannot share an endpoint), a `DEVEPTCFG` write while EPEN is
+clear is silently ignored on this part, and the mode must be reapplied
+whenever endpoint configuration is rebuilt (every bus reset and
+SET_CONFIGURATION), or an enumeration quietly reverts it.
 
 For scale, the ADC's full in-spec output at this clock is about
-**1.81 MB/s**, and the working full loop moves 1.24 MB/s combined.
+**1.81 MB/s**, and the full-rate loop moves 3.7 MB/s combined - which
+is why it only became viable once the playback ring was DMA-fed.
 
 Earlier figures from the single-threaded benchmark - 3.86 IN, 3.02 OUT,
 3.58 duplex - were partly measuring the host's own polling loop: one
@@ -39,12 +48,24 @@ jumps x 128 B) and by the jumps landing exactly on DAC ring-buffer
 boundaries. Clock-paced writes at the exact consumption rate still
 dropped at every tested queue depth.
 
-The policy that measures clean, now in `host/loopback.py`: a real-time
-thread polls `TIOCOUTQ` and bursts 16 KB **only into a truly empty
-queue**. The device's 8 KB ring covers the detection latency, so the
-far end never starves either: zero underruns and full tone amplitude in
-every window, reproducibly. Any future host software that feeds the
-DAC must keep this policy.
+Two policies have measured clean, and which applies depends on the
+device side:
+
+- **Manual-FIFO device** (small ring, drains the queue only at DAC
+  consumption rate): the only safe write lands in a *truly empty*
+  queue - a real-time thread polling `TIOCOUTQ` and bursting only at
+  zero. That gate caps near 1.7 MB/s once IN traffic competes.
+- **DMA-fed device** (current: 32 KB ring ingested by endpoint DMA at
+  wire speed): the tty queue stays shallow as long as the host's lead
+  is smaller than the ring, so the pressure condition cannot form and
+  **clock-paced blocking writes at the DAC byte rate with a ~20 KB
+  lead are safe** - and reach full rate in duplex. Writes must be
+  whole 512-byte packets so no short packet fragments the device's
+  stream DMA span.
+
+`host/loopback.py` implements the second. Any future host software
+that feeds the DAC must keep whichever policy matches the device it
+talks to, and must never free-run writes into saturation.
 
 ## close() hangs unless the device always drains OUT
 

@@ -91,6 +91,14 @@ But the throughput argument for it is gone. At full rate the write
 occupies roughly a fifth of wall time, so about 80% of the processor is
 still idle. DMA is now an efficiency improvement, not an enabler.
 
+*Postscript, after the DMA work landed:* that conclusion held for
+one-direction streaming and fell for full-rate duplex - the CPU-copy
+paths capped gated OUT near 1.7 MB/s while capture streamed, and the
+907 ksps full-duplex pair only ran once the playback ring was DMA-fed.
+So: not needed for capture-only throughput, an enabler after all for
+the full instrument. Endpoint DMA now works (see `docs/usb.md`) and
+playback uses it; capture IN conversion is the current objective.
+
 ## How the USB stack was fixed
 
 It did not enumerate for a long time. Register dumps showed everything
@@ -235,16 +243,18 @@ than the source can produce is describing its own bug.**
 
 ## Next
 
-0. `usb_cdc_write` clobbers IN banks when producing faster than the
-   host drains: the flood benchmark's device-side counter reads far
-   above the wire rate while the host receives a fraction of it. The
-   streaming path never outruns the wire so frames are verifiedly
-   intact, but the no-spin guard is not doing what it claims and the
-   flood counter is meaningless until this is understood.
+The live objective list is in `docs/HANDOFF.md`: capture IN over
+endpoint DMA, the cable swap, the second pair, the dual-DAC purity
+signatures, equivalent-time reconstruction. Longer-horizon items parked
+here:
+
 1. Understand why the UOTGHS interrupt stops firing after the first
-   reset. Polling works, but the cause is unknown and may bite elsewhere.
-2. Vendor-class endpoint with UOTGHS DMA, to get the CPU out of the
-   sample path entirely. No longer needed for throughput; still the
-   right architecture.
+   reset. Polling works, but the cause is unknown and may bite
+   elsewhere.
+2. The bank-overcommit behaviour when the host stops draining, common
+   to the manual `usb_cdc_write` and the IN DMA path: device counters
+   read far above the wire, so flood benchmarks trust host numbers
+   only. Harmless in normal operation; understand it before relying on
+   device-side byte counts anywhere else.
 3. Burst mode, for capture bursts above the sustainable stream rate.
 4. Twelve-channel capture, now that the transport can carry full rate.

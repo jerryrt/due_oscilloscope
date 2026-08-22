@@ -78,9 +78,10 @@ Check here before reasoning from general Arduino knowledge.
   there either. Verified from core source; see `docs/hardware.md`.
 - **macOS's CDC-ACM output path drops ~128-byte chunks under pressure**,
   silently, with `write()` having counted them and every counter on
-  both sides green. Host code must write into an *empty* tty queue
-  (TIOCOUTQ gating from a real-time thread, as `host/loopback.py`
-  does), never free-run blocking writes. See `docs/usb.md`.
+  both sides green. Never free-run writes into saturation. The safe
+  feed policy depends on the device side - clock-paced with a bounded
+  lead against the current DMA-fed ring, empty-queue-gated against a
+  manual-FIFO device. See `docs/usb.md`.
 - **A CDC device must keep draining bulk OUT even when nothing uses
   it.** macOS's `close()` waits for in-flight write URBs; a NAKing pipe
   never completes them and the host process hangs in `close()` holding
@@ -178,8 +179,8 @@ because there is no debug probe.
    trigger-overrun cliff (RC 86) was found
 4. DACC, closing the DAC0-to-A0 loopback — done, both directions,
    including host-fed playback
-5. Replace the printf sink with the USB path — done (CPU FIFO copies;
-   endpoint DMA still pending, see `docs/HANDOFF.md`)
+5. Replace the printf sink with the USB path — done; playback runs on
+   endpoint DMA, capture IN is the last CPU copy (see `docs/HANDOFF.md`)
 6. Host application — capture/loopback/bench tools done; GUI pending
 7. FreeRTOS variant — not started
 

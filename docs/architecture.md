@@ -4,17 +4,18 @@
 pointers and nothing else. Every design decision below follows from that.
 
 > **Implementation status.** The PDC halves of this design are built
-> and verified: ADC capture ring and host-fed DAC playback ring both
-> run without the CPU in the sample path. The USB hop is currently a
-> CPU-driven FIFO copy - a deliberate interim that measurably sustains
-> full rate (see the measurements below and `docs/usb.md`) but violates
-> the invariant; the UOTGHS endpoint-DMA primitives exist in
-> `drivers/usb_cdc.c` and stall after one transfer, which is a current
-> objective in `docs/HANDOFF.md`. Two details also differ from the
-> sketches below, from measurement rather than accident: host-fed
-> playback runs the DACC from its own timer channel (TIOA1) so the AWG
-> rate is independent of the capture rate, and the playback stream uses
-> half-word transfers with TAG rather than `WORD=1`.
+> and verified, and the playback USB hop now runs on UOTGHS endpoint
+> DMA: bulk OUT data lands in the ring with no CPU byte-copy,
+> multi-slot spans keep the transfer independent of main-loop latency,
+> and progress publishes from the channel's BUFF_COUNT mid-flight. The
+> capture USB hop is the one remaining CPU FIFO copy (it measurably
+> sustains full rate; converting it - header contiguous with payload,
+> one DMA per frame - is the top objective in `docs/HANDOFF.md`). Two
+> details also differ from the sketches below, from measurement rather
+> than accident: host-fed playback runs the DACC from its own timer
+> channel (TIOA1) so the AWG rate is independent of the capture rate,
+> and the playback stream uses half-word transfers with TAG rather
+> than `WORD=1`.
 
 ## Datapath
 

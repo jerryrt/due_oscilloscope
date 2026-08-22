@@ -36,9 +36,10 @@ run. See [docs/status.md](docs/status.md).
 
 | Measurement | Result |
 |---|---|
-| Full loop (DAC 200 ksps + ADC 400 ksps, duplex) | 1371 +/- 2 codes, every window, `under=0` |
-| Capture at max in-spec rate (MCK 78, RC 86) | 453,488 Hz/ch declared, 453,489 measured, gapless |
-| USB IN / OUT / duplex ceilings | 5.20 / 5.03 / 5.25 MB/s (OUT byte-perfect) |
+| Matched loop up to 453,488 sps each way | 1371 +/- 2 codes in every window, `under=0`, gapless |
+| AWG play-only up to 1.383 Msps (DACC hardware limit) | `under=0` at a 2.81 MB/s DMA-fed stream |
+| Full-rate pair: DAC 907 k + capture 907 k aggregate | runs with `under=0`; purity work remains (see handoff) |
+| USB via endpoint DMA (IN / OUT / duplex) | **32.0 / 26.6 byte-perfect / 16.95 MB/s** |
 
 Both tracks stream the ADC's full in-spec output continuously over
 plain CDC; Track A is the reference oracle, Track B the project. The
@@ -53,8 +54,8 @@ capture is deterministic and generation phase-stable (the host-fed
 playback path runs the DAC on its own timer channel). The ADC's PDC
 channel writes conversions into a ring of SRAM buffers; the playback
 ring feeds the DACC the same way in reverse. The CPU never touches
-sample data in the design's end state — today the USB hop is a
-CPU-driven FIFO copy that demonstrably sustains full rate, with the
-UOTGHS endpoint DMA as the remaining step. A jumper from DAC0 to A0
+sample data in the design's end state — playback already reaches it
+(the ring is filled by UOTGHS endpoint DMA), and converting the capture
+side's remaining FIFO copy is the current objective. A jumper from DAC0 to A0
 closes the loop so each half validates the other without any front-end
 hardware.
