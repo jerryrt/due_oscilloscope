@@ -233,6 +233,72 @@ other.
 **Firmware flashing.** The front end does not program the board.
 `tools/flash.sh` keeps that job.
 
+## Record and logging
+
+There are two modes and they answer the "does the GUI keep every
+sample" question differently, which is why it cannot be settled once.
+
+**Live mode** keeps a rolling window in memory - a ring sized in
+*seconds*, not bytes, so it does not silently shrink to a fraction of a
+screen when the rate goes up. It holds what the display and the
+measurements need and discards behind that. Nothing is written to disk.
+
+**Logging mode** captures to disk continuously, and the recording is
+complete whether or not the display keeps up.
+
+### The daemon writes the file, not the GUI
+
+Recording must survive the GUI, and it must not depend on it. If the
+front end crashes, blocks on a repaint, or is closed by accident, the
+capture continues. Sending the stream across the socket only for a Qt
+process to write it back to disk would add a second process's
+scheduling to the write path and a second place for it to fail, for no
+gain: the daemon already holds every frame.
+
+So the GUI sends start and stop, and displays progress, byte count and
+counters. The file is the daemon's.
+
+### Format: the frames, verbatim
+
+Frames are appended to the file exactly as they arrived, headers
+included. That keeps sequence numbers, device timestamps and overrun
+flags in the record, which is what makes continuity provable after the
+fact rather than assumed - and it means the same `measure.parse_frames`
+reads a file and a live stream. A sidecar records what the frames do
+not carry: rate, channel map, track, device banner, host wall-clock at
+start.
+
+Appending fixed 4096-byte frames is also the cheapest write available,
+which matters at these rates.
+
+### What has to be true, and what is not yet known
+
+The aggregate stream is ~1.81 MB/s, so a continuous log costs about
+**6.5 GB per hour** (arithmetic on a measured figure, not a measured
+figure itself). Whether this host sustains that write rate *while*
+streaming USB is **unmeasured** - the hazard is not average bandwidth
+but a stall, from an fsync, an indexer, or a sleeping disk.
+
+Two rules follow, and they are the same ones the display already obeys:
+
+- **Disk backpressure never stalls the USB drain.** The writer runs
+  behind a bounded queue. If the queue fills, frames are dropped from
+  the record and counted, and the count is surfaced. A recording with a
+  hole in it says so.
+- **A dropped frame is never spliced over.** The gap is recorded, so
+  the file cannot later be read as continuous data. This is invariant 5
+  applied to storage.
+
+Measure the sustained write rate before trusting a long capture, and
+record the figure in `docs/status.md` rather than assuming a modern
+disk copes.
+
+### Playing a recording back
+
+The GUI should open a file as a source in place of the live daemon -
+same parser, same views, scrubbable. Without it, logging produces data
+nothing in this project can look at.
+
 ## Rules the UI must obey
 
 Each of these is a defect this project has already paid for once.
@@ -268,10 +334,12 @@ Phase 3 analog front end exists. A warning label is not sufficient.
 
 - **G0** - serial backend abstraction, headless daemon, wire protocol.
   Verifiable by the existing pytest suite with no GUI at all.
-- **G1** - Qt shell, live single-channel view, roll mode.
+- **G1** - Qt shell, live single-channel view, roll mode. Logging mode
+  lands here too: it is daemon-side, cheap, and does not wait on the
+  display.
 - **G2** - trigger, measurements, FFT.
 - **G3** - AWG panel with arbitrary upload.
-- **G4** - dual channel, XY, record and export, calibration.
+- **G4** - dual channel, XY, file playback and export, calibration.
 
 G0 carries the real risk, and it is the Windows serial backend rather
 than anything about the GUI. G1 to G4 are ordinary UI work.
@@ -319,8 +387,6 @@ having no dependencies, because it covers the GUI too.
   package manager that means a python.org installer. Worth settling
   early: it decides whether the front end is developed here or only on
   the other two platforms.
-- Record buffer size and whether the GUI keeps every sample or only
-  what it displays.
 - Whether the daemon binds loopback only, or offers remote operation -
   and if remote, what authenticates the connection.
 - Where calibration constants live: host file, or device flash.
