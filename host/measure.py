@@ -152,6 +152,11 @@ class ParsedStream:
     declared_rate_hz: int = 0
     channel_mask: int = 0
     n_channels: int = 0
+    version: int = 0
+    bits_per_sample: int = 0
+    packing: int = 0
+    n_samples: int = 0
+    inconsistent: int = 0
     ts_first: int = None
     ts_last: int = None
     per_channel: dict = field(default_factory=dict)
@@ -228,6 +233,7 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
     ps = ParsedStream(raw_bytes=len(buf))
     seq_prev = None
     keep_from = None
+    first_shape = None
     pos = 0
     blen = len(buf)
 
@@ -248,10 +254,21 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
         body = bytes(buf[i + HDR_LEN:i + need])
         pos = i + need
 
+        shape = (ver, bits, packing, rate, nsamp, chmask)
         if ps.frames == 0:
             ps.first_seq = seq
             ps.ts_first = ts
             keep_from = (ts + settle_us) & 0xFFFFFFFF if settle_us else None
+            ps.version = ver
+            ps.bits_per_sample = bits
+            ps.packing = packing
+            ps.n_samples = nsamp
+            first_shape = shape
+        elif shape != first_shape:
+            # The stream's shape must not change mid-run: a rate or mask
+            # that moves under the host is a frame described by a header
+            # that no longer applies to it.
+            ps.inconsistent += 1
         ps.frames += 1
         ps.payload_bytes += len(body)
         ps.last_seq = seq
@@ -867,6 +884,26 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
         refused="refused" in text, console=text, report=rep,
         play=parse_play(rep), bench=parse_bench(rep),
         rt_note=feeder.note, stale_bytes=stale)
+
+
+def probe_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
+               settle=0.6):
+    """Ask the device to start a loop and read whether it agreed.
+
+    Refusals matter as much as successes here. An over-fast trigger is
+    dropped silently with no status bit set, which reads downstream as
+    clean data at half the rate, so the guard is the only thing between
+    that and corrupt data presented as good. This starts nothing the
+    host has to feed, and stops whatever it started.
+    """
+    board.poll_console()
+    board.cmd(f"={dac_sps},{adc_hz},{channels}L")
+    time.sleep(settle)
+    text = board.drain_console(0.4)
+    board.cmd("0")
+    time.sleep(0.2)
+    board.poll_console()
+    return ("refused" not in text), text
 
 
 @dataclass

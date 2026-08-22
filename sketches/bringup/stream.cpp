@@ -149,10 +149,19 @@ static bool stream_start_common(uint32_t trigger_hz, bool with_gen,
 	usb_bytes = 0;
 	tx_phase = TX_IDLE;
 	tx_off = 0;
-	rate_hz = trigger_hz;
-
 	if (!acq_start(trigger_hz, n_channels))
 		return false;
+
+	/*
+	 * Report the rate the hardware will actually produce, not the one
+	 * that was asked for. The trigger is TC compare, so the rate is
+	 * 39 MHz / RC and a request that does not divide 39 MHz truncates:
+	 * asking for 210000 gets RC 185 and 210810 conversions per second.
+	 * Declaring the request in the header makes every frequency the
+	 * host derives from it wrong by the same fraction, silently, which
+	 * is exactly the failure the exact-divisor rule exists to avoid.
+	 */
+	rate_hz = (SystemCoreClock / 2u) / acq_configured_rc();
 
 	if (with_gen)
 		gen_start();
