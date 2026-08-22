@@ -2,7 +2,8 @@
 
 Read this first, then `docs/status.md` (what works, measured figures,
 recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
-policy).
+policy). If you are here to build the test suite, the whole plan is in
+`docs/testing.md` - start there and read this for the environment.
 
 ## Where the work stands (2026-08-22)
 
@@ -67,6 +68,20 @@ publishing.
 
 ## Next objectives, in order
 
+0. **Build the pytest suite.** Designed and agreed, not implemented;
+   `docs/testing.md` is a complete implementation guide written to be
+   picked up cold. Two decisions are settled: the measurement logic is
+   extracted into `host/measure.py` with the three CLI scripts becoming
+   thin wrappers (tests import it, they do not parse stdout), and all
+   four test files get built. Start at "Implementation order" - step 1
+   is the refactor, and it must not change measurement behaviour.
+
+   Everything the tests assert against is already measured and
+   tabulated in that document, so nothing needs re-deriving. The one
+   design point worth not missing: hold the control port open for the
+   whole session, because opening it resets the board and that fixed
+   cost otherwise dominates the run.
+
 1. **Capture IN over endpoint DMA.** The remaining CPU copy, the
    remaining invariant violation, and the source of the capture
    resyncs (1-1300/run, honestly flagged) that keep full-rate purity
@@ -94,6 +109,21 @@ publishing.
 6. **`usb_cdc_write`/DMA bank overcommit when the host stops
    draining** (status.md "Next" item 0): flood counters read far above
    the wire; harmless in normal operation, meaningless benches.
+7. **MCK 40 for a capture-only scope mode** - investigated and shelved,
+   recorded so it is not re-derived. `PMC_MCKR_PRES_CLK_3` makes MCK a
+   multiple of 4, so MCK 40 with `PRESCAL=0` reaches exactly 20.0 MHz
+   of ADC clock against today's 19.5 - the only in-spec way to clear
+   900 ksps on a single channel (predicted 909,090, and 930,232
+   aggregate for two). It is not worth it for the loop: the DACC is
+   MCK-limited at ~54.7 cycles per conversion (measured, see
+   hardware.md), so halving MCK roughly halves the AWG to ~730 ksps,
+   below the new ADC ceiling. Only interesting as a runtime-switchable
+   capture-only mode. **Trap if anyone tries it:** `ACQ_MIN_RC` is
+   MCK-independent only while `PRESCAL=1` keeps the timer clock at
+   twice the ADC clock. With `PRESCAL=0` they are equal and every cliff
+   RC halves - 86 becomes 43, 44 becomes 22 - so the guard must be
+   expressed in ADC clocks (22 isolated, 43 per pair) and derived from
+   the live clock ratio.
 
 ## Hard-won facts the next session must not rediscover
 

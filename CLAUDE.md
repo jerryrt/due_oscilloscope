@@ -1,7 +1,8 @@
 # Agent Instructions
 
 Working notes for AI agents on this repository. Read `docs/scope.md` and
-`docs/architecture.md` before making non-trivial changes.
+`docs/architecture.md` before making non-trivial changes, and
+`docs/testing.md` before touching the host tools or adding tests.
 
 ## What this project is
 
