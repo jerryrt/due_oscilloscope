@@ -59,11 +59,7 @@ def main():
         sys.exit("no control port found")
 
     def notify(event, **kw):
-        if event == "console":
-            for line in kw["text"].splitlines():
-                if line.strip():
-                    print("# ctl> " + line.strip())
-        elif event == "native":
+        if event == "native":
             print(f"# native port: {kw['path']}")
         elif event == "rt":
             print(f"# capture thread: {kw['note']}")
@@ -80,6 +76,14 @@ def main():
                                   notify=notify, uart=args.uart)
     finally:
         board.close()
+
+    # The device's own console during the run. It arrives after the
+    # capture now rather than before it, because the stream is started
+    # only once the native port is open and drained - which is what
+    # makes the first captured frame the first frame of the run.
+    for line in res.console.splitlines():
+        if line.strip():
+            print("# ctl> " + line.strip())
 
     ps = res.stream
     el = res.elapsed_s

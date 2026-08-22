@@ -947,57 +947,62 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
                 stop="0", settle_cap=8192, notify=None, uart=False):
     """Device-generated capture: no host feed, just the stream.
 
+    The native port is opened and drained *before* the stream is
+    started, so the first frame of the run is the first frame captured
+    and freshness is provable rather than probable. Doing it the other
+    way round leaves the device streaming into the kernel buffer for as
+    long as the setup takes, and the capture then opens partway into a
+    stream that is this run's but no longer starts at zero.
+
     Nothing but reading happens in the capture phase. An earlier
     receiver parsed each frame inline, including a per-sample Python
     loop; at ~0.9 MB/s that is far too slow, so the port stopped being
     drained, the kernel buffer overflowed and bytes were lost. The
     symptom looked exactly like a firmware framing bug.
     """
-    console = ""
     if uart:
         # Single-port mode: frames arrive on the control port itself, as
         # Track B does when streaming over the UART. The command and the
         # binary share the one port, so nothing may print to it.
         fd = board.cfd
         time.sleep(0.2)
-        if preset:
-            board.cmd(preset)
     else:
         board.poll_console()
-        if preset:
-            board.cmd(preset)
-            time.sleep(0.4)
-            console = board.drain_console(0.6)
-            if notify:
-                notify("console", text=console)
         fd = board.open_native(notify=notify)
-    # Drop anything queued from a previous run before the clock starts.
-    time.sleep(0.3)
-    try:
-        termios.tcflush(fd, termios.TCIFLUSH)
-    except OSError:
-        pass
-    drain_until_quiet(fd, quiet=0.2, cap=2.0)
+        try:
+            termios.tcflush(fd, termios.TCIFLUSH)
+        except OSError:
+            pass
+        drain_until_quiet(fd, quiet=0.3, cap=5.0)
 
     note = rt.promote(period_ms=5.0, computation_ms=0.5, constraint_ms=2.5)
     if notify:
         notify("rt", note=note)
 
+    if preset:
+        board.cmd(preset)
+
     chunks = []
+    console = b""
     t0 = time.time()
     end = t0 + seconds
+    watch = [fd] if uart else [fd, board.cfd]
     try:
         while time.time() < end:
-            r, _, _ = select.select([fd], [], [], 0.2)
-            if not r:
-                continue
-            try:
-                chunk = os.read(fd, 262144)
-            except OSError:
-                time.sleep(0.02)
-                continue
-            if chunk:
-                chunks.append(chunk)
+            r, _, _ = select.select(watch, [], [], 0.2)
+            if not uart and board.cfd in r:
+                try:
+                    console += os.read(board.cfd, 65536)
+                except OSError:
+                    pass
+            if fd in r:
+                try:
+                    chunk = os.read(fd, 262144)
+                except OSError:
+                    time.sleep(0.02)
+                    continue
+                if chunk:
+                    chunks.append(chunk)
     finally:
         elapsed = time.time() - t0
         if stop:
@@ -1009,7 +1014,8 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
     buf = b"".join(chunks)
     ps = _finish(parse_frames(buf, settle_cap=settle_cap))
     return CaptureResult(stream=ps, elapsed_s=elapsed, host_rx_bytes=len(buf),
-                         console=console, expect_hz=expect_hz, rt_note=note)
+                         console=console.decode("utf-8", "replace"),
+                         expect_hz=expect_hz, rt_note=note)
 
 
 BENCH_CMD = {"in": "F", "out": "R", "duplex": "X",
@@ -1130,6 +1136,43 @@ def run_bench(board, *, mode, seconds=5.0, block=16384):
     return BenchResult(mode=mode, block=block, elapsed_s=elapsed,
                        host_rx_bytes=rx_n[0], host_tx_bytes=tx_n[0],
                        device=parse_bench(rep), report=rep, rt_notes=notes)
+
+
+_HEX_KEYS = ("devisr", "ep0isr", "devimr")
+
+
+def stream_stats(board, *, secs=1.2):
+    """The `?` report: frame, ring, resync and USB-level counters.
+
+    resync and ringovf are the honest flags behind invariant 5 - a
+    capture that lapped its ring is counted here rather than spliced
+    silently into the stream.
+    """
+    text = board.ask("?", secs=secs)
+    got = {}
+    for line in text.splitlines():
+        if "frames=" in line or "usb isr=" in line:
+            for k, v in _KV.findall(line):
+                if k not in _HEX_KEYS:
+                    got[k] = int(v)
+    return got, text
+
+
+TRACK_MARK = {"a": "Track A", "b": "Track B"}
+
+
+def which_track(board, *, secs=1.5):
+    """Which firmware is actually on the board, from its own banner.
+
+    Asked rather than assumed: flashing is the slowest thing the suite
+    does, and a stale image is the failure that looks like a firmware
+    regression.
+    """
+    text = board.banner() if secs is None else board.ask("h", secs=secs)
+    for track, mark in TRACK_MARK.items():
+        if mark in text:
+            return track, text
+    return None, text
 
 
 # ---------------------------------------------------------------------
@@ -1255,6 +1298,16 @@ def profile(board, *, timeout=30.0):
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _tool_env():
+    """cmake and arduino-cli live in ~/.local/bin, which is on the
+    interactive PATH but not necessarily on pytest's."""
+    env = dict(os.environ)
+    local = os.path.expanduser("~/.local/bin")
+    if local not in env.get("PATH", "").split(":"):
+        env["PATH"] = local + ":" + env.get("PATH", "")
+    return env
+
+
 def flash(track, control=None, retries=2, build=False):
     """Flash a track, retrying with the port named explicitly.
 
@@ -1271,7 +1324,7 @@ def flash(track, control=None, retries=2, build=False):
             if track == "b":
                 if build:
                     subprocess.run(["cmake", "--build", "build", "-j"],
-                                   cwd=REPO, check=True,
+                                   cwd=REPO, check=True, env=_tool_env(),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT)
                 cmd = [os.path.join(REPO, "tools", "flash.sh"),
@@ -1285,15 +1338,15 @@ def flash(track, control=None, retries=2, build=False):
                         ["arduino-cli", "compile", "--fqbn",
                          "arduino:sam:arduino_due_x_dbg",
                          "--build-property", "build.f_cpu=78000000L", sketch],
-                        cwd=REPO, check=True, stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT)
+                        cwd=REPO, check=True, env=_tool_env(),
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 cmd = ["arduino-cli", "upload", "--fqbn",
                        "arduino:sam:arduino_due_x_dbg", "-p", control, sketch]
             else:
                 raise ValueError(f"unknown track {track!r}")
-            subprocess.run(cmd, cwd=REPO, check=True,
+            subprocess.run(cmd, cwd=REPO, check=True, env=_tool_env(),
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                           timeout=180)
+                           timeout=300)
             time.sleep(2.0)
             return True
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:

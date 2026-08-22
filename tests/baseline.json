@@ -1,0 +1,57 @@
+{
+  "_comment": [
+    "Measured on THIS board at MCK 78 MHz. A record of one board, not a",
+    "datasheet: re-measure rather than re-derive if any of it is in doubt.",
+    "Tolerances come from the observed run-to-run spread. A tolerance",
+    "tighter than the spread is a flaky test; one much looser is not a test."
+  ],
+  "clock": {
+    "mck_hz": 78000000,
+    "tc_clock_hz": 39000000,
+    "adc_clock_hz": 19500000
+  },
+  "rc": {
+    "two_ch_floor": 86,
+    "two_ch_cliff": 85,
+    "one_ch_floor": 44,
+    "one_ch_cliff": 43,
+    "dac_top": 28,
+    "adc_clocks_per_conversion_isolated": 22,
+    "adc_clocks_per_pair": 43
+  },
+  "rates_hz": {
+    "two_ch_per_channel": 453488,
+    "two_ch_aggregate": 906976,
+    "one_ch": 886363,
+    "dac_top": 1392857
+  },
+  "frame": {
+    "header_bytes": 32,
+    "samples": 2032,
+    "bytes": 4096
+  },
+  "amplitude": {
+    "full_scale_codes": 1370.5,
+    "window_floor_codes": 1340.0,
+    "window_fraction": 0.90,
+    "silent_ceiling_codes": 20.0,
+    "crosstalk_ceiling_codes": 12.0
+  },
+  "dac_mv": {
+    "span_lo": 546,
+    "span_hi": 2760
+  },
+  "transport_min_mbs": {
+    "in-dma": 26.0,
+    "out-dma": 22.0,
+    "duplex-dma": 13.0,
+    "in": 3.0,
+    "out": 3.0,
+    "duplex": 3.0
+  },
+  "ladders": {
+    "two_ch_rc": [780, 390, 200, 195, 130, 98, 88, 86],
+    "one_ch_rc": [390, 195, 98, 65, 50, 45, 44],
+    "awg_rc": [195, 98, 65, 44, 39, 32, 28]
+  }
+}
