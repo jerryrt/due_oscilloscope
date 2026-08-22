@@ -196,12 +196,33 @@ static bool ep_configure(uint32_t ep, uint32_t type, uint32_t dir_in,
  * that forgot the mode would silently recreate the one-transfer DMA
  * stall this flag exists to prevent.
  */
+/*
+ * UOTGHS_DEVDMA is indexed from endpoint 1, so endpoint n uses index
+ * n-1. Endpoint 0 has no DMA channel, which is fine: control transfers
+ * are tiny and rare.
+ */
+#define DMA_IN_CH   (EP_IN  - 1u)
+#define DMA_OUT_CH  (EP_OUT - 1u)
+
 static bool dma_mode_in, dma_mode_out;
 
 static void ep_apply_autosw(uint32_t ep, bool on);
 
+static void dma_channel_stop(uint32_t ch);
+
 static void configure_data_endpoints(void)
 {
+	/*
+	 * A transfer that was in flight when the endpoint got rebuilt is
+	 * stalled for good: the bank switch it is waiting for cannot
+	 * happen across a reconfiguration, and every caller here polls
+	 * "is the channel still busy" before re-arming, so a stalled
+	 * channel wedges that direction permanently. Stop both first and
+	 * let the callers re-arm from a known state.
+	 */
+	dma_channel_stop(DMA_IN_CH);
+	dma_channel_stop(DMA_OUT_CH);
+
 	/* type: 0 control, 1 isochronous, 2 bulk, 3 interrupt */
 	ep_configure(EP_ACM, 3u, 1u, 64u,      2u);
 	ep_configure(EP_OUT, 2u, 0u, EPX_SIZE, 2u);
@@ -406,14 +427,6 @@ size_t usb_cdc_read(uint8_t *dst, size_t max)
 /* ------------------------------------------------------------------ */
 /* Endpoint DMA                                                        */
 /* ------------------------------------------------------------------ */
-
-/*
- * UOTGHS_DEVDMA is indexed from endpoint 1, so endpoint n uses index
- * n-1. Endpoint 0 has no DMA channel, which is fine: control transfers
- * are tiny and rare.
- */
-#define DMA_IN_CH   (EP_IN  - 1u)
-#define DMA_OUT_CH  (EP_OUT - 1u)
 
 /*
  * DMA needs AUTOSW: with it, the controller validates a filled IN bank

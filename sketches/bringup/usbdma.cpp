@@ -71,6 +71,22 @@ static void ep_give_back(uint32_t ep)
 	UOTGHS->UOTGHS_DEVIER = UOTGHS_DEVIER_PEP_0 << ep;
 }
 
+/*
+ * Reset one endpoint's FIFO and bank state, keeping its configuration.
+ *
+ * Stopping a DMA mid-transfer leaves the endpoint holding a bank that
+ * is partially filled and never validated. Nothing frees it: the next
+ * transfer waits for a free bank that cannot arrive, which presents as
+ * a channel stuck busy forever after exactly one short transfer. EPRST
+ * clears the banks and the data toggle, which is what a host expects
+ * after the reconfiguration that caused this in the first place.
+ */
+static void ep_reset_fifo(uint32_t ep)
+{
+	UOTGHS->UOTGHS_DEVEPT |= UOTGHS_DEVEPT_EPRST0 << ep;
+	UOTGHS->UOTGHS_DEVEPT &= ~(UOTGHS_DEVEPT_EPRST0 << ep);
+}
+
 static void dma_channel_stop(uint32_t ch)
 {
 	if (!(UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMASTATUS
@@ -131,23 +147,43 @@ void usbdma_keepalive(void)
 		return;
 
 	if (mode_out) {
-		if (!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX] & UOTGHS_DEVEPTCFG_AUTOSW)) {
-			ep_apply_autosw(CDC_RX, true);
+		if (!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX] & UOTGHS_DEVEPTCFG_AUTOSW))
 			clobbered = true;
-		}
-		if (UOTGHS->UOTGHS_DEVIMR & (UOTGHS_DEVIMR_PEP_0 << CDC_RX)) {
-			ep_take(CDC_RX);
+		if (UOTGHS->UOTGHS_DEVIMR & (UOTGHS_DEVIMR_PEP_0 << CDC_RX))
 			clobbered = true;
-		}
 	}
 	if (mode_in &&
-	    !(UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX] & UOTGHS_DEVEPTCFG_AUTOSW)) {
-		ep_apply_autosw(CDC_TX, true);
+	    !(UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX] & UOTGHS_DEVEPTCFG_AUTOSW))
 		clobbered = true;
+
+	if (!clobbered)
+		return;
+
+	/*
+	 * A transfer that was in flight when the core rebuilt the endpoint
+	 * is stalled for good: the bank switch it waits for cannot happen
+	 * across a reconfiguration. Every caller polls "is the channel
+	 * still busy" before re-arming, so a stalled channel wedges that
+	 * direction permanently - which is exactly what it did, as an
+	 * intermittent one-transfer IN stall whenever enumeration landed
+	 * just after the first arm.
+	 *
+	 * Stop the channels first, then restore the mode, and let the
+	 * callers re-arm from a known state.
+	 */
+	if (mode_out) {
+		dma_channel_stop(DMA_OUT_CH);
+		ep_reset_fifo(CDC_RX);
+		ep_take(CDC_RX);
+		ep_apply_autosw(CDC_RX, true);
+	}
+	if (mode_in) {
+		dma_channel_stop(DMA_IN_CH);
+		ep_reset_fifo(CDC_TX);
+		ep_apply_autosw(CDC_TX, true);
 	}
 
-	if (clobbered)
-		usbdma_rebuilds++;
+	usbdma_rebuilds++;
 }
 
 /* ------------------------------------------------------------------ */
