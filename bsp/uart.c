@@ -8,6 +8,16 @@
  * Output is polled, not interrupt-driven. Polled output is slow, but it
  * works with interrupts disabled and from fault context, which is
  * exactly when diagnostics matter most.
+ *
+ * Input is the other way round, and has to be. uart_getc() used to read
+ * UART_RHR directly, so a character that arrived while the main loop
+ * was inside a printf was simply lost - and a printf costs about 3.5 ms
+ * against one character every 87 us at 115200, so "# stream stopped"
+ * alone swallows the next seventeen. A command sent straight after one
+ * that prints was therefore dropped, silently and intermittently, which
+ * is exactly what a rate argument typed before a command letter looks
+ * like. Track A never had this because Arduino's Serial is interrupt
+ * buffered; this is the same thing, smaller.
  */
 
 #include "sam.h"
@@ -15,6 +25,32 @@
 
 #define PIN_URXD (1u << 8)   /* PA8 */
 #define PIN_UTXD (1u << 9)   /* PA9 */
+
+/*
+ * Receive ring. 64 bytes is far more than the longest command line and
+ * the ISR is a handful of instructions, so it sits at the bottom of the
+ * priority order where it cannot disturb the sample path.
+ */
+#define RX_RING 64u
+
+static volatile uint8_t  rx_ring[RX_RING];
+static volatile uint32_t rx_head, rx_tail;
+
+void UART_Handler(void)
+{
+	while (UART->UART_SR & UART_SR_RXRDY) {
+		uint8_t c = (uint8_t)(UART->UART_RHR & 0xffu);
+		uint32_t next = (rx_head + 1u) % RX_RING;
+
+		/* A full ring drops the newest rather than overwriting the
+		 * oldest: a truncated command is refused, a corrupted one
+		 * might be obeyed. */
+		if (next != rx_tail) {
+			rx_ring[rx_head] = c;
+			rx_head = next;
+		}
+	}
+}
 
 void uart_init(uint32_t baud)
 {
@@ -40,6 +76,12 @@ void uart_init(uint32_t baud)
 
 	UART->UART_IDR = 0xffffffff;
 	UART->UART_CR  = UART_CR_RXEN | UART_CR_TXEN;
+
+	rx_head = rx_tail = 0;
+	NVIC_ClearPendingIRQ(UART_IRQn);
+	NVIC_SetPriority(UART_IRQn, 15);   /* below ADC 0 and DACC 1 */
+	NVIC_EnableIRQ(UART_IRQn);
+	UART->UART_IER = UART_IER_RXRDY;
 }
 
 void uart_putc_polled(char c)
@@ -57,14 +99,18 @@ void uart_puts_polled(const char *s)
 
 bool uart_rx_ready(void)
 {
-	return (UART->UART_SR & UART_SR_RXRDY) != 0;
+	return rx_head != rx_tail;
 }
 
 int uart_getc(void)
 {
-	if (!uart_rx_ready())
+	uint8_t c;
+
+	if (rx_head == rx_tail)
 		return -1;
-	return (int)(UART->UART_RHR & 0xff);
+	c = rx_ring[rx_tail];
+	rx_tail = (rx_tail + 1u) % RX_RING;
+	return (int)c;
 }
 
 void uart_flush(void)

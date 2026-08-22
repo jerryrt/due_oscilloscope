@@ -487,23 +487,24 @@ class Board:
         self._console += got
         return got
 
-    def drain_console(self, secs, quiet=None, cap=30.0):
-        """Read the console for `secs`, or until `quiet` seconds pass
-        with nothing arriving (bounded by `cap`)."""
+    def drain_console(self, secs, quiet=None, cap=30.0, until=None):
+        """Read the console until it is done talking.
+
+        Whichever of these is given decides when that is: a fixed
+        `secs`, a closing marker in `until` (a string or several), or
+        `quiet` seconds with nothing arriving. Markers and quiet can be
+        combined - the marker ends it promptly on the track that prints
+        one, and quiet is the backstop for the track that does not.
+        Guessing at a silence long enough to mean "finished" is how one
+        command's tail ends up parsed as the next one's output.
+        """
+        marks = ()
+        if until is not None:
+            marks = ((until,) if isinstance(until, str) else tuple(until))
+            marks = tuple(m.encode() for m in marks)
         out = b""
-        if quiet is None:
-            end = time.time() + secs
-            while time.time() < end:
-                r, _, _ = select.select([self.cfd], [], [], 0.05)
-                if r:
-                    try:
-                        out += os.read(self.cfd, 65536)
-                    except OSError:
-                        break
-            self._console += out
-            return out.decode("utf-8", "replace")
         last = time.time()
-        end = time.time() + cap
+        end = time.time() + (secs if quiet is None and not marks else cap)
         while time.time() < end:
             r, _, _ = select.select([self.cfd], [], [], 0.05)
             if r:
@@ -514,8 +515,10 @@ class Board:
                 if d:
                     out += d
                     last = time.time()
+                    if marks and any(m in out for m in marks):
+                        break
                     continue
-            if time.time() - last >= quiet:
+            if quiet is not None and time.time() - last >= quiet:
                 break
         self._console += out
         return out.decode("utf-8", "replace")
@@ -1233,6 +1236,9 @@ class SweepRow:
 _NUM = re.compile(r"-?\d+")
 
 
+_SWEEP_HDR = re.compile(r"TC->ADC->PDC.*?(\d+)\s*(?:ch\b|channel)")
+
+
 def _sweep_rows(text, channels, dac=False):
     """Parse a `t` or `d` sweep.
 
@@ -1243,7 +1249,16 @@ def _sweep_rows(text, channels, dac=False):
     """
     rows = []
     layout = None
+    reported = None
     for line in text.splitlines():
+        m = _SWEEP_HDR.search(line)
+        if m:
+            # A fresh sweep starts here; anything above belongs to an
+            # earlier command and is not this measurement.
+            reported = int(m.group(1))
+            rows = []
+            layout = None
+            continue
         s = line.strip()
         if s.startswith("#") and " RC " in s and "ratio" in s:
             layout = "rc" if s.split()[1] == "RC" else "want"
@@ -1284,7 +1299,7 @@ def _sweep_rows(text, channels, dac=False):
                 ratio=int(m.group(5)) + int(m.group(6)) / 1000.0,
                 rxbuff=int(m.group(7)) if m.group(7) else None,
                 govre=int(m.group(8)) if m.group(8) else None, raw=s))
-    return rows
+    return rows, reported
 
 
 def sweep_rates(board, *, channels=2, timeout=40.0):
@@ -1296,16 +1311,24 @@ def sweep_rates(board, *, channels=2, timeout=40.0):
     """
     board.poll_console()
     board.cmd(f"=0,0,{channels}t" if channels != 2 else "t")
-    text = board.drain_console(0, quiet=2.0, cap=timeout)
-    return _sweep_rows(text, channels), text
+    # Both tracks print a closing line, and they print different ones.
+    text = board.drain_console(0, quiet=2.0, cap=timeout,
+                               until=("past the measured ceiling",
+                                      "every trigger produced a conversion"))
+    rows, reported = _sweep_rows(text, channels)
+    if reported is not None and reported != channels:
+        raise BoardError(f"asked for a {channels}-channel sweep and the "
+                         f"device ran a {reported}-channel one")
+    return rows, text
 
 
 def sweep_dac(board, *, timeout=40.0):
     """The DAC update-rate sweep (`d`). Track A only."""
     board.poll_console()
     board.cmd("d")
-    text = board.drain_console(0, quiet=2.0, cap=timeout)
-    return _sweep_rows(text, 1, dac=True), text
+    text = board.drain_console(0, quiet=2.0, cap=timeout,
+                               until="every trigger produced a DAC update")
+    return _sweep_rows(text, 1, dac=True)[0], text
 
 
 _PROF = re.compile(r"^#\s+(\S.*?)\s{2,}(\d+)\s+ns\s*$")
@@ -1319,7 +1342,8 @@ def profile(board, *, timeout=30.0):
     """
     board.poll_console()
     board.cmd("Q")
-    text = board.drain_console(0, quiet=1.5, cap=timeout)
+    text = board.drain_console(0, quiet=1.5, cap=timeout,
+                               until="services early-return unless started")
     out = {}
     for line in text.splitlines():
         m = _PROF.match(line.rstrip())
