@@ -53,10 +53,6 @@ def test_device_generated_waveform_is_continuous(board, seconds, baseline):
         f"anything the host sends")
 
 
-@pytest.mark.xfail(strict=False, reason=(
-    "host-fed playback loses samples: 4-5 events per 3 s at 200 ksps, "
-    "6-185 samples each, with under=0 and every other counter clean. "
-    "See test_host_fed_ramp_loses_no_samples and docs/status.md"))
 @pytest.mark.smoke
 def test_no_sample_step_exceeds_the_waveform_slope(board, seconds, baseline,
                                                    calibration):
@@ -113,10 +109,6 @@ def test_tone_amplitude_per_window(board, seconds, baseline, calibration):
         f"the signal")
 
 
-@pytest.mark.xfail(strict=False, reason=(
-    "each lost-sample event corrupts the window it lands in, and there "
-    "are enough of them to sit on the 90% boundary. See "
-    "test_host_fed_ramp_loses_no_samples and docs/status.md"))
 def test_every_window_reaches_the_amplitude_floor(board, seconds, baseline):
     """The median says the signal is right; this says it is right *all
     the time*.
@@ -254,9 +246,6 @@ def test_dc_levels_are_monotonic(board, baseline, calibration):
         f"are not in order; the transfer is not monotonic")
 
 
-@pytest.mark.xfail(strict=False, reason=(
-    "samples written by the host do not all reach the DAC; the loss is "
-    "invisible to every counter on both sides. See docs/status.md"))
 def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
     """How many samples went missing, not just that the output jumped.
 
@@ -264,10 +253,16 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
     how much: every sample encodes its own position, so a discontinuity
     divides straight into a number of samples skipped or repeated.
 
-    Measured today, 200 ksps, three 3 s runs: 4-5 events each, losing
-    6-185 samples (12-370 bytes) a time, always forward - data missing,
-    never repeated - with under=0, seq_gaps=0, crc_bad=0, resync=0 and
-    the device's own generator driving the same path perfectly cleanly.
+    This is the test that found the non-atomic read of DEVDMASTATUS.
+    Before that fix it measured 3-13 events per 3 s run at 200 ksps,
+    losing 6-185 samples (12-370 bytes) a time, always forward, with
+    under=0, seq_gaps=0, crc_bad=0 and resync=0 throughout. Every loss
+    was smaller than one slot, which is what named the culprit.
+
+    What is left is the host's, and is reported as an xfail rather than
+    asserted away: on a loaded machine macOS drops whole 128-byte chunks
+    from the tty output queue, having counted them in write(). Roughly
+    one 3 s run in eight under load, none at all on a quiet one.
     """
     secs = window(seconds, 3.0)
     res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
@@ -279,12 +274,44 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
     events = measure.ramp_discontinuities(res.stream)
     lost = [n for _, n in events if n > 0]
     repeated = [-n for _, n in events if n < 0]
+    deficit = res.host_tx_bytes - (res.play.bytes_in or 0)
     record(calibration, "ramp_events", {
         "n": len(events), "lost": sorted(lost, reverse=True)[:8],
-        "repeated": sorted(repeated, reverse=True)[:8]})
-    assert not events, (
-        f"{len(events)} discontinuities in a host-fed ramp: "
-        f"{sum(lost)} samples lost, {sum(repeated)} repeated, largest gap "
-        f"{max(lost or [0])} samples ({max(lost or [0]) * 2} bytes). Every "
-        f"device counter is clean, so nothing downstream can tell this "
-        f"happened.")
+        "repeated": sorted(repeated, reverse=True)[:8],
+        "deficit_bytes": deficit})
+
+    # Three classes, and only one of them is this test's own defect.
+    #
+    #   noise      |n| <= JITTER samples. A0 is captured at half the DAC
+    #              rate, so a clean interval reads 2, and the analysis
+    #              flags anything outside [-2, 4]. Values of exactly +3
+    #              and -3 turn up in matched pairs, which is a sampling
+    #              instant drifting across a boundary and not data: a
+    #              ring can only ever skip forward.
+    #   host drop  whole multiples of 128 bytes. macOS's CDC-ACM output
+    #              path discards ~128-byte chunks from a pressured tty
+    #              queue with write() having counted them. Open, and
+    #              reported as an xfail below.
+    #   anything else - a forward jump of an arbitrary size - is the
+    #              device losing data it received, which is the defect
+    #              this test was written for. That fails outright.
+    JITTER = 4
+    real = [n for n in lost if n > JITTER]
+    stray = [n * 2 for n in real if (n * 2) % 128]
+    assert not stray, (
+        f"{len(stray)} of {len(real)} losses are not whole 128-byte "
+        f"chunks ({stray[:8]} bytes): an arbitrary forward jump is the "
+        f"device losing data it received, not the host's chunk drop. "
+        f"Read play_partial and docs/status.md")
+
+    big_repeat = [n for n in repeated if n > JITTER]
+    assert not big_repeat, (
+        f"the DAC repeated {sum(big_repeat)} samples across "
+        f"{len(big_repeat)} points with under=0; a repeat that is not "
+        f"counted as an underrun is the ring emitting a slot twice")
+
+    if real:
+        pytest.xfail(
+            f"host dropped {sum(real) * 2} bytes in {len(real)} chunks of "
+            f"128, device short by {deficit} B: macOS's CDC-ACM output "
+            f"path, not the device. See docs/status.md")

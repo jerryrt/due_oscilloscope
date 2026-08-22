@@ -78,8 +78,28 @@ def assert_no_underruns(res, tolerance=0):
     assert under <= tolerance, (
         f"{under} playback underruns: the DAC repeated a buffer, so the "
         f"waveform on the wire is not the one the host sent"
-        + (f" (tolerating {tolerance} while objective 0 is open)"
+        + (f" (tolerating {tolerance} at a rate that starves)"
            if tolerance else ""))
+    assert_spans_whole(res)
+
+
+def assert_spans_whole(res):
+    """No OUT DMA span ended anywhere but on a slot edge.
+
+    The tripwire for the defect that lost samples silently for a
+    fortnight. A stream span is armed with a length that lands exactly
+    on a slot boundary and nothing is allowed to end it early, so a
+    span that finished elsewhere means the device read its own progress
+    wrong - and the next span then resumes behind the data already in
+    SRAM and overwrites it. Nothing else on either side notices.
+    """
+    partial = res.play.partial
+    if partial is None:
+        return          # firmware predating the counter
+    assert partial == 0, (
+        f"{partial} OUT DMA spans ended off a slot edge; each one "
+        f"overwrites data already landed, losing up to a slot of samples "
+        f"with every counter clean")
 
 
 def window_purity(res, tag, size=8192):
