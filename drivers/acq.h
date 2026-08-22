@@ -13,7 +13,21 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* TC_CMR fields. TIMER_CLOCK1 is MCK/2 = 42 MHz. */
+/*
+ * TC_CMR fields.
+ *
+ * TIMER_CLOCK1 is MCK/2, so 39 MHz at the MCK 78 this project runs -
+ * not the 42 MHz an earlier version of this comment claimed from the
+ * 84 MHz era. Every RC figure here divides 39 MHz: RC 86 is 453,488 Hz,
+ * RC 44 is 886,363. The stale number made the arithmetic look wrong.
+ *
+ * The trigger is TIOA0 from TC0 channel 0 in waveform mode: the counter
+ * counts up and resets on RC compare, so trigger rate = 39 MHz / RC,
+ * with RA at RC/2 for a 50% duty edge. Rates are held in RC rather than
+ * Hz because RC is what the hardware has, and because the ADC and timer
+ * clocks both scale with MCK - which is why the measured cliffs sit at
+ * a fixed RC whatever MCK is set to.
+ */
 #define TCCLKS_TIMER_CLOCK1   (0u << 0)
 #define WAVSEL_UP_RC          (2u << 13)
 #define ACPA_CLEAR            (2u << 16)
