@@ -27,6 +27,8 @@ volatile uint32_t play_bytes_in;
 volatile uint32_t play_isr_calls;
 volatile uint32_t play_endtx_seen;
 volatile uint32_t play_svc_calls;
+volatile uint32_t play_spans;         /* OUT DMA transfers armed */
+volatile uint32_t play_partial;       /* spans that ended off a slot edge */
 
 static uint32_t fill_off;            /* byte offset into the filling buffer */
 static uint32_t dac_rc;
@@ -36,6 +38,7 @@ static bool     dma_inflight;        /* an OUT-endpoint DMA is running */
 static uint32_t dma_asked;           /* bytes requested of that transfer */
 static uint32_t dma_start_off;       /* fill_off when it started */
 static uint32_t dma_published;       /* slots already published from it */
+static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
 
 /* Enough queued to ride out host scheduling jitter before the first
  * conversion, so priming never emits a burst of stale repeats. */
@@ -77,6 +80,8 @@ bool play_start(uint32_t dac_hz)
 	play_stop();
 
 	play_produced = 0;
+	play_spans = 0;
+	play_partial = 0;
 	play_consumed = 0;
 	play_underruns = 0;
 	play_bytes_in = 0;
@@ -186,7 +191,20 @@ void play_service(void)
 		 * the DMA lands bytes, so completed slots can be published
 		 * incrementally and exactly.
 		 */
-		uint32_t done = usbdma_out_received(dma_asked);
+		/*
+		 * One snapshot, decoded twice. Asking the hardware separately
+		 * how far it got and whether it had finished let the transfer
+		 * end between the two questions, and the pair of answers then
+		 * described a state that never existed: a span recorded as
+		 * short resumed the next one behind the data already in SRAM,
+		 * and the bytes in between were overwritten before the DAC
+		 * ever read them.
+		 */
+		uint32_t st = usbdma_out_status();
+		uint32_t left = (st & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
+		                >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
+		bool busy = (st & UOTGHS_DEVDMASTATUS_CHANN_ENB) != 0;
+		uint32_t done = dma_asked > left ? dma_asked - left : 0;
 		uint32_t slots_done = (dma_start_off + done) / PLAY_BUF_BYTES;
 
 		if (slots_done > dma_published) {
@@ -198,12 +216,30 @@ void play_service(void)
 			 * dark during the busiest part of a transfer. */
 			usb_out_activity++;
 		}
-		if (usbdma_out_busy())
+		/*
+		 * Byte accounting has to be exact to be worth anything: the
+		 * question it answers is whether the device received every
+		 * byte the host wrote, and an under-report of unknown size
+		 * cannot answer it. Publish the in-flight progress on every
+		 * pass rather than a whole span behind it.
+		 */
+		play_bytes_in += done - dma_counted;
+		dma_counted = done;
+
+		if (busy)
 			goto prime;
 
 		dma_inflight = false;
-		play_bytes_in += done;
 		fill_off = (dma_start_off + done) % PLAY_BUF_BYTES;
+		/*
+		 * A stream span is armed with a length that ends exactly on a
+		 * slot edge, and nothing may end it early, so a non-zero
+		 * fill_off here means the transfer stopped somewhere the
+		 * arithmetic did not expect and the next span will resume at
+		 * the wrong offset.
+		 */
+		if (fill_off != 0)
+			play_partial++;
 	}
 
 	if (!dma_inflight &&
@@ -219,8 +255,11 @@ void play_service(void)
 		dma_asked = span * PLAY_BUF_BYTES - fill_off;
 		dma_start_off = fill_off;
 		dma_published = 0;
-		if (usbdma_out_start_stream(dst, dma_asked))
+		dma_counted = 0;
+		if (usbdma_out_start_stream(dst, dma_asked)) {
 			dma_inflight = true;
+			play_spans++;
+		}
 	}
 
 prime:

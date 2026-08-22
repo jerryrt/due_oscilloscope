@@ -40,6 +40,8 @@ uint32_t play_configured_rc(void);
 const uint8_t *play_ring_base(void);   /* for mapping DACC_TPR to a slot */
 
 extern volatile uint32_t play_produced;    /* buffers filled from USB */
+extern volatile uint32_t play_spans;       /* OUT DMA transfers armed */
+extern volatile uint32_t play_partial;     /* spans that ended off a slot edge */
 extern volatile uint32_t play_consumed;    /* buffers handed to the PDC */
 extern volatile uint32_t play_underruns;
 extern volatile uint32_t play_bytes_in;

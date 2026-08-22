@@ -197,18 +197,23 @@ bool usbdma_out_busy(void)
 }
 
 /*
- * BUFF_COUNT counts down as the controller lands bytes, so this reports
- * progress mid-transfer, not only at the end. A multi-slot span takes
- * milliseconds to complete and a consumer that only learned of new data
- * at completion would drain the ring against a frozen counter.
+ * One read of DEVDMASTATUS, decoded by the caller.
+ *
+ * BUFF_COUNT counts down as the controller lands bytes, so a caller can
+ * follow progress mid-transfer rather than only at the end - a
+ * multi-slot span takes milliseconds to complete and a consumer that
+ * only learned of new data at completion would drain the ring against a
+ * frozen counter.
+ *
+ * Byte count and channel-enabled live in the same register, and reading
+ * it twice asks two different instants whether the transfer finished
+ * and how far it got. The answers disagree exactly when the transfer
+ * ends between them, which is the moment the caller most needs them to
+ * agree.
  */
-uint32_t usbdma_out_received(uint32_t requested)
+uint32_t usbdma_out_status(void)
 {
-	uint32_t left = (UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS
-	                 & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
-	                >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
-
-	return left > requested ? 0 : requested - left;
+	return UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS;
 }
 
 static bool dma_out_start_ctl(void *buf, uint32_t len, uint32_t extra)

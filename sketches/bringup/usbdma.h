@@ -34,7 +34,7 @@ bool     usbdma_ready(void);
 bool     usbdma_out_claimed(void);
 
 bool     usbdma_out_busy(void);
-uint32_t usbdma_out_received(uint32_t requested);
+uint32_t usbdma_out_status(void);   /* raw DEVDMASTATUS, read once */
 bool     usbdma_out_start(void *buf, uint32_t len);         /* stops short */
 bool     usbdma_out_start_stream(void *buf, uint32_t len);  /* runs on */
 

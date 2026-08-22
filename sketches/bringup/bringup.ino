@@ -1036,8 +1036,8 @@ void loop()
 	          Serial.println(buf);
 	          snprintf(buf, sizeof(buf),
 	                   "# play: in=%lu produced=%lu consumed=%lu under=%lu "
-	                   "isr=%lu endtx=%lu svc=%lu rebuilds=%lu "
-	                   "act-in=%lu act-out=%lu",
+	                   "isr=%lu endtx=%lu svc=%lu spans=%lu partial=%lu "
+	                   "rebuilds=%lu act-in=%lu act-out=%lu",
 	                   (unsigned long)play_bytes_in,
 	                   (unsigned long)play_produced,
 	                   (unsigned long)play_consumed,
@@ -1045,6 +1045,8 @@ void loop()
 	                   (unsigned long)play_isr_calls,
 	                   (unsigned long)play_endtx_seen,
 	                   (unsigned long)play_svc_calls,
+	                   (unsigned long)play_spans,
+	                   (unsigned long)play_partial,
 	                   (unsigned long)usbdma_rebuilds,
 	                   (unsigned long)usb_in_activity,
 	                   (unsigned long)usb_out_activity);
