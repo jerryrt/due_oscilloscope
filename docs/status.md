@@ -373,6 +373,100 @@ The tell in both cases was arithmetic: the frame count exceeded what the
 configured sample rate could generate. **A receiver reporting more data
 than the source can produce is describing its own bug.**
 
+## Found by the test suite: host-fed playback loses samples
+
+**Open. This is the most serious thing on this page.** Samples the host
+writes do not all reach the DAC, and nothing on either side notices.
+
+At 200 ksps, three consecutive 3 s runs showed 4, 5 and 4
+discontinuities, each losing 6 to 185 DAC samples (12 to 370 bytes),
+always forward - data missing, never repeated - with `under=0`,
+`seq_gaps=0`, `crc_bad=0`, `resync=0`, `ringovf=0` and the DAC's own
+underrun counter reading zero throughout. In a captured 1 kHz sine it
+shows as steps of 1000-2500 codes where the largest legitimate step is
+43, a few times a second.
+
+How it was localised, in order:
+
+1. **The capture path is not at fault.** `M` drives the DAC from the
+   device's own flash sine through the identical DACC, PDC, trigger,
+   ADC, framing and USB IN path with the host removed from the DAC
+   side. Three runs, maximum step 38-43 codes against an analytic 17,
+   zero discontinuities. Whatever is wrong is in host -> DAC.
+2. **A ramp says how much, not just that.** Feeding a sawtooth that
+   rises 8 DAC codes per sample makes every sample encode its own
+   position, so a discontinuity divides straight into a sample count.
+   That is what produced the 6-185 figure and showed the loss is always
+   forward. `measure.build_ramp` and `measure.ramp_discontinuities`.
+3. **Byte accounting is suggestive but not conclusive.** Over 20 s at
+   200 ksps the host's `write()` counted 8,020,480 B and the device's
+   `play_bytes_in` reported 7,995,392 - a 25,088 B deficit against an
+   in-flight span of 8192. But `play_bytes_in` only advances when a DMA
+   span completes, so it under-reports by a varying amount, and the
+   same comparison against the OUT sink benchmark gave deltas from 2 KB
+   to 280 KB depending on write size and pacing. **Not clean enough to
+   say whether the bytes are lost in macOS's tty layer or in the
+   device's OUT DMA path.** That is the open question.
+
+What was tried and did not fix it: capping the host's write size at one
+512-byte packet, raising the feeder's lead to 24 and 28 KB, issuing the
+opening lead as a single write, and raising `PLAY_PRIME_BUFS` from 4 to
+16. An early run suggested loss scaled with write size (2 KB lost at
+512 B writes against 41 KB at 16384 B) but that did not reproduce, and
+the write-size cap was reverted rather than shipped unproven.
+
+Related and probably the same mechanism: **playback starves at some
+rates.** RC 65 (600,000 sps) fails 5 runs out of 5 with about 17
+underruns per 3 s; RC 32 and RC 28 fail 4 out of 5; RC 195, 98, 44 and
+39 are 5/5 clean. RC 65 sitting between two clean rates rules out a
+bandwidth ceiling. During starvation the host's tty output queue is
+empty (median 0 B, max 1024), so the device drains everything written
+the moment it is written and the host is simply never far enough ahead:
+the feeder's 20 KB lead is spent once at startup and never rebuilt, and
+whether a run keeps a cushion is decided in its first milliseconds and
+then holds for its whole length.
+
+Both are tracked as xfail in the suite - `test_host_fed_ramp_loses_no_samples`,
+`test_no_sample_step_exceeds_the_waveform_slope`,
+`test_every_window_reaches_the_amplitude_floor` and the `STARVES`
+entries in the rate ladders - so they are reported on every run and
+turn green by themselves when this is fixed.
+
+## Found by the test suite: three defects, fixed
+
+**`SET_LINE_CODING` was answered before its data stage.** Opening the
+native port cost 25 s in `open()` and another 25 s in `tcsetattr()`,
+every time, on Track B only. A control write is SETUP, then the host's
+data, then a zero-length IN as the status stage; the device sent the
+status ZLP immediately, so the seven bytes still to come were never
+accepted and macOS retried until it gave up. The SETUP log (`u`) showed
+thirteen `bm=21 req=20 len=7` where there should be one. Track A opened
+in 0.00 s on the same cable throughout, which is what ruled out the
+marginal cable and the host driver. Fixed; four consecutive opens now
+measure 0.00 s.
+
+**The console dropped commands typed while it was printing.**
+`uart_getc()` read `UART_RHR` directly, so anything arriving while the
+main loop sat inside a printf was lost - and the reply to `0` alone
+swallows the next seventeen characters at 115200. A `=0,0,1t` sent
+straight after a stop consistently lost its rate arguments and ran a
+two-channel sweep instead. RX is now interrupt buffered. Track A never
+had this; Arduino's `Serial` is interrupt driven.
+
+**The frame header declared the requested rate, not the real one.**
+Asking for 210,000 Hz gets RC 185 and 210,810 conversions per second,
+and the header said 210,000. Every host-side frequency derived from it
+was wrong by the same 0.4% with every counter clean. Both tracks now
+report `39 MHz / RC`.
+
+**The playback ring could latch an unfilled slot.** At ENDTX the PDC has
+already moved TNPR into TPR, so the slot being queued is
+`play_consumed + 2` and needs `play_produced >= play_consumed + 3`; the
+guard checked for 2. Found while investigating the lost samples above -
+it is a real latent defect but **it did not change that symptom**, and
+is fixed on its own merits: it turns a silently emitted unfilled buffer
+into a counted underrun.
+
 ## Measured figures
 
 | Quantity | Value |

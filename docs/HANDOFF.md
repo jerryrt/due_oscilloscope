@@ -33,8 +33,8 @@ regime is validated by the tone-amplitude oracle (theoretical maximum
 
 | Regime | State | Evidence |
 |---|---|---|
-| Matched loop up to 453,488 sps each way (ADC in-spec ceiling) | **solid** | under=0, gaps=0, 1371 +/- 2 every window |
-| AWG play-only up to 1.383 Msps (DACC hardware ceiling, RC 28) | **solid** | under=0 at 2.81 MB/s feed |
+| Matched loop up to 453,488 sps each way (ADC in-spec ceiling) | under=0, gaps=0, median window 1371 | but a few samples per second are lost silently on the way to the DAC: objective 0 |
+| AWG play-only up to 1.393 Msps (DACC hardware ceiling, RC 28) | **runs; not reliably clean** | 5 runs each: RC 195/98/44/39 are 5/5 under=0, RC 65 is 0/5, RC 32 and 28 are 1/5. See objective 0 |
 | Full-rate pair: DAC 906,976 + capture 906,976 aggregate | **runs, under=0**, both tracks | windows 1074-1345 (B), 1028-1338 (A) |
 | Transport via endpoint DMA | measured | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s |
 | Two-channel DAC (tag-interleaved) | routing verified | purity open, see objective 4 |
@@ -68,19 +68,24 @@ publishing.
 
 ## Next objectives, in order
 
-0. **Build the pytest suite.** Designed and agreed, not implemented;
-   `docs/testing.md` is a complete implementation guide written to be
-   picked up cold. Two decisions are settled: the measurement logic is
-   extracted into `host/measure.py` with the three CLI scripts becoming
-   thin wrappers (tests import it, they do not parse stdout), and all
-   four test files get built. Start at "Implementation order" - step 1
-   is the refactor, and it must not change measurement behaviour.
+0. **Host-fed playback loses samples.** New, and ahead of everything
+   else because it breaks invariant 5 with every counter clean. At
+   200 ksps a host-fed run drops 6-185 DAC samples a few times a
+   second; the device's own generator through the same path is
+   perfectly clean. Localised to host -> DAC, but not yet split between
+   macOS's tty layer and the device's OUT DMA - the byte accounting on
+   both sides is too coarse to say. Full write-up, including what was
+   tried and did not work, under "Found by the test suite" in
+   `docs/status.md`. The instruments are built: `M` for the control,
+   `measure.build_ramp` / `ramp_discontinuities` for counting the lost
+   samples, and four xfail tests that turn green by themselves.
 
-   Everything the tests assert against is already measured and
-   tabulated in that document, so nothing needs re-deriving. The one
-   design point worth not missing: hold the control port open for the
-   whole session, because opening it resets the board and that fixed
-   cost otherwise dominates the run.
+   Related and probably the same mechanism: playback starves at RC 65,
+   32 and 28 while the rates either side of them are clean.
+
+0b. **The pytest suite** - built. `docs/testing.md` is the design and
+   now also records what building it found. 63 tests, about 5 minutes
+   per track.
 
 1. **Capture IN over endpoint DMA.** The remaining CPU copy, the
    remaining invariant violation, and the source of the capture

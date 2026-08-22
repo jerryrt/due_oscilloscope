@@ -171,6 +171,22 @@ arduino-cli upload  --fqbn arduino:sam:arduino_due_x_dbg \
 python3 tools/serial_probe.py /dev/cu.usbmodem14201 --send h --seconds 3
 ```
 
+### Python
+
+Host CLI tools under `host/` are **stdlib only** and run from the system
+interpreter - this machine has no package manager and bring-up must not
+need one. The **test suite runs from the project venv**, because pytest
+is not stdlib:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest --track=b -q
+```
+
+Never add a third-party import to `host/`. Anything a test needs beyond
+stdlib belongs in the test, not the library.
+
 **Use the xPack toolchain, not ARM's official macOS build.** ARM's links
 `cc1` against Homebrew's zstd at an absolute path and cannot run on this
 host; the driver still reports a version, so the failure only appears

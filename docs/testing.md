@@ -1,9 +1,42 @@
 # Test Suite: design and implementation guide
 
-**Status: designed, not implemented.** This document is the whole plan.
-It is written so that a session starting cold can build the suite from
-it without re-deriving anything. Read `docs/HANDOFF.md` first for the
+**Status: implemented.** `host/measure.py` plus `tests/`. Run it with
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest --track=b -q
+```
+
+pytest is not stdlib, so the suite needs the venv. Everything under
+`host/` stays stdlib only: those tools have to run from the system
+interpreter during bring-up.
+
+This document remains the design. Read `docs/HANDOFF.md` first for the
 board, ports and build environment.
+
+### What building it found
+
+Four defects, none of which the manual runs had shown, three fixed and
+one open. They are written up in `docs/status.md`; briefly: the native
+port took 51 s to open because `SET_LINE_CODING` was answered before
+its data stage, the console silently dropped commands sent while it was
+printing, the frame header declared the requested rate rather than the
+one the hardware makes, and - still open - host-fed playback loses
+samples that no counter on either side sees.
+
+The open one is why the suite exists. `seq_gaps=0 crc_bad=0 under=0`
+was true for every one of those runs.
+
+### One rule added while building it
+
+**Every rate is `hz_for(RC)` for an integer RC, never a round decimal
+number.** The trigger is a TC compare against RC and the DAC update is
+the same timer on another channel, so `39 MHz / RC` is the entire set of
+rates the hardware has; asking for anything between two of them just
+rounds down. The ladders are therefore RC and the Hz are derived, and
+`test_every_ladder_rate_is_a_real_divider_value` checks that they
+round-trip.
 
 Two decisions are settled and are not open for re-litigation:
 

@@ -20,6 +20,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/debugging.md](docs/debugging.md) | Probeless bring-up strategy |
 | [docs/rtos.md](docs/rtos.md) | Bare-metal and FreeRTOS integration |
 | [docs/usb.md](docs/usb.md) | Measured transport ceilings and host I/O policy |
+| [docs/testing.md](docs/testing.md) | On-hardware pytest suite: design, and what it found |
 | [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | Current state and next objectives |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Commit conventions |
@@ -46,6 +47,26 @@ plain CDC; Track A is the reference oracle, Track B the project. The
 transport was never the limit — most of what looked like device faults
 were host-side measurement bugs, all recorded in
 [docs/status.md](docs/status.md).
+
+## Tests
+
+The suite runs against the real board over both USB ports; there is no
+simulator, because the failures it exists to catch have no software
+model. It needs pytest, which is not stdlib, so **the Python side runs
+from a venv**:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest --track=b -q      # or --track=a, or both
+.venv/bin/python -m pytest -m smoke -q       # the fast subset
+```
+
+Everything under `host/` stays stdlib only and runs from the system
+interpreter: those tools are used during bring-up on a machine with no
+package manager. Only the tests need the venv.
+
+See [docs/testing.md](docs/testing.md).
 
 ## Design in one paragraph
 
