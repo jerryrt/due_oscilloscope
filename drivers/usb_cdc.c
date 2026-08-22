@@ -43,6 +43,11 @@
 
 #define FIFO(ep)  (((volatile uint8_t (*)[0x8000])UOTGHS_RAM_ADDR)[(ep)])
 
+/* Activity counters for the front-panel LEDs: any byte moved or DMA
+ * started bumps these; the main loop turns deltas into blinks. */
+volatile uint32_t usb_in_activity;
+volatile uint32_t usb_out_activity;
+
 volatile uint32_t usb_reset_count;
 volatile uint32_t usb_setup_count;
 volatile uint32_t usb_stall_count;
@@ -345,6 +350,8 @@ size_t usb_cdc_write(const uint8_t *data, size_t len)
 
 		done += n;
 	}
+	if (done)
+		usb_in_activity += (uint32_t)done;
 	return done;
 }
 
@@ -386,6 +393,7 @@ size_t usb_cdc_read(uint8_t *dst, size_t max)
 		dst[i] = fifo[out_rd_off + i];
 	out_rd_off += n;
 
+	usb_out_activity += n;
 	/* Hand the bank back only once every byte in it has been taken. */
 	if (out_rd_off >= byct) {
 		out_rd_off = 0;
@@ -506,7 +514,7 @@ uint32_t usb_dma_out_received(uint32_t requested)
 	return requested > left ? requested - left : 0;
 }
 
-bool usb_dma_out_start(void *buf, uint32_t len)
+static bool dma_out_start_ctl(void *buf, uint32_t len, uint32_t extra)
 {
 	if (!usb_cdc_ready() || len == 0)
 		return false;
@@ -516,13 +524,34 @@ bool usb_dma_out_start(void *buf, uint32_t len)
 	UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMAADDRESS = (uint32_t)buf;
 	UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMACONTROL =
 		  UOTGHS_DEVDMACONTROL_BUFF_LENGTH(len)
-		/* END_TR_EN stops on a short packet, which is how a host
-		 * signals the end of a transfer smaller than the buffer. */
-		| UOTGHS_DEVDMACONTROL_END_TR_EN
+		| extra
 		| UOTGHS_DEVDMACONTROL_END_B_EN
 		| UOTGHS_DEVDMACONTROL_END_BUFFIT
 		| UOTGHS_DEVDMACONTROL_CHANN_ENB;
+	usb_out_activity++;
 	return true;
+}
+
+bool usb_dma_out_start(void *buf, uint32_t len)
+{
+	/* END_TR_EN stops on a short packet, which is how a host signals
+	 * the end of a transfer smaller than the buffer. Right for
+	 * request/response traffic like the benches. */
+	return dma_out_start_ctl(buf, len, UOTGHS_DEVDMACONTROL_END_TR_EN);
+}
+
+bool usb_dma_out_start_stream(void *buf, uint32_t len)
+{
+	/*
+	 * No END_TR_EN: a continuous sample stream never legitimately
+	 * ends, and a short packet - which host-side pacing produces
+	 * whenever a write is not a multiple of 512 - must not terminate
+	 * the transfer. Ending it there forced a re-arm through the main
+	 * loop every couple of kilobytes, and the re-arm latency was a
+	 * measured throughput ceiling. The DMA just keeps filling; the
+	 * caller tracks progress through BUFF_COUNT.
+	 */
+	return dma_out_start_ctl(buf, len, 0);
 }
 
 bool usb_cdc_ready(void)

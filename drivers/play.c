@@ -25,6 +25,10 @@ volatile uint32_t play_svc_calls;
 static uint32_t fill_off;            /* byte offset into the filling buffer */
 static bool     active;
 static bool     primed;
+static bool     dma_inflight;        /* an OUT-endpoint DMA is running */
+static uint32_t dma_asked;           /* bytes requested of that transfer */
+static uint32_t dma_start_off;       /* fill_off when it started */
+static uint32_t dma_published;       /* slots already published from it */
 
 #define PLAY_PRIME_BUFS 4u
 
@@ -67,6 +71,10 @@ bool play_start(uint32_t dac_hz)
 	play_bytes_in = 0;
 	play_svc_calls = 0;
 	fill_off = 0;
+	dma_inflight = false;
+
+	/* The ring is fed by endpoint DMA; capture IN stays manual. */
+	usb_cdc_dma_mode(false, true);
 
 	/* Silence until the host supplies something: mid scale on both. */
 	for (unsigned b = 0; b < PLAY_NBUF; b++)
@@ -113,6 +121,8 @@ bool play_start(uint32_t dac_hz)
 
 void play_stop(void)
 {
+	if (active)
+		usb_cdc_dma_mode(false, false);
 	active = false;
 	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
 	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);
@@ -122,12 +132,12 @@ void play_stop(void)
 }
 
 /*
- * Drain the bulk OUT endpoint straight into the ring.
- *
- * usb_cdc_read writes into the destination given, so bytes go from the
- * endpoint bank into the playback buffer with no staging copy. Reads are
- * clipped to the remainder of the current buffer so a bank that straddles
- * a boundary is split rather than lost.
+ * Fill the ring by endpoint DMA: bulk OUT data moves from the FIFO into
+ * the playback buffers with no CPU copy at all, which is the invariant
+ * this architecture is built on. One transfer is in flight at a time,
+ * aimed at the remainder of the slot being filled; END_TR_EN ends a
+ * transfer early at a short packet, so arbitrary host write chunking
+ * costs a partial slot to resume, never a byte.
  */
 void play_service(void)
 {
@@ -136,50 +146,62 @@ void play_service(void)
 
 	play_svc_calls++;
 
-	for (int budget = 0; budget < 16; budget++) {
-		uint8_t *dst;
-		uint32_t space;
-		size_t got;
-
+	if (dma_inflight) {
 		/*
-		 * The PDC owns two buffers at once: the one in TPR/TCR that it
-		 * is emitting, and the one whose pointer is already latched in
-		 * TNPR/TNCR. So the producer may only touch play_consumed + 2
-		 * onward, and the reservation is two slots rather than one.
-		 *
-		 * Reserving only one let the producer overwrite a buffer the
-		 * PDC had already latched but not yet started, which looks like
-		 * nothing is wrong and emits half-written data.
+		 * Publish progress while the transfer runs, not just at its
+		 * end: a multi-slot span takes many milliseconds to complete,
+		 * and a consumer that only learned of new data at completion
+		 * would drain the ring against a frozen counter and underrun
+		 * with the bytes already in SRAM. BUFF_COUNT counts down as
+		 * the DMA lands bytes, so completed slots can be published
+		 * incrementally and exactly.
 		 */
-		if (play_produced - play_consumed >= PLAY_NBUF - 2u)
-			return;
+		uint32_t done = usb_dma_out_received(dma_asked);
+		uint32_t slots_done = (dma_start_off + done) / PLAY_BUF_BYTES;
 
-		dst = (uint8_t *)play_buf[play_produced % PLAY_NBUF] + fill_off;
-		space = PLAY_BUF_BYTES - fill_off;
-
-		got = usb_cdc_read(dst, space);
-		if (got == 0)
-			return;
-
-		play_bytes_in += (uint32_t)got;
-		fill_off += (uint32_t)got;
-		if (fill_off >= PLAY_BUF_BYTES) {
-			fill_off = 0;
-			/*
-			 * Publish. The payload is written through a non-volatile
-			 * pointer, so without this barrier the compiler may sink
-			 * those stores past the counter increment, and the PDC is
-			 * an independent bus master that would then read a buffer
-			 * advertised as complete but not yet written.
-			 */
+		if (slots_done > dma_published) {
 			__DMB();
-			play_produced++;
+			play_produced += slots_done - dma_published;
+			dma_published = slots_done;
 		}
+		if (usb_dma_out_busy())
+			goto prime;
 
-		if (!primed && play_produced >= PLAY_PRIME_BUFS) {
-			primed = true;
-			TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
-		}
+		dma_inflight = false;
+		play_bytes_in += done;
+		fill_off = (dma_start_off + done) % PLAY_BUF_BYTES;
+	}
+
+	/*
+	 * Span as many contiguous free slots as the ring allows in one
+	 * transfer. One-slot transfers capped throughput at roughly
+	 * slot-size over service latency (~1.7 MB/s measured), because a
+	 * new transfer could only start on a main-loop pass; a multi-slot
+	 * transfer keeps the DMA busy across many passes. The reservation
+	 * stays two slots short of the reader because the PDC owns both
+	 * the buffer it is emitting and the one latched in TNPR.
+	 */
+	if (!dma_inflight &&
+	    play_produced - play_consumed < PLAY_NBUF - 2u) {
+		uint32_t slot = play_produced % PLAY_NBUF;
+		uint32_t free_slots = (PLAY_NBUF - 2u)
+		                    - (play_produced - play_consumed);
+		uint32_t until_wrap = PLAY_NBUF - slot;
+		uint32_t span = free_slots < until_wrap ? free_slots
+		                                        : until_wrap;
+		uint8_t *dst = (uint8_t *)play_buf[slot] + fill_off;
+
+		dma_asked = span * PLAY_BUF_BYTES - fill_off;
+		dma_start_off = fill_off;
+		dma_published = 0;
+		if (usb_dma_out_start_stream(dst, dma_asked))
+			dma_inflight = true;
+	}
+
+prime:
+	if (!primed && play_produced >= PLAY_PRIME_BUFS) {
+		primed = true;
+		TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
 	}
 }
 

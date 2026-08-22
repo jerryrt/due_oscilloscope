@@ -20,6 +20,8 @@ void   usb_cdc_poll(void);
 
 /* True once the host has configured the device and raised DTR. */
 bool   usb_cdc_ready(void);
+extern volatile uint32_t usb_in_activity;   /* bytes/transfers, IN  */
+extern volatile uint32_t usb_out_activity;  /* bytes/transfers, OUT */
 
 /*
  * Queue up to len bytes on the bulk IN endpoint. Returns the number
@@ -61,6 +63,7 @@ bool   usb_dma_in_busy(void);
 uint32_t usb_dma_in_residue(void);
 
 bool   usb_dma_out_start(void *buf, uint32_t len);
+bool   usb_dma_out_start_stream(void *buf, uint32_t len);  /* no END_TR */
 bool   usb_dma_out_busy(void);
 uint32_t usb_dma_out_received(uint32_t requested);
 
