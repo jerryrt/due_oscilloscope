@@ -121,23 +121,53 @@ ADC rate needs 1.81 MB/s of gated OUT against the ~1.7 MB/s duplex cap
 and is not clean (under=1037/5 s, tone 376 codes) - the exact
 configuration objective 1 unblocks.
 
+## Endpoint DMA: working, playback converted (2026-08-22)
+
+The one-transfer stall was three findings deep, all now in the
+`usb_cdc.c` history: DMA needs AUTOSW (manual FIFOCON and automatic
+bank switching cannot share an endpoint), a `DEVEPTCFG` write while
+EPEN is clear is silently ignored on this part, and the mode must be
+reapplied on every endpoint rebuild or an enumeration reverts it.
+
+Transport ceilings via DMA: **IN 32.0 MB/s, OUT 26.6 MB/s
+byte-perfect, duplex 8.55 + 8.40 = 16.95 MB/s** (vs 5.20/5.03/5.25 for
+CPU copies). The playback ring is now fed by endpoint DMA - multi-slot
+spans, progress published from BUFF_COUNT mid-flight, no END_TR on the
+stream variant - and the host feed is clock-paced with a 20 KB lead
+(the empty-queue gate is obsolete now that the DMA-fed ring drains the
+tty queue at wire speed; see the loopback.py history for why each
+piece is shaped as it is).
+
+Result: **the full-rate single pair runs - DAC 906,976 sps + capture
+906,976 sps aggregate, zero underruns.** Purity at that extreme is
+~90-95% of theoretical amplitude with run-to-run variance: capture
+resyncs (honestly flagged, 1-1300 per run) from the still-CPU-copied
+IN path, plus suspicion of link-level retransmits on a cable that
+failed hard twice today. Baseline through 600 k configs remeasure
+clean (1371 +/- 2) after every change.
+
 ## Next objectives, in order
 
-1. **Endpoint DMA** - now the binding constraint for everything below,
-   not just an invariant repair: it is what lifts gated duplex OUT past
-   1.7 MB/s. The primitives in `drivers/usb_cdc.c` stall after one
-   transfer; status-register handling is the likely culprit.
-2. **The second pair.** Two pairs need ~2.85 MB/s OUT + ~1.81 MB/s IN.
-   Blocked on objective 1 by the 1.7 MB/s gated-OUT cap.
-3. **Equivalent-time reconstruction** (sampling-scope trick): DAC and
-   ADC dividers are coprime and share MCK, so a host-side reorder gives
-   a 25.6 ns-resolution view of the DAC waveform through the slow ADC.
-   All firmware pieces exist; needs a capture-single-channel mode and a
-   host script.
-4. **`usb_cdc_write` bank clobbering at flood rates** (see
-   `docs/status.md` "Next" item 0): the no-spin TXINI guard admits far
-   more bytes than the wire carries when the host lags. Harmless below
-   the wire ceiling, meaningless flood counters, latent risk above.
+1. **Capture IN over endpoint DMA.** The remaining CPU copy, the
+   remaining invariant violation, and the source of the resyncs at
+   full-rate duplex. Needs the frame header contiguous with the
+   payload: give each capture buffer 32 B of headroom, point the PDC at
+   the payload, CPU writes only the header, one DMA per frame.
+2. **Replace the marginal native-port cable** and remeasure the
+   full-rate purity variance before attributing anything further to
+   software.
+3. **The second pair.** Two pairs need ~2.85 MB/s OUT + ~1.81 MB/s IN
+   - trivial against the DMA duplex numbers once objective 1 lands.
+4. **Two-channel DAC purity** (routing verified; A0 slot-aligned jumps
+   and A1 32-sample-periodic steps unexplained - retest after 1 and 2,
+   which may explain both).
+5. **Equivalent-time reconstruction** (sampling-scope trick): coprime
+   dividers on a shared MCK give a 25.6 ns-resolution view of the DAC
+   waveform through the slow ADC. Firmware pieces exist; needs a
+   single-channel capture mode and a host reorder script.
+6. **`usb_cdc_write` bank clobbering at flood rates** (status.md "Next"
+   item 0); the DMA path shows the same overcommit when the host stops
+   draining - harmless in normal operation, meaningless flood counters.
 
 ## Hard-won facts the next session must not rediscover
 
