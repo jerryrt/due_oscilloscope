@@ -6,8 +6,13 @@
 
 #define TRGSEL_TIOA1 (2u << 1)   /* DACC_MR.TRGSEL: 2 = TIOA1 */
 
+/*
+ * Bank 1, not bank 0: the 32-slot ring no longer fits bank 0 next to
+ * the capture ring, and separating the two DMA rings across banks is
+ * what the linker regions exist for anyway.
+ */
 static uint16_t play_buf[PLAY_NBUF][PLAY_BUF_SAMPLES]
-	__attribute__((aligned(4)));
+	__attribute__((aligned(4), section(".sram1")));
 
 volatile uint32_t play_produced;
 volatile uint32_t play_consumed;

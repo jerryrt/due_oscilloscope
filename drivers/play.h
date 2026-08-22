@@ -19,7 +19,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define PLAY_NBUF        8
+/*
+ * Ring depth is the margin against host scheduling gaps: the queue-
+ * gated host feed loses ~1 ms per burst to empty-queue detection, and
+ * the ring must carry playback across that gap at full rate. 8 slots
+ * (4 KB, ~2.9 ms at the DACC ceiling) measurably starved during duplex;
+ * 32 slots is ~11.8 ms at the ceiling, and 32 KB of SRAM this project
+ * has nothing better to spend on.
+ */
+#define PLAY_NBUF        32
 #define PLAY_BUF_SAMPLES 512
 #define PLAY_BUF_BYTES   (PLAY_BUF_SAMPLES * 2)
 
