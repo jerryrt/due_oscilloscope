@@ -26,7 +26,7 @@ and should not erode.
 
 ## Phases
 
-### Phase 1 — Loopback bring-up (in progress)
+### Phase 1 — Loopback bring-up (complete)
 
 Jumpers from **DAC0 to A0** and **DAC1 to A1** close the loop. The
 second channel is not decorative: it is what makes multiplexer crosstalk
@@ -44,21 +44,26 @@ Deliverables:
 - [x] Real DAC endpoints measured: **546 mV to 2760 mV**
 - [x] ADC linearity: 171-172 codes per 256 DAC codes, flat across range
 - [x] Multiplexer crosstalk baseline: +/-1 code at slow tracking
-- [ ] TC-triggered ADC with PDC ping-pong
-- [ ] TC-triggered DAC playback
-- [ ] End-to-end latency, actual trigger rate, dropped-sample count
+- [x] TC-triggered ADC with PDC ping-pong
+- [x] TC-triggered DAC playback (flash table via gen, host-fed via play)
+- [x] Actual trigger rate verified: ratio 1.000 up to RC 86, silent 2:1
+      decimation past it; dropped samples counted in every frame header
 
 What Phase 1 deliberately does **not** prove: noise, loading, or cable
 effects. A two-inch jumper with a shared ground hides all of those. They
 belong to Phase 3.
 
-### Phase 2 — Host streaming
+### Phase 2 — Host streaming (complete except live plot)
 
-- USB bulk streaming of capture buffers (see `docs/protocol.md`)
-- **Measure actual sustained USB throughput** — this is the single
-  unknown that determines whether continuous capture is viable
-- Host application: deframe, verify sequence continuity, FFT, live plot
-- Burst (scope) mode first; continuous (spectrum) mode second
+- [x] USB bulk streaming of capture buffers (see `docs/protocol.md`)
+- [x] Sustained USB throughput measured: full in-spec ADC rate
+      (1.83 MB/s) gapless on both tracks; transport ceilings far above
+      it (see `docs/usb.md`)
+- [x] Host application: deframe, sequence continuity, Goertzel tone
+      verification (`host/receive.py`, `host/loopback.py`)
+- [ ] Live plot / GUI - planned as a client/server split: a streaming
+      daemon owning the ports and real-time threads, a GUI as a
+      separate process over a local socket
 
 ### Phase 3 — Analog front end
 
@@ -70,7 +75,7 @@ Only after the digital path is proven:
   plus a reconstruction filter
 - Anti-aliasing filters — one per active channel
 
-### Phase 3.5 — Arbitrary waveform generator (host to device)
+### Phase 3.5 — Arbitrary waveform generator (working at 200 ksps)
 
 Turn the board into a signal generator as well as a scope: the host
 generates a waveform and streams it down to the DAC, instead of the DAC
@@ -93,24 +98,28 @@ Targets, from measurements already taken:
 
 So a symmetric full-duplex instrument needs about **3.9 MB/s combined**,
 and pushing the DAC to its own ceiling while capturing needs about
-**5.0 MB/s**. Measured transport capability is 1.969 MB/s in one
-direction, with the FIFO copy itself benchmarked near 8.9 MB/s, so
-whether both directions can run at once is an open question to be
-measured rather than assumed.
+**5.0 MB/s**. Duplex has since been measured at 2.77 in + 2.47 out =
+**5.25 MB/s combined** with equal contention (see `docs/usb.md`), so
+the symmetric instrument fits; the DAC-at-ceiling case needs the
+direction balance biased toward OUT, or endpoint DMA.
 
 Deliverables:
 
-- [ ] Bulk OUT path read on the device; playback ring fed from it
-- [ ] DACC driven by PDC from that ring, with underrun counted
-- [ ] Host sender streaming a generated waveform
-- [ ] Maximum sustained playback rate, measured
-- [ ] Full duplex: capture and playback simultaneously, both rates measured
-- [ ] End-to-end proof through the loopback: the captured signal matches
-      the waveform the host sent
+- [x] Bulk OUT path read on the device; playback ring fed from it
+- [x] DACC driven by PDC from that ring, with underrun counted
+- [x] Host sender streaming a generated waveform (`host/loopback.py`,
+      with the empty-queue write policy `docs/usb.md` explains)
+- [ ] Maximum sustained playback rate - 200 ksps verified solid; the
+      push toward the DACC ceiling is a current objective
+- [x] Full duplex: capture and playback simultaneously - the working
+      loop runs 0.40 MB/s OUT + 0.84 MB/s IN with zero underruns
+- [x] End-to-end proof through the loopback: host-sent 1 kHz sine comes
+      back on A0 at 1371 +/- 2 codes (theoretical 1370.5) in every
+      window; A1 flat
 
-The loopback makes this self-checking. The host knows exactly what it
-sent, so comparing it against what comes back validates both directions
-at once.
+The loopback made this self-checking exactly as intended - including
+catching the failures that were *host-side* all along (stale kernel
+buffers, CDC-ACM write drops; see `docs/status.md`).
 
 ### Phase 4 — RTOS variant
 
@@ -119,13 +128,16 @@ against the bare-metal build. See `docs/rtos.md`.
 
 ## Performance targets
 
-Derived in `docs/architecture.md`; summarised here.
+Derived in `docs/architecture.md`; summarised here. The project now
+runs MCK at 78 MHz so the ADC clock sits inside its datasheet limit
+(see `docs/hardware.md`, "Operating point"); the 84 MHz figures are
+kept for comparison.
 
 ```
-MCK                     84 MHz
-ADCClock (PRESCAL=1)    21 MHz            (datasheet max 20 MHz - OVER)
+MCK                     78 MHz            (84 possible, ADC clock then 5% over spec)
+ADCClock (PRESCAL=1)    19.5 MHz          (datasheet max 20 MHz - in spec)
 Conversion              ~21.5 ADC clocks  (measured, minimal TRACKTIM)
-Aggregate rate          976,744 sps       (measured ceiling, not 1 Msps)
+Aggregate rate          ~907,000 sps      (RC 86; 976,744 at MCK 84)
 ```
 
 The SAM3X8E has **one** ADC behind a 16:1 multiplexer, not twelve ADCs.
@@ -134,17 +146,18 @@ rate rather than multiplying throughput.
 
 | Channels | Per-channel | Nyquist | Realistic usable BW |
 |---|---|---|---|
-| 1 | 976 ksps | 488 kHz | ~150 kHz |
-| 2 | 488 ksps | 244 kHz | ~80 kHz |
-| 12 | 81.4 ksps | 40.7 kHz | ~20-30 kHz |
+| 1 | 907 ksps | 453 kHz | ~140 kHz |
+| 2 | 453 ksps | 227 kHz | ~75 kHz |
+| 12 | 75.6 ksps | 37.8 kHz | ~20-30 kHz |
 
-Per-channel figures are the measured 976,744 sps aggregate divided by
-channel count. The 2-channel row is confirmed on hardware.
+Per-channel figures are the ~907 ksps in-spec aggregate at MCK 78
+divided by channel count. The 2-channel row is confirmed on hardware:
+453,488 Hz per channel declared, 453,489 measured, ratio 1.000.
 
-**Aggregate data rate is 1.95 MB/s regardless of channel count**
-(976,744 sps x 2 bytes). Twelve channels costs no extra USB bandwidth; it
+**Aggregate data rate is ~1.81 MB/s regardless of channel count**
+(907 ksps x 2 bytes). Twelve channels costs no extra USB bandwidth; it
 costs per-channel sample rate. 12-bit packing would reduce this to
-1.47 MB/s at the cost of the channel tag.
+1.36 MB/s at the cost of the channel tag.
 
 Expect the practical per-channel rate to land lower than the table —
 raising `TRACKTIM` to suppress multiplexer crosstalk on high-impedance
@@ -156,6 +169,12 @@ sources cuts aggregate throughput. Plan for **50–85 ksps/channel** in a
 Phase 1 is complete when the host can plot a DAC-generated waveform
 captured through A0, with a reported dropped-sample count of zero over a
 sustained run, and a measured figure for DAC range and USB throughput.
+
+**Met** (verification is spectral rather than plotted: Goertzel
+amplitude at the sent frequency, per device-time window): zero drops
+over sustained runs, DAC range 546-2760 mV measured, transport
+ceilings measured in all three directions. The waveform now even
+originates on the host, which is Phase 3.5's bar, not Phase 1's.
 
 ## Non-goals
 

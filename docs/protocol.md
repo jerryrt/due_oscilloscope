@@ -1,11 +1,12 @@
 # Host Protocol
 
-Two channels, deliberately separated:
+Two channels, deliberately separated (paths are enumeration-dependent;
+discover them with `python3 host/ports.py`, never hardcode):
 
-| Port | Path | Traffic |
-|---|---|---|
-| Native (`SerialUSB`) | `/dev/cu.usbmodem1411401` | **Binary sample frames only** |
-| Programming | `/dev/cu.usbmodem141301` | ASCII control commands, status, debug logs |
+| Port | Traffic |
+|---|---|
+| Native (High Speed) | **Binary sample frames** in; playback samples out |
+| Programming | ASCII control commands, status, debug logs |
 
 Keeping logs off the data pipe means a stray `printf` cannot corrupt a
 sample frame, and the debug stream can be watched in a second terminal
@@ -24,8 +25,10 @@ while the host application owns the data port.
   packet). Short packets mid-stream waste a transaction slot and confuse
   host framing.
 
-Default frame: **8192 bytes = 16 x 512**, comprising a 32-byte header and
-8160 bytes of payload (4080 samples at 16-bit).
+Frame size in the current firmware: **4096 bytes = 8 x 512**,
+comprising a 32-byte header and 4064 bytes of payload (2032 samples at
+16-bit, `ACQ_BUF_SAMPLES`). Any exact multiple of 512 with a whole
+number of samples is valid under these rules.
 
 ### Header (32 bytes)
 
@@ -166,8 +169,9 @@ amiss.
 Two defences, and both are needed:
 
 - **Firmware refuses** a trigger period below the measured floor. On
-  this board the floor is 976,744 sps aggregate, i.e. `TC_RC >= 86` at
-  `TIMER_CLOCK1`, divided by the number of enabled channels.
+  this board that is `TC_RC >= 86` at `TIMER_CLOCK1` (correct at any
+  MCK, since the timer and ADC clocks scale together; ~907 ksps
+  aggregate at MCK 78), scaled by the number of enabled channels.
 - **Host verifies** the rate independently: `n_samples` against
   `timestamp_us` deltas between consecutive frames must agree with
   `sample_rate_hz`. A steady 2x discrepancy is this bug.

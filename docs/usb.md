@@ -1,18 +1,64 @@
 # USB Transport
 
 Measured on this host, MCK 78 MHz. All rates are **host-timed**; the
-device reports byte counts only, for reasons in the last section.
+device reports byte counts only, for reasons in a later section.
 
 ## Ceilings
 
-| Direction | Track A (Arduino CDC) | Track B (bare metal) |
-|---|---|---|
-| IN, device to host | **7.81 MB/s** | 3.86 MB/s |
-| OUT, host to device | **0.126 MB/s** | **3.02 MB/s** |
-| Duplex, equal budgets | not measured | 1.93 in + 1.65 out = **3.58 MB/s** |
+Current figures, measured with `host/usbbench.py` running one
+real-time thread per direction (see `host/rt.py`):
 
-For scale, the ADC's full output at this clock is 906,738 sps x 2 bytes =
-**1.813 MB/s**.
+| Direction | Track B (bare metal) |
+|---|---|
+| IN, device to host | **5.20 MB/s** |
+| OUT, host to device | **5.03 MB/s**, byte-perfect against the device counter |
+| Duplex, equal contention | 2.77 in + 2.47 out = **5.25 MB/s** |
+
+For scale, the ADC's full in-spec output at this clock is about
+**1.81 MB/s**, and the working full loop moves 1.24 MB/s combined.
+
+Earlier figures from the single-threaded benchmark - 3.86 IN, 3.02 OUT,
+3.58 duplex - were partly measuring the host's own polling loop: one
+thread interleaved both directions behind a select() timeout, so each
+direction stalled while the other's syscall ran. The device-side
+counter for the IN flood is disregarded entirely: it reads far above
+the wire rate, which means `usb_cdc_write` clobbers banks when
+producing faster than the host drains (recorded as an open issue in
+`docs/status.md`; the streaming path never outruns the wire and its
+frames verify byte-perfect).
+
+## macOS drops OUT bytes when the tty queue is pressured
+
+The costliest host-side discovery in the project: **writing into a
+macOS CDC-ACM output queue that is under pressure silently loses
+~128-byte chunks that `write()` has already counted.** Nothing errors.
+Free-running blocking writes produced ~75 clean phase jumps per second
+on the DAC while every counter on both sides stayed green; the loss was
+proven by byte conservation (host-written minus device-received matched
+jumps x 128 B) and by the jumps landing exactly on DAC ring-buffer
+boundaries. Clock-paced writes at the exact consumption rate still
+dropped at every tested queue depth.
+
+The policy that measures clean, now in `host/loopback.py`: a real-time
+thread polls `TIOCOUTQ` and bursts 16 KB **only into a truly empty
+queue**. The device's 8 KB ring covers the detection latency, so the
+far end never starves either: zero underruns and full tone amplitude in
+every window, reproducibly. Any future host software that feeds the
+DAC must keep this policy.
+
+## close() hangs unless the device always drains OUT
+
+macOS's `close()` on a tty waits for in-flight write URBs to complete.
+`tcflush` cannot recall a URB already handed to the controller, so if
+the device stops reading bulk OUT - as it used to after a stop command
+- the host process hangs in `close()` forever, holding the port and
+leaving the board streaming for the next run to trip over. Two rules
+came out of this, both implemented:
+
+- The firmware's main loop **drains and discards bulk OUT whenever no
+  consumer owns it** (correct CDC behaviour anyway).
+- Host tools still `tcflush` before closing the native port, as a
+  belt-and-braces against queued-but-not-submitted bytes.
 
 ## The 62x asymmetry was a firmware path, not USB
 
@@ -40,18 +86,18 @@ for the next pass of the main loop. Non-blocking cost throughput.
 difference: moving the native port from behind two chained hubs to a
 root port changed IN from 7.855 to 7.811 MB/s and left OUT unchanged.
 
-## Duplex is limited by the service loop, not the link
+## Duplex is limited by the service loops, not the link
 
-Duplex total (3.58 MB/s) lands close to IN alone (3.86), rather than
-adding to it. Separate endpoints in opposite directions can overlap on
-the bus, so a link-limited system would have shown roughly twice the
-one-way figure. What is shared is the processor: both directions copy
-through the same FIFO loop from the same main loop.
-
-That also means the headroom is a firmware question. Track A demonstrates
-7.81 MB/s of write throughput from the same silicon by keeping the banks
-fed; combining that technique with block reads should lift duplex well
-above the 3.63 MB/s a symmetric full-rate instrument needs.
+This held on both ends, and both fixes were measured. Device-side, both
+directions copy through the same FIFO loop from the same main loop, so
+duplex lands near the better single direction rather than their sum.
+Host-side, the original single-threaded benchmark had the same shape,
+and splitting it into one real-time thread per direction lifted the
+measured duplex from 3.58 to 5.25 MB/s combined - the earlier "ceiling"
+was partly the measuring loop itself. The remaining device-side
+headroom is the endpoint-DMA work: 5.25 MB/s already clears the
+~3.9 MB/s a symmetric full-rate instrument needs, while the
+DAC-at-ceiling case (~5.0 MB/s biased toward OUT) is the tight one.
 
 ### Measuring duplex fairly
 

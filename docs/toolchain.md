@@ -72,8 +72,13 @@ touch reset works. That is the one to use.
 ```sh
 arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg sketches/blink
 arduino-cli upload  --fqbn arduino:sam:arduino_due_x_dbg \
-                    -p /dev/cu.usbmodem141301 sketches/blink
+                    -p "$(python3 host/ports.py | awk '/control/{print $3}')" \
+                    sketches/blink
 ```
+
+The port path is enumeration-dependent; discover it, never hardcode it.
+A stale hardcoded path once aimed the 1200-baud erase at the wrong port
+and wiped the flash without writing anything.
 
 ### What it installs that Track B reuses
 
@@ -213,17 +218,19 @@ The Due programming port is erased and reset by opening it at **1200
 baud**, which drives the 16U2 to pull ERASE and RESET. `bossac` then
 talks to the SAM-BA bootloader.
 
-`tools/flash.sh` wraps this. Exact `bossac` flag set is to be confirmed
-at first bring-up rather than guessed; the shape is:
+`tools/flash.sh` wraps this, and **discovers the port itself rather
+than accepting a guess** - a stale hardcoded path once aimed the
+1200-baud erase at the wrong port and wiped the flash without writing
+anything. Use it:
 
 ```sh
-# 1200-baud touch to trigger erase + reset
-# then something along the lines of:
-bossac --port=cu.usbmodem141301 -U false -e -w -v -b build/firmware.bin -R
+tools/flash.sh build/baremetal_bringup.bin
 ```
 
-Note `bossac` wants the port name **without** the `/dev/` prefix, and
-`-U false` selects the programming port rather than the native one.
+Under the hood: 1200-baud touch to trigger erase + reset, then
+`bossac -U false -e -w -v -b <bin> -R`. `bossac` wants the port name
+**without** the `/dev/` prefix, and `-U false` selects the programming
+port rather than the native one.
 
 ## Track parity
 

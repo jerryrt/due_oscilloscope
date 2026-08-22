@@ -5,8 +5,8 @@ RTOS-agnostic; only `main()` differs. That is what makes the comparison
 meaningful rather than two unrelated projects.
 
 ```
-apps/baremetal_loopback/main.c    superloop + ISRs
-apps/rtos_loopback/main.c         FreeRTOS tasks + the same ISRs
+apps/baremetal_bringup/main.c     superloop + ISRs (exists, working)
+apps/rtos_bringup/main.c          FreeRTOS tasks + the same ISRs (not started)
 ```
 
 ## Order of work

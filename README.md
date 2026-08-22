@@ -19,30 +19,42 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/protocol.md](docs/protocol.md) | Host streaming frame format |
 | [docs/debugging.md](docs/debugging.md) | Probeless bring-up strategy |
 | [docs/rtos.md](docs/rtos.md) | Bare-metal and FreeRTOS integration |
+| [docs/usb.md](docs/usb.md) | Measured transport ceilings and host I/O policy |
+| [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
+| [docs/HANDOFF.md](docs/HANDOFF.md) | Current state and next objectives |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Commit conventions |
 | [CLAUDE.md](CLAUDE.md) | Agent working instructions |
 
 ## Status
 
-**Both tracks stream the ADC's full output over USB.** See
+**The complete loop works, solidly**: the host streams a waveform to
+the DAC over bulk OUT while simultaneously capturing it back from the
+ADC over bulk IN, on Track B's bare-metal UOTGHS stack. Verified: zero
+underruns, zero sequence gaps, zero CRC errors, and tone amplitude at
+the theoretical maximum (1371 +/- 2 codes) in every 40 ms window of a
+run. See [docs/status.md](docs/status.md).
+
+| Measurement | Result |
+|---|---|
+| Full loop (DAC 200 ksps + ADC 400 ksps, duplex) | 1371 +/- 2 codes, every window, `under=0` |
+| Capture at max in-spec rate (MCK 78, RC 86) | 453,488 Hz/ch declared, 453,489 measured, gapless |
+| USB IN / OUT / duplex ceilings | 5.20 / 5.03 / 5.25 MB/s (OUT byte-perfect) |
+
+Both tracks stream the ADC's full in-spec output continuously over
+plain CDC; Track A is the reference oracle, Track B the project. The
+transport was never the limit — most of what looked like device faults
+were host-side measurement bugs, all recorded in
 [docs/status.md](docs/status.md).
-
-| Trigger | Aggregate | Track A | Track B |
-|---|---|---|---|
-| 200 kHz | 400 ksps | 0.806 MB/s, ratio 1.000 | 0.806 MB/s, ratio 1.000 |
-| 400 kHz | 800 ksps | 1.613 MB/s, ratio 1.000 | 1.613 MB/s, ratio 1.000 |
-| 488 kHz | 976,744 sps | **1.969 MB/s, ratio 1.000** | **1.969 MB/s, ratio 1.000** |
-
-Continuous, gapless, at the ADC's measured ceiling. Track A uses the
-Arduino core's CDC; Track B uses its own bare-metal UOTGHS stack. They
-perform identically, which is the useful result: the transport was never
-the limit.
 
 ## Design in one paragraph
 
-A single Timer Counter output triggers both the ADC and the DAC, so
-generation and capture are phase-coherent. The ADC's PDC channel writes
-conversions into a ring of SRAM buffers; the UOTGHS built-in DMA ships
-those same buffers to the host over a bulk IN endpoint. The CPU never
-touches sample data, only pointers. A jumper from DAC0 to A0 closes the
-loop so each half validates the other without any front-end hardware.
+Timer Counter outputs trigger the ADC and the DAC in hardware, so
+capture is deterministic and generation phase-stable (the host-fed
+playback path runs the DAC on its own timer channel). The ADC's PDC
+channel writes conversions into a ring of SRAM buffers; the playback
+ring feeds the DACC the same way in reverse. The CPU never touches
+sample data in the design's end state — today the USB hop is a
+CPU-driven FIFO copy that demonstrably sustains full rate, with the
+UOTGHS endpoint DMA as the remaining step. A jumper from DAC0 to A0
+closes the loop so each half validates the other without any front-end
+hardware.

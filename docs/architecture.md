@@ -3,6 +3,19 @@
 **Organising principle: the CPU never touches sample data.** It moves
 pointers and nothing else. Every design decision below follows from that.
 
+> **Implementation status.** The PDC halves of this design are built
+> and verified: ADC capture ring and host-fed DAC playback ring both
+> run without the CPU in the sample path. The USB hop is currently a
+> CPU-driven FIFO copy - a deliberate interim that measurably sustains
+> full rate (see the measurements below and `docs/usb.md`) but violates
+> the invariant; the UOTGHS endpoint-DMA primitives exist in
+> `drivers/usb_cdc.c` and stall after one transfer, which is a current
+> objective in `docs/HANDOFF.md`. Two details also differ from the
+> sketches below, from measurement rather than accident: host-fed
+> playback runs the DACC from its own timer channel (TIOA1) so the AWG
+> rate is independent of the capture rate, and the playback stream uses
+> half-word transfers with TAG rather than `WORD=1`.
+
 ## Datapath
 
 ```
@@ -266,12 +279,15 @@ See `docs/debugging.md`.
 
 ## Bring-up order
 
-Each stage is independently verifiable, which matters without a debugger:
+Each stage is independently verifiable, which matters without a
+debugger. All four are done; the order is kept because it was right:
 
 1. TC + ADC + PDC ping-pong, dumping a few buffers over UART printf
 2. Verify sample timing against the configured trigger rate
 3. Add DACC, close the DAC0-to-A0 loopback
 4. Replace the printf sink with the real USB path
 
-Do not skip step 2. If the trigger rate is wrong, every subsequent
+Step 2 earned its place: it found the silent trigger-overrun cliff
+(RC 86), and later caught a stale preset that a clock change had
+quietly invalidated. If the trigger rate is wrong, every subsequent
 measurement is wrong in a way that looks like an analog fault.

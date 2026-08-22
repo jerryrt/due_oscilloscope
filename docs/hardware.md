@@ -1,6 +1,8 @@
 # Hardware Reference
 
-Target: **Arduino Due**, Atmel/Microchip **SAM3X8E**, ARM Cortex-M3 @ 84 MHz.
+Target: **Arduino Due**, Atmel/Microchip **SAM3X8E**, ARM Cortex-M3
+rated 84 MHz — **run at MCK 78 MHz in this project** so the ADC clock
+stays inside its datasheet limit (see "Operating point" below).
 
 Figures marked *(verified)* were read from this development host or are
 unambiguous. Figures marked *(check)* need confirmation against the
@@ -25,7 +27,7 @@ Both ports are exposed and serve different roles. Verified on this host:
 
 | | Programming port | Native port |
 |---|---|---|
-| Device path | `/dev/cu.usbmodem141301` | `/dev/cu.usbmodem1411401` |
+| Device path (example; moves with cables) | `/dev/cu.usbmodem14201` | `/dev/cu.usbmodemB_011` |
 | USB ID | `2341:003d` | `2341:003e` |
 | Bridge | ATmega16U2 | SAM3X UOTGHS (on-die) |
 | `Device Speed` | 1 = Full Speed *(verified)* | **2 = High Speed** *(verified)* |
@@ -38,9 +40,12 @@ The native port **already enumerates at High Speed**. There is no switch
 to enable; the Arduino core does not force Full Speed. Any throughput
 shortfall lives in the CDC-ACM stack above the PHY, not in the PHY.
 
-Device paths are enumeration-dependent and may change. The programming
-port has a serial number (`1344A47403035101C8E8`) and can be matched on
-it; the native port does not report one.
+Device paths are enumeration-dependent and change whenever a cable
+moves; discover them with `python3 host/ports.py`. The programming port
+has a serial number (`1344A47403035101C8E8`) and can be matched on it.
+The Arduino core's native port reports no serial; Track B's bare-metal
+stack reports `B-01`, which is why its node enumerates as
+`usbmodemB_011`.
 
 Always use `/dev/cu.*`, never `/dev/tty.*`, for host-side serial clients
 on macOS. The native port ignores baud rate entirely (CDC).
@@ -90,7 +95,7 @@ directly rather than build on the core's CDC. See `docs/architecture.md`.
 | Resolution | 12-bit |
 | Converters | **One**, behind a 16:1 input multiplexer |
 | Channels on Due headers | 12 (A0–A11) |
-| Aggregate rate | **976,744 sps** *(measured, see below)* |
+| Aggregate rate | **976,744 sps at MCK 84; ~907 ksps at the MCK 78 operating point** *(measured, see below)* |
 | Max ADC clock | **20 MHz** *(datasheet Table 46-28)* |
 | Input range | 0 V to ADVREF (3.3 V). No negative, no overvoltage |
 
@@ -433,17 +438,12 @@ configuration. See `docs/debugging.md` for how it is used.
 
 ## Development host topology
 
-Measured on this machine. The native port currently sits behind two
-chained hubs:
+The topology changes whenever cables move (it has, more than once), so
+check with `system_profiler SPUSBDataType` rather than trusting a
+snapshot here. Two measured facts survive any topology:
 
-```
-USB 3.0 Bus
-  USB2.1 Hub (0x14100000)
-    Arduino Due Prog. Port (0x14130000)  Full Speed
-    USB2.1 Hub (0x14110000)
-      Arduino Due            (0x14114000)  High Speed
-```
-
-The Due is the only active device on the chain, so contention is not a
-concern here. For absolute throughput benchmarking, connect the native
-port directly to the host to avoid measuring the hub chain.
+- Hub chains do not measurably limit throughput at this project's
+  rates: moving the native port from behind two chained hubs to a root
+  port changed IN by under 1% and OUT not at all.
+- The Due should be the only active device on its chain when
+  benchmarking absolute ceilings.
