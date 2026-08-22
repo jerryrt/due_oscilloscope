@@ -173,10 +173,11 @@ python3 tools/serial_probe.py /dev/cu.usbmodem14201 --send h --seconds 3
 
 ### Python
 
-Host CLI tools under `host/` are **stdlib only** and run from the system
-interpreter - this machine has no package manager and bring-up must not
-need one. The **test suite runs from the project venv**, because pytest
-is not stdlib:
+**Everything with dependencies runs from a venv.** The test suite does
+already; the GUI and any Windows serial backend will. Dependencies are
+declared once, pinned, and committed; the venvs themselves are per
+machine and never committed, because a venv holds absolute paths and
+platform-specific wheels and does not travel.
 
 ```sh
 python3 -m venv .venv
@@ -184,8 +185,21 @@ python3 -m venv .venv
 .venv/bin/python -m pytest --track=b -q
 ```
 
-Never add a third-party import to `host/`. Anything a test needs beyond
-stdlib belongs in the test, not the library.
+**Host CLI tools under `host/` stay stdlib only**, so bring-up needs no
+install step at all - this machine has no package manager, and the
+tools you reach for when you do not yet know whether the board is alive
+must not depend on one. Note what that rule is and is not: `python3 -m
+venv` works offline, so a venv is not the hazard, `pip install` is. Any
+of these tools may be run from a venv; keeping them import-clean simply
+means they also run when the venv is the broken thing.
+
+So this is a property of `host/` to preserve, not a rule to extend. It
+already holds, so it costs nothing to keep, and the tools are written
+around it - `termios` and `fcntl` instead of pyserial, a Goertzel
+instead of an FFT library, `zlib.crc32` instead of a checksum package.
+The system interpreter here is Python 3.9, which is the version those
+files target. New code with real dependencies does not inherit the
+rule; it gets a venv.
 
 **Use the xPack toolchain, not ARM's official macOS build.** ARM's links
 `cc1` against Homebrew's zstd at an absolute path and cannot run on this

@@ -276,12 +276,49 @@ Phase 3 analog front end exists. A warning label is not sufficient.
 G0 carries the real risk, and it is the Windows serial backend rather
 than anything about the GUI. G1 to G4 are ordinary UI work.
 
+## Dependencies and environments
+
+Settled, and it revises what `CLAUDE.md` used to say. Everything with
+dependencies runs from a venv: the test suite already does, the GUI
+will, and a Windows serial backend may. `host/` stays stdlib, but as a
+property preserved rather than a rule extended - it buys a diagnostic
+that needs no install step on the bring-up machine, and it already
+holds, so keeping it is free.
+
+The distinction that resolves the apparent conflict: `python3 -m venv`
+works offline and `pip install` does not. The venv was never the
+hazard. Tools in `host/` may be run from one; being import-clean only
+means they also run when the venv is the broken thing.
+
+The daemon therefore stays stdlib on macOS and Linux because it already
+is, and takes a venv on Windows if its backend needs pyserial. Neither
+weakens anything, because bring-up does not happen on Windows.
+
+What is self-contained is the **lockfile**, not the venv. A venv holds
+absolute paths and platform-specific wheels; it does not travel between
+operating systems, architectures, or Python versions. So: one pinned
+declaration committed, one venv per machine created from it, none of
+them committed. Extras keep it to a single declaration:
+
+```sh
+pip install -e .            # daemon: stdlib, nothing pulled
+pip install -e .[gui]       # PySide6, pyqtgraph, numpy, scipy
+pip install -e .[dev]       # pytest
+```
+
+For a machine with no package manager, vendor the wheels and install
+with `--no-index --find-links`. That is a better offline story than
+having no dependencies, because it covers the GUI too.
+
 ## Open questions
 
-- May the daemon take pyserial as a dependency on Windows, or does the
-  stdlib-only rule extend to it? The rule exists so bring-up needs no
-  package manager, and bring-up happens on macOS - which argues the
-  Windows backend may take one. Undecided.
+- Whether the GUI can run on this machine at all. The system
+  interpreter is Python 3.9.6 and recent numpy and PySide6 releases
+  have moved past 3.9 *(check the current wheels)*. If they have, the
+  GUI venv needs an interpreter this machine does not have, and with no
+  package manager that means a python.org installer. Worth settling
+  early: it decides whether the front end is developed here or only on
+  the other two platforms.
 - Record buffer size and whether the GUI keeps every sample or only
   what it displays.
 - Whether the daemon binds loopback only, or offers remote operation -
