@@ -722,6 +722,54 @@ static void cmd_usb_dump(void)
 }
 
 /*
+ * Where the main loop's time goes.
+ *
+ * Track A's loop measured 93k passes per second against Track B's 1.4M,
+ * and the DMA benches re-arm at most once per pass, so that difference
+ * is a throughput ceiling and not a curiosity. Guessing at it from the
+ * source was unproductive; this times each candidate directly.
+ *
+ * Results are ns per call. Anything here that costs more than a few
+ * hundred nanoseconds does not belong on a path that runs every pass.
+ */
+static void cmd_profile(void)
+{
+	const uint32_t n = 20000;
+	char buf[128];
+	uint32_t t0, t1;
+
+	Serial.println("# main-loop profile, ns per call");
+	Serial.flush();
+
+#define PROF(label, expr)                                            \
+	do {                                                         \
+		t0 = micros();                                       \
+		for (uint32_t i = 0; i < n; i++) { expr; }            \
+		t1 = micros();                                       \
+		snprintf(buf, sizeof(buf), "# %-22s %6lu ns", label,  \
+		         (unsigned long)(((uint64_t)(t1 - t0) * 1000ull) / n)); \
+		Serial.println(buf);                                 \
+		Serial.flush();                                      \
+	} while (0)
+
+	PROF("empty loop", __asm__ volatile(""));
+	PROF("millis()", (void)millis());
+	PROF("micros()", (void)micros());
+	PROF("Serial.available()", (void)Serial.available());
+	PROF("SerialUSB.available()", (void)SerialUSB.available());
+	PROF("SerialUSB.dtr()", (void)SerialUSB.dtr());
+	PROF("usbdma_out_busy()", (void)usbdma_out_busy());
+	PROF("usbdma_keepalive()", usbdma_keepalive());
+	PROF("play_service()", play_service());
+	PROF("stream_service()", stream_service());
+	PROF("diag_service()", diag_service());
+#undef PROF
+
+	Serial.println("# note: services early-return unless started");
+	Serial.flush();
+}
+
+/*
  * Branch to an even address. The Cortex-M3 requires the Thumb bit set in
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
@@ -762,6 +810,8 @@ void loop()
 	static uint32_t led_usb_at;
 	static uint32_t led_in_last, led_out_last;
 	char buf[192];
+
+	stream_loop_passes++;
 
 	/* Heartbeat: if this stops, the board hung or faulted. */
 	uint32_t now = millis();
@@ -937,6 +987,7 @@ void loop()
 		Serial.flush();
 		break;
 	}
+	case 'Q': cmd_profile();  break;
 	case 'V': play_dump();    break;
 	case 'D': diag_start();   break;
 	/*

@@ -47,6 +47,9 @@ static uint32_t bench_turn;
 static uint16_t bench_payload[ACQ_BUF_SAMPLES];
 static uint8_t  bench_scratch[512];
 
+volatile uint32_t stream_loop_passes;
+static uint32_t dma_in_arms, dma_out_arms;
+
 static bool     active;
 static uint32_t seq, rate_hz, frames_sent, bytes_sent, started_us;
 static uint32_t pending_overrun, resync_count, refused;
@@ -306,6 +309,8 @@ static void bench_reset(enum bench_mode m)
 	seq = 0;
 	bench_in_bytes = 0;
 	bench_out_bytes = 0;
+	dma_in_arms = dma_out_arms = 0;
+	stream_loop_passes = 0;
 	bench_t0 = micros();
 	bench_resets++;
 	bench = m;
@@ -417,7 +422,7 @@ void stream_bench_report(void)
 	 * The byte counts are trustworthy and are what the host needs; it
 	 * has its own clock.
 	 */
-	printf("# bench=%s  IN %lu B   OUT %lu B\n",
+	printf("# bench=%s  IN %lu B   OUT %lu B  passes=%lu arms-in=%lu arms-out=%lu\n",
 	       bench == BENCH_FLOOD  ? "flood"  :
 	       bench == BENCH_SINK   ? "sink"   :
 	       bench == BENCH_DUPLEX ? "duplex" :
@@ -425,7 +430,10 @@ void stream_bench_report(void)
 	       bench == BENCH_SINK_DMA ? "sink-dma" :
 	       bench == BENCH_DUPLEX_DMA ? "duplex-dma" : "off",
 	       (unsigned long)bench_in_bytes,
-	       (unsigned long)bench_out_bytes);
+	       (unsigned long)bench_out_bytes,
+	       (unsigned long)stream_loop_passes,
+	       (unsigned long)dma_in_arms,
+	       (unsigned long)dma_out_arms);
 	uart_flush();
 }
 
@@ -442,7 +450,21 @@ void stream_bench_report(void)
  */
 #define DMA_FRAME_BYTES  (32u + ACQ_BUF_SAMPLES * 2u)
 
-static uint8_t dma_tx[2][DMA_FRAME_BYTES] __attribute__((aligned(4)));
+/*
+ * Frames per DMA transfer.
+ *
+ * One. The re-arm gap between a completed transfer and the main-loop
+ * pass that starts the next looked like it should cost several percent
+ * on IN, so this was tried at two - and Track A got measurably slower,
+ * 28.7-29.7 MB/s against 30.2-31.2. Building a second header per arm
+ * costs more than the gap it removes, micros() alone being 1427 ns on
+ * that track. Kept as a knob because the experiment is worth being able
+ * to repeat, and set to the value that measured best.
+ */
+#define DMA_FRAMES_PER_XFER 1u
+#define DMA_XFER_BYTES   (DMA_FRAME_BYTES * DMA_FRAMES_PER_XFER)
+
+static uint8_t dma_tx[2][DMA_XFER_BYTES] __attribute__((aligned(4)));
 static uint8_t dma_rx[2][2048]            __attribute__((aligned(4)));
 static uint8_t dma_tx_slot, dma_rx_slot;
 static uint32_t dma_in_inflight, dma_out_inflight;
@@ -468,12 +490,15 @@ static void dma_build_frame(uint8_t *dst)
 
 static void dma_seed_payloads(void)
 {
-	for (int s = 0; s < 2; s++) {
-		uint16_t *p = (uint16_t *)(dma_tx[s] + 32u);
-		for (unsigned i = 0; i < ACQ_BUF_SAMPLES; i++)
-			p[i] = (uint16_t)((((i & 1u) ? 6u : 7u) << 12)
-			                  | (i & 0x0fffu));
-	}
+	for (int s = 0; s < 2; s++)
+		for (unsigned f = 0; f < DMA_FRAMES_PER_XFER; f++) {
+			uint16_t *p = (uint16_t *)(dma_tx[s]
+			                           + f * DMA_FRAME_BYTES + 32u);
+
+			for (unsigned i = 0; i < ACQ_BUF_SAMPLES; i++)
+				p[i] = (uint16_t)((((i & 1u) ? 6u : 7u) << 12)
+				                  | (i & 0x0fffu));
+		}
 }
 
 static void dma_push_in(void)
@@ -484,10 +509,12 @@ static void dma_push_in(void)
 		bench_in_bytes += dma_in_inflight - usb_dma_in_residue();
 		dma_in_inflight = 0;
 	}
-	dma_build_frame(dma_tx[dma_tx_slot]);
-	if (usb_dma_in_start(dma_tx[dma_tx_slot], DMA_FRAME_BYTES)) {
-		dma_in_inflight = DMA_FRAME_BYTES;
+	for (unsigned f = 0; f < DMA_FRAMES_PER_XFER; f++)
+		dma_build_frame(dma_tx[dma_tx_slot] + f * DMA_FRAME_BYTES);
+	if (usb_dma_in_start(dma_tx[dma_tx_slot], DMA_XFER_BYTES)) {
+		dma_in_inflight = DMA_XFER_BYTES;
 		dma_tx_slot ^= 1u;
+		dma_in_arms++;
 	}
 }
 
@@ -499,9 +526,18 @@ static void dma_pull_out(void)
 		bench_out_bytes += usb_dma_out_received(dma_out_inflight);
 		dma_out_inflight = 0;
 	}
-	if (usb_dma_out_start(dma_rx[dma_rx_slot], sizeof(dma_rx[0]))) {
+	/*
+	 * Stream variant, no END_TR_EN. With it, every short packet the
+	 * host's pacing produces ended the transfer, so a 2048-byte buffer
+	 * absorbed an average of 347 bytes before needing a re-arm through
+	 * the main loop - and that re-arm latency, not the wire, was what
+	 * the OUT number measured. The playback ring learned this already;
+	 * the bench had not.
+	 */
+	if (usb_dma_out_start_stream(dma_rx[dma_rx_slot], sizeof(dma_rx[0]))) {
 		dma_out_inflight = sizeof(dma_rx[0]);
 		dma_rx_slot ^= 1u;
+		dma_out_arms++;
 	}
 }
 

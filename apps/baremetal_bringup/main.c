@@ -405,6 +405,50 @@ static void diag_service(void)
 }
 
 /*
+ * Where the main loop's time goes.
+ *
+ * The DMA benches re-arm at most one transfer per main-loop pass, so
+ * the cost of a pass is a throughput ceiling, not a curiosity. Track A
+ * carries the identical command so the two can be compared directly -
+ * which is the only way to tell a real difference from a difference in
+ * how the two were built.
+ *
+ * Results are ns per call.
+ */
+static void cmd_profile(void)
+{
+	const uint32_t n = 20000;
+	uint32_t t0, t1;
+
+	printf("# main-loop profile, ns per call\n");
+	uart_flush();
+
+#define PROF(label, expr)                                            \
+	do {                                                         \
+		t0 = micros();                                       \
+		for (uint32_t i = 0; i < n; i++) { expr; }            \
+		t1 = micros();                                       \
+		printf("# %-22s %6lu ns\n", label,                   \
+		       (unsigned long)(((uint64_t)(t1 - t0) * 1000ull) / n)); \
+		uart_flush();                                        \
+	} while (0)
+
+	PROF("empty loop", __asm__ volatile(""));
+	PROF("millis()", (void)millis());
+	PROF("micros()", (void)micros());
+	PROF("usb_cdc_ready()", (void)usb_cdc_ready());
+	PROF("usb_dma_out_busy()", (void)usb_dma_out_busy());
+	PROF("usb_cdc_poll()", usb_cdc_poll());
+	PROF("play_service()", play_service());
+	PROF("stream_service()", stream_service());
+	PROF("diag_service()", diag_service());
+#undef PROF
+
+	printf("# note: services early-return unless started\n");
+	uart_flush();
+}
+
+/*
  * Branch to an even address. Cortex-M3 requires the Thumb bit set in
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
@@ -454,6 +498,8 @@ int main(void)
 
 	for (;;) {
 		uint32_t now = millis();
+
+		stream_loop_passes++;
 
 		if (now - heartbeat_at >= (led_state ? 100u : 900u)) {
 			led_state = !led_state;
@@ -603,6 +649,7 @@ int main(void)
 			uart_flush();
 			break;
 		}
+		case 'Q': cmd_profile(); break;
 		case 'V': play_dump(); break;
 		case 'D': diag_start(); break;
 		/*

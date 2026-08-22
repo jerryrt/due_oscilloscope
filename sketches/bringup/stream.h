@@ -26,6 +26,14 @@ void stream_duplex_start(void);     /* both at once, the real target */
 void stream_bench_report(char *buf, size_t n);
 
 /*
+ * Main-loop passes, bumped by the sketch's loop(). The DMA benches
+ * re-arm at most one transfer per pass, so passes per second is the
+ * ceiling on transfers per second and the first thing to check when a
+ * direction comes in under the wire.
+ */
+extern volatile uint32_t stream_loop_passes;
+
+/*
  * The same three over UOTGHS endpoint DMA. The Arduino core never
  * programs a DMA channel itself, so these drive the controller directly
  * while leaving enumeration to the core; see usbdma.h.
