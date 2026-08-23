@@ -738,6 +738,60 @@ with a 2.3 ms maximum on a quiet machine, which is comfortable against
 80 ms and much less comfortable against 18 ms - which is the argument
 for ring depth, now with a number attached.
 
+## Objective 0a: a hypothesis disproved, and better evidence than it
+
+The theory was that the feeder paces against the host's crystal while
+the DAC consumes on the device's, so the cushion drifts out over a run.
+It is wrong, and the way it fell apart is worth keeping, because two
+plausible measurements had to be thrown away first.
+
+**Two drift figures, both artifacts.** Pacing on device timestamps
+appeared to show the device clock running 6% fast. It is not. The first
+version anchored device time at the first frame the host read, which is
+typically 0.19 s old because the stream starts before the read loop
+does; anchoring host time and the byte count at the same instant did
+not fix it, because the *observation* of device time lags by however
+deep the kernel buffer is, and a draining backlog makes device time
+appear to advance faster than real time. The arithmetic settles it: 
+1,916,176 samples arrived in 3.00 s, which reads as 638,725 sps against
+a declared 600,000 - and 600,725 sps once the 0.19 s of pre-roll is
+removed. The device clock is right to 0.1%.
+
+**Which leaves the real finding.** At RC 65 the host fed 1.225 MB/s
+against a nominal need of 1.200 MB/s - a 2% *surplus* - and still
+underran 7 to 10 times per 3 s run. **The starvation is not a rate
+deficit.** No pacing correction can fix a feed that is already ahead on
+average.
+
+**What did fix it, and what that says.** The buggy version, which
+believed it was 228 KB behind, wrote until the queue blocked and
+underran zero times in four runs out of four. Its span counts are the
+tell:
+
+| Feed | Underruns per 3 s | OUT DMA spans |
+|---|---|---|
+| clock-paced, 20 KB lead | 7, 8, 6, 8 | ~237 |
+| over-fed into saturation | 0, 0, 0, 0 | ~3,525 |
+
+That is exactly the discriminator this objective already records - a
+starving run arms few large spans, a healthy one arms many small ones -
+and it now has a second rate confirming it. The mechanism is on the
+device: under a trickle feed the OUT DMA arms few, large spans that
+take too long to complete, and the ring runs dry underneath them.
+
+**Why the fix is not shipped.** Writing until the queue blocks is
+free-running into saturation, and a pressured tty output queue is
+exactly where macOS drops 128-byte chunks. It trades a counted underrun
+for a silent data loss. The feed policy change was reverted; only the
+finding is kept.
+
+**The next experiment**, then, is not about clocks: hold a bounded lead
+measured against the device's consumption rather than the kernel queue,
+target 70-80% ring occupancy, and watch the span count. If spans stay
+high while the queue stays shallow, the mechanism is confirmed and the
+policy is safe. If spans collapse the moment the queue drains, the
+arming policy in the firmware is what needs changing, not the feed.
+
 ## Measured figures
 
 | Quantity | Value |

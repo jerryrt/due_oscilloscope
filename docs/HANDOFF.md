@@ -133,6 +133,17 @@ before and is now separate, with its own evidence.
    burst, and a larger device prime threshold (4 -> 16 buffers) each
    changed nothing.
 
+   **It is not a rate deficit, and not a clock mismatch.** At RC 65 the
+   host fed a 2% surplus over what the DAC needs and still underran 7
+   to 10 times a run; pacing against the device's own clock cannot help
+   a feed that is already ahead. A feeder that over-fed into saturation
+   underran zero times in 4 of 4 runs and armed ~3,525 spans against
+   ~237 - so the span pattern, not the average rate, is what separates
+   the two. That fix is not shipped: writing until the queue blocks is
+   the saturation that makes macOS drop 128-byte chunks. Full write-up,
+   including two drift figures that turned out to be measurement
+   artifacts, in `docs/status.md`.
+
    The `spans` counter added with the lost-sample fix is a new handle
    on it: a starving run arms few, large DMA spans (RC 32, failing: 464
    in 3 s) and a healthy one arms many small ones (RC 32, clean:
