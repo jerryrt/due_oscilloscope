@@ -1065,6 +1065,12 @@ class Feeder:
                            else write_size)
         self.count = 0
         self.note = None
+        # Closed-loop rate trim. The writer thread owns the pacing
+        # anchor and applies a pending rate itself, so the observer
+        # never takes a lock against a real-time thread - a missed
+        # update costs one trim interval and the next one carries it.
+        self._pending_rate = None
+        self.retunes = 0
         # Whether stop() had to discard queued output. It does that only
         # when the writer is wedged, but the discarded bytes have
         # already been counted in self.count, so any byte-exactness
@@ -1088,10 +1094,25 @@ class Feeder:
         pos = 0
         t0 = time.monotonic()
         last_write = None
+        # Pacing runs from a movable anchor, not from t0, so the rate
+        # can change mid-run without the schedule stepping. `lead` is
+        # the backlog carried across a retune: re-anchoring with a fixed
+        # LEAD would hand the device a jump of up to 20 kB at the moment
+        # the model changed, which is a position correction - exactly
+        # what the rate loop is supposed to avoid making.
+        anchor_t, anchor_count, lead = t0, 0, self.LEAD
         while not self._stop.is_set():
             now = time.monotonic()
-            due = (int((now - t0) * self.byte_rate)
-                   + self.LEAD - self.count)
+            pending = self._pending_rate
+            if pending is not None:
+                self._pending_rate = None
+                lead = (int((now - anchor_t) * self.byte_rate)
+                        + lead - (self.count - anchor_count))
+                anchor_t, anchor_count = now, self.count
+                self.byte_rate = pending
+                self.retunes += 1
+            due = (int((now - anchor_t) * self.byte_rate)
+                   + lead - (self.count - anchor_count))
             if due <= 0:
                 time.sleep(min(0.005, -due / self.byte_rate + 0.001))
                 continue
@@ -1129,6 +1150,18 @@ class Feeder:
                 last_write = now
                 self.count += n
                 pos = (pos + n) % len(wave)
+
+    def retune(self, byte_rate):
+        """Adopt a new rate model, applied by the writer thread.
+
+        The rate only - never the position. Feeding a correction for
+        bytes already missing takes the underrun counter to zero and
+        leaves the waveform broken, which is the trap `docs/usb.md`
+        records and invariant 5 exists to prevent. This changes how fast
+        the schedule advances from here and touches nothing behind it.
+        """
+        if byte_rate and byte_rate > 0:
+            self._pending_rate = float(byte_rate)
 
     def stop(self):
         # The device keeps consuming until the stream is stopped, so a
@@ -1328,6 +1361,7 @@ class PlayResult:
     occ: OccHist = field(default_factory=OccHist)
     drained: bool = False
     stats: list = field(default_factory=list)
+    retunes: int = 0
 
     @property
     def host_deficit(self):
@@ -1342,8 +1376,17 @@ class PlayResult:
         return self.host_tx_bytes - self.play.bytes_in
 
 
+# Closed-loop trim cadence. Deliberately slow: the handoff's warning is
+# that a loop closed over a window comparable to the pipeline delay
+# corrects for staleness it cannot see. The converter holds one rate for
+# a whole run - measured - so a long baseline is the right estimator and
+# not a lagging one.
+TRIM_WARMUP_S = 0.8
+TRIM_PERIOD_S = 0.5
+
+
 def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
-             scale=1.0, drain_s=0.0, write_size=None):
+             scale=1.0, drain_s=0.0, write_size=None, closed_loop=False):
     if dc is not None:
         wave, tone_hz = build_dc(dc)
     else:
@@ -1365,6 +1408,8 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
                     write_size=write_size)
     feeder.start()
     t0 = time.time()
+    now_s = time.time
+    next_trim = t0 + TRIM_WARMUP_S
     end = t0 + seconds
     while time.time() < end:
         r, _, _ = select.select([fd, board.cfd], [], [], 0.05)
@@ -1378,6 +1423,15 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
                 console += os.read(board.cfd, 65536).decode("utf-8", "replace")
             except OSError:
                 pass
+        # The outer loop: trim the feed's rate model to what the device
+        # says it is consuming. Off by default - it changes what every
+        # measurement in this file measures, and the ladders that
+        # established the baseline have to keep meaning what they meant.
+        if closed_loop and now_s() >= next_trim:
+            measured = playstat_rate(parse_playstats(inbuf))
+            if measured:
+                feeder.retune(measured)
+            next_trim = now_s() + TRIM_PERIOD_S
     elapsed = time.time() - t0
     # Everything in the buffer now was emitted while the host was still
     # feeding. What arrives afterwards describes the shutdown: the ring
@@ -1458,7 +1512,8 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
                       console=console, report=report,
                       play=play, rt_note=feeder.note,
                       occ=occ, drained=drain_s > 0.0,
-                      stats=parse_playstats(inbuf[:fed_len]))
+                      stats=parse_playstats(inbuf[:fed_len]),
+                      retunes=feeder.retunes)
 
 
 @dataclass
