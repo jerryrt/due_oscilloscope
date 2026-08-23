@@ -434,6 +434,22 @@ sub-question: RC 44 reads one of two discrete converter rates.
    waveform, with `under=0`.** The largest remaining loss, and the
    place to start.
 
+   **The premise is now confirmed on single runs, not inferred across
+   rates.** RC 44 picking one of two converter states per run makes it
+   a controlled experiment: same commanded rate, same feed, same write
+   policy, and the state is the only thing that moves. Over eight
+   drained runs, seven took the fast state and lost 1.35% against a
+   converter 1.56% slow; the one that took the slow state lost 2.13%
+   against a converter 2.34% slow. Control at RC 65: six runs, 0.00%
+   both. **The deficit follows the converter, not the rate.** Held by
+   `test_the_deficit_is_the_oversupply`.
+
+   One loose end: the deficit is consistently **0.21 pp less** than the
+   converter's shortfall, in both states, reproducible to 0.01 pp. It
+   is not explained. Do not design against it until it is, and do not
+   assume it is a constant at other rates - it has only been measured
+   at RC 44.
+
    Those converters run slow - 1.58% and 2.35% measured against the
    device's own clock (`play_run_us` with `play_consumed`). The host
    feeds the declared rate, the device cannot take it, and the surplus
@@ -580,8 +596,30 @@ sub-question: RC 44 reads one of two discrete converter rates.
    which is the hazard `docs/usb.md` describes: macOS's `close()` waits
    for in-flight write URBs and `tcflush` cannot recall them.
 
-   **Not reproduced**: eight consecutive duplex-dma and out-dma benches
-   afterwards closed in 0.00 s each. So this is a candidate, not a
+   **Reproduced on 2026-08-23, and confirmed from the inside for the
+   first time.** A script doing 13 drained `run_play` calls back to
+   back (RC 44 x8, RC 39 x3, RC 65 x2) wedged with CPU time frozen -
+   3.63 s of CPU unchanged across 21 s of wall clock, which is what
+   distinguishes blocked from slow. `sample <pid> 2 -mayDie` put all
+   1435 samples of the main thread in `os_close` -> `close()` in
+   libsystem_kernel. Previous occurrences were diagnosed from the LEDs;
+   this one has a stack. The board was fine afterwards, both ports
+   still enumerating, exactly as the entry predicts.
+
+   Note `close_native()` already does `tcflush(TCIOFLUSH)` before
+   `os.close`, and it still hung - which is the recorded behaviour, not
+   a surprise: `tcflush` reaches the tty queue and cannot recall a URB
+   already at the controller.
+
+   **The obvious hypothesis is wrong.** Oversupply looked like the
+   trigger - those rates leave bytes the converter can never take - so
+   a soak ran 6 drained runs at RC 65 then 8 at RC 44, timing every
+   close. All 14 closed in 0.00 s. Oversupply alone does not do it, and
+   the run that wedged is still the only one that has.
+
+   **Not reproduced on demand**: eight consecutive duplex-dma and
+   out-dma benches after the first occurrence closed in 0.00 s each,
+   and the 14-run soak above adds to that. So this is a candidate, not a
    cause - but a specific one. `usb_cdc_dma_mode()` stops both DMA
    channels and flips AUTOSW and **never issues `EPRST`**, while the
    fact recorded below says stopping the channel is not enough and the

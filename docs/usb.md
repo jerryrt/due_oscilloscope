@@ -232,7 +232,17 @@ came out of this, both implemented:
 **It happened again on 2026-08-22 and is not fully explained.** The
 test suite hung 50 minutes in `close()` after the duplex DMA
 benchmark, board heartbeat still flashing and both USB activity LEDs
-dark. It did not reproduce in eight further benches. The candidate is
+dark. It did not reproduce in eight further benches.
+
+**And again on 2026-08-23, this time with a stack.** A script doing 13
+drained `run_play` calls back to back wedged with its CPU time frozen -
+the tell that separates blocked from slow - and `sample <pid> 2
+-mayDie` put all 1435 samples of the main thread in `os_close` ->
+`close()`. That confirms from the inside what the LEDs had only implied.
+A deliberate soak afterwards, 6 drained runs at an exact rate and 8 at
+an oversupplied one with every close timed, closed in 0.00 s every
+time - so oversupply is not the trigger, and it is still not
+reproducible on demand. The candidate is
 `usb_cdc_dma_mode()`, which stops both DMA channels and flips AUTOSW
 but never issues `EPRST` - a DMA stopped mid-bank leaves a bank
 nothing frees, and the endpoint NAKs for good. Track A does reset the
