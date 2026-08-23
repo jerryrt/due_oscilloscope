@@ -465,6 +465,8 @@ class OccHist:
     decim: int = 0
     run_us: int = 0
     consumed: int = 0
+    rate_us: list = field(default_factory=list)
+    rate_decim: int = 0
 
     def device_byte_rate(self):
         """Bytes per second the converter actually consumed, timed by
@@ -473,6 +475,40 @@ class OccHist:
         if not self.run_us or not self.consumed:
             return None
         return self.consumed * 1024 / (self.run_us / 1e6)
+
+    def window_rates(self):
+        """Bytes per second the converter consumed over each traced
+        window, from the device's own clock.
+
+        The trace is keyed on *consumed*, so every window is exactly
+        `rate_decim` buffers of data and an underrun falling inside one
+        does not bias it. This is what distinguishes a converter that
+        held one rate all run from one that changed state part-way -
+        `device_byte_rate()` averages the two together and reports a
+        number that was never the rate at any instant.
+        """
+        out = []
+        for a, b in zip(self.rate_us, self.rate_us[1:]):
+            dt = (b - a) & 0xFFFFFFFF
+            if dt:
+                out.append(self.rate_decim * 1024 * 1e6 / dt)
+        return out
+
+    def traced_byte_rate(self):
+        """Converter rate across the whole trace, first sample to last.
+
+        Independent of `device_byte_rate()`: that one divides a counter
+        by a run timer read after the stop, this one spans two samples
+        taken during the run. They should agree, and disagreeing is
+        itself worth knowing.
+        """
+        if len(self.rate_us) < 2:
+            return None
+        dt = (self.rate_us[-1] - self.rate_us[0]) & 0xFFFFFFFF
+        if not dt:
+            return None
+        buffers = (len(self.rate_us) - 1) * self.rate_decim
+        return buffers * 1024 * 1e6 / dt
 
     @property
     def total(self):
@@ -500,6 +536,7 @@ class OccHist:
 
 _OCC = re.compile(r"play_occ min=(\d+) endtx=(\d+) runus=(\d+) consumed=(\d+) hist=([\d,]+)")
 _OCC_TRACE = re.compile(r"play_occ_trace decim=(\d+) n=(\d+) v=([\d,]*)")
+_RATE = re.compile(r"play_rate decim=(\d+) n=(\d+) us=([\d,]*)")
 
 
 def parse_occ(text):
@@ -514,6 +551,10 @@ def parse_occ(text):
         if t and t.group(3):
             got.decim = int(t.group(1))
             got.trace = [int(v) for v in t.group(3).split(",")]
+        rt = _RATE.search(line)
+        if rt and rt.group(3):
+            got.rate_decim = int(rt.group(1))
+            got.rate_us = [int(v) for v in rt.group(3).split(",")]
     return got
 
 
@@ -1293,7 +1334,14 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
         # stops, so on a drained run it spans the starvation too. There
         # is no honest way to report it; measure occupancy on a run made
         # without a drain.
-        occ = OccHist()
+        #
+        # The rate trace survives that, because it is keyed on
+        # *consumed* rather than on ENDTX: the drain starves the device,
+        # which adds underruns and no consumed buffers, so it writes no
+        # further samples. A drained run is therefore the one place
+        # host_deficit and the converter's own rate can be read from the
+        # same run, which is the comparison objective 0i rests on.
+        occ = OccHist(rate_us=occ.rate_us, rate_decim=occ.rate_decim)
 
     return PlayResult(elapsed_s=elapsed, host_tx_bytes=tx, dac_sps=dac_sps,
                       tone_hz=tone_hz, refused="refused" in console,
