@@ -504,17 +504,31 @@ sub-question: RC 44 reads one of two discrete converter rates.
    because there IN carries frames on DMA and the FIFO path must not
    share the endpoint.
 
-   **Loop mode still has no carrier, and the plan recorded for it was
-   wrong.** This file said the capture frame header "already has spare
-   fields and costs nothing". It has none: all 32 bytes are allocated
-   (`docs/protocol.md`), and the size is not free either - `acq.h` sizes
-   the payload at 2032 samples precisely so header plus payload is
-   4096 bytes, `8 x 512`, and one DMA sends whole packets. Adding a
-   field means taking two samples out of the payload to hold the
-   alignment, and the header is shared verbatim between Track A and
-   Track B so the host cannot tell them apart. That is a protocol
-   change across both tracks, the host parser and `protocol.md` - worth
-   doing, but not the free lunch the note implied.
+   **Loop mode has its carrier too, in the frame header - but the plan
+   recorded for it was wrong about the cost.** This file said the header
+   "already has spare fields and costs nothing". It had none: all 32
+   bytes were allocated, and the size is load-bearing - `acq.h` sizes
+   the payload so header plus payload is 4096 bytes, `8 x 512`, one DMA,
+   whole packets.
+
+   So the frame format went to **version 2**: `play_consumed` at offset
+   28, CRC at 32, header 36 bytes, and the payload down from 2032
+   samples to 2030 to hold the 4096. The header is shared verbatim
+   between the tracks, so both were changed together along with both
+   host parsers and `docs/protocol.md`. Track A builds and Track B runs.
+
+   The field completes a pair rather than adding one: the header already
+   carried `timestamp_us` from the same device clock, so
+   `measure.playstat_rate` reads frame headers with no change at all -
+   `ParsedStream.play_stats` is a list of the same `PlayStat` the
+   bulk-IN records parse into.
+
+   Validated the same way as play-only, against the console trace in the
+   same run: at RC 44 the frame carrier reads +1.58% against the trace's
+   +1.56%. `run_loop(closed_loop=True)` retunes without disturbing
+   capture - no CRC failures, no sequence gaps, no underruns - which is
+   the case that matters, because there the correction and the
+   measurement share a wire.
 
    It agrees with the console trace to **0.001-0.018 pp** at RC 65, 44
    and 39 - two paths sharing only the device's clock - and costs the
@@ -553,7 +567,8 @@ sub-question: RC 44 reads one of two discrete converter rates.
    **RC 44 is bimodal, and the state is latched at `play_start`.**
    886,363 sps does not read one slow rate - it reads one of exactly
    two, chosen per run and then held for the whole of it. Measured with
-   the per-window rate trace (`play_rate_us`, added for this): across
+   the per-window rate trace (`play_rate_us`, now off by default - see
+   below): across
    twelve runs the median of the first third and of the last third
    agreed to **0.000 pp every time**, and the spread across ~160
    windows was 0.010-0.021 pp, which is the trace's resolution rather
@@ -576,8 +591,26 @@ sub-question: RC 44 reads one of two discrete converter rates.
    state is still unknown, and does not have to be known to close the
    loop - only to predict which state a run will take.
 
-   The instrument to use is `OccHist.window_rates()`, or `trace` on the
-   daemon. It is keyed on *consumed* buffers rather than on ENDTX, so a
+   **The instrument that found this is now off by default, and that is
+   a correctness decision.** Sampling `micros()` in the ENDTX handler
+   perturbs the path it measures. Placed between `play_consumed++` and
+   the TNPR store - inside the window that handler exists to keep short
+   - it broke `test_host_fed_ramp_loses_no_samples` in 2 runs of 6, with
+   1,600 to 2,500 forward jumps of 10 to 12 bytes: the sub-slot
+   signature of a late pointer load, with `under=0`, no CRC failures and
+   no sequence gaps. Bisected - the same test was clean 6 of 6 at the
+   commit before the trace existed. Moved after the PDC re-arm it fell
+   to about 1 run in 8, better and still not nothing, so it is behind
+   `PLAY_RATE_TRACE_ENABLED` (default 0). Turn it on to re-check the
+   bimodality; do not judge sample integrity on a build that has it on.
+
+   That is also 0e's signature - "losses of exactly 10 bytes" - which
+   this file recorded from one Track A run and could not explain. Worth
+   checking whether 0e was ever something else.
+
+   The instrument to use instead is the carrier: `measure.playstat_rate`
+   over `PlayResult.stats` in play-only, or over
+   `ParsedStream.play_stats` in loop mode, or `trace` on the It is keyed on *consumed* buffers rather than on ENDTX, so a
    window is exactly `PLAY_RATE_DECIM` buffers of data whatever the
    underruns, and it survives a drained run - which is the only way to
    read the deficit and the converter's rate from the same run, and so
@@ -705,7 +738,16 @@ sub-question: RC 44 reads one of two discrete converter rates.
    same benches on both tracks and closed in the usual time. Still
    unreproduced, so the reasoning above stands unchanged.
 
-0e. **One gross ramp failure on Track A, seen once, unexplained.** On
+0e. **One gross ramp failure on Track A - and its signature came back.**
+   The 10-byte quantum is what a late DACC pointer load looks like: this
+   session put `micros()` in the ENDTX handler and reproduced 1,600 to
+   2,500 losses of exactly 10 to 12 bytes, on demand, on Track B. That
+   does not explain the original - Track A had no such code - but it
+   names the mechanism the signature points at, which is more than this
+   entry had. Anything that lengthens the ENDTX path is now a suspect,
+   including on Track A. Original entry follows.
+
+   On
    2026-08-22 `test_host_fed_ramp_loses_no_samples[a]` failed with
    73,314 losses of **exactly 10 bytes each** - not the host's 128-byte
    signature, and far too many to be the beat in 0f. Every loss being
