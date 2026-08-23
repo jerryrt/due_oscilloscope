@@ -229,12 +229,24 @@ before and is now separate, with its own evidence.
    tests for both. `--track=a|b|both`, `--reflash` to force a flash,
    `-m smoke` for a ~2 minute iteration pass.
 
-1. **Capture IN over endpoint DMA.** The remaining CPU copy, the
-   remaining invariant violation, and the source of the capture
-   resyncs (1-1300/run, honestly flagged) that keep full-rate purity
-   at 90-95%. Design: give each capture buffer 32 B of headroom so the
-   frame header is contiguous with the payload, point the PDC at the
-   payload, CPU writes only the header, one DMA per 4096 B frame.
+1. **Capture IN over endpoint DMA** - **done on Track B**, and its
+   premise was wrong. The design was as sketched here: 32 B of headroom
+   per capture buffer, PDC on the payload, CPU writing only the header.
+   What it did not do is improve purity - measured against the old
+   firmware in loop mode at the full-rate pair, the two paths are
+   indistinguishable and both show resync=2. Whatever limits purity
+   there is not the copy.
+
+   Two things had to be measured to make it safe, and the first version
+   lost samples while looking perfect: transfers are packet-sized and
+   the capture ring is pinned to bank 1, because a 4096-byte transfer
+   from bank 0 costs 439 ADC overruns per 4 s at the full rate. Full
+   table in `docs/status.md`.
+
+   **Track A still copies**, deliberately: it cannot pin a buffer to a
+   bank under the Arduino core's linker, and without that the same port
+   measures 81 overruns per run against zero today. Adopting it there
+   needs a verified placement mechanism first.
 2. **Replace the marginal native-port cable** before attributing any
    further purity variance to software. It failed hard twice on
    2026-08-21 (VBUS present, D+/D- dead: enumerates nowhere) and the

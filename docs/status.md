@@ -853,6 +853,29 @@ be measured against the firmware it replaces, not against expectation.**
 Reflashing the old build took three minutes and was the only reason the
 439 overruns were attributed to this change rather than to the board.
 
+### Track A does not get this change, and the reason is the linker
+
+The port to Track A is straightforward and was written and measured:
+same struct, same packet-sized transfers, same per-direction DMA mode
+setters. On hardware it produces **81 ADC overruns per 4 s run at the
+full rate against zero on the path it would replace** - the same figure
+Track B measured in bank 0, from the same cause.
+
+Track B fixes that by pinning the capture ring to bank 1, which it can
+do because it owns `linker/sam3x8e_flash.ld` and the two banks are
+separate regions there. Track A links against the Arduino core's script
+and has no way to pin a buffer to a bank: both its rings land in bank 0
+(`acq_slot` at 0x20070944, `play_buf` at 0x20074fe4, measured from the
+elf). `-Wl,--section-start` would place a section without reserving it
+from the general allocator, which trades a counted overrun for a silent
+overlap.
+
+So Track A keeps the CPU copy. The tracks still present the same
+commands and the same wire format, which is what the parity rule is
+for; what differs is an implementation detail that the oracle is better
+off without. **Open item:** adopting it on Track A needs a verified way
+to place a buffer in bank 1 under the core's linker.
+
 ## Measured figures
 
 | Quantity | Value |
