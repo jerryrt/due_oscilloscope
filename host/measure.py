@@ -961,11 +961,13 @@ class Feeder:
             # device's stream DMA span, and on older firmware ended it.
             if self.write_size:
                 if due < self.write_size:
-                    # Fine-grained, because a 512-byte write at the
-                    # DACC ceiling is due every ~210 us and a coarser
-                    # sleep would turn a paced small-write test into a
-                    # burst of them, which is a different experiment.
-                    time.sleep(0.0001)
+                    # Sleep until the next write is actually due, rather
+                    # than polling. A fixed short sleep here costs 10k
+                    # wakeups a second and 0.14 of a core at the
+                    # full-rate pair, for nothing: the arrival time of
+                    # the next write is known exactly from the rate.
+                    time.sleep(min(0.005,
+                                   (self.write_size - due) / self.byte_rate))
                     continue
                 due = self.write_size
             else:
@@ -1069,7 +1071,7 @@ class LoopResult:
 
 def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
              tone=1000.0, seconds=3.0, dc=None, ramp=None, diag=False,
-             drain=True, notify=None, scale=1.0):
+             drain=True, notify=None, scale=1.0, write_size=None):
     """The complete loop: HOST -> USB -> DAC -> wire -> ADC -> USB -> HOST.
 
     Because the host authored the signal, any discrepancy in what comes
@@ -1092,7 +1094,8 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     board.cmd(f"={dac_sps},{adc_hz},{channels}L")
     time.sleep(0.2)
 
-    feeder = Feeder(fd, wave, dac_sps * 2, scale=scale)
+    feeder = Feeder(fd, wave, dac_sps * 2, scale=scale,
+                    write_size=write_size)
     feeder.start()
 
     chunks = []
