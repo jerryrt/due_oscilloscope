@@ -65,6 +65,11 @@ belong to Phase 3.
       daemon owning the ports and real-time threads, a GUI as a
       separate process over a local socket
 
+A successor instrument - faster, more channels, or streaming over
+USB 3 - is sketched in `docs/hardware-next.md`: what the host software
+would keep, what has to be rebuilt, and the four questions that decide
+which option applies.
+
 ### Phase 3 — Analog front end
 
 Only after the digital path is proven:
