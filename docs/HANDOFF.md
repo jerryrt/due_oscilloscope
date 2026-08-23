@@ -296,19 +296,35 @@ before and is now separate, with its own evidence.
 
    **The next experiments, in order:**
 
-   1. **Drain the benches.** `out-dma` reports host 114,180,096 B
-      against device 111,683,584 - 2.19% short, a whole multiple of
-      128, same signature. But it reads the device's counter with the
-      pipeline still full, and at 28.5 MB/s that pipeline is large, so
-      this may be entirely in flight. Give `usbbench` the same drain
-      `run_play(drain_s=...)` has. If the bench loses bytes too, this
-      is the whole OUT path and not the playback feed - which would
-      also mean **the "OUT 26.6 MB/s byte-perfect" figure this project
-      quotes is not established**. Cheapest possible next step and it
-      changes what the problem is.
+   1. ~~**Drain the benches.**~~ **Done, and it changes the problem.**
+      `run_bench` now drains, and `out-dma` at ~28.5 MB/s is short by
+      2.15-2.25% at drain lengths of 0.3, 1.0, 3.0 and 6.0 seconds -
+      flat, so none of it is in flight - with no flush on any run and
+      every deficit a whole multiple of 128.
+
+      **So this is the OUT path, not the playback feed.** It reproduces
+      with no DAC, no ring, no pacing and no real-time thread: a plain
+      writer thread and a device that sinks by DMA. Attack it there;
+      it is by far the simplest reproduction, it runs at 15x the rate,
+      and nothing about the DAC or the feed policy is involved.
+
+      It also means **"OUT 26.6 MB/s byte-perfect" is withdrawn**. The
+      OUT throughput figures in this project are bytes offered, not
+      bytes delivered.
    2. **Check capture IN the same way.** Nothing has ever compared
       device-sent against host-received with a drain. If IN loses too,
       every purity figure in this project is suspect.
+   2a. **Separate host drop from device under-count.** Not yet done,
+      and it decides everything downstream. The 128-byte granularity
+      points at the host - a device-side DMA counter would be granular
+      in packets (512 B) or in span size - and bulk OUT cannot lose
+      data on the wire. But the device's counting has not been audited
+      against an independent measure, and blaming macOS without doing
+      that is exactly the mistake this project made for a fortnight
+      over `DEVDMASTATUS`. Cheap version: throttle the bench writer and
+      see whether the loss falls to zero at low rates the way the
+      playback feed does at 200 ksps.
+
    3. **Leave CDC-ACM for the OUT path** if the floor survives 1 and 2:
       claim the interface with libusb or take the bulk endpoints
       through IOKit. That removes the layer losing the bytes and also

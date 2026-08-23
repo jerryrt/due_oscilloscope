@@ -144,15 +144,36 @@ with an empty queue and cannot be fed around, and a surplus-shedding
 term on top of it that punishes over-feeding. The floor is the open
 question.
 
-**Unfinished: the benches have never had this treatment.** `out-dma`
-reports the host writing 114,180,096 B and the device receiving
-111,683,584 - a 2.19% shortfall, and a whole multiple of 128. That is
-the same signature, but the bench reads the device's counter without
-draining the pipeline first, and at 28.5 MB/s the pipeline is large, so
-the figure may be entirely in flight. It cannot be told apart until the
-bench drains the way `run_play(drain_s=...)` does. Until then the
-"OUT 26.6 MB/s byte-perfect" figure quoted elsewhere in this project is
-not established.
+**The whole OUT path loses bytes, not just the playback feed, and
+"OUT byte-perfect" was never true.** `out-dma` at ~28.5 MB/s, with the
+pipeline given 0.3 s, 1.0 s, 3.0 s and 6.0 s to drain and no flush on
+any run:
+
+| drain | host wrote | device received | short | |
+|---|---|---|---|---|
+| 0.3 s | 113,836,032 | 111,392,768 | 2,443,264 | 2.15% |
+| 1.0 s | 113,393,664 | 110,940,160 | 2,453,504 | 2.16% |
+| 3.0 s | 112,852,992 | 110,309,376 | 2,543,616 | 2.25% |
+| 6.0 s | 113,311,744 | 110,796,800 | 2,514,944 | 2.22% |
+
+Flat against drain length, so none of it is in flight, and every
+deficit is a whole multiple of 128. This is the same defect the
+playback feed suffers, reproduced with **no DAC, no ring, no pacing
+and no real-time thread** - just a writer thread pushing 16 KB blocks
+at a device that sinks them by DMA. That makes the bench the simplest
+reproduction available and the right place to attack this.
+
+It also means the throughput figures this project quotes for OUT
+describe bytes *offered*, not bytes *delivered*, and the "byte-perfect"
+qualifier attached to them is withdrawn.
+
+**Still unseparated: host-side drop, or device-side under-count.** The
+128-byte granularity points at the host - a device-side DMA counter
+would be granular in packets (512 B) or in span size - and bulk OUT
+cannot lose data on the wire, since it is CRC-checked with retries and
+NAK backpressure. But the device's own counting has not been audited
+against an independent measure, and it should be before the host is
+blamed.
 
 **And the clean rates are not clean.** 886,363 and 1,000,000 sps lose
 the most (1.48% and 2.25%) and report `under=0`, because the device's

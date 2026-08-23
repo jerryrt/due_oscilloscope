@@ -1372,6 +1372,17 @@ class BenchResult:
     device: BenchCounters
     report: str
     rt_notes: dict
+    flushed: bool = False
+
+    @property
+    def out_deficit(self):
+        """Bytes the host wrote that the device never counted. Only
+        meaningful on a run whose drain was long enough to empty the
+        pipeline, and worthless if `flushed` - a flush discards output
+        already counted in host_tx_bytes."""
+        if not self.want_tx or self.device.out_bytes is None:
+            return None
+        return self.host_tx_bytes - self.device.out_bytes
 
     want_rx = property(lambda s: s.mode in BENCH_RX)
     want_tx = property(lambda s: s.mode in BENCH_TX)
@@ -1381,7 +1392,8 @@ class BenchResult:
                       if s.elapsed_s else 0.0)
 
 
-def run_bench(board, *, mode, seconds=5.0, block=16384):
+def run_bench(board, *, mode, seconds=5.0, block=16384,
+              drain_s=0.3):
     """Drive the device's flood / sink / duplex modes and measure each
     direction from the host side, so the host's own throughput is
     visible alongside what the device counted. A mismatch between the
@@ -1446,13 +1458,27 @@ def run_bench(board, *, mode, seconds=5.0, block=16384):
     stop.set()
     for th in threads:
         th.join(2.0)
+    flushed = False
     if any(th.is_alive() for th in threads):
         # A writer wedged on a queue the device stopped draining.
+        flushed = True
         termios.tcflush(fd, termios.TCOFLUSH)
         for th in threads:
             th.join(1.0)
 
-    time.sleep(0.3)
+    # Let the pipeline empty before asking the device what it received.
+    # Without this the tens to hundreds of KB still in the CDC driver
+    # read as a loss, which is how a byte-perfect claim gets made from a
+    # measurement that could not have supported one - in either
+    # direction. The device keeps sinking OUT until the mode is stopped.
+    t_drain = time.time() + drain_s
+    while time.time() < t_drain:
+        r, _, _ = select.select([fd], [], [], 0.05)
+        if r:
+            try:
+                os.read(fd, 262144)
+            except OSError:
+                pass
     board.cmd("B")
     time.sleep(0.6)
     report = b""
@@ -1473,7 +1499,8 @@ def run_bench(board, *, mode, seconds=5.0, block=16384):
     rep = report.decode("utf-8", "replace")
     return BenchResult(mode=mode, block=block, elapsed_s=elapsed,
                        host_rx_bytes=rx_n[0], host_tx_bytes=tx_n[0],
-                       device=parse_bench(rep), report=rep, rt_notes=notes)
+                       device=parse_bench(rep), report=rep, rt_notes=notes,
+                       flushed=flushed)
 
 
 _HEX_KEYS = ("devisr", "ep0isr", "devimr")
