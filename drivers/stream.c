@@ -234,6 +234,21 @@ bool stream_out_in_use(void)
 	       bench == BENCH_SINK_DMA || bench == BENCH_DUPLEX_DMA;
 }
 
+/*
+ * Whether anything is writing bulk IN. The mirror of
+ * stream_out_in_use, and it exists for a sharper reason: only this
+ * path may write IN while streaming, because the FIFO path owns
+ * FIFOCON by hand and DMA needs the hardware to switch banks itself.
+ * Anything else that wants to send on IN - the playback status record
+ * the rate loop is closed on - has to ask first and stay silent when
+ * this is true.
+ */
+bool stream_in_in_use(void)
+{
+	return active || bench == BENCH_FLOOD || bench == BENCH_DUPLEX ||
+	       bench == BENCH_FLOOD_DMA || bench == BENCH_DUPLEX_DMA;
+}
+
 void stream_bench_service(void);
 
 void stream_service(void)

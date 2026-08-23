@@ -22,7 +22,9 @@
 #include "acq.h"
 #include "gen.h"
 #include "stream.h"
+#include "frame.h"
 #include "play.h"
+#include "playstat.h"
 #include "usb_cdc.h"
 
 #define LED_MASK (1u << 27)
@@ -603,6 +605,50 @@ int main(void)
 			for (int b = 0; b < 4; b++)
 				if (usb_cdc_read(scrap, sizeof(scrap)) == 0)
 					break;
+		}
+
+		/*
+		 * Playback status on bulk IN, so the host can close a rate
+		 * loop on what the converter actually consumed. Only in
+		 * play-only: in loop mode IN carries frames and is on DMA,
+		 * and the FIFO path must not touch an endpoint DMA owns.
+		 *
+		 * usb_cdc_write never spins - it gives up when no bank is
+		 * free - so a host that stops reading costs a dropped record
+		 * and not a stalled main loop. The host tolerates gaps: it
+		 * differences whichever records arrive.
+		 */
+		if (play_active() && !stream_in_in_use()) {
+			static uint32_t last_stat_ms;
+			uint32_t now_ms = millis();
+
+			if ((uint32_t)(now_ms - last_stat_ms) >= PLAYSTAT_MS) {
+				playstat_t st;
+
+				last_stat_ms = now_ms;
+				st.magic[0] = PLAYSTAT_MAGIC0;
+				st.magic[1] = PLAYSTAT_MAGIC1;
+				st.magic[2] = PLAYSTAT_MAGIC2;
+				st.magic[3] = PLAYSTAT_MAGIC3;
+				st.version   = PLAYSTAT_VERSION;
+				st.pad[0] = st.pad[1] = st.pad[2] = 0;
+				/*
+				 * Each field is a 32-bit aligned volatile read
+				 * and so atomic on this core, but the set is
+				 * not sampled as one. A one-buffer skew against
+				 * a window the host averages over hundreds of
+				 * milliseconds is below the noise it is
+				 * measuring.
+				 */
+				st.consumed  = play_consumed;
+				st.underruns = play_underruns;
+				st.bytes_in  = play_bytes_in;
+				st.dev_us    = micros();
+				st.crc32     = frame_crc32((const uint8_t *)&st,
+				                           sizeof(st)
+				                           - sizeof(st.crc32));
+				usb_cdc_write((const uint8_t *)&st, sizeof(st));
+			}
 		}
 
 		int c = uart_getc();

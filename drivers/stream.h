@@ -9,6 +9,7 @@ bool stream_start_capture_only(uint32_t trigger_hz, unsigned n_channels);
 bool stream_start_uart(uint32_t trigger_hz);
 void stream_stop(void);
 bool stream_out_in_use(void);   /* a bench mode is consuming bulk OUT */
+bool stream_in_in_use(void);    /* anything is writing bulk IN */
 void stream_service(void);
 void stream_report(void);
 
