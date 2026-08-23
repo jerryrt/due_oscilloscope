@@ -163,3 +163,58 @@ def test_the_rate_trace_survives_a_drained_run(board, seconds):
     assert not res.occ.buckets, (
         "the occupancy histogram was reported for a drained run, where "
         "it describes the shutdown rather than the run")
+
+
+@pytest.mark.parametrize("rc", [65, 44, 39])
+def test_the_deficit_is_the_oversupply(board, seconds, calibration, rc):
+    """What the host loses is what the converter could not take.
+
+    Objective 0i's claim, and until the rate trace survived a drained
+    run it could only be checked across rates - which is weak evidence,
+    because rate is confounded with everything else that varies with
+    rate.
+
+    RC 44 turns it into a controlled experiment. It picks one of two
+    converter states per run at the same commanded rate, with the same
+    feed and the same write policy, so the state is the only thing that
+    moves. Measured over eight runs: seven took the fast state and lost
+    1.35% against a converter 1.56% slow; the one that took the slow
+    state lost 2.13% against a converter 2.34% slow. The difference held
+    at -0.21 pp across both. The deficit follows the converter, not the
+    rate.
+
+    That -0.21 pp offset is consistent to 0.01 pp and is *not*
+    explained. It is left out of the assertion deliberately: this test
+    is here to hold the relationship, and pinning an unexplained
+    constant would turn a measurement into a requirement.
+    """
+    hz = measure.hz_for(rc)
+    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0),
+                           drain_s=1.5)
+    assert not res.refused, res.console
+    assert res.drained
+
+    traced = res.occ.traced_byte_rate()
+    assert traced, f"RC {rc}: the drained run reported no rate trace"
+
+    nominal = hz * 2.0
+    slow_pct = (1 - traced / nominal) * 100
+    deficit_pct = res.host_deficit / res.host_tx_bytes * 100
+
+    record(calibration, f"oversupply_rc{rc}", {
+        "hz": hz, "slow_pct": round(slow_pct, 3),
+        "deficit_pct": round(deficit_pct, 3),
+        "diff_pp": round(deficit_pct - slow_pct, 3),
+        "lost_bytes": res.host_deficit})
+
+    assert deficit_pct == pytest.approx(slow_pct, abs=0.5), (
+        f"RC {rc}: lost {deficit_pct:.2f}% against a converter "
+        f"{slow_pct:.2f}% slow. These track each other - a gap means "
+        f"the loss is no longer just the surplus the converter refused")
+
+    if rc == 65:
+        # The control. An exact converter oversupplies nothing, so a
+        # loss here would be a different defect wearing 0i's clothes.
+        assert deficit_pct < 0.1, (
+            f"RC {rc} is byte-exact by measurement, but lost "
+            f"{deficit_pct:.3f}% ({res.host_deficit} B)")
