@@ -534,6 +534,103 @@ class OccHist:
         return sum(self.buckets[:slots]) / n if n else None
 
 
+# Playback status on bulk IN, mirrored from drivers/playstat.h. In
+# play-only the IN endpoint carries nothing else, so these are the whole
+# stream; the host differences consecutive records to get the rate the
+# converter is actually holding, without a console round trip.
+PLAYSTAT_FMT = "<4sB3sIIIII"
+PLAYSTAT_LEN = struct.calcsize(PLAYSTAT_FMT)
+PLAYSTAT_MAGIC = b"DUEP"
+
+
+@dataclass
+class PlayStat:
+    consumed: int
+    underruns: int
+    bytes_in: int
+    dev_us: int
+
+
+def parse_playstats(buf):
+    """Status records out of a play-only IN stream.
+
+    Scans for the magic and checks the CRC rather than assuming
+    alignment: a read can start mid-record, and a record that fails its
+    CRC is skipped by one byte rather than trusted, so a false magic
+    inside other data cannot be half-read as a real one.
+    """
+    out = []
+    i = 0
+    while True:
+        i = buf.find(PLAYSTAT_MAGIC, i)
+        if i < 0 or i + PLAYSTAT_LEN > len(buf):
+            return out
+        rec = bytes(buf[i:i + PLAYSTAT_LEN])
+        (_, ver, _pad, consumed, under,
+         bytes_in, dev_us, crc) = struct.unpack(PLAYSTAT_FMT, rec)
+        if ver == 1 and zlib.crc32(rec[:-4]) & 0xFFFFFFFF == crc:
+            out.append(PlayStat(consumed, under, bytes_in, dev_us))
+            i += PLAYSTAT_LEN
+        else:
+            i += 1
+
+
+def playstat_rate(stats):
+    """Bytes per second the converter consumed, from the records alone.
+
+    Spans the widest interval over which `consumed` was actually moving,
+    on the device's own clock. That span is far longer than the pipeline
+    delay, which is what makes it usable as a rate model: the staleness
+    that sank the earlier device-timestamp attempt biases a *position*,
+    not a rate measured across a long baseline.
+
+    Both ends have to be trimmed, and the tail is not optional. Once the
+    host stops feeding, `consumed` freezes while `dev_us` keeps
+    advancing, so a span that runs to the last record reports a
+    converter far slower than any it ever ran at - measured, 55% slow
+    against a true 1.6%, because a drained run collects several seconds
+    of starvation after three of playback. The head is trimmed for the
+    same reason at the other end, before priming has handed over a
+    buffer.
+
+    A live rate loop never sees either, since it reads while feeding.
+    This is for reading a finished run back.
+    """
+    if len(stats) < 2:
+        return None
+
+    # Span the interval over which `consumed` was actually moving.
+    #
+    # Selecting on `underruns` instead does not work, though it looks
+    # more principled: before the ring primes, the DACC trigger has not
+    # started, so no ENDTX fires and underruns is frozen at 0 right
+    # alongside consumed. The whole dead head then reads as one
+    # un-starved span.
+    #
+    # That head is real and long. run_play issues P and then spends
+    # about half a second on console reads before the feeder starts, so
+    # the device sits play-active with nothing to play and emits ~30
+    # records with consumed at 0.
+    hi = len(stats) - 1
+    while hi > 0 and stats[hi].consumed == stats[hi - 1].consumed:
+        hi -= 1
+    lo = 0
+    while lo < hi and stats[lo].consumed == stats[lo + 1].consumed:
+        lo += 1
+    # lo is now the last record before consumption began, so the first
+    # interval in the span is the partial one in which playback started.
+    # Including it reads as a converter up to 0.6 pp slow - one interval
+    # in ~150 - and by how much depends on where in that interval the
+    # first buffer landed, which is why the error wandered run to run.
+    lo += 1
+    if hi - lo < 1:
+        return None
+    dt = (stats[hi].dev_us - stats[lo].dev_us) & 0xFFFFFFFF
+    if not dt:
+        return None
+    return (stats[hi].consumed - stats[lo].consumed) * 1024 * 1e6 / dt
+
+
 _OCC = re.compile(r"play_occ min=(\d+) endtx=(\d+) runus=(\d+) consumed=(\d+) hist=([\d,]+)")
 _OCC_TRACE = re.compile(r"play_occ_trace decim=(\d+) n=(\d+) v=([\d,]*)")
 _RATE = re.compile(r"play_rate decim=(\d+) n=(\d+) us=([\d,]*)")
@@ -1230,6 +1327,7 @@ class PlayResult:
     rt_note: str
     occ: OccHist = field(default_factory=OccHist)
     drained: bool = False
+    stats: list = field(default_factory=list)
 
     @property
     def host_deficit(self):
@@ -1258,6 +1356,11 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     time.sleep(0.2)
     console = board.drain_console(0.3)
 
+    # In play-only the IN endpoint carries only playback status
+    # records, so keeping everything it says costs ~1.4 kB/s and gives
+    # the rate loop its signal with no console round trip.
+    inbuf = bytearray()
+
     feeder = Feeder(fd, wave, dac_sps * 2, scale=scale,
                     write_size=write_size)
     feeder.start()
@@ -1267,7 +1370,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
         r, _, _ = select.select([fd, board.cfd], [], [], 0.05)
         if fd in r:
             try:
-                os.read(fd, 262144)
+                inbuf += os.read(fd, 262144)
             except OSError:
                 pass
         if board.cfd in r:
@@ -1276,6 +1379,13 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
             except OSError:
                 pass
     elapsed = time.time() - t0
+    # Everything in the buffer now was emitted while the host was still
+    # feeding. What arrives afterwards describes the shutdown: the ring
+    # and then the CDC pipeline empty raggedly, so consumed keeps
+    # advancing at a decaying rate before it freezes. Trimming only the
+    # frozen tail leaves that decay in, and it reads as a converter
+    # 0.1-0.7 pp slower than the trace says, varying run to run.
+    fed_len = len(inbuf)
     tx = feeder.stop()
 
     # Optionally let everything the host wrote reach the device before
@@ -1298,7 +1408,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
             r, _, _ = select.select([fd, board.cfd], [], [], 0.05)
             if fd in r:
                 try:
-                    os.read(fd, 262144)
+                    inbuf += os.read(fd, 262144)
                 except OSError:
                     pass
         board.cmd("B")
@@ -1347,7 +1457,8 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
                       tone_hz=tone_hz, refused="refused" in console,
                       console=console, report=report,
                       play=play, rt_note=feeder.note,
-                      occ=occ, drained=drain_s > 0.0)
+                      occ=occ, drained=drain_s > 0.0,
+                      stats=parse_playstats(inbuf[:fed_len]))
 
 
 @dataclass
