@@ -14,6 +14,13 @@ python3 -m daemon --fake        # synthetic frames, no board
 python3 -m daemon               # the real thing
 ```
 
+**Run it on a free-threaded interpreter.** With four busy Python
+threads in the process, the GIL build underran playback 13 times and
+read 132 frames where a quiet run reads ~890; the free-threaded build
+of the same version underran zero times and read 891. The daemon is
+stdlib only, so it needs no free-threaded wheels - `python3.14t -m venv
+.venv-ft` is the whole setup. Measured in `docs/status.md`.
+
 ## Transport
 
 TCP. The default bind is **all interfaces with no authentication**, on

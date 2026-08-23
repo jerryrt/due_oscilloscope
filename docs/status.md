@@ -667,6 +667,45 @@ was at fault.
 
 **The rule this leaves:** on a poll path, ask the device nothing.
 
+## The daemon runs free-threaded, and it matters under load
+
+The question was whether the daemon's own work - fan-out, recording,
+anything a real front end asks for - competes with the real-time feeder
+through the GIL. It does, and the measurement is not subtle.
+
+Same script, same board, same rates, four pure-Python threads burning
+CPU inside the daemon process for four seconds:
+
+| Build | Underruns | Frames read (quiet run: ~890) |
+|---|---|---|
+| 3.14.6, GIL | 13 | **132** |
+| 3.14.6, free-threaded | 0 | 891 |
+
+On the GIL build the burners take the interpreter away from both
+real-time threads: playback underruns *and* capture collapses to 15% of
+the frames, because the reader cannot drain the port either. On the
+free-threaded build the same load is invisible - underruns zero, frames
+identical to a quiet run, and the quiet runs either side of it agree.
+
+**Why this was cheap to try.** The free-threaded ABI needs its own
+wheels and most projects do not ship them yet. The daemon is stdlib
+only, so it needs none: `python3.14t -m venv` and it runs. The property
+that looked like an inconvenience earlier in the evening is what made
+the experiment a five-minute change.
+
+**Why it is safe here.** Without the GIL, `x += 1` on a shared
+attribute is no longer implicitly atomic. Every counter in the daemon
+is either written by exactly one thread - `frames_read` by the reader,
+`sent_frames` by that session's sender - or written under the lock that
+already guards its queue, as `dropped` is. The full test suite passes
+on the free-threaded build: 86 tests, and faster than on the GIL build
+because the threads genuinely overlap.
+
+**What it does not fix.** Load in *other* processes is the operating
+system's scheduler, not the GIL, and nothing here changes that. This
+decouples the daemon's own threads from each other, which is the part
+the daemon owns.
+
 ## Measured figures
 
 | Quantity | Value |

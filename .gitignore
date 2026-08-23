@@ -42,3 +42,4 @@ captures/
 # macOS
 .DS_Store
 .venv-gui/
+.venv-ft/
