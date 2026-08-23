@@ -629,8 +629,8 @@ int main(void)
 			unsigned nch    = rate_arg[2] ? rate_arg[2] : 2u;
 
 			if (!play_start(dac_hz)) {
-				printf("# loop: DAC %lu sps refused\n",
-				       (unsigned long)dac_hz);
+				printf("# loop: DAC %lu sps refused (max %lu)\n",
+				       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
 				uart_flush();
 				break;
 			}
@@ -658,8 +658,8 @@ int main(void)
 				printf("# play only: DAC %lu sps from USB, no capture\n",
 				       (unsigned long)dac_hz);
 			else
-				printf("# play only: %lu sps refused\n",
-				       (unsigned long)dac_hz);
+				printf("# play only: %lu sps refused (max %lu)\n",
+				       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
 			uart_flush();
 			break;
 		}

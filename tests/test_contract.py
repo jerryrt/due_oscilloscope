@@ -123,3 +123,36 @@ def test_channel_mask_matches_what_was_asked_for(board):
         assert set(res.stream.per_channel) == expect, (
             f"samples arrived tagged {sorted(res.stream.per_channel)}, "
             f"header mask says {sorted(expect)}")
+
+
+@pytest.mark.parametrize("rc,accepted", [(28, True), (27, False),
+                                         (20, False)])
+def test_the_dac_ceiling_is_refused_not_attempted(board, rc, accepted):
+    """RC 28 is the DACC's own ceiling; faster is not a rate it makes.
+
+    This went unrefused until the daemon's tests asked the board for its
+    own words: the ADC path has named its limit since bring-up, while
+    `=1950000,200000,2P` - RC 20, well past a converter that needs about
+    54.7 MCK cycles per update - was acknowledged. The trigger runs
+    there quite happily and the DAC simply does not keep up, which
+    reads downstream as an underrun storm rather than as a refusal.
+    """
+    hz = measure.hz_for(rc)
+    board.poll_console()
+    board.cmd(f"={hz},200000,2P")
+    text = board.drain_console(1.2)
+    board.cmd("0")
+    board.drain_console(0.4)
+
+    refused = "refused" in text
+    if accepted:
+        assert not refused, (
+            f"RC {rc} ({hz} sps) is the measured ceiling and must be "
+            f"accepted\n{text}")
+        return
+    assert refused, (
+        f"RC {rc} ({hz} sps) was accepted. It is past the DACC ceiling, "
+        f"so the DAC cannot make the rate and the failure arrives as "
+        f"underruns instead of an answer\n{text}")
+    assert "max" in text, (
+        f"a refusal must name the limit it refused against\n{text}")

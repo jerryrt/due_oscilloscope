@@ -68,7 +68,7 @@ bool play_start(uint32_t dac_hz)
 	if (dac_hz == 0)
 		return false;
 	rc = (SystemCoreClock / 2u) / dac_hz;
-	if (rc < 2u)
+	if (rc < PLAY_MIN_RC)
 		return false;
 
 	play_stop();

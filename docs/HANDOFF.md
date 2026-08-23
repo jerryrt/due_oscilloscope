@@ -209,7 +209,14 @@ before and is now separate, with its own evidence.
    not been tested.** When the xfail comes off, the numbers it was
    hiding need re-deriving rather than inheriting.
 
-0g. **The firmware does not refuse a DAC rate past the DACC ceiling.**
+0g. ~~**The firmware does not refuse a DAC rate past the DACC
+   ceiling.**~~ **Fixed on both tracks.** `play_start` now refuses
+   below `PLAY_MIN_RC` (28) and both consoles name the limit the way
+   the ADC path always has. `tests/test_contract.py` holds it: RC 28 is
+   accepted, RC 27 and RC 20 are refused, and a refusal must contain
+   the word "max". Original entry follows.
+
+   **The firmware does not refuse a DAC rate past the DACC ceiling.**
    `=906976,906976,2L` is refused with the limit named - `# loop: ADC
    906976 Hz x2 ch refused (max 453488)` - which is the behaviour the
    documentation describes. But `=1950000,200000,2P` is *accepted*:

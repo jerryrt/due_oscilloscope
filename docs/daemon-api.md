@@ -108,12 +108,12 @@ forwarded verbatim - `# loop: ADC 906976 Hz x2 ch refused (max 453488)`
 reaches the client as an error carrying that text. The **capability
 report** in `docs/frontend.md` is what ends the duplication.
 
-One asymmetry found while testing this: the firmware refuses a capture
-rate past the trigger floor, but **accepts a DAC rate past the DACC
-ceiling** - `=1950000,200000,2P` is acknowledged, not refused, though
-RC 20 is well past the ~1.393 Msps the DACC can convert. So the host
-check is not belt and braces there; it is the only check. See the
-objective in `docs/HANDOFF.md`.
+An asymmetry found while testing this has since been closed in
+firmware: the capture path had refused past its floor since bring-up,
+while a DAC rate past the DACC ceiling was acknowledged rather than
+refused. Both tracks now refuse below RC 28 and name the limit, so the
+host table is a courtesy again rather than the only thing standing
+between a console user and a rate the converter cannot make.
 
 ## Events
 

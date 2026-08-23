@@ -27,6 +27,19 @@
  * 32 slots is ~11.8 ms at the ceiling, and 32 KB of SRAM this project
  * has nothing better to spend on.
  */
+/*
+ * The DACC's own ceiling, measured: RC 28 is 1,392,857 updates per
+ * second and the converter needs about 54.7 MCK cycles each, so faster
+ * is not a rate it can make. The trigger will happily run there and the
+ * DAC will simply not keep up, which reads downstream as an underrun
+ * storm rather than as a refusal.
+ *
+ * The ADC path has refused past its floor since bring-up. This one did
+ * not, so `=1950000,200000,2P` was acknowledged rather than refused
+ * until the daemon's tests went looking for the device's own words.
+ */
+#define PLAY_MIN_RC      28u
+
 #define PLAY_NBUF        32
 #define PLAY_BUF_SAMPLES 512
 #define PLAY_BUF_BYTES   (PLAY_BUF_SAMPLES * 2)

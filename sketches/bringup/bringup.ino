@@ -959,8 +959,9 @@ void loop()
 		unsigned nch    = rate_arg[2] ? rate_arg[2] : 2u;
 
 		if (!play_start(dac_hz)) {
-			snprintf(buf, sizeof(buf), "# loop: DAC %lu sps refused",
-			         (unsigned long)dac_hz);
+			snprintf(buf, sizeof(buf),
+			         "# loop: DAC %lu sps refused (max %lu)",
+			         (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
 			Serial.println(buf);
 			Serial.flush();
 			break;
@@ -994,8 +995,9 @@ void loop()
 			         "# play only: DAC %lu sps from USB, no capture",
 			         (unsigned long)dac_hz);
 		else
-			snprintf(buf, sizeof(buf), "# play only: %lu sps refused",
-			         (unsigned long)dac_hz);
+			snprintf(buf, sizeof(buf),
+			         "# play only: %lu sps refused (max %lu)",
+			         (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
 		Serial.println(buf);
 		Serial.flush();
 		break;
