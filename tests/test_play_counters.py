@@ -81,6 +81,10 @@ def test_the_converter_holds_one_rate_for_a_whole_run(board, seconds,
     res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0))
     assert not res.refused, res.console
 
+    if not res.occ.rate_us:
+        pytest.skip("PLAY_RATE_TRACE_ENABLED is 0 - the ENDTX rate trace "
+                    "is off by default because it perturbs the path it "
+                    "measures; build with it on to re-check this")
     rates = res.occ.window_rates()
     assert len(rates) >= 20, (
         f"RC {rc}: {len(rates)} rate windows, too few to judge flatness\n"
@@ -112,34 +116,36 @@ def test_the_converter_holds_one_rate_for_a_whole_run(board, seconds,
 def test_the_two_rate_estimators_agree(board, seconds, rc):
     """Whole-run counters against a trace taken during the run.
 
-    device_byte_rate() divides a counter by a run timer read after the
-    stop; traced_byte_rate() spans two timestamps taken while playing.
-    They share the device's clock and nothing else, so agreement is
-    evidence and disagreement localises the fault to whichever one the
-    shutdown can reach.
+    device_byte_rate() divides the device's own counters by its own run
+    timer, read over the console after the stop. playstat_rate() spans
+    timestamped records that came off bulk IN while the run was still
+    going. Different sampling site, different transport, same clock - so
+    agreement is evidence, and disagreement says which of the two the
+    shutdown reached.
     """
     hz = measure.hz_for(rc)
     res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0))
     assert not res.refused, res.console
 
     whole = res.occ.device_byte_rate()
-    traced = res.occ.traced_byte_rate()
-    assert whole and traced, f"RC {rc}: an estimator returned nothing"
+    carrier = measure.playstat_rate(res.stats)
+    assert whole and carrier, f"RC {rc}: an estimator returned nothing"
 
-    diff = abs(traced / whole - 1) * 100
+    diff = abs(carrier / whole - 1) * 100
     assert diff < 0.20, (
-        f"RC {rc}: whole-run {whole:.0f} B/s against traced {traced:.0f} "
-        f"B/s, {diff:.3f}% apart - one of them is measuring the shutdown")
+        f"RC {rc}: whole-run counters say {whole:.0f} B/s, the bulk-IN "
+        f"carrier says {carrier:.0f} B/s, {diff:.3f}% apart")
 
 
-def test_the_rate_trace_survives_a_drained_run(board, seconds):
+def test_the_carrier_survives_a_drained_run(board, seconds):
     """A drained run reports the deficit *and* the converter's rate.
 
     The occupancy histogram cannot survive a drain: the device
     accumulates it until playback stops, so it spans the starvation the
-    drain creates by design. The rate trace can, because it is keyed on
-    consumed rather than on ENDTX - a starved device consumes nothing
-    and so writes no further samples.
+    drain creates by design, and run_play withholds it. The bulk-IN
+    carrier does survive, because run_play slices the records at the
+    moment the feeder stopped - what arrives after that describes the
+    shutdown.
 
     That is what makes objective 0i measurable at all. The oversupply
     claim is that the deficit equals the fraction by which the converter
@@ -153,16 +159,15 @@ def test_the_rate_trace_survives_a_drained_run(board, seconds):
     assert res.drained
     assert res.host_deficit is not None
 
-    assert res.occ.rate_us, (
-        "a drained run reported no rate trace, so the deficit and the "
+    assert measure.playstat_rate(res.stats), (
+        "a drained run reported no usable carrier, so the deficit and the "
         f"converter rate cannot be read from one run\n{res.report}")
-    rates = res.occ.window_rates()
-    assert len(rates) >= 20, f"only {len(rates)} windows survived the drain"
 
     # The histogram must still be withheld: it spans the starvation.
     assert not res.occ.buckets, (
         "the occupancy histogram was reported for a drained run, where "
         "it describes the shutdown rather than the run")
+
 
 
 @pytest.mark.parametrize("rc", [65, 44, 39])
@@ -194,8 +199,8 @@ def test_the_deficit_is_the_oversupply(board, seconds, calibration, rc):
     assert not res.refused, res.console
     assert res.drained
 
-    traced = res.occ.traced_byte_rate()
-    assert traced, f"RC {rc}: the drained run reported no rate trace"
+    traced = measure.playstat_rate(res.stats)
+    assert traced, f"RC {rc}: the drained run reported no usable carrier"
 
     nominal = hz * 2.0
     slow_pct = (1 - traced / nominal) * 100
@@ -236,9 +241,11 @@ def test_the_carrier_reports_what_the_console_trace_reports(board, seconds,
     every 20 ms, the other is an array sampled in the ENDTX handler and
     read out afterwards. Measured agreement is 0.001 to 0.018 pp.
     """
+    # Undrained deliberately. A drain starves the device by design, and
+    # run_play then withholds the occupancy line - the oracle - because
+    # it would describe the shutdown. The deficit is not wanted here.
     hz = measure.hz_for(rc)
-    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0),
-                           drain_s=1.5)
+    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0))
     assert not res.refused, res.console
 
     assert len(res.stats) > 20, (
@@ -246,7 +253,7 @@ def test_the_carrier_reports_what_the_console_trace_reports(board, seconds,
         f"IN - the carrier is not delivering")
 
     carrier = measure.playstat_rate(res.stats)
-    traced = res.occ.traced_byte_rate()
+    traced = res.occ.device_byte_rate()
     assert carrier and traced, f"RC {rc}: carrier={carrier} traced={traced}"
 
     nominal = hz * 2.0
@@ -500,3 +507,72 @@ def test_the_closed_loop_residual_is_a_startup_cost(board, calibration):
     assert long.host_deficit < short.host_deficit * 1.5, (
         f"doubling the run took the loss from {short.host_deficit} B to "
         f"{long.host_deficit} B - that is a rate error, not a startup cost")
+
+
+# -- loop mode's carrier ----------------------------------------------
+
+def test_loop_mode_frames_carry_the_converter_rate(board, seconds,
+                                                   calibration):
+    """The frame header is loop mode's carrier, and it has an oracle.
+
+    In play-only the signal rides the bulk-IN status record. In loop
+    mode bulk IN carries frames and the endpoint is on DMA, so nothing
+    else may write there - the header is the only channel left. It
+    already carried the other half of a rate estimate, `timestamp_us`,
+    so `play_consumed` completes the pair rather than adding one.
+
+    The console trace checks it, exactly as it checks the play-only
+    carrier: same converter, same device clock, sampled in the ENDTX
+    handler instead of built into a frame.
+    """
+    # RC 65 rather than an oversupplied rate, because loop mode has no
+    # device-side oracle: run_loop's shutdown is seconds of console
+    # reads, over which play_run_us keeps growing while the starved
+    # converter consumes nothing, so device_byte_rate() reads ~40% slow.
+    # RC 65 needs no oracle - it is byte-exact by measurement, so the
+    # converter is at nominal and the carrier must say so.
+    dac = measure.hz_for(65)
+    res = measure.run_loop(board, dac_sps=dac, adc_hz=measure.hz_for(130),
+                           channels=2, seconds=window(seconds, 3.0))
+    assert not res.refused, res.console
+    assert res.frames > 100, f"only {res.frames} frames"
+
+    stats = res.stream.play_stats
+    assert len(stats) == res.frames, (
+        f"{len(stats)} carriers against {res.frames} frames - the header "
+        f"field is not being read for every frame")
+    assert stats[-1].consumed > stats[0].consumed, (
+        "play_consumed never moved, so the header is carrying nothing")
+
+    carrier = measure.playstat_rate(stats)
+    assert carrier, "the frame headers yielded no usable rate"
+
+    nominal = dac * 2.0
+    cp = (1 - carrier / nominal) * 100
+    record(calibration, "loop_carrier_rc65", {
+        "frames": res.frames, "carrier_pct": round(cp, 3)})
+    assert abs(cp) < 0.20, (
+        f"loop-mode carrier says the converter is {cp:+.2f}% off nominal at "
+        f"a rate that is byte-exact, so it should be at nominal")
+
+
+def test_the_closed_loop_runs_in_loop_mode_without_breaking_the_stream(
+        board, seconds):
+    """Trimming the feed must not disturb capture.
+
+    Loop mode is the case where the correction and the measurement share
+    a wire: the rate signal rides the frames, and retuning changes how
+    fast the host writes into the same USB link those frames come back
+    on. If that coupling misbehaves it shows up as CRC failures or
+    sequence gaps, not as a bad rate.
+    """
+    res = measure.run_loop(board, dac_sps=measure.hz_for(44),
+                           adc_hz=measure.hz_for(88), channels=2,
+                           seconds=window(seconds, 3.0), closed_loop=True)
+    assert not res.refused, res.console
+    assert res.retunes > 0, "the loop never retuned, so this proves nothing"
+    assert res.frames > 100, f"only {res.frames} frames"
+    assert res.crc_bad == 0, f"{res.crc_bad} frames failed CRC"
+    assert res.seq_gaps == 0, f"{res.seq_gaps} sequence gaps"
+    assert res.play.underruns == 0, (
+        f"the closed loop cost {res.play.underruns} underruns in loop mode")
