@@ -143,17 +143,37 @@ kept needing and not having:
 - Whatever the rate loop needs to be closed in *capture-only* mode,
   which has no carrier at all today.
 
+## Settled
+
+Three questions this document opened have been answered by the project
+owner, and they simplify it.
+
+**Reset in deployment is the cable.** The native port is also the power
+source, so unplugging it power-cycles the board. Losing NRSTB with the
+programming port costs nothing that matters, and no software reset
+command is required.
+
+**printf diagnostics are development-only.** They are not intended to
+be available in deployment at all, so nothing has to replace the UART
+channel `docs/debugging.md` is built around. This also removes the last
+reason for the console to exist on the shipped path.
+
+**Track A follows.** That looked like it would force Track A to stop
+using the Arduino core for enumeration, which would have cost it its
+value as an independent oracle. It does not: the SAM core at 1.6.12
+defines `PLUGGABLE_USB_ENABLED` and ships `PluggableUSB.{h,cpp}`, so a
+second interface is added through the core's own extension mechanism
+rather than by patching it *(check: PluggableUSB has not been exercised
+on this board yet)*. Track A keeps the core for enumeration exactly as
+invariant 3 intends.
+
 ## Open questions
 
 - Total endpoint DPRAM budget on this part, and whether two more
   64-byte double-banked endpoints fit alongside the existing 512-byte
   pair *(check)*.
-- Whether the deployed board needs remote reset. Dropping the
-  programming port loses NRSTB, and there is no software substitute in
-  the current design.
-- The UART printf diagnostic channel goes with the programming port,
-  and `docs/debugging.md` is built around it. What replaces it in
-  deployment, given there is no debug probe?
-- Whether Track A follows. The tracks share the frame header verbatim;
-  this proposal shares nothing, because Track A's enumeration belongs
-  to the Arduino core.
+- Track B hand-writes its descriptors and Track A will go through
+  PluggableUSB, so the two arrive at the same wire layout by different
+  routes. The interface and endpoint numbering has to be pinned in this
+  document, or they will drift and the host will need to tell them
+  apart.
