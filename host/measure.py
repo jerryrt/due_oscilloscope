@@ -1139,10 +1139,23 @@ class PlayResult:
     play: PlayCounters
     rt_note: str
     occ: OccHist = field(default_factory=OccHist)
+    drained: bool = False
+
+    @property
+    def host_deficit(self):
+        """Bytes write() counted that the device never received.
+
+        Only meaningful on a run made with drain_s long enough for the
+        pipeline to empty - otherwise this is measuring what is still in
+        flight. `drained` says which kind of run it was.
+        """
+        if self.play.bytes_in is None:
+            return None
+        return self.host_tx_bytes - self.play.bytes_in
 
 
 def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
-             scale=1.0):
+             scale=1.0, drain_s=0.0):
     if dc is not None:
         wave, tone_hz = build_dc(dc)
     else:
@@ -1174,6 +1187,26 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     elapsed = time.time() - t0
     tx = feeder.stop()
 
+    # Optionally let everything the host wrote reach the device before
+    # asking how much arrived. Without the wait the pipeline - measured
+    # at 55 to 450 KB - reads as a loss, and with it a shortfall is a
+    # real one. The device is left playing throughout, so it keeps
+    # draining bulk OUT; the underruns this costs are the shutdown's and
+    # are why the counters below are only trusted for their byte count.
+    if drain_s > 0.0:
+        end = time.time() + drain_s
+        while time.time() < end:
+            r, _, _ = select.select([fd, board.cfd], [], [], 0.05)
+            if fd in r:
+                try:
+                    os.read(fd, 262144)
+                except OSError:
+                    pass
+        board.cmd("B")
+        time.sleep(0.5)
+        report = board.drain_console(1.2)
+        drained_play = parse_play(report)
+
     # Stop the device before reading its counters. Playback keeps
     # running after the feeder stops, so counters read afterwards
     # include the underruns of the shutdown rather than the run - which
@@ -1189,11 +1222,17 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     report = board.drain_console(1.2)
     board.close_native(fd)
 
+    play = parse_play(report)
+    if drain_s > 0.0:
+        # Byte counts from the drained read; everything else from the
+        # stopped one, because the drain deliberately underruns.
+        play.raw["in"] = drained_play.bytes_in
+
     return PlayResult(elapsed_s=elapsed, host_tx_bytes=tx, dac_sps=dac_sps,
                       tone_hz=tone_hz, refused="refused" in console,
                       console=console, report=report,
-                      play=parse_play(report), rt_note=feeder.note,
-                      occ=parse_occ(report))
+                      play=play, rt_note=feeder.note,
+                      occ=parse_occ(report), drained=drain_s > 0.0)
 
 
 @dataclass

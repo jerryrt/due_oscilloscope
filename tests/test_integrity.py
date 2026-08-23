@@ -351,3 +351,78 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
             f"host dropped {sum(real) * 2} bytes in {len(real)} chunks of "
             f"128, device short by {deficit} B: macOS's CDC-ACM output "
             f"path, not the device. See docs/status.md")
+
+
+# Rates at which the host's USB stack discards bytes write() counted.
+#
+# Measured with the pipeline drained, two runs per rate, run to run
+# within 1%: RC 195 loses nothing, and every rate above it loses a
+# steady fraction - 0.45% at 397,959 sps, 0.67% at 600,000, 1.48% at
+# 886,363, 2.25% at 1,000,000, 0.67% at 1,218,750, 0.85% at 1,392,857.
+# Every deficit is a whole multiple of 128 while the host only ever
+# writes multiples of 512, which is the macOS CDC-ACM chunk size
+# docs/usb.md describes.
+#
+# This is the cause of the playback starvation, not a separate defect:
+# the ring drains at exactly the rate bytes go missing. RC 65 loses
+# 0.67% and its ring decays at 0.73% a second; RC 32 loses 0.67% and
+# decays at 0.79%.
+HOST_DROPS_ABOVE_SPS = 200000
+
+
+@pytest.mark.parametrize("rc", [195, 98, 65, 44, 39, 32, 28])
+def test_device_receives_every_byte_the_host_sent(board, seconds,
+                                                  calibration, rc):
+    """Byte accounting with the pipeline drained, which is the only way
+    it means anything.
+
+    play_bytes_in is exact, so it can answer whether the device received
+    what the host wrote - but only once everything in flight has
+    arrived. Read straight after the feeder stops, the 55 to 450 KB
+    still in the CDC driver reads as a loss and the comparison is
+    worthless. Here the feed stops, the device keeps draining bulk OUT,
+    and the counters are read afterwards.
+
+    That the shortfall is real rather than still in flight was checked
+    by reading the device once a second for six seconds after the feed
+    stopped: play_bytes_in and play_consumed both freeze while
+    play_underruns climbs. The device sits starved with an empty ring
+    and the bytes never arrive.
+
+    A loss here is invisible to every other instrument in this suite.
+    The device cannot flag it - invariant 5 makes it count and report
+    what *it* drops, and these bytes never reached it - so the DAC
+    emits a discontinuity with under=0 and every counter green.
+    """
+    hz = measure.hz_for(rc)
+    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0),
+                           drain_s=1.5)
+    assert not res.refused, f"RC {rc} ({hz} sps) was refused\n{res.console}"
+    assert res.drained
+
+    deficit = res.host_deficit
+    record(calibration, f"host_deficit_rc{rc}", {
+        "hz": hz, "tx": res.host_tx_bytes, "in": res.play.bytes_in,
+        "deficit": deficit,
+        "pct": round(deficit / res.host_tx_bytes * 100, 4) if res.host_tx_bytes
+               else None})
+
+    # A loss that is not a whole number of 128-byte chunks is not the
+    # host's documented drop, and would be the device losing data it
+    # received - a different and worse defect. That fails outright at
+    # every rate, including the ones expected to lose bytes.
+    assert deficit % 128 == 0, (
+        f"RC {rc} lost {deficit} B, which is not a whole number of "
+        f"128-byte chunks: that is the device losing data it received, "
+        f"not the host's chunk drop. Read play_partial and docs/usb.md")
+
+    if hz > HOST_DROPS_ABOVE_SPS:
+        pytest.xfail(
+            f"RC {rc} ({hz} sps): host dropped {deficit} B "
+            f"({deficit / res.host_tx_bytes * 100:.2f}%), "
+            f"{deficit // 128} chunks of 128. See HOST_DROPS_ABOVE_SPS")
+
+    assert deficit == 0, (
+        f"RC {rc} ({hz} sps) lost {deficit} B ({deficit // 128} chunks "
+        f"of 128) that write() counted. This rate has always been "
+        f"byte-exact; a loss here is a regression in the feed path")
