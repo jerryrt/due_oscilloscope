@@ -901,6 +901,10 @@ class Feeder:
     # tracked separately.
     WRITE_SIZE = 512
 
+    # Only the legacy due-sized path uses this, and that path is kept
+    # solely so the two can be compared. It loses bytes.
+    MAX_WRITE = 16384
+
     def __init__(self, fd, wave, byte_rate, scale=1.0,
                  write_size=None):
         self.fd = fd
