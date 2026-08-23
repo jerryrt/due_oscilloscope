@@ -276,11 +276,8 @@ void stream_service(void)
 			tx_hdr.magic[3] = FRAME_MAGIC3;
 			tx_hdr.version         = FRAME_VERSION;
 			tx_hdr.flags           = FRAME_FLAG_CONTINUOUS;
-			tx_hdr.bits_per_sample = 12;
-			tx_hdr.packing         = 0;
 			tx_hdr.seq             = seq;
 			tx_hdr.sample_rate_hz  = rate_hz;
-			tx_hdr.n_samples       = ACQ_BUF_SAMPLES;
 			tx_hdr.channel_mask    = acq_channel_mask();
 			tx_hdr.timestamp_us    = micros();
 			tx_hdr.overrun_count   = overruns;
@@ -420,11 +417,8 @@ static void bench_push_in(uint32_t byte_budget)
 		h.magic[2] = FRAME_MAGIC2; h.magic[3] = FRAME_MAGIC3;
 		h.version         = FRAME_VERSION;
 		h.flags           = FRAME_FLAG_CONTINUOUS;
-		h.bits_per_sample = 12;
-		h.packing         = 0;
 		h.seq             = seq;
 		h.sample_rate_hz  = 0;          /* synthetic, not acquired */
-		h.n_samples       = ACQ_BUF_SAMPLES;
 		h.channel_mask    = (1u << 7) | (1u << 6);
 		h.timestamp_us    = micros();
 		h.overrun_count   = 0;
@@ -543,7 +537,7 @@ void stream_bench_report(char *buf, size_t n)
 /*
  * Double-buffered so nothing blocks: one frame is in flight under DMA
  * while the next is being prepared. The processor writes only the
- * 36-byte header; the 4060-byte payload is never touched by it, which
+ * 32-byte header; the 4064-byte payload is never touched by it, which
  * is the property the architecture actually asks for - and the one the
  * core's byte-at-a-time FIFO copy cannot provide at any rate.
  */
@@ -576,11 +570,8 @@ static void dma_build_frame(uint8_t *dst)
 	h->magic[2] = FRAME_MAGIC2; h->magic[3] = FRAME_MAGIC3;
 	h->version         = FRAME_VERSION;
 	h->flags           = FRAME_FLAG_CONTINUOUS;
-	h->bits_per_sample = 12;
-	h->packing         = 0;
 	h->seq             = seq++;
 	h->sample_rate_hz  = 0;
-	h->n_samples       = ACQ_BUF_SAMPLES;
 	h->channel_mask    = (1u << 7) | (1u << 6);
 	h->timestamp_us    = micros();
 	h->overrun_count   = 0;

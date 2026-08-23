@@ -38,8 +38,8 @@
 #define TRGSEL_TIOA1          (2u << 1)
 
 #define ACQ_NBUF              4
-#define ACQ_BUF_SAMPLES       2030   /* 4060 B payload + 36 B header = 8 x 512 */
-#define ACQ_HDR_BYTES         36     /* sizeof(frame_header_t) */
+#define ACQ_BUF_SAMPLES       2032   /* 4064 B payload + 32 B header = 8 x 512 */
+#define ACQ_HDR_BYTES         32     /* sizeof(frame_header_t) */
 #define ACQ_FRAME_BYTES       (ACQ_HDR_BYTES + ACQ_BUF_SAMPLES * 2)
 
 /*

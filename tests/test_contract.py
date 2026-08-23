@@ -24,12 +24,15 @@ def test_frame_header_is_self_consistent(board, baseline, seconds):
     ps = res.stream
 
     f = baseline["frame"]
-    assert ps.version == 2
-    assert ps.bits_per_sample == 12
-    assert ps.packing == 0, "0 = 12-bit right aligned in 16-bit LE"
-    assert ps.n_samples == f["samples"]
+    assert ps.version == 3
+    # bits_per_sample, packing and n_samples left the header in v3: they
+    # never varied, and their four bytes bought play_consumed. The frame
+    # is a fixed 4096 bytes because that is 8 x 512 and one DMA sends
+    # whole packets, so the sample count is architecture rather than
+    # data - which is what this now checks.
+    assert measure.FRAME_SAMPLES == f["samples"]
     assert measure.HDR_LEN == f["header_bytes"]
-    assert measure.HDR_LEN + ps.n_samples * 2 == f["bytes"], (
+    assert measure.HDR_LEN + measure.FRAME_SAMPLES * 2 == f["bytes"], (
         "the frame must stay a whole number of 512-byte USB packets")
     assert ps.crc_bad == 0
     assert ps.inconsistent == 0, (

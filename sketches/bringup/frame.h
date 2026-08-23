@@ -15,7 +15,7 @@
 #define FRAME_MAGIC1 'U'
 #define FRAME_MAGIC2 'E'
 #define FRAME_MAGIC3 '0'
-#define FRAME_VERSION 2
+#define FRAME_VERSION 3
 
 #define FRAME_FLAG_OVERRUN     (1u << 0)
 #define FRAME_FLAG_BURST_FIRST (1u << 1)
@@ -23,32 +23,33 @@
 #define FRAME_FLAG_CONTINUOUS  (1u << 3)
 
 /*
- * play_consumed carries the rate loop's signal in loop mode.
+ * play_consumed is paid for out of fields that never varied.
  *
- * In play-only the host gets it from the bulk-IN status record
- * (drivers/playstat.h), but in loop mode bulk IN carries frames and the
- * endpoint is on DMA, so nothing else may write there. The frame header
- * is the only channel left, and it already carries the other half of
- * what a rate estimate needs - timestamp_us is the same device clock -
- * so this completes the pair rather than adding one.
+ * bits_per_sample was always 12, packing always 0, and n_samples always
+ * ACQ_BUF_SAMPLES - the frame is a fixed 4096 bytes because that is
+ * 8 x 512 and one DMA sends whole packets, so its sample count is
+ * architecture, not data. Four bytes of constants bought the one field
+ * that is neither.
  *
- * Zero from the bench frame builders, which acquire nothing and play
- * nothing.
+ * The alternative was to grow the header and take two samples out of
+ * the payload. That was tried, and moving ACQ_BUF_SAMPLES off 2032
+ * cost the ramp test 4 runs in 15 against 0 in 15 before it. The
+ * geometry is load-bearing; leave it alone.
+ *
+ * sample_rate_hz stays, because it is the one field here that genuinely
+ * varies run to run and cannot be reconstructed from a recording.
  */
 typedef struct __attribute__((packed)) {
 	uint8_t  magic[4];
 	uint8_t  version;
 	uint8_t  flags;
-	uint8_t  bits_per_sample;
-	uint8_t  packing;          /* 0 = 12-bit right aligned in 16-bit LE */
+	uint16_t channel_mask;     /* ADC channel indices, not A-labels */
 	uint32_t seq;
 	uint32_t sample_rate_hz;   /* per channel */
-	uint16_t n_samples;        /* across all channels */
-	uint16_t channel_mask;     /* ADC channel indices, not A-labels */
 	uint32_t timestamp_us;
 	uint32_t overrun_count;
 	uint32_t play_consumed;    /* playback buffers the DAC has taken */
-	uint32_t header_crc32;     /* over the preceding 32 bytes */
+	uint32_t header_crc32;     /* over the preceding 28 bytes */
 } frame_header_t;
 
 /*

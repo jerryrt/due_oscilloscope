@@ -45,7 +45,7 @@ import rt
 # Wire format. Shared verbatim with drivers/frame.h.
 # ---------------------------------------------------------------------
 
-HDR_FMT = "<4sBBBBIIHHIIII"
+HDR_FMT = "<4sBBHIIIIII"
 HDR_LEN = struct.calcsize(HDR_FMT)
 MAGIC = b"DUE0"
 
@@ -60,7 +60,7 @@ FLAG_CONTINUOUS  = 1 << 3
 # for its settled sample window.
 SETTLE_US = 1_000_000
 
-FRAME_SAMPLES = 2030
+FRAME_SAMPLES = 2032
 FRAME_BYTES = HDR_LEN + FRAME_SAMPLES * 2
 
 # TIMER_CLOCK1 is MCK/2. Both the TC and the ADC scale with MCK, which
@@ -160,9 +160,6 @@ class ParsedStream:
     channel_mask: int = 0
     n_channels: int = 0
     version: int = 0
-    bits_per_sample: int = 0
-    packing: int = 0
-    n_samples: int = 0
     inconsistent: int = 0
     ts_first: int = None
     ts_last: int = None
@@ -278,27 +275,24 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
         if i < 0 or blen - i < HDR_LEN:
             break
         hdr = bytes(buf[i:i + HDR_LEN])
-        (_m, ver, flags, bits, packing, seq, rate, nsamp,
-         chmask, ts, overruns, consumed, crc) = struct.unpack(HDR_FMT, hdr)
+        (_m, ver, flags, chmask, seq, rate,
+         ts, overruns, consumed, crc) = struct.unpack(HDR_FMT, hdr)
         if zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF != crc:
             ps.crc_bad += 1
             pos = i + 4
             continue
-        need = HDR_LEN + nsamp * 2
+        need = HDR_LEN + FRAME_SAMPLES * 2
         if blen - i < need:
             break
         body = bytes(buf[i + HDR_LEN:i + need])
         pos = i + need
 
-        shape = (ver, bits, packing, rate, nsamp, chmask)
+        shape = (ver, rate, chmask)
         if ps.frames == 0:
             ps.first_seq = seq
             ps.ts_first = ts
             keep_from = (ts + settle_us) & 0xFFFFFFFF if settle_us else None
             ps.version = ver
-            ps.bits_per_sample = bits
-            ps.packing = packing
-            ps.n_samples = nsamp
             first_shape = shape
         elif shape != first_shape:
             # The stream's shape must not change mid-run: a rate or mask

@@ -20,7 +20,7 @@ import struct
 
 import numpy as np
 
-HDR_FMT = "<4sBBBBIIHHIII"
+HDR_FMT = "<4sBBHIIIIII"
 HDR_LEN = struct.calcsize(HDR_FMT)
 MAGIC = b"DUE0"
 
@@ -64,8 +64,9 @@ def decode(buf):
     """
     if len(buf) < HDR_LEN or not buf.startswith(MAGIC):
         return None
-    (_magic, _version, flags, _bits, _packing, seq, rate, n, mask, ts,
-     overrun, _crc) = struct.unpack_from(HDR_FMT, buf, 0)
+    (_magic, _version, flags, mask, seq, rate, ts,
+     overrun, _consumed, _crc) = struct.unpack_from(HDR_FMT, buf, 0)
+    n = (len(buf) - HDR_LEN) // 2
 
     raw = np.frombuffer(buf, dtype="<u2", offset=HDR_LEN)
     tags = (raw >> 12).astype(np.uint8)

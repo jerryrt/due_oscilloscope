@@ -38,7 +38,7 @@
 
 /* 4 buffers gives two spare while one fills and one drains. */
 #define ACQ_NBUF              4
-#define ACQ_BUF_SAMPLES       2030   /* 4060 B payload + 36 B header = 8 x 512 */
+#define ACQ_BUF_SAMPLES       2032   /* 4064 B payload + 32 B header = 8 x 512 */
 
 /*
  * Measured on this board: RC 86 works, RC 85 drops every other trigger
