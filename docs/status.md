@@ -792,6 +792,67 @@ high while the queue stays shallow, the mechanism is confirmed and the
 policy is safe. If spans collapse the moment the queue drains, the
 arming policy in the firmware is what needs changing, not the feed.
 
+## Capture over endpoint DMA, and what it cost to get right
+
+The CPU no longer touches sample data on Track B. Each capture buffer
+carries 32 bytes of headroom in front of its payload, so a finished
+frame is 4096 contiguous bytes: the PDC is pointed at the samples, the
+processor writes only the header, and one DMA sends both. That closes
+the last violation of invariant 1.
+
+Getting there took four measurements, and the first version looked
+perfect while losing data.
+
+**One 4096-byte transfer per frame streams cleanly and starves the
+ADC.** No sequence gaps, no CRC failures, no DMA stalls - and 439 ADC
+general overruns in a 4 s run at the full rate, against **zero** on the
+CPU-copy path. It was only visible because the previous firmware was
+flashed back and measured rather than assumed to be equivalent.
+
+The mechanism is bus contention: the USB DMA holds the matrix while the
+ADC's PDC is trying to write the next conversion into SRAM, and the
+conversion is lost. Two changes were needed, and the 2x2 is why both:
+
+| Capture ring | Transfer size | GOVRE per 4 s at full rate |
+|---|---|---|
+| bank 0 | 4096 B | 439 |
+| bank 1 | 4096 B | 202 |
+| bank 0 | 512 B | 77 |
+| bank 1 | 512 B | **0** |
+
+So transfers are packet-sized - which also keeps every transfer exactly
+one bulk packet, so nothing short is ever emitted mid-frame - and the
+capture ring moved to bank 1 while the playback ring moved to bank 0.
+A swap, not a shrink: playback keeps all 32 KB of depth.
+
+**This answers an open question in `docs/scope.md`.** Whether the two
+SRAM banks are distinct bus-matrix slaves, and whether placement
+actually removes contention, was listed as needing the datasheet and a
+measurement. It does, and the measurement is the table above.
+
+### The objective's premise was wrong
+
+Objective 1 said the CPU copy was the source of the capture resyncs
+that hold full-rate purity at 90-95%. It is not. Loop mode at the
+full-rate pair, three runs each:
+
+| Path | Median window (codes) | resync |
+|---|---|---|
+| DMA | 1291, 1293, 1298 | 2 |
+| CPU copy | 1292, 1306, 1293 | 2 |
+
+Indistinguishable. Whatever limits purity at the full-rate pair, it is
+not the copy, and the resync count is identical either way. What the
+change does buy is the invariant, the processor time the copy used, and
+a capture-only stream at the full rate that is now as clean as the CPU
+path while doing no copying. The 200 ksps loop stays byte-exact:
+deficit 0, under=0, partial=0.
+
+Worth keeping as a rule: **a firmware change that looks equivalent must
+be measured against the firmware it replaces, not against expectation.**
+Reflashing the old build took three minutes and was the only reason the
+439 overruns were attributed to this change rather than to the board.
+
 ## Measured figures
 
 | Quantity | Value |

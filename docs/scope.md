@@ -215,7 +215,14 @@ guess.
 2. ~~CDC bulk endpoint `wMaxPacketSize`.~~ **Resolved**: 512 bytes,
    2-bank, read from `arduino:sam@1.6.12` source. Already optimal; no
    tuning available. See `docs/hardware.md`.
-3. Whether SRAM bank 0 and bank 1 sit on separate bus-matrix slaves.
+3. ~~Whether SRAM bank 0 and bank 1 sit on separate bus-matrix
+   slaves.~~ **Answered by measurement**: they are separate enough for
+   placement to matter. Sending capture frames by USB DMA while the
+   ADC's PDC writes the same bank costs 439 ADC overruns per 4 s at the
+   full rate; moving the ring to the other bank halves it, and
+   packet-sized transfers remove the rest. See `docs/status.md`.
+   Original entry: whether SRAM bank 0 and bank 1 sit on separate
+   bus-matrix slaves.
    **Partially answered**: the memory map is confirmed from Atmel's
    linker script. Bank 0 is 64 KB and bank 1 is 32 KB, made contiguous
    by an alias at `0x20070000`; bank 0 is also visible at `0x20000000`.

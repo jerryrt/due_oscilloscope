@@ -539,14 +539,24 @@ static void dma_channel_stop(uint32_t ch)
 			break;
 }
 
-void usb_cdc_dma_mode(bool in_dma, bool out_dma)
+void usb_cdc_dma_mode_in(bool on)
 {
 	dma_channel_stop(DMA_IN_CH);
+	dma_mode_in = on;
+	ep_apply_autosw(EP_IN, on);
+}
+
+void usb_cdc_dma_mode_out(bool on)
+{
 	dma_channel_stop(DMA_OUT_CH);
-	dma_mode_in = in_dma;
-	dma_mode_out = out_dma;
-	ep_apply_autosw(EP_IN, in_dma);
-	ep_apply_autosw(EP_OUT, out_dma);
+	dma_mode_out = on;
+	ep_apply_autosw(EP_OUT, on);
+}
+
+void usb_cdc_dma_mode(bool in_dma, bool out_dma)
+{
+	usb_cdc_dma_mode_in(in_dma);
+	usb_cdc_dma_mode_out(out_dma);
 }
 
 bool usb_dma_in_busy(void)

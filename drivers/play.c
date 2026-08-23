@@ -11,8 +11,13 @@
  * the capture ring, and separating the two DMA rings across banks is
  * what the linker regions exist for anyway.
  */
+/*
+ * Bank 0, since the capture ring now needs bank 1 - see acq.c. The
+ * playback pairing is the DACC's PDC reading while the USB DMA writes,
+ * which is the same shape and now has bank 0 to itself.
+ */
 static uint16_t play_buf[PLAY_NBUF][PLAY_BUF_SAMPLES]
-	__attribute__((aligned(4), section(".sram1")));
+	__attribute__((aligned(4)));
 
 volatile uint32_t play_produced;
 volatile uint32_t play_consumed;
@@ -79,7 +84,10 @@ bool play_start(uint32_t dac_hz)
 	dma_inflight = false;
 
 	/* The ring is fed by endpoint DMA; capture IN stays manual. */
-	usb_cdc_dma_mode(false, true);
+	/* OUT only: capture may be running with IN on DMA, and taking
+	 * that away here is how a loop ends up with one direction
+	 * silently back on the FIFO path. */
+	usb_cdc_dma_mode_out(true);
 
 	/* Silence until the host supplies something: mid scale on both. */
 	for (unsigned b = 0; b < PLAY_NBUF; b++)
@@ -127,7 +135,7 @@ bool play_start(uint32_t dac_hz)
 void play_stop(void)
 {
 	if (active)
-		usb_cdc_dma_mode(false, false);
+		usb_cdc_dma_mode_out(false);
 	active = false;
 	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
 	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);

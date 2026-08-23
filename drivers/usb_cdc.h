@@ -58,6 +58,16 @@ size_t usb_cdc_read(uint8_t *dst, size_t max);
  * hand, DMA needs the hardware to switch banks itself. */
 void   usb_cdc_dma_mode(bool in_dma, bool out_dma);
 
+/*
+ * Set one direction without disturbing the other.
+ *
+ * Capture wants IN on DMA while playback wants OUT on DMA, and the two
+ * are started and stopped independently. Setting both at once means
+ * whichever starts second silently turns the first one off.
+ */
+void   usb_cdc_dma_mode_in(bool on);
+void   usb_cdc_dma_mode_out(bool on);
+
 bool   usb_dma_in_start(const void *buf, uint32_t len);
 bool   usb_dma_in_busy(void);
 uint32_t usb_dma_in_residue(void);

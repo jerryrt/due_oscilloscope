@@ -14,6 +14,7 @@
 #include "stream.h"
 #include "usb_cdc.h"
 #include <stdio.h>
+#include <string.h>
 
 uint32_t frame_crc32(const uint8_t *data, size_t len)
 {
@@ -54,10 +55,42 @@ static bool     active;
 static uint32_t seq, rate_hz, frames_sent, bytes_sent, started_us;
 static uint32_t pending_overrun, resync_count, refused;
 
-typedef enum { TX_IDLE, TX_HEADER, TX_PAYLOAD } tx_phase_t;
+typedef enum { TX_IDLE, TX_HEADER, TX_PAYLOAD, TX_DMA } tx_phase_t;
 static tx_phase_t     tx_phase;
 static size_t         tx_off;
 static frame_header_t tx_hdr;
+
+/*
+ * Capture over endpoint DMA.
+ *
+ * The CPU-copied path below it stays for the UART transport and for a
+ * host that has not configured the endpoints, but on USB a finished
+ * frame is 4096 contiguous bytes - header headroom included - and goes
+ * out in one transfer that the processor never reads.
+ */
+/* The headroom in front of each capture buffer is sized in acq.h,
+ * which cannot see this type. If they ever disagree the header would
+ * be written over the first samples of its own payload. */
+_Static_assert(sizeof(frame_header_t) == ACQ_HDR_BYTES,
+               "capture header headroom must match the frame header");
+
+static bool     tx_dma;
+static uint32_t dma_frames, dma_stalls;
+
+/*
+ * How much of a frame goes out per DMA transfer.
+ *
+ * One 4096-byte transfer measurably starves the ADC's PDC: 439 general
+ * overruns in a 4 s run at the full rate against none on the CPU-copy
+ * path, because the USB DMA holds the bus matrix while the PDC is
+ * trying to write the next conversion into SRAM. Moving the capture
+ * ring to the other bank halved it, which named the mechanism, and
+ * smaller transfers give the PDC gaps to win arbitration in.
+ *
+ * 512 keeps every transfer exactly one bulk packet, so the stream stays
+ * packet-aligned and no short packet is ever emitted mid-frame.
+ */
+#define DMA_CHUNK_BYTES  512u
 
 static bool stream_start_common(uint32_t trigger_hz);
 static bool stream_start_common_nogen(uint32_t trigger_hz,
@@ -151,6 +184,18 @@ static bool stream_start_common(uint32_t trigger_hz)
 
 	gen_start();
 	started_us = micros();
+
+	/*
+	 * Take the IN endpoint onto DMA for the duration. Only this path
+	 * writes IN while streaming, and the two modes must never be
+	 * mixed on one endpoint: the FIFO path owns FIFOCON by hand and
+	 * DMA needs the hardware to switch banks itself.
+	 */
+	tx_dma = (xport == XPORT_USB);
+	dma_frames = dma_stalls = 0;
+	if (tx_dma)
+		usb_cdc_dma_mode_in(true);
+
 	active = true;
 	return true;
 }
@@ -158,6 +203,16 @@ static bool stream_start_common(uint32_t trigger_hz)
 void stream_stop(void)
 {
 	active = false;
+	if (tx_dma) {
+		/* Never leave a transfer reading a buffer the PDC is about
+		 * to be pointed at again. */
+		while (usb_dma_in_busy())
+			;
+		usb_cdc_dma_mode_in(false);
+		tx_dma = false;
+	}
+	tx_phase = TX_IDLE;
+	tx_off = 0;
 	if (bench == BENCH_FLOOD_DMA || bench == BENCH_SINK_DMA ||
 	    bench == BENCH_DUPLEX_DMA)
 		usb_cdc_dma_mode(false, false);
@@ -199,6 +254,39 @@ void stream_service(void)
 	for (int budget = 0; budget < 4; budget++) {
 		const uint8_t *payload;
 		size_t plen = ACQ_BUF_SAMPLES * sizeof(uint16_t);
+
+		/*
+		 * A DMA in flight owns the buffer it is reading, so the
+		 * frame is not released and the next one is not started
+		 * until it has finished. Releasing early would hand the
+		 * PDC a buffer the USB controller is still sending.
+		 */
+		if (tx_phase == TX_DMA) {
+			uint8_t *frame = acq_frame_bytes();
+
+			if (usb_dma_in_busy())
+				return;
+			if (tx_off < ACQ_FRAME_BYTES) {
+				uint32_t n = ACQ_FRAME_BYTES - tx_off;
+
+				if (n > DMA_CHUNK_BYTES)
+					n = DMA_CHUNK_BYTES;
+				if (!usb_dma_in_start(frame + tx_off, n)) {
+					dma_stalls++;
+					return;
+				}
+				tx_off += n;
+				continue;
+			}
+			bytes_sent += ACQ_FRAME_BYTES;
+			tx_off = 0;
+			tx_phase = TX_IDLE;
+			acq_frame_release();
+			frames_sent++;
+			dma_frames++;
+			seq++;
+			continue;
+		}
 
 		/*
 		 * Start a new frame only when the previous one is fully out.
@@ -257,6 +345,24 @@ void stream_service(void)
 
 			tx_off = 0;
 			tx_phase = TX_HEADER;
+
+			if (tx_dma) {
+				/*
+				 * The header is written into the headroom in
+				 * front of this buffer's payload, so the two
+				 * are one transfer. Thirty-two bytes of
+				 * header is the only thing the processor
+				 * writes; the 4064 bytes of samples are read
+				 * by the DMA straight out of where the PDC
+				 * left them.
+				 */
+				uint8_t *frame = acq_frame_bytes();
+
+				memcpy(frame, &tx_hdr, sizeof(tx_hdr));
+				tx_off = 0;
+				tx_phase = TX_DMA;
+				continue;
+			}
 		}
 
 		/*
@@ -297,6 +403,8 @@ void stream_report(void)
 	uint32_t us = micros() - started_us;
 	uint32_t kbps = us ? (uint32_t)(((uint64_t)bytes_sent * 1000ull) / us) : 0;
 
+	printf("# dma-frames=%lu dma-stalls=%lu\n",
+	       (unsigned long)dma_frames, (unsigned long)dma_stalls);
 	printf("# frames=%lu bytes=%lu %lu.%03lu MB/s prod=%lu cons=%lu "
 	       "ringovf=%lu resync=%lu refused=%lu rxbuff=%lu govre=%lu "
 	       "endtx=%lu rst=%lu setup=%lu stall=%lu cfg=%lu dtr=%lu cfgfail=%lu\n"

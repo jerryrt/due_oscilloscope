@@ -2,7 +2,16 @@
 #include "acq.h"
 #include "analog.h"
 
-uint16_t acq_buf[ACQ_NBUF][ACQ_BUF_SAMPLES];
+/*
+ * Bank 1, deliberately.
+ *
+ * The USB DMA reads these buffers while the ADC's PDC writes them, and
+ * measured at the full rate that pairing costs ADC general overruns
+ * when it also has to arbitrate with everything else in bank 0: 439 in
+ * a 4 s run with one transfer per frame, 77 with packet-sized
+ * transfers, 0 once the ring is here. See docs/status.md.
+ */
+acq_slot_t acq_slot[ACQ_NBUF] __attribute__((section(".sram1")));
 
 volatile uint32_t acq_buffers_done;
 volatile uint32_t acq_rxbuff_overruns;
@@ -114,9 +123,9 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 
 	tc_init(rc);
 
-	ADC->ADC_RPR  = (uint32_t)acq_buf[0];
+	ADC->ADC_RPR  = (uint32_t)acq_slot[0].samples;
 	ADC->ADC_RCR  = ACQ_BUF_SAMPLES;
-	ADC->ADC_RNPR = (uint32_t)acq_buf[1];
+	ADC->ADC_RNPR = (uint32_t)acq_slot[1].samples;
 	ADC->ADC_RNCR = ACQ_BUF_SAMPLES;
 
 	(void)ADC->ADC_ISR;
@@ -155,7 +164,8 @@ void ADC_Handler(void)
 
 	if (status & ADC_ISR_ENDRX) {
 		filling = (filling + 1u) % ACQ_NBUF;
-		ADC->ADC_RNPR = (uint32_t)acq_buf[(filling + 1u) % ACQ_NBUF];
+		ADC->ADC_RNPR =
+			(uint32_t)acq_slot[(filling + 1u) % ACQ_NBUF].samples;
 		ADC->ADC_RNCR = ACQ_BUF_SAMPLES;
 		acq_buffers_done++;
 
