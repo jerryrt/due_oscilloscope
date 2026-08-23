@@ -126,6 +126,33 @@ extern volatile uint32_t play_run_us;
  * which is left at reset priority 0 while DACC is set to 1, so the
  * tick it reads cannot be held off by this handler.
  */
+/*
+ * OFF by default, and that is a correctness decision rather than a
+ * cost one.
+ *
+ * Sampling micros() in the ENDTX handler perturbs the path it measures.
+ * Placed between play_consumed++ and the TNPR store - inside the window
+ * this handler exists to keep short - it broke the ramp test in 2 runs
+ * of 6 with 1,600 to 2,500 forward jumps of 10 to 12 bytes, the
+ * sub-slot signature of a late pointer load, while under=0 and the
+ * frame stream stayed clean. Moved after the PDC re-arm it fell to
+ * about 1 run in 8, which is better and still not nothing. At the
+ * commit before it existed the same test was clean 6 of 6.
+ *
+ * It is kept because it answered a question nothing else could - that
+ * the converter holds one rate for a whole run, latched at play_start -
+ * and it would be needed again to re-check that. It is not kept on,
+ * because the production signal is the playstat carrier
+ * (drivers/playstat.h) and the frame header's play_consumed, both
+ * sampled in the main loop at no cost to the real-time path.
+ *
+ * Turn it on for an investigation; do not judge sample integrity on a
+ * build that has it on.
+ */
+#ifndef PLAY_RATE_TRACE_ENABLED
+#define PLAY_RATE_TRACE_ENABLED 0
+#endif
+
 #define PLAY_RATE_TRACE 256
 #define PLAY_RATE_DECIM 32u
 

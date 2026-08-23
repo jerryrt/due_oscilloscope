@@ -336,15 +336,15 @@ static void play_endtx(void)
 			play_occ_trace[play_occ_traced++] = (uint8_t)occ;
 	}
 
+	bool sample_rate_now = false;
+
 	if (play_produced - play_consumed >= 3u) {
 		/* The buffer just finished is released; queue the next. */
 		play_consumed++;
-		if (play_consumed % PLAY_RATE_DECIM == 0u &&
-		    play_rate_traced < PLAY_RATE_TRACE)
-			play_rate_us[play_rate_traced++] = micros();
 		__DMB();
 		DACC->DACC_TNPR =
 			(uint32_t)play_buf[(play_consumed + 1u) % PLAY_NBUF];
+		sample_rate_now = (play_consumed % PLAY_RATE_DECIM == 0u);
 	} else {
 		/*
 		 * Nothing new to queue. Repeat the current buffer rather than
@@ -357,6 +357,29 @@ static void play_endtx(void)
 			(uint32_t)play_buf[play_consumed % PLAY_NBUF];
 	}
 	DACC->DACC_TNCR = PLAY_BUF_SAMPLES;
+
+	/*
+	 * The rate trace is sampled only once the PDC has been re-armed.
+	 *
+	 * It sat between play_consumed++ and the TNPR store, which is the
+	 * window this handler exists to keep short: the next buffer pointer
+	 * has to be loaded before the current transfer completes. micros()
+	 * there was enough to break the ramp test in 2 runs of 6 - 1600 to
+	 * 2500 forward jumps of 10 to 12 bytes, the sub-slot signature of a
+	 * late pointer, with under=0 and the stream otherwise clean. At the
+	 * session's starting commit the same test was clean 6 of 6.
+	 *
+	 * Sampling here delays every timestamp by the same few hundred
+	 * nanoseconds, and the host reads differences, so a constant offset
+	 * costs nothing. Only on the consumed branch, or a run of underruns
+	 * would resample the same buffer index repeatedly.
+	 */
+#if PLAY_RATE_TRACE_ENABLED
+	if (sample_rate_now && play_rate_traced < PLAY_RATE_TRACE)
+		play_rate_us[play_rate_traced++] = micros();
+#else
+	(void)sample_rate_now;
+#endif
 }
 
 /*
