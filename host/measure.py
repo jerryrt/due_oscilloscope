@@ -38,6 +38,7 @@ from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ports import find_ports, open_raw
+import jitter
 import rt
 
 # ---------------------------------------------------------------------
@@ -805,6 +806,10 @@ class Feeder:
         self.byte_rate = byte_rate
         self.count = 0
         self.note = None
+        # How late does this thread actually run? The underrun counter
+        # says the ring went dry; this says by how much the writer was
+        # delayed, which is the number a fix has to move.
+        self.gap = jitter.Histogram("feed-write-gap")
         self._stop = threading.Event()
         self._th = threading.Thread(target=self._run, daemon=True)
 
@@ -817,8 +822,10 @@ class Feeder:
         wave = self.wave
         pos = 0
         t0 = time.monotonic()
+        last_write = None
         while not self._stop.is_set():
-            due = (int((time.monotonic() - t0) * self.byte_rate)
+            now = time.monotonic()
+            due = (int((now - t0) * self.byte_rate)
                    + self.LEAD - self.count)
             if due <= 0:
                 time.sleep(min(0.005, -due / self.byte_rate + 0.001))
@@ -840,6 +847,9 @@ class Feeder:
             except OSError:
                 return
             if n > 0:
+                if last_write is not None:
+                    self.gap.add(now - last_write)
+                last_write = now
                 self.count += n
                 pos = (pos + n) % len(wave)
 

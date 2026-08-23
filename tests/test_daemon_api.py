@@ -575,3 +575,40 @@ def test_the_daemon_can_quiet_the_cycle_collector(make_server):
     finally:
         srv.stop()
     assert gc.isenabled(), "stopping the daemon must give the collector back"
+
+
+# -- latency instrumentation ------------------------------------------
+
+@pytest.mark.smoke
+def test_status_carries_where_the_latency_is(connect):
+    """Counters say a buffer went dry; these say by how much the thread
+    that fills it was late, which is the number a fix has to move."""
+    c = connect("control")
+    c.subscribe()
+    c.call("start", mode="capture", adc_hz=200000, channels=2)
+    c.wait_frames(20, timeout=15.0)
+    j = c.call("status")["status"]["jitter"]
+
+    assert set(j) >= {"read_gap", "fanout"}
+    assert j["read_gap"]["n"] > 0
+    assert j["fanout"]["n"] >= 20
+    for name in ("read_gap", "fanout"):
+        s = j[name]
+        assert s["max_us"] >= s["mean_us"], f"{name}: a maximum below its mean"
+        assert s["p99_us"] >= 0
+
+
+def test_the_fanout_cost_is_recorded_per_frame(connect):
+    """One sample per frame, not per client and not per read: the
+    question it answers is what a frame costs the reader thread."""
+    c = connect("control")
+    c.subscribe()
+    c.call("start", mode="capture", adc_hz=200000, channels=2)
+    c.wait_frames(30, timeout=15.0)
+    st = c.call("status")["status"]
+    # The status reply is a snapshot, not an atomic one: frames_read is
+    # read before the histograms are, so a frame that arrives between
+    # the two leaves fan-out one ahead. Locking the read path to tidy
+    # that up would cost more than the tidiness is worth.
+    assert st["jitter"]["fanout"]["n"] <= st["frames_read"] + 2
+    assert st["jitter"]["fanout"]["n"] >= 25

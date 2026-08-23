@@ -29,6 +29,8 @@ import socket
 import threading
 import time
 
+import jitter
+
 from . import device as devmod
 from . import protocol as proto
 from . import rates as ratemod
@@ -206,6 +208,26 @@ class _Session(threading.Thread):
         except OSError:
             pass
 
+    def jitter(self):
+        """Where the latency actually is, host-side.
+
+        `read_gap` is the interval between reads that returned data - a
+        long one means the reader was descheduled while the kernel
+        buffer filled. `fanout` is what one frame costs to hand to every
+        client and the recorder, which is the work that competes with
+        the reader for the same thread.
+
+        `feed` comes from the writer when playback is running, and is
+        the one with a deadline: the device ring drains in about 18 ms
+        at the full rate.
+        """
+        out = {"read_gap": self.read_gap.summary(),
+               "fanout": self.fanout.summary()}
+        feeder = getattr(self.device, "feeder", None)
+        if feeder is not None and getattr(feeder, "gap", None) is not None:
+            out["feed"] = feeder.gap.summary()
+        return out
+
     def status(self):
         return {"addr": f"{self.addr[0]}:{self.addr[1]}", "role": self.role,
                 "subscribed": self.subscribed, "dropped": self.dropped,
@@ -285,6 +307,26 @@ class _Recorder:
             json.dump(side, f, indent=2, sort_keys=True)
         return side
 
+    def jitter(self):
+        """Where the latency actually is, host-side.
+
+        `read_gap` is the interval between reads that returned data - a
+        long one means the reader was descheduled while the kernel
+        buffer filled. `fanout` is what one frame costs to hand to every
+        client and the recorder, which is the work that competes with
+        the reader for the same thread.
+
+        `feed` comes from the writer when playback is running, and is
+        the one with a deadline: the device ring drains in about 18 ms
+        at the full rate.
+        """
+        out = {"read_gap": self.read_gap.summary(),
+               "fanout": self.fanout.summary()}
+        feeder = getattr(self.device, "feeder", None)
+        if feeder is not None and getattr(feeder, "gap", None) is not None:
+            out["feed"] = feeder.gap.summary()
+        return out
+
     def status(self):
         return {"path": self.path, "frames": self.frames, "bytes": self.bytes,
                 "dropped": self.dropped, "error": self.error}
@@ -316,6 +358,11 @@ class Server:
         self._splitter = devmod.FrameSplitter()
         self.frames_read = 0
         self.started_unix = None
+        # Latency, not rate. Every failure this project has had was a
+        # late wakeup at a moment when a buffer was empty, and an
+        # average hides exactly that.
+        self.read_gap = jitter.Histogram("device-read-gap")
+        self.fanout = jitter.Histogram("fanout")
         # The waveform a client uploaded, held for the next play. The
         # device loops it; the daemon does not generate signals.
         self.waveform = b""
@@ -403,6 +450,7 @@ class Server:
 
     def _read_loop(self):
         """Drain the device forever, whoever is or is not listening."""
+        last_read = None
         while not self._stop.is_set():
             try:
                 data = self.device.read(timeout=0.2)
@@ -412,6 +460,10 @@ class Server:
                 continue
             if not data:
                 continue
+            now = time.monotonic()
+            if last_read is not None:
+                self.read_gap.add(now - last_read)
+            last_read = now
             for frame in self._splitter.feed(data):
                 self.frames_read += 1
                 with self._lock:
@@ -421,6 +473,7 @@ class Server:
                     s.put_frame(frame)
                 if rec is not None:
                     rec.put(frame)
+                self.fanout.add(time.monotonic() - now)
 
     def forget(self, session):
         with self._lock:
@@ -503,6 +556,26 @@ class Server:
             self._description = self.device.describe()
         return dict(self._description)
 
+    def jitter(self):
+        """Where the latency actually is, host-side.
+
+        `read_gap` is the interval between reads that returned data - a
+        long one means the reader was descheduled while the kernel
+        buffer filled. `fanout` is what one frame costs to hand to every
+        client and the recorder, which is the work that competes with
+        the reader for the same thread.
+
+        `feed` comes from the writer when playback is running, and is
+        the one with a deadline: the device ring drains in about 18 ms
+        at the full rate.
+        """
+        out = {"read_gap": self.read_gap.summary(),
+               "fanout": self.fanout.summary()}
+        feeder = getattr(self.device, "feeder", None)
+        if feeder is not None and getattr(feeder, "gap", None) is not None:
+            out["feed"] = feeder.gap.summary()
+        return out
+
     def status(self):
         with self._lock:
             sessions = [s.status() for s in self.sessions]
@@ -522,6 +595,7 @@ class Server:
             "recording": rec,
             "waveform_bytes": len(self.waveform),
             "stats": self.device.stats(),
+            "jitter": self.jitter(),
         }
 
 

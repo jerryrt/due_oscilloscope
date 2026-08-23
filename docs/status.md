@@ -706,6 +706,38 @@ system's scheduler, not the GIL, and nothing here changes that. This
 decouples the daemon's own threads from each other, which is the part
 the daemon owns.
 
+## Where the latency is, in microseconds
+
+The counters say a buffer went dry. They do not say by how much the
+thread that fills it was late, and that is the number any fix has to
+move. `host/jitter.py` records three latencies in log-2 microsecond
+buckets - the interval between device reads that returned data, the
+cost of fanning one frame out to every client and the recorder, and the
+interval between the feeder's writes - and the daemon reports them in
+`status`.
+
+Validated against a condition already known to be bad, which is the
+only honest way to introduce an instrument. Four pure-Python threads
+burning CPU in the daemon process, 200 ksps loop, four seconds:
+
+| Build, load | read gap max | feed gap max | Underruns |
+|---|---|---|---|
+| GIL, quiet | 5.4 ms | 2.3 ms | 0 |
+| GIL, 4 burners | **92 ms** | **72 ms** | 18 |
+| free-threaded, 4 burners | 5.1 ms | 2.3 ms | 0 |
+
+That is the mechanism stated in the units that matter. The playback
+ring is 32 KB, which is about 80 ms at 200 ksps and about 18 ms at the
+full rate. A 72 ms gap between writes empties it; a 2.3 ms gap does
+not. Nothing here needed to be inferred from an underrun count.
+
+Two figures worth keeping from the healthy case. Fan-out costs a mean
+of 45 us per frame and never exceeded 127 us in these runs, so it is
+not what delays the reader. And the feeder's write gap is ~1.28 ms mean
+with a 2.3 ms maximum on a quiet machine, which is comfortable against
+80 ms and much less comfortable against 18 ms - which is the argument
+for ring depth, now with a number attached.
+
 ## Measured figures
 
 | Quantity | Value |

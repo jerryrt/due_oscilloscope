@@ -180,6 +180,17 @@ and not itself a measurement.
 magic. Anything beyond one frame's worth means framing is not locking
 on, which reads downstream as data corruption.
 
+### Status carries the latency histograms
+
+`status.jitter` holds three log-2 microsecond histograms: `read_gap`,
+the interval between device reads that returned data; `fanout`, what
+one frame costs to hand to every client and the recorder; and `feed`,
+the interval between the feeder's writes, present while playback runs.
+Each reports `n`, `mean_us`, `max_us` and percentile upper bounds.
+
+Read `max_us` first. A mean hides the one late wakeup that empties a
+buffer, which is the only kind of failure this system has ever had.
+
 ### Status asks the device nothing
 
 Poll it as often as you like. That is a property worth stating because
