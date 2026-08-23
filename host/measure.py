@@ -600,13 +600,18 @@ def scan_play_stats(buf, pos=0):
             continue
         hdr = bytes(buf[pos:pos + HDR_LEN])
         vals = struct.unpack(HDR_FMT, hdr)
-        if zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF != vals[12]:
+        # Field positions in HDR_FMT: 0 magic, 1 version, 2 flags,
+        # 3 channel_mask, 4 seq, 5 sample_rate_hz, 6 timestamp_us,
+        # 7 overrun_count, 8 play_consumed, 9 header_crc32. Named here
+        # because v3 dropped three fields and the old numeric indices
+        # kept parsing without complaint until they ran off the end.
+        if zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF != vals[9]:
             pos += 4
             continue
-        need = HDR_LEN + vals[7] * 2
+        need = HDR_LEN + FRAME_SAMPLES * 2
         if pos + need > n:
             break                       # payload not all here yet
-        out.append(PlayStat(vals[11], 0, 0, vals[9]))
+        out.append(PlayStat(vals[8], 0, 0, vals[6]))
         pos += need
     return out, pos
 
