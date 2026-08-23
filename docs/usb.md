@@ -67,19 +67,66 @@ device side:
 that feeds the DAC must keep whichever policy matches the device it
 talks to, and must never free-run writes into saturation.
 
-**It has not gone away, and it is now measurable.** The clock-paced
-feed against the DMA-fed ring made it rare rather than absent: on a
-machine also running a build or the test suite, roughly one 3 s run in
-eight at 200 ksps loses one to four chunks; on a quiet machine, none in
-22 runs. What changed is that it can now be *attributed* rather than
-suspected. `play_bytes_in` follows the OUT DMA's `BUFF_COUNT`
-continuously, so the device's byte count is exact, and on a run that
-skips it is short by exactly the bytes that went missing - they never
-reached the device. The quantum is the fingerprint: every such loss is
-a whole multiple of 128 bytes, where the device-side defect this was
-confused with for a fortnight lost arbitrary amounts (12 to 370 bytes,
-no common factor). `test_host_fed_ramp_loses_no_samples` separates them
-on exactly that basis.
+**It has not gone away, it is now measurable, and it is far worse than
+"rare".** `play_bytes_in` follows the OUT DMA's `BUFF_COUNT`
+continuously, so the device's byte count is exact and the question is
+answerable directly: stop feeding, let the pipeline drain, and compare.
+The quantum is the fingerprint - every such loss is a whole multiple of
+128 bytes, where the device-side defect this was confused with for a
+fortnight lost arbitrary amounts (12 to 370 bytes, no common factor).
+`test_host_fed_ramp_loses_no_samples` and
+`test_device_receives_every_byte_the_host_sent` separate them on
+exactly that basis.
+
+What that measurement shows, two runs per rate on a quiet machine,
+agreeing run to run within 1%:
+
+| DAC rate | lost per 3 s | share of what was written |
+|---|---|---|
+| 200,000 sps | 0 B | **exact** |
+| 397,959 | ~11 kB | 0.45% |
+| 600,000 | ~24 kB | 0.67% |
+| 886,363 | ~79 kB | 1.48% |
+| 1,000,000 | ~136 kB | 2.25% |
+| 1,218,750 | ~50 kB | 0.67% |
+| 1,392,857 | ~72 kB | 0.85% |
+
+So the earlier figure - one 3 s run in eight under load, none in 22 on
+a quiet machine - was measured at 200 ksps, the one rate that loses
+nothing. Above it the drop is **continuous, reproducible, and present
+on an idle machine**. It is not an event that occasionally happens to a
+run; it is the normal behaviour of this path.
+
+**The drain is not optional to the measurement.** Counters read
+straight after the feeder stops show a deficit that is mostly pipeline:
+55 to 450 kB sits in the CDC driver beneath the tty layer. That the
+remainder is genuinely lost was established by reading the device once
+a second for six seconds after the feed stopped - `play_bytes_in` and
+`play_consumed` both freeze while `play_underruns` climbs, so the
+device is sitting starved with an empty ring and the bytes never
+arrive. It also cannot be the wire: bulk OUT is CRC-checked with
+retries and NAK backpressure, so whatever reaches the host controller
+is delivered. The loss is above the controller.
+
+**This is the cause of the playback starvation**, not a separate
+defect. The ring drains at exactly the rate bytes go missing: 600,000
+sps loses 0.67% and its ring decays at 0.73% per second; 1,218,750 sps
+loses 0.67% and decays at 0.79%. Every underrun attributed to host
+scheduling, feed policy, lead size or device arming was this.
+
+**It also means over-feeding is not a fix**, though it looks like one.
+Feeding 1-2% surplus stops the ring draining and takes the underrun
+count to zero at every failing rate - while the dropped samples are
+still missing from the waveform. The counter goes green and the data
+stays wrong, which is the precise failure mode invariant 5 exists to
+prevent. The device cannot flag it: it counts and reports what *it*
+drops, and these bytes never reached it.
+
+**And the clean rates are not clean.** 886,363 and 1,000,000 sps lose
+the most (1.48% and 2.25%) and report `under=0`, because the device's
+own timing shows its converter running slow there by almost the same
+fraction (-1.58% and -2.35%). Supply and demand cancel. Judge this path
+by byte conservation, never by the underrun counter.
 
 ## close() hangs unless the device always drains OUT
 

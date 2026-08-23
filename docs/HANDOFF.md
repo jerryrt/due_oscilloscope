@@ -5,12 +5,30 @@ recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
 policy). If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
-## Where the work stands (2026-08-23, end of session)
+## Where the work stands (2026-08-23, later session)
 
-The board is a working instrument with a front end on top of it. What
-changed this session is that the host side grew a spine: a daemon that
-owns the ports, a socket API with its own test suite, and a Qt window
-that draws from it.
+**Read this first: host-fed playback loses samples above 200 ksps, and
+has all along.** The host's USB stack discards bytes `write()` has
+counted - 0.45% to 2.25% of the stream depending on rate, continuously,
+on an idle machine. It is the cause of the playback starvation that was
+objective 0a, it is the defect that was objective 0b measured properly,
+and it means **the underrun counter cannot be trusted as evidence of a
+clean run**: the two rates that report `under=0` most reliably are
+losing 1.5% and 2.3% of the waveform. Full write-up in objective 0a/0b
+below and in `docs/usb.md`. Nothing above 200 ksps should be quoted as
+a clean AWG or loop figure until this is fixed.
+
+The instruments that found it are new and worth knowing about: the
+device now keeps its own playback-ring occupancy histogram and a
+decimated trace of it (`O`), times its own run (`play_run_us`), and
+`test_device_receives_every_byte_the_host_sent` compares the host's
+write count against the device's receive count with the pipeline
+drained.
+
+The rest of the board is a working instrument with a front end on top
+of it. What the previous session added was a spine on the host side: a
+daemon that owns the ports, a socket API with its own test suite, and a
+Qt window that draws from it.
 
 **The daemon.** `host/daemon/` owns both ports and the real-time
 feeder and serves clients over TCP - `docs/daemon-api.md` is the
@@ -75,10 +93,11 @@ worth not re-deriving:
 Work is on `main` and pushed. The board was last flashed with
 **Track B**.
 
-Three things separated out of the lost-sample defect in the previous
-session remain objectives 0a to 0c: the rate starvation is a different
-mechanism, what is left of the sample loss is the host's, and the
-suite wedged once in `close()`.
+Of the three things separated out of the lost-sample defect in the
+previous session, two have turned out to be one: **the rate starvation
+and the host's sample loss are the same defect**, and it is larger than
+either entry described - see 0a/0b. The `close()` wedge (0c) is still
+its own unreproduced thing.
 
 Track A is level with Track B where it counts - same command letters,
 same output format, same refusals, same wire format, same throughput -
@@ -112,7 +131,7 @@ regime is validated by the tone-amplitude oracle (theoretical maximum
 | Regime | State | Evidence |
 |---|---|---|
 | Matched loop up to 453,488 sps each way (ADC in-spec ceiling) | under=0, gaps=0, median window 1371 | at 200 ksps the loop is now byte-exact end to end: `play_bytes_in` equals the host's `write()` count and a host-fed ramp has no discontinuities |
-| AWG play-only up to 1.393 Msps (DACC hardware ceiling, RC 28) | **runs; not reliably clean** | 5 runs each: RC 195/98/44/39 are 5/5 under=0, RC 65 is 0/5, RC 32 is 3/5, RC 28 is 1/5. See objective 0a |
+| AWG play-only up to 1.393 Msps (DACC hardware ceiling, RC 28) | **runs; loses samples above 200 ksps** | the underrun pattern (RC 195/98/44/39 clean, 65/32/28 not) is a *symptom*: the host discards 0.45-2.25% of what it writes at every rate above 200 ksps, and the rates that report under=0 are among the worst losers. See objective 0a/0b |
 | Full-rate pair: DAC 906,976 + capture 906,976 aggregate | **runs, under=0**, both tracks | windows 1074-1345 (B), 1028-1338 (A) |
 | Transport via endpoint DMA | measured | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s |
 | Two-channel DAC (tag-interleaved) | routing verified | purity open, see objective 4 |
@@ -155,10 +174,15 @@ publishing.
 
 ## Next objectives, in order
 
-**Start here**: objective 0a. It is the oldest thing still open, the
-mechanism is now narrowed to the device rather than the feed, and the
-next experiment is written out under it. Everything else on this list
-is either a smaller job or waits on hardware.
+**Start here**: objective 0a/0b. The diagnosis is finished - the host
+discards bytes `write()` counted, continuously, at every rate above
+200 ksps, and that is the whole of the playback starvation. What is
+open is the remedy, and the next experiment is written out under it.
+Everything else on this list is either a smaller job or waits on
+hardware.
+
+Read that entry before trusting any underrun count in this file. Two
+rates that report `under=0` are losing 1.5% and 2.3% of the waveform.
 
 If you would rather build than debug, the alternative is **G2** on the
 front end - trigger, measurements, FFT - which needs no board at all
@@ -168,61 +192,99 @@ Objectives 0a to 0c are what came out of the lost-sample defect when it
 was taken apart. None of them is that defect; each was folded into it
 before and is now separate, with its own evidence.
 
-0a. **Playback starves at RC 65, 32 and 28** while the rates either side
-   of them are clean. A feed-policy problem, not a bandwidth ceiling:
-   during starvation the host's tty output queue is empty (median 0 B),
-   so the device drains everything written the moment it is written and
-   the host is simply never far enough ahead. The feeder's 20 KB lead
-   is spent once at startup and never rebuilt, and whether a run keeps
-   a cushion is decided in its first milliseconds and holds for the
-   whole run. Larger leads (24 and 28 KB), a single-write opening
-   burst, and a larger device prime threshold (4 -> 16 buffers) each
-   changed nothing.
+0a/0b. **The host's USB stack discards bytes `write()` counted, and
+   that is the whole of the playback starvation.** These were two
+   objectives. They are one defect, and the second one caused the first.
 
-   **It is not a rate deficit, and not a clock mismatch.** At RC 65 the
-   host fed a 2% surplus over what the DAC needs and still underran 7
-   to 10 times a run; pacing against the device's own clock cannot help
-   a feed that is already ahead. A feeder that over-fed into saturation
-   underran zero times in 4 of 4 runs and armed ~3,525 spans against
-   ~237 - so the span pattern, not the average rate, is what separates
-   the two. That fix is not shipped: writing until the queue blocks is
-   the saturation that makes macOS drop 128-byte chunks. Full write-up,
-   including two drift figures that turned out to be measurement
-   artifacts, in `docs/status.md`.
+   **What was measured.** Stop feeding, let the pipeline drain, then
+   compare the host's `write()` count against `play_bytes_in`, which is
+   exact because it follows the OUT DMA's `BUFF_COUNT`. Two runs per
+   rate on a quiet machine, agreeing within 1%: 200,000 sps loses
+   nothing; 397,959 loses 0.45%; 600,000 loses 0.67%; 886,363 loses
+   1.48%; 1,000,000 loses 2.25%; 1,218,750 loses 0.67%; 1,392,857 loses
+   0.85%. Every deficit is a whole multiple of 128 bytes while the host
+   only ever writes multiples of 512. Held by
+   `test_device_receives_every_byte_the_host_sent`, which asserts the
+   128-byte granularity at every rate (a ragged loss would be the
+   device dropping data it received, which is worse) and xfails above
+   200 ksps naming the chunk count.
 
-   **The next experiment, stated so it can be run without re-deriving
-   it:** hold a bounded lead measured against the device's consumption
-   rather than against the kernel queue - target 70-80% ring occupancy
-   - and watch the span count. If spans stay high while the queue
-   stays shallow, the mechanism is confirmed and the policy is safe to
-   ship. If spans collapse the moment the queue drains, the arming
-   policy in firmware is what needs changing, not the feed.
+   **The drain is what makes it a measurement.** Counters read straight
+   after the feeder stops show a deficit that is mostly pipeline - 55
+   to 450 KB sits in the CDC driver below the tty layer. That the rest
+   is genuinely gone was established by reading the device once a second
+   for six seconds afterwards: `play_bytes_in` and `play_consumed`
+   freeze while `play_underruns` climbs. The device sits starved with an
+   empty ring and the bytes never arrive. It is not the wire either -
+   bulk OUT is CRC'd with retries and NAK backpressure.
 
-   Do not reach for the device clock to do it. That was tried and the
-   arithmetic is in `docs/status.md`: the device's timestamps lag by
-   however deep the kernel buffer is, so pacing on them silently
-   over-feeds, and over-feeding is saturation - which is where macOS
-   drops 128-byte chunks.
+   **So the old 0b figure was an artifact of where it was measured.**
+   "Roughly one 3 s run in eight under load, none in 22 on a quiet
+   machine" was measured at 200 ksps, the one rate that loses nothing.
+   Above it the loss is continuous and reproducible on an idle machine.
 
-   The `spans` counter added with the lost-sample fix is a new handle
-   on it: a starving run arms few, large DMA spans (RC 32, failing: 464
-   in 3 s) and a healthy one arms many small ones (RC 32, clean:
-   6,610). Tracked as `STARVES` in `tests/test_rates.py`, xfail and
-   non-strict, so it reports on every run and turns green by itself.
-   The 2026-08-22 pass xpassed RC 65 on three of the four ladder
-   entries that carry it - Track A one-channel and AWG, Track B AWG -
-   and still xfailed Track B one-channel. That is the intermittency
-   this objective describes, not a change in it.
+   **And it explains 0a exactly.** The ring drains at the rate bytes go
+   missing: RC 65 loses 0.67% and decays at 0.73% per second; RC 32
+   loses 0.67% and decays at 0.79%. Everything the old entry blamed -
+   scheduling, feed policy, lead size, span arming - was this.
 
-0b. **macOS drops 128-byte chunks from the tty output queue** under
-   load, having counted them in `write()`. Long documented in
-   `docs/usb.md` as a hazard; now *measured*, because the device's byte
-   accounting is exact: a run that skips is short by whole multiples of
-   128 bytes and the device never received them. Roughly one 3 s run in
-   eight with a build or the suite running alongside, none in 22 runs on
-   a quiet machine. Reported by `test_host_fed_ramp_loses_no_samples` as
-   an xfail that names the host; an arbitrary-sized jump fails the same
-   test outright, because that would be the device losing data again.
+   **Three things the old 0a entry asserted are wrong**, disproved by
+   the device's own occupancy trace (`O`, added this session):
+
+   - *"Decided in its first milliseconds and holds for the whole run."*
+     No. Every run starts at 20 slots, exactly where the 20 KB lead puts
+     it. RC 32 then decays linearly to 4 over 850 ms; RC 65 over 2 s.
+     What differs between rates is the slope, not the start.
+   - *"A starving run arms few large spans and a healthy one many
+     small ones."* True but backwards as a diagnosis. The arming code
+     spans **all** contiguous free slots, so span size is a function of
+     occupancy. Spans are a symptom; the feed is the cause.
+   - *"`B` costs no underruns."* Rate-dependent. At 200 ksps the ring
+     holds 51 ms and it is free; at RC 65 with the ring at 5 slots,
+     polling at 20 Hz took the run from 6 underruns to 30. Where you
+     most want to observe, observing is what breaks it. That is why the
+     occupancy instrument lives on the device.
+
+   **The floor is a servo, which is why it is stable at ~5 slots.** The
+   ENDTX guard needs 3 slots; below that it repeats a buffer, and a
+   repeat consumes time but not data, so the device's data consumption
+   falls until it matches whatever the host actually delivered. The
+   underrun count is that error signal: at RC 65, 0.0031 of 3516 ENDTX
+   events found fewer than three slots, which is the 11 underruns
+   reported.
+
+   **Do not "fix" this by over-feeding.** Feeding 1-2% surplus takes
+   every failing rate to `under=0` - measured at scales 1.005 through
+   1.05 - while the dropped samples stay missing. The counter goes green
+   and the waveform stays broken, which is exactly what invariant 5
+   exists to prevent. For the same reason **the clean rates are not
+   clean**: 886,363 and 1,000,000 sps lose the most (1.48%, 2.25%) and
+   report `under=0` only because the device's own timing shows its
+   converter running slow there by nearly the same fraction. Two errors
+   cancelling. Judge this path by byte conservation, never by the
+   underrun counter.
+
+   **Also ruled out.** It is not the device's clock: the device times
+   its own run now (`play_run_us`) and agrees with the host to 0.02%.
+   It is not a rate-dependent quirk: sweeping a deliberate feed-rate
+   offset puts the balance point - where the ring neither fills nor
+   drains - at 1.0077 for both RC 65 and RC 32, two rates a factor of
+   two apart, so the shortfall is a constant fraction. And a feed loop
+   closed on `TIOCOUTQ` cannot work: it reports the tty layer only,
+   reading 0 while tens to hundreds of KB sit in the CDC driver, so it
+   computes that it is at its target depth while the ring holds five
+   slots. Any feedback needs a signal from the device.
+
+   **The next question is what makes macOS drop**, and whether the OUT
+   path can be made lossless through the tty at all or has to leave
+   CDC-ACM entirely (a vendor-specific interface claimed with libusb,
+   or IOKit bulk endpoints directly). Note the shape of the evidence
+   before designing: loss is zero at 200 ksps and non-zero at every rate
+   above, it is not monotonic in rate, and it is unaffected by machine
+   load. A per-write size or cadence effect fits that better than
+   queue pressure does, and the cheapest next experiment is to sweep
+   write size and inter-write interval at a fixed rate and see which
+   one moves the deficit.
 
 0c. **The suite wedged once in `close()` after the duplex DMA bench**,
    on 2026-08-22, and it is unexplained. All 134 tests reported and
