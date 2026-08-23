@@ -416,14 +416,17 @@ pip install -e .[gui]       # PySide6, pyqtgraph, numpy, scipy
 pip install -e .[dev]       # pytest
 ```
 
-**Which interpreter, checked rather than assumed.** PySide6 6.9.3 is
-`cp39-abi3` and declares `>=3.9,<3.14`, so the GUI venv must be 3.13 or
-older; its macOS wheel is `macosx_12_0_universal2`, which this host
-(12.7.6, Intel) satisfies, so the front end can be developed here.
-numpy ships a cp314 x86_64 wheel and constrains nothing. The test venv
-runs 3.14.6 from MacPorts today; the GUI wants `sudo port install
-python313`. Providing the interpreter is the OS user's job - the
-project declares what it needs and does not work around an old one.
+**Which interpreter, settled by installing it.** The GUI venv is
+`.venv-gui` on Python 3.13.14, carrying PySide6 6.9.3 (Qt 6.9.3),
+pyqtgraph 0.14.0, numpy 2.5.2 and scipy 1.18.1 - installed on this
+machine and imported, not inferred from metadata. PySide6 is
+`cp39-abi3` and declares `>=3.9,<3.14`, so 3.14 is out for the GUI
+while the test venv is happy there; its wheel is
+`macosx_12_0_universal2`, which this host satisfies. The front end can
+be developed here.
+
+Providing the interpreter is the OS user's job - the project declares
+what it needs and does not work around an old one.
 
 For a machine with no package manager, vendor the wheels and install
 with `--no-index --find-links`. That is a better offline story than

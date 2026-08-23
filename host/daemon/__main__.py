@@ -30,6 +30,10 @@ def main(argv=None):
                     help="serve synthetic frames instead of a board")
     ap.add_argument("--pace", action="store_true",
                     help="with --fake, produce frames at the claimed rate")
+    ap.add_argument("--gc", action="store_true",
+                    help="leave the cycle collector running; by default the "
+                         "daemon disables it, since the streaming path "
+                         "makes no cycles and refcounting frees promptly")
     args = ap.parse_args(argv)
 
     if args.fake:
@@ -39,7 +43,8 @@ def main(argv=None):
         board = measure.Board(settle=3.0)
         dev = devmod.BoardDevice(board)
 
-    srv = srvmod.Server(dev, host=args.host, port=args.port).start()
+    srv = srvmod.Server(dev, host=args.host, port=args.port,
+                        tune_gc=not args.gc).start()
     print(f"daemon on {srv.host}:{srv.port}  device={dev.describe()}")
     try:
         while True:

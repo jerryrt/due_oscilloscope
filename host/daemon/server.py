@@ -22,6 +22,7 @@ to survive the front end. See `docs/frontend.md`.
 from __future__ import annotations
 
 import collections
+import gc
 import json
 import os
 import socket
@@ -44,6 +45,25 @@ CLIENT_QUEUE_FRAMES = 64
 RECORD_QUEUE_FRAMES = 512
 
 
+def _sendmsg_all(sock, hdr, body):
+    """Send header and body as two buffers, handling a partial send.
+
+    `sendmsg` writes what it can and reports how much, so a large frame
+    on a full socket buffer comes back short and the rest has to be
+    re-offered. Getting this wrong corrupts the stream rather than
+    slowing it, which is why it is one function with one job.
+    """
+    parts = [hdr, body]
+    sent = sock.sendmsg(parts)
+    total = len(hdr) + len(body)
+    while sent < total:
+        if sent < len(hdr):
+            parts = [memoryview(hdr)[sent:], body]
+        else:
+            parts = [memoryview(body)[sent - len(hdr):]]
+        sent += sock.sendmsg(parts)
+
+
 class _Session(threading.Thread):
     """One connected client: a receive loop here, a sender thread, and a
     bounded queue between them."""
@@ -58,51 +78,89 @@ class _Session(threading.Thread):
         self.dropped = 0
         self.sent_frames = 0
         self.hello = False
-        self._q = collections.deque()
+        # Two queues, not one of (type, body) pairs. A tuple per frame
+        # is a container object per frame, and container churn is what
+        # the cycle collector scans - the frame bytes themselves are not
+        # even tracked by it. At 442 frames a second the tuples are the
+        # allocation that matters.
+        self._events = collections.deque()
+        self._frames = collections.deque()
+        self._hdr = {}
         self._cv = threading.Condition()
         self._stop = threading.Event()
         self._sender = threading.Thread(target=self._send_loop, daemon=True,
                                         name=f"sender-{addr}")
 
     # -- outbound ----------------------------------------------------
-    def put(self, mtype, body):
-        """Queue a message. Frames are droppable; events are not.
+    def put_frame(self, frame):
+        """Queue one device frame, dropping the oldest if full.
 
-        Dropping the *oldest* frames rather than the newest is
-        deliberate: a client that fell behind wants to catch up with
-        what is happening now, not to replay what it missed.
+        Dropping the *oldest* rather than the newest is deliberate: a
+        client that fell behind wants to catch up with what is happening
+        now, not to replay what it missed.
+
+        The frame is queued as it arrived. Its 8-byte header is added at
+        send time from a per-length cache, so nothing here concatenates
+        a header onto 4 KB of payload once per client per frame.
         """
         with self._cv:
             if self._stop.is_set():
                 return
-            if mtype == proto.T_FRAME:
-                frames = sum(1 for t, _ in self._q if t == proto.T_FRAME)
-                while frames >= self.server.client_queue_frames:
-                    for i, (t, _) in enumerate(self._q):
-                        if t == proto.T_FRAME:
-                            del self._q[i]
-                            break
-                    frames -= 1
-                    self.dropped += 1
-            self._q.append((mtype, body))
+            while len(self._frames) >= self.server.client_queue_frames:
+                self._frames.popleft()
+                self.dropped += 1
+            self._frames.append(frame)
+            self._cv.notify()
+
+    def put_message(self, blob):
+        """Queue an already-encoded message. Never dropped."""
+        with self._cv:
+            if self._stop.is_set():
+                return
+            self._events.append(blob)
             self._cv.notify()
 
     def event(self, name, **kw):
         obj = dict(kw)
         obj["event"] = name
-        self.put(proto.T_EVT, proto.encode_json(proto.T_EVT, obj))
+        self.put_message(proto.encode_json(proto.T_EVT, obj))
+
+    def _frame_header(self, n):
+        hdr = self._hdr.get(n)
+        if hdr is None:
+            hdr = proto.HDR.pack(proto.MAGIC, proto.T_FRAME, 0, n)
+            self._hdr[n] = hdr
+        return hdr
 
     def _send_loop(self):
+        """Events first, then frames.
+
+        A reply must not queue behind four hundred frames a client has
+        not read yet, and a frame is the thing that may be dropped.
+        """
+        sendmsg = getattr(self.conn, "sendmsg", None)
         while not self._stop.is_set():
+            frame = blob = None
             with self._cv:
-                while not self._q and not self._stop.is_set():
+                while not self._events and not self._frames \
+                        and not self._stop.is_set():
                     self._cv.wait(0.2)
                 if self._stop.is_set():
                     return
-                mtype, body = self._q.popleft()
+                if self._events:
+                    blob = self._events.popleft()
+                else:
+                    frame = self._frames.popleft()
             try:
-                self.conn.sendall(body)
-                if mtype == proto.T_FRAME:
+                if blob is not None:
+                    self.conn.sendall(blob)
+                else:
+                    hdr = self._frame_header(len(frame))
+                    if sendmsg is not None:
+                        _sendmsg_all(self.conn, hdr, frame)
+                    else:
+                        # Windows has no sendmsg; pay the copy there.
+                        self.conn.sendall(hdr + frame)
                     self.sent_frames += 1
             except OSError:
                 self.close()
@@ -242,7 +300,7 @@ class Server:
     """
 
     def __init__(self, device, host="0.0.0.0", port=DEFAULT_PORT, *,
-                 client_queue_frames=CLIENT_QUEUE_FRAMES):
+                 client_queue_frames=CLIENT_QUEUE_FRAMES, tune_gc=False):
         self.device = device
         self.host = host
         self.port = port
@@ -262,9 +320,23 @@ class Server:
         # device loops it; the daemon does not generate signals.
         self.waveform = b""
         self._description = None
+        # Off by default: importing a library must not change the
+        # collector of whatever process happens to load it. The daemon
+        # process turns it on for itself.
+        self.tune_gc = tune_gc
+        self._gc_was_enabled = None
 
     # -- lifecycle ---------------------------------------------------
     def start(self):
+        if self.tune_gc:
+            # Reference counting still frees promptly; it is the cycle
+            # detector that pauses, and the streaming path is built not
+            # to make cycles. freeze() moves everything alive now out of
+            # the generations so a later collection has less to walk.
+            gc.collect()
+            gc.freeze()
+            self._gc_was_enabled = gc.isenabled()
+            gc.disable()
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._sock.bind((self.host, self.port))
@@ -305,6 +377,10 @@ class Server:
             self.device.close()
         except Exception:                            # noqa: BLE001
             pass
+        if self._gc_was_enabled:
+            gc.enable()
+            gc.unfreeze()
+            self._gc_was_enabled = None
 
     def __enter__(self):
         return self.start()
@@ -338,12 +414,11 @@ class Server:
                 continue
             for frame in self._splitter.feed(data):
                 self.frames_read += 1
-                msg = proto.encode(proto.T_FRAME, frame)
                 with self._lock:
                     targets = [s for s in self.sessions if s.subscribed]
                     rec = self.recorder
                 for s in targets:
-                    s.put(proto.T_FRAME, msg)
+                    s.put_frame(frame)
                 if rec is not None:
                     rec.put(frame)
 

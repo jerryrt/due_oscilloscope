@@ -203,12 +203,17 @@ working code. Treat that as a fact about the code, not a rule new code
 inherits: everything runs from the venv now, and anything that needs a
 dependency may take one.
 
-**The GUI needs an older interpreter than the tests do.** PySide6 6.9.3
-is `cp39-abi3` and declares `>=3.9,<3.14`, so it will not install on
-3.14; its macOS wheel is `macosx_12_0_universal2`, which this host
-(12.7.6, x86_64) satisfies. numpy ships a cp314 x86_64 wheel and is
-fine either way. So the GUI venv wants 3.13 - `sudo port install
-python313` - while the test venv is happy on 3.14.
+**Two venvs, two interpreters, and both exist here.** PySide6 6.9.3 is
+`cp39-abi3` and declares `>=3.9,<3.14`, so it will not install on 3.14.
+
+| venv | Interpreter | Holds |
+|---|---|---|
+| `.venv` | 3.14.6 (`/opt/local/bin/python3.14`) | pytest |
+| `.venv-gui` | 3.13.14 (`/opt/local/bin/python3.13`) | PySide6 6.9.3, pyqtgraph 0.14.0, numpy 2.5.2, scipy 1.18.1 |
+
+Both are installed and both import - verified, not inferred from
+metadata. Neither is committed; a venv holds absolute paths and
+platform-specific wheels and does not travel.
 
 **Use the xPack toolchain, not ARM's official macOS build.** ARM's links
 `cc1` against Homebrew's zstd at an absolute path and cannot run on this

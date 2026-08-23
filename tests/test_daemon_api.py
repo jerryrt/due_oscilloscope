@@ -12,9 +12,11 @@ and sequence numbers included, so `measure.parse_frames` is what checks
 they arrived intact.
 """
 
+import gc
 import json
 import os
 import socket
+import sys
 import threading
 import time
 
@@ -504,3 +506,72 @@ def test_the_bind_address_is_a_setting(make_server):
     srv = make_server()
     assert srv.host == "127.0.0.1"
     assert servermod.Server(devmod.FakeDevice()).host == "0.0.0.0"
+
+
+# -- allocation behaviour ---------------------------------------------
+
+def _stream_and_count(make_server, n_frames):
+    """Warm every code path, then measure what streaming actually costs."""
+    srv = make_server(pace=False)
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=30.0,
+                         frame_capacity=16)
+    c.connect()
+    c.hello("control")
+    c.subscribe()
+    c.call("start", mode="capture", adc_hz=200000, channels=2)
+    c.wait_frames(200, timeout=30.0)
+    gc.collect()
+    base_blocks = sys.getallocatedblocks()
+    base_gen0 = gc.get_stats()[0]["collections"]
+    start = c.frames_received
+    c.wait_frames(start + n_frames, timeout=60.0)
+    out = (sys.getallocatedblocks() - base_blocks,
+           gc.get_stats()[0]["collections"] - base_gen0,
+           c.frames_received - start)
+    c.call("stop")
+    c.close()
+    return out
+
+
+@pytest.mark.slow
+def test_streaming_does_not_grow_the_heap(make_server):
+    """A daemon that allocates per frame has a pause waiting to happen.
+
+    The frame bytes are not the problem - the cycle collector does not
+    even track them. Container churn is: a tuple per frame per client is
+    a tracked object 442 times a second. So frames and events ride
+    separate queues and the 8-byte header is cached per length rather
+    than concatenated onto 4 KB of payload.
+
+    Measured after that change: 2,000 frames grow the heap by 40 to 96
+    blocks in total, which is not a function of the frame count. The
+    bound here is far above what was measured and far below anything
+    proportional.
+    """
+    blocks, _, got = _stream_and_count(make_server, 2000)
+    assert got >= 2000
+    assert blocks < 500, (
+        f"{blocks} blocks for {got} frames ({blocks / got:.2f} each): the "
+        f"streaming path is allocating per frame again")
+
+
+@pytest.mark.slow
+def test_streaming_does_not_wake_the_cycle_collector(make_server):
+    """Measured at zero collections over 2,000 frames, twice."""
+    _, gen0, got = _stream_and_count(make_server, 2000)
+    assert gen0 <= 1, (
+        f"{gen0} generation-0 collections while streaming {got} frames: "
+        f"something in the hot path is creating tracked containers")
+
+
+def test_the_daemon_can_quiet_the_cycle_collector(make_server):
+    """Off by default, because importing a library must not change the
+    collector of whatever process loads it. The daemon process turns it
+    on for itself."""
+    assert gc.isenabled(), "the test process should start with gc on"
+    srv = make_server(tune_gc=True)
+    try:
+        assert not gc.isenabled()
+    finally:
+        srv.stop()
+    assert gc.isenabled(), "stopping the daemon must give the collector back"
