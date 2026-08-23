@@ -1,5 +1,16 @@
 # Status and Known Issues
 
+> **2026-08-23: read `docs/HANDOFF.md` objective 0h before quoting
+> anything below that was measured above 200 ksps.** The host's USB
+> stack was silently discarding 0.45-0.85% of what `write()` counted on
+> the playback path, and the underrun counter - which most figures here
+> were judged by - stays at zero through exactly that kind of loss. The
+> feed is fixed (a constant 512-byte write, `Feeder.WRITE_SIZE`), two
+> narrower losses remain, and the figures here have not yet been
+> re-read against byte conservation. Some will hold; 886,363 and
+> 1,000,000 sps will not.
+
+
 Updated after the host-fed playback loss was root-caused and fixed on
 both tracks: `play_service()` read the OUT DMA's status register twice
 where it needed one read. See "Found by the test suite: host-fed
@@ -888,7 +899,7 @@ to place a buffer in bank 1 under the core's linker.
 | Capture at max in-spec (MCK 78) | 453,488 Hz/ch declared, 453,489 measured, ratio 1.000 |
 | Full loop, duplex | 200 ksps DAC + 400 ksps ADC, tone 1371+/-2 in every window |
 | USB IN only (RT threaded host) | 5.20 MB/s |
-| USB OUT only (RT threaded host) | 5.03 MB/s, byte-perfect vs device counter |
+| USB OUT only (RT threaded host) | 5.03 MB/s, matched the device counter - but read without draining the pipeline, so it could not have shown a shortfall; see docs/usb.md |
 | USB duplex (RT threaded host) | 2.77 in + 2.47 out = 5.25 MB/s combined |
 | **Matched loop ceiling** | **453,488 sps DAC + 906,976 sps capture, solid** (under=0, gaps=0, 1372 codes) |
 | **AWG (play-only) ceiling** | **1.383 Msps solid** (RC 28, under=0, 2.81 MB/s feed); DACC saturates ~1.41 M over-triggered |

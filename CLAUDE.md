@@ -10,12 +10,22 @@ A 12-bit oscilloscope and signal generator on the Arduino Due
 (SAM3X8E, Cortex-M3 @ 84 MHz). The board acquires and generates; the
 host does all DSP and visualisation.
 
-Status: **full loop working and solid, with a front end on it.** Both
-tracks stream the ADC's complete in-spec output gaplessly, and both run
-host-fed DAC playback with simultaneous capture (HOST -> DAC0 -> A0 ->
-HOST) at zero underruns and tone amplitude at the theoretical maximum.
-Both move bulk data by UOTGHS endpoint DMA and reach the full-rate
-pair; Track A keeps the Arduino core for enumeration only.
+Status: **full loop working, with a front end on it, and a
+re-validation debt.** Both tracks stream the ADC's complete in-spec
+output gaplessly, and both run host-fed DAC playback with simultaneous
+capture (HOST -> DAC0 -> A0 -> HOST) at zero underruns and tone
+amplitude at the theoretical maximum. Both move bulk data by UOTGHS
+endpoint DMA and reach the full-rate pair; Track A keeps the Arduino
+core for enumeration only.
+
+**But "zero underruns" is not the guarantee it reads as.** Until
+2026-08-23 the host's USB stack was silently discarding 0.45-0.85% of
+what `write()` counted on the playback path, and an underrun counter
+stays at zero through exactly that. The feed is fixed - a constant
+512-byte write, `Feeder.WRITE_SIZE` - but most figures measured above
+200 ksps predate the fix and have not been re-read against byte
+conservation. See objective 0h in `docs/HANDOFF.md` before quoting
+any of them.
 
 The host side is a daemon that owns the ports (`host/daemon/`) and a Qt
 window that draws from it (`gui/`), and both have test suites that need
@@ -92,12 +102,23 @@ Check here before reasoning from general Arduino knowledge.
   channels, leaving enumeration and control transfers with the core.
   The fact above is why that file exists, not a description of what
   Track A does now.
-- **macOS's CDC-ACM output path drops ~128-byte chunks under pressure**,
-  silently, with `write()` having counted them and every counter on
-  both sides green. Never free-run writes into saturation. The safe
-  feed policy depends on the device side - clock-paced with a bounded
-  lead against the current DMA-fed ring, empty-queue-gated against a
-  manual-FIFO device. See `docs/usb.md`.
+- **macOS's CDC-ACM output path discards bytes `write()` has counted**,
+  silently, with every counter on both sides green. Two separate
+  behaviours, and both are measured:
+  - **Under pressure** it drops ~128-byte chunks. Never free-run writes
+    into saturation.
+  - **Regardless of pressure**, it loses 0.45-0.85% at every rate above
+    200 ksps unless every `write()` is *the same size*. A constant 512
+    bytes is lossless; "whatever is due" is not, even when every write
+    it emits is 512 or 1024. The mechanism is unknown; the measurement
+    is not. `Feeder.WRITE_SIZE`.
+
+  The safe feed is therefore: constant-size writes, clock-paced, with a
+  bounded lead against the DMA-fed ring, sleeping until the next write
+  is due rather than on a fixed tick. Against a manual-FIFO device the
+  old empty-queue gate applies instead. **A byte comparison against the
+  device proves nothing without draining the pipeline first** - 55 to
+  450 KB sits in the CDC driver below the tty layer. See `docs/usb.md`.
 - **A CDC device must keep draining bulk OUT even when nothing uses
   it.** macOS's `close()` waits for in-flight write URBs; a NAKing pipe
   never completes them and the host process hangs in `close()` holding

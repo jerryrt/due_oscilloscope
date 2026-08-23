@@ -7,23 +7,50 @@ policy). If you are here to build the test suite, the whole plan is in
 
 ## Where the work stands (2026-08-23, later session)
 
-**Read this first: host-fed playback loses samples above 200 ksps, and
-has all along.** The host's USB stack discards bytes `write()` has
-counted - 0.45% to 2.25% of the stream depending on rate, continuously,
-on an idle machine. It is the cause of the playback starvation that was
-objective 0a, it is the defect that was objective 0b measured properly,
-and it means **the underrun counter cannot be trusted as evidence of a
-clean run**: the two rates that report `under=0` most reliably are
-losing 1.5% and 2.3% of the waveform. Full write-up in objective 0a/0b
-below and in `docs/usb.md`. Nothing above 200 ksps should be quoted as
-a clean AWG or loop figure until this is fixed.
+**Host-fed playback was losing samples at every rate above 200 ksps,
+and had been all along. That is fixed; two narrower losses remain.**
 
-The instruments that found it are new and worth knowing about: the
-device now keeps its own playback-ring occupancy histogram and a
-decimated trace of it (`O`), times its own run (`play_run_us`), and
-`test_device_receives_every_byte_the_host_sent` compares the host's
-write count against the device's receive count with the pipeline
-drained.
+The host's USB stack discards bytes `write()` has counted - silently,
+with nothing erroring and every counter on both sides green. It was the
+cause of the playback starvation that was objective 0a, and it was
+objective 0b measured properly rather than at the one rate that happens
+not to show it.
+
+**The fix is one line of policy: write a constant 512 bytes per
+`write()`** instead of "whatever is due, capped at 16 KB"
+(`Feeder.WRITE_SIZE`). Same sizes on the wire, same pacing, same rate -
+and no loss where the old policy lost 0.45% to 0.85%. The AWG and
+one-channel ladders now run clean with no xfails, `STARVES` is empty,
+and the three rates that starved report `under=0` with the ring at
+21-30 slots instead of 5.
+
+**What still loses samples, and neither shows up as an underrun:**
+
+- **Oversupply at 886,363 and 1,000,000 sps** - 1.35% and 2.15%. Those
+  converters run slow (1.58% and 2.35% by the device's own clock), the
+  host feeds more than they can take, and the surplus is discarded
+  rather than queued. Both report `under=0` while losing more than any
+  other rate on the ladder.
+- **An intermittent residual at 1,218,750 sps** - exact on most runs,
+  then 384 B or 452,352 B with no pattern yet.
+
+**So the rule this session earned: the underrun counter is not evidence
+of a clean run.** It agreed with every wrong theory in this
+investigation. Judge this path by byte conservation
+(`test_device_receives_every_byte_the_host_sent`) and purity per
+window, never by counters being green. Nothing above 200 ksps that was
+measured before this session should be quoted until it has been re-read
+that way - see objective 0h.
+
+**The instruments that found it, all new this session:** the device
+keeps its own playback-ring occupancy histogram and a decimated trace
+of it (`O`), and times its own run (`play_run_us`); `run_play(drain_s=)`
+and `run_bench(drain_s=)` let the pipeline empty before reading the
+device's byte count, without which the comparison measures what is
+still in flight rather than what was lost; and `Feeder(scale=)` and
+`Feeder(write_size=)` are the knobs that turned inference into
+measurement. `write_size=0` selects the old lossy policy and exists
+only as the control arm.
 
 The rest of the board is a working instrument with a front end on top
 of it. What the previous session added was a spine on the host side: a
@@ -63,9 +90,25 @@ units of "13 underruns"; it can now be conducted in milliseconds.
 
 ### The suite
 
-`pytest --track=both -q`: **244 passed, 2 skipped, 4 xfailed, 4
-xpassed in 12:11**. About 12 minutes for both tracks, of which the
-board-free tests are seconds.
+`pytest --track=both -q`: **261 passed, 2 skipped, 5 xfailed in
+15:10**. About 15 minutes for both tracks, of which the board-free
+tests are seconds. No failures and no xpasses - every xfail is one of
+the two remaining losses, named:
+
+| xfail | |
+|---|---|
+| `receives_every_byte[a-44]` | 113,664 B, 2.13% |
+| `receives_every_byte[a-39]` | 129,536 B, 2.15% |
+| `receives_every_byte[b-44]` | 72,576 B, 1.36% |
+| `receives_every_byte[b-39]` | 129,536 B, 2.15% |
+| `receives_every_byte[b-32]` | 446,336 B - the intermittent residual, absent on most runs |
+
+**Both tracks are byte-exact everywhere else**, including 600,000,
+1,218,750 and 1,392,857 sps, which is the constant-size feed working on
+Track A as well - the fix is host-side and needs nothing from the
+firmware. Track A shows the same oversupply at 886,363 and 1,000,000,
+which makes it a device-side property rather than a quirk of one
+build.
 
 | Venv | Interpreter | Runs |
 |---|---|---|
@@ -90,14 +133,41 @@ worth not re-deriving:
   xfail, so it inherited a number that the mechanism it measures
   exceeds routinely.
 
-Work is on `main` and pushed. The board was last flashed with
+And five more from this session, every one of which was believed on
+good-looking evidence and killed by an independent instrument rather
+than by argument. The pattern is the lesson:
+
+- **"Occupancy is decided in the first milliseconds and holds."** No.
+  Every run starts at 20 slots, exactly where the lead puts it, and
+  then decays or does not. The device's own trace showed it the moment
+  one existed.
+- **"Span count diagnoses the feed."** Backwards. The arming code
+  spans *all* contiguous free slots, so span size is a function of
+  occupancy. Spans are a symptom.
+- **"Write size is irrelevant."** Tested only at 1,000,000 sps, which
+  is oversupplied and which no write policy can fix. At 200,000 sps the
+  threshold is plain: 0.000% at 512 B and 1024 B, 0.28-0.39% at
+  2048 B, 0.56-0.76% above.
+- **"The OUT bench reproduces the same defect."** It does not. The
+  bench free-runs, which is saturation - a different regime, in which
+  *smaller* writes lose *more* (512 B: 6.7%, 16384 B: 2.16%), the
+  inverse of the paced feed. The 128-byte-granularity argument that
+  linked them was vacuous because both bench counters are 512-aligned
+  anyway.
+- **"The constant-size feed costs ADC overruns."** Two runs said so
+  (93 and 20 against 19 and 15). Three more rounds destroyed it: the
+  due-sized feed gave 7, 16, 18, 140 and 573, the constant one 3, 10,
+  11, 19 and 100. Overruns at the full-rate pair do not separate the
+  two feeds at all.
+
+Work is on `main`. **Not pushed** - the last session ended with ten
+commits sitting locally. The board was last flashed with
 **Track B**.
 
-Of the three things separated out of the lost-sample defect in the
-previous session, two have turned out to be one: **the rate starvation
-and the host's sample loss are the same defect**, and it is larger than
-either entry described - see 0a/0b. The `close()` wedge (0c) is still
-its own unreproduced thing.
+Of the three things separated out of the lost-sample defect two
+sessions ago, two turned out to be one and are now fixed: **the rate
+starvation and the host's sample loss were the same defect** - see
+0a/0b. The `close()` wedge (0c) is still its own unreproduced thing.
 
 Track A is level with Track B where it counts - same command letters,
 same output format, same refusals, same wire format, same throughput -
@@ -115,7 +185,10 @@ The 900 ksps loop runs on both: `--dac-sps 906976 --adc-hz 453488` is
 906,976 conversions per second, because two channels convert
 round-robin. Single-channel capture now exists too (`--adc-channels 1`,
 or `=<dac>,<adc>,1` on the console) and both tracks run a matched loop
-at its ceiling of 886,363 sps each way with `under=0`.
+at its ceiling of 886,363 sps each way with `under=0`. **Read `under=0`
+in that sentence with objective 0h in mind**: it was measured with the
+feed that lost bytes, and 886,363 sps is one of the two oversupplied
+rates that lose most while reporting exactly that.
 
 Track B runs the complete instrument loop on one channel pair:
 
@@ -133,7 +206,7 @@ regime is validated by the tone-amplitude oracle (theoretical maximum
 | Matched loop up to 453,488 sps each way (ADC in-spec ceiling) | under=0, gaps=0, median window 1371 | at 200 ksps the loop is now byte-exact end to end: `play_bytes_in` equals the host's `write()` count and a host-fed ramp has no discontinuities |
 | AWG play-only up to 1.393 Msps (DACC hardware ceiling, RC 28) | **runs; loses samples above 200 ksps** | the underrun pattern (RC 195/98/44/39 clean, 65/32/28 not) is a *symptom*: the host discards 0.45-2.25% of what it writes at every rate above 200 ksps, and the rates that report under=0 are among the worst losers. See objective 0a/0b |
 | Full-rate pair: DAC 906,976 + capture 906,976 aggregate | **runs, under=0**, both tracks | windows 1074-1345 (B), 1028-1338 (A) |
-| Transport via endpoint DMA | measured | IN 32.0 / OUT 26.6 byte-perfect / duplex 16.95 MB/s |
+| Transport via endpoint DMA | measured; **OUT byte-perfect withdrawn** | IN 32.0 / OUT 26.6 / duplex 16.95 MB/s, all bytes *offered*. Drained, the OUT bench delivers 26.3-28.0 depending on block size and is short by 2.2-6.8%; the benches free-run into saturation. See objective 0h |
 | Two-channel DAC (tag-interleaved) | routing verified | purity open, see objective 4 |
 
 The `~1.7 MB/s "gated OUT" cap` that once blocked full-rate duplex is
@@ -174,23 +247,24 @@ publishing.
 
 ## Next objectives, in order
 
-**Start here**: objective 0a/0b. The diagnosis is finished - the host
-discards bytes `write()` counted, continuously, at every rate above
-200 ksps, and that is the whole of the playback starvation. What is
-open is the remedy, and the next experiment is written out under it.
-Everything else on this list is either a smaller job or waits on
-hardware.
+**Start here**: objective 0i, the oversupply loss. It is the largest
+remaining hole in the data path - 1.35% and 2.15% of the waveform at
+886,363 and 1,000,000 sps - it has a clear cause, and the fix (closed
+loop on the device's own consumption) is now a real fix rather than a
+mask, because the byte loss underneath it is gone.
 
-Read that entry before trusting any underrun count in this file. Two
-rates that report `under=0` are losing 1.5% and 2.3% of the waveform.
+If you would rather build than debug, **G2** on the front end -
+trigger, measurements, FFT - needs no board at all (`--spawn-fake`) and
+cannot be blocked by the cable in objective 2.
 
-If you would rather build than debug, the alternative is **G2** on the
-front end - trigger, measurements, FFT - which needs no board at all
-(`--spawn-fake`) and cannot be blocked by the cable in objective 2.
+**Before quoting any number in this file, read objective 0h.** Most
+figures above 200 ksps were measured with a feed that silently lost
+0.45-0.85% of what it wrote, and were judged by an underrun counter
+that stays at zero through exactly that.
 
-Objectives 0a to 0c are what came out of the lost-sample defect when it
-was taken apart. None of them is that defect; each was folded into it
-before and is now separate, with its own evidence.
+The 0-series is what came out of the lost-sample defect two sessions
+ago, plus what came out of taking it apart properly. 0a/0b is fixed;
+0i, 0j, 0h and 0c are what is left.
 
 0a/0b. ~~**Playback starves at RC 65, 32 and 28.**~~ **Fixed, and it
    was never a feed-policy problem.** The host's USB stack was
@@ -348,9 +422,103 @@ before and is now separate, with its own evidence.
       removes the TIOCOUTQ blindness, so a real closed loop becomes
       possible afterwards.
 
-   Do **not** start with a feed-policy or flow-control redesign. Every
-   such policy compensates for the loss rather than removing it, takes
-   the underrun counter to zero, and leaves the waveform broken.
+   Do **not** start with a feed-policy or flow-control redesign for the
+   *floor*. Every such policy compensates for a loss rather than
+   removing it, takes the underrun counter to zero, and leaves the
+   waveform broken. That warning does not apply to 0i, where the host
+   genuinely oversupplies and matching the rate is the actual fix.
+
+0i. **Oversupply at 886,363 and 1,000,000 sps: 1.35% and 2.15% of the
+   waveform, with `under=0`.** The largest remaining loss, and the
+   place to start.
+
+   Those converters run slow - 1.58% and 2.35% measured against the
+   device's own clock (`play_run_us` with `play_consumed`). The host
+   feeds the declared rate, the device cannot take it, and the surplus
+   is discarded by the host's USB stack rather than queued. The
+   deficits are those same figures, which is the giveaway. No write
+   policy can fix this: the bytes are genuinely surplus.
+
+   **This is where the closed loop belongs.** The device reports a
+   monotonic total of buffers consumed; the host runs a slow outer loop
+   that trims its *rate* model, not its position, over a window much
+   longer than the pipeline delay - so the staleness that sank the
+   earlier device-timestamp attempt cannot bias a rate estimate. Keep
+   the fast inner loop clock-paced and constant-size.
+
+   **Two things to settle first.** The carrier must not be the console:
+   `B` polling at 20 Hz took RC 65 from 6 underruns to 30 when the ring
+   was short, because printf holds the main loop. Use the native port's
+   bulk IN, which is idle in play-only; in loop mode the capture frame
+   header already has spare fields and costs nothing. And **verify the
+   slow-converter figure before designing against it** - the same
+   instrument gave RC 32 -0.01% on one run and -6.26% on another, so it
+   is not yet trustworthy. Re-measure it with the drain-aware method.
+
+   Why those two rates and not 600,000 or 1,392,857 is unexplained. It
+   is not the DACC ceiling (1,392,857 *is* the ceiling and measures
+   exact) and not RC truncation (RC 39 divides 39 MHz to exactly
+   1,000,000).
+
+0j. **Why a constant write size is lossless and a varying one is not.**
+   The fix works and the mechanism is unknown, which is worth one more
+   session before it is forgotten.
+
+   The contradiction is sharp. A constant 512 B loses nothing. A
+   constant 1024 B loses nothing. `min(due, 1024) & ~511`, which can
+   only ever emit 512 or 1024, loses 0.47-0.84%. Same sizes, same rate,
+   same pacing, same real-time thread. A 50x finer idle sleep changes
+   nothing.
+
+   Ruled out already: it is not a startup artifact (the deficit scales
+   with run length - 2 s loses 19,840 B, 4 s 36,096 B, 8 s 67,712 B, so
+   ~8-10 kB/s continuously), and it is not queue pressure (feeding 4%
+   *under* the device's rate, with the ring draining and the queue
+   certainly empty, still loses 0.68%).
+
+   **The experiment that isolates it**, and it is cheap: strictly
+   alternate 512 B and 1024 B writes at a rate that is clean with
+   either size alone. If alternation alone reproduces the loss with
+   nothing else changed, the mechanism is cornered - and the untested
+   guess to aim at is that the CDC driver packs payloads into
+   fixed-size internal buffers that a uniform stream stays aligned to.
+
+0k. **An intermittent large loss at 1,218,750 sps.** Exact on most
+   runs, then 384 B, then 452,352 B, with no pattern found. Always a
+   whole multiple of 128. Tracked as `RESIDUAL` in
+   `tests/test_integrity.py`, by outcome rather than by mark, so a
+   clean run passes and it turns green by itself.
+
+0l. **`play_endtx_seen` disagrees with `play_consumed`.** At RC 98 it
+   reads 1165/s against 777/s with `under=0`, but the handler does
+   exactly one of `play_consumed++` or `play_underruns++` per entry, so
+   they must agree. Most likely the ISR re-enters while the DACC's
+   ENDTX flag is still asserted.
+
+   It matters because the occupancy histogram is sampled in the same
+   place, so its sample counts are inflated at some rates. The shape
+   looked right - at RC 65 the fraction of samples below three slots
+   matched the underrun count exactly - but an instrument that is
+   wrong at one rate and right at another has not been validated.
+   Fix it before drawing anything else from the histogram.
+
+0h. **Re-validation debt: most figures above 200 ksps are unproven.**
+   Not a defect, a bookkeeping obligation, and it is large.
+
+   Every AWG and loop figure in `docs/status.md` and this file above
+   200 ksps was measured with the feed that lost 0.45-0.85% of what it
+   wrote, and was judged by the underrun counter, which stays at zero
+   through exactly that kind of loss. The full-rate pair, the 900 ksps
+   loop, the tone-amplitude oracle results, the "matched loop at 886,363
+   each way with under=0" claim - none has been re-read against byte
+   conservation. Some will hold. The two oversupplied rates will not.
+
+   Re-run them with `run_play(drain_s=...)` or the loop equivalent and
+   record the deficit alongside every figure, then correct the docs.
+   Purity is judged **per window**, never per run - a phase
+   discontinuity cancels a whole-run Goertzel, which is how a constant
+   1024 B write looked fine on counters while its whole-run tone fell
+   to 500 codes.
 
 0c. **The suite wedged once in `close()` after the duplex DMA bench**,
    on 2026-08-22, and it is unexplained. All 134 tests reported and
@@ -509,8 +677,63 @@ before and is now separate, with its own evidence.
 
 ## Hard-won facts the next session must not rediscover
 
+- **The underrun counter is not evidence of a clean run.** It agreed
+  with every wrong theory in the starvation investigation. Playback
+  loss on the host side of the wire produces no underrun, no sequence
+  gap, no CRC failure and no counter movement, because the device
+  counts what *it* drops and these bytes never reach it. Judge by byte
+  conservation and by purity per window.
+- **Write a constant size to the CDC port.** A constant 512 B is
+  lossless; "whatever is due" loses 0.45-0.85% at every rate above
+  200 ksps even when every write it emits is 512 or 1024. The
+  mechanism is unknown (objective 0j); the measurement is not.
+- **Do not raise that to 1024 for syscall economy.** It is byte-exact
+  in play-only and halves the syscalls, and in the full-rate loop the
+  whole-run tone falls to 500-984 codes against 1215-1290 - the phase
+  discontinuity signature. Measured, and it looked like a free win
+  right up to the point it was measured in duplex.
+- **Sleep until the next write is due, not on a fixed tick.** A fixed
+  100 us poll costs 10k wakeups a second and 0.14 of a core at the
+  full-rate pair; the arrival time is known exactly from the byte rate.
+  With it, the constant-size feed costs no measurable CPU over the
+  due-sized one it replaced.
+- **A byte comparison against the device means nothing without a
+  drain.** 55 to 450 KB sits in the CDC driver below the tty layer, and
+  read straight after the feed stops it all looks like loss.
+  `run_play(drain_s=)` and `run_bench(drain_s=)` exist for this. To
+  prove a shortfall is real rather than in flight, read the device
+  repeatedly: `play_bytes_in` and `play_consumed` freeze while
+  `play_underruns` climbs.
+- **Counters read across a drain describe the shutdown.** A 1.5 s drain
+  at RC 39 adds ~6,000 underruns to a run that had none, and the
+  occupancy histogram spans the starvation too. `run_play` therefore
+  takes byte counts from after the drain and everything else from
+  before it, and reports occupancy as empty on a drained run.
+- **`TIOCOUTQ` is blind here.** It reports the tty layer only, reading
+  0 while tens to hundreds of KB sit in the CDC driver beneath it. A
+  feed loop closed on it computes that it is at its target ring depth
+  while the ring holds five slots. Any feedback needs a signal from the
+  device.
+- **The OUT benches free-run, which is saturation, and they are not a
+  model for the paced feed.** In that regime *smaller* writes lose
+  *more* - 512 B loses 6.7% where 16384 B loses 2.16% - the inverse of
+  the paced case. Their throughput figures are bytes offered: delivered
+  is 26.3 MB/s at 512 B against 28.0 at 16384 B, and **"OUT 26.6 MB/s
+  byte-perfect" is withdrawn.**
+- **The playback ring's floor is a servo, not a resting place.** The
+  ENDTX guard needs three slots; below that it repeats a buffer, and a
+  repeat consumes time but not data, so device consumption falls until
+  it matches whatever the host actually delivered. A ring pinned at
+  ~5 slots with a steady underrun rate is measuring the feed deficit,
+  not a scheduling problem.
+- **Asking the device costs underruns exactly where you need to ask.**
+  `B` polling at 20 Hz took RC 65 from 6 underruns to 30 with the ring
+  at 5 slots, and costs nothing at 200 ksps where the ring holds 51 ms.
+  The "B is free" note below is rate-dependent. This is why the
+  occupancy instrument lives on the device.
 - **Asking the board for its banner while it plays costs eleven
-  underruns.** Every time, measured. The banner is a long console
+  underruns**, and `B` is only free when the ring has margin - see the
+  entry above.** Every time, measured. The banner is a long console
   print, the main loop is inside it, and `play_service()` does not run
   while it is. `B`, the short counters report, costs none. The rule the
   daemon now follows: **on a poll path, ask the device nothing** - its
@@ -708,8 +931,11 @@ Same letters, same output. Track A adds `d` (DAC update-rate sweep) and
 `j`/`k` (independent-DAC cross-check), which Track B has never had.
 
 Its bulk endpoints run on UOTGHS DMA under the core's enumeration
-(`sketches/bringup/usbdma.cpp`). Measured: OUT 19.72 MB/s byte-perfect,
-IN 31.10, duplex 15.58; full loop at 200,000 sps each way with under=0
+(`sketches/bringup/usbdma.cpp`). Measured: OUT 19.72 MB/s, IN 31.10,
+duplex 15.58 - bytes offered, and the "byte-perfect" that used to
+qualify the OUT figure is withdrawn for the same reason it was on
+Track B (objective 0h); Track A has never been drained-measured at
+all; full loop at 200,000 sps each way with under=0
 and the tone at the theoretical maximum; full-rate pair (DAC 906,976 +
 capture 453,488) with under=0.
 
@@ -774,3 +1000,41 @@ python3 host/receive.py --send 5 --seconds 5 --expect-hz 885.72
 
 `receive.py --expect-hz` is the gen tone: trigger rate / 512, i.e.
 885.72 Hz at the 453,488 Hz max in-spec preset.
+
+### Measuring the byte loss
+
+Everything the 0-series above rests on comes from these, and none of
+it is reachable from the command line yet - it is library API, used
+from a scratch script or a test.
+
+```python
+import measure
+from ports import find_ports
+ctl, nat = find_ports()
+board = measure.Board(control=ctl, native=nat, settle=3.0)
+
+# Did the device receive what the host sent? drain_s is not optional:
+# without it the 55-450 KB still in the CDC driver reads as loss.
+r = measure.run_play(board, dac_sps=600000, seconds=3.0, drain_s=1.5)
+r.host_deficit            # bytes write() counted that never arrived
+r.drained                 # False means host_deficit is meaningless
+
+# Ring occupancy, from a run made WITHOUT a drain - the device
+# accumulates the histogram until playback stops.
+r = measure.run_play(board, dac_sps=600000, seconds=3.0)
+r.occ.quantile(0.10)      # slots, from the device's own `O` histogram
+r.occ.below(3)            # fraction of ENDTX events that found too few
+r.occ.trace               # decimated, every 16th ENDTX: shape over time
+
+# The two diagnostic knobs on the feed.
+measure.run_play(board, dac_sps=600000, seconds=3.0, write_size=0)
+                          # 0 = the old due-sized policy, the control arm
+measure.run_play(board, dac_sps=600000, seconds=3.0, scale=1.02)
+                          # deliberate feed-rate offset; sweeping it
+                          # finds where the ring neither fills nor drains
+```
+
+`run_bench(..., drain_s=..., tx_rate=..., block=...)` is the same idea
+for the transport benches, plus `BenchResult.out_deficit`. Remember
+that the benches free-run into saturation and behave oppositely to the
+paced feed.
