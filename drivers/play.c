@@ -3,6 +3,7 @@
 #include "play.h"
 #include "usb_cdc.h"
 #include "gen.h"
+#include "bsp.h"      /* micros(), for timing the run on the device's own clock */
 
 #define TRGSEL_TIOA1 (2u << 1)   /* DACC_MR.TRGSEL: 2 = TIOA1 */
 
@@ -28,6 +29,12 @@ volatile uint32_t play_endtx_seen;
 volatile uint32_t play_svc_calls;
 volatile uint32_t play_spans;         /* OUT DMA transfers armed */
 volatile uint32_t play_partial;       /* spans that ended off a slot edge */
+volatile uint32_t play_occ_hist[PLAY_NBUF];
+volatile uint32_t play_occ_min;
+volatile uint8_t  play_occ_trace[PLAY_OCC_TRACE];
+volatile uint32_t play_occ_traced;
+volatile uint32_t play_run_us;
+static uint32_t   run_t0_us;
 
 static uint32_t fill_off;            /* byte offset into the filling buffer */
 static bool     active;
@@ -80,6 +87,12 @@ bool play_start(uint32_t dac_hz)
 	play_svc_calls = 0;
 	play_spans = 0;
 	play_partial = 0;
+	for (unsigned i = 0; i < PLAY_NBUF; i++)
+		play_occ_hist[i] = 0;
+	play_occ_min = PLAY_NBUF;
+	play_occ_traced = 0;
+	play_run_us = 0;
+	run_t0_us = 0;
 	fill_off = 0;
 	dma_inflight = false;
 
@@ -247,8 +260,11 @@ void play_service(void)
 prime:
 	if (!primed && play_produced >= PLAY_PRIME_BUFS) {
 		primed = true;
+		run_t0_us = micros();
 		TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
 	}
+	if (primed)
+		play_run_us = micros() - run_t0_us;
 }
 
 /*
@@ -300,6 +316,22 @@ static void play_endtx(void)
 	 * the honest outcome: a repeated buffer is flagged, unfilled memory
 	 * is not.
 	 */
+	/*
+	 * Sample before the decision, not after: this is the occupancy the
+	 * guard below is about to judge, and it is the only quantity that
+	 * distinguishes a run that starves from one that does not.
+	 */
+	{
+		uint32_t occ = play_produced - play_consumed;
+
+		play_occ_hist[occ < PLAY_NBUF ? occ : PLAY_NBUF - 1u]++;
+		if (occ < play_occ_min)
+			play_occ_min = occ;
+		if (play_endtx_seen % PLAY_OCC_DECIM == 0u &&
+		    play_occ_traced < PLAY_OCC_TRACE)
+			play_occ_trace[play_occ_traced++] = (uint8_t)occ;
+	}
+
 	if (play_produced - play_consumed >= 3u) {
 		/* The buffer just finished is released; queue the next. */
 		play_consumed++;

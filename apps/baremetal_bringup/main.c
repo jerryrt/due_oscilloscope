@@ -45,6 +45,7 @@ static void banner(void)
 	printf("#           G/T/Y = same three via DMA\n");
 	printf("#           L=full loop HOST->DAC->ADC->HOST\n");
 	printf("#           P=play only  V=ring dump  D=loop diagnostic\n");
+	printf("#           O=playback ring occupancy histogram\n");
 	printf("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels\n");
 	printf("#           M=mimic loop without USB (gen sine on TIOA1 + capture)\n");
 	printf("#           Q=main-loop profile  z=software reset\n");
@@ -427,6 +428,39 @@ static void diag_service(void)
  *
  * Results are ns per call.
  */
+/*
+ * Dump the playback ring's occupancy distribution.
+ *
+ * Printed as a bare comma-separated list rather than key=value pairs:
+ * 32 buckets as `occ0=..` would be a long line for a parse that gains
+ * nothing, and the index is the occupancy, so position is the key.
+ */
+static void cmd_occ_hist(void)
+{
+	printf("# play_occ min=%lu endtx=%lu runus=%lu consumed=%lu hist=",
+	       (unsigned long)play_occ_min,
+	       (unsigned long)play_endtx_seen,
+	       (unsigned long)play_run_us,
+	       (unsigned long)play_consumed);
+	for (unsigned i = 0; i < PLAY_NBUF; i++)
+		printf("%lu%s", (unsigned long)play_occ_hist[i],
+		       i + 1u < PLAY_NBUF ? "," : "");
+	printf("\n");
+	uart_flush();
+
+	printf("# play_occ_trace decim=%u n=%lu v=", PLAY_OCC_DECIM,
+	       (unsigned long)play_occ_traced);
+	for (unsigned i = 0; i < play_occ_traced; i++) {
+		printf("%u%s", (unsigned)play_occ_trace[i],
+		       i + 1u < play_occ_traced ? "," : "");
+		/* 256 entries is more than one UART buffer holds. */
+		if ((i & 31u) == 31u)
+			uart_flush();
+	}
+	printf("\n");
+	uart_flush();
+}
+
 static void cmd_profile(void)
 {
 	const uint32_t n = 20000;
@@ -696,7 +730,7 @@ int main(void)
 			uart_flush();
 			break;
 		case 'B': stream_bench_report();
-		          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu\n",
+		          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
 		                 (unsigned long)play_bytes_in,
 		                 (unsigned long)play_produced,
 		                 (unsigned long)play_consumed,
@@ -704,8 +738,16 @@ int main(void)
 		                 (unsigned long)play_isr_calls,
 		                 (unsigned long)play_endtx_seen,
 		                 (unsigned long)play_spans,
-		                 (unsigned long)play_partial);
+		                 (unsigned long)play_partial,
+		                 (unsigned long)play_occ_min);
 		          uart_flush(); break;
+		/*
+		 * The occupancy histogram, off the `B` path deliberately.
+		 * `B` is polled mid-stream by the daemon and must stay one
+		 * short line; this is 32 buckets and belongs where `V`
+		 * already lives, which is between runs.
+		 */
+		case 'O': cmd_occ_hist(); break;
 		case 'w': cmd_stream_uart(2000); break;
 		default:                    break;
 		}

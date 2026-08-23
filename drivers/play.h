@@ -61,5 +61,46 @@ extern volatile uint32_t play_svc_calls;   /* play_service entries while active 
 extern volatile uint32_t play_spans;       /* OUT DMA transfers armed */
 extern volatile uint32_t play_partial;     /* spans that ended off a slot edge */
 
+/*
+ * Ring occupancy sampled at the instant that decides an underrun.
+ *
+ * The end-of-run figure the host can compute from produced - consumed
+ * is a frozen snapshot taken after playback stopped, and the only way
+ * to sample it during a run from the host is to ask over the console -
+ * which at the rates where the ring is actually short costs more
+ * underruns than it measures. So the device keeps its own distribution:
+ * one array increment in the ENDTX path, no console traffic, and the
+ * histogram is read out afterwards with `O`.
+ *
+ * Indexed by occupancy in slots, saturating at the top bucket.
+ */
+extern volatile uint32_t play_occ_hist[PLAY_NBUF];
+extern volatile uint32_t play_occ_min;     /* fewest slots ever seen at ENDTX */
+
+/*
+ * A decimated trace of the same quantity, because the histogram cannot
+ * answer the question that matters: whether a run starts deep and
+ * decays, or never fills at all. Every PLAY_OCC_DECIM-th ENDTX, so 256
+ * entries span 4096 buffers - the whole of a 3 s run at the low rates
+ * and all of the startup transient at the high ones.
+ */
+#define PLAY_OCC_TRACE  256
+#define PLAY_OCC_DECIM  16
+
+extern volatile uint8_t  play_occ_trace[PLAY_OCC_TRACE];
+extern volatile uint32_t play_occ_traced;  /* entries written, saturating */
+
+/*
+ * Microseconds the converter has actually been running, by the device's
+ * own clock, measured from the instant the trigger was started.
+ *
+ * Without it the device's true consumption rate can only be inferred
+ * from the host's clock, which is the very comparison in question: a
+ * feed that tracks the host's idea of the rate drains the ring at a
+ * fraction of a percent, and there is no way to tell a slow host from a
+ * fast device without asking each to time itself.
+ */
+extern volatile uint32_t play_run_us;
+
 
 #endif /* PLAY_H */
