@@ -263,8 +263,10 @@ figures above 200 ksps were measured with a feed that silently lost
 that stays at zero through exactly that.
 
 The 0-series is what came out of the lost-sample defect two sessions
-ago, plus what came out of taking it apart properly. 0a/0b is fixed;
-0i, 0j, 0h and 0c are what is left.
+ago, plus what came out of taking it apart properly. 0a/0b and 0l are
+fixed; 0i, 0j, 0h and 0c are what is left. 0i's gate is discharged -
+the slow-converter instrument is validated - but it grew a new
+sub-question: RC 44 reads one of two discrete converter rates.
 
 0a/0b. ~~**Playback starves at RC 65, 32 and 28.**~~ **Fixed, and it
    was never a feed-policy problem.** The host's USB stack was
@@ -450,15 +452,35 @@ ago, plus what came out of taking it apart properly. 0a/0b is fixed;
    `B` polling at 20 Hz took RC 65 from 6 underruns to 30 when the ring
    was short, because printf holds the main loop. Use the native port's
    bulk IN, which is idle in play-only; in loop mode the capture frame
-   header already has spare fields and costs nothing. And **verify the
-   slow-converter figure before designing against it** - the same
-   instrument gave RC 32 -0.01% on one run and -6.26% on another, so it
-   is not yet trustworthy. Re-measure it with the drain-aware method.
+   header already has spare fields and costs nothing. ~~And verify the
+   slow-converter figure before designing against it.~~ **The figure is
+   verified; the instrument is sound.** `OccHist.device_byte_rate()`
+   divides `consumed` by `run_us`, and both are reset per run, so the
+   estimator was never the problem. Measured undrained, three runs per
+   rate: 600,000 reads -0.01/-0.02/-0.01%, 1,000,000 reads
+   -2.36/-2.35/-2.35%, 1,218,750 reads +0.00/-0.01/-0.01%. Spread is
+   0.01-0.02 percentage points. The recorded RC 32 -6.26% outlier did
+   not reproduce in thirteen runs and is unexplained; it is not a
+   property of the estimator as written. Design against these figures.
 
    Why those two rates and not 600,000 or 1,392,857 is unexplained. It
    is not the DACC ceiling (1,392,857 *is* the ceiling and measures
    exact) and not RC truncation (RC 39 divides 39 MHz to exactly
    1,000,000).
+
+   **RC 44 is bimodal, and that is new.** 886,363 sps does not read one
+   slow rate - it reads one of exactly two, picked per run and stable
+   to 0.01 pp within each. Over ten consecutive runs: seven at -1.57%
+   (872,4xx sps) and three at -2.36% (865,5xx sps). `under=0` and
+   `occ_p50=30` in both states, so the ring is backed up either way and
+   the converter is device-limited rather than starved; nothing else in
+   the run correlates with which state it lands in. Neither rate is
+   39 MHz over an integer, so it is not the trigger divisor. 1,000,000
+   sps shows no such split - it reads -2.35% every time - and -2.36% is
+   also the value RC 44's slow state takes, which may or may not be a
+   coincidence. Settle this before closing any loop on RC 44: a rate
+   model trimmed against a converter that changes state between runs
+   will chase a step it cannot see the cause of.
 
 0j. **Why a constant write size is lossless and a varying one is not.**
    The fix works and the mechanism is unknown, which is worth one more
@@ -489,18 +511,28 @@ ago, plus what came out of taking it apart properly. 0a/0b is fixed;
    `tests/test_integrity.py`, by outcome rather than by mark, so a
    clean run passes and it turns green by itself.
 
-0l. **`play_endtx_seen` disagrees with `play_consumed`.** At RC 98 it
-   reads 1165/s against 777/s with `under=0`, but the handler does
-   exactly one of `play_consumed++` or `play_underruns++` per entry, so
-   they must agree. Most likely the ISR re-enters while the DACC's
-   ENDTX flag is still asserted.
+0l. ~~**`play_endtx_seen` disagrees with `play_consumed`.**~~ **Fixed.
+   It was not ISR re-entry.** `play_start()` cleared every other
+   playback counter and left `play_endtx_seen` alone, so the `O` line
+   reported a total accumulated since boot while `consumed` and
+   `run_us` were per-run. The disagreement was therefore whatever the
+   previous runs in that session had added, which is why it looked
+   rate-dependent: the ratio is a function of how many runs preceded,
+   not of the rate.
 
-   It matters because the occupancy histogram is sampled in the same
-   place, so its sample counts are inflated at some rates. The shape
-   looked right - at RC 65 the fraction of samples below three slots
-   matched the underrun count exactly - but an instrument that is
-   wrong at one rate and right at another has not been validated.
-   Fix it before drawing anything else from the histogram.
+   Seen directly by running the same rate three times in one session:
+   `endtx` came back 3565, 7097, 10642, each the previous total plus
+   this run's `consumed`. One line in the reset block fixes it. After
+   it, `endtx == consumed + underruns` at 600,000, 886,363, 1,000,000
+   and 1,218,750 sps, three runs each.
+
+   **The occupancy histogram was never affected.** `play_occ_hist` is
+   reset in the same block and incremented once per ENDTX, so its
+   distribution was always sound - the earlier worry that its sample
+   counts were inflated was wrong. Only the reported scalar and the
+   *trace* decimation phase, which is derived from the same counter at
+   `drivers/play.c:330`, were wrong; the trace's interval was always
+   right, only its offset from the run start was arbitrary.
 
 0h. **Re-validation debt: most figures above 200 ksps are unproven.**
    Not a defect, a bookkeeping obligation, and it is large.
