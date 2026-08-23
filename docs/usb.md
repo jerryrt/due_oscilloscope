@@ -122,6 +122,38 @@ stays wrong, which is the precise failure mode invariant 5 exists to
 prevent. The device cannot flag it: it counts and reports what *it*
 drops, and these bytes never reached it.
 
+**What the loss is not.** Two mechanisms were tested and neither
+explains the floor:
+
+- *Not write size.* The loss is not monotonic in rate, and the two
+  worst rates are the two whose due-sized writes work out near 1536 B -
+  the only non-power-of-two size in the set. Forcing every write to a
+  fixed size at a fixed rate kills the idea outright: at 1,000,000 sps
+  the deficit is 2.04-2.25% at every size from 512 B to 16384 B. Rate
+  is the variable; the size and cadence that make up that rate are not.
+- *Not queue pressure, for the floor.* Feeding deliberately **under**
+  the device's rate, so the ring drains hard and the tty queue is
+  certainly empty, does not reduce it. At 600,000 sps the deficit is
+  0.62-0.78% at every feed scale from 0.96 through 1.00 - flat. Only
+  the part **above** the device's rate is pressure-related, and that
+  part is large: scale 1.01 loses 1.02-1.10% and scale 1.02 loses
+  1.82-1.90%.
+
+So the loss has two components: a rate-dependent floor that happens
+with an empty queue and cannot be fed around, and a surplus-shedding
+term on top of it that punishes over-feeding. The floor is the open
+question.
+
+**Unfinished: the benches have never had this treatment.** `out-dma`
+reports the host writing 114,180,096 B and the device receiving
+111,683,584 - a 2.19% shortfall, and a whole multiple of 128. That is
+the same signature, but the bench reads the device's counter without
+draining the pipeline first, and at 28.5 MB/s the pipeline is large, so
+the figure may be entirely in flight. It cannot be told apart until the
+bench drains the way `run_play(drain_s=...)` does. Until then the
+"OUT 26.6 MB/s byte-perfect" figure quoted elsewhere in this project is
+not established.
+
 **And the clean rates are not clean.** 886,363 and 1,000,000 sps lose
 the most (1.48% and 2.25%) and report `under=0`, because the device's
 own timing shows its converter running slow there by almost the same

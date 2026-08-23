@@ -275,16 +275,49 @@ before and is now separate, with its own evidence.
    computes that it is at its target depth while the ring holds five
    slots. Any feedback needs a signal from the device.
 
-   **The next question is what makes macOS drop**, and whether the OUT
-   path can be made lossless through the tty at all or has to leave
-   CDC-ACM entirely (a vendor-specific interface claimed with libusb,
-   or IOKit bulk endpoints directly). Note the shape of the evidence
-   before designing: loss is zero at 200 ksps and non-zero at every rate
-   above, it is not monotonic in rate, and it is unaffected by machine
-   load. A per-write size or cadence effect fits that better than
-   queue pressure does, and the cheapest next experiment is to sweep
-   write size and inter-write interval at a fixed rate and see which
-   one moves the deficit.
+   **Two candidate mechanisms are already eliminated**, so do not
+   re-run them:
+
+   - *Write size and cadence.* Forcing every write to a fixed size at a
+     fixed rate leaves the deficit unchanged: at RC 39 it is 2.04-2.25%
+     at every size from 512 B to 16384 B, a 32x span of size and of
+     inter-write interval. Rate is the variable; what it is made of is
+     not.
+   - *Queue pressure, for the floor.* Feeding deliberately under the
+     device's rate - ring draining hard, queue certainly empty - does
+     not reduce it. At RC 65 the deficit is 0.62-0.78% at every feed
+     scale from 0.96 to 1.00. Only the surplus above 1.00 is pressure
+     related, and it is steep: 1.01 loses ~1.06%, 1.02 loses ~1.86%.
+
+   So there are two components: a **rate-dependent floor that happens
+   with an empty queue**, and a surplus-shedding term above it. The
+   floor is the open question, and it is the one that makes the
+   waveform wrong.
+
+   **The next experiments, in order:**
+
+   1. **Drain the benches.** `out-dma` reports host 114,180,096 B
+      against device 111,683,584 - 2.19% short, a whole multiple of
+      128, same signature. But it reads the device's counter with the
+      pipeline still full, and at 28.5 MB/s that pipeline is large, so
+      this may be entirely in flight. Give `usbbench` the same drain
+      `run_play(drain_s=...)` has. If the bench loses bytes too, this
+      is the whole OUT path and not the playback feed - which would
+      also mean **the "OUT 26.6 MB/s byte-perfect" figure this project
+      quotes is not established**. Cheapest possible next step and it
+      changes what the problem is.
+   2. **Check capture IN the same way.** Nothing has ever compared
+      device-sent against host-received with a drain. If IN loses too,
+      every purity figure in this project is suspect.
+   3. **Leave CDC-ACM for the OUT path** if the floor survives 1 and 2:
+      claim the interface with libusb or take the bulk endpoints
+      through IOKit. That removes the layer losing the bytes and also
+      removes the TIOCOUTQ blindness, so a real closed loop becomes
+      possible afterwards.
+
+   Do **not** start with a feed-policy or flow-control redesign. Every
+   such policy compensates for the loss rather than removing it, takes
+   the underrun counter to zero, and leaves the waveform broken.
 
 0c. **The suite wedged once in `close()` after the duplex DMA bench**,
    on 2026-08-22, and it is unexplained. All 134 tests reported and

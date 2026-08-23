@@ -880,7 +880,8 @@ class Feeder:
 
     MAX_WRITE = 16384
 
-    def __init__(self, fd, wave, byte_rate, scale=1.0):
+    def __init__(self, fd, wave, byte_rate, scale=1.0,
+                 write_size=None):
         self.fd = fd
         self.wave = wave
         # A deliberate feed-rate offset. Not a tuning knob: it is the
@@ -889,6 +890,12 @@ class Feeder:
         # is measured rather than inferred from the underrun count.
         self.byte_rate = byte_rate * scale
         self.nominal_rate = byte_rate
+        # Force every write to one size, instead of writing whatever is
+        # due. The host's byte loss is not monotonic in rate, and the
+        # rates that lose most are the ones whose due-sized writes land
+        # on 1536 - so write size is the suspect and this is how it gets
+        # varied independently of rate.
+        self.write_size = write_size
         self.count = 0
         self.note = None
         # Whether stop() had to discard queued output. It does that only
@@ -923,10 +930,16 @@ class Feeder:
                 continue
             # Whole 512-byte packets only: a short packet fragments the
             # device's stream DMA span, and on older firmware ended it.
-            due = min(due, self.MAX_WRITE) & ~511
-            if due == 0:
-                time.sleep(0.001)
-                continue
+            if self.write_size:
+                if due < self.write_size:
+                    time.sleep(0.0005)
+                    continue
+                due = self.write_size
+            else:
+                due = min(due, self.MAX_WRITE) & ~511
+                if due == 0:
+                    time.sleep(0.001)
+                    continue
             block = wave[pos:pos + due]
             while len(block) < due:
                 block += wave[:due - len(block)]
@@ -1155,7 +1168,7 @@ class PlayResult:
 
 
 def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
-             scale=1.0, drain_s=0.0):
+             scale=1.0, drain_s=0.0, write_size=None):
     if dc is not None:
         wave, tone_hz = build_dc(dc)
     else:
@@ -1168,7 +1181,8 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     time.sleep(0.2)
     console = board.drain_console(0.3)
 
-    feeder = Feeder(fd, wave, dac_sps * 2, scale=scale)
+    feeder = Feeder(fd, wave, dac_sps * 2, scale=scale,
+                    write_size=write_size)
     feeder.start()
     t0 = time.time()
     end = t0 + seconds
@@ -1194,6 +1208,14 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     # draining bulk OUT; the underruns this costs are the shutdown's and
     # are why the counters below are only trusted for their byte count.
     if drain_s > 0.0:
+        # Counters first, while they still describe the run. The drain
+        # below deliberately starves the device, so underruns and the
+        # occupancy histogram accumulated across it describe the
+        # shutdown - at RC 39 a 1.5 s drain adds ~6,000 underruns to a
+        # run that had none.
+        board.cmd("B")
+        time.sleep(0.5)
+        run_play_counters = parse_play(board.drain_console(1.2))
         end = time.time() + drain_s
         while time.time() < end:
             r, _, _ = select.select([fd, board.cfd], [], [], 0.05)
@@ -1223,16 +1245,25 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     board.close_native(fd)
 
     play = parse_play(report)
+    occ = parse_occ(report)
     if drain_s > 0.0:
-        # Byte counts from the drained read; everything else from the
-        # stopped one, because the drain deliberately underruns.
+        # Bytes from the drained read, because only then has everything
+        # the host wrote had time to arrive. Everything else from the
+        # read taken before the drain, because the drain starves the
+        # device by design.
+        play = run_play_counters
         play.raw["in"] = drained_play.bytes_in
+        # The device accumulates its occupancy histogram until playback
+        # stops, so on a drained run it spans the starvation too. There
+        # is no honest way to report it; measure occupancy on a run made
+        # without a drain.
+        occ = OccHist()
 
     return PlayResult(elapsed_s=elapsed, host_tx_bytes=tx, dac_sps=dac_sps,
                       tone_hz=tone_hz, refused="refused" in console,
                       console=console, report=report,
                       play=play, rt_note=feeder.note,
-                      occ=parse_occ(report), drained=drain_s > 0.0)
+                      occ=occ, drained=drain_s > 0.0)
 
 
 @dataclass
