@@ -70,6 +70,24 @@ it moves into the daemon and drags numpy in behind it. Worth adding
 later as a second head on the same daemon, which the protocol below
 allows for. Not the first one.
 
+## Running it
+
+```sh
+.venv-gui/bin/python -m gui --spawn-fake   # no hardware at all
+.venv-gui/bin/python -m gui                # a daemon already running
+```
+
+The daemon is stdlib only, so `--spawn-fake` starts one on the same
+interpreter - there is no second environment to install for a demo. The
+front end's own tests run headlessly in the same venv:
+
+```sh
+.venv-gui/bin/python -m pytest tests/test_gui.py -q
+```
+
+They skip in the test venv rather than failing, because that one
+deliberately has neither Qt nor numpy.
+
 ## Toolkit
 
 **PySide6 (Qt 6) with pyqtgraph.**
@@ -374,11 +392,13 @@ Phase 3 analog front end exists. A warning label is not sufficient.
 
 ## Phasing
 
-- **G0** - serial backend abstraction, headless daemon, wire protocol.
-  Verifiable by the existing pytest suite with no GUI at all.
-- **G1** - Qt shell, live single-channel view, roll mode. Logging mode
-  lands here too: it is daemon-side, cheap, and does not wait on the
-  display.
+- **G0** - **done** apart from the Windows serial backend. The daemon,
+  the wire protocol and the client exist and are tested; see
+  `docs/daemon-api.md`.
+- **G1** - **done**: Qt shell, live trace with min/max decimation, roll
+  mode, health panel. `gui/`, 14 headless tests. Logging mode is
+  daemon-side and already available through the API; wiring a button to
+  it is G2 work.
 - **G2** - trigger, measurements, FFT.
 - **G3** - AWG panel with arbitrary upload.
 - **G4** - dual channel, XY, file playback and export, calibration.
