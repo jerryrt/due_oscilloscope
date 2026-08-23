@@ -83,6 +83,7 @@ bool play_start(uint32_t dac_hz)
 	play_produced = 0;
 	play_consumed = 0;
 	play_underruns = 0;
+	play_endtx_seen = 0;
 	play_bytes_in = 0;
 	play_svc_calls = 0;
 	play_spans = 0;
