@@ -288,3 +288,215 @@ def test_the_carrier_stays_silent_in_loop_mode(board, seconds):
         f"while the stream owns it")
     assert res.seq_gaps == 0, (
         f"{res.seq_gaps} sequence gaps - the frame stream is not intact")
+
+
+# -- the carrier's parser, with no board ------------------------------
+#
+# These run anywhere. The estimator has been wrong three times in ways
+# that only showed up against hardware, so the shapes that broke it are
+# reproduced here directly and cost nothing to check.
+
+def _rec(consumed, underruns, dev_us, bytes_in=0, version=1, crc=None):
+    """One status record, built exactly as drivers/playstat.h emits it."""
+    import struct, zlib
+    body = struct.pack("<4sB3sIIII", b"DUEP", version, b"\0\0\0",
+                       consumed, underruns, bytes_in, dev_us)
+    if crc is None:
+        crc = zlib.crc32(body) & 0xFFFFFFFF
+    return body + struct.pack("<I", crc)
+
+
+def test_parse_playstats_reads_a_record_the_device_would_send():
+    got = measure.parse_playstats(_rec(1234, 5, 999999, bytes_in=777))
+    assert len(got) == 1
+    assert (got[0].consumed, got[0].underruns,
+            got[0].dev_us, got[0].bytes_in) == (1234, 5, 999999, 777)
+
+
+def test_parse_playstats_finds_a_record_at_any_offset():
+    """A read can start mid-record, so the parser scans rather than
+    assuming the buffer begins on a boundary."""
+    buf = b"\x00\x01rubbish\xff" + _rec(10, 0, 20) + b"trailing"
+    got = measure.parse_playstats(buf)
+    assert len(got) == 1 and got[0].consumed == 10
+
+
+def test_parse_playstats_rejects_a_corrupt_record():
+    """A bad CRC is skipped, not trusted. The magic is four bytes and
+    will occur by chance in other data; without the check a run of
+    sample values could be read as a status record."""
+    bad = bytearray(_rec(10, 0, 20))
+    bad[8] ^= 0xFF                      # flip a counter, leave the CRC
+    assert measure.parse_playstats(bytes(bad)) == []
+
+
+def test_parse_playstats_rejects_an_unknown_version():
+    assert measure.parse_playstats(_rec(10, 0, 20, version=2)) == []
+
+
+def test_playstat_rate_ignores_the_dead_head_and_a_frozen_tail():
+    """The two shapes playstat_rate is responsible for.
+
+    A run has a dead head: run_play issues P and then spends about half
+    a second on console reads before the feeder starts, so the device
+    sits play-active with consumed frozen at 0 for ~30 records. Span
+    everything and the rate reads 55% slow.
+
+    Selecting on `underruns` instead looks more principled and selects
+    the whole array, because before the ring primes the DACC trigger has
+    not started, so no ENDTX fires and underruns is frozen at 0
+    alongside consumed. The discriminator has to be consumed.
+
+    The ragged decay between "still fed" and "fully starved" is not this
+    function's job - run_play slices the buffer at the moment the feeder
+    stopped, so the records never contain it. That slice is what
+    test_the_carrier_reports_what_the_console_trace_reports checks
+    against hardware.
+    """
+    rate = 1_700_000.0                  # bytes/s the converter holds
+    per = 20_000                        # 20 ms between records, in us
+    step = rate * per / 1e6 / 1024      # buffers per interval
+    stats, t, c = [], 0, 0.0
+    for _ in range(30):                 # dead head: nothing consumed yet
+        stats.append(measure.PlayStat(0, 0, 0, t)); t += per
+    for _ in range(150):                # steady state
+        c += step
+        stats.append(measure.PlayStat(round(c), 0, 0, t)); t += per
+    for _ in range(60):                 # starved: consumed frozen hard
+        stats.append(measure.PlayStat(round(c), 0, 0, t)); t += per
+
+    got = measure.playstat_rate(stats)
+    assert got == pytest.approx(rate, rel=0.002), (
+        f"recovered {got:.0f} B/s from a converter holding {rate:.0f}")
+
+
+def test_playstat_rate_does_not_start_on_the_partial_interval():
+    """The span must begin after consumption starts, not on the last
+    frozen record.
+
+    Starting one record early includes the interval in which playback
+    began, which carries a fraction of a full interval's data over a
+    full interval's time. It is one interval in ~150 and it read up to
+    0.6 pp slow against hardware, wandering run to run with where in
+    that interval the first buffer happened to land.
+    """
+    rate, per = 1_700_000.0, 20_000
+    step = rate * per / 1e6 / 1024
+    stats, t = [], 0
+    stats.append(measure.PlayStat(0, 0, 0, t)); t += per   # last frozen
+    c = step * 0.1                                         # partial start
+    for _ in range(100):
+        stats.append(measure.PlayStat(round(c), 0, 0, t)); t += per
+        c += step
+    got = measure.playstat_rate(stats)
+    assert got == pytest.approx(rate, rel=0.002), (
+        f"recovered {got:.0f} B/s - the partial first interval is in the span")
+
+
+def test_playstat_rate_declines_to_guess_from_too_little():
+    assert measure.playstat_rate([]) is None
+    assert measure.playstat_rate([measure.PlayStat(0, 0, 0, 0)]) is None
+    # All frozen: no interval over which the converter was consuming.
+    frozen = [measure.PlayStat(5, 0, 0, i * 100) for i in range(10)]
+    assert measure.playstat_rate(frozen) is None
+
+
+# -- the closed loop, on hardware -------------------------------------
+
+@pytest.mark.parametrize("rc", [44, 39])
+def test_the_closed_loop_removes_most_of_the_oversupply(board, seconds,
+                                                        calibration, rc):
+    """Objective 0i's fix, measured against its own open-loop control.
+
+    Interleaved in one test rather than compared against a recorded
+    figure, because the converter picks its state per run: a closed-loop
+    run in the slow state against an open-loop number from the fast one
+    would flatter or damn the loop by up to 0.8 pp for nothing.
+
+    What is left after the loop is startup, not rate error - see
+    test_the_closed_loop_residual_is_a_startup_cost.
+    """
+    hz = measure.hz_for(rc)
+    secs = window(seconds, 3.0)
+    op = measure.run_play(board, dac_sps=hz, seconds=secs, drain_s=1.5)
+    cl = measure.run_play(board, dac_sps=hz, seconds=secs, drain_s=1.5,
+                          closed_loop=True)
+    for r in (op, cl):
+        assert not r.refused, r.console
+        assert r.drained
+
+    o = op.host_deficit / op.host_tx_bytes * 100
+    c = cl.host_deficit / cl.host_tx_bytes * 100
+    record(calibration, f"closed_loop_rc{rc}", {
+        "hz": hz, "open_pct": round(o, 3), "closed_pct": round(c, 3),
+        "retunes": cl.retunes})
+
+    assert cl.retunes > 0, "the loop never retuned, so this proves nothing"
+    assert o > 1.0, f"RC {rc}: open loop lost only {o:.2f}%, expected >1%"
+    assert c < o / 2, (
+        f"RC {rc}: closed loop lost {c:.2f}% against {o:.2f}% open - the "
+        f"trim is not tracking the converter")
+
+
+@pytest.mark.parametrize("rc", [44, 39])
+def test_the_closed_loop_buys_nothing_with_underruns(board, seconds, rc):
+    """The loop must not pay for accuracy in starvation.
+
+    Trimming the feed down to the converter's rate moves toward
+    under-feeding, and an underrun is a repeated buffer - a
+    discontinuity invariant 5 exists to keep out of the data. The
+    opposite trap is recorded in usb.md: over-feeding 1-2% takes the
+    underrun counter to zero while the dropped samples stay missing.
+    Neither counter is evidence on its own, so both are checked here.
+    """
+    res = measure.run_play(board, dac_sps=measure.hz_for(rc),
+                           seconds=window(seconds, 3.0), drain_s=1.5,
+                           closed_loop=True)
+    assert not res.refused, res.console
+    assert res.play.underruns == 0, (
+        f"RC {rc}: the closed loop cost {res.play.underruns} underruns")
+
+
+def test_the_closed_loop_leaves_an_exact_rate_alone(board, seconds):
+    """At a rate the converter holds exactly there is nothing to correct.
+
+    RC 65 measures byte-exact open loop, so the loop's job here is to do
+    no harm: it should still run, and still lose nothing.
+    """
+    res = measure.run_play(board, dac_sps=measure.hz_for(65),
+                           seconds=window(seconds, 3.0), drain_s=1.5,
+                           closed_loop=True)
+    assert not res.refused, res.console
+    assert res.retunes > 0, "the loop did not run"
+    assert res.play.underruns == 0
+    pct = res.host_deficit / res.host_tx_bytes * 100
+    assert pct < 0.1, f"RC 65 closed loop lost {pct:.3f}%, open loop loses 0"
+
+
+@pytest.mark.slow
+def test_the_closed_loop_residual_is_a_startup_cost(board, calibration):
+    """What the loop leaves behind is bytes, not a rate.
+
+    The feed runs open loop until the first trim, which cannot happen
+    until the dead head has passed and a span exists to measure. Those
+    bytes are lost once per run, so the loss per run is roughly constant
+    and the percentage falls as the run lengthens. A rate model that was
+    simply wrong would lose proportionally instead.
+
+    Measured at RC 39: 27,648 B over 3 s and 28,544 B over 6 s, so
+    0.466% became 0.242%.
+    """
+    hz = measure.hz_for(39)
+    short = measure.run_play(board, dac_sps=hz, seconds=3.0, drain_s=1.5,
+                             closed_loop=True)
+    long = measure.run_play(board, dac_sps=hz, seconds=6.0, drain_s=1.5,
+                            closed_loop=True)
+    record(calibration, "closed_loop_startup_cost", {
+        "short_bytes": short.host_deficit, "long_bytes": long.host_deficit,
+        "short_pct": round(short.host_deficit / short.host_tx_bytes * 100, 3),
+        "long_pct": round(long.host_deficit / long.host_tx_bytes * 100, 3)})
+
+    assert short.host_deficit > 0, "nothing was lost, so nothing is proven"
+    assert long.host_deficit < short.host_deficit * 1.5, (
+        f"doubling the run took the loss from {short.host_deficit} B to "
+        f"{long.host_deficit} B - that is a rate error, not a startup cost")
