@@ -11,6 +11,7 @@
 #include "acq.h"
 #include "gen.h"
 #include "frame.h"
+#include "play.h"
 #include "stream.h"
 #include "usb_cdc.h"
 #include <stdio.h>
@@ -348,6 +349,7 @@ void stream_service(void)
 			tx_hdr.channel_mask    = acq_channel_mask();
 			tx_hdr.timestamp_us    = micros();
 			tx_hdr.overrun_count   = overruns;
+			tx_hdr.play_consumed   = play_consumed;
 
 			if (overruns != pending_overrun) {
 				tx_hdr.flags |= FRAME_FLAG_OVERRUN;
@@ -367,7 +369,7 @@ void stream_service(void)
 				 * front of this buffer's payload, so the two
 				 * are one transfer. Thirty-two bytes of
 				 * header is the only thing the processor
-				 * writes; the 4064 bytes of samples are read
+				 * writes; the 4060 bytes of samples are read
 				 * by the DMA straight out of where the PDC
 				 * left them.
 				 */
@@ -494,6 +496,7 @@ static void bench_push_in(uint32_t byte_budget)
 		h.channel_mask    = (1u << 7) | (1u << 6);
 		h.timestamp_us    = micros();
 		h.overrun_count   = 0;
+		h.play_consumed   = 0;
 		h.header_crc32 = frame_crc32((const uint8_t *)&h,
 		                             sizeof(h) - sizeof(uint32_t));
 
@@ -588,7 +591,7 @@ void stream_bench_report(void)
 /*
  * Double-buffered so nothing blocks: one frame is in flight under DMA
  * while the next is being prepared. The processor writes only the
- * 32-byte header; the 4064-byte payload is never touched by it, which
+ * 36-byte header; the 4060-byte payload is never touched by it, which
  * is the property the architecture actually asks for.
  */
 #define DMA_FRAME_BYTES  (32u + ACQ_BUF_SAMPLES * 2u)
@@ -628,6 +631,7 @@ static void dma_build_frame(uint8_t *dst)
 	h->channel_mask    = (1u << 7) | (1u << 6);
 	h->timestamp_us    = micros();
 	h->overrun_count   = 0;
+	h->play_consumed   = 0;
 	h->header_crc32    = frame_crc32(dst, sizeof(*h) - sizeof(uint32_t));
 }
 

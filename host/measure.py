@@ -45,7 +45,7 @@ import rt
 # Wire format. Shared verbatim with drivers/frame.h.
 # ---------------------------------------------------------------------
 
-HDR_FMT = "<4sBBBBIIHHIII"
+HDR_FMT = "<4sBBBBIIHHIIII"
 HDR_LEN = struct.calcsize(HDR_FMT)
 MAGIC = b"DUE0"
 
@@ -60,7 +60,7 @@ FLAG_CONTINUOUS  = 1 << 3
 # for its settled sample window.
 SETTLE_US = 1_000_000
 
-FRAME_SAMPLES = 2032
+FRAME_SAMPLES = 2030
 FRAME_BYTES = HDR_LEN + FRAME_SAMPLES * 2
 
 # TIMER_CLOCK1 is MCK/2. Both the TC and the ADC scale with MCK, which
@@ -166,6 +166,11 @@ class ParsedStream:
     inconsistent: int = 0
     ts_first: int = None
     ts_last: int = None
+    # One PlayStat per frame, so loop mode can close the same rate loop
+    # play-only closes on the bulk-IN records. The frame header already
+    # carries the device clock in timestamp_us, so play_consumed
+    # completes the pair and playstat_rate reads it unchanged.
+    play_stats: list = field(default_factory=list)
     per_channel: dict = field(default_factory=dict)
     series: dict = field(default_factory=dict)   # tag -> array('H') codes
     marks: dict = field(default_factory=dict)    # tag -> [(index, ts_us)]
@@ -274,7 +279,7 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
             break
         hdr = bytes(buf[i:i + HDR_LEN])
         (_m, ver, flags, bits, packing, seq, rate, nsamp,
-         chmask, ts, overruns, crc) = struct.unpack(HDR_FMT, hdr)
+         chmask, ts, overruns, consumed, crc) = struct.unpack(HDR_FMT, hdr)
         if zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF != crc:
             ps.crc_bad += 1
             pos = i + 4
@@ -307,6 +312,7 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
         ps.channel_mask = chmask
         ps.n_channels = max(1, bin(chmask).count("1"))
         ps.ts_last = ts
+        ps.play_stats.append(PlayStat(consumed, 0, 0, ts))
         if flags & FLAG_OVERRUN:
             ps.overrun_frames += 1
         if ps.first_overrun is None:
@@ -573,6 +579,42 @@ def parse_playstats(buf):
             i += PLAYSTAT_LEN
         else:
             i += 1
+
+
+def scan_play_stats(buf, pos=0):
+    """Header-only scan for the rate loop, resumable from `pos`.
+
+    Loop mode carries the loop's signal in the frame header, so the host
+    has to read it while the stream is still running. Re-parsing the
+    payload every trim would mean several megabytes per correction on
+    the same thread that services the port; this reads the 36-byte
+    headers, skips each payload by its declared length, and returns
+    where it stopped so the next call resumes there.
+
+    Returns (stats, next_pos). A trailing partial frame is left for the
+    next call rather than half-read.
+    """
+    out = []
+    n = len(buf)
+    while pos + HDR_LEN <= n:
+        if bytes(buf[pos:pos + 4]) != MAGIC:
+            i = buf.find(MAGIC, pos)
+            if i < 0:
+                # Keep only what could still be the start of a magic.
+                return out, max(pos, n - 3)
+            pos = i
+            continue
+        hdr = bytes(buf[pos:pos + HDR_LEN])
+        vals = struct.unpack(HDR_FMT, hdr)
+        if zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF != vals[12]:
+            pos += 4
+            continue
+        need = HDR_LEN + vals[7] * 2
+        if pos + need > n:
+            break                       # payload not all here yet
+        out.append(PlayStat(vals[11], 0, 0, vals[9]))
+        pos += need
+    return out, pos
 
 
 def playstat_rate(stats):
@@ -1199,6 +1241,7 @@ class LoopResult:
     bench: BenchCounters
     rt_note: str
     stale_bytes: int
+    retunes: int = 0
 
     # Pass-throughs, so a test can read the numbers it cares about
     # without knowing whether they came from the stream or the host.
@@ -1242,7 +1285,8 @@ class LoopResult:
 
 def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
              tone=1000.0, seconds=3.0, dc=None, ramp=None, diag=False,
-             drain=True, notify=None, scale=1.0, write_size=None):
+             drain=True, notify=None, scale=1.0, write_size=None,
+             closed_loop=False):
     """The complete loop: HOST -> USB -> DAC -> wire -> ADC -> USB -> HOST.
 
     Because the host authored the signal, any discrepancy in what comes
@@ -1272,7 +1316,14 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     chunks = []
     console = b""
     diag_sent = False
+    # Loop mode's rate signal arrives inside frame headers, so it is
+    # scanned incrementally: scanbuf holds only what has not been read
+    # yet and is trimmed after every pass.
+    scanbuf = bytearray()
+    scanpos = 0
+    loop_stats = []
     t0 = time.time()
+    next_trim = t0 + TRIM_WARMUP_S
     while time.time() - t0 < seconds:
         # The diagnostic must sample while both directions are live, so
         # it is triggered mid-run rather than before or after.
@@ -1287,9 +1338,22 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
                 pass
         if fd in r:
             try:
-                chunks.append(os.read(fd, 262144))
+                got = os.read(fd, 262144)
             except OSError:
-                pass
+                got = b""
+            if got:
+                chunks.append(got)
+                if closed_loop:
+                    scanbuf += got
+        if closed_loop and time.time() >= next_trim:
+            fresh, scanpos = scan_play_stats(scanbuf, scanpos)
+            loop_stats += fresh
+            measured = playstat_rate(loop_stats)
+            if measured:
+                feeder.retune(measured)
+            del scanbuf[:scanpos]
+            scanpos = 0
+            next_trim = time.time() + TRIM_PERIOD_S
     elapsed = time.time() - t0
 
     tx = feeder.stop()
@@ -1322,7 +1386,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
         dac_sps=dac_sps, adc_hz=adc_hz, channels=channels, tone_hz=tone_hz,
         refused="refused" in text, console=text, report=rep,
         play=parse_play(rep), bench=parse_bench(rep),
-        rt_note=feeder.note, stale_bytes=stale)
+        rt_note=feeder.note, stale_bytes=stale, retunes=feeder.retunes)
 
 
 def probe_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,

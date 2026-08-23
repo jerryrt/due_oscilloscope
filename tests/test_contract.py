@@ -24,7 +24,7 @@ def test_frame_header_is_self_consistent(board, baseline, seconds):
     ps = res.stream
 
     f = baseline["frame"]
-    assert ps.version == 1
+    assert ps.version == 2
     assert ps.bits_per_sample == 12
     assert ps.packing == 0, "0 = 12-bit right aligned in 16-bit LE"
     assert ps.n_samples == f["samples"]

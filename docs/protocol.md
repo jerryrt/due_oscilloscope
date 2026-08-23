@@ -26,17 +26,17 @@ while the host application owns the data port.
   host framing.
 
 Frame size in the current firmware: **4096 bytes = 8 x 512**,
-comprising a 32-byte header and 4064 bytes of payload (2032 samples at
+comprising a 36-byte header and 4060 bytes of payload (2030 samples at
 16-bit, `ACQ_BUF_SAMPLES`). Any exact multiple of 512 with a whole
 number of samples is valid under these rules.
 
-### Header (32 bytes)
+### Header (36 bytes)
 
 ```
 off sz  field             notes
 ---------------------------------------------------------------------
  0   4  magic             "DUE0" - resync anchor
- 4   1  version           = 1
+ 4   1  version           = 2
  5   1  flags             see below
  6   1  bits_per_sample   = 12
  7   1  packing           0 = 12-bit right-aligned in 16-bit LE
@@ -47,9 +47,11 @@ off sz  field             notes
 18   2  channel_mask      bit n set = A_n present in the sequence
 20   4  timestamp_us      free-running TC-derived microseconds
 24   4  overrun_count     cumulative RXBUFF + GOVRE events since reset
-28   4  header_crc32      CRC-32 over bytes 0..27
+28   4  play_consumed     playback buffers the DAC has taken; 0 when
+                          not playing, and 0 from the bench builders
+32   4  header_crc32      CRC-32 over bytes 0..31
 ---------------------------------------------------------------------
-32      payload
+36      payload
 ```
 
 `flags`:
@@ -67,7 +69,7 @@ USB already provides a per-packet CRC-16 with hardware retry at the link
 layer, so a payload CRC would be redundant. More importantly, computing
 one would mean the CPU reading all 2.1 MB/s of sample data — which
 directly violates the architecture's central rule that the CPU never
-touches sample data. The header CRC costs 32 bytes' worth of work and is
+touches sample data. The header CRC costs 36 bytes' worth of work and is
 kept; the payload is protected by USB itself.
 
 Integrity of the *stream* is established by `seq` and the overrun flag,
@@ -93,6 +95,24 @@ at the cost of the host having to trust the sequence order. Use only if
 throughput measurement demands it.
 
 ### Host receive algorithm
+
+### `play_consumed` is loop mode's rate carrier
+
+The host paces playback against a model of how fast the DAC consumes,
+and the converter does not always run at the rate it was asked for - at
+886,363 sps it holds one of two rates, picked per run. Closing that loop
+needs the device's consumption paired with the device's clock.
+
+In play-only that arrives on a separate bulk-IN record
+(`drivers/playstat.h`). In loop mode bulk IN carries frames and the
+endpoint is on DMA, so nothing else may write there: the FIFO path and
+DMA must not share an endpoint, and a record spliced between frames
+would put non-sample bytes inside the sample stream. The header is the
+only channel left, and it already carried `timestamp_us` from the same
+clock, so this field completes the pair rather than adding one.
+
+Payload dropped from 2032 samples to 2030 to pay for it, because the
+frame stays 4096 bytes: `8 x 512`, one DMA, whole packets.
 
 1. Scan for `magic`, validate `header_crc32`.
 2. Check `seq == expected_seq`. A gap means frames were lost on the host

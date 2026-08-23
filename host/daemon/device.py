@@ -24,10 +24,10 @@ import time
 import zlib
 
 # Frame layout, shared verbatim with drivers/frame.h and host/measure.py.
-HDR_FMT = "<4sBBBBIIHHIII"
+HDR_FMT = "<4sBBBBIIHHIIII"
 HDR_LEN = struct.calcsize(HDR_FMT)
 FRAME_MAGIC = b"DUE0"
-FRAME_SAMPLES = 2032
+FRAME_SAMPLES = 2030
 FRAME_BYTES = HDR_LEN + FRAME_SAMPLES * 2
 
 FLAG_CONTINUOUS = 1 << 3
@@ -203,8 +203,8 @@ class FakeDevice(Device):
                 # 12-bit right aligned, tag in the top nibble, exactly as
                 # the ADC delivers it with TAG enabled.
                 body += struct.pack("<H", (t << 12) | (v & 0xFFF))
-        hdr = struct.pack(HDR_FMT, FRAME_MAGIC, 1, FLAG_CONTINUOUS, 12, 0,
-                          seq, rate, FRAME_SAMPLES, mask, ts, 0, 0)
+        hdr = struct.pack(HDR_FMT, FRAME_MAGIC, 2, FLAG_CONTINUOUS, 12, 0,
+                          seq, rate, FRAME_SAMPLES, mask, ts, 0, 0, 0)
         crc = zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF
         hdr = hdr[:HDR_LEN - 4] + struct.pack("<I", crc)
         return bytes(hdr) + bytes(body)

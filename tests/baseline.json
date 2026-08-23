@@ -26,8 +26,8 @@
     "dac_top": 1392857
   },
   "frame": {
-    "header_bytes": 32,
-    "samples": 2032,
+    "header_bytes": 36,
+    "samples": 2030,
     "bytes": 4096
   },
   "amplitude": {
