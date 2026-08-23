@@ -448,6 +448,20 @@ before and is now separate, with its own evidence.
    and tested there, so this is mostly new views over existing data.
    Needs no board.
 
+1c. **Track A has none of this session's instrumentation.** `O`, the
+   `occmin` key on `B`, and `play_run_us` are Track B only, so Track A
+   cannot be measured against the defect that dominated this session.
+   The project rule is that anything added to one track is added to the
+   other with the same commands and output format, and this is a
+   straight port - `sketches/bringup/play.cpp` is deliberately a
+   transliteration of `drivers/play.c`, so the ENDTX hook goes in the
+   same place.
+
+   The host-side fix (`Feeder.WRITE_SIZE`) is track-independent and
+   already applies to both, but nobody has run the byte-exactness test
+   against Track A. Do that before quoting any Track A playback figure:
+   its numbers were taken with the feed that loses bytes.
+
 1b. **Capture over endpoint DMA on Track A**, which currently still
    copies. The port is written and measured - 81 ADC overruns per 4 s
    at the full rate - and blocked on placement: Track A links against
