@@ -468,19 +468,39 @@ sub-question: RC 44 reads one of two discrete converter rates.
    exact) and not RC truncation (RC 39 divides 39 MHz to exactly
    1,000,000).
 
-   **RC 44 is bimodal, and that is new.** 886,363 sps does not read one
-   slow rate - it reads one of exactly two, picked per run and stable
-   to 0.01 pp within each. Over ten consecutive runs: seven at -1.57%
-   (872,4xx sps) and three at -2.36% (865,5xx sps). `under=0` and
-   `occ_p50=30` in both states, so the ring is backed up either way and
-   the converter is device-limited rather than starved; nothing else in
-   the run correlates with which state it lands in. Neither rate is
-   39 MHz over an integer, so it is not the trigger divisor. 1,000,000
-   sps shows no such split - it reads -2.35% every time - and -2.36% is
-   also the value RC 44's slow state takes, which may or may not be a
-   coincidence. Settle this before closing any loop on RC 44: a rate
-   model trimmed against a converter that changes state between runs
-   will chase a step it cannot see the cause of.
+   **RC 44 is bimodal, and the state is latched at `play_start`.**
+   886,363 sps does not read one slow rate - it reads one of exactly
+   two, chosen per run and then held for the whole of it. Measured with
+   the per-window rate trace (`play_rate_us`, added for this): across
+   twelve runs the median of the first third and of the last third
+   agreed to **0.000 pp every time**, and the spread across ~160
+   windows was 0.010-0.021 pp, which is the trace's resolution rather
+   than movement in the converter. The two states are -1.56%
+   (872,4xx sps) and -2.34% (865,5xx sps); nothing between them has
+   ever been seen. Roughly seven runs in twelve take the fast one.
+
+   `under=0` and `occ_p50=30` in both states, so the ring is backed up
+   either way and the converter is device-limited rather than starved.
+   Neither rate is 39 MHz over an integer, so it is not the trigger
+   divisor. 1,000,000 sps shows no such split - it reads -2.34% every
+   time - and that is also RC 44's slow state, which may or may not be
+   a coincidence.
+
+   **What this means for the loop.** It is designable: the converter
+   holds one rate per run, so a rate model can be *measured at the
+   start of a run* and trusted for the rest of it. What it must not do
+   is carry a rate across `play_start`, or average the two states into
+   a figure the hardware never produced. The mechanism that picks the
+   state is still unknown, and does not have to be known to close the
+   loop - only to predict which state a run will take.
+
+   The instrument to use is `OccHist.window_rates()`, or `trace` on the
+   daemon. It is keyed on *consumed* buffers rather than on ENDTX, so a
+   window is exactly `PLAY_RATE_DECIM` buffers of data whatever the
+   underruns, and it survives a drained run - which is the only way to
+   read the deficit and the converter's rate from the same run, and so
+   the only way to test the oversupply claim directly rather than by
+   comparing two runs that may have taken different states.
 
 0j. **Why a constant write size is lossless and a varying one is not.**
    The fix works and the mechanism is unknown, which is worth one more
