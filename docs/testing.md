@@ -200,6 +200,7 @@ tests/
   test_rates.py        # domain 1
   test_integrity.py    # domain 2
   test_channels.py     # domain 3
+  test_play_counters.py # the device's own instruments, not the signal
   test_transport.py    # USB benchmarks                      (slow)
 host/measure.py        # extracted library
 ```

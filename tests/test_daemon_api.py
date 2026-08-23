@@ -472,6 +472,9 @@ def test_status_never_asks_the_device_anything(srv, connect):
         def describe(self, *a, **kw):
             raise AssertionError("status must not ask the device")
 
+        def trace(self):
+            raise AssertionError("status must not ask the device")
+
     c = connect("observer")             # hello caches the description
     srv.device = Loud()
     st = c.call("status")["status"]
@@ -482,6 +485,28 @@ def test_status_never_asks_the_device_anything(srv, connect):
 def test_counters_are_available_when_asked_for(connect):
     got = connect().call("counters")["counters"]
     assert "underruns" in got
+
+
+def test_the_rate_trace_is_available_when_asked_for(connect):
+    """`trace` is its own operation, not part of `counters`.
+
+    Different device command, a reply two orders of magnitude longer,
+    and a different question: counters say what went wrong, the trace
+    says what rate the converter actually held. Folding them together
+    would put a 256-entry reply on a path clients are expected to call
+    often.
+    """
+    got = connect().call("trace")["trace"]
+    for key in ("rate_decim", "rate_us", "window_rates", "traced_byte_rate"):
+        assert key in got, f"trace reply is missing {key}: {sorted(got)}"
+
+    # The windows must be derivable from the timestamps, because that is
+    # the whole contract: the device sends absolute microseconds and the
+    # host differences them.
+    decim, us = got["rate_decim"], got["rate_us"]
+    assert len(got["window_rates"]) == len(us) - 1
+    expected = decim * 1024 * 1e6 / (us[1] - us[0])
+    assert got["window_rates"][0] == pytest.approx(expected)
 
 
 # -- lifecycle --------------------------------------------------------
