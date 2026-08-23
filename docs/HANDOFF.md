@@ -716,9 +716,27 @@ sub-question: RC 44 reads one of two discrete converter rates.
    close. All 14 closed in 0.00 s. Oversupply alone does not do it, and
    the run that wedged is still the only one that has.
 
+   **And a second time the same day**, during a full `--track=b` run,
+   about 68% of the way through. Same signature and same confirmation:
+   CPU time frozen at 44.18 s across two samples while wall clock ran to
+   42 minutes for a suite that takes 11, and all 1618 samples of the
+   main thread in `os_close`. Board healthy afterwards, both ports
+   enumerating.
+
+   **Two stack-confirmed occurrences in one session, against one in the
+   weeks before.** That may be chance, and it may not: this session
+   added an emitter that writes bulk IN every 20 ms during play-only.
+   The wedge is a *write* URB on bulk OUT, so there is no mechanism
+   connecting them that survives a second's thought - but the
+   coincidence is recorded rather than dismissed, because the last four
+   things this session was sure of were wrong.
+
    **Not reproduced on demand**: eight consecutive duplex-dma and
    out-dma benches after the first occurrence closed in 0.00 s each,
-   and the 14-run soak above adds to that. So this is a candidate, not a
+   and the 14-run soak above adds to that. What has never been tried is
+   a soak of *port open/close cycles* rather than of benches - both
+   occurrences this session came during long sequences of them, which is
+   the one thing the two have in common. So this is a candidate, not a
    cause - but a specific one. `usb_cdc_dma_mode()` stops both DMA
    channels and flips AUTOSW and **never issues `EPRST`**, while the
    fact recorded below says stopping the channel is not enough and the
