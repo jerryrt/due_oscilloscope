@@ -218,3 +218,73 @@ def test_the_deficit_is_the_oversupply(board, seconds, calibration, rc):
         assert deficit_pct < 0.1, (
             f"RC {rc} is byte-exact by measurement, but lost "
             f"{deficit_pct:.3f}% ({res.host_deficit} B)")
+
+
+@pytest.mark.parametrize("rc", [65, 44, 39])
+def test_the_carrier_reports_what_the_console_trace_reports(board, seconds,
+                                                            calibration, rc):
+    """Playback status over bulk IN agrees with the console `O` trace.
+
+    These are the two ends of objective 0i's carrier problem. The rate
+    loop cannot be closed over the console - polling `B` at 20 Hz took
+    RC 65 from 6 underruns to 30 when the ring was short, because a
+    printf holds the main loop - so the signal goes out on the native
+    port's bulk IN, which is idle in play-only.
+
+    The console trace is then the oracle for it. They share the device's
+    clock and nothing else: one is a record emitted from the main loop
+    every 20 ms, the other is an array sampled in the ENDTX handler and
+    read out afterwards. Measured agreement is 0.001 to 0.018 pp.
+    """
+    hz = measure.hz_for(rc)
+    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0),
+                           drain_s=1.5)
+    assert not res.refused, res.console
+
+    assert len(res.stats) > 20, (
+        f"RC {rc}: only {len(res.stats)} status records arrived over bulk "
+        f"IN - the carrier is not delivering")
+
+    carrier = measure.playstat_rate(res.stats)
+    traced = res.occ.traced_byte_rate()
+    assert carrier and traced, f"RC {rc}: carrier={carrier} traced={traced}"
+
+    nominal = hz * 2.0
+    cp = (1 - carrier / nominal) * 100
+    tp = (1 - traced / nominal) * 100
+    record(calibration, f"carrier_rc{rc}", {
+        "hz": hz, "records": len(res.stats),
+        "carrier_pct": round(cp, 3), "trace_pct": round(tp, 3),
+        "delta_pp": round(cp - tp, 4)})
+
+    assert cp == pytest.approx(tp, abs=0.10), (
+        f"RC {rc}: carrier says the converter is {cp:+.2f}% off nominal, "
+        f"the console trace says {tp:+.2f}% - {cp-tp:+.3f} pp apart. One "
+        f"of the two is not measuring the converter")
+
+
+@pytest.mark.smoke
+def test_the_carrier_stays_silent_in_loop_mode(board, seconds):
+    """Nothing splices status records into a capture stream.
+
+    In loop mode bulk IN carries frames and the IN endpoint is on DMA.
+    Writing a record there would be wrong twice over: the FIFO path and
+    DMA must never share an endpoint - `stream.c` says so and it has
+    wedged the endpoint before - and a record spliced between frames
+    would put 28 bytes of non-sample data inside the sample stream,
+    which invariant 5 exists to prevent.
+
+    The emitter is gated on `stream_in_in_use()`. This is the test of
+    that gate. Framing integrity is the observable proxy: injected bytes
+    would show up as a CRC failure or a sequence gap, because a frame
+    parser that swallowed them would be reading payload out of step.
+    """
+    res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
+                           seconds=window(seconds, 2.0))
+    assert not res.refused, res.console
+    assert res.frames > 0, "no frames captured, so the gate proves nothing"
+    assert res.crc_bad == 0, (
+        f"{res.crc_bad} frames failed CRC - something is writing bulk IN "
+        f"while the stream owns it")
+    assert res.seq_gaps == 0, (
+        f"{res.seq_gaps} sequence gaps - the frame stream is not intact")

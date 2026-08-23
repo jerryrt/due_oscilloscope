@@ -464,11 +464,36 @@ sub-question: RC 44 reads one of two discrete converter rates.
    earlier device-timestamp attempt cannot bias a rate estimate. Keep
    the fast inner loop clock-paced and constant-size.
 
-   **Two things to settle first.** The carrier must not be the console:
+   **The carrier is built and validated.** It could not be the console:
    `B` polling at 20 Hz took RC 65 from 6 underruns to 30 when the ring
-   was short, because printf holds the main loop. Use the native port's
-   bulk IN, which is idle in play-only; in loop mode the capture frame
-   header already has spare fields and costs nothing. ~~And verify the
+   was short, because printf holds the main loop. It is now a 28-byte
+   record on the native port's bulk IN, emitted from the main loop every
+   20 ms in play-only - `drivers/playstat.h`, parsed by
+   `measure.parse_playstats`, read as a rate by `measure.playstat_rate`.
+   Loop mode is untouched: the emitter is gated on `stream_in_in_use()`,
+   because there IN carries frames on DMA and the FIFO path must not
+   share the endpoint. Loop mode still needs the frame header's spare
+   fields, which is not done.
+
+   It agrees with the console trace to **0.001-0.018 pp** at RC 65, 44
+   and 39 - two paths sharing only the device's clock - and costs the
+   playback path nothing measurable: deficit 0.00%, 1.35% and 2.15% at
+   those rates with `under=0`, matching the baseline taken before it
+   existed. Held by `test_the_carrier_reports_what_the_console_trace_reports`
+   and `test_the_carrier_stays_silent_in_loop_mode`.
+
+   **Read the rate over an interval where `consumed` is moving, and
+   start it one record after consumption begins.** Three estimators were
+   wrong before this one, all plausible: spanning every record reads 55%
+   slow, because a drained run collects seconds of starvation; spanning
+   to the last record with a *frozen* tail still reads 0.1-0.7 pp slow,
+   because the ring and pipeline empty raggedly; and selecting the
+   longest run with no underruns selects everything, because before the
+   ring primes the DACC trigger has not started, so `underruns` is
+   frozen at 0 alongside `consumed`. The remaining trap is an
+   off-by-one: the span must not begin on the last frozen record, or the
+   partial interval in which playback started costs up to 0.6 pp and
+   wanders run to run. ~~And verify the
    slow-converter figure before designing against it.~~ **The figure is
    verified; the instrument is sound.** `OccHist.device_byte_rate()`
    divides `consumed` by `run_us`, and both are reset per run, so the
