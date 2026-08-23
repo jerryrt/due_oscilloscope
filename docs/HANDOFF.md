@@ -457,12 +457,42 @@ sub-question: RC 44 reads one of two discrete converter rates.
    deficits are those same figures, which is the giveaway. No write
    policy can fix this: the bytes are genuinely surplus.
 
-   **This is where the closed loop belongs.** The device reports a
-   monotonic total of buffers consumed; the host runs a slow outer loop
-   that trims its *rate* model, not its position, over a window much
-   longer than the pipeline delay - so the staleness that sank the
-   earlier device-timestamp attempt cannot bias a rate estimate. Keep
-   the fast inner loop clock-paced and constant-size.
+   **The closed loop is built, and it works.** `run_play(closed_loop=
+   True)`. The device reports a monotonic total of buffers consumed; a
+   slow outer loop trims the feed's *rate* model - never its position -
+   while the inner loop stays clock-paced and constant-size. Measured,
+   interleaved against its own open-loop control:
+
+   | rate | open loop | closed loop |
+   |---|---|---|
+   | 600,000 (RC 65) | 0.000% | 0.000% |
+   | 886,363 (RC 44) | 1.344%, 1.352% | 0.434%, 0.213% |
+   | 1,000,000 (RC 39) | 2.151%, 2.151% | 0.480%, 0.472% |
+
+   `under=0` in every closed-loop run, which matters: the loop trims
+   *down* toward the converter, so the failure it could have bought is
+   starvation, and the opposite trap - over-feeding to make the counter
+   read zero while the samples stay missing - is what `docs/usb.md`
+   warns about. Neither happened.
+
+   **It is off by default**, because turning it on changes what every
+   measurement in this file measures and the ladders that set the
+   baseline have to keep meaning what they meant.
+
+   **What is left is startup, not rate error.** The feed runs open loop
+   until the first trim can be made, and those bytes are lost once per
+   run rather than continuously. At RC 39: 27,648 B over 3 s and
+   28,544 B over 6 s - the *bytes* are flat and the percentage halves,
+   0.466% to 0.242%. A wrong rate model would lose proportionally. So
+   the residual shrinks with run length and matters least where it
+   matters least: a scope streams for minutes.
+
+   Shortening it means shortening the dead head, which is not the
+   loop's: `run_play` issues `P` and then spends about half a second on
+   console reads before the feeder starts, and the device sits
+   play-active with nothing to play for all of it. Fixing that changes
+   the startup timing of every measurement in the file, so it was left
+   alone.
 
    **The carrier is built and validated.** It could not be the console:
    `B` polling at 20 Hz took RC 65 from 6 underruns to 30 when the ring
@@ -472,8 +502,19 @@ sub-question: RC 44 reads one of two discrete converter rates.
    `measure.parse_playstats`, read as a rate by `measure.playstat_rate`.
    Loop mode is untouched: the emitter is gated on `stream_in_in_use()`,
    because there IN carries frames on DMA and the FIFO path must not
-   share the endpoint. Loop mode still needs the frame header's spare
-   fields, which is not done.
+   share the endpoint.
+
+   **Loop mode still has no carrier, and the plan recorded for it was
+   wrong.** This file said the capture frame header "already has spare
+   fields and costs nothing". It has none: all 32 bytes are allocated
+   (`docs/protocol.md`), and the size is not free either - `acq.h` sizes
+   the payload at 2032 samples precisely so header plus payload is
+   4096 bytes, `8 x 512`, and one DMA sends whole packets. Adding a
+   field means taking two samples out of the payload to hold the
+   alignment, and the header is shared verbatim between Track A and
+   Track B so the host cannot tell them apart. That is a protocol
+   change across both tracks, the host parser and `protocol.md` - worth
+   doing, but not the free lunch the note implied.
 
    It agrees with the console trace to **0.001-0.018 pp** at RC 65, 44
    and 39 - two paths sharing only the device's clock - and costs the
