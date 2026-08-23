@@ -10,13 +10,18 @@ A 12-bit oscilloscope and signal generator on the Arduino Due
 (SAM3X8E, Cortex-M3 @ 84 MHz). The board acquires and generates; the
 host does all DSP and visualisation.
 
-Status: **full loop working and solid.** Both tracks stream the ADC's
-complete in-spec output gaplessly, and both run host-fed DAC playback
-with simultaneous capture (HOST -> DAC0 -> A0 -> HOST) at zero
-underruns and tone amplitude at the theoretical maximum. Both now move
-bulk data by UOTGHS endpoint DMA and reach the full-rate pair; Track A
-keeps the Arduino core for enumeration only. See `docs/status.md` for
-numbers and `docs/HANDOFF.md` for the current objectives.
+Status: **full loop working and solid, with a front end on it.** Both
+tracks stream the ADC's complete in-spec output gaplessly, and both run
+host-fed DAC playback with simultaneous capture (HOST -> DAC0 -> A0 ->
+HOST) at zero underruns and tone amplitude at the theoretical maximum.
+Both move bulk data by UOTGHS endpoint DMA and reach the full-rate
+pair; Track A keeps the Arduino core for enumeration only.
+
+The host side is a daemon that owns the ports (`host/daemon/`) and a Qt
+window that draws from it (`gui/`), and both have test suites that need
+no board. See `docs/status.md` for numbers, `docs/frontend.md` and
+`docs/daemon-api.md` for the host architecture, and `docs/HANDOFF.md`
+for the current objectives.
 
 ## Invariants
 
@@ -235,8 +240,12 @@ because there is no debug probe.
 4. DACC, closing the DAC0-to-A0 loopback — done, both directions,
    including host-fed playback
 5. Replace the printf sink with the USB path — done; playback runs on
-   endpoint DMA, capture IN is the last CPU copy (see `docs/HANDOFF.md`)
-6. Host application — capture/loopback/bench tools done; GUI pending
+   endpoint DMA, and on Track B capture IN does too - the processor no
+   longer touches sample data at all. Track A still copies; see
+   objective 1b in `docs/HANDOFF.md` for why
+6. Host application — capture/loopback/bench tools, a daemon owning the
+   ports (`host/daemon/`, `docs/daemon-api.md`), and a Qt front end
+   (`gui/`) that draws from it. See `docs/frontend.md`
 7. FreeRTOS variant — not started
 
 ## Debugging context

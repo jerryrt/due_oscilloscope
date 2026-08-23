@@ -1,6 +1,21 @@
 # Test Suite: design and implementation guide
 
-**Status: implemented.** `host/measure.py` plus `tests/`. Run it with
+**Status: implemented, and since extended past the hardware.** The
+original four files still talk to a real board for everything about
+signals, timing and transport. Three more do not, deliberately:
+`test_daemon_protocol.py`, `test_daemon_api.py` and `test_jitter.py`
+judge framing, ownership, refusals, backpressure and recording, which
+are not properties of the Due, and `test_gui.py` drives the front end
+headlessly in the GUI venv. They cost seconds and run first, so a
+protocol regression fails before anything has been flashed.
+
+That is not a retreat from the no-simulator rule. The synthetic device
+produces frames in the device's own format - same header, same CRC,
+same sequence numbers - and `measure.parse_frames` is what checks they
+arrived intact, so the real parser is exercised on synthetic bytes
+rather than a second definition of the format being written.
+
+`host/measure.py` plus `tests/`. Run it with
 
 ```sh
 python3 -m venv .venv

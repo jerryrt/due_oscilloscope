@@ -21,6 +21,9 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/rtos.md](docs/rtos.md) | Bare-metal and FreeRTOS integration |
 | [docs/usb.md](docs/usb.md) | Measured transport ceilings and host I/O policy |
 | [docs/testing.md](docs/testing.md) | On-hardware pytest suite: design, and what it found |
+| [docs/frontend.md](docs/frontend.md) | Front end architecture: daemon, GUI, recording |
+| [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
+| [docs/hardware-next.md](docs/hardware-next.md) | Options for a more powerful successor |
 | [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | Current state and next objectives |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Commit conventions |
@@ -35,11 +38,24 @@ underruns, zero sequence gaps, zero CRC errors, and tone amplitude at
 the theoretical maximum (1371 +/- 2 codes) in every 40 ms window of a
 run. See [docs/status.md](docs/status.md).
 
+**And there is a front end on it.** A daemon owns the ports and the
+real-time threads and serves clients over a socket
+([docs/daemon-api.md](docs/daemon-api.md)); a Qt window draws from it
+with min/max decimation and a health panel
+([docs/frontend.md](docs/frontend.md)). Both have test suites that need
+no board:
+
+```sh
+python3 -m daemon --fake                     # from host/
+.venv-gui/bin/python -m gui --spawn-fake     # the front end, no hardware
+```
+
 | Measurement | Result |
 |---|---|
 | Matched loop up to 453,488 sps each way | 1371 +/- 2 codes in every window, `under=0`, gapless |
 | AWG play-only up to 1.383 Msps (DACC hardware limit) | `under=0` at a 2.81 MB/s DMA-fed stream |
 | Full-rate pair: DAC 907 k + capture 907 k aggregate | runs with `under=0`; purity work remains (see handoff) |
+| Capture path (Track B) | sent by endpoint DMA; the processor never reads a sample |
 | USB via endpoint DMA (IN / OUT / duplex) | **32.0 / 26.6 byte-perfect / 16.95 MB/s** |
 
 Both tracks stream the ADC's full in-spec output continuously over

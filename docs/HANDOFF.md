@@ -5,49 +5,86 @@ recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
 policy). If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
-## Where the work stands (2026-08-22, end of session)
+## Where the work stands (2026-08-23, end of session)
 
-**This session closed the lost-sample defect** that had been objective
-0 since the test suite was built. `play_service()` read
-`UOTGHS_DEVDMASTATUS` twice - byte count from one read, "has it
-finished" from another - and when a DMA span completed between the two,
-the ring resumed the next span behind data already in SRAM and
-overwrote samples that had arrived but not yet played. Both tracks
-carried it, because Track A's `play.cpp` is a transliteration of Track
-B's `play.c`. One read, decoded twice, on both. Full write-up in
-`docs/status.md`; the short version is in "Hard-won facts" below.
+The board is a working instrument with a front end on top of it. What
+changed this session is that the host side grew a spine: a daemon that
+owns the ports, a socket API with its own test suite, and a Qt window
+that draws from it.
 
-The loop at 200 ksps is now **byte-exact**: `play_bytes_in` equals the
-host's `write()` count, a host-fed ramp has no discontinuities, and
-`play_partial` - a new counter for the case the arithmetic says cannot
-happen - stays at zero.
+**The daemon.** `host/daemon/` owns both ports and the real-time
+feeder and serves clients over TCP - `docs/daemon-api.md` is the
+reference, `docs/frontend.md` says why it is a separate process.
+Frames cross verbatim, so `measure.parse_frames` reads a socket and a
+serial port identically. `python3 -m daemon --fake` runs it with no
+hardware at all, which is what front end work should be built against.
 
-Work is **merged to `main`**; the branch it was built on,
-`fix/out-dma-status-race`, is gone. Both tracks build from it. The
-board was last flashed with Track B.
+**The front end.** `gui/` is G1: a live trace with min/max decimation,
+timebase and channel controls, and a health panel built first rather
+than last. Run it with `.venv-gui/bin/python -m gui --spawn-fake`.
 
-Three things were separated out of that objective rather than fixed
-with it, and they are objectives 0a to 0c below: the rate starvation is
-a different mechanism, what is left of the sample loss is the host's,
-and the suite wedged once in `close()`.
+**Capture no longer touches the processor** (Track B). Each capture
+buffer carries 32 bytes of headroom, so a finished frame is 4096
+contiguous bytes sent by one DMA per packet. That closes the last
+violation of invariant 1. It did **not** improve purity, which was the
+reason the objective existed - see objective 1 below and the A/B in
+`docs/status.md`. Track A still copies, deliberately.
 
-**The clean two-track pass is recorded.** The suite now runs on Python
-3.14.6 from MacPorts and carries the daemon's own tests: `pytest
---track=both -q` gave **211 passed, 1 skipped, 7 xfailed, 2 xpassed in
-10:54**, closing without wedging. That was the loose end left by the
-run that had reported every test and then hung in teardown; 0c has not
-reproduced since.
+**The daemon runs free-threaded.** With four busy Python threads in
+its process, the GIL build underran playback 13 times and read 132
+frames where a quiet run reads ~890; the free-threaded build of the
+same version underran zero times and read 891. It is stdlib only, so
+it needs no free-threaded wheels: `python3.14t -m venv` is the whole
+setup.
 
-**The daemon exists.** `host/daemon/` serves the sample stream and the
-device console over a socket - see `docs/daemon-api.md` for the wire
-protocol and `docs/frontend.md` for why it is a separate process. 81 of
-its tests need no board and run in three seconds; one hardware case
-runs last. `python3 -m daemon --fake` runs it with no hardware at all,
-which is what GUI work should be built against.
+**Latency is measured, not inferred.** `host/jitter.py` records the
+device read gap, the fan-out cost and the feeder's write interval in
+log-2 microsecond buckets, and the daemon reports them in `status`.
+Every scheduling argument in this project used to be conducted in
+units of "13 underruns"; it can now be conducted in milliseconds.
 
-Track A is level with Track B: same command letters, same output format,
-same refusals, the same transport mechanism, and now the same
-throughput. Its bulk endpoints were taken away from the Arduino core and
+### The suite
+
+`pytest --track=both -q`: **244 passed, 2 skipped, 4 xfailed, 4
+xpassed in 12:11**. About 12 minutes for both tracks, of which the
+board-free tests are seconds.
+
+| Venv | Interpreter | Runs |
+|---|---|---|
+| `.venv` | 3.14.6 | the suite - `--track=a|b|both`, `-m smoke` for a ~2 min pass |
+| `.venv-gui` | 3.13.14 | the GUI and `tests/test_gui.py` (PySide6 is `<3.14`) |
+| `.venv-ft` | 3.14.6 free-threaded | the daemon, and the suite when checking it there |
+
+The GUI tests skip in `.venv` rather than failing, because that venv
+deliberately has neither Qt nor numpy.
+
+### Things that were believed and turned out to be wrong
+
+Three, all disproved with measurement rather than argument, and all
+worth not re-deriving:
+
+- **The capture CPU copy was not limiting purity.** A/B in loop mode
+  at the full-rate pair: median window 1291-1298 codes on DMA against
+  1292-1306 on the copy, `resync=2` either way.
+- **Objective 0a is not a clock-drift problem.** Two separate "6%
+  drift" figures were measurement artifacts - see 0a.
+- **The slew test's margin was never exercised** while the test was an
+  xfail, so it inherited a number that the mechanism it measures
+  exceeds routinely.
+
+Work is on `main` and pushed. The board was last flashed with
+**Track B**.
+
+Three things separated out of the lost-sample defect in the previous
+session remain objectives 0a to 0c: the rate starvation is a different
+mechanism, what is left of the sample loss is the host's, and the
+suite wedged once in `close()`.
+
+Track A is level with Track B where it counts - same command letters,
+same output format, same refusals, same wire format, same throughput -
+and differs in one implementation detail: Track B's capture path is on
+endpoint DMA and Track A's still copies, because Track A cannot pin a
+buffer to an SRAM bank under the Arduino core's linker (objective 1b). Its bulk endpoints were taken away from the Arduino core and
 put on UOTGHS DMA; the core still enumerates. Typical figures are
 OUT ~27, IN ~31-32, duplex ~15-16 MB/s, but **the run-to-run spread is
 35-59%, not the ~5% this file used to claim**: five 4 s runs per mode
@@ -99,8 +136,12 @@ publishing.
   byte. `play_partial` counts spans that ended off a slot edge and
   must stay zero.
 - **Capture**: TIOA0-triggered ADC, PDC ping-pong into a 4-buffer ring,
-  frames (32 B header + 2032 samples = 4096 B) sent by CPU FIFO copy -
-  the one remaining CPU touch of sample data (objective 1).
+  frames (32 B header + 2032 samples = 4096 B). **Track B sends them by
+  endpoint DMA**: each buffer carries the header in 32 bytes of
+  headroom in front of its payload, so a finished frame is contiguous
+  and goes out in packet-sized transfers the processor never reads. The
+  ring is pinned to SRAM bank 1 for that reason - see the hard-won
+  facts. **Track A still copies** (objective 1b).
 - **Host feed** (`host/loopback.py`): real-time thread (`host/rt.py`,
   QoS + Mach time-constraint; XNU has no core pinning), clock-paced at
   the DAC byte rate with a 20 KB lead, blocking writes of whole
@@ -114,9 +155,14 @@ publishing.
 
 ## Next objectives, in order
 
-**Start here**: objective 0a. The recorded two-track pass that used to
-head this list is done (see above), so the starvation is now the oldest
-thing still open.
+**Start here**: objective 0a. It is the oldest thing still open, the
+mechanism is now narrowed to the device rather than the feed, and the
+next experiment is written out under it. Everything else on this list
+is either a smaller job or waits on hardware.
+
+If you would rather build than debug, the alternative is **G2** on the
+front end - trigger, measurements, FFT - which needs no board at all
+(`--spawn-fake`) and cannot be blocked by the cable in objective 2.
 
 Objectives 0a to 0c are what came out of the lost-sample defect when it
 was taken apart. None of them is that defect; each was folded into it
@@ -143,6 +189,20 @@ before and is now separate, with its own evidence.
    the saturation that makes macOS drop 128-byte chunks. Full write-up,
    including two drift figures that turned out to be measurement
    artifacts, in `docs/status.md`.
+
+   **The next experiment, stated so it can be run without re-deriving
+   it:** hold a bounded lead measured against the device's consumption
+   rather than against the kernel queue - target 70-80% ring occupancy
+   - and watch the span count. If spans stay high while the queue
+   stays shallow, the mechanism is confirmed and the policy is safe to
+   ship. If spans collapse the moment the queue drains, the arming
+   policy in firmware is what needs changing, not the feed.
+
+   Do not reach for the device clock to do it. That was tried and the
+   arithmetic is in `docs/status.md`: the device's timestamps lag by
+   however deep the kernel buffer is, so pacing on them silently
+   over-feeds, and over-feeding is saturation - which is where macOS
+   drops 128-byte chunks.
 
    The `spans` counter added with the lost-sample fix is a new handle
    on it: a starving run arms few, large DMA spans (RC 32, failing: 464
@@ -254,6 +314,20 @@ before and is now separate, with its own evidence.
    bank under the Arduino core's linker, and without that the same port
    measures 81 overruns per run against zero today. Adopting it there
    needs a verified placement mechanism first.
+1a. **G2 on the front end**: trigger (edge, level, pulse; auto, normal,
+   single), automatic measurements, FFT with a window choice. The
+   decode, ring and reduction are already Qt-free in `gui/stream.py`
+   and tested there, so this is mostly new views over existing data.
+   Needs no board.
+
+1b. **Capture over endpoint DMA on Track A**, which currently still
+   copies. The port is written and measured - 81 ADC overruns per 4 s
+   at the full rate - and blocked on placement: Track A links against
+   the Arduino core's script and cannot pin a buffer to bank 1, which
+   is what makes it clean on Track B. Needs a verified placement
+   mechanism first, not a `--section-start` guess that would overlap
+   whatever the allocator put there.
+
 2. **Replace the marginal native-port cable** before attributing any
    further purity variance to software. It failed hard twice on
    2026-08-21 (VBUS present, D+/D- dead: enumerates nowhere) and the
@@ -293,6 +367,48 @@ before and is now separate, with its own evidence.
 
 ## Hard-won facts the next session must not rediscover
 
+- **Asking the board for its banner while it plays costs eleven
+  underruns.** Every time, measured. The banner is a long console
+  print, the main loop is inside it, and `play_service()` does not run
+  while it is. `B`, the short counters report, costs none. The rule the
+  daemon now follows: **on a poll path, ask the device nothing** - its
+  `status` is answerable from the host alone and the device
+  description is cached, because it used to be fetched per call.
+- **Measure a firmware change against the firmware it replaces, not
+  against expectation.** Capture over DMA streamed with no gaps, no CRC
+  failures and no stalls while losing 439 ADC conversions per 4 s run.
+  Reflashing the old build took three minutes and was the only reason
+  that was attributed to the change rather than to the board.
+- **The two SRAM banks are separate enough for placement to matter**,
+  which `docs/scope.md` had listed as an open question. USB DMA reading
+  the same bank the ADC's PDC writes costs 439 overruns per 4 s at the
+  full rate; the other bank halves it; packet-sized transfers remove
+  the rest. Track B therefore pins capture to bank 1 and playback to
+  bank 0 - a swap, not a shrink.
+- **A frame is 4096 bytes because the header sits in front of the
+  payload**, in the same allocation. `acq_slot_t` is that struct, and
+  `_Static_assert` holds both its size and the frame's 512-byte
+  alignment. Growing the header silently breaks every short-packet rule
+  in `docs/protocol.md`.
+- **The GIL couples the daemon's own work to its real-time threads.**
+  Four busy Python threads in the process: 13 underruns and 132 frames
+  read against ~890 on the GIL build, none and 891 free-threaded. Load
+  in *other* processes is the scheduler's business and is unaffected.
+- **A drain loop with no bound never returns** when the producer is
+  faster than the display. It hung the GUI's first test run for ten
+  minutes. The daemon is built to drop toward a slow client and count
+  it, so leaving frames queued is the designed behaviour.
+- **Do not derive a ring's write position from a running total.** It is
+  correct until one append is larger than the ring, and then the window
+  silently returns samples that are not the newest.
+- **A threshold that has only ever run under an xfail has not been
+  tested.** When the xfail comes off, the numbers it was hiding need
+  re-deriving rather than inheriting.
+- **Both "the device clock drifts 6%" figures were artifacts.** The
+  first anchored on a frame that was already 0.19 s old; the second
+  lagged by however deep the kernel buffer was. The device clock is
+  right to a tenth of a percent - 600,725 sps measured against a
+  declared 600,000 once the pre-roll is removed.
 - **Never analyse a capture without proving it is fresh.** Stale
   kernel-buffered frames from a previous run manufactured a "frozen
   DAC" that cost a full session. Sequence numbers near zero and device
@@ -380,9 +496,22 @@ before and is now separate, with its own evidence.
 ## Environment
 
 - macOS 12.7.6, Intel x86_64, no Homebrew - but **MacPorts is
-  installed** at `/opt/local`, with `python314` 3.14.6 active, which is
-  what `.venv` is built on. `/usr/bin/python3` is the Xcode CLT 3.9.6.
-  `~/.local/bin` on `PATH` (holds `arduino-cli`, `cmake`, `gh`).
+  installed** at `/opt/local`. `/usr/bin/python3` is the Xcode CLT
+  3.9.6 and nothing is built on it any more. `~/.local/bin` on `PATH`
+  (holds `arduino-cli`, `cmake`, `gh`).
+- **Three venvs, none committed.** A venv holds absolute paths and
+  platform-specific wheels and does not travel; the pinned declaration
+  is what is committed.
+
+  | Venv | Interpreter | Holds |
+  |---|---|---|
+  | `.venv` | `/opt/local/bin/python3.14` (3.14.6) | pytest |
+  | `.venv-gui` | `/opt/local/bin/python3.13` (3.13.14) | PySide6 6.9.3, pyqtgraph, numpy, scipy |
+  | `.venv-ft` | `/opt/local/bin/python3.14t` (free-threaded) | pytest; run the daemon here |
+
+  PySide6 declares `>=3.9,<3.14`, which is why the GUI has its own
+  interpreter. The daemon imports nothing outside the standard library,
+  which is why it can run on the free-threaded build at all.
 - Track B: `cmake --build build -j`, flash with
   `tools/flash.sh build/baremetal_bringup.bin` (discovers the port; an
   interrupted flash leaves SAM-BA enumerated and the banner silent -
@@ -406,6 +535,30 @@ before and is now separate, with its own evidence.
 - Scratch scripts written this session are under the session scratchpad
   and are not part of the repo. Anything worth keeping was folded into
   `host/measure.py` or `tests/`.
+
+## Daemon and front end
+
+```sh
+# the daemon: no hardware
+python3 -m daemon --fake            # from host/, or PYTHONPATH=host
+.venv-ft/bin/python -m daemon       # the real board, free-threaded
+
+# the front end
+.venv-gui/bin/python -m gui --spawn-fake    # starts its own fake daemon
+.venv-gui/bin/python -m gui                 # a daemon already running
+
+# their tests
+.venv/bin/python -m pytest tests/test_daemon_protocol.py \
+                          tests/test_daemon_api.py tests/test_jitter.py -q
+.venv-gui/bin/python -m pytest tests/test_gui.py -q
+```
+
+`docs/daemon-api.md` is the socket reference: framing, the command
+catalogue, ownership, backpressure, recording, and what `status`
+carries. Two things about it are load-bearing rather than incidental -
+`status` never touches the device, and a client that stops reading
+loses frames that are counted and reported rather than slowing anyone
+down.
 
 ## Track A command reference
 

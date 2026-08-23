@@ -53,7 +53,7 @@ What Phase 1 deliberately does **not** prove: noise, loading, or cable
 effects. A two-inch jumper with a shared ground hides all of those. They
 belong to Phase 3.
 
-### Phase 2 — Host streaming (complete except live plot)
+### Phase 2 — Host streaming (complete)
 
 - [x] USB bulk streaming of capture buffers (see `docs/protocol.md`)
 - [x] Sustained USB throughput measured: full in-spec ADC rate
@@ -61,9 +61,12 @@ belong to Phase 3.
       it (see `docs/usb.md`)
 - [x] Host application: deframe, sequence continuity, Goertzel tone
       verification (`host/receive.py`, `host/loopback.py`)
-- [ ] Live plot / GUI - planned as a client/server split: a streaming
-      daemon owning the ports and real-time threads, a GUI as a
-      separate process over a local socket
+- [x] Live plot / GUI - built as the planned client/server split: a
+      streaming daemon owning the ports and real-time threads
+      (`host/daemon/`, `docs/daemon-api.md`), a Qt front end as a
+      separate process over a socket (`gui/`, `docs/frontend.md`).
+      G1 is a live trace with min/max decimation and a health panel;
+      trigger, measurements and FFT are G2
 
 A successor instrument - faster, more channels, or streaming over
 USB 3 - is sketched in `docs/hardware-next.md`: what the host software
