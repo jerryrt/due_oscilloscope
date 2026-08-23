@@ -72,6 +72,7 @@ limit rather than saying no.
 | `ping` | no | `pong` |
 | `status` | no | Everything below under [Status](#status). Host-side only; safe to poll |
 | `counters` | no | The device's own counters, over the console |
+| `trace` | no | Playback occupancy and the converter's own rate trace |
 | `caps` | no | Rate limits, modes, device description |
 | `rate` | no | Snap `adc_hz`/`dac_sps` without touching the device |
 | `subscribe` | no | `{frames: bool}` - start or stop receiving `FRAME` |
@@ -205,6 +206,26 @@ reflash.
 separate. `B` is a short report and measures clean mid-stream, but a
 client that wants numbers during playback should still prefer taking
 them after the stop.
+
+### `trace` reports the rate the converter actually held
+
+`counters` says what went wrong; `trace` says what the DAC was actually
+doing. It returns the playback ring's occupancy histogram and, more
+usefully, `rate_us` - absolute device microseconds sampled every
+`rate_decim`-th *consumed* buffer - with `window_rates` differenced from
+them and `traced_byte_rate` spanning the whole trace.
+
+Its own op rather than part of `counters` because it is a different
+device command (`O`) and a reply two orders of magnitude longer: two
+lines of up to 256 values. Like `counters`, `status` never drags it in.
+
+Why per-window and not a whole-run average: at 886,363 sps the converter
+holds one of two discrete rates, -1.56% or -2.34% of nominal, chosen at
+`play_start` and held for the entire run. An average across a rate that
+changes is a number the hardware never produced. The trace is keyed on
+consumed buffers rather than on ENDTX, so a window is exactly
+`rate_decim` buffers of data whatever the underruns, and a run that ends
+starved - a drained run, deliberately - writes no misleading samples.
 
 ## Versioning
 

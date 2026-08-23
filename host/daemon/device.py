@@ -66,6 +66,16 @@ class Device:
         it is never called on a status poll - see `stats`."""
         return {}
 
+    def trace(self):
+        """The playback ring's occupancy and the converter's own rate.
+
+        A separate call from `counters` because it is a different device
+        command and a much longer reply - two lines of up to 256 values
+        each - so it costs more than a poll path can afford. Like
+        `counters`, never dragged in by `status`.
+        """
+        return {}
+
     def stats(self):
         """What the host knows without asking the device anything.
 
@@ -215,6 +225,28 @@ class FakeDevice(Device):
             return {"frames": self._sent_frames, "awg_bytes": self._awg_bytes,
                     "underruns": 0, "overruns": 0, "seq_gaps": 0}
 
+    def trace(self):
+        """A structurally real trace: a converter holding one exact rate.
+
+        Deterministic like the rest of this device, so a client can be
+        built and tested against the shape of the reply without a board.
+        The rate is exact because the interesting deviations are a
+        property of the hardware, and inventing one here would put a
+        number in the fake that a reader could mistake for a measurement.
+        """
+        decim, n = 32, 64
+        with self._lock:
+            sps = (self.rates or {}).get("dac_sps") or 200000
+        dt = round(decim * 1024 * 1e6 / (sps * 2.0))
+        rate_us = [i * dt for i in range(n)]
+        return {"occ_min": 20, "endtx": n * decim, "run_us": rate_us[-1],
+                "consumed": n * decim, "hist": [], "trace": [], "decim": 0,
+                "rate_decim": decim, "rate_us": rate_us,
+                "window_rates": [decim * 1024 * 1e6 / dt] * (n - 1),
+                "byte_rate": decim * n * 1024 * 1e6 / rate_us[-1],
+                "traced_byte_rate": decim * (n - 1) * 1024 * 1e6
+                                    / (rate_us[-1] - rate_us[0])}
+
     def stats(self):
         with self._lock:
             return {"frames": self._sent_frames, "awg_bytes": self._awg_bytes}
@@ -354,6 +386,24 @@ class BoardDevice(Device):
                     "partial": play.partial, "rx_bytes": self._rx}
         except Exception:                            # noqa: BLE001
             return {"rx_bytes": self._rx}
+
+    def trace(self):
+        """`O`, parsed. Two long lines, so it gets a longer read window.
+
+        Reported whether or not playback is running: the device holds
+        the histogram and the trace until the next play_start, so the
+        useful moment to ask is after a run rather than during one -
+        and asking during one costs underruns at exactly the rates
+        where the answer matters.
+        """
+        o = self.m.parse_occ(self.board.ask("O", secs=2.0))
+        return {"occ_min": o.min, "endtx": o.endtx, "run_us": o.run_us,
+                "consumed": o.consumed, "hist": list(o.buckets),
+                "trace": list(o.trace), "decim": o.decim,
+                "rate_decim": o.rate_decim, "rate_us": list(o.rate_us),
+                "window_rates": o.window_rates(),
+                "byte_rate": o.device_byte_rate(),
+                "traced_byte_rate": o.traced_byte_rate()}
 
     def stats(self):
         return {"rx_bytes": self._rx}

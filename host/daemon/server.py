@@ -643,6 +643,18 @@ def _op_counters(srv, ses, msg):
     return {"event": "counters", "counters": srv.device.counters()}
 
 
+def _op_trace(srv, ses, msg):
+    """The playback occupancy histogram and the converter's rate trace.
+
+    Its own operation rather than part of `counters`: a different device
+    command, a far longer reply, and a different question. `counters`
+    asks what went wrong; this asks what rate the converter actually
+    held, which the whole-run figure cannot answer because it averages a
+    converter that changes state with one that does not.
+    """
+    return {"event": "trace", "trace": srv.device.trace()}
+
+
 def _op_caps(srv, ses, msg):
     return {"event": "caps", "rates": ratemod.describe(),
             "device": srv.description(),
@@ -743,6 +755,7 @@ OPS = {
     "ping": _op_ping,
     "status": _op_status,
     "counters": _op_counters,
+    "trace": _op_trace,
     "caps": _op_caps,
     "rate": _op_rate,
     "subscribe": _op_subscribe,
