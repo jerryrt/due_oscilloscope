@@ -198,6 +198,20 @@ before and is now separate, with its own evidence.
    not been tested.** When the xfail comes off, the numbers it was
    hiding need re-deriving rather than inheriting.
 
+0g. **The firmware does not refuse a DAC rate past the DACC ceiling.**
+   `=906976,906976,2L` is refused with the limit named - `# loop: ADC
+   906976 Hz x2 ch refused (max 453488)` - which is the behaviour the
+   documentation describes. But `=1950000,200000,2P` is *accepted*:
+   RC 20, well past the ~1.393 Msps the DACC can convert at ~54.7 MCK
+   cycles per conversion. Observed on both tracks while testing the
+   daemon's refusal path.
+
+   It matters more now than it did. `host/daemon/rates.py` refuses it,
+   so nothing gets through the daemon - but that makes the host the
+   only check rather than a courtesy, and a console user still walks
+   straight into it. Refuse it in firmware, on both tracks, naming the
+   limit the way the ADC path already does.
+
 0d. **The pytest suite** - built, and it is the instrument that found
    all four defects on this page. `docs/testing.md` is the design and
    records what building it found. About 5 minutes per track, ~138

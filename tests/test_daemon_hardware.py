@@ -11,6 +11,7 @@ Kept to one streaming case on purpose. This is the slowest kind of test
 in the project and its value is the wiring, not the measurement.
 """
 
+import socket
 import time
 
 import pytest
@@ -19,6 +20,7 @@ import measure
 from helpers import record
 from daemon import client as clientmod
 from daemon import device as devmod
+from daemon import protocol as proto
 from daemon import server as servermod
 
 
@@ -207,3 +209,169 @@ def test_a_waveform_uploaded_through_the_daemon_reaches_the_pin(board, track,
     finally:
         c.close()
         srv.stop()
+
+
+@pytest.mark.slow
+def test_the_device_s_own_refusal_reaches_the_client(board, track):
+    """`BoardDevice` looks for "refused" in the console and turns it
+    into an error. Until now that path had only ever run against the
+    synthetic device, where the refusal was the host's own.
+
+    Driven at the device layer on purpose: the server refuses this rate
+    from its own table before the board would ever see it, and what
+    needs proving here is that the board's words come back when the
+    table is not the thing that caught it.
+    """
+    dev = devmod.BoardDevice(board)
+    with pytest.raises(devmod.DeviceError) as e:
+        dev.start("loop", dac_sps=200000, adc_hz=906976, channels=2,
+                  waveform=b"\x00\x00" * 512)
+    msg = str(e.value)
+    assert "refused" in msg, f"the device's refusal did not come back: {msg}"
+    assert "453488" in msg, (
+        f"the refusal reached the client without the limit it names: {msg}")
+    assert not dev.running
+
+
+@pytest.mark.slow
+@pytest.mark.scope
+def test_a_recording_of_a_real_stream_is_byte_identical(board, track,
+                                                        tmp_path):
+    """What the device sent is what is on disk, and the sidecar carries
+    what the frames cannot."""
+    path = str(tmp_path / f"real-{track}.due")
+    dev = devmod.BoardDevice(board)
+    srv = servermod.Server(dev, host="127.0.0.1", port=0).start()
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=20.0,
+                         frame_capacity=20000)
+    try:
+        c.connect()
+        c.hello("control")
+        c.subscribe()
+        c.call("start", mode="capture", preset="1")
+        c.wait_frames(20, timeout=20.0)
+        c.call("record.start", path=path)
+        c.wait_frames(c.frames_received + 60, timeout=20.0)
+        side = c.call("record.stop")["sidecar"]
+        c.call("stop")
+    finally:
+        c.close()
+        srv.stop()
+
+    blob = open(path, "rb").read()
+    assert side["dropped"] == 0, (
+        f"{side['dropped']} frames dropped from the record: the disk did "
+        f"not keep up with {devmod.FRAME_BYTES} bytes a frame")
+    assert side["error"] is None
+    assert len(blob) == side["bytes"] == side["frames"] * devmod.FRAME_BYTES
+
+    ps = measure._finish(measure.parse_frames(blob))
+    assert ps.frames == side["frames"]
+    assert ps.seq_gaps == 0 and ps.crc_bad == 0
+    assert ps.declared_rate_hz > 0
+
+    # Every frame in the file is a frame the client also received, and
+    # the sidecar describes the same device.
+    got = set(bytes(f) for f in c.frames)
+    n = devmod.FRAME_BYTES
+    on_disk = [blob[i:i + n] for i in range(0, len(blob), n)]
+    assert sum(1 for f in on_disk if f in got) >= len(on_disk) // 2
+    assert side["device"]["kind"] == "board"
+    assert side["frame_bytes"] == devmod.FRAME_BYTES
+
+
+@pytest.mark.slow
+@pytest.mark.scope
+def test_a_client_that_stops_reading_loses_frames_and_the_rest_do_not(
+        board, track):
+    """The drop policy at the real rate, not a synthetic one.
+
+    A wedged client must lose frames - counted, and visible in status -
+    while the device keeps streaming and a reading client keeps
+    receiving everything. This is the rule the whole display design
+    rests on.
+    """
+    dev = devmod.BoardDevice(board)
+    srv = servermod.Server(dev, host="127.0.0.1", port=0,
+                           client_queue_frames=8).start()
+    silent = socket.create_connection(("127.0.0.1", srv.port))
+    good = clientmod.Client("127.0.0.1", srv.port, timeout=20.0,
+                            frame_capacity=20000)
+    try:
+        silent.sendall(proto.encode_json(proto.T_CMD,
+                                         {"op": "hello", "id": 1}))
+        silent.sendall(proto.encode_json(proto.T_CMD,
+                                         {"op": "subscribe", "frames": True,
+                                          "id": 2}))
+        good.connect()
+        good.hello("control")
+        good.subscribe()
+        good.call("start", mode="capture", preset="5")
+
+        end = time.time() + 25.0
+        while time.time() < end:
+            if max((s.dropped for s in srv.sessions), default=0) > 0:
+                break
+            time.sleep(0.1)
+        dropped = max((s.dropped for s in srv.sessions), default=0)
+        before = good.frames_received
+        time.sleep(1.0)
+        after = good.frames_received
+        st = good.call("status")["status"]
+        good.call("stop")
+    finally:
+        good.close()
+        silent.close()
+        srv.stop()
+
+    assert dropped > 0, (
+        "the silent client never lost a frame: either the queue never "
+        "filled or the stream never reached rate")
+    assert after > before + 100, (
+        f"the reading client got {after - before} frames while another "
+        f"client was wedged; it should be receiving at full rate")
+    assert any(cl["dropped"] > 0 for cl in st["clients"])
+    ps = measure._finish(measure.parse_frames(b"".join(list(good.frames))))
+    assert ps.seq_gaps == 0, (
+        f"{ps.seq_gaps} gaps at the reading client: one client falling "
+        f"behind must not cost another its data")
+
+
+@pytest.mark.slow
+@pytest.mark.scope
+def test_stopping_the_daemon_mid_stream_leaves_the_port_usable(board, track):
+    """The close() wedge class, objective 0c.
+
+    The daemon is stopped at the full rate without stopping the device
+    first, which is what happens when the process is killed. The board
+    must still answer, and the native port must still open and go
+    quiet.
+    """
+    dev = devmod.BoardDevice(board)
+    srv = servermod.Server(dev, host="127.0.0.1", port=0).start()
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=20.0)
+    try:
+        c.connect()
+        c.hello("control")
+        c.subscribe()
+        c.call("start", mode="capture", preset="5")
+        c.wait_frames(200, timeout=20.0)
+    finally:
+        c.close()
+        t0 = time.time()
+        srv.stop()                       # no stop first, on purpose
+        teardown = time.time() - t0
+
+    assert teardown < 15.0, (
+        f"the daemon took {teardown:.1f}s to stop: something waited on a "
+        f"device that was still streaming")
+
+    banner = board.ask("h", secs=2.0)
+    assert "due_oscilloscope" in banner, (
+        "the board did not answer after the daemon was stopped mid-stream")
+
+    fd = board.open_native()
+    try:
+        measure.drain_until_quiet(fd, quiet=0.3, cap=5.0)
+    finally:
+        board.close_native(fd)

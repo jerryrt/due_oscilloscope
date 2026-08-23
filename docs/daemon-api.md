@@ -96,10 +96,17 @@ a defect, and this is the same mistake at the other end of the wire.
 
 Rates past a limit are refused with the limit named: the trigger floor
 (RC 86 for two channels, RC 44 for one - measured, not derived, and not
-halvable) and the DACC ceiling at RC 28. The board remains the
-authority and its refusals are forwarded verbatim; these checks only
-catch what can be caught early. The **capability report** in
-`docs/frontend.md` is what ends the duplication.
+halvable) and the DACC ceiling at RC 28. The board's own refusals are
+forwarded verbatim - `# loop: ADC 906976 Hz x2 ch refused (max 453488)`
+reaches the client as an error carrying that text. The **capability
+report** in `docs/frontend.md` is what ends the duplication.
+
+One asymmetry found while testing this: the firmware refuses a capture
+rate past the trigger floor, but **accepts a DAC rate past the DACC
+ceiling** - `=1950000,200000,2P` is acknowledged, not refused, though
+RC 20 is well past the ~1.393 Msps the DACC can convert. So the host
+check is not belt and braces there; it is the only check. See the
+objective in `docs/HANDOFF.md`.
 
 ## Events
 
