@@ -122,15 +122,49 @@ stays wrong, which is the precise failure mode invariant 5 exists to
 prevent. The device cannot flag it: it counts and reports what *it*
 drops, and these bytes never reached it.
 
+**The fix: write a constant size.** Writing a constant 512 bytes per
+`write()` is lossless where writing "whatever is due" is not - same
+sizes on the wire, same pacing, same rate, different result. Measured
+with the pipeline drained, interleaved so a drifting machine cannot
+favour one arm:
+
+| DAC rate | due-sized writes | constant 512 B |
+|---|---|---|
+| 200,000 sps | 0.000% | 0.000% |
+| 397,959 | 0.45% | **0.000%** |
+| 600,000 | 0.67% | **0.000%** |
+| 1,218,750 | 0.67% | **0.000%** (residual, below) |
+| 1,392,857 | 0.85% | **0.000%** |
+
+With it the AWG ladder runs clean at every rate over repeated passes,
+and the three rates that used to starve - 600,000, 1,218,750 and
+1,392,857 - report `under=0` with the ring sitting at 21 to 30 slots
+instead of 5. `Feeder.WRITE_SIZE` is where this lives.
+
+**Size alone is not the mechanism**, and this is the part that is still
+not understood. Capping the due-sized path at 1024 bytes leaves
+0.47-0.84% - with or without a finer idle sleep - even though every
+write it then issues is 512 or 1024, the same sizes the constant-size
+path uses. Something about *how* the writes are issued matters and it
+is not their size. What is established is which policy is clean.
+
+**A residual survives at the top of the ladder.** 1,218,750 sps is
+exact in most runs, and occasionally loses a little (384 B) or a lot
+(336,768 B). That is the intermittency the earlier "one run in eight"
+figure described, now confined to the fastest rates instead of spread
+across all of them. Held by `RESIDUAL` in the test, by outcome rather
+than by mark, so it turns green by itself.
+
 **What the loss is not.** Two mechanisms were tested and neither
 explains the floor:
 
-- *Not write size.* The loss is not monotonic in rate, and the two
-  worst rates are the two whose due-sized writes work out near 1536 B -
-  the only non-power-of-two size in the set. Forcing every write to a
-  fixed size at a fixed rate kills the idea outright: at 1,000,000 sps
-  the deficit is 2.04-2.25% at every size from 512 B to 16384 B. Rate
-  is the variable; the size and cadence that make up that rate are not.
+- *Not write size alone.* At 1,000,000 sps the deficit is 2.04-2.25%
+  at every forced size from 512 B to 16384 B - but that rate is one of
+  the oversupplied ones below, which no write policy fixes, so it was
+  the wrong rate to test the idea at. At 200,000 sps, which loses
+  nothing by default, forcing the size shows the threshold plainly:
+  0.000% at 512 B and 1024 B, 0.28-0.39% at 2048 B, 0.56-0.76% at
+  4096 B and above.
 - *Not queue pressure, for the floor.* Feeding deliberately **under**
   the device's rate, so the ring drains hard and the tty queue is
   certainly empty, does not reduce it. At 600,000 sps the deficit is

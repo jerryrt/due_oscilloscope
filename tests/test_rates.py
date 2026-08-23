@@ -22,26 +22,21 @@ TWO_CH = [780, 390, 200, 195, 130, 98, 88, 86]
 ONE_CH = [390, 195, 98, 65, 50, 45, 44]
 AWG    = [195, 98, 65, 44, 39, 32, 28]
 
-# Playback rates where the host feed does not hold the device ring.
+# Playback rates where the host feed did not hold the device ring.
 #
-# Measured, five 3 s runs each, with the clock-paced feeder: RC 195, 98,
-# 44 and 39 are 5/5 clean, RC 65 is 0/5, and RC 32 and 28 are 1/5. RC 65
-# sits between two clean rates, so this is not a bandwidth ceiling. The
-# host's tty output queue is empty throughout (median 0 B, max 1024), so
-# the device drains everything written and the host is simply not far
-# enough ahead: the feeder's 20 KB lead is spent once at the start and
-# never rebuilt, and whether a run keeps a cushion is decided in its
-# first milliseconds and then holds for the whole run. Larger leads
-# (24 and 28 KB), a single-write opening burst, and a larger device
-# prime threshold (4 -> 16 buffers) each changed nothing.
+# Empty, and the reason is worth keeping. The starvation was never a
+# scheduling or feed-policy problem: the host's USB stack was
+# discarding bytes write() had counted, and the ring drained at exactly
+# that rate. RC 65 lost 0.67% of what was written and its ring decayed
+# at 0.73% a second; RC 32 lost 0.67% and decayed at 0.79%.
 #
-# Not marked strict: these pass perhaps one run in five, and they should
-# start passing outright when the feed policy is revisited. See
-# docs/status.md.
-#
-# RC 65 starves in the two-way loop as well, not only play-only, so the
-# set applies to both ladders that contain it.
-STARVES = {65, 32, 28}
+# Writing a constant 512 bytes per write() instead of "whatever is due"
+# removed it - same sizes on the wire, same pacing, no loss - and all
+# three rates now run clean over repeated ladder passes. See
+# Feeder.WRITE_SIZE and test_device_receives_every_byte_the_host_sent,
+# which is the test that can still see the residual; this one only sees
+# underruns, and underruns are what stopped being the symptom.
+STARVES = set()
 AWG_STARVES = STARVES
 
 

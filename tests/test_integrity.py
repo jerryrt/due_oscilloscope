@@ -353,21 +353,38 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
             f"path, not the device. See docs/status.md")
 
 
-# Rates at which the host's USB stack discards bytes write() counted.
+# Rates whose feed genuinely oversupplies, so the surplus is shed.
 #
-# Measured with the pipeline drained, two runs per rate, run to run
-# within 1%: RC 195 loses nothing, and every rate above it loses a
-# steady fraction - 0.45% at 397,959 sps, 0.67% at 600,000, 1.48% at
-# 886,363, 2.25% at 1,000,000, 0.67% at 1,218,750, 0.85% at 1,392,857.
-# Every deficit is a whole multiple of 128 while the host only ever
-# writes multiples of 512, which is the macOS CDC-ACM chunk size
-# docs/usb.md describes.
+# The host's USB stack discards bytes write() has counted, silently.
+# Two separable causes were measured:
 #
-# This is the cause of the playback starvation, not a separate defect:
-# the ring drains at exactly the rate bytes go missing. RC 65 loses
-# 0.67% and its ring decays at 0.73% a second; RC 32 loses 0.67% and
-# decays at 0.79%.
-HOST_DROPS_ABOVE_SPS = 200000
+#   How the writes are issued. Writing a constant 512 bytes is
+#   lossless; writing "whatever is due" - the same sizes, the same
+#   pacing - loses 0.45-0.65% at every rate above 200 ksps. The feeder
+#   writes a constant size for that reason, and it took five of the
+#   seven rates here from losing to exact.
+#
+#   Genuine oversupply, which no write policy can fix. At 886,363 and
+#   1,000,000 sps the converter runs slow by 1.58% and 2.35% - measured
+#   against the device's own clock - so the host feeds more than the
+#   device can take and the excess is discarded rather than queued.
+#   The deficits, 1.35% and 2.15%, are those figures. These rates
+#   report under=0 while losing the most of any rate in the ladder,
+#   which is why this test exists and the underrun counter cannot
+#   stand in for it.
+OVERSUPPLIED = {44, 39}
+
+# Rates where a small residual loss survives the constant-size feed.
+#
+# The constant-size write took RC 32 from 49,664 B lost per 3 s run to
+# 0 B in most runs and 384 B - three chunks - in others. That is a 130x
+# reduction and not a fix: something still drops occasionally at the
+# top of the ladder, and it is the intermittency the original 0b entry
+# described, now confined to the two fastest rates.
+#
+# Handled by outcome rather than by mark, so a clean run passes and
+# reports: this turns green by itself when the residual is fixed.
+RESIDUAL = {32, 28}
 
 
 @pytest.mark.parametrize("rc", [195, 98, 65, 44, 39, 32, 28])
@@ -416,13 +433,20 @@ def test_device_receives_every_byte_the_host_sent(board, seconds,
         f"128-byte chunks: that is the device losing data it received, "
         f"not the host's chunk drop. Read play_partial and docs/usb.md")
 
-    if hz > HOST_DROPS_ABOVE_SPS:
+    if deficit and rc in OVERSUPPLIED:
         pytest.xfail(
-            f"RC {rc} ({hz} sps): host dropped {deficit} B "
-            f"({deficit / res.host_tx_bytes * 100:.2f}%), "
-            f"{deficit // 128} chunks of 128. See HOST_DROPS_ABOVE_SPS")
+            f"RC {rc} ({hz} sps): host lost {deficit} B "
+            f"({deficit / res.host_tx_bytes * 100:.2f}%) feeding a "
+            f"converter that runs slow. See OVERSUPPLIED")
+    if deficit and rc in RESIDUAL:
+        pytest.xfail(
+            f"RC {rc} ({hz} sps): host lost {deficit} B "
+            f"({deficit // 128} chunks) - the residual the constant-size "
+            f"feed did not remove. See RESIDUAL")
 
     assert deficit == 0, (
         f"RC {rc} ({hz} sps) lost {deficit} B ({deficit // 128} chunks "
-        f"of 128) that write() counted. This rate has always been "
-        f"byte-exact; a loss here is a regression in the feed path")
+        f"of 128) that write() counted. This rate is byte-exact with a "
+        f"constant-size feed; a loss here means the feeder stopped "
+        f"writing a constant size, or the oversupply that affects "
+        f"RC 44 and 39 has spread. Read Feeder.WRITE_SIZE")

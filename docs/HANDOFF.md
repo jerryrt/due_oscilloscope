@@ -192,9 +192,26 @@ Objectives 0a to 0c are what came out of the lost-sample defect when it
 was taken apart. None of them is that defect; each was folded into it
 before and is now separate, with its own evidence.
 
-0a/0b. **The host's USB stack discards bytes `write()` counted, and
-   that is the whole of the playback starvation.** These were two
-   objectives. They are one defect, and the second one caused the first.
+0a/0b. ~~**Playback starves at RC 65, 32 and 28.**~~ **Fixed, and it
+   was never a feed-policy problem.** The host's USB stack was
+   discarding bytes `write()` had counted, and the ring drained at
+   exactly that rate. Writing a **constant 512 bytes** per `write()`
+   instead of "whatever is due" removes it: the AWG and one-channel
+   ladders now run 14/14 clean with no xfails over repeated passes,
+   `STARVES` is empty, and the three rates that starved report
+   `under=0` with the ring at 21-30 slots instead of 5.
+
+   Two things are still open and are tracked below: an oversupply
+   effect at RC 44 and 39 that no write policy can fix, and a residual
+   intermittent loss at the top of the ladder. Neither starves the
+   ring; both lose samples. Read on before quoting any figure above
+   200 ksps.
+
+   The original entries follow, because the evidence is what makes the
+   remaining items tractable.
+
+   These were two objectives. They are one defect, and the second one
+   caused the first.
 
    **What was measured.** Stop feeding, let the pipeline drain, then
    compare the host's `write()` count against `play_bytes_in`, which is

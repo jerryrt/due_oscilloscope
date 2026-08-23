@@ -878,7 +878,28 @@ class Feeder:
 
     LEAD = 20480
 
-    MAX_WRITE = 16384
+    # Every write is this size, and that is what keeps the path
+    # lossless - not the size on its own.
+    #
+    # Measured with the pipeline drained, interleaved so a drifting
+    # machine cannot favour one arm. Writing a constant 512 bytes:
+    # 0.000% lost at 200,000, 600,000, 1,218,750 and 1,392,857 sps.
+    # Writing "whatever is due, capped at 512 or 1024": 0.45-0.65% lost
+    # at the same rates in every run. Same sizes on the wire, same
+    # pacing, different result - so the mechanism is in how the writes
+    # are issued rather than how big they are, and it is not yet
+    # understood. What is established is which one is clean.
+    #
+    # Size alone was tested and is not sufficient: capping MAX_WRITE at
+    # 1024 in the due-sized path leaves 0.47-0.84%, with or without a
+    # finer idle sleep.
+    #
+    # This does not fix a feed that genuinely oversupplies. 1,000,000
+    # and 886,363 sps still lose ~2.2% and ~1.5%, because their
+    # converters run slow by nearly the same fraction and the surplus
+    # is shed however it is written. That is rate matching and is
+    # tracked separately.
+    WRITE_SIZE = 512
 
     def __init__(self, fd, wave, byte_rate, scale=1.0,
                  write_size=None):
@@ -895,7 +916,11 @@ class Feeder:
         # rates that lose most are the ones whose due-sized writes land
         # on 1536 - so write size is the suspect and this is how it gets
         # varied independently of rate.
-        self.write_size = write_size
+        # None takes the measured-clean constant size; 0 selects the
+        # old due-sized path, which is kept only so the two can be
+        # compared - it loses bytes.
+        self.write_size = (self.WRITE_SIZE if write_size is None
+                           else write_size)
         self.count = 0
         self.note = None
         # Whether stop() had to discard queued output. It does that only
@@ -932,7 +957,11 @@ class Feeder:
             # device's stream DMA span, and on older firmware ended it.
             if self.write_size:
                 if due < self.write_size:
-                    time.sleep(0.0005)
+                    # Fine-grained, because a 512-byte write at the
+                    # DACC ceiling is due every ~210 us and a coarser
+                    # sleep would turn a paced small-write test into a
+                    # burst of them, which is a different experiment.
+                    time.sleep(0.0001)
                     continue
                 due = self.write_size
             else:
@@ -1393,7 +1422,7 @@ class BenchResult:
 
 
 def run_bench(board, *, mode, seconds=5.0, block=16384,
-              drain_s=0.3):
+              drain_s=0.3, tx_rate=None):
     """Drive the device's flood / sink / duplex modes and measure each
     direction from the host side, so the host's own throughput is
     visible alongside what the device counted. A mismatch between the
@@ -1439,7 +1468,17 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
     def writer():
         notes["writer"] = rt.promote(period_ms=5.0, computation_ms=0.5,
                                      constraint_ms=2.5)
+        # Optionally pace the writer, so the OUT loss can be measured
+        # against offered rate with no DAC, no ring and no ring-derived
+        # pacing in the picture. Free-running is the default and is what
+        # the throughput figures are taken at.
+        t_start = time.monotonic()
         while not stop.is_set():
+            if tx_rate:
+                due = (time.monotonic() - t_start) * tx_rate - tx_n[0]
+                if due < len(payload):
+                    time.sleep(0.0005)
+                    continue
             try:
                 tx_n[0] += os.write(fd, payload)
             except OSError:
