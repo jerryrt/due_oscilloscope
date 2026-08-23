@@ -34,6 +34,8 @@ volatile uint32_t play_occ_min;
 volatile uint8_t  play_occ_trace[PLAY_OCC_TRACE];
 volatile uint32_t play_occ_traced;
 volatile uint32_t play_run_us;
+volatile uint32_t play_rate_us[PLAY_RATE_TRACE];
+volatile uint32_t play_rate_traced;
 static uint32_t   run_t0_us;
 
 static uint32_t fill_off;            /* byte offset into the filling buffer */
@@ -93,6 +95,7 @@ bool play_start(uint32_t dac_hz)
 	play_occ_min = PLAY_NBUF;
 	play_occ_traced = 0;
 	play_run_us = 0;
+	play_rate_traced = 0;
 	run_t0_us = 0;
 	fill_off = 0;
 	dma_inflight = false;
@@ -336,6 +339,9 @@ static void play_endtx(void)
 	if (play_produced - play_consumed >= 3u) {
 		/* The buffer just finished is released; queue the next. */
 		play_consumed++;
+		if (play_consumed % PLAY_RATE_DECIM == 0u &&
+		    play_rate_traced < PLAY_RATE_TRACE)
+			play_rate_us[play_rate_traced++] = micros();
 		__DMB();
 		DACC->DACC_TNPR =
 			(uint32_t)play_buf[(play_consumed + 1u) % PLAY_NBUF];

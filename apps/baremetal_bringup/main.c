@@ -459,6 +459,22 @@ static void cmd_occ_hist(void)
 	}
 	printf("\n");
 	uart_flush();
+
+	/*
+	 * Absolute microseconds at every PLAY_RATE_DECIM-th consumed
+	 * buffer. The host differences them; sending deltas here would
+	 * throw away the only reading that survives a disturbed sample.
+	 */
+	printf("# play_rate decim=%u n=%lu us=", (unsigned)PLAY_RATE_DECIM,
+	       (unsigned long)play_rate_traced);
+	for (unsigned i = 0; i < play_rate_traced; i++) {
+		printf("%lu%s", (unsigned long)play_rate_us[i],
+		       i + 1u < play_rate_traced ? "," : "");
+		if ((i & 15u) == 15u)
+			uart_flush();
+	}
+	printf("\n");
+	uart_flush();
 }
 
 static void cmd_profile(void)

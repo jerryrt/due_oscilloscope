@@ -102,5 +102,35 @@ extern volatile uint32_t play_occ_traced;  /* entries written, saturating */
  */
 extern volatile uint32_t play_run_us;
 
+/*
+ * A decimated trace of the converter's own clock, so the rate can be
+ * read *within* a run and not only across one.
+ *
+ * play_run_us over play_consumed answers "what did this run average",
+ * which cannot tell a converter that held one rate from one that
+ * changed state part-way through. RC 44 reads one of two discrete
+ * rates from run to run, and the whole-run figure alone cannot say
+ * whether the state is latched at start or wandering during it.
+ *
+ * Sampled every PLAY_RATE_DECIM-th *consumed* buffer rather than every
+ * ENDTX, so a window is exactly PLAY_RATE_DECIM buffers of data no
+ * matter how many underruns fell inside it and the per-window rate
+ * needs no correction. play_occ_trace samples on ENDTX instead,
+ * because occupancy is a property of the event and not of the data.
+ *
+ * Absolute microseconds, not deltas: the span across the whole trace
+ * stays exact even if one sample is disturbed, and deltas are
+ * derivable from absolutes while the converse is not.
+ *
+ * micros() is safe in the ENDTX handler. It interpolates SysTick,
+ * which is left at reset priority 0 while DACC is set to 1, so the
+ * tick it reads cannot be held off by this handler.
+ */
+#define PLAY_RATE_TRACE 256
+#define PLAY_RATE_DECIM 32u
+
+extern volatile uint32_t play_rate_us[PLAY_RATE_TRACE];
+extern volatile uint32_t play_rate_traced;  /* entries written, saturating */
+
 
 #endif /* PLAY_H */
