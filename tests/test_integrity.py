@@ -72,6 +72,26 @@ def test_no_sample_step_exceeds_the_waveform_slope(board, seconds, baseline,
 
     amplitude = baseline["amplitude"]["full_scale_codes"]
     fs = res.stream.declared_rate_hz
+    got = res.stream.max_slew(measure.CH_A0, from_us=measure.SETTLE_US)
+    limit = measure.slew_limit(res.tone_hz, amplitude, fs) * 3.0
+
+    # Same discrimination the ramp test makes, for the same reason. The
+    # device's byte accounting is exact - the deficit is 0 on every
+    # healthy run, measured - so a device short by a whole multiple of
+    # 128 bytes is macOS's CDC-ACM output path dropping chunks it
+    # counted in write(), which is objective 0b and not this test's
+    # defect. A sine cannot say how many samples went missing, but the
+    # byte counts can, and 64 samples skipped at 200 ksps is a 115
+    # degree phase jump - a step of up to 2314 codes in this tone, which
+    # is the size these failures come in.
+    deficit = res.host_tx_bytes - (res.play.bytes_in or 0)
+    if got > limit and res.play.bytes_in and deficit > 0 and \
+            deficit % 128 == 0:
+        pytest.xfail(
+            f"host dropped {deficit} B in whole 128-byte chunks, so the DAC "
+            f"skipped {deficit // 2} samples: macOS's output path, not the "
+            f"device. A {got}-code step is what that does to this tone. "
+            f"See docs/status.md")
     # 3.0, the helper's documented default, not the 1.6 this carried
     # while it was an xfail and the margin was never exercised. The
     # measurement is bimodal, not noisy: 49-51 codes when the DAC update
@@ -91,6 +111,7 @@ def test_no_sample_step_exceeds_the_waveform_slope(board, seconds, baseline,
                       margin=3.0)
     record(calibration, "slew_a0", {
         "max_step": got,
+        "deficit_bytes": deficit,
         "analytic": round(measure.slew_limit(res.tone_hz, amplitude, fs), 1)})
 
 

@@ -598,6 +598,32 @@ Worth noting for the next reader: **a threshold that has only ever run
 under an xfail has not been tested**. When an xfail is removed, the
 numbers it was hiding need re-deriving, not inheriting.
 
+### And then the widened margin caught something real
+
+With the margin at 3.0 the test failed again on Track A, this time at
+**1911 codes against a 129-code limit** - forty-four times the analytic
+step, and larger than the tone's own full-scale amplitude. That is not
+the beat; it is a genuine discontinuity, and the wider threshold caught
+it anyway, which is what a threshold set from the mechanism rather than
+from the observed spread is supposed to do.
+
+It is the host's chunk drop, arriving in a sine instead of a ramp. One
+128-byte chunk is 64 samples; at 200 ksps against a 1 kHz tone that is
+a 115.2 degree phase jump, and a jump that size produces a step of up
+to 2,314 codes. 1911 sits inside that.
+
+The proof available is the same one the ramp test uses: the device's
+byte accounting is exact, and `host_tx_bytes - play.bytes_in` measures
+**0 on every healthy run** - five runs, byte for byte. So the slew test
+now makes the same three-way distinction the ramp test does. A step
+over the limit with the device short by a whole multiple of 128 bytes
+is macOS, reported as an xfail that names it. A step over the limit
+with the byte counts matching is the device, and still fails outright.
+
+Neither test can be read as "the sine looked wrong, therefore the
+firmware is broken" any more, which is the mistake that cost a
+fortnight the first time.
+
 ## Found by testing the daemon: the banner costs eleven underruns
 
 The daemon's `status` reply included the device description, and the
