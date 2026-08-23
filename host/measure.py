@@ -429,6 +429,7 @@ class PlayCounters:
     rebuilds   = property(lambda s: s._g("rebuilds"))
     act_in     = property(lambda s: s._g("act-in"))
     act_out    = property(lambda s: s._g("act-out"))
+    occ_min    = property(lambda s: s._g("occmin"))
 
 
 @dataclass
@@ -445,6 +446,75 @@ class BenchCounters:
 
 
 _BENCH = re.compile(r"bench=(\S+)\s+IN\s+(\d+)\s+B\s+OUT\s+(\d+)\s+B")
+
+
+@dataclass
+class OccHist:
+    """Playback ring occupancy sampled by the device at every ENDTX.
+
+    The host cannot sample this itself. produced - consumed read after a
+    run is a frozen snapshot of the shutdown, and reading it during one
+    means asking over the console, which at the rates where the ring is
+    short costs more underruns than it measures. The device keeps the
+    distribution instead; this is the readout of `O`.
+    """
+    buckets: list = field(default_factory=list)
+    min: int = None
+    endtx: int = None
+    trace: list = field(default_factory=list)
+    decim: int = 0
+    run_us: int = 0
+    consumed: int = 0
+
+    def device_byte_rate(self):
+        """Bytes per second the converter actually consumed, timed by
+        the device's own clock. Repeated buffers are excluded, because
+        an underrun consumes time and not data."""
+        if not self.run_us or not self.consumed:
+            return None
+        return self.consumed * 1024 / (self.run_us / 1e6)
+
+    @property
+    def total(self):
+        return sum(self.buckets)
+
+    def quantile(self, q):
+        """Occupancy at quantile q, in slots. q=0.5 is the median slot
+        depth the converter actually found waiting for it."""
+        n = self.total
+        if not n:
+            return None
+        want = q * n
+        run = 0
+        for i, c in enumerate(self.buckets):
+            run += c
+            if run >= want:
+                return i
+        return len(self.buckets) - 1
+
+    def below(self, slots):
+        """Fraction of ENDTX events that found fewer than `slots`."""
+        n = self.total
+        return sum(self.buckets[:slots]) / n if n else None
+
+
+_OCC = re.compile(r"play_occ min=(\d+) endtx=(\d+) runus=(\d+) consumed=(\d+) hist=([\d,]+)")
+_OCC_TRACE = re.compile(r"play_occ_trace decim=(\d+) n=(\d+) v=([\d,]*)")
+
+
+def parse_occ(text):
+    got = OccHist()
+    for line in text.splitlines():
+        m = _OCC.search(line)
+        if m:
+            got = OccHist(buckets=[int(v) for v in m.group(5).split(",")],
+                          min=int(m.group(1)), endtx=int(m.group(2)),
+                          run_us=int(m.group(3)), consumed=int(m.group(4)))
+        t = _OCC_TRACE.search(line)
+        if t and t.group(3):
+            got.decim = int(t.group(1))
+            got.trace = [int(v) for v in t.group(3).split(",")]
+    return got
 
 
 def parse_play(text):
@@ -794,18 +864,39 @@ class Feeder:
     queue stays shallow as long as the lead is smaller than the ring, so
     the macOS pressure-drop condition cannot form and pacing by the
     clock is safe - and measurably clean.
+
+    A fourth policy was tried and does not work, recorded so it is not
+    rebuilt: hold the lead against the device's consumption rather than
+    against the clock, using TIOCOUTQ to subtract whatever the kernel
+    still holds. TIOCOUTQ reports the tty layer only. Measured against
+    the device's own occupancy histogram it reads 0 essentially always
+    while 55 to 450 KB sits in the CDC driver beneath it, so a loop
+    closed on it is blind: it computes that it is already at its target
+    depth while the ring holds five slots. Any feedback policy needs a
+    signal from the device, not from the kernel.
     """
 
     LEAD = 20480
 
     MAX_WRITE = 16384
 
-    def __init__(self, fd, wave, byte_rate):
+    def __init__(self, fd, wave, byte_rate, scale=1.0):
         self.fd = fd
         self.wave = wave
-        self.byte_rate = byte_rate
+        # A deliberate feed-rate offset. Not a tuning knob: it is the
+        # instrument for finding the rate at which the device's ring
+        # neither fills nor drains, which is how the feed's true error
+        # is measured rather than inferred from the underrun count.
+        self.byte_rate = byte_rate * scale
+        self.nominal_rate = byte_rate
         self.count = 0
         self.note = None
+        # Whether stop() had to discard queued output. It does that only
+        # when the writer is wedged, but the discarded bytes have
+        # already been counted in self.count, so any byte-exactness
+        # comparison drawn across a flushed stop is measuring the flush.
+        self.flushed = False
+        self.join_s = 0.0
         # How late does this thread actually run? The underrun counter
         # says the ring went dry; this says by how much the writer was
         # delayed, which is the number a fix has to move.
@@ -858,10 +949,13 @@ class Feeder:
         # final blocking write completes on its own; the flush is only a
         # backstop against a writer wedged on a queue nobody drains.
         self._stop.set()
+        t0 = time.monotonic()
         self._th.join(2.0)
         if self._th.is_alive():
+            self.flushed = True
             termios.tcflush(self.fd, termios.TCOFLUSH)
             self._th.join(1.0)
+        self.join_s = time.monotonic() - t0
         return self.count
 
 
@@ -929,7 +1023,7 @@ class LoopResult:
 
 def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
              tone=1000.0, seconds=3.0, dc=None, ramp=None, diag=False,
-             drain=True, notify=None):
+             drain=True, notify=None, scale=1.0):
     """The complete loop: HOST -> USB -> DAC -> wire -> ADC -> USB -> HOST.
 
     Because the host authored the signal, any discrepancy in what comes
@@ -952,7 +1046,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     board.cmd(f"={dac_sps},{adc_hz},{channels}L")
     time.sleep(0.2)
 
-    feeder = Feeder(fd, wave, dac_sps * 2)
+    feeder = Feeder(fd, wave, dac_sps * 2, scale=scale)
     feeder.start()
 
     chunks = []
@@ -1044,9 +1138,11 @@ class PlayResult:
     report: str
     play: PlayCounters
     rt_note: str
+    occ: OccHist = field(default_factory=OccHist)
 
 
-def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None):
+def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
+             scale=1.0):
     if dc is not None:
         wave, tone_hz = build_dc(dc)
     else:
@@ -1059,7 +1155,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None):
     time.sleep(0.2)
     console = board.drain_console(0.3)
 
-    feeder = Feeder(fd, wave, dac_sps * 2)
+    feeder = Feeder(fd, wave, dac_sps * 2, scale=scale)
     feeder.start()
     t0 = time.time()
     end = t0 + seconds
@@ -1086,13 +1182,18 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None):
     time.sleep(0.2)
     board.cmd("B")
     time.sleep(0.4)
+    # The occupancy histogram is read after the stop, but it describes
+    # the run: the device accumulated it at every ENDTX while playing.
+    board.cmd("O")
+    time.sleep(0.3)
     report = board.drain_console(1.2)
     board.close_native(fd)
 
     return PlayResult(elapsed_s=elapsed, host_tx_bytes=tx, dac_sps=dac_sps,
                       tone_hz=tone_hz, refused="refused" in console,
                       console=console, report=report,
-                      play=parse_play(report), rt_note=feeder.note)
+                      play=parse_play(report), rt_note=feeder.note,
+                      occ=parse_occ(report))
 
 
 @dataclass
