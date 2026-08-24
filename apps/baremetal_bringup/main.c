@@ -528,15 +528,218 @@ static void trigger_fault(void)
 	printf("# unreachable\n");
 }
 
+/* ------------------------------------------------------------------ */
+/* The command layer                                                   */
+/*                                                                     */
+/* Parsing and execution are separated because a second transport is   */
+/* coming: the native port will carry a binary framed protocol         */
+/* (docs/control-protocol.md) with a different parser, and both must   */
+/* reach the same executor. Two implementations of "start playback"    */
+/* would drift, and the refusal wording is part of what the host is    */
+/* told, not decoration.                                               */
+/*                                                                     */
+/* Structure only. The UART is still the only caller and every command */
+/* behaves exactly as it did.                                          */
+/* ------------------------------------------------------------------ */
+
+typedef struct {
+	int      op;           /* the command letter */
+	uint32_t arg[3];       /* "=<a>[,<b>[,<c>]]" typed before it */
+} cmd_t;
+
+/*
+ * Feed one received character; true when `out` holds a whole command.
+ *
+ * The '=' introducer is what keeps bare digits working as the stream
+ * presets: while an entry is open, digits and up to two commas are
+ * argument text, and the next command letter consumes the arguments
+ * and closes the entry.
+ */
+static bool cmd_parse_ascii(int c, cmd_t *out)
+{
+	static uint32_t arg[3];
+	static unsigned idx;
+	static bool entry;
+
+	if (c == '=') {
+		arg[0] = arg[1] = arg[2] = 0;
+		idx = 0;
+		entry = true;
+		return false;
+	}
+	if (entry && c >= '0' && c <= '9') {
+		arg[idx] = arg[idx] * 10u + (uint32_t)(c - '0');
+		return false;
+	}
+	if (entry && c == ',' && idx < 2) {
+		idx++;
+		return false;
+	}
+	if (c < 0)
+		return false;
+
+	entry = false;
+	out->op = c;
+	out->arg[0] = arg[0];
+	out->arg[1] = arg[1];
+	out->arg[2] = arg[2];
+	/* A dispatched command consumes its arguments. */
+	arg[0] = arg[1] = arg[2] = 0;
+	idx = 0;
+	return true;
+}
+
+/* Carry out one parsed command. The only place a command is executed,
+ * whichever transport delivered it. */
+static void cmd_execute(const cmd_t *cmd)
+{
+	switch (cmd->op) {
+	case 'h': banner();         break;
+	case 'p': measure_printf(); break;
+	case 'g': measure_gpio();   break;
+	case 'f': trigger_fault();  break;
+	case 'r': cmd_read();       break;
+	case 's': cmd_sweep();      break;
+	case 'x': cmd_crosstalk();  break;
+	case 't': cmd_rate_sweep(cmd->arg[2] ? cmd->arg[2] : 2u); break;
+	case '1': cmd_stream(50000);  break;
+	case '2': cmd_stream(100000); break;
+	case '3': cmd_stream(200000); break;
+	case '4': cmd_stream(400000); break;
+	/*
+	 * Max in-spec rate, derived from the running clock exactly as
+	 * Track A does. A hardcoded 488372 Hz lingered here from the
+	 * MCK=84 MHz era and was silently refused by the ACQ_MIN_RC
+	 * guard at 78 MHz - the guard doing its job on a stale preset.
+	 */
+	case '5': cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC); break;
+	case '0': stream_stop(); play_stop();
+	          printf("# stream stopped\n"); uart_flush(); break;
+	case '?': stream_report();  break;
+	case 'u': usb_cdc_dump();   break;
+	case 'F': stream_flood_start();
+	          printf("# flood: IN only\n"); uart_flush(); break;
+	case 'R': stream_sink_start();
+	          printf("# sink: OUT only\n"); uart_flush(); break;
+	case 'X': stream_duplex_start();
+	          printf("# duplex: IN and OUT together\n"); uart_flush(); break;
+	case 'G': stream_flood_dma_start();
+	          printf("# flood: IN via DMA\n"); uart_flush(); break;
+	case 'T': stream_sink_dma_start();
+	          printf("# sink: OUT via DMA\n"); uart_flush(); break;
+	case 'Y': stream_duplex_dma_start();
+	          printf("# duplex: IN+OUT via DMA\n"); uart_flush(); break;
+	/*
+	 * The complete loop: the host supplies the waveform, the DAC
+	 * emits it, the jumper carries it to the ADC, and the capture
+	 * comes back over the same USB pipe. Both directions run at
+	 * once, which is the target configuration.
+	 */
+	case 'L': {
+		/* "=<dac>[,<adc>]L"; one number sets both, none = 200k. */
+		uint32_t dac_hz = cmd->arg[0] ? cmd->arg[0] : 200000u;
+		uint32_t adc_hz = cmd->arg[1] ? cmd->arg[1] : dac_hz;
+		unsigned nch    = cmd->arg[2] ? cmd->arg[2] : 2u;
+
+		if (!play_start(dac_hz)) {
+			printf("# loop: DAC %lu sps refused (max %lu)\n",
+			       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
+			uart_flush();
+			break;
+		}
+		if (!stream_start_capture_only(adc_hz, nch)) {
+			play_stop();
+			printf("# loop: ADC %lu Hz x%u ch refused (max %lu)\n",
+			       (unsigned long)adc_hz, nch,
+			       (unsigned long)((SystemCoreClock / 2u)
+			                       / ACQ_MIN_RC_FOR(nch)));
+			uart_flush();
+			break;
+		}
+		printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch\n",
+		       (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
+		printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
+		uart_flush();
+		break;
+	}
+	/* Playback with NO capture stream, to separate a fault in the
+	 * DAC path from an interaction between the two service loops. */
+	case 'P': {
+		uint32_t dac_hz = cmd->arg[0] ? cmd->arg[0] : 200000u;
+
+		if (play_start(dac_hz))
+			printf("# play only: DAC %lu sps from USB, no capture\n",
+			       (unsigned long)dac_hz);
+		else
+			printf("# play only: %lu sps refused (max %lu)\n",
+			       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
+		uart_flush();
+		break;
+	}
+	case 'Q': cmd_profile(); break;
+	/*
+	 * Software reset. The test suite holds the control port open
+	 * for a whole session, because opening it asserts NRSTB and
+	 * costs a reset plus a native-port re-glob every time; this is
+	 * how it recovers a wedged device without giving that up.
+	 * Track A has always had it and docs/HANDOFF.md has always
+	 * listed it here, so this closes a documented parity gap
+	 * rather than adding a feature.
+	 */
+	case 'z': printf("# software reset now\n"); uart_flush();
+	          RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
+	          break;
+	case 'V': play_dump(); break;
+	case 'D': diag_start(); break;
+	/*
+	 * The loop's timing skeleton with no USB in it: gen's flash sine
+	 * through play's exact DACC + TIOA1 configuration, capture
+	 * running, ordering matched to what L does once the ring primes.
+	 * Observe with D: if cdr7 swings, the fault needs USB to appear;
+	 * if it freezes, the trigger/DACC/ADC interaction is the fault.
+	 */
+	case 'M':
+		play_stop();
+		gen_init();
+		gen_prepare_tioa1(200000u);
+		stream_start_capture_only(200000u, 2);
+		gen_go_tioa1();
+		printf("# mimic loop: gen sine on TIOA1 at 200000 sps, capture 200000 Hz\n");
+		printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
+		uart_flush();
+		break;
+	case 'B': stream_bench_report();
+	          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
+	                 (unsigned long)play_bytes_in,
+	                 (unsigned long)play_produced,
+	                 (unsigned long)play_consumed,
+	                 (unsigned long)play_underruns,
+	                 (unsigned long)play_isr_calls,
+	                 (unsigned long)play_endtx_seen,
+	                 (unsigned long)play_spans,
+	                 (unsigned long)play_partial,
+	                 (unsigned long)play_occ_min);
+	          uart_flush(); break;
+	/*
+	 * The occupancy histogram, off the `B` path deliberately.
+	 * `B` is polled mid-stream by the daemon and must stay one
+	 * short line; this is 32 buckets and belongs where `V`
+	 * already lives, which is between runs.
+	 */
+	case 'O': cmd_occ_hist(); break;
+	case 'w': cmd_stream_uart(2000); break;
+	default:                    break;
+	}
+}
+
+
 int main(void)
 {
 	uint32_t heartbeat_at;
 	int led_state = 0;
 	uint32_t led_usb_at = 0;
 	uint32_t led_in_last = 0, led_out_last = 0;
-	uint32_t rate_arg[3] = { 0, 0, 0 };
-	unsigned rate_idx = 0;
-	bool rate_entry = false;
+	cmd_t cmd;
 
 	/* WDT is enabled out of reset on this part and will reset the board
 	 * roughly every 15 s if not serviced. Nothing here services it. */
@@ -653,171 +856,7 @@ int main(void)
 
 		int c = uart_getc();
 
-		/*
-		 * Rate arguments: "=<dac>[,<adc>]" typed before a command
-		 * letter. The '=' introducer keeps bare digits working as the
-		 * stream presets; while an entry is open, digits and one comma
-		 * are argument text. The next command letter consumes the
-		 * arguments and closes the entry.
-		 */
-		if (c == '=') {
-			rate_arg[0] = rate_arg[1] = rate_arg[2] = 0;
-			rate_idx = 0;
-			rate_entry = true;
-			c = -1;
-		} else if (rate_entry && c >= '0' && c <= '9') {
-			rate_arg[rate_idx] = rate_arg[rate_idx] * 10u
-			                   + (uint32_t)(c - '0');
-			c = -1;
-		} else if (rate_entry && c == ',' && rate_idx < 2) {
-			rate_idx++;
-			c = -1;
-		} else if (c >= 0) {
-			rate_entry = false;
-		}
-
-		switch (c) {
-		case 'h': banner();         break;
-		case 'p': measure_printf(); break;
-		case 'g': measure_gpio();   break;
-		case 'f': trigger_fault();  break;
-		case 'r': cmd_read();       break;
-		case 's': cmd_sweep();      break;
-		case 'x': cmd_crosstalk();  break;
-		case 't': cmd_rate_sweep(rate_arg[2] ? rate_arg[2] : 2u); break;
-		case '1': cmd_stream(50000);  break;
-		case '2': cmd_stream(100000); break;
-		case '3': cmd_stream(200000); break;
-		case '4': cmd_stream(400000); break;
-		/*
-		 * Max in-spec rate, derived from the running clock exactly as
-		 * Track A does. A hardcoded 488372 Hz lingered here from the
-		 * MCK=84 MHz era and was silently refused by the ACQ_MIN_RC
-		 * guard at 78 MHz - the guard doing its job on a stale preset.
-		 */
-		case '5': cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC); break;
-		case '0': stream_stop(); play_stop();
-		          printf("# stream stopped\n"); uart_flush(); break;
-		case '?': stream_report();  break;
-		case 'u': usb_cdc_dump();   break;
-		case 'F': stream_flood_start();
-		          printf("# flood: IN only\n"); uart_flush(); break;
-		case 'R': stream_sink_start();
-		          printf("# sink: OUT only\n"); uart_flush(); break;
-		case 'X': stream_duplex_start();
-		          printf("# duplex: IN and OUT together\n"); uart_flush(); break;
-		case 'G': stream_flood_dma_start();
-		          printf("# flood: IN via DMA\n"); uart_flush(); break;
-		case 'T': stream_sink_dma_start();
-		          printf("# sink: OUT via DMA\n"); uart_flush(); break;
-		case 'Y': stream_duplex_dma_start();
-		          printf("# duplex: IN+OUT via DMA\n"); uart_flush(); break;
-		/*
-		 * The complete loop: the host supplies the waveform, the DAC
-		 * emits it, the jumper carries it to the ADC, and the capture
-		 * comes back over the same USB pipe. Both directions run at
-		 * once, which is the target configuration.
-		 */
-		case 'L': {
-			/* "=<dac>[,<adc>]L"; one number sets both, none = 200k. */
-			uint32_t dac_hz = rate_arg[0] ? rate_arg[0] : 200000u;
-			uint32_t adc_hz = rate_arg[1] ? rate_arg[1] : dac_hz;
-			unsigned nch    = rate_arg[2] ? rate_arg[2] : 2u;
-
-			if (!play_start(dac_hz)) {
-				printf("# loop: DAC %lu sps refused (max %lu)\n",
-				       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
-				uart_flush();
-				break;
-			}
-			if (!stream_start_capture_only(adc_hz, nch)) {
-				play_stop();
-				printf("# loop: ADC %lu Hz x%u ch refused (max %lu)\n",
-				       (unsigned long)adc_hz, nch,
-				       (unsigned long)((SystemCoreClock / 2u)
-				                       / ACQ_MIN_RC_FOR(nch)));
-				uart_flush();
-				break;
-			}
-			printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch\n",
-			       (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
-			printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
-			uart_flush();
-			break;
-		}
-		/* Playback with NO capture stream, to separate a fault in the
-		 * DAC path from an interaction between the two service loops. */
-		case 'P': {
-			uint32_t dac_hz = rate_arg[0] ? rate_arg[0] : 200000u;
-
-			if (play_start(dac_hz))
-				printf("# play only: DAC %lu sps from USB, no capture\n",
-				       (unsigned long)dac_hz);
-			else
-				printf("# play only: %lu sps refused (max %lu)\n",
-				       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
-			uart_flush();
-			break;
-		}
-		case 'Q': cmd_profile(); break;
-		/*
-		 * Software reset. The test suite holds the control port open
-		 * for a whole session, because opening it asserts NRSTB and
-		 * costs a reset plus a native-port re-glob every time; this is
-		 * how it recovers a wedged device without giving that up.
-		 * Track A has always had it and docs/HANDOFF.md has always
-		 * listed it here, so this closes a documented parity gap
-		 * rather than adding a feature.
-		 */
-		case 'z': printf("# software reset now\n"); uart_flush();
-		          RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
-		          break;
-		case 'V': play_dump(); break;
-		case 'D': diag_start(); break;
-		/*
-		 * The loop's timing skeleton with no USB in it: gen's flash sine
-		 * through play's exact DACC + TIOA1 configuration, capture
-		 * running, ordering matched to what L does once the ring primes.
-		 * Observe with D: if cdr7 swings, the fault needs USB to appear;
-		 * if it freezes, the trigger/DACC/ADC interaction is the fault.
-		 */
-		case 'M':
-			play_stop();
-			gen_init();
-			gen_prepare_tioa1(200000u);
-			stream_start_capture_only(200000u, 2);
-			gen_go_tioa1();
-			printf("# mimic loop: gen sine on TIOA1 at 200000 sps, capture 200000 Hz\n");
-			printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
-			uart_flush();
-			break;
-		case 'B': stream_bench_report();
-		          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
-		                 (unsigned long)play_bytes_in,
-		                 (unsigned long)play_produced,
-		                 (unsigned long)play_consumed,
-		                 (unsigned long)play_underruns,
-		                 (unsigned long)play_isr_calls,
-		                 (unsigned long)play_endtx_seen,
-		                 (unsigned long)play_spans,
-		                 (unsigned long)play_partial,
-		                 (unsigned long)play_occ_min);
-		          uart_flush(); break;
-		/*
-		 * The occupancy histogram, off the `B` path deliberately.
-		 * `B` is polled mid-stream by the daemon and must stay one
-		 * short line; this is 32 buckets and belongs where `V`
-		 * already lives, which is between runs.
-		 */
-		case 'O': cmd_occ_hist(); break;
-		case 'w': cmd_stream_uart(2000); break;
-		default:                    break;
-		}
-
-		/* A dispatched command consumes any rate arguments. */
-		if (c >= 0) {
-			rate_arg[0] = rate_arg[1] = rate_arg[2] = 0;
-			rate_idx = 0;
-		}
+		if (cmd_parse_ascii(c, &cmd))
+			cmd_execute(&cmd);
 	}
 }
