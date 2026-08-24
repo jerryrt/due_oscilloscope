@@ -745,12 +745,49 @@ sub-question: RC 44 reads one of two discrete converter rates.
    `EPRST` anywhere. A DMA stopped mid-bank leaves a bank nothing
    frees, and the endpoint then NAKs for good.
 
-   Deliberately not "fixed" on that reasoning alone: `EPRST` also
-   clears the data toggle, and `usb_cdc_dma_mode()` runs at every
-   playback and bench start and stop, so a wrong guess here breaks the
-   link everywhere. Reproduce it first - a long soak of bench mode
-   switches is the obvious way - then fix it against a failure that can
-   be seen to go away.
+   **The `EPRST` theory is dead. Do not implement it.** A wedge was
+   finally caught with the device interrogated at the moment of the
+   hanging close, and `ep2(OUT)` read `CFG=00003066 ISR=00044188` -
+   bit-identical to the healthy baseline taken from several hundred
+   good closes, with `NBUSYBK` clear. **No bank was held.** The fix
+   this entry recommended for weeks would have changed nothing and
+   cleared the data toggle for nothing.
+
+   Also withdrawn, because it was the same mistake made faster: the
+   wedge's OUT DMA showed `BUFF_COUNT` of 16,896 bytes outstanding,
+   which looked like a smoking gun against a three-sample baseline. At
+   106 samples a non-zero `BUFF_COUNT` is simply normal - 30,720 is the
+   commonest value. Nothing measured at the wedge yet differs from a
+   healthy close.
+
+   **What the evidence now points at.** The board is healthy throughout
+   and its heartbeat runs in the main loop, so the main loop is alive.
+   A live main loop drains bulk OUT only when nothing owns it:
+
+       if (!play_active() && !stream_out_in_use())
+
+   so the one state that produces a NAKing pipe with a healthy endpoint
+   is a device that still believes a playback or a bench is running
+   while nothing consumes. Confirming that needs the *mode* at a wedge,
+   which is what `B` reports and what the trap below now captures. It
+   has not been caught yet: 318 healthy closes across three suite runs
+   all read `bench=off`.
+
+   **Four occurrences, none reproducible on demand.** Ruled out by
+   measurement, not argument: oversupply (14 drained runs), bench mode
+   switching (40 cycles), a large undeliverable backlog (25 undrained
+   runs at ~2 MB each), the transport benches alone (3 clean runs), and
+   console pressure - a suite run with *extra* console traffic on every
+   close passed clean.
+
+   **The trap is armed, so stop hunting it.** `close_native` now closes
+   on a thread with a 3 s deadline. On a wedge it reads the device's
+   state over the control port - a different fd, still working, which
+   is why every earlier diagnosis had to guess - and then re-sends the
+   stop. If the drain-gate theory is right the close completes and the
+   run continues; if not, the run fails with the device's state
+   attached. Either way the suite stops being un-runnable, and the next
+   occurrence arrives already diagnosed.
 
    It did not recur in the 2026-08-22 two-track pass, which ran the
    same benches on both tracks and closed in the usual time. Still
