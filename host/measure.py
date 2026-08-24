@@ -718,6 +718,12 @@ def parse_bench(text):
 # The board
 # ---------------------------------------------------------------------
 
+# How long close() on the native port may take before it is treated as
+# objective 0c. Healthy closes measure 0.00 s across several hundred
+# samples, so this is three orders of magnitude of headroom.
+CLOSE_WEDGE_S = 3.0
+
+
 class BoardError(RuntimeError):
     pass
 
@@ -905,7 +911,63 @@ class Board:
             # that had gone away (ENXIO) aborted the whole measurement
             # from inside the cleanup.
             pass
-        os.close(fd)
+
+        # os.close() on this port is the hang in objective 0c: macOS
+        # waits for in-flight write URBs and a device that has stopped
+        # draining bulk OUT never completes them. Four occurrences are
+        # on record and none has ever been reproduced on demand, so the
+        # trap has to be armed all the time rather than during a hunt.
+        #
+        # It costs nothing on a healthy close - the wait returns
+        # immediately - and on a wedge it does the two things that were
+        # impossible before. It reads the device's state, which works
+        # because the *control* port is a different fd and the board
+        # stays healthy throughout; every diagnosis so far had to guess
+        # at this. And it re-sends the stop, because the leading theory
+        # is that the device still believes something owns bulk OUT, so
+        # the main loop is not running its fallback drain. If that is
+        # right the close completes and the run continues.
+        done = threading.Event()
+
+        def _close():
+            try:
+                os.close(fd)
+            finally:
+                done.set()
+
+        threading.Thread(target=_close, daemon=True,
+                         name="close-native").start()
+        if done.wait(CLOSE_WEDGE_S):
+            return
+
+        print(f"[0c] close() has not returned in {CLOSE_WEDGE_S}s - "
+              f"asking the board what state it is in", file=sys.stderr,
+              flush=True)
+        try:
+            txt = self.ask("B", secs=0.8) + self.ask("u", secs=0.8)
+            for line in txt.splitlines():
+                if ("ep2(OUT)" in line or "dma ch1(OUT)" in line
+                        or "bench=" in line or "play:" in line):
+                    print(f"[0c]   {line.strip()}", file=sys.stderr,
+                          flush=True)
+        except Exception as e:                       # noqa: BLE001
+            print(f"[0c]   dump failed: {e!r}", file=sys.stderr, flush=True)
+
+        for attempt in range(3):
+            try:
+                self.cmd("0")
+            except Exception:                        # noqa: BLE001
+                pass
+            if done.wait(2.0):
+                print(f"[0c] close() completed after re-issuing 0 "
+                      f"({attempt + 1} time(s)) - the device had not "
+                      f"stopped", file=sys.stderr, flush=True)
+                return
+
+        raise BoardError(
+            "close() on the native port wedged and did not recover - "
+            "objective 0c. The [0c] lines above are the device's state; "
+            "the port is still held by a thread inside this process.")
 
     def close(self):
         if self.cfd is not None:
