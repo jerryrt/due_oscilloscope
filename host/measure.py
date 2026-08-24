@@ -37,7 +37,7 @@ from array import array
 from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ports import find_ports, open_raw
+from ports import find_ports, native_order, open_raw
 import jitter
 import rt
 
@@ -870,8 +870,13 @@ class Board:
         fd = None
         give_up = time.time() + wait
         while fd is None:
-            cands = [n for n in sorted(glob.glob("/dev/cu.usbmodem*"))
-                     if n != self.control]
+            # The board offers two native nodes now, samples and
+            # commands. Ordering them by USB interface rather than by
+            # name is what keeps this pointed at the sample one: the
+            # names happen to sort the same way today, and that is a
+            # property of macOS's naming rather than of the device.
+            cands = native_order([n for n in glob.glob("/dev/cu.usbmodem*")
+                                  if n != self.control])
             try:
                 if cands:
                     fd = open_raw(cands[0], 115200, dtr=dtr)

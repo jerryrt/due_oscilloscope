@@ -36,18 +36,19 @@ import measure  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASELINE_PATH = os.path.join(HERE, "baseline.json")
 
-# The order the suite runs in, and the reason for it. The daemon's own
-# tests need no board and cost three seconds, so they go first and fail
-# before anything has been flashed. Then a physical fault must be
+# The order the suite runs in, and the reason for it. Port discovery and
+# the daemon's own tests need no board and cost three seconds, so they go
+# first and fail before anything has been flashed - discovery first of
+# all, because everything after it depends on naming the right node. Then a physical fault must be
 # diagnosed before anything blames firmware for it, contract checks are
 # cheap and catch regressions before the long streaming tests have
 # started, and the transport benchmarks are the slowest thing here. The
 # daemon's one hardware case runs last: it is the only test that wants
 # the board in a state nothing else cares about.
-FILE_ORDER = ["test_jitter", "test_daemon_protocol", "test_daemon_api",
-              "test_link_health", "test_contract", "test_channels",
-              "test_rates", "test_integrity", "test_transport",
-              "test_daemon_hardware"]
+FILE_ORDER = ["test_ports", "test_jitter", "test_daemon_protocol",
+              "test_daemon_api", "test_link_health", "test_contract",
+              "test_channels", "test_rates", "test_integrity",
+              "test_transport", "test_daemon_hardware"]
 
 
 def pytest_addoption(parser):

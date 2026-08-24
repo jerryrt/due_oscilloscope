@@ -9,11 +9,13 @@ blamed on whatever firmware happened to change that day, so these run
 before anything else and their failure messages say "cable" out loud.
 """
 
+import os
 import time
 
 import pytest
 
 import measure
+import ports
 from helpers import assert_fresh, assert_stream_clean, window
 
 pytestmark = pytest.mark.smoke
@@ -75,6 +77,79 @@ def test_native_port_enumerates(board):
         f"opening the native port took {cost:.1f} s. The device is "
         f"answering control requests wrongly or the link is retrying; "
         f"read the SETUP log with `u`.")
+
+
+def test_native_port_offers_both_functions(board, track):
+    """One cable, two CDC functions: samples and commands.
+
+    The deployed board has only the native port, so a control path that
+    lives on the programming port does not exist in deployment at all.
+    This is the check that the second function is really there and is
+    really the one the numbering pins - interfaces 0 and 1 for samples,
+    2 and 3 for commands - rather than two nodes that happen to appear.
+    """
+    if track != "b":
+        pytest.skip("Track A has no control channel yet (it follows Track B)")
+
+    ctl, samples, commands = ports.find_all_ports(wait=12.0)
+    assert ctl, "the control port stopped answering"
+    assert samples, "no native sample node"
+    assert commands, (
+        "the native port offers only one CDC function. Track B firmware "
+        "should present two; a board flashed with an older build will "
+        "fail here, which is the intended reading.")
+
+    ifaces = ports.usb_interfaces()
+    if not ifaces:
+        pytest.skip("IOKit did not answer; interface numbers unverifiable")
+
+    sam_serial, sam_iface = ifaces[samples]
+    cmd_serial, cmd_iface = ifaces[commands]
+    assert sam_serial == cmd_serial, (
+        f"the two nodes belong to different devices: {sam_serial!r} and "
+        f"{cmd_serial!r}. Two boards are attached, or discovery paired "
+        f"them wrongly.")
+    assert (sam_iface, cmd_iface) == (1, 3), (
+        f"interfaces are {sam_iface} and {cmd_iface}, not 1 and 3. The "
+        f"numbering is a contract shared with Track A - see "
+        f"docs/control-protocol.md - so a change here breaks the host "
+        f"against one track or the other.")
+
+
+def test_command_port_opens_and_closes(board, track):
+    """The command port can be opened, written and closed, promptly.
+
+    Its bulk OUT is drained by the main loop even though nothing
+    consumes it yet, and that is not decoration: an allocated bulk OUT
+    that nobody drains NAKs forever, and macOS's close() waits on write
+    URBs that will never complete. Without the drain, adding the
+    endpoint would have turned a port that does nothing into a port that
+    hangs the machine - so this asserts the close, not just the open.
+    """
+    if track != "b":
+        pytest.skip("Track A has no control channel yet (it follows Track B)")
+
+    _ctl, _samples, commands = ports.find_all_ports(wait=12.0)
+    if not commands:
+        pytest.skip("no command node; covered by the test above")
+
+    t0 = time.time()
+    fd = measure.open_raw(commands, 115200, dtr=True)
+    opened = time.time() - t0
+    try:
+        os.set_blocking(fd, True)
+        n = os.write(fd, b"\x00" * 2048)
+        assert n == 2048, f"short write of {n} bytes to the command port"
+    finally:
+        t0 = time.time()
+        os.close(fd)
+        closed = time.time() - t0
+
+    assert opened < 5.0, f"opening the command port took {opened:.1f} s"
+    assert closed < 5.0, (
+        f"closing the command port took {closed:.1f} s. The device is not "
+        f"draining its bulk OUT, so the host is waiting on write URBs that "
+        f"will never complete.")
 
 
 def test_link_carries_a_clean_stream(board, seconds):
