@@ -81,10 +81,71 @@ macOS the CDC-ACM driver has already matched and claimed this device
 (`AppleUSBDevice`, driver matched, in `ioreg`), and whether libusb can
 open it for control transfers regardless has not been tested.
 
-Size the control endpoints at 64 bytes, not 512. Commands are small,
-and endpoint FIFO memory is shared DPRAM that the two 512-byte
-double-banked data endpoints already draw on *(check: total DPRAM
-budget not verified)*.
+**The control endpoints are 512-byte bulk, single-banked.** That is not
+what this document first said - it said 64 bytes, on the reasoning that
+commands are small and DPRAM is shared - and the reasoning was fine but
+the size is not available. USB 2.0 section 5.8.3: *a high-speed bulk
+endpoint must have a wMaxPacketSize of 512 bytes.* It is not a maximum
+and there is no small-endpoint case; 64-byte bulk is a full-speed size.
+A host might well accept a 64-byte high-speed bulk endpoint, but a
+device that enumerates out of spec is a defect waiting for a different
+host, and this one has already spent a session on a host-side USB
+behaviour nothing reported.
+
+The size is forced; the bank count is what buys it back. **The budget is
+4096 bytes** - datasheet 40.2, "4096 bytes of Embedded Dual-Port RAM
+(DPRAM) for Pipes/Endpoints" - and a bank costs its endpoint's full
+size, so 512-byte control endpoints are affordable only single-banked:
+
+| | size x banks | bytes |
+|---|---|---|
+| EP0 control | 64 x 1 | 64 |
+| EP1 ACM notification | 64 x 2 | 128 |
+| EP2 bulk OUT (samples) | 512 x 2 | 1024 |
+| EP3 bulk IN (frames) | 512 x 2 | 1024 |
+| **in use today** | | **2240** |
+| EP4 control notification | 64 x 1 | 64 |
+| EP5 control bulk OUT | 512 x 1 | 512 |
+| EP6 control bulk IN | 512 x 1 | 512 |
+| **after this channel** | | **3328** |
+
+768 bytes spare. Double-banking both control endpoints would need 4416
+and does not fit, which is the whole reason the bank count is pinned
+here rather than left to the implementation:
+
+| layout | cost | total |
+|---|---|---|
+| 64 B, 2 banks (what this document first pinned) | 384 | 2624 - fits, but out of spec |
+| 512 B, 2 banks | 2176 | **4416 - does not fit** |
+| 512 B, 1 bank | 1088 | 3328 - fits |
+
+Single-banking costs throughput and nothing else: the endpoint cannot
+accept the next packet until the previous one is read out, so back-to-back
+512-byte transfers pay a turnaround. Commands are one frame each and
+arrive at human or 1 Hz heartbeat rates, so the cost is not measurable
+here. It does mean the control channel must never be used to move bulk
+data - if something ever wants to, it takes the spare 768 bytes for a
+second OUT bank and re-reads this table.
+
+Two constraints from Table 40-1 that the layout has to respect, and does:
+endpoints 4, 5 and 6 allow at most **two** banks each (only EP1 and EP2
+allow three), so the "512 B, 2 banks" row was never more than one bank
+short of illegal anyway; and all three are DMA-capable, so nothing about
+the numbering forecloses moving the control channel onto DMA later.
+
+One ordering rule comes with it (40.5.1.6): **pipes and endpoints can
+only be allocated in ascending order**, and re-allocating endpoint x
+slides x+1's window without moving x+2, which silently corrupts both.
+So the control endpoints must be configured after the sample endpoints,
+never in between, and none of the existing four may be re-`ALLOC`ed once
+the new ones are up. `configure_data_endpoints()` already walks EP1..EP3
+in order; the new ones append.
+
+The hardware also checks this for us: `CFGOK` is set only if the
+requested size and bank count fit the endpoint's maximum *and* the
+DPRAM. `usb_cfg_fail` already counts endpoints that come back without
+it, so a budget mistake surfaces as a counter rather than as a
+mysteriously dead endpoint.
 
 ## Numbering, pinned
 
@@ -107,8 +168,10 @@ Endpoints 4 to 6 are free: the CMSIS header declares
 
 Two interface association descriptors, one per function, so the host
 groups them correctly and does not present the four interfaces as
-unrelated. The control function's endpoints are 64 bytes; only the
-sample function needs 512.
+unrelated. All four bulk endpoints are 512 bytes because high speed
+allows no other size; the control pair is single-banked and the sample
+pair double-banked, which is where the difference between them actually
+lives. The notification endpoints are 16-byte interrupt.
 
 A host tells the two apart by interface number, not by enumeration
 order. `host/ports.py` currently identifies the control port by the
@@ -312,8 +375,13 @@ invariant 3 intends.
 
 ## Open questions
 
-- Total endpoint DPRAM budget on this part, and whether two more
-  64-byte double-banked endpoints fit alongside the existing 512-byte
-  pair *(check)*.
-- Nothing outstanding that blocks starting. The numbering below is the
-  contract; the DPRAM budget above is the one figure still unverified.
+Nothing outstanding that blocks starting. The numbering above is the
+contract, and the DPRAM budget - the one figure this document opened
+without - is now read off the datasheet: 4096 bytes, 2240 in use, 1088
+more for this channel.
+
+What remains unverified is not a number but two behaviours, and both are
+marked *(check)* where they are stated: whether libusb can open a device
+macOS's CDC-ACM driver has already claimed, which only matters if the
+EP0 route is ever revisited, and whether PluggableUSB works on this
+board, which Track A will answer the first time it is asked to.
