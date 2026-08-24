@@ -1119,6 +1119,38 @@ sub-question: RC 44 reads one of two discrete converter rates.
   whole-run averages - a handful of glitches per second hides in an
   average and shows instantly in windows.
 
+## Starting on a different machine, or a different board
+
+Nothing in the repository is machine-specific, but three things are not
+in it and one of them is easy to mistake for a regression.
+
+**The venvs are not committed and never travel.** A venv holds absolute
+paths and platform wheels. Rebuild all three from the pinned
+requirements; `CLAUDE.md` has the interpreters and what each one holds.
+`.venv-ft` is the free-threaded 3.14 the daemon wants.
+
+**The toolchain is the xPack ARM build, not ARM's own.** ARM's macOS
+build links `cc1` against a Homebrew zstd at an absolute path and
+cannot run here; the driver still reports a version, so the failure
+only appears when something is actually compiled. See
+`docs/toolchain.md`.
+
+**`tests/baseline.json` is calibrated against one specific board**, and
+says so in its own header: "Measured on THIS board at MCK 78 MHz. A
+record of one board, not a datasheet." On a second Due, expect the
+timing-sensitive thresholds to need re-measuring - amplitude floors,
+the slew margin, the per-channel rate floors. A failure there on a new
+board is a recalibration, not a regression, and the two must not be
+confused: re-measure and record, do not widen a tolerance to make a
+test pass.
+
+Port paths are enumeration-dependent everywhere; discover them with
+`python3 host/ports.py` rather than copying any path out of the docs.
+
+And before a long unattended run, read objective 0c: a wedge leaves an
+unkillable process holding the ports, and the only recovery is
+unplugging the board.
+
 ## Environment
 
 - macOS 12.7.6, Intel x86_64, no Homebrew - but **MacPorts is
