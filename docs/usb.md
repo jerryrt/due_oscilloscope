@@ -225,7 +225,11 @@ leaving the board streaming for the next run to trip over. Two rules
 came out of this, both implemented:
 
 - The firmware's main loop **drains and discards bulk OUT whenever no
-  consumer owns it** (correct CDC behaviour anyway).
+  consumer owns it** (correct CDC behaviour anyway). That now covers
+  two endpoints: the sample function's, and the command function's,
+  which has no consumer at all yet. An allocated bulk OUT that nobody
+  drains is the failure above waiting to happen on a port that appears
+  to do nothing.
 - Host tools still `tcflush` before closing the native port, as a
   belt-and-braces against queued-but-not-submitted bytes.
 

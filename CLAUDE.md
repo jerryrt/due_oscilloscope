@@ -132,15 +132,24 @@ Check here before reasoning from general Arduino knowledge.
 
 | Role | Path (example, changes with topology) | Notes |
 |---|---|---|
-| Flash + control + debug | `/dev/cu.usbmodem14201` | Programming port, Full Speed |
+| Flash + control + debug | `/dev/cu.usbmodem14201` | Programming port, Full Speed. Development only |
 | Sample data | `/dev/cu.usbmodemB_011` | Native port, High Speed; Track B's stack reports serial `B-01` |
+| Commands | `/dev/cu.usbmodemB_013` | Native port, second CDC function. **Track B only**, and nothing speaks over it yet |
+
+**The native port is two device nodes, not one** (Track B). It presents
+two CDC functions on one cable so that a deployed board needs no second
+cable, and they are told apart by USB interface number - 0 and 1 carry
+samples, 2 and 3 carry commands, pinned in `docs/control-protocol.md`.
+Do not pick one by position: `ports.find_all_ports()` returns all three
+nodes and `ports.native_order()` is the rule. Track A still has one.
 
 Paths are enumeration-dependent and change whenever a cable moves; the
 table is an example, not a reference. Discover with
-`python3 host/ports.py`, which identifies the control port by the fact
-that it answers. Always `/dev/cu.*`, never `/dev/tty.*`. Opening the
-control port resets the board over NRSTB and re-enumerates the native
-port, so open control first and re-glob the native node after.
+`python3 host/ports.py`, which identifies the programming port by the
+fact that it answers and the native pair by asking IOKit. Always
+`/dev/cu.*`, never `/dev/tty.*`. Opening the control port resets the
+board over NRSTB and re-enumerates the native port, so open control
+first and re-glob the native nodes after.
 
 ## Do not invent numbers
 

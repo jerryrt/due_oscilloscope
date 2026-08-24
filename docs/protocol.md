@@ -1,16 +1,23 @@
 # Host Protocol
 
-Two channels, deliberately separated (paths are enumeration-dependent;
-discover them with `python3 host/ports.py`, never hardcode):
+Three channels on two cables (paths are enumeration-dependent; discover
+them with `python3 host/ports.py`, never hardcode):
 
 | Port | Traffic |
 |---|---|
-| Native (High Speed) | **Binary sample frames** in; playback samples out |
-| Programming | ASCII control commands, status, debug logs |
+| Native, function 1 (High Speed) | **Binary sample frames** in; playback samples out |
+| Native, function 2 (High Speed) | Commands and responses. **Track B only, and nothing speaks over it yet** - see `docs/control-protocol.md` |
+| Programming | ASCII control commands, status, debug logs. **Development only** |
 
 Keeping logs off the data pipe means a stray `printf` cannot corrupt a
 sample frame, and the debug stream can be watched in a second terminal
 while the host application owns the data port.
+
+The programming port is a bench convenience, not part of the shipped
+design: a deployed board is one cable, and that cable is the native
+port. That is what the second CDC function on it exists for. Everything
+below describes the sample channel, which is unchanged by its
+appearance.
 
 ---
 

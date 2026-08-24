@@ -253,6 +253,11 @@ remaining hole in the data path - 1.35% and 2.15% of the waveform at
 loop on the device's own consumption) is now a real fix rather than a
 mask, because the byte loss underneath it is gone.
 
+Or continue **objective 8**, the native-port control channel, which is
+the one thing standing between this and a board that can be deployed on
+one cable. Its transport is built and measured; what is left is the
+protocol on top, which needs the board only to test.
+
 If you would rather build than debug, **G2** on the front end -
 trigger, measurements, FFT - needs no board at all (`--spawn-fake`) and
 cannot be blocked by the cable in objective 2.
@@ -936,6 +941,49 @@ sub-question: RC 44 reads one of two discrete converter rates.
    expressed in ADC clocks (22 isolated, 43 per pair) and derived from
    the live clock ratio.
 
+8. **The native-port control channel** - the deployed board is one
+   cable, and that cable is the native port, so a control path that
+   lives behind the programming port does not exist in deployment at
+   all. `docs/control-protocol.md` is the design and carries its own
+   status table. What is done:
+
+   - the command layer is split out of `main.c`'s switch, so parsing
+     and execution are separate and a second transport can reach the
+     same executor (Track B);
+   - the native port presents **two** CDC functions on one cable, which
+     enumerate as two device nodes - samples on interfaces 0/1,
+     commands on 2/3;
+   - `usb_ctl_read()` / `usb_ctl_write()` carry bytes both ways, tested
+     byte-exact at 2048 bytes each way with a temporary echo build;
+   - the main loop drains the command endpoint although nothing
+     consumes it, because an undrained bulk OUT hangs the host in
+     `close()`;
+   - `host/ports.py` returns all three nodes and tells the native pair
+     apart by USB interface number rather than by name order.
+
+   What is not:
+
+   - **the frame parser and the executor binding.** The header, opcodes
+     and error convention are designed in `docs/control-protocol.md`
+     and nothing implements them. Bytes written to the command node are
+     currently drained and discarded.
+   - **the heartbeat and asynchronous notifications**, which are the
+     reason this is an endpoint pair rather than EP0.
+   - **Track A**, which still has one CDC function. Both tracks must
+     present identical descriptors and identical responses, and the
+     suite is where that is enforced - `--track=both`, comparing, not
+     two tests asserting separately. The two on-board tests in
+     `tests/test_link_health.py` skip on Track A today and are what
+     will stop skipping when it follows.
+
+   One figure that is settled and should not be re-derived: the UOTGHS
+   has 4096 bytes of endpoint DPRAM, 2240 of it already spent, and the
+   control function costs 1088 more. It costs that much rather than the
+   384 the design first assumed because USB 2.0 requires a high-speed
+   bulk endpoint to be exactly 512 bytes, so the endpoints are 512 and
+   single-banked rather than 64 and double-banked. Two 512-byte
+   double-banked pairs need 4416 and do not fit.
+
 ## Hard-won facts the next session must not rediscover
 
 - **The underrun counter is not evidence of a clean run.** It agreed
@@ -1091,7 +1139,10 @@ sub-question: RC 44 reads one of two discrete converter rates.
   open control first, keep it open, re-glob and retry the native open.
   The device cannot time its own benchmarks; the host keeps the clock.
 - **Discover ports, never hardcode them** (`host/ports.py`); a stale
-  path once aimed the 1200-baud erase at the wrong port.
+  path once aimed the 1200-baud erase at the wrong port. On Track B
+  there are **three** nodes, two of them on the native cable, and they
+  are told apart by USB interface number rather than by name order -
+  `find_all_ports()`, not `sorted(glob(...))[0]`.
 - **Give the board time to re-enumerate before opening the native
   port.** `measure.Board(settle=3.0)` is what the suite uses and it is
   not decoration: opening the control port resets the board, and a
@@ -1283,7 +1334,7 @@ which is what the underrun counter is for.
 ## Host tools
 
 ```sh
-python3 host/ports.py                             # discover both ports
+python3 host/ports.py                             # discover all three ports
 python3 host/loopback.py --seconds 5              # loop test, 200 k defaults
 python3 host/loopback.py --dac-sps 906976 --adc-hz 453488   # full-rate pair
 python3 host/loopback.py --diag                   # with mid-run firmware snapshots

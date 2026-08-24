@@ -1,7 +1,24 @@
-# Control over the native port — design proposal
+# Control over the native port
 
-**Status: proposal, nothing implemented.** Written to be argued with
-before any of it is built.
+**Status: the transport exists on Track B; nothing speaks over it yet.**
+
+| | |
+|---|---|
+| Command layer split out of the main loop | done, Track B |
+| Second CDC function on the native cable | done, Track B |
+| Host discovers the two nodes by interface number | done |
+| Frame parser, executor binding, opcodes | not started |
+| Heartbeat and asynchronous notifications | not started |
+| Track A | not started |
+
+What that means concretely today: the board enumerates two serial nodes
+on one cable, `usb_ctl_read()` and `usb_ctl_write()` carry bytes both
+ways byte-exact, and the main loop drains the command endpoint and
+throws the bytes away. The framing below is still a design and is still
+worth arguing with; the numbering above it is now a measured fact.
+
+The rest of this document is written as the proposal it was, because the
+reasoning is what makes the parts that are not built yet decidable.
 
 ## Why
 
@@ -174,9 +191,17 @@ pair double-banked, which is where the difference between them actually
 lives. The notification endpoints are 16-byte interrupt.
 
 A host tells the two apart by interface number, not by enumeration
-order. `host/ports.py` currently identifies the control port by the
-fact that it answers, which will no longer be sufficient once a board
-offers two serial nodes on one cable.
+order, and `host/ports.py` now does: `usb_interfaces()` asks IOKit which
+USB interface is behind each callout device, and `find_all_ports()`
+returns the programming port, the sample node and the command node.
+
+On this machine the three are `/dev/cu.usbmodem141201`,
+`/dev/cu.usbmodemB_011` and `/dev/cu.usbmodemB_013`. The two native
+names sort the same way the interfaces number, which is why taking the
+first of them worked before this was written down - and why it is not
+what the code does: that agreement is macOS deriving a node name from an
+interface number, not anything the device controls. Name order is the
+fallback for a host with no `ioreg`, and it is tested as one.
 
 ## Firmware structure: one executor, two transports
 
