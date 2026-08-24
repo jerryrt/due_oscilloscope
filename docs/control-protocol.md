@@ -60,9 +60,26 @@ Two candidates:
 | Endpoint cost | 1 interrupt + 2 bulk | none |
 | Interferes with the sample path | no — separate endpoints | no |
 
-**Recommendation: the second CDC interface.** It keeps the "you can
-poke it from a terminal" property that this project has leaned on
-throughout bring-up, and it costs endpoints we have.
+**Recommendation: the second CDC interface**, and the reason is not
+convenience.
+
+EP0 is testable from code - it needs libusb or pyusb rather than a
+terminal, which is a dependency this host does not have today but could
+take. The argument against it is architectural: **EP0 is host-initiated
+only.** The device can never push on it. This channel exists to export
+more state, and on EP0 every piece of state costs a poll; a bulk IN
+endpoint lets the device send status, alarms and events as they happen.
+
+Two smaller costs, recorded so they are not rediscovered: a control
+transfer's data stage is small and unstreamed, so anything larger than
+a register dump arrives in pieces; and EP0 is shared with enumeration,
+so a busy poll loop competes with the transfers that keep the device
+attached.
+
+One thing to establish before EP0 is dismissed entirely *(check)*: on
+macOS the CDC-ACM driver has already matched and claimed this device
+(`AppleUSBDevice`, driver matched, in `ioreg`), and whether libusb can
+open it for control transfers regardless has not been tested.
 
 Size the control endpoints at 64 bytes, not 512. Commands are small,
 and endpoint FIFO memory is shared DPRAM that the two 512-byte
@@ -128,6 +145,92 @@ one-way timestamps; use the ping only for offset and liveness.**
 Interval: ~1 Hz. It must never printf, and it must never touch the
 sample path.
 
+## The command set
+
+### Frame
+
+Request and response share one 16-byte header. `drivers/playstat.h` set
+the pattern and this follows it: a magic of its own, a version, a CRC,
+and a fixed layout the host mirrors.
+
+```
+off sz  field      notes
+---------------------------------------------------------------------
+ 0   4  magic      "DUEC"
+ 4   1  version    = 1
+ 5   1  flags      bit0 1 = response, bit1 1 = error
+ 6   2  req_id     echoed in the response, so a late reply to an
+                   abandoned request cannot be read as the answer to
+                   the next one
+ 8   2  opcode     see below; echoed in the response
+10   2  length     payload bytes following this header
+12   4  crc32      over bytes 0..11 and the payload
+---------------------------------------------------------------------
+16      payload
+```
+
+On error, `flags` bit1 is set and the payload is a `u16` code followed
+by ASCII text - the same words the console prints today, because the
+device already has to produce them for the UART transport and two sets
+of refusal wording would drift.
+
+Every response is sent, including for commands with nothing to say.
+Silence is never a valid answer: it is indistinguishable from a wedged
+device, which is the failure this project has spent the most time on.
+
+### Opcodes
+
+Grouped so the ranges mean something, and every one of them maps onto a
+`cmd_execute()` case that the UART transport reaches too.
+
+| op | name | payload in | payload out |
+|---|---|---|---|
+| `0x0001` | `PING` | — | `dev_us` u32, `dev_ms` u32, `seq` u32 |
+| `0x0002` | `IDENTITY` | — | track, fw id, protocol ver, frame bytes, samples/frame, MCK |
+| `0x0003` | `CAPABILITIES` | — | RC limits per direction, channel limits, ring depths |
+| `0x0010` | `GET_RATES` | — | dac RC + hz, adc RC + hz, channels |
+| `0x0011` | `SET_RATES` | dac_sps u32, adc_hz u32, channels u8 | the *snapped* values actually set |
+| `0x0012` | `GET_MODE` | — | mode u8 |
+| `0x0013` | `SET_MODE` | mode u8, flags u8 | mode actually entered |
+| `0x0020` | `GET_COUNTERS` | — | the `play:` and stream counters, with `dev_us` |
+| `0x0021` | `GET_OCCUPANCY` | — | `occ_min`, `endtx`, `run_us`, `consumed`, histogram |
+| `0x0022` | `GET_RATE_TRACE` | — | the decimated trace, empty when compiled out |
+| `0x0023` | `GET_LINK` | — | endpoint and DMA status, activity counters, cfg failures |
+| `0x0030` | `GET_FAULT` | — | the last HardFault record, or empty |
+| `0x0031` | `CLEAR_COUNTERS` | — | — |
+| `0x0032` | `RESET` | magic u32 | — (no response; the device is gone) |
+
+`SET_RATES` returning the snapped value rather than an acknowledgement
+is deliberate. Every rate here is `39 MHz / RC` for integer RC, the
+host already has to know what it actually got, and a protocol that
+answers "yes" to a request it silently altered is how a project ends up
+quoting rates the hardware never ran at.
+
+`RESET` is the one command with no response, and it takes a magic
+argument so a corrupted frame cannot reboot the instrument.
+
+### What stays on the UART
+
+The development-only commands - `measure_printf`, `measure_gpio`,
+`trigger_fault`, the sweeps and the crosstalk scan - are not in this
+set. They exist to characterise the board on a bench, they print pages
+of text, and deployment has no console at all. The rule is not that the
+two transports expose the same commands; it is that any command both
+expose runs the same code.
+
+### Asynchronous notifications
+
+The device may send an unsolicited response - `flags` bit0 set,
+`req_id` zero - on the control IN endpoint. That is the whole reason
+this is an endpoint pair rather than EP0. The first users:
+
+- overrun or underrun crossing a threshold, so the host learns without
+  polling;
+- mode changed by the device itself, which today happens on a refusal
+  the host has to go looking for;
+- fault captured, so a HardFault reaches the host rather than waiting
+  for someone to ask.
+
 ## State worth exporting
 
 Beyond what `B` and `O` print today, and driven by what this session
@@ -157,6 +260,17 @@ command is required.
 be available in deployment at all, so nothing has to replace the UART
 channel `docs/debugging.md` is built around. This also removes the last
 reason for the console to exist on the shipped path.
+
+**Both tracks must behave identically.** Not merely
+feature-equivalent: the same command on either track produces the same
+response bytes, the same refusals, and the same state. The tracks share
+no source by invariant 3, so this is a contract enforced by tests
+rather than by a shared header - the wire format is the only thing they
+are allowed to have in common, and it belongs in this document.
+
+The suite already runs `--track=both`; every command added here needs a
+test that runs on both and compares, not two tests that each assert
+against the same expectation separately.
 
 **Track A follows.** That looked like it would force Track A to stop
 using the Arduino core for enumeration, which would have cost it its
