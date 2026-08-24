@@ -811,6 +811,22 @@ int main(void)
 		}
 
 		/*
+		 * The command endpoint has no consumer yet, and until it does
+		 * it needs the same treatment for the same reason: an
+		 * allocated bulk OUT that nobody drains is a pipe that NAKs
+		 * forever, and a host that wrote to it hangs in close().
+		 * Adding the endpoint without this would have turned a port
+		 * that does nothing into a port that wedges the machine.
+		 */
+		{
+			static uint8_t ctl_scrap[512];
+			for (int b = 0; b < 4; b++)
+				if (usb_ctl_read(ctl_scrap,
+				                 sizeof(ctl_scrap)) == 0)
+					break;
+		}
+
+		/*
 		 * Playback status on bulk IN, so the host can close a rate
 		 * loop on what the converter actually consumed. Only in
 		 * play-only: in loop mode IN carries frames and is on DMA,

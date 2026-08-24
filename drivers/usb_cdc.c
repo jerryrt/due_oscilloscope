@@ -1,14 +1,25 @@
 /*
  * Bare-metal CDC-ACM on UOTGHS.
  *
- * Endpoint layout matches the Arduino core so the host sees an identical
- * device:
+ * Two CDC-ACM functions on one cable, so the deployed board needs only
+ * the native port:
  *   EP0  control, 64 B
  *   EP1  interrupt IN, 64 B   (ACM notification, never used)
- *   EP2  bulk OUT, 512 B, 2 banks
- *   EP3  bulk IN,  512 B, 2 banks
+ *   EP2  bulk OUT, 512 B, 2 banks   samples: host -> DAC
+ *   EP3  bulk IN,  512 B, 2 banks   samples: ADC -> host
+ *   EP4  interrupt IN, 64 B   (ACM notification, never used)
+ *   EP5  bulk OUT, 512 B, 1 bank    commands
+ *   EP6  bulk IN,  512 B, 1 bank    responses and notifications
  *
- * The device enumerates at High Speed, so bulk endpoints are 512 bytes.
+ * The first function's endpoint layout matches the Arduino core, so a
+ * host that only opens the first CDC function sees the same device it
+ * always did.
+ *
+ * The device enumerates at High Speed, so every bulk endpoint is 512
+ * bytes - the USB 2.0 spec allows no other size, which is why the
+ * command endpoints are not the 64 bytes their traffic would suggest.
+ * They are single-banked instead: two 512-byte double-banked pairs do
+ * not fit the 4096-byte DPRAM. See docs/control-protocol.md.
  */
 
 #include "sam.h"
@@ -20,6 +31,9 @@
 #define EP_ACM    1u
 #define EP_OUT    2u
 #define EP_IN     3u
+#define EP_CACM   4u
+#define EP_COUT   5u
+#define EP_CIN    6u
 
 /*
  * USB_FORCE_FS exists as a bisection aid. High Speed needs a successful
@@ -40,6 +54,10 @@
 #else
 #define EPX_SIZE  512u
 #endif
+
+/* The command endpoints are bulk too, so they are the same size for the
+ * same reason. Only the bank count differs. */
+#define EPC_SIZE  EPX_SIZE
 
 #define FIFO(ep)  (((volatile uint8_t (*)[0x8000])UOTGHS_RAM_ADDR)[(ep)])
 
@@ -90,9 +108,27 @@ static const uint8_t *ctrl_src;
 static uint32_t ctrl_remaining;
 static bool ctrl_active;
 
-/* CDC line coding: 115200 8N1. Content is irrelevant to a CDC data path
- * but the host asks for it and expects seven sane bytes back. */
-static uint8_t line_coding[7] = { 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00, 0x08 };
+/*
+ * CDC line coding: 115200 8N1, one set per function. Content is
+ * irrelevant to a CDC data path but the host asks for it and expects
+ * seven sane bytes back - and it asks per interface, so answering both
+ * functions out of one buffer would let a tcsetattr on one port be
+ * read back on the other.
+ */
+static uint8_t line_coding[2][7] = {
+	{ 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00, 0x08 },
+	{ 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00, 0x08 },
+};
+
+/* Which function the pending SET_LINE_CODING data stage belongs to. */
+static unsigned ctrl_out_fn;
+
+/*
+ * Bytes already taken from the command endpoint's held bank. Declared
+ * here rather than beside its sample-path twin because rebuilding the
+ * endpoints resets it, and that happens further up the file.
+ */
+static uint32_t ctl_out_rd_off;
 
 /* ------------------------------------------------------------------ */
 /* Descriptors                                                         */
@@ -110,14 +146,21 @@ static const uint8_t desc_device[18] = {
 	1
 };
 
-#define CONF_LEN 75
+/*
+ * Two CDC functions, four interfaces. The numbering is a contract
+ * shared with Track A and pinned in docs/control-protocol.md, not an
+ * implementation detail: interfaces 0 and 1 keep the numbers they have
+ * always had, so a host that opens the first CDC function does not
+ * notice the second one appearing.
+ */
+#define CONF_LEN 141
 
 static const uint8_t desc_config[CONF_LEN] = {
 	/* configuration */
-	9, 2, CONF_LEN & 0xff, CONF_LEN >> 8, 2, 1, 0, 0xc0, 50,
+	9, 2, CONF_LEN & 0xff, CONF_LEN >> 8, 4, 1, 0, 0xc0, 50,
 
-	/* interface association: comm + data */
-	8, 11, 0, 2, 0x02, 0x02, 0x01, 0,
+	/* interface association: sample comm + data */
+	8, 11, 0, 2, 0x02, 0x02, 0x01, 4,
 
 	/* CDC communication interface */
 	9, 4, 0, 0, 1, 0x02, 0x02, 0x01, 0,
@@ -130,13 +173,39 @@ static const uint8_t desc_config[CONF_LEN] = {
 	/* CDC data interface */
 	9, 4, 1, 0, 2, 0x0a, 0, 0, 0,
 	7, 5, EP_OUT,        0x02, EPX_SIZE & 0xff, EPX_SIZE >> 8, 0,
-	7, 5, 0x80 | EP_IN,  0x02, EPX_SIZE & 0xff, EPX_SIZE >> 8, 0
+	7, 5, 0x80 | EP_IN,  0x02, EPX_SIZE & 0xff, EPX_SIZE >> 8, 0,
+
+	/* interface association: control comm + data */
+	8, 11, 2, 2, 0x02, 0x02, 0x01, 5,
+
+	/* CDC communication interface */
+	9, 4, 2, 0, 1, 0x02, 0x02, 0x01, 0,
+	5, 0x24, 0x00, 0x10, 0x01,          /* header */
+	5, 0x24, 0x01, 0x01, 3,             /* call management */
+	4, 0x24, 0x02, 0x06,                /* ACM */
+	5, 0x24, 0x06, 2, 3,                /* union */
+	7, 5, 0x80 | EP_CACM, 0x03, 0x10, 0x00, 0x10,
+
+	/* CDC data interface */
+	9, 4, 3, 0, 2, 0x0a, 0, 0, 0,
+	7, 5, EP_COUT,        0x02, EPC_SIZE & 0xff, EPC_SIZE >> 8, 0,
+	7, 5, 0x80 | EP_CIN,  0x02, EPC_SIZE & 0xff, EPC_SIZE >> 8, 0
 };
 
 static const uint8_t desc_lang[4]  = { 4, 3, 0x09, 0x04 };
 static const uint8_t desc_manu[18] = { 18, 3, 'A',0,'r',0,'d',0,'u',0,'i',0,'n',0,'o',0,' ',0 };
 static const uint8_t desc_prod[24] = { 24, 3, 'D',0,'u',0,'e',0,' ',0,'S',0,'c',0,'o',0,'p',0,'e',0,' ',0,'B',0 };
 static const uint8_t desc_serial[10] = { 10, 3, 'B',0,'-',0,'0',0,'1',0 };
+
+/*
+ * iFunction on each IAD. macOS names the serial nodes from the
+ * interface number rather than from these, but they are what shows the
+ * two functions apart in ioreg and system_profiler, and a device that
+ * cannot say which of its two ports is which is a device someone will
+ * eventually open the wrong one of.
+ */
+static const uint8_t desc_fn_data[16] = { 16, 3, 'S',0,'a',0,'m',0,'p',0,'l',0,'e',0,'s',0 };
+static const uint8_t desc_fn_ctl[16]  = { 16, 3, 'C',0,'o',0,'n',0,'t',0,'r',0,'o',0,'l',0 };
 
 /* ------------------------------------------------------------------ */
 /* EP0 helpers                                                         */
@@ -178,10 +247,10 @@ static void ctrl_handle_out(void)
 		              UOTGHS_DEVEPTISR_BYCT_Msk)
 		           >> UOTGHS_DEVEPTISR_BYCT_Pos;
 
-		if (n > sizeof(line_coding))
-			n = sizeof(line_coding);
+		if (n > sizeof(line_coding[0]))
+			n = sizeof(line_coding[0]);
 		for (uint32_t i = 0; i < n; i++)
-			line_coding[i] = fifo[i];
+			line_coding[ctrl_out_fn][i] = fifo[i];
 		ctrl_out_expect = 0;
 	}
 
@@ -283,6 +352,24 @@ static void configure_data_endpoints(void)
 	ep_configure(EP_ACM, 3u, 1u, 64u,      2u);
 	ep_configure(EP_OUT, 2u, 0u, EPX_SIZE, 2u);
 	ep_configure(EP_IN,  2u, 1u, EPX_SIZE, 2u);
+
+	/*
+	 * The control function, and the order matters. DPRAM is allocated
+	 * in ascending endpoint order, and re-allocating one endpoint
+	 * slides the next one's window up while leaving the one after it
+	 * where it was - so configuring these before the sample endpoints
+	 * would corrupt the sample endpoints rather than fail visibly.
+	 *
+	 * Single-banked because two 512-byte double-banked pairs need 4416
+	 * bytes of a 4096-byte DPRAM. A wrong bank count here does not
+	 * fail silently: CFGOK stays clear and usb_cfg_fail counts it.
+	 */
+	ep_configure(EP_CACM, 3u, 1u, 64u,      1u);
+	ep_configure(EP_COUT, 2u, 0u, EPC_SIZE, 1u);
+	ep_configure(EP_CIN,  2u, 1u, EPC_SIZE, 1u);
+
+	ctl_out_rd_off = 0;
+
 	ep_apply_autosw(EP_OUT, dma_mode_out);
 	ep_apply_autosw(EP_IN, dma_mode_in);
 }
@@ -300,7 +387,6 @@ static void handle_setup(void)
 	uint16_t wIndex       = (uint16_t)(fifo[4] | (fifo[5] << 8));
 	uint16_t wLength      = (uint16_t)(fifo[6] | (fifo[7] << 8));
 
-	(void)wIndex;
 	usb_setup_count++;
 	{
 		unsigned i = setup_log_at++ % SETUP_LOG_N;
@@ -337,6 +423,8 @@ static void handle_setup(void)
 				case 1: s = desc_manu;   n = sizeof(desc_manu);   break;
 				case 2: s = desc_prod;   n = sizeof(desc_prod);   break;
 				case 3: s = desc_serial; n = sizeof(desc_serial); break;
+				case 4: s = desc_fn_data; n = sizeof(desc_fn_data); break;
+				case 5: s = desc_fn_ctl;  n = sizeof(desc_fn_ctl);  break;
 				default: break;
 				}
 				if (s) {
@@ -378,17 +466,31 @@ static void handle_setup(void)
 
 	/* CDC class requests on the communication interface */
 	if ((bmRequestType & 0x60) == 0x20) {
+		/*
+		 * wIndex is the interface the request is aimed at, and with
+		 * two functions it finally means something: 0 and 1 are the
+		 * sample function, 2 and 3 the control function. Ignoring it
+		 * would let opening either port raise DTR on both, and
+		 * usb_cdc_ready() gates the whole sample path on that bit.
+		 */
+		unsigned fn = wIndex >= 2u ? 1u : 0u;
+
 		switch (bRequest) {
 		case 0x20:  /* SET_LINE_CODING: the data stage comes next */
+			ctrl_out_fn = fn;
 			ctrl_out_expect = wLength;
 			if (!ctrl_out_expect)
 				ctrl_send_zlp();
 			return;
 		case 0x21:  /* GET_LINE_CODING */
-			ctrl_send(line_coding, sizeof(line_coding), wLength);
+			ctrl_send(line_coding[fn], sizeof(line_coding[fn]),
+			          wLength);
 			return;
 		case 0x22:  /* SET_CONTROL_LINE_STATE */
-			usb_line_state = wValue;
+			if (fn)
+				usb_ctl_line_state = wValue;
+			else
+				usb_line_state = wValue;
 			ctrl_send_zlp();
 			return;
 		case 0x23:  /* SEND_BREAK */
@@ -406,38 +508,47 @@ static void handle_setup(void)
 /* Bulk IN                                                             */
 /* ------------------------------------------------------------------ */
 
-size_t usb_cdc_write(const uint8_t *data, size_t len)
+static size_t ep_fifo_write(uint32_t ep, uint32_t epsize,
+                            const uint8_t *data, size_t len)
 {
 	size_t done = 0;
-
-	if (!usb_cdc_ready())
-		return 0;
 
 	while (done < len) {
 		volatile uint8_t *fifo;
 		uint32_t n;
 
 		/*
-		 * No spinning. If neither bank is free the host is not
-		 * draining, and blocking here is precisely the failure that
-		 * wedges the Arduino CDC path.
+		 * No spinning. If no bank is free the host is not draining,
+		 * and blocking here is precisely the failure that wedges the
+		 * Arduino CDC path.
 		 */
-		if (!(UOTGHS->UOTGHS_DEVEPTISR[EP_IN] & UOTGHS_DEVEPTISR_TXINI))
+		if (!(UOTGHS->UOTGHS_DEVEPTISR[ep] & UOTGHS_DEVEPTISR_TXINI))
 			break;
 
 		n = len - done;
-		if (n > EPX_SIZE)
-			n = EPX_SIZE;
+		if (n > epsize)
+			n = epsize;
 
-		fifo = FIFO(EP_IN);
+		fifo = FIFO(ep);
 		for (uint32_t i = 0; i < n; i++)
 			fifo[i] = data[done + i];
 
-		UOTGHS->UOTGHS_DEVEPTICR[EP_IN] = UOTGHS_DEVEPTICR_TXINIC;
-		UOTGHS->UOTGHS_DEVEPTIDR[EP_IN] = UOTGHS_DEVEPTIDR_FIFOCONC;
+		UOTGHS->UOTGHS_DEVEPTICR[ep] = UOTGHS_DEVEPTICR_TXINIC;
+		UOTGHS->UOTGHS_DEVEPTIDR[ep] = UOTGHS_DEVEPTIDR_FIFOCONC;
 
 		done += n;
 	}
+	return done;
+}
+
+size_t usb_cdc_write(const uint8_t *data, size_t len)
+{
+	size_t done;
+
+	if (!usb_cdc_ready())
+		return 0;
+
+	done = ep_fifo_write(EP_IN, EPX_SIZE, data, len);
 	if (done)
 		usb_in_activity += (uint32_t)done;
 	return done;
@@ -453,9 +564,10 @@ size_t usb_cdc_write(const uint8_t *data, size_t len)
  */
 static uint32_t out_rd_off;
 
-size_t usb_cdc_read(uint8_t *dst, size_t max)
+static size_t ep_fifo_read(uint32_t ep, uint32_t *rd_off,
+                           uint8_t *dst, size_t max)
 {
-	uint32_t st = UOTGHS->UOTGHS_DEVEPTISR[EP_OUT];
+	uint32_t st = UOTGHS->UOTGHS_DEVEPTISR[ep];
 	uint32_t byct, n;
 	volatile uint8_t *fifo;
 
@@ -463,32 +575,80 @@ size_t usb_cdc_read(uint8_t *dst, size_t max)
 		return 0;
 
 	byct = (st & UOTGHS_DEVEPTISR_BYCT_Msk) >> UOTGHS_DEVEPTISR_BYCT_Pos;
-	if (byct <= out_rd_off) {
+	if (byct <= *rd_off) {
 		/* Zero-length packet, or a bank already fully drained:
 		 * release it and move on. */
-		out_rd_off = 0;
-		UOTGHS->UOTGHS_DEVEPTICR[EP_OUT] = UOTGHS_DEVEPTICR_RXOUTIC;
-		UOTGHS->UOTGHS_DEVEPTIDR[EP_OUT] = UOTGHS_DEVEPTIDR_FIFOCONC;
+		*rd_off = 0;
+		UOTGHS->UOTGHS_DEVEPTICR[ep] = UOTGHS_DEVEPTICR_RXOUTIC;
+		UOTGHS->UOTGHS_DEVEPTIDR[ep] = UOTGHS_DEVEPTIDR_FIFOCONC;
 		return 0;
 	}
 
-	n = byct - out_rd_off;
+	n = byct - *rd_off;
 	if (n > max)
 		n = max;
 
-	fifo = FIFO(EP_OUT);
+	fifo = FIFO(ep);
 	for (uint32_t i = 0; i < n; i++)
-		dst[i] = fifo[out_rd_off + i];
-	out_rd_off += n;
+		dst[i] = fifo[*rd_off + i];
+	*rd_off += n;
 
-	usb_out_activity += n;
 	/* Hand the bank back only once every byte in it has been taken. */
-	if (out_rd_off >= byct) {
-		out_rd_off = 0;
-		UOTGHS->UOTGHS_DEVEPTICR[EP_OUT] = UOTGHS_DEVEPTICR_RXOUTIC;
-		UOTGHS->UOTGHS_DEVEPTIDR[EP_OUT] = UOTGHS_DEVEPTIDR_FIFOCONC;
+	if (*rd_off >= byct) {
+		*rd_off = 0;
+		UOTGHS->UOTGHS_DEVEPTICR[ep] = UOTGHS_DEVEPTICR_RXOUTIC;
+		UOTGHS->UOTGHS_DEVEPTIDR[ep] = UOTGHS_DEVEPTIDR_FIFOCONC;
 	}
 	return n;
+}
+
+size_t usb_cdc_read(uint8_t *dst, size_t max)
+{
+	size_t n = ep_fifo_read(EP_OUT, &out_rd_off, dst, max);
+
+	usb_out_activity += (uint32_t)n;
+	return n;
+}
+
+/* ------------------------------------------------------------------ */
+/* Control channel                                                     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The command endpoints, always manual FIFO.
+ *
+ * They are deliberately not on the LED activity counters: those exist to
+ * show sample traffic, and a 1 Hz heartbeat blinking the same lights
+ * would turn a useful indicator into a clock. Their own counters are
+ * for diagnostics.
+ */
+volatile uint32_t usb_ctl_in_activity;
+volatile uint32_t usb_ctl_out_activity;
+volatile uint32_t usb_ctl_line_state;
+
+bool usb_ctl_ready(void)
+{
+	return usb_configured != 0 && (usb_ctl_line_state & 0x01) != 0;
+}
+
+size_t usb_ctl_read(uint8_t *dst, size_t max)
+{
+	size_t n = ep_fifo_read(EP_COUT, &ctl_out_rd_off, dst, max);
+
+	usb_ctl_out_activity += (uint32_t)n;
+	return n;
+}
+
+size_t usb_ctl_write(const uint8_t *data, size_t len)
+{
+	size_t done;
+
+	if (!usb_ctl_ready())
+		return 0;
+
+	done = ep_fifo_write(EP_CIN, EPC_SIZE, data, len);
+	usb_ctl_in_activity += (uint32_t)done;
+	return done;
 }
 
 /* ------------------------------------------------------------------ */
@@ -681,8 +841,10 @@ void usb_cdc_poll(void)
 		usb_reset_count++;
 		usb_configured = 0;
 		usb_line_state = 0;
+		usb_ctl_line_state = 0;
 		pending_address = 0;
 		out_rd_off = 0;
+		ctl_out_rd_off = 0;
 
 		/* A bus reset clears the endpoint configuration, so EP0 has to
 		 * be rebuilt every time rather than only once. */
@@ -881,6 +1043,24 @@ void usb_cdc_dump(void)
 	       (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[2],
 	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3],
 	       (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[3]);
+	/*
+	 * The control function. CFGOK is the whole verification for the
+	 * DPRAM budget: the controller sets it only if the requested size
+	 * and bank count fit both the endpoint's maximum and the remaining
+	 * DPRAM, so three ones here is the hardware agreeing that the
+	 * layout in docs/control-protocol.md is affordable.
+	 */
+	printf("# ep4(cACM) ok=%d  ep5(cOUT) CFG=%08lx ok=%d  ep6(cIN) CFG=%08lx ok=%d\n",
+	       (int)!!(UOTGHS->UOTGHS_DEVEPTISR[EP_CACM] & UOTGHS_DEVEPTISR_CFGOK),
+	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[EP_COUT],
+	       (int)!!(UOTGHS->UOTGHS_DEVEPTISR[EP_COUT] & UOTGHS_DEVEPTISR_CFGOK),
+	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[EP_CIN],
+	       (int)!!(UOTGHS->UOTGHS_DEVEPTISR[EP_CIN] & UOTGHS_DEVEPTISR_CFGOK));
+	printf("# ctl dtr=%d cfgfail=%lu in=%lu out=%lu\n",
+	       (int)!!(usb_ctl_line_state & 0x01),
+	       (unsigned long)usb_cfg_fail,
+	       (unsigned long)usb_ctl_in_activity,
+	       (unsigned long)usb_ctl_out_activity);
 	printf("# dma ch1(OUT) ADDR=%08lx CTRL=%08lx ST=%08lx  ch2(IN) ADDR=%08lx CTRL=%08lx ST=%08lx\n",
 	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMAADDRESS,
 	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMACONTROL,

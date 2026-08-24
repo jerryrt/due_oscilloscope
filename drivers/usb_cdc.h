@@ -42,6 +42,29 @@ size_t usb_cdc_write(const uint8_t *data, size_t len);
 size_t usb_cdc_read(uint8_t *dst, size_t max);
 
 /*
+ * The second CDC function: commands in, responses and unsolicited
+ * notifications out.
+ *
+ * A separate interface pair rather than markers in the sample stream,
+ * for two measured reasons: scanning bulk OUT for command markers would
+ * put the CPU back on the sample path, and injecting an odd-sized write
+ * into a stream whose every write must be the same size reintroduces a
+ * loss no counter on either side reports. See docs/control-protocol.md.
+ *
+ * Both are manual FIFO and both refuse rather than block, on the same
+ * reasoning as their sample-path twins. usb_ctl_read() does not require
+ * DTR: a host that opened the port and went away must still have its
+ * bulk OUT drained, or its close() waits forever on an in-flight write.
+ */
+bool   usb_ctl_ready(void);
+size_t usb_ctl_read(uint8_t *dst, size_t max);
+size_t usb_ctl_write(const uint8_t *data, size_t len);
+
+extern volatile uint32_t usb_ctl_in_activity;
+extern volatile uint32_t usb_ctl_out_activity;
+extern volatile uint32_t usb_ctl_line_state;
+
+/*
  * DMA transfers on the bulk endpoints.
  *
  * The UOTGHS has a DMA channel per endpoint, so the controller can read
