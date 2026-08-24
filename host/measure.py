@@ -874,9 +874,19 @@ class Board:
         # console round trip on every close.
         if os.environ.get("DUE_EP_DUMP_ON_CLOSE"):
             try:
-                txt = self.ask("u", secs=0.8)
+                # 'B' first: it names the mode. The main loop only drains
+                # bulk OUT when nothing owns it -
+                #   if (!play_active() && !stream_out_in_use())
+                # - so a device still marked as running a bench or a
+                # playback, with nothing actually consuming, is the one
+                # state that produces a NAKing pipe with a healthy
+                # endpoint. That is what the first captured wedge looked
+                # like: ep2(OUT) ISR bit-identical to a healthy close,
+                # but the OUT DMA holding 16896 bytes outstanding.
+                txt = self.ask("B", secs=0.8) + self.ask("u", secs=0.8)
                 for line in txt.splitlines():
-                    if "ep2(OUT)" in line or "dma ch1(OUT)" in line:
+                    if ("ep2(OUT)" in line or "dma ch1(OUT)" in line
+                            or "bench=" in line or "play:" in line):
                         print(f"[0c] before close: {line.strip()}",
                               file=sys.stderr, flush=True)
             except Exception as e:                    # noqa: BLE001
