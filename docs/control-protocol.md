@@ -86,6 +86,35 @@ and endpoint FIFO memory is shared DPRAM that the two 512-byte
 double-banked data endpoints already draw on *(check: total DPRAM
 budget not verified)*.
 
+## Numbering, pinned
+
+Track B hand-writes its descriptors and Track A goes through
+PluggableUSB, so the same layout is reached by two routes. Both tracks
+must present *identical* descriptors, so the numbering is a contract
+rather than an implementation detail, and it lives here.
+
+| | interface | endpoints |
+|---|---|---|
+| CDC comm (data) | 0 | EP1 interrupt IN |
+| CDC data (samples) | 1 | EP2 bulk OUT, EP3 bulk IN |
+| CDC comm (control) | 2 | EP4 interrupt IN |
+| CDC data (control) | 3 | EP5 bulk OUT, EP6 bulk IN |
+
+Interfaces 0 and 1 keep their present numbers, so an existing host that
+opens the first CDC function is unaffected by the second appearing.
+Endpoints 4 to 6 are free: the CMSIS header declares
+`UOTGHS_DEVEPTCFG[10]`.
+
+Two interface association descriptors, one per function, so the host
+groups them correctly and does not present the four interfaces as
+unrelated. The control function's endpoints are 64 bytes; only the
+sample function needs 512.
+
+A host tells the two apart by interface number, not by enumeration
+order. `host/ports.py` currently identifies the control port by the
+fact that it answers, which will no longer be sufficient once a board
+offers two serial nodes on one cable.
+
 ## Firmware structure: one executor, two transports
 
 **The command execution layer must be shared.** Whether a command
@@ -286,8 +315,5 @@ invariant 3 intends.
 - Total endpoint DPRAM budget on this part, and whether two more
   64-byte double-banked endpoints fit alongside the existing 512-byte
   pair *(check)*.
-- Track B hand-writes its descriptors and Track A will go through
-  PluggableUSB, so the two arrive at the same wire layout by different
-  routes. The interface and endpoint numbering has to be pinned in this
-  document, or they will drift and the host will need to tell them
-  apart.
+- Nothing outstanding that blocks starting. The numbering below is the
+  contract; the DPRAM budget above is the one figure still unverified.
