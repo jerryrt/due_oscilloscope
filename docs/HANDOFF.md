@@ -780,6 +780,14 @@ sub-question: RC 44 reads one of two discrete converter rates.
    console pressure - a suite run with *extra* console traffic on every
    close passed clean.
 
+   **A wedge costs the bench, not just the run.** The stuck thread is
+   blocked in the driver, so `kill -9` leaves the process in `STAT ?E`
+   - exiting, unkillable - still holding both port fds. The next
+   process to open the port then blocks in `open()` rather than
+   `close()`, which is how a 12-minute suite run became an 11-hour one.
+   Recovery is physical: unplug and replug the board. There is no
+   software route.
+
    **The trap is armed, so stop hunting it.** `close_native` now closes
    on a thread with a 3 s deadline. On a wedge it reads the device's
    state over the control port - a different fd, still working, which

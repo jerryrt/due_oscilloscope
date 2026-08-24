@@ -254,7 +254,21 @@ Diagnosing it from the outside: a host tool making no progress while
 the board's heartbeat still flashes and both activity LEDs stay dark
 is this and not a dead board. `sample <pid> 2 -mayDie | grep close`
 confirms it in one line. `tcflush` will not help and neither will
-waiting; kill the process.
+waiting.
+
+**Killing the process does not help either, and this file used to say
+it did.** The thread is blocked in the driver, so `kill -9` leaves it
+in `STAT ?E` - exiting, unkillable - still holding both port fds. One
+was watched for 11 hours in that state and refused repeated `kill -9`.
+Anything that then tries to open the port blocks in `open()` rather
+than `close()`, so a wedge in one process silently becomes a hang in
+the next one, which is how a twelve-minute suite run turned into an
+overnight one.
+
+**Recovery is physical: unplug and replug the board.** That releases
+the driver, the stuck process finally exits, and the ports come back.
+There is no software route, which is worth knowing before spending an
+afternoon looking for one.
 
 ## Track A's bulk path now bypasses the core
 

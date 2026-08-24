@@ -723,6 +723,21 @@ def parse_bench(text):
 # samples, so this is three orders of magnitude of headroom.
 CLOSE_WEDGE_S = 3.0
 
+# Where a wedge diagnosis goes. A file, because the failure being
+# diagnosed is a hang, and anything buffered by a test runner is lost
+# when the session never finishes.
+WEDGE_LOG = os.environ.get("DUE_WEDGE_LOG", "/tmp/due-0c.log")
+
+
+def _wedge_note(text):
+    line = f"[0c] {text}"
+    print(line, file=sys.stderr, flush=True)
+    try:
+        with open(WEDGE_LOG, "a") as fh:
+            fh.write(f"{time.strftime('%F %T')} {line}\n")
+    except OSError:
+        pass
+
 
 class BoardError(RuntimeError):
     pass
@@ -749,6 +764,10 @@ class Board:
             raise BoardError("no control port found")
         self.control = control
         self.native = native
+        # Set when close() on the native port wedged: the fd is leaked
+        # and a thread is stuck on it, so nothing in this process can
+        # open it again.
+        self.wedged = False
         self.cfd = open_raw(control, 115200)
         self._console = b""
         if settle:
@@ -843,6 +862,11 @@ class Board:
         Its name changes whenever the board resets, so it is discovered
         every time rather than remembered.
         """
+        if self.wedged:
+            raise BoardError(
+                "the native port is held by a thread stuck in a close() "
+                "that never returned (objective 0c); this process cannot "
+                f"reopen it. See {WEDGE_LOG}.")
         fd = None
         give_up = time.time() + wait
         while fd is None:
@@ -940,18 +964,21 @@ class Board:
         if done.wait(CLOSE_WEDGE_S):
             return
 
-        print(f"[0c] close() has not returned in {CLOSE_WEDGE_S}s - "
-              f"asking the board what state it is in", file=sys.stderr,
-              flush=True)
+        # To a file, not just stderr. The first wedge caught with this
+        # armed produced nothing readable: pytest captures stderr per
+        # test and only prints it in the failure report, and the report
+        # never came because the session hung afterwards. A diagnosis
+        # that only survives a clean exit is no use for a defect whose
+        # whole signature is not exiting.
+        _wedge_note(f"close() has not returned in {CLOSE_WEDGE_S}s")
         try:
             txt = self.ask("B", secs=0.8) + self.ask("u", secs=0.8)
             for line in txt.splitlines():
                 if ("ep2(OUT)" in line or "dma ch1(OUT)" in line
                         or "bench=" in line or "play:" in line):
-                    print(f"[0c]   {line.strip()}", file=sys.stderr,
-                          flush=True)
+                    _wedge_note("  " + line.strip())
         except Exception as e:                       # noqa: BLE001
-            print(f"[0c]   dump failed: {e!r}", file=sys.stderr, flush=True)
+            _wedge_note(f"  dump failed: {e!r}")
 
         for attempt in range(3):
             try:
@@ -959,11 +986,18 @@ class Board:
             except Exception:                        # noqa: BLE001
                 pass
             if done.wait(2.0):
-                print(f"[0c] close() completed after re-issuing 0 "
-                      f"({attempt + 1} time(s)) - the device had not "
-                      f"stopped", file=sys.stderr, flush=True)
+                _wedge_note(f"close() completed after re-issuing 0 "
+                            f"({attempt + 1} time(s)) - the device had "
+                            f"not stopped")
                 return
 
+        # The fd is leaked and a thread is stuck on it, so this process
+        # can never use the port again. Say so once, here, rather than
+        # letting the next open() block forever - which is what happened
+        # the first time this fired: the close hang became an open hang
+        # and the suite sat for eleven hours instead of twelve minutes.
+        self.wedged = True
+        _wedge_note("board marked unusable for the rest of this session")
         raise BoardError(
             "close() on the native port wedged and did not recover - "
             "objective 0c. The [0c] lines above are the device's state; "
