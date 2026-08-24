@@ -864,6 +864,24 @@ class Board:
         return fd
 
     def close_native(self, fd):
+        # Objective 0c: close() hangs here, and when it does the process
+        # holds both ports so nothing outside can ask the board what
+        # happened. The board itself stays healthy, so the state that
+        # would explain it is readable right up to the moment of the
+        # call - but only from in here.
+        #
+        # Off unless DUE_EP_DUMP_ON_CLOSE is set, because it costs a
+        # console round trip on every close.
+        if os.environ.get("DUE_EP_DUMP_ON_CLOSE"):
+            try:
+                txt = self.ask("u", secs=0.8)
+                for line in txt.splitlines():
+                    if "ep2(OUT)" in line or "dma ch1(OUT)" in line:
+                        print(f"[0c] before close: {line.strip()}",
+                              file=sys.stderr, flush=True)
+            except Exception as e:                    # noqa: BLE001
+                print(f"[0c] dump failed: {e!r}", file=sys.stderr, flush=True)
+
         # '0' stops the device draining bulk OUT, so bytes still in the
         # kernel's output queue can never leave - and close() on a tty
         # drains that queue first. Without the flush the process hangs
