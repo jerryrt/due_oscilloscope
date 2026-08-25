@@ -20,16 +20,13 @@ touching any of them.
 
 from __future__ import annotations
 
-import fcntl
 import glob
 import math
 import os
 import re
-import select
 import struct
 import subprocess
 import sys
-import termios
 import threading
 import time
 import zlib
@@ -37,9 +34,11 @@ from array import array
 from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ports import find_ports, native_order, open_raw
+import ports
+from ports import find_ports, native_order, open_raw  # noqa: F401
 import jitter
 import rt
+import transport
 
 # ---------------------------------------------------------------------
 # Wire format. Shared verbatim with drivers/frame.h.
@@ -775,17 +774,17 @@ class Board:
 
     # -- control port ------------------------------------------------
     def cmd(self, text):
-        os.write(self.cfd, text.encode() if isinstance(text, str) else text)
+        self.cfd.write(text.encode() if isinstance(text, str) else text)
 
     def poll_console(self):
         """Non-blocking drain; returns whatever was waiting."""
         got = b""
         while True:
-            r, _, _ = select.select([self.cfd], [], [], 0)
+            r = transport.wait_any([self.cfd], 0)
             if not r:
                 break
             try:
-                d = os.read(self.cfd, 65536)
+                d = self.cfd.read(65536)
             except OSError:
                 break
             if not d:
@@ -813,10 +812,10 @@ class Board:
         last = time.time()
         end = time.time() + (secs if quiet is None and not marks else cap)
         while time.time() < end:
-            r, _, _ = select.select([self.cfd], [], [], 0.05)
+            r = transport.wait_any([self.cfd], 0.05)
             if r:
                 try:
-                    d = os.read(self.cfd, 65536)
+                    d = self.cfd.read(65536)
                 except OSError:
                     break
                 if d:
@@ -875,8 +874,7 @@ class Board:
             # name is what keeps this pointed at the sample one: the
             # names happen to sort the same way today, and that is a
             # property of macOS's naming rather than of the device.
-            cands = native_order([n for n in glob.glob("/dev/cu.usbmodem*")
-                                  if n != self.control])
+            cands = ports.native_nodes(exclude=self.control)
             try:
                 if cands:
                     fd = open_raw(cands[0], 115200, dtr=dtr)
@@ -894,8 +892,7 @@ class Board:
             # Without this a full queue raises EAGAIN and a naive writer
             # dies silently. VMIN=0 keeps reads non-blocking, so this
             # affects only the write side.
-            fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
+            fd.set_blocking(True)
         return fd
 
     def command_node(self):
@@ -911,8 +908,7 @@ class Board:
         every caller must cope, because the fallback is the console and
         the console still works.
         """
-        cands = native_order([n for n in glob.glob("/dev/cu.usbmodem*")
-                              if n != self.control])
+        cands = ports.native_nodes(exclude=self.control)
         return cands[1] if len(cands) > 1 else None
 
     def close_native(self, fd):
@@ -949,16 +945,14 @@ class Board:
         # drains that queue first. Without the flush the process hangs
         # in close() forever, holding the port and leaving the board
         # streaming into the void for the next run to trip over.
-        try:
-            termios.tcflush(fd, termios.TCIOFLUSH)
-        except (OSError, termios.error):
-            # termios.error is not an OSError - it derives straight from
-            # Exception - so `except OSError` never caught it, and a port
-            # that had gone away (ENXIO) aborted the whole measurement
-            # from inside the cleanup.
-            pass
+        # flush_both() swallows the platform's own flush error itself:
+        # termios.error is not an OSError - it derives straight from
+        # Exception - so `except OSError` never caught it, and a port
+        # that had gone away (ENXIO) aborted the whole measurement from
+        # inside the cleanup. That guard now lives in transport.py.
+        fd.flush_both()
 
-        # os.close() on this port is the hang in objective 0c: macOS
+        # Closing this port is the hang in objective 0c: macOS
         # waits for in-flight write URBs and a device that has stopped
         # draining bulk OUT never completes them. Four occurrences are
         # on record and none has ever been reproduced on demand, so the
@@ -977,7 +971,7 @@ class Board:
 
         def _close():
             try:
-                os.close(fd)
+                fd.close()
             finally:
                 done.set()
 
@@ -1054,7 +1048,7 @@ class Board:
 
     def close(self):
         if self.cfd is not None:
-            os.close(self.cfd)
+            self.cfd.close()
             self.cfd = None
 
     def __enter__(self):
@@ -1078,10 +1072,10 @@ def drain_until_quiet(fd, quiet=1.0, cap=10.0):
     last = time.time()
     end = time.time() + cap
     while time.time() - last < quiet and time.time() < end:
-        r, _, _ = select.select([fd], [], [], 0.1)
+        r = transport.wait_any([fd], 0.1)
         if r:
             try:
-                n = len(os.read(fd, 65536))
+                n = len(fd.read(65536))
             except OSError:
                 break
             if n:
@@ -1352,7 +1346,7 @@ class Feeder:
             while len(block) < due:
                 block += wave[:due - len(block)]
             try:
-                n = os.write(self.fd, block)
+                n = self.fd.write(block)
             except BlockingIOError:
                 time.sleep(0.001)
                 continue
@@ -1386,7 +1380,7 @@ class Feeder:
         self._th.join(2.0)
         if self._th.is_alive():
             self.flushed = True
-            termios.tcflush(self.fd, termios.TCOFLUSH)
+            self.fd.flush_output()
             self._th.join(1.0)
         self.join_s = time.monotonic() - t0
         return self.count
@@ -1414,6 +1408,7 @@ class LoopResult:
     rt_note: str
     stale_bytes: int
     retunes: int = 0
+    settle_frames: int = 0
 
     # Pass-throughs, so a test can read the numbers it cares about
     # without knowing whether they came from the stream or the host.
@@ -1479,8 +1474,48 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
 
     board.poll_console()
     board.cmd(f"={dac_sps},{adc_hz},{channels}L")
-    time.sleep(0.2)
 
+    # Settle, but drain while settling instead of sleeping blind.
+    #
+    # There used to be a bare 0.2 s sleep here. The device starts
+    # capturing the moment it takes the command, and its ADC ring is
+    # four 4 KB buffers - 16 KB, or 20 ms at 800 KB/s - so not reading
+    # for 0.2 s overruns that ring by an order of magnitude and the
+    # device drops frames it has already numbered. Measured: overrun
+    # 33-35 per run and a frame lost in three runs out of four.
+    #
+    # macOS hid it. Its CDC driver buffers 55-450 KB below the tty layer
+    # and absorbed the burst, so the device overran and the host never
+    # saw the consequence. Windows has no such cushion, which is how
+    # this surfaced at all.
+    #
+    # The settle itself has to stay: removing it starts the feed before
+    # the device has armed playback, and the device then receives fewer
+    # bytes than the host sent - 6 KB to 20 KB, measured, which is a
+    # byte-conservation failure and far worse than the overrun.
+    #
+    # Frames read here are deliberately discarded, so the run's first
+    # analysed sequence number is not zero. settle_frames records how
+    # many, because "starts near zero" is how a stale capture is caught
+    # and that check has to know the difference.
+    settle_bytes = 0
+    _t = time.time()
+    while time.time() - _t < 0.2:
+        if transport.wait_any([fd], 0.02):
+            settle_bytes += len(fd.read(262144))
+    #
+    # There used to be a 0.2 s sleep here, to let the device settle
+    # before the feed began. But the device starts capturing the moment
+    # it takes the command, and its ADC ring is four 4 KB buffers - 16 KB,
+    # or 20 ms at 800 KB/s. Sleeping 0.2 s without reading overruns that
+    # ring by an order of magnitude, and the device drops frames it has
+    # already numbered: measured as overrun_count 33-35 per run and a
+    # lost frame in three runs out of four.
+    #
+    # macOS hid it because its CDC driver buffers 55-450 KB below the tty
+    # layer and absorbed the burst; the device still overran, the host
+    # just never saw the consequence. Windows has no such cushion.
+    #
     feeder = Feeder(fd, wave, dac_sps * 2, scale=scale,
                     write_size=write_size)
     feeder.start()
@@ -1502,15 +1537,15 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
         if diag and not diag_sent and time.time() - t0 > 1.5:
             board.cmd("D")
             diag_sent = True
-        r, _, _ = select.select([fd, board.cfd], [], [], 0.05)
+        r = transport.wait_any([fd, board.cfd], 0.05)
         if board.cfd in r:
             try:
-                console += os.read(board.cfd, 65536)
+                console += board.cfd.read(65536)
             except OSError:
                 pass
         if fd in r:
             try:
-                got = os.read(fd, 262144)
+                got = fd.read(262144)
             except OSError:
                 got = b""
             if got:
@@ -1535,10 +1570,10 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     report = b""
     end = time.time() + 1.5
     while time.time() < end:
-        r, _, _ = select.select([fd, board.cfd], [], [], 0.1)
+        r = transport.wait_any([fd, board.cfd], 0.1)
         for f in r:
             try:
-                d = os.read(f, 65536)
+                d = f.read(65536)
                 if f == board.cfd:
                     report += d
             except OSError:
@@ -1558,7 +1593,8 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
         dac_sps=dac_sps, adc_hz=adc_hz, channels=channels, tone_hz=tone_hz,
         refused="refused" in text, console=text, report=rep,
         play=parse_play(rep), bench=parse_bench(rep),
-        rt_note=feeder.note, stale_bytes=stale, retunes=feeder.retunes)
+        rt_note=feeder.note, stale_bytes=stale, retunes=feeder.retunes,
+        settle_frames=settle_bytes // FRAME_BYTES)
 
 
 def probe_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
@@ -1648,15 +1684,15 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     next_trim = t0 + TRIM_WARMUP_S
     end = t0 + seconds
     while time.time() < end:
-        r, _, _ = select.select([fd, board.cfd], [], [], 0.05)
+        r = transport.wait_any([fd, board.cfd], 0.05)
         if fd in r:
             try:
-                inbuf += os.read(fd, 262144)
+                inbuf += fd.read(262144)
             except OSError:
                 pass
         if board.cfd in r:
             try:
-                console += os.read(board.cfd, 65536).decode("utf-8", "replace")
+                console += board.cfd.read(65536).decode("utf-8", "replace")
             except OSError:
                 pass
         # The outer loop: trim the feed's rate model to what the device
@@ -1695,10 +1731,10 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
         run_play_counters = parse_play(board.drain_console(1.2))
         end = time.time() + drain_s
         while time.time() < end:
-            r, _, _ = select.select([fd, board.cfd], [], [], 0.05)
+            r = transport.wait_any([fd, board.cfd], 0.05)
             if fd in r:
                 try:
-                    inbuf += os.read(fd, 262144)
+                    inbuf += fd.read(262144)
                 except OSError:
                     pass
         board.cmd("B")
@@ -1794,7 +1830,7 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
         board.poll_console()
         fd = board.open_native(notify=notify)
         try:
-            termios.tcflush(fd, termios.TCIFLUSH)
+            fd.flush_input()
         except OSError:
             pass
         drain_until_quiet(fd, quiet=0.3, cap=5.0)
@@ -1813,15 +1849,15 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
     watch = [fd] if uart else [fd, board.cfd]
     try:
         while time.time() < end:
-            r, _, _ = select.select(watch, [], [], 0.2)
+            r = transport.wait_any(watch, 0.2)
             if not uart and board.cfd in r:
                 try:
-                    console += os.read(board.cfd, 65536)
+                    console += board.cfd.read(65536)
                 except OSError:
                     pass
             if fd in r:
                 try:
-                    chunk = os.read(fd, 262144)
+                    chunk = fd.read(262144)
                 except OSError:
                     time.sleep(0.02)
                     continue
@@ -1891,14 +1927,13 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
     time.sleep(0.4)
 
     fd = board.open_native(wait=10.0)
-    termios.tcflush(fd, termios.TCIFLUSH)
+    fd.flush_input()
 
     # One thread per direction, and blocking writes. An earlier loop
     # interleaved reads and writes on one thread behind a select()
     # timeout, so each direction stalled while the other's syscall ran -
     # a ceiling made by the host's scheduling, not by the transport.
-    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
+    fd.set_blocking(True)
 
     payload = bytes(range(256)) * (block // 256)
     want_rx = mode in BENCH_RX
@@ -1915,10 +1950,10 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
         notes["reader"] = rt.promote(period_ms=5.0, computation_ms=0.5,
                                      constraint_ms=2.5)
         while not stop.is_set():
-            r, _, _ = select.select([fd], [], [], 0.05)
+            r = transport.wait_any([fd], 0.05)
             if r:
                 try:
-                    rx_n[0] += len(os.read(fd, 262144))
+                    rx_n[0] += len(fd.read(262144))
                 except OSError:
                     return
 
@@ -1937,7 +1972,7 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
                     time.sleep(0.0005)
                     continue
             try:
-                tx_n[0] += os.write(fd, payload)
+                tx_n[0] += fd.write(payload)
             except OSError:
                 return
 
@@ -1958,7 +1993,7 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
     if any(th.is_alive() for th in threads):
         # A writer wedged on a queue the device stopped draining.
         flushed = True
-        termios.tcflush(fd, termios.TCOFLUSH)
+        fd.flush_output()
         for th in threads:
             th.join(1.0)
 
@@ -1969,10 +2004,10 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
     # direction. The device keeps sinking OUT until the mode is stopped.
     t_drain = time.time() + drain_s
     while time.time() < t_drain:
-        r, _, _ = select.select([fd], [], [], 0.05)
+        r = transport.wait_any([fd], 0.05)
         if r:
             try:
-                os.read(fd, 262144)
+                fd.read(262144)
             except OSError:
                 pass
     board.cmd("B")
@@ -1981,10 +2016,10 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
     t1 = time.time()
     while time.time() - t1 < 1.5:
         # Keep draining so a blocked device can still answer.
-        r, _, _ = select.select([fd, board.cfd], [], [], 0.1)
+        r = transport.wait_any([fd, board.cfd], 0.1)
         for f in r:
             try:
-                d = os.read(f, 262144)
+                d = f.read(262144)
                 if f == board.cfd:
                     report += d
             except OSError:
