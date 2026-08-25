@@ -109,6 +109,16 @@ Check here before reasoning from general Arduino knowledge.
   protection of any kind.
 - **Cortex-M3 has no data cache**, so DMA buffers need no cache
   maintenance. Advice written for Cortex-M7 parts does not apply.
+- **Any write to `UOTGHS_DEVEPTCFG` re-allocates that endpoint's DPRAM.**
+  There is no such thing as a harmless one: the `ALLOC` bit is in the
+  same register, so changing AUTOSW rewrites it, and datasheet 40.5.1.6
+  says the x+1 window then slides up and loses its data while x+2 and
+  above stay where they are. Note 3 permits it when the configuration is
+  unchanged - but only "as far as nothing has been written or received
+  into" the higher endpoints while it happens. So: never rewrite an
+  endpoint's configuration while an endpoint above it is in use, and
+  re-allocate the ones above afterwards. This was inert while EP3 was
+  the last endpoint and became a wedge the day EP4-EP6 appeared.
 - **Pin 13 is PB27** and carries no SPI conflict on the Due.
 - **MCK is 78 MHz here, not 84.** Chosen so the ADC clock is 19.5 MHz,
   inside the 20 MHz datasheet limit. Costs 7.2% of sample rate. Track A

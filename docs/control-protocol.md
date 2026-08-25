@@ -445,11 +445,11 @@ rather than by patching it *(check: PluggableUSB has not been exercised
 on this board yet)*. Track A keeps the core for enumeration exactly as
 invariant 3 intends.
 
-## The wedge the second function introduced - proposal
+## The wedge the second function introduced - found and fixed
 
-**Status: mechanism identified from the datasheet, not yet proven on the
-board.** Written to be argued with before it is built, and the test that
-would settle it is named at the end.
+**Status: mechanism confirmed on the board, fixed, and measured.** The
+proposal below is kept as it was written, because the reasoning is what
+made the fix a small one, and the result is recorded at the end.
 
 ### What is measured
 
@@ -545,6 +545,37 @@ idle bulk OUT drain - to work with AUTOSW on, or to go. That is a real
 change to a load-bearing path with its own history of wedges, so it is
 the right long-term direction and the wrong thing to do while chasing a
 defect.
+
+### What happened when it was built
+
+Both changes went in as proposed - skip a write that changes nothing,
+re-allocate the control endpoints in ascending order when a write is
+needed - and the board confirmed the mechanism before the tests did.
+`usb_ctl_reallocs` is exported for exactly that: after one capture start
+and stop it reads **2**, so the hazard fires twice per cycle from eight
+call sites, and a suite run does hundreds of them.
+
+| | before | after |
+|---|---|---|
+| the 41-second reproducer | wedged, twice | clean, 3:54 |
+| full Track B suite | wedged, five times | **233 passed, 0 failed, 11:59** |
+
+`cfgfail` stays at zero throughout, so every re-allocation is accepted.
+
+**What this does not settle.** The four historical occurrences of
+objective 0c are dated 2026-08-22 and 2026-08-23; the second CDC
+function landed on the 24th, so EP4-EP6 did not exist and cannot have
+been the victim. The same mechanism with a different victim is a live
+hypothesis and a good one: re-allocating EP2 slides **EP3**, which is
+the sample IN endpoint carrying frames, and the datasheet's caveat
+applies to it word for word.
+
+Half of this fix helps there - the redundant writes that no longer
+happen were re-allocating EP2 for nothing - but the exposure is not
+gone, because EP3 is deliberately not re-allocated: it can have an armed
+DMA transfer, and disturbing that is a larger change than the defect.
+Closing it properly means one of the two options rejected above, and the
+better one is to stop toggling AUTOSW at run time altogether.
 
 ### The test that settles it
 

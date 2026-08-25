@@ -692,7 +692,40 @@ sub-question: RC 44 reads one of two discrete converter rates.
    1024 B write looked fine on counters while its whole-run tone fell
    to 500 codes.
 
-0c. **A deterministic reproducer, and a measured mechanism (2026-08-24).**
+0c. **Cause found and fixed for the 2026-08-24 wedge; the older ones are
+   not yet closed.**
+
+   `ep_apply_autosw()` switched an endpoint between FIFO and DMA by
+   rewriting `DEVEPTCFG` with `ALLOC` still set, which re-allocates it -
+   and datasheet 40.5.1.6 says the next endpoint's memory window then
+   slides up and loses its data. It fires twice per capture start and
+   stop, from eight call sites. Inert while EP3 was the last endpoint;
+   live the moment the control channel added EP4 to EP6 above it.
+
+   Fixed by not writing when the bit already holds the wanted value, and
+   by re-allocating the control endpoints in ascending order when a
+   write is needed. `usb_ctl_reallocs` on `u` reads 2 after one capture
+   cycle, so the hazard is visible rather than inferred.
+
+   | | before | after |
+   |---|---|---|
+   | the 41 s reproducer | wedged, twice | clean, 3:54 |
+   | full Track B suite | wedged, five times | 233 passed, 0 failed |
+
+   **Still open: the original.** The four earlier occurrences are dated
+   2026-08-22 and 2026-08-23 and the second CDC function landed on the
+   24th, so EP4-EP6 cannot have been the victim. The same mechanism with
+   EP3 as the victim is the obvious candidate - re-allocating EP2 slides
+   EP3, which carries frames - and half of this fix helps, because the
+   redundant writes are gone. But EP3 is deliberately still not
+   re-allocated: it can have an armed DMA transfer. Closing it means
+   ceasing to toggle AUTOSW at run time, which needs the manual-FIFO
+   users (the playback status record, the idle bulk OUT drain) dealt
+   with first. That is the next move on this objective.
+
+   The reproducer and the printf measurements that led here follow.
+
+   **A deterministic reproducer, and a measured mechanism (2026-08-24).**
 
    Two for two, wedging at 41 seconds each time, with a stopwatch
    agreement that leaves little room for coincidence:
