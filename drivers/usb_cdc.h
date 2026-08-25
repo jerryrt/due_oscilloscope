@@ -60,6 +60,10 @@ bool   usb_ctl_ready(void);
 size_t usb_ctl_read(uint8_t *dst, size_t max);
 size_t usb_ctl_write(const uint8_t *data, size_t len);
 
+/* Times the control endpoints have been re-allocated because a sample
+ * endpoint's configuration was rewritten under them. Zero means the
+ * hazard never fired; climbing during a run is the signature. */
+extern volatile uint32_t usb_ctl_reallocs;
 extern volatile uint32_t usb_ctl_in_activity;
 extern volatile uint32_t usb_ctl_out_activity;
 extern volatile uint32_t usb_ctl_line_state;

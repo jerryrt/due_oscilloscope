@@ -332,6 +332,7 @@ static bool ep_configure(uint32_t ep, uint32_t type, uint32_t dir_in,
 static bool dma_mode_in, dma_mode_out;
 
 static void ep_apply_autosw(uint32_t ep, bool on);
+static void ep_configure_control(void);
 
 static void dma_channel_stop(uint32_t ch);
 
@@ -360,15 +361,12 @@ static void configure_data_endpoints(void)
 	 * where it was - so configuring these before the sample endpoints
 	 * would corrupt the sample endpoints rather than fail visibly.
 	 *
-	 * Single-banked because two 512-byte double-banked pairs need 4416
-	 * bytes of a 4096-byte DPRAM. A wrong bank count here does not
-	 * fail silently: CFGOK stays clear and usb_cfg_fail counts it.
+	 * Sizes live in ep_configure_control() and nowhere else: the same
+	 * three calls run again whenever a sample endpoint is rewritten
+	 * underneath them, and two copies of a bank count would eventually
+	 * disagree.
 	 */
-	ep_configure(EP_CACM, 3u, 1u, 64u,      1u);
-	ep_configure(EP_COUT, 2u, 0u, EPC_SIZE, 1u);
-	ep_configure(EP_CIN,  2u, 1u, EPC_SIZE, 1u);
-
-	ctl_out_rd_off = 0;
+	ep_configure_control();
 
 	ep_apply_autosw(EP_OUT, dma_mode_out);
 	ep_apply_autosw(EP_IN, dma_mode_in);
@@ -622,6 +620,7 @@ size_t usb_cdc_read(uint8_t *dst, size_t max)
  * would turn a useful indicator into a clock. Their own counters are
  * for diagnostics.
  */
+volatile uint32_t usb_ctl_reallocs;
 volatile uint32_t usb_ctl_in_activity;
 volatile uint32_t usb_ctl_out_activity;
 volatile uint32_t usb_ctl_line_state;
@@ -669,9 +668,58 @@ size_t usb_ctl_write(const uint8_t *data, size_t len)
  * FIFOCON handling. The two are per-endpoint modes, so switch
  * explicitly and never mix them on the same endpoint at the same time.
  */
+/*
+ * Put the control endpoints back where they belong.
+ *
+ * Any write to DEVEPTCFG with ALLOC set re-allocates that endpoint, and
+ * the datasheet is explicit about the consequence (40.5.1.6): the x+1
+ * window slides up and loses its data, while x+2 and above stay where
+ * they are. Note 3 adds that re-allocating the *same* configuration is
+ * harmless "as far as nothing has been written or received into" the
+ * higher endpoints while it happens - which is precisely the condition
+ * a control channel in use violates.
+ *
+ * Until this file grew a second CDC function, EP3 was the last endpoint
+ * and the hazard was inert. It is not inert now, and the fix is what the
+ * hardware asks for: allocate in ascending order, so re-establish
+ * everything above the endpoint that moved.
+ *
+ * Only the control endpoints, deliberately. EP3 is also above EP2 and
+ * has always been exposed to this, but it carries frames on DMA and
+ * re-allocating it would disturb an armed transfer - a bigger change
+ * than the defect being fixed, and one with its own history. These
+ * three are manual-FIFO always, so restoring them costs nothing but a
+ * frame in flight, which the parser's idle timeout already recovers.
+ */
+static void ep_configure_control(void)
+{
+	ep_configure(EP_CACM, 3u, 1u, 64u,      1u);
+	ep_configure(EP_COUT, 2u, 0u, EPC_SIZE, 1u);
+	ep_configure(EP_CIN,  2u, 1u, EPC_SIZE, 1u);
+
+	/* A partly-read bank did not survive the move. */
+	ctl_out_rd_off = 0;
+}
+
+static void ep_realloc_control(void)
+{
+	ep_configure_control();
+	usb_ctl_reallocs++;
+}
+
 static void ep_apply_autosw(uint32_t ep, bool on)
 {
 	uint32_t cfg = UOTGHS->UOTGHS_DEVEPTCFG[ep];
+
+	/*
+	 * A write that changes nothing must not happen at all, because on
+	 * this controller there is no such thing: every DEVEPTCFG write
+	 * carries ALLOC and re-allocates. Most calls here are redundant -
+	 * usb_cdc_dma_mode(false, false) on a stop that was already
+	 * stopped - and they were paying full price for it.
+	 */
+	if (!!(cfg & UOTGHS_DEVEPTCFG_AUTOSW) == on)
+		return;
 
 	if (on)
 		cfg |= UOTGHS_DEVEPTCFG_AUTOSW;
@@ -688,6 +736,8 @@ static void ep_apply_autosw(uint32_t ep, bool on)
 	UOTGHS->UOTGHS_DEVEPTCFG[ep] = cfg;
 	if (!(UOTGHS->UOTGHS_DEVEPTISR[ep] & UOTGHS_DEVEPTISR_CFGOK))
 		usb_cfg_fail++;
+
+	ep_realloc_control();
 }
 
 static void dma_channel_stop(uint32_t ch)
@@ -1060,9 +1110,10 @@ void usb_cdc_dump(void)
 	       (int)!!(UOTGHS->UOTGHS_DEVEPTISR[EP_COUT] & UOTGHS_DEVEPTISR_CFGOK),
 	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[EP_CIN],
 	       (int)!!(UOTGHS->UOTGHS_DEVEPTISR[EP_CIN] & UOTGHS_DEVEPTISR_CFGOK));
-	printf("# ctl dtr=%d cfgfail=%lu in=%lu out=%lu\n",
+	printf("# ctl dtr=%d cfgfail=%lu realloc=%lu in=%lu out=%lu\n",
 	       (int)!!(usb_ctl_line_state & 0x01),
 	       (unsigned long)usb_cfg_fail,
+	       (unsigned long)usb_ctl_reallocs,
 	       (unsigned long)usb_ctl_in_activity,
 	       (unsigned long)usb_ctl_out_activity);
 	printf("# dma ch1(OUT) ADDR=%08lx CTRL=%08lx ST=%08lx  ch2(IN) ADDR=%08lx CTRL=%08lx ST=%08lx\n",
