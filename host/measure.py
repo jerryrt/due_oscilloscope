@@ -2216,10 +2216,13 @@ def flash(track, control=None, retries=2, build=False):
             elif track == "a":
                 sketch = os.path.join(REPO, "sketches", "bringup")
                 if build:
+                    # tools/sketch.sh, not a bare arduino-cli call: Track
+                    # A needs two build properties and both are silent
+                    # when missing - a wrong f_cpu makes micros() lie,
+                    # and a missing ldscript leaves the capture ring in
+                    # bank 0. One place decides them.
                     subprocess.run(
-                        ["arduino-cli", "compile", "--fqbn",
-                         "arduino:sam:arduino_due_x_dbg",
-                         "--build-property", "build.f_cpu=78000000L", sketch],
+                        [os.path.join(REPO, "tools", "sketch.sh"), "compile"],
                         cwd=REPO, check=True, env=_tool_env(),
                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 cmd = ["arduino-cli", "upload", "--fqbn",
