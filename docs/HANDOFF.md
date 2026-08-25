@@ -127,10 +127,19 @@ measured until the port is back.
 |---|---|---|
 | `windows-validation` | #3 -> `main` | 8 commits, CLEAN/MERGEABLE. macOS verified all but the last round |
 | `host-transport-port` | #4 -> #3 | 12 commits. Windows: 228 passed, 1 failed, 12 skipped |
-| `wip/stream-stop-race` | none | **UNTESTED**, do not merge. See below |
+| `wip/stream-stop-race` | none | Tested 2026-08-25. **Do not merge as a fix** - see below |
+| `issue-5-instrument` | none | The splice census. Off `host-transport-port`, board-free tests, no firmware change |
+| `wip/refusal-reporting` | none | Off `wip/stream-stop-race`. Names which refusal it is; moves preset M's printfs off the capture |
 
 The one failure in #4 is issue #5, which is on `main` and is not the
-branch's doing.
+branch's doing. It does not fail on `wip/stream-stop-race`, and the full
+Track B suite there is 235 passed / 0 failed - but read the section below
+before taking that as the defect being fixed, because the same suite goes
+green and red with four bytes of bss.
+
+`issue-5-instrument` is the branch to merge. It changes no firmware, it
+replaces a continuity check that had a real defect under it for a
+session, and none of its value depends on how issue #5 turns out.
 
 The macOS team has stopped. Both PRs carry their full review history and
 every finding they raised is answered in the comments.
@@ -146,51 +155,118 @@ and 9 s.** All three gave 21-24 underruns, so it was a startup burst and
 nothing else. That question is now in `CLAUDE.md` ahead of the
 invariants. Track A still primes at 4 (objective 1c).
 
-### Issue #5 is diagnosed but not fixed
+### Issue #5's diagnosis is wrong, and the branch is not a fix
 
-`stream_stop()` aborts an in-flight IN transfer through
-`dma_channel_stop()`, which stops the controller "at the next packet
-boundary" **and does not check that it got one**. On a host that has
-stopped reading there is no next packet boundary, so it returns with the
-channel still enabled and still reading an ADC capture buffer. The next
-run arms the PDC over those buffers.
+**Do not merge `wip/stream-stop-race` as a fix for issue #5.** It was
+built on the model above - `stream_stop()` aborts an IN transfer, the
+channel stays enabled, the next run arms the PDC over buffers it is
+still reading, the two race. Tested on hardware 2026-08-25 (later
+session), that model does not survive any of the following, and neither
+does "780 splices" as a description.
 
-Measured, splices per 3 s capture, four runs each:
+**It is not a splice.** On the flat channel every event is one sample
+displaced by +62..68 codes, and with the original table every one was
+exactly bit 6 set - clearing that bit recovers the neighbouring value
+exactly. Sequence numbers, header CRCs and byte counts stay perfect. One
+disturbed sample is not data joined from two points in time, and calling
+it a splice is what sent a session to the stop path.
 
-| firmware | splices | max step |
+**Its period is the generator's table, not anything in the capture or
+USB path.** Events are spaced exactly 512 samples per channel, single
+phase, 779 of 779 gaps. `GEN_TABLE_LEN` is `GEN_SINE_POINTS * 2` = 512.
+Doubling `GEN_SINE_POINTS` moved the spacing to exactly 1024 and changed
+the displacement to +45..50, which also stops it being a clean bit 6. The
+event is locked to the DAC's buffer wrap.
+
+**It does not happen on the ordinary capture path.** Same firmware, same
+200 kHz, alternating presets three times each: preset `3` is clean on the
+flat channel (sd 1.0, nothing over 10 codes) while preset `M` shows 779
+events at spacing 512. Under `3` the generator is still running and its
+ENDTX still firing, so ENDTX alone is not it either. Only `M` shows this.
+
+**The variable that decides it is the binary.** It is bimodal and latched
+per run - a run is ~780 events or exactly 0, never between - and the
+proportion of dirty runs moves with the image and nothing else:
+
+| firmware | text / bss | clean runs |
 |---|---|---|
-| `1e11005` (before) | 0, 2, 0, 0 | 39-40 |
-| `91cfe35` (main) | 778-780 every run | 58 |
-| a 2 ms bounded wait at stop | 780 every run | 58 |
+| `c657841` stream.c, the abort | 28096 / 73020 | 4/10 |
+| `wip/stream-stop-race` as committed | 28144 / 73020 | **25/25** |
+| + preset-M return check only | 28180 / 73020 | 10/10 |
+| + a refusal flag and accessor | 28308 / **73024** | 5/10, twice |
+| + printfs moved off the capture | 28316 / 73024 | 10/10 |
 
-A bounded wait at *stop* cannot work - with no reader there is never a
-packet boundary. And 780 splices spread through one run cannot come from
-a stop at the end; they come from the stop *before* the capture, so the
-corruption is inherited.
+Four bytes of bss and a branch take a 25/25 image back to control
+incidence. 25/25 against a 40% clean rate is p ~ 1e-10, so the branch
+does measure differently - but not by the mechanism it claims, and a
+green count from it means nothing.
 
-`wip/stream-stop-race` keeps the abort at stop (invariant 7) and moves
-the wait to `stream_start`, refusing rather than racing (invariant 5).
-**It builds and has never run.** Testing it is the first job after the
-replug.
+**One hypothesis is eliminated; do not re-run it.** Both timers are
+200 kHz off the same 39 MHz, so their relative phase is fixed for a whole
+run and set by the instruction timing between `stream_start_capture_only()`
+and `gen_go_tioa1()` - which would have explained every row above. It is
+wrong. A deliberate spin inserted between those two calls and swept 0 to
+140 iterations, over two full DAC periods at 78 MHz, gives 16 clean runs
+out of 16 including at zero.
 
-**One thing unexplained**, and it should be understood before that fix
-is called complete: one early run of the abort firmware measured max 39
-with zero oversized steps, right after a detach and reflash. Every later
-run of the same firmware gave 780.
+**Settle whether this is a defect in the product before doing more
+firmware work on it.** The question is not "what corrupts the sample" but
+"does preset `M`'s setup produce this on its own". Two things to read
+first. `docs/hardware.md` records the DAC0->A0 / DAC1->A1 crosstalk
+baseline as +/-1 code and says in the same section that it was taken at
+maximum `TRACKTIM` and `SETTLING` with software-triggered single
+conversions milliseconds apart, and that this "does not retire the
+crosstalk risk" because "crosstalk bites when tracking time is short" -
+while `acq.c` streams at `TRACKTIM(0)`, `SETTLING(0)`, `TRANSFER(1)`. And
+A1 is not an unconnected channel: `gen` drives DAC1 with DC 2048 through
+the same PDC stream in TAG mode, so both channels come from the wrap the
+period is locked to.
 
-### How to measure this at all
+**And fix the control before trusting it.**
+`test_device_generated_waveform_is_continuous` is described as "the
+control for everything below, and it must stay green", and its signal is
+absent from every other capture path. Preset `M` was built for objective
+0c - its own banner says "press D and read cdr7: swing = USB at fault,
+frozen = trigger path" - and was promoted to continuity control later. A
+control that fires only on one diagnostic preset is not controlling what
+it claims to.
 
-The sine is a **staircase**, not a continuous wave: each DAC level is
-held for exactly two ADC samples and steps by ~30 codes. So
-`slew_limit()`'s continuous-sine derivative (16.85) is the wrong model,
-and the "3x headroom" in
-`test_device_generated_waveform_is_continuous` is really 1.3x against
-the true step of 39. That is why the test is marginal and why pass/fail
-was a poor instrument.
+### The instrument, which is the part that holds
 
-Collapse the series to its levels and count steps over 45 instead. It
-separates a real defect (780) from noise (0-2) immediately, where the
-test only wobbled between passing and failing.
+`measure.level_census()` and `tools/splices.py`, with board-free tests in
+`tests/test_census.py`. Collapse the staircase to its levels and count the
+steps above a threshold, instead of judging the largest step against
+`slew_limit()`: `gen` emits a staircase whose honest ceiling is ~38 codes
+against that function's 16.85, so the old "3x margin" was really 1.3x and
+a real defect could only make the test wobble. The count separates where
+the maximum does not - 778-780 against 0, where the maximum moves 38 to 58.
+
+**It reports the void it judges in, and that has already earned its
+keep.** The threshold is not tuned: the healthy distribution ends at 38
+and the defective one starts at 51, so 45 sits in a twelve-bin gap and any
+value across it returns the same count. When `GEN_SINE_POINTS` was doubled
+the DAC step grew into that gap, and the tool said so - "the void around
+45 is under 4 codes wide on 10 run(s)" - on the same runs where `max_step`
+had gone bimodal at 24 and 42 and the count was still reporting 0. A count
+under a closed void is not a measurement.
+
+**Judge this by `count`, never by `max_step`.** That is the whole lesson
+of the defect it was built for.
+
+### Two host-side traps this left behind
+
+- **A stream that never ran censuses as zero splices.** The device can
+  refuse to start now, so this is reachable rather than theoretical, and
+  it reads as exactly the result a fix is hoping for. `tools/splices.py`
+  raises instead of reporting when a run's level count is far below what
+  its rate and duration require.
+- **Preset `M` printed over its own capture.** Two printfs and a
+  `uart_flush` ran immediately after `gen_go_tioa1()` - about 7 ms of
+  blocked main loop on the first samples of every capture, on the path
+  the suite calls its continuity control. Invariant 8. Moved ahead of the
+  converters on `wip/refusal-reporting`. It was never inside the analysed
+  window (`SETTLE_US` is 1 s) and is not an explanation for any of the
+  above, but it had no business being there.
 
 ### The rest, in brief
 
