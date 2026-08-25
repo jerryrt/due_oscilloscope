@@ -53,23 +53,27 @@ def find_console(explicit=None):
     return hits[0]
 
 
-def find_samba():
-    """The ROM bootloader, if it is already running.
+def samba_nodes():
+    """Every ROM-bootloader node on the system.
 
-    Found the hard way: with blank flash the SAM3X boots ROM SAM-BA, which
-    enumerates on the NATIVE port as 03EB:6124 - not through the 16U2. So
-    after an erase the programming port is the wrong place to look, and
-    bossac reports "No device found" on a board that is sitting in the
-    bootloader waiting. Check for it before touching anything.
+    With blank flash the SAM3X boots ROM SAM-BA, which enumerates on the
+    NATIVE port as 03EB:6124 - not through the 16U2. So after an erase
+    the programming port is the wrong place to look, and bossac reports
+    "No device found" on a board that is sitting in the bootloader
+    waiting.
+
+    Returns a list, never one node, because attributing a bootloader to
+    a board is the whole problem: SAM-BA has a different VID/PID and no
+    serial number in common with the running firmware, so with two
+    boards attached there is nothing in the enumeration that says which
+    is which. The caller has to earn the attribution - see main().
     """
     try:
         from serial.tools import list_ports
     except ImportError:
-        return None
-    for p in list_ports.comports():
-        if (p.vid, p.pid) == SAMBA:
-            return p.device
-    return None
+        return []
+    return [p.device for p in list_ports.comports()
+            if (p.vid, p.pid) == SAMBA]
 
 
 def touch_1200(port):
@@ -110,6 +114,8 @@ def main() -> int:
     ap.add_argument("--port", help="programming port; discovered if omitted")
     ap.add_argument("--bossac", help="bossac executable; from the registry "
                                      "if omitted (CMake passes it)")
+    ap.add_argument("--samba", help="bootloader port to flash directly, for "
+                                    "when more than one board is blank")
     args = ap.parse_args()
 
     binary = os.path.abspath(args.bin)
@@ -126,26 +132,51 @@ def main() -> int:
     print(f"==> bossac : {bossac}")
     print(f"==> binary : {binary}")
 
+    # A bootloader node is only used if it can be attributed to the board
+    # we were asked to flash. Attribution comes from one of two things: it
+    # appeared as a result of *our* touch, or it is the only one on the
+    # system and no port was named. Anything else and we would be aiming
+    # an erase at somebody else's board - the same accident find_console
+    # refuses, and the one the comment above it records.
+    before = set(samba_nodes())
     console = None
-    target = find_samba()
-    if target:
-        # Already in the bootloader: do not touch, that would only reset it.
+    target = native_usb = None
+
+    if args.samba:
+        target, native_usb = args.samba, "true"
+        print(f"==> SAM-BA        : {target} (named)")
+    elif before and not args.port:
+        if len(before) > 1:
+            sys.exit(f"more than one board is in SAM-BA: {sorted(before)}. "
+                     f"Pass --samba to say which, or --port to touch a "
+                     f"specific programming port.")
+        target, native_usb = next(iter(before)), "true"
         print(f"==> SAM-BA already up on {target} (native USB)")
-        native_usb = "true"
-    else:
+
+    if target is None:
         console = find_console(args.port)
         print(f"==> port   : {console}")
         touch_1200(console)
         target, native_usb = console, "false"
         # The touch erases; the chip then boots ROM SAM-BA on the native
-        # port. Prefer it when it shows up - it is the path that works.
+        # port. Take only a node that was NOT there beforehand - that is
+        # what makes it ours rather than whichever blank board happened
+        # to be plugged in.
         for _ in range(20):
-            found = find_samba()
-            if found:
-                print(f"==> SAM-BA came up on {found} (native USB)")
-                target, native_usb = found, "true"
+            fresh = set(samba_nodes()) - before
+            if len(fresh) == 1:
+                target, native_usb = fresh.pop(), "true"
+                print(f"==> SAM-BA came up on {target} (native USB)")
                 break
+            if len(fresh) > 1:
+                sys.exit(f"the touch brought up {len(fresh)} bootloader "
+                         f"nodes: {sorted(fresh)}. Refusing to guess.")
             time.sleep(0.25)
+        else:
+            # No new node. Either this core flashes through the 16U2, or
+            # the touch did not take. Try the programming port and let
+            # bossac say.
+            print("==> no new SAM-BA node; trying the programming port")
 
     # bossac wants the node name, not the path.
     print(f"==> bossac: writing {os.path.basename(binary)} via {target}")
