@@ -806,7 +806,77 @@ def parse_occ(text):
 
 
 def parse_play(text):
+    """Track A's path, and Track B's fallback. Prefer play_counters().
+
+    Reading counters by printing them costs 13.14 ms of blocked main
+    loop for `B` and 15.40 ms for `O` - invariant 8 - and run_loop used
+    to spend two of those *inside* the run it was measuring. It stays
+    because Track A has no control channel (objective 1c) and this is
+    the only thing that works there.
+    """
     return PlayCounters(_counters(text, "play:"))
+
+
+# Console key names, so the control channel produces a PlayCounters
+# indistinguishable from the console's and no caller has to know which
+# path it came from.
+_CTL_TO_CONSOLE = {
+    "bytes_in": "in", "produced": "produced", "consumed": "consumed",
+    "underruns": "under", "isr_calls": "isr", "endtx": "endtx",
+    "svc_calls": "svc", "spans": "spans", "partial": "partial",
+    "occ_min": "occmin", "run_us": "runus", "abandoned": "abandoned",
+    "drain_polls": "drainpolls",
+}
+
+
+def play_counters(board, secs=1.2):
+    """The playback counters, over the control channel where there is one.
+
+    Falls back to `B` and the console scraper, and says which it used via
+    `.via`. The fallback is not a preference - it is what Track A still
+    has, and the day Track A grows a control channel this function stops
+    having two halves.
+    """
+    link = board.ctl()
+    if link is not None:
+        try:
+            ct = link.counters()
+            got = PlayCounters({v: ct[k] for k, v in _CTL_TO_CONSOLE.items()
+                                if k in ct})
+            got.via = "control"
+            return got
+        except Exception:                                    # noqa: BLE001
+            board.drop_ctl()
+    board.cmd("B")
+    time.sleep(0.5)
+    got = parse_play(board.drain_console(secs))
+    got.via = "console"
+    return got
+
+
+def occupancy(board, secs=1.2):
+    """The occupancy histogram and traces, control channel first.
+
+    Same split and the same reason as play_counters().
+    """
+    link = board.ctl()
+    if link is not None:
+        try:
+            o = link.occupancy()
+            got = OccHist(buckets=list(o["hist"]), min=o["min"],
+                          endtx=o["endtx"], run_us=o["run_us"],
+                          consumed=o["consumed"])
+            got.decim = o.get("decim", 0)
+            got.trace = list(o.get("trace", []))
+            got.via = "control"
+            return got
+        except Exception:                                    # noqa: BLE001
+            board.drop_ctl()
+    board.cmd("O")
+    time.sleep(0.3)
+    got = parse_occ(board.drain_console(secs))
+    got.via = "console"
+    return got
 
 
 def parse_bench(text):
@@ -877,10 +947,46 @@ class Board:
         # and a thread is stuck on it, so nothing in this process can
         # open it again.
         self.wedged = False
+        # Opened lazily and only once. Track A has no control channel, so
+        # None is an ordinary answer here and every caller falls back to
+        # the console rather than failing.
+        self._ctl = None
+        self._ctl_tried = False
         self.cfd = open_raw(control, 115200)
         self._console = b""
         if settle:
             time.sleep(settle)
+
+    # -- command channel ----------------------------------------------
+    def ctl(self):
+        """The native port's control channel, or None where there is none.
+
+        None means Track A, or a board whose native port has not
+        enumerated - both of which are states the suite has to keep
+        working in, so this never raises. `self.control` is the
+        *programming* port and is a different thing entirely.
+        """
+        if self._ctl_tried:
+            return self._ctl
+        self._ctl_tried = True
+        try:
+            import control as _control
+            nodes = ports.native_nodes(exclude=self.control)
+            if len(nodes) >= 2:
+                link = _control.Control(nodes[-1], timeout=1.0)
+                link.ping()
+                self._ctl = link
+        except Exception:                                    # noqa: BLE001
+            self._ctl = None
+        return self._ctl
+
+    def drop_ctl(self):
+        if self._ctl is not None:
+            try:
+                self._ctl.close()
+            except Exception:                                # noqa: BLE001
+                pass
+        self._ctl = None
 
     # -- control port ------------------------------------------------
     def cmd(self, text):
@@ -1157,6 +1263,7 @@ class Board:
             "the port is still held by a thread inside this process.")
 
     def close(self):
+        self.drop_ctl()
         if self.cfd is not None:
             self.cfd.close()
             self.cfd = None
@@ -1842,9 +1949,12 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
         # occupancy histogram accumulated across it describe the
         # shutdown - at RC 39 a 1.5 s drain adds ~6,000 underruns to a
         # run that had none.
-        board.cmd("B")
-        time.sleep(0.5)
-        run_play_counters = parse_play(board.drain_console(1.2))
+        # Over the control channel where there is one. This read happens
+        # *inside* the run, and as `B` it cost 13.14 ms of blocked main
+        # loop during the thing being measured - the instrument
+        # perturbing its own measurement, which is invariant 8's whole
+        # point. GET_COUNTERS is 146 us.
+        run_play_counters = play_counters(board)
         end = time.time() + drain_s
         while time.time() < end:
             r = transport.wait_any([fd, board.cfd], 0.05)
@@ -1853,10 +1963,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
                     inbuf += fd.read(262144)
                 except OSError:
                     pass
-        board.cmd("B")
-        time.sleep(0.5)
-        report = board.drain_console(1.2)
-        drained_play = parse_play(report)
+        drained_play = play_counters(board)
 
     # Stop the device before reading its counters. Playback keeps
     # running after the feeder stops, so counters read afterwards
@@ -1864,17 +1971,12 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     # is measuring the wrong thing and reads as a fault in the feed.
     board.cmd("0")
     time.sleep(0.2)
-    board.cmd("B")
-    time.sleep(0.4)
     # The occupancy histogram is read after the stop, but it describes
     # the run: the device accumulated it at every ENDTX while playing.
-    board.cmd("O")
-    time.sleep(0.3)
-    report = board.drain_console(1.2)
+    play = play_counters(board)
+    occ = occupancy(board)
+    report = board.drain_console(0.3)
     board.close_native(fd)
-
-    play = parse_play(report)
-    occ = parse_occ(report)
     if drain_s > 0.0:
         # Bytes from the drained read, because only then has everything
         # the host wrote had time to arrive. Everything else from the
