@@ -445,6 +445,121 @@ rather than by patching it *(check: PluggableUSB has not been exercised
 on this board yet)*. Track A keeps the core for enumeration exactly as
 invariant 3 intends.
 
+## The wedge the second function introduced - proposal
+
+**Status: mechanism identified from the datasheet, not yet proven on the
+board.** Written to be argued with before it is built, and the test that
+would settle it is named at the end.
+
+### What is measured
+
+| firmware | control channel used | full Track B suite |
+|---|---|---|
+| before the second CDC function | n/a | clean |
+| with it | **no** | clean, twice |
+| with it | **yes** | wedges in `close()`, five times |
+
+The wedge is objective 0c: the host hangs in `close()` on the *sample*
+port. It is not a main-loop-time effect - the loop is now 6.70 us
+against 7.85 before this channel existed, and it still wedges - and it
+is not the poller's cost, which is 0.3% of a pass.
+
+### The mechanism
+
+`ep_apply_autosw()` changes an endpoint between manual-FIFO and DMA
+operation by reading `UOTGHS_DEVEPTCFG[ep]`, flipping AUTOSW and writing
+it back. The value it writes back still has `ALLOC` set. Datasheet
+40.5.1.6:
+
+> The allocation of a pipe/endpoint x starts when the
+> `UOTGHS_DEVEPTCFGx.ALLOC` bit is written to one. Then, the hardware
+> allocates a memory area in the DPRAM and inserts it between the x-1
+> and x+1 pipes/endpoints. **The x+1 pipe/endpoint memory window slides
+> up and its data is lost.** Note that the following pipe/endpoint
+> memory windows (from x+2) do not slide.
+
+and note 3, which is the part that matters here:
+
+> Deactivating then reactivating the same pipe/endpoint with the same
+> configuration only modifies temporarily the controller DPRAM pointer
+> and size for this pipe/endpoint. Nothing changes in the DPRAM, higher
+> endpoints seem not to have been moved and their data is preserved **as
+> far as nothing has been written or received into them while changing
+> the allocation state**.
+
+So re-writing ALLOC is safe only while the endpoints above are idle.
+`ep_apply_autosw` runs at every capture start and stop and every
+playback start and stop - `play.c` twice, `stream.c` six times - and it
+does not even check whether AUTOSW already holds the value it wants, so
+most of those writes change nothing and re-allocate anyway.
+
+**Until this session EP3 was the last endpoint**, so re-allocating EP2
+slid only EP3 and re-allocating EP3 slid nothing. The hazard was real
+and inert. Adding EP4, EP5 and EP6 above them made it live, and it fires
+exactly when the datasheet says it will: when something is being written
+to or received into the higher endpoints - that is, when the control
+channel is in use.
+
+That fits every observation, including the two that did not fit
+anything else: why presence of the channel is harmless but use of it is
+not, and why it is intermittent rather than deterministic - it depends
+on whether a control transfer is in flight at the instant of a mode
+switch.
+
+The DPRAM budget commit earlier today said "none of the existing four
+may be re-`ALLOC`ed once the new ones are up" and then did not audit the
+existing code for it. This is that.
+
+### Proposal, smallest first
+
+**1. Do not write `DEVEPTCFG` when AUTOSW already holds the wanted
+value.** Most of the calls are redundant - `usb_cdc_dma_mode(false,
+false)` on stop, when it is already false - and a write that changes
+nothing should not re-allocate DPRAM. Free, and removes most of the
+exposure.
+
+**2. When a write is genuinely needed, re-allocate the endpoints above
+it afterwards, in ascending order.** That is what the hardware asks for,
+and it restores their windows deterministically instead of leaving them
+where a slide put them. The cost is that a control frame in flight at
+that moment is lost - which the parser's 200 ms idle timeout already
+recovers from, and which the host retries.
+
+Together: about fifteen lines in `usb_cdc.c`. No descriptor change, no
+protocol change, no host change, no renumbering.
+
+### Considered and rejected
+
+**Renumbering so the sample endpoints are highest.** Endpoint numbers
+are independent of interface numbers, so the sample function could keep
+interfaces 0 and 1 while moving to endpoints 4-6. It does not work:
+there are two sample endpoints and they are re-configured independently,
+so re-allocating the lower one still slides the higher one - and in loop
+mode the higher one is carrying frames on DMA at the time. Strictly
+worse than what is there now.
+
+**Never toggling AUTOSW at run time.** This would remove the hazard
+rather than manage it, by setting each endpoint's mode once. It requires
+the manual-FIFO users - the playback status record on bulk IN, and the
+idle bulk OUT drain - to work with AUTOSW on, or to go. That is a real
+change to a load-bearing path with its own history of wedges, so it is
+the right long-term direction and the wrong thing to do while chasing a
+defect.
+
+### The test that settles it
+
+The reproducer is already there and takes three minutes:
+
+```sh
+.venv/bin/python -m pytest tests/test_play_counters.py --track=b
+```
+
+...with `tools/loadwatch.py` polling the control channel beside it. That
+wedges at 41 seconds today, and the full suite with the control tests in
+wedges every time while the same suite without them is clean. If the
+proposal is right, both go clean; if they do not, the mechanism above is
+wrong and the host-side coupling theory comes back.
+
 ## Open questions
 
 Nothing outstanding that blocks starting. The numbering above is the
