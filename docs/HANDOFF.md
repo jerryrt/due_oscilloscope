@@ -894,6 +894,26 @@ sub-question: RC 44 reads one of two discrete converter rates.
    1024 B write looked fine on counters while its whole-run tone fell
    to 500 codes.
 
+   **Answered on Windows: `Feeder.WRITE_SIZE` is a macOS workaround, not
+   a rule** (2026-08-25, `docs/windows.md`). The constant-512 policy
+   exists because "whatever is due, capped at 16 KB" lost 0.45-0.85%
+   above 200 ksps here. Swept against rate on Windows - four write
+   policies including the legacy due-sized path and the 1536 B size that
+   loses most, across six rates from 200,000 to 1,392,857 sps - **24
+   runs, 0 B deficit in every one.** Confirmed at volume: 23.48 MB
+   through the legacy path at RC 39, the worst rate on record here,
+   deficit 0 B. macOS loses about 516 KB on that same run.
+
+   So the byte-conservation half of this debt does not transfer. The
+   Windows figures are the honest ones and they were taken with drains.
+
+   **The policy keeps its place, for a different reason.** Underruns do
+   depend on write size on Windows even though bytes do not: 16384 B
+   roughly doubles them against 512 B at every rate (0 -> 3 at RC 195,
+   0 -> 15 at RC 65, 21 -> 37 at RC 28). Constant 512 is still the right
+   default; the justification in the comment above it is the wrong one
+   off macOS, and should say ring stability rather than byte loss.
+
 0c. **Answered, and now confirmed host-specific. The host is stuck, the
    device is not, and a software detach releases it.**
 
