@@ -51,9 +51,12 @@ Everything else in the review is non-blocking and listed on the PR. What
 *is* verified good on macOS: every Darwin pattern in `toolchains.json`
 resolves, and a clean configure + build links GNU 15.2.1.
 
-The full review is on the PR. It has not been merged and the local `main`
-is 7 commits ahead of it; a trial merge conflicts only in `CLAUDE.md` and
-`docs/toolchain.md`, both doc-only.
+The full review is posted on the PR. It has not been merged. `main` was
+pushed on 2026-08-25 with this session's eight commits, so the PR now
+sits behind the Track A DMA work and the identity line; a trial merge
+against the pre-push main conflicted only in `CLAUDE.md` and
+`docs/toolchain.md`, both doc-only, and both were touched again by the
+push - expect the same two conflicts, slightly larger.
 
 ## Read this first: the development platform is changing (2026-08-25)
 
@@ -342,9 +345,9 @@ than by argument. The pattern is the lesson:
   11, 19 and 100. Overruns at the full-rate pair do not separate the
   two feeds at all.
 
-Work is on `main`. **Not pushed** - the last session ended with ten
-commits sitting locally. The board was last flashed with
-**Track B**.
+Work is on `main` and **pushed** as of 2026-08-25. The board was last
+flashed with **Track A** (the identity-line build); `pytest` reflashes
+whichever track it needs.
 
 Of the three things separated out of the lost-sample defect two
 sessions ago, two turned out to be one and are now fixed: **the rate
