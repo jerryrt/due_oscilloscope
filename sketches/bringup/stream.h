@@ -11,6 +11,7 @@ bool stream_active(void);
 bool stream_out_in_use(void);   /* a bench mode is consuming bulk OUT */
 void stream_service(void);
 void stream_report(char *buf, size_t n);
+void stream_dma_report(char *buf, size_t n);
 
 /*
  * Transport benchmarks, decoupled from the converters.

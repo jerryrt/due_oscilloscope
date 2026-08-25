@@ -432,6 +432,8 @@ static void cmd_stream_stats(void)
 {
 	char buf[192];
 
+	stream_dma_report(buf, sizeof(buf));
+	Serial.println(buf);
 	stream_report(buf, sizeof(buf));
 	Serial.println(buf);
 	Serial.flush();
