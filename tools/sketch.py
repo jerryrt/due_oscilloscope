@@ -106,17 +106,45 @@ def main() -> int:
     ap.add_argument("port", nargs="?")
     ap.add_argument("--arduino-cli")
     ap.add_argument("--build-path")
+    ap.add_argument("--bin", help="binary to upload; found in the build "
+                                  "path if omitted")
     args, passthrough = ap.parse_known_args()
 
     cli = arduino_cli(args.arduino_cli)
 
     if args.action == "upload":
-        port = find_port(args.port)
-        print(f"==> uploading Track A to {port}")
-        cmd = [cli, "upload", "--fqbn", FQBN, "-p", port]
-        if args.build_path:
-            cmd += ["--input-dir", args.build_path]
-        return subprocess.call(cmd + passthrough + [SKETCH])
+        # Do NOT use `arduino-cli upload` here.
+        #
+        # The sam core's recipe does the 1200-baud touch and then points
+        # bossac at the programming port with -U false. That works on
+        # macOS, where ROM SAM-BA is reachable through the 16U2's UART.
+        # On Windows the erased chip brings SAM-BA up on the NATIVE port
+        # as 03EB:6124 instead, so bossac reports "No device found on
+        # COM7" - having already erased the board. Measured: it wipes
+        # Track B and leaves nothing behind.
+        #
+        # tools/flash.py already knows how to find SAM-BA and attribute
+        # it to the right board, so hand it the binary arduino-cli built
+        # rather than keeping a second, worse flash path here.
+        binary = args.bin
+        if not binary:
+            build = args.build_path or os.path.join(REPO, "build", "track_a")
+            cands = [os.path.join(build, f) for f in os.listdir(build)
+                     if f.endswith(".bin")] if os.path.isdir(build) else []
+            if len(cands) != 1:
+                sys.exit(f"expected exactly one .bin in {build}, found "
+                         f"{len(cands)}. Build first, or pass --bin.")
+            binary = cands[0]
+
+        argv = ["--bin", binary]
+        if args.port:
+            argv += ["--port", args.port]
+        import flash
+        saved, sys.argv = sys.argv, ["flash.py"] + argv
+        try:
+            return flash.main()
+        finally:
+            sys.argv = saved
 
     variant = variant_path(cli)
     # platform.txt links with -T{build.variant.path}/{build.ldscript}, so

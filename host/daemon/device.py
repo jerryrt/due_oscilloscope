@@ -17,11 +17,12 @@ parsing gets exercised too.
 from __future__ import annotations
 
 import os
-import select
 import struct
 import threading
 import time
 import zlib
+
+import transport
 
 # Frame layout, shared verbatim with drivers/frame.h and host/measure.py.
 HDR_FMT = "<4sBBHIIIIII"
@@ -413,11 +414,11 @@ class BoardDevice(Device):
         if self.fd is None:
             time.sleep(min(timeout, 0.05))
             return b""
-        r, _, _ = select.select([self.fd], [], [], timeout)
+        r = transport.wait_any([self.fd], timeout)
         if not r:
             return b""
         try:
-            data = os.read(self.fd, 262144)
+            data = self.fd.read(262144)
         except OSError:
             return b""
         self._rx += len(data)

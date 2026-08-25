@@ -124,6 +124,46 @@ MB/s aggregate, and both sit far outside the spread.
 Same failure as the underrun rate in issue #5 - a number quoted before
 the sample was big enough to separate a difference from noise.
 
+## Objective 0h: WRITE_SIZE is a macOS workaround
+
+`Feeder.WRITE_SIZE = 512` is the fix for the macOS byte loss - "whatever
+is due, capped at 16 KB" lost 0.45-0.85% above 200 ksps and a constant
+512 lost nothing. Whether that is a property of the device, of the
+protocol, or of one host's driver was never established. It is the
+driver's.
+
+Swept with the project's own `Feeder` through `run_play(drain_s=1.5)`,
+four write policies against six rates:
+
+| write policy | deficit, all six rates |
+|---|---|
+| 512 (current policy) | **0 B** |
+| due-sized, capped at 16 KB (the legacy path) | **0 B** |
+| 1536 (the size that loses most on macOS) | **0 B** |
+| 16384 | **0 B** |
+
+24 runs, not one byte lost. Confirmed at volume on the worst rate on
+record: **23.48 MB through the legacy path at RC 39, deficit 0 B.** The
+same run loses about 516 KB on macOS.
+
+**The policy still earns its place, for a different reason.** Underruns
+depend on write size here even though bytes do not - 16384 B roughly
+doubles them against 512 B at every rate:
+
+| RC | sps | under @ 512 | under @ 16384 |
+|---|---|---|---|
+| 195 | 200,000 | 0 | 3 |
+| 98 | 397,959 | 0 | 9 |
+| 65 | 600,000 | 0 | 15 |
+| 44 | 886,363 | 6 | 20 |
+| 39 | 1,000,000 | 10 | 23 |
+| 28 | 1,392,857 | 21 | 37 |
+
+Constant 512 remains the right default. The reason written beside it -
+byte loss - is a macOS reason; off macOS the reason is ring stability,
+and the two should not be confused, because a future host that pages the
+first will not necessarily page the second.
+
 ## Capture and the full loop
 
 `tools/loop.py`. Capture at 453,488 sps/ch, two channels, 5 s:
@@ -222,6 +262,79 @@ the same conclusion, reached invalidly. `restype`/`argtypes` on
 `GetCurrentProcess`/`SetPriorityClass` are not optional; a 64-bit HANDLE
 truncates to `c_int` without them.
 
+## Porting host/ to the seam, and the two bugs it exposed
+
+`host/` was POSIX-only: raw termios, `os.read`/`os.write` on a bare fd,
+and `select.select` to wait on the sample and console ports together.
+All of that now sits behind `host/transport.py`, so `measure.py`, the
+daemon, the front end and `tests/` are written once and run everywhere.
+`host/rt.py` gained the Windows and Linux promotions beside the Mach
+one.
+
+The POSIX backend is the original code **moved, not rewritten**. This
+project's measured history depends on exact write semantics - "a
+constant 512 bytes per write()" is the macOS byte-loss fix, and "one
+blocking write" is part of objective 0c's condition - so a rewrite that
+merely looked equivalent would invalidate every figure taken there.
+
+Porting it found two real defects. Neither is Windows-specific; macOS
+was hiding both.
+
+### The settle window overran the device's ADC ring
+
+`run_loop()` issued the `L` command and then **slept 0.2 s without
+reading**. The device starts capturing the moment it takes the command,
+and its ADC ring is four 4 KB buffers - 16 KB, or 20 ms at 800 KB/s. So
+the host spent ten ring-fulls not reading, and the device dropped frames
+it had already numbered.
+
+Measured before: `overrun_count` 33-35 per run and a lost frame in three
+runs out of four. After draining during the settle instead of sleeping
+blind: **0 lost frames in four runs, overrun 0-10**, and playback still
+byte-exact.
+
+macOS never showed it because its CDC driver buffers 55-450 KB below the
+tty layer and absorbed the burst. **The device was overrunning there
+too** - the host just never saw the consequence. This is a real fix for
+both platforms.
+
+The settle itself has to stay. Removing it entirely starts the feed
+before the device has armed playback, and the device then receives 6-20
+KB less than the host sent - a byte-conservation failure, and far worse
+than the overrun it was meant to cure. Measured, not assumed.
+
+Frames read during the settle are deliberately discarded, so a run's
+first analysed sequence number is no longer zero. `settle_frames`
+records how many, because "starts near zero" is how a stale capture is
+caught and that check has to tell the two apart.
+
+### Windows gives a COM port 4 KB of receive buffer
+
+At the full in-spec capture rate of 1.82 MB/s, 4096 bytes is **2.2 ms**
+of headroom; the measured worst case between reads is 5.4-7.6 ms. The
+port now asks for 4 MB.
+
+And `wait_any` **drains as it polls** rather than asking `in_waiting`
+and sleeping. Polling does not empty the driver buffer; only reading
+does. Asking while a writer thread holds the GIL lets the buffer back
+up, the device's bulk IN stops being consumed, and the ADC ring overruns
+on the board - a host-side stall that arrives looking like a device
+fault, with the device's own overrun counter as the only clue. That
+change alone took `overrun_count` from 33-204 to a steady 33-35 before
+the settle fix took it to 0-10.
+
+### A test that pinned one OS's naming
+
+`test_native_port_offers_both_functions` asserted the two CDC functions
+report interfaces `(1, 3)`. On Windows they report `(0, 2)`, and both
+are right: a CDC-ACM function spans **two** interfaces, a Communications
+one carrying the notification endpoint and a Data one carrying bulk.
+macOS's IOKit names the data interface because the BSD callout node
+hangs off it; Windows' `usbser` names the comm interface because it
+binds the function there. The test now asserts the structure the
+contract actually specifies - samples first, commands one whole function
+later - instead of one host's choice of which half to name.
+
 ## Toolchain
 
 Everything Track B needs was already on the machine; nothing was
@@ -238,17 +351,210 @@ downloaded. Locations resolve from `toolchains.json` with no
 Track B builds clean: 19/19 objects, no warnings under `-Wall -Wextra`,
 27,868 B text / 116 B data / 73,020 B bss.
 
+## What runs here now
+
+After the transport port, the project's own tooling runs on Windows -
+not just the pyserial harnesses written for the first pass.
+
+| | Result |
+|---|---|
+| `host/ports.py` | control COM7, native COM11, command COM12, ordered by interface |
+| `host/receive.py` | 1783 frames, 0 CRC bad, 0 seq gaps, 1.825 MB/s; A1 flat at 2053-2062 |
+| `host/loopback.py` | A0 1371.9 codes, A1 0.7 codes |
+| `host/daemon`, `--fake` and against the board | runs; the socket is TCP, so nothing there was POSIX-bound |
+| `tests/`, no hardware | 96 passed |
+| `tests/ --track=b -m smoke` | 108 passed, 2 skipped |
+
+`loopback.py`'s own per-window series oscillates 1364.3 <-> 1376.9 in a
+regular beat, which is objective 0f's sampling beat and not a property
+of this host - the project's own tool shows it too.
+
+## Track A on Windows
+
+First run of the oracle on this platform. It builds (63,612 bytes),
+flashes, and reports itself:
+
+```
+# id: track=A fw=0.1.0 ctlver=0 framever=3 mck=78000000 adcclk=19500000 ...
+```
+
+`ctlver=0` is correct - Track A has no control channel yet - and the
+native port presents one CDC function, so `find_all_ports()` returns no
+command node. Both are the contract behaving as documented.
+
+| Suite | Result |
+|---|---|
+| `--track=a -m smoke` | **89 passed, 21 skipped, 0 failed** |
+| `--track=a` (full) | **198 passed, 19 failed, 24 skipped** (10m51) |
+
+The 19 failures are the same three classes as Track B's 11, and nothing
+new:
+
+- **~10 assert a byte deficit exists** (`assert 0 > 0`, `assert 0 > 20`,
+  "the loop never retuned"). Track A conserves bytes on Windows too, so
+  the closed-loop tests have no oversupply to correct.
+- **~6 are missing instrumentation** (`assert None`) - the carrier and
+  rate-trace tests need what objective 1c says Track A does not have.
+- **The rest are underrun thresholds** at the top rates.
+
+**`arduino-cli upload` cannot flash a Due on Windows.** The sam core's
+recipe does the 1200-baud touch and then points bossac at the
+programming port with `-U false`. That works on macOS, where ROM SAM-BA
+answers through the 16U2's UART; here the erased chip brings SAM-BA up
+on the *native* port as `03EB:6124`, so bossac reports "No device found
+on COM7" **having already erased the board**. Measured: it wiped Track B
+and left nothing behind. `tools/sketch.py upload` now hands the binary
+arduino-cli built to `tools/flash.py`, which knows where SAM-BA is and
+which board it belongs to.
+
+One test was skipped rather than fixed:
+`test_playback_counters_describe_one_run_not_several` reads its identity
+off the `O` occupancy line, and Track A has no `O`. That is objective 1c
+and not a defect, so it skips with that reason - the same way the
+control-channel and load-monitor tests already do.
+
+## WSL2: tier 2, and what that buys
+
+Run under WSL2 Ubuntu 24.04, kernel 5.15.153.1-microsoft-standard-WSL2,
+Python 3.12.3. **No board was attached.** WSL2 is tier 2 for the software
+path only; native Linux is tier 1 *deferred* and has never run at all.
+See CLAUDE.md's tier table for why the two are not the same claim.
+
+### What it established
+
+| | Result |
+|---|---|
+| `transport` backend selection | `_PosixPort`, `WINDOWS=False` |
+| `rt.promote()` unprivileged | reached `SCHED_FIFO`, refused for want of privilege, degraded correctly |
+| `rt.promote()` privileged | **`sched=fifo:10`**, `sched_getscheduler` returns 1, priority 10 |
+| `ports.usb_interfaces()` / `native_nodes()` | `{}` / `[]` with no devices - no crash |
+| `toolchains.json` under WSL2 | resolved `cmake` at `/usr/bin`; the rest absent, as expected |
+| daemon suite | **47 passed in 44 s** after the `accept()` fix, from 1 failed in 188 s |
+
+Two of those are worth more than the rest. The privileged `SCHED_FIFO`
+run is the first execution of that path **anywhere** - it is where a
+`NameError` had been found by inspection rather than by running, on
+exactly the branch meant to degrade gracefully. And the `accept()` bug
+was found here and nowhere else, because it needs a kernel whose
+`close()` does not wake a blocked `accept()`.
+
+### What it cannot establish, and why
+
+WSL2 has no native USB passthrough. A device reaches it only through
+`usbipd-win`, which detaches the device on the Windows side and tunnels
+every URB over TCP to `vhci-hcd` in the VM:
+
+```
+native Linux    app -> cdc_acm -> usbcore -> xHCI -> wire
+WSL2 + usbipd   app -> cdc_acm -> usbcore -> vhci-hcd -> TCP
+                    -> usbipd-win -> Windows USB stack -> xHCI -> wire
+```
+
+`cdc_acm` is the real driver and you get a real `/dev/ttyACM0`. What is
+not real is everything under it - and it is exactly the layer this
+project measures:
+
+- **Buffering and backpressure.** This document's central finding is
+  "macOS buffers 55-450 KB and discards; Windows applies backpressure".
+  usbip inserts a further queue between `cdc_acm` and the wire.
+- **Throughput.** URBs serialise over one TCP connection, so the 26-48
+  MB/s figures here would measure usbip's ceiling and not the device's.
+- **Underruns and ring occupancy.** Completion timing crosses two
+  schedulers and a socket.
+- **Objective 0c.** "Does `close()` hang on outstanding write URBs" would
+  be testing `vhci`'s URB cancellation rather than native `cdc_acm` and
+  xHCI.
+
+So through usbip: port discovery, frame parsing, header CRC, sequence
+continuity, command round-trips and the whole board-free suite are worth
+running. **No throughput, underrun, byte-margin or `close()` figure taken
+that way is a Linux figure.**
+
+**The trap, named so it cannot be walked into quietly.** A usbip-induced
+dropout looks exactly like a device fault. Most of the last several
+sessions went into proving the firmware innocent of a host defect;
+introducing a tunnel that manufactures the same symptoms is worth doing
+only with that written down first.
+
+### Measured, and the prediction above was wrong
+
+The four bullets above were reasoned from the architecture. The
+experiment was then run - `usbipd-win` 5.3.0, both Due devices bound and
+attached to WSL2, the same `tools/bench.py` against the same board,
+minutes apart - and **it refutes most of them.**
+
+`vhci_hcd` and `cdc_acm` bind exactly as described, `/dev/ttyACM0/1/2`
+appear, and `host/ports.py` discovers and orders all three unaided.
+pyserial reports interface numbers in `location` here (`1-2:1.0`,
+`1-2:1.2`), unlike macOS.
+
+| Measurement | Windows native | WSL2 via usbip |
+|---|---|---|
+| out-dma | 37.30-37.91 MB/s, 0 B deficit | **37.25 MB/s, 0 B deficit** |
+| in-dma | 30.24 / 31.94 / 32.98 MB/s | **30.26 / 32.19 / 32.48 MB/s** |
+| play RC 65 conservation | 0 B, `under=0` | **0 B, `under=0`** |
+| play, deficit at RC 44/39/32/28 | 0 B | **0 B at every rate** |
+
+**Throughput is not degraded.** The claim that URBs serialising over one
+TCP connection would cap throughput is simply false at these rates - the
+two hosts are indistinguishable on both directions.
+
+**Byte conservation holds.** 0 B at every rate tested.
+
+And the underruns go the *other* way. Five runs per rate, matching the
+Windows sample so a single run is not compared against a five-run median:
+
+| RC | sps | Windows native | WSL2 via usbip |
+|---|---|---|---|
+| 44 | 886,363 | 6,5,7,6,7 - median **6** | 0,0,0,0,0 - median **0** |
+| 39 | 1,000,000 | 7,12,6,9,8 - median **8** | 0,4,0,0,0 - median **0** |
+| 28 | 1,392,857 | ~21-23 | 4,55,0,4,5 - median **4** |
+
+### So the real risk is the opposite of the one predicted
+
+The warning above was that usbip would manufacture symptoms that look
+like device faults. It does not. What it does is **flatter the host**:
+the tunnel is itself another queue in front of the device, and a queue is
+exactly what the playback ring wants. Windows' `usbser.sys` applies
+backpressure and gives the ring no elastic store beyond its own 32 KB;
+add a TCP queue and the ring stops running dry.
+
+Which means the numbers are still not Linux numbers - **but for the
+opposite reason.** They are not pessimistic, they are optimistic, and
+the confound cannot be resolved here: "Linux buffers ahead without
+discarding" and "usbip's queue supplies the elasticity" predict the same
+result and only a native host can separate them. If the first is true,
+Linux is the best of the three platforms for this workload. That is worth
+knowing and is not yet known.
+
+**One real defect, and it is stability not fidelity.** The tunnel dropped
+twice unprompted - `vhci_hcd: connection closed`, then `stop threads`,
+`release socket`, `disconnect device`, and Windows put the device back
+from `Attached` to `Shared`. Both times needed a manual re-attach. It is
+not a board reset: opening and closing both the console and the native
+port deliberately did not reproduce it.
+
+So WSL2 stays tier 2, and the reason in the tier table stands - just not
+the reasoning that was written under it. A usbip figure is not a Linux
+figure. It is now known to be optimistic rather than pessimistic, and
+that is a worse trap, not a better one: a host that looks good through a
+tunnel invites the conclusion that it is good.
+
 ## What was not measured
 
+- **Native Linux.** Tier 1 *deferred*: no Linux machine has had a board
+  on it. The POSIX backend and the `SCHED_FIFO` path are exercised under
+  WSL2, which is a real kernel, so the software results should carry -
+  but nothing about USB does, and a WSL2 pass must not stand in for a
+  native run.
+- **macOS after the port.** The POSIX backend is the original code
+  moved, not rewritten, but no Mac has run it since. That is the one
+  thing the review of this branch most needs.
 - **Track A on Windows.** Only Track B was built and flashed.
-- **The second channel pair.** A1 was captured at `nch=2` and did not
-  read flat, but DAC1 -> A1 is objective 3 and the loop was validated on
-  one channel, which is what the waveform targets.
-- **The daemon and the Qt front end.** Both are POSIX-bound through
-  `host/`; neither was run.
-- **The pytest suite.** `tests/` imports `host/`, so it does not run
-  here. Everything above went through `tools/bench.py` and
-  `tools/loop.py`, which are pyserial-only.
+- **The second channel pair.** DAC1 -> A1 is objective 3; the loop was
+  validated on one channel, which is what the waveform targets.
+- **The Qt front end.** Needs its own venv and PySide6; not installed
+  here. `tests/test_gui.py` skips for that reason, not a platform one.
 - **Long soaks.** The longest run was 5 s. Nothing here says anything
   about thermal drift or hour-scale stability.
 - One board, one machine, one USB topology.

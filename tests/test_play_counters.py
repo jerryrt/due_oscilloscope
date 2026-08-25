@@ -16,11 +16,11 @@ import statistics
 import pytest
 
 import measure
-from helpers import record, window
+from helpers import needs_a_buffering_host, record, window
 
 
 @pytest.mark.smoke
-def test_playback_counters_describe_one_run_not_several(board, seconds):
+def test_playback_counters_describe_one_run_not_several(board, seconds, track):
     """Every playback counter is reset by play_start.
 
     play_endtx_seen was not, so the `O` line reported a total
@@ -35,6 +35,14 @@ def test_playback_counters_describe_one_run_not_several(board, seconds):
     at any rate. Testing it on the *second* run is the whole point: the
     first run passes even with the bug present.
     """
+    if track != "b":
+        # The identity is read off the `O` occupancy line, and Track A
+        # has no `O` - objective 1c. Skipping rather than xfailing:
+        # nothing is known to be broken here, the instrument to observe
+        # it with is simply not on that track yet. This starts passing
+        # when 1c does, the same way the control-channel tests will.
+        pytest.skip("Track A has no occupancy histogram yet (objective 1c)")
+
     hz = measure.hz_for(65)
     secs = window(seconds, 2.0)
 
@@ -212,10 +220,27 @@ def test_the_deficit_is_the_oversupply(board, seconds, calibration, rc):
         "diff_pp": round(deficit_pct - slow_pct, 3),
         "lost_bytes": res.host_deficit})
 
-    assert deficit_pct == pytest.approx(slow_pct, abs=0.5), (
-        f"RC {rc}: lost {deficit_pct:.2f}% against a converter "
-        f"{slow_pct:.2f}% slow. These track each other - a gap means "
-        f"the loss is no longer just the surplus the converter refused")
+    from helpers import BUFFERING_HOST
+    if BUFFERING_HOST:
+        assert deficit_pct == pytest.approx(slow_pct, abs=0.5), (
+            f"RC {rc}: lost {deficit_pct:.2f}% against a converter "
+            f"{slow_pct:.2f}% slow. These track each other - a gap means "
+            f"the loss is no longer just the surplus the converter refused")
+    else:
+        # The relationship needs a deficit to relate. This host applies
+        # backpressure, so there is none - and that is the stronger
+        # claim, so assert it: byte conservation is the invariant, the
+        # deficit relationship is a characterisation of one host.
+        #
+        # The converter is still slow here (RC 44 and 39 measure 1.6% by
+        # the device's own runus), which is what makes this the right
+        # assertion rather than a weaker one: the device-side half of
+        # objective 0i is present and nothing is lost anyway.
+        assert deficit_pct < 0.1, (
+            f"RC {rc}: this host does not oversupply, so nothing should "
+            f"be lost at all - but {deficit_pct:.3f}% "
+            f"({res.host_deficit} B) is missing against a converter "
+            f"{slow_pct:.2f}% slow")
 
     if rc == 65:
         # The control. An exact converter oversupplies nothing, so a
@@ -423,6 +448,7 @@ def test_the_closed_loop_removes_most_of_the_oversupply(board, seconds,
     What is left after the loop is startup, not rate error - see
     test_the_closed_loop_residual_is_a_startup_cost.
     """
+    needs_a_buffering_host("the rate loop's whole subject")
     hz = measure.hz_for(rc)
     secs = window(seconds, 3.0)
     op = measure.run_play(board, dac_sps=hz, seconds=secs, drain_s=1.5)
@@ -456,6 +482,7 @@ def test_the_closed_loop_buys_nothing_with_underruns(board, seconds, rc):
     underrun counter to zero while the dropped samples stay missing.
     Neither counter is evidence on its own, so both are checked here.
     """
+    needs_a_buffering_host("the rate loop's cost")
     res = measure.run_play(board, dac_sps=measure.hz_for(rc),
                            seconds=window(seconds, 3.0), drain_s=1.5,
                            closed_loop=True)
@@ -470,6 +497,7 @@ def test_the_closed_loop_leaves_an_exact_rate_alone(board, seconds):
     RC 65 measures byte-exact open loop, so the loop's job here is to do
     no harm: it should still run, and still lose nothing.
     """
+    needs_a_buffering_host("the rate loop's no-op case")
     res = measure.run_play(board, dac_sps=measure.hz_for(65),
                            seconds=window(seconds, 3.0), drain_s=1.5,
                            closed_loop=True)
@@ -493,6 +521,7 @@ def test_the_closed_loop_residual_is_a_startup_cost(board, calibration):
     Measured at RC 39: 27,648 B over 3 s and 28,544 B over 6 s, so
     0.466% became 0.242%.
     """
+    needs_a_buffering_host("the rate loop's residual")
     hz = measure.hz_for(39)
     short = measure.run_play(board, dac_sps=hz, seconds=3.0, drain_s=1.5,
                              closed_loop=True)
@@ -566,6 +595,7 @@ def test_the_closed_loop_runs_in_loop_mode_without_breaking_the_stream(
     on. If that coupling misbehaves it shows up as CRC failures or
     sequence gaps, not as a bad rate.
     """
+    needs_a_buffering_host("the rate loop in loop mode")
     res = measure.run_loop(board, dac_sps=measure.hz_for(44),
                            adc_hz=measure.hz_for(88), channels=2,
                            seconds=window(seconds, 3.0), closed_loop=True)

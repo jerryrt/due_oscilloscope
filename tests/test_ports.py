@@ -63,15 +63,22 @@ def test_native_order_keeps_two_boards_apart(monkeypatch):
                    "/dev/cu.two_s", "/dev/cu.two_c"]
 
 
-def test_usb_interfaces_survives_a_missing_ioreg(monkeypatch):
-    """An unreadable IOKit is no information, not an error.
+def test_usb_interfaces_survives_an_unreadable_enumeration(monkeypatch):
+    """An unreadable enumeration is no information, not an error.
 
     Every caller falls back, so this must return empty rather than
-    propagate: discovery failing outright on a host without ioreg would
-    make the whole suite unrunnable there for no gain.
+    propagate: discovery failing outright would make the whole suite
+    unrunnable on that host for no gain.
+
+    The contract is the same everywhere; only the source differs. macOS
+    asks ioreg, Windows and Linux ask pyserial, so break whichever one
+    this platform actually uses.
     """
     def boom(*a, **kw):
-        raise OSError("no ioreg here")
+        raise OSError("no enumeration here")
 
-    monkeypatch.setattr(ports.subprocess, "run", boom)
+    if ports.DARWIN:
+        monkeypatch.setattr(ports.subprocess, "run", boom)
+    else:
+        monkeypatch.setattr(ports, "_pyserial_nodes", boom)
     assert ports.usb_interfaces() == {}
