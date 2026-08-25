@@ -7,10 +7,18 @@ policy). If you are here to build the test suite, the whole plan is in
 
 ## Where the work stands (2026-08-25)
 
-**If you are here to build G2 - trigger, measurements, FFT - read
-objective 1a and stop. Nothing below blocks you and none of it needs a
-board.** The rest of this file is a measurement-integrity investigation
-that has been running for several sessions; it matters when you quote a
+**Track A parity is a precondition for front-end work (set 2026-08-25).**
+Objectives 1b and 1c come before 1a. The two tracks must be peers in
+design, feature set and performance - both are bare metal on the same
+silicon, and Arduino is an abstraction layer rather than a different
+architecture, so a gap between them is debt with a date on it and not a
+property of the track. Track A fell a long way behind on 2026-08-24/25
+and the front end is not the thing to build on top of that.
+
+If you are here to build G2 - trigger, measurements, FFT - objective 1a
+has everything you need and none of it requires a board; read it, but
+clear 1b and 1c first. The rest of this file is a measurement-integrity
+investigation running for several sessions; it matters when you quote a
 number, not when you write a view.
 
 What the 2026-08-24/25 session changed, in one pass:
@@ -282,11 +290,15 @@ publishing.
 
 ## Next objectives, in order
 
-**Start here, if you are building the front end**: objective 1a. It
-needs no board, nothing below blocks it, and the path it stands on was
-checked end to end on 2026-08-25 rather than assumed.
+**Start here**: objectives 1b and 1c, Track A parity. It is a
+precondition for the front end now, not a background chore - see the
+note at the top of this file. Neither is blocked; 1b's recorded blocker
+turned out not to exist.
 
-**Start here, if you are chasing numbers**: objective 0i, the oversupply
+**Then** objective 1a, the front end. It needs no board, and the path it
+stands on was checked end to end on 2026-08-25 rather than assumed.
+
+**If you are chasing numbers instead**: objective 0i, the oversupply
 loss. It is the largest
 remaining hole in the data path - 1.35% and 2.15% of the waveform at
 886,363 and 1,000,000 sps - it has a clear cause, and the fix (closed
@@ -1248,13 +1260,39 @@ sub-question: RC 44 reads one of two discrete converter rates.
    against Track A. Do that before quoting any Track A playback figure:
    its numbers were taken with the feed that loses bytes.
 
-1b. **Capture over endpoint DMA on Track A**, which currently still
-   copies. The port is written and measured - 81 ADC overruns per 4 s
-   at the full rate - and blocked on placement: Track A links against
-   the Arduino core's script and cannot pin a buffer to bank 1, which
-   is what makes it clean on Track B. Needs a verified placement
-   mechanism first, not a `--section-start` guess that would overlap
-   whatever the allocator put there.
+1b. **Capture over endpoint DMA on Track A**, which still copies and so
+   still violates invariant 1 on that track. The port is written and
+   measured - 81 ADC overruns per 4 s at the full rate - and was
+   recorded as blocked on placement: "Track A links against the Arduino
+   core's script and cannot pin a buffer to bank 1".
+
+   **That blocker does not exist, and was never checked.** Two facts,
+   both read out of the installed toolchain on 2026-08-25:
+
+   - The stock Due linker script already declares the region.
+     `variants/arduino_due_x/linker_scripts/gcc/flash.ld`:
+     `sram1 (rwx) : ORIGIN = 0x20080000, LENGTH = 0x00008000`.
+   - The script itself is an ordinary build property. `platform.txt`
+     links with `-T{build.variant.path}/{build.ldscript}`, and
+     `boards.txt` sets `arduino_due_x_dbg.build.ldscript=linker_scripts/gcc/flash.ld`.
+     So `--build-property build.ldscript=<your copy>` substitutes it -
+     the same mechanism this project already relies on for
+     `build.f_cpu`, without which `micros()` is silently wrong.
+
+   So the work is: copy `flash.ld`, add a section that lands `> sram1`,
+   place the capture ring in it with
+   `__attribute__((section(...)))`, and pass the property. No
+   `--section-start` guess and nothing to overlap.
+
+   **Not yet done or tested** - what is established is that the
+   objection recorded against it is false, which is a different thing
+   from the placement working. Verify it the way Track B's was verified:
+   the ring pinned, the frame contiguous, and the overrun count at the
+   full rate compared against the 81 that the copy path costs.
+
+   This is the clearest case of the rule in invariant 3: "the core will
+   not let us" is a claim to test against `platform.txt`, not to
+   believe.
 
 2. **Replace the marginal native-port cable** before attributing any
    further purity variance to software. It failed hard twice on

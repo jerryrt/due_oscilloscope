@@ -43,9 +43,25 @@ Violating any of these is a design regression, not a style preference.
    wrong.
 2. **No on-target DSP.** The Cortex-M3 has no FPU. FFT and filtering
    belong on the host.
-3. **The two toolchains share no source.** Track A (arduino-cli) is a
-   reference oracle; Track B (CMake + arm-gcc) is the project. Do not
-   attempt to unify them.
+3. **The two toolchains share no source, and are peers in everything
+   else.** Track A (arduino-cli) is a reference oracle; Track B (CMake +
+   arm-gcc) is the project. Do not attempt to unify the *source* - the
+   independence is what makes the oracle worth having.
+
+   But they must be comparable in **design, feature set and
+   performance**. Both are bare-metal on the same silicon; Arduino is an
+   abstraction layer, not a different architecture, and nothing it
+   provides prevents reaching the same registers. So a capability on one
+   track and not the other is **debt with a date on it**, never a
+   property of the track - and "the core will not let us" is a claim to
+   be tested against `platform.txt` before it is believed. It has been
+   wrong once already: objective 1b recorded for weeks that the Arduino
+   linker could not place a buffer in SRAM bank 1, when `sram1` is
+   declared in the stock `flash.ld` and `build.ldscript` is an ordinary
+   build property.
+
+   From 2026-08-25 this is a gate, not an aspiration: **Track A is
+   brought level before front-end work continues.**
 4. **`drivers/` stays RTOS-agnostic.** Bare-metal and FreeRTOS builds
    link identical driver code and differ only in `main()`.
 5. **Never present discontinuous data as continuous.** Overruns are
