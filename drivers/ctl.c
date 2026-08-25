@@ -305,7 +305,8 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 
 static void ctl_frame_complete(void);
 
-static void ctl_header_complete(void)
+/* True when this produced a reply, so the caller can stop for the pass. */
+static bool ctl_header_complete(void)
 {
 	const ctl_header_t *h = (const ctl_header_t *)rx_hdr;
 
@@ -318,14 +319,14 @@ static void ctl_header_complete(void)
 		          "unsupported protocol version");
 		rx_skip = h->length;
 		rx_state = rx_skip ? ST_SKIP : ST_MAGIC;
-		return;
+		return true;
 	}
 	if (h->length > CTL_MAX_PAYLOAD) {
 		ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
 		          "payload too long");
 		rx_skip = h->length;
 		rx_state = ST_SKIP;
-		return;
+		return true;
 	}
 	rx_payload_at = 0;
 	if (h->length == 0) {
@@ -333,9 +334,10 @@ static void ctl_header_complete(void)
 		 * for a payload byte that is never coming - which would also
 		 * swallow the first byte of the next frame. */
 		ctl_frame_complete();
-		return;
+		return true;
 	}
 	rx_state = ST_PAYLOAD;
+	return false;    /* nothing answered yet; the payload is still coming */
 }
 
 static void ctl_frame_complete(void)
@@ -363,7 +365,7 @@ static void ctl_frame_complete(void)
 	ctl_dispatch(h, rx_payload, h->length);
 }
 
-static void ctl_feed(uint8_t b)
+static bool ctl_feed(uint8_t b)
 {
 	rx_last_us = micros();
 
@@ -385,38 +387,48 @@ static void ctl_feed(uint8_t b)
 			rx_magic_at = 0;
 			rx_state = ST_HEADER;
 		}
-		return;
+		return false;
 
 	case ST_HEADER:
 		rx_hdr[rx_hdr_at++] = b;
 		if (rx_hdr_at >= CTL_HDR_BYTES)
-			ctl_header_complete();
-		return;
+			return ctl_header_complete();
+		return false;
 
 	case ST_PAYLOAD: {
 		const ctl_header_t *h = (const ctl_header_t *)rx_hdr;
 
 		if (rx_payload_at < h->length)
 			rx_payload[rx_payload_at++] = b;
-		if (rx_payload_at >= h->length)
+		if (rx_payload_at >= h->length) {
 			ctl_frame_complete();
-		return;
+			return true;
+		}
+		return false;
 	}
 	case ST_SKIP:
 		if (--rx_skip == 0)
 			rx_state = ST_MAGIC;
-		return;
+		return false;
 
 	default:
 		rx_state = ST_MAGIC;
-		return;
+		return false;
 	}
 }
 
+/*
+ * One packet held across calls, so that stopping mid-packet is possible.
+ *
+ * Static and fixed: the endpoint is 512 bytes, so this is the whole
+ * worst case and there is nothing to size at run time.
+ */
+static uint8_t  rx_buf[512];
+static uint32_t rx_buf_len;
+static uint32_t rx_buf_at;
+
 void ctl_service(void)
 {
-	static uint8_t buf[512];
-
 	/* Abandon a frame that stopped arriving. Unsigned subtraction is
 	 * correct across the micros() wrap; comparing timestamps directly
 	 * would not be. */
@@ -426,20 +438,30 @@ void ctl_service(void)
 		ctl_rx_bad++;
 	}
 
-	/*
-	 * Bounded, like the sample path's drain. An unbounded loop here
-	 * would let a host that writes continuously starve play_service()
-	 * and stream_service(), and the command channel is the least
-	 * urgent thing in this loop by a wide margin.
-	 */
-	for (int b = 0; b < 4; b++) {
-		size_t n = usb_ctl_read(buf, sizeof(buf));
-
-		if (n == 0)
-			break;
-		for (size_t i = 0; i < n; i++)
-			ctl_feed(buf[i]);
+	if (rx_buf_at >= rx_buf_len) {
+		rx_buf_len = usb_ctl_read(rx_buf, sizeof(rx_buf));
+		rx_buf_at = 0;
+		if (rx_buf_len == 0)
+			return;
 	}
+
+	/*
+	 * At most one frame per call, and the rest of the packet waits.
+	 *
+	 * The previous version fed up to four banks - 2048 bytes - and
+	 * dispatched every frame in them. A host writing 16-byte frames
+	 * back to back could therefore ask for 128 replies in a single
+	 * main-loop pass, each a CRC32 over its payload and a 464-byte
+	 * FIFO write: milliseconds of a loop that must keep draining bulk
+	 * OUT, chosen by the peer rather than by this firmware. That is
+	 * the shape of failure this project already has a name for.
+	 *
+	 * The worst case is now one packet scanned plus one reply built,
+	 * and it does not depend on what the host sent.
+	 */
+	while (rx_buf_at < rx_buf_len)
+		if (ctl_feed(rx_buf[rx_buf_at++]))
+			return;
 }
 
 void ctl_dump(void)

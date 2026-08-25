@@ -53,7 +53,25 @@ Violating any of these is a design regression, not a style preference.
    corrupted data that gets mistaken for a real signal.
 6. **Never printf from an ISR.** Ring-buffer and drain outside the
    real-time path. A printf costs ~3.5 ms against a 0.95 us conversion.
-7. **printf is a debug method, not an instrument.** It is too expensive
+7. **Constant memory and constant time, everywhere on the working path.**
+   This is bare metal: every buffer is fixed and known at build time,
+   and every ISR and every main-loop pass has a bounded worst case that
+   does not depend on what a host chose to send. No allocation, no
+   unbounded loop, no "process everything that arrived" - a peer that
+   floods an endpoint must cost a bounded slice of one pass and no
+   more, because the alternative is a main loop that stops draining and
+   a host wedged in `close()`.
+
+   The shape that follows from it: **an ISR notices, the main loop
+   acts.** An interrupt or DMA completion sets a flag and returns;
+   parsing, checksums and replies happen in the loop where they can be
+   bounded and preempted. Building one control response is a CRC32 over
+   464 bytes and has no business above a 0.95 us conversion cadence.
+
+   Only debug-only features may break this rule, and they must be
+   unreachable on the deployed path. `Q`, `l`, the sweeps and the
+   printf diagnostics are all in that class.
+8. **printf is a debug method, not an instrument.** It is too expensive
    to use for profiling or for status polling while the board is
    working, and not by a small margin: measured with the load monitor,
    one console status command blocks the main loop for 13-20 ms (`B`
