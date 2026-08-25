@@ -1013,6 +1013,33 @@ class Board:
                             f"not stopped")
                 return
 
+        # A software unplug, which is the thing that actually works.
+        #
+        # The host is not waiting for the device to accept data: read
+        # over the control channel during a wedge it is running 145 k
+        # main-loop passes a second and draining bulk OUT on every one
+        # of them. It is waiting on the USB pipe, and only a disconnect
+        # aborts that. The recorded recovery was physical - unplug and
+        # replug - and `Z` is that in software, commanded over the
+        # programming port because detaching takes the control channel
+        # down with it.
+        #
+        # Measured: 9 wedges out of 30 open/close cycles, 9 released,
+        # 0.01 to 0.23 s. It costs a re-enumeration, which open_native
+        # already re-globs for.
+        for attempt in range(2):
+            try:
+                self.cmd("=400Z")
+            except Exception:                        # noqa: BLE001
+                pass
+            if done.wait(6.0):
+                _wedge_note(f"close() released by a software detach "
+                            f"({attempt + 1} attempt(s)); the native port "
+                            f"is re-enumerating")
+                self.native = None
+                time.sleep(2.0)
+                return
+
         # The fd is leaked and a thread is stuck on it, so this process
         # can never use the port again. Say so once, here, rather than
         # letting the next open() block forever - which is what happened

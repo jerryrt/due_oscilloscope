@@ -55,6 +55,7 @@ static void banner(void)
 	printf("#           Q=main-loop profile  l=main-loop load\n");
 	printf("#           =<ms>S = stall the loop (validates l)\n");
 	printf("#           =1l = report load, then clear it\n");
+	printf("#           =<ms>Z = detach the native port (software unplug)\n");
 	printf("#           z=software reset\n");
 	printf("#\n");
 }
@@ -765,6 +766,17 @@ static void cmd_execute(const cmd_t *cmd)
 	 * listed it here, so this closes a documented parity gap
 	 * rather than adding a feature.
 	 */
+	/*
+	 * A software unplug of the native port. `z` is a processor reset
+	 * only - RSTC_CR_PROCRST leaves the UOTGHS running and its pull-up
+	 * attached, so the host never sees a disconnect and a wedged
+	 * close() is not released by it. This is the one that detaches.
+	 */
+	case 'Z': printf("# detaching the native port for %lu ms\n",
+	                 (unsigned long)(cmd->arg[0] ? cmd->arg[0] : 250u));
+	          uart_flush();
+	          usb_cdc_detach_cycle(cmd->arg[0]);
+	          break;
 	case 'z': printf("# software reset now\n"); uart_flush();
 	          RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
 	          break;

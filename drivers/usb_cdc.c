@@ -865,6 +865,39 @@ bool usb_dma_out_start_stream(void *buf, uint32_t len)
 	return dma_out_start_ctl(buf, len, 0);
 }
 
+void usb_cdc_detach_cycle(uint32_t ms)
+{
+	/*
+	 * Drop the pull-up, wait, put it back: a disconnect and reconnect
+	 * the host cannot tell from someone pulling the cable.
+	 *
+	 * This exists to answer one question about objective 0c. The host
+	 * hangs in close() while this device is demonstrably draining -
+	 * 145 k main-loop passes a second, a drain on every one - so it is
+	 * not waiting for the device to accept data. The recorded recovery
+	 * is physical: unplug and replug. If a software detach does the
+	 * same, the host is waiting on the USB pipe and a wedge is
+	 * recoverable without touching the cable; if it does not, the host
+	 * is stuck on something no device action can reach.
+	 *
+	 * Commanded from the *programming* port, necessarily: detaching
+	 * takes the control channel down with it, since both CDC functions
+	 * are on this one device.
+	 */
+	uint32_t until;
+
+	UOTGHS->UOTGHS_DEVCTRL |= UOTGHS_DEVCTRL_DETACH;
+	usb_configured = 0;
+	usb_line_state = 0;
+	usb_ctl_line_state = 0;
+
+	until = millis() + (ms ? ms : 250u);
+	while ((int32_t)(millis() - until) < 0)
+		;
+
+	UOTGHS->UOTGHS_DEVCTRL &= ~UOTGHS_DEVCTRL_DETACH;
+}
+
 bool usb_cdc_ready(void)
 {
 	return usb_configured != 0 && (usb_line_state & 0x01) != 0;

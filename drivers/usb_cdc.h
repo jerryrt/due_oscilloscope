@@ -19,6 +19,11 @@ void   usb_cdc_dump(void);
 void   usb_cdc_poll(void);
 
 /* True once the host has configured the device and raised DTR. */
+/* Detach the native port for `ms`, then re-attach: a software unplug.
+ * Command it from the programming port - it takes the control channel
+ * down with it, both CDC functions being on the one device. */
+void   usb_cdc_detach_cycle(uint32_t ms);
+
 bool   usb_cdc_ready(void);
 extern volatile uint32_t usb_in_activity;   /* bytes/transfers, IN  */
 extern volatile uint32_t usb_out_activity;  /* bytes/transfers, OUT */
