@@ -18,6 +18,15 @@ from helpers import (assert_fresh, assert_no_underruns, assert_stream_clean,
 
 pytestmark = pytest.mark.scope
 
+# The playback ring's underruns on a host that does not buffer ahead of
+# the device were an xfail here, at RC 44 and above. They are gone: the
+# cause was PLAY_PRIME_BUFS starting the DAC on an eighth of a ring, and
+# raising it takes every rate on the ladder to zero. See drivers/play.c.
+#
+# Kept as a comment rather than deleted because the xfail is the kind of
+# thing that gets re-added by whoever next sees underruns on a new host,
+# and the answer is the prime, not a tolerance.
+
 TWO_CH = [780, 390, 200, 195, 130, 98, 88, 86]
 ONE_CH = [390, 195, 98, 65, 50, 45, 44]
 AWG    = [195, 98, 65, 44, 39, 32, 28]

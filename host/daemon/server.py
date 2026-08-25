@@ -21,6 +21,12 @@ to survive the front end. See `docs/frontend.md`.
 
 from __future__ import annotations
 
+# How often the accept loop wakes to check whether it has been stopped.
+# Short enough that teardown is not noticeable, long enough that an idle
+# daemon is not spinning: 5 wakeups a second against a loop that does
+# nothing else.
+ACCEPT_TIMEOUT_S = 0.2
+
 import collections
 import gc
 import json
@@ -386,6 +392,9 @@ class Server:
             gc.disable()
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # A timeout, so the accept loop can notice stop() on every
+        # platform - see _accept_loop.
+        self._sock.settimeout(ACCEPT_TIMEOUT_S)
         self._sock.bind((self.host, self.port))
         self._sock.listen(8)
         self.port = self._sock.getsockname()[1]
@@ -440,8 +449,22 @@ class Server:
         while not self._stop.is_set():
             try:
                 conn, addr = self._sock.accept()
+            except socket.timeout:
+                # The wake-up. stop() closes the listening socket from
+                # another thread, and whether that wakes a thread already
+                # blocked in accept() is undefined by POSIX: BSD and macOS
+                # return EBADF, Linux leaves the thread blocked until a
+                # connection actually arrives. So the accept times out
+                # instead and re-checks _stop.
+                #
+                # Measured before this: every daemon teardown on Linux
+                # burned the full 3.0 s join in stop(), 47 tests spent
+                # ~140 s of a 188 s run waiting, and
+                # test_the_server_leaves_no_threads_behind failed outright.
+                continue
             except OSError:
                 return
+            conn.settimeout(None)          # inherit nothing from the listener
             conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s = _Session(self, conn, addr)
             with self._lock:

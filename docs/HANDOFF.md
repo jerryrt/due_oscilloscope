@@ -2,7 +2,9 @@
 
 Read this first, then `docs/status.md` (what works, measured figures,
 recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
-policy). If you are here to build the test suite, the whole plan is in
+policy). `docs/windows.md` is the 2026-08-25 validation on a second host
+and a second board: it settles objective 0c, and it shows the playback
+byte loss is macOS's driver rather than anything on the device. If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
 ## PR #3 from the Windows team is open and not merged (2026-08-25)
@@ -106,6 +108,178 @@ Windows backend so that test runs first.
 **Nothing in this section is measured.** It is a decision and its
 consequences as predicted. Treat every "Windows will" here as a
 hypothesis with a test attached.
+
+## Start here: the Windows session handoff (2026-08-25)
+
+**Do this first: unplug and replug the Due's native USB cable.** The
+native port stopped enumerating at the end of the session and no
+software remedy reaches it - `=400Z`, three reflashes and a SAM-BA
+round trip all failed, while SAM-BA itself enumerates fine over the same
+cable, so the hardware is good and the Windows USB stack is not. It
+follows a run of `usbipd` bind/attach/detach cycles and there are seven
+phantom `VID_2341&PID_003E` registrations left behind (COM8, COM9,
+COM11, COM12 and three composite instances). Nothing below can be
+measured until the port is back.
+
+### Where the branches are
+
+| Branch | PR | State |
+|---|---|---|
+| `windows-validation` | #3 -> `main` | 8 commits, CLEAN/MERGEABLE. macOS verified all but the last round |
+| `host-transport-port` | #4 -> #3 | 12 commits. Windows: 228 passed, 1 failed, 12 skipped |
+| `wip/stream-stop-race` | none | Tested 2026-08-25. **Do not merge as a fix** - see below |
+| `issue-5-instrument` | none | The splice census. Off `host-transport-port`, board-free tests, no firmware change |
+| `wip/refusal-reporting` | none | Off `wip/stream-stop-race`. Names which refusal it is; moves preset M's printfs off the capture |
+
+The one failure in #4 is issue #5, which is on `main` and is not the
+branch's doing. It does not fail on `wip/stream-stop-race`, and the full
+Track B suite there is 235 passed / 0 failed - but read the section below
+before taking that as the defect being fixed, because the same suite goes
+green and red with four bytes of bss.
+
+`issue-5-instrument` is the branch to merge. It changes no firmware, it
+replaces a continuity check that had a real defect under it for a
+session, and none of its value depends on how issue #5 turns out.
+
+The macOS team has stopped. Both PRs carry their full review history and
+every finding they raised is answered in the comments.
+
+### Objective 0i's underrun half is closed, and it was cheap
+
+`PLAY_PRIME_BUFS` was 4 - the DAC started on an eighth of a ring, 1.4 ms
+of runway at the top rate. At 24 the AWG ladder is **zero underruns at
+every rate**, byte conservation untouched, occmin 2 -> 18-26.
+
+The method matters more than the fix: **run the same rate for 1 s, 3 s
+and 9 s.** All three gave 21-24 underruns, so it was a startup burst and
+nothing else. That question is now in `CLAUDE.md` ahead of the
+invariants. Track A still primes at 4 (objective 1c).
+
+### Issue #5's diagnosis is wrong, and the branch is not a fix
+
+**Do not merge `wip/stream-stop-race` as a fix for issue #5.** It was
+built on the model above - `stream_stop()` aborts an IN transfer, the
+channel stays enabled, the next run arms the PDC over buffers it is
+still reading, the two race. Tested on hardware 2026-08-25 (later
+session), that model does not survive any of the following, and neither
+does "780 splices" as a description.
+
+**It is not a splice.** On the flat channel every event is one sample
+displaced by +62..68 codes, and with the original table every one was
+exactly bit 6 set - clearing that bit recovers the neighbouring value
+exactly. Sequence numbers, header CRCs and byte counts stay perfect. One
+disturbed sample is not data joined from two points in time, and calling
+it a splice is what sent a session to the stop path.
+
+**Its period is the generator's table, not anything in the capture or
+USB path.** Events are spaced exactly 512 samples per channel, single
+phase, 779 of 779 gaps. `GEN_TABLE_LEN` is `GEN_SINE_POINTS * 2` = 512.
+Doubling `GEN_SINE_POINTS` moved the spacing to exactly 1024 and changed
+the displacement to +45..50, which also stops it being a clean bit 6. The
+event is locked to the DAC's buffer wrap.
+
+**It does not happen on the ordinary capture path.** Same firmware, same
+200 kHz, alternating presets three times each: preset `3` is clean on the
+flat channel (sd 1.0, nothing over 10 codes) while preset `M` shows 779
+events at spacing 512. Under `3` the generator is still running and its
+ENDTX still firing, so ENDTX alone is not it either. Only `M` shows this.
+
+**The variable that decides it is the binary.** It is bimodal and latched
+per run - a run is ~780 events or exactly 0, never between - and the
+proportion of dirty runs moves with the image and nothing else:
+
+| firmware | text / bss | clean runs |
+|---|---|---|
+| `c657841` stream.c, the abort | 28096 / 73020 | 4/10 |
+| `wip/stream-stop-race` as committed | 28144 / 73020 | **25/25** |
+| + preset-M return check only | 28180 / 73020 | 10/10 |
+| + a refusal flag and accessor | 28308 / **73024** | 5/10, twice |
+| + printfs moved off the capture | 28316 / 73024 | 10/10 |
+
+Four bytes of bss and a branch take a 25/25 image back to control
+incidence. 25/25 against a 40% clean rate is p ~ 1e-10, so the branch
+does measure differently - but not by the mechanism it claims, and a
+green count from it means nothing.
+
+**One hypothesis is eliminated; do not re-run it.** Both timers are
+200 kHz off the same 39 MHz, so their relative phase is fixed for a whole
+run and set by the instruction timing between `stream_start_capture_only()`
+and `gen_go_tioa1()` - which would have explained every row above. It is
+wrong. A deliberate spin inserted between those two calls and swept 0 to
+140 iterations, over two full DAC periods at 78 MHz, gives 16 clean runs
+out of 16 including at zero.
+
+**Settle whether this is a defect in the product before doing more
+firmware work on it.** The question is not "what corrupts the sample" but
+"does preset `M`'s setup produce this on its own". Two things to read
+first. `docs/hardware.md` records the DAC0->A0 / DAC1->A1 crosstalk
+baseline as +/-1 code and says in the same section that it was taken at
+maximum `TRACKTIM` and `SETTLING` with software-triggered single
+conversions milliseconds apart, and that this "does not retire the
+crosstalk risk" because "crosstalk bites when tracking time is short" -
+while `acq.c` streams at `TRACKTIM(0)`, `SETTLING(0)`, `TRANSFER(1)`. And
+A1 is not an unconnected channel: `gen` drives DAC1 with DC 2048 through
+the same PDC stream in TAG mode, so both channels come from the wrap the
+period is locked to.
+
+**And fix the control before trusting it.**
+`test_device_generated_waveform_is_continuous` is described as "the
+control for everything below, and it must stay green", and its signal is
+absent from every other capture path. Preset `M` was built for objective
+0c - its own banner says "press D and read cdr7: swing = USB at fault,
+frozen = trigger path" - and was promoted to continuity control later. A
+control that fires only on one diagnostic preset is not controlling what
+it claims to.
+
+### The instrument, which is the part that holds
+
+`measure.level_census()` and `tools/splices.py`, with board-free tests in
+`tests/test_census.py`. Collapse the staircase to its levels and count the
+steps above a threshold, instead of judging the largest step against
+`slew_limit()`: `gen` emits a staircase whose honest ceiling is ~38 codes
+against that function's 16.85, so the old "3x margin" was really 1.3x and
+a real defect could only make the test wobble. The count separates where
+the maximum does not - 778-780 against 0, where the maximum moves 38 to 58.
+
+**It reports the void it judges in, and that has already earned its
+keep.** The threshold is not tuned: the healthy distribution ends at 38
+and the defective one starts at 51, so 45 sits in a twelve-bin gap and any
+value across it returns the same count. When `GEN_SINE_POINTS` was doubled
+the DAC step grew into that gap, and the tool said so - "the void around
+45 is under 4 codes wide on 10 run(s)" - on the same runs where `max_step`
+had gone bimodal at 24 and 42 and the count was still reporting 0. A count
+under a closed void is not a measurement.
+
+**Judge this by `count`, never by `max_step`.** That is the whole lesson
+of the defect it was built for.
+
+### Two host-side traps this left behind
+
+- **A stream that never ran censuses as zero splices.** The device can
+  refuse to start now, so this is reachable rather than theoretical, and
+  it reads as exactly the result a fix is hoping for. `tools/splices.py`
+  raises instead of reporting when a run's level count is far below what
+  its rate and duration require.
+- **Preset `M` printed over its own capture.** Two printfs and a
+  `uart_flush` ran immediately after `gen_go_tioa1()` - about 7 ms of
+  blocked main loop on the first samples of every capture, on the path
+  the suite calls its continuity control. Invariant 8. Moved ahead of the
+  converters on `wip/refusal-reporting`. It was never inside the analysed
+  window (`SETTLE_US` is 1 s) and is not an explanation for any of the
+  above, but it had no business being there.
+
+### The rest, in brief
+
+- **Objective 0h answered**: `Feeder.WRITE_SIZE` is a macOS workaround.
+  24 runs across four write policies and six rates, 0 B deficit in every
+  one; 23.48 MB through the legacy path at RC 39 loses nothing.
+- **WSL2 is tier 2, native Linux tier 1 deferred.** usbip measured, and
+  it does *not* degrade throughput or conservation - it *flatters* the
+  host, because the tunnel is another queue in front of the ring. See
+  `docs/windows.md`.
+- **Track A runs on Windows**: 89/21 smoke, 198/19 full, same three
+  failure classes as Track B. `arduino-cli upload` cannot flash a Due
+  here and fails destructively; `sketch.py` routes through `flash.py`.
 
 ## Where the work stands (2026-08-25)
 
@@ -635,6 +809,52 @@ sub-question: RC 44 reads one of two discrete converter rates.
    waveform broken. That warning does not apply to 0i, where the host
    genuinely oversupplies and matching the rate is the actual fix.
 
+0i-underruns. **Solved, and it was one constant.**
+
+   The underrun half of this objective is closed. `PLAY_PRIME_BUFS` was
+   4: the DAC's timer started once four of thirty-two ring slots held
+   data, which is 1.4 ms of runway at the top rate. Raised to 24, the
+   AWG ladder reports **zero underruns at every rate from 200,000 to
+   1,392,857 sps**, five runs each, with byte conservation untouched and
+   occmin going from 2 to 18-26.
+
+   Measured, five runs per rate, underruns per run:
+
+   | prime | RC 44 | RC 39 | RC 28 |
+   |---|---|---|---|
+   | 4 (was) | 4-7 | 7-10 | 22-25 |
+   | 12 | 1-5 | 5-11 | 14-21 |
+   | 20 | 3-6 | 1-7 | 13-20 |
+   | 22 | 0 | 0 | 0 |
+   | **24 (now)** | **0** | **0** | **0** |
+
+   The threshold is sharp because nothing drains while the timer is
+   stopped: the ring fills to exactly the prime and that is where it then
+   sits. **The prime sets the operating point, not just the start.**
+
+   What found it, after this was chased across many sessions and blamed
+   on feed policy, write size, scheduling, thread priority, driver
+   buffering and three operating systems: **run the same rate for 1 s,
+   3 s and 9 s.** At RC 28 all three gave 21-24. Nine times the duration,
+   the same count - so it was a burst at the start and nothing else, and
+   only the ring's state at t=0 could explain it.
+
+   Raising the prime creates one hazard and it is handled: a playback
+   shorter than the prime would never start, because the ring never
+   reaches the threshold and the abandon timer drops a waveform that
+   arrived intact. `play_service` now also primes on a host that has
+   gone quiet with at least `PLAY_PRIME_MIN` slots. Verified: 8 KB and
+   16 KB transfers, both under the 24-slot threshold, play.
+
+   **Still open in 0i: the oversupply byte loss**, which is a different
+   defect and macOS's - see below and `docs/windows.md`. Windows loses
+   0 B at every rate, so the underrun half and the byte half were never
+   the same problem, and treating them as one is part of why this took
+   as long as it did.
+
+   **Track A has not had this change** and its prime is still 4;
+   objective 1c.
+
 0i. **Oversupply at 886,363 and 1,000,000 sps: 1.35% and 2.15% of the
    waveform, with `under=0`.** The largest remaining loss, and the
    place to start.
@@ -892,12 +1112,52 @@ sub-question: RC 44 reads one of two discrete converter rates.
    1024 B write looked fine on counters while its whole-run tone fell
    to 500 codes.
 
-0c. **Answered. The host is stuck, the device is not, and a software
-   detach releases it.**
+   **Answered on Windows: `Feeder.WRITE_SIZE` is a macOS workaround, not
+   a rule** (2026-08-25, `docs/windows.md`). The constant-512 policy
+   exists because "whatever is due, capped at 16 KB" lost 0.45-0.85%
+   above 200 ksps here. Swept against rate on Windows - four write
+   policies including the legacy due-sized path and the 1536 B size that
+   loses most, across six rates from 200,000 to 1,392,857 sps - **24
+   runs, 0 B deficit in every one.** Confirmed at volume: 23.48 MB
+   through the legacy path at RC 39, the worst rate on record here,
+   deficit 0 B. macOS loses about 516 KB on that same run.
+
+   So the byte-conservation half of this debt does not transfer. The
+   Windows figures are the honest ones and they were taken with drains.
+
+   **The policy keeps its place, for a different reason.** Underruns do
+   depend on write size on Windows even though bytes do not: 16384 B
+   roughly doubles them against 512 B at every rate (0 -> 3 at RC 195,
+   0 -> 15 at RC 65, 21 -> 37 at RC 28). Constant 512 is still the right
+   default; the justification in the comment above it is the wrong one
+   off macOS, and should say ring stability rather than byte loss.
+
+0c. **Answered, and now confirmed host-specific. The host is stuck, the
+   device is not, and a software detach releases it.**
 
    Not fixed - it is a macOS defect this firmware cannot reach - but
    diagnosed, reproducible in thirty seconds, and recoverable without
-   touching the cable. What is left is a prediction to test, below.
+   touching the cable.
+
+   **The prediction has been tested and it held** (2026-08-25, Windows
+   11, second board; `docs/windows.md`). Same firmware, same
+   reproducer, no wedge: 0 in 40 cycles of the standard soak and 0 in 12
+   of a harder variant that closes with a write actively transferring
+   430 KB/s, against 9 in 30 on macOS. It is this host.
+
+   **But the mechanism is not the one that was assumed, and that is the
+   part that matters.** Windows does not survive the backlog - it never
+   builds one. `usbser.sys` paces the writer at the device's consumption
+   rate, so a 256 KB write returns in 0.193 s having delivered all but
+   about 1 KB, and `close()` then has nothing to dispose of. macOS
+   buffers 55-450 KB below the tty layer and hangs disposing of it.
+
+   **That single difference also explains the byte loss.** A driver that
+   applies backpressure cannot silently discard, and Windows loses zero
+   bytes at every rate from 200,000 to 1,392,857 sps. So 0c and
+   0a/0b/0i/0k are two symptoms of one macOS behaviour rather than two
+   faults - worth knowing before any more of either is attributed to the
+   device.
 
    **The device is innocent, measured rather than assumed.** During a
    live wedge, read over the control channel (a different interface,
@@ -961,9 +1221,20 @@ sub-question: RC 44 reads one of two discrete converter rates.
    outstanding at close is part of the condition, not merely that
    something is. Windows blocks in WriteFile anyway.
 
-   If it never wedges elsewhere, 0c is macOS's and this firmware is done
-   with it. If it reproduces everywhere, the belief is wrong and the
-   device is back in scope.
+   **Run on Windows 11, 2026-08-25: 0 wedges in 40 cycles, worst close
+   0.002 s.** So 0c is macOS's and this firmware is done with it.
+
+   One caveat on reading that as a verdict on the close path: the
+   standard soak cannot wedge Windows, because WriteFile is paced by the
+   device and returns with ~1 KB outstanding, so `close()` never faces a
+   backlog. The condition had to be built deliberately - a slow DAC, a
+   4 MB write from a writer thread, `close()` from another thread one
+   second in - and the device counted `in=430080` during that second,
+   proving the write was moving data at full rate when the close hit it.
+   Twelve cycles, no wedge. Details in `docs/windows.md`.
+
+   Linux is still untried, and would say whether this is macOS
+   specifically or every CDC-ACM stack that buffers.
 
    The earlier entries follow, including the DPRAM re-allocation defect
    found and fixed on the way - real, confirmed by a counter, and not

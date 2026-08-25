@@ -14,12 +14,12 @@ answer to the next question, and this channel is meant to be polled.
 """
 
 import os
-import select
 import struct
-import termios
 import threading
 import time
 import zlib
+
+import transport
 
 MAGIC = b"DUEC"
 # 2: IDENTITY grew the firmware version over its reserved byte, so its
@@ -176,9 +176,10 @@ class Control:
             return
         fd, self.fd = self.fd, None
         try:
-            termios.tcflush(fd, termios.TCIOFLUSH)
-        except (OSError, termios.error):
-            # termios.error is not an OSError, so `except OSError`
+            fd.flush_both()
+        except OSError:
+            # The platform's own flush error is swallowed inside
+            # transport.flush_both(); termios.error is not an OSError
             # would not catch a port that had gone away.
             pass
 
@@ -186,7 +187,7 @@ class Control:
 
         def _close():
             try:
-                os.close(fd)
+                fd.close()
             finally:
                 done.set()
 
@@ -213,11 +214,11 @@ class Control:
         """
         end = time.time() + secs
         while time.time() < end:
-            r, _, _ = select.select([self.fd], [], [], 0.05)
+            r = transport.wait_any([self.fd], 0.05)
             if not r:
                 break
             try:
-                if not os.read(self.fd, 4096):
+                if not self.fd.read(4096):
                     break
             except (BlockingIOError, OSError):
                 break
@@ -225,11 +226,11 @@ class Control:
 
     # -- raw ---------------------------------------------------------
     def send_raw(self, data):
-        os.set_blocking(self.fd, True)
+        self.fd.set_blocking(True)
         try:
-            n = os.write(self.fd, data)
+            n = self.fd.write(data)
         finally:
-            os.set_blocking(self.fd, False)
+            self.fd.set_blocking(False)
         if n != len(data):
             raise ProtocolError(f"short write: {n} of {len(data)}")
 
@@ -243,10 +244,10 @@ class Control:
             left = end - time.time()
             if left <= 0:
                 return None
-            r, _, _ = select.select([self.fd], [], [], min(left, 0.1))
+            r = transport.wait_any([self.fd], min(left, 0.1))
             if r:
                 try:
-                    chunk = os.read(self.fd, 4096)
+                    chunk = self.fd.read(4096)
                 except (BlockingIOError, OSError):
                     chunk = b""
                 if chunk:
