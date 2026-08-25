@@ -20,7 +20,6 @@ and 1 carry samples, 2 and 3 carry commands - and IOKit is asked for it
 rather than the node name being pattern-matched.
 """
 
-import glob
 import re
 import subprocess
 import sys
@@ -41,6 +40,19 @@ BANNER_MARK = b"due_oscilloscope"
 VID = 0x2341
 PID_CONSOLE = 0x003D                  # programming port, via the 16U2
 PID_NATIVE = 0x003E                   # native port, the SAM3X's own USB
+
+
+def answers_banner(dev, timeout=1.5):
+    """Does this node produce the firmware banner?
+
+    No longer used for discovery - that is VID/PID now, on every
+    platform, because probing opens the programming port and opening it
+    resets the board. Kept because "is there working firmware behind
+    this node" is a different and still useful question from "which node
+    is this", and the two were conflated for as long as discovery
+    probed.
+    """
+    return _responds(dev, timeout)
 
 
 def _responds(dev, timeout=1.5):
@@ -178,12 +190,16 @@ def native_nodes(exclude=None):
     Discovery here never opens a port. Opening the programming port
     asserts NRSTB and resets the board, so a running daemon cannot
     afford to probe.
+
+    Filtered by USB VID/PID on every platform. The POSIX branch used to
+    glob /dev/cu.usbmodem* with no VID/PID test at all, which matches the
+    programming port and a second board's ROM SAM-BA node (03eb:6124 is
+    a cu.usbmodem* too) - and native_order sorted the programming port
+    *first*, because its serial sorts before B-01. Latent only because
+    both callers pass exclude=self.control.
     """
-    if WINDOWS:
-        nodes = [d for d, v, p, _i, _s in _pyserial_nodes()
-                 if (v, p) == (VID, PID_NATIVE) and d != exclude]
-    else:
-        nodes = [n for n in glob.glob("/dev/cu.usbmodem*") if n != exclude]
+    nodes = [d for d, v, p, _i, _s in _pyserial_nodes()
+             if (v, p) == (VID, PID_NATIVE) and d != exclude]
     return native_order(nodes)
 
 
@@ -206,36 +222,31 @@ def find_all_ports(wait=8.0):
     """
     end = time.time() + wait
     while True:
-        if WINDOWS:
-            # Identify by USB VID/PID rather than by probing. The
-            # programming port is 2341:003D and the native pair
-            # 2341:003E; that is stable across every OS, and it avoids
-            # opening - and therefore resetting - the board just to find
-            # out what it is.
-            found = _pyserial_nodes()
-            ctl = next((d for d, v, p, _i, _s in found
-                        if (v, p) == (VID, PID_CONSOLE)), None)
-            rest = native_order([d for d, v, p, _i, _s in found
-                                 if (v, p) == (VID, PID_NATIVE)])
-            if ctl or rest:
-                return (ctl,
-                        rest[0] if rest else None,
-                        rest[1] if len(rest) > 1 else None)
-            if time.time() >= end:
-                return None, None, None
-            time.sleep(0.5)
-            continue
-
-        nodes = sorted(glob.glob("/dev/cu.usbmodem*"))
-        ctl = next((n for n in nodes if _responds(n)), None)
-        if ctl:
-            rest = native_order([n for n in nodes if n != ctl])
+        # Identify by USB VID/PID on every platform, not by probing.
+        #
+        # The programming port is 2341:003D and the native pair 2341:003E,
+        # and pyserial reports both correctly on macOS as well - measured
+        # in review, not assumed. So the "port that answers h" probe is
+        # gone: it opened the programming port to find out what it was,
+        # and opening it asserts NRSTB and resets the board. Discovery
+        # that costs a reset is not discovery a running daemon can do,
+        # and that was as true on macOS as anywhere.
+        #
+        # Ordering is the one thing that stays platform-specific, and it
+        # lives in native_order(): pyserial takes `location` from the
+        # parent USB device on macOS, so both CDC functions report the
+        # same string there and only IOKit can tell interface 1 from 3.
+        found = _pyserial_nodes()
+        ctl = next((d for d, v, p, _i, _s in found
+                    if (v, p) == (VID, PID_CONSOLE)), None)
+        rest = native_order([d for d, v, p, _i, _s in found
+                             if (v, p) == (VID, PID_NATIVE)])
+        if ctl or rest:
             return (ctl,
                     rest[0] if rest else None,
                     rest[1] if len(rest) > 1 else None)
         if time.time() >= end:
-            rest = native_order(nodes)
-            return None, (rest[0] if rest else None), None
+            return None, None, None
         time.sleep(0.5)
 
 

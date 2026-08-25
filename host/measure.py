@@ -1443,7 +1443,13 @@ class LoopResult:
         """
         if self.stream.frames == 0:
             return False
-        if self.stream.first_seq > 10:
+        # Allow for frames the run deliberately discarded while settling,
+        # exactly as tests/helpers.py assert_fresh does. Those frames are
+        # this run's, read and thrown away on purpose; a bare
+        # `first_seq > 10` calls every loop run stale - on macOS
+        # first_seq is 86 - and two definitions of freshness that
+        # disagree is how the next session loses an afternoon.
+        if self.stream.first_seq > 10 + getattr(self, "settle_frames", 0):
             return False
         span = self.stream.dev_span_s
         want = host_seconds if host_seconds is not None else self.elapsed_s
