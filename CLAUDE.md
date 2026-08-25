@@ -161,10 +161,27 @@ Check here before reasoning from general Arduino knowledge.
   device proves nothing without draining the pipeline first** - 55 to
   450 KB sits in the CDC driver below the tty layer. See `docs/usb.md`.
 - **A CDC device must keep draining bulk OUT even when nothing uses
-  it.** macOS's `close()` waits for in-flight write URBs; a NAKing pipe
-  never completes them and the host process hangs in `close()` holding
-  the port. The main loop drains and discards OUT when no consumer owns
-  it - do not remove that.
+  it.** The main loop drains and discards OUT when no consumer owns it -
+  do not remove that, and do not slow it down either: gating it to 1 kHz
+  narrows the drain to ~2 MB/s against a host that writes ~1.8 MB/s, and
+  the margin *is* the guarantee.
+
+  **But the explanation attached to this rule is wrong, and the
+  correction matters more than the rule.** It used to say macOS hangs in
+  `close()` because a NAKing pipe never completes its write URBs. That
+  was never measured, because the process that wedges holds both ports.
+  Read over the control channel during an actual wedge, the device is
+  running its main loop at 143 k passes/s and taking the drain branch on
+  **every one of them**, with both banks free and nothing pending. It is
+  draining an empty pipe as fast as the hardware allows while the host
+  sits in `close()`. Objective 0c is host-side; stop attributing it to
+  the device.
+- **A host that closes the port without stopping playback used to strand
+  the device.** The drain guard is `!play_active() && !stream_out_in_use()`,
+  and playback stayed "active" for ever with its OUT DMA armed for bytes
+  nobody would send. Playback now stops itself after 500 ms with no byte
+  arriving (`play_abandoned` counts it), which also changes AWG
+  behaviour: a starved feed used to hold its last buffer indefinitely.
 - **There is no CPU pinning on macOS.** Predictable host-side streaming
   comes from the QoS class plus the Mach time-constraint band, wrapped
   in `host/rt.py`.

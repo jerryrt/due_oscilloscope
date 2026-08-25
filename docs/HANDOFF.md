@@ -692,7 +692,49 @@ sub-question: RC 44 reads one of two discrete converter rates.
    1024 B write looked fine on counters while its whole-run tone fell
    to 500 codes.
 
-0c. **A real cause found and fixed. The wedge still happens.**
+0c. **It is host-side. The device is draining throughout.**
+
+   Measured, finally, because the control channel is a different
+   interface and keeps answering while the sample port is stuck. Taken
+   during a live wedge:
+
+   ```
+   loop passes  +216408 in 1.51 s     143 k passes/s
+   drain polls  +216408               every single pass
+   ```
+
+   Both EP2 banks free, nothing pending, not stalled, AUTOSW off. The
+   device is draining an empty pipe as fast as the hardware allows while
+   macOS waits in `close()`. **The recorded mechanism - a NAKing pipe
+   that never completes the host's write URBs - is not what happens.**
+   Every earlier diagnosis had to assume the device's side; none could
+   read it.
+
+   **A thirty-second reproducer**, `tools/soak0c.py`: soak port
+   open/close cycles with write URBs deliberately outstanding, which is
+   the one thing the previous session listed as never tried. Closing
+   with playback still active wedged at cycles 8, 5 and 2 across three
+   runs; closing after stopping it ran 40 cycles clean with a worst
+   close of 0.005 s.
+
+   **Where to look next, given the device is exonerated:** what differs
+   between those two cases on the *host* side. Stopping playback makes
+   the device consume the queue before close; not stopping leaves data
+   queued below the tty layer. So the condition is likely "close() with
+   bytes still outstanding", and the device's readiness to accept them
+   is irrelevant - which would explain why fourteen *drained* runs closed
+   in 0.00 s and why `tcflush` never helped.
+
+   Two things worth trying that have not been: `ioreg`/`ioclasscount`
+   on the pipe state during a wedge, and whether a `libusb` handle on
+   the same device can complete or abort the pipe from outside the
+   wedged process.
+
+   The earlier entry follows, including the DPRAM re-allocation defect
+   that was found and fixed on the way - real, confirmed by a counter,
+   and not the cause of this.
+
+   **A real cause found and fixed. The wedge still happens.**
 
    **Read the correction at the end of this entry before quoting the
    233-passed run.** One clean full-suite run was taken as confirmation
