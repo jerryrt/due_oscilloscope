@@ -39,6 +39,33 @@
 /* 4 buffers gives two spare while one fills and one drains. */
 #define ACQ_NBUF              4
 #define ACQ_BUF_SAMPLES       2032   /* 4064 B payload + 32 B header = 8 x 512 */
+#define ACQ_HDR_BYTES         32     /* sizeof(frame_header_t) */
+#define ACQ_FRAME_BYTES       (ACQ_HDR_BYTES + ACQ_BUF_SAMPLES * 2)
+
+/*
+ * A capture buffer with its frame header in front of it.
+ *
+ * The header sits in the same allocation as the payload, immediately
+ * before it, so a finished frame is 4096 contiguous bytes and the USB
+ * DMA can send it in one transfer. The PDC is pointed at `samples` and
+ * never touches `hdr`; the processor writes `hdr` and never touches
+ * `samples`. That is invariant 1 expressed in a struct: the only thing
+ * the CPU does to a sample is decide which buffer it lives in.
+ *
+ * Aligned to 4 because both the PDC and the UOTGHS DMA want word
+ * addresses. Identical to Track B's acq_slot_t, deliberately: the two
+ * tracks share no source, so the way they stay comparable is by being
+ * transliterations of each other.
+ */
+typedef struct __attribute__((aligned(4))) {
+	uint8_t  hdr[ACQ_HDR_BYTES];
+	uint16_t samples[ACQ_BUF_SAMPLES];
+} acq_slot_t;
+
+/* If the header ever grows, the frame stops being 8 x 512 bytes and
+ * every short-packet rule in docs/protocol.md breaks quietly. */
+static_assert(ACQ_FRAME_BYTES % 512 == 0,
+              "a frame must be a whole number of 512-byte packets");
 
 /*
  * Measured on this board: RC 86 works, RC 85 drops every other trigger
@@ -66,7 +93,7 @@
 /* Minimum compare value for a given channel count. Measured, not derived. */
 #define ACQ_MIN_RC_FOR(n)     ((n) == 1u ? ACQ_MIN_RC_1CH : ACQ_MIN_RC)
 
-extern uint16_t acq_buf[ACQ_NBUF][ACQ_BUF_SAMPLES];
+extern acq_slot_t acq_slot[ACQ_NBUF];
 
 void     acq_init(void);
 bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
@@ -98,7 +125,13 @@ static inline bool acq_frame_available(void)
 
 static inline const uint16_t *acq_frame_data(void)
 {
-	return acq_buf[acq_consumed % ACQ_NBUF];
+	return acq_slot[acq_consumed % ACQ_NBUF].samples;
+}
+
+/* The whole frame - header headroom first - for a single DMA. */
+static inline uint8_t *acq_frame_bytes(void)
+{
+	return acq_slot[acq_consumed % ACQ_NBUF].hdr;
 }
 
 static inline void acq_frame_release(void)

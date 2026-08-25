@@ -9,7 +9,18 @@
 #include <Arduino.h>
 #include "acq.h"
 
-uint16_t acq_buf[ACQ_NBUF][ACQ_BUF_SAMPLES];
+/*
+ * Bank 1, so that the PDC writing conversions and the USB DMA reading
+ * finished frames are not arbitrating for the same bus matrix slave as
+ * the playback ring and everything else. Measured on Track B: a
+ * 4096-byte transfer out of bank 0 costs 439 ADC overruns per 4 s at
+ * the full rate, and moving the ring halved it.
+ *
+ * The placement needs linker/arduino_due_x_sram1.ld, passed with
+ * --build-property build.ldscript=... - see tools/sketch.sh. Building
+ * without it puts this in .bss, which still links and still runs.
+ */
+acq_slot_t acq_slot[ACQ_NBUF] __attribute__((section(".sram1")));
 
 volatile uint32_t acq_buffers_done;
 volatile uint32_t acq_rxbuff_overruns;
@@ -129,9 +140,9 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	tc_init(rc);
 
 	/* Prime the PDC: current buffer plus the next one. */
-	ADC->ADC_RPR  = (uint32_t)acq_buf[0];
+	ADC->ADC_RPR  = (uint32_t)acq_slot[0].samples;
 	ADC->ADC_RCR  = ACQ_BUF_SAMPLES;
-	ADC->ADC_RNPR = (uint32_t)acq_buf[1];
+	ADC->ADC_RNPR = (uint32_t)acq_slot[1].samples;
 	ADC->ADC_RNCR = ACQ_BUF_SAMPLES;
 
 	(void)ADC->ADC_ISR;                      /* clear stale flags */
@@ -182,7 +193,8 @@ void ADC_Handler(void)
 		/* The PDC has already promoted the next descriptor, so RPR now
 		 * points at filling+1. Load the one after that. */
 		filling = (filling + 1u) % ACQ_NBUF;
-		ADC->ADC_RNPR = (uint32_t)acq_buf[(filling + 1u) % ACQ_NBUF];
+		ADC->ADC_RNPR =
+			(uint32_t)acq_slot[(filling + 1u) % ACQ_NBUF].samples;
 		ADC->ADC_RNCR = ACQ_BUF_SAMPLES;
 		acq_buffers_done++;
 
