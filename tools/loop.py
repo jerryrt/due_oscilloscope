@@ -275,7 +275,8 @@ def run_loop(board, sps, secs, nch, tone_hz):
         if amp < 100:
             print("  ! amplitude far below 1371: check the DAC0 -> A0 jumper. "
                   "A floating A0 reads noise and looks exactly like this.")
-    return st
+    # Return the tone actually emitted, not the one asked for. See main().
+    return st, tone
 
 
 def windows(st, fs, tone, ms=40.0, settle=0.1):
@@ -323,9 +324,21 @@ def main():
         if args.mode in ("capture", "both"):
             run_capture(board, args.secs)
         if args.mode in ("loop", "both"):
-            st = run_loop(board, args.sps, args.secs, args.nch, args.tone)
+            st, tone = run_loop(board, args.sps, args.secs, args.nch,
+                                args.tone)
             fs = st.rate or args.sps
-            w = windows(st, fs, args.tone)
+            # The REAL tone, not args.tone.
+            #
+            # build_waveform picks a whole-sample period, so what the DAC
+            # actually emits is sps / round(sps / tone). At 200,000 sps
+            # that is exactly 1000 Hz and the distinction is invisible;
+            # at 453,488 it is 1001.077 Hz, and analysing at 1000.0 makes
+            # the window a non-integer number of real cycles - precisely
+            # the leakage the comment in windows() says it exists to
+            # prevent. It read as the per-window level sitting ~4 codes
+            # under the whole-run aggregate, which was written up as
+            # possible ADC track-and-hold settling. It was this.
+            w = windows(st, fs, tone)
             if w:
                 print(f"  per-window amplitude over {len(w)} windows "
                       f"(head discarded): min {min(w):.1f} max {max(w):.1f} "
