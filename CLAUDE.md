@@ -38,6 +38,41 @@ no board. See `docs/status.md` for numbers, `docs/frontend.md` and
 `docs/daemon-api.md` for the host architecture, and `docs/HANDOFF.md`
 for the current objectives.
 
+## Ask what the buffer was doing before blaming the transport
+
+Objective 0i - playback underruns at the top of the AWG ladder - was
+open across many sessions. It was attributed in turn to feed policy,
+write size, scheduling, real-time thread priority, host driver
+buffering, and the difference between three operating systems. Two hosts
+were characterised in detail. A closed-loop rate feed was designed to
+fix it.
+
+The cause was `PLAY_PRIME_BUFS = 4`: the DAC's timer started once four
+of thirty-two ring slots held data. At the top rate that is 1.4 ms of
+runway. Raising it to 24 takes the underruns to **zero at every rate on
+the ladder**, byte conservation untouched, and the ring stops living at
+the ENDTX guard - occmin goes from 2 to about 21.
+
+**One constant. The diagnosis that found it took ten minutes.**
+
+Run the same rate for 1 s, 3 s and 9 s. At RC 28 all three produced
+21-24 underruns. Nine times the duration, the same count - so it was
+never a leak, it was a burst at the start, and only the state of the
+ring at t=0 could explain it. Everything downstream of that question was
+answered by one grep.
+
+**The lesson, and it generalises past this bug.** A rate-dependent defect
+that does not scale with duration is a startup condition. Ask how full
+the buffer is when the consumer starts *before* characterising the
+producer, the transport, or the operating system - those are expensive
+to measure and this is one constant to read. The sessions spent on host
+driver behaviour were not wasted (they settled objectives 0c and 0a/0b,
+which were real and are macOS's) but they were spent on the wrong
+suspect for this.
+
+The cheap question first: **is the count proportional to how long you
+ran?**
+
 ## Invariants
 
 Violating any of these is a design regression, not a style preference.
@@ -246,12 +281,27 @@ Check here before reasoning from general Arduino knowledge.
   comes from the QoS class plus the Mach time-constraint band, wrapped
   in `host/rt.py`.
 
-## The development platform is moving to Windows (2026-08-25)
+## Platform tiers
+
+| Tier | Platform | Standard |
+|---|---|---|
+| **1** | **Windows** | Develop, test and deploy. 100% correctness; a failure here is a bug to fix, not a platform quirk to document |
+| **1, deferred** | native Linux | Intended tier 1. **No host, nothing measured.** Not a claim until a Linux machine has a board on it |
+| **2** | macOS | Porting target. May compromise where the OS forces it, and does. **Also the provenance of every figure in `docs/status.md` until the 0-series is re-taken** |
+| **2** | WSL2 | Porting target for the *software* path only. Real Linux kernel, but no native USB - see below |
+
+That second row carries two things and they pull in opposite directions.
+macOS is where the project may compromise *going forward*, and it is
+where essentially everything already measured was measured. "Tier 2, may
+compromise" is a statement about which host to trust for new numbers -
+it is **not** licence to discount the existing record, which is the only
+record there is for most of the 0-series. Re-take a figure before
+disbelieving it.
 
 macOS's CDC-ACM stack silently discards bytes `write()` has counted, in
-two separate measured ways (see the fact below), and that defect has
-been the subject of most of the last several sessions. The decision is
-to develop on **Windows** and treat **macOS as a porting target**.
+two separate measured ways, and that defect has been the subject of most
+of the last several sessions. So the project was written on macOS and
+macOS is now the one that has to keep up.
 
 **The Windows run is in `docs/windows.md` and it settles two objectives
 at once.** Objective 0c does not reproduce there - 0 wedges in 52 cycles
@@ -259,7 +309,9 @@ across two reproducers, against 9 in 30 on macOS - and neither does the
 playback byte loss: 0 B lost at every rate from 200,000 to 1,392,857
 sps, including the two that lose most here. Both are the same driver
 behaviour, because a stack that applies backpressure to the writer
-cannot silently discard. Do not attribute either to the device.
+cannot silently discard. Do not attribute either to the device. A
+macOS-only failure is a tier-2 compromise to record, not a defect to
+chase in the firmware.
 
 It confirms objective 0i rather than dismissing it. RC 44 and RC 39 run
 1.6% slow on Windows too, by the device's own `runus`, so the slow
@@ -273,14 +325,79 @@ numbers are the project's numbers. Re-taking the 0-series in
 `Feeder.WRITE_SIZE` may turn out to be a macOS workaround rather than a
 rule.
 
-Everything in `host/` is POSIX-only today - `termios`, `fcntl`, `select`
-on raw descriptors, `/dev/cu.*` globs - and `host/rt.py` promotes
-nothing off macOS. `docs/frontend.md` has the backend split sketched.
-What already runs on any host: `tools/bench.py` (byte conservation and
-transport rates), `tools/loop.py` (frame integrity and the captured
-tone), `tools/flash.py`, `tools/toolchain.py` and
-`tools/soak0c_portable.py` - pyserial or stdlib, all matching ports on
-USB VID/PID rather than node name.
+**All platform difference lives in `host/transport.py` and
+`host/rt.py`.** Everything above them - `measure.py`, the daemon, the
+front end, `tests/` - is written once. If a change needs to know the OS
+anywhere else, that is the seam failing and the fix belongs in the seam.
+`host/` is no longer stdlib-only: it takes pyserial, which is declared
+in `requirements-dev.txt`. The old rule was always "a fact about the
+code, not a rule new code inherits".
+
+### WSL2 is tier 2, and only for the software path
+
+WSL2 runs a **real Linux kernel** (5.15.153.1-microsoft-standard-WSL2) in
+a light VM - not emulation - so syscall semantics, glibc and Python are
+genuinely Linux. That makes it useful, and it has already earned its
+keep: it is where `rt.promote()`'s `SCHED_FIFO` path ran for the first
+time anywhere, and where the `accept()` teardown bug was found.
+
+**What it cannot do is measure this project.** WSL2 has no native USB
+passthrough. A device reaches it only through `usbipd-win`, which
+detaches the device on the Windows side and tunnels every URB over TCP
+to `vhci-hcd` inside the VM:
+
+    native Linux   app -> cdc_acm -> usbcore -> xHCI -> wire
+    WSL2 + usbipd  app -> cdc_acm -> usbcore -> vhci-hcd -> TCP
+                       -> usbipd-win -> Windows USB stack -> xHCI -> wire
+
+`cdc_acm` is real and you get a real `/dev/ttyACM0`. What is not real is
+what sits under it, and it changes precisely the properties this project
+exists to measure:
+
+- **Buffering and backpressure.** The central finding here is "macOS
+  buffers 55-450 KB and discards; Windows applies backpressure". usbip
+  inserts another queue between `cdc_acm` and the wire.
+- **Throughput.** URBs serialise over one TCP connection, so the 30-48
+  MB/s figures would measure usbip's ceiling rather than the device's.
+- **Underruns and jitter.** Completion timing crosses two schedulers and
+  a socket.
+- **Objective 0c.** "Does `close()` hang on outstanding write URBs" would
+  be testing `vhci`'s URB cancellation, not native `cdc_acm` + xHCI.
+
+So: **valid on WSL2** - port discovery, frame parsing, header CRC,
+sequence continuity, command round-trips, the daemon, the whole
+board-free suite. **Not valid** - any throughput, underrun, byte-margin
+or `close()` figure.
+
+**And the trap worth naming.** A usbip-induced dropout looks exactly like
+a device fault. Proving the firmware innocent of a host defect is what
+most of the last several sessions went into; a tunnel that manufactures
+the same symptoms is worth using only with that written down first.
+
+**Measured, and the four bullets above were mostly wrong.** The
+experiment was run - both Due devices attached to WSL2 through usbipd,
+the same `bench.py` against the same board, minutes apart. Throughput is
+*not* degraded (out 37.25 vs 37.3-37.9 MB/s; in 30-32 vs 30-33), byte
+conservation holds at every rate, and underruns are **lower** through the
+tunnel than natively on Windows - median 0 against 6 at RC 44, 0 against
+8 at RC 39.
+
+The tunnel is itself a queue in front of the device, and a queue is what
+the playback ring wants. So a usbip figure is still not a Linux figure,
+but the error is **optimistic, not pessimistic** - which is the worse
+trap, because a host that looks good through a tunnel invites the
+conclusion that it is good. "Linux buffers ahead without discarding" and
+"usbip supplies the elasticity" predict the same numbers, and only a
+native host separates them. Full data in `docs/windows.md`.
+
+Stability, not fidelity, is the real defect: the tunnel dropped twice
+unprompted (`vhci_hcd: connection closed`) and needed a manual
+re-attach.
+
+Native Linux stays **tier 1, deferred**: `transport.py`'s POSIX backend
+and `rt.py`'s `SCHED_FIFO` path are exercised under WSL2, but no Linux
+machine has had a board on it. Treat the first native Linux run as
+bring-up, and do not let a WSL2 pass stand in for it.
 
 ## Ports on the development host
 

@@ -47,7 +47,45 @@ static uint32_t dma_start_off;       /* fill_off when it started */
 static uint32_t dma_published;       /* slots already published from it */
 static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
 
-#define PLAY_PRIME_BUFS 4u
+/*
+ * How full the ring must be before the DAC's timer is started.
+ *
+ * This is the whole of the playback underrun problem on a host that does
+ * not buffer ahead of the device, and it was set to 4 - an eighth of the
+ * ring, and 1.4 ms of runway at the top rate.
+ *
+ * Measured on Windows, five runs per rate, underruns per run:
+ *
+ *   prime    RC 44        RC 39         RC 28
+ *      4     4-7          7-10          22-25
+ *     12     1-5          5-11          14-21
+ *     20     3-6          1-7           13-20
+ *     22     0            0             0
+ *     24     0            0             0
+ *     28     0            0             0
+ *
+ * Zero at every rate from 22 upward, and occupancy stops living at the
+ * ENDTX guard: occmin goes from 2 to 21-26. The threshold is sharp
+ * because while the timer is stopped nothing drains, so the ring fills
+ * to exactly this many slots and that is where it then sits - the prime
+ * sets the operating point, not just the start.
+ *
+ * The count is a startup burst and nothing else, which is what says this
+ * is the right knob: at prime 4 a 1 s run and a 9 s run at RC 28 both
+ * produce 21-24 underruns. Nine times the duration, the same count.
+ *
+ * 24 rather than 22: above the measured threshold with margin, and eight
+ * slots clear of the ring so a multi-slot DMA span still has somewhere
+ * to land while priming.
+ */
+#define PLAY_PRIME_BUFS 24u
+
+/*
+ * ...unless the host simply has less than that to send. Below this the
+ * ENDTX guard repeats immediately, so it is the floor rather than a
+ * choice.
+ */
+#define PLAY_PRIME_MIN 4u
 
 bool play_active(void) { return active; }
 
@@ -77,6 +115,14 @@ bool play_active(void) { return active; }
  * the difference is never silent.
  */
 #define PLAY_ABANDON_MS 500u
+
+/*
+ * How long the host must be quiet before a short playback is started
+ * with whatever arrived. Well inside PLAY_ABANDON_MS so the waveform
+ * plays rather than being abandoned, and long enough that an ordinary
+ * gap between writes does not trip it.
+ */
+#define PLAY_PRIME_QUIET_MS 100u
 
 volatile uint32_t play_abandoned;
 static uint32_t abandon_bytes;
@@ -323,8 +369,23 @@ void play_service(void)
 	}
 
 prime:
+	/*
+	 * Start on a full enough ring, or on a host that has stopped
+	 * talking. Without the second clause a playback shorter than
+	 * PLAY_PRIME_BUFS never starts at all: the ring never reaches the
+	 * threshold, the abandon timer fires, and the waveform is dropped
+	 * having been received intact. That is a real regression from a
+	 * prime of 4, and it is the price of raising it - so it is paid
+	 * here rather than left for someone to find.
+	 */
 	if (!primed && play_produced >= PLAY_PRIME_BUFS) {
 		primed = true;
+	} else if (!primed && play_produced >= PLAY_PRIME_MIN
+	           && play_bytes_in == abandon_bytes
+	           && millis() - abandon_at_ms > PLAY_PRIME_QUIET_MS) {
+		primed = true;
+	}
+	if (primed && run_t0_us == 0) {
 		run_t0_us = micros();
 		TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
 	}

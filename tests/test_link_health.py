@@ -126,8 +126,25 @@ def test_native_port_offers_both_functions(board, track):
         f"the two nodes belong to different devices: {sam_serial!r} and "
         f"{cmd_serial!r}. Two boards are attached, or discovery paired "
         f"them wrongly.")
-    assert (sam_iface, cmd_iface) == (1, 3), (
-        f"interfaces are {sam_iface} and {cmd_iface}, not 1 and 3. The "
+    # A CDC-ACM function spans TWO interfaces - a Communications class
+    # interface carrying the notification endpoint, and a Data class one
+    # carrying bulk. So the sample function is interfaces 0+1 and the
+    # command function 2+3, and which of each pair a host reports is the
+    # host's choice: macOS names the data interface (1 and 3) because the
+    # BSD callout node hangs off it, Windows names the comm interface
+    # (0 and 2) because usbser binds the function there. Both are correct
+    # about the same descriptor.
+    #
+    # So assert the structure, which is the actual contract in
+    # docs/control-protocol.md: samples first, commands one whole
+    # function later. Pinning the absolute numbers pins one OS's naming.
+    assert sam_iface in (0, 1), (
+        f"the sample function reports interface {sam_iface}, which is not "
+        f"in the first CDC function (0+1). Discovery has paired the nodes "
+        f"wrongly, or the descriptor changed.")
+    assert cmd_iface - sam_iface == 2, (
+        f"interfaces are {sam_iface} and {cmd_iface}: the command function "
+        f"is not exactly one CDC function after the sample one. The "
         f"numbering is a contract shared with Track A - see "
         f"docs/control-protocol.md - so a change here breaks the host "
         f"against one track or the other.")
@@ -151,15 +168,15 @@ def test_command_port_opens_and_closes(board, track):
         pytest.skip("no command node; covered by the test above")
 
     t0 = time.time()
-    fd = measure.open_raw(commands, 115200, dtr=True)
+    port = measure.open_raw(commands, 115200, dtr=True)
     opened = time.time() - t0
     try:
-        os.set_blocking(fd, True)
-        n = os.write(fd, b"\x00" * 2048)
+        port.set_blocking(True)
+        n = port.write(b"\x00" * 2048)
         assert n == 2048, f"short write of {n} bytes to the command port"
     finally:
         t0 = time.time()
-        os.close(fd)
+        port.close()
         closed = time.time() - t0
 
     assert opened < 5.0, f"opening the command port took {opened:.1f} s"
