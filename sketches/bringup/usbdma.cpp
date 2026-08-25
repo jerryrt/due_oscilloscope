@@ -60,6 +60,18 @@ static void ep_apply_autosw(uint32_t ep, bool on)
 {
 	uint32_t cfg = UOTGHS->UOTGHS_DEVEPTCFG[ep];
 
+	/*
+	 * A write that changes nothing must not happen at all, because on
+	 * this controller there is no such thing: every DEVEPTCFG write
+	 * carries ALLOC and re-allocates. Most calls here are redundant -
+	 * releasing a mode that was never claimed - and they were paying
+	 * full price for it. This is half of the fix named in the warning
+	 * above; the other half, re-allocating the endpoints above, has
+	 * nothing to re-allocate until the control channel arrives.
+	 */
+	if (!!(cfg & UOTGHS_DEVEPTCFG_AUTOSW) == on)
+		return;
+
 	if (on)
 		cfg |= UOTGHS_DEVEPTCFG_AUTOSW;
 	else
@@ -118,21 +130,30 @@ static void dma_channel_stop(uint32_t ch)
 			break;
 }
 
-void usbdma_mode(bool in_dma, bool out_dma)
+void usbdma_mode_out(bool on)
 {
 	dma_channel_stop(DMA_OUT_CH);
-	dma_channel_stop(DMA_IN_CH);
+	mode_out = on;
 
-	mode_out = out_dma;
-	mode_in  = in_dma;
-
-	if (out_dma)
+	if (on)
 		ep_take(CDC_RX);
 	else
 		ep_give_back(CDC_RX);
 
-	ep_apply_autosw(CDC_RX, out_dma);
-	ep_apply_autosw(CDC_TX, in_dma);
+	ep_apply_autosw(CDC_RX, on);
+}
+
+void usbdma_mode_in(bool on)
+{
+	dma_channel_stop(DMA_IN_CH);
+	mode_in = on;
+	ep_apply_autosw(CDC_TX, on);
+}
+
+void usbdma_mode(bool in_dma, bool out_dma)
+{
+	usbdma_mode_in(in_dma);
+	usbdma_mode_out(out_dma);
 }
 
 /*

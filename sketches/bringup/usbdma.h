@@ -29,6 +29,15 @@
  * endpoint left in AUTOSW breaks it.
  */
 void     usbdma_mode(bool in_dma, bool out_dma);
+
+/*
+ * One direction at a time, because the two have different owners:
+ * playback claims OUT and capture claims IN, and in loop mode both are
+ * claimed at once. The pair form above sets both and would have each
+ * caller release the other's endpoint.
+ */
+void     usbdma_mode_in(bool on);
+void     usbdma_mode_out(bool on);
 void     usbdma_keepalive(void);   /* re-assert after a core rebuild */
 bool     usbdma_ready(void);
 bool     usbdma_out_claimed(void);
