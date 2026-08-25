@@ -109,6 +109,102 @@ Windows backend so that test runs first.
 consequences as predicted. Treat every "Windows will" here as a
 hypothesis with a test attached.
 
+## Start here: the Windows session handoff (2026-08-25)
+
+**Do this first: unplug and replug the Due's native USB cable.** The
+native port stopped enumerating at the end of the session and no
+software remedy reaches it - `=400Z`, three reflashes and a SAM-BA
+round trip all failed, while SAM-BA itself enumerates fine over the same
+cable, so the hardware is good and the Windows USB stack is not. It
+follows a run of `usbipd` bind/attach/detach cycles and there are seven
+phantom `VID_2341&PID_003E` registrations left behind (COM8, COM9,
+COM11, COM12 and three composite instances). Nothing below can be
+measured until the port is back.
+
+### Where the branches are
+
+| Branch | PR | State |
+|---|---|---|
+| `windows-validation` | #3 -> `main` | 8 commits, CLEAN/MERGEABLE. macOS verified all but the last round |
+| `host-transport-port` | #4 -> #3 | 12 commits. Windows: 228 passed, 1 failed, 12 skipped |
+| `wip/stream-stop-race` | none | **UNTESTED**, do not merge. See below |
+
+The one failure in #4 is issue #5, which is on `main` and is not the
+branch's doing.
+
+The macOS team has stopped. Both PRs carry their full review history and
+every finding they raised is answered in the comments.
+
+### Objective 0i's underrun half is closed, and it was cheap
+
+`PLAY_PRIME_BUFS` was 4 - the DAC started on an eighth of a ring, 1.4 ms
+of runway at the top rate. At 24 the AWG ladder is **zero underruns at
+every rate**, byte conservation untouched, occmin 2 -> 18-26.
+
+The method matters more than the fix: **run the same rate for 1 s, 3 s
+and 9 s.** All three gave 21-24 underruns, so it was a startup burst and
+nothing else. That question is now in `CLAUDE.md` ahead of the
+invariants. Track A still primes at 4 (objective 1c).
+
+### Issue #5 is diagnosed but not fixed
+
+`stream_stop()` aborts an in-flight IN transfer through
+`dma_channel_stop()`, which stops the controller "at the next packet
+boundary" **and does not check that it got one**. On a host that has
+stopped reading there is no next packet boundary, so it returns with the
+channel still enabled and still reading an ADC capture buffer. The next
+run arms the PDC over those buffers.
+
+Measured, splices per 3 s capture, four runs each:
+
+| firmware | splices | max step |
+|---|---|---|
+| `1e11005` (before) | 0, 2, 0, 0 | 39-40 |
+| `91cfe35` (main) | 778-780 every run | 58 |
+| a 2 ms bounded wait at stop | 780 every run | 58 |
+
+A bounded wait at *stop* cannot work - with no reader there is never a
+packet boundary. And 780 splices spread through one run cannot come from
+a stop at the end; they come from the stop *before* the capture, so the
+corruption is inherited.
+
+`wip/stream-stop-race` keeps the abort at stop (invariant 7) and moves
+the wait to `stream_start`, refusing rather than racing (invariant 5).
+**It builds and has never run.** Testing it is the first job after the
+replug.
+
+**One thing unexplained**, and it should be understood before that fix
+is called complete: one early run of the abort firmware measured max 39
+with zero oversized steps, right after a detach and reflash. Every later
+run of the same firmware gave 780.
+
+### How to measure this at all
+
+The sine is a **staircase**, not a continuous wave: each DAC level is
+held for exactly two ADC samples and steps by ~30 codes. So
+`slew_limit()`'s continuous-sine derivative (16.85) is the wrong model,
+and the "3x headroom" in
+`test_device_generated_waveform_is_continuous` is really 1.3x against
+the true step of 39. That is why the test is marginal and why pass/fail
+was a poor instrument.
+
+Collapse the series to its levels and count steps over 45 instead. It
+separates a real defect (780) from noise (0-2) immediately, where the
+test only wobbled between passing and failing.
+
+### The rest, in brief
+
+- **Objective 0h answered**: `Feeder.WRITE_SIZE` is a macOS workaround.
+  24 runs across four write policies and six rates, 0 B deficit in every
+  one; 23.48 MB through the legacy path at RC 39 loses nothing.
+- **WSL2 is tier 2, native Linux tier 1 deferred.** usbip measured, and
+  it does *not* degrade throughput or conservation - it *flatters* the
+  host, because the tunnel is another queue in front of the ring. See
+  `docs/windows.md`.
+- **Track A runs on Windows**: 89/21 smoke, 198/19 full, same three
+  failure classes as Track B. `arduino-cli upload` cannot flash a Due
+  here and fails destructively; `sketch.py` routes through `flash.py`.
+
 ## Where the work stands (2026-08-25)
 
 **Track A parity is a precondition for front-end work (set 2026-08-25).**
