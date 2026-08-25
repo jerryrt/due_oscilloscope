@@ -692,8 +692,11 @@ sub-question: RC 44 reads one of two discrete converter rates.
    1024 B write looked fine on counters while its whole-run tone fell
    to 500 codes.
 
-0c. **Cause found and fixed for the 2026-08-24 wedge; the older ones are
-   not yet closed.**
+0c. **A real cause found and fixed. The wedge still happens.**
+
+   **Read the correction at the end of this entry before quoting the
+   233-passed run.** One clean full-suite run was taken as confirmation
+   and it was not: the same firmware wedged on the next two runs.
 
    `ep_apply_autosw()` switched an endpoint between FIFO and DMA by
    rewriting `DEVEPTCFG` with `ALLOC` still set, which re-allocates it -
@@ -710,7 +713,21 @@ sub-question: RC 44 reads one of two discrete converter rates.
    | | before | after |
    |---|---|---|
    | the 41 s reproducer | wedged, twice | clean, 3:54 |
-   | full Track B suite | wedged, five times | 233 passed, 0 failed |
+   | full Track B suite | wedged, five times | 233/0 once, then wedged twice |
+
+   **The correction.** The 233-passed run was one run. The next two runs
+   of the same code wedged - one with a drain-gating experiment applied,
+   one with it reverted and the binary behaviourally identical to the
+   one that passed. So the DPRAM re-allocation was a real defect and its
+   removal is worth keeping, but it was not the only cause and this
+   objective is not closed.
+
+   **Also tried and rejected: gating the idle bulk OUT drain to 1 kHz.**
+   It is worth 1.68 us of a 6.77 us pass, and it narrows the drain to
+   about 2 MB/s against a host that writes ~1.8 MB/s during playback.
+   The margin is the guarantee, so the throughput of that loop is
+   load-bearing and not a poll to be economised. Reverted; the comment
+   in main.c says so.
 
    **Still open: the original.** The four earlier occurrences are dated
    2026-08-22 and 2026-08-23 and the second CDC function landed on the

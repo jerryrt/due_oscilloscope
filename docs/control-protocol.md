@@ -445,11 +445,11 @@ rather than by patching it *(check: PluggableUSB has not been exercised
 on this board yet)*. Track A keeps the core for enumeration exactly as
 invariant 3 intends.
 
-## The wedge the second function introduced - found and fixed
+## The wedge the second function introduced - one cause found, not the last
 
-**Status: mechanism confirmed on the board, fixed, and measured.** The
-proposal below is kept as it was written, because the reasoning is what
-made the fix a small one, and the result is recorded at the end.
+**Status: a real defect found, confirmed and fixed. The wedge still
+happens.** The proposal below is kept as it was written; the result and
+the correction to it are at the end.
 
 ### What is measured
 
@@ -558,9 +558,22 @@ call sites, and a suite run does hundreds of them.
 | | before | after |
 |---|---|---|
 | the 41-second reproducer | wedged, twice | clean, 3:54 |
-| full Track B suite | wedged, five times | **233 passed, 0 failed, 11:59** |
+| full Track B suite | wedged, five times | 233 passed, 0 failed - **once** |
 
 `cfgfail` stays at zero throughout, so every re-allocation is accepted.
+
+**And that single clean run was read as more than it was.** Two later
+runs of the same code wedged again - once with an unrelated experiment
+applied, once with that experiment reverted and the binary behaviourally
+identical to the one that scored 233. So the tally on the fixed firmware
+is one clean run and one wedged run, not a fix.
+
+What the evidence does support: the re-allocation was a genuine defect,
+it is confirmed by a counter rather than inferred, and removing it took
+the reproducer from wedging twice out of twice to clean. What it does
+not support is that it was the *only* cause. Something else is still
+there, and the earlier framing of this section as "found and fixed" was
+one run of confirmation bias.
 
 **What this does not settle.** The four historical occurrences of
 objective 0c are dated 2026-08-22 and 2026-08-23; the second CDC

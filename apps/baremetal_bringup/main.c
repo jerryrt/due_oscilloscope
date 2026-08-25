@@ -918,6 +918,18 @@ int main(void)
 		 * and tcflush cannot recall a URB already at the controller,
 		 * so the host process hangs in close() holding the port.
 		 */
+		/*
+		 * Every pass, and it was tried the other way.
+		 *
+		 * Gating this to 1 kHz like the two polls above buys 1.68 us
+		 * of a 6.77 us pass - and the suite went from 233 passed to
+		 * 223 passed and a wedge. Four banks per millisecond is about
+		 * 2 MB/s of drain capacity against a host that writes at
+		 * ~1.8 MB/s during playback, so the margin was gone. This is
+		 * not a poll that finds nothing; it is the guarantee that the
+		 * pipe never NAKs indefinitely, and its *throughput* is the
+		 * guarantee, not just its existence.
+		 */
 		if (!play_active() && !stream_out_in_use()) {
 			static uint8_t scrap[512];
 			for (int b = 0; b < 4; b++)
