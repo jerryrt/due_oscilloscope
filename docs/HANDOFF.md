@@ -692,7 +692,65 @@ sub-question: RC 44 reads one of two discrete converter rates.
    1024 B write looked fine on counters while its whole-run tone fell
    to 500 codes.
 
-0c. **It is host-side. The device is draining throughout.**
+0c. **Answered. The host is stuck, the device is not, and a software
+   detach releases it.**
+
+   Not fixed - it is a macOS defect this firmware cannot reach - but
+   diagnosed, reproducible in thirty seconds, and recoverable without
+   touching the cable. What is left is a prediction to test, below.
+
+   **The device is innocent, measured rather than assumed.** During a
+   live wedge, read over the control channel (a different interface,
+   which keeps answering while the sample port is stuck):
+
+   ```
+   loop passes  +145049 in 1.00 s     145 k passes/s
+   drain polls  +145049               a drain on every single pass
+   ```
+
+   Both EP2 banks free, nothing pending, not stalled, AUTOSW off. The
+   device is draining an empty pipe as fast as the hardware allows.
+
+   **It is not the tty layer either.** `TIOCOUTQ` answers `EBADF` while
+   the hang is in progress: `close()` is past the file-table stage and
+   blocked inside the driver.
+
+   **`z` does not help, and that is a fact about `z`.**
+   `RSTC_CR_PROCRST` resets the processor only; the UOTGHS keeps running
+   with its pull-up attached, so the host never sees a disconnect.
+   Twenty seconds, still hung. Do not read that as "the device cannot
+   release it".
+
+   **A software unplug releases it in milliseconds.**
+   `usb_cdc_detach_cycle()` drops the pull-up, waits, and restores it -
+   the recorded physical recovery, in software. Console `=<ms>Z`, and it
+   must be commanded from the *programming* port because detaching takes
+   the control channel down with it. First attempt: 0.02 s. A soak of 30
+   open/close cycles wedged 9 times and recovered **9 of 9**, 0.01 to
+   0.23 s.
+
+   `close_native()` now tries it before giving up, so a wedge costs a
+   re-enumeration instead of the rest of the session.
+
+   **The reproducer**, `tools/soak0c.py`, about thirty seconds: soak
+   port open/close cycles with write URBs outstanding, which is what 0c
+   hangs in. Closing with playback still running wedges roughly one
+   cycle in three; closing after stopping it ran 40 cycles clean with a
+   worst close of 0.005 s.
+
+   **The prediction worth testing, and the reason it matters.** If this
+   is macOS's CDC-ACM close path, the same firmware and the same soak
+   should not wedge on Linux or Windows. Nobody has tried. `host/` is
+   POSIX-only today but `tools/soak0c.py` is small and mostly `os.write`
+   and `os.close`, so porting it is an afternoon and it would turn "we
+   believe it is host-side" into "it is this host". If it reproduces
+   everywhere, the belief is wrong and the device is back in scope.
+
+   The earlier entries follow, including the DPRAM re-allocation defect
+   found and fixed on the way - real, confirmed by a counter, and not
+   the cause of this.
+
+   **It is host-side. The device is draining throughout.**
 
    Measured, finally, because the control channel is a different
    interface and keeps answering while the sample port is stuck. Taken
