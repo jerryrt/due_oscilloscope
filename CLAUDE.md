@@ -38,6 +38,41 @@ no board. See `docs/status.md` for numbers, `docs/frontend.md` and
 `docs/daemon-api.md` for the host architecture, and `docs/HANDOFF.md`
 for the current objectives.
 
+## Ask what the buffer was doing before blaming the transport
+
+Objective 0i - playback underruns at the top of the AWG ladder - was
+open across many sessions. It was attributed in turn to feed policy,
+write size, scheduling, real-time thread priority, host driver
+buffering, and the difference between three operating systems. Two hosts
+were characterised in detail. A closed-loop rate feed was designed to
+fix it.
+
+The cause was `PLAY_PRIME_BUFS = 4`: the DAC's timer started once four
+of thirty-two ring slots held data. At the top rate that is 1.4 ms of
+runway. Raising it to 24 takes the underruns to **zero at every rate on
+the ladder**, byte conservation untouched, and the ring stops living at
+the ENDTX guard - occmin goes from 2 to about 21.
+
+**One constant. The diagnosis that found it took ten minutes.**
+
+Run the same rate for 1 s, 3 s and 9 s. At RC 28 all three produced
+21-24 underruns. Nine times the duration, the same count - so it was
+never a leak, it was a burst at the start, and only the state of the
+ring at t=0 could explain it. Everything downstream of that question was
+answered by one grep.
+
+**The lesson, and it generalises past this bug.** A rate-dependent defect
+that does not scale with duration is a startup condition. Ask how full
+the buffer is when the consumer starts *before* characterising the
+producer, the transport, or the operating system - those are expensive
+to measure and this is one constant to read. The sessions spent on host
+driver behaviour were not wasted (they settled objectives 0c and 0a/0b,
+which were real and are macOS's) but they were spent on the wrong
+suspect for this.
+
+The cheap question first: **is the count proportional to how long you
+ran?**
+
 ## Invariants
 
 Violating any of these is a design regression, not a style preference.
