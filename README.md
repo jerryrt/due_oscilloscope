@@ -1,8 +1,10 @@
 # due_oscilloscope
 
 A 12-bit oscilloscope and signal generator built on the Arduino Due
-(Atmel SAM3X8E, Cortex-M3 @ 84 MHz), streaming samples over USB to a host
-for FFT/DSP and visualisation.
+(Atmel SAM3X8E, Cortex-M3), streaming samples over USB to a host for
+FFT/DSP and visualisation. **MCK runs at 78 MHz, not the Due's usual
+84**, chosen so the ADC clock lands at 19.5 MHz inside its 20 MHz limit;
+every RC in this project divides 39 MHz because of it.
 
 The board does acquisition and generation only. All signal processing and
 rendering happens on the host, where numpy/scipy are available and the
@@ -25,6 +27,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
 | [docs/hardware-next.md](docs/hardware-next.md) | Options for a more powerful successor |
 | [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
+| [docs/windows.md](docs/windows.md) | Windows validation: 0c settled, byte loss is macOS's |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | Current state and next objectives |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Commit conventions |
 | [CLAUDE.md](CLAUDE.md) | Agent working instructions |
@@ -37,6 +40,11 @@ ADC over bulk IN, on Track B's bare-metal UOTGHS stack. Verified: zero
 underruns, zero sequence gaps, zero CRC errors, and tone amplitude at
 the theoretical maximum (1371 +/- 2 codes) in every 40 ms window of a
 run. See [docs/status.md](docs/status.md).
+
+Those figures are macOS's. Read them with objective 0h in mind: the
+playback path there loses 0.45-2.25% of what the host writes above
+200 ksps, silently and with `under=0` throughout. It does not on
+Windows - [docs/windows.md](docs/windows.md).
 
 **And there is a front end on it.** A daemon owns the ports and the
 real-time threads and serves clients over a socket
@@ -56,7 +64,15 @@ python3 -m daemon --fake                     # from host/
 | AWG play-only up to 1.383 Msps (DACC hardware limit) | `under=0` at a 2.81 MB/s DMA-fed stream |
 | Full-rate pair: DAC 907 k + capture 907 k aggregate | runs with `under=0`; purity work remains (see handoff) |
 | Capture path (Track B) | sent by endpoint DMA; the processor never reads a sample |
-| USB via endpoint DMA (IN / OUT / duplex) | **32.0 / 26.6 byte-perfect / 16.95 MB/s** |
+| USB via endpoint DMA (IN / OUT / duplex) | **32.0 / 26.6 / 16.95 MB/s** on macOS; bytes *offered*, see objective 0h |
+| The same three on Windows 11 | **34.14 / 37.58 / 47.35 MB/s**, and OUT with 0 B deficit |
+
+**Validated on a second host.** The same firmware on Windows 11 and a
+second board conserves every byte at every playback rate from 200,000 to
+1,392,857 sps, captures gapless at 453,488 sps, returns the loop tone at
+1370.8 codes, and never wedges in `close()`. That settles objective 0c
+and points the playback byte loss at macOS's CDC driver rather than at
+the device - see [docs/windows.md](docs/windows.md).
 
 Both tracks stream the ADC's full in-spec output continuously over
 plain CDC; Track A is the reference oracle, Track B the project. The

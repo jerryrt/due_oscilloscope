@@ -7,8 +7,13 @@ Working notes for AI agents on this repository. Read `docs/scope.md` and
 ## What this project is
 
 A 12-bit oscilloscope and signal generator on the Arduino Due
-(SAM3X8E, Cortex-M3 @ 84 MHz). The board acquires and generates; the
-host does all DSP and visualisation.
+(SAM3X8E, Cortex-M3). The board acquires and generates; the host does
+all DSP and visualisation.
+
+**MCK is 78 MHz, not the Due's usual 84** - see "Facts that are easy to
+get wrong". Every RC in this project divides 39 MHz. The header used to
+say 84 and was quoted from here into two other documents, so correct
+this line rather than working around it.
 
 Status: **full loop working, with a front end on it, and a
 re-validation debt.** Both tracks stream the ADC's complete in-spec
@@ -248,19 +253,34 @@ two separate measured ways (see the fact below), and that defect has
 been the subject of most of the last several sessions. The decision is
 to develop on **Windows** and treat **macOS as a porting target**.
 
-Nothing in this file is invalidated by that. Everything measured here
-was measured on macOS and stays true of macOS; what changes is which
-host's numbers are the project's numbers. The first work on Windows is
-to re-take the 0-series in `docs/HANDOFF.md` rather than to build on top
-of it, and `Feeder.WRITE_SIZE` may turn out to be a macOS workaround
-rather than a rule.
+**The Windows run is in `docs/windows.md` and it settles two objectives
+at once.** Objective 0c does not reproduce there - 0 wedges in 52 cycles
+across two reproducers, against 9 in 30 on macOS - and neither does the
+playback byte loss: 0 B lost at every rate from 200,000 to 1,392,857
+sps, including the two that lose most here. Both are the same driver
+behaviour, because a stack that applies backpressure to the writer
+cannot silently discard. Do not attribute either to the device.
+
+It confirms objective 0i rather than dismissing it. RC 44 and RC 39 run
+1.6% slow on Windows too, by the device's own `runus`, so the slow
+converter is genuinely the device's; Windows simply never oversupplies
+it.
+
+Nothing else in this file is invalidated. Everything measured here was
+measured on macOS and stays true of macOS; what changes is which host's
+numbers are the project's numbers. Re-taking the 0-series in
+`docs/HANDOFF.md` comes before building on top of it, and
+`Feeder.WRITE_SIZE` may turn out to be a macOS workaround rather than a
+rule.
 
 Everything in `host/` is POSIX-only today - `termios`, `fcntl`, `select`
 on raw descriptors, `/dev/cu.*` globs - and `host/rt.py` promotes
 nothing off macOS. `docs/frontend.md` has the backend split sketched.
-`tools/soak0c_portable.py` is the only host-side tool that runs
-anywhere, and it exists to answer whether the `close()` wedge is macOS's
-alone.
+What already runs on any host: `tools/bench.py` (byte conservation and
+transport rates), `tools/loop.py` (frame integrity and the captured
+tone), `tools/flash.py`, `tools/toolchain.py` and
+`tools/soak0c_portable.py` - pyserial or stdlib, all matching ports on
+USB VID/PID rather than node name.
 
 ## Ports on the development host
 

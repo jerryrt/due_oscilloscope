@@ -9,6 +9,13 @@
 > narrower losses remain, and the figures here have not yet been
 > re-read against byte conservation. Some will hold; 886,363 and
 > 1,000,000 sps will not.
+>
+> **2026-08-25: that loss is macOS's, not the device's.** The same
+> firmware on Windows 11 conserves every byte at every rate from 200,000
+> to 1,392,857 sps, including the two above. Windows' `usbser.sys` paces
+> the writer at the device's consumption rate instead of buffering, so
+> it has nothing to discard - and for the same reason it never wedges in
+> `close()` either. `docs/windows.md`.
 
 
 Updated after the host-fed playback loss was root-caused and fixed on
@@ -962,6 +969,25 @@ single run in either direction.
 | **Full-rate pair (DAC 907 k + ADC 907 k aggregate)** | runs with **under=0** on DMA playback; purity 90-95% pending IN-side DMA and a cable swap |
 | ~1.7 MB/s "gated OUT" cap | explained: DMA re-arm/service latency x transfer granularity, not FIFO interleave; removed by multi-slot spans |
 | printf, 40-char line | 3600 us |
+
+### Windows 11, second board, 2026-08-25
+
+Measured with `tools/bench.py` and `tools/loop.py` (pyserial; `host/` is
+POSIX-only). Byte figures taken after a drain; underruns with a prompt
+stop. Full context and caveats in `docs/windows.md`.
+
+| Quantity | Value |
+|---|---|
+| Playback byte conservation, RC 195 to RC 28 | **0 B deficit at all eight rates** (200,000 to 1,392,857 sps), design feed policy |
+| Playback underruns | **`under=0`** to 1,218,750 sps; 15 (0.4%) at 1,392,857, past the stated DACC limit |
+| Capture, 453,488 sps/ch x 2 ch | **2240 frames, seq 0..2239, 0 gaps, 0 dropped, 0 bad CRC**, 1.82 MB/s |
+| Full loop, 453,488 sps, 1 ch | tone **1370.8 codes**; 40 ms windows 1365.8-1367.5, spread 1.5 |
+| Full loop, 200,000 sps, 1 ch | tone **1370.7 codes**; windows spread **0.1** |
+| USB endpoint DMA IN | 34.14 MB/s |
+| USB endpoint DMA OUT | **37.58 MB/s with 0 B deficit** after a drain |
+| USB endpoint DMA duplex | 18.94 in + 28.41 out = **47.35 MB/s aggregate** |
+| Objective 0c close wedge | **0 in 52 cycles** across two reproducers |
+| Converter rate at RC 44 and RC 39 | **1.6% slow** by the device's own `runus`, confirming the slow-converter half of objective 0i |
 | GPIO set+clear pair | 138.3 ns (Track A) / 71.5 ns (Track B) |
 
 ## Next
