@@ -104,20 +104,12 @@ declared rate 453488 Hz/ch  payload 9.10 MB (1.82 MB/s)
 Full loop, HOST -> DAC -> jumper -> ADC -> HOST, one channel, three
 consecutive runs:
 
-| sps | aggregate amplitude | per-window (40 ms) | spread | seq_gaps | under |
-|---|---|---|---|---|---|
-| 453,488 | 1370.9 / 1370.8 / 1370.8 | 1365.8 - 1367.5 | 1.5 codes | 0 / 1 / 0 | 0 |
-| 200,000 | 1370.7 | 1370.6 - 1370.8 | **0.1 codes** | 0 | 0 |
+| sps | aggregate amplitude | per-window (40 ms) | spread | outside +/-2 | seq_gaps | under |
+|---|---|---|---|---|---|---|
+| 453,488 | **1371.2** | 1371.2 - 1371.3 | **0.1 codes** | 0 of 19 | 0 | 0 |
+| 200,000 | 1370.7 | 1370.6 - 1370.8 | 0.1 codes | 0 | 0 | 0 |
 
-The aggregate matches the design's 1371 +/- 2 at both rates.
-
-**One thing is unexplained and should not be smoothed over.** At
-453,488 sps the per-window level sits about 4 codes (0.3%) below the
-whole-run aggregate, while at 200,000 sps the two agree exactly. Both
-analyses use a whole number of tone cycles, so it is not the windowing.
-The likeliest cause is ADC track-and-hold settling at the top rate,
-which would be a real analog effect rather than a measurement one - but
-it has not been demonstrated, and is recorded here as open.
+The design's 1371 +/- 2 in every 40 ms window, met at both rates.
 
 ### Two measurement traps this run fell into
 
@@ -136,8 +128,34 @@ questions need two runs. `tools/bench.py` now does both.
 **Goertzel windows must hold a whole number of tone cycles.** 8192
 samples at 453,488 Hz is 18.08 cycles of a 1001 Hz tone; the leftover
 fraction leaks differently in every window and produced a +/-5 code
-ripple that was the measurement, not the signal. With whole cycles the
-spread is 1.5 codes.
+ripple that was the measurement, not the signal.
+
+**And the window must use the tone actually emitted, not the one
+requested.** Fixing the window length left a residue - the per-window
+level sat ~4 codes under the whole-run aggregate at 453,488 sps while
+agreeing exactly at 200,000 - and this document previously recorded that
+as possibly ADC track-and-hold settling, open and undemonstrated. It was
+neither. `build_waveform` picks a whole-sample period, so the DAC emits
+`sps / round(sps / tone)`: exactly 1000.000 Hz at 200,000 sps, but
+1001.077 Hz at 453,488, because 453.488 rounds to 453. `run_loop`
+computed that correctly and then returned only the stream, so `main()`
+analysed at the requested 1000.0 and reintroduced the very leakage the
+whole-cycle fix had removed.
+
+Checked against a mathematically perfect 1371-code sine, before touching
+the board:
+
+| sps | per_cycle | real tone | at real tone | at requested tone |
+|---|---|---|---|---|
+| 200,000 | 200 | 1000.000 Hz | 1371.00, 0 of 40 outside +/-2 | same |
+| 453,488 | 453 | 1001.077 Hz | 1370.95, 0 of 17 outside | **1366.00-1367.53, 17 of 17 outside** |
+
+On the board after the fix: aggregate 1371.2, windows 1371.2-1371.3,
+spread 0.1 codes, none outside +/-2. `host/loopback.py` never had this
+because it passes the tone `build_waveform` handed back.
+
+Found by the macOS team reviewing PR #3, and findable only because the
+number it was supposed to be had been written down.
 
 ## Platform notes
 
