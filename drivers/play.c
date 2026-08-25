@@ -221,7 +221,16 @@ void play_service(void)
 		if (play_bytes_in != abandon_bytes) {
 			abandon_bytes = play_bytes_in;
 			abandon_at_ms = ms;
-		} else if (ms - abandon_at_ms > PLAY_ABANDON_MS) {
+		} else if (abandon_bytes != 0
+		           && ms - abandon_at_ms > PLAY_ABANDON_MS) {
+			/*
+			 * Only after something has arrived. Abandonment means
+			 * "was receiving, then stopped" - a run that has not
+			 * started yet is a different thing, and timing it from
+			 * play_start stopped playback before the host had
+			 * finished priming its feeder. That cost 24 tests, all
+			 * of them reporting bytes_in=0.
+			 */
 			play_abandoned++;
 			play_stop();
 			return;
