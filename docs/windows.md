@@ -124,6 +124,46 @@ MB/s aggregate, and both sit far outside the spread.
 Same failure as the underrun rate in issue #5 - a number quoted before
 the sample was big enough to separate a difference from noise.
 
+## Objective 0h: WRITE_SIZE is a macOS workaround
+
+`Feeder.WRITE_SIZE = 512` is the fix for the macOS byte loss - "whatever
+is due, capped at 16 KB" lost 0.45-0.85% above 200 ksps and a constant
+512 lost nothing. Whether that is a property of the device, of the
+protocol, or of one host's driver was never established. It is the
+driver's.
+
+Swept with the project's own `Feeder` through `run_play(drain_s=1.5)`,
+four write policies against six rates:
+
+| write policy | deficit, all six rates |
+|---|---|
+| 512 (current policy) | **0 B** |
+| due-sized, capped at 16 KB (the legacy path) | **0 B** |
+| 1536 (the size that loses most on macOS) | **0 B** |
+| 16384 | **0 B** |
+
+24 runs, not one byte lost. Confirmed at volume on the worst rate on
+record: **23.48 MB through the legacy path at RC 39, deficit 0 B.** The
+same run loses about 516 KB on macOS.
+
+**The policy still earns its place, for a different reason.** Underruns
+depend on write size here even though bytes do not - 16384 B roughly
+doubles them against 512 B at every rate:
+
+| RC | sps | under @ 512 | under @ 16384 |
+|---|---|---|---|
+| 195 | 200,000 | 0 | 3 |
+| 98 | 397,959 | 0 | 9 |
+| 65 | 600,000 | 0 | 15 |
+| 44 | 886,363 | 6 | 20 |
+| 39 | 1,000,000 | 10 | 23 |
+| 28 | 1,392,857 | 21 | 37 |
+
+Constant 512 remains the right default. The reason written beside it -
+byte loss - is a macOS reason; off macOS the reason is ring stability,
+and the two should not be confused, because a future host that pages the
+first will not necessarily page the second.
+
 ## Capture and the full loop
 
 `tools/loop.py`. Capture at 453,488 sps/ch, two channels, 5 s:
