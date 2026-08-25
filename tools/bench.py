@@ -51,10 +51,19 @@ def find_ports(console=None, native=None):
             if (p.vid, p.pid) == (VID, PID_CONSOLE)]
     nats = [p for p in list_ports.comports()
             if (p.vid, p.pid) == (VID, PID_NATIVE)]
-    # Interfaces 0/1 carry samples, 2/3 carry commands. Windows spells that
-    # MI_00/MI_02 in the Win32 DeviceID, but pyserial does not surface it;
-    # its LOCATION ends in the interface number, so sort on that and take
-    # the lowest rather than trusting a substring that is not always there.
+    # Interfaces 0/1 carry samples, 2/3 carry commands.
+    #
+    # This sort is right on Windows, where pyserial's LOCATION ends in the
+    # interface number ("1-5:x.0", "1-5:x.2"). It is INOPERATIVE on macOS:
+    # pyserial takes location from the parent USB device there, so both
+    # CDC functions report the same string and this falls through to node
+    # name - which happens to give the right answer and would stop doing
+    # so if the naming ever changed.
+    #
+    # host/ports.py:native_order() is the rule, and asks IOKit on macOS
+    # for exactly this reason. This tool does not import host/ (that is
+    # POSIX-only), so it keeps a lesser version and says so rather than
+    # claiming a mechanism it does not have.
     nats.sort(key=lambda p: (p.location or "", p.device))
     return (console or (cons[0].device if cons else None),
             native or (nats[0].device if nats else None))
@@ -124,6 +133,28 @@ def drain(read, label):
     return last, DRAIN_POLLS
 
 
+def settle(nat, secs=0.5):
+    """Read and discard for a fixed period, then let the caller start.
+
+    NOT "drain until quiet": during a flood the device never goes quiet,
+    so that spins forever - it hung the first version of this.
+
+    The point is that the device begins streaming the moment it takes the
+    command, and `board.cmd()` then sleeps and reads the console. Those
+    bytes land in the host buffer the whole time, so counting them in
+    `total` while leaving that time out of `elapsed` over-reads the rate.
+    Measured on Windows: IN read 34.14 MB/s that way against 27.75 with a
+    settled start - a 23% over-read, not the few percent it looks like,
+    because the buffer is megabytes deep.
+
+    A fixed discard window both empties the backlog and skips the
+    startup transient, and it terminates whatever the device is doing.
+    """
+    end = time.monotonic() + secs
+    while time.monotonic() < end:
+        nat.read(CHUNK)
+
+
 def human(n):
     return f"{n/1e6:.2f} MB" if n and n >= 1e6 else f"{n} B"
 
@@ -170,6 +201,7 @@ def test_in_dma(board, secs):
     board.stop()
     nat = board.open_native()
     board.cmd("G", 0.4)
+    settle(nat)
     total = 0
     t0 = time.time()
     while time.time() - t0 < secs:
@@ -191,6 +223,7 @@ def test_duplex(board, secs):
     board.stop()
     nat = board.open_native()
     board.cmd("Y", 0.4)
+    settle(nat)
     payload = bytes(CHUNK)
     counts = {"r": 0, "w": 0}
     stop_at = time.time() + secs
@@ -311,8 +344,14 @@ def main():
     ap.add_argument("--secs", type=float, default=5.0)
     ap.add_argument("--rc", type=int, help="one RC only, for --only play")
     ap.add_argument("--only", choices=["out-dma", "in-dma", "duplex", "play"])
-    ap.add_argument("--policy", choices=["bulk", "design"], default="bulk",
-                    help="bulk = 256 KB writes; design = the Feeder policy")
+    # The design's feed is the default. `bulk` free-runs 256 KB writes,
+    # which is the policy macOS is measured to lose 0.45-0.85% on, and
+    # this tool prints the shortfall as the DEVICE's deficit - so the
+    # wrong default makes a host defect read as a board defect on the
+    # platform that has it.
+    ap.add_argument("--policy", choices=["bulk", "design"], default="design",
+                    help="design = the Feeder policy (512 B, paced); "
+                         "bulk = 256 KB free-run, which loses bytes on macOS")
     args = ap.parse_args()
 
     console, native = find_ports(args.console, args.native)

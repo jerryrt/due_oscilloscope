@@ -31,6 +31,11 @@ REPO = toolchain.REPO
 VID, PID_CONSOLE = 0x2341, 0x003D          # programming port (the 16U2)
 SAMBA = (0x03EB, 0x6124)                   # SAM3X ROM bootloader
 
+# How long to wait for the native bootloader node after the touch. It is
+# an optimisation - the programming port is tried regardless - so this is
+# patience, not a deadline anything depends on.
+SAMBA_WAIT_S = 15.0
+
 
 def find_console(explicit=None):
     """The programming port, by USB VID/PID - identical on every OS."""
@@ -103,8 +108,17 @@ def restore_115200(port):
         s.port, s.baudrate = port, 115200
         s.open()
         s.close()
-    except Exception:                                    # noqa: BLE001
-        pass
+    except Exception as e:                               # noqa: BLE001
+        # Do NOT swallow this silently. The docstring above says why: a
+        # port left at 1200 re-triggers the 16U2's erase-and-reset on the
+        # next open, so a silent failure here re-arms exactly the hazard
+        # this function exists to disarm, and the next person sees a
+        # board that wipes itself whenever a tool attaches.
+        print(f"WARNING: could not restore {port} to 115200: {e}",
+              file=sys.stderr)
+        print("         The next open of this port may erase the board. "
+              "Re-open it at", file=sys.stderr)
+        print("         115200 before using it.", file=sys.stderr)
 
 
 def main() -> int:
@@ -162,7 +176,14 @@ def main() -> int:
         # port. Take only a node that was NOT there beforehand - that is
         # what makes it ours rather than whichever blank board happened
         # to be plugged in.
-        for _ in range(20):
+        # Poll gently and for longer. 5 s of 0.25 s polling was not
+        # enough on macOS - measured failing about one run in three - and
+        # re-enumerating every serial device four times a second while
+        # the board is itself re-enumerating is not free. Missing the
+        # node is no longer fatal, because the programming port is tried
+        # too, so this can afford to be patient rather than eager.
+        deadline = time.time() + SAMBA_WAIT_S
+        while time.time() < deadline:
             fresh = set(samba_nodes()) - before
             if len(fresh) == 1:
                 target, native_usb = fresh.pop(), "true"
@@ -171,21 +192,58 @@ def main() -> int:
             if len(fresh) > 1:
                 sys.exit(f"the touch brought up {len(fresh)} bootloader "
                          f"nodes: {sorted(fresh)}. Refusing to guess.")
-            time.sleep(0.25)
+            time.sleep(0.5)
         else:
-            # No new node. Either this core flashes through the 16U2, or
-            # the touch did not take. Try the programming port and let
-            # bossac say.
-            print("==> no new SAM-BA node; trying the programming port")
+            print(f"==> no native SAM-BA node in {SAMBA_WAIT_S:.0f} s; "
+                  f"the programming port serves the ROM monitor too")
 
-    # bossac wants the node name, not the path.
-    print(f"==> bossac: writing {os.path.basename(binary)} via {target}")
-    rc = subprocess.call([bossac, "-i", "-d", f"--port={os.path.basename(target)}",
-                          "-U", native_usb, "-e", "-w", "-v", "-b", binary, "-R"])
+    # Try every route before giving up, because by this point the touch
+    # has already erased the board: a failure here is not "nothing
+    # happened", it is a board with no program in it.
+    #
+    # The native SAM-BA node is an OPTIMISATION, never a requirement. The
+    # SAM3X ROM monitor listens on the UART behind the 16U2 as well, so
+    # the programming port always works - that is why the old shell
+    # script had no race at all. Treating the native node as the only
+    # path is what made this fail one run in three on macOS and leave the
+    # board unbootable.
+    routes = []
+    if native_usb == "true":
+        routes.append((target, "true", "native SAM-BA"))
+        if console:
+            routes.append((console, "false", "programming port"))
+    else:
+        routes.append((target, "false", "programming port"))
+
+    rc = 1
+    for node, usb, label in routes:
+        print(f"==> bossac: writing {os.path.basename(binary)} via {node} "
+              f"({label})")
+        rc = subprocess.call([bossac, "-i", "-d",
+                              f"--port={os.path.basename(node)}",
+                              "-U", usb, "-e", "-w", "-v", "-b", binary, "-R"])
+        if rc == 0:
+            break
+        print(f"    {label} failed ({rc})")
+        if (node, usb, label) is not routes[-1]:
+            time.sleep(1.5)
+
     if console:
         restore_115200(console)
     if rc != 0:
-        print(f"bossac failed ({rc})", file=sys.stderr)
+        print("", file=sys.stderr)
+        print(f"FLASH FAILED ({rc}) - and the board is now ERASED.",
+              file=sys.stderr)
+        print("The 1200-baud touch erases before anything is written, so "
+              "there is no", file=sys.stderr)
+        print("program on the board and it will not enumerate its native "
+              "port. This is", file=sys.stderr)
+        print("recoverable: just run the flash again. The board is sitting "
+              "in ROM SAM-BA", file=sys.stderr)
+        print("and the next run takes the 'already up' path.",
+              file=sys.stderr)
+        print("If it still fails, press ERASE then RESET on the board and "
+              "retry.", file=sys.stderr)
     return rc
 
 

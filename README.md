@@ -65,7 +65,7 @@ python3 -m daemon --fake                     # from host/
 | Full-rate pair: DAC 907 k + capture 907 k aggregate | runs with `under=0`; purity work remains (see handoff) |
 | Capture path (Track B) | sent by endpoint DMA; the processor never reads a sample |
 | USB via endpoint DMA (IN / OUT / duplex) | **32.0 / 26.6 / 16.95 MB/s** on macOS; bytes *offered*, see objective 0h |
-| The same three on Windows 11 | **34.14 / 37.58 / 47.35 MB/s**, and OUT with 0 B deficit |
+| The same three on Windows 11 | IN **29 median (26-34 over 9 runs)** / OUT **37.6-37.8** / duplex **47.7-48.5 MB/s**, OUT with 0 B deficit |
 
 **Validated on a second host.** The same firmware on Windows 11 and a
 second board conserves every byte at every playback rate from 200,000 to

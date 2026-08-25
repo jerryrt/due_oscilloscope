@@ -83,9 +83,22 @@ class Stats:
         self.rate = self.chmask = None
         self.by_ch = {}
         self.payload_bytes = 0
+        self.capped = False
+        self.keep_samples = KEEP_SAMPLES
 
 
-def deframe(buf, keep_samples=400000):
+# Per-channel sample cap for the SIGNAL analysis. Frame, CRC and
+# sequence counting always cover the whole buffer; only the Goertzel and
+# the range/mean are capped, because they are O(n) in Python and a 5 s
+# run at 453 ksps is 2.3 M samples per channel.
+#
+# It used to be silent, which is worse than the cost it saves: a 5 s run
+# analysed 0.88 s of tone and a dropout at t=3 s reported clean. It now
+# says what it looked at.
+KEEP_SAMPLES = 400000
+
+
+def deframe(buf, keep_samples=KEEP_SAMPLES):
     """Scan for magic, verify the header CRC, then take the payload.
 
     The CRC is checked rather than the magic trusted: a false magic
@@ -140,6 +153,8 @@ def deframe(buf, keep_samples=400000):
         else:
             st.resyncs += 1
     st.by_ch = keep
+    st.capped = any(len(v) >= keep_samples for v in keep.values())
+    st.keep_samples = keep_samples
     return st
 
 
@@ -159,6 +174,11 @@ def report(st, secs, label):
     print(f"  declared rate {st.rate} Hz/ch  chmask 0x{st.chmask:x}  "
           f"payload {st.payload_bytes/1e6:.2f} MB "
           f"({st.payload_bytes/secs/1e6:.2f} MB/s)")
+    if st.capped:
+        span = st.keep_samples / st.rate if st.rate else 0.0
+        print(f"  ! signal analysis capped at {st.keep_samples} samples/ch "
+              f"= {span:.2f} s of {secs:.2f} s. Frames, CRC and sequence "
+              f"cover the whole run; the tone does not.")
 
 
 def run_capture(board, secs):

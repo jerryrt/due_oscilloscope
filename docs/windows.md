@@ -18,9 +18,9 @@ twice.
 | Playback underruns, up to 1,218,750 sps | `under=0` | **`under=0`** | matches |
 | Capture continuity, 453,488 sps | gapless, 1.83 MB/s | **gapless, 1.82 MB/s** | matches |
 | Loop tone amplitude | 1371 +/- 2 codes | **1370.8** | matches |
-| OUT via endpoint DMA | 26.6 MB/s, *byte-perfect withdrawn* | **37.58 MB/s, 0 B deficit** | +41% |
-| IN via endpoint DMA | 32.0 MB/s | **34.14 MB/s** | +7% |
-| Duplex, aggregate | 8.55 + 8.40 = 16.95 MB/s | **18.94 + 28.41 = 47.35 MB/s** | 2.8x |
+| OUT via endpoint DMA | 26.6 MB/s, *byte-perfect withdrawn* | **37.6-37.8 MB/s, 0 B deficit** | higher, and conserved |
+| IN via endpoint DMA | 32.0 MB/s (single run) | **29 median, 26.4-34.0 over 9 runs** | no difference worth claiming |
+| Duplex, aggregate | 8.55 + 8.40 = 16.95 MB/s | **47.7-48.5 MB/s** | ~2.8x |
 | Objective 0c close wedge | ~1 cycle in 3 | **0 in 52 cycles** | does not occur |
 
 ## Objective 0c does not reproduce here
@@ -90,6 +90,39 @@ shedding is the right diagnosis, and closing the loop on the device's
 own consumption is the right fix; Windows simply does it in the driver.
 (HANDOFF records 1.58% and 2.35% for these two. The first agrees, the
 second does not, and is worth re-deriving.)
+
+## A correction to the IN figure, wrong in two ways
+
+This document first reported IN at **34.14 MB/s** against the design's
+32.0, as "+7%". Both halves of that were unsound; the macOS review
+caught the first.
+
+**The clock started late.** `t0` was taken after `board.cmd()` had slept
+0.4 s and read the console, during which the device was already
+streaming into a host buffer megabytes deep. Those bytes counted toward
+`total` while their time did not count toward `elapsed`.
+
+The fix is a bounded discard window before the clock starts - and the
+first attempt at it is worth recording as a mistake in its own right:
+"drain until nothing has arrived for 200 ms" **never terminates during a
+flood**, because the device never goes quiet. It hung. A fixed settle
+window both empties the backlog and skips the startup transient, and it
+terminates whatever the device is doing.
+
+**And one run was never a figure.** With the clock fixed, nine runs give
+26.36, 27.46, 27.82, 27.88, 28.96, 28.98, 28.99, 31.79, 34.02 - median
+**28.96**, spread **26.4 to 34.0**. The original 34.14 sits at the top of
+that distribution. `docs/status.md` already records this counter's
+run-to-run spread as 35-59% on macOS, and the same caution simply was
+not applied here.
+
+So **IN is not measurably different between the two hosts**, and the +7%
+should never have been written. OUT and duplex survive the correction:
+OUT is 37.6-37.8 MB/s across runs with 0 B deficit, duplex 47.7-48.5
+MB/s aggregate, and both sit far outside the spread.
+
+Same failure as the underrun rate in issue #5 - a number quoted before
+the sample was big enough to separate a difference from noise.
 
 ## Capture and the full loop
 
