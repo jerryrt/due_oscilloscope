@@ -42,8 +42,14 @@ def assert_fresh(res, seconds=None):
     """
     ps = res.stream
     assert ps.frames > 0, "no frames arrived at all"
-    assert ps.first_seq <= 10, (
-        f"capture starts at seq {ps.first_seq}, not near 0: this is stale "
+    # Frames a run deliberately discarded while settling are not stale
+    # data - they are this run's, read and thrown away on purpose so the
+    # device's ADC ring is not left to overrun. Allow for them, and no
+    # more: the check exists to catch a previous run's leftovers.
+    settled = getattr(res, "settle_frames", 0)
+    assert ps.first_seq <= 10 + settled, (
+        f"capture starts at seq {ps.first_seq}, not near 0 "
+        f"({settled} frames were discarded while settling): this is stale "
         f"data from an earlier stream, so nothing computed from it is about "
         f"this run")
     want = seconds if seconds is not None else res.elapsed_s
