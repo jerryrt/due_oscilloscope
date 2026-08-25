@@ -60,6 +60,17 @@ RC 65 from 6 underruns to 30 when the ring was short, because a printf
 holds the main loop for milliseconds against a 0.95 µs conversion.
 Where you most want to observe, observing is what breaks it.
 
+That was written from the underrun count. The load monitor has since
+measured it directly, and it is worse than "milliseconds": `B` blocks
+the main loop for **13.14 ms**, `?` for 20.18, `O` for 15.40, `u` for
+113. Twenty `GET_LOAD` queries over this channel cost 0.29 ms in total.
+For the whole of each of those console milliseconds the loop drains no
+bulk OUT, and that is the NAKing pipe that hangs macOS in `close()` -
+objective 0c, where console polling during playback turned out to be
+part of the cause rather than a witness to it. The rule is therefore
+general and not about the heartbeat: **anything read while the board is
+working is read over this channel, never printed.**
+
 ## Transport: a second interface
 
 Endpoints are not scarce. The CMSIS header declares

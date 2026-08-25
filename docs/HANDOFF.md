@@ -692,8 +692,70 @@ sub-question: RC 44 reads one of two discrete converter rates.
    1024 B write looked fine on counters while its whole-run tone fell
    to 500 codes.
 
-0c. **The suite wedged once in `close()` after the duplex DMA bench**,
-   on 2026-08-22, and it is unexplained. All 134 tests reported and
+0c. **A deterministic reproducer, and a measured mechanism (2026-08-24).**
+
+   Two for two, wedging at 41 seconds each time, with a stopwatch
+   agreement that leaves little room for coincidence:
+
+   ```
+   .venv/bin/python tools/loadwatch.py /dev/cu.usbmodemB_013 log stop &
+   .venv/bin/python -m pytest tests/test_play_counters.py --track=b
+   ```
+
+   `test_play_counters.py` alone is clean. Add a process polling
+   `GET_LOAD` on the native control channel at 10 Hz beside it and the
+   suite wedges in `close()` both times. That is the first reproducer
+   this objective has ever had; four earlier occurrences were all
+   after the fact.
+
+   **The mechanism is printf, and it is now measured rather than
+   suspected.** The load monitor reports the worst main-loop pass, and
+   a console command is one pass. During that pass the main loop drains
+   no bulk OUT - which is precisely the NAKing pipe `docs/usb.md` says
+   hangs macOS in `close()`:
+
+   | console command | blocks the main loop |
+   |---|---|
+   | `B` bench stats | 13.14 ms |
+   | `?` stream stats | 20.18 ms |
+   | `O` occupancy histogram | 15.40 ms |
+   | `l` load report | 13.03 ms |
+   | `h` banner | 89.03 ms |
+   | `u` usb registers | 113.35 ms |
+   | 20 x `GET_LOAD` over the control channel | 0.29 ms **total** |
+
+   The control channel is about a thousand times cheaper per query,
+   because it writes 164 bytes to an endpoint instead of formatting
+   text into a 115200-baud UART.
+
+   **So the suite is a participant, not just a witness.** It polls
+   `B`, `?` and `O` *during playback*, and each poll stops the drain
+   for 13-20 ms. The control-channel poller did not introduce a new
+   defect; it added enough extra main-loop pressure to turn an
+   intermittent wedge into a reliable one - which is the most useful
+   thing it could have done.
+
+   What follows from it, in order:
+
+   - **Move the suite's in-flight polling off the console.** Any status
+     read taken while the sample path is running should go over the
+     control channel. That is what it is for, and the figures above are
+     the argument.
+   - **printf is a debug method, not an instrument.** Recorded in
+     `CLAUDE.md` as a rule rather than an observation. `l` is in the
+     table above for a reason: the console form of the load report
+     costs 13 ms and must not be used during active work. `GET_LOAD` is
+     the supported path.
+   - It is still worth knowing whether a drain gap alone is sufficient,
+     or whether a host-side condition has to coincide. The stall
+     injector (`=<ms>S`) can now produce a drain gap of any chosen
+     length on demand, so that is a designed experiment rather than a
+     wait for it to happen again.
+
+   The original entry follows.
+
+   **The suite wedged once in `close()` after the duplex DMA bench**,
+   on 2026-08-22, and it was unexplained. All 134 tests reported and
    none failed; the session then hung in `close()` on the native port
    for 50 minutes with the board's heartbeat still flashing and both
    USB activity LEDs dark - the device had stopped draining bulk OUT,

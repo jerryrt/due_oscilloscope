@@ -53,6 +53,19 @@ Violating any of these is a design regression, not a style preference.
    corrupted data that gets mistaken for a real signal.
 6. **Never printf from an ISR.** Ring-buffer and drain outside the
    real-time path. A printf costs ~3.5 ms against a 0.95 us conversion.
+7. **printf is a debug method, not an instrument.** It is too expensive
+   to use for profiling or for status polling while the board is
+   working, and not by a small margin: measured with the load monitor,
+   one console status command blocks the main loop for 13-20 ms (`B`
+   13.14, `?` 20.18, `O` 15.40), `u` for 113 ms and the banner for
+   89 ms. For every one of those milliseconds the loop drains no bulk
+   OUT, which is the NAKing pipe that hangs macOS in `close()` - see
+   objective 0c, where console polling during playback turned out to be
+   a participant in the wedge rather than a witness to it. Twenty
+   `GET_LOAD` queries over the control channel cost 0.29 ms *in total*.
+   **New instrumentation goes in the metric system** (`bsp/load.c`,
+   `GET_LOAD`), never in a printf, and anything read while the sample
+   path is running goes over the control channel.
 
 ## Facts that are easy to get wrong
 
