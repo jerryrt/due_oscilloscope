@@ -6,3 +6,4 @@
 #   .venv/bin/pip install -r requirements-dev.txt
 #   .venv/bin/python -m pytest tests -v
 pytest>=7.0
+pyserial==3.5   # tools/soak0c_portable.py: the only cross-platform serial client here
