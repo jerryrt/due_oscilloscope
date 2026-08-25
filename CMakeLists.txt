@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
+# string(JSON) needs 3.19; the registry in toolchains.json is read with it.
+cmake_minimum_required(VERSION 3.19)
 project(due_oscilloscope C ASM)
 
 set(CMAKE_C_STANDARD 11)
@@ -72,3 +73,80 @@ add_custom_command(TARGET baremetal_bringup POST_BUILD
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:baremetal_bringup>
     COMMENT "Generating .bin and reporting size"
 )
+
+# ---------------------------------------------------------------------------
+# One build system, two tracks.
+#
+# CMake is the single entry point, but it does NOT build Track A itself: it
+# drives arduino-cli. Invariant 3 - the two toolchains share no source, and
+# Track A is a reference oracle only for as long as a different compiler and
+# a different USB stack produce it. Consolidating the *interface* is free;
+# consolidating the *toolchains* would destroy the thing Track A is for.
+#
+# Tool locations come from toolchains.json via cmake/hosttools.cmake, so
+# platform differences are resolved here rather than inside the scripts.
+# ---------------------------------------------------------------------------
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/hosttools.cmake)
+
+# Prefer the project venv: tools/flash.py needs pyserial, which is declared
+# in requirements-dev.txt and installed there, not in the system interpreter.
+# Scripts/ on Windows, bin/ elsewhere - resolved here so no script has to ask.
+find_package(Python3 COMPONENTS Interpreter)
+set(PY "${Python3_EXECUTABLE}")
+foreach(_cand "${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe"
+              "${CMAKE_SOURCE_DIR}/.venv/bin/python")
+    if(EXISTS "${_cand}")
+        set(PY "${_cand}")
+        break()
+    endif()
+endforeach()
+message(STATUS "python:        ${PY}")
+
+hosttools_find(arduino_cli ARDUINO_CLI_DIR ARDUINO_CLI)
+hosttools_find(bossac      BOSSAC_DIR      BOSSAC)
+
+add_custom_target(tools
+    COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/toolchain.py"
+    COMMENT "Host tools resolved from toolchains.json"
+    USES_TERMINAL VERBATIM)
+
+# Track A -- the reference oracle, built by arduino-cli against the Arduino
+# core. build.f_cpu MUST match the runtime clock: micros() divides by it,
+# and MCK is 78 MHz here so the ADC clock stays inside its 20 MHz limit.
+if(ARDUINO_CLI)
+    message(STATUS "arduino-cli:   ${ARDUINO_CLI}")
+    add_custom_target(track_a
+        COMMAND "${ARDUINO_CLI}" compile
+                --fqbn arduino:sam:arduino_due_x_dbg
+                --build-property build.f_cpu=78000000L
+                --build-path "${CMAKE_BINARY_DIR}/track_a"
+                "${CMAKE_SOURCE_DIR}/sketches/bringup"
+        COMMENT "Track A (arduino-cli, Arduino core -- the oracle)"
+        USES_TERMINAL VERBATIM)
+
+    add_custom_target(flash_track_a
+        COMMAND "${ARDUINO_CLI}" upload
+                --fqbn arduino:sam:arduino_due_x_dbg
+                --input-dir "${CMAKE_BINARY_DIR}/track_a"
+                "${CMAKE_SOURCE_DIR}/sketches/bringup"
+        COMMENT "Flashing Track A"
+        USES_TERMINAL VERBATIM)
+else()
+    message(STATUS "arduino-cli:   not found -- Track A targets unavailable")
+endif()
+
+# Track B -- this project. The 1200-baud touch and bossac call live in
+# tools/flash.py because pyserial does them identically everywhere; CMake
+# supplies the tool path it resolved.
+if(BOSSAC)
+    message(STATUS "bossac:        ${BOSSAC}")
+    add_custom_target(flash
+        COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/flash.py"
+                --bin  "$<TARGET_FILE_DIR:baremetal_bringup>/baremetal_bringup.bin"
+                --bossac "${BOSSAC}"
+        DEPENDS baremetal_bringup
+        COMMENT "Flashing Track B over the programming port"
+        USES_TERMINAL VERBATIM)
+else()
+    message(STATUS "bossac:        not found -- the flash target is unavailable")
+endif()

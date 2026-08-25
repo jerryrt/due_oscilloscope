@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "$comment": [
+    "Where each host keeps its build tools.",
+    "",
+    "This file is COMMITTED and shared: adding a host means adding a search",
+    "pattern here, not editing CMake or a script. It follows the same rule as",
+    "requirements-dev.txt - the declaration travels, the installed bytes do not.",
+    "",
+    "Each tool lists glob patterns per platform, tried in order; the first match",
+    "that exists and contains the named executable wins. Platform keys are",
+    "CMAKE_HOST_SYSTEM_NAME / platform.system(): Darwin, Windows, Linux.",
+    "",
+    "Placeholders: {repo} = repository root, {home} = the user's home directory.",
+    "Patterns always name a DIRECTORY; 'requires' is the executable inside it",
+    "(a .exe suffix is tolerated on Windows).",
+    "",
+    "For a machine this file does not describe, create toolchains.local.json",
+    "with the same shape - it is gitignored, searched first, and only needs the",
+    "tools that differ. Prefer adding a pattern here if the layout is one another",
+    "teammate could plausibly have; keep local overrides for genuinely odd paths.",
+    "ARM_TOOLCHAIN_DIR in the environment, or -DARM_TOOLCHAIN_DIR, still wins",
+    "over both."
+  ],
+
+  "tools": {
+    "arm_toolchain": {
+      "what": "Track B cross compiler: the bin/ holding arm-none-eabi-gcc",
+      "requires": "arm-none-eabi-gcc",
+      "reject": [
+        "*/packages/arduino/tools/arm-none-eabi-gcc/*"
+      ],
+      "reject_why": [
+        "arduino:sam bundles gcc 4.8.3 from 2014. Track B is deliberately not",
+        "built with it, and it is on PATH-adjacent disk on any machine with the",
+        "Arduino IDE installed, so it is refused by pattern rather than by luck."
+      ],
+      "search": {
+        "Darwin": [
+          "{repo}/tools/xpack-arm-none-eabi-gcc-*/bin",
+          "{repo}/tools/arm-gnu-toolchain-*/bin",
+          "{home}/.local/opt/xpack-arm-none-eabi-gcc-*/bin"
+        ],
+        "Windows": [
+          "{repo}/tools/xpack-arm-none-eabi-gcc-*/bin",
+          "{repo}/tools/arm-gnu-toolchain-*/bin",
+          "C:/arm-gnu-toolchain-*/bin",
+          "C:/xpack-arm-none-eabi-gcc-*/bin",
+          "C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/*/bin",
+          "C:/Program Files/Arm GNU Toolchain arm-none-eabi/*/bin",
+          "{home}/AppData/Local/Programs/arm-gnu-toolchain-*/bin"
+        ],
+        "Linux": [
+          "{repo}/tools/xpack-arm-none-eabi-gcc-*/bin",
+          "{repo}/tools/arm-gnu-toolchain-*/bin",
+          "/opt/xpack-arm-none-eabi-gcc-*/bin",
+          "/opt/arm-gnu-toolchain-*/bin",
+          "/usr/bin"
+        ]
+      },
+      "note": [
+        "On macOS use the xPack build: ARM's own darwin-x86_64 build links cc1",
+        "against Homebrew's zstd at an absolute path and dies in dyld on a machine",
+        "without Homebrew, while reporting a version happily from the driver.",
+        "That is a macOS packaging defect, not a verdict on ARM's toolchain -",
+        "ARM's mingw-w64 build is self-contained and is what Windows uses here."
+      ]
+    },
+
+    "bossac": {
+      "what": "SAM flash programmer, shipped with the Arduino sam core",
+      "requires": "bossac",
+      "search": {
+        "Darwin": [
+          "{home}/Library/Arduino15/packages/arduino/tools/bossac/*"
+        ],
+        "Windows": [
+          "{home}/AppData/Local/Arduino15/packages/arduino/tools/bossac/*"
+        ],
+        "Linux": [
+          "{home}/.arduino15/packages/arduino/tools/bossac/*"
+        ]
+      }
+    },
+
+    "arduino_cli": {
+      "what": "Track A build/upload. The Arduino IDE 2.x bundles one",
+      "requires": "arduino-cli",
+      "search": {
+        "Darwin": [
+          "{home}/.local/bin",
+          "/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources"
+        ],
+        "Windows": [
+          "{home}/AppData/Local/Programs/Arduino IDE/resources/app/lib/backend/resources",
+          "C:/Program Files/Arduino IDE/resources/app/lib/backend/resources"
+        ],
+        "Linux": [
+          "{home}/.local/bin",
+          "/opt/Arduino IDE/resources/app/lib/backend/resources"
+        ]
+      }
+    },
+
+    "cmake": {
+      "what": "Track B build driver. Only needed if cmake is not already on PATH",
+      "requires": "cmake",
+      "search": {
+        "Darwin": [
+          "{home}/.local/bin",
+          "{home}/.local/opt/CMake.app/Contents/bin",
+          "/opt/local/bin"
+        ],
+        "Windows": [
+          "C:/Program Files/CMake/bin",
+          "C:/Program Files/Microsoft Visual Studio/*/*/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin"
+        ],
+        "Linux": [
+          "/usr/bin",
+          "/usr/local/bin"
+        ]
+      }
+    },
+
+    "ninja": {
+      "what": "Optional generator. Unix Makefiles is the default and needs no entry",
+      "requires": "ninja",
+      "search": {
+        "Darwin": [
+          "{home}/.local/bin",
+          "/opt/local/bin"
+        ],
+        "Windows": [
+          "C:/Program Files/Microsoft Visual Studio/*/*/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja"
+        ],
+        "Linux": [
+          "/usr/bin",
+          "/usr/local/bin"
+        ]
+      }
+    }
+  }
+}
