@@ -37,12 +37,21 @@
  * liveness, 0x001x state the host both reads and writes, 0x002x
  * counters, 0x003x faults and resets.
  *
- * Only the first two are implemented. The rest are listed in docs/control-protocol.md and reach
+ * LOAD is in the counter range and is the one metric here that is about
+ * the device rather than about the data. Everything else this board
+ * exports says the loop was too slow *afterwards* - an underrun, an
+ * overrun, a ring that ran dry. LOAD says how close to the edge it is
+ * on a run that passes, and it is readable while the sample path is
+ * blocked, which is the case the programming port has always been
+ * needed for and a deployed board does not have.
+ *
+ * The rest are listed in docs/control-protocol.md and reach
  * cmd_execute() when they land, so that a command means the same thing
  * whichever transport delivered it.
  */
 #define CTL_OP_PING       0x0001u
 #define CTL_OP_IDENTITY   0x0002u
+#define CTL_OP_LOAD       0x0024u
 
 /*
  * Error codes. The payload of an error response is one of these

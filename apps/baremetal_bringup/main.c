@@ -26,6 +26,7 @@
 #include "play.h"
 #include "playstat.h"
 #include "ctl.h"
+#include "load.h"
 #include "usb_cdc.h"
 
 #define LED_MASK (1u << 27)
@@ -51,7 +52,10 @@ static void banner(void)
 	printf("#           O=playback ring occupancy histogram\n");
 	printf("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels\n");
 	printf("#           M=mimic loop without USB (gen sine on TIOA1 + capture)\n");
-	printf("#           Q=main-loop profile  z=software reset\n");
+	printf("#           Q=main-loop profile  l=main-loop load\n");
+	printf("#           =<ms>S = stall the loop (validates l)\n");
+	printf("#           =1l = report load, then clear it\n");
+	printf("#           z=software reset\n");
 	printf("#\n");
 }
 
@@ -501,6 +505,15 @@ static void cmd_profile(void)
 	PROF("empty loop", __asm__ volatile(""));
 	PROF("millis()", (void)millis());
 	PROF("micros()", (void)micros());
+	/*
+	 * load_tick() is measured by the same command that condemned
+	 * micros(). It runs on every pass of this loop, so if it ever
+	 * stops being negligible here it has stopped being an instrument
+	 * and started being part of what it measures. The count it adds
+	 * while profiling is deliberate: the profile is not a normal pass
+	 * and it should be visible in the histogram as one.
+	 */
+	PROF("load_tick()", load_tick());
 	PROF("usb_cdc_ready()", (void)usb_cdc_ready());
 	PROF("usb_dma_out_busy()", (void)usb_dma_out_busy());
 	PROF("usb_cdc_poll()", usb_cdc_poll());
@@ -519,6 +532,46 @@ static void cmd_profile(void)
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
  */
+/*
+ * Block the main loop for a known number of milliseconds.
+ *
+ * Exists to validate the load monitor, and it is the only way to do
+ * that honestly: every other long pass on this board - a printf, a
+ * sweep, the profile itself - has a duration nobody knows independently,
+ * so agreeing with it would prove only that two unknowns match. This
+ * one has a duration the *host* chose, so the monitor can be checked
+ * against a number it was not told.
+ *
+ * Busy-waits on millis() rather than sleeping: the point is to occupy
+ * the loop, which is exactly what a wedged pass does.
+ *
+ * Development only, like trigger_fault. It is not in the control
+ * protocol's command set and must not be: a deployed instrument with a
+ * remote "stop responding for a while" is a defect, not a feature.
+ */
+static void cmd_stall(uint32_t ms)
+{
+	uint32_t until;
+
+	if (ms == 0u)
+		ms = 10u;
+	if (ms > 2000u)
+		ms = 2000u;    /* long enough to see, short of a watchdog */
+
+	/*
+	 * Deliberately silent. A printf here lands in the very pass this
+	 * command exists to measure - 36 characters at 115200 baud is
+	 * 3.1 ms - and the monitor would faithfully report the stall plus
+	 * the announcement of it. That was measured, not guessed: with the
+	 * message in, a 5 ms stall read 7.2 ms and a 1500 ms stall read
+	 * 1502.7 ms, the same 2-3 ms offset at both ends. The answer to
+	 * "did it work" is the load report, not an echo.
+	 */
+	until = millis() + ms;
+	while ((int32_t)(millis() - until) < 0)
+		;
+}
+
 static void trigger_fault(void)
 {
 	printf("# triggering deliberate hard fault (INVSTATE)...\n");
@@ -680,6 +733,20 @@ static void cmd_execute(const cmd_t *cmd)
 	}
 	case 'Q': cmd_profile(); break;
 	/*
+	 * `l` reports; `=1l` reports and then clears. The counters are
+	 * cumulative so two readings give a rate over any interval the
+	 * host chooses - but max_cycles is a maximum, not a counter, and
+	 * differencing a maximum is meaningless. Clearing has to be
+	 * explicit rather than a side effect of reading, or two consumers
+	 * of this channel would silently steal each other's worst case.
+	 */
+	case 'l':
+		load_dump();
+		if (cmd->arg[0])
+			load_clear();
+		break;
+	case 'S': cmd_stall(cmd->arg[0]); break;
+	/*
 	 * Software reset. The test suite holds the control port open
 	 * for a whole session, because opening it asserts NRSTB and
 	 * costs a reset plus a native-port re-glob every time; this is
@@ -754,6 +821,7 @@ int main(void)
 	led_aux_init();
 	uart_init(115200);
 	systick_init();
+	load_init();
 	dac_init();
 	adc_init();
 	usb_cdc_init();
@@ -766,8 +834,15 @@ int main(void)
 	heartbeat_at = millis();
 
 	for (;;) {
-		uint32_t now = millis();
+		uint32_t now;
 
+		/*
+		 * First thing in the pass, so the interval measured is the
+		 * whole pass rather than the part after the timebase read.
+		 */
+		load_tick();
+
+		now = millis();
 		stream_loop_passes++;
 
 		if (now - heartbeat_at >= (led_state ? 100u : 900u)) {

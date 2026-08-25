@@ -122,5 +122,22 @@
       "measure before removing it."
     ],
     "ladder_underrun_tolerance": 5
+  },
+  "load": {
+    "_comment": [
+      "Main-loop load, measured on THIS board with the cycle-counter",
+      "monitor (bsp/load.c). Idle and steady-state capture both put",
+      "essentially every pass in one log2 bucket, which is what makes",
+      "an outlier meaningful. Floors are well below the measured rate",
+      "because the point is to catch a loop that has stopped running,",
+      "not to police a few per cent of drift."
+    ],
+    "idle_passes_per_s": 102900,
+    "capture_max_passes_per_s": 93700,
+    "passes_per_s_floor": 60000,
+    "steady_worst_pass_us": 292,
+    "steady_worst_pass_ceiling_us": 2000,
+    "main_bucket_fraction_floor": 0.99,
+    "stall_tolerance_ms": 2.0
   }
 }

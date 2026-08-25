@@ -38,6 +38,7 @@ add_executable(baremetal_bringup
     bsp/uart.c
     bsp/led.c
     bsp/systick.c
+    bsp/load.c
     bsp/clock.c
     bsp/fault.c
     bsp/syscalls.c

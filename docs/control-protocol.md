@@ -7,19 +7,15 @@
 | Command layer split out of the main loop | done, Track B |
 | Second CDC function on the native cable | done, Track B |
 | Host discovers the two nodes by interface number | done |
-| Framing: header, CRC, resync, refusals | done, Track B |
-| `PING` and `IDENTITY` | done, Track B |
-| The rest of the opcodes, executor binding | not started |
+| Frame parser, executor binding, opcodes | not started |
 | Heartbeat and asynchronous notifications | not started |
 | Track A | not started |
 
 What that means concretely today: the board enumerates two serial nodes
-on one cable, and a host can ask it `PING` and `IDENTITY` and get framed
-answers. Malformed frames are refused in words rather than ignored, and
-the parser resynchronises rather than being retired by one truncated
-write. The opcodes that change device state are still a design and are
-still worth arguing with; the framing and the numbering are now
-measured facts.
+on one cable, `usb_ctl_read()` and `usb_ctl_write()` carry bytes both
+ways byte-exact, and the main loop drains the command endpoint and
+throws the bytes away. The framing below is still a design and is still
+worth arguing with; the numbering above it is now a measured fact.
 
 The rest of this document is written as the proposal it was, because the
 reasoning is what makes the parts that are not built yet decidable.
@@ -232,16 +228,6 @@ response frame. That is what keeps the two from drifting.
 
 ## Framing
 
-**The parser abandons a frame that stops arriving.** Nothing in the
-original design said so, and leaving it out was a real defect rather
-than an omission: a host that dies between a header and its payload
-leaves the parser waiting for bytes that never come, and the *next*
-frame is then read as the tail of the abandoned one - permanently,
-because the deployed board's only reset is the cable. So a partial frame
-older than 200 ms is dropped. The threshold is enormous against how long
-a frame takes (a 272-byte frame crosses a high-speed link in
-microseconds) and small against a person noticing.
-
 `drivers/playstat.h` is the working precedent and should set the
 pattern: a magic distinct from `FRAME_MAGIC`, a version byte, a CRC,
 and a fixed layout the host mirrors. A parser that meets one of these
@@ -327,6 +313,7 @@ Grouped so the ranges mean something, and every one of them maps onto a
 | `0x0021` | `GET_OCCUPANCY` | — | `occ_min`, `endtx`, `run_us`, `consumed`, histogram |
 | `0x0022` | `GET_RATE_TRACE` | — | the decimated trace, empty when compiled out |
 | `0x0023` | `GET_LINK` | — | endpoint and DMA status, activity counters, cfg failures |
+| `0x0024` | `GET_LOAD` | — | `dev_us`, main-loop passes, worst pass, MCK, a 32-bucket log2 histogram of pass duration in cycles |
 | `0x0030` | `GET_FAULT` | — | the last HardFault record, or empty |
 | `0x0031` | `CLEAR_COUNTERS` | — | — |
 | `0x0032` | `RESET` | magic u32 | — (no response; the device is gone) |
@@ -361,6 +348,41 @@ this is an endpoint pair rather than EP0. The first users:
   the host has to go looking for;
 - fault captured, so a HardFault reaches the host rather than waiting
   for someone to ask.
+
+### Load, and why it is here
+
+Every other counter in this set reports damage: an underrun, an
+overrun, a ring that ran dry. All of them say the main loop was too
+slow *somewhere*, and none says when, for how long, or how close to the
+edge a run that passed actually came. Objective 0c is diagnosed today by
+reading endpoint registers over the programming port - which is exactly
+the port a deployed board does not have.
+
+`GET_LOAD` reports how hard the device is working while it is working:
+main-loop passes and the distribution of how long each one took. It is
+readable while the sample path is blocked, because it is a different
+endpoint pair on a different interface.
+
+Cumulative since boot or since a clear, so the host differences two
+readings and gets a rate over whatever interval it chose. The worst
+pass is the exception - a maximum cannot be differenced - so clearing is
+a separate act and never a side effect of reading, or the console and
+the control channel would silently steal each other's worst case.
+
+**It is measured with the cycle counter, not with `micros()`.** `micros()`
+costs 869 ns on this board, measured by `Q`; the idle pass is about
+10 us, so sampling it every pass would tax the loop by more than a
+fifth. DWT's cycle counter is one load from a free-running register.
+`load_tick()` costs 410 ns - 4% of a pass - and is profiled by `Q`
+alongside everything else, so if it ever stops being negligible that is
+visible in the same place that condemned `micros()`.
+
+What a healthy board looks like, measured: 103 k passes/s idle and
+94 k while capturing at the maximum in-spec rate, with 99.99% of passes
+in a single log2 bucket. That tightness is the point - against a
+distribution this narrow, one pass several buckets to the right is
+unmistakable, and starting a stream (11.8 ms of printf) shows up
+immediately.
 
 ## State worth exporting
 

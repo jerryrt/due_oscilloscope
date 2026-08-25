@@ -47,7 +47,7 @@ BASELINE_PATH = os.path.join(HERE, "baseline.json")
 # the board in a state nothing else cares about.
 FILE_ORDER = ["test_ports", "test_jitter", "test_daemon_protocol",
               "test_daemon_api", "test_link_health", "test_control",
-              "test_contract",
+              "test_load", "test_contract",
               "test_channels", "test_rates", "test_integrity",
               "test_transport", "test_daemon_hardware"]
 

@@ -7,6 +7,7 @@
 #include "acq.h"
 #include "bsp.h"
 #include "frame.h"
+#include "load.h"
 #include "usb_cdc.h"
 #include "sam.h"
 #include <stdio.h>
@@ -164,6 +165,25 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		       sizeof(build) - 1u < sizeof(id.build)
 		           ? sizeof(build) - 1u : sizeof(id.build));
 		ctl_respond(h->req_id, h->opcode, 0, &id, sizeof(id));
+		return;
+	}
+	case CTL_OP_LOAD: {
+		load_report_t r;
+
+		if (len != 0) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "load takes no payload");
+			return;
+		}
+		/*
+		 * Sampled here rather than cached, so the timestamp and the
+		 * counters come from one moment. A host differencing two
+		 * reports needs them paired or the rate it computes is
+		 * against the wrong interval - the same reason playstat
+		 * carries its own dev_us.
+		 */
+		load_sample(&r);
+		ctl_respond(h->req_id, h->opcode, 0, &r, sizeof(r));
 		return;
 	}
 	default:

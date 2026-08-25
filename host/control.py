@@ -31,6 +31,9 @@ FLAG_ERROR = 1 << 1
 
 OP_PING = 0x0001
 OP_IDENTITY = 0x0002
+OP_LOAD = 0x0024
+
+LOAD_BUCKETS = 32
 
 ERR_VERSION = 1
 ERR_OPCODE = 2
@@ -40,6 +43,7 @@ ERR_CRC = 4
 _HDR = struct.Struct("<4sBBHHHI")
 _PING = struct.Struct("<III")
 _IDENTITY = struct.Struct("<BBBBHHII24s")
+_LOAD = struct.Struct("<IIIIBB2x%dI" % LOAD_BUCKETS)
 
 
 class ControlError(Exception):
@@ -281,6 +285,44 @@ class Control:
         """(dev_us, dev_ms, seq) from the device's own clock."""
         frame = self.call(OP_PING)
         return _PING.unpack(frame.payload)
+
+    def load(self):
+        """Main-loop load: how hard the device is working, right now.
+
+        Cumulative since boot or since the last clear, so a rate comes
+        from differencing two of these over whatever interval the caller
+        wants. max_us is the exception - a maximum cannot be
+        differenced, so it is the worst pass since the last clear.
+
+        The histogram is floor(log2(cycles)) per pass. A healthy idle
+        board puts essentially every pass in one bucket; anything that
+        blocks the loop shows up as a lone count several buckets to the
+        right, which is what makes an outlier legible at a glance.
+        """
+        frame = self.call(OP_LOAD)
+        got = _LOAD.unpack(frame.payload)
+        dev_us, passes, max_cycles, mck_hz, available, buckets = got[:6]
+        hist = list(got[6:])
+        if not available:
+            raise ProtocolError(
+                "the device reports no cycle counter, so every pass "
+                "would read as zero cycles - treat the figures as absent "
+                "rather than as a very fast loop")
+        if buckets != LOAD_BUCKETS:
+            raise ProtocolError(
+                f"device reports {buckets} histogram buckets, this host "
+                f"expects {LOAD_BUCKETS}")
+        per_us = mck_hz / 1e6
+        return {
+            "dev_us": dev_us,
+            "passes": passes,
+            "max_cycles": max_cycles,
+            "max_us": max_cycles / per_us,
+            "mck_hz": mck_hz,
+            "hist": hist,
+            # Bucket i covers [2^i, 2^(i+1)) cycles.
+            "hist_us": [(1 << i) / per_us for i in range(len(hist))],
+        }
 
     def identity(self):
         frame = self.call(OP_IDENTITY)
