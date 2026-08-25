@@ -23,7 +23,7 @@ TONE = 1000.0
 
 
 @pytest.mark.smoke
-def test_device_generated_waveform_is_continuous(board, seconds, baseline):
+def test_device_generated_waveform_is_continuous(board, seconds):
     """The control for everything below, and it must stay green.
 
     `M` drives the DAC from the device's own flash sine through the same
@@ -41,16 +41,25 @@ def test_device_generated_waveform_is_continuous(board, seconds, baseline):
     ps = res.stream
     vals = ps.series[measure.CH_A0]
     start = ps._index_at(measure.CH_A0, measure.SETTLE_US)
-    step = max(abs(vals[i] - vals[i - 1]) for i in range(start + 1, len(vals)))
 
-    # gen's tone is the trigger rate over 512.
-    tone = ps.declared_rate_hz / 512.0
-    limit = measure.slew_limit(tone, baseline["amplitude"]["full_scale_codes"],
-                               ps.declared_rate_hz) * 3.0
-    assert step <= limit, (
-        f"the device's own waveform shows a {step} code step against a "
-        f"{limit:.0f} code limit; the fault is in the capture path, not in "
-        f"anything the host sends")
+    # Count the steps; do not judge the maximum. This test used to
+    # compare the largest step against slew_limit() * 3, and that is the
+    # wrong model twice over: `gen` emits a staircase, so the honest
+    # ceiling is the ~38-code DAC step and not the 16.85-code derivative
+    # of a continuous sine, which left the "3x margin" at 1.3x of real
+    # headroom. Issue #5 then sat under it for a whole session, because
+    # it moves the maximum from 38 to 58 - a factor of 1.5 that only
+    # made this test wobble - while it moves the count from 0 to 780.
+    #
+    # Measured on hardware, 25 runs across the two firmwares: every
+    # defective run lands at 778-780 and every healthy one at exactly 0,
+    # with nothing in between, and no healthy run has ever exceeded 39.
+    census = measure.level_census(vals[start:])
+    assert census["count"] == 0, (
+        f"the device's own waveform shows {census['count']} steps above "
+        f"{census['threshold']} codes (largest {census['max_step']:.1f}, "
+        f"nothing occupies {census['gap'][0]}..{census['gap'][1]}); the "
+        f"fault is in the capture path, not in anything the host sends")
 
 
 @pytest.mark.smoke
