@@ -9,6 +9,8 @@ before believing a single number in it.
 
 import statistics
 
+import sys
+
 import pytest
 
 import measure
@@ -31,6 +33,36 @@ def loop_cmd(adc_hz, channels=2, dac_sps=200000):
     point of the underrun counter.
     """
     return f"={dac_sps},{adc_hz},{channels}L"
+
+
+# Does this host's serial stack buffer ahead of the device?
+#
+# macOS's CDC driver holds 55-450 KB below the tty layer, runs ahead of
+# the device, and silently discards what it cannot place - which is
+# objective 0a/0b/0i, and the reason a deficit exists there at all.
+# Windows' usbser.sys applies backpressure to the writer instead, so no
+# backlog forms and nothing is discarded: measured 0 B lost at every rate
+# from 200,000 to 1,392,857 sps, across four write policies.
+#
+# So a test that asserts a deficit EXISTS is characterising one host, not
+# the device. Byte conservation is the invariant and is asserted
+# everywhere; the deficit relationship is asserted only where there is a
+# deficit to relate. See docs/windows.md and CLAUDE.md's tier table.
+BUFFERING_HOST = sys.platform == "darwin"
+
+
+def needs_a_buffering_host(what):
+    """Skip a test whose subject is the host's own oversupply.
+
+    Not an xfail: nothing here is broken and nothing is expected to
+    start working. The condition the test exists to observe does not
+    occur on this platform.
+    """
+    if not BUFFERING_HOST:
+        pytest.skip(
+            f"{what} needs a host that buffers ahead of the device. "
+            f"{sys.platform} applies backpressure instead, so there is no "
+            f"oversupply to measure - see docs/windows.md")
 
 
 def assert_fresh(res, seconds=None):
