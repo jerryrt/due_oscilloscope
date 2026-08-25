@@ -983,7 +983,7 @@ class Board:
             import control as _control
             nodes = ports.native_nodes(exclude=self.control)
             if len(nodes) >= 2:
-                link = _control.Control(nodes[-1], timeout=1.0)
+                link = _control.Control(nodes[-1], timeout=3.0)
                 link.ping()
                 self._ctl = link
         except Exception:                                    # noqa: BLE001

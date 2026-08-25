@@ -95,18 +95,21 @@ def link(board, track):
     """An open conversation with the command port."""
     if track != "b":
         pytest.skip("Track A has no control channel yet")
-    _ctl, _samples, cmd = ports.find_all_ports(wait=12.0)
-    if not cmd:
+    # The board owns the one control link for the session, the same way
+    # it owns the console port and for the same reason. A fixture that
+    # opened its own used to work; it stopped the day measure.py started
+    # using the channel too, because the port does not open twice.
+    c = board.ctl()
+    if c is None:
         pytest.fail("the board does not present a command port")
-    c = control.Control(cmd, timeout=2.0)
     try:
         yield c
     finally:
         # Take whatever is still in flight off the wire before closing.
         # These tests deliberately provoke refusals, and a queue left
         # full at close() is how objective 0c starts.
+        # Drained, not closed: the board owns it.
         c.drain()
-        c.close()
 
 
 def test_ping_answers_and_counts(link):

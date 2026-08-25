@@ -7,7 +7,20 @@ and a second board: it settles objective 0c, and it shows the playback
 byte loss is macOS's driver rather than anything on the device. If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
-## PR #3 from the Windows team is open and not merged (2026-08-25)
+## PR #3 from the Windows team, merged 2026-08-25
+
+**Both PRs are merged and there are no open PRs.** #4 into
+`windows-validation`, then #3 into `main`, both fast-forwards. All four
+macOS review blockers were re-verified fixed first: `loop.py` analysing
+`args.tone`, `flash.sh` reaching a system python without pyserial,
+`toolchain.py` exiting 1 on the optional ninja, and `flash.py` ignoring
+`--port` when a board sits in ROM SAM-BA. The record below is kept
+because the review is what made them findable.
+
+The history was rewritten on 2026-08-25 to correct 32 commits authored
+with the wrong email; every tree is byte-identical and the commit count
+is unchanged, but every SHA from `91cfe35` onward differs from what the
+text below quotes.
 
 `windows-validation`, 4 commits, +1811/-126. It is the first validation
 of this project on a host other than macOS and it settles the biggest
@@ -123,23 +136,17 @@ measured until the port is back.
 
 ### Where the branches are
 
-| Branch | PR | State |
-|---|---|---|
-| `windows-validation` | #3 -> `main` | 8 commits, CLEAN/MERGEABLE. macOS verified all but the last round |
-| `host-transport-port` | #4 -> #3 | 12 commits. Windows: 228 passed, 1 failed, 12 skipped |
-| `wip/stream-stop-race` | none | Tested 2026-08-25. **Do not merge as a fix** - see below |
-| `issue-5-instrument` | none | The splice census. Off `host-transport-port`, board-free tests, no firmware change |
-| `wip/refusal-reporting` | none | Off `wip/stream-stop-race`. Names which refusal it is; moves preset M's printfs off the capture |
+| Branch | State |
+|---|---|
+| `main` | Both PRs merged. Carries the splice census and the issue #5 write-up |
+| `printf-stage1` | Stages 1-2 of taking measurement off the console. Full suite green |
+| `wip/stream-stop-race` | Tested 2026-08-25. **Do not merge as a fix** - see below |
+| `wip/refusal-reporting` | Off `wip/stream-stop-race`. Names which refusal it is; moves preset M's printfs off the capture. Local only |
 
-The one failure in #4 is issue #5, which is on `main` and is not the
-branch's doing. It does not fail on `wip/stream-stop-race`, and the full
-Track B suite there is 235 passed / 0 failed - but read the section below
-before taking that as the defect being fixed, because the same suite goes
-green and red with four bytes of bss.
+`windows-validation` and `host-transport-port` are merged and can go.
 
-`issue-5-instrument` is the branch to merge. It changes no firmware, it
-replaces a continuity check that had a real defect under it for a
-session, and none of its value depends on how issue #5 turns out.
+Issue #5 is open and its recorded diagnosis is wrong; the correction is
+below and should be posted to the issue, whose title is also wrong.
 
 The macOS team has stopped. Both PRs carry their full review history and
 every finding they raised is answered in the comments.
@@ -267,6 +274,63 @@ of the defect it was built for.
   converters on `wip/refusal-reporting`. It was never inside the analysed
   window (`SETTLE_US` is 1 s) and is not an explanation for any of the
   above, but it had no business being there.
+
+### Taking measurement off the printf channel (stages 1-4)
+
+The rule is invariant 8 and it was not holding. It had been in CLAUDE.md
+the whole time while `measure.py` - the apparatus every test measures
+with - read its counters by sending `B` and scraping the printf, twice
+*inside* run_loop, under a comment saying "counters first, while they
+still describe the run". That is 13.14 ms of blocked main loop for `B`
+and 15.40 ms for `O`, spent in the middle of the run being measured,
+draining no bulk OUT for any of it. The daemon had been moved to the
+control channel when it was built; `measure.py` never was.
+
+**Stage 1, done.** `CTL_OP_STREAM_STATS` (0x0023, 23 counters, what `?`
+prints) and `CTL_OP_BENCH` (0x0025, bytes and microseconds, what `B`'s
+bench half prints). The device does not compute a rate - a throughput is
+arithmetic over two counters and does not need a Cortex-M3 mid-benchmark
+to do it. `stream.c` fills its own struct rather than un-static'ing its
+counters, and `_Static_assert` guards the memcpy between the two
+layouts so a divergence is a build error rather than wrong numbers on
+the wire. CTL_VERSION 2 -> 3, FW_VERSION 0.1.0 -> 0.2.0, baseline.json
+with them. Validated against the console on one running stream, field by
+field.
+
+**Stage 2, done.** `measure.play_counters()` and `measure.occupancy()`
+prefer the control channel and report which path they used as `.via`.
+Validated against the console on a real host-fed run: bytes_in 820224,
+produced 801, consumed 799, underruns 171, isr 209711, endtx 970, spans
+138, occ_min 2 - identical both ways, and the occupancy histogram too.
+
+**Playback figures do not compare across stage 2.** Removing two 13 ms
+stalls from inside a run removes the underruns those stalls caused. The
+measurement got more honest; the device did not change.
+
+**Stage 3, blocked on objective 1c.** The enforcement is
+`#pragma GCC poison printf` plus a `dbg()` that takes only a string
+literal - `#define dbg(s) dbg_puts("" s "")`, which will not compile with
+a runtime value. Both were checked against arm-none-eabi-gcc 14.3 and
+give the errors they should. It cannot be applied yet: **Track A has no
+control channel at all**, so the console is the only instrument it has,
+and poisoning one track and not the other creates exactly the asymmetry
+invariant 3 forbids. Stage 3 lands the day 1c does, and not before.
+
+**What holds the line meanwhile.**
+`test_measurement_does_not_come_from_the_console_on_this_track` asserts
+that where a control channel exists, the suite used it. It failed on its
+first run and caught two real bugs - a wrong key name, and a bare
+`except Exception` that swallowed it and degraded silently back to
+printf. That second one is the failure mode worth naming: a fallback
+that hides a bug behind a working-looking measurement taken the slow way
+is worse than no fallback. `_LINK_GONE` is now (OSError, ValueError)
+only.
+
+**Still on the console, deliberately.** `test_core_did_not_rebuild_endpoints`
+reads `rebuilds`, a Track A counter with no opcode, on a Track A only
+test. `t`, `x`, `r`, `s`, `V`, `D` and `u` are bring-up and dump
+commands run between runs rather than during them; they are stage 4,
+along with the Track A half of all of the above.
 
 ### The rest, in brief
 
