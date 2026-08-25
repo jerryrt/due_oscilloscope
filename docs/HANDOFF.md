@@ -637,6 +637,52 @@ sub-question: RC 44 reads one of two discrete converter rates.
    waveform broken. That warning does not apply to 0i, where the host
    genuinely oversupplies and matching the rate is the actual fix.
 
+0i-underruns. **Solved, and it was one constant.**
+
+   The underrun half of this objective is closed. `PLAY_PRIME_BUFS` was
+   4: the DAC's timer started once four of thirty-two ring slots held
+   data, which is 1.4 ms of runway at the top rate. Raised to 24, the
+   AWG ladder reports **zero underruns at every rate from 200,000 to
+   1,392,857 sps**, five runs each, with byte conservation untouched and
+   occmin going from 2 to 18-26.
+
+   Measured, five runs per rate, underruns per run:
+
+   | prime | RC 44 | RC 39 | RC 28 |
+   |---|---|---|---|
+   | 4 (was) | 4-7 | 7-10 | 22-25 |
+   | 12 | 1-5 | 5-11 | 14-21 |
+   | 20 | 3-6 | 1-7 | 13-20 |
+   | 22 | 0 | 0 | 0 |
+   | **24 (now)** | **0** | **0** | **0** |
+
+   The threshold is sharp because nothing drains while the timer is
+   stopped: the ring fills to exactly the prime and that is where it then
+   sits. **The prime sets the operating point, not just the start.**
+
+   What found it, after this was chased across many sessions and blamed
+   on feed policy, write size, scheduling, thread priority, driver
+   buffering and three operating systems: **run the same rate for 1 s,
+   3 s and 9 s.** At RC 28 all three gave 21-24. Nine times the duration,
+   the same count - so it was a burst at the start and nothing else, and
+   only the ring's state at t=0 could explain it.
+
+   Raising the prime creates one hazard and it is handled: a playback
+   shorter than the prime would never start, because the ring never
+   reaches the threshold and the abandon timer drops a waveform that
+   arrived intact. `play_service` now also primes on a host that has
+   gone quiet with at least `PLAY_PRIME_MIN` slots. Verified: 8 KB and
+   16 KB transfers, both under the 24-slot threshold, play.
+
+   **Still open in 0i: the oversupply byte loss**, which is a different
+   defect and macOS's - see below and `docs/windows.md`. Windows loses
+   0 B at every rate, so the underrun half and the byte half were never
+   the same problem, and treating them as one is part of why this took
+   as long as it did.
+
+   **Track A has not had this change** and its prime is still 4;
+   objective 1c.
+
 0i. **Oversupply at 886,363 and 1,000,000 sps: 1.35% and 2.15% of the
    waveform, with `under=0`.** The largest remaining loss, and the
    place to start.
