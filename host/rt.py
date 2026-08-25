@@ -48,9 +48,13 @@ def _promote_linux():
     negative nice value is still worth having - it will not meet a
     deadline but it does keep the thread off the back of the runqueue.
 
-    NOT YET RUN ON HARDWARE. Written against the documented interface;
-    no Linux host has been attached to this project. Treat the first
-    Linux run as bring-up, not as regression.
+    Exercised under WSL2 (kernel 5.15), both branches: unprivileged it
+    refuses and degrades, privileged it returns sched=fifo:10 with
+    sched_getscheduler reporting 1. **Never run on a native Linux host,
+    and never with a board attached** - WSL2 has no native USB, so
+    nothing here says what the promotion is worth in the only place it
+    matters, which is holding a feed schedule against a real device.
+    Native Linux is tier 1 deferred; treat its first run as bring-up.
     """
     try:
         param = os.sched_param(LINUX_FIFO_PRIORITY)

@@ -248,10 +248,12 @@ Check here before reasoning from general Arduino knowledge.
 
 ## Platform tiers
 
-| Tier | Platforms | Standard |
+| Tier | Platform | Standard |
 |---|---|---|
-| **1** | **Windows, Linux** | Develop, test and deploy. 100% correctness; a failure here is a bug to fix, not a platform quirk to document |
+| **1** | **Windows** | Develop, test and deploy. 100% correctness; a failure here is a bug to fix, not a platform quirk to document |
+| **1, deferred** | native Linux | Intended tier 1. **No host, nothing measured.** Not a claim until a Linux machine has a board on it |
 | **2** | macOS | Porting target. May compromise where the OS forces it, and does. **Also the provenance of every figure in `docs/status.md` until the 0-series is re-taken** |
+| **2** | WSL2 | Porting target for the *software* path only. Real Linux kernel, but no native USB - see below |
 
 That second row carries two things and they pull in opposite directions.
 macOS is where the project may compromise *going forward*, and it is
@@ -296,10 +298,56 @@ anywhere else, that is the seam failing and the fix belongs in the seam.
 in `requirements-dev.txt`. The old rule was always "a fact about the
 code, not a rule new code inherits".
 
-Nothing here has run on **Linux**. It is tier 1 by decision, not by
-evidence: `transport.py` uses the POSIX backend there and `rt.py` has a
-SCHED_FIFO path, both written against documented interfaces and neither
-executed. Treat the first Linux run as bring-up.
+### WSL2 is tier 2, and only for the software path
+
+WSL2 runs a **real Linux kernel** (5.15.153.1-microsoft-standard-WSL2) in
+a light VM - not emulation - so syscall semantics, glibc and Python are
+genuinely Linux. That makes it useful, and it has already earned its
+keep: it is where `rt.promote()`'s `SCHED_FIFO` path ran for the first
+time anywhere, and where the `accept()` teardown bug was found.
+
+**What it cannot do is measure this project.** WSL2 has no native USB
+passthrough. A device reaches it only through `usbipd-win`, which
+detaches the device on the Windows side and tunnels every URB over TCP
+to `vhci-hcd` inside the VM:
+
+    native Linux   app -> cdc_acm -> usbcore -> xHCI -> wire
+    WSL2 + usbipd  app -> cdc_acm -> usbcore -> vhci-hcd -> TCP
+                       -> usbipd-win -> Windows USB stack -> xHCI -> wire
+
+`cdc_acm` is real and you get a real `/dev/ttyACM0`. What is not real is
+what sits under it, and it changes precisely the properties this project
+exists to measure:
+
+- **Buffering and backpressure.** The central finding here is "macOS
+  buffers 55-450 KB and discards; Windows applies backpressure". usbip
+  inserts another queue between `cdc_acm` and the wire.
+- **Throughput.** URBs serialise over one TCP connection, so the 30-48
+  MB/s figures would measure usbip's ceiling rather than the device's.
+- **Underruns and jitter.** Completion timing crosses two schedulers and
+  a socket.
+- **Objective 0c.** "Does `close()` hang on outstanding write URBs" would
+  be testing `vhci`'s URB cancellation, not native `cdc_acm` + xHCI.
+
+So: **valid on WSL2** - port discovery, frame parsing, header CRC,
+sequence continuity, command round-trips, the daemon, the whole
+board-free suite. **Not valid** - any throughput, underrun, byte-margin
+or `close()` figure.
+
+**And the trap worth naming.** A usbip-induced dropout looks exactly like
+a device fault. Proving the firmware innocent of a host defect is what
+most of the last several sessions went into; a tunnel that manufactures
+the same symptoms is worth using only with that written down first.
+
+This is reasoned from the architecture, **not measured** - `usbipd` is
+not installed here and no board has been attached to WSL2. Turning it
+into a number means running the same `bench.py` natively on Windows and
+through usbip against the same board.
+
+Native Linux stays **tier 1, deferred**: `transport.py`'s POSIX backend
+and `rt.py`'s `SCHED_FIFO` path are exercised under WSL2, but no Linux
+machine has had a board on it. Treat the first native Linux run as
+bring-up, and do not let a WSL2 pass stand in for it.
 
 ## Ports on the development host
 
