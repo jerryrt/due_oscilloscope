@@ -413,46 +413,83 @@ off the `O` occupancy line, and Track A has no `O`. That is objective 1c
 and not a defect, so it skips with that reason - the same way the
 control-channel and load-monitor tests already do.
 
-## Linux: the software path, not the hardware
+## WSL2: tier 2, and what that buys
 
-Run under WSL2 Ubuntu 24.04, Python 3.12.3. **No hardware**: `usbipd` is
-not installed, so no USB passthrough, and nothing below touched a board.
-This moves Linux from "declared tier 1 on zero evidence" to "the code
-paths are exercised"; it does not make it validated.
+Run under WSL2 Ubuntu 24.04, kernel 5.15.153.1-microsoft-standard-WSL2,
+Python 3.12.3. **No board was attached.** WSL2 is tier 2 for the software
+path only; native Linux is tier 1 *deferred* and has never run at all.
+See CLAUDE.md's tier table for why the two are not the same claim.
 
-What ran:
+### What it established
 
 | | Result |
 |---|---|
 | `transport` backend selection | `_PosixPort`, `WINDOWS=False` |
-| `rt.promote()` | reached `SCHED_FIFO`, refused for want of privilege, degraded correctly |
+| `rt.promote()` unprivileged | reached `SCHED_FIFO`, refused for want of privilege, degraded correctly |
+| `rt.promote()` privileged | **`sched=fifo:10`**, `sched_getscheduler` returns 1, priority 10 |
 | `ports.usb_interfaces()` / `native_nodes()` | `{}` / `[]` with no devices - no crash |
-| `toolchains.json` on Linux | resolved `cmake` at `/usr/bin`; the rest absent, as expected |
-| no-hardware suite | **99 passed, 1 failed** |
+| `toolchains.json` under WSL2 | resolved `cmake` at `/usr/bin`; the rest absent, as expected |
+| daemon suite | **47 passed in 44 s** after the `accept()` fix, from 1 failed in 188 s |
 
-The `rt.py` result is the one worth having: that is the exact
-degradation branch where I had found - by inspection, not by running -
-a `NameError` from Python unbinding the `except ... as` variable. It now
-takes that branch for real and returns the right message. The privileged
-success path still has not run; it needs `CAP_SYS_NICE` or an rtprio
-limit.
+Two of those are worth more than the rest. The privileged `SCHED_FIFO`
+run is the first execution of that path **anywhere** - it is where a
+`NameError` had been found by inspection rather than by running, on
+exactly the branch meant to degrade gracefully. And the `accept()` bug
+was found here and nowhere else, because it needs a kernel whose
+`close()` does not wake a blocked `accept()`.
 
-**The one failure is pre-existing and not the transport port's.**
-`test_the_server_leaves_no_threads_behind` times out waiting 10 s for
-daemon threads to exit. Controlled by running the **pre-transport**
-`host/` - which is POSIX-only and needs no port to run on Linux - from
-the same venv: it fails **two** tests there, against one here. Both
-versions take ~180 s wall for ~15 s of CPU, so something in the daemon
-tests blocks on Linux regardless of this branch. Worth its own
-investigation; it is not this PR.
+### What it cannot establish, and why
+
+WSL2 has no native USB passthrough. A device reaches it only through
+`usbipd-win`, which detaches the device on the Windows side and tunnels
+every URB over TCP to `vhci-hcd` in the VM:
+
+```
+native Linux    app -> cdc_acm -> usbcore -> xHCI -> wire
+WSL2 + usbipd   app -> cdc_acm -> usbcore -> vhci-hcd -> TCP
+                    -> usbipd-win -> Windows USB stack -> xHCI -> wire
+```
+
+`cdc_acm` is the real driver and you get a real `/dev/ttyACM0`. What is
+not real is everything under it - and it is exactly the layer this
+project measures:
+
+- **Buffering and backpressure.** This document's central finding is
+  "macOS buffers 55-450 KB and discards; Windows applies backpressure".
+  usbip inserts a further queue between `cdc_acm` and the wire.
+- **Throughput.** URBs serialise over one TCP connection, so the 26-48
+  MB/s figures here would measure usbip's ceiling and not the device's.
+- **Underruns and ring occupancy.** Completion timing crosses two
+  schedulers and a socket.
+- **Objective 0c.** "Does `close()` hang on outstanding write URBs" would
+  be testing `vhci`'s URB cancellation rather than native `cdc_acm` and
+  xHCI.
+
+So through usbip: port discovery, frame parsing, header CRC, sequence
+continuity, command round-trips and the whole board-free suite are worth
+running. **No throughput, underrun, byte-margin or `close()` figure taken
+that way is a Linux figure.**
+
+**The trap, named so it cannot be walked into quietly.** A usbip-induced
+dropout looks exactly like a device fault. Most of the last several
+sessions went into proving the firmware innocent of a host defect;
+introducing a tunnel that manufactures the same symptoms is worth doing
+only with that written down first.
+
+All of this is reasoned from the architecture and **not measured** -
+`usbipd` is not installed on this machine and no board has been attached
+to WSL2. Turning it into a number means running the same `tools/bench.py`
+natively on Windows and through usbip against the same board, and
+comparing. Until someone does, treat the split above as a well-founded
+prediction rather than a result.
 
 ## What was not measured
 
-- **Linux.** Nothing here has run on Linux. `host/transport.py` uses the
-  POSIX backend there and `host/rt.py` has a SCHED_FIFO path, both
-  written against documented interfaces and **neither executed**. Treat
-  the first Linux run as bring-up, not regression - it is tier 1 and has
-  not earned that yet.
+- **Native Linux.** Tier 1 *deferred*: no Linux machine has had a board
+  on it. The POSIX backend and the `SCHED_FIFO` path are exercised under
+  WSL2, which is a real kernel, so the software results should carry -
+  but nothing about USB does, and a WSL2 pass must not stand in for a
+  native run.
 - **macOS after the port.** The POSIX backend is the original code
   moved, not rewritten, but no Mac has run it since. That is the one
   thing the review of this branch most needs.
