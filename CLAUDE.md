@@ -339,10 +339,25 @@ a device fault. Proving the firmware innocent of a host defect is what
 most of the last several sessions went into; a tunnel that manufactures
 the same symptoms is worth using only with that written down first.
 
-This is reasoned from the architecture, **not measured** - `usbipd` is
-not installed here and no board has been attached to WSL2. Turning it
-into a number means running the same `bench.py` natively on Windows and
-through usbip against the same board.
+**Measured, and the four bullets above were mostly wrong.** The
+experiment was run - both Due devices attached to WSL2 through usbipd,
+the same `bench.py` against the same board, minutes apart. Throughput is
+*not* degraded (out 37.25 vs 37.3-37.9 MB/s; in 30-32 vs 30-33), byte
+conservation holds at every rate, and underruns are **lower** through the
+tunnel than natively on Windows - median 0 against 6 at RC 44, 0 against
+8 at RC 39.
+
+The tunnel is itself a queue in front of the device, and a queue is what
+the playback ring wants. So a usbip figure is still not a Linux figure,
+but the error is **optimistic, not pessimistic** - which is the worse
+trap, because a host that looks good through a tunnel invites the
+conclusion that it is good. "Linux buffers ahead without discarding" and
+"usbip supplies the elasticity" predict the same numbers, and only a
+native host separates them. Full data in `docs/windows.md`.
+
+Stability, not fidelity, is the real defect: the tunnel dropped twice
+unprompted (`vhci_hcd: connection closed`) and needed a manual
+re-attach.
 
 Native Linux stays **tier 1, deferred**: `transport.py`'s POSIX backend
 and `rt.py`'s `SCHED_FIFO` path are exercised under WSL2, but no Linux
