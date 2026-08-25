@@ -5,7 +5,42 @@ recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
 policy). If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
-## Where the work stands (2026-08-23, later session)
+## Where the work stands (2026-08-25)
+
+**If you are here to build G2 - trigger, measurements, FFT - read
+objective 1a and stop. Nothing below blocks you and none of it needs a
+board.** The rest of this file is a measurement-integrity investigation
+that has been running for several sessions; it matters when you quote a
+number, not when you write a view.
+
+What the 2026-08-24/25 session changed, in one pass:
+
+- **The native port carries a control channel.** Two CDC functions on
+  one cable, a framed protocol, and six working opcodes - `PING`,
+  `IDENTITY`, `COUNTERS`, `OCCUPANCY`, `RATE_TRACE`, `LOAD`. The daemon
+  reads counters and the occupancy trace over it instead of the
+  console, which took a status poll from 13.14 ms of blocked main loop
+  to 146 us. Objective 8.
+- **The device measures its own load** (`bsp/load.c`, `GET_LOAD`,
+  console `l`). Cycle-counter based, validated against host-chosen
+  stalls, and it is what found the two defects below.
+- **printf is not an instrument** - now invariant 8 in `CLAUDE.md`, with
+  the measurements behind it.
+- **Constant memory and constant time on the working path** - invariant
+  7, which immediately condemned code written the same day.
+- **Objective 0c is answered.** The device is innocent and that is
+  measured, not argued; a software detach recovers a wedged host 9 times
+  out of 9. See 0c.
+- The main loop went 9.72 us -> 6.70 us a pass by gating two polls that
+  were asking a UOTGHS register about events that happen tens of times a
+  second.
+
+Suite on Track B: **234 and 232 passed, 0 failed**, on the last two
+runs. `.venv-gui/bin/python -m pytest tests/test_gui.py` is 14/14 -
+worth knowing that those skip in `.venv`, which is how four of them sat
+broken for a while.
+
+## Where the work stood (2026-08-23, later session)
 
 **Host-fed playback was losing samples at every rate above 200 ksps,
 and had been all along. That is fixed; two narrower losses remain.**
@@ -247,7 +282,12 @@ publishing.
 
 ## Next objectives, in order
 
-**Start here**: objective 0i, the oversupply loss. It is the largest
+**Start here, if you are building the front end**: objective 1a. It
+needs no board, nothing below blocks it, and the path it stands on was
+checked end to end on 2026-08-25 rather than assumed.
+
+**Start here, if you are chasing numbers**: objective 0i, the oversupply
+loss. It is the largest
 remaining hole in the data path - 1.35% and 2.15% of the waveform at
 886,363 and 1,000,000 sps - it has a clear cause, and the fix (closed
 loop on the device's own consumption) is now a real fix rather than a
@@ -1108,12 +1148,85 @@ sub-question: RC 44 reads one of two discrete converter rates.
    measures 81 overruns per run against zero today. Adopting it there
    needs a verified placement mechanism first.
 1a. **G2 on the front end**: trigger (edge, level, pulse; auto, normal,
-   single), automatic measurements, FFT with a window choice. The
-   decode, ring and reduction are already Qt-free in `gui/stream.py`
-   and tested there, so this is mostly new views over existing data.
-   Needs no board.
+   single), automatic measurements (Vpp, RMS, frequency, duty, rise and
+   fall), math including A-B, and FFT with a window choice. The decode,
+   ring and reduction are already Qt-free in `gui/stream.py` and tested
+   there, so this is mostly new views over existing data.
 
-1c. **Track A has none of this session's instrumentation.** `O`, the
+   **Verified working on 2026-08-25, so start from here rather than
+   from doubt:**
+
+   ```sh
+   .venv-gui/bin/python -m gui --spawn-fake      # the whole thing, no board
+   .venv-gui/bin/python -m pytest tests/test_gui.py -q     # 14/14
+   .venv/bin/python -m pytest tests/test_daemon_api.py -q  # no board
+   ```
+
+   Driven headless against a real `--fake` daemon, the real
+   `MainWindow` ingested 1178 frames across two channels at 200 ksps.
+   The front end does not auto-start: `start_capture()` is what the
+   Start button calls, which is worth knowing before concluding that no
+   frames arrive.
+
+   **What you already have, and it is most of what G2 needs.**
+   `ChannelRing.window(n)` returns `(samples, breaks)` - a contiguous
+   numpy array *and* a discontinuity mask. That mask is not decoration:
+   invariant 5 forbids presenting spliced data as continuous, so a
+   trigger must not arm across a break and an FFT must not transform
+   across one. `minmax(samples, columns, breaks)` already puts NaN at
+   breaks for the decimated draw, and is the model to follow.
+
+   The fake daemon emits a real sine - `2048 + amplitude * sin(phase)`,
+   1 kHz by default - so every measurement and the FFT can be developed
+   *and validated against a known answer* with no hardware. Use that:
+   a frequency readout that has never been checked against a tone whose
+   frequency you chose is not a measurement.
+
+   `.venv-gui` has numpy 2.5.2, scipy 1.18.1, PySide6 6.9.3 and
+   pyqtgraph 0.14.0. `.venv` deliberately has none of them, which is why
+   `tests/test_gui.py` skips there - the skip reason names the command.
+
+   **Three design facts that will bite, none of them blockers.**
+
+   - **Channel skew is real.** Conversions are ~0.95 us apart, not
+     simultaneous. Single-channel work is unaffected; **A-B math must
+     correct for it host-side** or it produces a phase artefact that
+     looks like a signal. `docs/hardware.md` has the figures.
+   - **The DAC is not rail-to-rail** (~0.55-2.75 V), so absolute voltage
+     readouts against the loopback need that calibration and not a naive
+     full-scale mapping. `codes_to_volts` is the place.
+   - **Do not put a throughput or sample-rate figure above 200 ksps in
+     the UI yet.** Objective 0h: most were measured through a feed that
+     silently lost 0.45-0.85%. Samples in hand are fine; quoted rates
+     are not.
+
+   **Where the design already is:** `docs/frontend.md` has the scope
+   feature list and the reasoning, including why the trigger is software
+   today and what a hardware trigger (`ADC_EMR`'s window comparator)
+   would buy later.
+
+   One cheap piece of polish that is not a prerequisite: the daemon now
+   reports `via: "control"` on `counters()` and `trace()`, and the
+   health panel does not surface it. That panel is also the natural home
+   for `GET_LOAD`.
+
+1c. **Track A has fallen further behind, and the list is now long.**
+   Missing relative to Track B: the second CDC function and the whole
+   control channel, the load monitor (`l`, `GET_LOAD`), the software
+   detach (`Z`), the stall injector (`S`), the playback-abandon
+   timeout, and the drain-poll counter - on top of what it was already
+   missing below. The project rule is that anything added to one track
+   is added to the other with the same commands and output format, and
+   that debt has grown faster this session than any other.
+
+   The wire format is the thing that matters most: `docs/control-protocol.md`
+   says both tracks must present *identical* descriptors and identical
+   response bytes, and the suite is where that is enforced. The two
+   on-board control tests in `tests/test_link_health.py` and all of
+   `tests/test_control.py` skip on Track A today; they are what will
+   stop skipping.
+
+   **Track A has none of the earlier session's instrumentation either.** `O`, the
    `occmin` key on `B`, and `play_run_us` are Track B only, so Track A
    cannot be measured against the defect that dominated this session.
    The project rule is that anything added to one track is added to the
@@ -1445,13 +1558,18 @@ unplugging the board.
 
   | Venv | Interpreter | Holds |
   |---|---|---|
-  | `.venv` | `/opt/local/bin/python3.14` (3.14.6) | pytest |
+  | `.venv` | `/opt/local/bin/python3.14` (3.14.6) | pytest, pyserial |
   | `.venv-gui` | `/opt/local/bin/python3.13` (3.13.14) | PySide6 6.9.3, pyqtgraph, numpy, scipy |
   | `.venv-ft` | `/opt/local/bin/python3.14t` (free-threaded) | pytest; run the daemon here |
 
   PySide6 declares `>=3.9,<3.14`, which is why the GUI has its own
   interpreter. The daemon imports nothing outside the standard library,
   which is why it can run on the free-threaded build at all.
+
+  `pyserial` arrived on 2026-08-25 for `tools/soak0c_portable.py`, the
+  one host-side thing here that has to run off macOS. `host/` itself is
+  still stdlib-only - which `CLAUDE.md` is careful to call a fact about
+  the code rather than a rule new code inherits.
 - Track B: `cmake --build build -j`, flash with
   `tools/flash.sh build/baremetal_bringup.bin` (discovers the port; an
   interrupted flash leaves SAM-BA enumerated and the banner silent -
@@ -1559,8 +1677,29 @@ which is what the underrun counter is for.
 | `V` | dump playback ring + DACC registers |
 | `D` | loop diagnostic: 12 snapshots at 150 ms, printed afterwards |
 | `M` | mimic loop without USB: gen sine on TIOA1 + capture |
-| `u` | dump USB + endpoint + DMA registers |
-| `z` | software reset |
+| `u` | dump USB + endpoint + DMA registers, both CDC functions |
+| `l` / `=1l` | main-loop load: passes, worst pass, log2 histogram / and clear |
+| `=<ms>S` | stall the main loop for `<ms>` - validates `l`, dev only |
+| `=<ms>Z` | **detach the native port and re-attach it**: a software unplug, and what releases a host wedged in `close()` (objective 0c). Not `z` - that is a processor reset and leaves the USB pull-up attached |
+| `z` | software reset (processor only; no USB disconnect) |
+
+### The native port's control channel
+
+Framed binary, not console text, and the supported way to read state
+while the board is working - a console poll blocks the main loop for
+13-20 ms and `u` for 113. Six opcodes are implemented:
+
+| op | name | what it carries |
+|---|---|---|
+| `0x0001` | `PING` | device clock, sequence |
+| `0x0002` | `IDENTITY` | track, versions, frame geometry, MCK |
+| `0x0020` | `COUNTERS` | the `play:` counters, loop passes, drain polls |
+| `0x0021` | `OCCUPANCY` | ring histogram and its trace |
+| `0x0022` | `RATE_TRACE` | the consumed-buffer timestamps, paged |
+| `0x0024` | `LOAD` | main-loop passes, worst pass, log2 histogram |
+
+`host/control.py` is the client; `docs/control-protocol.md` is the wire
+format and the design for what is not built yet.
 
 ## Host tools
 
@@ -1571,7 +1710,17 @@ python3 host/loopback.py --dac-sps 906976 --adc-hz 453488   # full-rate pair
 python3 host/loopback.py --diag                   # with mid-run firmware snapshots
 python3 host/usbbench.py in-dma --seconds 4       # DMA transport benchmarks
 python3 host/receive.py --send 5 --seconds 5 --expect-hz 885.72
+
+# added 2026-08-25
+python3 tools/loadwatch.py <command-port> log stop   # poll GET_LOAD at 10 Hz
+python3 tools/soak0c.py 40 play-nodrain              # reproduce 0c, ~30 s
+python3 tools/soak0c_portable.py --cycles 40         # same, pyserial, any OS
 ```
+
+`tools/soak0c_portable.py` is the only host-side thing here that runs
+off macOS, and the only one with a dependency (`pyserial`, pinned in
+`requirements-dev.txt`). It exists to answer whether 0c reproduces on
+Windows or Linux.
 
 `receive.py --expect-hz` is the gen tone: trigger rate / 512, i.e.
 885.72 Hz at the 453,488 Hz max in-spec preset.
