@@ -65,6 +65,7 @@
  * started bumps these; the main loop turns deltas into blinks. */
 volatile uint32_t usb_in_activity;
 volatile uint32_t usb_out_activity;
+volatile uint32_t usb_out_drain_polls;
 
 volatile uint32_t usb_reset_count;
 volatile uint32_t usb_setup_count;

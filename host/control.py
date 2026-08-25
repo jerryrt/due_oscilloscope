@@ -47,7 +47,7 @@ _HDR = struct.Struct("<4sBBHHHI")
 _PING = struct.Struct("<III")
 _IDENTITY = struct.Struct("<BBBBHHII24s")
 _LOAD = struct.Struct("<IIIIBB2x%dI" % LOAD_BUCKETS)
-_COUNTERS = struct.Struct("<13I")
+_COUNTERS = struct.Struct("<15I")
 _OCC = struct.Struct("<IIIIIBBH")
 _RATE_PAGE = struct.Struct("<BBHHH")
 
@@ -303,14 +303,15 @@ class Control:
         frame = self.call(OP_COUNTERS)
         (dev_us, bytes_in, produced, consumed, underruns, isr_calls,
          endtx_seen, spans, partial, occ_min, svc_calls, loop_passes,
-         run_us) = _COUNTERS.unpack(frame.payload)
+         run_us, abandoned, drain_polls) = _COUNTERS.unpack(frame.payload)
         return {
             "dev_us": dev_us, "bytes_in": bytes_in, "produced": produced,
             "consumed": consumed, "underruns": underruns,
             "isr_calls": isr_calls, "endtx": endtx_seen, "spans": spans,
             "partial": partial, "occ_min": occ_min,
             "svc_calls": svc_calls, "loop_passes": loop_passes,
-            "run_us": run_us,
+            "run_us": run_us, "abandoned": abandoned,
+            "drain_polls": drain_polls,
         }
 
     def occupancy(self):

@@ -188,6 +188,8 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		ct.svc_calls   = play_svc_calls;
 		ct.loop_passes = stream_loop_passes;
 		ct.run_us      = play_run_us;
+		ct.abandoned   = play_abandoned;
+		ct.drain_polls = usb_out_drain_polls;
 		ctl_respond(h->req_id, h->opcode, 0, &ct, sizeof(ct));
 		return;
 	}

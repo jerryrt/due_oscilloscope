@@ -54,6 +54,10 @@ const uint8_t *play_ring_base(void);   /* for mapping DACC_TPR to a slot */
 extern volatile uint32_t play_produced;    /* buffers filled from USB */
 extern volatile uint32_t play_consumed;    /* buffers handed to the PDC */
 extern volatile uint32_t play_underruns;
+/* Times playback stopped itself because nothing arrived for
+ * PLAY_ABANDON_MS. Non-zero means a host went away mid-run - which used
+ * to leave bulk OUT undrained and hang that host in close(). */
+extern volatile uint32_t play_abandoned;
 extern volatile uint32_t play_bytes_in;
 extern volatile uint32_t play_isr_calls;
 extern volatile uint32_t play_endtx_seen;

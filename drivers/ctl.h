@@ -121,6 +121,8 @@ typedef struct __attribute__((packed)) {
 	uint32_t svc_calls;
 	uint32_t loop_passes;    /* the stream side's own pass counter */
 	uint32_t run_us;
+	uint32_t abandoned;      /* playback stopped itself; host went away */
+	uint32_t drain_polls;    /* main-loop fallback drains attempted */
 } ctl_counters_t;
 
 /*

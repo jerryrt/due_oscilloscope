@@ -51,6 +51,37 @@ static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
 
 bool play_active(void) { return active; }
 
+/*
+ * Playback that is receiving nothing is not playback, and leaving it
+ * "active" is what hangs the host.
+ *
+ * The main loop drains bulk OUT only when nothing owns it -
+ * !play_active() && !stream_out_in_use() - because during playback the
+ * DMA owns the endpoint and the FIFO path must not touch it. That guard
+ * has a hole the host can fall into: close the port without stopping
+ * playback first, and the device stays active for ever with its OUT DMA
+ * armed for bytes nobody will send. Nothing drains, macOS waits in
+ * close() for write URBs that can never complete, and the port is held
+ * until the board is unplugged. That is objective 0c, and it reproduces
+ * in eight open/close cycles.
+ *
+ * So the device stops depending on being told. Half a second without a
+ * single byte arriving is enormous - the ring is 32 KB, about 18 ms at
+ * the full rate - so this cannot fire on a host that is merely slow. It
+ * fires on a host that has gone.
+ *
+ * The cost is a behaviour change worth stating: an AWG whose feed stops
+ * used to hold its last buffer for ever, repeating and counting
+ * underruns. Now it stops after half a second. A device that cannot be
+ * closed is worse than one that stops, and play_abandoned counts it so
+ * the difference is never silent.
+ */
+#define PLAY_ABANDON_MS 500u
+
+volatile uint32_t play_abandoned;
+static uint32_t abandon_bytes;
+static uint32_t abandon_at_ms;
+
 const uint8_t *play_ring_base(void) { return (const uint8_t *)play_buf; }
 
 static void dac_tc_init(uint32_t rc)
@@ -99,6 +130,8 @@ bool play_start(uint32_t dac_hz)
 	run_t0_us = 0;
 	fill_off = 0;
 	dma_inflight = false;
+	abandon_bytes = 0;
+	abandon_at_ms = millis();
 
 	/* The ring is fed by endpoint DMA; capture IN stays manual. */
 	/* OUT only: capture may be running with IN on DMA, and taking
@@ -175,6 +208,25 @@ void play_service(void)
 		return;
 
 	play_svc_calls++;
+
+	/*
+	 * Has anything arrived lately? millis() rather than micros()
+	 * because this runs on every pass while active and micros() costs
+	 * five times as much - and half a second needs no better
+	 * resolution than a millisecond.
+	 */
+	{
+		uint32_t ms = millis();
+
+		if (play_bytes_in != abandon_bytes) {
+			abandon_bytes = play_bytes_in;
+			abandon_at_ms = ms;
+		} else if (ms - abandon_at_ms > PLAY_ABANDON_MS) {
+			play_abandoned++;
+			play_stop();
+			return;
+		}
+	}
 
 	if (dma_inflight) {
 		/*

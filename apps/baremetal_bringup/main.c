@@ -932,6 +932,11 @@ int main(void)
 		 */
 		if (!play_active() && !stream_out_in_use()) {
 			static uint8_t scrap[512];
+
+			/* Counted so that "the device stopped draining" is a
+			 * reading and not a theory. It is the one thing every
+			 * 0c diagnosis has had to assume. */
+			usb_out_drain_polls++;
 			for (int b = 0; b < 4; b++)
 				if (usb_cdc_read(scrap, sizeof(scrap)) == 0)
 					break;

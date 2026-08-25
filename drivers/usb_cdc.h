@@ -22,6 +22,9 @@ void   usb_cdc_poll(void);
 bool   usb_cdc_ready(void);
 extern volatile uint32_t usb_in_activity;   /* bytes/transfers, IN  */
 extern volatile uint32_t usb_out_activity;  /* bytes/transfers, OUT */
+/* Times the main loop took its fallback-drain branch. Frozen while the
+ * board looks alive is the signature 0c has never been able to check. */
+extern volatile uint32_t usb_out_drain_polls;
 
 /*
  * Queue up to len bytes on the bulk IN endpoint. Returns the number
