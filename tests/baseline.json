@@ -18,8 +18,8 @@
       "either a stale flash or an un-updated baseline, and the test",
       "cannot tell you which if only one of them moved."
     ],
-    "version": "0.1.0",
-    "ctl_version": 2,
+    "version": "0.2.0",
+    "ctl_version": 3,
     "frame_version": 3
   },
   "rc": {

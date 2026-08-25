@@ -16,6 +16,17 @@
 #include <stdio.h>
 #include <string.h>
 
+/*
+ * The wire structs are copies of stream.c's, so that ctl.c stays a copy
+ * and not a field-by-field mapping that can be got wrong silently. That
+ * is only safe while they agree, so say so to the compiler rather than
+ * in a comment.
+ */
+_Static_assert(sizeof(ctl_stream_stats_t) == sizeof(stream_stats_t),
+               "ctl_stream_stats_t and stream_stats_t have diverged");
+_Static_assert(sizeof(ctl_bench_t) == sizeof(stream_bench_t),
+               "ctl_bench_t and stream_bench_t have diverged");
+
 volatile uint32_t ctl_rx_frames;
 volatile uint32_t ctl_rx_bad;
 volatile uint32_t ctl_tx_dropped;
@@ -195,6 +206,34 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		ct.abandoned   = play_abandoned;
 		ct.drain_polls = usb_out_drain_polls;
 		ctl_respond(h->req_id, h->opcode, 0, &ct, sizeof(ct));
+		return;
+	}
+	case CTL_OP_STREAM_STATS: {
+		stream_stats_t st;
+		ctl_stream_stats_t out;
+
+		if (len != 0) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "stream stats takes no payload");
+			return;
+		}
+		stream_get_stats(&st);
+		memcpy(&out, &st, sizeof(out));
+		ctl_respond(h->req_id, h->opcode, 0, &out, sizeof(out));
+		return;
+	}
+	case CTL_OP_BENCH: {
+		stream_bench_t b;
+		ctl_bench_t out;
+
+		if (len != 0) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "bench takes no payload");
+			return;
+		}
+		stream_get_bench(&b);
+		memcpy(&out, &b, sizeof(out));
+		ctl_respond(h->req_id, h->opcode, 0, &out, sizeof(out));
 		return;
 	}
 	case CTL_OP_OCCUPANCY: {

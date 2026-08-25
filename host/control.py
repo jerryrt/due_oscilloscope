@@ -26,7 +26,7 @@ MAGIC = b"DUEC"
 # response is 42 bytes where 1 sent 40. The device refuses a frame whose
 # version is not its own (drivers/ctl.c), which is the point: a host and
 # a board that disagree fail immediately instead of misparsing.
-VERSION = 2
+VERSION = 3
 HDR_BYTES = 16
 MAX_PAYLOAD = 448
 
@@ -38,7 +38,9 @@ OP_IDENTITY = 0x0002
 OP_COUNTERS = 0x0020
 OP_OCCUPANCY = 0x0021
 OP_RATE_TRACE = 0x0022
+OP_STREAM_STATS = 0x0023
 OP_LOAD = 0x0024
+OP_BENCH = 0x0025
 
 LOAD_BUCKETS = 32
 
@@ -49,6 +51,8 @@ ERR_CRC = 4
 
 _HDR = struct.Struct("<4sBBHHHI")
 _PING = struct.Struct("<III")
+_STREAM_STATS = struct.Struct("<23I")
+_BENCH = struct.Struct("<9I")
 _IDENTITY = struct.Struct("<BBBBBBHHII24s")
 _LOAD = struct.Struct("<IIIIBB2x%dI" % LOAD_BUCKETS)
 _COUNTERS = struct.Struct("<15I")
@@ -318,6 +322,39 @@ class Control:
             "run_us": run_us, "abandoned": abandoned,
             "drain_polls": drain_polls,
         }
+
+    def stream_stats(self):
+        """What `?` prints, without printing it.
+
+        The console form is twenty-four numbers and a uart_flush on a
+        board that is streaming when you want to read them - invariant 8,
+        and the same reason counters() exists. Nothing that measures
+        should go back to `?`.
+        """
+        f = self.call(OP_STREAM_STATS)
+        k = ("dma_frames", "dma_stalls", "frames", "bytes", "run_us",
+             "produced", "consumed", "ring_overflow", "resync", "refused",
+             "rxbuff_overruns", "govre", "gen_endtx",
+             "usb_reset", "usb_setup", "usb_stall", "usb_configured",
+             "usb_line_state", "usb_cfg_fail",
+             "usb_isr", "usb_devisr", "usb_ep0isr", "usb_devimr")
+        return dict(zip(k, _STREAM_STATS.unpack(f.payload)))
+
+    def bench(self):
+        """The bench half of `B`, with the division done here.
+
+        The device reports bytes and microseconds. A throughput is
+        arithmetic over two of its counters and nothing about it needs a
+        Cortex-M3 to do it, least of all one that is mid-benchmark.
+        """
+        f = self.call(OP_BENCH)
+        k = ("mode", "in_bytes", "out_bytes", "elapsed_us",
+             "resets", "turn", "dma_in_arms", "dma_out_arms", "loop_passes")
+        d = dict(zip(k, _BENCH.unpack(f.payload)))
+        us = d["elapsed_us"] or 1
+        d["in_mbps"] = d["in_bytes"] / us
+        d["out_mbps"] = d["out_bytes"] / us
+        return d
 
     def occupancy(self):
         """The playback ring's occupancy histogram and its trace.

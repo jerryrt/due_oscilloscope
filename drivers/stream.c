@@ -424,6 +424,52 @@ void stream_service(void)
 }
 
 
+void stream_get_stats(stream_stats_t *out)
+{
+	out->dma_frames      = dma_frames;
+	out->dma_stalls      = dma_stalls;
+	out->frames          = frames_sent;
+	out->bytes           = bytes_sent;
+	out->run_us          = active ? (micros() - started_us) : 0u;
+	out->produced        = acq_produced;
+	out->consumed        = acq_consumed;
+	out->ring_overflow   = acq_ring_overflow;
+	out->resync          = resync_count;
+	out->refused         = refused;
+	out->rxbuff_overruns = acq_rxbuff_overruns;
+	out->govre           = acq_govre;
+	out->gen_endtx       = gen_endtx_count;
+	out->usb_reset       = usb_reset_count;
+	out->usb_setup       = usb_setup_count;
+	out->usb_stall       = usb_stall_count;
+	out->usb_configured  = usb_configured;
+	out->usb_line_state  = usb_line_state;
+	out->usb_cfg_fail    = usb_cfg_fail;
+	out->usb_isr         = usb_isr_count;
+	out->usb_devisr      = usb_last_devisr;
+	out->usb_ep0isr      = usb_last_ep0isr;
+	out->usb_devimr      = usb_devier_snap;
+}
+
+/*
+ * The throughput division stays on the host. The device reports bytes
+ * and microseconds; a rate is arithmetic over two of its counters and
+ * nothing about it needs a Cortex-M3 to do it, least of all one that is
+ * streaming.
+ */
+void stream_get_bench(stream_bench_t *out)
+{
+	out->mode         = (uint32_t)bench;
+	out->in_bytes     = bench_in_bytes;
+	out->out_bytes    = bench_out_bytes;
+	out->elapsed_us   = micros() - bench_t0;
+	out->resets       = bench_resets;
+	out->turn         = bench_turn;
+	out->dma_in_arms  = dma_in_arms;
+	out->dma_out_arms = dma_out_arms;
+	out->loop_passes  = stream_loop_passes;
+}
+
 void stream_report(void)
 {
 	uint32_t us = micros() - started_us;

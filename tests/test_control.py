@@ -223,3 +223,65 @@ def test_a_long_payload_is_refused_and_skipped(link):
     # rests on the idle timeout.
     time.sleep(0.35)
     assert link.ping()[2] >= 1
+
+
+def test_stream_stats_says_what_the_console_says(link, board):
+    """The opcode must carry the console's measurement, not a new one.
+
+    This is the migration's whole risk: an opcode that quietly reports
+    something else than `?` does replaces a slow instrument with a wrong
+    one. So the two are read against the same running stream and
+    compared field by field.
+
+    Only the fields that cannot move between two reads are asserted.
+    `produced`, `consumed` and `gen_endtx` are free-running at 200 kHz
+    and advance measurably in the time it takes the console form to
+    print twenty-four numbers - which is the reason the opcode exists.
+    """
+    board.stop()
+    board.drain_console(0.3)
+    board.cmd("3")
+    time.sleep(1.5)
+    try:
+        st = link.stream_stats()
+        board.drain_console(0.2)
+        board.cmd("?")
+        text = board.drain_console(0.8)
+    finally:
+        board.stop()
+
+    kv = dict((k, int(v)) for k, v in
+              __import__("re").findall(r"([A-Za-z_][A-Za-z0-9_-]*)=(-?\d+)",
+                                       text))
+    settled = [("frames", "frames"), ("resync", "resync"),
+               ("refused", "refused"), ("ring_overflow", "ringovf"),
+               ("govre", "govre"), ("rxbuff_overruns", "rxbuff"),
+               ("dma_frames", "dma-frames"), ("dma_stalls", "dma-stalls"),
+               ("usb_configured", "cfg"), ("usb_line_state", "dtr")]
+    for op_key, con_key in settled:
+        if con_key in kv:
+            assert st[op_key] == kv[con_key], (
+                f"{op_key}: control channel says {st[op_key]}, console "
+                f"says {con_key}={kv[con_key]}")
+
+    # The moving ones must at least be moving in the right direction.
+    for op_key, con_key in (("produced", "prod"), ("consumed", "cons"),
+                            ("gen_endtx", "endtx")):
+        if con_key in kv:
+            assert kv[con_key] >= st[op_key], (
+                f"{op_key} went backwards between the control read and "
+                f"the console read: {st[op_key]} -> {kv[con_key]}")
+
+
+def test_bench_leaves_the_division_to_the_host(link):
+    """Bytes and microseconds off the device; the rate computed here.
+
+    A throughput is arithmetic over two counters, and a Cortex-M3 that
+    is mid-benchmark is the worst place to do it.
+    """
+    b = link.bench()
+    for key in ("mode", "in_bytes", "out_bytes", "elapsed_us", "resets",
+                "turn", "dma_in_arms", "dma_out_arms", "loop_passes"):
+        assert key in b
+    assert b["elapsed_us"] > 0
+    assert b["in_mbps"] == b["in_bytes"] / b["elapsed_us"]

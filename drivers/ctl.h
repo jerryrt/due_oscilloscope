@@ -29,7 +29,7 @@
  *    so its response is 42 bytes where 1 sent 40. A host built for 1
  *    would read frame_bytes out of the version fields.
  */
-#define CTL_VERSION  2
+#define CTL_VERSION  3
 
 #define CTL_HDR_BYTES     16u
 
@@ -75,6 +75,8 @@
 #define CTL_OP_OCCUPANCY  0x0021u
 #define CTL_OP_RATE_TRACE 0x0022u
 #define CTL_OP_LOAD       0x0024u
+#define CTL_OP_STREAM_STATS 0x0023u   /* what `?` prints */
+#define CTL_OP_BENCH      0x0025u   /* what `B`'s bench half prints */
 
 /*
  * Error codes. The payload of an error response is one of these
@@ -129,6 +131,28 @@ typedef struct __attribute__((packed)) {
 	uint32_t abandoned;      /* playback stopped itself; host went away */
 	uint32_t drain_polls;    /* main-loop fallback drains attempted */
 } ctl_counters_t;
+
+/*
+ * `?` over the control channel. Twenty-four counters and a uart_flush is
+ * what the console form costs, on a board that is by definition
+ * streaming when you want to read it - invariant 8. Field order matches
+ * stream_stats_t so ctl.c is a copy and not a mapping to get wrong.
+ */
+typedef struct {
+	uint32_t dma_frames, dma_stalls;
+	uint32_t frames, bytes, run_us;
+	uint32_t produced, consumed, ring_overflow, resync, refused;
+	uint32_t rxbuff_overruns, govre, gen_endtx;
+	uint32_t usb_reset, usb_setup, usb_stall, usb_configured;
+	uint32_t usb_line_state, usb_cfg_fail;
+	uint32_t usb_isr, usb_devisr, usb_ep0isr, usb_devimr;
+} ctl_stream_stats_t;
+
+/* The bench half of `B`. Bytes and microseconds; the host divides. */
+typedef struct {
+	uint32_t mode, in_bytes, out_bytes, elapsed_us;
+	uint32_t resets, turn, dma_in_arms, dma_out_arms, loop_passes;
+} ctl_bench_t;
 
 /*
  * OCCUPANCY: what the first two lines of `O` print.
