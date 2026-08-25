@@ -97,6 +97,17 @@ static uint32_t dma_frames, dma_stalls;
 #define DMA_CHUNK_BYTES  512u
 
 static bool stream_start_common(uint32_t trigger_hz);
+/*
+ * How long stream_start() waits for a stale IN transfer - one a previous
+ * stop aborted without it stopping - to finish, before arming capture
+ * over the buffers it is reading. Generous on purpose: by this point the
+ * host has the port open and its driver is draining, so a live transfer
+ * completes in microseconds and only a genuinely wedged host reaches the
+ * bound.
+ */
+#define STREAM_START_WAIT_MS 250u
+
+
 static bool stream_start_common_nogen(uint32_t trigger_hz,
                                       unsigned n_channels);
 
@@ -141,6 +152,30 @@ bool stream_start_capture_only(uint32_t trigger_hz, unsigned n_channels)
 static bool stream_start_common_nogen(uint32_t trigger_hz,
                                       unsigned n_channels)
 {
+	/*
+	 * Never arm the ADC's PDC over a buffer a USB transfer is still
+	 * reading. This is the wait stream_stop() cannot safely do: there
+	 * the host may be gone, here it has the port open and is draining,
+	 * so a stale transfer ends almost at once.
+	 *
+	 * Refusing is the right failure if it does not. Starting anyway
+	 * produces data that passes every continuity check the protocol
+	 * has and is spliced regardless; a refusal the host can see and
+	 * report is strictly better than that.
+	 */
+	{
+		uint32_t t0 = millis();
+
+		while (usb_dma_in_busy()
+		       && (millis() - t0) < STREAM_START_WAIT_MS)
+			;
+		if (usb_dma_in_busy()) {
+			usb_cdc_dma_mode_in(false);
+			if (usb_dma_in_busy())
+				return false;
+		}
+	}
+
 	acq_init();
 	seq = frames_sent = bytes_sent = 0;
 	pending_overrun = resync_count = refused = 0;
@@ -214,12 +249,27 @@ void stream_stop(void)
 		 * peer: if the host has stopped reading IN, the transfer
 		 * never completes and the stop command never returns, which
 		 * is invariant 7 broken on the one path a wedged host is
-		 * most likely to reach. usb_cdc_dma_mode_in(false) aborts the
-		 * channel through dma_channel_stop(), whose spin is bounded,
-		 * and an aborted transfer stops reading the buffer just as
-		 * surely as a finished one does. The worst case is one
-		 * corrupted frame already on the wire; the alternative is a
-		 * board that has to be power-cycled.
+		 * most likely to reach.
+		 *
+		 * But the claim that followed - "an aborted transfer stops
+		 * reading the buffer just as surely as a finished one" - is
+		 * false, and it costs data. dma_channel_stop() only stops the
+		 * controller "at the next packet boundary" and does not check
+		 * that it got one; on the same wedged host it returns with
+		 * the channel STILL ENABLED, still reading a capture buffer.
+		 * The next run then arms the ADC's PDC over those buffers and
+		 * the two race.
+		 *
+		 * Measured with the device generating its own sine, splices
+		 * per 3 s capture: 780 with the abort, 0-2 with the original
+		 * wait. Sequence numbers and header CRCs stay perfect
+		 * throughout, so nothing in the protocol reports it - which
+		 * is exactly the condition invariant 5 exists to prevent.
+		 *
+		 * The abort stays, because the alternative really is a board
+		 * that needs a power cycle. The wait moves to stream_start,
+		 * where the host has the port open and draining and a stale
+		 * transfer can actually finish.
 		 */
 		usb_cdc_dma_mode_in(false);
 		tx_dma = false;
