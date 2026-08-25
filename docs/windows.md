@@ -369,6 +369,83 @@ not just the pyserial harnesses written for the first pass.
 regular beat, which is objective 0f's sampling beat and not a property
 of this host - the project's own tool shows it too.
 
+## Track A on Windows
+
+First run of the oracle on this platform. It builds (63,612 bytes),
+flashes, and reports itself:
+
+```
+# id: track=A fw=0.1.0 ctlver=0 framever=3 mck=78000000 adcclk=19500000 ...
+```
+
+`ctlver=0` is correct - Track A has no control channel yet - and the
+native port presents one CDC function, so `find_all_ports()` returns no
+command node. Both are the contract behaving as documented.
+
+| Suite | Result |
+|---|---|
+| `--track=a -m smoke` | **89 passed, 21 skipped, 0 failed** |
+| `--track=a` (full) | **198 passed, 19 failed, 24 skipped** (10m51) |
+
+The 19 failures are the same three classes as Track B's 11, and nothing
+new:
+
+- **~10 assert a byte deficit exists** (`assert 0 > 0`, `assert 0 > 20`,
+  "the loop never retuned"). Track A conserves bytes on Windows too, so
+  the closed-loop tests have no oversupply to correct.
+- **~6 are missing instrumentation** (`assert None`) - the carrier and
+  rate-trace tests need what objective 1c says Track A does not have.
+- **The rest are underrun thresholds** at the top rates.
+
+**`arduino-cli upload` cannot flash a Due on Windows.** The sam core's
+recipe does the 1200-baud touch and then points bossac at the
+programming port with `-U false`. That works on macOS, where ROM SAM-BA
+answers through the 16U2's UART; here the erased chip brings SAM-BA up
+on the *native* port as `03EB:6124`, so bossac reports "No device found
+on COM7" **having already erased the board**. Measured: it wiped Track B
+and left nothing behind. `tools/sketch.py upload` now hands the binary
+arduino-cli built to `tools/flash.py`, which knows where SAM-BA is and
+which board it belongs to.
+
+One test was skipped rather than fixed:
+`test_playback_counters_describe_one_run_not_several` reads its identity
+off the `O` occupancy line, and Track A has no `O`. That is objective 1c
+and not a defect, so it skips with that reason - the same way the
+control-channel and load-monitor tests already do.
+
+## Linux: the software path, not the hardware
+
+Run under WSL2 Ubuntu 24.04, Python 3.12.3. **No hardware**: `usbipd` is
+not installed, so no USB passthrough, and nothing below touched a board.
+This moves Linux from "declared tier 1 on zero evidence" to "the code
+paths are exercised"; it does not make it validated.
+
+What ran:
+
+| | Result |
+|---|---|
+| `transport` backend selection | `_PosixPort`, `WINDOWS=False` |
+| `rt.promote()` | reached `SCHED_FIFO`, refused for want of privilege, degraded correctly |
+| `ports.usb_interfaces()` / `native_nodes()` | `{}` / `[]` with no devices - no crash |
+| `toolchains.json` on Linux | resolved `cmake` at `/usr/bin`; the rest absent, as expected |
+| no-hardware suite | **99 passed, 1 failed** |
+
+The `rt.py` result is the one worth having: that is the exact
+degradation branch where I had found - by inspection, not by running -
+a `NameError` from Python unbinding the `except ... as` variable. It now
+takes that branch for real and returns the right message. The privileged
+success path still has not run; it needs `CAP_SYS_NICE` or an rtprio
+limit.
+
+**The one failure is pre-existing and not the transport port's.**
+`test_the_server_leaves_no_threads_behind` times out waiting 10 s for
+daemon threads to exit. Controlled by running the **pre-transport**
+`host/` - which is POSIX-only and needs no port to run on Linux - from
+the same venv: it fails **two** tests there, against one here. Both
+versions take ~180 s wall for ~15 s of CPU, so something in the daemon
+tests blocks on Linux regardless of this branch. Worth its own
+investigation; it is not this PR.
+
 ## What was not measured
 
 - **Linux.** Nothing here has run on Linux. `host/transport.py` uses the

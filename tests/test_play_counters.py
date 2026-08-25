@@ -20,7 +20,7 @@ from helpers import record, window
 
 
 @pytest.mark.smoke
-def test_playback_counters_describe_one_run_not_several(board, seconds):
+def test_playback_counters_describe_one_run_not_several(board, seconds, track):
     """Every playback counter is reset by play_start.
 
     play_endtx_seen was not, so the `O` line reported a total
@@ -35,6 +35,14 @@ def test_playback_counters_describe_one_run_not_several(board, seconds):
     at any rate. Testing it on the *second* run is the whole point: the
     first run passes even with the bug present.
     """
+    if track != "b":
+        # The identity is read off the `O` occupancy line, and Track A
+        # has no `O` - objective 1c. Skipping rather than xfailing:
+        # nothing is known to be broken here, the instrument to observe
+        # it with is simply not on that track yet. This starts passing
+        # when 1c does, the same way the control-channel tests will.
+        pytest.skip("Track A has no occupancy histogram yet (objective 1c)")
+
     hz = measure.hz_for(65)
     secs = window(seconds, 2.0)
 
