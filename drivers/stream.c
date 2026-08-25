@@ -208,10 +208,19 @@ void stream_stop(void)
 {
 	active = false;
 	if (tx_dma) {
-		/* Never leave a transfer reading a buffer the PDC is about
-		 * to be pointed at again. */
-		while (usb_dma_in_busy())
-			;
+		/*
+		 * Do NOT spin on "is the channel still busy" here. It was
+		 * written that way first and it is an unbounded wait on a
+		 * peer: if the host has stopped reading IN, the transfer
+		 * never completes and the stop command never returns, which
+		 * is invariant 7 broken on the one path a wedged host is
+		 * most likely to reach. usb_cdc_dma_mode_in(false) aborts the
+		 * channel through dma_channel_stop(), whose spin is bounded,
+		 * and an aborted transfer stops reading the buffer just as
+		 * surely as a finished one does. The worst case is one
+		 * corrupted frame already on the wire; the alternative is a
+		 * board that has to be power-cycled.
+		 */
 		usb_cdc_dma_mode_in(false);
 		tx_dma = false;
 	}
