@@ -251,7 +251,15 @@ Check here before reasoning from general Arduino knowledge.
 | Tier | Platforms | Standard |
 |---|---|---|
 | **1** | **Windows, Linux** | Develop, test and deploy. 100% correctness; a failure here is a bug to fix, not a platform quirk to document |
-| **2** | macOS | Porting target. May compromise where the OS forces it, and does |
+| **2** | macOS | Porting target. May compromise where the OS forces it, and does. **Also the provenance of every figure in `docs/status.md` until the 0-series is re-taken** |
+
+That second row carries two things and they pull in opposite directions.
+macOS is where the project may compromise *going forward*, and it is
+where essentially everything already measured was measured. "Tier 2, may
+compromise" is a statement about which host to trust for new numbers -
+it is **not** licence to discount the existing record, which is the only
+record there is for most of the 0-series. Re-take a figure before
+disbelieving it.
 
 macOS's CDC-ACM stack silently discards bytes `write()` has counted, in
 two separate measured ways, and that defect has been the subject of most
