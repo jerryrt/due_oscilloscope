@@ -635,7 +635,11 @@ size_t usb_ctl_read(uint8_t *dst, size_t max)
 {
 	size_t n = ep_fifo_read(EP_COUT, &ctl_out_rd_off, dst, max);
 
-	usb_ctl_out_activity += (uint32_t)n;
+	/* Only when there is something to count. This runs on the empty
+	 * path far more often than the full one, and a volatile
+	 * read-modify-write is not free on a counter nobody read. */
+	if (n)
+		usb_ctl_out_activity += (uint32_t)n;
 	return n;
 }
 

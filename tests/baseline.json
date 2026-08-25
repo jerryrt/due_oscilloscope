@@ -130,9 +130,12 @@
       "essentially every pass in one log2 bucket, which is what makes",
       "an outlier meaningful. Floors are well below the measured rate",
       "because the point is to catch a loop that has stopped running,",
-      "not to police a few per cent of drift."
+      "not to police a few per cent of drift.",
+      "idle_passes_per_s rose from 102900 to 126600 when ctl_service was",
+      "gated to 1 kHz; servicing the control endpoint every pass cost",
+      "2141 ns of a 9720 ns pass. Re-measure rather than scale."
     ],
-    "idle_passes_per_s": 102900,
+    "idle_passes_per_s": 126600,
     "capture_max_passes_per_s": 93700,
     "passes_per_s_floor": 60000,
     "steady_worst_pass_us": 292,

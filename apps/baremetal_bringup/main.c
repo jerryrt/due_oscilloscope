@@ -521,6 +521,16 @@ static void cmd_profile(void)
 	PROF("stream_service()", stream_service());
 	PROF("diag_service()", diag_service());
 	PROF("ctl_service()", ctl_service());
+	{
+		static uint8_t scratch[64];
+
+		/* Split out because ctl_service() measured 2141 ns while
+		 * doing nothing, which is more than stream_service(). The
+		 * question is whether the cost is the endpoint read or the
+		 * wrapper around it, and guessing has a poor record here. */
+		PROF("usb_ctl_read()", (void)usb_ctl_read(scratch,
+		                                          sizeof(scratch)));
+	}
 #undef PROF
 
 	printf("# note: services early-return unless started\n");
@@ -833,6 +843,8 @@ int main(void)
 	banner();
 	heartbeat_at = millis();
 
+	uint32_t ctl_ms = 0;
+
 	for (;;) {
 		uint32_t now;
 
@@ -888,12 +900,31 @@ int main(void)
 		}
 
 		/*
-		 * The control channel. Also what keeps its bulk OUT drained:
-		 * an allocated OUT endpoint that nobody reads NAKs forever
-		 * and hangs the host in close(), so this must keep being
-		 * called whether or not anything is talking to it.
+		 * The control channel, at most once a millisecond.
+		 *
+		 * Servicing it every pass cost 2141 ns of a 9700 ns pass -
+		 * more than stream_service() - to poll an endpoint that
+		 * receives a command ten times a second. The cost is a UOTGHS
+		 * register read, which is far dearer than an SRAM one:
+		 * usb_ctl_read() alone measures 1205 ns doing nothing. `Q`
+		 * reports both, which is how this was found rather than
+		 * argued.
+		 *
+		 * A millisecond is still 100x faster than any host can
+		 * notice on a status poll, and it leaves the drain with
+		 * 2 KB/ms of capacity against command traffic measured in
+		 * bytes. It is gated here rather than inside ctl_service
+		 * because `now` is already in a register, so the check is
+		 * free where a second millis() would not be.
+		 *
+		 * The drain still has to happen: an allocated OUT endpoint
+		 * that nobody reads NAKs forever and hangs the host in
+		 * close(). Once a millisecond is draining; never is not.
 		 */
-		ctl_service();
+		if (now != ctl_ms) {
+			ctl_ms = now;
+			ctl_service();
+		}
 
 		/*
 		 * Playback status on bulk IN, so the host can close a rate
