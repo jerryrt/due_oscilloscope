@@ -248,8 +248,16 @@ rather than an artefact of two different harnesses.
 | LED heartbeat | `PIO_SODR`/`PIO_CODR` | `bsp/led.c` |
 | HardFault report | `sketches/bringup/fault.cpp` | `bsp/fault.c` |
 | Commands | `h` `p` `g` `f` | `h` `p` `g` `f` |
-| Build | `arduino-cli compile` | `cmake --build build` |
-| Flash | `arduino-cli upload` | `tools/flash.sh` |
+| Build | `tools/sketch.sh compile` | `cmake --build build` |
+| Flash | `tools/sketch.sh upload` | `tools/flash.sh` |
+| Link map | `linker/arduino_due_x_sram1.ld` | `linker/sam3x8e_flash.ld` |
+
+Track A goes through a wrapper rather than `arduino-cli` directly
+because it needs two build properties and each one fails silently:
+`build.f_cpu=78000000L`, without which `micros()` is wrong by 7.7%, and
+`build.ldscript`, without which the capture ring is not in SRAM bank 1.
+The second has to be a path relative to the *installed variant
+directory*, so the wrapper computes it.
 
 Track A was implemented and verified on hardware **first**, then Track B
 was written against it. With no debug probe, having a known-good

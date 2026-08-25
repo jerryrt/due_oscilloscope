@@ -864,28 +864,80 @@ be measured against the firmware it replaces, not against expectation.**
 Reflashing the old build took three minutes and was the only reason the
 439 overruns were attributed to this change rather than to the board.
 
-### Track A does not get this change, and the reason is the linker
+### Track A has this change too, and the linker was never the obstacle
 
-The port to Track A is straightforward and was written and measured:
-same struct, same packet-sized transfers, same per-direction DMA mode
-setters. On hardware it produces **81 ADC overruns per 4 s run at the
-full rate against zero on the path it would replace** - the same figure
-Track B measured in bank 0, from the same cause.
+Same struct, same packet-sized transfers, same per-direction DMA mode
+setters, and the capture ring pinned to bank 1 exactly as here. Done
+2026-08-25.
 
-Track B fixes that by pinning the capture ring to bank 1, which it can
-do because it owns `linker/sam3x8e_flash.ld` and the two banks are
-separate regions there. Track A links against the Arduino core's script
-and has no way to pin a buffer to a bank: both its rings land in bank 0
-(`acq_slot` at 0x20070944, `play_buf` at 0x20074fe4, measured from the
-elf). `-Wl,--section-start` would place a section without reserving it
-from the general allocator, which trades a counted overrun for a silent
-overlap.
+**The blocker on record did not exist.** This section used to say Track
+A "links against the Arduino core's script and has no way to pin a
+buffer to a bank". Two facts out of the installed toolchain say
+otherwise, and neither had ever been checked:
 
-So Track A keeps the CPU copy. The tracks still present the same
-commands and the same wire format, which is what the parity rule is
-for; what differs is an implementation detail that the oracle is better
-off without. **Open item:** adopting it on Track A needs a verified way
-to place a buffer in bank 1 under the core's linker.
+- the stock Due `flash.ld` already declares
+  `sram1 (rwx) : ORIGIN = 0x20080000, LENGTH = 0x00008000`, and nothing
+  is placed in it;
+- `platform.txt` links with `-T{build.variant.path}/{build.ldscript}`
+  and `boards.txt` sets `build.ldscript`, so it substitutes like any
+  other build property - the same mechanism `build.f_cpu` already
+  relies on.
+
+`linker/arduino_due_x_sram1.ld` is that script with two changes, and
+`tools/sketch.sh` computes the relative path and passes it. Both
+changes are load-bearing:
+
+1. **`ram` shrinks from 96K to bank 0's 64K.** The stock region spans
+   0x20070000..0x20088000, which *includes* bank 1 - so `.bss` grows
+   into the bank the DMA buffer is pinned to and lands on top of it with
+   no diagnostic. It already did: before this, the sketch's `.bss` ended
+   at 0x20081B6C, 6.5 KB inside bank 1.
+2. **A `.sram1` output section**, placed last in the script so that
+   `_end` - which is where `syscalls_sam3.c`'s `_sbrk()` starts the heap
+   - stays in bank 0.
+
+The stack follows `ram` and therefore moves from the top of bank 1 to
+the top of bank 0, which is the point: leaving it in bank 1 would put
+every push and pop in the way of the PDC writes the separation exists to
+protect. That leaves 9032 bytes for stack and heap together, against
+Track B's 8784 - the same budget, not a new risk.
+
+### What it measures
+
+Three firmwares, flashed and measured the same way in the same session,
+capture-only at the full rate (`5`, 4 s, three runs each) and the
+full-rate loop:
+
+| Track A build | GOVRE per 4 s, capture-only | Median window in loop mode |
+|---|---|---|
+| CPU copy (the path it replaces) | 0, 0, 0 | 1213.3 |
+| DMA, ring in bank 0 | 42, 44, 35 | 1255.6 *(check - one arm, three runs)* |
+| **DMA, ring in bank 1** | **0, 0, 0** | **1255.6** |
+
+Same shape as Track B's 2x2 above, and the same cause: 35-44 overruns
+in bank 0 against Track B's 77, zero in bank 1 against Track B's zero.
+`dma-frames` equals `frames` and `dma-stalls` is 0, so every frame goes
+out by DMA and none of them falls back.
+
+**The 81 in the old text was not the copy path's number.** It was this
+port's own, measured in bank 0 - the row above, not the row below it.
+The copy path measures **zero** in capture-only mode, re-measured here
+across three runs. Anything that quoted 81 as the cost of copying was
+reading the table upside down.
+
+**Purity improves, which Track B's did not.** Median window over six
+full-rate loop runs each: 1213.3 on the copy path against 1255.6 on
+DMA, and every one of the six DMA runs beats every one of the six copy
+runs (1252.2-1266.7 against 1207.5-1218.9). Against a theoretical
+maximum of 1370.5. The bank-0 arm reaches the same 1255.6, so it is the
+DMA path buying this and not the placement.
+
+**Loop-mode GOVRE does not separate the arms**, and six runs each is not
+enough to say it ever will: copy 1, 13, 67, 93, 480, 881; DMA in bank 1
+9, 12, 14, 24, 145, 473. Medians 80 against 19, distributions
+overlapping. Read the capture-only column for the placement question -
+that one is clean - and do not quote a loop-mode overrun figure from a
+single run in either direction.
 
 ## Measured figures
 

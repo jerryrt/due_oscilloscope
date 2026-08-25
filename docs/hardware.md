@@ -176,7 +176,7 @@ constant, so a clock change that the build does not know about silently
 skews every timing measurement. Track A must be built with:
 
 ```sh
-arduino-cli compile --build-property build.f_cpu=78000000L ...
+tools/sketch.sh compile     # passes it, along with build.ldscript
 ```
 
 The firmware prints both values at start-up and warns if they disagree,

@@ -5,21 +5,84 @@ recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
 policy). If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
+## Read this first: the development platform is changing (2026-08-25)
+
+**Windows becomes the main development platform; macOS becomes a
+porting target.** The user's decision, taken on the Windows team's
+feedback and on the evidence in this file: the defects that have
+dominated the last several sessions - 0a, 0b, 0h, 0i, 0j, 0k, and 0c -
+are all macOS CDC-ACM host defects, and the firmware has been clean
+underneath every one of them. Developing against the host with the
+broken stack has meant spending sessions proving the device innocent.
+
+**Nothing measured here is invalidated by that, and nothing is
+confirmed by it either.** What is measured is what this host does. The
+first job on Windows is not to build - it is to re-take the 0-series
+against a host that does not silently discard bytes:
+
+- **0h's re-validation debt should be re-taken on Windows, not macOS.**
+  Every figure above 200 ksps is suspect because of a macOS write-size
+  defect. If Windows does not have it, the honest numbers are the
+  Windows ones and `Feeder.WRITE_SIZE` becomes a macOS workaround rather
+  than a rule.
+- **0c has a prediction and a tool.** `tools/soak0c_portable.py` is
+  pyserial-only and runs anywhere; it was fidelity-checked on macOS
+  first (6 wedges in 25 cycles against the POSIX original's 9 in 30). If
+  it never wedges on Windows, 0c is macOS's and the firmware is done
+  with it.
+- **0i and 0j are the two remaining losses.** Both were characterised
+  entirely through a macOS write path. Re-measure before theorising
+  further.
+
+**The porting work is real and none of it is in the GUI.** Every line
+of `host/` is POSIX-only - `os.open`, `termios`, `fcntl`/`TIOCM_DTR`,
+globbing `/dev/cu.usbmodem*`, `select` on raw descriptors - and
+`host/rt.py` returns "no promotion (not macOS)" everywhere else.
+`docs/frontend.md` ("Portability: the work is not in the GUI") has the
+backend split already sketched: Linux is a different glob, Windows is
+pyserial or ctypes over `CreateFile`/`ReadFile` with overlapped I/O, and
+real-time promotion needs `timeBeginPeriod` plus a time-critical thread
+priority. Port *identification* is already portable and stays as it is:
+the control port is the one that answers `h` with the banner.
+
+Two things that do not move: the firmware, and the byte accounting. The
+device's `play_bytes_in` against the host's `write()` count is what
+found the macOS defect and is what will find the Windows one. Build the
+Windows backend so that test runs first.
+
+**Nothing in this section is measured.** It is a decision and its
+consequences as predicted. Treat every "Windows will" here as a
+hypothesis with a test attached.
+
 ## Where the work stands (2026-08-25)
 
 **Track A parity is a precondition for front-end work (set 2026-08-25).**
-Objectives 1b and 1c come before 1a. The two tracks must be peers in
-design, feature set and performance - both are bare metal on the same
-silicon, and Arduino is an abstraction layer rather than a different
-architecture, so a gap between them is debt with a date on it and not a
-property of the track. Track A fell a long way behind on 2026-08-24/25
-and the front end is not the thing to build on top of that.
+Objective 1b is done; **objective 1c is what remains, and it comes
+before 1a.** The two tracks must be peers in design, feature set and
+performance - both are bare metal on the same silicon, and Arduino is
+an abstraction layer rather than a different architecture, so a gap
+between them is debt with a date on it and not a property of the track.
+
+**Start at 1c.** Its cheapest first step is named by the suite:
+`test_playback_counters_describe_one_run_not_several` is the one Track
+A failure in `pytest --track=a`, and it fails because Track A has no
+`O`. Port the occupancy instruments, then the control channel.
 
 If you are here to build G2 - trigger, measurements, FFT - objective 1a
 has everything you need and none of it requires a board; read it, but
-clear 1b and 1c first. The rest of this file is a measurement-integrity
+clear 1c first. The rest of this file is a measurement-integrity
 investigation running for several sessions; it matters when you quote a
 number, not when you write a view.
+
+**What the 2026-08-25 (later) session changed:** objective 1b, which
+had been recorded for weeks as blocked by the Arduino linker. It was
+not. Track A now sends capture frames by endpoint DMA out of a ring
+pinned to SRAM bank 1, with `linker/arduino_due_x_sram1.ld` and
+`tools/sketch.sh`, and it measures zero ADC overruns at the full rate
+where the same port in bank 0 costs 35-44. The invariant-1 violation on
+that track is gone. Read 1b for the two build properties, the trap in
+the stock `ram` region, and the purity result that Track B's version of
+this change did not produce.
 
 What the 2026-08-24/25 session changed, in one pass:
 
@@ -43,8 +106,19 @@ What the 2026-08-24/25 session changed, in one pass:
   were asking a UOTGHS register about events that happen tens of times a
   second.
 
+**Suite on Track A, 2026-08-25, first full run ever on that track:
+198 passed, 18 failed, 23 skipped, 2 xfailed in 10:39.** Every one of
+the 18 is in `tests/test_play_counters.py`, and every one is objective
+1c - Track A has no `O`, no `play_run_us`, no rate trace and no closed
+loop, so the tests that measure the measuring apparatus have nothing to
+read. The two xfails are the known oversupply at RC 44 and RC 39. Nothing
+in capture, integrity, streaming or transport fails. The run ends in a
+0c wedge, which is the cascade of the failures above it rather than a
+new symptom.
+
 Suite on Track B: **234 and 232 passed, 0 failed**, on the last two
-runs. `.venv-gui/bin/python -m pytest tests/test_gui.py` is 14/14 -
+runs; the 2026-08-25 smoke pass after the stop-path fix is 108 passed,
+0 failed. `.venv-gui/bin/python -m pytest tests/test_gui.py` is 14/14 -
 worth knowing that those skip in `.venv`, which is how four of them sat
 broken for a while.
 
@@ -116,7 +190,9 @@ buffer carries 32 bytes of headroom, so a finished frame is 4096
 contiguous bytes sent by one DMA per packet. That closes the last
 violation of invariant 1. It did **not** improve purity, which was the
 reason the objective existed - see objective 1 below and the A/B in
-`docs/status.md`. Track A still copies, deliberately.
+`docs/status.md`. Track A got the same change on 2026-08-25, and on
+that track it *did* improve purity - which is its own small puzzle. See
+objective 1b.
 
 **The daemon runs free-threaded.** With four busy Python threads in
 its process, the GIL build underran playback 13 times and read 132
@@ -212,12 +288,13 @@ sessions ago, two turned out to be one and are now fixed: **the rate
 starvation and the host's sample loss were the same defect** - see
 0a/0b. The `close()` wedge (0c) is still its own unreproduced thing.
 
-Track A is level with Track B where it counts - same command letters,
-same output format, same refusals, same wire format, same throughput -
-and differs in one implementation detail: Track B's capture path is on
-endpoint DMA and Track A's still copies, because Track A cannot pin a
-buffer to an SRAM bank under the Arduino core's linker (objective 1b). Its bulk endpoints were taken away from the Arduino core and
-put on UOTGHS DMA; the core still enumerates. Typical figures are
+Track A matches Track B on the sample path as of 2026-08-25: same
+command letters, same output format, same refusals, same wire format,
+same throughput, and now the same capture path - endpoint DMA out of a
+capture ring pinned to SRAM bank 1. Its bulk endpoints were taken away
+from the Arduino core and put on UOTGHS DMA; the core still enumerates.
+What it is still missing is the 2026-08-24/25 session's *instruments*
+and the control channel - objective 1c. Typical figures are
 OUT ~27, IN ~31-32, duplex ~15-16 MB/s, but **the run-to-run spread is
 35-59%, not the ~5% this file used to claim**: five 4 s runs per mode
 gave IN 19.8-30.5, OUT 17.9-28.2, duplex 8.2-20.0. The suite's floors
@@ -271,12 +348,15 @@ publishing.
   byte. `play_partial` counts spans that ended off a slot edge and
   must stay zero.
 - **Capture**: TIOA0-triggered ADC, PDC ping-pong into a 4-buffer ring,
-  frames (32 B header + 2032 samples = 4096 B). **Track B sends them by
-  endpoint DMA**: each buffer carries the header in 32 bytes of
+  frames (32 B header + 2032 samples = 4096 B). **Both tracks send them
+  by endpoint DMA**: each buffer carries the header in 32 bytes of
   headroom in front of its payload, so a finished frame is contiguous
   and goes out in packet-sized transfers the processor never reads. The
   ring is pinned to SRAM bank 1 for that reason - see the hard-won
-  facts. **Track A still copies** (objective 1b).
+  facts. Track A gets there with `linker/arduino_due_x_sram1.ld`, passed
+  by `tools/sketch.sh`; build it any other way and the ring lands in
+  bank 0, which still links, still runs, and costs 35-44 ADC overruns
+  per 4 s at the full rate.
 - **Host feed** (`host/loopback.py`): real-time thread (`host/rt.py`,
   QoS + Mach time-constraint; XNU has no core pinning), clock-paced at
   the DAC byte rate with a 20 KB lead, blocking writes of whole
@@ -290,10 +370,9 @@ publishing.
 
 ## Next objectives, in order
 
-**Start here**: objectives 1b and 1c, Track A parity. It is a
+**Start here**: objective 1c, the rest of Track A parity. It is a
 precondition for the front end now, not a background chore - see the
-note at the top of this file. Neither is blocked; 1b's recorded blocker
-turned out not to exist.
+note at the top of this file. 1b is done.
 
 **Then** objective 1a, the front end. It needs no board, and the path it
 stands on was checked end to end on 2026-08-25 rather than assumed.
@@ -1157,19 +1236,20 @@ sub-question: RC 44 reads one of two discrete converter rates.
    from bank 0 costs 439 ADC overruns per 4 s at the full rate. Full
    table in `docs/status.md`.
 
-   **Track A still copies**, and the same port measures 81 overruns per
-   run there against zero here. That was recorded as deliberate - "it
-   cannot pin a buffer to a bank under the Arduino core's linker" - and
-   the objection is false: see objective 1b, which names the two build
-   properties that do it.
-1b. **Capture over endpoint DMA on Track A**, which still copies and so
-   still violates invariant 1 on that track. The port is written and
-   measured - 81 ADC overruns per 4 s at the full rate - and was
-   recorded as blocked on placement: "Track A links against the Arduino
-   core's script and cannot pin a buffer to bank 1".
+   **Track A now does the same** - objective 1b, done 2026-08-25. The
+   81 overruns per run recorded here as the cost of that port were the
+   port *in bank 0*, not the cost of copying; the copy path measures
+   zero, re-measured three times.
+1b. ~~**Capture over endpoint DMA on Track A.**~~ **Done, 2026-08-25.**
+   Same struct as Track B - 32 bytes of header headroom in front of the
+   payload, so a finished frame is 4096 contiguous bytes - packet-sized
+   512-byte transfers, per-direction DMA mode setters, and the capture
+   ring pinned to SRAM bank 1.
 
-   **That blocker does not exist, and was never checked.** Two facts,
-   both read out of the installed toolchain on 2026-08-25:
+   **The blocker on record never existed, and had never been checked.**
+   It said "Track A links against the Arduino core's script and cannot
+   pin a buffer to bank 1". Two facts out of the installed toolchain say
+   otherwise:
 
    - The stock Due linker script already declares the region.
      `variants/arduino_due_x/linker_scripts/gcc/flash.ld`:
@@ -1181,20 +1261,47 @@ sub-question: RC 44 reads one of two discrete converter rates.
      the same mechanism this project already relies on for
      `build.f_cpu`, without which `micros()` is silently wrong.
 
-   So the work is: copy `flash.ld`, add a section that lands `> sram1`,
-   place the capture ring in it with
-   `__attribute__((section(...)))`, and pass the property. No
-   `--section-start` guess and nothing to overlap.
+   `linker/arduino_due_x_sram1.ld` is that copy. **Two changes, and the
+   second one is the trap:** a `.sram1` output section over the existing
+   region, *and* `ram` shrunk from the stock 96 KB to bank 0's 64 KB -
+   because the stock `ram` spans 0x20070000..0x20088000 and therefore
+   *includes* bank 1. Before this, the sketch's `.bss` ended at
+   0x20081B6C, 6.5 KB inside the bank, and the stack top was at
+   0x20088000. Placing a buffer at 0x20080000 without shrinking `ram`
+   puts it under `.bss` with no diagnostic. The `.sram1` section is also
+   placed *last* in the script, so `_end` - the heap base
+   `syscalls_sam3.c`'s `_sbrk()` starts from - stays in bank 0.
 
-   **Not yet done or tested** - what is established is that the
-   objection recorded against it is false, which is a different thing
-   from the placement working. Verify it the way Track B's was verified:
-   the ring pinned, the frame contiguous, and the overrun count at the
-   full rate compared against the 81 that the copy path costs.
+   The path has to be relative to the *installed variant directory*, so
+   it is computed rather than written down: `tools/sketch.sh` is the one
+   place that knows both build properties, and `measure.flash("a",
+   build=True)` calls it.
 
-   This is the clearest case of the rule in invariant 3: "the core will
-   not let us" is a claim to test against `platform.txt`, not to
-   believe.
+   **Measured, three firmwares in one session, capture-only at the full
+   rate, 4 s, three runs each:**
+
+   | Track A build | GOVRE per 4 s |
+   |---|---|
+   | CPU copy (the path it replaces) | 0, 0, 0 |
+   | DMA, ring in bank 0 | 42, 44, 35 |
+   | **DMA, ring in bank 1** | **0, 0, 0** |
+
+   `dma-frames` equals `frames` and `dma-stalls` is 0, so no frame falls
+   back to the copy path. Same shape as Track B's 2x2, same cause.
+
+   **Purity improved, unlike Track B's.** Median window over six
+   full-rate loop runs each: 1213.3 copy, 1255.6 DMA, and every DMA run
+   beat every copy run (1252.2-1266.7 against 1207.5-1218.9), against a
+   theoretical maximum of 1370.5. The bank-0 arm reaches the same
+   1255.6, so it is the DMA path buying this and not the placement.
+   Track B's A/B found the two paths indistinguishable at the same
+   rates; **why the same change separates them here and not there is
+   open**, and it is the interesting residue of this objective.
+
+   **Loop-mode GOVRE does not separate the arms and six runs each is not
+   enough that it ever will:** copy 1, 13, 67, 93, 480, 881; DMA in bank
+   1 9, 12, 14, 24, 145, 473. Do not quote a loop-mode overrun figure
+   from a single run in either direction.
 
 1c. **Track A has fallen further behind, and the list is now long.**
    Missing relative to Track B: the second CDC function and the whole
@@ -1205,13 +1312,18 @@ sub-question: RC 44 reads one of two discrete converter rates.
    is added to the other with the same commands and output format, and
    that debt has grown faster this session than any other.
 
-   **One landmine, flagged in the code itself.** Track A's
-   `ep_apply_autosw()` in `sketches/bringup/usbdma.cpp` is byte-for-byte
-   the version that cost Track B a session: it rewrites `DEVEPTCFG` with
-   `ALLOC` set, re-allocating the endpoint and sliding the next one's
-   memory window. It is harmless there *only* because Track A stops at
-   EP3 and nothing sits above it - which is exactly where Track B was
-   until EP4-EP6 arrived. Port the fix with the feature, not after it.
+   **One landmine, half defused.** Track A's `ep_apply_autosw()` in
+   `sketches/bringup/usbdma.cpp` rewrites `DEVEPTCFG` with `ALLOC` set,
+   re-allocating the endpoint and sliding the next one's memory window -
+   the version that cost Track B a session. Objective 1b ported the
+   first half of the fix: the write is skipped when the bit already
+   holds the wanted value, which is what most calls were doing. **The
+   second half is still missing** - re-allocating the endpoints above,
+   in ascending order, when the write does happen - and it is inert only
+   while Track A stops at EP3. The day this track grows EP4 the hazard
+   goes live, which is the same day the control channel arrives. Port it
+   with the feature, not after it; `drivers/usb_cdc.c`'s
+   `ep_realloc_control()` is the model.
 
    The wire format is the thing that matters most: `docs/control-protocol.md`
    says both tracks must present *identical* descriptors and identical
@@ -1223,6 +1335,16 @@ sub-question: RC 44 reads one of two discrete converter rates.
    **Track A has none of the earlier session's instrumentation either.** `O`, the
    `occmin` key on `B`, and `play_run_us` are Track B only, so Track A
    cannot be measured against the defect that dominated this session.
+   **The suite has measured how far behind: `pytest --track=a` is 198
+   passed, 18 failed, and all 18 are `tests/test_play_counters.py`.**
+   They fail rather than skip, because `O` returns nothing and the tests
+   assert on lines that were never printed. That file is therefore the
+   whole of this objective's first half, and it is a straight port:
+   `sketches/bringup/play.cpp` is deliberately a transliteration of
+   `drivers/play.c`, so the ENDTX hook goes in the same place. Port the
+   instruments and 18 failures become 18 passes or 18 honest findings -
+   either is progress, and nobody knows which yet, because Track A's
+   playback has never been measured by them.
    The project rule is that anything added to one track is added to the
    other with the same commands and output format, and this is a
    straight port - `sketches/bringup/play.cpp` is deliberately a
@@ -1623,7 +1745,10 @@ unplugging the board.
   `tools/flash.sh build/baremetal_bringup.bin` (discovers the port; an
   interrupted flash leaves SAM-BA enumerated and the banner silent -
   just flash again with the port given explicitly).
-- Track A: needs `--build-property build.f_cpu=78000000L` (MCK is 78).
+- Track A: `tools/sketch.sh compile` / `tools/sketch.sh upload`. Never
+  a bare `arduino-cli compile` - it needs `build.f_cpu=78000000L`
+  (MCK is 78) and `build.ldscript` (the capture ring in bank 1), and
+  both are silent when missing.
 - Use the **xPack** ARM toolchain; ARM's own macOS build cannot run
   here.
 - Wiring: **DAC0 -> A0**, DAC1 -> A1.
@@ -1696,12 +1821,17 @@ Climbing means the link is resetting, which otherwise reads as data
 corruption.
 
 ```sh
-arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg \
-                    --build-property build.f_cpu=78000000L sketches/bringup
-arduino-cli upload  --fqbn arduino:sam:arduino_due_x_dbg \
-                    -p "$(python3 host/ports.py | awk '/control/{print $3}')" \
-                    sketches/bringup
+tools/sketch.sh compile      # both build properties, ldscript path computed
+tools/sketch.sh upload       # discovers the control port itself
 ```
+
+Do not call `arduino-cli compile` by hand. Track A needs two build
+properties and each is silent when it is missing: a wrong `build.f_cpu`
+makes `micros()` lie by 7.7%, and a missing `build.ldscript` leaves the
+capture ring in bank 0, which links, runs, and costs 35-44 ADC overruns
+per 4 s at the full rate. The ldscript path has to be relative to the
+installed variant directory, which is why it is computed rather than
+written down.
 
 The host tools below work against either track unchanged; the wire
 format is byte-identical. `loopback.py`'s clock-paced feed is tuned for

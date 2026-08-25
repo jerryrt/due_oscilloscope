@@ -58,7 +58,8 @@ Violating any of these is a design regression, not a style preference.
    wrong once already: objective 1b recorded for weeks that the Arduino
    linker could not place a buffer in SRAM bank 1, when `sram1` is
    declared in the stock `flash.ld` and `build.ldscript` is an ordinary
-   build property.
+   build property. Tested on 2026-08-25, it took an afternoon, and
+   Track A now pins its capture ring exactly as Track B does.
 
    From 2026-08-25 this is a gate, not an aspiration: **Track A is
    brought level before front-end work continues.**
@@ -123,6 +124,16 @@ Check here before reasoning from general Arduino knowledge.
   limits live in the CDC-ACM stack, not the PHY.
 - **Nothing is 5 V tolerant.** No clamps, no series resistors, no
   protection of any kind.
+- **The stock Due `ram` region includes SRAM bank 1.** `flash.ld`
+  declares `ram` as 0x20070000 length 0x18000 - all 96 KB - *and*
+  `sram1` as 0x20080000 length 0x8000, the same 32 KB a second time. So
+  `.bss` grows straight into any buffer pinned to bank 1, with no
+  diagnostic, and the stack top is inside bank 1 as well. Anything
+  placing a DMA buffer there under the Arduino core must shrink `ram` to
+  bank 0 first; `linker/arduino_due_x_sram1.ld` does, and moves the
+  stack to the top of bank 0 with it. Bank-0 space is then 64 KB for
+  everything, which the sketch fits in with ~9 KB left for stack and
+  heap.
 - **Cortex-M3 has no data cache**, so DMA buffers need no cache
   maintenance. Advice written for Cortex-M7 parts does not apply.
 - **Any write to `UOTGHS_DEVEPTCFG` re-allocates that endpoint's DPRAM.**
@@ -154,11 +165,11 @@ Check here before reasoning from general Arduino knowledge.
   sample path without breaking invariant 1. Endpoints are already
   512-byte and 2-bank, so there is nothing to tune there either.
   Verified from core source; see `docs/hardware.md`. **Track A no longer
-  routes samples through it**: `sketches/bringup/usbdma.cpp` takes the
-  two bulk endpoints away from the core and programs the UOTGHS DMA
-  channels, leaving enumeration and control transfers with the core.
-  The fact above is why that file exists, not a description of what
-  Track A does now.
+  routes samples through it, in either direction**:
+  `sketches/bringup/usbdma.cpp` takes the two bulk endpoints away from
+  the core and programs the UOTGHS DMA channels, leaving enumeration and
+  control transfers with the core. The fact above is why that file
+  exists, not a description of what Track A does now.
 - **macOS's CDC-ACM output path discards bytes `write()` has counted**,
   silently, with every counter on both sides green. Two separate
   behaviours, and both are measured:
@@ -211,6 +222,27 @@ Check here before reasoning from general Arduino knowledge.
 - **There is no CPU pinning on macOS.** Predictable host-side streaming
   comes from the QoS class plus the Mach time-constraint band, wrapped
   in `host/rt.py`.
+
+## The development platform is moving to Windows (2026-08-25)
+
+macOS's CDC-ACM stack silently discards bytes `write()` has counted, in
+two separate measured ways (see the fact below), and that defect has
+been the subject of most of the last several sessions. The decision is
+to develop on **Windows** and treat **macOS as a porting target**.
+
+Nothing in this file is invalidated by that. Everything measured here
+was measured on macOS and stays true of macOS; what changes is which
+host's numbers are the project's numbers. The first work on Windows is
+to re-take the 0-series in `docs/HANDOFF.md` rather than to build on top
+of it, and `Feeder.WRITE_SIZE` may turn out to be a macOS workaround
+rather than a rule.
+
+Everything in `host/` is POSIX-only today - `termios`, `fcntl`, `select`
+on raw descriptors, `/dev/cu.*` globs - and `host/rt.py` promotes
+nothing off macOS. `docs/frontend.md` has the backend split sketched.
+`tools/soak0c_portable.py` is the only host-side tool that runs
+anywhere, and it exists to answer whether the `close()` wedge is macOS's
+alone.
 
 ## Ports on the development host
 
@@ -278,13 +310,13 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
 cmake --build build -j
 tools/flash.sh build/baremetal_bringup.bin
 
-# Track A: reference oracle
-# build.f_cpu MUST match the runtime clock: micros() divides by it.
-arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg \\
-                    --build-property build.f_cpu=78000000L sketches/bringup
-arduino-cli upload  --fqbn arduino:sam:arduino_due_x_dbg \
-                    -p "$(python3 host/ports.py | awk '/control/{print $3}')" \
-                    sketches/bringup
+# Track A: reference oracle. Use the wrapper - the sketch needs two
+# build properties and both are silent when missing. build.f_cpu MUST
+# match the runtime clock, because micros() divides by it; and
+# build.ldscript pins the capture ring to SRAM bank 1, whose path has to
+# be computed relative to the *installed variant directory*.
+tools/sketch.sh compile
+tools/sketch.sh upload
 
 # Talk to either (discover the port first; the path moves with cables)
 python3 tools/serial_probe.py /dev/cu.usbmodem14201 --send h --seconds 3
@@ -353,10 +385,9 @@ because there is no debug probe.
    trigger-overrun cliff (RC 86) was found
 4. DACC, closing the DAC0-to-A0 loopback — done, both directions,
    including host-fed playback
-5. Replace the printf sink with the USB path — done; playback runs on
-   endpoint DMA, and on Track B capture IN does too - the processor no
-   longer touches sample data at all. Track A still copies; see
-   objective 1b in `docs/HANDOFF.md` for why
+5. Replace the printf sink with the USB path — done on both tracks;
+   playback and capture both run on endpoint DMA and the processor no
+   longer touches sample data at all
 6. Host application — capture/loopback/bench tools, a daemon owning the
    ports (`host/daemon/`, `docs/daemon-api.md`), and a Qt front end
    (`gui/`) that draws from it. See `docs/frontend.md`
