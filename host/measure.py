@@ -817,6 +817,12 @@ def parse_play(text):
     return PlayCounters(_counters(text, "play:"))
 
 
+# What counts as "the link is gone" and may fall back to the console.
+# Deliberately not Exception: a KeyError or TypeError from the control
+# path is a bug in this file, and falling back on it would hide the bug
+# behind a working-looking measurement taken the slow way.
+_LINK_GONE = (OSError, ValueError)
+
 # Console key names, so the control channel produces a PlayCounters
 # indistinguishable from the console's and no caller has to know which
 # path it came from.
@@ -845,7 +851,11 @@ def play_counters(board, secs=1.2):
                                 if k in ct})
             got.via = "control"
             return got
-        except Exception:                                    # noqa: BLE001
+        except _LINK_GONE:
+            # Only a transport failure falls back. A KeyError here is a
+            # mapping bug, and swallowing it would degrade silently to
+            # printf and report the wrong instrument as working - which
+            # is what this whole migration exists to stop. It escapes.
             board.drop_ctl()
     board.cmd("B")
     time.sleep(0.5)
@@ -863,14 +873,14 @@ def occupancy(board, secs=1.2):
     if link is not None:
         try:
             o = link.occupancy()
-            got = OccHist(buckets=list(o["hist"]), min=o["min"],
+            got = OccHist(buckets=list(o["hist"]), min=o["occ_min"],
                           endtx=o["endtx"], run_us=o["run_us"],
                           consumed=o["consumed"])
             got.decim = o.get("decim", 0)
             got.trace = list(o.get("trace", []))
             got.via = "control"
             return got
-        except Exception:                                    # noqa: BLE001
+        except _LINK_GONE:
             board.drop_ctl()
     board.cmd("O")
     time.sleep(0.3)

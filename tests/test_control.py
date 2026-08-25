@@ -20,6 +20,7 @@ import zlib
 import pytest
 
 import control
+import measure
 import ports
 
 pytestmark = pytest.mark.smoke
@@ -285,3 +286,33 @@ def test_bench_leaves_the_division_to_the_host(link):
         assert key in b
     assert b["elapsed_us"] > 0
     assert b["in_mbps"] == b["in_bytes"] / b["elapsed_us"]
+
+
+def test_measurement_does_not_come_from_the_console_on_this_track(board, track):
+    """The rule, enforced rather than remembered.
+
+    Invariant 8 has been in CLAUDE.md the whole time and measure.py still
+    read its counters by printing them, twice inside a running loop. A
+    rule nothing checks is a rule that decays, so this checks it: where
+    the board has a control channel, the suite's measurement helpers must
+    have used it.
+
+    Track A is exempt because it has no control channel at all, not
+    because the console is acceptable there. That exemption is objective
+    1c and it is meant to disappear - when it does, delete the skip and
+    this test covers both tracks unchanged.
+    """
+    if track != "b":
+        pytest.skip("Track A has no control channel yet (objective 1c)")
+    assert board.ctl() is not None, "Track B board with no control channel"
+
+    counters = measure.play_counters(board)
+    assert counters.via == "control", (
+        "play_counters() fell back to the console on a board that has a "
+        "control channel: measurement is coming from printf again, which "
+        "is invariant 8. Check why the control link dropped.")
+
+    occ = measure.occupancy(board)
+    assert occ.via == "control", (
+        "occupancy() fell back to the console on a board that has a "
+        "control channel - see above")
