@@ -246,12 +246,17 @@ Check here before reasoning from general Arduino knowledge.
   comes from the QoS class plus the Mach time-constraint band, wrapped
   in `host/rt.py`.
 
-## The development platform is moving to Windows (2026-08-25)
+## Platform tiers
+
+| Tier | Platforms | Standard |
+|---|---|---|
+| **1** | **Windows, Linux** | Develop, test and deploy. 100% correctness; a failure here is a bug to fix, not a platform quirk to document |
+| **2** | macOS | Porting target. May compromise where the OS forces it, and does |
 
 macOS's CDC-ACM stack silently discards bytes `write()` has counted, in
-two separate measured ways (see the fact below), and that defect has
-been the subject of most of the last several sessions. The decision is
-to develop on **Windows** and treat **macOS as a porting target**.
+two separate measured ways, and that defect has been the subject of most
+of the last several sessions. So the project was written on macOS and
+macOS is now the one that has to keep up.
 
 **The Windows run is in `docs/windows.md` and it settles two objectives
 at once.** Objective 0c does not reproduce there - 0 wedges in 52 cycles
@@ -259,7 +264,9 @@ across two reproducers, against 9 in 30 on macOS - and neither does the
 playback byte loss: 0 B lost at every rate from 200,000 to 1,392,857
 sps, including the two that lose most here. Both are the same driver
 behaviour, because a stack that applies backpressure to the writer
-cannot silently discard. Do not attribute either to the device.
+cannot silently discard. Do not attribute either to the device. A
+macOS-only failure is a tier-2 compromise to record, not a defect to
+chase in the firmware.
 
 It confirms objective 0i rather than dismissing it. RC 44 and RC 39 run
 1.6% slow on Windows too, by the device's own `runus`, so the slow
@@ -273,14 +280,18 @@ numbers are the project's numbers. Re-taking the 0-series in
 `Feeder.WRITE_SIZE` may turn out to be a macOS workaround rather than a
 rule.
 
-Everything in `host/` is POSIX-only today - `termios`, `fcntl`, `select`
-on raw descriptors, `/dev/cu.*` globs - and `host/rt.py` promotes
-nothing off macOS. `docs/frontend.md` has the backend split sketched.
-What already runs on any host: `tools/bench.py` (byte conservation and
-transport rates), `tools/loop.py` (frame integrity and the captured
-tone), `tools/flash.py`, `tools/toolchain.py` and
-`tools/soak0c_portable.py` - pyserial or stdlib, all matching ports on
-USB VID/PID rather than node name.
+**All platform difference lives in `host/transport.py` and
+`host/rt.py`.** Everything above them - `measure.py`, the daemon, the
+front end, `tests/` - is written once. If a change needs to know the OS
+anywhere else, that is the seam failing and the fix belongs in the seam.
+`host/` is no longer stdlib-only: it takes pyserial, which is declared
+in `requirements-dev.txt`. The old rule was always "a fact about the
+code, not a rule new code inherits".
+
+Nothing here has run on **Linux**. It is tier 1 by decision, not by
+evidence: `transport.py` uses the POSIX backend there and `rt.py` has a
+SCHED_FIFO path, both written against documented interfaces and neither
+executed. Treat the first Linux run as bring-up.
 
 ## Ports on the development host
 

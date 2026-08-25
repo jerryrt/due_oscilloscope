@@ -222,6 +222,79 @@ the same conclusion, reached invalidly. `restype`/`argtypes` on
 `GetCurrentProcess`/`SetPriorityClass` are not optional; a 64-bit HANDLE
 truncates to `c_int` without them.
 
+## Porting host/ to the seam, and the two bugs it exposed
+
+`host/` was POSIX-only: raw termios, `os.read`/`os.write` on a bare fd,
+and `select.select` to wait on the sample and console ports together.
+All of that now sits behind `host/transport.py`, so `measure.py`, the
+daemon, the front end and `tests/` are written once and run everywhere.
+`host/rt.py` gained the Windows and Linux promotions beside the Mach
+one.
+
+The POSIX backend is the original code **moved, not rewritten**. This
+project's measured history depends on exact write semantics - "a
+constant 512 bytes per write()" is the macOS byte-loss fix, and "one
+blocking write" is part of objective 0c's condition - so a rewrite that
+merely looked equivalent would invalidate every figure taken there.
+
+Porting it found two real defects. Neither is Windows-specific; macOS
+was hiding both.
+
+### The settle window overran the device's ADC ring
+
+`run_loop()` issued the `L` command and then **slept 0.2 s without
+reading**. The device starts capturing the moment it takes the command,
+and its ADC ring is four 4 KB buffers - 16 KB, or 20 ms at 800 KB/s. So
+the host spent ten ring-fulls not reading, and the device dropped frames
+it had already numbered.
+
+Measured before: `overrun_count` 33-35 per run and a lost frame in three
+runs out of four. After draining during the settle instead of sleeping
+blind: **0 lost frames in four runs, overrun 0-10**, and playback still
+byte-exact.
+
+macOS never showed it because its CDC driver buffers 55-450 KB below the
+tty layer and absorbed the burst. **The device was overrunning there
+too** - the host just never saw the consequence. This is a real fix for
+both platforms.
+
+The settle itself has to stay. Removing it entirely starts the feed
+before the device has armed playback, and the device then receives 6-20
+KB less than the host sent - a byte-conservation failure, and far worse
+than the overrun it was meant to cure. Measured, not assumed.
+
+Frames read during the settle are deliberately discarded, so a run's
+first analysed sequence number is no longer zero. `settle_frames`
+records how many, because "starts near zero" is how a stale capture is
+caught and that check has to tell the two apart.
+
+### Windows gives a COM port 4 KB of receive buffer
+
+At the full in-spec capture rate of 1.82 MB/s, 4096 bytes is **2.2 ms**
+of headroom; the measured worst case between reads is 5.4-7.6 ms. The
+port now asks for 4 MB.
+
+And `wait_any` **drains as it polls** rather than asking `in_waiting`
+and sleeping. Polling does not empty the driver buffer; only reading
+does. Asking while a writer thread holds the GIL lets the buffer back
+up, the device's bulk IN stops being consumed, and the ADC ring overruns
+on the board - a host-side stall that arrives looking like a device
+fault, with the device's own overrun counter as the only clue. That
+change alone took `overrun_count` from 33-204 to a steady 33-35 before
+the settle fix took it to 0-10.
+
+### A test that pinned one OS's naming
+
+`test_native_port_offers_both_functions` asserted the two CDC functions
+report interfaces `(1, 3)`. On Windows they report `(0, 2)`, and both
+are right: a CDC-ACM function spans **two** interfaces, a Communications
+one carrying the notification endpoint and a Data one carrying bulk.
+macOS's IOKit names the data interface because the BSD callout node
+hangs off it; Windows' `usbser` names the comm interface because it
+binds the function there. The test now asserts the structure the
+contract actually specifies - samples first, commands one whole function
+later - instead of one host's choice of which half to name.
+
 ## Toolchain
 
 Everything Track B needs was already on the machine; nothing was
@@ -238,17 +311,39 @@ downloaded. Locations resolve from `toolchains.json` with no
 Track B builds clean: 19/19 objects, no warnings under `-Wall -Wextra`,
 27,868 B text / 116 B data / 73,020 B bss.
 
+## What runs here now
+
+After the transport port, the project's own tooling runs on Windows -
+not just the pyserial harnesses written for the first pass.
+
+| | Result |
+|---|---|
+| `host/ports.py` | control COM7, native COM11, command COM12, ordered by interface |
+| `host/receive.py` | 1783 frames, 0 CRC bad, 0 seq gaps, 1.825 MB/s; A1 flat at 2053-2062 |
+| `host/loopback.py` | A0 1371.9 codes, A1 0.7 codes |
+| `host/daemon`, `--fake` and against the board | runs; the socket is TCP, so nothing there was POSIX-bound |
+| `tests/`, no hardware | 96 passed |
+| `tests/ --track=b -m smoke` | 108 passed, 2 skipped |
+
+`loopback.py`'s own per-window series oscillates 1364.3 <-> 1376.9 in a
+regular beat, which is objective 0f's sampling beat and not a property
+of this host - the project's own tool shows it too.
+
 ## What was not measured
 
+- **Linux.** Nothing here has run on Linux. `host/transport.py` uses the
+  POSIX backend there and `host/rt.py` has a SCHED_FIFO path, both
+  written against documented interfaces and **neither executed**. Treat
+  the first Linux run as bring-up, not regression - it is tier 1 and has
+  not earned that yet.
+- **macOS after the port.** The POSIX backend is the original code
+  moved, not rewritten, but no Mac has run it since. That is the one
+  thing the review of this branch most needs.
 - **Track A on Windows.** Only Track B was built and flashed.
-- **The second channel pair.** A1 was captured at `nch=2` and did not
-  read flat, but DAC1 -> A1 is objective 3 and the loop was validated on
-  one channel, which is what the waveform targets.
-- **The daemon and the Qt front end.** Both are POSIX-bound through
-  `host/`; neither was run.
-- **The pytest suite.** `tests/` imports `host/`, so it does not run
-  here. Everything above went through `tools/bench.py` and
-  `tools/loop.py`, which are pyserial-only.
+- **The second channel pair.** DAC1 -> A1 is objective 3; the loop was
+  validated on one channel, which is what the waveform targets.
+- **The Qt front end.** Needs its own venv and PySide6; not installed
+  here. `tests/test_gui.py` skips for that reason, not a platform one.
 - **Long soaks.** The longest run was 5 s. Nothing here says anything
   about thermal drift or hour-scale stability.
 - One board, one machine, one USB topology.
