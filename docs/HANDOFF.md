@@ -305,14 +305,16 @@ remaining hole in the data path - 1.35% and 2.15% of the waveform at
 loop on the device's own consumption) is now a real fix rather than a
 mask, because the byte loss underneath it is gone.
 
-Or continue **objective 8**, the native-port control channel, which is
-the one thing standing between this and a board that can be deployed on
-one cable. Its transport is built and measured; what is left is the
-protocol on top, which needs the board only to test.
+**Objective 8**, the native-port control channel, is the one thing
+standing between this and a board deployable on one cable. Its transport
+and six opcodes are built and measured; what is left is the
+state-changing commands - and Track A, which is part of the parity gate
+above.
 
-If you would rather build than debug, **G2** on the front end -
-trigger, measurements, FFT - needs no board at all (`--spawn-fake`) and
-cannot be blocked by the cable in objective 2.
+Note what this ordering replaced: this file used to say G2 "needs no
+board at all and cannot be blocked". That is still true of the *cable*
+and the *board*. It is no longer the whole story, because the gate is
+Track A parity rather than hardware.
 
 **Before quoting any number in this file, read objective 0h.** Most
 figures above 200 ksps were measured with a feed that silently lost
@@ -1155,10 +1157,83 @@ sub-question: RC 44 reads one of two discrete converter rates.
    from bank 0 costs 439 ADC overruns per 4 s at the full rate. Full
    table in `docs/status.md`.
 
-   **Track A still copies**, deliberately: it cannot pin a buffer to a
-   bank under the Arduino core's linker, and without that the same port
-   measures 81 overruns per run against zero today. Adopting it there
-   needs a verified placement mechanism first.
+   **Track A still copies**, and the same port measures 81 overruns per
+   run there against zero here. That was recorded as deliberate - "it
+   cannot pin a buffer to a bank under the Arduino core's linker" - and
+   the objection is false: see objective 1b, which names the two build
+   properties that do it.
+1b. **Capture over endpoint DMA on Track A**, which still copies and so
+   still violates invariant 1 on that track. The port is written and
+   measured - 81 ADC overruns per 4 s at the full rate - and was
+   recorded as blocked on placement: "Track A links against the Arduino
+   core's script and cannot pin a buffer to bank 1".
+
+   **That blocker does not exist, and was never checked.** Two facts,
+   both read out of the installed toolchain on 2026-08-25:
+
+   - The stock Due linker script already declares the region.
+     `variants/arduino_due_x/linker_scripts/gcc/flash.ld`:
+     `sram1 (rwx) : ORIGIN = 0x20080000, LENGTH = 0x00008000`.
+   - The script itself is an ordinary build property. `platform.txt`
+     links with `-T{build.variant.path}/{build.ldscript}`, and
+     `boards.txt` sets `arduino_due_x_dbg.build.ldscript=linker_scripts/gcc/flash.ld`.
+     So `--build-property build.ldscript=<your copy>` substitutes it -
+     the same mechanism this project already relies on for
+     `build.f_cpu`, without which `micros()` is silently wrong.
+
+   So the work is: copy `flash.ld`, add a section that lands `> sram1`,
+   place the capture ring in it with
+   `__attribute__((section(...)))`, and pass the property. No
+   `--section-start` guess and nothing to overlap.
+
+   **Not yet done or tested** - what is established is that the
+   objection recorded against it is false, which is a different thing
+   from the placement working. Verify it the way Track B's was verified:
+   the ring pinned, the frame contiguous, and the overrun count at the
+   full rate compared against the 81 that the copy path costs.
+
+   This is the clearest case of the rule in invariant 3: "the core will
+   not let us" is a claim to test against `platform.txt`, not to
+   believe.
+
+1c. **Track A has fallen further behind, and the list is now long.**
+   Missing relative to Track B: the second CDC function and the whole
+   control channel, the load monitor (`l`, `GET_LOAD`), the software
+   detach (`Z`), the stall injector (`S`), the playback-abandon
+   timeout, and the drain-poll counter - on top of what it was already
+   missing below. The project rule is that anything added to one track
+   is added to the other with the same commands and output format, and
+   that debt has grown faster this session than any other.
+
+   **One landmine, flagged in the code itself.** Track A's
+   `ep_apply_autosw()` in `sketches/bringup/usbdma.cpp` is byte-for-byte
+   the version that cost Track B a session: it rewrites `DEVEPTCFG` with
+   `ALLOC` set, re-allocating the endpoint and sliding the next one's
+   memory window. It is harmless there *only* because Track A stops at
+   EP3 and nothing sits above it - which is exactly where Track B was
+   until EP4-EP6 arrived. Port the fix with the feature, not after it.
+
+   The wire format is the thing that matters most: `docs/control-protocol.md`
+   says both tracks must present *identical* descriptors and identical
+   response bytes, and the suite is where that is enforced. The two
+   on-board control tests in `tests/test_link_health.py` and all of
+   `tests/test_control.py` skip on Track A today; they are what will
+   stop skipping.
+
+   **Track A has none of the earlier session's instrumentation either.** `O`, the
+   `occmin` key on `B`, and `play_run_us` are Track B only, so Track A
+   cannot be measured against the defect that dominated this session.
+   The project rule is that anything added to one track is added to the
+   other with the same commands and output format, and this is a
+   straight port - `sketches/bringup/play.cpp` is deliberately a
+   transliteration of `drivers/play.c`, so the ENDTX hook goes in the
+   same place.
+
+   The host-side fix (`Feeder.WRITE_SIZE`) is track-independent and
+   already applies to both, but nobody has run the byte-exactness test
+   against Track A. Do that before quoting any Track A playback figure:
+   its numbers were taken with the feed that loses bytes.
+
 1a. **G2 on the front end**: trigger (edge, level, pulse; auto, normal,
    single), automatic measurements (Vpp, RMS, frequency, duty, rise and
    fall), math including A-B, and FFT with a window choice. The decode,
@@ -1221,78 +1296,6 @@ sub-question: RC 44 reads one of two discrete converter rates.
    reports `via: "control"` on `counters()` and `trace()`, and the
    health panel does not surface it. That panel is also the natural home
    for `GET_LOAD`.
-
-1c. **Track A has fallen further behind, and the list is now long.**
-   Missing relative to Track B: the second CDC function and the whole
-   control channel, the load monitor (`l`, `GET_LOAD`), the software
-   detach (`Z`), the stall injector (`S`), the playback-abandon
-   timeout, and the drain-poll counter - on top of what it was already
-   missing below. The project rule is that anything added to one track
-   is added to the other with the same commands and output format, and
-   that debt has grown faster this session than any other.
-
-   **One landmine, flagged in the code itself.** Track A's
-   `ep_apply_autosw()` in `sketches/bringup/usbdma.cpp` is byte-for-byte
-   the version that cost Track B a session: it rewrites `DEVEPTCFG` with
-   `ALLOC` set, re-allocating the endpoint and sliding the next one's
-   memory window. It is harmless there *only* because Track A stops at
-   EP3 and nothing sits above it - which is exactly where Track B was
-   until EP4-EP6 arrived. Port the fix with the feature, not after it.
-
-   The wire format is the thing that matters most: `docs/control-protocol.md`
-   says both tracks must present *identical* descriptors and identical
-   response bytes, and the suite is where that is enforced. The two
-   on-board control tests in `tests/test_link_health.py` and all of
-   `tests/test_control.py` skip on Track A today; they are what will
-   stop skipping.
-
-   **Track A has none of the earlier session's instrumentation either.** `O`, the
-   `occmin` key on `B`, and `play_run_us` are Track B only, so Track A
-   cannot be measured against the defect that dominated this session.
-   The project rule is that anything added to one track is added to the
-   other with the same commands and output format, and this is a
-   straight port - `sketches/bringup/play.cpp` is deliberately a
-   transliteration of `drivers/play.c`, so the ENDTX hook goes in the
-   same place.
-
-   The host-side fix (`Feeder.WRITE_SIZE`) is track-independent and
-   already applies to both, but nobody has run the byte-exactness test
-   against Track A. Do that before quoting any Track A playback figure:
-   its numbers were taken with the feed that loses bytes.
-
-1b. **Capture over endpoint DMA on Track A**, which still copies and so
-   still violates invariant 1 on that track. The port is written and
-   measured - 81 ADC overruns per 4 s at the full rate - and was
-   recorded as blocked on placement: "Track A links against the Arduino
-   core's script and cannot pin a buffer to bank 1".
-
-   **That blocker does not exist, and was never checked.** Two facts,
-   both read out of the installed toolchain on 2026-08-25:
-
-   - The stock Due linker script already declares the region.
-     `variants/arduino_due_x/linker_scripts/gcc/flash.ld`:
-     `sram1 (rwx) : ORIGIN = 0x20080000, LENGTH = 0x00008000`.
-   - The script itself is an ordinary build property. `platform.txt`
-     links with `-T{build.variant.path}/{build.ldscript}`, and
-     `boards.txt` sets `arduino_due_x_dbg.build.ldscript=linker_scripts/gcc/flash.ld`.
-     So `--build-property build.ldscript=<your copy>` substitutes it -
-     the same mechanism this project already relies on for
-     `build.f_cpu`, without which `micros()` is silently wrong.
-
-   So the work is: copy `flash.ld`, add a section that lands `> sram1`,
-   place the capture ring in it with
-   `__attribute__((section(...)))`, and pass the property. No
-   `--section-start` guess and nothing to overlap.
-
-   **Not yet done or tested** - what is established is that the
-   objection recorded against it is false, which is a different thing
-   from the placement working. Verify it the way Track B's was verified:
-   the ring pinned, the frame contiguous, and the overrun count at the
-   full rate compared against the 81 that the copy path costs.
-
-   This is the clearest case of the rule in invariant 3: "the core will
-   not let us" is a claim to test against `platform.txt`, not to
-   believe.
 
 2. **Replace the marginal native-port cable** before attributing any
    further purity variance to software. It failed hard twice on
