@@ -115,20 +115,22 @@ add_custom_target(tools
 # and MCK is 78 MHz here so the ADC clock stays inside its 20 MHz limit.
 if(ARDUINO_CLI)
     message(STATUS "arduino-cli:   ${ARDUINO_CLI}")
+    # Both targets go through tools/sketch.py, which is the single place
+    # that knows Track A's build properties. Repeating build.f_cpu here -
+    # as this file did - builds a Track A that links, runs, and silently
+    # costs 35-44 ADC overruns per 4 s, because build.ldscript is missing
+    # and the capture ring is not in SRAM bank 1.
     add_custom_target(track_a
-        COMMAND "${ARDUINO_CLI}" compile
-                --fqbn arduino:sam:arduino_due_x_dbg
-                --build-property build.f_cpu=78000000L
+        COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/sketch.py" compile
+                --arduino-cli "${ARDUINO_CLI}"
                 --build-path "${CMAKE_BINARY_DIR}/track_a"
-                "${CMAKE_SOURCE_DIR}/sketches/bringup"
         COMMENT "Track A (arduino-cli, Arduino core -- the oracle)"
         USES_TERMINAL VERBATIM)
 
     add_custom_target(flash_track_a
-        COMMAND "${ARDUINO_CLI}" upload
-                --fqbn arduino:sam:arduino_due_x_dbg
-                --input-dir "${CMAKE_BINARY_DIR}/track_a"
-                "${CMAKE_SOURCE_DIR}/sketches/bringup"
+        COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/sketch.py" upload
+                --arduino-cli "${ARDUINO_CLI}"
+                --build-path "${CMAKE_BINARY_DIR}/track_a"
         COMMENT "Flashing Track A"
         USES_TERMINAL VERBATIM)
 else()
