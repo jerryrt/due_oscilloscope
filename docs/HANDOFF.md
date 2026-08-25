@@ -2,7 +2,9 @@
 
 Read this first, then `docs/status.md` (what works, measured figures,
 recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
-policy). If you are here to build the test suite, the whole plan is in
+policy). `docs/windows.md` is the 2026-08-25 validation on a second host
+and a second board: it settles objective 0c, and it shows the playback
+byte loss is macOS's driver rather than anything on the device. If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
 ## PR #3 from the Windows team is open and not merged (2026-08-25)
@@ -892,12 +894,32 @@ sub-question: RC 44 reads one of two discrete converter rates.
    1024 B write looked fine on counters while its whole-run tone fell
    to 500 codes.
 
-0c. **Answered. The host is stuck, the device is not, and a software
-   detach releases it.**
+0c. **Answered, and now confirmed host-specific. The host is stuck, the
+   device is not, and a software detach releases it.**
 
    Not fixed - it is a macOS defect this firmware cannot reach - but
    diagnosed, reproducible in thirty seconds, and recoverable without
-   touching the cable. What is left is a prediction to test, below.
+   touching the cable.
+
+   **The prediction has been tested and it held** (2026-08-25, Windows
+   11, second board; `docs/windows.md`). Same firmware, same
+   reproducer, no wedge: 0 in 40 cycles of the standard soak and 0 in 12
+   of a harder variant that closes with a write actively transferring
+   430 KB/s, against 9 in 30 on macOS. It is this host.
+
+   **But the mechanism is not the one that was assumed, and that is the
+   part that matters.** Windows does not survive the backlog - it never
+   builds one. `usbser.sys` paces the writer at the device's consumption
+   rate, so a 256 KB write returns in 0.193 s having delivered all but
+   about 1 KB, and `close()` then has nothing to dispose of. macOS
+   buffers 55-450 KB below the tty layer and hangs disposing of it.
+
+   **That single difference also explains the byte loss.** A driver that
+   applies backpressure cannot silently discard, and Windows loses zero
+   bytes at every rate from 200,000 to 1,392,857 sps. So 0c and
+   0a/0b/0i/0k are two symptoms of one macOS behaviour rather than two
+   faults - worth knowing before any more of either is attributed to the
+   device.
 
    **The device is innocent, measured rather than assumed.** During a
    live wedge, read over the control channel (a different interface,
@@ -961,9 +983,20 @@ sub-question: RC 44 reads one of two discrete converter rates.
    outstanding at close is part of the condition, not merely that
    something is. Windows blocks in WriteFile anyway.
 
-   If it never wedges elsewhere, 0c is macOS's and this firmware is done
-   with it. If it reproduces everywhere, the belief is wrong and the
-   device is back in scope.
+   **Run on Windows 11, 2026-08-25: 0 wedges in 40 cycles, worst close
+   0.002 s.** So 0c is macOS's and this firmware is done with it.
+
+   One caveat on reading that as a verdict on the close path: the
+   standard soak cannot wedge Windows, because WriteFile is paced by the
+   device and returns with ~1 KB outstanding, so `close()` never faces a
+   backlog. The condition had to be built deliberately - a slow DAC, a
+   4 MB write from a writer thread, `close()` from another thread one
+   second in - and the device counted `in=430080` during that second,
+   proving the write was moving data at full rate when the close hit it.
+   Twelve cycles, no wedge. Details in `docs/windows.md`.
+
+   Linux is still untried, and would say whether this is macOS
+   specifically or every CDC-ACM stack that buffers.
 
    The earlier entries follow, including the DPRAM re-allocation defect
    found and fixed on the way - real, confirmed by a counter, and not
