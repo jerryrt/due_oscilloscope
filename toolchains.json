@@ -104,6 +104,7 @@
 
     "cmake": {
       "what": "Track B build driver. Only needed if cmake is not already on PATH",
+      "optional": true,
       "requires": "cmake",
       "search": {
         "Darwin": [
@@ -124,6 +125,7 @@
 
     "ninja": {
       "what": "Optional generator. Unix Makefiles is the default and needs no entry",
+      "optional": true,
       "requires": "ninja",
       "search": {
         "Darwin": [
