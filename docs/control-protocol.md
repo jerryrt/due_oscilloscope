@@ -7,15 +7,19 @@
 | Command layer split out of the main loop | done, Track B |
 | Second CDC function on the native cable | done, Track B |
 | Host discovers the two nodes by interface number | done |
-| Frame parser, executor binding, opcodes | not started |
+| Framing: header, CRC, resync, refusals | done, Track B |
+| `PING` and `IDENTITY` | done, Track B |
+| The rest of the opcodes, executor binding | not started |
 | Heartbeat and asynchronous notifications | not started |
 | Track A | not started |
 
 What that means concretely today: the board enumerates two serial nodes
-on one cable, `usb_ctl_read()` and `usb_ctl_write()` carry bytes both
-ways byte-exact, and the main loop drains the command endpoint and
-throws the bytes away. The framing below is still a design and is still
-worth arguing with; the numbering above it is now a measured fact.
+on one cable, and a host can ask it `PING` and `IDENTITY` and get framed
+answers. Malformed frames are refused in words rather than ignored, and
+the parser resynchronises rather than being retired by one truncated
+write. The opcodes that change device state are still a design and are
+still worth arguing with; the framing and the numbering are now
+measured facts.
 
 The rest of this document is written as the proposal it was, because the
 reasoning is what makes the parts that are not built yet decidable.
@@ -227,6 +231,16 @@ it as the text a human reads today, the native port packs it into a
 response frame. That is what keeps the two from drifting.
 
 ## Framing
+
+**The parser abandons a frame that stops arriving.** Nothing in the
+original design said so, and leaving it out was a real defect rather
+than an omission: a host that dies between a header and its payload
+leaves the parser waiting for bytes that never come, and the *next*
+frame is then read as the tail of the abandoned one - permanently,
+because the deployed board's only reset is the cable. So a partial frame
+older than 200 ms is dropped. The threshold is enormous against how long
+a frame takes (a 272-byte frame crosses a high-speed link in
+microseconds) and small against a person noticing.
 
 `drivers/playstat.h` is the working precedent and should set the
 pattern: a magic distinct from `FRAME_MAGIC`, a version byte, a CRC,

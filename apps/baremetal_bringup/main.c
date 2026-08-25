@@ -25,6 +25,7 @@
 #include "frame.h"
 #include "play.h"
 #include "playstat.h"
+#include "ctl.h"
 #include "usb_cdc.h"
 
 #define LED_MASK (1u << 27)
@@ -506,6 +507,7 @@ static void cmd_profile(void)
 	PROF("play_service()", play_service());
 	PROF("stream_service()", stream_service());
 	PROF("diag_service()", diag_service());
+	PROF("ctl_service()", ctl_service());
 #undef PROF
 
 	printf("# note: services early-return unless started\n");
@@ -616,7 +618,7 @@ static void cmd_execute(const cmd_t *cmd)
 	case '0': stream_stop(); play_stop();
 	          printf("# stream stopped\n"); uart_flush(); break;
 	case '?': stream_report();  break;
-	case 'u': usb_cdc_dump();   break;
+	case 'u': usb_cdc_dump();   ctl_dump();   break;
 	case 'F': stream_flood_start();
 	          printf("# flood: IN only\n"); uart_flush(); break;
 	case 'R': stream_sink_start();
@@ -811,20 +813,12 @@ int main(void)
 		}
 
 		/*
-		 * The command endpoint has no consumer yet, and until it does
-		 * it needs the same treatment for the same reason: an
-		 * allocated bulk OUT that nobody drains is a pipe that NAKs
-		 * forever, and a host that wrote to it hangs in close().
-		 * Adding the endpoint without this would have turned a port
-		 * that does nothing into a port that wedges the machine.
+		 * The control channel. Also what keeps its bulk OUT drained:
+		 * an allocated OUT endpoint that nobody reads NAKs forever
+		 * and hangs the host in close(), so this must keep being
+		 * called whether or not anything is talking to it.
 		 */
-		{
-			static uint8_t ctl_scrap[512];
-			for (int b = 0; b < 4; b++)
-				if (usb_ctl_read(ctl_scrap,
-				                 sizeof(ctl_scrap)) == 0)
-					break;
-		}
+		ctl_service();
 
 		/*
 		 * Playback status on bulk IN, so the host can close a rate

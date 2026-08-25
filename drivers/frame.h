@@ -60,4 +60,12 @@ typedef struct __attribute__((packed)) {
  */
 uint32_t frame_crc32(const uint8_t *data, size_t len);
 
+/*
+ * The same CRC, resumable. The control protocol's checksum covers the
+ * bytes on either side of the field it sits in, so it cannot be taken
+ * over one contiguous run - and a second copy of the polynomial loop is
+ * a second thing to get wrong. Start at 0xffffffff, finish with ~c.
+ */
+uint32_t frame_crc32_update(uint32_t c, const uint8_t *data, size_t len);
+
 #endif /* FRAME_H */
