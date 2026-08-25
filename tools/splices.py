@@ -49,6 +49,17 @@ def main():
             vals = ps.series.get(args.tag, [])
             start = ps._index_at(args.tag, measure.SETTLE_US)
             c = measure.level_census(vals[start:], threshold=args.threshold)
+            # A stream that never started censuses as zero splices, which
+            # is the one way this tool can report a clean run from no data
+            # at all. The device refuses to start when a previous stop
+            # left an IN transfer running, so that case is reachable.
+            want = args.seconds * ps.declared_rate_hz * 0.5
+            if c["levels"] < want * 0.5:
+                raise SystemExit(
+                    f"run {i}: only {c['levels']} levels from "
+                    f"{len(vals)} samples at {ps.declared_rate_hz} Hz - "
+                    f"the stream did not run, so its zero means nothing. "
+                    f"Check the console for a refusal.")
             rows.append(c)
             print(f"run {i}: splices={c['count']:6d}  "
                   f"max_step={c['max_step']:6.1f}  "
