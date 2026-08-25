@@ -141,15 +141,29 @@ def level_steps(vals, flat=STEP_FLAT_CODES):
     ~88 codes that is not a splice and that a raw threshold would count
     as one.
     """
+    return _collapse(vals, flat)[0]
+
+
+def _collapse(vals, flat):
+    """(steps between levels, index of the sample each step lands on).
+
+    The index matters as much as the step. Periodicity is a property of
+    where events fall in the sample stream, and level indices do not
+    carry it: a staircase collapses at a rate that follows the sine's
+    own slope, so a metronome in sample space looks irregular in level
+    space. This was got wrong once.
+    """
     if len(vals) < 2:
-        return []
-    levels, start = [], 0
+        return [], []
+    levels, starts, start = [], [], 0
     for i in range(1, len(vals)):
         if abs(vals[i] - vals[i - 1]) > flat:
             levels.append(sum(vals[start:i]) / (i - start))
+            starts.append(start)
             start = i
     levels.append(sum(vals[start:]) / (len(vals) - start))
-    return [abs(b - a) for a, b in zip(levels, levels[1:])]
+    starts.append(start)
+    return ([abs(b - a) for a, b in zip(levels, levels[1:])], starts[1:])
 
 
 def level_census(vals, threshold=STEP_SPLICE_CODES, flat=STEP_FLAT_CODES):
@@ -169,22 +183,43 @@ def level_census(vals, threshold=STEP_SPLICE_CODES, flat=STEP_FLAT_CODES):
     that prompted it moved the maximum from 39 to 58, a factor of 1.5,
     while it moved the count from 0 to 780.
     """
-    steps = level_steps(vals, flat=flat)
+    steps, where = _collapse(vals, flat)
     if not steps:
-        return {"count": 0, "max_step": 0.0, "levels": 0,
-                "gap": (0, 0), "threshold": threshold}
+        return {"count": 0, "max_step": 0.0, "levels": 0, "gap": (0, 0),
+                "threshold": threshold, "period": 0, "periodic": False}
     occupied = {int(s) for s in steps}
     lo = hi = int(threshold)
     while lo - 1 >= 0 and (lo - 1) not in occupied:
         lo -= 1
     while (hi + 1) not in occupied and hi < int(max(steps)) + 1:
         hi += 1
+
+    # Where the oversized steps fall, not just how many. A splice is an
+    # event: data joined at one point in time, once. Issue #5 is a
+    # metronome - its events sit at a constant spacing equal to the
+    # generator's table length, 779 of 779 gaps identical, and that
+    # regularity is what says it is locked to the DAC's buffer wrap
+    # rather than to anything that happened to the stream. Callers use
+    # it to tell the known device artifact from a real discontinuity
+    # without having to trust a count.
+    at = [w for st, w in zip(steps, where) if st > threshold]
+    # One occurrence can cross the threshold twice - going up into the
+    # displaced sample and back down out of it - so neighbours a couple
+    # of samples apart are one event, not two.
+    occurrences = [w for k, w in enumerate(at) if k == 0 or w - at[k - 1] > 4]
+    period, periodic = 0, False
+    if len(occurrences) >= 10:
+        gaps = [b - a for a, b in zip(occurrences, occurrences[1:])]
+        period = max(set(gaps), key=gaps.count)
+        periodic = gaps.count(period) >= 0.9 * len(gaps)
     return {
-        "count": sum(1 for s in steps if s > threshold),
+        "count": len(at),
         "max_step": max(steps),
         "levels": len(steps) + 1,
         "gap": (lo, hi),
         "threshold": threshold,
+        "period": period,
+        "periodic": periodic,
     }
 
 

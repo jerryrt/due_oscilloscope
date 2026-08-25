@@ -78,6 +78,25 @@ def test_the_issue_5_signature_is_counted_once_per_occurrence():
     assert c["max_step"] >= 64
 
 
+def test_a_splice_is_not_periodic_and_the_issue_5_signature_is():
+    """The discrimination the suite rests on. A splice is one event; the
+    open device artifact is a metronome at the DAC table length, and only
+    the second may be excused."""
+    v = staircase()
+    once = measure.level_census(v[:100_000] + v[133_337:])
+    assert once["count"] == 1
+    assert not once["periodic"]
+
+    # The shape the board actually produces: a staircase with one sample
+    # displaced once per DAC table wrap.
+    w = staircase(noise=2)
+    for i in range(444, len(w), TABLE):
+        w[i] |= 0x40
+    metronome = measure.level_census(w)
+    assert metronome["periodic"], metronome
+    assert metronome["period"] == TABLE, metronome
+
+
 def test_the_threshold_sits_in_an_empty_gap():
     """The census reports the void it is judging in, so a later board
     that narrows it shows the number to move instead of hiding it."""
