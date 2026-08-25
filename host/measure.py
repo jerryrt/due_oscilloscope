@@ -113,6 +113,81 @@ def slew_limit(tone_hz, amplitude_codes, fs_hz):
     return 2.0 * math.pi * tone_hz * amplitude_codes / fs_hz
 
 
+# The device's own sine is a staircase, not a wave: `gen` holds each DAC
+# level for exactly two ADC samples and steps by up to ~38 codes. So
+# slew_limit()'s continuous-sine derivative is the wrong model for it -
+# it computes 16.85 where the honest ceiling is 38, and the "3x margin"
+# that papered over the difference left only 1.3x of real headroom. That
+# is why test_device_generated_waveform_is_continuous wobbled between
+# passing and failing while a 780-splice defect sat under it.
+#
+# These two constants are measured, not chosen. See level_census().
+STEP_FLAT_CODES = 2          # within this, two samples are one DAC level
+STEP_SPLICE_CODES = 45       # above this, a step is not a DAC step
+
+
+def level_steps(vals, flat=STEP_FLAT_CODES):
+    """Collapse a staircase to its levels and return the steps between.
+
+    Consecutive samples within `flat` codes of each other are one DAC
+    level held across more than one ADC sample; each run of them becomes
+    its mean. What comes back is the sequence of transitions between
+    levels, which is what a splice has to survive and cannot.
+
+    Collapsing matters even where the raw series separates just as well
+    (it does on preset M). On a host-fed run the DAC update clock and
+    the ADC trigger are free-running TC channels that beat, so one
+    sample repeats and the next spans two DAC updates - a raw step of
+    ~88 codes that is not a splice and that a raw threshold would count
+    as one.
+    """
+    if len(vals) < 2:
+        return []
+    levels, start = [], 0
+    for i in range(1, len(vals)):
+        if abs(vals[i] - vals[i - 1]) > flat:
+            levels.append(sum(vals[start:i]) / (i - start))
+            start = i
+    levels.append(sum(vals[start:]) / (len(vals) - start))
+    return [abs(b - a) for a, b in zip(levels, levels[1:])]
+
+
+def level_census(vals, threshold=STEP_SPLICE_CODES, flat=STEP_FLAT_CODES):
+    """Count the steps a DAC staircase cannot account for.
+
+    Returns `count` (steps above `threshold`), `max_step`, `levels`, and
+    `gap` - the run of step sizes from `threshold` downward that nothing
+    occupies.
+
+    `gap` is the point of this. The threshold is not a tuned constant:
+    on a healthy board the step distribution ends at 38 and on a spliced
+    one the second population starts at 51, so 45 sits in a void twelve
+    bins wide and any value across it reports the same number. A census
+    that reports its own gap can be checked rather than trusted - if a
+    later board narrows the void, the number to move is visible instead
+    of inferred. Judge this by `count`, never by `max_step`: the defect
+    that prompted it moved the maximum from 39 to 58, a factor of 1.5,
+    while it moved the count from 0 to 780.
+    """
+    steps = level_steps(vals, flat=flat)
+    if not steps:
+        return {"count": 0, "max_step": 0.0, "levels": 0,
+                "gap": (0, 0), "threshold": threshold}
+    occupied = {int(s) for s in steps}
+    lo = hi = int(threshold)
+    while lo - 1 >= 0 and (lo - 1) not in occupied:
+        lo -= 1
+    while (hi + 1) not in occupied and hi < int(max(steps)) + 1:
+        hi += 1
+    return {
+        "count": sum(1 for s in steps if s > threshold),
+        "max_step": max(steps),
+        "levels": len(steps) + 1,
+        "gap": (lo, hi),
+        "threshold": threshold,
+    }
+
+
 # ---------------------------------------------------------------------
 # Frame parsing
 # ---------------------------------------------------------------------
