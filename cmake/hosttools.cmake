@@ -80,17 +80,34 @@ function(hosttools_find tool dir_var)
     hosttools_home(_home)
     set(_repo "${HOSTTOOLS_REGISTRY_DIR}")
 
-    _hosttools_array(_requires "${_repo}/toolchains.json" ${tool} requires)
-    if(NOT _requires)
-        # 'requires' is a string, not an array; read it directly.
-        file(READ "${_repo}/toolchains.json" _json)
-        string(JSON _requires ERROR_VARIABLE _e
-               GET "${_json}" tools ${tool} requires)
-        if(_e)
-            set(_requires "${tool}")
+    # Read `requires` and `reject` from the LOCAL file first, then the
+    # shared one - the same layering tools/toolchain.py does. Reading
+    # only the shared file meant a tool declared solely in
+    # toolchains.local.json resolved for the scripts and silently did not
+    # for CMake, which is exactly the divergence one registry exists to
+    # prevent.
+    set(_requires "")
+    foreach(_file "${_repo}/toolchains.local.json" "${_repo}/toolchains.json")
+        if(_requires OR NOT EXISTS "${_file}")
+            continue()
         endif()
+        file(READ "${_file}" _json)
+        string(JSON _r ERROR_VARIABLE _e GET "${_json}" tools ${tool} requires)
+        if(NOT _e)
+            set(_requires "${_r}")
+        endif()
+    endforeach()
+    if(NOT _requires)
+        set(_requires "${tool}")
     endif()
-    _hosttools_array(_reject "${_repo}/toolchains.json" ${tool} reject)
+
+    set(_reject "")
+    foreach(_file "${_repo}/toolchains.local.json" "${_repo}/toolchains.json")
+        if(_reject)
+            continue()
+        endif()
+        _hosttools_array(_reject "${_file}" ${tool} reject)
+    endforeach()
 
     set(_patterns "")
     foreach(_file "${_repo}/toolchains.local.json" "${_repo}/toolchains.json")

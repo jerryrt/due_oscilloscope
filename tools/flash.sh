@@ -16,6 +16,8 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
+BIN="${1:-}"
+PORT="${2:-}"
 
 if [ -z "${PYTHON:-}" ]; then
     for cand in "$repo/.venv/bin/python" "$repo/.venv/Scripts/python.exe"; do
@@ -35,7 +37,9 @@ if ! "$PYTHON" -c 'import serial' 2>/dev/null; then
     exit 1
 fi
 
-args=()
-[ -n "${1:-}" ] && args+=(--bin "$1")
-[ -n "${2:-}" ] && args+=(--port "$2")
-exec "$PYTHON" "$here/flash.py" "${args[@]}"
+# Pass only what was given, without an empty-array expansion: bash 3.2 -
+# which is what /bin/bash still is on macOS - treats "${args[@]}" as an
+# unbound variable under `set -u` when the array is empty, so calling
+# this with no arguments aborted before running anything. It survived
+# here only because /usr/bin/env finds a newer bash first.
+exec "$PYTHON" "$here/flash.py" ${BIN:+--bin "$BIN"} ${PORT:+--port "$PORT"}
