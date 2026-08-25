@@ -28,14 +28,32 @@
 #include "ctl.h"
 #include "load.h"
 #include "usb_cdc.h"
+#include "version.h"
 
 #define LED_MASK (1u << 27)
+
+/*
+ * One line saying which firmware this is. Same format on both tracks -
+ * see drivers/version.h - so a host reads one regular expression rather
+ * than matching the banner's prose, and so a board can be identified
+ * without paying for the banner (89 ms of blocked main loop, invariant
+ * 8). `v` prints exactly this and nothing else.
+ */
+static void identity_line(void)
+{
+	printf(FW_ID_FORMAT "\n",
+	       FW_TRACK, FW_VERSION_STR, CTL_VERSION, FRAME_VERSION,
+	       (unsigned long)SystemCoreClock,
+	       (unsigned long)(SystemCoreClock / 4u),
+	       (unsigned)ACQ_FRAME_BYTES, (unsigned)ACQ_BUF_SAMPLES,
+	       __DATE__, __TIME__);
+}
 
 static void banner(void)
 {
 	printf("#\n");
 	printf("# due_oscilloscope :: Track B bare-metal bring-up\n");
-	printf("# built %s %s\n", __DATE__, __TIME__);
+	identity_line();
 	printf("# SystemCoreClock = %lu  ADC clk = %lu (max 20000000)\n",
 	       (unsigned long)SystemCoreClock, (unsigned long)(SystemCoreClock / 4u));
 	printf("# commands: h=help p=printf-cost g=gpio-cost f=fault\n");
@@ -56,7 +74,7 @@ static void banner(void)
 	printf("#           =<ms>S = stall the loop (validates l)\n");
 	printf("#           =1l = report load, then clear it\n");
 	printf("#           =<ms>Z = detach the native port (software unplug)\n");
-	printf("#           z=software reset\n");
+	printf("#           z=software reset  v=identity line\n");
 	printf("#\n");
 }
 
@@ -661,6 +679,7 @@ static void cmd_execute(const cmd_t *cmd)
 {
 	switch (cmd->op) {
 	case 'h': banner();         break;
+	case 'v': identity_line();  break;
 	case 'p': measure_printf(); break;
 	case 'g': measure_gpio();   break;
 	case 'f': trigger_fault();  break;

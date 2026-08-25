@@ -140,6 +140,12 @@ def test_identity_reports_this_board(link, board, baseline):
     assert ident["frame_bytes"] == 4096
     assert ident["frame_samples"] == 2032
     assert ident["build"], "no build identity"
+    # The firmware version, which is neither wire contract above. Checked
+    # against the header the firmware was built from, so the two cannot
+    # drift apart silently - that they *can* is why this field exists.
+    assert ident["fw_version"] == baseline["firmware"]["version"], (
+        f"board reports fw {ident['fw_version']}, "
+        f"drivers/version.h says {baseline['firmware']['version']}")
 
 
 def test_response_echoes_the_request_id(link):

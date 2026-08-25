@@ -10,6 +10,18 @@
     "tc_clock_hz": 39000000,
     "adc_clock_hz": 19500000
   },
+  "firmware": {
+    "_comment": [
+      "drivers/version.h and sketches/bringup/version.h, which are",
+      "byte-identical apart from FW_TRACK. Bump all three together:",
+      "a board reporting a version this file does not know about is",
+      "either a stale flash or an un-updated baseline, and the test",
+      "cannot tell you which if only one of them moved."
+    ],
+    "version": "0.1.0",
+    "ctl_version": 2,
+    "frame_version": 3
+  },
   "rc": {
     "two_ch_floor": 86,
     "two_ch_cliff": 85,

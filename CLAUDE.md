@@ -124,6 +124,24 @@ Check here before reasoning from general Arduino knowledge.
   limits live in the CDC-ACM stack, not the PHY.
 - **Nothing is 5 V tolerant.** No clamps, no series resistors, no
   protection of any kind.
+- **Three version numbers, and none substitutes for another.**
+  `FRAME_VERSION` (`frame.h`) is the sample-stream wire format,
+  `CTL_VERSION` (`ctl.h`) the control-channel wire format, and
+  `FW_VERSION_*` (`version.h`, one byte-identical copy per track) says
+  which build is on the board when both contracts are unchanged. A host
+  *refuses a pairing* on the first two and *reports* the third. Bumping
+  `CTL_VERSION` is a hard break by design: the device rejects a frame
+  whose version is not its own, so a mismatched host fails on the first
+  exchange rather than misparsing every one after it.
+- **Ask a board what it is with `v`, not with the banner.** Both tracks
+  emit one identity line in one fixed format - `# id: track=B fw=0.1.0
+  ctlver=2 framever=3 mck=... build=...` - and `measure.parse_identity`
+  reads it. `ctlver=0` means "this track has no control channel", which
+  is Track A today. The banner says the track only in prose and costs
+  89 ms of blocked main loop; matching `"Track A"` in a paragraph is the
+  old fallback and is kept only for images built before `v` existed. On
+  a deployed board - native port only - the answer comes from the
+  control channel's `IDENTITY`, which carries the same fields.
 - **The stock Due `ram` region includes SRAM bank 1.** `flash.ld`
   declares `ram` as 0x20070000 length 0x18000 - all 96 KB - *and*
   `sram1` as 0x20080000 length 0x8000, the same 32 KB a second time. So

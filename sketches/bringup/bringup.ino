@@ -42,6 +42,8 @@
 #include "stream.h"
 #include "play.h"
 #include "usbdma.h"
+#include "frame.h"
+#include "version.h"
 
 #define LED_MASK (1u << 27)   /* pin 13 = PB27 */
 
@@ -89,14 +91,38 @@ static void led_rx(int on)
 		PIOC->PIO_SODR = RXL_MASK;
 }
 
+/*
+ * No control channel on this track yet - objective 1c - so the identity
+ * line reports ctlver=0, which is what "this board has none" looks like
+ * to a host. It is not a version number that will ever be 0 on Track B.
+ */
+#define CTL_VERSION 0
+
+/*
+ * One line saying which firmware this is. Same format on both tracks -
+ * see version.h - so a host reads one regular expression rather than
+ * matching the banner's prose, and so a board can be identified without
+ * paying for the banner (89 ms of blocked main loop, invariant 8). `v`
+ * prints exactly this and nothing else.
+ */
+static void identity_line(void)
+{
+	char buf[192];
+
+	snprintf(buf, sizeof(buf), FW_ID_FORMAT,
+	         FW_TRACK, FW_VERSION_STR, CTL_VERSION, FRAME_VERSION,
+	         (unsigned long)SystemCoreClock,
+	         (unsigned long)(SystemCoreClock / 4u),
+	         (unsigned)ACQ_FRAME_BYTES, (unsigned)ACQ_BUF_SAMPLES,
+	         __DATE__, __TIME__);
+	Serial.println(buf);
+}
+
 static void banner(void)
 {
 	Serial.println("#");
 	Serial.println("# due_oscilloscope :: Track A bring-up oracle");
-	Serial.print("# built ");
-	Serial.print(__DATE__);
-	Serial.print(" ");
-	Serial.println(__TIME__);
+	identity_line();
 	Serial.print("# SystemCoreClock = ");
 	Serial.print(SystemCoreClock);
 	Serial.print("  F_CPU = ");
@@ -127,6 +153,7 @@ static void banner(void)
 	Serial.println("#           d=DAC max update-rate sweep");
 	Serial.println("#           j/k=DAC 1.5M/3.0M indep + capture 200k");
 	Serial.println("#           z=software reset (tests GPBR retention)");
+	Serial.println("#           v=identity line");
 	Serial.println("#");
 }
 
@@ -898,6 +925,7 @@ void loop()
 
 	switch (c) {
 	case 'h': banner();          break;
+	case 'v': identity_line();   break;
 	case 'p': measure_printf();  break;
 	case 'g': measure_gpio();    break;
 	case 'f': trigger_fault();   break;

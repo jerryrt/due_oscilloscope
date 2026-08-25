@@ -285,7 +285,7 @@ and a fixed layout the host mirrors.
 off sz  field      notes
 ---------------------------------------------------------------------
  0   4  magic      "DUEC"
- 4   1  version    = 1
+ 4   1  version    = 2
  5   1  flags      bit0 1 = response, bit1 1 = error
  6   2  req_id     echoed in the response, so a late reply to an
                    abandoned request cannot be read as the answer to
@@ -296,6 +296,15 @@ off sz  field      notes
 ---------------------------------------------------------------------
 16      payload
 ```
+
+**Version history.** The device refuses a frame whose version is not its
+own, which is the point: a host and a board that disagree fail on the
+first exchange instead of misparsing every one after it.
+
+| ver | change |
+|---|---|
+| 1 | first |
+| 2 | `IDENTITY` grew `fw_major`/`fw_minor`/`fw_patch` over its reserved byte: the response is 42 bytes where 1 sent 40. A host built for 1 would read `frame_bytes` out of the version fields. |
 
 On error, `flags` bit1 is set and the payload is a `u16` code followed
 by ASCII text - the same words the console prints today, because the
@@ -314,7 +323,7 @@ Grouped so the ranges mean something, and every one of them maps onto a
 | op | name | payload in | payload out |
 |---|---|---|---|
 | `0x0001` | `PING` | — | `dev_us` u32, `dev_ms` u32, `seq` u32 |
-| `0x0002` | `IDENTITY` | — | track, fw id, protocol ver, frame bytes, samples/frame, MCK |
+| `0x0002` | `IDENTITY` | — | track, firmware version, both protocol versions, frame bytes, samples/frame, MCK, ADC clock, build date |
 | `0x0003` | `CAPABILITIES` | — | RC limits per direction, channel limits, ring depths |
 | `0x0010` | `GET_RATES` | — | dac RC + hz, adc RC + hz, channels |
 | `0x0011` | `SET_RATES` | dac_sps u32, adc_hz u32, channels u8 | the *snapped* values actually set |
@@ -405,8 +414,14 @@ kept needing and not having:
   channel makes it available without a stream running.
 - Occupancy histogram and `play_occ_min`, currently only via `O`.
 - Overrun counters, currently only in the frame header.
-- Build identity: firmware version and track, so a host can refuse a
-  mismatched pairing rather than misparse.
+- ~~Build identity: firmware version and track, so a host can refuse a
+  mismatched pairing rather than misparse.~~ **Done.** `IDENTITY`
+  carries `fw_major`/`fw_minor`/`fw_patch` alongside the two protocol
+  versions, which took the record from 40 bytes to 42 and the channel
+  from version 1 to 2. See `drivers/version.h` for why three version
+  numbers rather than one: the two protocol versions are contracts a
+  host refuses a pairing on, the firmware version says which build is
+  on the board when both contracts are unchanged.
 - Whatever the rate loop needs to be closed in *capture-only* mode,
   which has no carrier at all today.
 

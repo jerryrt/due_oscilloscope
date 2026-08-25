@@ -24,7 +24,12 @@
 #define CTL_MAGIC1   'U'
 #define CTL_MAGIC2   'E'
 #define CTL_MAGIC3   'C'
-#define CTL_VERSION  1
+/*
+ * 2: IDENTITY grew fw_major/fw_minor/fw_patch over the reserved byte,
+ *    so its response is 42 bytes where 1 sent 40. A host built for 1
+ *    would read frame_bytes out of the version fields.
+ */
+#define CTL_VERSION  2
 
 #define CTL_HDR_BYTES     16u
 
@@ -179,7 +184,19 @@ typedef struct __attribute__((packed)) {
 	uint8_t  track;            /* 'A' or 'B' */
 	uint8_t  ctl_version;
 	uint8_t  frame_version;
-	uint8_t  reserved;
+	/*
+	 * The firmware version, which is none of the two above: those are
+	 * wire contracts a host refuses a pairing on, this is which build
+	 * is on the board when both contracts are unchanged. It took the
+	 * `reserved` byte and two more. See drivers/version.h.
+	 *
+	 * This is the deployed path for it. A deployed board is the native
+	 * port and nothing else, so the console banner - the only other
+	 * place the firmware says what it is - is not reachable.
+	 */
+	uint8_t  fw_major;
+	uint8_t  fw_minor;
+	uint8_t  fw_patch;
 	uint16_t frame_bytes;
 	uint16_t frame_samples;
 	uint32_t mck_hz;

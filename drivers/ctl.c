@@ -4,6 +4,7 @@
  */
 
 #include "ctl.h"
+#include "version.h"
 #include "acq.h"
 #include "bsp.h"
 #include "frame.h"
@@ -154,9 +155,12 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			return;
 		}
 		memset(&id, 0, sizeof(id));
-		id.track         = 'B';
+		id.track         = FW_TRACK;
 		id.ctl_version   = CTL_VERSION;
 		id.frame_version = FRAME_VERSION;
+		id.fw_major      = FW_VERSION_MAJOR;
+		id.fw_minor      = FW_VERSION_MINOR;
+		id.fw_patch      = FW_VERSION_PATCH;
 		id.frame_bytes   = ACQ_FRAME_BYTES;
 		id.frame_samples = ACQ_BUF_SAMPLES;
 		id.mck_hz        = SystemCoreClock;

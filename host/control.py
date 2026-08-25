@@ -22,7 +22,11 @@ import time
 import zlib
 
 MAGIC = b"DUEC"
-VERSION = 1
+# 2: IDENTITY grew the firmware version over its reserved byte, so its
+# response is 42 bytes where 1 sent 40. The device refuses a frame whose
+# version is not its own (drivers/ctl.c), which is the point: a host and
+# a board that disagree fail immediately instead of misparsing.
+VERSION = 2
 HDR_BYTES = 16
 MAX_PAYLOAD = 448
 
@@ -45,7 +49,7 @@ ERR_CRC = 4
 
 _HDR = struct.Struct("<4sBBHHHI")
 _PING = struct.Struct("<III")
-_IDENTITY = struct.Struct("<BBBBHHII24s")
+_IDENTITY = struct.Struct("<BBBBBBHHII24s")
 _LOAD = struct.Struct("<IIIIBB2x%dI" % LOAD_BUCKETS)
 _COUNTERS = struct.Struct("<15I")
 _OCC = struct.Struct("<IIIIIBBH")
@@ -410,12 +414,17 @@ class Control:
 
     def identity(self):
         frame = self.call(OP_IDENTITY)
-        (track, ctl_ver, frame_ver, _res, frame_bytes, frame_samples,
-         mck_hz, adc_clock_hz, build) = _IDENTITY.unpack(frame.payload)
+        (track, ctl_ver, frame_ver, fw_maj, fw_min, fw_pat, frame_bytes,
+         frame_samples, mck_hz, adc_clock_hz,
+         build) = _IDENTITY.unpack(frame.payload)
         return {
             "track": chr(track).lower(),
             "ctl_version": ctl_ver,
             "frame_version": frame_ver,
+            # The firmware version, which is neither wire contract above:
+            # it says which build is on the board when both are unchanged.
+            "fw_version": f"{fw_maj}.{fw_min}.{fw_pat}",
+            "fw": (fw_maj, fw_min, fw_pat),
             "frame_bytes": frame_bytes,
             "frame_samples": frame_samples,
             "mck_hz": mck_hz,

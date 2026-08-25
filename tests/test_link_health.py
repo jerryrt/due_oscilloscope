@@ -22,11 +22,22 @@ pytestmark = pytest.mark.smoke
 
 
 def test_control_port_answers(board, track):
-    """The board is there and it is the firmware we asked for."""
-    have, banner = measure.which_track(board)
+    """The board is there and it is the firmware we asked for.
+
+    Asserted on the identity line rather than on prose in the banner.
+    Both tracks emit it in one fixed format (drivers/version.h), which
+    is the only way a board says which track it is without the 89 ms
+    banner - and requiring it here is what keeps both tracks emitting
+    it.
+    """
+    have, text = measure.which_track(board)
     assert have == track, (
-        f"board reports track {have!r}, expected {track!r}\n{banner}")
-    assert "SystemCoreClock" in banner or "MCK" in banner, banner
+        f"board reports track {have!r}, expected {track!r}\n{text}")
+    ident = measure.parse_identity(text)
+    assert ident is not None, (
+        f"no identity line; `v` should print one on both tracks\n{text}")
+    assert ident["track"] == track
+    assert ident["fw_version"], text
 
 
 def test_clock_is_mck_78(board, baseline):
@@ -36,13 +47,19 @@ def test_clock_is_mck_78(board, baseline):
     limit. Every RC in this suite divides 39 MHz because of it, and
     Track A built at the wrong f_cpu reports a silently wrong micros().
     """
-    _, banner = measure.which_track(board)
+    _, text = measure.which_track(board)
+    ident = measure.parse_identity(text)
+    assert ident is not None, text
     mck = baseline["clock"]["mck_hz"]
     adc = baseline["clock"]["adc_clock_hz"]
-    assert str(mck) in banner, (
-        f"banner does not report MCK {mck}; Track A must be built with "
-        f"--build-property build.f_cpu=78000000L\n{banner}")
-    assert str(adc) in banner, f"banner does not report ADC clock {adc}"
+    # Compared as numbers off the identity line, not as substrings of a
+    # paragraph: 78000000 appearing anywhere in the banner used to be
+    # enough to pass this.
+    assert ident["mck_hz"] == mck, (
+        f"board reports MCK {ident['mck_hz']}, expected {mck}; Track A "
+        f"must be built with --build-property build.f_cpu=78000000L\n{text}")
+    assert ident["adc_clock_hz"] == adc, (
+        f"board reports ADC clock {ident['adc_clock_hz']}, expected {adc}")
 
 
 def test_native_port_enumerates(board):

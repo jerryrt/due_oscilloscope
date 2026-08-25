@@ -2021,15 +2021,67 @@ def stream_stats(board, *, secs=1.2):
 
 TRACK_MARK = {"a": "Track A", "b": "Track B"}
 
+# The identity line, emitted by `v` and by the banner on both tracks.
+# See drivers/version.h; the format is fixed and identical on the two.
+_ID_LINE = re.compile(
+    r"#\s*id:\s*track=(?P<track>[AB])\s+fw=(?P<fw>[0-9]+\.[0-9]+\.[0-9]+)"
+    r"\s+ctlver=(?P<ctlver>\d+)\s+framever=(?P<framever>\d+)"
+    r"\s+mck=(?P<mck>\d+)\s+adcclk=(?P<adcclk>\d+)"
+    r"\s+framebytes=(?P<framebytes>\d+)\s+framesamples=(?P<framesamples>\d+)"
+    r"\s+build=(?P<build>.+?)\s*$", re.M)
+
+
+def parse_identity(text):
+    """The identity line, or None. Same shape as the control channel's
+    IDENTITY record, so a caller can use either interchangeably."""
+    m = _ID_LINE.search(text)
+    if not m:
+        return None
+    g = m.groupdict()
+    return {
+        "track": g["track"].lower(),
+        "fw_version": g["fw"],
+        # 0 means "this track has no control channel" - Track A today.
+        "ctl_version": int(g["ctlver"]),
+        "frame_version": int(g["framever"]),
+        "mck_hz": int(g["mck"]),
+        "adc_clock_hz": int(g["adcclk"]),
+        "frame_bytes": int(g["framebytes"]),
+        "frame_samples": int(g["framesamples"]),
+        "build": g["build"].strip(),
+    }
+
+
+def identity(board, *, secs=1.0):
+    """Ask the board what it is. One short line, not the banner.
+
+    The banner costs 89 ms of blocked main loop (invariant 8) and says
+    which track only in prose. `v` is one line in a fixed format, cheap
+    enough to ask while something is running.
+    """
+    return parse_identity(board.ask("v", secs=secs))
+
 
 def which_track(board, *, secs=1.5):
-    """Which firmware is actually on the board, from its own banner.
+    """Which firmware is actually on the board, from its own report.
 
     Asked rather than assumed: flashing is the slowest thing the suite
     does, and a stale image is the failure that looks like a firmware
     regression.
+
+    `v` first, because it is one line and it states the track as a field
+    rather than as prose. The banner is the fallback, for an image built
+    before `v` existed - matching "Track A" in a paragraph is what this
+    used to do and it is kept only for that case.
     """
+    text = board.ask("v", secs=min(secs, 1.0))
+    ident = parse_identity(text)
+    if ident:
+        return ident["track"], text
     text = board.banner() if secs is None else board.ask("h", secs=secs)
+    ident = parse_identity(text)
+    if ident:
+        return ident["track"], text
     for track, mark in TRACK_MARK.items():
         if mark in text:
             return track, text
