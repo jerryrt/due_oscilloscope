@@ -131,12 +131,13 @@
       "an outlier meaningful. Floors are well below the measured rate",
       "because the point is to catch a loop that has stopped running,",
       "not to police a few per cent of drift.",
-      "idle_passes_per_s went 102900 -> 128100 when ctl_service was gated",
-      "to 1 kHz; servicing the control endpoint every pass cost 2.2 us of",
-      "a 9.7 us pass. load_tick itself is free at this resolution: 128.1 k",
-      "with it against 127.4 k built out. Re-measure rather than scale."
+      "The idle pass went 9.72 -> 7.90 -> 6.70 us as ctl_service and then",
+      "usb_cdc_poll were gated to 1 kHz. Both were reading a UOTGHS",
+      "register every pass to ask about events that happen tens of times",
+      "a second. load_tick itself is free at this resolution: 128.1 k with",
+      "it against 127.4 k built out. Re-measure rather than scale."
     ],
-    "idle_passes_per_s": 128100,
+    "idle_passes_per_s": 149300,
     "capture_max_passes_per_s": 93700,
     "passes_per_s_floor": 60000,
     "steady_worst_pass_us": 292,

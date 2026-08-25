@@ -844,6 +844,7 @@ int main(void)
 	heartbeat_at = millis();
 
 	uint32_t ctl_ms = 0;
+	uint32_t usb_ms = 0;
 
 	for (;;) {
 		uint32_t now;
@@ -880,7 +881,32 @@ int main(void)
 			led_usb_at = now;
 		}
 
-		usb_cdc_poll();
+		/*
+		 * Control transfers, at most once a millisecond.
+		 *
+		 * Same argument as the control channel below, and the same
+		 * measurement behind it: this reads UOTGHS_DEVISR every pass
+		 * and costs about 1.2 us of a 7.8 us one. The expense is not
+		 * the instruction, it is the peripheral bus and its
+		 * clock-domain crossing - the CPU stalls, and nothing in the
+		 * pipeline can hide that.
+		 *
+		 * It is asking about an event that happens a few dozen times
+		 * at enumeration and essentially never afterwards, so at one
+		 * pass in a hundred thousand it was oversampled by about that
+		 * factor. USB allows 500 ms for most control requests and
+		 * 50 ms for the SET_ADDRESS status stage; a millisecond of
+		 * added latency is invisible against either, and costs about
+		 * twenty milliseconds spread across a whole enumeration.
+		 *
+		 * The real fix is UOTGHS_IRQn, which is written
+		 * (UOTGHS_Handler) and has never been enabled. This is the
+		 * one-line version of it.
+		 */
+		if (now != usb_ms) {
+			usb_ms = now;
+			usb_cdc_poll();
+		}
 		play_service();
 		stream_service();
 		diag_service();
