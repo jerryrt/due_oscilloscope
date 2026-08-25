@@ -21,9 +21,18 @@ import zlib
 
 import pytest
 
-numpy = pytest.importorskip("numpy")
-pytest.importorskip("PySide6")
-pytest.importorskip("pyqtgraph")
+# The skip reason is an instruction, not a diagnosis. "could not import
+# numpy" is true and useless: it reads as a broken environment when it
+# means "you are in the wrong venv", and a skip nobody knows how to turn
+# into a run is a test that silently stops existing. Four of these were
+# failing against a stale frame header for as long as nobody happened to
+# remember the other interpreter.
+_WRONG_VENV = ("needs the GUI venv - run "
+               ".venv-gui/bin/python -m pytest tests/test_gui.py")
+
+numpy = pytest.importorskip("numpy", reason=_WRONG_VENV)
+pytest.importorskip("PySide6", reason=_WRONG_VENV)
+pytest.importorskip("pyqtgraph", reason=_WRONG_VENV)
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -66,13 +75,19 @@ def win(qapp, daemon):
 
 def make_frame(seq, codes_by_tag, rate=200000, flags=0, overrun=0):
     """A frame in the device's own format, so the GUI decodes real
-    bytes rather than a convenient object."""
-    n = sum(len(v) for v in codes_by_tag.values())
+    bytes rather than a convenient object.
+
+    Header v3, which is ten fields and not twelve: bits_per_sample,
+    packing and n_samples were spent on play_consumed because they never
+    varied, and the sample count now comes from the frame's length. See
+    drivers/frame.h - this helper has to track it, because a fixture
+    that builds a frame the device would never send tests nothing.
+    """
     mask = 0
     for t in codes_by_tag:
         mask |= 1 << t
-    hdr = struct.pack(stream.HDR_FMT, b"DUE0", 1, flags, 12, 0, seq, rate,
-                      n, mask, seq * 1000, overrun, 0)
+    hdr = struct.pack(stream.HDR_FMT, b"DUE0", 1, flags, mask, seq, rate,
+                      seq * 1000, overrun, 0, 0)
     hdr = hdr[:28] + struct.pack("<I", zlib.crc32(hdr[:28]) & 0xFFFFFFFF)
     tags = sorted(codes_by_tag, reverse=True)
     body = bytearray()
