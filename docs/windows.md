@@ -476,12 +476,69 @@ sessions went into proving the firmware innocent of a host defect;
 introducing a tunnel that manufactures the same symptoms is worth doing
 only with that written down first.
 
-All of this is reasoned from the architecture and **not measured** -
-`usbipd` is not installed on this machine and no board has been attached
-to WSL2. Turning it into a number means running the same `tools/bench.py`
-natively on Windows and through usbip against the same board, and
-comparing. Until someone does, treat the split above as a well-founded
-prediction rather than a result.
+### Measured, and the prediction above was wrong
+
+The four bullets above were reasoned from the architecture. The
+experiment was then run - `usbipd-win` 5.3.0, both Due devices bound and
+attached to WSL2, the same `tools/bench.py` against the same board,
+minutes apart - and **it refutes most of them.**
+
+`vhci_hcd` and `cdc_acm` bind exactly as described, `/dev/ttyACM0/1/2`
+appear, and `host/ports.py` discovers and orders all three unaided.
+pyserial reports interface numbers in `location` here (`1-2:1.0`,
+`1-2:1.2`), unlike macOS.
+
+| Measurement | Windows native | WSL2 via usbip |
+|---|---|---|
+| out-dma | 37.30-37.91 MB/s, 0 B deficit | **37.25 MB/s, 0 B deficit** |
+| in-dma | 30.24 / 31.94 / 32.98 MB/s | **30.26 / 32.19 / 32.48 MB/s** |
+| play RC 65 conservation | 0 B, `under=0` | **0 B, `under=0`** |
+| play, deficit at RC 44/39/32/28 | 0 B | **0 B at every rate** |
+
+**Throughput is not degraded.** The claim that URBs serialising over one
+TCP connection would cap throughput is simply false at these rates - the
+two hosts are indistinguishable on both directions.
+
+**Byte conservation holds.** 0 B at every rate tested.
+
+And the underruns go the *other* way. Five runs per rate, matching the
+Windows sample so a single run is not compared against a five-run median:
+
+| RC | sps | Windows native | WSL2 via usbip |
+|---|---|---|---|
+| 44 | 886,363 | 6,5,7,6,7 - median **6** | 0,0,0,0,0 - median **0** |
+| 39 | 1,000,000 | 7,12,6,9,8 - median **8** | 0,4,0,0,0 - median **0** |
+| 28 | 1,392,857 | ~21-23 | 4,55,0,4,5 - median **4** |
+
+### So the real risk is the opposite of the one predicted
+
+The warning above was that usbip would manufacture symptoms that look
+like device faults. It does not. What it does is **flatter the host**:
+the tunnel is itself another queue in front of the device, and a queue is
+exactly what the playback ring wants. Windows' `usbser.sys` applies
+backpressure and gives the ring no elastic store beyond its own 32 KB;
+add a TCP queue and the ring stops running dry.
+
+Which means the numbers are still not Linux numbers - **but for the
+opposite reason.** They are not pessimistic, they are optimistic, and
+the confound cannot be resolved here: "Linux buffers ahead without
+discarding" and "usbip's queue supplies the elasticity" predict the same
+result and only a native host can separate them. If the first is true,
+Linux is the best of the three platforms for this workload. That is worth
+knowing and is not yet known.
+
+**One real defect, and it is stability not fidelity.** The tunnel dropped
+twice unprompted - `vhci_hcd: connection closed`, then `stop threads`,
+`release socket`, `disconnect device`, and Windows put the device back
+from `Attached` to `Shared`. Both times needed a manual re-attach. It is
+not a board reset: opening and closing both the console and the native
+port deliberately did not reproduce it.
+
+So WSL2 stays tier 2, and the reason in the tier table stands - just not
+the reasoning that was written under it. A usbip figure is not a Linux
+figure. It is now known to be optimistic rather than pessimistic, and
+that is a worse trap, not a better one: a host that looks good through a
+tunnel invites the conclusion that it is good.
 
 ## What was not measured
 
