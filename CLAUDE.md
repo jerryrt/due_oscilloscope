@@ -176,6 +176,16 @@ Check here before reasoning from general Arduino knowledge.
   draining an empty pipe as fast as the hardware allows while the host
   sits in `close()`. Objective 0c is host-side; stop attributing it to
   the device.
+- **A wedged `close()` is recoverable in software - do not pull the
+  cable.** The host is waiting on the USB pipe, and only a disconnect
+  aborts that. `=<ms>Z` on the console detaches the native port and
+  re-attaches it, which released a wedged close in 0.01-0.23 s on 9 of 9
+  attempts. Command it from the *programming* port: detaching takes the
+  control channel down with it. `z` is no substitute - that is
+  `RSTC_CR_PROCRST`, a processor reset that leaves the USB pull-up
+  attached and the host none the wiser, and twenty seconds of it changed
+  nothing. `measure.close_native` tries this automatically before giving
+  up, so a wedge costs a re-enumeration rather than the session.
 - **A host that closes the port without stopping playback used to strand
   the device.** The drain guard is `!play_active() && !stream_out_in_use()`,
   and playback stayed "active" for ever with its OUT DMA armed for bytes
