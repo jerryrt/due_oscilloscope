@@ -738,13 +738,32 @@ sub-question: RC 44 reads one of two discrete converter rates.
    cycle in three; closing after stopping it ran 40 cycles clean with a
    worst close of 0.005 s.
 
-   **The prediction worth testing, and the reason it matters.** If this
-   is macOS's CDC-ACM close path, the same firmware and the same soak
-   should not wedge on Linux or Windows. Nobody has tried. `host/` is
-   POSIX-only today but `tools/soak0c.py` is small and mostly `os.write`
-   and `os.close`, so porting it is an afternoon and it would turn "we
-   believe it is host-side" into "it is this host". If it reproduces
-   everywhere, the belief is wrong and the device is back in scope.
+   **The prediction worth testing, and the tool is already written.** If
+   this is macOS's CDC-ACM close path, the same firmware and the same
+   soak should not wedge on Linux or Windows.
+
+   `tools/soak0c_portable.py` is that experiment: pyserial and nothing
+   else, no dependency on POSIX-only `host/`, ports matched on USB
+   VID/PID (2341:003D programming, 2341:003E native) which reads the
+   same on every OS.
+
+   ```sh
+   pip install pyserial
+   python tools/soak0c_portable.py --cycles 40      # --stop-first = control arm
+   ```
+
+   Fidelity checked on macOS before it was trusted anywhere else: 6
+   wedges in 25 cycles, 6 recovered, against 9 in 30 for the POSIX
+   original. **The payload must go out in one blocking write.** pyserial
+   keeps a POSIX fd non-blocking and feeds the tty queue in select-sized
+   chunks, and written that way it did not wedge in 65 cycles on a host
+   where the blocking version wedges one in four - so how much is
+   outstanding at close is part of the condition, not merely that
+   something is. Windows blocks in WriteFile anyway.
+
+   If it never wedges elsewhere, 0c is macOS's and this firmware is done
+   with it. If it reproduces everywhere, the belief is wrong and the
+   device is back in scope.
 
    The earlier entries follow, including the DPRAM re-allocation defect
    found and fixed on the way - real, confirmed by a counter, and not
