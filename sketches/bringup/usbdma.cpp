@@ -38,6 +38,24 @@ bool usbdma_ready(void)
  * ignored, so a disable-write-enable sequence reads back without AUTOSW
  * and recreates the stall. The live write sticks and CFGOK stays set.
  */
+/*
+ * WARNING for whoever adds the control channel to this track.
+ *
+ * This writes DEVEPTCFG with ALLOC still set, which re-allocates the
+ * endpoint - and datasheet 40.5.1.6 says the x+1 window then slides up
+ * and loses its data while x+2 and above stay put. It is harmless here
+ * only because this track stops at EP3, so re-allocating EP2 slides EP3
+ * and nothing sits above it.
+ *
+ * Track B was in exactly this position until EP4-EP6 arrived, at which
+ * point the hazard went live and cost a session: the host wedged in
+ * close() whenever the control channel was in use, because a control
+ * transfer was in flight while a mode switch slid its endpoint's memory
+ * out from under it. drivers/usb_cdc.c carries the fix - skip the write
+ * when the bit already holds the wanted value, and re-allocate the
+ * endpoints above in ascending order when it does not. Port the fix
+ * with the feature, not after it.
+ */
 static void ep_apply_autosw(uint32_t ep, bool on)
 {
 	uint32_t cfg = UOTGHS->UOTGHS_DEVEPTCFG[ep];

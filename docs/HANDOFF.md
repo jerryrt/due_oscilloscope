@@ -1219,6 +1219,14 @@ sub-question: RC 44 reads one of two discrete converter rates.
    is added to the other with the same commands and output format, and
    that debt has grown faster this session than any other.
 
+   **One landmine, flagged in the code itself.** Track A's
+   `ep_apply_autosw()` in `sketches/bringup/usbdma.cpp` is byte-for-byte
+   the version that cost Track B a session: it rewrites `DEVEPTCFG` with
+   `ALLOC` set, re-allocating the endpoint and sliding the next one's
+   memory window. It is harmless there *only* because Track A stops at
+   EP3 and nothing sits above it - which is exactly where Track B was
+   until EP4-EP6 arrived. Port the fix with the feature, not after it.
+
    The wire format is the thing that matters most: `docs/control-protocol.md`
    says both tracks must present *identical* descriptors and identical
    response bytes, and the suite is where that is enforced. The two
