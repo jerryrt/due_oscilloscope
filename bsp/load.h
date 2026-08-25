@@ -64,9 +64,32 @@ extern uint32_t load_prev_cycles;
  * as much as the measurement and would run a quarter of a million times
  * a second to answer a question settled once at boot.
  */
+/*
+ * Compiled out entirely, for an A/B against an uninstrumented loop.
+ *
+ * It earned its place. `Q` reported load_tick at 410 ns of a 7900 ns
+ * pass and the arithmetic said that was 5%, which was enough to suspect
+ * it of the loop-mode test failures at the full-rate pair. Building it
+ * out and reading the loop rate over the control channel said
+ * otherwise: 128.1 k passes/s with it against 127.4 k without, the
+ * difference in the noise and the wrong way round.
+ *
+ * So `Q` over-reports a cheap inline by several times - it calls it in
+ * a tight loop where every iteration serially depends on the previous
+ * DWT read, while the real loop has 7.8 us of other work between them
+ * and hides the cost in peripheral-read stalls. Price anything this
+ * small by A/B on the loop rate, never by `Q` alone.
+ */
+#ifndef LOAD_TICK_DISABLED
+#define LOAD_TICK_DISABLED 0
+#endif
+
 __attribute__((always_inline))
 static inline void load_tick(void)
 {
+#if LOAD_TICK_DISABLED
+	return;
+#else
 	uint32_t now = LOAD_DWT_CYCCNT;
 	uint32_t d = now - load_prev_cycles;
 
@@ -86,6 +109,7 @@ static inline void load_tick(void)
 	 * rather than making the result undefined.
 	 */
 	load_hist[31u - (uint32_t)__builtin_clz(d | 1u)]++;
+#endif
 }
 
 /*
