@@ -346,7 +346,8 @@ than by argument. The pattern is the lesson:
   two feeds at all.
 
 Work is on `main` and **pushed** as of 2026-08-25. The board was last
-flashed with **Track A** (the identity-line build); `pytest` reflashes
+flashed with **Track B**, and both tracks carry the identity line, so
+`v` will tell you rather than this paragraph; `pytest` reflashes
 whichever track it needs.
 
 Of the three things separated out of the lost-sample defect two
