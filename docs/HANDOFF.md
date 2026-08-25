@@ -5,6 +5,56 @@ recorded mistakes) and `docs/usb.md` (transport ceilings and host I/O
 policy). If you are here to build the test suite, the whole plan is in
 `docs/testing.md` - start there and read this for the environment.
 
+## PR #3 from the Windows team is open and not merged (2026-08-25)
+
+`windows-validation`, 4 commits, +1811/-126. It is the first validation
+of this project on a host other than macOS and it settles the biggest
+open question in this file: **0c does not reproduce off macOS** (0 wedges
+in 40 cycles against 9 in 30 here), **and neither does the playback byte
+loss** - Windows loses 0 B at all eight rates from 200 k to 1.393 M sps,
+including the two that lose most here. `usbser.sys` paces the writer at
+the device's consumption rate, so the backlog macOS discards is never
+built. 0c and 0a/0b/0i/0k are two symptoms of one macOS behaviour.
+
+It also *confirms* 0i rather than dismissing it: RC 44 and RC 39 run
+1.6% slow on Windows too, by the device's own `runus`. The slow converter
+is the device's. Nothing is lost there only because Windows never
+oversupplies.
+
+**Reviewed on macOS with the board. Three things block a merge, and one
+review finding closes the PR's own open question.**
+
+- **Its "Left open" item is its harness, not the ADC.** `tools/loop.py`
+  passes `args.tone` to `windows()` where `run_loop` correctly uses the
+  tone `build_waveform` actually emitted. At 453,488 sps the requested
+  1000 Hz becomes 1001.077 (453488/453), the window stops being a whole
+  number of real cycles, and Goertzel leakage reads ~4 codes low. Run
+  against a perfect synthetic 1371-code sine with their `windows()`
+  unmodified: 1371.00 at the real tone, 1366.05-1367.59 at `args.tone`,
+  22 of 22 windows "outside 1371 +/- 2". At 200,000 sps the two agree
+  exactly because 200000/1000 is exactly 200. That is the whole reported
+  asymmetry, and no ADC settling is implicated.
+- **`tools/flash.sh` no longer flashes on this Mac.** The shim runs
+  `${PYTHON:-python3}`, and `flash.py` imports pyserial unconditionally -
+  `touch_1200` does, so `--port` does not avoid it. Reproduced on
+  hardware. `requirements-dev.txt` states the rule it breaks. With
+  `PYTHON=.venv/bin/python` the whole path works and is *better* than the
+  old one: it takes the native-port ROM SAM-BA route and verifies.
+- **`python3 tools/toolchain.py` exits 1 on a fully working machine** -
+  it counts the optional `ninja` as missing - so
+  `cmake --build build --target tools` fails.
+- **`flash.py` ignores `--port` when anything is in ROM SAM-BA**, with no
+  multi-device guard where `find_console` has one. Two boards attached,
+  one blank, and it flashes the wrong one.
+
+Everything else in the review is non-blocking and listed on the PR. What
+*is* verified good on macOS: every Darwin pattern in `toolchains.json`
+resolves, and a clean configure + build links GNU 15.2.1.
+
+The full review is on the PR. It has not been merged and the local `main`
+is 7 commits ahead of it; a trial merge conflicts only in `CLAUDE.md` and
+`docs/toolchain.md`, both doc-only.
+
 ## Read this first: the development platform is changing (2026-08-25)
 
 **Windows becomes the main development platform; macOS becomes a
@@ -73,6 +123,19 @@ has everything you need and none of it requires a board; read it, but
 clear 1c first. The rest of this file is a measurement-integrity
 investigation running for several sessions; it matters when you quote a
 number, not when you write a view.
+
+**Also added 2026-08-25: the firmware says what it is.** A board could
+not tell you which track or which build it was running - the only answer
+was prose in the console banner, matched host-side as a substring, on a
+banner that costs 89 ms and lives on a port a deployed board does not
+have. Now both tracks emit one identity line in one format, `v` prints
+it for the cost of one line, and Track B's `IDENTITY` carries the
+firmware version over the control channel, which is the deployed path.
+Three version numbers now, deliberately: `FRAME_VERSION` and
+`CTL_VERSION` are wire contracts a host refuses a pairing on,
+`FW_VERSION_*` says which build is on the board when both are unchanged.
+`CTL_VERSION` went to 2 for it. See `drivers/version.h`, which carries
+the bump rule.
 
 **What the 2026-08-25 (later) session changed:** objective 1b, which
 had been recorded for weeks as blocked by the Arduino linker. It was
