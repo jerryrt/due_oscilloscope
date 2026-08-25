@@ -159,6 +159,10 @@ class FakeDevice(Device):
 
     def close(self):
         self.stop()
+        # The channel outlives a run deliberately - it is what status
+        # polling uses between them - so it is released here and not in
+        # _teardown.
+        self._drop_control()
         self.closed = True
 
     # -- stream ------------------------------------------------------
@@ -278,6 +282,56 @@ class BoardDevice(Device):
         self.mode = None
         self.rates = None
         self._rx = 0
+        self._ctl = None
+        self._ctl_tried = False
+        self._ctl_note = None
+
+    def control(self):
+        """The native port's command channel, or None.
+
+        Opened lazily and kept, because this is what replaces polling
+        the console while the board is working. Measured on this board:
+        one `B` blocks the main loop for 13.14 ms and one `O` for
+        15.40 ms, and for every one of those milliseconds no bulk OUT is
+        drained - which is the NAKing pipe that hangs macOS in close().
+        The same readings over this channel cost 146 and 274 us.
+
+        None on firmware with one CDC function, which is Track A today.
+        Callers fall back to the console and are slower and rougher on
+        the board, which is the honest behaviour rather than refusing to
+        report anything at all.
+        """
+        if self._ctl is not None or self._ctl_tried:
+            return self._ctl
+        self._ctl_tried = True
+        try:
+            import control as control_mod
+
+            node = self.board.command_node()
+            if node is None:
+                self._ctl_note = "no command port; this firmware has one "\
+                                 "CDC function"
+                return None
+            self._ctl = control_mod.Control(node, timeout=2.0)
+        except Exception as e:                       # noqa: BLE001
+            self._ctl_note = f"command port unavailable: {e}"
+            self._ctl = None
+        return self._ctl
+
+    def _drop_control(self):
+        """Forget the channel, so the next caller reopens it.
+
+        A board reset re-enumerates the native port and the node can
+        move, so a cached fd outlives its device. Reopening is cheap;
+        reading a stale one is not.
+        """
+        c, self._ctl = self._ctl, None
+        self._ctl_tried = False
+        if c is not None:
+            try:
+                c.close()
+            except Exception:                        # noqa: BLE001
+                pass
 
     def describe(self, refresh=False):
         """Cached, and cached for a measured reason.
@@ -373,29 +427,63 @@ class BoardDevice(Device):
         return self.board.poll_console()
 
     def counters(self):
-        """The device's own counters, over the console.
+        """The device's own counters, over the control channel.
 
-        `B` is a short report and measures clean - zero underruns across
-        repeated mid-stream calls - unlike the banner. It still costs a
-        console round trip, so it is an explicit request rather than
-        something a status poll drags in.
+        This used to poll `B`, and `B` costs 13.14 ms of blocked main
+        loop - measured, not estimated. Nothing drains bulk OUT for any
+        of it, which is how a host ends up stuck in close(); see
+        objective 0c. GET_COUNTERS is the same numbers for 146 us.
+
+        The console remains the fallback for firmware without a command
+        port. It is not a preference: it is what Track A still has.
         """
+        c = self.control()
+        if c is not None:
+            try:
+                ct = c.counters()
+                return {"underruns": ct["underruns"], "spans": ct["spans"],
+                        "partial": ct["partial"], "consumed": ct["consumed"],
+                        "occ_min": ct["occ_min"], "dev_us": ct["dev_us"],
+                        "rx_bytes": self._rx, "via": "control"}
+            except Exception:                        # noqa: BLE001
+                self._drop_control()
         try:
             play = self.m.parse_play(self.board.ask("B", secs=1.0))
             return {"underruns": play.underruns, "spans": play.spans,
-                    "partial": play.partial, "rx_bytes": self._rx}
+                    "partial": play.partial, "rx_bytes": self._rx,
+                    "via": "console"}
         except Exception:                            # noqa: BLE001
-            return {"rx_bytes": self._rx}
+            return {"rx_bytes": self._rx, "via": "none"}
 
     def trace(self):
-        """`O`, parsed. Two long lines, so it gets a longer read window.
+        """The occupancy histogram, its trace, and the rate trace.
 
-        Reported whether or not playback is running: the device holds
-        the histogram and the trace until the next play_start, so the
-        useful moment to ask is after a run rather than during one -
-        and asking during one costs underruns at exactly the rates
-        where the answer matters.
+        Over the control channel, for the same reason as `counters`:
+        `O` is three long console lines and blocks the main loop for
+        15.40 ms, where GET_OCCUPANCY costs 274 us. The old docstring
+        said asking during a run "costs underruns at exactly the rates
+        where the answer matters" - that caveat is now about the
+        console fallback only, and the control channel can be asked
+        whenever the answer is wanted.
+
+        The rate trace is paged: PLAY_RATE_TRACE entries of four bytes
+        do not fit a packet, and a response spanning packets can be
+        truncated by a single-banked endpoint without saying so.
         """
+        c = self.control()
+        if c is not None:
+            try:
+                occ = c.occupancy()
+                rate = c.rate_trace()
+                return {"occ_min": occ["occ_min"], "endtx": occ["endtx"],
+                        "run_us": occ["run_us"],
+                        "consumed": occ["consumed"],
+                        "hist": occ["hist"], "trace": occ["trace"],
+                        "decim": occ["decim"],
+                        "rate_decim": rate["decim"],
+                        "rate_us": rate["us"], "via": "control"}
+            except Exception:                        # noqa: BLE001
+                self._drop_control()
         o = self.m.parse_occ(self.board.ask("O", secs=2.0))
         return {"occ_min": o.min, "endtx": o.endtx, "run_us": o.run_us,
                 "consumed": o.consumed, "hist": list(o.buckets),
@@ -403,7 +491,8 @@ class BoardDevice(Device):
                 "rate_decim": o.rate_decim, "rate_us": list(o.rate_us),
                 "window_rates": o.window_rates(),
                 "byte_rate": o.device_byte_rate(),
-                "traced_byte_rate": o.traced_byte_rate()}
+                "traced_byte_rate": o.traced_byte_rate(),
+                "via": "console"}
 
     def stats(self):
         return {"rx_bytes": self._rx}

@@ -898,6 +898,23 @@ class Board:
             fcntl.fcntl(fd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
         return fd
 
+    def command_node(self):
+        """Path of the native port's *command* node, or None.
+
+        Derived from the same glob and the same ordering as
+        open_native, and deliberately not from ports.find_all_ports():
+        that probes the programming port to find the one that answers,
+        and probing it asserts NRSTB and resets the board. Discovery
+        that costs a reset is not discovery a running daemon can do.
+
+        None on firmware with one CDC function - Track A today - and
+        every caller must cope, because the fallback is the console and
+        the console still works.
+        """
+        cands = native_order([n for n in glob.glob("/dev/cu.usbmodem*")
+                              if n != self.control])
+        return cands[1] if len(cands) > 1 else None
+
     def close_native(self, fd):
         # Objective 0c: close() hangs here, and when it does the process
         # holds both ports so nothing outside can ask the board what

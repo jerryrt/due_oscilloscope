@@ -8,6 +8,8 @@
 #include "bsp.h"
 #include "frame.h"
 #include "load.h"
+#include "play.h"
+#include "stream.h"
 #include "usb_cdc.h"
 #include "sam.h"
 #include <stdio.h>
@@ -127,8 +129,6 @@ static void ctl_error(uint16_t req_id, uint16_t opcode, uint16_t code,
 static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
                          uint16_t len)
 {
-	(void)payload;
-
 	switch (h->opcode) {
 	case CTL_OP_PING: {
 		ctl_ping_t p;
@@ -165,6 +165,112 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		       sizeof(build) - 1u < sizeof(id.build)
 		           ? sizeof(build) - 1u : sizeof(id.build));
 		ctl_respond(h->req_id, h->opcode, 0, &id, sizeof(id));
+		return;
+	}
+	case CTL_OP_COUNTERS: {
+		ctl_counters_t ct;
+
+		if (len != 0) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "counters takes no payload");
+			return;
+		}
+		ct.dev_us      = micros();
+		ct.bytes_in    = play_bytes_in;
+		ct.produced    = play_produced;
+		ct.consumed    = play_consumed;
+		ct.underruns   = play_underruns;
+		ct.isr_calls   = play_isr_calls;
+		ct.endtx_seen  = play_endtx_seen;
+		ct.spans       = play_spans;
+		ct.partial     = play_partial;
+		ct.occ_min     = play_occ_min;
+		ct.svc_calls   = play_svc_calls;
+		ct.loop_passes = stream_loop_passes;
+		ct.run_us      = play_run_us;
+		ctl_respond(h->req_id, h->opcode, 0, &ct, sizeof(ct));
+		return;
+	}
+	case CTL_OP_OCCUPANCY: {
+		static uint8_t body[sizeof(ctl_occupancy_t)
+		                    + PLAY_NBUF * sizeof(uint32_t)
+		                    + PLAY_OCC_TRACE];
+		ctl_occupancy_t *o = (ctl_occupancy_t *)body;
+		uint8_t *p = body + sizeof(*o);
+		uint32_t traced = play_occ_traced;
+
+		if (len != 0) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "occupancy takes no payload");
+			return;
+		}
+		if (traced > PLAY_OCC_TRACE)
+			traced = PLAY_OCC_TRACE;
+
+		o->dev_us      = micros();
+		o->occ_min     = play_occ_min;
+		o->endtx_seen  = play_endtx_seen;
+		o->run_us      = play_run_us;
+		o->consumed    = play_consumed;
+		o->nbuf        = (uint8_t)PLAY_NBUF;
+		o->trace_decim = (uint8_t)PLAY_OCC_DECIM;
+		o->trace_n     = (uint16_t)traced;
+
+		for (unsigned i = 0; i < PLAY_NBUF; i++) {
+			uint32_t v = play_occ_hist[i];
+
+			memcpy(p, &v, sizeof(v));
+			p += sizeof(v);
+		}
+		for (uint32_t i = 0; i < traced; i++)
+			*p++ = play_occ_trace[i];
+
+		ctl_respond(h->req_id, h->opcode, 0, body,
+		            (uint16_t)(p - body));
+		return;
+	}
+	case CTL_OP_RATE_TRACE: {
+		/*
+		 * Paged: PLAY_RATE_TRACE entries of four bytes do not fit a
+		 * packet. The page size is what is left of the payload after
+		 * the header, computed rather than written down, so raising
+		 * CTL_MAX_PAYLOAD cannot leave a stale constant behind.
+		 */
+		enum { PAGE = (CTL_MAX_PAYLOAD - sizeof(ctl_rate_page_t))
+		              / sizeof(uint32_t) };
+		static uint8_t body[sizeof(ctl_rate_page_t)
+		                    + PAGE * sizeof(uint32_t)];
+		ctl_rate_page_t *rp = (ctl_rate_page_t *)body;
+		uint8_t *p = body + sizeof(*rp);
+		uint32_t total = play_rate_traced;
+		uint32_t off, n;
+
+		if (len != 2) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "rate trace takes a u16 offset");
+			return;
+		}
+		if (total > PLAY_RATE_TRACE)
+			total = PLAY_RATE_TRACE;
+		off = (uint32_t)payload[0] | ((uint32_t)payload[1] << 8);
+		n = off >= total ? 0u : total - off;
+		if (n > (uint32_t)PAGE)
+			n = (uint32_t)PAGE;
+
+		rp->decim    = (uint8_t)PLAY_RATE_DECIM;
+		rp->reserved = 0;
+		rp->total    = (uint16_t)total;
+		rp->offset   = (uint16_t)off;
+		rp->count    = (uint16_t)n;
+
+		for (uint32_t i = 0; i < n; i++) {
+			uint32_t v = play_rate_us[off + i];
+
+			memcpy(p, &v, sizeof(v));
+			p += sizeof(v);
+		}
+		ctl_respond(h->req_id, h->opcode, 0, body,
+		            (uint16_t)(p - body));
 		return;
 	}
 	case CTL_OP_LOAD: {

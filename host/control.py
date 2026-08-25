@@ -24,13 +24,16 @@ import zlib
 MAGIC = b"DUEC"
 VERSION = 1
 HDR_BYTES = 16
-MAX_PAYLOAD = 256
+MAX_PAYLOAD = 448
 
 FLAG_RESPONSE = 1 << 0
 FLAG_ERROR = 1 << 1
 
 OP_PING = 0x0001
 OP_IDENTITY = 0x0002
+OP_COUNTERS = 0x0020
+OP_OCCUPANCY = 0x0021
+OP_RATE_TRACE = 0x0022
 OP_LOAD = 0x0024
 
 LOAD_BUCKETS = 32
@@ -44,6 +47,9 @@ _HDR = struct.Struct("<4sBBHHHI")
 _PING = struct.Struct("<III")
 _IDENTITY = struct.Struct("<BBBBHHII24s")
 _LOAD = struct.Struct("<IIIIBB2x%dI" % LOAD_BUCKETS)
+_COUNTERS = struct.Struct("<13I")
+_OCC = struct.Struct("<IIIIIBBH")
+_RATE_PAGE = struct.Struct("<BBHHH")
 
 
 class ControlError(Exception):
@@ -285,6 +291,83 @@ class Control:
         """(dev_us, dev_ms, seq) from the device's own clock."""
         frame = self.call(OP_PING)
         return _PING.unpack(frame.payload)
+
+    def counters(self):
+        """What `B` prints, without printing it.
+
+        This is the one polled while the board is working. The console
+        form costs 13.14 ms of blocked main loop and drains no bulk OUT
+        for any of it, which is how a host ends up wedged in close() -
+        see objective 0c. Nothing here should ever go back to `B`.
+        """
+        frame = self.call(OP_COUNTERS)
+        (dev_us, bytes_in, produced, consumed, underruns, isr_calls,
+         endtx_seen, spans, partial, occ_min, svc_calls, loop_passes,
+         run_us) = _COUNTERS.unpack(frame.payload)
+        return {
+            "dev_us": dev_us, "bytes_in": bytes_in, "produced": produced,
+            "consumed": consumed, "underruns": underruns,
+            "isr_calls": isr_calls, "endtx": endtx_seen, "spans": spans,
+            "partial": partial, "occ_min": occ_min,
+            "svc_calls": svc_calls, "loop_passes": loop_passes,
+            "run_us": run_us,
+        }
+
+    def occupancy(self):
+        """The playback ring's occupancy histogram and its trace.
+
+        Variable length: the trace is only as long as it has been
+        filled. The device says how many entries it sent rather than the
+        host inferring it from the frame, so a short read is an error
+        here instead of a silently truncated trace.
+        """
+        frame = self.call(OP_OCCUPANCY)
+        (dev_us, occ_min, endtx, run_us, consumed, nbuf, decim,
+         trace_n) = _OCC.unpack_from(frame.payload, 0)
+        at = _OCC.size
+        want = at + nbuf * 4 + trace_n
+        if len(frame.payload) != want:
+            raise ProtocolError(
+                f"occupancy payload is {len(frame.payload)} bytes, "
+                f"expected {want} for {nbuf} buckets and {trace_n} "
+                f"trace entries")
+        hist = list(struct.unpack_from("<%dI" % nbuf, frame.payload, at))
+        at += nbuf * 4
+        trace = list(frame.payload[at:at + trace_n])
+        return {"dev_us": dev_us, "occ_min": occ_min, "endtx": endtx,
+                "run_us": run_us, "consumed": consumed, "hist": hist,
+                "decim": decim, "trace": trace}
+
+    def rate_trace(self):
+        """The consumed-buffer timestamp trace, paged.
+
+        PLAY_RATE_TRACE entries of four bytes do not fit one packet, and
+        a response that spans packets can be truncated silently by a
+        single-banked endpoint. So the device pages it and this walks
+        the pages, trusting the count it reports rather than assuming
+        the page size.
+
+        Usually empty: PLAY_RATE_TRACE_ENABLED is 0 by default because
+        the trace perturbs the path it measures.
+        """
+        out = []
+        decim = 0
+        offset = 0
+        while True:
+            frame = self.call(OP_RATE_TRACE, struct.pack("<H", offset))
+            (decim, _res, total, got_off,
+             count) = _RATE_PAGE.unpack_from(frame.payload, 0)
+            if got_off != offset:
+                raise ProtocolError(
+                    f"asked for rate trace at {offset}, device answered "
+                    f"for {got_off}")
+            if count:
+                out.extend(struct.unpack_from(
+                    "<%dI" % count, frame.payload, _RATE_PAGE.size))
+            offset += count
+            if count == 0 or offset >= total:
+                break
+        return {"decim": decim, "us": out}
 
     def load(self):
         """Main-loop load: how hard the device is working, right now.
