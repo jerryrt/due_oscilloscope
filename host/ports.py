@@ -21,70 +21,73 @@ rather than the node name being pattern-matched.
 """
 
 import glob
-import os
 import re
-import select
-import struct
 import subprocess
 import sys
-import termios
 import time
+
+import transport
+from transport import WINDOWS, open_raw          # noqa: F401  (re-exported)
+
+# macOS is the only platform that needs ioreg, and the only one where
+# pyserial does not report a USB interface number. Tier 2: see CLAUDE.md.
+DARWIN = sys.platform == "darwin"
 
 BANNER_MARK = b"due_oscilloscope"
 
-
-def open_raw(dev, baud=None, dtr=False):
-    fd = os.open(dev, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
-    a = termios.tcgetattr(fd)
-    a[0] = a[1] = a[3] = 0
-    a[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
-    if baud:
-        a[4] = a[5] = getattr(termios, "B%d" % baud)
-    a[6][termios.VMIN] = 0
-    a[6][termios.VTIME] = 0
-    termios.tcsetattr(fd, termios.TCSANOW, a)
-    if dtr:
-        try:
-            import fcntl
-            fcntl.ioctl(fd, termios.TIOCMBIS,
-                        struct.pack("I", termios.TIOCM_DTR | termios.TIOCM_RTS))
-        except OSError:
-            pass
-    return fd
+# The board's USB identity, which reads the same on every OS - unlike a
+# device node name, which macOS derives from USB location and Windows
+# assigns from an enumeration counter.
+VID = 0x2341
+PID_CONSOLE = 0x003D                  # programming port, via the 16U2
+PID_NATIVE = 0x003E                   # native port, the SAM3X's own USB
 
 
 def _responds(dev, timeout=1.5):
     try:
-        fd = open_raw(dev, 115200)
+        port = open_raw(dev, 115200)
     except OSError:
         return False
     try:
-        os.write(fd, b"h")
+        port.write(b"h")
         end = time.time() + timeout
         buf = b""
         while time.time() < end:
-            r, _, _ = select.select([fd], [], [], 0.1)
-            if r:
+            if transport.wait_any([port], 0.1):
                 try:
-                    buf += os.read(fd, 4096)
+                    buf += port.read(4096)
                 except OSError:
                     break
             if BANNER_MARK in buf:
                 return True
         return False
     finally:
-        os.close(fd)
+        port.close()
 
 
 def usb_interfaces():
     """Map each serial node to the USB interface behind it.
 
-    Returns {device_path: (serial_number, interface_number)}. Empty on
-    anything that is not macOS, or if ioreg is missing or changes its
-    output - every caller treats that as "no information" and falls back
-    rather than failing, because this is an aid to identification and
-    not the identification itself.
+    Returns {device_path: (serial_number, interface_number)}, or {} if
+    the platform will not say - every caller treats that as "no
+    information" and falls back rather than failing, because this is an
+    aid to identification and not the identification itself.
+
+    One function, because native_order() must not branch on platform:
+    the ordering rule is a contract from docs/control-protocol.md
+    (samples on interfaces 0/1, commands on 2/3) and it is the same
+    everywhere. Only the way the number is obtained differs - pyserial
+    on Windows and Linux, ioreg on macOS.
     """
+    if not DARWIN:
+        # The guard belongs here rather than inside _pyserial_nodes,
+        # because this is the function that promises {} on failure.
+        try:
+            return {d: (ser or "", i)
+                    for d, _v, _p, i, ser in _pyserial_nodes()
+                    if i is not None}
+        except Exception:                                    # noqa: BLE001
+            return {}
     try:
         out = subprocess.run(
             ["ioreg", "-c", "IOUSBHostInterface", "-r", "-l", "-w", "0",
@@ -116,6 +119,31 @@ def usb_interfaces():
     return found
 
 
+def _pyserial_nodes():
+    """(node, vid, pid, interface) for every serial device, or [].
+
+    pyserial's `location` ends in the USB interface number on Windows
+    ("1-5:x.0", "1-5:x.2"), which is the same contract IOKit is asked
+    for on macOS: interfaces 0/1 carry samples, 2/3 carry commands.
+    Note that pyserial's `hwid` does NOT carry the MI_00 that the Win32
+    DeviceID has, so matching on that substring finds nothing here.
+    """
+    try:
+        from serial.tools import list_ports
+        out = []
+        for p in list_ports.comports():
+            iface = None
+            m = re.search(r"[.:](\d+)$", (p.location or ""))
+            if m:
+                iface = int(m.group(1))
+            out.append((p.device, p.vid, p.pid, iface, p.serial_number))
+        return out
+    except Exception:                                        # noqa: BLE001
+        # Same contract as the ioreg path: an enumeration that will not
+        # answer is no information, not an error. Callers fall back.
+        return []
+
+
 def native_order(nodes):
     """Sort native nodes so the sample function comes first.
 
@@ -137,6 +165,28 @@ def native_order(nodes):
     return sorted(nodes, key=key)
 
 
+def native_nodes(exclude=None):
+    """The native port's nodes, sample function first.
+
+    One discovery path for every caller. measure.py used to glob
+    /dev/cu.usbmodem* itself in two places, which is a second
+    implementation of this and macOS-only besides. Ordering is by USB
+    interface number - samples on 0/1, commands on 2/3 - which is a
+    contract pinned in docs/control-protocol.md rather than a property
+    of any one OS's device naming.
+
+    Discovery here never opens a port. Opening the programming port
+    asserts NRSTB and resets the board, so a running daemon cannot
+    afford to probe.
+    """
+    if WINDOWS:
+        nodes = [d for d, v, p, _i, _s in _pyserial_nodes()
+                 if (v, p) == (VID, PID_NATIVE) and d != exclude]
+    else:
+        nodes = [n for n in glob.glob("/dev/cu.usbmodem*") if n != exclude]
+    return native_order(nodes)
+
+
 def find_ports(wait=8.0):
     """Return (control_port, native_port).
 
@@ -156,6 +206,26 @@ def find_all_ports(wait=8.0):
     """
     end = time.time() + wait
     while True:
+        if WINDOWS:
+            # Identify by USB VID/PID rather than by probing. The
+            # programming port is 2341:003D and the native pair
+            # 2341:003E; that is stable across every OS, and it avoids
+            # opening - and therefore resetting - the board just to find
+            # out what it is.
+            found = _pyserial_nodes()
+            ctl = next((d for d, v, p, _i, _s in found
+                        if (v, p) == (VID, PID_CONSOLE)), None)
+            rest = native_order([d for d, v, p, _i, _s in found
+                                 if (v, p) == (VID, PID_NATIVE)])
+            if ctl or rest:
+                return (ctl,
+                        rest[0] if rest else None,
+                        rest[1] if len(rest) > 1 else None)
+            if time.time() >= end:
+                return None, None, None
+            time.sleep(0.5)
+            continue
+
         nodes = sorted(glob.glob("/dev/cu.usbmodem*"))
         ctl = next((n for n in nodes if _responds(n)), None)
         if ctl:
