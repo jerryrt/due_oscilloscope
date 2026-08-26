@@ -296,6 +296,21 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   reports false failures.
 - **Opening the control port resets the board.** Any test that opens it
   independently of the session Board invalidates whatever was running.
+- **Two one-off failures at the top of the rate ladder, unexplained.**
+  Six full Track B runs on 2026-08-26 produced two failures, each in a
+  different test, each passing on re-run and in isolation:
+  `test_awg_ladder_play_only[b-32]` at 1,218,750 sps, and
+  `test_matched_full_rate_loop[b-2-906976-453488]`. Both sit at the top
+  of the ladder, where `docs/HANDOFF.md` already records an intermittent
+  residual at 1,218,750 sps and oversupply at 886,363 and 1,000,000.
+  **Neither assertion was captured**, so this is a pattern and not a
+  diagnosis - do not quote it as "known flakiness" to dismiss a failure
+  there. The next one to appear should be read before it is re-run.
+- **Never truncate a suite run's output.** The first of those two was
+  lost to a `| tail -3` on the pytest invocation, which threw away the
+  traceback and left nothing to diagnose; the re-run was green and the
+  evidence was gone for good. Run with `-rf --tb=short` and keep the
+  whole thing.
 
 ## 10. Implementation order
 
