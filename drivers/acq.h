@@ -92,8 +92,20 @@ _Static_assert(ACQ_FRAME_BYTES % 512 == 0,
  */
 #define ACQ_MIN_RC_1CH        44u
 
+/*
+ * Three channels, for the issue #5 impedance rig on A2. **Provisional -
+ * derived, not measured**, which is exactly what the note above says not
+ * to do, so it is deliberately conservative rather than tight: 906,976
+ * conversions per second over three channels is 302,325 triggers, RC
+ * 129, and this rounds up. The measured floor belongs here as soon as
+ * the sweep has been run; nothing in the rig needs the top of the range,
+ * which is why the placeholder is safe to work behind. *(check)*
+ */
+#define ACQ_MIN_RC_3CH        132u
+
 /* Minimum compare value for a given channel count. Measured, not derived. */
-#define ACQ_MIN_RC_FOR(n)     ((n) == 1u ? ACQ_MIN_RC_1CH : ACQ_MIN_RC)
+#define ACQ_MIN_RC_FOR(n)     ((n) == 1u ? ACQ_MIN_RC_1CH :   \
+                               (n) == 3u ? ACQ_MIN_RC_3CH : ACQ_MIN_RC)
 
 extern acq_slot_t acq_slot[ACQ_NBUF];
 
@@ -102,11 +114,16 @@ extern uint8_t acq_tracktim;
 extern uint8_t acq_settling;
 void acq_set_timing(uint32_t tracktim, uint32_t settling);
 
+/* Which channel joins A0 in a two-channel capture. See acq.c. */
+extern uint8_t acq_pair_second;
+void acq_set_pair(uint32_t a_number);
+
 void     acq_init(void);
 bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
 void     acq_stop(void);
 uint32_t acq_configured_rc(void);
 uint16_t acq_channel_mask(void);   /* ADC channel indices now enabled */
+uint32_t acq_mr(void);             /* ADC_MR as the hardware holds it */
 
 extern volatile uint32_t acq_buffers_done;
 extern volatile uint32_t acq_rxbuff_overruns;

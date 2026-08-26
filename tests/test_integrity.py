@@ -23,7 +23,8 @@ TONE = 1000.0
 
 
 @pytest.mark.smoke
-def test_device_generated_waveform_is_continuous(board, seconds):
+def test_device_generated_waveform_is_continuous(board, seconds,
+                                                calibration):
     """The control for everything below, and it must stay green.
 
     `M` drives the DAC from the device's own flash sine through the same
@@ -42,39 +43,67 @@ def test_device_generated_waveform_is_continuous(board, seconds):
     vals = ps.series[measure.CH_A0]
     start = ps._index_at(measure.CH_A0, measure.SETTLE_US)
 
-    # Count the steps; do not judge the maximum. This test used to
-    # compare the largest step against slew_limit() * 3, and that is the
-    # wrong model twice over: `gen` emits a staircase, so the honest
-    # ceiling is the ~38-code DAC step and not the 16.85-code derivative
-    # of a continuous sine, which left the "3x margin" at 1.3x of real
-    # headroom. Issue #5 then sat under it for a whole session, because
-    # it moves the maximum from 38 to 58 - a factor of 1.5 that only
-    # made this test wobble - while it moves the count from 0 to 780.
+    # Do not judge the maximum step. This test once compared the largest
+    # step against slew_limit() * 3, which is the wrong model twice over:
+    # `gen` emits a staircase, so the honest ceiling is the ~38-code DAC
+    # step and not the 16.85-code derivative of a continuous sine, which
+    # left the "3x margin" at 1.3x of real headroom. Issue #5 then sat
+    # under it for a whole session.
     #
-    # Measured on hardware, 25 runs across the two firmwares: every
-    # defective run lands at 778-780 and every healthy one at exactly 0,
-    # with nothing in between, and no healthy run has ever exceeded 39.
-    census = measure.level_census(vals[start:])
+    # Nor threshold the count, which is what replaced it. Issue #5 is
+    # open, its amplitude tracks the binary, and a detector with a line
+    # at STEP_SPLICE_CODES works only while the artifact is far from it.
+    # On 2026-08-26 a build landed with the artifact at 47-48 codes
+    # against a line at 45: only some wraps crossed, the selected subset
+    # was irregular, `periodic` went false, the xfail below stopped
+    # applying and the test failed hard - caused by the detector sitting
+    # on top of the signal, not by anything changing in the device. Any
+    # rebuild can put it there again.
+    #
+    # So identify the state and report its amplitude, which is the rule
+    # this project arrived at for issue #5 generally. pair_fold() is the
+    # instrument for this channel: gen holds each DAC level for two ADC
+    # samples, so differencing within the pair cancels the staircase by
+    # construction and leaves a one-sample event at full height, with no
+    # threshold anywhere in it.
+    vals = vals[start:]
+    census = measure.level_census(vals)
+    fold = measure.pair_fold(vals)
+    record(calibration, "device_waveform", {
+        "census": census["count"],
+        "fold_peak": round(fold["peak"], 2),
+        "fold_z": round(fold["z"], 1),
+        "fold_control_z": round(fold["control_z"], 1),
+        "fold_phase": fold["peak_phase"],
+    })
 
-    # Issue #5, which is open and whose recorded diagnosis is wrong. Its
-    # events are a metronome, not an event: a constant spacing equal to
-    # GEN_TABLE_LEN, every gap identical, each one sample displaced by
-    # ~64 codes with sequence numbers and header CRCs perfect. It appears
-    # on no other capture path - preset 3 at the same rate on the same
-    # firmware is clean - and whether a given build shows it at all
-    # tracks the binary, so this cannot be a plain assertion without
-    # failing on roughly half of all runs. A real splice is not periodic
-    # and still fails below.
-    if census["count"] and census["periodic"]:
+    # A level is only a level while the two clocks are locked. If the
+    # pairing broke, the differencing measured the staircase instead of
+    # cancelling it and nothing below can be read.
+    assert fold["hold_ok"], (
+        f"the DAC hold did not survive: pair spread {fold['pair_spread']:.1f} "
+        f"codes, so pair_fold() is measuring the waveform rather than the "
+        f"artifact and this run cannot be judged")
+
+    # Locked to the table wrap and not to a period it was not given - a
+    # real lock is a high z against a low control_z. That is issue #5:
+    # known, open, made at a DAC output pin, and expected to be here.
+    if fold["z"] >= measure.FOLD_Z_DIRTY and fold["control_z"] < measure.FOLD_Z_DIRTY:
         pytest.xfail(
-            f"issue #5: {census['count']} single-sample events at a fixed "
-            f"spacing of {census['period']} samples, which is the DAC table "
-            f"wrap and not a splice. See docs/HANDOFF.md")
+            f"issue #5: one sample per DAC table wrap displaced by "
+            f"{fold['peak']:+.1f} codes at phase {fold['peak_phase']}, z "
+            f"{fold['z']:.1f} against a control of {fold['control_z']:.1f} "
+            f"({census['count']} steps over {census['threshold']} codes). "
+            f"A DAC output pin, not a splice - see docs/HANDOFF.md")
 
+    # Nothing is locked to the wrap, so whatever the census still sees is
+    # not issue #5 and has to be accounted for.
     assert census["count"] == 0, (
         f"the device's own waveform shows {census['count']} steps above "
         f"{census['threshold']} codes (largest {census['max_step']:.1f}, "
-        f"nothing occupies {census['gap'][0]}..{census['gap'][1]}); the "
+        f"nothing occupies {census['gap'][0]}..{census['gap'][1]}) and "
+        f"nothing is locked to the table wrap (fold z {fold['z']:.1f}, "
+        f"control {fold['control_z']:.1f}), so this is not issue #5; the "
         f"fault is in the capture path, not in anything the host sends")
 
 

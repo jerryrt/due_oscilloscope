@@ -37,6 +37,30 @@ void acq_set_timing(uint32_t tracktim, uint32_t settling)
 	acq_settling = (uint8_t)(settling > 3u ? 3u : settling);
 }
 
+/*
+ * Which channel joins A0 in a two-channel capture: A1 or A2.
+ *
+ * The impedance sweep compared A1 against A2 inside one three-channel
+ * frame, where ascending index converts A2 first and A1 second - so
+ * source and conversion slot moved together and the sweep could not
+ * separate them. ADC_MR.USEQ was the obvious control and does not work
+ * on this part: SEQR1 reads back exactly as written and the converter
+ * still returns tag 0 and floating-pin values.
+ *
+ * This is the control that does work, and it needs no sequencer. A0+A1
+ * and A0+A2 both put the channel under test in slot 0 with the sine in
+ * slot 1, so the two configurations differ in the source and in nothing
+ * else. Interleave them and the state draw cancels too.
+ */
+uint8_t acq_pair_second = ADC_CH_A1;
+
+void acq_set_pair(uint32_t a_number)
+{
+	acq_pair_second = (a_number == 2u) ? (uint8_t)ADC_CH_A2
+	                                   : (uint8_t)ADC_CH_A1;
+}
+
+
 volatile uint32_t acq_buffers_done;
 volatile uint32_t acq_rxbuff_overruns;
 volatile uint32_t acq_govre;
@@ -74,6 +98,24 @@ uint32_t acq_configured_rc(void)
 uint16_t acq_channel_mask(void)
 {
 	return configured_mask;
+}
+
+/*
+ * ADC_MR as the hardware holds it, not as acq_init() meant to write it.
+ *
+ * The track/settling sweep is a negative result - neither register moves
+ * issue #5 - and a negative result is only as good as the proof that the
+ * knob was connected. Nothing in this project could show that: the `A`
+ * command echoes the variables it just set, acq_start() then does a
+ * read-modify-write on the same register, and every reading came back
+ * through a printf of a variable rather than of the peripheral. So the
+ * sweep and the conversion-time check both rest on an assumption.
+ *
+ * This is the register itself. TRACKTIM is bits 27:24 and SETTLING 21:20.
+ */
+uint32_t acq_mr(void)
+{
+	return ADC->ADC_MR;
 }
 
 void acq_init(void)
@@ -118,7 +160,7 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	 * conversions per second, not triggers: one channel may be
 	 * triggered twice as fast as two for the same converter load.
 	 */
-	if (n_channels == 0 || n_channels > 2)
+	if (n_channels == 0 || n_channels > 3)
 		return false;
 	if (rc < ACQ_MIN_RC_FOR(n_channels))
 		return false;
@@ -131,9 +173,18 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	 * order, and the tag in each sample names the channel, so the host
 	 * demultiplexes without being told which mode this is.
 	 */
+	/*
+	 * Ascending channel index is the conversion order, so three
+	 * channels convert A2, A1, A0 - the impedance arm first and the
+	 * sine last. The tag names the channel in every sample, so the
+	 * host demultiplexes without being told which mode this is.
+	 */
 	configured_mask = (n_channels == 1)
 	                ? (uint16_t)(1u << ADC_CH_A0)
-	                : (uint16_t)((1u << ADC_CH_A0) | (1u << ADC_CH_A1));
+	                : (n_channels == 2)
+	                ? (uint16_t)((1u << ADC_CH_A0) | (1u << acq_pair_second))
+	                : (uint16_t)((1u << ADC_CH_A0) | (1u << ADC_CH_A1)
+	                             | (1u << ADC_CH_A2));
 	ADC->ADC_CHDR = 0xffffu;
 	ADC->ADC_CHER = configured_mask;
 

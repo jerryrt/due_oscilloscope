@@ -475,8 +475,22 @@ void stream_report(void)
 	uint32_t us = micros() - started_us;
 	uint32_t kbps = us ? (uint32_t)(((uint64_t)bytes_sent * 1000ull) / us) : 0;
 
-	printf("# dma-frames=%lu dma-stalls=%lu\n",
-	       (unsigned long)dma_frames, (unsigned long)dma_stalls);
+	/*
+	 * ADC_MR read back from the peripheral, not echoed from the
+	 * variable that was meant to reach it: the track/settling sweep
+	 * found neither TRACKTIM nor SETTLING moving issue #5, and a
+	 * negative result is only as good as the proof that the knob was
+	 * connected. TRACKTIM is bits 27:24, SETTLING 21:20.
+	 *
+	 * Raw, and sharing this printf, because the cost of a console
+	 * command is the bytes it puts on the UART and not the number of
+	 * calls - decoding the two fields here read as free and measured
+	 * 3.8 ms, a fifth of what `?` cost in total. Invariant 8 is about
+	 * exactly that. The host decodes instead.
+	 */
+	printf("# dma-frames=%lu dma-stalls=%lu adcmr=%08lx acr=%08lx\n",
+	       (unsigned long)dma_frames, (unsigned long)dma_stalls,
+	       (unsigned long)acq_mr(), (unsigned long)gen_acr());
 	printf("# frames=%lu bytes=%lu %lu.%03lu MB/s prod=%lu cons=%lu "
 	       "ringovf=%lu resync=%lu refused=%lu rxbuff=%lu govre=%lu "
 	       "endtx=%lu rst=%lu setup=%lu stall=%lu cfg=%lu dtr=%lu cfgfail=%lu\n"

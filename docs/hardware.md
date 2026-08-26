@@ -301,12 +301,24 @@ Useful register bits:
 One shared sample-and-hold means residual charge from the previous
 channel contaminates the next. With high-impedance sources this is
 severe and presents as noise. Mitigations are buffering each channel
-with an op-amp, or raising `TRACKTIM` — but raising `TRACKTIM` cuts
-aggregate throughput. At ~30 cycles/conversion the aggregate falls to
-about 700 ksps, i.e. ~58 ksps/channel across twelve channels.
+with an op-amp, or raising `TRACKTIM` — but raising `TRACKTIM` was
+expected to cut aggregate throughput: at ~30 cycles/conversion the
+aggregate would fall to about 700 ksps, i.e. ~58 ksps/channel across
+twelve channels. *(check)* **Measured 2026-08-26, it does not fall at
+all.** `TRACKTIM(15)` with `SETTLING(3)` sustains every rate from rc 200
+to rc 86 — 390 to 907 ksps aggregate — with `govre=0`, no overrun frames
+and rates identical to `TRACKTIM(0)` to the sample, while ADC_MR read
+back from the peripheral carries the field. `TRACKTIM` sets a *minimum*
+tracking time and the converter is idle for longer than that at every
+rate here; at rc 86, where the minimum would have to lengthen the cycle,
+the hardware declines to. So this is not a usable knob on tracking in
+this design, and not a throughput cost either. See `docs/HANDOFF.md`,
+"Track and settling do nothing".
 
-This tradeoff, not USB bandwidth, is the most likely determinant of the
-real per-channel rate.
+That tradeoff was expected to be the determinant of the real
+per-channel rate, ahead of USB bandwidth. On the measurement above it is
+not a tradeoff at all: the converter's own 20-clock conversion sets the
+ceiling, and `ACQ_MIN_RC` is where it lands.
 
 **Measured baseline** (DAC0->A0, DAC1->A1 loopback, one channel held at
 mid scale while the other swings full range):
@@ -336,6 +348,13 @@ configuration will behave.
 | Channels | 2 (DAC0, DAC1) |
 | Output range | **546 mV to 2760 mV** *(measured on this board)* |
 | Drive | High output impedance; needs a buffer op-amp for any real load |
+
+**Issue #5 lives on this pin.** Once per DAC table wrap one sample read
+from a DAC output is displaced by up to ~80 codes, which is -49 dB
+against full scale where the part is specified at -64 to -80 dB THD. It
+is an AWG defect and does not affect ordinary ADC inputs. See
+`docs/issue5-impact.md` for what it bounds and `docs/HANDOFF.md` for the
+investigation.
 
 The non-rail-to-rail output surprises everyone. `analogWrite(DAC0, 0)`
 produces 546 mV on this board, not ground.

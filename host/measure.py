@@ -69,10 +69,13 @@ FRAME_BYTES = HDR_LEN + FRAME_SAMPLES * 2
 MCK_HZ = 78_000_000
 TC_CLOCK_HZ = MCK_HZ // 2          # 39 MHz
 
-# The ADC labels map to channels descending: A0 is AD7, A1 is AD6.
+# The ADC labels map to channels descending: A0 is AD7, A1 is AD6,
+# A2 is AD5. A2 carries the issue #5 impedance arm - 1.65 V behind
+# 5.5k, against A1 at the same voltage behind a DAC output.
 CH_A0 = 7
 CH_A1 = 6
-CHANNEL_LABELS = {7: "A0", 6: "A1"}
+CH_A2 = 5
+CHANNEL_LABELS = {7: "A0", 6: "A1", 5: "A2"}
 
 
 def label_for(tag):
@@ -348,6 +351,139 @@ def _shift_period(at, min_period, max_period, regularity, probes=400):
         if score >= regularity:
             return period, score
     return None
+
+
+# The generator's table length, and so the period the artifact has been
+# locked to on every reproduction. A default, not a constant: the table
+# doubles under GEN_SINE_POINTS and the period follows it.
+GEN_TABLE_LEN = 512
+
+# Folding at 512 bins gives 512 chances for noise to throw up a peak, so
+# the largest bin of a clean run sits around 3.2 sigma by construction.
+# 6 is clear of that and still an order of magnitude more sensitive than
+# any threshold detector written for this defect.
+FOLD_Z_DIRTY = 6.0
+
+
+def fold_profile(vals, period=GEN_TABLE_LEN, control_period=None):
+    """Average the run at a known period. There is no threshold in here.
+
+    Every detector this defect has defeated worked by deciding which
+    samples are events, and each one went blind when the amplitude moved
+    under whatever line it drew - 45 codes, then 20, then the shape.
+    This one decides nothing. It folds the run at a period it is told
+    and reports the average deviation at each phase, so a displacement
+    smaller than the noise on any single sample still shows up in the
+    mean of the several hundred wraps that share its phase.
+
+    That is what answers the question the thresholds cannot: whether
+    "presence may be constant" and only the amplitude varies. Noise in a
+    bin falls as sqrt(n), so ~780 wraps buy a factor of 28 and put the
+    floor near a fifth of a code - two orders below FLAT_DEV_CODES.
+
+    `z` is the peak bin in units of the scatter between bins, estimated
+    robustly (MAD across the bin means) so that the events themselves do
+    not inflate it. `control_z` is the same statistic folded at a period
+    the signal is not locked to; a real lock gives a high z and a low
+    control_z, and anything with both high is an artifact of the fold
+    rather than a finding.
+
+    Deterministic: same samples in, same numbers out, no randomness and
+    nothing tuned.
+    """
+    import statistics as _st
+    if control_period is None:
+        control_period = period + 1
+    none = {"period": period, "peak": 0.0, "peak_phase": 0, "z": 0.0,
+            "stderr": 0.0, "n_per_bin": 0, "control_period": control_period,
+            "control_z": 0.0, "profile": [], "spike": 0.0, "spike_phase": 0,
+            "spike_z": 0.0, "control_spike_z": 0.0}
+    if len(vals) < 4 * period:
+        return none
+    base = _st.median(vals)
+
+    def _fold(p):
+        sums = [0.0] * p
+        counts = [0] * p
+        for i, x in enumerate(vals):
+            b = i % p
+            sums[b] += x - base
+            counts[b] += 1
+        means = [sums[b] / counts[b] for b in range(p) if counts[b]]
+        centre = _st.median(means)
+        devs = [abs(m - centre) for m in means]
+        # MAD, not sd: a few hundred displaced samples all land in one
+        # bin, and an sd across bins would be inflated by the very thing
+        # being measured. 1.4826 makes MAD comparable to a sigma.
+        mad = _st.median(devs) * 1.4826 or 1e-9
+        peak_phase = max(range(len(means)), key=lambda b: abs(means[b] - centre))
+        peak = means[peak_phase] - centre
+
+        # Curvature, so the measurement survives a waveform underneath.
+        # Folding assumes the profile is flat apart from the artifact,
+        # which holds only while A1 is a DC channel. Pull the DAC1
+        # jumper and the floating input follows A0's sine through the
+        # multiplexer, the profile becomes the waveform, and peak/MAD
+        # goes to 1 whether or not anything is there.
+        #
+        # A sine is smooth across neighbouring bins and the artifact is
+        # one bin wide, so subtracting each bin's own neighbours removes
+        # the waveform and leaves the spike at its full height. This is
+        # strictly the better statistic - on a flat channel the
+        # subtraction takes nothing away - and it is what makes the
+        # disconnected-jumper test answerable at all.
+        m = len(means)
+        resid = [means[b] - (means[(b - 1) % m] + means[(b + 1) % m]) / 2.0
+                 for b in range(m)]
+        rc_ = _st.median(resid)
+        rmad = _st.median([abs(x - rc_) for x in resid]) * 1.4826 or 1e-9
+        sphase = max(range(m), key=lambda b: abs(resid[b] - rc_))
+        speak = resid[sphase] - rc_
+        return (means, peak, peak_phase, abs(peak) / mad, mad, min(counts),
+                speak, sphase, abs(speak) / rmad)
+
+    means, peak, phase, z, mad, n, speak, sphase, sz = _fold(period)
+    _, _, _, cz, _, _, _, _, scz = _fold(control_period)
+    return {"period": period, "peak": peak, "peak_phase": phase, "z": z,
+            "stderr": mad, "n_per_bin": n, "control_period": control_period,
+            "control_z": cz, "profile": means,
+            "spike": speak, "spike_phase": sphase, "spike_z": sz,
+            "control_spike_z": scz}
+
+
+def pair_fold(vals, period=GEN_TABLE_LEN):
+    """Fold the staircase channel, by differencing within each DAC level.
+
+    fold_profile() needs a flat channel and A0 is not one: gen holds each
+    DAC level for exactly two ADC samples, so the folded profile is the
+    staircase and a one-sample event does not stand out from it - a
+    40-code spike scores 1.4 on `spike_z`, which is why A0 could not be
+    the control for the jumper test.
+
+    The hold is itself the measurement. Two samples of one DAC level
+    should read the same, and a one-sample artifact lands on exactly one
+    of them, so differencing within the pair cancels the waveform by
+    construction and leaves the event at full height. It is what made
+    the track/settling sweep runnable with A1 grounded.
+
+    `hold_ok` is false when the pairing does not hold - the two samples
+    of a level are only a level while the DAC and ADC rates are locked,
+    and at some rates they are not. A large median absolute difference
+    says the differencing is measuring the staircase rather than
+    cancelling it, and the result should not be read.
+    """
+    import statistics as _st
+    if len(vals) < 4 * period:
+        return dict(fold_profile([], period=max(1, period // 2)),
+                    hold_ok=False, pair_spread=0.0)
+    d = [vals[i] - vals[i + 1] for i in range(0, len(vals) - 1, 2)]
+    out = fold_profile(d, period=period // 2)
+    # Within a held level the difference is noise; across a broken
+    # pairing it is a DAC step, which is tens of codes.
+    spread = _st.median([abs(x) for x in d])
+    out["pair_spread"] = spread
+    out["hold_ok"] = spread <= 4.0
+    return out
 
 
 def flat_census(vals, threshold=FLAT_DEV_CODES):

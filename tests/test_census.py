@@ -320,3 +320,217 @@ def test_shift_invariance_does_not_rescue_aperiodic_outliers():
     for i in rng.sample(range(100_000), 400):
         v[i] += 30
     assert measure.periodic_census(v)["count"] == 0
+
+
+# ---------------------------------------------------------------------
+# Folding. Every detector above decides which samples are events, and
+# each went blind when the amplitude crossed its line. fold_profile()
+# decides nothing: it averages the run at a period it is told, so a
+# displacement far under the per-sample noise still moves the mean of
+# the wraps that share its phase.
+#
+# All seeded. Same numbers every run, on every host.
+# ---------------------------------------------------------------------
+
+FOLD_SEED = 20260826
+
+
+def flat_run(n=200_000, level=2055, noise=1, seed=FOLD_SEED):
+    rng = random.Random(seed)
+    return [level + rng.randint(-noise, noise) for _ in range(n)], rng
+
+
+def test_noise_folds_flat_at_both_periods():
+    """512 bins give noise 512 chances to throw up a peak, so a clean run
+    sits near 3.2 either way. FOLD_Z_DIRTY is set clear of that."""
+    v, _ = flat_run()
+    f = measure.fold_profile(v)
+    assert f["z"] < measure.FOLD_Z_DIRTY
+    assert f["control_z"] < measure.FOLD_Z_DIRTY
+
+
+def test_a_displacement_far_under_every_threshold_is_found():
+    """One code on 40% of wraps - 0.4 codes averaged, against detectors
+    that draw their lines at 20 and 45. This is the whole point of the
+    instrument, and the reason "presence may be constant" is answerable
+    at all."""
+    v, rng = flat_run()
+    first = 300
+    for i in range(first, len(v), TABLE):
+        if rng.random() < 0.4:
+            v[i] += 1
+    f = measure.fold_profile(v)
+    assert f["z"] > measure.FOLD_Z_DIRTY, f["z"]
+    assert f["peak_phase"] == first % TABLE
+    assert 0.3 < f["peak"] < 0.5
+    # and neither threshold instrument sees anything at all
+    assert measure.periodic_census(v)["count"] == 0
+    assert measure.flat_census(v)["count"] == 0
+
+
+def test_the_control_period_stays_quiet_when_the_real_one_fires():
+    v, _ = flat_run()
+    for i in range(300, len(v), TABLE):
+        v[i] += 4
+    f = measure.fold_profile(v)
+    assert f["z"] > 10 * f["control_z"], f
+
+
+def test_folding_at_the_wrong_period_finds_nothing():
+    """Folding a locked signal at a period it is not locked to smears it
+    across bins, which is what makes control_z a control."""
+    v, _ = flat_run()
+    for i in range(300, len(v), TABLE):
+        v[i] += 4
+    assert measure.fold_profile(v, period=TABLE + 1)["z"] \
+        < measure.FOLD_Z_DIRTY
+
+
+def test_aperiodic_outliers_do_not_fold():
+    """Four hundred large displacements at random positions. Bigger than
+    anything above and they must still read as nothing, because they are
+    not locked to a phase."""
+    v, rng = flat_run()
+    for i in rng.sample(range(len(v)), 400):
+        v[i] += 30
+    assert measure.fold_profile(v)["z"] < measure.FOLD_Z_DIRTY
+
+
+def test_a_burst_folds_at_the_wrap_period():
+    """The shape that defeated the gap test folds like anything else -
+    the instrument has no opinion about how many samples an event is."""
+    f = measure.fold_profile(burst(n=200_000), period=TABLE)
+    assert f["z"] > measure.FOLD_Z_DIRTY
+
+
+def test_it_is_deterministic():
+    """Same samples in, same numbers out - the property the harness
+    depends on, since a verdict that moves between runs of the same data
+    cannot gate an A/B."""
+    v, _ = flat_run()
+    for i in range(300, len(v), TABLE):
+        v[i] += 3
+    a = measure.fold_profile(v)
+    b = measure.fold_profile(list(v))
+    assert (a["z"], a["peak"], a["peak_phase"]) == \
+           (b["z"], b["peak"], b["peak_phase"])
+
+
+def test_a_short_run_is_not_an_error():
+    assert measure.fold_profile([2055] * 100)["z"] == 0.0
+
+
+# ---------------------------------------------------------------------
+# Curvature. fold_profile()'s `z` assumes the folded profile is flat
+# apart from the artifact, which holds only while A1 is a DC channel.
+# `spike_z` subtracts each bin's own neighbours, so a one-bin event
+# survives a smooth waveform underneath - and does not survive a
+# staircase, which is the limitation that decided a hardware test.
+# ---------------------------------------------------------------------
+
+
+def sine_under(n=200_000, amp=700, period=TABLE, hold=1, spike=0,
+               first=300, seed=FOLD_SEED):
+    rng = random.Random(seed)
+    v = []
+    for i in range(n):
+        phase = (i % period) // hold
+        v.append(round(1668 + amp * math.sin(2 * math.pi * phase
+                                             / (period // hold)))
+                 + rng.randint(-1, 1))
+    if spike:
+        for i in range(first, n, period):
+            v[i] += spike
+    return v
+
+
+def test_plain_z_is_blind_once_a_waveform_is_folded_in():
+    """Why spike_z exists. Pull the DAC1 jumper and the floating input
+    follows A0's sine through the multiplexer; the profile becomes the
+    waveform and peak/MAD goes to 1 whether or not anything is there."""
+    f = measure.fold_profile(sine_under(spike=4))
+    assert f["z"] < 2.0
+    assert f["spike_z"] > f["z"]
+
+
+def test_a_spike_on_a_smooth_waveform_is_found_by_curvature():
+    f = measure.fold_profile(sine_under(spike=4))
+    assert f["spike_phase"] == 300 % TABLE
+    assert f["spike"] > 3.0
+
+
+def test_curvature_reports_nothing_on_a_waveform_alone():
+    assert measure.fold_profile(sine_under())["spike_z"] < 2.0
+
+
+def test_curvature_cannot_see_through_a_staircase():
+    """The limitation, recorded because it decided an experiment.
+
+    A0 carries gen's staircase - each DAC level held two ADC samples -
+    so its folded profile has a large second difference at every step
+    and a one-bin event does not stand out. A 40-code spike scores 1.4.
+    So A0 cannot serve as the positive control for a jumper test, and
+    the flat channel has to be made flat by other means rather than left
+    floating.
+    """
+    quiet = measure.fold_profile(sine_under(amp=1371, hold=2))
+    loud = measure.fold_profile(sine_under(amp=1371, hold=2, spike=40))
+    assert quiet["spike_z"] < 2.0
+    assert loud["spike_z"] < 2.0
+
+
+def test_curvature_matches_plain_z_on_a_flat_channel():
+    """The subtraction takes nothing away when there is nothing to take:
+    on a DC channel both statistics find the same event."""
+    v, _ = flat_run()
+    for i in range(300, len(v), TABLE):
+        v[i] += 4
+    f = measure.fold_profile(v)
+    assert f["spike_phase"] == f["peak_phase"]
+    assert f["spike_z"] > measure.FOLD_Z_DIRTY
+
+
+# ---------------------------------------------------------------------
+# pair_fold: the staircase channel. A0 holds each DAC level for two ADC
+# samples, so folding it directly measures the waveform; differencing
+# within the pair cancels the waveform and keeps the event.
+# ---------------------------------------------------------------------
+
+
+def staircase_pairs(n=200_000, amp=1371, spike=0, first=300, period=TABLE,
+                    seed=FOLD_SEED, hold=2):
+    rng = random.Random(seed)
+    v = []
+    for i in range(n):
+        lvl = (i % period) // hold
+        v.append(round(2048 + amp * math.sin(2 * math.pi * lvl
+                                             / (period // hold)))
+                 + rng.randint(-1, 1))
+    if spike:
+        for i in range(first, n, period):
+            v[i] += spike
+    return v
+
+
+def test_pair_fold_finds_what_folding_a_staircase_cannot():
+    v = staircase_pairs(spike=40)
+    assert measure.fold_profile(v)["spike_z"] < 2.0      # the reason it exists
+    f = measure.pair_fold(v)
+    assert f["hold_ok"], f["pair_spread"]
+    assert f["z"] > measure.FOLD_Z_DIRTY
+    assert abs(f["peak"]) > 30
+
+
+def test_pair_fold_is_quiet_on_a_clean_staircase():
+    f = measure.pair_fold(staircase_pairs())
+    assert f["hold_ok"]
+    assert f["z"] < measure.FOLD_Z_DIRTY
+
+
+def test_pair_fold_refuses_when_the_pairing_is_broken():
+    """The two samples of a level are only a level while the DAC and ADC
+    rates are locked. Held for one sample instead of two, the difference
+    is a DAC step and the result must not be read."""
+    f = measure.pair_fold(staircase_pairs(hold=1, spike=40))
+    assert not f["hold_ok"]
+    assert f["pair_spread"] > 4.0

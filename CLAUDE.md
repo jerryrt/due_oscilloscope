@@ -132,7 +132,7 @@ Violating any of these is a design regression, not a style preference.
    to use for profiling or for status polling while the board is
    working, and not by a small margin: measured with the load monitor,
    one console status command blocks the main loop for 13-20 ms (`B`
-   13.14, `?` 20.18, `O` 15.40), `u` for 113 ms and the banner for
+   13.14, `?` 21.48, `O` 15.40), `u` for 113 ms and the banner for
    89 ms. For every one of those milliseconds the loop drains no bulk
    OUT, which is the NAKing pipe that hangs macOS in `close()` - see
    objective 0c, where console polling during playback turned out to be
@@ -141,6 +141,15 @@ Violating any of these is a design regression, not a style preference.
    **New instrumentation goes in the metric system** (`bsp/load.c`,
    `GET_LOAD`), never in a printf, and anything read while the sample
    path is running goes over the control channel.
+
+   The `?` figure was 20.18 ms until the ADC_MR readback landed on it on
+   2026-08-26. The raw register costs 1.3 ms of UART; decoding its two
+   fields on the device cost 3.8, which is why the host decodes and the
+   device prints the word. **The cost of a console command is the bytes
+   it puts on the wire, not the number of `printf` calls** - which is
+   not what "share an existing printf to keep it free" predicts, and
+   that guess was wrong when it was measured. Re-measured with `l`,
+   which reproduces the `B` and `O` figures above to 0.2%.
 
 ## Facts that are easy to get wrong
 

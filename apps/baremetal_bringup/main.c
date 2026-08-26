@@ -75,6 +75,10 @@ static void banner(void)
 	printf("#           =1l = report load, then clear it\n");
 	printf("#           =<ms>Z = detach the native port (software unplug)\n");
 	printf("#           =<tt>,<st>A = ADC track/settling time\n");
+	printf("#           =<n>C = 2ch pair: A0+A1 or A0+A2\n");
+	printf("#           =<n>N = gen layout 0..3 (see gen.h)\n");
+	printf("#           =<ch>,<core>I = DACC_ACR bias (2,1 = Arduino)\n");
+	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
 	printf("#           z=software reset  v=identity line\n");
 	printf("#\n");
 }
@@ -135,15 +139,29 @@ static void measure_gpio(void)
 	printf("# use direct PIO writes for ISR instrumentation\n");
 	uart_flush();
 }
+/* The M preset's ADC-start-to-DAC-start gap. See case 'K'. */
+static uint32_t mimic_start_delay_us;
+
 
 static void cmd_read(void)
 {
-	uint16_t a0, a1;
+	uint16_t a0, a1, a2;
 
 	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
-	printf("# A0(AD7) = %4u  %4lu mV    A1(AD6) = %4u  %4lu mV\n",
+	a2 = adc_read(ADC_CH_A2);
+	/*
+	 * A2 is read separately rather than as a pair, because it is
+	 * the impedance arm and pairing it would convert it straight
+	 * after another channel - which is the one thing this rig
+	 * exists to hold still. Software-triggered with a generous
+	 * tracking time, so this is a DC reading and not a sample of
+	 * the artifact.
+	 */
+	printf("# A0(AD7) = %4u  %4lu mV    A1(AD6) = %4u  %4lu mV    "
+	       "A2(AD5) = %4u  %4lu mV\n",
 	       a0, (unsigned long)code_to_mv(a0),
-	       a1, (unsigned long)code_to_mv(a1));
+	       a1, (unsigned long)code_to_mv(a1),
+	       a2, (unsigned long)code_to_mv(a2));
 	uart_flush();
 }
 
@@ -803,6 +821,29 @@ static void cmd_execute(const cmd_t *cmd)
 	case 'V': play_dump(); break;
 	case 'D': diag_start(); break;
 	/*
+	 * "=<us>K". The gap between the ADC start and the DAC start, in
+	 * microseconds, held across runs and applied by the M preset.
+	 *
+	 * The two states this issue draws are selected by the binary and
+	 * not by anything the host does - three states on one image and one
+	 * on the next, with the changed code never executed. The M preset's
+	 * comment below names the only free variable that layout could
+	 * plausibly move: gen sits on TIOA1 while the ADC sits on TIOA0, so
+	 * the sampling phase relative to the DAC table wrap is fixed for a
+	 * run by the instruction timing between the two starts, and a
+	 * different layout is a different number of instructions.
+	 *
+	 * This makes that variable settable, so the hypothesis can be
+	 * tested inside one image instead of by flashing two. Debug-only,
+	 * on a preset that is already debug-only, and it busy-waits.
+	 */
+	case 'K':
+		mimic_start_delay_us = cmd->arg[0];
+		printf("# mimic start delay: %lu us (next M)\n",
+		       (unsigned long)mimic_start_delay_us);
+		uart_flush();
+		break;
+	/*
 	 * The loop's timing skeleton with no USB in it: gen's flash sine
 	 * through play's exact DACC + TIOA1 configuration, capture
 	 * running, ordering matched to what L does once the ring primes.
@@ -834,6 +875,14 @@ static void cmd_execute(const cmd_t *cmd)
 		 */
 		uint32_t dac_hz = cmd->arg[0] ? cmd->arg[0] : 200000u;
 		uint32_t adc_hz = cmd->arg[1] ? cmd->arg[1] : dac_hz;
+		/*
+		 * "=<dac>,<adc>,<nch>M". Three channels puts the issue #5
+		 * impedance arm on A2 into the same capture as A1 and the
+		 * sine on A0, so the arms are matched inside one run
+		 * instead of compared across runs that draw different
+		 * states.
+		 */
+		unsigned nch    = cmd->arg[2] ? cmd->arg[2] : 2u;
 
 		/*
 		 * Everything the console has to say is said before the
@@ -860,14 +909,60 @@ static void cmd_execute(const cmd_t *cmd)
 		 * the preset the splice census measures, so a refusal that
 		 * says nothing would be scored as a clean run.
 		 */
-		if (!stream_start_capture_only(adc_hz, 2)) {
+		if (!stream_start_capture_only(adc_hz, nch)) {
 			printf("# mimic loop: refused, the ADC would not start\n");
 			uart_flush();
 			break;
 		}
+		if (mimic_start_delay_us) {
+			uint32_t t0 = micros();
+			while (micros() - t0 < mimic_start_delay_us)
+				;
+		}
 		gen_go_tioa1();
 		break;
 	}
+	/*
+	 * "=<n>C": which channel pairs with A0 in a two-channel capture,
+	 * 1 for A1 and 2 for A2. It is how source impedance is told apart
+	 * from conversion slot - see acq_set_pair().
+	 */
+	case 'C':
+		acq_set_pair(cmd->arg[0]);
+		printf("# capture pair: A0 + A%u (next 2ch stream)\n",
+		       acq_pair_second == ADC_CH_A2 ? 2u : 1u);
+		uart_flush();
+		break;
+	/*
+	 * "=<n>N": generator layout, 0 normal, 1 swapped, 2 two-cycle,
+	 * 3 all-DC. Rebuilt now and again by gen_init(), which M calls.
+	 * See gen.h for what each arm is for.
+	 */
+	case 'N': {
+		static const char *const names[] = {
+			"normal: sine DAC0, DC DAC1",
+			"swapped: DC DAC0, sine DAC1",
+			"two-cycle: two sine periods per wrap",
+			"all-DC: no sine on either",
+		};
+		gen_set_layout(cmd->arg[0]);
+		printf("# gen layout %u = %s\n",
+		       (unsigned)gen_layout, names[gen_layout]);
+		uart_flush();
+		break;
+	}
+	/*
+	 * "=<ch>,<core>I": DACC_ACR's IBCTLCHx and IBCTLDACCORE, applied
+	 * at the next DACC init. "=2,1I" is the Arduino core's value and
+	 * the datasheet's characterisation condition; 0,0 is reset, which
+	 * is what this project has always run. See gen.c.
+	 */
+	case 'I':
+		gen_set_ibctl(cmd->arg[0], cmd->arg[1]);
+		printf("# dacc ibctl: ch=%u core=%u (next DACC init)\n",
+		       (unsigned)gen_ibctl_ch, (unsigned)gen_ibctl_core);
+		uart_flush();
+		break;
 	case 'A':
 		/*
 		 * "=<tracktim>,<settling>A". Applied at the next acq_init(),

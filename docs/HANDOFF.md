@@ -122,45 +122,253 @@ Windows backend so that test runs first.
 consequences as predicted. Treat every "Windows will" here as a
 hypothesis with a test attached.
 
-## Start here: the Windows session handoff (2026-08-25)
+## Start here (2026-08-26, Windows session)
 
-**Do this first: unplug and replug the Due's native USB cable.** The
-native port stopped enumerating at the end of the session and no
-software remedy reaches it - `=400Z`, three reflashes and a SAM-BA
-round trip all failed, while SAM-BA itself enumerates fine over the same
-cable, so the hardware is good and the Windows USB stack is not. It
-follows a run of `usbipd` bind/attach/detach cycles and there are seven
-phantom `VID_2341&PID_003E` registrations left behind (COM8, COM9,
-COM11, COM12 and three composite instances). Nothing below can be
-measured until the port is back.
+`main` is green on both tracks and there are no open PRs. One open
+issue, #5, and it changed character overnight: **it is analog.**
 
-### The agreed order of work (2026-08-25, approved)
+| | |
+|---|---|
+| Track A | 237 passed / 0 failed |
+| Track B | 258 passed / 0 failed |
+| Branches | `main`, `wip/track-a-control-channel` |
+| Board | Track B |
+| Tag | `dead/stream-stop-race` - kept reachable, not a fix |
 
-**1 -> loose ends -> 2 -> 3 -> 4.**
+### Issue #5 is an analog problem, and one resistor is the next move
 
-1. **Settle whether issue #5 is a defect at all.** Step 1 no longer means
-   the ADC-timing sweep: this board has stopped exhibiting the defect
-   (see the retraction below), so there is nothing here for that sweep to
-   act on. The tool is built and waiting on `issue5-adc-timing`
-   (`=<tt>,<st>A`, runtime, one image sweeps the whole range). **Step 1
-   now means confirming on macOS, which has never been tried**, and
-   pulling the DAC1->A1 jumper on a board that does reproduce.
-2. **Objective 1c, first half**: port `O`, `occmin` and `play_run_us` to
-   `sketches/bringup/play.cpp`. A straight transliteration; turns the 18
-   Track A failures in `test_play_counters.py` into 18 passes or 18
-   honest findings, and nobody knows which.
-3. **Objective 1c, second half**: Track A's control channel. The gate for
-   everything else. Port `ep_realloc_control()`'s second half *with* the
-   feature - Track A's `ep_apply_autosw()` hazard goes live the day that
-   track grows EP4, which is the day the control channel arrives.
-4. **printf stages 3 and 4**: poison `printf`, `dbg()` literal-only, and
-   opcodes or demotions for `t x r s V D u`.
+The macOS jumper test settles the kind of answer. A1 tied to **GND**
+rather than DAC1: zero nonzero samples in ~3.2 million across eight RCs,
+including four that folded at +54 to +66 codes an hour earlier, while A0
+carried the sine in the same captures. Nothing digital can be switched
+off by holding an input at a rail - a corrupted result register, a stale
+IN transfer racing the PDC, a TAG-mode mix-up, a bit set in passing,
+each appears whatever the pin is doing. **The artifact is made at the
+ADC front end or before it.** Every digital theory this issue has
+carried, including the one it is named after, is the wrong *kind* of
+answer.
 
-Loose ends worth an hour: rebase `wip/refusal-reporting` onto `main` and
-land it on its own merits, post the issue #5 correction, and watch the
-next few full runs for the load-dependent flake that stopped appearing
-after the stage 2 stalls were removed (n=2, a hypothesis and not a fix).
+**The next experiment is one resistor.** Grounding changed two things at
+once - it removed DAC1 and replaced a mid-rail source with a zero-ohm
+source at the rail - so DAC1 glitching and the ADC input network failing
+to settle both survive. Reconnect DAC1 to A1 through **10k**: source
+impedance decides settling, so the artifact growing with the resistor
+means the front end and exonerates DAC1; no change means DAC1.
 
+**DEFERRED: the hardware is not to hand (2026-08-26).** Nothing else is
+blocked by it. Do not open the session by trying it.
+
+**And the design changed - do not run the DAC1+10k version.** A
+mid-rail source that is not the DAC is better, because the DAC+resistor
+test moves two things at once: it raises the source impedance *and*
+low-passes DAC1's own output, so the two hypotheses push the measurement
+in opposite directions through one knob.
+
+What is wanted is **a mid-rail source with selectable series
+resistance** - a reference plus a few resistors, or just a divider off
+3.3 V, whose output impedance is `R1||R2` and therefore free to choose.
+A voltage reference alone is not enough: it is deliberately ~0 ohm,
+which is the same confound GND had.
+
+Set it near **1.65 V**, where A1 sat (~2055 codes) when the artifact was
+characterised, so the comparison is like with like. GND was flawed twice
+over - it clipped at code 0, so a negative-going event was invisible and
+two RCs had measured negative, and it was stiff.
+
+    A1 driven by                     appears            absent
+    mid-rail reference, ~0 ohm       not DAC1           ambiguous
+    mid-rail reference + series R    not DAC1, and      DAC1
+                                     R-dependence
+                                     says settling
+
+Only the second row is conclusive in both directions, which is the whole
+reason to wait for the parts rather than improvise with what is on the
+bench.
+
+**The track/settling sweep is done, and the answer is neither register -
+but it is not the answer it reads as.** Both sessions ran it, on two
+hosts, two channels and two instruments, and both found every condition
+drawing from the same values with the maximum of each register looking
+exactly like the minimum. The Windows arm replicates the macOS one on
+A1 with DAC1 still connected, folded rather than paired: 35 interleaved
+runs at RC 189, TRACKTIM 0-15 against SETTLING 0-3, and the condition
+never predicted anything.
+
+**What it does not do is test the front end.** `?` now prints ADC_MR as
+the hardware holds it, and the register is programmed exactly as asked
+mid-run - so the knob is connected, which nobody had shown. It is also
+free: TRACKTIM(15) with SETTLING(3) sustains the whole ladder from rc
+200 to rc 86, govre 0 and rates identical to TRACKTIM(0) to the sample,
+where an additive tracking time would have had to drop every other
+trigger at rc 86. TRACKTIM sets a *minimum*, the converter is already
+idle for longer at every rate here - 47 clocks of budget against a
+20-clock conversion at RC 189 - and at the one rate where it would bite
+the hardware declines to lengthen the cycle. **The acquisition window
+never moved in either arm**, so "neither register moves it" is a fact
+about the register and not evidence about the ADC input network.
+`docs/hardware.md`'s "raising TRACKTIM cuts aggregate throughput ... to
+about 700 ksps" is wrong as written and should be re-measured with it.
+
+So the two-way split stands undisturbed, and the deferred source
+experiment still decides it. Source impedance is the one knob that
+demonstrably varies settling here; this one does not.
+
+**Build it once, on separate channels. Do not swap resistors.** The
+board is usually driven remotely, and swapping a series resistor between
+arms is both impractical and worse science: each impedance would be a
+different run, so the two-state coin flip and the amplitude drift land
+on the arms unequally. Give every impedance its own ADC channel and one
+capture contains every arm, perfectly matched.
+
+Equal legs put the tap at exactly V/2 whatever the value, so one pair
+per channel sets the level and the impedance together:
+
+    A1   1k  / 1k    ->  1.65 V at   500 ohm
+    A2  10k  / 10k   ->  1.65 V at     5 kohm
+    A3 100k  / 100k  ->  1.65 V at    50 kohm
+    A4  DAC1, original jumper restored - the condition already measured
+    A0  DAC0 loopback, unchanged - the known-artifact positive control
+
+Six resistors and two jumpers, built once and never touched again. Add a
+1M pair for a fourth decade if it is to hand; leakage there is a
+sub-code offset and Johnson noise about 0.1 codes, both negligible
+against a 2-to-80 code artifact.
+
+**No capacitors on any of these nodes.** A 100 nF at an ADC input is the
+reflex and it is correct everywhere except here: a cap is a
+low-impedance reservoir at the sampling instant, so it does what GND did
+and suppresses the effect being measured.
+
+**Two things to do before the parts arrive.** Preset `M` hardcodes two
+channels and needs a channel count, the same shape as the
+`=<dac>[,<adc>]M` knob. And note the untested assumption: the artifact
+has only ever been seen with two channels, so adding channels moves the
+per-channel rate and therefore the fold period, and whether it survives
+at all is unknown. `periodic_census()` can find the new period and A0
+says whether the board is still doing it, but do not assume the
+five-channel configuration reproduces until it has.
+
+**And it found the shape of the whole problem, which matters more than
+the sweep did.** The amplitudes are two states separated by phase, a
+factor of forty apart, drawn about evenly per run - and the small one
+has always been reported as a clean run. See "the coin has two faces"
+below before planning any experiment that counts dirty runs.
+
+**And the number of states is a property of the binary.** An interleaved
+A/B with the flash in the rotation gives three states on `c9efd53` and
+one on `f6bf644`, sixteen runs each, where the change between them is
+never executed during the measurement. So "two states" is a count taken
+from one image, every reflashing A/B moves layout as well as logic, and
+the state distribution of both arms is what to report. See "the image
+chooses the state" below.
+
+**Do not measure this with a threshold.** Three fixed thresholds went
+blind to it in one day and every "does not reproduce" measured with one
+is void. `periodic_census()` and `fold_profile()` key on structure;
+`sd` is the free corroborator, 0.78-0.89 clean against 0.93-4.59
+reproducing on both hosts, with no overlap and nothing to choose.
+
+**And use `tools/ab.py`.** Interleaved arms, and it refuses to report
+when the control never reproduced. Four findings died this session to
+experiments whose control arm was clean because the board was clean:
+the stop-race "fix" at 25/25, the bss claim, the TIOA phase sweep at
+16/16, the printf placement switch at 0/10 both ways. A negative result
+does not look like a comparison, which is what made it hard to see four
+times.
+
+### Where Track A's control channel stands
+
+`wip/track-a-control-channel`, pushed, **do not merge**. Enumeration
+works; the sample path does not.
+
+Working and verified: a `PluggableUSBModule` adds the second CDC
+function without patching the core, plugged from a global constructor
+because `main()` attaches USB before `setup()`; it lands on interfaces
+2/3 and EP4-6 and *checks* rather than assumes; single-bank endpoint
+words, since the core's are double-banked and the DPRAM budget forbids
+that here; `ep_apply_autosw()`'s missing half, which had to land with
+this and not after; and `_cdcComposite = 1`, which is what Track B's
+`0xEF/0x02/0x01` device descriptor does and which the core otherwise
+gates behind a probe-order heuristic. With it, both nodes open and
+`ports.native_nodes()` orders them samples-first with no host change.
+
+**Two real defects found along the way, both worth keeping.** The core
+enables EP4-6 interrupts and its ISR has no case for them, so an OUT
+packet on EP5 raised an interrupt nothing acknowledged and the main loop
+starved - the board kept enumerating, because that is all the ISR was
+doing, and answered nothing else. That was the "silent flash" blamed on
+bossac twice. And the wrong device class did not refuse enumeration: both
+nodes appeared, both bound `usbser`, both reported `Status OK` - and
+opening the *sample* node blocked for ever.
+
+**Still broken:** 160 passed / 88 failed, and the failures are now "no
+frames arrived at all" with `raw_bytes=0` - the sample IN path
+delivering nothing. Two hypotheses are dead: the interrupt mask writes
+only PEP_4-6 (bits 16-18; DMA channel interrupts are 25-28 and
+untouched), and `CFGOK` reads `1111111` at idle, so allocation and DPRAM
+were never it. Enumeration is also unstable across a board reset.
+
+`E` is on that branch and reports CFGOK plus the realloc and cfgfail
+counters *during* a run. Use it: the banner reports CFGOK at boot, which
+is exactly when nothing is wrong yet.
+
+**The lesson that found the device class: compare against Track B.**
+Track B has had two CDC functions working the whole time. Going to first
+principles cost hours that a diff of the two enumerations would not have.
+
+### What printf stages 3-4 are waiting for
+
+Stages 1-2 are done and on `main`: `CTL_OP_STREAM_STATS`, `CTL_OP_BENCH`,
+and `measure.py` reading counters over the control channel instead of by
+printing them - it used to send `B` twice *inside* `run_loop`, 13.14 ms
+of blocked main loop in the middle of the run being measured.
+
+Stage 3 is `#pragma GCC poison printf` plus a `dbg()` that takes only a
+string literal. Both are verified against arm-none-eabi-gcc 14.3 and
+give the errors they should. **It cannot land while Track A has no
+control channel**, because poisoning `printf` there removes that track's
+only instrument - invariant 3 broken in order to enforce invariant 8.
+Stage 4 is opcodes or demotions for `t x r s V D u`.
+
+Worth knowing before spending a day on it: measured, the *single*
+console read `run_loop` does on Track A is not perturbing it - 0
+underruns and occmin 21-25 at RC 44. Five reads take that to 15
+underruns and occmin 2. So the live-measurement case for the control
+channel is thin; the real reasons are the descriptor-identity contract
+the suite cannot currently enforce on Track A, and this.
+
+### The agreed order of work (updated 2026-08-26)
+
+1. **Issue #5: blocked on one resistor, and nothing else.** Step 1 used
+   to be "settle whether it is a defect at all", then "confirm on macOS",
+   then "the 10k resistor, then the track/settling sweep". All of those
+   are done or answered except the resistor, which is **deferred - the
+   hardware is not to hand as of 2026-08-26**.
+
+   It reproduces on both hosts, presence is constant once you stop
+   thresholding, the jumper test says the cause is analog and at the ADC
+   front end or before it. Neither `TRACKTIM` nor `SETTLING` moves it -
+   but the readback says that is a fact about the registers, which are
+   programmed and cost nothing at any rate here, rather than evidence
+   about the input network. What is left is which analog - DAC1
+   glitching, or the ADC input network failing to settle - and one
+   resistor still separates them - see the source note above.
+
+   **Do not spend a session working around the missing part.** The
+   remaining question is a two-way split that one component decides;
+   anything else is a longer road to the same fork. Pick up objective 1c
+   or the Track A control channel instead, and take issue #5 when the
+   resistor exists.
+2. **Objective 1c, first half** - done. `O`, `occmin`, `play_run_us`, the
+   playstat carrier, `PLAY_PRIME_BUFS` 24 and the playback-abandon
+   timeout are all on `main`, and Track A is 237 passed / 0 failed.
+3. **Objective 1c, second half**: Track A's control channel. Enumeration
+   works on `wip/track-a-control-channel`; the sample path delivers no
+   frames. See "Where Track A's control channel stands".
+4. **printf stages 3 and 4**, behind 3.
+
+Steps 1 and 3 are independent: one needs the board and a resistor, the
+other needs a USB bug found. Neither blocks the other.
 ### Objective 1c's first half is done, and it found three things
 
 Ported to `sketches/bringup/play.cpp` with the same names, the same
@@ -401,6 +609,590 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### DACC_ACR is at reset on Track B, and it sets the output slew rate
+
+**Track B has never written `DACC_ACR`.** Not in `gen.c`, not in
+`play.c`, not anywhere - `grep` finds no reference in `drivers/`,
+`apps/` or `sketches/`. So `IBCTLCH0`, `IBCTLCH1` and `IBCTLDACCORE` sit
+at their reset value on every capture this project has taken.
+
+Three facts about that register, from the datasheet in `docs/datasheets`
+rather than from memory:
+
+- **`IBCTLCHx`: "Analog Output Current Control - allows to adapt the
+  slew rate of the analog output."** Datasheet 45.7.11, `DACC_ACR` at
+  0x400C8094, read-write. It is the DAC output stage's bias current.
+- **The DAC's published performance is specified at a non-reset value.**
+  Tables 46-38 and 46-40 give INL, DNL, offset, gain, SNR, THD and
+  SINAD at `IBCTLDACCORE = 01, IBCTLCHx = 10`. Nothing is characterised
+  at reset, so the numbers in the datasheet's DAC section do not
+  describe the part as this project runs it.
+- **The DAC's reference is ADVREF**, the ADC's reference - Table 46-39's
+  note. A documented shared node between the two converters.
+
+**The Arduino core sets it and we do not**, which makes this a track
+parity gap and therefore debt under invariant 3.
+`cores/arduino/wiring_analog.c:232` writes
+`DACC_ACR_IBCTLCH0(0x02) | DACC_ACR_IBCTLCH1(0x02) |
+DACC_ACR_IBCTLDACCORE(0x01)` the first time a DAC channel is enabled -
+exactly the datasheet's characterisation condition. Track A gets that
+for free through `analogWrite()`; Track B's `gen_init()` and
+`play_init()` configure `DACC_MR`, `DACC_CHER` and the PDC and never
+touch `ACR`.
+
+**Why this is a lead and not just tidiness.** The artifact is a brief
+excursion on a DAC output pin, once per PDC reload, whose size needs the
+output to be in motion - and `IBCTLCHx` is the register that decides how
+fast that output can move. A stage at minimum bias is the slowest and
+highest-impedance configuration the part offers, which is where a
+disturbance would be largest and longest. It also explains why
+`docs/hardware.md` had to write "high output impedance" as a warning
+with no figure: that is the reset stage, not the characterised one.
+
+**It is a runtime knob**, so it can be swept the way everything else
+here is - one image, interleaved, no reflash between arms. Read it back
+from the peripheral rather than echoing it; `acq_mr()` exists because
+that distinction has already cost this project a day.
+
+**Measured, and it is not the fix.** `=<ch>,<core>I` sets the field and
+`?` reads `DACC_ACR` back from the peripheral. Reset reads `00000000`,
+confirming from the hardware what the grep said about the source: this
+project has always run the output stage at minimum bias. The Arduino
+value reads `0000010a` and the maximum `0000030f`, and both survive the
+`DACC_CR_SWRST` in `gen_init()` because `gen_apply_acr()` runs after it -
+setting the register from the console alone would have been undone by
+the next capture, silently.
+
+Three gaps, three reps, interleaved, one binary, readback asserted on
+every run:
+
+| ACR | \|peak\| med | z med | A1 sd | peak phase |
+|---|---|---|---|---|
+| `00000000` reset | 6.12 | 52.3 | 0.893 | 188, consistently |
+| `0000010a` Arduino / datasheet | 8.70 | 62.5 | 0.937 | 378 or 486 |
+| `0000030f` maximum | 8.84 | 71.9 | 0.970 | 378, 486, 88 |
+
+**No bias setting removes the artifact**, and the amplitude does not
+fall with more drive - it is flat to slightly higher, as is the channel's
+own noise. So the artifact is not the output stage being slew-limited at
+minimum bias, which was the reason for looking.
+
+**The null is powered, and the phase is what powers it.** Reset sits on
+phase 188 in every run; both raised settings move to 378 or 486. The
+register demonstrably reaches the analog path and changes the timing of
+whatever the ADC is catching. That also means the amplitude column
+cannot be read as a size comparison - the sampling instant moved with
+the arm, and the sampling instant is known to set amplitude and sign.
+Separating them needs a gap sweep fine enough to resolve one ADC period,
+which `micros()` cannot deliver.
+
+**The parity gap is still real and is left open deliberately.** Track A
+gets the datasheet's characterised condition through `analogWrite()`;
+Track B now *can* but still boots at reset, so nothing about existing
+measurements changes underneath anyone. Closing it is spec conformance -
+the published INL, DNL, SNR and THD do not describe a part at
+IBCTL 0 - and it should be decided on that, **not** sold as an issue #5
+fix, because it measurably is not one.
+
+
+
+### Four generator arms: a DAC pin generally, and the wrap not the wave
+
+`=<n>N` selects what `build_table()` puts on each DAC, at runtime, in one
+image - because the binary selects the state, so two builds would change
+the layout as well as the waveform and an absent artifact in the second
+arm would be unreadable. The table is a RAM array rebuilt by
+`gen_init()`, which `M` calls before every capture, so this costs a
+branch and no flash. Every arm keeps DAC0 on even slots and DAC1 on odd,
+so a swap moves the values and not the update timing.
+
+| arm | DAC0 | DAC1 |
+|---|---|---|
+| 0 `normal` | sine | DC |
+| 1 `swapped` | DC | sine |
+| 2 `two-cycle` | two sine periods per wrap | DC |
+| 3 `all-DC` | DC | DC |
+
+Verified before use: `normal` puts 1369.7 of tone on A0 and nothing on
+A1, `swapped` exactly the reverse, `two-cycle` puts 1370.2 at **twice**
+the frequency and 0.2 at the original, `all-DC` has no tone anywhere.
+
+**Twelve runs per arm, three gaps, interleaved, one binary.** Folded on
+whichever channel is flat in that arm:
+
+| arm | flat ch | \|peak\| | z | 2nd peak / 1st | control z |
+|---|---|---|---|---|---|
+| `normal` | A1 (DAC1) | **2.41** | **17.2** | **0.29** | 3.1 |
+| `swapped` | A0 (DAC0) | **1.54** | **15.8** | 0.84 | 3.1 |
+| `two-cycle` | A1 | 1.58 | 10.7 | 0.82 | 3.0 |
+| `all-DC` | A0 | 0.48 | 6.1 | 0.95 | 3.1 |
+| `all-DC` | A1 | 0.65 | 5.1 | 0.95 | 3.2 |
+
+**1. It is a DAC output pin, not DAC1.** Put the DC on DAC0 and the
+displacement moves to A0 with it - z 15.8 against `normal`'s 17.2 on the
+other pin. The open question from the pin result is answered, and the
+answer is the less convenient one: this is a property of a DAC output on
+this silicon, **not a defect of this board**, so the front end has to
+design around it.
+
+**2. It follows the wrap, not the waveform.** `two-cycle` halves the
+sine's period while leaving the table wrap at 512, and it never once
+produced two events 256 apart - 0 of 12 runs. In every arm the peak
+folded at 256 is *exactly half* the peak folded at 512, which is what a
+512-periodic event aliasing into a 256-fold does and not what a
+256-periodic event does. So comparing a 256-fold against a 512-fold
+cannot answer this and the first pass that did so was measuring the
+alias; counting peaks inside the 512-profile is the form that works.
+The wrap is a **PDC reload** - `DACC_TNPR`/`TNCR` rearmed, ENDTX fired,
+`gen_endtx_count` counting it - and that is the once-per-wrap event.
+
+**3. A changing output is needed.** `all-DC` has no structured event at
+all: z 5-6 against a control of 3.1, and a second peak 95% of the first,
+which is what the largest bin of pure noise looks like rather than a
+spike. So the reload alone does not do it; the reload is *when*, and the
+output being in motion is what gives it size.
+
+**What is not established, and it would be easy to overclaim here.**
+`swapped` reproduces the artifact but not its shape - a second peak at
+84% of the first, against 29% on `normal` - so the two pins are not
+demonstrated to behave identically, only to both carry it. `two-cycle`
+is weaker than `normal` (1.58 against 2.41) and it is not known why;
+"the wrap event is unchanged by doubling the waveform" is *not* shown.
+And every amplitude in this table is smaller than the 10.6 codes the
+slot control measured, because that was a different binary - the
+comparisons here are valid within this run and nowhere else.
+
+
+**What it costs the instrument is in `docs/issue5-impact.md`** - which
+half is affected, what it looks like in a spectrum, and how it compares
+with the DAC's own specification. This section is the investigation; that
+file is the consequence.
+
+
+### It is a DAC pin - and DAC1 is not special after all
+
+The two-way split is closed. **The artifact is made at the DAC1 pin.**
+The ADC input network is exonerated, and it did not need the mid-rail
+source rig `eb6d639` designed - two equal resistors and a jumper did it.
+
+**The rig.** Two matched resistors between 3.3 V and GND with the tap on
+A2, so 1.65 V behind R/2, which is the level A1 sits at and the level the
+artifact was characterised at. Four pairs swapped in turn: 100, 470, 5k
+and 11k, giving 50, 235, 2500 and 5500 ohms. A1 and A0 stay wired as
+they were, so every capture carries the DAC1 arm and the sine alongside
+the impedance arm.
+
+**One binary for the whole sweep, and that is not a detail.** The binary
+selects the artifact's state, so points taken across a reflash are not
+comparable. Nothing was reflashed between the four points, and A1 rides
+in every frame as a per-run reference: if the board had drawn a
+different state, A1 would have moved and it did not.
+
+| A2 source | A2 \|peak\| | A2 z | A2 sd | A1 \|peak\|, same frames |
+|---|---|---|---|---|
+| 50 ohm | 0.50 | 10.4 | 0.768 | 4.70 |
+| 235 ohm | 0.48 | 11.3 | 0.684 | 4.69 |
+| 2.5k | 0.38 | 9.6 | 0.726 | 4.55 |
+| 5.5k | 0.37 | 8.9 | 1.094 | 4.49 |
+
+Eight runs per point, 32 in total. **A 110x change in source impedance
+moves the artifact by 0.13 codes, and downward.** A1 sits at 4.49-4.70
+in the same captures with its phase on 82 or 83 in all thirty-two runs,
+while A2's phase never locks once - which is what a channel with nothing
+periodic on it looks like.
+
+**The knob is live, and this is the control the TRACKTIM sweep did not
+have.** A2's `sd` rises to 1.094 at 5.5k against 0.68-0.77 below it, so
+the source impedance does reach the converter and settling does start to
+degrade by a few kilohms. The artifact is at its *smallest* exactly
+there. A null from an instrument that visibly responds to the knob is a
+result; a null from one that does not is the mistake this file has
+recorded twice today.
+
+**The slot control, because the sweep alone could not separate source
+from position.** Ascending channel index converts A2 first and A1
+second, so the two arms differed in conversion slot as well as source.
+`=<n>C` picks which channel joins A0 in a two-channel capture, so A0+A1
+and A0+A2 both put the channel under test in **slot 0** with the sine in
+slot 1 - same slot, same channel count, same cadence, same binary,
+interleaved over six rounds:
+
+| in slot 0 | \|peak\|, codes | z | control z | phase |
+|---|---|---|---|---|
+| A1, the DAC1 pin | **10.64** (10.55-10.80) | 73.4 | 3.0-3.5 | **486, all six** |
+| A2, 2.5k divider | **0.22** (0.19-0.27) | **2.0** | 2.4-3.7 | six different |
+| A2, 50 ohm divider | **0.26** (0.22-0.33) | **2.3** | 2.6-4.4 | three different |
+
+A2's z is *below its own control z* in both arms. That is not a small
+artifact, it is none.
+
+The 50-ohm row is the same comparison at the bottom of the sweep, run
+after it so it needs no cross-reference: the same voltage, the same
+slot, the same binary. A1 reads 10.60 against the 10.64 it read in the
+2.5k rotation, on phase 486 in all twelve runs of both, which is what
+says the board never changed state between them.
+
+**A correction to how this was first written.** It said "source
+impedance matched to within 50 ohms", on the assumption that a DAC
+output is a near-zero-ohm source. It is not, and `docs/hardware.md` says
+so on its own DAC page: *"High output impedance; needs a buffer op-amp
+for any real load"*, with no figure. The SAM3X datasheet gives no output
+impedance for the DACC either, so **the DAC1 arm's source impedance is
+unknown and was never matched.**
+
+The conclusion is unharmed and is arguably stronger stated correctly:
+the sweep covers 50 ohms to 5.5k, a range that plausibly brackets
+whatever the DAC's output impedance is, and **no value in it produces
+the artifact on a non-DAC source** - while the DAC pin produces it at
+every one. What dies is the word "matched", not the result. The DAC's
+output impedance is worth measuring for the front end anyway: one known
+resistor from the pin to ground and the voltage droop gives it, and
+`docs/hardware.md` currently has a design warning where a number should
+be.
+
+**So: not impedance, not conversion slot, only the pin.** Nothing
+connects DAC1 to A2, both channels sit at the same voltage, both are DC,
+and only the one with a DAC output on it displaces a sample once per DAC
+table wrap.
+
+**What this does not settle.** Whether the mechanism is DAC1's
+conversion glitching into its own pin or something a DAC output pin does
+generally - DAC0 carries the sine and cannot be folded the same way, so
+"DAC pins do this" and "DAC1 does this" are not yet separated. Nor does
+it explain the start-gap dependence, though it constrains it: the gap
+sets when the ADC samples relative to the DAC update, and the thing
+being sampled is now known to be at the DAC pin.
+
+**And a correction to a recommendation made on issue #5.** `ADC_MR.USEQ`
+was proposed there as the way to permute conversion order. **It does not
+work on this part.** With `USEQ` set and `ADC_SEQR1` reading back exactly
+as written - `00000765` for A2, A1, A0, verified from the peripheral -
+every sample returns tag 0 and floating-pin values near full scale, so
+the converter is not converting the sequence it was given. The code was
+reverted; `=<n>C` is the control that works and needs no sequencer.
+
+
+### The start gap is the mechanism, and it is the first knob this issue has
+
+`=<us>K` sets the gap between the ADC start and the DAC start, held
+across runs and applied by the `M` preset. It exists because the state
+count is a property of the binary while the changed code is never
+executed, which leaves timing as the only thing layout can move - and
+the `M` preset's own comment names the candidate: gen on TIOA1 against
+the ADC on TIOA0, with the sampling phase relative to the DAC table wrap
+fixed for a run by the instruction timing between the two starts.
+
+**It moves the artifact, inside one image.** Interleaved, five rounds,
+gap 0 in the rotation as the untreated arm, RC 189, `TRACKTIM=0
+SETTLING=0`, `fold_profile()` on A1:
+
+| gap, us | peak, codes (5 reps) | phases | median |
+|---|---|---|---|
+| 0 | +2.29 .. +2.37 | 272 | **+2.32** |
+| 620 | -12.41 .. +2.09 | 272, 386 | +2.00 |
+| 1085 | -12.84 .. -8.49 | 272, 386 | **-8.56** |
+| 1551 | -15.00 .. -1.89 | 164, 272 | **-14.91** |
+
+Control z was 2.5-3.7 everywhere, so every run is the artifact. The
+untreated arm reproduced in all five rounds, which is the rule
+`tools/ab.py` exists to enforce, and the treated arms are shifted: gap
+1085 never drew the gap-0 state in five tries and gap 1551's median is
+six times its amplitude with the opposite sign.
+
+**Gap 0 is deterministic; every nonzero gap is not.** Five runs at gap 0
+span 0.08 codes and one phase, and forty runs at gap 0 across two
+earlier experiments never left it. The other three gaps each draw from
+two states. The busy-wait polls `micros()`, so a nonzero gap ends on a
+systick edge that is asynchronous to both timers - the lottery is
+something the wait *introduces*, not something intrinsic to the preset.
+That is worth following: it says the selection is sub-microsecond, and
+`micros()` is the wrong instrument to set it with. A TC-derived gap, or
+one counted in ADC trigger periods, should be deterministic at every
+value.
+
+**What this settles.** The image dependence has a mechanism: layout
+changes the instruction count between the two starts, the gap sets the
+sampling phase against the DAC table wrap, and the phase sets the
+amplitude and sign. Nothing about the artifact needs to differ between
+two binaries for their state counts to differ.
+
+**What it does not settle**, and the temptation is to overread it: this
+says what selects the state, not what the artifact *is*. DAC1 glitching
+and the ADC input network failing to settle both survive, and the
+deferred source experiment still decides between them. It does lean on
+the timing reading - an amplitude that depends on when the ADC samples
+relative to the DAC update is the ADC catching the output mid-transition
+- but both surviving hypotheses predict exactly that, so it separates
+neither. The jumper test is still where "analog" comes from.
+
+**Do not sweep this with `micros()` and call the result a curve.** The
+single unrepeated pass over sixteen gaps looked like a clean
+dose-response and the interleaved repeat shows it is a distribution.
+The table above is five reps per point; anything less is a draw.
+
+
+### The image chooses the state, and this one is powered
+
+The count of states is a property of the binary, not of the host or the
+board. Interleaved A/B with the flash **inside** the rotation, four
+rounds, four runs per image per round, RC 189, TRACKTIM 0 SETTLING 0
+throughout, `fold_profile()` on A1 with DAC1 connected:
+
+| image | states drawn in 16 runs |
+|---|---|
+| `c9efd53` | phase 58 at **+34.8** (4), phase 172 at **-13.1** (3), phase 386 at **-2.4** (9) |
+| `f6bf644` | phase 272 at **+2.4**, 16 of 16 |
+
+Control z was 2.6-3.9 in every run of both arms, so every one of those
+four is the artifact and none is a clean run. The old arm drew three
+states inside one rotation - and drew a *fourth* pattern of its own,
+holding phase 58 for all four runs of round 2 and then varying within a
+single boot in the other three rounds. The new arm never moved: four
+separate boots, sixteen runs, one phase, a 0.20-code spread.
+
+**The change between the two images is not executed during the
+measurement.** `f6bf644` adds `acq_mr()` and two `printf`s to
+`stream_report()`, which is `?`, and the harness never sends `?`. So
+what differs is the layout of the binary and nothing else - which makes
+this the "four bytes of bss flip it" claim that died earlier for want of
+a control, now with the control it never had: interleaved, flash in the
+rotation, continuous readout, and an old arm visibly reproducing three
+ways while the new one holds still.
+
+**What this does to the record.**
+
+- **"Two states" is this-image-specific.** The macOS pair at phases 63
+  and 211 and the Windows pair are counts taken from particular
+  binaries. Three states appear here, and one, on two images an hour
+  apart.
+- **The macOS session's question 2 on issue #5 is answered, and the
+  answer is not about the host.** Windows shows three states on one
+  image and one on another, so "one state, or three" cannot separate
+  the hosts. Compare images before comparing anything else.
+- **Any A/B that reflashes is confounded by this**, which is most of
+  them: `tools/ab.py`'s conditions are shell commands that leave the
+  board flashed, so the treatment changes the layout as well as the
+  logic. That is not a reason to stop interleaving - it is a reason to
+  report the state distribution of both arms rather than a verdict, and
+  to carry a layout-only arm.
+- **It does not touch the jumper test**, which is where "analog" comes
+  from: grounding A1 silenced the artifact on one image, and no layout
+  change can do that.
+
+**What it does not settle.** Why a layout change moves a phase, and
+whether "the image" means alignment of the two timer starts, of the
+capture, or of something in the DAC path. `PLAY`/`gen` start ordering is
+instruction timing between two clocks by construction - see the `M`
+preset's own comment - so a first guess is that the layout shifts the
+gap between `gen_go_tioa1()` and the ADC start. Untested.
+
+**The prelude does not do it.** Sending an extra console command and its
+printf reply before the capture - none, `=0,0A`, `v`, two of them,
+interleaved over six rounds - left all 24 runs on phase 272 at +2.3 to
++2.5. So it is not simply the time or the instruction count immediately
+before the start.
+
+
+### Track and settling do nothing, and the coin flip has two faces
+
+The sweep is finally a real experiment. It was inconclusive first time
+because the verdict was a bimodal dirty/clean from a threshold detector
+on a drifting board - 32 of 32 clean, baseline included, so nothing
+could be concluded either way. `pair_fold()` on A0 gives a signed
+amplitude with a floor well under a code, so the same sweep is a
+dose-response curve. Run at RC 196, interleaved, baseline in the
+rotation, A1 still grounded:
+
+    TRACKTIM= 0 SETTLING=0:  -77.8  -77.9   +1.9
+    TRACKTIM= 2 SETTLING=0:   +1.9  -77.8  -80.2
+    TRACKTIM= 4 SETTLING=0:  -80.3  -80.2   +2.4
+    TRACKTIM= 8 SETTLING=0:   +1.9  -80.2   +2.4
+    TRACKTIM=15 SETTLING=0:  -80.2   +2.0  -77.9
+    TRACKTIM= 0 SETTLING=3:   +1.9  -80.3   +2.4
+    TRACKTIM=15 SETTLING=3:  -77.9   +1.9   +2.4
+
+**Neither register does anything.** Every condition draws from the same
+handful of values, including both extremes, and the maximum of both
+registers looks exactly like the minimum. The baseline arm reproduced,
+the readout is continuous, and the treatment arms are not shifted.
+
+**Windows replicates it on the other channel.** Same experiment on A1
+with DAC1 still connected, `fold_profile()` rather than `pair_fold()`,
+RC 189, seven conditions interleaved over five rounds - TRACKTIM 0, 2,
+4, 8, 15 at SETTLING 0, plus TRACKTIM 0 and 15 at SETTLING 3. Thirty-five
+runs, and the condition predicts nothing at all. Two hosts, two boards,
+two channels, two instruments, one answer.
+
+**But this is a powered negative about the registers and not about the
+front end, and the difference matters.** `?` now prints ADC_MR as the
+hardware holds it: asked for (0,0), (4,0), (8,2) and (15,3) mid-run it
+answers `100f0103`, `140f0103`, `182f0103`, `1f3f0103`, so the knob is
+connected - which no earlier reading could show, because `A` echoes the
+variable and `acq_start()` then read-modify-writes the same register.
+
+The knob is also free, and that is what voids the inference. TRACKTIM(15)
+with SETTLING(3) sustains the whole ladder - rc 200, 170, 144, 130, 115,
+100, 92, 86, i.e. 390 to 907 ksps aggregate - at `govre=0`, no overrun
+frames, and rates identical to TRACKTIM(0) to the sample. At rc 86 the
+budget is 21.5 ADC clocks per conversion and an additive TRACKTIM(15)
+needs about 36, so it would have had to drop every other trigger.
+TRACKTIM sets a *minimum* tracking time; the converter is already idle
+for longer at every rate here (47 clocks of budget against a 20-clock
+conversion at RC 189), and at the one rate where the minimum would bite,
+the hardware declines to lengthen the cycle rather than dropping
+triggers. **So the acquisition window never moved in either arm.**
+Neither sweep varied source settling, and neither is evidence about the
+ADC input network. The deferred source experiment still decides the
+two-way split.
+
+`docs/hardware.md`'s "raising `TRACKTIM` cuts aggregate throughput ...
+about 700 ksps" is contradicted by this and is marked *(check)*.
+
+**What the sweep found instead is the shape of the whole problem.** The
+values are not scattered - they are two states, and the phase separates
+them cleanly. Fourteen runs at fixed conditions:
+
+| state | peak, codes | phase | runs |
+|---|---|---|---|
+| A | -77.9 to -80.3 | **63** | 7 of 14 |
+| B | +1.8 to +2.4 | **211** | 7 of 14 |
+
+Two states, a factor of forty apart in amplitude, at two different
+phases, drawn about evenly, chosen per run and constant within it.
+
+The Windows arm splits the same way on A1, at a smaller ratio:
+
+| state | peak, codes | fold z | sd | runs |
+|---|---|---|---|---|
+| A | -13.04 to -13.16 | 106-122 | 1.067-1.072 | 20 of 35 |
+| B | -2.19 to -2.56 | 14-21 | 0.831-0.841 | 15 of 35 |
+
+Control z was 2.5-3.8 throughout, so **both** states are the artifact and
+neither is a clean run. The ratio is 5.5x rather than 40x and both states
+are negative here, where macOS's split was signed - so the two-state
+structure replicates and the particular amplitudes do not. `sd` alone
+separates the states perfectly, which is the same free corroborator the
+RC scans found. Phase was not recorded in this arm; the macOS phases are
+the only ones measured.
+
+**That is the bimodality this investigation has been fighting since the
+beginning, and it was never dirty-versus-clean.** State B is +2 codes,
+which is under `STEP_SPLICE_CODES`, under `FLAT_DEV_CODES`, under
+`periodic_census()`'s floor and under every threshold ever used here. So
+state B has always been reported as a clean run, and everything follows
+from that:
+
+- "6 of 10 dirty" is the coin flip, not an incidence rate;
+- the session-long "fade" is a run of state-B draws;
+- every A/B comparison sampled the coin in both arms, which is exactly
+  why interleaving was necessary and still not sufficient;
+- and no run was ever clean, which is what the fold already said.
+
+**A run is now identified, not judged.** Report which state a run landed
+in and its amplitude; do not report dirty or clean. Two states with a
+40x amplitude ratio, selected at start and stable within a run, is the
+signature of a startup alignment with a small number of outcomes - and
+the phase difference, 63 against 211, says the two states sample the
+disturbance at different points rather than scaling it.
+
+### The jumper test, at last: nothing digital survives it
+
+A1 tied to **GND** instead of DAC1, `main` at `d1c2841`, eight RCs
+including the four that folded at +54 to +66 codes an hour earlier:
+
+| A1 at GND | A0 in the same captures |
+|---|---|
+| **0 nonzero samples in ~3.2 M**, sd 0.00, fold z 0.0 at every RC | median 2051, sd 969 - the sine, converting normally |
+
+The liveness check matters as much as the result. A dead channel also
+reads zero, and A0 rules that out: both channels convert in the same
+capture and only the grounded one is silent.
+
+**This kills every digital explanation, including the one the issue is
+named after.** A corrupted result register, a stale IN transfer racing
+the PDC, a TAG-mode channel mix-up, a bit set on the way through - any
+of them appears whatever the pin is doing. None of them can be switched
+off by holding the input at a rail. The artifact requires the analog
+input to be something other than a hard low-impedance source, so it is
+made at the ADC's front end or before it, and `wip/stream-stop-race` was
+never even the right *kind* of theory.
+
+**What it does not settle.** Grounding changed two things at once: it
+removed DAC1, and it replaced a DAC output at mid-rail with an
+essentially zero-ohm source at the rail. So DAC1's output glitching and
+the ADC's input network failing to settle are still both alive, and this
+test cannot separate them.
+
+**The experiment that does**, and it is one resistor: reconnect
+DAC1 -> A1 *through a series resistance* - 10k, say. Source impedance is
+what decides settling, so if the artifact grows with the resistor it is
+the ADC front end and DAC1 is exonerated; if it is unchanged, it is
+DAC1's output. `docs/hardware.md` already warns that "crosstalk bites
+when tracking time is short" and `acq.c` streams at `TRACKTIM(0)`,
+`SETTLING(0)`.
+
+**And the track/settling sweep is now worth re-running**, which it was
+not before. It was inconclusive in its first attempt because the verdict
+was a bimodal dirty/clean from a threshold detector on a drifting board.
+`fold_profile()` reports a continuous amplitude with a floor near a
+fifth of a code, so `=<tt>,<st>A` against fold z is a dose-response
+curve rather than a coin flip - and the RC dependence already says the
+artifact is a function of conversion timing, which is exactly what those
+two registers control.
+
+### Presence is constant. The question is only what sets the amplitude.
+
+Folded at `GEN_TABLE_LEN`, **14 of the 15 RCs carry the artifact** - and
+that includes every RC both hosts' threshold instruments called clean.
+`measure.fold_profile()` averages the run at the known period instead of
+deciding which samples are events, so the floor sits near a fifth of a
+code rather than at 20:
+
+| rc | peak, codes | z | control z | census verdict |
+|---|---|---|---|---|
+| 187 | **-4.31** | 36.2 | 3.5 | clean |
+| 190 | +4.51 | 24.6 | 3.0 | clean |
+| 191 | +4.32 | 38.5 | 3.0 | clean |
+| 192 | -0.39 | **2.5** | 2.8 | clean |
+| 195 | +3.33 | 27.7 | 3.0 | clean |
+| 198 | +5.35 | 28.3 | 3.1 | clean |
+| 199 | +5.29 | 33.1 | 3.7 | clean |
+
+Only RC 192 is quiet, at -0.39 codes with z below its own control. The
+other six are not marginal: z of 25 to 39 against a control period
+reading 3.
+
+So conjecture 3 above is settled. **The defect is present at very nearly
+every RC on this board, at amplitudes from under half a code to 66, and
+"clean" has never meant anything but "under the line in force".** Two
+consequences follow immediately.
+
+**The RC scans on both hosts measured detector floors, not physics.**
+The macOS 10-of-15, the Windows 7-of-15 and the nesting between them are
+all one continuous amplitude surface sampled through different floors.
+Windows runs smaller, so its floor cuts more of the surface away - which
+is exactly why its dirty set nested inside the macOS one, and that
+nesting is now evidence about the instruments rather than about the
+hosts.
+
+**And the amplitude drifts at fixed RC, which is the fade.** RC 188 and
+196 folded at 65 and 60 codes here, having censused clean in an earlier
+scan the same evening at the same RC on the same image. Nothing switches
+on or off; a continuous quantity wanders across whatever line is
+currently drawn.
+
+**The displacement is signed, and the sign varies with RC.** RC 187 and
+189 are negative; everything else measured is positive. Every account of
+this artifact has called it one sample displaced *upward*, on both
+hosts, because every detector so far keyed on absolute deviation and
+could not have seen otherwise. A mechanism now has to explain a signed,
+continuously varying displacement - which is a much stronger constraint
+than "sets bit 6" ever was, and rules out anything that can only add.
+
+**What to stop doing.** Do not report an RC, a host or a build as clean
+without folding it. Do not read a dirty-set difference as a difference
+in behaviour. `tools/ab.py` gates on the fold now for this reason.
+
 ### macOS: conjectures 2 and 3 above are confirmed, and two more things
 
 Re-ran the RC scan with `periodic_census()` on the reproducing board.
@@ -549,6 +1341,12 @@ branch is gone.
 | `issue5-phase-walk` | the two-clock preset `M`, merged |
 | `issue5-repro` | both of those plus `periodic_census()`, merged |
 | `wip/stream-stop-race` | **not a fix.** Tagged `dead/stream-stop-race` and deleted |
+
+Since then, one branch is live again: **`wip/track-a-control-channel`**,
+pushed and not for merging. Everything else the macOS session has sent -
+`flat_census()`, the flash boot check, the burst-tolerant detector, the
+A/B verdict, `fold_profile()` and the jumper result - is merged into
+`main`.
 
 The tag is the only thing not on `main`. It holds the stale-DMA wait,
 kept reachable for reference and not merged, because its 25/25 clean was

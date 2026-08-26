@@ -46,21 +46,45 @@ sys.path.insert(0, os.path.join(
 import measure  # noqa: E402
 
 
-def measure_once(board, seconds, preset):
-    """One capture. Dirty if either channel is above its own threshold."""
+def measure_once(board, seconds, preset, period=measure.GEN_TABLE_LEN):
+    """One capture, judged by folding it at the generator's table length.
+
+    The verdict does not come from a threshold, and deliberately so.
+    This harness exists because four findings died of a control arm that
+    read clean, and the control-arm rule below is only as good as the
+    verdict feeding it - so it must not use an instrument that can go
+    blind. Every threshold written for this defect has: 45 codes missed
+    the macOS form, 20 missed both locked forms, and the shape assumption
+    missed the burst. This one was gating on the first two, which would
+    have scored four of the ten reproducing macOS RCs clean, and every
+    locked-form Windows run at 8-14 codes - refusing experiments on tier
+    1 whose controls were reproducing throughout.
+
+    fold_profile() decides nothing about which samples are events. It
+    averages at the known period, so the floor is near a fifth of a code
+    rather than twenty, and the same capture always yields the same
+    verdict.
+
+    The census still runs, because what the run looks like is worth
+    recording even though it no longer decides anything.
+    """
     res = measure.run_capture(board, preset=preset, seconds=seconds)
     ps = res.stream
     flat = ps.series.get(measure.CH_A1, [])
     flat = flat[ps._index_at(measure.CH_A1, measure.SETTLE_US):]
-    step = ps.series.get(measure.CH_A0, [])
-    step = step[ps._index_at(measure.CH_A0, measure.SETTLE_US):]
     if len(flat) < 1000:
         return None                      # no data is not a clean run
-    fc = measure.flat_census(flat)
-    sc = measure.level_census(step)
-    return {"dirty": bool(fc["count"] or sc["count"]),
-            "flat": fc["count"], "step": sc["count"],
-            "max_dev": fc["max_dev"], "period": fc["period"] or sc["period"]}
+    f = measure.fold_profile(flat, period=period)
+    pc = measure.periodic_census(flat)
+    return {"dirty": f["z"] >= measure.FOLD_Z_DIRTY,
+            "z": f["z"], "control_z": f["control_z"],
+            "peak": f["peak"], "phase": f["peak_phase"],
+            "sd": pc["sd"], "events": pc["count"],
+            "amplitude": pc["amplitude"],
+            "period": pc["period"] or f["period"],
+            # A fold that fires at the control period too is measuring
+            # the fold, not the board. Never silently scored as dirty.
+            "suspect": f["control_z"] >= measure.FOLD_Z_DIRTY}
 
 
 def main():
@@ -73,6 +97,9 @@ def main():
                     help="reps per condition, interleaved")
     ap.add_argument("-s", "--seconds", type=float, default=2.0)
     ap.add_argument("--preset", default="M")
+    ap.add_argument("--period", type=int, default=measure.GEN_TABLE_LEN,
+                    help="fold period; GEN_TABLE_LEN, which doubles with "
+                         "GEN_SINE_POINTS (default %(default)s)")
     args = ap.parse_args()
 
     conditions = [("control", args.control)]
@@ -89,7 +116,8 @@ def main():
             board = measure.Board(settle=3.0)
             try:
                 board.stop(); board.drain_console(0.4)
-                got = measure_once(board, args.seconds, args.preset)
+                got = measure_once(board, args.seconds, args.preset,
+                                   period=args.period)
             finally:
                 try:
                     board.stop()
@@ -100,9 +128,19 @@ def main():
                          f"run, so this round says nothing. Check the flash.")
             tally[name][1] += 1
             tally[name][0] += got["dirty"]
-            mark = (f"DIRTY flat={got['flat']} step={got['step']} "
-                    f"dev={got['max_dev']:.0f} period={got['period']}"
-                    if got["dirty"] else "clean")
+            if got["dirty"]:
+                mark = (f"DIRTY z={got['z']:.1f} peak={got['peak']:+.2f} "
+                        f"phase={got['phase']} sd={got['sd']:.2f} "
+                        f"events={got['events']} period={got['period']}")
+            else:
+                # z is printed for a clean round too. A column of z=1.2
+                # and a column of z=5.8 are both "clean" and are not the
+                # same result, and this file exists because a column of
+                # zeroes hid four findings.
+                mark = f"clean z={got['z']:.1f} sd={got['sd']:.2f}"
+            if got["suspect"]:
+                mark += (f"  SUSPECT control_z={got['control_z']:.1f} "
+                         f"- the fold fires at the control period too")
             print(f"           -> {mark}", flush=True)
 
     print("\n" + "=" * 56)

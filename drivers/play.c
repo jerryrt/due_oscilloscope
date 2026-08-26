@@ -192,6 +192,7 @@ bool play_start(uint32_t dac_hz)
 
 	PMC->PMC_PCER1 = (1u << (ID_DACC - 32));
 	DACC->DACC_CR = DACC_CR_SWRST;
+	gen_apply_acr();   /* SWRST clears it; see gen.c */
 	DACC->DACC_MR = DACC_MR_TAG
 	              | DACC_MR_REFRESH(1)
 	              | (0x10u << DACC_MR_STARTUP_Pos)
