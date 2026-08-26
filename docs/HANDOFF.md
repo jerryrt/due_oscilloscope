@@ -253,7 +253,7 @@ nowhere near either threshold. The board really was not reproducing.
 |---|---|---|---|---|
 | Windows | 512 | 63-68, always bit 6 | 3.0 | 0.86 |
 | Windows | 1024 | 49-50, no common bit | 1.7 | 0.86 |
-| macOS | 512 | 26-32, no common bit | - | 0.87 |
+| macOS | 512 | 26-32, no common bit | 1.66 | 0.87 |
 
 Same period, same 777-of-777 regularity, same flat-channel single-sample
 shape - and roughly a factor of two in size, with the single-bit form
@@ -262,6 +262,23 @@ from 68 to 49 when the table was doubled, so it is not a fixed quantity
 of the defect. **Anything proposed as a mechanism has to explain the
 amplitude, not just the period**, and a mechanism that produces exactly
 one bit cannot be it, because three of the four rows above do not.
+
+**But the `sd, dirty` column is not independent evidence, and should
+not be read as three different behaviours.** A flat line carrying one
+`+A` displacement every `period` samples has
+`sd = sqrt(sd_clean^2 + A^2 * p * (1-p))` for `p = 1/period`, and all
+three rows sit inside what their own amplitude and period predict:
+
+| host | table | A | predicted sd | measured |
+|---|---|---|---|---|
+| Windows | 512 | 63-68 | 2.91-3.12 | 3.0 |
+| Windows | 1024 | 49-50 | 1.76-1.78 | 1.7 |
+| macOS | 512 | 26-32 | 1.44-1.66 | 1.66 |
+
+So sd is amplitude and period restated, which is what makes it a cheap
+discriminator - it needs no threshold and no census - and also what
+stops it being a fourth measurement. The 3.0 against 1.7 on one host is
+the table doubling, not the defect behaving differently.
 
 *Nothing here provokes it.* Nineteen software detach cycles across three
 timings (3x400 ms, 6x150 ms, 10x60 ms), five runs measured after each
