@@ -278,6 +278,58 @@ times.
 
 ### Where Track A's control channel stands
 
+**Re-measured 2026-08-26 on Windows, and the recorded symptom is wrong.**
+It is not "the sample IN path delivers no frames". **No bulk endpoint is
+enabled at all.**
+
+| build | `UOTGHS_DEVEPT` | meaning | capture |
+|---|---|---|---|
+| `main` | `0000000f` | EP0-EP3 enabled | rx 1,200,128 B, 293 frames |
+| this branch | `00000001` | **EP0 only** | neither node opens |
+
+Both CDC nodes enumerate, `ports.native_nodes()` still orders them
+samples-first, and **opening either fails with Windows error 31,
+`ERROR_GEN_FAILURE`** - the driver cannot configure the port, which is a
+different failure from a port that opens and delivers nothing. Stable
+across resets and re-flashes, three reads apart.
+
+**`cfgok=1111111` is not the reassurance it looks like.** CFGOK says a
+configuration was accepted; `EPEN` in `DEVEPT` is what enables the
+endpoint, and that is the bit that is clear. Every earlier reading here
+was of CFGOK, which is why allocation and DPRAM looked innocent - they
+are innocent, and so is everything else the endpoint layer does.
+
+**The truncation hypothesis is dead, measured rather than argued.**
+USBCore's SET_CONFIGURATION counts endpoints by walking `EndPoints[]` to
+the first zero and hands that count to `UDD_InitEndpoints()`, which loops
+from 1 - so a zero in the wrong slot would silently truncate everything
+and leave exactly `EPT=1`. `E` now prints the table and the count.
+Measured on the device: **`count=7`, `8242 14646 12390 12646 14642 12386
+12642 0 0 0`.** The table is correct and complete and the count is 7.
+
+**So `SET_CONFIGURATION` never completes.** That moves the whole
+investigation off the endpoint layer and onto the descriptors: the host
+reads enough to create both nodes, then does not configure the device.
+`_cdcComposite = 1` and the IAD device class are the newest and least
+validated things here, and `a8de2a6` is exactly that commit.
+
+**Next: dump the configuration descriptor the device actually reports
+and validate it** - `wTotalLength` against the bytes emitted, the IAD's
+`bFirstInterface`/`bInterfaceCount`, and the interface numbering across
+the core's two and the module's two. The core computes `wTotalLength`
+itself while PluggableUSB contributes descriptors, and that sum is the
+first thing to check rather than the last.
+
+**A landmine worth knowing before touching this**, found in the core
+while chasing the above: `UDD_InitEndpoints()` in
+`system/libsam/source/uotghs_device.c:158` does `while(1);` if any
+endpoint fails to configure - an infinite loop inside the USB
+interrupt. It is *not* firing here (the main loop runs at 225k
+passes/s), but a wrong endpoint configuration on this branch will hang
+the board rather than report anything, and it will look like a dead
+device.
+
+
 `wip/track-a-control-channel`, pushed, **do not merge**. Enumeration
 works; the sample path does not.
 

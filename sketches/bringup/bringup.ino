@@ -1177,6 +1177,37 @@ void loop()
 		         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
 		         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3]);
 		Serial.println(buf2); Serial.flush();
+
+		/*
+		 * The table the core actually scans, and the count it
+		 * derives from it.
+		 *
+		 * USBCore's SET_CONFIGURATION handler counts endpoints by
+		 * walking EndPoints[] to the first zero and hands that count
+		 * to UDD_InitEndpoints(), which loops from 1. So a zero in
+		 * the wrong slot silently truncates the whole thing, and
+		 * DEVEPT ends up with only EP0 enabled - which is exactly
+		 * what this branch reads (EPT=00000001 against 0000000f on
+		 * a working build) while CFGOK still reports 1111111,
+		 * because CFGOK describes a configuration and EPEN is what
+		 * actually enables the endpoint.
+		 *
+		 * Printed rather than reasoned about: the count is the whole
+		 * question and nothing else on the board reveals it.
+		 */
+		{
+			extern uint32_t EndPoints[];
+			char eb[160];
+			int  n = 0;
+			unsigned count = 0;
+			while (EndPoints[count] != 0)
+				count++;
+			n = snprintf(eb, sizeof(eb), "# eptab count=%u :", count);
+			for (unsigned e = 0; e < 10 && n < (int)sizeof(eb) - 12; e++)
+				n += snprintf(eb + n, sizeof(eb) - n, " %lu",
+				              (unsigned long)EndPoints[e]);
+			Serial.println(eb); Serial.flush();
+		}
 		break;
 	}
 	case 'Q': cmd_profile();  break;
