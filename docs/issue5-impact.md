@@ -14,10 +14,12 @@ at the noise floor the DAC is specified to.
 
 Once per DAC table wrap - the DACC's PDC reload, `GEN_TABLE_LEN` samples
 apart - one ADC sample taken from a **DAC output pin** reads displaced by
-somewhere between a fraction of a code and about 80. It is analog, it is
-made at the DAC pin rather than in the ADC, and it needs some DAC output
-to be moving. See `docs/HANDOFF.md` for the evidence behind each of
-those clauses.
+somewhere between a fraction of a code and about 80. It is analog and it
+is made at the DAC pin rather than in the ADC. It does **not** need a
+moving output: the reload alone produces it, measured on two boards and
+two hosts. See `docs/HANDOFF.md` for the evidence behind each of those
+clauses, and for why the earlier "a changing output is needed" was an
+artifact of one image.
 
 ## Which half of the instrument is affected
 
@@ -27,7 +29,7 @@ those clauses.
 | **Scope on an ordinary input, AWG running at the same time** | **No** | same measurement - the arms above were taken with the generator running |
 | **AWG output** | **Yes** | the artifact appears only on DAC pins, and on whichever pin is DC while the other moves |
 | **Loopback / self-test / calibration** | **Yes** | there the scope input *is* a DAC pin |
-| **AWG idle, or holding DC** | **No** | the `all-DC` arm has no structured event: z 5-6 against a control of 3.1, second peak 95% of the first |
+| **AWG idle, or holding DC** | **Yes, on some builds** | the `all-DC` arm was null on the image that first measured it - z 5-6 against a control of 3.1 - and on `main` at `a30b646` the same board with the same wiring gives 8.0-8.2 codes on A0 at z 61-148 and 10.3-10.5 on A1, with no sine anywhere. Assume it is present |
 
 Two consequences worth stating explicitly, because both are easy to get
 backwards:

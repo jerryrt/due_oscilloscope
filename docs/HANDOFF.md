@@ -148,25 +148,27 @@ a different layer entirely and is **not mergeable**.
    afterwards, with no bus reset. Two concrete next steps and one
    landmine are listed there. **This is the one that needs a fresh
    session.**
-2. **Two contradictions from macOS that this session has not answered.**
-   `d15e8dd` replicates the layout sweep on a second board and finds
-   `all-DC` *not* null - 7.84 codes at z 29-32 - against this board's
-   null, which is the basis of "a changing output is needed". Their
-   wiring hypothesis is testable here in minutes: **pull the DAC1->A1
-   jumper and re-run `all-DC`.** And `b96368e` fixed a parity bug in
-   `pair_fold()` *after* the integrity gate was rewritten to depend on
-   it, so that gate wants re-verifying.
+2. ~~**Two contradictions from macOS.**~~ **Both answered 2026-08-26,
+   later, and neither needed the jumper.** The `all-DC` disagreement is
+   the *image*, not the board and not the wiring: the sweep's own image
+   reproduces the null on this board with the jumper fitted, and `main`
+   gives 8 codes at z 69-148 on the same board, same wiring, same
+   session. **Finding 3 - "a changing output is needed" - is dead**, and
+   `docs/issue5-impact.md` no longer tells a user that an AWG holding DC
+   is safe. And the integrity gate is re-verified: the two `pair_fold`
+   parities are 24x apart on device data, so its selection rule is not
+   a coin flip. Both write-ups are in this file and in `docs/testing.md`.
 3. **The 0-series Windows re-validation.** 0h's figures above 200 ksps
    are still suspect and `Feeder.WRITE_SIZE` may be a macOS workaround
    rather than a rule. This is the oldest real debt here.
 4. **A standing decision, not a task:** whether Track B adopts the
    datasheet's `DACC_ACR` value. It is spec conformance and Track A
    parity - **not** an issue #5 fix, measurably. `=<ch>,<core>I`.
-5. **`tools/serial_probe.py` does not run on Windows** - it imports
-   `termios` at module scope, so it dies on import. `CLAUDE.md` still
-   quotes it as the way to talk to either board. Everything else moved
-   behind `host/transport.py`; this one was missed. Small, and it is a
-   tier-1 platform.
+5. ~~**`tools/serial_probe.py` does not run on Windows.**~~ **Done
+   2026-08-26**, `7bc977f`: it is on the `host/transport.py` seam like
+   everything else, and `serial_probe.py auto --send h` answers on
+   Windows. POSIX behaviour is unchanged - that backend is the original
+   code moved, not rewritten.
 
 ### Rules that changed this session, and both bite immediately
 
@@ -956,6 +958,54 @@ whether or not a wire leaves the pin, so `swapped` satisfies its
 own precondition unmeasured. The second channel buys a per-run reference,
 not an arm. Verified before use: 1 upward mean-crossing per wrap on
 `normal`, 2 on `two-cycle`.
+
+**Settled 2026-08-26, later: it is the image, and finding 3 is dead
+here too.** The contradiction was never board against board. Same board,
+same host, same jumper fitted, same script, one session, two images:
+
+| image | all-DC on A0 | z | control z | peak phase |
+|---|---|---|---|---|
+| `f7d62b6` (the sweep's own) | **0.43-0.52** | 4.0-4.4 | 3.1-4.1 | 383, 490, 0 - random |
+| `main` at `a30b646` | **8.02-8.23** | 69-148 | 2.3-5.1 | 280, 281, 301 |
+
+The first row reproduces the recorded 0.48 at z 6.1 exactly, so the
+original measurement stands. The second is six runs across a reflash
+cycle, and on it `all-DC` carries the event on **both** DAC pins with no
+sine anywhere: A0 8.0-8.2 at z 61-148, A1 10.3-10.5 at z 112-157. A
+period scan over 504-520 puts every neighbour of 512 at noise - z 3.8-4.0
+with peaks of 0.1-0.4 codes - so it is locked to the table wrap and not
+to a period it was not given.
+
+**So the wiring hypothesis is dead without pulling the jumper.** DAC1->A1
+was fitted for both rows. The same wiring gives null on one image and 8
+codes on the other, which no property of the wiring can do. Board-specific
+is dead for the same reason. **What is left is the one this project
+already knew: the binary selects which state issue #5 draws** - and it
+turns out that includes whether the `all-DC` arm draws anything at all.
+
+**`ad0ac4a` is the only firmware commit between the two images, and it is
+not the cause.** Its default is unchanged and the readback says so:
+`DACC_ACR` reads `00000000` after every `M` capture on `main`, the same
+reset value the sweep image ran at. (Read it *after* a capture. Cold, with
+the DACC clock still off, `?` reports `000001aa`, which is not a setting
+and not a reset value - it is an unclocked peripheral.) What moved
+between the two images is code layout.
+
+**Finding 3 - "a changing output is needed" - does not survive**, on
+either board now. The reload alone produces the event; the output being
+in motion is not a precondition, and `docs/issue5-impact.md` has been
+corrected where it told a user the AWG holding DC was safe.
+
+**One methodological correction, and it is what made the arm read as
+null.** The sweep called `all-DC` noise partly on "second peak 95% of the
+first". On `main` that ratio reads **1.00** on a structure 60-150x the
+MAD, because there is more than one event per wrap: A0 is +8.0 at 280 and
+281 and +8.1 at 301 with -3.0 at 322, 323 and 343; A1 is +10.3 at 126,
+-4.1 at 168 and +2.0 at 268. **The second-peak ratio is a discriminator
+only against a single event.** z against the control-period fold is the
+one that keeps working, and it was already in the table saying 6.1 - low,
+but taken against a control of 3.1 rather than the 2.3-5.1 the current
+image's clean arms sit at.
 
 **What it costs the instrument is in `docs/issue5-impact.md`** - which
 half is affected, what it looks like in a spectrum, and how it compares
