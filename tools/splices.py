@@ -17,8 +17,18 @@ Count the steps; do not judge the maximum.
 
     python3 tools/splices.py -n 4
 
-Reports per run, and the empty gap around the threshold so the threshold
-stays auditable - see measure.level_census().
+**Both channels are censused, and the flat one is the sensitive one.**
+`M` drives DAC1 with DC 2048, so A1 is a flat line and a displaced
+sample is unmistakable there; A0 carries the sine and needs the
+staircase census. This matters because the two thresholds are far apart:
+on macOS the displacement is 26-32 codes, which forms its own level on
+A0 and lands *under* STEP_SPLICE_CODES = 45. Ten runs reported 0 splices
+on A0 across a period when six runs in ten were dirty on A1 - the tool
+said "does not reproduce" about a board that was reproducing it. Judge
+by whichever channel is above its threshold, never by A0 alone.
+
+Reports per run, and the empty gap around each threshold so both stay
+auditable - see measure.level_census() and measure.flat_census().
 """
 import argparse, os, sys
 
@@ -34,11 +44,17 @@ def main():
     ap.add_argument("--preset", default="M")
     ap.add_argument("--threshold", type=float,
                     default=measure.STEP_SPLICE_CODES)
-    ap.add_argument("--tag", type=int, default=measure.CH_A0)
+    ap.add_argument("--flat-threshold", type=float,
+                    default=measure.FLAT_DEV_CODES)
+    ap.add_argument("--tag", type=int, default=measure.CH_A0,
+                    help="staircase channel, censused by level_census")
+    ap.add_argument("--flat-tag", type=int, default=measure.CH_A1,
+                    help="flat channel, censused by flat_census; "
+                         "-1 to skip it")
     args = ap.parse_args()
 
     board = measure.Board(settle=3.0)
-    rows = []
+    rows, flats = [], []
     try:
         board.stop()
         board.drain_console(0.5)
@@ -66,6 +82,31 @@ def main():
                   f"levels={c['levels']:7d}  "
                   f"empty {c['gap'][0]}..{c['gap'][1]} around "
                   f"{args.threshold:g}", flush=True)
+
+            if args.flat_tag >= 0:
+                fv = ps.series.get(args.flat_tag, [])
+                fs = ps._index_at(args.flat_tag, measure.SETTLE_US)
+                fv = fv[fs:]
+                # The levels guard above cannot be reused here: a flat
+                # channel has no levels to count, and asking it for some
+                # is what made --tag 6 abort with "the stream did not
+                # run" on a stream that ran perfectly well. Liveness on
+                # this channel is the sample count.
+                if len(fv) < want * 0.5:
+                    raise SystemExit(
+                        f"run {i}: only {len(fv)} samples on the flat "
+                        f"channel at {ps.declared_rate_hz} Hz - the stream "
+                        f"did not run, so its zero means nothing.")
+                f = measure.flat_census(fv, threshold=args.flat_threshold)
+                flats.append(f)
+                print(f"        flat  events={f['count']:6d}  "
+                      f"max_dev={f['max_dev']:6.1f}  "
+                      f"sd={f['sd']:5.2f}  "
+                      f"period={f['period']}"
+                      f"{' PERIODIC' if f['periodic'] else ''}  "
+                      f"empty {f['gap'][0]}..{f['gap'][1]} around "
+                      f"{args.flat_threshold:g}", flush=True)
+
             board.stop()
             board.drain_console(0.3)
     finally:
@@ -78,13 +119,26 @@ def main():
     print(f"\n{len(rows)} runs of {args.seconds:g}s at preset {args.preset}: "
           f"splices {min(counts)}-{max(counts)}, "
           f"max step {max(r['max_step'] for r in rows):.1f}")
+    if flats:
+        fc = [f["count"] for f in flats]
+        print(f"  flat channel: events {min(fc)}-{max(fc)}, "
+              f"dirty on {sum(1 for x in fc if x):d} of {len(fc)} runs, "
+              f"max deviation {max(f['max_dev'] for f in flats):.1f}")
+        periods = {f["period"] for f in flats if f["periodic"]}
+        if periods:
+            print(f"  periodic at {sorted(periods)} - the issue #5 "
+                  f"signature is a metronome at GEN_TABLE_LEN, not a splice")
+
     # A threshold sitting on an occupied bin is a number to re-derive,
     # not a result to quote.
-    tight = [r for r in rows if r["gap"][1] - r["gap"][0] < 4]
-    if tight:
-        print(f"WARNING: the void around {args.threshold:g} is under 4 codes "
-              f"wide on {len(tight)} run(s); re-derive the threshold before "
-              f"quoting these counts")
+    def warn(name, rs, thr):
+        tight = [r for r in rs if r["gap"][1] - r["gap"][0] < 4]
+        if tight:
+            print(f"WARNING: the {name} void around {thr:g} is under 4 codes "
+                  f"wide on {len(tight)} run(s); re-derive the threshold "
+                  f"before quoting these counts")
+    warn("step", rows, args.threshold)
+    warn("flat", flats, args.flat_threshold)
 
 
 if __name__ == "__main__":

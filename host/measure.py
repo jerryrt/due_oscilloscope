@@ -25,6 +25,7 @@ import math
 import os
 import re
 import shutil
+import statistics
 import struct
 import subprocess
 import sys
@@ -217,6 +218,81 @@ def level_census(vals, threshold=STEP_SPLICE_CODES, flat=STEP_FLAT_CODES):
         "count": len(at),
         "max_step": max(steps),
         "levels": len(steps) + 1,
+        "gap": (lo, hi),
+        "threshold": threshold,
+        "period": period,
+        "periodic": periodic,
+    }
+
+
+# Within this many codes of the run's own median, a sample is the flat
+# line plus noise. Measured, like the two above: on a healthy board A1
+# sits at sd 0.87 with excursions to 7-8 codes, and the issue #5
+# population lands at 26-32. The void between them measured 9..20 over
+# four runs, so 20 sits in eleven empty bins and any value across them
+# reports the same number. flat_census() reports that void so it can be
+# checked rather than trusted.
+FLAT_DEV_CODES = 20
+
+
+def flat_census(vals, threshold=FLAT_DEV_CODES):
+    """Count the samples a flat line cannot account for.
+
+    The companion to level_census(), and needed because that one cannot
+    see this. level_census() judges the steps of a DAC staircase against
+    STEP_SPLICE_CODES = 45; on macOS the issue #5 displacement is 26-32
+    codes, which forms its own level and lands *under* that threshold.
+    Ten runs of tools/splices.py reported 0 splices on A0 across a
+    period when six runs in ten were displacing samples on A1 - so the
+    instrument said "does not reproduce on macOS" about a board that was
+    reproducing it. Do not census a flat channel with a staircase tool.
+
+    A flat channel is also where the defect is unmistakable rather than
+    merely detectable: preset `M` drives DAC1 with DC 2048, so anything
+    that moves A1 was made by the board and no waveform can be blamed
+    for it.
+
+    Returns `count` (samples further than `threshold` from the median),
+    `max_dev`, `sd`, `median`, `samples`, the void around the threshold
+    as `gap`, and `period`/`periodic` on the same terms level_census()
+    uses - a metronome at GEN_TABLE_LEN is the issue #5 signature and is
+    what tells it from a real discontinuity.
+    """
+    n = len(vals)
+    if n < 2:
+        return {"count": 0, "max_dev": 0.0, "sd": 0.0, "median": 0.0,
+                "samples": n, "gap": (0, 0), "threshold": threshold,
+                "period": 0, "periodic": False}
+    med = statistics.median(vals)
+    devs = [abs(v - med) for v in vals]
+    # sd over a bounded prefix, not the whole run: this is reported for
+    # eyeballing, and it separates the populations on its own (0.87
+    # clean against 1.66 dirty) without needing to be exact.
+    sd = statistics.pstdev(vals[:20000])
+
+    occupied = {int(d) for d in devs}
+    lo = hi = int(threshold)
+    while lo - 1 >= 0 and (lo - 1) not in occupied:
+        lo -= 1
+    while (hi + 1) not in occupied and hi < int(max(devs)) + 1:
+        hi += 1
+
+    at = [i for i, d in enumerate(devs) if d > threshold]
+    # One event can put two adjacent samples over, so neighbours a
+    # couple of samples apart are one occurrence - the same merge
+    # level_census() does, for the same reason.
+    occurrences = [w for k, w in enumerate(at) if k == 0 or w - at[k - 1] > 4]
+    period, periodic = 0, False
+    if len(occurrences) >= 10:
+        gaps = [b - a for a, b in zip(occurrences, occurrences[1:])]
+        period = max(set(gaps), key=gaps.count)
+        periodic = gaps.count(period) >= 0.9 * len(gaps)
+    return {
+        "count": len(occurrences),
+        "max_dev": max(devs),
+        "sd": sd,
+        "median": med,
+        "samples": n,
         "gap": (lo, hi),
         "threshold": threshold,
         "period": period,
