@@ -96,6 +96,14 @@ explicit failure counter. The failure mode is the dual of overrun -
 Underrun must be counted and reported, never concealed by silently
 repeating the previous buffer.
 
+**A known defect bounds what this phase can claim.** Issue #5 puts a
+one-sample impulse on the DAC output once per table wrap, synchronous
+with the tone and therefore appearing as harmonic distortion rather than
+as a separable spur. At a typical draw it is at the DAC's specified
+noise floor and at worst 15-30 dB below it. Any AWG spec quoted here has
+to be quoted against that. See `docs/issue5-impact.md`.
+
+
 Targets, from measurements already taken:
 
 | Quantity | Measured | Implied data rate |
@@ -197,6 +205,14 @@ originates on the host, which is Phase 3.5's bar, not Phase 1's.
 
 Carried forward; each needs measurement or a datasheet check, not a
 guess.
+
+1. **What the issue #5 transient actually looks like at the DAC pin.**
+   Every measurement so far is through the ADC, which reports where its
+   sample landed rather than the excursion's height or width - and the
+   sampling instant changes the reading by a factor of forty, so the
+   recorded amplitudes are a lower bound. **An oscilloscope on DAC1,
+   triggered on the wrap, answers it and nothing else can.** See
+   `docs/issue5-impact.md`.
 
 1. ~~Sustained USB CDC throughput.~~ **Resolved by measurement**:
    **1.969 MB/s, gapless, at the ADC's full 976,744 sps.** Both tracks

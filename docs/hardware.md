@@ -349,6 +349,13 @@ configuration will behave.
 | Output range | **546 mV to 2760 mV** *(measured on this board)* |
 | Drive | High output impedance; needs a buffer op-amp for any real load |
 
+**Issue #5 lives on this pin.** Once per DAC table wrap one sample read
+from a DAC output is displaced by up to ~80 codes, which is -49 dB
+against full scale where the part is specified at -64 to -80 dB THD. It
+is an AWG defect and does not affect ordinary ADC inputs. See
+`docs/issue5-impact.md` for what it bounds and `docs/HANDOFF.md` for the
+investigation.
+
 The non-rail-to-rail output surprises everyone. `analogWrite(DAC0, 0)`
 produces 546 mV on this board, not ground.
 

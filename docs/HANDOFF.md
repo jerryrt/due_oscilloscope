@@ -763,6 +763,12 @@ slot control measured, because that was a different binary - the
 comparisons here are valid within this run and nowhere else.
 
 
+**What it costs the instrument is in `docs/issue5-impact.md`** - which
+half is affected, what it looks like in a spectrum, and how it compares
+with the DAC's own specification. This section is the investigation; that
+file is the consequence.
+
+
 ### It is a DAC pin - and DAC1 is not special after all
 
 The two-way split is closed. **The artifact is made at the DAC1 pin.**
