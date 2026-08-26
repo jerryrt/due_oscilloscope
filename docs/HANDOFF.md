@@ -219,6 +219,14 @@ factor of forty apart, drawn about evenly per run - and the small one
 has always been reported as a clean run. See "the coin has two faces"
 below before planning any experiment that counts dirty runs.
 
+**And the number of states is a property of the binary.** An interleaved
+A/B with the flash in the rotation gives three states on `c9efd53` and
+one on `f6bf644`, sixteen runs each, where the change between them is
+never executed during the measurement. So "two states" is a count taken
+from one image, every reflashing A/B moves layout as well as logic, and
+the state distribution of both arms is what to report. See "the image
+chooses the state" below.
+
 **Do not measure this with a threshold.** Three fixed thresholds went
 blind to it in one day and every "does not reproduce" measured with one
 is void. `periodic_census()` and `fold_profile()` key on structure;
