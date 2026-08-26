@@ -476,13 +476,27 @@ def pair_fold(vals, period=GEN_TABLE_LEN):
     if len(vals) < 4 * period:
         return dict(fold_profile([], period=max(1, period // 2)),
                     hold_ok=False, pair_spread=0.0)
-    d = [vals[i] - vals[i + 1] for i in range(0, len(vals) - 1, 2)]
+    # Both parities, and keep the one that actually pairs. The caller
+    # hands us a slice trimmed at a settle time, which lands on either
+    # side of a level boundary depending on the rate and the trim - and
+    # the wrong parity differences two samples from *different* DAC
+    # levels, so every difference is a DAC step instead of noise. It
+    # showed up as hold_ok refusing the sine arms of the layout sweep,
+    # which was the guard working rather than the measurement failing,
+    # but the measurement is available for one more subtraction.
+    import statistics as _st2
+    best_d, best_spread = None, None
+    for off in (0, 1):
+        d = [vals[i] - vals[i + 1] for i in range(off, len(vals) - 1, 2)]
+        spread = _st2.median([abs(x) for x in d])
+        if best_spread is None or spread < best_spread:
+            best_d, best_spread = d, spread
+    d = best_d
     out = fold_profile(d, period=period // 2)
     # Within a held level the difference is noise; across a broken
     # pairing it is a DAC step, which is tens of codes.
-    spread = _st.median([abs(x) for x in d])
-    out["pair_spread"] = spread
-    out["hold_ok"] = spread <= 4.0
+    out["pair_spread"] = best_spread
+    out["hold_ok"] = best_spread <= 4.0
     return out
 
 
