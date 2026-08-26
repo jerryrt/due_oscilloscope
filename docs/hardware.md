@@ -301,12 +301,24 @@ Useful register bits:
 One shared sample-and-hold means residual charge from the previous
 channel contaminates the next. With high-impedance sources this is
 severe and presents as noise. Mitigations are buffering each channel
-with an op-amp, or raising `TRACKTIM` — but raising `TRACKTIM` cuts
-aggregate throughput. At ~30 cycles/conversion the aggregate falls to
-about 700 ksps, i.e. ~58 ksps/channel across twelve channels.
+with an op-amp, or raising `TRACKTIM` — but raising `TRACKTIM` was
+expected to cut aggregate throughput: at ~30 cycles/conversion the
+aggregate would fall to about 700 ksps, i.e. ~58 ksps/channel across
+twelve channels. *(check)* **Measured 2026-08-26, it does not fall at
+all.** `TRACKTIM(15)` with `SETTLING(3)` sustains every rate from rc 200
+to rc 86 — 390 to 907 ksps aggregate — with `govre=0`, no overrun frames
+and rates identical to `TRACKTIM(0)` to the sample, while ADC_MR read
+back from the peripheral carries the field. `TRACKTIM` sets a *minimum*
+tracking time and the converter is idle for longer than that at every
+rate here; at rc 86, where the minimum would have to lengthen the cycle,
+the hardware declines to. So this is not a usable knob on tracking in
+this design, and not a throughput cost either. See `docs/HANDOFF.md`,
+"Track and settling do nothing".
 
-This tradeoff, not USB bandwidth, is the most likely determinant of the
-real per-channel rate.
+That tradeoff was expected to be the determinant of the real
+per-channel rate, ahead of USB bandwidth. On the measurement above it is
+not a tradeoff at all: the converter's own 20-clock conversion sets the
+ceiling, and `ACQ_MIN_RC` is where it lands.
 
 **Measured baseline** (DAC0->A0, DAC1->A1 loopback, one channel held at
 mid scale while the other swings full range):

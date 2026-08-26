@@ -185,13 +185,33 @@ Only the second row is conclusive in both directions, which is the whole
 reason to wait for the parts rather than improvise with what is on the
 bench.
 
-**The track/settling sweep is done, and the answer is neither register.**
-It did not need the resistor after all - `pair_fold()` measures A0,
-which is still looped, so the sweep ran with A1 still grounded. Run at
-RC 196, interleaved, baseline in the rotation and reproducing: every
-condition draws from the same values including both extremes, and the
-maximum of both registers looks exactly like the minimum. A powered
-negative, not another era measurement. Details below.
+**The track/settling sweep is done, and the answer is neither register -
+but it is not the answer it reads as.** Both sessions ran it, on two
+hosts, two channels and two instruments, and both found every condition
+drawing from the same values with the maximum of each register looking
+exactly like the minimum. The Windows arm replicates the macOS one on
+A1 with DAC1 still connected, folded rather than paired: 35 interleaved
+runs at RC 189, TRACKTIM 0-15 against SETTLING 0-3, and the condition
+never predicted anything.
+
+**What it does not do is test the front end.** `?` now prints ADC_MR as
+the hardware holds it, and the register is programmed exactly as asked
+mid-run - so the knob is connected, which nobody had shown. It is also
+free: TRACKTIM(15) with SETTLING(3) sustains the whole ladder from rc
+200 to rc 86, govre 0 and rates identical to TRACKTIM(0) to the sample,
+where an additive tracking time would have had to drop every other
+trigger at rc 86. TRACKTIM sets a *minimum*, the converter is already
+idle for longer at every rate here - 47 clocks of budget against a
+20-clock conversion at RC 189 - and at the one rate where it would bite
+the hardware declines to lengthen the cycle. **The acquisition window
+never moved in either arm**, so "neither register moves it" is a fact
+about the register and not evidence about the ADC input network.
+`docs/hardware.md`'s "raising TRACKTIM cuts aggregate throughput ... to
+about 700 ksps" is wrong as written and should be re-measured with it.
+
+So the two-way split stands undisturbed and the resistor still decides
+it. Source impedance is the one knob that demonstrably varies settling
+here; this one does not.
 
 **And it found the shape of the whole problem, which matters more than
 the sweep did.** The amplitudes are two states separated by phase, a
@@ -284,9 +304,12 @@ the suite cannot currently enforce on Track A, and this.
 
    It reproduces on both hosts, presence is constant once you stop
    thresholding, the jumper test says the cause is analog and at the ADC
-   front end or before it, and neither `TRACKTIM` nor `SETTLING` moves
-   it. What is left is which analog - DAC1 glitching, or the ADC input
-   network failing to settle - and one resistor separates them.
+   front end or before it. Neither `TRACKTIM` nor `SETTLING` moves it -
+   but the readback says that is a fact about the registers, which are
+   programmed and cost nothing at any rate here, rather than evidence
+   about the input network. What is left is which analog - DAC1
+   glitching, or the ADC input network failing to settle - and one
+   resistor still separates them.
 
    **Do not spend a session working around the missing part.** The
    remaining question is a two-way split that one component decides;
@@ -563,9 +586,39 @@ rotation, A1 still grounded:
 
 **Neither register does anything.** Every condition draws from the same
 handful of values, including both extremes, and the maximum of both
-registers looks exactly like the minimum. This is a powered negative
-result rather than another era measurement: the baseline arm reproduced,
+registers looks exactly like the minimum. The baseline arm reproduced,
 the readout is continuous, and the treatment arms are not shifted.
+
+**Windows replicates it on the other channel.** Same experiment on A1
+with DAC1 still connected, `fold_profile()` rather than `pair_fold()`,
+RC 189, seven conditions interleaved over five rounds - TRACKTIM 0, 2,
+4, 8, 15 at SETTLING 0, plus TRACKTIM 0 and 15 at SETTLING 3. Thirty-five
+runs, and the condition predicts nothing at all. Two hosts, two boards,
+two channels, two instruments, one answer.
+
+**But this is a powered negative about the registers and not about the
+front end, and the difference matters.** `?` now prints ADC_MR as the
+hardware holds it: asked for (0,0), (4,0), (8,2) and (15,3) mid-run it
+answers `100f0103`, `140f0103`, `182f0103`, `1f3f0103`, so the knob is
+connected - which no earlier reading could show, because `A` echoes the
+variable and `acq_start()` then read-modify-writes the same register.
+
+The knob is also free, and that is what voids the inference. TRACKTIM(15)
+with SETTLING(3) sustains the whole ladder - rc 200, 170, 144, 130, 115,
+100, 92, 86, i.e. 390 to 907 ksps aggregate - at `govre=0`, no overrun
+frames, and rates identical to TRACKTIM(0) to the sample. At rc 86 the
+budget is 21.5 ADC clocks per conversion and an additive TRACKTIM(15)
+needs about 36, so it would have had to drop every other trigger.
+TRACKTIM sets a *minimum* tracking time; the converter is already idle
+for longer at every rate here (47 clocks of budget against a 20-clock
+conversion at RC 189), and at the one rate where the minimum would bite,
+the hardware declines to lengthen the cycle rather than dropping
+triggers. **So the acquisition window never moved in either arm.**
+Neither sweep varied source settling, and neither is evidence about the
+ADC input network. The resistor still decides the two-way split.
+
+`docs/hardware.md`'s "raising `TRACKTIM` cuts aggregate throughput ...
+about 700 ksps" is contradicted by this and is marked *(check)*.
 
 **What the sweep found instead is the shape of the whole problem.** The
 values are not scattered - they are two states, and the phase separates
@@ -578,6 +631,21 @@ them cleanly. Fourteen runs at fixed conditions:
 
 Two states, a factor of forty apart in amplitude, at two different
 phases, drawn about evenly, chosen per run and constant within it.
+
+The Windows arm splits the same way on A1, at a smaller ratio:
+
+| state | peak, codes | fold z | sd | runs |
+|---|---|---|---|---|
+| A | -13.04 to -13.16 | 106-122 | 1.067-1.072 | 20 of 35 |
+| B | -2.19 to -2.56 | 14-21 | 0.831-0.841 | 15 of 35 |
+
+Control z was 2.5-3.8 throughout, so **both** states are the artifact and
+neither is a clean run. The ratio is 5.5x rather than 40x and both states
+are negative here, where macOS's split was signed - so the two-state
+structure replicates and the particular amplitudes do not. `sd` alone
+separates the states perfectly, which is the same free corroborator the
+RC scans found. Phase was not recorded in this arm; the macOS phases are
+the only ones measured.
 
 **That is the bimodality this investigation has been fighting since the
 beginning, and it was never dirty-versus-clean.** State B is +2 codes,
