@@ -274,6 +274,59 @@ yet a difference between the hosts - it was never looked for here, and
 every flash this session was judged by the string macOS has now shown to
 be worthless. It is checked from now on, on both.
 
+### Objective 1c's measurement half is closed (2026-08-25, later)
+
+`pytest --track=a` is **229 passed / 0 failed / 33 skipped**, from 198
+passed / 18 failed at the start of the day. What closed it:
+
+- **The occupancy instruments** - `play_occ_hist`, `play_occ_min`,
+  `play_occ_trace`, `play_occ_traced`, `play_run_us`, `occmin=` on `B`,
+  the `O` command.
+- **The playstat carrier.** All nine remaining failures said "0 status
+  records arrived over bulk IN"; this track had no `playstat.h` at all.
+  The record layout is a byte-for-byte copy of `drivers/playstat.h` -
+  the tracks share no source but must share the wire, and the host
+  parses one magic and one CRC with no idea which track sent it.
+  `stream_in_in_use()` is the play-only guard and is new here too.
+- **`PLAY_PRIME_BUFS` 24**, measured on this track rather than copied.
+
+`test_playback_counters_describe_one_run_not_several` - the test this
+objective named as its cheapest first step - was skipped on Track A
+under a note reading "this starts passing when 1c does". It does. The
+skip is gone and it covers both tracks.
+
+**What is left of 1c is the control channel**, and with it the second
+half of `ep_realloc_control()`: Track A's `ep_apply_autosw()` hazard is
+inert only while that track stops at EP3, and the control channel is
+what grows it to EP4. Port the fix with the feature.
+
+### A harness that cannot repeat this session's mistake
+
+`tools/ab.py`. Conditions interleaved one rep per round so drift lands
+on every arm equally, and one arm named the control: **if the control
+never goes dirty the run is REFUSED rather than reported.** A treatment
+that beat a control which never reproduced has beaten nothing.
+
+It exists because four findings died of exactly that in one day - the
+stop-race "fix" (25/25 clean), the bss claim, the TIOA phase sweep
+(16/16), the printf placement switch (0/10 both ways) - plus the macOS
+32-of-32 sweep whose fourth condition turned out to be the untreated
+baseline. Every one was a negative result, which is what made them hard
+to see as comparisons: nothing looks less like a claim than a column of
+zeroes. `tests/test_ab.py` covers the refusal branch and needs no board.
+
+**Use it for any issue #5 experiment.** A sweep without a reproducing
+control arm is not evidence, whatever it reports.
+
+### The flash-boot failure is macOS's, measured
+
+macOS found bossac reporting "Verify successful" over a board left in
+ROM SAM-BA, at roughly two attempts in three. **Windows: 0 of 20**,
+every flash booted, `Verify successful` on all twenty. Not the same
+rate, and it clears the image comparisons taken on this host - though
+they remain confounded by time, which is the larger problem and is not
+fixed by this.
+
 ### Where the branches are
 
 | Branch | State |
