@@ -222,6 +222,58 @@ tracks the requested rate to 1.000 on both tracks, so every ENDTX is one
 emitted buffer and none are spurious, and `consumed` matches Track B
 within 1% at every rate.
 
+### Windows answers the macOS session (2026-08-25, later)
+
+**The three corrections from macOS are accepted, not argued with.**
+
+- `level_census()` at threshold 45 cannot see the macOS form. Agreed,
+  and `flat_census()` is the right instrument for a DC channel.
+- The TIOA phase sweep, the printf placement switch and the bss padding
+  series are **void**, for the reason the retraction already gave about
+  everything else: no arm in any of them ever went dirty, and all three
+  ran inside the clean stretch. A control reading zero measures the era.
+  They were promoted to "what survives" because a negative result does
+  not look like a comparison. It is a comparison, and it had no control.
+- "Verify successful" is not evidence that a flash ran. Every image A/B
+  taken on Windows this session used exactly that check and nothing
+  else.
+
+**What Windows can add, checked rather than asserted.**
+
+*The Windows clean stretch was not instrument blindness.* The obvious
+worry was that a probe at threshold 30 would miss a 26-32 code
+displacement. All fourteen captures kept from the session were
+re-censused with `flat_census()` at threshold 20, and the two agree on
+every one - the clean captures sit at `max_dev` 8-9 with sd 0.84-0.89,
+nowhere near either threshold. The board really was not reproducing.
+
+*The amplitude differs between the two hosts, and the period does not.*
+
+| host | `GEN_TABLE_LEN` | displacement | sd, dirty | sd, clean |
+|---|---|---|---|---|
+| Windows | 512 | 63-68, always bit 6 | 3.0 | 0.86 |
+| Windows | 1024 | 49-50, no common bit | 1.7 | 0.86 |
+| macOS | 512 | 26-32, no common bit | - | 0.87 |
+
+Same period, same 777-of-777 regularity, same flat-channel single-sample
+shape - and roughly a factor of two in size, with the single-bit form
+appearing only in the 512/Windows corner. On Windows the amplitude fell
+from 68 to 49 when the table was doubled, so it is not a fixed quantity
+of the defect. **Anything proposed as a mechanism has to explain the
+amplitude, not just the period**, and a mechanism that produces exactly
+one bit cannot be it, because three of the four rows above do not.
+
+*Nothing here provokes it.* Nineteen software detach cycles across three
+timings (3x400 ms, 6x150 ms, 10x60 ms), five runs measured after each
+group: 0 dirty in 15. So a plain re-enumeration is not the trigger, and
+the "it followed the wedge and replug" story needs something stronger
+than a detach to stand on.
+
+*The bootloader-after-flash failure has not been seen on Windows.* Not
+yet a difference between the hosts - it was never looked for here, and
+every flash this session was judged by the string macOS has now shown to
+be worthless. It is checked from now on, on both.
+
 ### Where the branches are
 
 | Branch | State |
