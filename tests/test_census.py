@@ -320,3 +320,101 @@ def test_shift_invariance_does_not_rescue_aperiodic_outliers():
     for i in rng.sample(range(100_000), 400):
         v[i] += 30
     assert measure.periodic_census(v)["count"] == 0
+
+
+# ---------------------------------------------------------------------
+# Folding. Every detector above decides which samples are events, and
+# each went blind when the amplitude crossed its line. fold_profile()
+# decides nothing: it averages the run at a period it is told, so a
+# displacement far under the per-sample noise still moves the mean of
+# the wraps that share its phase.
+#
+# All seeded. Same numbers every run, on every host.
+# ---------------------------------------------------------------------
+
+FOLD_SEED = 20260826
+
+
+def flat_run(n=200_000, level=2055, noise=1, seed=FOLD_SEED):
+    rng = random.Random(seed)
+    return [level + rng.randint(-noise, noise) for _ in range(n)], rng
+
+
+def test_noise_folds_flat_at_both_periods():
+    """512 bins give noise 512 chances to throw up a peak, so a clean run
+    sits near 3.2 either way. FOLD_Z_DIRTY is set clear of that."""
+    v, _ = flat_run()
+    f = measure.fold_profile(v)
+    assert f["z"] < measure.FOLD_Z_DIRTY
+    assert f["control_z"] < measure.FOLD_Z_DIRTY
+
+
+def test_a_displacement_far_under_every_threshold_is_found():
+    """One code on 40% of wraps - 0.4 codes averaged, against detectors
+    that draw their lines at 20 and 45. This is the whole point of the
+    instrument, and the reason "presence may be constant" is answerable
+    at all."""
+    v, rng = flat_run()
+    first = 300
+    for i in range(first, len(v), TABLE):
+        if rng.random() < 0.4:
+            v[i] += 1
+    f = measure.fold_profile(v)
+    assert f["z"] > measure.FOLD_Z_DIRTY, f["z"]
+    assert f["peak_phase"] == first % TABLE
+    assert 0.3 < f["peak"] < 0.5
+    # and neither threshold instrument sees anything at all
+    assert measure.periodic_census(v)["count"] == 0
+    assert measure.flat_census(v)["count"] == 0
+
+
+def test_the_control_period_stays_quiet_when_the_real_one_fires():
+    v, _ = flat_run()
+    for i in range(300, len(v), TABLE):
+        v[i] += 4
+    f = measure.fold_profile(v)
+    assert f["z"] > 10 * f["control_z"], f
+
+
+def test_folding_at_the_wrong_period_finds_nothing():
+    """Folding a locked signal at a period it is not locked to smears it
+    across bins, which is what makes control_z a control."""
+    v, _ = flat_run()
+    for i in range(300, len(v), TABLE):
+        v[i] += 4
+    assert measure.fold_profile(v, period=TABLE + 1)["z"] \
+        < measure.FOLD_Z_DIRTY
+
+
+def test_aperiodic_outliers_do_not_fold():
+    """Four hundred large displacements at random positions. Bigger than
+    anything above and they must still read as nothing, because they are
+    not locked to a phase."""
+    v, rng = flat_run()
+    for i in rng.sample(range(len(v)), 400):
+        v[i] += 30
+    assert measure.fold_profile(v)["z"] < measure.FOLD_Z_DIRTY
+
+
+def test_a_burst_folds_at_the_wrap_period():
+    """The shape that defeated the gap test folds like anything else -
+    the instrument has no opinion about how many samples an event is."""
+    f = measure.fold_profile(burst(n=200_000), period=TABLE)
+    assert f["z"] > measure.FOLD_Z_DIRTY
+
+
+def test_it_is_deterministic():
+    """Same samples in, same numbers out - the property the harness
+    depends on, since a verdict that moves between runs of the same data
+    cannot gate an A/B."""
+    v, _ = flat_run()
+    for i in range(300, len(v), TABLE):
+        v[i] += 3
+    a = measure.fold_profile(v)
+    b = measure.fold_profile(list(v))
+    assert (a["z"], a["peak"], a["peak_phase"]) == \
+           (b["z"], b["peak"], b["peak_phase"])
+
+
+def test_a_short_run_is_not_an_error():
+    assert measure.fold_profile([2055] * 100)["z"] == 0.0
