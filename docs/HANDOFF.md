@@ -122,45 +122,141 @@ Windows backend so that test runs first.
 consequences as predicted. Treat every "Windows will" here as a
 hypothesis with a test attached.
 
-## Start here: the Windows session handoff (2026-08-25)
+## Start here (2026-08-26, Windows session)
 
-**Do this first: unplug and replug the Due's native USB cable.** The
-native port stopped enumerating at the end of the session and no
-software remedy reaches it - `=400Z`, three reflashes and a SAM-BA
-round trip all failed, while SAM-BA itself enumerates fine over the same
-cable, so the hardware is good and the Windows USB stack is not. It
-follows a run of `usbipd` bind/attach/detach cycles and there are seven
-phantom `VID_2341&PID_003E` registrations left behind (COM8, COM9,
-COM11, COM12 and three composite instances). Nothing below can be
-measured until the port is back.
+`main` is green on both tracks and there are no open PRs. One open
+issue, #5, and it changed character overnight: **it is analog.**
 
-### The agreed order of work (2026-08-25, approved)
+| | |
+|---|---|
+| Track A | 237 passed / 0 failed |
+| Track B | 258 passed / 0 failed |
+| Branches | `main`, `wip/track-a-control-channel` |
+| Board | Track B |
+| Tag | `dead/stream-stop-race` - kept reachable, not a fix |
 
-**1 -> loose ends -> 2 -> 3 -> 4.**
+### Issue #5 is an analog problem, and one resistor is the next move
 
-1. **Settle whether issue #5 is a defect at all.** Step 1 no longer means
-   the ADC-timing sweep: this board has stopped exhibiting the defect
-   (see the retraction below), so there is nothing here for that sweep to
-   act on. The tool is built and waiting on `issue5-adc-timing`
-   (`=<tt>,<st>A`, runtime, one image sweeps the whole range). **Step 1
-   now means confirming on macOS, which has never been tried**, and
-   pulling the DAC1->A1 jumper on a board that does reproduce.
-2. **Objective 1c, first half**: port `O`, `occmin` and `play_run_us` to
-   `sketches/bringup/play.cpp`. A straight transliteration; turns the 18
-   Track A failures in `test_play_counters.py` into 18 passes or 18
-   honest findings, and nobody knows which.
-3. **Objective 1c, second half**: Track A's control channel. The gate for
-   everything else. Port `ep_realloc_control()`'s second half *with* the
-   feature - Track A's `ep_apply_autosw()` hazard goes live the day that
-   track grows EP4, which is the day the control channel arrives.
-4. **printf stages 3 and 4**: poison `printf`, `dbg()` literal-only, and
-   opcodes or demotions for `t x r s V D u`.
+The macOS jumper test settles the kind of answer. A1 tied to **GND**
+rather than DAC1: zero nonzero samples in ~3.2 million across eight RCs,
+including four that folded at +54 to +66 codes an hour earlier, while A0
+carried the sine in the same captures. Nothing digital can be switched
+off by holding an input at a rail - a corrupted result register, a stale
+IN transfer racing the PDC, a TAG-mode mix-up, a bit set in passing,
+each appears whatever the pin is doing. **The artifact is made at the
+ADC front end or before it.** Every digital theory this issue has
+carried, including the one it is named after, is the wrong *kind* of
+answer.
 
-Loose ends worth an hour: rebase `wip/refusal-reporting` onto `main` and
-land it on its own merits, post the issue #5 correction, and watch the
-next few full runs for the load-dependent flake that stopped appearing
-after the stage 2 stalls were removed (n=2, a hypothesis and not a fix).
+**The next experiment is one resistor.** Grounding changed two things at
+once - it removed DAC1 and replaced a mid-rail source with a zero-ohm
+source at the rail - so DAC1 glitching and the ADC input network failing
+to settle both survive. Reconnect DAC1 to A1 through **10k**: source
+impedance decides settling, so the artifact growing with the resistor
+means the front end and exonerates DAC1; no change means DAC1.
 
+**Then re-run the track/settling sweep.** `=<tt>,<st>A` is on `main` and
+was inconclusive the first time because the verdict came from a
+threshold detector on a drifting board. `fold_profile()`'s `z` is
+continuous with a floor near a fifth of a code, so the same sweep is now
+a dose-response curve rather than a coin flip - and the RC dependence
+already says this is a function of conversion timing, which is exactly
+what those registers control.
+
+**Do not measure this with a threshold.** Three fixed thresholds went
+blind to it in one day and every "does not reproduce" measured with one
+is void. `periodic_census()` and `fold_profile()` key on structure;
+`sd` is the free corroborator, 0.78-0.89 clean against 0.93-4.59
+reproducing on both hosts, with no overlap and nothing to choose.
+
+**And use `tools/ab.py`.** Interleaved arms, and it refuses to report
+when the control never reproduced. Four findings died this session to
+experiments whose control arm was clean because the board was clean:
+the stop-race "fix" at 25/25, the bss claim, the TIOA phase sweep at
+16/16, the printf placement switch at 0/10 both ways. A negative result
+does not look like a comparison, which is what made it hard to see four
+times.
+
+### Where Track A's control channel stands
+
+`wip/track-a-control-channel`, pushed, **do not merge**. Enumeration
+works; the sample path does not.
+
+Working and verified: a `PluggableUSBModule` adds the second CDC
+function without patching the core, plugged from a global constructor
+because `main()` attaches USB before `setup()`; it lands on interfaces
+2/3 and EP4-6 and *checks* rather than assumes; single-bank endpoint
+words, since the core's are double-banked and the DPRAM budget forbids
+that here; `ep_apply_autosw()`'s missing half, which had to land with
+this and not after; and `_cdcComposite = 1`, which is what Track B's
+`0xEF/0x02/0x01` device descriptor does and which the core otherwise
+gates behind a probe-order heuristic. With it, both nodes open and
+`ports.native_nodes()` orders them samples-first with no host change.
+
+**Two real defects found along the way, both worth keeping.** The core
+enables EP4-6 interrupts and its ISR has no case for them, so an OUT
+packet on EP5 raised an interrupt nothing acknowledged and the main loop
+starved - the board kept enumerating, because that is all the ISR was
+doing, and answered nothing else. That was the "silent flash" blamed on
+bossac twice. And the wrong device class did not refuse enumeration: both
+nodes appeared, both bound `usbser`, both reported `Status OK` - and
+opening the *sample* node blocked for ever.
+
+**Still broken:** 160 passed / 88 failed, and the failures are now "no
+frames arrived at all" with `raw_bytes=0` - the sample IN path
+delivering nothing. Two hypotheses are dead: the interrupt mask writes
+only PEP_4-6 (bits 16-18; DMA channel interrupts are 25-28 and
+untouched), and `CFGOK` reads `1111111` at idle, so allocation and DPRAM
+were never it. Enumeration is also unstable across a board reset.
+
+`E` is on that branch and reports CFGOK plus the realloc and cfgfail
+counters *during* a run. Use it: the banner reports CFGOK at boot, which
+is exactly when nothing is wrong yet.
+
+**The lesson that found the device class: compare against Track B.**
+Track B has had two CDC functions working the whole time. Going to first
+principles cost hours that a diff of the two enumerations would not have.
+
+### What printf stages 3-4 are waiting for
+
+Stages 1-2 are done and on `main`: `CTL_OP_STREAM_STATS`, `CTL_OP_BENCH`,
+and `measure.py` reading counters over the control channel instead of by
+printing them - it used to send `B` twice *inside* `run_loop`, 13.14 ms
+of blocked main loop in the middle of the run being measured.
+
+Stage 3 is `#pragma GCC poison printf` plus a `dbg()` that takes only a
+string literal. Both are verified against arm-none-eabi-gcc 14.3 and
+give the errors they should. **It cannot land while Track A has no
+control channel**, because poisoning `printf` there removes that track's
+only instrument - invariant 3 broken in order to enforce invariant 8.
+Stage 4 is opcodes or demotions for `t x r s V D u`.
+
+Worth knowing before spending a day on it: measured, the *single*
+console read `run_loop` does on Track A is not perturbing it - 0
+underruns and occmin 21-25 at RC 44. Five reads take that to 15
+underruns and occmin 2. So the live-measurement case for the control
+channel is thin; the real reasons are the descriptor-identity contract
+the suite cannot currently enforce on Track A, and this.
+
+### The agreed order of work (updated 2026-08-26)
+
+1. **Issue #5: the 10k resistor, then the track/settling sweep.** Step 1
+   used to be "settle whether it is a defect at all" and then "confirm on
+   macOS". Both are done. It reproduces on both hosts, presence looks
+   constant once you stop thresholding, and the jumper test says it is
+   analog. What is left is which analog: DAC1 glitching, or the ADC input
+   network failing to settle. One resistor separates them. See the top of
+   this file.
+2. **Objective 1c, first half** - done. `O`, `occmin`, `play_run_us`, the
+   playstat carrier, `PLAY_PRIME_BUFS` 24 and the playback-abandon
+   timeout are all on `main`, and Track A is 237 passed / 0 failed.
+3. **Objective 1c, second half**: Track A's control channel. Enumeration
+   works on `wip/track-a-control-channel`; the sample path delivers no
+   frames. See "Where Track A's control channel stands".
+4. **printf stages 3 and 4**, behind 3.
+
+Steps 1 and 3 are independent: one needs the board and a resistor, the
+other needs a USB bug found. Neither blocks the other.
 ### Objective 1c's first half is done, and it found three things
 
 Ported to `sketches/bringup/play.cpp` with the same names, the same
@@ -647,6 +743,12 @@ branch is gone.
 | `issue5-phase-walk` | the two-clock preset `M`, merged |
 | `issue5-repro` | both of those plus `periodic_census()`, merged |
 | `wip/stream-stop-race` | **not a fix.** Tagged `dead/stream-stop-race` and deleted |
+
+Since then, one branch is live again: **`wip/track-a-control-channel`**,
+pushed and not for merging. Everything else the macOS session has sent -
+`flat_census()`, the flash boot check, the burst-tolerant detector, the
+A/B verdict, `fold_profile()` and the jumper result - is merged into
+`main`.
 
 The tag is the only thing not on `main`. It holds the stale-DMA wait,
 kept reachable for reference and not merged, because its 25/25 clean was
