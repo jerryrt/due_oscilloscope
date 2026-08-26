@@ -661,9 +661,19 @@ interleaved over six rounds:
 |---|---|---|---|---|
 | A1, the DAC1 pin | **10.64** (10.55-10.80) | 73.4 | 3.0-3.5 | **486, all six** |
 | A2, 2.5k divider | **0.22** (0.19-0.27) | **2.0** | 2.4-3.7 | six different |
+| A2, 50 ohm divider | **0.26** (0.22-0.33) | **2.3** | 2.6-4.4 | three different |
 
-A2's z is *below its own control z*. That is not a small artifact, it is
-none.
+A2's z is *below its own control z* in both arms. That is not a small
+artifact, it is none.
+
+The 50-ohm row is the same comparison with source impedance matched as
+well, run after the sweep so it needs no cross-reference to it: 50 ohms
+against a DAC output's near-zero, the same voltage, the same slot, the
+same binary. A1 reads 10.60 against the 10.64 it read in the 2.5k
+rotation, on phase 486 in all twelve runs of both, which is what says
+the board never changed state between them. **Forty times, in the one
+configuration where nothing differs but which pin the sample came
+from.**
 
 **So: not impedance, not conversion slot, only the pin.** Nothing
 connects DAC1 to A2, both channels sit at the same voltage, both are DC,
