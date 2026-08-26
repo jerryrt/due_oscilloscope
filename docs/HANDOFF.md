@@ -211,7 +211,7 @@ about 700 ksps" is wrong as written and should be re-measured with it.
 
 So the two-way split stands undisturbed, and the deferred source
 experiment still decides it. Source impedance is the one knob that
-here; this one does not.
+demonstrably varies settling here; this one does not.
 
 **And it found the shape of the whole problem, which matters more than
 the sweep did.** The amplitudes are two states separated by phase, a
