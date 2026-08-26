@@ -74,6 +74,28 @@ static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
  */
 #define PLAY_PRIME_BUFS 24u
 
+/*
+ * How long the host may be silent before playback gives up.
+ *
+ * Ported from drivers/play.c, same constant and same rule. Without it
+ * this track keeps repeating its last buffer for as long as nothing
+ * stops it: run_us measured 5.00 s for a 3 s run where Track B's was
+ * 3.5 s, and every underrun and the whole of occmin came from that
+ * tail. A counter read after the feeder stops was describing the
+ * shutdown, which is how PLAY_PRIME_BUFS looked inert on this track
+ * when it is not.
+ *
+ * Half a second is many hundreds of buffers at every rate on the
+ * ladder, so it cannot fire on a host that is merely slow; it fires on
+ * a host that has gone. play_abandoned counts it so the behaviour
+ * change is never silent.
+ */
+#define PLAY_ABANDON_MS 500u
+
+volatile uint32_t play_abandoned;
+static uint32_t abandon_bytes;
+static uint32_t abandon_at_ms;
+
 bool play_active(void) { return active; }
 
 uint32_t play_configured_rc(void) { return dac_rc; }
@@ -117,6 +139,9 @@ bool play_start(uint32_t dac_hz)
 	play_bytes_in = 0;
 	play_isr_calls = 0;
 	play_endtx_seen = 0;
+	play_abandoned = 0;
+	abandon_bytes = 0;
+	abandon_at_ms = millis();
 	for (unsigned i = 0; i < PLAY_NBUF; i++)
 		play_occ_hist[i] = 0;
 	play_occ_min = PLAY_NBUF;
@@ -211,6 +236,32 @@ void play_service(void)
 		return;
 
 	play_svc_calls++;
+
+	/*
+	 * millis(), not micros(): this runs on every pass while active and
+	 * micros() costs five times as much, and half a second needs no
+	 * better resolution than a millisecond.
+	 */
+	{
+		uint32_t ms = millis();
+
+		if (play_bytes_in != abandon_bytes) {
+			abandon_bytes = play_bytes_in;
+			abandon_at_ms = ms;
+		} else if (abandon_bytes != 0
+		           && ms - abandon_at_ms > PLAY_ABANDON_MS) {
+			/*
+			 * Only after something has arrived. Abandonment means
+			 * "was receiving, then stopped"; a run that has not
+			 * started yet is a different thing, and timing it from
+			 * play_start stopped playback before the host had
+			 * finished priming its feeder.
+			 */
+			play_abandoned++;
+			play_stop();
+			return;
+		}
+	}
 
 	/* The core rebuilds endpoint configuration on bus reset and
 	 * SET_CONFIGURATION, clearing AUTOSW and re-enabling its own

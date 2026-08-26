@@ -90,4 +90,7 @@ extern volatile uint32_t play_occ_traced;  /* entries written, saturating */
  */
 extern volatile uint32_t play_run_us;
 
+/* Playback stopped itself because the host went away. See play.cpp. */
+extern volatile uint32_t play_abandoned;
+
 #endif /* PLAY_H */
