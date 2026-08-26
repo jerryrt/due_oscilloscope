@@ -763,6 +763,41 @@ slot control measured, because that was a different binary - the
 comparisons here are valid within this run and nowhere else.
 
 
+**macOS replicated the sweep and finding 3 does not survive it.** Same
+image, second board, second host, 2026-08-26. Three interleaved rounds:
+
+| arm | A0 carries | |peak| on A0 | z | control z |
+|---|---|---|---|---|
+| `normal` | sine | 6.61 | 54-60 | 2.2-3.4 |
+| `swapped` | DC | 7.91 | 88-113 | 2.9-3.2 |
+| `two-cycle` | sine | 8.17 | 63-93 | 3.0-5.0 |
+| `all-DC` | DC | 7.84 | 29-32 | 2.6-3.4 |
+
+**All four arms are indistinguishable there, and `all-DC` is not null** -
+7.84 codes at z 29-32 against a clean control, three consistent runs, at
+the same phase as `swapped`. On that board the reload alone produces the
+event with no moving output anywhere. Amplitudes do not compare across
+boards, but null against not-null is qualitative and does not need them
+to.
+
+**Two candidate explanations, and they are not equivalent.** It may be
+board-specific. Or it may be the wiring: on the Windows board DAC1 is
+connected to A1, and on the macOS one DAC1 is disconnected entirely, so a
+sine on DAC1 has a path into the header there and none here. If that is
+it, part of "a changing output is needed" is coupling through the wiring
+rather than a property of the DACC, and the arm that decides it is
+`swapped` measured with DAC1 disconnected - which is what the macOS run
+already is.
+
+**The sweep needs only one DAC/ADC pair.** Every arm puts something on
+DAC0 - the sine in `normal` and `two-cycle`, DC in `swapped` and
+`all-DC` - so A0 alone covers the set, with `fold_profile()` on the DC
+arms and `pair_fold()` on the sine arms. DAC1 is driven by the PDC
+whether or not a wire leaves the pin, so `swapped` satisfies its
+own precondition unmeasured. The second channel buys a per-run reference,
+not an arm. Verified before use: 1 upward mean-crossing per wrap on
+`normal`, 2 on `two-cycle`.
+
 **What it costs the instrument is in `docs/issue5-impact.md`** - which
 half is affected, what it looks like in a spectrum, and how it compares
 with the DAC's own specification. This section is the investigation; that
