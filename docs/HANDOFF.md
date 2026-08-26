@@ -398,6 +398,56 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### macOS: conjectures 2 and 3 above are confirmed, and two more things
+
+Re-ran the RC scan with `periodic_census()` on the reproducing board.
+
+**"The ADC's RC gates it" is withdrawn.** The signature is present at
+**10 of 15 RCs**, including six of the twelve the first scan called
+clean, and `flat_census()` at 20 was blind to four of those six. RC sets
+the amplitude, over an order of magnitude, and does not decide presence:
+
+    rc   186  187  189  190  191  193  197  198  199  200
+    amp   54   49    9   39    6   12   54   57   15   65
+
+**"The first on-demand reproduction" is withdrawn with it.** RC 194 gave
+777-780 events on 5 of 5 runs in the afternoon and, interleaved the same
+evening, 0 on 2 of 3 at sd 0.86. It drifts like everything else. There
+is still no configuration that reproduces on demand.
+
+**The period is not always `GEN_TABLE_LEN`.** RC 194 detects at **256**
+with 1560 events - two per table wrap, not one. So "the detected period
+always equals that capture's own GEN_TABLE_LEN" holds for the captures
+it was checked against, not in general.
+
+**And the artifact is not always one displaced sample.** At RC 200 each
+wrap produces a burst of about four, spaced 64 apart, the bursts
+repeating at 512. The gaps run 64, 64, 64, 320, so the commonest gap
+holds 0.77 of them, nothing clears 0.9, and `periodic_census()` returned
+**0 on a run carrying 3276 events at 68 codes with sd 4.58** against a
+clean 0.86. A detector keyed on one event per period is still a detector
+keyed on a shape.
+
+The fix keeps the gap test as the fast path and falls back to **shift
+invariance** - for the true period, nearly every event has another event
+exactly P samples later, whatever the arrangement inside the period. It
+scores a single displacement per wrap identically, so the simple case is
+untouched, and it runs only where the gap test found nothing.
+
+After it, the detector and `sd` agree on all twelve runs of an
+interleaved re-test, with no overlap between them:
+
+| | sd | detected |
+|---|---|---|
+| runs the detector calls clean | 0.82-0.89 | 0 of 5 |
+| runs it calls reproducing | 0.99-4.59 | 7 of 7 |
+
+Which is the strongest argument yet for the point already made above:
+**`sd` is the tell that needs no threshold, no period and no shape.**
+Every instrument written for this defect has gone blind to it within a
+day by assuming something about what it looks like. `sd` has assumed
+nothing and has been right every time.
+
 ### 1c: the abandon timeout is in, the control channel is scoped not built
 
 **Done.** The playback-abandon timeout, which was the item quietly
