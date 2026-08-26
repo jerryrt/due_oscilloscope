@@ -609,7 +609,74 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
-### It is DAC1. The impedance rig and the slot control both say so
+### Four generator arms: a DAC pin generally, and the wrap not the wave
+
+`=<n>N` selects what `build_table()` puts on each DAC, at runtime, in one
+image - because the binary selects the state, so two builds would change
+the layout as well as the waveform and an absent artifact in the second
+arm would be unreadable. The table is a RAM array rebuilt by
+`gen_init()`, which `M` calls before every capture, so this costs a
+branch and no flash. Every arm keeps DAC0 on even slots and DAC1 on odd,
+so a swap moves the values and not the update timing.
+
+| arm | DAC0 | DAC1 |
+|---|---|---|
+| 0 `normal` | sine | DC |
+| 1 `swapped` | DC | sine |
+| 2 `two-cycle` | two sine periods per wrap | DC |
+| 3 `all-DC` | DC | DC |
+
+Verified before use: `normal` puts 1369.7 of tone on A0 and nothing on
+A1, `swapped` exactly the reverse, `two-cycle` puts 1370.2 at **twice**
+the frequency and 0.2 at the original, `all-DC` has no tone anywhere.
+
+**Twelve runs per arm, three gaps, interleaved, one binary.** Folded on
+whichever channel is flat in that arm:
+
+| arm | flat ch | \|peak\| | z | 2nd peak / 1st | control z |
+|---|---|---|---|---|---|
+| `normal` | A1 (DAC1) | **2.41** | **17.2** | **0.29** | 3.1 |
+| `swapped` | A0 (DAC0) | **1.54** | **15.8** | 0.84 | 3.1 |
+| `two-cycle` | A1 | 1.58 | 10.7 | 0.82 | 3.0 |
+| `all-DC` | A0 | 0.48 | 6.1 | 0.95 | 3.1 |
+| `all-DC` | A1 | 0.65 | 5.1 | 0.95 | 3.2 |
+
+**1. It is a DAC output pin, not DAC1.** Put the DC on DAC0 and the
+displacement moves to A0 with it - z 15.8 against `normal`'s 17.2 on the
+other pin. The open question from the pin result is answered, and the
+answer is the less convenient one: this is a property of a DAC output on
+this silicon, **not a defect of this board**, so the front end has to
+design around it.
+
+**2. It follows the wrap, not the waveform.** `two-cycle` halves the
+sine's period while leaving the table wrap at 512, and it never once
+produced two events 256 apart - 0 of 12 runs. In every arm the peak
+folded at 256 is *exactly half* the peak folded at 512, which is what a
+512-periodic event aliasing into a 256-fold does and not what a
+256-periodic event does. So comparing a 256-fold against a 512-fold
+cannot answer this and the first pass that did so was measuring the
+alias; counting peaks inside the 512-profile is the form that works.
+The wrap is a **PDC reload** - `DACC_TNPR`/`TNCR` rearmed, ENDTX fired,
+`gen_endtx_count` counting it - and that is the once-per-wrap event.
+
+**3. A changing output is needed.** `all-DC` has no structured event at
+all: z 5-6 against a control of 3.1, and a second peak 95% of the first,
+which is what the largest bin of pure noise looks like rather than a
+spike. So the reload alone does not do it; the reload is *when*, and the
+output being in motion is what gives it size.
+
+**What is not established, and it would be easy to overclaim here.**
+`swapped` reproduces the artifact but not its shape - a second peak at
+84% of the first, against 29% on `normal` - so the two pins are not
+demonstrated to behave identically, only to both carry it. `two-cycle`
+is weaker than `normal` (1.58 against 2.41) and it is not known why;
+"the wrap event is unchanged by doubling the waveform" is *not* shown.
+And every amplitude in this table is smaller than the 10.6 codes the
+slot control measured, because that was a different binary - the
+comparisons here are valid within this run and nowhere else.
+
+
+### It is a DAC pin - and DAC1 is not special after all
 
 The two-way split is closed. **The artifact is made at the DAC1 pin.**
 The ADC input network is exonerated, and it did not need the mid-rail

@@ -50,19 +50,48 @@ static int32_t sine_q15(uint32_t i, uint32_t n)
 	}
 }
 
+static void build_table(void);
+
+uint8_t gen_layout = GEN_LAYOUT_NORMAL;
+
+void gen_set_layout(uint32_t layout)
+{
+	gen_layout = (layout > GEN_LAYOUT_DC) ? (uint8_t)GEN_LAYOUT_NORMAL
+	                                      : (uint8_t)layout;
+	build_table();
+}
+
 static void build_table(void)
 {
+	/*
+	 * TWOCYCLE fits two sine periods into the same 256 points rather
+	 * than lengthening the table, so the wrap stays at GEN_TABLE_LEN
+	 * and only the waveform speeds up. That is the whole point: the
+	 * wrap is a PDC reload and has been exactly one sine period in
+	 * every build this project has run, so "follows the table" and
+	 * "follows the waveform" have never been separable. Here they fold
+	 * at 512 and 256 respectively.
+	 */
+	const unsigned period = (gen_layout == GEN_LAYOUT_TWOCYCLE)
+	                      ? GEN_SINE_POINTS / 2u : GEN_SINE_POINTS;
+
 	for (unsigned i = 0; i < GEN_SINE_POINTS; i++) {
-		int32_t s = sine_q15(i, GEN_SINE_POINTS);      /* -32768..32767 */
+		int32_t s = sine_q15(i % period, period);      /* -32768..32767 */
 		int32_t code = 2048 + ((s * 2047) >> 15);
+		uint16_t v0 = DC_CODE, v1 = DC_CODE;
 
 		if (code < 0)
 			code = 0;
 		if (code > 4095)
 			code = 4095;
 
-		gen_table[2 * i]     = (uint16_t)((0u << 12) | (uint16_t)code);
-		gen_table[2 * i + 1] = (uint16_t)((1u << 12) | DC_CODE);
+		if (gen_layout == GEN_LAYOUT_SWAPPED)
+			v1 = (uint16_t)code;
+		else if (gen_layout != GEN_LAYOUT_DC)
+			v0 = (uint16_t)code;
+
+		gen_table[2 * i]     = (uint16_t)((0u << 12) | v0);
+		gen_table[2 * i + 1] = (uint16_t)((1u << 12) | v1);
 	}
 }
 

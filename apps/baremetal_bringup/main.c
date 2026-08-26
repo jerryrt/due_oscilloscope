@@ -76,6 +76,7 @@ static void banner(void)
 	printf("#           =<ms>Z = detach the native port (software unplug)\n");
 	printf("#           =<tt>,<st>A = ADC track/settling time\n");
 	printf("#           =<n>C = 2ch pair: A0+A1 or A0+A2\n");
+	printf("#           =<n>N = gen layout 0..3 (see gen.h)\n");
 	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
 	printf("#           z=software reset  v=identity line\n");
 	printf("#\n");
@@ -931,6 +932,24 @@ static void cmd_execute(const cmd_t *cmd)
 		       acq_pair_second == ADC_CH_A2 ? 2u : 1u);
 		uart_flush();
 		break;
+	/*
+	 * "=<n>N": generator layout, 0 normal, 1 swapped, 2 two-cycle,
+	 * 3 all-DC. Rebuilt now and again by gen_init(), which M calls.
+	 * See gen.h for what each arm is for.
+	 */
+	case 'N': {
+		static const char *const names[] = {
+			"normal: sine DAC0, DC DAC1",
+			"swapped: DC DAC0, sine DAC1",
+			"two-cycle: two sine periods per wrap",
+			"all-DC: no sine on either",
+		};
+		gen_set_layout(cmd->arg[0]);
+		printf("# gen layout %u = %s\n",
+		       (unsigned)gen_layout, names[gen_layout]);
+		uart_flush();
+		break;
+	}
 	case 'A':
 		/*
 		 * "=<tracktim>,<settling>A". Applied at the next acq_init(),
