@@ -106,6 +106,50 @@ unrelated typo is two commits.
 
 Every commit should build. Bisect is worth protecting.
 
+## Branches
+
+**`main` is the branch.** It is what is built, what is tested, what is
+released and what every session starts from. Nothing else is a place
+where work lives.
+
+**Every other branch is short-lived: used and discarded.** Personal
+branches, feature branches, bug-fix branches - all of them exist to
+carry one change from its first commit to `main` and are deleted the
+moment they land. A branch is a way of moving a change, not a place to
+keep one.
+
+**Concretely:**
+
+- Branch from current `main`, not from another branch.
+- Keep it to one change, the same way a commit is one logical change.
+- Merge or rebase onto `main` and **delete the branch**, locally and on
+  the remote, in the same breath. A merged branch left behind is
+  noise that the next person has to evaluate.
+- If a branch cannot land within a few days, that is a signal the change
+  is too big, not a reason to keep the branch. Split it and land the
+  parts that are ready.
+- Leave the working tree on `main` when you stop. A checkout parked on a
+  feature branch is how unrelated commits end up on the wrong one.
+
+**Why this is a rule here and not a preference.** A long-lived branch on
+this project rots in a way that is specific and expensive: the binary
+selects which state issue #5 draws, so a branch that has drifted from
+`main` is running different firmware *and* a different draw of an open
+defect, and any measurement taken on it compares two things at once.
+Instruments drift too - `wip/track-a-control-channel` sat long enough
+that its recorded "160 passed / 88 failed" was taken with a
+`measure.py` that no longer exists, so the number meant nothing by the
+time anyone read it. Neither problem is visible from inside the branch.
+
+**The one long-lived exception, and it is being retired.**
+`wip/track-a-control-channel` predates this rule. It is not to be
+treated as precedent: it either lands or is deleted, and until it does,
+it is merged *from* `main` rather than left to drift. Anything learned
+on it that is not the change itself - a diagnosis, a measurement, a
+landmine in the vendor core - belongs on `main` in `docs/`, where it
+survives the branch being thrown away.
+
+
 ## Code conventions
 
 To be established with the first firmware commit. Provisionally:
