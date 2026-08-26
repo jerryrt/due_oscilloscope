@@ -141,10 +141,10 @@ that its recorded "160 passed / 88 failed" was taken with a
 `measure.py` that no longer exists, so the number meant nothing by the
 time anyone read it. Neither problem is visible from inside the branch.
 
-**The one long-lived exception, and it is being retired.**
-`wip/track-a-control-channel` predates this rule. It is not to be
-treated as precedent: it either lands or is deleted, and until it does,
-it is merged *from* `main` rather than left to drift. Anything learned
+**The one long-lived exception, and it is retired.**
+`wip/track-a-control-channel` predated this rule and was never
+precedent. It landed on 2026-08-26 and was deleted the same day, locally
+and on the remote. There is no standing exception now. Anything learned
 on it that is not the change itself - a diagnosis, a measurement, a
 landmine in the vendor core - belongs on `main` in `docs/`, where it
 survives the branch being thrown away.

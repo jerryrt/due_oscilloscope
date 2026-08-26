@@ -184,8 +184,9 @@ enumerates and opens.
 - **`main` is the branch; everything else is short-lived.**
   `CONTRIBUTING.md` has the full rule. The corollary that matters:
   **findings go on `main` in `docs/`, not on the branch that produced
-  them.** `wip/track-a-control-channel` is the one exception and is not
-  precedent - it lands or it is deleted.
+  them.** `wip/track-a-control-channel` was the one exception; it
+  landed on 2026-08-26 and is deleted. There is no standing exception
+  now.
 - **Report which state a run drew, never dirty or clean.** The
   integrity gate now identifies issue #5 with `pair_fold()` instead of
   thresholding it. Worth knowing why: the old gate reported **"0 steps
@@ -1611,8 +1612,10 @@ branch is gone.
 | `issue5-repro` | both of those plus `periodic_census()`, merged |
 | `wip/stream-stop-race` | **not a fix.** Tagged `dead/stream-stop-race` and deleted |
 
-Since then, one branch is live again: **`wip/track-a-control-channel`**,
-pushed and not for merging. Everything else the macOS session has sent -
+Since then that branch has landed too - **`wip/track-a-control-channel`**
+was merged and deleted on 2026-08-26, and the text below describing it as
+live is kept only for the reasoning. Everything the macOS session has
+sent -
 `flat_census()`, the flash boot check, the burst-tolerant detector, the
 A/B verdict, `fold_profile()` and the jumper result - is merged into
 `main`.

@@ -464,7 +464,11 @@ that no longer existed, so the number meant nothing by the time it was
 read. **Findings belong on `main` in `docs/`, not on the branch that
 produced them** - a branch is thrown away and a diagnosis should not be.
 
-`wip/track-a-control-channel` predates the rule and is not precedent.
+`wip/track-a-control-channel` was the one exception that predated the
+rule. It landed on 2026-08-26 and is deleted, locally and on the remote.
+There is no standing exception now, and the rule cost it nothing: the
+diagnosis that made it mergeable was written to `docs/` on `main` before
+the branch was merged, so it survives the branch.
 
 
 ## Commits
