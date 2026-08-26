@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "USB/USBDesc.h"          /* CDC_RX, CDC_TX */
 #include "usbdma.h"
+#include "ctlusb.h"
 
 /*
  * UOTGHS_DEVDMA is indexed from endpoint 1, so endpoint n uses index
@@ -65,9 +66,10 @@ static void ep_apply_autosw(uint32_t ep, bool on)
 	 * this controller there is no such thing: every DEVEPTCFG write
 	 * carries ALLOC and re-allocates. Most calls here are redundant -
 	 * releasing a mode that was never claimed - and they were paying
-	 * full price for it. This is half of the fix named in the warning
-	 * above; the other half, re-allocating the endpoints above, has
-	 * nothing to re-allocate until the control channel arrives.
+	 * full price for it. That is half of the fix named in the warning
+	 * above; the other half is below, and it is no longer inert - the
+	 * control channel brought EP4-6 into existence, so a write here
+	 * really does slide a window that matters.
 	 */
 	if (!!(cfg & UOTGHS_DEVEPTCFG_AUTOSW) == on)
 		return;
@@ -78,6 +80,14 @@ static void ep_apply_autosw(uint32_t ep, bool on)
 		cfg &= ~UOTGHS_DEVEPTCFG_AUTOSW;
 
 	UOTGHS->UOTGHS_DEVEPTCFG[ep] = cfg;
+
+	/*
+	 * The other half. This write re-allocated `ep`, which slides
+	 * the window of ep+1 and loses whatever was in it (40.5.1.6).
+	 * The control endpoints sit above both EP2 and EP3, so put
+	 * them back, ascending, before anything reads them.
+	 */
+	ctlusb_realloc_endpoints();
 }
 
 /*
@@ -172,6 +182,12 @@ void usbdma_mode(bool in_dma, bool out_dma)
  */
 void usbdma_keepalive(void)
 {
+	/* The core re-enables every endpoint's interrupt on bus reset and
+	 * SET_CONFIGURATION, including the control endpoints it knows
+	 * nothing about. Mask them again here, on the same schedule and
+	 * for the same reason this function already exists. */
+	ctlusb_quiesce_interrupts();
+
 	bool clobbered = false;
 
 	/*

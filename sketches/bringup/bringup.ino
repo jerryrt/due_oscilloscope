@@ -42,6 +42,7 @@
 #include "stream.h"
 #include "play.h"
 #include "playstat.h"
+#include "ctlusb.h"
 #include "usbdma.h"
 #include "frame.h"
 #include "version.h"
@@ -150,6 +151,21 @@ static void banner(void)
 	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
 	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
 	Serial.println("#           O=playback ring occupancy histogram");
+	{
+		/* CFGOK per endpoint: the controller's own answer to "did
+		 * this allocation take". Guessing at DPRAM arithmetic is how
+		 * an endpoint that never configured gets blamed on software. */
+		char ok[16];
+		for (unsigned e = 0; e < 7; e++)
+			ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
+			         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
+		ok[7] = 0;
+		Serial.print("#           ep cfgok[0..6]: ");
+		Serial.println(ok);
+	}
+	Serial.print("#           control channel: ");
+	Serial.println(ctlusb_ok() ? "registered (iface 2/3, EP4-6)"
+	                          : "NOT registered - one CDC function only");
 	Serial.println("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels");
 	Serial.println("#           M=mimic loop without USB (gen sine on TIOA1 + capture)");
 	Serial.println("#           d=DAC max update-rate sweep");
@@ -893,8 +909,119 @@ void setup()
 	heartbeat_at = millis();
 }
 
+/*
+ * High-water mark on UOTGHS_DEVEPT.
+ *
+ * SET_CONFIGURATION demonstrably ran (_usbConfiguration=1) and its
+ * handler calls UDD_InitEndpoints() immediately before setting that
+ * flag, so EP1-6 should have been enabled - yet DEVEPT reads 1. Either
+ * the enables never happened, or they happened and something cleared
+ * them. A single sample cannot tell those apart and the main loop is
+ * the only place that can watch. Costs one OR per pass.
+ */
+volatile uint32_t devept_seen;
+
+/*
+ * When did it change, and had the bus been reset when it did?
+ *
+ * The high-water mark above says EP1-6 *were* enabled and are not any
+ * more. It cannot say when, which is the difference between "cleared
+ * during configuration" and "cleared later, when something touched the
+ * endpoints" - and those want different code read.
+ *
+ * So trace every change, with an independent witness for the one
+ * explanation that would make this ordinary. UOTGHS_DEVCTRL carries
+ * UADD and ADDEN: SET_ADDRESS writes them and a bus reset clears them,
+ * in the controller, with no software involved. `_usbConfiguration` is
+ * the core's own flag for the same question and it is only as good as
+ * the core's EORST handler running. If DEVEPT drops to 1 while UADD is
+ * still set, no reset happened and something in this image cleared six
+ * endpoints. If UADD clears with it, the host reset the bus and the
+ * core failed to notice, which is a different bug in a different file.
+ *
+ * Sixteen entries and a saturating index: this must not become the
+ * thing that perturbs what it measures, and the interesting events are
+ * the first ones. Two reads and a compare per pass.
+ */
+#define USBTRACE_N 32u
+struct usbtrace_e {
+	uint32_t us, pass, devept, devctrl, cfg;
+};
+static volatile struct usbtrace_e usbtrace[USBTRACE_N];
+static volatile uint32_t usbtrace_n;      /* entries kept, saturating */
+static volatile uint32_t usbtrace_drop;   /* changes past the sixteenth */
+
+static inline void usbtrace_sample(uint32_t pass)
+{
+	extern volatile uint32_t _usbConfiguration;
+	static uint32_t last_ept = 0xffffffffu, last_ctrl, last_cfg;
+	uint32_t ept  = UOTGHS->UOTGHS_DEVEPT;
+	uint32_t ctrl = UOTGHS->UOTGHS_DEVCTRL;
+	uint32_t cfg  = _usbConfiguration;
+
+	if (ept == last_ept && ctrl == last_ctrl && cfg == last_cfg)
+		return;
+	last_ept = ept; last_ctrl = ctrl; last_cfg = cfg;
+
+	if (usbtrace_n >= USBTRACE_N) {
+		usbtrace_drop++;
+		return;
+	}
+	usbtrace[usbtrace_n].us      = micros();
+	usbtrace[usbtrace_n].pass    = pass;
+	usbtrace[usbtrace_n].devept  = ept;
+	usbtrace[usbtrace_n].devctrl = ctrl;
+	usbtrace[usbtrace_n].cfg     = cfg;
+	usbtrace_n++;
+}
+
+
+/*
+ * Put the enables back, a bounded number of times, and report what the
+ * controller does with the write.
+ *
+ * The trace says EP1-6 are enabled at SET_CONFIGURATION and cleared
+ * 2.5 ms later with the device still addressed, so no bus reset. That
+ * narrows the question to one the controller can answer directly: does
+ * EPEN stay set when it is written back? If it reads 0x7f and holds,
+ * the clear was a one-off act by something in this image and the next
+ * job is to find it. If it reads back 1, the controller is refusing to
+ * enable these endpoints - which is DPRAM, not software, and CFGOK
+ * reporting 1111111 is then describing configurations rather than
+ * allocations.
+ *
+ * Bounded because an unbounded retry against a controller that refuses
+ * is a main loop that does nothing else. Eight is enough to tell a
+ * one-off from a fight, and usbtrace records every attempt with its
+ * timestamp.
+ */
+#define DEVEPT_RESTORE_MAX 8u
+static volatile uint32_t devept_restores;
+static volatile uint32_t devept_after[DEVEPT_RESTORE_MAX];
+
+static inline void devept_restore(void)
+{
+	extern volatile uint32_t _usbConfiguration;
+
+	if (devept_restores >= DEVEPT_RESTORE_MAX)
+		return;
+	if (!_usbConfiguration || devept_seen != 0x7fu)
+		return;
+	if (UOTGHS->UOTGHS_DEVEPT == 0x7fu)
+		return;
+
+	UOTGHS->UOTGHS_DEVEPT |= 0x7eu;                  /* EP1-6 */
+	devept_after[devept_restores] = UOTGHS->UOTGHS_DEVEPT;
+	devept_restores++;
+}
+
+
 void loop()
 {
+	devept_seen |= UOTGHS->UOTGHS_DEVEPT;
+	usbtrace_sample(stream_loop_passes);
+	devept_restore();
+	usbtrace_sample(stream_loop_passes);
 	static uint32_t rate_arg[3];
 	static unsigned rate_idx;
 	static bool     rate_entry;
@@ -903,6 +1030,19 @@ void loop()
 	char buf[192];
 
 	stream_loop_passes++;
+
+	/*
+	 * Every pass, and unconditionally. The core enables EP4-6's
+	 * interrupts at SET_CONFIGURATION and again on every bus reset,
+	 * and its ISR has no case for them - an OUT packet on EP5 then
+	 * raises an interrupt nothing acknowledges and the handler
+	 * re-enters for ever. The board keeps enumerating, because that
+	 * is all the ISR is still doing, and answers nothing else.
+	 * Cheap enough to do here rather than reason about when it is
+	 * needed: one register write against a storm that presents as a
+	 * dead board.
+	 */
+	ctlusb_quiesce_interrupts();
 
 	/* Heartbeat: if this stops, the board hung or faulted. */
 	uint32_t now = millis();
@@ -1126,6 +1266,139 @@ void loop()
 		break;
 	}
 	case 'O': cmd_occ_hist(); break;
+	case 'E': {
+		/*
+		 * Endpoint state, readable while a stream is running.
+		 *
+		 * The banner reports CFGOK once, at boot, which is exactly when
+		 * nothing is wrong yet. The question this exists for is whether
+		 * the sample endpoints are still configured *during* a capture,
+		 * once ep_apply_autosw() and the control-endpoint realloc have
+		 * been running against each other for a few thousand passes.
+		 */
+		char buf2[128], ok[16];
+		for (unsigned e = 0; e < 7; e++)
+			ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
+			         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
+		ok[7] = 0;
+		snprintf(buf2, sizeof(buf2),
+		         "# ep cfgok=%s reallocs=%lu cfgfail=%lu ep2=%08lx ep3=%08lx",
+		         ok, (unsigned long)ctlusb_reallocs,
+		         (unsigned long)ctlusb_cfg_fail,
+		         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
+		         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3]);
+		Serial.println(buf2); Serial.flush();
+
+		/*
+		 * The table the core actually scans, and the count it
+		 * derives from it.
+		 *
+		 * USBCore's SET_CONFIGURATION handler counts endpoints by
+		 * walking EndPoints[] to the first zero and hands that count
+		 * to UDD_InitEndpoints(), which loops from 1. So a zero in
+		 * the wrong slot silently truncates the whole thing, and
+		 * DEVEPT ends up with only EP0 enabled - which is exactly
+		 * what this branch reads (EPT=00000001 against 0000000f on
+		 * a working build) while CFGOK still reports 1111111,
+		 * because CFGOK describes a configuration and EPEN is what
+		 * actually enables the endpoint.
+		 *
+		 * Printed rather than reasoned about: the count is the whole
+		 * question and nothing else on the board reveals it.
+		 */
+		{
+			extern uint32_t EndPoints[];
+			char eb[160];
+			int  n = 0;
+			unsigned count = 0;
+			while (EndPoints[count] != 0)
+				count++;
+			n = snprintf(eb, sizeof(eb), "# eptab count=%u :", count);
+			for (unsigned e = 0; e < 10 && n < (int)sizeof(eb) - 12; e++)
+				n += snprintf(eb + n, sizeof(eb) - n, " %lu",
+				              (unsigned long)EndPoints[e]);
+			Serial.println(eb); Serial.flush();
+
+			/*
+			 * Did SET_CONFIGURATION ever run?
+			 *
+			 * USBCore sets _usbConfiguration in its SET_CONFIGURATION
+			 * handler, immediately after UDD_InitEndpoints(), and
+			 * clears it on bus reset. DEVEPT reads 1 and DEVCTRL says
+			 * the device is addressed, so the question is whether the
+			 * host never configured it or whether the handler ran and
+			 * something undid it. Nothing else on the board
+			 * distinguishes those.
+			 */
+			{
+				extern volatile uint32_t _usbConfiguration;
+				char cb[80];
+				snprintf(cb, sizeof(cb),
+				         "# usbcfg _usbConfiguration=%lu deveptseen=%08lx now=%08lx",
+				         (unsigned long)_usbConfiguration,
+				         (unsigned long)devept_seen,
+				         (unsigned long)UOTGHS->UOTGHS_DEVEPT);
+				Serial.println(cb); Serial.flush();
+			}
+
+			/*
+			 * The trace. One line per change of DEVEPT, DEVCTRL or
+			 * _usbConfiguration, in the order they happened, with
+			 * micros() and the pass number.
+			 *
+			 * Read DEVCTRL first: bit 8 is ADDEN and bits 0-6 are
+			 * UADD, both written by SET_ADDRESS and both cleared by
+			 * the controller on a bus reset. An entry where DEVEPT
+			 * falls to 1 while ADDEN is still set is a clear that no
+			 * reset explains.
+			 */
+			{
+				char tb[160];
+				int  tn = snprintf(tb, sizeof(tb),
+				         "# usbrestore n=%lu after:",
+				         (unsigned long)devept_restores);
+				for (unsigned i = 0; i < devept_restores
+				                  && i < DEVEPT_RESTORE_MAX; i++)
+					tn += snprintf(tb + tn, sizeof(tb) - tn, " %08lx",
+					               (unsigned long)devept_after[i]);
+				Serial.println(tb); Serial.flush();
+				tn = snprintf(tb, sizeof(tb),
+				         "# usbsetup n=%lu dropped=%lu",
+				         (unsigned long)ctlusb_setup_n,
+				         (unsigned long)ctlusb_setup_drop);
+				Serial.println(tb); Serial.flush();
+				for (unsigned i = 0; i < ctlusb_setup_n
+				                  && i < CTLUSB_SETUP_N; i++) {
+					snprintf(tb, sizeof(tb),
+					         "# s%02u type=%02x req=%02x val=%04x idx=%04x len=%u claimed=%u",
+					         i, ctlusb_setups[i].bmRequestType,
+					         ctlusb_setups[i].bRequest,
+					         ctlusb_setups[i].wValue,
+					         ctlusb_setups[i].wIndex,
+					         ctlusb_setups[i].wLength,
+					         ctlusb_setups[i].claimed);
+					Serial.println(tb); Serial.flush();
+				}
+				snprintf(tb, sizeof(tb),
+				         "# usbtrace n=%lu dropped=%lu (us pass devept devctrl cfg)",
+				         (unsigned long)usbtrace_n,
+				         (unsigned long)usbtrace_drop);
+				Serial.println(tb); Serial.flush();
+				for (unsigned i = 0; i < usbtrace_n && i < USBTRACE_N; i++) {
+					snprintf(tb, sizeof(tb),
+					         "# t%02u %10lu %10lu %08lx %08lx %lu",
+					         i,
+					         (unsigned long)usbtrace[i].us,
+					         (unsigned long)usbtrace[i].pass,
+					         (unsigned long)usbtrace[i].devept,
+					         (unsigned long)usbtrace[i].devctrl,
+					         (unsigned long)usbtrace[i].cfg);
+					Serial.println(tb); Serial.flush();
+				}
+			}
+		}
+		break;
+	}
 	case 'Q': cmd_profile();  break;
 	case 'V': play_dump();    break;
 	case 'D': diag_start();   break;
