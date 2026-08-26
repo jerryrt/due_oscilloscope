@@ -654,9 +654,46 @@ here is - one image, interleaved, no reflash between arms. Read it back
 from the peripheral rather than echoing it; `acq_mr()` exists because
 that distinction has already cost this project a day.
 
-**Untested.** Nothing here has been measured yet. The reset value has
-not even been read off the board - the claim is that the code never
-writes it, which is a fact about the source, not about the register.
+**Measured, and it is not the fix.** `=<ch>,<core>I` sets the field and
+`?` reads `DACC_ACR` back from the peripheral. Reset reads `00000000`,
+confirming from the hardware what the grep said about the source: this
+project has always run the output stage at minimum bias. The Arduino
+value reads `0000010a` and the maximum `0000030f`, and both survive the
+`DACC_CR_SWRST` in `gen_init()` because `gen_apply_acr()` runs after it -
+setting the register from the console alone would have been undone by
+the next capture, silently.
+
+Three gaps, three reps, interleaved, one binary, readback asserted on
+every run:
+
+| ACR | \|peak\| med | z med | A1 sd | peak phase |
+|---|---|---|---|---|
+| `00000000` reset | 6.12 | 52.3 | 0.893 | 188, consistently |
+| `0000010a` Arduino / datasheet | 8.70 | 62.5 | 0.937 | 378 or 486 |
+| `0000030f` maximum | 8.84 | 71.9 | 0.970 | 378, 486, 88 |
+
+**No bias setting removes the artifact**, and the amplitude does not
+fall with more drive - it is flat to slightly higher, as is the channel's
+own noise. So the artifact is not the output stage being slew-limited at
+minimum bias, which was the reason for looking.
+
+**The null is powered, and the phase is what powers it.** Reset sits on
+phase 188 in every run; both raised settings move to 378 or 486. The
+register demonstrably reaches the analog path and changes the timing of
+whatever the ADC is catching. That also means the amplitude column
+cannot be read as a size comparison - the sampling instant moved with
+the arm, and the sampling instant is known to set amplitude and sign.
+Separating them needs a gap sweep fine enough to resolve one ADC period,
+which `micros()` cannot deliver.
+
+**The parity gap is still real and is left open deliberately.** Track A
+gets the datasheet's characterised condition through `analogWrite()`;
+Track B now *can* but still boots at reset, so nothing about existing
+measurements changes underneath anyone. Closing it is spec conformance -
+the published INL, DNL, SNR and THD do not describe a part at
+IBCTL 0 - and it should be decided on that, **not** sold as an issue #5
+fix, because it measurably is not one.
+
 
 
 ### Four generator arms: a DAC pin generally, and the wrap not the wave

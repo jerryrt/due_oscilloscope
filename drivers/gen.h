@@ -30,6 +30,13 @@
 #define GEN_LAYOUT_TWOCYCLE  2u
 #define GEN_LAYOUT_DC        3u
 
+/* DACC output-stage bias. Applied after every DACC_CR_SWRST. See gen.c. */
+extern uint8_t gen_ibctl_ch;
+extern uint8_t gen_ibctl_core;
+void     gen_set_ibctl(uint32_t ch, uint32_t core);
+void     gen_apply_acr(void);
+uint32_t gen_acr(void);
+
 extern uint8_t gen_layout;
 void gen_set_layout(uint32_t layout);
 

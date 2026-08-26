@@ -77,6 +77,7 @@ static void banner(void)
 	printf("#           =<tt>,<st>A = ADC track/settling time\n");
 	printf("#           =<n>C = 2ch pair: A0+A1 or A0+A2\n");
 	printf("#           =<n>N = gen layout 0..3 (see gen.h)\n");
+	printf("#           =<ch>,<core>I = DACC_ACR bias (2,1 = Arduino)\n");
 	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
 	printf("#           z=software reset  v=identity line\n");
 	printf("#\n");
@@ -950,6 +951,18 @@ static void cmd_execute(const cmd_t *cmd)
 		uart_flush();
 		break;
 	}
+	/*
+	 * "=<ch>,<core>I": DACC_ACR's IBCTLCHx and IBCTLDACCORE, applied
+	 * at the next DACC init. "=2,1I" is the Arduino core's value and
+	 * the datasheet's characterisation condition; 0,0 is reset, which
+	 * is what this project has always run. See gen.c.
+	 */
+	case 'I':
+		gen_set_ibctl(cmd->arg[0], cmd->arg[1]);
+		printf("# dacc ibctl: ch=%u core=%u (next DACC init)\n",
+		       (unsigned)gen_ibctl_ch, (unsigned)gen_ibctl_core);
+		uart_flush();
+		break;
 	case 'A':
 		/*
 		 * "=<tracktim>,<settling>A". Applied at the next acq_init(),

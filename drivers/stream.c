@@ -488,9 +488,9 @@ void stream_report(void)
 	 * 3.8 ms, a fifth of what `?` cost in total. Invariant 8 is about
 	 * exactly that. The host decodes instead.
 	 */
-	printf("# dma-frames=%lu dma-stalls=%lu adcmr=%08lx\n",
+	printf("# dma-frames=%lu dma-stalls=%lu adcmr=%08lx acr=%08lx\n",
 	       (unsigned long)dma_frames, (unsigned long)dma_stalls,
-	       (unsigned long)acq_mr());
+	       (unsigned long)acq_mr(), (unsigned long)gen_acr());
 	printf("# frames=%lu bytes=%lu %lu.%03lu MB/s prod=%lu cons=%lu "
 	       "ringovf=%lu resync=%lu refused=%lu rxbuff=%lu govre=%lu "
 	       "endtx=%lu rst=%lu setup=%lu stall=%lu cfg=%lu dtr=%lu cfgfail=%lu\n"

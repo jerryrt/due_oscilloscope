@@ -50,6 +50,47 @@ static int32_t sine_q15(uint32_t i, uint32_t n)
 	}
 }
 
+/*
+ * DACC_ACR: the output stage's bias current, and it has never been
+ * written here.
+ *
+ * Datasheet 45.7.11 calls IBCTLCHx "Analog Output Current Control -
+ * allows to adapt the slew rate of the analog output", and Tables 46-38
+ * and 46-40 specify every published DAC figure - INL, DNL, SNR, THD,
+ * SINAD - at IBCTLDACCORE=01 with IBCTLCHx=10. At reset the field is 0,
+ * so the part has been running outside the conditions its own numbers
+ * describe. The Arduino core writes exactly the characterised value at
+ * wiring_analog.c:232 the first time a DAC channel is enabled, which
+ * makes this a track parity gap as well as a knob.
+ *
+ * It has to be applied *after* DACC_CR_SWRST, and by every path that
+ * issues one - gen_init() and play_init() both do. Setting it from a
+ * console command alone would be silently undone by the next capture,
+ * which is the mistake ADC_MR's readback exists to catch.
+ */
+uint8_t gen_ibctl_ch;      /* IBCTLCH0 and CH1, 0-3 */
+uint8_t gen_ibctl_core;    /* IBCTLDACCORE, 0-3    */
+
+void gen_set_ibctl(uint32_t ch, uint32_t core)
+{
+	gen_ibctl_ch   = (uint8_t)(ch > 3u ? 3u : ch);
+	gen_ibctl_core = (uint8_t)(core > 3u ? 3u : core);
+}
+
+void gen_apply_acr(void)
+{
+	DACC->DACC_ACR = DACC_ACR_IBCTLCH0(gen_ibctl_ch)
+	               | DACC_ACR_IBCTLCH1(gen_ibctl_ch)
+	               | DACC_ACR_IBCTLDACCORE(gen_ibctl_core);
+}
+
+/* As the hardware holds it. See acq_mr() for why this is not an echo. */
+uint32_t gen_acr(void)
+{
+	return DACC->DACC_ACR;
+}
+
+
 static void build_table(void);
 
 uint8_t gen_layout = GEN_LAYOUT_NORMAL;
@@ -106,6 +147,7 @@ void gen_init(void)
 
 	PMC->PMC_PCER1 = (1u << (ID_DACC - 32));
 	DACC->DACC_CR = DACC_CR_SWRST;
+	gen_apply_acr();
 
 	DACC->DACC_MR = DACC_MR_TAG
 	              | DACC_MR_REFRESH(1)
