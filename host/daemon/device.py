@@ -286,6 +286,8 @@ class BoardDevice(Device):
         self._ctl = None
         self._ctl_tried = False
         self._ctl_note = None
+        self._ident = None
+        self._ident_tried = False
 
     def control(self):
         """The native port's command channel, or None.
@@ -301,6 +303,21 @@ class BoardDevice(Device):
         Callers fall back to the console and are slower and rougher on
         the board, which is the honest behaviour rather than refusing to
         report anything at all.
+
+        **A node is not a protocol.** This used to open whatever
+        `command_node()` returned and speak to it, which is correct only
+        while "has a second CDC function" and "answers CTL frames" are
+        the same firmware. They stopped being the same the moment Track
+        A's control channel was enumerated ahead of being implemented:
+        the node appears, opens, and answers nothing, and every call
+        made through it then blocks until its caller's timeout - 20 s in
+        the daemon suite, against a board that is working perfectly.
+
+        The identity line already carries the discriminator and
+        `CLAUDE.md` already names it: `ctlver=0` means "this track has no
+        control channel". So ask. `v` is one short line rather than the
+        banner, and the answer is cached for the same reason `describe`
+        caches the track: it cannot change without a reflash.
         """
         if self._ctl is not None or self._ctl_tried:
             return self._ctl
@@ -313,11 +330,38 @@ class BoardDevice(Device):
                 self._ctl_note = "no command port; this firmware has one "\
                                  "CDC function"
                 return None
+            ident = self._identity()
+            if ident is None:
+                self._ctl_note = "the board did not answer `v`, so whether "\
+                                 "it speaks CTL is unknown; not guessing"
+                return None
+            if ident.get("ctl_version", 0) < 1:
+                self._ctl_note = "the command node enumerates but reports "\
+                                 "ctlver=0: this firmware has no control "\
+                                 "channel"
+                return None
             self._ctl = control_mod.Control(node, timeout=2.0)
         except Exception as e:                       # noqa: BLE001
             self._ctl_note = f"command port unavailable: {e}"
             self._ctl = None
         return self._ctl
+
+    def _identity(self):
+        """The board's identity line, asked once and kept.
+
+        Separate from `describe`, which asks `which_track` and may
+        decline to ask at all while the device is busy. This one is
+        reached only from `control`, costs one line rather than the
+        banner, and what it reports cannot change without a reflash.
+        """
+        if self._ident_tried:
+            return self._ident
+        self._ident_tried = True
+        try:
+            self._ident = self.m.identity(self.board)
+        except Exception:                            # noqa: BLE001
+            self._ident = None
+        return self._ident
 
     def _drop_control(self):
         """Forget the channel, so the next caller reopens it.
@@ -328,6 +372,8 @@ class BoardDevice(Device):
         """
         c, self._ctl = self._ctl, None
         self._ctl_tried = False
+        self._ident = None
+        self._ident_tried = False
         if c is not None:
             try:
                 c.close()
