@@ -1155,6 +1155,30 @@ void loop()
 		break;
 	}
 	case 'O': cmd_occ_hist(); break;
+	case 'E': {
+		/*
+		 * Endpoint state, readable while a stream is running.
+		 *
+		 * The banner reports CFGOK once, at boot, which is exactly when
+		 * nothing is wrong yet. The question this exists for is whether
+		 * the sample endpoints are still configured *during* a capture,
+		 * once ep_apply_autosw() and the control-endpoint realloc have
+		 * been running against each other for a few thousand passes.
+		 */
+		char buf2[128], ok[16];
+		for (unsigned e = 0; e < 7; e++)
+			ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
+			         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
+		ok[7] = 0;
+		snprintf(buf2, sizeof(buf2),
+		         "# ep cfgok=%s reallocs=%lu cfgfail=%lu ep2=%08lx ep3=%08lx",
+		         ok, (unsigned long)ctlusb_reallocs,
+		         (unsigned long)ctlusb_cfg_fail,
+		         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
+		         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3]);
+		Serial.println(buf2); Serial.flush();
+		break;
+	}
 	case 'Q': cmd_profile();  break;
 	case 'V': play_dump();    break;
 	case 'D': diag_start();   break;

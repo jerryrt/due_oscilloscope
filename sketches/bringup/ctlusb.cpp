@@ -83,6 +83,30 @@ static const uint8_t ctl_desc[] = {
 #define CTL_FIRST_INTERFACE  2u
 #define CTL_FIRST_ENDPOINT   CTL_EP_ACM
 
+/*
+ * Make the core report the IAD-composite device class.
+ *
+ * Track B's device descriptor is 0xEF/0x02/0x01 - misc, common class,
+ * interface association - because a device carrying two CDC functions
+ * has to say so before a host will honour its IADs. The core has that
+ * descriptor as USB_DeviceDescriptorA and picks it only when
+ * _cdcComposite is set, which USBCore does when a device-descriptor
+ * request arrives with wLength == 8. That heuristic is for the
+ * short-probe-then-full-read order; it is not a promise, and Windows
+ * cached this board's compatible IDs as DevClass_00 - the single-CDC
+ * class - which is what a second function must not enumerate under.
+ *
+ * The symptom was not a refused enumeration. Both nodes appeared, both
+ * bound usbser, both reported Status OK - and opening the *sample* node
+ * blocked for ever, because the function boundaries the host had were
+ * not the ones the device meant. Track B, with the same two functions
+ * and the right device class, opens both.
+ *
+ * Set it here rather than waiting to be asked, since by the time the
+ * question is asked the answer has to be right already.
+ */
+extern "C" uint32_t _cdcComposite;
+
 static bool registered;
 volatile uint32_t ctlusb_reallocs;
 volatile uint32_t ctlusb_cfg_fail;
@@ -126,6 +150,8 @@ CtlUSB::CtlUSB() : PluggableUSBModule(3, 2, eps)
 	line_coding[4] = 0; line_coding[5] = 0; line_coding[6] = 8;
 
 	registered = PluggableUSB().plug(this) && contracted();
+	if (registered)
+		_cdcComposite = 1;
 }
 
 bool CtlUSB::contracted() const
