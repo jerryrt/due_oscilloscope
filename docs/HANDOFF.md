@@ -566,6 +566,68 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### The image chooses the state, and this one is powered
+
+The count of states is a property of the binary, not of the host or the
+board. Interleaved A/B with the flash **inside** the rotation, four
+rounds, four runs per image per round, RC 189, TRACKTIM 0 SETTLING 0
+throughout, `fold_profile()` on A1 with DAC1 connected:
+
+| image | states drawn in 16 runs |
+|---|---|
+| `c9efd53` | phase 58 at **+34.8** (4), phase 172 at **-13.1** (3), phase 386 at **-2.4** (9) |
+| `f6bf644` | phase 272 at **+2.4**, 16 of 16 |
+
+Control z was 2.6-3.9 in every run of both arms, so every one of those
+four is the artifact and none is a clean run. The old arm drew three
+states inside one rotation - and drew a *fourth* pattern of its own,
+holding phase 58 for all four runs of round 2 and then varying within a
+single boot in the other three rounds. The new arm never moved: four
+separate boots, sixteen runs, one phase, a 0.20-code spread.
+
+**The change between the two images is not executed during the
+measurement.** `f6bf644` adds `acq_mr()` and two `printf`s to
+`stream_report()`, which is `?`, and the harness never sends `?`. So
+what differs is the layout of the binary and nothing else - which makes
+this the "four bytes of bss flip it" claim that died earlier for want of
+a control, now with the control it never had: interleaved, flash in the
+rotation, continuous readout, and an old arm visibly reproducing three
+ways while the new one holds still.
+
+**What this does to the record.**
+
+- **"Two states" is this-image-specific.** The macOS pair at phases 63
+  and 211 and the Windows pair are counts taken from particular
+  binaries. Three states appear here, and one, on two images an hour
+  apart.
+- **The macOS session's question 2 on issue #5 is answered, and the
+  answer is not about the host.** Windows shows three states on one
+  image and one on another, so "one state, or three" cannot separate
+  the hosts. Compare images before comparing anything else.
+- **Any A/B that reflashes is confounded by this**, which is most of
+  them: `tools/ab.py`'s conditions are shell commands that leave the
+  board flashed, so the treatment changes the layout as well as the
+  logic. That is not a reason to stop interleaving - it is a reason to
+  report the state distribution of both arms rather than a verdict, and
+  to carry a layout-only arm.
+- **It does not touch the jumper test**, which is where "analog" comes
+  from: grounding A1 silenced the artifact on one image, and no layout
+  change can do that.
+
+**What it does not settle.** Why a layout change moves a phase, and
+whether "the image" means alignment of the two timer starts, of the
+capture, or of something in the DAC path. `PLAY`/`gen` start ordering is
+instruction timing between two clocks by construction - see the `M`
+preset's own comment - so a first guess is that the layout shifts the
+gap between `gen_go_tioa1()` and the ADC start. Untested.
+
+**The prelude does not do it.** Sending an extra console command and its
+printf reply before the capture - none, `=0,0A`, `v`, two of them,
+interleaved over six rounds - left all 24 runs on phase 272 at +2.3 to
++2.5. So it is not simply the time or the instruction count immediately
+before the start.
+
+
 ### Track and settling do nothing, and the coin flip has two faces
 
 The sweep is finally a real experiment. It was inconclusive first time
