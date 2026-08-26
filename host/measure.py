@@ -484,11 +484,10 @@ def pair_fold(vals, period=GEN_TABLE_LEN):
     # showed up as hold_ok refusing the sine arms of the layout sweep,
     # which was the guard working rather than the measurement failing,
     # but the measurement is available for one more subtraction.
-    import statistics as _st2
     best_d, best_spread = None, None
     for off in (0, 1):
         d = [vals[i] - vals[i + 1] for i in range(off, len(vals) - 1, 2)]
-        spread = _st2.median([abs(x) for x in d])
+        spread = _st.median([abs(x) for x in d])
         if best_spread is None or spread < best_spread:
             best_d, best_spread = d, spread
     d = best_d
