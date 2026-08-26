@@ -155,8 +155,35 @@ to settle both survive. Reconnect DAC1 to A1 through **10k**: source
 impedance decides settling, so the artifact growing with the resistor
 means the front end and exonerates DAC1; no change means DAC1.
 
-**The resistor is DEFERRED: the hardware is not to hand (2026-08-26).**
-Nothing else is blocked by it. Do not open the session by trying it.
+**DEFERRED: the hardware is not to hand (2026-08-26).** Nothing else is
+blocked by it. Do not open the session by trying it.
+
+**And the design changed - do not run the DAC1+10k version.** A
+mid-rail source that is not the DAC is better, because the DAC+resistor
+test moves two things at once: it raises the source impedance *and*
+low-passes DAC1's own output, so the two hypotheses push the measurement
+in opposite directions through one knob.
+
+What is wanted is **a mid-rail source with selectable series
+resistance** - a reference plus a few resistors, or just a divider off
+3.3 V, whose output impedance is `R1||R2` and therefore free to choose.
+A voltage reference alone is not enough: it is deliberately ~0 ohm,
+which is the same confound GND had.
+
+Set it near **1.65 V**, where A1 sat (~2055 codes) when the artifact was
+characterised, so the comparison is like with like. GND was flawed twice
+over - it clipped at code 0, so a negative-going event was invisible and
+two RCs had measured negative, and it was stiff.
+
+    A1 driven by                     appears            absent
+    mid-rail reference, ~0 ohm       not DAC1           ambiguous
+    mid-rail reference + series R    not DAC1, and      DAC1
+                                     R-dependence
+                                     says settling
+
+Only the second row is conclusive in both directions, which is the whole
+reason to wait for the parts rather than improvise with what is on the
+bench.
 
 **The track/settling sweep is done, and the answer is neither register.**
 It did not need the resistor after all - `pair_fold()` measures A0,
