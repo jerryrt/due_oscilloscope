@@ -505,6 +505,38 @@ SAM-BA and is caught), and it means the 0-of-20 measured here was a
 sample that missed it rather than proof of absence. Neither check
 catches this one; the only evidence is silence.
 
+### Windows re-runs the RC scan: the withdrawal holds, and the sets nest
+
+Same scan, same `periodic_census()`, Track B, RC 186-200, one run each.
+
+    rc    186 187 188 189 190 191 192 193 194 195 196 197 198 199 200
+    win     y   y   .   y   y   .   .   y   .   .   .   .   y   y   .
+    mac     y   y   .   y   y   y   .   y   .   .   .   y   y   y   y
+
+**RC does not gate it here either** - 7 of 15, sparse and structured,
+which is the same shape macOS found and the same reason the "on-demand
+reproduction" was withdrawn.
+
+**The dirty set is a strict subset of macOS's.** Every RC implicated
+here is implicated there; macOS adds 191, 197 and 200. Read alongside
+the amplitudes that is the strongest support yet for "RC sets the
+amplitude": **Windows runs 8-14 codes where macOS runs 6-65**, so the
+RCs this host reports clean are the ones whose amplitude has fallen
+under the detection floor rather than a different set of RCs. Presence
+may well be universal on both hosts and only the size differ.
+
+**`sd` separates perfectly on this host too**, with no overlap and no
+threshold to choose: 0.93-1.11 where the detector fires, 0.78-0.86 where
+it does not. macOS measured 0.99-4.59 against 0.82-0.89. Two hosts, two
+amplitude ranges, one clean discriminator - **if a run's `sd` is above
+about 0.9 the board is displacing samples**, whatever any threshold
+census says.
+
+**Neither new shape appears here.** Period is 512 at every dirty RC -
+no 256, no two-per-wrap - and no burst: `regularity` is 0.96-1.00
+throughout, where the burst form drops it to 0.77. So the burst and the
+halved period are macOS-only so far, on this board and at these rates.
+
 ### Where the branches are
 
 **`main` only.** Everything from both sessions is merged and every other
