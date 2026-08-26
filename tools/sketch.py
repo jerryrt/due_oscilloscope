@@ -99,6 +99,18 @@ def find_port(explicit=None):
     return hits[0]
 
 
+# One place decides where Track A builds and where it uploads from.
+#
+# These used to disagree: compile passed --build-path only when asked,
+# so arduino-cli built into its own cache, while upload defaulted to
+# build/track_a and flashed whatever had last been left there. The board
+# then ran an image nobody had built, with no error anywhere - a Track A
+# measurement taken nine hours after the source changed was still
+# measuring the old firmware. Silent staleness on the path the oracle
+# depends on is worse than a build failure.
+BUILD_PATH = os.path.join(REPO, "build", "track_a")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("action", nargs="?", default="compile",
@@ -128,7 +140,7 @@ def main() -> int:
         # rather than keeping a second, worse flash path here.
         binary = args.bin
         if not binary:
-            build = args.build_path or os.path.join(REPO, "build", "track_a")
+            build = args.build_path or BUILD_PATH
             cands = [os.path.join(build, f) for f in os.listdir(build)
                      if f.endswith(".bin")] if os.path.isdir(build) else []
             if len(cands) != 1:
@@ -168,8 +180,7 @@ def main() -> int:
     cmd = [cli, "compile", "--fqbn", FQBN,
            "--build-property", "build.f_cpu=78000000L",
            "--build-property", f"build.ldscript={ldscript}"]
-    if args.build_path:
-        cmd += ["--build-path", args.build_path]
+    cmd += ["--build-path", args.build_path or BUILD_PATH]
     return subprocess.call(cmd + passthrough + [SKETCH])
 
 

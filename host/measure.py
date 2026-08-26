@@ -2529,19 +2529,28 @@ def flash(track, control=None, retries=2, build=False):
                 if control:
                     cmd.append(control)
             elif track == "a":
-                sketch = os.path.join(REPO, "sketches", "bringup")
+                # tools/sketch.py, and through this interpreter.
+                #
+                # Not the .sh shim: it is not executable on win32, where
+                # CreateProcess answers "%1 is not a valid Win32
+                # application" and the whole track becomes unreachable
+                # from the suite. Not a bare arduino-cli call either -
+                # Track A needs two build properties, both silent when
+                # missing (a wrong f_cpu makes micros() lie, a missing
+                # ldscript leaves the capture ring in bank 0), and
+                # `arduino-cli upload` cannot flash a Due on this host
+                # and fails destructively. sketch.py decides the
+                # properties and routes the upload through flash.py,
+                # which works everywhere.
+                sk = os.path.join(REPO, "tools", "sketch.py")
                 if build:
-                    # tools/sketch.sh, not a bare arduino-cli call: Track
-                    # A needs two build properties and both are silent
-                    # when missing - a wrong f_cpu makes micros() lie,
-                    # and a missing ldscript leaves the capture ring in
-                    # bank 0. One place decides them.
                     subprocess.run(
-                        [os.path.join(REPO, "tools", "sketch.sh"), "compile"],
+                        [sys.executable, sk, "compile"],
                         cwd=REPO, check=True, env=_tool_env(),
                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                cmd = ["arduino-cli", "upload", "--fqbn",
-                       "arduino:sam:arduino_due_x_dbg", "-p", control, sketch]
+                cmd = [sys.executable, sk, "upload"]
+                if control:
+                    cmd.append(control)
             else:
                 raise ValueError(f"unknown track {track!r}")
             subprocess.run(cmd, cwd=REPO, check=True, env=_tool_env(),
