@@ -74,6 +74,7 @@ static void banner(void)
 	printf("#           =<ms>S = stall the loop (validates l)\n");
 	printf("#           =1l = report load, then clear it\n");
 	printf("#           =<ms>Z = detach the native port (software unplug)\n");
+	printf("#           =<tt>,<st>A = ADC track/settling time\n");
 	printf("#           z=software reset  v=identity line\n");
 	printf("#\n");
 }
@@ -867,6 +868,18 @@ static void cmd_execute(const cmd_t *cmd)
 		gen_go_tioa1();
 		break;
 	}
+	case 'A':
+		/*
+		 * "=<tracktim>,<settling>A". Applied at the next acq_init(),
+		 * so set it before starting a stream. One image sweeps the
+		 * whole range, which is the only way to compare the constant
+		 * rather than comparing two binaries - see acq.c.
+		 */
+		acq_set_timing(cmd->arg[0], cmd->arg[1]);
+		printf("# adc timing: tracktim=%u settling=%u (next stream)\n",
+		       (unsigned)acq_tracktim, (unsigned)acq_settling);
+		uart_flush();
+		break;
 	case 'B': stream_bench_report();
 	          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
 	                 (unsigned long)play_bytes_in,

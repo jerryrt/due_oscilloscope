@@ -97,6 +97,11 @@ _Static_assert(ACQ_FRAME_BYTES % 512 == 0,
 
 extern acq_slot_t acq_slot[ACQ_NBUF];
 
+/* ADC track/settling time, applied at the next acq_init(). See acq.c. */
+extern uint8_t acq_tracktim;
+extern uint8_t acq_settling;
+void acq_set_timing(uint32_t tracktim, uint32_t settling);
+
 void     acq_init(void);
 bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
 void     acq_stop(void);
