@@ -609,6 +609,56 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### DACC_ACR is at reset on Track B, and it sets the output slew rate
+
+**Track B has never written `DACC_ACR`.** Not in `gen.c`, not in
+`play.c`, not anywhere - `grep` finds no reference in `drivers/`,
+`apps/` or `sketches/`. So `IBCTLCH0`, `IBCTLCH1` and `IBCTLDACCORE` sit
+at their reset value on every capture this project has taken.
+
+Three facts about that register, from the datasheet in `docs/datasheets`
+rather than from memory:
+
+- **`IBCTLCHx`: "Analog Output Current Control - allows to adapt the
+  slew rate of the analog output."** Datasheet 45.7.11, `DACC_ACR` at
+  0x400C8094, read-write. It is the DAC output stage's bias current.
+- **The DAC's published performance is specified at a non-reset value.**
+  Tables 46-38 and 46-40 give INL, DNL, offset, gain, SNR, THD and
+  SINAD at `IBCTLDACCORE = 01, IBCTLCHx = 10`. Nothing is characterised
+  at reset, so the numbers in the datasheet's DAC section do not
+  describe the part as this project runs it.
+- **The DAC's reference is ADVREF**, the ADC's reference - Table 46-39's
+  note. A documented shared node between the two converters.
+
+**The Arduino core sets it and we do not**, which makes this a track
+parity gap and therefore debt under invariant 3.
+`cores/arduino/wiring_analog.c:232` writes
+`DACC_ACR_IBCTLCH0(0x02) | DACC_ACR_IBCTLCH1(0x02) |
+DACC_ACR_IBCTLDACCORE(0x01)` the first time a DAC channel is enabled -
+exactly the datasheet's characterisation condition. Track A gets that
+for free through `analogWrite()`; Track B's `gen_init()` and
+`play_init()` configure `DACC_MR`, `DACC_CHER` and the PDC and never
+touch `ACR`.
+
+**Why this is a lead and not just tidiness.** The artifact is a brief
+excursion on a DAC output pin, once per PDC reload, whose size needs the
+output to be in motion - and `IBCTLCHx` is the register that decides how
+fast that output can move. A stage at minimum bias is the slowest and
+highest-impedance configuration the part offers, which is where a
+disturbance would be largest and longest. It also explains why
+`docs/hardware.md` had to write "high output impedance" as a warning
+with no figure: that is the reset stage, not the characterised one.
+
+**It is a runtime knob**, so it can be swept the way everything else
+here is - one image, interleaved, no reflash between arms. Read it back
+from the peripheral rather than echoing it; `acq_mr()` exists because
+that distinction has already cost this project a day.
+
+**Untested.** Nothing here has been measured yet. The reset value has
+not even been read off the board - the claim is that the code never
+writes it, which is a fact about the source, not about the register.
+
+
 ### Four generator arms: a DAC pin generally, and the wrap not the wave
 
 `=<n>N` selects what `build_table()` puts on each DAC, at runtime, in one
@@ -733,14 +783,29 @@ interleaved over six rounds:
 A2's z is *below its own control z* in both arms. That is not a small
 artifact, it is none.
 
-The 50-ohm row is the same comparison with source impedance matched as
-well, run after the sweep so it needs no cross-reference to it: 50 ohms
-against a DAC output's near-zero, the same voltage, the same slot, the
-same binary. A1 reads 10.60 against the 10.64 it read in the 2.5k
-rotation, on phase 486 in all twelve runs of both, which is what says
-the board never changed state between them. **Forty times, in the one
-configuration where nothing differs but which pin the sample came
-from.**
+The 50-ohm row is the same comparison at the bottom of the sweep, run
+after it so it needs no cross-reference: the same voltage, the same
+slot, the same binary. A1 reads 10.60 against the 10.64 it read in the
+2.5k rotation, on phase 486 in all twelve runs of both, which is what
+says the board never changed state between them.
+
+**A correction to how this was first written.** It said "source
+impedance matched to within 50 ohms", on the assumption that a DAC
+output is a near-zero-ohm source. It is not, and `docs/hardware.md` says
+so on its own DAC page: *"High output impedance; needs a buffer op-amp
+for any real load"*, with no figure. The SAM3X datasheet gives no output
+impedance for the DACC either, so **the DAC1 arm's source impedance is
+unknown and was never matched.**
+
+The conclusion is unharmed and is arguably stronger stated correctly:
+the sweep covers 50 ohms to 5.5k, a range that plausibly brackets
+whatever the DAC's output impedance is, and **no value in it produces
+the artifact on a non-DAC source** - while the DAC pin produces it at
+every one. What dies is the word "matched", not the result. The DAC's
+output impedance is worth measuring for the front end anyway: one known
+resistor from the pin to ground and the voltage droop gives it, and
+`docs/hardware.md` currently has a design warning where a number should
+be.
 
 **So: not impedance, not conversion slot, only the pin.** Nothing
 connects DAC1 to A2, both channels sit at the same voltage, both are DC,
