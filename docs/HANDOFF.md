@@ -132,7 +132,7 @@ a different layer entirely and is **not mergeable**.
 
 | | |
 |---|---|
-| Track B | 281 passed, 12 skipped, **1 xfailed** (issue #5, identified not thresholded) |
+| Track B | last full run **280 passed, 2 failed, 12 skipped, 1 xfailed**. Both failures are the documented intermittents, shown by an interleaved A/B not to be regressions - see `docs/testing.md` |
 | Track A | not re-measured this session; the branch's old 160/88 is void |
 | Branches | `main`, `wip/track-a-control-channel` - **not mergeable** |
 | Board | Track B, `main` |
