@@ -909,8 +909,22 @@ void setup()
 	heartbeat_at = millis();
 }
 
+/*
+ * High-water mark on UOTGHS_DEVEPT.
+ *
+ * SET_CONFIGURATION demonstrably ran (_usbConfiguration=1) and its
+ * handler calls UDD_InitEndpoints() immediately before setting that
+ * flag, so EP1-6 should have been enabled - yet DEVEPT reads 1. Either
+ * the enables never happened, or they happened and something cleared
+ * them. A single sample cannot tell those apart and the main loop is
+ * the only place that can watch. Costs one OR per pass.
+ */
+volatile uint32_t devept_seen;
+
+
 void loop()
 {
+	devept_seen |= UOTGHS->UOTGHS_DEVEPT;
 	static uint32_t rate_arg[3];
 	static unsigned rate_idx;
 	static bool     rate_entry;
@@ -1207,6 +1221,28 @@ void loop()
 				n += snprintf(eb + n, sizeof(eb) - n, " %lu",
 				              (unsigned long)EndPoints[e]);
 			Serial.println(eb); Serial.flush();
+
+			/*
+			 * Did SET_CONFIGURATION ever run?
+			 *
+			 * USBCore sets _usbConfiguration in its SET_CONFIGURATION
+			 * handler, immediately after UDD_InitEndpoints(), and
+			 * clears it on bus reset. DEVEPT reads 1 and DEVCTRL says
+			 * the device is addressed, so the question is whether the
+			 * host never configured it or whether the handler ran and
+			 * something undid it. Nothing else on the board
+			 * distinguishes those.
+			 */
+			{
+				extern volatile uint32_t _usbConfiguration;
+				char cb[80];
+				snprintf(cb, sizeof(cb),
+				         "# usbcfg _usbConfiguration=%lu deveptseen=%08lx now=%08lx",
+				         (unsigned long)_usbConfiguration,
+				         (unsigned long)devept_seen,
+				         (unsigned long)UOTGHS->UOTGHS_DEVEPT);
+				Serial.println(cb); Serial.flush();
+			}
 		}
 		break;
 	}
