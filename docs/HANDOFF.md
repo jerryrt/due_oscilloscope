@@ -191,27 +191,36 @@ programming port after the 1200-baud touch, but on Windows the erased
 chip brings SAM-BA up on the *native* port, so it wipes the board and
 then reports no device. Both go through `sketch.py` now.
 
-**3. Track B's prime fix does not transfer, and the copy was not made.**
-`PLAY_PRIME_BUFS` is 24 on Track B because objective 0i measured it
-there. On Track A it changes nothing:
+**3. Track B's prime fix does transfer - and the first measurement of
+it here was wrong.** `PLAY_PRIME_BUFS` is now 24 on both tracks, measured
+on this one. Three runs per rate, two builds verified distinct by
+checksum, counters read inside the run:
 
-| prime | RC 44 | RC 39 | RC 28 |
-|---|---|---|---|
-| 4 | 3382-3384 | 3789-3792 | 5416-5422 |
-| 24 | 3354-3384 | 3789-3790 | 5416-5417 |
+| prime | underruns | occmin |
+|---|---|---|
+| 4 | 0-7 | 2-8 |
+| 24 | **0 in all nine** | **21-29** |
 
-Three runs per rate, two builds verified distinct by checksum, `occmin`
-2 in all eighteen. **Track A's ring does not start low and recover - it
-lives at the ENDTX guard for the whole run**, and the prime is not what
-puts it there. The constant stays at 4 with the measurement recorded,
-because raising it would make the tracks look alike while changing
-nothing measured.
+Objective 0i's Track B result exactly.
 
-That is now the largest open number on this project: at RC 44 the
-underruns outnumber two thirds of the buffers consumed. It has been
-there all along and nobody could see it, because until this session
-Track A could not report occupancy. **This is the next thing to chase on
-Track A**, ahead of the control channel.
+**The wrong version of that table is worth keeping, because the error is
+one this project makes.** The first sweep read the counters with `B`
+after `run_loop` returned - which is *after the drain*. Track A has no
+playback-abandon timeout (a known 1c gap), so it keeps repeating for
+about 2 s of deliberate starvation once the feeder stops: `run_us` is
+5.00 s for a 3 s run where Track B's is 3.5 s. Every underrun and the
+whole of occmin came from that tail. It produced 3382 "underruns" at
+RC 44 and an occmin pinned at 2 no matter what the prime was, and it was
+written up here as the largest open number on the project. It was the
+shutdown, not the run.
+
+`run_loop` already snapshots the counters before it drains, under a
+comment that says "counters first, while they still describe the run".
+**A counter read after the drain describes the drain.** The same audit
+clears Track A of the rest of the suspicion: `endtx * 512 / run_us`
+tracks the requested rate to 1.000 on both tracks, so every ENDTX is one
+emitted buffer and none are spurious, and `consumed` matches Track B
+within 1% at every rate.
 
 ### Where the branches are
 

@@ -50,30 +50,29 @@ static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
  * Enough queued to ride out host scheduling jitter before the first
  * conversion, so priming never emits a burst of stale repeats.
  *
- * Still 4, where drivers/play.c is 24, and that is a measurement rather
- * than debt left unpaid. Objective 0i raised Track B's from 4 to 24 and
- * took underruns to zero at every rate on the ladder, occmin from 2 to
- * 21-26. It buys nothing here. Measured the day this track first grew
- * the instruments to see the ring at all, three runs per rate, two
- * builds verified distinct:
+ * 24, matching drivers/play.c, and measured on this track rather than
+ * copied from it. Three runs per rate, two builds verified distinct by
+ * checksum, counters read inside the run:
  *
- *   prime   RC 44        RC 39        RC 28
- *      4    3382-3384    3789-3792    5416-5422
- *     24    3354-3384    3789-3790    5416-5417
+ *   prime   underruns          occmin
+ *      4    0-7                2-8
+ *     24    0 in all nine      21-29
  *
- * occmin is 2 in all eighteen runs. So Track A's ring does not merely
- * start low, it lives at the ENDTX guard for the whole run, and the
- * prime is not what puts it there. Raising this constant to match Track
- * B would make the two tracks look alike and change nothing that is
- * measured, which is the failure invariant 5 exists to prevent applied
- * to a constant instead of to data.
+ * Which is objective 0i's Track B result exactly: the ring stops living
+ * at the ENDTX guard and the startup burst goes away.
  *
- * The cause is not yet found and the numbers say it is not small: at
- * RC 44 the underruns outnumber two thirds of the buffers consumed.
- * Nobody has looked, because until now this track could not report
- * occupancy. See objective 1c.
+ * It first appeared not to transfer, and the reason is worth keeping.
+ * The first sweep read the counters with `B` after run_loop returned -
+ * which is after the drain, and this track has no playback-abandon
+ * timeout, so it keeps repeating for ~2 s of deliberate starvation
+ * after the feeder stops. Every underrun and the whole of occmin came
+ * from that tail: 3382 "underruns" at RC 44 that were the shutdown, not
+ * the run, and occmin pinned at 2 whatever the prime was. run_loop
+ * already snapshots the counters before it drains, under a comment
+ * saying "counters first, while they still describe the run". Read
+ * those. A counter read after the drain describes the drain.
  */
-#define PLAY_PRIME_BUFS 4u
+#define PLAY_PRIME_BUFS 24u
 
 bool play_active(void) { return active; }
 
