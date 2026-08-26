@@ -286,9 +286,68 @@ def periodic_census(vals, min_events=10, regularity=0.9):
                     "threshold": thr, "sd": sd}
     if best["count"]:
         best["sd"] = sd
+        return best
+
+    # The gap test above assumes one event per period, and that is not
+    # what the artifact always is. At ADC RC 200 on macOS each wrap
+    # produces a burst of about four displaced samples spaced 64 apart,
+    # the bursts repeating at 512: the gaps run 64, 64, 64, 320, so the
+    # commonest gap holds 0.77 of them and nothing clears 0.9. That run
+    # carried 3276 events at 68 codes with sd 4.58 against a clean 0.86,
+    # and this function called it clean.
+    #
+    # Shift invariance does not care how the events are arranged inside
+    # the period, only that the arrangement repeats: for the true P,
+    # nearly every event has another event P samples later. It scores a
+    # single displacement per wrap exactly as the gap test does, so the
+    # simple case is unchanged and this only ever runs when that found
+    # nothing.
+    for k in (12.0, 10.0, 8.0, 6.0, 5.0, 4.0):
+        thr = k * sd
+        at = [i for i, x in enumerate(vals) if abs(x - base) > thr]
+        if len(at) < min_events:
+            continue
+        found = _shift_period(at, min_period=2, max_period=4096,
+                              regularity=regularity)
+        if found and (not best["count"] or len(at) > best["count"]):
+            period, reg = found
+            best = {"count": len(at), "period": period, "regularity": reg,
+                    "amplitude": _st.median(abs(vals[i] - base) for i in at),
+                    "threshold": thr, "sd": sd}
+    if best["count"]:
+        best["sd"] = sd
     else:
         best = dict(none, sd=sd)
     return best
+
+
+def _shift_period(at, min_period, max_period, regularity, probes=400):
+    """Smallest P for which the event set repeats every P samples.
+
+    Returns (P, score) or None. The score is the fraction of probed
+    events that have another event exactly P later, which is 1.0 for any
+    pattern locked to a period whatever its shape, and near the event
+    density for an unlocked one.
+
+    Smallest wins, because 2P and 4P score just as well and the period
+    is meant to be comparable with GEN_TABLE_LEN. Probing a bounded
+    subset keeps this linear in the range rather than in the event
+    count - the full sweep is 4095 candidates and a long run has
+    thousands of events.
+    """
+    if len(at) < 4:
+        return None
+    seen = set(at)
+    last = at[-1]
+    for period in range(min_period, max_period + 1):
+        usable = [i for i in at[::max(1, len(at) // probes)] if i + period <= last]
+        if len(usable) < 4:
+            continue
+        hits = sum(1 for i in usable if i + period in seen)
+        score = hits / len(usable)
+        if score >= regularity:
+            return period, score
+    return None
 
 
 def flat_census(vals, threshold=FLAT_DEV_CODES):
