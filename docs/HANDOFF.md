@@ -135,7 +135,7 @@ enumerates and opens.
 
 | | |
 |---|---|
-| Track B | last full run **280 passed, 2 failed, 12 skipped, 1 xfailed**. Both failures are the documented intermittents, shown by an interleaved A/B not to be regressions - see `docs/testing.md` |
+| Track B | last full run **282 passed, 12 skipped, 1 xfailed, 0 failed** (2026-08-26, after the daemon `ctlver` gate). The two documented intermittents did not fire this run; they are not fixed, see `docs/testing.md` |
 | Track A | **261 passed, 33 skipped, 1 xfailed** - the xfail is issue #5's gate. The control channel's blocker is found and landed |
 | Branches | `main` only. `wip/track-a-control-channel` landed and is gone |
 | Board | Track B, `main` |
