@@ -86,12 +86,44 @@ def samba_nodes():
             if (p.vid, p.pid) == SAMBA]
 
 
-def touch_1200(port):
+def open_port(port, baud, tries=6, delay=0.75):
+    """Open a serial port, waiting out a handle another process still holds.
+
+    A test run that is killed rather than finished leaves its Python
+    holding the programming port, and Windows reports the next open as
+    PermissionError(13) - "Access is denied" - which reads like a
+    permissions problem and is not one. The handle goes when the process
+    does, which can be a moment later than the kill.
+
+    Retrying is the whole fix, but the message matters as much: three
+    flashes failed this way in one session and each one looked like a
+    different problem. Say what is actually happening.
+    """
     import serial
+    last = None
+    for attempt in range(tries):
+        s = serial.Serial()
+        s.port, s.baudrate = port, baud
+        try:
+            s.open()
+            return s
+        except serial.SerialException as e:
+            last = e
+            if "PermissionError" not in repr(e) and "Access is denied" not in repr(e):
+                raise
+            if attempt == 0:
+                print(f"==> {port} is held by another process; waiting for it "
+                      f"to release (a killed test run does this)")
+            time.sleep(delay)
+    raise SystemExit(
+        f"{port} was still held after {tries} attempts over "
+        f"{tries * delay:.0f}s: {last}. Something still has it open; "
+        f"on Windows: Get-Process python* | Stop-Process -Force")
+
+
+def touch_1200(port):
     print(f"==> 1200-baud touch on {port} (erase + reset)")
-    s = serial.Serial()
-    s.port, s.baudrate = port, 1200
-    s.open()
+    s = open_port(port, 1200)
     s.dtr = False                     # the erase+reset trigger
     time.sleep(0.1)
     s.close()
@@ -107,12 +139,8 @@ def restore_115200(port):
     open, which presents as the board mysteriously restarting whenever a
     tool attaches.
     """
-    import serial
     try:
-        s = serial.Serial()
-        s.port, s.baudrate = port, 115200
-        s.open()
-        s.close()
+        open_port(port, 115200).close()
     except Exception as e:                               # noqa: BLE001
         # Do NOT swallow this silently. The docstring above says why: a
         # port left at 1200 re-triggers the 16U2's erase-and-reset on the
