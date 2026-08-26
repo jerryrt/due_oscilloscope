@@ -109,3 +109,87 @@ def test_a_flat_line_and_an_empty_series_are_not_errors():
     assert measure.level_census([])["count"] == 0
     assert measure.level_census([MID] * 1000)["count"] == 0
     assert measure.level_steps([MID]) == []
+
+
+# ---------------------------------------------------------------------
+# The flat-channel census
+#
+# measure.flat_census() exists because the tests above are not enough.
+# They pin the signature at +64 codes, which is what Windows reported and
+# which level_census() sees comfortably at STEP_SPLICE_CODES = 45. On
+# macOS the same signature arrives at 26-32 codes, under that threshold,
+# and tools/splices.py reported 0 splices for ten runs while six runs in
+# ten were displacing samples on A1. The instrument said "does not
+# reproduce" about a board that was reproducing it.
+# ---------------------------------------------------------------------
+
+MACOS_DEV = 29                   # 26-32 measured; the middle of it
+
+
+def flat(n=100_000, level=2055, noise=1, dev=0, first=318, period=TABLE):
+    """A1 under preset `M`: DC 2048 out of DAC1, so a flat line plus ADC
+    noise, optionally with one sample displaced every `period`."""
+    rng = random.Random(20260825)
+    v = [level + rng.randint(-noise, noise) for _ in range(n)]
+    if dev:
+        for i in range(first, n, period):
+            v[i] += dev
+    return v
+
+
+def test_a_flat_line_has_no_events():
+    c = measure.flat_census(flat())
+    assert c["count"] == 0
+    assert c["max_dev"] < measure.FLAT_DEV_CODES
+
+
+def test_the_macos_signature_is_counted_once_per_occurrence():
+    """+29 codes, once per DAC table wrap. Counted once per event, not
+    twice: unlike the staircase census this measures deviation from the
+    median rather than steps between levels, so one displaced sample is
+    one crossing."""
+    n = 100_000
+    c = measure.flat_census(flat(n=n, dev=MACOS_DEV))
+    assert c["count"] == len(range(318, n, TABLE)), c
+    assert c["periodic"] and c["period"] == TABLE, c
+
+
+def test_the_staircase_census_cannot_see_the_macos_signature():
+    """The regression this pair of instruments exists to prevent.
+
+    Not an assertion about what level_census() *should* do - it is
+    judging steps against a 38-code DAC staircase and 29 is honestly
+    below that. It is a record of why censusing A0 alone is not an
+    answer, so that "splices.py reported zero" is never again read as
+    "the board is clean".
+    """
+    v = flat(dev=MACOS_DEV)
+    assert measure.level_census(v)["count"] == 0
+    assert measure.flat_census(v)["count"] > 0
+
+
+def test_the_windows_signature_is_seen_by_both():
+    v = flat(dev=64)
+    assert measure.level_census(v)["count"] > 0
+    assert measure.flat_census(v)["count"] > 0
+
+
+def test_the_flat_threshold_sits_in_an_empty_gap():
+    lo, hi = measure.flat_census(flat(dev=MACOS_DEV))["gap"]
+    assert lo <= measure.FLAT_DEV_CODES <= hi
+    assert hi - lo >= 4
+
+
+def test_a_single_displacement_is_not_periodic():
+    """One event is not the device artifact, and must not be excused as
+    one however small it is."""
+    v = flat()
+    v[50_000] += MACOS_DEV
+    c = measure.flat_census(v)
+    assert c["count"] == 1
+    assert not c["periodic"]
+
+
+def test_an_empty_series_is_not_an_error():
+    assert measure.flat_census([])["count"] == 0
+    assert measure.flat_census([2055])["count"] == 0

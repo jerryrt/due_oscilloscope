@@ -311,9 +311,32 @@ mostly within one image:
 - the period is `GEN_TABLE_LEN` and follows it when the table doubles;
 - it does not appear on preset `3` at the same rate on the same
   firmware, only on preset `M`;
-- the TIOA0/TIOA1 phase does not decide it (16/16 clean across a spin
-  swept over two full DAC periods);
-- the printf placement does not decide it (0/10 both ways, one image).
+- it appears on macOS too, at the same period and the same 777-of-777
+  regularity (2026-08-25, `16b68a2`, 6 runs in 10 dirty).
+
+**RETRACTED with the rest: the three "eliminated" hypotheses are
+unpowered, not negative.** This list used to carry the TIOA0/TIOA1
+phase (16/16 clean across a swept spin), the printf placement (0/10
+both ways) and the bss layout (eight images, 0/5 each). **In none of
+the three did any arm ever go dirty.** All were taken inside the same
+clean stretch this section has just finished describing - about 200
+runs across ten images, all clean - so with a ~60% base rate a control
+arm reading zero says the board was not reproducing the defect, and the
+treatment arm's zero says nothing about the treatment.
+
+That is the retraction above applied to negative results instead of to
+A/B comparisons, and it was missed because a negative result does not
+look like a comparison. It is the same trap either way: **an experiment
+without a positive control measures the era it was run in.** So all
+three go back to open, and "already eliminated, do not re-run" is
+withdrawn.
+
+The macOS track/settling sweep is the worked example. Four conditions
+by eight reps, interleaved, 32 of 32 clean - which reads as three
+treatments that all work until you notice the fourth condition was the
+untreated baseline, 6/10 dirty ninety minutes earlier. Only a live
+baseline arm in the same interleave makes that visible; a remembered
+one does not.
 
 **The live hypothesis is host or USB state, not code.** It fits when the
 defect appeared: early in the session, shortly after the native port had
@@ -322,10 +345,28 @@ cycles, and it faded over many clean enumerations afterwards. It also
 fits this project's history, where 0a, 0b, 0c, 0h, 0i and 0k all turned
 out to be host CDC-ACM defects with the firmware clean underneath.
 
-**It has only ever been recorded on Windows.** The issue says so in its
-own body - "Reported from Windows, but nothing here is host-specific ...
-Worth checking on macOS, where I would expect it to reproduce" - and
-that check has never been done. It is now the first thing to do.
+**It has now been recorded on both hosts, and it fades on both.**
+The macOS run (2026-08-25) reproduced it at 6/10 and then went to 0 in
+about 50 consecutive runs over ninety minutes, the same shape the
+Windows board showed. Two differences worth carrying: the displacement
+is 26-32 codes here rather than 64, and it is **not** a single bit - the
+XOR against the neighbour takes 13 distinct values across 0x20-0x2f, so
+"bit 6 set" is not the invariant. A displacement that varies by +/-3
+codes reads analog rather than digital.
+
+Because it is 26-32 codes, `level_census()` at `STEP_SPLICE_CODES = 45`
+cannot see it: on one capture whose A1 census counted 778 periodic
+events, A0 censused `count=0 max_step=42.5`. `tools/splices.py` run as
+the brief specified would have reported "does not reproduce on macOS"
+about a board that was reproducing it. `measure.flat_census()` is the
+companion instrument; census the flat channel, never A0 alone.
+
+**The blocking question is no longer analog-versus-digital, it is what
+makes a board go dirty.** The jumper test is still the most decisive
+run available, but it is only decisive while a board is reproducing -
+pulled against a clean board it reports zero either way, which is
+exactly how the three eliminations above got their zeros. Nothing here
+is measurable on demand until the defect is.
 
 **Settle whether this is a defect in the product before doing more
 firmware work on it.** The question is not "what corrupts the sample" but
