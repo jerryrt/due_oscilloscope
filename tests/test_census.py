@@ -193,3 +193,67 @@ def test_a_single_displacement_is_not_periodic():
 def test_an_empty_series_is_not_an_error():
     assert measure.flat_census([])["count"] == 0
     assert measure.flat_census([2055])["count"] == 0
+
+
+# ------------------------------------------------------- periodic_census
+
+def _flat(n=400_000, sd=0.85, seed=20260825):
+    rng = random.Random(seed)
+    return [MID + round(rng.gauss(0, sd)) for _ in range(n)]
+
+
+def test_noise_alone_has_no_period():
+    """The whole risk of a periodicity detector: finding structure in a
+    long series of nothing. Both observed clean sd values."""
+    for sd in (0.85, 1.05):
+        c = measure.periodic_census(_flat(sd=sd))
+        assert c["count"] == 0, (sd, c)
+
+
+def test_large_aperiodic_outliers_are_rejected():
+    """A splice is big and irregular; this defect is small and regular.
+    An instrument that confused the two would be worse than useless."""
+    v = _flat()
+    rng = random.Random(7)
+    for i in rng.sample(range(len(v)), 400):
+        v[i] += 30
+    assert measure.periodic_census(v)["count"] == 0
+
+
+def test_a_small_periodic_displacement_is_found():
+    """Seven codes, where FLAT_DEV_CODES is 20 and STEP_SPLICE_CODES 45.
+
+    This is the case both fixed thresholds miss and it is the case the
+    board spent a whole session in - every capture kept from 2026-08-25
+    carries it at 6-7 codes, on runs that were reported clean at the
+    time and used as control arms.
+    """
+    v = _flat()
+    for i in range(444, len(v), TABLE):
+        v[i] += 7
+    c = measure.periodic_census(v)
+    assert c["count"] > 700
+    assert c["period"] == TABLE
+    assert c["regularity"] >= 0.9
+    assert 6 <= c["amplitude"] <= 8
+
+
+def test_it_reports_nothing_rather_than_guessing_under_the_noise():
+    """Four codes against sd 0.85 is not recoverable, and saying so is
+    the honest answer. A detector that always finds something cannot be
+    used to decide whether a board is reproducing."""
+    v = _flat()
+    for i in range(444, len(v), TABLE):
+        v[i] += 4
+    assert measure.periodic_census(v)["count"] == 0
+
+
+def test_the_period_follows_the_table_not_the_threshold():
+    """What has never varied across five measured amplitudes on two
+    hosts is the period. That is why it is the thing to key on."""
+    for table, amp in ((512, 7), (1024, 30), (512, 65)):
+        v = _flat()
+        for i in range(300, len(v), table):
+            v[i] += amp
+        c = measure.periodic_census(v)
+        assert c["period"] == table, (table, amp, c)

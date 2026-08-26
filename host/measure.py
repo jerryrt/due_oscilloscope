@@ -235,6 +235,62 @@ def level_census(vals, threshold=STEP_SPLICE_CODES, flat=STEP_FLAT_CODES):
 FLAT_DEV_CODES = 20
 
 
+def periodic_census(vals, min_events=10, regularity=0.9):
+    """Find the issue #5 signature by its period, not by its size.
+
+    Every fixed threshold written for this defect has gone blind to it
+    within a day, because the amplitude is not a property of the defect.
+    Measured so far, all of it the same artifact: 12-14 and ~15 codes
+    with the two clocks locked, 26-32 on macOS, 49-50 and 63-68 on
+    Windows. STEP_SPLICE_CODES = 45 missed the macOS form;
+    FLAT_DEV_CODES = 20 misses both locked forms, including the one the
+    session that chose 20 had itself measured at 15.
+
+    What has never varied is the period. It is GEN_TABLE_LEN, it follows
+    the table when the table is doubled, and the gaps are 100% identical
+    on every reproduction on either host. So key on that: sweep the
+    threshold down from the run's own noise floor and accept the widest
+    set of events whose spacing is regular. Noise does not come at a
+    constant interval; this does.
+
+    `sd` is the corroborating tell and costs nothing to report - a clean
+    A1 sits at 0.83-0.87 and a reproducing one at 1.04-1.05, because a
+    few hundred displaced samples move the deviation of the whole run.
+
+    Returns count, period, regularity, amplitude (median absolute
+    deviation of the events), threshold used, and sd. count is 0 when
+    nothing regular was found at any threshold.
+    """
+    import statistics as _st
+    none = {"count": 0, "period": 0, "regularity": 0.0, "amplitude": 0.0,
+            "threshold": 0.0, "sd": 0.0}
+    if len(vals) < 4 * min_events:
+        return none
+    base = _st.median(vals)
+    sd = _st.pstdev(vals[:min(len(vals), 20000)]) or 0.5
+    best = none
+    # Down from well clear of the noise. Stop before the floor: at 3 sd a
+    # clean run offers plenty of excursions and some will look regular by
+    # accident over a long series.
+    for k in (12.0, 10.0, 8.0, 6.0, 5.0, 4.0):
+        thr = k * sd
+        at = [i for i, x in enumerate(vals) if abs(x - base) > thr]
+        if len(at) < min_events:
+            continue
+        gaps = [b - a for a, b in zip(at, at[1:])]
+        period = max(set(gaps), key=gaps.count)
+        reg = gaps.count(period) / len(gaps)
+        if reg >= regularity and period > 1 and len(at) > best["count"]:
+            best = {"count": len(at), "period": period, "regularity": reg,
+                    "amplitude": _st.median(abs(vals[i] - base) for i in at),
+                    "threshold": thr, "sd": sd}
+    if best["count"]:
+        best["sd"] = sd
+    else:
+        best = dict(none, sd=sd)
+    return best
+
+
 def flat_census(vals, threshold=FLAT_DEV_CODES):
     """Count the samples a flat line cannot account for.
 

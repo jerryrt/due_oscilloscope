@@ -344,6 +344,60 @@ rate, and it clears the image comparisons taken on this host - though
 they remain confounded by time, which is the larger problem and is not
 fixed by this.
 
+### The board never stopped reproducing. Read this before trusting any clean run.
+
+The macOS RC finding replicates on Windows, and following it up says
+something larger than the finding.
+
+**The RC result holds here.** With the two clocks locked at the same
+rate, ADC RC 194 and 198 reproduce and RC 195 does not - the same RCs,
+on a board that had reported clean for two hundred runs.
+
+**But `flat_census()` at 20 reports 0 for every one of those runs.** The
+events are there at 12-14 codes with 100% of gaps identical at 512. The
+threshold that was chosen when the macOS amplitude was 26-32 cannot see
+the locked form, including the 15 the same session measured. `sd` is the
+tell that needed no threshold: 1.04-1.05 reproducing against 0.83-0.87
+clean.
+
+**And with a detector keyed on the period instead, every capture kept
+from this session carries the signature - including all fourteen taken
+during the "clean stretch", at 6-7 codes.** The detected period always
+equals that capture's own `GEN_TABLE_LEN`, 512 or 1024, which noise
+cannot do.
+
+So the session-long "fade" was never a fade. **The amplitude dropped;
+the defect did not stop.** That is worse than the confound already
+recorded here, because it means the control arms in every A/B were
+reproducing too - the experiments were not comparing dirty against
+clean, they were comparing dirty against dirty-below-threshold.
+
+`measure.periodic_census()` keys on what has never varied. Across two
+hosts the amplitude has been 6-7, 12-14, ~15, 26-32, 49-50 and 63-68 -
+six values, three of which were under whichever threshold was current -
+while the period has been `GEN_TABLE_LEN` every single time. It sweeps
+the threshold down from the run's own noise floor and accepts the widest
+set of events whose spacing is regular.
+
+It is tested against the way it could fail rather than the way it should
+work: pure noise at both observed sd values reports 0, four hundred
+random 30-code outliers report 0, a 7-code displacement every 512 is
+found at regularity 0.96, and a 4-code one under the noise reports 0
+rather than guessing. `tests/test_census.py`, no board.
+
+**Consequences, in order.**
+
+1. **No clean run in this investigation has been verified clean.** Every
+   "does not reproduce" on either host was measured with a threshold
+   instrument. Re-check with `periodic_census()` before quoting one.
+2. **The macOS "clean" arms are suspect too** - including the RC scan's
+   twelve clean RCs and the 32-of-32 sweep.
+3. **The question changes.** Not "what makes it appear" but "what sets
+   its amplitude", because presence may be constant. RC 194/198 versus
+   195 may be an amplitude step across a threshold rather than a switch.
+4. `tools/ab.py`'s control-arm rule still holds and matters more: a
+   control that reads clean on a threshold instrument is not a control.
+
 ### Where the branches are
 
 | Branch | State |
