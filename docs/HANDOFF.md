@@ -134,6 +134,33 @@ phantom `VID_2341&PID_003E` registrations left behind (COM8, COM9,
 COM11, COM12 and three composite instances). Nothing below can be
 measured until the port is back.
 
+### The agreed order of work (2026-08-25, approved)
+
+**1 -> loose ends -> 2 -> 3 -> 4.**
+
+1. **Settle whether issue #5 is a defect at all.** Step 1 no longer means
+   the ADC-timing sweep: this board has stopped exhibiting the defect
+   (see the retraction below), so there is nothing here for that sweep to
+   act on. The tool is built and waiting on `issue5-adc-timing`
+   (`=<tt>,<st>A`, runtime, one image sweeps the whole range). **Step 1
+   now means confirming on macOS, which has never been tried**, and
+   pulling the DAC1->A1 jumper on a board that does reproduce.
+2. **Objective 1c, first half**: port `O`, `occmin` and `play_run_us` to
+   `sketches/bringup/play.cpp`. A straight transliteration; turns the 18
+   Track A failures in `test_play_counters.py` into 18 passes or 18
+   honest findings, and nobody knows which.
+3. **Objective 1c, second half**: Track A's control channel. The gate for
+   everything else. Port `ep_realloc_control()`'s second half *with* the
+   feature - Track A's `ep_apply_autosw()` hazard goes live the day that
+   track grows EP4, which is the day the control channel arrives.
+4. **printf stages 3 and 4**: poison `printf`, `dbg()` literal-only, and
+   opcodes or demotions for `t x r s V D u`.
+
+Loose ends worth an hour: rebase `wip/refusal-reporting` onto `main` and
+land it on its own merits, post the issue #5 correction, and watch the
+next few full runs for the load-dependent flake that stopped appearing
+after the stage 2 stalls were removed (n=2, a hypothesis and not a fix).
+
 ### Where the branches are
 
 | Branch | State |
