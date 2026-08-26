@@ -488,3 +488,49 @@ def test_curvature_matches_plain_z_on_a_flat_channel():
     f = measure.fold_profile(v)
     assert f["spike_phase"] == f["peak_phase"]
     assert f["spike_z"] > measure.FOLD_Z_DIRTY
+
+
+# ---------------------------------------------------------------------
+# pair_fold: the staircase channel. A0 holds each DAC level for two ADC
+# samples, so folding it directly measures the waveform; differencing
+# within the pair cancels the waveform and keeps the event.
+# ---------------------------------------------------------------------
+
+
+def staircase_pairs(n=200_000, amp=1371, spike=0, first=300, period=TABLE,
+                    seed=FOLD_SEED, hold=2):
+    rng = random.Random(seed)
+    v = []
+    for i in range(n):
+        lvl = (i % period) // hold
+        v.append(round(2048 + amp * math.sin(2 * math.pi * lvl
+                                             / (period // hold)))
+                 + rng.randint(-1, 1))
+    if spike:
+        for i in range(first, n, period):
+            v[i] += spike
+    return v
+
+
+def test_pair_fold_finds_what_folding_a_staircase_cannot():
+    v = staircase_pairs(spike=40)
+    assert measure.fold_profile(v)["spike_z"] < 2.0      # the reason it exists
+    f = measure.pair_fold(v)
+    assert f["hold_ok"], f["pair_spread"]
+    assert f["z"] > measure.FOLD_Z_DIRTY
+    assert abs(f["peak"]) > 30
+
+
+def test_pair_fold_is_quiet_on_a_clean_staircase():
+    f = measure.pair_fold(staircase_pairs())
+    assert f["hold_ok"]
+    assert f["z"] < measure.FOLD_Z_DIRTY
+
+
+def test_pair_fold_refuses_when_the_pairing_is_broken():
+    """The two samples of a level are only a level while the DAC and ADC
+    rates are locked. Held for one sample instead of two, the difference
+    is a DAC step and the result must not be read."""
+    f = measure.pair_fold(staircase_pairs(hold=1, spike=40))
+    assert not f["hold_ok"]
+    assert f["pair_spread"] > 4.0

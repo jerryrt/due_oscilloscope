@@ -497,6 +497,62 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### Track and settling do nothing, and the coin flip has two faces
+
+The sweep is finally a real experiment. It was inconclusive first time
+because the verdict was a bimodal dirty/clean from a threshold detector
+on a drifting board - 32 of 32 clean, baseline included, so nothing
+could be concluded either way. `pair_fold()` on A0 gives a signed
+amplitude with a floor well under a code, so the same sweep is a
+dose-response curve. Run at RC 196, interleaved, baseline in the
+rotation, A1 still grounded:
+
+    TRACKTIM= 0 SETTLING=0:  -77.8  -77.9   +1.9
+    TRACKTIM= 2 SETTLING=0:   +1.9  -77.8  -80.2
+    TRACKTIM= 4 SETTLING=0:  -80.3  -80.2   +2.4
+    TRACKTIM= 8 SETTLING=0:   +1.9  -80.2   +2.4
+    TRACKTIM=15 SETTLING=0:  -80.2   +2.0  -77.9
+    TRACKTIM= 0 SETTLING=3:   +1.9  -80.3   +2.4
+    TRACKTIM=15 SETTLING=3:  -77.9   +1.9   +2.4
+
+**Neither register does anything.** Every condition draws from the same
+handful of values, including both extremes, and the maximum of both
+registers looks exactly like the minimum. This is a powered negative
+result rather than another era measurement: the baseline arm reproduced,
+the readout is continuous, and the treatment arms are not shifted.
+
+**What the sweep found instead is the shape of the whole problem.** The
+values are not scattered - they are two states, and the phase separates
+them cleanly. Fourteen runs at fixed conditions:
+
+| state | peak, codes | phase | runs |
+|---|---|---|---|
+| A | -77.9 to -80.3 | **63** | 7 of 14 |
+| B | +1.8 to +2.4 | **211** | 7 of 14 |
+
+Two states, a factor of forty apart in amplitude, at two different
+phases, drawn about evenly, chosen per run and constant within it.
+
+**That is the bimodality this investigation has been fighting since the
+beginning, and it was never dirty-versus-clean.** State B is +2 codes,
+which is under `STEP_SPLICE_CODES`, under `FLAT_DEV_CODES`, under
+`periodic_census()`'s floor and under every threshold ever used here. So
+state B has always been reported as a clean run, and everything follows
+from that:
+
+- "6 of 10 dirty" is the coin flip, not an incidence rate;
+- the session-long "fade" is a run of state-B draws;
+- every A/B comparison sampled the coin in both arms, which is exactly
+  why interleaving was necessary and still not sufficient;
+- and no run was ever clean, which is what the fold already said.
+
+**A run is now identified, not judged.** Report which state a run landed
+in and its amplitude; do not report dirty or clean. Two states with a
+40x amplitude ratio, selected at start and stable within a run, is the
+signature of a startup alignment with a small number of outcomes - and
+the phase difference, 63 against 211, says the two states sample the
+disturbance at different points rather than scaling it.
+
 ### The jumper test, at last: nothing digital survives it
 
 A1 tied to **GND** instead of DAC1, `main` at `d1c2841`, eight RCs

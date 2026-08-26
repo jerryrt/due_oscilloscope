@@ -448,6 +448,41 @@ def fold_profile(vals, period=GEN_TABLE_LEN, control_period=None):
             "control_spike_z": scz}
 
 
+def pair_fold(vals, period=GEN_TABLE_LEN):
+    """Fold the staircase channel, by differencing within each DAC level.
+
+    fold_profile() needs a flat channel and A0 is not one: gen holds each
+    DAC level for exactly two ADC samples, so the folded profile is the
+    staircase and a one-sample event does not stand out from it - a
+    40-code spike scores 1.4 on `spike_z`, which is why A0 could not be
+    the control for the jumper test.
+
+    The hold is itself the measurement. Two samples of one DAC level
+    should read the same, and a one-sample artifact lands on exactly one
+    of them, so differencing within the pair cancels the waveform by
+    construction and leaves the event at full height. It is what made
+    the track/settling sweep runnable with A1 grounded.
+
+    `hold_ok` is false when the pairing does not hold - the two samples
+    of a level are only a level while the DAC and ADC rates are locked,
+    and at some rates they are not. A large median absolute difference
+    says the differencing is measuring the staircase rather than
+    cancelling it, and the result should not be read.
+    """
+    import statistics as _st
+    if len(vals) < 4 * period:
+        return dict(fold_profile([], period=max(1, period // 2)),
+                    hold_ok=False, pair_spread=0.0)
+    d = [vals[i] - vals[i + 1] for i in range(0, len(vals) - 1, 2)]
+    out = fold_profile(d, period=period // 2)
+    # Within a held level the difference is noise; across a broken
+    # pairing it is a DAC step, which is tens of codes.
+    spread = _st.median([abs(x) for x in d])
+    out["pair_spread"] = spread
+    out["hold_ok"] = spread <= 4.0
+    return out
+
+
 def flat_census(vals, threshold=FLAT_DEV_CODES):
     """Count the samples a flat line cannot account for.
 
