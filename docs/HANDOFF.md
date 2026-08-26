@@ -213,6 +213,41 @@ So the two-way split stands undisturbed, and the deferred source
 experiment still decides it. Source impedance is the one knob that
 demonstrably varies settling here; this one does not.
 
+**Build it once, on separate channels. Do not swap resistors.** The
+board is usually driven remotely, and swapping a series resistor between
+arms is both impractical and worse science: each impedance would be a
+different run, so the two-state coin flip and the amplitude drift land
+on the arms unequally. Give every impedance its own ADC channel and one
+capture contains every arm, perfectly matched.
+
+Equal legs put the tap at exactly V/2 whatever the value, so one pair
+per channel sets the level and the impedance together:
+
+    A1   1k  / 1k    ->  1.65 V at   500 ohm
+    A2  10k  / 10k   ->  1.65 V at     5 kohm
+    A3 100k  / 100k  ->  1.65 V at    50 kohm
+    A4  DAC1, original jumper restored - the condition already measured
+    A0  DAC0 loopback, unchanged - the known-artifact positive control
+
+Six resistors and two jumpers, built once and never touched again. Add a
+1M pair for a fourth decade if it is to hand; leakage there is a
+sub-code offset and Johnson noise about 0.1 codes, both negligible
+against a 2-to-80 code artifact.
+
+**No capacitors on any of these nodes.** A 100 nF at an ADC input is the
+reflex and it is correct everywhere except here: a cap is a
+low-impedance reservoir at the sampling instant, so it does what GND did
+and suppresses the effect being measured.
+
+**Two things to do before the parts arrive.** Preset `M` hardcodes two
+channels and needs a channel count, the same shape as the
+`=<dac>[,<adc>]M` knob. And note the untested assumption: the artifact
+has only ever been seen with two channels, so adding channels moves the
+per-channel rate and therefore the fold period, and whether it survives
+at all is unknown. `periodic_census()` can find the new period and A0
+says whether the board is still doing it, but do not assume the
+five-channel configuration reproduces until it has.
+
 **And it found the shape of the whole problem, which matters more than
 the sweep did.** The amplitudes are two states separated by phase, a
 factor of forty apart, drawn about evenly per run - and the small one
