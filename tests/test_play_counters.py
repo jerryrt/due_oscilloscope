@@ -35,13 +35,10 @@ def test_playback_counters_describe_one_run_not_several(board, seconds, track):
     at any rate. Testing it on the *second* run is the whole point: the
     first run passes even with the bug present.
     """
-    if track != "b":
-        # The identity is read off the `O` occupancy line, and Track A
-        # has no `O` - objective 1c. Skipping rather than xfailing:
-        # nothing is known to be broken here, the instrument to observe
-        # it with is simply not on that track yet. This starts passing
-        # when 1c does, the same way the control-channel tests will.
-        pytest.skip("Track A has no occupancy histogram yet (objective 1c)")
+    # Ran on Track B only until 2026-08-25, because the identity is read
+    # off the `O` occupancy line and Track A had no `O`. It has one now -
+    # objective 1c's first half - so this covers both tracks, which is
+    # what the skip it replaced said would happen.
 
     hz = measure.hz_for(65)
     secs = window(seconds, 2.0)

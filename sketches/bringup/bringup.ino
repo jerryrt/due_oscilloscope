@@ -41,6 +41,7 @@
 #include "gen.h"
 #include "stream.h"
 #include "play.h"
+#include "playstat.h"
 #include "usbdma.h"
 #include "frame.h"
 #include "version.h"
@@ -931,6 +932,48 @@ void loop()
 	play_service();
 	stream_service();
 	diag_service();
+
+	/*
+	 * Playback status on bulk IN, so the host can close a rate loop
+	 * on what the converter actually consumed. Ported from
+	 * apps/baremetal_bringup/main.c; the record layout is a
+	 * byte-for-byte copy in playstat.h, because the host parses one
+	 * magic and one CRC for both tracks.
+	 *
+	 * Play-only, and nowhere else. In loop mode bulk IN carries
+	 * capture frames and the endpoint is on DMA; the FIFO path must
+	 * not touch an endpoint DMA owns. stream_in_in_use() is the
+	 * guard and it is new on this track too.
+	 *
+	 * SerialUSB.write returns short rather than spinning when no
+	 * bank is free, and dtr() is checked first, so a host that has
+	 * stopped reading costs a dropped record and not a stalled main
+	 * loop - invariant 7. The host tolerates gaps: it differences
+	 * whichever records arrive.
+	 */
+	if (play_active() && !stream_in_in_use() && SerialUSB.dtr()) {
+		static uint32_t last_stat_ms;
+
+		if ((uint32_t)(now - last_stat_ms) >= PLAYSTAT_MS) {
+			playstat_t st;
+
+			last_stat_ms = now;
+			st.magic[0] = PLAYSTAT_MAGIC0;
+			st.magic[1] = PLAYSTAT_MAGIC1;
+			st.magic[2] = PLAYSTAT_MAGIC2;
+			st.magic[3] = PLAYSTAT_MAGIC3;
+			st.version  = PLAYSTAT_VERSION;
+			st.pad[0] = st.pad[1] = st.pad[2] = 0;
+			st.consumed  = play_consumed;
+			st.underruns = play_underruns;
+			st.bytes_in  = play_bytes_in;
+			st.dev_us    = micros();
+			st.crc32     = frame_crc32((const uint8_t *)&st,
+			                           sizeof(st) - sizeof(st.crc32));
+			if (SerialUSB.write((const uint8_t *)&st, sizeof(st)))
+				usb_in_activity++;
+		}
+	}
 
 	/*
 	 * Keep bulk OUT drained when nothing is consuming it. A CDC device

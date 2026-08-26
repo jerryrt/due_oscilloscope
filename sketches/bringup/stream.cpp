@@ -258,6 +258,12 @@ bool stream_active(void)
  * data wedges the host, because macOS's close() waits for in-flight
  * write URBs that a NAKing pipe never completes.
  */
+bool stream_in_in_use(void)
+{
+	return stream_active() || bench == BENCH_FLOOD || bench == BENCH_DUPLEX ||
+	       bench == BENCH_FLOOD_DMA || bench == BENCH_DUPLEX_DMA;
+}
+
 bool stream_out_in_use(void)
 {
 	return bench == BENCH_SINK || bench == BENCH_DUPLEX ||
