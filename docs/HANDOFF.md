@@ -155,13 +155,22 @@ to settle both survive. Reconnect DAC1 to A1 through **10k**: source
 impedance decides settling, so the artifact growing with the resistor
 means the front end and exonerates DAC1; no change means DAC1.
 
-**Then re-run the track/settling sweep.** `=<tt>,<st>A` is on `main` and
-was inconclusive the first time because the verdict came from a
-threshold detector on a drifting board. `fold_profile()`'s `z` is
-continuous with a floor near a fifth of a code, so the same sweep is now
-a dose-response curve rather than a coin flip - and the RC dependence
-already says this is a function of conversion timing, which is exactly
-what those registers control.
+**The resistor is DEFERRED: the hardware is not to hand (2026-08-26).**
+Nothing else is blocked by it. Do not open the session by trying it.
+
+**The track/settling sweep is done, and the answer is neither register.**
+It did not need the resistor after all - `pair_fold()` measures A0,
+which is still looped, so the sweep ran with A1 still grounded. Run at
+RC 196, interleaved, baseline in the rotation and reproducing: every
+condition draws from the same values including both extremes, and the
+maximum of both registers looks exactly like the minimum. A powered
+negative, not another era measurement. Details below.
+
+**And it found the shape of the whole problem, which matters more than
+the sweep did.** The amplitudes are two states separated by phase, a
+factor of forty apart, drawn about evenly per run - and the small one
+has always been reported as a clean run. See "the coin has two faces"
+below before planning any experiment that counts dirty runs.
 
 **Do not measure this with a threshold.** Three fixed thresholds went
 blind to it in one day and every "does not reproduce" measured with one
@@ -240,13 +249,23 @@ the suite cannot currently enforce on Track A, and this.
 
 ### The agreed order of work (updated 2026-08-26)
 
-1. **Issue #5: the 10k resistor, then the track/settling sweep.** Step 1
-   used to be "settle whether it is a defect at all" and then "confirm on
-   macOS". Both are done. It reproduces on both hosts, presence looks
-   constant once you stop thresholding, and the jumper test says it is
-   analog. What is left is which analog: DAC1 glitching, or the ADC input
-   network failing to settle. One resistor separates them. See the top of
-   this file.
+1. **Issue #5: blocked on one resistor, and nothing else.** Step 1 used
+   to be "settle whether it is a defect at all", then "confirm on macOS",
+   then "the 10k resistor, then the track/settling sweep". All of those
+   are done or answered except the resistor, which is **deferred - the
+   hardware is not to hand as of 2026-08-26**.
+
+   It reproduces on both hosts, presence is constant once you stop
+   thresholding, the jumper test says the cause is analog and at the ADC
+   front end or before it, and neither `TRACKTIM` nor `SETTLING` moves
+   it. What is left is which analog - DAC1 glitching, or the ADC input
+   network failing to settle - and one resistor separates them.
+
+   **Do not spend a session working around the missing part.** The
+   remaining question is a two-way split that one component decides;
+   anything else is a longer road to the same fork. Pick up objective 1c
+   or the Track A control channel instead, and take issue #5 when the
+   resistor exists.
 2. **Objective 1c, first half** - done. `O`, `occmin`, `play_run_us`, the
    playstat carrier, `PLAY_PRIME_BUFS` 24 and the playback-abandon
    timeout are all on `main`, and Track A is 237 passed / 0 failed.
