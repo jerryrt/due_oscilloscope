@@ -401,6 +401,51 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### The jumper test, at last: nothing digital survives it
+
+A1 tied to **GND** instead of DAC1, `main` at `d1c2841`, eight RCs
+including the four that folded at +54 to +66 codes an hour earlier:
+
+| A1 at GND | A0 in the same captures |
+|---|---|
+| **0 nonzero samples in ~3.2 M**, sd 0.00, fold z 0.0 at every RC | median 2051, sd 969 - the sine, converting normally |
+
+The liveness check matters as much as the result. A dead channel also
+reads zero, and A0 rules that out: both channels convert in the same
+capture and only the grounded one is silent.
+
+**This kills every digital explanation, including the one the issue is
+named after.** A corrupted result register, a stale IN transfer racing
+the PDC, a TAG-mode channel mix-up, a bit set on the way through - any
+of them appears whatever the pin is doing. None of them can be switched
+off by holding the input at a rail. The artifact requires the analog
+input to be something other than a hard low-impedance source, so it is
+made at the ADC's front end or before it, and `wip/stream-stop-race` was
+never even the right *kind* of theory.
+
+**What it does not settle.** Grounding changed two things at once: it
+removed DAC1, and it replaced a DAC output at mid-rail with an
+essentially zero-ohm source at the rail. So DAC1's output glitching and
+the ADC's input network failing to settle are still both alive, and this
+test cannot separate them.
+
+**The experiment that does**, and it is one resistor: reconnect
+DAC1 -> A1 *through a series resistance* - 10k, say. Source impedance is
+what decides settling, so if the artifact grows with the resistor it is
+the ADC front end and DAC1 is exonerated; if it is unchanged, it is
+DAC1's output. `docs/hardware.md` already warns that "crosstalk bites
+when tracking time is short" and `acq.c` streams at `TRACKTIM(0)`,
+`SETTLING(0)`.
+
+**And the track/settling sweep is now worth re-running**, which it was
+not before. It was inconclusive in its first attempt because the verdict
+was a bimodal dirty/clean from a threshold detector on a drifting board.
+`fold_profile()` reports a continuous amplitude with a floor near a
+fifth of a code, so `=<tt>,<st>A` against fold z is a dose-response
+curve rather than a coin flip - and the RC dependence already says the
+artifact is a function of conversion timing, which is exactly what those
+two registers control.
+
 ### Presence is constant. The question is only what sets the amplitude.
 
 Folded at `GEN_TABLE_LEN`, **14 of the 15 RCs carry the artifact** - and
