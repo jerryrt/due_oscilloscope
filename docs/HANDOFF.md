@@ -375,7 +375,10 @@ clean, they were comparing dirty against dirty-below-threshold.
 `measure.periodic_census()` keys on what has never varied. Across two
 hosts the amplitude has been 6-7, 12-14, ~15, 26-32, 49-50 and 63-68 -
 six values, three of which were under whichever threshold was current -
-while the period has been `GEN_TABLE_LEN` every single time. It sweeps
+while the period has been regular every single time. (It is not
+always `GEN_TABLE_LEN` - see the macOS correction below, where RC 194
+detects at 256, two events per wrap. Regularity is what holds; the
+particular period is not.) It sweeps
 the threshold down from the run's own noise floor and accepts the widest
 set of events whose spacing is regular.
 
