@@ -13,6 +13,30 @@
  */
 acq_slot_t acq_slot[ACQ_NBUF] __attribute__((section(".sram1")));
 
+/*
+ * ADC track and settling time, applied at the next acq_init().
+ *
+ * Runtime rather than a #define on purpose. The defect this exists to
+ * test is bimodal per run and its incidence tracks the binary - four
+ * bytes of bss have moved it - so a compile-time sweep compares images
+ * and cannot separate the constant from the layout. One image that
+ * takes the value from the host compares only the constant.
+ *
+ * 0/0 is what this project has always streamed at, and is the default,
+ * so nothing changes unless a host asks for it. docs/hardware.md warns
+ * that the +/-1 code crosstalk baseline was taken at the maximum of
+ * both and "does not retire the crosstalk risk" because "crosstalk
+ * bites when tracking time is short".
+ */
+uint8_t acq_tracktim = 0;   /* 0-15 */
+uint8_t acq_settling = 0;   /* 0-3  */
+
+void acq_set_timing(uint32_t tracktim, uint32_t settling)
+{
+	acq_tracktim = (uint8_t)(tracktim > 15u ? 15u : tracktim);
+	acq_settling = (uint8_t)(settling > 3u ? 3u : settling);
+}
+
 volatile uint32_t acq_buffers_done;
 volatile uint32_t acq_rxbuff_overruns;
 volatile uint32_t acq_govre;
@@ -65,8 +89,8 @@ void acq_init(void)
 	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)
-	            | ADC_MR_TRACKTIM(0)
-	            | (0u << ADC_MR_SETTLING_Pos)
+	            | ADC_MR_TRACKTIM(acq_tracktim)
+	            | ((uint32_t)acq_settling << ADC_MR_SETTLING_Pos)
 	            | (1u << ADC_MR_TRANSFER_Pos);
 
 	ADC->ADC_EMR = ADC_EMR_TAG;
