@@ -68,7 +68,7 @@ static void banner(void)
 	printf("#           L=full loop HOST->DAC->ADC->HOST\n");
 	printf("#           P=play only  V=ring dump  D=loop diagnostic\n");
 	printf("#           O=playback ring occupancy histogram\n");
-	printf("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels\n");
+	printf("#           =<dac>[,<adc>[,<nch>]] before L/P/t/M: rates, channels\n");
 	printf("#           M=mimic loop without USB (gen sine on TIOA1 + capture)\n");
 	printf("#           Q=main-loop profile  l=main-loop load\n");
 	printf("#           =<ms>S = stall the loop (validates l)\n");
@@ -808,7 +808,32 @@ static void cmd_execute(const cmd_t *cmd)
 	 * Observe with D: if cdr7 swings, the fault needs USB to appear;
 	 * if it freezes, the trigger/DACC/ADC interaction is the fault.
 	 */
-	case 'M':
+	case 'M': {
+		/*
+		 * "=<dac>[,<adc>]M", defaulting to 200000 for both, which is
+		 * what this preset always did.
+		 *
+		 * Settable because this is the only path in the firmware
+		 * where the DAC update clock and the ADC trigger are two
+		 * independent timers - gen_prepare_tioa1() selects TIOA1
+		 * where every other path leaves the DACC on the ADC's TIOA0.
+		 * That makes the sampling phase relative to the DAC's table
+		 * wrap a free variable, fixed for a run by the instruction
+		 * timing between the two starts, and it is the one structural
+		 * difference between this preset and the ordinary capture
+		 * path that issue #5 does not appear on.
+		 *
+		 * Giving the two clocks slightly different rates walks that
+		 * phase through a full period within one capture, so one run
+		 * samples the whole phase space instead of whichever point a
+		 * run happened to start at. A defect that is bimodal per run
+		 * and constant within it is what a fixed free variable looks
+		 * like; this is how to test that without needing a board that
+		 * is currently reproducing.
+		 */
+		uint32_t dac_hz = cmd->arg[0] ? cmd->arg[0] : 200000u;
+		uint32_t adc_hz = cmd->arg[1] ? cmd->arg[1] : dac_hz;
+
 		/*
 		 * Everything the console has to say is said before the
 		 * converters start. These two lines used to run after
@@ -819,12 +844,13 @@ static void cmd_execute(const cmd_t *cmd)
 		 * on one image with the two orders alternated; moved anyway,
 		 * because it had no business being there.
 		 */
-		printf("# mimic loop: gen sine on TIOA1 at 200000 sps, capture 200000 Hz\n");
+		printf("# mimic loop: gen sine on TIOA1 at %lu sps, capture %lu Hz\n",
+		       (unsigned long)dac_hz, (unsigned long)adc_hz);
 		printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
 		uart_flush();
 		play_stop();
 		gen_init();
-		gen_prepare_tioa1(200000u);
+		gen_prepare_tioa1(dac_hz);
 		/*
 		 * Checked, unlike every earlier version of this line. A
 		 * refusal is silent otherwise: gen still runs, the banner
@@ -833,13 +859,14 @@ static void cmd_execute(const cmd_t *cmd)
 		 * the preset the splice census measures, so a refusal that
 		 * says nothing would be scored as a clean run.
 		 */
-		if (!stream_start_capture_only(200000u, 2)) {
+		if (!stream_start_capture_only(adc_hz, 2)) {
 			printf("# mimic loop: refused, the ADC would not start\n");
 			uart_flush();
 			break;
 		}
 		gen_go_tioa1();
 		break;
+	}
 	case 'B': stream_bench_report();
 	          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
 	                 (unsigned long)play_bytes_in,
