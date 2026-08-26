@@ -401,6 +401,59 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### Presence is constant. The question is only what sets the amplitude.
+
+Folded at `GEN_TABLE_LEN`, **14 of the 15 RCs carry the artifact** - and
+that includes every RC both hosts' threshold instruments called clean.
+`measure.fold_profile()` averages the run at the known period instead of
+deciding which samples are events, so the floor sits near a fifth of a
+code rather than at 20:
+
+| rc | peak, codes | z | control z | census verdict |
+|---|---|---|---|---|
+| 187 | **-4.31** | 36.2 | 3.5 | clean |
+| 190 | +4.51 | 24.6 | 3.0 | clean |
+| 191 | +4.32 | 38.5 | 3.0 | clean |
+| 192 | -0.39 | **2.5** | 2.8 | clean |
+| 195 | +3.33 | 27.7 | 3.0 | clean |
+| 198 | +5.35 | 28.3 | 3.1 | clean |
+| 199 | +5.29 | 33.1 | 3.7 | clean |
+
+Only RC 192 is quiet, at -0.39 codes with z below its own control. The
+other six are not marginal: z of 25 to 39 against a control period
+reading 3.
+
+So conjecture 3 above is settled. **The defect is present at very nearly
+every RC on this board, at amplitudes from under half a code to 66, and
+"clean" has never meant anything but "under the line in force".** Two
+consequences follow immediately.
+
+**The RC scans on both hosts measured detector floors, not physics.**
+The macOS 10-of-15, the Windows 7-of-15 and the nesting between them are
+all one continuous amplitude surface sampled through different floors.
+Windows runs smaller, so its floor cuts more of the surface away - which
+is exactly why its dirty set nested inside the macOS one, and that
+nesting is now evidence about the instruments rather than about the
+hosts.
+
+**And the amplitude drifts at fixed RC, which is the fade.** RC 188 and
+196 folded at 65 and 60 codes here, having censused clean in an earlier
+scan the same evening at the same RC on the same image. Nothing switches
+on or off; a continuous quantity wanders across whatever line is
+currently drawn.
+
+**The displacement is signed, and the sign varies with RC.** RC 187 and
+189 are negative; everything else measured is positive. Every account of
+this artifact has called it one sample displaced *upward*, on both
+hosts, because every detector so far keyed on absolute deviation and
+could not have seen otherwise. A mechanism now has to explain a signed,
+continuously varying displacement - which is a much stronger constraint
+than "sets bit 6" ever was, and rules out anything that can only add.
+
+**What to stop doing.** Do not report an RC, a host or a build as clean
+without folding it. Do not read a dirty-set difference as a difference
+in behaviour. `tools/ab.py` gates on the fold now for this reason.
+
 ### macOS: conjectures 2 and 3 above are confirmed, and two more things
 
 Re-ran the RC scan with `periodic_census()` on the reproducing board.
