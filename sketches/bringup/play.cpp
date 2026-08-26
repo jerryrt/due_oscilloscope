@@ -46,8 +46,33 @@ static uint32_t dma_start_off;       /* fill_off when it started */
 static uint32_t dma_published;       /* slots already published from it */
 static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
 
-/* Enough queued to ride out host scheduling jitter before the first
- * conversion, so priming never emits a burst of stale repeats. */
+/*
+ * Enough queued to ride out host scheduling jitter before the first
+ * conversion, so priming never emits a burst of stale repeats.
+ *
+ * Still 4, where drivers/play.c is 24, and that is a measurement rather
+ * than debt left unpaid. Objective 0i raised Track B's from 4 to 24 and
+ * took underruns to zero at every rate on the ladder, occmin from 2 to
+ * 21-26. It buys nothing here. Measured the day this track first grew
+ * the instruments to see the ring at all, three runs per rate, two
+ * builds verified distinct:
+ *
+ *   prime   RC 44        RC 39        RC 28
+ *      4    3382-3384    3789-3792    5416-5422
+ *     24    3354-3384    3789-3790    5416-5417
+ *
+ * occmin is 2 in all eighteen runs. So Track A's ring does not merely
+ * start low, it lives at the ENDTX guard for the whole run, and the
+ * prime is not what puts it there. Raising this constant to match Track
+ * B would make the two tracks look alike and change nothing that is
+ * measured, which is the failure invariant 5 exists to prevent applied
+ * to a constant instead of to data.
+ *
+ * The cause is not yet found and the numbers say it is not small: at
+ * RC 44 the underruns outnumber two thirds of the buffers consumed.
+ * Nobody has looked, because until now this track could not report
+ * occupancy. See objective 1c.
+ */
 #define PLAY_PRIME_BUFS 4u
 
 bool play_active(void) { return active; }
