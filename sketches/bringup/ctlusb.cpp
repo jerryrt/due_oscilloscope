@@ -167,11 +167,54 @@ int CtlUSB::getInterface(uint8_t *interfaceCount)
 	return USBD_SendControl(0, ctl_desc, sizeof(ctl_desc));
 }
 
-int CtlUSB::getDescriptor(USBSetup & /*setup*/)
+/*
+ * String 5, and it is not cosmetic.
+ *
+ * ctl_desc's IAD carries iFunction = 5, matching drivers/usb_cdc.c so
+ * the two functions can be told apart in Device Manager and ioreg. On
+ * Track B that string is in the device's own descriptor table. Here the
+ * core owns strings, and USBD_SendDescriptor answers exactly four
+ * indices - 0, IPRODUCT, IMANUFACTURER and ISERIAL - and returns false
+ * for everything else.
+ *
+ * False is not a benign refusal on this core. USBCore answers it with
+ * UDD_Stall(), and UDD_Stall() is
+ *
+ *     UOTGHS->UOTGHS_DEVEPT = (UOTGHS_DEVEPT_EPEN0 << EP0);
+ *
+ * an assignment rather than a set, so a protocol stall on EP0 disables
+ * every other endpoint on the device. That is the whole of this
+ * branch's "the endpoints are enabled at SET_CONFIGURATION and then
+ * cleared": Windows asks for string 5 about 2.4 ms after configuring,
+ * the core cannot supply it, and EP1-6 go away with the address and
+ * _usbConfiguration untouched - which is why it never looked like a
+ * bus reset.
+ *
+ * PluggableUSB is asked first (USBCore.cpp:397), before the core's own
+ * string handling, and a positive return claims the request. So the
+ * string this descriptor promises is supplied by the module that
+ * promised it, and nothing stalls.
+ */
+static const uint8_t ctl_string5[] = {
+	2 + 2 * 15, 3,
+	'C',0, 'o',0, 'n',0, 't',0, 'r',0, 'o',0, 'l',0, ' ',0,
+	'c',0, 'h',0, 'a',0, 'n',0, 'n',0, 'e',0, 'l',0
+};
+
+#define CTL_ISTR_FUNCTION 5u
+
+int CtlUSB::getDescriptor(USBSetup &setup)
 {
-	/* No class-specific descriptor requests of our own; the CDC ones
-	 * are answered from the configuration descriptor above. */
-	return 0;
+	if (setup.wValueH != 3u)                    /* STRING */
+		return 0;
+	if (setup.wValueL != CTL_ISTR_FUNCTION)
+		return 0;
+
+	uint32_t len = sizeof(ctl_string5);
+	if (setup.wLength && len > setup.wLength)
+		len = setup.wLength;
+	USBD_SendControl(0, ctl_string5, len);
+	return 1;
 }
 
 /*
