@@ -92,8 +92,20 @@ _Static_assert(ACQ_FRAME_BYTES % 512 == 0,
  */
 #define ACQ_MIN_RC_1CH        44u
 
+/*
+ * Three channels, for the issue #5 impedance rig on A2. **Provisional -
+ * derived, not measured**, which is exactly what the note above says not
+ * to do, so it is deliberately conservative rather than tight: 906,976
+ * conversions per second over three channels is 302,325 triggers, RC
+ * 129, and this rounds up. The measured floor belongs here as soon as
+ * the sweep has been run; nothing in the rig needs the top of the range,
+ * which is why the placeholder is safe to work behind. *(check)*
+ */
+#define ACQ_MIN_RC_3CH        132u
+
 /* Minimum compare value for a given channel count. Measured, not derived. */
-#define ACQ_MIN_RC_FOR(n)     ((n) == 1u ? ACQ_MIN_RC_1CH : ACQ_MIN_RC)
+#define ACQ_MIN_RC_FOR(n)     ((n) == 1u ? ACQ_MIN_RC_1CH :   \
+                               (n) == 3u ? ACQ_MIN_RC_3CH : ACQ_MIN_RC)
 
 extern acq_slot_t acq_slot[ACQ_NBUF];
 

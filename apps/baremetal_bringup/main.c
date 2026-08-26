@@ -142,12 +142,23 @@ static uint32_t mimic_start_delay_us;
 
 static void cmd_read(void)
 {
-	uint16_t a0, a1;
+	uint16_t a0, a1, a2;
 
 	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
-	printf("# A0(AD7) = %4u  %4lu mV    A1(AD6) = %4u  %4lu mV\n",
+	a2 = adc_read(ADC_CH_A2);
+	/*
+	 * A2 is read separately rather than as a pair, because it is
+	 * the impedance arm and pairing it would convert it straight
+	 * after another channel - which is the one thing this rig
+	 * exists to hold still. Software-triggered with a generous
+	 * tracking time, so this is a DC reading and not a sample of
+	 * the artifact.
+	 */
+	printf("# A0(AD7) = %4u  %4lu mV    A1(AD6) = %4u  %4lu mV    "
+	       "A2(AD5) = %4u  %4lu mV\n",
 	       a0, (unsigned long)code_to_mv(a0),
-	       a1, (unsigned long)code_to_mv(a1));
+	       a1, (unsigned long)code_to_mv(a1),
+	       a2, (unsigned long)code_to_mv(a2));
 	uart_flush();
 }
 
@@ -861,6 +872,14 @@ static void cmd_execute(const cmd_t *cmd)
 		 */
 		uint32_t dac_hz = cmd->arg[0] ? cmd->arg[0] : 200000u;
 		uint32_t adc_hz = cmd->arg[1] ? cmd->arg[1] : dac_hz;
+		/*
+		 * "=<dac>,<adc>,<nch>M". Three channels puts the issue #5
+		 * impedance arm on A2 into the same capture as A1 and the
+		 * sine on A0, so the arms are matched inside one run
+		 * instead of compared across runs that draw different
+		 * states.
+		 */
+		unsigned nch    = cmd->arg[2] ? cmd->arg[2] : 2u;
 
 		/*
 		 * Everything the console has to say is said before the
@@ -887,7 +906,7 @@ static void cmd_execute(const cmd_t *cmd)
 		 * the preset the splice census measures, so a refusal that
 		 * says nothing would be scored as a clean run.
 		 */
-		if (!stream_start_capture_only(adc_hz, 2)) {
+		if (!stream_start_capture_only(adc_hz, nch)) {
 			printf("# mimic loop: refused, the ADC would not start\n");
 			uart_flush();
 			break;

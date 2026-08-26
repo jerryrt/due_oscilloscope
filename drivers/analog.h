@@ -6,6 +6,11 @@
  * actual DAC endpoints, which are a Phase 1 deliverable.
  *
  * Loopback wiring:  DAC0 -> A0,  DAC1 -> A1
+ *
+ * A2 carries no DAC. From 2026-08-26 it is the impedance arm of the
+ * issue #5 rig: two 11k resistors between 3.3 V and GND with the tap
+ * on the pin, so 1.65 V behind 5.5k. A1 is the same voltage behind a
+ * DAC output, which is what makes the pair a matched comparison.
  */
 
 #ifndef ANALOG_H
@@ -24,6 +29,7 @@
  */
 #define ADC_CH_A0  7u
 #define ADC_CH_A1  6u
+#define ADC_CH_A2  5u
 
 void     dac_init(void);
 void     dac_write(unsigned ch, uint16_t code12);   /* ch 0 or 1 */

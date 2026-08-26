@@ -69,10 +69,13 @@ FRAME_BYTES = HDR_LEN + FRAME_SAMPLES * 2
 MCK_HZ = 78_000_000
 TC_CLOCK_HZ = MCK_HZ // 2          # 39 MHz
 
-# The ADC labels map to channels descending: A0 is AD7, A1 is AD6.
+# The ADC labels map to channels descending: A0 is AD7, A1 is AD6,
+# A2 is AD5. A2 carries the issue #5 impedance arm - 1.65 V behind
+# 5.5k, against A1 at the same voltage behind a DAC output.
 CH_A0 = 7
 CH_A1 = 6
-CHANNEL_LABELS = {7: "A0", 6: "A1"}
+CH_A2 = 5
+CHANNEL_LABELS = {7: "A0", 6: "A1", 5: "A2"}
 
 
 def label_for(tag):

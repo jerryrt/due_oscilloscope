@@ -37,6 +37,7 @@ void acq_set_timing(uint32_t tracktim, uint32_t settling)
 	acq_settling = (uint8_t)(settling > 3u ? 3u : settling);
 }
 
+
 volatile uint32_t acq_buffers_done;
 volatile uint32_t acq_rxbuff_overruns;
 volatile uint32_t acq_govre;
@@ -136,7 +137,7 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	 * conversions per second, not triggers: one channel may be
 	 * triggered twice as fast as two for the same converter load.
 	 */
-	if (n_channels == 0 || n_channels > 2)
+	if (n_channels == 0 || n_channels > 3)
 		return false;
 	if (rc < ACQ_MIN_RC_FOR(n_channels))
 		return false;
@@ -149,9 +150,18 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	 * order, and the tag in each sample names the channel, so the host
 	 * demultiplexes without being told which mode this is.
 	 */
+	/*
+	 * Ascending channel index is the conversion order, so three
+	 * channels convert A2, A1, A0 - the impedance arm first and the
+	 * sine last. The tag names the channel in every sample, so the
+	 * host demultiplexes without being told which mode this is.
+	 */
 	configured_mask = (n_channels == 1)
 	                ? (uint16_t)(1u << ADC_CH_A0)
-	                : (uint16_t)((1u << ADC_CH_A0) | (1u << ADC_CH_A1));
+	                : (n_channels == 2)
+	                ? (uint16_t)((1u << ADC_CH_A0) | (1u << ADC_CH_A1))
+	                : (uint16_t)((1u << ADC_CH_A0) | (1u << ADC_CH_A1)
+	                             | (1u << ADC_CH_A2));
 	ADC->ADC_CHDR = 0xffffu;
 	ADC->ADC_CHER = configured_mask;
 
