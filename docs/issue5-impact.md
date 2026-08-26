@@ -105,6 +105,12 @@ inference to observation and gives the transient's actual shape and
 duration, which no amount of ADC work can. Nothing else on the open list
 is worth as much per minute spent.
 
+**Deferred as of 2026-08-26**, with a different instrument to be built
+for it rather than an oscilloscope borrowed. So the central claim of
+this file stays marked as inference, and every amplitude quoted here
+stays a lower bound, until that exists. Nothing downstream should be
+written as though the transient's height were known.
+
 ## What this does not bound
 
 The AWG's *underrun* behaviour, byte conservation and rate accuracy are
