@@ -400,20 +400,22 @@ rather than guessing. `tests/test_census.py`, no board.
 
 ### Where the branches are
 
-| Branch | State |
+**`main` only.** Everything from both sessions is merged and every other
+branch is gone.
+
+| was | why it went |
 |---|---|
-| `main` | Both PRs merged. Carries the splice census and the issue #5 write-up |
-| `printf-stage1` | Stages 1-2 of taking measurement off the console. Full suite green |
-| `wip/stream-stop-race` | Tested 2026-08-25. **Do not merge as a fix** - see below |
-| `wip/refusal-reporting` | Off `wip/stream-stop-race`. Names which refusal it is; moves preset M's printfs off the capture. Local only |
+| `windows-validation`, `host-transport-port` | PRs #3 and #4, merged |
+| `issue5-adc-timing` | the runtime `=<tt>,<st>A` knob, merged |
+| `issue5-phase-walk` | the two-clock preset `M`, merged |
+| `issue5-repro` | both of those plus `periodic_census()`, merged |
+| `wip/stream-stop-race` | **not a fix.** Tagged `dead/stream-stop-race` and deleted |
 
-`windows-validation` and `host-transport-port` are merged and can go.
-
-Issue #5 is open and its recorded diagnosis is wrong; the correction is
-below and should be posted to the issue, whose title is also wrong.
-
-The macOS team has stopped. Both PRs carry their full review history and
-every finding they raised is answered in the comments.
+The tag is the only thing not on `main`. It holds the stale-DMA wait,
+kept reachable for reference and not merged, because its 25/25 clean was
+a control arm that never reproduced and the defect it was written
+against is not a splice, not the stop path, and present on the control
+too.
 
 ### Objective 0i's underrun half is closed, and it was cheap
 
