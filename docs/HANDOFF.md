@@ -122,18 +122,73 @@ Windows backend so that test runs first.
 consequences as predicted. Treat every "Windows will" here as a
 hypothesis with a test attached.
 
-## Start here (2026-08-26, Windows session)
+## Start here (2026-08-26, end of the Windows session)
 
-`main` is green on both tracks and there are no open PRs. One open
-issue, #5, and it changed character overnight: **it is analog.**
+**Issue #5's two-way split is closed: the artifact is made at a DAC
+output pin, not in the ADC.** What it costs the instrument is in
+`docs/issue5-impact.md` - read that before quoting anything about it.
+The open work is Track A's control channel, which was re-diagnosed onto
+a different layer entirely and is **not mergeable**.
 
 | | |
 |---|---|
-| Track A | 237 passed / 0 failed |
-| Track B | 258 passed / 0 failed |
-| Branches | `main`, `wip/track-a-control-channel` |
-| Board | Track B |
+| Track B | 281 passed, 12 skipped, **1 xfailed** (issue #5, identified not thresholded) |
+| Track A | not re-measured this session; the branch's old 160/88 is void |
+| Branches | `main`, `wip/track-a-control-channel` - **not mergeable** |
+| Board | Track B, `main` |
+| Wiring | **DAC0->A0 and DAC1->A1 only. A2 is disconnected** - the impedance rig was removed after the sweep |
 | Tag | `dead/stream-stop-race` - kept reachable, not a fix |
+
+### What to pick up, in order
+
+1. **Track A's control channel.** The whole diagnosis is under "Where
+   Track A's control channel stands" and the question is now one line
+   wide: the endpoints are enabled at SET_CONFIGURATION and cleared
+   afterwards, with no bus reset. Two concrete next steps and one
+   landmine are listed there. **This is the one that needs a fresh
+   session.**
+2. **Two contradictions from macOS that this session has not answered.**
+   `d15e8dd` replicates the layout sweep on a second board and finds
+   `all-DC` *not* null - 7.84 codes at z 29-32 - against this board's
+   null, which is the basis of "a changing output is needed". Their
+   wiring hypothesis is testable here in minutes: **pull the DAC1->A1
+   jumper and re-run `all-DC`.** And `b96368e` fixed a parity bug in
+   `pair_fold()` *after* the integrity gate was rewritten to depend on
+   it, so that gate wants re-verifying.
+3. **The 0-series Windows re-validation.** 0h's figures above 200 ksps
+   are still suspect and `Feeder.WRITE_SIZE` may be a macOS workaround
+   rather than a rule. This is the oldest real debt here.
+4. **A standing decision, not a task:** whether Track B adopts the
+   datasheet's `DACC_ACR` value. It is spec conformance and Track A
+   parity - **not** an issue #5 fix, measurably. `=<ch>,<core>I`.
+
+### Rules that changed this session, and both bite immediately
+
+- **`main` is the branch; everything else is short-lived.**
+  `CONTRIBUTING.md` has the full rule. The corollary that matters:
+  **findings go on `main` in `docs/`, not on the branch that produced
+  them.** `wip/track-a-control-channel` is the one exception and is not
+  precedent - it lands or it is deleted.
+- **Report which state a run drew, never dirty or clean.** The
+  integrity gate now identifies issue #5 with `pair_fold()` instead of
+  thresholding it. Worth knowing why: the old gate reported **"0 steps
+  over 45 codes" on runs whose fold z was 30-33 against a control of
+  3.** It has been able to pass a defective run the whole time, so
+  historical greens on it are worth less than they look.
+
+### Three traps this session paid for
+
+- **A knob that is programmed is not a knob that does anything.**
+  `TRACKTIM` reads back exactly as written and costs nothing at any
+  rate, so the track/settling sweep is a fact about the register and not
+  evidence about the ADC. Read the register back *and* show it changes
+  something.
+- **The binary selects which state issue #5 draws.** Points taken
+  across a reflash are not comparable; A1 in the same frame is the
+  reference that makes a sweep readable.
+- **Never truncate a suite run's output.** One failure was lost to a
+  `| tail -3` and never reproduced. `-rf --tb=short`, keep all of it.
+
 
 ### Issue #5 is an analog problem, and one resistor is the next move
 

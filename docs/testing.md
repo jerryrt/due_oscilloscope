@@ -311,6 +311,32 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   traceback and left nothing to diagnose; the re-run was green and the
   evidence was gone for good. Run with `-rf --tb=short` and keep the
   whole thing.
+- **The native port can accept an open and never return from it**, and
+  that is not the same as being absent. Measured on Windows after a
+  NRSTB reset: `ports.native_nodes()` lists the node, Device Manager
+  reports it healthy, and `CreateFile` blocks - so a caller with a
+  generous deadline still hangs, because control never comes back to
+  test the deadline. Seen as `OSError(22)`, Windows `ERROR_SEM_TIMEOUT`,
+  and as error 31 on the sibling node.
+
+  `Board.open_native()` runs each attempt in a daemon thread and
+  abandons it after `attempt_timeout`, re-globbing every pass, for up to
+  45 s. An abandoned thread leaks a handle in a process that is about to
+  exit; that is a straight trade against hanging the run.
+
+- **Healing, in the order to try it.** Any of these is acceptable - the
+  bench is a test rig, not a patient.
+  1. **Close what you opened.** `measure.Board` is a context manager;
+     use `with`. A script that dies holding the control port makes every
+     later run fail with "Access is denied" on it, and that looks
+     exactly like a board fault. Most of one session's "unstable
+     enumeration" was this.
+  2. **Kill any stray process** still holding a node. A blocked open in
+     an abandoned process holds the port until that process exits.
+  3. **Reflash.** `tools/flash.py` does a 1200-baud touch and a full
+     re-enumeration and reliably clears a device that has stopped
+     answering. Verified: five consecutive capture cycles afterwards,
+     4.8 s each, byte-identical.
 
 ## 10. Implementation order
 
