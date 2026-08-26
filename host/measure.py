@@ -24,6 +24,7 @@ import glob
 import math
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -2496,13 +2497,42 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _tool_env():
-    """cmake and arduino-cli live in ~/.local/bin, which is on the
-    interactive PATH but not necessarily on pytest's."""
+    """PATH with the build tools on it, wherever this host keeps them.
+
+    ~/.local/bin with a ':' separator is where they live on macOS and it
+    is not portable in either half: Windows separates PATH with ';' and
+    keeps cmake inside the Visual Studio tree. toolchains.json already
+    knows both, so ask it rather than guessing, and keep the POSIX
+    default as one more entry rather than as the rule.
+    """
     env = dict(os.environ)
-    local = os.path.expanduser("~/.local/bin")
-    if local not in env.get("PATH", "").split(":"):
-        env["PATH"] = local + ":" + env.get("PATH", "")
+    extra = [os.path.expanduser("~/.local/bin")]
+    try:
+        sys.path.insert(0, os.path.join(REPO, "tools"))
+        import toolchain
+        reg = toolchain.load()
+        for tool in ("cmake", "ninja", "arm_toolchain", "bossac",
+                     "arduino_cli"):
+            d, _exe = toolchain.resolve(tool, reg)
+            if d:
+                extra.append(d.replace("/", os.sep))
+    except Exception:                                        # noqa: BLE001
+        pass                       # no registry is no information, not an error
+    have = env.get("PATH", "").split(os.pathsep)
+    env["PATH"] = os.pathsep.join(
+        [d for d in extra if d and d not in have] + have)
     return env
+
+
+def _exe(name, env):
+    """Absolute path to a build tool, or the bare name.
+
+    CreateProcess searches the *parent's* PATH on Windows, not the one
+    handed to the child, so putting a directory in env["PATH"] is not
+    enough to make the child findable. Every caller here passes env, so
+    every caller needs this too.
+    """
+    return shutil.which(name, path=env.get("PATH")) or name
 
 
 def flash(track, control=None, retries=2, build=False):
@@ -2519,15 +2549,22 @@ def flash(track, control=None, retries=2, build=False):
     for attempt in range(retries + 1):
         try:
             if track == "b":
+                env = _tool_env()
                 if build:
-                    subprocess.run(["cmake", "--build", "build", "-j"],
-                                   cwd=REPO, check=True, env=_tool_env(),
+                    subprocess.run([_exe("cmake", env), "--build", "build",
+                                    "-j"],
+                                   cwd=REPO, check=True, env=env,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT)
-                cmd = [os.path.join(REPO, "tools", "flash.sh"),
+                # flash.py, not the .sh shim, for the reason the Track A
+                # branch below spells out: a shell script is not
+                # executable on win32, and this path only ever ran
+                # because the board already happened to be on this track.
+                cmd = [sys.executable, os.path.join(REPO, "tools", "flash.py"),
+                       "--bin",
                        os.path.join(REPO, "build", "baremetal_bringup.bin")]
                 if control:
-                    cmd.append(control)
+                    cmd += ["--port", control]
             elif track == "a":
                 # tools/sketch.py, and through this interpreter.
                 #

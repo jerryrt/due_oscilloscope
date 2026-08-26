@@ -161,6 +161,58 @@ land it on its own merits, post the issue #5 correction, and watch the
 next few full runs for the load-dependent flake that stopped appearing
 after the stage 2 stalls were removed (n=2, a hypothesis and not a fix).
 
+### Objective 1c's first half is done, and it found three things
+
+Ported to `sketches/bringup/play.cpp` with the same names, the same
+decimation and byte-for-byte the same output format: `play_occ_hist`,
+`play_occ_min`, `play_occ_trace`, `play_occ_traced`, `play_run_us`,
+`occmin=` on `B`, and the `O` command. The host's existing parser reads
+it with no change. `pytest --track=a tests/test_play_counters.py` goes
+from **18 failed / 0 passed to 9 failed / 9 passed**; the remaining nine
+need the binary status-record carrier on bulk IN and the closed-loop
+rate feed, which are the other half of 1c.
+
+**1. Track A had been flashing an image nobody built.** `sketch.py
+compile` passed `--build-path` only when given one, so arduino-cli built
+into its own cache, while `upload` defaulted to `build/track_a` and
+flashed whatever had last been left there. The artifacts here were nine
+hours stale and the board had been running them all evening with no
+error anywhere. **Any Track A figure taken before 2026-08-25 evening may
+have been measuring source that had already changed** - on the track
+whose entire job is to be the reference oracle. One constant now decides
+both paths.
+
+**2. `measure.flash()` could not reach Track A on Windows at all.** It
+ran `tools/sketch.sh` through subprocess; win32 answers "%1 is not a
+valid Win32 application" and every Track A test errors in the fixture.
+It also called `arduino-cli upload`, which `sketch.py`'s own comment
+records as destructive here - the sam recipe points bossac at the
+programming port after the 1200-baud touch, but on Windows the erased
+chip brings SAM-BA up on the *native* port, so it wipes the board and
+then reports no device. Both go through `sketch.py` now.
+
+**3. Track B's prime fix does not transfer, and the copy was not made.**
+`PLAY_PRIME_BUFS` is 24 on Track B because objective 0i measured it
+there. On Track A it changes nothing:
+
+| prime | RC 44 | RC 39 | RC 28 |
+|---|---|---|---|
+| 4 | 3382-3384 | 3789-3792 | 5416-5422 |
+| 24 | 3354-3384 | 3789-3790 | 5416-5417 |
+
+Three runs per rate, two builds verified distinct by checksum, `occmin`
+2 in all eighteen. **Track A's ring does not start low and recover - it
+lives at the ENDTX guard for the whole run**, and the prime is not what
+puts it there. The constant stays at 4 with the measurement recorded,
+because raising it would make the tracks look alike while changing
+nothing measured.
+
+That is now the largest open number on this project: at RC 44 the
+underruns outnumber two thirds of the buffers consumed. It has been
+there all along and nobody could see it, because until this session
+Track A could not report occupancy. **This is the next thing to chase on
+Track A**, ahead of the control channel.
+
 ### Where the branches are
 
 | Branch | State |
