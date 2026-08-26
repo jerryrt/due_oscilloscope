@@ -191,30 +191,53 @@ flat channel (sd 1.0, nothing over 10 codes) while preset `M` shows 779
 events at spacing 512. Under `3` the generator is still running and its
 ENDTX still firing, so ENDTX alone is not it either. Only `M` shows this.
 
-**The variable that decides it is the binary.** It is bimodal and latched
-per run - a run is ~780 events or exactly 0, never between - and the
-proportion of dirty runs moves with the image and nothing else:
+**RETRACTED: "the variable is the binary" is wrong.** This file said,
+and the commits and the draft issue comment said, that incidence tracked
+the image - that four bytes of bss took a 25/25 clean build back to
+baseline. That claim does not survive its own control. Rebuilding and
+flashing the *identical* binary later the same day - `wip/refusal-reporting`,
+text 28316, bss 73024, same board, same host - gives **0 dirty runs in
+10**, where it gave 5/10 dirty twice that morning.
 
-| firmware | text / bss | clean runs |
-|---|---|---|
-| `c657841` stream.c, the abort | 28096 / 73020 | 4/10 |
-| `wip/stream-stop-race` as committed | 28144 / 73020 | **25/25** |
-| + preset-M return check only | 28180 / 73020 | 10/10 |
-| + a refusal flag and accessor | 28308 / **73024** | 5/10, twice |
-| + printfs moved off the capture | 28316 / 73024 | 10/10 |
+**What actually changed across the session is time.** The board went
+from roughly 60% of runs dirty in the morning to zero by the evening,
+and stayed there: about 200 runs across ten distinct images, all clean.
+Deliberate bss padding does not bring it back - eight images from bss
+73028 to 73284, 0/5 dirty every one. Neither does printf placement,
+tested properly at last on **one** image with a runtime switch: preset
+`M` printing its two lines after `gen_go_tioa1()` versus before it,
+alternated, 0/10 dirty both ways.
 
-Four bytes of bss and a branch take a 25/25 image back to control
-incidence. 25/25 against a 40% clean rate is p ~ 1e-10, so the branch
-does measure differently - but not by the mechanism it claims, and a
-green count from it means nothing.
+**So every A/B comparison between builds in this investigation is
+confounded by when it was taken**, including the 25/25 that made
+`wip/stream-stop-race` look like a fix. That branch was never shown to
+fix anything, and the bss story that replaced it was no better. Do not
+compare a number from one hour to a number from another; interleave the
+conditions or do not run the experiment.
 
-**One hypothesis is eliminated; do not re-run it.** Both timers are
-200 kHz off the same 39 MHz, so their relative phase is fixed for a whole
-run and set by the instruction timing between `stream_start_capture_only()`
-and `gen_go_tioa1()` - which would have explained every row above. It is
-wrong. A deliberate spin inserted between those two calls and swept 0 to
-140 iterations, over two full DAC periods at 78 MHz, gives 16 clean runs
-out of 16 including at zero.
+**What does survive**, because it was measured within one session and
+mostly within one image:
+
+- it is not a splice - one sample displaced, mean 2058.24 over the 5000
+  samples before and 2058.24 over the 5000 after;
+- the period is `GEN_TABLE_LEN` and follows it when the table doubles;
+- it does not appear on preset `3` at the same rate on the same
+  firmware, only on preset `M`;
+- the TIOA0/TIOA1 phase does not decide it (16/16 clean across a spin
+  swept over two full DAC periods);
+- the printf placement does not decide it (0/10 both ways, one image).
+
+**The live hypothesis is host or USB state, not code.** It fits when the
+defect appeared: early in the session, shortly after the native port had
+been wedged and replugged following a run of `usbipd` bind/attach/detach
+cycles, and it faded over many clean enumerations afterwards. It also
+fits this project's history, where 0a, 0b, 0c, 0h, 0i and 0k all turned
+out to be host CDC-ACM defects with the firmware clean underneath.
+
+**It has only ever been recorded on Windows.** The issue says so in its
+own body - "Reported from Windows, but nothing here is host-specific ...
+Worth checking on macOS, where I would expect it to reproduce" - and
+that check has never been done. It is now the first thing to do.
 
 **Settle whether this is a defect in the product before doing more
 firmware work on it.** The question is not "what corrupts the sample" but
