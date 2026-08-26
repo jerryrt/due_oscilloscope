@@ -114,6 +114,10 @@ extern uint8_t acq_tracktim;
 extern uint8_t acq_settling;
 void acq_set_timing(uint32_t tracktim, uint32_t settling);
 
+/* Which channel joins A0 in a two-channel capture. See acq.c. */
+extern uint8_t acq_pair_second;
+void acq_set_pair(uint32_t a_number);
+
 void     acq_init(void);
 bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
 void     acq_stop(void);

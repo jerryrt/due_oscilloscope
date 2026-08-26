@@ -75,6 +75,7 @@ static void banner(void)
 	printf("#           =1l = report load, then clear it\n");
 	printf("#           =<ms>Z = detach the native port (software unplug)\n");
 	printf("#           =<tt>,<st>A = ADC track/settling time\n");
+	printf("#           =<n>C = 2ch pair: A0+A1 or A0+A2\n");
 	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
 	printf("#           z=software reset  v=identity line\n");
 	printf("#\n");
@@ -919,6 +920,17 @@ static void cmd_execute(const cmd_t *cmd)
 		gen_go_tioa1();
 		break;
 	}
+	/*
+	 * "=<n>C": which channel pairs with A0 in a two-channel capture,
+	 * 1 for A1 and 2 for A2. It is how source impedance is told apart
+	 * from conversion slot - see acq_set_pair().
+	 */
+	case 'C':
+		acq_set_pair(cmd->arg[0]);
+		printf("# capture pair: A0 + A%u (next 2ch stream)\n",
+		       acq_pair_second == ADC_CH_A2 ? 2u : 1u);
+		uart_flush();
+		break;
 	case 'A':
 		/*
 		 * "=<tracktim>,<settling>A". Applied at the next acq_init(),

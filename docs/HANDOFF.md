@@ -609,6 +609,84 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### It is DAC1. The impedance rig and the slot control both say so
+
+The two-way split is closed. **The artifact is made at the DAC1 pin.**
+The ADC input network is exonerated, and it did not need the mid-rail
+source rig `eb6d639` designed - two equal resistors and a jumper did it.
+
+**The rig.** Two matched resistors between 3.3 V and GND with the tap on
+A2, so 1.65 V behind R/2, which is the level A1 sits at and the level the
+artifact was characterised at. Four pairs swapped in turn: 100, 470, 5k
+and 11k, giving 50, 235, 2500 and 5500 ohms. A1 and A0 stay wired as
+they were, so every capture carries the DAC1 arm and the sine alongside
+the impedance arm.
+
+**One binary for the whole sweep, and that is not a detail.** The binary
+selects the artifact's state, so points taken across a reflash are not
+comparable. Nothing was reflashed between the four points, and A1 rides
+in every frame as a per-run reference: if the board had drawn a
+different state, A1 would have moved and it did not.
+
+| A2 source | A2 \|peak\| | A2 z | A2 sd | A1 \|peak\|, same frames |
+|---|---|---|---|---|
+| 50 ohm | 0.50 | 10.4 | 0.768 | 4.70 |
+| 235 ohm | 0.48 | 11.3 | 0.684 | 4.69 |
+| 2.5k | 0.38 | 9.6 | 0.726 | 4.55 |
+| 5.5k | 0.37 | 8.9 | 1.094 | 4.49 |
+
+Eight runs per point, 32 in total. **A 110x change in source impedance
+moves the artifact by 0.13 codes, and downward.** A1 sits at 4.49-4.70
+in the same captures with its phase on 82 or 83 in all thirty-two runs,
+while A2's phase never locks once - which is what a channel with nothing
+periodic on it looks like.
+
+**The knob is live, and this is the control the TRACKTIM sweep did not
+have.** A2's `sd` rises to 1.094 at 5.5k against 0.68-0.77 below it, so
+the source impedance does reach the converter and settling does start to
+degrade by a few kilohms. The artifact is at its *smallest* exactly
+there. A null from an instrument that visibly responds to the knob is a
+result; a null from one that does not is the mistake this file has
+recorded twice today.
+
+**The slot control, because the sweep alone could not separate source
+from position.** Ascending channel index converts A2 first and A1
+second, so the two arms differed in conversion slot as well as source.
+`=<n>C` picks which channel joins A0 in a two-channel capture, so A0+A1
+and A0+A2 both put the channel under test in **slot 0** with the sine in
+slot 1 - same slot, same channel count, same cadence, same binary,
+interleaved over six rounds:
+
+| in slot 0 | \|peak\|, codes | z | control z | phase |
+|---|---|---|---|---|
+| A1, the DAC1 pin | **10.64** (10.55-10.80) | 73.4 | 3.0-3.5 | **486, all six** |
+| A2, 2.5k divider | **0.22** (0.19-0.27) | **2.0** | 2.4-3.7 | six different |
+
+A2's z is *below its own control z*. That is not a small artifact, it is
+none.
+
+**So: not impedance, not conversion slot, only the pin.** Nothing
+connects DAC1 to A2, both channels sit at the same voltage, both are DC,
+and only the one with a DAC output on it displaces a sample once per DAC
+table wrap.
+
+**What this does not settle.** Whether the mechanism is DAC1's
+conversion glitching into its own pin or something a DAC output pin does
+generally - DAC0 carries the sine and cannot be folded the same way, so
+"DAC pins do this" and "DAC1 does this" are not yet separated. Nor does
+it explain the start-gap dependence, though it constrains it: the gap
+sets when the ADC samples relative to the DAC update, and the thing
+being sampled is now known to be at the DAC pin.
+
+**And a correction to a recommendation made on issue #5.** `ADC_MR.USEQ`
+was proposed there as the way to permute conversion order. **It does not
+work on this part.** With `USEQ` set and `ADC_SEQR1` reading back exactly
+as written - `00000765` for A2, A1, A0, verified from the peripheral -
+every sample returns tag 0 and floating-pin values near full scale, so
+the converter is not converting the sequence it was given. The code was
+reverted; `=<n>C` is the control that works and needs no sequencer.
+
+
 ### The start gap is the mechanism, and it is the first knob this issue has
 
 `=<us>K` sets the gap between the ADC start and the DAC start, held
