@@ -979,6 +979,35 @@ image and not on the next, so the disagreement is one draw against
 another rather than a fact about either board. Finding 3 needed a stable
 null to rest on and there is not one.
 
+**All four arms, re-run on `main`'s image, and the ordering inverts.**
+Three interleaved rounds, same form as the original sweep - `pair_fold()`
+on the arms where A0 carries the sine, `fold_profile()` where it carries
+DC:
+
+| arm | A0 carries | \|peak\| | z | control z | phase |
+|---|---|---|---|---|---|
+| `normal` | sine | 5.34 | 40-42 | 2.8-3.5 | 192 |
+| `swapped` | DC | **12.23** | 89-121 | 3.1-4.0 | 301 |
+| `two-cycle` | sine | **14.71** | 128-149 | 2.9-3.6 | 150 |
+| `all-DC` | DC | 8.26 | 75-125 | 2.8-3.4 | 280, 301 |
+
+**Every arm carries it, and the amplitude ordering is not the one the
+original sweep found.** There `normal` was 2.41 and `swapped` 1.54;
+here `swapped` is more than twice `normal`, and `two-cycle` - the
+weakest arm before, at 1.58 against 2.41 - is the strongest. The phases
+are stable within this image (192, 301, 150, 280/301, three rounds each)
+and share nothing with the earlier ones.
+
+**The consequence for method is larger than the numbers.** The original
+sweep's "what is not established" paragraph already warned that its
+amplitudes were valid within that run and nowhere else. This is what
+that looks like when it is tested: **the ordering between arms is
+redrawn by a rebuild, so no conclusion may rest on one arm being
+stronger than another unless both were measured in the same image.**
+That retires the reading that `swapped` is weaker than `normal` because
+DAC1 couples through the jumper - it is not weaker here, with the same
+jumper.
+
 **`ad0ac4a` is the only firmware commit between the two images, and it is
 not the cause.** Its default is unchanged and the readback says so:
 `DACC_ACR` reads `00000000` after every `M` capture on `main`, the same
