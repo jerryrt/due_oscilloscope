@@ -122,19 +122,22 @@ Windows backend so that test runs first.
 consequences as predicted. Treat every "Windows will" here as a
 hypothesis with a test attached.
 
-## Start here (2026-08-26, end of the Windows session)
+## Start here (2026-08-26, end of the second Windows session)
 
 **Issue #5's two-way split is closed: the artifact is made at a DAC
 output pin, not in the ADC.** What it costs the instrument is in
 `docs/issue5-impact.md` - read that before quoting anything about it.
-The open work is Track A's control channel, which was re-diagnosed onto
-a different layer entirely and is **not mergeable**.
+Track A's control channel is no longer the open work: the bug that
+blocked it was a promised string descriptor the Arduino core cannot
+supply, and `wip/track-a-control-channel` is fixed, green and merged.
+What is open there is *building* the protocol on a node that now
+enumerates and opens.
 
 | | |
 |---|---|
 | Track B | last full run **280 passed, 2 failed, 12 skipped, 1 xfailed**. Both failures are the documented intermittents, shown by an interleaved A/B not to be regressions - see `docs/testing.md` |
-| Track A | not re-measured this session; the branch's old 160/88 is void |
-| Branches | `main`, `wip/track-a-control-channel` - **not mergeable** |
+| Track A | **261 passed, 33 skipped, 1 xfailed** - the xfail is issue #5's gate. The control channel's blocker is found and landed |
+| Branches | `main` only. `wip/track-a-control-channel` landed and is gone |
 | Board | Track B, `main` |
 | Wiring | **DAC0->A0 and DAC1->A1. That is the baseline and the only thing to assume.** |
 | Resistor rigs | **On demand only.** A2 is bare unless someone has just fitted something and said so |
@@ -142,12 +145,18 @@ a different layer entirely and is **not mergeable**.
 
 ### What to pick up, in order
 
-1. **Track A's control channel.** The whole diagnosis is under "Where
-   Track A's control channel stands" and the question is now one line
-   wide: the endpoints are enabled at SET_CONFIGURATION and cleared
-   afterwards, with no bus reset. Two concrete next steps and one
-   landmine are listed there. **This is the one that needs a fresh
-   session.**
+1. ~~**Track A's control channel.**~~ **The USB half is closed
+   2026-08-26 and merged.** It was never the endpoints: the IAD promised
+   a string index the Arduino core cannot supply, and `UDD_Stall()`
+   *assigns* `UOTGHS_DEVEPT` rather than setting a bit in it, so a
+   protocol stall on EP0 disabled every other endpoint. Full write-up
+   under "Track A's control channel: it was a string, and it is landed".
+
+   **What is left is to build the channel, not to find a bug.** Track A
+   reports `ctlver=0`: both nodes enumerate and open and
+   `ports.native_nodes()` orders them samples-first, but nothing speaks
+   `docs/control-protocol.md` over it yet. That is objective 1c's
+   remaining half, and printf stages 3-4 sit behind it.
 2. ~~**Two contradictions from macOS.**~~ **Both answered 2026-08-26,
    later, and neither needed the jumper.** The `all-DC` disagreement is
    the *image*, not the board and not the wiring: the sweep's own image
@@ -358,124 +367,100 @@ the stop-race "fix" at 25/25, the bss claim, the TIOA phase sweep at
 does not look like a comparison, which is what made it hard to see four
 times.
 
-### Where Track A's control channel stands
+### Track A's control channel: it was a string, and it is landed
 
-**Re-diagnosed 2026-08-26 on Windows. The recorded symptom was wrong and
-so was the layer.** It is not "the sample IN path delivers no frames".
-**The bulk endpoints are enabled at SET_CONFIGURATION and then cleared.**
+**Closed 2026-08-26. The endpoints were never the problem, and neither
+was DPRAM, the endpoint table, the host, or SET_CONFIGURATION.** Every
+one of those was measured and cleared across four sessions, and every
+one of those readbacks was right. The device was correct the whole time.
 
-| build | `UOTGHS_DEVEPT` | capture |
-|---|---|---|
-| `main` | `0000000f` (EP0-3) | rx 1,200,128 B, 293 frames |
-| the branch | `00000001` (EP0 only) | neither node opens |
+`ctl_desc`'s interface association carries `iFunction = 5`, matching
+`drivers/usb_cdc.c` so the two functions can be told apart in Device
+Manager and ioreg. Track B has that string in its own descriptor table.
+On Track A the core owns strings, and `USBD_SendDescriptor` answers
+exactly four indices - 0, `IPRODUCT`, `IMANUFACTURER`, `ISERIAL` - and
+returns false for every other one.
 
-Both CDC nodes enumerate, `ports.native_nodes()` orders them
-samples-first, and opening either fails with Windows error 31,
-`ERROR_GEN_FAILURE` - the driver unable to configure the port, not a
-port that opens and stays silent.
+**False is not a benign refusal on this core.** `USBCore.cpp:820`
+answers it with `UDD_Stall()`, and `UDD_Stall()`
+(`system/libsam/source/uotghs_device.c:287`) is
 
-**Four hypotheses died to readbacks, in this order. `E` prints all of
-them now, and none of it was reasoning.**
+```c
+UOTGHS->UOTGHS_DEVEPT = (UOTGHS_DEVEPT_EPEN0 << EP0);
+```
 
-1. *Endpoint allocation or DPRAM.* `cfgok=1111111` is not the
-   reassurance it looks like: CFGOK says a configuration was accepted,
-   `EPEN` in `DEVEPT` is what enables the endpoint, and `EPEN` is what
-   is clear. Every earlier reading here was of CFGOK.
-2. *A truncated endpoint table.* USBCore counts endpoints by walking
-   `EndPoints[]` to the first zero and hands the count to
-   `UDD_InitEndpoints()`, which loops from 1 - so a stray zero would
-   leave exactly `EPT=1`. The board answers **`count=7`, table `8242
-   14646 12390 12646 14642 12386 12642 0 0 0`**. Correct and complete.
-3. *The host rejecting the device.* Windows reports **Status OK,
-   Problem 0** on the composite device and both function nodes, and it
-   created `MI_00` and `MI_02` - the same split as the working Track B
-   device - so usbccgp parsed the IADs and the descriptors are
-   accepted. The descriptor bytes were also checked field by field
-   against `drivers/usb_cdc.c` and match.
-4. *SET_CONFIGURATION never running.* It runs:
-   **`_usbConfiguration=1`**, set by the core immediately after
-   `UDD_InitEndpoints()`.
+an **assignment, not a set**. A protocol stall on EP0 disables every
+other endpoint on the device. With one CDC function nothing ever went
+unanswered and the bug was invisible; this function promised a string
+the core cannot supply, Windows asked for it, and EP1-6 went away.
 
-**What is left, and it is narrow.** `deveptseen=0000007f now=00000001`:
-a high-water mark sampled every main-loop pass says **EP0-EP6 really
-were all enabled, and EP1-EP6 were cleared afterwards.** Meanwhile
-`_usbConfiguration` is still 1, and the core's bus-reset handler sets it
-to 0 (`USBCore.cpp:618`) - **so no bus reset has happened since.**
-Something clears `EPEN` for six endpoints without touching the core's
-configuration state.
+**The fix is four lines**: answer string 5 from the module that promised
+it, through `PluggableUSB::getDescriptor`, which the core consults at
+`USBCore.cpp:397` *before* its own string handling. Nothing stalls and
+the descriptor keeps saying what it meant to say.
 
-**Ruled out as the clearer:** every `DEVEPT` write in the sketch.
-`ep_reset_fifo()` (`usbdma.cpp:126`) is a read-modify-write on the EPRST
-bits, and `UOTGHS_DEVEPT_EPRST0` is bit 16 against `EPEN0` at bit 0, so
-it preserves the enables. `ctlusb_realloc_endpoints()` writes
-`DEVEPTCFG`, not `DEVEPT`, and `reallocs=0` says it has not run at all.
-The core's `UDD_InitEP()` only ORs an enable in.
+**Track A: 261 passed, 33 skipped, 1 xfailed** - the xfail is issue #5's
+gate. The branch is merged and its recorded 160/88 is superseded, not
+compared: it was taken with instruments that no longer exist.
 
-**Where to look next, in order.**
+#### What found it, and why the earlier readbacks could not
 
-- **When does it change?** The high-water mark says *that* it changed,
-  not *when*. Record the pass number or `micros()` at the first
-  main-loop sample where `DEVEPT != 0x7f`, and whether it happens before
-  or after the host first opens a node. That splits "during
-  configuration" from "when something touches the endpoints later".
-- **The `DEVEPTCFG` hazard is still the best structural suspect**, even
-  though it does not write `DEVEPT`. `CLAUDE.md` records that any write
-  re-allocates DPRAM and slides the windows above it, and
-  `ep_apply_autosw()` (`usbdma.cpp:82`) writes `DEVEPTCFG[CDC_RX]` and
-  `[CDC_TX]` - EP2 and EP3 - with `ALLOC` set, which by that rule
-  invalidates EP4-EP6. Whether the controller responds by clearing
-  `EPEN` is the question, and it is answerable: log `DEVEPT` either side
-  of that write.
-- **A landmine before touching any of it.** `UDD_InitEndpoints()`
-  (`system/libsam/source/uotghs_device.c:158`) does `while(1);` if an
-  endpoint fails to configure - an infinite loop **inside the USB
-  interrupt**. It is not firing here (the main loop runs at 225k
-  passes/s), but a wrong endpoint configuration on this branch hangs the
-  board silently and will look like dead hardware.
+A high-water mark on `UOTGHS_DEVEPT` said EP1-6 *had* been enabled and
+were not any more. It could not say **when**, and that was the whole
+difference between "cleared during configuration" and "cleared later,
+when something touches the endpoints".
 
-**Status: not mergeable, and not close.** Enumeration works and the
-descriptors are right; the endpoints do not stay enabled. Under the new
-branch rule this either lands or is deleted - the instruments and this
-diagnosis are on `main` and survive either outcome.
+So the instrument became a trace - one entry per change of `DEVEPT`,
+`DEVCTRL` or `_usbConfiguration`, with `micros()` and the pass number -
+and it named the answer in one run:
 
+```
+# t02     224469       9696 00000001 000000a4 1     SET_CONFIGURATION
+# t03     224482       9697 0000007f 000000a4 1     UDD_InitEndpoints
+# t04     226914       9900 00000001 000000a4 1     <- 2.4 ms later
+```
 
-`wip/track-a-control-channel`, pushed, **do not merge**. Enumeration
-works; the sample path does not.
+`DEVCTRL` is the witness that mattered. `UADD` and `ADDEN` are written
+by SET_ADDRESS and cleared **by the controller** on a bus reset, with no
+software involved, so they answer "was the bus reset" without trusting
+the core's EORST handler to have run. It reads `000000a4` through the
+drop: addressed, never reset. `_usbConfiguration` stays 1. That is what
+made "something in this image cleared six endpoints" the only remaining
+shape, 2.4 ms after configuring and never again.
 
-Working and verified: a `PluggableUSBModule` adds the second CDC
-function without patching the core, plugged from a global constructor
-because `main()` attaches USB before `setup()`; it lands on interfaces
-2/3 and EP4-6 and *checks* rather than assumes; single-bank endpoint
-words, since the core's are double-banked and the DPRAM budget forbids
-that here; `ep_apply_autosw()`'s missing half, which had to land with
-this and not after; and `_cdcComposite = 1`, which is what Track B's
-`0xEF/0x02/0x01` device descriptor does and which the core otherwise
-gates behind a probe-order heuristic. With it, both nodes open and
+Two more readbacks closed it. A bounded restore wrote the enables back
+and recorded what the controller did with the write - `0000007f`, held,
+once - which rules out a controller refusing a bad allocation and puts
+the clear in software. And with the enables back the sample path
+delivered **2,404,352 bytes in 3 s at 200 ksps**, so "no frames arrived
+at all" was this and nothing else. A ring of the setup packets
+PluggableUSB offered showed all three claimed, which is what pointed at
+a request that never reaches a module: a *descriptor*, not a class
+request.
+
+**The restore stays in the sketch.** `UDD_Stall()` disabling every
+endpoint is a property of the core, not of this change, so any future
+unanswered request does the same thing. It repairs and counts rather
+than presenting a dead sample path, and the counter reads 0 now.
+
+#### Two things this left behind
+
+**A node is not a protocol, and the daemon assumed it was.**
+`BoardDevice.control()` opened whatever `command_node()` returned and
+spoke CTL to it. Track A now enumerates that node with `ctlver=0` - the
+node exists, the protocol does not - so every daemon call through it
+blocked until the caller's timeout. Three failures out of three on
+`test_a_waveform_uploaded_through_the_daemon_reaches_the_pin`, against a
+board streaming 2.4 MB in 3 s at that moment. It now gates on the
+identity line's `ctlver`, which `CLAUDE.md` already named as the
+discriminator. `7d9d30a`.
+
+**Track A has the node, not the channel.** `ctlver=0` is honest: the
+second CDC function enumerates, both nodes open, and
 `ports.native_nodes()` orders them samples-first with no host change.
-
-**Two real defects found along the way, both worth keeping.** The core
-enables EP4-6 interrupts and its ISR has no case for them, so an OUT
-packet on EP5 raised an interrupt nothing acknowledged and the main loop
-starved - the board kept enumerating, because that is all the ISR was
-doing, and answered nothing else. That was the "silent flash" blamed on
-bossac twice. And the wrong device class did not refuse enumeration: both
-nodes appeared, both bound `usbser`, both reported `Status OK` - and
-opening the *sample* node blocked for ever.
-
-**Still broken:** 160 passed / 88 failed, and the failures are now "no
-frames arrived at all" with `raw_bytes=0` - the sample IN path
-delivering nothing. Two hypotheses are dead: the interrupt mask writes
-only PEP_4-6 (bits 16-18; DMA channel interrupts are 25-28 and
-untouched), and `CFGOK` reads `1111111` at idle, so allocation and DPRAM
-were never it. Enumeration is also unstable across a board reset.
-
-`E` is on that branch and reports CFGOK plus the realloc and cfgfail
-counters *during* a run. Use it: the banner reports CFGOK at boot, which
-is exactly when nothing is wrong yet.
-
-**The lesson that found the device class: compare against Track B.**
-Track B has had two CDC functions working the whole time. Going to first
-principles cost hours that a diff of the two enumerations would not have.
+Nothing speaks `docs/control-protocol.md` over it yet. That is the next
+piece of objective 1c, and printf stages 3-4 are behind it - but they
+are behind *implementing* it now, not behind finding a USB bug.
 
 ### What printf stages 3-4 are waiting for
 
@@ -523,9 +508,12 @@ the suite cannot currently enforce on Track A, and this.
 2. **Objective 1c, first half** - done. `O`, `occmin`, `play_run_us`, the
    playstat carrier, `PLAY_PRIME_BUFS` 24 and the playback-abandon
    timeout are all on `main`, and Track A is 237 passed / 0 failed.
-3. **Objective 1c, second half**: Track A's control channel. Enumeration
-   works on `wip/track-a-control-channel`; the sample path delivers no
-   frames. See "Where Track A's control channel stands".
+3. **Objective 1c, second half**: Track A's control channel. The USB
+   bug is found, fixed and merged, and the sample path delivers - 261
+   passed on Track A. What remains is implementing
+   `docs/control-protocol.md` on the node, which is why `ctlver` still
+   reads 0 there. See "Track A's control channel: it was a string, and
+   it is landed".
 4. **printf stages 3 and 4**, behind 3.
 
 Steps 1 and 3 are independent: one needs the board and a resistor, the
