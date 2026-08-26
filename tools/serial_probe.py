@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-Minimal serial probe for bring-up. Stdlib only: no pyserial dependency,
-which matters because this host has no package manager installed.
+Minimal serial probe for bring-up.
 
 Opens the port raw at the requested baud, optionally sends a command
 byte, and captures output for a bounded time.
+
+The port itself comes from `host/transport.py`, which is the one seam
+the rest of `host/` already goes through: raw termios on POSIX, pyserial
+on Windows. This file used to open the fd itself with `termios` and
+`select` imported at module scope, so it did not import at all on a
+tier-1 platform - while `CLAUDE.md` still quoted it as the way to talk
+to either board.
 
 Never opens the programming port at 1200 baud: that triggers the Due's
 erase-and-reset path.
@@ -14,28 +20,19 @@ usage: serial_probe.py PORT [--baud N] [--send CHARS] [--seconds N]
 
 import argparse
 import os
-import select
 import sys
-import termios
 import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "host"))
+
+import transport                                              # noqa: E402
 
 
 def open_port(dev, baud):
     if baud == 1200:
         sys.exit("refusing 1200 baud: that triggers erase+reset on the Due")
-    fd = os.open(dev, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
-    a = termios.tcgetattr(fd)
-    speed = getattr(termios, "B%d" % baud)
-    a[0] = 0                                              # iflag: raw
-    a[1] = 0                                              # oflag: raw
-    a[2] = termios.CS8 | termios.CREAD | termios.CLOCAL   # cflag: 8N1
-    a[3] = 0                                              # lflag: raw
-    a[4] = speed                                          # ispeed
-    a[5] = speed                                          # ospeed
-    a[6][termios.VMIN] = 0
-    a[6][termios.VTIME] = 0
-    termios.tcsetattr(fd, termios.TCSANOW, a)
-    return fd
+    return transport.open_raw(dev, baud)
 
 
 def main():
@@ -49,28 +46,25 @@ def main():
 
     dev = args.port
     if dev == "auto":
-        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                        "..", "host"))
         from ports import find_ports
         dev = find_ports()[0] or sys.exit("no control port found")
-    fd = open_port(dev, args.baud)
+    port = open_port(dev, args.baud)
     try:
         time.sleep(args.settle)
         if args.send:
-            os.write(fd, args.send.encode())
+            port.write(args.send.encode())
 
         out = bytearray()
         deadline = time.time() + args.seconds
         while time.time() < deadline:
-            r, _, _ = select.select([fd], [], [], 0.1)
-            if r:
-                chunk = os.read(fd, 4096)
+            if transport.wait_any([port], 0.1):
+                chunk = port.read(4096)
                 if chunk:
                     out += chunk
         sys.stdout.write(out.decode("utf-8", "replace"))
         sys.stdout.flush()
     finally:
-        os.close(fd)
+        port.close()
 
 
 if __name__ == "__main__":
