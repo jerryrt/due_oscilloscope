@@ -42,6 +42,7 @@
 #include "stream.h"
 #include "play.h"
 #include "playstat.h"
+#include "ctlusb.h"
 #include "usbdma.h"
 #include "frame.h"
 #include "version.h"
@@ -150,6 +151,21 @@ static void banner(void)
 	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
 	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
 	Serial.println("#           O=playback ring occupancy histogram");
+	{
+		/* CFGOK per endpoint: the controller's own answer to "did
+		 * this allocation take". Guessing at DPRAM arithmetic is how
+		 * an endpoint that never configured gets blamed on software. */
+		char ok[16];
+		for (unsigned e = 0; e < 7; e++)
+			ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
+			         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
+		ok[7] = 0;
+		Serial.print("#           ep cfgok[0..6]: ");
+		Serial.println(ok);
+	}
+	Serial.print("#           control channel: ");
+	Serial.println(ctlusb_ok() ? "registered (iface 2/3, EP4-6)"
+	                          : "NOT registered - one CDC function only");
 	Serial.println("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels");
 	Serial.println("#           M=mimic loop without USB (gen sine on TIOA1 + capture)");
 	Serial.println("#           d=DAC max update-rate sweep");
@@ -903,6 +919,19 @@ void loop()
 	char buf[192];
 
 	stream_loop_passes++;
+
+	/*
+	 * Every pass, and unconditionally. The core enables EP4-6's
+	 * interrupts at SET_CONFIGURATION and again on every bus reset,
+	 * and its ISR has no case for them - an OUT packet on EP5 then
+	 * raises an interrupt nothing acknowledges and the handler
+	 * re-enters for ever. The board keeps enumerating, because that
+	 * is all the ISR is still doing, and answers nothing else.
+	 * Cheap enough to do here rather than reason about when it is
+	 * needed: one register write against a storm that presents as a
+	 * dead board.
+	 */
+	ctlusb_quiesce_interrupts();
 
 	/* Heartbeat: if this stops, the board hung or faulted. */
 	uint32_t now = millis();
