@@ -375,7 +375,10 @@ clean, they were comparing dirty against dirty-below-threshold.
 `measure.periodic_census()` keys on what has never varied. Across two
 hosts the amplitude has been 6-7, 12-14, ~15, 26-32, 49-50 and 63-68 -
 six values, three of which were under whichever threshold was current -
-while the period has been `GEN_TABLE_LEN` every single time. It sweeps
+while the period has been regular every single time. (It is not
+always `GEN_TABLE_LEN` - see the macOS correction below, where RC 194
+detects at 256, two events per wrap. Regularity is what holds; the
+particular period is not.) It sweeps
 the threshold down from the run's own noise floor and accepts the widest
 set of events whose spacing is regular.
 
@@ -397,6 +400,56 @@ rather than guessing. `tests/test_census.py`, no board.
    195 may be an amplitude step across a threshold rather than a switch.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
+
+### macOS: conjectures 2 and 3 above are confirmed, and two more things
+
+Re-ran the RC scan with `periodic_census()` on the reproducing board.
+
+**"The ADC's RC gates it" is withdrawn.** The signature is present at
+**10 of 15 RCs**, including six of the twelve the first scan called
+clean, and `flat_census()` at 20 was blind to four of those six. RC sets
+the amplitude, over an order of magnitude, and does not decide presence:
+
+    rc   186  187  189  190  191  193  197  198  199  200
+    amp   54   49    9   39    6   12   54   57   15   65
+
+**"The first on-demand reproduction" is withdrawn with it.** RC 194 gave
+777-780 events on 5 of 5 runs in the afternoon and, interleaved the same
+evening, 0 on 2 of 3 at sd 0.86. It drifts like everything else. There
+is still no configuration that reproduces on demand.
+
+**The period is not always `GEN_TABLE_LEN`.** RC 194 detects at **256**
+with 1560 events - two per table wrap, not one. So "the detected period
+always equals that capture's own GEN_TABLE_LEN" holds for the captures
+it was checked against, not in general.
+
+**And the artifact is not always one displaced sample.** At RC 200 each
+wrap produces a burst of about four, spaced 64 apart, the bursts
+repeating at 512. The gaps run 64, 64, 64, 320, so the commonest gap
+holds 0.77 of them, nothing clears 0.9, and `periodic_census()` returned
+**0 on a run carrying 3276 events at 68 codes with sd 4.58** against a
+clean 0.86. A detector keyed on one event per period is still a detector
+keyed on a shape.
+
+The fix keeps the gap test as the fast path and falls back to **shift
+invariance** - for the true period, nearly every event has another event
+exactly P samples later, whatever the arrangement inside the period. It
+scores a single displacement per wrap identically, so the simple case is
+untouched, and it runs only where the gap test found nothing.
+
+After it, the detector and `sd` agree on all twelve runs of an
+interleaved re-test, with no overlap between them:
+
+| | sd | detected |
+|---|---|---|
+| runs the detector calls clean | 0.82-0.89 | 0 of 5 |
+| runs it calls reproducing | 0.99-4.59 | 7 of 7 |
+
+Which is the strongest argument yet for the point already made above:
+**`sd` is the tell that needs no threshold, no period and no shape.**
+Every instrument written for this defect has gone blind to it within a
+day by assuming something about what it looks like. `sd` has assumed
+nothing and has been right every time.
 
 ### 1c: the abandon timeout is in, the control channel is scoped not built
 
@@ -451,6 +504,38 @@ neither the console nor the native port. A reflash fixed it. That is a
 SAM-BA and is caught), and it means the 0-of-20 measured here was a
 sample that missed it rather than proof of absence. Neither check
 catches this one; the only evidence is silence.
+
+### Windows re-runs the RC scan: the withdrawal holds, and the sets nest
+
+Same scan, same `periodic_census()`, Track B, RC 186-200, one run each.
+
+    rc    186 187 188 189 190 191 192 193 194 195 196 197 198 199 200
+    win     y   y   .   y   y   .   .   y   .   .   .   .   y   y   .
+    mac     y   y   .   y   y   y   .   y   .   .   .   y   y   y   y
+
+**RC does not gate it here either** - 7 of 15, sparse and structured,
+which is the same shape macOS found and the same reason the "on-demand
+reproduction" was withdrawn.
+
+**The dirty set is a strict subset of macOS's.** Every RC implicated
+here is implicated there; macOS adds 191, 197 and 200. Read alongside
+the amplitudes that is the strongest support yet for "RC sets the
+amplitude": **Windows runs 8-14 codes where macOS runs 6-65**, so the
+RCs this host reports clean are the ones whose amplitude has fallen
+under the detection floor rather than a different set of RCs. Presence
+may well be universal on both hosts and only the size differ.
+
+**`sd` separates perfectly on this host too**, with no overlap and no
+threshold to choose: 0.93-1.11 where the detector fires, 0.78-0.86 where
+it does not. macOS measured 0.99-4.59 against 0.82-0.89. Two hosts, two
+amplitude ranges, one clean discriminator - **if a run's `sd` is above
+about 0.9 the board is displacing samples**, whatever any threshold
+census says.
+
+**Neither new shape appears here.** Period is 512 at every dirty RC -
+no 256, no two-per-wrap - and no burst: `regularity` is 0.96-1.00
+throughout, where the burst form drops it to 0.77. So the burst and the
+halved period are macOS-only so far, on this board and at these rates.
 
 ### Where the branches are
 

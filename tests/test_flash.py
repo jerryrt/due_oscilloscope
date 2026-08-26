@@ -16,6 +16,7 @@ run corrupts every one of them.
 """
 
 import os
+import pytest
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
@@ -68,3 +69,67 @@ def test_nothing_to_watch_is_not_reported_as_a_failure(monkeypatch):
     and the check must not invent a failure from its own blindness."""
     monkeypatch.setattr(flash, "samba_nodes", _nodes([[SAMBA_NODE]]))
     assert flash.wait_for_boot(set(), timeout=1.5)
+
+
+# ------------------------------------------------- a port someone else holds
+
+class _FakeSerial:
+    """serial.Serial, refusing to open the first `refuse` times."""
+    refuse = 0
+    opened = 0
+
+    def __init__(self):
+        self.port = None
+        self.baudrate = None
+
+    def open(self):
+        import serial
+        if _FakeSerial.opened < _FakeSerial.refuse:
+            _FakeSerial.opened += 1
+            raise serial.SerialException(
+                "could not open port 'COM7': "
+                "PermissionError(13, 'Access is denied.', None, 5)")
+        _FakeSerial.opened += 1
+
+    def close(self):
+        pass
+
+
+def test_a_held_port_is_waited_out_rather_than_failed(monkeypatch):
+    """A killed test run leaves its Python holding the programming port
+    and Windows reports the next open as "Access is denied", which reads
+    like a permissions problem and is not one. The handle goes when the
+    process does, a moment later than the kill."""
+    import serial
+    _FakeSerial.refuse, _FakeSerial.opened = 3, 0
+    monkeypatch.setattr(serial, "Serial", _FakeSerial)
+    s = flash.open_port("COM7", 1200, tries=6, delay=0.0)
+    assert s is not None
+    assert _FakeSerial.opened == 4          # three refusals then the open
+
+
+def test_a_port_held_for_ever_says_what_to_do(monkeypatch):
+    """Three flashes failed this way in one session and each looked like
+    a different problem, so the message has to name the cause."""
+    import serial
+    _FakeSerial.refuse, _FakeSerial.opened = 99, 0
+    monkeypatch.setattr(serial, "Serial", _FakeSerial)
+    with pytest.raises(SystemExit) as e:
+        flash.open_port("COM7", 1200, tries=3, delay=0.0)
+    assert "still held" in str(e.value)
+    assert "Stop-Process" in str(e.value)
+
+
+def test_a_real_failure_is_not_retried(monkeypatch):
+    """Only a held handle is worth waiting on. A port that does not exist
+    must fail at once rather than after six seconds of hope."""
+    import serial
+
+    class _Missing(_FakeSerial):
+        def open(self):
+            raise serial.SerialException("could not open port 'COM99': "
+                                         "FileNotFoundError(2, ...)")
+
+    monkeypatch.setattr(serial, "Serial", _Missing)
+    with pytest.raises(serial.SerialException):
+        flash.open_port("COM99", 1200, tries=6, delay=0.0)

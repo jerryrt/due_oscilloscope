@@ -257,3 +257,66 @@ def test_the_period_follows_the_table_not_the_threshold():
             v[i] += amp
         c = measure.periodic_census(v)
         assert c["period"] == table, (table, amp, c)
+
+
+# ---------------------------------------------------------------------
+# Bursts. The artifact is not always one sample per wrap: at ADC RC 200
+# on macOS each wrap displaces about four samples spaced 64 apart, and
+# the gap test cannot see that shape at all - gaps of 64, 64, 64, 320
+# put the commonest gap at 0.77 and nothing clears 0.9.
+# ---------------------------------------------------------------------
+
+
+def burst(n=100_000, level=2055, noise=1, dev=68, first=404,
+          period=TABLE, spacing=64, per_burst=4):
+    rng = random.Random(20260825)
+    v = [level + rng.randint(-noise, noise) for _ in range(n)]
+    for base in range(first, n, period):
+        for j in range(per_burst):
+            i = base + j * spacing
+            if i < n:
+                v[i] += dev
+    return v
+
+
+def test_a_burst_per_wrap_is_found_at_the_wrap_period():
+    """Not at 64, which is the commonest gap and the wrong answer: the
+    period that matters is the one that tracks GEN_TABLE_LEN."""
+    c = measure.periodic_census(burst())
+    assert c["count"] > 700, c
+    assert c["period"] == TABLE, c
+    assert c["regularity"] >= 0.9, c
+
+
+def test_the_gap_test_alone_would_miss_the_burst():
+    """Records why the fallback exists. The commonest gap in a four-event
+    burst is 64 and it holds three quarters of them, so a rule that wants
+    90% identical gaps rejects a run carrying 3276 events at 68 codes."""
+    v = burst()
+    at = [i for i, x in enumerate(v) if abs(x - 2055) > 30]
+    gaps = [b - a for a, b in zip(at, at[1:])]
+    best = max(set(gaps), key=gaps.count)
+    assert best == 64
+    assert gaps.count(best) / len(gaps) < 0.9
+
+
+def test_the_burst_period_follows_the_table():
+    c = measure.periodic_census(burst(period=2 * TABLE))
+    assert c["period"] == 2 * TABLE, c
+
+
+def test_shift_invariance_does_not_rescue_noise():
+    """The fallback runs only when the gap test found nothing, which is
+    exactly the state a clean run is in - so it must not turn one into a
+    detection."""
+    rng = random.Random(7)
+    v = [2055 + rng.randint(-1, 1) for _ in range(100_000)]
+    assert measure.periodic_census(v)["count"] == 0
+
+
+def test_shift_invariance_does_not_rescue_aperiodic_outliers():
+    rng = random.Random(11)
+    v = [2055 + rng.randint(-1, 1) for _ in range(100_000)]
+    for i in rng.sample(range(100_000), 400):
+        v[i] += 30
+    assert measure.periodic_census(v)["count"] == 0
