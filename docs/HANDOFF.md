@@ -278,6 +278,85 @@ times.
 
 ### Where Track A's control channel stands
 
+**Re-diagnosed 2026-08-26 on Windows. The recorded symptom was wrong and
+so was the layer.** It is not "the sample IN path delivers no frames".
+**The bulk endpoints are enabled at SET_CONFIGURATION and then cleared.**
+
+| build | `UOTGHS_DEVEPT` | capture |
+|---|---|---|
+| `main` | `0000000f` (EP0-3) | rx 1,200,128 B, 293 frames |
+| the branch | `00000001` (EP0 only) | neither node opens |
+
+Both CDC nodes enumerate, `ports.native_nodes()` orders them
+samples-first, and opening either fails with Windows error 31,
+`ERROR_GEN_FAILURE` - the driver unable to configure the port, not a
+port that opens and stays silent.
+
+**Four hypotheses died to readbacks, in this order. `E` prints all of
+them now, and none of it was reasoning.**
+
+1. *Endpoint allocation or DPRAM.* `cfgok=1111111` is not the
+   reassurance it looks like: CFGOK says a configuration was accepted,
+   `EPEN` in `DEVEPT` is what enables the endpoint, and `EPEN` is what
+   is clear. Every earlier reading here was of CFGOK.
+2. *A truncated endpoint table.* USBCore counts endpoints by walking
+   `EndPoints[]` to the first zero and hands the count to
+   `UDD_InitEndpoints()`, which loops from 1 - so a stray zero would
+   leave exactly `EPT=1`. The board answers **`count=7`, table `8242
+   14646 12390 12646 14642 12386 12642 0 0 0`**. Correct and complete.
+3. *The host rejecting the device.* Windows reports **Status OK,
+   Problem 0** on the composite device and both function nodes, and it
+   created `MI_00` and `MI_02` - the same split as the working Track B
+   device - so usbccgp parsed the IADs and the descriptors are
+   accepted. The descriptor bytes were also checked field by field
+   against `drivers/usb_cdc.c` and match.
+4. *SET_CONFIGURATION never running.* It runs:
+   **`_usbConfiguration=1`**, set by the core immediately after
+   `UDD_InitEndpoints()`.
+
+**What is left, and it is narrow.** `deveptseen=0000007f now=00000001`:
+a high-water mark sampled every main-loop pass says **EP0-EP6 really
+were all enabled, and EP1-EP6 were cleared afterwards.** Meanwhile
+`_usbConfiguration` is still 1, and the core's bus-reset handler sets it
+to 0 (`USBCore.cpp:618`) - **so no bus reset has happened since.**
+Something clears `EPEN` for six endpoints without touching the core's
+configuration state.
+
+**Ruled out as the clearer:** every `DEVEPT` write in the sketch.
+`ep_reset_fifo()` (`usbdma.cpp:126`) is a read-modify-write on the EPRST
+bits, and `UOTGHS_DEVEPT_EPRST0` is bit 16 against `EPEN0` at bit 0, so
+it preserves the enables. `ctlusb_realloc_endpoints()` writes
+`DEVEPTCFG`, not `DEVEPT`, and `reallocs=0` says it has not run at all.
+The core's `UDD_InitEP()` only ORs an enable in.
+
+**Where to look next, in order.**
+
+- **When does it change?** The high-water mark says *that* it changed,
+  not *when*. Record the pass number or `micros()` at the first
+  main-loop sample where `DEVEPT != 0x7f`, and whether it happens before
+  or after the host first opens a node. That splits "during
+  configuration" from "when something touches the endpoints later".
+- **The `DEVEPTCFG` hazard is still the best structural suspect**, even
+  though it does not write `DEVEPT`. `CLAUDE.md` records that any write
+  re-allocates DPRAM and slides the windows above it, and
+  `ep_apply_autosw()` (`usbdma.cpp:82`) writes `DEVEPTCFG[CDC_RX]` and
+  `[CDC_TX]` - EP2 and EP3 - with `ALLOC` set, which by that rule
+  invalidates EP4-EP6. Whether the controller responds by clearing
+  `EPEN` is the question, and it is answerable: log `DEVEPT` either side
+  of that write.
+- **A landmine before touching any of it.** `UDD_InitEndpoints()`
+  (`system/libsam/source/uotghs_device.c:158`) does `while(1);` if an
+  endpoint fails to configure - an infinite loop **inside the USB
+  interrupt**. It is not firing here (the main loop runs at 225k
+  passes/s), but a wrong endpoint configuration on this branch hangs the
+  board silently and will look like dead hardware.
+
+**Status: not mergeable, and not close.** Enumeration works and the
+descriptors are right; the endpoints do not stay enabled. Under the new
+branch rule this either lands or is deleted - the instruments and this
+diagnosis are on `main` and survive either outcome.
+
+
 `wip/track-a-control-channel`, pushed, **do not merge**. Enumeration
 works; the sample path does not.
 
