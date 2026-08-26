@@ -136,7 +136,8 @@ a different layer entirely and is **not mergeable**.
 | Track A | not re-measured this session; the branch's old 160/88 is void |
 | Branches | `main`, `wip/track-a-control-channel` - **not mergeable** |
 | Board | Track B, `main` |
-| Wiring | **DAC0->A0 and DAC1->A1 only. A2 is disconnected** - the impedance rig was removed after the sweep |
+| Wiring | **DAC0->A0 and DAC1->A1. That is the baseline and the only thing to assume.** |
+| Resistor rigs | **On demand only.** A2 is bare unless someone has just fitted something and said so |
 | Tag | `dead/stream-stop-race` - kept reachable, not a fix |
 
 ### What to pick up, in order
@@ -161,6 +162,11 @@ a different layer entirely and is **not mergeable**.
 4. **A standing decision, not a task:** whether Track B adopts the
    datasheet's `DACC_ACR` value. It is spec conformance and Track A
    parity - **not** an issue #5 fix, measurably. `=<ch>,<core>I`.
+5. **`tools/serial_probe.py` does not run on Windows** - it imports
+   `termios` at module scope, so it dies on import. `CLAUDE.md` still
+   quotes it as the way to talk to either board. Everything else moved
+   behind `host/transport.py`; this one was missed. Small, and it is a
+   tier-1 platform.
 
 ### Rules that changed this session, and both bite immediately
 
@@ -176,7 +182,7 @@ a different layer entirely and is **not mergeable**.
   3.** It has been able to pass a defective run the whole time, so
   historical greens on it are worth less than they look.
 
-### Three traps this session paid for
+### Traps this session paid for
 
 - **A knob that is programmed is not a knob that does anything.**
   `TRACKTIM` reads back exactly as written and costs nothing at any
@@ -188,9 +194,28 @@ a different layer entirely and is **not mergeable**.
   reference that makes a sweep readable.
 - **Never truncate a suite run's output.** One failure was lost to a
   `| tail -3` and never reproduced. `-rf --tb=short`, keep all of it.
+- **Do not assume a resistor rig is wired.** The A2 divider was fitted
+  for one afternoon and removed. `r` reports A0, A1 and A2, and a
+  floating A2 reads near its neighbours rather than at a divider's
+  mid-rail - check it before believing any measurement that depends on
+  it.
+- **A listed serial node is not an openable one.** `CreateFile` can
+  accept the open and never return, so a deadline never gets tested.
+  `Board.open_native()` now runs each attempt in a daemon thread and
+  abandons it. And **`measure.Board` is a context manager** - a script
+  that dies holding the control port makes every later run fail with
+  "Access is denied", which looks exactly like a board fault. Most of
+  this session's "unstable enumeration" was that. Healing order is in
+  `docs/testing.md`; reflashing clears it reliably.
 
 
-### Issue #5 is an analog problem, and one resistor is the next move
+### Issue #5 is analog: how that was established *(superseded)*
+
+**This section is history, kept because the reasoning is worth reading
+and the jumper test is still the origin of "analog".** The resistor
+experiment it proposes has been run - see "It is a DAC pin" below - and
+the two-way split it describes is closed. Do not act on its "next move".
+
 
 The macOS jumper test settles the kind of answer. A1 tied to **GND**
 rather than DAC1: zero nonzero samples in ~3.2 million across eight RCs,
