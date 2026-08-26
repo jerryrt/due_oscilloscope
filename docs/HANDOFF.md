@@ -209,8 +209,8 @@ about the register and not evidence about the ADC input network.
 `docs/hardware.md`'s "raising TRACKTIM cuts aggregate throughput ... to
 about 700 ksps" is wrong as written and should be re-measured with it.
 
-So the two-way split stands undisturbed and the resistor still decides
-it. Source impedance is the one knob that demonstrably varies settling
+So the two-way split stands undisturbed, and the deferred source
+experiment still decides it. Source impedance is the one knob that
 here; this one does not.
 
 **And it found the shape of the whole problem, which matters more than
@@ -317,7 +317,7 @@ the suite cannot currently enforce on Track A, and this.
    programmed and cost nothing at any rate here, rather than evidence
    about the input network. What is left is which analog - DAC1
    glitching, or the ADC input network failing to settle - and one
-   resistor still separates them.
+   resistor still separates them - see the source note above.
 
    **Do not spend a session working around the missing part.** The
    remaining question is a two-way split that one component decides;
@@ -685,7 +685,8 @@ conversion at RC 189), and at the one rate where the minimum would bite,
 the hardware declines to lengthen the cycle rather than dropping
 triggers. **So the acquisition window never moved in either arm.**
 Neither sweep varied source settling, and neither is evidence about the
-ADC input network. The resistor still decides the two-way split.
+ADC input network. The deferred source experiment still decides the
+two-way split.
 
 `docs/hardware.md`'s "raising `TRACKTIM` cuts aggregate throughput ...
 about 700 ksps" is contradicted by this and is marked *(check)*.
