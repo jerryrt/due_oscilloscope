@@ -393,7 +393,8 @@ def fold_profile(vals, period=GEN_TABLE_LEN, control_period=None):
         control_period = period + 1
     none = {"period": period, "peak": 0.0, "peak_phase": 0, "z": 0.0,
             "stderr": 0.0, "n_per_bin": 0, "control_period": control_period,
-            "control_z": 0.0, "profile": []}
+            "control_z": 0.0, "profile": [], "spike": 0.0, "spike_phase": 0,
+            "spike_z": 0.0, "control_spike_z": 0.0}
     if len(vals) < 4 * period:
         return none
     base = _st.median(vals)
@@ -414,13 +415,37 @@ def fold_profile(vals, period=GEN_TABLE_LEN, control_period=None):
         mad = _st.median(devs) * 1.4826 or 1e-9
         peak_phase = max(range(len(means)), key=lambda b: abs(means[b] - centre))
         peak = means[peak_phase] - centre
-        return means, peak, peak_phase, abs(peak) / mad, mad, min(counts)
 
-    means, peak, phase, z, mad, n = _fold(period)
-    _, _, _, cz, _, _ = _fold(control_period)
+        # Curvature, so the measurement survives a waveform underneath.
+        # Folding assumes the profile is flat apart from the artifact,
+        # which holds only while A1 is a DC channel. Pull the DAC1
+        # jumper and the floating input follows A0's sine through the
+        # multiplexer, the profile becomes the waveform, and peak/MAD
+        # goes to 1 whether or not anything is there.
+        #
+        # A sine is smooth across neighbouring bins and the artifact is
+        # one bin wide, so subtracting each bin's own neighbours removes
+        # the waveform and leaves the spike at its full height. This is
+        # strictly the better statistic - on a flat channel the
+        # subtraction takes nothing away - and it is what makes the
+        # disconnected-jumper test answerable at all.
+        m = len(means)
+        resid = [means[b] - (means[(b - 1) % m] + means[(b + 1) % m]) / 2.0
+                 for b in range(m)]
+        rc_ = _st.median(resid)
+        rmad = _st.median([abs(x - rc_) for x in resid]) * 1.4826 or 1e-9
+        sphase = max(range(m), key=lambda b: abs(resid[b] - rc_))
+        speak = resid[sphase] - rc_
+        return (means, peak, peak_phase, abs(peak) / mad, mad, min(counts),
+                speak, sphase, abs(speak) / rmad)
+
+    means, peak, phase, z, mad, n, speak, sphase, sz = _fold(period)
+    _, _, _, cz, _, _, _, _, scz = _fold(control_period)
     return {"period": period, "peak": peak, "peak_phase": phase, "z": z,
             "stderr": mad, "n_per_bin": n, "control_period": control_period,
-            "control_z": cz, "profile": means}
+            "control_z": cz, "profile": means,
+            "spike": speak, "spike_phase": sphase, "spike_z": sz,
+            "control_spike_z": scz}
 
 
 def flat_census(vals, threshold=FLAT_DEV_CODES):

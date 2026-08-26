@@ -418,3 +418,73 @@ def test_it_is_deterministic():
 
 def test_a_short_run_is_not_an_error():
     assert measure.fold_profile([2055] * 100)["z"] == 0.0
+
+
+# ---------------------------------------------------------------------
+# Curvature. fold_profile()'s `z` assumes the folded profile is flat
+# apart from the artifact, which holds only while A1 is a DC channel.
+# `spike_z` subtracts each bin's own neighbours, so a one-bin event
+# survives a smooth waveform underneath - and does not survive a
+# staircase, which is the limitation that decided a hardware test.
+# ---------------------------------------------------------------------
+
+
+def sine_under(n=200_000, amp=700, period=TABLE, hold=1, spike=0,
+               first=300, seed=FOLD_SEED):
+    rng = random.Random(seed)
+    v = []
+    for i in range(n):
+        phase = (i % period) // hold
+        v.append(round(1668 + amp * math.sin(2 * math.pi * phase
+                                             / (period // hold)))
+                 + rng.randint(-1, 1))
+    if spike:
+        for i in range(first, n, period):
+            v[i] += spike
+    return v
+
+
+def test_plain_z_is_blind_once_a_waveform_is_folded_in():
+    """Why spike_z exists. Pull the DAC1 jumper and the floating input
+    follows A0's sine through the multiplexer; the profile becomes the
+    waveform and peak/MAD goes to 1 whether or not anything is there."""
+    f = measure.fold_profile(sine_under(spike=4))
+    assert f["z"] < 2.0
+    assert f["spike_z"] > f["z"]
+
+
+def test_a_spike_on_a_smooth_waveform_is_found_by_curvature():
+    f = measure.fold_profile(sine_under(spike=4))
+    assert f["spike_phase"] == 300 % TABLE
+    assert f["spike"] > 3.0
+
+
+def test_curvature_reports_nothing_on_a_waveform_alone():
+    assert measure.fold_profile(sine_under())["spike_z"] < 2.0
+
+
+def test_curvature_cannot_see_through_a_staircase():
+    """The limitation, recorded because it decided an experiment.
+
+    A0 carries gen's staircase - each DAC level held two ADC samples -
+    so its folded profile has a large second difference at every step
+    and a one-bin event does not stand out. A 40-code spike scores 1.4.
+    So A0 cannot serve as the positive control for a jumper test, and
+    the flat channel has to be made flat by other means rather than left
+    floating.
+    """
+    quiet = measure.fold_profile(sine_under(amp=1371, hold=2))
+    loud = measure.fold_profile(sine_under(amp=1371, hold=2, spike=40))
+    assert quiet["spike_z"] < 2.0
+    assert loud["spike_z"] < 2.0
+
+
+def test_curvature_matches_plain_z_on_a_flat_channel():
+    """The subtraction takes nothing away when there is nothing to take:
+    on a DC channel both statistics find the same event."""
+    v, _ = flat_run()
+    for i in range(300, len(v), TABLE):
+        v[i] += 4
+    f = measure.fold_profile(v)
+    assert f["spike_phase"] == f["peak_phase"]
+    assert f["spike_z"] > measure.FOLD_Z_DIRTY
