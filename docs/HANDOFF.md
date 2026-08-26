@@ -978,10 +978,18 @@ to a period it was not given.
 
 **So the wiring hypothesis is dead without pulling the jumper.** DAC1->A1
 was fitted for both rows. The same wiring gives null on one image and 8
-codes on the other, which no property of the wiring can do. Board-specific
-is dead for the same reason. **What is left is the one this project
-already knew: the binary selects which state issue #5 draws** - and it
-turns out that includes whether the `all-DC` arm draws anything at all.
+codes on the other, which no property of the wiring can do. **What is
+left is the one this project already knew: the binary selects which
+state issue #5 draws** - and it turns out that includes whether the
+`all-DC` arm draws anything at all.
+
+**Be careful about what this does *not* settle.** On `f7d62b6`'s image
+the two boards still disagree - null here, 7.84 codes at z 29-32 there -
+and nothing above explains that. What it kills is "`all-DC` is null on
+the Windows board" as a property of the board: this board is null on one
+image and not on the next, so the disagreement is one draw against
+another rather than a fact about either board. Finding 3 needed a stable
+null to rest on and there is not one.
 
 **`ad0ac4a` is the only firmware commit between the two images, and it is
 not the cause.** Its default is unchanged and the readback says so:
