@@ -26,6 +26,12 @@ volatile uint32_t play_underruns;
 volatile uint32_t play_bytes_in;
 volatile uint32_t play_isr_calls;
 volatile uint32_t play_endtx_seen;
+volatile uint32_t play_occ_hist[PLAY_NBUF];
+volatile uint32_t play_occ_min;
+volatile uint8_t  play_occ_trace[PLAY_OCC_TRACE];
+volatile uint32_t play_occ_traced;
+volatile uint32_t play_run_us;
+static uint32_t run_t0_us;
 volatile uint32_t play_svc_calls;
 volatile uint32_t play_spans;         /* OUT DMA transfers armed */
 volatile uint32_t play_partial;       /* spans that ended off a slot edge */
@@ -87,6 +93,12 @@ bool play_start(uint32_t dac_hz)
 	play_bytes_in = 0;
 	play_isr_calls = 0;
 	play_endtx_seen = 0;
+	for (unsigned i = 0; i < PLAY_NBUF; i++)
+		play_occ_hist[i] = 0;
+	play_occ_min = PLAY_NBUF;
+	play_occ_traced = 0;
+	play_run_us = 0;
+	run_t0_us = 0;
 	play_svc_calls = 0;
 	fill_off = 0;
 	dac_rc = rc;
@@ -265,8 +277,11 @@ void play_service(void)
 prime:
 	if (!primed && play_produced >= PLAY_PRIME_BUFS) {
 		primed = true;
+		run_t0_us = micros();
 		TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
 	}
+	if (primed)
+		play_run_us = micros() - run_t0_us;
 }
 
 /*
@@ -307,6 +322,24 @@ static void play_endtx(void)
 	 * short now counts an underrun and repeats, which is the honest
 	 * outcome: a repeated buffer is flagged, unfilled memory is not.
 	 */
+	/*
+	 * Sample before the decision, not after: this is the occupancy
+	 * the guard below is about to judge, and it is the only
+	 * quantity that distinguishes a run that starves from one that
+	 * does not. Same place in the ISR as drivers/play.c, because
+	 * sampling it anywhere else measures a different moment.
+	 */
+	{
+		uint32_t occ = play_produced - play_consumed;
+
+		play_occ_hist[occ < PLAY_NBUF ? occ : PLAY_NBUF - 1u]++;
+		if (occ < play_occ_min)
+			play_occ_min = occ;
+		if (play_endtx_seen % PLAY_OCC_DECIM == 0u &&
+		    play_occ_traced < PLAY_OCC_TRACE)
+			play_occ_trace[play_occ_traced++] = (uint8_t)occ;
+	}
+
 	if (play_produced - play_consumed >= 3u) {
 		play_consumed++;
 		__DMB();

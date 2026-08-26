@@ -62,4 +62,32 @@ extern volatile uint32_t play_isr_calls;
 extern volatile uint32_t play_endtx_seen;
 extern volatile uint32_t play_svc_calls;   /* play_service entries while active */
 
+/*
+ * Occupancy, sampled by the device at every ENDTX. Ported from
+ * drivers/play.c, same names, same decimation, same output format -
+ * docs/control-protocol.md and the suite both require the two tracks to
+ * be indistinguishable here, and the whole point of the oracle is that
+ * a number means the same thing on both.
+ *
+ * Why on the device and not on the host: at the top of the AWG ladder
+ * the ring holds a few slots, and polling `B` at 20 Hz to watch it took
+ * a run from 6 underruns to 30. Where you most want to observe,
+ * observing is what breaks it.
+ */
+extern volatile uint32_t play_occ_hist[PLAY_NBUF];
+extern volatile uint32_t play_occ_min;     /* fewest slots ever seen at ENDTX */
+
+#define PLAY_OCC_TRACE  256
+#define PLAY_OCC_DECIM  16
+extern volatile uint8_t  play_occ_trace[PLAY_OCC_TRACE];
+extern volatile uint32_t play_occ_traced;  /* entries written, saturating */
+
+/*
+ * Microseconds since the DAC's timer started, which is not the same as
+ * since the host asked: the ring primes first. The device timing its
+ * own run is what showed the host and the device agreeing to 0.02% and
+ * took the clock off the suspect list.
+ */
+extern volatile uint32_t play_run_us;
+
 #endif /* PLAY_H */

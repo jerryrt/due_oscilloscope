@@ -148,6 +148,7 @@ static void banner(void)
 	Serial.println("#           G/T/Y = the same three via endpoint DMA");
 	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
 	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
+	Serial.println("#           O=playback ring occupancy histogram");
 	Serial.println("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels");
 	Serial.println("#           M=mimic loop without USB (gen sine on TIOA1 + capture)");
 	Serial.println("#           d=DAC max update-rate sweep");
@@ -772,6 +773,55 @@ static void cmd_usb_dump(void)
  * Results are ns per call. Anything here that costs more than a few
  * hundred nanoseconds does not belong on a path that runs every pass.
  */
+/*
+ * Dump the playback ring's occupancy distribution.
+ *
+ * Byte-for-byte the format drivers/../main.c prints, because the suite
+ * parses one regex for both tracks and docs/control-protocol.md makes
+ * that a requirement rather than a convenience. Printed as a bare
+ * comma-separated list rather than key=value pairs: 32 buckets as
+ * `occ0=..` would be a long line for a parse that gains nothing, and
+ * the index is the occupancy, so position is the key.
+ *
+ * Track B also emits a `play_rate` line here. This track has no rate
+ * trace yet - it is the other half of objective 1c - and the host's
+ * parser treats that line as optional, so its absence reads as "not
+ * sampled" rather than as a malformed record.
+ */
+static void cmd_occ_hist(void)
+{
+	char buf[64];
+
+	snprintf(buf, sizeof(buf), "# play_occ min=%lu endtx=%lu runus=%lu consumed=%lu hist=",
+	         (unsigned long)play_occ_min,
+	         (unsigned long)play_endtx_seen,
+	         (unsigned long)play_run_us,
+	         (unsigned long)play_consumed);
+	Serial.print(buf);
+	for (unsigned i = 0; i < PLAY_NBUF; i++) {
+		snprintf(buf, sizeof(buf), "%lu%s", (unsigned long)play_occ_hist[i],
+		         i + 1u < PLAY_NBUF ? "," : "");
+		Serial.print(buf);
+	}
+	Serial.println();
+	Serial.flush();
+
+	snprintf(buf, sizeof(buf), "# play_occ_trace decim=%u n=%lu v=",
+	         PLAY_OCC_DECIM, (unsigned long)play_occ_traced);
+	Serial.print(buf);
+	for (unsigned i = 0; i < play_occ_traced; i++) {
+		snprintf(buf, sizeof(buf), "%u%s", (unsigned)play_occ_trace[i],
+		         i + 1u < play_occ_traced ? "," : "");
+		Serial.print(buf);
+		/* 256 entries is more than one buffer holds. */
+		if ((i & 31u) == 31u)
+			Serial.flush();
+	}
+	Serial.println();
+	Serial.flush();
+}
+
+
 static void cmd_profile(void)
 {
 	const uint32_t n = 20000;
@@ -1032,6 +1082,7 @@ void loop()
 		Serial.flush();
 		break;
 	}
+	case 'O': cmd_occ_hist(); break;
 	case 'Q': cmd_profile();  break;
 	case 'V': play_dump();    break;
 	case 'D': diag_start();   break;
@@ -1069,7 +1120,7 @@ void loop()
 	          snprintf(buf, sizeof(buf),
 	                   "# play: in=%lu produced=%lu consumed=%lu under=%lu "
 	                   "isr=%lu endtx=%lu svc=%lu spans=%lu partial=%lu "
-	                   "rebuilds=%lu act-in=%lu act-out=%lu",
+	                   "occmin=%lu rebuilds=%lu act-in=%lu act-out=%lu",
 	                   (unsigned long)play_bytes_in,
 	                   (unsigned long)play_produced,
 	                   (unsigned long)play_consumed,
@@ -1079,6 +1130,7 @@ void loop()
 	                   (unsigned long)play_svc_calls,
 	                   (unsigned long)play_spans,
 	                   (unsigned long)play_partial,
+	                   (unsigned long)play_occ_min,
 	                   (unsigned long)usbdma_rebuilds,
 	                   (unsigned long)usb_in_activity,
 	                   (unsigned long)usb_out_activity);
