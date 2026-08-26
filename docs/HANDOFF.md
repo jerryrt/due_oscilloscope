@@ -311,6 +311,21 @@ still reading, the two race. Tested on hardware 2026-08-25 (later
 session), that model does not survive any of the following, and neither
 does "780 splices" as a description.
 
+**Vocabulary, because the rest of this section is unreadable without
+it.** A **run** is one 3 s capture at preset `M`. A **dirty** run is one
+that contains the artifact, a **clean** run is one that does not, and
+the two do not shade into each other - a run carries either ~778 events
+or exactly 0, at sd 1.66 against sd 0.87. So "6/10 dirty" means six of
+ten captures showed it on the same board and image, which is the whole
+difficulty: the defect is intermittent per run, not per build.
+
+An **arm** is one condition of an experiment - the untreated control, or
+the board with some change applied. A **dirty arm** is one that actually
+produced the artifact. The distinction carries the retraction below: a
+treatment arm reading zero is only evidence when the control arm read
+dirty, because otherwise nothing was there to fix while you were
+watching.
+
 **It is not a splice.** On the flat channel every event is one sample
 displaced by +62..68 codes, and with the original table every one was
 exactly bit 6 set - clearing that bit recovers the neighbouring value
