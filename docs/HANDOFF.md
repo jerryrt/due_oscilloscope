@@ -398,6 +398,60 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### 1c: the abandon timeout is in, the control channel is scoped not built
+
+**Done.** The playback-abandon timeout, which was the item quietly
+corrupting every playback figure on Track A. `run_us` 5.00 s -> 3.51 s
+for a 3 s run, and the counters land on Track B's at every rate. Track A
+is **237 passed / 0 failed**.
+
+**Scoped, and not to be started casually.** The control channel is the
+rest of 1c and it is a day of firmware with real enumeration risk. What
+is established, so the next session does not re-derive it:
+
+- **The core can carry it.** `PLUGGABLE_USB_ENABLED` is defined in the
+  sam 1.6.12 core and `USBCore.cpp` dispatches `setup`, `getInterface`
+  and `getDescriptor` to `PluggableUSB()`. A `PluggableUSBModule` adds
+  interfaces and endpoints without patching the core, which is what
+  keeps enumeration the core's job.
+- **The numbers line up with no negotiation.** The core's CDC takes
+  interfaces 0-1 and EP1-3; `PluggableUSB_::plug()` then assigns
+  interface 2 and EP4, which is exactly Track B's layout.
+- **The descriptor bytes to emit are the second half of `desc_config[]`
+  in `drivers/usb_cdc.c`** - IAD (8,11,2,2,0x02,0x02,0x01,5), comm
+  interface 2 with its four class descriptors and the EP4 notify, data
+  interface 3 with EP5 OUT and EP6 IN at 512 bytes.
+- **The endpoint geometry is a requirement, not a preference.**
+  `docs/control-protocol.md`: EP4 64x1, EP5 512x1, EP6 512x1. High-speed
+  bulk *must* be 512, DPRAM only affords one bank each, and 40.5.1.6
+  says allocation is ascending - so the control endpoints are configured
+  after the sample ones.
+- **`UDD_InitEP` is inside the precompiled `libsam`**, so how it sizes
+  and banks an endpoint cannot be read. Track A already reprograms
+  `DEVEPTCFG` directly for EP2/EP3, so the same is expected for EP4-6 -
+  but that is an expectation, not a measurement, and it is where this
+  will be won or lost.
+- **`ep_apply_autosw()`'s second half goes in with this and not after.**
+  It is inert only while the track stops at EP3.
+
+Then `sketches/bringup/ctl.cpp` is a transliteration of `drivers/ctl.c`,
+and `tests/test_control.py` plus the two on-board tests in
+`tests/test_link_health.py` stop skipping.
+
+**printf stages 3-4 stay blocked behind it.** Poisoning `printf` on one
+track and not the other removes Track A's only instrument, which is
+invariant 3 broken to enforce invariant 8.
+
+### One flash failed silently on Windows after all
+
+A Track A flash reported `Verify successful`, left no bootloader node -
+so `flash.py`'s new check passed - and produced a board that answered
+neither the console nor the native port. A reflash fixed it. That is a
+**different failure from the macOS one** (which leaves the board in ROM
+SAM-BA and is caught), and it means the 0-of-20 measured here was a
+sample that missed it rather than proof of absence. Neither check
+catches this one; the only evidence is silence.
+
 ### Where the branches are
 
 **`main` only.** Everything from both sessions is merged and every other
