@@ -56,4 +56,19 @@ void ctlusb_quiesce_interrupts(void);
 extern volatile uint32_t ctlusb_reallocs;
 extern volatile uint32_t ctlusb_cfg_fail;
 
+/*
+ * The setup packets this module was offered, and whether it claimed
+ * them. An unclaimed class-interface request is answered by USBCore
+ * with UDD_Stall(), which assigns UOTGHS_DEVEPT rather than setting a
+ * bit in it and so disables every endpoint above EP0. See ctlusb.cpp.
+ */
+#define CTLUSB_SETUP_N 12u
+struct ctlusb_setup_e {
+	uint8_t  bmRequestType, bRequest, claimed;
+	uint16_t wValue, wIndex, wLength;
+};
+extern volatile struct ctlusb_setup_e ctlusb_setups[CTLUSB_SETUP_N];
+extern volatile uint32_t ctlusb_setup_n;
+extern volatile uint32_t ctlusb_setup_drop;
+
 #endif /* CTLUSB_H */

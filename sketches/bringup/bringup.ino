@@ -921,10 +921,107 @@ void setup()
  */
 volatile uint32_t devept_seen;
 
+/*
+ * When did it change, and had the bus been reset when it did?
+ *
+ * The high-water mark above says EP1-6 *were* enabled and are not any
+ * more. It cannot say when, which is the difference between "cleared
+ * during configuration" and "cleared later, when something touched the
+ * endpoints" - and those want different code read.
+ *
+ * So trace every change, with an independent witness for the one
+ * explanation that would make this ordinary. UOTGHS_DEVCTRL carries
+ * UADD and ADDEN: SET_ADDRESS writes them and a bus reset clears them,
+ * in the controller, with no software involved. `_usbConfiguration` is
+ * the core's own flag for the same question and it is only as good as
+ * the core's EORST handler running. If DEVEPT drops to 1 while UADD is
+ * still set, no reset happened and something in this image cleared six
+ * endpoints. If UADD clears with it, the host reset the bus and the
+ * core failed to notice, which is a different bug in a different file.
+ *
+ * Sixteen entries and a saturating index: this must not become the
+ * thing that perturbs what it measures, and the interesting events are
+ * the first ones. Two reads and a compare per pass.
+ */
+#define USBTRACE_N 32u
+struct usbtrace_e {
+	uint32_t us, pass, devept, devctrl, cfg;
+};
+static volatile struct usbtrace_e usbtrace[USBTRACE_N];
+static volatile uint32_t usbtrace_n;      /* entries kept, saturating */
+static volatile uint32_t usbtrace_drop;   /* changes past the sixteenth */
+
+static inline void usbtrace_sample(uint32_t pass)
+{
+	extern volatile uint32_t _usbConfiguration;
+	static uint32_t last_ept = 0xffffffffu, last_ctrl, last_cfg;
+	uint32_t ept  = UOTGHS->UOTGHS_DEVEPT;
+	uint32_t ctrl = UOTGHS->UOTGHS_DEVCTRL;
+	uint32_t cfg  = _usbConfiguration;
+
+	if (ept == last_ept && ctrl == last_ctrl && cfg == last_cfg)
+		return;
+	last_ept = ept; last_ctrl = ctrl; last_cfg = cfg;
+
+	if (usbtrace_n >= USBTRACE_N) {
+		usbtrace_drop++;
+		return;
+	}
+	usbtrace[usbtrace_n].us      = micros();
+	usbtrace[usbtrace_n].pass    = pass;
+	usbtrace[usbtrace_n].devept  = ept;
+	usbtrace[usbtrace_n].devctrl = ctrl;
+	usbtrace[usbtrace_n].cfg     = cfg;
+	usbtrace_n++;
+}
+
+
+/*
+ * Put the enables back, a bounded number of times, and report what the
+ * controller does with the write.
+ *
+ * The trace says EP1-6 are enabled at SET_CONFIGURATION and cleared
+ * 2.5 ms later with the device still addressed, so no bus reset. That
+ * narrows the question to one the controller can answer directly: does
+ * EPEN stay set when it is written back? If it reads 0x7f and holds,
+ * the clear was a one-off act by something in this image and the next
+ * job is to find it. If it reads back 1, the controller is refusing to
+ * enable these endpoints - which is DPRAM, not software, and CFGOK
+ * reporting 1111111 is then describing configurations rather than
+ * allocations.
+ *
+ * Bounded because an unbounded retry against a controller that refuses
+ * is a main loop that does nothing else. Eight is enough to tell a
+ * one-off from a fight, and usbtrace records every attempt with its
+ * timestamp.
+ */
+#define DEVEPT_RESTORE_MAX 8u
+static volatile uint32_t devept_restores;
+static volatile uint32_t devept_after[DEVEPT_RESTORE_MAX];
+
+static inline void devept_restore(void)
+{
+	extern volatile uint32_t _usbConfiguration;
+
+	if (devept_restores >= DEVEPT_RESTORE_MAX)
+		return;
+	if (!_usbConfiguration || devept_seen != 0x7fu)
+		return;
+	if (UOTGHS->UOTGHS_DEVEPT == 0x7fu)
+		return;
+
+	UOTGHS->UOTGHS_DEVEPT |= 0x7eu;                  /* EP1-6 */
+	devept_after[devept_restores] = UOTGHS->UOTGHS_DEVEPT;
+	devept_restores++;
+}
+
 
 void loop()
 {
 	devept_seen |= UOTGHS->UOTGHS_DEVEPT;
+	usbtrace_sample(stream_loop_passes);
+	devept_restore();
+	usbtrace_sample(stream_loop_passes);
 	static uint32_t rate_arg[3];
 	static unsigned rate_idx;
 	static bool     rate_entry;
@@ -1242,6 +1339,62 @@ void loop()
 				         (unsigned long)devept_seen,
 				         (unsigned long)UOTGHS->UOTGHS_DEVEPT);
 				Serial.println(cb); Serial.flush();
+			}
+
+			/*
+			 * The trace. One line per change of DEVEPT, DEVCTRL or
+			 * _usbConfiguration, in the order they happened, with
+			 * micros() and the pass number.
+			 *
+			 * Read DEVCTRL first: bit 8 is ADDEN and bits 0-6 are
+			 * UADD, both written by SET_ADDRESS and both cleared by
+			 * the controller on a bus reset. An entry where DEVEPT
+			 * falls to 1 while ADDEN is still set is a clear that no
+			 * reset explains.
+			 */
+			{
+				char tb[160];
+				int  tn = snprintf(tb, sizeof(tb),
+				         "# usbrestore n=%lu after:",
+				         (unsigned long)devept_restores);
+				for (unsigned i = 0; i < devept_restores
+				                  && i < DEVEPT_RESTORE_MAX; i++)
+					tn += snprintf(tb + tn, sizeof(tb) - tn, " %08lx",
+					               (unsigned long)devept_after[i]);
+				Serial.println(tb); Serial.flush();
+				tn = snprintf(tb, sizeof(tb),
+				         "# usbsetup n=%lu dropped=%lu",
+				         (unsigned long)ctlusb_setup_n,
+				         (unsigned long)ctlusb_setup_drop);
+				Serial.println(tb); Serial.flush();
+				for (unsigned i = 0; i < ctlusb_setup_n
+				                  && i < CTLUSB_SETUP_N; i++) {
+					snprintf(tb, sizeof(tb),
+					         "# s%02u type=%02x req=%02x val=%04x idx=%04x len=%u claimed=%u",
+					         i, ctlusb_setups[i].bmRequestType,
+					         ctlusb_setups[i].bRequest,
+					         ctlusb_setups[i].wValue,
+					         ctlusb_setups[i].wIndex,
+					         ctlusb_setups[i].wLength,
+					         ctlusb_setups[i].claimed);
+					Serial.println(tb); Serial.flush();
+				}
+				snprintf(tb, sizeof(tb),
+				         "# usbtrace n=%lu dropped=%lu (us pass devept devctrl cfg)",
+				         (unsigned long)usbtrace_n,
+				         (unsigned long)usbtrace_drop);
+				Serial.println(tb); Serial.flush();
+				for (unsigned i = 0; i < usbtrace_n && i < USBTRACE_N; i++) {
+					snprintf(tb, sizeof(tb),
+					         "# t%02u %10lu %10lu %08lx %08lx %lu",
+					         i,
+					         (unsigned long)usbtrace[i].us,
+					         (unsigned long)usbtrace[i].pass,
+					         (unsigned long)usbtrace[i].devept,
+					         (unsigned long)usbtrace[i].devctrl,
+					         (unsigned long)usbtrace[i].cfg);
+					Serial.println(tb); Serial.flush();
+				}
 			}
 		}
 		break;

@@ -118,6 +118,7 @@ public:
 
 protected:
 	bool setup(USBSetup &setup);
+	bool setup_inner(USBSetup &setup);
 	int  getInterface(uint8_t *interfaceCount);
 	int  getDescriptor(USBSetup &setup);
 
@@ -173,7 +174,47 @@ int CtlUSB::getDescriptor(USBSetup & /*setup*/)
 	return 0;
 }
 
+/*
+ * Every setup packet PluggableUSB offers us, and whether we claimed it.
+ *
+ * USBCore answers an unclaimed class-interface request with UDD_Stall(),
+ * and UDD_Stall() on this core is
+ *
+ *     UOTGHS->UOTGHS_DEVEPT = (UOTGHS_DEVEPT_EPEN0 << EP0);
+ *
+ * an assignment, not a set - so a protocol stall on EP0 disables every
+ * other endpoint on the device. With one CDC function nothing ever
+ * stalled and the bug was invisible. The question this ring answers is
+ * which request arrives that nobody claims.
+ */
+volatile struct ctlusb_setup_e ctlusb_setups[CTLUSB_SETUP_N];
+volatile uint32_t ctlusb_setup_n;
+volatile uint32_t ctlusb_setup_drop;
+
+static void setup_log(const USBSetup &s, uint8_t claimed)
+{
+	if (ctlusb_setup_n >= CTLUSB_SETUP_N) {
+		ctlusb_setup_drop++;
+		return;
+	}
+	volatile struct ctlusb_setup_e *e = &ctlusb_setups[ctlusb_setup_n];
+	e->bmRequestType = s.bmRequestType;
+	e->bRequest      = s.bRequest;
+	e->wValue        = (uint16_t)(s.wValueL | (s.wValueH << 8));
+	e->wIndex        = s.wIndex;
+	e->wLength       = s.wLength;
+	e->claimed       = claimed;
+	ctlusb_setup_n++;
+}
+
 bool CtlUSB::setup(USBSetup &setup)
+{
+	bool claimed = setup_inner(setup);
+	setup_log(setup, claimed ? 1 : 0);
+	return claimed;
+}
+
+bool CtlUSB::setup_inner(USBSetup &setup)
 {
 	/*
 	 * Only our own interfaces, and only class requests.
