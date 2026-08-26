@@ -809,14 +809,36 @@ static void cmd_execute(const cmd_t *cmd)
 	 * if it freezes, the trigger/DACC/ADC interaction is the fault.
 	 */
 	case 'M':
-		play_stop();
-		gen_init();
-		gen_prepare_tioa1(200000u);
-		stream_start_capture_only(200000u, 2);
-		gen_go_tioa1();
+		/*
+		 * Everything the console has to say is said before the
+		 * converters start. These two lines used to run after
+		 * gen_go_tioa1(), which is ~7 ms of blocked main loop laid
+		 * over the first samples of every capture this preset takes
+		 * - invariant 8, on the path the suite calls its continuity
+		 * control. Measured not to change what that path reports,
+		 * on one image with the two orders alternated; moved anyway,
+		 * because it had no business being there.
+		 */
 		printf("# mimic loop: gen sine on TIOA1 at 200000 sps, capture 200000 Hz\n");
 		printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
 		uart_flush();
+		play_stop();
+		gen_init();
+		gen_prepare_tioa1(200000u);
+		/*
+		 * Checked, unlike every earlier version of this line. A
+		 * refusal is silent otherwise: gen still runs, the banner
+		 * above has already claimed a capture, and the host reads an
+		 * empty stream from a device that reported success. This is
+		 * the preset the splice census measures, so a refusal that
+		 * says nothing would be scored as a clean run.
+		 */
+		if (!stream_start_capture_only(200000u, 2)) {
+			printf("# mimic loop: refused, the ADC would not start\n");
+			uart_flush();
+			break;
+		}
+		gen_go_tioa1();
 		break;
 	case 'B': stream_bench_report();
 	          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
