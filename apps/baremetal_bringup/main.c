@@ -75,6 +75,7 @@ static void banner(void)
 	printf("#           =1l = report load, then clear it\n");
 	printf("#           =<ms>Z = detach the native port (software unplug)\n");
 	printf("#           =<tt>,<st>A = ADC track/settling time\n");
+	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
 	printf("#           z=software reset  v=identity line\n");
 	printf("#\n");
 }
@@ -135,6 +136,9 @@ static void measure_gpio(void)
 	printf("# use direct PIO writes for ISR instrumentation\n");
 	uart_flush();
 }
+/* The M preset's ADC-start-to-DAC-start gap. See case 'K'. */
+static uint32_t mimic_start_delay_us;
+
 
 static void cmd_read(void)
 {
@@ -803,6 +807,29 @@ static void cmd_execute(const cmd_t *cmd)
 	case 'V': play_dump(); break;
 	case 'D': diag_start(); break;
 	/*
+	 * "=<us>K". The gap between the ADC start and the DAC start, in
+	 * microseconds, held across runs and applied by the M preset.
+	 *
+	 * The two states this issue draws are selected by the binary and
+	 * not by anything the host does - three states on one image and one
+	 * on the next, with the changed code never executed. The M preset's
+	 * comment below names the only free variable that layout could
+	 * plausibly move: gen sits on TIOA1 while the ADC sits on TIOA0, so
+	 * the sampling phase relative to the DAC table wrap is fixed for a
+	 * run by the instruction timing between the two starts, and a
+	 * different layout is a different number of instructions.
+	 *
+	 * This makes that variable settable, so the hypothesis can be
+	 * tested inside one image instead of by flashing two. Debug-only,
+	 * on a preset that is already debug-only, and it busy-waits.
+	 */
+	case 'K':
+		mimic_start_delay_us = cmd->arg[0];
+		printf("# mimic start delay: %lu us (next M)\n",
+		       (unsigned long)mimic_start_delay_us);
+		uart_flush();
+		break;
+	/*
 	 * The loop's timing skeleton with no USB in it: gen's flash sine
 	 * through play's exact DACC + TIOA1 configuration, capture
 	 * running, ordering matched to what L does once the ring primes.
@@ -864,6 +891,11 @@ static void cmd_execute(const cmd_t *cmd)
 			printf("# mimic loop: refused, the ADC would not start\n");
 			uart_flush();
 			break;
+		}
+		if (mimic_start_delay_us) {
+			uint32_t t0 = micros();
+			while (micros() - t0 < mimic_start_delay_us)
+				;
 		}
 		gen_go_tioa1();
 		break;

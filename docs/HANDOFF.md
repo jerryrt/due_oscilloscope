@@ -609,6 +609,65 @@ rather than guessing. `tests/test_census.py`, no board.
 4. `tools/ab.py`'s control-arm rule still holds and matters more: a
    control that reads clean on a threshold instrument is not a control.
 
+### The start gap is the mechanism, and it is the first knob this issue has
+
+`=<us>K` sets the gap between the ADC start and the DAC start, held
+across runs and applied by the `M` preset. It exists because the state
+count is a property of the binary while the changed code is never
+executed, which leaves timing as the only thing layout can move - and
+the `M` preset's own comment names the candidate: gen on TIOA1 against
+the ADC on TIOA0, with the sampling phase relative to the DAC table wrap
+fixed for a run by the instruction timing between the two starts.
+
+**It moves the artifact, inside one image.** Interleaved, five rounds,
+gap 0 in the rotation as the untreated arm, RC 189, `TRACKTIM=0
+SETTLING=0`, `fold_profile()` on A1:
+
+| gap, us | peak, codes (5 reps) | phases | median |
+|---|---|---|---|
+| 0 | +2.29 .. +2.37 | 272 | **+2.32** |
+| 620 | -12.41 .. +2.09 | 272, 386 | +2.00 |
+| 1085 | -12.84 .. -8.49 | 272, 386 | **-8.56** |
+| 1551 | -15.00 .. -1.89 | 164, 272 | **-14.91** |
+
+Control z was 2.5-3.7 everywhere, so every run is the artifact. The
+untreated arm reproduced in all five rounds, which is the rule
+`tools/ab.py` exists to enforce, and the treated arms are shifted: gap
+1085 never drew the gap-0 state in five tries and gap 1551's median is
+six times its amplitude with the opposite sign.
+
+**Gap 0 is deterministic; every nonzero gap is not.** Five runs at gap 0
+span 0.08 codes and one phase, and forty runs at gap 0 across two
+earlier experiments never left it. The other three gaps each draw from
+two states. The busy-wait polls `micros()`, so a nonzero gap ends on a
+systick edge that is asynchronous to both timers - the lottery is
+something the wait *introduces*, not something intrinsic to the preset.
+That is worth following: it says the selection is sub-microsecond, and
+`micros()` is the wrong instrument to set it with. A TC-derived gap, or
+one counted in ADC trigger periods, should be deterministic at every
+value.
+
+**What this settles.** The image dependence has a mechanism: layout
+changes the instruction count between the two starts, the gap sets the
+sampling phase against the DAC table wrap, and the phase sets the
+amplitude and sign. Nothing about the artifact needs to differ between
+two binaries for their state counts to differ.
+
+**What it does not settle**, and the temptation is to overread it: this
+says what selects the state, not what the artifact *is*. DAC1 glitching
+and the ADC input network failing to settle both survive, and the
+deferred source experiment still decides between them. It does lean on
+the timing reading - an amplitude that depends on when the ADC samples
+relative to the DAC update is the ADC catching the output mid-transition
+- but both surviving hypotheses predict exactly that, so it separates
+neither. The jumper test is still where "analog" comes from.
+
+**Do not sweep this with `micros()` and call the result a curve.** The
+single unrepeated pass over sixteen gaps looked like a clean
+dose-response and the interleaved repeat shows it is a distribution.
+The table above is five reps per point; anything less is a draw.
+
+
 ### The image chooses the state, and this one is powered
 
 The count of states is a property of the binary, not of the host or the
