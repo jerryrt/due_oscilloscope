@@ -36,6 +36,11 @@ SAMBA = (0x03EB, 0x6124)                   # SAM3X ROM bootloader
 # patience, not a deadline anything depends on.
 SAMBA_WAIT_S = 15.0
 
+# How long to wait, after bossac has reset the board, for the ROM
+# bootloader node to go away - which is the only evidence available here
+# that the program actually took over.
+BOOT_WAIT_S = 8.0
+
 
 def find_console(explicit=None):
     """The programming port, by USB VID/PID - identical on every OS."""
@@ -121,31 +126,41 @@ def restore_115200(port):
         print("         115200 before using it.", file=sys.stderr)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--bin", default=os.path.join(REPO, "build",
-                                                  "baremetal_bringup.bin"))
-    ap.add_argument("--port", help="programming port; discovered if omitted")
-    ap.add_argument("--bossac", help="bossac executable; from the registry "
-                                     "if omitted (CMake passes it)")
-    ap.add_argument("--samba", help="bootloader port to flash directly, for "
-                                    "when more than one board is blank")
-    args = ap.parse_args()
+def wait_for_boot(watched, timeout=BOOT_WAIT_S):
+    """Did the program actually start after bossac reset the board?
 
-    binary = os.path.abspath(args.bin)
-    if not os.path.isfile(binary):
-        sys.exit(f"no such binary: {binary}\nbuild it first: cmake --build build")
+    bossac reports "Verify successful" for a write that lands perfectly
+    and still leaves the board sitting in ROM SAM-BA - measured here at
+    roughly two attempts in three on macOS, with no diagnostic anywhere.
+    The board then has no native port, answers nothing, and the only
+    symptom is silence, so it reads as a firmware fault rather than a
+    flash that did not finish. It cost three false conclusions in one
+    session, including "this branch does not boot" about a branch that
+    boots fine - the interleaved control was what disproved it.
 
-    bossac = args.bossac
-    if not bossac:
-        _, bossac = toolchain.resolve("bossac")
-    if not bossac or not os.path.isfile(bossac):
-        sys.exit("bossac not found. Add a pattern to toolchains.json, or "
-                 "pass --bossac. Run: python3 tools/toolchain.py")
+    The evidence is negative and that is the best available without
+    knowing what the program enumerates: SAM-BA is 03EB:6124 and the
+    running firmware is not, so a bootloader node that is still there
+    after the reset window means the reset went back into the ROM
+    monitor. Track A and Track B enumerate different things and a
+    program need not enumerate at all, so do not test for a native port.
 
-    print(f"==> bossac : {bossac}")
-    print(f"==> binary : {binary}")
+    The limitation, stated rather than hidden: with a second board in
+    SAM-BA this cannot tell whose node it is looking at, which is the
+    same attribution problem samba_nodes() documents. main() already
+    refuses to guess in that case.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        now = set(samba_nodes())
+        if not (now & watched) and not (watched and now):
+            return True
+        time.sleep(0.5)
+    return False
 
+
+def _flash_attempt(bossac, binary, args):
+    """One erase-write-verify-reset cycle. Returns (rc, booted)."""
     # A bootloader node is only used if it can be attributed to the board
     # we were asked to flash. Attribution comes from one of two things: it
     # appeared as a result of *our* touch, or it is the only one on the
@@ -228,6 +243,16 @@ def main() -> int:
         if (node, usb, label) is not routes[-1]:
             time.sleep(1.5)
 
+
+    # Verified is not booted. See wait_for_boot().
+    booted = True
+    if rc == 0 and not args.no_boot_check:
+        watched = {target} if native_usb == "true" else set()
+        booted = wait_for_boot(watched)
+        if not booted:
+            print("==> flashed and verified, but the board came back "
+                  "in the ROM bootloader")
+
     if console:
         restore_115200(console)
     if rc != 0:
@@ -244,6 +269,65 @@ def main() -> int:
               file=sys.stderr)
         print("If it still fails, press ERASE then RESET on the board and "
               "retry.", file=sys.stderr)
+    return rc, booted
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--bin", default=os.path.join(REPO, "build",
+                                                  "baremetal_bringup.bin"))
+    ap.add_argument("--port", help="programming port; discovered if omitted")
+    ap.add_argument("--bossac", help="bossac executable; from the registry "
+                                     "if omitted (CMake passes it)")
+    ap.add_argument("--samba", help="bootloader port to flash directly, for "
+                                    "when more than one board is blank")
+    ap.add_argument("--retries", type=int, default=3,
+                    help="re-flash this many times if the board comes back "
+                         "in the bootloader instead of running the program "
+                         "(default 3; 0 to report and stop)")
+    ap.add_argument("--no-boot-check", action="store_true",
+                    help="skip the post-flash boot check; for a program "
+                         "that is expected not to run, or a second board "
+                         "in SAM-BA that would confuse the attribution")
+    args = ap.parse_args()
+
+    binary = os.path.abspath(args.bin)
+    if not os.path.isfile(binary):
+        sys.exit(f"no such binary: {binary}\nbuild it first: cmake --build build")
+
+    bossac = args.bossac
+    if not bossac:
+        _, bossac = toolchain.resolve("bossac")
+    if not bossac or not os.path.isfile(bossac):
+        sys.exit("bossac not found. Add a pattern to toolchains.json, or "
+                 "pass --bossac. Run: python3 tools/toolchain.py")
+
+    print(f"==> bossac : {bossac}")
+    print(f"==> binary : {binary}")
+
+    for attempt in range(1, max(0, args.retries) + 2):
+        if attempt > 1:
+            # Re-flashing repeats the 1200-baud touch, which erases
+            # first - that is the sequence that recovers a board stuck
+            # in the ROM monitor, and doing it by hand is how this was
+            # got through before the check existed.
+            print(f"==> retrying ({attempt - 1} of {args.retries})")
+        rc, booted = _flash_attempt(bossac, binary, args)
+        if rc == 0 and booted:
+            return 0
+
+    if rc == 0 and not booted:
+        print("", file=sys.stderr)
+        print(f"FLASHED BUT NOT RUNNING after {attempt} attempt(s).",
+              file=sys.stderr)
+        print("The write verified every time; the board is sitting in "
+              "ROM SAM-BA and", file=sys.stderr)
+        print("is not running the program. Run the flash again, or "
+              "press ERASE then", file=sys.stderr)
+        print("RESET on the board. Do not read this as a firmware "
+              "fault: a board that", file=sys.stderr)
+        print("never started looks exactly like one that hangs on "
+              "boot.", file=sys.stderr)
+        return 2
     return rc
 
 
