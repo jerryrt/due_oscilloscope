@@ -249,6 +249,44 @@ is cheap, and it fails loudly on exactly the failure the protocol exists
 to prevent: data spliced across two points in time that still passes its
 header CRC.
 
+### The device-waveform gate, re-verified after the pair_fold fix (2026-08-26)
+
+`b96368e` changed `pair_fold()` to try both parities *after* the gate in
+`test_device_generated_waveform_is_continuous` had been rewritten to
+depend on it, so the gate was resting on an instrument that had moved
+under it. Re-measured on Track B `main`, four captures at preset `M`
+plus four suite runs:
+
+| | parity 0 | parity 1 |
+|---|---|---|
+| `pair_spread` (median abs difference) | **1.00 codes** | 24.00 codes |
+| fold z | 43-60 | 1.2 |
+| fold peak | -5.3 to -5.6 codes | +42.6 to +43.2 codes |
+
+**The selection rule is not close on device data - the two parities are
+24x apart, identically on every run.** That is the separation the rule
+assumes: within a held DAC level the difference is noise, across a level
+boundary it is a whole DAC step. A rule that picked the smaller of two
+similar numbers would be a coin flip and the gate would be unstable; it
+is not.
+
+Two things follow that are worth writing down. **Parity 0 is what wins
+here, which is what the pre-fix code assumed** - so at preset `M` on this
+board the fix changes nothing, and the gate's recorded verdicts before
+and after it are comparable. The fix's effect was on the layout sweep's
+sine arms, where the trim landed on the other side. And **the wrong
+parity does not merely misreport, it reports something plausible**: z 1.2
+at +43 codes, which is a DAC step wearing the artifact's units. `hold_ok`
+refuses it at 24 against a limit of 4, which is the guard doing its job
+rather than the measurement failing.
+
+The gate itself is stable across seven consecutive runs: `hold_ok` true,
+xfail on issue #5 every time, peak -5.4 to -5.6 codes at phase 192, z
+41-60 against a control z of 2.7-4.1. The census count under it moves
+between 0, 1 and 5 steps over 45 codes run to run, which is exactly why
+the gate stopped thresholding that number and started identifying the
+state instead.
+
 ## 6. Domain 3 - channels and ceilings
 
 Cheap, mostly contract, so it runs before the long streaming tests.
@@ -296,21 +334,61 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   reports false failures.
 - **Opening the control port resets the board.** Any test that opens it
   independently of the session Board invalidates whatever was running.
-- **Two one-off failures at the top of the rate ladder, unexplained.**
-  Six full Track B runs on 2026-08-26 produced two failures, each in a
-  different test, each passing on re-run and in isolation:
-  `test_awg_ladder_play_only[b-32]` at 1,218,750 sps, and
-  `test_matched_full_rate_loop[b-2-906976-453488]`. Both sit at the top
-  of the ladder, where `docs/HANDOFF.md` already records an intermittent
-  residual at 1,218,750 sps and oversupply at 886,363 and 1,000,000.
-  **Neither assertion was captured**, so this is a pattern and not a
-  diagnosis - do not quote it as "known flakiness" to dismiss a failure
-  there. The next one to appear should be read before it is re-run.
+- **`test_host_fed_ramp_loses_no_samples` is intermittent, and its rate
+  drifts by era.** Measured 2026-08-26 rather than guessed: 5 of 8, then
+  2 of 8, then 1 of 8 in sequential batches on the same firmware - and
+  **0 of 10 against 1 of 10 when the two firmwares were interleaved with
+  a reflash between arms.** So the failure is real, unexplained, and
+  *not* attributable to anything changed that day; the sequential
+  batches were measuring the hour, not the build. It fails on byte
+  conservation with losses that are not whole 128-byte chunks
+  (`[10, 12, 10, ...]` bytes), which the assertion reads as the device
+  losing data it received.
+
+  **The lesson is the method, not the number.** Two sequential batches
+  of eight disagreed with each other by a factor of two and a half. Any
+  claim about this test - including "my change broke it" and "my change
+  fixed it" - needs the arms interleaved, exactly as a firmware A/B
+  does. See `tools/ab.py` for why.
+
+- **`test_matched_full_rate_loop[b-2-906976-453488]` and
+  `test_awg_ladder_play_only[b-32]` also fail occasionally**, one
+  sequence gap or one uncounted repeat, at the top of the ladder where
+  `docs/HANDOFF.md` already records an intermittent residual and
+  oversupply. Neither has been characterised the way the ramp test now
+  has. Do not quote any of this as "known flakiness" to wave away a
+  failure there - the next one should be read before it is re-run.
 - **Never truncate a suite run's output.** The first of those two was
   lost to a `| tail -3` on the pytest invocation, which threw away the
   traceback and left nothing to diagnose; the re-run was green and the
   evidence was gone for good. Run with `-rf --tb=short` and keep the
   whole thing.
+- **The native port can accept an open and never return from it**, and
+  that is not the same as being absent. Measured on Windows after a
+  NRSTB reset: `ports.native_nodes()` lists the node, Device Manager
+  reports it healthy, and `CreateFile` blocks - so a caller with a
+  generous deadline still hangs, because control never comes back to
+  test the deadline. Seen as `OSError(22)`, Windows `ERROR_SEM_TIMEOUT`,
+  and as error 31 on the sibling node.
+
+  `Board.open_native()` runs each attempt in a daemon thread and
+  abandons it after `attempt_timeout`, re-globbing every pass, for up to
+  45 s. An abandoned thread leaks a handle in a process that is about to
+  exit; that is a straight trade against hanging the run.
+
+- **Healing, in the order to try it.** Any of these is acceptable - the
+  bench is a test rig, not a patient.
+  1. **Close what you opened.** `measure.Board` is a context manager;
+     use `with`. A script that dies holding the control port makes every
+     later run fail with "Access is denied" on it, and that looks
+     exactly like a board fault. Most of one session's "unstable
+     enumeration" was this.
+  2. **Kill any stray process** still holding a node. A blocked open in
+     an abandoned process holds the port until that process exits.
+  3. **Reflash.** `tools/flash.py` does a 1200-baud touch and a full
+     re-enumeration and reliably clears a device that has stopped
+     answering. Verified: five consecutive capture cycles afterwards,
+     4.8 s each, byte-identical.
 
 ## 10. Implementation order
 

@@ -476,13 +476,26 @@ def pair_fold(vals, period=GEN_TABLE_LEN):
     if len(vals) < 4 * period:
         return dict(fold_profile([], period=max(1, period // 2)),
                     hold_ok=False, pair_spread=0.0)
-    d = [vals[i] - vals[i + 1] for i in range(0, len(vals) - 1, 2)]
+    # Both parities, and keep the one that actually pairs. The caller
+    # hands us a slice trimmed at a settle time, which lands on either
+    # side of a level boundary depending on the rate and the trim - and
+    # the wrong parity differences two samples from *different* DAC
+    # levels, so every difference is a DAC step instead of noise. It
+    # showed up as hold_ok refusing the sine arms of the layout sweep,
+    # which was the guard working rather than the measurement failing,
+    # but the measurement is available for one more subtraction.
+    best_d, best_spread = None, None
+    for off in (0, 1):
+        d = [vals[i] - vals[i + 1] for i in range(off, len(vals) - 1, 2)]
+        spread = _st.median([abs(x) for x in d])
+        if best_spread is None or spread < best_spread:
+            best_d, best_spread = d, spread
+    d = best_d
     out = fold_profile(d, period=period // 2)
     # Within a held level the difference is noise; across a broken
     # pairing it is a DAC step, which is tens of codes.
-    spread = _st.median([abs(x) for x in d])
-    out["pair_spread"] = spread
-    out["hold_ok"] = spread <= 4.0
+    out["pair_spread"] = best_spread
+    out["hold_ok"] = best_spread <= 4.0
     return out
 
 
@@ -1408,19 +1421,47 @@ class Board:
         return self.drain_console(0, quiet=1.0, cap=wait)
 
     # -- native port -------------------------------------------------
-    def open_native(self, wait=12.0, dtr=True, blocking_writes=False,
-                    notify=None):
-        """Re-glob and open the native node.
+    def open_native(self, wait=45.0, dtr=True, blocking_writes=False,
+                    notify=None, attempt_timeout=6.0):
+        """Re-glob and open the native node, and keep trying.
 
         Its name changes whenever the board resets, so it is discovered
         every time rather than remembered.
+
+        **The open itself can block for ever**, which is why this is
+        more than a retry loop. A COM node whose device has not finished
+        coming back after a reset accepts the `CreateFile` and never
+        returns from it, so a caller with a generous timeout still hangs:
+        the deadline never gets tested because control never comes back.
+        Measured on Windows after a NRSTB reset, and it is the whole
+        reason a capture would fail with "native port did not enumerate"
+        while `ports.native_nodes()` listed the node and Device Manager
+        showed it healthy.
+
+        So each attempt runs in a daemon thread and is abandoned if it
+        does not return within `attempt_timeout`. An abandoned thread
+        costs a leaked handle in a test process that is about to exit,
+        which is a straight trade against hanging the run. The loop
+        re-globs every pass, because the node can also come back under a
+        different name.
+
+        Generous by design: the board is re-enumerating and there is
+        nothing to be gained by being brisk about it.
         """
         if self.wedged:
             raise BoardError(
                 "the native port is held by a thread stuck in a close() "
                 "that never returned (objective 0c); this process cannot "
                 f"reopen it. See {WEDGE_LOG}.")
+
+        def _try(node, out):
+            try:
+                out.append(open_raw(node, 115200, dtr=dtr))
+            except Exception as exc:                 # noqa: BLE001
+                out.append(exc)
+
         fd = None
+        seen = []
         give_up = time.time() + wait
         while fd is None:
             # The board offers two native nodes now, samples and
@@ -1429,19 +1470,28 @@ class Board:
             # names happen to sort the same way today, and that is a
             # property of macOS's naming rather than of the device.
             cands = ports.native_nodes(exclude=self.control)
-            try:
-                if cands:
-                    fd = open_raw(cands[0], 115200, dtr=dtr)
+            seen = cands or seen
+            if cands:
+                out = []
+                th = threading.Thread(target=_try, args=(cands[0], out),
+                                      daemon=True)
+                th.start()
+                th.join(attempt_timeout)
+                if out and not isinstance(out[0], Exception):
+                    fd = out[0]
                     if notify:
                         notify("native", path=cands[0],
                                changed=cands[0] != self.native)
                     self.native = cands[0]
-            except OSError:
-                fd = None
             if fd is None:
                 if time.time() >= give_up:
-                    raise BoardError("native port did not enumerate")
-                time.sleep(0.5)
+                    raise BoardError(
+                        "native port did not open after "
+                        f"{wait:.0f}s; nodes seen: {seen or 'none'}. "
+                        "A listed node that will not open is the device "
+                        "still coming back from a reset - see "
+                        "Board.open_native().")
+                time.sleep(1.0)
         if blocking_writes:
             # Without this a full queue raises EAGAIN and a naive writer
             # dies silently. VMIN=0 keeps reads non-blocking, so this

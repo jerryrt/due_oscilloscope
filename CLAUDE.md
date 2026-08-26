@@ -445,6 +445,28 @@ against it and the resulting failure looks like an analog problem.
 Mark uncertain figures *(check)* in documentation, matching the existing
 convention in `docs/hardware.md`.
 
+## Branches
+
+**`main` is the branch, and every other branch is short-lived: used and
+discarded.** Branch from current `main`, carry one change, land it, and
+delete the branch locally and on the remote in the same breath. Leave
+the working tree on `main` when you stop. Full rule in
+`CONTRIBUTING.md`.
+
+This is a rule here rather than a preference because a stale branch on
+this project misleads in two specific ways, neither visible from inside
+it. The binary selects which state issue #5 draws, so a branch that has
+drifted is running different firmware *and* a different draw of an open
+defect, and anything measured on it compares two things at once. And the
+instruments move: `wip/track-a-control-channel` sat long enough that its
+recorded "160 passed / 88 failed" had been taken with a `measure.py`
+that no longer existed, so the number meant nothing by the time it was
+read. **Findings belong on `main` in `docs/`, not on the branch that
+produced them** - a branch is thrown away and a diagnosis should not be.
+
+`wip/track-a-control-channel` predates the rule and is not precedent.
+
+
 ## Commits
 
 Linux kernel style, enforced. See `CONTRIBUTING.md`.

@@ -534,3 +534,18 @@ def test_pair_fold_refuses_when_the_pairing_is_broken():
     f = measure.pair_fold(staircase_pairs(hold=1, spike=40))
     assert not f["hold_ok"]
     assert f["pair_spread"] > 4.0
+
+
+def test_pair_fold_finds_the_level_boundary_either_way():
+    """The caller hands pair_fold a slice trimmed at a settle time, which
+    lands on either side of a DAC level boundary. Differencing on the
+    wrong parity subtracts two different levels, so every difference is a
+    DAC step and the pairing looks broken - which is what refused the
+    sine arms of the layout sweep on real captures."""
+    v = staircase_pairs(spike=40)
+    aligned = measure.pair_fold(v)
+    offset = measure.pair_fold(v[1:])
+    assert aligned["hold_ok"] and offset["hold_ok"], (
+        aligned["pair_spread"], offset["pair_spread"])
+    assert offset["z"] > measure.FOLD_Z_DIRTY
+    assert abs(abs(offset["peak"]) - abs(aligned["peak"])) < 5

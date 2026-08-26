@@ -122,20 +122,102 @@ Windows backend so that test runs first.
 consequences as predicted. Treat every "Windows will" here as a
 hypothesis with a test attached.
 
-## Start here (2026-08-26, Windows session)
+## Start here (2026-08-26, end of the Windows session)
 
-`main` is green on both tracks and there are no open PRs. One open
-issue, #5, and it changed character overnight: **it is analog.**
+**Issue #5's two-way split is closed: the artifact is made at a DAC
+output pin, not in the ADC.** What it costs the instrument is in
+`docs/issue5-impact.md` - read that before quoting anything about it.
+The open work is Track A's control channel, which was re-diagnosed onto
+a different layer entirely and is **not mergeable**.
 
 | | |
 |---|---|
-| Track A | 237 passed / 0 failed |
-| Track B | 258 passed / 0 failed |
-| Branches | `main`, `wip/track-a-control-channel` |
-| Board | Track B |
+| Track B | last full run **280 passed, 2 failed, 12 skipped, 1 xfailed**. Both failures are the documented intermittents, shown by an interleaved A/B not to be regressions - see `docs/testing.md` |
+| Track A | not re-measured this session; the branch's old 160/88 is void |
+| Branches | `main`, `wip/track-a-control-channel` - **not mergeable** |
+| Board | Track B, `main` |
+| Wiring | **DAC0->A0 and DAC1->A1. That is the baseline and the only thing to assume.** |
+| Resistor rigs | **On demand only.** A2 is bare unless someone has just fitted something and said so |
 | Tag | `dead/stream-stop-race` - kept reachable, not a fix |
 
-### Issue #5 is an analog problem, and one resistor is the next move
+### What to pick up, in order
+
+1. **Track A's control channel.** The whole diagnosis is under "Where
+   Track A's control channel stands" and the question is now one line
+   wide: the endpoints are enabled at SET_CONFIGURATION and cleared
+   afterwards, with no bus reset. Two concrete next steps and one
+   landmine are listed there. **This is the one that needs a fresh
+   session.**
+2. ~~**Two contradictions from macOS.**~~ **Both answered 2026-08-26,
+   later, and neither needed the jumper.** The `all-DC` disagreement is
+   the *image*, not the board and not the wiring: the sweep's own image
+   reproduces the null on this board with the jumper fitted, and `main`
+   gives 8 codes at z 69-148 on the same board, same wiring, same
+   session. **Finding 3 - "a changing output is needed" - is dead**, and
+   `docs/issue5-impact.md` no longer tells a user that an AWG holding DC
+   is safe. And the integrity gate is re-verified: the two `pair_fold`
+   parities are 24x apart on device data, so its selection rule is not
+   a coin flip. Both write-ups are in this file and in `docs/testing.md`.
+3. **The 0-series Windows re-validation.** 0h's figures above 200 ksps
+   are still suspect and `Feeder.WRITE_SIZE` may be a macOS workaround
+   rather than a rule. This is the oldest real debt here.
+4. **A standing decision, not a task:** whether Track B adopts the
+   datasheet's `DACC_ACR` value. It is spec conformance and Track A
+   parity - **not** an issue #5 fix, measurably. `=<ch>,<core>I`.
+5. ~~**`tools/serial_probe.py` does not run on Windows.**~~ **Done
+   2026-08-26**, `7bc977f`: it is on the `host/transport.py` seam like
+   everything else, and `serial_probe.py auto --send h` answers on
+   Windows. POSIX behaviour is unchanged - that backend is the original
+   code moved, not rewritten.
+
+### Rules that changed this session, and both bite immediately
+
+- **`main` is the branch; everything else is short-lived.**
+  `CONTRIBUTING.md` has the full rule. The corollary that matters:
+  **findings go on `main` in `docs/`, not on the branch that produced
+  them.** `wip/track-a-control-channel` is the one exception and is not
+  precedent - it lands or it is deleted.
+- **Report which state a run drew, never dirty or clean.** The
+  integrity gate now identifies issue #5 with `pair_fold()` instead of
+  thresholding it. Worth knowing why: the old gate reported **"0 steps
+  over 45 codes" on runs whose fold z was 30-33 against a control of
+  3.** It has been able to pass a defective run the whole time, so
+  historical greens on it are worth less than they look.
+
+### Traps this session paid for
+
+- **A knob that is programmed is not a knob that does anything.**
+  `TRACKTIM` reads back exactly as written and costs nothing at any
+  rate, so the track/settling sweep is a fact about the register and not
+  evidence about the ADC. Read the register back *and* show it changes
+  something.
+- **The binary selects which state issue #5 draws.** Points taken
+  across a reflash are not comparable; A1 in the same frame is the
+  reference that makes a sweep readable.
+- **Never truncate a suite run's output.** One failure was lost to a
+  `| tail -3` and never reproduced. `-rf --tb=short`, keep all of it.
+- **Do not assume a resistor rig is wired.** The A2 divider was fitted
+  for one afternoon and removed. `r` reports A0, A1 and A2, and a
+  floating A2 reads near its neighbours rather than at a divider's
+  mid-rail - check it before believing any measurement that depends on
+  it.
+- **A listed serial node is not an openable one.** `CreateFile` can
+  accept the open and never return, so a deadline never gets tested.
+  `Board.open_native()` now runs each attempt in a daemon thread and
+  abandons it. And **`measure.Board` is a context manager** - a script
+  that dies holding the control port makes every later run fail with
+  "Access is denied", which looks exactly like a board fault. Most of
+  this session's "unstable enumeration" was that. Healing order is in
+  `docs/testing.md`; reflashing clears it reliably.
+
+
+### Issue #5 is analog: how that was established *(superseded)*
+
+**This section is history, kept because the reasoning is worth reading
+and the jumper test is still the origin of "analog".** The resistor
+experiment it proposes has been run - see "It is a DAC pin" below - and
+the two-way split it describes is closed. Do not act on its "next move".
+
 
 The macOS jumper test settles the kind of answer. A1 tied to **GND**
 rather than DAC1: zero nonzero samples in ~3.2 million across eight RCs,
@@ -277,6 +359,124 @@ does not look like a comparison, which is what made it hard to see four
 times.
 
 ### Where Track A's control channel stands
+
+**Re-diagnosed 2026-08-26 on Windows. The recorded symptom was wrong and
+so was the layer.** It is not "the sample IN path delivers no frames".
+**The bulk endpoints are enabled at SET_CONFIGURATION and then cleared.**
+
+| build | `UOTGHS_DEVEPT` | capture |
+|---|---|---|
+| `main` | `0000000f` (EP0-3) | rx 1,200,128 B, 293 frames |
+| the branch | `00000001` (EP0 only) | neither node opens |
+
+Both CDC nodes enumerate, `ports.native_nodes()` orders them
+samples-first, and opening either fails with Windows error 31,
+`ERROR_GEN_FAILURE` - the driver unable to configure the port, not a
+port that opens and stays silent.
+
+**Four hypotheses died to readbacks, in this order. `E` prints all of
+them now, and none of it was reasoning.**
+
+1. *Endpoint allocation or DPRAM.* `cfgok=1111111` is not the
+   reassurance it looks like: CFGOK says a configuration was accepted,
+   `EPEN` in `DEVEPT` is what enables the endpoint, and `EPEN` is what
+   is clear. Every earlier reading here was of CFGOK.
+2. *A truncated endpoint table.* USBCore counts endpoints by walking
+   `EndPoints[]` to the first zero and hands the count to
+   `UDD_InitEndpoints()`, which loops from 1 - so a stray zero would
+   leave exactly `EPT=1`. The board answers **`count=7`, table `8242
+   14646 12390 12646 14642 12386 12642 0 0 0`**. Correct and complete.
+3. *The host rejecting the device.* Windows reports **Status OK,
+   Problem 0** on the composite device and both function nodes, and it
+   created `MI_00` and `MI_02` - the same split as the working Track B
+   device - so usbccgp parsed the IADs and the descriptors are
+   accepted. The descriptor bytes were also checked field by field
+   against `drivers/usb_cdc.c` and match.
+4. *SET_CONFIGURATION never running.* It runs:
+   **`_usbConfiguration=1`**, set by the core immediately after
+   `UDD_InitEndpoints()`.
+
+**What is left, and it is narrow.** `deveptseen=0000007f now=00000001`:
+a high-water mark sampled every main-loop pass says **EP0-EP6 really
+were all enabled, and EP1-EP6 were cleared afterwards.** Meanwhile
+`_usbConfiguration` is still 1, and the core's bus-reset handler sets it
+to 0 (`USBCore.cpp:618`) - **so no bus reset has happened since.**
+Something clears `EPEN` for six endpoints without touching the core's
+configuration state.
+
+**Ruled out as the clearer:** every `DEVEPT` write in the sketch.
+`ep_reset_fifo()` (`usbdma.cpp:126`) is a read-modify-write on the EPRST
+bits, and `UOTGHS_DEVEPT_EPRST0` is bit 16 against `EPEN0` at bit 0, so
+it preserves the enables. `ctlusb_realloc_endpoints()` writes
+`DEVEPTCFG`, not `DEVEPT`, and `reallocs=0` says it has not run at all.
+The core's `UDD_InitEP()` only ORs an enable in.
+
+**Where to look next, in order.**
+
+- **When does it change?** The high-water mark says *that* it changed,
+  not *when*. Record the pass number or `micros()` at the first
+  main-loop sample where `DEVEPT != 0x7f`, and whether it happens before
+  or after the host first opens a node. That splits "during
+  configuration" from "when something touches the endpoints later".
+- **The `DEVEPTCFG` hazard is still the best structural suspect**, even
+  though it does not write `DEVEPT`. `CLAUDE.md` records that any write
+  re-allocates DPRAM and slides the windows above it, and
+  `ep_apply_autosw()` (`usbdma.cpp:82`) writes `DEVEPTCFG[CDC_RX]` and
+  `[CDC_TX]` - EP2 and EP3 - with `ALLOC` set, which by that rule
+  invalidates EP4-EP6. Whether the controller responds by clearing
+  `EPEN` is the question, and it is answerable: log `DEVEPT` either side
+  of that write.
+- **A landmine before touching any of it.** `UDD_InitEndpoints()`
+  (`system/libsam/source/uotghs_device.c:158`) does `while(1);` if an
+  endpoint fails to configure - an infinite loop **inside the USB
+  interrupt**. It is not firing here (the main loop runs at 225k
+  passes/s), but a wrong endpoint configuration on this branch hangs the
+  board silently and will look like dead hardware.
+
+**Status: not mergeable, and not close.** Enumeration works and the
+descriptors are right; the endpoints do not stay enabled. Under the new
+branch rule this either lands or is deleted - the instruments and this
+diagnosis are on `main` and survive either outcome.
+
+
+`wip/track-a-control-channel`, pushed, **do not merge**. Enumeration
+works; the sample path does not.
+
+Working and verified: a `PluggableUSBModule` adds the second CDC
+function without patching the core, plugged from a global constructor
+because `main()` attaches USB before `setup()`; it lands on interfaces
+2/3 and EP4-6 and *checks* rather than assumes; single-bank endpoint
+words, since the core's are double-banked and the DPRAM budget forbids
+that here; `ep_apply_autosw()`'s missing half, which had to land with
+this and not after; and `_cdcComposite = 1`, which is what Track B's
+`0xEF/0x02/0x01` device descriptor does and which the core otherwise
+gates behind a probe-order heuristic. With it, both nodes open and
+`ports.native_nodes()` orders them samples-first with no host change.
+
+**Two real defects found along the way, both worth keeping.** The core
+enables EP4-6 interrupts and its ISR has no case for them, so an OUT
+packet on EP5 raised an interrupt nothing acknowledged and the main loop
+starved - the board kept enumerating, because that is all the ISR was
+doing, and answered nothing else. That was the "silent flash" blamed on
+bossac twice. And the wrong device class did not refuse enumeration: both
+nodes appeared, both bound `usbser`, both reported `Status OK` - and
+opening the *sample* node blocked for ever.
+
+**Still broken:** 160 passed / 88 failed, and the failures are now "no
+frames arrived at all" with `raw_bytes=0` - the sample IN path
+delivering nothing. Two hypotheses are dead: the interrupt mask writes
+only PEP_4-6 (bits 16-18; DMA channel interrupts are 25-28 and
+untouched), and `CFGOK` reads `1111111` at idle, so allocation and DPRAM
+were never it. Enumeration is also unstable across a board reset.
+
+`E` is on that branch and reports CFGOK plus the realloc and cfgfail
+counters *during* a run. Use it: the banner reports CFGOK at boot, which
+is exactly when nothing is wrong yet.
+
+**The lesson that found the device class: compare against Track B.**
+Track B has had two CDC functions working the whole time. Going to first
+principles cost hours that a diff of the two enumerations would not have.
+
 ### What printf stages 3-4 are waiting for
 
 Stages 1-2 are done and on `main`: `CTL_OP_STREAM_STATS`, `CTL_OP_BENCH`,
@@ -723,6 +923,89 @@ And every amplitude in this table is smaller than the 10.6 codes the
 slot control measured, because that was a different binary - the
 comparisons here are valid within this run and nowhere else.
 
+
+**macOS replicated the sweep and finding 3 does not survive it.** Same
+image, second board, second host, 2026-08-26. Three interleaved rounds:
+
+| arm | A0 carries | |peak| on A0 | z | control z |
+|---|---|---|---|---|
+| `normal` | sine | 6.61 | 54-60 | 2.2-3.4 |
+| `swapped` | DC | 7.91 | 88-113 | 2.9-3.2 |
+| `two-cycle` | sine | 8.17 | 63-93 | 3.0-5.0 |
+| `all-DC` | DC | 7.84 | 29-32 | 2.6-3.4 |
+
+**All four arms are indistinguishable there, and `all-DC` is not null** -
+7.84 codes at z 29-32 against a clean control, three consistent runs, at
+the same phase as `swapped`. On that board the reload alone produces the
+event with no moving output anywhere. Amplitudes do not compare across
+boards, but null against not-null is qualitative and does not need them
+to.
+
+**Two candidate explanations, and they are not equivalent.** It may be
+board-specific. Or it may be the wiring: on the Windows board DAC1 is
+connected to A1, and on the macOS one DAC1 is disconnected entirely, so a
+sine on DAC1 has a path into the header there and none here. If that is
+it, part of "a changing output is needed" is coupling through the wiring
+rather than a property of the DACC, and the arm that decides it is
+`swapped` measured with DAC1 disconnected - which is what the macOS run
+already is.
+
+**The sweep needs only one DAC/ADC pair.** Every arm puts something on
+DAC0 - the sine in `normal` and `two-cycle`, DC in `swapped` and
+`all-DC` - so A0 alone covers the set, with `fold_profile()` on the DC
+arms and `pair_fold()` on the sine arms. DAC1 is driven by the PDC
+whether or not a wire leaves the pin, so `swapped` satisfies its
+own precondition unmeasured. The second channel buys a per-run reference,
+not an arm. Verified before use: 1 upward mean-crossing per wrap on
+`normal`, 2 on `two-cycle`.
+
+**Settled 2026-08-26, later: it is the image, and finding 3 is dead
+here too.** The contradiction was never board against board. Same board,
+same host, same jumper fitted, same script, one session, two images:
+
+| image | all-DC on A0 | z | control z | peak phase |
+|---|---|---|---|---|
+| `f7d62b6` (the sweep's own) | **0.43-0.52** | 4.0-4.4 | 3.1-4.1 | 383, 490, 0 - random |
+| `main` at `a30b646` | **8.02-8.23** | 69-148 | 2.3-5.1 | 280, 281, 301 |
+
+The first row reproduces the recorded 0.48 at z 6.1 exactly, so the
+original measurement stands. The second is six runs across a reflash
+cycle, and on it `all-DC` carries the event on **both** DAC pins with no
+sine anywhere: A0 8.0-8.2 at z 61-148, A1 10.3-10.5 at z 112-157. A
+period scan over 504-520 puts every neighbour of 512 at noise - z 3.8-4.0
+with peaks of 0.1-0.4 codes - so it is locked to the table wrap and not
+to a period it was not given.
+
+**So the wiring hypothesis is dead without pulling the jumper.** DAC1->A1
+was fitted for both rows. The same wiring gives null on one image and 8
+codes on the other, which no property of the wiring can do. Board-specific
+is dead for the same reason. **What is left is the one this project
+already knew: the binary selects which state issue #5 draws** - and it
+turns out that includes whether the `all-DC` arm draws anything at all.
+
+**`ad0ac4a` is the only firmware commit between the two images, and it is
+not the cause.** Its default is unchanged and the readback says so:
+`DACC_ACR` reads `00000000` after every `M` capture on `main`, the same
+reset value the sweep image ran at. (Read it *after* a capture. Cold, with
+the DACC clock still off, `?` reports `000001aa`, which is not a setting
+and not a reset value - it is an unclocked peripheral.) What moved
+between the two images is code layout.
+
+**Finding 3 - "a changing output is needed" - does not survive**, on
+either board now. The reload alone produces the event; the output being
+in motion is not a precondition, and `docs/issue5-impact.md` has been
+corrected where it told a user the AWG holding DC was safe.
+
+**One methodological correction, and it is what made the arm read as
+null.** The sweep called `all-DC` noise partly on "second peak 95% of the
+first". On `main` that ratio reads **1.00** on a structure 60-150x the
+MAD, because there is more than one event per wrap: A0 is +8.0 at 280 and
+281 and +8.1 at 301 with -3.0 at 322, 323 and 343; A1 is +10.3 at 126,
+-4.1 at 168 and +2.0 at 268. **The second-peak ratio is a discriminator
+only against a single event.** z against the control-period fold is the
+one that keeps working, and it was already in the table saying 6.1 - low,
+but taken against a control of 3.1 rather than the 2.3-5.1 the current
+image's clean arms sit at.
 
 **What it costs the instrument is in `docs/issue5-impact.md`** - which
 half is affected, what it looks like in a spectrum, and how it compares
