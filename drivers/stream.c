@@ -477,6 +477,17 @@ void stream_report(void)
 
 	printf("# dma-frames=%lu dma-stalls=%lu\n",
 	       (unsigned long)dma_frames, (unsigned long)dma_stalls);
+	/*
+	 * Read back from the peripheral, not echoed from the variable that
+	 * was meant to reach it. The track/settling sweep found neither
+	 * TRACKTIM nor SETTLING moving issue #5, and a negative result is
+	 * only as good as the proof that the knob was connected - see
+	 * acq_mr().
+	 */
+	printf("# adcmr=%08lx tracktim=%lu settling=%lu\n",
+	       (unsigned long)acq_mr(),
+	       (unsigned long)((acq_mr() >> 24) & 0xfu),
+	       (unsigned long)((acq_mr() >> 20) & 0x3u));
 	printf("# frames=%lu bytes=%lu %lu.%03lu MB/s prod=%lu cons=%lu "
 	       "ringovf=%lu resync=%lu refused=%lu rxbuff=%lu govre=%lu "
 	       "endtx=%lu rst=%lu setup=%lu stall=%lu cfg=%lu dtr=%lu cfgfail=%lu\n"

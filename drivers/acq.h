@@ -107,6 +107,7 @@ bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
 void     acq_stop(void);
 uint32_t acq_configured_rc(void);
 uint16_t acq_channel_mask(void);   /* ADC channel indices now enabled */
+uint32_t acq_mr(void);             /* ADC_MR as the hardware holds it */
 
 extern volatile uint32_t acq_buffers_done;
 extern volatile uint32_t acq_rxbuff_overruns;

@@ -76,6 +76,24 @@ uint16_t acq_channel_mask(void)
 	return configured_mask;
 }
 
+/*
+ * ADC_MR as the hardware holds it, not as acq_init() meant to write it.
+ *
+ * The track/settling sweep is a negative result - neither register moves
+ * issue #5 - and a negative result is only as good as the proof that the
+ * knob was connected. Nothing in this project could show that: the `A`
+ * command echoes the variables it just set, acq_start() then does a
+ * read-modify-write on the same register, and every reading came back
+ * through a printf of a variable rather than of the peripheral. So the
+ * sweep and the conversion-time check both rest on an assumption.
+ *
+ * This is the register itself. TRACKTIM is bits 27:24 and SETTLING 21:20.
+ */
+uint32_t acq_mr(void)
+{
+	return ADC->ADC_MR;
+}
+
 void acq_init(void)
 {
 	PMC->PMC_PCER1 = (1u << (ID_ADC - 32));
