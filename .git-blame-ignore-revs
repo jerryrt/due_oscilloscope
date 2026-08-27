@@ -1,0 +1,11 @@
+# Revisions that touched every line of a file without changing any of
+# them. Turn this on once, per clone:
+#
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# `git blame -w` alone also hides them; this makes it the default.
+
+# build: LF everywhere, and a .gitattributes that keeps it that way
+# gui/stream.py and bsp/load.h had CRLF blobs while every other text
+# file had LF. Line endings only.
+5c1a83f2282edc489046e490ae2f0434b79d659e
