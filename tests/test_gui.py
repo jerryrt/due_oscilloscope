@@ -415,6 +415,164 @@ def test_volts_come_from_the_measured_reference_not_a_nominal_one():
     assert abs(mid - 2048) <= 1
 
 
+def test_the_measurements_recover_a_known_tone():
+    """A tone whose frequency and amplitude are known by construction."""
+    rate, period = 200000, 250              # 800 Hz exactly
+    r = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    r.append(_tone(8000, period, amp=800, mid=2048))
+
+    m = stream.measure(stream.select(r, 4000), rate)
+    assert m["note"] is None
+
+    assert abs(m["freq_hz"] - rate / period) < 1.0, m["freq_hz"]
+    assert abs(m["period_s"] - period / rate) < 1e-7
+
+    # 1600 codes peak-to-peak through the measured reference.
+    want_vpp = float(stream.codes_to_volts(1600))
+    assert abs(m["vpp_v"] - want_vpp) < 0.01, (m["vpp_v"], want_vpp)
+
+    # A sine's RMS is its mean squared plus half its amplitude squared.
+    a = float(stream.codes_to_volts(800))
+    dc = float(stream.codes_to_volts(2048))
+    assert abs(m["rms_v"] - np.sqrt(dc * dc + a * a / 2)) < 0.01
+    assert abs(m["duty"] - 0.5) < 0.02
+
+
+def test_a_discontinuity_in_the_window_measures_nothing():
+    """Rather than measuring across it.
+
+    The largest excursion may span two unrelated moments and the
+    interval between crossings is not a period. A number carries that
+    lie further than a plot does - the plot at least shows the break.
+    """
+    rate = 200000
+    r = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    r.append(_tone(2000, 250))
+    r.append(_tone(2000, 250, phase=2000), discontinuous=True)
+
+    m = stream.measure(stream.select(r, 3000), rate)
+    assert m["note"] == "discontinuity in window"
+    for k in ("vpp_v", "rms_v", "freq_hz", "duty"):
+        assert m[k] is None, f"{k} was measured across a splice"
+
+
+def test_a_flat_channel_refuses_to_report_a_frequency():
+    """A quiet channel crosses its own midpoint on noise. Timing that
+    would report the noise and call it the signal."""
+    rate = 200000
+    r = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    rng = np.random.default_rng(7)
+    flat = (2048 + rng.integers(-1, 2, size=4000)).astype(np.uint16)
+    r.append(flat)
+
+    m = stream.measure(stream.select(r, 3000), rate)
+    assert m["freq_hz"] is None and m["duty"] is None
+    assert m["note"] == "signal too flat to time"
+    # Amplitude is still honest - it is the timing that is unavailable.
+    assert m["vpp_v"] is not None
+
+
+def test_there_is_no_rise_time_because_this_adc_cannot_see_one():
+    """Deliberate absence, asserted so it is not added by accident.
+
+    The DAC's step is 789-938 ns measured with a scope (docs/awg.md);
+    this ADC's sample interval is 1.1 us at its fastest. A 10-90% time
+    from these samples would report the sampling interval and call it
+    the converter's edge.
+    """
+    rate = 200000
+    r = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    r.append(_tone(4000, 250))
+    m = stream.measure(stream.select(r, 2000), rate)
+    assert "rise_s" not in m and "fall_s" not in m
+
+
+def test_the_spectrum_puts_a_known_tone_at_its_known_level():
+    """A tone on an exact bin, so bin resolution is not in the way.
+
+    64 whole cycles in the 16384-point transform: 200000/256 = 781.25 Hz
+    exactly. 1000 codes of amplitude against a full scale of 2048 is
+    20*log10(1000/2048) = -6.227 dBFS, and the transform should say so
+    rather than approximately so.
+    """
+    rate = 200000
+    r = stream.ChannelRing(seconds=0.3, rate_hz=rate)
+    r.append(_tone(30000, 256.0, amp=1000, skew=0.0))
+
+    f, db, note = stream.spectrum(stream.select(r, stream.FFT_MAX_POINTS), rate)
+    assert note is None
+    i = int(np.argmax(db))
+    assert abs(f[i] - rate / 256.0) < 0.01, f[i]
+    assert abs(db[i] - 20 * np.log10(1000 / 2048)) < 0.05, db[i]
+
+
+def test_every_window_reports_the_same_amplitude():
+    """Only the leakage should change, not the height of the tone.
+
+    Normalising by the window's own sum is what buys this. Without it a
+    Blackman spectrum reads several dB below a rectangular one for the
+    same signal, and a user comparing two captures taken with different
+    windows would read a level change that is not there.
+    """
+    rate = 200000
+    r = stream.ChannelRing(seconds=0.3, rate_hz=rate)
+    r.append(_tone(30000, 256.0, amp=1000, skew=0.0))
+    sw = stream.select(r, stream.FFT_MAX_POINTS)
+
+    peaks = []
+    for w in stream.FFT_WINDOWS:
+        _f, db, note = stream.spectrum(sw, rate, window=w)
+        assert note is None, (w, note)
+        peaks.append(float(db[int(np.argmax(db))]))
+    assert max(peaks) - min(peaks) < 0.05, dict(zip(stream.FFT_WINDOWS, peaks))
+
+
+def test_a_tone_between_bins_loses_only_scalloping():
+    """Off-bin, the peak bin under-reads. That is the transform, not a
+    defect, and the size of it is bounded and known: Hann's worst case
+    is 1.42 dB. Asserted so a real error cannot hide inside it."""
+    rate = 200000
+    r = stream.ChannelRing(seconds=0.3, rate_hz=rate)
+    r.append(_tone(30000, 250.0, amp=1000, skew=0.0))
+
+    _f, db, _n = stream.spectrum(stream.select(r, stream.FFT_MAX_POINTS), rate)
+    peak = float(db[int(np.argmax(db))])
+    ideal = 20 * np.log10(1000 / 2048)
+    assert -1.45 < peak - ideal <= 0.05, peak - ideal
+
+
+def test_the_spectrum_refuses_across_a_discontinuity():
+    """Sharper than the time domain's version of this rule.
+
+    A splice is a step, a step is broadband, and the transform will
+    spread that step's energy across every frequency on screen - which
+    reads as a noise floor rather than as the missing data it is.
+    """
+    rate = 200000
+    r = stream.ChannelRing(seconds=0.3, rate_hz=rate)
+    r.append(_tone(8000, 256.0, skew=0.0))
+    r.append(_tone(8000, 256.0, phase=8000, skew=0.0), discontinuous=True)
+
+    f, db, note = stream.spectrum(stream.select(r, 12000), rate)
+    assert f is None and db is None
+    assert note == "discontinuity in window"
+
+
+def test_the_transform_is_bounded_so_it_cannot_block_the_feeder():
+    """Rule 5. The ring holds two seconds - 1.8 M samples at the full
+    rate - and an FFT that size inside a 33 ms redraw would stall the
+    display and, behind it, the reader."""
+    rate = 907000
+    r = stream.ChannelRing(seconds=2.0, rate_hz=rate)
+    r.append(_tone(200000, 256.0, skew=0.0))
+
+    sw = stream.select(r, 200000)
+    assert sw.samples.size > stream.FFT_MAX_POINTS
+    f, db, note = stream.spectrum(sw, rate)
+    assert note is None
+    assert db.size == stream.FFT_MAX_POINTS // 2 + 1, db.size
+
+
 def test_the_trigger_controls_describe_the_trigger_that_is_used(win):
     """The controls and the Trigger object must not drift apart."""
     win.trig_mode.setCurrentIndex(0)                      # Off
@@ -429,6 +587,80 @@ def test_the_trigger_controls_describe_the_trigger_that_is_used(win):
     assert t.level == stream.volts_to_codes(1.65)
     # And that conversion round-trips against the one the trace uses.
     assert abs(float(stream.codes_to_volts(t.level)) - 1.65) < 0.002
+
+
+def test_the_panel_shows_the_reason_where_a_refused_number_would_be(win):
+    """Not a dash, and not the previous value.
+
+    A field that reverts to its last good reading invites a stale number
+    being read as a live one, which is the failure docs/status.md
+    records more than once - a clean-looking display over data that was
+    wrong.
+    """
+    win.measure.update_from(stream.measure(
+        stream.Sweep(np.empty(0, dtype=np.uint16), np.empty(0, dtype=bool)),
+        200000))
+    assert win.measure._labels["vpp_v"].text() == "no data"
+
+    rate, period = 200000, 250
+    r = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    r.append(_tone(8000, period))
+    win.measure.update_from(stream.measure(stream.select(r, 4000), rate))
+    shown = win.measure._labels["freq_hz"].text()
+    assert shown.startswith("800"), shown
+
+    # And back to a refusal: the good number must not survive.
+    r2 = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    r2.append(_tone(2000, period))
+    r2.append(_tone(2000, period, phase=2000), discontinuous=True)
+    win.measure.update_from(stream.measure(stream.select(r2, 3000), rate))
+    assert win.measure._labels["freq_hz"].text() == "discontinuity in window"
+
+
+def test_the_panel_says_which_reference_its_volts_are_in(win):
+    """A reading that cannot be attributed is not a measurement.
+
+    The loop is ratiometric, so every volt on screen is scaled by a
+    number that came from an instrument this board cannot be.
+    """
+    text = win.measure.reference.text()
+    assert str(stream.ADVREF_MV) in text and stream.ADVREF_SOURCE in text
+
+
+def test_the_measurements_describe_the_trace_that_was_drawn(win, daemon):
+    """Measured over the sweep as drawn, not a second one taken later.
+
+    Two sweeps a frame apart are different data, and a number beside a
+    trace that describes a different trace is worse than no number.
+    """
+    win.connect_to_daemon()
+    win.client.call("start", mode="capture", adc_hz=200000, channels=2)
+    win.client.wait_frames(10, timeout=15.0)
+    win.tick()
+
+    drawn = win.scope.last_sweep
+    assert drawn.samples.size > 0
+    direct = stream.measure(drawn, win.rate_hz)
+    if direct["vpp_v"] is not None:
+        assert win.measure._labels["vpp_v"].text() == f"{direct['vpp_v']:.4f} V"
+
+
+def test_switching_to_the_spectrum_relabels_the_axes(win, daemon):
+    """A dBFS curve under a Volts axis is a lie a screenshot carries."""
+    win.connect_to_daemon()
+    win.client.call("start", mode="capture", adc_hz=200000, channels=2)
+    win.client.wait_frames(10, timeout=15.0)
+
+    win.view_box.setCurrentIndex(0)
+    win.tick()
+    assert "Time" in win.scope.plot.getAxis("bottom").labelText
+
+    win.view_box.setCurrentIndex(1)
+    win.tick()
+    assert "Frequency" in win.scope.plot.getAxis("bottom").labelText
+    assert "dBFS" in win.scope.plot.getAxis("left").labelText
+    x, y = win.scope.curve.getData()
+    assert x is not None and len(x) > 0, "the spectrum drew nothing"
 
 
 def test_the_readout_says_whether_it_triggered_not_what_was_asked(win, daemon):

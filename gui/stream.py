@@ -220,6 +220,12 @@ class ChannelRing:
 #: enough that the search stays inside the frame budget.
 SEARCH_SPAN = 4
 
+#: Below this peak-to-peak, midpoint crossings are noise rather than
+#: the waveform and any frequency from them is invented. Ten codes is
+#: about 5 mV, comfortably above the ~1-2 codes a quiet channel shows
+#: and far below any signal worth timing.
+MEASURE_MIN_SWING_CODES = 10
+
 
 class Sweep:
     """One screenful, and where it came from.
@@ -355,6 +361,143 @@ def select(ring, n, trig=None):
     t = int(idx[-1])                       # the most recent qualifying edge
     a, b = t - pre, t + post
     return Sweep(samples[a:b], breaks[a:b], triggered=True, trigger_index=pre)
+
+
+def measure(sweep, rate_hz):
+    """Automatic measurements over the sweep on screen.
+
+    Every value is either a number or None with a reason, never a
+    plausible-looking figure. "Do not invent numbers" is a rule in
+    CLAUDE.md because a guessed value that later reads as established
+    fact is the most expensive error this project makes.
+
+    **A window containing a discontinuity measures nothing.** An
+    overrun-flagged frame is not continuous with the one before it, so
+    the largest excursion may span two unrelated moments and the
+    interval between crossings is not a period. Invariant 5 forbids
+    presenting discontinuous data as continuous; a number carries that
+    lie further than a plot does, because the plot at least shows the
+    break.
+
+    **There is deliberately no rise or fall time.** The DAC's step was
+    measured with a scope at 789-938 ns (`docs/awg.md`), and this ADC's
+    sample interval is 1.1 us at its very fastest and 5 us at 200 ksps.
+    A 10-90% time computed from these samples would be one sample wide
+    at best - it would be reporting the sampling interval and calling it
+    the converter's edge. The instrument that can measure it is the one
+    on the bench, and it already has.
+    """
+    out = {"vpp_v": None, "mean_v": None, "rms_v": None,
+           "freq_hz": None, "period_s": None, "duty": None, "note": None}
+    if sweep.empty:
+        out["note"] = "no data"
+        return out
+    if sweep.breaks is not None and bool(sweep.breaks.any()):
+        out["note"] = "discontinuity in window"
+        return out
+
+    v = np.asarray(codes_to_volts(sweep.samples), dtype=np.float64)
+    out["vpp_v"] = float(v.max() - v.min())
+    out["mean_v"] = float(v.mean())
+    out["rms_v"] = float(np.sqrt(np.mean(v * v)))
+
+    # Frequency from the signal's own midpoint rather than the trigger
+    # level: the trigger may sit anywhere on the waveform, and a level
+    # near a peak crosses twice per period in one place and not at all
+    # in another. The midpoint is where a symmetric wave crosses once
+    # per period going up.
+    codes = sweep.samples.astype(np.int32)
+    mid = int((int(codes.max()) + int(codes.min())) // 2)
+    if codes.max() - codes.min() < MEASURE_MIN_SWING_CODES:
+        out["note"] = "signal too flat to time"
+        return out
+
+    ups = find_edges(sweep.samples, mid, rising=True)
+    if ups.size < 2:
+        out["note"] = "fewer than two crossings in window"
+        return out
+
+    # The mean interval over the whole window rather than one period:
+    # averaging N intervals divides the one-sample edge uncertainty by
+    # N, which is the same reason a frequency counter gates over many
+    # cycles instead of timing one.
+    period_samples = float(ups[-1] - ups[0]) / float(ups.size - 1)
+    if period_samples <= 0 or rate_hz <= 0:
+        out["note"] = "rate unknown"
+        return out
+    out["period_s"] = period_samples / float(rate_hz)
+    out["freq_hz"] = float(rate_hz) / period_samples
+    out["duty"] = float(np.count_nonzero(codes > mid)) / float(codes.size)
+    return out
+
+
+#: FFT windows. Rectangular is included and is not a default: it is the
+#: right answer only when the window holds a whole number of cycles, and
+#: the wrong one everywhere else, where it smears a tone across the
+#: whole spectrum. Hann is the usable default.
+FFT_WINDOWS = ("hann", "hamming", "blackman", "rectangular")
+
+#: The most points the transform runs on. The ring holds two seconds -
+#: 1.8 M samples at the full rate - and an FFT that size inside a 33 ms
+#: redraw would block the feeder, which rule 5 forbids. 16384 bins put
+#: about 55 Hz per bin at 907 ksps and cost well under a millisecond.
+FFT_MAX_POINTS = 16384
+
+
+def spectrum(sweep, rate_hz, window="hann"):
+    """The sweep's spectrum, in dB relative to a full-scale sine.
+
+    Returns (freqs_hz, db) or (None, None) with the reason as the third
+    element. Same rule as `measure`: a refusal with a reason, never a
+    plausible-looking curve.
+
+    Refuses on a discontinuity for a sharper reason than the time
+    domain's. A splice is a step, a step is broadband, and the transform
+    will happily draw that step's energy spread across every frequency
+    on the screen - which looks like a noise floor rather than like the
+    missing data it is.
+
+    dB is relative to a full-scale sine rather than to the largest bin,
+    so two captures can be compared. Normalised by the window's own sum
+    so the amplitude a tone reports does not change with the window
+    chosen - only its leakage does, which is the whole reason for
+    choosing one.
+    """
+    if sweep.empty:
+        return None, None, "no data"
+    if sweep.breaks is not None and bool(sweep.breaks.any()):
+        return None, None, "discontinuity in window"
+    if rate_hz <= 0:
+        return None, None, "rate unknown"
+
+    x = sweep.samples
+    if x.size > FFT_MAX_POINTS:
+        x = x[-FFT_MAX_POINTS:]           # the most recent, not the oldest
+    n = int(x.size)
+    if n < 16:
+        return None, None, "window too short to transform"
+
+    v = x.astype(np.float64)
+    v -= v.mean()                          # DC would swamp bin 0 and nothing else
+
+    if window == "hann":
+        w = np.hanning(n)
+    elif window == "hamming":
+        w = np.hamming(n)
+    elif window == "blackman":
+        w = np.blackman(n)
+    else:
+        w = np.ones(n)
+
+    mag = np.abs(np.fft.rfft(v * w))
+    # Amplitude in codes: two for the half spectrum, divided by the
+    # window's coherent gain so a tone reads the same whichever window
+    # is chosen.
+    amp = 2.0 * mag / max(float(w.sum()), 1.0)
+    full = (FULL_SCALE_CODES + 1) / 2.0
+    db = 20.0 * np.log10(np.maximum(amp, 1e-9) / full)
+    freqs = np.fft.rfftfreq(n, d=1.0 / float(rate_hz))
+    return freqs, db, None
 
 
 def minmax(samples, columns, breaks=None):

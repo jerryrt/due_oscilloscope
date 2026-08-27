@@ -22,6 +22,7 @@ from daemon import client as clientmod      # noqa: E402
 
 from . import stream                        # noqa: E402
 from .health import HealthPanel             # noqa: E402
+from .measure_panel import MeasurePanel     # noqa: E402
 from .scope import ScopeView                # noqa: E402
 
 # Windows offered in the timebase box, in seconds.
@@ -64,6 +65,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.scope = ScopeView()
         self.health = HealthPanel()
+        self.measure = MeasurePanel()
 
         self.channel = QtWidgets.QComboBox()
         for tag, label in sorted(stream.LABELS.items(), reverse=True):
@@ -107,6 +109,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.trig_state = QtWidgets.QLabel("--")
         self.trig_state.setMinimumWidth(56)
 
+        # Time or spectrum. One plot rather than two, because the
+        # rendering budget is one 1200-column redraw per 33 ms and a
+        # second live plot halves it - docs/frontend.md sizes the UI
+        # around that.
+        self.view_box = QtWidgets.QComboBox()
+        self.view_box.addItem("Time", "time")
+        self.view_box.addItem("Spectrum", "spectrum")
+
+        self.fft_window = QtWidgets.QComboBox()
+        for w in stream.FFT_WINDOWS:
+            self.fft_window.addItem(w.capitalize(), w)
+        self.fft_window.setToolTip(
+            "Rectangular is exact only when the window holds a whole "
+            "number of cycles, and smears the tone everywhere else.")
+
         self.connect_btn = QtWidgets.QPushButton("Connect")
         self.start_btn = QtWidgets.QPushButton("Start")
         self.stop_btn = QtWidgets.QPushButton("Stop")
@@ -121,7 +138,8 @@ class MainWindow(QtWidgets.QMainWindow):
                   QtWidgets.QLabel("Window"), self.window_box,
                   QtWidgets.QLabel("Rate"), self.preset,
                   QtWidgets.QLabel("Trigger"), self.trig_mode,
-                  self.trig_slope, self.trig_level, self.trig_state):
+                  self.trig_slope, self.trig_level, self.trig_state,
+                  QtWidgets.QLabel("View"), self.view_box, self.fft_window):
             controls.addWidget(w)
         controls.addStretch(1)
         for b in (self.connect_btn, self.start_btn, self.stop_btn):
@@ -131,9 +149,14 @@ class MainWindow(QtWidgets.QMainWindow):
         left.addWidget(self.scope, 1)
         left.addLayout(controls)
 
+        side = QtWidgets.QVBoxLayout()
+        side.addWidget(self.health)
+        side.addWidget(self.measure)
+        side.addStretch(1)
+
         body = QtWidgets.QHBoxLayout()
         body.addLayout(left, 1)
-        body.addWidget(self.health)
+        body.addLayout(side)
 
         central = QtWidgets.QWidget()
         central.setLayout(body)
@@ -246,9 +269,16 @@ class MainWindow(QtWidgets.QMainWindow):
         tag = self.channel.currentData()
         ring = self.rings.get(tag)
         if ring is not None:
+            trig = self.trigger()
+            view = self.view_box.currentData()
+            self.fft_window.setEnabled(view == "spectrum")
             self.scope.draw(ring, self.window_box.currentData(), self.rate_hz,
-                            self.trigger())
+                            trig, view, self.fft_window.currentData())
             self.trig_state.setText(self.trigger_state_text())
+            # Measured over the sweep that was drawn, not over a fresh
+            # one: a number beside a trace has to describe that trace.
+            self.measure.update_from(
+                stream.measure(self.scope.last_sweep, self.rate_hz))
 
     def trigger(self):
         """The trigger the controls currently describe, or None."""

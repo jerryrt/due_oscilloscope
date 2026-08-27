@@ -37,11 +37,56 @@ class ScopeView(QtWidgets.QWidget):
         lay.addWidget(self.plot)
         self.columns = 1200
         self.last_triggered = False
+        # The sweep as drawn, so the measurements describe the trace on
+        # screen rather than a second one taken a moment later.
+        self.last_sweep = stream.Sweep(np.empty(0, dtype=np.uint16),
+                                       np.empty(0, dtype=bool))
+        self._view = "time"
 
-    def draw(self, ring, window_s, rate_hz, trig=None):
+    def _axes_for_time(self):
+        if self._view == "time":
+            return
+        self._view = "time"
+        self.plot.setLabel("left", "Volts")
+        self.plot.setLabel("bottom", "Time", units="s")
+        self.plot.setYRange(0.0, stream.VREF_V)
+        self.plot.setTitle(None)
+
+    def _draw_spectrum(self, sweep, rate_hz, fft_window):
+        """The spectrum, or the reason there is not one.
+
+        A refusal blanks the curve and writes why across the plot. It
+        does not leave the previous spectrum up: a stale curve under a
+        live-looking axis is exactly the lie the health panel exists to
+        prevent, and it is worse here than in the time domain because a
+        spectrum carries no visible sign of being old.
+        """
+        if self._view != "spectrum":
+            self._view = "spectrum"
+            self.plot.setLabel("left", "dBFS")
+            self.plot.setLabel("bottom", "Frequency", units="Hz")
+            self.plot.setYRange(-120.0, 0.0)
+
+        freqs, db, note = stream.spectrum(sweep, rate_hz, fft_window)
+        if freqs is None:
+            self.curve.setData([], [])
+            self.plot.setTitle(note or "no spectrum")
+            return 0
+        self.plot.setTitle(None)
+        self.curve.setData(freqs, db)
+        self.plot.setXRange(0.0, float(freqs[-1]), padding=0)
+        return int(sweep.samples.size)
+
+    def draw(self, ring, window_s, rate_hz, trig=None, view="time",
+             fft_window="hann"):
         n = int(max(1, window_s * rate_hz))
         sweep = stream.select(ring, n, trig)
         self.last_triggered = sweep.triggered
+        if not sweep.empty:
+            self.last_sweep = sweep
+        if view == "spectrum":
+            return self._draw_spectrum(sweep, rate_hz, fft_window)
+        self._axes_for_time()
         if sweep.empty:
             # Normal mode with no edge: hold the previous trace rather
             # than blanking. A scope that clears its screen every time
