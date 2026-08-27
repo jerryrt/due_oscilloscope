@@ -1960,7 +1960,10 @@ def set_sync(board, mode):
     return board.drain_console(0.4)
 
 
-def set_gen(board, shape, points=None):
+GEN_AMP_FULL = 256
+
+
+def set_gen(board, shape, points=None, amp=None):
     """`=<shape>,<pts>W`. Returns the device's own answer.
 
     Over the console, because that is the only place the generator can
@@ -1972,7 +1975,12 @@ def set_gen(board, shape, points=None):
     """
     code = GEN_SHAPES[shape] if isinstance(shape, str) else int(shape)
     board.poll_console()
-    board.cmd(f"={code},{int(points)}W" if points else f"={code}W")
+    if amp is not None:
+        board.cmd(f"={code},{int(points or 0)},{int(amp)}W")
+    elif points:
+        board.cmd(f"={code},{int(points)}W")
+    else:
+        board.cmd(f"={code}W")
     return board.drain_console(0.4)
 
 

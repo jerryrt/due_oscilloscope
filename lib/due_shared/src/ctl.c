@@ -313,7 +313,8 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			 * and accepting them would let a host believe it
 			 * had set a frequency it cannot set from here.
 			 */
-			ctl_port_gen_set(req.shape, req.points, req.sync);
+			ctl_port_gen_set(req.shape, req.points, req.sync,
+			                 req.amp);
 		}
 		if (!ctl_port_gen_get(&g)) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
@@ -378,6 +379,24 @@ uint16_t gen_updates_per_cycle(uint16_t points, uint8_t sync)
 	return (sync == GEN_SYNC_SOLO) ? p : (uint16_t)(2u * p);
 }
 
+uint16_t gen_scale_code(int32_t code, uint16_t amp)
+{
+	int32_t centred;
+
+	if (amp >= GEN_AMP_FULL)
+		amp = GEN_AMP_FULL;
+	if (amp < GEN_AMP_MIN)
+		amp = GEN_AMP_MIN;
+	/* About mid scale, so the bias does not move with the amplitude. */
+	centred = ((code - 2048) * (int32_t)amp) / (int32_t)GEN_AMP_FULL;
+	centred += 2048;
+	if (centred < 0)
+		centred = 0;
+	if (centred > 4095)
+		centred = 4095;
+	return (uint16_t)centred;
+}
+
 uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points, uint8_t sync)
 {
 	uint16_t u = gen_updates_per_cycle(points, sync);
@@ -389,15 +408,15 @@ int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g)
 {
 	if (!g->trigger_hz)
 		return snprintf(buf, n,
-		                "gen shape %u = %s, %u pts/cycle, sync %u = %s"
-		                " (no trigger running)",
+		                "gen shape %u = %s, %u pts/cycle, amp %u/256, "
+		                "sync %u = %s (no trigger running)",
 		                g->shape, gen_shape_name(g->shape), g->points,
-		                g->sync, gen_sync_name(g->sync));
+		                g->amp, g->sync, gen_sync_name(g->sync));
 	return snprintf(buf, n,
-	                "gen shape %u = %s, %u pts/cycle, sync %u = %s"
-	                " -> %lu Hz at trigger %lu Hz",
+	                "gen shape %u = %s, %u pts/cycle, amp %u/256, "
+	                "sync %u = %s -> %lu Hz at trigger %lu Hz",
 	                g->shape, gen_shape_name(g->shape), g->points,
-	                g->sync, gen_sync_name(g->sync),
+	                g->amp, g->sync, gen_sync_name(g->sync),
 	                (unsigned long)g->output_hz,
 	                (unsigned long)g->trigger_hz);
 }

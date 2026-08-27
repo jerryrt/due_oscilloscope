@@ -81,8 +81,9 @@ static void banner(void)
 	printf("#           =<tt>,<st>A = ADC track/settling time\n");
 	printf("#           =<n>C = 2ch pair: A0+A1 or A0+A2\n");
 	printf("#           =<n>N = gen layout 0..3 (see gen.h)\n");
-	printf("#           =<shape>,<pts>W = gen waveform: 0 sine 1 square\n");
+	printf("#           =<shape>,<pts>,<amp>W = gen waveform: 0 sine 1 square\n");
 	printf("#                             2 ramp 3 triangle 4 dc; pts 2..256\n");
+	printf("#                             amp 1..256 (256ths of full scale)\n");
 	printf("#           =<n>J = sync out: 0 off 1 per-cycle 2 per-wrap\n");
 	printf("#           =<ch>,<core>I = DACC_ACR bias (2,1 = Arduino)\n");
 	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
@@ -1011,6 +1012,13 @@ static void cmd_execute(const cmd_t *cmd)
 		gen_set_shape(cmd->arg[0]);
 		if (cmd->arg[1])
 			gen_set_points(cmd->arg[1]);
+		/* "=<shape>,<pts>,<amp>W". amp in 1/256ths of full scale,
+		 * about mid, so a small waveform still moves the converter
+		 * every update without spanning its range - which is what
+		 * lets a scope come up ten times in the vertical. Omitting
+		 * it keeps the current amplitude. */
+		if (cmd->arg[2])
+			gen_set_amp(cmd->arg[2]);
 		gen_report();
 		break;
 	}

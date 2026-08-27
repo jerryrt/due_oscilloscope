@@ -46,6 +46,20 @@ static int32_t shape_code(unsigned t, unsigned period)
 	}
 }
 
+static void build_table(void);
+
+uint16_t gen_amp = GEN_AMP_FULL;
+
+void gen_set_amp(uint32_t amp)
+{
+	if (amp > GEN_AMP_FULL)
+		amp = GEN_AMP_FULL;
+	if (amp < GEN_AMP_MIN)
+		amp = GEN_AMP_MIN;
+	gen_amp = (uint16_t)amp;
+	build_table();
+}
+
 uint8_t gen_sync = GEN_SYNC_CYCLE;
 
 /*
@@ -89,7 +103,9 @@ static void build_table(void)
 				code = 0;
 			if (code > 4095)
 				code = 4095;
-			gen_table[i] = (uint16_t)((0u << 12) | (uint16_t)code);
+			gen_table[i] = (uint16_t)((0u << 12)
+			                          | gen_scale_code(code,
+			                                           gen_amp));
 		}
 		return;
 	}
@@ -102,7 +118,11 @@ static void build_table(void)
 		if (code > 4095)
 			code = 4095;
 
-		gen_table[2 * i]     = (uint16_t)((0u << 12) | (uint16_t)code);
+		/* The waveform is scaled; the sync is not - it is a trigger
+		 * and wants every volt of edge it can get. */
+		gen_table[2 * i]     = (uint16_t)((0u << 12)
+		                                  | gen_scale_code(code,
+		                                                   gen_amp));
 		gen_table[2 * i + 1] = (uint16_t)((1u << 12)
 		                                  | sync_code(i, period));
 	}

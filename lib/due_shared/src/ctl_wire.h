@@ -348,6 +348,27 @@ typedef struct __attribute__((packed)) {
  * partial cycle at the PDC reload, which is a phase step in the analog
  * output once per wrap.
  */
+/*
+ * Output amplitude, in 1/256ths of full scale, about mid scale.
+ *
+ * Every shape was full scale until now, and that made one measurement
+ * impossible. Issue #5's artifact is 5-15 DAC codes; a full-swing
+ * waveform needs 0.5 V/div to fit on screen, where one 8-bit screen
+ * level is 29 codes - so the excursion is a fraction of one level and
+ * no averaging recovers it, because the quantiser is the floor.
+ *
+ * The artifact is reported to need the output in motion, and motion
+ * does not require the full range. At 1/16th of full scale the
+ * converter still updates every trigger and the vertical can come up
+ * tenfold.
+ *
+ * Centred on mid scale so the DC operating point does not move with
+ * the amplitude: comparing two amplitudes is then comparing two
+ * amplitudes, not two amplitudes and two bias points.
+ */
+#define GEN_AMP_FULL        256u
+#define GEN_AMP_MIN         1u
+
 #define GEN_TABLE_POINTS    256u
 #define GEN_POINTS_MIN      2u
 #define GEN_POINTS_MAX      GEN_TABLE_POINTS
@@ -372,6 +393,11 @@ uint16_t gen_points_for(uint32_t points);
  * updates. This is the resolution/frequency trade in one line. */
 uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points, uint8_t sync);
 
+/* One shape point scaled to `amp`/256 of full scale about mid, clamped
+ * to the converter's 12 bits. Shared because it is arithmetic on a
+ * contract value, not register programming. */
+uint16_t gen_scale_code(int32_t code, uint16_t amp);
+
 /* DACC updates one cycle costs: `points`, doubled unless the second
  * channel has been given up. The one place that arithmetic lives. */
 uint16_t gen_updates_per_cycle(uint16_t points, uint8_t sync);
@@ -383,6 +409,8 @@ typedef struct __attribute__((packed)) {
 	uint8_t  shape;          /* GEN_SHAPE_* */
 	uint8_t  sync;           /* GEN_SYNC_*  */
 	uint16_t points;         /* points per cycle, as adopted */
+	uint16_t amp;            /* 1..256, 256 = full scale */
+	uint16_t reserved;       /* keeps the 32-bit fields aligned */
 	/*
 	 * The trigger the converter is actually running at, and the
 	 * output frequency that follows from it. Zero when nothing is

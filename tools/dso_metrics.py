@@ -1037,6 +1037,20 @@ def cmd_ceiling(board, inst, args):
 # reload: is the PDC reload visible on the pin? (issue #5)
 # ------------------------------------------------------------------
 
+#: The instrument's vertical ladder, x1 probes. Picking from it rather
+#: than asking for an arbitrary number, because the scope snaps and the
+#: snapped value is what the resolution actually is.
+VDIV_LADDER = (0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0)
+
+
+def _fit_vdiv(swing_v, divisions=6.0):
+    """The finest vertical that still fits `swing_v` on screen."""
+    for v in VDIV_LADDER:
+        if v * divisions >= swing_v:
+            return v
+    return VDIV_LADDER[-1]
+
+
 def cmd_reload(board, inst, args):
     """Look at the DAC pin across a whole table wrap, and control it.
 
@@ -1074,12 +1088,19 @@ def cmd_reload(board, inst, args):
     results = {}
     for mode in ("wrap", "cycle"):
         measure.set_sync(board, mode)
-        measure.set_gen(board, args.shape_one, pts)
+        measure.set_gen(board, args.shape_one, pts, amp=args.amp)
         board.cmd(preset)
         time.sleep(0.8)
         board.drain_console(0.3)
         inst.channel_enable(2, False)
-        inst.channel_scale(args.channel, args.vdiv or 0.5)
+        # A small waveform is the whole point of the amplitude knob: the
+        # converter still updates every trigger, but the vertical can
+        # come up. At full scale 0.5 V/div is forced and one screen
+        # level is 29 DAC codes, so a 5-15 code excursion is a fraction
+        # of one level and nothing recovers it.
+        vdiv = args.vdiv or _fit_vdiv(DAC_SPAN_V * args.amp
+                                      / measure.GEN_AMP_FULL)
+        inst.channel_scale(args.channel, vdiv)
         inst.channel_offset(args.channel, -DAC_MID_V)
         inst.coupling(args.channel, "DC")
         # A timebase slow enough that the record spans a whole wrap.
@@ -1138,6 +1159,7 @@ def cmd_reload(board, inst, args):
             "covers_wrap": span >= wrap_s, "extent_v": hi - lo,
             "noise_v": floor, "cycles": n_cyc, "compared": len(live),
             "worst_v": x, "worst_cycle": k, "prominence": prom,
+            "vdiv": vdiv,
             "period_s": period_s,
             "worst_at_s": (j * period_s / len(per_cycle[0]))
                           if per_cycle and j is not None else None,
@@ -1145,7 +1167,11 @@ def cmd_reload(board, inst, args):
         }
         board.stop(); board.drain_console(0.2)
 
-    print(f"\nDAC0 carries {args.shape_one}; "
+    quantum = results["wrap"]["vdiv"] * 8 / 256
+    print(f"\namp {args.amp}/256 -> {DAC_SPAN_V*args.amp/256*1000:.0f} mV "
+          f"swing at {results['wrap']['vdiv']*1000:g} mV/div; one screen "
+          f"level is {quantum/V_PER_CODE:.2f} DAC codes")
+    print(f"DAC0 carries {args.shape_one}; "
           f"{results['wrap']['points']:,} samples at "
           f"{results['wrap']['dt_s']*1e9:.0f} ns, "
           f"{results['wrap']['span_s']*1e3:.2f} ms span "
@@ -1563,6 +1589,10 @@ def _parser():
                     help="reload only: AC-couple the channel, so a held "
                          "level can be viewed at the instrument's highest "
                          "vertical gain instead of its DC offset range")
+    ap.add_argument("--amp", type=int, default=256,
+                    help="reload only: generator amplitude in 256ths of "
+                         "full scale. Smaller lets the vertical come up: "
+                         "at full scale one screen level is 29 DAC codes")
     ap.add_argument("--window", type=float, default=40e-6,
                     help="reload only: seconds of record around the reload")
     ap.add_argument("--shape-one", default="sine",

@@ -148,6 +148,9 @@ void gen_set_shape(uint32_t shape);
  * GEN_LAYOUT_DC ignores this. That arm exists so that nothing swings on
  * either pin, and a sync square would defeat the control it is.
  */
+extern uint16_t gen_amp;      /* 1..256, 256 = full scale */
+void gen_set_amp(uint32_t amp);
+
 extern uint8_t gen_sync;
 void gen_set_sync(uint32_t mode);
 

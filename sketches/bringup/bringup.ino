@@ -150,8 +150,9 @@ static void banner(void)
 	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
 	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
 	Serial.println("#           O=playback ring occupancy histogram");
-	Serial.println("#           =<shape>,<pts>W = gen waveform: 0 sine 1 square");
+	Serial.println("#           =<shape>,<pts>,<amp>W = gen waveform: 0 sine 1 square");
 	Serial.println("#                             2 ramp 3 triangle 4 dc; pts 2..256");
+	Serial.println("#                             amp 1..256 (256ths of full scale)");
 	Serial.println("#           =<n>J = sync out: 0 off 1 per-cycle 2 per-wrap");
 	{
 		/* CFGOK per endpoint: the controller's own answer to "did
@@ -1463,6 +1464,11 @@ void loop()
 		gen_set_shape(rate_arg[0]);
 		if (rate_arg[1])
 			gen_set_points(rate_arg[1]);
+		/* "=<shape>,<pts>,<amp>W". amp in 1/256ths of full scale,
+		 * about mid: a small waveform still moves the converter
+		 * every update without spanning its range. */
+		if (rate_arg[2])
+			gen_set_amp(rate_arg[2]);
 		gen_report();
 		break;
 	/*

@@ -151,6 +151,18 @@ uint32_t gen_trigger_hz(void)
 	return rc ? (SystemCoreClock / 2u) / rc : 0u;
 }
 
+uint16_t gen_amp = GEN_AMP_FULL;
+
+void gen_set_amp(uint32_t amp)
+{
+	if (amp > GEN_AMP_FULL)
+		amp = GEN_AMP_FULL;
+	if (amp < GEN_AMP_MIN)
+		amp = GEN_AMP_MIN;
+	gen_amp = (uint16_t)amp;
+	build_table();
+}
+
 uint8_t gen_sync = GEN_SYNC_CYCLE;
 
 void gen_set_sync(uint32_t mode)
@@ -261,7 +273,9 @@ static void build_table(void)
 				code = 0;
 			if (code > 4095)
 				code = 4095;
-			gen_table[i] = (uint16_t)((0u << 12) | (uint16_t)code);
+			gen_table[i] = (uint16_t)((0u << 12)
+			                          | gen_scale_code(code,
+			                                           gen_amp));
 		}
 		return;
 	}
@@ -281,11 +295,15 @@ static void build_table(void)
 		 * goes on the other pin. GEN_LAYOUT_DC gets neither: it is
 		 * the control arm in which nothing swings anywhere.
 		 */
+		/* The waveform is scaled; the sync is NOT. The sync is a
+		 * trigger and wants every volt of edge it can get - and
+		 * scaling it would couple the bench's trigger quality to
+		 * an amplitude chosen for the signal. */
 		if (gen_layout == GEN_LAYOUT_SWAPPED) {
-			v1 = (uint16_t)code;
+			v1 = gen_scale_code(code, gen_amp);
 			v0 = sync_code(i, period);
 		} else if (gen_layout != GEN_LAYOUT_DC) {
-			v0 = (uint16_t)code;
+			v0 = gen_scale_code(code, gen_amp);
 			v1 = sync_code(i, period);
 		}
 

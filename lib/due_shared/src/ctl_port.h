@@ -176,7 +176,8 @@ int ctl_port_rate_page(uint8_t *body, size_t max, uint16_t offset);
  * then answers CTL_ERR_OPCODE rather than a body of zeroes.
  */
 bool ctl_port_gen_get(ctl_gen_t *out);
-void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync);
+void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
+                      uint16_t amp);
 
 /*
  * Flush the debug console. Only ctl_dump() uses this, it is never
