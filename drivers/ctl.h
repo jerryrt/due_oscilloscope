@@ -212,7 +212,7 @@ typedef struct __attribute__((packed)) {
 	 * The firmware version, which is none of the two above: those are
 	 * wire contracts a host refuses a pairing on, this is which build
 	 * is on the board when both contracts are unchanged. It took the
-	 * `reserved` byte and two more. See drivers/version.h.
+	 * `reserved` byte and two more. See lib/due_shared/src/fw_version.h.
 	 *
 	 * This is the deployed path for it. A deployed board is the native
 	 * port and nothing else, so the console banner - the only other

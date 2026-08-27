@@ -26,7 +26,7 @@ def test_control_port_answers(board, track):
     """The board is there and it is the firmware we asked for.
 
     Asserted on the identity line rather than on prose in the banner.
-    Both tracks emit it in one fixed format (drivers/version.h), which
+    Both tracks emit it in one fixed format (lib/due_shared/src/fw_version.h), which
     is the only way a board says which track it is without the 89 ms
     banner - and requiring it here is what keeps both tracks emitting
     it.

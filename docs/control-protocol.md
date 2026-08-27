@@ -239,7 +239,7 @@ response frame. That is what keeps the two from drifting.
 
 ## Framing
 
-`drivers/playstat.h` is the working precedent and should set the
+`lib/due_shared/src/playstat.h` is the working precedent and should set the
 pattern: a magic distinct from `FRAME_MAGIC`, a version byte, a CRC,
 and a fixed layout the host mirrors. A parser that meets one of these
 in a stream it did not expect must reject it rather than half-read it.
@@ -277,7 +277,7 @@ sample path.
 
 ### Frame
 
-Request and response share one 16-byte header. `drivers/playstat.h` set
+Request and response share one 16-byte header. `lib/due_shared/src/playstat.h` set
 the pattern and this follows it: a magic of its own, a version, a CRC,
 and a fixed layout the host mirrors.
 
@@ -418,7 +418,7 @@ kept needing and not having:
   mismatched pairing rather than misparse.~~ **Done.** `IDENTITY`
   carries `fw_major`/`fw_minor`/`fw_patch` alongside the two protocol
   versions, which took the record from 40 bytes to 42 and the channel
-  from version 1 to 2. See `drivers/version.h` for why three version
+  from version 1 to 2. See `lib/due_shared/src/fw_version.h` for why three version
   numbers rather than one: the two protocol versions are contracts a
   host refuses a pairing on, the firmware version says which build is
   on the board when both contracts are unchanged.

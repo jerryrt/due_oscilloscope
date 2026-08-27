@@ -326,7 +326,7 @@ def test_the_carrier_stays_silent_in_loop_mode(board, seconds):
 # reproduced here directly and cost nothing to check.
 
 def _rec(consumed, underruns, dev_us, bytes_in=0, version=1, crc=None):
-    """One status record, built exactly as drivers/playstat.h emits it."""
+    """One status record, built exactly as lib/due_shared/src/playstat.h emits it."""
     import struct, zlib
     body = struct.pack("<4sB3sIIII", b"DUEP", version, b"\0\0\0",
                        consumed, underruns, bytes_in, dev_us)

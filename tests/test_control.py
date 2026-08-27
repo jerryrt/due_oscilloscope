@@ -149,7 +149,36 @@ def test_identity_reports_this_board(link, board, baseline):
     # drift apart silently - that they *can* is why this field exists.
     assert ident["fw_version"] == baseline["firmware"]["version"], (
         f"board reports fw {ident['fw_version']}, "
-        f"drivers/version.h says {baseline['firmware']['version']}")
+        f"lib/due_shared/src/fw_version.h says "
+        f"{baseline['firmware']['version']}")
+
+
+def test_the_two_identity_channels_agree(link, board):
+    """The console `v` line and CTL_OP_IDENTITY describe one board.
+
+    measure.parse_identity documents its result as "the same shape as
+    the control channel's IDENTITY record, so a caller can use either
+    interchangeably". Nothing asserted it, and they were not
+    interchangeable: bf791f3 bumped FW_VERSION_MINOR and left
+    FW_VERSION_STR behind, so the numbers went to this record as 0.2.0
+    while the string went to the console as 0.1.0, in every build since.
+    Hand-copying version.h between the tracks kept both copies in
+    agreement at the wrong value, which is why neither track caught it.
+
+    The version is now derived from the numbers in one shared header, so
+    this cannot drift by construction - but "by construction" is what
+    was believed about the two copies too. Assert it.
+    """
+    from_ctl = link.identity()
+    from_console = measure.parse_identity(board.ask("v", secs=1.5))
+    assert from_console is not None, "no identity line on the console"
+
+    for field in ("track", "fw_version", "ctl_version", "frame_version",
+                  "mck_hz", "adc_clock_hz", "frame_bytes", "frame_samples"):
+        assert from_console[field] == from_ctl[field], (
+            f"the two identity channels disagree about {field}: console "
+            f"says {from_console[field]!r}, the control channel says "
+            f"{from_ctl[field]!r}. They are documented as interchangeable.")
 
 
 def test_response_echoes_the_request_id(link):

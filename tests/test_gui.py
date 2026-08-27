@@ -80,7 +80,7 @@ def make_frame(seq, codes_by_tag, rate=200000, flags=0, overrun=0):
     Header v3, which is ten fields and not twelve: bits_per_sample,
     packing and n_samples were spent on play_consumed because they never
     varied, and the sample count now comes from the frame's length. See
-    drivers/frame.h - this helper has to track it, because a fixture
+    lib/due_shared/src/frame.h - this helper has to track it, because a fixture
     that builds a frame the device would never send tests nothing.
     """
     mask = 0

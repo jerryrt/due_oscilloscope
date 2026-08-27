@@ -28,24 +28,20 @@
 #include "ctl.h"
 #include "load.h"
 #include "usb_cdc.h"
-#include "version.h"
-#include "shared_probe.h"        /* Phase 0 probe */
+#include "track_id.h"
+#include "fw_version.h"
 
 #define LED_MASK (1u << 27)
 
 /*
  * One line saying which firmware this is. Same format on both tracks -
- * see drivers/version.h - so a host reads one regular expression rather
+ * see lib/due_shared/src/fw_version.h - so a host reads one regular expression rather
  * than matching the banner's prose, and so a board can be identified
  * without paying for the banner (89 ms of blocked main loop, invariant
  * 8). `v` prints exactly this and nothing else.
  */
 static void identity_line(void)
 {
-	/* Phase 0 probe: the same translation unit CMake and arduino-cli
-	 * both compile. Printed on both tracks so the two can be compared. */
-	printf("# shared probe: %08lx\n",
-	       (unsigned long)shared_probe_magic());
 	printf(FW_ID_FORMAT "\n",
 	       FW_TRACK, FW_VERSION_STR, CTL_VERSION, FRAME_VERSION,
 	       (unsigned long)SystemCoreClock,

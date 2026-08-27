@@ -4,7 +4,8 @@
  */
 
 #include "ctl.h"
-#include "version.h"
+#include "track_id.h"
+#include "fw_version.h"
 #include "acq.h"
 #include "bsp.h"
 #include "frame.h"

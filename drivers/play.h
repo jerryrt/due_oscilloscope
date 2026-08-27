@@ -147,7 +147,7 @@ extern volatile uint32_t play_run_us;
  * the converter holds one rate for a whole run, latched at play_start -
  * and it would be needed again to re-check that. It is not kept on,
  * because the production signal is the playstat carrier
- * (drivers/playstat.h) and the frame header's play_consumed, both
+ * (lib/due_shared/src/playstat.h) and the frame header's play_consumed, both
  * sampled in the main loop at no cost to the real-time path.
  *
  * Turn it on for an investigation; do not judge sample integrity on a
