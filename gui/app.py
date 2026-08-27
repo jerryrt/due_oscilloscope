@@ -23,6 +23,7 @@ from daemon import client as clientmod      # noqa: E402
 from . import stream                        # noqa: E402
 from .health import HealthPanel             # noqa: E402
 from .measure_panel import MeasurePanel     # noqa: E402
+from .awg import AwgPanel                   # noqa: E402
 from .scope import ScopeView                # noqa: E402
 
 # Windows offered in the timebase box, in seconds.
@@ -66,6 +67,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scope = ScopeView()
         self.health = HealthPanel()
         self.measure = MeasurePanel()
+        self.awg = AwgPanel()
+        self.awg.requested.connect(self.awg_requested)
 
         # Both channels are drawn; this picks which one the trigger and
         # the measurements follow. That is what a scope's trigger-source
@@ -156,6 +159,7 @@ class MainWindow(QtWidgets.QMainWindow):
         side = QtWidgets.QVBoxLayout()
         side.addWidget(self.health)
         side.addWidget(self.measure)
+        side.addWidget(self.awg)
         side.addStretch(1)
 
         body = QtWidgets.QHBoxLayout()
@@ -284,6 +288,53 @@ class MainWindow(QtWidgets.QMainWindow):
             self.measure.update_from(
                 stream.measure(self.scope.last_sweep, self.rate_hz))
 
+    def awg_requested(self, shape, hz, vpp, offset, running):
+        """Build the waveform, send it, and drive the loop.
+
+        `loop` rather than `play`: the point of a generator on a
+        loopback bench is seeing what came back, and loop mode feeds
+        DAC0 and captures at the same time. docs/frontend.md's Safety
+        section is why there is no other mode here - DAC0 to A0 over a
+        jumper is the whole of it.
+        """
+        if self.client is None:
+            return
+        if not running:
+            try:
+                self.client.call("stop")
+                self.statusBar().showMessage("generator stopped")
+            except Exception as e:                       # noqa: BLE001
+                self.statusBar().showMessage(f"stop refused: {e}")
+            return
+
+        lo, hi, why = self.awg.code_range()
+        if why is not None:                              # already shown
+            return
+        try:
+            import measure as measuremod
+        except ImportError:
+            self.statusBar().showMessage("host/measure.py not importable")
+            return
+
+        # The rate the *device* will make, not the one typed. Rule 1:
+        # rate controls snap to an integer RC and display what the
+        # hardware makes - the frame header is what the display trusts,
+        # and the AWG's own rate is the same kind of number.
+        dac_sps = 200000
+        blob, actual_hz = measuremod.build_arb(
+            shape, hz, dac_sps, lo_code=lo, hi_code=hi, cycles=20)
+        try:
+            self.client.send_awg(blob)
+            self.client.call("start", mode="loop", dac_sps=dac_sps,
+                             adc_hz=dac_sps, channels=2)
+        except Exception as e:                           # noqa: BLE001
+            self.awg.run_btn.setChecked(False)
+            self.statusBar().showMessage(f"generator refused: {e}")
+            return
+        self.statusBar().showMessage(
+            f"{shape} {actual_hz:,.1f} Hz, {vpp:.3f} Vpp at {offset:.3f} V "
+            f"(codes {lo}-{hi})")
+
     def trigger(self):
         """The trigger the controls currently describe, or None."""
         mode = self.trig_mode.currentData()
@@ -370,6 +421,16 @@ class MainWindow(QtWidgets.QMainWindow):
                           ("fanout", "fanout")):
             s = j.get(name)
             self.health.set(key, f"{s['max_us']:,} us" if s else "-")
+        # The generator's own number, and the only one that says the
+        # host kept up. under=0 has coexisted with a badly wrong signal
+        # in this project before, which is why it sits next to the
+        # controls that cause it rather than in a log.
+        try:
+            ct = self.client.call("counters")["counters"]
+            self.awg.underruns.setText(f"{ct.get('underruns', 0):,}")
+        except Exception:                                # noqa: BLE001
+            self.awg.underruns.setText("-")
+
         rec = st.get("recording")
         self.health.set("recording",
                         f"{rec['frames']:,} frames" if rec else "no")

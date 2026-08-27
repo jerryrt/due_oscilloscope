@@ -1720,6 +1720,53 @@ def build_waveform(tone_hz, dac_total_sps, cycles=20):
     return bytes(out), dac_total_sps / per_cycle
 
 
+def build_arb(shape, tone_hz, dac_total_sps, lo_code=0, hi_code=4095,
+              cycles=20):
+    """Whole cycles of `shape` between two DAC codes, tagged for DAC0.
+
+    The generic form of build_waveform and build_square, which stay as
+    they are: they are full-scale by definition and a dozen recorded
+    figures were taken with them. This one exists for the front end,
+    where amplitude and offset are chosen in volts, and it takes the
+    code range already resolved so that the volts-to-codes decision -
+    which needs the DAC's measured span - is made once, in the UI, and
+    not again here.
+
+    Whole cycles, always, and the same reason as build_square's even
+    sample count: a fractional cycle at the end of the buffer is a step
+    when the buffer repeats, and a step authored by the host is
+    indistinguishable on a screen from one made by the converter.
+    """
+    per_cycle = int(round(dac_total_sps / max(tone_hz, 1e-9)))
+    if shape == "square":
+        per_cycle += per_cycle & 1        # even, so both halves match
+    per_cycle = max(2, per_cycle)
+
+    lo = max(0, min(4095, int(lo_code)))
+    hi = max(0, min(4095, int(hi_code)))
+    if hi < lo:
+        lo, hi = hi, lo
+    span = hi - lo
+
+    out = bytearray()
+    for i in range(per_cycle * cycles):
+        phase = (i % per_cycle) / float(per_cycle)
+        if shape == "sine":
+            u = 0.5 + 0.5 * math.sin(2.0 * math.pi * phase)
+        elif shape == "square":
+            u = 1.0 if phase < 0.5 else 0.0
+        elif shape == "ramp":
+            u = phase
+        elif shape == "triangle":
+            u = 2.0 * phase if phase < 0.5 else 2.0 * (1.0 - phase)
+        else:
+            raise ValueError(f"unknown shape {shape!r}")
+        code = lo + int(round(u * span))
+        code = max(0, min(4095, code))
+        out += struct.pack("<H", (0 << 12) | (code & 0xFFF))
+    return bytes(out), dac_total_sps / per_cycle
+
+
 def build_square(tone_hz, dac_total_sps, cycles=20):
     """Whole cycles of a full-scale square on DAC0, 50% duty.
 
