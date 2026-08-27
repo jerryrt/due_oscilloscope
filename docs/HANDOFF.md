@@ -135,8 +135,8 @@ enumerates and opens.
 
 | | |
 |---|---|
-| Track B | last full run **283 passed, 12 skipped, 1 xfailed, 0 failed** (2026-08-26, after shared-source Phase 1). An earlier run that day failed `test_awg_ladder_play_only[b-32]`; it is read up in `docs/testing.md` and is not fixed |
-| Track A | **263 passed, 32 skipped, 1 xfailed** (2026-08-26, after shared-source Phase 1). The xfail is issue #5's gate |
+| Track B | last full run **298 passed, 16 skipped, 1 xfailed, 1 failed** (2026-08-27, all shared-source phases). The failure is `test_the_fanout_cost_is_recorded_per_frame` - board-free, context-only, passes standalone. It and `test_awg_ladder_play_only` are both read up in `docs/testing.md` and neither is fixed |
+| Track A | **290 passed, 25 skipped, 1 xfailed, 0 failed** (2026-08-27, all shared-source phases). The xfail is issue #5's gate. It runs the control suite now |
 | Branches | `main` only. `wip/track-a-control-channel` landed and is gone |
 | Board | Track B, `main` |
 | Wiring | **DAC0->A0 and DAC1->A1. That is the baseline and the only thing to assume.** |
@@ -186,12 +186,20 @@ enumerates and opens.
    after: adopting it changes what every existing figure was measured
    against, so doing both at once re-baselines once instead of twice.
 
-5. **Sharing the wire contract between the tracks** - the plan and its
-   evidence are in `docs/shared-source.md`. Phases 0, 0.5 and 1 are
-   done; 2-6 are open and each is independently verifiable. Phase 5 is
-   the one that matters most, because it is also objective 1c's second
-   half: sharing `ctl.c` gives Track A a control channel without writing
-   a second implementation of the protocol.
+5. ~~**Sharing the wire contract between the tracks.**~~ **All six
+   phases done 2026-08-27**, `docs/shared-source.md`. The wire format,
+   the CRC and the whole control parser are one copy in
+   `lib/due_shared/src` that both builds compile; `FW_TRACK` is the only
+   thing left with a copy per track; invariant 3 is rescoped to the
+   hardware layer its argument is actually about, and
+   `tests/test_shared_source.py` fails if a per-track header shadows a
+   shared one.
+
+   **It closed objective 1c on the way.** Track A reports `ctlver=3`
+   because it runs the same parser, not a second implementation of
+   `docs/control-protocol.md`. Two opcodes are refused there with
+   `CTL_ERR_OPCODE` - STREAM_STATS and BENCH carry Track B's own USB
+   stack counters - which is a per-track capability and not a gap.
 5. ~~**`tools/serial_probe.py` does not run on Windows.**~~ **Done
    2026-08-26**, `7bc977f`: it is on the `host/transport.py` seam like
    everything else, and `serial_probe.py auto --send h` answers on
