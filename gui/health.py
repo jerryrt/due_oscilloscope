@@ -14,6 +14,7 @@ from PySide6 import QtCore, QtWidgets
 
 FIELDS = [
     ("link", "Link"),
+    ("source", "Source"),
     ("role", "Role"),
     ("mode", "Mode"),
     ("rate", "Rate (actual)"),

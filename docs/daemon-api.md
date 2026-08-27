@@ -10,8 +10,9 @@ plus `tests/test_daemon_protocol.py`, `tests/test_daemon_api.py` and one
 hardware case in `tests/test_daemon_hardware.py`.
 
 ```sh
-python3 -m daemon --fake        # synthetic frames, no board
-python3 -m daemon               # the real thing
+python3 -m daemon --fake         # synthetic frames, no board
+python3 -m daemon --file cap.due # replay a recording; see "Replay"
+python3 -m daemon                # the real thing
 ```
 
 **Run it on a free-threaded interpreter.** With four busy Python
@@ -166,6 +167,55 @@ in `dropped`, in the sidecar and in `status`. A recording with a hole
 says so. Sustained write rate on this host is **unmeasured**; ~1.81
 MB/s is about 6.5 GB per hour, which is arithmetic on a measured figure
 and not itself a measurement.
+
+## Replay
+
+`--file` serves a recording in place of a board. It is the other half of
+the section above, and until 2026-08-27 it did not exist: `record.start`
+wrote a format nothing in the repository read back.
+
+```sh
+python3 -m daemon --file cap.due                 # paced as recorded
+python3 -m daemon --file cap.due --replay-loop   # start again at the end
+python3 -m daemon --file cap.due --replay-speed 4
+python3 -m daemon --file cap.due --replay-fast   # as fast as it is read
+```
+
+**The frames a client receives are the bytes in the file**, headers and
+CRCs included. That is the property the whole thing rests on: everything
+above the daemon - the frame splitter, the trigger, the measurements,
+the FFT, the export - then runs over a recording through exactly the
+code that runs over a board, rather than a second decoding of the same
+format. `tests/test_daemon_api.py` asserts the byte identity directly.
+
+It is a source and not a mode, so the client-facing protocol is
+unchanged: `hello`, `subscribe`, `start` and `stop` mean what they
+always did, and `start` rewinds to the beginning of the file.
+
+What it refuses, and what it will not pretend:
+
+| | |
+|---|---|
+| `describe().kind` | `"file"`, with the sidecar's own device block beside it as `recorded`. Two fields, because a capture read as a live bench of that track is exactly the confusion **two differently-wired benches** make easy |
+| `status.rates` | the recording's, with `source: "recording"`. Never the rate the caller asked to start at - a file cannot be asked to convert, and answering as though it could would put a number in a reply that nothing measured |
+| `start mode=play` | refused. A recording has samples to replay, not a generator |
+| a waveform upload | refused, and the session survives the refusal |
+| a differing `frame_bytes` in the sidecar | refused at open, naming both sizes. The 4096-byte frame is compiled in and `frame.h` calls the geometry load-bearing; reading across it would misalign every sample and still decode to plausible numbers |
+| a trailing part-frame | reported as `truncated_bytes`, not trimmed in silence. A recorder killed mid-write leaves a file whose end is unknown, and that is worth knowing before a measurement is taken off it |
+
+Pacing comes from the frames' own `timestamp_us`, so a stall on the
+bench replays as a stall rather than being smoothed to the nominal rate.
+One exception, and it is counted: a gap longer than `REPLAY_MAX_GAP_S`
+(1.0 s) is truncated and added to `gaps_shortened` in `counters`,
+because a front end that looks hung is worse than a distortion that
+reports itself. `--replay-loop` wraps, and the sequence numbers jump
+backwards at the seam: the daemon counts a gap there and a display draws
+a break, because the two passes were never continuous.
+
+`counters` on a replay carries `frames`, `frames_total`, `loops`,
+`at_end`, `seq_gaps`, `gaps_shortened`, and `recorded_dropped` - what
+the recorder itself lost to the disk, carried through from the sidecar
+so a hole in the source is never read as a fault of the replay.
 
 ## Status
 

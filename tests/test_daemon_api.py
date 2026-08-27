@@ -637,3 +637,241 @@ def test_the_fanout_cost_is_recorded_per_frame(connect):
     # that up would cost more than the tidiness is worth.
     assert st["jitter"]["fanout"]["n"] <= st["frames_read"] + 2
     assert st["jitter"]["fanout"]["n"] >= 25
+
+# -- replay -----------------------------------------------------------
+#
+# The other half of recording, and until it existed the Record button
+# wrote a format with no reader. What these assert is one property and
+# its consequences: a recording replayed through the daemon delivers the
+# frames that were recorded, byte for byte, so everything above the
+# daemon - trigger, measurements, FFT, export - is running over the
+# capture rather than over a second decoding of it.
+
+
+@pytest.fixture
+def recording(tmp_path, make_server):
+    """A real recording, made the way the front end makes one.
+
+    Recorded through the server rather than written by hand, so what
+    the replay tests read back is what `record.start` actually
+    produces - sidecar, geometry and all.
+    """
+    def _record(frames=8, adc_hz=200000, channels=2, name="cap.due"):
+        path = str(tmp_path / name)
+        # Paced, so the count is close to what was asked for. An
+        # unpaced fake produces frames as fast as the reader takes
+        # them, and a fixture that overshoots to eighty frames turns
+        # every replay assertion below into a race with the drop
+        # policy rather than a test of the replay.
+        srv = make_server(pace=True)
+        c = clientmod.Client("127.0.0.1", srv.port, timeout=5.0,
+                             frame_capacity=1024).connect()
+        try:
+            c.hello("control")
+            c.subscribe()
+            c.call("start", mode="capture", adc_hz=adc_hz, channels=channels)
+            c.call("record.start", path=path)
+            wait_until(lambda: srv.recorder and srv.recorder.frames >= frames,
+                       timeout=15.0, what=f"{frames} frames recorded")
+            side = c.call("record.stop")["sidecar"]
+            c.call("stop")
+        finally:
+            c.close()
+        assert side["dropped"] == 0 and side["error"] is None
+        return path, open(path, "rb").read(), side
+    return _record
+
+
+def replay(make_server, path, **kw):
+    """A server whose device is that recording.
+
+    `pace=False` by default: these tests care what comes out, not how
+    fast, and the recordings are short enough that nothing is dropped
+    on the way. The paced default is what the GUI gets, and has a test
+    of its own below.
+    """
+    kw.setdefault("pace", False)
+    return make_server(device=devmod.FileDevice(path, **kw))
+
+
+@pytest.mark.smoke
+def test_a_replay_delivers_the_bytes_that_were_recorded(recording,
+                                                        make_server, connect):
+    """The whole claim, in one assertion.
+
+    Not "the same samples" or "the same measurements" - the same bytes,
+    headers included. Anything weaker would let a replay agree with a
+    live capture everywhere except where it matters.
+    """
+    path, blob, side = recording(frames=8)
+    srv = replay(make_server, path)
+    c = connect("control", server=srv)
+    c.subscribe()
+    c.call("start", mode="capture")
+    c.wait_frames(side["frames"], timeout=15.0)
+    got = b"".join(bytes(f) for f in c.frames)
+    assert got == blob
+
+
+def test_a_replay_says_it_is_a_file_and_which_one(recording, make_server,
+                                                  connect):
+    path, blob, side = recording(frames=4)
+    srv = replay(make_server, path)
+    dev = connect("control", server=srv).call("hello", role="control")["device"]
+    assert dev["kind"] == "file"
+    assert dev["path"] == os.path.basename(path)
+    assert dev["frames"] == side["frames"]
+    assert dev["truncated_bytes"] == 0
+
+
+def test_a_replay_carries_the_bench_the_samples_came_from(recording,
+                                                          make_server,
+                                                          connect):
+    """`kind` is the source, `recorded` is the origin, and they are two
+    fields because conflating them is how a replayed capture gets read
+    as a live board of that track. The project has two benches wired
+    differently; a capture without its bench is not comparable with
+    anything."""
+    path, blob, side = recording(frames=4)
+    srv = replay(make_server, path)
+    dev = connect(server=srv).call("hello", role="observer")["device"]
+    assert dev["kind"] == "file"
+    assert dev["recorded"]["kind"] == "fake"
+    assert dev["recorded_mode"] == "capture"
+    assert dev["recorded_rates"]["adc_hz"] == 200000
+    assert dev["recorded_dropped"] == 0
+
+
+def test_a_replay_reports_the_rate_it_was_recorded_at(recording, make_server,
+                                                      connect):
+    """A file cannot be asked to convert at another rate. Answering
+    `status` with the rate the caller asked for would put a number in a
+    reply that nothing measured, and every time axis drawn from it would
+    be wrong."""
+    path, blob, side = recording(frames=4, adc_hz=100000)
+    srv = replay(make_server, path)
+    c = connect("control", server=srv)
+    c.call("start", mode="capture", adc_hz=400000, channels=2)
+    st = c.call("status")["status"]
+    assert st["rates"]["adc_hz"] == 100000
+    assert st["rates"]["source"] == "recording"
+
+
+def test_a_replay_stops_at_the_end_of_the_recording(recording, make_server,
+                                                    connect):
+    path, blob, side = recording(frames=6)
+    srv = replay(make_server, path)
+    c = connect("control", server=srv)
+    c.subscribe()
+    c.call("start", mode="capture")
+    wait_until(lambda: not c.call("status")["status"]["running"],
+               timeout=15.0, what="the replay to reach the end")
+    ct = c.call("counters")["counters"]
+    assert ct["at_end"] is True
+    assert ct["frames"] == side["frames"] == ct["frames_total"]
+    assert ct["loops"] == 0
+
+
+def test_a_looping_replay_starts_again_and_the_seam_is_a_gap(recording,
+                                                             make_server,
+                                                             connect):
+    """A loop is a convenience, not a longer capture. The sequence
+    numbers jump backwards at the seam, so the daemon counts a gap there
+    and the front end draws a discontinuity - which is right: the two
+    passes were never continuous."""
+    path, blob, side = recording(frames=6)
+    srv = replay(make_server, path, loop=True)
+    c = connect("control", server=srv)
+    c.subscribe()
+    c.call("start", mode="capture")
+    c.wait_frames(side["frames"] + 3, timeout=15.0)
+    ct = c.call("counters")["counters"]
+    assert ct["loops"] >= 1
+    assert ct["seq_gaps"] >= 1
+
+
+def test_a_recording_with_another_frame_geometry_is_refused_by_name(
+        recording, tmp_path):
+    """`frame.h` calls the 4096-byte frame load-bearing and the ramp
+    test failed 4 runs in 15 the last time it moved. Read across that
+    and every sample after the first header lands at the wrong offset -
+    and still decodes to a plausible number, which is the dangerous
+    part."""
+    path, blob, side = recording(frames=4)
+    side["frame_bytes"] = devmod.FRAME_BYTES // 2
+    with open(path + ".json", "w") as f:
+        json.dump(side, f)
+    with pytest.raises(devmod.DeviceError) as e:
+        devmod.FileDevice(path)
+    assert str(devmod.FRAME_BYTES // 2) in str(e.value)
+    assert str(devmod.FRAME_BYTES) in str(e.value)
+
+
+def test_a_truncated_recording_says_how_much_is_not_a_frame(recording,
+                                                            make_server,
+                                                            connect):
+    """A recorder killed mid-write leaves a part-frame. Trimming it in
+    silence would make a file whose end is unknown look like one whose
+    end is known."""
+    path, blob, side = recording(frames=4)
+    with open(path, "ab") as f:
+        f.write(b"\x00" * 10)
+    srv = replay(make_server, path)
+    dev = connect(server=srv).call("hello")["device"]
+    assert dev["truncated_bytes"] == 10
+    assert dev["frames"] == side["frames"]
+
+
+def test_a_file_with_no_whole_frame_is_refused(tmp_path):
+    path = str(tmp_path / "stub.due")
+    with open(path, "wb") as f:
+        f.write(b"DUE0" + b"\x00" * 16)
+    with pytest.raises(devmod.DeviceError):
+        devmod.FileDevice(path)
+
+
+def test_a_recording_has_no_generator_and_the_refusal_keeps_the_session(
+        recording, make_server, connect):
+    """The waveform path is not covered by the dispatch guard, so a
+    device refusal there used to be a dead connection rather than an
+    answer. A front end that uploads to a replay gets told no and stays
+    connected."""
+    path, blob, side = recording(frames=4)
+    srv = replay(make_server, path)
+    c = connect("control", server=srv)
+    c.send_awg(b"\x00" * 64)
+    ev = c.wait_event("error")
+    assert ev["code"] == "refused" and "generator" in ev["message"]
+    assert c.call("ping")["event"] == "pong"
+    assert c.call("status")["status"]["waveform_bytes"] == 0
+
+
+def test_a_recording_refuses_to_play(recording, make_server, connect):
+    path, blob, side = recording(frames=4)
+    srv = replay(make_server, path)
+    c = connect("control", server=srv)
+    with pytest.raises(clientmod.Refused) as e:
+        c.call("start", mode="play", dac_sps=200000)
+    assert "replay" in e.value.message
+
+
+def test_a_paced_replay_follows_the_recorded_timestamps(recording,
+                                                        make_server, connect):
+    """The default, and the reason the GUI can be pointed at a file at
+    all: its ring is sized in seconds. Frames come back at the interval
+    the device stamped them with rather than as fast as the socket will
+    take them."""
+    path, blob, side = recording(frames=8, adc_hz=100000)
+    srv = replay(make_server, path, pace=True)
+    c = connect("control", server=srv)
+    c.subscribe()
+    t0 = time.monotonic()
+    c.call("start", mode="capture")
+    c.wait_frames(8, timeout=15.0)
+    elapsed = time.monotonic() - t0
+    # 2032 samples over two channels at 100 kHz is 10.16 ms a frame, so
+    # seven intervals is about 71 ms. The bound is loose on the high
+    # side because a scheduler is not a clock; what it has to catch is a
+    # replay that ignores the timestamps entirely.
+    assert elapsed > 0.04, f"eight frames in {elapsed:.3f}s is not paced"
+    assert elapsed < 2.0

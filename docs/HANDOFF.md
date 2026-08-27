@@ -3800,11 +3800,13 @@ unplugging the board.
 ```sh
 # the daemon: no hardware
 python3 -m daemon --fake            # from host/, or PYTHONPATH=host
+python3 -m daemon --file cap.due    # replay a recording
 .venv-ft/bin/python -m daemon       # the real board, free-threaded
 
 # the front end
-.venv-gui/bin/python -m gui --spawn-fake    # starts its own fake daemon
-.venv-gui/bin/python -m gui                 # a daemon already running
+.venv-gui/bin/python -m gui --spawn-fake          # its own fake daemon
+.venv-gui/bin/python -m gui --spawn-file cap.due  # replay, daemon and all
+.venv-gui/bin/python -m gui                       # a daemon already running
 
 # their tests
 .venv/bin/python -m pytest tests/test_daemon_protocol.py \
@@ -3813,8 +3815,19 @@ python3 -m daemon --fake            # from host/, or PYTHONPATH=host
 ```
 
 `docs/daemon-api.md` is the socket reference: framing, the command
-catalogue, ownership, backpressure, recording, and what `status`
-carries. Two things about it are load-bearing rather than incidental -
+catalogue, ownership, backpressure, recording, replay, and what `status`
+carries.
+
+**`--file` is how a capture crosses between benches.** The frames a
+client receives are the bytes in the file, so a recording taken on one
+bench is re-analysed on the other by the same trigger, measurements,
+FFT, cursors and export - rather than quoted as a number, which is not
+comparable across two benches wired differently and has had to be
+withdrawn twice. It says what it is rather than passing for a board:
+`kind="file"`, the sidecar's own device block carried separately as
+`recorded`, the recording's rates in `status` rather than whatever was
+asked for, and refusals for `play` and for a waveform upload.
+`docs/frontend.md` says why the daemon opens the file and not the GUI. Two things about it are load-bearing rather than incidental -
 `status` never touches the device, and a client that stops reading
 loses frames that are counted and reported rather than slowing anyone
 down.

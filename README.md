@@ -58,6 +58,7 @@ no board:
 ```sh
 python3 -m daemon --fake                     # from host/
 .venv-gui/bin/python -m gui --spawn-fake     # the front end, no hardware
+.venv-gui/bin/python -m gui --spawn-file cap.due   # replay a recording
 ```
 
 | Measurement | Result |

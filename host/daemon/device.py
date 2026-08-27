@@ -16,6 +16,8 @@ parsing gets exercised too.
 
 from __future__ import annotations
 
+import collections
+import json
 import os
 import struct
 import threading
@@ -256,6 +258,426 @@ class FakeDevice(Device):
         with self._lock:
             return {"frames": self._sent_frames, "awg_bytes": self._awg_bytes}
 
+def frame_header(frame):
+    """The header fields by name, so nothing above has to know offsets.
+
+    `HDR_FMT` is already written down in three places - here,
+    `lib/due_shared/src/frame.h` and `host/measure.py` - and every copy
+    is a chance to read a stored frame at the wrong offsets. Anything
+    here that wants a field asks for it by name and unpacks once.
+    """
+    (magic, version, flags, channel_mask, seq, sample_rate_hz,
+     timestamp_us, overrun_count, play_consumed,
+     header_crc32) = struct.unpack(HDR_FMT, bytes(frame[:HDR_LEN]))
+    return {"magic": magic, "version": version, "flags": flags,
+            "channel_mask": channel_mask, "seq": seq,
+            "sample_rate_hz": sample_rate_hz, "timestamp_us": timestamp_us,
+            "overrun_count": overrun_count, "play_consumed": play_consumed,
+            "header_crc32": header_crc32}
+
+
+# The longest a replay will sit still for one gap in a recording.
+#
+# A hole in a record is real - the recorder counts what the disk made it
+# drop, and the sequence numbers in the surviving frames prove it - so
+# replaying the hole at its true length is the honest default. Past this
+# bound the front end just looks hung, so the wait is truncated instead
+# and *counted* in `counters` as `gaps_shortened`. The distortion is
+# then visible rather than silent, which is the only version of it this
+# project allows.
+REPLAY_MAX_GAP_S = 1.0
+
+
+class FileDevice(Device):
+    """A recording, replayed through the same path that read it live.
+
+    `record.start` has written frames verbatim since the daemon had a
+    recorder, and until this class nothing anywhere read them back: the
+    front end's Record button wrote a format with no reader. This is the
+    reader.
+
+    It is a `Device` rather than a loader inside the front end on
+    purpose. Everything above this line - the frame splitter, the
+    trigger, the measurements, the FFT, the cursors, the CSV export -
+    then runs over a recording through exactly the code that runs over
+    the board, so a replay shows what the bench showed rather than what
+    a second implementation of the same parsing believes it showed.
+
+    Two facts about this project make that worth building rather than
+    merely convenient. There are two benches here, wired differently,
+    and `docs/HANDOFF.md` says plainly that a figure taken on one is not
+    comparable with a figure taken on the other; a recording is the one
+    thing one bench can hand the other and have re-analysed by the same
+    code, instead of a number quoted in an issue. And numbers quoted as
+    prose have been withdrawn twice this week - the reload figures on #5
+    were the instrument handing back the previous vertical gain's data -
+    where a capture would still have been re-readable by whoever doubted
+    it.
+
+    What it will not do is pass for a board. `describe()` says
+    `kind="file"` and carries the sidecar's own device block beside it;
+    the rates in `status` are the recording's and not whatever the
+    caller asked to start at; and `write_awg` refuses, because a
+    recording has no generator and accepting a waveform would put the
+    DAC's name on samples nothing produced.
+    """
+
+    def __init__(self, path, *, pace=True, loop=False, speed=1.0,
+                 chunk_bytes=1 << 16):
+        if speed <= 0:
+            raise DeviceError(f"replay speed must be positive, not {speed}")
+        self.path = path
+        self.pace = pace
+        self.loop = loop
+        self.speed = float(speed)
+        self._chunk = int(chunk_bytes)
+        self._lock = threading.Lock()
+
+        try:
+            self.size = os.path.getsize(path)
+        except OSError as e:
+            # `strerror` rather than the exception: OSError's own text
+            # repeats the filename, and this message already carries it.
+            raise DeviceError(
+                f"cannot read {path}: {e.strerror or e}") from e
+
+        self.sidecar = self._load_sidecar()
+        self._check_geometry()
+
+        # A trailing part-frame is a recorder that was killed mid-write.
+        # It is reported rather than trimmed in silence: a file that is
+        # not a whole number of frames is a file whose end is unknown,
+        # and that is worth knowing before a measurement is taken off it.
+        self.frames_total = self.size // FRAME_BYTES
+        self.truncated_bytes = self.size % FRAME_BYTES
+        if self.frames_total == 0:
+            raise DeviceError(
+                f"{path} holds no whole frames ({self.size} bytes, "
+                f"a frame is {FRAME_BYTES})")
+
+        self._fh = None
+        self._splitter = None
+        self._pending = collections.deque()
+        self._hold = None
+        self._console = []
+        self.closed = False
+        self.running = False
+        self.mode = None
+        self.rates = None
+        self.at_end = False
+        self.loops = 0
+        self.seq_gaps = 0
+        self.gaps_shortened = 0
+        self.overruns = 0
+        self.last_rate_hz = None
+        self._replayed = 0
+        self._t0 = 0.0
+        self._elapsed_us = 0.0
+        self._prev_ts = None
+        self._prev_seq = None
+
+    # -- the file ----------------------------------------------------
+    def _load_sidecar(self):
+        """The `.json` beside the frames, if it is there.
+
+        Optional, because a bare frame file is still readable - the
+        header carries the rate, which is the one thing that genuinely
+        varies and cannot be reconstructed. Everything else the sidecar
+        adds is provenance, and provenance that is missing should say so
+        rather than be invented.
+        """
+        try:
+            with open(self.path + ".json") as f:
+                side = json.load(f)
+        except FileNotFoundError:
+            return None
+        except (OSError, ValueError) as e:
+            raise DeviceError(f"{self.path}.json is unreadable: {e}") from e
+        if not isinstance(side, dict):
+            raise DeviceError(f"{self.path}.json is not a sidecar object")
+        return side
+
+    def _check_geometry(self):
+        """Refuse a recording this build cannot read, by name.
+
+        The frame is a fixed 4096 bytes because that is 8 x 512 and one
+        DMA sends whole packets - `frame.h` calls the geometry
+        load-bearing and the ramp test failed 4 runs in 15 when it last
+        moved. So a file recorded against a different geometry is not
+        something to read best-effort: every sample after the first
+        header would land at the wrong offset and still decode to a
+        plausible number.
+        """
+        if not self.sidecar:
+            return
+        fb = self.sidecar.get("frame_bytes")
+        if fb is not None and fb != FRAME_BYTES:
+            raise DeviceError(
+                f"{self.path} was recorded with {fb}-byte frames; this "
+                f"build reads {FRAME_BYTES}. The geometry is compiled in "
+                f"(lib/due_shared/src/frame.h) and reading across it "
+                f"would misalign every sample")
+
+    def _open(self):
+        self._fh = open(self.path, "rb")
+        self._splitter = FrameSplitter()
+        self._pending.clear()
+        self._hold = None
+        self._t0 = time.monotonic()
+        self._elapsed_us = 0.0
+        self._prev_ts = None
+        self._prev_seq = None
+
+    def _close_fh(self):
+        if self._fh is not None:
+            try:
+                self._fh.close()
+            finally:
+                self._fh = None
+        self._splitter = None
+        self._pending.clear()
+        self._hold = None
+
+    def _recorded_rates(self):
+        """What the recording was taken at - never what the caller asked.
+
+        A file cannot be asked to convert at a different rate, and
+        answering `status` as though it could would put a number in a
+        reply that nothing measured. The frame headers carry the
+        device's own answer as they go past; the sidecar's is only what
+        was requested of it.
+        """
+        rates = dict((self.sidecar or {}).get("rates") or {})
+        rates["source"] = "recording"
+        return rates
+
+    # -- control -----------------------------------------------------
+    def describe(self):
+        rec = (self.sidecar or {}).get("device") or {}
+        return {"track": rec.get("track", "file"), "kind": "file",
+                "frame_bytes": FRAME_BYTES,
+                "samples_per_frame": FRAME_SAMPLES,
+                "path": os.path.basename(self.path),
+                "frames": self.frames_total,
+                "bytes": self.size,
+                "truncated_bytes": self.truncated_bytes,
+                "sidecar": self.sidecar is not None,
+                # The bench the samples actually came from, kept apart
+                # from `kind` so that nothing downstream can read
+                # replayed samples as a live board of that track.
+                "recorded": rec or None,
+                "recorded_mode": (self.sidecar or {}).get("mode"),
+                "recorded_rates": (self.sidecar or {}).get("rates"),
+                "recorded_dropped": (self.sidecar or {}).get("dropped"),
+                "recorded_unix": (self.sidecar or {}).get("started_unix")}
+
+    def start(self, mode, *, dac_sps=None, adc_hz=None, channels=2,
+              waveform=None, preset=None):
+        if self.closed:
+            raise DeviceError("device is closed")
+        if mode not in MODES:
+            raise DeviceError(f"unknown mode {mode!r}")
+        if mode == "play":
+            # Play means "produce samples", and this device has none to
+            # produce. Refusing here rather than running quietly is the
+            # same choice FakeDevice makes about never being more
+            # permissive than the hardware it stands in for.
+            raise DeviceError(
+                "a recording cannot play; it has samples to replay, "
+                "not a generator")
+        if self.running:
+            raise DeviceError("already running; stop first")
+        with self._lock:
+            self._open()
+            self.running = True
+            self.mode = mode
+            self.at_end = False
+            self.loops = 0
+            self.seq_gaps = 0
+            self.gaps_shortened = 0
+            self._replayed = 0
+            self.rates = self._recorded_rates()
+            self._console.append(
+                f"replaying {os.path.basename(self.path)}: "
+                f"{self.frames_total} frames\n")
+            asked = adc_hz or dac_sps
+            recorded = self.rates.get("adc_hz") or self.rates.get("dac_sps")
+            if asked and recorded and int(asked) != int(recorded):
+                # Said out loud rather than accepted in silence: the
+                # samples are at the rate they were taken at, and a
+                # caller who believes otherwise reads every time axis
+                # wrong.
+                self._console.append(
+                    f"note: asked for {int(asked)} Hz; the recording is "
+                    f"{int(recorded)} Hz and that is what it replays at\n")
+
+    def stop(self):
+        with self._lock:
+            self._close_fh()
+            self.running = False
+            self.mode = None
+            self._console.append("stopped\n")
+
+    def close(self):
+        self.stop()
+        self.closed = True
+
+    def write_awg(self, data):
+        """Refuse, rather than accept a waveform nothing will play.
+
+        The daemon holds an uploaded waveform whether or not the device
+        takes it, so staying quiet here would leave a front end
+        believing it had armed a generator that does not exist.
+        """
+        raise DeviceError(
+            "a recording has no generator; nothing here can play a "
+            "waveform")
+
+    # -- stream ------------------------------------------------------
+    def read(self, timeout=0.2):
+        with self._lock:
+            if not self.running:
+                if timeout:
+                    time.sleep(min(timeout, 0.01))
+                return b""
+            if self._hold is None:
+                got = self._next()
+                if got is None:
+                    self._finish()
+                    return b""
+                frame, hdr = got
+                self._hold = (frame, hdr, self._schedule(hdr))
+            frame, hdr, due = self._hold
+            if self.pace:
+                wait = due - time.monotonic()
+                if wait > 0:
+                    time.sleep(min(wait, timeout))
+                    if wait > timeout:
+                        # Still not due. The server asks again in a
+                        # moment, and the frame stays held so its place
+                        # in the recording's own timeline is not lost.
+                        return b""
+            self._hold = None
+            self._count(hdr)
+            self._replayed += 1
+            return frame
+
+    def _next(self):
+        """The next whole frame and its header, or None at the end."""
+        for _ in range(2):                    # at most one wrap per call
+            while not self._pending:
+                chunk = self._fh.read(self._chunk)
+                if not chunk:
+                    break
+                self._pending.extend(self._splitter.feed(chunk))
+            if self._pending:
+                frame = self._pending.popleft()
+                return frame, frame_header(frame)
+            if not self.loop:
+                return None
+            self._rewind()
+        return None
+
+    def _rewind(self):
+        self.loops += 1
+        self._fh.seek(0)
+        self._splitter = FrameSplitter()
+        self._pending.clear()
+        # The pacing origin restarts with the file. Carrying the old one
+        # across would make every frame of the second pass due in the
+        # past, and replay it as fast as the socket would take it.
+        self._t0 = time.monotonic()
+        self._elapsed_us = 0.0
+        self._prev_ts = None
+        # `_prev_seq` deliberately survives the wrap. The sequence
+        # numbers jump backwards at the seam and that is a real
+        # discontinuity - the two passes were never continuous - so it
+        # is counted here and drawn as a break by the front end, rather
+        # than smoothed over because this end knows it was a loop.
+        self._console.append(f"looped: pass {self.loops + 1}\n")
+
+    def _schedule(self, hdr):
+        """When this frame is due, on the clock the device stamped it with.
+
+        Pacing off `timestamp_us` rather than off the nominal rate
+        reproduces the run's timing including its irregularities, which
+        is the part worth seeing: a stall on the bench was a stall, and
+        smoothing it to the nominal rate here would replay a run that
+        never happened.
+        """
+        ts = hdr["timestamp_us"]
+        if self._prev_ts is None:
+            d_us = 0.0
+        else:
+            d_us = float((ts - self._prev_ts) & 0xFFFFFFFF)  # uint32 wraps
+            if d_us <= 0.0:
+                d_us = self._nominal_us(hdr)
+            elif d_us > REPLAY_MAX_GAP_S * 1e6:
+                self.gaps_shortened += 1
+                d_us = REPLAY_MAX_GAP_S * 1e6
+        self._prev_ts = ts
+        self._elapsed_us += d_us
+        return self._t0 + (self._elapsed_us / 1e6) / self.speed
+
+    @staticmethod
+    def _nominal_us(hdr):
+        """One frame's duration from the header's own rate.
+
+        The fallback for a stream whose timestamps do not advance.
+        `sample_rate_hz` is per channel and the frame holds
+        `FRAME_SAMPLES` of them interleaved, so the channel count comes
+        out of the mask rather than being assumed to be two.
+        """
+        n_ch = max(1, bin(hdr["channel_mask"]).count("1"))
+        rate = hdr["sample_rate_hz"] or 200000
+        return FRAME_SAMPLES * 1e6 / float(rate * n_ch)
+
+    def _count(self, hdr):
+        if self._prev_seq is not None:
+            if ((hdr["seq"] - self._prev_seq) & 0xFFFFFFFF) != 1:
+                self.seq_gaps += 1
+        self._prev_seq = hdr["seq"]
+        self.overruns = hdr["overrun_count"]
+        self.last_rate_hz = hdr["sample_rate_hz"]
+
+    def _finish(self):
+        self._close_fh()
+        self.running = False
+        self.mode = None
+        self.at_end = True
+        self._console.append(
+            f"end of {os.path.basename(self.path)}: "
+            f"{self._replayed} frames replayed\n")
+
+    # -- reporting ---------------------------------------------------
+    def console(self):
+        with self._lock:
+            out = "".join(self._console)
+            self._console = []
+            return out
+
+    def counters(self):
+        with self._lock:
+            return {"frames": self._replayed, "awg_bytes": 0,
+                    "underruns": 0,
+                    # The device's own running count, carried in the
+                    # frames. What the board reported at capture time,
+                    # not something recomputed now.
+                    "overruns": self.overruns,
+                    "seq_gaps": self.seq_gaps,
+                    "frames_total": self.frames_total,
+                    "loops": self.loops,
+                    "at_end": self.at_end,
+                    "rate_hz": self.last_rate_hz,
+                    "gaps_shortened": self.gaps_shortened,
+                    "recorded_dropped": (self.sidecar or {}).get("dropped")}
+
+    def stats(self):
+        with self._lock:
+            return {"frames": self._replayed,
+                    "frames_total": self.frames_total,
+                    "loops": self.loops, "at_end": self.at_end,
+                    "awg_bytes": 0}
 
 class BoardDevice(Device):
     """The real board, driven through `host/measure.py`.

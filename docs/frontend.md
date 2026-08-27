@@ -81,8 +81,9 @@ python -m venv .venv-gui
 ```
 
 ```sh
-.venv-gui/bin/python -m gui --spawn-fake   # no hardware at all
-.venv-gui/bin/python -m gui                # a daemon already running
+.venv-gui/bin/python -m gui --spawn-fake        # no hardware at all
+.venv-gui/bin/python -m gui --spawn-file cap.due  # replay a recording
+.venv-gui/bin/python -m gui                     # a daemon already running
 ```
 
 On Windows the paths are `.venv-gui/Scripts/python.exe`, and the
@@ -373,9 +374,52 @@ disk copes.
 
 ### Playing a recording back
 
-The GUI should open a file as a source in place of the live daemon -
-same parser, same views, scrubbable. Without it, logging produces data
-nothing in this project can look at.
+**Built, 2026-08-27.** `python3 -m daemon --file cap.due` serves a
+recording in place of a board, and the front end connects to it exactly
+as it connects to one:
+
+```sh
+python3 -m daemon --file cap.due                 # a source, not a mode
+.venv-gui/bin/python -m gui --spawn-file cap.due # both, in one command
+```
+
+**The daemon opens the file, not the GUI**, and that is the same
+decision as "the daemon writes the file, not the GUI" two sections up.
+The daemon owns the device; a front end that could swap the source
+underneath a running recorder would be exactly the confusion the split
+exists to prevent. Replaying a capture is therefore a daemon you start,
+the way a board is.
+
+The property that makes it worth having: **the frames the client
+receives are the bytes in the file**, headers and CRCs included, so the
+frame splitter, the trigger, the measurements, the FFT, the cursors and
+the CSV export all run over a recording through the code that runs over
+the board. Not a second decoding that agrees with the first until it
+does not. `tests/test_daemon_api.py` asserts the byte identity directly.
+
+What a replay will not do is pass for a board:
+
+- `describe()` says `kind="file"`, and carries the sidecar's own device
+  block beside it as `recorded`. Two fields, because conflating them is
+  how somebody else's capture gets read as a live bench of that track -
+  and **this project has two benches, wired differently**.
+- The rates in `status` are the recording's, never the ones the caller
+  asked to start at. A file cannot be asked to convert at another rate,
+  and answering as though it could would put a number in a reply that
+  nothing measured.
+- `write_awg` refuses. A recording has no generator, and the front end
+  greys the generator panel and the rate preset out rather than
+  offering controls the source cannot answer.
+- Frames are paced from the frames' own `timestamp_us`, so a stall on
+  the bench replays as a stall. A gap longer than `REPLAY_MAX_GAP_S` is
+  truncated and *counted* as `gaps_shortened`, because a front end that
+  looks hung is worse than a distortion that is reported.
+- `--replay-loop` starts the file again at its end. The sequence
+  numbers jump backwards at the seam, the daemon counts a gap there and
+  the display draws a break: the two passes were never continuous.
+
+Still not built: scrubbing. A replay runs forwards from the start, and
+`--replay-speed` is the only handle on it.
 
 ## Rules the UI must obey
 
@@ -423,8 +467,8 @@ Phase 3 analog front end exists. A warning label is not sufficient.
 - **G3** - **panel done**: shape, frequency, amplitude and offset in
   volts, mapped through the measured DAC span, with a refusal instead of
   a clamp. Arbitrary upload from file or drawn by hand is still open.
-- **G4** - **dual channel, XY, cursors, recording and CSV export
-  done**; file *playback* and calibration open.
+- **G4** - **dual channel, XY, cursors, recording, file playback and
+  CSV export done**; calibration open, and scrubbing a replay with it.
 
 G0 carries the real risk, and it is the Windows serial backend rather
 than anything about the GUI. G1 to G4 are ordinary UI work.
@@ -562,7 +606,11 @@ work, because that is the number the user is actually after.
 - **Recording is the daemon's.** This section already said "the daemon
   writes the file, not the GUI"; the button only asks. Frames go to disk
   exactly as the device sent them, header and CRC included, so a
-  recording replays through the same parser that read it live.
+  recording replays through the same parser that read it live - which
+  it now does: `--file` is the reader, and "Playing a recording back"
+  above is what it is for. Until 2026-08-27 that sentence described a
+  property nothing exercised, and the Record button wrote a format with
+  no reader anywhere in the repository.
 - **Export is the sweep on screen and says so in its header**, along
   with the rate, the source channel, whether it was triggered, and the
   ADVREF its volts were scaled by. That last one is not decoration:

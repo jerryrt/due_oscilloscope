@@ -17,6 +17,7 @@ reports what it cost to draw.
 import os
 import struct
 import sys
+import time
 import zlib
 
 import pytest
@@ -1133,3 +1134,97 @@ def test_the_window_survives_the_daemon_going_away(win, daemon):
     win.poll_status()
     assert win.client is None
     assert "stopped answering" in win.statusBar().currentMessage()
+
+# -- replaying a recording --------------------------------------------
+#
+# The front end does not open the file: the daemon does, and this window
+# connects to it like any other source. What is worth asserting here is
+# that it says which source it is looking at, and that it stops offering
+# the controls a recording cannot answer.
+
+
+@pytest.fixture
+def recording_path(tmp_path):
+    """Six frames in the device's own format, with the sidecar the
+    recorder writes beside them."""
+    import json
+    path = str(tmp_path / "bench2.due")
+    with open(path, "wb") as f:
+        for seq in range(6):
+            f.write(make_frame(seq, {7: [2048] * 1016, 6: [2048] * 1016},
+                               rate=100000))
+    with open(path + ".json", "w") as f:
+        json.dump({"device": {"track": "b", "kind": "board"},
+                   "mode": "capture", "frame_bytes": devmod.FRAME_BYTES,
+                   "rates": {"adc_hz": 100000, "channels": 2},
+                   "frames": 6, "dropped": 0, "error": None}, f)
+    return path
+
+
+@pytest.fixture
+def replay_daemon(recording_path):
+    srv = servermod.Server(devmod.FileDevice(recording_path, pace=False),
+                           host="127.0.0.1", port=0).start()
+    yield srv
+    srv.stop()
+
+
+@pytest.fixture
+def replay_win(qapp, replay_daemon):
+    w = MainWindow(host="127.0.0.1", port=replay_daemon.port)
+    yield w
+    w.disconnect_from_daemon()
+    w.close()
+
+
+def test_the_panel_names_the_recording_it_is_looking_at(replay_win,
+                                                        recording_path):
+    """The link row has always said which host and port. What it never
+    said is what is on the other end, which mattered less when the only
+    answers were this board and the synthetic device."""
+    replay_win.connect_to_daemon()
+    src = replay_win.health._labels["source"].text()
+    assert os.path.basename(recording_path) in src
+    assert "6 frames" in src
+    assert "replaying" in replay_win.windowTitle()
+
+
+def test_a_replay_offers_no_generator_and_no_rate(replay_win):
+    """Greyed out because the source cannot answer them, not because
+    the features are gone: a recording has no DAC to drive, and its
+    samples are at the rate they were taken at."""
+    replay_win.connect_to_daemon()
+    assert replay_win.replaying is True
+    assert not replay_win.awg.isEnabled()
+    assert not replay_win.preset.isEnabled()
+
+
+def test_a_board_still_offers_both(win):
+    """The negative, so that the disabling above cannot quietly become
+    unconditional."""
+    win.connect_to_daemon()
+    assert win.replaying is False
+    assert win.awg.isEnabled() and win.preset.isEnabled()
+
+
+def test_disconnecting_from_a_replay_puts_the_controls_back(replay_win):
+    replay_win.connect_to_daemon()
+    replay_win.disconnect_from_daemon()
+    assert replay_win.replaying is False
+    assert replay_win.awg.isEnabled() and replay_win.preset.isEnabled()
+    assert replay_win.health._labels["source"].text() == "-"
+    assert replay_win.windowTitle() == "due_oscilloscope"
+
+
+def test_the_trace_follows_the_rate_in_the_recording(replay_win):
+    """The point of replaying through the daemon rather than loading a
+    file here: the rate comes out of the frame headers, exactly as it
+    does live, so the time axis is the recording's and not this
+    window's default."""
+    replay_win.connect_to_daemon()
+    replay_win.start_capture()
+    deadline = time.time() + 10.0
+    while replay_win.client.frames_received < 3 and time.time() < deadline:
+        time.sleep(0.02)
+    replay_win.tick()
+    assert replay_win.rate_hz == 100000
