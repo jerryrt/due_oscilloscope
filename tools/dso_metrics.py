@@ -44,6 +44,7 @@ import time
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(HERE, "host"))
 
+import calibration                                            # noqa: E402
 import measure                                                # noqa: E402
 import trace                                                  # noqa: E402
 import scope as dso                                           # noqa: E402
@@ -66,26 +67,20 @@ DEGENERATE_AT_2 = {
     "triangle": "collapses to a full-amplitude square: codes 0 and 4095",
 }
 
-# The DAC's span, from tests/baseline.json, which is where this project
-# keeps measured constants.
+# The DAC's span, from calibration.json, which is where this project
+# keeps measured constants about the hardware.
 #
 # It used to be 0.52/2.82 V here, from a bench note in dso_sweep.py,
-# while baseline.json said 0.546/2.760 and the scope said something else
-# again - three values for one constant, and every "codes" figure this
-# file printed was scaled by the middle one and about 4% out. Reading
-# the one file that is under review kills the third copy; `transfer` is
-# what puts the number in it.
+# while the recorded pair said 0.546/2.760 and the scope said something
+# else again - three values for one constant, and every "codes" figure
+# this file printed was scaled by the middle one and about 4% out.
+# Reading the one recorded home kills the third copy; `transfer` is what
+# puts the number in it. `require()` raises rather than falling back: a
+# tool that is about to measure something must not print figures scaled
+# by a guess.
 def _load_span():
-    import json
-    path = os.path.join(HERE, "tests", "baseline.json")
-    try:
-        with open(path) as f:
-            mv = json.load(f)["dac_mv"]
-        return mv["span_lo"] / 1000.0, mv["span_hi"] / 1000.0
-    except Exception as e:                                # pragma: no cover
-        raise SystemExit(
-            f"cannot read the DAC span from {path}: {e}. It is a measured "
-            f"constant and this file will not guess one.")
+    mv = calibration.require()["dac_mv"]
+    return mv["span_lo"] / 1000.0, mv["span_hi"] / 1000.0
 
 
 DAC_LO_V, DAC_HI_V = _load_span()
@@ -104,7 +99,7 @@ def verify_probe(board, inst, ch, preset):
     and x1 on different days.
 
     So the one handle there is: a full-scale square is a known 2.19 V by
-    tests/baseline.json, and an instrument that disagrees by a factor of
+    calibration.json, and an instrument that disagrees by a factor of
     ten is not measuring what it thinks. Subtler errors this cannot see,
     and it does not pretend to.
     """
@@ -134,7 +129,7 @@ def verify_probe(board, inst, ch, preset):
     if not 0.7 <= ratio <= 1.4:
         raise SystemExit(
             f"CH{ch} read {vpp:.3f} V for a full-scale square that "
-            f"tests/baseline.json says is {DAC_SPAN_V:.3f} V - a factor "
+            f"calibration.json says is {DAC_SPAN_V:.3f} V - a factor "
             f"of {ratio:.2f}. The scope is told the probe is x{told:g}; "
             f"check what is fitted. Every volt this tool prints is wrong "
             f"by that factor until it agrees.")
@@ -835,7 +830,7 @@ def cmd_transfer(board, inst, args):
 
     The measurement this project could not make. Everything it knows
     about its own converters came from one of them: `dac_mv` in
-    tests/baseline.json is the DAC's span *as the ADC reports it*, with
+    calibration.json holds the DAC's span as the SCOPE reports it, with
     a 3300 mV reference assumed, and there was no third party to ask.
     Now there is one, and it settles two things at once - the DAC's real
     span, and the ADC's gain and offset against something that is not
@@ -917,7 +912,7 @@ def cmd_transfer(board, inst, args):
           f"would give {ADC_FULL_SCALE/ADC_VREF_MV:.4f}")
     print(f"  gain error {(g_adc/(ADC_FULL_SCALE/ADC_VREF_MV)-1)*100:+.2f}%, "
           f"offset {o_adc:+.1f} codes")
-    print(f"\ntests/baseline.json currently records dac_mv "
+    print(f"\ncalibration.json currently records dac_mv "
           f"span_lo/span_hi through the ADC.\nThis is the same span "
           f"measured with the ADC taken out of the path.")
     return {"span_lo_mv": lo, "span_hi_mv": hi,
@@ -932,6 +927,55 @@ def cmd_transfer(board, inst, args):
 # ------------------------------------------------------------------
 # settle: how long until the tail is inside one code
 # ------------------------------------------------------------------
+
+#: Distinct values the on-screen set must have before it is called a
+#: signal. Deliberately far below what a real tail shows (hundreds) and
+#: far above what a clipped level can show (one, plus interpolation
+#: strays), so it separates the two without being tuned against either.
+DISTINCT_FLOOR = 16
+
+
+def _rails(v, share=0.005):
+    """The instrument's clipping levels, by weight rather than by extreme.
+
+    A rail is a level the trace *rests* on, so it holds a large share of
+    a long record; a stray from interpolation or a single-sample glitch
+    holds one point. Taking the extreme values that carry at least
+    `share` of the record ignores the strays and finds the levels, which
+    raw min/max does not - and min/max being the wrong statistic for a
+    long record is a mistake this project has now made twice.
+
+    Falls back to the raw extremes when nothing is common enough to be a
+    rail, which is what a record with no clipping in it looks like: the
+    filter that uses these then keeps essentially everything, which is
+    the right answer for a trace that is entirely on screen.
+    """
+    from collections import Counter
+    counts = Counter(v)
+    floor = max(2, int(len(v) * share))
+    common = [x for x, n in counts.items() if n >= floor]
+    if not common:
+        return min(v), max(v)
+    return min(common), max(common)
+
+
+def _residual_rms_codes(v, level):
+    """How far the trace moves about a level it is supposed to be
+    holding, in DAC codes.
+
+    The number that decides whether any of the band columns mean
+    anything. `settle` asks when the trace enters a band of 0.5 to 10
+    codes; if the residual is larger than the band, the answer is a
+    property of the noise and not of the converter, and it changes every
+    run. Measured, not assumed - CLAUDE.md records ~20 mV RMS on this
+    pin with the DAC idle, and averaging is supposed to take that down,
+    so what matters is what is left after it.
+    """
+    if not v:
+        return 0.0
+    return math.sqrt(sum((x - level) ** 2 for x in v)
+                     / len(v)) / V_PER_CODE
+
 
 def cmd_settle(board, inst, args):
     """Settling time to a band, measured in DAC codes rather than percent.
@@ -981,8 +1025,19 @@ def cmd_settle(board, inst, args):
     v, _ = trace.trim_invalid_head(v, dt, max_spread=DAC_SPAN_V * 1.15,
                                    window_s=2.0 / args.trigger)
     lo, hi = inst.extent(v)
-    tail = v[int(len(v) * 0.6):]
-    final = sorted(tail)[len(tail) // 2]
+    # The HIGH level, chosen because it is the one this measurement is
+    # about: the trigger is a rising edge through mid scale, so the
+    # level being settled onto is the one above it.
+    #
+    # It used to be the median of the coarse record's last 40%, which is
+    # whichever level that part of the record happened to hold. A 655 us
+    # record inside a 1.28 ms half period picks the low one about once
+    # in seven, and Phase 0 caught it twice at exactly that rate - once
+    # before the refinement below existed and once after, because
+    # refining faithfully refines the wrong level. `extent` reads about
+    # 50 mV high here, since it is a percentile of a record containing
+    # the overshoot, and the refinement absorbs that easily.
+    final = hi
     edges = trace.find_edges(v, dt, min_step=(hi - lo) * 0.3)
     if not edges:
         raise SystemExit("no step found in the coarse capture")
@@ -991,8 +1046,62 @@ def cmd_settle(board, inst, args):
           f"{len(edges)} edge(s)")
 
     # Fine: the same edge with the vertical on the tail.
-    inst.channel_scale(args.channel, args.vdiv or 0.005)
-    inst.channel_offset(args.channel, -final)
+    #
+    # And the offset is CHECKED, not merely sent. `_apply` already
+    # returns what the instrument holds - "quantised, or clamped" is in
+    # its own docstring - and the first version of this threw that
+    # return value away. The DS1102E clamps the vertical offset at
+    # +-2 V once the gain is 250 mV/div or finer, so a level that
+    # settles at 2.8 V cannot be brought on screen at 5 mV/div at all:
+    # the request goes out as -2.814 and the instrument holds -2.000,
+    # 163 divisions away, and every sample in the record is a rail.
+    #
+    # That is not a hypothetical. It is where the 118 us "settling
+    # tail" came from, and the readback that disproves it was being
+    # discarded one line above the analysis that believed it.
+    # Find the level at a gain where it CANNOT be off screen, then step
+    # down to it. At 5 mV/div the whole screen is 40 mV, so the level
+    # has to be known to +-20 mV before the fine capture can see it at
+    # all - and the coarse estimate is not that good. It is a percentile
+    # of a record that includes the overshoot, and worse, `final` is the
+    # median of the coarse record's tail: a 655 us record inside a
+    # 1.28 ms half period sits on whichever level it happens to sit on,
+    # so it picked the square's LOW level in one run of seven. Phase 0
+    # found that - `final_v` had a 560 mV spread over seven runs with
+    # nothing changed, on a generator that repeated the same square.
+    for mid in (0.05, 0.02):
+        inst.channel_scale(args.channel, mid)
+        inst.channel_offset(args.channel, -final)
+        inst.averaging(args.average)
+        time.sleep(0.3 + args.average * 0.006)
+        vm, _ = inst.capture(args.channel)
+        inst.averaging(None)
+        if not vm:
+            raise SystemExit("no refinement capture")
+        rl, rh = _rails(vm)
+        qm = mid * 8 / 256
+        onm = [x for x in vm if rl + 1.5 * qm < x < rh - 1.5 * qm]
+        if len(onm) < 200:
+            raise SystemExit(
+                f"the level is not on screen at {mid*1000:g} mV/div "
+                f"({len(onm)} of {len(vm):,} samples). The coarse pass "
+                f"put it at {final*1000:.0f} mV.")
+        final = sorted(onm)[len(onm) // 2]
+    print(f"        level refined to {final*1000:.2f} mV")
+
+    vdiv = args.vdiv or 0.005
+    inst.channel_scale(args.channel, vdiv)
+    want = -final
+    got = inst.channel_offset(args.channel, want)
+    if abs(got - want) > vdiv / 2.0:
+        raise SystemExit(
+            f"the instrument clamped the vertical offset: asked for "
+            f"{want*1000:.0f} mV, holding {got*1000:.0f} mV. The level "
+            f"settles at {final*1000:.0f} mV and this scope's offset "
+            f"range at {vdiv*1000:g} mV/div does not reach it, so the "
+            f"whole record would be a rail. AC-couple the channel or "
+            f"lower the generator amplitude with --amp so the settled "
+            f"level is inside the offset range.")
     inst.averaging(args.average)
     time.sleep(0.4 + args.average * 0.006)
     v2, dt2 = inst.capture(args.channel)
@@ -1000,9 +1109,9 @@ def cmd_settle(board, inst, args):
     board.stop(); board.drain_console(0.2)
     if not v2:
         raise SystemExit("no fine capture")
-    q = (args.vdiv or 0.005) * 8 / 256
+    q = vdiv * 8 / 256
     print(f"fine:   {len(v2):,} samples at {dt2*1e9:.0f} ns, "
-          f"{(args.vdiv or 0.005)*1000:g} mV/div, one screen level "
+          f"{vdiv*1000:g} mV/div, one screen level "
           f"{q/V_PER_CODE:.2f} codes")
 
     # ONLY the samples that are on screen.
@@ -1015,21 +1124,45 @@ def cmd_settle(board, inst, args):
     # band because a rail is outside every band, and in a different
     # place each run because the trigger sits at a different point in
     # the record. None of that was the tail.
-    rail_lo, rail_hi = min(v2), max(v2)
+    #
+    # The rails are found by WEIGHT, not by min and max. Raw extremes
+    # are the wrong statistic for a 65,526-point record and this
+    # project has now been bitten by that twice in opposite directions:
+    # one railed sample read a 2.19 V pin as 3.640 V peak to peak, and
+    # here a single stray at 2025.0 mV sat above a rail resting at
+    # 2022.0, so the test let 53,745 rail samples through as signal and
+    # the version of this filter that was written to kill the artifact
+    # reported it anyway.
+    rail_lo, rail_hi = _rails(v2)
     on = [i for i, x in enumerate(v2)
           if rail_lo + 1.5 * q < x < rail_hi - 1.5 * q]
     if len(on) < 200:
         raise SystemExit(
             f"only {len(on)} of {len(v2):,} samples are on screen at "
-            f"{(args.vdiv or 0.005)*1000:g} mV/div - the record is almost "
+            f"{vdiv*1000:g} mV/div - the record is almost "
             f"all rail. Widen --vdiv or narrow --window.")
     start, stop = on[0], on[-1]
     v2 = v2[start:stop + 1]
     start = 0
+    distinct = len(set(v2))
+    # A backstop that does not depend on finding the rails at all. A
+    # settling tail digitised at 0.29 codes per screen level takes
+    # hundreds of distinct values; a clipped level takes one, and the
+    # count of samples cannot tell them apart because a rail has plenty
+    # of those. Had this been here first, the artifact could not have
+    # survived any rail estimator.
+    if distinct < DISTINCT_FLOOR:
+        raise SystemExit(
+            f"{len(v2):,} samples on screen but only {distinct} distinct "
+            f"values - that is a clipped level, not a tail. A settling "
+            f"tail at {q/V_PER_CODE:.2f} codes per screen level takes "
+            f"hundreds.")
     t2 = v2[int(len(v2) * 0.7):]
     f2 = sorted(t2)[len(t2) // 2]
+    resid = _residual_rms_codes(v2, f2)
     print(f"        {len(v2):,} samples on screen "
-          f"({len(v2)*dt2*1e6:.1f} us of settled record)")
+          f"({len(v2)*dt2*1e6:.1f} us of settled record), "
+          f"{distinct} distinct values")
     # Not just the LAST excursion - all of them, and how they are
     # spaced. The first version reported only the last time the trace
     # left each band and every band answered 122.59 us, which is not
@@ -1037,6 +1170,15 @@ def cmd_settle(board, inst, args):
     # loose one. One time for every band means one discrete event, and
     # the question then is whether there are more of them and how far
     # apart, which a single number cannot say.
+    # What the pin is doing while it holds the level, in the same units
+    # as the bands below - because a band smaller than this is not a
+    # band the instrument can time an entry into. Reported first, on
+    # purpose: the excursion table underneath is meaningless without it,
+    # and the first version printed only the table.
+    print(f"\n        residual about the level: {resid:.2f} codes rms "
+          f"({resid*V_PER_CODE*1000:.2f} mV) after {args.average}x "
+          f"averaging")
+
     print(f"\n{'band':>8s} {'excursions':>11s} {'first':>10s} "
           f"{'last':>10s} {'median gap':>12s}")
     print("-" * 56)
@@ -1064,7 +1206,24 @@ def cmd_settle(board, inst, args):
               f"{('-' if first is None else format(first*1e6, '9.2f') + 'u'):>10s} "
               f"{('-' if last is None else format(last*1e6, '9.2f') + 'u'):>10s} "
               f"{('-' if med is None else format(med*1e6, '10.2f') + 'u'):>12s}")
+    below = [r["codes"] for r in rows if r["codes"] < resid]
+    if below:
+        print(f"\nBands {min(below):g}-{max(below):g} codes are BELOW the "
+              f"{resid:.2f}-code residual on this pin.\nA time to enter a "
+              f"band smaller than the noise is the time the noise happened "
+              f"to\nfall inside it, and it will not repeat: Phase 0 "
+              f"measured 82% run-to-run\nspread on these columns. "
+              f"docs/measurement-suite.md.")
+
+    # And the conclusion below is gated on the band being ABOVE the
+    # residual. Left ungated it fires on noise - a trace crossing a
+    # 1-code band 3,105 times because the pin moves 20 codes is not
+    # "something disturbing this pin repeatedly", it is the pin. A
+    # confident wrong positive is the failure mode this whole file has
+    # been corrected for twice today.
     one = next((r for r in rows if r["codes"] == 1.0), None)
+    if one and one["codes"] < resid:
+        one = None
     if one and one["n"] > 2 and one["gap_s"]:
         print(f"\n{one['n']} excursions past one code, spaced "
               f"{one['gap_s']*1e6:.2f} us apart on the median.")
@@ -1080,7 +1239,17 @@ def cmd_settle(board, inst, args):
             if 0.9 <= r <= 1.1:
                 print(f"  {one['gap_s']*1e6:.2f} us matches {name} "
                       f"({period*1e6:.2f} us) to {abs(r-1)*100:.1f}%")
-    return {"final_v": final, "bands": rows, "quantum_v": q}
+    # The capture's own resolution travels with the numbers taken from
+    # it. Every time in `bands` is quantised by dt and every level by
+    # one screen level, so a repeatability run can floor its tolerances
+    # on the ruler this record was actually read with rather than on a
+    # constant tuned against some other capture length. That is the trap
+    # host/trace.py was rebuilt to close: a threshold calibrated against
+    # a 600-point record found 17,580 edges in a clean sine at 65,526.
+    return {"final_v": final, "fine_final_v": f2, "bands": rows,
+            "quantum_v": q, "dt_s": dt2, "on_screen_s": len(v2) * dt2,
+            "on_screen_n": len(v2), "on_screen_distinct": distinct,
+            "residual_codes": resid, "step_v": hi - lo}
 
 
 # ------------------------------------------------------------------

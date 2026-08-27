@@ -257,6 +257,18 @@ Check here before reasoning from general Arduino knowledge.
   **Discover the level, never assume it** -
   `scope.Oscilloscope.ext_trigger_autoset()`. `None` means no signal is
   arriving, which is a cable fault.
+- **A third silent DS1102E trap: the vertical offset clamps at ±2 V**
+  once the gain is 250 mV/div or finer. Ask for -2.814 V at 5 mV/div and
+  the instrument holds -2.000, 163 divisions out, and hands back a
+  record that is entirely rail while every command succeeds. It cost a
+  118 µs "settling tail" that was reproducible to the sample across
+  three runs, because a rail is reproducible and the trigger sits at a
+  fixed position in the record. `scope._apply()` returns what the
+  instrument actually holds - "quantised, or clamped" is in its own
+  docstring - so **check the readback against the request**, and read
+  min/max off a long record with suspicion: one stray sample above a
+  rail defeated the filter written to catch exactly this.
+
 - **Fold to phase before calling anything jitter.** "The crossing
   nearest screen centre" flips between adjacent cycles whenever the
   trigger's phase differs from the crossing's, and reports ~100% of a

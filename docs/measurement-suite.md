@@ -146,6 +146,111 @@ prints the ratio per key: near 1 means that key does not care about the
 binary, well above 1 means it does. That makes the axis choice
 reviewable instead of asserted.
 
+### Its first subject, and what happened
+
+Phase 0 was pointed at the 118 µs settling tail, and **the tail did not
+survive contact with it.** The figure is retracted; see `settle` in
+`tools/dso_metrics.py` and the commit that withdrew it.
+
+The mechanism is worth keeping because it will happen again. The
+DS1102E clamps its vertical offset at ±2 V once the gain is 250 mV/div
+or finer. `settle` asked for −2.814 V at 5 mV/div, the instrument held
+−2.000 V, and every sample in the record was a rail - 8 distinct values
+in 65,526 samples. The "tail" was the low rail's 11,775 samples, which
+is 117.75 µs at 10 ns, and it was "reproducible to the sample across
+three runs" because the trigger sits at a fixed position in the record.
+Everything that made it mysterious follows from that: it did not scale
+with overdrive, it did not scale with the step, and every band from 10
+codes to 0.5 answered identically, because a rail is outside all of
+them.
+
+Two things had already been built to catch exactly this and both were
+defeated:
+
+- the on-screen filter, by taking rails from raw `min`/`max` - one stray
+  sample at 2025.0 mV sat above a rail resting at 2022.0, so 53,745 rail
+  samples passed as signal
+- `_apply()`, which returns what the instrument actually holds and says
+  "quantised, or clamped" in its own docstring - the return value was
+  discarded one line above the analysis that trusted it
+
+`settle` now checks the offset readback against the request, finds rails
+by weight rather than by extreme, and refuses a record with fewer than
+16 distinct values on screen. Any one of the three kills the artifact.
+
+### And then Phase 0 was pointed at the corrected metric
+
+Which is the point of having it: a metric that no longer reports an
+artifact is not thereby a metric that reports anything. Fourteen runs,
+seven in place and seven across a reflash, `records/phase0-settle.jsonl`.
+
+**The reflash axis bought nothing.** Every key's spread ratio came in at
+2.0 or below and most below 1.0 - the in-place spread was the larger one
+on nearly every column. So `settle`'s tolerances, if it ever earns any,
+come from the cheap axis. That is the second metric to say so, after OUT
+and duplex, and it is why the axis is a result rather than a rule.
+
+**The metric was not repeatable at all**: 82% run-to-run spread on the
+band columns and on the length of the analysed record, with nothing
+changed between runs. Two causes, both found by looking at the runs the
+harness had written down rather than by re-measuring.
+
+*The level was a coin flip.* `final` was the median of the coarse
+record's last 40%, and a 655 µs record inside a 1.28 ms half period sits
+on whichever level it sits on. One run in seven picked the square's
+*low* level, and everything downstream then measured a different thing -
+`final_v` spread 560 mV over seven runs of an unchanged generator.
+
+*The level also had to be right to ±20 mV before it could be seen at
+all.* The whole screen is 40 mV at 5 mV/div, and the coarse estimate is
+a percentile of a record that includes the overshoot. `settle` now takes
+the high level deliberately - it is the one the rising-edge trigger
+settles onto - and finds it at a gain where it cannot be off screen
+before stepping down.
+
+Both fixes were checked the way they were found, with another seven
+runs, and the order they were made in is worth keeping because the first
+one alone did not work:
+
+| method | `final_v` spread | record-length spread |
+|---|---|---|
+| as found | *(the record was a rail)* | 82% |
+| level refined, still chosen by the coarse median | 560 mV - one flip in seven | 82% |
+| level chosen deliberately, then refined | **0.8 mV** | **12%** |
+
+Refining a level does nothing about choosing the wrong one, and n=7
+caught the flip at the same one-in-seven rate on both sides of the first
+fix. `records/phase0-settle-levelrefine.jsonl` is that middle row.
+
+**What no fix reaches is the band.** The residual about the level is
+**20.4 codes rms after 64× averaging**, and every band `settle` offers -
+0.5 to 10 codes - is below it. A time to enter a band smaller than the
+noise is the time the noise happened to fall inside it, which is what
+those columns were reporting. The tool now prints the residual above the
+table and refuses to draw its "something is disturbing this pin"
+conclusion for a band underneath it.
+
+So the honest state of Tier A's settling row: **this bench cannot time a
+settling tail to one code on this pin.** The instrument that could is
+the ADC - averaged, it out-resolves the scope by a wide margin, which is
+Tier 3 of the calibration argument below and is not built.
+
+**One thing worth chasing, written down as a hypothesis and not a
+figure.** In a single capture, windowed by distance from the edge, the
+mean offset from the settled level goes −4.3 → −3.9 → −1.0 codes over
+0-2, 2-5 and 5-20 µs, with the rms falling 6.6 → 6.1 → 4.4. That is the
+shape a real tail would have. It is also n=1, with windows anchored to
+the longest on-screen run rather than to the edge itself, on a bench
+whose residual is four times the effect. It is a reason to build the
+measurement properly, not a result.
+
+**And this is what Phase 0 is for.** The tail was the only observation
+in that chase that survived a discriminating test, and it was reported
+as "reproducible to the sample across three runs" - the strongest
+possible language over three back-to-back runs on one flash in one
+thermal state. It cost one run and one look at the capture's own values
+to fall over.
+
 ## The catalogue, in three tiers
 
 The tiers are about **what a figure's provenance depends on**, which is
@@ -161,7 +266,7 @@ first in this project that do not inherit the 0-series debt or the
 | metric | today | state |
 |---|---|---|
 | full-scale step: rise, slew, overshoot | 789-938 ns, 1.89-2.11 V/us, 0.96-1.80% | measured, unrecorded |
-| settling to 1% | window-limited at two of three timebases | method needs a longer record |
+| settling to a code band | **retracted** - the record was a rail | blocked below, and the method now refuses rather than reports |
 | TAG interleave skew | -0.967 trigger periods (predicts -1.000) | measured, unrecorded |
 | frequency ceiling, sync on | ~357 kHz square | measured, unrecorded |
 | frequency ceiling, solo | ~750 kHz toggling | measured, unrecorded |
@@ -374,6 +479,17 @@ expensive kind of error here.
   calibration and to a probe whose division ratio is asserted, not
   measured. Every span and offset figure is "as this instrument sees
   it". A calibrator would fix it; nothing here does.
+- **Settling, at one code, on a level above 2 V.** The DS1102E clamps
+  its vertical offset at ±2 V once the gain is 250 mV/div or finer, so
+  a level that settles at 2.8 V cannot be brought on screen at 5 mV/div
+  at all - and the instrument says so only if the readback is checked,
+  which is how it produced a 118 µs "tail" made entirely of rail. The
+  two ways round it are a smaller amplitude, which works and is what
+  `settle --amp 64` does, and AC coupling, which **is not free**: its
+  own highpass droops over the same window as the thing being measured,
+  by an amount nobody here has measured. Measure the droop before
+  trusting a number taken through it.
+
 - **Anything about a native Linux host.** Tier 1, deferred, still no
   board on a Linux machine.
 - **Whether the 375 kHz pin is the DACC or the PDC.** The output stops

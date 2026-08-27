@@ -50,3 +50,8 @@ toolchains.local.json
 # Calibration output. Written by --calibrate for a human to promote
 # into baseline.json, never to be committed as it is.
 tests/baseline.measured.json
+
+# Phase 0 summaries. Derived from the .jsonl records beside them by
+# `tools/phase0.py --report`, and a derived file in the tree is a second
+# home for a number that already has one.
+records/*.summary.json
