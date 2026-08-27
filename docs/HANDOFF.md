@@ -139,9 +139,31 @@ enumerates and opens.
 | Track A | **290 passed, 25 skipped, 1 xfailed, 0 failed** (2026-08-27, all shared-source phases). The xfail is issue #5's gate. It runs the control suite now |
 | Branches | `main` only. `wip/track-a-control-channel` landed and is gone |
 | Board | Track B, `main` |
-| Wiring | **DAC0->A0 and DAC1->A1. That is the baseline and the only thing to assume.** |
+| Wiring | **Two benches, and they differ - ask which one a figure came from.** Here: DAC0->A0, DAC1->A1. The DSO bench: DAC0->A0, DAC1->**EXT TRIG**, so A1 sees nothing there. See below |
 | Resistor rigs | **On demand only.** A2 is bare unless someone has just fitted something and said so |
 | Tag | `dead/stream-stop-race` - kept reachable, not a fix |
+
+**The wiring is no longer one fact, and that is the first thing to
+check before comparing any two analog figures.**
+
+| | DAC0 | DAC1 | A1 sees |
+|---|---|---|---|
+| this bench | A0 | A1 | the DAC1 pin |
+| the DSO bench | A0 | the scope's EXT TRIG | nothing |
+
+`docs/measurement-suite.md` records the second and names probe ratio and
+wiring among the fields that make a run void if unrecorded. This table
+used to say "DAC0->A0 and DAC1->A1, that is the baseline and the only
+thing to assume", which was true when there was one bench and is a trap
+now: **every A1-referenced result in this file was taken with DAC1->A1
+fitted**, including the layout sweep's arms, the jumper test and the
+"A1 in the same frame is the reference" rule. None of them can be
+re-run on the DSO bench without moving the wire back.
+
+It cuts the other way too. `=0J` restores DAC1 to a static level here,
+but on the DSO bench that removes the scope's trigger - which is what
+the sync exists to provide. The two benches want opposite defaults, so
+say which one a number came from rather than assuming a default.
 
 ### What to pick up, in order
 
