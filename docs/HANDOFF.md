@@ -152,11 +152,20 @@ enumerates and opens.
    protocol stall on EP0 disabled every other endpoint. Full write-up
    under "Track A's control channel: it was a string, and it is landed".
 
-   **What is left is to build the channel, not to find a bug.** Track A
-   reports `ctlver=0`: both nodes enumerate and open and
-   `ports.native_nodes()` orders them samples-first, but nothing speaks
-   `docs/control-protocol.md` over it yet. That is objective 1c's
-   remaining half, and printf stages 3-4 sit behind it.
+   **And the channel is built. Objective 1c is closed, 2026-08-27.**
+   Track A reports `ctlver=3` and answers PING, IDENTITY, COUNTERS and
+   OCCUPANCY over the native port's second CDC function. It got there by
+   *sharing* the parser rather than writing a second one: framing, CRC,
+   validation and dispatch are `lib/due_shared/src/ctl.c`, which both
+   tracks compile, and each track supplies a small `ctl_port.c`. See
+   `docs/shared-source.md`.
+
+   Two opcodes are refused there with `CTL_ERR_OPCODE`, on purpose -
+   STREAM_STATS and BENCH carry Track B's own USB stack counters, which
+   this track does not have - and so are LOAD and RATE_TRACE. That is a
+   per-track capability, not a gap: a body of zeroes would read as a
+   measurement. **printf stages 3-4 are unblocked**, since poisoning
+   `printf` no longer removes Track A's only instrument.
 2. ~~**Two contradictions from macOS.**~~ **Both answered 2026-08-26,
    later, and neither needed the jumper.** The `all-DC` disagreement is
    the *image*, not the board and not the wiring: the sweep's own image
@@ -466,12 +475,12 @@ board streaming 2.4 MB in 3 s at that moment. It now gates on the
 identity line's `ctlver`, which `CLAUDE.md` already named as the
 discriminator. `7d9d30a`.
 
-**Track A has the node, not the channel.** `ctlver=0` is honest: the
-second CDC function enumerates, both nodes open, and
-`ports.native_nodes()` orders them samples-first with no host change.
-Nothing speaks `docs/control-protocol.md` over it yet. That is the next
-piece of objective 1c, and printf stages 3-4 are behind it - but they
-are behind *implementing* it now, not behind finding a USB bug.
+**Track A had the node, not the channel - and now has both.** Closed
+2026-08-27 by sharing the parser instead of writing a second one; the
+whole story is in `docs/shared-source.md`. `ctlver` reads 3 on both
+tracks because both run the same `ctl.c`. printf stages 3-4 are
+unblocked: poisoning `printf` no longer removes this track's only
+instrument.
 
 ### What printf stages 3-4 are waiting for
 

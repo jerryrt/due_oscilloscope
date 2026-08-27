@@ -120,7 +120,7 @@ bring-up order. Do not reorder.
 | 2 | `frame_crc32_update` out of `drivers/stream.c` | both tracks link it; CRC tests pass | **done** |
 | 3 | Split `ctl.h` into `ctl_wire.h` (shared) + device API | Track B control suite unchanged | **done** |
 | 4 | Decouple `ctl.c` from `load_*` and the transport, behind accessors | Track B control suite unchanged | **done** |
-| 5 | Share `ctl.c`; Track A implements the seam; `ctlver` 0 -> 3 | `test_control.py` runs on **both** tracks | open |
+| 5 | Share `ctl.c`; Track A implements the seam; `ctlver` 0 -> 3 | `test_control.py` runs on **both** tracks | **done** |
 | 6 | Delete the hand-copies; rescope invariant 3; guard against regrowth | - | open |
 
 ## Two traps
@@ -131,8 +131,43 @@ with the same wiring gives `all-DC` null on one image and 8 codes at z
 69-148 on the next. **Re-baseline issue #5 after Phase 5, and never
 compare arm amplitudes across a phase boundary.**
 
-**One dependency is left in `ctl.c` on purpose, and Phase 5 must
-settle it.** It still includes `sam.h` for `SystemCoreClock`, because
+**Phase 5 settled it, and not the way Phase 4 guessed.** `ctl.c` no
+longer includes `sam.h` or anything else per-track, because the
+constraint turned out broader than one header: **a file inside the
+shared library cannot include a header from a track's own folder at
+all.** Measured, on moving `ctl.c` into `lib/due_shared/src`:
+`track_id.h: No such file or directory`. On Track A `acq.h`, `play.h`,
+`stream.h` and `track_id.h` all live in the sketch folder.
+
+So the split is not "protocol versus hardware", which is where this
+document started. It is **what every board does the same way versus what
+a board has to look up locally.** Framing, the CRC, header validation,
+the receive state machine, the idle timeout, dispatch and every error
+path are the same everywhere and are shared - about two thirds of the
+file. Filling a response body means reading this track's counters, and
+that is `ctl_port.c`, one function per opcode.
+
+**And two of the eight opcodes turned out not to be protocol at all.**
+`ctl_stream_stats_t` and `ctl_bench_t` carry `usb_reset`, `usb_setup`,
+`usb_stall`, `usb_configured`, `usb_devisr`, `usb_ep0isr` and
+`usb_devimr` - counters kept by Track B's *own USB stack*. Track A
+enumerates through the Arduino core and has none of them. Sharing the
+parser is what made that visible; it had been sitting inside a document
+described as a contract between the two tracks.
+
+**Hence the rule: an opcode a track does not implement is answered with
+`CTL_ERR_OPCODE`, never with a body of zeroes.** Zero is a measurement -
+"the counter is there and read nothing" - and a host cannot tell that
+from "this firmware does not count that". It covers stream stats, bench,
+the load monitor and the rate trace. `tests/test_control.py` carries the
+capability table, so a refusal is tolerated only where it is expected
+and Track B losing its stream stats still fails.
+
+**One more language fact.** `_Static_assert` is C11 and Track A is C++,
+which spells it `static_assert`. A header both tracks compile can use
+neither name directly; `ctl_wire.h` defines `CTL_STATIC_ASSERT`.
+
+**The earlier note, kept because the guess was wrong:** It still includes `sam.h` for `SystemCoreClock`, because
 both tracks are the same silicon and spell that identically - and
 `ctl_port.h` says in as many words that an accessor both tracks spell
 the same is called directly, not wrapped. What is untested is whether a

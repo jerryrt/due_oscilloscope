@@ -185,8 +185,12 @@ Check here before reasoning from general Arduino knowledge.
 - **Ask a board what it is with `v`, not with the banner.** Both tracks
   emit one identity line in one fixed format - `# id: track=B fw=0.1.0
   ctlver=2 framever=3 mck=... build=...` - and `measure.parse_identity`
-  reads it. `ctlver=0` means "this track has no control channel", which
-  is Track A today. The banner says the track only in prose and costs
+  reads it. `ctlver=0` means "this track has no control channel", and
+  **no track reports it any more**: Track A gained one on 2026-08-27 and
+  reports `ctlver=3`, the same as Track B, because both run the same
+  parser out of `lib/due_shared`. What still differs is which *opcodes*
+  a track implements - an unimplemented one answers `CTL_ERR_OPCODE`
+  rather than a body of zeroes. See `docs/shared-source.md`. The banner says the track only in prose and costs
   89 ms of blocked main loop; matching `"Track A"` in a paragraph is the
   old fallback and is kept only for images built before `v` existed. On
   a deployed board - native port only - the answer comes from the

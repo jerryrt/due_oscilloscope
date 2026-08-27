@@ -90,11 +90,41 @@ def test_encoded_header_matches_the_documented_layout():
 
 # ------------------------------------------------------------- hardware
 
+# Which tracks implement the optional opcodes.
+#
+# An opcode a track does not implement answers CTL_ERR_OPCODE rather
+# than a body of zeroes - lib/due_shared/src/ctl_port.h says why: zero
+# is a measurement, and a host cannot tell "the counter read nothing"
+# from "this firmware does not keep that counter" unless the device
+# says so.
+#
+# The table is here rather than a bare try/except so that a refusal is
+# only tolerated where it is expected. Track B losing its stream stats
+# still fails; Track A refusing them is the documented answer.
+IMPLEMENTS = {
+    # ctl_stream_stats_t and ctl_bench_t carry Track B's own USB stack
+    # counters - usb_devisr, usb_ep0isr, usb_devimr. Track A enumerates
+    # through the Arduino core and has no equivalent.
+    "stream_stats": {"b"},
+    "bench": {"b"},
+    # bsp/load.c is Track B's; it reads the Cortex-M3 cycle counter,
+    # which the Arduino core does not enable.
+    "load": {"b"},
+}
+
+
+def requires(what, track):
+    """Skip unless this track implements the opcode."""
+    if track not in IMPLEMENTS[what]:
+        pytest.skip(
+            f"track {track.upper()} answers {what} with CTL_ERR_OPCODE; "
+            f"it is a per-track capability, not universal protocol - see "
+            f"lib/due_shared/src/ctl_port.h")
+
+
 @pytest.fixture
 def link(board, track):
     """An open conversation with the command port."""
-    if track != "b":
-        pytest.skip("Track A has no control channel yet")
     # The board owns the one control link for the session, the same way
     # it owns the console port and for the same reason. A fixture that
     # opened its own used to work; it stopped the day measure.py started
@@ -129,7 +159,7 @@ def test_ping_answers_and_counts(link):
         f"device clock; suspect the main loop is blocked")
 
 
-def test_identity_reports_this_board(link, board, baseline):
+def test_identity_reports_this_board(link, board, baseline, track):
     """What a host would refuse a mismatched pairing on.
 
     Checked against the same baseline the banner is checked against,
@@ -137,7 +167,7 @@ def test_identity_reports_this_board(link, board, baseline):
     clock without one of them failing.
     """
     ident = link.identity()
-    assert ident["track"] == "b"
+    assert ident["track"] == track
     assert ident["ctl_version"] == control.VERSION
     assert ident["mck_hz"] == baseline["clock"]["mck_hz"]
     assert ident["adc_clock_hz"] == baseline["clock"]["adc_clock_hz"]
@@ -258,7 +288,7 @@ def test_a_long_payload_is_refused_and_skipped(link):
     assert link.ping()[2] >= 1
 
 
-def test_stream_stats_says_what_the_console_says(link, board):
+def test_stream_stats_says_what_the_console_says(link, board, track):
     """The opcode must carry the console's measurement, not a new one.
 
     This is the migration's whole risk: an opcode that quietly reports
@@ -271,6 +301,7 @@ def test_stream_stats_says_what_the_console_says(link, board):
     and advance measurably in the time it takes the console form to
     print twenty-four numbers - which is the reason the opcode exists.
     """
+    requires("stream_stats", track)
     board.stop()
     board.drain_console(0.3)
     board.cmd("3")
@@ -306,12 +337,13 @@ def test_stream_stats_says_what_the_console_says(link, board):
                 f"the console read: {st[op_key]} -> {kv[con_key]}")
 
 
-def test_bench_leaves_the_division_to_the_host(link):
+def test_bench_leaves_the_division_to_the_host(link, track):
     """Bytes and microseconds off the device; the rate computed here.
 
     A throughput is arithmetic over two counters, and a Cortex-M3 that
     is mid-benchmark is the worst place to do it.
     """
+    requires("bench", track)
     b = link.bench()
     for key in ("mode", "in_bytes", "out_bytes", "elapsed_us", "resets",
                 "turn", "dma_in_arms", "dma_out_arms", "loop_passes"):
@@ -329,14 +361,15 @@ def test_measurement_does_not_come_from_the_console_on_this_track(board, track):
     the board has a control channel, the suite's measurement helpers must
     have used it.
 
-    Track A is exempt because it has no control channel at all, not
-    because the console is acceptable there. That exemption is objective
-    1c and it is meant to disappear - when it does, delete the skip and
-    this test covers both tracks unchanged.
+    Track A used to be exempt because it had no control channel at all,
+    and the exemption said it was meant to disappear when objective 1c
+    landed. It landed on 2026-08-27: Track A reports ctlver=3 and runs
+    the same parser. The skip is deleted and this covers both tracks
+    unchanged, which is exactly what the old comment promised.
     """
-    if track != "b":
-        pytest.skip("Track A has no control channel yet (objective 1c)")
-    assert board.ctl() is not None, "Track B board with no control channel"
+    assert board.ctl() is not None, (
+        f"track {track.upper()} reports a control channel but the suite's "
+        f"helpers did not use it")
 
     counters = measure.play_counters(board)
     assert counters.via == "control", (

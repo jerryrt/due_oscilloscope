@@ -30,7 +30,15 @@ pytestmark = pytest.mark.smoke
 @pytest.fixture
 def link(board, track):
     if track != "b":
-        pytest.skip("Track A has no load monitor yet")
+        # Not "not yet a control channel" any more - Track A has one and
+        # reports ctlver=3. It has no load monitor: bsp/load.c reads the
+        # Cortex-M3 cycle counter, which the Arduino core does not
+        # enable. CTL_OP_LOAD is answered with CTL_ERR_OPCODE there, on
+        # purpose, because a report of zeroes would read as an idle main
+        # loop. See lib/due_shared/src/ctl_port.h.
+        pytest.skip(
+            "track %s answers CTL_OP_LOAD with CTL_ERR_OPCODE: no load "
+            "monitor on this track" % track.upper())
     # The board owns the one control link for the session, the same way
     # it owns the console port and for the same reason. A fixture that
     # opened its own used to work; it stopped the day measure.py started
