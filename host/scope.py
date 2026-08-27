@@ -629,6 +629,21 @@ class RigolDS1000E(Oscilloscope):
         "NDUTYCYCLE", "FREQ",
     ))
 
+    @staticmethod
+    def extent(v, reject=0.001):
+        """(low, high) of a trace, ignoring the extreme tails.
+
+        Raw min/max is the wrong statistic for a long record. A single
+        railed sample in 65,526 - 0.00% of the capture - read a 2.19 V
+        pin as 3.640 V peak-to-peak, a 66% error from one point, and
+        nothing about the number looked wrong. Percentiles do not care.
+        """
+        if not v:
+            return None, None
+        srt = sorted(v)
+        k = max(1, int(len(srt) * reject))
+        return srt[k - 1], srt[-k]
+
     def level(self, ch=1):
         """Mean level of the trace, in volts, from the samples.
 
@@ -655,12 +670,122 @@ class RigolDS1000E(Oscilloscope):
         return None if v >= self.NO_READING / 10 else v
 
     def waveform(self, ch=1, points="NORMAL"):
+        # RAW returns the acquisition memory - but ONLY while stopped.
+        # Asked while running it silently hands back the 600-point
+        # screen record instead, with no error and no way to tell from
+        # the data. Use capture() for measurement; this stays the
+        # screen reader it has always been.
+        if points != "NORMAL" and self.io.ask(":TRIG:STAT?") != "STOP":
+            raise ValueError(
+                f"{points} point mode needs the instrument stopped; while "
+                f"running it returns the 600-point screen record and says "
+                f"nothing. Use capture().")
         self.io.write(f":WAV:POIN:MODE {points}", settle=0.1)
         raw = parse_block(self.io.ask_raw(f":WAV:DATA? CHAN{ch}", settle=0.4))
         scal = self.channel_scale(ch)
         offs = self.channel_offset(ch)
         return [(self._CENTRE_BYTE - b) * scal / self._BYTES_PER_DIV
                 - (offs + scal * self._DIVS_TO_ZERO) for b in raw]
+
+    #: What a capture actually delivers here, measured rather than
+    #: claimed. `:ACQ:MEMD LONG` and a bare sleep can be made to hand
+    #: back 1,048,576 points, but not through this sequence, and a
+    #: capability query is not a promise about a particular instrument.
+    #: 65,526 is what arrives, and it is 109x the 600-point screen
+    #: record - which is the difference that matters.
+    TYPICAL_POINTS = 65526
+
+    def sample_rate(self, ch=1):
+        """Samples per second in the acquisition memory.
+
+        The one number that turns a memory read into time. It is not the
+        screen's - the record is longer than the screen at every
+        timebase this was checked at.
+        """
+        return float(self.io.ask(f":ACQ:SRAT? CHAN{ch}"))
+
+    def memory_depth(self, mode=None):
+        """NORMAL or LONG. LONG is 1,048,576 points on one channel here
+        against 16,384, and it is what makes a whole waveform period
+        capturable at fine resolution instead of a guessed window."""
+        if mode is not None:
+            self.io.write(f":ACQ:MEMD {mode}", settle=0.4)
+        return self.io.ask(":ACQ:MEMD?")
+
+    def capture(self, ch=1, deep=True, timeout=6.0, settle=0.35,
+                dwell=1.2):
+        """One acquisition, read from memory rather than from the screen.
+
+        Returns (volts, dt) or (None, None) if it never triggered.
+
+        Why this exists, and why `waveform()` is not it. `:WAV:DATA?` in
+        NORMAL point mode returns **600 points of the screen record** -
+        decimated for display, and 600 points across a 2.56 ms wrap is
+        4.3 us per point, which cannot see a brief excursion at all. The
+        acquisition memory holds 1,048,576, and the difference is not
+        resolution in the vertical - both are 8-bit - it is that a
+        transient between two screen pixels exists in one and not the
+        other.
+
+        The catch is that RAW only works stopped, so this arms, waits
+        for a real trigger, stops, and reads. A free-running instrument
+        cannot be asked for its memory.
+        """
+        was_depth = self.memory_depth()
+        try:
+            if deep:
+                self.memory_depth("LONG")
+            # Arm and leave it alone.
+            #
+            # Polling :TRIG:STAT? while it fills costs the record: the
+            # same settings that yield 1,048,576 points when left for a
+            # second yield 65,526 when the status is asked every 50 ms.
+            # Whether the query restarts the acquisition or merely
+            # interrupts it, the instrument does not say - and the only
+            # evidence is the length, which is why the length is checked
+            # below rather than assumed.
+            self.run()
+            # Dwell after the trigger before stopping. Stopping on the
+            # first trigger captures a partial record: the same setup
+            # that yields 1,048,576 points with a dwell yields 65,526
+            # without one, and nothing says which you got except the
+            # length.
+            # Dwell after the trigger before stopping, and check the
+            # length. Stopping too soon captures a PARTIAL record: the
+            # same setup yields 65,526 points with a short dwell and
+            # 1,048,576 with a long one, and nothing says which you got
+            # except the length. A partial record is not an error - it
+            # is a shorter span - but concluding "the feature is not in
+            # the window" from one is wrong when the window was 16x
+            # smaller than intended.
+            v = None
+            for attempt in range(3):
+                time.sleep(dwell * (attempt + 1))
+                self.stop()
+                time.sleep(settle)
+                v = self.waveform(ch, points="RAW")
+                if v and len(v) > 2000:
+                    break
+                self.io.write(":WAV:POIN:MODE NORMAL", settle=0.1)
+                self.run()
+            if not v:
+                return None, None
+
+            # From the sample rate, NEVER from the timebase.
+            #
+            # The acquisition memory does not span the screen. On this
+            # model it is a fixed 100 MSa/s in LONG mode however the
+            # timebase is set, so 1,048,576 points is 10.49 ms of record
+            # at 10 ns - while the screen at 200 us/div shows 2.4 ms.
+            # Deriving dt from the timebase made a known 320 us period
+            # measure 2.93 us, and the error changes with every timebase
+            # so it does not even look like a constant.
+            dt = 1.0 / self.sample_rate(ch)
+            return v, dt
+        finally:
+            self.io.write(":WAV:POIN:MODE NORMAL", settle=0.1)
+            self.memory_depth(was_depth)
+            self.run()
 
     def run(self):
         self.io.write(":RUN", settle=0.2)
