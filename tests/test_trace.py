@@ -279,3 +279,38 @@ def test_folding_masks_transitions_wherever_the_schedule_starts(dt):
     assert max(live) < 40 * V_PER_CODE, (
         f"{max(live)/V_PER_CODE:.0f} codes with the schedule offset by a "
         f"third of an update; the mask is not finding the transitions")
+
+
+@pytest.mark.parametrize("dt", DENSITIES)
+def test_an_invalid_record_head_is_trimmed(dt):
+    """A RAW acquisition does not begin with valid data: on hardware the
+    first ~40 us spreads 3660 mV on a pin whose whole range is 2193.
+    Folded across cycles that head becomes one cycle disagreeing with
+    the others by the full swing, which is what a wrap-locked excursion
+    would look like."""
+    period = 1 / 3125
+    good = sine_staircase(dt, hz=3125, pts_per_cycle=32, cycles=6)
+    junk_n = int(round(40e-6 / dt))
+    rnd = random.Random(7)
+    # Junk that stays INSIDE the converter's range, so only the
+    # record's own body can tell it apart. The absolute test passes it:
+    # measured on hardware, a junk window spread 2300 mV against a
+    # 2522 mV cap while being nine times a legitimate window.
+    junk = [rnd.uniform(0.5, 2.7) for _ in range(junk_n)]
+    v, dropped = tr.trim_invalid_head(junk + good, dt, max_spread=2.52)
+    assert dropped >= junk_n * 0.5, (
+        f"dropped only {dropped} of {junk_n} junk samples")
+    assert len(v) > 3 * period / dt, "trimmed away the signal too"
+
+
+@pytest.mark.parametrize("dt", DENSITIES)
+def test_trimming_leaves_a_clean_record_alone(dt):
+    """It must not eat a good record, and must not eat an excursion: a
+    15-code spike does not move a window's spread past the converter's
+    whole range."""
+    v = sine_staircase(dt, hz=3125, pts_per_cycle=32, cycles=6,
+                       noise=NOISE_V / 8,
+                       spike=(2, 0.4, 15 * V_PER_CODE, 3e-6))
+    got, dropped = tr.trim_invalid_head(v, dt, max_spread=2.52)
+    assert dropped == 0
+    assert got is v

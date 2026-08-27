@@ -1098,6 +1098,17 @@ def cmd_reload(board, inst, args):
         v, dt = inst.capture(args.channel)
         if not v:
             raise SystemExit(f"no capture with sync={mode}")
+        # The head of a RAW record is not the signal. Measured here: the
+        # first ~40 us spreads 3660 mV inside a 10 us window, on a pin
+        # whose entire range is 2193 - and folded across cycles that
+        # head becomes one cycle disagreeing with the others by the full
+        # swing, which is exactly what a wrap-locked excursion would
+        # look like. It read as one for three rounds.
+        v, dropped = trace.trim_invalid_head(
+            v, dt, max_spread=DAC_SPAN_V * 1.15, window_s=2.0 / args.trigger)
+        if dropped:
+            print(f"  trimmed {dropped:,} samples "
+                  f"({dropped*dt*1e6:.1f} us) of invalid record head")
         span = len(v) * dt
         lo, hi = inst.extent(v)
         floor = trace.quantised_floor(v, dt)

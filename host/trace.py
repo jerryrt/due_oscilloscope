@@ -233,6 +233,53 @@ def worst(resid):
     return (i, r) if r else (None, None)
 
 
+def trim_invalid_head(v, dt, max_spread=None, window_s=10e-6,
+                      tolerance=4.0, reference_frac=0.5):
+    """Drop the head of a record that does not look like the rest of it.
+
+    A RAW acquisition does not begin with valid data. Measured on this
+    instrument: the first ~40 us of a 65,526-point capture spreads 3660
+    and 2300 mV inside a 10 us window, while everything after it sits at
+    40 to 280. That head is memory the trigger had not filled, and
+    folded across cycles it becomes one cycle disagreeing with the
+    others by the full swing - which is precisely what a wrap-locked
+    excursion would look like, and read as one for three rounds.
+
+    Two criteria, and the second is the one that works. `max_spread` is
+    physical - what the source can produce at all - and catches the
+    worst of it, but it is far too lenient on its own: a junk window
+    spreading 2300 mV passes a 2522 mV cap while being nine times what
+    a legitimate window of the same length shows.
+
+    So the reference is **the rest of this same record**. The body is
+    known good, being most of the capture, and a leading window several
+    times its typical spread is not a noisy measurement of the signal.
+    That cannot mistake a real excursion for junk either: an excursion
+    lives in the triggered region, not in the pre-trigger head, and 15
+    codes does not multiply a window's spread by four.
+
+    Returns (trimmed, n_dropped).
+    """
+    if not v:
+        return v, 0
+    w = max(8, int(round(window_s / dt)))
+    n_win = len(v) // w
+    if n_win < 4:
+        return v, 0
+    spreads = [max(v[i * w:(i + 1) * w]) - min(v[i * w:(i + 1) * w])
+               for i in range(n_win)]
+    tail = sorted(spreads[int(n_win * (1 - reference_frac)):])
+    reference = tail[len(tail) // 2] if tail else 0.0
+    limit = max(tolerance * reference, 1e-4)
+    if max_spread is not None:
+        limit = min(limit, max_spread)
+    i = 0
+    while i < n_win and spreads[i] > limit:
+        i += 1
+    dropped = i * w
+    return (v[dropped:], dropped) if dropped else (v, 0)
+
+
 def fold_compare(v, dt, period_s, update_s=None, settle_s=1.2e-6):
     """Split a record into cycles and compare each against the others.
 
