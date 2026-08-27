@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import struct
 import time
+import zlib
 
 # A short query answers in well under a second. Long enough to absorb a
 # retry, short enough that a wedged instrument fails the run rather than
@@ -78,6 +79,59 @@ def parse_block(raw):
     n = int(raw[2:2 + width])
     body = raw[2 + width:]
     return body[:n] if n <= len(body) else body
+
+
+def bmp_to_png(bmp):
+    """An 8-bit palette BMP as PNG bytes. No Pillow.
+
+    The instrument hands back a BMP and nothing else reads BMP happily -
+    a browser will, but at 75 kB a shot and 48 shots a sweep that is
+    3.6 MB of screenshots to move around. The same image as a palette
+    PNG is a few kB, because a scope screen is mostly one background
+    colour and that is exactly what DEFLATE is for.
+
+    Pillow would do this in one line and is not a dependency this file
+    is worth adding one for: PNG with a palette is a signature, three
+    chunks and a CRC, and zlib is already in the standard library.
+    """
+    if bmp[:2] != b"BM":
+        raise ValueError("not a BMP")
+    pix_off, = struct.unpack("<I", bmp[10:14])
+    hdr, = struct.unpack("<I", bmp[14:18])
+    w, h = struct.unpack("<ii", bmp[18:26])
+    bpp, = struct.unpack("<H", bmp[28:30])
+    comp, = struct.unpack("<I", bmp[30:34])
+    if bpp != 8 or comp != 0:
+        raise ValueError(f"only uncompressed 8-bit BMP, got {bpp}bpp "
+                         f"compression {comp}")
+    # BGRA palette entries, and PNG wants RGB.
+    pal = bmp[14 + hdr:pix_off]
+    plte = bytearray()
+    for i in range(0, min(len(pal), 256 * 4), 4):
+        plte += bytes((pal[i + 2], pal[i + 1], pal[i]))
+    plte += b"\x00" * (768 - len(plte))
+
+    # BMP rows are bottom-up when the height is positive, and padded to
+    # a 4-byte boundary. PNG rows are top-down with a filter byte each.
+    flip = h > 0
+    rows_n = abs(h)
+    stride = (w + 3) & ~3
+    raw = bytearray()
+    for r in range(rows_n):
+        src = (rows_n - 1 - r) if flip else r
+        start = pix_off + src * stride
+        raw += b"\x00" + bmp[start:start + w]
+
+    def chunk(tag, data):
+        return (struct.pack(">I", len(data)) + tag + data
+                + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff))
+
+    ihdr = struct.pack(">IIBBBBB", w, rows_n, 8, 3, 0, 0, 0)
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", ihdr)
+            + chunk(b"PLTE", bytes(plte))
+            + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
+            + chunk(b"IEND", b""))
 
 
 def _backend():
@@ -278,6 +332,35 @@ class Oscilloscope:
                 if self.triggered():
                     return {"coupling": coup, "level": lev, "slope": slope}
         return None
+
+    def menu_display(self, on=None):                          # pragma: no cover
+        """Show or hide the instrument's soft-key menu.
+
+        For screenshots. Every SCPI write that touches a menu leaves it
+        on screen, and it covers about a fifth of the graticule - so a
+        shot taken after setting the timebase has the timebase menu
+        sitting over the right-hand divisions of the trace.
+        """
+        raise NotImplementedError
+
+    def channel_enable(self, ch, on=None):                    # pragma: no cover
+        """Show or hide a channel's trace.
+
+        Worth having for screenshots: an unconnected input draws a flat
+        line at whatever it is picking up, and a reader cannot tell that
+        from a real signal that happens to be flat.
+        """
+        raise NotImplementedError
+
+    def screenshot(self):                                     # pragma: no cover
+        """The instrument's screen, as PNG bytes.
+
+        The screen and not a re-plot of :WAV:DATA?, because they are not
+        the same picture: the screen carries the graticule, the trigger
+        marker, the scale factors and the on-screen measurements, which
+        is most of what makes a screenshot worth keeping.
+        """
+        raise NotImplementedError
 
     def timebase_offset(self, seconds=None):                  # pragma: no cover
         """Where the trigger sits relative to the screen centre.
@@ -490,6 +573,24 @@ class RigolDS1000E(Oscilloscope):
                 "sweep": self.io.ask(":TRIG:EDGE:SWE?"),
                 "level": float(self.io.ask(":TRIG:EDGE:LEV?")),
                 "status": self.io.ask(":TRIG:STAT?")}
+
+    def menu_display(self, on=None):
+        if on is not None:
+            self.io.write(f":DISP:MNUS {'ON' if on else 'OFF'}", settle=0.2)
+        return self.io.ask(":DISP:MNUS?") in ("ON", "1")
+
+    def channel_enable(self, ch, on=None):
+        if on is not None:
+            self.io.write(f":CHAN{ch}:DISP {'ON' if on else 'OFF'}",
+                          settle=0.15)
+        return self.io.ask(f":CHAN{ch}:DISP?") in ("ON", "1")
+
+    def screenshot(self):
+        # 320x234, 8-bit palette, ~75 kB. The transfer is slow enough
+        # that the default timeout is not generous: give it its own.
+        bmp = parse_block(self.io.ask_raw(":DISP:DATA?", size=1 << 18,
+                                          settle=1.0, timeout=15000))
+        return bmp_to_png(bmp)
 
     def timebase_offset(self, seconds=None):
         if seconds is not None:
