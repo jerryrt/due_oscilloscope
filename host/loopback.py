@@ -38,6 +38,8 @@ def main():
                          "full single-channel conversion rate")
     ap.add_argument("--dc", type=int, default=None,
                     help="send a constant DAC0 code instead of a tone")
+    ap.add_argument("--square", type=float, default=None, metavar="HZ",
+                    help="send a full-scale square at HZ instead of a tone")
     ap.add_argument("--scan", action="store_true",
                     help="sweep candidate frequencies to find the energy")
     ap.add_argument("--burst", type=int, default=16384,
@@ -51,10 +53,8 @@ def main():
         sys.exit(f"ports not found (control={ctl} native={nat})")
     print(f"# control={ctl}  native={nat}")
 
-    if args.dc is not None:
-        wave, tone = measure.build_dc(args.dc)
-    else:
-        wave, tone = measure.build_waveform(args.tone, args.dac_sps)
+    wave, tone = measure.build_selected(args.dac_sps, tone=args.tone,
+                                        dc=args.dc, square=args.square)
     print(f"# waveform: {len(wave)} B block, DAC0 tone {tone:.2f} Hz "
           f"at {args.dac_sps} sps (single channel)")
 
@@ -72,7 +72,8 @@ def main():
         res = measure.run_loop(board, dac_sps=args.dac_sps,
                                adc_hz=args.adc_hz, channels=args.adc_channels,
                                tone=args.tone, seconds=args.seconds,
-                               dc=args.dc, diag=args.diag, notify=notify)
+                               dc=args.dc, square=args.square,
+                               diag=args.diag, notify=notify)
     finally:
         board.close()
 

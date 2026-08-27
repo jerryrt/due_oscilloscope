@@ -356,6 +356,13 @@ def _shift_period(at, min_period, max_period, regularity, probes=400):
 # The generator's table length, and so the period the artifact has been
 # locked to on every reproduction. A default, not a constant: the table
 # doubles under GEN_SINE_POINTS and the period follows it.
+#
+# It also stops being the generator's period the moment the resolution
+# is changed. `=<shape>,<pts>W` sets points-per-cycle, and the internal
+# generator's period is then 2 * points rather than the table length -
+# so an issue-#5 fold taken at anything other than 256 points is folding
+# at the wrong period. gen_fold_len() below is the honest form; this
+# constant is the default because 256 is the default.
 GEN_TABLE_LEN = 512
 
 # Folding at 512 bins gives 512 chances for noise to throw up a peak, so
@@ -1713,6 +1720,31 @@ def build_waveform(tone_hz, dac_total_sps, cycles=20):
     return bytes(out), dac_total_sps / per_cycle
 
 
+def build_square(tone_hz, dac_total_sps, cycles=20):
+    """Whole cycles of a full-scale square on DAC0, 50% duty.
+
+    The instrument the sine is not. A sine's slew is bounded by its own
+    frequency, so however fast it is played the DAC is never asked for
+    a full-scale step and the settling behaviour of the converter never
+    appears in the output. A square asks for one twice a cycle, so
+    overshoot, ring and settling time are the converter's answer rather
+    than a property of the shape - which is what makes it the waveform
+    worth watching at the top of the AWG ladder.
+
+    Even samples per cycle, always. An odd count puts one extra sample
+    on one half, and a 51% duty cycle authored by the generator is
+    indistinguishable on a screen from one caused by the device.
+    """
+    per_cycle = int(round(dac_total_sps / tone_hz))
+    per_cycle = max(2, per_cycle - (per_cycle & 1))
+    half = per_cycle // 2
+    out = bytearray()
+    for i in range(per_cycle * cycles):
+        code = 4095 if (i % per_cycle) < half else 0
+        out += struct.pack("<H", (0 << 12) | (code & 0xFFF))
+    return bytes(out), dac_total_sps / per_cycle
+
+
 # DAC codes per sample in the ramp instrument.
 #
 # The DAC's span reaches the ADC at about 0.67 codes per DAC code, and
@@ -1789,6 +1821,117 @@ def build_dc(code):
     DAC is not consuming host data at all, which separates a data-path
     fault from a timing one."""
     return struct.pack("<H", (0 << 12) | (code & 0xFFF)) * 4000, 0.0
+
+
+# ---------------------------------------------------------------------
+# The firmware's own generator
+#
+# Everything above builds samples the *host* sends. This block drives
+# the generator that lives on the device - drivers/gen.c on Track B,
+# sketches/bringup/gen.cpp on Track A - which plays a table with no USB
+# in the path at all. Two generators, two reasons: the streamed one is
+# arbitrary and the internal one keeps running when no host is attached.
+#
+# The names and codes here are the device's, and both tracks must agree
+# with them. A track that answers `=1W` with something other than
+# "square" is a parity bug, not a host bug.
+# ---------------------------------------------------------------------
+
+GEN_SHAPES = {"sine": 0, "square": 1, "ramp": 2, "triangle": 3, "dc": 4}
+GEN_SHAPE_NAMES = {v: k for k, v in GEN_SHAPES.items()}
+
+# The sync output on the pin the waveform is not using - DAC1 in the
+# normal layout. It is the bench trigger, so DAC1 is no longer a channel
+# to measure: DSO tools look at DAC0, and A1 is what can still see DAC1.
+GEN_SYNCS = {"off": 0, "cycle": 1, "wrap": 2}
+GEN_SYNC_NAMES = {v: k for k, v in GEN_SYNCS.items()}
+
+# Points in the table. A cycle may spend any power-of-two count from 2
+# up to this, and nothing between - see gen.h for why a count that does
+# not divide the table is a phase step at every PDC reload.
+GEN_TABLE_POINTS = 256
+GEN_POINTS_MIN = 2
+
+
+def gen_points_for(points):
+    """The resolution the device will actually adopt for a request.
+
+    The device rounds down to the nearest legal power of two rather than
+    refusing, so a host that predicts the frequency has to round the
+    same way or its prediction is wrong for every non-power-of-two.
+    """
+    points = min(int(points), GEN_TABLE_POINTS)
+    p = GEN_POINTS_MIN
+    while (p << 1) <= points:
+        p <<= 1
+    return p
+
+
+def gen_output_hz(trigger_hz, points=GEN_TABLE_POINTS):
+    """Output frequency of the internal generator.
+
+    The trigger clocks one table point per update and DACC TAG mode
+    spends every other update on DAC1, so a cycle costs 2 * points
+    updates. This is the resolution/frequency trade in one line: points
+    buys staircase resolution and costs frequency, at a fixed update
+    rate that only the trigger changes.
+    """
+    return trigger_hz / (2.0 * gen_points_for(points))
+
+
+def gen_fold_len(points=GEN_TABLE_POINTS):
+    """The period an issue-#5 fold should use at this resolution."""
+    return 2 * gen_points_for(points)
+
+
+def set_sync(board, mode):
+    """`=<n>J`. The bench trigger on the spare DAC pin.
+
+    Measured against triggering on the signal itself: 222x less jitter
+    on a sine, 2.2x on a ramp. See docs/awg.md, including the two silent
+    ways a DS1102E's EXT input refuses to trigger.
+    """
+    code = GEN_SYNCS[mode] if isinstance(mode, str) else int(mode)
+    board.poll_console()
+    board.cmd(f"={code}J")
+    return board.drain_console(0.4)
+
+
+def set_gen(board, shape, points=None):
+    """`=<shape>,<pts>W`. Returns the device's own answer.
+
+    Over the console, because that is the only place the generator can
+    be set today: the control channel is all queries, so a deployed
+    board - native port only - cannot change shape. `ctl_wire.h` keeps
+    0x001x free for state the host writes and nothing occupies it yet.
+    That gap is real and is called out in docs/awg.md rather than
+    papered over here.
+    """
+    code = GEN_SHAPES[shape] if isinstance(shape, str) else int(shape)
+    board.poll_console()
+    board.cmd(f"={code},{int(points)}W" if points else f"={code}W")
+    return board.drain_console(0.4)
+
+
+def build_selected(dac_sps, *, tone=1000.0, dc=None, ramp=None, square=None):
+    """The waveform kwargs every runner takes, resolved in one place.
+
+    run_loop and run_play each carried their own copy of this chain and
+    had already drifted apart once - `ramp` reached run_loop long before
+    it reached run_play, so for a while the ADC path could measure a
+    waveform the DAC-only path could not play. A tool that sweeps every
+    supported waveform needs the same set from both, and one chain is
+    the only way that stays true when the next shape is added.
+
+    Returns (bytes, tone_hz), with tone_hz 0.0 for the aperiodic ones.
+    """
+    if ramp is not None:
+        return build_ramp(step=ramp)
+    if dc is not None:
+        return build_dc(dc)
+    if square is not None:
+        return build_square(square, dac_sps)
+    return build_waveform(tone, dac_sps)
 
 
 # ---------------------------------------------------------------------
@@ -2062,21 +2205,17 @@ class LoopResult:
 
 
 def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
-             tone=1000.0, seconds=3.0, dc=None, ramp=None, diag=False,
-             drain=True, notify=None, scale=1.0, write_size=None,
-             closed_loop=False):
+             tone=1000.0, seconds=3.0, dc=None, ramp=None, square=None,
+             diag=False, drain=True, notify=None, scale=1.0,
+             write_size=None, closed_loop=False):
     """The complete loop: HOST -> USB -> DAC -> wire -> ADC -> USB -> HOST.
 
     Because the host authored the signal, any discrepancy in what comes
     back is a fault in the path rather than an unknown property of a
     signal.
     """
-    if ramp is not None:
-        wave, tone_hz = build_ramp(step=ramp)
-    elif dc is not None:
-        wave, tone_hz = build_dc(dc)
-    else:
-        wave, tone_hz = build_waveform(tone, dac_sps)
+    wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc, ramp=ramp,
+                                   square=square)
 
     fd = board.open_native(blocking_writes=True, notify=notify)
     stale = drain_until_quiet(fd) if drain else 0
@@ -2269,18 +2408,10 @@ TRIM_PERIOD_S = 0.5
 
 
 def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
-             ramp=None, scale=1.0, drain_s=0.0, write_size=None,
-             closed_loop=False):
-    # The same three waveforms run_loop offers. They differed only
-    # because nothing had needed a ramp without capture yet, and a tool
-    # that sweeps every supported waveform needs all three on the path
-    # that does not involve the ADC.
-    if ramp is not None:
-        wave, tone_hz = build_ramp(step=ramp)
-    elif dc is not None:
-        wave, tone_hz = build_dc(dc)
-    else:
-        wave, tone_hz = build_waveform(tone, dac_sps)
+             ramp=None, square=None, scale=1.0, drain_s=0.0,
+             write_size=None, closed_loop=False):
+    wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc, ramp=ramp,
+                                   square=square)
 
     fd = board.open_native(blocking_writes=True)
     drain_until_quiet(fd, quiet=0.3, cap=3.0)
