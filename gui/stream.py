@@ -82,6 +82,17 @@ def codes_to_volts(codes):
     return np.asarray(codes, dtype=np.float32) * (VREF_V / (FULL_SCALE_CODES + 1))
 
 
+def volts_to_codes(volts):
+    """The inverse, for controls that are entered in volts.
+
+    One conversion, both directions, in the place that already owns it.
+    A trigger level typed in volts and compared against codes elsewhere
+    would be a second scale factor, and this project has already paid
+    twice for one number living in two places.
+    """
+    return int(round(float(volts) / (VREF_V / (FULL_SCALE_CODES + 1))))
+
+
 class ChannelRing:
     """A rolling window of one channel's samples.
 

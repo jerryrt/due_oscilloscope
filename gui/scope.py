@@ -36,11 +36,17 @@ class ScopeView(QtWidgets.QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(self.plot)
         self.columns = 1200
+        self.last_triggered = False
 
-    def draw(self, ring, window_s, rate_hz):
+    def draw(self, ring, window_s, rate_hz, trig=None):
         n = int(max(1, window_s * rate_hz))
-        sweep = stream.select(ring, n)
+        sweep = stream.select(ring, n, trig)
+        self.last_triggered = sweep.triggered
         if sweep.empty:
+            # Normal mode with no edge: hold the previous trace rather
+            # than blanking. A scope that clears its screen every time
+            # it fails to trigger is unreadable, and the caller is told
+            # which happened through last_triggered.
             return 0
         samples, breaks = sweep.samples, sweep.breaks
         cols = min(self.columns, max(2, self.plot.width() or self.columns))

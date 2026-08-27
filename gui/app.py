@@ -33,6 +33,12 @@ WINDOWS = [("1 ms", 0.001), ("5 ms", 0.005), ("20 ms", 0.02),
 PRESETS = [("50 kHz", "1"), ("100 kHz", "2"), ("200 kHz", "3"),
            ("400 kHz", "4"), ("max in-spec", "5")]
 
+#: Off free-runs the way this window always has. Auto triggers when
+#: it can and free-runs when it cannot, which is the usable default.
+#: Normal holds the last trace rather than drawing an untriggered
+#: one, which is what you want when the edge is the question.
+TRIGGER_MODES = [("Off", "off"), ("Auto", "auto"), ("Normal", "normal")]
+
 
 class MainWindow(QtWidgets.QMainWindow):
     # Frames decoded per redraw. At 30 Hz this keeps up with about
@@ -72,6 +78,35 @@ class MainWindow(QtWidgets.QMainWindow):
         for label, key in PRESETS:
             self.preset.addItem(label, key)
 
+        # Trigger. Software, on captured samples - docs/frontend.md
+        # keeps an external trigger *input* disabled until the Phase 3
+        # analog front end exists, and says a warning label is not
+        # sufficient. Nothing here reaches a pin.
+        self.trig_mode = QtWidgets.QComboBox()
+        for label, key in TRIGGER_MODES:
+            self.trig_mode.addItem(label, key)
+        self.trig_mode.setCurrentIndex(1)              # auto
+
+        self.trig_slope = QtWidgets.QComboBox()
+        self.trig_slope.addItem("Rising", True)
+        self.trig_slope.addItem("Falling", False)
+
+        # Volts, because that is what the trace is labelled in; the one
+        # conversion lives in stream.volts_to_codes.
+        self.trig_level = QtWidgets.QDoubleSpinBox()
+        self.trig_level.setRange(0.0, stream.VREF_V)
+        self.trig_level.setDecimals(3)
+        self.trig_level.setSingleStep(0.05)
+        self.trig_level.setSuffix(" V")
+        self.trig_level.setValue(stream.VREF_V / 2.0)
+
+        # Whether it is actually triggering, which is not the same as
+        # what the mode box says. Auto free-runs when it finds no edge,
+        # and a scope that does that silently is how a moving trace gets
+        # blamed on the signal.
+        self.trig_state = QtWidgets.QLabel("--")
+        self.trig_state.setMinimumWidth(56)
+
         self.connect_btn = QtWidgets.QPushButton("Connect")
         self.start_btn = QtWidgets.QPushButton("Start")
         self.stop_btn = QtWidgets.QPushButton("Stop")
@@ -84,7 +119,9 @@ class MainWindow(QtWidgets.QMainWindow):
         controls = QtWidgets.QHBoxLayout()
         for w in (QtWidgets.QLabel("Channel"), self.channel,
                   QtWidgets.QLabel("Window"), self.window_box,
-                  QtWidgets.QLabel("Rate"), self.preset):
+                  QtWidgets.QLabel("Rate"), self.preset,
+                  QtWidgets.QLabel("Trigger"), self.trig_mode,
+                  self.trig_slope, self.trig_level, self.trig_state):
             controls.addWidget(w)
         controls.addStretch(1)
         for b in (self.connect_btn, self.start_btn, self.stop_btn):
@@ -209,7 +246,32 @@ class MainWindow(QtWidgets.QMainWindow):
         tag = self.channel.currentData()
         ring = self.rings.get(tag)
         if ring is not None:
-            self.scope.draw(ring, self.window_box.currentData(), self.rate_hz)
+            self.scope.draw(ring, self.window_box.currentData(), self.rate_hz,
+                            self.trigger())
+            self.trig_state.setText(self.trigger_state_text())
+
+    def trigger(self):
+        """The trigger the controls currently describe, or None."""
+        mode = self.trig_mode.currentData()
+        if mode == "off":
+            return None
+        return stream.Trigger(
+            level=stream.volts_to_codes(self.trig_level.value()),
+            rising=bool(self.trig_slope.currentData()),
+            mode=mode)
+
+    def trigger_state_text(self):
+        """What the sweep did, not what was asked for.
+
+        "Auto" and "triggering" are different states and the difference
+        is the whole reason this label exists: auto falls back to
+        free-running when it finds no edge, and a trace that moves for
+        that reason looks exactly like a trace that moves because the
+        signal is wrong.
+        """
+        if self.trig_mode.currentData() == "off":
+            return "free"
+        return "TRIG" if self.scope.last_triggered else "searching"
 
     def ingest(self, f):
         if f.rate_hz and f.rate_hz != self.rate_hz:

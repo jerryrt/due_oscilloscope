@@ -383,6 +383,47 @@ def test_frames_from_a_real_daemon_become_a_trace(win, daemon):
     assert len(win.scope.curve.getData()[0]) > 0, "nothing was drawn"
 
 
+def test_the_trigger_controls_describe_the_trigger_that_is_used(win):
+    """The controls and the Trigger object must not drift apart."""
+    win.trig_mode.setCurrentIndex(0)                      # Off
+    assert win.trigger() is None
+
+    win.trig_mode.setCurrentIndex(1)                      # Auto
+    win.trig_slope.setCurrentIndex(1)                     # Falling
+    win.trig_level.setValue(1.65)
+    t = win.trigger()
+    assert t is not None and t.mode == "auto" and t.rising is False
+    # Volts in, codes out, through the one conversion.
+    assert t.level == stream.volts_to_codes(1.65)
+    # And that conversion round-trips against the one the trace uses.
+    assert abs(float(stream.codes_to_volts(t.level)) - 1.65) < 0.002
+
+
+def test_the_readout_says_whether_it_triggered_not_what_was_asked(win, daemon):
+    """Auto free-runs when it finds no edge. The label has to say so.
+
+    This is the whole reason the readout exists: a trace moving because
+    the trigger found nothing looks exactly like a trace moving because
+    the signal is wrong, and this bench has already spent effort telling
+    those apart for a different instrument.
+    """
+    win.connect_to_daemon()
+    win.client.call("start", mode="capture", adc_hz=200000, channels=2)
+    win.client.wait_frames(10, timeout=15.0)
+
+    win.trig_mode.setCurrentIndex(0)                      # Off
+    win.tick()
+    assert win.trigger_state_text() == "free"
+
+    # A level the synthetic device's signal cannot reach, so auto must
+    # fall back - and must not claim to have triggered.
+    win.trig_mode.setCurrentIndex(1)                      # Auto
+    win.trig_level.setValue(stream.VREF_V)                # full scale
+    win.tick()
+    assert win.trigger_state_text() == "searching", (
+        "auto free-ran but the readout claimed a trigger")
+
+
 def test_the_health_panel_reports_what_it_cost_to_draw(win, daemon):
     win.connect_to_daemon()
     win.client.call("start", mode="capture", adc_hz=200000, channels=2)
