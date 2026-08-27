@@ -227,16 +227,9 @@ def test_rigol_no_reading_is_not_a_voltage():
 # The instrument itself. Skips without one; --dso makes absence fatal.
 # ---------------------------------------------------------------------
 
-@pytest.fixture(scope="module")
-def dso(request):
-    try:
-        inst = scope.open_scope()
-    except Exception as e:                      # ScopeUnavailable, or pyusb
-        if request.config.getoption("--dso"):
-            pytest.fail(f"--dso given but no scope: {e}")
-        pytest.skip(f"no bench scope: {e}")
-    yield inst
-    inst.close()
+# The `dso` fixture lives in conftest.py now: more than one file needs
+# it, and opening the instrument twice is a USBTMC claim conflict rather
+# than a second handle.
 
 
 @pytest.mark.dso

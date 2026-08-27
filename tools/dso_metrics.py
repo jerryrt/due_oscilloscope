@@ -11,6 +11,8 @@ ways a DS1102E refuses to trigger on it.
              clock over two and the fastest output on the ADC's timer
     ceiling  the same square with the DAC on its own timer instead,
              swept past the DACC's measured ceiling
+    transfer DAC code -> volts -> ADC code, so the ADC is finally
+             measured against something that is not the ADC
     step     full-scale step response - slew rate, overshoot, settling
     skew     the TAG interleave, separated from the instrument's own
              trigger-path delay by measuring it at four rates
@@ -32,6 +34,7 @@ import math
 import os
 import statistics
 import sys
+import threading
 import time
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,10 +61,29 @@ DEGENERATE_AT_2 = {
     "triangle": "collapses to a full-amplitude square: codes 0 and 4095",
 }
 
-# Measured on this bench, and the DAC is not rail to rail: full scale
-# lands at 0.52 V and 2.82 V. Used only to turn volts into codes for
-# reporting, never to decide anything.
-DAC_LO_V, DAC_HI_V = 0.52, 2.82
+# The DAC's span, from tests/baseline.json, which is where this project
+# keeps measured constants.
+#
+# It used to be 0.52/2.82 V here, from a bench note in dso_sweep.py,
+# while baseline.json said 0.546/2.760 and the scope said something else
+# again - three values for one constant, and every "codes" figure this
+# file printed was scaled by the middle one and about 4% out. Reading
+# the one file that is under review kills the third copy; `transfer` is
+# what puts the number in it.
+def _load_span():
+    import json
+    path = os.path.join(HERE, "tests", "baseline.json")
+    try:
+        with open(path) as f:
+            mv = json.load(f)["dac_mv"]
+        return mv["span_lo"] / 1000.0, mv["span_hi"] / 1000.0
+    except Exception as e:                                # pragma: no cover
+        raise SystemExit(
+            f"cannot read the DAC span from {path}: {e}. It is a measured "
+            f"constant and this file will not guess one.")
+
+
+DAC_LO_V, DAC_HI_V = _load_span()
 DAC_SPAN_V = DAC_HI_V - DAC_LO_V
 DAC_MID_V = (DAC_LO_V + DAC_HI_V) / 2.0
 V_PER_CODE = DAC_SPAN_V / 4095.0
@@ -194,6 +216,7 @@ def cmd_step(board, inst, args):
     print(f"\n{'us/div':>8s} {'rise 10-90%':>12s} {'slew':>12s} "
           f"{'overshoot':>11s} {'settle to 1%':>13s}")
     print("-" * 62)
+    out = []
     step = 0.0
     for tb in args.timebase:
         inst.timebase(tb)
@@ -250,6 +273,11 @@ def cmd_step(board, inst, args):
         print(f"{tb*1e6:8.2f} {rise*1e9:10.0f}ns "
               f"{slew/1e6:9.3f}V/us {over:10.2f}% {shown:>13s}",
               flush=True)
+        out.append({"timebase_s": tb, "rise_s": rise,
+                    "slew_v_per_s": slew, "overshoot_pct": over,
+                    "settle_s": settle, "step_v": step,
+                    "settle_window_limited": settle is not None
+                    and settle > 0.9 * window})
     print(f"\nStep was {step*1000:.0f} mV = {step/V_PER_CODE:.0f} codes.")
     print(f"1% of it is {step*10:.0f} mV, against ~20 mV RMS of noise on "
           f"the pin - so the 1%\nband needs the averaging to be doing "
@@ -261,6 +289,7 @@ def cmd_step(board, inst, args):
           f"with both channels interleaved - so at the top of the ladder "
           f"a full-scale\nstep does not finish before the next one is "
           f"due. That is a property of the\nconverter, not of the feed.")
+    return {"edge_vs_sync_s": te, "points": out}
 
 
 # ------------------------------------------------------------------
@@ -336,7 +365,7 @@ def cmd_skew(board, inst, args):
         board.stop(); board.drain_console(0.2)
     if len(rows) < 2:
         print("\nNeed at least two rates to separate the two terms.")
-        return
+        return None
     # Least squares of skew against the trigger period.
     xs = [p for _, p, _ in rows]
     ys = [s for _, _, s in rows]
@@ -352,6 +381,9 @@ def cmd_skew(board, inst, args):
           f"{icept*1e9:+.0f} ns")
     print(f"  TAG interleave predicts exactly -1.000 trigger periods "
           f"(DAC0 leads DAC1)")
+    return {"interleave_periods": slope, "instrument_delay_s": icept,
+            "points": [{"trigger_hz": h, "period_s": pd, "skew_s": sk}
+                       for h, pd, sk in rows]}
 
 
 # ------------------------------------------------------------------
@@ -620,6 +652,223 @@ def cmd_clock(board, inst, args):
           f"holds while the half period is comfortably above that and "
           f"falls when\nit is not - that is the converter, not the "
           f"table.")
+
+
+# ------------------------------------------------------------------
+# transfer: the span, and the ADC measured against something else
+# ------------------------------------------------------------------
+
+# ADC reference, as tests/test_integrity.py has always assumed it. It is
+# an assumption and this measurement is what tests it: if the scope and
+# the ADC disagree about the same pin, either this is wrong or the ADC
+# has gain and offset error, and until now there was no way to tell.
+ADC_VREF_MV = 3300.0
+ADC_FULL_SCALE = 4095.0
+
+
+def _dc_point_repeated(board, inst, ch, code, seconds, average, repeats):
+    """`repeats` independent points, reduced by median.
+
+    Not for precision - the median of three is barely better than one -
+    but for outlier rejection. A single sweep put 2 points of 10 tens of
+    mV off the line, because a scope read can land on a screen the run
+    had already stopped feeding, and one bad point moves a least-squares
+    fit more than all the good ones together.
+    """
+    got = []
+    for _ in range(max(1, repeats)):
+        r = _dc_point(board, inst, ch, code, seconds, average)
+        if r["scope_v"] is not None and r["adc_code"] is not None:
+            got.append(r)
+    if not got:
+        return _dc_point(board, inst, ch, code, seconds, average)
+    got.sort(key=lambda x: x["scope_v"])
+    mid = got[len(got) // 2]
+    spread = got[-1]["scope_v"] - got[0]["scope_v"]
+    return {**mid, "repeats": len(got), "spread_v": spread}
+
+
+def _dc_point(board, inst, ch, code, seconds, average):
+    """Hold DAC0 at one code; read the pin two ways at once.
+
+    run_loop drives the code and captures A0 in the same run, so the two
+    readings are of the same output at the same time rather than of two
+    runs that might have differed. The scope reads from another thread
+    because run_loop blocks - it is a separate USB device, so nothing
+    contends.
+    """
+    res = {}
+
+    def worker():
+        res["r"] = measure.run_loop(board, dac_sps=200000, adc_hz=200000,
+                                    channels=2, dc=code, seconds=seconds)
+    # Everything the instrument needs that does not depend on the level
+    # is set BEFORE the run starts, so the run itself is spent reading
+    # rather than configuring.
+    inst.coupling(ch, "DC")
+    inst.timebase(1e-3)
+    inst.trigger_edge(source=f"CHAN{ch}", level=DAC_MID_V, sweep="AUTO")
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+    time.sleep(0.6)
+
+    # Coarse first, to find the level, then zoom the vertical on it.
+    # Reading a 12-bit converter at 0.5 V/div spends one 8-bit screen
+    # level on 28 DAC codes; at 0.1 V/div it is 5.6, and averaging
+    # dithers below that.
+    #
+    # Both reads have to land INSIDE the run. run_loop returns when its
+    # feed ends and the DAC is abandoned 500 ms later, so a read taken
+    # after it samples a pin holding primed mid-scale silence - which is
+    # exactly what the first version of this did, reporting 1680 mV for
+    # every code while the ADC column tracked perfectly.
+    inst.channel_scale(ch, 0.5)
+    inst.channel_offset(ch, -DAC_MID_V)
+    inst.averaging(None)
+    inst.run()
+    time.sleep(0.35)
+    # VAVERAGE, not VAVG: the latter is not a mnemonic this model knows
+    # and an unknown one returns nothing at all rather than an error.
+    coarse = inst.measure(what="VAVERAGE", ch=ch)
+    fine = None
+    if coarse is not None:
+        inst.channel_scale(ch, 0.1)
+        inst.channel_offset(ch, -coarse)
+        inst.averaging(average)
+        time.sleep(0.25 + average * 0.005)
+        # From the samples, not from :MEAS:. The measurement subsystem
+        # answers to three significant figures, which near 2.7 V is a
+        # 10 mV step - about 19 DAC codes, and the vertical gain cannot
+        # improve it because the limit is the response format. Averaging
+        # 600 trace samples dithered by the pin's own noise gets far
+        # below one screen level.
+        fine = inst.level(ch)
+    # Was the run still going when that was read?
+    #
+    # Asked of the thread, not inferred from the value. The first
+    # version compared the fine read against the coarse one and called a
+    # difference over 400 mV stale, which catches a read that fell back
+    # to mid-scale from code 0 or 4095 and misses one from code 2560 -
+    # where the drop to mid-scale is only 280 mV. Four points in ten
+    # came through with hundreds of mV of spread that way. The thread
+    # knows exactly when the run ended; nothing has to be guessed.
+    during_run = t.is_alive()
+    inst.averaging(None)
+    stale = not during_run
+    t.join(timeout=seconds + 15)
+
+    adc = None
+    r = res.get("r")
+    if r is not None:
+        vals = r.stream.settled.get(measure.CH_A0) or []
+        if vals:
+            adc = sum(vals) / len(vals)
+    board.stop()
+    board.drain_console(0.2)
+    return {"code": code,
+            "scope_v": coarse if (stale or fine is None) else fine,
+            "scope_coarse_v": coarse, "scope_fine_v": fine,
+            "stale": stale, "adc_code": adc}
+
+
+def cmd_transfer(board, inst, args):
+    """DAC code -> volts -> ADC code, in one run per point.
+
+    The measurement this project could not make. Everything it knows
+    about its own converters came from one of them: `dac_mv` in
+    tests/baseline.json is the DAC's span *as the ADC reports it*, with
+    a 3300 mV reference assumed, and there was no third party to ask.
+    Now there is one, and it settles two things at once - the DAC's real
+    span, and the ADC's gain and offset against something that is not
+    itself.
+
+    Bounded, and the bound is stated with the result: the scope is 8-bit
+    and averages before its quantiser, so a level is 5.6 DAC codes at
+    0.1 V/div and averaging dithers below that. Good to about a code,
+    which is an order finer than issue #5's 30-45 code signature and
+    nowhere near a per-code DNL.
+    """
+    codes = args.codes or [0, 256, 512, 1024, 1536, 2048, 2560, 3072,
+                           3583, 4095]
+    print(f"\n{'code':>5s} {'scope mV':>10s} {'ADC code':>9s} "
+          f"{'ADC mV @3300':>13s} {'delta mV':>9s} {'spread mV':>10s}")
+    print("-" * 66)
+    rows = []
+    for code in codes:
+        r = _dc_point_repeated(board, inst, args.channel, code,
+                               args.seconds, args.average, args.repeats)
+        smv = None if r["scope_v"] is None else r["scope_v"] * 1000.0
+        amv = (None if r["adc_code"] is None
+               else r["adc_code"] * ADC_VREF_MV / ADC_FULL_SCALE)
+        d = (None if (smv is None or amv is None) else amv - smv)
+        rows.append({**r, "scope_mv": smv, "adc_mv": amv, "delta_mv": d})
+        acode = r["adc_code"]
+        if r.get("stale"):
+            print(f"      code {code}: fine read disagreed with coarse by "
+                  f"{abs(r['scope_fine_v'] - r['scope_coarse_v'])*1000:.0f}"
+                  f" mV; using the coarse one")
+        print(f"{code:5d} "
+              f"{'-' if smv is None else format(smv, '10.1f')} "
+              f"{'-' if acode is None else format(acode, '9.1f')} "
+              f"{'-' if amv is None else format(amv, '13.1f')} "
+              f"{'-' if d is None else format(d, '+9.1f')} "
+              f"{format(r.get('spread_v', 0)*1000, '10.1f')}", flush=True)
+    # Fit only points whose repeats agreed. A point whose three reads
+    # spread over hundreds of mV is not a noisy measurement of one
+    # level, it is a mixture of two - and one of those moves a
+    # least-squares fit further than all the good points together.
+    SPREAD_LIMIT_V = 0.020
+    usable = [r for r in rows if r["scope_mv"] is not None
+              and r["adc_code"] is not None]
+    good = [r for r in usable if r.get("spread_v", 0) <= SPREAD_LIMIT_V]
+    dropped = len(usable) - len(good)
+    if dropped:
+        print(f"\n{dropped} of {len(usable)} points dropped from the fit: "
+              f"their repeats spread more than "
+              f"{SPREAD_LIMIT_V*1000:.0f} mV")
+    if len(good) < 3:
+        print("\nnot enough agreeing points to fit")
+        return rows
+
+    def fit(xs, ys):
+        n = len(xs)
+        mx, my = sum(xs) / n, sum(ys) / n
+        den = sum((x - mx) ** 2 for x in xs)
+        a = sum((xs[i] - mx) * (ys[i] - my) for i in range(n)) / den
+        return a, my - a * mx
+
+    cs = [r["code"] for r in good]
+    sv = [r["scope_mv"] for r in good]
+    av = [r["adc_code"] for r in good]
+    g_dac, o_dac = fit(cs, sv)
+    g_adc, o_adc = fit(sv, av)
+    lo = o_dac
+    hi = g_dac * 4095 + o_dac
+    resid = [sv[i] - (g_dac * cs[i] + o_dac) for i in range(len(cs))]
+    worst = max(resid, key=abs)
+
+    print(f"\nDAC, as the scope sees it")
+    print(f"  {g_dac*1000:7.3f} uV per code, offset {o_dac:8.1f} mV")
+    print(f"  span at code 0 and 4095: {lo:.0f} - {hi:.0f} mV "
+          f"({hi-lo:.0f} mV swing)")
+    print(f"  worst deviation from the fit {worst:+.1f} mV "
+          f"= {worst/g_dac:+.1f} codes")
+    print(f"\nADC, against the scope")
+    print(f"  {g_adc:7.4f} codes per mV; an ideal 3300 mV / 4095 reference "
+          f"would give {ADC_FULL_SCALE/ADC_VREF_MV:.4f}")
+    print(f"  gain error {(g_adc/(ADC_FULL_SCALE/ADC_VREF_MV)-1)*100:+.2f}%, "
+          f"offset {o_adc:+.1f} codes")
+    print(f"\ntests/baseline.json currently records dac_mv "
+          f"span_lo/span_hi through the ADC.\nThis is the same span "
+          f"measured with the ADC taken out of the path.")
+    return {"span_lo_mv": lo, "span_hi_mv": hi,
+            "uv_per_code": g_dac * 1000, "worst_dev_codes": worst / g_dac,
+            "adc_codes_per_mv": g_adc,
+            "adc_gain_error_pct": (g_adc / (ADC_FULL_SCALE / ADC_VREF_MV)
+                                   - 1) * 100,
+            "adc_offset_codes": o_adc, "points_used": len(good),
+            "points_dropped": dropped, "points": rows}
 
 
 # ------------------------------------------------------------------
@@ -893,12 +1142,27 @@ def cmd_shots(board, inst, args):
           else "every shot triggered")
 
 
-def main():
+def default_args(what, **overrides):
+    """The Namespace main() would build, without a command line.
+
+    So the suite can run a metric with exactly the defaults the CLI
+    uses. Two entry points computing their own defaults is how a
+    recorded number stops matching the printed one.
+    """
+    ns = _parser().parse_args([what])
+    _apply_defaults(ns)
+    for k, v in overrides.items():
+        setattr(ns, k, v)
+    return ns
+
+
+def _parser():
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("what", choices=("step", "skew", "lin", "wrap",
-                                    "clock", "ceiling", "shots"))
+                                    "clock", "ceiling", "transfer",
+                                    "shots"))
     ap.add_argument("--channel", type=int, default=1,
                     help="scope channel on DAC0 (default 1). DAC1 is the "
                          "trigger and is not a channel to measure")
@@ -935,11 +1199,24 @@ def main():
                     help="shots only: capture the solo clock square at "
                          "these DAC update rates, via =<dac>M, instead of "
                          "sweeping resolutions")
+    ap.add_argument("--repeats", type=int, default=3,
+                    help="transfer only: points per code, reduced by "
+                         "median, to reject a read that landed on a "
+                         "stopped run (default 3)")
+    ap.add_argument("--codes", action="append", type=int, default=[],
+                    help="transfer only: DAC codes to step through")
+    ap.add_argument("--seconds", type=float, default=4.0,
+                    help="transfer only: hold time per code. Must cover "
+                         "both scope reads, or they land after the run "
+                         "and measure a pin holding primed silence")
     ap.add_argument("--solo", action="store_true",
                     help="ceiling only: give up DAC1 and the sync, so "
                          "DAC0 updates every trigger and the output "
                          "frequency doubles")
-    args = ap.parse_args()
+    return ap
+
+
+def _apply_defaults(args):
 
     if not args.shape:
         args.shape = ["sine", "square", "ramp", "triangle"]
@@ -958,12 +1235,17 @@ def main():
                       2_200_000, 2_800_000, 3_600_000]
 
     defaults = {"step": 4, "skew": 4, "lin": 256, "wrap": 32,
-                "clock": 2, "ceiling": 2, "shots": 32}
+                "clock": 2, "ceiling": 2, "transfer": 256,
+                "shots": 32}
     if args.points is None:
         args.points = defaults[args.what]
     if args.what == "step" and not args.timebase:
         args.timebase = [1e-6, 500e-9, 200e-9]
 
+
+def main():
+    args = _parser().parse_args()
+    _apply_defaults(args)
     inst = dso.open_scope()
     print(f"scope: {' '.join(inst.identify())}")
     print(f"probe on CH{args.channel}: x{inst.probe(args.channel):g} "
@@ -974,7 +1256,7 @@ def main():
         board.drain_console(0.5)
         {"step": cmd_step, "skew": cmd_skew, "lin": cmd_lin,
          "wrap": cmd_wrap, "clock": cmd_clock,
-         "ceiling": cmd_ceiling,
+         "ceiling": cmd_ceiling, "transfer": cmd_transfer,
          "shots": cmd_shots}[args.what](board, inst, args)
     finally:
         try:

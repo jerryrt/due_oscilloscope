@@ -208,6 +208,120 @@ Analog and full are not run per commit. They are run when the DAC path,
 the generator or the wiring changes, and on demand before a figure is
 quoted anywhere.
 
+## Calibration: the ADC is the fine instrument, the scope is the true one
+
+The Due's ADC has **four times the resolution of the scope** at the
+scope's best usable gain - 0.806 mV per code against 3.1 mV per screen
+level at 0.1 V/div - and it samples fast enough that averaging takes the
+statistical part far below a code. What it does not have is a scale
+anyone can trust. That is the classic transfer-standard arrangement, and
+it is worth building deliberately.
+
+| instrument | resolution | absolute scale | independent? |
+|---|---|---|---|
+| Due ADC | 0.806 mV/code, far finer averaged | unknown - ADVREF is a regulator, not a reference | no: it is the thing under test |
+| DS1102E | 3.1 mV/level at 0.1 V/div, better averaged | its own calibration, plus an asserted probe ratio | yes |
+| 6.5-digit meter *(not on this bench)* | microvolts | traceable | yes |
+
+### The loop is ratiometric, and that is the whole lever
+
+**The DAC's reference is ADVREF, the ADC's reference** - datasheet Table
+46-39's note, recorded in `docs/HANDOFF.md`. One shared node, so a DAC
+code produces a fixed fraction of ADVREF and the ADC reads it as a
+fraction of the same ADVREF. The code-to-code ratio is therefore
+**immune to what the 3.3 V rail actually is** - and, by exactly the same
+token, **blind to it**. The board cannot measure its own reference, ever,
+by any amount of cleverness.
+
+The scope supplies precisely that missing number, and the first
+measurement already did:
+
+| route | ADVREF |
+|---|---|
+| loop slope (0.67053 ADC codes per DAC code) against the scope's DAC span | 3270.3 mV |
+| the ADC's codes-per-millivolt against the scope, directly | 3270.2 mV |
+| what `host/` and `tests/` have assumed all along | 3300.0 mV |
+
+Two independent routes agreeing to 0.1 mV, and the assumption is high by
+**0.91%**. So the "+0.91% ADC gain error" the first fit reported is very
+likely not the ADC's error at all - it is the assumed reference. Nothing
+on the board could have told those apart.
+
+### Three tiers, and only one of them needs an instrument
+
+**Tier 1 - absolute, occasional, external.** The scope (or a meter)
+pins ADVREF and the DAC's span. Slow, needs a bench, and only has to be
+redone when the hardware, the wiring or the instrument changes.
+
+**Tier 2 - ratiometric self-check, any time, no instruments.** Sweep the
+DAC through its codes, capture the loop, compare against the stored
+curve. Immune to rail drift by construction, so what it catches is
+*shape*: drift, damage, a reflash that changed the analog path, and any
+nonlinearity that was not there before. This is the one a deployed board
+can run on its own, and it is cheap enough to run at every boot.
+
+**Tier 3 - the ADC as a fine relative voltmeter.** Once Tier 1 has
+supplied the scale, the averaged ADC out-resolves the scope by a wide
+margin and becomes the right instrument for anything measuring
+*differences*: linearity residuals, settling tails, drift over
+temperature. `dso_metrics lin` is quantiser-limited at ~11 codes and the
+ADC would not be.
+
+### What self-calibration can and cannot fix
+
+**Can:** rail drift (ratiometrically, for free); repeatability and
+shape, against a stored curve; and - with the SAM3X's on-chip
+temperature sensor - conditioning a stored calibration on temperature,
+so a board can at least notice it is outside the conditions its
+calibration was taken in.
+
+**Cannot:** absolute scale. There is no on-chip voltage reference on the
+SAM3X to bootstrap from, so ADVREF's value has to come from outside and
+be *stored*. Today that store is `tests/baseline.json`, which is a host
+file; a deployed board would want it in its own flash, reported over
+`CTL_OP_IDENTITY` or a sibling opcode, so the board can say what
+calibration it is carrying.
+
+**Cannot, and this is the subtle one:** a linear fit cannot calibrate
+out a nonlinearity, and issue #5 is a suspected nonlinearity. Gain and
+offset are two numbers; INL is a curve. Correcting the loop with two
+numbers and then using the corrected loop to hunt issue #5 would be
+fitting the artifact into the correction.
+
+### Separating the DAC's INL from the ADC's
+
+The measurement neither instrument gives alone. Note that A0 and A1 are
+**one converter behind a multiplexer**, so the ADC's INL is common to
+both channels and comparing them cannot separate it - what it separates
+is DAC0's INL from DAC1's, which is still worth having.
+
+Two routes, both available here:
+
+1. **Same code, both DACs, both channels.** Drive DAC0 and DAC1 with an
+   identical sweep and read A0 and A1. The difference is the two DACs'
+   relative INL; the common part is the ADC's plus whatever the two DACs
+   share. Needs DAC1 back on A1, which the current wiring gives up to
+   the bench trigger - so it is a wiring mode, not the default.
+2. **The scope as the arbiter.** DAC code → volts → ADC code, which
+   `dso_metrics transfer` already does, bounded by the scope at about
+   ±4 codes over the measured range. That is not fine enough for a
+   per-code DNL and **is** fine enough for issue #5, whose signature is
+   30-45 codes. Worth stating plainly: **the scope can adjudicate issue
+   #5.** It could not before.
+
+### What to build for it
+
+1. **Store the calibration where the measurement can reach it.** Done
+   for `dac_mv` and `advref_mv`; `host/` still divides by a hard-coded
+   3300 in places and should read the file instead.
+2. **A Tier 2 self-check command.** Sweep, fold, compare to stored,
+   report a single deviation figure. No instrument, no host DSP.
+3. **Temperature alongside it.** The SAM3X ADC's internal sensor, read
+   at the same moment, so a calibration carries the conditions it was
+   taken in.
+4. **Re-take `dc_transfer`'s assertions against 3270 mV** rather than
+   3300, and mark which figures moved.
+
 ## What this bench cannot measure
 
 Saying so is part of the suite, because a plausible number is the

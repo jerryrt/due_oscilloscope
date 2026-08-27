@@ -618,7 +618,39 @@ class RigolDS1000E(Oscilloscope):
         self.io.write(f":ACQ:AVER {int(count)}", settle=0.1)
         return int(float(self.io.ask(":ACQ:AVER?")))
 
+    #: Mnemonics this model answers. Checked before the query, because
+    #: an unknown one does not return an error - it returns *nothing*,
+    #: and the read then times out and reads as a hung instrument. `VAVG`
+    #: cost a run that way; the name here is `VAVERAGE`.
+    MEASUREMENTS = frozenset((
+        "VPP", "VMAX", "VMIN", "VAMP", "VTOP", "VBASE", "VAVERAGE",
+        "VRMS", "OVERSHOOT", "PRESHOOT", "FREQUENCY", "RISETIME",
+        "FALLTIME", "PERIOD", "PWIDTH", "NWIDTH", "PDUTYCYCLE",
+        "NDUTYCYCLE", "FREQ",
+    ))
+
+    def level(self, ch=1):
+        """Mean level of the trace, in volts, from the samples.
+
+        Not `:MEAS:VAVERAGE?`, which answers to **three significant
+        figures**: near 2.7 V that is a 10 mV step, or about 19 DAC
+        codes, and no amount of vertical gain improves it because the
+        limit is the response format rather than the screen. The trace
+        itself is 600 8-bit samples, and a level dithered by the pin's
+        own ~20 mV of noise averages far below one level.
+
+        Use this for any level that matters. `measure("VAVERAGE")` is
+        still the right call for a quick look.
+        """
+        v = self.waveform(ch)
+        return (sum(v) / len(v)) if v else None
+
     def measure(self, what, ch=1):
+        if what not in self.MEASUREMENTS:
+            raise ValueError(
+                f"{what!r} is not a measurement this model answers; an "
+                f"unknown mnemonic returns nothing and times out. "
+                f"Known: {', '.join(sorted(self.MEASUREMENTS))}")
         v = float(self.io.ask(f":MEAS:{what}? CHAN{ch}"))
         return None if v >= self.NO_READING / 10 else v
 

@@ -145,6 +145,50 @@ def calibration(request):
 
 
 @pytest.fixture(scope="session")
+def dso(request):
+    """The bench oscilloscope. Skips without one; --dso makes absence
+    fatal, for a bench where it is supposed to be attached and its
+    absence is the bug.
+
+    Session-scoped and here rather than in one test module, because more
+    than one file needs it now and opening the instrument twice is a
+    USBTMC claim conflict rather than a second handle.
+    """
+    import scope as scope_mod
+    try:
+        inst = scope_mod.open_scope()
+    except Exception as e:                      # ScopeUnavailable, or pyusb
+        if request.config.getoption("--dso"):
+            pytest.fail(f"--dso given but no scope: {e}")
+        pytest.skip(f"no bench scope: {e}")
+    yield inst
+    try:
+        inst.averaging(None)
+    finally:
+        inst.close()
+
+
+@pytest.fixture
+def provenance(board, dso):
+    """The conditions a measurement has to carry to mean anything.
+
+    Fails the test rather than recording an unattributable number. That
+    is deliberate and it is the whole point of the fixture: this project
+    has twice had a figure outlive the thing it described - a version
+    string that disagreed with its own numbers, and a recorded pass rate
+    taken with instruments that no longer existed - and in both cases
+    the number looked fine.
+    """
+    import provenance as prov
+    p = prov.collect(board=board, inst=dso)
+    gaps = prov.missing(p)
+    assert not gaps, (
+        f"refusing to record: provenance is missing {gaps}. A measurement "
+        f"without its conditions is not a baseline point.")
+    return p
+
+
+@pytest.fixture(scope="session")
 def board(request, track):
     """The board, with its control port held open for the session."""
     want = track
