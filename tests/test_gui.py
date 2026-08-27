@@ -1239,8 +1239,7 @@ def test_starting_the_generator_clears_the_previous_run(win, daemon):
                                             6: [1000] * 1016})))
     win.ingest(stream.decode(make_frame(5, {7: [1000] * 1016,
                                             6: [1000] * 1016})))
-    assert win.rings and win.seq_gaps == 1 and win.frames_shown == 0
-    win.frames_shown = 2
+    assert win.rings and win.seq_gaps == 1 and win.frames_shown == 2
 
     win.awg.vpp.setValue(1.0)
     win.awg.offset.setValue(1.65)
@@ -1267,3 +1266,164 @@ def test_a_refused_generator_does_not_clear_anything(win, daemon):
     win.awg_requested("sine", 1000.0, 3.3, 0.1, True)
 
     assert win.rings == before
+
+
+# -- the daemon session -----------------------------------------------
+#
+# Driven without a window at all, which is the whole reason it is a
+# separate object: the daemon-facing half is the part a new maintainer
+# most needs to touch and was the part most tangled with Qt.
+
+
+@pytest.fixture
+def session(qapp, daemon):
+    from gui.session import DaemonSession
+    s = DaemonSession("127.0.0.1", daemon.port)
+    yield s
+    s.close()
+
+
+def collect(signal):
+    """Record what a signal emits, as a list of argument tuples."""
+    seen = []
+    signal.connect(lambda *args: seen.append(args))
+    return seen
+
+
+def test_the_session_reports_a_refusal_and_keeps_the_link(session):
+    """A refusal and a loss are different things, and conflating them is
+    what five separate `except` blocks in the window used to do. The
+    device saying no leaves the link exactly where it was."""
+    refusals = collect(session.refused)
+    gone = collect(session.disconnected)
+    assert session.open("control")
+
+    assert session.call("start", mode="capture", adc_hz=10_000_000) is None
+    assert len(refusals) == 1
+    op, message = refusals[0]
+    assert op == "start" and message, "the device's own message is empty"
+    assert session.is_open and not gone
+    # And the link really is usable, not merely marked open.
+    assert session.call("ping") is not None
+
+
+def test_a_dead_daemon_closes_the_session_and_says_why(session, daemon):
+    """The other outcome. It is not a refusal, must not read as one, and
+    the window has to be told to stop drawing."""
+    refusals = collect(session.refused)
+    gone = collect(session.disconnected)
+    assert session.open("control")
+    daemon.stop()
+
+    assert session.call("ping") is None
+    assert not session.is_open
+    assert len(gone) == 1 and "stopped answering" in gone[0][0]
+    assert not refusals, "a dead daemon was reported as a refusal"
+    # Every later call is a no-op rather than a second failure.
+    assert session.call("ping") is None
+    assert len(gone) == 1
+
+
+def test_a_connect_that_never_lands_reports_and_leaves_no_link(qapp):
+    from gui.session import DaemonSession
+    s = DaemonSession("127.0.0.1", 1)              # nothing listens on 1
+    failed = collect(s.connect_failed)
+    assert s.open("control") is False
+    assert not s.is_open
+    assert len(failed) == 1
+    # The message has to carry the way out, not just the fact.
+    assert "python3 -m daemon --fake" in failed[0][0]
+
+
+def test_the_poll_path_does_not_shout_about_a_refusal(session):
+    """`counters` costs the board a console round trip and may refuse
+    while playback runs. A refusal there is a dash on a panel, not
+    something to say out loud four times a second - but a lost link
+    still is."""
+    refusals = collect(session.refused)
+    assert session.open("observer")
+
+    # An observer may not drive the device, so this is a real refusal.
+    assert session.call_quiet("start", mode="capture") is None
+    assert not refusals
+    assert session.is_open
+
+
+def test_closing_twice_emits_once(session):
+    gone = collect(session.disconnected)
+    session.open("control")
+    session.close()
+    session.close()
+    assert len(gone) == 1 and gone[0][0] == ""
+
+
+# -- the run state ----------------------------------------------------
+
+
+def test_reset_clears_everything_a_new_run_must_not_inherit():
+    """The shape test, and the reason the state is one object.
+
+    Compared field by field against a state that has never seen a frame,
+    so an eighth number added to `AcquisitionState` and forgotten in
+    `reset()` fails here rather than by drawing the previous run's
+    samples as this one's - which is what the two-places version did.
+    """
+    fresh = vars(stream.AcquisitionState())
+
+    acq = stream.AcquisitionState()
+    for seq in (1, 2, 7):                      # 7 makes a gap
+        acq.ingest(stream.decode(make_frame(seq, {7: [1000] * 1016,
+                                                  6: [3000] * 1016})))
+    assert acq.rings and acq.seq_gaps == 1 and acq.frames_shown == 3
+    acq.reset()
+
+    assert vars(acq) == fresh
+
+
+def test_the_rate_survives_a_reset_because_it_is_not_the_runs():
+    """It describes how the device is configured, not what this run did,
+    and the first frame of the next run corrects it either way.
+    Re-defaulting it would put 200 kHz on the panel for a bench that is
+    not running at 200 kHz."""
+    acq = stream.AcquisitionState()
+    acq.ingest(stream.decode(make_frame(1, {7: [2048] * 1016},
+                                        rate=100000)))
+    assert acq.rate_hz == 100000
+    acq.reset()
+    assert acq.rate_hz == 100000
+
+
+def test_a_sequence_gap_breaks_the_ring_without_a_widget():
+    """The rule that needed a board to find - frames dropped between the
+    daemon and the window were counted and then drawn straight across -
+    asserted where it lives, rather than through a window."""
+    acq = stream.AcquisitionState()
+    def feed(seq):
+        return acq.ingest(stream.decode(make_frame(seq, {7: [1000] * 1016})))
+
+    assert feed(1) is False
+    assert feed(2) is False
+    assert feed(9) is True
+    assert acq.seq_gaps == 1
+    assert acq.discontinuities(7) == 1
+    assert acq.discontinuities(6) == 0, "a channel with no ring is not a break"
+
+
+# -- the layer rule ---------------------------------------------------
+
+
+def test_the_compute_layer_has_no_qt():
+    """`gui/stream.py` is what makes 60-odd headless tests possible, and
+    it stays that way only if something checks. A stray `from PySide6
+    import QtCore` for one convenience is how a module like this stops
+    being importable without a display, and nothing else would notice
+    until the suite needed one."""
+    import subprocess
+    out = subprocess.run(
+        [sys.executable, "-c",
+         "import sys, os; sys.path.insert(0, os.getcwd()); "
+         "import gui.stream; "
+         "print(any(m.startswith('PySide6') for m in sys.modules))"],
+        cwd=ROOT, capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == "False", "Qt reached gui/stream.py"
