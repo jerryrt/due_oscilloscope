@@ -46,6 +46,16 @@ class MeasurePanel(QtWidgets.QGroupBox):
             self._labels[key] = lab
             form.addRow(text, lab)
 
+        # The cursors' own reading, kept separate from the automatic
+        # measurements above it. They answer different questions - the
+        # automatic ones describe the whole sweep, the cursors describe
+        # two points somebody chose - and merging them into one list
+        # would make it unclear which is which.
+        self.cursor = QtWidgets.QLabel("-")
+        self.cursor.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        self.cursor.setWordWrap(True)
+        form.addRow("Cursors", self.cursor)
+
         self.note = QtWidgets.QLabel("")
         self.note.setWordWrap(True)
         self.note.setStyleSheet("color: #c0392b;")
@@ -60,6 +70,10 @@ class MeasurePanel(QtWidgets.QGroupBox):
             f"ADVREF {stream.ADVREF_MV} mV, {stream.ADVREF_SOURCE}")
         self.reference.setStyleSheet("color: #7f8c8d;")
         form.addRow("", self.reference)
+
+    def set_cursor(self, text):
+        """Show the cursors' reading, or a dash when they are off."""
+        self.cursor.setText(text or "-")
 
     def update_from(self, result):
         """Show a measure() result, refusals and all."""
