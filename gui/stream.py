@@ -29,6 +29,12 @@ FLAG_OVERRUN = 1 << 0
 # ADC labels map descending: A0 is channel 7, A1 is channel 6.
 LABELS = {7: "A0", 6: "A1"}
 
+#: Named, because "channel 7" is the ADC's number and "A0" is the pin's,
+#: and CLAUDE.md lists confusing the two among the facts that are easy to
+#: get wrong: "A0 is ADC channel 7, not 0".
+CH_A0 = 7
+CH_A1 = 6
+
 FULL_SCALE_CODES = 4095
 
 
@@ -243,13 +249,19 @@ class Sweep:
     a different instrument (`docs/awg.md`).
     """
 
-    __slots__ = ("samples", "breaks", "triggered", "trigger_index")
+    __slots__ = ("samples", "breaks", "triggered", "trigger_index",
+                 "end_back")
 
-    def __init__(self, samples, breaks, triggered=False, trigger_index=None):
+    def __init__(self, samples, breaks, triggered=False, trigger_index=None,
+                 end_back=0):
         self.samples = samples
         self.breaks = breaks
         self.triggered = triggered
         self.trigger_index = trigger_index
+        #: How many samples back from the newest this window *ends*.
+        #: Zero when free-running. It is what lets a second channel be
+        #: drawn from the same place - see window_like().
+        self.end_back = int(end_back)
 
     @property
     def empty(self):
@@ -340,7 +352,8 @@ def select(ring, n, trig=None):
     """
     if trig is None:
         samples, breaks = ring.window(n)
-        return Sweep(samples, breaks, triggered=False, trigger_index=None)
+        return Sweep(samples, breaks, triggered=False, trigger_index=None,
+                     end_back=0)
 
     span = min(ring.filled, int(n * SEARCH_SPAN))
     samples, breaks = ring.window(span)
@@ -349,7 +362,8 @@ def select(ring, n, trig=None):
     pre = max(0, min(n, pre))
     post = n - pre
 
-    free = Sweep(*ring.window(n), triggered=False, trigger_index=None)
+    free = Sweep(*ring.window(n), triggered=False, trigger_index=None,
+                 end_back=0)
     if samples.size < n:
         return free
 
@@ -365,7 +379,77 @@ def select(ring, n, trig=None):
 
     t = int(idx[-1])                       # the most recent qualifying edge
     a, b = t - pre, t + post
-    return Sweep(samples[a:b], breaks[a:b], triggered=True, trigger_index=pre)
+    return Sweep(samples[a:b], breaks[a:b], triggered=True, trigger_index=pre,
+                 end_back=samples.size - b)
+
+
+def window_like(ring, source_ring, sweep):
+    """The same window as `sweep`, taken from another channel's ring.
+
+    Both rings are fed from the same frames and the same number of
+    samples each time, so "the same window" is the same count ending the
+    same distance back from the newest sample.
+
+    This exists so the second channel is *not* triggered independently.
+    A0 and A1 are captured in the same frames; sliding them separately
+    would put two different moments on one time axis and invite reading
+    a phase difference that the display invented. Which matters here
+    more than on most instruments - the demux check is "A1 must read
+    flat", and a phase artefact between the two is exactly the sort of
+    thing that gets mistaken for channel confusion.
+
+    Returns empty arrays when the two rings have drifted out of step,
+    rather than guessing an alignment.
+    """
+    n = int(sweep.samples.size)
+    back = int(sweep.end_back)
+    if n == 0 or ring.filled < n + back:
+        return (np.empty(0, dtype=np.uint16), np.empty(0, dtype=bool))
+    if source_ring is not None and ring.filled != source_ring.filled:
+        # Different amounts of data means the frames did not carry both
+        # channels equally, and any alignment here would be a guess.
+        return (np.empty(0, dtype=np.uint16), np.empty(0, dtype=bool))
+    samples, breaks = ring.window(n + back)
+    if back:
+        samples, breaks = samples[:-back], breaks[:-back]
+    return samples, breaks
+
+
+#: Most points an XY trace draws. min/max-per-column cannot be used
+#: here - it reduces a function of time, and XY is not one - so the only
+#: reduction available is taking fewer points, and rule 5 still applies.
+XY_MAX_POINTS = 4000
+
+
+def xy_points(x_samples, y_samples, breaks=None, max_points=XY_MAX_POINTS):
+    """One channel against the other, in volts.
+
+    Returns (x_volts, y_volts) with NaN inserted at a discontinuity so
+    the figure breaks instead of drawing a chord across itself. In XY
+    that chord is worse than in the time domain: it is a straight line
+    between two unrelated operating points, and a straight line through
+    a Lissajous figure reads as a real trajectory rather than as missing
+    data.
+
+    Subsampled rather than min/max-reduced. Reducing a column to its
+    extremes is meaningful for a function of time and meaningless here,
+    where consecutive points are a path - taking every k-th point keeps
+    the path's shape and simply draws it more coarsely.
+    """
+    n = int(min(x_samples.size, y_samples.size))
+    if n == 0:
+        return np.empty(0), np.empty(0)
+    step = max(1, n // int(max(1, max_points)))
+    xs = np.asarray(codes_to_volts(x_samples[:n:step]), dtype=np.float64)
+    ys = np.asarray(codes_to_volts(y_samples[:n:step]), dtype=np.float64)
+    if breaks is not None and breaks.size >= n:
+        b = np.asarray(breaks[:n:step], dtype=bool)
+        if b.any():
+            xs = xs.copy()
+            ys = ys.copy()
+            xs[b] = np.nan
+            ys[b] = np.nan
+    return xs, ys
 
 
 def measure(sweep, rate_hz):

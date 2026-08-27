@@ -67,6 +67,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.health = HealthPanel()
         self.measure = MeasurePanel()
 
+        # Both channels are drawn; this picks which one the trigger and
+        # the measurements follow. That is what a scope's trigger-source
+        # selector is, rather than a "which one do I look at" switch.
         self.channel = QtWidgets.QComboBox()
         for tag, label in sorted(stream.LABELS.items(), reverse=True):
             self.channel.addItem(label, tag)
@@ -116,6 +119,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view_box = QtWidgets.QComboBox()
         self.view_box.addItem("Time", "time")
         self.view_box.addItem("Spectrum", "spectrum")
+        self.view_box.addItem("XY", "xy")
 
         self.fft_window = QtWidgets.QComboBox()
         for w in stream.FFT_WINDOWS:
@@ -134,7 +138,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stop_btn.clicked.connect(self.stop_capture)
 
         controls = QtWidgets.QHBoxLayout()
-        for w in (QtWidgets.QLabel("Channel"), self.channel,
+        for w in (QtWidgets.QLabel("Source"), self.channel,
                   QtWidgets.QLabel("Window"), self.window_box,
                   QtWidgets.QLabel("Rate"), self.preset,
                   QtWidgets.QLabel("Trigger"), self.trig_mode,
@@ -267,13 +271,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if got:
             self.frames_shown += got
         tag = self.channel.currentData()
-        ring = self.rings.get(tag)
-        if ring is not None:
+        if self.rings.get(tag) is not None:
             trig = self.trigger()
             view = self.view_box.currentData()
             self.fft_window.setEnabled(view == "spectrum")
-            self.scope.draw(ring, self.window_box.currentData(), self.rate_hz,
-                            trig, view, self.fft_window.currentData())
+            self.scope.draw(self.rings, tag, self.window_box.currentData(),
+                            self.rate_hz, trig, view,
+                            self.fft_window.currentData())
             self.trig_state.setText(self.trigger_state_text())
             # Measured over the sweep that was drawn, not over a fresh
             # one: a number beside a trace has to describe that trace.

@@ -744,6 +744,114 @@ def test_a_dropped_frame_breaks_the_trace_like_an_overrun_does(win):
     assert m["note"] == "discontinuity in window"
 
 
+def test_both_channels_are_drawn_not_just_the_source(win, daemon):
+    """The board captures A0 and A1 in the same frames.
+
+    Drawing one at a time hid the thing they are captured together for:
+    docs/frontend.md lists "2ch with DAC1 at mid scale: A1 tone < a few
+    codes" as a self-test, and the device's own console prints "A1 must
+    read flat, or demux is wrong". Neither is checkable on a display
+    that shows one channel.
+    """
+    win.connect_to_daemon()
+    win.client.call("start", mode="capture", adc_hz=200000, channels=2)
+    win.client.wait_frames(20, timeout=15.0)
+    win.tick()
+
+    assert set(win.rings) >= {stream.CH_A0, stream.CH_A1}
+    for tag in (stream.CH_A0, stream.CH_A1):
+        x, y = win.scope.curves[tag].getData()
+        assert x is not None and len(x) > 0, f"{stream.LABELS[tag]} not drawn"
+
+    # And they are distinguishable, because every trace in this project
+    # ends up in a screenshot pasted into a message.
+    assert (win.scope.curves[stream.CH_A0].opts["pen"].color().name()
+            != win.scope.curves[stream.CH_A1].opts["pen"].color().name())
+
+
+def test_the_second_channel_shares_the_first_ones_time_axis():
+    """Not triggered independently.
+
+    A0 and A1 come from the same frames, so sliding them separately
+    would put two moments on one axis and invite reading a phase
+    difference the display invented.
+    """
+    rate = 200000
+    a = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    b = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    # Identical content in both, fed in lockstep the way frames arrive.
+    for _ in range(4):
+        chunk = _tone(1000, 271.0)
+        a.append(chunk)
+        b.append(chunk)
+
+    sw = stream.select(a, 800, stream.Trigger(level=2048, rising=True))
+    assert sw.triggered and sw.end_back > 0, "expected a triggered sub-window"
+
+    other, _breaks = stream.window_like(b, a, sw)
+    assert np.array_equal(other, sw.samples), (
+        "the second channel was taken from a different offset")
+
+
+def test_channels_out_of_step_draw_nothing_rather_than_guessing():
+    """If the rings hold different amounts, any alignment is a guess."""
+    rate = 200000
+    a = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    b = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    a.append(_tone(2000, 271.0))
+    b.append(_tone(1500, 271.0))          # short by 500
+
+    sw = stream.select(a, 800)
+    other, _breaks = stream.window_like(b, a, sw)
+    assert other.size == 0
+
+
+def test_xy_draws_the_path_and_breaks_it_at_a_discontinuity():
+    """A chord across a Lissajous figure reads as a real trajectory.
+
+    Worse than the time domain's version: there, a straight segment is
+    visibly a join. Here it is a plausible path between two operating
+    points, and nothing about it says the data is missing.
+    """
+    n = 2000
+    x = _tone(n, 200.0, amp=900)
+    y = _tone(n, 200.0, amp=900, phase=50.0)
+    breaks = np.zeros(n, dtype=bool)
+    breaks[900] = True
+
+    xs, ys = stream.xy_points(x, y, breaks)
+    assert xs.size > 0 and xs.size == ys.size
+    assert np.isnan(xs).any() and np.isnan(ys).any(), (
+        "the discontinuity did not break the figure")
+
+    # Volts, not codes, through the one conversion.
+    finite = xs[np.isfinite(xs)]
+    assert 0.0 <= finite.min() and finite.max() <= stream.VREF_V
+
+
+def test_xy_is_subsampled_not_reduced_to_extremes():
+    """min/max per column reduces a function of time. XY is a path, and
+    its extremes are not where it went."""
+    n = 40000
+    x = _tone(n, 2000.0, amp=900)
+    y = _tone(n, 2000.0, amp=900, phase=500.0)
+    xs, ys = stream.xy_points(x, y, max_points=1000)
+    assert 0 < xs.size <= 1000 and xs.size == ys.size
+
+
+def test_xy_mode_labels_both_axes_with_their_channels(win, daemon):
+    win.connect_to_daemon()
+    win.client.call("start", mode="capture", adc_hz=200000, channels=2)
+    win.client.wait_frames(20, timeout=15.0)
+
+    win.view_box.setCurrentIndex(2)                  # XY
+    win.tick()
+    assert "A0" in win.scope.plot.getAxis("bottom").labelText
+    assert "A1" in win.scope.plot.getAxis("left").labelText
+    x, y = win.scope.curves[stream.CH_A0].getData()
+    assert x is not None and len(x) > 0, "XY drew nothing"
+
+
 def test_the_readout_says_whether_it_triggered_not_what_was_asked(win, daemon):
     """Auto free-runs when it finds no edge. The label has to say so.
 
