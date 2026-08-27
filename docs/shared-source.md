@@ -117,7 +117,7 @@ bring-up order. Do not reorder.
 | 0 | The build mechanism | both binaries print the same value | **done** |
 | 0.5 | Drain Track A's control bulk OUT; un-skip the command-port tests | 1 MB at the node, device counts every byte | **done** |
 | 1 | `frame.h`, `playstat.h`, the version numbers; extract `track_id.h` | `v` and `CTL_OP_IDENTITY` agree - a new test | **done** |
-| 2 | `frame_crc32_update` out of `drivers/stream.c` | both tracks link it; CRC tests pass | open |
+| 2 | `frame_crc32_update` out of `drivers/stream.c` | both tracks link it; CRC tests pass | **done** |
 | 3 | Split `ctl.h` into `ctl_wire.h` (shared) + device API | Track B control suite unchanged | open |
 | 4 | Decouple `ctl.c` from `load_*` and the transport, behind accessors | Track B control suite unchanged | open |
 | 5 | Share `ctl.c`; Track A implements the seam; `ctlver` 0 -> 3 | `test_control.py` runs on **both** tracks | open |
@@ -135,3 +135,12 @@ compare arm amplitudes across a phase boundary.**
 link and the runtime value for exactly this reason. Any later phase that
 adds a shared `.c` must show it running on both tracks, not compiling on
 both tracks.
+
+**The two tracks are not the same language.** Track B is C throughout;
+Track A is C++ - every sketch translation unit is `.cpp` or `.ino`. So
+**every shared header that declares a function needs `extern "C"`
+guards**, or the shared `.c` exports unmangled symbols that Track A
+cannot link against. Phase 2 hit this with `frame.h` and it is now
+guarded; `ctl_wire.h` and anything Phase 5 adds will need the same. The
+failure is a link error with a mangled name in it, which reads as a
+missing function rather than as a linkage mismatch.

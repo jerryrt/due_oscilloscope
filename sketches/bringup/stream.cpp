@@ -25,18 +25,6 @@
 #include "stream.h"
 #include "usbdma.h"
 
-uint32_t frame_crc32(const uint8_t *data, size_t len)
-{
-	uint32_t c = 0xffffffffu;
-
-	while (len--) {
-		c ^= *data++;
-		for (int k = 0; k < 8; k++)
-			c = (c >> 1) ^ (0xedb88320u & (uint32_t)(-(int32_t)(c & 1u)));
-	}
-	return ~c;
-}
-
 /*
  * Transport selection. The UART variant exists for the same reason it
  * does in Track B: it demonstrates the whole chain - timer trigger,

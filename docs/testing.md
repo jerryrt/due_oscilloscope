@@ -352,7 +352,9 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   does. See `tools/ab.py` for why.
 
 - **`test_matched_full_rate_loop[b-2-906976-453488]` and
-  `test_awg_ladder_play_only[b-32]` also fail occasionally**, one
+  `test_awg_ladder_play_only[b-32]` also fail occasionally** - and the
+  second one is characterised below and is **not** Track B's: it fails
+  the same way on Track A, one
   sequence gap or one uncounted repeat, at the top of the ladder where
   `docs/HANDOFF.md` already records an intermittent residual and
   oversupply. Neither has been characterised the way the ramp test now
@@ -374,11 +376,56 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   `timeBeginPeriod(1)` and `SetThreadPriority`), and the `Feeder` thread
   does promote itself - `Feeder._run` calls it first thing.
 
-  **This is a reading, not a characterisation.** Two observations do not
-  meet the standard the ramp test above sets, and the rule there applies
-  here: interleave the arms before claiming a cause. What is now on
-  record is where to start - it is context-dependent, it is host-side,
-  and the promotion machinery is present and applied.
+  **Characterised the same day, and the useful finding is that the rate
+  is bimodal.** Read `fed_mbs` from `--calibrate` instead of pass/fail -
+  the test records it on passing runs too - and it lands in one of two
+  tight clusters and never between them:
+
+  | mode | `fed_mbs` | against the 2.438 needed | gate at 0.95 |
+  |---|---|---|---|
+  | high | **2.431-2.434** | 99.8% | passes |
+  | low | **2.281-2.283** | 93.6% | fails |
+
+  Fourteen runs, seven of each arm of the A/B below, plus three failures
+  seen in full-suite runs at 2.282274, 2.282930 and 2.283142 - a spread
+  of 0.04% across three different sessions and two different suite
+  compositions. **A scheduling or jitter story predicts a distribution;
+  two clusters 6.3% apart with nothing between them means something
+  discrete is switching.** That is the thing to chase, and it is not
+  "occasional flakiness".
+
+  **A hypothesis that died, recorded because the way it died is the
+  point.** `test_jitter.py` immediately before `test_rates.py`
+  reproduces it in 110 s, where `test_rates.py` alone does not and
+  `test_census.py` before it does not either - so it looked specific to
+  that file, and `test_jitter.py` is pure computation that builds
+  histograms. Cyclic-GC pressure was the obvious mechanism, and
+  disabling the collector made the first four measurements separate
+  perfectly: 2.282/2.283 with it on, 2.432/2.433 with it off.
+
+  **Interleaved to five rounds, it fell apart.** `gc=off` produced 2.281
+  in round 4, and pooled the low mode appears 3 of 7 times with the
+  collector on and 1 of 7 with it off - not separable at that n. The
+  first four points were the exact trap the ramp-test entry above warns
+  about, on the same suite, three paragraphs later. **Interleave before
+  believing, including when the first numbers look decisive - especially
+  then.**
+
+  Two mechanisms are ruled out by direct check rather than by argument:
+  `rt.promote()` is not a no-op on Windows (it does `timeBeginPeriod(1)`
+  and `SetThreadPriority`), and `Feeder._run` promotes its own thread
+  before its first write.
+
+  **And it is host-side, which is now shown rather than inferred: the
+  same low mode appears on Track A.** `test_awg_ladder_play_only[a-32]`
+  fed 2.282286 MB/s in a full Track A run - inside the 2.281-2.283
+  cluster the Track B failures sit in, matching to 0.05%. The two tracks
+  share no firmware source, enumerate through different USB stacks, and
+  reach the DAC by different code; what they share is this host and this
+  feeder. **So the entry above should not be read as a Track B
+  property**, and any explanation that starts in the firmware has to
+  account for two independent implementations landing on the same two
+  numbers.
 - **Never truncate a suite run's output.** The first of those two was
   lost to a `| tail -3` on the pytest invocation, which threw away the
   traceback and left nothing to diagnose; the re-run was green and the

@@ -17,21 +17,6 @@
 #include <stdio.h>
 #include <string.h>
 
-uint32_t frame_crc32_update(uint32_t c, const uint8_t *data, size_t len)
-{
-	while (len--) {
-		c ^= *data++;
-		for (int k = 0; k < 8; k++)
-			c = (c >> 1) ^ (0xedb88320u & (uint32_t)(-(int32_t)(c & 1u)));
-	}
-	return c;
-}
-
-uint32_t frame_crc32(const uint8_t *data, size_t len)
-{
-	return ~frame_crc32_update(0xffffffffu, data, len);
-}
-
 /*
  * Transport selection.
  *

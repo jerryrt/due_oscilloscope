@@ -53,6 +53,19 @@ typedef struct __attribute__((packed)) {
 } frame_header_t;
 
 /*
+ * C linkage, because this header is shared and the two tracks are not
+ * the same language. Track B is C throughout; Track A is C++ - every
+ * sketch translation unit is .cpp or .ino. Without this the shared
+ * crc32.c would export unmangled symbols that Track A's callers cannot
+ * link against, and the failure arrives at link time with a mangled
+ * name in it rather than at the include. Every shared header that
+ * declares a function needs this; see docs/shared-source.md.
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
  * Deliberately no payload CRC. USB already provides a per-packet CRC-16
  * with hardware retry, and computing one here would make the CPU read
  * the whole sample stream, which is the one thing the architecture
@@ -67,5 +80,9 @@ uint32_t frame_crc32(const uint8_t *data, size_t len);
  * a second thing to get wrong. Start at 0xffffffff, finish with ~c.
  */
 uint32_t frame_crc32_update(uint32_t c, const uint8_t *data, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FRAME_H */
