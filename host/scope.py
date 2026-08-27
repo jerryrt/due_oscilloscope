@@ -238,6 +238,67 @@ class Oscilloscope:
                      sweep=None):                             # pragma: no cover
         raise NotImplementedError
 
+    def ext_trigger_autoset(self, levels=None, couplings=("AC", "DC"),
+                            slope="POS", settle=0.45):        # pragma: no cover
+        """Find a level and coupling on which EXT actually triggers.
+
+        Why this is not a constant. The DAC swings 0.52-2.82 V, so the
+        obvious level is 1.67 V - and the DS1102E's EXT input clamps at
+        1.2 V, which no readback complains about: it silently accepts
+        1.67 and holds 1.20. Then the probe ratio moves the whole
+        signal, and a x10 probe puts the crossing at 0.167 V and the
+        swing at 230 mV, which is the instrument's own sensitivity
+        floor. Measured here: the window is 0.1-0.2 V DC-coupled and
+        0.0-0.1 V AC-coupled, and a sweep at 0.0/0.3/0.6/1.0/1.2 steps
+        over it and reports "EXT does not work".
+
+        So the level is discovered, not assumed. Returns the settings
+        that triggered, or None - and None means no signal is reaching
+        the input, which is a cable fault and not a level to guess
+        harder at.
+        """
+        if levels is None:
+            levels = [i / 20.0 for i in range(-24, 25)]
+        for coup in couplings:
+            self.trigger_coupling(coup)
+            for lev in levels:
+                self.trigger_edge(source="EXT", slope=slope, level=lev,
+                                  sweep="NORMAL")
+                self.run()
+                time.sleep(settle)
+                if self.triggered():
+                    return {"coupling": coup, "level": lev, "slope": slope}
+        return None
+
+    def timebase_offset(self, seconds=None):                  # pragma: no cover
+        """Where the trigger sits relative to the screen centre.
+
+        Needed to look at what happens *after* an edge: the trigger
+        point is centre by default, which spends half the record on
+        what came before. Negative moves the trigger left.
+        """
+        raise NotImplementedError
+
+    def trigger_coupling(self, mode=None):                    # pragma: no cover
+        """DC, AC, HF or LF on the trigger path only.
+
+        Not the channel's coupling: this one decides what the trigger
+        comparator sees, and for EXT it is the difference between a
+        usable setup and one that never fires - the DAC's 1.67 V
+        midpoint is above the 1.2 V the input can threshold, and AC
+        coupling is what brings the crossing back into range.
+        """
+        raise NotImplementedError
+
+    def triggered(self):                                      # pragma: no cover
+        """True when the instrument has actually acquired on a trigger.
+
+        A predicate rather than a status string, because the string is
+        this instrument's - a DS1102E says "T'D" - and callers must not
+        learn one scope's spelling.
+        """
+        raise NotImplementedError
+
     def averaging(self, count=None):                          # pragma: no cover
         """Acquisition averaging - the scope's version of folding.
 
@@ -420,6 +481,24 @@ class RigolDS1000E(Oscilloscope):
                 "sweep": self.io.ask(":TRIG:EDGE:SWE?"),
                 "level": float(self.io.ask(":TRIG:EDGE:LEV?")),
                 "status": self.io.ask(":TRIG:STAT?")}
+
+    def timebase_offset(self, seconds=None):
+        if seconds is not None:
+            self._apply(":TIM:OFFS", ":TIM:OFFS?", seconds, tol=1e-9)
+        return float(self.io.ask(":TIM:OFFS?"))
+
+    def trigger_coupling(self, mode=None):
+        if mode is not None:
+            self.io.write(f":TRIG:EDGE:COUP {mode}", settle=0.15)
+        return self.io.ask(":TRIG:EDGE:COUP?")
+
+    #: What this model calls "acquired on a trigger". The apostrophe is
+    #: not a typo and is why this is a driver detail rather than a
+    #: string any caller should hold.
+    TRIGGERED = ("T'D", "TD")
+
+    def triggered(self):
+        return self.io.ask(":TRIG:STAT?") in self.TRIGGERED
 
     def averaging(self, count=None):
         if count is None:
