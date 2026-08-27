@@ -5,26 +5,10 @@
 
 #include "ctl.h"
 #include "ctl_port.h"
-#include "track_id.h"
 #include "fw_version.h"
-#include "acq.h"
 #include "frame.h"
-#include "play.h"
-#include "stream.h"
-#include "sam.h"
 #include <stdio.h>
 #include <string.h>
-
-/*
- * The wire structs are copies of stream.c's, so that ctl.c stays a copy
- * and not a field-by-field mapping that can be got wrong silently. That
- * is only safe while they agree, so say so to the compiler rather than
- * in a comment.
- */
-_Static_assert(sizeof(ctl_stream_stats_t) == sizeof(stream_stats_t),
-               "ctl_stream_stats_t and stream_stats_t have diverged");
-_Static_assert(sizeof(ctl_bench_t) == sizeof(stream_bench_t),
-               "ctl_bench_t and stream_bench_t have diverged");
 
 volatile uint32_t ctl_rx_frames;
 volatile uint32_t ctl_rx_bad;
@@ -157,7 +141,6 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 	}
 	case CTL_OP_IDENTITY: {
 		ctl_identity_t id;
-		static const char build[] = __DATE__ " " __TIME__;
 
 		if (len != 0) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
@@ -165,19 +148,23 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			return;
 		}
 		memset(&id, 0, sizeof(id));
-		id.track         = FW_TRACK;
+		/*
+		 * The track fills in what only it knows - which track it is,
+		 * its clocks, its frame geometry, its build stamp.
+		 */
+		ctl_port_identity(&id);
+		/*
+		 * The three versions are answered here and never by the
+		 * track. They are the contract this file *is*, and a board
+		 * that reported its own idea of CTL_VERSION could disagree
+		 * with the parser actually running on it - which is the one
+		 * mismatch a version field exists to make impossible.
+		 */
 		id.ctl_version   = CTL_VERSION;
 		id.frame_version = FRAME_VERSION;
 		id.fw_major      = FW_VERSION_MAJOR;
 		id.fw_minor      = FW_VERSION_MINOR;
 		id.fw_patch      = FW_VERSION_PATCH;
-		id.frame_bytes   = ACQ_FRAME_BYTES;
-		id.frame_samples = ACQ_BUF_SAMPLES;
-		id.mck_hz        = SystemCoreClock;
-		id.adc_clock_hz  = SystemCoreClock / 4u;
-		memcpy(id.build, build,
-		       sizeof(build) - 1u < sizeof(id.build)
-		           ? sizeof(build) - 1u : sizeof(id.build));
 		ctl_respond(h->req_id, h->opcode, 0, &id, sizeof(id));
 		return;
 	}
@@ -189,26 +176,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			          "counters takes no payload");
 			return;
 		}
-		ct.dev_us      = ctl_port_micros();
-		ct.bytes_in    = play_bytes_in;
-		ct.produced    = play_produced;
-		ct.consumed    = play_consumed;
-		ct.underruns   = play_underruns;
-		ct.isr_calls   = play_isr_calls;
-		ct.endtx_seen  = play_endtx_seen;
-		ct.spans       = play_spans;
-		ct.partial     = play_partial;
-		ct.occ_min     = play_occ_min;
-		ct.svc_calls   = play_svc_calls;
-		ct.loop_passes = stream_loop_passes;
-		ct.run_us      = play_run_us;
-		ct.abandoned   = play_abandoned;
-		ct.drain_polls = ctl_port_out_drain_polls();
+		ctl_port_counters(&ct);
 		ctl_respond(h->req_id, h->opcode, 0, &ct, sizeof(ct));
 		return;
 	}
 	case CTL_OP_STREAM_STATS: {
-		stream_stats_t st;
 		ctl_stream_stats_t out;
 
 		if (len != 0) {
@@ -216,13 +188,15 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			          "stream stats takes no payload");
 			return;
 		}
-		stream_get_stats(&st);
-		memcpy(&out, &st, sizeof(out));
+		if (!ctl_port_stream_stats(&out)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no stream stats on this track");
+			return;
+		}
 		ctl_respond(h->req_id, h->opcode, 0, &out, sizeof(out));
 		return;
 	}
 	case CTL_OP_BENCH: {
-		stream_bench_t b;
 		ctl_bench_t out;
 
 		if (len != 0) {
@@ -230,91 +204,56 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			          "bench takes no payload");
 			return;
 		}
-		stream_get_bench(&b);
-		memcpy(&out, &b, sizeof(out));
+		if (!ctl_port_bench(&out)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no bench counters on this track");
+			return;
+		}
 		ctl_respond(h->req_id, h->opcode, 0, &out, sizeof(out));
 		return;
 	}
 	case CTL_OP_OCCUPANCY: {
-		static uint8_t body[sizeof(ctl_occupancy_t)
-		                    + PLAY_NBUF * sizeof(uint32_t)
-		                    + PLAY_OCC_TRACE];
-		ctl_occupancy_t *o = (ctl_occupancy_t *)body;
-		uint8_t *p = body + sizeof(*o);
-		uint32_t traced = play_occ_traced;
+		static uint8_t body[CTL_MAX_PAYLOAD];
+		int n;
 
 		if (len != 0) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
 			          "occupancy takes no payload");
 			return;
 		}
-		if (traced > PLAY_OCC_TRACE)
-			traced = PLAY_OCC_TRACE;
-
-		o->dev_us      = ctl_port_micros();
-		o->occ_min     = play_occ_min;
-		o->endtx_seen  = play_endtx_seen;
-		o->run_us      = play_run_us;
-		o->consumed    = play_consumed;
-		o->nbuf        = (uint8_t)PLAY_NBUF;
-		o->trace_decim = (uint8_t)PLAY_OCC_DECIM;
-		o->trace_n     = (uint16_t)traced;
-
-		for (unsigned i = 0; i < PLAY_NBUF; i++) {
-			uint32_t v = play_occ_hist[i];
-
-			memcpy(p, &v, sizeof(v));
-			p += sizeof(v);
+		/*
+		 * The track writes the whole body, because its length comes
+		 * from that track's PLAY_NBUF and PLAY_OCC_TRACE. The layout
+		 * is still ctl_wire.h's and only one of those exists.
+		 */
+		n = ctl_port_occupancy(body, sizeof(body));
+		if (n < 0) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no occupancy histogram on this track");
+			return;
 		}
-		for (uint32_t i = 0; i < traced; i++)
-			*p++ = play_occ_trace[i];
-
-		ctl_respond(h->req_id, h->opcode, 0, body,
-		            (uint16_t)(p - body));
+		ctl_respond(h->req_id, h->opcode, 0, body, (uint16_t)n);
 		return;
 	}
 	case CTL_OP_RATE_TRACE: {
-		/*
-		 * Paged: PLAY_RATE_TRACE entries of four bytes do not fit a
-		 * packet. The page size is what is left of the payload after
-		 * the header, computed rather than written down, so raising
-		 * CTL_MAX_PAYLOAD cannot leave a stale constant behind.
-		 */
-		enum { PAGE = (CTL_MAX_PAYLOAD - sizeof(ctl_rate_page_t))
-		              / sizeof(uint32_t) };
-		static uint8_t body[sizeof(ctl_rate_page_t)
-		                    + PAGE * sizeof(uint32_t)];
-		ctl_rate_page_t *rp = (ctl_rate_page_t *)body;
-		uint8_t *p = body + sizeof(*rp);
-		uint32_t total = play_rate_traced;
-		uint32_t off, n;
+		static uint8_t body[CTL_MAX_PAYLOAD];
+		uint16_t off;
+		int n;
 
 		if (len != 2) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
 			          "rate trace takes a u16 offset");
 			return;
 		}
-		if (total > PLAY_RATE_TRACE)
-			total = PLAY_RATE_TRACE;
-		off = (uint32_t)payload[0] | ((uint32_t)payload[1] << 8);
-		n = off >= total ? 0u : total - off;
-		if (n > (uint32_t)PAGE)
-			n = (uint32_t)PAGE;
-
-		rp->decim    = (uint8_t)PLAY_RATE_DECIM;
-		rp->reserved = 0;
-		rp->total    = (uint16_t)total;
-		rp->offset   = (uint16_t)off;
-		rp->count    = (uint16_t)n;
-
-		for (uint32_t i = 0; i < n; i++) {
-			uint32_t v = play_rate_us[off + i];
-
-			memcpy(p, &v, sizeof(v));
-			p += sizeof(v);
+		off = (uint16_t)((uint32_t)payload[0]
+		                 | ((uint32_t)payload[1] << 8));
+		n = ctl_port_rate_page(body, sizeof(body), off);
+		if (n < 0) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no rate trace in this build");
+			return;
 		}
-		ctl_respond(h->req_id, h->opcode, 0, body,
-		            (uint16_t)(p - body));
+		ctl_respond(h->req_id, h->opcode, 0, body, (uint16_t)n);
 		return;
 	}
 	case CTL_OP_LOAD: {

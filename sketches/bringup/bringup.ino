@@ -43,6 +43,7 @@
 #include "play.h"
 #include "playstat.h"
 #include "ctlusb.h"
+#include "ctl.h"                    /* the shared parser */
 #include "usbdma.h"
 #include "frame.h"
 #include "track_id.h"
@@ -93,13 +94,6 @@ static void led_rx(int on)
 	else
 		PIOC->PIO_SODR = RXL_MASK;
 }
-
-/*
- * No control channel on this track yet - objective 1c - so the identity
- * line reports ctlver=0, which is what "this board has none" looks like
- * to a host. It is not a version number that will ever be 0 on Track B.
- */
-#define CTL_VERSION 0
 
 /*
  * One line saying which firmware this is. Same format on both tracks -
@@ -1046,13 +1040,15 @@ void loop()
 	ctlusb_quiesce_interrupts();
 
 	/*
-	 * And drain its bulk OUT, on the same schedule and for a reason of
-	 * the same size. The endpoint is allocated whether or not anything
-	 * consumes it, and an allocated bulk OUT that nobody drains NAKs
-	 * for ever - which stalls the host's writer and, on macOS, leaves
-	 * close() waiting on URBs that never complete. One bank per pass.
+	 * The control channel, which is also what keeps its bulk OUT
+	 * drained. This used to be ctlusb_drain_out(), which released the
+	 * bank and discarded what was in it because nothing here spoke the
+	 * protocol; ctl_service() reads the same endpoint and answers.
+	 * The drain obligation is unchanged and is why this runs every
+	 * pass whether or not a host is talking - an allocated bulk OUT
+	 * that nobody hands back NAKs for ever.
 	 */
-	ctlusb_drain_out();
+	ctl_service();
 
 	/* Heartbeat: if this stops, the board hung or faulted. */
 	uint32_t now = millis();

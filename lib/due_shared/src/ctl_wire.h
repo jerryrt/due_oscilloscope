@@ -16,6 +16,19 @@
 #ifndef CTL_WIRE_H
 #define CTL_WIRE_H
 
+/*
+ * A static assertion in both languages. The tracks are not the same
+ * one: Track B is C and gets _Static_assert from C11, Track A is C++ in
+ * every translation unit and spells it static_assert. This header is
+ * compiled by both, so it can use neither name directly.
+ */
+#ifdef __cplusplus
+#define CTL_STATIC_ASSERT(c, m) static_assert(c, m)
+#else
+#define CTL_STATIC_ASSERT(c, m) _Static_assert(c, m)
+#endif
+
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -99,7 +112,7 @@ typedef struct __attribute__((packed)) {
 	uint32_t crc32;        /* over the 12 bytes above, then the payload */
 } ctl_header_t;
 
-_Static_assert(sizeof(ctl_header_t) == CTL_HDR_BYTES,
+CTL_STATIC_ASSERT(sizeof(ctl_header_t) == CTL_HDR_BYTES,
                "the control header is a wire format, not a struct layout");
 
 /*

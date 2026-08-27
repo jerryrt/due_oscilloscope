@@ -426,6 +426,23 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   property**, and any explanation that starts in the firmware has to
   account for two independent implementations landing on the same two
   numbers.
+- **Two tests now fail only inside a full run, and it is worth
+  watching whether that is one thing or two.**
+  `test_awg_ladder_play_only[*-32]` is characterised above.
+  `test_daemon_api.py::test_the_fanout_cost_is_recorded_per_frame`
+  joined it on 2026-08-27: `assert 33 <= (30 + 2)`, off by one on a
+  tolerance, in a full Track B run. It passed 6 of 6 standalone and 47
+  of 47 with its own file, three times each, on the same tree.
+
+  They have almost nothing else in common - one is a host feed rate
+  against real hardware, the other is board-free accounting over a fake
+  device - so **do not assume a shared cause**. What they share is that
+  neither reproduces outside a long session, which is the property that
+  makes both expensive to chase and is why both are written down rather
+  than re-run until green. The suite grew ~27 tests on 2026-08-26 when
+  the bench-scope work landed, which changes ordering and timing for
+  everything after it; that is a candidate and not a finding.
+
 - **Never truncate a suite run's output.** The first of those two was
   lost to a `| tail -3` on the pytest invocation, which threw away the
   traceback and left nothing to diagnose; the re-run was green and the

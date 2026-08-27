@@ -53,7 +53,7 @@ add_executable(baremetal_bringup
     drivers/play.c
     drivers/usb_cdc.c
     drivers/stream.c
-    drivers/ctl.c
+    lib/due_shared/src/ctl.c
     drivers/ctl_port.c
     lib/due_shared/src/crc32.c
     ${DEVICE}/source/system_sam3xa.c

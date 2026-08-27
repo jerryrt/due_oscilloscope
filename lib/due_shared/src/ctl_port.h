@@ -89,6 +89,80 @@ uint32_t ctl_port_out_drain_polls(void);
 bool ctl_port_load_sample(load_report_t *out);
 
 /*
+ * ---------------------------------------------------------------------
+ * The per-opcode data.
+ *
+ * These exist because of a build fact rather than a design preference,
+ * and the fact is worth stating: **a file inside the shared library
+ * cannot include a header from a track's own folder.** arduino-cli
+ * compiles a library with the library's include path, so ctl.c living
+ * here cannot reach acq.h, play.h, stream.h or track_id.h on Track A -
+ * measured, as `track_id.h: No such file or directory`.
+ *
+ * So the split is not "protocol versus hardware", which is where this
+ * started, but "what every board does the same versus what a board has
+ * to look up locally". Framing, the CRC, header validation, the receive
+ * state machine, the idle timeout, dispatch and every error path are
+ * the same everywhere and stay shared - about two thirds of the file.
+ * Filling in a response body means reading this track's counters, and
+ * that is here.
+ *
+ * The wire layout of each struct is still one definition in
+ * ctl_wire.h, so a track can get a field wrong but cannot get the
+ * *format* wrong, and tests/test_control.py checks the values against a
+ * real board on both tracks.
+ * ---------------------------------------------------------------------
+ */
+
+/*
+ * The identity fields only a track knows: track letter, clocks, frame
+ * geometry and build stamp. The caller fills in the three version
+ * numbers, which are shared and must not be answered locally.
+ */
+void ctl_port_identity(ctl_identity_t *out);
+
+/* CTL_OP_COUNTERS. Every field; the caller zeroes nothing. */
+void ctl_port_counters(ctl_counters_t *out);
+
+/*
+ * CTL_OP_STREAM_STATS and CTL_OP_BENCH - what `?` and the bench half of
+ * `B` print. False means this track does not keep them.
+ *
+ * These two are worth a note, because finding it out is what set the
+ * rule below. Their payloads carry `usb_reset`, `usb_setup`,
+ * `usb_stall`, `usb_configured`, `usb_devisr`, `usb_ep0isr` and
+ * `usb_devimr` - counters kept by *Track B's own USB stack*. Track A
+ * enumerates through the Arduino core and has no such numbers. So these
+ * are not universal protocol; they are one track's internals that the
+ * control channel happens to carry.
+ *
+ * **The rule: an opcode a track does not implement is answered with
+ * CTL_ERR_OPCODE, never with a body of zeroes.** Zero is a
+ * measurement - "the counter is there and it read nothing" - and a host
+ * cannot tell that from "this firmware does not count that" unless the
+ * device says so. The same rule covers the load monitor and the rate
+ * trace.
+ */
+bool ctl_port_stream_stats(ctl_stream_stats_t *out);
+bool ctl_port_bench(ctl_bench_t *out);
+
+/*
+ * CTL_OP_OCCUPANCY. Writes the whole body - header, per-slot histogram
+ * and trace - and returns its length, because the sizes come from this
+ * track's PLAY_NBUF and PLAY_OCC_TRACE. Returns -1 if this track does
+ * not keep the histogram, which is answered as CTL_ERR_OPCODE.
+ */
+int ctl_port_occupancy(uint8_t *body, size_t max);
+
+/*
+ * CTL_OP_RATE_TRACE, one page from `offset`. Same contract, and -1 is
+ * the expected answer on a track built without the rate trace - Track A
+ * has no PLAY_RATE_TRACE at all, and Track B compiles it out by
+ * default (PLAY_RATE_TRACE_ENABLED 0).
+ */
+int ctl_port_rate_page(uint8_t *body, size_t max, uint16_t offset);
+
+/*
  * Flush the debug console. Only ctl_dump() uses this, it is never
  * called while the sample path is running, and a track whose console
  * needs no flushing implements it empty.
