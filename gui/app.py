@@ -124,6 +124,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view_box.addItem("Spectrum", "spectrum")
         self.view_box.addItem("XY", "xy")
 
+        self.cursor_btn = QtWidgets.QCheckBox("Cursors")
+        self.cursor_btn.toggled.connect(self.scope_cursors)
+
         self.fft_window = QtWidgets.QComboBox()
         for w in stream.FFT_WINDOWS:
             self.fft_window.addItem(w.capitalize(), w)
@@ -146,7 +149,8 @@ class MainWindow(QtWidgets.QMainWindow):
                   QtWidgets.QLabel("Rate"), self.preset,
                   QtWidgets.QLabel("Trigger"), self.trig_mode,
                   self.trig_slope, self.trig_level, self.trig_state,
-                  QtWidgets.QLabel("View"), self.view_box, self.fft_window):
+                  QtWidgets.QLabel("View"), self.view_box, self.fft_window,
+                  self.cursor_btn):
             controls.addWidget(w)
         controls.addStretch(1)
         for b in (self.connect_btn, self.start_btn, self.stop_btn):
@@ -287,6 +291,40 @@ class MainWindow(QtWidgets.QMainWindow):
             # one: a number beside a trace has to describe that trace.
             self.measure.update_from(
                 stream.measure(self.scope.last_sweep, self.rate_hz))
+            self.measure.set_cursor(self.cursor_text())
+
+    def scope_cursors(self, on):
+        self.scope.set_cursors(bool(on))
+        # cursor_text(), not cursor_reading(): the panel takes the
+        # formatted string and the reading is a dict.
+        self.measure.set_cursor(self.cursor_text())
+
+    def cursor_text(self):
+        """The pair's reading, formatted for whichever view is up.
+
+        The units follow the axis rather than being assumed: the same
+        two lines measure seconds in the time view and hertz in the
+        spectrum, and labelling a frequency difference "dt" would be a
+        small lie that a screenshot carries a long way.
+        """
+        r = self.scope.cursor_reading()
+        if r is None:
+            return None
+        if r["view"] == "spectrum":
+            out = [f"df {r['dx']:,.1f} Hz"]
+            if r["dy"] is not None:
+                out.append(f"dA {r['dy']:+.2f} dB")
+        elif r["view"] == "xy":
+            out = [f"dX {r['dx']:.4f} V"]
+            if r["dy"] is not None:
+                out.append(f"dY {r['dy']:+.4f} V")
+        else:
+            out = [f"dt {r['dx'] * 1e6:,.2f} us"]
+            if r["inverse"]:
+                out.append(f"1/dt {r['inverse']:,.1f} Hz")
+            if r["dy"] is not None:
+                out.append(f"dV {r['dy']:+.4f} V")
+        return "   ".join(out)
 
     def awg_requested(self, shape, hz, vpp, offset, running):
         """Build the waveform, send it, and drive the loop.

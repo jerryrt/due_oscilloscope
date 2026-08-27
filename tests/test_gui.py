@@ -936,6 +936,67 @@ def test_the_generator_builds_whole_cycles_between_the_codes():
     assert tags == {0}
 
 
+def test_cursors_measure_the_interval_between_them(win, daemon):
+    """dt, its reciprocal, and dV - in the units the axis is in."""
+    win.connect_to_daemon()
+    win.client.call("start", mode="capture", adc_hz=200000, channels=2)
+    win.client.wait_frames(20, timeout=15.0)
+    win.window_box.setCurrentIndex(2)                 # 20 ms
+    win.tick()
+
+    assert win.cursor_text() is None, "cursors should start off"
+    win.cursor_btn.setChecked(True)
+    win.tick()
+
+    # Place them a known distance apart and check the arithmetic.
+    win.scope.cursors[0].setPos(0.002)                # 2 ms
+    win.scope.cursors[1].setPos(0.005)                # 5 ms
+    r = win.scope.cursor_reading()
+    assert abs(r["dx"] - 0.003) < 1e-9
+    assert abs(r["inverse"] - 1.0 / 0.003) < 1e-6
+
+    text = win.cursor_text()
+    assert "3,000.00 us" in text, text
+    assert "333.3 Hz" in text, text
+
+    # The panel is written on redraw, not on drag, so compare after a
+    # tick rather than before one.
+    win.tick()
+    assert win.measure.cursor.text() == win.cursor_text()
+
+
+def test_cursors_report_the_axis_they_are_on(win, daemon):
+    """The same two lines measure seconds in the time view and hertz in
+    the spectrum. Labelling a frequency difference "dt" is a small lie
+    that a screenshot carries a long way."""
+    win.connect_to_daemon()
+    win.client.call("start", mode="capture", adc_hz=200000, channels=2)
+    win.client.wait_frames(20, timeout=15.0)
+    win.cursor_btn.setChecked(True)
+    win.tick()
+    assert "dt" in win.cursor_text()
+
+    win.view_box.setCurrentIndex(1)                   # Spectrum
+    win.tick()
+    win.scope.cursors[0].setPos(1000.0)
+    win.scope.cursors[1].setPos(4000.0)
+    text = win.cursor_text()
+    assert "df" in text and "3,000.0 Hz" in text, text
+    assert "dt" not in text
+
+
+def test_a_cursor_on_a_break_reads_nothing_rather_than_a_level():
+    """The curve carries NaN where the data is discontinuous, and a
+    cursor landing there must not report the number beside it."""
+    from gui import scope as scopemod
+    xs = np.array([0.0, 1.0, 2.0, 3.0])
+    ys = np.array([1.0, np.nan, 2.0, 2.5])
+
+    assert scopemod._sample_at(xs, ys, 0.0) == 1.0
+    assert scopemod._sample_at(xs, ys, 1.0) is None      # the break
+    assert scopemod._sample_at(xs, ys, 9.0) is None      # off the end
+
+
 def test_the_readout_says_whether_it_triggered_not_what_was_asked(win, daemon):
     """Auto free-runs when it finds no edge. The label has to say so.
 

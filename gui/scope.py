@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from . import stream
 
@@ -59,8 +59,66 @@ class ScopeView(QtWidgets.QWidget):
         # The sweep as drawn, so the measurements describe the trace on
         # screen rather than a second one taken a moment later.
         self.last_sweep = stream.Sweep(np.empty(0, dtype=np.uint16),
-                                       np.empty(0, dtype=bool))
+                                       np.empty(0, dtype=bool))
         self._view = "time"
+
+        # Two draggable verticals. Off by default: a cursor sitting on a
+        # trace that nobody put there reads as a feature of the signal.
+        self.cursors = [
+            pg.InfiniteLine(angle=90, movable=True,
+                            pen=pg.mkPen("#95a5a6", width=1,
+                                         style=QtCore.Qt.DashLine))
+            for _ in range(2)]
+        for c in self.cursors:
+            c.setZValue(10)
+        self.cursors_on = False
+
+    def set_cursors(self, on):
+        """Show or hide the pair, placing them somewhere useful.
+
+        A quarter and three quarters of the *visible* range rather than
+        at the edges: a cursor on the boundary is indistinguishable from
+        the axis, and the first thing anyone does is drag it inward.
+        """
+        if on == self.cursors_on:
+            return
+        self.cursors_on = on
+        if on:
+            (x0, x1), _y = self.plot.viewRange()
+            span = x1 - x0
+            for c, frac in zip(self.cursors, (0.25, 0.75)):
+                c.setPos(x0 + span * frac)
+                self.plot.addItem(c, ignoreBounds=True)
+        else:
+            for c in self.cursors:
+                self.plot.removeItem(c)
+
+    def cursor_reading(self):
+        """What the pair measures, in whatever units the axis is in.
+
+        Returns a dict, or None when the cursors are off.
+
+        The y values are read off the *drawn* curve rather than
+        re-derived from the samples, so the number agrees with the
+        picture even where the picture is a min/max envelope. A reading
+        that disagreed with the pixels beside it would be worse than no
+        reading.
+        """
+        if not self.cursors_on:
+            return None
+        a, b = (float(c.value()) for c in self.cursors)
+        lo, hi = (a, b) if a <= b else (b, a)
+        out = {"view": self._view, "x1": lo, "x2": hi, "dx": hi - lo,
+               "y1": None, "y2": None, "dy": None, "inverse": None}
+        if out["dx"] > 0 and self._view == "time":
+            out["inverse"] = 1.0 / out["dx"]
+        xs, ys = self.curve.getData()
+        if xs is not None and len(xs) > 1:
+            out["y1"] = _sample_at(xs, ys, lo)
+            out["y2"] = _sample_at(xs, ys, hi)
+            if out["y1"] is not None and out["y2"] is not None:
+                out["dy"] = out["y2"] - out["y1"]
+        return out
 
     def _axes_for_time(self):
         if self._view == "time":
@@ -191,3 +249,18 @@ class ScopeView(QtWidgets.QWidget):
         if drawn:
             self.plot.setXRange(0, max(span, 1e-6), padding=0)
         return drawn
+
+
+def _sample_at(xs, ys, x):
+    """The drawn y nearest x, or None if x is off the ends.
+
+    Nearest rather than interpolated. The curve is already a min/max
+    envelope with two points per pixel column, so interpolating between
+    them would invent a value between a column's minimum and its
+    maximum - which is not a value the signal ever took.
+    """
+    if x < xs[0] or x > xs[-1]:
+        return None
+    i = int(np.argmin(np.abs(np.asarray(xs) - x)))
+    v = ys[i]
+    return None if v != v else float(v)          # NaN is a break, not a level
