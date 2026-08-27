@@ -61,18 +61,20 @@ def test_a_truncated_block_returns_what_arrived():
     assert scope.parse_block(raw) == b"\x01\x02\x03"
 
 
-def test_an_exponent_needs_a_mantissa():
-    """`%g` renders 1e-5 as "1e-05", which this firmware ignores in
-    silence: the write is accepted, the setting does not move, and the
-    readback returns the old value. Its own replies are formatted
-    "1.000e-05" and that form is accepted, so _num() matches it.
+def test_numbers_are_written_as_plain_decimal():
+    """The instrument replies in exponent form and does not reliably
+    accept it back. "%g" writing 1e-05 is ignored in silence - write
+    accepted, setting unchanged, readback stale - and so is "1.000e-05".
 
-    Board-free because the lesson is the string, and because the cost of
-    getting it wrong is a setting that looks applied and is not."""
-    assert scope._num(1e-5) == "1.000e-05"
-    assert scope._num(0.5) == "5.000e-01"
-    assert scope._num(-1.6) == "-1.600e+00"
-    assert "e" in scope._num(2e-9)
+    The test that first appeared to show exponent working was reading a
+    setting already at the target, so every value that "worked" was one
+    the scope already held. Alternating between two values so each write
+    has to change something, plain decimal takes every time.
+    """
+    assert scope._num(1e-5) == "0.000010000000"
+    assert scope._num(0.5) == "0.500000000000"
+    assert scope._num(-1.6) == "-1.600000000000"
+    assert "e" not in scope._num(2e-9)          # the whole point
 
 
 def test_no_reading_is_not_a_voltage():
