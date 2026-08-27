@@ -105,6 +105,36 @@ def test_discovery_names_what_it_looked_for():
     assert "Nothing" in str(e.value)
 
 
+def test_a_missing_dependency_does_not_read_as_a_missing_scope(monkeypatch):
+    """The third problem, and it used to wear the second one's message.
+
+    find_device already raises separately for "pyusb not installed" and
+    "no such device" - its docstring says why - but open_scope caught
+    every ScopeUnavailable and continued, so a machine that had never
+    run `pip install -r requirements-dev.txt` was told "no known scope
+    found; looked for 1ab1:0588" and sent to check USB cables.
+
+    Monkeypatched rather than conditioned on the real import, because
+    the bug is only visible on a host *without* the dependency and this
+    test has to fail on a host that has it.
+    """
+    class Nothing(scope.Oscilloscope):
+        IDS = ((0xDEAD, 0xBEEF),)
+
+    def no_pyusb(vid, pid):
+        raise scope.ScopeUnavailable("pyusb not installed: no module 'usb'")
+
+    monkeypatch.setattr(scope, "find_device", no_pyusb)
+    with pytest.raises(scope.ScopeUnavailable) as e:
+        scope.open_scope(drivers=(Nothing,))
+
+    msg = str(e.value)
+    assert "not installed" in msg, msg
+    assert "missing dependency, not a missing instrument" in msg, msg
+    assert "no known scope found" not in msg, (
+        "the dependency failure is still wearing the no-scope message: " + msg)
+
+
 # ---------------------------------------------------------------------
 # One model's dialect. Named so, because it is not general.
 # ---------------------------------------------------------------------

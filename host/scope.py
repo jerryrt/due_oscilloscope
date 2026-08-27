@@ -557,16 +557,41 @@ def open_scope(drivers=DRIVERS):
     driver yet".
     """
     tried = []
+    blocked = None
     for cls in drivers:
         for vid, pid in cls.IDS:
             tried.append(f"{vid:04x}:{pid:04x} ({cls.__name__})")
             try:
                 dev = find_device(vid, pid)
-            except ScopeUnavailable:
+            except ScopeUnavailable as e:
+                # find_device's docstring already makes the point: "no
+                # pyusb" and "no scope" are different reasons. They were
+                # being flattened here - every ScopeUnavailable became
+                # `continue`, so a machine that had simply never run
+                # `pip install -r requirements-dev.txt` was told "no
+                # known scope found" and went looking at USB cables.
+                #
+                # A missing import cannot be fixed by plugging something
+                # in, so it is kept and reported instead of the generic
+                # message. Still not raised on the spot: a later driver
+                # might use a different transport, and this one is only
+                # the answer if nothing else works.
+                if "not installed" in str(e) and blocked is None:
+                    blocked = e
                 continue
             inst = cls(UsbTmc(dev))
             if inst.matches(inst.identify()):
                 return inst
             inst.close()
+    if blocked is not None:
+        # Both facts, not one. The dependency is the actionable half,
+        # and the ids are still what says whether this model has a
+        # driver at all - dropping them would trade one lost distinction
+        # for another.
+        raise ScopeUnavailable(
+            f"cannot look for a scope: {blocked}. This is a missing "
+            f"dependency, not a missing instrument - "
+            f"pip install -r requirements-dev.txt. Would have looked "
+            f"for " + ", ".join(tried))
     raise ScopeUnavailable("no known scope found; looked for " +
                            ", ".join(tried))
