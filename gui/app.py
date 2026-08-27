@@ -10,10 +10,13 @@ and keeps streaming. The count is on screen for that reason.
 from __future__ import annotations
 
 import os
+import socket
+import subprocess
 import sys
+import time
 
 import numpy as np
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "host"))
@@ -25,9 +28,15 @@ from .measure_panel import MeasurePanel     # noqa: E402
 from .awg import AwgPanel                   # noqa: E402
 from .scope import ScopeView                # noqa: E402
 
-# Windows offered in the timebase box, in seconds.
-WINDOWS = [("1 ms", 0.001), ("5 ms", 0.005), ("20 ms", 0.02),
-           ("100 ms", 0.1), ("500 ms", 0.5), ("2 s", 2.0)]
+# Spans offered in the timebase box, in seconds. Named for the control
+# rather than "windows", which in this module already means the FFT
+# window function.
+TIMEBASES = [("1 ms", 0.001), ("5 ms", 0.005), ("20 ms", 0.02),
+             ("100 ms", 0.1), ("500 ms", 0.5), ("2 s", 2.0)]
+
+#: What the plot can show. One list, so the combo box and the View menu
+#: cannot come to hold different ideas of what the options are.
+VIEWS = [("Time", "time"), ("Spectrum", "spectrum"), ("XY", "xy")]
 
 # Capture presets the firmware carries; the rate it actually produces
 # comes back in the frame header, which is what gets displayed.
@@ -39,6 +48,18 @@ PRESETS = [("50 kHz", "1"), ("100 kHz", "2"), ("200 kHz", "3"),
 #: Normal holds the last trace rather than drawing an untriggered
 #: one, which is what you want when the edge is the question.
 TRIGGER_MODES = [("Off", "off"), ("Auto", "auto"), ("Normal", "normal")]
+
+
+def free_port():
+    """A port nothing is listening on, for a daemon we are about to start.
+
+    Racy in principle and not in practice: the daemon binds immediately,
+    and the alternative - a fixed second port - collides with the last
+    replay this window opened rather than with a stranger.
+    """
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
 
 
 def describe_source(dev):
@@ -79,10 +100,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, host="127.0.0.1", port=45454, parent=None):
         super().__init__(parent)
         self.setWindowTitle("due_oscilloscope")
-        self.resize(1100, 620)
+        self.resize(1100, 660)
 
         self.host = host
         self.port = port
+        #: Where this window was pointed when it started. `Open
+        #: recording` moves it to a daemon it spawned itself, and this
+        #: is what Device > Connect to ... comes back to.
+        self.home = (host, port)
+        self.replay_child = None
 
         # The daemon connection, and every way it can go wrong. The
         # window asks it for things and renders what comes back on the
@@ -106,12 +132,156 @@ class MainWindow(QtWidgets.QMainWindow):
         # at connect time.
         self.replaying = False
 
+        # What the *device* is doing, from its own status. Not what the
+        # buttons were last told to ask for - Run/Stop has to do the
+        # other thing to whatever is actually happening.
+        self.device_running = False
+
+        self._build_panels()
+        self._build_actions()
+        self._build_menus()
+        self._build_toolbar()
+        self._build_controls()
+        self._build_layout()
+        self._build_timers()
+        self.statusBar().showMessage(f"not connected ({host}:{port})")
+
+    # -- construction --------------------------------------------------
+    #
+    # Split by what it builds rather than left in one 156-line method.
+    # This is the first thing anyone reads, and "where is the trigger
+    # level set up" should not be a scroll.
+
+    def _build_panels(self):
         self.scope = ScopeView()
         self.health = HealthPanel()
         self.measure = MeasurePanel()
         self.awg = AwgPanel()
         self.awg.requested.connect(self.awg_requested)
 
+    def _build_actions(self):
+        """The verbs, once each.
+
+        A `QAction` rather than a button because the same verb appears
+        in the menu, on the toolbar and on a keyboard shortcut, and one
+        object in three places cannot drift the way three objects do -
+        enabling it once disables it everywhere.
+
+        **Every shortcut carries Ctrl, including the ones a bench scope
+        would give a bare key.** A bare Space or `[` belongs to whatever
+        widget has focus: Space opens a focused combo box and a digit
+        types into the trigger-level spin box. A shortcut that works
+        until you click a control is worse than one that reads as
+        slightly formal.
+        """
+        def action(text, slot, shortcut=None, checkable=False, tip=None):
+            act = QtGui.QAction(text, self)
+            if shortcut:
+                act.setShortcut(shortcut)
+            if tip:
+                act.setToolTip(tip)
+                act.setStatusTip(tip)
+            if checkable:
+                act.setCheckable(True)
+                act.toggled.connect(slot)
+            else:
+                act.triggered.connect(slot)
+            return act
+
+        self.act_connect = action("&Connect", self.toggle_connect, "Ctrl+K")
+        self.act_start = action("&Start", self.start_capture, "Ctrl+Return")
+        self.act_stop = action("Sto&p", self.stop_capture, "Ctrl+.")
+        self.act_run = action("&Run / Stop", self.toggle_run, "Ctrl+Space",
+                              tip="Start if the device is idle, stop if it "
+                                  "is running")
+        self.act_start.setEnabled(False)
+        self.act_stop.setEnabled(False)
+
+        # Recording is the *daemon's*, not this window's, and that is
+        # the point: docs/frontend.md says "the daemon writes the file,
+        # not the GUI", because a recording that stops when a display is
+        # closed or drops what a slow display dropped is not a record of
+        # the run. This only asks.
+        self.act_record = action("&Record...", self.toggle_record, "Ctrl+R",
+                                 checkable=True)
+        self.act_record.setEnabled(False)
+
+        # Export is this window's, and only ever of what is on screen.
+        self.act_export = action("&Export CSV...", self.export_csv, "Ctrl+E")
+
+        self.act_open = action("&Open recording...", self.open_recording,
+                               "Ctrl+O",
+                               tip="Start a daemon replaying a recorded "
+                                   "file, and connect to it")
+        self.act_home = action(f"Connect to {self.home[0]}:{self.home[1]}",
+                               self.connect_home)
+        self.act_quit = action("&Quit", self.close, "Ctrl+Q")
+
+        self.act_cursors = action("C&ursors", self.scope_cursors, "Ctrl+U",
+                                  checkable=True)
+
+        self.act_views = [
+            action(label, (lambda _=None, k=key: self.set_view(k)),
+                   f"Ctrl+{n}")
+            for n, (label, key) in enumerate(VIEWS, start=1)]
+        self.act_shorter = action("S&horter timebase",
+                                  lambda: self.step_timebase(-1), "Ctrl+[")
+        self.act_longer = action("&Longer timebase",
+                                 lambda: self.step_timebase(+1), "Ctrl+]")
+        self.act_about = action("&About", self.about)
+
+    def _build_menus(self):
+        bar = self.menuBar()
+        f = bar.addMenu("&File")
+        f.addAction(self.act_open)
+        f.addSeparator()
+        f.addAction(self.act_record)
+        f.addAction(self.act_export)
+        f.addSeparator()
+        f.addAction(self.act_quit)
+
+        d = bar.addMenu("&Device")
+        d.addAction(self.act_connect)
+        d.addSeparator()
+        d.addAction(self.act_start)
+        d.addAction(self.act_stop)
+        d.addAction(self.act_run)
+        d.addSeparator()
+        d.addAction(self.act_home)
+
+        v = bar.addMenu("&View")
+        for act in self.act_views:
+            v.addAction(act)
+        v.addSeparator()
+        v.addAction(self.act_cursors)
+        v.addSeparator()
+        v.addAction(self.act_shorter)
+        v.addAction(self.act_longer)
+
+        bar.addMenu("&Help").addAction(self.act_about)
+
+    def _build_toolbar(self):
+        """The five verbs, and only those.
+
+        They used to sit in the control row under the plot, where
+        fifteen widgets competed for 1100 px. Moving them up frees about
+        two fifths of that row for the controls that actually describe
+        what is on screen.
+        """
+        bar = QtWidgets.QToolBar("Main", self)
+        bar.setMovable(False)
+        bar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        bar.addAction(self.act_connect)
+        bar.addSeparator()
+        bar.addAction(self.act_start)
+        bar.addAction(self.act_stop)
+        bar.addSeparator()
+        bar.addAction(self.act_record)
+        bar.addAction(self.act_export)
+        self.addToolBar(bar)
+        self.toolbar = bar
+
+    def _build_controls(self):
         # Both channels are drawn; this picks which one the trigger and
         # the measurements follow. That is what a scope's trigger-source
         # selector is, rather than a "which one do I look at" switch.
@@ -119,10 +289,14 @@ class MainWindow(QtWidgets.QMainWindow):
         for tag, label in sorted(stream.LABELS.items(), reverse=True):
             self.channel.addItem(label, tag)
 
-        self.window_box = QtWidgets.QComboBox()
-        for label, secs in WINDOWS:
-            self.window_box.addItem(label, secs)
-        self.window_box.setCurrentIndex(2)
+        # `timebase`, not `window`: this module already uses "window" for
+        # the FFT window function, and one name for two things in the
+        # same call - `scope.draw(..., window_s, ..., fft_window)` - is a
+        # trap for whoever reads it next.
+        self.timebase = QtWidgets.QComboBox()
+        for label, secs in TIMEBASES:
+            self.timebase.addItem(label, secs)
+        self.timebase.setCurrentIndex(2)
 
         self.preset = QtWidgets.QComboBox()
         for label, key in PRESETS:
@@ -162,26 +336,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # second live plot halves it - docs/frontend.md sizes the UI
         # around that.
         self.view_box = QtWidgets.QComboBox()
-        self.view_box.addItem("Time", "time")
-        self.view_box.addItem("Spectrum", "spectrum")
-        self.view_box.addItem("XY", "xy")
-
-        self.cursor_btn = QtWidgets.QCheckBox("Cursors")
-        self.cursor_btn.toggled.connect(self.scope_cursors)
-
-        # Recording is the *daemon's*, not this window's, and that is
-        # the point: docs/frontend.md says "the daemon writes the file,
-        # not the GUI", because a recording that stops when a display
-        # is closed or drops what a slow display dropped is not a
-        # record of the run. This button only asks.
-        self.record_btn = QtWidgets.QPushButton("Record...")
-        self.record_btn.setCheckable(True)
-        self.record_btn.toggled.connect(self.toggle_record)
-        self.record_btn.setEnabled(False)
-
-        # Export is this window's, and only ever of what is on screen.
-        self.export_btn = QtWidgets.QPushButton("Export CSV...")
-        self.export_btn.clicked.connect(self.export_csv)
+        for label, key in VIEWS:
+            self.view_box.addItem(label, key)
 
         self.fft_window = QtWidgets.QComboBox()
         for w in stream.FFT_WINDOWS:
@@ -190,28 +346,38 @@ class MainWindow(QtWidgets.QMainWindow):
             "Rectangular is exact only when the window holds a whole "
             "number of cycles, and smears the tone everywhere else.")
 
-        self.connect_btn = QtWidgets.QPushButton("Connect")
-        self.start_btn = QtWidgets.QPushButton("Start")
-        self.stop_btn = QtWidgets.QPushButton("Stop")
-        for b in (self.start_btn, self.stop_btn):
-            b.setEnabled(False)
-        self.connect_btn.clicked.connect(self.toggle_connect)
-        self.start_btn.clicked.connect(self.start_capture)
-        self.stop_btn.clicked.connect(self.stop_capture)
+        # The menu's cursor action, wearing a button. One checkable
+        # thing, so the tick and the button can never disagree.
+        self.cursor_button = QtWidgets.QToolButton()
+        self.cursor_button.setDefaultAction(self.act_cursors)
 
+    def _build_layout(self):
+        def separator():
+            line = QtWidgets.QFrame()
+            line.setFrameShape(QtWidgets.QFrame.VLine)
+            line.setFrameShadow(QtWidgets.QFrame.Sunken)
+            return line
+
+        # Three groups, in the order a scope is set up: what is being
+        # looked at, what holds it still, and how it is drawn. They used
+        # to run flat, fifteen widgets deep with the buttons among them,
+        # and nothing said where one idea ended and the next began.
         controls = QtWidgets.QHBoxLayout()
-        for w in (QtWidgets.QLabel("Source"), self.channel,
-                  QtWidgets.QLabel("Window"), self.window_box,
-                  QtWidgets.QLabel("Rate"), self.preset,
-                  QtWidgets.QLabel("Trigger"), self.trig_mode,
-                  self.trig_slope, self.trig_level, self.trig_state,
-                  QtWidgets.QLabel("View"), self.view_box, self.fft_window,
-                  self.cursor_btn):
-            controls.addWidget(w)
+        groups = (
+            (QtWidgets.QLabel("Source"), self.channel,
+             QtWidgets.QLabel("Timebase"), self.timebase,
+             QtWidgets.QLabel("Rate"), self.preset),
+            (QtWidgets.QLabel("Trigger"), self.trig_mode,
+             self.trig_slope, self.trig_level, self.trig_state),
+            (QtWidgets.QLabel("View"), self.view_box, self.fft_window,
+             self.cursor_button),
+        )
+        for i, group in enumerate(groups):
+            if i:
+                controls.addWidget(separator())
+            for w in group:
+                controls.addWidget(w)
         controls.addStretch(1)
-        for b in (self.record_btn, self.export_btn,
-                  self.connect_btn, self.start_btn, self.stop_btn):
-            controls.addWidget(b)
 
         left = QtWidgets.QVBoxLayout()
         left.addWidget(self.scope, 1)
@@ -230,8 +396,8 @@ class MainWindow(QtWidgets.QMainWindow):
         central = QtWidgets.QWidget()
         central.setLayout(body)
         self.setCentralWidget(central)
-        self.statusBar().showMessage(f"not connected ({host}:{port})")
 
+    def _build_timers(self):
         # Draw at 30 Hz; poll the daemon's own numbers at 4 Hz. Status
         # is answerable from the host alone - it costs the device
         # nothing - which is why polling it is safe at all.
@@ -241,6 +407,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_timer = QtCore.QTimer(self)
         self.status_timer.timeout.connect(self.poll_status)
         self.status_timer.start(250)
+
+    # -- view controls -------------------------------------------------
+    def set_view(self, key):
+        i = self.view_box.findData(key)
+        if i >= 0:
+            self.view_box.setCurrentIndex(i)
+
+    def step_timebase(self, delta):
+        """One step along the timebase list, and stop at the ends.
+
+        Wrapping would take the 1 ms setting to 2 s on one keypress,
+        which on a rolling display looks like the signal changed.
+        """
+        i = self.timebase.currentIndex() + delta
+        if 0 <= i < self.timebase.count():
+            self.timebase.setCurrentIndex(i)
+
+    def about(self):
+        QtWidgets.QMessageBox.about(
+            self, "due_oscilloscope",
+            "A front end for the Due capture daemon.\n\n"
+            "The daemon owns the device and this window draws what it "
+            "sends; `docs/frontend.md` says why they are separate "
+            "processes, and \"Where a change goes\" says which module "
+            "a change belongs in.")
 
     # -- what this run has accumulated ---------------------------------
     #
@@ -286,12 +477,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.health.set("link", f"{self.host}:{self.port}")
         self.health.set("source", describe_source(dev))
         self.health.set("role", role)
-        self.connect_btn.setText("Disconnect")
-        self.start_btn.setEnabled(role == "control")
+        self.act_connect.setText("&Disconnect")
+        self.act_start.setEnabled(role == "control")
         # Recording is the daemon's and needs no control role - an
         # observer may record what it is watching.
-        self.record_btn.setEnabled(True)
-        self.stop_btn.setEnabled(role == "control")
+        self.act_record.setEnabled(True)
+        self.act_stop.setEnabled(role == "control")
         self.set_replay(dev)
         self.session.call("subscribe", frames=True)
         self.statusBar().showMessage(
@@ -352,11 +543,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.session.close()
 
     def _on_disconnected(self, reason):
-        self.connect_btn.setText("Connect")
-        self.start_btn.setEnabled(False)
-        self.record_btn.setEnabled(False)
-        self.stop_btn.setEnabled(False)
-        self.record_btn.setChecked(False)
+        self.act_connect.setText("&Connect")
+        self.act_start.setEnabled(False)
+        self.act_record.setEnabled(False)
+        self.act_stop.setEnabled(False)
+        self.act_record.setChecked(False)
+        self.device_running = False
         self.health.set("link", "-")
         self.health.set("source", "-")
         self.replaying = False
@@ -384,6 +576,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def stop_capture(self):
         self.session.call("stop")
+
+    def toggle_run(self):
+        """Whatever the device is doing, do the other thing.
+
+        Off the device's own `running`, not off which button was pressed
+        last: a replay that reached the end of its file stopped without
+        anyone asking, and a Run key that argued with that would be
+        asking the daemon to start something already started.
+        """
+        if self.device_running:
+            self.stop_capture()
+        else:
+            self.start_capture()
 
     # -- the loop -----------------------------------------------------
     def tick(self):
@@ -413,7 +618,7 @@ class MainWindow(QtWidgets.QMainWindow):
             view = self.view_box.currentData()
             self.fft_window.setEnabled(view == "spectrum")
             self.scope.draw(self.acq.rings, tag,
-                            self.window_box.currentData(),
+                            self.timebase.currentData(),
                             self.acq.rate_hz, trig, view,
                             self.fft_window.currentData())
             self.trig_state.setText(self.trigger_state_text())
@@ -432,14 +637,14 @@ class MainWindow(QtWidgets.QMainWindow):
         show would not be that.
         """
         if not self.session.is_open:
-            self.record_btn.setChecked(False)
+            self.act_record.setChecked(False)
             return
         if not on:
             reply = self.session.call("record.stop")
             if reply is None:                    # already reported
                 return
             side = reply.get("sidecar", {})
-            self.record_btn.setText("Record...")
+            self.act_record.setText("&Record...")
             self.statusBar().showMessage(
                 f"recorded {side.get('frames', 0):,} frames, "
                 f"{side.get('bytes', 0):,} bytes, "
@@ -447,15 +652,15 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         path, _filter = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Record frames to", "capture.frames",
-            "Frame log (*.frames);;All files (*)")
+            self, "Record frames to", "capture.due",
+            "Frame recordings (*.due);;All files (*)")
         if not path:
-            self.record_btn.setChecked(False)
+            self.act_record.setChecked(False)
             return
         if self.session.call("record.start", path=path) is None:
-            self.record_btn.setChecked(False)
+            self.act_record.setChecked(False)
             return
-        self.record_btn.setText("Stop recording")
+        self.act_record.setText("Stop &recording")
         self.statusBar().showMessage(f"recording to {path}")
 
     def export_csv(self):
@@ -655,6 +860,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.session.poll()
 
     def _on_status(self, st):
+        self.device_running = bool(st.get("running"))
         self.health.set("mode", st.get("mode") or "idle")
         self.health.set("rate", f"{self.acq.rate_hz:,} Hz")
         self.health.set("frames",
@@ -688,6 +894,89 @@ class MainWindow(QtWidgets.QMainWindow):
         # controls that cause it rather than in a log.
         self.awg.underruns.setText(f"{ct.get('underruns', 0):,}")
 
+    # -- opening a recording -------------------------------------------
+    #
+    # The window starts a daemon and connects to it; it does not read the
+    # file. That is the same rule as "the daemon writes the file, not the
+    # GUI" - the daemon owns the source, and a front end that could swap
+    # it underneath a running recorder is the confusion the split exists
+    # to prevent. What this adds is only that you no longer have to leave
+    # the program to do it.
+    def open_recording(self):
+        path, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Open a recording", "",
+            "Frame recordings (*.due *.frames);;All files (*)")
+        if path:
+            self.replay(path)
+
+    def replay(self, path):
+        """Start a daemon serving `path`, and point this window at it."""
+        self._stop_replay_child()
+        port = free_port()
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        try:
+            child = subprocess.Popen(
+                [sys.executable, "-m", "daemon", "--file",
+                 os.path.abspath(path), "--host", "127.0.0.1",
+                 "--port", str(port)],
+                cwd=os.path.join(root, "host"),
+                stderr=subprocess.PIPE, text=True)
+        except OSError as e:                             # no interpreter
+            QtWidgets.QMessageBox.warning(self, "Cannot replay", str(e))
+            return
+        self.replay_child = child
+
+        self.session.point_at("127.0.0.1", port)
+        self.host, self.port = "127.0.0.1", port
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        try:
+            # The daemon refuses an unreadable recording, a sidecar
+            # declaring another frame geometry, or a file that holds no
+            # whole frame - and it does all three *before* binding a
+            # port, so a child that has exited is carrying the useful
+            # message and "could not reach a daemon" would bury it.
+            deadline = time.monotonic() + 5.0
+            while time.monotonic() < deadline:
+                if child.poll() is not None:
+                    err = (child.stderr.read() or "").strip()
+                    self.replay_child = None
+                    QtWidgets.QMessageBox.warning(
+                        self, "Cannot replay",
+                        err or f"the daemon exited with {child.returncode}")
+                    return
+                if self.session.open("control", quiet=True):
+                    return
+                time.sleep(0.1)
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
+        self._stop_replay_child()
+        QtWidgets.QMessageBox.warning(
+            self, "Cannot replay",
+            f"the daemon started but never answered on port {port}")
+
+    def connect_home(self):
+        """Back to the daemon this window was pointed at when it started."""
+        self._stop_replay_child()
+        self.host, self.port = self.home
+        self.session.point_at(*self.home)
+        self.session.open("control")
+
+    def _stop_replay_child(self):
+        child, self.replay_child = self.replay_child, None
+        if child is None:
+            return
+        if self.session.is_open and self.port != self.home[1]:
+            self.session.close()
+        child.terminate()
+        try:
+            child.wait(5)
+        except subprocess.TimeoutExpired:
+            child.kill()
+
     def closeEvent(self, event):
         self.disconnect_from_daemon()
+        # A replay daemon this window started is this window's to end.
+        # Leaving it holding a port would make the next Open recording
+        # look like it worked and connect to the previous file.
+        self._stop_replay_child()
         super().closeEvent(event)

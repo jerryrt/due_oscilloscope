@@ -80,8 +80,27 @@ class DaemonSession(QtCore.QObject):
     def is_open(self):
         return self.client is not None
 
-    def open(self, role="control"):
-        """Connect and say hello. True if there is a link afterwards."""
+    def point_at(self, host, port):
+        """Aim at a different daemon, dropping any current link.
+
+        Its own method because "where this session connects" is state a
+        caller reads back - `Open recording` moves it to a daemon the
+        window started, `Connect to ...` moves it home - and poking the
+        two attributes from outside would leave a live socket pointing
+        somewhere the fields no longer describe.
+        """
+        self.close()
+        self.host = host
+        self.port = port
+
+    def open(self, role="control", quiet=False):
+        """Connect and say hello. True if there is a link afterwards.
+
+        `quiet` suppresses `connect_failed` for a caller that is
+        retrying on purpose: a daemon the window has just started needs
+        a moment to bind, and a dialog per attempt would be five
+        dialogs for one success.
+        """
         if self.client is not None:
             return True
         try:
@@ -90,9 +109,11 @@ class DaemonSession(QtCore.QObject):
             c.connect()
             hello = c.hello(role)
         except (OSError, clientmod.ClientError) as e:
-            self.connect_failed.emit(
-                f"Could not reach a daemon at {self.host}:{self.port}\n\n"
-                f"{e}\n\nStart one with:  python3 -m daemon --fake")
+            if not quiet:
+                self.connect_failed.emit(
+                    f"Could not reach a daemon at {self.host}:{self.port}"
+                    f"\n\n{e}\n\n"
+                    f"Start one with:  python3 -m daemon --fake")
             return False
         self.client = c
         self.device = hello.get("device", {})

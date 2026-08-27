@@ -935,11 +935,11 @@ def test_cursors_measure_the_interval_between_them(win, daemon):
     win.connect_to_daemon()
     win.client.call("start", mode="capture", adc_hz=200000, channels=2)
     win.client.wait_frames(20, timeout=15.0)
-    win.window_box.setCurrentIndex(2)                 # 20 ms
+    win.timebase.setCurrentIndex(2)                 # 20 ms
     win.tick()
 
     assert win.cursor_text() is None, "cursors should start off"
-    win.cursor_btn.setChecked(True)
+    win.act_cursors.setChecked(True)
     win.tick()
 
     # Place them a known distance apart and check the arithmetic.
@@ -966,7 +966,7 @@ def test_cursors_report_the_axis_they_are_on(win, daemon):
     win.connect_to_daemon()
     win.client.call("start", mode="capture", adc_hz=200000, channels=2)
     win.client.wait_frames(20, timeout=15.0)
-    win.cursor_btn.setChecked(True)
+    win.act_cursors.setChecked(True)
     win.tick()
     assert "dt" in win.cursor_text()
 
@@ -1427,3 +1427,143 @@ def test_the_compute_layer_has_no_qt():
         cwd=ROOT, capture_output=True, text=True)
     assert out.returncode == 0, out.stderr
     assert out.stdout.strip() == "False", "Qt reached gui/stream.py"
+
+
+# -- menus, toolbar and shortcuts --------------------------------------
+
+
+def test_a_verb_is_one_object_in_every_place_it_appears():
+    """Menu item, toolbar button and shortcut are one `QAction`.
+
+    Three objects would have to be enabled three times, and the one that
+    got forgotten would be a button that still looks pressable while the
+    window is not connected.
+    """
+    from PySide6 import QtGui
+    win = MainWindow()
+    try:
+        device = [m for m in win.menuBar().findChildren(QtWidgets.QMenu)
+                  if m.title() == "&Device"][0]
+        assert win.act_start in device.actions()
+        assert win.act_start in win.toolbar.actions()
+
+        win.act_start.setEnabled(True)
+        button = win.toolbar.widgetForAction(win.act_start)
+        assert button.isEnabled()
+        win.act_start.setEnabled(False)
+        assert not button.isEnabled(), "the toolbar kept its own copy"
+        assert isinstance(win.act_start, QtGui.QAction)
+    finally:
+        win.close()
+
+
+def test_every_shortcut_carries_a_modifier():
+    """A bare key belongs to whichever widget has focus.
+
+    Space opens a focused combo box and a digit types into the trigger
+    level, so a bare-key shortcut works right up until someone clicks a
+    control - which is worse than one that reads as slightly formal.
+    This is the kind of rule that only holds if something checks.
+    """
+    from PySide6 import QtCore, QtGui
+    win = MainWindow()
+    try:
+        bare = []
+        for act in win.findChildren(QtGui.QAction):
+            for seq in act.shortcuts():
+                if not seq.count():
+                    continue
+                if seq[0].keyboardModifiers() == QtCore.Qt.NoModifier:
+                    bare.append((act.text(), seq.toString()))
+        assert not bare, f"bare-key shortcuts: {bare}"
+    finally:
+        win.close()
+
+
+def test_run_stop_follows_the_device_and_not_the_last_button(win, daemon):
+    """A replay that reaches the end of its file stops without anyone
+    asking. A Run key that tracked which button was pressed last would
+    then be asking the daemon to start something already started."""
+    win.connect_to_daemon()
+    win.start_capture()
+    win.poll_status()
+    assert win.device_running is True
+
+    win.toggle_run()                       # running -> stop
+    win.poll_status()
+    assert win.device_running is False
+
+    win.toggle_run()                       # idle -> start
+    win.poll_status()
+    assert win.device_running is True
+
+
+def test_the_view_menu_and_the_view_box_cannot_disagree(win):
+    """The menu sets the combo rather than holding a second copy of the
+    setting, so there is nothing to keep in step."""
+    win.set_view("xy")
+    assert win.view_box.currentData() == "xy"
+    win.set_view("time")
+    assert win.view_box.currentData() == "time"
+    win.set_view("not a view")             # ignored, not an exception
+    assert win.view_box.currentData() == "time"
+
+
+def test_the_timebase_steps_and_stops_at_the_ends(win):
+    """Wrapping would take 1 ms to 2 s on one keypress, which on a
+    rolling display looks like the signal changed."""
+    win.timebase.setCurrentIndex(0)
+    win.step_timebase(-1)
+    assert win.timebase.currentIndex() == 0
+    win.step_timebase(+1)
+    assert win.timebase.currentIndex() == 1
+
+    win.timebase.setCurrentIndex(win.timebase.count() - 1)
+    win.step_timebase(+1)
+    assert win.timebase.currentIndex() == win.timebase.count() - 1
+
+
+# -- opening a recording from the window -------------------------------
+
+
+def test_opening_a_recording_starts_a_daemon_and_connects(win,
+                                                          recording_path):
+    """The window starts a daemon and connects to it; it does not read
+    the file. Same rule as "the daemon writes the file, not the GUI" -
+    what this adds is only that you no longer have to leave the program
+    to do it."""
+    win.connect_to_daemon()
+    home_port = win.port
+
+    win.replay(recording_path)
+
+    assert win.client is not None, "never connected to the replay daemon"
+    assert win.replaying is True
+    assert win.port != home_port, "still pointed at the daemon it started on"
+    assert win.replay_child is not None and win.replay_child.poll() is None
+    assert os.path.basename(recording_path) in win.windowTitle()
+
+    child = win.replay_child
+    win.connect_home()
+    assert child.poll() is not None, "the replay daemon was left running"
+    assert win.port == home_port
+    assert win.replay_child is None
+
+
+def test_a_recording_the_daemon_refuses_never_becomes_a_connection(
+        win, tmp_path, monkeypatch):
+    """The daemon checks the file before it binds a port, so a child
+    that has exited is carrying the useful message - and "could not
+    reach a daemon" would bury it under the symptom."""
+    said = []
+    monkeypatch.setattr(QtWidgets.QMessageBox, "warning",
+                        lambda *a, **k: said.append(a[2]))
+    bad = str(tmp_path / "notaframe.due")
+    with open(bad, "wb") as f:
+        f.write(b"nowhere near a frame")
+
+    win.replay(bad)
+
+    assert win.client is None
+    assert win.replay_child is None, "a refused replay left a process behind"
+    assert said and "no whole frames" in said[0], said
