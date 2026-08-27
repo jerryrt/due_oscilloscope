@@ -358,6 +358,27 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   oversupply. Neither has been characterised the way the ramp test now
   has. Do not quote any of this as "known flakiness" to wave away a
   failure there - the next one should be read before it is re-run.
+
+  **The next one was read, 2026-08-26.** `test_awg_ladder_play_only[b-32]`
+  failed in a full run at **2.283 MB/s against the 2.438 MB/s that
+  1,218,750 sps needs** - 93.7% against a 95% gate, so a 1.3-point miss
+  rather than a collapse. It is the *host* short of the rate, not the
+  device: `under=0`, and the assertion exists precisely because a device
+  that was never asked for the rate cannot underrun.
+
+  **Then it passed 6 of 6 standalone, 8 s each, on the same binary and
+  the same host minutes later.** So whatever this is, it is not an
+  intrinsic ceiling at RC 32 - it depends on running inside a full
+  suite. Two hypotheses that are *not* it, both checked rather than
+  assumed: `rt.promote()` is not a no-op on Windows (it does
+  `timeBeginPeriod(1)` and `SetThreadPriority`), and the `Feeder` thread
+  does promote itself - `Feeder._run` calls it first thing.
+
+  **This is a reading, not a characterisation.** Two observations do not
+  meet the standard the ramp test above sets, and the rule there applies
+  here: interleave the arms before claiming a cause. What is now on
+  record is where to start - it is context-dependent, it is host-side,
+  and the promotion machinery is present and applied.
 - **Never truncate a suite run's output.** The first of those two was
   lost to a `| tail -3` on the pytest invocation, which threw away the
   traceback and left nothing to diagnose; the re-run was green and the
