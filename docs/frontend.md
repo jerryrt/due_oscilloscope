@@ -415,12 +415,65 @@ Phase 3 analog front end exists. A warning label is not sufficient.
   mode, health panel. `gui/`, 14 headless tests. Logging mode is
   daemon-side and already available through the API; wiring a button to
   it is G2 work.
-- **G2** - trigger, measurements, FFT.
+- **G2** - trigger **done**, measurements and FFT open. 24 headless
+  tests, up from 14. See "The trigger" below.
 - **G3** - AWG panel with arbitrary upload.
 - **G4** - dual channel, XY, file playback and export, calibration.
 
 G0 carries the real risk, and it is the Windows serial backend rather
 than anything about the GUI. G1 to G4 are ordinary UI work.
+
+### The trigger
+
+**The defect it fixes, and why it is not cosmetic.** `CLAUDE.md`: the
+GUI "draws the most recent N samples every 33 ms with no trigger at all,
+so a trace holds still only when `rate/tone` divides the frame's
+samples-per-channel. That is a missing front-end feature, not a signal
+defect." The bench has since spent real effort proving that a *different*
+shake is the DSO's trigger rather than the board (`docs/awg.md`), so a
+GUI that shakes for a third reason is a standing source of
+misattribution.
+
+**Measured, not eyeballed.** A tone whose period deliberately does not
+divide the window, fed in ragged chunks the way frames arrive: the
+free-running window moves by up to **1598 codes** between redraws, the
+triggered one by **1**. That is the assertion - displacement in codes -
+because bit-equality is the wrong test: the same phase computed at a
+different absolute sample index differs by 1 LSB of float rounding, and
+calling that "moved" fails for the wrong reason.
+
+**Where it lives.** `gui/stream.select()` returns a `Sweep`, and
+`ScopeView.draw` renders whatever it is handed. The decision is Qt-free
+so a headless test can reach it without a display; that is the whole
+reason the extraction came first.
+
+Four decisions a later session should not have to rediscover:
+
+- **`Sweep.triggered` is not bookkeeping.** A free-running sweep and a
+  triggered one are identical as arrays. Auto falls back to free-running
+  when it finds no edge, and a scope that does that *silently* is how a
+  moving trace gets blamed on the signal. The toolbar readout shows what
+  the sweep did, never what the mode box says.
+- **A crossing at a discontinuity is rejected.** The step across a
+  frame the device flagged is not a transition the signal made.
+  Triggering on it would hold the trace still and make a splice look
+  like a signal - worse than drawing it moving. Invariant 5 at the one
+  place it would be believed.
+- **An edge trigger at sample resolution is one sample unstable** when a
+  sample lands exactly on the level: that sample reads at the level on
+  some periods and below it on others - through truncation in a
+  synthetic tone, through noise on a real input. 5 us at 200 ksps.
+  Sub-sample interpolation is the fix and is deliberately not built,
+  because it changes what is *drawn* rather than only where the sweep
+  starts. A test holds it as a known number and says to rewrite rather
+  than delete it when interpolation lands.
+- **No holdoff knob.** The search takes the most recent qualifying edge,
+  so a minimum spacing has nothing to reject. A knob that is programmed
+  is not a knob that does anything.
+
+**Still software only.** Nothing here reaches a pin - see Safety above,
+which keeps an external trigger *input* disabled until the Phase 3
+analog front end exists.
 
 ## Dependencies and environments
 
