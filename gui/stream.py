@@ -226,6 +226,11 @@ SEARCH_SPAN = 4
 #: and far below any signal worth timing.
 MEASURE_MIN_SWING_CODES = 10
 
+#: Hysteresis for the period measurement, as a fraction of the
+#: signal's own peak-to-peak. A tenth is far above the ADC's noise
+#: and far below any real waveform's slope through its midpoint.
+MEASURE_HYSTERESIS = 0.1
+
 
 class Sweep:
     """One screenful, and where it came from.
@@ -412,16 +417,28 @@ def measure(sweep, rate_hz):
         out["note"] = "signal too flat to time"
         return out
 
-    ups = find_edges(sweep.samples, mid, rising=True)
-    if ups.size < 2:
-        out["note"] = "fewer than two crossings in window"
+    # Hysteresis, and it is not optional on real data. A sine crosses
+    # its midpoint once per period in theory; through an ADC it wanders
+    # across that level several times on the way, and every wobble is
+    # another "crossing". Requiring the signal to leave a band around
+    # the midpoint before the next crossing counts removes them.
+    #
+    # Found on the board, not in the synthetic device. Three captures of
+    # one unchanging 97.66 Hz signal read 97.66, 146.41 and 195.31 - the
+    # last two being spurious crossings inflating the count.
+    band = max(1, int(round((codes.max() - codes.min())
+                            * MEASURE_HYSTERESIS)))
+    ups = _hysteretic_ups(codes, mid, band)
+    if ups.size < 3:
+        out["note"] = "fewer than two periods in window"
         return out
 
-    # The mean interval over the whole window rather than one period:
-    # averaging N intervals divides the one-sample edge uncertainty by
-    # N, which is the same reason a frequency counter gates over many
-    # cycles instead of timing one.
-    period_samples = float(ups[-1] - ups[0]) / float(ups.size - 1)
+    # The *median* interval, not the mean across the endpoints. The mean
+    # is what those bad readings came from: with three crossings, one
+    # spurious edge halves it. A median needs more than half the
+    # intervals to be wrong before it moves, and on a clean capture the
+    # two agree exactly - measured, every interval was 512 samples.
+    period_samples = float(np.median(np.diff(ups)))
     if period_samples <= 0 or rate_hz <= 0:
         out["note"] = "rate unknown"
         return out
@@ -429,6 +446,25 @@ def measure(sweep, rate_hz):
     out["freq_hz"] = float(rate_hz) / period_samples
     out["duty"] = float(np.count_nonzero(codes > mid)) / float(codes.size)
     return out
+
+
+def _hysteretic_ups(codes, mid, band):
+    """Rising midpoint crossings, ignoring wobble inside +/- band.
+
+    Armed below `mid - band`, fires at or above `mid`, and does not
+    re-arm until the signal goes below `mid - band` again.
+    """
+    out = []
+    armed = False
+    lo = mid - band
+    for i in range(codes.size):
+        c = int(codes[i])
+        if c < lo:
+            armed = True
+        elif armed and c >= mid:
+            out.append(i)
+            armed = False
+    return np.asarray(out, dtype=np.int64)
 
 
 #: FFT windows. Rectangular is included and is not a default: it is the

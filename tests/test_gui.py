@@ -438,6 +438,53 @@ def test_the_measurements_recover_a_known_tone():
     assert abs(m["duty"] - 0.5) < 0.02
 
 
+def test_noise_at_the_midpoint_does_not_multiply_the_frequency():
+    """The defect hardware validation found, as a regression test.
+
+    A sine crosses its midpoint once per period in theory. Through an
+    ADC it wanders across that level on the way, and every wobble reads
+    as another crossing. Three captures of one unchanging 97.66 Hz
+    signal read 97.66, 146.41 and 195.31 before hysteresis - the last
+    two are spurious edges inflating the count, and the mean-across-the-
+    endpoints estimator turned a couple of them into a doubling.
+
+    The noise here is deliberately placed where it does damage: on the
+    samples nearest the midpoint, which is where a real converter's is
+    least helpful.
+    """
+    rate, period = 50000, 512
+    n = 6000
+    t = np.arange(n, dtype=np.float64)
+    clean = 2048 + 900 * np.sin(2 * np.pi * t / period)
+
+    rng = np.random.default_rng(11)
+    noisy = clean.copy()
+    near = np.abs(clean - 2048) < 40           # the midpoint crossings
+    noisy[near] += rng.integers(-12, 13, size=int(near.sum()))
+
+    r = stream.ChannelRing(seconds=0.5, rate_hz=rate)
+    r.append(noisy.astype(np.uint16))
+
+    m = stream.measure(stream.select(r, n), rate)
+    assert m["note"] is None, m["note"]
+    want = rate / period
+    assert abs(m["freq_hz"] - want) < want * 0.02, (
+        f"{m['freq_hz']:.2f} Hz against a true {want:.2f} - noise at the "
+        f"midpoint is being counted as crossings")
+
+
+def test_a_window_holding_one_period_refuses_rather_than_guessing():
+    """Two crossings give one interval, and one interval cannot be
+    checked against anything. The old estimator reported it anyway."""
+    rate, period = 50000, 512
+    r = stream.ChannelRing(seconds=0.5, rate_hz=rate)
+    r.append(_tone(3000, float(period), amp=900, skew=0.0))
+
+    m = stream.measure(stream.select(r, 700), rate)   # ~1.4 periods
+    assert m["freq_hz"] is None
+    assert m["note"] == "fewer than two periods in window"
+
+
 def test_a_discontinuity_in_the_window_measures_nothing():
     """Rather than measuring across it.
 
@@ -661,6 +708,40 @@ def test_switching_to_the_spectrum_relabels_the_axes(win, daemon):
     assert "dBFS" in win.scope.plot.getAxis("left").labelText
     x, y = win.scope.curve.getData()
     assert x is not None and len(x) > 0, "the spectrum drew nothing"
+
+
+def test_a_dropped_frame_breaks_the_trace_like_an_overrun_does(win):
+    """The gap the daemon makes on purpose, not the device's overrun.
+
+    Rule 5 has the daemon drop frames toward a slow client rather than
+    block the feeder, so a sequence gap is the *expected* discontinuity
+    and not a rare fault. Until this it reached the health panel as a
+    counter and reached the ring as nothing at all, so the trace was
+    drawn straight across the missing samples and the measurements were
+    computed over the join.
+
+    Found by running against the board. The synthetic device never drops
+    anything, which is exactly why it could not have found it.
+    """
+    codes = np.full(64, 2000, dtype=np.uint16)
+    win.ingest(stream.decode(make_frame(1, {7: codes, 6: codes})))
+    win.ingest(stream.decode(make_frame(2, {7: codes, 6: codes})))
+    ring = win.rings[7]
+    _s, breaks = ring.window()
+    assert not breaks.any(), "consecutive frames must not break the line"
+
+    # seq 4: three is missing.
+    win.ingest(stream.decode(make_frame(4, {7: codes, 6: codes})))
+    assert win.seq_gaps == 1
+    _s, breaks = ring.window()
+    assert breaks.any(), (
+        "a dropped frame was joined onto the previous one - rule 3 says "
+        "never draw across a discontinuity, and rule 5 makes this the "
+        "common case rather than a rare one")
+
+    # And the measurements refuse over it rather than measuring the join.
+    m = stream.measure(stream.select(ring, ring.filled), 200000)
+    assert m["note"] == "discontinuity in window"
 
 
 def test_the_readout_says_whether_it_triggered_not_what_was_asked(win, daemon):
