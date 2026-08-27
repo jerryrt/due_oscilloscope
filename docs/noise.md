@@ -50,6 +50,9 @@ that silently misreports the next one.
 
 A0, driven by DAC0 holding a fixed code, on the macOS bench, Track B.
 `records/phase0-noise-fast.jsonl` and `records/noise-activity.jsonl`.
+A second bench has since measured 3x quieter; see "A second board, on a
+second host" below before treating any figure here as the board's
+rather than this bench's.
 
 | | |
 |---|---|
@@ -68,6 +71,83 @@ This agrees with what the scope says about the same pin from the other
 side: ~15-20 mV peak recorded in `CLAUDE.md`, against 3 mV rms here,
 which is 5-6 sigma. Two instruments, two methods, one pin, consistent -
 and that agreement is the reason to believe either.
+
+## A second board, on a second host
+
+Taken 2026-08-27 on `windows-desk`: a different Arduino Due, Windows 11
+on AMD64, Track B fw 0.2.0, same frame geometry, same `noisetool.py`.
+`records/phase0-noise-fast.jsonl` now holds both benches; the `bench`
+field in each row separates them.
+
+**Board and host changed together.** Nothing here says which of the two
+the difference belongs to, and the honest reading is "another bench",
+not "another board".
+
+| n=7 each | windows-desk | macOS / DSO bench |
+|---|---|---|
+| noise | **1.05 codes rms** (0.81-1.06) | 3.27 (3.13-4.43) |
+| effective resolution | **10.14 bits** (10.12-10.51) | 8.50 (8.06-8.56) |
+| noise-free resolution | **9.21 bits** (9.19-9.58) | 7.57 (7.13-7.63) |
+| against an ideal converter | **3.6x** the quantisation floor | 11.3x |
+| repeatability, in place | 0.38 bits | 0.50 bits |
+| held level | 2052.7 codes | 2050.1 |
+| lines per run | median 3, up to 7 | 0 in 7 of 7 |
+
+**The ranges do not overlap**, by 1.56 bits at their closest: 3.1x less
+noise and 1.64 bits more resolution than the bench this measurement was
+designed on. Repeatability is slightly better too, so this is not the
+quieter bench merely being sampled at a lucky moment.
+
+Four bits of twelve are gone on that bench. Here it is closer to two.
+
+### What reproduced, and what that is worth
+
+**Host-fed playback costs the same.** Two independent five-round
+interleaved sweeps here, against the two already recorded there:
+
+| sweep | playback vs internal |
+|---|---|
+| windows-desk, first | **-0.184 +- 0.076 bits** |
+| windows-desk, second | **-0.256 +- 0.115 bits** |
+| macOS, first | -0.292 +- 0.074 bits |
+| macOS, second | -0.234 +- 0.078 bits |
+
+Four sweeps, two boards, two hosts, all four inside one standard error
+of each other. That is the figure to carry forward: the absolute floor
+is a property of a bench and does not travel, but the *cost of feeding
+the DAC over USB* does.
+
+It is also the argument for the paired method rather than for the
+method. On the bench where the floor is 3x lower the paired difference
+came out the same, which is what a real difference does and what an
+artefact of the noisier bench's wander would not.
+
+**The rate arm is still not resolved, and this bench nearly fooled me.**
+The first sweep here returned `+0.030 +- 0.004 bits` for 200 k -> 453 k -
+resolved at seven standard errors, and tempting to report. The second
+sweep, same board, same session, returned "not resolved, < 0.285". Two
+sweeps of the same arm, one apparently resolved to four decimal places
+and one not resolved at all. **The quoted result is unresolved**, and
+the reason the doc above asks for two sweeps is that one of them will
+occasionally do this.
+
+**Nothing narrowband, again.** This bench does show lines where the
+other showed none - median 3 per run, up to 7 - but they fail the
+two-rate test: `alias` finds zero lines at 200 ksps and five at 453 k,
+with nothing stationary across the two. They appear here and not there
+because the broadband floor is 3x lower, so the estimator's tail now
+clears it. The conclusion is unchanged and better supported: broadband,
+no discrete aggressor, nothing to notch.
+
+### What could not be repeated here
+
+**The free-A1 finding.** "An unused ADC channel reads its neighbour"
+needs an unused channel, and this bench has DAC1 wired to A1 - its own
+`s` sweep tracks DAC1 to within ~10 mV mid-range, and A1 does not move
+when DAC0 swings full scale. A1 here reads 2057.9 codes against A0's
+2052.8, which looks like the 4.3-code offset recorded there and is not:
+it is a driven pin sitting where its own DAC put it. Coincidence, not
+replication, and worth saying because the numbers agree.
 
 ## What the noise is, and what it is not
 
