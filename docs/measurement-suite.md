@@ -89,9 +89,17 @@ rather than pretending to know.
 ## Phase 0: measure the ruler before the thing
 
 **No tolerance gets written until its own repeatability has been
-measured.** Run each metric N=7 times with nothing changed - no
-reflash, no re-cable, no power cycle - and record the spread. That
-spread is the tolerance floor.
+measured.** Run each metric N=7 times and record the spread. That spread
+is the tolerance floor. Built, and it is `tools/phase0.py` over
+`host/repeat.py`:
+
+    python3 tools/phase0.py settle --runs 7 --axis both
+    python3 tools/phase0.py settle --report      # no bench needed
+
+Records land in `records/phase0-<metric>.jsonl`, one JSON line per run,
+**flushed and fsynced before the next run starts**. That is not caution:
+`--calibrate` wrote at session end, a session hung at 90%, and twelve
+minutes of bench time produced nothing at all.
 
 There is already evidence this is not a formality:
 
@@ -99,14 +107,44 @@ There is already evidence this is not a formality:
   run, a ±5% spread from the *instrument*, not the converter
 - Vpp at the ceiling read 1.54 / 1.88 / 1.58 / 1.88 V across adjacent
   rates, because the scope's Vpp on a degraded waveform is unstable
+- `status.md` said the transport spread was "about 5%"; interleaved
+  across a reflash, IN spans 40% while OUT and duplex hold to 1%
 - the wrap fold's "worst bin" is 9.5× the median, and nobody yet knows
   whether that is the defect or the half-cycle of fold smear
 
-A second axis matters too: **across a reflash**. Some metrics should be
-identical (slew, span) and some are known not to be (issue #5's draw).
-Phase 0 measures both spreads and the suite records which kind each
-metric is, because a regression test that fires on every reflash is
-noise and one that cannot fire on a reflash is blind.
+### What a Phase 0 entry carries
+
+The tolerance, and **the evidence that produced it**: `n`, the observed
+spread, and the axis it was taken on. Agreed on issue #6, and the reason
+is that a tolerance alone throws the evidence away - so "was seven
+enough" stays answerable by whoever reads it next instead of evaporating
+into a single number. A metric whose spread later grows then shows up as
+a changed spread rather than only as a failing assertion.
+
+The derived tolerance says how it was derived, too: twice the observed
+half-width, which is **a stated choice and not a measurement**. Seven
+points bound the seven points. Two hypotheses on this project looked
+like clean signal at four and died at the fifth.
+
+Where a metric reports its own resolution - `settle` returns the sample
+interval and the screen level it measured with - the tolerance is
+floored on it, so it can never claim to be finer than the ruler that
+took it.
+
+### The axis is a result, not an input
+
+**Across a reflash** is the second axis. Some metrics should be
+identical (slew, span) and some are known not to be (issue #5's draw
+changes with the binary).
+
+The first version of this rule said reflash-interleaved was the primary
+axis, and that was too strong: OUT and duplex hold to ~1% in place and
+the interleaving bought them nothing, while IN needed it. So both
+spreads are measured for every metric and each metric's own numbers
+decide which axis its tolerance comes from. `phase0.py --axis both`
+prints the ratio per key: near 1 means that key does not care about the
+binary, well above 1 means it does. That makes the axis choice
+reviewable instead of asserted.
 
 ## The catalogue, in three tiers
 
