@@ -383,6 +383,13 @@ python3 -m daemon --file cap.due                 # a source, not a mode
 .venv-gui/bin/python -m gui --spawn-file cap.due # both, in one command
 ```
 
+Or **File > Open recording...** (`Ctrl+O`), which does the same thing
+from inside the window: it starts a daemon with `--file` on a free port
+and connects to it. **Device > Connect to ...** comes back to wherever
+the window was pointed when it started, and the replay daemon it
+started is ended with it. The window still does not read the file - the
+daemon does - for the same reason it does not write one.
+
 **The daemon opens the file, not the GUI**, and that is the same
 decision as "the daemon writes the file, not the GUI" two sections up.
 The daemon owns the device; a front end that could swap the source
@@ -469,6 +476,47 @@ The window keeps read-only properties (`rings`, `rate_hz`,
 That is deliberately its read surface - what the health panel, the
 export header and the headless tests ask it - and read-only is the
 point: there is one writer.
+
+## Menus, toolbar and keys
+
+Added 2026-08-27, with the survey in issue #8. The five verbs - Connect,
+Start, Stop, Record, Export - used to sit in the control row under the
+plot, where fifteen widgets competed for the window's width. They are
+now a menu bar and a toolbar, and what is left under the plot is
+grouped by function with separators rather than running flat: **source,
+timebase and rate**, then **trigger**, then **view**. Measured in the
+same font, the strip went from 2094 px of preferred width to 1564, and
+the window's own minimum from 2616 to 2086.
+
+Each verb is one `QAction` appearing in the menu, on the toolbar and on
+a shortcut. Three objects would have to be enabled three times, and the
+one that got forgotten would be a button that still looks pressable
+while nothing is connected.
+
+| | |
+|---|---|
+| `Ctrl+K` | Connect / Disconnect |
+| `Ctrl+Return` / `Ctrl+.` | Start / Stop |
+| `Ctrl+Space` | Run/Stop - whatever the device is doing, do the other thing |
+| `Ctrl+R` | Record |
+| `Ctrl+E` | Export CSV |
+| `Ctrl+O` | Open recording |
+| `Ctrl+U` | Cursors |
+| `Ctrl+1` `Ctrl+2` `Ctrl+3` | Time, spectrum, XY |
+| `Ctrl+[` `Ctrl+]` | Shorter, longer timebase |
+
+**Every shortcut carries `Ctrl`, including the ones a bench scope would
+give a bare key.** A bare `Space` or `[` belongs to whichever widget has
+focus - `Space` opens a focused combo box, a digit types into the
+trigger-level spin box - so a bare-key binding works right up until
+someone clicks a control. A test walks every action and fails on a
+shortcut with no modifier, because that is the kind of rule that only
+holds if something checks.
+
+Run/Stop follows the device's own `running`, not which button was
+pressed last. A replay that reaches the end of its file stops without
+anyone asking, and a Run key that tracked the last button would then be
+asking the daemon to start something already started.
 
 ## Rules the UI must obey
 
