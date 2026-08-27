@@ -139,9 +139,51 @@ rounds:
 | host-fed playback vs internal | not resolved, **< 0.043 bits** | not resolved, **< 0.072** |
 | 200 k -> 453 ksps | -0.066 +- 0.015 | not resolved, < 0.037 |
 
-Neither arm is resolved. The rate arm came back *resolved at four
+Neither arm is resolved here. The rate arm came back *resolved at four
 standard errors* in the first sweep and unresolved in the second, which
-is why one sweep is not a result here.
+is why one sweep is not a result - though on a bench with a lower floor
+it resolves cleanly and turns out to be bandwidth rather than a cost;
+see below.
+
+### The rate arm is bandwidth, and cannot answer what it was asked
+
+Confirmed on the Windows bench, which bounds the playback arm at
+**< 0.105 bits** over nine rounds - the withdrawal above holds on a
+second board and a second host, this time with both benches on the same
+build. Its first five-round sweep read `-0.209 +- 0.087`, a 2.4-sem
+near-miss, and its second could not resolve the arm at all against a
+0.96-bit spread; nine rounds bounded it. Three false positives in this
+investigation have now come from one five-round sweep.
+
+**The rate arm is a different matter: it resolves, and it is not a
+cost.** That bench reads `-0.177 +- 0.002` across sweeps of 5, 5 and 9
+rounds agreeing to 0.004 bits. Integrating the spectrum over the band
+the two arms *share* says why. ENBW scaling is the same constant for
+both windows and cancels:
+
+| band | 200 ksps | 453 ksps |
+|---|---|---|
+| 0-100 kHz, which both rates can see | 0.845 codes | **0.657** |
+| 100-226 kHz, which only the fast rate sees | - | 0.688 |
+| total rms | 0.845 | 0.952 |
+
+**The faster rate is quieter in the band both can see.** All of its
+extra noise sits above 100 kHz, where the 200 ksps arm has no Nyquist to
+see it with. So comparing rms across two sample rates compares two
+measurement bandwidths: the arm answers "is there noise between 100 and
+226 kHz" - there is, 0.688 codes of it - and not "does converting faster
+cost anything".
+
+That is the same missing anti-alias filter the `alias` section is about,
+one level down, and it explains the arm's whole history: unresolved on
+both benches while the firmware bimodality was larger than it, resolving
+the moment that was fixed, and resolving to different magnitudes on two
+benches because what it measures is each bench's own high-frequency
+content.
+
+To ask the original question the arms have to be equalised - decimate
+the fast one to the slow one's bandwidth, or low-pass both to a shared
+band - before they are compared. Not done.
 
 ### The 0.26-bit playback cost is withdrawn
 
