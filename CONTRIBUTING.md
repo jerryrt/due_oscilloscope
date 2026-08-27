@@ -112,6 +112,14 @@ Every commit should build. Bisect is worth protecting.
 released and what every session starts from. Nothing else is a place
 where work lives.
 
+**Several people and agents push to it at once**, from different
+machines and different benches, so `origin/main` has usually moved since
+you last looked: pull before you branch and again before you commit.
+Commits carry what changed and why; **issues are the discussion
+channel** - proposals, dividing work, and anything only another bench
+can answer. `CLAUDE.md`'s "Working alongside other agents" has the
+split and what each is for.
+
 **Every other branch is short-lived: used and discarded.** Personal
 branches, feature branches, bug-fix branches - all of them exist to
 carry one change from its first commit to `main` and are deleted the
