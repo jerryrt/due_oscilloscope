@@ -415,8 +415,8 @@ Phase 3 analog front end exists. A warning label is not sufficient.
   mode, health panel. `gui/`, 14 headless tests. Logging mode is
   daemon-side and already available through the API; wiring a button to
   it is G2 work.
-- **G2** - trigger **done**, measurements and FFT open. 24 headless
-  tests, up from 14. See "The trigger" below.
+- **G2** - **done**: trigger, measurements, FFT. 38 headless tests, up
+  from 14. See "The trigger" and "Measurements and the spectrum" below.
 - **G3** - AWG panel with arbitrary upload.
 - **G4** - dual channel, XY, file playback and export, calibration.
 
@@ -474,6 +474,51 @@ Four decisions a later session should not have to rediscover:
 **Still software only.** Nothing here reaches a pin - see Safety above,
 which keeps an external trigger *input* disabled until the Phase 3
 analog front end exists.
+
+### Measurements and the spectrum
+
+**Every value is a number or a reason, never a plausible-looking
+figure.** The panel shows the reason where the number would be - not a
+dash, and not the previous reading, because a field that reverts to its
+last good value invites a stale number being read as a live one. That is
+the failure `docs/status.md` records more than once.
+
+Three refusals, each earned:
+
+- **A window containing a discontinuity measures nothing.** The largest
+  excursion may span two unrelated moments and the interval between
+  crossings is not a period. In the spectrum it is sharper still: a
+  splice is a step, a step is broadband, and the transform spreads that
+  energy across every frequency on screen, which reads as a noise floor
+  rather than as missing data.
+- **A channel swinging under ten codes reports amplitude but not
+  timing.** A quiet channel crosses its own midpoint on noise.
+- **There is no rise or fall time, deliberately.** The DAC's step is
+  789-938 ns measured with a scope (`docs/awg.md`); this ADC's sample
+  interval is 1.1 us at its fastest and 5 us at 200 ksps. A 10-90% time
+  from these samples would report the sampling interval and call it the
+  converter's edge. A test asserts the absence so it is not added by
+  accident.
+
+**The spectrum's dB is absolute**, referenced to a full-scale sine
+rather than to the largest bin, so two captures compare. Normalising by
+the window's own sum keeps a tone's reported height the same whichever
+window is chosen - measured, all four agree within 0.05 dB - so only the
+leakage changes, which is the whole reason for choosing one. Scalloping
+is bounded rather than hidden: a tone between bins under-reads by up to
+Hann's 1.42 dB, and a test holds the loss inside that so a real error
+cannot hide there.
+
+**The transform is capped at 16384 points.** The ring holds two seconds,
+1.8 M samples at the full rate, and an FFT that size inside a 33 ms
+redraw would block the feeder.
+
+**Volts come from the measured reference.** `ADVREF` is 3270 mV, not the
+nominal 3300, and the panel footers which it used. The loop is
+ratiometric - the DAC's reference *is* the ADC's - so the board cannot
+measure its own reference and every volt on screen is scaled by a number
+that came from an instrument this board cannot be. A reading that cannot
+be attributed is not a measurement.
 
 ## Dependencies and environments
 
