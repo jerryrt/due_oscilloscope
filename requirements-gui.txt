@@ -1,0 +1,39 @@
+# The front end's dependencies, pinned.
+#
+# docs/frontend.md settled the policy - "one pinned declaration
+# committed, one venv per machine created from it, none of them
+# committed" - and then the declaration itself was never written, so the
+# versions lived only in that document's prose. These are the ones it
+# names, and they install unchanged on Windows/3.12 as well as on the
+# macOS/3.13 they were resolved on.
+#
+#     python -m venv .venv-gui
+#     .venv-gui/Scripts/python -m pip install -r requirements-gui.txt
+#
+# PySide6 is cp39-abi3 and declares >=3.9,<3.14, which is why the GUI
+# has its own interpreter: the test venv is happy on 3.14 and PySide6 is
+# not. 3.12 satisfies both, which is what this venv uses here.
+PySide6==6.9.3
+pyqtgraph==0.14.0
+numpy==2.5.2
+
+# pytest, because tests/test_gui.py runs headlessly in this venv rather
+# than in the test one - that venv deliberately has neither Qt nor numpy.
+pytest>=7.0
+
+# pyserial, and this one is Windows-only in spirit though it is
+# unconditional here.
+#
+# tests/conftest.py imports measure -> ports -> transport, and
+# transport's Windows backend imports serial while its POSIX backend
+# imports termios from the standard library. So on macOS the GUI venv
+# never needed this and docs/frontend.md, written there, does not
+# mention it; on Windows the whole GUI test file fails to collect
+# without it. Installing it everywhere costs nothing and keeps one
+# declaration rather than two.
+pyserial==3.5
+
+# scipy is named in docs/frontend.md but nothing imports it yet. It is
+# left out until something does - an unused pin is a version this
+# project would have to keep true for no reason. FFT windowing is the
+# likely first caller (G2); add it then.
