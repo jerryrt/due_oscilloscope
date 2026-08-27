@@ -75,8 +75,39 @@ Track B's own DMA work, apply here with an extra twist:
 
 ### Transport, measured host-side
 
-Both tracks, same host, same cable, same session. Run-to-run spread is
-about 5%, so treat differences smaller than that as noise.
+**Re-taken on Windows 2026-08-27**, which is the 0-series debt this
+file's header opens with. The macOS table is kept below it: it is still
+the record for macOS, and this project's rule is to re-take a figure
+before disbelieving it rather than to delete it.
+
+Three interleaved rounds per track, a reflash between every arm, plus
+one run each from the per-file calibration sweep - so four points per
+cell rather than one.
+
+| Direction | Track A | Track B | macOS A | macOS B |
+|---|---|---|---|---|
+| OUT | **32.38-32.62** | **32.19-32.41** | 27.33 | 26.92 |
+| IN | **22.21-30.54** | **27.46-35.65** | 31.02 | 32.12 |
+| Duplex | **46.41-46.76** | **46.14-46.98** | 15.19 | 16.25 |
+
+**Duplex is the headline: about 2.9x.** 46-47 MB/s combined is 78% of
+USB 2.0 high speed's 60 MB/s against macOS's 28%, and it is the same
+firmware and the same cable - which is what a host that paces the writer
+instead of buffering and discarding buys. OUT gains about 20%.
+
+**IN cannot be quoted as a single number and the old one should not
+have been.** It spans 22.2 to 35.7 MB/s here, and the two tracks are
+indistinguishable inside that: Track A's 30.54 sits above Track B's
+27.46. The apparent 42% track gap in the first single-run pair - 25.06
+against 35.65 - did not survive interleaving, which is the second time
+in one day that a clean-looking separation on this bench died that way.
+
+**So the "run-to-run spread is about 5%" above is wrong for IN**, and
+that sentence is what made a single IN reading look quotable. OUT and
+duplex do hold to about 1% across every round, which is why the gap that
+matters shows up in them and not in IN.
+
+The macOS figures, for reference:
 
 | Direction | Track A | Track B |
 |---|---|---|

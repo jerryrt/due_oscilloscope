@@ -46,3 +46,7 @@ captures/
 
 # Per-machine tool locations (the shared registry is toolchains.json)
 toolchains.local.json
+
+# Calibration output. Written by --calibrate for a human to promote
+# into baseline.json, never to be committed as it is.
+tests/baseline.measured.json

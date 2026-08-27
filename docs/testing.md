@@ -443,6 +443,26 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   the bench-scope work landed, which changes ordering and timing for
   everything after it; that is a candidate and not a finding.
 
+- **`--calibrate` writes only at session end, so a run that hangs at
+  90% yields nothing.** Collect per file instead - one pytest session
+  per test file, each flushing its own `baseline.measured.json` - and
+  merge. A full calibrated run took twelve minutes and produced no data
+  at all on 2026-08-27; the per-file sweep produced 51 keys and every
+  file completed.
+
+  `tests/baseline.measured.json` is also not in `.gitignore`, so it can
+  be committed by accident. It is meant for a human to promote into
+  `baseline.json`, never to land as it is.
+
+- **After force-killing a suite, heal the ports before running anything
+  else.** A killed pytest can leave a process holding the control port,
+  and every later run then fails with `could not open port 'COM7':
+  Access is denied` - which looks exactly like a board fault and is not.
+  Measured on 2026-08-27: one force-kill made five consecutive per-file
+  runs error out at fixture setup in 0.05 s each, reading as five broken
+  files rather than one unreleased port. Killing the two stray processes
+  was enough; the reflash in the healing order below was not needed.
+
 - **Never truncate a suite run's output.** The first of those two was
   lost to a `| tail -3` on the pytest invocation, which threw away the
   traceback and left nothing to diagnose; the re-run was green and the
