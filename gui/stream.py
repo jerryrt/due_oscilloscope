@@ -30,7 +30,39 @@ FLAG_OVERRUN = 1 << 0
 LABELS = {7: "A0", 6: "A1"}
 
 FULL_SCALE_CODES = 4095
-VREF_V = 3.3
+
+
+def _advref_mv():
+    """ADVREF as the scope measured it, not a nominal 3300.
+
+    The DAC->ADC loop is ratiometric - the DAC's reference *is* the
+    ADC's, Table 46-39's note - so the board cannot measure its own
+    reference and 3300 was an assumption sitting where a measurement
+    belongs. An external instrument settled it at 3270 mV by two routes
+    agreeing to 0.1 mV; `tests/baseline.json` holds the result and
+    `host/receive.py` reads it the same way.
+
+    Every volt this window draws came from an ADC code, so the axis, the
+    cursors and the trigger level were all 0.91% high until this.
+
+    Falls back to the old assumption if the file is unreadable, because
+    a display is not worth refusing to start over - and says so in
+    ADVREF_SOURCE, so a reading can be attributed rather than guessed
+    at.
+    """
+    import json
+    import os
+    path = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "tests", "baseline.json")
+    try:
+        with open(path) as f:
+            return int(json.load(f)["adc_transfer"]["advref_mv"]), "measured"
+    except Exception:                                    # noqa: BLE001
+        return 3300, "assumed (baseline.json unreadable)"
+
+
+ADVREF_MV, ADVREF_SOURCE = _advref_mv()
+VREF_V = ADVREF_MV / 1000.0
 
 
 class Frame:
