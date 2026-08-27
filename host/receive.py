@@ -26,6 +26,25 @@ from measure import goertzel, label_for
 from ports import find_ports
 
 
+
+# ADVREF as measured, not a nominal 3300. The DAC->ADC loop is
+# ratiometric - one shared reference - so the board cannot measure its
+# own reference; tests/baseline.json holds what the scope said.
+def _advref_mv():
+    import json
+    import os
+    path = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "tests", "baseline.json")
+    try:
+        with open(path) as f:
+            return json.load(f)["adc_transfer"]["advref_mv"]
+    except Exception:
+        # A display path is not worth failing over; say which it used.
+        return 3300
+
+
+ADVREF_MV = _advref_mv()
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", default=None)
@@ -125,7 +144,7 @@ def main():
         for ch in sorted(keep):
             mag = goertzel(keep[ch], rate_hz, args.expect_hz)
             print(f"#   AD{ch} {label_for(ch)}  amplitude {mag:8.1f} codes"
-                  f"   ({mag * 3300 / 4095:7.1f} mV)")
+                  f"   ({mag * ADVREF_MV / 4095:7.1f} mV)")
         print("#   A0 should show the tone; A1 should be near zero")
 
 

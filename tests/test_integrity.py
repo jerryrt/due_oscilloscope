@@ -307,7 +307,13 @@ def test_dc_transfer_tracks_the_code(board, baseline, calibration, code):
     mean = sum(vals) / len(vals)
     spread = max(vals) - min(vals)
 
-    mv = mean * 3300.0 / 4095.0
+    # ADVREF, not a nominal 3300. The loop is ratiometric - the DAC's
+    # reference IS the ADC's - so the board cannot measure its own
+    # reference and this constant was an assumption, not a measurement.
+    # The scope settled it at 3270 mV by two independent routes agreeing
+    # to 0.1 mV, so a nominal 3300 reads every millivolt here 0.91% high.
+    advref = baseline["adc_transfer"]["advref_mv"]
+    mv = mean * advref / 4095.0
     lo, hi = baseline["dac_mv"]["span_lo"], baseline["dac_mv"]["span_hi"]
     record(calibration, f"dc_{code}", {"mean_code": round(mean, 1),
                                        "mv": round(mv, 1)})
