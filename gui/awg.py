@@ -13,7 +13,7 @@ the second one produces a clipped waveform that looks like a converter
 defect - which this project has spent whole sessions distinguishing from
 real ones. So it refuses and says what it can do instead.
 
-The span comes from `tests/baseline.json`, which holds what the scope
+The span comes from `calibration.json`, which holds what the scope
 measured on this board. `docs/frontend.md` still quotes 546-2760 mV in
 its feature list; that pair is the retired ADC-derived one, low by about
 the ADC's own offset, and is not what this uses.
@@ -21,31 +21,26 @@ the ADC's own offset, and is not what this uses.
 
 from __future__ import annotations
 
-import json
 import os
+import sys
 
 from PySide6 import QtCore, QtWidgets
 
 
 SHAPES = ("sine", "square", "triangle", "ramp")
 
-#: Fallback if baseline.json cannot be read. The nominal pair from the
-#: datasheet's "1/6 to 5/6 of ADVREF", not the retired ADC-derived one -
-#: a fallback should be a specification, not another measurement's
-#: leftovers.
-FALLBACK_SPAN_MV = (545, 2725)
-
-
 def dac_span_mv():
-    """The DAC's output span in millivolts, and where it came from."""
-    path = os.path.join(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))), "tests", "baseline.json")
-    try:
-        with open(path) as f:
-            d = json.load(f)["dac_mv"]
-        return int(d["span_lo"]), int(d["span_hi"]), "measured"
-    except Exception:                                    # noqa: BLE001
-        return FALLBACK_SPAN_MV[0], FALLBACK_SPAN_MV[1], "nominal"
+    """The DAC's output span in millivolts, and where it came from.
+
+    From `calibration.json` through `host/calibration.py`, which owns
+    the fallback too: the datasheet's nominal pair, not the retired
+    ADC-derived one, because a fallback should be a specification rather
+    than another measurement's leftovers.
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "host"))
+    import calibration
+    return calibration.dac_span_mv()
 
 
 def plan(amplitude_vpp, offset_v, lo_mv, hi_mv):

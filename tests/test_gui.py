@@ -392,20 +392,17 @@ def test_volts_come_from_the_measured_reference_not_a_nominal_one():
     3270, and until the GUI read that the axis, the cursors and the
     trigger level were all 0.91% high.
 
-    Asserted against tests/baseline.json rather than against 3270, so
+    Asserted against the calibration record rather than against 3270, so
     the day a better instrument moves the number this follows it instead
     of failing.
     """
-    import json
-    import os
-    path = os.path.join(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))), "tests", "baseline.json")
-    with open(path) as f:
-        want = json.load(f)["adc_transfer"]["advref_mv"]
+    import calibration as cal
+    want, source = cal.advref_mv()
+    assert source == "measured", "calibration.json is unreadable from here"
 
     assert stream.ADVREF_MV == want
     assert stream.ADVREF_SOURCE == "measured", (
-        "the GUI fell back to the nominal reference; baseline.json is "
+        "the GUI fell back to the nominal reference; calibration.json is "
         "unreadable from here")
     assert abs(stream.VREF_V - want / 1000.0) < 1e-9
 
@@ -904,14 +901,10 @@ def test_the_generator_span_comes_from_the_measurement_not_the_doc():
     """docs/frontend.md still quotes 546-2760, the retired ADC-derived
     pair. The panel must use what the scope measured."""
     from gui import awg
-    import json
-    import os
+    import calibration as cal
 
     lo, hi, source = awg.dac_span_mv()
-    path = os.path.join(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))), "tests", "baseline.json")
-    with open(path) as f:
-        want = json.load(f)["dac_mv"]
+    want = cal.require()["dac_mv"]
     assert source == "measured"
     assert (lo, hi) == (want["span_lo"], want["span_hi"])
     assert (lo, hi) != (want["adc_derived_span_lo"],

@@ -312,9 +312,10 @@ def test_dc_transfer_tracks_the_code(board, baseline, calibration, code):
     # reference and this constant was an assumption, not a measurement.
     # The scope settled it at 3270 mV by two independent routes agreeing
     # to 0.1 mV, so a nominal 3300 reads every millivolt here 0.91% high.
-    advref = baseline["adc_transfer"]["advref_mv"]
+    import calibration as cal
+    advref, _ = cal.advref_mv()
     mv = mean * advref / 4095.0
-    lo, hi = baseline["dac_mv"]["span_lo"], baseline["dac_mv"]["span_hi"]
+    lo, hi, _ = cal.dac_span_mv()
     record(calibration, f"dc_{code}", {"mean_code": round(mean, 1),
                                        "mv": round(mv, 1)})
     assert lo - 60 <= mv <= hi + 60, (

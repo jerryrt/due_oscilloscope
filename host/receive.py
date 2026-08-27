@@ -23,27 +23,20 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import measure
 from measure import goertzel, label_for
+import calibration
 from ports import find_ports
 
 
 
 # ADVREF as measured, not a nominal 3300. The DAC->ADC loop is
 # ratiometric - one shared reference - so the board cannot measure its
-# own reference; tests/baseline.json holds what the scope said.
-def _advref_mv():
-    import json
-    import os
-    path = os.path.join(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))), "tests", "baseline.json")
-    try:
-        with open(path) as f:
-            return json.load(f)["adc_transfer"]["advref_mv"]
-    except Exception:
-        # A display path is not worth failing over; say which it used.
-        return 3300
-
-
-ADVREF_MV = _advref_mv()
+# own reference; calibration.json holds what the scope said.
+#
+# It used to be read out of tests/baseline.json by a copy of this
+# function living here, and the comment promised to "say which it used"
+# and then did not. Both are fixed: one reader, and the source travels
+# with the number.
+ADVREF_MV, ADVREF_SOURCE = calibration.advref_mv()
 
 def main():
     ap = argparse.ArgumentParser()

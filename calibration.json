@@ -1,0 +1,71 @@
+{
+  "_comment": [
+    "What this board's analog path IS, measured against an instrument",
+    "that is not the ADC. Moved here from tests/baseline.json on",
+    "2026-08-27, unchanged: the numbers were right and the home was",
+    "wrong. host/receive.py, gui/stream.py, gui/awg.py and",
+    "tools/dso_metrics.py were all reaching into a test fixture for",
+    "them, so every volt the front end drew came out of a file whose",
+    "job is regression tolerances.",
+    "",
+    "The split: this file is what the hardware is; baseline.json is",
+    "what its behaviour is expected to be. Read it through",
+    "host/calibration.py, which is the only reader - one home for the",
+    "number and one implementation of finding it."
+  ],
+  "dac_mv": {
+    "_comment": [
+      "The DAC's output span, measured with the SCOPE on the pin, not",
+      "through the ADC. span_lo/span_hi used to be ADC-derived - a mean",
+      "code times 3300/4095 - which folds the ADC's own offset into the",
+      "DAC's span and reads about 32 mV low at the bottom. The two agree",
+      "once that offset is accounted for, which is the check that",
+      "settled it; before the scope there was no third party to ask.",
+      "tools/dso_metrics.py transfer, 8 agreeing points of 10, repeats",
+      "spread 1.2-8.1 mV, worst deviation from the fit 4.4 codes."
+    ],
+    "span_lo": 578,
+    "span_hi": 2771,
+    "uv_per_code": 535.5,
+    "span_tolerance_mv": 40,
+    "adc_derived_span_lo": 546,
+    "adc_derived_span_hi": 2760
+  },
+  "adc_transfer": {
+    "_comment": [
+      "The DAC->ADC loop is RATIOMETRIC: the DAC's reference is ADVREF,",
+      "the ADC's reference (datasheet Table 46-39's note, recorded in",
+      "docs/HANDOFF.md). One reference, so the loop's code-to-code ratio",
+      "is immune to what the 3.3 V rail actually is - and, by the same",
+      "token, blind to it. The board cannot measure its own reference.",
+      "",
+      "The scope supplies exactly that missing scale, and two",
+      "independent routes agree to 0.1 mV: the loop slope against the",
+      "scope's DAC span, and the ADC's codes-per-millivolt directly.",
+      "Both give ADVREF = 3270 mV, not the 3300 that host/ and tests/",
+      "have assumed.",
+      "",
+      "So the +0.91% first reported as an ADC gain error is very likely",
+      "not the ADC's at all - it is the assumed reference being high. A",
+      "ratiometric loop cannot separate those two; only an external",
+      "instrument can, which is the whole argument for having one.",
+      "",
+      "What is NOT claimed: absolute accuracy. This is ADVREF as a",
+      "DS1102E with an asserted probe ratio sees it. A 6.5-digit meter",
+      "would move it and would be believed over this."
+    ],
+    "advref_mv": 3270,
+    "advref_mv_assumed_previously": 3300,
+    "advref_tolerance_mv": 40,
+    "loop_slope_adc_per_dac_code": 0.67053,
+    "worst_dev_codes_over_measured_range": 4.4,
+    "_offset_note": [
+      "A separate offset term is deliberately NOT recorded. The DAC only",
+      "spans 578-2771 mV, so an offset at code 0 is extrapolated outside",
+      "the data and is strongly correlated with the slope: the -47 codes",
+      "the first fit reported is mostly a 0.9% slope error walked back",
+      "from mid-scale. Over the measured range a single scale factor",
+      "reconciles the two instruments to about 4 codes."
+    ]
+  }
+}
