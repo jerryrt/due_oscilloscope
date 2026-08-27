@@ -553,6 +553,18 @@ class MainWindow(QtWidgets.QMainWindow):
         dac_sps = 200000
         blob, actual_hz = measuremod.build_arb(
             shape, hz, dac_sps, lo_code=lo, hi_code=hi, cycles=20)
+
+        # Play starts the device, so it clears the last run exactly as
+        # Start does. Without this the rings, the sequence-gap count and
+        # the discontinuity count carried across and the previous run's
+        # samples were drawn as this one's - rule 2's own failure, the
+        # one that manufactured a "frozen DAC" that was not happening,
+        # reachable from a button.
+        #
+        # After the local checks and not before them: a request the
+        # panel itself refuses never reaches the device, so there is no
+        # new run to make room for.
+        self.reset_counters()
         try:
             self.client.send_awg(blob)
             self.client.call("start", mode="loop", dac_sps=dac_sps,
