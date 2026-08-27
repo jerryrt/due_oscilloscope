@@ -43,14 +43,14 @@
 /* Buckets are floor(log2(cycles)), so 32 covers every 32-bit delta and
  * the hot path needs no clamp. At 78 MHz bucket 13 is ~105 us and
  * bucket 20 is ~13 ms. */
-/*
- * LOAD_BUCKETS and load_report_t are the wire, not the monitor.
- * CTL_OP_LOAD sends the struct verbatim and host/control.py parses
- * it as "<IIIIBB2x32I", so it is a contract with the host and
- * belongs beside the other CTL payloads rather than in this
- * track's private header. See docs/shared-source.md.
- */
-#include "ctl_wire.h"
+/*
+ * LOAD_BUCKETS and load_report_t are the wire, not the monitor.
+ * CTL_OP_LOAD sends the struct verbatim and host/control.py parses
+ * it as "<IIIIBB2x32I", so it is a contract with the host and
+ * belongs beside the other CTL payloads rather than in this
+ * track's private header. See docs/shared-source.md.
+ */
+#include "ctl_wire.h"
 
 
 /* Hot-path state. Public because load_tick() is inline: this runs on
