@@ -279,7 +279,27 @@ bool CtlUSB::setup_inner(USBSetup &setup)
 		USBD_SendControl(0, line_coding, sizeof(line_coding));
 		return true;
 	case 0x20:                                    /* SET_LINE_CODING */
-		/* Accepted and discarded. See line_coding. */
+		/*
+		 * Read the data stage, then answer. Discarding the value is
+		 * fine; skipping the transfer is not.
+		 *
+		 * SET_LINE_CODING carries seven bytes host-to-device. Returning
+		 * true without collecting them leaves the control transfer
+		 * unfinished, and the host retries the whole thing until it
+		 * gives up. Measured here: opening the command node took
+		 * **60.0 s**, against milliseconds once this line existed.
+		 *
+		 * This project has paid for this once already. docs/testing.md
+		 * records the native port taking 51 s to open for exactly this
+		 * reason, on the first CDC function, and it was one of the four
+		 * defects that justified building the suite. It came back the
+		 * moment a second function was added, because the new function
+		 * answers its own class requests and this one was written from
+		 * the shape of SET_CONTROL_LINE_STATE - which has no data stage
+		 * - rather than from the core's own CDC_Setup, which does
+		 * exactly this at CDC.cpp:127.
+		 */
+		USBD_RecvControl(line_coding, sizeof(line_coding));
 		return true;
 	case 0x22:                                    /* SET_CONTROL_LINE_STATE */
 		return true;
@@ -325,6 +345,58 @@ bool CtlUSB::setup_inner(USBSetup &setup)
  * so this has to be re-applied rather than done once - usbdma.cpp's
  * keepalive has the same shape for the same reason.
  */
+/*
+ * Drain bulk OUT, even though nothing consumes it yet.
+ *
+ * This endpoint is declared in ctl_desc and configured by
+ * ctlusb_realloc_endpoints, and until now nothing ever read it. An
+ * allocated bulk OUT that nobody drains NAKs for ever: CLAUDE.md says
+ * so in bold, drivers/usb_cdc.c does the same thing for Track B's
+ * control endpoint, and tests/test_link_health.py exists to assert it -
+ * "without the drain, adding the endpoint would have turned a port that
+ * does nothing into a port that hangs the machine".
+ *
+ * Measured before this landed, writing at the command node from
+ * Windows: 16 KB, 32 KB, then a stall and a write timeout at 48 KB,
+ * with the device itself perfectly healthy - _usbConfiguration 1,
+ * DEVEPT 0000007f, console answering. That is objective 0c's shape, and
+ * on macOS it is close() waiting on write URBs that never complete
+ * rather than a write that reports an error.
+ *
+ * Discard, not read. Nothing speaks docs/control-protocol.md over this
+ * node yet (ctlver=0), so there is no consumer to hand bytes to; what
+ * matters is that the bank goes back to the controller. When the
+ * protocol lands this becomes the read path and the discard becomes its
+ * empty case.
+ *
+ * One bank per call, which is what keeps invariant 7. A single 512-byte
+ * bank released per main-loop pass is ~115 MB/s of headroom against a
+ * 1.8 MB/s wire, so bounding it costs nothing real - and the alternative,
+ * "drain everything that arrived", is a main-loop pass whose length the
+ * peer chooses.
+ */
+volatile uint32_t ctlusb_out_bytes;
+volatile uint32_t ctlusb_out_banks;
+
+void ctlusb_drain_out(void)
+{
+	if (!registered)
+		return;
+
+	uint32_t st = UOTGHS->UOTGHS_DEVEPTISR[CTL_EP_OUT];
+	if (!(st & UOTGHS_DEVEPTISR_RXOUTI))
+		return;
+
+	ctlusb_out_bytes += (st & UOTGHS_DEVEPTISR_BYCT_Msk)
+	                  >> UOTGHS_DEVEPTISR_BYCT_Pos;
+	ctlusb_out_banks++;
+
+	/* Acknowledge the packet, then hand the bank back. Both, and in
+	 * this order: clearing RXOUTI alone leaves the bank held. */
+	UOTGHS->UOTGHS_DEVEPTICR[CTL_EP_OUT] = UOTGHS_DEVEPTICR_RXOUTIC;
+	UOTGHS->UOTGHS_DEVEPTIDR[CTL_EP_OUT] = UOTGHS_DEVEPTIDR_FIFOCONC;
+}
+
 void ctlusb_quiesce_interrupts(void)
 {
 	if (!registered)
