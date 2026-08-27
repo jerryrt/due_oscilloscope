@@ -135,8 +135,8 @@ enumerates and opens.
 
 | | |
 |---|---|
-| Track B | last full run **281 passed, 12 skipped, 1 xfailed, 1 failed** (2026-08-26). The failure is `test_awg_ladder_play_only[b-32]`, **read rather than re-run** - host-side, context-dependent, passes 6/6 standalone. See `docs/testing.md` |
-| Track A | **263 passed, 31 skipped, 1 xfailed** - the xfail is issue #5's gate. The command-port tests run here now and pass |
+| Track B | last full run **283 passed, 12 skipped, 1 xfailed, 0 failed** (2026-08-26, after shared-source Phase 1). An earlier run that day failed `test_awg_ladder_play_only[b-32]`; it is read up in `docs/testing.md` and is not fixed |
+| Track A | **263 passed, 32 skipped, 1 xfailed** (2026-08-26, after shared-source Phase 1). The xfail is issue #5's gate |
 | Branches | `main` only. `wip/track-a-control-channel` landed and is gone |
 | Board | Track B, `main` |
 | Wiring | **DAC0->A0 and DAC1->A1. That is the baseline and the only thing to assume.** |
@@ -172,7 +172,17 @@ enumerates and opens.
    rather than a rule. This is the oldest real debt here.
 4. **A standing decision, not a task:** whether Track B adopts the
    datasheet's `DACC_ACR` value. It is spec conformance and Track A
-   parity - **not** an issue #5 fix, measurably. `=<ch>,<core>I`.
+   parity - **not** an issue #5 fix, measurably. `=<ch>,<core>I`. Take
+   it *with* the 0-series re-validation above rather than before or
+   after: adopting it changes what every existing figure was measured
+   against, so doing both at once re-baselines once instead of twice.
+
+5. **Sharing the wire contract between the tracks** - the plan and its
+   evidence are in `docs/shared-source.md`. Phases 0, 0.5 and 1 are
+   done; 2-6 are open and each is independently verifiable. Phase 5 is
+   the one that matters most, because it is also objective 1c's second
+   half: sharing `ctl.c` gives Track A a control channel without writing
+   a second implementation of the protocol.
 5. ~~**`tools/serial_probe.py` does not run on Windows.**~~ **Done
    2026-08-26**, `7bc977f`: it is on the `host/transport.py` seam like
    everything else, and `serial_probe.py auto --send h` answers on
