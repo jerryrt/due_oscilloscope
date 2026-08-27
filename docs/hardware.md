@@ -346,7 +346,7 @@ configuration will behave.
 |---|---|
 | Resolution | 12-bit |
 | Channels | 2 (DAC0, DAC1) |
-| Output range | **546 mV to 2760 mV** *(measured on this board)* |
+| Output range | **578 mV to 2771 mV** *(scope on the pin; `calibration.json`)* |
 | Drive | High output impedance; needs a buffer op-amp for any real load |
 
 **Issue #5 lives on this pin.** Once per DAC table wrap one sample read
@@ -357,16 +357,28 @@ is an AWG defect and does not affect ordinary ADC inputs. See
 investigation.
 
 The non-rail-to-rail output surprises everyone. `analogWrite(DAC0, 0)`
-produces 546 mV on this board, not ground.
+produces about 578 mV on this board, not ground.
 
 Measured through the DAC0->A0 loopback, both tracks agreeing to within
 +/-2 ADC codes:
 
-| DAC code | Measured |
-|---|---|
-| 0 | **546 mV** (theory: 1/6 x 3.3 V = 550 mV) |
-| 4095 | **2760 mV** (theory: 5/6 x 3.3 V = 2750 mV) |
-| Usable span | 2214 mV, i.e. 2747 ADC codes |
+| DAC code | Measured through the loop | Theory at ADVREF 3270 |
+|---|---|---|
+| 0 | **546 mV** | 1/6 x 3270 = 545 mV |
+| 4095 | **2760 mV** | 5/6 x 3270 = 2725 mV |
+| Usable span | 2214 mV, i.e. 2747 ADC codes | 2180 mV |
+
+> **These are the loop's numbers, not the pin's, and the difference is a
+> measurement in its own right.** A scope on the same pin reads
+> **578-2771 mV** (`calibration.json`), which is 32 mV higher at the
+> bottom: the loop folds the *ADC's* offset into what it reports as the
+> *DAC's* span. Use the scope pair for anything absolute - an output
+> stage designed against the bottom of this column would be designed
+> against 32 mV that belongs to the other converter.
+>
+> The theory column also used to divide by 3.3 V. ADVREF is measured at
+> **3270 mV** by two independent routes agreeing to 0.1 mV, so the
+> nominal endpoints move with it.
 
 Linearity is excellent: 171-172 ADC codes per 256 DAC codes, consistent
 to within a couple of codes across the whole range. So the part matches

@@ -245,7 +245,7 @@ record and export.
 **AWG.** Waveform library and arbitrary upload from file or drawn by
 hand, amplitude and offset entered in volts and mapped through the
 DAC's real **578-2771 mV** span - the scope-measured pair in
-`tests/baseline.json`, not the 546-2760 this line used to quote, which
+`calibration.json`, not the 546-2760 this line used to quote, which
 was ADC-derived and low by about the ADC's own offset - per-channel
 DAC0 and DAC1 via tag
 interleaving, sweep, burst, one-shot, and a visible underrun count.

@@ -18,6 +18,92 @@
 > `close()` either. `docs/windows.md`.
 
 
+## Provenance audit: which figures here predate which fix
+
+**2026-08-27.** Every figure below is dated by `git blame` - the newest
+figure-bearing line in its section - and compared against the changes
+that alter what a measurement of that kind *means*. **20 of 31
+figure-bearing sections are postdated by at least one of them.**
+
+Two distinctions this table keeps, because collapsing them is how an
+audit becomes noise:
+
+- **"Postdated by" is mechanical and certain.** It is a date comparison
+  out of git, nothing more.
+- **"Invalidated" is a judgement and is not claimed here.** A DAC fix
+  does not touch a throughput figure; the classification below is by
+  keyword and deliberately over-flags. A flagged figure is one to
+  re-take before quoting, not one known to be wrong.
+
+The reason to do this at all is that firmware age was invisible and
+turned out to matter: reflashing this bench across `623d4dc` moved the
+noise floor by a **whole bit** and collapsed a spread that had been
+published as repeatability. Nothing warned anyone - both benches
+reported `fw 0.2.0` four hours and three DAC commits apart. See
+`docs/noise.md`.
+
+### The changes that redefine a measurement
+
+| commit | when | what it changes about a figure |
+|---|---|---|
+| `15d08f7` | 08-23 02:00 | constant-size writes. Byte conservation on the playback path; objective 0h's gate |
+| `3cf34fe` | 08-25 15:38 | `PLAY_PRIME_BUFS` 4 -> 24. Takes underruns to **zero at every rate on the ladder** |
+| `c6415fc` | 08-27 07:09 | the sync default. A1 peak-to-peak goes 18-20 -> 2753, so every A1-referenced arm means something else |
+| `2e74fbb`, `f38523b`, `623d4dc` | 08-27 08:09-11:39 | the DAC and its sync. `623d4dc` clears a disturbance worth a bit of ADC noise |
+
+### What is flagged
+
+| section | newest figure | postdated by |
+|---|---|---|
+| Status and Known Issues | 08-25 | `3cf34fe` prime |
+| The bulk path no longer goes through the core | 08-22 | `15d08f7` bytes, `3cf34fe` prime |
+| The loop, measured per window | 08-22 | `623d4dc` DAC |
+| The single-channel floor is measured, not scaled | 08-22 | `15d08f7` bytes, `3cf34fe` prime, `623d4dc` DAC |
+| Headline result: both tracks reach the full ADC rate | 08-21 | `15d08f7` bytes, `3cf34fe` prime |
+| A conclusion that was wrong twice | 08-21 | `15d08f7` bytes, `3cf34fe` prime |
+| What survives about the DMA plan | 08-22 | `15d08f7` bytes, `3cf34fe` prime |
+| The full loop works; the "frozen DAC" was the receiver's own bug | 08-21 | `15d08f7` bytes, `3cf34fe` prime, `623d4dc` DAC, `c6415fc` A1 |
+| Two host-side bugs that looked like firmware bugs | 08-21 | `15d08f7` bytes, `3cf34fe` prime |
+| Found by the test suite: host-fed playback lost samples | 08-22 | `15d08f7` bytes, `3cf34fe` prime |
+| What is left is the host's, and it has a different fingerprint | 08-22 | `15d08f7` bytes, `3cf34fe` prime |
+| Playback still starves at RC 65, 32 and 28 | 08-22 | `15d08f7` bytes, `3cf34fe` prime |
+| The slew alarm that was the sampling beat | 08-22 | `623d4dc` DAC |
+| And then the widened margin caught something real | 08-22 | `15d08f7` bytes, `3cf34fe` prime, `623d4dc` DAC |
+| The daemon runs free-threaded, and it matters under load | 08-22 | `15d08f7` bytes, `3cf34fe` prime |
+| Objective 0a: a hypothesis disproved, and better evidence than it | 08-22 | `15d08f7` bytes, `3cf34fe` prime, `623d4dc` DAC |
+| Capture over endpoint DMA, and what it cost to get right | 08-22 | `15d08f7` bytes, `3cf34fe` prime |
+| The objective's premise was wrong | 08-22 | `15d08f7` bytes, `3cf34fe` prime |
+| Measured figures | 08-23 | `3cf34fe` prime, `623d4dc` DAC |
+| Windows 11, second board, 2026-08-25 | 08-25 | `3cf34fe` prime, `623d4dc` DAC |
+
+<!-- 20 of 31 figure-bearing sections -->
+
+### Two things the audit found that are not merely stale
+
+**1. The DAC output range in "Measured figures" is the retired pair.**
+It reads 546-2760 mV. `calibration.json` records the scope-measured span
+as **578-2771** and keeps 546-2760 under `adc_derived_*` precisely
+because it folds the ADC's own offset into the DAC's span and reads
+about 32 mV low at the bottom. `docs/hardware.md` carries the same
+retired pair as current. Both now point at the calibration record
+instead of restating it - one home for the number, which is the rule
+`host/calibration.py` exists to enforce.
+
+**2. "Playback still starves at RC 65, 32 and 28" documents starvation
+that has since been fixed.** It was measured 08-22; `3cf34fe` landed
+08-25 and took underruns to zero at every rate on the ladder. That table
+is not un-revalidated, it is very likely *wrong now*, and it is marked
+where it sits.
+
+### What this does not do
+
+It dates sections, not individual numbers, and it dates when a figure
+was **written** rather than when it was measured - usually the same
+session, but not guaranteed. It also cannot see a figure that was
+correct when taken and is still correct: absence from this table is not
+a warrant, and presence in it is not a retraction.
+
+
 Updated after the host-fed playback loss was root-caused and fixed on
 both tracks: `play_service()` read the OUT DMA's status register twice
 where it needed one read. See "Found by the test suite: host-fed
@@ -542,6 +628,12 @@ reports as an xfail naming the host, and a quiet machine passes it.
 
 ### Playback still starves at RC 65, 32 and 28
 
+> **Superseded 2026-08-25 by `3cf34fe`, and left here as history.** The
+> cause was `PLAY_PRIME_BUFS = 4` - the DAC's timer started on an eighth
+> of a ring - and raising it to 24 takes underruns to zero at every rate
+> on this ladder. The table below was measured on 08-22 and is not a
+> description of the current firmware. See the provenance audit above.
+
 Recorded here as "related and probably the same mechanism". It is not.
 Measured after the fix, five play-only runs each, underruns per 3 s:
 
@@ -981,7 +1073,7 @@ single run in either direction.
 
 | Quantity | Value |
 |---|---|
-| DAC output range | 546 mV to 2760 mV |
+| DAC output range | **578 mV to 2771 mV**, `calibration.json` - measured with a scope on the pin. The 546-2760 this line used to give is the retired ADC-derived pair, which folds the ADC's own offset into the DAC's span |
 | ADC aggregate ceiling | RC 86; RC 85 silently halves. 906,976 sps at MCK 78 (976,744 at the old MCK 84) |
 | Multiplexer crosstalk | +/-1 code at slow tracking |
 | USB, Arduino CDC | 0.8 MB/s gapless, ~0.95 MB/s ceiling |

@@ -52,7 +52,7 @@ The DAC's output span, right now, has three values in this repository:
 
 | source | span | where |
 |---|---|---|
-| `tests/baseline.json` | 546 - 2760 mV | `dac_mv`, ADC-derived |
+| `calibration.json` | 546 - 2760 mV | `adc_derived_*`, kept as history |
 | `tools/dso_metrics.py` | 520 - 2820 mV | `DAC_LO_V`/`DAC_HI_V`, a bench note |
 | the scope, this session | Vmax 2.82-2.86, Vpp 2.42-2.44 V | measured, unrecorded |
 
