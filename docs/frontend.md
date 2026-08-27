@@ -425,8 +425,27 @@ What a replay will not do is pass for a board:
   numbers jump backwards at the seam, the daemon counts a gap there and
   the display draws a break: the two passes were never continuous.
 
-Still not built: scrubbing. A replay runs forwards from the start, and
-`--replay-speed` is the only handle on it.
+The window shows where it has got to: a **Replay** bar under the plot
+with the position in frames, the pass number when it is looping, and a
+**Restart**. It is counted in frames rather than as a percentage
+because frames are the unit the sidecar, the daemon's `frames_read` and
+the health panel all quote, and a percentage would be the one number
+here that did not join up with the rest. The position is
+`frames - loops * frames_total`: the daemon counts what it has sent,
+which runs on across a loop while the file starts again.
+
+The end of a recording is announced rather than left to be inferred. A
+recording stops on its own, which on a board only ever happens because
+something went wrong, and a trace that stopped for the ordinary reason
+should not read as a fault. It comes off the daemon's own `at_end`
+rather than off watching `running` go false: a short recording can be
+over before the first status poll, and an edge nobody was there to see
+is an end that never gets announced.
+
+Still not built: **scrubbing**. A replay runs forwards from wherever
+Restart put it, and `--replay-speed` is the only other handle on it.
+Seeking would need the daemon to be able to start at an offset, which
+is a change to `FileDevice` rather than to the window.
 
 ## Where a change goes
 
@@ -439,7 +458,7 @@ contributor needs before touching anything.
 | `gui/stream.py` | Frames to something drawable: decoding, the rings, the trigger, measurements, the FFT, the min/max reduction, `AcquisitionState` | **Any Qt import.** A test asserts it |
 | `gui/session.py` | The daemon connection and every way it can fail. Signals out, plain calls in | A widget, a layout, a message string aimed at a user |
 | `gui/scope.py` | Drawing the reduced data pyqtgraph is handed | Deciding *what* to draw - that is `stream.select` |
-| `gui/awg.py`, `gui/health.py`, `gui/measure_panel.py` | One panel each, with its own local validation | Talking to the daemon |
+| `gui/awg.py`, `gui/health.py`, `gui/measure_panel.py`, `gui/notice.py`, `gui/replay_bar.py` | One panel each, with its own local validation | Talking to the daemon |
 | `gui/app.py` | Wiring. Which widget is connected to which slot, and what a signal renders as | Arithmetic, unit conversion, and `daemon.client` |
 
 Two objects carry most of the weight, and both were pulled out of the
@@ -512,6 +531,30 @@ trigger-level spin box - so a bare-key binding works right up until
 someone clicks a control. A test walks every action and fails on a
 shortcut with no modifier, because that is the kind of rule that only
 holds if something checks.
+
+## Where a message goes
+
+`statusBar().showMessage()` was the window's only error channel, and
+every message overwrote the last - including the ones the 4 Hz status
+poll writes. The device's own refusal, which rule 4 below says is the
+one message that must be shown, could be gone in 250 ms.
+
+`gui/notice.py` is a bar under the plot that keeps it until something
+replaces it or it is dismissed. The pattern is not new: `gui/awg.py`
+already kept a persistent wrapped red label for the generator's own
+local refusals, and reserved the height a wrapped one needs because "a
+truncated explanation is worse than a bare no - it reads as the whole
+answer". This is that label generalised, so there is one answer to
+"where does a message go" rather than two.
+
+**A refusal is not a dialog.** It names a limit worth reading twice -
+the rate the hardware will actually make, the offset that would fit -
+and a modal is the one presentation that cannot be read twice. `start`
+used to raise one while the same refusal of the same op from the
+generator panel went to the status bar; now everything renders in
+`_on_refused`, and the status bar keeps a copy that it is free to lose.
+A new run clears the notice, because a notice that outlived the thing
+it was about would be the same defect as a counter that did.
 
 Run/Stop follows the device's own `running`, not which button was
 pressed last. A replay that reaches the end of its file stops without
