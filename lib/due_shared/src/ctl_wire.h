@@ -228,4 +228,29 @@ typedef struct __attribute__((packed)) {
 	uint8_t  build[24];        /* __DATE__ " " __TIME__, NUL-padded */
 } ctl_identity_t;
 
+/*
+ * CTL_OP_LOAD's payload. The main-loop load monitor fills it in and
+ * host/control.py parses it as "<IIIIBB2x32I"; it lived in bsp/load.h,
+ * which is Track B's private header, so the wire format of an opcode
+ * was defined somewhere only one track could see it.
+ */
+#define LOAD_BUCKETS 32u
+
+/*
+ * A snapshot. Cumulative since boot or since the last load_clear(), so
+ * two of them differenced give a rate and a distribution over exactly
+ * the interval the caller chose - the same convention as every other
+ * counter here, and the reason nothing has to agree on a window.
+ */
+typedef struct __attribute__((packed)) {
+	uint32_t dev_us;         /* when this was taken */
+	uint32_t passes;
+	uint32_t max_cycles;     /* worst single pass */
+	uint32_t mck_hz;         /* so the host can turn cycles into time */
+	uint8_t  available;      /* 0 = the cycle counter does not count */
+	uint8_t  buckets;        /* LOAD_BUCKETS, so the host can check */
+	uint8_t  reserved[2];
+	uint32_t hist[LOAD_BUCKETS];
+} load_report_t;
+
 #endif /* CTL_WIRE_H */

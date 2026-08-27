@@ -4,15 +4,13 @@
  */
 
 #include "ctl.h"
+#include "ctl_port.h"
 #include "track_id.h"
 #include "fw_version.h"
 #include "acq.h"
-#include "bsp.h"
 #include "frame.h"
-#include "load.h"
 #include "play.h"
 #include "stream.h"
-#include "usb_cdc.h"
 #include "sam.h"
 #include <stdio.h>
 #include <string.h>
@@ -109,13 +107,13 @@ static void ctl_respond(uint16_t req_id, uint16_t opcode, uint8_t flags,
 	h->crc32 = ~c;
 
 	/*
-	 * One write, and no retry. usb_ctl_write refuses rather than
+	 * One write, and no retry. ctl_port_write refuses rather than
 	 * blocks when the host is not reading, and spinning here would
 	 * hand a stalled host the power to stop the main loop - which is
 	 * the failure the sample path is built to avoid. A lost answer is
 	 * visible in ctl_tx_dropped; a wedged board is not visible at all.
 	 */
-	if (usb_ctl_write(out, CTL_HDR_BYTES + len) != CTL_HDR_BYTES + len)
+	if (ctl_port_write(out, CTL_HDR_BYTES + len) != CTL_HDR_BYTES + len)
 		ctl_tx_dropped++;
 }
 
@@ -151,8 +149,8 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			          "ping takes no payload");
 			return;
 		}
-		p.dev_us = micros();
-		p.dev_ms = millis();
+		p.dev_us = ctl_port_micros();
+		p.dev_ms = ctl_port_millis();
 		p.seq    = ++ping_seq;
 		ctl_respond(h->req_id, h->opcode, 0, &p, sizeof(p));
 		return;
@@ -191,7 +189,7 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			          "counters takes no payload");
 			return;
 		}
-		ct.dev_us      = micros();
+		ct.dev_us      = ctl_port_micros();
 		ct.bytes_in    = play_bytes_in;
 		ct.produced    = play_produced;
 		ct.consumed    = play_consumed;
@@ -205,7 +203,7 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		ct.loop_passes = stream_loop_passes;
 		ct.run_us      = play_run_us;
 		ct.abandoned   = play_abandoned;
-		ct.drain_polls = usb_out_drain_polls;
+		ct.drain_polls = ctl_port_out_drain_polls();
 		ctl_respond(h->req_id, h->opcode, 0, &ct, sizeof(ct));
 		return;
 	}
@@ -253,7 +251,7 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		if (traced > PLAY_OCC_TRACE)
 			traced = PLAY_OCC_TRACE;
 
-		o->dev_us      = micros();
+		o->dev_us      = ctl_port_micros();
 		o->occ_min     = play_occ_min;
 		o->endtx_seen  = play_endtx_seen;
 		o->run_us      = play_run_us;
@@ -334,7 +332,19 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		 * against the wrong interval - the same reason playstat
 		 * carries its own dev_us.
 		 */
-		load_sample(&r);
+		/*
+		 * A track without a load monitor answers CTL_ERR_OPCODE
+		 * rather than a report of zeroes. `available` inside the
+		 * report already means "the cycle counter is not counting",
+		 * which is a different statement from "this firmware does
+		 * not measure this" - and a host that cannot tell them apart
+		 * will read the second as an idle main loop.
+		 */
+		if (!ctl_port_load_sample(&r)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no load monitor on this track");
+			return;
+		}
 		ctl_respond(h->req_id, h->opcode, 0, &r, sizeof(r));
 		return;
 	}
@@ -413,7 +423,7 @@ static void ctl_frame_complete(void)
 
 static bool ctl_feed(uint8_t b)
 {
-	rx_last_us = micros();
+	rx_last_us = ctl_port_micros();
 
 	switch (rx_state) {
 	case ST_MAGIC:
@@ -476,16 +486,16 @@ static uint32_t rx_buf_at;
 void ctl_service(void)
 {
 	/* Abandon a frame that stopped arriving. Unsigned subtraction is
-	 * correct across the micros() wrap; comparing timestamps directly
+	 * correct across the ctl_port_micros() wrap; comparing timestamps directly
 	 * would not be. */
-	if (rx_state != ST_MAGIC && micros() - rx_last_us > CTL_IDLE_US) {
+	if (rx_state != ST_MAGIC && ctl_port_micros() - rx_last_us > CTL_IDLE_US) {
 		rx_state = ST_MAGIC;
 		rx_magic_at = 0;
 		ctl_rx_bad++;
 	}
 
 	if (rx_buf_at >= rx_buf_len) {
-		rx_buf_len = usb_ctl_read(rx_buf, sizeof(rx_buf));
+		rx_buf_len = ctl_port_read(rx_buf, sizeof(rx_buf));
 		rx_buf_at = 0;
 		if (rx_buf_len == 0)
 			return;
@@ -523,5 +533,5 @@ void ctl_dump(void)
 	       (unsigned long)ctl_tx_dropped,
 	       (unsigned)rx_state,
 	       (unsigned long)ping_seq);
-	uart_flush();
+	ctl_port_console_flush();
 }

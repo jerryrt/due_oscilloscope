@@ -43,7 +43,15 @@
 /* Buckets are floor(log2(cycles)), so 32 covers every 32-bit delta and
  * the hot path needs no clamp. At 78 MHz bucket 13 is ~105 us and
  * bucket 20 is ~13 ms. */
-#define LOAD_BUCKETS 32u
+/*
+ * LOAD_BUCKETS and load_report_t are the wire, not the monitor.
+ * CTL_OP_LOAD sends the struct verbatim and host/control.py parses
+ * it as "<IIIIBB2x32I", so it is a contract with the host and
+ * belongs beside the other CTL payloads rather than in this
+ * track's private header. See docs/shared-source.md.
+ */
+#include "ctl_wire.h"
+
 
 /* Hot-path state. Public because load_tick() is inline: this runs on
  * every pass of the main loop and a call would cost more than the
@@ -112,22 +120,6 @@ static inline void load_tick(void)
 #endif
 }
 
-/*
- * A snapshot. Cumulative since boot or since the last load_clear(), so
- * two of them differenced give a rate and a distribution over exactly
- * the interval the caller chose - the same convention as every other
- * counter here, and the reason nothing has to agree on a window.
- */
-typedef struct __attribute__((packed)) {
-	uint32_t dev_us;         /* when this was taken */
-	uint32_t passes;
-	uint32_t max_cycles;     /* worst single pass */
-	uint32_t mck_hz;         /* so the host can turn cycles into time */
-	uint8_t  available;      /* 0 = the cycle counter does not count */
-	uint8_t  buckets;        /* LOAD_BUCKETS, so the host can check */
-	uint8_t  reserved[2];
-	uint32_t hist[LOAD_BUCKETS];
-} load_report_t;
 
 void load_init(void);
 bool load_available(void);
