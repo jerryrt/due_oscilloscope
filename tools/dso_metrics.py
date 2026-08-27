@@ -15,6 +15,8 @@ ways a DS1102E refuses to trigger on it.
              measured against something that is not the ADC
     reload   is the PDC reload visible on the pin, with a control that
              says whether it is locked to the reload or the waveform
+    settle   how long the tail takes to fall inside ONE CODE, which is
+             not the 10-90% rise and sizes every settle mask here
     step     full-scale step response - slew rate, overshoot, settling
     skew     the TAG interleave, separated from the instrument's own
              trigger-path delay by measuring it at four rates
@@ -928,6 +930,160 @@ def cmd_transfer(board, inst, args):
 
 
 # ------------------------------------------------------------------
+# settle: how long until the tail is inside one code
+# ------------------------------------------------------------------
+
+def cmd_settle(board, inst, args):
+    """Settling time to a band, measured in DAC codes rather than percent.
+
+    `step` reports rise as 10% to 90% - 789 to 938 ns - and that is the
+    number the reload fold's settle mask was sized on. It is the wrong
+    number for the job. Rise says how fast the output crosses the middle
+    of a step; settling says when the tail stops moving, and the two are
+    not the same quantity or even the same order. `step`'s own settling
+    column was window-limited past 8.6 us and recorded as such, which
+    should have been the clue: if the tail is still moving at 8.6 us,
+    a 1.2 us mask leaves most of it inside the comparison.
+
+    Measured with the vertical at a gain where one code is visible,
+    which puts the step itself off screen. That is deliberate - the
+    approach rails and the tail does not, so the record shows exactly
+    the part in question at 0.29 codes a screen level instead of 29.
+    """
+    preset = TRIGGER_PRESETS[args.trigger]
+    # A square slow enough that the hold after the edge is long. At 256
+    # points a cycle the half period is 1.28 ms, so nothing else happens
+    # while the tail is being watched.
+    measure.set_sync(board, "cycle", amp=args.sync_amp)
+    measure.set_gen(board, "square", 256, amp=args.amp)
+    board.cmd(preset)
+    time.sleep(0.9)
+    board.drain_console(0.3)
+
+    inst.channel_enable(2, False)
+    inst.coupling(args.channel, "DC")
+    inst.timebase(args.window / 12.0)
+    inst.timebase_offset(0.0)
+    # The square's own edge is the best trigger available - measured at
+    # 0.007 us of jitter, against the sync's 1.471 - and this is the one
+    # measurement where that matters more than anything.
+    inst.trigger_coupling("DC")
+    inst.trigger_edge(source=f"CHAN{args.channel}", slope="POS",
+                      level=DAC_MID_V, sweep="NORMAL")
+
+    # Coarse: where does it settle to, and where is the edge.
+    inst.channel_scale(args.channel, 0.5)
+    inst.channel_offset(args.channel, -DAC_MID_V)
+    inst.averaging(None)
+    v, dt = inst.capture(args.channel)
+    if not v:
+        raise SystemExit("no coarse capture")
+    v, _ = trace.trim_invalid_head(v, dt, max_spread=DAC_SPAN_V * 1.15,
+                                   window_s=2.0 / args.trigger)
+    lo, hi = inst.extent(v)
+    tail = v[int(len(v) * 0.6):]
+    final = sorted(tail)[len(tail) // 2]
+    edges = trace.find_edges(v, dt, min_step=(hi - lo) * 0.3)
+    if not edges:
+        raise SystemExit("no step found in the coarse capture")
+    print(f"\ncoarse: {len(v):,} samples at {dt*1e9:.0f} ns, step "
+          f"{(hi-lo)*1000:.0f} mV, settles to {final*1000:.1f} mV, "
+          f"{len(edges)} edge(s)")
+
+    # Fine: the same edge with the vertical on the tail.
+    inst.channel_scale(args.channel, args.vdiv or 0.005)
+    inst.channel_offset(args.channel, -final)
+    inst.averaging(args.average)
+    time.sleep(0.4 + args.average * 0.006)
+    v2, dt2 = inst.capture(args.channel)
+    inst.averaging(None)
+    board.stop(); board.drain_console(0.2)
+    if not v2:
+        raise SystemExit("no fine capture")
+    q = (args.vdiv or 0.005) * 8 / 256
+    print(f"fine:   {len(v2):,} samples at {dt2*1e9:.0f} ns, "
+          f"{(args.vdiv or 0.005)*1000:g} mV/div, one screen level "
+          f"{q/V_PER_CODE:.2f} codes")
+
+    # ONLY the samples that are on screen.
+    #
+    # At this gain the pre-edge level is 2.3 V away and rails, so most
+    # of the record is a rail rather than a signal - 7 distinct values
+    # in 65,526 samples, 48 mV peak to peak on an 8-division screen of
+    # 40. The first version of this analysed all of it and reported the
+    # rail crossings as "excursions": two of them, identical at every
+    # band because a rail is outside every band, and in a different
+    # place each run because the trigger sits at a different point in
+    # the record. None of that was the tail.
+    rail_lo, rail_hi = min(v2), max(v2)
+    on = [i for i, x in enumerate(v2)
+          if rail_lo + 1.5 * q < x < rail_hi - 1.5 * q]
+    if len(on) < 200:
+        raise SystemExit(
+            f"only {len(on)} of {len(v2):,} samples are on screen at "
+            f"{(args.vdiv or 0.005)*1000:g} mV/div - the record is almost "
+            f"all rail. Widen --vdiv or narrow --window.")
+    start, stop = on[0], on[-1]
+    v2 = v2[start:stop + 1]
+    start = 0
+    t2 = v2[int(len(v2) * 0.7):]
+    f2 = sorted(t2)[len(t2) // 2]
+    print(f"        {len(v2):,} samples on screen "
+          f"({len(v2)*dt2*1e6:.1f} us of settled record)")
+    # Not just the LAST excursion - all of them, and how they are
+    # spaced. The first version reported only the last time the trace
+    # left each band and every band answered 122.59 us, which is not
+    # what a settling tail does: a tail leaves a tight band later than a
+    # loose one. One time for every band means one discrete event, and
+    # the question then is whether there are more of them and how far
+    # apart, which a single number cannot say.
+    print(f"\n{'band':>8s} {'excursions':>11s} {'first':>10s} "
+          f"{'last':>10s} {'median gap':>12s}")
+    print("-" * 56)
+    rows = []
+    for codes in (10.0, 5.0, 2.0, 1.0, 0.5):
+        band = codes * V_PER_CODE
+        hits, run = [], None
+        for i in range(start, len(v2)):
+            if abs(v2[i] - f2) > band:
+                if run is None:
+                    run = i
+            elif run is not None:
+                hits.append((run + i) // 2)
+                run = None
+        if run is not None:
+            hits.append((run + len(v2)) // 2)
+        gaps = sorted((hits[i] - hits[i - 1]) * dt2
+                      for i in range(1, len(hits)))
+        med = gaps[len(gaps) // 2] if gaps else None
+        first = ((hits[0] - start) * dt2) if hits else None
+        last = ((hits[-1] - start) * dt2) if hits else None
+        rows.append({"codes": codes, "n": len(hits), "first_s": first,
+                     "last_s": last, "gap_s": med})
+        print(f"{codes:6.1f}c {len(hits):11d} "
+              f"{('-' if first is None else format(first*1e6, '9.2f') + 'u'):>10s} "
+              f"{('-' if last is None else format(last*1e6, '9.2f') + 'u'):>10s} "
+              f"{('-' if med is None else format(med*1e6, '10.2f') + 'u'):>12s}")
+    one = next((r for r in rows if r["codes"] == 1.0), None)
+    if one and one["n"] > 2 and one["gap_s"]:
+        print(f"\n{one['n']} excursions past one code, spaced "
+              f"{one['gap_s']*1e6:.2f} us apart on the median.")
+        print(f"That is not a settling tail - a tail happens ONCE after "
+              f"a step and decays.\nSomething is disturbing this pin "
+              f"repeatedly while it holds a constant level.")
+        for name, period in (("a DAC0 update", 2.0 / args.trigger),
+                             ("the USB microframe", 125e-6),
+                             ("the ADC frame", 2032.0 / args.trigger),
+                             ("the table wrap",
+                              512.0 / args.trigger)):
+            r = one["gap_s"] / period
+            if 0.9 <= r <= 1.1:
+                print(f"  {one['gap_s']*1e6:.2f} us matches {name} "
+                      f"({period*1e6:.2f} us) to {abs(r-1)*100:.1f}%")
+    return {"final_v": final, "bands": rows, "quantum_v": q}
+
+
+# ------------------------------------------------------------------
 # ceiling: how far the DAC really goes, off the ADC's leash
 # ------------------------------------------------------------------
 
@@ -1544,7 +1700,7 @@ def _parser():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("what", choices=("step", "skew", "lin", "wrap",
                                     "clock", "ceiling", "transfer",
-                                    "reload", "shots"))
+                                    "reload", "settle", "shots"))
     ap.add_argument("--channel", type=int, default=1,
                     help="scope channel on DAC0 (default 1). DAC1 is the "
                          "trigger and is not a channel to measure")
@@ -1589,6 +1745,10 @@ def _parser():
                     help="reload only: AC-couple the channel, so a held "
                          "level can be viewed at the instrument's highest "
                          "vertical gain instead of its DC offset range")
+    ap.add_argument("--sync-amp", type=int, default=64,
+                    help="the sync's own swing in 256ths. EXT triggers "
+                         "down to 8/256; smaller is politer to the "
+                         "neighbouring pin")
     ap.add_argument("--amp", type=int, default=256,
                     help="reload only: generator amplitude in 256ths of "
                          "full scale. Smaller lets the vertical come up: "
@@ -1633,7 +1793,7 @@ def _apply_defaults(args):
 
     defaults = {"step": 4, "skew": 4, "lin": 256, "wrap": 32,
                 "clock": 2, "ceiling": 2, "transfer": 256,
-                "reload": 32, "shots": 32}
+                "reload": 32, "settle": 256, "shots": 32}
     if args.points is None:
         args.points = defaults[args.what]
     if args.what == "step" and not args.timebase:
@@ -1658,7 +1818,7 @@ def main():
         {"step": cmd_step, "skew": cmd_skew, "lin": cmd_lin,
          "wrap": cmd_wrap, "clock": cmd_clock,
          "ceiling": cmd_ceiling, "transfer": cmd_transfer,
-         "reload": cmd_reload_repeat,
+         "reload": cmd_reload_repeat, "settle": cmd_settle,
          "shots": cmd_shots}[args.what](board, inst, args)
     finally:
         try:
