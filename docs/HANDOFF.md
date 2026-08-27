@@ -135,8 +135,8 @@ enumerates and opens.
 
 | | |
 |---|---|
-| Track B | last full run **282 passed, 12 skipped, 1 xfailed, 0 failed** (2026-08-26, after the daemon `ctlver` gate). The two documented intermittents did not fire this run; they are not fixed, see `docs/testing.md` |
-| Track A | **261 passed, 33 skipped, 1 xfailed** - the xfail is issue #5's gate. The control channel's blocker is found and landed |
+| Track B | last full run **281 passed, 12 skipped, 1 xfailed, 1 failed** (2026-08-26). The failure is `test_awg_ladder_play_only[b-32]`, **read rather than re-run** - host-side, context-dependent, passes 6/6 standalone. See `docs/testing.md` |
+| Track A | **263 passed, 31 skipped, 1 xfailed** - the xfail is issue #5's gate. The command-port tests run here now and pass |
 | Branches | `main` only. `wip/track-a-control-channel` landed and is gone |
 | Board | Track B, `main` |
 | Wiring | **DAC0->A0 and DAC1->A1. That is the baseline and the only thing to assume.** |
