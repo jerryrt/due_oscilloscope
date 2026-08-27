@@ -91,6 +91,56 @@ DAC_MID_V = (DAC_LO_V + DAC_HI_V) / 2.0
 V_PER_CODE = DAC_SPAN_V / 4095.0
 
 
+def verify_probe(board, inst, ch, preset):
+    """Drive a known amplitude and check the instrument agrees about it.
+
+    A probe ratio is asserted, never measured: the scope reports what it
+    has been TOLD and there is no query for what is fitted. Getting it
+    wrong is a silent factor of ten in every volt this file prints, with
+    no error anywhere - and the probes on this bench have now been x10
+    and x1 on different days.
+
+    So the one handle there is: a full-scale square is a known 2.19 V by
+    tests/baseline.json, and an instrument that disagrees by a factor of
+    ten is not measuring what it thinks. Subtler errors this cannot see,
+    and it does not pretend to.
+    """
+    measure.set_sync(board, "cycle")
+    measure.set_gen(board, "square", 32)
+    board.cmd(preset)
+    time.sleep(0.8)
+    board.drain_console(0.3)
+    inst.channel_scale(ch, 0.5)
+    inst.channel_offset(ch, -DAC_MID_V)
+    inst.coupling(ch, "DC")
+    inst.timebase(50e-6)
+    inst.trigger_coupling("DC")
+    inst.trigger_edge(source=f"CHAN{ch}", level=DAC_MID_V, slope="POS",
+                      sweep="AUTO")
+    inst.averaging(None)
+    inst.run()
+    time.sleep(0.5)
+    vpp = inst.measure("VPP", ch)
+    board.stop()
+    board.drain_console(0.2)
+    told = inst.probe(ch)
+    if vpp is None:
+        print(f"probe check: no reading on CH{ch}; cannot verify x{told:g}")
+        return None
+    ratio = vpp / DAC_SPAN_V
+    if not 0.7 <= ratio <= 1.4:
+        raise SystemExit(
+            f"CH{ch} read {vpp:.3f} V for a full-scale square that "
+            f"tests/baseline.json says is {DAC_SPAN_V:.3f} V - a factor "
+            f"of {ratio:.2f}. The scope is told the probe is x{told:g}; "
+            f"check what is fitted. Every volt this tool prints is wrong "
+            f"by that factor until it agrees.")
+    print(f"probe check: CH{ch} told x{told:g}, full-scale square reads "
+          f"{vpp:.3f} V against {DAC_SPAN_V:.3f} V expected "
+          f"({ratio:.3f}x)")
+    return vpp
+
+
 def arm(board, inst, preset, shape="square", pts=32):
     """Start the generator and find the EXT trigger, in that order.
 
@@ -737,6 +787,7 @@ def _dc_point(board, inst, ch, code, seconds, average):
     if coarse is not None:
         inst.channel_scale(ch, 0.1)
         inst.channel_offset(ch, -coarse)
+        # See stable_trace(): the readback can lag a scale change.
         inst.averaging(average)
         time.sleep(0.25 + average * 0.005)
         # From the samples, not from :MEAS:. The measurement subsystem
@@ -745,7 +796,9 @@ def _dc_point(board, inst, ch, code, seconds, average):
         # improve it because the limit is the response format. Averaging
         # 600 trace samples dithered by the pin's own noise gets far
         # below one screen level.
-        fine = inst.level(ch)
+        fv = stable_trace(ch=ch, inst=inst, lo_v=DAC_LO_V - 0.2,
+                          hi_v=DAC_HI_V + 0.2)
+        fine = (sum(fv) / len(fv)) if fv else None
     # Was the run still going when that was read?
     #
     # Asked of the thread, not inferred from the value. The first
@@ -1079,10 +1132,19 @@ def cmd_reload(board, inst, args):
         inst.channel_offset(args.channel, -mid)
         inst.averaging(args.average)
         time.sleep(0.4 + args.average * 0.006)
-        v = inst.waveform(args.channel)
+        # AC coupling puts the trace at zero, so the plausible window is
+        # about the instrument's own screen rather than the DAC's range.
+        if args.ac:
+            lo_ok, hi_ok = -0.5, 0.5
+        else:
+            lo_ok, hi_ok = DAC_LO_V - 0.2, DAC_HI_V + 0.2
+        v = stable_trace(inst, args.channel, lo_ok, hi_ok)
         inst.averaging(None)
         if not v:
-            raise SystemExit("no trace")
+            raise SystemExit(
+                f"CH{args.channel} never returned a plausible trace at "
+                f"{(args.vdiv or 0.02)*1000:.0f} mV/div. The readback was "
+                f"still the previous gain's data; widen --vdiv.")
         dt = inst.timebase() * 12.0 / len(v)
         n = len(v)
         # The waveform here is a STAIRCASE, not a curve, and that is
@@ -1128,11 +1190,19 @@ def cmd_reload(board, inst, args):
               f"{r['rms_v']*1000:7.2f} mV {r['rms_v']/V_PER_CODE:4.1f}c")
 
     w, c = results["wrap"], results["cycle"]
-    floor = c["rms_v"]
+    # The floor is whichever is larger: what the control actually shows,
+    # or one screen level. A control that reports 0.00 mV is not a
+    # silent pin - it is every sample landing on one 8-bit level, and
+    # dividing by it produces a nan that reads like an error rather than
+    # like the resolution limit it is.
+    quantum = (args.vdiv or 0.02) * 8 / 256
+    floor = max(c["rms_v"], quantum)
+    floor_is_quantiser = c["rms_v"] < quantum
     ratio = abs(w["worst_v"]) / floor if floor else float("nan")
-    print(f"\nThe control's rms is the floor: {floor*1000:.2f} mV = "
-          f"{floor/V_PER_CODE:.1f} codes.")
-    if ratio >= 4.0 and abs(w["worst_v"]) > 2.5 * abs(c["worst_v"]):
+    print(f"\nFloor {floor*1000:.3f} mV = {floor/V_PER_CODE:.2f} codes"
+          f"{' (one screen level; the control is below it)' if floor_is_quantiser else ' (the control rms)'}.")
+    if ratio >= 4.0 and abs(w["worst_v"]) > 2.5 * max(abs(c["worst_v"]),
+                                                     quantum):
         print(f"Wrap-locked feature: {ratio:.1f}x the control's rms, and "
               f"{abs(w['worst_v']/c['worst_v']):.1f}x the control's own "
               f"worst.\nIt is locked to the reload rather than to the "
@@ -1144,6 +1214,85 @@ def cmd_reload(board, inst, args):
               f"{floor/V_PER_CODE:.1f} codes would not be seen by this "
               f"setup, and issue #5's\nreported peaks are 5-15 codes.")
     return results
+
+
+def cmd_reload_repeat(board, inst, args):
+    """The reload experiment, several times, so repeatability answers it.
+
+    A single pair cannot distinguish a real wrap-locked excursion from
+    one sample of noise that happened to be the largest. What separates
+    them is whether the feature lands at the SAME TIME with the SAME
+    SIGN run after run - noise does not, and something clocked to the
+    reload has nowhere else to be.
+    """
+    rounds = []
+    for k in range(args.repeats):
+        print(f"\n--- round {k + 1} of {args.repeats} ---", flush=True)
+        rounds.append(cmd_reload(board, inst, args))
+    print(f"\n{'=' * 62}\nrepeatability across {len(rounds)} rounds\n")
+    print(f"{'round':>5s} {'wrap worst':>12s} {'at':>10s} "
+          f"{'ctrl worst':>12s} {'at':>10s}")
+    print("-" * 54)
+    for k, r in enumerate(rounds):
+        print(f"{k+1:5d} {r['wrap']['worst_v']*1000:+9.3f} mV "
+              f"{r['wrap']['worst_at_s']*1e6:+8.2f}us "
+              f"{r['cycle']['worst_v']*1000:+9.3f} mV "
+              f"{r['cycle']['worst_at_s']*1e6:+8.2f}us")
+    wt = [r["wrap"]["worst_at_s"] for r in rounds]
+    wv = [r["wrap"]["worst_v"] for r in rounds]
+    ct = [r["cycle"]["worst_at_s"] for r in rounds]
+    quantum = (args.vdiv or 0.02) * 8 / 256
+    spread_t = (max(wt) - min(wt)) * 1e6
+    ctrl_spread_t = (max(ct) - min(ct)) * 1e6
+    same_sign = len({v > 0 for v in wv}) == 1
+    biggest = max(abs(v) for v in wv)
+    print(f"\nwrap worst lands within {spread_t:.2f} us across rounds "
+          f"(control {ctrl_spread_t:.2f} us), sign "
+          f"{'consistent' if same_sign else 'flips'}")
+    # Repeatability of an argmax over an all-zero array is not
+    # repeatability of a feature: max(..., key=abs) returns the first
+    # index every time, and the control does exactly the same. Require
+    # something above the quantiser before calling consistency evidence.
+    if biggest <= quantum:
+        print(f"But the largest wrap residual in any round is "
+              f"{biggest*1000:.3f} mV, at or below one screen level "
+              f"({quantum*1000:.3f} mV).\nThere is no feature for that "
+              f"consistency to be about - it is the argmax of a flat "
+              f"array,\nand the control reproduces it just as tightly.")
+    elif spread_t < 2.0 and same_sign and ctrl_spread_t > spread_t:
+        print("Same place, same sign, every round. That is clocked to "
+              "something,\nand the only thing at that phase is the "
+              "reload.")
+    else:
+        print("It moves between rounds. That is noise finding a different "
+              "largest\nsample each time, not a feature locked to the "
+              "reload.")
+    return rounds
+
+
+def stable_trace(inst, ch, lo_v, hi_v, tries=5, settle=0.35):
+    """A trace the instrument has actually refreshed, or None.
+
+    Changing the vertical scale does not take effect on the readback
+    immediately: `:WAV:DATA?` can hand back the PREVIOUS gain's data,
+    and if the previous gain was 25x higher that data is railed. Decoded
+    with the new scale it becomes a plausible-looking constant at an
+    impossible voltage - 13660 mV, 37700 mV - and a residual computed
+    from it is exactly 0.000 mV, which reads like a quiet pin.
+
+    Every reload number taken before this guard existed was that. So:
+    read, check the trace is inside the range the DAC can physically
+    reach and has more than a couple of distinct levels, and retry
+    rather than believe it.
+    """
+    for _ in range(tries):
+        v = inst.waveform(ch)
+        if v:
+            mean = sum(v) / len(v)
+            if lo_v <= mean <= hi_v and len(set(v)) > 2:
+                return v
+        time.sleep(settle)
+    return None
 
 
 def _plateau_residual(v, settle_frac=0.2, edge_k=4.0):
@@ -1498,10 +1647,14 @@ def main():
     try:
         board.stop()
         board.drain_console(0.5)
+        if args.what not in ("shots",):
+            # Before any number is taken, not after.
+            verify_probe(board, inst, args.channel,
+                         TRIGGER_PRESETS[args.trigger])
         {"step": cmd_step, "skew": cmd_skew, "lin": cmd_lin,
          "wrap": cmd_wrap, "clock": cmd_clock,
          "ceiling": cmd_ceiling, "transfer": cmd_transfer,
-         "reload": cmd_reload,
+         "reload": cmd_reload_repeat,
          "shots": cmd_shots}[args.what](board, inst, args)
     finally:
         try:
