@@ -95,6 +95,27 @@ that has since been fixed.** It was measured 08-22; `3cf34fe` landed
 is not un-revalidated, it is very likely *wrong now*, and it is marked
 where it sits.
 
+### Both halves executed, 2026-08-27
+
+**The analog half, this bench, current firmware.** The whole hardware
+suite: **499 passed, 5 skipped, 4 xfailed, no failures**, 14 minutes.
+The four xfails are the known documented defects - issue #5's wrap
+displacement, and the macOS byte loss at RC 44, 39 and 28, now
+quantified at 1.41%, 2.21% and a 57,856 B residual. Every rate,
+amplitude, channel, integrity, load and daemon assertion in
+`tests/baseline.json` holds on the post-`623d4dc` build.
+
+Two documented figures moved and both are corrected above: the loop's
+"tone 1371 +/- 2 in every window" is 99.3% of windows rather than all of
+them, and the playback starvation ladder is gone.
+
+**The host half is not all mine to run.** Transport MB/s was re-taken on
+Windows on 08-27 and is current. What this bench can say about the rest
+is that the byte deficits reproduce here and are macOS's - which is not
+a re-validation of the Windows figures, it is a confirmation that the
+macOS ones are still what they were. The 0-series re-take at tier 1
+remains open and remains the other bench's.
+
 ### What this does not do
 
 It dates sections, not individual numbers, and it dates when a figure
@@ -628,11 +649,33 @@ reports as an xfail naming the host, and a quiet machine passes it.
 
 ### Playback still starves at RC 65, 32 and 28
 
-> **Superseded 2026-08-25 by `3cf34fe`, and left here as history.** The
-> cause was `PLAY_PRIME_BUFS = 4` - the DAC's timer started on an eighth
-> of a ring - and raising it to 24 takes underruns to zero at every rate
-> on this ladder. The table below was measured on 08-22 and is not a
-> description of the current firmware. See the provenance audit above.
+> **Superseded, and re-measured 2026-08-27.** The cause was
+> `PLAY_PRIME_BUFS = 4` - the DAC's timer started on an eighth of a ring
+> - and `3cf34fe` raised it to 24. Re-run on current firmware, same
+> bench, `tools/bench.py --only play`, 3 s per rate:
+>
+> | RC | rate | underruns | byte deficit |
+> |---|---|---|---|
+> | 195 | 200,000 | 0 | 0.214% |
+> | 130 | 300,000 | 0 | 0 |
+> | 98 | 397,959 | 0 | 0 |
+> | **65** | **600,000** | **0** | **0** |
+> | 44 | 886,363 | 0 *(see below)* | 0.403-0.562% |
+> | 39 | 1,000,000 | 0 | 0.763% |
+> | **32** | **1,218,750** | **0** | **0** |
+> | **28** | **1,392,857** | **0** | 0.629% |
+>
+> **The three rates this section is about - 65, 32, 28 - now run with
+> zero underruns**, against the 9 to 17 recorded below. The table that
+> follows is history.
+>
+> The deficits are the macOS byte loss and are a different defect: they
+> reproduce, they are xfailed in the suite with the mechanism named, and
+> Windows conserves every byte at the same rates (`docs/windows.md`).
+>
+> One ladder pass showed **199 underruns at RC 44**, and three repeats of
+> that rate alone showed zero. Not reproducible, so not a finding -
+> recorded because it was seen, not because it means anything yet.
 
 Recorded here as "related and probably the same mechanism". It is not.
 Measured after the fix, five play-only runs each, underruns per 3 s:
@@ -1079,7 +1122,7 @@ single run in either direction.
 | USB, Arduino CDC | 0.8 MB/s gapless, ~0.95 MB/s ceiling |
 | USB, bare-metal CDC | **1.83 MB/s gapless at full in-spec ADC rate** |
 | Capture at max in-spec (MCK 78) | 453,488 Hz/ch declared, 453,489 measured, ratio 1.000 |
-| Full loop, duplex | 200 ksps DAC + 400 ksps ADC, tone 1371+/-2 in every window |
+| Full loop, duplex | 200 ksps DAC + 400 ksps ADC. Re-taken 08-27 on current firmware, 3 runs: tone median **1368.6-1372.2** codes, **99.3%** of windows at or above the 1340 floor, 10-12 flagged overrun frames per 3 s run, 0 sequence gaps. The "+/-2 in every window" this line used to claim does not hold - the low windows are the spliced ones, which invariant 5 flags rather than hides |
 | USB IN only (RT threaded host) | 5.20 MB/s |
 | USB OUT only (RT threaded host) | 5.03 MB/s, matched the device counter - but read without draining the pipeline, so it could not have shown a shortfall; see docs/usb.md |
 | USB duplex (RT threaded host) | 2.77 in + 2.47 out = 5.25 MB/s combined |
