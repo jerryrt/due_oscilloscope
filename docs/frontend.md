@@ -513,6 +513,29 @@ cannot hide there.
 1.8 M samples at the full rate, and an FFT that size inside a 33 ms
 redraw would block the feeder.
 
+**Two defects that only the board could find.** Both were invisible
+against `FakeDevice`, which produces a clean tone and never drops a
+frame - which is the argument for validating a display against hardware
+even when its logic is testable without one.
+
+- **A sequence gap reached the health panel and reached the ring as
+  nothing.** Only the device's own overrun flag marked a break, so
+  frames dropped *between the daemon and the window* were counted and
+  then drawn straight across. Rule 5 has the daemon drop toward a slow
+  client by design, so this was the common case, not a rare fault:
+  61 gaps in a six-second run, every one joined.
+- **Noise at the midpoint was counted as crossings.** A sine crosses its
+  midpoint once per period in theory; through an ADC it wanders across
+  it on the way. Three captures of one unchanging signal read 97.66,
+  146.41 and 195.31 Hz. Hysteresis of a tenth of the signal's own
+  peak-to-peak fixed the crossings; the *median* interval rather than
+  the mean across the endpoints fixed the estimator, which turned one
+  spurious edge in a three-crossing window into a doubling.
+
+**The frame header's rate is per channel**, and it says so. Reading it
+as an aggregate is how 195.31 Hz looked like it "exactly matched
+50000/256" when the signal was 50000/512.
+
 **Volts come from the measured reference.** `ADVREF` is 3270 mV, not the
 nominal 3300, and the panel footers which it used. The loop is
 ratiometric - the DAC's reference *is* the ADC's - so the board cannot
