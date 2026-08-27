@@ -7,3 +7,14 @@
 #   .venv/bin/python -m pytest tests -v
 pytest>=7.0
 pyserial==3.5   # tools/soak0c_portable.py: the only cross-platform serial client here
+
+# The bench oscilloscope, for the measurements the ADC under
+# investigation cannot make about itself. USBTMC needs raw USB access
+# and macOS has no kernel driver for it, so pyusb talks to the
+# instrument directly - and libusb-package carries prebuilt libusb
+# binaries, which keeps this to a pip install rather than a system
+# package and a sudo. host/scope.py imports both lazily and raises
+# ScopeUnavailable, so a machine with neither still collects and runs
+# the whole suite.
+pyusb==1.3.1
+libusb-package==1.0.30.0
