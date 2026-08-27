@@ -68,8 +68,10 @@ def _num(v):
 
     `%g` writes 1e-05, which a DS1102E ignores silently - the write is
     accepted, the setting does not change, and the readback returns the
-    old value. Its own replies are formatted `5.000e-06`, and that form
-    is accepted, so match it.
+    old value. Exponent notation is not the fix either: the instrument
+    *replies* `5.000e-06` but does not reliably accept that form back,
+    and a test that appeared to show it working was reading a setting
+    already at the target. Plain decimal is what it takes.
 
     Even then a write does not always take. Setters here therefore
     return what the instrument *holds afterwards* rather than what was
@@ -77,7 +79,7 @@ def _num(v):
     a range that depends on other settings, and occasionally simply not
     applied. A caller that needs a specific value must compare.
     """
-    return f"{float(v):.3e}"
+    return f"{float(v):.12f}"
 
 
 class ScopeUnavailable(Exception):
@@ -222,6 +224,32 @@ class Scope:
     def ask_float(self, cmd, **kw):
         return float(self.ask(cmd, **kw))
 
+    def _apply(self, cmd, query, value, tol=1e-3, timeout=2.0):
+        """Write a numeric setting, then wait until it is reported back.
+
+        A fixed delay after the write is the wrong shape for this
+        instrument: 0.05 s was too short for `:CHAN:PROB`, 0.1 s was
+        enough for it and too short for `:TIM:SCAL`, which needed about
+        a second. Guessing a constant large enough for the slowest
+        command taxes every other one.
+
+        So poll instead, and return what the instrument holds when the
+        wait ends - which is the honest answer whether the value was
+        applied, quantised to the 1-2-5 sequence, or clamped against
+        some other setting. A caller that needs an exact value compares;
+        it can no longer be misled by a stale readback into thinking the
+        write failed.
+        """
+        self.write(f"{cmd} {_num(value)}")
+        deadline = time.time() + timeout
+        while True:
+            got = self.ask_float(query)
+            if abs(got - value) <= max(tol, abs(value) * tol):
+                return got
+            if time.time() >= deadline:
+                return got
+            time.sleep(0.1)
+
     # ---- identity ----------------------------------------------------
 
     def identify(self):
@@ -239,12 +267,14 @@ class Scope:
 
     def channel_scale(self, ch, volts_per_div=None):
         if volts_per_div is not None:
-            self.write(f":CHAN{ch}:SCAL {_num(volts_per_div)}")
+            return self._apply(f":CHAN{ch}:SCAL", f":CHAN{ch}:SCAL?",
+                               volts_per_div)
         return self.ask_float(f":CHAN{ch}:SCAL?")
 
     def channel_offset(self, ch, volts=None):
         if volts is not None:
-            self.write(f":CHAN{ch}:OFFS {_num(volts)}")
+            return self._apply(f":CHAN{ch}:OFFS", f":CHAN{ch}:OFFS?",
+                               volts, tol=1e-2)
         return self.ask_float(f":CHAN{ch}:OFFS?")
 
     def coupling(self, ch, mode=None):
@@ -261,15 +291,17 @@ class Scope:
         so anywhere.
         """
         if ratio is not None:
-            self.write(f":CHAN{ch}:PROB {_num(ratio)}")
+            return self._apply(f":CHAN{ch}:PROB", f":CHAN{ch}:PROB?",
+                               ratio)
         return self.ask_float(f":CHAN{ch}:PROB?")
 
     def timebase(self, seconds_per_div=None):
         if seconds_per_div is not None:
-            self.write(f":TIM:SCAL {_num(seconds_per_div)}")
+            return self._apply(":TIM:SCAL", ":TIM:SCAL?",
+                               seconds_per_div)
         return self.ask_float(":TIM:SCAL?")
 
-    def trigger_edge(self, source=None, level=None, slope=None):
+    def trigger_edge(self, source=None, level=None, slope=None, sweep=None):
         """Configure or read back the edge trigger.
 
         The reload of the DAC's PDC is DAC0's rising mid-scale crossing,
@@ -282,11 +314,22 @@ class Scope:
             self.write(f":TRIG:EDGE:SOUR {source}")
         if slope is not None:
             self.write(f":TRIG:EDGE:SLOP {slope}")
+        if sweep is not None:
+            # AUTO sweeps even when nothing triggers, which is why an
+            # untriggered trace crawls across the screen instead of
+            # sitting still. NORMAL sweeps only on a real trigger, so a
+            # stationary trace is itself evidence the trigger is finding
+            # the edge - and a blank screen is evidence it is not.
+            self.write(f":TRIG:EDGE:SWE {sweep}")
         if level is not None:
-            self.write(f":TRIG:EDGE:LEV {_num(level)}")
+            self._apply(":TRIG:EDGE:LEV", ":TRIG:EDGE:LEV?",
+                        level, tol=1e-2)
         return {"mode": self.ask(":TRIG:MODE?"),
                 "source": self.ask(":TRIG:EDGE:SOUR?"),
-                "level": self.ask_float(":TRIG:EDGE:LEV?")}
+                "slope": self.ask(":TRIG:EDGE:SLOP?"),
+                "sweep": self.ask(":TRIG:EDGE:SWE?"),
+                "level": self.ask_float(":TRIG:EDGE:LEV?"),
+                "status": self.ask(":TRIG:STAT?")}
 
     def averaging(self, count=None):
         """Acquisition averaging - the scope's version of folding.
