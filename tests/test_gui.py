@@ -1221,3 +1221,49 @@ def test_the_trace_follows_the_rate_in_the_recording(replay_win):
         time.sleep(0.02)
     replay_win.tick()
     assert replay_win.rate_hz == 100000
+
+
+def test_starting_the_generator_clears_the_previous_run(win, daemon):
+    """Play starts the device, so it must clear what the last run left
+    behind - exactly as Start does.
+
+    `docs/frontend.md` rule 2: stale frames from a previous run once
+    manufactured a "frozen DAC" that was not happening and cost a full
+    session. This window reached that state from a button: Play called
+    `start mode=loop` without resetting, so the rings, the sequence-gap
+    count and the discontinuity count all carried across, and the old
+    samples were drawn as the new run's.
+    """
+    win.connect_to_daemon()
+    win.ingest(stream.decode(make_frame(1, {7: [1000] * 1016,
+                                            6: [1000] * 1016})))
+    win.ingest(stream.decode(make_frame(5, {7: [1000] * 1016,
+                                            6: [1000] * 1016})))
+    assert win.rings and win.seq_gaps == 1 and win.frames_shown == 0
+    win.frames_shown = 2
+
+    win.awg.vpp.setValue(1.0)
+    win.awg.offset.setValue(1.65)
+    win.awg_requested("sine", 1000.0, 1.0, 1.65, True)
+
+    assert win.rings == {}, "the previous run's samples survived Play"
+    assert win.seq_gaps == 0 and win.frames_shown == 0
+    assert win.last_seq is None and win.overruns == 0
+
+
+def test_a_refused_generator_does_not_clear_anything(win, daemon):
+    """The reset belongs after the local checks, not before them. A
+    request the panel itself refuses never reaches the device, so there
+    is no new run to make room for - and wiping the trace would throw
+    away the picture the user was looking at when they mistyped."""
+    win.connect_to_daemon()
+    win.ingest(stream.decode(make_frame(1, {7: [1000] * 1016,
+                                            6: [1000] * 1016})))
+    before = dict(win.rings)
+
+    win.awg.vpp.setValue(3.3)          # cannot be centred on this span
+    win.awg.offset.setValue(0.1)
+    assert win.awg.code_range()[2] is not None, "expected a refusal"
+    win.awg_requested("sine", 1000.0, 3.3, 0.1, True)
+
+    assert win.rings == before
