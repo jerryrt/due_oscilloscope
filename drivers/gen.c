@@ -102,23 +102,152 @@ void gen_set_layout(uint32_t layout)
 	build_table();
 }
 
+uint8_t  gen_shape  = GEN_SHAPE_SINE;
+uint16_t gen_points = GEN_SINE_POINTS;
+
+void gen_set_shape(uint32_t shape)
+{
+	gen_shape = (shape > GEN_SHAPE_MAX) ? (uint8_t)GEN_SHAPE_SINE
+	                                    : (uint8_t)shape;
+	build_table();
+}
+
+/* Which resolutions exist is the contract's business, not this
+ * track's: gen_points_for() is in the shared layer so the host, the
+ * console and the control channel cannot round differently. */
+void gen_set_points(uint32_t points)
+{
+	gen_points = gen_points_for(points);
+	build_table();
+}
+
+/*
+ * The rate the converter is actually being clocked at, as the hardware
+ * holds it - not an echo of what anyone asked for.
+ *
+ * Same reason acq_mr() and gen_acr() read back instead of remembering:
+ * a stored copy is a second source of truth that goes stale the moment
+ * anything else touches the register, and the DACC's trigger is touched
+ * by gen, by play and by every stop. DACC_MR says whether a trigger is
+ * enabled and which TIOA it is; that TC channel's RC says the divisor.
+ *
+ * Zero when nothing is clocking it, which is a different statement from
+ * a frequency and is why ctl_gen_t carries the trigger as well as the
+ * output.
+ */
+uint32_t gen_trigger_hz(void)
+{
+	uint32_t mr = DACC->DACC_MR;
+	uint32_t sel, rc;
+
+	if (!(mr & DACC_MR_TRGEN))
+		return 0u;
+	/* TRGSEL 1 is TIOA0 and 2 is TIOA1, so the TC channel is one
+	 * less. Anything else is a trigger this driver did not set. */
+	sel = (mr & DACC_MR_TRGSEL_Msk) >> DACC_MR_TRGSEL_Pos;
+	if (sel != 1u && sel != 2u)
+		return 0u;
+	rc = TC0->TC_CHANNEL[sel - 1u].TC_RC;
+	return rc ? (SystemCoreClock / 2u) / rc : 0u;
+}
+
+uint8_t gen_sync = GEN_SYNC_CYCLE;
+
+void gen_set_sync(uint32_t mode)
+{
+	gen_sync = (mode > GEN_SYNC_MAX) ? (uint8_t)GEN_SYNC_OFF
+	                                 : (uint8_t)mode;
+	build_table();
+}
+
+/*
+ * The sync level at table index `i`. Rising edge at phase 0, which for
+ * every shape here is the start of the cycle - so a scope triggered on
+ * the sync's rising edge puts the waveform's phase 0 at the trigger
+ * point, one trigger period later for the TAG interleave.
+ */
+static uint16_t sync_code(unsigned i, unsigned period)
+{
+	unsigned t, half;
+
+	switch (gen_sync) {
+	case GEN_SYNC_CYCLE:
+		t = period ? (i % period) : 0u;
+		half = period / 2u;
+		return (t < half) ? 4095u : 0u;
+	case GEN_SYNC_WRAP:
+		return (i < GEN_SINE_POINTS / 2u) ? 4095u : 0u;
+	case GEN_SYNC_OFF:
+	default:
+		return DC_CODE;
+	}
+}
+
+/*
+ * One point of the selected shape, as a 12-bit DAC code.
+ *
+ * `t` is the position within a cycle and `period` the points in one, so
+ * every shape here is scale-free: resolution changes what `period` is
+ * and nothing else. Integer only - see gen.h for why that is a
+ * constraint and not a preference.
+ */
+static int32_t shape_code(unsigned t, unsigned period)
+{
+	unsigned half = period / 2u;
+
+	switch (gen_shape) {
+	case GEN_SHAPE_SQUARE:
+		return (t < half) ? 4095 : 0;
+	case GEN_SHAPE_RAMP:
+		/*
+		 * A rising sawtooth that wraps, so the last point is one
+		 * step below full scale rather than at it: dividing by
+		 * `period` and not by `period - 1` is what keeps the step
+		 * between the last point and the next cycle's first equal
+		 * to every other step. Ending at 4095 would make the wrap
+		 * a step of zero and put a one-sample flat spot in the
+		 * only place a sawtooth has no flat spots.
+		 */
+		return (int32_t)((t * 4096u) / period);
+	case GEN_SHAPE_TRIANGLE: {
+		unsigned u = (t < half) ? t : (period - t);
+		return half ? (int32_t)((u * 4095u) / half) : 2048;
+	}
+	case GEN_SHAPE_DC:
+		return DC_CODE;
+	case GEN_SHAPE_SINE:
+	default:
+		return 2048 + ((sine_q15(t, period) * 2047) >> 15);
+	}
+}
+
 static void build_table(void)
 {
 	/*
-	 * TWOCYCLE fits two sine periods into the same 256 points rather
+	 * Resolution first, then TWOCYCLE on top of it.
+	 *
+	 * TWOCYCLE fits two periods into the space one would occupy rather
 	 * than lengthening the table, so the wrap stays at GEN_TABLE_LEN
 	 * and only the waveform speeds up. That is the whole point: the
-	 * wrap is a PDC reload and has been exactly one sine period in
-	 * every build this project has run, so "follows the table" and
-	 * "follows the waveform" have never been separable. Here they fold
-	 * at 512 and 256 respectively.
+	 * wrap is a PDC reload and has been exactly one period in every
+	 * build this project has run, so "follows the table" and "follows
+	 * the waveform" have never been separable. Here they fold at 512
+	 * and at 2 * period respectively.
+	 *
+	 * Composing it with gen_points rather than replacing it: at the
+	 * default 256 this is byte-for-byte the table the TWOCYCLE arm has
+	 * always built, so its recorded issue-#5 results still describe
+	 * the thing they were taken on. Resolution 128 in the NORMAL
+	 * layout builds the same *waveform* by the other route, and the
+	 * two differ only in where the fold lands - which is exactly the
+	 * distinction the arm exists to make.
 	 */
 	const unsigned period = (gen_layout == GEN_LAYOUT_TWOCYCLE)
-	                      ? GEN_SINE_POINTS / 2u : GEN_SINE_POINTS;
+	                      ? (gen_points / 2u) : gen_points;
 
 	for (unsigned i = 0; i < GEN_SINE_POINTS; i++) {
-		int32_t s = sine_q15(i % period, period);      /* -32768..32767 */
-		int32_t code = 2048 + ((s * 2047) >> 15);
+		int32_t code = period ? shape_code(i % period, period)
+		                      : (int32_t)DC_CODE;
 		uint16_t v0 = DC_CODE, v1 = DC_CODE;
 
 		if (code < 0)
@@ -126,19 +255,22 @@ static void build_table(void)
 		if (code > 4095)
 			code = 4095;
 
-		if (gen_layout == GEN_LAYOUT_SWAPPED)
+		/*
+		 * The waveform goes where the layout says, and the sync
+		 * goes on the other pin. GEN_LAYOUT_DC gets neither: it is
+		 * the control arm in which nothing swings anywhere.
+		 */
+		if (gen_layout == GEN_LAYOUT_SWAPPED) {
 			v1 = (uint16_t)code;
-		else if (gen_layout != GEN_LAYOUT_DC)
+			v0 = sync_code(i, period);
+		} else if (gen_layout != GEN_LAYOUT_DC) {
 			v0 = (uint16_t)code;
+			v1 = sync_code(i, period);
+		}
 
 		gen_table[2 * i]     = (uint16_t)((0u << 12) | v0);
 		gen_table[2 * i + 1] = (uint16_t)((1u << 12) | v1);
 	}
-}
-
-uint32_t gen_sine_hz(uint32_t trigger_hz)
-{
-	return trigger_hz / GEN_TABLE_LEN;
 }
 
 void gen_init(void)

@@ -13,21 +13,124 @@ static uint32_t dac_rc;
 static uint16_t gen_table[GEN_TABLE_LEN];
 volatile uint32_t gen_endtx_count;
 
-static void build_table(void)
-{
-	for (unsigned i = 0; i < GEN_SINE_POINTS; i++) {
-		double phase = (2.0 * M_PI * i) / GEN_SINE_POINTS;
-		/* Full-scale sine centred in the 12-bit range. */
-		uint16_t s = (uint16_t)(2047.5 + 2047.0 * sin(phase));
+uint8_t  gen_shape  = GEN_SHAPE_SINE;
+uint16_t gen_points = GEN_SINE_POINTS;
 
-		gen_table[2 * i]     = (uint16_t)((0u << 12) | (s & 0x0fffu));
-		gen_table[2 * i + 1] = (uint16_t)((1u << 12) | DC_CODE);
+/*
+ * One point of the selected shape, as a 12-bit code. `t` is the
+ * position in a cycle and `period` the points in one, so resolution
+ * changes `period` and nothing else here.
+ */
+static int32_t shape_code(unsigned t, unsigned period)
+{
+	unsigned half = period / 2u;
+
+	switch (gen_shape) {
+	case GEN_SHAPE_SQUARE:
+		return (t < half) ? 4095 : 0;
+	case GEN_SHAPE_RAMP:
+		/* Divide by period, not period - 1: the wrap is then the
+		 * same step as every other, instead of a flat spot in the
+		 * one waveform that has none. */
+		return (int32_t)((t * 4096u) / period);
+	case GEN_SHAPE_TRIANGLE: {
+		unsigned u = (t < half) ? t : (period - t);
+		return half ? (int32_t)((u * 4095u) / half) : 2048;
+	}
+	case GEN_SHAPE_DC:
+		return (int32_t)DC_CODE;
+	case GEN_SHAPE_SINE:
+	default:
+		return (int32_t)(2047.5 + 2047.0
+		                 * sin((2.0 * M_PI * t) / (double)period));
 	}
 }
 
-uint32_t gen_sine_hz(uint32_t trigger_hz)
+uint8_t gen_sync = GEN_SYNC_CYCLE;
+
+/*
+ * The sync level at table index `i`. Rising edge at phase 0, so a scope
+ * triggered on it puts the waveform's phase 0 at the trigger point -
+ * one trigger period later, for the TAG interleave.
+ */
+static uint16_t sync_code(unsigned i, unsigned period)
 {
-	return trigger_hz / GEN_TABLE_LEN;
+	unsigned t, half;
+
+	switch (gen_sync) {
+	case GEN_SYNC_CYCLE:
+		t = period ? (i % period) : 0u;
+		half = period / 2u;
+		return (t < half) ? 4095u : 0u;
+	case GEN_SYNC_WRAP:
+		return (i < GEN_SINE_POINTS / 2u) ? 4095u : 0u;
+	case GEN_SYNC_OFF:
+	default:
+		return DC_CODE;
+	}
+}
+
+static void build_table(void)
+{
+	const unsigned period = gen_points ? gen_points : GEN_SINE_POINTS;
+
+	for (unsigned i = 0; i < GEN_SINE_POINTS; i++) {
+		int32_t code = shape_code(i % period, period);
+
+		if (code < 0)
+			code = 0;
+		if (code > 4095)
+			code = 4095;
+
+		gen_table[2 * i]     = (uint16_t)((0u << 12) | (uint16_t)code);
+		gen_table[2 * i + 1] = (uint16_t)((1u << 12)
+		                                  | sync_code(i, period));
+	}
+}
+
+void gen_set_sync(uint32_t mode)
+{
+	gen_sync = (mode > GEN_SYNC_MAX) ? (uint8_t)GEN_SYNC_OFF
+	                                 : (uint8_t)mode;
+	build_table();
+}
+
+void gen_set_shape(uint32_t shape)
+{
+	gen_shape = (shape > GEN_SHAPE_MAX) ? (uint8_t)GEN_SHAPE_SINE
+	                                    : (uint8_t)shape;
+	build_table();
+}
+
+/* Which resolutions exist is the contract's business, not this track's:
+ * gen_points_for() is in the shared layer so the host, the console and
+ * the control channel cannot round differently. */
+void gen_set_points(uint32_t points)
+{
+	gen_points = gen_points_for(points);
+	build_table();
+}
+
+/*
+ * The rate the converter is actually clocked at, as the hardware holds
+ * it. DACC_MR says whether a trigger is enabled and which TIOA; that TC
+ * channel's RC is the divisor. Read back rather than remembered, for
+ * the same reason every other readback here is: a stored copy is a
+ * second source of truth that goes stale when play or a stop touches
+ * the register.
+ */
+uint32_t gen_trigger_hz(void)
+{
+	uint32_t mr = DACC->DACC_MR;
+	uint32_t sel, rc;
+
+	if (!(mr & DACC_MR_TRGEN))
+		return 0u;
+	sel = (mr & DACC_MR_TRGSEL_Msk) >> DACC_MR_TRGSEL_Pos;
+	if (sel != 1u && sel != 2u)
+		return 0u;
+	rc = TC0->TC_CHANNEL[sel - 1u].TC_RC;
+	return rc ? (SystemCoreClock / 2u) / rc : 0u;
 }
 
 void gen_init(void)

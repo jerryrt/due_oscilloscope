@@ -287,11 +287,106 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		ctl_respond(h->req_id, h->opcode, 0, &r, sizeof(r));
 		return;
 	}
+	case CTL_OP_GEN: {
+		ctl_gen_t g;
+
+		/*
+		 * Zero length reads, a full payload writes and reads back.
+		 * Anything else is a length error rather than a partial
+		 * write: a generator half-set is a converter emitting
+		 * something nobody asked for.
+		 */
+		if (len != 0 && len != sizeof(ctl_gen_t)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "gen takes 0 bytes to read or a full "
+			          "ctl_gen_t to write");
+			return;
+		}
+		if (len == sizeof(ctl_gen_t)) {
+			ctl_gen_t req;
+
+			memcpy(&req, payload, sizeof(req));
+			/*
+			 * trigger_hz and output_hz are outputs and are
+			 * ignored on the way in. They are properties of
+			 * whatever is clocking the converter, not settings,
+			 * and accepting them would let a host believe it
+			 * had set a frequency it cannot set from here.
+			 */
+			ctl_port_gen_set(req.shape, req.points, req.sync);
+		}
+		if (!ctl_port_gen_get(&g)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no generator on this track");
+			return;
+		}
+		/* The state as it ended up, never an echo: the device
+		 * clamps, and a host told its own request would report a
+		 * setting the converter is not running. */
+		ctl_respond(h->req_id, h->opcode, 0, &g, sizeof(g));
+		return;
+	}
 	default:
 		ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
 		          "no such command");
 		return;
 	}
+}
+
+/*
+ * One description of a generator state, so both consoles print the same
+ * words and neither owns them. Deliberately not a printf on either
+ * track: this file has no console, and the caller decides where the
+ * bytes go.
+ */
+const char *gen_shape_name(uint8_t s)
+{
+	static const char *const w[] = { "sine", "square", "ramp",
+	                                 "triangle", "dc" };
+	return (s < sizeof(w) / sizeof(w[0])) ? w[s] : "?";
+}
+
+const char *gen_sync_name(uint8_t s)
+{
+	static const char *const w[] = { "off (mid scale)",
+	                                 "square, one per cycle",
+	                                 "square, one per table wrap" };
+	return (s < sizeof(w) / sizeof(w[0])) ? w[s] : "?";
+}
+
+uint16_t gen_points_for(uint32_t points)
+{
+	uint32_t p = GEN_POINTS_MIN;
+
+	if (points > GEN_POINTS_MAX)
+		points = GEN_POINTS_MAX;
+	while ((p << 1) <= points)
+		p <<= 1;
+	return (uint16_t)p;
+}
+
+uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points)
+{
+	uint16_t p = gen_points_for(points);
+
+	return p ? trigger_hz / (2u * p) : 0u;
+}
+
+int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g)
+{
+	if (!g->trigger_hz)
+		return snprintf(buf, n,
+		                "gen shape %u = %s, %u pts/cycle, sync %u = %s"
+		                " (no trigger running)",
+		                g->shape, gen_shape_name(g->shape), g->points,
+		                g->sync, gen_sync_name(g->sync));
+	return snprintf(buf, n,
+	                "gen shape %u = %s, %u pts/cycle, sync %u = %s"
+	                " -> %lu Hz at trigger %lu Hz",
+	                g->shape, gen_shape_name(g->shape), g->points,
+	                g->sync, gen_sync_name(g->sync),
+	                (unsigned long)g->output_hz,
+	                (unsigned long)g->trigger_hz);
 }
 
 /* ------------------------------------------------------------------ */

@@ -19,6 +19,7 @@
 #include "load.h"
 #include "stream.h"
 #include "play.h"
+#include "gen.h"
 #include "usb_cdc.h"
 #include "sam.h"
 
@@ -111,6 +112,29 @@ void ctl_port_counters(ctl_counters_t *out)
 	out->run_us      = play_run_us;
 	out->abandoned   = play_abandoned;
 	out->drain_polls = usb_out_drain_polls;
+}
+
+/*
+ * CTL_OP_GEN. The whole of this track's part: the semantics, the
+ * clamping and the words all live in the shared layer, and what is here
+ * is the call into this track's own generator.
+ */
+bool ctl_port_gen_get(ctl_gen_t *out)
+{
+	out->shape      = gen_shape;
+	out->sync       = gen_sync;
+	out->points     = gen_points;
+	out->trigger_hz = gen_trigger_hz();
+	out->output_hz  = gen_hz_for(out->trigger_hz, gen_points);
+	return true;
+}
+
+void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync)
+{
+	gen_set_shape(shape);
+	if (points)
+		gen_set_points(points);
+	gen_set_sync(sync);
 }
 
 bool ctl_port_stream_stats(ctl_stream_stats_t *out)

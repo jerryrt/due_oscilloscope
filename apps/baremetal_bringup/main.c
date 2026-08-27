@@ -26,6 +26,9 @@
 #include "play.h"
 #include "playstat.h"
 #include "ctl.h"
+#include "ctl_port.h"   /* ctl_port_gen_get: the console reads the
+                            * generator through the same hook the control
+                            * channel does, so the two cannot disagree */
 #include "load.h"
 #include "usb_cdc.h"
 #include "track_id.h"
@@ -78,6 +81,9 @@ static void banner(void)
 	printf("#           =<tt>,<st>A = ADC track/settling time\n");
 	printf("#           =<n>C = 2ch pair: A0+A1 or A0+A2\n");
 	printf("#           =<n>N = gen layout 0..3 (see gen.h)\n");
+	printf("#           =<shape>,<pts>W = gen waveform: 0 sine 1 square\n");
+	printf("#                             2 ramp 3 triangle 4 dc; pts 2..256\n");
+	printf("#           =<n>J = sync out: 0 off 1 per-cycle 2 per-wrap\n");
 	printf("#           =<ch>,<core>I = DACC_ACR bias (2,1 = Arduino)\n");
 	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
 	printf("#           z=software reset  v=identity line\n");
@@ -346,8 +352,32 @@ static void cmd_stream_uart(uint32_t trigger_hz)
 		uart_flush();
 		return;
 	}
-	printf("# uart-stream: trigger %lu Hz, sine %lu Hz - binary follows\n",
-	       (unsigned long)trigger_hz, (unsigned long)gen_sine_hz(trigger_hz));
+	printf("# uart-stream: trigger %lu Hz, %s %lu Hz - binary follows\n",
+	       (unsigned long)trigger_hz, gen_shape_name(gen_shape),
+	       (unsigned long)gen_hz_for(trigger_hz, gen_points));
+	uart_flush();
+}
+
+/*
+ * What the generator is doing, in the contract's words.
+ *
+ * The sentence itself is ctl_gen_describe() in the shared layer, so the
+ * console and CTL_OP_GEN cannot describe the same state differently and
+ * the two tracks cannot drift apart in how they say it. This function
+ * is the part that is genuinely this track's: where the bytes go.
+ */
+static void gen_report(void)
+{
+	char line[160];
+	ctl_gen_t g;
+
+	if (!ctl_port_gen_get(&g)) {
+		printf("# no generator on this track\n");
+		uart_flush();
+		return;
+	}
+	ctl_gen_describe(line, sizeof(line), &g);
+	printf("# %s\n", line);
 	uart_flush();
 }
 
@@ -359,10 +389,18 @@ static void cmd_stream(uint32_t trigger_hz)
 		uart_flush();
 		return;
 	}
-	printf("# streaming: trigger %lu Hz, %lu sps aggregate, sine %lu Hz\n",
+	printf("# streaming: trigger %lu Hz, %lu sps aggregate, %s %lu Hz "
+	       "(%u pts/cycle)\n",
 	       (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
-	       (unsigned long)gen_sine_hz(trigger_hz));
-	printf("# DAC1 holds mid scale: A1 must read flat, or demux is wrong\n");
+	       gen_shape_name(gen_shape),
+	       (unsigned long)gen_hz_for(trigger_hz, gen_points),
+	       (unsigned)gen_points);
+	if (gen_sync == GEN_SYNC_OFF)
+		printf("# DAC1 holds mid scale: A1 must read flat, or demux "
+		       "is wrong\n");
+	else
+		printf("# DAC1 carries the sync: A1 must show a square, not "
+		       "the waveform\n");
 	uart_flush();
 }
 
@@ -952,6 +990,48 @@ static void cmd_execute(const cmd_t *cmd)
 		uart_flush();
 		break;
 	}
+	/*
+	 * "=<shape>,<points>W": the internal generator's waveform.
+	 *
+	 * shape 0 sine, 1 square, 2 ramp, 3 triangle, 4 DC. points is
+	 * the resolution - how many table points one cycle spends - and
+	 * rounds down to a power of two in 2..256, because those are the
+	 * only counts that divide the table without leaving a partial
+	 * cycle at the PDC wrap. Omitting it keeps the current value.
+	 *
+	 * Resolution is a frequency knob and the report says so: the
+	 * update rate is the trigger's, so halving the points halves the
+	 * time a cycle takes and doubles the output frequency, at the
+	 * cost of a coarser staircase. That trade is the whole reason it
+	 * is exposed - see gen.h.
+	 *
+	 * Rebuilt now and again by gen_init(), which M calls.
+	 */
+	case 'W': {
+		gen_set_shape(cmd->arg[0]);
+		if (cmd->arg[1])
+			gen_set_points(cmd->arg[1]);
+		gen_report();
+		break;
+	}
+	/*
+	 * "=<n>J": the sync output, 0 off, 1 per cycle, 2 per table wrap.
+	 *
+	 * A trigger for the bench, on whichever DAC pin is not carrying
+	 * the waveform. Triggering a scope on the signal itself divides
+	 * the pin's ~20 mV of noise by the waveform's slew rate at the
+	 * trigger level, which is why a ramp shakes 27 us and a square
+	 * does not shake at all - docs/awg.md. A full-scale sync edge
+	 * makes that term vanish, and it cannot drift against the
+	 * waveform because one PDC stream and one trigger feed both.
+	 *
+	 * The scope's EXT input tops out at 1.2 V here and the DAC sits
+	 * at 0.52-2.82 V, so AC-couple the trigger or it will never fire.
+	 */
+	case 'J':
+		gen_set_sync(cmd->arg[0]);
+		gen_report();
+		break;
 	/*
 	 * "=<ch>,<core>I": DACC_ACR's IBCTLCHx and IBCTLDACCORE, applied
 	 * at the next DACC init. "=2,1I" is the Arduino core's value and

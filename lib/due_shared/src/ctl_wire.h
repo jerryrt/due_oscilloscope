@@ -27,7 +27,8 @@
 #else
 #define CTL_STATIC_ASSERT(c, m) _Static_assert(c, m)
 #endif
-
+
+
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -84,6 +85,7 @@
  */
 #define CTL_OP_PING       0x0001u
 #define CTL_OP_IDENTITY   0x0002u
+#define CTL_OP_GEN        0x0010u   /* the signal generator: read and write */
 #define CTL_OP_COUNTERS   0x0020u
 #define CTL_OP_OCCUPANCY  0x0021u
 #define CTL_OP_RATE_TRACE 0x0022u
@@ -265,5 +267,115 @@ typedef struct __attribute__((packed)) {
 	uint8_t  reserved[2];
 	uint32_t hist[LOAD_BUCKETS];
 } load_report_t;
+
+/*
+ * CTL_OP_GEN's payload, and the first thing in the 0x001x range - state
+ * the host both reads and writes.
+ *
+ * One opcode for both directions: a zero-length request reads, and a
+ * ctl_gen_t request writes and then reads back. The response is always
+ * the state as it ended up, never an echo of the request, because the
+ * device clamps - a resolution that is not a legal power of two rounds
+ * down - and a host that echoed its own request would report a setting
+ * the converter is not running.
+ *
+ * Written once, here, rather than twice. The generator itself is two
+ * independent implementations on purpose - invariant 3 names gen among
+ * the register programming the tracks must not share - but "what does
+ * =<shape>,<pts>W mean" is protocol, not register programming, and two
+ * hand-copies of it are two homes for one misreading. ctl_dispatch()
+ * carries the semantics; ctl_port_gen_get/set is the only per-track
+ * part, and it is four lines that call each track's own gen driver.
+ *
+ * Additive, so no CTL_VERSION bump. A build without this opcode answers
+ * CTL_ERR_OPCODE, which is exactly the capability signal invariant 3
+ * requires and is distinguishable from a body of zeroes. The version
+ * bumps when a payload layout changes - see the v2 note above - not
+ * when a command is added.
+ */
+/*
+ * The generator's value space. Shared, because it is what travels on
+ * the wire and what the console prints - not because the generator is
+ * shared. The two tracks keep separate table builders and separate
+ * register programming, which is what invariant 3 protects and what
+ * makes Track A an oracle; what they must not keep separate is the
+ * meaning of the number 1 in "=1W".
+ *
+ * These were written twice for about an hour. `library.properties`
+ * already said it: "Not hardware: register programming stays
+ * independent per track."
+ */
+#define GEN_SHAPE_SINE      0u
+#define GEN_SHAPE_SQUARE    1u
+#define GEN_SHAPE_RAMP      2u
+#define GEN_SHAPE_TRIANGLE  3u
+#define GEN_SHAPE_DC        4u
+#define GEN_SHAPE_MAX       GEN_SHAPE_DC
+
+#define GEN_SYNC_OFF        0u
+#define GEN_SYNC_CYCLE      1u
+#define GEN_SYNC_WRAP       2u
+#define GEN_SYNC_MAX        GEN_SYNC_WRAP
+
+/*
+ * Points in the table, and so the resolutions that exist. A cycle may
+ * spend any power of two from GEN_POINTS_MIN to the table length, and
+ * nothing between: a count that does not divide the table leaves a
+ * partial cycle at the PDC reload, which is a phase step in the analog
+ * output once per wrap.
+ */
+#define GEN_TABLE_POINTS    256u
+#define GEN_POINTS_MIN      2u
+#define GEN_POINTS_MAX      GEN_TABLE_POINTS
+
+/*
+ * The first functions in this header, and so the first place it needs
+ * the C linkage guard: Track A compiles it as C++ and ctl.c is C.
+ * Everything above is types and macros, which needed neither.
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* The resolution the device will adopt for a request: nearest legal
+ * power of two at or below it, clamped. Rounding rather than refusing,
+ * so a caller need not know which values exist - and shared, so the
+ * host, the console and the control channel cannot round differently. */
+uint16_t gen_points_for(uint32_t points);
+
+/* Output frequency: one table point per trigger, and TAG mode spends
+ * every other update on the second channel, so a cycle costs 2*points
+ * updates. This is the resolution/frequency trade in one line. */
+uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points);
+
+const char *gen_shape_name(uint8_t shape);
+const char *gen_sync_name(uint8_t sync);
+
+typedef struct __attribute__((packed)) {
+	uint8_t  shape;          /* GEN_SHAPE_* */
+	uint8_t  sync;           /* GEN_SYNC_*  */
+	uint16_t points;         /* points per cycle, as adopted */
+	/*
+	 * The trigger the converter is actually running at, and the
+	 * output frequency that follows from it. Zero when nothing is
+	 * running: the generator has a shape at all times and a frequency
+	 * only while a trigger is clocking it, and a host that was handed
+	 * a frequency for a stopped converter would believe a number
+	 * nothing is producing.
+	 */
+	uint32_t trigger_hz;
+	uint32_t output_hz;
+} ctl_gen_t;
+
+/*
+ * The one-line human description of a generator state, so the console
+ * on each track prints the same words without either one owning them.
+ * Returns the length written, excluding the NUL.
+ */
+int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CTL_WIRE_H */

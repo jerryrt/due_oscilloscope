@@ -44,6 +44,10 @@
 #include "playstat.h"
 #include "ctlusb.h"
 #include "ctl.h"                    /* the shared parser */
+#include "ctl_port.h"               /* ctl_port_gen_get: the console reads
+                                     * the generator through the same hook
+                                     * the control channel does, so the two
+                                     * cannot disagree */
 #include "usbdma.h"
 #include "frame.h"
 #include "track_id.h"
@@ -146,6 +150,9 @@ static void banner(void)
 	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
 	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
 	Serial.println("#           O=playback ring occupancy histogram");
+	Serial.println("#           =<shape>,<pts>W = gen waveform: 0 sine 1 square");
+	Serial.println("#                             2 ramp 3 triangle 4 dc; pts 2..256");
+	Serial.println("#           =<n>J = sync out: 0 off 1 per-cycle 2 per-wrap");
 	{
 		/* CFGOK per endpoint: the controller's own answer to "did
 		 * this allocation take". Guessing at DPRAM arithmetic is how
@@ -437,11 +444,16 @@ static void cmd_stream(uint32_t trigger_hz)
 		return;
 	}
 	snprintf(buf, sizeof(buf),
-	         "# streaming: trigger %lu Hz, %lu sps aggregate, sine %lu Hz on DAC0",
+	         "# streaming: trigger %lu Hz, %lu sps aggregate, %s %lu Hz on "
+	         "DAC0 (%u pts/cycle)",
 	         (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
-	         (unsigned long)gen_sine_hz(trigger_hz));
+	         gen_shape_name(gen_shape),
+	         (unsigned long)gen_hz_for(trigger_hz, gen_points),
+	         (unsigned)gen_points);
 	Serial.println(buf);
-	Serial.println("# DAC1 holds mid scale: A1 must read flat, or demux is wrong");
+	Serial.println(gen_sync == GEN_SYNC_OFF
+	               ? "# DAC1 holds mid scale: A1 must read flat, or demux is wrong"
+	               : "# DAC1 carries the sync: A1 must show a square, not the waveform");
 	Serial.flush();
 }
 
@@ -451,6 +463,30 @@ static void cmd_stream(uint32_t trigger_hz)
  * 8 kB/s fits with margin. ASCII output must stay silent while this
  * runs, since frames and logs share the one port here.
  */
+/*
+ * What the generator is doing, in the contract's words.
+ *
+ * The sentence is ctl_gen_describe() in the shared layer, so the
+ * console and CTL_OP_GEN cannot describe the same state differently and
+ * the two tracks cannot drift apart in how they say it. What is here is
+ * the part that is genuinely this track's: where the bytes go.
+ */
+static void gen_report(void)
+{
+	char line[160];
+	ctl_gen_t g;
+
+	if (!ctl_port_gen_get(&g)) {
+		Serial.println("# no generator on this track");
+		Serial.flush();
+		return;
+	}
+	ctl_gen_describe(line, sizeof(line), &g);
+	Serial.print("# ");
+	Serial.println(line);
+	Serial.flush();
+}
+
 static void cmd_stream_uart(uint32_t trigger_hz)
 {
 	char buf[128];
@@ -461,9 +497,9 @@ static void cmd_stream_uart(uint32_t trigger_hz)
 		return;
 	}
 	snprintf(buf, sizeof(buf),
-	         "# uart-stream: trigger %lu Hz, sine %lu Hz - binary follows",
-	         (unsigned long)trigger_hz,
-	         (unsigned long)gen_sine_hz(trigger_hz));
+	         "# uart-stream: trigger %lu Hz, %s %lu Hz - binary follows",
+	         (unsigned long)trigger_hz, gen_shape_name(gen_shape),
+	         (unsigned long)gen_hz_for(trigger_hz, gen_points));
 	Serial.println(buf);
 	Serial.flush();
 }
@@ -1410,6 +1446,41 @@ void loop()
 		}
 		break;
 	}
+	/*
+	 * "=<shape>,<pts>W": the internal generator's waveform.
+	 *
+	 * Track B's gen.c carries the same command with the same
+	 * arguments and the same printed format - independent source,
+	 * identical feature, which is invariant 3.
+	 *
+	 * shape 0 sine, 1 square, 2 ramp, 3 triangle, 4 DC. pts is the
+	 * resolution and rounds down to a power of two in 2..256;
+	 * omitting it keeps the current value. Halving the points
+	 * doubles the output frequency and coarsens the staircase,
+	 * which is the trade it exists to expose.
+	 */
+	case 'W':
+		gen_set_shape(rate_arg[0]);
+		if (rate_arg[1])
+			gen_set_points(rate_arg[1]);
+		gen_report();
+		break;
+	/*
+	 * "=<n>J": the sync output, 0 off, 1 per cycle, 2 per table wrap.
+	 * Track B's main.c carries the same command with the same
+	 * arguments and the same printed format.
+	 *
+	 * A trigger for the bench, on DAC1. Triggering a scope on the
+	 * signal itself divides the pin's ~20 mV of noise by the
+	 * waveform's slew rate at the trigger level, which is why a ramp
+	 * shakes 27 us and a square does not shake at all - docs/awg.md.
+	 * The scope's EXT input tops out at 1.2 V against a 0.52-2.82 V
+	 * DAC, so AC-couple the trigger or it will never fire.
+	 */
+	case 'J':
+		gen_set_sync(rate_arg[0]);
+		gen_report();
+		break;
 	case 'Q': cmd_profile();  break;
 	case 'V': play_dump();    break;
 	case 'D': diag_start();   break;

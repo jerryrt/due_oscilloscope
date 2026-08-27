@@ -167,6 +167,22 @@ int ctl_port_rate_page(uint8_t *body, size_t max, uint16_t offset);
  * called while the sample path is running, and a track whose console
  * needs no flushing implements it empty.
  */
+/*
+ * CTL_OP_GEN. The whole per-track part of the generator command: four
+ * lines each, calling that track's own gen driver.
+ *
+ * The driver stays two independent implementations - invariant 3 names
+ * gen among the register programming the tracks must not share, because
+ * two programmings of one converter is what makes a divergence point at
+ * one of them. What is shared is the command's meaning, which is not
+ * register programming and had no business being written twice.
+ *
+ * A track with no generator returns false from get(), and the opcode
+ * then answers CTL_ERR_OPCODE rather than a body of zeroes.
+ */
+bool ctl_port_gen_get(ctl_gen_t *out);
+void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync);
+
 void ctl_port_console_flush(void);
 
 #ifdef __cplusplus
