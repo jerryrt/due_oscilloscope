@@ -163,6 +163,18 @@ void gen_set_amp(uint32_t amp)
 	build_table();
 }
 
+uint16_t gen_sync_amp = GEN_SYNC_AMP_FULL;
+
+void gen_set_sync_amp(uint32_t amp)
+{
+	if (amp > GEN_AMP_FULL)
+		amp = GEN_AMP_FULL;
+	if (amp < GEN_AMP_MIN)
+		amp = GEN_AMP_MIN;
+	gen_sync_amp = (uint16_t)amp;
+	build_table();
+}
+
 uint8_t gen_sync = GEN_SYNC_CYCLE;
 
 void gen_set_sync(uint32_t mode)
@@ -186,9 +198,10 @@ static uint16_t sync_code(unsigned i, unsigned period)
 	case GEN_SYNC_CYCLE:
 		t = period ? (i % period) : 0u;
 		half = period / 2u;
-		return (t < half) ? 4095u : 0u;
+		return gen_scale_code((t < half) ? 4095 : 0, gen_sync_amp);
 	case GEN_SYNC_WRAP:
-		return (i < GEN_SINE_POINTS / 2u) ? 4095u : 0u;
+		return gen_scale_code(
+			(i < GEN_SINE_POINTS / 2u) ? 4095 : 0, gen_sync_amp);
 	case GEN_SYNC_OFF:
 	default:
 		return DC_CODE;

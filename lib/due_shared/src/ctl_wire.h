@@ -369,6 +369,24 @@ typedef struct __attribute__((packed)) {
 #define GEN_AMP_FULL        256u
 #define GEN_AMP_MIN         1u
 
+/*
+ * The sync's own amplitude, separately from the waveform's.
+ *
+ * It defaults to full scale because a trigger wants every volt of edge
+ * it can get. But a full-scale square switching on the pin next to the
+ * signal is also the obvious suspect for a disturbance that does not
+ * scale with the signal - measured here at 35-80 mV beside a 34 mV
+ * waveform, which is larger than the signal itself. Being able to shrink
+ * the sync is how that suspicion gets tested rather than argued about:
+ * if the disturbance follows the sync down, the sync is the source.
+ *
+ * A DS1102E's EXT input needs of order a hundred millivolts with a x1
+ * probe, not two volts, so there is room to shrink it a long way before
+ * the trigger stops working - and where it stops is itself worth
+ * knowing.
+ */
+#define GEN_SYNC_AMP_FULL   256u
+
 #define GEN_TABLE_POINTS    256u
 #define GEN_POINTS_MIN      2u
 #define GEN_POINTS_MAX      GEN_TABLE_POINTS
@@ -410,7 +428,7 @@ typedef struct __attribute__((packed)) {
 	uint8_t  sync;           /* GEN_SYNC_*  */
 	uint16_t points;         /* points per cycle, as adopted */
 	uint16_t amp;            /* 1..256, 256 = full scale */
-	uint16_t reserved;       /* keeps the 32-bit fields aligned */
+	uint16_t sync_amp;       /* 1..256, the sync's own swing */
 	/*
 	 * The trigger the converter is actually running at, and the
 	 * output frequency that follows from it. Zero when nothing is

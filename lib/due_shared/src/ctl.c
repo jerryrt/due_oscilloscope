@@ -314,7 +314,7 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			 * had set a frequency it cannot set from here.
 			 */
 			ctl_port_gen_set(req.shape, req.points, req.sync,
-			                 req.amp);
+			                 req.amp, req.sync_amp);
 		}
 		if (!ctl_port_gen_get(&g)) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
@@ -409,14 +409,15 @@ int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g)
 	if (!g->trigger_hz)
 		return snprintf(buf, n,
 		                "gen shape %u = %s, %u pts/cycle, amp %u/256, "
-		                "sync %u = %s (no trigger running)",
+		                "sync %u = %s at %u/256 (no trigger running)",
 		                g->shape, gen_shape_name(g->shape), g->points,
-		                g->amp, g->sync, gen_sync_name(g->sync));
+		                g->amp, g->sync, gen_sync_name(g->sync),
+		                g->sync_amp);
 	return snprintf(buf, n,
 	                "gen shape %u = %s, %u pts/cycle, amp %u/256, "
-	                "sync %u = %s -> %lu Hz at trigger %lu Hz",
+	                "sync %u = %s at %u/256 -> %lu Hz at trigger %lu Hz",
 	                g->shape, gen_shape_name(g->shape), g->points,
-	                g->amp, g->sync, gen_sync_name(g->sync),
+	                g->amp, g->sync, gen_sync_name(g->sync), g->sync_amp,
 	                (unsigned long)g->output_hz,
 	                (unsigned long)g->trigger_hz);
 }

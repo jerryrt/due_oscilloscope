@@ -84,7 +84,7 @@ static void banner(void)
 	printf("#           =<shape>,<pts>,<amp>W = gen waveform: 0 sine 1 square\n");
 	printf("#                             2 ramp 3 triangle 4 dc; pts 2..256\n");
 	printf("#                             amp 1..256 (256ths of full scale)\n");
-	printf("#           =<n>J = sync out: 0 off 1 per-cycle 2 per-wrap\n");
+	printf("#           =<n>,<amp>J = sync: 0 off 1 per-cycle 2 per-wrap 3 solo\n");
 	printf("#           =<ch>,<core>I = DACC_ACR bias (2,1 = Arduino)\n");
 	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
 	printf("#           z=software reset  v=identity line\n");
@@ -1038,6 +1038,12 @@ static void cmd_execute(const cmd_t *cmd)
 	 */
 	case 'J':
 		gen_set_sync(cmd->arg[0]);
+		/* "=<mode>,<amp>J". The sync's own swing, in 256ths, so a
+		 * full-scale square on the pin next to the signal can be
+		 * shrunk and the disturbance it may be causing tested
+		 * rather than argued about. */
+		if (cmd->arg[1])
+			gen_set_sync_amp(cmd->arg[1]);
 		gen_report();
 		break;
 	/*

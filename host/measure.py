@@ -1947,7 +1947,7 @@ def gen_fold_len(points=GEN_TABLE_POINTS):
     return 2 * gen_points_for(points)
 
 
-def set_sync(board, mode):
+def set_sync(board, mode, amp=None):
     """`=<n>J`. The bench trigger on the spare DAC pin.
 
     Measured against triggering on the signal itself: 222x less jitter
@@ -1956,7 +1956,7 @@ def set_sync(board, mode):
     """
     code = GEN_SYNCS[mode] if isinstance(mode, str) else int(mode)
     board.poll_console()
-    board.cmd(f"={code}J")
+    board.cmd(f"={code},{int(amp)}J" if amp is not None else f"={code}J")
     return board.drain_console(0.4)
 
 

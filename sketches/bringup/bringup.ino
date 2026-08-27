@@ -153,7 +153,7 @@ static void banner(void)
 	Serial.println("#           =<shape>,<pts>,<amp>W = gen waveform: 0 sine 1 square");
 	Serial.println("#                             2 ramp 3 triangle 4 dc; pts 2..256");
 	Serial.println("#                             amp 1..256 (256ths of full scale)");
-	Serial.println("#           =<n>J = sync out: 0 off 1 per-cycle 2 per-wrap");
+	Serial.println("#           =<n>,<amp>J = sync: 0 off 1 per-cycle 2 per-wrap 3 solo");
 	{
 		/* CFGOK per endpoint: the controller's own answer to "did
 		 * this allocation take". Guessing at DPRAM arithmetic is how
@@ -1485,6 +1485,9 @@ void loop()
 	 */
 	case 'J':
 		gen_set_sync(rate_arg[0]);
+		/* "=<mode>,<amp>J". The sync's own swing, in 256ths. */
+		if (rate_arg[1])
+			gen_set_sync_amp(rate_arg[1]);
 		gen_report();
 		break;
 	case 'Q': cmd_profile();  break;

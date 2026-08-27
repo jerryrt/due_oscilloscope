@@ -125,14 +125,17 @@ bool ctl_port_gen_get(ctl_gen_t *out)
 	out->sync       = gen_sync;
 	out->points     = gen_points;
 	out->amp        = gen_amp;
+	out->sync_amp   = gen_sync_amp;
 	out->trigger_hz = gen_trigger_hz();
 	out->output_hz  = gen_hz_for(out->trigger_hz, gen_points, gen_sync);
 	return true;
 }
 
 void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
-                      uint16_t amp)
+                      uint16_t amp, uint16_t sync_amp)
 {
+	if (sync_amp)
+		gen_set_sync_amp(sync_amp);
 	gen_set_shape(shape);
 	if (points)
 		gen_set_points(points);

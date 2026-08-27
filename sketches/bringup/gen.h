@@ -80,6 +80,9 @@
 extern uint16_t gen_amp;      /* 1..256, 256 = full scale */
 void gen_set_amp(uint32_t amp);
 
+extern uint16_t gen_sync_amp;  /* 1..256, the sync's own swing */
+void gen_set_sync_amp(uint32_t amp);
+
 extern uint8_t gen_sync;
 void gen_set_sync(uint32_t mode);
 
