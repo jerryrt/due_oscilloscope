@@ -308,19 +308,36 @@ class MainWindow(QtWidgets.QMainWindow):
             self.rate_hz = f.rate_hz
             for r in self.rings.values():
                 r.set_rate(f.rate_hz)
-        if self.last_seq is not None and f.seq != self.last_seq + 1:
+        gap = self.last_seq is not None and f.seq != self.last_seq + 1
+        if gap:
             # A gap here is the daemon dropping toward us, which it
             # counts too - both numbers are on the panel so they can be
             # compared rather than confused.
             self.seq_gaps += 1
         self.last_seq = f.seq
         self.overruns = max(self.overruns, f.overrun_count)
+
+        # **A missed frame is a discontinuity, exactly like an overrun.**
+        #
+        # Only f.discontinuous - the device's own overrun flag - used to
+        # reach the ring, so frames dropped *between the daemon and this
+        # window* were counted on the health panel and then drawn across
+        # as though the samples either side were adjacent. Rule 3 says
+        # never join across a discontinuity and invariant 5 says never
+        # present discontinuous data as continuous; a sequence gap is
+        # one, and it is the *expected* one rather than a rare fault:
+        # rule 5 has the daemon drop toward a slow client by design.
+        #
+        # Found by validating against the board rather than the
+        # synthetic device, which never drops anything. Seven gaps in a
+        # six-second run, with the trace joined across every one and the
+        # measurements computed over the join.
         for tag, codes in f.channels.items():
             ring = self.rings.get(tag)
             if ring is None:
                 ring = stream.ChannelRing(seconds=2.0, rate_hz=self.rate_hz)
                 self.rings[tag] = ring
-            ring.append(codes, discontinuous=f.discontinuous)
+            ring.append(codes, discontinuous=(f.discontinuous or gap))
 
     def poll_status(self):
         if self.client is None:
