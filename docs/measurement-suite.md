@@ -223,7 +223,9 @@ caught the flip at the same one-in-seven rate on both sides of the first
 fix. `records/phase0-settle-levelrefine.jsonl` is that middle row.
 
 **What no fix reaches is the band.** The residual about the level is
-**20.4 codes rms after 64× averaging**, and every band `settle` offers -
+**20.4 codes rms after 64× averaging** *(scope, pre-`623d4dc`; the ADC
+now folds the same pin to 0.28 codes and `host/eqtime.py` settles the
+question a different way)*, and every band `settle` offers -
 0.5 to 10 codes - is below it. A time to enter a band smaller than the
 noise is the time the noise happened to fall inside it, which is what
 those columns were reporting. The tool now prints the residual above the
@@ -260,10 +262,17 @@ that, and it needs no instrument at all: how many of the converter's
 twelve bits this board actually leaves it, what each digital load costs
 in bits, and which spectral lines are real rather than folded.
 
-**8.2-8.4 effective bits of 12**, broadband with no lines, no drift and
-no mains; host-fed playback costs about 0.26 bits and the conversion
-rate costs less than 0.19. `tools/noisetool.py`, `host/noise.py`,
+**9.5 effective bits of 12** on current firmware, broadband with no
+drift and no mains; every digital-activity arm is bounded under 0.07
+bits and none is resolved. `tools/noisetool.py`, `host/noise.py`,
 repeatability through `tools/phase0.py noise-fast`.
+
+Both of those numbers replaced earlier ones - 8.2-8.4 bits and a
+0.26-bit playback cost - which were measured on a build five minutes
+older than a DAC fix. The playback figure had reproduced across two
+boards and two hosts before it was withdrawn, because both benches ran
+the same firmware: **two benches test the board and the host, not the
+build.** `docs/noise.md`.
 
 Being scope-free is what makes it a standard rather than a reading: any
 bench can re-take it, including one with no DS1102E, and the figures

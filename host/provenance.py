@@ -54,7 +54,23 @@ REPO = os.path.dirname(HERE)
 #: Fields a run must carry. Anything here that `collect()` could not
 #: establish makes the run unattributable, not merely under-documented.
 REQUIRED = ("track", "fw_version", "ctl_version", "frame_version",
-            "build", "host_os", "repo_rev", "wiring")
+            "build", "host_os", "repo_rev", "wiring", "bench")
+
+#: `bench` is required, which means an undeclared bench cannot record.
+#:
+#: That is a deliberate answer to the question raised on issue #10 when
+#: `WIRING` stopped being a module constant. A default is worse than a
+#: blank here: the Windows bench's first records claimed `A1 free` on a
+#: desk where DAC1 is jumpered to A1, so anyone comparing the two benches
+#: would have taken A1 for the free-pin control on both. And that is not
+#: a hypothetical detail - a bare neighbour was later measured to cost
+#: its neighbour 0.347 bits, so the two desks were never the same
+#: circuit.
+#:
+#: This module's own docstring says a run records its conditions or it
+#: does not record. A wiring string that might be someone else's is not
+#: a condition, it is a guess wearing one. Declaring costs one gitignored
+#: file per desk, once.
 
 #: Where a bench declares itself. Gitignored on purpose: it describes
 #: one desk, and committing one desk's cables is how every other desk
