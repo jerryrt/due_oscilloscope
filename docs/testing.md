@@ -352,7 +352,9 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   does. See `tools/ab.py` for why.
 
 - **`test_matched_full_rate_loop[b-2-906976-453488]` and
-  `test_awg_ladder_play_only[b-32]` also fail occasionally**, one
+  `test_awg_ladder_play_only[b-32]` also fail occasionally** - and the
+  second one is characterised below and is **not** Track B's: it fails
+  the same way on Track A, one
   sequence gap or one uncounted repeat, at the top of the ladder where
   `docs/HANDOFF.md` already records an intermittent residual and
   oversupply. Neither has been characterised the way the ramp test now
@@ -413,6 +415,17 @@ should stay near 2 minutes for iteration. Transport benchmarks are
   `rt.promote()` is not a no-op on Windows (it does `timeBeginPeriod(1)`
   and `SetThreadPriority`), and `Feeder._run` promotes its own thread
   before its first write.
+
+  **And it is host-side, which is now shown rather than inferred: the
+  same low mode appears on Track A.** `test_awg_ladder_play_only[a-32]`
+  fed 2.282286 MB/s in a full Track A run - inside the 2.281-2.283
+  cluster the Track B failures sit in, matching to 0.05%. The two tracks
+  share no firmware source, enumerate through different USB stacks, and
+  reach the DAC by different code; what they share is this host and this
+  feeder. **So the entry above should not be read as a Track B
+  property**, and any explanation that starts in the firmware has to
+  account for two independent implementations landing on the same two
+  numbers.
 - **Never truncate a suite run's output.** The first of those two was
   lost to a `| tail -3` on the pytest invocation, which threw away the
   traceback and left nothing to diagnose; the re-run was green and the
