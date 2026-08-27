@@ -107,7 +107,7 @@ and the converter does not always run at the rate it was asked for - at
 needs the device's consumption paired with the device's clock.
 
 In play-only that arrives on a separate bulk-IN record
-(`drivers/playstat.h`). In loop mode bulk IN carries frames and the
+(`lib/due_shared/src/playstat.h`). In loop mode bulk IN carries frames and the
 endpoint is on DMA, so nothing else may write there: the FIFO path and
 DMA must not share an endpoint, and a record spliced between frames
 would put non-sample bytes inside the sample stream. The header is the

@@ -1,10 +1,12 @@
 /*
  * Firmware identity: which track, and which build of it.
  *
- * Shared verbatim between Track A and Track B, like frame.h - two
- * copies by invariant 3, kept byte-identical apart from FW_TRACK, which
- * is the whole point of the file. Track A's copy is
- * sketches/bringup/version.h.
+ * **One copy, compiled by both tracks.** This file used to be two -
+ * drivers/version.h and sketches/bringup/version.h, kept byte-identical
+ * by hand apart from FW_TRACK. That arrangement is what
+ * docs/shared-source.md exists to end, and this file is the first thing
+ * it moved: the wire contract is shared source, and only FW_TRACK is
+ * legitimately per-track. It lives in each track's own track_id.h.
  *
  * ## Why this exists
  *
@@ -34,7 +36,7 @@
  *
  * ## When to bump FW_VERSION
  *
- * By hand, in both copies, in the same commit as the change:
+ * By hand - once, now - in the same commit as the change:
  *
  *   PATCH  a fix or a measurement-affecting change with no new command
  *   MINOR  a new command, counter, or capability on either track
@@ -48,17 +50,49 @@
  * date already answers "is this the image I just flashed".
  */
 
-#ifndef VERSION_H
-#define VERSION_H
+#ifndef FW_VERSION_H
+#define FW_VERSION_H
+
+/*
+ * FW_TRACK is deliberately *not* here and this file does not include
+ * the header that defines it.
+ *
+ * It cannot: arduino-cli compiles a library with the library's own
+ * include path, not the sketch's, so a shared header reaching back for
+ * a per-track one fails to resolve on Track A - measured, it is a
+ * "track_id.h: No such file or directory" from inside this file.
+ *
+ * It also should not. This file is the wire contract; which track built
+ * an image is a fact about the image, and nothing here needs it -
+ * FW_TRACK reaches FW_ID_FORMAT as a printf argument, never as a token
+ * in this file. So each track includes its own track_id.h beside this
+ * one: drivers/track_id.h and sketches/bringup/track_id.h.
+ */
 
 #define FW_VERSION_MAJOR 0
 #define FW_VERSION_MINOR 2
 #define FW_VERSION_PATCH 0
-#define FW_VERSION_STR   "0.1.0"
 
-/* 'A' = arduino-cli reference oracle, 'B' = CMake bare metal. The one
- * line that differs between the two copies of this file. */
-#define FW_TRACK 'B'
+/*
+ * Derived, never typed, and that is the whole point of the change that
+ * brought this file here.
+ *
+ * bf791f3 bumped FW_VERSION_MINOR from 1 to 2 and left the string at
+ * "0.1.0". The two disagreed in every build since, and they reach
+ * different consumers: the numbers go to CTL_OP_IDENTITY
+ * (drivers/ctl.c), the string to the `v` console line - which
+ * measure.parse_identity documents as interchangeable with it. So the
+ * board answered "which firmware are you" with 0.1.0 or 0.2.0 depending
+ * which channel was asked. tests/baseline.json says 0.2.0 and the
+ * control channel was right; the console had been under-reporting.
+ *
+ * Hand-copying the file between tracks kept the two copies in perfect
+ * agreement - at the wrong value. One representation cannot drift from
+ * itself.
+ */
+#define FW__STR2(x) #x
+#define FW__STR(x)  FW__STR2(x)
+#define FW_VERSION_STR  FW__STR(FW_VERSION_MAJOR) "." FW__STR(FW_VERSION_MINOR) "." FW__STR(FW_VERSION_PATCH)
 
 /*
  * The identity line, emitted by the banner and by the `v` command on
@@ -76,4 +110,4 @@
 	"# id: track=%c fw=%s ctlver=%u framever=%u mck=%lu adcclk=%lu " \
 	"framebytes=%u framesamples=%u build=%s %s"
 
-#endif /* VERSION_H */
+#endif /* FW_VERSION_H */

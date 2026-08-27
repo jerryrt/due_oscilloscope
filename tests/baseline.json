@@ -12,9 +12,10 @@
   },
   "firmware": {
     "_comment": [
-      "drivers/version.h and sketches/bringup/version.h, which are",
-      "byte-identical apart from FW_TRACK. Bump all three together:",
-      "a board reporting a version this file does not know about is",
+      "lib/due_shared/src/fw_version.h, which both tracks compile.",
+      "It used to be two hand-copied files and the string drifted from",
+      "the numbers; the string is derived now. Bump both together: a",
+      "board reporting a version this file does not know about is",
       "either a stale flash or an un-updated baseline, and the test",
       "cannot tell you which if only one of them moved."
     ],

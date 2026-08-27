@@ -43,7 +43,7 @@ import rt
 import transport
 
 # ---------------------------------------------------------------------
-# Wire format. Shared verbatim with drivers/frame.h.
+# Wire format. Shared verbatim with lib/due_shared/src/frame.h.
 # ---------------------------------------------------------------------
 
 HDR_FMT = "<4sBBHIIIIII"
@@ -984,7 +984,7 @@ class OccHist:
         return sum(self.buckets[:slots]) / n if n else None
 
 
-# Playback status on bulk IN, mirrored from drivers/playstat.h. In
+# Playback status on bulk IN, mirrored from lib/due_shared/src/playstat.h. In
 # play-only the IN endpoint carries nothing else, so these are the whole
 # stream; the host differences consecutive records to get the rate the
 # converter is actually holding, without a console round trip.
@@ -2663,7 +2663,7 @@ def stream_stats(board, *, secs=1.2):
 TRACK_MARK = {"a": "Track A", "b": "Track B"}
 
 # The identity line, emitted by `v` and by the banner on both tracks.
-# See drivers/version.h; the format is fixed and identical on the two.
+# See lib/due_shared/src/fw_version.h; the format is fixed and identical on the two.
 _ID_LINE = re.compile(
     r"#\s*id:\s*track=(?P<track>[AB])\s+fw=(?P<fw>[0-9]+\.[0-9]+\.[0-9]+)"
     r"\s+ctlver=(?P<ctlver>\d+)\s+framever=(?P<framever>\d+)"

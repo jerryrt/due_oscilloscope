@@ -24,7 +24,7 @@ import zlib
 
 import transport
 
-# Frame layout, shared verbatim with drivers/frame.h and host/measure.py.
+# Frame layout, shared verbatim with lib/due_shared/src/frame.h and host/measure.py.
 HDR_FMT = "<4sBBHIIIIII"
 HDR_LEN = struct.calcsize(HDR_FMT)
 FRAME_MAGIC = b"DUE0"

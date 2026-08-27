@@ -95,8 +95,17 @@ function from the shared `.c` and print what it returns.
 
 Smoke after: Track A 91 passed, Track B 110 passed.
 
-`shared_probe.[ch]` is scaffolding and Phase 1 deletes it. It is
-committed rather than thrown away so the answer is reproducible.
+`shared_probe.[ch]` was scaffolding and Phase 1 deleted it, as planned.
+
+**Phase 1 found one constraint worth writing down.** A shared header
+cannot include a per-track one: `arduino-cli` compiles a library with
+the library's own include path and not the sketch's, so
+`fw_version.h`'s `#include "track_id.h"` failed to resolve on Track A -
+measured, as `track_id.h: No such file or directory` from inside the
+shared file. The fix is also the better layering: the shared file is the
+wire contract and does not need to know which track built the image, so
+each track includes its own `track_id.h` alongside it. **Dependencies
+point from per-track code into shared code, never back.**
 
 ## Phases
 
@@ -107,7 +116,7 @@ bring-up order. Do not reorder.
 |---|---|---|---|
 | 0 | The build mechanism | both binaries print the same value | **done** |
 | 0.5 | Drain Track A's control bulk OUT; un-skip the command-port tests | 1 MB at the node, device counts every byte | **done** |
-| 1 | `frame.h`, `playstat.h`, the version numbers; extract `track_id.h` | `v` and `CTL_OP_IDENTITY` agree - a new test | open |
+| 1 | `frame.h`, `playstat.h`, the version numbers; extract `track_id.h` | `v` and `CTL_OP_IDENTITY` agree - a new test | **done** |
 | 2 | `frame_crc32_update` out of `drivers/stream.c` | both tracks link it; CRC tests pass | open |
 | 3 | Split `ctl.h` into `ctl_wire.h` (shared) + device API | Track B control suite unchanged | open |
 | 4 | Decouple `ctl.c` from `load_*` and the transport, behind accessors | Track B control suite unchanged | open |
