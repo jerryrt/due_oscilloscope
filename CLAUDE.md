@@ -203,6 +203,55 @@ Check here before reasoning from general Arduino knowledge.
   apart; channel skew is real and must be corrected host-side.
 - **The DAC is not rail-to-rail.** Output spans roughly 0.55–2.75 V.
   Writing zero does not give ground.
+- **A trace that shakes horizontally on the bench scope is the trigger,
+  not the board.** About 20 mV RMS sits on DAC0 - 15 mV of it with the
+  DAC not driven at all - and a scope turns that into time jitter by
+  dividing it by the waveform's slew rate at the trigger level. So
+  square does not shake (full-scale step), sine shakes a little
+  (~45 mV/us), and the ramp shakes 30-60x worse than sine because its
+  staircase rises **4.5 mV per sample**. Measured across a 12x span of
+  jitter, `sd x slew` is constant at ~20 mV. Do not chase this in the
+  feed, the ring or the transport - underruns were 0 on every shaky
+  row, and the internal generator with no USB in the path shakes
+  identically. `docs/awg.md`.
+- **The GUI shakes for an unrelated reason and the two must not be
+  confused.** `gui/app.py` draws the most recent N samples every 33 ms
+  with **no trigger at all**, so a trace holds still only when
+  `rate/tone` divides the frame's samples-per-channel. That is a missing
+  front-end feature, not a signal defect.
+- **DAC1 is the bench trigger now, and DAC0 is the signal.** `=<n>J`
+  puts a full-scale square on whichever DAC pin is not carrying the
+  waveform, phase-locked by construction - one PDC stream, one trigger,
+  so it lags the waveform by exactly one trigger period and by nothing
+  else. Measured against triggering on the signal: sine **222x** less
+  jitter, ramp 2.2x. It is also a *better* demux check than the old DC
+  level, because a flat line is what an unwritten channel looks like and
+  a square is not. **DSO tools measure CH1 = DAC0 only**; DAC1 is not on
+  an analog channel any more, so the ADC (A1) is the instrument that can
+  still see it.
+- **Two EXT-trigger traps on the DS1102E, and both are silent.** The
+  level clamps at **±1.2 V** - it accepts `1.67` and holds `1.20`, with
+  the readback agreeing - so a DC-coupled x1 sync never triggers at all.
+  And the probe ratio moves the usable window, which is only ~100 mV
+  wide: with x10 fitted it is 0.1-0.2 V DC or 0.0-0.1 V AC, and a sweep
+  at 0.0/0.3/0.6/1.0/1.2 steps over it and concludes EXT is broken.
+  **Discover the level, never assume it** -
+  `scope.Oscilloscope.ext_trigger_autoset()`. `None` means no signal is
+  arriving, which is a cable fault.
+- **Fold to phase before calling anything jitter.** "The crossing
+  nearest screen centre" flips between adjacent cycles whenever the
+  trigger's phase differs from the crossing's, and reports ~100% of a
+  period on a trace that is perfectly still. Circular statistics on the
+  folded phase; measured, and it was wrong once here.
+- **There are two generators and only one of them is arbitrary.** The
+  host streams samples over USB (`build_selected`, `run_play`); the
+  device also plays its own 256-point table with no USB in the path
+  (`drivers/gen.c`, `sketches/bringup/gen.cpp`, `=<shape>,<pts>W`).
+  Resolution is the internal generator's *frequency* knob -
+  `f = trigger_hz / (2 * points)` - and points must be a power of two
+  from 2 to 256 or a cycle straddles the PDC wrap. Changing it also
+  changes the period the issue-#5 fold instruments must use; see
+  `measure.gen_fold_len()`. `docs/awg.md`.
 - **The native port already runs at High Speed.** Verified: `Device
   Speed` = 2, `bcdUSB` = 0x0200. There is nothing to enable. Throughput
   limits live in the CDC-ACM stack, not the PHY.

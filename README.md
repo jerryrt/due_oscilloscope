@@ -19,6 +19,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/toolchain.md](docs/toolchain.md) | arduino-cli track and CMake/arm-gcc track |
 | [docs/architecture.md](docs/architecture.md) | DMA datapath, timebase, buffering |
 | [docs/protocol.md](docs/protocol.md) | Host streaming frame format |
+| [docs/awg.md](docs/awg.md) | Both generators, shapes, resolution, and why a trace shakes |
 | [docs/debugging.md](docs/debugging.md) | Probeless bring-up strategy |
 | [docs/rtos.md](docs/rtos.md) | Bare-metal and FreeRTOS integration |
 | [docs/usb.md](docs/usb.md) | Measured transport ceilings and host I/O policy |
