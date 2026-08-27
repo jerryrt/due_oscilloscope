@@ -10,6 +10,7 @@ before anything else and their failure messages say "cable" out loud.
 """
 
 import os
+import threading
 import time
 
 import pytest
@@ -96,7 +97,7 @@ def test_native_port_enumerates(board):
         f"read the SETUP log with `u`.")
 
 
-def test_native_port_offers_both_functions(board, track):
+def test_native_port_offers_both_functions(board):
     """One cable, two CDC functions: samples and commands.
 
     The deployed board has only the native port, so a control path that
@@ -105,9 +106,6 @@ def test_native_port_offers_both_functions(board, track):
     really the one the numbering pins - interfaces 0 and 1 for samples,
     2 and 3 for commands - rather than two nodes that happen to appear.
     """
-    if track != "b":
-        pytest.skip("Track A has no control channel yet (it follows Track B)")
-
     ctl, samples, commands = ports.find_all_ports(wait=12.0)
     assert ctl, "the control port stopped answering"
     assert samples, "no native sample node"
@@ -150,7 +148,7 @@ def test_native_port_offers_both_functions(board, track):
         f"against one track or the other.")
 
 
-def test_command_port_opens_and_closes(board, track):
+def test_command_port_opens_and_closes(board):
     """The command port can be opened, written and closed, promptly.
 
     Its bulk OUT is drained by the main loop even though nothing
@@ -160,9 +158,6 @@ def test_command_port_opens_and_closes(board, track):
     endpoint would have turned a port that does nothing into a port that
     hangs the machine - so this asserts the close, not just the open.
     """
-    if track != "b":
-        pytest.skip("Track A has no control channel yet (it follows Track B)")
-
     _ctl, _samples, commands = ports.find_all_ports(wait=12.0)
     if not commands:
         pytest.skip("no command node; covered by the test above")
@@ -170,10 +165,46 @@ def test_command_port_opens_and_closes(board, track):
     t0 = time.time()
     port = measure.open_raw(commands, 115200, dtr=True)
     opened = time.time() - t0
+    wrote = []
     try:
         port.set_blocking(True)
-        n = port.write(b"\x00" * 2048)
-        assert n == 2048, f"short write of {n} bytes to the command port"
+
+        # Enough to leave the host's own buffer, and that is the whole
+        # point of the size. This test used to write 2048 bytes, which
+        # fits in the Windows driver's transmit buffer - so it returned
+        # instantly whether or not the device drained anything, and it
+        # passed against Track A firmware that drained nothing at all.
+        # Measured on that firmware: the writer stalls at 48 KB. On
+        # macOS the same defect appears in close(), which the assertion
+        # at the end is for; on Windows it appears here, and only past
+        # the buffer.
+        #
+        # In a thread with a deadline because transport's blocking write
+        # has no timeout: against an undrained endpoint a plain write
+        # hangs the suite instead of failing it, which is the harder
+        # failure to read. Same shape as Board.open_native().
+        payload = b"\x00" * (64 * 1024)
+
+        def _push():
+            try:
+                wrote.append(port.write(payload))
+            except Exception as e:                       # noqa: BLE001
+                wrote.append(e)
+
+        t1 = time.time()
+        th = threading.Thread(target=_push, daemon=True)
+        th.start()
+        th.join(10.0)
+        pushed = time.time() - t1
+        assert not th.is_alive(), (
+            f"writing {len(payload)} B to the command port did not finish "
+            f"in {pushed:.1f} s. The device is not draining its bulk OUT: "
+            f"an allocated OUT endpoint that nobody reads NAKs for ever.")
+        assert not isinstance(wrote[0], Exception), (
+            f"the command port refused a {len(payload)} B write: "
+            f"{wrote[0]!r}. The device is not draining its bulk OUT.")
+        assert wrote[0] == len(payload), (
+            f"short write of {wrote[0]} bytes to the command port")
     finally:
         t0 = time.time()
         port.close()
