@@ -29,6 +29,7 @@
 #include "load.h"
 #include "usb_cdc.h"
 #include "version.h"
+#include "shared_probe.h"        /* Phase 0 probe */
 
 #define LED_MASK (1u << 27)
 
@@ -41,6 +42,10 @@
  */
 static void identity_line(void)
 {
+	/* Phase 0 probe: the same translation unit CMake and arduino-cli
+	 * both compile. Printed on both tracks so the two can be compared. */
+	printf("# shared probe: %08lx\n",
+	       (unsigned long)shared_probe_magic());
 	printf(FW_ID_FORMAT "\n",
 	       FW_TRACK, FW_VERSION_STR, CTL_VERSION, FRAME_VERSION,
 	       (unsigned long)SystemCoreClock,

@@ -21,7 +21,10 @@ add_compile_options(
 # include, which is where SystemInit and SystemCoreClock are declared.
 add_compile_definitions(__SAM3X8E__)
 
-include_directories(bsp drivers)
+# lib/due_shared/src is the wire contract both tracks compile.
+# arduino-cli reaches the same files as an Arduino library, via
+# --libraries lib in tools/sketch.py.
+include_directories(bsp drivers lib/due_shared/src)
 
 # SYSTEM: vendor headers are not ours to fix, and -Wall -Wextra otherwise
 # buries real diagnostics under warnings from the CMSIS pack.
@@ -51,6 +54,7 @@ add_executable(baremetal_bringup
     drivers/usb_cdc.c
     drivers/stream.c
     drivers/ctl.c
+    lib/due_shared/src/shared_probe.c
     ${DEVICE}/source/system_sam3xa.c
 )
 

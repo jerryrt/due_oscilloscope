@@ -179,7 +179,11 @@ def main() -> int:
     print(f"==> ldscript : {ldscript}")
     cmd = [cli, "compile", "--fqbn", FQBN,
            "--build-property", "build.f_cpu=78000000L",
-           "--build-property", f"build.ldscript={ldscript}"]
+           "--build-property", f"build.ldscript={ldscript}",
+           # Where the shared wire contract lives. arduino-cli searches
+           # this directory for Arduino libraries; CMake reaches the same
+           # source through include_directories + an explicit file list.
+           "--libraries", os.path.join(REPO, "lib")]
     cmd += ["--build-path", args.build_path or BUILD_PATH]
     return subprocess.call(cmd + passthrough + [SKETCH])
 

@@ -43,6 +43,7 @@
 #include "play.h"
 #include "playstat.h"
 #include "ctlusb.h"
+#include <shared_probe.h>          /* Phase 0 probe */
 #include "usbdma.h"
 #include "frame.h"
 #include "version.h"
@@ -151,6 +152,14 @@ static void banner(void)
 	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
 	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
 	Serial.println("#           O=playback ring occupancy histogram");
+	{
+		/* Phase 0 probe: proves this translation unit was compiled and
+		 * linked by arduino-cli from outside the sketch folder. */
+		char pb[64];
+		snprintf(pb, sizeof(pb), "#           shared probe: %08lx",
+		         (unsigned long)shared_probe_magic());
+		Serial.println(pb);
+	}
 	{
 		/* CFGOK per endpoint: the controller's own answer to "did
 		 * this allocation take". Guessing at DPRAM arithmetic is how
