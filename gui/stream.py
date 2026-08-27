@@ -172,6 +172,12 @@ class ChannelRing:
                 np.concatenate((self._breaks[start:], self._breaks[:end])))
 
 
+#: How far back select() looks for a trigger, in screenfuls. Four
+#: is enough that a slow repetition still finds an edge and small
+#: enough that the search stays inside the frame budget.
+SEARCH_SPAN = 4
+
+
 class Sweep:
     """One screenful, and where it came from.
 
@@ -196,7 +202,66 @@ class Sweep:
         return self.samples.size == 0
 
 
-def select(ring, n):
+class Trigger:
+    """An edge trigger: where the sweep starts, instead of "wherever".
+
+    Software, on samples already captured. Deliberately not an external
+    trigger input - `docs/frontend.md` keeps anything that reads as
+    "connect your signal here" disabled until the Phase 3 analog front
+    end exists, and says in as many words that a warning label is not
+    sufficient. Nothing here touches a pin.
+
+    `level` is in ADC codes, the units the ring holds. Converting at the
+    edge of the UI rather than here keeps this testable against integers
+    and keeps one conversion, `codes_to_volts`, in one place.
+
+    There is no holdoff knob. It would do nothing yet - the search takes
+    the most recent qualifying edge, so a minimum spacing between
+    consecutive accepted edges has nothing to reject - and this project
+    has a name for that: a knob that is programmed is not a knob that
+    does anything. It arrives when something needs it.
+    """
+
+    __slots__ = ("level", "rising", "mode", "pretrigger")
+
+    #: How far into the screen the trigger point sits. Half is the
+    #: convention and it is the useful one: it shows what led into the
+    #: edge, which is most of why anyone triggers.
+    def __init__(self, level, rising=True, mode="auto", pretrigger=0.5):
+        self.level = int(level)
+        self.rising = bool(rising)
+        self.mode = mode
+        self.pretrigger = float(pretrigger)
+
+
+def find_edges(samples, level, rising=True, breaks=None):
+    """Indices where the signal crosses `level` in the given direction.
+
+    The crossing is reported at the first sample *at or past* the level,
+    so `samples[i-1]` is on one side and `samples[i]` on the other.
+
+    A crossing is rejected when `breaks[i]` is set. That sample begins a
+    new run - a frame the device flagged as discontinuous with the one
+    before it - so the step from `samples[i-1]` to `samples[i]` is not a
+    transition the signal made. Invariant 5 forbids presenting
+    discontinuous data as continuous, and triggering on a splice would
+    be exactly that, with the added insult of holding the trace still
+    and making it look right.
+    """
+    if samples.size < 2:
+        return np.empty(0, dtype=np.int64)
+    v = samples.astype(np.int32)
+    if rising:
+        cross = (v[:-1] < level) & (v[1:] >= level)
+    else:
+        cross = (v[:-1] > level) & (v[1:] <= level)
+    idx = np.flatnonzero(cross) + 1
+    if breaks is not None and idx.size:
+        idx = idx[~breaks[idx]]
+    return idx
+
+
+def select(ring, n, trig=None):
     """Which `n` samples to draw.
 
     The whole "what goes on screen" decision, in one Qt-free place.
@@ -207,12 +272,46 @@ def select(ring, n):
     window, which CLAUDE.md records as a missing front-end feature that
     must not be confused with the signal defects around it.
 
-    Extracting it changes nothing yet: this is still the most recent n.
-    What it buys is somewhere for a trigger to live that a headless test
-    can reach without a display.
+    With a trigger, the sweep is anchored to the most recent edge that
+    has a whole screen either side of it. Without one, or in `auto` when
+    no edge is found, it is the most recent n - and `Sweep.triggered`
+    says which happened, because the two are indistinguishable as
+    arrays.
+
+    Bounded on purpose. The ring holds up to two seconds, which is 1.8 M
+    samples at the full rate, and this runs inside a 33 ms frame budget
+    that rule 5 says must never block the feeder. The search looks at
+    the newest `SEARCH_SPAN` windows and no further; an edge older than
+    that is off the back of a display that redraws 30 times a second.
     """
-    samples, breaks = ring.window(n)
-    return Sweep(samples, breaks, triggered=False, trigger_index=None)
+    if trig is None:
+        samples, breaks = ring.window(n)
+        return Sweep(samples, breaks, triggered=False, trigger_index=None)
+
+    span = min(ring.filled, int(n * SEARCH_SPAN))
+    samples, breaks = ring.window(span)
+
+    pre = int(round(trig.pretrigger * n))
+    pre = max(0, min(n, pre))
+    post = n - pre
+
+    free = Sweep(*ring.window(n), triggered=False, trigger_index=None)
+    if samples.size < n:
+        return free
+
+    idx = find_edges(samples, trig.level, trig.rising, breaks)
+    # Only edges with a whole screen either side of them: a trigger at
+    # the very edge of what has been captured would draw a half screen
+    # that grows as more arrives, which reads as drift.
+    idx = idx[(idx >= pre) & (idx + post <= samples.size)]
+    if idx.size == 0:
+        return free if trig.mode == "auto" else Sweep(
+            np.empty(0, dtype=samples.dtype), np.empty(0, dtype=bool),
+            triggered=False, trigger_index=None)
+
+    t = int(idx[-1])                       # the most recent qualifying edge
+    a, b = t - pre, t + post
+    return Sweep(samples[a:b], breaks[a:b], triggered=True, trigger_index=pre)
 
 
 def minmax(samples, columns, breaks=None):

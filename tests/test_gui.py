@@ -200,6 +200,176 @@ def test_an_empty_ring_gives_an_empty_sweep_rather_than_raising():
     assert sw.empty and not sw.triggered
 
 
+#: A half-sample skew so the waveform crosses `mid` *between* samples
+#: rather than landing on one. Without it the crossing sample computes
+#: to mid +/- 1 ULP and truncates to 2047 or 2048 depending on the last
+#: bit, which moves the detected edge by one sample - see
+#: test_a_sample_sitting_exactly_on_the_level_is_one_sample_unstable.
+_SKEW = 0.5
+
+
+def _tone(n, period, amp=800, mid=2048, phase=0.0, skew=_SKEW):
+    t = np.arange(n, dtype=np.float64) + skew
+    return (mid + amp * np.sin(2 * np.pi * (t + phase) / period)).astype(np.uint16)
+
+
+def _displacement(a, b):
+    """How far one drawn window moved against the previous one, in codes."""
+    n = min(a.size, b.size)
+    if n == 0:
+        return 0
+    return int(np.abs(a[:n].astype(np.int32) - b[:n].astype(np.int32)).max())
+
+
+def test_the_trigger_holds_a_tone_still_that_free_running_does_not():
+    """The defect this exists for, as a number rather than an eye.
+
+    CLAUDE.md: the GUI "draws the most recent N samples every 33 ms with
+    no trigger at all, so a trace holds still only when rate/tone
+    divides the frame's samples-per-channel".
+
+    So pick a period that deliberately does not divide the window, feed
+    it in ragged chunks the way frames arrive, and compare the drawn
+    window against the previous one each time. Free-running, consecutive
+    sweeps differ; triggered, they are identical.
+    """
+    period, win = 271, 1000                  # 1000 % 271 != 0, on purpose
+    r = stream.ChannelRing(seconds=0.05, rate_hz=200000)
+    trig = stream.Trigger(level=2048, rising=True)
+
+    # One continuous tone, appended in ragged chunks the way frames
+    # arrive. `pos` is the absolute sample index so the phase carries
+    # across the joins - get that wrong and the ring holds a tone with
+    # steps in it, which no trigger can or should hold still.
+    pos = 0
+    n0 = 6000
+    r.append(_tone(n0, period, phase=pos)); pos += n0
+
+    free_moved = trig_moved = 0
+    prev_free = prev_trig = None
+    for k in range(1, 9):
+        chunk = 137 * k
+        r.append(_tone(chunk, period, phase=pos)); pos += chunk
+
+        f = stream.select(r, win)
+        t = stream.select(r, win, trig)
+        assert t.triggered, "a clean tone should always find an edge"
+
+        # How far the drawn trace moved, in codes, rather than whether
+        # it moved at all. Bit-equality is the wrong test: the same
+        # phase computed at a different absolute sample index differs by
+        # 1 LSB of float rounding, which is not the trace moving.
+        if prev_free is not None:
+            free_moved = max(free_moved, _displacement(f.samples, prev_free))
+            trig_moved = max(trig_moved, _displacement(t.samples, prev_trig))
+        prev_free, prev_trig = f.samples, t.samples
+
+    # Measured: free-running swings by up to ~1600 codes between
+    # redraws, triggered by 1. The gap is three orders of magnitude, so
+    # the thresholds are nowhere near either number.
+    assert free_moved > 50, (
+        f"free-running moved only {free_moved} codes - this tone was "
+        f"chosen so its period does not divide the window, so if it is "
+        f"holding still the test has stopped testing anything")
+    assert trig_moved <= 2, (
+        f"the triggered sweep moved {trig_moved} codes between redraws; "
+        f"anything above a couple of LSB means it is not anchored")
+
+
+def test_a_sample_sitting_exactly_on_the_level_is_one_sample_unstable():
+    """A property of edge triggering at sample resolution, recorded
+    rather than papered over.
+
+    When the signal passes through the trigger level *at* a sample, that
+    sample is at the level on some periods and just below it on others -
+    here because the sine computes to mid +/- 1 ULP and truncates, and
+    on a real input because of noise. The detected edge then moves by one
+    sample, and the trace jitters by one sample period: 5 us at
+    200 ksps, which is 0.1% of a 5 ms window.
+
+    Sub-sample interpolation is the fix and is deliberately not built
+    yet - it changes what is drawn, not just where the sweep starts.
+    This test exists so the limitation is a known number rather than a
+    surprise, and it should be *changed* when interpolation lands, not
+    deleted.
+    """
+    period, win = 271, 1000
+    r = stream.ChannelRing(seconds=0.05, rate_hz=200000)
+    trig = stream.Trigger(level=2048, rising=True)
+
+    pos, first = 0, None
+    shifts = 0
+    r.append(_tone(6000, period, phase=pos, skew=0.0)); pos += 6000
+    for k in range(1, 6):
+        chunk = 137 * k
+        r.append(_tone(chunk, period, phase=pos, skew=0.0)); pos += chunk
+        sw = stream.select(r, win, trig)
+        if first is None:
+            first = sw.samples
+        elif not np.array_equal(sw.samples, first):
+            shifts += 1
+
+    assert shifts > 0, (
+        "the knife-edge case stopped reproducing - if interpolation "
+        "landed, rewrite this test rather than deleting it")
+
+
+def test_the_trigger_puts_the_edge_where_it_says_it_does():
+    r = stream.ChannelRing(seconds=0.05, rate_hz=200000)
+    r.append(_tone(6000, 300))
+    sw = stream.select(r, 1000, stream.Trigger(level=2048, rising=True))
+
+    assert sw.triggered and sw.trigger_index == 500      # pretrigger 0.5
+    i = sw.trigger_index
+    assert sw.samples[i - 1] < 2048 <= sw.samples[i], (
+        "the sample at trigger_index should be the first at or past the "
+        "level, with its predecessor below it")
+
+
+def test_a_falling_trigger_finds_the_other_slope():
+    r = stream.ChannelRing(seconds=0.05, rate_hz=200000)
+    r.append(_tone(6000, 300))
+    sw = stream.select(r, 1000, stream.Trigger(level=2048, rising=False))
+    i = sw.trigger_index
+    assert sw.triggered
+    assert sw.samples[i - 1] > 2048 >= sw.samples[i]
+
+
+def test_auto_free_runs_when_there_is_no_edge_and_admits_it():
+    """A flat line has no crossing. Auto must still draw something, and
+    must not claim it triggered."""
+    r = stream.ChannelRing(seconds=0.05, rate_hz=200000)
+    r.append(np.full(4000, 1000, dtype=np.uint16))
+
+    auto = stream.select(r, 1000, stream.Trigger(level=2048, mode="auto"))
+    assert not auto.empty and not auto.triggered
+
+    normal = stream.select(r, 1000, stream.Trigger(level=2048, mode="normal"))
+    assert normal.empty, "normal mode draws nothing rather than free-running"
+
+
+def test_the_trigger_does_not_fire_on_a_splice():
+    """Invariant 5, at the one place it would be believed.
+
+    A frame flagged discontinuous is not continuous with the one before
+    it, so the step across that boundary is not a transition the signal
+    made. Triggering on it would hold the trace still and make a splice
+    look like a signal, which is worse than drawing it moving.
+    """
+    r = stream.ChannelRing(seconds=0.05, rate_hz=200000)
+    r.append(np.full(2000, 1000, dtype=np.uint16))
+    # A jump from below the level to above it, at a frame the device
+    # flagged: the only "crossing" anywhere in this ring.
+    r.append(np.full(2000, 3000, dtype=np.uint16), discontinuous=True)
+
+    samples, breaks = r.window()
+    edges = stream.find_edges(samples, 2048, rising=True, breaks=breaks)
+    assert edges.size == 0, "the splice was accepted as an edge"
+
+    sw = stream.select(r, 1000, stream.Trigger(level=2048, mode="normal"))
+    assert sw.empty, "normal mode triggered on a discontinuity"
+
+
 def test_frames_from_a_real_daemon_become_a_trace(win, daemon):
     win.connect_to_daemon()
     assert win.client is not None
