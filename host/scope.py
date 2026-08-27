@@ -258,6 +258,18 @@ class Oscilloscope:
     def run(self):                                            # pragma: no cover
         raise NotImplementedError
 
+    def stop(self):                                           # pragma: no cover
+        raise NotImplementedError
+
+    def measure_all(self, ch=1, names=("VPP", "VMAX", "VMIN", "FREQ")):
+        """Several measurements in one call, each None where unreadable.
+
+        Convenience, not dialect: it is `measure()` in a loop, and it
+        exists because a caller that wants four numbers should not have
+        to remember that any of them can be absent.
+        """
+        return {n: self.measure(n, ch) for n in names}
+
     def close(self):                                          # pragma: no cover
         raise NotImplementedError
 
@@ -431,6 +443,9 @@ class RigolDS1000E(Oscilloscope):
 
     def run(self):
         self.io.write(":RUN", settle=0.2)
+
+    def stop(self):
+        self.io.write(":STOP", settle=0.2)
 
     def close(self):
         self.io.close()

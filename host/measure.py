@@ -2269,8 +2269,15 @@ TRIM_PERIOD_S = 0.5
 
 
 def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
-             scale=1.0, drain_s=0.0, write_size=None, closed_loop=False):
-    if dc is not None:
+             ramp=None, scale=1.0, drain_s=0.0, write_size=None,
+             closed_loop=False):
+    # The same three waveforms run_loop offers. They differed only
+    # because nothing had needed a ramp without capture yet, and a tool
+    # that sweeps every supported waveform needs all three on the path
+    # that does not involve the ADC.
+    if ramp is not None:
+        wave, tone_hz = build_ramp(step=ramp)
+    elif dc is not None:
         wave, tone_hz = build_dc(dc)
     else:
         wave, tone_hz = build_waveform(tone, dac_sps)

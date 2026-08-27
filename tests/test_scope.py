@@ -85,7 +85,7 @@ def test_every_driver_implements_the_interface():
     person is not looking for a typo."""
     required = ["identify", "channel_scale", "channel_offset", "coupling",
                 "probe", "timebase", "trigger_edge", "averaging",
-                "measure", "waveform", "run", "close"]
+                "measure", "waveform", "run", "stop", "close"]
     for cls in scope.DRIVERS:
         assert issubclass(cls, scope.Oscilloscope)
         for name in required:
@@ -169,6 +169,22 @@ def test_a_measurement_that_could_not_be_made_is_none():
     to catch a wrong number passes it straight through."""
     assert scope.RigolDS1000E(FakeIo(["9.9e37"])).measure("FREQ") is None
     assert scope.RigolDS1000E(FakeIo(["76300.0"])).measure("FREQ") == 76300.0
+
+
+def test_measure_all_carries_the_gaps_through():
+    """It is measure() in a loop, so an unreadable one has to stay None
+    rather than become a number on the way out - a sweep prints these
+    straight into a table."""
+    io = FakeIo(["2.32", "2.82", "0.50", "9.9e37"])
+    got = scope.RigolDS1000E(io).measure_all()
+    assert got == {"VPP": 2.32, "VMAX": 2.82, "VMIN": 0.50, "FREQ": None}
+
+
+def test_measure_all_is_not_the_drivers_to_implement():
+    """Convenience on the interface, not dialect. A driver that
+    overrides it has almost certainly misread where the seam is."""
+    for cls in scope.DRIVERS:
+        assert cls.measure_all is scope.Oscilloscope.measure_all
 
 
 def test_rigol_no_reading_is_not_a_voltage():
