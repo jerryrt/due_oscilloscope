@@ -72,10 +72,25 @@ allows for. Not the first one.
 
 ## Running it
 
+Build the venv first - one pinned declaration, committed, and the venv
+itself never is:
+
+```sh
+python -m venv .venv-gui
+.venv-gui/bin/python -m pip install -r requirements-gui.txt
+```
+
 ```sh
 .venv-gui/bin/python -m gui --spawn-fake   # no hardware at all
 .venv-gui/bin/python -m gui                # a daemon already running
 ```
+
+On Windows the paths are `.venv-gui/Scripts/python.exe`, and the
+declaration carries `pyserial` for a reason that is not about the GUI:
+`tests/conftest.py` reaches `host/transport.py`, whose Windows backend
+imports `serial` where the POSIX one imports `termios`. Without it the
+whole GUI test file fails to *collect*, which reads as a broken test
+file rather than a missing wheel.
 
 The daemon is stdlib only, so `--spawn-fake` starts one on the same
 interpreter - there is no second environment to install for a demo. The
@@ -392,9 +407,10 @@ Phase 3 analog front end exists. A warning label is not sufficient.
 
 ## Phasing
 
-- **G0** - **done** apart from the Windows serial backend. The daemon,
-  the wire protocol and the client exist and are tested; see
-  `docs/daemon-api.md`.
+- **G0** - **done.** The daemon, the wire protocol and the client exist
+  and are tested; see `docs/daemon-api.md`. The Windows serial backend
+  this line used to except is landed - `host/transport.py` is the seam
+  and both backends are behind it.
 - **G1** - **done**: Qt shell, live trace with min/max decimation, roll
   mode, health panel. `gui/`, 14 headless tests. Logging mode is
   daemon-side and already available through the API; wiring a button to
