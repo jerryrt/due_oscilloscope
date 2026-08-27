@@ -69,6 +69,11 @@ import math
 #: over one LSB has variance 1/12.
 Q_RMS_LSB = 1.0 / math.sqrt(12.0)
 
+#: Smallest level ratio `scaling_fit` will fit a slope across. Below
+#: this an additive term and a multiplicative one are not separable and
+#: the fit reports whichever way the noise happened to fall.
+MIN_LEVER = 1.5
+
 #: Sigmas spanned by the "noise-free" convention: 6.6 sigma is 99.9% of
 #: a Gaussian, which is what a reading has to sit inside to be stable on
 #: a display rather than merely stable on average.
@@ -420,6 +425,76 @@ def split_by_averaging(points):
         out["note"] = ("intercept is not positive: the data does not "
                        "support a coherent term at this depth")
     return out
+
+
+def scaling_fit(points):
+    """Is the noise additive, or does it scale with the level?
+
+    The one question the ratiometric loop still answers about its own
+    reference. `points` is [(level, rms), ...].
+
+    ADVREF is the reference for the DAC *and* the ADC, so a DAC code
+    makes a fixed fraction of ADVREF and the ADC reads it as a fraction
+    of the same ADVREF: the level cancels, and the board cannot measure
+    its reference directly. What does not cancel is the *signature*.
+    Reference noise - and gain noise generally - is **multiplicative**,
+    so it grows in proportion to the output level. Noise from the ADC's
+    input, its comparator or thermal sources is **additive** and does
+    not.
+
+    Fits `rms = a + b * level` and reports what each term is worth at
+    the top of the range, so the answer is a proportion rather than a
+    slope nobody can size. A fit is not a mechanism: multiplicative here
+    means "the reference or the DAC's gain", and separating those two
+    needs an input that is not derived from ADVREF, which this board
+    does not have without firmware or hardware.
+    """
+    pts = [(x, y) for x, y in points if x is not None and y is not None]
+    if len(pts) < 3:
+        return {}
+    # A lever, or no answer. Fitting a slope through points that share an
+    # x is not a weak measurement, it is an arithmetic accident: the
+    # first run of this returned "51% of the noise scales with the
+    # level" and a -39-code additive term from six points whose levels
+    # were all 2050, because the command driving the DAC was setting an
+    # amplitude on a shape that has none. The tool printed `lever 1.0x`
+    # in the same breath and gave a verdict anyway.
+    xs = [x for x, _ in pts]
+    lo, hi = min(xs), max(xs)
+    if lo <= 0 or hi / lo < MIN_LEVER:
+        return {"n": len(pts), "level_lo": lo, "level_hi": hi,
+                "lever": (hi / lo) if lo else None,
+                "refused": f"levels span {hi/lo if lo else 0:.2f}x, under "
+                           f"the {MIN_LEVER:.1f}x needed to separate a "
+                           f"slope from an offset"}
+    n = len(pts)
+    sx = sum(x for x, _ in pts)
+    sy = sum(y for _, y in pts)
+    sxx = sum(x * x for x, _ in pts)
+    sxy = sum(x * y for x, y in pts)
+    den = n * sxx - sx * sx
+    if not den:
+        return {}
+    b = (n * sxy - sx * sy) / den
+    a = (sy - b * sx) / n
+    xs = [x for x, _ in pts]
+    lo, hi = min(xs), max(xs)
+    # Residual of the fit, so a bad fit cannot masquerade as a finding.
+    resid = math.sqrt(sum((y - (a + b * x)) ** 2 for x, y in pts) / n)
+    mult_at_top = b * hi
+    return {
+        "n": n,
+        "additive": a,
+        "slope": b,
+        "level_lo": lo,
+        "level_hi": hi,
+        "multiplicative_at_top": mult_at_top,
+        "fraction_multiplicative": (abs(mult_at_top) /
+                                    (abs(a) + abs(mult_at_top))
+                                    if (a or mult_at_top) else None),
+        "fit_residual": resid,
+        "lever": (hi / lo) if lo else None,
+    }
 
 
 def paired_delta(pairs):

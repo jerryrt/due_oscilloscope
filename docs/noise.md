@@ -164,6 +164,74 @@ So the honest state of the activity question is a **bound**: whatever
 the digital side costs this converter, it is under 0.07 bits, and the
 0.26 was a disturbance in the generator that has since been fixed.
 
+## ADVREF: the loop cannot see it, and that is arithmetic
+
+The obvious suspect for a noise floor is the reference, and it is the one
+node both converters share. It is also the one thing this loop can never
+measure, and it is worth being precise about why rather than repeating
+"ratiometric".
+
+The DAC's output is nominally 1/6 to 5/6 of ADVREF, so
+`V = ADVREF * (1/6 + code/4096 * 2/3)`, and the ADC returns
+`4096 * V / ADVREF`. The reference divides out:
+
+| code | nominal | ADC reads | with ADVREF 1% high | shift |
+|---|---|---|---|---|
+| 0 | 545.0 mV | 682.7 | 682.7 | **+0.000** |
+| 2048 | 1635.0 mV | 2048.0 | 2048.0 | **+0.000** |
+| 4095 | 2724.5 mV | 3412.7 | 3412.7 | **+0.000** |
+
+A 1% reference excursion moves the loop by zero codes **at every code**.
+Against a non-ratiometric input the same excursion is worth 10-20 codes.
+There is no measurement to be cleverer about: the term is divided away
+before anything here sees it.
+
+### What the loop can still say, and does
+
+Reference noise is *multiplicative* - it scales with the output level -
+while the ADC's input and comparator noise is *additive*. The DAC's span
+is a 5.1x lever on the level, and that lever needs no rewiring.
+
+Six interleaved rounds, paired within rounds, `records/noise-codes.jsonl`:
+
+| level (codes) | 676 | 1020 | 1363 | 2050 | 2736 | 3422 |
+|---|---|---|---|---|---|---|
+| noise (rms) | 2.154 | 1.709 | 1.707 | **1.680** | 1.894 | 2.289 |
+
+**Not monotonic.** It is a U with its minimum at mid-scale, and paired
+against mid-scale the two ends resolve at `+0.440 +- 0.094` (bottom) and
+`+0.370 +- 0.154` (top), with `+0.144 +- 0.062` at 3072 and nothing
+resolvable at 1024.
+
+Multiplicative noise rises with the level and does not come back down at
+the bottom of the range. So **ADVREF's noise is not what is left in this
+floor** - and the linear fit agrees from the other side: the
+multiplicative term is 0.316 codes at full scale against a fit residual
+of 0.220, which is not resolved.
+
+A four-round sweep of the same thing resolved nothing at all, and an
+earlier one reported "51% of the noise scales with the level" from six
+points whose levels were **all identical** - the command driving the DAC
+was setting an amplitude on a shape that has none. `scaling_fit()` now
+refuses a fit whose level lever is under 1.5x, and prints the lever
+either way.
+
+### Where the U points instead
+
+The noise is lowest at mid-scale and rises toward both ends of the DAC's
+span - and 1/6 and 5/6 of ADVREF are exactly where that converter's
+output stage is specified to stop. That makes the DAC's output stage near
+its limits the first place to look, not the reference. Not chased here.
+
+### What would actually see the reference
+
+An input not derived from ADVREF. The board has exactly one on chip - the
+ADC's internal temperature sensor, a bandgap-derived absolute whose
+reading is proportional to `1/ADVREF` - and it is not enabled in either
+firmware. Issue #11. That is the only route short of external hardware,
+and it would also settle whether the ~0.44-bit gap between the two
+benches lives in the reference.
+
 ## An unused ADC channel reads its neighbour
 
 Found while looking for a free control arm, and it matters well beyond

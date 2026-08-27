@@ -298,3 +298,64 @@ def test_an_unresolved_difference_is_reported_as_a_bound_not_a_zero():
 
 def test_one_round_is_not_a_paired_comparison():
     assert noise.paired_delta([(1.0, 2.0)]) == {}
+
+
+# ------------------------------------------------------------------
+# additive against multiplicative, which is what the loop can still say
+# ------------------------------------------------------------------
+
+def test_purely_additive_noise_shows_no_scaling():
+    """The ratiometric prediction. If the reference cancels, the residual
+    does not care how big the output is."""
+    pts = [(x, 1.65) for x in (700, 1400, 2100, 2800, 3400)]
+    f = noise.scaling_fit(pts)
+    assert abs(f["multiplicative_at_top"]) < 0.05
+    assert f["fraction_multiplicative"] < 0.05
+    assert f["additive"] == pytest.approx(1.65, rel=0.01)
+
+
+def test_purely_multiplicative_noise_is_recovered_as_such():
+    """What reference or gain noise would look like: 0.05% of the level."""
+    pts = [(x, 0.0005 * x) for x in (700, 1400, 2100, 2800, 3400)]
+    f = noise.scaling_fit(pts)
+    assert f["additive"] == pytest.approx(0.0, abs=1e-9)
+    assert f["multiplicative_at_top"] == pytest.approx(0.0005 * 3400, rel=0.01)
+    assert f["fraction_multiplicative"] > 0.99
+
+
+def test_a_mixture_splits_into_its_two_terms():
+    pts = [(x, 1.0 + 0.0003 * x) for x in (700, 1400, 2100, 2800, 3400)]
+    f = noise.scaling_fit(pts)
+    assert f["additive"] == pytest.approx(1.0, rel=0.02)
+    assert f["multiplicative_at_top"] == pytest.approx(1.02, rel=0.02)
+
+
+def test_the_fit_reports_its_own_residual():
+    """A bad fit must not read as a finding. Scattered points give a
+    residual comparable to the effect, and the caller can see it."""
+    pts = [(700, 1.0), (1400, 3.0), (2100, 0.5), (2800, 2.8), (3400, 1.1)]
+    f = noise.scaling_fit(pts)
+    assert f["fit_residual"] > 0.5
+
+
+def test_two_levels_are_not_a_scaling_measurement():
+    assert noise.scaling_fit([(700, 1.0), (3400, 2.0)]) == {}
+
+
+def test_a_degenerate_level_range_is_refused_not_fitted():
+    """Found on the bench. Six points whose levels were all 2050 - the
+    command was setting an amplitude on a shape that has none - produced
+    "51% of the noise scales with the level" and a -39-code additive
+    term. A slope through one x is an arithmetic accident."""
+    f = noise.scaling_fit([(2050.1, 1.686), (2050.2, 1.656),
+                           (2050.1, 1.657), (2050.0, 1.672)])
+    assert "refused" in f
+    assert "additive" not in f
+    assert f["lever"] == pytest.approx(1.0, abs=1e-3)
+
+
+def test_a_real_lever_is_fitted():
+    f = noise.scaling_fit([(700, 1.0), (1400, 1.0), (2800, 1.0),
+                           (3400, 1.0)])
+    assert "refused" not in f
+    assert f["lever"] == pytest.approx(3400 / 700, rel=0.01)

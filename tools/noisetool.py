@@ -336,6 +336,111 @@ def cmd_activity(board, args):
     return rounds
 
 
+def cmd_codes(board, args):
+    """Noise against output level: is what is left additive or scaled?
+
+    The only question about ADVREF this board can still put to itself.
+    The DAC->ADC loop is ratiometric - one reference feeding both
+    converters - so the reference's *level* cancels and cannot be
+    measured from inside. Its *signature* does not cancel: reference
+    noise, like any gain noise, is multiplicative and grows with the
+    output level, while the ADC's input and comparator noise is additive
+    and does not.
+
+    The DAC spans about 0.55 to 2.75 V, which is a 5x lever on the
+    level, and no rewiring or firmware is needed to pull it.
+
+    What this cannot do, said before the numbers arrive: it cannot tell
+    ADVREF's noise from the DAC's own gain noise. Both are
+    multiplicative. Separating them needs an input that is not derived
+    from ADVREF - the on-chip temperature sensor, or an external
+    reference - and this board has neither wired.
+
+    Interleaved, because the arms have to be compared within rounds on a
+    bench whose level wanders; blocked comparisons have already been
+    wrong here twice.
+    """
+    lsb_v, advref, source = adc_lsb_v()
+    print(f"ADC LSB {lsb_v*1e6:.1f} uV (ADVREF {advref} mV, {source})")
+    codes = args.codes or [0, 512, 1024, 2048, 3072, 4095]
+    print(f"{len(codes)} codes x {args.rounds} interleaved rounds\n")
+
+    rec = repeat.Recorder(os.path.join(RECORDS, "noise-codes.jsonl"))
+    p = prov.collect(board=board, extra={"metric": "noise-codes",
+                                         "seconds": args.seconds,
+                                         "window": args.window})
+    gaps = prov.missing(p)
+    if gaps:
+        raise SystemExit(f"refusing to record: provenance missing {gaps}")
+
+    rounds = []
+    for r in range(args.rounds):
+        row = {}
+        for c in codes:
+            # Host-fed, because the internal generator cannot hold an
+            # arbitrary level: `gen_set_amp` scales a waveform about mid
+            # scale and a DC shape has no amplitude to scale, so every
+            # code came out at 2050. The USB OUT path is therefore active
+            # for every arm here - constant across the sweep, so it does
+            # not bias a comparison between codes.
+            res = hold_host_dc(board, c, 200000, args.seconds)
+            fs = res.stream.declared_rate_hz or 200000
+            a = analyse(_series(res, measure.CH_A0), fs, lsb_v,
+                        window=args.window)
+            row[c] = a
+            rec.add({"metric": "noise-codes", "code": c, "round": r,
+                     "axis": "interleaved",
+                     "values": {k: v for k, v in a.items()
+                                if isinstance(v, (int, float))
+                                and not isinstance(v, bool)},
+                     "provenance": p})
+            print(f"  round {r+1}/{args.rounds} code {c:4d} -> level "
+                  f"{a.get('mean_code', 0):7.1f}, "
+                  f"{a.get('rms_lsb', 0):5.3f} codes rms")
+        rounds.append(row)
+
+    print(f"\n{'code':>6s} {'level':>9s} {'level mV':>9s} {'rms codes':>10s} "
+          f"{'spread':>8s}")
+    print("-" * 48)
+    pts = []
+    for c in codes:
+        vals = [r[c] for r in rounds if "error" not in r[c]]
+        if not vals:
+            continue
+        lv = sorted(v["mean_code"] for v in vals)
+        rm = sorted(v["rms_lsb"] for v in vals)
+        med_lv, med_rm = lv[len(lv) // 2], rm[len(rm) // 2]
+        pts.append((med_lv, med_rm))
+        print(f"{c:6d} {med_lv:9.1f} {med_lv*lsb_v*1000:9.1f} "
+              f"{med_rm:10.3f} {rm[-1]-rm[0]:8.3f}")
+
+    f = noise.scaling_fit(pts)
+    if not f:
+        return rounds
+    if f.get("refused"):
+        print(f"\n  no fit: {f['refused']}")
+        return rounds
+    print(f"\n  additive term        {f['additive']:.3f} codes rms")
+    print(f"  multiplicative term  {f['multiplicative_at_top']:+.3f} codes "
+          f"at the top of the range ({f['level_hi']:.0f} codes)")
+    print(f"  lever                {f['lever']:.1f}x in level")
+    print(f"  fit residual         {f['fit_residual']:.3f} codes")
+    frac = f["fraction_multiplicative"]
+    print(f"\n  {frac*100:.0f}% of the noise at full output scales with "
+          f"the level.")
+    if abs(f["multiplicative_at_top"]) < 2 * f["fit_residual"]:
+        print("  That is inside the fit's own residual, so it is NOT "
+              "resolved.\n  The residual is additive as far as this can "
+              "see, which is what a\n  ratiometric loop predicts - and it "
+              "means ADVREF's noise is not\n  what is left.")
+    else:
+        print("  That is outside the fit's residual: the noise scales "
+              "with the\n  output, which is the signature of the "
+              "reference or the DAC's gain.\n  This cannot tell those "
+              "two apart.")
+    return rounds
+
+
 def cmd_alias(board, args):
     """No line is named until it has been seen at two sample rates."""
     lsb_v, _, _ = adc_lsb_v()
@@ -365,7 +470,9 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("what", choices=("dc", "activity", "alias"))
+    ap.add_argument("what", choices=("dc", "activity", "alias", "codes"))
+    ap.add_argument("--codes", type=int, action="append", default=[],
+                    help="codes: DAC codes to sweep, repeatable")
     ap.add_argument("--code", type=int, default=2048,
                     help="DAC code to hold (default mid scale)")
     ap.add_argument("--preset", default="5", choices=sorted(PRESETS))
@@ -380,7 +487,7 @@ def main():
     try:
         board.stop()
         board.drain_console(0.5)
-        {"dc": cmd_dc, "activity": cmd_activity,
+        {"dc": cmd_dc, "activity": cmd_activity, "codes": cmd_codes,
          "alias": cmd_alias}[args.what](board, args)
     finally:
         try:
