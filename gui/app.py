@@ -18,9 +18,8 @@ from PySide6 import QtCore, QtWidgets
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "host"))
 
-from daemon import client as clientmod      # noqa: E402
-
 from . import stream                        # noqa: E402
+from .session import DaemonSession          # noqa: E402
 from .health import HealthPanel             # noqa: E402
 from .measure_panel import MeasurePanel     # noqa: E402
 from .awg import AwgPanel                   # noqa: E402
@@ -69,25 +68,43 @@ class MainWindow(QtWidgets.QMainWindow):
     # produces, while bounding the work one tick can do.
     MAX_DRAIN = 120
 
+    #: Refusals worth interrupting for, rather than a line in the status
+    #: bar that the next message overwrites. A rate the hardware will
+    #: not make is a decision the user has to change before anything
+    #: else can happen; a refused `stop` is information. One set rather
+    #: than a choice made separately at each call site, because those
+    #: five sites used to disagree.
+    LOUD_REFUSALS = {"start"}
+
     def __init__(self, host="127.0.0.1", port=45454, parent=None):
         super().__init__(parent)
         self.setWindowTitle("due_oscilloscope")
         self.resize(1100, 620)
 
-        self.client = None
         self.host = host
         self.port = port
 
-        self.rings = {}                 # tag -> ChannelRing
+        # The daemon connection, and every way it can go wrong. The
+        # window asks it for things and renders what comes back on the
+        # signals; it never touches `daemon.client` itself.
+        self.session = DaemonSession(host, port, parent=self)
+        self.session.connected.connect(self._on_connected)
+        self.session.connect_failed.connect(self._on_connect_failed)
+        self.session.disconnected.connect(self._on_disconnected)
+        self.session.refused.connect(self._on_refused)
+        self.session.status.connect(self._on_status)
+        self.session.counters.connect(self._on_counters)
+
+        # Everything one run accumulates, in one object with one
+        # `reset()`. See `stream.AcquisitionState` for what having it in
+        # two places cost.
+        self.acq = stream.AcquisitionState()
+
         # Whether the daemon is serving a recording rather than a
-        # board. It changes what may be asked of it, not how anything
-        # here draws: the frames are the same frames.
+        # board. Not part of the run state: it changes what may be asked
+        # of the source, not what a run accumulates, and it is settled
+        # at connect time.
         self.replaying = False
-        self.rate_hz = 200000
-        self.frames_shown = 0
-        self.seq_gaps = 0
-        self.last_seq = None
-        self.overruns = 0
 
         self.scope = ScopeView()
         self.health = HealthPanel()
@@ -225,40 +242,77 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_timer.timeout.connect(self.poll_status)
         self.status_timer.start(250)
 
+    # -- what this run has accumulated ---------------------------------
+    #
+    # Read-only forwards onto `self.acq`. This is the window's read
+    # surface - what the health panel, the export header and the
+    # headless tests ask it - and read-only is the point: there is one
+    # writer, and `AcquisitionState.reset()` is the whole answer to what
+    # a new run clears.
+    rings = property(lambda self: self.acq.rings)
+    rate_hz = property(lambda self: self.acq.rate_hz)
+    frames_shown = property(lambda self: self.acq.frames_shown)
+    seq_gaps = property(lambda self: self.acq.seq_gaps)
+    last_seq = property(lambda self: self.acq.last_seq)
+    overruns = property(lambda self: self.acq.overruns)
+
     # -- connection ---------------------------------------------------
+    #
+    # The window's half of this is presentation only. `DaemonSession`
+    # owns the socket and decides what is a refusal and what is a lost
+    # link; every method below either asks it for something or renders
+    # one of its signals.
     def toggle_connect(self):
-        if self.client is None:
-            self.connect_to_daemon()
-        else:
+        if self.session.is_open:
             self.disconnect_from_daemon()
+        else:
+            self.connect_to_daemon()
 
     def connect_to_daemon(self):
-        try:
-            c = clientmod.Client(self.host, self.port, timeout=5.0,
-                                 frame_capacity=512)
-            c.connect()
-            hello = c.hello("control")
-        except (OSError, clientmod.ClientError) as e:
-            QtWidgets.QMessageBox.warning(
-                self, "No daemon",
-                f"Could not reach a daemon at {self.host}:{self.port}\n\n"
-                f"{e}\n\nStart one with:  python3 -m daemon --fake")
-            return
-        self.client = c
-        dev = hello.get("device", {})
+        self.session.open("control")
+
+    @property
+    def client(self):
+        """The session's client, or None.
+
+        Read-only, and the window's own code does not use it: it is here
+        because "is there a link" and "how many frames has it seen" are
+        questions the headless tests ask of the window, and routing them
+        through one property is what keeps the session the only writer.
+        """
+        return self.session.client
+
+    def _on_connected(self, dev, role):
         self.health.set("link", f"{self.host}:{self.port}")
         self.health.set("source", describe_source(dev))
-        self.health.set("role", hello.get("role", "?"))
+        self.health.set("role", role)
         self.connect_btn.setText("Disconnect")
-        self.start_btn.setEnabled(hello.get("role") == "control")
+        self.start_btn.setEnabled(role == "control")
         # Recording is the daemon's and needs no control role - an
         # observer may record what it is watching.
         self.record_btn.setEnabled(True)
-        self.stop_btn.setEnabled(hello.get("role") == "control")
+        self.stop_btn.setEnabled(role == "control")
         self.set_replay(dev)
-        c.subscribe()
+        self.session.call("subscribe", frames=True)
         self.statusBar().showMessage(
             f"connected to {dev.get('kind', '?')} device")
+
+    def _on_connect_failed(self, message):
+        QtWidgets.QMessageBox.warning(self, "No daemon", message)
+
+    def _on_refused(self, op, message):
+        """Rule 4 in one place: the device's own message, naming the limit.
+
+        The message is rendered here and nowhere else. What a caller
+        still owns is repairing its own widget - a checkable button that
+        asked for something and did not get it has to come back up - and
+        it learns that from `call()` returning None rather than by
+        catching an exception and inventing its own wording, which is
+        what the five call sites here used to do five different ways.
+        """
+        if op in self.LOUD_REFUSALS:
+            QtWidgets.QMessageBox.warning(self, "Refused", message)
+        self.statusBar().showMessage(f"{op} refused: {message}")
 
     def set_replay(self, dev):
         """Shut off the controls a recording has nothing to answer with.
@@ -295,60 +349,47 @@ class MainWindow(QtWidgets.QMainWindow):
                 self, "About this recording", "; ".join(notes) + ".")
 
     def disconnect_from_daemon(self):
-        if self.client is not None:
-            try:
-                self.client.close()
-            finally:
-                self.client = None
+        self.session.close()
+
+    def _on_disconnected(self, reason):
         self.connect_btn.setText("Connect")
         self.start_btn.setEnabled(False)
         self.record_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
+        self.record_btn.setChecked(False)
         self.health.set("link", "-")
         self.health.set("source", "-")
         self.replaying = False
         self.awg.setEnabled(True)
         self.preset.setEnabled(True)
         self.setWindowTitle("due_oscilloscope")
-        self.statusBar().showMessage("disconnected")
+        # The reason when the link went away underneath us, the bare
+        # word when we closed it. Which of the two happened is the
+        # session's to know; the window used to infer it from which of
+        # its own methods it happened to be standing in.
+        self.statusBar().showMessage(reason or "disconnected")
 
     # -- device -------------------------------------------------------
     def start_capture(self):
-        if self.client is None:
+        if not self.session.is_open:
             return
-        self.reset_counters()
-        try:
-            # No preset and no rate when the source is a recording: it
-            # has one rate, it is in the frames, and asking for another
-            # would be asking the file to convert.
-            extra = ({} if self.replaying else
-                     {"preset": self.preset.currentData(),
-                      "adc_hz": 200000, "channels": 2})
-            self.client.call("start", mode="capture", **extra)
-        except clientmod.Refused as e:
-            # The device's own refusal, with the limit it names.
-            QtWidgets.QMessageBox.warning(self, "Refused", e.message)
+        self.acq.reset()
+        # No preset and no rate when the source is a recording: it has
+        # one rate, it is in the frames, and asking for another would be
+        # asking the file to convert.
+        extra = ({} if self.replaying else
+                 {"preset": self.preset.currentData(),
+                  "adc_hz": 200000, "channels": 2})
+        self.session.call("start", mode="capture", **extra)
 
     def stop_capture(self):
-        if self.client is None:
-            return
-        try:
-            self.client.call("stop")
-        except clientmod.Refused as e:
-            self.statusBar().showMessage(f"stop refused: {e.message}")
-
-    def reset_counters(self):
-        self.rings.clear()
-        self.frames_shown = 0
-        self.seq_gaps = 0
-        self.last_seq = None
-        self.overruns = 0
+        self.session.call("stop")
 
     # -- the loop -----------------------------------------------------
     def tick(self):
-        if self.client is None:
+        if not self.session.is_open:
             return
-        frames = self.client.frames
+        frames = self.session.frames
         got = 0
         # Bounded, and not as a nicety: an unbounded drain loop against
         # a producer faster than the display never returns, and the
@@ -365,22 +406,21 @@ class MainWindow(QtWidgets.QMainWindow):
             if f is None:
                 continue
             got += 1
-            self.ingest(f)
-        if got:
-            self.frames_shown += got
+            self.acq.ingest(f)
         tag = self.channel.currentData()
-        if self.rings.get(tag) is not None:
+        if self.acq.ring(tag) is not None:
             trig = self.trigger()
             view = self.view_box.currentData()
             self.fft_window.setEnabled(view == "spectrum")
-            self.scope.draw(self.rings, tag, self.window_box.currentData(),
-                            self.rate_hz, trig, view,
+            self.scope.draw(self.acq.rings, tag,
+                            self.window_box.currentData(),
+                            self.acq.rate_hz, trig, view,
                             self.fft_window.currentData())
             self.trig_state.setText(self.trigger_state_text())
             # Measured over the sweep that was drawn, not over a fresh
             # one: a number beside a trace has to describe that trace.
             self.measure.update_from(
-                stream.measure(self.scope.last_sweep, self.rate_hz))
+                stream.measure(self.scope.last_sweep, self.acq.rate_hz))
             self.measure.set_cursor(self.cursor_text())
 
     def toggle_record(self, on):
@@ -391,19 +431,19 @@ class MainWindow(QtWidgets.QMainWindow):
         parser that read it live. A CSV of what the screen happened to
         show would not be that.
         """
-        if self.client is None:
+        if not self.session.is_open:
             self.record_btn.setChecked(False)
             return
         if not on:
-            try:
-                side = self.client.call("record.stop")["sidecar"]
-                self.record_btn.setText("Record...")
-                self.statusBar().showMessage(
-                    f"recorded {side.get('frames', 0):,} frames, "
-                    f"{side.get('bytes', 0):,} bytes, "
-                    f"{side.get('dropped', 0):,} dropped")
-            except Exception as e:                       # noqa: BLE001
-                self.statusBar().showMessage(f"stop recording failed: {e}")
+            reply = self.session.call("record.stop")
+            if reply is None:                    # already reported
+                return
+            side = reply.get("sidecar", {})
+            self.record_btn.setText("Record...")
+            self.statusBar().showMessage(
+                f"recorded {side.get('frames', 0):,} frames, "
+                f"{side.get('bytes', 0):,} bytes, "
+                f"{side.get('dropped', 0):,} dropped")
             return
 
         path, _filter = QtWidgets.QFileDialog.getSaveFileName(
@@ -412,11 +452,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if not path:
             self.record_btn.setChecked(False)
             return
-        try:
-            self.client.call("record.start", path=path)
-        except Exception as e:                           # noqa: BLE001
+        if self.session.call("record.start", path=path) is None:
             self.record_btn.setChecked(False)
-            self.statusBar().showMessage(f"record refused: {e}")
             return
         self.record_btn.setText("Stop recording")
         self.statusBar().showMessage(f"recording to {path}")
@@ -527,14 +564,11 @@ class MainWindow(QtWidgets.QMainWindow):
         section is why there is no other mode here - DAC0 to A0 over a
         jumper is the whole of it.
         """
-        if self.client is None:
+        if not self.session.is_open:
             return
         if not running:
-            try:
-                self.client.call("stop")
+            if self.session.call("stop") is not None:
                 self.statusBar().showMessage("generator stopped")
-            except Exception as e:                       # noqa: BLE001
-                self.statusBar().showMessage(f"stop refused: {e}")
             return
 
         lo, hi, why = self.awg.code_range()
@@ -564,14 +598,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # After the local checks and not before them: a request the
         # panel itself refuses never reaches the device, so there is no
         # new run to make room for.
-        self.reset_counters()
-        try:
-            self.client.send_awg(blob)
-            self.client.call("start", mode="loop", dac_sps=dac_sps,
-                             adc_hz=dac_sps, channels=2)
-        except Exception as e:                           # noqa: BLE001
+        self.acq.reset()
+        if not self.session.send_awg(blob):
             self.awg.run_btn.setChecked(False)
-            self.statusBar().showMessage(f"generator refused: {e}")
+            return
+        if self.session.call("start", mode="loop", dac_sps=dac_sps,
+                             adc_hz=dac_sps, channels=2) is None:
+            self.awg.run_btn.setChecked(False)
             return
         self.statusBar().showMessage(
             f"{shape} {actual_hz:,.1f} Hz, {vpp:.3f} Vpp at {offset:.3f} V "
@@ -601,81 +634,59 @@ class MainWindow(QtWidgets.QMainWindow):
         return "TRIG" if self.scope.last_triggered else "searching"
 
     def ingest(self, f):
-        if f.rate_hz and f.rate_hz != self.rate_hz:
-            self.rate_hz = f.rate_hz
-            for r in self.rings.values():
-                r.set_rate(f.rate_hz)
-        gap = self.last_seq is not None and f.seq != self.last_seq + 1
-        if gap:
-            # A gap here is the daemon dropping toward us, which it
-            # counts too - both numbers are on the panel so they can be
-            # compared rather than confused.
-            self.seq_gaps += 1
-        self.last_seq = f.seq
-        self.overruns = max(self.overruns, f.overrun_count)
+        """One decoded frame into the run state.
 
-        # **A missed frame is a discontinuity, exactly like an overrun.**
-        #
-        # Only f.discontinuous - the device's own overrun flag - used to
-        # reach the ring, so frames dropped *between the daemon and this
-        # window* were counted on the health panel and then drawn across
-        # as though the samples either side were adjacent. Rule 3 says
-        # never join across a discontinuity and invariant 5 says never
-        # present discontinuous data as continuous; a sequence gap is
-        # one, and it is the *expected* one rather than a rare fault:
-        # rule 5 has the daemon drop toward a slow client by design.
-        #
-        # Found by validating against the board rather than the
-        # synthetic device, which never drops anything. Seven gaps in a
-        # six-second run, with the trace joined across every one and the
-        # measurements computed over the join.
-        for tag, codes in f.channels.items():
-            ring = self.rings.get(tag)
-            if ring is None:
-                ring = stream.ChannelRing(seconds=2.0, rate_hz=self.rate_hz)
-                self.rings[tag] = ring
-            ring.append(codes, discontinuous=(f.discontinuous or gap))
+        Kept as a method because the headless tests drive the window
+        this way, and because "what this window does with a frame" is a
+        reasonable thing to be able to call. The logic itself lives in
+        `stream.AcquisitionState.ingest`, where the gap and
+        discontinuity rules can be exercised without a widget.
+        """
+        return self.acq.ingest(f)
 
     def poll_status(self):
-        if self.client is None:
-            return
-        try:
-            st = self.client.call("status")["status"]
-        except (clientmod.ClientError, OSError):
-            # Disconnect first: it sets its own message, and the useful
-            # one is the reason rather than the consequence.
-            self.disconnect_from_daemon()
-            self.statusBar().showMessage("daemon stopped answering")
-            return
+        """Ask; the answers arrive on `_on_status` and `_on_counters`.
+
+        Two questions rather than one because the daemon keeps them
+        apart on purpose: `status` is answerable from the host alone and
+        costs the device nothing, which is what makes polling it at 4 Hz
+        safe, while `counters` can cost a console round trip.
+        """
+        self.session.poll()
+
+    def _on_status(self, st):
         self.health.set("mode", st.get("mode") or "idle")
-        self.health.set("rate", f"{self.rate_hz:,} Hz")
+        self.health.set("rate", f"{self.acq.rate_hz:,} Hz")
         self.health.set("frames",
-                        f"{self.frames_shown:,} / {st.get('frames_read', 0):,}")
+                        f"{self.acq.frames_shown:,} / "
+                        f"{st.get('frames_read', 0):,}")
         mine = [c for c in st.get("clients", []) if c.get("role") == "control"]
         self.health.set("dropped", mine[0]["dropped"] if mine else 0)
-        self.health.set("gaps", self.seq_gaps)
-        tag = self.channel.currentData()
-        ring = self.rings.get(tag)
-        self.health.set("breaks", ring.discontinuities if ring else 0)
-        self.health.set("overruns", self.overruns)
+        self.health.set("gaps", self.acq.seq_gaps)
+        self.health.set("breaks",
+                        self.acq.discontinuities(self.channel.currentData()))
+        self.health.set("overruns", self.acq.overruns)
         j = st.get("jitter", {})
-        for key, name in (("read_gap", "read_gap"), ("feed", "feed"),
-                          ("fanout", "fanout")):
-            s = j.get(name)
-            self.health.set(key, f"{s['max_us']:,} us" if s else "-")
+        for key in ("read_gap", "feed", "fanout"):
+            summary = j.get(key)
+            self.health.set(key,
+                            f"{summary['max_us']:,} us" if summary else "-")
+        rec = st.get("recording")
+        self.health.set("recording",
+                        f"{rec['frames']:,} frames" if rec else "no")
+        # Cleared here and filled by `_on_counters` a moment later, in
+        # the same tick. `counters` is the call that can refuse while
+        # playback runs, and a stale underrun count left on screen from
+        # the last successful poll is exactly the kind of number this
+        # panel exists to stop showing.
+        self.awg.underruns.setText("-")
+
+    def _on_counters(self, ct):
         # The generator's own number, and the only one that says the
         # host kept up. under=0 has coexisted with a badly wrong signal
         # in this project before, which is why it sits next to the
         # controls that cause it rather than in a log.
-        try:
-            ct = self.client.call("counters")["counters"]
-            self.awg.underruns.setText(f"{ct.get('underruns', 0):,}")
-        except Exception:                                # noqa: BLE001
-            self.awg.underruns.setText("-")
-
-        rec = st.get("recording")
-        self.health.set("recording",
-                        f"{rec['frames']:,} frames" if rec else "no")
+        self.awg.underruns.setText(f"{ct.get('underruns', 0):,}")
 
     def closeEvent(self, event):
         self.disconnect_from_daemon()

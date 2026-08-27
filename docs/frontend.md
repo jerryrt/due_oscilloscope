@@ -421,6 +421,55 @@ What a replay will not do is pass for a board:
 Still not built: scrubbing. A replay runs forwards from the start, and
 `--replay-speed` is the only handle on it.
 
+## Where a change goes
+
+`gui/` is worked by more than one person now, which is why this section
+exists at all. Issue #8 has the full survey; this is the part a
+contributor needs before touching anything.
+
+| Module | What belongs in it | What must never be in it |
+|---|---|---|
+| `gui/stream.py` | Frames to something drawable: decoding, the rings, the trigger, measurements, the FFT, the min/max reduction, `AcquisitionState` | **Any Qt import.** A test asserts it |
+| `gui/session.py` | The daemon connection and every way it can fail. Signals out, plain calls in | A widget, a layout, a message string aimed at a user |
+| `gui/scope.py` | Drawing the reduced data pyqtgraph is handed | Deciding *what* to draw - that is `stream.select` |
+| `gui/awg.py`, `gui/health.py`, `gui/measure_panel.py` | One panel each, with its own local validation | Talking to the daemon |
+| `gui/app.py` | Wiring. Which widget is connected to which slot, and what a signal renders as | Arithmetic, unit conversion, and `daemon.client` |
+
+Two objects carry most of the weight, and both were pulled out of the
+window in 2026-08-27 rather than designed in:
+
+**`DaemonSession` owns the socket.** The window had thirteen `try:`
+blocks, five of them catching bare `Exception`, and each ended in its
+own hand-written status message - so rule 4 below, "refusals come from
+the device", was implemented five times and the five did not agree. The
+distinction the session exists to keep is between three outcomes rather
+than one: a **reply**, a **refusal** (the device said no and its own
+message names the limit; the link is fine), and a **loss** (the daemon
+is gone, which is not a refusal and must not read as one). Calls return
+the reply or `None`; what went wrong arrives as a signal that exactly
+one method renders. A caller still repairs its own widget - a checkable
+button that asked for something and did not get it has to come back up -
+and it learns that from the `None`, not by catching.
+
+**`AcquisitionState` owns what a run accumulates.** Seven numbers that
+used to be flat attributes on the window, reset from two places that
+were not the same two: `reset_counters()` had exactly one caller, Start,
+while Play starts the device too. So Play carried the previous run's
+rings, sequence-gap count and discontinuity count into the next run and
+drew the old samples as the new one's - rule 2's own failure mode,
+reached from a button. Nothing was wrong with any line of it; the defect
+was that there were two places to remember and no way to see they had
+diverged. `reset()` is now the whole answer to "what does a new run
+clear?", and a test compares the state field by field against one that
+has never seen a frame, so an eighth number added and forgotten fails
+there rather than on screen.
+
+The window keeps read-only properties (`rings`, `rate_hz`,
+`frames_shown`, `seq_gaps`, `last_seq`, `overruns`) forwarding onto it.
+That is deliberately its read surface - what the health panel, the
+export header and the headless tests ask it - and read-only is the
+point: there is one writer.
+
 ## Rules the UI must obey
 
 Each of these is a defect this project has already paid for once.

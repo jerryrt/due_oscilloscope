@@ -233,11 +233,113 @@ SEARCH_SPAN = 4
 #: and far below any signal worth timing.
 MEASURE_MIN_SWING_CODES = 10
 
-#: Hysteresis for the period measurement, as a fraction of the
-#: signal's own peak-to-peak. A tenth is far above the ADC's noise
-#: and far below any real waveform's slope through its midpoint.
+#: Hysteresis for the period measurement, as a fraction of the
+
+#: signal's own peak-to-peak. A tenth is far above the ADC's noise
+
+#: and far below any real waveform's slope through its midpoint.
+
 MEASURE_HYSTERESIS = 0.1
 
+#: Seconds of history the display keeps per channel. Two seconds is
+#: 1.8 M samples at the full rate; `ChannelRing` says why it is sized in
+#: seconds rather than samples.
+RING_SECONDS = 2.0
+
+#: The rate assumed before any frame has said otherwise. Every frame
+#: carries the real one and the first one corrects this.
+DEFAULT_RATE_HZ = 200000
+
+
+class AcquisitionState:
+    """What one run accumulates, and the single place a new run clears it.
+
+    These seven numbers used to be flat attributes on the window, reset
+    from two places that were not the same two. `reset_counters()` had
+    exactly one caller - Start - while Play also starts the device, so
+    pressing Play carried the previous run's rings, sequence-gap count
+    and discontinuity count into the next one and drew the old samples
+    as the new run's. That is `docs/frontend.md` rule 2's own failure
+    mode reached from a button, and it was a defect of *shape*: nothing
+    was wrong with any line of it, only with there being two places to
+    remember and no way to tell they had diverged.
+
+    So the state lives together and `reset()` is the whole answer to
+    "what does a new run clear?". Adding an eighth number is one line
+    here instead of an audit of the window.
+
+    Qt-free on purpose, like everything else in this module: the gap and
+    discontinuity logic below is the part most worth testing and the
+    part least in need of a widget to test it.
+    """
+
+    def __init__(self, seconds=RING_SECONDS, rate_hz=DEFAULT_RATE_HZ):
+        self.seconds = seconds
+        self.rings = {}
+        # The rate deliberately survives `reset()`: it is a property of
+        # how the device is configured rather than of the run, the first
+        # frame of the new run corrects it either way, and re-defaulting
+        # it would put 200 kHz on the panel for a bench that is not
+        # running at 200 kHz.
+        self.rate_hz = rate_hz
+        self.reset()
+
+    def reset(self):
+        """Everything a new run must not inherit."""
+        self.rings.clear()
+        self.frames_shown = 0
+        self.seq_gaps = 0
+        self.last_seq = None
+        self.overruns = 0
+
+    def ingest(self, frame):
+        """One decoded frame into the rings. Returns True on a break.
+
+        **A missed frame is a discontinuity, exactly like an overrun.**
+        Only the device's own overrun flag used to reach the ring, so
+        frames dropped *between the daemon and the window* were counted
+        on the health panel and then drawn straight across as though the
+        samples either side were adjacent. Rule 3 says never join across
+        a discontinuity and invariant 5 says never present discontinuous
+        data as continuous; a sequence gap is one, and it is the
+        *expected* one rather than a rare fault, because rule 5 has the
+        daemon drop toward a slow client by design.
+
+        Found by validating against the board rather than the synthetic
+        device, which never drops anything: seven gaps in a six-second
+        run, the trace joined across every one and the measurements
+        computed over the join.
+        """
+        if frame.rate_hz and frame.rate_hz != self.rate_hz:
+            self.rate_hz = frame.rate_hz
+            for ring in self.rings.values():
+                ring.set_rate(frame.rate_hz)
+
+        gap = self.last_seq is not None and frame.seq != self.last_seq + 1
+        if gap:
+            # The daemon counts its own drops too, and both numbers are
+            # on the panel so they can be compared rather than confused.
+            self.seq_gaps += 1
+        self.last_seq = frame.seq
+        self.overruns = max(self.overruns, frame.overrun_count)
+
+        broken = bool(frame.discontinuous or gap)
+        for tag, codes in frame.channels.items():
+            ring = self.rings.get(tag)
+            if ring is None:
+                ring = ChannelRing(seconds=self.seconds, rate_hz=self.rate_hz)
+                self.rings[tag] = ring
+            ring.append(codes, discontinuous=broken)
+        self.frames_shown += 1
+        return broken
+
+    def ring(self, tag):
+        return self.rings.get(tag)
+
+    def discontinuities(self, tag):
+        """Breaks in one channel's ring, or 0 if it has no samples yet."""
+        ring = self.rings.get(tag)
+        return ring.discontinuities if ring is not None else 0
 
 class Sweep:
     """One screenful, and where it came from.
