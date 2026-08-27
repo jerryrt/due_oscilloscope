@@ -25,6 +25,8 @@ from . import stream                        # noqa: E402
 from .session import DaemonSession          # noqa: E402
 from .health import HealthPanel             # noqa: E402
 from .measure_panel import MeasurePanel     # noqa: E402
+from .notice import NoticeBar               # noqa: E402
+from .replay_bar import ReplayBar           # noqa: E402
 from .awg import AwgPanel                   # noqa: E402
 from .scope import ScopeView                # noqa: E402
 
@@ -89,14 +91,6 @@ class MainWindow(QtWidgets.QMainWindow):
     # produces, while bounding the work one tick can do.
     MAX_DRAIN = 120
 
-    #: Refusals worth interrupting for, rather than a line in the status
-    #: bar that the next message overwrites. A rate the hardware will
-    #: not make is a decision the user has to change before anything
-    #: else can happen; a refused `stop` is information. One set rather
-    #: than a choice made separately at each call site, because those
-    #: five sites used to disagree.
-    LOUD_REFUSALS = {"start"}
-
     def __init__(self, host="127.0.0.1", port=45454, parent=None):
         super().__init__(parent)
         self.setWindowTitle("due_oscilloscope")
@@ -137,6 +131,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # other thing to whatever is actually happening.
         self.device_running = False
 
+        # Whether the end of the current recording has been announced.
+        # Once per run: `at_end` stays true until something starts it
+        # again, and repeating the notice every poll would be noise.
+        self._said_end = False
+
         self._build_panels()
         self._build_actions()
         self._build_menus()
@@ -158,6 +157,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.measure = MeasurePanel()
         self.awg = AwgPanel()
         self.awg.requested.connect(self.awg_requested)
+
+        # Where a refusal goes, now that there is somewhere for it to
+        # stay. See `gui/notice.py`.
+        self.notice = NoticeBar()
+
+        # Only ever shown while the source is a recording: a board has
+        # no position, and a progress bar against one would be inventing
+        # a number.
+        self.replay_bar = ReplayBar()
+        self.replay_bar.restart.connect(self.restart_replay)
+        self.replay_bar.hide()
 
     def _build_actions(self):
         """The verbs, once each.
@@ -381,6 +391,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         left = QtWidgets.QVBoxLayout()
         left.addWidget(self.scope, 1)
+        left.addWidget(self.notice)
+        left.addWidget(self.replay_bar)
         left.addLayout(controls)
 
         side = QtWidgets.QVBoxLayout()
@@ -460,6 +472,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.connect_to_daemon()
 
     def connect_to_daemon(self):
+        self.notice.clear()
         self.session.open("control")
 
     @property
@@ -489,7 +502,7 @@ class MainWindow(QtWidgets.QMainWindow):
             f"connected to {dev.get('kind', '?')} device")
 
     def _on_connect_failed(self, message):
-        QtWidgets.QMessageBox.warning(self, "No daemon", message)
+        self.notice.error(message)
 
     def _on_refused(self, op, message):
         """Rule 4 in one place: the device's own message, naming the limit.
@@ -500,9 +513,15 @@ class MainWindow(QtWidgets.QMainWindow):
         it learns that from `call()` returning None rather than by
         catching an exception and inventing its own wording, which is
         what the five call sites here used to do five different ways.
+
+        It goes to the notice bar and not to a dialog. A refusal here
+        names a limit worth reading twice - the rate the hardware will
+        actually make, the offset that would fit - and a modal is the
+        one presentation that cannot be read twice. The status bar gets
+        it too, and loses it to the next poll, which is what the status
+        bar is for.
         """
-        if op in self.LOUD_REFUSALS:
-            QtWidgets.QMessageBox.warning(self, "Refused", message)
+        self.notice.error(f"{op} refused: {message}")
         self.statusBar().showMessage(f"{op} refused: {message}")
 
     def set_replay(self, dev):
@@ -519,6 +538,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.replaying = replay
         self.awg.setEnabled(not replay)
         self.preset.setEnabled(not replay)
+        self.replay_bar.setVisible(replay)
+        self.replay_bar.reset()
         if not replay:
             self.setWindowTitle("due_oscilloscope")
             return
@@ -535,12 +556,24 @@ class MainWindow(QtWidgets.QMainWindow):
         if notes:
             # Said once, on connect, rather than left to be noticed in a
             # counter. A hole in the source is not a fault of the trace
-            # on screen, and the two are easy to confuse.
-            QtWidgets.QMessageBox.information(
-                self, "About this recording", "; ".join(notes) + ".")
+            # on screen, and the two are easy to confuse - and it stays
+            # on screen, because it is true for as long as this
+            # recording is the source.
+            self.notice.info("About this recording: " + "; ".join(notes) + ".")
 
     def disconnect_from_daemon(self):
         self.session.close()
+
+    def restart_replay(self):
+        """Play the recording again from the beginning.
+
+        Stop first: `start` on a device that is already running is
+        refused, by the fake and by the board alike, and a replay that
+        has not reached its end is still running.
+        """
+        self.session.call("stop")
+        self.replay_bar.reset()
+        self.start_capture()
 
     def _on_disconnected(self, reason):
         self.act_connect.setText("&Connect")
@@ -554,6 +587,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.replaying = False
         self.awg.setEnabled(True)
         self.preset.setEnabled(True)
+        self.replay_bar.hide()
+        self.replay_bar.reset()
         self.setWindowTitle("due_oscilloscope")
         # The reason when the link went away underneath us, the bare
         # word when we closed it. Which of the two happened is the
@@ -565,6 +600,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def start_capture(self):
         if not self.session.is_open:
             return
+        # A new run answers whatever the last one was refused for. A
+        # notice that outlived the thing it was about would be the same
+        # defect as a counter that did.
+        self.notice.clear()
+        self._said_end = False
         self.acq.reset()
         # No preset and no rate when the source is a recording: it has
         # one rate, it is in the frames, and asking for another would be
@@ -893,6 +933,21 @@ class MainWindow(QtWidgets.QMainWindow):
         # in this project before, which is why it sits next to the
         # controls that cause it rather than in a log.
         self.awg.underruns.setText(f"{ct.get('underruns', 0):,}")
+        if not self.replaying:
+            return
+        self.replay_bar.set_position(ct)
+        # A recording ends on its own, which on a board only ever
+        # happens because something went wrong. Said out loud so a
+        # stopped trace is not read as a fault.
+        #
+        # Off the daemon's own `at_end` rather than off watching
+        # `running` go false: a short recording can be over before the
+        # first status poll, and an edge nobody was there to see is an
+        # end that never gets announced.
+        if ct.get("at_end") and not self._said_end:
+            self._said_end = True
+            self.notice.info("End of the recording. Restart to play it "
+                             "again, or open another.")
 
     # -- opening a recording -------------------------------------------
     #
@@ -907,6 +962,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self, "Open a recording", "",
             "Frame recordings (*.due *.frames);;All files (*)")
         if path:
+            self.notice.clear()
             self.replay(path)
 
     def replay(self, path):
@@ -922,7 +978,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 cwd=os.path.join(root, "host"),
                 stderr=subprocess.PIPE, text=True)
         except OSError as e:                             # no interpreter
-            QtWidgets.QMessageBox.warning(self, "Cannot replay", str(e))
+            self.notice.error(f"Cannot replay: {e}")
             return
         self.replay_child = child
 
@@ -940,9 +996,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 if child.poll() is not None:
                     err = (child.stderr.read() or "").strip()
                     self.replay_child = None
-                    QtWidgets.QMessageBox.warning(
-                        self, "Cannot replay",
-                        err or f"the daemon exited with {child.returncode}")
+                    self.notice.error(
+                        "Cannot replay: "
+                        + (err or f"the daemon exited with "
+                                  f"{child.returncode}"))
                     return
                 if self.session.open("control", quiet=True):
                     return
@@ -950,9 +1007,8 @@ class MainWindow(QtWidgets.QMainWindow):
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
         self._stop_replay_child()
-        QtWidgets.QMessageBox.warning(
-            self, "Cannot replay",
-            f"the daemon started but never answered on port {port}")
+        self.notice.error(f"Cannot replay: the daemon started but never "
+                          f"answered on port {port}")
 
     def connect_home(self):
         """Back to the daemon this window was pointed at when it started."""

@@ -1283,6 +1283,23 @@ def session(qapp, daemon):
     s.close()
 
 
+def pump(win, seconds=10.0, until=None):
+    """Run the window by hand for a while.
+
+    No Qt event loop runs under pytest, so the 30 Hz redraw and the 4 Hz
+    poll never fire on their own. Anything that waits for frames to
+    arrive has to turn the crank itself.
+    """
+    deadline = time.time() + seconds
+    while time.time() < deadline:
+        win.tick()
+        win.poll_status()
+        if until is not None and until():
+            return True
+        time.sleep(0.02)
+    return until is None or until()
+
+
 def collect(signal):
     """Record what a signal emits, as a list of argument tuples."""
     seen = []
@@ -1551,13 +1568,10 @@ def test_opening_a_recording_starts_a_daemon_and_connects(win,
 
 
 def test_a_recording_the_daemon_refuses_never_becomes_a_connection(
-        win, tmp_path, monkeypatch):
+        win, tmp_path):
     """The daemon checks the file before it binds a port, so a child
     that has exited is carrying the useful message - and "could not
     reach a daemon" would bury it under the symptom."""
-    said = []
-    monkeypatch.setattr(QtWidgets.QMessageBox, "warning",
-                        lambda *a, **k: said.append(a[2]))
     bad = str(tmp_path / "notaframe.due")
     with open(bad, "wb") as f:
         f.write(b"nowhere near a frame")
@@ -1566,4 +1580,141 @@ def test_a_recording_the_daemon_refuses_never_becomes_a_connection(
 
     assert win.client is None
     assert win.replay_child is None, "a refused replay left a process behind"
-    assert said and "no whole frames" in said[0], said
+    assert win.notice.showing
+    assert "no whole frames" in win.notice.text, win.notice.text
+
+
+# -- a refusal that stays ----------------------------------------------
+
+
+def test_a_refusal_outlives_the_next_status_poll(win, daemon):
+    """The defect this fixes, stated as the test.
+
+    `showMessage` was the only error channel and the 4 Hz status poll
+    writes to it too, so the device's own refusal - the one message rule
+    4 says to show - could be gone in 250 ms.
+    """
+    win.connect_to_daemon()
+    win.session.call("start", mode="capture", adc_hz=10_000_000)
+    assert win.notice.showing
+    first = win.notice.text
+    assert "start refused" in first
+
+    for _ in range(4):
+        win.poll_status()
+    assert win.notice.text == first, "the poll overwrote the refusal"
+
+
+def test_a_refusal_is_not_a_dialog(win, daemon, monkeypatch):
+    """A modal is the one presentation a refusal cannot survive: it names
+    a limit worth reading twice, and a dialog is gone the moment it is
+    acknowledged. This used to raise one for `start` and not for the
+    same refusal of the same op from the generator panel."""
+    def boom(*a, **k):
+        raise AssertionError("a refusal opened a dialog")
+
+    monkeypatch.setattr(QtWidgets.QMessageBox, "warning", boom)
+    monkeypatch.setattr(QtWidgets.QMessageBox, "information", boom)
+    win.connect_to_daemon()
+    win.session.call("start", mode="capture", adc_hz=10_000_000)
+    assert win.notice.showing
+
+
+def test_a_new_run_clears_the_last_refusal(win, daemon):
+    """A notice that outlived the thing it was about would be the same
+    defect as a counter that did."""
+    win.connect_to_daemon()
+    win.session.call("start", mode="capture", adc_hz=10_000_000)
+    assert win.notice.showing
+    win.start_capture()
+    assert not win.notice.showing
+
+
+def test_a_notice_can_be_dismissed(win):
+    win.notice.error("something")
+    assert win.notice.showing
+    win.notice.dismiss.click()
+    assert not win.notice.showing
+    assert win.notice.text == ""
+
+
+# -- replay transport --------------------------------------------------
+
+
+def test_the_replay_bar_is_only_up_for_a_recording(win, replay_win):
+    """A board has no position, and a progress bar against one would be
+    inventing a number."""
+    win.connect_to_daemon()
+    assert win.replay_bar.isHidden()
+
+    replay_win.connect_to_daemon()
+    assert not replay_win.replay_bar.isHidden()
+    replay_win.disconnect_from_daemon()
+    assert replay_win.replay_bar.isHidden()
+
+
+def test_the_replay_bar_counts_frames_not_percent(replay_win):
+    """Frames, because that is the unit the sidecar, the daemon's
+    `frames_read` and the health panel all quote, and a percentage would
+    be the one number here that does not join up with the rest."""
+    replay_win.connect_to_daemon()
+    replay_win.start_capture()
+    pump(replay_win, until=lambda: replay_win.replay_bar.bar.maximum() > 1)
+
+    assert replay_win.replay_bar.bar.maximum() == 6      # the fixture's frames
+    assert "frames" in replay_win.replay_bar.bar.format()
+
+
+def test_the_position_is_where_in_the_file_and_not_how_many_were_sent():
+    """The replayed count runs on across a loop while the file starts
+    again, so where in the file that is has to come out of how many
+    times it wrapped. Asserted on the widget rather than through a
+    daemon, because the arithmetic is the thing that can be wrong."""
+    from gui.replay_bar import ReplayBar
+    bar = ReplayBar()
+    bar.set_position({"frames": 14, "frames_total": 6, "loops": 2,
+                      "at_end": False})
+    assert bar.bar.maximum() == 6
+    assert bar.bar.value() == 2                    # 14 - 2*6
+    assert bar.state.text() == "pass 3"
+
+    bar.set_position({"frames": 6, "frames_total": 6, "loops": 0,
+                      "at_end": True})
+    assert bar.bar.value() == 6 and bar.state.text() == "at the end"
+
+    # A board's counters carry no frames_total, and must leave it alone
+    # rather than reset it to a position of zero.
+    bar.set_position({"frames": 900, "underruns": 0})
+    assert bar.bar.value() == 6
+
+
+def test_the_end_of_a_recording_says_so(replay_win):
+    """A recording ends on its own, which on a board only ever happens
+    because something went wrong. A trace that stopped for the ordinary
+    reason should not read as a fault."""
+    replay_win.connect_to_daemon()
+    replay_win.start_capture()
+    assert pump(replay_win, until=lambda: replay_win.notice.showing)
+
+    assert replay_win.device_running is False
+    assert "End of the recording" in replay_win.notice.text
+
+
+def test_restart_plays_the_recording_again(replay_win):
+    """`start` on a device that is already running is refused, by the
+    fake and by the board alike, so Restart has to stop first."""
+    replay_win.connect_to_daemon()
+    replay_win.start_capture()
+    # Both, and not just the notice: `at_end` can arrive on the poll
+    # before the tick that drains the last frames, and this test is
+    # about what a second pass does to the first pass's numbers.
+    assert pump(replay_win, until=lambda: (replay_win.notice.showing
+                                           and replay_win.frames_shown == 6))
+
+    replay_win.replay_bar.restart_btn.click()
+    assert not replay_win.notice.showing, "the end-of-file notice survived"
+    assert replay_win.frames_shown == 0, "the last pass was not cleared"
+
+    played_again = pump(replay_win,
+                       until=lambda: replay_win.frames_shown == 6)
+    assert played_again, "the recording did not play again"
