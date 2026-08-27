@@ -230,7 +230,29 @@ enumerates and opens.
   something.
 - **The binary selects which state issue #5 draws.** Points taken
   across a reflash are not comparable; A1 in the same frame is the
-  reference that makes a sweep readable.
+  reference that makes a sweep readable - **but only in the `all-DC`
+  arm now.** See the next entry.
+- **The sync output changed what three of the four sweep arms mean, and
+  the older write-ups in this file predate it.** `gen_sync` defaults to
+  `GEN_SYNC_CYCLE`, which puts a full-scale square on whichever DAC pin
+  is not carrying the waveform - so in `normal`, `swapped` and
+  `two-cycle`, **A1 is no longer a flat reference**. Measured on
+  `68b5b85`: A1 peak-to-peak in `normal` is **2753 codes** against the
+  18-20 every earlier figure in this file was taken with.
+
+  `all-DC` is unaffected by design - `drivers/gen.h` says that arm
+  exists so nothing swings on either pin and a sync square would defeat
+  the control it is - and the measurement agrees, A0 19 and A1 30.
+
+  So: **`all-DC` figures still compare across images; `normal`,
+  `swapped` and `two-cycle` figures taken before `c6415fc` do not
+  compare with anything taken after it**, and that is a change in the
+  signal rather than the usual "the binary redraws the state".
+
+  **`=0J` restores the old condition, checked rather than assumed:** the
+  board answers `sync 0 = off (mid scale)` and A1 peak-to-peak falls to
+  **11 codes**. Send it before re-running any arm comparison in this
+  file. `docs/awg.md` has the sync's own story and why it exists.
 - **Never truncate a suite run's output.** One failure was lost to a
   `| tail -3` and never reproduced. `-rf --tb=short`, keep all of it.
 - **Do not assume a resistor rig is wired.** The A2 divider was fitted

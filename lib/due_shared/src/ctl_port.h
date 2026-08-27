@@ -163,11 +163,6 @@ int ctl_port_occupancy(uint8_t *body, size_t max);
 int ctl_port_rate_page(uint8_t *body, size_t max, uint16_t offset);
 
 /*
- * Flush the debug console. Only ctl_dump() uses this, it is never
- * called while the sample path is running, and a track whose console
- * needs no flushing implements it empty.
- */
-/*
  * CTL_OP_GEN. The whole per-track part of the generator command: four
  * lines each, calling that track's own gen driver.
  *
@@ -183,6 +178,11 @@ int ctl_port_rate_page(uint8_t *body, size_t max, uint16_t offset);
 bool ctl_port_gen_get(ctl_gen_t *out);
 void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync);
 
+/*
+ * Flush the debug console. Only ctl_dump() uses this, it is never
+ * called while the sample path is running, and a track whose console
+ * needs no flushing implements it empty.
+ */
 void ctl_port_console_flush(void);
 
 #ifdef __cplusplus
