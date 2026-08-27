@@ -109,6 +109,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.trig_state = QtWidgets.QLabel("--")
         self.trig_state.setMinimumWidth(56)
 
+        # Time or spectrum. One plot rather than two, because the
+        # rendering budget is one 1200-column redraw per 33 ms and a
+        # second live plot halves it - docs/frontend.md sizes the UI
+        # around that.
+        self.view_box = QtWidgets.QComboBox()
+        self.view_box.addItem("Time", "time")
+        self.view_box.addItem("Spectrum", "spectrum")
+
+        self.fft_window = QtWidgets.QComboBox()
+        for w in stream.FFT_WINDOWS:
+            self.fft_window.addItem(w.capitalize(), w)
+        self.fft_window.setToolTip(
+            "Rectangular is exact only when the window holds a whole "
+            "number of cycles, and smears the tone everywhere else.")
+
         self.connect_btn = QtWidgets.QPushButton("Connect")
         self.start_btn = QtWidgets.QPushButton("Start")
         self.stop_btn = QtWidgets.QPushButton("Stop")
@@ -123,7 +138,8 @@ class MainWindow(QtWidgets.QMainWindow):
                   QtWidgets.QLabel("Window"), self.window_box,
                   QtWidgets.QLabel("Rate"), self.preset,
                   QtWidgets.QLabel("Trigger"), self.trig_mode,
-                  self.trig_slope, self.trig_level, self.trig_state):
+                  self.trig_slope, self.trig_level, self.trig_state,
+                  QtWidgets.QLabel("View"), self.view_box, self.fft_window):
             controls.addWidget(w)
         controls.addStretch(1)
         for b in (self.connect_btn, self.start_btn, self.stop_btn):
@@ -254,8 +270,10 @@ class MainWindow(QtWidgets.QMainWindow):
         ring = self.rings.get(tag)
         if ring is not None:
             trig = self.trigger()
+            view = self.view_box.currentData()
+            self.fft_window.setEnabled(view == "spectrum")
             self.scope.draw(ring, self.window_box.currentData(), self.rate_hz,
-                            trig)
+                            trig, view, self.fft_window.currentData())
             self.trig_state.setText(self.trigger_state_text())
             # Measured over the sweep that was drawn, not over a fresh
             # one: a number beside a trace has to describe that trace.

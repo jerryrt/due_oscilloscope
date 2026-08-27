@@ -431,6 +431,75 @@ def measure(sweep, rate_hz):
     return out
 
 
+#: FFT windows. Rectangular is included and is not a default: it is the
+#: right answer only when the window holds a whole number of cycles, and
+#: the wrong one everywhere else, where it smears a tone across the
+#: whole spectrum. Hann is the usable default.
+FFT_WINDOWS = ("hann", "hamming", "blackman", "rectangular")
+
+#: The most points the transform runs on. The ring holds two seconds -
+#: 1.8 M samples at the full rate - and an FFT that size inside a 33 ms
+#: redraw would block the feeder, which rule 5 forbids. 16384 bins put
+#: about 55 Hz per bin at 907 ksps and cost well under a millisecond.
+FFT_MAX_POINTS = 16384
+
+
+def spectrum(sweep, rate_hz, window="hann"):
+    """The sweep's spectrum, in dB relative to a full-scale sine.
+
+    Returns (freqs_hz, db) or (None, None) with the reason as the third
+    element. Same rule as `measure`: a refusal with a reason, never a
+    plausible-looking curve.
+
+    Refuses on a discontinuity for a sharper reason than the time
+    domain's. A splice is a step, a step is broadband, and the transform
+    will happily draw that step's energy spread across every frequency
+    on the screen - which looks like a noise floor rather than like the
+    missing data it is.
+
+    dB is relative to a full-scale sine rather than to the largest bin,
+    so two captures can be compared. Normalised by the window's own sum
+    so the amplitude a tone reports does not change with the window
+    chosen - only its leakage does, which is the whole reason for
+    choosing one.
+    """
+    if sweep.empty:
+        return None, None, "no data"
+    if sweep.breaks is not None and bool(sweep.breaks.any()):
+        return None, None, "discontinuity in window"
+    if rate_hz <= 0:
+        return None, None, "rate unknown"
+
+    x = sweep.samples
+    if x.size > FFT_MAX_POINTS:
+        x = x[-FFT_MAX_POINTS:]           # the most recent, not the oldest
+    n = int(x.size)
+    if n < 16:
+        return None, None, "window too short to transform"
+
+    v = x.astype(np.float64)
+    v -= v.mean()                          # DC would swamp bin 0 and nothing else
+
+    if window == "hann":
+        w = np.hanning(n)
+    elif window == "hamming":
+        w = np.hamming(n)
+    elif window == "blackman":
+        w = np.blackman(n)
+    else:
+        w = np.ones(n)
+
+    mag = np.abs(np.fft.rfft(v * w))
+    # Amplitude in codes: two for the half spectrum, divided by the
+    # window's coherent gain so a tone reads the same whichever window
+    # is chosen.
+    amp = 2.0 * mag / max(float(w.sum()), 1.0)
+    full = (FULL_SCALE_CODES + 1) / 2.0
+    db = 20.0 * np.log10(np.maximum(amp, 1e-9) / full)
+    freqs = np.fft.rfftfreq(n, d=1.0 / float(rate_hz))
+    return freqs, db, None
+
+
 def minmax(samples, columns, breaks=None):
     """Reduce samples to one min/max pair per pixel column.
 
