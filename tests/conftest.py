@@ -63,6 +63,9 @@ def pytest_addoption(parser):
                 help="never flash; fail if the wrong track is on the board")
     g.addoption("--no-build", action="store_true",
                 help="flash the existing artefacts without rebuilding")
+    g.addoption("--dso", action="store_true",
+                help="require the bench oscilloscope; without it, tests "
+                     "that need one skip when it is absent")
     g.addoption("--calibrate", action="store_true",
                 help="record measurements into tests/baseline.json instead "
                      "of asserting against it")
@@ -76,6 +79,7 @@ def pytest_configure(config):
         ("slow", "tens of seconds; transport benchmarks"),
         ("awg", "drives the DAC"),
         ("scope", "drives the ADC"),
+        ("dso", "needs the bench oscilloscope attached"),
         ("track_a", "Track A only"),
         ("track_b", "Track B only"),
     ):

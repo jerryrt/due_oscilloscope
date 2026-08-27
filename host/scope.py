@@ -1,89 +1,83 @@
-"""A Rigol DS1000E on the bench, over USBTMC.
+"""A bench oscilloscope, whichever one is on the bench.
 
 Why this exists. Everything this project knows about issue #5 is what
-the *converter* returned; `docs/HANDOFF.md` records that the central
-claim - that the voltage at the pin actually moves - stays inference,
-and every amplitude a lower bound, until an instrument that is not the
-ADC says otherwise. This is that instrument.
+the *converter under investigation* returned; `docs/HANDOFF.md` records
+the consequence - that the voltage at the DAC pin actually moves stays
+inference, and every amplitude a lower bound, until an instrument that
+is not the ADC says otherwise. This is that instrument.
 
-Why not pyvisa. USBTMC's bulk protocol is a twelve-byte header and a
-payload, and speaking it directly keeps the dependency to pyusb plus the
-libusb binaries that ship inside `libusb-package` - no system libusb, no
-`sudo`, no VISA stack to install per host. That matters because the
-suite has to run unchanged on a machine with no scope attached.
+Three layers, because the bench is not promised to keep the same scope:
 
-Both imports are optional and failure is a *skip*, not an error: a host
-without pyusb, or without a scope, must still collect and run the rest
-of the suite.
+    UsbTmc          the transport. USBTMC's bulk protocol, and nothing
+                    about any particular instrument.
+    Oscilloscope    the interface. What this project asks a scope to do,
+                    named once so callers never learn a dialect.
+    RigolDS1000E    one driver. Every quirk below lives here, because
+                    every one of them is this model's and not USBTMC's.
 
-Verified against a DS1102E, firmware 00.04.02.01.00, on 2026-08-26.
-Everything below answered on that instrument; nothing here is written
-from the programming guide alone.
+Adding a second model is a class and a line in DRIVERS. Nothing that
+calls `open_scope()` changes, which is the point: tests and tools are
+written against `Oscilloscope`, and a DS1102E today must not become a
+rewrite when it is something else tomorrow.
 
-Two traps, both paid for once already:
-
-  * **The bulk header is twelve bytes**, not eleven. MsgID, bTag,
-    ~bTag, reserved, a four-byte length, bmTransferAttributes, and three
-    reserved. Pack eleven and the scope accepts the write, answers
-    nothing, and the read times out with no diagnostic.
-
-  * **`:MEAS:...?` returns 9.9e37 when it has no reading**, not an
-    error. Parsed as a float that is 9.9e37 volts, and it will sail
-    through any comparison written to catch a wrong number. `measure()`
-    returns None for it instead.
-
-And one that is not this module's to solve but belongs in the same
-breath: `:CHAN<n>:PROB?` is what the *scope has been told* the probe is,
-not what is clipped to the board. A 10x probe against a scope set to 1x
-reads every voltage ten times small, and nothing in the data says so.
-probe() is provided so a caller can assert it rather than assume it.
+Why not pyvisa. macOS has no kernel driver for USBTMC, so raw USB is
+required either way, and `libusb-package` carries prebuilt libusb
+binaries - which keeps this to a pip install rather than a system
+package and a sudo. Both imports are lazy and absence raises
+ScopeUnavailable, so a host with neither still collects and runs the
+whole suite.
 """
 from __future__ import annotations
 
 import struct
 import time
 
-# Rigol's USB vendor ID, and the DS1000E-series product ID. A DS1102E
-# reports 1AB1:0588; other Rigol families use other product IDs and are
-# not claimed to work here.
-RIGOL_VID = 0x1AB1
-DS1000E_PID = 0x0588
-
-# The scope answers a short query in well under a second. Long enough to
-# absorb one retry, short enough that a wedged instrument fails the run
-# rather than hanging it.
+# A short query answers in well under a second. Long enough to absorb a
+# retry, short enough that a wedged instrument fails the run rather than
+# hanging it.
 DEFAULT_TIMEOUT_MS = 5000
-
-# What a DS1000E returns from a measurement it could not make.
-NO_READING = 9.9e37
-
-# How long the instrument needs after a state-changing write before a
-# query reflects it. Empirical on a DS1102E: 0.05 s was not enough and
-# 0.05 s more was.
-POST_WRITE_S = 0.1
-
-
-def _num(v):
-    """Format a number the way this firmware will accept it.
-
-    `%g` writes 1e-05, which a DS1102E ignores silently - the write is
-    accepted, the setting does not change, and the readback returns the
-    old value. Exponent notation is not the fix either: the instrument
-    *replies* `5.000e-06` but does not reliably accept that form back,
-    and a test that appeared to show it working was reading a setting
-    already at the target. Plain decimal is what it takes.
-
-    Even then a write does not always take. Setters here therefore
-    return what the instrument *holds afterwards* rather than what was
-    asked for: the value is quantised to the 1-2-5 sequence, clamped to
-    a range that depends on other settings, and occasionally simply not
-    applied. A caller that needs a specific value must compare.
-    """
-    return f"{float(v):.12f}"
 
 
 class ScopeUnavailable(Exception):
     """No scope, or no way to reach one. Callers skip on this."""
+
+
+# ---------------------------------------------------------------------
+# Transport: USBTMC. Model-independent.
+# ---------------------------------------------------------------------
+
+def usbtmc_header(msgid, tag, size, attrs):
+    """One USBTMC bulk header. Twelve bytes, and the count is the trap.
+
+    MsgID, bTag, the one's complement of bTag, one reserved byte, a
+    four-byte little-endian transfer size, bmTransferAttributes, then
+    three reserved. Eleven bytes is a header the instrument accepts on
+    the write and never answers, which presents as a read timeout with
+    nothing to suggest the request was malformed.
+
+    Module-level so the shape is checkable with no instrument attached.
+    """
+    return struct.pack("<BBBBIB3s", msgid, tag, ~tag & 0xFF, 0,
+                       size, attrs, b"\x00\x00\x00")
+
+
+def parse_block(raw):
+    """Payload of an IEEE 488.2 definite-length block.
+
+    `#`, one digit giving the width of the length field, that many
+    digits of length, then the data: a screen read comes back as
+    `#800000600` followed by 600 bytes. Returned unchanged if it is not
+    a block, because most queries answer in plain ASCII and a caller
+    should not have to know which kind it is about to get.
+    """
+    if raw[:1] != b"#" or len(raw) < 2 or not raw[1:2].isdigit():
+        return raw
+    width = int(raw[1:2])
+    if width == 0 or len(raw) < 2 + width:
+        return raw
+    n = int(raw[2:2 + width])
+    body = raw[2 + width:]
+    return body[:n] if n <= len(body) else body
 
 
 def _backend():
@@ -94,12 +88,12 @@ def _backend():
     return libusb_package.get_libusb1_backend()
 
 
-def find_scope(vid=RIGOL_VID, pid=DS1000E_PID):
-    """The scope's USB device, or raise ScopeUnavailable.
+def find_device(vid, pid):
+    """One USB device by id, or raise ScopeUnavailable.
 
-    Deliberately raises rather than returning None: every caller wants
-    to skip with a reason, and "no scope" and "no pyusb" are different
-    reasons that a None cannot carry.
+    Raises rather than returning None because every caller wants to skip
+    with a reason, and "no pyusb" and "no scope" are different reasons a
+    None cannot carry.
     """
     try:
         import usb.core
@@ -112,57 +106,20 @@ def find_scope(vid=RIGOL_VID, pid=DS1000E_PID):
     return dev
 
 
-def usbtmc_header(msgid, tag, size, attrs):
-    """One USBTMC bulk header. Twelve bytes, and the count is the trap.
+class UsbTmc:
+    """USBTMC over the first bulk endpoint pair. Not thread-safe."""
 
-    MsgID, bTag, the one's complement of bTag, one reserved byte, a
-    four-byte little-endian transfer size, bmTransferAttributes, then
-    three reserved. Eleven bytes is a header the scope accepts on the
-    write and never answers, which presents as a read timeout with
-    nothing to suggest the request was malformed.
-
-    Module-level so the shape can be checked without an instrument
-    attached - that failure cost a debugging round and should not be
-    reachable again on a host with no scope.
-    """
-    return struct.pack("<BBBBIB3s", msgid, tag, ~tag & 0xFF, 0,
-                       size, attrs, b"\x00\x00\x00")
-
-
-def parse_block(raw):
-    """Payload of an IEEE 488.2 definite-length block.
-
-    `#` then one digit giving the width of the length field, then that
-    many digits of length, then the data: a DS1000E screen read comes
-    back as `#800000600` followed by 600 bytes. Returned unchanged if it
-    is not a block, because some queries answer in plain ASCII and a
-    caller should not have to know which.
-    """
-    if not raw[:1] == b"#" or len(raw) < 2 or not raw[1:2].isdigit():
-        return raw
-    width = int(raw[1:2])
-    if width == 0 or len(raw) < 2 + width:
-        return raw
-    n = int(raw[2:2 + width])
-    body = raw[2 + width:]
-    return body[:n] if n <= len(body) else body
-
-
-class Scope:
-    """One DS1000E. Not thread-safe; one owner at a time."""
-
-    def __init__(self, dev=None):
+    def __init__(self, dev):
         import usb.util
-        self.dev = dev if dev is not None else find_scope()
+        self.dev = dev
         try:
             self.dev.set_configuration()
         except Exception:
-            # Already configured by a previous open. Not an error: the
-            # instrument keeps its configuration across process exits,
-            # and re-setting it would reset the scope's own state.
+            # Already configured by an earlier open. Not an error: the
+            # instrument keeps its configuration across process exits and
+            # re-setting it would disturb the scope's own state.
             pass
-        cfg = self.dev.get_active_configuration()
-        itf = cfg[(0, 0)]
+        itf = self.dev.get_active_configuration()[(0, 0)]
         self._out = usb.util.find_descriptor(
             itf, custom_match=lambda e:
             usb.util.endpoint_direction(e.bEndpointAddress)
@@ -175,36 +132,21 @@ class Scope:
             raise ScopeUnavailable("no bulk endpoint pair on interface 0")
         self._tag = 0
 
-    # ---- USBTMC transport -------------------------------------------
-
     def _tag_next(self):
-        # bTag cycles 1..255; zero is reserved.
-        self._tag = (self._tag % 255) + 1
+        self._tag = (self._tag % 255) + 1     # bTag is 1..255; 0 reserved
         return self._tag
 
-    def _header(self, msgid, size, attrs):
-        return usbtmc_header(msgid, self._tag_next(), size, attrs)
-
-    def write(self, cmd, timeout=DEFAULT_TIMEOUT_MS):
-        """One SCPI command. EOM set, padded to a four-byte boundary.
-
-        The settle afterwards is not politeness. A query issued straight
-        after a state-changing write returns the value the instrument
-        held *before* it: measured here setting `:CHAN1:PROB 10` and
-        reading `:CHAN1:PROB?` back as 1.0, while the channel's V/div had
-        already rescaled by ten - so the write had landed and the
-        readback had not caught up. A caller that sets and verifies would
-        conclude the write failed and set it again.
-        """
+    def write(self, cmd, timeout=DEFAULT_TIMEOUT_MS, settle=0.0):
         payload = cmd.encode() + b"\n"
-        pkt = self._header(1, len(payload), 0x01) + payload
+        pkt = usbtmc_header(1, self._tag_next(), len(payload), 0x01) + payload
         pkt += b"\x00" * (-len(pkt) % 4)
         self._out.write(pkt, timeout=timeout)
-        time.sleep(POST_WRITE_S)
+        if settle:
+            time.sleep(settle)
 
     def read_raw(self, size=1 << 16, timeout=DEFAULT_TIMEOUT_MS):
-        """Request and return one response payload, header stripped."""
-        self._out.write(self._header(2, size, 0x00), timeout=timeout)
+        self._out.write(usbtmc_header(2, self._tag_next(), size, 0x00),
+                        timeout=timeout)
         data = self._in.read(size + 64, timeout=timeout).tobytes()
         n = struct.unpack("<I", data[4:8])[0]
         return data[12:12 + n]
@@ -221,40 +163,189 @@ class Scope:
     def ask(self, cmd, **kw):
         return self.ask_raw(cmd, **kw).decode(errors="replace").strip()
 
-    def ask_float(self, cmd, **kw):
-        return float(self.ask(cmd, **kw))
+    def close(self):
+        try:
+            import usb.util
+            usb.util.dispose_resources(self.dev)
+        except Exception:                                     # pragma: no cover
+            pass
+
+
+# ---------------------------------------------------------------------
+# Interface: what this project asks of a scope.
+# ---------------------------------------------------------------------
+
+class Oscilloscope:
+    """The operations a driver must provide. Callers use only these.
+
+    Deliberately small. It covers what is needed to point an instrument
+    at a DAC pin and read a transient off it, and nothing else: the
+    moment this grows a method because one model happens to have it, the
+    abstraction has stopped being one.
+
+    Two conventions every driver honours, both learned the expensive way
+    on the first instrument:
+
+      * **A setter returns what the instrument holds afterwards**, never
+        what it was asked for. Scopes quantise to a 1-2-5 sequence,
+        clamp against other settings, and sometimes do not apply a write
+        at all - and report none of it. A caller needing an exact value
+        compares.
+
+      * **A measurement that could not be made is None**, not a
+        sentinel. Instruments answer things like 9.9e37, which is a
+        float, is a plausible voltage to any comparison written to catch
+        a wrong number, and sails straight through it.
+    """
+
+    #: (vendor id, product id) pairs this driver claims.
+    IDS = ()
+
+    def matches(self, idn):                                   # pragma: no cover
+        """True if this driver should own an instrument reporting `idn`.
+
+        The USB id gets a driver as far as the device; the *IDN model
+        string separates families that share a product id.
+        """
+        return True
+
+    def identify(self):                                       # pragma: no cover
+        """(manufacturer, model, serial, firmware)."""
+        raise NotImplementedError
+
+    def channel_scale(self, ch, volts_per_div=None):          # pragma: no cover
+        raise NotImplementedError
+
+    def channel_offset(self, ch, volts=None):                 # pragma: no cover
+        raise NotImplementedError
+
+    def coupling(self, ch, mode=None):                        # pragma: no cover
+        raise NotImplementedError
+
+    def probe(self, ch, ratio=None):                          # pragma: no cover
+        """The attenuation the scope has been *told*, not what is fitted.
+
+        A 10x probe against a scope set to 1x reads every voltage ten
+        times small and nothing in the data says so. Exposed so a caller
+        can assert it rather than assume it.
+        """
+        raise NotImplementedError
+
+    def timebase(self, seconds_per_div=None):                 # pragma: no cover
+        raise NotImplementedError
+
+    def trigger_edge(self, source=None, level=None, slope=None,
+                     sweep=None):                             # pragma: no cover
+        raise NotImplementedError
+
+    def averaging(self, count=None):                          # pragma: no cover
+        """Acquisition averaging - the scope's version of folding.
+
+        Same argument and the same sqrt(n) as `measure.fold_profile()`:
+        the artifact under investigation is a few millivolts, and
+        averaging a few hundred triggered acquisitions is what brings it
+        out of the noise.
+        """
+        raise NotImplementedError
+
+    def measure(self, what, ch=1):                            # pragma: no cover
+        raise NotImplementedError
+
+    def waveform(self, ch=1):                                 # pragma: no cover
+        """The displayed trace as volts, oldest sample first."""
+        raise NotImplementedError
+
+    def run(self):                                            # pragma: no cover
+        raise NotImplementedError
+
+    def close(self):                                          # pragma: no cover
+        raise NotImplementedError
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+
+# ---------------------------------------------------------------------
+# Driver: Rigol DS1000E. Everything here is this model's dialect.
+# ---------------------------------------------------------------------
+
+class RigolDS1000E(Oscilloscope):
+    """Verified against a DS1102E, firmware 00.04.02.01.00, 2026-08-26.
+
+    Nothing here is written from the programming guide alone; every
+    command below answered on that instrument, and each behaviour
+    documented in this class cost a debugging round.
+    """
+
+    IDS = ((0x1AB1, 0x0588),)          # Rigol, DS1000E series
+
+    #: What this model returns from a measurement it could not make.
+    NO_READING = 9.9e37
+
+    #: Screen data is one byte per point and *inverted* - a larger byte
+    #: is a lower voltage - referenced to the channel's scale and
+    #: offset. Checked against the instrument's own :MEAS: readings on a
+    #: known square: waveform() and :MEAS:VPP? agreed within 20 mV
+    #: through entirely separate paths.
+    _CENTRE_BYTE = 240
+    _BYTES_PER_DIV = 25.0
+    _DIVS_TO_ZERO = 4.6
+
+    def __init__(self, io):
+        self.io = io
+
+    def matches(self, idn):
+        return "DS1" in (idn[1] if len(idn) > 1 else "")
+
+    # -- dialect ------------------------------------------------------
+
+    @staticmethod
+    def fmt_number(v):
+        """Plain decimal, because exponent notation is ignored.
+
+        `%g` writes 1e-05 and this firmware ignores it in silence: the
+        write is accepted, the setting does not move, and the readback
+        returns the old value. Exponent is not the fix either - the
+        instrument *replies* `5.000e-06` but does not reliably accept
+        that form back. The test that appeared to prove otherwise was
+        reading a setting already at the target, so every value that
+        "worked" was one the scope already held. Alternating between two
+        values so each write has to change something, plain decimal
+        takes every time.
+        """
+        return f"{float(v):.12f}"
 
     def _apply(self, cmd, query, value, tol=1e-3, timeout=2.0):
         """Write a numeric setting, then wait until it is reported back.
 
-        A fixed delay after the write is the wrong shape for this
-        instrument: 0.05 s was too short for `:CHAN:PROB`, 0.1 s was
-        enough for it and too short for `:TIM:SCAL`, which needed about
-        a second. Guessing a constant large enough for the slowest
-        command taxes every other one.
+        A fixed post-write delay is the wrong shape for this instrument:
+        0.05 s was too short for `:CHAN:PROB`, 0.1 s was enough for that
+        and too short for `:TIM:SCAL`, which wanted about a second. A
+        constant sized for the slowest command taxes every other one.
 
-        So poll instead, and return what the instrument holds when the
-        wait ends - which is the honest answer whether the value was
-        applied, quantised to the 1-2-5 sequence, or clamped against
-        some other setting. A caller that needs an exact value compares;
-        it can no longer be misled by a stale readback into thinking the
-        write failed.
+        Polling instead returns what the instrument holds when the wait
+        ends, which is the honest answer whether the value was applied,
+        quantised, or clamped - and a stale readback can no longer be
+        mistaken for a failed write.
         """
-        self.write(f"{cmd} {_num(value)}")
+        self.io.write(f"{cmd} {self.fmt_number(value)}")
         deadline = time.time() + timeout
         while True:
-            got = self.ask_float(query)
+            got = float(self.io.ask(query))
             if abs(got - value) <= max(tol, abs(value) * tol):
                 return got
             if time.time() >= deadline:
                 return got
             time.sleep(0.1)
 
-    # ---- identity ----------------------------------------------------
+    # -- interface ----------------------------------------------------
 
     def identify(self):
-        """(manufacturer, model, serial, firmware)."""
-        parts = self.ask("*IDN?").split(",")
+        parts = self.io.ask("*IDN?").split(",")
         while len(parts) < 4:
             parts.append("")
         return tuple(p.strip() for p in parts[:4])
@@ -263,126 +354,116 @@ class Scope:
     def model(self):
         return self.identify()[1]
 
-    # ---- vertical, horizontal, trigger -------------------------------
-
     def channel_scale(self, ch, volts_per_div=None):
         if volts_per_div is not None:
             return self._apply(f":CHAN{ch}:SCAL", f":CHAN{ch}:SCAL?",
                                volts_per_div)
-        return self.ask_float(f":CHAN{ch}:SCAL?")
+        return float(self.io.ask(f":CHAN{ch}:SCAL?"))
 
     def channel_offset(self, ch, volts=None):
         if volts is not None:
             return self._apply(f":CHAN{ch}:OFFS", f":CHAN{ch}:OFFS?",
                                volts, tol=1e-2)
-        return self.ask_float(f":CHAN{ch}:OFFS?")
+        return float(self.io.ask(f":CHAN{ch}:OFFS?"))
 
     def coupling(self, ch, mode=None):
         if mode is not None:
-            self.write(f":CHAN{ch}:COUP {mode}")
-            return mode
-        return self.ask(f":CHAN{ch}:COUP?")
+            self.io.write(f":CHAN{ch}:COUP {mode}", settle=0.1)
+        return self.io.ask(f":CHAN{ch}:COUP?")
 
     def probe(self, ch, ratio=None):
-        """The attenuation the scope *believes*, not the one fitted.
-
-        Read it and assert it. A 10x probe against a scope set to 1x
-        reports every voltage ten times small and the data does not say
-        so anywhere.
-        """
         if ratio is not None:
-            return self._apply(f":CHAN{ch}:PROB", f":CHAN{ch}:PROB?",
-                               ratio)
-        return self.ask_float(f":CHAN{ch}:PROB?")
+            return self._apply(f":CHAN{ch}:PROB", f":CHAN{ch}:PROB?", ratio)
+        return float(self.io.ask(f":CHAN{ch}:PROB?"))
 
     def timebase(self, seconds_per_div=None):
         if seconds_per_div is not None:
-            return self._apply(":TIM:SCAL", ":TIM:SCAL?",
-                               seconds_per_div)
-        return self.ask_float(":TIM:SCAL?")
+            return self._apply(":TIM:SCAL", ":TIM:SCAL?", seconds_per_div)
+        return float(self.io.ask(":TIM:SCAL?"))
 
     def trigger_edge(self, source=None, level=None, slope=None, sweep=None):
         """Configure or read back the edge trigger.
 
-        The reload of the DAC's PDC is DAC0's rising mid-scale crossing,
-        so an edge trigger on that channel is a trigger on the wrap
-        itself - which is what makes a once-per-2.56 ms event findable
-        at all.
+        The DAC's PDC reload is DAC0's rising mid-scale crossing, so an
+        edge trigger there is a trigger on the table wrap itself - which
+        is what makes a once-per-2.56 ms event findable at all.
         """
         if source is not None:
-            self.write(":TRIG:MODE EDGE")
-            self.write(f":TRIG:EDGE:SOUR {source}")
+            self.io.write(":TRIG:MODE EDGE", settle=0.1)
+            self.io.write(f":TRIG:EDGE:SOUR {source}", settle=0.1)
         if slope is not None:
-            self.write(f":TRIG:EDGE:SLOP {slope}")
+            self.io.write(f":TRIG:EDGE:SLOP {slope}", settle=0.1)
         if sweep is not None:
             # AUTO sweeps even when nothing triggers, which is why an
             # untriggered trace crawls across the screen instead of
-            # sitting still. NORMAL sweeps only on a real trigger, so a
-            # stationary trace is itself evidence the trigger is finding
-            # the edge - and a blank screen is evidence it is not.
-            self.write(f":TRIG:EDGE:SWE {sweep}")
+            # sitting still. Under NORMAL a stationary trace is evidence
+            # the trigger is finding the edge and a blank screen is
+            # evidence it is not; AUTO says neither.
+            self.io.write(f":TRIG:EDGE:SWE {sweep}", settle=0.1)
         if level is not None:
-            self._apply(":TRIG:EDGE:LEV", ":TRIG:EDGE:LEV?",
-                        level, tol=1e-2)
-        return {"mode": self.ask(":TRIG:MODE?"),
-                "source": self.ask(":TRIG:EDGE:SOUR?"),
-                "slope": self.ask(":TRIG:EDGE:SLOP?"),
-                "sweep": self.ask(":TRIG:EDGE:SWE?"),
-                "level": self.ask_float(":TRIG:EDGE:LEV?"),
-                "status": self.ask(":TRIG:STAT?")}
+            self._apply(":TRIG:EDGE:LEV", ":TRIG:EDGE:LEV?", level, tol=1e-2)
+        return {"mode": self.io.ask(":TRIG:MODE?"),
+                "source": self.io.ask(":TRIG:EDGE:SOUR?"),
+                "slope": self.io.ask(":TRIG:EDGE:SLOP?"),
+                "sweep": self.io.ask(":TRIG:EDGE:SWE?"),
+                "level": float(self.io.ask(":TRIG:EDGE:LEV?")),
+                "status": self.io.ask(":TRIG:STAT?")}
 
     def averaging(self, count=None):
-        """Acquisition averaging - the scope's version of folding.
-
-        Same argument and the same sqrt(n): the artifact is a few
-        millivolts and averaging a few hundred triggered acquisitions is
-        what brings it out of the noise. `count=None` returns to NORMAL.
-        """
         if count is None:
-            self.write(":ACQ:TYPE NORMAL")
+            self.io.write(":ACQ:TYPE NORMAL", settle=0.1)
             return None
-        self.write(":ACQ:TYPE AVERAGE")
-        self.write(f":ACQ:AVER {int(count)}")
-        return int(self.ask_float(":ACQ:AVER?"))
-
-    # ---- readings ----------------------------------------------------
+        self.io.write(":ACQ:TYPE AVERAGE", settle=0.1)
+        self.io.write(f":ACQ:AVER {int(count)}", settle=0.1)
+        return int(float(self.io.ask(":ACQ:AVER?")))
 
     def measure(self, what, ch=1):
-        """One measurement, or None where the scope had no reading.
-
-        `:MEAS:FREQ? CHAN1` answers 9.9e37 with nothing connected. That
-        is not an error and not a frequency; returning it as a float
-        puts 9.9e37 into whatever the caller does next.
-        """
-        v = self.ask_float(f":MEAS:{what}? CHAN{ch}")
-        return None if v >= NO_READING / 10 else v
+        v = float(self.io.ask(f":MEAS:{what}? CHAN{ch}"))
+        return None if v >= self.NO_READING / 10 else v
 
     def waveform(self, ch=1, points="NORMAL"):
-        """The displayed trace as volts, oldest sample first.
-
-        Screen data is one byte per point, *inverted* - larger byte
-        means lower voltage - and referenced to the channel's own scale
-        and offset. The conversion below is the DS1000E's documented one
-        and was checked against a known square on this bench rather than
-        taken on trust.
-        """
-        self.write(f":WAV:POIN:MODE {points}")
-        time.sleep(0.1)
-        raw = parse_block(self.ask_raw(f":WAV:DATA? CHAN{ch}", settle=0.4))
+        self.io.write(f":WAV:POIN:MODE {points}", settle=0.1)
+        raw = parse_block(self.io.ask_raw(f":WAV:DATA? CHAN{ch}", settle=0.4))
         scal = self.channel_scale(ch)
         offs = self.channel_offset(ch)
-        return [(240 - b) * scal / 25.0 - (offs + scal * 4.6) for b in raw]
+        return [(self._CENTRE_BYTE - b) * scal / self._BYTES_PER_DIV
+                - (offs + scal * self._DIVS_TO_ZERO) for b in raw]
+
+    def run(self):
+        self.io.write(":RUN", settle=0.2)
 
     def close(self):
-        try:
-            import usb.util
-            usb.util.dispose_resources(self.dev)
-        except Exception:                                     # pragma: no cover
-            pass
+        self.io.close()
 
-    def __enter__(self):
-        return self
 
-    def __exit__(self, *exc):
-        self.close()
-        return False
+# ---------------------------------------------------------------------
+# Discovery.
+# ---------------------------------------------------------------------
+
+#: Every driver this project knows. A new model is a class above and an
+#: entry here; nothing that calls open_scope() changes.
+DRIVERS = (RigolDS1000E,)
+
+
+def open_scope(drivers=DRIVERS):
+    """The first known scope on the bus, wrapped in its driver.
+
+    Raises ScopeUnavailable naming every id it looked for, so the
+    failure says what was expected rather than only what was missing -
+    the difference between "plug the scope in" and "this model has no
+    driver yet".
+    """
+    tried = []
+    for cls in drivers:
+        for vid, pid in cls.IDS:
+            tried.append(f"{vid:04x}:{pid:04x} ({cls.__name__})")
+            try:
+                dev = find_device(vid, pid)
+            except ScopeUnavailable:
+                continue
+            inst = cls(UsbTmc(dev))
+            if inst.matches(inst.identify()):
+                return inst
+            inst.close()
+    raise ScopeUnavailable("no known scope found; looked for " +
+                           ", ".join(tried))
