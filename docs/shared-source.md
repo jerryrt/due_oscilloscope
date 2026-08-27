@@ -118,7 +118,7 @@ bring-up order. Do not reorder.
 | 0.5 | Drain Track A's control bulk OUT; un-skip the command-port tests | 1 MB at the node, device counts every byte | **done** |
 | 1 | `frame.h`, `playstat.h`, the version numbers; extract `track_id.h` | `v` and `CTL_OP_IDENTITY` agree - a new test | **done** |
 | 2 | `frame_crc32_update` out of `drivers/stream.c` | both tracks link it; CRC tests pass | **done** |
-| 3 | Split `ctl.h` into `ctl_wire.h` (shared) + device API | Track B control suite unchanged | open |
+| 3 | Split `ctl.h` into `ctl_wire.h` (shared) + device API | Track B control suite unchanged | **done** |
 | 4 | Decouple `ctl.c` from `load_*` and the transport, behind accessors | Track B control suite unchanged | open |
 | 5 | Share `ctl.c`; Track A implements the seam; `ctlver` 0 -> 3 | `test_control.py` runs on **both** tracks | open |
 | 6 | Delete the hand-copies; rescope invariant 3; guard against regrowth | - | open |
