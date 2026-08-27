@@ -53,6 +53,16 @@ void ctlusb_realloc_endpoints(void);
  */
 void ctlusb_quiesce_interrupts(void);
 
+/*
+ * Release one bulk OUT bank per call, discarding what is in it. Must be
+ * polled from the main loop: an allocated bulk OUT that nobody drains
+ * NAKs for ever and hangs the host in close(). See ctlusb.cpp.
+ */
+void ctlusb_drain_out(void);
+
+extern volatile uint32_t ctlusb_out_bytes;
+extern volatile uint32_t ctlusb_out_banks;
+
 extern volatile uint32_t ctlusb_reallocs;
 extern volatile uint32_t ctlusb_cfg_fail;
 

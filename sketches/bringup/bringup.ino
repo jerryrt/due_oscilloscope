@@ -1044,6 +1044,15 @@ void loop()
 	 */
 	ctlusb_quiesce_interrupts();
 
+	/*
+	 * And drain its bulk OUT, on the same schedule and for a reason of
+	 * the same size. The endpoint is allocated whether or not anything
+	 * consumes it, and an allocated bulk OUT that nobody drains NAKs
+	 * for ever - which stalls the host's writer and, on macOS, leaves
+	 * close() waiting on URBs that never complete. One bank per pass.
+	 */
+	ctlusb_drain_out();
+
 	/* Heartbeat: if this stops, the board hung or faulted. */
 	uint32_t now = millis();
 	if (now - heartbeat_at >= (led_on ? 100u : 900u)) {
@@ -1361,6 +1370,11 @@ void loop()
 				                  && i < DEVEPT_RESTORE_MAX; i++)
 					tn += snprintf(tb + tn, sizeof(tb) - tn, " %08lx",
 					               (unsigned long)devept_after[i]);
+				Serial.println(tb); Serial.flush();
+				snprintf(tb, sizeof(tb),
+				         "# ctlout banks=%lu bytes=%lu",
+				         (unsigned long)ctlusb_out_banks,
+				         (unsigned long)ctlusb_out_bytes);
 				Serial.println(tb); Serial.flush();
 				tn = snprintf(tb, sizeof(tb),
 				         "# usbsetup n=%lu dropped=%lu",
