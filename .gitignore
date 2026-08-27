@@ -55,3 +55,7 @@ tests/baseline.measured.json
 # `tools/phase0.py --report`, and a derived file in the tree is a second
 # home for a number that already has one.
 records/*.summary.json
+
+# A bench declares its own cabling; see host/provenance.py. One desk,
+# not the repository.
+bench.json
