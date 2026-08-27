@@ -997,6 +997,64 @@ def test_a_cursor_on_a_break_reads_nothing_rather_than_a_level():
     assert scopemod._sample_at(xs, ys, 9.0) is None      # off the end
 
 
+def test_the_export_carries_the_reference_its_volts_are_in(win, daemon, tmp_path):
+    """A column of volts is meaningless without the reference.
+
+    ADVREF moved by 0.91% once already in this project, so a file that
+    does not say which one it was scaled by cannot be compared with one
+    written before or after that. Provenance in the file, not the
+    filename.
+    """
+    win.connect_to_daemon()
+    win.client.call("start", mode="capture", adc_hz=200000, channels=2)
+    win.client.wait_frames(20, timeout=15.0)
+    win.tick()
+
+    out = tmp_path / "sweep.csv"
+    n = win._write_csv(str(out), win.scope.last_sweep)
+    assert n > 0
+
+    text = out.read_text()
+    head = [l for l in text.splitlines() if l.startswith("#")]
+    assert any(f"advref_mv={stream.ADVREF_MV}" in l for l in head), head
+    assert any(stream.ADVREF_SOURCE in l for l in head), head
+    assert any("rate_hz=" in l for l in head), head
+    assert any("triggered=" in l for l in head), head
+
+    rows = [l for l in text.splitlines() if l and not l.startswith("#")]
+    assert rows[0].startswith("t_s,")
+    assert len(rows) == n + 1                      # header plus samples
+
+
+def test_the_export_marks_discontinuities_as_a_column(win, tmp_path):
+    """A join is a column, not a missing row.
+
+    A reader has to be able to see the break rather than infer it from
+    a jump in the time step - and the time step does not jump, because
+    the samples either side are adjacent in the ring even though they
+    are not adjacent in time.
+    """
+    codes = np.full(64, 2000, dtype=np.uint16)
+    win.ingest(stream.decode(make_frame(1, {7: codes, 6: codes})))
+    win.ingest(stream.decode(make_frame(3, {7: codes, 6: codes})))   # gap
+
+    ring = win.rings[7]
+    sweep = stream.select(ring, ring.filled)
+    out = tmp_path / "broken.csv"
+    win._write_csv(str(out), sweep)
+
+    rows = [l for l in out.read_text().splitlines()
+            if l and not l.startswith("#")]
+    header, body = rows[0], rows[1:]
+    assert header.endswith("break")
+    assert any(r.endswith(",1") for r in body), "the join is not marked"
+
+
+def test_export_of_an_empty_screen_says_so_rather_than_writing_a_file(win):
+    win.export_csv()
+    assert "nothing on screen" in win.statusBar().currentMessage()
+
+
 def test_the_readout_says_whether_it_triggered_not_what_was_asked(win, daemon):
     """Auto free-runs when it finds no edge. The label has to say so.
 

@@ -423,8 +423,8 @@ Phase 3 analog front end exists. A warning label is not sufficient.
 - **G3** - **panel done**: shape, frequency, amplitude and offset in
   volts, mapped through the measured DAC span, with a refusal instead of
   a clamp. Arbitrary upload from file or drawn by hand is still open.
-- **G4** - **dual channel and XY done**; file playback, export and
-  calibration open.
+- **G4** - **dual channel, XY, cursors, recording and CSV export
+  done**; file *playback* and calibration open.
 
 G0 carries the real risk, and it is the Windows serial backend rather
 than anything about the GUI. G1 to G4 are ordinary UI work.
@@ -550,6 +550,27 @@ clipped waveform, and a clipped waveform on this bench looks exactly
 like the converter misbehaving, which is a diagnosis this project has
 paid for more than once. The refusal names the offsets that *would*
 work, because that is the number the user is actually after.
+
+**Cursors, recording and export.** Three notes worth keeping:
+
+- **The cursors' y values are read off the drawn curve, not
+  re-derived**, so the number agrees with the pixels beside it. And the
+  sample is the nearest one, never interpolated: the curve is already a
+  min/max envelope with two points per column, so interpolating would
+  invent a value between a column's minimum and its maximum, which is
+  not a value the signal took. A cursor on a NaN reads nothing.
+- **Recording is the daemon's.** This section already said "the daemon
+  writes the file, not the GUI"; the button only asks. Frames go to disk
+  exactly as the device sent them, header and CRC included, so a
+  recording replays through the same parser that read it live.
+- **Export is the sweep on screen and says so in its header**, along
+  with the rate, the source channel, whether it was triggered, and the
+  ADVREF its volts were scaled by. That last one is not decoration:
+  ADVREF moved 0.91% in this project once already, and a column of volts
+  without its reference cannot be compared across that. A discontinuity
+  is a `break` column rather than a missing row, because the time step
+  does not jump across a join - the samples are adjacent in the ring
+  and not in time - so a reader could not otherwise see it.
 
 **The generator, end to end on the board.** Volts in, volts back:
 1.500 Vpp requested at 1.675 V, and the loop returns 1.5248 Vpp at a

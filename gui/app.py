@@ -127,6 +127,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cursor_btn = QtWidgets.QCheckBox("Cursors")
         self.cursor_btn.toggled.connect(self.scope_cursors)
 
+        # Recording is the *daemon's*, not this window's, and that is
+        # the point: docs/frontend.md says "the daemon writes the file,
+        # not the GUI", because a recording that stops when a display
+        # is closed or drops what a slow display dropped is not a
+        # record of the run. This button only asks.
+        self.record_btn = QtWidgets.QPushButton("Record...")
+        self.record_btn.setCheckable(True)
+        self.record_btn.toggled.connect(self.toggle_record)
+        self.record_btn.setEnabled(False)
+
+        # Export is this window's, and only ever of what is on screen.
+        self.export_btn = QtWidgets.QPushButton("Export CSV...")
+        self.export_btn.clicked.connect(self.export_csv)
+
         self.fft_window = QtWidgets.QComboBox()
         for w in stream.FFT_WINDOWS:
             self.fft_window.addItem(w.capitalize(), w)
@@ -153,7 +167,8 @@ class MainWindow(QtWidgets.QMainWindow):
                   self.cursor_btn):
             controls.addWidget(w)
         controls.addStretch(1)
-        for b in (self.connect_btn, self.start_btn, self.stop_btn):
+        for b in (self.record_btn, self.export_btn,
+                  self.connect_btn, self.start_btn, self.stop_btn):
             controls.addWidget(b)
 
         left = QtWidgets.QVBoxLayout()
@@ -209,6 +224,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.health.set("role", hello.get("role", "?"))
         self.connect_btn.setText("Disconnect")
         self.start_btn.setEnabled(hello.get("role") == "control")
+        # Recording is the daemon's and needs no control role - an
+        # observer may record what it is watching.
+        self.record_btn.setEnabled(True)
         self.stop_btn.setEnabled(hello.get("role") == "control")
         c.subscribe()
         self.statusBar().showMessage(
@@ -222,6 +240,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.client = None
         self.connect_btn.setText("Connect")
         self.start_btn.setEnabled(False)
+        self.record_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
         self.health.set("link", "-")
         self.statusBar().showMessage("disconnected")
@@ -292,6 +311,108 @@ class MainWindow(QtWidgets.QMainWindow):
             self.measure.update_from(
                 stream.measure(self.scope.last_sweep, self.rate_hz))
             self.measure.set_cursor(self.cursor_text())
+
+    def toggle_record(self, on):
+        """Ask the daemon to start or stop writing frames.
+
+        The frames go to disk exactly as the device sent them - header,
+        CRC and all - so a recording can be replayed through the same
+        parser that read it live. A CSV of what the screen happened to
+        show would not be that.
+        """
+        if self.client is None:
+            self.record_btn.setChecked(False)
+            return
+        if not on:
+            try:
+                side = self.client.call("record.stop")["sidecar"]
+                self.record_btn.setText("Record...")
+                self.statusBar().showMessage(
+                    f"recorded {side.get('frames', 0):,} frames, "
+                    f"{side.get('bytes', 0):,} bytes, "
+                    f"{side.get('dropped', 0):,} dropped")
+            except Exception as e:                       # noqa: BLE001
+                self.statusBar().showMessage(f"stop recording failed: {e}")
+            return
+
+        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Record frames to", "capture.frames",
+            "Frame log (*.frames);;All files (*)")
+        if not path:
+            self.record_btn.setChecked(False)
+            return
+        try:
+            self.client.call("record.start", path=path)
+        except Exception as e:                           # noqa: BLE001
+            self.record_btn.setChecked(False)
+            self.statusBar().showMessage(f"record refused: {e}")
+            return
+        self.record_btn.setText("Stop recording")
+        self.statusBar().showMessage(f"recording to {path}")
+
+    def export_csv(self):
+        """Write the sweep on screen, in the units on screen.
+
+        Deliberately only what is displayed, and it says so in the
+        header. Exporting "the last two seconds" from the ring instead
+        would hand back samples the user never saw and never triggered
+        on, and a file that does not match the picture it came from is
+        the kind of evidence that gets argued about later.
+        """
+        sweep = self.scope.last_sweep
+        if sweep.empty:
+            self.statusBar().showMessage("nothing on screen to export")
+            return
+        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export the visible sweep", "sweep.csv",
+            "CSV (*.csv);;All files (*)")
+        if not path:
+            return
+        try:
+            n = self._write_csv(path, sweep)
+        except OSError as e:
+            self.statusBar().showMessage(f"export failed: {e}")
+            return
+        self.statusBar().showMessage(f"exported {n:,} samples to {path}")
+
+    def _write_csv(self, path, sweep):
+        source = self.channel.currentData()
+        other_tag = (stream.CH_A1 if source == stream.CH_A0
+                     else stream.CH_A0)
+        other = self.rings.get(other_tag)
+        ys, _b = (stream.window_like(other, self.rings.get(source), sweep)
+                  if other is not None
+                  else (np.empty(0, dtype=np.uint16), None))
+
+        v0 = stream.codes_to_volts(sweep.samples)
+        v1 = stream.codes_to_volts(ys) if ys.size == sweep.samples.size else None
+        dt = 1.0 / float(max(1, self.rate_hz))
+
+        with open(path, "w", newline="") as f:
+            # Provenance in the file, not in the filename. A column of
+            # volts is meaningless without the reference it was scaled
+            # by, and this project has an ADVREF that moved by 0.91%
+            # once already.
+            f.write(f"# due_oscilloscope, the sweep as displayed\n")
+            f.write(f"# rate_hz={self.rate_hz} source={stream.LABELS.get(source, source)}\n")
+            f.write(f"# advref_mv={stream.ADVREF_MV} ({stream.ADVREF_SOURCE})\n")
+            f.write(f"# triggered={sweep.triggered}\n")
+            head = ["t_s", f"{stream.LABELS.get(source, source)}_V"]
+            if v1 is not None:
+                head.append(f"{stream.LABELS.get(other_tag, other_tag)}_V")
+            head.append("break")
+            f.write(",".join(head) + "\n")
+            for i in range(sweep.samples.size):
+                row = [f"{i * dt:.9g}", f"{float(v0[i]):.6f}"]
+                if v1 is not None:
+                    row.append(f"{float(v1[i]):.6f}")
+                # A discontinuity is a column, not a missing row: the
+                # reader has to be able to see the join rather than
+                # infer it from a time step.
+                row.append("1" if (sweep.breaks is not None
+                                   and bool(sweep.breaks[i])) else "0")
+                f.write(",".join(row) + "\n")
+        return int(sweep.samples.size)
 
     def scope_cursors(self, on):
         self.scope.set_cursors(bool(on))
