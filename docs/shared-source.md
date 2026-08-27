@@ -119,7 +119,7 @@ bring-up order. Do not reorder.
 | 1 | `frame.h`, `playstat.h`, the version numbers; extract `track_id.h` | `v` and `CTL_OP_IDENTITY` agree - a new test | **done** |
 | 2 | `frame_crc32_update` out of `drivers/stream.c` | both tracks link it; CRC tests pass | **done** |
 | 3 | Split `ctl.h` into `ctl_wire.h` (shared) + device API | Track B control suite unchanged | **done** |
-| 4 | Decouple `ctl.c` from `load_*` and the transport, behind accessors | Track B control suite unchanged | open |
+| 4 | Decouple `ctl.c` from `load_*` and the transport, behind accessors | Track B control suite unchanged | **done** |
 | 5 | Share `ctl.c`; Track A implements the seam; `ctlver` 0 -> 3 | `test_control.py` runs on **both** tracks | open |
 | 6 | Delete the hand-copies; rescope invariant 3; guard against regrowth | - | open |
 
@@ -130,6 +130,17 @@ relocates code, and 2026-08-26 measured what that does: the same board
 with the same wiring gives `all-DC` null on one image and 8 codes at z
 69-148 on the next. **Re-baseline issue #5 after Phase 5, and never
 compare arm amplitudes across a phase boundary.**
+
+**One dependency is left in `ctl.c` on purpose, and Phase 5 must
+settle it.** It still includes `sam.h` for `SystemCoreClock`, because
+both tracks are the same silicon and spell that identically - and
+`ctl_port.h` says in as many words that an accessor both tracks spell
+the same is called directly, not wrapped. What is untested is whether a
+file *inside the shared library* can reach the CMSIS header on Track A,
+where the include path is the Arduino core's rather than the sketch's.
+Phase 2 already found that a library cannot reach back into the sketch
+folder. If it cannot reach CMSIS either, the answer is
+`ctl_port_mck_hz()` and not a header hunt.
 
 **A shared header is not a shared translation unit.** Phase 0 checks the
 link and the runtime value for exactly this reason. Any later phase that
