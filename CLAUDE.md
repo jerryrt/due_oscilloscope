@@ -552,6 +552,64 @@ against it and the resulting failure looks like an analog problem.
 Mark uncertain figures *(check)* in documentation, matching the existing
 convention in `docs/hardware.md`.
 
+## Working alongside other agents
+
+**You are not the only one in this repository.** Several agents work it
+at once, on different machines and different benches, and they push to
+the same `main` while you are mid-task. Assume `origin/main` has moved
+since you last looked, because it usually has.
+
+**There are two channels and they carry different things.**
+
+| channel | what belongs in it |
+|---|---|
+| **git** | what changed and why. A commit body is where a finding *lives* - the measurement, the number, the hypothesis that died. `docs/` on `main` is where it survives the branch that produced it |
+| **issues** | discussion. Anything that needs another party: a question, a proposal, dividing work so two people do not build the same thing, a measurement only their bench can take, a disagreement about method |
+
+The split matters because they decay differently. A commit message is
+read by whoever runs `git log` on that file in six months; an issue is
+read by whoever is working *now*. Putting a finding only in an issue
+loses it, and putting a coordination question only in a commit means
+nobody answers it.
+
+**Use issues for the things a commit cannot do.** Two examples from this
+repository, both of which changed what got built:
+
+- **#5** is a measurement dialogue across two boards and two hosts. One
+  side's `all-DC` arm read null and the other's did not; the exchange
+  ran for days, several hypotheses died in it, and the conclusion - that
+  it was the *image*, not the board or the wiring - came out of one side
+  proposing a test and the other running a cheaper one.
+- **#6** splits a plan two agents had arrived at independently, so that
+  the mechanical half and the analog half were not both built twice.
+
+**Mechanics that follow from working in parallel.**
+
+- **Pull before you branch and again before you commit.** A rebase onto
+  a moved `origin/main` is routine here; a merge conflict you could have
+  avoided by fetching is not.
+- **Keep branches short-lived and single-purpose**, which the Branches
+  section already requires - it matters more when someone else is
+  pushing to the same file.
+- **Notice what another agent is actively editing.** If a file is moving
+  under you, say so in an issue rather than racing it. This is why
+  printf stage 3 was deferred while the generator work was in flight:
+  poisoning `printf` touches every driver, and the other agent was in
+  those files.
+- **Silence is not agreement.** An unanswered issue means nobody has
+  read it yet. If you offered to take something and got no reply, watch
+  what they push - starting `host/provenance.py` was how one agent said
+  "I have this" without answering.
+- **Fix what you find in their work, and say so plainly.** A misleading
+  diagnostic or a stale claim is worth a small commit and a note; it is
+  not worth waiting for permission. Do not rewrite the shape of
+  something they are actively building.
+
+**Say which bench a number came from.** There is more than one, and they
+differ - this one has DAC1 wired to A1, the DSO bench has it on the
+scope's external trigger. `docs/HANDOFF.md`'s status table carries both.
+A figure without its bench is not comparable with anything.
+
 ## Branches
 
 **`main` is the branch, and every other branch is short-lived: used and
