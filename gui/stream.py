@@ -220,6 +220,12 @@ class ChannelRing:
 #: enough that the search stays inside the frame budget.
 SEARCH_SPAN = 4
 
+#: Below this peak-to-peak, midpoint crossings are noise rather than
+#: the waveform and any frequency from them is invented. Ten codes is
+#: about 5 mV, comfortably above the ~1-2 codes a quiet channel shows
+#: and far below any signal worth timing.
+MEASURE_MIN_SWING_CODES = 10
+
 
 class Sweep:
     """One screenful, and where it came from.
@@ -355,6 +361,74 @@ def select(ring, n, trig=None):
     t = int(idx[-1])                       # the most recent qualifying edge
     a, b = t - pre, t + post
     return Sweep(samples[a:b], breaks[a:b], triggered=True, trigger_index=pre)
+
+
+def measure(sweep, rate_hz):
+    """Automatic measurements over the sweep on screen.
+
+    Every value is either a number or None with a reason, never a
+    plausible-looking figure. "Do not invent numbers" is a rule in
+    CLAUDE.md because a guessed value that later reads as established
+    fact is the most expensive error this project makes.
+
+    **A window containing a discontinuity measures nothing.** An
+    overrun-flagged frame is not continuous with the one before it, so
+    the largest excursion may span two unrelated moments and the
+    interval between crossings is not a period. Invariant 5 forbids
+    presenting discontinuous data as continuous; a number carries that
+    lie further than a plot does, because the plot at least shows the
+    break.
+
+    **There is deliberately no rise or fall time.** The DAC's step was
+    measured with a scope at 789-938 ns (`docs/awg.md`), and this ADC's
+    sample interval is 1.1 us at its very fastest and 5 us at 200 ksps.
+    A 10-90% time computed from these samples would be one sample wide
+    at best - it would be reporting the sampling interval and calling it
+    the converter's edge. The instrument that can measure it is the one
+    on the bench, and it already has.
+    """
+    out = {"vpp_v": None, "mean_v": None, "rms_v": None,
+           "freq_hz": None, "period_s": None, "duty": None, "note": None}
+    if sweep.empty:
+        out["note"] = "no data"
+        return out
+    if sweep.breaks is not None and bool(sweep.breaks.any()):
+        out["note"] = "discontinuity in window"
+        return out
+
+    v = np.asarray(codes_to_volts(sweep.samples), dtype=np.float64)
+    out["vpp_v"] = float(v.max() - v.min())
+    out["mean_v"] = float(v.mean())
+    out["rms_v"] = float(np.sqrt(np.mean(v * v)))
+
+    # Frequency from the signal's own midpoint rather than the trigger
+    # level: the trigger may sit anywhere on the waveform, and a level
+    # near a peak crosses twice per period in one place and not at all
+    # in another. The midpoint is where a symmetric wave crosses once
+    # per period going up.
+    codes = sweep.samples.astype(np.int32)
+    mid = int((int(codes.max()) + int(codes.min())) // 2)
+    if codes.max() - codes.min() < MEASURE_MIN_SWING_CODES:
+        out["note"] = "signal too flat to time"
+        return out
+
+    ups = find_edges(sweep.samples, mid, rising=True)
+    if ups.size < 2:
+        out["note"] = "fewer than two crossings in window"
+        return out
+
+    # The mean interval over the whole window rather than one period:
+    # averaging N intervals divides the one-sample edge uncertainty by
+    # N, which is the same reason a frequency counter gates over many
+    # cycles instead of timing one.
+    period_samples = float(ups[-1] - ups[0]) / float(ups.size - 1)
+    if period_samples <= 0 or rate_hz <= 0:
+        out["note"] = "rate unknown"
+        return out
+    out["period_s"] = period_samples / float(rate_hz)
+    out["freq_hz"] = float(rate_hz) / period_samples
+    out["duty"] = float(np.count_nonzero(codes > mid)) / float(codes.size)
+    return out
 
 
 def minmax(samples, columns, breaks=None):

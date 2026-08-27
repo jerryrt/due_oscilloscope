@@ -37,11 +37,17 @@ class ScopeView(QtWidgets.QWidget):
         lay.addWidget(self.plot)
         self.columns = 1200
         self.last_triggered = False
+        # The sweep as drawn, so the measurements describe the trace on
+        # screen rather than a second one taken a moment later.
+        self.last_sweep = stream.Sweep(np.empty(0, dtype=np.uint16),
+                                       np.empty(0, dtype=bool))
 
     def draw(self, ring, window_s, rate_hz, trig=None):
         n = int(max(1, window_s * rate_hz))
         sweep = stream.select(ring, n, trig)
         self.last_triggered = sweep.triggered
+        if not sweep.empty:
+            self.last_sweep = sweep
         if sweep.empty:
             # Normal mode with no edge: hold the previous trace rather
             # than blanking. A scope that clears its screen every time

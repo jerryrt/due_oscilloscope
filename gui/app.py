@@ -22,6 +22,7 @@ from daemon import client as clientmod      # noqa: E402
 
 from . import stream                        # noqa: E402
 from .health import HealthPanel             # noqa: E402
+from .measure_panel import MeasurePanel     # noqa: E402
 from .scope import ScopeView                # noqa: E402
 
 # Windows offered in the timebase box, in seconds.
@@ -64,6 +65,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.scope = ScopeView()
         self.health = HealthPanel()
+        self.measure = MeasurePanel()
 
         self.channel = QtWidgets.QComboBox()
         for tag, label in sorted(stream.LABELS.items(), reverse=True):
@@ -131,9 +133,14 @@ class MainWindow(QtWidgets.QMainWindow):
         left.addWidget(self.scope, 1)
         left.addLayout(controls)
 
+        side = QtWidgets.QVBoxLayout()
+        side.addWidget(self.health)
+        side.addWidget(self.measure)
+        side.addStretch(1)
+
         body = QtWidgets.QHBoxLayout()
         body.addLayout(left, 1)
-        body.addWidget(self.health)
+        body.addLayout(side)
 
         central = QtWidgets.QWidget()
         central.setLayout(body)
@@ -246,9 +253,14 @@ class MainWindow(QtWidgets.QMainWindow):
         tag = self.channel.currentData()
         ring = self.rings.get(tag)
         if ring is not None:
+            trig = self.trigger()
             self.scope.draw(ring, self.window_box.currentData(), self.rate_hz,
-                            self.trigger())
+                            trig)
             self.trig_state.setText(self.trigger_state_text())
+            # Measured over the sweep that was drawn, not over a fresh
+            # one: a number beside a trace has to describe that trace.
+            self.measure.update_from(
+                stream.measure(self.scope.last_sweep, self.rate_hz))
 
     def trigger(self):
         """The trigger the controls currently describe, or None."""
