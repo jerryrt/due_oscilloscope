@@ -48,20 +48,38 @@ import provenance as prov                                     # noqa: E402
 import repeat                                                 # noqa: E402
 import scope as dso                                           # noqa: E402
 import dso_metrics as dm                                      # noqa: E402
+import noise_metrics as nm                                    # noqa: E402
 
 RECORDS = os.path.join(HERE, "records")
 
-#: The metrics that return a result worth taking a spread of. `shots`
-#: writes PNGs and `wrap`/`reload` have their own repeat machinery, so
-#: they are not here; adding one is a line, not a design.
+#: The metrics that return a result worth taking a spread of, and
+#: whether each needs the bench instrument. `shots` writes PNGs and
+#: `wrap`/`reload` have their own repeat machinery, so they are not
+#: here; adding one is a line, not a design.
+#:
+#: The scope-free entries matter more than they look. A metric that
+#: needs no instrument can be repeated on any bench, by anyone, without
+#: the DS1102E - and `noise-dc` is the first figure of merit this
+#: project has that a second board could be measured against directly.
 METRICS = {
-    "settle": dm.cmd_settle,
-    "step": dm.cmd_step,
-    "skew": dm.cmd_skew,
-    "transfer": dm.cmd_transfer,
-    "lin": dm.cmd_lin,
-    "clock": dm.cmd_clock,
+    "settle": {"fn": dm.cmd_settle, "scope": True, "args": dm.default_args},
+    "step": {"fn": dm.cmd_step, "scope": True, "args": dm.default_args},
+    "skew": {"fn": dm.cmd_skew, "scope": True, "args": dm.default_args},
+    "transfer": {"fn": dm.cmd_transfer, "scope": True,
+                 "args": dm.default_args},
+    "lin": {"fn": dm.cmd_lin, "scope": True, "args": dm.default_args},
+    "clock": {"fn": dm.cmd_clock, "scope": True, "args": dm.default_args},
+    "noise-dc": {"fn": nm.cmd_noise_dc, "scope": False,
+                 "args": nm.default_args},
+    "noise-fast": {"fn": nm.cmd_noise_fast, "scope": False,
+                   "args": nm.default_args},
+    "noise-host": {"fn": nm.cmd_noise_host, "scope": False,
+                   "args": nm.default_args},
 }
+
+
+def needs_scope(metric):
+    return METRICS[metric]["scope"]
 
 
 def floors_for(metric, records):
@@ -102,14 +120,15 @@ def run_once(board, inst, metric, args):
     comparable.
     """
     try:
-        return METRICS[metric](board, inst, args), None
+        return METRICS[metric]["fn"](board, inst, args), None
     except SystemExit as e:                       # the metrics' own refusals
         return None, str(e)
     except Exception as e:                                    # noqa: BLE001
         return None, f"{type(e).__name__}: {e}"
     finally:
         try:
-            inst.averaging(None)
+            if inst is not None:
+                inst.averaging(None)
             board.stop()
             board.drain_console(0.2)
         except Exception:                                     # noqa: BLE001
@@ -159,8 +178,15 @@ def take(args):
     """N runs on one axis, each flushed before the next begins."""
     path = args.out or os.path.join(RECORDS, f"phase0-{args.metric}.jsonl")
     rec = repeat.Recorder(path)
-    inst = dso.open_scope()
-    print(f"scope: {' '.join(inst.identify())}")
+    inst = None
+    if needs_scope(args.metric):
+        inst = dso.open_scope()
+        print(f"scope: {' '.join(inst.identify())}")
+    else:
+        # Said out loud, because "no instrument" is a property of the
+        # metric worth knowing when a figure is quoted: it can be
+        # re-taken on a bench that has no scope at all.
+        print(f"no instrument needed for {args.metric}")
     print(f"record: {path}")
     board = None
     try:
@@ -179,10 +205,12 @@ def take(args):
                               f"track {args.track} in {time.time()-t0:.0f} s"
                               + (f" ({attempts} attempts)"
                                  if attempts > 1 else ""))
-                    # Before any number is taken, not after: a probe
-                    # ratio is asserted and a factor of ten is silent.
-                    dm.verify_probe(board, inst, args.channel,
-                                    dm.TRIGGER_PRESETS[args.trigger])
+                    if inst is not None:
+                        # Before any number is taken, not after: a probe
+                        # ratio is asserted and a factor of ten is
+                        # silent.
+                        dm.verify_probe(board, inst, args.channel,
+                                        dm.TRIGGER_PRESETS[args.trigger])
 
                 p = prov.collect(board=board, inst=inst,
                                  channels=(args.channel,),
@@ -197,7 +225,8 @@ def take(args):
 
                 print(f"\n=== {args.metric} [{axis}] run {i+1}/{args.runs} "
                       f"===")
-                ns = dm.default_args(args.metric, **args.overrides)
+                ns = METRICS[args.metric]["args"](args.metric,
+                                                  **args.overrides)
                 t0 = time.time()
                 result, err = run_once(board, inst, args.metric, ns)
                 rec.add({
@@ -221,8 +250,9 @@ def take(args):
                 measure.set_sync(board, "cycle")
             finally:
                 board.close()
-        inst.averaging(None)
-        inst.close()
+        if inst is not None:
+            inst.averaging(None)
+            inst.close()
     return path
 
 
@@ -307,12 +337,17 @@ def main():
     ap.add_argument("--vdiv", type=float, default=None)
     ap.add_argument("--window", type=float, default=None)
     ap.add_argument("--amp", type=int, default=None)
+    ap.add_argument("--seconds", type=float, default=None,
+                    help="noise metrics: capture length per run")
+    ap.add_argument("--code", type=int, default=None,
+                    help="noise metrics: DAC code to hold")
     args = ap.parse_args()
 
     args.axes = (["in-place", "reflash"] if args.axis == "both"
                  else [args.axis])
-    args.overrides = {"channel": args.channel, "trigger": args.trigger}
-    for k in ("average", "vdiv", "window", "amp"):
+    args.overrides = ({"channel": args.channel, "trigger": args.trigger}
+                      if needs_scope(args.metric) else {})
+    for k in ("average", "vdiv", "window", "amp", "seconds", "code"):
         if getattr(args, k) is not None:
             args.overrides[k] = getattr(args, k)
 

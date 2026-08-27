@@ -251,6 +251,24 @@ possible language over three back-to-back runs on one flash in one
 thermal state. It cost one run and one look at the capture's own values
 to fall over.
 
+### Tier 3 is in use, and it is scope-free
+
+The calibration argument below says the averaged ADC out-resolves the
+scope by a wide margin and is the right instrument for anything
+measuring differences. `docs/noise.md` is the first measurement built on
+that, and it needs no instrument at all: how many of the converter's
+twelve bits this board actually leaves it, what each digital load costs
+in bits, and which spectral lines are real rather than folded.
+
+**8.2-8.4 effective bits of 12**, broadband with no lines, no drift and
+no mains; host-fed playback costs about 0.26 bits and the conversion
+rate costs less than 0.19. `tools/noisetool.py`, `host/noise.py`,
+repeatability through `tools/phase0.py noise-fast`.
+
+Being scope-free is what makes it a standard rather than a reading: any
+bench can re-take it, including one with no DS1102E, and the figures
+compare directly.
+
 ## The catalogue, in three tiers
 
 The tiers are about **what a figure's provenance depends on**, which is
