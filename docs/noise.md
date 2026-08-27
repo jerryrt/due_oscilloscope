@@ -50,9 +50,10 @@ that silently misreports the next one.
 
 A0, driven by DAC0 holding a fixed code, on the macOS bench, Track B.
 `records/phase0-noise-fast.jsonl` and `records/noise-activity.jsonl`.
-A second bench has since measured 3x quieter; see "A second board, on a
-second host" below before treating any figure here as the board's
-rather than this bench's.
+**These figures were taken through a firmware disturbance that has since
+been fixed, on a bench with a free neighbour on the mux.** A second
+bench measures 3x quieter; see "A second board, on a second host" below,
+and re-take these before treating any of them as the board's.
 
 | | |
 |---|---|
@@ -74,80 +75,118 @@ and that agreement is the reason to believe either.
 
 ## A second board, on a second host
 
-Taken 2026-08-27 on `windows-desk`: a different Arduino Due, Windows 11
-on AMD64, Track B fw 0.2.0, same frame geometry, same `noisetool.py`.
-`records/phase0-noise-fast.jsonl` now holds both benches; the `bench`
-field in each row separates them.
+Taken 2026-08-27 on `windows-desk`: a different Due, Windows 11 on
+AMD64, Track B. `records/phase0-noise-fast.jsonl` holds both benches and
+the `bench` field separates them.
 
-**Board and host changed together.** Nothing here says which of the two
-the difference belongs to, and the honest reading is "another bench",
-not "another board".
+**The first version of this section reported a 1.64-bit difference and
+called it "another bench". That was three variables reported as one, and
+most of what follows is the work of taking them apart.** Two are now
+removed or measured; about 1.4 bits is left and is not explained.
 
-| n=7 each | windows-desk | macOS / DSO bench |
+### The firmware was not the same, and that mattered
+
+Both boards reported `fw 0.2.0`. The `build` strings did not: 11:34:35
+there, 07:34:13 here, with `2e74fbb`, `f38523b` and `623d4dc` landing in
+between - all three on the DAC and its sync, which is exactly the path
+the `gen-dc` arm holds a level on. A version string is not a build, and
+this is the second time in this project that `FW_VERSION_STR` has been
+the same across two things that were not.
+
+Reflashed here from `main` at `6f17a8e`, and the effect is not on the
+level but on the **shape of the distribution**:
+
+| this board, n=7 in place | before reflash | after |
 |---|---|---|
-| noise | **1.05 codes rms** (0.81-1.06) | 3.27 (3.13-4.43) |
-| effective resolution | **10.14 bits** (10.12-10.51) | 8.50 (8.06-8.56) |
-| noise-free resolution | **9.21 bits** (9.19-9.58) | 7.57 (7.13-7.63) |
-| against an ideal converter | **3.6x** the quantisation floor | 11.3x |
-| repeatability, in place | 0.38 bits | 0.50 bits |
-| held level | 2052.7 codes | 2050.1 |
-| lines per run | median 3, up to 7 | 0 in 7 of 7 |
+| noise | 0.813 **or** 1.061 codes | 0.956 |
+| spread | 0.248 codes / 0.38 bits | **0.004 codes / 0.006 bits** |
 
-**The ranges do not overlap**, by 1.56 bits at their closest: 3.1x less
-noise and 1.64 bits more resolution than the bench this measurement was
-designed on. Repeatability is slightly better too, so this is not the
-quieter bench merely being sampled at a lucky moment.
+Before, it sat in one of two states and flipped between runs with
+nothing changed. After, seven runs agree to three decimal places. **What
+this document previously called "repeatability, n=7 in place: 0.50 bits"
+is not repeatability. It is two states.**
 
-Four bits of twelve are gone on that bench. Here it is closer to two.
+And the same signature is in the macOS record: sorted, its seven runs
+are 3.128 3.167 3.171 3.274 3.457 | 4.345 4.426 - a gap 2.7x wider than
+the widest cluster. That bench's firmware predates `623d4dc`, the commit
+whose subject is "clear it of the disturbance", by five minutes.
 
-### What reproduced, and what that is worth
+**Prediction, and the cheapest thing anyone can do next: reflash the
+macOS bench from current `main` and re-run `noise-fast --runs 7`. If the
+spread collapses the way it did here, every figure in the table above is
+measured through a disturbance that has since been fixed.**
 
-**Host-fed playback costs the same.** Two independent five-round
-interleaved sweeps here, against the two already recorded there:
+### A bare neighbour in the sequence costs 0.347 bits
+
+The other bench has A1 free; this one has DAC1 on A1. That is not a
+detail: the ADC converts a pair through one sample-and-hold, so what the
+*other* channel is doing lands in this one.
+
+Measured here by switching the capture pair between A0+A1 (driven) and
+A0+A2 (bare), interleaved, five rounds, on the reflashed board:
+
+    A1 driven   0.952-0.956 codes    10.272-10.279 bits
+    A2 bare     1.210-1.216 codes     9.926-9.932 bits
+    paired      -0.347 +- 0.002 bits  (n=5, sd 0.004)
+
+So a bench with a free neighbour reads about a third of a bit worse, and
+comparing one to the other without accounting for it is comparing two
+different circuits. This also sharpens the finding below: an unused
+channel does not merely read its neighbour, it **costs** its neighbour.
+
+### What is left is 1.4 bits and is not explained
+
+| n=7 each, after reflash | windows-desk | macOS / DSO bench |
+|---|---|---|
+| noise | 0.956 codes rms | 3.27 |
+| effective resolution | 10.27 bits | 8.50 |
+| spread in place | 0.006 bits | 0.50 (two states) |
+
+1.77 bits apart. The neighbour accounts for 0.35 of that. The firmware
+is no longer a difference on this side and may be worth something on the
+other. **That leaves about 1.4 bits between two boards of the same
+design running the same firmware, which is too much to accept as a board
+tolerance and is not currently explained.**
+
+Board and host still change together here, so this cannot say which.
+What would settle it, cheapest first: reflash the macOS bench and re-run
+(above); move one board to the other host; measure ADVREF's own noise
+rather than its level, since it is the reference both converters share
+and nothing here has ever looked at it.
+
+Until then the honest reading of the headline table at the top of this
+document is **"what one bench measured through a firmware disturbance
+with a free neighbour"**, not "what this board does".
+
+### What reproduced anyway
+
+**The playback cost.** Two interleaved five-round sweeps here against
+the two there:
 
 | sweep | playback vs internal |
 |---|---|
-| windows-desk, first | **-0.184 +- 0.076 bits** |
-| windows-desk, second | **-0.256 +- 0.115 bits** |
+| windows-desk, first | -0.184 +- 0.076 bits |
+| windows-desk, second | -0.256 +- 0.115 bits |
 | macOS, first | -0.292 +- 0.074 bits |
 | macOS, second | -0.234 +- 0.078 bits |
 
-Four sweeps, two boards, two hosts, all four inside one standard error
-of each other. That is the figure to carry forward: the absolute floor
-is a property of a bench and does not travel, but the *cost of feeding
-the DAC over USB* does.
-
+Four sweeps, two boards, two hosts, all inside one standard error. The
+absolute floor is a property of a bench and does not travel; this does.
 It is also the argument for the paired method rather than for the
-method. On the bench where the floor is 3x lower the paired difference
-came out the same, which is what a real difference does and what an
-artefact of the noisier bench's wander would not.
+instrument: it survived a bench whose floor was 3x lower, two states in
+the firmware, and a different neighbour on the mux.
 
-**The rate arm is still not resolved, and this bench nearly fooled me.**
-The first sweep here returned `+0.030 +- 0.004 bits` for 200 k -> 453 k -
-resolved at seven standard errors, and tempting to report. The second
-sweep, same board, same session, returned "not resolved, < 0.285". Two
-sweeps of the same arm, one apparently resolved to four decimal places
-and one not resolved at all. **The quoted result is unresolved**, and
-the reason the doc above asks for two sweeps is that one of them will
-occasionally do this.
+**The rate arm is still unresolved, and this bench nearly sold the
+opposite.** The first sweep here returned `+0.030 +- 0.004 bits` for
+200 k -> 453 k - resolved at seven standard errors and tempting to
+publish. The second, same board and session, returned "not resolved,
+< 0.285". Quoted as unresolved. In hindsight the first sweep was
+measuring which of the two firmware states each round happened to be in.
 
-**Nothing narrowband, again.** This bench does show lines where the
-other showed none - median 3 per run, up to 7 - but they fail the
-two-rate test: `alias` finds zero lines at 200 ksps and five at 453 k,
-with nothing stationary across the two. They appear here and not there
-because the broadband floor is 3x lower, so the estimator's tail now
-clears it. The conclusion is unchanged and better supported: broadband,
-no discrete aggressor, nothing to notch.
-
-### What could not be repeated here
-
-**The free-A1 finding.** "An unused ADC channel reads its neighbour"
-needs an unused channel, and this bench has DAC1 wired to A1 - its own
-`s` sweep tracks DAC1 to within ~10 mV mid-range, and A1 does not move
-when DAC0 swings full scale. A1 here reads 2057.9 codes against A0's
-2052.8, which looks like the 4.3-code offset recorded there and is not:
-it is a driven pin sitting where its own DAC put it. Coincidence, not
-replication, and worth saying because the numbers agree.
+**Nothing narrowband.** This bench shows lines where the other showed
+none, but `alias` finds zero at 200 ksps and five at 453 k with nothing
+stationary across the two. They clear the floor here only because the
+floor is lower. Same conclusion, better supported.
 
 ## What the noise is, and what it is not
 
