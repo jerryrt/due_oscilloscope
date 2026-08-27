@@ -19,6 +19,12 @@ from PySide6 import QtWidgets
 from . import stream
 
 
+#: One colour per channel, and they must stay distinguishable in a
+#: screenshot pasted into a message - which is what happens to every
+#: trace in this project's history.
+CHANNEL_COLOURS = {7: "#2e86de", 6: "#e67e22"}
+
+
 class ScopeView(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -30,8 +36,21 @@ class ScopeView(QtWidgets.QWidget):
         self.plot.setYRange(0.0, stream.VREF_V)
         # connect="finite" is what makes a NaN a break in the line
         # rather than a point at zero.
-        self.curve = self.plot.plot(pen=pg.mkPen("#2e86de", width=1),
-                                    connect="finite")
+        #
+        # One curve per channel, created up front. The board captures A0
+        # and A1 in the same frames and drawing only one of them hid the
+        # thing they are captured together *for*: the demultiplexing
+        # check. `docs/frontend.md` lists "2ch with DAC1 at mid scale: A1
+        # tone < a few codes" as a self-test, and the device's own
+        # console says "A1 must read flat, or demux is wrong" - neither
+        # is checkable on a display that shows one channel at a time.
+        self.curves = {}
+        for tag, colour in CHANNEL_COLOURS.items():
+            self.curves[tag] = self.plot.plot(
+                pen=pg.mkPen(colour, width=1), connect="finite",
+                name=stream.LABELS.get(tag, str(tag)))
+        # The source channel's curve, for callers that still want one.
+        self.curve = self.curves[stream.CH_A0]
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(self.plot)
@@ -51,6 +70,37 @@ class ScopeView(QtWidgets.QWidget):
         self.plot.setLabel("bottom", "Time", units="s")
         self.plot.setYRange(0.0, stream.VREF_V)
         self.plot.setTitle(None)
+
+    def _draw_xy(self, rings, source, ring, sweep):
+        """One channel against the other. The loopback bench's view."""
+        other_tag = (stream.CH_A1 if source == stream.CH_A0
+                     else stream.CH_A0)
+        other = rings.get(other_tag)
+        if self._view != "xy":
+            self._view = "xy"
+            self.plot.setLabel("bottom",
+                               f"{stream.LABELS.get(source, source)} (V)")
+            self.plot.setLabel("left",
+                               f"{stream.LABELS.get(other_tag, other_tag)} (V)")
+            self.plot.setXRange(0.0, stream.VREF_V, padding=0)
+            self.plot.setYRange(0.0, stream.VREF_V)
+        for tag, curve in self.curves.items():
+            if tag != source:
+                curve.setData([], [])
+        if other is None or sweep.empty:
+            self.curve.setData([], [])
+            self.plot.setTitle("needs both channels")
+            return 0
+        ys, _b = stream.window_like(other, ring, sweep)
+        if ys.size == 0:
+            self.curve.setData([], [])
+            self.plot.setTitle("channels out of step")
+            return 0
+        self.plot.setTitle(None)
+        x, y = stream.xy_points(sweep.samples, ys, sweep.breaks)
+        self.curves[source].setData(x, y)
+        self.curve = self.curves[source]
+        return int(sweep.samples.size)
 
     def _draw_spectrum(self, sweep, rate_hz, fft_window):
         """The spectrum, or the reason there is not one.
@@ -77,8 +127,24 @@ class ScopeView(QtWidgets.QWidget):
         self.plot.setXRange(0.0, float(freqs[-1]), padding=0)
         return int(sweep.samples.size)
 
-    def draw(self, ring, window_s, rate_hz, trig=None, view="time",
-             fft_window="hann"):
+    def draw(self, rings, source, window_s, rate_hz, trig=None,
+             view="time", fft_window="hann"):
+        """Draw every channel that has data; measure and trigger on one.
+
+        `rings` is tag -> ChannelRing and `source` is the tag the
+        trigger and the measurements follow - which is what a scope's
+        trigger-source selector is, rather than a "which one do I look
+        at" switch.
+
+        The other channels are drawn from the *same* sample offset as
+        the source rather than triggered independently. They were
+        captured in the same frames, so sliding them separately would
+        put two moments on one time axis and invite reading a phase
+        difference that is an artefact of the display.
+        """
+        ring = rings.get(source)
+        if ring is None:
+            return 0
         n = int(max(1, window_s * rate_hz))
         sweep = stream.select(ring, n, trig)
         self.last_triggered = sweep.triggered
@@ -86,6 +152,8 @@ class ScopeView(QtWidgets.QWidget):
             self.last_sweep = sweep
         if view == "spectrum":
             return self._draw_spectrum(sweep, rate_hz, fft_window)
+        if view == "xy":
+            return self._draw_xy(rings, source, ring, sweep)
         self._axes_for_time()
         if sweep.empty:
             # Normal mode with no edge: hold the previous trace rather
@@ -93,14 +161,33 @@ class ScopeView(QtWidgets.QWidget):
             # it fails to trigger is unreadable, and the caller is told
             # which happened through last_triggered.
             return 0
-        samples, breaks = sweep.samples, sweep.breaks
         cols = min(self.columns, max(2, self.plot.width() or self.columns))
-        x, y = stream.minmax(samples, cols, breaks)
-        if x.size == 0:
-            return 0
-        # x comes back in sample indices; show it as time.
-        t = x / float(max(1, rate_hz))
-        volts = stream.codes_to_volts(np.nan_to_num(y, nan=np.nan))
-        self.curve.setData(t, volts)
-        self.plot.setXRange(0, max(t[-1], 1e-6), padding=0)
-        return samples.size
+        drawn = 0
+        span = 0.0
+        for tag, curve in self.curves.items():
+            other = rings.get(tag)
+            if other is None:
+                curve.setData([], [])
+                continue
+            if tag == source:
+                samples, breaks = sweep.samples, sweep.breaks
+            else:
+                # The same window, taken from the same place in the
+                # ring, so the two channels share one time axis.
+                samples, breaks = stream.window_like(other, ring, sweep)
+            if samples.size == 0:
+                curve.setData([], [])
+                continue
+            x, y = stream.minmax(samples, cols, breaks)
+            if x.size == 0:
+                curve.setData([], [])
+                continue
+            # x comes back in sample indices; show it as time.
+            t = x / float(max(1, rate_hz))
+            volts = stream.codes_to_volts(np.nan_to_num(y, nan=np.nan))
+            curve.setData(t, volts)
+            span = max(span, float(t[-1]))
+            drawn = max(drawn, int(samples.size))
+        if drawn:
+            self.plot.setXRange(0, max(span, 1e-6), padding=0)
+        return drawn
