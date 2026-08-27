@@ -13,6 +13,8 @@ ways a DS1102E refuses to trigger on it.
              swept past the DACC's measured ceiling
     transfer DAC code -> volts -> ADC code, so the ADC is finally
              measured against something that is not the ADC
+    reload   is the PDC reload visible on the pin, with a control that
+             says whether it is locked to the reload or the waveform
     step     full-scale step response - slew rate, overshoot, settling
     skew     the TAG interleave, separated from the instrument's own
              trigger-path delay by measuring it at four rates
@@ -978,6 +980,237 @@ def cmd_ceiling(board, inst, args):
 
 
 # ------------------------------------------------------------------
+# reload: is the PDC reload visible on the pin? (issue #5)
+# ------------------------------------------------------------------
+
+def cmd_reload(board, inst, args):
+    """Look at the DAC pin at the instant the PDC reloads, and control it.
+
+    This is the measurement issue #5 has been owed: every reading of that
+    artifact so far came from the ADC, which is one of the two converters
+    under suspicion. `docs/HANDOFF.md` describes it as a brief excursion
+    on a DAC output pin once per PDC reload, whose size needs the output
+    to be in motion - so a flat level is the wrong place to look and a
+    moving one is the right one.
+
+    Two things make it measurable now that were not before.
+
+    The sync gives a trigger that does not move, and **averaging is only
+    meaningful on a trigger that does not move**. Triggered on the signal
+    the jitter is tens of microseconds, which smears any feature narrower
+    than that into the baseline. On the sync it is sub-microsecond, so
+    256 averages pull a few millivolts out of the pin's ~20 mV of noise
+    instead of blurring it away.
+
+    And the resolution knob separates the reload from the waveform.
+    Below the default resolution the table holds several cycles per wrap,
+    so "once per cycle" and "once per reload" stop being the same event -
+    which is the distinction GEN_LAYOUT_TWOCYCLE was built to make, now
+    available continuously.
+
+    **The control is the point.** Same board, same output, same
+    averaging, same window; only what the scope is locked to changes:
+
+      sync=wrap   the reload sits at a fixed phase every trigger, so a
+                  feature locked to it survives averaging
+      sync=cycle  the scope triggers once per cycle instead, so the
+                  reload lands at a different one each time and anything
+                  locked to it averages away
+
+    A feature that is present under wrap and absent under cycle is locked
+    to the reload. One that is present under both is a property of the
+    waveform. One that is absent from both is below what this setup can
+    see, and the floor is reported with the result rather than left as
+    "nothing found".
+    """
+    preset = TRIGGER_PRESETS[args.trigger]
+    pts = measure.gen_points_for(args.points)
+    cycles_per_wrap = measure.GEN_TABLE_POINTS // pts
+    if cycles_per_wrap < 2:
+        raise SystemExit(
+            f"{pts} points a cycle puts {cycles_per_wrap} cycle in a wrap, "
+            f"so 'once per cycle' and 'once per reload' are the same event "
+            f"and the control cannot separate them. Use fewer points.")
+    out_hz = measure.gen_output_hz(args.trigger, pts)
+    trig_period = 1.0 / args.trigger
+    print(f"\n{pts} pts/cycle -> {cycles_per_wrap} cycles per wrap, "
+          f"waveform {out_hz:,.0f} Hz, wrap {out_hz/cycles_per_wrap:,.1f} Hz")
+    print(f"one trigger period is {trig_period*1e6:.2f} us; the reload sits "
+          f"about one of those\nbefore the sync edge, for the TAG "
+          f"interleave")
+
+    results = {}
+    for mode in ("wrap", "cycle"):
+        measure.set_sync(board, mode)
+        measure.set_gen(board, args.shape_one, pts)
+        board.cmd(preset)
+        time.sleep(0.8)
+        board.drain_console(0.3)
+        inst.channel_scale(args.channel, 0.5)
+        inst.channel_offset(args.channel, -DAC_MID_V)
+        inst.coupling(args.channel, "AC" if args.ac else "DC")
+        inst.timebase(args.window / 12.0)
+        inst.timebase_offset(0.0)
+        got = inst.ext_trigger_autoset()
+        if not got:
+            raise SystemExit(f"EXT did not trigger with sync={mode}")
+        # Centre the window on the reload, then zoom the vertical onto
+        # whatever the waveform is doing there.
+        inst.timebase_offset(-trig_period)
+        inst.averaging(None)
+        inst.run()
+        time.sleep(0.4)
+        mid = inst.level(args.channel)
+        if mid is None:
+            raise SystemExit("no trace")
+        # The vertical gain is the whole measurement here. 0.02 V/div is
+        # this instrument's floor with a x10 probe told, and one screen
+        # level there is 1.17 DAC codes - which is what makes issue #5's
+        # reported 5-15 code peaks 4-13 levels rather than invisible.
+        #
+        # `:WAV:DATA?` hands back 8-bit SCREEN levels no matter how much
+        # averaging is set, so the quantiser is the floor and no amount
+        # of averaging moves it. Averaging still earns its place: it
+        # decides whether a level flickers between two codes or sits on
+        # one. The first version of this ran at 0.1 V/div and reported a
+        # residual of exactly 0.00 mV, which is not a quiet pin - it is
+        # every sample of a held level landing on one screen level.
+        inst.channel_scale(args.channel, args.vdiv or 0.02)
+        inst.channel_offset(args.channel, -mid)
+        inst.averaging(args.average)
+        time.sleep(0.4 + args.average * 0.006)
+        v = inst.waveform(args.channel)
+        inst.averaging(None)
+        if not v:
+            raise SystemExit("no trace")
+        dt = inst.timebase() * 12.0 / len(v)
+        n = len(v)
+        # The waveform here is a STAIRCASE, not a curve, and that is
+        # what the first version of this got wrong: it removed a cubic
+        # and reported the steps as residual - 87 codes rms, when the
+        # artifact being hunted is 5-15. A polynomial cannot fit a step.
+        #
+        # The right model is the one the artifact is described in: a
+        # brief excursion on a pin that is otherwise holding a level.
+        # So split the record at its own step edges, drop the settling
+        # at the head of each plateau - measured at 789-938 ns, so a
+        # fifth of a 10 us plateau is generous - and ask what is left
+        # ON the flats. That floor is the pin's noise after averaging,
+        # not the waveform's shape.
+        resid, worst_i = _plateau_residual(v)
+        if not resid:
+            raise SystemExit("no plateaus found; widen --window")
+        keep = [r for r in resid if r is not None]
+        rms = math.sqrt(sum(r * r for r in keep) / len(keep))
+        results[mode] = {
+            "worst_v": resid[worst_i], "worst_at_s": (worst_i - n / 2.0) * dt,
+            "rms_v": rms, "dt_s": dt, "points": n,
+            "settled_points": len(keep),
+            "level_v": mid, "vdiv": args.vdiv or 0.1,
+        }
+        board.stop(); board.drain_console(0.2)
+
+    lvl_codes = (args.vdiv or 0.02) * 8 / 256 / V_PER_CODE
+    print(f"\nDAC0 carries {args.shape_one}; averaged {args.average}x at "
+          f"{(args.vdiv or 0.02)*1000:.0f} mV/div "
+          f"{'AC' if args.ac else 'DC'}-coupled.")
+    print(f"One 8-bit screen level is {lvl_codes:.2f} DAC codes, and that "
+          f"is the floor:\n:WAV:DATA? returns screen levels however much "
+          f"averaging is set.\n")
+    print(f"{'locked to':>10s} {'worst residual':>16s} {'at':>10s} "
+          f"{'rms':>14s}")
+    print("-" * 56)
+    for mode in ("wrap", "cycle"):
+        r = results[mode]
+        print(f"{mode:>10s} {r['worst_v']*1000:+9.2f} mV "
+              f"{r['worst_v']/V_PER_CODE:+5.1f}c "
+              f"{r['worst_at_s']*1e6:+8.2f}us "
+              f"{r['rms_v']*1000:7.2f} mV {r['rms_v']/V_PER_CODE:4.1f}c")
+
+    w, c = results["wrap"], results["cycle"]
+    floor = c["rms_v"]
+    ratio = abs(w["worst_v"]) / floor if floor else float("nan")
+    print(f"\nThe control's rms is the floor: {floor*1000:.2f} mV = "
+          f"{floor/V_PER_CODE:.1f} codes.")
+    if ratio >= 4.0 and abs(w["worst_v"]) > 2.5 * abs(c["worst_v"]):
+        print(f"Wrap-locked feature: {ratio:.1f}x the control's rms, and "
+              f"{abs(w['worst_v']/c['worst_v']):.1f}x the control's own "
+              f"worst.\nIt is locked to the reload rather than to the "
+              f"waveform.")
+    else:
+        print(f"No wrap-locked feature above the floor. Worst under wrap "
+              f"is {ratio:.1f}x the\ncontrol's rms, which is not a "
+              f"detection - it is a bound. An excursion smaller\nthan "
+              f"{floor/V_PER_CODE:.1f} codes would not be seen by this "
+              f"setup, and issue #5's\nreported peaks are 5-15 codes.")
+    return results
+
+
+def _plateau_residual(v, settle_frac=0.2, edge_k=4.0):
+    """Deviation from each plateau's own level, on the settled part.
+
+    Splits at the trace's own step edges rather than at a computed
+    sample period, because the sample period is only known if the
+    timebase snapped to what was asked - and on a 1-2-5 ladder it
+    usually did not.
+
+    Returns (residuals, index of the worst), with None wherever the
+    sample was inside a step or its settling and therefore says nothing
+    about a level being held.
+    """
+    n = len(v)
+    d = [abs(v[i] - v[i - 1]) for i in range(1, n)]
+    if not d:
+        return [], 0
+    med = sorted(d)[len(d) // 2]
+    # An edge is a jump well above the typical sample-to-sample move.
+    cut = [i + 1 for i, x in enumerate(d) if x > max(edge_k * med, 1e-6)]
+    bounds = [0] + cut + [n]
+    resid = [None] * n
+    for a, b in zip(bounds, bounds[1:]):
+        seg = list(range(a, b))
+        if len(seg) < 8:
+            continue
+        drop = max(1, int(len(seg) * settle_frac))
+        settled = seg[drop:]
+        vals = sorted(v[i] for i in settled)
+        level = vals[len(vals) // 2]
+        for i in settled:
+            resid[i] = v[i] - level
+    worst = max((i for i in range(n) if resid[i] is not None),
+                key=lambda i: abs(resid[i]), default=0)
+    return resid, worst
+
+
+def _polyfit(xs, ys, deg):
+    """Least squares by normal equations. Small degree, small n."""
+    m = deg + 1
+    a = [[sum(x ** (i + j) for x in xs) for j in range(m)] for i in range(m)]
+    b = [sum(ys[k] * xs[k] ** i for k in range(len(xs))) for i in range(m)]
+    for i in range(m):                      # Gaussian elimination
+        p = max(range(i, m), key=lambda r: abs(a[r][i]))
+        a[i], a[p] = a[p], a[i]
+        b[i], b[p] = b[p], b[i]
+        if a[i][i] == 0:
+            continue
+        for r in range(i + 1, m):
+            f = a[r][i] / a[i][i]
+            for c2 in range(i, m):
+                a[r][c2] -= f * a[i][c2]
+            b[r] -= f * b[i]
+    out = [0.0] * m
+    for i in range(m - 1, -1, -1):
+        s = b[i] - sum(a[i][j] * out[j] for j in range(i + 1, m))
+        out[i] = s / a[i][i] if a[i][i] else 0.0
+    return out
+
+
+def _polyval(coef, x):
+    return sum(c * x ** i for i, c in enumerate(coef))
+
+
+
+# ------------------------------------------------------------------
 # shots: what each waveform actually looks like, at three zooms
 # ------------------------------------------------------------------
 
@@ -1162,7 +1395,7 @@ def _parser():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("what", choices=("step", "skew", "lin", "wrap",
                                     "clock", "ceiling", "transfer",
-                                    "shots"))
+                                    "reload", "shots"))
     ap.add_argument("--channel", type=int, default=1,
                     help="scope channel on DAC0 (default 1). DAC1 is the "
                          "trigger and is not a channel to measure")
@@ -1203,6 +1436,17 @@ def _parser():
                     help="transfer only: points per code, reduced by "
                          "median, to reject a read that landed on a "
                          "stopped run (default 3)")
+    ap.add_argument("--ac", action="store_true",
+                    help="reload only: AC-couple the channel, so a held "
+                         "level can be viewed at the instrument's highest "
+                         "vertical gain instead of its DC offset range")
+    ap.add_argument("--window", type=float, default=40e-6,
+                    help="reload only: seconds of record around the reload")
+    ap.add_argument("--shape-one", default="sine",
+                    choices=("sine", "square", "ramp", "triangle", "dc"),
+                    help="reload only: what DAC0 carries. The artifact is "
+                         "reported to need the output in motion, so a flat "
+                         "level is the wrong place to look")
     ap.add_argument("--codes", action="append", type=int, default=[],
                     help="transfer only: DAC codes to step through")
     ap.add_argument("--seconds", type=float, default=4.0,
@@ -1236,7 +1480,7 @@ def _apply_defaults(args):
 
     defaults = {"step": 4, "skew": 4, "lin": 256, "wrap": 32,
                 "clock": 2, "ceiling": 2, "transfer": 256,
-                "shots": 32}
+                "reload": 32, "shots": 32}
     if args.points is None:
         args.points = defaults[args.what]
     if args.what == "step" and not args.timebase:
@@ -1257,6 +1501,7 @@ def main():
         {"step": cmd_step, "skew": cmd_skew, "lin": cmd_lin,
          "wrap": cmd_wrap, "clock": cmd_clock,
          "ceiling": cmd_ceiling, "transfer": cmd_transfer,
+         "reload": cmd_reload,
          "shots": cmd_shots}[args.what](board, inst, args)
     finally:
         try:
