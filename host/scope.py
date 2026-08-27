@@ -239,7 +239,7 @@ class Oscilloscope:
         raise NotImplementedError
 
     def ext_trigger_autoset(self, levels=None, couplings=("AC", "DC"),
-                            slope="POS", settle=0.45):        # pragma: no cover
+                            slope="POS", settle=0.3):         # pragma: no cover
         """Find a level and coupling on which EXT actually triggers.
 
         Why this is not a constant. The DAC swings 0.52-2.82 V, so the
@@ -258,7 +258,16 @@ class Oscilloscope:
         harder at.
         """
         if levels is None:
-            levels = [i / 20.0 for i in range(-24, 25)]
+            # Ordered outward from zero, because that is where a working
+            # setup is: AC coupling centres the sync on 0 V, and the
+            # first candidate hits on a x1 probe. An evenly-spaced sweep
+            # of the whole range instead costs ~44 s of instrument time
+            # per call, which is longer than the window it was being
+            # called inside - it kept sweeping after the output had
+            # stopped and collided with the next acquisition.
+            levels = [0.0]
+            for step in (0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1.2):
+                levels += [step, -step]
         for coup in couplings:
             self.trigger_coupling(coup)
             for lev in levels:

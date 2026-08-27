@@ -15,9 +15,25 @@ Playback only - preset `P`, no capture. The ADC is the instrument under
 suspicion in issue #5 and has its own rate ceiling; neither belongs in a
 measurement of what the DAC puts on a pin.
 
-    python3 tools/dso_sweep.py                 # everything, ~3 minutes
+There are two generators on this board and this tool drives both.
+
+    streamed   the host authors every sample and feeds them over USB.
+               The rate axis is the AWG ladder, and the shape can be
+               anything - it is `measure.build_selected`.
+    internal   the device plays its own table with no USB in the path.
+               The rate axis is resolution, because the trigger fixes
+               the update rate and points-per-cycle decides how many
+               updates a cycle spends. See docs/awg.md.
+
+Same shapes, same framing, same readings, so the two are comparable -
+which is the whole reason the internal one is worth watching through the
+same instrument.
+
+    python3 tools/dso_sweep.py                 # streamed, ~4 minutes
     python3 tools/dso_sweep.py --waveform sine
     python3 tools/dso_sweep.py --seconds 10 --rc 195 --rc 28
+    python3 tools/dso_sweep.py --internal      # the device's own table
+    python3 tools/dso_sweep.py --internal --points 8 --waveform square
 """
 import argparse
 import os
@@ -38,11 +54,17 @@ TC_HZ = 39_000_000
 # numbers that truncate into a different one.
 AWG_RC = [195, 98, 65, 44, 39, 32, 28]
 
-# Samples per cycle for the sine. Fixed rather than a fixed frequency so
-# the shape on screen is identical at every rate and only the speed
-# changes - which is what makes degradation at the top of the ladder
-# visible as degradation rather than as "a faster sine".
-SINE_SAMPLES_PER_CYCLE = 32
+# Samples per cycle for the shapes that have a frequency. Fixed rather
+# than a fixed frequency so the shape on screen is identical at every
+# rate and only the speed changes - which is what makes degradation at
+# the top of the ladder visible as degradation rather than as "a faster
+# sine".
+#
+# The square gets the same count deliberately: the two shapes then ask
+# the DAC for the same number of updates per cycle and differ only in
+# what those updates are, so anything that appears on one and not the
+# other is about the step size rather than about the rate.
+SAMPLES_PER_CYCLE = 32
 
 # DAC codes per sample in the ramp, and so 4096/step samples per cycle.
 RAMP_STEP = measure.RAMP_STEP
@@ -64,8 +86,11 @@ def combinations(waveforms, rcs):
         for rc in rcs:
             sps = rate_of(rc)
             if name == "sine":
-                tone = sps / SINE_SAMPLES_PER_CYCLE
+                tone = sps / SAMPLES_PER_CYCLE
                 yield name, rc, sps, {"tone": tone}, 1.0 / tone
+            elif name == "square":
+                tone = sps / SAMPLES_PER_CYCLE
+                yield name, rc, sps, {"square": tone}, 1.0 / tone
             elif name == "ramp":
                 period = (4096 / RAMP_STEP) / sps
                 yield name, rc, sps, {"ramp": RAMP_STEP}, period
@@ -74,7 +99,43 @@ def combinations(waveforms, rcs):
                 yield name, rc, sps, {"dc": DC_CODE}, None
 
 
-def frame(inst, ch, period, volts_per_div=0.5):
+# Resolutions swept in --internal mode, and the frequency axis there.
+# Powers of two because nothing else divides the table; four of them
+# because two octaves either side of the default is enough to see the
+# staircase coarsen and the frequency rise together.
+INTERNAL_POINTS = [256, 64, 16, 4]
+
+# Trigger presets, which are the only commands that start a capture
+# without also starting host-fed playback - and playback would be a
+# second claimant on the DACC. `L` takes an arbitrary rate and is
+# therefore the wrong command here.
+TRIGGER_PRESETS = {50_000: "1", 100_000: "2", 200_000: "3", 400_000: "4"}
+
+
+def internal_combinations(waveforms, points_list, trigger_hz):
+    """(name, points, trigger, output Hz, cycle period) for the device's
+    own generator.
+
+    A 2-point sine is degenerate and is skipped rather than reported as
+    a failure: both of its samples land on a zero crossing, so the table
+    holds mid-scale twice and the output is a flat line. That is Nyquist
+    doing exactly what it says, not the converter failing - measured,
+    and the square at the same resolution makes a clean 50 kHz.
+    """
+    for name in waveforms:
+        for pts in points_list:
+            p = measure.gen_points_for(pts)
+            if name == "sine" and p == 2:
+                print(f"    skipping sine at 2 pts/cycle: both samples "
+                      f"sit on a zero crossing, so the output is flat "
+                      f"by construction")
+                continue
+            hz = measure.gen_output_hz(trigger_hz, p)
+            yield name, p, trigger_hz, hz, (None if name == "dc"
+                                            else 1.0 / hz)
+
+
+def frame(inst, ch, period, volts_per_div=0.5, ext=False):
     """Point the scope at one waveform, and say how it was pointed.
 
     Three periods across the screen: enough to see the shape repeat and
@@ -90,12 +151,15 @@ def frame(inst, ch, period, volts_per_div=0.5):
     inst.channel_scale(ch, volts_per_div)
     inst.channel_offset(ch, -DAC_MID_V)
     inst.coupling(ch, "DC")
-    if period:
-        inst.timebase(period * 3.0 / 12.0)
+    inst.timebase(period * 3.0 / 12.0 if period else 1e-3)
+    if ext:
+        apply_ext(inst, ext)
+    elif period:
+        inst.trigger_coupling("DC")
         inst.trigger_edge(source=f"CHAN{ch}", slope="POS", level=DAC_MID_V,
                           sweep="NORMAL")
     else:
-        inst.timebase(1e-3)
+        inst.trigger_coupling("DC")
         inst.trigger_edge(source=f"CHAN{ch}", level=DAC_MID_V, sweep="AUTO")
     inst.run()
 
@@ -119,11 +183,95 @@ def wait_triggered(inst, timeout=3.0):
     return status
 
 
-def main():
+def arm_ext(board, inst, preset):
+    """Find the EXT trigger level once, with the output running.
+
+    Once per run and not once per combination, for two reasons. The
+    probe and the sync do not change between combinations, so a search
+    per combination is repeated work; and a search that outlives the
+    window it was started in keeps driving the instrument while the next
+    acquisition is using it, which is a USBTMC collision and reads as a
+    timeout rather than as the ordering mistake it is.
+
+    The window is about 100 mV wide and moves with the probe ratio -
+    x10 puts it at 0.1-0.2 V DC, and x1 needs AC because the DAC's
+    1.67 V midpoint is past the input's 1.2 V clamp. So it is
+    discovered; a failure means no signal is arriving rather than a
+    level to guess harder at. See docs/awg.md.
+    """
+    measure.set_sync(board, "cycle")
+    measure.set_gen(board, "square", 32)   # fastest sync edges to find
+    board.cmd(preset)
+    time.sleep(1.0)
+    got = inst.ext_trigger_autoset()
+    board.stop()
+    board.drain_console(0.3)
+    if got:
+        print(f"EXT trigger armed: {got['coupling']} coupled, level "
+              f"{got['level']:+.2f} V", flush=True)
+    else:
+        print("EXT did not trigger at any level - no signal is reaching "
+              "it. Check the cable, and that the sync is on (=1J).",
+              flush=True)
+    return got
+
+
+def apply_ext(inst, armed):
+    """Re-assert the settings arm_ext() found. Cheap: no search."""
+    inst.trigger_coupling(armed["coupling"])
+    inst.trigger_edge(source="EXT", slope=armed["slope"],
+                      level=armed["level"], sweep="NORMAL")
+
+
+def hold_and_measure(inst, ch, period, seconds, run, label, ext=False):
+    """Frame the scope, start the output, read it *while* it runs.
+
+    Reading afterwards samples whatever is left on the pin, which for
+    streamed playback is sometimes the tail of the waveform and
+    sometimes a dead pin - the DAC runs out its last buffer and is
+    abandoned after 500 ms. It cost one dash in twenty-one on the first
+    full sweep, and a dash is what this tool calls a failure.
+
+    The instrument is a separate USB device from the board, so the
+    reader thread contends with nothing; one thread owns the scope,
+    which is all UsbTmc asks.
+    """
+    if inst:
+        frame(inst, ch, period, ext=ext)
+    print(f"    {label} {seconds:g}s ...", flush=True)
+    got, trig = {}, None
+    reader = None
+    if inst:
+        def read_during():
+            nonlocal got, trig
+            time.sleep(min(2.0, seconds * 0.4))
+            trig = wait_triggered(inst) if (period or ext) else "AUTO"
+            got = inst.measure_all(ch)
+        reader = threading.Thread(target=read_during, daemon=True)
+        reader.start()
+    run()
+    if reader:
+        reader.join(timeout=10.0)
+    if inst:
+        fmt = {k: ("-" if v is None else f"{v:.4g}") for k, v in got.items()}
+        print(f"    scope: Vpp {fmt.get('VPP','?')}  "
+              f"Vmax {fmt.get('VMAX','?')}  Vmin {fmt.get('VMIN','?')}"
+              f"  freq {fmt.get('FREQ','?')}", flush=True)
+        if trig not in ("T'D", "AUTO"):
+            print(f"    NOT TRIGGERED (status {trig}) - the numbers above "
+                  f"are from whatever the screen held", flush=True)
+    return got
+
+
+def build_parser():
+    """Separate from main() so a test can read the defaults without
+    driving a board - notably that the measured channel is DAC0. DAC1
+    carries the bench trigger now and is not a channel to look at."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--waveform", action="append", default=[],
-                    choices=("sine", "ramp", "dc"),
-                    help="repeatable; default all three")
+                    choices=("sine", "square", "ramp", "triangle", "dc"),
+                    help="repeatable; default all but triangle, which the "
+                         "streamed path does not build")
     ap.add_argument("--rc", action="append", type=int, default=[],
                     help="repeatable; default the whole AWG ladder")
     ap.add_argument("--seconds", type=float, default=5.0,
@@ -135,9 +283,45 @@ def main():
                     help="scope channel watching DAC0 (default 1)")
     ap.add_argument("--no-scope", action="store_true",
                     help="drive the board without touching the instrument")
+    ap.add_argument("--internal", action="store_true",
+                    help="sweep the device's own table generator instead "
+                         "of streaming samples to it")
+    ap.add_argument("--points", action="append", type=int, default=[],
+                    help="--internal only: resolutions to sweep, repeatable "
+                         f"(default {INTERNAL_POINTS})")
+    ap.add_argument("--trigger", type=int, default=200_000,
+                    choices=sorted(TRIGGER_PRESETS),
+                    help="--internal only: trigger rate (default 200000)")
+    ap.add_argument("--ext-trigger", action="store_true",
+                    help="trigger on the DAC1 sync through EXT instead of "
+                         "on the signal; the level is discovered, not "
+                         "assumed - see docs/awg.md")
+    return ap
+
+
+def main():
+    ap = build_parser()
     args = ap.parse_args()
 
-    waveforms = args.waveform or ["sine", "ramp", "dc"]
+    if args.ext_trigger and not args.internal:
+        # The streamed path cannot make a sync. build_waveform tags every
+        # sample for DAC0, and the one attempt to interleave DAC1 is a
+        # recorded, unexplained failure - "the analog result behaved as
+        # though both samples reached channel 0" - so there is nothing on
+        # the spare pin to trigger from. Refusing beats running a whole
+        # sweep that never triggers, which is what the first attempt at
+        # this did.
+        sys.exit("--ext-trigger needs the sync, which only the internal "
+                 "generator makes: add --internal, or drop --ext-trigger")
+
+    if args.internal:
+        waveforms = args.waveform or ["sine", "square", "ramp", "triangle",
+                                      "dc"]
+    else:
+        waveforms = args.waveform or ["sine", "square", "ramp", "dc"]
+        if "triangle" in waveforms:
+            sys.exit("triangle exists only on the internal generator; "
+                     "add --internal or drop it")
     rcs = args.rc or AWG_RC
 
     inst = None
@@ -157,60 +341,59 @@ def main():
     try:
         board.stop()
         board.drain_console(0.5)
-        for name, rc, sps, kw, period in combinations(waveforms, rcs):
-            shape = (f"{1/period:,.0f} Hz" if period else "level "
-                     f"{DC_CODE}")
-            print(f"\n=== {name:4s}  RC {rc:3d}  {sps:>9,} sps  {shape} ===",
-                  flush=True)
-            if inst:
-                frame(inst, args.channel, period)
-            print(f"    playing {args.seconds:g}s ...", flush=True)
+        armed = None
+        if args.internal:
+            preset = TRIGGER_PRESETS[args.trigger]
+            if args.ext_trigger:
+                armed = arm_ext(board, inst, preset) if inst else None
+            for name, pts, trig_hz, out_hz, period in internal_combinations(
+                    waveforms, args.points or INTERNAL_POINTS, args.trigger):
+                shape = f"{out_hz:,.1f} Hz" if period else "level 2048"
+                print(f"\n=== {name:8s}  {pts:3d} pts/cycle  trigger "
+                      f"{trig_hz:>7,} Hz  {shape} ===", flush=True)
+                if armed:
+                    # One square per waveform cycle, so every shape -
+                    # including DC, which has no edge of its own - gets a
+                    # real trigger rather than AUTO sweep.
+                    measure.set_sync(board, "cycle")
+                said = measure.set_gen(board, name, pts)
+                for line in said.splitlines():
+                    if line.startswith("# gen shape"):
+                        print(f"    device: {line[2:]}", flush=True)
 
-            got, trig = {}, None
-            reader = None
-            if inst:
-                # Read *during* playback, from another thread.
-                #
-                # run_play() returns when the feed ends, and the output
-                # does not survive it - the DAC runs out its last buffer
-                # and is abandoned after 500 ms. Measuring afterwards
-                # therefore samples whatever is left, which is sometimes
-                # the tail of the waveform and sometimes a dead pin. It
-                # cost one dash in twenty-one on the first full sweep,
-                # and a dash is what this tool calls a failure.
-                #
-                # The instrument is a separate USB device from the
-                # board, so nothing here contends; one thread owns the
-                # scope, which is all UsbTmc asks.
-                def read_during():
-                    nonlocal got, trig
-                    time.sleep(min(2.0, args.seconds * 0.4))
-                    trig = wait_triggered(inst) if period else "AUTO"
-                    got = inst.measure_all(args.channel)
-                reader = threading.Thread(target=read_during, daemon=True)
-                reader.start()
+                def run():
+                    board.cmd(preset)
+                    time.sleep(args.seconds)
 
-            res = measure.run_play(board, dac_sps=sps, seconds=args.seconds,
-                                   **kw)
-            if reader:
-                reader.join(timeout=10.0)
+                got = hold_and_measure(inst, args.channel, period,
+                                       args.seconds, run, "running",
+                                       ext=armed)
+                rows.append((name, pts, trig_hz, period, got))
+                board.stop()
+                board.drain_console(0.2)
+                print(f"    off {args.off:g}s", flush=True)
+                time.sleep(args.off)
+            # Leave the generator as every other tool expects to find it.
+            measure.set_gen(board, "sine", measure.GEN_TABLE_POINTS)
+        else:
+            for name, rc, sps, kw, period in combinations(waveforms, rcs):
+                shape = (f"{1/period:,.0f} Hz" if period else "level "
+                         f"{DC_CODE}")
+                print(f"\n=== {name:6s}  RC {rc:3d}  {sps:>9,} sps  "
+                      f"{shape} ===", flush=True)
 
-            if inst:
-                fmt = {k: ("-" if v is None else f"{v:.4g}")
-                       for k, v in got.items()}
-                print(f"    scope: Vpp {fmt.get('VPP','?')}  "
-                      f"Vmax {fmt.get('VMAX','?')}  Vmin {fmt.get('VMIN','?')}"
-                      f"  freq {fmt.get('FREQ','?')}", flush=True)
-                if trig not in ("T'D", "AUTO"):
-                    print(f"    NOT TRIGGERED (status {trig}) - the numbers "
-                          f"above are from whatever the screen held",
-                          flush=True)
+                def run():
+                    measure.run_play(board, dac_sps=sps,
+                                     seconds=args.seconds, **kw)
 
-            rows.append((name, rc, sps, period, got))
-            board.stop()
-            board.drain_console(0.2)
-            print(f"    off {args.off:g}s", flush=True)
-            time.sleep(args.off)
+                got = hold_and_measure(inst, args.channel, period,
+                                       args.seconds, run, "playing",
+                                       ext=armed)
+                rows.append((name, rc, sps, period, got))
+                board.stop()
+                board.drain_console(0.2)
+                print(f"    off {args.off:g}s", flush=True)
+                time.sleep(args.off)
     finally:
         try:
             board.stop()
@@ -219,18 +402,20 @@ def main():
             if inst:
                 inst.close()
 
-    print("\n" + "=" * 74)
-    print(f"{'wave':5s} {'RC':>4s} {'sps':>10s} {'expected':>12s} "
+    axis = "pts" if args.internal else "RC"
+    unit = "trigger" if args.internal else "sps"
+    print("\n" + "=" * 78)
+    print(f"{'wave':9s} {axis:>4s} {unit:>10s} {'expected':>12s} "
           f"{'measured':>12s} {'Vpp':>8s}")
-    print("-" * 74)
-    for name, rc, sps, period, got in rows:
+    print("-" * 78)
+    for name, x, sps, period, got in rows:
         exp = f"{1/period:,.0f} Hz" if period else "DC"
         f = got.get("FREQ")
         vpp = got.get("VPP")
-        print(f"{name:5s} {rc:4d} {sps:10,} {exp:>12s} "
+        print(f"{name:9s} {x:4d} {sps:10,} {exp:>12s} "
               f"{('-' if f is None else f'{f:,.0f} Hz'):>12s} "
               f"{('-' if vpp is None else f'{vpp:.3f} V'):>8s}")
-    print("=" * 74)
+    print("=" * 78)
     print("A dash under measured is not a failure for DC: the instrument "
           "reports\nno frequency because there is none. It is a failure "
           "for anything else.")
