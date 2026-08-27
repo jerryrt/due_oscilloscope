@@ -76,12 +76,94 @@ Measured, trigger 200 kHz, square (`tools/dso_sweep.py --internal`):
 Full amplitude at every resolution including the top: the DAC is not the
 limit here, the table is.
 
-**A 2-point sine is flat, and that is Nyquist rather than a fault.** Both
-of its samples land on a zero crossing, so the table holds mid-scale
-twice and the output is a line - measured at 0.16 V, which is the noise
-floor. A square at the same resolution makes a clean 50 kHz at full
-amplitude, which is what proves the converter innocent. `dso_sweep
---internal` skips that one combination and says why.
+### Two points a cycle is the clock, not just the coarsest setting
+
+At two points the table holds **one sample per half cycle**, so the
+output toggles on every DAC0 update and the waveform *is* the update
+clock divided by two. Nothing on this path is faster: a third point per
+cycle is a *slower* wave, not a quicker one. It is the top rung and it
+belongs in every sweep - leaving it out stops one step short of the
+ceiling the sweep exists to find.
+
+TAG mode spends every other update on DAC1, so DAC0 updates at
+trigger/2 and the square lands at **trigger/4**. Giving up the sync and
+tagging every sample for DAC0 would double that, which is what the
+streamed path already does - a trade, not a defect.
+
+Measured across every trigger the generator's TIOA0 will take:
+
+| trigger | DAC0 updates | half period | expected | measured | Vpp | of max |
+|---|---|---|---|---|---|---|
+| 50,000 | 25,000/s | 40.00 us | 12,500 Hz | 12,500 Hz | 2.440 V | 100.0% |
+| 100,000 | 50,000/s | 20.00 us | 25,000 Hz | 25,000 Hz | 2.420 V | 99.2% |
+| 200,000 | 100,000/s | 10.00 us | 50,000 Hz | 50,000 Hz | 2.440 V | 100.0% |
+| 400,000 | 200,000/s | 5.00 us | 100,000 Hz | 100,000 Hz | 2.420 V | 99.2% |
+| 453,488 | 226,744/s | 4.41 us | 113,372 Hz | 114,000 Hz | 2.420 V | 99.2% |
+
+**The ceiling is the trigger, not the converter.** Frequency tracks
+trigger/4 exactly and amplitude never leaves 99.2-100% of maximum, right
+up to 113 kHz - where the half period is still 4.41 us against a
+789-938 ns rise. What does change is the *shape*: at 113 kHz the square
+is visibly trapezoidal, the slew taking about a fifth of each half
+period, with a glitch spike at each transition. `dso_metrics.py clock`.
+
+### 113 kHz is not the DAC's limit, and it is not close to it
+
+Every ordinary path leaves the DACC triggered from **TIOA0**, the ADC's
+timer, so that generation and capture are phase-coherent - and TIOA0 is
+capped by `ACQ_MIN_RC` = 86 at 453,488 Hz. That cap is the *ADC's*
+in-spec floor. `=<dac>M` is the one path that selects TIOA1 and takes an
+arbitrary rate, and with the DAC off the ADC's leash it goes more than
+three times further. Square at 2 points, `dso_metrics.py ceiling`:
+
+| dac_hz | DAC0 updates | half period | expected | measured | Vpp |
+|---|---|---|---|---|---|
+| 400,000 | 200,000/s | 5.000 us | 100,000 Hz | 100,000 Hz | 2.420 V |
+| 800,000 | 400,000/s | 2.500 us | 200,000 Hz | 205,000 Hz | 2.420 V |
+| 1,200,000 | 600,000/s | 1.667 us | 300,000 Hz | 303,000 Hz | 2.420 V |
+| **1,392,857** | 696,428/s | 1.436 us | 348,214 Hz | **357,000 Hz** | 2.380 V |
+| 1,800,000 | 900,000/s | 1.111 us | 450,000 Hz | 375,000 Hz | 2.360 V |
+| 2,200,000 | 1,100,000/s | 0.909 us | 550,000 Hz | 375,000 Hz | 2.400 V |
+| 2,800,000 | 1,400,000/s | 0.714 us | 700,000 Hz | 375,000 Hz | 2.380 V |
+
+Frequency follows `dac_hz / 4` exactly up to the DACC's own measured
+ceiling and then **pins at 375 kHz and stops**. That is the converter
+saturating, not the amplitude failing - Vpp stays at 97.5-100%
+throughout, because what it still produces is full-swing, just fewer
+transitions than were asked for. It is the same 1,392,857 updates/s
+`drivers/play.h` records from the playback path, seen from the analog
+side for the first time.
+
+**Four different ceilings, and they are not the same number.** Naming
+them separately matters, because a design sized against the wrong one
+fails in a way that looks analog:
+
+| what limits it | number | why |
+|---|---|---|
+| internal generator on TIOA0 | **113 kHz** square | the ADC's `ACQ_MIN_RC`, then halved by TAG |
+| internal generator on TIOA1, sync on | **~357 kHz** square, measured | DACC conversion, halved by TAG's other channel |
+| DAC0-only, no sync | ~700 kHz square *(check)* | DACC conversion, not halved |
+| analog slew | ~530-630 kHz square *(check)* | 789-938 ns rise against the half period |
+
+The last two cross. With TAG the converter runs out first at ~357 kHz
+and the slew still has margin; give up the sync to double the update
+rate and the slew becomes the binding limit instead. Neither of those
+two rows is measured yet - the DAC0-only table is not built, and the
+slew figure is extrapolated from the step response rather than swept.
+
+**Only the square means anything at two points.** The others collapse,
+and a screenshot of a collapsed one with its own name on it is worse
+than no screenshot:
+
+| shape | codes at 2 pts | what it actually is |
+|---|---|---|
+| sine | 2048, 2048 | flat - both samples land on a zero crossing (Nyquist) |
+| square | 4095, 0 | the clock, full amplitude |
+| ramp | 0, 2048 | a half-amplitude square |
+| triangle | 0, 4095 | a full-amplitude square |
+
+`dso_sweep --internal` and `dso_metrics shots` skip the three that
+collapse and say which, rather than filing them under the wrong name.
 
 **The scope's frequency counter is not reliable below about 16 points
 per cycle.** At 8 points it read 11,200 Hz for a sine and 13,800 Hz for a

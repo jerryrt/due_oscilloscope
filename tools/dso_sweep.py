@@ -103,7 +103,11 @@ def combinations(waveforms, rcs):
 # Powers of two because nothing else divides the table; four of them
 # because two octaves either side of the default is enough to see the
 # staircase coarsen and the frequency rise together.
-INTERNAL_POINTS = [256, 64, 16, 4]
+# 2 is the top rung and is not optional: at two points the table holds
+# one sample per half cycle, so the output toggles on every DAC0 update
+# and the square *is* the update clock over two. Nothing here is faster,
+# and a sweep that stops at 4 stops one step short of the ceiling.
+INTERNAL_POINTS = [256, 64, 16, 4, 2]
 
 # Trigger presets, which are the only commands that start a capture
 # without also starting host-fed playback - and playback would be a
@@ -116,19 +120,24 @@ def internal_combinations(waveforms, points_list, trigger_hz):
     """(name, points, trigger, output Hz, cycle period) for the device's
     own generator.
 
-    A 2-point sine is degenerate and is skipped rather than reported as
-    a failure: both of its samples land on a zero crossing, so the table
-    holds mid-scale twice and the output is a flat line. That is Nyquist
-    doing exactly what it says, not the converter failing - measured,
-    and the square at the same resolution makes a clean 50 kHz.
+    At two points a cycle only the square means anything: the table
+    holds one sample per half cycle, so a sine goes flat (both samples
+    on a zero crossing - Nyquist, not a fault) and ramp and triangle
+    collapse into squares of 2048 and 4095 codes. Those three are
+    skipped with the reason, because a shot of a collapsed shape filed
+    under its own name is worse than no shot.
     """
+    degenerate = {
+        "sine": "flat - both samples land on a zero crossing (Nyquist)",
+        "ramp": "collapses to a half-amplitude square, codes 0 and 2048",
+        "triangle": "collapses to a full-amplitude square, codes 0 and 4095",
+    }
     for name in waveforms:
         for pts in points_list:
             p = measure.gen_points_for(pts)
-            if name == "sine" and p == 2:
-                print(f"    skipping sine at 2 pts/cycle: both samples "
-                      f"sit on a zero crossing, so the output is flat "
-                      f"by construction")
+            if p == 2 and name in degenerate:
+                print(f"    skipping {name} at 2 pts/cycle: "
+                      f"{degenerate[name]}")
                 continue
             hz = measure.gen_output_hz(trigger_hz, p)
             yield name, p, trigger_hz, hz, (None if name == "dc"

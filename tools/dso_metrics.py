@@ -7,6 +7,10 @@ instead, and all four need a trigger that does not move: the sync on the
 spare DAC pin, through EXT. `docs/awg.md` has why, and the two silent
 ways a DS1102E refuses to trigger on it.
 
+    clock    the square at two points a cycle, which is the update
+             clock over two and the fastest output on the ADC's timer
+    ceiling  the same square with the DAC on its own timer instead,
+             swept past the DACC's measured ceiling
     step     full-scale step response - slew rate, overshoot, settling
     skew     the TAG interleave, separated from the instrument's own
              trigger-path delay by measuring it at four rates
@@ -36,7 +40,23 @@ sys.path.insert(0, os.path.join(HERE, "host"))
 import measure                                                # noqa: E402
 import scope as dso                                           # noqa: E402
 
-TRIGGER_PRESETS = {50_000: "1", 100_000: "2", 200_000: "3", 400_000: "4"}
+# Preset 5 is the fastest trigger the capture path will accept -
+# (MCK/2)/ACQ_MIN_RC, 39 MHz over 86 - and the internal generator runs
+# off the same TIOA0, so it is also the fastest the generator goes on
+# this path. Worth having here because the square's ceiling is a
+# division of it.
+TRIGGER_PRESETS = {50_000: "1", 100_000: "2", 200_000: "3", 400_000: "4",
+                   453_488: "5"}
+
+# At two points a cycle the table holds one sample per half cycle, so
+# the output toggles on every DAC0 update. Only the square means
+# anything there; the rest collapse, and saying which is the difference
+# between a screenshot and a mislabelled screenshot.
+DEGENERATE_AT_2 = {
+    "sine": "flat - both samples land on a zero crossing (Nyquist)",
+    "ramp": "collapses to a half-amplitude square: codes 0 and 2048",
+    "triangle": "collapses to a full-amplitude square: codes 0 and 4095",
+}
 
 # Measured on this bench, and the DAC is not rail to rail: full scale
 # lands at 0.52 V and 2.82 V. Used only to turn volts into codes for
@@ -538,6 +558,167 @@ def cmd_wrap(board, inst, args):
 
 
 # ------------------------------------------------------------------
+# clock: the square at two points, which is the update clock
+# ------------------------------------------------------------------
+
+def cmd_clock(board, inst, args):
+    """The highest frequency this converter can put on a pin, and where
+    it stops being a square.
+
+    Two points a cycle is not "the coarsest resolution", it is a
+    different thing: the table holds one sample per half cycle, so the
+    output toggles on every DAC0 update and the waveform *is* the update
+    clock divided by two. Nothing faster exists on this path - a third
+    point per cycle would be a slower wave, not a faster one.
+
+    TAG mode spends every other update on DAC1, so DAC0 updates at
+    trigger/2 and the square lands at trigger/4. That is the ceiling
+    with a sync running; giving up the sync and tagging every sample for
+    DAC0 would double it, which is what the streamed path already does
+    and is a trade rather than a bug.
+
+    What the sweep is for: the step response says a full-scale
+    transition takes 789-938 ns to go 10-90%, so as the half period
+    closes on that the amplitude has to fall. This finds where.
+    """
+    inst.channel_scale(args.channel, 0.5)
+    inst.channel_offset(args.channel, -DAC_MID_V)
+    inst.coupling(args.channel, "DC")
+    inst.averaging(None)
+    rows = []
+    print(f"\n{'trigger':>9s} {'DAC0 updates':>13s} {'half period':>12s} "
+          f"{'expected':>11s} {'measured':>11s} {'Vpp':>8s} {'of max':>7s}")
+    print("-" * 80)
+    for hz, preset in sorted(TRIGGER_PRESETS.items()):
+        if args.trigger_list and hz not in args.trigger_list:
+            continue
+        arm(board, inst, preset, "square", 2)
+        want = measure.gen_output_hz(hz, 2)
+        inst.timebase(3.0 / want / 12.0)
+        inst.timebase_offset(0.0)
+        inst.menu_display(False)
+        inst.run()
+        time.sleep(0.6)
+        g = inst.measure_all(args.channel, names=("VPP", "FREQ"))
+        vpp, f = g.get("VPP"), g.get("FREQ")
+        rows.append((hz, want, f, vpp))
+        board.stop(); board.drain_console(0.2)
+    if not rows:
+        return
+    ref = max((v for _, _, _, v in rows if v), default=None)
+    for hz, want, f, vpp in rows:
+        half_us = 1e6 / (2.0 * want)
+        pct = (vpp / ref * 100.0) if (vpp and ref) else float("nan")
+        print(f"{hz:9,} {hz//2:11,}/s {half_us:10.2f}us "
+              f"{want:9,.0f}Hz "
+              f"{('-' if f is None else f'{f:,.0f}Hz'):>11s} "
+              f"{('-' if vpp is None else f'{vpp:.3f}V'):>8s} "
+              f"{pct:6.1f}%", flush=True)
+    print(f"\nThe square at two points is the DAC0 update clock over two, "
+          f"and nothing on this\npath is faster. A full-scale step needs "
+          f"789-938 ns to go 10-90% (dso_metrics step),\nso amplitude "
+          f"holds while the half period is comfortably above that and "
+          f"falls when\nit is not - that is the converter, not the "
+          f"table.")
+
+
+# ------------------------------------------------------------------
+# ceiling: how far the DAC really goes, off the ADC's leash
+# ------------------------------------------------------------------
+
+# The DACC's own measured update ceiling. RC 28 on the playback path is
+# 1,392,857 updates/s and the converter needs about 54.7 MCK cycles for
+# each, so faster is not a rate it can make - the trigger will run there
+# happily and the DAC simply will not keep up. See drivers/play.h.
+DACC_CEILING_HZ = 1_392_857
+
+# What `clock` can reach, and why it is not the DAC's limit: the
+# internal generator runs off TIOA0, the ADC's trigger, so it inherits
+# the ADC's in-spec floor of ACQ_MIN_RC = 86 -> 453,488 Hz.
+GEN_TIOA0_MAX_HZ = 453_488
+
+
+def cmd_ceiling(board, inst, args):
+    """The square's real ceiling, with the DAC on its own timer.
+
+    `clock` tops out at 113 kHz and that is the *ADC's* limit, not the
+    converter's: every ordinary path leaves the DACC triggered from
+    TIOA0 so that generation and capture are phase-coherent, and TIOA0
+    is capped at 453,488 Hz by ACQ_MIN_RC. The DACC's own measured
+    ceiling is 1,392,857 updates/s - three times higher - and `=<dac>M`
+    is the one path that selects TIOA1 and asks for an arbitrary rate.
+
+    So this sweeps past both, with the square at two points a cycle, and
+    watches for the two different ways it can stop working: the trigger
+    outrunning the converter (amplitude collapses, the DACC cannot
+    convert that fast) and the analog slew running out (amplitude falls
+    smoothly as the half period closes on the 789-938 ns rise time).
+    They look different and the sweep is wide enough to show which.
+    """
+    measure.set_sync(board, "cycle")
+    measure.set_gen(board, "square", 2)
+    inst.channel_scale(args.channel, 0.5)
+    inst.channel_offset(args.channel, -DAC_MID_V)
+    inst.coupling(args.channel, "DC")
+    inst.averaging(None)
+    print(f"\nDACC measured ceiling {DACC_CEILING_HZ:,} updates/s; "
+          f"TIOA0 caps the generator at {GEN_TIOA0_MAX_HZ:,}")
+    print(f"square at 2 pts = dac_hz / 4, because TAG spends every other "
+          f"update on DAC1\n")
+    print(f"{'dac_hz':>10s} {'DAC0 upd':>11s} {'half per':>10s} "
+          f"{'expected':>11s} {'measured':>11s} {'Vpp':>8s} {'of max':>7s} "
+          f"{'note'}")
+    print("-" * 92)
+    rows = []
+    for dac_hz in args.rates:
+        board.stop(); board.drain_console(0.2)
+        board.cmd(f"={dac_hz},200000,2M")
+        time.sleep(1.0); board.drain_console(0.4)
+        want = dac_hz / 4.0
+        inst.timebase(3.0 / want / 12.0)
+        inst.timebase_offset(0.0)
+        got = inst.ext_trigger_autoset()
+        if not got:
+            # No sync edge the instrument can find. Fall back to the
+            # signal itself: a square is the one shape whose own edge
+            # triggers as well as a sync does.
+            inst.trigger_coupling("DC")
+            inst.trigger_edge(source=f"CHAN{args.channel}", slope="POS",
+                              level=DAC_MID_V, sweep="NORMAL")
+        inst.menu_display(False)
+        inst.run()
+        time.sleep(0.6)
+        g = inst.measure_all(args.channel, names=("VPP", "FREQ"))
+        rows.append((dac_hz, want, g.get("FREQ"), g.get("VPP"),
+                     bool(got)))
+    board.stop(); board.drain_console(0.3)
+    ref = max((v for _, _, _, v, _ in rows if v), default=None)
+    for dac_hz, want, f, vpp, synced in rows:
+        half_us = 1e6 / (2.0 * want)
+        pct = (vpp / ref * 100.0) if (vpp and ref) else float("nan")
+        note = []
+        if dac_hz > DACC_CEILING_HZ:
+            note.append("past the DACC ceiling")
+        if half_us < 0.938:
+            note.append("half period < rise time")
+        elif half_us < 2.0:
+            note.append("half period < 2x rise")
+        if not synced:
+            note.append("triggered on the signal, no sync edge")
+        print(f"{dac_hz:10,} {dac_hz//2:9,}/s {half_us:8.3f}us "
+              f"{want:9,.0f}Hz "
+              f"{('-' if f is None else f'{f:,.0f}Hz'):>11s} "
+              f"{('-' if vpp is None else f'{vpp:.3f}V'):>8s} "
+              f"{pct:6.1f}% {'; '.join(note)}", flush=True)
+    print(f"\nTwo different failures to tell apart. The converter "
+          f"outrun: past {DACC_CEILING_HZ:,}\nupdates/s the DACC cannot "
+          f"convert in time and the output stops following the table at "
+          f"all.\nThe analog slew: a full-scale step needs 789-938 ns to "
+          f"go 10-90%, so amplitude\nfalls smoothly once the half period "
+          f"closes on that - around 530-630 kHz of square.")
+
+
+# ------------------------------------------------------------------
 # shots: what each waveform actually looks like, at three zooms
 # ------------------------------------------------------------------
 
@@ -586,9 +767,11 @@ def cmd_shots(board, inst, args):
     for shape in args.shape:
         for pts in args.points_list:
             p = measure.gen_points_for(pts)
-            if shape == "sine" and p == 2:
-                print(f"  skipping sine at 2 pts: both samples land on a "
-                      f"zero crossing, so the output is flat")
+            if p == 2 and shape in DEGENERATE_AT_2:
+                # Captured anyway for square; for the others the shot
+                # would be a square with the wrong name on it.
+                print(f"  skipping {shape} at 2 pts: "
+                      f"{DEGENERATE_AT_2[shape]}")
                 continue
             hz = measure.gen_output_hz(args.trigger, p)
             measure.set_gen(board, shape, p)
@@ -614,6 +797,7 @@ def cmd_shots(board, inst, args):
                 with open(os.path.join(out, name), "wb") as f:
                     f.write(png)
                 shots.append({"shape": shape, "points": p, "hz": hz,
+                              "is_clock": p == 2,
                               "cycles_asked": cyc, "cycles_shown": shown,
                               "timebase_s": tb, "file": name,
                               "bytes": len(png), "triggered": ok})
@@ -637,7 +821,7 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("what", choices=("step", "skew", "lin", "wrap",
-                                    "shots"))
+                                    "clock", "ceiling", "shots"))
     ap.add_argument("--channel", type=int, default=1,
                     help="scope channel on DAC0 (default 1). DAC1 is the "
                          "trigger and is not a channel to measure")
@@ -667,14 +851,29 @@ def main():
                          "repeatable (default 256 64 16 4)")
     ap.add_argument("--out", default="shots",
                     help="shots only: directory for the PNGs")
+    ap.add_argument("--rates", action="append", type=int, default=[],
+                    help="ceiling only: DAC update rates to sweep, "
+                         "repeatable")
     args = ap.parse_args()
 
     if not args.shape:
         args.shape = ["sine", "square", "ramp", "triangle"]
     if not args.points_list:
-        args.points_list = [256, 64, 16, 4]
+        # 2 is the top rung and is not optional: it is the update clock
+        # over two, the fastest thing the converter can be asked for,
+        # and leaving it out stops the sweep one step short of the
+        # ceiling it exists to show.
+        args.points_list = [256, 64, 16, 4, 2]
 
-    defaults = {"step": 4, "skew": 4, "lin": 256, "wrap": 32, "shots": 32}
+    if not args.rates:
+        # Through the generator's TIOA0 cap, through the DACC's own
+        # measured ceiling, and out the far side, so both failures are
+        # in one table.
+        args.rates = [400_000, 800_000, 1_200_000, 1_392_857, 1_800_000,
+                      2_200_000, 2_800_000, 3_600_000]
+
+    defaults = {"step": 4, "skew": 4, "lin": 256, "wrap": 32,
+                "clock": 2, "ceiling": 2, "shots": 32}
     if args.points is None:
         args.points = defaults[args.what]
     if args.what == "step" and not args.timebase:
@@ -689,7 +888,9 @@ def main():
         board.stop()
         board.drain_console(0.5)
         {"step": cmd_step, "skew": cmd_skew, "lin": cmd_lin,
-         "wrap": cmd_wrap, "shots": cmd_shots}[args.what](board, inst, args)
+         "wrap": cmd_wrap, "clock": cmd_clock,
+         "ceiling": cmd_ceiling,
+         "shots": cmd_shots}[args.what](board, inst, args)
     finally:
         try:
             board.stop()

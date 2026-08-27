@@ -219,6 +219,15 @@ Check here before reasoning from general Arduino knowledge.
   with **no trigger at all**, so a trace holds still only when
   `rate/tone` divides the frame's samples-per-channel. That is a missing
   front-end feature, not a signal defect.
+- **The generator's 113 kHz ceiling is the ADC's, not the DAC's.** Every
+  ordinary path triggers the DACC from TIOA0 so generation and capture
+  stay phase-coherent, and TIOA0 is capped by `ACQ_MIN_RC` = 86 at
+  453,488 Hz; TAG halves it again. `=<dac>M` selects TIOA1 instead and
+  reaches **~357 kHz of square, measured** - and past the DACC's
+  1,392,857 updates/s the frequency **pins at 375 kHz** while Vpp stays
+  at 97-100%, which is the converter saturating rather than the
+  amplitude failing. Four ceilings, all different, in `docs/awg.md`; do
+  not size a design against the wrong one.
 - **DAC1 is the bench trigger now, and DAC0 is the signal.** `=<n>J`
   puts a full-scale square on whichever DAC pin is not carrying the
   waveform, phase-locked by construction - one PDC stream, one trigger,
