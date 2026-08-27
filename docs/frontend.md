@@ -551,6 +551,19 @@ like the converter misbehaving, which is a diagnosis this project has
 paid for more than once. The refusal names the offsets that *would*
 work, because that is the number the user is actually after.
 
+**The generator, end to end on the board.** Volts in, volts back:
+1.500 Vpp requested at 1.675 V, and the loop returns 1.5248 Vpp at a
+mean of 1.6390 V, 500.0 Hz, zero underruns. Both errors are accounted
+for rather than mysterious - the **-36 mV** offset is the ADC's own,
+which `baseline.json` records deliberately uncorrected (its ADC-derived
+span sits 32 mV below the scope's for the same reason), and the
+**+1.65%** amplitude is inside the DAC span's stated
+`span_tolerance_mv` of 40, which is +/-1.8% of 2193 mV.
+
+Worth knowing what that bounds: the front end agrees with the bench
+scope to about the tolerance the scope's own span carries, and no
+better. It is not a calibration.
+
 **Volts come from the measured reference.** `ADVREF` is 3270 mV, not the
 nominal 3300, and the panel footers which it used. The loop is
 ratiometric - the DAC's reference *is* the ADC's - so the board cannot
