@@ -22,6 +22,7 @@ measurement of what the DAC puts on a pin.
 import argparse
 import os
 import sys
+import threading
 import time
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -99,6 +100,25 @@ def frame(inst, ch, period, volts_per_div=0.5):
     inst.run()
 
 
+def wait_triggered(inst, timeout=3.0):
+    """Wait for a real acquisition before believing a measurement.
+
+    Under NORMAL sweep the instrument does not redraw until it triggers,
+    and `:MEAS:` answers from whatever the screen still holds - so a
+    measurement taken too early is not wrong-looking, it is a plausible
+    number from the previous combination. Returns the last status seen,
+    so a caller can say which it got rather than guessing.
+    """
+    deadline = time.time() + timeout
+    status = None
+    while time.time() < deadline:
+        status = inst.io.ask(":TRIG:STAT?")
+        if status == "T'D":
+            return status
+        time.sleep(0.1)
+    return status
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--waveform", action="append", default=[],
@@ -146,18 +166,45 @@ def main():
                 frame(inst, args.channel, period)
             print(f"    playing {args.seconds:g}s ...", flush=True)
 
+            got, trig = {}, None
+            reader = None
+            if inst:
+                # Read *during* playback, from another thread.
+                #
+                # run_play() returns when the feed ends, and the output
+                # does not survive it - the DAC runs out its last buffer
+                # and is abandoned after 500 ms. Measuring afterwards
+                # therefore samples whatever is left, which is sometimes
+                # the tail of the waveform and sometimes a dead pin. It
+                # cost one dash in twenty-one on the first full sweep,
+                # and a dash is what this tool calls a failure.
+                #
+                # The instrument is a separate USB device from the
+                # board, so nothing here contends; one thread owns the
+                # scope, which is all UsbTmc asks.
+                def read_during():
+                    nonlocal got, trig
+                    time.sleep(min(2.0, args.seconds * 0.4))
+                    trig = wait_triggered(inst) if period else "AUTO"
+                    got = inst.measure_all(args.channel)
+                reader = threading.Thread(target=read_during, daemon=True)
+                reader.start()
+
             res = measure.run_play(board, dac_sps=sps, seconds=args.seconds,
                                    **kw)
+            if reader:
+                reader.join(timeout=10.0)
 
-            got = {}
             if inst:
-                # Read while the output is still up: the instrument
-                # measures what is on the pin now, not what was there.
-                got = inst.measure_all(args.channel)
                 fmt = {k: ("-" if v is None else f"{v:.4g}")
                        for k, v in got.items()}
-                print(f"    scope: Vpp {fmt['VPP']}  Vmax {fmt['VMAX']}  "
-                      f"Vmin {fmt['VMIN']}  freq {fmt['FREQ']}", flush=True)
+                print(f"    scope: Vpp {fmt.get('VPP','?')}  "
+                      f"Vmax {fmt.get('VMAX','?')}  Vmin {fmt.get('VMIN','?')}"
+                      f"  freq {fmt.get('FREQ','?')}", flush=True)
+                if trig not in ("T'D", "AUTO"):
+                    print(f"    NOT TRIGGERED (status {trig}) - the numbers "
+                          f"above are from whatever the screen held",
+                          flush=True)
 
             rows.append((name, rc, sps, period, got))
             board.stop()
