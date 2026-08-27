@@ -302,7 +302,12 @@ class Recorder:
             os.makedirs(d, exist_ok=True)
 
     def add(self, record):
-        with open(self.path, "a") as f:
+        # newline="" so the separator written below is the only one
+        # there is. Text mode on Windows turns it into CRLF, which put
+        # CRLF into two committed record files and made every later
+        # `git add` warn; a record is data and reads the same on every
+        # platform or it is not one file.
+        with open(self.path, "a", newline="") as f:
             f.write(json.dumps(record, sort_keys=True) + "\n")
             f.flush()
             os.fsync(f.fileno())

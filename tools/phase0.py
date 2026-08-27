@@ -300,7 +300,7 @@ def report(path, metric):
               "Well above 1 means it does.")
 
     out = os.path.splitext(path)[0] + ".summary.json"
-    with open(out, "w") as f:
+    with open(out, "w", newline="") as f:
         json.dump({"metric": metric, "summary": summary,
                    "axis_comparison": rows,
                    "taken_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")},
