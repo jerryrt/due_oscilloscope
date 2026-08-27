@@ -563,7 +563,17 @@ class Server:
         self.waveform = body
         sink = getattr(self.device, "write_awg", None)
         if sink is not None:
-            sink(body)
+            try:
+                sink(body)
+            except devmod.DeviceError as e:
+                # A device that has no generator says so, and the reply
+                # is the refusal rather than a dead session. This path
+                # is not wrapped by `handle`'s dispatch guard, so
+                # without this a refusal here takes the connection down
+                # instead of answering it.
+                self.waveform = b""
+                session.event("error", code="refused", message=str(e))
+                return
         session.event("awg_ok", bytes=len(body), held=len(self.waveform))
 
     # -- state -------------------------------------------------------

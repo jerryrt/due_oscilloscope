@@ -42,6 +42,27 @@ PRESETS = [("50 kHz", "1"), ("100 kHz", "2"), ("200 kHz", "3"),
 TRIGGER_MODES = [("Off", "off"), ("Auto", "auto"), ("Normal", "normal")]
 
 
+def describe_source(dev):
+    """One line naming where the samples come from.
+
+    The panel already said which host and port; what it never said is
+    what is on the other end. That mattered less when the only two
+    answers were a board and the synthetic device, and matters now that
+    a third answer is somebody else's bench an hour ago.
+    """
+    kind = dev.get("kind", "?")
+    if kind == "file":
+        rec = dev.get("recorded") or {}
+        track = rec.get("track")
+        n = dev.get("frames")
+        bit = f"{n:,} frames" if isinstance(n, int) else "recording"
+        return (f"{dev.get('path', 'recording')} ({bit}"
+                + (f", track {track}" if track and track != "fake" else "")
+                + ")")
+    track = dev.get("track")
+    return f"{kind}" + (f" (track {track})" if track else "")
+
+
 class MainWindow(QtWidgets.QMainWindow):
     # Frames decoded per redraw. At 30 Hz this keeps up with about
     # 3,600 frames a second, comfortably above the ~442 the full rate
@@ -58,6 +79,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.port = port
 
         self.rings = {}                 # tag -> ChannelRing
+        # Whether the daemon is serving a recording rather than a
+        # board. It changes what may be asked of it, not how anything
+        # here draws: the frames are the same frames.
+        self.replaying = False
         self.rate_hz = 200000
         self.frames_shown = 0
         self.seq_gaps = 0
@@ -220,7 +245,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 f"{e}\n\nStart one with:  python3 -m daemon --fake")
             return
         self.client = c
+        dev = hello.get("device", {})
         self.health.set("link", f"{self.host}:{self.port}")
+        self.health.set("source", describe_source(dev))
         self.health.set("role", hello.get("role", "?"))
         self.connect_btn.setText("Disconnect")
         self.start_btn.setEnabled(hello.get("role") == "control")
@@ -228,9 +255,44 @@ class MainWindow(QtWidgets.QMainWindow):
         # observer may record what it is watching.
         self.record_btn.setEnabled(True)
         self.stop_btn.setEnabled(hello.get("role") == "control")
+        self.set_replay(dev)
         c.subscribe()
         self.statusBar().showMessage(
-            f"connected to {hello.get('device', {}).get('kind', '?')} device")
+            f"connected to {dev.get('kind', '?')} device")
+
+    def set_replay(self, dev):
+        """Shut off the controls a recording has nothing to answer with.
+
+        A replay has no generator and no rate to be asked for: the
+        samples are at the rate they were taken at, and the frame
+        headers say so. Leaving the generator panel live would let a
+        waveform be uploaded that nothing plays, and leaving the preset
+        box live would suggest a rate this source can be moved to.
+        Greyed out is the honest state, not a disabled feature.
+        """
+        replay = dev.get("kind") == "file"
+        self.replaying = replay
+        self.awg.setEnabled(not replay)
+        self.preset.setEnabled(not replay)
+        if not replay:
+            self.setWindowTitle("due_oscilloscope")
+            return
+        self.setWindowTitle(f"due_oscilloscope - replaying "
+                            f"{dev.get('path', '?')}")
+        trunc = dev.get("truncated_bytes") or 0
+        dropped = dev.get("recorded_dropped") or 0
+        notes = []
+        if dropped:
+            notes.append(f"{dropped:,} frames were dropped when it was "
+                         f"recorded")
+        if trunc:
+            notes.append(f"{trunc:,} trailing bytes are not a whole frame")
+        if notes:
+            # Said once, on connect, rather than left to be noticed in a
+            # counter. A hole in the source is not a fault of the trace
+            # on screen, and the two are easy to confuse.
+            QtWidgets.QMessageBox.information(
+                self, "About this recording", "; ".join(notes) + ".")
 
     def disconnect_from_daemon(self):
         if self.client is not None:
@@ -243,6 +305,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.record_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
         self.health.set("link", "-")
+        self.health.set("source", "-")
+        self.replaying = False
+        self.awg.setEnabled(True)
+        self.preset.setEnabled(True)
+        self.setWindowTitle("due_oscilloscope")
         self.statusBar().showMessage("disconnected")
 
     # -- device -------------------------------------------------------
@@ -251,9 +318,13 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.reset_counters()
         try:
-            self.client.call("start", mode="capture",
-                             preset=self.preset.currentData(),
-                             adc_hz=200000, channels=2)
+            # No preset and no rate when the source is a recording: it
+            # has one rate, it is in the frames, and asking for another
+            # would be asking the file to convert.
+            extra = ({} if self.replaying else
+                     {"preset": self.preset.currentData(),
+                      "adc_hz": 200000, "channels": 2})
+            self.client.call("start", mode="capture", **extra)
         except clientmod.Refused as e:
             # The device's own refusal, with the limit it names.
             QtWidgets.QMessageBox.warning(self, "Refused", e.message)
