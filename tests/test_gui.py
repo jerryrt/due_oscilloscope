@@ -852,6 +852,90 @@ def test_xy_mode_labels_both_axes_with_their_channels(win, daemon):
     assert x is not None and len(x) > 0, "XY drew nothing"
 
 
+def test_the_generator_refuses_what_the_dac_cannot_reach():
+    """The DAC is not rail-to-rail, and clamping would hide that.
+
+    CLAUDE.md lists "writing zero does not give ground" among the facts
+    that are easy to get wrong. A generator that silently clamps an
+    over-large request produces a clipped waveform, and a clipped
+    waveform on this bench looks exactly like the converter
+    misbehaving - a diagnosis this project has paid for more than once.
+    """
+    from gui import awg
+
+    lo_mv, hi_mv = 578, 2771
+    centre = (lo_mv + hi_mv) / 2000.0
+
+    lo, hi, why = awg.plan(1.5, centre, lo_mv, hi_mv)
+    assert why is None and lo is not None and hi > lo
+
+    # Wider than the span at any offset.
+    _l, _h, why = awg.plan(3.0, centre, lo_mv, hi_mv)
+    assert why and "span" in why
+
+    # Fits, but not where it was asked for - and the message names an
+    # offset that would work, because that is the number wanted.
+    _l, _h, why = awg.plan(1.5, 0.4, lo_mv, hi_mv)
+    assert why and "Offset" in why, why
+
+    _l, _h, why = awg.plan(0.0, centre, lo_mv, hi_mv)
+    assert why and "above zero" in why
+
+
+def test_the_generator_maps_volts_onto_the_measured_span():
+    """Full-scale request lands on the full code range, and the ends
+    correspond to the ends of the measured span."""
+    from gui import awg
+
+    lo_mv, hi_mv = 578, 2771
+    span_v = (hi_mv - lo_mv) / 1000.0
+    lo, hi, why = awg.plan(span_v, (lo_mv + hi_mv) / 2000.0, lo_mv, hi_mv)
+    assert why is None
+    assert lo == 0 and hi == 4095, (lo, hi)
+
+    # Half amplitude at the centre uses the middle half of the range.
+    lo, hi, why = awg.plan(span_v / 2, (lo_mv + hi_mv) / 2000.0, lo_mv, hi_mv)
+    assert why is None
+    assert abs(lo - 1024) <= 2 and abs(hi - 3071) <= 2, (lo, hi)
+
+
+def test_the_generator_span_comes_from_the_measurement_not_the_doc():
+    """docs/frontend.md still quotes 546-2760, the retired ADC-derived
+    pair. The panel must use what the scope measured."""
+    from gui import awg
+    import json
+    import os
+
+    lo, hi, source = awg.dac_span_mv()
+    path = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "tests", "baseline.json")
+    with open(path) as f:
+        want = json.load(f)["dac_mv"]
+    assert source == "measured"
+    assert (lo, hi) == (want["span_lo"], want["span_hi"])
+    assert (lo, hi) != (want["adc_derived_span_lo"],
+                        want["adc_derived_span_hi"])
+
+
+def test_the_generator_builds_whole_cycles_between_the_codes():
+    """A fractional cycle is a step when the buffer repeats, and a step
+    the host authored is indistinguishable from one the converter made."""
+    import measure as measuremod
+    import struct as _struct
+
+    blob, hz = measuremod.build_arb("sine", 1000.0, 200000,
+                                    lo_code=1000, hi_code=3000, cycles=3)
+    codes = [_struct.unpack("<H", blob[i:i + 2])[0] & 0xFFF
+             for i in range(0, len(blob), 2)]
+    assert len(codes) % 3 == 0, "not whole cycles"
+    assert min(codes) == 1000 and max(codes) == 3000
+    assert abs(hz - 1000.0) < 1.0
+    # Every sample tagged for DAC0.
+    tags = {_struct.unpack("<H", blob[i:i + 2])[0] >> 12
+            for i in range(0, len(blob), 2)}
+    assert tags == {0}
+
+
 def test_the_readout_says_whether_it_triggered_not_what_was_asked(win, daemon):
     """Auto free-runs when it finds no edge. The label has to say so.
 

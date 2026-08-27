@@ -243,7 +243,10 @@ record and export.
 
 **AWG.** Waveform library and arbitrary upload from file or drawn by
 hand, amplitude and offset entered in volts and mapped through the
-DAC's real 546-2760 mV span, per-channel DAC0 and DAC1 via tag
+DAC's real **578-2771 mV** span - the scope-measured pair in
+`tests/baseline.json`, not the 546-2760 this line used to quote, which
+was ADC-derived and low by about the ADC's own offset - per-channel
+DAC0 and DAC1 via tag
 interleaving, sweep, burst, one-shot, and a visible underrun count.
 
 **Parameters already settable**: sample rate on both sides, channel
@@ -417,8 +420,11 @@ Phase 3 analog front end exists. A warning label is not sufficient.
   it is G2 work.
 - **G2** - **done**: trigger, measurements, FFT. 38 headless tests, up
   from 14. See "The trigger" and "Measurements and the spectrum" below.
-- **G3** - AWG panel with arbitrary upload.
-- **G4** - dual channel, XY, file playback and export, calibration.
+- **G3** - **panel done**: shape, frequency, amplitude and offset in
+  volts, mapped through the measured DAC span, with a refusal instead of
+  a clamp. Arbitrary upload from file or drawn by hand is still open.
+- **G4** - **dual channel and XY done**; file playback, export and
+  calibration open.
 
 G0 carries the real risk, and it is the Windows serial backend rather
 than anything about the GUI. G1 to G4 are ordinary UI work.
@@ -535,6 +541,15 @@ even when its logic is testable without one.
 **The frame header's rate is per channel**, and it says so. Reading it
 as an aggregate is how 195.31 Hz looked like it "exactly matched
 50000/256" when the signal was 50000/512.
+
+**The generator refuses rather than clamps.** The DAC is not
+rail-to-rail - `CLAUDE.md` lists that among the facts that are easy to
+get wrong, because writing zero does not give ground - so "1.5 Vpp at
+0.4 V" is not producible. A panel that silently clamped it would emit a
+clipped waveform, and a clipped waveform on this bench looks exactly
+like the converter misbehaving, which is a diagnosis this project has
+paid for more than once. The refusal names the offsets that *would*
+work, because that is the number the user is actually after.
 
 **Volts come from the measured reference.** `ADVREF` is 3270 mV, not the
 nominal 3300, and the panel footers which it used. The loop is
