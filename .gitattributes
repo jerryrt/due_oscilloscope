@@ -1,0 +1,29 @@
+# Line endings are LF in the repository and LF in the working tree, on
+# every platform.
+#
+# This is not a preference. `gui/stream.py` and `bsp/load.h` had CRLF in
+# their blobs while every other text file had LF, which is invisible
+# from macOS and unworkable from Windows: with `core.autocrlf=true` git
+# normalises the working tree to LF and compares it against a CRLF blob,
+# so any real edit to those two files showed as the whole file rewritten
+# - 657 deletions and 759 insertions to change ten lines - and buried
+# the change it was supposed to show. Both were normalised in the same
+# commit that added this file.
+#
+# `text=auto` still lets git detect binary content and leave it alone;
+# the explicit rules below are for the cases where a wrong guess would
+# corrupt the file rather than merely annoy someone.
+* text=auto eol=lf
+
+*.pdf   binary
+*.png   binary
+*.bin   binary
+*.elf   binary
+*.rar   binary
+*.zip   binary
+
+# Shell scripts and the linker scripts are read by tools that do not all
+# tolerate CR, and are named here so the rule survives someone relaxing
+# the line above.
+*.sh    text eol=lf
+*.ld    text eol=lf
