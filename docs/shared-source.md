@@ -1,6 +1,9 @@
 # Sharing the wire contract between the tracks
 
-**Status: Phase 0 done and measured. Phases 1-6 open.**
+**Status: all six phases done, 2026-08-27.** What is left is not in
+this plan: Track A has no load monitor and no rate trace, and answers
+those two opcodes with `CTL_ERR_OPCODE`. That is honest rather than
+missing, and porting `bsp/load.c` is its own piece of work.
 
 Invariant 3 says the two toolchains share no source. This document
 narrows that rule to the layer its own rationale is about, and plans the
@@ -121,7 +124,7 @@ bring-up order. Do not reorder.
 | 3 | Split `ctl.h` into `ctl_wire.h` (shared) + device API | Track B control suite unchanged | **done** |
 | 4 | Decouple `ctl.c` from `load_*` and the transport, behind accessors | Track B control suite unchanged | **done** |
 | 5 | Share `ctl.c`; Track A implements the seam; `ctlver` 0 -> 3 | `test_control.py` runs on **both** tracks | **done** |
-| 6 | Delete the hand-copies; rescope invariant 3; guard against regrowth | - | open |
+| 6 | Delete the hand-copies; rescope invariant 3; guard against regrowth | the guard fails on a planted violation | **done** |
 
 ## Two traps
 

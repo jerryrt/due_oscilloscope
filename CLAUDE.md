@@ -83,10 +83,45 @@ Violating any of these is a design regression, not a style preference.
    wrong.
 2. **No on-target DSP.** The Cortex-M3 has no FPU. FFT and filtering
    belong on the host.
-3. **The two toolchains share no source, and are peers in everything
-   else.** Track A (arduino-cli) is a reference oracle; Track B (CMake +
-   arm-gcc) is the project. Do not attempt to unify the *source* - the
-   independence is what makes the oracle worth having.
+3. **The two toolchains share no *hardware* source, and are peers in
+   everything else.** Track A (arduino-cli) is a reference oracle; Track
+   B (CMake + arm-gcc) is the project. Register programming stays
+   independent - `usbdma`/`usb_cdc`, `acq`/`adc`/`dac`/`gen`/`play`
+   internals, clock, fault - because two independent programmings of the
+   same silicon is what makes a behavioural divergence point at one of
+   them, and that is the whole value of the oracle.
+
+   **The wire contract is shared source, and this rule used to say
+   otherwise.** It read "share no source", full stop, and that
+   over-reached: the argument above is about registers and does not
+   transfer to a frame layout or a CRC. Two hand-copies written from the
+   same `docs/control-protocol.md` by the same author are not
+   independent - they are two homes for one misreading, plus drift.
+
+   It is rescoped on evidence, not taste. The tracks were already
+   sharing protocol source by hand-copying it, and it had already gone
+   wrong twice: Track A's `frame.h` was missing `frame_crc32_update`,
+   the one form the control protocol needs; and `FW_VERSION_STR` said
+   0.1.0 while `FW_VERSION_MAJOR/MINOR/PATCH` said 0.2.0 - identically
+   on both tracks, reaching different consumers, so one board answered
+   "which firmware are you" two ways. Copying kept them in perfect
+   agreement at the wrong value.
+
+   What is shared lives in `lib/due_shared/src` and both builds compile
+   it: the frame and playback-status layouts, the CRC, the control
+   protocol's wire format and its whole parser. `FW_TRACK` is the only
+   thing left with a copy per track. **The oracle for the wire is the
+   host, not the other track** - `host/control.py` and the suite parse
+   it with no idea which track emitted it, which is the independence
+   that actually catches a protocol bug. Full reasoning and the phases
+   in `docs/shared-source.md`.
+
+   **Per-track capabilities.** Sharing the parser is what showed that
+   two opcodes - STREAM_STATS and BENCH - carry Track B's own USB stack
+   counters and are not universal protocol. A track that does not
+   implement an opcode answers `CTL_ERR_OPCODE`, **never a body of
+   zeroes**: zero is a measurement, and a host cannot otherwise tell it
+   from "not counted here".
 
    But they must be comparable in **design, feature set and
    performance**. Both are bare-metal on the same silicon; Arduino is an
