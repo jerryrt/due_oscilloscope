@@ -383,6 +383,38 @@ def test_frames_from_a_real_daemon_become_a_trace(win, daemon):
     assert len(win.scope.curve.getData()[0]) > 0, "nothing was drawn"
 
 
+def test_volts_come_from_the_measured_reference_not_a_nominal_one():
+    """Every volt this window draws came from an ADC code.
+
+    The DAC->ADC loop is ratiometric, so the board cannot measure its
+    own reference and 3300 was an assumption. The scope settled it at
+    3270, and until the GUI read that the axis, the cursors and the
+    trigger level were all 0.91% high.
+
+    Asserted against tests/baseline.json rather than against 3270, so
+    the day a better instrument moves the number this follows it instead
+    of failing.
+    """
+    import json
+    import os
+    path = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "tests", "baseline.json")
+    with open(path) as f:
+        want = json.load(f)["adc_transfer"]["advref_mv"]
+
+    assert stream.ADVREF_MV == want
+    assert stream.ADVREF_SOURCE == "measured", (
+        "the GUI fell back to the nominal reference; baseline.json is "
+        "unreadable from here")
+    assert abs(stream.VREF_V - want / 1000.0) < 1e-9
+
+    # Full scale reads as the reference, and the trigger level control
+    # round-trips through the same scale factor the trace uses.
+    assert abs(float(stream.codes_to_volts(4095)) - want / 1000.0) < 0.001
+    mid = stream.volts_to_codes(want / 2000.0)
+    assert abs(mid - 2048) <= 1
+
+
 def test_the_trigger_controls_describe_the_trigger_that_is_used(win):
     """The controls and the Trigger object must not drift apart."""
     win.trig_mode.setCurrentIndex(0)                      # Off
