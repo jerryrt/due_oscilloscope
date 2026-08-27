@@ -596,6 +596,11 @@ repository, both of which changed what got built:
   printf stage 3 was deferred while the generator work was in flight:
   poisoning `printf` touches every driver, and the other agent was in
   those files.
+- **Check the issues every time you push or pull.** Not once a session.
+  A push is exactly the moment someone else's work has just become
+  relevant to yours, and a pull is exactly the moment theirs landed on
+  top of it - #6 was opened nineteen minutes before a push that
+  answered half of it, and neither side knew until someone looked.
 - **Silence is not agreement.** An unanswered issue means nobody has
   read it yet. If you offered to take something and got no reply, watch
   what they push - starting `host/provenance.py` was how one agent said

@@ -74,6 +74,66 @@ def noise_floor(v, dt, lag_s=200e-9):
     return mad / (0.9539 * math.sqrt(2.0))
 
 
+def quantised_floor(v, dt, quantum=None):
+    """noise_floor(), never below what the instrument can resolve.
+
+    A pin quieter than one screen level reads as exactly zero noise -
+    correctly, because every sample lands on the same level - and zero
+    is useless as a scale: every prominence computed against it comes
+    out at 10^12. The quantiser's own contribution is q/sqrt(12), and
+    that is the floor when the pin is below it.
+
+    `quantum` is one screen level in volts; inferred from the trace's
+    own distinct values when not given.
+    """
+    est = noise_floor(v, dt)
+    if quantum is None:
+        vals = sorted(set(v))
+        gaps = [b - a for a, b in zip(vals, vals[1:]) if b > a]
+        quantum = min(gaps) if gaps else 0.0
+    return max(est, quantum / math.sqrt(12.0))
+
+
+def period_of(v, dt, hint_s, search=0.25):
+    """The trace's own repeat period, near `hint_s`.
+
+    Folding at the COMMANDED frequency is an assumption, and on this
+    bench it was wrong enough to matter: folding a sine at its nominal
+    3125 Hz put one cycle's peak against another's trough and reported
+    the whole 2.3 V swing as a per-cycle deviation. The trace knows its
+    own period; ask it.
+
+    Coarse search by mean absolute difference against a shifted copy,
+    on a rebinned record so the search is cheap, then refined.
+    """
+    if len(v) < 4:
+        return hint_s
+    # Rebin to about 200 points per hinted period - enough to locate the
+    # period well inside a sample, cheap enough to scan.
+    target = hint_s / 200.0
+    w, wdt, _ = rebin(v, dt, target) if target > dt else (v, dt, 1)
+    centre = hint_s / wdt
+    lo = max(2, int(centre * (1 - search)))
+    hi = min(len(w) - 2, int(centre * (1 + search)))
+    if hi <= lo:
+        return hint_s
+    best, best_lag = None, centre
+    n = len(w)
+    for lag in range(lo, hi + 1):
+        m = n - lag
+        if m < 8:
+            continue
+        step = max(1, m // 400)
+        acc = cnt = 0
+        for i in range(0, m, step):
+            acc += abs(w[i + lag] - w[i])
+            cnt += 1
+        score = acc / cnt
+        if best is None or score < best:
+            best, best_lag = score, lag
+    return best_lag * wdt
+
+
 def find_edges(v, dt, min_step, rise_s=900e-9):
     """Where the trace steps by at least `min_step` volts.
 
@@ -228,8 +288,27 @@ def fold_compare(v, dt, period_s, update_s=None, settle_s=1.2e-6):
 
     dev = [[c[j] - typical[j] for j in range(bins)] for c in cycles]
     if update_s and update_s > 0:
+        # WHERE the update schedule starts, from the data.
+        #
+        # Masking at multiples of update_s measured from the record's
+        # first sample assumes the record begins on an update boundary,
+        # and it does not - it begins wherever the trigger landed. The
+        # mask then falls between the transitions instead of on them,
+        # leaving every step unmasked while deleting good phases, and
+        # the fold reports the sine's full 2.3 V swing as a per-cycle
+        # deviation.
+        #
+        # The transitions are in `typical`, which is the waveform with
+        # the noise already taken out of it by the median across cycles.
+        # Find the first and count from there.
+        bin_dt = period_s / bins
+        swing = max(typical) - min(typical)
+        marks = find_edges(typical, bin_dt, min_step=max(0.06 * swing,
+                                                         1e-6),
+                           rise_s=max(2 * bin_dt, 200e-9))
+        origin = (marks[0] * bin_dt) if marks else 0.0
         for j in range(bins):
-            t = j * period_s / bins
+            t = j * period_s / bins - origin
             r = t % update_s
             # Distance to the nearest update boundary, not the time
             # since the last one. A phase just BEFORE a boundary is as
@@ -249,7 +328,7 @@ def fold_compare(v, dt, period_s, update_s=None, settle_s=1.2e-6):
     return dev, typical, n
 
 
-def odd_cycle(per_cycle):
+def odd_cycle(per_cycle, floor=None):
     """(cycle, phase, value) of the largest single deviation, and how
     far it stands above the rest.
 
@@ -265,6 +344,14 @@ def odd_cycle(per_cycle):
     k, j, x = max(flat, key=lambda t: abs(t[2]))
     if not x:
         return None, None, None, 0.0
-    mags = sorted(abs(t[2]) for t in flat)
-    typical = mags[len(mags) // 2] or 1e-12
-    return k, j, x, abs(x) / typical
+    # Prominence against the NOISE, not against the median deviation.
+    #
+    # Most compared phases sit at exactly zero deviation, because the
+    # pin is quieter than one screen level there and both cycles land
+    # on the same level. A median over those is zero, and dividing by
+    # it produced prominences of 2.3e12 - a number that says only that
+    # the denominator was wrong.
+    if floor is None:
+        mags = sorted(abs(t[2]) for t in flat)
+        floor = mags[int(len(mags) * 0.75)] or 1e-12
+    return k, j, x, abs(x) / max(floor, 1e-12)

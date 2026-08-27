@@ -254,3 +254,28 @@ def test_folding_reports_nothing_when_nothing_is_there(dt):
     _, _, _, prominence = tr.odd_cycle(per_cycle)
     assert prominence < 12, (
         f"prominence {prominence:.1f}x with nothing planted")
+
+
+@pytest.mark.parametrize("dt", DENSITIES)
+def test_folding_masks_transitions_wherever_the_schedule_starts(dt):
+    """The record begins where the trigger landed, not on an update
+    boundary. Masking at multiples of the update period measured from
+    sample zero puts the mask between the steps instead of on them, and
+    the fold then reports the waveform's whole swing as a deviation -
+    2.3 V of it, on hardware."""
+    period = 1 / 3125
+    # Shift the whole signal by a third of an update, so the schedule
+    # does not start at t=0.
+    offset_s = (period / 32) / 3
+    n = int(round(8 * period / dt))
+    v = []
+    for i in range(n):
+        k = int((i * dt + offset_s) / (period / 32)) % 32
+        v.append(1.674 + 1.1 * math.sin(2 * math.pi * k / 32))
+    per_cycle, _, _ = tr.fold_compare(v, dt, period,
+                                      update_s=period / 32)
+    live = [abs(x) for c in per_cycle for x in c if x is not None]
+    assert live, "everything masked"
+    assert max(live) < 40 * V_PER_CODE, (
+        f"{max(live)/V_PER_CODE:.0f} codes with the schedule offset by a "
+        f"third of an update; the mask is not finding the transitions")

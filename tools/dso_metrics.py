@@ -1086,7 +1086,11 @@ def cmd_reload(board, inst, args):
         # The sample rate drops with the timebase, so this is a trade of
         # resolution for span - and 100 ns still beats the 600-point
         # screen record's 4.3 us by forty-three times.
-        inst.timebase(wrap_s * 1.4 / 12.0)
+        # Slow enough that the record spans a whole wrap. The sample
+        # rate falls with the timebase, so this trades resolution for
+        # span - and even at 100 ns it beats the 600-point screen
+        # record's 4.3 us by forty-three times.
+        inst.timebase(wrap_s * 2.0 / 12.0)
         inst.timebase_offset(0.0)
         got = inst.ext_trigger_autoset()
         if not got:
@@ -1096,23 +1100,36 @@ def cmd_reload(board, inst, args):
             raise SystemExit(f"no capture with sync={mode}")
         span = len(v) * dt
         lo, hi = inst.extent(v)
-        floor = trace.noise_floor(v, dt)
-        # A step is anything well clear of the record's own noise. Not a
-        # constant, and not a multiple of the median sample-to-sample
-        # difference - which collapses toward the quantiser at 10 ns and
-        # found 17,580 edges in a clean sine.
-        min_step = max(12 * floor, 30 * V_PER_CODE)
-        resid, segs = trace.residuals(v, dt, min_step=min_step)
-        i, r = trace.worst(resid)
-        live = [x for x in resid if x is not None]
-        rms = (math.sqrt(sum(x * x for x in live) / len(live))
+        floor = trace.quantised_floor(v, dt)
+        # Fold at the period the trace HAS, not the one commanded. The
+        # nominal was out by enough to put one cycle's peak against
+        # another's trough and report the whole 2.3 V swing as a
+        # per-cycle deviation.
+        period_s = trace.period_of(v, dt, 1.0 / out_hz)
+        # Fold at the WAVEFORM's period, across the cycles the record
+        # holds. Every cycle is the same commanded output, so the median
+        # across them is the waveform and what is left is what differs -
+        # and the reload happens in exactly one of them.
+        #
+        # A plateau residual was tried here and is the wrong instrument
+        # for a moving waveform: a sine's steps run from nearly zero at
+        # the peaks to hundreds of millivolts at the crossings, so it
+        # read the sine's own slope as 3,921 codes of defect.
+        update_s = 2.0 / args.trigger
+        per_cycle, typical, n_cyc = trace.fold_compare(
+            v, dt, period_s, update_s=update_s)
+        k, j, x, prom = trace.odd_cycle(per_cycle, floor=floor)
+        live = [abs(a) for c in per_cycle for a in c if a is not None]
+        rms = (math.sqrt(sum(a * a for a in live) / len(live))
                if live else 0.0)
         results[mode] = {
             "points": len(v), "dt_s": dt, "span_s": span,
             "covers_wrap": span >= wrap_s, "extent_v": hi - lo,
-            "noise_v": floor, "min_step_v": min_step,
-            "plateaus": len(segs), "settled": len(live),
-            "worst_v": r, "worst_at_s": (i * dt) if i is not None else None,
+            "noise_v": floor, "cycles": n_cyc, "compared": len(live),
+            "worst_v": x, "worst_cycle": k, "prominence": prom,
+            "period_s": period_s,
+            "worst_at_s": (j * period_s / len(per_cycle[0]))
+                          if per_cycle and j is not None else None,
             "rms_v": rms,
         }
         board.stop(); board.drain_console(0.2)
@@ -1123,35 +1140,42 @@ def cmd_reload(board, inst, args):
           f"{results['wrap']['span_s']*1e3:.2f} ms span "
           f"({'covers' if results['wrap']['covers_wrap'] else 'SHORTER THAN'}"
           f" one wrap)\n")
-    print(f"{'locked to':>10s} {'plateaus':>9s} {'settled':>9s} "
-          f"{'noise':>13s} {'worst':>18s} {'at':>10s}")
-    print("-" * 76)
+    print(f"measured period {results['wrap']['period_s']*1e6:.3f} us "
+          f"against {1e6/out_hz:.3f} commanded\n")
+    print(f"{'locked to':>10s} {'cycles':>7s} {'compared':>9s} "
+          f"{'noise':>13s} {'worst':>18s} {'in cycle':>9s} "
+          f"{'at phase':>9s} {'prominence':>11s}")
+    print("-" * 96)
     for mode in ("wrap", "cycle"):
         d = results[mode]
         wv = ("-" if d["worst_v"] is None
               else f"{d['worst_v']*1000:+8.3f} mV "
                    f"{d['worst_v']/V_PER_CODE:+5.1f}c")
         at = ("-" if d["worst_at_s"] is None
-              else f"{d['worst_at_s']*1e6:8.1f}us")
-        print(f"{mode:>10s} {d['plateaus']:9d} {d['settled']:9,} "
+              else f"{d['worst_at_s']*1e6:7.2f}us")
+        kk = "-" if d["worst_cycle"] is None else str(d["worst_cycle"])
+        print(f"{mode:>10s} {d['cycles']:7d} {d['compared']:9,} "
               f"{d['noise_v']*1000:7.3f} mV "
-              f"{d['noise_v']/V_PER_CODE:4.1f}c {wv:>18s} {at:>10s}")
+              f"{d['noise_v']/V_PER_CODE:4.1f}c {wv:>18s} {kk:>9s} "
+              f"{at:>9s} {d['prominence']:10.1f}x")
 
     w, c = results["wrap"], results["cycle"]
-    floor = max(c["rms_v"], c["noise_v"])
     ww = abs(w["worst_v"]) if w["worst_v"] is not None else 0.0
     cw = abs(c["worst_v"]) if c["worst_v"] is not None else 0.0
-    print(f"\nFloor {floor*1000:.3f} mV = {floor/V_PER_CODE:.2f} codes "
-          f"(the control's own worst is {cw/V_PER_CODE:.2f} codes).")
-    if ww > max(6 * floor, 2.5 * cw) and cw > 0:
-        print(f"Wrap arm carries {ww/V_PER_CODE:.2f} codes against the "
-              f"control's {cw/V_PER_CODE:.2f}.\nThat is locked to the "
-              f"reload rather than to the waveform.")
+    bound = max(cw, w["rms_v"] * 4)
+    print(f"\nControl's own worst is {cw/V_PER_CODE:.2f} codes at "
+          f"{c['prominence']:.1f}x prominence.")
+    if w["prominence"] > 6 and ww > 2.5 * cw:
+        print(f"The wrap arm carries {ww/V_PER_CODE:.2f} codes in one "
+              f"cycle at {w['prominence']:.1f}x prominence, against the "
+              f"control's\n{cw/V_PER_CODE:.2f} at "
+              f"{c['prominence']:.1f}x. That is locked to the reload "
+              f"rather than to the waveform.")
     else:
         print(f"Nothing in the wrap arm the control does not also show. "
-              f"That is a bound at\n{max(floor, cw)/V_PER_CODE:.2f} "
-              f"codes, not an absence - issue #5's reported peaks are "
-              f"5-15.")
+              f"A bound at "
+              f"{bound/V_PER_CODE:.2f} codes,\nnot an absence - issue "
+              f"#5's reported peaks are 5-15.")
     return results
 
 
