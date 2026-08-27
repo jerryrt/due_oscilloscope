@@ -655,7 +655,8 @@ def cmd_ceiling(board, inst, args):
     smoothly as the half period closes on the 789-938 ns rise time).
     They look different and the sweep is wide enough to show which.
     """
-    measure.set_sync(board, "cycle")
+    solo = args.solo
+    measure.set_sync(board, "solo" if solo else "cycle")
     measure.set_gen(board, "square", 2)
     inst.channel_scale(args.channel, 0.5)
     inst.channel_offset(args.channel, -DAC_MID_V)
@@ -663,8 +664,16 @@ def cmd_ceiling(board, inst, args):
     inst.averaging(None)
     print(f"\nDACC measured ceiling {DACC_CEILING_HZ:,} updates/s; "
           f"TIOA0 caps the generator at {GEN_TIOA0_MAX_HZ:,}")
-    print(f"square at 2 pts = dac_hz / 4, because TAG spends every other "
-          f"update on DAC1\n")
+    div = 2 if solo else 4
+    if solo:
+        print(f"SOLO: every table entry tagged DAC0, so DAC0 updates on "
+              f"every trigger and the\nsquare lands at dac_hz / 2. No "
+              f"sync, so the scope triggers on the signal - which for a "
+              f"square\nis the best trigger available anyway (0.007 us "
+              f"of jitter, against the sync's 1.471).\n")
+    else:
+        print(f"square at 2 pts = dac_hz / 4, because TAG spends every "
+              f"other update on DAC1\n")
     print(f"{'dac_hz':>10s} {'DAC0 upd':>11s} {'half per':>10s} "
           f"{'expected':>11s} {'measured':>11s} {'Vpp':>8s} {'of max':>7s} "
           f"{'note'}")
@@ -674,10 +683,10 @@ def cmd_ceiling(board, inst, args):
         board.stop(); board.drain_console(0.2)
         board.cmd(f"={dac_hz},200000,2M")
         time.sleep(1.0); board.drain_console(0.4)
-        want = dac_hz / 4.0
+        want = dac_hz / float(div)
         inst.timebase(3.0 / want / 12.0)
         inst.timebase_offset(0.0)
-        got = inst.ext_trigger_autoset()
+        got = None if solo else inst.ext_trigger_autoset()
         if not got:
             # No sync edge the instrument can find. Fall back to the
             # signal itself: a square is the one shape whose own edge
@@ -703,9 +712,10 @@ def cmd_ceiling(board, inst, args):
             note.append("half period < rise time")
         elif half_us < 2.0:
             note.append("half period < 2x rise")
-        if not synced:
+        if not synced and not solo:
             note.append("triggered on the signal, no sync edge")
-        print(f"{dac_hz:10,} {dac_hz//2:9,}/s {half_us:8.3f}us "
+        upd = dac_hz if solo else dac_hz // 2
+        print(f"{dac_hz:10,} {upd:9,}/s {half_us:8.3f}us "
               f"{want:9,.0f}Hz "
               f"{('-' if f is None else f'{f:,.0f}Hz'):>11s} "
               f"{('-' if vpp is None else f'{vpp:.3f}V'):>8s} "
@@ -729,6 +739,71 @@ def cmd_ceiling(board, inst, args):
 SHOT_CYCLES = (1, 5, 10)
 
 
+def shots_solo(board, inst, args):
+    """The clock square at the hardware's own limit, off every leash.
+
+    Solo, so DAC0 updates on every trigger; two points a cycle, so it
+    toggles on every update; and `=<dac>M` so the rate is the DAC's own
+    timer rather than the ADC's. That is every constraint removed except
+    the converter itself, and the pictures are what the converter does
+    as it runs out - which is the point of taking them rather than only
+    tabulating Vpp, because "amplitude fell to 68%" and "the square
+    became a triangle" are the same number and different findings.
+
+    No sync exists in solo, so the scope triggers on the signal. For a
+    square that is the best trigger available anyway: measured, its own
+    edge gives 0.007 us of jitter against the sync's 1.471.
+    """
+    measure.set_sync(board, "solo")
+    measure.set_gen(board, "square", 2)
+    inst.channel_enable(2, False)
+    inst.channel_enable(args.channel, True)
+    inst.channel_scale(args.channel, 0.5)
+    inst.channel_offset(args.channel, -DAC_MID_V)
+    inst.coupling(args.channel, "DC")
+    inst.averaging(None)
+    inst.trigger_coupling("DC")
+
+    out = os.path.abspath(args.out)
+    os.makedirs(out, exist_ok=True)
+    shots = []
+    for dac_hz in args.dac_hz:
+        board.stop(); board.drain_console(0.2)
+        board.cmd(f"={dac_hz},200000,2M")
+        time.sleep(1.0); board.drain_console(0.4)
+        hz = dac_hz / 2.0
+        inst.trigger_edge(source=f"CHAN{args.channel}", slope="POS",
+                          level=DAC_MID_V, sweep="NORMAL")
+        for cyc in SHOT_CYCLES:
+            inst.timebase(cyc / hz / 12.0)
+            tb = inst.timebase()
+            shown = tb * 12.0 * hz
+            inst.timebase_offset(0.0)
+            inst.menu_display(False)
+            inst.run()
+            time.sleep(0.6)
+            ok = inst.triggered()
+            g = inst.measure_all(args.channel, names=("VPP", "FREQ"))
+            png = inst.screenshot()
+            name = f"clock_{dac_hz//1000:04d}k_{hz/1000:.0f}kHz_{cyc:02d}cyc.png"
+            with open(os.path.join(out, name), "wb") as f:
+                f.write(png)
+            shots.append({"shape": "square", "points": 2, "solo": True,
+                          "dac_hz": dac_hz, "hz": hz, "is_clock": True,
+                          "cycles_asked": cyc, "cycles_shown": shown,
+                          "timebase_s": tb, "file": name,
+                          "bytes": len(png), "triggered": ok,
+                          "vpp": g.get("VPP"), "freq": g.get("FREQ")})
+            print(f"  {name:40s} {len(png):6d} B  {tb*1e9:8.0f}ns/div  "
+                  f"Vpp {g.get('VPP')}  f {g.get('FREQ')}  "
+                  f"{'triggered' if ok else 'NOT TRIGGERED'}", flush=True)
+    board.stop(); board.drain_console(0.3)
+    import json
+    with open(os.path.join(out, "shots_solo.json"), "w") as f:
+        json.dump({"solo": True, "shots": shots}, f, indent=1)
+    print(f"\n{len(shots)} solo shots in {out}")
+
+
 def cmd_shots(board, inst, args):
     """One screenshot per waveform, per frequency, per zoom.
 
@@ -744,6 +819,8 @@ def cmd_shots(board, inst, args):
     So the sweep over resolutions is a sweep over frequency AND over
     staircase coarseness at once, which is worth seeing in one place.
     """
+    if args.dac_hz:
+        return shots_solo(board, inst, args)
     preset = TRIGGER_PRESETS[args.trigger]
     arm(board, inst, preset, "square", 32)
     # An unconnected CH2 draws a flat line that a reader cannot tell
@@ -854,6 +931,14 @@ def main():
     ap.add_argument("--rates", action="append", type=int, default=[],
                     help="ceiling only: DAC update rates to sweep, "
                          "repeatable")
+    ap.add_argument("--dac-hz", action="append", type=int, default=[],
+                    help="shots only: capture the solo clock square at "
+                         "these DAC update rates, via =<dac>M, instead of "
+                         "sweeping resolutions")
+    ap.add_argument("--solo", action="store_true",
+                    help="ceiling only: give up DAC1 and the sync, so "
+                         "DAC0 updates every trigger and the output "
+                         "frequency doubles")
     args = ap.parse_args()
 
     if not args.shape:

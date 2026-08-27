@@ -74,6 +74,26 @@ static void build_table(void)
 {
 	const unsigned period = gen_points ? gen_points : GEN_SINE_POINTS;
 
+	/*
+	 * SOLO: every entry tagged DAC0, so the converter updates it on
+	 * every trigger instead of every other one and the table holds
+	 * GEN_TABLE_LEN points of waveform instead of GEN_SINE_POINTS.
+	 * The output frequency doubles; the sync, the bench trigger and
+	 * the demultiplexing check are all given up for it.
+	 */
+	if (gen_sync == GEN_SYNC_SOLO) {
+		for (unsigned i = 0; i < GEN_TABLE_LEN; i++) {
+			int32_t code = shape_code(i % period, period);
+
+			if (code < 0)
+				code = 0;
+			if (code > 4095)
+				code = 4095;
+			gen_table[i] = (uint16_t)((0u << 12) | (uint16_t)code);
+		}
+		return;
+	}
+
 	for (unsigned i = 0; i < GEN_SINE_POINTS; i++) {
 		int32_t code = shape_code(i % period, period);
 

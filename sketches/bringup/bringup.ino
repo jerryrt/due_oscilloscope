@@ -448,7 +448,7 @@ static void cmd_stream(uint32_t trigger_hz)
 	         "DAC0 (%u pts/cycle)",
 	         (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
 	         gen_shape_name(gen_shape),
-	         (unsigned long)gen_hz_for(trigger_hz, gen_points),
+	         (unsigned long)gen_hz_for(trigger_hz, gen_points, gen_sync),
 	         (unsigned)gen_points);
 	Serial.println(buf);
 	Serial.println(gen_sync == GEN_SYNC_OFF
@@ -499,7 +499,7 @@ static void cmd_stream_uart(uint32_t trigger_hz)
 	snprintf(buf, sizeof(buf),
 	         "# uart-stream: trigger %lu Hz, %s %lu Hz - binary follows",
 	         (unsigned long)trigger_hz, gen_shape_name(gen_shape),
-	         (unsigned long)gen_hz_for(trigger_hz, gen_points));
+	         (unsigned long)gen_hz_for(trigger_hz, gen_points, gen_sync));
 	Serial.println(buf);
 	Serial.flush();
 }

@@ -354,7 +354,7 @@ static void cmd_stream_uart(uint32_t trigger_hz)
 	}
 	printf("# uart-stream: trigger %lu Hz, %s %lu Hz - binary follows\n",
 	       (unsigned long)trigger_hz, gen_shape_name(gen_shape),
-	       (unsigned long)gen_hz_for(trigger_hz, gen_points));
+	       (unsigned long)gen_hz_for(trigger_hz, gen_points, gen_sync));
 	uart_flush();
 }
 
@@ -393,7 +393,7 @@ static void cmd_stream(uint32_t trigger_hz)
 	       "(%u pts/cycle)\n",
 	       (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
 	       gen_shape_name(gen_shape),
-	       (unsigned long)gen_hz_for(trigger_hz, gen_points),
+	       (unsigned long)gen_hz_for(trigger_hz, gen_points, gen_sync),
 	       (unsigned)gen_points);
 	if (gen_sync == GEN_SYNC_OFF)
 		printf("# DAC1 holds mid scale: A1 must read flat, or demux "

@@ -185,7 +185,33 @@ def test_the_sync_modes_match_the_shared_header():
     """GEN_SYNC_* is in lib/due_shared/src/ctl_wire.h and both tracks
     compile it. The host holds the same numbers, and a host that
     disagreed would set a mode nobody asked for."""
-    assert measure.GEN_SYNCS == {"off": 0, "cycle": 1, "wrap": 2}
+    assert measure.GEN_SYNCS == {"off": 0, "cycle": 1, "wrap": 2,
+                                 "solo": 3}
+
+
+def test_solo_doubles_the_output_frequency():
+    """Solo tags every table entry for DAC0, so the converter updates it
+    on every trigger rather than every other one. That is the whole
+    difference and it is worth exactly a factor of two - the factor that
+    takes the measured ceiling from ~357 kHz to ~750 kHz."""
+    for pts in (2, 4, 32, 256):
+        tag = measure.gen_output_hz(1_000_000, pts, measure.GEN_SYNCS["cycle"])
+        solo = measure.gen_output_hz(1_000_000, pts, measure.GEN_SYNCS["solo"])
+        assert solo == 2 * tag
+        assert measure.gen_updates_per_cycle(pts, measure.GEN_SYNCS["solo"]) \
+            == measure.gen_points_for(pts)
+
+
+def test_the_clock_square_is_the_update_rate_over_two_in_solo():
+    """Two points a cycle in solo is one sample per half cycle with no
+    interleave, so the output toggles on every DACC update: the fastest
+    thing this converter can be asked for."""
+    solo = measure.GEN_SYNCS["solo"]
+    assert measure.gen_output_hz(1_392_857, 2, solo) == 1_392_857 / 2
+    # and with the sync running it is half that again
+    assert measure.gen_output_hz(1_392_857, 2,
+                                 measure.GEN_SYNCS["cycle"]) \
+        == 1_392_857 / 4
 
 
 def test_dac1_is_not_a_measurement_channel():

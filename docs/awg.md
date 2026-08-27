@@ -134,22 +134,66 @@ transitions than were asked for. It is the same 1,392,857 updates/s
 `drivers/play.h` records from the playback path, seen from the analog
 side for the first time.
 
-**Four different ceilings, and they are not the same number.** Naming
+### Solo: give up DAC1 and the sync, and take the last factor of two
+
+`=3J` tags **every** table entry for DAC0, so the converter updates it
+on every trigger instead of every other one, the table holds 512
+waveform points instead of 256, and the output frequency doubles:
+`f = trigger_hz / points` rather than `trigger_hz / (2 * points)`.
+
+The cost is the sync, and with it the bench trigger and the
+demultiplexing check. That is a real trade rather than a strictly better
+mode - but it is the right trade for exactly one shape, because a
+square's own edge triggers a scope better than any sync does: 0.007 us
+of jitter against the sync's 1.471.
+
+Square at two points, `dso_metrics.py ceiling --solo`:
+
+| dac_hz | DAC0 updates | half period | expected | measured | Vpp | of max |
+|---|---|---|---|---|---|---|
+| 800,000 | 800,000/s | 1.250 us | 400,000 Hz | 407,000 Hz | 2.400 V | **100.0%** |
+| 1,200,000 | 1,200,000/s | 0.833 us | 600,000 Hz | 592,000 Hz | 1.960 V | 81.7% |
+| 1,392,857 | 1,392,857/s | 0.718 us | 696,428 Hz | - | 1.640 V | 68.3% |
+| 1,600,000 | 1,600,000/s | 0.625 us | 800,000 Hz | 755,000 Hz | 1.880 V | 78.3% |
+| 2,000,000 | 2,000,000/s | 0.500 us | 1,000,000 Hz | **749,000 Hz** | 1.540 V | 64.2% |
+| 3,000,000 | 3,000,000/s | 0.333 us | 1,500,000 Hz | 746,000 Hz | 1.580 V | 65.8% |
+
+**Three limits, and they are far apart. 1 MHz is not one of them.**
+
+- **Frequency ceiling ~750 kHz.** Ask for 1,000,000 Hz and 749,000
+  arrives; ask for 1,500,000 and 746,000 arrives. Past roughly 1.5 M
+  updates/s the output pins there whatever the timer is told, which is
+  the DACC's conversion limit seen from the analog side.
+- **Full amplitude to ~400-450 kHz.** Vpp holds at 2.38-2.40 V through
+  407 kHz and is down to 81.7% by 592 kHz.
+- **A recognisable square only to ~100-200 kHz.** This is the one the
+  numbers hide, and it is why the screenshots matter: at 407 kHz the
+  amplitude is still 100% and the waveform is already a trapezoid with
+  almost no flat top, because the 789-938 ns rise is most of a 1.25 us
+  half period. By 600 kHz it is a triangle. At the DACC ceiling it is a
+  triangle whose peak height varies cycle to cycle - the converter
+  failing to keep up irregularly rather than uniformly.
+
+"Amplitude fell to 68%" and "the square became a triangle" are the same
+number and different findings, which is the whole argument for capturing
+the screen and not only the measurements.
+
+**Five different ceilings, and they are not the same number.** Naming
 them separately matters, because a design sized against the wrong one
 fails in a way that looks analog:
 
 | what limits it | number | why |
 |---|---|---|
 | internal generator on TIOA0 | **113 kHz** square | the ADC's `ACQ_MIN_RC`, then halved by TAG |
-| internal generator on TIOA1, sync on | **~357 kHz** square, measured | DACC conversion, halved by TAG's other channel |
-| DAC0-only, no sync | ~700 kHz square *(check)* | DACC conversion, not halved |
-| analog slew | ~530-630 kHz square *(check)* | 789-938 ns rise against the half period |
+| internal generator on TIOA1, sync on | **~357 kHz** square | DACC conversion, halved by TAG's other channel |
+| solo, no sync, TIOA1 | **~750 kHz** toggling | DACC conversion, not halved. The hardware's own ceiling |
+| solo, and still full amplitude | **~400-450 kHz** | 789-938 ns rise against the half period |
+| solo, and still shaped like a square | **~100-200 kHz** | the same rise, judged on shape instead of on peak-to-peak |
 
-The last two cross. With TAG the converter runs out first at ~357 kHz
-and the slew still has margin; give up the sync to double the update
-rate and the slew becomes the binding limit instead. Neither of those
-two rows is measured yet - the DAC0-only table is not built, and the
-slew figure is extrapolated from the step response rather than swept.
+All five measured. The last three are the same converter described three
+ways, and which one to quote depends entirely on what the output is for:
+a clock only has to cross a threshold, a reference has to reach its
+rails, and a waveform has to keep its shape.
 
 **Only the square means anything at two points.** The others collapse,
 and a screenshot of a collapsed one with its own name on it is worse

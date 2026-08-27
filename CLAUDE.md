@@ -219,6 +219,16 @@ Check here before reasoning from general Arduino knowledge.
   with **no trigger at all**, so a trace holds still only when
   `rate/tone` divides the frame's samples-per-channel. That is a missing
   front-end feature, not a signal defect.
+- **The DAC tops out around 750 kHz of toggling, and stops being a
+  square long before that.** Measured with `=3J` (solo: every table
+  entry tagged DAC0, no sync, double rate) on TIOA1: ask for 1,000,000
+  Hz and 749,000 arrives; ask for 1,500,000 and 746,000 arrives. Full
+  amplitude survives only to **~400-450 kHz**, and a *recognisable
+  square* only to ~100-200 kHz - at 407 kHz Vpp is still 100% and the
+  waveform is already a trapezoid with no flat top. "Amplitude fell to
+  68%" and "the square became a triangle" are the same number and
+  different findings; quote the one that matches what the output is
+  for. `docs/awg.md`.
 - **The generator's 113 kHz ceiling is the ADC's, not the DAC's.** Every
   ordinary path triggers the DACC from TIOA0 so generation and capture
   stay phase-coherent, and TIOA0 is capped by `ACQ_MIN_RC` = 86 at

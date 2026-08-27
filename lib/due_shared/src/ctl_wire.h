@@ -315,7 +315,31 @@ typedef struct __attribute__((packed)) {
 #define GEN_SYNC_OFF        0u
 #define GEN_SYNC_CYCLE      1u
 #define GEN_SYNC_WRAP       2u
-#define GEN_SYNC_MAX        GEN_SYNC_WRAP
+/*
+ * SOLO is not a third kind of sync, it is the absence of the second
+ * channel altogether - and it belongs on this axis because it is the
+ * same question, "what is the other DAC doing", taken to its end.
+ *
+ * OFF, CYCLE and WRAP all still spend every other DACC update on DAC1,
+ * because TAG mode interleaves and the table alternates tags. SOLO tags
+ * every entry for DAC0, so DAC0 updates on *every* trigger rather than
+ * every other one, and the output frequency doubles:
+ *
+ *     OFF/CYCLE/WRAP   f = trigger_hz / (2 * points)
+ *     SOLO             f = trigger_hz / points
+ *
+ * The cost is the sync, and with it the bench trigger and the
+ * demultiplexing check. That is a real trade and not a strictly better
+ * mode: it is worth taking for the square, whose own edge triggers a
+ * scope better than any sync does (0.007 us of jitter against the
+ * sync's 1.471), and worth refusing for anything slower-slewing.
+ *
+ * It also doubles the table's useful length: 512 DAC0 points per wrap
+ * instead of 256. Every legal resolution still divides that, so the
+ * wrap stays phase-continuous.
+ */
+#define GEN_SYNC_SOLO       3u
+#define GEN_SYNC_MAX        GEN_SYNC_SOLO
 
 /*
  * Points in the table, and so the resolutions that exist. A cycle may
@@ -346,7 +370,11 @@ uint16_t gen_points_for(uint32_t points);
 /* Output frequency: one table point per trigger, and TAG mode spends
  * every other update on the second channel, so a cycle costs 2*points
  * updates. This is the resolution/frequency trade in one line. */
-uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points);
+uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points, uint8_t sync);
+
+/* DACC updates one cycle costs: `points`, doubled unless the second
+ * channel has been given up. The one place that arithmetic lives. */
+uint16_t gen_updates_per_cycle(uint16_t points, uint8_t sync);
 
 const char *gen_shape_name(uint8_t shape);
 const char *gen_sync_name(uint8_t sync);

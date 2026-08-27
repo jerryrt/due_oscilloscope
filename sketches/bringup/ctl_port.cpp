@@ -201,7 +201,7 @@ bool ctl_port_gen_get(ctl_gen_t *out)
 	out->sync       = gen_sync;
 	out->points     = gen_points;
 	out->trigger_hz = gen_trigger_hz();
-	out->output_hz  = gen_hz_for(out->trigger_hz, gen_points);
+	out->output_hz  = gen_hz_for(out->trigger_hz, gen_points, gen_sync);
 	return true;
 }
 

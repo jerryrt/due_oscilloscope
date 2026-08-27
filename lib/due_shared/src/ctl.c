@@ -348,9 +348,12 @@ const char *gen_shape_name(uint8_t s)
 
 const char *gen_sync_name(uint8_t s)
 {
-	static const char *const w[] = { "off (mid scale)",
-	                                 "square, one per cycle",
-	                                 "square, one per table wrap" };
+	static const char *const w[] = {
+		"off (mid scale)",
+		"square, one per cycle",
+		"square, one per table wrap",
+		"solo - DAC0 only, no sync, 2x rate",
+	};
 	return (s < sizeof(w) / sizeof(w[0])) ? w[s] : "?";
 }
 
@@ -365,11 +368,21 @@ uint16_t gen_points_for(uint32_t points)
 	return (uint16_t)p;
 }
 
-uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points)
+uint16_t gen_updates_per_cycle(uint16_t points, uint8_t sync)
 {
 	uint16_t p = gen_points_for(points);
 
-	return p ? trigger_hz / (2u * p) : 0u;
+	/* TAG mode spends every other update on the second channel, so a
+	 * cycle costs twice its points - unless the second channel has
+	 * been given up, and then it costs exactly its points. */
+	return (sync == GEN_SYNC_SOLO) ? p : (uint16_t)(2u * p);
+}
+
+uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points, uint8_t sync)
+{
+	uint16_t u = gen_updates_per_cycle(points, sync);
+
+	return u ? trigger_hz / u : 0u;
 }
 
 int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g)

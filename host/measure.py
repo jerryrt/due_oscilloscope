@@ -1843,7 +1843,12 @@ GEN_SHAPE_NAMES = {v: k for k, v in GEN_SHAPES.items()}
 # The sync output on the pin the waveform is not using - DAC1 in the
 # normal layout. It is the bench trigger, so DAC1 is no longer a channel
 # to measure: DSO tools look at DAC0, and A1 is what can still see DAC1.
-GEN_SYNCS = {"off": 0, "cycle": 1, "wrap": 2}
+# "solo" is not a third kind of sync but the absence of the second
+# channel: every table entry tagged DAC0, so DAC0 updates on every
+# trigger instead of every other one and the output frequency doubles.
+# The cost is the sync itself, which is worth paying only for the
+# square - whose own edge triggers a scope better than any sync does.
+GEN_SYNCS = {"off": 0, "cycle": 1, "wrap": 2, "solo": 3}
 GEN_SYNC_NAMES = {v: k for k, v in GEN_SYNCS.items()}
 
 # Points in the table. A cycle may spend any power-of-two count from 2
@@ -1867,16 +1872,27 @@ def gen_points_for(points):
     return p
 
 
-def gen_output_hz(trigger_hz, points=GEN_TABLE_POINTS):
+def gen_updates_per_cycle(points=GEN_TABLE_POINTS, sync=1):
+    """DACC updates one cycle costs, which is the whole frequency story.
+
+    TAG mode spends every other update on the second channel, so a cycle
+    costs twice its points - unless the second channel has been given up
+    (`solo`), and then it costs exactly its points.
+    """
+    p = gen_points_for(points)
+    return p if sync == GEN_SYNCS["solo"] else 2 * p
+
+
+def gen_output_hz(trigger_hz, points=GEN_TABLE_POINTS, sync=1):
     """Output frequency of the internal generator.
 
-    The trigger clocks one table point per update and DACC TAG mode
-    spends every other update on DAC1, so a cycle costs 2 * points
-    updates. This is the resolution/frequency trade in one line: points
-    buys staircase resolution and costs frequency, at a fixed update
-    rate that only the trigger changes.
+    The trigger clocks one table point per update, so a cycle takes
+    gen_updates_per_cycle() of them. This is the resolution/frequency
+    trade in one line: points buys staircase resolution and costs
+    frequency, at a fixed update rate that only the trigger changes -
+    and `solo` buys a factor of two by giving up DAC1.
     """
-    return trigger_hz / (2.0 * gen_points_for(points))
+    return trigger_hz / float(gen_updates_per_cycle(points, sync))
 
 
 def gen_fold_len(points=GEN_TABLE_POINTS):
