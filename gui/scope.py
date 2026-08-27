@@ -39,9 +39,10 @@ class ScopeView(QtWidgets.QWidget):
 
     def draw(self, ring, window_s, rate_hz):
         n = int(max(1, window_s * rate_hz))
-        samples, breaks = ring.window(n)
-        if samples.size == 0:
+        sweep = stream.select(ring, n)
+        if sweep.empty:
             return 0
+        samples, breaks = sweep.samples, sweep.breaks
         cols = min(self.columns, max(2, self.plot.width() or self.columns))
         x, y = stream.minmax(samples, cols, breaks)
         if x.size == 0:

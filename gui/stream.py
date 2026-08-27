@@ -172,6 +172,49 @@ class ChannelRing:
                 np.concatenate((self._breaks[start:], self._breaks[:end])))
 
 
+class Sweep:
+    """One screenful, and where it came from.
+
+    `triggered` is the part that matters later: a free-running sweep and
+    a triggered one look identical as arrays, and the UI has to be able
+    to say which it is drawing. A scope that silently free-runs when it
+    cannot find an edge, without saying so, is how a shaking trace gets
+    blamed on the signal - which has happened on this bench already, to
+    a different instrument (`docs/awg.md`).
+    """
+
+    __slots__ = ("samples", "breaks", "triggered", "trigger_index")
+
+    def __init__(self, samples, breaks, triggered=False, trigger_index=None):
+        self.samples = samples
+        self.breaks = breaks
+        self.triggered = triggered
+        self.trigger_index = trigger_index
+
+    @property
+    def empty(self):
+        return self.samples.size == 0
+
+
+def select(ring, n):
+    """Which `n` samples to draw.
+
+    The whole "what goes on screen" decision, in one Qt-free place.
+
+    It lived inside ScopeView.draw as `ring.window(n)` - the most recent
+    n samples, every 33 ms, with nothing anchoring them. That is why a
+    trace holds still only when the tone's period happens to divide the
+    window, which CLAUDE.md records as a missing front-end feature that
+    must not be confused with the signal defects around it.
+
+    Extracting it changes nothing yet: this is still the most recent n.
+    What it buys is somewhere for a trigger to live that a headless test
+    can reach without a display.
+    """
+    samples, breaks = ring.window(n)
+    return Sweep(samples, breaks, triggered=False, trigger_index=None)
+
+
 def minmax(samples, columns, breaks=None):
     """Reduce samples to one min/max pair per pixel column.
 

@@ -174,6 +174,32 @@ def test_the_ring_keeps_the_newest_samples_when_it_wraps():
 
 # -- end to end -------------------------------------------------------
 
+def test_a_free_running_sweep_says_that_it_is_free_running():
+    """A free-running sweep and a triggered one are the same array.
+
+    The only thing that can tell them apart is the sweep saying so, and
+    a scope that silently free-runs when it cannot find an edge is how a
+    shaking trace gets blamed on the signal.
+    """
+    r = stream.ChannelRing(seconds=0.001, rate_hz=200000)
+    r.append(np.arange(2000, dtype=np.uint16))
+
+    sw = stream.select(r, 500)
+    assert not sw.triggered
+    assert sw.trigger_index is None
+    assert sw.samples.size == 500
+    # The most recent 500, which is what the widget used to ask for
+    # directly - the extraction must not have moved the window.
+    want, _ = r.window(500)
+    assert np.array_equal(sw.samples, want)
+
+
+def test_an_empty_ring_gives_an_empty_sweep_rather_than_raising():
+    r = stream.ChannelRing(seconds=0.001, rate_hz=200000)
+    sw = stream.select(r, 500)
+    assert sw.empty and not sw.triggered
+
+
 def test_frames_from_a_real_daemon_become_a_trace(win, daemon):
     win.connect_to_daemon()
     assert win.client is not None
