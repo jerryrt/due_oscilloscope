@@ -28,6 +28,13 @@ diff as a new dependency on a seam module.
 The one curated fact is which headers *are* the seam - acq, gen and the
 transport - and that is the decision issue #14 records, not this tool's.
 
+Known hole, noted in review (windows-desk, on the issue): a
+function-like #define is not a prototype, so a macro-shaped interface
+in a seam header would classify as "other". Today that is theoretical
+- nothing either stream file calls is a macro - and the core check
+turns it into a feature: a macro reaching stream_core.c fails the
+"no shared header declares" arm until it becomes a function.
+
     python3 tools/stream_seam.py            # print the classified list
     python3 tools/stream_seam.py --write    # update tools/stream_seam.list
     python3 tools/stream_seam.py --check    # fail if the list drifted
@@ -51,9 +58,18 @@ INCLUDE_DIRS = [os.path.join("bsp"), os.path.join("lib", "due_shared", "src")]
 # Issue #14's decision: the seam stream_port.h will declare is the acq
 # and gen interfaces plus the transport. Headers, not names - the names
 # come from extraction.
-SEAM_HEADERS = {"acq.h", "gen.h", "usbdma.h", "usb_cdc.h"}
+SEAM_HEADERS = {"acq.h", "gen.h", "usbdma.h", "usb_cdc.h",
+                "stream_port.h"}
 
 LIST_PATH = os.path.join(REPO, "tools", "stream_seam.list")
+
+# The shared framer and its dependency record (issue #14 step 3). The
+# core may reach only what the record and the shared headers declare -
+# plus the C library's memcpy - and the record may declare nothing the
+# core does not use. Both directions are drift.
+CORE = os.path.join("lib", "due_shared", "src", "stream_core.c")
+PORT = os.path.join("lib", "due_shared", "src", "stream_port.h")
+CORE_ALLOWED_OTHER = {"memcpy"}
 
 KEYWORDS = {"if", "while", "for", "switch", "return", "sizeof", "do",
             "else", "defined",
@@ -99,7 +115,9 @@ def declared_in_header(text):
     static inline definitions (name(...) {), which are interface too -
     acq.h hands out its frame accessors that way."""
     d = {m.group(1)
-         for m in re.finditer(r"\b([A-Za-z_]\w*)\s*\([^;{]*\)\s*;", text)}
+         for m in re.finditer(
+             r"\b([A-Za-z_]\w*)\s*\([^;{()]*(?:\([^()]*\)[^;{()]*)*\)\s*;",
+             text)}
     d |= {m.group(1) for m in re.finditer(
         r"\b([A-Za-z_]\w*)\s*\([^;{()]*(?:\([^()]*\)[^;{()]*)*\)\s*\{",
         text)}
@@ -237,6 +255,40 @@ def check(list_path=LIST_PATH):
     return drift
 
 
+def port_decls(port_text=None):
+    """Everything stream_port.h offers: functions and extern data."""
+    if port_text is None:
+        port_text = _strip(_read(PORT))
+    return declared_in_header(port_text) | extern_data_decls(port_text)
+
+
+def core_check(port_text=None):
+    """Drift between stream_core.c and stream_port.h, both directions.
+
+    Returns a list of complaint lines, empty when they agree. The
+    port_text parameter exists for the test that proves this check can
+    fail; the default is the real header.
+    """
+    ext = extract(CORE)
+    if not ext:
+        return ["extraction of stream_core.c produced nothing; "
+                "the extractor is broken"]
+    declared = port_decls(port_text)
+    used = {name for (name, _kind) in ext}
+    drift = []
+    for (name, kind), origin in sorted(ext.items()):
+        undeclared = (origin == "other" and name not in CORE_ALLOWED_OTHER) \
+            or (os.path.basename(origin) == "stream_port.h"
+                and name not in declared)
+        if undeclared:
+            drift.append(f"stream_core.c reaches {name} ({kind}), which "
+                         "no shared header declares")
+    for name in sorted(declared - used):
+        drift.append(f"stream_port.h declares {name}, which "
+                     "stream_core.c does not use")
+    return drift
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--write", action="store_true",
@@ -246,7 +298,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.check:
-        drift = check()
+        drift = check() + core_check()
         for line in drift:
             print(line)
         return 1 if drift else 0

@@ -1,9 +1,9 @@
 # Sharing the wire contract between the tracks
 
-**Status: all six phases done, 2026-08-27.** What is left is not in
-this plan: Track A has no load monitor and no rate trace, and answers
-those two opcodes with `CTL_ERR_OPCODE`. That is honest rather than
-missing, and porting `bsp/load.c` is its own piece of work.
+**Status: phases 0-8 done, 2026-08-28.** What is left is not in
+this plan: Track A has no rate trace, and answers
+that opcode with `CTL_ERR_OPCODE`. That is honest rather than
+missing.
 
 Invariant 3 says the two toolchains share no source. This document
 narrows that rule to the layer its own rationale is about, and plans the
@@ -132,6 +132,7 @@ bring-up order. Do not reorder.
 | 5 | Share `ctl.c`; Track A implements the seam; `ctlver` 0 -> 3 | `test_control.py` runs on **both** tracks | **done** |
 | 6 | Delete the hand-copies; rescope invariant 3; guard against regrowth | the guard fails on a planted violation | **done** |
 | 7 | Share the console surface and the load monitor | both tracks answer `h` with the same list and report no missing commands | **done** |
+| 8 | Share the framer: `stream_core.c` behind `stream_port.h` | the seam check holds header and extraction equal both ways; full suites both tracks | **done** |
 
 ## Phase 7: the console and the load monitor, 2026-08-28
 
@@ -310,3 +311,30 @@ cannot link against. Phase 2 hit this with `frame.h` and it is now
 guarded; `ctl_wire.h` and anything Phase 5 adds will need the same. The
 failure is a link error with a mangled name in it, which reads as a
 missing function rather than as a linkage mismatch.
+
+## Phase 8: the framer, 2026-08-28 (issue #14)
+
+`stream.c` and `stream.cpp` were 780 lines of policy written twice,
+five register lines between them. Frame building, sequencing, overrun
+accounting and the resync rule now live once in
+`lib/due_shared/src/stream_core.c`; `stream_port.h` records every name
+the framer reaches outside itself, and `tests/test_shared_source.py`
+holds that record equal to a fresh extraction in both directions
+(`tools/stream_seam.py`). The seam is functions *and extern data* -
+the framer reads `acq_produced`, `acq_consumed`, the overrun counters
+and `play_consumed` directly, which the issue's hand-made table
+missed and extraction found.
+
+What stayed per track, on purpose: the transport shims
+(`stream_port_write`/`stream_port_ready` - uart/usb_cdc on B, the
+core's Serial objects on A), the bench arms and their buffers, the
+reports and STREAM_STATS (per-track surface, #7), and every register.
+The bench arms are the remaining candidate for a later pass, after
+their numbers are re-taken either side of this move.
+
+The move paid for itself before it landed: reading the two copies
+side by side surfaced that `6c96eed` had armed capture DMA in one of
+Track B's two start functions and not the other, so every capture-only
+stream ran the CPU path for six days (`db08d76` fixed it, and the fix
+in turn handed issue #20 its strongest constraint yet). One shared
+start function is why that cannot recur.

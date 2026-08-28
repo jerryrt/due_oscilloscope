@@ -109,7 +109,9 @@ Violating any of these is a design regression, not a style preference.
 
    What is shared lives in `lib/due_shared/src` and both builds compile
    it: the frame and playback-status layouts, the CRC, the control
-   protocol's wire format and its whole parser. `FW_TRACK` is the only
+   protocol's wire format and its whole parser, the console surface,
+   and the stream framer (`stream_core.c` behind `stream_port.h`, whose
+   seam a test holds equal to extraction - issue #14). `FW_TRACK` is the only
    thing left with a copy per track. **The oracle for the wire is the
    host, not the other track** - `host/control.py` and the suite parse
    it with no idea which track emitted it, which is the independence

@@ -132,25 +132,16 @@ extern volatile uint32_t acq_produced;
 extern volatile uint32_t acq_consumed;
 extern volatile uint32_t acq_ring_overflow;
 
-static inline bool acq_frame_available(void)
-{
-	return acq_produced != acq_consumed;
-}
-
-static inline const uint16_t *acq_frame_data(void)
-{
-	return acq_slot[acq_consumed % ACQ_NBUF].samples;
-}
-
+/*
+ * Real functions, not static inlines, since the framer moved to
+ * lib/due_shared (issue #14): the shared file cannot include this
+ * header, so it links against these through stream_port.h's identical
+ * declarations. They run once per frame; inlining never mattered.
+ */
+bool acq_frame_available(void);
+const uint16_t *acq_frame_data(void);
 /* The whole frame - header headroom first - for a single DMA. */
-static inline uint8_t *acq_frame_bytes(void)
-{
-	return acq_slot[acq_consumed % ACQ_NBUF].hdr;
-}
-
-static inline void acq_frame_release(void)
-{
-	acq_consumed++;
-}
+uint8_t *acq_frame_bytes(void);
+void acq_frame_release(void);
 
 #endif /* ACQ_H */

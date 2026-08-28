@@ -23,6 +23,8 @@
 #include "frame.h"
 #include "play.h"
 #include "stream.h"
+#include "stream_core.h"
+#include "stream_port.h"
 #include "usbdma.h"
 
 /*
@@ -45,60 +47,26 @@ static uint8_t  bench_scratch[512];
 volatile uint32_t stream_loop_passes;
 static uint32_t dma_in_arms, dma_out_arms;
 
-static bool     active;
-static uint32_t seq;
-static uint32_t rate_hz;
-static uint32_t frames_sent;
-static uint32_t bytes_sent;
-static uint32_t started_us;
-static uint32_t pending_overrun;
-static uint32_t write_fail;
-static uint32_t short_write;
-static uint32_t resync_count;
-static uint32_t usb_us;
-static uint32_t usb_bytes;
+/* The bench stamps its own sequence numbers; the capture stream's live
+ * in the shared framer now. */
+static uint32_t bench_seq;
+
+/* The framer - frame building, sequencing, overrun accounting, the
+ * resync rule - is lib/due_shared/src/stream_core.c now, one copy for
+ * both tracks (issue #14). Its view of the capture ring layout must be
+ * this track's. */
+static_assert(STREAM_NBUF == ACQ_NBUF &&
+              STREAM_BUF_SAMPLES == ACQ_BUF_SAMPLES &&
+              STREAM_HDR_BYTES == ACQ_HDR_BYTES &&
+              STREAM_FRAME_BYTES == ACQ_FRAME_BYTES,
+              "stream_port.h ring layout must match acq.h");
 
 /*
- * A CDC pipe is a byte stream with no frame boundaries, so a short write
- * is not something the receiver can recover from: it loses byte
- * alignment and starts misreading channel tags. Transmission is
- * therefore resumable across service calls and never abandoned
- * part-way, exactly as in Track B.
+ * The shared framer's transport, this track's plumbing: the core's
+ * Serial objects underneath, which is exactly what Track B must never
+ * link.
  */
-typedef enum { TX_IDLE, TX_HEADER, TX_PAYLOAD, TX_DMA } tx_phase_t;
-static tx_phase_t     tx_phase;
-static size_t         tx_off;
-static frame_header_t tx_hdr;
-
-/* The headroom in front of each capture buffer is sized in acq.h,
- * which cannot see this type. If they ever disagree the header would
- * be written over the first samples of its own payload. */
-static_assert(sizeof(frame_header_t) == ACQ_HDR_BYTES,
-              "capture header headroom must match the frame header");
-
-static bool     tx_dma;
-static uint32_t dma_frames, dma_stalls;
-
-/*
- * How much of a frame goes out per DMA transfer.
- *
- * One 4096-byte transfer measurably starves the ADC's PDC: measured on
- * Track B, 439 general overruns in a 4 s run at the full rate against
- * none on the CPU-copy path, because the USB DMA holds the bus matrix
- * while the PDC is trying to write the next conversion into SRAM.
- * Moving the capture ring to the other bank halved it, which named the
- * mechanism, and smaller transfers give the PDC gaps to win arbitration
- * in.
- *
- * 512 keeps every transfer exactly one bulk packet, so the stream stays
- * packet-aligned and no short packet is ever emitted mid-frame.
- */
-#define DMA_CHUNK_BYTES  512u
-
-static bool stream_start_common(uint32_t trigger_hz, bool with_gen,
-                                unsigned n_channels);
-
-static size_t xport_write(const uint8_t *p, size_t n)
+size_t stream_port_write(const uint8_t *p, size_t n)
 {
 	if (xport == XPORT_UART) {
 		Serial.write(p, n);
@@ -123,7 +91,7 @@ static size_t xport_write(const uint8_t *p, size_t n)
  * the write corresponded to nearly 9 MB/s, and the ceiling was the
  * guard. dtr() reads the same lineState with no delay.
  */
-static bool xport_ready(void)
+bool stream_port_ready(void)
 {
 	return xport == XPORT_UART ? true : SerialUSB.dtr();
 }
@@ -136,108 +104,33 @@ static bool xport_ready(void)
 bool stream_start_capture_only(uint32_t trigger_hz, unsigned n_channels)
 {
 	xport = XPORT_USB;
-	return stream_start_common(trigger_hz, false, n_channels);
+	return stream_core_start(trigger_hz, false, n_channels, true);
 }
 
 bool stream_start(uint32_t trigger_hz)
 {
 	xport = XPORT_USB;
-	return stream_start_common(trigger_hz, true, 2);
+	return stream_core_start(trigger_hz, true, 2, true);
 }
 
 bool stream_start_uart(uint32_t trigger_hz)
 {
 	xport = XPORT_UART;
-	return stream_start_common(trigger_hz, true, 2);
+	return stream_core_start(trigger_hz, true, 2, false);
 }
-
-static bool stream_start_common(uint32_t trigger_hz, bool with_gen,
-                                unsigned n_channels)
-{
-	acq_init();
-	if (with_gen)
-		gen_init();
-
-	seq = 0;
-	frames_sent = 0;
-	bytes_sent = 0;
-	pending_overrun = 0;
-	write_fail = 0;
-	short_write = 0;
-	resync_count = 0;
-	usb_us = 0;
-	usb_bytes = 0;
-	tx_phase = TX_IDLE;
-	tx_off = 0;
-	if (!acq_start(trigger_hz, n_channels))
-		return false;
-
-	/*
-	 * Report the rate the hardware will actually produce, not the one
-	 * that was asked for. The trigger is TC compare, so the rate is
-	 * 39 MHz / RC and a request that does not divide 39 MHz truncates:
-	 * asking for 210000 gets RC 185 and 210810 conversions per second.
-	 * Declaring the request in the header makes every frequency the
-	 * host derives from it wrong by the same fraction, silently, which
-	 * is exactly the failure the exact-divisor rule exists to avoid.
-	 */
-	rate_hz = (SystemCoreClock / 2u) / acq_configured_rc();
-
-	if (with_gen)
-		gen_start();
-
-	started_us = micros();
-
-	/*
-	 * Take the IN endpoint onto DMA for the duration. Only this path
-	 * writes IN while streaming, and the two modes must never be mixed
-	 * on one endpoint: the core's writer owns the FIFO by hand and DMA
-	 * needs the hardware to switch banks itself.
-	 */
-	tx_dma = (xport == XPORT_USB);
-	dma_frames = dma_stalls = 0;
-	if (tx_dma)
-		usb_dma_mode_in(true);
-
-	active = true;
-	return true;
-}
-
-void stream_bench_service(void);
 
 void stream_stop(void)
 {
-	active = false;
-	if (tx_dma) {
-		/*
-		 * Do NOT spin on "is the channel still busy" here. It was
-		 * written that way first and it is an unbounded wait on a
-		 * peer: if the host has stopped reading IN, the transfer
-		 * never completes and the stop command never returns, which
-		 * is invariant 7 broken on the one path a wedged host is
-		 * most likely to reach. usb_dma_mode_in(false) aborts the
-		 * channel through dma_channel_stop(), whose spin is bounded,
-		 * and an aborted transfer stops reading the buffer just as
-		 * surely as a finished one does. The worst case is one
-		 * corrupted frame already on the wire; the alternative is a
-		 * board that has to be power-cycled.
-		 */
-		usb_dma_mode_in(false);
-		tx_dma = false;
-	}
-	tx_phase = TX_IDLE;
-	tx_off = 0;
+	stream_core_stop();
 	if (bench == BENCH_FLOOD_DMA || bench == BENCH_SINK_DMA ||
 	    bench == BENCH_DUPLEX_DMA)
 		usb_dma_mode(false, false);
 	bench = BENCH_OFF;
-	acq_stop();
-	gen_stop();
 }
 
 bool stream_active(void)
 {
-	return active;
+	return stream_core_active();
 }
 
 /*
@@ -248,7 +141,8 @@ bool stream_active(void)
  */
 bool stream_in_in_use(void)
 {
-	return stream_active() || bench == BENCH_FLOOD || bench == BENCH_DUPLEX ||
+	return stream_core_active() ||
+	       bench == BENCH_FLOOD || bench == BENCH_DUPLEX ||
 	       bench == BENCH_FLOOD_DMA || bench == BENCH_DUPLEX_DMA;
 }
 
@@ -262,242 +156,52 @@ bool stream_out_in_use(void)
  * Called from the main loop. Sends at most a few frames per call so the
  * command interface stays responsive.
  */
+void stream_bench_service(void);
+
 void stream_service(void)
 {
 	stream_bench_service();
-
-	if (!active)
-		return;
-
-	/*
-	 * With the port closed, discard rather than queue. Serial_::write
-	 * already returns 0 without blocking when the host has not set
-	 * lineState, but a frame half-way through transmission would then
-	 * sit in TX_HEADER forever while the PDC laps the ring behind it.
-	 * Dropping keeps the counters honest: the frames are gone either
-	 * way, and the ones that follow stay continuous.
-	 *
-	 * The genuine hazard is a host that holds the port open and stops
-	 * reading, and no API here detects that.
-	 */
-	if (!xport_ready()) {
-		while (acq_frame_available())
-			acq_frame_release();
-		tx_phase = TX_IDLE;
-		tx_off = 0;
-		return;
-	}
-
-	for (int budget = 0; budget < 4; budget++) {
-		const uint8_t *payload;
-		size_t plen = ACQ_BUF_SAMPLES * sizeof(uint16_t);
-		uint32_t t_in;
-		size_t w;
-
-		/*
-		 * A DMA in flight owns the buffer it is reading, so the frame
-		 * is not released and the next one is not started until it
-		 * has finished. Releasing early would hand the PDC a buffer
-		 * the USB controller is still sending.
-		 */
-		if (tx_phase == TX_DMA) {
-			uint8_t *frame = acq_frame_bytes();
-
-			if (usb_dma_in_busy())
-				return;
-			if (tx_off < ACQ_FRAME_BYTES) {
-				uint32_t n = ACQ_FRAME_BYTES - tx_off;
-
-				if (n > DMA_CHUNK_BYTES)
-					n = DMA_CHUNK_BYTES;
-				/*
-				 * Deliberately not counted into usb_us /
-				 * usb_bytes. Arming a DMA is four register
-				 * writes and returns long before the bytes
-				 * are on the wire, so timing it and dividing
-				 * reports the speed of the register file:
-				 * 145 MB/s on a 1.8 MB/s link, which is
-				 * worse than no figure at all. `inwrite` in
-				 * the report describes the CPU write path
-				 * and nothing else.
-				 */
-				if (!usb_dma_in_start(frame + tx_off, n)) {
-					dma_stalls++;
-					return;
-				}
-				tx_off += n;
-				continue;
-			}
-			bytes_sent += ACQ_FRAME_BYTES;
-			tx_off = 0;
-			tx_phase = TX_IDLE;
-			acq_frame_release();
-			frames_sent++;
-			dma_frames++;
-			seq++;
-			continue;
-		}
-
-		/*
-		 * Start a new frame only when the previous one is fully out.
-		 *
-		 * Everything that selects a buffer or builds a header happens
-		 * here and nowhere else. Re-running the lap check while a
-		 * frame is in flight would move acq_consumed, and with it the
-		 * payload pointer, out from under the transfer.
-		 */
-		if (tx_phase == TX_IDLE) {
-			uint32_t produced, overruns;
-
-			if (!acq_frame_available())
-				return;
-
-			produced = acq_produced;
-
-			/*
-			 * If the ISR has lapped us, the oldest unsent buffers are
-			 * being overwritten by the PDC as we read them. Sending
-			 * one anyway yields a frame that passes its header CRC
-			 * while carrying spliced data, which is exactly the silent
-			 * corruption the protocol exists to prevent. Skip forward
-			 * to the newest safe buffer and flag the discontinuity.
-			 */
-			if (produced - acq_consumed >= ACQ_NBUF - 1u) {
-				acq_consumed = produced - (ACQ_NBUF - 2u);
-				resync_count++;
-			}
-
-			overruns = acq_rxbuff_overruns + acq_govre +
-			           acq_ring_overflow + resync_count;
-
-			tx_hdr.magic[0] = FRAME_MAGIC0;
-			tx_hdr.magic[1] = FRAME_MAGIC1;
-			tx_hdr.magic[2] = FRAME_MAGIC2;
-			tx_hdr.magic[3] = FRAME_MAGIC3;
-			tx_hdr.version         = FRAME_VERSION;
-			tx_hdr.flags           = FRAME_FLAG_CONTINUOUS;
-			tx_hdr.seq             = seq;
-			tx_hdr.sample_rate_hz  = rate_hz;
-			tx_hdr.channel_mask    = acq_channel_mask();
-			tx_hdr.timestamp_us    = micros();
-			tx_hdr.overrun_count   = overruns;
-			tx_hdr.play_consumed   = play_consumed;
-
-			if (overruns != pending_overrun) {
-				tx_hdr.flags |= FRAME_FLAG_OVERRUN;
-				pending_overrun = overruns;
-			}
-
-			tx_hdr.header_crc32 =
-				frame_crc32((const uint8_t *)&tx_hdr,
-				            sizeof(tx_hdr) - sizeof(uint32_t));
-
-			tx_off = 0;
-			tx_phase = TX_HEADER;
-
-			if (tx_dma) {
-				/*
-				 * The header is written into the headroom in
-				 * front of this buffer's payload, so the two
-				 * are one transfer. Thirty-two bytes of
-				 * header is the only thing the processor
-				 * writes; the 4064 bytes of samples are read
-				 * by the DMA straight out of where the PDC
-				 * left them.
-				 */
-				uint8_t *frame = acq_frame_bytes();
-
-				memcpy(frame, &tx_hdr, sizeof(tx_hdr));
-				tx_off = 0;
-				tx_phase = TX_DMA;
-				continue;
-			}
-		}
-
-		/* Time spent inside the transport only, so the effective rate
-		 * of the write path can be separated from everything else the
-		 * loop does. */
-		if (tx_phase == TX_HEADER) {
-			const uint8_t *hp = (const uint8_t *)&tx_hdr;
-
-			t_in = micros();
-			w = xport_write(hp + tx_off, sizeof(tx_hdr) - tx_off);
-			usb_us += micros() - t_in;
-			usb_bytes += w;
-			tx_off += w;
-			if (tx_off < sizeof(tx_hdr)) {
-				/* The core's CDC discards silently unless the host has
-				 * set lineState, and write() then returns 0. Counting
-				 * attempts rather than accepted bytes would report a
-				 * stream that is not actually leaving the board. */
-				if (w == 0)
-					write_fail++;
-				else
-					short_write++;
-				return;
-			}
-			tx_off = 0;
-			tx_phase = TX_PAYLOAD;
-		}
-
-		payload = (const uint8_t *)acq_frame_data();
-		t_in = micros();
-		w = xport_write(payload + tx_off, plen - tx_off);
-		usb_us += micros() - t_in;
-		usb_bytes += w;
-		tx_off += w;
-		if (tx_off < plen) {
-			if (w == 0)
-				write_fail++;
-			else
-				short_write++;
-			return;
-		}
-
-		bytes_sent += sizeof(tx_hdr) + plen;
-		tx_off = 0;
-		tx_phase = TX_IDLE;
-
-		acq_frame_release();
-		frames_sent++;
-		seq++;
-	}
+	stream_core_service();
 }
 
-/*
- * The DMA capture counters, on their own line and in Track B's exact
- * wording: the host's `?` parser keys off the text, so a difference in
- * spelling here is a difference the suite cannot see past.
- */
+
 int stream_dma_report(char *buf, size_t n)
 {
+	stream_core_stats_t cs;
+
+	stream_core_get_stats(&cs);
 	return snprintf(buf, n, "# dma-frames=%lu dma-stalls=%lu",
-	                (unsigned long)dma_frames, (unsigned long)dma_stalls);
+	                (unsigned long)cs.dma_frames,
+	                (unsigned long)cs.dma_stalls);
 }
 
 void stream_report(char *buf, size_t n)
 {
-	uint32_t us = micros() - started_us;
-	uint32_t kbps = us ? (uint32_t)(((uint64_t)bytes_sent * 1000ull) / us) : 0;
+	stream_core_stats_t cs;
+	uint32_t us, kbps;
+
+	stream_core_get_stats(&cs);
+	us = micros() - cs.started_us;
+	kbps = us ? (uint32_t)(((uint64_t)cs.bytes * 1000ull) / us) : 0;
 
 	snprintf(buf, n,
 	         "# frames=%lu bytes=%lu %lu.%03lu MB/s prod=%lu cons=%lu "
 	         "ringovf=%lu resync=%lu rxbuff=%lu govre=%lu endtx=%lu "
 	         "wfail=%lu wshort=%lu dtr=%d inwrite=%lu.%03lu MB/s (cpu path)",
-	         (unsigned long)frames_sent, (unsigned long)bytes_sent,
+	         (unsigned long)cs.frames, (unsigned long)cs.bytes,
 	         (unsigned long)(kbps / 1000u), (unsigned long)(kbps % 1000u),
 	         (unsigned long)acq_produced, (unsigned long)acq_consumed,
 	         (unsigned long)acq_ring_overflow,
-	         (unsigned long)resync_count,
+	         (unsigned long)cs.resync,
 	         (unsigned long)acq_rxbuff_overruns,
 	         (unsigned long)acq_govre,
 	         (unsigned long)gen_endtx_count,
-	         (unsigned long)write_fail, (unsigned long)short_write,
+	         (unsigned long)cs.write_fail, (unsigned long)cs.short_write,
 	         /* dtr() reads lineState directly; (bool)SerialUSB would
 	          * report the same thing after a delay(10). */
 	         (int)SerialUSB.dtr(),
-	         (unsigned long)(usb_us ? ((uint64_t)usb_bytes * 1000ull / usb_us) / 1000u : 0),
-	         (unsigned long)(usb_us ? ((uint64_t)usb_bytes * 1000ull / usb_us) % 1000u : 0));
+	         (unsigned long)(cs.usb_us ? ((uint64_t)cs.usb_bytes * 1000ull / cs.usb_us) / 1000u : 0),
+	         (unsigned long)(cs.usb_us ? ((uint64_t)cs.usb_bytes * 1000ull / cs.usb_us) % 1000u : 0));
 }
 
 /* ------------------------------------------------------------------ */
@@ -511,7 +215,7 @@ static void bench_reset(bench_mode m)
 	for (unsigned i = 0; i < ACQ_BUF_SAMPLES; i++)
 		bench_payload[i] = (uint16_t)((((i & 1u) ? 6u : 7u) << 12)
 		                              | (i & 0x0fffu));
-	seq = 0;
+	bench_seq = 0;
 	bench_in_bytes = 0;
 	bench_out_bytes = 0;
 	dma_in_arms = dma_out_arms = 0;
@@ -546,7 +250,7 @@ static void bench_push_in(uint32_t byte_budget)
 		h.magic[2] = FRAME_MAGIC2; h.magic[3] = FRAME_MAGIC3;
 		h.version         = FRAME_VERSION;
 		h.flags           = FRAME_FLAG_CONTINUOUS;
-		h.seq             = seq;
+		h.seq             = bench_seq;
 		h.sample_rate_hz  = 0;          /* synthetic, not acquired */
 		h.channel_mask    = (1u << 7) | (1u << 6);
 		h.timestamp_us    = micros();
@@ -562,7 +266,7 @@ static void bench_push_in(uint32_t byte_budget)
 		                     sizeof(bench_payload));
 		bench_in_bytes += w1 + w2;
 		sent += (uint32_t)(w1 + w2);
-		seq++;
+		bench_seq++;
 		if (w2 != sizeof(bench_payload))
 			return;
 	}
@@ -699,7 +403,7 @@ static void dma_build_frame(uint8_t *dst)
 	h->magic[2] = FRAME_MAGIC2; h->magic[3] = FRAME_MAGIC3;
 	h->version         = FRAME_VERSION;
 	h->flags           = FRAME_FLAG_CONTINUOUS;
-	h->seq             = seq++;
+	h->seq             = bench_seq++;
 	h->sample_rate_hz  = 0;
 	h->channel_mask    = (1u << 7) | (1u << 6);
 	h->timestamp_us    = micros();

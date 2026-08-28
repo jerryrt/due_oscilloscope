@@ -22,6 +22,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Same geometry as Track B, so the host feeds both identically: 32 KB
  * of ring is ~11.8 ms of margin at the DACC ceiling, and 512-sample
@@ -92,5 +96,9 @@ extern volatile uint32_t play_run_us;
 
 /* Playback stopped itself because the host went away. See play.cpp. */
 extern volatile uint32_t play_abandoned;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PLAY_H */

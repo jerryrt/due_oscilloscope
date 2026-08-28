@@ -19,7 +19,12 @@
 #ifndef USBDMA_H
 #define USBDMA_H
 
+
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Claim or release the bulk endpoints. Claiming an endpoint stops the
@@ -77,5 +82,9 @@ extern volatile uint32_t usbdma_rebuilds;
 void     usbdma_detach_cycle(uint32_t ms);
 
 void     usbdma_dump(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* USBDMA_H */

@@ -572,3 +572,25 @@ void ADC_Handler(void)
 		acq_produced++;
 	}
 }
+
+/* See the note in acq.h: the shared framer links these through
+ * stream_port.h and cannot see this header. */
+bool acq_frame_available(void)
+{
+	return acq_produced != acq_consumed;
+}
+
+const uint16_t *acq_frame_data(void)
+{
+	return acq_slot[acq_consumed % ACQ_NBUF].samples;
+}
+
+uint8_t *acq_frame_bytes(void)
+{
+	return acq_slot[acq_consumed % ACQ_NBUF].hdr;
+}
+
+void acq_frame_release(void)
+{
+	acq_consumed++;
+}

@@ -1,6 +1,11 @@
 #ifndef GEN_H
 #define GEN_H
+
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * DAC playback driven by the same TIOA0 that triggers the ADC, so
@@ -219,5 +224,9 @@ extern volatile uint32_t gen_endtx_count;
  * vector, so the owner dispatches on which source is active.
  */
 void     gen_endtx(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* GEN_H */
