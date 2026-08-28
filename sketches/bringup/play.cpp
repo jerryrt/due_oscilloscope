@@ -290,7 +290,7 @@ void play_service(void)
 		 * and the bytes in between were overwritten before the DAC
 		 * ever read them.
 		 */
-		uint32_t st = usbdma_out_status();
+		uint32_t st = usb_dma_out_status();
 		uint32_t left = (st & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
 		                >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
 		bool busy = (st & UOTGHS_DEVDMASTATUS_CHANN_ENB) != 0;
@@ -346,7 +346,7 @@ void play_service(void)
 		dma_start_off = fill_off;
 		dma_published = 0;
 		dma_counted = 0;
-		if (usbdma_out_start_stream(dst, dma_asked)) {
+		if (usb_dma_out_start_stream(dst, dma_asked)) {
 			dma_inflight = true;
 			play_spans++;
 		}

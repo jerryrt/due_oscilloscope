@@ -645,8 +645,8 @@ run, observed. The loss per event is bounded by what the DMA can land
 in that window, which is why every one of the sixty-odd measured
 events was smaller than a 1024-byte slot: 12 to 370 bytes.
 
-The fix is one read, decoded twice (`usb_dma_out_status()`, and
-`usbdma_out_status()` on Track A). After it, at 200 ksps:
+The fix is one read, decoded twice (`usb_dma_out_status()`, the same
+name on both tracks since the #14 rename). After it, at 200 ksps:
 
 | | Before | After |
 |---|---|---|

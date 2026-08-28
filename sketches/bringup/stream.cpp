@@ -303,7 +303,7 @@ void stream_service(void)
 		if (tx_phase == TX_DMA) {
 			uint8_t *frame = acq_frame_bytes();
 
-			if (usbdma_in_busy())
+			if (usb_dma_in_busy())
 				return;
 			if (tx_off < ACQ_FRAME_BYTES) {
 				uint32_t n = ACQ_FRAME_BYTES - tx_off;
@@ -321,7 +321,7 @@ void stream_service(void)
 				 * the report describes the CPU write path
 				 * and nothing else.
 				 */
-				if (!usbdma_in_start(frame + tx_off, n)) {
+				if (!usb_dma_in_start(frame + tx_off, n)) {
 					dma_stalls++;
 					return;
 				}
@@ -656,7 +656,7 @@ void stream_bench_report(char *buf, size_t n)
 	         (unsigned long)dma_in_arms,
 	         (unsigned long)dma_out_arms,
 	         (unsigned long)usbdma_rebuilds,
-	         (int)usbdma_in_busy());
+	         (int)usb_dma_in_busy());
 }
 
 /* ------------------------------------------------------------------ */
@@ -723,15 +723,15 @@ static void dma_seed_payloads(void)
 
 static void dma_push_in(void)
 {
-	if (usbdma_in_busy())
+	if (usb_dma_in_busy())
 		return;
 	if (dma_in_inflight) {
-		bench_in_bytes += dma_in_inflight - usbdma_in_residue();
+		bench_in_bytes += dma_in_inflight - usb_dma_in_residue();
 		dma_in_inflight = 0;
 	}
 	for (unsigned f = 0; f < DMA_FRAMES_PER_XFER; f++)
 		dma_build_frame(dma_tx[dma_tx_slot] + f * DMA_FRAME_BYTES);
-	if (usbdma_in_start(dma_tx[dma_tx_slot], DMA_XFER_BYTES)) {
+	if (usb_dma_in_start(dma_tx[dma_tx_slot], DMA_XFER_BYTES)) {
 		dma_in_inflight = DMA_XFER_BYTES;
 		dma_tx_slot ^= 1u;
 		dma_in_arms++;
@@ -742,7 +742,7 @@ static void dma_pull_out(void)
 {
 	/* One read: byte count and channel-enabled share the register, and
 	 * two reads ask two different instants. See drivers/play.c. */
-	uint32_t st = usbdma_out_status();
+	uint32_t st = usb_dma_out_status();
 
 	if (st & UOTGHS_DEVDMASTATUS_CHANN_ENB)
 		return;
@@ -762,7 +762,7 @@ static void dma_pull_out(void)
 	 * the OUT number measured. The playback ring learned this already;
 	 * the bench had not.
 	 */
-	if (usbdma_out_start_stream(dma_rx[dma_rx_slot], sizeof(dma_rx[0]))) {
+	if (usb_dma_out_start_stream(dma_rx[dma_rx_slot], sizeof(dma_rx[0]))) {
 		dma_out_inflight = sizeof(dma_rx[0]);
 		dma_rx_slot ^= 1u;
 		dma_out_arms++;

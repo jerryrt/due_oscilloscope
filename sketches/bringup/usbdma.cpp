@@ -266,7 +266,7 @@ bool usbdma_out_busy(void)
  * ends between them, which is the moment the caller most needs them to
  * agree.
  */
-uint32_t usbdma_out_status(void)
+uint32_t usb_dma_out_status(void)
 {
 	return UOTGHS->UOTGHS_DEVDMA[DMA_OUT_CH].UOTGHS_DEVDMASTATUS;
 }
@@ -297,7 +297,7 @@ bool usbdma_out_start(void *buf, uint32_t len)
 	return dma_out_start_ctl(buf, len, UOTGHS_DEVDMACONTROL_END_TR_EN);
 }
 
-bool usbdma_out_start_stream(void *buf, uint32_t len)
+bool usb_dma_out_start_stream(void *buf, uint32_t len)
 {
 	/*
 	 * No END_TR_EN: a continuous sample stream never legitimately ends,
@@ -314,24 +314,24 @@ bool usbdma_out_start_stream(void *buf, uint32_t len)
 /* IN: device -> host                                                  */
 /* ------------------------------------------------------------------ */
 
-bool usbdma_in_busy(void)
+bool usb_dma_in_busy(void)
 {
 	return (UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMASTATUS
 	        & UOTGHS_DEVDMASTATUS_CHANN_ENB) != 0;
 }
 
-uint32_t usbdma_in_residue(void)
+uint32_t usb_dma_in_residue(void)
 {
 	return (UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMASTATUS
 	        & UOTGHS_DEVDMASTATUS_BUFF_COUNT_Msk)
 	       >> UOTGHS_DEVDMASTATUS_BUFF_COUNT_Pos;
 }
 
-bool usbdma_in_start(const void *buf, uint32_t len)
+bool usb_dma_in_start(const void *buf, uint32_t len)
 {
 	if (!mode_in || !usbdma_ready() || len == 0)
 		return false;
-	if (usbdma_in_busy())
+	if (usb_dma_in_busy())
 		return false;
 
 	UOTGHS->UOTGHS_DEVDMA[DMA_IN_CH].UOTGHS_DEVDMAADDRESS = (uint32_t)buf;

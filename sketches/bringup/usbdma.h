@@ -43,13 +43,13 @@ bool     usbdma_ready(void);
 bool     usbdma_out_claimed(void);
 
 bool     usbdma_out_busy(void);
-uint32_t usbdma_out_status(void);   /* raw DEVDMASTATUS, read once */
+uint32_t usb_dma_out_status(void);   /* raw DEVDMASTATUS, read once */
 bool     usbdma_out_start(void *buf, uint32_t len);         /* stops short */
-bool     usbdma_out_start_stream(void *buf, uint32_t len);  /* runs on */
+bool     usb_dma_out_start_stream(void *buf, uint32_t len);  /* runs on */
 
-bool     usbdma_in_busy(void);
-uint32_t usbdma_in_residue(void);
-bool     usbdma_in_start(const void *buf, uint32_t len);
+bool     usb_dma_in_busy(void);
+uint32_t usb_dma_in_residue(void);
+bool     usb_dma_in_start(const void *buf, uint32_t len);
 
 /*
  * Activity counters for the front-panel LEDs: any byte moved or DMA
