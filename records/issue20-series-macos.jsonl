@@ -1,0 +1,150 @@
+{"ts": "2026-08-28T22:52:41Z", "run": 1, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:52:56Z", "run": 2, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:53:10Z", "run": 3, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:53:24Z", "run": 4, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:53:38Z", "run": 5, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:53:52Z", "run": 6, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:54:07Z", "run": 7, "result": "fail", "losses": 2, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:54:21Z", "run": 8, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:54:35Z", "run": 9, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:54:49Z", "run": 10, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:55:03Z", "run": 11, "result": "fail", "losses": 479, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:55:17Z", "run": 12, "result": "fail", "losses": 380, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:55:31Z", "run": 13, "result": "fail", "losses": 202, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:55:45Z", "run": 14, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:55:59Z", "run": 15, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:56:14Z", "run": 16, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:56:28Z", "run": 17, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:56:42Z", "run": 18, "result": "fail", "losses": 634, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:56:56Z", "run": 19, "result": "fail", "losses": 800, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:57:10Z", "run": 20, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:57:24Z", "run": 21, "result": "fail", "losses": 1, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:57:38Z", "run": 22, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:57:53Z", "run": 23, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:58:07Z", "run": 24, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:58:21Z", "run": 25, "result": "fail", "losses": 6, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:58:36Z", "run": 26, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:58:50Z", "run": 27, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:59:04Z", "run": 28, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:59:18Z", "run": 29, "result": "fail", "losses": 62, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:59:32Z", "run": 30, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T22:59:46Z", "run": 31, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:00:00Z", "run": 32, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:00:14Z", "run": 33, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:00:29Z", "run": 34, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:00:43Z", "run": 35, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:00:57Z", "run": 36, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:01:11Z", "run": 37, "result": "fail", "losses": 3, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:01:25Z", "run": 38, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:01:39Z", "run": 39, "result": "fail", "losses": 59, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:01:53Z", "run": 40, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:02:07Z", "run": 41, "result": "fail", "losses": null, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:02:22Z", "run": 42, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:02:36Z", "run": 43, "result": "fail", "losses": 48, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:02:50Z", "run": 44, "result": "fail", "losses": 394, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:03:04Z", "run": 45, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:03:18Z", "run": 46, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:03:33Z", "run": 47, "result": "fail", "losses": null, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:03:47Z", "run": 48, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:04:01Z", "run": 49, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:04:15Z", "run": 50, "result": "fail", "losses": null, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:04:29Z", "run": 51, "result": "fail", "losses": 915, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:04:43Z", "run": 52, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:04:57Z", "run": 53, "result": "fail", "losses": 105, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:05:11Z", "run": 54, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:05:25Z", "run": 55, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:05:40Z", "run": 56, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:05:54Z", "run": 57, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:06:08Z", "run": 58, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:06:22Z", "run": 59, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:06:36Z", "run": 60, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:06:50Z", "run": 61, "result": "fail", "losses": 127, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:07:04Z", "run": 62, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:07:18Z", "run": 63, "result": "fail", "losses": 161, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:07:32Z", "run": 64, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:07:47Z", "run": 65, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:08:01Z", "run": 66, "result": "fail", "losses": 15, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:08:15Z", "run": 67, "result": "fail", "losses": 292, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:08:29Z", "run": 68, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:08:43Z", "run": 69, "result": "fail", "losses": null, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:08:57Z", "run": 70, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:09:12Z", "run": 71, "result": "fail", "losses": 46, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:09:26Z", "run": 72, "result": "fail", "losses": 26, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:09:40Z", "run": 73, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:09:54Z", "run": 74, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:10:08Z", "run": 75, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:10:22Z", "run": 76, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:10:36Z", "run": 77, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:10:50Z", "run": 78, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:11:04Z", "run": 79, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:11:18Z", "run": 80, "result": "fail", "losses": 218, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:11:32Z", "run": 81, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:11:47Z", "run": 82, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:12:01Z", "run": 83, "result": "fail", "losses": 312, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:12:15Z", "run": 84, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:12:29Z", "run": 85, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:12:43Z", "run": 86, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:12:57Z", "run": 87, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:13:12Z", "run": 88, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:13:26Z", "run": 89, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:13:40Z", "run": 90, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:13:55Z", "run": 91, "result": "fail", "losses": 38, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:14:09Z", "run": 92, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:14:23Z", "run": 93, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:14:37Z", "run": 94, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:14:51Z", "run": 95, "result": "fail", "losses": 925, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:15:05Z", "run": 96, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:15:19Z", "run": 97, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:15:33Z", "run": 98, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:15:48Z", "run": 99, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:16:02Z", "run": 100, "result": "fail", "losses": 115, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:16:16Z", "run": 101, "result": "fail", "losses": 35, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:16:30Z", "run": 102, "result": "fail", "losses": 922, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:16:45Z", "run": 103, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:16:59Z", "run": 104, "result": "fail", "losses": 2, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:17:13Z", "run": 105, "result": "fail", "losses": 691, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:17:27Z", "run": 106, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:17:42Z", "run": 107, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:17:56Z", "run": 108, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:18:10Z", "run": 109, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:18:24Z", "run": 110, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:18:38Z", "run": 111, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:18:52Z", "run": 112, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:19:06Z", "run": 113, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:19:20Z", "run": 114, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:19:34Z", "run": 115, "result": "fail", "losses": 93, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:19:48Z", "run": 116, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:20:02Z", "run": 117, "result": "fail", "losses": 1, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:20:17Z", "run": 118, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:20:31Z", "run": 119, "result": "fail", "losses": 64, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:20:45Z", "run": 120, "result": "fail", "losses": 531, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:20:59Z", "run": 121, "result": "fail", "losses": 3, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:21:13Z", "run": 122, "result": "fail", "losses": 2, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:21:27Z", "run": 123, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:21:41Z", "run": 124, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:21:56Z", "run": 125, "result": "fail", "losses": 140, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:22:10Z", "run": 126, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:22:24Z", "run": 127, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:22:38Z", "run": 128, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:22:53Z", "run": 129, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:23:07Z", "run": 130, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:23:21Z", "run": 131, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:23:35Z", "run": 132, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:23:49Z", "run": 133, "result": "fail", "losses": 631, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:24:03Z", "run": 134, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:24:18Z", "run": 135, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:24:32Z", "run": 136, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:24:46Z", "run": 137, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:25:00Z", "run": 138, "result": "fail", "losses": 40, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:25:14Z", "run": 139, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:25:28Z", "run": 140, "result": "fail", "losses": 58, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:25:42Z", "run": 141, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:25:56Z", "run": 142, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:26:10Z", "run": 143, "result": "fail", "losses": 144, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:26:25Z", "run": 144, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:26:39Z", "run": 145, "result": "fail", "losses": 671, "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:26:53Z", "run": 146, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:27:07Z", "run": 147, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:27:21Z", "run": 148, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:27:36Z", "run": 149, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
+{"ts": "2026-08-28T23:27:50Z", "run": 150, "result": "pass", "arm": "b", "mode": "isolated-series", "bench": "macos", "tree": "ab5cb59", "image": "59d6034986cb", "cadence_s": 12}
