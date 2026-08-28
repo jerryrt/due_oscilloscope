@@ -340,6 +340,23 @@ static void cmd_crosstalk(void)
 	uart_flush();
 
 	/*
+	 * The pads too, not only the converter. Issue #16(b)'s leading
+	 * suspect for the tracks' 3.3x disagreement on a bare channel is
+	 * what the two startups leave on the pins: the Arduino core walks
+	 * every pin at init, this build touches none, and a pull-up is
+	 * ~100k toward VDDIO on a pin nothing drives. Raw registers,
+	 * decoded by the reader - PUSR reads 1 where the pull-up is
+	 * DISABLED, PSR 1 where the PIO (not the peripheral) owns the
+	 * pin. A0=PA16, A1=PA24, A2=PA23, all PIOA.
+	 */
+	printf("# pioa: psr=%08lx osr=%08lx pusr=%08lx ifsr=%08lx\n",
+	       (unsigned long)PIOA->PIO_PSR,
+	       (unsigned long)PIOA->PIO_OSR,
+	       (unsigned long)PIOA->PIO_PUSR,
+	       (unsigned long)PIOA->PIO_IFSR);
+	uart_flush();
+
+	/*
 	 * The pair `C` selected, not a hardcoded A1. Issue #16's named
 	 * test is whether the excursion follows the *pin* or the
 	 * *position*, and only `=2C` can ask it: A2 is 5 and A1 is 6, so
