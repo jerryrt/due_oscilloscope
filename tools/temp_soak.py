@@ -1,0 +1,50 @@
+"""Is there a room-temperature signal left once build and activity are fixed?
+
+Issue #18 step 1. The sensor is known to read the workload (+1.57 codes
+idle to max-rate capture) and the build (0.6-0.8 codes between tracks),
+both larger than its 0.20-code short-term noise. If nothing above that
+noise survives with those two held fixed, there is nothing to condition
+a calibration on and the issue closes with a documented negative.
+
+One build (Track B, a99146e), one activity (idle between reads), one
+board, one session. The first samples are the die warming after the
+flash and are kept rather than trimmed, because where the warm-up ends
+is itself part of the answer.
+"""
+import json, os, sys, time
+REPO = r"C:\Jerry.Projects\due_oscilloscope"
+sys.path.insert(0, os.path.join(REPO, "host"))
+import measure
+
+MINUTES = float(sys.argv[1]) if len(sys.argv) > 1 else 30.0
+EVERY_S = 20.0
+
+rows = []
+b = measure.Board(settle=3.0)
+out = os.path.join(REPO, "records", "temp-soak.jsonl")
+try:
+    b.stop(); b.drain_console(0.5)
+    link = b.ctl()
+    if link is None:
+        raise SystemExit("no control channel")
+    t0 = time.time()
+    while time.time() - t0 < MINUTES * 60.0:
+        t = time.time()
+        r = link.temperature(samples=1024)
+        if not r["tson"]:
+            raise SystemExit("TSON clear - not the sensor")
+        rows.append({"t_s": round(t - t0, 1), "code": r["code"],
+                     "code_min": r["code_min"], "code_max": r["code_max"],
+                     "adc_mr": "%08x" % r["adc_mr"]})
+        print("%7.1f s  %8.3f" % (t - t0, r["code"]), flush=True)
+        # Idle is the fixed activity: nothing but the wait between reads.
+        while time.time() - t < EVERY_S:
+            time.sleep(0.5)
+finally:
+    try:
+        b.close()
+    finally:
+        with open(out, "w", newline="\n") as fh:
+            for r in rows:
+                fh.write(json.dumps(r, sort_keys=True) + "\n")
+        print("\nwrote", out, len(rows), "rows")
