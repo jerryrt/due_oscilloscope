@@ -332,6 +332,32 @@ Successive-difference rms over sqrt(2) measures the noise; whole-run rms
 measures noise plus drift, and the two must not be quoted under one
 name.
 
+## Pooling across a hidden variable manufactures modes
+
+One level up from the drift trap, and the same shape: the summary
+statistic is fine and the grouping is not.
+
+Issue #5's artifact was reported here as **bimodal** - 2.7 codes or 11.7
+codes on otherwise identical runs, the high mode 65% of the time - and
+the second bench then measured 20 of 20 runs in one state. The
+difference was not the boards. `pair_fold()` also reports
+`peak_phase`, and grouping the first bench's own records by it dissolves
+the modes: within a phase the spread is 0.07-0.26 codes, which is the
+second bench's spread at its single phase.
+
+So there were never two modes. There was one quantity that depends on
+phase, sampled at three phases on one bench and one on the other.
+
+**The rule: before calling a distribution bimodal, group it by every
+label the instrument already reports.** `pair_fold()` was returning
+`peak_phase` in the same dict the whole time. It cost a wrong model in a
+commit message, an issue comment and a set of records - and the data to
+refute it was inside the records themselves.
+
+The general form is worth stating because it is not only about phase: a
+mode is a claim that *no* remaining variable explains the split, and
+that claim is only as good as the labels that were checked.
+
 ## What this method cannot do
 
 Stated here rather than discovered later, because a plausible number is
