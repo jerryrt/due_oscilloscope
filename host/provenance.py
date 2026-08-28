@@ -164,6 +164,7 @@ def firmware(build_stamp=None):
                 "fw_provenance": ("matched" if stamp is not None
                                   else "latest, unmatched build stamp"),
                 "fw_source_current": fw_source_current(rec.get("repo_rev")),
+                "fw_build_is_current": build_is_current(build_stamp),
             }
     return {"fw_provenance": "unlogged"}
 
@@ -204,6 +205,42 @@ def fw_source_current(fw_rev):
     if out.returncode != 0:
         return None
     return out.stdout.strip() == ""
+
+
+def build_is_current(build_stamp):
+    """Was the image compiled after the newest firmware source commit?
+
+    `fw_source_current()` asks whether the *commit that was flashed* is
+    still current, and that is not the same question: a build system can
+    hand you a stale image while the flashing tool faithfully logs the
+    current commit, and then "flashed after built" is trivially true and
+    proves nothing.
+
+    That is not hypothetical. `arduino-cli` served a cached Track A
+    image stamped 11:34:37 on 2026-08-27 while `623d4dc` - which changes
+    `sketches/bringup/ctl_port.cpp`, the very file carrying the stamp -
+    had landed at 11:39. A clean rebuild stamped 20:35:25. The flash log
+    recorded the current commit both times, because the flash *was*
+    current; the image was not.
+
+    So this compares the image's own stamp against the newest commit
+    touching firmware source. Returns True, False, or None when it
+    cannot tell.
+    """
+    stamp = _build_epoch(build_stamp)
+    if stamp is None:
+        return None
+    try:
+        out = subprocess.run(
+            ("git", "log", "-1", "--format=%at", "--") + FW_SOURCE,
+            cwd=REPO, capture_output=True, text=True, timeout=5)
+    except Exception:                                        # pragma: no cover
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    # A minute of slack: the stamp has second resolution and a commit
+    # made during a build is not evidence of staleness.
+    return stamp + 60 >= int(out.stdout.strip())
 
 
 def _build_epoch(stamp):

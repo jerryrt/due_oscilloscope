@@ -216,6 +216,12 @@ def render(run):
     A(f"| **build stamp** | {p.get('build')} |")
     A(f"| flashed at | {p.get('fw_flashed_at')} |")
     A(f"| build/commit match | **{p.get('fw_provenance')}** |")
+    bcur = p.get("fw_build_is_current")
+    A("| image built after newest fw commit | " + (
+        "**yes**" if bcur is True else
+        "**NO - the image predates a firmware commit; a build cache "
+        "probably served a stale object**" if bcur is False
+        else "could not be checked") + " |")
     cur = p.get("fw_source_current")
     A("| firmware source since flashed | " + (
         "**unchanged** - the board runs current firmware however far the "
@@ -338,6 +344,15 @@ def main():
                 run["metrics"][k] = fn(board, args)
             except SystemExit as e:
                 run["metrics"][k] = {"error": str(e)}
+            except Exception as e:                            # noqa: BLE001
+                # One metric failing must not cost the whole run. The
+                # first version caught only the metrics' own refusals,
+                # so a macOS `close()` wedge in the playback ladder -
+                # objective 0c, a known host defect - killed a Track A
+                # run that had already produced three good metrics and
+                # emitted no report at all. A failed metric is a
+                # recorded condition, not a reason to lose the rest.
+                run["metrics"][k] = {"error": f"{type(e).__name__}: {e}"}
             finally:
                 board.stop(); board.drain_console(0.2)
     finally:
