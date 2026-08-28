@@ -47,6 +47,27 @@ void adc_init(void)
 	ADC->ADC_EMR = ADC_EMR_TAG;
 
 	ADC->ADC_CHDR = 0xffffu;
+
+	/*
+	 * Pad pull-ups off on every analog pin, as Track A has always run:
+	 * the Arduino core's init() disables the pull-up on every pin, and
+	 * bare metal inherits the reset default, which is enabled. That
+	 * difference was worth a factor of 3.3 on issue #16's bare-channel
+	 * bleed - a floating pad reads its neighbour through the
+	 * multiplexer at -282 codes (Track A) against -937 here, and
+	 * dropping the pull-up takes this track to -338. It also unloads
+	 * every driven pin: 50-150k to 3.3 V hangs on the DAC outputs and
+	 * the jumpered inputs otherwise.
+	 *
+	 * AD0-7 = PA2,3,4,6,16,22,23,24 (descending A7..A0); AD10-13 =
+	 * PB17-20; DAC0/1 = PB15/16. Disabling pull-ups on the remaining
+	 * digital pins as well was measured and changes nothing (-335), so
+	 * only the analog pads are named.
+	 */
+	PIOA->PIO_PUDR = (1u << 2) | (1u << 3) | (1u << 4) | (1u << 6)
+	               | (1u << 16) | (1u << 22) | (1u << 23) | (1u << 24);
+	PIOB->PIO_PUDR = (1u << 15) | (1u << 16) | (1u << 17) | (1u << 18)
+	               | (1u << 19) | (1u << 20);
 }
 
 uint16_t adc_read(unsigned ch)
