@@ -681,6 +681,153 @@ static void trigger_fault(void)
 	printf("# unreachable\n");
 }
 
+/*
+ * Find the DACC's maximum update rate.
+ *
+ * In TAG mode one trigger produces one conversion, so the achieved rate
+ * is table length times ENDTX count over elapsed time. Counting the
+ * peripheral's own completions avoids needing the ADC to observe the
+ * output, and gives the same kind of hard number the ADC sweep produced.
+ *
+ * Track A has carried this since DAC bring-up and this track had no
+ * equivalent - issue #13. Independent source, same command, same
+ * printed format, which is invariant 3: two programmings of one
+ * converter disagreeing is the finding, and it cannot be had if only
+ * one of them can be asked.
+ */
+static void cmd_dac_sweep(void)
+{
+	static const uint32_t rates[] = {
+		 100000,  500000,  800000, 1000000, 1200000,
+		1500000, 1750000, 2000000, 2500000, 3000000
+	};
+
+	gen_init();
+	printf("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode\n");
+	printf("#     want      RC   TCexact    measured    ratio\n");
+	uart_flush();
+
+	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
+		uint32_t sync, guard, t0, t1, e0, got;
+		uint32_t rc, tcexact, us, measured, ratio_x1000;
+		uint64_t convs;
+
+		if (!gen_start_independent(rates[i])) {
+			printf("# %8lu       -         -    REFUSED\n",
+			       (unsigned long)rates[i]);
+			uart_flush();
+			continue;
+		}
+
+		/* Start counting on a table boundary, so the first interval
+		 * is a whole number of passes rather than whatever remained
+		 * of the one in flight. */
+		sync  = gen_endtx_count;
+		guard = micros();
+		while (gen_endtx_count == sync && (micros() - guard) < 500000u)
+			;
+
+		t0 = micros();
+		e0 = gen_endtx_count;
+		while (gen_endtx_count - e0 < 64u && (micros() - t0) < 1000000u)
+			;
+		t1 = micros();
+		got = gen_endtx_count - e0;
+
+		gen_stop();
+
+		rc      = gen_configured_rc();
+		tcexact = rc ? (SystemCoreClock / 2u) / rc : 0u;
+		us      = t1 - t0;
+		convs   = (uint64_t)got * GEN_TABLE_LEN;
+		measured = us ? (uint32_t)((convs * 1000000ull) / us) : 0u;
+		ratio_x1000 = tcexact
+			? (uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0u;
+
+		printf("# %8lu %7lu %9lu %11lu   %2lu.%03lu\n",
+		       (unsigned long)rates[i], (unsigned long)rc,
+		       (unsigned long)tcexact, (unsigned long)measured,
+		       (unsigned long)(ratio_x1000 / 1000u),
+		       (unsigned long)(ratio_x1000 % 1000u));
+		uart_flush();
+	}
+	printf("# ratio 1.000 means every trigger produced a DAC update\n");
+	uart_flush();
+}
+
+/*
+ * Cross-check the DAC ceiling against the frequency it actually emits.
+ *
+ * ENDTX counts PDC completions, which equal conversions only if the DACC
+ * back-pressures the PDC when it cannot keep up. Driving the DAC on its
+ * own timebase and capturing the result gives an independent measure: a
+ * GEN_TABLE_LEN-entry table played at R conversions per second must
+ * produce a tone at R/GEN_TABLE_LEN, whatever the trigger was set to.
+ */
+static void cmd_dac_crosscheck(uint32_t dac_hz)
+{
+	gen_init();
+	if (!gen_start_independent(dac_hz)) {
+		printf("# refused\n");
+		uart_flush();
+		return;
+	}
+	if (!stream_start_capture_only(200000, 2)) {
+		gen_stop();
+		printf("# capture refused\n");
+		uart_flush();
+		return;
+	}
+
+	printf("# DAC indep %lu Hz (RC %lu), capture 200000 Hz\n",
+	       (unsigned long)dac_hz, (unsigned long)gen_configured_rc());
+	printf("# if the DAC truly runs at the trigger, tone = %lu Hz\n",
+	       (unsigned long)(dac_hz / GEN_TABLE_LEN));
+	printf("# if it saturates near 1539700, tone = 3007 Hz instead\n");
+	uart_flush();
+}
+
+/*
+ * Endpoint state, readable while a stream is running.
+ *
+ * The banner reports CFGOK once, at boot, which is exactly when nothing
+ * is wrong yet. The question this exists for is whether the sample
+ * endpoints are still configured *during* a capture, after the AUTOSW
+ * writes and the control-endpoint re-allocations have been running
+ * against each other for a few thousand passes.
+ *
+ * It matters more here than it did on the track it came from. Any write
+ * to UOTGHS_DEVEPTCFG re-allocates that endpoint's DPRAM - the ALLOC bit
+ * is in the same register - and datasheet 40.5.1.6 says the x+1 window
+ * then slides up and loses its data. That was inert while EP3 was the
+ * last endpoint and became a wedge the day EP4-EP6 appeared, which is
+ * this track. CFGOK is the controller's own answer to "did the
+ * allocation take", and guessing at DPRAM arithmetic is how an endpoint
+ * that never configured gets blamed on software.
+ *
+ * EPEN and CFGOK are different questions and both are printed: CFGOK
+ * describes a configuration, DEVEPT says which endpoints are actually
+ * enabled, and an endpoint can read configured while disabled.
+ */
+static void cmd_endpoint_state(void)
+{
+	char ok[8];
+
+	for (unsigned e = 0; e < 7; e++)
+		ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
+		         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
+	ok[7] = 0;
+
+	printf("# ep cfgok[0..6]=%s devept=%08lx devctrl=%08lx\n",
+	       ok, (unsigned long)UOTGHS->UOTGHS_DEVEPT,
+	       (unsigned long)UOTGHS->UOTGHS_DEVCTRL);
+	printf("# epcfg: ");
+	for (unsigned e = 0; e < 7; e++)
+		printf("%08lx%s", (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[e],
+		       e == 6 ? "\n" : " ");
+	uart_flush();
+}
+
 /* ------------------------------------------------------------------ */
 /* The command layer                                                   */
 /*                                                                     */
@@ -707,6 +854,10 @@ static void h_read(const uint32_t *a)  { (void)a; cmd_read(); }
 static void h_sweep(const uint32_t *a) { (void)a; cmd_sweep(); }
 static void h_xtalk(const uint32_t *a) { (void)a; cmd_crosstalk(); }
 static void h_ratesweep(const uint32_t *a) { cmd_rate_sweep(a[2] ? a[2] : 2u); }
+static void h_dac_sweep(const uint32_t *a) { (void)a; cmd_dac_sweep(); }
+static void h_dac_15m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(1500000); }
+static void h_dac_30m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(3000000); }
+static void h_epstate(const uint32_t *a)   { (void)a; cmd_endpoint_state(); }
 
 static void h_s50(const uint32_t *a)  { (void)a; cmd_stream(50000); }
 static void h_s100(const uint32_t *a) { (void)a; cmd_stream(100000); }
@@ -1149,11 +1300,13 @@ const console_binding_t console_bindings[] = {
 	{ 'g', h_gpio },        { 'f', h_fault },
 
 	{ 'r', h_read },        { 's', h_sweep },       { 'x', h_xtalk },
-	{ 't', h_ratesweep },
+	{ 't', h_ratesweep },   { 'd', h_dac_sweep },   { 'j', h_dac_15m },
+	{ 'k', h_dac_30m },
 
 	{ '1', h_s50 },         { '2', h_s100 },        { '3', h_s200 },
 	{ '4', h_s400 },        { '5', h_smax },        { '0', h_stop },
 	{ '?', h_stats },       { 'u', h_usb },         { 'w', h_uart_stream },
+	{ 'E', h_epstate },
 
 	{ 'F', h_flood },       { 'R', h_sink },        { 'X', h_duplex },
 	{ 'G', h_flood_dma },   { 'T', h_sink_dma },    { 'Y', h_duplex_dma },
