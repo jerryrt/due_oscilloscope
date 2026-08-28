@@ -5,6 +5,12 @@
     python3 tools/metrics.py --quick             # fewer repeats, for a check
     python3 tools/metrics.py --only noise,loop
 
+**No instrument is required.** The ADC is the instrument: the board is
+opened directly, nothing imports `host/scope.py`, and no USBTMC is
+involved. That is what makes this report reproducible on a bench that
+has no oscilloscope, and `tests/test_metrics.py` asserts it in a
+subprocess so a convenience import cannot take it away silently.
+
 The deliverable is the **report**, not the run. Everything this project
 has got wrong about its own numbers came from a figure that outlived the
 conditions it was taken in, so a report that cannot state those
@@ -163,7 +169,11 @@ def m_settling(board, args):
         a = settletime.cmd_rise(board, argparse.Namespace(
             points=8, seconds=args.seconds, pre=80, dac_hz=200000))
         out["rise_10_90_ns"] = _spread([a["rise_s"] * 1e9])
-        out["agrees_with_scope"] = a["agrees"]
+        # Named for what it is: a comparison against a figure the DSO
+        # bench stored (789-938 ns), not a live instrument. No scope is
+        # attached or needed for this run, and on a different board that
+        # stored range is a sanity check rather than a verdict.
+        out["agrees_with_stored_dso_range"] = a["agrees"]
         out["fold_margin"] = a["margin"]
     except SystemExit as e:
         out["error"] = str(e)
@@ -206,10 +216,18 @@ def render(run):
     A(f"| **build stamp** | {p.get('build')} |")
     A(f"| flashed at | {p.get('fw_flashed_at')} |")
     A(f"| build/commit match | **{p.get('fw_provenance')}** |")
+    cur = p.get("fw_source_current")
+    A("| firmware source since flashed | " + (
+        "**unchanged** - the board runs current firmware however far the "
+        "host tree has moved" if cur is True else
+        "**CHANGED - the board is not running current firmware**" if cur
+        is False else "could not be checked") + " |")
     A(f"| ctl / frame version | {p.get('ctl_version')} / "
       f"{p.get('frame_version')} |")
     A("| scope | **firmware only** - the board is opened directly and "
       "no daemon is in the path |")
+    A("| instrument | **none required** - the ADC is the instrument, so "
+      "this report is reproducible on any bench with a board |")
     A(f"| host tree | `{p.get('repo_rev')}` |")
     A(f"| host | {p.get('host_os')} ({p.get('host_machine')}), "
       f"python {p.get('python')} |")

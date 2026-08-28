@@ -163,8 +163,47 @@ def firmware(build_stamp=None):
                 "fw_flashed_at": rec.get("when"),
                 "fw_provenance": ("matched" if stamp is not None
                                   else "latest, unmatched build stamp"),
+                "fw_source_current": fw_source_current(rec.get("repo_rev")),
             }
     return {"fw_provenance": "unlogged"}
+
+
+#: What a firmware image is built from. If none of this moved between
+#: the flashed commit and the tree, the board is running current
+#: firmware however far the host tools have travelled.
+FW_SOURCE = ("drivers", "apps", "lib", "linker", "cmake", "CMakeLists.txt",
+             "sketches")
+
+
+def fw_source_current(fw_rev):
+    """Has any firmware source changed since the image was built?
+
+    The honest answer to "the firmware commit and the host tree differ,
+    does that matter?" - which they routinely do, because host tools and
+    docs move many times a day and the board is flashed once. Comparing
+    the two revisions alone would cry wolf every afternoon; comparing
+    the paths an image is actually built from does not.
+
+    Returns True, False, or None when it cannot tell - a detached rev, a
+    missing git, a dirty flash. None is not False: "I could not check"
+    and "it is stale" are different claims.
+    """
+    if not fw_rev:
+        return None
+    rev = fw_rev.split("-dirty")[0]
+    # Not via `_git()`: that returns None for empty output, and an empty
+    # diff is precisely the answer being asked for here. Collapsing "no
+    # changes" into "could not check" made this report say it could not
+    # tell, on a tree where it could.
+    try:
+        out = subprocess.run(
+            ("git", "diff", "--name-only", f"{rev}..HEAD", "--") + FW_SOURCE,
+            cwd=REPO, capture_output=True, text=True, timeout=5)
+    except Exception:                                        # pragma: no cover
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip() == ""
 
 
 def _build_epoch(stamp):
