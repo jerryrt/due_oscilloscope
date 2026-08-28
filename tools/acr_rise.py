@@ -7,9 +7,8 @@ ABBA interleaved so drift cancels; the arm order flips every round.
 import argparse, io, json, os, re, statistics, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPO = r"C:\Jerry.Projects\due_oscilloscope"
-sys.path.insert(0, os.path.join(REPO, "host"))
-sys.path.insert(0, os.path.join(REPO, "tools"))
+sys.path.insert(0, os.path.join(HERE, "host"))
+sys.path.insert(0, os.path.join(HERE, "tools"))
 import measure, settletime, eqtime            # noqa: E402
 
 ARMS = {"0x000": (0, 0), "0x10A": (2, 1)}
