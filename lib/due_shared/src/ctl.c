@@ -465,6 +465,52 @@ int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g)
 	                (unsigned long)g->trigger_hz);
 }
 
+/*
+ * Median, range and the shape of the distribution - never one number.
+ * See ctl_wire.h for why, which is issue #16.
+ */
+int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
+                       const int16_t *vals, unsigned count)
+{
+	int16_t sorted[CTL_BLEED_MAX];
+	int lo, hi, median;
+	unsigned i, j;
+	int written;
+
+	if (count == 0u)
+		return snprintf(buf, n, "# %s: no observations", label);
+	if (count > CTL_BLEED_MAX)
+		count = CTL_BLEED_MAX;
+
+	/* Insertion sort: count is at most CTL_BLEED_MAX, so this is
+	 * bounded at build time and needs no allocation. */
+	for (i = 0; i < count; i++) {
+		int16_t v = vals[i];
+
+		for (j = i; j > 0u && sorted[j - 1u] > v; j--)
+			sorted[j] = sorted[j - 1u];
+		sorted[j] = v;
+	}
+
+	lo = sorted[0];
+	hi = sorted[count - 1u];
+	median = sorted[count / 2u];
+
+	written = snprintf(buf, n,
+	                   "# %s: median %+d codes, range %+d..%+d, n=%u",
+	                   label, median, lo, hi, count);
+	/*
+	 * Say when the range is wide, rather than leaving a reader to
+	 * notice. A spread this size is not scatter around a value - issue
+	 * #16 measured two modes - and a median alone would hide it just
+	 * as effectively as the single draw did.
+	 */
+	if (hi - lo > 20 && written > 0 && (unsigned long)written < n)
+		snprintf(buf + written, n - (unsigned long)written,
+		         "  <- SPREAD %d codes, not one quantity", hi - lo);
+	return written;
+}
+
 /* ------------------------------------------------------------------ */
 /* Receive                                                             */
 /* ------------------------------------------------------------------ */

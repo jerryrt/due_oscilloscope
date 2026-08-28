@@ -564,6 +564,35 @@ typedef struct __attribute__((packed)) {
  */
 int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g);
 
+/*
+ * How many observations `x` may take. Bounded because a host picks it:
+ * invariant 7 wants the worst case of one console command fixed at
+ * build time, and each observation is four settle waits.
+ */
+#define CTL_BLEED_MAX      15u
+#define CTL_BLEED_DEFAULT   9u
+
+/*
+ * Summarise repeated crosstalk observations, so the two tracks print
+ * the same words about the same quantity. Same pattern as
+ * ctl_gen_describe(): the measurement is register work and stays per
+ * track, the description is not and had no business being written
+ * twice.
+ *
+ * **Why repeats at all.** `x` printed a single draw, and issue #16
+ * measured the quantity to be *bimodal* - 0 or ~152 codes on otherwise
+ * identical runs, the high mode about 15-20% of the time. 152 codes is
+ * 5.5% of full swing, so the two answers are not a disagreement about a
+ * detail: one says the multiplexer is clean and the other says it
+ * bleeds badly. A single draw of that reported as a measurement is the
+ * defect, whichever value is right.
+ *
+ * So this prints the median, the range and how many observations landed
+ * in each, and never one number alone. Returns the length written.
+ */
+int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
+                       const int16_t *vals, unsigned count);
+
 #ifdef __cplusplus
 }
 #endif

@@ -184,6 +184,14 @@ extern uint16_t gen_points;
 void        gen_set_shape(uint32_t shape);
 void        gen_set_points(uint32_t points);
 
+/*
+ * One code to one DAC channel, software-written, TAG-encoded. Use this
+ * rather than the core's analogWrite(), which rewrites DACC_ACR with
+ * its own bias and configures the channel behind this driver - see
+ * gen.cpp and docs/hardware.md.
+ */
+void     gen_write_dac(unsigned ch, uint16_t code12);
+
 void     gen_init(void);
 void     gen_start(void);
 /*

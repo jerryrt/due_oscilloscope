@@ -160,6 +160,9 @@ static void measure_gpio(void)
 /* The M preset's ADC-start-to-DAC-start gap. See case 'K'. */
 static uint32_t mimic_start_delay_us;
 
+/* "=<n>x": how many crosstalk observations. See cmd_crosstalk(). */
+static uint32_t crosstalk_repeats;
+
 
 static void cmd_read(void)
 {
@@ -237,38 +240,81 @@ static void cmd_sweep(void)
  * Tracking time is generous here, so this is close to a best case. The
  * fast configuration used for streaming will look worse.
  */
+/*
+ * Multiplexer bleed, repeated - "=<n>x", default CTL_BLEED_DEFAULT.
+ *
+ * **It prints a distribution, never one number.** Issue #16 measured
+ * this quantity to be bimodal on an otherwise idle board: 0 or ~152
+ * codes, the high mode about 15-20% of runs, with ADC_MR read back
+ * identical in both. 152 codes is 5.5% of the 2747-code full swing, so
+ * the two answers disagree about whether the multiplexer is clean. A
+ * single draw reported as a measurement is the defect, whichever value
+ * is right.
+ *
+ * **What it assumes about the bench, which differs between ours.** The
+ * A1 arm holds DAC1 at mid scale and swings DAC0. Where DAC1 is
+ * jumpered to A1 that pin is *driven* to the held level; where DAC1
+ * goes to a scope's external trigger it is *free*, and one
+ * sample-and-hold behind a 16:1 mux makes a free input read a smeared
+ * copy of whatever was converted before it. The command works either
+ * way and does not measure the same thing - so it says which it found.
+ */
 static void cmd_crosstalk(void)
 {
+	int16_t a1_bleed[CTL_BLEED_MAX], a0_bleed[CTL_BLEED_MAX];
+	unsigned n = crosstalk_repeats ? crosstalk_repeats : CTL_BLEED_DEFAULT;
 	uint16_t a0, a1, lo, hi;
+	char line[160];
+	unsigned i;
 
-	printf("# crosstalk: hold one channel, swing the other\n");
+	if (n > CTL_BLEED_MAX)
+		n = CTL_BLEED_MAX;
 
-	/* Hold DAC1 mid scale; swing DAC0. Watch A1. */
+	printf("# crosstalk: hold one channel, swing the other, %u times\n", n);
+	uart_flush();
+
+	for (i = 0; i < n; i++) {
+		/* Hold DAC1 mid scale; swing DAC0. Watch A1. */
+		dac_write(1, 2048);
+		dac_write(0, 0);
+		for (volatile uint32_t d = 0; d < 400000u; d++) { }
+		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &lo);
+
+		dac_write(0, 4095);
+		for (volatile uint32_t d = 0; d < 400000u; d++) { }
+		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &hi);
+		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
+
+		/* Hold DAC0 mid scale; swing DAC1. Watch A0. */
+		dac_write(0, 2048);
+		dac_write(1, 0);
+		for (volatile uint32_t d = 0; d < 400000u; d++) { }
+		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &lo, &a1);
+
+		dac_write(1, 4095);
+		for (volatile uint32_t d = 0; d < 400000u; d++) { }
+		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &hi, &a1);
+		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
+	}
+
+	ctl_bleed_describe(line, sizeof(line),
+	                   "A1 bleed (DAC1 held, DAC0 swung)", a1_bleed, n);
+	printf("%s\n", line);
+	ctl_bleed_describe(line, sizeof(line),
+	                   "A0 bleed (DAC0 held, DAC1 swung)", a0_bleed, n);
+	printf("%s\n", line);
+
+	/*
+	 * Which bench this is, read rather than assumed. With DAC1
+	 * jumpered to A1, holding DAC1 at 2048 drives A1 to about 2048;
+	 * with A1 free it sits wherever the mux left it.
+	 */
 	dac_write(1, 2048);
-	dac_write(0, 0);
 	for (volatile uint32_t d = 0; d < 400000u; d++) { }
-	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &lo);
-
-	dac_write(0, 4095);
-	for (volatile uint32_t d = 0; d < 400000u; d++) { }
-	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &hi);
-
-	printf("# DAC1 held 2048: A1 = %4u (DAC0=0) -> %4u (DAC0=4095), bleed %+d codes\n",
-	       lo, hi, (int)hi - (int)lo);
-
-	/* Hold DAC0 mid scale; swing DAC1. Watch A0. */
-	dac_write(0, 2048);
-	dac_write(1, 0);
-	for (volatile uint32_t d = 0; d < 400000u; d++) { }
-	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &lo, &a1);
-
-	dac_write(1, 4095);
-	for (volatile uint32_t d = 0; d < 400000u; d++) { }
-	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &hi, &a1);
-
-	printf("# DAC0 held 2048: A0 = %4u (DAC1=0) -> %4u (DAC1=4095), bleed %+d codes\n",
-	       lo, hi, (int)hi - (int)lo);
-
+	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
+	printf("# A1 reads %u with DAC1 held at 2048: %s\n", a1,
+	       (a1 > 1800u && a1 < 2300u) ? "DAC1 -> A1 is fitted"
+	                                  : "A1 looks undriven - see docs/noise.md");
 	printf("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes.\n");
 	uart_flush();
 }
@@ -852,7 +898,7 @@ static void h_gpio(const uint32_t *a)  { (void)a; measure_gpio(); }
 static void h_fault(const uint32_t *a) { (void)a; trigger_fault(); }
 static void h_read(const uint32_t *a)  { (void)a; cmd_read(); }
 static void h_sweep(const uint32_t *a) { (void)a; cmd_sweep(); }
-static void h_xtalk(const uint32_t *a) { (void)a; cmd_crosstalk(); }
+static void h_xtalk(const uint32_t *a) { crosstalk_repeats = a[0]; cmd_crosstalk(); }
 static void h_ratesweep(const uint32_t *a) { cmd_rate_sweep(a[2] ? a[2] : 2u); }
 static void h_dac_sweep(const uint32_t *a) { (void)a; cmd_dac_sweep(); }
 static void h_dac_15m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(1500000); }

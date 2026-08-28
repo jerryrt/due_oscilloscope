@@ -47,6 +47,28 @@ static int32_t shape_code(unsigned t, unsigned period)
 }
 
 /*
+ * One code to one DAC channel, software-written.
+ *
+ * **Not `analogWrite()`, for the reason docs/hardware.md now records.**
+ * The core's `analogWrite()` on a DAC pin calls
+ * `dacc_set_analog_control()` with its own `DACC_ACR` - IBCTLCH0/1 = 2,
+ * IBCTLDACCORE = 1 - so a console command that used it silently
+ * overwrote whatever `=<ch>,<core>I` had set, and did it on a register
+ * whose value is worth 2.71x on the settling edge (issue #13). It also
+ * enables and configures the channel behind this driver's back.
+ *
+ * TAG mode is on, so the channel goes in bits 13:12 of the data word
+ * exactly as the PDC stream carries it - one path, one encoding.
+ */
+void gen_write_dac(unsigned ch, uint16_t code12)
+{
+	while (!(DACC->DACC_ISR & DACC_ISR_TXRDY))
+		{ }
+
+	DACC->DACC_CDR = ((uint32_t)(ch & 1u) << 12) | (code12 & 0x0fffu);
+}
+
+/*
  * DACC_ACR, applied after every DACC_CR_SWRST. See gen.h for what the
  * datasheet says about the field and why running at its reset value
  * puts the part outside its own published conditions.

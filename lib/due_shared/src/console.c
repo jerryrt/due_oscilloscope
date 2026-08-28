@@ -50,7 +50,7 @@ static const struct cmd_entry table[] = {
 	/* One-shot analog measurements. */
 	{ 'r', NULL,        "read A0/A1 once" },
 	{ 's', NULL,        "DAC sweep into the ADC" },
-	{ 'x', NULL,        "channel crosstalk" },
+	{ 'x', "=<n>",      "multiplexer bleed, n observations (median + range)" },
 	{ 'd', NULL,        "DAC max update-rate sweep" },
 	{ 'j', NULL,        "DAC 1.5 MHz independent + capture 200k" },
 	{ 'k', NULL,        "DAC 3.0 MHz independent + capture 200k" },

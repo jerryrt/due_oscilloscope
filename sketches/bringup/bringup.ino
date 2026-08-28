@@ -282,8 +282,8 @@ static void cmd_sweep(void)
 		uint16_t c = (uint16_t)(code > 4095u ? 4095u : code);
 		uint16_t inv = (uint16_t)(4095u - c);
 
-		analogWrite(DAC0, c);
-		analogWrite(DAC1, inv);
+		gen_write_dac(0, c);
+		gen_write_dac(1, inv);
 		delay(5);
 
 		uint16_t a0, a1;
@@ -308,37 +308,84 @@ static void cmd_sweep(void)
  * held channel is multiplexer bleed. Swinging both at once, as an
  * earlier version did, isolates nothing.
  */
+/* "=<n>x": how many crosstalk observations. See cmd_crosstalk(). */
+static uint32_t crosstalk_repeats;
+
+/*
+ * Multiplexer bleed, repeated - "=<n>x", default CTL_BLEED_DEFAULT.
+ *
+ * **It prints a distribution, never one number.** Issue #16 measured
+ * this quantity to be bimodal on an otherwise idle board: 0 or ~152
+ * codes, the high mode about 15-20% of runs, with ADC_MR read back
+ * identical in both. 152 codes is 5.5% of the 2747-code full swing, so
+ * the two answers disagree about whether the multiplexer is clean, and
+ * a single draw reported as a measurement is the defect whichever value
+ * is right.
+ *
+ * **What it assumes about the bench, which differs between ours.** The
+ * A1 arm holds DAC1 at mid scale and swings DAC0. Where DAC1 is
+ * jumpered to A1 that pin is *driven* to the held level; where DAC1
+ * goes to a scope's external trigger it is *free*, and one
+ * sample-and-hold behind a 16:1 mux makes a free input read a smeared
+ * copy of whatever was converted before it. The command works either
+ * way and does not measure the same thing, so it says which it found.
+ *
+ * Track B's main.c carries the same command with the same arguments and
+ * the same printed format; the summary wording is ctl_bleed_describe()
+ * so neither track owns it.
+ */
 static void cmd_crosstalk(void)
 {
-	char buf[128];
-	uint16_t lo, hi;
+	int16_t a1_bleed[CTL_BLEED_MAX], a0_bleed[CTL_BLEED_MAX];
+	unsigned n = crosstalk_repeats ? crosstalk_repeats : CTL_BLEED_DEFAULT;
+	char buf[176];
+	uint16_t lo, hi, a1;
+	unsigned i;
 
-	Serial.println("# crosstalk: hold one channel, swing the other");
+	if (n > CTL_BLEED_MAX)
+		n = CTL_BLEED_MAX;
 
-	analogWrite(DAC1, 2048);
-	analogWrite(DAC0, 0);
-	delay(10);
-	lo = acq_read_one(ACQ_CH_A1);
-	analogWrite(DAC0, 4095);
-	delay(10);
-	hi = acq_read_one(ACQ_CH_A1);
 	snprintf(buf, sizeof(buf),
-	         "# DAC1 held 2048: A1 = %4u (DAC0=0) -> %4u (DAC0=4095), bleed %+d codes",
-	         lo, hi, (int)hi - (int)lo);
+	         "# crosstalk: hold one channel, swing the other, %u times", n);
+	Serial.println(buf);
+	Serial.flush();
+
+	for (i = 0; i < n; i++) {
+		gen_write_dac(1, 2048);
+		gen_write_dac(0, 0);
+		delay(10);
+		lo = acq_read_one(ACQ_CH_A1);
+		gen_write_dac(0, 4095);
+		delay(10);
+		hi = acq_read_one(ACQ_CH_A1);
+		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
+
+		gen_write_dac(0, 2048);
+		gen_write_dac(1, 0);
+		delay(10);
+		lo = acq_read_one(ACQ_CH_A0);
+		gen_write_dac(1, 4095);
+		delay(10);
+		hi = acq_read_one(ACQ_CH_A0);
+		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
+	}
+
+	ctl_bleed_describe(buf, sizeof(buf),
+	                   "A1 bleed (DAC1 held, DAC0 swung)", a1_bleed, n);
+	Serial.println(buf);
+	ctl_bleed_describe(buf, sizeof(buf),
+	                   "A0 bleed (DAC0 held, DAC1 swung)", a0_bleed, n);
 	Serial.println(buf);
 
-	analogWrite(DAC0, 2048);
-	analogWrite(DAC1, 0);
+	/* Which bench this is, read rather than assumed. */
+	gen_write_dac(1, 2048);
 	delay(10);
-	lo = acq_read_one(ACQ_CH_A0);
-	analogWrite(DAC1, 4095);
-	delay(10);
-	hi = acq_read_one(ACQ_CH_A0);
+	a1 = acq_read_one(ACQ_CH_A1);
 	snprintf(buf, sizeof(buf),
-	         "# DAC0 held 2048: A0 = %4u (DAC1=0) -> %4u (DAC1=4095), bleed %+d codes",
-	         lo, hi, (int)hi - (int)lo);
+	         "# A1 reads %u with DAC1 held at 2048: %s", a1,
+	         (a1 > 1800u && a1 < 2300u) ? "DAC1 -> A1 is fitted"
+	                                    : "A1 looks undriven - see docs/noise.md");
 	Serial.println(buf);
-
 	Serial.println("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes.");
 	Serial.flush();
 }
@@ -1232,7 +1279,7 @@ static void ha_sweep(const uint32_t *a)
 
 static void ha_xtalk(const uint32_t *a)
 {
-	(void)a;
+	crosstalk_repeats = a[0];
 	cmd_crosstalk();
 }
 
