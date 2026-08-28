@@ -13,6 +13,7 @@
  * docs/shared-source.md.
  */
 #include "ctl_port.h"
+#include "load.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -279,11 +280,18 @@ int ctl_port_rate_page(uint8_t *body, size_t max, uint16_t offset)
 bool ctl_port_load_sample(load_report_t *out)
 {
 	/*
-	 * No load monitor here yet. bsp/load.c is Track B's, and porting
-	 * it is a separate piece of work from giving this track a control
-	 * channel - the counter it reads is the Cortex-M3 cycle counter,
-	 * which the Arduino core does not enable.
+	 * True even when the cycle counter is not counting. `available`
+	 * inside the report says that, and it is a different statement
+	 * from "this track has no load monitor", which is what returning
+	 * false meant while this was a stub.
+	 *
+	 * The monitor is lib/due_shared/src/load.c and both tracks compile
+	 * it. What the Arduino core does not do is enable DWT's counter -
+	 * load_init() does, and checks that it counts rather than assuming
+	 * it, because a counter stuck at zero reports a loop with no pass
+	 * longer than one cycle: a wrong answer that looks like a very good
+	 * one.
 	 */
-	(void)out;
-	return false;
+	load_sample(out);
+	return true;
 }

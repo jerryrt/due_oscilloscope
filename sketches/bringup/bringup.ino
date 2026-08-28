@@ -45,6 +45,7 @@
 #include "ctlusb.h"
 #include "ctl.h"                    /* the shared parser */
 #include "console.h"                /* the shared command surface */
+#include "load.h"                   /* the shared main-loop monitor */
 #include "ctl_port.h"               /* ctl_port_gen_get: the console reads
                                      * the generator through the same hook
                                      * the control channel does, so the two
@@ -966,6 +967,14 @@ void setup()
 	SerialUSB.begin(0);          /* native port; CDC ignores baud */
 	while (!Serial && millis() < 2000) { }
 	boot_log();
+	/*
+	 * Before the banner, so load_prev_cycles starts from a defined
+	 * point rather than from whatever CYCCNT held at reset - the first
+	 * delta would otherwise land in an arbitrary bucket and stay in
+	 * the histogram for the whole run.
+	 */
+	load_init();
+
 	banner();
 	heartbeat_at = millis();
 }
@@ -1646,6 +1655,45 @@ static void ha_mimic(const uint32_t *a)
 }
 
 /*
+ * `l` reports; `=1l` reports and then clears. The counters are
+ * cumulative so two readings give a rate over any interval the host
+ * chooses - but max_cycles is a maximum, not a counter, and
+ * differencing a maximum is meaningless. Clearing has to be explicit
+ * rather than a side effect of reading, or two consumers of this
+ * channel would silently steal each other's worst case.
+ */
+static void ha_load(const uint32_t *a)
+{
+	load_dump();
+	if (a[0])
+		load_clear();
+}
+
+/*
+ * "=<ms>S": block the main loop, to validate that `l` sees it.
+ *
+ * Deliberately silent. A printf here lands in the very pass this
+ * command exists to measure - 36 characters at 115200 baud is 3.1 ms -
+ * and the monitor would faithfully report the stall plus the
+ * announcement of it. Measured on Track B, not guessed: with the
+ * message in, a 5 ms stall read 7.2 ms and a 1500 ms stall read
+ * 1502.7 ms, the same 2-3 ms offset at both ends. The answer to "did it
+ * work" is the load report, not an echo.
+ */
+static void ha_stall(const uint32_t *a)
+{
+	uint32_t ms = a[0] ? a[0] : 10u;
+	uint32_t until;
+
+	if (ms > 2000u)
+		ms = 2000u;    /* long enough to see, short of a watchdog */
+
+	until = millis() + ms;
+	while ((int32_t)(millis() - until) < 0)
+		;
+}
+
+/*
  * "=<us>K". The gap between the ADC start and the DAC start, in
  * microseconds, held across runs and applied by the M preset above.
  *
@@ -1802,14 +1850,22 @@ const console_binding_t console_bindings[] = {
 
 	{ 'C', ha_pair },       { 'A', ha_adc_timing },
 
-	{ 'Q', ha_profile },    { 'K', ha_mimic_gap },  { 'Z', ha_detach },
-	{ 'z', ha_reset },
+	{ 'Q', ha_profile },    { 'l', ha_load },       { 'S', ha_stall },
+	{ 'K', ha_mimic_gap },  { 'Z', ha_detach },     { 'z', ha_reset },
 
 	{ 0, 0 },
 };
 
 void loop()
 {
+	/*
+	 * One DWT read at the top of every pass. Inline and branchless -
+	 * see load.h for why it is the cycle counter and not micros(),
+	 * which costs 869 ns against a ~4 us idle pass and would tax the
+	 * loop it measures by a fifth.
+	 */
+	load_tick();
+
 	devept_seen |= UOTGHS->UOTGHS_DEVEPT;
 	usbtrace_sample(stream_loop_passes);
 	devept_restore();

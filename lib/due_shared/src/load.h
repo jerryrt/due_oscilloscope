@@ -52,6 +52,15 @@
  */
 #include "ctl_wire.h"
 
+/*
+ * C linkage: this header is included from Track A's C++ sketch and the
+ * implementation is compiled as C, the same arrangement console.h and
+ * ctl_port.h use.
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /* Hot-path state. Public because load_tick() is inline: this runs on
  * every pass of the main loop and a call would cost more than the
@@ -60,9 +69,20 @@ extern uint32_t load_max_cycles;
 extern uint32_t load_hist[LOAD_BUCKETS];
 extern uint32_t load_prev_cycles;
 
+/*
+ * DWT and CoreDebug by address rather than through CMSIS.
+ *
+ * This header is included from a bare-metal main and from an Arduino
+ * sketch, and a file in the shared library cannot include either
+ * track's device header. The addresses are architectural on Cortex-M3
+ * and identical on both builds, which is the same reason the monitor
+ * itself can be shared at all - see load.c.
+ */
 #define LOAD_DWT_CTRL   (*(volatile uint32_t *)0xE0001000u)
 #define LOAD_DWT_CYCCNT (*(volatile uint32_t *)0xE0001004u)
 #define LOAD_DWT_CYCCNTENA (1u << 0)
+#define LOAD_DEMCR      (*(volatile uint32_t *)0xE000EDFCu)
+#define LOAD_DEMCR_TRCENA (1u << 24)
 
 /*
  * Call once at the top of every main-loop pass.
@@ -126,5 +146,9 @@ bool load_available(void);
 void load_sample(load_report_t *out);
 void load_clear(void);
 void load_dump(void);            /* console; never from an ISR */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LOAD_H */
