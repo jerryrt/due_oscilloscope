@@ -145,6 +145,22 @@ static bool stream_start_common_nogen(uint32_t trigger_hz,
 	rate_hz = (SystemCoreClock / 2u) / acq_configured_rc();
 
 	started_us = micros();
+
+	/*
+	 * Take the IN endpoint onto DMA exactly as stream_start_common
+	 * does. This line was missing from the day 6c96eed put capture on
+	 * endpoint DMA: that commit armed it in one of the two start
+	 * functions and not this one, so every capture-only stream - the
+	 * host-fed loop included - went out through the CPU-copied FIFO
+	 * path, which is invariant 1 quietly broken on the headline path.
+	 * Track A arms it for every USB start (cff7f2f, single merged
+	 * start function) and never had the gap.
+	 */
+	tx_dma = (xport == XPORT_USB);
+	dma_frames = dma_stalls = 0;
+	if (tx_dma)
+		usb_dma_mode_in(true);
+
 	active = true;
 	return true;
 }
