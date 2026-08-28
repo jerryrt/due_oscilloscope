@@ -137,7 +137,12 @@ def _resolve(header, srcdir):
     for d in [srcdir] + INCLUDE_DIRS:
         p = os.path.join(REPO, d, header)
         if os.path.isfile(p):
-            return os.path.join(d, header)
+            # One separator on every platform. The pinned list is a
+            # committed artifact, and os.path.join would spell these
+            # paths with backslashes on Windows - which made every
+            # name drift in both directions the first time the check
+            # ran on the other bench.
+            return os.path.join(d, header).replace(os.sep, "/")
     return None
 
 
