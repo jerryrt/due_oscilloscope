@@ -130,6 +130,84 @@ both tracks: `play_service()` read the OUT DMA's status register twice
 where it needed one read. See "Found by the test suite: host-fed
 playback lost samples".
 
+## Recorded figures, generated
+
+Everything in this section is **generated from the recorded measurements
+by `tools/report.py`** and nothing in it is hand-written. That is the
+point of it: the audit above catalogues figures that went stale because
+they were copied into prose and outlived their measurement, and these
+cannot, because `tools/report.py --check` fails when the document and
+`tests/baseline.json` disagree.
+
+The boundary is deliberate. Numbers live here; the argument for a number,
+its caveats and its retractions stay in prose, because those are what a
+generator cannot check and what carries the meaning. Do not hand-edit
+between the markers - regeneration discards it.
+
+### Trigger rates
+
+<!-- generated: rates -->
+| what | RC | sps |
+|---|---|---|
+| two channels, per channel | 86 | 453,488 |
+| two channels, aggregate | 86 | 906,976 |
+| one channel | 44 | 886,363 |
+| DAC top | 28 | 1,392,857 |
+
+TC clock 39,000,000 Hz, MCK 78,000,000 Hz, ADC clock 19,500,000 Hz.
+<!-- end generated -->
+
+### Frame geometry and amplitude
+
+<!-- generated: frame -->
+| field | value |
+|---|---|
+| frame header | 32 bytes |
+| samples per frame | 2032 |
+| frame size | 4096 bytes |
+| full scale | 1370.5 codes |
+| window floor | 1340.0 codes |
+| window fraction | 0.9 |
+<!-- end generated -->
+
+### Transport
+
+<!-- generated: transport -->
+| direction | measured MB/s | floor MB/s | worst-case margin |
+|---|---|---|---|
+| duplex | - | 3.0 | - |
+| duplex-dma | 8.19-20.03 | 5.0 | 1.64x |
+| in | - | 3.0 | - |
+| in-dma | 19.84-30.45 | 12.0 | 1.65x |
+| out | - | 3.0 | - |
+| out-dma | 17.94-28.23 | 12.0 | 1.50x |
+<!-- end generated -->
+
+The margin column is taken from the **low** end of each observed range,
+because a floor answers "did the worst run clear it" - see issue #6,
+where a single IN reading looked quotable against a ~40% spread.
+
+### Calibration
+
+<!-- generated: calibration -->
+| group | key | value |
+|---|---|---|
+| adc_transfer | advref_mv | 3270 |
+| adc_transfer | advref_mv_assumed_previously | 3300 |
+| adc_transfer | advref_tolerance_mv | 40 |
+| adc_transfer | loop_slope_adc_per_dac_code | 0.67053 |
+| adc_transfer | worst_dev_codes_over_measured_range | 4.4 |
+| dac_mv | adc_derived_span_hi | 2760 |
+| dac_mv | adc_derived_span_lo | 546 |
+| dac_mv | span_hi | 2771 |
+| dac_mv | span_lo | 578 |
+| dac_mv | span_tolerance_mv | 40 |
+| dac_mv | uv_per_code | 535.5 |
+
+From `calibration.json`, via `host/calibration.py`. The `_comment` blocks there record how each figure was arrived at and are deliberately not reproduced: they are the argument, not the number.
+<!-- end generated -->
+
+
 ## Working
 
 | Capability | Track A | Track B |
