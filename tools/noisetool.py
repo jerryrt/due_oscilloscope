@@ -3,6 +3,7 @@
     python3 tools/noisetool.py dc          one held level, in bits
     python3 tools/noisetool.py activity    what each digital load costs
     python3 tools/noisetool.py alias       which lines are real
+    python3 tools/noisetool.py temp        ADVREF's noise, via the die sensor
 
 Named `noisetool` rather than `noise` because `host/noise.py` owns that
 name and both directories are on the path in `tools/phase0.py`. A tool
@@ -67,6 +68,7 @@ that is not this board's DAC.
 needs a much longer record, which is a different measurement.
 """
 import argparse
+import math
 import os
 import sys
 import time
@@ -353,8 +355,10 @@ def cmd_codes(board, args):
     What this cannot do, said before the numbers arrive: it cannot tell
     ADVREF's noise from the DAC's own gain noise. Both are
     multiplicative. Separating them needs an input that is not derived
-    from ADVREF - the on-chip temperature sensor, or an external
-    reference - and this board has neither wired.
+    from ADVREF - and since `ae0b48a` the board has one: the on-die
+    temperature sensor, ADC channel 15 behind ADC_ACR.TSON, whose reading
+    is proportional to 1/ADVREF. That is the `temp` arm, and it bounds
+    ADVREF's short-term noise at about 200 ppm. Issue #11.
 
     Interleaved, because the arms have to be compared within rounds on a
     bench whose level wanders; blocked comparisons have already been
@@ -441,6 +445,102 @@ def cmd_codes(board, args):
     return rounds
 
 
+def cmd_temp(board, args):
+    """ADVREF's noise, made visible by an input that does not scale with it.
+
+    Issue #11's arm. The DAC-to-ADC loop is ratiometric - both ends are
+    referred to ADVREF, so it divides out exactly and a reference
+    excursion moves the loop by zero codes at every code. That is why
+    this project cannot see its own reference from the loop, and the
+    level sweep on #11 confirmed it: the residual is a U with its
+    minimum at mid-scale, which is what a *cancelling* reference
+    predicts.
+
+    The on-die temperature sensor is the input that does not cancel. Its
+    voltage is generated on the die, so `code = 4096 * V_temp / ADVREF`
+    carries ADVREF in the denominator and nothing removes it. A
+    fractional excursion in ADVREF appears as an equal and opposite
+    fractional excursion in the code.
+
+    **What this bounds, and what it does not.** The scatter measured here
+    is ADVREF's noise *plus* the sensor's own plus the ADC's, so it is an
+    upper bound on ADVREF and not an estimate of it. That is still the
+    useful direction: if the bound is small, ADVREF is excluded as the
+    explanation for anything larger.
+
+    **Drift is not noise.** The die warms under load and the sensor
+    reports it, monotonically, which an rms over a whole run reads as
+    scatter. So the figure here is the rms of *successive differences*
+    over sqrt(2), which is blind to any trend slower than the sampling
+    interval, and the trend is reported separately so it can be seen
+    rather than folded in.
+    """
+    link = board.ctl()
+    if link is None:
+        raise SystemExit(
+            "no control channel on this board - the temperature sensor is "
+            "read over it (CTL_OP_TEMP), so this arm needs firmware that "
+            "presents the command port. Track A and B both do since "
+            "ae0b48a.")
+
+    reads = []
+    print(f"{args.rounds} reads x {args.samples} conversions each\n")
+    for i in range(args.rounds):
+        t = link.temperature(samples=args.samples)
+        if not t["tson"]:
+            raise SystemExit(
+                "ADC_ACR.TSON reads clear in the register the device "
+                "captured during the conversions, so whatever was "
+                "measured, it was not the sensor.")
+        reads.append(t)
+        print(f"  {i:3d}  code {t['code']:8.3f}  "
+              f"min {t['code_min']:4d} max {t['code_max']:4d}  "
+              f"n {t['samples']}")
+
+    codes = [t["code"] for t in reads]
+    n = len(codes)
+    mean = sum(codes) / n
+    # Successive differences, so a warming die does not read as scatter.
+    diffs = [codes[i + 1] - codes[i] for i in range(n - 1)]
+    sd_short = (math.sqrt(sum(d * d for d in diffs) / len(diffs) / 2.0)
+                if diffs else 0.0)
+    # The whole-run rms, kept only to show how much of it is trend.
+    sd_total = math.sqrt(sum((c - mean) ** 2 for c in codes) / n)
+    drift = codes[-1] - codes[0]
+
+    ppm = sd_short / mean * 1e6 if mean else 0.0
+    print(f"\n  mean code            {mean:.3f}")
+    # Sign only. Reading it as a temperature needs the sensor's slope,
+    # which this arm does not measure and which carries a large part-to-
+    # part offset - so the drift is reported as codes and left there.
+    print(f"  drift, first to last {drift:+.3f} codes  "
+          f"(codes, not degrees; the slope is not measured here)")
+    print(f"  rms over the run     {sd_total:.4f} codes  "
+          f"<- includes the drift, do not quote this")
+    print(f"  successive-diff rms  {sd_short:.4f} codes  <- the noise")
+    print(f"\n  ADVREF short-term noise, upper bound: {ppm:.1f} ppm")
+
+    # What that would be worth on an input that does not cancel it.
+    print(f"  worth {ppm*2048/1e6:.4f} codes at mid-scale on a "
+          f"non-ratiometric input,")
+    print(f"  and exactly 0 codes on this project's DAC-to-ADC loop, "
+          f"which is ratiometric.")
+
+    rec = repeat.Recorder(os.path.join(RECORDS, "advref-temp.jsonl"))
+    p = prov.collect(board=board, extra={"metric": "advref-temp",
+                                         "samples": args.samples,
+                                         "rounds": args.rounds})
+    gaps = prov.missing(p)
+    if gaps:
+        raise SystemExit(f"refusing to record: provenance missing {gaps}")
+    rec.add({"metric": "advref-temp", "axis": "in-place",
+             "values": {"mean_code": mean, "sd_short_codes": sd_short,
+                        "sd_total_codes": sd_total, "drift_codes": drift,
+                        "advref_ppm_upper": ppm, "n": n},
+             "provenance": p})
+    return {"mean_code": mean, "advref_ppm_upper": ppm}
+
+
 def cmd_alias(board, args):
     """No line is named until it has been seen at two sample rates."""
     lsb_v, _, _ = adc_lsb_v()
@@ -470,7 +570,8 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("what", choices=("dc", "activity", "alias", "codes"))
+    ap.add_argument("what",
+                    choices=("dc", "activity", "alias", "codes", "temp"))
     ap.add_argument("--codes", type=int, action="append", default=[],
                     help="codes: DAC codes to sweep, repeatable")
     ap.add_argument("--code", type=int, default=2048,
@@ -479,6 +580,8 @@ def main():
     ap.add_argument("--seconds", type=float, default=2.0)
     ap.add_argument("--rounds", type=int, default=5,
                     help="activity: interleaved rounds per arm")
+    ap.add_argument("--samples", type=int, default=256,
+                    help="temp: conversions the device averages per read")
     ap.add_argument("--window", type=int, default=4096,
                     help="samples per spectrum; a power of two")
     args = ap.parse_args()
@@ -488,7 +591,7 @@ def main():
         board.stop()
         board.drain_console(0.5)
         {"dc": cmd_dc, "activity": cmd_activity, "codes": cmd_codes,
-         "alias": cmd_alias}[args.what](board, args)
+         "alias": cmd_alias, "temp": cmd_temp}[args.what](board, args)
     finally:
         try:
             board.stop()
