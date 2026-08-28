@@ -65,24 +65,13 @@ def free_port():
 
 
 def describe_source(dev):
-    """One line naming where the samples come from.
+    """Moved to `stream.describe_source`; re-exported for callers.
 
-    The panel already said which host and port; what it never said is
-    what is on the other end. That mattered less when the only two
-    answers were a board and the synthetic device, and matters now that
-    a third answer is somebody else's bench an hour ago.
+    Kept as a name here because tests and `__main__` import it from this
+    module, and because "where does app.py get its strings" should have
+    one answer rather than two spellings of it.
     """
-    kind = dev.get("kind", "?")
-    if kind == "file":
-        rec = dev.get("recorded") or {}
-        track = rec.get("track")
-        n = dev.get("frames")
-        bit = f"{n:,} frames" if isinstance(n, int) else "recording"
-        return (f"{dev.get('path', 'recording')} ({bit}"
-                + (f", track {track}" if track and track != "fake" else "")
-                + ")")
-    track = dev.get("track")
-    return f"{kind}" + (f" (track {track})" if track else "")
+    return stream.describe_source(dev)
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -729,43 +718,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage(f"exported {n:,} samples to {path}")
 
     def _write_csv(self, path, sweep):
-        source = self.channel.currentData()
-        other_tag = (stream.CH_A1 if source == stream.CH_A0
-                     else stream.CH_A0)
-        other = self.rings.get(other_tag)
-        ys, _b = (stream.window_like(other, self.rings.get(source), sweep)
-                  if other is not None
-                  else (np.empty(0, dtype=np.uint16), None))
-
-        v0 = stream.codes_to_volts(sweep.samples)
-        v1 = stream.codes_to_volts(ys) if ys.size == sweep.samples.size else None
-        dt = 1.0 / float(max(1, self.rate_hz))
-
-        with open(path, "w", newline="") as f:
-            # Provenance in the file, not in the filename. A column of
-            # volts is meaningless without the reference it was scaled
-            # by, and this project has an ADVREF that moved by 0.91%
-            # once already.
-            f.write(f"# due_oscilloscope, the sweep as displayed\n")
-            f.write(f"# rate_hz={self.rate_hz} source={stream.LABELS.get(source, source)}\n")
-            f.write(f"# advref_mv={stream.ADVREF_MV} ({stream.ADVREF_SOURCE})\n")
-            f.write(f"# triggered={sweep.triggered}\n")
-            head = ["t_s", f"{stream.LABELS.get(source, source)}_V"]
-            if v1 is not None:
-                head.append(f"{stream.LABELS.get(other_tag, other_tag)}_V")
-            head.append("break")
-            f.write(",".join(head) + "\n")
-            for i in range(sweep.samples.size):
-                row = [f"{i * dt:.9g}", f"{float(v0[i]):.6f}"]
-                if v1 is not None:
-                    row.append(f"{float(v1[i]):.6f}")
-                # A discontinuity is a column, not a missing row: the
-                # reader has to be able to see the join rather than
-                # infer it from a time step.
-                row.append("1" if (sweep.breaks is not None
-                                   and bool(sweep.breaks[i])) else "0")
-                f.write(",".join(row) + "\n")
-        return int(sweep.samples.size)
+        """The sweep as displayed. See `stream.write_csv`."""
+        return stream.write_csv(path, sweep,
+                                source=self.channel.currentData(),
+                                rings=self.rings, rate_hz=self.rate_hz)
 
     def scope_cursors(self, on):
         self.scope.set_cursors(bool(on))
@@ -774,31 +730,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.measure.set_cursor(self.cursor_text())
 
     def cursor_text(self):
-        """The pair's reading, formatted for whichever view is up.
-
-        The units follow the axis rather than being assumed: the same
-        two lines measure seconds in the time view and hertz in the
-        spectrum, and labelling a frequency difference "dt" would be a
-        small lie that a screenshot carries a long way.
-        """
-        r = self.scope.cursor_reading()
-        if r is None:
-            return None
-        if r["view"] == "spectrum":
-            out = [f"df {r['dx']:,.1f} Hz"]
-            if r["dy"] is not None:
-                out.append(f"dA {r['dy']:+.2f} dB")
-        elif r["view"] == "xy":
-            out = [f"dX {r['dx']:.4f} V"]
-            if r["dy"] is not None:
-                out.append(f"dY {r['dy']:+.4f} V")
-        else:
-            out = [f"dt {r['dx'] * 1e6:,.2f} us"]
-            if r["inverse"]:
-                out.append(f"1/dt {r['inverse']:,.1f} Hz")
-            if r["dy"] is not None:
-                out.append(f"dV {r['dy']:+.4f} V")
-        return "   ".join(out)
+        """The reading, formatted. See `stream.cursor_text`."""
+        return stream.cursor_text(self.scope.cursor_reading())
 
     def awg_requested(self, shape, hz, vpp, offset, running):
         """Build the waveform, send it, and drive the loop.
@@ -866,17 +799,9 @@ class MainWindow(QtWidgets.QMainWindow):
             mode=mode)
 
     def trigger_state_text(self):
-        """What the sweep did, not what was asked for.
-
-        "Auto" and "triggering" are different states and the difference
-        is the whole reason this label exists: auto falls back to
-        free-running when it finds no edge, and a trace that moves for
-        that reason looks exactly like a trace that moves because the
-        signal is wrong.
-        """
-        if self.trig_mode.currentData() == "off":
-            return "free"
-        return "TRIG" if self.scope.last_triggered else "searching"
+        """What the sweep did. See `stream.trigger_state_text`."""
+        return stream.trigger_state_text(self.trig_mode.currentData(),
+                                         self.scope.last_triggered)
 
     def ingest(self, f):
         """One decoded frame into the run state.

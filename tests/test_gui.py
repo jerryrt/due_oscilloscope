@@ -1718,3 +1718,126 @@ def test_restart_plays_the_recording_again(replay_win):
     played_again = pump(replay_win,
                        until=lambda: replay_win.frames_shown == 6)
     assert played_again, "the recording did not play again"
+
+
+# ------------------------------------------------------------------
+# The four functions issue #8's A3 moved out of the window.
+#
+# The point of these is not coverage - three of them were already
+# exercised through a MainWindow. It is that they can now be exercised
+# *without* one, which is what "compute in stream.py, draw in a widget"
+# buys and the only way to tell whether the move actually happened. If
+# any of these grows a widget again, these tests stop compiling before
+# the rule stops being true.
+# ------------------------------------------------------------------
+
+
+def test_cursor_text_labels_the_axis_it_is_reading():
+    """Seconds in the time view, hertz in the spectrum, volts in XY.
+
+    Labelling a frequency difference "dt" is the small lie the docstring
+    warns about, and it is the kind a screenshot carries a long way.
+    """
+    assert stream.cursor_text(None) is None
+
+    t = stream.cursor_text({"view": "time", "dx": 1.5e-6,
+                            "inverse": 666666.7, "dy": 0.25})
+    assert t.startswith("dt 1.50 us"), t
+    assert "1/dt 666,666.7 Hz" in t
+    assert "dV +0.2500 V" in t
+
+    f = stream.cursor_text({"view": "spectrum", "dx": 12345.6,
+                            "inverse": None, "dy": -3.5})
+    assert "df 12,345.6 Hz" in f and "dA -3.50 dB" in f
+    assert "dt" not in f, "a frequency difference must not be called dt"
+
+    xy = stream.cursor_text({"view": "xy", "dx": 0.5,
+                             "inverse": None, "dy": -0.25})
+    assert "dX 0.5000 V" in xy and "dY -0.2500 V" in xy
+
+
+def test_cursor_text_omits_the_second_line_when_there_is_no_dy():
+    """A missing reading is absent, not zero - the two mean different
+    things and a cursor pair on one axis has no dy at all."""
+    t = stream.cursor_text({"view": "time", "dx": 1e-6,
+                            "inverse": None, "dy": None})
+    assert "dV" not in t and "1/dt" not in t
+    assert t == "dt 1.00 us"
+
+
+def test_trigger_state_text_separates_asked_for_from_happened():
+    """The distinction the label exists for: auto that found no edge is
+    free-running, and a trace moving for that reason looks exactly like
+    a trace moving because the signal is wrong."""
+    assert stream.trigger_state_text("off", False) == "free"
+    assert stream.trigger_state_text("off", True) == "free"
+    assert stream.trigger_state_text("auto", True) == "TRIG"
+    assert stream.trigger_state_text("auto", False) == "searching"
+
+
+def test_describe_source_names_a_replay_by_its_path():
+    """Replay is the answer that needed this function - "a board" and
+    "the synthetic device" were distinguishable without it."""
+    s = stream.describe_source({"kind": "file", "path": "cap.due",
+                                "frames": 1234,
+                                "recorded": {"track": "b"}})
+    assert "cap.due" in s and "1,234 frames" in s and "track b" in s
+
+    # `fake` is not a track anyone should be told about.
+    s = stream.describe_source({"kind": "file", "path": "x.due",
+                                "frames": 2, "recorded": {"track": "fake"}})
+    assert "track" not in s
+
+    assert stream.describe_source({"kind": "board", "track": "a"}) \
+        == "board (track a)"
+    assert stream.describe_source({"kind": "synthetic"}) == "synthetic"
+
+
+def test_write_csv_carries_the_reference_it_scaled_by(tmp_path):
+    """Provenance in the file, not the filename.
+
+    A column of volts is meaningless without ADVREF, and this project
+    has had ADVREF move by 0.91% under figures already written down.
+    """
+    import numpy as np
+
+    n = 8
+    sweep = stream.Sweep(samples=np.full(n, 2048, dtype=np.uint16),
+                         breaks=np.zeros(n, dtype=bool),
+                         triggered=True)
+    path = tmp_path / "out.csv"
+    written = stream.write_csv(str(path), sweep, source=stream.CH_A0,
+                               rings={}, rate_hz=453488)
+    assert written == n
+
+    text = path.read_text()
+    head = [l for l in text.splitlines() if l.startswith("#")]
+    assert any("advref_mv={}".format(stream.ADVREF_MV) in l for l in head), head
+    assert any(stream.ADVREF_SOURCE in l for l in head), head
+    assert any("rate_hz=453488" in l for l in head), head
+    assert any("triggered=True" in l for l in head), head
+
+    rows = [l for l in text.splitlines() if l and not l.startswith("#")]
+    assert rows[0].startswith("t_s,"), rows[0]
+    assert rows[0].endswith(",break"), rows[0]
+    assert len(rows) == n + 1
+
+
+def test_write_csv_marks_a_discontinuity_as_a_column(tmp_path):
+    """A break is a column and not a missing row: the reader has to see
+    the join rather than infer it from a time step."""
+    import numpy as np
+
+    n = 4
+    breaks = np.zeros(n, dtype=bool)
+    breaks[2] = True
+    sweep = stream.Sweep(samples=np.full(n, 1000, dtype=np.uint16),
+                         breaks=breaks, triggered=False)
+    path = tmp_path / "b.csv"
+    stream.write_csv(str(path), sweep, source=stream.CH_A0,
+                     rings={}, rate_hz=1000)
+
+    rows = [l for l in path.read_text().splitlines()
+            if l and not l.startswith("#")][1:]
+    assert len(rows) == n
+    assert [r.split(",")[-1] for r in rows] == ["0", "0", "1", "0"]

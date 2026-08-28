@@ -757,3 +757,124 @@ def minmax(samples, columns, breaks=None):
         y[2 * i] = lo
         y[2 * i + 1] = hi
     return x, y
+
+
+# ------------------------------------------------------------------
+# Formatting and export
+#
+# These four were methods on MainWindow. They are pure functions of
+# their arguments and none of them touches a widget, which is the whole
+# reason they belong here: issue #8's rule is compute in stream.py, draw
+# in a widget, wire in app.py, and four pure functions living as window
+# methods is how that rule starts to go. The window keeps thin callers
+# that gather the Qt state and hand it over.
+# ------------------------------------------------------------------
+
+
+def describe_source(dev):
+    """One line naming where the samples come from.
+
+    The panel already said which host and port; what it never said is
+    what is on the other end. That mattered less when the only two
+    answers were a board and the synthetic device, and matters now that
+    a third answer is somebody else's bench an hour ago.
+    """
+    kind = dev.get("kind", "?")
+    if kind == "file":
+        rec = dev.get("recorded") or {}
+        track = rec.get("track")
+        n = dev.get("frames")
+        bit = "{:,} frames".format(n) if isinstance(n, int) else "recording"
+        return ("{} ({}".format(dev.get("path", "recording"), bit)
+                + (", track {}".format(track)
+                   if track and track != "fake" else "")
+                + ")")
+    track = dev.get("track")
+    return "{}".format(kind) + (" (track {})".format(track) if track else "")
+
+
+def cursor_text(reading):
+    """The cursor pair's reading, formatted for whichever view is up.
+
+    The units follow the axis rather than being assumed: the same two
+    lines measure seconds in the time view and hertz in the spectrum,
+    and labelling a frequency difference "dt" would be a small lie that
+    a screenshot carries a long way.
+
+    Takes the reading rather than the scope, so the formatting can be
+    tested against a dict instead of against a widget.
+    """
+    if reading is None:
+        return None
+    r = reading
+    if r["view"] == "spectrum":
+        out = ["df {:,.1f} Hz".format(r["dx"])]
+        if r["dy"] is not None:
+            out.append("dA {:+.2f} dB".format(r["dy"]))
+    elif r["view"] == "xy":
+        out = ["dX {:.4f} V".format(r["dx"])]
+        if r["dy"] is not None:
+            out.append("dY {:+.4f} V".format(r["dy"]))
+    else:
+        out = ["dt {:,.2f} us".format(r["dx"] * 1e6)]
+        if r["inverse"]:
+            out.append("1/dt {:,.1f} Hz".format(r["inverse"]))
+        if r["dy"] is not None:
+            out.append("dV {:+.4f} V".format(r["dy"]))
+    return "   ".join(out)
+
+
+def trigger_state_text(mode, last_triggered):
+    """What the sweep did, not what was asked for.
+
+    "Auto" and "triggering" are different states and the difference is
+    the whole reason this label exists: auto falls back to free-running
+    when it finds no edge, and a trace that moves for that reason looks
+    exactly like a trace that moves because the signal is wrong.
+    """
+    if mode == "off":
+        return "free"
+    return "TRIG" if last_triggered else "searching"
+
+
+def write_csv(path, sweep, *, source, rings, rate_hz):
+    """The sweep as displayed, with the reference it was scaled by.
+
+    `rings` and `rate_hz` are passed rather than read off a window so
+    that this can be exercised with two arrays and an int.
+    """
+    other_tag = CH_A1 if source == CH_A0 else CH_A0
+    other = rings.get(other_tag)
+    ys, _b = (window_like(other, rings.get(source), sweep)
+              if other is not None
+              else (np.empty(0, dtype=np.uint16), None))
+
+    v0 = codes_to_volts(sweep.samples)
+    v1 = codes_to_volts(ys) if ys.size == sweep.samples.size else None
+    dt = 1.0 / float(max(1, rate_hz))
+
+    with open(path, "w", newline="") as f:
+        # Provenance in the file, not in the filename. A column of volts
+        # is meaningless without the reference it was scaled by, and
+        # this project has an ADVREF that moved by 0.91% once already.
+        f.write("# due_oscilloscope, the sweep as displayed\n")
+        f.write("# rate_hz={} source={}\n".format(
+            rate_hz, LABELS.get(source, source)))
+        f.write("# advref_mv={} ({})\n".format(ADVREF_MV, ADVREF_SOURCE))
+        f.write("# triggered={}\n".format(sweep.triggered))
+        head = ["t_s", "{}_V".format(LABELS.get(source, source))]
+        if v1 is not None:
+            head.append("{}_V".format(LABELS.get(other_tag, other_tag)))
+        head.append("break")
+        f.write(",".join(head) + "\n")
+        for i in range(sweep.samples.size):
+            row = ["{:.9g}".format(i * dt), "{:.6f}".format(float(v0[i]))]
+            if v1 is not None:
+                row.append("{:.6f}".format(float(v1[i])))
+            # A discontinuity is a column, not a missing row: the reader
+            # has to be able to see the join rather than infer it from a
+            # time step.
+            row.append("1" if (sweep.breaks is not None
+                               and bool(sweep.breaks[i])) else "0")
+            f.write(",".join(row) + "\n")
+    return int(sweep.samples.size)
