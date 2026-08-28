@@ -19,9 +19,15 @@ import measure
 MINUTES = float(sys.argv[1]) if len(sys.argv) > 1 else 30.0
 EVERY_S = 20.0
 
-rows = []
 b = measure.Board(settle=3.0)
 out = os.path.join(REPO, "records", "temp-soak.jsonl")
+n = 0
+# Append and flush per reading rather than writing at the end. The run
+# this is for is hours long, and a file that only exists on a clean exit
+# is a file that does not exist: `--calibrate` writing at session end
+# cost the other bench twelve minutes on issue #6, and the same shape
+# would cost a night here.
+fh = open(out, "w", buffering=1, newline="\n")
 try:
     b.stop(); b.drain_console(0.5)
     link = b.ctl()
@@ -33,9 +39,13 @@ try:
         r = link.temperature(samples=1024)
         if not r["tson"]:
             raise SystemExit("TSON clear - not the sensor")
-        rows.append({"t_s": round(t - t0, 1), "code": r["code"],
-                     "code_min": r["code_min"], "code_max": r["code_max"],
-                     "adc_mr": "%08x" % r["adc_mr"]})
+        fh.write(json.dumps({"t_s": round(t - t0, 1), "code": r["code"],
+                             "code_min": r["code_min"],
+                             "code_max": r["code_max"],
+                             "adc_mr": "%08x" % r["adc_mr"]},
+                            sort_keys=True) + "\n")
+        fh.flush()
+        n += 1
         print("%7.1f s  %8.3f" % (t - t0, r["code"]), flush=True)
         # Idle is the fixed activity: nothing but the wait between reads.
         while time.time() - t < EVERY_S:
@@ -44,7 +54,5 @@ finally:
     try:
         b.close()
     finally:
-        with open(out, "w", newline="\n") as fh:
-            for r in rows:
-                fh.write(json.dumps(r, sort_keys=True) + "\n")
-        print("\nwrote", out, len(rows), "rows")
+        fh.close()
+        print("\nwrote %s, %d rows" % (out, n))
