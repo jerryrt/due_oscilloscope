@@ -68,8 +68,10 @@ static int32_t sine_q15(uint32_t i, uint32_t n)
  * console command alone would be silently undone by the next capture,
  * which is the mistake ADC_MR's readback exists to catch.
  */
-uint8_t gen_ibctl_ch;      /* IBCTLCH0 and CH1, 0-3 */
-uint8_t gen_ibctl_core;    /* IBCTLDACCORE, 0-3    */
+/* IBCTLCH0 and CH1, 0-3; IBCTLDACCORE, 0-3. Defaulted to the
+ * datasheet's characterisation condition - see gen.h. */
+uint8_t gen_ibctl_ch   = GEN_IBCTL_CH_CHARACTERISED;
+uint8_t gen_ibctl_core = GEN_IBCTL_CORE_CHARACTERISED;
 
 void gen_set_ibctl(uint32_t ch, uint32_t core)
 {

@@ -115,6 +115,9 @@ IMPLEMENTS = {
     # the report is still a runtime answer, and a part without CYCCNT
     # would say so there.
     "load": {"a", "b"},
+    # ADC_ACR.TSON and channel 15 - per-track register programming,
+    # implemented on both from 2026-08-28 (issue #11).
+    "temp": {"a", "b"},
 }
 
 
@@ -355,6 +358,94 @@ def test_bench_leaves_the_division_to_the_host(link, track):
         assert key in b
     assert b["elapsed_us"] > 0
     assert b["in_mbps"] == b["in_bytes"] / b["elapsed_us"]
+
+
+def test_temperature_is_a_reading_and_says_what_it_was_taken_at(link, track):
+    """The sensor answers, and the answer carries its own conditions.
+
+    Deliberately not asserting a temperature. The device reports a raw
+    code and the offset is per-part and uncalibrated, so any degrees
+    figure here would be this test inventing a calibration - which is
+    the failure mode `docs/scope.md` warns about, on a number that would
+    then be read as established.
+
+    What can be checked is that it is a *measurement*: TSON was on while
+    the conversions happened, the average lies between the extremes it
+    reports, and the count is the one the device says it used.
+    """
+    requires("temp", track)
+    t = link.temperature()
+
+    assert t["channel"] == 15, (
+        f"the sensor is ADC channel 15 on this part; the device reported "
+        f"channel {t['channel']}")
+    assert t["samples"] > 0
+    assert t["tson"], (
+        "ADC_ACR.TSON reads clear in the register the device captured "
+        "during the conversions, so whatever was measured, it was not "
+        "the temperature sensor")
+    assert t["code_min"] <= t["code"] <= t["code_max"], (
+        f"the average {t['code']:.2f} is outside the range the device "
+        f"reported for the same conversions ({t['code_min']}..{t['code_max']})")
+    # A floating input rails or wanders; a bandgap sits still. Loose
+    # enough not to be a temperature assertion, tight enough to fail an
+    # unconnected channel.
+    assert 1 <= t["code"] <= 4094, (
+        f"code {t['code']:.2f} is at a rail, which is what an unenabled "
+        f"or unconnected channel reads")
+
+
+def test_temperature_honours_the_sample_count_it_reports(link, track):
+    """Averaging more must actually average more, and be bounded.
+
+    The count is a request rather than a promise - the device clamps it,
+    because invariant 7 wants a worst case that does not depend on what
+    a host sent - so what is checked is that the report says what was
+    really done, not that the request was obeyed.
+    """
+    requires("temp", track)
+
+    one = link.temperature(samples=1)
+    assert one["samples"] == 1
+    assert one["code_min"] == one["code_max"], (
+        "a single conversion cannot have a spread; the device reported "
+        f"{one['code_min']}..{one['code_max']}")
+
+    many = link.temperature(samples=64)
+    assert many["samples"] == 64
+
+    # Past the ceiling the device clamps rather than obeying or refusing.
+    huge = link.temperature(samples=65535)
+    assert huge["samples"] <= 4096, (
+        f"asked for 65535 conversions and the device says it did "
+        f"{huge['samples']}; the clamp is what keeps one main-loop pass "
+        f"bounded")
+
+
+def test_temperature_leaves_the_capture_channels_alone(link, board, track):
+    """Reading it must not change what the next stream converts.
+
+    This is the one that would hurt silently. Channel count *divides*
+    the aggregate rate and channel skew is real, so a sensor left in the
+    sequencer turns every two-channel figure into a three-channel one -
+    and the stream would still look perfectly healthy while doing it.
+    The device saves ADC_CHSR and restores it; this is what says so from
+    the outside.
+    """
+    requires("temp", track)
+    link.temperature()
+
+    res = measure.run_capture(board, preset="3", seconds=1.0)
+    assert res.stream.frames, f"no frames after a temperature read: {res.console}"
+
+    mask = res.stream.channel_mask
+    got = {i for i in range(16) if mask & (1 << i)}
+    assert got == {measure.CH_A0, measure.CH_A1}, (
+        f"after a temperature reading the capture's channel mask is "
+        f"{mask:#06x} = {sorted(got)}, not the A0+A1 pair asked for. "
+        f"Channel 15 is the sensor: if it is in that set it was left in "
+        f"the sequencer, which changes the aggregate rate of every run "
+        f"after it.")
 
 
 def test_measurement_does_not_come_from_the_console_on_this_track(board, track):

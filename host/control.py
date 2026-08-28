@@ -41,6 +41,7 @@ OP_RATE_TRACE = 0x0022
 OP_STREAM_STATS = 0x0023
 OP_LOAD = 0x0024
 OP_BENCH = 0x0025
+OP_TEMP = 0x0026
 
 LOAD_BUCKETS = 32
 
@@ -58,6 +59,14 @@ _LOAD = struct.Struct("<IIIIBB2x%dI" % LOAD_BUCKETS)
 _COUNTERS = struct.Struct("<15I")
 _OCC = struct.Struct("<IIIIIBBH")
 _RATE_PAGE = struct.Struct("<BBHHH")
+_TEMP = struct.Struct("<IIHHHBBII")
+
+# Matches CTL_TEMP_SAMPLES_* in lib/due_shared/src/ctl_wire.h. Passed
+# through rather than enforced here: the device clamps and reports what
+# it actually averaged, so a host that disagreed would be arguing with
+# the only party that knows.
+TEMP_SAMPLES_DEFAULT = 256
+
 
 
 class ControlError(Exception):
@@ -448,6 +457,66 @@ class Control:
             "hist": hist,
             # Bucket i covers [2^i, 2^(i+1)) cycles.
             "hist_us": [(1 << i) / per_us for i in range(len(hist))],
+        }
+
+    def temperature(self, samples=None):
+        """The on-die temperature sensor, averaged on the device.
+
+        **Read this before quoting the number.** It is not a
+        temperature in degrees and it is not a value for ADVREF noise.
+
+        ADVREF is the reference for the ADC *and* the DAC, so the
+        loopback is ratiometric and divides its own reference out
+        exactly - a 1% excursion moves the loop by zero codes at every
+        code. The sensor is a bandgap-derived *absolute* voltage, so it
+        goes as 1/ADVREF and sees fractional reference noise at full
+        weight. That is what it is for. Issue #11.
+
+        What it cannot do, in the issue's own words and repeated here
+        because this docstring will outlive the thread:
+
+        - **No degrees.** Converting needs the datasheet slope and a
+          per-part offset that is uncalibrated on this board. `code` is
+          what the converter returned; apply a calibration when one
+          exists.
+        - **An upper bound, not a value.** One channel cannot separate
+          the sensor's own noise from the reference's. A comparison
+          *between benches* is a difference in which the sensor's
+          contribution is common, which is what makes it useful anyway.
+        - **Bandwidth.** The sensor is slow and filtered, so a null
+          result does not close the question - the fast part, where
+          ratiometric cancellation is weakest, may not reach it at all.
+
+        `samples` is a request. The device clamps it and reports what it
+        averaged, which is what comes back in `samples`.
+        """
+        payload = b""
+        if samples is not None:
+            payload = struct.pack("<H", int(samples))
+        frame = self.call(OP_TEMP, payload)
+        (dev_us, code_x16, code_min, code_max, n, channel, _reserved,
+         adc_mr, adc_acr) = _TEMP.unpack(frame.payload)
+        if not n:
+            raise ProtocolError(
+                "the device reported a temperature reading averaged over "
+                "zero conversions, which it should have refused instead")
+        return {
+            "dev_us": dev_us,
+            # Sixteenths on the wire so the average survives the integer
+            # it travels in: 256 samples of a 4-code-rms signal resolve
+            # to ~0.25 codes, and rounding to a whole code throws the
+            # measurement away.
+            "code": code_x16 / 16.0,
+            "code_min": code_min,
+            "code_max": code_max,
+            "samples": n,
+            "channel": channel,
+            # The conditions, as the hardware held them *during* the
+            # conversions. A reading taken at one track/settling time is
+            # not comparable with one taken at another.
+            "adc_mr": adc_mr,
+            "adc_acr": adc_acr,
+            "tson": bool(adc_acr & (1 << 4)),
         }
 
     def identity(self):

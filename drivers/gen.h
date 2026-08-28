@@ -41,6 +41,31 @@
 #define GEN_LAYOUT_DC        3u
 
 /* DACC output-stage bias. Applied after every DACC_CR_SWRST. See gen.c. */
+/*
+ * The datasheet's characterisation condition, and the default.
+ *
+ * Tables 46-38 and 46-40 specify every published DAC figure - INL, DNL,
+ * SNR, THD, SINAD - at IBCTLDACCORE=01 with IBCTLCHx=10. Anything else
+ * is the part running outside the conditions its own numbers describe.
+ *
+ * **These were 0 until 2026-08-28, and that was worse than not writing
+ * ACR at all.** Measured on Track B, which has no Arduino core anywhere
+ * in the image: a booted board that has never written ACR reads
+ * 0x000001AA, and 0x1AA decodes to IBCTLCH0=2, IBCTLCH1=2,
+ * IBCTLDACCORE=1 - the characterised condition already - plus bits 5
+ * and 7, which the SAM3X datasheet does not define. So gen_apply_acr()
+ * with a zero default was not the no-op it looked like: it moved the
+ * converter *off* the characterised bias every time gen_init() ran,
+ * which is every capture.
+ *
+ * Writing 2/1 gives 0x10A: the same three defined fields as the
+ * untouched value, with bits 5 and 7 cleared. Whether those two matter
+ * is not known here and is not claimed - what is known is that 0x10A is
+ * the documented condition and 0x000 is not.
+ */
+#define GEN_IBCTL_CH_CHARACTERISED    2u
+#define GEN_IBCTL_CORE_CHARACTERISED  1u
+
 extern uint8_t gen_ibctl_ch;
 extern uint8_t gen_ibctl_core;
 void     gen_set_ibctl(uint32_t ch, uint32_t core);
