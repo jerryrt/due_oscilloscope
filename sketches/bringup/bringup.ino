@@ -690,8 +690,18 @@ static void diag_start(void)
 
 static void diag_service(void)
 {
-	char buf[192];
-
+	/*
+	 * No buffer here. It used to be declared at the top, before the
+	 * early return, so every idle main-loop pass paid to set up a
+	 * 192-byte stack frame for a function that returns immediately -
+	 * `Q` measured this at 590 ns against Track B's 115 for the same
+	 * function with the same body and no buffer. That is 475 ns on a
+	 * ~9 us pass, for nothing, and it is issue #13's performance
+	 * parity in miniature: the tracks are transliterations, so a
+	 * difference this size is a defect in one of them rather than a
+	 * property of either. It lives in the reporting block below,
+	 * which is the only thing that uses it.
+	 */
 	if (!diag_run)
 		return;
 
@@ -724,6 +734,7 @@ static void diag_service(void)
 
 	{
 		uint32_t base = (uint32_t)play_ring_base();
+		char buf[192];
 
 		snprintf(buf, sizeof(buf),
 		         "# diag: play ring base=%08lx slot=%u B nslots=%u",
@@ -967,6 +978,36 @@ static void trigger_fault(void)
 	bad();
 
 	Serial.println("# unreachable");
+}
+
+/*
+ * Override the core's weak serialEventRun(), which runs after every
+ * loop() and is invisible to `Q`.
+ *
+ * The stock one polls UARTClass::available() on **all four** hardware
+ * serials - Serial, Serial1, Serial2, Serial3 - so it can dispatch a
+ * serialEvent() handler. This sketch opens one of them and defines no
+ * such handler, so three of those four calls ask a UART that was never
+ * begun whether it has data, and the fourth duplicates what
+ * console_feed() already does at the bottom of loop().
+ *
+ * Measured: Serial.available() is 372 ns on this board, so the stock
+ * version is about 1.5 us of a 8.6 us pass - 17%, spent outside loop()
+ * where the profiler cannot see it. It was found by disassembling the
+ * symbol rather than by measuring, because there is no way to measure
+ * it from inside the loop it sits after.
+ *
+ * This is issue #13's performance parity and it is also the concrete
+ * case for CLAUDE.md's claim that "Arduino is an abstraction layer, not
+ * a different architecture": the cost is the core's *default policy*,
+ * not anything the silicon requires, and a sketch may decline it.
+ *
+ * Nothing is lost. serialEvent() and friends are weak empty stubs in
+ * this image - the console is read by console_feed(), which is where
+ * both tracks read theirs.
+ */
+void serialEventRun(void)
+{
 }
 
 void setup()
@@ -2119,8 +2160,21 @@ void loop()
 	 * 512 bytes, so it stops accepting as soon as nothing reads it.
 	 */
 	if (!play_active() && !stream_out_in_use() && !usbdma_out_claimed()) {
-		for (int b = 0; b < 512 && SerialUSB.available() > 0; b++)
-			(void)SerialUSB.read();
+		/*
+		 * read() alone, not available() then read(). Serial_::read()
+		 * returns -1 on an empty ring, so the guard the loop needs
+		 * is already inside the call it was going to make anyway -
+		 * and available() is the dearer of the two, doing an add and
+		 * a modulo where read() compares head against tail.
+		 *
+		 * The drain's *throughput* is the guarantee, not just its
+		 * existence - CLAUDE.md, and Track B learned it by gating
+		 * this and losing the margin - so a change here has to be
+		 * faster or not happen. Same 512-byte bound per pass, one
+		 * call per byte instead of two.
+		 */
+		for (int b = 0; b < 512 && SerialUSB.read() >= 0; b++)
+			;
 	}
 
 	/*
@@ -2129,5 +2183,11 @@ void loop()
 	 * which is why "nothing arrived" is fed to it rather than tested
 	 * for here - see lib/due_shared/src/console.c.
 	 */
-	console_feed(Serial.available() ? Serial.read() : -1);
+	/*
+	 * read() alone: UARTClass::read() returns -1 on an empty ring,
+	 * which is exactly the value console_feed() treats as "nothing
+	 * arrived". available() was a second call to answer a question
+	 * read() already answers, on every pass of the loop.
+	 */
+	console_feed(Serial.read());
 }
