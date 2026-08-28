@@ -93,6 +93,40 @@ class ScopeView(QtWidgets.QWidget):
             for c in self.cursors:
                 self.plot.removeItem(c)
 
+    def trace(self, tag=None):
+        """The drawn points for a channel, or for the active one.
+
+        Issue #8's C1. The tests reached `scope.curves[tag].getData()`,
+        which puts pyqtgraph's own API inside the suite's contract: a
+        pyqtgraph upgrade that renamed `getData` would break the tests
+        of a project that does not otherwise care what draws.
+
+        Returns `(x, y)`, and the arrays are the ones being displayed
+        rather than the ones last handed in - which is the question a
+        test about drawing is asking.
+        """
+        curve = self.curve if tag is None else self.curves.get(tag)
+        return (None, None) if curve is None else curve.getData()
+
+    def trace_color(self, tag):
+        """The pen colour a channel is drawn in, as `#rrggbb`.
+
+        Exists because "the two channels are drawn in different colours"
+        is a real assertion and the only way to make it was three levels
+        into a pyqtgraph pen.
+        """
+        curve = self.curves.get(tag)
+        return None if curve is None else curve.opts["pen"].color().name()
+
+    def cursor_positions(self):
+        """Where the two cursors sit, in axis units."""
+        return tuple(float(c.value()) for c in self.cursors)
+
+    def set_cursor_positions(self, a, b):
+        """Move both cursors. Axis units, same as `cursor_positions`."""
+        self.cursors[0].setPos(a)
+        self.cursors[1].setPos(b)
+
     def cursor_reading(self):
         """What the pair measures, in whatever units the axis is in.
 

@@ -71,6 +71,25 @@ class MeasurePanel(QtWidgets.QGroupBox):
         self.reference.setStyleSheet("color: #7f8c8d;")
         form.addRow("", self.reference)
 
+    def value(self, key):
+        """What this field is showing, as text. Issue #8's C1.
+
+        Text rather than the number, for the same reason as
+        `HealthPanel.value`: a refusal shows the *reason* here rather
+        than a dash, so "what is this field saying" and "what was the
+        last measurement" are different questions and the tests want the
+        first one.
+        """
+        lab = self._labels.get(key)
+        return None if lab is None else lab.text()
+
+    def cursor_value(self):
+        """The cursor line's text, or the dash it shows when off."""
+        return self.cursor.text()
+
+    def keys(self):
+        return tuple(k for k, _t, _f in FIELDS)
+
     def set_cursor(self, text):
         """Show the cursors' reading, or a dash when they are off."""
         self.cursor.setText(text or "-")

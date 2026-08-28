@@ -48,6 +48,32 @@ class HealthPanel(QtWidgets.QGroupBox):
             self._labels[key] = lab
             form.addRow(text, lab)
 
+    def value(self, key):
+        """What this field is showing, as text.
+
+        Issue #8's C1. The tests read `_labels[key].text()`, which makes
+        a private name part of the suite's contract - so nobody renames
+        it, which is the opposite of what a private name is for.
+        `NoticeBar` and `ReplayBar` were built with read properties from
+        the start; this is the same thing for the panels that were not.
+
+        Text rather than the value that was set, deliberately: what a
+        test wants to know is what a person would see, and `set()`
+        stringifies. A test asserting on a number the panel might be
+        formatting differently is not testing the panel.
+        """
+        lab = self._labels.get(key)
+        return None if lab is None else lab.text()
+
+    def alarming(self, key):
+        """Whether the field is showing its alarm styling."""
+        lab = self._labels.get(key)
+        return bool(lab is not None and lab.styleSheet())
+
+    def keys(self):
+        """Every field this panel has, so a test can assert on the set."""
+        return tuple(k for k, _ in FIELDS)
+
     def set(self, key, value, alarm=None):
         lab = self._labels.get(key)
         if lab is None:

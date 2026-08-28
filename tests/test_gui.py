@@ -14,6 +14,7 @@ sample that happened to land on a pixel, and that the health panel
 reports what it cost to draw.
 """
 
+import io
 import os
 import struct
 import sys
@@ -380,8 +381,8 @@ def test_frames_from_a_real_daemon_become_a_trace(win, daemon):
     assert win.frames_shown >= 10
     assert 7 in win.rings, "A0 never reached the display"
     assert win.rings[7].filled > 0
-    assert win.scope.curve.getData()[0] is not None
-    assert len(win.scope.curve.getData()[0]) > 0, "nothing was drawn"
+    assert win.scope.trace()[0] is not None
+    assert len(win.scope.trace()[0]) > 0, "nothing was drawn"
 
 
 def test_volts_come_from_the_measured_reference_not_a_nominal_one():
@@ -645,13 +646,13 @@ def test_the_panel_shows_the_reason_where_a_refused_number_would_be(win):
     win.measure.update_from(stream.measure(
         stream.Sweep(np.empty(0, dtype=np.uint16), np.empty(0, dtype=bool)),
         200000))
-    assert win.measure._labels["vpp_v"].text() == "no data"
+    assert win.measure.value("vpp_v") == "no data"
 
     rate, period = 200000, 250
     r = stream.ChannelRing(seconds=0.05, rate_hz=rate)
     r.append(_tone(8000, period))
     win.measure.update_from(stream.measure(stream.select(r, 4000), rate))
-    shown = win.measure._labels["freq_hz"].text()
+    shown = win.measure.value("freq_hz")
     assert shown.startswith("800"), shown
 
     # And back to a refusal: the good number must not survive.
@@ -659,7 +660,7 @@ def test_the_panel_shows_the_reason_where_a_refused_number_would_be(win):
     r2.append(_tone(2000, period))
     r2.append(_tone(2000, period, phase=2000), discontinuous=True)
     win.measure.update_from(stream.measure(stream.select(r2, 3000), rate))
-    assert win.measure._labels["freq_hz"].text() == "discontinuity in window"
+    assert win.measure.value("freq_hz") == "discontinuity in window"
 
 
 def test_the_panel_says_which_reference_its_volts_are_in(win):
@@ -687,7 +688,7 @@ def test_the_measurements_describe_the_trace_that_was_drawn(win, daemon):
     assert drawn.samples.size > 0
     direct = stream.measure(drawn, win.rate_hz)
     if direct["vpp_v"] is not None:
-        assert win.measure._labels["vpp_v"].text() == f"{direct['vpp_v']:.4f} V"
+        assert win.measure.value("vpp_v") == f"{direct['vpp_v']:.4f} V"
 
 
 def test_switching_to_the_spectrum_relabels_the_axes(win, daemon):
@@ -704,7 +705,7 @@ def test_switching_to_the_spectrum_relabels_the_axes(win, daemon):
     win.tick()
     assert "Frequency" in win.scope.plot.getAxis("bottom").labelText
     assert "dBFS" in win.scope.plot.getAxis("left").labelText
-    x, y = win.scope.curve.getData()
+    x, y = win.scope.trace()
     assert x is not None and len(x) > 0, "the spectrum drew nothing"
 
 
@@ -758,13 +759,13 @@ def test_both_channels_are_drawn_not_just_the_source(win, daemon):
 
     assert set(win.rings) >= {stream.CH_A0, stream.CH_A1}
     for tag in (stream.CH_A0, stream.CH_A1):
-        x, y = win.scope.curves[tag].getData()
+        x, y = win.scope.trace(tag)
         assert x is not None and len(x) > 0, f"{stream.LABELS[tag]} not drawn"
 
     # And they are distinguishable, because every trace in this project
     # ends up in a screenshot pasted into a message.
-    assert (win.scope.curves[stream.CH_A0].opts["pen"].color().name()
-            != win.scope.curves[stream.CH_A1].opts["pen"].color().name())
+    assert (win.scope.trace_color(stream.CH_A0)
+            != win.scope.trace_color(stream.CH_A1))
 
 
 def test_the_second_channel_shares_the_first_ones_time_axis():
@@ -846,7 +847,7 @@ def test_xy_mode_labels_both_axes_with_their_channels(win, daemon):
     win.tick()
     assert "A0" in win.scope.plot.getAxis("bottom").labelText
     assert "A1" in win.scope.plot.getAxis("left").labelText
-    x, y = win.scope.curves[stream.CH_A0].getData()
+    x, y = win.scope.trace(stream.CH_A0)
     assert x is not None and len(x) > 0, "XY drew nothing"
 
 
@@ -943,8 +944,7 @@ def test_cursors_measure_the_interval_between_them(win, daemon):
     win.tick()
 
     # Place them a known distance apart and check the arithmetic.
-    win.scope.cursors[0].setPos(0.002)                # 2 ms
-    win.scope.cursors[1].setPos(0.005)                # 5 ms
+    win.scope.set_cursor_positions(0.002, 0.005)      # 2 ms, 5 ms
     r = win.scope.cursor_reading()
     assert abs(r["dx"] - 0.003) < 1e-9
     assert abs(r["inverse"] - 1.0 / 0.003) < 1e-6
@@ -972,8 +972,7 @@ def test_cursors_report_the_axis_they_are_on(win, daemon):
 
     win.view_box.setCurrentIndex(1)                   # Spectrum
     win.tick()
-    win.scope.cursors[0].setPos(1000.0)
-    win.scope.cursors[1].setPos(4000.0)
+    win.scope.set_cursor_positions(1000.0, 4000.0)
     text = win.cursor_text()
     assert "df" in text and "3,000.0 Hz" in text, text
     assert "dt" not in text
@@ -1080,12 +1079,11 @@ def test_the_health_panel_reports_what_it_cost_to_draw(win, daemon):
     win.client.wait_frames(10, timeout=15.0)
     win.tick()
     win.poll_status()
-    labels = win.health._labels
-    assert labels["mode"].text() == "capture"
-    assert "/" in labels["frames"].text()
-    assert labels["gaps"].text() == "0"
-    assert labels["read_gap"].text().endswith("us")
-    assert labels["role"].text() == "control"
+    assert win.health.value("mode") == "capture"
+    assert "/" in win.health.value("frames")
+    assert win.health.value("gaps") == "0"
+    assert win.health.value("read_gap").endswith("us")
+    assert win.health.value("role") == "control"
 
 
 def test_the_display_shows_the_rate_the_hardware_makes(win, daemon):
@@ -1097,7 +1095,7 @@ def test_the_display_shows_the_rate_the_hardware_makes(win, daemon):
     win.tick()
     win.poll_status()
     assert win.rate_hz == 201030
-    assert "201,030" in win.health._labels["rate"].text()
+    assert "201,030" in win.health.value("rate")
 
 
 def test_a_sequence_gap_is_counted_and_shown(win, daemon):
@@ -1106,7 +1104,7 @@ def test_a_sequence_gap_is_counted_and_shown(win, daemon):
     win.ingest(stream.decode(make_frame(5, {7: [3, 4]})))
     win.poll_status()
     assert win.seq_gaps == 1
-    assert win.health._labels["gaps"].text() == "1"
+    assert win.health.value("gaps") == "1"
 
 
 def test_a_discontinuous_frame_is_counted_for_the_channel_shown(win, daemon):
@@ -1116,7 +1114,7 @@ def test_a_discontinuous_frame_is_counted_for_the_channel_shown(win, daemon):
         make_frame(2, {7: [3, 4]}, flags=stream.FLAG_OVERRUN)))
     win.poll_status()
     assert win.rings[7].discontinuities == 1
-    assert win.health._labels["breaks"].text() == "1"
+    assert win.health.value("breaks") == "1"
 
 
 def test_the_window_survives_the_daemon_going_away(win, daemon):
@@ -1176,7 +1174,7 @@ def test_the_panel_names_the_recording_it_is_looking_at(replay_win,
     said is what is on the other end, which mattered less when the only
     answers were this board and the synthetic device."""
     replay_win.connect_to_daemon()
-    src = replay_win.health._labels["source"].text()
+    src = replay_win.health.value("source")
     assert os.path.basename(recording_path) in src
     assert "6 frames" in src
     assert "replaying" in replay_win.windowTitle()
@@ -1205,7 +1203,7 @@ def test_disconnecting_from_a_replay_puts_the_controls_back(replay_win):
     replay_win.disconnect_from_daemon()
     assert replay_win.replaying is False
     assert replay_win.awg.isEnabled() and replay_win.preset.isEnabled()
-    assert replay_win.health._labels["source"].text() == "-"
+    assert replay_win.health.value("source") == "-"
     assert replay_win.windowTitle() == "due_oscilloscope"
 
 
@@ -1841,3 +1839,98 @@ def test_write_csv_marks_a_discontinuity_as_a_column(tmp_path):
             if l and not l.startswith("#")][1:]
     assert len(rows) == n
     assert [r.split(",")[-1] for r in rows] == ["0", "0", "1", "0"]
+
+
+# ------------------------------------------------------------------
+# Issue #8's C1: the panels' read APIs, and the rule that keeps them
+# the only way in.
+#
+# Moving 24 assertions off `_labels[...]` is only half of it. Without
+# something asserting the boundary, the next test written reaches
+# through the private name again - which is how the debt accumulated in
+# the first place, one reasonable-looking test at a time.
+# ------------------------------------------------------------------
+
+
+def test_no_gui_test_reaches_past_a_panel_read_api():
+    """The boundary, asserted on this file.
+
+    The panels' private label dictionary was load-bearing: every reader
+    of a label indexed straight into it and called `.text()`, so
+    renaming a private broke the tests of a project that does not
+    otherwise care how a panel stores its widgets. That is the wrong way
+    round, and it is why `NoticeBar` and `ReplayBar` were built with
+    read properties from the start.
+
+    Note that this docstring cannot spell the forbidden forms either -
+    the check reads the whole file, so naming them here would make the
+    explanation the offender. They are in `banned` below, assembled from
+    fragments.
+
+    Checked textually rather than by import, because what is being
+    protected is how the *tests* are written.
+    """
+    import re
+    with io.open(__file__, encoding="utf-8") as fh:
+        text = fh.read()
+
+    # Assembled from fragments so this file does not itself contain the
+    # strings it forbids. Spelling them out here made the test its own
+    # first offender, which is funny once and then just a false alarm
+    # everyone learns to ignore.
+    labels = "." + "_labels" + "["
+    banned = {
+        labels: "panel.value(key)",
+        ".scope." + "curve.getData(": "scope.trace()",
+        ".scope." + "curves[": "scope.trace(tag) / scope.trace_color(tag)",
+        ".scope." + "cursors[": "scope.set_cursor_positions(a, b)",
+    }
+    offenders = []
+    for frag, instead in banned.items():
+        start = 0
+        while True:
+            i = text.find(frag, start)
+            if i < 0:
+                break
+            offenders.append("line %d: %s -> use %s"
+                             % (text.count("\n", 0, i) + 1, frag, instead))
+            start = i + 1
+    assert not offenders, (
+        "GUI tests reaching past a panel's read API:\n  "
+        + "\n  ".join(offenders))
+
+
+def test_the_read_apis_answer_for_every_field_the_panel_has(win):
+    """A read API that silently returns None for a real field is worse
+    than the private access it replaced, because a test asserting
+    `value(key) is None` would pass on a typo."""
+    for key in win.health.keys():
+        assert win.health.value(key) is not None, (
+            "health.value(%r) is None but %r is one of the panel's own "
+            "fields" % (key, key))
+    for key in win.measure.keys():
+        assert win.measure.value(key) is not None, (
+            "measure.value(%r) is None but %r is one of the panel's own "
+            "fields" % (key, key))
+
+    # And an unknown key answers None rather than raising, so a test
+    # that asks the wrong question gets a clear failure.
+    assert win.health.value("no_such_field") is None
+    assert win.measure.value("no_such_field") is None
+
+
+def test_scope_trace_returns_what_is_drawn(win, daemon):
+    """`trace()` is the active channel and `trace(tag)` is a named one,
+    and they agree when the named one is active."""
+    win.connect_to_daemon()
+    win.start_capture()
+    assert pump(win, until=lambda: win.frames_shown > 0)
+
+    x, y = win.scope.trace()
+    assert x is not None and len(x) > 0, "nothing was drawn"
+
+    xa, ya = win.scope.trace(stream.CH_A0)
+    assert len(xa) == len(x)
+
+    assert win.scope.trace("not a channel") == (None, None)
+    assert win.scope.trace_color("not a channel") is None
