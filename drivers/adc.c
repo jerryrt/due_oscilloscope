@@ -10,6 +10,8 @@
  * belongs with the TC-triggered PDC path.
  */
 
+#include <stdbool.h>
+
 #include "sam.h"
 #include "bsp.h"        /* micros() */
 #include "analog.h"
@@ -77,6 +79,66 @@ void adc_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
 
 	*a = (uint16_t)(ADC->ADC_CDR[cha] & 0x0fffu);
 	*b = (uint16_t)(ADC->ADC_CDR[chb] & 0x0fffu);
+}
+
+/*
+ * Measurement conditions for a polled reading, set here rather than
+ * inherited, and restored afterwards.
+ *
+ * Same argument as adc_read_temp() below and the same one issue #15
+ * settled: **the variable is not which track, it is whatever last
+ * touched the register.** Issue #16 then measured what that is worth on
+ * a quantity more sensitive than a temperature. `x` ran at
+ * TRACKTIM 0 / SETTLING 0 on Track A and TRACKTIM 15 / SETTLING 3 on
+ * Track B - the two ends of the range - because each track's `x`
+ * inherited whatever its own init had left. On the `=2C` arm that was
+ * worth a *sign flip and a factor of four* between two builds of the
+ * same command on the same board minutes apart, which makes a bleed
+ * figure meaningless across tracks and across "before or after a
+ * capture" within one.
+ *
+ * Tracking time is the dominant term for multiplexer bleed, so a
+ * crosstalk measurement that inherits it is measuring its own history.
+ * TRACKTIM 15 and SETTLING 3 are the maxima and are what a
+ * high-impedance source wants; they are the same conditions the
+ * temperature read already sets, so the two deliberate measurements on
+ * this part now agree about what "polled and accurate" means.
+ *
+ * Refuses while the ADC is hardware-triggered, for invariant 5's
+ * reason: this rewrites ADC_MR and the channel enables, and doing that
+ * under a running capture puts foreign conversions in the ring.
+ */
+static uint32_t measure_saved_mr;
+static uint32_t measure_saved_cher;
+static bool     measure_active;
+
+int adc_measure_begin(void)
+{
+	if (ADC->ADC_MR & ADC_MR_TRGEN)
+		return -1;
+	if (measure_active)
+		return -1;
+
+	measure_saved_mr   = ADC->ADC_MR;
+	measure_saved_cher = ADC->ADC_CHSR;
+	measure_active     = true;
+
+	ADC->ADC_MR = ADC_MR_PRESCAL(1)
+	            | (0xfu << ADC_MR_STARTUP_Pos)
+	            | ADC_MR_TRACKTIM(15)
+	            | (3u << ADC_MR_SETTLING_Pos)
+	            | (1u << ADC_MR_TRANSFER_Pos);
+	return 0;
+}
+
+void adc_measure_end(void)
+{
+	if (!measure_active)
+		return;
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = measure_saved_cher;
+	ADC->ADC_MR   = measure_saved_mr;
+	measure_active = false;
 }
 
 /*

@@ -466,21 +466,53 @@ it is *periodic*, and the two do not obviously compose:
   tracks were enumerated on the native port throughout, and `=<ms>Z`
   blocks the main loop for its whole detach, so there is no way to run
   `x` while the port is down.
-- **Track A converts the watched channel alone.** `acq_read_one()`
-  disables every other channel, so the conversion immediately preceding
-  the watched one is *the same channel*, not A0 - and Track A still
-  shows the excursion, and is where the 64 ms cadence locks cleanly.
-  Whatever the first-converted channel is inheriting, on Track A it is
-  not inheriting it from A0 within a sequence.
+- **Track A used to convert the watched channel alone** - and still
+  showed the excursion, which said that whatever the first-converted
+  channel inherits, it was not inheriting it from A0 within a sequence.
+  That instrument difference is closed below; the excursion survived
+  closing it, so the observation stands and the explanation is still
+  owed.
 
-**The two tracks' `x` are not the same instrument, and that is a parity
-gap rather than a curiosity.** Track B converts the pair in one
-sequence; Track A calls `acq_read_one` twice. So the conversion
-preceding the watched one differs between them, which is exactly the
-variable this measurement turns on - and it is why the two tracks report
-different signs for the bare channel (-90 against +105). **A bleed
-figure is not comparable across tracks today.** Closing that gap comes
-before any model of the mechanism is worth building.
+### The two tracks' `x` were three different instruments
+
+Chasing why the tracks disagreed about the bare channel turned up three
+separate differences. Two are now closed by construction and the third
+is measured and open.
+
+**The conversion sequence.** Track A converted the watched channel with
+every other disabled; Track B converted the pair. Both convert the pair
+now. Worth a sign flip and 3x on the `=2C` arm: +95 with a +37 control
+before, -282 with -89 after.
+
+**The conditions.** `x` inherited whatever last wrote `ADC_MR` - and
+that was TRACKTIM 0 / SETTLING 0 on Track A against 15 / 3 on Track B,
+the two ends of the range, because each track's `x` inherited its own
+init. Tracking time is the dominant term for multiplexer bleed, so a
+bleed figure taken at an inherited tracking time is a figure about the
+previous command. Both tracks now set their own and restore it, exactly
+as the temperature read does after issue #15, and `x` prints the
+register it actually ran at rather than prose about it.
+
+Setting them changed Track B by 22% (-1205 to -940 as TRANSFER went 2 to
+1) and Track A not at all - so **tracking time was not the cause of the
+disagreement**, which is worth recording as a measured negative.
+
+**What is still different.** At identical sequence, identical `ADC_MR`
+(readback `1f3f0100` on both) and an identical `micros()` settle spin:
+
+    Track A   -282 bleed   -89 control
+    Track B   -940 bleed     0 control
+
+on the same board minutes apart. `DACC_MR` and the `DACC_ACR` bias
+defaults are byte-identical across the tracks, so it is not the
+converter's configuration. The leading candidate is the **pad state of
+the bare pin**: Track A boots the Arduino core, which configures every
+pin, and Track B does not - and what else sits on a pad is exactly what
+sets an undriven input's charge behaviour. Untested.
+
+**So a bleed figure is still not comparable across tracks**, and a model
+of the mechanism built on either track's number is built on the
+instrument. That is the thing to close before the mechanism.
 
 `tools/bleed_cadence.py` is the cadence sweep; `=<n>,<ms>x` and `=<n>C`
 are the two knobs. Both need no instrument and run on either track.

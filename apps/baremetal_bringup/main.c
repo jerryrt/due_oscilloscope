@@ -317,10 +317,26 @@ static void cmd_crosstalk(void)
 	if (ms > CTL_BLEED_SETTLE_MAX_MS)
 		ms = CTL_BLEED_SETTLE_MAX_MS;
 
+	if (adc_measure_begin() != 0) {
+		printf("# crosstalk: refused, the ADC is hardware-triggered - stop the capture first (0)\n");
+	uart_flush();
+	return;
+	}
+
 	printf("# crosstalk: hold one channel, swing the other, %u times,"
 	       " %lu ms settle\n", n, (unsigned long)ms);
 	printf("# each arm has a control that writes the same code twice, so"
 	       " the swing is the only difference\n");
+	/*
+	 * The conditions as the hardware holds them, not as this function
+	 * believes it set them. Issue #16 spent a bench session on two
+	 * tracks disagreeing about a bleed figure while both printed the
+	 * same prose; the register is the only account that cannot drift
+	 * from what was measured. Raw, and decoded by the host - the cost
+	 * of a console command is the bytes it puts on the wire.
+	 */
+	printf("# adcmr=%08lx (this command's own; restored after)\n",
+	       (unsigned long)acq_mr());
 	uart_flush();
 
 	/*
@@ -428,7 +444,11 @@ static void cmd_crosstalk(void)
 	       (a1 > 1800u && a1 < 2300u) ? "DAC1 -> A1 is fitted"
 	                                  : "A1 looks undriven - see docs/noise.md");
 	printf("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes.\n");
+	printf("# taken at TRACKTIM 15, SETTLING 3 - this command's own, not"
+	       " whatever ADC_MR held\n");
 	uart_flush();
+
+	adc_measure_end();
 }
 
 /*

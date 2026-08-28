@@ -325,6 +325,24 @@ static uint32_t crosstalk_repeats;
 static uint32_t crosstalk_settle_ms;
 
 /*
+ * The settle wait, spun on micros() rather than delay().
+ *
+ * delay() calls yield() and snaps to the SysTick millisecond, so it is
+ * neither the same duration nor the same activity as Track B's wait -
+ * and issue #16 is a measurement of what happens *between* two
+ * conversions, which is exactly what a differing wait changes. Two
+ * instruments that disagree by a factor of three should not also
+ * disagree about how they wait. Same spin as bleed_settle() in main.c.
+ */
+static void bleed_settle(uint32_t ms)
+{
+	uint32_t t0 = micros();
+
+	while (micros() - t0 < ms * 1000u)
+		{ }
+}
+
+/*
  * Multiplexer bleed, repeated - "=<n>,<ms>x".
  *
  * **It prints a distribution, never one number, and in the order taken.**
@@ -374,7 +392,7 @@ static void cmd_crosstalk(void)
 	uint32_t ms = crosstalk_settle_ms ? crosstalk_settle_ms
 	                                  : CTL_BLEED_SETTLE_MS;
 	char buf[224];
-	uint16_t lo, hi, a1;
+	uint16_t a0, a1, lo, hi;
 	unsigned i;
 
 	if (n > CTL_BLEED_MAX)
@@ -382,58 +400,87 @@ static void cmd_crosstalk(void)
 	if (ms > CTL_BLEED_SETTLE_MAX_MS)
 		ms = CTL_BLEED_SETTLE_MAX_MS;
 
+	if (acq_measure_begin() != 0) {
+		Serial.println("# crosstalk: refused, the ADC is hardware-triggered - stop the capture first (0)");
+	Serial.flush();
+	return;
+	}
+
 	snprintf(buf, sizeof(buf),
 	         "# crosstalk: hold one channel, swing the other, %u times,"
 	         " %lu ms settle", n, (unsigned long)ms);
 	Serial.println(buf);
 	Serial.println("# each arm has a control that writes the same code"
 	               " twice, so the swing is the only difference");
+	/*
+	 * The conditions as the hardware holds them, not as this function
+	 * believes it set them. Issue #16 spent a bench session on two
+	 * tracks disagreeing about a bleed figure while both printed the
+	 * same prose; the register is the only account that cannot drift
+	 * from what was measured.
+	 */
+	snprintf(buf, sizeof(buf),
+	         "# adcmr=%08lx (this command's own; restored after)",
+	         (unsigned long)acq_mr());
+	Serial.println(buf);
 	Serial.flush();
 
 	/*
 	 * The pair `C` selected, so issue #16's pin-versus-position test
 	 * can be asked on this track too. See main.c for why `=2C` is the
 	 * one variable worth moving.
+	 *
+	 * **Every read is the two-channel sequence, which it was not.** This
+	 * called acq_read_one() and converted the watched channel with every
+	 * other disabled, while Track B converted the pair. That is one
+	 * difference and it was worth a sign and a factor of twelve: on
+	 * `=2C` the same board minutes apart read a plateau of **+95 codes
+	 * with a loud +37 control** on this track and **-1205 with a clean
+	 * control** on Track B. The two were not the same measurement, so a
+	 * bleed figure was not comparable across tracks - which is the class
+	 * of error issue #16 exists to remove, one level up from the pin
+	 * label. Same sequence on both now; the conversion preceding the
+	 * watched one is the same conversion.
 	 */
 	const unsigned second = acq_pair_second;
 
 	for (i = 0; i < n; i++) {
 		gen_write_dac(1, 2048);
 		gen_write_dac(0, 0);
-		delay(ms);
-		lo = acq_read_one(second);
+		bleed_settle(ms);
+		acq_read_pair(ACQ_CH_A0, second, &a0, &lo);
 		gen_write_dac(0, 4095);
-		delay(ms);
-		hi = acq_read_one(second);
+		bleed_settle(ms);
+		acq_read_pair(ACQ_CH_A0, second, &a0, &hi);
 		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
 
 		/* Same arm with nothing swung: DAC0 is written twice at the
 		 * same code. Identical writes, waits and conversions, so a
 		 * difference here is not crosstalk from a moving neighbour. */
 		gen_write_dac(0, 2048);
-		delay(ms);
-		lo = acq_read_one(second);
+		bleed_settle(ms);
+		acq_read_pair(ACQ_CH_A0, second, &a0, &lo);
 		gen_write_dac(0, 2048);
-		delay(ms);
-		hi = acq_read_one(second);
+		bleed_settle(ms);
+		acq_read_pair(ACQ_CH_A0, second, &a0, &hi);
 		a1_still[i] = (int16_t)((int)hi - (int)lo);
 
 		gen_write_dac(0, 2048);
 		gen_write_dac(1, 0);
-		delay(ms);
-		lo = acq_read_one(ACQ_CH_A0);
+		bleed_settle(ms);
+		acq_read_pair(ACQ_CH_A0, second, &lo, &a1);
 		gen_write_dac(1, 4095);
-		delay(ms);
-		hi = acq_read_one(ACQ_CH_A0);
+		bleed_settle(ms);
+		acq_read_pair(ACQ_CH_A0, second, &hi, &a1);
 		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
 
 		/* And its control. */
 		gen_write_dac(1, 2048);
-		delay(ms);
-		lo = acq_read_one(ACQ_CH_A0);
+		bleed_settle(ms);
+		acq_read_pair(ACQ_CH_A0, second, &lo, &a1);
 		gen_write_dac(1, 2048);
-		delay(ms);
-		hi = acq_read_one(ACQ_CH_A0);
+		bleed_settle(ms);
+		acq_read_pair(ACQ_CH_A0, second, &hi, &a1);
 		a0_still[i] = (int16_t)((int)hi - (int)lo);
 	}
 
@@ -469,14 +516,18 @@ static void cmd_crosstalk(void)
 
 	/* Which bench this is, read rather than assumed. */
 	gen_write_dac(1, 2048);
-	delay(ms);
-	a1 = acq_read_one(ACQ_CH_A1);
+	bleed_settle(ms);
+	acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
 	snprintf(buf, sizeof(buf),
 	         "# A1 reads %u with DAC1 held at 2048: %s", a1,
 	         (a1 > 1800u && a1 < 2300u) ? "DAC1 -> A1 is fitted"
 	                                    : "A1 looks undriven - see docs/noise.md");
 	Serial.println(buf);
 	Serial.println("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes.");
+	Serial.println("# taken at TRACKTIM 15, SETTLING 3 - this command's own,"
+	               " not whatever ADC_MR held");
+
+	acq_measure_end();
 	Serial.flush();
 }
 

@@ -56,6 +56,22 @@ uint16_t adc_read(unsigned ch);                     /* one channel */
  * read it before quoting a number from here. Issue #11.
  */
 int      adc_read_temp(ctl_temp_t *out, uint16_t samples);
+/*
+ * Measurement conditions for a polled reading: maximum tracking and
+ * settling, set rather than inherited, and restored by the matching
+ * _end. Returns -1 and changes nothing if a capture is running or a
+ * measurement is already open.
+ *
+ * Issue #16: `x` inherited whatever last wrote ADC_MR, which was
+ * TRACKTIM 0 on one track and 15 on the other, and that was worth a
+ * sign flip and a factor of four on the same board. Tracking time is
+ * the dominant term for multiplexer bleed, so a bleed figure taken at
+ * an inherited tracking time is a figure about the previous command.
+ * Same argument as adc_read_temp(); see adc.c.
+ */
+int      adc_measure_begin(void);
+void     adc_measure_end(void);
+
 void     adc_read_pair(unsigned cha, unsigned chb,
                        uint16_t *a, uint16_t *b);   /* one sequence */
 
