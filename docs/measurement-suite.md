@@ -488,7 +488,24 @@ Two routes, both available here:
    report a single deviation figure. No instrument, no host DSP.
 3. **Temperature alongside it.** The SAM3X ADC's internal sensor, read
    at the same moment, so a calibration carries the conditions it was
-   taken in.
+   taken in. `CTL_OP_TEMP` and `=<n>e` exist for this (issue #11).
+
+   **But it reads the workload, not the room, and that limits what it
+   can condition.** Measured on one image in one session, ABBA
+   interleaved, no reflash: 20 s of max-rate capture against 20 s idle
+   moves the reading **+1.57 +- 0.26 codes** (6.0 sigma,
+   `records/temp-workload.jsonl`). That is *larger* than the 0.6-0.8
+   codes two different firmware builds read apart, which is how the
+   difference between the two tracks was traced to their main loops
+   running at different rates rather than to anything about the sensor
+   or the reference.
+
+   So a stored calibration may condition on temperature only against
+   **the same build doing the same thing**. Comparing a reading from one
+   build with one from another - or an idle reading with a post-capture
+   one - measures the firmware. The reading is also not comparable
+   between boards as an absolute: two boards here read 39 codes apart,
+   which is the part-to-part offset the sensor is known for.
 4. **Re-take `dc_transfer`'s assertions against 3270 mV** rather than
    3300, and mark which figures moved.
 

@@ -1,0 +1,16 @@
+{"round": 0, "busy": false, "code": 1000.37, "load_s": 20.0}
+{"round": 0, "busy": true, "code": 1003.62, "load_s": 20.0}
+{"round": 0, "busy": true, "code": 1003.81, "load_s": 20.0}
+{"round": 0, "busy": false, "code": 1002.37, "load_s": 20.0}
+{"round": 1, "busy": false, "code": 1001.93, "load_s": 20.0}
+{"round": 1, "busy": true, "code": 1004.0, "load_s": 20.0}
+{"round": 1, "busy": true, "code": 1004.75, "load_s": 20.0}
+{"round": 1, "busy": false, "code": 1003.87, "load_s": 20.0}
+{"round": 2, "busy": false, "code": 1004.12, "load_s": 20.0}
+{"round": 2, "busy": true, "code": 1005.43, "load_s": 20.0}
+{"round": 2, "busy": true, "code": 1005.25, "load_s": 20.0}
+{"round": 2, "busy": false, "code": 1004.06, "load_s": 20.0}
+{"round": 3, "busy": false, "code": 1003.68, "load_s": 20.0}
+{"round": 3, "busy": true, "code": 1005.18, "load_s": 20.0}
+{"round": 3, "busy": true, "code": 1006.12, "load_s": 20.0}
+{"round": 3, "busy": false, "code": 1005.18, "load_s": 20.0}
