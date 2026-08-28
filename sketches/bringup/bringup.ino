@@ -173,6 +173,7 @@ static void banner(void)
 	Serial.println("#           M=mimic loop without USB (gen sine on TIOA1 + capture)");
 	Serial.println("#           d=DAC max update-rate sweep");
 	Serial.println("#           j/k=DAC 1.5M/3.0M indep + capture 200k");
+	Serial.println("#           =<ms>Z = detach the native port (software unplug)");
 	Serial.println("#           z=software reset (tests GPBR retention)");
 	Serial.println("#           v=identity line");
 	Serial.println("#");
@@ -1514,6 +1515,30 @@ void loop()
 		Serial.println("# press D and read cdr7: swing = USB at fault, frozen = trigger path");
 		Serial.flush();
 		break;
+	/*
+	 * "=<ms>Z": a software unplug of the native port, defaulting to
+	 * 250 ms. Track B's main.c carries the same command with the same
+	 * argument and the same default.
+	 *
+	 * It exists because objective 0c - the macOS close() wedge - is
+	 * recoverable in software: the host is waiting on the USB pipe and
+	 * only a disconnect aborts that. `z` below is not a substitute; it
+	 * leaves the pull-up attached and the host none the wiser.
+	 *
+	 * Necessarily typed on the programming port. Detaching takes the
+	 * control channel down with it, since both CDC functions are on
+	 * this one device.
+	 */
+	case 'Z': {
+		unsigned long ms = rate_arg[0] ? rate_arg[0] : 250u;
+
+		Serial.print("# detaching the native port for ");
+		Serial.print(ms);
+		Serial.println(" ms");
+		Serial.flush();
+		usbdma_detach_cycle(rate_arg[0]);
+		break;
+	}
 	/*
 	 * A software reset must not clear the backup domain. If the boot
 	 * counter still reads 1 afterwards, the counter itself is not

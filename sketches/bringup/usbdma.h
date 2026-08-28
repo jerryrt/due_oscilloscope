@@ -64,6 +64,18 @@ extern volatile uint32_t usb_out_activity;   /* host -> device */
  * enumeration; climbing during a run means the link is resetting. */
 extern volatile uint32_t usbdma_rebuilds;
 
+/*
+ * A software unplug of the native port: drop the pull-up, wait, put it
+ * back. Track B's usb_cdc_detach_cycle() with the same argument and the
+ * same default, transliterated rather than shared - invariant 3 keeps
+ * register programming per track.
+ *
+ * Command it from the *programming* port. Detaching takes both CDC
+ * functions down with it, the control channel included, because they
+ * are one USB device on one cable.
+ */
+void     usbdma_detach_cycle(uint32_t ms);
+
 void     usbdma_dump(void);
 
 #endif /* USBDMA_H */
