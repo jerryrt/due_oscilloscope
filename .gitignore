@@ -59,3 +59,6 @@ records/*.summary.json
 # A bench declares its own cabling; see host/provenance.py. One desk,
 # not the repository.
 bench.json
+
+# The flash log is one desk's history of what it put on its board.
+records/flash-log.jsonl

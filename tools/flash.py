@@ -299,6 +299,59 @@ def _flash_attempt(bossac, binary, args):
               "retry.", file=sys.stderr)
     return rc, booted
 
+#: Where the flash log lives. One JSON line per successful flash.
+FLASH_LOG = os.path.join(REPO, "records", "flash-log.jsonl")
+
+
+def _log_flash(binary) -> None:
+    """Record which commit produced the image that was just flashed.
+
+    The firmware deliberately does **not** carry a git SHA -
+    `lib/due_shared/src/fw_version.h` gives the reason, and it is a good
+    one: two toolchains would need build plumbing that can silently
+    disagree, and `__DATE__ " " __TIME__` already answers "is this the
+    image I just flashed".
+
+    It does not answer "which commit is this", and those are different
+    questions. On 2026-08-27 a bench published a noise floor a whole bit
+    wrong because its board carried a build five minutes older than a DAC
+    fix; both benches reported `fw 0.2.0` four hours and three commits
+    apart, and nothing on the device could have said so.
+
+    So the mapping is recorded here instead of baked in there: the tool
+    that does the flashing is the one place that knows the binary and the
+    tree at the same moment, and it cannot disagree with itself. Never
+    raises - a measurement tool that fails at the bookkeeping step has
+    still flashed the board.
+    """
+    try:
+        import hashlib
+        import json
+        h = hashlib.sha256(open(binary, "rb").read()).hexdigest()
+        def git(*a):
+            try:
+                return subprocess.run(("git",) + a, cwd=REPO, text=True,
+                                      capture_output=True,
+                                      timeout=5).stdout.strip() or None
+            except Exception:
+                return None
+        rec = {
+            "when": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            "binary": os.path.relpath(binary, REPO),
+            "sha256": h,
+            "repo_rev": git("rev-parse", "--short", "HEAD"),
+            "dirty": bool(git("status", "--porcelain")),
+        }
+        os.makedirs(os.path.dirname(FLASH_LOG), exist_ok=True)
+        with open(FLASH_LOG, "a") as f:
+            f.write(json.dumps(rec, sort_keys=True) + "\n")
+            f.flush()
+        print(f"==> logged: {rec['repo_rev']}"
+              f"{' (dirty)' if rec['dirty'] else ''} sha {h[:12]}")
+    except Exception as e:                                    # noqa: BLE001
+        print(f"==> could not log the flash: {e}", file=sys.stderr)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin", default=os.path.join(REPO, "build",
@@ -341,6 +394,7 @@ def main() -> int:
             print(f"==> retrying ({attempt - 1} of {args.retries})")
         rc, booted = _flash_attempt(bossac, binary, args)
         if rc == 0 and booted:
+            _log_flash(binary)
             return 0
 
     if rc == 0 and not booted:

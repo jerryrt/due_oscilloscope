@@ -54,7 +54,24 @@ REPO = os.path.dirname(HERE)
 #: Fields a run must carry. Anything here that `collect()` could not
 #: establish makes the run unattributable, not merely under-documented.
 REQUIRED = ("track", "fw_version", "ctl_version", "frame_version",
-            "build", "host_os", "repo_rev", "wiring", "bench")
+            "build", "host_os", "repo_rev", "wiring", "bench",
+            "fw_repo_rev")
+
+#: `fw_repo_rev` is required because `fw_version` is not an answer.
+#:
+#: Both benches reported `fw 0.2.0` on 2026-08-27 while running builds
+#: four hours and three DAC commits apart, and one of them published a
+#: noise floor a whole bit wrong as a result. A version string is bumped
+#: by hand and says what someone intended; the commit says what was
+#: compiled.
+#:
+#: It is *not* baked into the firmware, deliberately - see
+#: `lib/due_shared/src/fw_version.h`, which argues that two toolchains
+#: would need build plumbing that can silently disagree. It is recorded
+#: by `tools/flash.py` instead, which is the one place that knows the
+#: binary and the tree at the same instant and so cannot disagree with
+#: itself, and matched back here against the build stamp the device
+#: reports.
 
 #: `bench` is required, which means an undeclared bench cannot record.
 #:
@@ -71,6 +88,10 @@ REQUIRED = ("track", "fw_version", "ctl_version", "frame_version",
 #: does not record. A wiring string that might be someone else's is not
 #: a condition, it is a guess wearing one. Declaring costs one gitignored
 #: file per desk, once.
+
+#: Written by `tools/flash.py`, one JSON line per successful flash:
+#: when, binary, sha256, repo_rev, dirty.
+FLASH_LOG = "records/flash-log.jsonl"
 
 #: Where a bench declares itself. Gitignored on purpose: it describes
 #: one desk, and committing one desk's cables is how every other desk
@@ -108,6 +129,63 @@ def bench():
     if not isinstance(got, dict):
         return {"bench_error": f"{BENCH_FILE} is not a JSON object"}
     return got
+
+
+def firmware(build_stamp=None):
+    """Which commit produced the image the board is running.
+
+    Reads the flash log newest-first and returns the entry that could
+    have produced `build_stamp` - i.e. flashed at or after the moment
+    the image was compiled. Anything else is a guess, and this returns
+    a stated absence instead:
+
+        {"fw_provenance": "unlogged"}    nothing in the log fits
+
+    which `missing()` then refuses to record, because "the board is
+    running something and nobody knows what" is exactly the condition
+    that cost a bit of noise floor and two published figures.
+    """
+    path = os.path.join(REPO, FLASH_LOG)
+    try:
+        lines = [json.loads(x) for x in open(path) if x.strip()]
+    except (OSError, ValueError):
+        return {"fw_provenance": "unlogged"}
+    if not lines:
+        return {"fw_provenance": "unlogged"}
+    stamp = _build_epoch(build_stamp)
+    for rec in reversed(lines):
+        when = _iso_epoch(rec.get("when"))
+        if stamp is None or when is None or when >= stamp - 60:
+            return {
+                "fw_repo_rev": (rec.get("repo_rev") or "") +
+                               ("-dirty" if rec.get("dirty") else ""),
+                "fw_sha256": rec.get("sha256"),
+                "fw_flashed_at": rec.get("when"),
+                "fw_provenance": ("matched" if stamp is not None
+                                  else "latest, unmatched build stamp"),
+            }
+    return {"fw_provenance": "unlogged"}
+
+
+def _build_epoch(stamp):
+    """`__DATE__ " " __TIME__` as an epoch, or None."""
+    if not stamp:
+        return None
+    for fmt in ("%b %d %Y %H:%M:%S", "%b  %d %Y %H:%M:%S"):
+        try:
+            return time.mktime(time.strptime(stamp, fmt))
+        except ValueError:
+            continue
+    return None
+
+
+def _iso_epoch(s):
+    if not s:
+        return None
+    try:
+        return time.mktime(time.strptime(s[:19], "%Y-%m-%dT%H:%M:%S"))
+    except ValueError:
+        return None
 
 
 def wiring():
@@ -171,6 +249,7 @@ def collect(board=None, inst=None, channels=(1, 2), extra=None):
             import measure
             ident = measure.identity(board)
             if ident:
+                p.update(firmware(ident.get("build")))
                 p.update({
                     "track": ident["track"],
                     "fw_version": ident["fw_version"],

@@ -71,10 +71,18 @@ def expected_rc_dac(dac_hz):
 
 
 def capture(board, *, points, seconds, dac_hz=DAC_HZ, adc_hz=ADC_HZ,
-            shape="square"):
+            shape="square", amp=256):
     """One run of the M preset, with everything the fold needs checked."""
     measure.set_sync(board, "off")
-    measure.set_gen(board, shape, points)
+    # Amplitude explicitly, never inherited. `gen_amp` persists on the
+    # device across commands, so a metric run that measured noise at a
+    # held code first left the generator at half scale - and this then
+    # folded a 1374-code square instead of a 2752-code one and reported
+    # a 513 ns rise against the true 923, correctly flagging DISAGREES
+    # for a reason that had nothing to do with the converter. A
+    # measurement that inherits device state measures the previous
+    # measurement.
+    measure.set_gen(board, shape, points, amp=amp)
     res = measure.run_capture(board, preset=f"={dac_hz},{adc_hz},2M",
                               seconds=seconds)
     st = res.stream
