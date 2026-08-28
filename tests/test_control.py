@@ -90,44 +90,46 @@ def test_encoded_header_matches_the_documented_layout():
 
 # ------------------------------------------------------------- hardware
 
-# Which tracks implement the optional opcodes.
+# Which opcodes this build implements: the device answers, the test
+# asks. Issue #7.
 #
-# An opcode a track does not implement answers CTL_ERR_OPCODE rather
-# than a body of zeroes - lib/due_shared/src/ctl_port.h says why: zero
-# is a measurement, and a host cannot tell "the counter read nothing"
-# from "this firmware does not keep that counter" unless the device
-# says so.
+# This replaces a hand-written IMPLEMENTS table mapping names to sets of
+# tracks. The table could not express the truth: the capability list is
+# a property of the *build*, not the track - two Track B images
+# legitimately answer differently when PLAY_RATE_TRACE_ENABLED is
+# compiled out - and it was already wrong once, listing four optional
+# opcodes where the dispatch refuses seven. The device's own list is
+# held to the dispatch's actual behaviour by
+# test_the_capability_list_matches_what_the_device_actually_does below.
 #
-# The table is here rather than a bare try/except so that a refusal is
-# only tolerated where it is expected. Track B losing its stream stats
-# still fails; Track A refusing them is the documented answer.
-IMPLEMENTS = {
-    # ctl_stream_stats_t and ctl_bench_t carry Track B's own USB stack
-    # counters - usb_devisr, usb_ep0isr, usb_devimr. Track A enumerates
-    # through the Arduino core and has no equivalent.
-    "stream_stats": {"b"},
-    "bench": {"b"},
-    # The load monitor is shared - lib/due_shared/src/load.c, compiled by
-    # both tracks - so this is no longer a per-track capability. It was
-    # one while the monitor lived in bsp/: what the Arduino core does not
-    # do is *enable* DWT's cycle counter, and load_init() does, on both.
-    # Kept in the table rather than deleted because `available` inside
-    # the report is still a runtime answer, and a part without CYCCNT
-    # would say so there.
-    "load": {"a", "b"},
-    # ADC_ACR.TSON and channel 15 - per-track register programming,
-    # implemented on both from 2026-08-28 (issue #11).
-    "temp": {"a", "b"},
+# What the table did that this does not: fail, rather than skip, a track
+# that unexpectedly refused an opcode it was supposed to have. A build
+# that genuinely drops an opcode now skips its tests, and the skip
+# message names the opcode so the loss is visible in the summary rather
+# than silent. The cross-check test is what still fails when the list
+# and the dispatch disagree.
+
+# Human names for the optional opcodes, used in skip and failure
+# messages. The list itself always comes from the device.
+CAPABILITY_PROBES = {
+    control.OP_STREAM_STATS: "stream stats",
+    control.OP_BENCH: "bench counters",
+    control.OP_OCCUPANCY: "occupancy histogram",
+    control.OP_RATE_TRACE: "rate trace",
+    control.OP_LOAD: "load monitor",
+    control.OP_TEMP: "temperature sensor",
+    control.OP_GEN: "generator",
 }
 
 
-def requires(what, track):
-    """Skip unless this track implements the opcode."""
-    if track not in IMPLEMENTS[what]:
+def requires(link, op):
+    """Skip unless this build dispatches the opcode - the device's own
+    capability list is the authority, not a table in this file."""
+    if op not in link.capabilities():
+        what = CAPABILITY_PROBES.get(op, f"0x{op:04x}")
         pytest.skip(
-            f"track {track.upper()} answers {what} with CTL_ERR_OPCODE; "
-            f"it is a per-track capability, not universal protocol - see "
-            f"lib/due_shared/src/ctl_port.h")
+            f"this build does not dispatch {what} (0x{op:04x}) - its own "
+            f"capability list says so (CTL_OP_CAPABILITY, issue #7)")
 
 
 @pytest.fixture
@@ -310,7 +312,7 @@ def test_stream_stats_says_what_the_console_says(link, board, track):
     and advance measurably in the time it takes the console form to
     print twenty-four numbers - which is the reason the opcode exists.
     """
-    requires("stream_stats", track)
+    requires(link, control.OP_STREAM_STATS)
     board.stop()
     board.drain_console(0.3)
     board.cmd("3")
@@ -352,7 +354,7 @@ def test_bench_leaves_the_division_to_the_host(link, track):
     A throughput is arithmetic over two counters, and a Cortex-M3 that
     is mid-benchmark is the worst place to do it.
     """
-    requires("bench", track)
+    requires(link, control.OP_BENCH)
     b = link.bench()
     for key in ("mode", "in_bytes", "out_bytes", "elapsed_us", "resets",
                 "turn", "dma_in_arms", "dma_out_arms", "loop_passes"):
@@ -374,7 +376,7 @@ def test_temperature_is_a_reading_and_says_what_it_was_taken_at(link, track):
     the conversions happened, the average lies between the extremes it
     reports, and the count is the one the device says it used.
     """
-    requires("temp", track)
+    requires(link, control.OP_TEMP)
     t = link.temperature()
 
     assert t["channel"] == 15, (
@@ -404,7 +406,7 @@ def test_temperature_honours_the_sample_count_it_reports(link, track):
     a host sent - so what is checked is that the report says what was
     really done, not that the request was obeyed.
     """
-    requires("temp", track)
+    requires(link, control.OP_TEMP)
 
     one = link.temperature(samples=1)
     assert one["samples"] == 1
@@ -433,7 +435,7 @@ def test_temperature_leaves_the_capture_channels_alone(link, board, track):
     The device saves ADC_CHSR and restores it; this is what says so from
     the outside.
     """
-    requires("temp", track)
+    requires(link, control.OP_TEMP)
     link.temperature()
 
     res = measure.run_capture(board, preset="3", seconds=1.0)
@@ -488,15 +490,6 @@ def test_measurement_does_not_come_from_the_console_on_this_track(board, track):
 # on, so this cannot fail by drift between two firmware tables - it can
 # only fail if that word disagrees with what the handler actually does,
 # which is the one thing no amount of care inside the firmware prevents.
-CAPABILITY_PROBES = {
-    control.OP_STREAM_STATS: "stream stats",
-    control.OP_BENCH: "bench counters",
-    control.OP_OCCUPANCY: "occupancy histogram",
-    control.OP_RATE_TRACE: "rate trace",
-    control.OP_LOAD: "load monitor",
-    control.OP_TEMP: "temperature sensor",
-    control.OP_GEN: "generator",
-}
 
 
 def test_the_capability_list_matches_what_the_device_actually_does(link, track):
