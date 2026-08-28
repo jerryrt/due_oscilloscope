@@ -253,9 +253,10 @@ static uint32_t code_to_mv(uint16_t code)
 
 static void cmd_read(void)
 {
-	uint16_t a0 = analogRead(A0);
-	uint16_t a1 = analogRead(A1);
+	uint16_t a0, a1;
 	char buf[96];
+
+	acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
 
 	snprintf(buf, sizeof(buf),
 	         "# A0(AD7) = %4u  %4lu mV    A1(AD6) = %4u  %4lu mV",
@@ -285,8 +286,9 @@ static void cmd_sweep(void)
 		analogWrite(DAC1, inv);
 		delay(5);
 
-		uint16_t a0 = analogRead(A0);
-		uint16_t a1 = analogRead(A1);
+		uint16_t a0, a1;
+
+		acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
 
 		snprintf(buf, sizeof(buf),
 		         "# %4u   %6lu   %6u  %5lu  |  %6lu   %6u  %5lu",
@@ -316,10 +318,10 @@ static void cmd_crosstalk(void)
 	analogWrite(DAC1, 2048);
 	analogWrite(DAC0, 0);
 	delay(10);
-	lo = analogRead(A1);
+	lo = acq_read_one(ACQ_CH_A1);
 	analogWrite(DAC0, 4095);
 	delay(10);
-	hi = analogRead(A1);
+	hi = acq_read_one(ACQ_CH_A1);
 	snprintf(buf, sizeof(buf),
 	         "# DAC1 held 2048: A1 = %4u (DAC0=0) -> %4u (DAC0=4095), bleed %+d codes",
 	         lo, hi, (int)hi - (int)lo);
@@ -328,10 +330,10 @@ static void cmd_crosstalk(void)
 	analogWrite(DAC0, 2048);
 	analogWrite(DAC1, 0);
 	delay(10);
-	lo = analogRead(A0);
+	lo = acq_read_one(ACQ_CH_A0);
 	analogWrite(DAC1, 4095);
 	delay(10);
-	hi = analogRead(A0);
+	hi = acq_read_one(ACQ_CH_A0);
 	snprintf(buf, sizeof(buf),
 	         "# DAC0 held 2048: A0 = %4u (DAC1=0) -> %4u (DAC1=4095), bleed %+d codes",
 	         lo, hi, (int)hi - (int)lo);

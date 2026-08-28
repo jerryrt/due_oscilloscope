@@ -110,6 +110,18 @@ void     acq_set_timing(uint32_t tracktim, uint32_t settling);
 uint32_t acq_mr(void);             /* ADC_MR as the hardware holds it */
 
 /*
+ * Software-triggered polled reads, masked to 12 bits.
+ *
+ * Use these rather than the core's analogRead(): acq_init() turns on
+ * ADC_EMR_TAG and analogRead() does not mask the tag out of LCDR, so it
+ * returns tag|value and can return it from the wrong channel. See
+ * acq.cpp.
+ */
+uint16_t acq_read_one(unsigned ch);
+void     acq_read_pair(unsigned cha, unsigned chb,
+                       uint16_t *a, uint16_t *b);
+
+/*
  * The on-die temperature sensor, ADC channel 15 behind ADC_ACR.TSON.
  * Averages `samples` conversions (clamped to the CTL_TEMP_SAMPLES_*
  * range) and restores whatever channels were enabled. False means no

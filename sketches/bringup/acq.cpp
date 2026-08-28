@@ -137,6 +137,64 @@ uint32_t acq_mr(void)
 }
 
 /*
+ * Software-triggered polled reads, this track's own.
+ *
+ * **Not `analogRead()`, and that is a bug fix rather than a preference.**
+ * `acq_init()` sets `ADC_EMR_TAG`, which puts the channel index in
+ * LCDR[15:12] so the streaming path can demultiplex without being told
+ * the mode. The Arduino core's `analogRead()` reads LCDR and does not
+ * mask that, so once TAG is on it returns tag|value: `r` printed
+ * "A0(AD7) = 24584" - 0x6008, tag 6 with a value of 8 - for a converter
+ * that cannot exceed 4095.
+ *
+ * Worse than the arithmetic, the tag says the value came from the wrong
+ * channel. The sequencer converts every enabled channel per trigger in
+ * ascending index order, so the core's single-channel read can land on
+ * whichever conversion finished last. A0 came back carrying A1's tag.
+ *
+ * It became the default state on 2026-08-28 when `acq_init()` started
+ * running at boot (issue #13); before that it needed a stream to have
+ * run first, which is why it was not noticed. Reading through the core
+ * while this track programs the same peripheral itself is the divergence
+ * invariant 3 names - `acq`/`adc` internals stay per track - and Track B
+ * has had `adc_read`/`adc_read_pair` all along.
+ *
+ * Masked to 12 bits at the source, so no caller has to know TAG is on.
+ */
+uint16_t acq_read_one(unsigned ch)
+{
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = (1u << ch);
+
+	ADC->ADC_CR = ADC_CR_START;
+	while (!(ADC->ADC_ISR & (1u << ch)))
+		{ }
+
+	return (uint16_t)(ADC->ADC_CDR[ch] & 0x0fffu);
+}
+
+/*
+ * Both channels from one trigger. The sequencer converts every enabled
+ * channel per trigger event in ascending channel index order, so this is
+ * the same ordering the PDC path sees - which is what makes a polled
+ * reading comparable with a streamed one.
+ */
+void acq_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
+{
+	uint32_t mask = (1u << cha) | (1u << chb);
+
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = mask;
+
+	ADC->ADC_CR = ADC_CR_START;
+	while ((ADC->ADC_ISR & mask) != mask)
+		{ }
+
+	*a = (uint16_t)(ADC->ADC_CDR[cha] & 0x0fffu);
+	*b = (uint16_t)(ADC->ADC_CDR[chb] & 0x0fffu);
+}
+
+/*
  * The on-die temperature sensor: ADC channel 15, enabled by
  * ADC_ACR.TSON. See ctl_temp_t in ctl_wire.h for why it exists and,
  * more importantly, for what a reading from it may and may not be used
