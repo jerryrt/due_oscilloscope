@@ -345,6 +345,18 @@ class MainWindow(QtWidgets.QMainWindow):
             "Rectangular is exact only when the window holds a whole "
             "number of cycles, and smears the tone everywhere else.")
 
+        # The draggable trigger line (issue #8's B6). Two controls, one
+        # level: the spin box and the line echo each other, and the
+        # echo terminates because ScopeView.set_trigger_line treats a
+        # sub-resolution difference as the same value. Mode and view
+        # changes re-decide whether the line belongs on the plot at all.
+        self.trig_level.valueChanged.connect(self._sync_trig_line)
+        self.trig_mode.currentIndexChanged.connect(self._sync_trig_line)
+        self.view_box.currentIndexChanged.connect(self._sync_trig_line)
+        self.scope.trig_line.sigPositionChanged.connect(
+            self._trig_line_dragged)
+        self._sync_trig_line()
+
         # The menu's cursor action, wearing a button. One checkable
         # thing, so the tick and the button can never disagree.
         self.cursor_button = QtWidgets.QToolButton()
@@ -787,6 +799,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage(
             f"{shape} {actual_hz:,.1f} Hz, {vpp:.3f} Vpp at {offset:.3f} V "
             f"(codes {lo}-{hi})")
+
+    def _sync_trig_line(self, *_):
+        """Show the trigger level on the plot when it means something.
+
+        Off means there is no trigger to show. Spectrum and XY change
+        the axes out from under a level expressed in volts-at-time, so
+        the line leaves with them.
+        """
+        show = (self.trig_mode.currentData() != "off"
+                and self.view_box.currentData() == "time")
+        self.scope.set_trigger_line(
+            self.trig_level.value() if show else None)
+
+    def _trig_line_dragged(self):
+        """The line moved (a drag, or anything else that setPos's it);
+        the spin box follows. The spin rounds to its three decimals and
+        echoes back through _sync_trig_line, where the sub-resolution
+        guard ends the round trip."""
+        self.trig_level.setValue(float(self.scope.trig_line.value()))
 
     def trigger(self):
         """The trigger the controls currently describe, or None."""

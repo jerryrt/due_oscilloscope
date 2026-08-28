@@ -73,6 +73,20 @@ class ScopeView(QtWidgets.QWidget):
             c.setZValue(10)
         self.cursors_on = False
 
+        # The trigger level, visible where it acts (issue #8's B6). A
+        # horizontal draggable line: the spin box stays the number, this
+        # is the handle. Off the plot unless a trigger exists and the
+        # view is time - a level in volts drawn over a spectrum's dB
+        # axis or an XY plot's volts-vs-volts axes would be a lie of
+        # units.
+        self.trig_line = pg.InfiniteLine(
+            angle=0, movable=True,
+            pen=pg.mkPen("#c0392b", width=1, style=QtCore.Qt.DashLine),
+            hoverPen=pg.mkPen("#c0392b", width=2))
+        self.trig_line.setZValue(11)
+        self.trig_line.setBounds([0.0, stream.VREF_V])
+        self.trig_line_on = False
+
     def set_cursors(self, on):
         """Show or hide the pair, placing them somewhere useful.
 
@@ -92,6 +106,35 @@ class ScopeView(QtWidgets.QWidget):
         else:
             for c in self.cursors:
                 self.plot.removeItem(c)
+
+    def set_trigger_line(self, volts):
+        """Show the draggable trigger level, or hide it with None.
+
+        A no-op set must stay a no-op: the window echoes the line back
+        into the spin box and the spin box back into here on every
+        change, so a set that re-emitted at the same level would fight
+        the drag it exists to serve. "Same" is half the spin box's own
+        resolution - the two controls describe one level, and a
+        difference the number cannot display is not a difference.
+        """
+        if volts is None:
+            if self.trig_line_on:
+                self.plot.removeItem(self.trig_line)
+                self.trig_line_on = False
+            return
+        if not self.trig_line_on:
+            self.plot.addItem(self.trig_line, ignoreBounds=True)
+            self.trig_line_on = True
+        if abs(float(self.trig_line.value()) - volts) >= 5e-4:
+            self.trig_line.setPos(volts)
+
+    def trigger_line(self):
+        """The line's level in volts, or None while it is hidden.
+
+        The read API, same reason as `trace()`: the tests' contract is
+        "the level shown", not pyqtgraph's object model.
+        """
+        return float(self.trig_line.value()) if self.trig_line_on else None
 
     def trace(self, tag=None):
         """The drawn points for a channel, or for the active one.

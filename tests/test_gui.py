@@ -635,6 +635,51 @@ def test_the_trigger_controls_describe_the_trigger_that_is_used(win):
     assert abs(float(stream.codes_to_volts(t.level)) - 1.65) < 0.002
 
 
+def test_the_trigger_line_and_the_spin_box_are_one_control(win):
+    """Issue #8's B6: the level has a handle on the plot.
+
+    Two widgets, one number. Moving either must move the other, because
+    a line that shows yesterday's level over today's trigger is worse
+    than no line - it is a wrong number drawn where the eye is.
+    """
+    win.trig_mode.setCurrentIndex(1)                      # Auto
+    win.view_box.setCurrentIndex(0)                       # Time
+    assert win.scope.trigger_line() == pytest.approx(
+        win.trig_level.value(), abs=1e-3)
+
+    win.trig_level.setValue(1.0)
+    assert win.scope.trigger_line() == pytest.approx(1.0, abs=1e-3)
+
+    # A drag, as the mouse handler delivers it: setPos emits
+    # sigPositionChanged, which is the same signal the drag emits.
+    win.scope.trig_line.setPos(2.5)
+    assert win.trig_level.value() == pytest.approx(2.5, abs=1e-3)
+    # And the echo settled rather than ringing: both still agree.
+    assert win.scope.trigger_line() == pytest.approx(2.5, abs=1e-3)
+
+
+def test_the_trigger_line_leaves_when_it_would_lie(win):
+    """Off has no level to show; a spectrum's axis is dB and an XY
+    plot's is volts-vs-volts, so a volts-at-time level drawn on either
+    would be a unit error made visible."""
+    win.view_box.setCurrentIndex(0)                       # Time
+    win.trig_mode.setCurrentIndex(1)                      # Auto
+    assert win.scope.trigger_line() is not None
+
+    win.trig_mode.setCurrentIndex(0)                      # Off
+    assert win.scope.trigger_line() is None
+
+    win.trig_mode.setCurrentIndex(1)                      # Auto
+    win.view_box.setCurrentIndex(1)                       # Spectrum
+    assert win.scope.trigger_line() is None
+    win.view_box.setCurrentIndex(2)                       # XY
+    assert win.scope.trigger_line() is None
+
+    win.view_box.setCurrentIndex(0)                       # Time again
+    assert win.scope.trigger_line() == pytest.approx(
+        win.trig_level.value(), abs=1e-3)
+
+
 def test_the_panel_shows_the_reason_where_a_refused_number_would_be(win):
     """Not a dash, and not the previous value.
 
