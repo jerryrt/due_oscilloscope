@@ -922,6 +922,21 @@ static void cmd_profile(void)
 	} while (0)
 
 	PROF("empty loop", __asm__ volatile(""));
+	/*
+	 * The per-pass diagnostics, profiled because issue #13 measured
+	 * this loop at 75.1 k passes/s against Track B's 160.4 k and
+	 * invariant 3 wants the two comparable. Each of these reads a
+	 * UOTGHS register on every pass to ask about an event that
+	 * happens tens of times a second - which is the exact shape of
+	 * cost CLAUDE.md records Track B removing when gating ctl_service
+	 * and usb_cdc_poll to 1 kHz took its idle pass from 9.72 to
+	 * 6.70 us.
+	 */
+	PROF("UOTGHS_DEVEPT read", (void)UOTGHS->UOTGHS_DEVEPT);
+	PROF("usbtrace_sample()", usbtrace_sample(0));
+	PROF("devept_restore()", devept_restore());
+	PROF("ctlusb_quiesce_int()", ctlusb_quiesce_interrupts());
+	PROF("ctl_service()", ctl_service());
 	PROF("millis()", (void)millis());
 	PROF("micros()", (void)micros());
 	PROF("Serial.available()", (void)Serial.available());
@@ -1930,12 +1945,10 @@ void loop()
 	 */
 	load_tick();
 
-	devept_seen |= UOTGHS->UOTGHS_DEVEPT;
-	usbtrace_sample(stream_loop_passes);
-	devept_restore();
-	usbtrace_sample(stream_loop_passes);
 	static uint32_t led_usb_at;
 	static uint32_t led_in_last, led_out_last;
+	static uint32_t diag_ms, ctl_ms;
+	uint32_t now = millis();
 
 	stream_loop_passes++;
 
@@ -1961,10 +1974,73 @@ void loop()
 	 * pass whether or not a host is talking - an allocated bulk OUT
 	 * that nobody hands back NAKs for ever.
 	 */
-	ctl_service();
+	/*
+	 * At most once a millisecond, which is the gate Track B's main.c
+	 * put on the same call and for the same measured reason: it costs
+	 * 1964 ns of this pass - more than stream_service() - to poll an
+	 * endpoint that receives a command ten times a second, and the
+	 * cost is a UOTGHS register read rather than an SRAM one.
+	 *
+	 * A millisecond is 100x faster than a host can notice on a status
+	 * poll, and it leaves the drain with 2 KB/ms of capacity against
+	 * command traffic measured in bytes. **The drain obligation is
+	 * unchanged**: an allocated bulk OUT that nobody hands back NAKs
+	 * for ever and hangs the host in close(). Once a millisecond is
+	 * draining; never is not.
+	 *
+	 * Gated here rather than inside ctl_service() because `now` is
+	 * already in a register, so the check is free where a second
+	 * millis() would not be.
+	 */
+	/*
+	 * Two once-a-millisecond jobs, deliberately on *different passes*.
+	 *
+	 * Each is a UOTGHS poll asking about an event that happens tens of
+	 * times a second, and between them they were 5.2 us of a 10 us
+	 * pass - issue #13's 2.14x gap against Track B, which had already
+	 * gated its own equivalents.
+	 *
+	 * **Why the else, which is the part that is not obvious.** Gating
+	 * both on `now != <last>` fires them on the same pass, the first
+	 * of each millisecond, and that pass then costs 15 us against 10.
+	 * At ~100 k passes/s that is 1% of passes one log2 bucket to the
+	 * right - measured at 1.02% against 0.93% predicted - and
+	 * test_load.py::test_the_idle_loop_is_fast_and_uniform failed on
+	 * exactly that. It was right to: the instrument's value is that
+	 * the idle distribution is narrow enough for one slow pass to be
+	 * unmistakable, and a gate that manufactures a second mode spends
+	 * that for speed.
+	 *
+	 * The `else` puts the diagnostics on the *second* pass of each
+	 * millisecond instead. Same 1 kHz for both, neither pass carries
+	 * both, and both stay inside the bucket the ungated pass is in.
+	 * It needs two passes per millisecond to keep up, which at 100 k
+	 * passes/s is a hundredfold margin; a loop slow enough to break
+	 * that has already failed the floor assertion above it.
+	 *
+	 * ctl_service at 1 kHz is Track B's gate and its reasoning: it
+	 * costs 1964 ns to poll an endpoint that receives a command ten
+	 * times a second, a millisecond is 100x faster than a host can
+	 * notice, and **the drain obligation is unchanged** - an allocated
+	 * bulk OUT that nobody hands back NAKs for ever and hangs the host
+	 * in close(). Once a millisecond is draining; never is not.
+	 *
+	 * The sample-path OUT drain further down is NOT gated and must not
+	 * be: CLAUDE.md records that gating it to 1 kHz narrows it to
+	 * ~2 MB/s against a host that writes ~1.8 MB/s, and that margin is
+	 * the guarantee.
+	 */
+	if (now != ctl_ms) {
+		ctl_ms = now;
+		ctl_service();
+	} else if (now != diag_ms) {
+		diag_ms = now;
+		devept_seen |= UOTGHS->UOTGHS_DEVEPT;
+		usbtrace_sample(stream_loop_passes);
+		devept_restore();
+	}
 
 	/* Heartbeat: if this stops, the board hung or faulted. */
-	uint32_t now = millis();
 	if (now - heartbeat_at >= (led_on ? 100u : 900u)) {
 		led_on = !led_on;
 		if (led_on)
