@@ -350,14 +350,21 @@ static void cmd_crosstalk(void)
 	Serial.println(buf);
 	Serial.flush();
 
+	/*
+	 * The pair `C` selected, so issue #16's pin-versus-position test
+	 * can be asked on this track too. See main.c for why `=2C` is the
+	 * one variable worth moving.
+	 */
+	const unsigned second = acq_pair_second;
+
 	for (i = 0; i < n; i++) {
 		gen_write_dac(1, 2048);
 		gen_write_dac(0, 0);
 		delay(10);
-		lo = acq_read_one(ACQ_CH_A1);
+		lo = acq_read_one(second);
 		gen_write_dac(0, 4095);
 		delay(10);
-		hi = acq_read_one(ACQ_CH_A1);
+		hi = acq_read_one(second);
 		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
 
 		gen_write_dac(0, 2048);
@@ -370,8 +377,11 @@ static void cmd_crosstalk(void)
 		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
 	}
 
-	ctl_bleed_describe(buf, sizeof(buf),
-	                   "A1 bleed (DAC1 held, DAC0 swung)", a1_bleed, n);
+	/* Name the channel watched: with `=2C` these rows are about A2. */
+	char label[64];
+	snprintf(label, sizeof(label), "%s bleed (DAC1 held, DAC0 swung)",
+	         second == ACQ_CH_A2 ? "A2" : "A1");
+	ctl_bleed_describe(buf, sizeof(buf), label, a1_bleed, n);
 	Serial.println(buf);
 	ctl_bleed_describe(buf, sizeof(buf),
 	                   "A0 bleed (DAC0 held, DAC1 swung)", a0_bleed, n);

@@ -273,35 +273,57 @@ static void cmd_crosstalk(void)
 	printf("# crosstalk: hold one channel, swing the other, %u times\n", n);
 	uart_flush();
 
+	/*
+	 * The pair `C` selected, not a hardcoded A1. Issue #16's named
+	 * test is whether the excursion follows the *pin* or the
+	 * *position*, and only `=2C` can ask it: A2 is 5 and A1 is 6, so
+	 * either way the second channel converts BEFORE A0 (7) - the
+	 * sequencer goes by channel index and `adc_read_pair`'s argument
+	 * order only chooses which CDR is read out afterwards. So `=2C`
+	 * swaps the pin while holding the conversion position fixed,
+	 * which is exactly the one variable worth moving.
+	 */
+	const unsigned second = acq_pair_second;
+
 	for (i = 0; i < n; i++) {
-		/* Hold DAC1 mid scale; swing DAC0. Watch A1. */
+		/* Hold DAC1 mid scale; swing DAC0. Watch the second channel. */
 		dac_write(1, 2048);
 		dac_write(0, 0);
 		for (volatile uint32_t d = 0; d < 400000u; d++) { }
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &lo);
+		adc_read_pair(ADC_CH_A0, second, &a0, &lo);
 
 		dac_write(0, 4095);
 		for (volatile uint32_t d = 0; d < 400000u; d++) { }
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &hi);
+		adc_read_pair(ADC_CH_A0, second, &a0, &hi);
 		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
 
 		/* Hold DAC0 mid scale; swing DAC1. Watch A0. */
 		dac_write(0, 2048);
 		dac_write(1, 0);
 		for (volatile uint32_t d = 0; d < 400000u; d++) { }
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &lo, &a1);
+		adc_read_pair(ADC_CH_A0, second, &lo, &a1);
 
 		dac_write(1, 4095);
 		for (volatile uint32_t d = 0; d < 400000u; d++) { }
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &hi, &a1);
+		adc_read_pair(ADC_CH_A0, second, &hi, &a1);
 		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
 	}
 
-	ctl_bleed_describe(line, sizeof(line),
-	                   "A1 bleed (DAC1 held, DAC0 swung)", a1_bleed, n);
+	/*
+	 * Name the channel that was watched. With `=2C` selected these
+	 * rows are about A2 and a label saying A1 would be a figure
+	 * attributed to the wrong pin - which is the class of error this
+	 * whole issue is about.
+	 */
+	const char *sname = (second == ADC_CH_A2) ? "A2" : "A1";
+	char label[64];
+
+	snprintf(label, sizeof(label), "%s bleed (DAC1 held, DAC0 swung)", sname);
+	ctl_bleed_describe(line, sizeof(line), label, a1_bleed, n);
 	printf("%s\n", line);
-	ctl_bleed_describe(line, sizeof(line),
-	                   "A0 bleed (DAC0 held, DAC1 swung)", a0_bleed, n);
+	snprintf(label, sizeof(label), "A0 bleed (DAC0 held, DAC1 swung, %s in pair)",
+	         sname);
+	ctl_bleed_describe(line, sizeof(line), label, a0_bleed, n);
 	printf("%s\n", line);
 
 	/*
