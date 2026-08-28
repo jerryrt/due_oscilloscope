@@ -33,11 +33,13 @@
  * next to its own clocks, where it can. A shared help line carrying a
  * number would be a number written down twice.
  */
-static const struct {
+struct cmd_entry {
 	char        key;
 	const char *syntax;
 	const char *help;
-} table[] = {
+};
+
+static const struct cmd_entry table[] = {
 	/* Identity and cost of the console itself. */
 	{ 'h', NULL,        "help - this list" },
 	{ 'v', NULL,        "identity line (track, versions, clocks, build)" },
@@ -109,24 +111,17 @@ static const struct {
 
 /* ------------------------------------------------------------------ */
 
-static const char *syntax_of(char key)
+/* The table entry for a key, or NULL. One scan answers both "is this a
+ * command at all" and "what does it take", which the refusal path needs
+ * together. */
+static const struct cmd_entry *entry_of(char key)
 {
 	unsigned i;
 
 	for (i = 0; i < TABLE_N; i++)
 		if (table[i].key == key)
-			return table[i].syntax;
+			return &table[i];
 	return NULL;
-}
-
-static bool in_table(char key)
-{
-	unsigned i;
-
-	for (i = 0; i < TABLE_N; i++)
-		if (table[i].key == key)
-			return true;
-	return false;
 }
 
 static console_fn bound(char key)
@@ -231,6 +226,7 @@ static bool     arg_entry;
  */
 void console_feed(int c)
 {
+	const struct cmd_entry *e;
 	console_fn fn;
 
 	/*
@@ -267,7 +263,7 @@ void console_feed(int c)
 	fn = bound((char)c);
 	if (fn) {
 		fn(arg);
-	} else if (in_table((char)c)) {
+	} else if ((e = entry_of((char)c)) != NULL) {
 		/*
 		 * The console's CTL_ERR_OPCODE, and it is the reason this
 		 * file exists rather than a courtesy. Before this, a
@@ -289,7 +285,7 @@ void console_feed(int c)
 		console_write("# ");
 		console_write(k);
 		console_write(": not implemented on this track (");
-		console_write(syntax_of((char)c) ? syntax_of((char)c) : "no args");
+		console_write(e->syntax ? e->syntax : "no args");
 		console_write(")\n");
 		console_flush();
 	}
