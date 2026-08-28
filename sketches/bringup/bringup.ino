@@ -523,8 +523,22 @@ static void cmd_stream_uart(uint32_t trigger_hz)
 static void cmd_stream_stats(void)
 {
 	char buf[192];
+	int  n;
 
-	stream_dma_report(buf, sizeof(buf));
+	n = stream_dma_report(buf, sizeof(buf));
+	/*
+	 * The two registers the console can set and nothing else can
+	 * confirm, read from the peripheral rather than echoed. `A` and
+	 * `I` are applied at the next acq_init()/DACC reset, so what was
+	 * asked for and what the converter holds are different questions
+	 * and only one of them is evidence.
+	 *
+	 * Sharing this line rather than adding one: the cost of a console
+	 * command is the bytes it puts on the wire, and `?` is polled.
+	 */
+	if (n > 0 && n < (int)sizeof(buf))
+		snprintf(buf + n, sizeof(buf) - n, " adcmr=%08lx acr=%08lx",
+		         (unsigned long)acq_mr(), (unsigned long)gen_acr());
 	Serial.println(buf);
 	stream_report(buf, sizeof(buf));
 	Serial.println(buf);
@@ -1063,6 +1077,9 @@ static inline void devept_restore(void)
 }
 
 
+/* The M preset's ADC-start-to-DAC-start gap. See ha_mimic_gap(). */
+static uint32_t mimic_start_delay_us;
+
 /* ------------------------------------------------------------------ */
 /* The command layer                                                   */
 /*                                                                     */
@@ -1580,20 +1597,110 @@ static void ha_diag(const uint32_t *a)
  */
 static void ha_mimic(const uint32_t *a)
 {
-	(void)a;
-	
-		play_stop();
-		gen_init();
-		gen_prepare_tioa1(200000u);
-		if (!stream_start_capture_only(200000u, 2)) {
-			Serial.println("# mimic: capture refused");
-			Serial.flush();
-			return;
-		}
-		gen_go_tioa1();
-		Serial.println("# mimic loop: gen sine on TIOA1 at 200000 sps, capture 200000 Hz");
-		Serial.println("# press D and read cdr7: swing = USB at fault, frozen = trigger path");
+	/*
+	 * "=<dac>[,<adc>[,<nch>]]M", defaulting to 200000 for both rates
+	 * and two channels - which is what this preset always did, so no
+	 * recorded run moves.
+	 *
+	 * Settable for the reason Track B records: this is the only path
+	 * in the firmware where the DAC update clock and the ADC trigger
+	 * are two independent timers, so the sampling phase relative to
+	 * the DAC's table wrap is a free variable fixed for a run by the
+	 * instruction timing between the two starts. Giving the clocks
+	 * slightly different rates walks that phase through a full period
+	 * inside one capture.
+	 */
+	uint32_t dac_hz = a[0] ? a[0] : 200000u;
+	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
+	unsigned nch    = a[2] ? a[2] : 2u;
+	char buf[192];
+
+	/*
+	 * Everything the console has to say is said before the converters
+	 * start. These lines used to run after gen_go_tioa1(), which lays
+	 * milliseconds of blocked main loop over the first samples of
+	 * every capture this preset takes - invariant 8, on the path the
+	 * suite calls its continuity control.
+	 */
+	snprintf(buf, sizeof(buf),
+	         "# mimic loop: gen sine on TIOA1 at %lu sps, capture %lu Hz x%u ch",
+	         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
+	Serial.println(buf);
+	Serial.println("# press D and read cdr7: swing = USB at fault, frozen = trigger path");
+	Serial.flush();
+
+	play_stop();
+	gen_init();
+	gen_prepare_tioa1(dac_hz);
+	if (!stream_start_capture_only(adc_hz, nch)) {
+		Serial.println("# mimic loop: refused, the ADC would not start");
 		Serial.flush();
+		return;
+	}
+	if (mimic_start_delay_us) {
+		uint32_t t0 = micros();
+		while (micros() - t0 < mimic_start_delay_us)
+			;
+	}
+	gen_go_tioa1();
+}
+
+/*
+ * "=<us>K". The gap between the ADC start and the DAC start, in
+ * microseconds, held across runs and applied by the M preset above.
+ *
+ * The two states issue #5 draws are selected by the binary and not by
+ * anything the host does. M's comment names the only free variable a
+ * layout change could plausibly move, and this makes that variable
+ * settable, so the hypothesis can be tested inside one image instead of
+ * by flashing two. Debug-only, on a preset that is already debug-only,
+ * and it busy-waits.
+ */
+static void ha_mimic_gap(const uint32_t *a)
+{
+	char buf[96];
+
+	mimic_start_delay_us = a[0];
+	snprintf(buf, sizeof(buf), "# mimic start delay: %lu us (next M)",
+	         (unsigned long)mimic_start_delay_us);
+	Serial.println(buf);
+	Serial.flush();
+}
+
+/*
+ * "=<ch>,<core>I": DACC_ACR's IBCTLCHx and IBCTLDACCORE, applied at the
+ * next DACC init. "=2,1I" is the Arduino core's value and the
+ * datasheet's characterisation condition; 0,0 is reset, which is what
+ * this project has always run. See gen.h.
+ */
+static void ha_ibctl(const uint32_t *a)
+{
+	char buf[96];
+
+	gen_set_ibctl(a[0], a[1]);
+	snprintf(buf, sizeof(buf),
+	         "# dacc ibctl: ch=%u core=%u (next DACC init)",
+	         (unsigned)gen_ibctl_ch, (unsigned)gen_ibctl_core);
+	Serial.println(buf);
+	Serial.flush();
+}
+
+/*
+ * "=<tracktim>,<settling>A". Applied at the next acq_init(), so set it
+ * before starting a stream. One image sweeps the whole range, which is
+ * the only way to compare the constant rather than comparing two
+ * binaries - see acq.cpp.
+ */
+static void ha_adc_timing(const uint32_t *a)
+{
+	char buf[96];
+
+	acq_set_timing(a[0], a[1]);
+	snprintf(buf, sizeof(buf),
+	         "# adc timing: tracktim=%u settling=%u (next stream)",
+	         (unsigned)acq_tracktim, (unsigned)acq_settling);
+	Serial.println(buf);
+	Serial.flush();
 }
 
 /*
@@ -1691,10 +1798,12 @@ const console_binding_t console_bindings[] = {
 	{ 'V', ha_ring },       { 'D', ha_diag },       { 'O', ha_occ },
 
 	{ 'W', ha_wave },       { 'J', ha_sync },       { 'N', ha_layout },
+	{ 'I', ha_ibctl },
 
-	{ 'C', ha_pair },
+	{ 'C', ha_pair },       { 'A', ha_adc_timing },
 
-	{ 'Q', ha_profile },    { 'Z', ha_detach },     { 'z', ha_reset },
+	{ 'Q', ha_profile },    { 'K', ha_mimic_gap },  { 'Z', ha_detach },
+	{ 'z', ha_reset },
 
 	{ 0, 0 },
 };

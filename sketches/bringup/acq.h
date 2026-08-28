@@ -97,6 +97,16 @@ extern acq_slot_t acq_slot[ACQ_NBUF];
 
 void     acq_init(void);
 /*
+ * ADC track and settling time, applied at the next acq_init() - so set
+ * them before starting a stream. See acq.cpp for why they are runtime
+ * values rather than build constants.
+ */
+extern uint8_t acq_tracktim;
+extern uint8_t acq_settling;
+void     acq_set_timing(uint32_t tracktim, uint32_t settling);
+uint32_t acq_mr(void);             /* ADC_MR as the hardware holds it */
+
+/*
  * A0 is AD7, A1 is AD6, A2 is AD5 - the Arduino A0..A7 labels map to
  * AD7..AD0, descending, so nothing here may assume A0 == AD0. The
  * sequencer converts enabled channels in ascending channel-index order,

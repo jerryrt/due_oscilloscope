@@ -46,6 +46,38 @@ static int32_t shape_code(unsigned t, unsigned period)
 	}
 }
 
+/*
+ * DACC_ACR, applied after every DACC_CR_SWRST. See gen.h for what the
+ * datasheet says about the field and why running at its reset value
+ * puts the part outside its own published conditions.
+ */
+uint8_t gen_ibctl_ch;      /* IBCTLCH0 and CH1, 0-3 */
+uint8_t gen_ibctl_core;    /* IBCTLDACCORE, 0-3     */
+
+void gen_set_ibctl(uint32_t ch, uint32_t core)
+{
+	gen_ibctl_ch   = (uint8_t)(ch > 3u ? 3u : ch);
+	gen_ibctl_core = (uint8_t)(core > 3u ? 3u : core);
+}
+
+void gen_apply_acr(void)
+{
+	DACC->DACC_ACR = DACC_ACR_IBCTLCH0(gen_ibctl_ch)
+	               | DACC_ACR_IBCTLCH1(gen_ibctl_ch)
+	               | DACC_ACR_IBCTLDACCORE(gen_ibctl_core);
+}
+
+/*
+ * Read back rather than echo a stored copy. A remembered value is a
+ * second source of truth that goes stale the moment a reset path
+ * rewrites the register, which is exactly the failure this knob exists
+ * to make visible.
+ */
+uint32_t gen_acr(void)
+{
+	return DACC->DACC_ACR;
+}
+
 static void build_table(void);
 
 uint16_t gen_amp = GEN_AMP_FULL;
@@ -231,6 +263,7 @@ void gen_init(void)
 
 	PMC->PMC_PCER1 = (1u << (ID_DACC - 32));
 	DACC->DACC_CR = DACC_CR_SWRST;
+	gen_apply_acr();
 
 	DACC->DACC_MR = DACC_MR_TAG
 	              | DACC_MR_REFRESH(1)
