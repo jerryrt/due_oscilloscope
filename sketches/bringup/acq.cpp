@@ -185,6 +185,31 @@ bool acq_read_temp(ctl_temp_t *out, uint16_t samples)
 	ADC->ADC_CHDR = 0xffffu;
 	ADC->ADC_CHER = ADC_CHER_CH15;
 
+	/*
+	 * Throw the first conversion away.
+	 *
+	 * Found in this command's own output: a reading whose mean was
+	 * 992 came back with `min 175`, an 800-code outlier in a
+	 * distribution otherwise spanning 10. The channel has just been
+	 * switched and the sequencer may have been mid-conversion on
+	 * another one when this was called, so the first CDR[15] is not
+	 * necessarily this channel's settled result.
+	 *
+	 * It matters because min/max is reported as the spread. One stray
+	 * sample there reads as a sensor that is noisy by hundreds of
+	 * codes, on a measurement whose entire purpose is a fraction of a
+	 * code - and it would have been read as the sensor rather than as
+	 * this function.
+	 */
+	{
+		uint32_t t0 = micros();
+
+		ADC->ADC_CR = ADC_CR_START;
+		while (!(ADC->ADC_ISR & ADC_ISR_EOC15) && micros() - t0 < 200u)
+			;
+		(void)ADC->ADC_CDR[15];
+	}
+
 	while (got < samples) {
 		uint32_t t0 = micros();
 		uint16_t v;
