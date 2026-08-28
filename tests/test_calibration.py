@@ -82,7 +82,18 @@ def test_nothing_outside_the_suite_opens_the_test_fixture():
     number in it is: `baseline.json`'s stated job is regression
     tolerances, and the day someone treats it as the suite's working
     state, the front end's Y axis moves with it.
+
+    `tools/report.py` is exempt, and the exemption is the rule rather
+    than a hole in it. It is not an application: it renders the
+    *tolerances themselves* into `docs/status.md`, so the fixture is its
+    subject and not a convenient source of constants. Sending it to
+    `calibration.json` instead would put regression tolerances in the
+    file that `9cc92d1` created to hold measured constants of one board,
+    which is the distinction this test exists to protect.
+
+    Anything else added here needs the same argument made out loud.
     """
+    allowed = {os.path.join("tools", "report.py")}
     offenders = []
     for sub in ("host", "gui", "tools"):
         root = os.path.join(REPO, sub)
@@ -95,8 +106,11 @@ def test_nothing_outside_the_suite_opens_the_test_fixture():
                     continue
                 p = os.path.join(dirpath, n)
                 with open(p, encoding="utf-8", errors="replace") as f:
-                    if '"tests", "baseline.json"' in f.read():
-                        offenders.append(os.path.relpath(p, REPO))
+                    if '"tests", "baseline.json"' not in f.read():
+                        continue
+                    rel = os.path.relpath(p, REPO)
+                    if rel not in allowed:
+                        offenders.append(rel)
     assert not offenders, (
         f"{offenders} build a path into the test fixture. Measured "
         f"constants live in calibration.json and are read through "
