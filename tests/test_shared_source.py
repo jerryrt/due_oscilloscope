@@ -92,3 +92,78 @@ def test_track_id_is_the_only_per_track_duplicate():
         "two implementations of the same hardware, add them to the list "
         "in this test. If they are two copies of one contract, they "
         "belong in lib/due_shared/src - see docs/shared-source.md.")
+
+
+# ---------------------------------------------------------------------------
+# Issue #14: the stream seam, pinned before anything moves.
+#
+# stream.c and stream.cpp are one file written twice, and the plan for
+# sharing them starts by recording exactly what each copy reaches
+# outside itself. tools/stream_seam.py extracts that list mechanically;
+# tools/stream_seam.list pins it. The eventual stream_port.h must
+# declare exactly the extracted seam, so drift between the pin and the
+# source has to fail a run - in either direction.
+
+def _stream_seam():
+    import sys
+    tools = os.path.join(REPO, "tools")
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    import stream_seam
+    return stream_seam
+
+
+def test_stream_seam_list_is_pinned_and_current():
+    """The committed seam list equals a fresh extraction, exactly.
+
+    A new call into acq/gen/the transport, a rename, or a dropped
+    dependency all change the extraction, and each must fail here until
+    `tools/stream_seam.py --write` re-pins it - the same run that
+    introduced the change, not a later reader, notices.
+    """
+    ss = _stream_seam()
+    drift = ss.check()
+    assert not drift, "\n".join(drift)
+
+    # And the seam itself is what issue #14 recorded: nonempty on both
+    # tracks, acq/gen on both, each track's own transport names.
+    a, b = ss.seam(ss.SOURCES["a"]), ss.seam(ss.SOURCES["b"])
+    for names in (a, b):
+        assert "acq_start" in names and "gen_start" in names
+    assert "usb_dma_in_start" in a and "usb_dma_in_start" in b
+    assert "usbdma_keepalive" in a      # Track A repairs the core's reset
+    assert "usb_cdc_write" in b         # Track B's console shim
+
+
+def test_a_wrong_seam_list_fails_the_check(tmp_path):
+    """The check can fail, proven both ways - the deliverable of #14
+    step 2.
+
+    A generated-artifact check that silently stops extracting passes
+    for ever and reports agreement where nothing was compared (the
+    tools/report.py lesson, recorded on the issue). So: a pinned list
+    with a name nothing calls must fail, a pinned list missing a name
+    the source calls must fail, and an empty list must fail rather than
+    vacuously pass.
+    """
+    ss = _stream_seam()
+    good = [l for l in ss.render().splitlines() if not l.startswith("#")]
+
+    added = tmp_path / "added.list"
+    added.write_text("\n".join(good + ["b drivers/acq.h acq_nothing_calls_this"]) + "\n")
+    drift = ss.check(str(added))
+    assert any("acq_nothing_calls_this" in d and "pinned but not extracted" in d
+               for d in drift), drift
+
+    removed = tmp_path / "removed.list"
+    removed.write_text("\n".join(l for l in good if "acq_start" not in l) + "\n")
+    drift = ss.check(str(removed))
+    assert any("acq_start" in d and "extracted but not pinned" in d
+               for d in drift), drift
+
+    empty = tmp_path / "empty.list"
+    empty.write_text("# nothing\n")
+    assert ss.check(str(empty)), "an empty pinned list passed the check"
+
+    missing = tmp_path / "does-not-exist.list"
+    assert ss.check(str(missing)), "a missing pinned list passed the check"
