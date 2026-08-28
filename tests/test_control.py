@@ -478,3 +478,73 @@ def test_measurement_does_not_come_from_the_console_on_this_track(board, track):
     assert occ.via == "control", (
         "occupancy() fell back to the console on a board that has a "
         "control channel - see above")
+
+
+# The capability list is only worth having if it is true, and "true" is
+# checkable: ask the device what it implements, then ask it each opcode
+# and see whether the answers agree. Issue #7.
+#
+# The list is built on the device from the same word the dispatch refuses
+# on, so this cannot fail by drift between two firmware tables - it can
+# only fail if that word disagrees with what the handler actually does,
+# which is the one thing no amount of care inside the firmware prevents.
+CAPABILITY_PROBES = {
+    control.OP_STREAM_STATS: "stream stats",
+    control.OP_BENCH: "bench counters",
+    control.OP_OCCUPANCY: "occupancy histogram",
+    control.OP_RATE_TRACE: "rate trace",
+    control.OP_LOAD: "load monitor",
+    control.OP_TEMP: "temperature sensor",
+    control.OP_GEN: "generator",
+}
+
+
+def test_the_capability_list_matches_what_the_device_actually_does(link, track):
+    """Every opcode claimed answers; every one not claimed refuses.
+
+    This is the whole value of CTL_OP_CAPABILITY. A host greys out a
+    feature on the strength of this list, so a list that over-claims
+    produces a feature that fails when used, and one that under-claims
+    hides a feature that works. Both are worse than the CTL_ERR_OPCODE
+    discovery it replaces, because that at least could not lie.
+
+    Note what this does *not* assert: that a claimed opcode returns
+    useful data. `load` reports its own `available` and `rate_trace`
+    can be compiled out - "does this build dispatch it" and "is it
+    working right now" are different questions and both stay
+    answerable.
+    """
+    claimed = link.capabilities()
+
+    assert control.OP_PING in claimed and control.OP_IDENTITY in claimed, (
+        f"track {track.upper()} does not claim PING or IDENTITY, which "
+        f"every build must answer - a device that could not answer them "
+        f"could not have been asked this question")
+    assert control.OP_CAPABILITY in claimed, (
+        "the capability reply does not list itself, so a host cannot "
+        "tell 'this build has no capability opcode' from 'it has one "
+        "and forgot to mention it'")
+
+    wrong = []
+    for op, what in sorted(CAPABILITY_PROBES.items()):
+        try:
+            link.call(op)
+            answered = True
+        except control.ControlError as e:
+            if e.code != control.ERR_OPCODE:
+                # Refused for some other reason - busy, bad length -
+                # which means it *is* implemented. ERR_OPCODE is the
+                # only code that means "not here".
+                answered = True
+            else:
+                answered = False
+        if answered != (op in claimed):
+            wrong.append(
+                f"{what} (0x{op:04x}): claimed={op in claimed} "
+                f"actual={'answers' if answered else 'CTL_ERR_OPCODE'}")
+
+    assert not wrong, (
+        f"track {track.upper()}'s capability list disagrees with its own "
+        f"dispatch on {len(wrong)} opcode(s): {'; '.join(wrong)}. The list "
+        f"is built from the word the dispatch refuses on, so this means "
+        f"ctl_port_capabilities() and the handler disagree.")

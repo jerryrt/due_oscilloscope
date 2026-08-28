@@ -226,6 +226,23 @@ void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
 	gen_set_sync(sync);
 }
 
+/*
+ * Which optional opcodes this build implements. See ctl_port.h.
+ *
+ * No stream stats and no bench: ctl_stream_stats_t and ctl_bench_t
+ * carry Track B's own USB stack counters - usb_devisr, usb_ep0isr,
+ * usb_devimr - and this track enumerates through the Arduino core and
+ * has no equivalent. Not debt; a different stack has different
+ * counters.
+ *
+ * No rate trace: ctl_port_rate_page() above refuses unconditionally,
+ * and this word must agree with it.
+ */
+uint32_t ctl_port_capabilities(void)
+{
+	return CTL_CAP_OCCUPANCY | CTL_CAP_LOAD | CTL_CAP_TEMP | CTL_CAP_GEN;
+}
+
 bool ctl_port_stream_stats(ctl_stream_stats_t *out)
 {
 	(void)out;

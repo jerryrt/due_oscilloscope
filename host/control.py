@@ -35,6 +35,8 @@ FLAG_ERROR = 1 << 1
 
 OP_PING = 0x0001
 OP_IDENTITY = 0x0002
+OP_CAPABILITY = 0x0003
+OP_GEN = 0x0010
 OP_COUNTERS = 0x0020
 OP_OCCUPANCY = 0x0021
 OP_RATE_TRACE = 0x0022
@@ -522,6 +524,43 @@ class Control:
             "adc_acr": adc_acr,
             "tson": bool(adc_acr & (1 << 4)),
         }
+
+    def capabilities(self):
+        """The opcodes this build dispatches, as a set of numbers.
+
+        Issue #7. The device answers what it implements rather than a
+        host discovering it by collecting CTL_ERR_OPCODE one call at a
+        time - and the device builds the list from the same word its
+        dispatch refuses on, so the list and the refusal cannot drift
+        apart.
+
+        A list of opcodes rather than a bitmap on purpose: a bitmap is
+        silent about every opcode added after the host reading it was
+        written, and an unknown bit reads as "not implemented" - the
+        same defect as a body of zeroes, which is what this opcode
+        exists to remove.
+
+        It answers "does this build dispatch it", which is not "is it
+        working right now". CTL_OP_LOAD still reports its own
+        `available`, and a part without CYCCNT says so there.
+        """
+        frame = self.call(OP_CAPABILITY)
+        if len(frame.payload) < 2:
+            raise ProtocolError("capability reply is %d bytes, need at "
+                                "least 2" % len(frame.payload))
+        (n,) = struct.unpack_from("<H", frame.payload, 0)
+        want = 2 + 2 * n
+        # Trailing bytes are tolerated, not rejected. docs/control-protocol.md
+        # reserves 0x0003 for a wider capability report - the rate table and
+        # the channel map are later slices of the same opcode - and a host
+        # that refused a body longer than it understood would break on the
+        # firmware that adds them. Short is still an error: that is a body
+        # that cannot mean what it says.
+        if len(frame.payload) < want:
+            raise ProtocolError(
+                "capability says %d opcodes but the body is only %d bytes, "
+                "need %d" % (n, len(frame.payload), want))
+        return set(struct.unpack_from("<%dH" % n, frame.payload, 2))
 
     def identity(self):
         frame = self.call(OP_IDENTITY)

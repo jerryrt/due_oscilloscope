@@ -93,6 +93,59 @@
 #define CTL_OP_STREAM_STATS 0x0023u   /* what `?` prints */
 #define CTL_OP_BENCH      0x0025u   /* what `B`'s bench half prints */
 #define CTL_OP_TEMP       0x0026u   /* the SAM3X's internal temperature sensor */
+#define CTL_OP_CAPABILITY 0x0003u   /* which optional opcodes this build has */
+
+/*
+ * Which optional opcodes a build implements, so a host can grey out what
+ * a track has not got instead of discovering it through CTL_ERR_OPCODE.
+ *
+ * **This cannot be derived from ctl_dispatch().** The switch is
+ * universal - every opcode has a case, on both tracks - and what differs
+ * is that the track's ctl_port_* answers false and the shared code then
+ * returns CTL_ERR_OPCODE. So the switch says "known to the protocol",
+ * never "implemented here", and a list read off it would claim every
+ * track implements everything.
+ *
+ * **Nor can it be probed by calling.** CTL_OP_LOAD has a
+ * report-and-clear variant, so a capability query that ran each handler
+ * to see which succeeded would destroy the measurement it was asking
+ * about. Asking what exists must not change what exists.
+ *
+ * So each track answers one word - ctl_port_capabilities() - and
+ * ctl_dispatch() consults *that same word* before dispatching an
+ * optional opcode. One source, so the reply and the refusal cannot
+ * disagree. A capability list that can drift from the dispatch is worse
+ * than no list, because it is believed.
+ *
+ * One function rather than a predicate per opcode on purpose:
+ * ctl_port.h warns against growing into an abstraction layer, and seven
+ * ctl_port_have_x() would be that.
+ */
+#define CTL_CAP_STREAM_STATS  (1u << 0)
+#define CTL_CAP_BENCH         (1u << 1)
+#define CTL_CAP_OCCUPANCY     (1u << 2)
+#define CTL_CAP_RATE_TRACE    (1u << 3)
+#define CTL_CAP_LOAD          (1u << 4)
+#define CTL_CAP_TEMP          (1u << 5)
+#define CTL_CAP_GEN           (1u << 6)
+
+/*
+ * The reply carries the opcodes themselves, ascending - not the bitmask.
+ *
+ * A bitmask on the wire is silent about every opcode added after the
+ * host that reads it was written: an unknown bit reads as "not
+ * implemented", which is the same defect as a body of zeroes one level
+ * up, and this whole issue is about a device that cannot say "I do not
+ * know". A length-prefixed list can only ever say what it does say.
+ *
+ * The mask is the internal representation; this is what it means.
+ */
+#define CTL_CAP_MAX_OPCODES  16u
+
+typedef struct __attribute__((packed)) {
+	uint16_t n_opcodes;
+	uint16_t opcodes[CTL_CAP_MAX_OPCODES];
+} ctl_capability_t;
 
 /*
  * Error codes. The payload of an error response is one of these

@@ -121,6 +121,18 @@ static void ctl_error(uint16_t req_id, uint16_t opcode, uint16_t code,
 /* Dispatch                                                            */
 /* ------------------------------------------------------------------ */
 
+/*
+ * One source for "does this build implement that opcode".
+ *
+ * The dispatch refuses on this word and CTL_OP_CAPABILITY reports it, so
+ * the refusal and the list are the same fact read twice rather than two
+ * accounts that can drift. Issue #7.
+ */
+static bool ctl_have(uint32_t cap)
+{
+	return (ctl_port_capabilities() & cap) != 0u;
+}
+
 static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
                          uint16_t len)
 {
@@ -137,6 +149,64 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		p.dev_ms = ctl_port_millis();
 		p.seq    = ++ping_seq;
 		ctl_respond(h->req_id, h->opcode, 0, &p, sizeof(p));
+		return;
+	}
+	case CTL_OP_CAPABILITY: {
+		/*
+		 * The opcodes this build dispatches, ascending, built from
+		 * the same word the optional cases refuse on - so the list
+		 * and the refusal cannot disagree. A capability list that
+		 * can drift from the dispatch is worse than no list,
+		 * because it is believed.
+		 *
+		 * `cap` of 0 marks an opcode every build must answer. PING,
+		 * IDENTITY and CAPABILITY are mandatory because a device
+		 * that could not answer them could not be asked this
+		 * question; COUNTERS is mandatory because the shared
+		 * dispatch has no CTL_ERR_OPCODE path for it.
+		 */
+		static const struct {
+			uint16_t op;
+			uint32_t cap;
+		} known[] = {
+			{ CTL_OP_PING,         0 },
+			{ CTL_OP_IDENTITY,     0 },
+			{ CTL_OP_CAPABILITY,   0 },
+			{ CTL_OP_GEN,          CTL_CAP_GEN },
+			{ CTL_OP_COUNTERS,     0 },
+			{ CTL_OP_OCCUPANCY,    CTL_CAP_OCCUPANCY },
+			{ CTL_OP_RATE_TRACE,   CTL_CAP_RATE_TRACE },
+			{ CTL_OP_STREAM_STATS, CTL_CAP_STREAM_STATS },
+			{ CTL_OP_LOAD,         CTL_CAP_LOAD },
+			{ CTL_OP_BENCH,        CTL_CAP_BENCH },
+			{ CTL_OP_TEMP,         CTL_CAP_TEMP },
+		};
+		ctl_capability_t out;
+		uint32_t caps;
+		unsigned k, w = 0;
+
+		if (len != 0) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "capability takes no payload");
+			return;
+		}
+		memset(&out, 0, sizeof(out));
+		caps = ctl_port_capabilities();
+		for (k = 0; k < sizeof(known) / sizeof(known[0])
+			    && w < CTL_CAP_MAX_OPCODES; k++) {
+			if (known[k].cap == 0u || (caps & known[k].cap))
+				out.opcodes[w++] = known[k].op;
+		}
+		out.n_opcodes = (uint16_t)w;
+		/*
+		 * Only the words actually used. A fixed-size body would pad
+		 * with zero, and zero is a valid-looking opcode - the same
+		 * "a body of zeroes is a measurement" trap this opcode
+		 * exists to close.
+		 */
+		ctl_respond(h->req_id, h->opcode, 0, &out,
+		            (uint16_t)(sizeof(out.n_opcodes)
+		                       + w * sizeof(uint16_t)));
 		return;
 	}
 	case CTL_OP_IDENTITY: {
@@ -183,6 +253,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 	case CTL_OP_STREAM_STATS: {
 		ctl_stream_stats_t out;
 
+		if (!ctl_have(CTL_CAP_STREAM_STATS)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no stream stats on this track");
+			return;
+		}
 		if (len != 0) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
 			          "stream stats takes no payload");
@@ -199,6 +274,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 	case CTL_OP_BENCH: {
 		ctl_bench_t out;
 
+		if (!ctl_have(CTL_CAP_BENCH)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no bench counters on this track");
+			return;
+		}
 		if (len != 0) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
 			          "bench takes no payload");
@@ -216,6 +296,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		static uint8_t body[CTL_MAX_PAYLOAD];
 		int n;
 
+		if (!ctl_have(CTL_CAP_OCCUPANCY)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no occupancy histogram on this track");
+			return;
+		}
 		if (len != 0) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
 			          "occupancy takes no payload");
@@ -240,6 +325,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		uint16_t off;
 		int n;
 
+		if (!ctl_have(CTL_CAP_RATE_TRACE)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no rate trace on this track");
+			return;
+		}
 		if (len != 2) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
 			          "rate trace takes a u16 offset");
@@ -259,6 +349,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 	case CTL_OP_LOAD: {
 		load_report_t r;
 
+		if (!ctl_have(CTL_CAP_LOAD)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no load monitor on this track");
+			return;
+		}
 		if (len != 0) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
 			          "load takes no payload");
@@ -292,6 +387,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		uint16_t n = CTL_TEMP_SAMPLES_DEFAULT;
 		int rc;
 
+		if (!ctl_have(CTL_CAP_TEMP)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no temperature sensor on this track");
+			return;
+		}
 		/*
 		 * Zero length takes the default, two bytes ask for a sample
 		 * count. Bounded at both ends by the port: this runs in the
@@ -333,6 +433,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 	case CTL_OP_GEN: {
 		ctl_gen_t g;
 
+		if (!ctl_have(CTL_CAP_GEN)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no generator on this track");
+			return;
+		}
 		/*
 		 * Zero length reads, a full payload writes and reads back.
 		 * Anything else is a length error rather than a partial

@@ -150,6 +150,29 @@ void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
 	gen_set_sync(sync);
 }
 
+/*
+ * Which optional opcodes this build implements. See ctl_port.h.
+ *
+ * The rate trace is conditional rather than listed, because
+ * PLAY_RATE_TRACE_ENABLED is 0 by default - the trace perturbs the path
+ * it measures. Reporting the capability from a build that compiled it
+ * out would hand a host an empty page instead of a refusal, and "zero
+ * entries" is a measurement a host cannot tell from "not counted here".
+ * That is the whole defect this opcode exists to close, so it must not
+ * be reintroduced by the opcode itself.
+ */
+uint32_t ctl_port_capabilities(void)
+{
+	uint32_t caps = CTL_CAP_STREAM_STATS | CTL_CAP_BENCH
+	              | CTL_CAP_OCCUPANCY | CTL_CAP_LOAD
+	              | CTL_CAP_TEMP | CTL_CAP_GEN;
+
+#if PLAY_RATE_TRACE_ENABLED
+	caps |= CTL_CAP_RATE_TRACE;
+#endif
+	return caps;
+}
+
 bool ctl_port_stream_stats(ctl_stream_stats_t *out)
 {
 	stream_stats_t st;

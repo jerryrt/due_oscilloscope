@@ -143,6 +143,23 @@ void ctl_port_counters(ctl_counters_t *out);
  * device says so. The same rule covers the load monitor and the rate
  * trace.
  */
+/*
+ * CTL_OP_CAPABILITY: which optional opcodes this build implements, as a
+ * bitmask of CTL_CAP_*. Four lines on each track and no per-opcode
+ * predicates - see ctl_wire.h for why it is one word rather than seven
+ * functions, and why it cannot be derived or probed.
+ *
+ * ctl_dispatch() consults this *before* dispatching an optional opcode,
+ * so the capability reply and the CTL_ERR_OPCODE refusal are the same
+ * fact read once. Do not add a second account of it.
+ *
+ * It answers "does this build dispatch the opcode", which is not the
+ * same question as "is the thing working right now" - CTL_OP_LOAD's
+ * payload still carries its own `available`, and a part without CYCCNT
+ * says so there. Both stay answerable.
+ */
+uint32_t ctl_port_capabilities(void);
+
 bool ctl_port_stream_stats(ctl_stream_stats_t *out);
 bool ctl_port_bench(ctl_bench_t *out);
 
