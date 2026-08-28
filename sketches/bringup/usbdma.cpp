@@ -344,6 +344,46 @@ bool usbdma_in_start(const void *buf, uint32_t len)
 	return true;
 }
 
+/*
+ * A software unplug of the native port.
+ *
+ * `z` is a processor reset only - RSTC_CR_PROCRST leaves the UOTGHS
+ * running with its pull-up attached, so the host never sees a
+ * disconnect and a wedged close() is not released by it. This is the
+ * one that detaches, and on Track B it released the macOS close() wedge
+ * of objective 0c in 9 of 9 attempts.
+ *
+ * Register-level rather than the core's UDD_Detach()/UDD_Attach(): the
+ * two are the same DETACH bit either way, and invariant 3 wants the two
+ * tracks' register programming written independently so a divergence
+ * points at one of them.
+ *
+ * The core is not told. Nothing in it watches DEVCTRL, and there is no
+ * detach interrupt to notice - so SerialUSB.dtr() keeps reading true
+ * across the gap and only comes back to the truth when the host
+ * re-enumerates. The bus reset that follows the re-attach is an
+ * interrupt the core does handle, and it rebuilds the endpoints there;
+ * usbdma_keepalive() then puts the DMA mode back, which is the same
+ * path any enumeration already takes.
+ *
+ * Busy-waits, deliberately. It runs from the console with the sample
+ * path meaningless anyway - the pipe it would run on is unplugged - and
+ * a detach measured in milliseconds is not worth a state machine.
+ * Debug-only under invariant 7, like the console it is reached from.
+ */
+void usbdma_detach_cycle(uint32_t ms)
+{
+	uint32_t until;
+
+	UOTGHS->UOTGHS_DEVCTRL |= UOTGHS_DEVCTRL_DETACH;
+
+	until = millis() + (ms ? ms : 250u);
+	while ((int32_t)(millis() - until) < 0)
+		;
+
+	UOTGHS->UOTGHS_DEVCTRL &= ~UOTGHS_DEVCTRL_DETACH;
+}
+
 void usbdma_dump(void)
 {
 	char buf[176];

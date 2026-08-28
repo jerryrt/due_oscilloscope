@@ -12,7 +12,9 @@ bool stream_in_in_use(void);    /* anything is writing bulk IN */
 bool stream_out_in_use(void);   /* a bench mode is consuming bulk OUT */
 void stream_service(void);
 void stream_report(char *buf, size_t n);
-void stream_dma_report(char *buf, size_t n);
+/* Returns what snprintf did, so a caller may append to the same line
+ * rather than spend another one - see cmd_stream_stats(). */
+int  stream_dma_report(char *buf, size_t n);
 
 /*
  * Transport benchmarks, decoupled from the converters.

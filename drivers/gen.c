@@ -416,6 +416,46 @@ void gen_go_tioa1(void)
 	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
 }
 
+/*
+ * TC0 channel 1's compare value, as the hardware holds it.
+ *
+ * Read back rather than remembered, like gen_trigger_hz(), acq_mr() and
+ * gen_acr() above: the rate a caller asked for and the rate the timer
+ * was given differ by an integer division, and the sweep this feeds
+ * exists to report exactly that difference.
+ */
+uint32_t gen_configured_rc(void)
+{
+	return TC0->TC_CHANNEL[1].TC_RC;
+}
+
+/*
+ * Independent DAC timebase on TC0 channel 1, config and start together.
+ *
+ * In TAG mode each trigger converts exactly one sample, whichever
+ * channel its tag names, so DAC conversions per second equals the
+ * trigger rate. One ENDTX marks a whole table pass, which makes the
+ * achieved rate directly countable: table length times ENDTX count over
+ * elapsed time. That is the technique that found the ADC ceiling, and it
+ * needs no help from the capture path.
+ *
+ * The refusal is the point of it being a separate entry rather than the
+ * two calls the mimic preset makes: a compare value below 2 is a rate
+ * the timer cannot produce, and the sweep asks for rates that are meant
+ * to be refused.
+ */
+bool gen_start_independent(uint32_t dac_hz)
+{
+	if (dac_hz == 0)
+		return false;
+	if ((SystemCoreClock / 2u) / dac_hz < 2u)
+		return false;
+
+	gen_prepare_tioa1(dac_hz);
+	gen_go_tioa1();
+	return true;
+}
+
 void gen_stop(void)
 {
 	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);

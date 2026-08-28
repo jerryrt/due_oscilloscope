@@ -166,6 +166,9 @@ bool play_start(uint32_t dac_hz)
 
 	PMC->PMC_PCER1 = (1u << (ID_DACC - 32));
 	DACC->DACC_CR = DACC_CR_SWRST;
+	/* Every path that resets the DACC re-applies the output bias, or a
+	 * capture silently undoes what the console was told it set. */
+	gen_apply_acr();
 	DACC->DACC_MR = DACC_MR_TAG
 	              | DACC_MR_REFRESH(1)
 	              | (0x10u << DACC_MR_STARTUP_Pos)

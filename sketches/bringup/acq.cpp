@@ -22,6 +22,31 @@
  */
 acq_slot_t acq_slot[ACQ_NBUF] __attribute__((section(".sram1")));
 
+/*
+ * ADC track and settling time, applied at the next acq_init(). Track
+ * B's acq.c carries the same control under the same command.
+ *
+ * Runtime rather than a #define on purpose. The defect this exists to
+ * test is bimodal per run and its incidence tracks the binary - four
+ * bytes of bss have moved it - so a compile-time sweep compares images
+ * and cannot separate the constant from the layout. One image that
+ * takes the value from the host compares only the constant.
+ *
+ * 0/0 is what this project has always streamed at, and is the default,
+ * so nothing changes unless a host asks for it. docs/hardware.md warns
+ * that the +/-1 code crosstalk baseline was taken at the maximum of
+ * both and "does not retire the crosstalk risk" because "crosstalk
+ * bites when tracking time is short".
+ */
+uint8_t acq_tracktim = 0;   /* 0-15 */
+uint8_t acq_settling = 0;   /* 0-3  */
+
+void acq_set_timing(uint32_t tracktim, uint32_t settling)
+{
+	acq_tracktim = (uint8_t)(tracktim > 15u ? 15u : tracktim);
+	acq_settling = (uint8_t)(settling > 3u ? 3u : settling);
+}
+
 volatile uint32_t acq_buffers_done;
 volatile uint32_t acq_rxbuff_overruns;
 volatile uint32_t acq_govre;
@@ -39,8 +64,33 @@ static uint16_t configured_mask;
  * i.e. A1 before A0. The channel tag in LCDR[15:12] is what the host
  * demultiplexes on, so label order never has to be assumed.
  */
-#define CH_A0 7u
-#define CH_A1 6u
+
+/*
+ * Which channel joins A0 in a two-channel capture: A1 or A2. Track B's
+ * acq.c carries the same control under the same command and the same
+ * default.
+ *
+ * The impedance sweep compared A1 against A2 inside one three-channel
+ * frame, where ascending index converts A2 first and A1 second - so
+ * source and conversion slot moved together and the sweep could not
+ * separate them. ADC_MR.USEQ was the obvious control and does not work
+ * on this part: SEQR1 reads back exactly as written and the converter
+ * still returns tag 0 and floating-pin values.
+ *
+ * This is the control that does work, and it needs no sequencer. A0+A1
+ * and A0+A2 both put the channel under test in slot 0 with the sine in
+ * slot 1, so the two configurations differ in the source and in nothing
+ * else. Interleave them and the state draw cancels too.
+ *
+ * Two channels only, which is all this track's acq_start() accepts and
+ * all the arm needs. The three-channel path is a separate parity gap.
+ */
+uint8_t acq_pair_second = ACQ_CH_A1;
+
+void acq_set_pair(uint32_t a_number)
+{
+	acq_pair_second = (a_number == 2u) ? (uint8_t)ACQ_CH_A2 : (uint8_t)ACQ_CH_A1;
+}
 
 static void tc_init(uint32_t rc)
 {
@@ -70,25 +120,52 @@ uint16_t acq_channel_mask(void)
 	return configured_mask;
 }
 
+/*
+ * ADC_MR as the hardware holds it, not as anyone remembers setting it.
+ *
+ * The same discipline Track B records: acq_set_timing() and acq_init()
+ * are separated by a whole capture, ADC_MR is written by more than one
+ * path, and a reading that comes back through a printf of a variable
+ * rather than of the peripheral proves nothing about the converter.
+ * TRACKTIM is bits 27:24 and SETTLING 21:20; the host decodes them,
+ * because decoding on the device cost 3.8 ms of blocked main loop when
+ * Track B measured it and the raw word costs 1.3.
+ */
+uint32_t acq_mr(void)
+{
+	return ADC->ADC_MR;
+}
+
 void acq_init(void)
 {
 	PMC->PMC_PCER1 = (1u << (ID_ADC - 32));
 
 	ADC->ADC_CR = ADC_CR_SWRST;
 
-	/* ADCClock = MCK / ((PRESCAL+1) * 2) = 84/4 = 21 MHz, under the
-	 * ABOVE the 20 MHz datasheet maximum (Table 46-28); see
-	 * docs/hardware.md. Minimal tracking: this is the fast path, and the
-	 * crosstalk cost of that is a thing to be measured, not avoided. */
+	/*
+	 * ADCClock = MCK / ((PRESCAL+1) * 2) = 78/4 = 19.5 MHz, *under* the
+	 * 20 MHz datasheet maximum (Table 46-28); see docs/hardware.md.
+	 *
+	 * This comment used to read "84/4 = 21 MHz, under the ABOVE the
+	 * 20 MHz maximum", which is the MCK 84 arithmetic and a sentence
+	 * with both answers in it. MCK is 78 here precisely so this
+	 * division lands inside the limit - CLAUDE.md's first correction -
+	 * and a comment saying the clock is out of spec on the register
+	 * that sets it is the one place that misreading would be believed.
+	 *
+	 * Tracking is minimal because this is the fast path, and the
+	 * crosstalk cost of that is a thing to be measured, not avoided -
+	 * which is what acq_set_timing() is for.
+	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)
-	            | ADC_MR_TRACKTIM(0)
-	            | (0u << ADC_MR_SETTLING_Pos)
+	            | ADC_MR_TRACKTIM(acq_tracktim)
+	            | ((uint32_t)acq_settling << ADC_MR_SETTLING_Pos)
 	            | (1u << ADC_MR_TRANSFER_Pos);
 
 	ADC->ADC_EMR = ADC_EMR_TAG;      /* channel index in LCDR[15:12] */
 	ADC->ADC_CHDR = 0xffffu;
-	configured_mask = (uint16_t)((1u << CH_A0) | (1u << CH_A1));
+	configured_mask = (uint16_t)((1u << ACQ_CH_A0) | (1u << ACQ_CH_A1));
 	ADC->ADC_CHER = configured_mask;
 }
 
@@ -124,8 +201,8 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	 * so the host demultiplexes without being told which mode this is.
 	 */
 	configured_mask = (n_channels == 1)
-	                ? (uint16_t)(1u << CH_A0)
-	                : (uint16_t)((1u << CH_A0) | (1u << CH_A1));
+	                ? (uint16_t)(1u << ACQ_CH_A0)
+	                : (uint16_t)((1u << ACQ_CH_A0) | (1u << acq_pair_second));
 	ADC->ADC_CHDR = 0xffffu;
 	ADC->ADC_CHER = configured_mask;
 

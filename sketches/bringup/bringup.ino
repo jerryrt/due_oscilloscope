@@ -44,6 +44,8 @@
 #include "playstat.h"
 #include "ctlusb.h"
 #include "ctl.h"                    /* the shared parser */
+#include "console.h"                /* the shared command surface */
+#include "load.h"                   /* the shared main-loop monitor */
 #include "ctl_port.h"               /* ctl_port_gen_get: the console reads
                                      * the generator through the same hook
                                      * the control channel does, so the two
@@ -119,6 +121,18 @@ static void identity_line(void)
 	Serial.println(buf);
 }
 
+/*
+ * This track's own facts, then the shared command list.
+ *
+ * The list used to be twenty-eight Serial.println lines here and
+ * twenty-eight more in Track B's main.c, which is how the two command
+ * sets came to differ by twelve without anyone deciding they should -
+ * issue #13. console_help() prints one table, so a command that exists
+ * on one track and not the other now says so on both.
+ *
+ * The numbers stay here, where they can be computed. A shared help line
+ * carrying "453488" would be a figure written down a second time.
+ */
 static void banner(void)
 {
 	Serial.println("#");
@@ -137,23 +151,11 @@ static void banner(void)
 	Serial.print("# ADC clock = ");
 	Serial.print(SystemCoreClock / 4u);
 	Serial.println(" Hz (PRESCAL=1); datasheet max 20000000");
-	Serial.println("# commands: h=help p=printf-cost g=gpio-cost f=fault");
-	Serial.println("#           r=read a0/a1  s=dac sweep  x=crosstalk");
-	Serial.println("#           t=trigger-rate sweep (TC+ADC+PDC)");
-	Serial.print("#           1..5=stream 50k/100k/200k/400k Hz, 5=max in-spec (");
+	Serial.print("# max in-spec trigger = ");
 	Serial.print((SystemCoreClock / 2u) / ACQ_MIN_RC);
-	Serial.println(")");
-	Serial.println("#           0=stop everything   ?=stream stats");
-	Serial.println("#           w=stream over UART   u=usb registers");
-	Serial.println("#           F=flood IN  R=sink OUT  X=duplex  B=bench stats");
-	Serial.println("#           G/T/Y = the same three via endpoint DMA");
-	Serial.println("#           L=full loop HOST->DAC->ADC->HOST");
-	Serial.println("#           P=play only  V=ring dump  D=loop diagnostic");
-	Serial.println("#           O=playback ring occupancy histogram");
-	Serial.println("#           =<shape>,<pts>,<amp>W = gen waveform: 0 sine 1 square");
-	Serial.println("#                             2 ramp 3 triangle 4 dc; pts 2..256");
-	Serial.println("#                             amp 1..256 (256ths of full scale)");
-	Serial.println("#           =<n>,<amp>J = sync: 0 off 1 per-cycle 2 per-wrap 3 solo");
+	Serial.print(" Hz (RC ");
+	Serial.print(ACQ_MIN_RC);
+	Serial.println("); presets 1..4 are 50k/100k/200k/400k");
 	{
 		/* CFGOK per endpoint: the controller's own answer to "did
 		 * this allocation take". Guessing at DPRAM arithmetic is how
@@ -163,18 +165,32 @@ static void banner(void)
 			ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
 			         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
 		ok[7] = 0;
-		Serial.print("#           ep cfgok[0..6]: ");
+		Serial.print("# ep cfgok[0..6]: ");
 		Serial.println(ok);
 	}
-	Serial.print("#           control channel: ");
+	Serial.print("# control channel: ");
 	Serial.println(ctlusb_ok() ? "registered (iface 2/3, EP4-6)"
-	                          : "NOT registered - one CDC function only");
-	Serial.println("#           =<dac>[,<adc>[,<nch>]] before L/P/t: rates, channels");
-	Serial.println("#           M=mimic loop without USB (gen sine on TIOA1 + capture)");
-	Serial.println("#           d=DAC max update-rate sweep");
-	Serial.println("#           j/k=DAC 1.5M/3.0M indep + capture 200k");
-	Serial.println("#           z=software reset (tests GPBR retention)");
-	Serial.println("#           v=identity line");
+	                           : "NOT registered - one CDC function only");
+	Serial.println("# h for the command list");
+	Serial.println("#");
+}
+
+/*
+ * `h`: the facts, then the list.
+ *
+ * They are split because boot prints the banner and `h` is typed. The
+ * list is 47 lines now that it names what this track has *not* got, and
+ * every one of them is UART time the main loop is not draining bulk OUT
+ * for - invariant 8, and the banner was already the most expensive
+ * thing on the console at 89 ms. Boot pays for the identity it has to
+ * print and nothing else; the list costs what it costs, to whoever asks
+ * for it.
+ */
+static void cmd_help(void)
+{
+	banner();
+	Serial.println("# commands:");
+	console_help();
 	Serial.println("#");
 }
 
@@ -508,8 +524,22 @@ static void cmd_stream_uart(uint32_t trigger_hz)
 static void cmd_stream_stats(void)
 {
 	char buf[192];
+	int  n;
 
-	stream_dma_report(buf, sizeof(buf));
+	n = stream_dma_report(buf, sizeof(buf));
+	/*
+	 * The two registers the console can set and nothing else can
+	 * confirm, read from the peripheral rather than echoed. `A` and
+	 * `I` are applied at the next acq_init()/DACC reset, so what was
+	 * asked for and what the converter holds are different questions
+	 * and only one of them is evidence.
+	 *
+	 * Sharing this line rather than adding one: the cost of a console
+	 * command is the bytes it puts on the wire, and `?` is polled.
+	 */
+	if (n > 0 && n < (int)sizeof(buf))
+		snprintf(buf + n, sizeof(buf) - n, " adcmr=%08lx acr=%08lx",
+		         (unsigned long)acq_mr(), (unsigned long)gen_acr());
 	Serial.println(buf);
 	stream_report(buf, sizeof(buf));
 	Serial.println(buf);
@@ -937,6 +967,14 @@ void setup()
 	SerialUSB.begin(0);          /* native port; CDC ignores baud */
 	while (!Serial && millis() < 2000) { }
 	boot_log();
+	/*
+	 * Before the banner, so load_prev_cycles starts from a defined
+	 * point rather than from whatever CYCCNT held at reset - the first
+	 * delta would otherwise land in an arbitrary bucket and stay in
+	 * the histogram for the whole run.
+	 */
+	load_init();
+
 	banner();
 	heartbeat_at = millis();
 }
@@ -1048,18 +1086,790 @@ static inline void devept_restore(void)
 }
 
 
+/* The M preset's ADC-start-to-DAC-start gap. See ha_mimic_gap(). */
+static uint32_t mimic_start_delay_us;
+
+/* ------------------------------------------------------------------ */
+/* The command layer                                                   */
+/*                                                                     */
+/* The *surface* - which letters are commands, what arguments they     */
+/* take, what `h` prints and what happens to a letter this track has   */
+/* not got - is lib/due_shared/src/console.c, compiled by both tracks. */
+/* Everything below is this track's handlers, which is where the       */
+/* registers are. See console.h for why the line falls there, and      */
+/* issue #13 for what it cost to have the line nowhere at all.         */
+/* ------------------------------------------------------------------ */
+
+static void ha_help(const uint32_t *a)
+{
+	(void)a;
+	cmd_help();
+}
+
+static void ha_ident(const uint32_t *a)
+{
+	(void)a;
+	identity_line();
+}
+
+static void ha_printf(const uint32_t *a)
+{
+	(void)a;
+	measure_printf();
+}
+
+static void ha_gpio(const uint32_t *a)
+{
+	(void)a;
+	measure_gpio();
+}
+
+static void ha_fault(const uint32_t *a)
+{
+	(void)a;
+	trigger_fault();
+}
+
+static void ha_read(const uint32_t *a)
+{
+	(void)a;
+	cmd_read();
+}
+
+static void ha_sweep(const uint32_t *a)
+{
+	(void)a;
+	cmd_sweep();
+}
+
+static void ha_xtalk(const uint32_t *a)
+{
+	(void)a;
+	cmd_crosstalk();
+}
+
+static void ha_ratesweep(const uint32_t *a)
+{
+	cmd_rate_sweep(a[2] ? a[2] : 2u);
+}
+
+static void ha_dac_sweep(const uint32_t *a)
+{
+	(void)a;
+	cmd_dac_sweep();
+}
+
+static void ha_dac_15m(const uint32_t *a)
+{
+	(void)a;
+	cmd_dac_crosscheck(1500000);
+}
+
+static void ha_dac_30m(const uint32_t *a)
+{
+	(void)a;
+	cmd_dac_crosscheck(3000000);
+}
+
+static void ha_s50(const uint32_t *a)
+{
+	(void)a;
+	cmd_stream(50000);
+}
+
+static void ha_s100(const uint32_t *a)
+{
+	(void)a;
+	cmd_stream(100000);
+}
+
+static void ha_s200(const uint32_t *a)
+{
+	(void)a;
+	cmd_stream(200000);
+}
+
+static void ha_s400(const uint32_t *a)
+{
+	(void)a;
+	cmd_stream(400000);
+}
+
+/* Highest rate the ADC sustains, derived from the measured cliff at
+ * RC 86. That compare value holds across master clock settings,
+ * because the timer and ADC clocks scale together. */
+static void ha_smax(const uint32_t *a)
+{
+	(void)a;
+	cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC);
+}
+
+static void ha_stop(const uint32_t *a)
+{
+	(void)a;
+	stream_stop(); play_stop();
+	Serial.println("# stream stopped");
+	Serial.flush();
+}
+
+static void ha_stats(const uint32_t *a)
+{
+	(void)a;
+	cmd_stream_stats();
+}
+
+static void ha_usb(const uint32_t *a)
+{
+	(void)a;
+	cmd_usb_dump();
+}
+
+static void ha_uart_stream(const uint32_t *a)
+{
+	(void)a;
+	cmd_stream_uart(2000);
+}
+
+static void ha_flood(const uint32_t *a)
+{
+	(void)a;
+	stream_flood_start(); state_log("bench=flood(IN)");
+	Serial.println("# flood: IN only");
+	Serial.flush();
+}
+
+static void ha_sink(const uint32_t *a)
+{
+	(void)a;
+	stream_sink_start(); state_log("bench=sink(OUT)");
+	Serial.println("# sink: OUT only, send data now");
+	Serial.flush();
+}
+
+static void ha_duplex(const uint32_t *a)
+{
+	(void)a;
+	stream_duplex_start(); state_log("bench=duplex");
+	Serial.println("# duplex: IN and OUT together");
+	Serial.flush();
+}
+
+/*
+ * The same three over UOTGHS endpoint DMA. The Arduino core never
+ * programs a DMA channel itself; these take the bulk endpoints away
+ * from it and drive the controller directly, which is what makes
+ * the two tracks comparable on the transport as well as the
+ * converters.
+ */
+static void ha_flood_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_flood_dma_start(); state_log("bench=flood-dma");
+	Serial.println("# flood: IN via DMA");
+	Serial.flush();
+}
+
+static void ha_sink_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_sink_dma_start(); state_log("bench=sink-dma");
+	Serial.println("# sink: OUT via DMA, send data now");
+	Serial.flush();
+}
+
+static void ha_duplex_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_duplex_dma_start(); state_log("bench=duplex-dma");
+	Serial.println("# duplex: IN+OUT via DMA");
+	Serial.flush();
+}
+
+/*
+ * The complete loop: the host supplies the waveform, the DAC emits
+ * it, the jumper carries it to the ADC, and the capture comes back
+ * over the same USB pipe. Both directions run at once, which is the
+ * target configuration.
+ *
+ * "=<dac>[,<adc>]L"; one number sets both, none means 200k.
+ */
+static void ha_loop(const uint32_t *a)
+{
+	char buf[192];
+
+	uint32_t dac_hz = a[0] ? a[0] : 200000u;
+	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
+	unsigned nch    = a[2] ? a[2] : 2u;
+
+	if (!play_start(dac_hz)) {
+		snprintf(buf, sizeof(buf),
+		         "# loop: DAC %lu sps refused (max %lu)",
+		         (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
+		Serial.println(buf);
+		Serial.flush();
+		return;
+	}
+	if (!stream_start_capture_only(adc_hz, nch)) {
+		play_stop();
+		snprintf(buf, sizeof(buf),
+		         "# loop: ADC %lu Hz x%u ch refused (max %lu)",
+		         (unsigned long)adc_hz, nch,
+		         (unsigned long)((SystemCoreClock / 2u)
+		                         / ACQ_MIN_RC_FOR(nch)));
+		Serial.println(buf);
+		Serial.flush();
+		return;
+	}
+	snprintf(buf, sizeof(buf),
+	         "# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch",
+	         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
+	Serial.println(buf);
+	Serial.println("# DAC0 carries the waveform, DAC1 holds mid scale");
+	Serial.flush();
+}
+
+/* Playback with NO capture stream, to separate a fault in the DAC
+ * path from an interaction between the two service loops. */
+static void ha_play(const uint32_t *a)
+{
+	char buf[192];
+
+	uint32_t dac_hz = a[0] ? a[0] : 200000u;
+
+	if (play_start(dac_hz))
+		snprintf(buf, sizeof(buf),
+		         "# play only: DAC %lu sps from USB, no capture",
+		         (unsigned long)dac_hz);
+	else
+		snprintf(buf, sizeof(buf),
+		         "# play only: %lu sps refused (max %lu)",
+		         (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
+	Serial.println(buf);
+	Serial.flush();
+}
+
+static void ha_occ(const uint32_t *a)
+{
+	(void)a;
+	cmd_occ_hist();
+}
+
+static void ha_epstate(const uint32_t *a)
+{
+	(void)a;
+	/*
+	 * Endpoint state, readable while a stream is running.
+	 *
+	 * The banner reports CFGOK once, at boot, which is exactly when
+	 * nothing is wrong yet. The question this exists for is whether
+	 * the sample endpoints are still configured *during* a capture,
+	 * once ep_apply_autosw() and the control-endpoint realloc have
+	 * been running against each other for a few thousand passes.
+	 */
+	char buf2[128], ok[16];
+	for (unsigned e = 0; e < 7; e++)
+		ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
+		         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
+	ok[7] = 0;
+	snprintf(buf2, sizeof(buf2),
+	         "# ep cfgok=%s reallocs=%lu cfgfail=%lu ep2=%08lx ep3=%08lx",
+	         ok, (unsigned long)ctlusb_reallocs,
+	         (unsigned long)ctlusb_cfg_fail,
+	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
+	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3]);
+	Serial.println(buf2); Serial.flush();
+
+	/*
+	 * The table the core actually scans, and the count it
+	 * derives from it.
+	 *
+	 * USBCore's SET_CONFIGURATION handler counts endpoints by
+	 * walking EndPoints[] to the first zero and hands that count
+	 * to UDD_InitEndpoints(), which loops from 1. So a zero in
+	 * the wrong slot silently truncates the whole thing, and
+	 * DEVEPT ends up with only EP0 enabled - which is exactly
+	 * what this branch reads (EPT=00000001 against 0000000f on
+	 * a working build) while CFGOK still reports 1111111,
+	 * because CFGOK describes a configuration and EPEN is what
+	 * actually enables the endpoint.
+	 *
+	 * Printed rather than reasoned about: the count is the whole
+	 * question and nothing else on the board reveals it.
+	 */
+	{
+		extern uint32_t EndPoints[];
+		char eb[160];
+		int  n = 0;
+		unsigned count = 0;
+		while (EndPoints[count] != 0)
+			count++;
+		n = snprintf(eb, sizeof(eb), "# eptab count=%u :", count);
+		for (unsigned e = 0; e < 10 && n < (int)sizeof(eb) - 12; e++)
+			n += snprintf(eb + n, sizeof(eb) - n, " %lu",
+			              (unsigned long)EndPoints[e]);
+		Serial.println(eb); Serial.flush();
+
+		/*
+		 * Did SET_CONFIGURATION ever run?
+		 *
+		 * USBCore sets _usbConfiguration in its SET_CONFIGURATION
+		 * handler, immediately after UDD_InitEndpoints(), and
+		 * clears it on bus reset. DEVEPT reads 1 and DEVCTRL says
+		 * the device is addressed, so the question is whether the
+		 * host never configured it or whether the handler ran and
+		 * something undid it. Nothing else on the board
+		 * distinguishes those.
+		 */
+		{
+			extern volatile uint32_t _usbConfiguration;
+			char cb[80];
+			snprintf(cb, sizeof(cb),
+			         "# usbcfg _usbConfiguration=%lu deveptseen=%08lx now=%08lx",
+			         (unsigned long)_usbConfiguration,
+			         (unsigned long)devept_seen,
+			         (unsigned long)UOTGHS->UOTGHS_DEVEPT);
+			Serial.println(cb); Serial.flush();
+		}
+
+		/*
+		 * The trace. One line per change of DEVEPT, DEVCTRL or
+		 * _usbConfiguration, in the order they happened, with
+		 * micros() and the pass number.
+		 *
+		 * Read DEVCTRL first: bit 8 is ADDEN and bits 0-6 are
+		 * UADD, both written by SET_ADDRESS and both cleared by
+		 * the controller on a bus reset. An entry where DEVEPT
+		 * falls to 1 while ADDEN is still set is a clear that no
+		 * reset explains.
+		 */
+		{
+			char tb[160];
+			int  tn = snprintf(tb, sizeof(tb),
+			         "# usbrestore n=%lu after:",
+			         (unsigned long)devept_restores);
+			for (unsigned i = 0; i < devept_restores
+			                  && i < DEVEPT_RESTORE_MAX; i++)
+				tn += snprintf(tb + tn, sizeof(tb) - tn, " %08lx",
+				               (unsigned long)devept_after[i]);
+			Serial.println(tb); Serial.flush();
+			snprintf(tb, sizeof(tb),
+			         "# ctlout banks=%lu bytes=%lu",
+			         (unsigned long)ctlusb_out_banks,
+			         (unsigned long)ctlusb_out_bytes);
+			Serial.println(tb); Serial.flush();
+			tn = snprintf(tb, sizeof(tb),
+			         "# usbsetup n=%lu dropped=%lu",
+			         (unsigned long)ctlusb_setup_n,
+			         (unsigned long)ctlusb_setup_drop);
+			Serial.println(tb); Serial.flush();
+			for (unsigned i = 0; i < ctlusb_setup_n
+			                  && i < CTLUSB_SETUP_N; i++) {
+				snprintf(tb, sizeof(tb),
+				         "# s%02u type=%02x req=%02x val=%04x idx=%04x len=%u claimed=%u",
+				         i, ctlusb_setups[i].bmRequestType,
+				         ctlusb_setups[i].bRequest,
+				         ctlusb_setups[i].wValue,
+				         ctlusb_setups[i].wIndex,
+				         ctlusb_setups[i].wLength,
+				         ctlusb_setups[i].claimed);
+				Serial.println(tb); Serial.flush();
+			}
+			snprintf(tb, sizeof(tb),
+			         "# usbtrace n=%lu dropped=%lu (us pass devept devctrl cfg)",
+			         (unsigned long)usbtrace_n,
+			         (unsigned long)usbtrace_drop);
+			Serial.println(tb); Serial.flush();
+			for (unsigned i = 0; i < usbtrace_n && i < USBTRACE_N; i++) {
+				snprintf(tb, sizeof(tb),
+				         "# t%02u %10lu %10lu %08lx %08lx %lu",
+				         i,
+				         (unsigned long)usbtrace[i].us,
+				         (unsigned long)usbtrace[i].pass,
+				         (unsigned long)usbtrace[i].devept,
+				         (unsigned long)usbtrace[i].devctrl,
+				         (unsigned long)usbtrace[i].cfg);
+				Serial.println(tb); Serial.flush();
+			}
+		}
+	}
+}
+
+/*
+ * "=<shape>,<pts>W": the internal generator's waveform.
+ *
+ * Track B's gen.c carries the same command with the same
+ * arguments and the same printed format - independent source,
+ * identical feature, which is invariant 3.
+ *
+ * shape 0 sine, 1 square, 2 ramp, 3 triangle, 4 DC. pts is the
+ * resolution and rounds down to a power of two in 2..256;
+ * omitting it keeps the current value. Halving the points
+ * doubles the output frequency and coarsens the staircase,
+ * which is the trade it exists to expose.
+ */
+static void ha_wave(const uint32_t *a)
+{
+	gen_set_shape(a[0]);
+	if (a[1])
+		gen_set_points(a[1]);
+	/* "=<shape>,<pts>,<amp>W". amp in 1/256ths of full scale,
+	 * about mid: a small waveform still moves the converter
+	 * every update without spanning its range. */
+	if (a[2])
+		gen_set_amp(a[2]);
+	gen_report();
+}
+
+/*
+ * "=<n>J": the sync output, 0 off, 1 per cycle, 2 per table wrap.
+ * Track B's main.c carries the same command with the same
+ * arguments and the same printed format.
+ *
+ * A trigger for the bench, on DAC1. Triggering a scope on the
+ * signal itself divides the pin's ~20 mV of noise by the
+ * waveform's slew rate at the trigger level, which is why a ramp
+ * shakes 27 us and a square does not shake at all - docs/awg.md.
+ * The scope's EXT input tops out at 1.2 V against a 0.52-2.82 V
+ * DAC, so AC-couple the trigger or it will never fire.
+ */
+static void ha_sync(const uint32_t *a)
+{
+	gen_set_sync(a[0]);
+	/* "=<mode>,<amp>J". The sync's own swing, in 256ths. */
+	if (a[1])
+		gen_set_sync_amp(a[1]);
+	gen_report();
+}
+
+/*
+ * "=<n>C": which channel pairs with A0 in a two-channel capture,
+ * 1 for A1 and 2 for A2. It is how source impedance is told apart
+ * from conversion slot - see acq_set_pair().
+ */
+static void ha_pair(const uint32_t *a)
+{
+	acq_set_pair(a[0]);
+	Serial.print("# capture pair: A0 + A");
+	Serial.print(acq_pair_second == ACQ_CH_A2 ? 2 : 1);
+	Serial.println(" (next 2ch stream)");
+	Serial.flush();
+}
+
+/*
+ * "=<n>N": generator layout, 0 normal, 1 swapped, 2 two-cycle,
+ * 3 all-DC. Rebuilt now and again by gen_init(), which M calls.
+ * See gen.h for what each arm is for.
+ */
+static void ha_layout(const uint32_t *a)
+{
+	static const char *const names[] = {
+		"normal: sine DAC0, DC DAC1",
+		"swapped: DC DAC0, sine DAC1",
+		"two-cycle: two sine periods per wrap",
+		"all-DC: no sine on either",
+	};
+
+	gen_set_layout(a[0]);
+	Serial.print("# gen layout ");
+	Serial.print(gen_layout);
+	Serial.print(" = ");
+	Serial.println(names[gen_layout]);
+	Serial.flush();
+}
+
+static void ha_profile(const uint32_t *a)
+{
+	(void)a;
+	cmd_profile();
+}
+
+static void ha_ring(const uint32_t *a)
+{
+	(void)a;
+	play_dump();
+}
+
+static void ha_diag(const uint32_t *a)
+{
+	(void)a;
+	diag_start();
+}
+
+/*
+ * The loop's timing skeleton with no USB in it: gen's sine through
+ * play's exact DACC + TIOA1 configuration, capture running, ordering
+ * matched to what L does once the ring primes. Observe with D: if
+ * cdr7 swings, the fault needs USB to appear; if it freezes, the
+ * trigger/DACC/ADC interaction is the fault.
+ */
+static void ha_mimic(const uint32_t *a)
+{
+	/*
+	 * "=<dac>[,<adc>[,<nch>]]M", defaulting to 200000 for both rates
+	 * and two channels - which is what this preset always did, so no
+	 * recorded run moves.
+	 *
+	 * Settable for the reason Track B records: this is the only path
+	 * in the firmware where the DAC update clock and the ADC trigger
+	 * are two independent timers, so the sampling phase relative to
+	 * the DAC's table wrap is a free variable fixed for a run by the
+	 * instruction timing between the two starts. Giving the clocks
+	 * slightly different rates walks that phase through a full period
+	 * inside one capture.
+	 */
+	uint32_t dac_hz = a[0] ? a[0] : 200000u;
+	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
+	unsigned nch    = a[2] ? a[2] : 2u;
+	char buf[192];
+
+	/*
+	 * Everything the console has to say is said before the converters
+	 * start. These lines used to run after gen_go_tioa1(), which lays
+	 * milliseconds of blocked main loop over the first samples of
+	 * every capture this preset takes - invariant 8, on the path the
+	 * suite calls its continuity control.
+	 */
+	snprintf(buf, sizeof(buf),
+	         "# mimic loop: gen sine on TIOA1 at %lu sps, capture %lu Hz x%u ch",
+	         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
+	Serial.println(buf);
+	Serial.println("# press D and read cdr7: swing = USB at fault, frozen = trigger path");
+	Serial.flush();
+
+	play_stop();
+	gen_init();
+	gen_prepare_tioa1(dac_hz);
+	if (!stream_start_capture_only(adc_hz, nch)) {
+		Serial.println("# mimic loop: refused, the ADC would not start");
+		Serial.flush();
+		return;
+	}
+	if (mimic_start_delay_us) {
+		uint32_t t0 = micros();
+		while (micros() - t0 < mimic_start_delay_us)
+			;
+	}
+	gen_go_tioa1();
+}
+
+/*
+ * `l` reports; `=1l` reports and then clears. The counters are
+ * cumulative so two readings give a rate over any interval the host
+ * chooses - but max_cycles is a maximum, not a counter, and
+ * differencing a maximum is meaningless. Clearing has to be explicit
+ * rather than a side effect of reading, or two consumers of this
+ * channel would silently steal each other's worst case.
+ */
+static void ha_load(const uint32_t *a)
+{
+	load_dump();
+	if (a[0])
+		load_clear();
+}
+
+/*
+ * "=<ms>S": block the main loop, to validate that `l` sees it.
+ *
+ * Deliberately silent. A printf here lands in the very pass this
+ * command exists to measure - 36 characters at 115200 baud is 3.1 ms -
+ * and the monitor would faithfully report the stall plus the
+ * announcement of it. Measured on Track B, not guessed: with the
+ * message in, a 5 ms stall read 7.2 ms and a 1500 ms stall read
+ * 1502.7 ms, the same 2-3 ms offset at both ends. The answer to "did it
+ * work" is the load report, not an echo.
+ */
+static void ha_stall(const uint32_t *a)
+{
+	uint32_t ms = a[0] ? a[0] : 10u;
+	uint32_t until;
+
+	if (ms > 2000u)
+		ms = 2000u;    /* long enough to see, short of a watchdog */
+
+	until = millis() + ms;
+	while ((int32_t)(millis() - until) < 0)
+		;
+}
+
+/*
+ * "=<us>K". The gap between the ADC start and the DAC start, in
+ * microseconds, held across runs and applied by the M preset above.
+ *
+ * The two states issue #5 draws are selected by the binary and not by
+ * anything the host does. M's comment names the only free variable a
+ * layout change could plausibly move, and this makes that variable
+ * settable, so the hypothesis can be tested inside one image instead of
+ * by flashing two. Debug-only, on a preset that is already debug-only,
+ * and it busy-waits.
+ */
+static void ha_mimic_gap(const uint32_t *a)
+{
+	char buf[96];
+
+	mimic_start_delay_us = a[0];
+	snprintf(buf, sizeof(buf), "# mimic start delay: %lu us (next M)",
+	         (unsigned long)mimic_start_delay_us);
+	Serial.println(buf);
+	Serial.flush();
+}
+
+/*
+ * "=<ch>,<core>I": DACC_ACR's IBCTLCHx and IBCTLDACCORE, applied at the
+ * next DACC init. "=2,1I" is the Arduino core's value and the
+ * datasheet's characterisation condition; 0,0 is reset, which is what
+ * this project has always run. See gen.h.
+ */
+static void ha_ibctl(const uint32_t *a)
+{
+	char buf[96];
+
+	gen_set_ibctl(a[0], a[1]);
+	snprintf(buf, sizeof(buf),
+	         "# dacc ibctl: ch=%u core=%u (next DACC init)",
+	         (unsigned)gen_ibctl_ch, (unsigned)gen_ibctl_core);
+	Serial.println(buf);
+	Serial.flush();
+}
+
+/*
+ * "=<tracktim>,<settling>A". Applied at the next acq_init(), so set it
+ * before starting a stream. One image sweeps the whole range, which is
+ * the only way to compare the constant rather than comparing two
+ * binaries - see acq.cpp.
+ */
+static void ha_adc_timing(const uint32_t *a)
+{
+	char buf[96];
+
+	acq_set_timing(a[0], a[1]);
+	snprintf(buf, sizeof(buf),
+	         "# adc timing: tracktim=%u settling=%u (next stream)",
+	         (unsigned)acq_tracktim, (unsigned)acq_settling);
+	Serial.println(buf);
+	Serial.flush();
+}
+
+/*
+ * "=<ms>Z": a software unplug of the native port, defaulting to
+ * 250 ms. Track B's main.c carries the same command with the same
+ * argument and the same default.
+ *
+ * It exists because objective 0c - the macOS close() wedge - is
+ * recoverable in software: the host is waiting on the USB pipe and
+ * only a disconnect aborts that. `z` below is not a substitute; it
+ * leaves the pull-up attached and the host none the wiser.
+ *
+ * Necessarily typed on the programming port. Detaching takes the
+ * control channel down with it, since both CDC functions are on
+ * this one device.
+ */
+static void ha_detach(const uint32_t *a)
+{
+	unsigned long ms = a[0] ? a[0] : 250u;
+
+	Serial.print("# detaching the native port for ");
+	Serial.print(ms);
+	Serial.println(" ms");
+	Serial.flush();
+	usbdma_detach_cycle(a[0]);
+}
+
+/*
+ * A software reset must not clear the backup domain. If the boot
+ * counter still reads 1 afterwards, the counter itself is not
+ * retaining and cannot be used as evidence about resets.
+ */
+static void ha_reset(const uint32_t *a)
+{
+	(void)a;
+	Serial.println("# software reset now"); Serial.flush();
+	RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
+}
+
+static void ha_bench(const uint32_t *a)
+{
+	char buf[192];
+
+	(void)a;
+	stream_bench_report(buf, sizeof(buf));
+	Serial.println(buf);
+	snprintf(buf, sizeof(buf),
+	         "# play: in=%lu produced=%lu consumed=%lu under=%lu "
+	         "isr=%lu endtx=%lu svc=%lu spans=%lu partial=%lu "
+	         "occmin=%lu rebuilds=%lu act-in=%lu act-out=%lu",
+	         (unsigned long)play_bytes_in,
+	         (unsigned long)play_produced,
+	         (unsigned long)play_consumed,
+	         (unsigned long)play_underruns,
+	         (unsigned long)play_isr_calls,
+	         (unsigned long)play_endtx_seen,
+	         (unsigned long)play_svc_calls,
+	         (unsigned long)play_spans,
+	         (unsigned long)play_partial,
+	         (unsigned long)play_occ_min,
+	         (unsigned long)usbdma_rebuilds,
+	         (unsigned long)usb_in_activity,
+	         (unsigned long)usb_out_activity);
+	Serial.println(buf); Serial.flush();
+}
+
+/*
+ * What this track implements, in the shared surface's terms.
+ *
+ * A letter absent from here is answered "not implemented on this
+ * track", which is the console's CTL_ERR_OPCODE. `console_missing()`
+ * prints the list from this table, so the parity count is computed
+ * rather than remembered - issue #13's 29/8/4 was arrived at by diffing
+ * two dispatchers by hand, and a number arrived at that way is stale
+ * the first time either track moves.
+ */
+const console_binding_t console_bindings[] = {
+	{ 'h', ha_help },       { 'v', ha_ident },      { 'p', ha_printf },
+	{ 'g', ha_gpio },       { 'f', ha_fault },
+
+	{ 'r', ha_read },       { 's', ha_sweep },      { 'x', ha_xtalk },
+	{ 't', ha_ratesweep },  { 'd', ha_dac_sweep },  { 'j', ha_dac_15m },
+	{ 'k', ha_dac_30m },
+
+	{ '1', ha_s50 },        { '2', ha_s100 },       { '3', ha_s200 },
+	{ '4', ha_s400 },       { '5', ha_smax },       { '0', ha_stop },
+	{ '?', ha_stats },      { 'u', ha_usb },        { 'w', ha_uart_stream },
+	{ 'E', ha_epstate },
+
+	{ 'F', ha_flood },      { 'R', ha_sink },       { 'X', ha_duplex },
+	{ 'G', ha_flood_dma },  { 'T', ha_sink_dma },   { 'Y', ha_duplex_dma },
+	{ 'B', ha_bench },
+
+	{ 'L', ha_loop },       { 'P', ha_play },       { 'M', ha_mimic },
+	{ 'V', ha_ring },       { 'D', ha_diag },       { 'O', ha_occ },
+
+	{ 'W', ha_wave },       { 'J', ha_sync },       { 'N', ha_layout },
+	{ 'I', ha_ibctl },
+
+	{ 'C', ha_pair },       { 'A', ha_adc_timing },
+
+	{ 'Q', ha_profile },    { 'l', ha_load },       { 'S', ha_stall },
+	{ 'K', ha_mimic_gap },  { 'Z', ha_detach },     { 'z', ha_reset },
+
+	{ 0, 0 },
+};
+
 void loop()
 {
+	/*
+	 * One DWT read at the top of every pass. Inline and branchless -
+	 * see load.h for why it is the cycle counter and not micros(),
+	 * which costs 869 ns against a ~4 us idle pass and would tax the
+	 * loop it measures by a fifth.
+	 */
+	load_tick();
+
 	devept_seen |= UOTGHS->UOTGHS_DEVEPT;
 	usbtrace_sample(stream_loop_passes);
 	devept_restore();
 	usbtrace_sample(stream_loop_passes);
-	static uint32_t rate_arg[3];
-	static unsigned rate_idx;
-	static bool     rate_entry;
 	static uint32_t led_usb_at;
 	static uint32_t led_in_last, led_out_last;
-	char buf[192];
 
 	stream_loop_passes++;
 
@@ -1171,381 +1981,11 @@ void loop()
 			(void)SerialUSB.read();
 	}
 
-	if (!Serial.available())
-		return;
-
-	int c = Serial.read();
-
 	/*
-	 * Rate arguments: "=<dac>[,<adc>]" typed before a command letter.
-	 * The '=' introducer keeps bare digits working as the stream
-	 * presets; while an entry is open, digits and one comma are
-	 * argument text. The next command letter consumes the arguments and
-	 * closes the entry.
+	 * One byte to the shared console. It holds the "=" argument entry
+	 * across calls and answers a command this track has not bound,
+	 * which is why "nothing arrived" is fed to it rather than tested
+	 * for here - see lib/due_shared/src/console.c.
 	 */
-	if (c == '=') {
-		rate_arg[0] = rate_arg[1] = rate_arg[2] = 0;
-		rate_idx = 0;
-		rate_entry = true;
-		return;
-	}
-	if (rate_entry && c >= '0' && c <= '9') {
-		rate_arg[rate_idx] = rate_arg[rate_idx] * 10u + (uint32_t)(c - '0');
-		return;
-	}
-	if (rate_entry && c == ',' && rate_idx < 2) {
-		rate_idx++;
-		return;
-	}
-	rate_entry = false;
-
-	switch (c) {
-	case 'h': banner();          break;
-	case 'v': identity_line();   break;
-	case 'p': measure_printf();  break;
-	case 'g': measure_gpio();    break;
-	case 'f': trigger_fault();   break;
-	case 'r': cmd_read();        break;
-	case 's': cmd_sweep();       break;
-	case 'x': cmd_crosstalk();   break;
-	case 't': cmd_rate_sweep(rate_arg[2] ? rate_arg[2] : 2u); break;
-	case 'd': cmd_dac_sweep();   break;
-	case 'j': cmd_dac_crosscheck(1500000); break;
-	case 'k': cmd_dac_crosscheck(3000000); break;
-	case '1': cmd_stream(50000);   break;
-	case '2': cmd_stream(100000);  break;
-	case '3': cmd_stream(200000);  break;
-	case '4': cmd_stream(400000);  break;
-	/* Highest rate the ADC sustains, derived from the measured cliff at
-	 * RC 86. That compare value holds across master clock settings,
-	 * because the timer and ADC clocks scale together. */
-	case '5': cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC); break;
-	case '0': stream_stop(); play_stop();
-	          Serial.println("# stream stopped");
-	          Serial.flush();      break;
-	case '?': cmd_stream_stats();  break;
-	case 'u': cmd_usb_dump();      break;
-	case 'w': cmd_stream_uart(2000); break;
-	case 'F': stream_flood_start(); state_log("bench=flood(IN)");
-	          Serial.println("# flood: IN only");
-	          Serial.flush(); break;
-	case 'R': stream_sink_start(); state_log("bench=sink(OUT)");
-	          Serial.println("# sink: OUT only, send data now");
-	          Serial.flush(); break;
-	case 'X': stream_duplex_start(); state_log("bench=duplex");
-	          Serial.println("# duplex: IN and OUT together");
-	          Serial.flush(); break;
-	/*
-	 * The same three over UOTGHS endpoint DMA. The Arduino core never
-	 * programs a DMA channel itself; these take the bulk endpoints away
-	 * from it and drive the controller directly, which is what makes
-	 * the two tracks comparable on the transport as well as the
-	 * converters.
-	 */
-	case 'G': stream_flood_dma_start(); state_log("bench=flood-dma");
-	          Serial.println("# flood: IN via DMA");
-	          Serial.flush(); break;
-	case 'T': stream_sink_dma_start(); state_log("bench=sink-dma");
-	          Serial.println("# sink: OUT via DMA, send data now");
-	          Serial.flush(); break;
-	case 'Y': stream_duplex_dma_start(); state_log("bench=duplex-dma");
-	          Serial.println("# duplex: IN+OUT via DMA");
-	          Serial.flush(); break;
-	/*
-	 * The complete loop: the host supplies the waveform, the DAC emits
-	 * it, the jumper carries it to the ADC, and the capture comes back
-	 * over the same USB pipe. Both directions run at once, which is the
-	 * target configuration.
-	 *
-	 * "=<dac>[,<adc>]L"; one number sets both, none means 200k.
-	 */
-	case 'L': {
-		uint32_t dac_hz = rate_arg[0] ? rate_arg[0] : 200000u;
-		uint32_t adc_hz = rate_arg[1] ? rate_arg[1] : dac_hz;
-		unsigned nch    = rate_arg[2] ? rate_arg[2] : 2u;
-
-		if (!play_start(dac_hz)) {
-			snprintf(buf, sizeof(buf),
-			         "# loop: DAC %lu sps refused (max %lu)",
-			         (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
-			Serial.println(buf);
-			Serial.flush();
-			break;
-		}
-		if (!stream_start_capture_only(adc_hz, nch)) {
-			play_stop();
-			snprintf(buf, sizeof(buf),
-			         "# loop: ADC %lu Hz x%u ch refused (max %lu)",
-			         (unsigned long)adc_hz, nch,
-			         (unsigned long)((SystemCoreClock / 2u)
-			                         / ACQ_MIN_RC_FOR(nch)));
-			Serial.println(buf);
-			Serial.flush();
-			break;
-		}
-		snprintf(buf, sizeof(buf),
-		         "# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch",
-		         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
-		Serial.println(buf);
-		Serial.println("# DAC0 carries the waveform, DAC1 holds mid scale");
-		Serial.flush();
-		break;
-	}
-	/* Playback with NO capture stream, to separate a fault in the DAC
-	 * path from an interaction between the two service loops. */
-	case 'P': {
-		uint32_t dac_hz = rate_arg[0] ? rate_arg[0] : 200000u;
-
-		if (play_start(dac_hz))
-			snprintf(buf, sizeof(buf),
-			         "# play only: DAC %lu sps from USB, no capture",
-			         (unsigned long)dac_hz);
-		else
-			snprintf(buf, sizeof(buf),
-			         "# play only: %lu sps refused (max %lu)",
-			         (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
-		Serial.println(buf);
-		Serial.flush();
-		break;
-	}
-	case 'O': cmd_occ_hist(); break;
-	case 'E': {
-		/*
-		 * Endpoint state, readable while a stream is running.
-		 *
-		 * The banner reports CFGOK once, at boot, which is exactly when
-		 * nothing is wrong yet. The question this exists for is whether
-		 * the sample endpoints are still configured *during* a capture,
-		 * once ep_apply_autosw() and the control-endpoint realloc have
-		 * been running against each other for a few thousand passes.
-		 */
-		char buf2[128], ok[16];
-		for (unsigned e = 0; e < 7; e++)
-			ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
-			         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
-		ok[7] = 0;
-		snprintf(buf2, sizeof(buf2),
-		         "# ep cfgok=%s reallocs=%lu cfgfail=%lu ep2=%08lx ep3=%08lx",
-		         ok, (unsigned long)ctlusb_reallocs,
-		         (unsigned long)ctlusb_cfg_fail,
-		         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
-		         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3]);
-		Serial.println(buf2); Serial.flush();
-
-		/*
-		 * The table the core actually scans, and the count it
-		 * derives from it.
-		 *
-		 * USBCore's SET_CONFIGURATION handler counts endpoints by
-		 * walking EndPoints[] to the first zero and hands that count
-		 * to UDD_InitEndpoints(), which loops from 1. So a zero in
-		 * the wrong slot silently truncates the whole thing, and
-		 * DEVEPT ends up with only EP0 enabled - which is exactly
-		 * what this branch reads (EPT=00000001 against 0000000f on
-		 * a working build) while CFGOK still reports 1111111,
-		 * because CFGOK describes a configuration and EPEN is what
-		 * actually enables the endpoint.
-		 *
-		 * Printed rather than reasoned about: the count is the whole
-		 * question and nothing else on the board reveals it.
-		 */
-		{
-			extern uint32_t EndPoints[];
-			char eb[160];
-			int  n = 0;
-			unsigned count = 0;
-			while (EndPoints[count] != 0)
-				count++;
-			n = snprintf(eb, sizeof(eb), "# eptab count=%u :", count);
-			for (unsigned e = 0; e < 10 && n < (int)sizeof(eb) - 12; e++)
-				n += snprintf(eb + n, sizeof(eb) - n, " %lu",
-				              (unsigned long)EndPoints[e]);
-			Serial.println(eb); Serial.flush();
-
-			/*
-			 * Did SET_CONFIGURATION ever run?
-			 *
-			 * USBCore sets _usbConfiguration in its SET_CONFIGURATION
-			 * handler, immediately after UDD_InitEndpoints(), and
-			 * clears it on bus reset. DEVEPT reads 1 and DEVCTRL says
-			 * the device is addressed, so the question is whether the
-			 * host never configured it or whether the handler ran and
-			 * something undid it. Nothing else on the board
-			 * distinguishes those.
-			 */
-			{
-				extern volatile uint32_t _usbConfiguration;
-				char cb[80];
-				snprintf(cb, sizeof(cb),
-				         "# usbcfg _usbConfiguration=%lu deveptseen=%08lx now=%08lx",
-				         (unsigned long)_usbConfiguration,
-				         (unsigned long)devept_seen,
-				         (unsigned long)UOTGHS->UOTGHS_DEVEPT);
-				Serial.println(cb); Serial.flush();
-			}
-
-			/*
-			 * The trace. One line per change of DEVEPT, DEVCTRL or
-			 * _usbConfiguration, in the order they happened, with
-			 * micros() and the pass number.
-			 *
-			 * Read DEVCTRL first: bit 8 is ADDEN and bits 0-6 are
-			 * UADD, both written by SET_ADDRESS and both cleared by
-			 * the controller on a bus reset. An entry where DEVEPT
-			 * falls to 1 while ADDEN is still set is a clear that no
-			 * reset explains.
-			 */
-			{
-				char tb[160];
-				int  tn = snprintf(tb, sizeof(tb),
-				         "# usbrestore n=%lu after:",
-				         (unsigned long)devept_restores);
-				for (unsigned i = 0; i < devept_restores
-				                  && i < DEVEPT_RESTORE_MAX; i++)
-					tn += snprintf(tb + tn, sizeof(tb) - tn, " %08lx",
-					               (unsigned long)devept_after[i]);
-				Serial.println(tb); Serial.flush();
-				snprintf(tb, sizeof(tb),
-				         "# ctlout banks=%lu bytes=%lu",
-				         (unsigned long)ctlusb_out_banks,
-				         (unsigned long)ctlusb_out_bytes);
-				Serial.println(tb); Serial.flush();
-				tn = snprintf(tb, sizeof(tb),
-				         "# usbsetup n=%lu dropped=%lu",
-				         (unsigned long)ctlusb_setup_n,
-				         (unsigned long)ctlusb_setup_drop);
-				Serial.println(tb); Serial.flush();
-				for (unsigned i = 0; i < ctlusb_setup_n
-				                  && i < CTLUSB_SETUP_N; i++) {
-					snprintf(tb, sizeof(tb),
-					         "# s%02u type=%02x req=%02x val=%04x idx=%04x len=%u claimed=%u",
-					         i, ctlusb_setups[i].bmRequestType,
-					         ctlusb_setups[i].bRequest,
-					         ctlusb_setups[i].wValue,
-					         ctlusb_setups[i].wIndex,
-					         ctlusb_setups[i].wLength,
-					         ctlusb_setups[i].claimed);
-					Serial.println(tb); Serial.flush();
-				}
-				snprintf(tb, sizeof(tb),
-				         "# usbtrace n=%lu dropped=%lu (us pass devept devctrl cfg)",
-				         (unsigned long)usbtrace_n,
-				         (unsigned long)usbtrace_drop);
-				Serial.println(tb); Serial.flush();
-				for (unsigned i = 0; i < usbtrace_n && i < USBTRACE_N; i++) {
-					snprintf(tb, sizeof(tb),
-					         "# t%02u %10lu %10lu %08lx %08lx %lu",
-					         i,
-					         (unsigned long)usbtrace[i].us,
-					         (unsigned long)usbtrace[i].pass,
-					         (unsigned long)usbtrace[i].devept,
-					         (unsigned long)usbtrace[i].devctrl,
-					         (unsigned long)usbtrace[i].cfg);
-					Serial.println(tb); Serial.flush();
-				}
-			}
-		}
-		break;
-	}
-	/*
-	 * "=<shape>,<pts>W": the internal generator's waveform.
-	 *
-	 * Track B's gen.c carries the same command with the same
-	 * arguments and the same printed format - independent source,
-	 * identical feature, which is invariant 3.
-	 *
-	 * shape 0 sine, 1 square, 2 ramp, 3 triangle, 4 DC. pts is the
-	 * resolution and rounds down to a power of two in 2..256;
-	 * omitting it keeps the current value. Halving the points
-	 * doubles the output frequency and coarsens the staircase,
-	 * which is the trade it exists to expose.
-	 */
-	case 'W':
-		gen_set_shape(rate_arg[0]);
-		if (rate_arg[1])
-			gen_set_points(rate_arg[1]);
-		/* "=<shape>,<pts>,<amp>W". amp in 1/256ths of full scale,
-		 * about mid: a small waveform still moves the converter
-		 * every update without spanning its range. */
-		if (rate_arg[2])
-			gen_set_amp(rate_arg[2]);
-		gen_report();
-		break;
-	/*
-	 * "=<n>J": the sync output, 0 off, 1 per cycle, 2 per table wrap.
-	 * Track B's main.c carries the same command with the same
-	 * arguments and the same printed format.
-	 *
-	 * A trigger for the bench, on DAC1. Triggering a scope on the
-	 * signal itself divides the pin's ~20 mV of noise by the
-	 * waveform's slew rate at the trigger level, which is why a ramp
-	 * shakes 27 us and a square does not shake at all - docs/awg.md.
-	 * The scope's EXT input tops out at 1.2 V against a 0.52-2.82 V
-	 * DAC, so AC-couple the trigger or it will never fire.
-	 */
-	case 'J':
-		gen_set_sync(rate_arg[0]);
-		/* "=<mode>,<amp>J". The sync's own swing, in 256ths. */
-		if (rate_arg[1])
-			gen_set_sync_amp(rate_arg[1]);
-		gen_report();
-		break;
-	case 'Q': cmd_profile();  break;
-	case 'V': play_dump();    break;
-	case 'D': diag_start();   break;
-	/*
-	 * The loop's timing skeleton with no USB in it: gen's sine through
-	 * play's exact DACC + TIOA1 configuration, capture running, ordering
-	 * matched to what L does once the ring primes. Observe with D: if
-	 * cdr7 swings, the fault needs USB to appear; if it freezes, the
-	 * trigger/DACC/ADC interaction is the fault.
-	 */
-	case 'M':
-		play_stop();
-		gen_init();
-		gen_prepare_tioa1(200000u);
-		if (!stream_start_capture_only(200000u, 2)) {
-			Serial.println("# mimic: capture refused");
-			Serial.flush();
-			break;
-		}
-		gen_go_tioa1();
-		Serial.println("# mimic loop: gen sine on TIOA1 at 200000 sps, capture 200000 Hz");
-		Serial.println("# press D and read cdr7: swing = USB at fault, frozen = trigger path");
-		Serial.flush();
-		break;
-	/*
-	 * A software reset must not clear the backup domain. If the boot
-	 * counter still reads 1 afterwards, the counter itself is not
-	 * retaining and cannot be used as evidence about resets.
-	 */
-	case 'z': Serial.println("# software reset now"); Serial.flush();
-	          RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
-	          break;
-	case 'B': stream_bench_report(buf, sizeof(buf));
-	          Serial.println(buf);
-	          snprintf(buf, sizeof(buf),
-	                   "# play: in=%lu produced=%lu consumed=%lu under=%lu "
-	                   "isr=%lu endtx=%lu svc=%lu spans=%lu partial=%lu "
-	                   "occmin=%lu rebuilds=%lu act-in=%lu act-out=%lu",
-	                   (unsigned long)play_bytes_in,
-	                   (unsigned long)play_produced,
-	                   (unsigned long)play_consumed,
-	                   (unsigned long)play_underruns,
-	                   (unsigned long)play_isr_calls,
-	                   (unsigned long)play_endtx_seen,
-	                   (unsigned long)play_svc_calls,
-	                   (unsigned long)play_spans,
-	                   (unsigned long)play_partial,
-	                   (unsigned long)play_occ_min,
-	                   (unsigned long)usbdma_rebuilds,
-	                   (unsigned long)usb_in_activity,
-	                   (unsigned long)usb_out_activity);
-	          Serial.println(buf); Serial.flush(); break;
-	default:                     break;
-	}
-
-	/* A dispatched command consumes any rate arguments. */
-	rate_arg[0] = rate_arg[1] = rate_arg[2] = 0;
-	rate_idx = 0;
+	console_feed(Serial.available() ? Serial.read() : -1);
 }

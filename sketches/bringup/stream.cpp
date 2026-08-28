@@ -469,10 +469,10 @@ void stream_service(void)
  * wording: the host's `?` parser keys off the text, so a difference in
  * spelling here is a difference the suite cannot see past.
  */
-void stream_dma_report(char *buf, size_t n)
+int stream_dma_report(char *buf, size_t n)
 {
-	snprintf(buf, n, "# dma-frames=%lu dma-stalls=%lu",
-	         (unsigned long)dma_frames, (unsigned long)dma_stalls);
+	return snprintf(buf, n, "# dma-frames=%lu dma-stalls=%lu",
+	                (unsigned long)dma_frames, (unsigned long)dma_stalls);
 }
 
 void stream_report(char *buf, size_t n)

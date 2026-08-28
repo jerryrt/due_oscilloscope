@@ -150,7 +150,13 @@
       "usb_cdc_poll were gated to 1 kHz. Both were reading a UOTGHS",
       "register every pass to ask about events that happen tens of times",
       "a second. load_tick itself is free at this resolution: 128.1 k with",
-      "it against 127.4 k built out. Re-measure rather than scale."
+      "it against 127.4 k built out. Re-measure rather than scale.",
+      "These are Track B's. The monitor is shared from 2026-08-28 and",
+      "the suite runs on both tracks; the floors are loose enough to",
+      "cover both, but the loops are NOT the same. Track A idles at",
+      "75.1 k passes/s against Track B's 160.4 k on this bench - a 2.14x",
+      "difference that is its own finding, open in issue #13. Do not",
+      "read a Track A number against idle_passes_per_s below."
     ],
     "idle_passes_per_s": 149300,
     "capture_max_passes_per_s": 93700,
