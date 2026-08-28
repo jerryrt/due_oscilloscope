@@ -125,12 +125,13 @@ def test_stream_seam_list_is_pinned_and_current():
     drift = ss.check()
     assert not drift, "\n".join(drift)
 
-    # And the residue is what step 3 left per track: the framer's calls
-    # moved to stream_core.c, so what remains is the bench arms and the
-    # reports - the transport push, and the acq counters the reports
-    # read directly.
+    # And the residue is what steps 3 and 4 left per track: framer and
+    # bench policy moved to the shared files, so what remains is each
+    # track's stream_port implementations and the reports - the raw
+    # DMA status read the out_done decode wraps, and the acq counters
+    # the reports read directly.
     a, b = ss.seam(ss.SOURCES["a"]), ss.seam(ss.SOURCES["b"])
-    assert "usb_dma_in_start" in a and "usb_dma_in_start" in b
+    assert "usb_dma_out_status" in a and "usb_dma_out_status" in b
     assert "acq_produced" in a and "acq_produced" in b
     assert "acq_start" not in a and "acq_start" not in b  # framer's now
     assert "usbdma_keepalive" in a      # Track A repairs the core's reset
@@ -159,9 +160,9 @@ def test_a_wrong_seam_list_fails_the_check(tmp_path):
 
     removed = tmp_path / "removed.list"
     removed.write_text(
-        "\n".join(l for l in good if "usb_dma_in_start" not in l) + "\n")
+        "\n".join(l for l in good if "usb_dma_out_status" not in l) + "\n")
     drift = ss.check(str(removed))
-    assert any("usb_dma_in_start" in d and "extracted but not pinned" in d
+    assert any("usb_dma_out_status" in d and "extracted but not pinned" in d
                for d in drift), drift
 
     empty = tmp_path / "empty.list"
@@ -189,7 +190,7 @@ def test_a_wrong_stream_port_header_fails_the_check(tmp_path):
     # A declaration nothing uses must be flagged.
     padded = ss._strip(real + "\nvoid stream_port_never_called(void);\n")
     drift = ss.core_check(padded)
-    assert any("stream_port_never_called" in d and "does not use" in d
+    assert any("stream_port_never_called" in d and "uses" in d
                for d in drift), drift
 
     # Removing a declaration the core does use must be flagged.

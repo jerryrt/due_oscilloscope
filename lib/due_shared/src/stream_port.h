@@ -85,6 +85,36 @@ void     usb_dma_mode_in(bool on);
 size_t stream_port_write(const uint8_t *p, size_t n);
 bool   stream_port_ready(void);
 
+/* The bench arms' transport (issue #14 step 4). Always the USB bulk
+ * pair, CPU path - the UART switch above is the framer's business, not
+ * the bench's. A short return is the bank refusing, never an error. */
+size_t usb_port_write(const uint8_t *p, size_t n);
+size_t usb_port_read(uint8_t *p, size_t n);
+
+/* Endpoint DMA, bench side. usb_dma_out_done decodes one raw status
+ * read per call - byte count and channel-enabled share the register,
+ * and two reads ask two different instants (see drivers/play.c):
+ * false while the channel still runs, else *bytes_left holds the
+ * residue and the channel is idle. The decode lives per track because
+ * the register does.
+ *
+ * usb_dma_keepalive: on Track A the Arduino core rebuilds endpoint
+ * configuration on bus reset and SET_CONFIGURATION, and this repairs
+ * it on the bench's schedule. Track B has no core, so there is nothing
+ * to repair: its implementation is an empty function with that reason
+ * next to it, which is the honest shape - an #ifdef would hide the
+ * asymmetry this header exists to record.
+ */
+uint32_t usb_dma_in_residue(void);
+bool     usb_dma_out_start_stream(void *buf, uint32_t len);
+bool     usb_dma_out_done(uint32_t *bytes_left);
+void     usb_dma_mode(bool in_dma, bool out_dma);
+void     usb_dma_keepalive(void);
+
+/* Defined per track (its main loop increments it); the bench resets
+ * it and the reports read it. */
+extern volatile uint32_t stream_loop_passes;
+
 /* --- platform ----------------------------------------------------- */
 uint32_t micros(void);
 extern uint32_t SystemCoreClock;

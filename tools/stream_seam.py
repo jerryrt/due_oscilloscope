@@ -67,7 +67,8 @@ LIST_PATH = os.path.join(REPO, "tools", "stream_seam.list")
 # core may reach only what the record and the shared headers declare -
 # plus the C library's memcpy - and the record may declare nothing the
 # core does not use. Both directions are drift.
-CORE = os.path.join("lib", "due_shared", "src", "stream_core.c")
+CORE_FILES = [os.path.join("lib", "due_shared", "src", "stream_core.c"),
+              os.path.join("lib", "due_shared", "src", "stream_bench.c")]
 PORT = os.path.join("lib", "due_shared", "src", "stream_port.h")
 CORE_ALLOWED_OTHER = {"memcpy"}
 
@@ -263,16 +264,23 @@ def port_decls(port_text=None):
 
 
 def core_check(port_text=None):
-    """Drift between stream_core.c and stream_port.h, both directions.
+    """Drift between the shared stream files and stream_port.h, both
+    directions.
 
     Returns a list of complaint lines, empty when they agree. The
     port_text parameter exists for the test that proves this check can
     fail; the default is the real header.
     """
-    ext = extract(CORE)
-    if not ext:
-        return ["extraction of stream_core.c produced nothing; "
-                "the extractor is broken"]
+    ext = {}
+    origins = {}
+    for f in CORE_FILES:
+        e = extract(f)
+        if not e:
+            return [f"extraction of {f} produced nothing; "
+                    "the extractor is broken"]
+        for k, origin in e.items():
+            ext[k] = origin
+            origins.setdefault(k, f)
     declared = port_decls(port_text)
     used = {name for (name, _kind) in ext}
     drift = []
@@ -281,11 +289,12 @@ def core_check(port_text=None):
             or (os.path.basename(origin) == "stream_port.h"
                 and name not in declared)
         if undeclared:
-            drift.append(f"stream_core.c reaches {name} ({kind}), which "
-                         "no shared header declares")
+            drift.append(f"{os.path.basename(origins[(name, kind)])} "
+                         f"reaches {name} ({kind}), which no shared "
+                         "header declares")
     for name in sorted(declared - used):
         drift.append(f"stream_port.h declares {name}, which "
-                     "stream_core.c does not use")
+                     "no shared stream file uses")
     return drift
 
 

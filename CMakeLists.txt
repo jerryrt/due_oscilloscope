@@ -59,6 +59,7 @@ add_executable(baremetal_bringup
     drivers/console_port.c
     lib/due_shared/src/crc32.c
     lib/due_shared/src/stream_core.c
+    lib/due_shared/src/stream_bench.c
     ${DEVICE}/source/system_sam3xa.c
 )
 

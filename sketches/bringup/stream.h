@@ -3,6 +3,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bool stream_start(uint32_t trigger_hz);
 bool stream_start_capture_only(uint32_t trigger_hz, unsigned n_channels);
 bool stream_start_uart(uint32_t trigger_hz);
@@ -45,5 +49,9 @@ extern volatile uint32_t stream_loop_passes;
 void stream_flood_dma_start(void);
 void stream_sink_dma_start(void);
 void stream_duplex_dma_start(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STREAM_H */
