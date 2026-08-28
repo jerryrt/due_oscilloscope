@@ -199,20 +199,32 @@ console and were invisible while each track was read on its own:
   Track B's 160.4 k, three trials each, spread under 0.2%. Invariant 3
   requires the tracks to be comparable in performance and on the idle
   loop they are not.
-- **The two tracks hold different converter configurations while idle.**
-  Track B calls `dac_init()` and `adc_init()` in `main()`; Track A calls
-  `acq_init()` and `gen_init()` only on the paths that need them, so
-  before a stream it answers with the *Arduino core's* register values -
-  `adcmr=10380200 acr=000001aa` against Track B's own. Visible only once
-  `?` read the registers back instead of echoing what was asked for.
+- **The two tracks held different ADC configurations while idle.**
+  Track B calls `adc_init()` in `main()`; Track A called `acq_init()`
+  only on the paths that need it, so before a stream it answered
+  `adcmr=10380200` - written by `analogRead()` inside the core - against
+  Track B's own `2f3f0100`. Visible only once `?` read the register back
+  instead of echoing what was asked for. Closed 2026-08-28: Track A
+  initialises its own converters at boot.
+
+  **The DAC half of this was wrong when first written and is retracted.**
+  The idle `acr=000001aa` was reported as the core's too. It is not:
+  Track B, which contains no Arduino core anywhere in the image, reads
+  the same `000001aa` at boot after its own `DACC_CR_SWRST`. So `0x1aa`
+  is what the DACC holds when nothing has written ACR, on either track,
+  and only the ADC half was ever a divergence. The mistake was reading
+  two unfamiliar register values side by side and attributing both to
+  the one explanation that fitted the first.
 - **Being on the Arduino core is not the same as getting the core's
   register writes.** The core sets `DACC_ACR` in `wiring_analog.c` the
   first time a DAC channel is enabled; Track A's gen and play never go
   through that path, so the sketch had been running at reset bias
   exactly as the bare-metal track was.
 
-The first two are open in issue #13. The third is closed: both tracks
-now write ACR after every `DACC_CR_SWRST`.
+The first is open in issue #13. The second is closed - Track A
+initialises its own converters at boot from 2026-08-28 - with the
+retraction above attached to it. The third is closed: both tracks now
+write ACR after every `DACC_CR_SWRST`.
 
 ## Two traps
 

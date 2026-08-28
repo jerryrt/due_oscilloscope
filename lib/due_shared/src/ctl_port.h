@@ -180,6 +180,24 @@ void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
                       uint16_t amp, uint16_t sync_amp);
 
 /*
+ * CTL_OP_TEMP. Read the on-die temperature sensor, averaging `samples`
+ * conversions, and fill in the report. False means this track does not
+ * read it, and the opcode is then answered with CTL_ERR_OPCODE rather
+ * than a body of zeroes - code 0 is a reading, not an absence.
+ *
+ * Per track because it is ADC register programming: ADC_ACR.TSON, the
+ * channel enable and the conversion loop. What is shared is the payload
+ * and what the fields mean - see ctl_temp_t, which also carries what
+ * this measurement may and may not be used to claim.
+ *
+ * `samples` is a request, not a promise. The callee clamps it to
+ * [CTL_TEMP_SAMPLES_MIN, CTL_TEMP_SAMPLES_MAX] and reports what it
+ * actually averaged, because invariant 7 wants a bounded worst case
+ * that does not depend on what a host sent.
+ */
+bool ctl_port_temp(ctl_temp_t *out, uint16_t samples);
+
+/*
  * Flush the debug console. Only ctl_dump() uses this, it is never
  * called while the sample path is running, and a track whose console
  * needs no flushing implements it empty.

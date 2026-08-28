@@ -21,6 +21,9 @@
 #define ANALOG_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
+#include "ctl_wire.h"   /* ctl_temp_t: the temperature report is a wire format */
 
 /*
  * Arduino's A0..A7 labels map to ADC channels in DESCENDING order. Code
@@ -40,6 +43,17 @@ void     dac_write(unsigned ch, uint16_t code12);   /* ch 0 or 1 */
 
 void     adc_init(void);
 uint16_t adc_read(unsigned ch);                     /* one channel */
+
+/*
+ * The on-die temperature sensor, ADC channel 15 behind ADC_ACR.TSON.
+ * Averages `samples` conversions (clamped to the CTL_TEMP_SAMPLES_*
+ * range) and restores whatever channels were enabled. False means no
+ * conversion completed, which CTL_OP_TEMP answers as CTL_ERR_OPCODE.
+ *
+ * ctl_temp_t carries what the reading may and may not be used to claim -
+ * read it before quoting a number from here. Issue #11.
+ */
+bool     adc_read_temp(ctl_temp_t *out, uint16_t samples);
 void     adc_read_pair(unsigned cha, unsigned chb,
                        uint16_t *a, uint16_t *b);   /* one sequence */
 

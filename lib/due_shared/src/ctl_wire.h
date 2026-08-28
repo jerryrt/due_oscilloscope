@@ -92,6 +92,7 @@
 #define CTL_OP_LOAD       0x0024u
 #define CTL_OP_STREAM_STATS 0x0023u   /* what `?` prints */
 #define CTL_OP_BENCH      0x0025u   /* what `B`'s bench half prints */
+#define CTL_OP_TEMP       0x0026u   /* the SAM3X's internal temperature sensor */
 
 /*
  * Error codes. The payload of an error response is one of these
@@ -267,6 +268,89 @@ typedef struct __attribute__((packed)) {
 	uint8_t  reserved[2];
 	uint32_t hist[LOAD_BUCKETS];
 } load_report_t;
+
+/*
+ * CTL_OP_TEMP's payload: the SAM3X's on-die temperature sensor, ADC
+ * channel 15, enabled by ADC_ACR.TSON.
+ *
+ * **Why it exists, and it is not about temperature.** ADVREF is the
+ * reference for the ADC *and* the DAC, so the loopback this project
+ * measures everything with is ratiometric and cannot see its own
+ * reference: the DAC emits ADVREF * (1/6 + code/4096 * 2/3) and the ADC
+ * returns 4096 * V / ADVREF, so ADVREF divides out exactly and a 1%
+ * excursion moves the loop by zero codes at every code. Measured as
+ * well as derived - swept across a 5.1x lever in output level the
+ * residual is a U with its minimum at mid-scale, which is what a
+ * cancelling reference predicts and what reference-dominated noise
+ * contradicts. Issue #11.
+ *
+ * The sensor is a bandgap-derived *absolute* voltage, so its reading is
+ * proportional to 1/ADVREF and fractional reference noise appears in it
+ * directly, at full weight - the one term the loop divides away.
+ *
+ * **What this does not claim, stated here because the field will outlive
+ * the thread.**
+ *
+ * - **No degrees.** `code` is what the converter returned. Turning it
+ *   into a temperature needs the datasheet slope *and* a per-part
+ *   offset that is uncalibrated on this board, so a degrees field would
+ *   be a number sized against an assumption. The host applies a
+ *   calibration when one exists.
+ * - **An upper bound on ADVREF noise, not a value.** One channel cannot
+ *   separate the sensor's own noise from the reference's. A comparison
+ *   *between benches* is a difference in which the sensor's
+ *   contribution is common, which is what makes it useful anyway.
+ * - **Bandwidth.** The sensor is slow and filtered. It will see
+ *   low-frequency reference noise and may see none of the fast part -
+ *   and the fast part is where ratiometric cancellation is weakest, so
+ *   a null result here does not close the question.
+ *
+ * `samples` is how many conversions were averaged into `code_x16`,
+ * which carries four fractional bits so the average is not thrown away
+ * by the integer it is reported in. One conversion is ~4 codes rms
+ * against a question about a fraction of a code, so a single reading
+ * answers nothing; the averaging is on the device because the host
+ * cannot ask for conversions fast enough to do it there.
+ *
+ * `adc_mr` and `adc_acr` are the registers as the hardware holds them,
+ * not an echo - a reading taken at a track/settling time nobody
+ * recorded is not comparable with one taken at another, and the two
+ * tracks do not necessarily idle at the same ADC_MR.
+ */
+/*
+ * How many conversions a temperature reading averages.
+ *
+ * The default is sized on docs/noise.md: a single conversion is ~4
+ * codes rms and averaging n of them divides that by sqrt(n), so 256
+ * gives ~0.25 codes - below the quantisation floor, which is the regime
+ * the ADVREF question lives in. At ~1 us a conversion that is well
+ * under a millisecond of main loop, on a debug path, once per request.
+ *
+ * The maximum is a bound rather than a recommendation. Invariant 7:
+ * the worst case of one main-loop pass must not depend on what a host
+ * chose to send, so a request past this is clamped and the report says
+ * what was actually averaged.
+ */
+#define CTL_TEMP_SAMPLES_DEFAULT  256u
+#define CTL_TEMP_SAMPLES_MIN        1u
+#define CTL_TEMP_SAMPLES_MAX     4096u
+
+typedef struct __attribute__((packed)) {
+	uint32_t dev_us;         /* when this was taken */
+	uint32_t code_x16;       /* mean of `samples`, in 1/16ths of a code */
+	uint16_t code_min;       /* the spread, so a host can see it is quiet */
+	uint16_t code_max;
+	uint16_t samples;        /* how many conversions were averaged */
+	uint8_t  channel;        /* ADC channel the sensor is on: 15 here */
+	uint8_t  reserved;
+	uint32_t adc_mr;         /* as the hardware holds it */
+	uint32_t adc_acr;        /* TSON lives here */
+} ctl_temp_t;
+
+/* host/control.py parses this as "<IIHHHBBII"; a layout that drifts from
+ * that is a silent misparse, not a link error. */
+CTL_STATIC_ASSERT(sizeof(ctl_temp_t) == 24u,
+                  "ctl_temp_t is a wire format, not a struct layout");
 
 /*
  * CTL_OP_GEN's payload, and the first thing in the 0x001x range - state

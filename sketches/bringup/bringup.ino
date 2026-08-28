@@ -975,6 +975,36 @@ void setup()
 	 */
 	load_init();
 
+	/*
+	 * The converters, so this board holds its own configuration from
+	 * boot rather than the Arduino core's.
+	 *
+	 * Found by #13's readback: before a stream, `?` on this track
+	 * answered adcmr=10380200 - written by analogRead() inside the
+	 * core, not by anything here - while Track B, which calls
+	 * adc_init() in main(), answered 2f3f0100, its own. Two boards
+	 * asked what their ADC is set to gave different answers while
+	 * idle, and any idle measurement inherited whichever one it
+	 * happened to be on. That is a confound for issue #11's
+	 * temperature reading in particular, which is taken with nothing
+	 * streaming.
+	 *
+	 * **The DAC half of that finding was wrong and is retracted
+	 * here.** The idle acr=000001aa was reported as the core's too.
+	 * It is not: Track B, which contains no Arduino core anywhere in
+	 * the image, reads the same 000001aa at boot after its own
+	 * dac_init()'s DACC_CR_SWRST. So 0x1aa is what the DACC holds
+	 * when nothing has written ACR, on either track. Only the ADC
+	 * half was ever a divergence.
+	 *
+	 * Neither call starts anything: acq_init() configures the ADC and
+	 * leaves the timer stopped, gen_init() configures the DACC and
+	 * builds the table but does not start a trigger - gen_start()
+	 * does. A stream still calls both again with its own arguments.
+	 */
+	acq_init();
+	gen_init();
+
 	banner();
 	heartbeat_at = millis();
 }
@@ -1629,8 +1659,14 @@ static void ha_mimic(const uint32_t *a)
 	 * every capture this preset takes - invariant 8, on the path the
 	 * suite calls its continuity control.
 	 */
+	/*
+	 * The shape as it is, not as this line used to assume - issue #9.
+	 * gen_shape_name() is the shared spelling, so the two tracks
+	 * cannot drift on the word either.
+	 */
 	snprintf(buf, sizeof(buf),
-	         "# mimic loop: gen sine on TIOA1 at %lu sps, capture %lu Hz x%u ch",
+	         "# mimic loop: gen %s on TIOA1 at %lu sps, capture %lu Hz x%u ch",
+	         gen_shape_name(gen_shape),
 	         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
 	Serial.println(buf);
 	Serial.println("# press D and read cdr7: swing = USB at fault, frozen = trigger path");
@@ -1650,6 +1686,36 @@ static void ha_mimic(const uint32_t *a)
 			;
 	}
 	gen_go_tioa1();
+}
+
+/*
+ * "=<n>e": the on-die temperature sensor, n conversions averaged.
+ *
+ * On the console as well as the control channel because a bench reading
+ * wants no host, and because the two paths going through one
+ * implementation is what makes them comparable. ctl_temp_t carries what
+ * this may and may not be used to claim - it is an upper bound on
+ * ADVREF noise, not a value, and not a temperature in degrees. Issue
+ * #11.
+ */
+static void ha_temp(const uint32_t *a)
+{
+	ctl_temp_t t;
+	char buf[160];
+
+	if (!acq_read_temp(&t, (uint16_t)a[0])) {
+		Serial.println("# temp: no conversion completed");
+		Serial.flush();
+		return;
+	}
+	snprintf(buf, sizeof(buf),
+	         "# temp: code %lu.%02lu (min %u max %u, n=%u) adcmr=%08lx adcacr=%08lx",
+	         (unsigned long)(t.code_x16 / 16u),
+	         (unsigned long)((t.code_x16 % 16u) * 100u / 16u),
+	         (unsigned)t.code_min, (unsigned)t.code_max, (unsigned)t.samples,
+	         (unsigned long)t.adc_mr, (unsigned long)t.adc_acr);
+	Serial.println(buf);
+	Serial.flush();
 }
 
 /*
@@ -1846,7 +1912,7 @@ const console_binding_t console_bindings[] = {
 	{ 'W', ha_wave },       { 'J', ha_sync },       { 'N', ha_layout },
 	{ 'I', ha_ibctl },
 
-	{ 'C', ha_pair },       { 'A', ha_adc_timing },
+	{ 'C', ha_pair },       { 'A', ha_adc_timing }, { 'e', ha_temp },
 
 	{ 'Q', ha_profile },    { 'l', ha_load },       { 'S', ha_stall },
 	{ 'K', ha_mimic_gap },  { 'Z', ha_detach },     { 'z', ha_reset },

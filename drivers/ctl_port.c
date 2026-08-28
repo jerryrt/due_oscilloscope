@@ -17,6 +17,7 @@
 #include "acq.h"
 #include "bsp.h"
 #include "load.h"
+#include "analog.h"
 #include "stream.h"
 #include "play.h"
 #include "gen.h"
@@ -70,6 +71,11 @@ bool ctl_port_load_sample(load_report_t *out)
 	 */
 	load_sample(out);
 	return true;
+}
+
+bool ctl_port_temp(ctl_temp_t *out, uint16_t samples)
+{
+	return adc_read_temp(out, samples);
 }
 
 void ctl_port_console_flush(void)

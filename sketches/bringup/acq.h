@@ -10,6 +10,9 @@
 #define ACQ_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
+#include "ctl_wire.h"   /* ctl_temp_t: the temperature report is a wire format */
 
 /*
  * TC_CMR fields.
@@ -105,6 +108,17 @@ extern uint8_t acq_tracktim;
 extern uint8_t acq_settling;
 void     acq_set_timing(uint32_t tracktim, uint32_t settling);
 uint32_t acq_mr(void);             /* ADC_MR as the hardware holds it */
+
+/*
+ * The on-die temperature sensor, ADC channel 15 behind ADC_ACR.TSON.
+ * Averages `samples` conversions (clamped to the CTL_TEMP_SAMPLES_*
+ * range) and restores whatever channels were enabled. False means no
+ * conversion completed, which CTL_OP_TEMP answers as CTL_ERR_OPCODE.
+ *
+ * ctl_temp_t carries what the reading may and may not be used to claim -
+ * read it before quoting a number from here. Issue #11.
+ */
+bool     acq_read_temp(ctl_temp_t *out, uint16_t samples);
 
 /*
  * A0 is AD7, A1 is AD6, A2 is AD5 - the Arduino A0..A7 labels map to

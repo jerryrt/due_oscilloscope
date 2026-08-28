@@ -1112,7 +1112,16 @@ static void h_mimic(const uint32_t *a)
 	 * that path reports, on one image with the two orders alternated;
 	 * moved anyway, because it had no business being there.
 	 */
-	printf("# mimic loop: gen sine on TIOA1 at %lu sps, capture %lu Hz\n",
+	/*
+	 * The shape as it is, not as this line used to assume. It said
+	 * "sine" whatever `W` had put in the table, so a square capture
+	 * came with a banner claiming a sine over it - issue #9 flagged it
+	 * twice, and it is the kind of stale claim that gets read as data
+	 * later. gen_shape_name() is the shared spelling, so the two
+	 * tracks cannot drift on the word either.
+	 */
+	printf("# mimic loop: gen %s on TIOA1 at %lu sps, capture %lu Hz\n",
+	       gen_shape_name(gen_shape),
 	       (unsigned long)dac_hz, (unsigned long)adc_hz);
 	printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
 	uart_flush();
@@ -1257,6 +1266,33 @@ static void h_adc_timing(const uint32_t *a)
 	uart_flush();
 }
 
+/*
+ * "=<n>e": the on-die temperature sensor, n conversions averaged.
+ *
+ * On the console as well as the control channel because a bench reading
+ * wants no host, and because the two paths going through one
+ * implementation is what makes them comparable. ctl_temp_t carries what
+ * this may and may not be used to claim - it is an upper bound on
+ * ADVREF noise, not a value, and not a temperature in degrees. Issue
+ * #11.
+ */
+static void h_temp(const uint32_t *a)
+{
+	ctl_temp_t t;
+
+	if (!adc_read_temp(&t, (uint16_t)a[0])) {
+		printf("# temp: no conversion completed\n");
+		uart_flush();
+		return;
+	}
+	printf("# temp: code %lu.%02lu (min %u max %u, n=%u) adcmr=%08lx adcacr=%08lx\n",
+	       (unsigned long)(t.code_x16 / 16u),
+	       (unsigned long)((t.code_x16 % 16u) * 100u / 16u),
+	       (unsigned)t.code_min, (unsigned)t.code_max, (unsigned)t.samples,
+	       (unsigned long)t.adc_mr, (unsigned long)t.adc_acr);
+	uart_flush();
+}
+
 static void h_bench(const uint32_t *a)
 {
 	(void)a;
@@ -1318,7 +1354,7 @@ const console_binding_t console_bindings[] = {
 	{ 'W', h_wave },        { 'J', h_sync },        { 'N', h_layout },
 	{ 'I', h_ibctl },
 
-	{ 'C', h_pair },        { 'A', h_adc_timing },
+	{ 'C', h_pair },        { 'A', h_adc_timing },  { 'e', h_temp },
 
 	{ 'Q', h_profile },     { 'l', h_load },        { 'S', h_stall },
 	{ 'K', h_mimic_gap },   { 'Z', h_detach },      { 'z', h_reset },

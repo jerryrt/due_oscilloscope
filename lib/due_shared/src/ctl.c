@@ -287,6 +287,41 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		ctl_respond(h->req_id, h->opcode, 0, &r, sizeof(r));
 		return;
 	}
+	case CTL_OP_TEMP: {
+		ctl_temp_t t;
+		uint16_t n = CTL_TEMP_SAMPLES_DEFAULT;
+
+		/*
+		 * Zero length takes the default, two bytes ask for a sample
+		 * count. Bounded at both ends by the port: this runs in the
+		 * main loop and invariant 7 wants a worst case that does not
+		 * depend on what a host sent, so a request for a million
+		 * conversions is clamped rather than honoured.
+		 */
+		if (len != 0 && len != sizeof(uint16_t)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "temp takes no payload or a uint16 sample "
+			          "count");
+			return;
+		}
+		if (len == sizeof(uint16_t))
+			memcpy(&n, payload, sizeof(n));
+
+		/*
+		 * A track without the sensor answers CTL_ERR_OPCODE rather
+		 * than a body of zeroes. Code 0 is a *reading* - the bottom
+		 * of the converter's range - and a host cannot tell it from
+		 * "this firmware does not read that" unless the device says
+		 * so.
+		 */
+		if (!ctl_port_temp(&t, n)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no temperature sensor on this track");
+			return;
+		}
+		ctl_respond(h->req_id, h->opcode, 0, &t, sizeof(t));
+		return;
+	}
 	case CTL_OP_GEN: {
 		ctl_gen_t g;
 

@@ -96,6 +96,7 @@ static const struct cmd_entry table[] = {
 
 	/* Acquisition settings. */
 	{ 'C', "=<n>",      "2ch pair: 1 = A0+A1, 2 = A0+A2" },
+	{ 'e', "=<n>",      "on-die temperature sensor, n conversions averaged" },
 	{ 'A', "=<tt>,<st>", "ADC track/settling time, at the next stream" },
 
 	/* Instrumentation and recovery. */

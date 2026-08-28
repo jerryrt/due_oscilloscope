@@ -11,6 +11,7 @@
  */
 
 #include "sam.h"
+#include "bsp.h"        /* micros() */
 #include "analog.h"
 
 void adc_init(void)
@@ -20,9 +21,19 @@ void adc_init(void)
 
 	ADC->ADC_CR = ADC_CR_SWRST;
 
-	/* ADCClock = MCK / ((PRESCAL + 1) * 2) = 84 MHz / 4 = 21 MHz,
-	 * ABOVE the 20 MHz datasheet maximum (Table 46-28); see
-	 * docs/hardware.md. PRESCAL=2 would give 14 MHz and be in spec. */
+	/*
+	 * ADCClock = MCK / ((PRESCAL + 1) * 2) = 78 MHz / 4 = 19.5 MHz,
+	 * *under* the 20 MHz datasheet maximum (Table 46-28); see
+	 * docs/hardware.md.
+	 *
+	 * This comment used to read "84 MHz / 4 = 21 MHz, ABOVE the 20 MHz
+	 * maximum". That is the MCK 84 arithmetic, and MCK is 78 here
+	 * precisely so this division lands inside the limit - CLAUDE.md's
+	 * first correction. The same sentence was on Track A's acq.cpp and
+	 * was fixed there in ede3a69; a comment claiming the clock is out
+	 * of spec, on the register that sets it, is the one place the
+	 * misreading gets believed.
+	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)
 	            | ADC_MR_TRACKTIM(15)
@@ -66,4 +77,117 @@ void adc_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
 
 	*a = (uint16_t)(ADC->ADC_CDR[cha] & 0x0fffu);
 	*b = (uint16_t)(ADC->ADC_CDR[chb] & 0x0fffu);
+}
+
+/*
+ * The on-die temperature sensor: ADC channel 15, enabled by
+ * ADC_ACR.TSON. See ctl_temp_t in ctl_wire.h for why it exists and,
+ * more importantly, for what a reading from it may and may not be used
+ * to claim.
+ *
+ * Register programming, so this is per track by invariant 3 - what is
+ * shared is the payload and the meaning of its fields.
+ *
+ * The refusal path is a real one and worth having: TSON needs the
+ * sensor's startup time before the first conversion is meaningful, and
+ * a converter that never raises EOC15 would otherwise spin here. The
+ * loop is bounded by a conversion budget rather than by a flag.
+ */
+bool adc_read_temp(ctl_temp_t *out, uint16_t samples)
+{
+	uint32_t saved_cher;
+	uint32_t sum = 0;
+	uint16_t got = 0;
+	uint16_t lo = 0xffffu, hi = 0;
+
+	if (samples < CTL_TEMP_SAMPLES_MIN)
+		samples = CTL_TEMP_SAMPLES_DEFAULT;
+	if (samples > CTL_TEMP_SAMPLES_MAX)
+		samples = CTL_TEMP_SAMPLES_MAX;
+
+	/*
+	 * Whatever was enabled goes back afterwards. This runs from the
+	 * control channel, which a host may poll while a capture is
+	 * configured but not running, and leaving channel 15 in the
+	 * sequencer would change the conversion order of the next stream -
+	 * channel count divides the aggregate rate, so that is a silent
+	 * change to every number a run reports.
+	 */
+	saved_cher = ADC->ADC_CHSR;
+
+	ADC->ADC_ACR |= ADC_ACR_TSON;
+
+	/*
+	 * The sensor's startup, spent once rather than per conversion.
+	 * Datasheet 46.7.4 gives t_START for the temperature sensor; this
+	 * is comfortably past it and costs 1 ms on a debug path.
+	 */
+	{
+		uint32_t t0 = micros();
+
+		while (micros() - t0 < 1000u)
+			;
+	}
+
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = ADC_CHER_CH15;
+
+	while (got < samples) {
+		uint32_t t0 = micros();
+		uint16_t v;
+
+		ADC->ADC_CR = ADC_CR_START;
+		/*
+		 * Bounded by time, not by the flag alone. A conversion is
+		 * ~1 us; 200 us is 200x that and is the difference between
+		 * "this part has no sensor" and a main loop that never
+		 * returns. Invariant 7 applies to the debug path too when
+		 * the debug path is reachable from a host.
+		 */
+		while (!(ADC->ADC_ISR & ADC_ISR_EOC15)) {
+			if (micros() - t0 > 200u)
+				goto done;
+		}
+		v = (uint16_t)(ADC->ADC_CDR[15] & ADC_CDR_DATA_Msk);
+		sum += v;
+		if (v < lo)
+			lo = v;
+		if (v > hi)
+			hi = v;
+		got++;
+	}
+
+done:
+	/*
+	 * The registers as they were *during* the conversions, captured
+	 * before the restore below.
+	 *
+	 * They were read after it at first, which reported acr with TSON
+	 * already cleared - the report said the sensor was off in the
+	 * measurement it was describing. The whole reason these two fields
+	 * are on the wire is that a reading taken at one track/settling
+	 * time is not comparable with one taken at another, so a value
+	 * from after the fact answers the wrong question.
+	 */
+	out->adc_mr  = ADC->ADC_MR;
+	out->adc_acr = ADC->ADC_ACR;
+
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = saved_cher;
+	ADC->ADC_ACR &= ~ADC_ACR_TSON;
+
+	if (!got)
+		return false;
+
+	out->dev_us   = micros();
+	/* x16 so the average survives the integer it is reported in: 256
+	 * samples of a 4-code-rms signal resolve to ~0.25 codes, and
+	 * rounding that to a whole code throws away the measurement. */
+	out->code_x16 = (uint32_t)((sum * 16u) / got);
+	out->code_min = lo;
+	out->code_max = hi;
+	out->samples  = got;
+	out->channel  = 15u;
+	out->reserved = 0;
+	return true;
 }

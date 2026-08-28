@@ -136,6 +136,110 @@ uint32_t acq_mr(void)
 	return ADC->ADC_MR;
 }
 
+/*
+ * The on-die temperature sensor: ADC channel 15, enabled by
+ * ADC_ACR.TSON. See ctl_temp_t in ctl_wire.h for why it exists and,
+ * more importantly, for what a reading from it may and may not be used
+ * to claim - the short version is that it is an upper bound on ADVREF
+ * noise rather than a value, and it is not a temperature in degrees.
+ *
+ * Register programming, so this is Track A's own by invariant 3. Track
+ * B's is drivers/adc.c; what is shared is the payload and the meaning
+ * of its fields, which is protocol rather than programming.
+ *
+ * Bounded by a time budget rather than by EOC15 alone. A converter that
+ * never raises the flag - a part without the sensor, or TSON not taking
+ * - would otherwise spin here for ever, and invariant 7 applies to a
+ * debug path when a host can reach it.
+ */
+bool acq_read_temp(ctl_temp_t *out, uint16_t samples)
+{
+	uint32_t saved_cher;
+	uint32_t sum = 0;
+	uint16_t got = 0;
+	uint16_t lo = 0xffffu, hi = 0;
+
+	if (samples < CTL_TEMP_SAMPLES_MIN)
+		samples = CTL_TEMP_SAMPLES_DEFAULT;
+	if (samples > CTL_TEMP_SAMPLES_MAX)
+		samples = CTL_TEMP_SAMPLES_MAX;
+
+	/*
+	 * Whatever was enabled goes back afterwards. Leaving channel 15 in
+	 * the sequencer would change the conversion order of the next
+	 * stream, and channel count divides the aggregate rate - a silent
+	 * change to every number a run reports.
+	 */
+	saved_cher = ADC->ADC_CHSR;
+
+	ADC->ADC_ACR |= ADC_ACR_TSON;
+
+	/* The sensor's startup, spent once rather than per conversion. */
+	{
+		uint32_t t0 = micros();
+
+		while (micros() - t0 < 1000u)
+			;
+	}
+
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = ADC_CHER_CH15;
+
+	while (got < samples) {
+		uint32_t t0 = micros();
+		uint16_t v;
+		bool timed_out = false;
+
+		ADC->ADC_CR = ADC_CR_START;
+		while (!(ADC->ADC_ISR & ADC_ISR_EOC15)) {
+			if (micros() - t0 > 200u) {
+				timed_out = true;
+				break;
+			}
+		}
+		if (timed_out)
+			break;
+		v = (uint16_t)(ADC->ADC_CDR[15] & ADC_CDR_DATA_Msk);
+		sum += v;
+		if (v < lo)
+			lo = v;
+		if (v > hi)
+			hi = v;
+		got++;
+	}
+
+	/*
+	 * The registers as they were *during* the conversions, captured
+	 * before the restore below.
+	 *
+	 * They were read after it at first, which reported acr with TSON
+	 * already cleared - the report said the sensor was off in the
+	 * measurement it was describing. The whole reason these two fields
+	 * are on the wire is that a reading taken at one track/settling
+	 * time is not comparable with one taken at another, so a value
+	 * from after the fact answers the wrong question.
+	 */
+	out->adc_mr  = ADC->ADC_MR;
+	out->adc_acr = ADC->ADC_ACR;
+
+	ADC->ADC_CHDR = 0xffffu;
+	ADC->ADC_CHER = saved_cher;
+	ADC->ADC_ACR &= ~ADC_ACR_TSON;
+
+	if (!got)
+		return false;
+
+	out->dev_us   = micros();
+	/* x16 so the average survives the integer it is reported in. */
+	out->code_x16 = (uint32_t)((sum * 16u) / got);
+	out->code_min = lo;
+	out->code_max = hi;
+	out->samples  = got;
+	out->channel  = 15u;
+	out->reserved = 0;
+	return true;
+}
+
 void acq_init(void)
 {
 	PMC->PMC_PCER1 = (1u << (ID_ADC - 32));
