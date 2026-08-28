@@ -573,6 +573,21 @@ int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g);
 #define CTL_BLEED_DEFAULT   9u
 
 /*
+ * How long a DAC output is given to settle before the conversion that
+ * reads it, and the ceiling a host may ask for. Both tracks wait wall
+ * clock for this; Track B used to spin a 400,000-iteration busy loop
+ * and Track A to call delay(10), which is the same command measuring
+ * two different things and their figures being quietly incomparable.
+ *
+ * It is settable because the excursion in issue #16 recurs on a fixed
+ * cadence - every fourth observation, measured on this bench - and
+ * only moving the cadence separates a beat against something periodic
+ * from a count kept in software.
+ */
+#define CTL_BLEED_SETTLE_MS      10u
+#define CTL_BLEED_SETTLE_MAX_MS 100u
+
+/*
  * Summarise repeated crosstalk observations, so the two tracks print
  * the same words about the same quantity. Same pattern as
  * ctl_gen_describe(): the measurement is register work and stays per
@@ -580,18 +595,39 @@ int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g);
  * twice.
  *
  * **Why repeats at all.** `x` printed a single draw, and issue #16
- * measured the quantity to be *bimodal* - 0 or ~152 codes on otherwise
- * identical runs, the high mode about 15-20% of the time. 152 codes is
- * 5.5% of full swing, so the two answers are not a disagreement about a
- * detail: one says the multiplexer is clean and the other says it
- * bleeds badly. A single draw of that reported as a measurement is the
- * defect, whichever value is right.
+ * measured the quantity to be spread - about 0 codes or about 160 on
+ * otherwise identical runs, the loud ones 10-15% of the time. 160 codes
+ * is 5.8% of full swing, so the two answers are not a disagreement
+ * about a detail: one says the multiplexer is clean and the other says
+ * it bleeds badly. A single draw of that reported as a measurement is
+ * the defect, whichever value is right.
  *
  * So this prints the median, the range and how many observations landed
  * in each, and never one number alone. Returns the length written.
+ *
+ * It was *bimodal* on both benches until the observations were printed
+ * in order and a wider n was taken, and it is not two modes: the loud
+ * ones recur on a fixed cadence that moves with the settle time,
+ * against a 64 ms period, and intermediate values turn up either side.
+ * See ctl_bleed_values() and docs/noise.md.
  */
 int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
                        const int16_t *vals, unsigned count);
+
+/*
+ * The observations themselves, in the order they were taken.
+ *
+ * A summary cannot answer the question the summary raised. Median and
+ * range say *that* the quantity is spread; they cannot say whether the
+ * high observations arrive at random, cluster into consecutive runs, or
+ * only ever land first - and those are three different defects. Issue
+ * #5 turned on exactly this distinction and was got wrong by pooling.
+ *
+ * Order is the whole point, so this never sorts. Returns the length
+ * written; needs about 6 bytes per observation plus the label.
+ */
+int ctl_bleed_values(char *buf, unsigned long n, const char *label,
+                     const int16_t *vals, unsigned count);
 
 #ifdef __cplusplus
 }

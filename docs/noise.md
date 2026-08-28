@@ -358,6 +358,133 @@ The general form is worth stating because it is not only about phase: a
 mode is a claim that *no* remaining variable explains the split, and
 that claim is only as good as the labels that were checked.
 
+## The bleed excursion: the position says which channel, and a 64 ms beat says when
+
+Issue #16, and the fourth measurement of the same quantity. `x` first
+printed one draw of it; then a median and a range, which said the
+quantity was spread and was read as *bimodal*; then the observations in
+the order they were taken; and then the same command with the channel
+pair as a variable. Two benches, both tracks, and the two halves of the
+answer came from different ends.
+
+**Which channel: the conversion position, not the pin.** A0 is ADC
+channel 7, A1 is 6 and A2 is 5, and the sequencer converts by ascending
+index - so in *both* pairings the watched channel converts **first** and
+A0 **second**. `adc_read_pair`'s argument order only chooses which CDR
+is read out afterwards. The two arms were never mirrors of one another
+with the numbers exchanged: one watches the first-converted channel and
+the other the second. Measured on `windows-desk`, 90 observations per
+cell, both tracks: A2 shows the excursion **larger** than A1, and A0
+never shows it at all - over 300 observations across two tracks and two
+pairings, never past +-6 codes.
+
+Whether the pin is *driven* sets the form rather than the presence. Both
+benches that have measured this have DAC1 jumpered to A1, so A1 is
+driven and recovers within the tracking time nearly always - an
+occasional excursion. A2 is bare on both, cannot recover, and sits
+permanently offset instead. That is this document's undriven-neighbour
+finding reappearing one level down, inside `x`. **It predicts the DSO
+bench**, where A1 is bare: `=1C` there should read like A2 here, a large
+standing offset rather than an occasional excursion. Untested.
+
+**When: a 64 ms beat.** Inside one invocation the loud observations
+recur on a fixed cadence, and the cadence moves when the settle time
+moves. Track A, `=15,<ms>x`, macOS bench:
+
+    settle ms   observation   gap between    gap x duration
+    (=<n>,<ms>x)   duration      loud ones
+        2            16 ms           4              64 ms
+        4            32 ms           2              64 ms
+        5            40 ms           8             320 ms
+        7            56 ms           8             448 ms
+        8            64 ms           1              64 ms
+       10            80 ms           4             320 ms
+       13           104 ms           8             832 ms
+       20           160 ms           2             320 ms
+       40           320 ms     none in 60 observations
+
+An observation is eight settle waits - two per arm, four arms - and the
+last column is an exact multiple of **64 ms** in every row, with the
+observed gap the smallest one that makes it so. Nine settings across a
+20x range, one period.
+
+At `ms` 8 the observation duration *is* 64 ms, so a run samples one
+fixed phase and the prediction is all-or-nothing. Measured: one run of
+15 loud observations at 162-168 codes and four runs with none. That is
+the strongest single row, and it also reads the amplitude off a run that
+is not sampling an edge - **~165 codes, 132 mV**. The 22/39/62/110/133
+values in other runs are the window's edges, not modes, and neither
+bench's "bimodal" survived a wider n.
+
+### The control arm, and what it separates
+
+Each arm carries a control that writes the same DAC code twice where the
+real arm swings it: identical writes, waits and conversions, and the
+only difference is that nothing moves. On the **driven** channel it has
+never once been loud - **0** in 1,005 observations on Track A and 0 in
+225 on Track B, against 10-15% on the swung arm. So the A1 excursion is
+about DAC0 being at full scale, not about the reading.
+
+**On the bare channel the control is loud too, and that is the point.**
+`=2C` on the macOS bench, Track A, `=15,8x`, three runs, in order:
+
+    A2 bleed    -170  +37  +80  +88  +90  +95  +96 ... +95
+    A2 control  -140   +1  +28  +33  +35  +38  +41 ... +38
+    A0 bleed      -1   -4   +2   +1   +0   +3   -1 ...  -1
+
+Reproducible to a few codes across all three. So the bare pin carries a
+**standing offset of about +37 codes that needs no swing at all**, and
+the swing adds about +56 on top of it. Those are two different effects
+and a command that reported only the swung arm would have quoted their
+sum as one number.
+
+It also has a **startup transient**: the first observation is -170, the
+second near zero, and it converges over about four observations to the
+plateau - three runs agreeing to within a few codes, so it is the pin's
+charge state settling and not scatter. A bare input behind the
+multiplexer takes a measurable time to reach whatever equilibrium
+repeated conversions of its neighbour put it at.
+
+Track A here plateaus at +95 against `windows-desk`'s +105 median for
+the same arm, which is the closest two benches have come to agreeing on
+this quantity.
+
+### What is still open, and it is the mechanism
+
+The position finding says which channel can show it. It does not say why
+it is *periodic*, and the two do not obviously compose:
+
+- **Nothing found has a 64 ms period.** Not the LED heartbeat - 100/900
+  ms, and the main loop is blocked for the whole command so it never
+  runs. Not the DACC refresh - microseconds, and `REFRESH` is an 8-bit
+  field so even its maximum is a few milliseconds *(check: from the
+  datasheet's 1024 x REFRESH / DACC clock, not measured here)*. Not
+  anything counted in software, because the cadence tracks wall clock
+  rather than the observation count, which is what the sweep measured.
+  Of the ISRs that can fire while the loop is blocked - SysTick, UART,
+  UOTGHS - none has one either. The USB host is **not** excluded: both
+  tracks were enumerated on the native port throughout, and `=<ms>Z`
+  blocks the main loop for its whole detach, so there is no way to run
+  `x` while the port is down.
+- **Track A converts the watched channel alone.** `acq_read_one()`
+  disables every other channel, so the conversion immediately preceding
+  the watched one is *the same channel*, not A0 - and Track A still
+  shows the excursion, and is where the 64 ms cadence locks cleanly.
+  Whatever the first-converted channel is inheriting, on Track A it is
+  not inheriting it from A0 within a sequence.
+
+**The two tracks' `x` are not the same instrument, and that is a parity
+gap rather than a curiosity.** Track B converts the pair in one
+sequence; Track A calls `acq_read_one` twice. So the conversion
+preceding the watched one differs between them, which is exactly the
+variable this measurement turns on - and it is why the two tracks report
+different signs for the bare channel (-90 against +105). **A bleed
+figure is not comparable across tracks today.** Closing that gap comes
+before any model of the mechanism is worth building.
+
+`tools/bleed_cadence.py` is the cadence sweep; `=<n>,<ms>x` and `=<n>C`
+are the two knobs. Both need no instrument and run on either track.
+
 ## What this method cannot do
 
 Stated here rather than discovered later, because a plausible number is

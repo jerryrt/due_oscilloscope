@@ -241,15 +241,57 @@ static void cmd_sweep(void)
  * fast configuration used for streaming will look worse.
  */
 /*
- * Multiplexer bleed, repeated - "=<n>x", default CTL_BLEED_DEFAULT.
+ * How long to wait for a DAC output to settle before converting -
+ * "=<n>,<ms>x", default CTL_BLEED_SETTLE_MS.
  *
- * **It prints a distribution, never one number.** Issue #16 measured
- * this quantity to be bimodal on an otherwise idle board: 0 or ~152
- * codes, the high mode about 15-20% of runs, with ADC_MR read back
- * identical in both. 152 codes is 5.5% of the 2747-code full swing, so
- * the two answers disagree about whether the multiplexer is clean. A
- * single draw reported as a measurement is the defect, whichever value
- * is right.
+ * It is a knob because the excursion issue #16 is about recurs on a
+ * fixed *cadence* rather than at random, and only moving the cadence
+ * separates a beat against something periodic from a count kept in
+ * software. Moving it is what measured the 64 ms period.
+ *
+ * This used to be a busy loop of 400,000 iterations here and delay(10)
+ * on Track A, so the same command waited different times on the two
+ * tracks and their figures were not comparable. Wall clock on both now.
+ */
+static uint32_t crosstalk_settle_ms;
+
+static void bleed_settle(uint32_t ms)
+{
+	uint32_t t0 = micros();
+
+	while (micros() - t0 < ms * 1000u)
+		{ }
+}
+
+/*
+ * Multiplexer bleed, repeated - "=<n>,<ms>x".
+ *
+ * **It prints a distribution, never one number, and in the order taken.**
+ * Issue #16 measured this quantity to be spread on an otherwise idle
+ * board: about 0 codes or about 160, the loud ones 10-15% of
+ * observations, with ADC_MR read back identical in both. 160 codes is
+ * 5.8% of the 2747-code full swing, so the two answers disagree about
+ * whether the multiplexer is clean, and a single draw reported as a
+ * measurement is the defect whichever value is right.
+ *
+ * **It is not two modes, which is what the order settled.** The loud
+ * observations recur on a fixed cadence inside a run, and the cadence
+ * moves with the settle time so that gap x observation-duration is a
+ * multiple of 64 ms at every setting tested. A beat against something
+ * periodic, then - not a coin flip and not a startup condition.
+ *
+ * **Which channel is set by the conversion position, not the pin** -
+ * see the `=<n>C` note below. The A0 arm has never shown it on either
+ * track in any pairing.
+ *
+ * **Each arm carries a control that swings nothing**, writing the same
+ * DAC code twice where the real arm writes 0 then 4095. Same writes,
+ * same waits, same conversions. On the *driven* channel it has never
+ * once been loud - 0 in 1,005 observations on Track A and 0 in 225 on
+ * Track B - which is what makes that excursion about the swing rather
+ * than the reading. On a *bare* channel it is loud: `=2C` reads a
+ * standing +37 codes with nothing swung and +95 with, so those are two
+ * effects and the control is what tells them apart. docs/noise.md.
  *
  * **What it assumes about the bench, which differs between ours.** The
  * A1 arm holds DAC1 at mid scale and swings DAC0. Where DAC1 is
@@ -262,15 +304,23 @@ static void cmd_sweep(void)
 static void cmd_crosstalk(void)
 {
 	int16_t a1_bleed[CTL_BLEED_MAX], a0_bleed[CTL_BLEED_MAX];
+	int16_t a1_still[CTL_BLEED_MAX], a0_still[CTL_BLEED_MAX];
 	unsigned n = crosstalk_repeats ? crosstalk_repeats : CTL_BLEED_DEFAULT;
+	uint32_t ms = crosstalk_settle_ms ? crosstalk_settle_ms
+	                                  : CTL_BLEED_SETTLE_MS;
 	uint16_t a0, a1, lo, hi;
-	char line[160];
+	char line[224];
 	unsigned i;
 
 	if (n > CTL_BLEED_MAX)
 		n = CTL_BLEED_MAX;
+	if (ms > CTL_BLEED_SETTLE_MAX_MS)
+		ms = CTL_BLEED_SETTLE_MAX_MS;
 
-	printf("# crosstalk: hold one channel, swing the other, %u times\n", n);
+	printf("# crosstalk: hold one channel, swing the other, %u times,"
+	       " %lu ms settle\n", n, (unsigned long)ms);
+	printf("# each arm has a control that writes the same code twice, so"
+	       " the swing is the only difference\n");
 	uart_flush();
 
 	/*
@@ -289,24 +339,46 @@ static void cmd_crosstalk(void)
 		/* Hold DAC1 mid scale; swing DAC0. Watch the second channel. */
 		dac_write(1, 2048);
 		dac_write(0, 0);
-		for (volatile uint32_t d = 0; d < 400000u; d++) { }
+		bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &a0, &lo);
 
 		dac_write(0, 4095);
-		for (volatile uint32_t d = 0; d < 400000u; d++) { }
+		bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &a0, &hi);
 		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
+
+		/* Same arm with nothing swung: DAC0 is written twice at the
+		 * same code. Identical writes, waits and conversions, so a
+		 * difference here is not crosstalk from a moving neighbour. */
+		dac_write(0, 2048);
+		bleed_settle(ms);
+		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &lo);
+
+		dac_write(0, 2048);
+		bleed_settle(ms);
+		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &hi);
+		a1_still[i] = (int16_t)((int)hi - (int)lo);
 
 		/* Hold DAC0 mid scale; swing DAC1. Watch A0. */
 		dac_write(0, 2048);
 		dac_write(1, 0);
-		for (volatile uint32_t d = 0; d < 400000u; d++) { }
+		bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &lo, &a1);
 
 		dac_write(1, 4095);
-		for (volatile uint32_t d = 0; d < 400000u; d++) { }
+		bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &hi, &a1);
 		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
+
+		/* And its control. */
+		dac_write(1, 2048);
+		bleed_settle(ms);
+		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &lo, &a1);
+
+		dac_write(1, 2048);
+		bleed_settle(ms);
+		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &hi, &a1);
+		a0_still[i] = (int16_t)((int)hi - (int)lo);
 	}
 
 	/*
@@ -321,9 +393,27 @@ static void cmd_crosstalk(void)
 	snprintf(label, sizeof(label), "%s bleed (DAC1 held, DAC0 swung)", sname);
 	ctl_bleed_describe(line, sizeof(line), label, a1_bleed, n);
 	printf("%s\n", line);
-	snprintf(label, sizeof(label), "A0 bleed (DAC0 held, DAC1 swung, %s in pair)",
-	         sname);
+	snprintf(label, sizeof(label), "%s bleed", sname);
+	ctl_bleed_values(line, sizeof(line), label, a1_bleed, n);
+	printf("%s\n", line);
+	snprintf(label, sizeof(label), "%s control (nothing swung)", sname);
+	ctl_bleed_describe(line, sizeof(line), label, a1_still, n);
+	printf("%s\n", line);
+	snprintf(label, sizeof(label), "%s control", sname);
+	ctl_bleed_values(line, sizeof(line), label, a1_still, n);
+	printf("%s\n", line);
+	uart_flush();
+
+	snprintf(label, sizeof(label),
+	         "A0 bleed (DAC0 held, DAC1 swung, %s in pair)", sname);
 	ctl_bleed_describe(line, sizeof(line), label, a0_bleed, n);
+	printf("%s\n", line);
+	ctl_bleed_values(line, sizeof(line), "A0 bleed", a0_bleed, n);
+	printf("%s\n", line);
+	ctl_bleed_describe(line, sizeof(line),
+	                   "A0 control (nothing swung)", a0_still, n);
+	printf("%s\n", line);
+	ctl_bleed_values(line, sizeof(line), "A0 control", a0_still, n);
 	printf("%s\n", line);
 
 	/*
@@ -332,7 +422,7 @@ static void cmd_crosstalk(void)
 	 * with A1 free it sits wherever the mux left it.
 	 */
 	dac_write(1, 2048);
-	for (volatile uint32_t d = 0; d < 400000u; d++) { }
+	bleed_settle(ms);
 	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
 	printf("# A1 reads %u with DAC1 held at 2048: %s\n", a1,
 	       (a1 > 1800u && a1 < 2300u) ? "DAC1 -> A1 is fitted"
@@ -920,7 +1010,12 @@ static void h_gpio(const uint32_t *a)  { (void)a; measure_gpio(); }
 static void h_fault(const uint32_t *a) { (void)a; trigger_fault(); }
 static void h_read(const uint32_t *a)  { (void)a; cmd_read(); }
 static void h_sweep(const uint32_t *a) { (void)a; cmd_sweep(); }
-static void h_xtalk(const uint32_t *a) { crosstalk_repeats = a[0]; cmd_crosstalk(); }
+static void h_xtalk(const uint32_t *a)
+{
+	crosstalk_repeats = a[0];
+	crosstalk_settle_ms = a[1];
+	cmd_crosstalk();
+}
 static void h_ratesweep(const uint32_t *a) { cmd_rate_sweep(a[2] ? a[2] : 2u); }
 static void h_dac_sweep(const uint32_t *a) { (void)a; cmd_dac_sweep(); }
 static void h_dac_15m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(1500000); }

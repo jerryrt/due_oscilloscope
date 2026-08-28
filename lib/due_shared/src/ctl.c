@@ -511,6 +511,34 @@ int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
 	return written;
 }
 
+/*
+ * The same observations unsorted, so a host can see where in the run
+ * each one landed. See ctl_wire.h for why the summary is not enough.
+ */
+int ctl_bleed_values(char *buf, unsigned long n, const char *label,
+                     const int16_t *vals, unsigned count)
+{
+	unsigned long used;
+	int written;
+	unsigned i;
+
+	if (count > CTL_BLEED_MAX)
+		count = CTL_BLEED_MAX;
+
+	written = snprintf(buf, n, "# %s, in order:", label);
+	if (written < 0)
+		return written;
+	used = (unsigned long)written;
+
+	for (i = 0; i < count && used < n; i++) {
+		written = snprintf(buf + used, n - used, " %+d", vals[i]);
+		if (written < 0)
+			return written;
+		used += (unsigned long)written;
+	}
+	return (int)used;
+}
+
 /* ------------------------------------------------------------------ */
 /* Receive                                                             */
 /* ------------------------------------------------------------------ */
