@@ -1761,8 +1761,8 @@ static void ha_temp(const uint32_t *a)
 	ctl_temp_t t;
 	char buf[160];
 
-	if (!acq_read_temp(&t, (uint16_t)a[0])) {
-		Serial.println("# temp: no conversion completed");
+	if (acq_read_temp(&t, (uint16_t)a[0]) != CTL_TEMP_OK) {
+		Serial.println("# temp: refused - a capture is armed, or no sensor here");
 		Serial.flush();
 		return;
 	}

@@ -1280,8 +1280,8 @@ static void h_temp(const uint32_t *a)
 {
 	ctl_temp_t t;
 
-	if (!adc_read_temp(&t, (uint16_t)a[0])) {
-		printf("# temp: no conversion completed\n");
+	if (adc_read_temp(&t, (uint16_t)a[0]) != CTL_TEMP_OK) {
+		printf("# temp: refused - a capture is armed, or no sensor here\n");
 		uart_flush();
 		return;
 	}

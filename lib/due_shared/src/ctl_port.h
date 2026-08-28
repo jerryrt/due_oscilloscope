@@ -181,9 +181,13 @@ void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
 
 /*
  * CTL_OP_TEMP. Read the on-die temperature sensor, averaging `samples`
- * conversions, and fill in the report. False means this track does not
- * read it, and the opcode is then answered with CTL_ERR_OPCODE rather
- * than a body of zeroes - code 0 is a reading, not an absence.
+ * conversions, and fill in the report.
+ *
+ * Returns CTL_TEMP_OK, CTL_TEMP_UNSUPPORTED (this track does not read
+ * it -> CTL_ERR_OPCODE) or CTL_TEMP_BUSY (a capture is armed and
+ * switching channels would corrupt it -> CTL_ERR_BUSY). Three outcomes
+ * rather than a bool because the two refusals have different remedies:
+ * one never becomes true, the other is fixed by retrying.
  *
  * Per track because it is ADC register programming: ADC_ACR.TSON, the
  * channel enable and the conversion loop. What is shared is the payload
@@ -195,7 +199,7 @@ void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
  * actually averaged, because invariant 7 wants a bounded worst case
  * that does not depend on what a host sent.
  */
-bool ctl_port_temp(ctl_temp_t *out, uint16_t samples);
+int ctl_port_temp(ctl_temp_t *out, uint16_t samples);
 
 /*
  * Flush the debug console. Only ctl_dump() uses this, it is never

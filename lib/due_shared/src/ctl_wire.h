@@ -104,6 +104,20 @@
 #define CTL_ERR_OPCODE    2u   /* no such command */
 #define CTL_ERR_LENGTH    3u   /* payload length wrong for the opcode */
 #define CTL_ERR_CRC       4u   /* header or payload did not check */
+/*
+ * The command is implemented and well-formed, and the device will not
+ * do it *now* because doing it would damage something already running.
+ *
+ * Distinct from CTL_ERR_OPCODE for the same reason that answers a body
+ * of zeroes: "this firmware cannot" and "not while a capture is armed"
+ * are different facts and a host that cannot tell them apart will
+ * conclude the wrong one. A retry fixes this one and never fixes that
+ * one.
+ *
+ * Additive, so no CTL_VERSION bump. A host that does not know the code
+ * still gets an error frame with its text.
+ */
+#define CTL_ERR_BUSY      5u   /* implemented, but not while that is running */
 
 typedef struct __attribute__((packed)) {
 	uint8_t  magic[4];
@@ -312,6 +326,14 @@ typedef struct __attribute__((packed)) {
  * answers nothing; the averaging is on the device because the host
  * cannot ask for conversions fast enough to do it there.
  *
+ * **Refused while a capture is armed**, with CTL_ERR_BUSY. Reading the
+ * sensor means disabling the capture's channels and enabling channel 15
+ * for the duration, which would put sensor conversions into the capture
+ * ring - discontinuous data presented as continuous, which is the one
+ * thing invariant 5 exists to prevent. The device tests ADC_MR's TRGEN
+ * rather than a software flag, because the hardware trigger being armed
+ * is the actual condition and a flag is a second account of it.
+ *
  * `adc_mr` and `adc_acr` are the registers as the hardware holds them,
  * not an echo - a reading taken at a track/settling time nobody
  * recorded is not comparable with one taken at another, and the two
@@ -331,6 +353,16 @@ typedef struct __attribute__((packed)) {
  * chose to send, so a request past this is clamped and the report says
  * what was actually averaged.
  */
+/*
+ * What ctl_port_temp() returns. Three outcomes rather than a bool,
+ * because "this track has no sensor" and "not right now" are different
+ * facts with different remedies and the caller has to answer them with
+ * different error codes.
+ */
+#define CTL_TEMP_OK          1
+#define CTL_TEMP_UNSUPPORTED 0
+#define CTL_TEMP_BUSY      (-1)
+
 #define CTL_TEMP_SAMPLES_DEFAULT  256u
 #define CTL_TEMP_SAMPLES_MIN        1u
 #define CTL_TEMP_SAMPLES_MAX     4096u

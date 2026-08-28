@@ -131,7 +131,7 @@ uint32_t ctl_port_out_drain_polls(void)
 	return ctlusb_out_banks;
 }
 
-bool ctl_port_temp(ctl_temp_t *out, uint16_t samples)
+int ctl_port_temp(ctl_temp_t *out, uint16_t samples)
 {
 	return acq_read_temp(out, samples);
 }

@@ -73,7 +73,7 @@ bool ctl_port_load_sample(load_report_t *out)
 	return true;
 }
 
-bool ctl_port_temp(ctl_temp_t *out, uint16_t samples)
+int ctl_port_temp(ctl_temp_t *out, uint16_t samples)
 {
 	return adc_read_temp(out, samples);
 }

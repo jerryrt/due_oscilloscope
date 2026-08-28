@@ -124,13 +124,15 @@ void     acq_read_pair(unsigned cha, unsigned chb,
 /*
  * The on-die temperature sensor, ADC channel 15 behind ADC_ACR.TSON.
  * Averages `samples` conversions (clamped to the CTL_TEMP_SAMPLES_*
- * range) and restores whatever channels were enabled. False means no
- * conversion completed, which CTL_OP_TEMP answers as CTL_ERR_OPCODE.
+ * range) and restores whatever channels were enabled. Returns CTL_TEMP_OK,
+ * CTL_TEMP_UNSUPPORTED or CTL_TEMP_BUSY - see ctl_port.h. Refused while
+ * the ADC is hardware-triggered, because switching channels under a
+ * running capture would corrupt it.
  *
  * ctl_temp_t carries what the reading may and may not be used to claim -
  * read it before quoting a number from here. Issue #11.
  */
-bool     acq_read_temp(ctl_temp_t *out, uint16_t samples);
+int      acq_read_temp(ctl_temp_t *out, uint16_t samples);
 
 /*
  * A0 is AD7, A1 is AD6, A2 is AD5 - the Arduino A0..A7 labels map to

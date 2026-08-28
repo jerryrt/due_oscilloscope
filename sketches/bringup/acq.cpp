@@ -210,9 +210,9 @@ void acq_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
  * - would otherwise spin here for ever, and invariant 7 applies to a
  * debug path when a host can reach it.
  */
-bool acq_read_temp(ctl_temp_t *out, uint16_t samples)
+int acq_read_temp(ctl_temp_t *out, uint16_t samples)
 {
-	uint32_t saved_cher;
+	uint32_t saved_cher, saved_mr;
 	uint32_t sum = 0;
 	uint16_t got = 0;
 	uint16_t lo = 0xffffu, hi = 0;
@@ -228,7 +228,51 @@ bool acq_read_temp(ctl_temp_t *out, uint16_t samples)
 	 * stream, and channel count divides the aggregate rate - a silent
 	 * change to every number a run reports.
 	 */
+	/*
+	 * Refuse while the ADC is hardware-triggered. Reading the sensor
+	 * disables the capture's channels and enables channel 15, which
+	 * would put sensor conversions into the capture ring -
+	 * discontinuous data presented as continuous, invariant 5. TRGEN
+	 * is the actual condition; a software flag would be a second
+	 * account of it that can disagree.
+	 */
+	if (ADC->ADC_MR & ADC_MR_TRGEN)
+		return CTL_TEMP_BUSY;
+
 	saved_cher = ADC->ADC_CHSR;
+	saved_mr   = ADC->ADC_MR;
+
+	/*
+	 * The sensor's own tracking time, set here rather than inherited.
+	 *
+	 * Issue #15 measured the two tracks reading the die sensor
+	 * **0.84 codes apart** - four times the ~0.20 codes that
+	 * `records/advref-temp.jsonl` bounds ADVREF's whole short-term
+	 * noise at - purely because they idle at different ADC_MR: Track A
+	 * at TRACKTIM 0 from acq_init(), Track B at 15 from adc_init().
+	 *
+	 * Converging the idle configs would not have fixed it, only moved
+	 * it: both tracks *stream* at TRACKTIM 0, so a reading taken after
+	 * a capture would still differ from one taken after boot. The
+	 * variable is not which track, it is whatever last touched the
+	 * register.
+	 *
+	 * So the measurement sets its own conditions and restores them.
+	 * TRACKTIM 15 and SETTLING 3 are the maxima, which is what a
+	 * high-impedance source wants - one ADC clock of tracking does not
+	 * charge the sample capacitor from a bandgap, and it reads low,
+	 * which is the same charge-sharing docs/noise.md describes for an
+	 * undriven input reading its neighbour. On a debug path that
+	 * already spends 1 ms on TSON startup they cost nothing.
+	 *
+	 * This also changes what `adc_mr` in the report is *for*: it was a
+	 * variable to be recorded, and it is now a constant to be checked.
+	 */
+	ADC->ADC_MR = ADC_MR_PRESCAL(1)
+	            | (0xfu << ADC_MR_STARTUP_Pos)
+	            | ADC_MR_TRACKTIM(15)
+	            | (3u << ADC_MR_SETTLING_Pos)
+	            | (1u << ADC_MR_TRANSFER_Pos);
 
 	ADC->ADC_ACR |= ADC_ACR_TSON;
 
@@ -308,9 +352,10 @@ bool acq_read_temp(ctl_temp_t *out, uint16_t samples)
 	ADC->ADC_CHDR = 0xffffu;
 	ADC->ADC_CHER = saved_cher;
 	ADC->ADC_ACR &= ~ADC_ACR_TSON;
+	ADC->ADC_MR = saved_mr;
 
 	if (!got)
-		return false;
+		return CTL_TEMP_UNSUPPORTED;
 
 	out->dev_us   = micros();
 	/* x16 so the average survives the integer it is reported in. */
@@ -320,7 +365,7 @@ bool acq_read_temp(ctl_temp_t *out, uint16_t samples)
 	out->samples  = got;
 	out->channel  = 15u;
 	out->reserved = 0;
-	return true;
+	return CTL_TEMP_OK;
 }
 
 void acq_init(void)

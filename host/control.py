@@ -49,6 +49,10 @@ ERR_VERSION = 1
 ERR_OPCODE = 2
 ERR_LENGTH = 3
 ERR_CRC = 4
+# Implemented and well-formed, but not right now - a capture is armed and
+# switching the ADC's channels would corrupt it. Distinct from ERR_OPCODE
+# because a retry fixes this one and never fixes that one.
+ERR_BUSY = 5
 
 _HDR = struct.Struct("<4sBBHHHI")
 _PING = struct.Struct("<III")

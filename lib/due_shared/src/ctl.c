@@ -290,6 +290,7 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 	case CTL_OP_TEMP: {
 		ctl_temp_t t;
 		uint16_t n = CTL_TEMP_SAMPLES_DEFAULT;
+		int rc;
 
 		/*
 		 * Zero length takes the default, two bytes ask for a sample
@@ -308,13 +309,20 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			memcpy(&n, payload, sizeof(n));
 
 		/*
-		 * A track without the sensor answers CTL_ERR_OPCODE rather
-		 * than a body of zeroes. Code 0 is a *reading* - the bottom
-		 * of the converter's range - and a host cannot tell it from
-		 * "this firmware does not read that" unless the device says
-		 * so.
+		 * Three outcomes, and a host must be able to tell the two
+		 * refusals apart. CTL_ERR_OPCODE is "this firmware does not
+		 * read it" and never becomes true; CTL_ERR_BUSY is "not
+		 * while a capture is armed" and a retry fixes it. Neither is
+		 * a body of zeroes, because code 0 is a *reading* - the
+		 * bottom of the converter's range.
 		 */
-		if (!ctl_port_temp(&t, n)) {
+		rc = ctl_port_temp(&t, n);
+		if (rc == CTL_TEMP_BUSY) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_BUSY,
+			          "not while a capture is armed");
+			return;
+		}
+		if (rc != CTL_TEMP_OK) {
 			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
 			          "no temperature sensor on this track");
 			return;
