@@ -17,10 +17,11 @@ figure. Issue #12.
 
 Two things in this run must not be read at face value:
 
-- **Every figure in "Effective resolution and noise" carries a spread
-  5-7x the macOS bench's** (0.380 against 0.060 on `effective_bits`).
-  The cross-bench gap below is therefore not a settled number - see the
-  note in issue #12.
+- **The "Effective resolution and noise" table below is contaminated**
+  and is superseded by the 9-round figures printed under it. At
+  `--repeats 3` this bench picked up intermittent spectral lines; at
+  `--repeats 9` it does not, and three sessions then agree to 0.0014
+  bits. Do not quote the 3-round numbers.
 - **`rise_10_90_ns` agreeing with macOS to three decimals is
   quantization, not agreement.** The equivalent-time grid is 1/13 MHz =
   76.923 ns and both benches landed on exactly 12 steps, so the metric
@@ -62,6 +63,26 @@ conditions in this block; a figure quoted without them is not a figure.
 | advref_source | measured | - | - |
 
 *units: bits of 12; codes rms; count*
+
+**The noise section above was taken at `--repeats 3` and is
+contaminated; use these figures instead.** Three independent 9-round
+sessions on this bench, same flash, same firmware:
+
+| run | effective_bits | spread | noise_rms_codes | spectral_lines |
+|---|---|---|---|---|
+| 1 | 10.2782 | 0.006845 | 0.952208 | 0 (spread 0) |
+| 2 | 10.2796 | 0.007487 | 0.951293 | 0 (spread 1) |
+| 3 | 10.2784 | 0.004652 | 0.952061 | 0 (spread 1) |
+
+The medians agree to **0.0014 bits**. The 3-round figure above reads
+10.152 with a spread of 0.380 and `spectral_lines` 6 with a spread of
+7 - a 9-sample range cannot be 55x smaller than a 3-sample range drawn
+from the same distribution, so the short run was contaminated by
+intermittent spectral lines rather than being merely imprecise. Lines
+depress `effective_bits`, which is the direction observed.
+
+**Against macOS Track B's 9.403 +- 0.060 the gap is 0.875 bits.** That
+excludes the ~0.4 predicted in issue #12 and the 1.77 we started from.
 
 ## The DAC to ADC loop
 
