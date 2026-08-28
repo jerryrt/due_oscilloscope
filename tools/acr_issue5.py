@@ -72,11 +72,23 @@ def main():
     print("round   0x000 peak    z   |  0x10A peak    z   |   |B|-|A|")
     for r in range(args.rounds):
         got = {}
-        for arm in ("0x000", "0x10A", "0x10A", "0x000"):
+        # Counterbalanced, not merely interleaved. ABBA aliases arm
+        # with position-in-round perfectly - 0x000 only ever ran 1st
+        # and 4th, 0x10A only 2nd and 3rd, in all 44 committed rows -
+        # so "the arm never lands at 188" and "positions 1 and 4 never
+        # land at 188" were the same sentence, and the record could not
+        # tell "the arm reaches the start relationship" from "the
+        # cadence does". Alternating ABBA with BAAB gives each arm
+        # every position; with t_wall per capture that is the design
+        # that separates them. Issue #5.
+        order = (("0x000", "0x10A", "0x10A", "0x000") if r % 2 == 0
+                 else ("0x10A", "0x000", "0x000", "0x10A"))
+        for pos, arm in enumerate(order):
             row = one(board, arm, args.seconds)
             if row is None:
                 print("  capture failed"); continue
             row["round"] = r
+            row["pos"] = pos
             rows.append(row)
             by[arm].append(row)
             got.setdefault(arm, []).append(row)
