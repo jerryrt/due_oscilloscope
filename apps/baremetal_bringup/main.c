@@ -26,6 +26,7 @@
 #include "play.h"
 #include "playstat.h"
 #include "ctl.h"
+#include "console.h"          /* the shared command surface */
 #include "ctl_port.h"   /* ctl_port_gen_get: the console reads the
                             * generator through the same hook the control
                             * channel does, so the two cannot disagree */
@@ -53,6 +54,20 @@ static void identity_line(void)
 	       __DATE__, __TIME__);
 }
 
+/*
+ * This track's own facts, then the shared command list.
+ *
+ * The list used to be twenty-eight printf lines here and twenty-eight
+ * more in Track A's sketch, which is how the two command sets came to
+ * differ by twelve without anyone deciding they should - issue #13.
+ * console_help() prints one table, so a command that exists on one
+ * track and not the other now says so on both.
+ *
+ * The numbers stay here, where they can be computed. A shared help line
+ * carrying "453488" would be a figure written down a second time, and
+ * this project's rule about invented numbers applies hardest to the
+ * ones that look derived.
+ */
 static void banner(void)
 {
 	printf("#\n");
@@ -60,34 +75,29 @@ static void banner(void)
 	identity_line();
 	printf("# SystemCoreClock = %lu  ADC clk = %lu (max 20000000)\n",
 	       (unsigned long)SystemCoreClock, (unsigned long)(SystemCoreClock / 4u));
-	printf("# commands: h=help p=printf-cost g=gpio-cost f=fault\n");
-	printf("#           r=read a0/a1  s=dac sweep  x=crosstalk\n");
-	printf("#           t=trigger-rate sweep (TC+ADC+PDC)\n");
-	printf("#           1..5=stream 50k/100k/200k/400k Hz, 5=max in-spec (%lu)\n",
-	       (unsigned long)((SystemCoreClock / 2u) / ACQ_MIN_RC));
-	printf("#           0=stop stream   ?=stream stats\n");
-	printf("#           w=stream over UART   u=usb registers\n");
-	printf("#           F=flood IN  R=sink OUT  X=duplex  B=bench stats\n");
-	printf("#           G/T/Y = same three via DMA\n");
-	printf("#           L=full loop HOST->DAC->ADC->HOST\n");
-	printf("#           P=play only  V=ring dump  D=loop diagnostic\n");
-	printf("#           O=playback ring occupancy histogram\n");
-	printf("#           =<dac>[,<adc>[,<nch>]] before L/P/t/M: rates, channels\n");
-	printf("#           M=mimic loop without USB (gen sine on TIOA1 + capture)\n");
-	printf("#           Q=main-loop profile  l=main-loop load\n");
-	printf("#           =<ms>S = stall the loop (validates l)\n");
-	printf("#           =1l = report load, then clear it\n");
-	printf("#           =<ms>Z = detach the native port (software unplug)\n");
-	printf("#           =<tt>,<st>A = ADC track/settling time\n");
-	printf("#           =<n>C = 2ch pair: A0+A1 or A0+A2\n");
-	printf("#           =<n>N = gen layout 0..3 (see gen.h)\n");
-	printf("#           =<shape>,<pts>,<amp>W = gen waveform: 0 sine 1 square\n");
-	printf("#                             2 ramp 3 triangle 4 dc; pts 2..256\n");
-	printf("#                             amp 1..256 (256ths of full scale)\n");
-	printf("#           =<n>,<amp>J = sync: 0 off 1 per-cycle 2 per-wrap 3 solo\n");
-	printf("#           =<ch>,<core>I = DACC_ACR bias (2,1 = Arduino)\n");
-	printf("#           =<us>K = M's ADC-start-to-DAC-start gap\n");
-	printf("#           z=software reset  v=identity line\n");
+	printf("# max in-spec trigger = %lu Hz (RC %u); presets 1..4 are 50k/100k/200k/400k\n",
+	       (unsigned long)((SystemCoreClock / 2u) / ACQ_MIN_RC),
+	       (unsigned)ACQ_MIN_RC);
+	printf("# h for the command list\n");
+	printf("#\n");
+}
+
+/*
+ * `h`: the facts, then the list.
+ *
+ * They are split because boot prints the banner and `h` is typed. The
+ * list is 47 lines now that it names what this track has *not* got, and
+ * every one of them is UART time the main loop is not draining bulk OUT
+ * for - invariant 8, and the banner was already the most expensive
+ * thing on the console at 89 ms. Boot pays for the identity it has to
+ * print and nothing else; the list costs what it costs, to whoever asks
+ * for it.
+ */
+static void cmd_help(void)
+{
+	banner();
+	printf("# commands:\n");
+	console_help();
 	printf("#\n");
 }
 
@@ -674,425 +684,494 @@ static void trigger_fault(void)
 /* ------------------------------------------------------------------ */
 /* The command layer                                                   */
 /*                                                                     */
-/* Parsing and execution are separated because a second transport is   */
-/* coming: the native port will carry a binary framed protocol         */
-/* (docs/control-protocol.md) with a different parser, and both must   */
-/* reach the same executor. Two implementations of "start playback"    */
-/* would drift, and the refusal wording is part of what the host is    */
-/* told, not decoration.                                               */
+/* The *surface* - which letters are commands, what arguments they     */
+/* take, what `h` prints and what happens to a letter this track has   */
+/* not got - is lib/due_shared/src/console.c, compiled by both tracks. */
+/* Everything below is this track's handlers, which is where the       */
+/* registers are. See console.h for why the line falls there.          */
 /*                                                                     */
-/* Structure only. The UART is still the only caller and every command */
-/* behaves exactly as it did.                                          */
+/* Parsing and execution stay separated for the reason they always     */
+/* were: the native port carries a binary framed protocol              */
+/* (docs/control-protocol.md) with a different parser, and both reach  */
+/* the same handlers. Two implementations of "start playback" would    */
+/* drift, and the refusal wording is part of what the host is told,    */
+/* not decoration.                                                     */
 /* ------------------------------------------------------------------ */
 
-typedef struct {
-	int      op;           /* the command letter */
-	uint32_t arg[3];       /* "=<a>[,<b>[,<c>]]" typed before it */
-} cmd_t;
+static void h_help(const uint32_t *a)  { (void)a; cmd_help(); }
+static void h_ident(const uint32_t *a) { (void)a; identity_line(); }
+static void h_printf(const uint32_t *a){ (void)a; measure_printf(); }
+static void h_gpio(const uint32_t *a)  { (void)a; measure_gpio(); }
+static void h_fault(const uint32_t *a) { (void)a; trigger_fault(); }
+static void h_read(const uint32_t *a)  { (void)a; cmd_read(); }
+static void h_sweep(const uint32_t *a) { (void)a; cmd_sweep(); }
+static void h_xtalk(const uint32_t *a) { (void)a; cmd_crosstalk(); }
+static void h_ratesweep(const uint32_t *a) { cmd_rate_sweep(a[2] ? a[2] : 2u); }
+
+static void h_s50(const uint32_t *a)  { (void)a; cmd_stream(50000); }
+static void h_s100(const uint32_t *a) { (void)a; cmd_stream(100000); }
+static void h_s200(const uint32_t *a) { (void)a; cmd_stream(200000); }
+static void h_s400(const uint32_t *a) { (void)a; cmd_stream(400000); }
+/*
+ * The top preset is derived, not written down: the highest rate the
+ * ADC sustains follows from the measured cliff at RC 86, and that
+ * compare value holds across master clock settings because the timer
+ * and the ADC clock scale together. A literal 500000 here was from the
+ * MCK=84 MHz era and was silently refused by the ACQ_MIN_RC guard at
+ * 78 MHz - the guard doing its job on a stale preset.
+ */
+static void h_smax(const uint32_t *a)
+{
+	(void)a;
+	cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC);
+}
+
+static void h_stop(const uint32_t *a)
+{
+	(void)a;
+	stream_stop();
+	play_stop();
+	printf("# stream stopped\n");
+	uart_flush();
+}
+
+static void h_stats(const uint32_t *a) { (void)a; stream_report(); }
+static void h_usb(const uint32_t *a)   { (void)a; usb_cdc_dump(); ctl_dump(); }
+static void h_uart_stream(const uint32_t *a) { (void)a; cmd_stream_uart(2000); }
+
+static void h_flood(const uint32_t *a)
+{
+	(void)a;
+	stream_flood_start();
+	printf("# flood: IN only\n");
+	uart_flush();
+}
+
+static void h_sink(const uint32_t *a)
+{
+	(void)a;
+	stream_sink_start();
+	printf("# sink: OUT only\n");
+	uart_flush();
+}
+
+static void h_duplex(const uint32_t *a)
+{
+	(void)a;
+	stream_duplex_start();
+	printf("# duplex: IN and OUT together\n");
+	uart_flush();
+}
+
+static void h_flood_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_flood_dma_start();
+	printf("# flood: IN via DMA\n");
+	uart_flush();
+}
+
+static void h_sink_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_sink_dma_start();
+	printf("# sink: OUT via DMA\n");
+	uart_flush();
+}
+
+static void h_duplex_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_duplex_dma_start();
+	printf("# duplex: IN+OUT via DMA\n");
+	uart_flush();
+}
 
 /*
- * Feed one received character; true when `out` holds a whole command.
- *
- * The '=' introducer is what keeps bare digits working as the stream
- * presets: while an entry is open, digits and up to two commas are
- * argument text, and the next command letter consumes the arguments
- * and closes the entry.
+ * The complete loop: the host supplies the waveform, the DAC emits it,
+ * the jumper carries it to the ADC, and the capture comes back over the
+ * same USB pipe. Both directions run at once, which is the target
+ * configuration.
  */
-static bool cmd_parse_ascii(int c, cmd_t *out)
+static void h_loop(const uint32_t *a)
 {
-	static uint32_t arg[3];
-	static unsigned idx;
-	static bool entry;
+	/* "=<dac>[,<adc>]L"; one number sets both, none = 200k. */
+	uint32_t dac_hz = a[0] ? a[0] : 200000u;
+	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
+	unsigned nch    = a[2] ? a[2] : 2u;
 
-	if (c == '=') {
-		arg[0] = arg[1] = arg[2] = 0;
-		idx = 0;
-		entry = true;
-		return false;
-	}
-	if (entry && c >= '0' && c <= '9') {
-		arg[idx] = arg[idx] * 10u + (uint32_t)(c - '0');
-		return false;
-	}
-	if (entry && c == ',' && idx < 2) {
-		idx++;
-		return false;
-	}
-	if (c < 0)
-		return false;
-
-	entry = false;
-	out->op = c;
-	out->arg[0] = arg[0];
-	out->arg[1] = arg[1];
-	out->arg[2] = arg[2];
-	/* A dispatched command consumes its arguments. */
-	arg[0] = arg[1] = arg[2] = 0;
-	idx = 0;
-	return true;
-}
-
-/* Carry out one parsed command. The only place a command is executed,
- * whichever transport delivered it. */
-static void cmd_execute(const cmd_t *cmd)
-{
-	switch (cmd->op) {
-	case 'h': banner();         break;
-	case 'v': identity_line();  break;
-	case 'p': measure_printf(); break;
-	case 'g': measure_gpio();   break;
-	case 'f': trigger_fault();  break;
-	case 'r': cmd_read();       break;
-	case 's': cmd_sweep();      break;
-	case 'x': cmd_crosstalk();  break;
-	case 't': cmd_rate_sweep(cmd->arg[2] ? cmd->arg[2] : 2u); break;
-	case '1': cmd_stream(50000);  break;
-	case '2': cmd_stream(100000); break;
-	case '3': cmd_stream(200000); break;
-	case '4': cmd_stream(400000); break;
-	/*
-	 * Max in-spec rate, derived from the running clock exactly as
-	 * Track A does. A hardcoded 488372 Hz lingered here from the
-	 * MCK=84 MHz era and was silently refused by the ACQ_MIN_RC
-	 * guard at 78 MHz - the guard doing its job on a stale preset.
-	 */
-	case '5': cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC); break;
-	case '0': stream_stop(); play_stop();
-	          printf("# stream stopped\n"); uart_flush(); break;
-	case '?': stream_report();  break;
-	case 'u': usb_cdc_dump();   ctl_dump();   break;
-	case 'F': stream_flood_start();
-	          printf("# flood: IN only\n"); uart_flush(); break;
-	case 'R': stream_sink_start();
-	          printf("# sink: OUT only\n"); uart_flush(); break;
-	case 'X': stream_duplex_start();
-	          printf("# duplex: IN and OUT together\n"); uart_flush(); break;
-	case 'G': stream_flood_dma_start();
-	          printf("# flood: IN via DMA\n"); uart_flush(); break;
-	case 'T': stream_sink_dma_start();
-	          printf("# sink: OUT via DMA\n"); uart_flush(); break;
-	case 'Y': stream_duplex_dma_start();
-	          printf("# duplex: IN+OUT via DMA\n"); uart_flush(); break;
-	/*
-	 * The complete loop: the host supplies the waveform, the DAC
-	 * emits it, the jumper carries it to the ADC, and the capture
-	 * comes back over the same USB pipe. Both directions run at
-	 * once, which is the target configuration.
-	 */
-	case 'L': {
-		/* "=<dac>[,<adc>]L"; one number sets both, none = 200k. */
-		uint32_t dac_hz = cmd->arg[0] ? cmd->arg[0] : 200000u;
-		uint32_t adc_hz = cmd->arg[1] ? cmd->arg[1] : dac_hz;
-		unsigned nch    = cmd->arg[2] ? cmd->arg[2] : 2u;
-
-		if (!play_start(dac_hz)) {
-			printf("# loop: DAC %lu sps refused (max %lu)\n",
-			       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
-			uart_flush();
-			break;
-		}
-		if (!stream_start_capture_only(adc_hz, nch)) {
-			play_stop();
-			printf("# loop: ADC %lu Hz x%u ch refused (max %lu)\n",
-			       (unsigned long)adc_hz, nch,
-			       (unsigned long)((SystemCoreClock / 2u)
-			                       / ACQ_MIN_RC_FOR(nch)));
-			uart_flush();
-			break;
-		}
-		printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch\n",
-		       (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
-		printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
+	if (!play_start(dac_hz)) {
+		printf("# loop: DAC %lu sps refused (max %lu)\n",
+		       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
 		uart_flush();
-		break;
+		return;
 	}
-	/* Playback with NO capture stream, to separate a fault in the
-	 * DAC path from an interaction between the two service loops. */
-	case 'P': {
-		uint32_t dac_hz = cmd->arg[0] ? cmd->arg[0] : 200000u;
-
-		if (play_start(dac_hz))
-			printf("# play only: DAC %lu sps from USB, no capture\n",
-			       (unsigned long)dac_hz);
-		else
-			printf("# play only: %lu sps refused (max %lu)\n",
-			       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
-		uart_flush();
-		break;
-	}
-	case 'Q': cmd_profile(); break;
-	/*
-	 * `l` reports; `=1l` reports and then clears. The counters are
-	 * cumulative so two readings give a rate over any interval the
-	 * host chooses - but max_cycles is a maximum, not a counter, and
-	 * differencing a maximum is meaningless. Clearing has to be
-	 * explicit rather than a side effect of reading, or two consumers
-	 * of this channel would silently steal each other's worst case.
-	 */
-	case 'l':
-		load_dump();
-		if (cmd->arg[0])
-			load_clear();
-		break;
-	case 'S': cmd_stall(cmd->arg[0]); break;
-	/*
-	 * Software reset. The test suite holds the control port open
-	 * for a whole session, because opening it asserts NRSTB and
-	 * costs a reset plus a native-port re-glob every time; this is
-	 * how it recovers a wedged device without giving that up.
-	 * Track A has always had it and docs/HANDOFF.md has always
-	 * listed it here, so this closes a documented parity gap
-	 * rather than adding a feature.
-	 */
-	/*
-	 * A software unplug of the native port. `z` is a processor reset
-	 * only - RSTC_CR_PROCRST leaves the UOTGHS running and its pull-up
-	 * attached, so the host never sees a disconnect and a wedged
-	 * close() is not released by it. This is the one that detaches.
-	 */
-	case 'Z': printf("# detaching the native port for %lu ms\n",
-	                 (unsigned long)(cmd->arg[0] ? cmd->arg[0] : 250u));
-	          uart_flush();
-	          usb_cdc_detach_cycle(cmd->arg[0]);
-	          break;
-	case 'z': printf("# software reset now\n"); uart_flush();
-	          RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
-	          break;
-	case 'V': play_dump(); break;
-	case 'D': diag_start(); break;
-	/*
-	 * "=<us>K". The gap between the ADC start and the DAC start, in
-	 * microseconds, held across runs and applied by the M preset.
-	 *
-	 * The two states this issue draws are selected by the binary and
-	 * not by anything the host does - three states on one image and one
-	 * on the next, with the changed code never executed. The M preset's
-	 * comment below names the only free variable that layout could
-	 * plausibly move: gen sits on TIOA1 while the ADC sits on TIOA0, so
-	 * the sampling phase relative to the DAC table wrap is fixed for a
-	 * run by the instruction timing between the two starts, and a
-	 * different layout is a different number of instructions.
-	 *
-	 * This makes that variable settable, so the hypothesis can be
-	 * tested inside one image instead of by flashing two. Debug-only,
-	 * on a preset that is already debug-only, and it busy-waits.
-	 */
-	case 'K':
-		mimic_start_delay_us = cmd->arg[0];
-		printf("# mimic start delay: %lu us (next M)\n",
-		       (unsigned long)mimic_start_delay_us);
-		uart_flush();
-		break;
-	/*
-	 * The loop's timing skeleton with no USB in it: gen's flash sine
-	 * through play's exact DACC + TIOA1 configuration, capture
-	 * running, ordering matched to what L does once the ring primes.
-	 * Observe with D: if cdr7 swings, the fault needs USB to appear;
-	 * if it freezes, the trigger/DACC/ADC interaction is the fault.
-	 */
-	case 'M': {
-		/*
-		 * "=<dac>[,<adc>]M", defaulting to 200000 for both, which is
-		 * what this preset always did.
-		 *
-		 * Settable because this is the only path in the firmware
-		 * where the DAC update clock and the ADC trigger are two
-		 * independent timers - gen_prepare_tioa1() selects TIOA1
-		 * where every other path leaves the DACC on the ADC's TIOA0.
-		 * That makes the sampling phase relative to the DAC's table
-		 * wrap a free variable, fixed for a run by the instruction
-		 * timing between the two starts, and it is the one structural
-		 * difference between this preset and the ordinary capture
-		 * path that issue #5 does not appear on.
-		 *
-		 * Giving the two clocks slightly different rates walks that
-		 * phase through a full period within one capture, so one run
-		 * samples the whole phase space instead of whichever point a
-		 * run happened to start at. A defect that is bimodal per run
-		 * and constant within it is what a fixed free variable looks
-		 * like; this is how to test that without needing a board that
-		 * is currently reproducing.
-		 */
-		uint32_t dac_hz = cmd->arg[0] ? cmd->arg[0] : 200000u;
-		uint32_t adc_hz = cmd->arg[1] ? cmd->arg[1] : dac_hz;
-		/*
-		 * "=<dac>,<adc>,<nch>M". Three channels puts the issue #5
-		 * impedance arm on A2 into the same capture as A1 and the
-		 * sine on A0, so the arms are matched inside one run
-		 * instead of compared across runs that draw different
-		 * states.
-		 */
-		unsigned nch    = cmd->arg[2] ? cmd->arg[2] : 2u;
-
-		/*
-		 * Everything the console has to say is said before the
-		 * converters start. These two lines used to run after
-		 * gen_go_tioa1(), which is ~7 ms of blocked main loop laid
-		 * over the first samples of every capture this preset takes
-		 * - invariant 8, on the path the suite calls its continuity
-		 * control. Measured not to change what that path reports,
-		 * on one image with the two orders alternated; moved anyway,
-		 * because it had no business being there.
-		 */
-		printf("# mimic loop: gen sine on TIOA1 at %lu sps, capture %lu Hz\n",
-		       (unsigned long)dac_hz, (unsigned long)adc_hz);
-		printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
-		uart_flush();
+	if (!stream_start_capture_only(adc_hz, nch)) {
 		play_stop();
-		gen_init();
-		gen_prepare_tioa1(dac_hz);
-		/*
-		 * Checked, unlike every earlier version of this line. A
-		 * refusal is silent otherwise: gen still runs, the banner
-		 * above has already claimed a capture, and the host reads an
-		 * empty stream from a device that reported success. This is
-		 * the preset the splice census measures, so a refusal that
-		 * says nothing would be scored as a clean run.
-		 */
-		if (!stream_start_capture_only(adc_hz, nch)) {
-			printf("# mimic loop: refused, the ADC would not start\n");
-			uart_flush();
-			break;
-		}
-		if (mimic_start_delay_us) {
-			uint32_t t0 = micros();
-			while (micros() - t0 < mimic_start_delay_us)
-				;
-		}
-		gen_go_tioa1();
-		break;
-	}
-	/*
-	 * "=<n>C": which channel pairs with A0 in a two-channel capture,
-	 * 1 for A1 and 2 for A2. It is how source impedance is told apart
-	 * from conversion slot - see acq_set_pair().
-	 */
-	case 'C':
-		acq_set_pair(cmd->arg[0]);
-		printf("# capture pair: A0 + A%u (next 2ch stream)\n",
-		       acq_pair_second == ADC_CH_A2 ? 2u : 1u);
+		printf("# loop: ADC %lu Hz x%u ch refused (max %lu)\n",
+		       (unsigned long)adc_hz, nch,
+		       (unsigned long)((SystemCoreClock / 2u)
+		                       / ACQ_MIN_RC_FOR(nch)));
 		uart_flush();
-		break;
-	/*
-	 * "=<n>N": generator layout, 0 normal, 1 swapped, 2 two-cycle,
-	 * 3 all-DC. Rebuilt now and again by gen_init(), which M calls.
-	 * See gen.h for what each arm is for.
-	 */
-	case 'N': {
-		static const char *const names[] = {
-			"normal: sine DAC0, DC DAC1",
-			"swapped: DC DAC0, sine DAC1",
-			"two-cycle: two sine periods per wrap",
-			"all-DC: no sine on either",
-		};
-		gen_set_layout(cmd->arg[0]);
-		printf("# gen layout %u = %s\n",
-		       (unsigned)gen_layout, names[gen_layout]);
-		uart_flush();
-		break;
+		return;
 	}
-	/*
-	 * "=<shape>,<points>W": the internal generator's waveform.
-	 *
-	 * shape 0 sine, 1 square, 2 ramp, 3 triangle, 4 DC. points is
-	 * the resolution - how many table points one cycle spends - and
-	 * rounds down to a power of two in 2..256, because those are the
-	 * only counts that divide the table without leaving a partial
-	 * cycle at the PDC wrap. Omitting it keeps the current value.
-	 *
-	 * Resolution is a frequency knob and the report says so: the
-	 * update rate is the trigger's, so halving the points halves the
-	 * time a cycle takes and doubles the output frequency, at the
-	 * cost of a coarser staircase. That trade is the whole reason it
-	 * is exposed - see gen.h.
-	 *
-	 * Rebuilt now and again by gen_init(), which M calls.
-	 */
-	case 'W': {
-		gen_set_shape(cmd->arg[0]);
-		if (cmd->arg[1])
-			gen_set_points(cmd->arg[1]);
-		/* "=<shape>,<pts>,<amp>W". amp in 1/256ths of full scale,
-		 * about mid, so a small waveform still moves the converter
-		 * every update without spanning its range - which is what
-		 * lets a scope come up ten times in the vertical. Omitting
-		 * it keeps the current amplitude. */
-		if (cmd->arg[2])
-			gen_set_amp(cmd->arg[2]);
-		gen_report();
-		break;
-	}
-	/*
-	 * "=<n>J": the sync output, 0 off, 1 per cycle, 2 per table wrap.
-	 *
-	 * A trigger for the bench, on whichever DAC pin is not carrying
-	 * the waveform. Triggering a scope on the signal itself divides
-	 * the pin's ~20 mV of noise by the waveform's slew rate at the
-	 * trigger level, which is why a ramp shakes 27 us and a square
-	 * does not shake at all - docs/awg.md. A full-scale sync edge
-	 * makes that term vanish, and it cannot drift against the
-	 * waveform because one PDC stream and one trigger feed both.
-	 *
-	 * The scope's EXT input tops out at 1.2 V here and the DAC sits
-	 * at 0.52-2.82 V, so AC-couple the trigger or it will never fire.
-	 */
-	case 'J':
-		gen_set_sync(cmd->arg[0]);
-		/* "=<mode>,<amp>J". The sync's own swing, in 256ths, so a
-		 * full-scale square on the pin next to the signal can be
-		 * shrunk and the disturbance it may be causing tested
-		 * rather than argued about. */
-		if (cmd->arg[1])
-			gen_set_sync_amp(cmd->arg[1]);
-		gen_report();
-		break;
-	/*
-	 * "=<ch>,<core>I": DACC_ACR's IBCTLCHx and IBCTLDACCORE, applied
-	 * at the next DACC init. "=2,1I" is the Arduino core's value and
-	 * the datasheet's characterisation condition; 0,0 is reset, which
-	 * is what this project has always run. See gen.c.
-	 */
-	case 'I':
-		gen_set_ibctl(cmd->arg[0], cmd->arg[1]);
-		printf("# dacc ibctl: ch=%u core=%u (next DACC init)\n",
-		       (unsigned)gen_ibctl_ch, (unsigned)gen_ibctl_core);
-		uart_flush();
-		break;
-	case 'A':
-		/*
-		 * "=<tracktim>,<settling>A". Applied at the next acq_init(),
-		 * so set it before starting a stream. One image sweeps the
-		 * whole range, which is the only way to compare the constant
-		 * rather than comparing two binaries - see acq.c.
-		 */
-		acq_set_timing(cmd->arg[0], cmd->arg[1]);
-		printf("# adc timing: tracktim=%u settling=%u (next stream)\n",
-		       (unsigned)acq_tracktim, (unsigned)acq_settling);
-		uart_flush();
-		break;
-	case 'B': stream_bench_report();
-	          printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
-	                 (unsigned long)play_bytes_in,
-	                 (unsigned long)play_produced,
-	                 (unsigned long)play_consumed,
-	                 (unsigned long)play_underruns,
-	                 (unsigned long)play_isr_calls,
-	                 (unsigned long)play_endtx_seen,
-	                 (unsigned long)play_spans,
-	                 (unsigned long)play_partial,
-	                 (unsigned long)play_occ_min);
-	          uart_flush(); break;
-	/*
-	 * The occupancy histogram, off the `B` path deliberately.
-	 * `B` is polled mid-stream by the daemon and must stay one
-	 * short line; this is 32 buckets and belongs where `V`
-	 * already lives, which is between runs.
-	 */
-	case 'O': cmd_occ_hist(); break;
-	case 'w': cmd_stream_uart(2000); break;
-	default:                    break;
-	}
+	printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch\n",
+	       (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
+	printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
+	uart_flush();
 }
+
+/* Playback with NO capture stream, to separate a fault in the DAC path
+ * from an interaction between the two service loops. */
+static void h_play(const uint32_t *a)
+{
+	uint32_t dac_hz = a[0] ? a[0] : 200000u;
+
+	if (play_start(dac_hz))
+		printf("# play only: DAC %lu sps from USB, no capture\n",
+		       (unsigned long)dac_hz);
+	else
+		printf("# play only: %lu sps refused (max %lu)\n",
+		       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
+	uart_flush();
+}
+
+static void h_profile(const uint32_t *a) { (void)a; cmd_profile(); }
+
+/*
+ * `l` reports; `=1l` reports and then clears. The counters are
+ * cumulative so two readings give a rate over any interval the host
+ * chooses - but max_cycles is a maximum, not a counter, and
+ * differencing a maximum is meaningless. Clearing has to be explicit
+ * rather than a side effect of reading, or two consumers of this
+ * channel would silently steal each other's worst case.
+ */
+static void h_load(const uint32_t *a)
+{
+	load_dump();
+	if (a[0])
+		load_clear();
+}
+
+static void h_stall(const uint32_t *a) { cmd_stall(a[0]); }
+
+/*
+ * Software reset. The test suite holds the control port open for a
+ * whole session, because opening it asserts NRSTB and costs a reset
+ * plus a native-port re-glob every time; this is how it recovers a
+ * wedged device without giving that up.
+ */
+/*
+ * A software unplug of the native port. `z` is a processor reset only -
+ * RSTC_CR_PROCRST leaves the UOTGHS running and its pull-up attached,
+ * so the host never sees a disconnect and a wedged close() is not
+ * released by it. This is the one that detaches.
+ */
+static void h_detach(const uint32_t *a)
+{
+	printf("# detaching the native port for %lu ms\n",
+	       (unsigned long)(a[0] ? a[0] : 250u));
+	uart_flush();
+	usb_cdc_detach_cycle(a[0]);
+}
+
+static void h_reset(const uint32_t *a)
+{
+	(void)a;
+	printf("# software reset now\n");
+	uart_flush();
+	RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
+}
+
+static void h_ring(const uint32_t *a) { (void)a; play_dump(); }
+static void h_diag(const uint32_t *a) { (void)a; diag_start(); }
+
+/*
+ * "=<us>K". The gap between the ADC start and the DAC start, in
+ * microseconds, held across runs and applied by the M preset.
+ *
+ * The two states this issue draws are selected by the binary and not by
+ * anything the host does - three states on one image and one on the
+ * next, with the changed code never executed. The M preset's comment
+ * below names the only free variable that layout could plausibly move:
+ * gen sits on TIOA1 while the ADC sits on TIOA0, so the sampling phase
+ * relative to the DAC table wrap is fixed for a run by the instruction
+ * timing between the two starts, and a different layout is a different
+ * number of instructions.
+ *
+ * This makes that variable settable, so the hypothesis can be tested
+ * inside one image instead of by flashing two. Debug-only, on a preset
+ * that is already debug-only, and it busy-waits.
+ */
+static void h_mimic_gap(const uint32_t *a)
+{
+	mimic_start_delay_us = a[0];
+	printf("# mimic start delay: %lu us (next M)\n",
+	       (unsigned long)mimic_start_delay_us);
+	uart_flush();
+}
+
+/*
+ * The loop's timing skeleton with no USB in it: gen's flash sine
+ * through play's exact DACC + TIOA1 configuration, capture running,
+ * ordering matched to what L does once the ring primes. Observe with D:
+ * if cdr7 swings, the fault needs USB to appear; if it freezes, the
+ * trigger/DACC/ADC interaction is the fault.
+ */
+static void h_mimic(const uint32_t *a)
+{
+	/*
+	 * "=<dac>[,<adc>]M", defaulting to 200000 for both, which is
+	 * what this preset always did.
+	 *
+	 * Settable because this is the only path in the firmware where
+	 * the DAC update clock and the ADC trigger are two independent
+	 * timers - gen_prepare_tioa1() selects TIOA1 where every other
+	 * path leaves the DACC on the ADC's TIOA0. That makes the
+	 * sampling phase relative to the DAC's table wrap a free
+	 * variable, fixed for a run by the instruction timing between the
+	 * two starts, and it is the one structural difference between
+	 * this preset and the ordinary capture path that issue #5 does
+	 * not appear on.
+	 *
+	 * Giving the two clocks slightly different rates walks that phase
+	 * through a full period within one capture, so one run samples
+	 * the whole phase space instead of whichever point a run happened
+	 * to start at. A defect that is bimodal per run and constant
+	 * within it is what a fixed free variable looks like; this is how
+	 * to test that without needing a board that is currently
+	 * reproducing.
+	 */
+	uint32_t dac_hz = a[0] ? a[0] : 200000u;
+	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
+	/*
+	 * "=<dac>,<adc>,<nch>M". Three channels puts the issue #5
+	 * impedance arm on A2 into the same capture as A1 and the sine on
+	 * A0, so the arms are matched inside one run instead of compared
+	 * across runs that draw different states.
+	 */
+	unsigned nch    = a[2] ? a[2] : 2u;
+
+	/*
+	 * Everything the console has to say is said before the converters
+	 * start. These two lines used to run after gen_go_tioa1(), which
+	 * is ~7 ms of blocked main loop laid over the first samples of
+	 * every capture this preset takes - invariant 8, on the path the
+	 * suite calls its continuity control. Measured not to change what
+	 * that path reports, on one image with the two orders alternated;
+	 * moved anyway, because it had no business being there.
+	 */
+	printf("# mimic loop: gen sine on TIOA1 at %lu sps, capture %lu Hz\n",
+	       (unsigned long)dac_hz, (unsigned long)adc_hz);
+	printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
+	uart_flush();
+	play_stop();
+	gen_init();
+	gen_prepare_tioa1(dac_hz);
+	/*
+	 * Checked, unlike every earlier version of this line. A refusal is
+	 * silent otherwise: gen still runs, the banner above has already
+	 * claimed a capture, and the host reads an empty stream from a
+	 * device that reported success. This is the preset the splice
+	 * census measures, so a refusal that says nothing would be scored
+	 * as a clean run.
+	 */
+	if (!stream_start_capture_only(adc_hz, nch)) {
+		printf("# mimic loop: refused, the ADC would not start\n");
+		uart_flush();
+		return;
+	}
+	if (mimic_start_delay_us) {
+		uint32_t t0 = micros();
+		while (micros() - t0 < mimic_start_delay_us)
+			;
+	}
+	gen_go_tioa1();
+}
+
+/*
+ * "=<n>C": which channel pairs with A0 in a two-channel capture, 1 for
+ * A1 and 2 for A2. It is how source impedance is told apart from
+ * conversion slot - see acq_set_pair().
+ */
+static void h_pair(const uint32_t *a)
+{
+	acq_set_pair(a[0]);
+	printf("# capture pair: A0 + A%u (next 2ch stream)\n",
+	       acq_pair_second == ADC_CH_A2 ? 2u : 1u);
+	uart_flush();
+}
+
+/*
+ * "=<n>N": generator layout, 0 normal, 1 swapped, 2 two-cycle, 3
+ * all-DC. Rebuilt now and again by gen_init(), which M calls. See gen.h
+ * for what each arm is for.
+ */
+static void h_layout(const uint32_t *a)
+{
+	static const char *const names[] = {
+		"normal: sine DAC0, DC DAC1",
+		"swapped: DC DAC0, sine DAC1",
+		"two-cycle: two sine periods per wrap",
+		"all-DC: no sine on either",
+	};
+
+	gen_set_layout(a[0]);
+	printf("# gen layout %u = %s\n", (unsigned)gen_layout, names[gen_layout]);
+	uart_flush();
+}
+
+/*
+ * "=<shape>,<points>W": the internal generator's waveform.
+ *
+ * shape 0 sine, 1 square, 2 ramp, 3 triangle, 4 DC. points is the
+ * resolution - how many table points one cycle spends - and rounds down
+ * to a power of two in 2..256, because those are the only counts that
+ * divide the table without leaving a partial cycle at the PDC wrap.
+ * Omitting it keeps the current value.
+ *
+ * Resolution is a frequency knob and the report says so: the update
+ * rate is the trigger's, so halving the points halves the time a cycle
+ * takes and doubles the output frequency, at the cost of a coarser
+ * staircase. That trade is the whole reason it is exposed - see gen.h.
+ *
+ * Rebuilt now and again by gen_init(), which M calls.
+ */
+static void h_wave(const uint32_t *a)
+{
+	gen_set_shape(a[0]);
+	if (a[1])
+		gen_set_points(a[1]);
+	/* "=<shape>,<pts>,<amp>W". amp in 1/256ths of full scale, about
+	 * mid, so a small waveform still moves the converter every update
+	 * without spanning its range - which is what lets a scope come up
+	 * ten times in the vertical. Omitting it keeps the current
+	 * amplitude. */
+	if (a[2])
+		gen_set_amp(a[2]);
+	gen_report();
+}
+
+/*
+ * "=<n>J": the sync output, 0 off, 1 per cycle, 2 per table wrap.
+ *
+ * A trigger for the bench, on whichever DAC pin is not carrying the
+ * waveform. Triggering a scope on the signal itself divides the pin's
+ * ~20 mV of noise by the waveform's slew rate at the trigger level,
+ * which is why a ramp shakes 27 us and a square does not shake at all -
+ * docs/awg.md. A full-scale sync edge makes that term vanish, and it
+ * cannot drift against the waveform because one PDC stream and one
+ * trigger feed both.
+ *
+ * The scope's EXT input tops out at 1.2 V here and the DAC sits at
+ * 0.52-2.82 V, so AC-couple the trigger or it will never fire.
+ */
+static void h_sync(const uint32_t *a)
+{
+	gen_set_sync(a[0]);
+	/* "=<mode>,<amp>J". The sync's own swing, in 256ths, so a
+	 * full-scale square on the pin next to the signal can be shrunk
+	 * and the disturbance it may be causing tested rather than argued
+	 * about. */
+	if (a[1])
+		gen_set_sync_amp(a[1]);
+	gen_report();
+}
+
+/*
+ * "=<ch>,<core>I": DACC_ACR's IBCTLCHx and IBCTLDACCORE, applied at the
+ * next DACC init. "=2,1I" is the Arduino core's value and the
+ * datasheet's characterisation condition; 0,0 is reset, which is what
+ * this project has always run. See gen.c.
+ */
+static void h_ibctl(const uint32_t *a)
+{
+	gen_set_ibctl(a[0], a[1]);
+	printf("# dacc ibctl: ch=%u core=%u (next DACC init)\n",
+	       (unsigned)gen_ibctl_ch, (unsigned)gen_ibctl_core);
+	uart_flush();
+}
+
+/*
+ * "=<tracktim>,<settling>A". Applied at the next acq_init(), so set it
+ * before starting a stream. One image sweeps the whole range, which is
+ * the only way to compare the constant rather than comparing two
+ * binaries - see acq.c.
+ */
+static void h_adc_timing(const uint32_t *a)
+{
+	acq_set_timing(a[0], a[1]);
+	printf("# adc timing: tracktim=%u settling=%u (next stream)\n",
+	       (unsigned)acq_tracktim, (unsigned)acq_settling);
+	uart_flush();
+}
+
+static void h_bench(const uint32_t *a)
+{
+	(void)a;
+	stream_bench_report();
+	printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
+	       (unsigned long)play_bytes_in,
+	       (unsigned long)play_produced,
+	       (unsigned long)play_consumed,
+	       (unsigned long)play_underruns,
+	       (unsigned long)play_isr_calls,
+	       (unsigned long)play_endtx_seen,
+	       (unsigned long)play_spans,
+	       (unsigned long)play_partial,
+	       (unsigned long)play_occ_min);
+	uart_flush();
+}
+
+/*
+ * The occupancy histogram, off the `B` path deliberately. `B` is polled
+ * mid-stream by the daemon and must stay one short line; this is 32
+ * buckets and belongs where `V` already lives, which is between runs.
+ */
+static void h_occ(const uint32_t *a) { (void)a; cmd_occ_hist(); }
+
+/*
+ * What this track implements, in the shared surface's terms.
+ *
+ * Order is this file's convenience - console.c scans by key and the
+ * help's order comes from its own table - so these are grouped the way
+ * the handlers above are written.
+ *
+ * A letter absent from here is answered "not implemented on this
+ * track", which is the console's CTL_ERR_OPCODE. Four are absent today
+ * and every one of them is Track A's: `d`, `j` and `k` are the DAC
+ * bring-up sweeps and `E` reads endpoint state during a stream, which
+ * this track has no equivalent of. Issue #13 has the list; `console_missing()`
+ * prints it from this table rather than from anyone's memory.
+ */
+const console_binding_t console_bindings[] = {
+	{ 'h', h_help },        { 'v', h_ident },       { 'p', h_printf },
+	{ 'g', h_gpio },        { 'f', h_fault },
+
+	{ 'r', h_read },        { 's', h_sweep },       { 'x', h_xtalk },
+	{ 't', h_ratesweep },
+
+	{ '1', h_s50 },         { '2', h_s100 },        { '3', h_s200 },
+	{ '4', h_s400 },        { '5', h_smax },        { '0', h_stop },
+	{ '?', h_stats },       { 'u', h_usb },         { 'w', h_uart_stream },
+
+	{ 'F', h_flood },       { 'R', h_sink },        { 'X', h_duplex },
+	{ 'G', h_flood_dma },   { 'T', h_sink_dma },    { 'Y', h_duplex_dma },
+	{ 'B', h_bench },
+
+	{ 'L', h_loop },        { 'P', h_play },        { 'M', h_mimic },
+	{ 'V', h_ring },        { 'D', h_diag },        { 'O', h_occ },
+
+	{ 'W', h_wave },        { 'J', h_sync },        { 'N', h_layout },
+	{ 'I', h_ibctl },
+
+	{ 'C', h_pair },        { 'A', h_adc_timing },
+
+	{ 'Q', h_profile },     { 'l', h_load },        { 'S', h_stall },
+	{ 'K', h_mimic_gap },   { 'Z', h_detach },      { 'z', h_reset },
+
+	{ 0, 0 },
+};
 
 
 int main(void)
@@ -1101,7 +1180,6 @@ int main(void)
 	int led_state = 0;
 	uint32_t led_usb_at = 0;
 	uint32_t led_in_last = 0, led_out_last = 0;
-	cmd_t cmd;
 
 	/* WDT is enabled out of reset on this part and will reset the board
 	 * roughly every 15 s if not serviced. Nothing here services it. */
@@ -1296,9 +1374,6 @@ int main(void)
 			}
 		}
 
-		int c = uart_getc();
-
-		if (cmd_parse_ascii(c, &cmd))
-			cmd_execute(&cmd);
+		console_feed(uart_getc());
 	}
 }
