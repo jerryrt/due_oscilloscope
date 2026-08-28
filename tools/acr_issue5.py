@@ -20,7 +20,7 @@ threshold anywhere in it.
 ABBA interleaved within one session, because the binary selects which
 state issue #5 draws and the die warms - a sweep is confounded with both.
 """
-import argparse, json, os, statistics, sys
+import argparse, json, os, statistics, sys, time
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(HERE, "host"))
@@ -44,6 +44,13 @@ def one(board, arm, seconds):
     fold = measure.pair_fold(vals)
     census = measure.level_census(vals)
     return {"arm": arm, "peak": fold["peak"], "z": fold["z"],
+            # Wall clock per capture, so the landing phase can be tested
+            # against elapsed time rather than argued about. Issue #5:
+            # the phases sit on a lattice of 21 and a lattice is what a
+            # periodic process looks like when the run start is
+            # arbitrary - which is testable only if the start is
+            # recorded.
+            "t_wall": time.time(),
             "control_z": fold["control_z"], "phase": fold["peak_phase"],
             "hold_ok": bool(fold["hold_ok"]),
             "pair_spread": fold["pair_spread"],
