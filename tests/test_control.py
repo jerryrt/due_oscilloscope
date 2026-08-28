@@ -139,7 +139,8 @@ def link(board, track):
     # using the channel too, because the port does not open twice.
     c = board.ctl()
     if c is None:
-        pytest.fail("the board does not present a command port")
+        pytest.fail("the board does not present a command port"
+                    + (f" ({board.ctl_why})" if board.ctl_why else ""))
     try:
         yield c
     finally:

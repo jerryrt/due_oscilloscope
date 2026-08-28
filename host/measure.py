@@ -30,6 +30,7 @@ import struct
 import subprocess
 import sys
 import threading
+import warnings
 import time
 import zlib
 from array import array
@@ -1310,33 +1311,95 @@ class Board:
         # the console rather than failing.
         self._ctl = None
         self._ctl_tried = False
+        self._ctl_why = None
+        self._ctl_why_first = None
+        self.ctl_retries = 0
         self.cfd = open_raw(control, 115200)
         self._console = b""
         if settle:
             time.sleep(settle)
 
     # -- command channel ----------------------------------------------
-    def ctl(self):
+    def ctl(self, attempts=3):
         """The native port's control channel, or None where there is none.
 
-        None means Track A, or a board whose native port has not
-        enumerated - both of which are states the suite has to keep
-        working in, so this never raises. `self.control` is the
-        *programming* port and is a different thing entirely.
+        None means no command port answered: a native port that has not
+        enumerated, or one whose command function did not come up. It
+        never raises, because the suite has to keep working in those
+        states. `self.control` is the *programming* port and is a
+        different thing entirely.
+
+        **This used to say "None means Track A", and that stopped being
+        true on 2026-08-27.** Both tracks carry a control channel and
+        both report ctlver=3. What differs is which opcodes each
+        implements, and an unimplemented one answers CTL_ERR_OPCODE
+        rather than nothing - so None is now a fault, never a track.
+
+        **A failure is retried before it is cached, and the retry is
+        reported.** `_ctl_tried` was set on the first attempt whatever
+        happened and the exception was swallowed, so one transient open
+        became 23 errors saying "the board does not present a command
+        port" - the message for a missing capability, not for an
+        accident. That has happened twice on this bench, both times
+        after flashing Track A, both times cured by re-flashing the
+        same binary; the second cost nothing only because the first was
+        written down.
+
+        Retrying is not the same as hiding. `ctl_retries` counts the
+        attempts it took and a line goes to stderr when it took more
+        than one, because a board that needs a second attempt is
+        evidence for the device-side defect that makes it need one.
+        `ctl_why` keeps the last error for a caller that wants to say
+        what went wrong rather than what is missing.
         """
         if self._ctl_tried:
             return self._ctl
         self._ctl_tried = True
-        try:
-            import control as _control
-            nodes = ports.native_nodes(exclude=self.control)
-            if len(nodes) >= 2:
+        attempts = max(1, attempts)
+        for i in range(attempts):
+            try:
+                import control as _control
+                # Re-globbed every attempt. Enumeration can be late, and
+                # a node that was missing a moment ago is exactly the
+                # failure being retried - a cached node list would retry
+                # nothing.
+                nodes = ports.native_nodes(exclude=self.control)
+                if len(nodes) < 2:
+                    raise OSError(
+                        "native port shows %d node(s), need 2 "
+                        "(samples on interface 0/1, commands on 2/3)"
+                        % len(nodes))
                 link = _control.Control(nodes[-1], timeout=3.0)
                 link.ping()
                 self._ctl = link
-        except Exception:                                    # noqa: BLE001
-            self._ctl = None
-        return self._ctl
+                self._ctl_why = None
+                self.ctl_retries = i
+                if i:
+                    # warnings, not print: pytest captures stdout and
+                    # stderr per test and shows them only on failure, so
+                    # a retry that *succeeded* would be swallowed -
+                    # which is precisely the evidence issue #19 wants.
+                    # A warning lands in the run's summary either way.
+                    warnings.warn(
+                        "the command port answered on attempt %d of %d "
+                        "(first error: %s) - see issue #19"
+                        % (i + 1, attempts, self._ctl_why_first),
+                        RuntimeWarning, stacklevel=2)
+                return self._ctl
+            except Exception as e:                           # noqa: BLE001
+                self._ctl_why = "%s: %s" % (type(e).__name__, e)
+                if i == 0:
+                    self._ctl_why_first = self._ctl_why
+                if i + 1 < attempts:
+                    time.sleep(0.5)
+        self.ctl_retries = attempts
+        self._ctl = None
+        return None
+
+    @property
+    def ctl_why(self):
+        """Why the command port did not open, or None if it did."""
+        return self._ctl_why
 
     def drop_ctl(self):
         if self._ctl is not None:
