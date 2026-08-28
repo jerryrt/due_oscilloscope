@@ -3133,7 +3133,7 @@ sub-question: RC 44 reads one of two discrete converter rates.
    a soak of *port open/close cycles* rather than of benches - both
    occurrences this session came during long sequences of them, which is
    the one thing the two have in common. So this is a candidate, not a
-   cause - but a specific one. `usb_cdc_dma_mode()` stops both DMA
+   cause - but a specific one. `usb_dma_mode()` stops both DMA
    channels and flips AUTOSW and **never issues `EPRST`**, while the
    fact recorded below says stopping the channel is not enough and the
    endpoint must be reset too. Track A implements exactly that

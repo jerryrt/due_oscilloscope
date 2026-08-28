@@ -183,7 +183,7 @@ bool play_start(uint32_t dac_hz)
 	/* OUT only: capture may be running with IN on DMA, and taking
 	 * that away here is how a loop ends up with one direction
 	 * silently back on the FIFO path. */
-	usb_cdc_dma_mode_out(true);
+	usb_dma_mode_out(true);
 
 	/* Silence until the host supplies something: mid scale on both. */
 	for (unsigned b = 0; b < PLAY_NBUF; b++)
@@ -232,7 +232,7 @@ bool play_start(uint32_t dac_hz)
 void play_stop(void)
 {
 	if (active)
-		usb_cdc_dma_mode_out(false);
+		usb_dma_mode_out(false);
 	active = false;
 	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
 	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);

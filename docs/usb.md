@@ -247,7 +247,7 @@ A deliberate soak afterwards, 6 drained runs at an exact rate and 8 at
 an oversupplied one with every close timed, closed in 0.00 s every
 time - so oversupply is not the trigger, and it is still not
 reproducible on demand. The candidate is
-`usb_cdc_dma_mode()`, which stops both DMA channels and flips AUTOSW
+`usb_dma_mode()`, which stops both DMA channels and flips AUTOSW
 but never issues `EPRST` - a DMA stopped mid-bank leaves a bank
 nothing frees, and the endpoint NAKs for good. Track A does reset the
 endpoint (`ep_reset_fifo()`); Track B has no `EPRST` anywhere. See

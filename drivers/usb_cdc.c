@@ -716,7 +716,7 @@ static void ep_apply_autosw(uint32_t ep, bool on)
 	 * A write that changes nothing must not happen at all, because on
 	 * this controller there is no such thing: every DEVEPTCFG write
 	 * carries ALLOC and re-allocates. Most calls here are redundant -
-	 * usb_cdc_dma_mode(false, false) on a stop that was already
+	 * usb_dma_mode(false, false) on a stop that was already
 	 * stopped - and they were paying full price for it.
 	 */
 	if (!!(cfg & UOTGHS_DEVEPTCFG_AUTOSW) == on)
@@ -754,24 +754,24 @@ static void dma_channel_stop(uint32_t ch)
 			break;
 }
 
-void usb_cdc_dma_mode_in(bool on)
+void usb_dma_mode_in(bool on)
 {
 	dma_channel_stop(DMA_IN_CH);
 	dma_mode_in = on;
 	ep_apply_autosw(EP_IN, on);
 }
 
-void usb_cdc_dma_mode_out(bool on)
+void usb_dma_mode_out(bool on)
 {
 	dma_channel_stop(DMA_OUT_CH);
 	dma_mode_out = on;
 	ep_apply_autosw(EP_OUT, on);
 }
 
-void usb_cdc_dma_mode(bool in_dma, bool out_dma)
+void usb_dma_mode(bool in_dma, bool out_dma)
 {
-	usb_cdc_dma_mode_in(in_dma);
-	usb_cdc_dma_mode_out(out_dma);
+	usb_dma_mode_in(in_dma);
+	usb_dma_mode_out(out_dma);
 }
 
 bool usb_dma_in_busy(void)

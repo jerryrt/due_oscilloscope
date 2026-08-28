@@ -528,7 +528,7 @@ existing code for it. This is that.
 ### Proposal, smallest first
 
 **1. Do not write `DEVEPTCFG` when AUTOSW already holds the wanted
-value.** Most of the calls are redundant - `usb_cdc_dma_mode(false,
+value.** Most of the calls are redundant - `usb_dma_mode(false,
 false)` on stop, when it is already false - and a write that changes
 nothing should not re-allocate DPRAM. Free, and removes most of the
 exposure.

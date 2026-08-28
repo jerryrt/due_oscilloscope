@@ -26,13 +26,13 @@ a other fn snprintf
 a sketches/bringup/usbdma.h fn usb_dma_in_busy
 a sketches/bringup/usbdma.h fn usb_dma_in_residue
 a sketches/bringup/usbdma.h fn usb_dma_in_start
+a sketches/bringup/usbdma.h fn usb_dma_mode
+a sketches/bringup/usbdma.h fn usb_dma_mode_in
 a sketches/bringup/usbdma.h fn usb_dma_out_start_stream
 a sketches/bringup/usbdma.h fn usb_dma_out_status
 a sketches/bringup/usbdma.h data usb_in_activity
 a sketches/bringup/usbdma.h data usb_out_activity
 a sketches/bringup/usbdma.h fn usbdma_keepalive
-a sketches/bringup/usbdma.h fn usbdma_mode
-a sketches/bringup/usbdma.h fn usbdma_mode_in
 a sketches/bringup/usbdma.h data usbdma_rebuilds
 b drivers/acq.h fn acq_channel_mask
 b drivers/acq.h fn acq_configured_rc
@@ -61,8 +61,6 @@ b drivers/play.h data play_consumed
 b other fn printf
 b bsp/bsp.h fn uart_flush
 b bsp/bsp.h fn uart_putc_polled
-b drivers/usb_cdc.h fn usb_cdc_dma_mode
-b drivers/usb_cdc.h fn usb_cdc_dma_mode_in
 b drivers/usb_cdc.h fn usb_cdc_read
 b drivers/usb_cdc.h fn usb_cdc_ready
 b drivers/usb_cdc.h fn usb_cdc_write
@@ -72,6 +70,8 @@ b drivers/usb_cdc.h data usb_devier_snap
 b drivers/usb_cdc.h fn usb_dma_in_busy
 b drivers/usb_cdc.h fn usb_dma_in_residue
 b drivers/usb_cdc.h fn usb_dma_in_start
+b drivers/usb_cdc.h fn usb_dma_mode
+b drivers/usb_cdc.h fn usb_dma_mode_in
 b drivers/usb_cdc.h fn usb_dma_out_start_stream
 b drivers/usb_cdc.h fn usb_dma_out_status
 b drivers/usb_cdc.h data usb_isr_count

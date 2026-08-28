@@ -197,7 +197,7 @@ static bool stream_start_common(uint32_t trigger_hz, bool with_gen,
 	tx_dma = (xport == XPORT_USB);
 	dma_frames = dma_stalls = 0;
 	if (tx_dma)
-		usbdma_mode_in(true);
+		usb_dma_mode_in(true);
 
 	active = true;
 	return true;
@@ -215,21 +215,21 @@ void stream_stop(void)
 		 * peer: if the host has stopped reading IN, the transfer
 		 * never completes and the stop command never returns, which
 		 * is invariant 7 broken on the one path a wedged host is
-		 * most likely to reach. usbdma_mode_in(false) aborts the
+		 * most likely to reach. usb_dma_mode_in(false) aborts the
 		 * channel through dma_channel_stop(), whose spin is bounded,
 		 * and an aborted transfer stops reading the buffer just as
 		 * surely as a finished one does. The worst case is one
 		 * corrupted frame already on the wire; the alternative is a
 		 * board that has to be power-cycled.
 		 */
-		usbdma_mode_in(false);
+		usb_dma_mode_in(false);
 		tx_dma = false;
 	}
 	tx_phase = TX_IDLE;
 	tx_off = 0;
 	if (bench == BENCH_FLOOD_DMA || bench == BENCH_SINK_DMA ||
 	    bench == BENCH_DUPLEX_DMA)
-		usbdma_mode(false, false);
+		usb_dma_mode(false, false);
 	bench = BENCH_OFF;
 	acq_stop();
 	gen_stop();
@@ -772,7 +772,7 @@ static void dma_pull_out(void)
 static void dma_bench_reset(bench_mode m, bool in_dma, bool out_dma)
 {
 	bench_reset(m);
-	usbdma_mode(in_dma, out_dma);
+	usb_dma_mode(in_dma, out_dma);
 	if (in_dma)
 		dma_seed_payloads();
 	dma_tx_slot = dma_rx_slot = 0;

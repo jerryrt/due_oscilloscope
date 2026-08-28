@@ -155,7 +155,7 @@ bool play_start(uint32_t dac_hz)
 
 	/* The ring is fed by endpoint DMA. Only OUT: in loop mode capture
 	 * owns IN at the same time, and the pair form would release it. */
-	usbdma_mode_out(true);
+	usb_dma_mode_out(true);
 
 	/* Silence until the host supplies something: mid scale on both,
 	 * with the channel tag alternating so the DACC sees a well-formed
@@ -208,7 +208,7 @@ bool play_start(uint32_t dac_hz)
 void play_stop(void)
 {
 	if (active)
-		usbdma_mode_out(false);
+		usb_dma_mode_out(false);
 	active = false;
 	primed = false;
 	dma_inflight = false;

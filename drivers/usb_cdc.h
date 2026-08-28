@@ -91,7 +91,7 @@ extern volatile uint32_t usb_ctl_line_state;
 /* Switch endpoints between manual-FIFO and DMA (AUTOSW) operation.
  * Never mix the two on one endpoint: the FIFO path owns FIFOCON by
  * hand, DMA needs the hardware to switch banks itself. */
-void   usb_cdc_dma_mode(bool in_dma, bool out_dma);
+void   usb_dma_mode(bool in_dma, bool out_dma);
 
 /*
  * Set one direction without disturbing the other.
@@ -100,8 +100,8 @@ void   usb_cdc_dma_mode(bool in_dma, bool out_dma);
  * are started and stopped independently. Setting both at once means
  * whichever starts second silently turns the first one off.
  */
-void   usb_cdc_dma_mode_in(bool on);
-void   usb_cdc_dma_mode_out(bool on);
+void   usb_dma_mode_in(bool on);
+void   usb_dma_mode_out(bool on);
 
 bool   usb_dma_in_start(const void *buf, uint32_t len);
 bool   usb_dma_in_busy(void);
