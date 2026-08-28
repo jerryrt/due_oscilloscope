@@ -72,6 +72,15 @@ void gen_set_sync_amp(uint32_t amp)
 	build_table();
 }
 
+uint8_t gen_layout = GEN_LAYOUT_NORMAL;
+
+void gen_set_layout(uint32_t layout)
+{
+	gen_layout = (layout > GEN_LAYOUT_DC) ? (uint8_t)GEN_LAYOUT_NORMAL
+	                                      : (uint8_t)layout;
+	build_table();
+}
+
 uint8_t gen_sync = GEN_SYNC_CYCLE;
 
 /*
@@ -99,7 +108,19 @@ static uint16_t sync_code(unsigned i, unsigned period)
 
 static void build_table(void)
 {
-	const unsigned period = gen_points ? gen_points : GEN_SINE_POINTS;
+	const unsigned points = gen_points ? gen_points : GEN_SINE_POINTS;
+	/*
+	 * TWOCYCLE halves the period so two waveform cycles fit one table,
+	 * composing with the resolution rather than replacing it: at the
+	 * default 256 this builds byte-for-byte the table the arm has
+	 * always built, so its recorded issue-#5 results still describe
+	 * what they were taken on. Resolution 128 in the NORMAL layout
+	 * builds the same *waveform* by the other route, and the two
+	 * differ only in where the fold lands - which is the distinction
+	 * the arm exists to make.
+	 */
+	const unsigned period = (gen_layout == GEN_LAYOUT_TWOCYCLE)
+	                      ? (points / 2u) : points;
 
 	/*
 	 * SOLO: every entry tagged DAC0, so the converter updates it on
@@ -110,7 +131,8 @@ static void build_table(void)
 	 */
 	if (gen_sync == GEN_SYNC_SOLO) {
 		for (unsigned i = 0; i < GEN_TABLE_LEN; i++) {
-			int32_t code = shape_code(i % period, period);
+			int32_t code = period ? shape_code(i % period, period)
+			                      : (int32_t)DC_CODE;
 
 			if (code < 0)
 				code = 0;
@@ -124,20 +146,37 @@ static void build_table(void)
 	}
 
 	for (unsigned i = 0; i < GEN_SINE_POINTS; i++) {
-		int32_t code = shape_code(i % period, period);
+		int32_t code = period ? shape_code(i % period, period)
+		                      : (int32_t)DC_CODE;
+		uint16_t v0 = DC_CODE, v1 = DC_CODE;
 
 		if (code < 0)
 			code = 0;
 		if (code > 4095)
 			code = 4095;
 
-		/* The waveform is scaled; the sync is not - it is a trigger
-		 * and wants every volt of edge it can get. */
-		gen_table[2 * i]     = (uint16_t)((0u << 12)
-		                                  | gen_scale_code(code,
-		                                                   gen_amp));
-		gen_table[2 * i + 1] = (uint16_t)((1u << 12)
-		                                  | sync_code(i, period));
+		/*
+		 * The waveform goes where the layout says and the sync goes
+		 * on the other pin. GEN_LAYOUT_DC gets neither: it is the
+		 * control arm in which nothing swings anywhere, which is
+		 * why both start at DC_CODE above rather than being
+		 * assigned in an else.
+		 *
+		 * The waveform is scaled; the sync is not - it is a trigger
+		 * and wants every volt of edge it can get, and scaling it
+		 * would couple the bench's trigger quality to an amplitude
+		 * chosen for the signal.
+		 */
+		if (gen_layout == GEN_LAYOUT_SWAPPED) {
+			v1 = gen_scale_code(code, gen_amp);
+			v0 = sync_code(i, period);
+		} else if (gen_layout != GEN_LAYOUT_DC) {
+			v0 = gen_scale_code(code, gen_amp);
+			v1 = sync_code(i, period);
+		}
+
+		gen_table[2 * i]     = (uint16_t)((0u << 12) | v0);
+		gen_table[2 * i + 1] = (uint16_t)((1u << 12) | v1);
 	}
 }
 

@@ -96,6 +96,28 @@ static_assert(ACQ_FRAME_BYTES % 512 == 0,
 extern acq_slot_t acq_slot[ACQ_NBUF];
 
 void     acq_init(void);
+/*
+ * A0 is AD7, A1 is AD6, A2 is AD5 - the Arduino A0..A7 labels map to
+ * AD7..AD0, descending, so nothing here may assume A0 == AD0. The
+ * sequencer converts enabled channels in ascending channel-index order,
+ * which is not label order either; the channel tag in LCDR[15:12] is
+ * what the host demultiplexes on, so it never has to be assumed.
+ *
+ * In the header because the console prints which pair is selected and
+ * would otherwise spell the index a second time.
+ */
+#define ACQ_CH_A0  7u
+#define ACQ_CH_A1  6u
+#define ACQ_CH_A2  5u
+
+/*
+ * Which channel pairs with A0 in a two-channel capture: ADC channel
+ * index, A1 by default and A2 on request. Applied at the next
+ * acq_start(). See acq.cpp for why the pair rather than the sequencer.
+ */
+extern uint8_t acq_pair_second;
+void     acq_set_pair(uint32_t a_number);
+
 bool     acq_start(uint32_t trigger_hz, unsigned n_channels);
 void     acq_stop(void);
 uint32_t acq_configured_rc(void);

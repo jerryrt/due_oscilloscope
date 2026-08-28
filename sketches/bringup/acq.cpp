@@ -39,8 +39,33 @@ static uint16_t configured_mask;
  * i.e. A1 before A0. The channel tag in LCDR[15:12] is what the host
  * demultiplexes on, so label order never has to be assumed.
  */
-#define CH_A0 7u
-#define CH_A1 6u
+
+/*
+ * Which channel joins A0 in a two-channel capture: A1 or A2. Track B's
+ * acq.c carries the same control under the same command and the same
+ * default.
+ *
+ * The impedance sweep compared A1 against A2 inside one three-channel
+ * frame, where ascending index converts A2 first and A1 second - so
+ * source and conversion slot moved together and the sweep could not
+ * separate them. ADC_MR.USEQ was the obvious control and does not work
+ * on this part: SEQR1 reads back exactly as written and the converter
+ * still returns tag 0 and floating-pin values.
+ *
+ * This is the control that does work, and it needs no sequencer. A0+A1
+ * and A0+A2 both put the channel under test in slot 0 with the sine in
+ * slot 1, so the two configurations differ in the source and in nothing
+ * else. Interleave them and the state draw cancels too.
+ *
+ * Two channels only, which is all this track's acq_start() accepts and
+ * all the arm needs. The three-channel path is a separate parity gap.
+ */
+uint8_t acq_pair_second = ACQ_CH_A1;
+
+void acq_set_pair(uint32_t a_number)
+{
+	acq_pair_second = (a_number == 2u) ? (uint8_t)ACQ_CH_A2 : (uint8_t)ACQ_CH_A1;
+}
 
 static void tc_init(uint32_t rc)
 {
@@ -88,7 +113,7 @@ void acq_init(void)
 
 	ADC->ADC_EMR = ADC_EMR_TAG;      /* channel index in LCDR[15:12] */
 	ADC->ADC_CHDR = 0xffffu;
-	configured_mask = (uint16_t)((1u << CH_A0) | (1u << CH_A1));
+	configured_mask = (uint16_t)((1u << ACQ_CH_A0) | (1u << ACQ_CH_A1));
 	ADC->ADC_CHER = configured_mask;
 }
 
@@ -124,8 +149,8 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	 * so the host demultiplexes without being told which mode this is.
 	 */
 	configured_mask = (n_channels == 1)
-	                ? (uint16_t)(1u << CH_A0)
-	                : (uint16_t)((1u << CH_A0) | (1u << CH_A1));
+	                ? (uint16_t)(1u << ACQ_CH_A0)
+	                : (uint16_t)((1u << ACQ_CH_A0) | (1u << acq_pair_second));
 	ADC->ADC_CHDR = 0xffffu;
 	ADC->ADC_CHER = configured_mask;
 

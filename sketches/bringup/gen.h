@@ -90,6 +90,41 @@ void gen_set_sync(uint32_t mode);
  * the TC channel it names; 0 when nothing is. Never a stored echo. */
 uint32_t gen_trigger_hz(void);
 
+/*
+ * What build_table() puts on each DAC, selected at runtime. Track B's
+ * gen.h carries the same four arms under the same names and the same
+ * command; the table builder below is this track's own.
+ *
+ * One image and one code path for every arm, because the binary selects
+ * which state issue #5 draws: two builds would change the layout as
+ * well as the waveform, and an absent artifact in the second arm could
+ * not then be read. The table lives in RAM and gen_init() rebuilds it,
+ * so an arm costs a branch and nothing else.
+ *
+ * NORMAL     sine on DAC0, sync on DAC1 - what this project has always
+ *            run
+ * SWAPPED    sync on DAC0, sine on DAC1 - is it DAC1, or a DAC pin?
+ * TWOCYCLE   two waveform periods in one table - separates the PDC
+ *            reload at the wrap from the waveform, which have been the
+ *            same event in every build so far
+ * DC         no waveform anywhere - is a swinging output needed at all?
+ *
+ * Every arm keeps DAC0 on even slots and DAC1 on odd, so a swap moves
+ * the values and not the update timing.
+ *
+ * Why Track A needs them at all: this track is the oracle, and the
+ * issue-#5 arms are most of what an oracle is for. Without them the
+ * sweeps could be run on one track only, which is a divergence that
+ * defeats the reason the second track exists - issue #13.
+ */
+#define GEN_LAYOUT_NORMAL    0u
+#define GEN_LAYOUT_SWAPPED   1u
+#define GEN_LAYOUT_TWOCYCLE  2u
+#define GEN_LAYOUT_DC        3u
+
+extern uint8_t gen_layout;
+void        gen_set_layout(uint32_t layout);
+
 extern uint8_t  gen_shape;
 extern uint16_t gen_points;
 void        gen_set_shape(uint32_t shape);
