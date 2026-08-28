@@ -293,6 +293,45 @@ is actually driving A1 - which is true on the DSO bench, where DAC1 goes
 to the scope's external trigger, and not true on the bench where DAC1 is
 wired to A1.
 
+## The die warms, so a sweep is confounded with time
+
+Three separate measurements on this project have read as a clean
+dependence and turned out to be the die warming, in one week and by
+three different people. It is worth stating once here rather than a
+fourth time in an issue thread.
+
+- **The temperature sensor** (issue #11). A straight sweep across
+  ADC track/settling read 998.50 -> 999.75 monotonically. That is
+  ~0.4 C of warming across a 40 s sweep, not a dependence on the
+  register.
+- **DACC_ACR against effective resolution** (issue #13). The arms drift
+  a few hundredths of a bit across a session in the direction that
+  favours whichever arm ran last.
+- **The settling fold** (issue #9), where the run order sets which
+  configuration looks faster.
+
+**The fix is pairing, not more repeats.** Interleave the arms ABBA
+inside one session and difference within the round: a linear drift
+cancels in the pair mean, and the round-to-round spread of the
+*difference* is then an honest error bar. Averaging more of an
+un-interleaved sweep makes a drifted number more precise, not more
+correct - which is the failure mode worth naming, because a tight
+confidence interval on a confounded measurement is what gets quoted.
+
+`tools/acr_noise.py` and `tools/acr_issue5.py` are the shape: same
+board, same session, arms alternated, difference reported per round.
+
+Two corollaries.
+
+**A first reading after a reset or a flash is not comparable with a
+tenth.** The die is coldest when the board has just been power-cycled
+and the run that immediately follows sits at one end of the drift.
+
+**Report drift separately rather than letting it hide in the scatter.**
+Successive-difference rms over sqrt(2) measures the noise; whole-run rms
+measures noise plus drift, and the two must not be quoted under one
+name.
+
 ## What this method cannot do
 
 Stated here rather than discovered later, because a plausible number is
