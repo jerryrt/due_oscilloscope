@@ -72,9 +72,17 @@ def expected_rc_dac(dac_hz):
 
 
 def capture(board, *, points, seconds, dac_hz=DAC_HZ, adc_hz=ADC_HZ,
-            shape="square", amp=256):
-    """One run of the M preset, with everything the fold needs checked."""
-    measure.set_sync(board, "off")
+            shape="square", amp=256, solo=False):
+    """One run of the M preset, with everything the fold needs checked.
+
+    `solo` tags every table entry DAC0, so the DACC converts only for the
+    signal channel and nothing touches the converter between steps. With
+    a 2-point square and a low TIOA1 rate that is a one-shot step and
+    hold - the stimulus milestone 2 needs, because the continuous one
+    re-drives the output every update and what gets timed is those
+    updates rather than the converter. See issue #9.
+    """
+    measure.set_sync(board, "solo" if solo else "off")
     # Amplitude explicitly, never inherited. `gen_amp` persists on the
     # device across commands, so a metric run that measured noise at a
     # held code first left the generator at half scale - and this then
@@ -103,9 +111,15 @@ def capture(board, *, points, seconds, dac_hz=DAC_HZ, adc_hz=ADC_HZ,
     return vals, rc_adc, st
 
 
-def fold(vals, rc_adc, points, *, span=4, rc_dac=195):
-    """Find the period, then reconstruct on it. Reports the margin."""
-    cands = [eqtime.period_ticks(rc, points)
+def fold(vals, rc_adc, points, *, span=4, rc_dac=195, solo=False):
+    """Find the period, then reconstruct on it. Reports the margin.
+
+    In solo the second channel is given up, so a cycle costs `points`
+    updates rather than `2 * points` - gen_updates_per_cycle() on the
+    device, and getting it wrong here scans the wrong candidates.
+    """
+    upc = points if solo else None
+    cands = [eqtime.period_ticks(rc, points, updates_per_cycle=upc)
              for rc in range(rc_dac - span, rc_dac + span + 1)]
     scan = eqtime.find_period(vals, rc_adc, cands)
     best = scan[0]
@@ -181,9 +195,11 @@ def cmd_settle(board, args):
     lsb_v, advref, source = adc_lsb_v()
     print(f"ADC LSB {lsb_v*1e6:.1f} uV (ADVREF {advref} mV, {source})\n")
     vals, rc_adc, st = capture(board, points=args.points,
-                               seconds=args.seconds, dac_hz=args.dac_hz)
+                               seconds=args.seconds, dac_hz=args.dac_hz,
+                               solo=args.solo)
     curve, cnt, best, margin, scan = fold(vals, rc_adc, args.points,
-                                          rc_dac=expected_rc_dac(args.dac_hz))
+                                          rc_dac=expected_rc_dac(args.dac_hz),
+                                          solo=args.solo)
     _report_fold(vals, rc_adc, best, margin, cnt, lsb_v)
 
     seg = eqtime.segment_after_edge(curve, pre=0)
@@ -229,11 +245,15 @@ def cmd_control(board, args):
     was an artifact of its own analysis.
     """
     lsb_v, _, _ = adc_lsb_v()
+    # The control must use the *same* stimulus as the measurement it
+    # guards, solo included - a control taken under different conditions
+    # is not a control.
     vals, rc_adc, st = capture(board, points=args.points,
                                seconds=args.seconds, shape="dc",
-                               dac_hz=args.dac_hz)
+                               dac_hz=args.dac_hz, solo=args.solo)
     curve, cnt, best, margin, scan = fold(vals, rc_adc, args.points,
-                                          rc_dac=expected_rc_dac(args.dac_hz))
+                                          rc_dac=expected_rc_dac(args.dac_hz),
+                                          solo=args.solo)
     ok = [v for v in curve if v is not None]
     m = sum(ok) / len(ok)
     rms = math.sqrt(sum((v - m) ** 2 for v in ok) / len(ok))
@@ -268,6 +288,13 @@ def main():
                     help="ticks of pre-edge baseline to keep")
     ap.add_argument("--record", action="store_true",
                     help="append the result to records/")
+    ap.add_argument("--solo", action="store_true",
+                    help="give up DAC1 so nothing converts between steps "
+                         "(`=3J`). With --points 2 and a low --dac-hz this "
+                         "is a one-shot step and hold, which is what the "
+                         "settling tail needs: the continuous stimulus "
+                         "re-drives the output every update and the bands "
+                         "then time those updates, not the converter")
     ap.add_argument("--ibctl", metavar="CH,CORE",
                     help="set DACC_ACR's output bias before measuring, as "
                          "`=<ch>,<core>I`. 2,1 is the datasheet's "
