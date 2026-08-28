@@ -31,6 +31,7 @@ tail where nothing can check the result.
 import argparse
 import math
 import os
+import re
 import sys
 import time
 
@@ -267,13 +268,33 @@ def main():
                     help="ticks of pre-edge baseline to keep")
     ap.add_argument("--record", action="store_true",
                     help="append the result to records/")
+    ap.add_argument("--ibctl", metavar="CH,CORE",
+                    help="set DACC_ACR's output bias before measuring, as "
+                         "`=<ch>,<core>I`. 2,1 is the datasheet's "
+                         "characterised condition and the part's own reset; "
+                         "gen_apply_acr() writes whatever is set here after "
+                         "every DACC_CR_SWRST, so it survives each capture. "
+                         "It is worth 2.7x on the rise - records/acr-rise.jsonl "
+                         "- so a settling figure that does not say which bias "
+                         "it was taken at is not a figure")
     args = ap.parse_args()
 
     board = measure.Board(settle=3.0)
     try:
         board.stop()
         board.drain_console(0.5)
+        acr = None
+        if args.ibctl:
+            ch, core = (int(x) for x in args.ibctl.split(","))
+            board.poll_console()
+            board.cmd(f"={ch},{core}I")
+            board.drain_console(0.4)
+            print("DACC_ACR bias set to %s,%s; applied at the next "
+                  "gen_init()" % (ch, core))
+            print()
         p = prov.collect(board=board, extra={"metric": f"settletime-{args.what}",
+                                            "ibctl": args.ibctl,
+                                            "acr": acr,
                                             "points": args.points,
                                             "seconds": args.seconds})
         gaps = prov.missing(p)
@@ -281,6 +302,20 @@ def main():
             raise SystemExit(f"refusing to record: provenance missing {gaps}")
         out = {"rise": cmd_rise, "settle": cmd_settle,
                "control": cmd_control}[args.what](board, args)
+        if args.ibctl:
+            # After, not before. `I` only stores the values; gen_apply_acr()
+            # writes them at the next DACC_CR_SWRST, which happens inside the
+            # capture - so a readback taken before the run reports whatever
+            # the *previous* capture left and looks like the write failed.
+            board.poll_console()
+            board.cmd("?")
+            txt = board.drain_console(0.6) or ""
+            m = re.search(r"acr=([0-9a-fA-F]+)", txt)
+            acr = m.group(1) if m else None
+            out["acr_readback"] = acr
+            print()
+            print("  DACC_ACR after the run: %s" % acr)
+            p["acr"] = acr
         if args.record:
             rec = repeat.Recorder(os.path.join(RECORDS, "settletime.jsonl"))
             rec.add({"metric": f"settletime-{args.what}",
