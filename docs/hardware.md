@@ -456,6 +456,45 @@ PIOB->PIO_CODR = PIO_PB27;          /* off */
 Available immediately after reset with one PMC write and no clock
 configuration. See `docs/debugging.md` for how it is used.
 
+## The Arduino core and this project do not compose silently
+
+Track A runs on the Arduino core but programs the ADC, the DAC, the
+timers and the USB endpoints itself. The core does the same to the same
+registers, on its own schedule, and **where the two overlap the core
+wins quietly**. Three instances in one week, each found by a measurement
+or by output that could not be true, never by reading the sketch:
+
+- **`analogRead()` against `ADC_EMR_TAG`.** `acq_init()` turns TAG on so
+  the streaming path can demultiplex; `analogRead()` reads LCDR without
+  masking it and returns `tag|value` - `A0 = 24584` on a 12-bit
+  converter - and the tag says the value came from the channel the
+  sequencer happened to finish last. `acq_read_one()`/`acq_read_pair()`
+  replace it.
+- **The core rebuilding endpoint configuration.** It re-enables each
+  endpoint's interrupt and clears AUTOSW at every bus reset and
+  `SET_CONFIGURATION`, which stalls a DMA transfer in flight for good.
+  `usbdma_keepalive()` exists to notice and undo that.
+- **`serialEventRun()`.** The core calls it after every `loop()` and it
+  polls `available()` on all four hardware UARTs to dispatch a
+  `serialEvent()` handler. This sketch opens one and defines no handler,
+  so it was ~1.5 us of an 8.6 us pass - **17%** - spent outside `loop()`
+  where the profiler cannot reach. The symbol is weak; the sketch
+  defines its own empty one.
+
+**The rule that follows: where a sketch reaches past the abstraction to
+a peripheral, it must stop using the abstraction for that peripheral.**
+Half-and-half is the state that fails, because the core's half is
+written against assumptions the sketch has already invalidated.
+
+CLAUDE.md's "Arduino is an abstraction layer, not a different
+architecture" is right and this is its corollary. Nothing above was
+prevented by the core - each was fixed by taking the register, which is
+also why "the core will not let us" stays a claim to be tested rather
+than believed.
+
+Track B has none of these by construction: there is no second party
+programming its peripherals.
+
 ## Safety notes
 
 - **No input protection exists.** No series resistors, no clamp diodes,
