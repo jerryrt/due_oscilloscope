@@ -1509,16 +1509,15 @@ static void ha_epstate(const uint32_t *a)
  */
 static void ha_wave(const uint32_t *a)
 {
-	
-		gen_set_shape(a[0]);
-		if (a[1])
-			gen_set_points(a[1]);
-		/* "=<shape>,<pts>,<amp>W". amp in 1/256ths of full scale,
-		 * about mid: a small waveform still moves the converter
-		 * every update without spanning its range. */
-		if (a[2])
-			gen_set_amp(a[2]);
-		gen_report();
+	gen_set_shape(a[0]);
+	if (a[1])
+		gen_set_points(a[1]);
+	/* "=<shape>,<pts>,<amp>W". amp in 1/256ths of full scale,
+	 * about mid: a small waveform still moves the converter
+	 * every update without spanning its range. */
+	if (a[2])
+		gen_set_amp(a[2]);
+	gen_report();
 }
 
 /*
@@ -1535,12 +1534,11 @@ static void ha_wave(const uint32_t *a)
  */
 static void ha_sync(const uint32_t *a)
 {
-	
-		gen_set_sync(a[0]);
-		/* "=<mode>,<amp>J". The sync's own swing, in 256ths. */
-		if (a[1])
-			gen_set_sync_amp(a[1]);
-		gen_report();
+	gen_set_sync(a[0]);
+	/* "=<mode>,<amp>J". The sync's own swing, in 256ths. */
+	if (a[1])
+		gen_set_sync_amp(a[1]);
+	gen_report();
 }
 
 /*
@@ -1550,12 +1548,11 @@ static void ha_sync(const uint32_t *a)
  */
 static void ha_pair(const uint32_t *a)
 {
-	
-		acq_set_pair(a[0]);
-		Serial.print("# capture pair: A0 + A");
-		Serial.print(acq_pair_second == 5u ? 2 : 1);
-		Serial.println(" (next 2ch stream)");
-		Serial.flush();
+	acq_set_pair(a[0]);
+	Serial.print("# capture pair: A0 + A");
+	Serial.print(acq_pair_second == ACQ_CH_A2 ? 2 : 1);
+	Serial.println(" (next 2ch stream)");
+	Serial.flush();
 }
 
 /*
@@ -1571,6 +1568,7 @@ static void ha_layout(const uint32_t *a)
 		"two-cycle: two sine periods per wrap",
 		"all-DC: no sine on either",
 	};
+
 	gen_set_layout(a[0]);
 	Serial.print("# gen layout ");
 	Serial.print(gen_layout);
@@ -1790,9 +1788,9 @@ static void ha_reset(const uint32_t *a)
 
 static void ha_bench(const uint32_t *a)
 {
-	(void)a;
 	char buf[192];
 
+	(void)a;
 	stream_bench_report(buf, sizeof(buf));
 	Serial.println(buf);
 	snprintf(buf, sizeof(buf),

@@ -107,9 +107,14 @@ IMPLEMENTS = {
     # through the Arduino core and has no equivalent.
     "stream_stats": {"b"},
     "bench": {"b"},
-    # bsp/load.c is Track B's; it reads the Cortex-M3 cycle counter,
-    # which the Arduino core does not enable.
-    "load": {"b"},
+    # The load monitor is shared - lib/due_shared/src/load.c, compiled by
+    # both tracks - so this is no longer a per-track capability. It was
+    # one while the monitor lived in bsp/: what the Arduino core does not
+    # do is *enable* DWT's cycle counter, and load_init() does, on both.
+    # Kept in the table rather than deleted because `available` inside
+    # the report is still a runtime answer, and a part without CYCCNT
+    # would say so there.
+    "load": {"a", "b"},
 }
 
 
