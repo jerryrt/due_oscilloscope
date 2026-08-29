@@ -243,12 +243,35 @@ distinction the arm exists to make.
 
 ## The wrap displacement, settled within tolerance (issue #5)
 
-**One sample per 256-point table wrap is displaced, by 1-8 codes, and
-the issue is closed on that bound rather than on a mechanism.** Both
-tracks show it; the displacement is **phase stable per session** - the
-same wrap position within a run, a fresh draw across reboots - which
-is what made it look like several different defects before the fold
-instruments pinned it. It is attributed to a DAC output pin effect,
+**One sample per 256-point table wrap is displaced, and the issue was
+closed on a 1-8 code bound rather than on a mechanism.** Both tracks
+show it.
+
+**The displacement is a discrete two-state draw, and it is redrawn per
+capture.** This paragraph used to say "phase stable per session - the
+same wrap position within a run, a fresh draw across reboots", and the
+second half is wrong: no reboot is needed. Twelve consecutive captures
+on one board in one session, full amplitude, nothing touched between
+them, landed six times at phase 138 and six times at phase 177,
+alternating freely:
+
+| landing phase | displacement | draws |
+|---|---|---|
+| 138 | -5.05 to -5.16 codes | 6 |
+| 177 | -14.06 to -14.54 codes | 6 |
+
+Each state is reproducible to a tenth of a code; what varies is which
+one a capture gets. So the magnitude does not "vary per session" - it
+is a function of the landing phase, and the phase is drawn per capture.
+
+**That is a trap for every A/B measurement on this artifact**, and it
+has already caught one. `tools/acr_issue5.py` compares two DACC_ACR
+arms by mean |peak| over a handful of captures; with a bimodal draw
+between 5 and 14 codes, six captures per arm sample the draw rather
+than the arm. Its 0x000 span of 2.9-14.1 codes against 0x10A's
+9.7-14.4 is what two samples of one distribution look like. Compare
+within a landing phase, or count how often each state is drawn - never
+the mean of the peak. It is attributed to a DAC output pin effect,
 not a splice and not stream_stop: the capture-side accounting is clean
 through every observation.
 
@@ -270,12 +293,12 @@ it xfailed exactly like every other, and the suite stayed green while
 the artifact doubled.
 
 It had. Measured on the macOS bench on 2026-08-29 with `pair_fold`,
-#5's own instrument on #5's own preset: **14.3-14.6 codes**, stable to
-a tenth across five draws, at phase 177 - one of the phases in the
-closing record above, at twice the magnitude. `tools/acr_issue5.py`
-rules the DAC bias out as the explanation: the two ACR arms overlap
-(0x000 spans 2.9-14.1, 0x10A 9.7-14.4), so this is not the slew state
-the closing draws were taken in.
+#5's own instrument on #5's own preset: the phase-177 state reads
+**14.1-14.5 codes** across eight draws, against the `+7.3 at 177` in
+the closing record above - the same state, at twice the magnitude. The
+comparison is phase-matched and amplitude-matched, which is the only
+way it means anything given the two-state draw. The DAC bias does not
+account for it; both ACR arms draw from the same two states.
 
 `tests/test_integrity.py` now bounds the amplitude at
 `DISPLACEMENT_VISIBLE_CODES`. The trip point is the closing argument's
@@ -353,6 +376,24 @@ What the host-fed path adds is roughly a doubling and an on/off
 behaviour: the fold reports the *average* displacement over the wraps
 it folds, so a quiet draw is the artifact appearing in a minority of
 wraps rather than a smaller artifact.
+
+**The displacement is not proportional to the signal - it grows as the
+signal shrinks.** Held at the phase-177 state and moving only the
+internal generator's amplitude:
+
+| generator amplitude | signal span | displacement |
+|---|---|---|
+| 256/256 | 2749 codes | 14.1-14.5 |
+| 128/256 | 1377 codes | 28.07, 28.11 |
+| 64/256 | 693 codes | 35.4, 36.2 |
+
+So it is not a slew or settling character on this path - the ADC
+catching the converter mid-transition would shrink with the slew, and
+this does the opposite. It is not a fixed code offset either. On the
+host-fed ramp the same question reads additive: changing `RAMP_STEP`
+moves the per-sample step by 2x while `n * slope * step` stays at
+~28-30 codes. Small n on the amplitude arms (1, 2, 2 draws) - treat the
+direction as measured and the coefficient as not.
 
 Still open: whether the doubling on the host-fed path is the same
 effect modulated or a larger sibling, and the mechanism for either.

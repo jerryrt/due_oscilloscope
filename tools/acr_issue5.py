@@ -19,6 +19,16 @@ threshold anywhere in it.
 
 ABBA interleaved within one session, because the binary selects which
 state issue #5 draws and the die warms - a sweep is confounded with both.
+
+**Read the result per landing phase, not as a mean of |peak|.** The
+displacement is a discrete draw and it is redrawn per capture, not per
+session: twelve consecutive full-amplitude captures on one board landed
+six times at phase 138 (-5.05 to -5.16 codes) and six times at phase 177
+(-14.06 to -14.54), alternating freely. A mean over six captures per arm
+therefore samples that draw rather than the arm, which is what the
+recorded overlap - 0x000 spanning 2.9-14.1 codes against 0x10A's
+9.7-14.4 - actually is. Compare within a phase, or compare how often
+each state is drawn. See docs/awg.md.
 """
 import argparse, json, os, statistics, sys, time
 
