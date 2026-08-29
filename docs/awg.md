@@ -310,13 +310,22 @@ So sites move together *within* a population and the populations are
 independent of each other. That is one mechanism gating the weak comb,
 not many separate events, and something else entirely holding 198.
 
+**The configuration is drawn per capture, and the odds drift.** This
+looked like stability for a while - the 198-dominant set held across 56
+consecutive captures - and "stable" is the wrong word for it. Earlier
+the same day the two sets alternated roughly evenly within twelve
+captures; later a single capture in the middle of a suite run drew the
+138-dominant set while the five captures around it drew 198. So it is
+one draw per capture whose probability moves on a scale of tens of
+minutes, not a state that is entered and held. Designing an experiment
+against "it is stable now" is how a drifting probability gets read as
+an effect.
+
 Two things that are **not** the draw event, both tested rather than
 assumed. A table rebuild is not: the eight rebuild captures above are
 indistinguishable from the sixteen without. Nor is the NRSTB reset that
-opening the control port performs - the same configuration came back
-across three separate tool invocations, each of which reset the board.
-A power cycle has not been tried, so "a fresh draw across reboots" is
-narrowed rather than refuted.
+opening the control port performs. A power cycle has not been tried, so
+"a fresh draw across reboots" is narrowed rather than refuted.
 
 One reading trap, since it cost a first pass here. `spike` subtracts
 each bin's neighbours because `fold_profile` must survive a waveform
