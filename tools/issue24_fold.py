@@ -218,6 +218,14 @@ def main():
     ap.add_argument("-n", "--runs", type=int, default=8)
     ap.add_argument("-s", "--seconds", type=float, default=3.0)
     ap.add_argument("--dac-sps", type=int, default=200000)
+    ap.add_argument("--channels", type=int, default=2,
+                    help="ADC channels. adc_hz is per channel, so A0's "
+                         "own rate and the fold are unchanged by this - "
+                         "what changes is whether the sequencer walks a "
+                         "multiplexer between A0 conversions. That is "
+                         "the arm that asks whether the artifact is the "
+                         "DAC's or the ADC's, which this issue has "
+                         "assumed rather than tested")
     ap.add_argument("--adc-hz", type=int, default=200000,
                     help="ADC trigger rate. Scaled WITH --dac-sps it "
                          "keeps one captured sample per DAC update, so "
@@ -249,7 +257,8 @@ def main():
                 board.drain_console(0.3)
                 continue
             res = measure.run_loop(board, dac_sps=args.dac_sps,
-                                   adc_hz=args.adc_hz, channels=2,
+                                   adc_hz=args.adc_hz,
+                                   channels=args.channels,
                                    ramp=args.step, seconds=args.seconds)
             ps = res.stream
             vals = ps.series.get(measure.CH_A0) or []
@@ -264,6 +273,7 @@ def main():
                    "arm": "host", "bench": args.bench,
                    "dac_sps": args.dac_sps,
                    "adc_hz": args.adc_hz,
+                   "channels": args.channels,
                    "ramp_step": args.step, "period": period,
                    "events": len(ev),
                    "seq_gaps": ps.seq_gaps, "crc_bad": ps.crc_bad,
