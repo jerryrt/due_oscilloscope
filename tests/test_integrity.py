@@ -19,6 +19,14 @@ from helpers import (assert_fresh, assert_no_underruns, assert_slew,
 
 pytestmark = [pytest.mark.scope, pytest.mark.awg]
 
+# The DAC carries ~20 mV - about 25 codes - of standing noise on every
+# sample, and that is the number issue #5's closure compared its 1-8
+# code displacement against. So it is also the number at which the
+# displacement stops being invisible, which is the only property that
+# made it ignorable. Measured on the macOS bench 2026-08-29: 14.4 codes
+# worst of six interleaved draws, in both ACR states.
+DISPLACEMENT_VISIBLE_CODES = 25.0
+
 TONE = 1000.0
 
 
@@ -89,6 +97,27 @@ def test_device_generated_waveform_is_continuous(board, seconds,
     # real lock is a high z against a low control_z. That is issue #5:
     # known, open, made at a DAC output pin, and expected to be here.
     if fold["z"] >= measure.FOLD_Z_DIRTY and fold["control_z"] < measure.FOLD_Z_DIRTY:
+        # Bound the amplitude, which this arm did not do and was
+        # documented as doing. Issue #5 closed on "1-8 codes against
+        # the DAC's ~25 code standing noise, so no user can see it",
+        # and docs/awg.md promised that a *grown* displacement would
+        # fail a run rather than hide under the tolerance. Nothing here
+        # ever looked at the number: the artifact went from 1-8 codes
+        # at closure to 14.4 on this bench eleven days later, in both
+        # ACR states, and every run xfailed exactly as before.
+        #
+        # The trip point is the closing argument's own criterion rather
+        # than a fresh invention. What made the artifact ignorable was
+        # that it sits under the noise every sample already carries, so
+        # the guard fires when it stops doing so. A bench that trips
+        # this should reopen #5, not raise the number.
+        assert abs(fold["peak"]) < DISPLACEMENT_VISIBLE_CODES, (
+            f"issue #5's displacement has reached "
+            f"{fold['peak']:+.1f} codes at phase {fold['peak_phase']} "
+            f"(z {fold['z']:.1f}, control {fold['control_z']:.1f}), which "
+            f"is no longer under the ~{DISPLACEMENT_VISIBLE_CODES:.0f} "
+            f"code standing noise the issue was closed against. That is "
+            f"the reopening condition #5 recorded for itself")
         pytest.xfail(
             f"issue #5: one sample per DAC table wrap displaced by "
             f"{fold['peak']:+.1f} codes at phase {fold['peak_phase']}, z "

@@ -262,12 +262,27 @@ downstream depends on it. Recorded draws at closure, macOS bench,
 +7.3 at 177, -1.8 at 117 (Track B); the windows-desk record is inside
 the same bound.
 
-The guard outlives the closure: the integrity suite's xfail keeps
-asserting the z-score discrimination, so a *grown* effect - a larger
-displacement, more than one sample, phase instability within a
-session - fails a run rather than hiding under the tolerance. If that
-fires, reopen #5; the fold instruments and the retracted-hypothesis
-record live on the issue.
+The guard outlives the closure, and **until 2026-08-29 it did not
+guard the thing this paragraph said it did.** The xfail asserted the
+z-score discrimination and reported the amplitude; nothing anywhere
+looked at the number. So a *grown* displacement did not fail a run -
+it xfailed exactly like every other, and the suite stayed green while
+the artifact doubled.
+
+It had. Measured on the macOS bench on 2026-08-29 with `pair_fold`,
+#5's own instrument on #5's own preset: **14.3-14.6 codes**, stable to
+a tenth across five draws, at phase 177 - one of the phases in the
+closing record above, at twice the magnitude. `tools/acr_issue5.py`
+rules the DAC bias out as the explanation: the two ACR arms overlap
+(0x000 spans 2.9-14.1, 0x10A 9.7-14.4), so this is not the slew state
+the closing draws were taken in.
+
+`tests/test_integrity.py` now bounds the amplitude at
+`DISPLACEMENT_VISIBLE_CODES`. The trip point is the closing argument's
+own criterion rather than a fresh number: what made the displacement
+ignorable is that it sits under the ~25 codes of standing noise every
+sample already carries, so the guard fires when it stops doing so. **A
+bench that trips it should reopen #5, not raise the number.**
 
 ## The same shape on the host-fed ramp (issue #24)
 
@@ -317,13 +332,30 @@ including one of 223,557 events against windows-desk's 228,893. The
 `pass`/`fail_device` and has no field that could have held the class.
 
 `tools/issue24_phase.py` is the instrument, stdlib-only so both benches
-run the same one; 46 runs in `records/issue24-phase-macos.jsonl`. What
-is **not** settled is the mechanism, and whether this is literally #5's
-displacement at a different magnitude: #5 is 1-8 codes on a 256-point
-sine with the host out of the DAC path, this is ~17-30 codes on a
-512-point host-fed ramp. `tools/splices.py` measures 26-32 codes for
-the `M` preset - the same magnitude as this, on the path with no host
-in it - which is the first thread to pull.
+run the same one; 46 runs in `records/issue24-phase-macos.jsonl`.
+
+**It is device-side, and the two issues are now measured in the same
+units.** `tools/issue24_fold.py` runs #5's `fold_profile` statistic on
+both paths, interleaved run by run in one session so warm-up and
+weather cannot favour either:
+
+| path | displacement |
+|---|---|
+| internal generator, no host in the DAC path (`pair_fold`, preset M) | **14.3 codes**, stable, phase 177 |
+| host-fed ramp, storm draw | **30.1-31.0 codes** |
+| host-fed ramp, quiet draw | 0.9-12 codes |
+| control period, either path | 1.7-1.8 codes |
+
+The artifact is therefore present at 14 codes with **no host in the DAC
+path at all**, which retires every host-side lead #24 accumulated -
+usbser.sys, feed backpressure, write pacing, the operating systems.
+What the host-fed path adds is roughly a doubling and an on/off
+behaviour: the fold reports the *average* displacement over the wraps
+it folds, so a quiet draw is the artifact appearing in a minority of
+wraps rather than a smaller artifact.
+
+Still open: whether the doubling on the host-fed path is the same
+effect modulated or a larger sibling, and the mechanism for either.
 
 ## The gap
 
