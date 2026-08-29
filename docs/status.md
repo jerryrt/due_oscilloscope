@@ -234,15 +234,52 @@ benchmarks.
 
 **Two parity breaks are open, both found 2026-08-29 on windows-desk.**
 
-**1. Long host-fed playback wedges Track A and not Track B.** At RC 195,
-`tools/bench.py --only play --mb 8` hangs with the host at 0.25 s of CPU
-after four minutes; the same command at `--mb 2` completes in about five
-seconds of feed. Track B on the same host, harness and rate completes
-8 MB in 20.9 s at 0 B deficit, **3 of 3**, against Track A's **2 of 2**
-wedged. Only the track differs, so this is not the harness and not
+**1. Sustained host-fed playback stops Track A servicing, and not
+Track B.** Issue #33. Track B on the same host, harness and rate
+completes 8 MB in 20.9 s at 0 B deficit, **3 of 3**, against Track A
+wedged. Only the track differs, so it is neither the harness nor
 Windows' backpressure - that was the first hypothesis and the control
-killed it. Not yet bisected to a rate threshold or a duration threshold;
-five seconds of feed works and twenty-one does not.
+killed it.
+
+**It is governed by feed duration, and by nothing else measured.** Seven
+runs across three rates spanning 7x:
+
+| rate | `--mb` | feed | outcome |
+|---|---|---|---|
+| RC 28 (1,392,857) | 8 | 3.0 s | completed |
+| RC 39 (1,000,000) | 8 | 4.3 s | completed |
+| RC 195 (200,000) | 2 | 5.2 s | completed |
+| RC 39 | 12 | **6.4 s** | completed |
+| RC 39 | 16 | **8.6 s** | wedged |
+| RC 195 | 4 | 10.4 s | wedged |
+| RC 28 | 32 | 12.0 s | wedged |
+
+**Threshold 6.4-8.6 s of sustained feed, at every rate tried. Bytes and
+ring turns are both excluded**, which matters because they are the two
+quantities that scale with duration at a fixed rate and separate across
+rates: 8 MB completes at RC 39 (8192 ring turns) while **4 MB wedges at
+RC 195 at 4096 turns** - half the bytes and half the turns, failing
+because it took twice as long. Wedging byte counts span 4 MB to 32 MB
+with no threshold in them.
+
+Note the direction, because it is the inverse of the reading that solved
+`PLAY_PRIME_BUFS`: there a count that *failed* to scale with duration
+proved a startup condition. This scales with duration alone, so it is
+something accumulating in wall time while the feed runs rather than a
+buffer filling or a priming depth.
+
+**The symptom is the main loop, not the pipe.** Inside the window the
+console goes silent too - a `B` query mid-run returns no `# play:` line
+at all - while the device keeps enumerating. That is the same signature
+`docs/linux.md` records as an unreproduced one-off ("answering neither
+the console nor the control channel while still enumerating, because the
+core's USB stack keeps running when the main loop does not"), and this
+is a deterministic reproducer for it: feed Track A for more than ~9 s.
+It recovers over NRSTB.
+
+**No test reaches it.** Track A's suite is green here - 505 passed / 19
+skipped / 1 xfailed - because the suite's AWG windows are shorter than
+this threshold.
 
 **2. The `# play:` line is not the same on both tracks**, which the
 "same output format" claim above does not survive. Track B prints
