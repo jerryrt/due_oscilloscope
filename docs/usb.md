@@ -141,28 +141,46 @@ and the three rates that used to starve - 600,000, 1,218,750 and
 1,392,857 - report `under=0` with the ring sitting at 21 to 30 slots
 instead of 5. `Feeder.WRITE_SIZE` is where this lives.
 
-**Re-taken 2026-08-29 against the current feed, and it holds - larger,
-if anything.** `tools/writepolicy.py`, four runs per arm per rate, ABBA
-within each rate so a drifting machine cannot favour one:
+**Re-taken 2026-08-29 against the current feed, across the whole
+ladder, and it holds - larger, if anything.** `tools/writepolicy.py`,
+four runs per arm per rate, ABBA within each rate so a drifting machine
+cannot favour one:
 
 | DAC rate | due-sized | constant 512 B |
 |---|---|---|
 | 200,000 sps | 0.000% (4/4) | 0.000% (4/4) |
 | 397,959 | 0.605-0.633% | **0 B, 4/4** |
 | 600,000 | 0.763-0.915% | **0 B, 4/4** |
+| 1,000,000 | 2.279-2.321% | 2.204-2.208% *(oversupplied)* |
+| 1,218,750 | 0.692-5.363% | **0-3584 B**, median 0 |
+| 1,392,857 | 0.724-0.908% | **0 B, 4/4** |
 
-No overlap between the arms at either rate, every deficit a whole
-number of 128-byte chunks, and the 200 ksps threshold in the claim above
-is exactly where it says it is. So `Feeder.WRITE_SIZE` is a **current
-rule on this platform, not a stale workaround** - which is the macOS
-half of the oldest debt in `docs/HANDOFF.md`. What it does not settle is
-whether the rule is *macOS-specific*; that needs the same tool on the
-Windows bench.
+**The constant-size feed is byte-exact at the AWG ceiling**, 0 B in
+four runs at 1,392,857 sps, where the due-sized feed loses 0.72-0.91%.
+So the rule is not a low-rate convenience that fades out - it earns
+most where the feed is hardest. The `RESIDUAL` class the suite carries
+for 1,218,750 and 1,392,857 shows as 0-3584 B against a due-sized
+51,072-390,144, which is the residual in proportion at last.
 
-One thing the original table does not carry: at 600,000 sps the
-due-sized arm also **starves the ring**, 7 to 12 underruns against 0 in
-every constant-size run. The write policy costs bytes and runway, not
-bytes alone.
+1,000,000 sps is the control that cannot answer the question, and it
+behaves like one: both arms lose ~2.2-2.3% because that converter runs
+slow and the surplus is shed however it is written. The write policy is
+worth ~0.1 percentage points on top of it. That is why `writepolicy.py`
+excludes the oversupplied rates by default.
+
+Two things the original table does not carry. The due-sized arm
+**starves the ring**, and worse with rate: 7-12 underruns at 600,000,
+30 at 1,218,750, 41-42 at 1,392,857, against **0 in every
+constant-size run at every rate**. So the policy costs runway as well
+as bytes - and an underrun count is therefore not independent evidence
+about a feed whose write policy is in question.
+
+**Windows needs none of it, and that is why the constant stays uniform
+rather than becoming a platform branch.** 48 runs there across the same
+ladder, both policies, deficit 0 throughout
+(`records/writepolicy-windows.jsonl`). Issue #27 settled the
+architecture on that pair of records: free where it is not needed,
+load-bearing where it is.
 
 **Size alone is not the mechanism**, and this is the part that is still
 not understood. Capping the due-sized path at 1024 bytes leaves
