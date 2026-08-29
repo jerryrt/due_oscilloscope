@@ -71,6 +71,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-n", "--runs", type=int, default=12)
     ap.add_argument("-s", "--seconds", type=float, default=3.0)
+    ap.add_argument("--sync", default=None,
+                    help="gen sync mode for the run, restored on exit. "
+                         "'off' puts DC on DAC1, which makes A1 the flat "
+                         "channel flat_census's docstring assumed it "
+                         "already was - and a flat channel's MAD is a "
+                         "fraction of a square's, which is what buys the "
+                         "detection margin the comb question needs "
+                         "without 110-second captures")
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "macos"))
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
@@ -80,6 +88,8 @@ def main():
     try:
         board.stop()
         board.drain_console(0.5)
+        if args.sync is not None:
+            print(measure.set_sync(board, args.sync).strip(), flush=True)
         for i in range(1, args.runs + 1):
             res = measure.run_capture(board, preset="M", seconds=args.seconds)
             ps = res.stream
@@ -106,6 +116,11 @@ def main():
             board.drain_console(0.3)
     finally:
         try:
+            # Put the sync back. Every other instrument on this issue
+            # assumes the default, and a tool that changes it and exits
+            # reconfigures the next person's baseline silently.
+            if args.sync is not None:
+                measure.set_sync(board, "cycle")
             board.stop()
         finally:
             board.close()
@@ -124,8 +139,44 @@ def main():
         tot1 = sum(r["a1"]["gaps21"] for r in on)
         print(f"\ngaps of 21, summed over those captures: "
               f"A0 {tot0}, A1 {tot1}")
-        print("A1 comparable to A0 -> the period counts DACC conversions")
-        print("A1 at zero          -> it is DAC0's own output stage")
+
+        # The power check, before the conclusion and gating it.
+        #
+        # A1 reads a full-scale square and A0 a sine, and the two do not
+        # have the same noise floor - A1's MAD runs about 1.8x A0's. The
+        # comb's sites are about 1 code. If 6*MAD on A1 is above that,
+        # A1 CANNOT SEE a comb of the same size and its silence means
+        # nothing, which is the trap this issue has fallen into twice.
+        comb = [abs(v) for r in on for _b, v, _z in r["a0"]["sites"]
+                if abs(v) < 3.0]
+        floor1 = measure.FOLD_Z_DIRTY * statistics.median(
+            [r["a1"]["mad"] for r in on])
+        floor0 = measure.FOLD_Z_DIRTY * statistics.median(
+            [r["a0"]["mad"] for r in on])
+        smallest = min(comb) if comb else 0.0
+        typical = statistics.median(comb) if comb else 0.0
+        print(f"\ndetection floor at z={measure.FOLD_Z_DIRTY}: "
+              f"A0 {floor0:.2f} codes, A1 {floor1:.2f} codes")
+        print(f"A0 comb sites: {smallest:.2f} smallest, "
+              f"{typical:.2f} typical")
+        # A margin, not a bare comparison. A comb 6% above the floor is
+        # detectable in principle and not in practice, and "A1 could
+        # have seen it" read off a 6% margin is the same mistake as
+        # reading a null from a test with no power - one step further
+        # down the same path. Two-to-one or it does not count.
+        if typical < 2.0 * floor1:
+            need = max(6, int(args.seconds * (2.0 * floor1 / typical) ** 2
+                              + 0.5)) if typical else 0
+            print("\nINCONCLUSIVE. A1's floor is not far enough below "
+                  "the comb for its silence to be evidence. The floor "
+                  f"falls as 1/sqrt(wraps), so -s {need} would give the "
+                  "2:1 margin this asks for.")
+        elif tot1 <= tot0 // 3:
+            print("\nA1 is silent where it COULD have seen it: the comb "
+                  "counts DAC0 writes, not DACC conversions.")
+        else:
+            print("\nA1 carries it too: the period counts DACC "
+                  "conversions, both channels.")
     else:
         print("A0 never drew the comb, so this run says nothing about A1. "
               "Run again - p(on) is about 0.2 per stream.")
