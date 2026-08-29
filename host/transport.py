@@ -32,6 +32,7 @@ import sys
 import time
 
 WINDOWS = sys.platform == "win32"
+LINUX = sys.platform.startswith("linux")
 
 # Windows serial receive/transmit buffer request. 4 MB of receive holds
 # about 2.2 s at the full in-spec capture rate, against the 2.2 ms the
@@ -65,13 +66,41 @@ class _PosixPort:
         a[6][termios.VMIN] = 0
         a[6][termios.VTIME] = 0
         termios.tcsetattr(self.fd, termios.TCSANOW, a)
-        if dtr:
-            try:
+        try:
+            if dtr:
                 fcntl.ioctl(self.fd, termios.TIOCMBIS,
                             struct.pack("I", termios.TIOCM_DTR |
                                         termios.TIOCM_RTS))
-            except OSError:
-                pass
+            elif LINUX:
+                # Linux has no callout node, and that is the whole of
+                # this branch.
+                #
+                # docs/hardware.md says "always /dev/cu.*, never
+                # /dev/tty.*", scoped to macOS. The reason is that cu.*
+                # is the callout device and does not touch modem
+                # control lines; tty.* is the dial-in device and does.
+                # Linux ships only /dev/ttyACM0, which behaves like
+                # tty.*: the tty layer raises DTR and RTS in
+                # tty_port_open() before userspace sees the fd, so
+                # passing dtr=False is not enough - nothing has been
+                # asserted *by us* and the lines are high anyway.
+                #
+                # On the Due those two lines are wired to the 16U2's
+                # RESET and ERASE. So an ordinary open of the
+                # programming port erases the flash and drops the board
+                # into SAM-BA, which is what it did here: the board ran
+                # Track B for 39 s, ports.py opened the console, and it
+                # came back as 03eb:6124 with a blank chip. Measured on
+                # the Linux bench 2026-08-29 - cleared, the same open
+                # returns the identity line and the board keeps running.
+                #
+                # HUPCL is already absent from c_cflag above, so close()
+                # does not pulse them again on the way out.
+                fcntl.ioctl(self.fd, termios.TIOCMBIC,
+                            struct.pack("I", termios.TIOCM_DTR |
+                                        termios.TIOCM_RTS))
+        except OSError:
+            pass
 
     def fileno(self):
         return self.fd
