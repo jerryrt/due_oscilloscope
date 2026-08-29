@@ -131,6 +131,32 @@ void stream_core_stop(void)
 	tx_phase = TX_IDLE;
 	tx_off = 0;
 	acq_stop();
+
+	/*
+	 * gen_stop() unconditionally, though gen_init()/gen_start() above
+	 * are conditional on with_gen. That asymmetry is deliberate and
+	 * load-bearing, and it reads like a bug, so: do not make it
+	 * conditional.
+	 *
+	 * cmd_dac_crosscheck() ('j'/'k') calls gen_start_independent()
+	 * itself and then stream_start_capture_only(), which is
+	 * with_gen=false. It stops nothing when it returns - the console's
+	 * '0' is what ends it, and '0' reaches the generator only through
+	 * this line. Gate it on with_gen and those two commands leave the
+	 * DACC running with no way to stop it short of a reset.
+	 *
+	 * The reverse hazard - tearing down a DACC that play.c owns, since
+	 * gen_stop() clears TRGEN, disables the PDC transmitter and calls
+	 * NVIC_DisableIRQ(DACC_IRQn) on a vector play.c owns - is not
+	 * reachable today: every capture start already claims the DACC
+	 * (the presets run with_gen=true and 'L' hands it to play.c), and
+	 * h_stop() calls play_stop() straight after this. It would become
+	 * reachable the day something stops a capture while leaving
+	 * playback running, which is exactly what independent AWG and
+	 * capture control in the front end would do. Checked on the bench
+	 * 2026-08-29 rather than assumed: no current command sequence
+	 * separates the two.
+	 */
 	gen_stop();
 }
 
