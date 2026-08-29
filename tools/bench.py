@@ -83,13 +83,55 @@ class Board:
         return self.con.read(60000).decode("utf-8", "replace")
 
     def play(self):
+        """The device's playback counters, parsed by field name.
+
+        **This used to be one positional regex written to Track B's field
+        order, and it silently returned {} on Track A** - which
+        `test_play` then reported as a 100% deficit, because a missing
+        `in` and an `in` of zero were the same thing to it. A parse
+        failure presented as total data loss is the same error as a
+        counter of zero presented as a measurement, and this project has
+        a rule about the second one.
+
+        The two tracks do not print the same line. Track B emits
+        `... endtx spans partial occmin`; Track A puts `svc` between
+        `endtx` and `spans` and adds `rebuilds`, `act-in` and `act-out`
+        after `occmin`. Parsing `key=value` pairs takes both, and takes
+        whichever field either track adds next without being edited.
+
+        Returns {} only when the device printed no `# play:` line at all.
+        A line that is present but missing a field this tool needs is a
+        different thing and says so - see `play_or_die`.
+        """
         out = self.cmd("B", 0.6)
-        m = re.search(r"# play: in=(\d+) produced=(\d+) consumed=(\d+) "
-                      r"under=(\d+) isr=(\d+) endtx=(\d+) spans=(\d+) "
-                      r"partial=(\d+) occmin=(\d+)", out)
-        keys = ("in", "produced", "consumed", "under", "isr", "endtx",
-                "spans", "partial", "occmin")
-        return dict(zip(keys, map(int, m.groups()))) if m else {}
+        m = re.search(r"# play:(.*)", out)
+        if not m:
+            return {}
+        got = dict(re.findall(r"([A-Za-z][\w-]*)=(\d+)", m.group(1)))
+        return {k: int(v) for k, v in got.items()}
+
+    PLAY_FIELDS = ("in", "produced", "consumed", "under", "partial",
+                   "occmin", "endtx")
+
+    def play_or_die(self):
+        """`play()`, but a missing field is an error rather than a zero.
+
+        The caller is about to divide by these and call the answer a
+        byte deficit. If the device did not report one, the honest
+        outcome is a stopped run naming the field, not a number.
+        """
+        got = self.play()
+        if not got:
+            raise RuntimeError(
+                "the device printed no '# play:' line in response to B - "
+                "this tool cannot measure playback on it")
+        missing = [k for k in self.PLAY_FIELDS if k not in got]
+        if missing:
+            raise RuntimeError(
+                f"the device's '# play:' line has no {', '.join(missing)} "
+                f"- got {sorted(got)}. A track that does not count a thing "
+                f"must not have a zero invented for it")
+        return got
 
     def bench(self):
         out = self.cmd("B", 0.6)
@@ -290,9 +332,17 @@ def test_play(board, dac_rc, mb, policy="bulk"):
         for _ in range(want // CHUNK):
             total += nat.write(payload) or 0
     elapsed = time.time() - t0
+    board.play_or_die()          # before measuring, not after
     settled, polls = drain(lambda: board.play().get("in"), "play in")
     nat.close()
     board.stop()
+    if settled is None:
+        # Never let an unread counter become a byte figure. `total - None`
+        # used to fall through `(settled or 0)` and print a 100% deficit,
+        # which is a parse failure wearing the clothes of total data loss.
+        raise RuntimeError(
+            f"RC {dac_rc}: the device's play 'in' counter never settled, so "
+            f"there is no figure to compare {total} written bytes against")
 
     # Underruns need a SECOND run, stopped the instant the feed ends.
     #
