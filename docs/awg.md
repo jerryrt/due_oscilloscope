@@ -241,6 +241,34 @@ recorded results still describe the thing they were taken on. Resolution
 and the two differ only in where the fold lands - which is exactly the
 distinction the arm exists to make.
 
+## The wrap displacement, settled within tolerance (issue #5)
+
+**One sample per 256-point table wrap is displaced, by 1-8 codes, and
+the issue is closed on that bound rather than on a mechanism.** Both
+tracks show it; the displacement is **phase stable per session** - the
+same wrap position within a run, a fresh draw across reboots - which
+is what made it look like several different defects before the fold
+instruments pinned it. It is attributed to a DAC output pin effect,
+not a splice and not stream_stop: the capture-side accounting is clean
+through every observation.
+
+Why closed within tolerance: 1-8 codes is 0.02-0.2% of full swing, on
+one sample in 256, against the ~20 mV (~25 code) standing noise the
+DAC carries on *every* sample. No user of the generator can see it
+without the coherent folding the suite's instruments perform
+(`measure.gen_fold_len()` and the issue-#5 fold tools), and nothing
+downstream depends on it. Recorded draws at closure, macOS bench,
+2026-08-28 suites: -2.9 codes at phase 44 (Track A), +1.0 at 202,
++7.3 at 177, -1.8 at 117 (Track B); the windows-desk record is inside
+the same bound.
+
+The guard outlives the closure: the integrity suite's xfail keeps
+asserting the z-score discrimination, so a *grown* effect - a larger
+displacement, more than one sample, phase instability within a
+session - fails a run rather than hiding under the tolerance. If that
+fires, reopen #5; the fold instruments and the retracted-hypothesis
+record live on the issue.
+
 ## The gap
 
 **The internal generator has no control-channel command.** `=<shape>,<pts>W`
