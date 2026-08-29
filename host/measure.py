@@ -459,7 +459,7 @@ def fold_profile(vals, period=GEN_TABLE_LEN, control_period=None):
             "control_spike_z": scz}
 
 
-def fold_sites(series, z_min=FOLD_Z_DIRTY, keep=None):
+def fold_sites(series, z_min=FOLD_Z_DIRTY, keep=None, absorb=False):
     """Every bin that stands out, not just the largest.
 
     `fold_profile`'s `peak`/`peak_phase` and `spike`/`spike_phase` are
@@ -489,6 +489,24 @@ def fold_sites(series, z_min=FOLD_Z_DIRTY, keep=None):
     the robust centre as well as from the output, so the masked step
     cannot set the scale everything else is judged against.
 
+    `absorb` folds each site's immediate neighbours into it, and belongs
+    with the neighbour-residual basis rather than the flat one. The
+    docstring above says a spike of A becomes A at its own bin and -A/2
+    at each neighbour and warns against reading that as three sites -
+    but that shadow is exactly what a *caller* who hands in a residual
+    has already created, so the warning applies to this function's own
+    output too and not only to how the series was built. With `absorb`
+    the strongest bin of a contiguous group claims its neighbours and
+    they are dropped.
+
+    It is off by default because the flat basis needs it not at all: two
+    genuinely adjacent sites are indistinguishable from a site and its
+    shadow, so absorbing merges them and reports one wrong magnitude.
+    Measured on a synthetic sawtooth, -25.0 at bin 200 with +25.0 at 201
+    comes back as +36.8 at 201. Sites on this artifact sit ~21 bins
+    apart, so that regime is not the one being read - but nothing here
+    can warn you when it happens.
+
     Returns `(sites, mad)`, sites being `(bin, deviation, z)` ordered by
     descending |deviation| - so `sites[0]` is exactly the argmax the
     older statistics reported, and the rest is what they were dropping.
@@ -506,6 +524,17 @@ def fold_sites(series, z_min=FOLD_Z_DIRTY, keep=None):
     out = [(b, series[b] - centre, abs(series[b] - centre) / mad)
            for b in idx if abs(series[b] - centre) / mad >= z_min]
     out.sort(key=lambda t: -abs(t[1]))
+    if absorb:
+        eligible, claimed, kept = set(idx), set(), []
+        for b, dev, z in out:
+            if b in claimed:
+                continue
+            for k in (-1, 0, 1):
+                nb = (b + k) % n
+                if nb in eligible:
+                    claimed.add(nb)
+            kept.append((b, dev, z))
+        out = kept
     return out, mad
 
 

@@ -77,11 +77,14 @@ def _masked_resid(vals, period, mask_wrap=True):
                          + means[(b + 1) % period]) / 2.0
              for b in range(period)]
 
+    # The wrap is where the folded profile falls by most of its span. It
+    # is also the ramp's table index 0, which is the whole reason to
+    # find it even when it is not being masked - see wrap_relative().
+    drops = [means[b] - means[(b - 1) % period] for b in range(period)]
+    w = min(range(period), key=lambda b: drops[b])
+
     keep = list(range(period))
     if mask_wrap:
-        # The wrap is where the folded profile falls by most of its span.
-        drops = [means[b] - means[(b - 1) % period] for b in range(period)]
-        w = min(range(period), key=lambda b: drops[b])
         masked = {(w + k) % period for k in (-2, -1, 0, 1, 2)}
         keep = [b for b in range(period) if b not in masked]
     if len(keep) < 8:
@@ -90,7 +93,24 @@ def _masked_resid(vals, period, mask_wrap=True):
     vals_keep = [resid[b] for b in keep]
     centre = statistics.median(vals_keep)
     mad = statistics.median([abs(v - centre) for v in vals_keep]) * 1.4826
-    return resid, keep, centre, mad or 1e-9, min(counts)
+    return resid, keep, centre, mad or 1e-9, min(counts), w
+
+
+def wrap_relative(b, wrap, period):
+    """A site's position as a ramp table index, not a capture-frame bin.
+
+    **Every site position #5 and #24 have published is a bin in a frame
+    whose zero is wherever the capture started** (`0bb9bd3`), so two
+    readings of the same site differ by a rotation nobody measured - and
+    on the internal path recovering it costs an alignment argument
+    against the sine's own shape.
+
+    The host-fed ramp does not need one. Its wrap is a full-scale step
+    at table index 0, present in every capture and already located here
+    to be masked, so subtracting it converts a bin straight into a table
+    index. The one free absolute reference either path has.
+    """
+    return (b - wrap) % period
 
 
 def masked_spike(vals, period, mask_wrap=True):
@@ -106,7 +126,7 @@ def masked_spike(vals, period, mask_wrap=True):
     got = _masked_resid(vals, period, mask_wrap)
     if got is None:
         return None
-    resid, keep, centre, mad, n = got
+    resid, keep, centre, mad, n, _wrap = got
     phase = max(keep, key=lambda b: abs(resid[b] - centre))
     spike = resid[phase] - centre
     return spike, phase, abs(spike) / mad, n
@@ -151,22 +171,10 @@ def masked_sites(vals, period, mask_wrap=True, z_min=measure.FOLD_Z_DIRTY):
     got = _masked_resid(vals, period, mask_wrap)
     if got is None:
         return None
-    resid, keep, centre, mad, n = got
-
-    keepset = set(keep)
-    hits = sorted((b for b in keep if abs(resid[b] - centre) / mad >= z_min),
-                  key=lambda b: -abs(resid[b] - centre))
-    claimed, out = set(), []
-    for b in hits:
-        if b in claimed:
-            continue
-        # Absorb the shadow this site casts into its own neighbours.
-        for k in (-1, 0, 1):
-            nb = (b + k) % period
-            if nb in keepset:
-                claimed.add(nb)
-        out.append((b, resid[b] - centre, abs(resid[b] - centre) / mad))
-    return out, mad, n
+    resid, keep, _centre, _mad, n, wrap = got
+    sites, mad = measure.fold_sites(resid, z_min=z_min, keep=keep,
+                                    absorb=True)
+    return sites, mad, n, wrap
 
 
 def gen_arm(board, i, args):
@@ -261,9 +269,16 @@ def main():
                             "control_spike_codes": round(ctl[0], 3),
                             "control_spike_z": round(ctl[2], 1)})
             if sites:
-                found, site_mad, _ = sites
+                found, site_mad, _, wrap = sites
+                # Both coordinates are recorded: the bin, so these rows
+                # compare with everything already published, and the
+                # table index, which is the one that survives a rotation.
                 row["sites"] = [[b, round(v, 3), round(z, 1)]
                                 for b, v, z in found]
+                row["sites_table"] = [[wrap_relative(b, wrap, period),
+                                       round(v, 3), round(z, 1)]
+                                      for b, v, z in found]
+                row["wrap_bin"] = wrap
                 row["site_mad"] = round(site_mad, 3)
             rows.append(row)
             print(f"run {i}: host  ev={row['events']:6d}  "
@@ -273,10 +288,11 @@ def main():
                   f"{row.get('control_spike_codes')} codes "
                   f"(z={row.get('control_spike_z')})", flush=True)
             if row.get("sites") is not None:
-                shown = ", ".join(f"{b}:{v:+.2f}(z{z:.0f})"
-                                  for b, v, z in row["sites"][:8])
+                shown = ", ".join(f"{t}:{v:+.2f}(z{z:.0f})"
+                                  for t, v, z in row["sites_table"][:8])
                 print(f"          sites n={len(row['sites'])} "
-                      f"mad={row['site_mad']}  {shown or '-'}", flush=True)
+                      f"mad={row['site_mad']} wrap={row['wrap_bin']}  "
+                      f"table {shown or '-'}", flush=True)
             board.stop()
             board.drain_console(0.3)
     finally:
@@ -298,18 +314,27 @@ def main():
     # The site table across runs, which is the reading the argmax above
     # cannot give: a site that is present every run with a moving value
     # is a different animal from one that comes and goes.
-    host_rows = [r for r in rows if r.get("sites") is not None]
+    host_rows = [r for r in rows if r.get("sites_table") is not None]
     if host_rows:
         seen = {}
         for r in host_rows:
-            for b, v, _z in r["sites"]:
-                seen.setdefault(b, []).append(v)
-        print(f"\nhost sites across {len(host_rows)} runs "
-              f"(phase: seen/n, value range):")
-        for b in sorted(seen, key=lambda k: -len(seen[k])):
-            vs = seen[b]
-            print(f"  {b:4d}: {len(vs)}/{len(host_rows)}  "
+            for t, v, _z in r["sites_table"]:
+                seen.setdefault(t, []).append(v)
+        wraps = sorted({r["wrap_bin"] for r in host_rows})
+        print(f"\nhost sites across {len(host_rows)} runs, in RAMP TABLE "
+              f"indices (wrap bins seen: {wraps}):")
+        for t in sorted(seen, key=lambda k: -len(seen[k])):
+            vs = seen[t]
+            print(f"  {t:4d}: {len(vs)}/{len(host_rows)}  "
                   f"{min(vs):+.2f} .. {max(vs):+.2f}")
+        recur = [t for t in seen if len(seen[t]) >= 3]
+        if recur:
+            res = {}
+            for t in sorted(recur):
+                res.setdefault(t % 21, []).append(t)
+            print("\n  mod 21, the residue classes the two benches share:")
+            for r_, ts in sorted(res.items()):
+                print(f"    residue {r_:2d}: {ts}")
     if args.out:
         with open(args.out, "a") as fh:
             for r in rows:
