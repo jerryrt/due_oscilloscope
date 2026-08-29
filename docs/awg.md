@@ -293,7 +293,49 @@ period 21, offset by 3 in bin terms, rather than one wandering phase.
 Stated as the arithmetic of five sites on one bench and one on another,
 which is not enough to call it the mechanism.
 
-**Two independent populations, and the fork "do the sites move
+**Both tracks show the same sites, offset by ten fold bins - which is
+the oracle earning its keep.** Track A and Track B flashed in turn on
+one board in one session, `tools/issue5_sites.py -n 12` each:
+
+| Track A | Track B | offset |
+|---|---|---|
+| 107, -3.4 .. -2.3 | 117, -2.0 .. -1.7 | -10 |
+| 188, +2.7 .. +3.1 | 198, +2.0 .. +2.4 | -10 |
+| 209, -1.5 .. -1.3 | 219, -1.4 .. -1.1 | -10 |
+
+Same positions, same magnitudes, same signs, from **two independent
+register programmings of the same silicon**. Three sites landing on one
+constant offset is not a coincidence a 256-bin fold offers cheaply, and
+the offset itself is the obvious thing - the two tracks begin capturing
+at slightly different points in the generator's table cycle, which
+shifts every phase by the same amount and nothing else.
+
+That is the strongest evidence yet for this issue's "a DAC output pin,
+not a splice" attribution: firmware is the one thing that differs
+between the arms, and it does not move the artifact. Two caveats kept
+with it - only 3 of Track B's 5 sites have a Track A counterpart (138
+and 177 have none at 128 and 167), and the ten-bin offset is inferred
+from those three coincidences rather than measured against the table
+directly.
+
+**The strong sites are rigidly coupled, and the earlier "two
+independent populations" reading here was wrong.** Twelve Track B
+captures in one session, with site 138 swinging -5.11 to +2.14 across
+them:
+
+    138 vs 198   r = -0.99
+    138 vs 219   r = +0.99
+    198 vs 219   r = -0.97
+
+One mechanism moves all of them, redistributing between sites rather
+than switching them on and off. The earlier reading came from a stretch
+where the configuration happened to be static, so there was no variance
+to correlate and the near-zero coefficients meant "nothing moved", not
+"nothing is linked". **Correlate only across a stretch where the thing
+actually varies** - the same trap as bounding a drifting probability,
+one section down.
+
+**Two populations by amplitude, and the fork "do the sites move
 together or independently" has an answer for each.** 24 captures inside
 one board session, 8 of them preceded by a `set_gen` table rebuild:
 
