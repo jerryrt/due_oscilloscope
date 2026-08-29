@@ -33,25 +33,16 @@ import measure  # noqa: E402
 
 
 def sites(profile, z_min=measure.FOLD_Z_DIRTY):
-    """Every bin that stands out, not just the largest.
+    """The whole profile's sites, via the shared reading.
 
-    Read off the profile directly, and **not** off `spike`'s neighbour
-    residual. `spike` subtracts each bin's neighbours because
-    fold_profile has to survive a waveform underneath it; after
-    pair_fold's differencing within the DAC hold there is no waveform
-    left, so the profile is already flat and the subtraction only adds
-    a shadow. A single spike of A becomes A at its own bin and -A/2 at
-    each neighbour, and reading that as three sites is how 176 and 178
-    were briefly reported here alongside a real site at 177.
+    This lived here as its own copy until the host-fed path needed the
+    same reading; it is `measure.fold_sites` now, so both #5's internal
+    arm and #24's host-fed arm are read by one rule rather than by two
+    that could drift apart. The profile goes in **as it is** - see that
+    function on why neighbour-subtracting a pair_fold profile invents
+    sites either side of a real one.
     """
-    centre = statistics.median(profile)
-    devs = [abs(v - centre) for v in profile]
-    mad = statistics.median(devs) * 1.4826 or 1e-9
-    out = [(b, profile[b] - centre, abs(profile[b] - centre) / mad)
-           for b in range(len(profile))
-           if abs(profile[b] - centre) / mad >= z_min]
-    out.sort(key=lambda t: -abs(t[1]))
-    return out, mad
+    return measure.fold_sites(profile, z_min=z_min)
 
 
 def main():

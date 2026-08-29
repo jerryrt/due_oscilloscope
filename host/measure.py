@@ -459,6 +459,56 @@ def fold_profile(vals, period=GEN_TABLE_LEN, control_period=None):
             "control_spike_z": scz}
 
 
+def fold_sites(series, z_min=FOLD_Z_DIRTY, keep=None):
+    """Every bin that stands out, not just the largest.
+
+    `fold_profile`'s `peak`/`peak_phase` and `spike`/`spike_phase` are
+    argmaxes, and this defect has several fixed sites per wrap. A single
+    number cannot tell "the artifact moved" from "there are several and
+    the biggest one shrank", and for a day it had two benches reporting
+    the same statistic two different ways - one saw the phase alternate
+    with the magnitude following, the other saw the phase hold while the
+    value flipped sign. Both were watching the argmax follow whichever
+    site currently dominated. **Quote the site table.**
+
+    The caller decides what to hand in, and the choice is not cosmetic:
+
+      * `pair_fold`'s `profile` - already flat, because differencing
+        within the DAC hold cancels the staircase. Pass it directly. Do
+        **not** neighbour-subtract it first: a single spike of A becomes
+        A at its own bin and -A/2 at each neighbour, and reading that as
+        three sites is how 176 and 178 were briefly reported alongside a
+        real site at 177.
+      * a neighbour residual - required where a waveform survives the
+        fold, as it does on the host-fed ramp, whose sawtooth is not
+        flat across adjacent bins.
+
+    `keep` restricts the eligible bins, for the ramp's wrap: the
+    full-scale step puts a residual either side of it that dwarfs
+    anything else in the profile. Bins outside `keep` are excluded from
+    the robust centre as well as from the output, so the masked step
+    cannot set the scale everything else is judged against.
+
+    Returns `(sites, mad)`, sites being `(bin, deviation, z)` ordered by
+    descending |deviation| - so `sites[0]` is exactly the argmax the
+    older statistics reported, and the rest is what they were dropping.
+    """
+    import statistics as _st
+    n = len(series)
+    if n < 3:
+        return [], 1e-9
+    idx = sorted(keep) if keep is not None else list(range(n))
+    if len(idx) < 8:
+        return [], 1e-9
+    vals = [series[b] for b in idx]
+    centre = _st.median(vals)
+    mad = _st.median([abs(v - centre) for v in vals]) * 1.4826 or 1e-9
+    out = [(b, series[b] - centre, abs(series[b] - centre) / mad)
+           for b in idx if abs(series[b] - centre) / mad >= z_min]
+    out.sort(key=lambda t: -abs(t[1]))
+    return out, mad
+
+
 def pair_fold(vals, period=GEN_TABLE_LEN):
     """Fold the staircase channel, by differencing within each DAC level.
 
@@ -1862,6 +1912,37 @@ def build_square(tone_hz, dac_total_sps, cycles=20):
 # sample puts a single-sample offset below the noise floor. Eight puts
 # it at about 5.4 ADC codes, which is unambiguous.
 RAMP_STEP = 8
+
+
+def gen_sine_code(i, points=None):
+    """The DAC code the device's own table holds at index `i`.
+
+    A mirror of `shape_code`'s sine branch in `drivers/gen.c`, integer
+    for integer including the Q15 approximation, so a table index can be
+    turned into the voltage the converter was asked for. That is the
+    coordinate an analog hypothesis about issue #5 has to be stated in:
+    a fold bin is arbitrary, a table index is the design's, and only the
+    code is the board's own output.
+
+    Kept here rather than in a tool because it is a statement about the
+    firmware's contract, and because a second hand-written copy of an
+    approximation is exactly the drift `lib/due_shared` exists to stop.
+    Unscaled - `gen_amp` scales it about mid-scale afterwards.
+    """
+    n = int(points or GEN_TABLE_POINTS)
+    x = (int(i) * 65536 // n) if n else 0
+    sign = 1
+    if x >= 32768:
+        x -= 32768
+        sign = -1
+    t = x
+    om = 32768 - t
+    tm = (t * om) >> 15
+    num = 16 * tm
+    den = 5 * 32768 - 4 * tm
+    q15 = sign * ((num << 15) // den)
+    code = 2048 + ((q15 * 2047) >> 15)
+    return max(0, min(4095, code))
 
 
 def build_ramp(step=RAMP_STEP, period=None):
