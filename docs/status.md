@@ -268,14 +268,44 @@ proved a startup condition. This scales with duration alone, so it is
 something accumulating in wall time while the feed runs rather than a
 buffer filling or a priming depth.
 
-**The symptom is the main loop, not the pipe.** Inside the window the
-console goes silent too - a `B` query mid-run returns no `# play:` line
-at all - while the device keeps enumerating. That is the same signature
-`docs/linux.md` records as an unreproduced one-off ("answering neither
-the console nor the control channel while still enumerating, because the
-core's USB stack keeps running when the main loop does not"), and this
-is a deterministic reproducer for it: feed Track A for more than ~9 s.
-It recovers over NRSTB.
+**The main loop halts, and that is measured rather than inferred.** The
+instrument is the one that settled objective 0c - `OP_LOAD` over the
+control channel - with the **UART** console's own `passes=` sampled on
+the same timeline, because UART owes nothing to USB and is the arm that
+separates "the loop stopped" from "only USB stopped".
+
+| t_s | ctl passes | uart passes | uart per s |
+|---|---|---|---|
+| 0.02 | 553133 | 553156 | - |
+| 4.42 | 868290 | 868316 | 71953 |
+| 8.84 | 1183226 | 1183260 | 70989 |
+| **9.94** | **no answer** | **silent** | - |
+
+Two independent runs agree to 0.1% at every sample and both die in the
+same 8.84-9.94 s window. **Both channels stop together**, so the halt is
+the loop's; the two independent transports reporting the same counter to
+within 0.01% is also what says neither reading is an instrument
+artifact. It is **abrupt** - ~71,000 passes/s flat to within 2%, and
+`max_us` never moves off 44447.4 - so nothing winds down first and this
+is not a leak slowing the loop.
+
+**It is the inverse of objective 0c**, which is the comparison worth
+carrying: there the same instrument found the loop running at 143 k
+passes/s while the host sat in `close()`, and that moved the diagnosis
+host-side. Here the device is what stops.
+
+Unresolved: the **ordering**. Sampling is ~0.6 s per point against a
+1.1 s gap, so whether the control channel dies just before the console
+is not visible; one sample from a worse-instrumented run suggested it
+might, and is recorded rather than dismissed. Also **time against
+accumulated passes** - the pass rate is ~71 k/s in every run, so 8.8 s
+and ~630,000 passes are the same event here.
+
+This is the same signature `docs/linux.md` records as an unreproduced
+one-off ("answering neither the console nor the control channel while
+still enumerating, because the core's USB stack keeps running when the
+main loop does not"), and feeding Track A for more than ~9 s reproduces
+it on demand. It recovers over NRSTB.
 
 **No test reaches it.** Track A's suite is green here - 505 passed / 19
 skipped / 1 xfailed - because the suite's AWG windows are shorter than
