@@ -83,7 +83,15 @@ def read(vals, start):
     prof = f.get("profile") or []
     found, mad = measure.fold_sites(prof)
     bins = sorted(b for b, _v, _z in found)
-    return {"sites": [[b, round(v, 2), round(z, 1)] for b, v, z in found[:8]],
+    # Threshold-free, because the site SET redraws every capture and a
+    # count of sites is a count of whatever cleared z this time. The
+    # total absolute deviation over the whole folded profile does not
+    # care which sites drew, only how much displacement there is, and it
+    # is the statistic two arms can actually be compared on.
+    pmed = statistics.median(prof) if prof else 0.0
+    total_abs = sum(abs(v - pmed) for v in prof)
+    return {"total_abs": round(total_abs, 2),
+            "sites": [[b, round(v, 2), round(z, 1)] for b, v, z in found[:8]],
             "n_sites": len(found), "bins": bins,
             "gaps21": comb_gaps(bins).get(21, 0),
             "hold_ok": bool(f.get("hold_ok")),
@@ -96,6 +104,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-n", "--runs", type=int, default=12)
     ap.add_argument("-s", "--seconds", type=float, default=3.0)
+    ap.add_argument("--nch-alt", action="store_true",
+                    help="alternate 2 and 3 channels run by run. "
+                         "Interleaved rather than blocked because this "
+                         "configuration drifts on tens-of-minutes "
+                         "scales, and sequential blocks cannot separate "
+                         "an arm effect from the weather - which has "
+                         "killed two false asymmetries on this project "
+                         "already")
     ap.add_argument("--nch", type=int, default=2,
                     help="ADC channels in preset M. The sequencer "
                          "converts in channel-index order, so 2 gives "
@@ -125,6 +141,8 @@ def main():
         if args.sync is not None:
             print(measure.set_sync(board, args.sync).strip(), flush=True)
         for i in range(1, args.runs + 1):
+            if args.nch_alt:
+                args.nch = 2 if (i % 2) else 3
             preset = ("M" if args.nch == 2
                       else f"=200000,200000,{args.nch}M")
             res = measure.run_capture(board, preset=preset,
