@@ -133,12 +133,18 @@ def test_device_generated_waveform_is_continuous(board, seconds,
                 f"the ~{DISPLACEMENT_VISIBLE_CODES:.0f} code standing "
                 f"noise the issue was closed against. That is the "
                 f"reopening condition #5 recorded for itself")
+        # "largest", not "the": the profile carries several displaced
+        # samples per wrap and fold_profile reports the biggest bin.
+        # Calling the argmax "the displacement" is what let two benches
+        # read this statistic and disagree - see docs/awg.md and
+        # tools/issue5_sites.py for the whole profile.
         pytest.xfail(
-            f"issue #5: one sample per DAC table wrap displaced by "
-            f"{fold['peak']:+.1f} codes at phase {fold['peak_phase']}, z "
-            f"{fold['z']:.1f} against a control of {fold['control_z']:.1f} "
-            f"({census['count']} steps over {census['threshold']} codes). "
-            f"A DAC output pin, not a splice - see docs/HANDOFF.md")
+            f"issue #5: samples near the DAC table wrap displaced, "
+            f"largest {fold['peak']:+.1f} codes at phase "
+            f"{fold['peak_phase']}, z {fold['z']:.1f} against a control "
+            f"of {fold['control_z']:.1f} ({census['count']} steps over "
+            f"{census['threshold']} codes). A DAC output pin, not a "
+            f"splice - see docs/awg.md")
 
     # Nothing is locked to the wrap, so whatever the census still sees is
     # not issue #5 and has to be accounted for.
