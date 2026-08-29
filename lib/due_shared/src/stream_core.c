@@ -178,6 +178,24 @@ void stream_core_service(void)
 	 * reading, and no API here detects that.
 	 */
 	if (!stream_port_ready()) {
+		/*
+		 * A DMA in flight owns the head buffer, and the head is
+		 * exactly what acq_frame_release() hands back. Discarding
+		 * here would give the PDC a buffer the USB controller is
+		 * still reading - the hazard named below - and the next
+		 * pass would then memcpy a fresh header into it, which is
+		 * the processor writing into an active DMA source.
+		 *
+		 * So wait for the transfer instead of corrupting it. This
+		 * is not the unbounded wait stream_core_stop() warns about:
+		 * nothing is blocked on it, the loop returns immediately
+		 * and keeps draining bulk OUT, and stop() remains the one
+		 * path that may abort a channel. The cost of a peer that
+		 * never drains is one buffer held out of four, which shows
+		 * up as resync rather than as silent corruption.
+		 */
+		if (tx_phase == TX_DMA && usb_dma_in_busy())
+			return;
 		while (acq_frame_available())
 			acq_frame_release();
 		tx_phase = TX_IDLE;
