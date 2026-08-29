@@ -264,6 +264,18 @@ Each state is reproducible to a tenth of a code; what varies is which
 one a capture gets. So the magnitude does not "vary per session" - it
 is a function of the landing phase, and the phase is drawn per capture.
 
+**The two states straddle `STEP_SPLICE_CODES`, and that explains a
+mystery already written down.** The sine's own largest staircase step is
+~38 codes and the census line is 45, so the phase-177 state (38 + 14.6)
+crosses it and the phase-138 state (38 + 5.1) does not - measured in one
+session, 776 steps over 45 codes in one state and **0** in the other.
+`tools/splices.py`'s docstring records "ten runs reported 0 splices on
+A0 across a period when six runs in ten were dirty on A1", and calls it
+the tool saying "does not reproduce" about a board that was
+reproducing. Six in ten is the draw. A threshold sitting between two
+states of a bimodal artifact reports which state was drawn, not whether
+the artifact is there.
+
 **That is a trap for every A/B measurement on this artifact**, and it
 has already caught one. `tools/acr_issue5.py` compares two DACC_ACR
 arms by mean |peak| over a handful of captures; with a bimodal draw
