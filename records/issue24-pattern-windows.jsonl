@@ -1,0 +1,5 @@
+{"bench": "windows-desk", "clean": 3, "detail": [["clean", 0, 0], ["storm", 1567, 1567], ["storm", 1567, 1567], ["clean", 0, 0], ["storm", 1568, 1568], ["clean", 0, 0]], "loss": 0, "storm": 3, "t": "2026-08-29T17:20:51Z"}
+{"bench": "windows-desk", "clean": 3, "detail": [["clean", 0, 0], ["storm", 598, 739], ["storm", 9, 15], ["clean", 0, 0], ["storm", 55, 76], ["clean", 0, 0]], "loss": 0, "storm": 3, "t": "2026-08-29T17:51:41Z"}
+{"bench": "windows-desk", "clean": 6, "detail": [["clean", 0, 0], ["clean", 0, 0], ["clean", 0, 0], ["clean", 0, 0], ["clean", 0, 0], ["clean", 0, 0]], "loss": 0, "storm": 0, "t": "2026-08-29T18:50:44Z"}
+{"bench": "windows-desk", "clean": 4, "detail": [["storm", 1567, 1567], ["clean", 0, 0], ["clean", 0, 0], ["storm", 1568, 1568], ["clean", 0, 0], ["clean", 0, 0]], "loss": 0, "storm": 2, "t": "2026-08-29T19:21:27Z"}
+{"bench": "windows-desk", "clean": 6, "detail": [["clean", 0, 0], ["clean", 0, 0], ["clean", 0, 0], ["clean", 0, 0], ["clean", 0, 0], ["clean", 0, 0]], "loss": 0, "storm": 0, "t": "2026-08-29T20:19:03Z"}
