@@ -336,7 +336,75 @@ inside the DAC, and neither bench could have established it alone.
 What *does* travel between boards is the co-movement: their 96 and 117
 correlate at r = +0.90 and both anti-correlate with 156, the same rigid
 coupling this bench measured at |r| = 0.97-0.99. **The structure is the
-design's; the positions are the board's.**
+design's; the positions are the board's** - **and the second half of
+that sentence was retracted the next day. Read the next section before
+quoting this one.**
+
+### The offset was measured, and it is not the fold's rotation
+
+Every position above is a **bin number in a frame whose zero is where
+the capture happened to start**, and the table two paragraphs up leans
+on that frame in both rows. The caveat kept with it - "the ten-bin
+offset is inferred from those three coincidences rather than measured
+against the table directly" - has now been cashed, and it did not pay
+what was expected.
+
+`tools/issue5_absphase.py` measures the rotation instead of assuming
+it. The reference costs no wiring: `shape_code` builds the sine as
+`2048 + sin(2*pi*i/period)`, so table index 0 is the rising mid-scale
+crossing, and folding the *level* series - the mean of each held DAC
+pair, the same pairing `pair_fold` differences within - recovers it.
+
+**Two estimators, and `align_ok` requires them to agree.** The crossing
+estimate reads two bins and this waveform gives it a reason to be
+wrong: the DAC is not rail-to-rail, the sine's trough is asked for at
+code 23, and a compressed trough raises `(max+min)/2` and drags the
+crossing with it. Track B's first series had its trough attestation 5
+bins out. `phase0` is now the argument of the k=1 DFT bin, over all
+256, with the crossing kept as the cross-check.
+
+One board, both images, rotation and sites measured together:
+
+| image | `phase0` | sites (table coordinates) |
+|---|---|---|
+| Track A | **13** | 94, 175, 196 |
+| Track B | **12** | 105, 126, 165, 186, 207 |
+
+**The rotations are one bin apart. The sites are eleven apart.** A's 175
+is B's 186, A's 196 is B's 207, A's 94 is B's 105. Parity differs
+between the tracks and cannot account for it - `pair_fold`'s level and
+difference series index from the same offset, so the frame cancels in
+`bin - phase0`.
+
+So "the two tracks begin capturing at slightly different points in the
+generator's table cycle, which shifts every phase by the same amount
+and nothing else" is **measured and wrong**. The capture start differs
+by one bin; the eleven is real displacement.
+
+That refutes the **first** row of the table above, not the second.
+Firmware *does* move the site positions, so the board-held arm is not a
+control any more, and "the positions are the board's" has lost the
+experiment it rested on rather than been contradicted by a new one. The
+cross-board observation stands as an observation.
+
+Twice now on this issue, three sites landing on one constant offset has
+been read as agreement. It is a displacement of eleven that happens to
+be constant.
+
+**What survives is the structure.** In table coordinates Track A sits on
+residues {7, 10} mod 21 and Track B on {18, 0} - the same two combs of
+period 21 offset by 3, moved bodily by 11 - and both benches' published
+sets sit on two such combs as well. Nothing has dented that.
+
+A site can now also be quoted as the code the converter was asked for,
+via `measure.gen_sine_code()`: Track B's 126 -> 2149, 186 -> 23,
+207 -> 139. **That excludes the obvious analog hypothesis.** Two sites
+sit within 140 codes of the bottom of a converter that is not
+rail-to-rail, which invites a nonlinearity argument - but DNL is a
+function of *code*, and the sites hold their table *index* across a 4x
+amplitude change while the code at a fixed index moves with it. A
+fixed-code converter nonlinearity cannot be it. Whatever this is, it is
+indexed by position in the update sequence, not by output voltage.
 
 **The strong sites are rigidly coupled, and the earlier "two
 independent populations" reading here was wrong.** Twelve Track B
