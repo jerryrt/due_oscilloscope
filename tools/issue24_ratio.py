@@ -49,10 +49,16 @@ def hold_fold(vals, hold, period):
 
     Returns (profile, spread, offset) or None.
     """
+    # The LAST two samples of each held group, not the first two. The
+    # DAC is still settling into the first sample after an update, and
+    # differencing samples 0 and 1 measures that transient instead of
+    # cancelling the level - which is what put 62-123 sites in a fold
+    # that reads 1-10 at a ratio of 1.
+    lag = hold - 2
     best = None
     for off in range(hold):
-        d = [vals[i] - vals[i + 1]
-             for i in range(off, len(vals) - 1, hold)]
+        d = [vals[i + lag] - vals[i + lag + 1]
+             for i in range(off, len(vals) - hold - 1, hold)]
         if len(d) < 4 * period:
             continue
         spread = statistics.median([abs(x) for x in d])
