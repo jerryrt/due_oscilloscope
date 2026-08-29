@@ -162,7 +162,7 @@ but still underruns 6-8 times at these rates, and Linux does not.
 |---|---|
 | Track B, board attached | **505 passed, 1 failed, 16 skipped, 1 xfailed** (8:47) |
 | GUI (`.venv-gui`, offscreen) | **100 passed** (23 s) |
-| Track A | compiles (70512 bytes); suite not yet run here |
+| Track A, board attached | **502 passed, 5 failed, 17 skipped, 1 xfailed** (8:55), twice, identical |
 
 The failure is
 `test_control.py::test_stream_stats_says_what_the_console_says[b]` -
@@ -173,6 +173,48 @@ documented on macOS. Not a Linux defect.
 
 The xfail is issue #5's gate, drawing +13.5 codes at phase 156, inside
 the recorded range.
+
+### Track A's five failures, unattributed
+
+Reproducible: the same five, twice, the second time on a freshly reset
+board.
+
+    test_contract.py::test_the_dac_ceiling_is_refused_not_attempted[a-27-False]
+    test_contract.py::test_the_dac_ceiling_is_refused_not_attempted[a-20-False]
+    test_channels.py::test_sweep_ratio_is_one_above_the_cliff[a-1]
+    test_channels.py::test_sweep_ratio_is_one_above_the_cliff[a-2]
+    test_channels.py::test_aggregate_conversion_rate_at_the_floor[a-2-two_ch_aggregate]
+
+**The firmware is not what is failing.** Objective 0g's refusal works
+when the board is asked by hand - `# play only: 1950000 sps refused (max
+1392857)` and the RC 27 equivalent, 6 of 6 across three repetitions, with
+the console still answering afterwards. The test sends the same command
+and finds no "refused" in `drain_console(1.2)`. The other three fail as
+"the sweep produced no parseable rows" and "device timestamps span 0.92 s
+of a 2.00 s host window", which is the same shape: console output the
+harness did not get.
+
+So the locus is between Track A's console and `board.drain_console()`,
+and Track A's console is the Arduino core's `Serial` rather than Track
+B's UART path. **Whether that is this platform's is not established** -
+this bench cannot tell a Linux-specific read problem from a Track A gap
+that no bench has run recently. The last recorded Track A figure is
+290 passed / 25 skipped / 0 failed from 2026-08-27, taken before these
+tests existed, so there is nothing to compare against. Asked on the
+status issue.
+
+### Track A wedged once, and it recovers over NRSTB
+
+Separately and once: after a suite run, Track A stopped answering **both**
+the console and the control channel while still enumerating - the core's
+USB stack keeps running when the main loop does not. `ping` timed out at
+1.0 s and the console read 0 bytes in 10 of 10 trials. A DTR toggle on the
+programming port resets it over NRSTB and it comes back clean.
+
+Not reproduced: the refusal sequence that preceded it runs 6 of 6 with the
+console alive after each. Issue #23 - "a bare `=2C` wedges it permanently"
+- is the same class and was closed on 2026-08-29, so this is recorded in
+case it is a recurrence rather than a new one.
 
 `rt.py`'s `SCHED_FIFO` path works natively - `sched=fifo:10`, policy
 confirmed with `sched_getscheduler`. It had only ever run under WSL2
