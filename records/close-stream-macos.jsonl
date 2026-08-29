@@ -1,0 +1,12 @@
+{"cycle": 1, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.003, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:38:51"}
+{"cycle": 2, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.003, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:38:55"}
+{"cycle": 3, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.004, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:38:58"}
+{"cycle": 4, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.005, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:01"}
+{"cycle": 5, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.004, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:05"}
+{"cycle": 6, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.003, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:08"}
+{"cycle": 7, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.003, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:11"}
+{"cycle": 8, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.004, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:15"}
+{"cycle": 9, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.004, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:18"}
+{"cycle": 10, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.004, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:21"}
+{"cycle": 11, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.004, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:25"}
+{"cycle": 12, "bench": "macos", "streamed_bytes": 712704, "close_s": 0.004, "wedged": false, "frames": 442, "seq_gaps": 0, "crc_bad": 0, "dropped_frames": 0, "overrun_frames": 1, "t": "2026-08-29T15:39:28"}
