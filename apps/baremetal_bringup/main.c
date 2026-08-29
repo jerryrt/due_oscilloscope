@@ -390,11 +390,11 @@ static void cmd_crosstalk(void)
 		 * difference here is not crosstalk from a moving neighbour. */
 		dac_write(0, 2048);
 		bleed_settle(ms);
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &lo);
+		adc_read_pair(ADC_CH_A0, second, &a0, &lo);
 
 		dac_write(0, 2048);
 		bleed_settle(ms);
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &hi);
+		adc_read_pair(ADC_CH_A0, second, &a0, &hi);
 		a1_still[i] = (int16_t)((int)hi - (int)lo);
 		a1s_lo[i] = lo; a1s_hi[i] = hi;
 
@@ -413,11 +413,11 @@ static void cmd_crosstalk(void)
 		/* And its control. */
 		dac_write(1, 2048);
 		bleed_settle(ms);
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &lo, &a1);
+		adc_read_pair(ADC_CH_A0, second, &lo, &a1);
 
 		dac_write(1, 2048);
 		bleed_settle(ms);
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &hi, &a1);
+		adc_read_pair(ADC_CH_A0, second, &hi, &a1);
 		a0_still[i] = (int16_t)((int)hi - (int)lo);
 		a0s_lo[i] = lo; a0s_hi[i] = hi;
 	}
