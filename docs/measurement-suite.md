@@ -506,6 +506,27 @@ Two routes, both available here:
    one - measures the firmware. The reading is also not comparable
    between boards as an absolute: two boards here read 39 codes apart,
    which is the part-to-part offset the sensor is known for.
+
+   **The ambient envelope, measured and adopted as documentation rather
+   than a conditioning implementation** (issue #18, owner's decision
+   2026-08-29). A 5-hour soak at fixed build and activity on the
+   windows-desk bench (records/temp-soak-overnight.jsonl) read the
+   room through the die: worst-case calibration error **1.8 codes
+   (~1.4 mV)** - a ~45-minute oscillation of up to +-1.4 codes
+   tracking the building's central-AC duty cycle, over a mean that
+   walked ~0.8 codes across the evening. The envelope is bench-class
+   conditional (climate-controlled space, no independent thermometer;
+   a swung room is unmeasured) and it is an order of magnitude under
+   the DAC's ~25-code standing noise, which is why it is a documented
+   envelope and not a correction: a calibration taken after warm-up is
+   good to +-2 codes against ambient in this environment, and nothing
+   a user can see improves by conditioning below that.
+
+   **Procedure line that stands regardless: calibrate and measure
+   after about one minute powered.** The post-flash warm-up transient
+   is ~1.0 code in the first minute (die self-heating; kept in the
+   soak rows deliberately) and dominates everything ambient does on
+   that timescale.
 4. **Re-take `dc_transfer`'s assertions against 3270 mV** rather than
    3300, and mark which figures moved.
 
