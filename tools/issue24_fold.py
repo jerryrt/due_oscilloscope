@@ -27,6 +27,16 @@ taken over what is left.
 Reported in ADC codes, which is what both issues' figures are in, with
 the fold's own control period alongside: a real lock reads high at the
 table period and low at a period the signal is not locked to.
+
+**And the host arm now reports its whole profile, not its argmax.**
+`tools/issue5_sites.py` reads the internal generator per site, and that
+reading is what showed the sites do not share an amplitude dependency -
+one scales with the signal, one is flat, one grows as it shrinks. The
+host-fed path had never been read the same way, so #24's "additive,
+~28-30 codes regardless of RAMP_STEP" was a single number over an
+unknown mixture. `masked_sites` supplies the table; `masked_spike`
+stays for continuity with the rows already recorded, with its own
+docstring now saying what it is.
 """
 import argparse
 import json
@@ -40,12 +50,13 @@ sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure  # noqa: E402
 
 
-def masked_spike(vals, period, mask_wrap=True):
-    """Largest one-bin neighbour residual, with the ramp's wrap masked.
+def _masked_resid(vals, period, mask_wrap=True):
+    """The folded neighbour residual with the ramp's wrap masked out.
 
-    Returns (spike_codes, phase, z, n_per_bin). The z is against the MAD
-    of the surviving residuals, so the artifact cannot inflate its own
-    significance.
+    Returns (resid, keep, centre, mad, n_per_bin), the common work
+    behind both `masked_spike` and `masked_sites`. The MAD is taken
+    over the surviving bins only, so the artifact cannot inflate its
+    own significance.
     """
     if len(vals) < 4 * period:
         return None
@@ -79,10 +90,83 @@ def masked_spike(vals, period, mask_wrap=True):
     vals_keep = [resid[b] for b in keep]
     centre = statistics.median(vals_keep)
     mad = statistics.median([abs(v - centre) for v in vals_keep]) * 1.4826
-    mad = mad or 1e-9
+    return resid, keep, centre, mad or 1e-9, min(counts)
+
+
+def masked_spike(vals, period, mask_wrap=True):
+    """Largest one-bin neighbour residual, with the ramp's wrap masked.
+
+    Returns (spike_codes, phase, z, n_per_bin).
+
+    **This is an argmax, and on this artifact an argmax is a
+    hypothesis.** Reading it as "the displacement" is what had the two
+    benches reporting the same statistic two different ways for a day -
+    see `masked_sites`, and quote the site table beside this number.
+    """
+    got = _masked_resid(vals, period, mask_wrap)
+    if got is None:
+        return None
+    resid, keep, centre, mad, n = got
     phase = max(keep, key=lambda b: abs(resid[b] - centre))
     spike = resid[phase] - centre
-    return spike, phase, abs(spike) / mad, min(counts)
+    return spike, phase, abs(spike) / mad, n
+
+
+def masked_sites(vals, period, mask_wrap=True, z_min=measure.FOLD_Z_DIRTY):
+    """Every bin that stands out on the host-fed path, not just the largest.
+
+    `tools/issue5_sites.py` does this for the *internal* generator, and
+    the host-fed ramp had never been read the same way - so #24's
+    "additive, ~28-30 codes regardless of RAMP_STEP" was one number over
+    an unknown mixture of sites, exactly the reading that turned out to
+    be wrong on the internal path (site 198 scales with the signal, 138
+    is flat, 177 grows as it shrinks).
+
+    Two differences from `issue5_sites.sites()`, and both are forced by
+    the waveform. That tool reads bins straight off the profile because
+    `pair_fold` leaves no waveform underneath; here a sawtooth is still
+    there, so the *neighbour residual* is the right basis - which also
+    means a real single-bin site casts a -A/2 shadow into each
+    neighbour. Adjacent bins are therefore folded into the strongest of
+    the group rather than counted as sites of their own.
+
+    Returns (sites, mad, n_per_bin) with sites as (phase, codes, z),
+    strongest first.
+
+    **Its power, measured rather than assumed.** On a synthetic sawtooth
+    (512 bins, 60 wraps, 3-code noise) it recovers three injected sites
+    at -30.0 / +12.0 / -6.0 as -30.50 / +11.81 / -6.22 at exactly their
+    phases, where `masked_spike` reports only the largest; and it finds
+    **0 false sites in 5120 bins** across ten un-injected runs.
+
+    The one regime it cannot read is **two real sites on adjacent bins**:
+    injected -25.0 at bin 200 and +25.0 at 201 come back as one site of
+    +36.8 at 201 plus +12.5 at 199. Shadow-absorption and the neighbour
+    residual cannot tell a real neighbour from a shadow, so an adjacent
+    pair merges and its magnitude is wrong. The sites this artifact
+    actually shows sit ~21 bins apart, so that is not the operating
+    regime - but a merged pair must never be read as one site, and this
+    tool cannot warn you that it happened.
+    """
+    got = _masked_resid(vals, period, mask_wrap)
+    if got is None:
+        return None
+    resid, keep, centre, mad, n = got
+
+    keepset = set(keep)
+    hits = sorted((b for b in keep if abs(resid[b] - centre) / mad >= z_min),
+                  key=lambda b: -abs(resid[b] - centre))
+    claimed, out = set(), []
+    for b in hits:
+        if b in claimed:
+            continue
+        # Absorb the shadow this site casts into its own neighbours.
+        for k in (-1, 0, 1):
+            nb = (b + k) % period
+            if nb in keepset:
+                claimed.add(nb)
+        out.append((b, resid[b] - centre, abs(resid[b] - centre) / mad))
+    return out, mad, n
 
 
 def gen_arm(board, i, args):
@@ -159,6 +243,7 @@ def main():
 
             got = masked_spike(tail, period)
             ctl = masked_spike(tail, period + 1)
+            sites = masked_sites(tail, period)
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                    "arm": "host", "bench": args.bench,
                    "dac_sps": args.dac_sps,
@@ -175,6 +260,11 @@ def main():
                 row.update({"control_period": period + 1,
                             "control_spike_codes": round(ctl[0], 3),
                             "control_spike_z": round(ctl[2], 1)})
+            if sites:
+                found, site_mad, _ = sites
+                row["sites"] = [[b, round(v, 3), round(z, 1)]
+                                for b, v, z in found]
+                row["site_mad"] = round(site_mad, 3)
             rows.append(row)
             print(f"run {i}: host  ev={row['events']:6d}  "
                   f"spike={row.get('spike_codes')} codes at phase "
@@ -182,6 +272,11 @@ def main():
                   f"n/bin={row.get('n_per_bin')})   control "
                   f"{row.get('control_spike_codes')} codes "
                   f"(z={row.get('control_spike_z')})", flush=True)
+            if row.get("sites") is not None:
+                shown = ", ".join(f"{b}:{v:+.2f}(z{z:.0f})"
+                                  for b, v, z in row["sites"][:8])
+                print(f"          sites n={len(row['sites'])} "
+                      f"mad={row['site_mad']}  {shown or '-'}", flush=True)
             board.stop()
             board.drain_console(0.3)
     finally:
@@ -199,6 +294,22 @@ def main():
             print(f"{a:5s}: {len(got)} runs, |spike| "
                   f"{mags[0]:.1f}-{mags[-1]:.1f} codes, "
                   f"median {mags[len(mags) // 2]:.1f}")
+
+    # The site table across runs, which is the reading the argmax above
+    # cannot give: a site that is present every run with a moving value
+    # is a different animal from one that comes and goes.
+    host_rows = [r for r in rows if r.get("sites") is not None]
+    if host_rows:
+        seen = {}
+        for r in host_rows:
+            for b, v, _z in r["sites"]:
+                seen.setdefault(b, []).append(v)
+        print(f"\nhost sites across {len(host_rows)} runs "
+              f"(phase: seen/n, value range):")
+        for b in sorted(seen, key=lambda k: -len(seen[k])):
+            vs = seen[b]
+            print(f"  {b:4d}: {len(vs)}/{len(host_rows)}  "
+                  f"{min(vs):+.2f} .. {max(vs):+.2f}")
     if args.out:
         with open(args.out, "a") as fh:
             for r in rows:
