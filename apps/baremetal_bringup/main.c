@@ -479,6 +479,9 @@ static void cmd_crosstalk(void)
 	printf("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes.\n");
 	printf("# taken at TRACKTIM 15, SETTLING 3 - this command's own, not"
 	       " whatever ADC_MR held\n");
+	printf("# pair-conv: restarts=%lu timeouts=%lu (nonzero: see #23)\n",
+	       (unsigned long)adc_pair_restarts,
+	       (unsigned long)adc_pair_timeouts);
 	uart_flush();
 
 	adc_measure_end();

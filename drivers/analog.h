@@ -74,6 +74,8 @@ void     adc_measure_end(void);
 
 void     adc_read_pair(unsigned cha, unsigned chb,
                        uint16_t *a, uint16_t *b);   /* one sequence */
+extern volatile uint32_t adc_pair_restarts;  /* issue #23: STARTs re-kicked */
+extern volatile uint32_t adc_pair_timeouts;  /* pairs abandoned incomplete */
 
 /* 12-bit code to millivolts against a 3.3 V reference. */
 static inline uint32_t code_to_mv(uint16_t code)

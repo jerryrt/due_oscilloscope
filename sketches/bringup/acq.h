@@ -198,6 +198,8 @@ extern volatile uint32_t acq_govre;
 extern volatile uint32_t acq_produced;
 extern volatile uint32_t acq_consumed;
 extern volatile uint32_t acq_ring_overflow;
+extern volatile uint32_t acq_pair_restarts;  /* issue #23: STARTs re-kicked */
+extern volatile uint32_t acq_pair_timeouts;  /* pairs abandoned incomplete */
 
 /*
  * Real functions, not static inlines, since the framer moved to

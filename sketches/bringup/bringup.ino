@@ -560,6 +560,11 @@ static void cmd_crosstalk(void)
 	Serial.println("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes.");
 	Serial.println("# taken at TRACKTIM 15, SETTLING 3 - this command's own,"
 	               " not whatever ADC_MR held");
+	snprintf(buf, sizeof(buf),
+	         "# pair-conv: restarts=%lu timeouts=%lu (nonzero: see #23)",
+	         (unsigned long)acq_pair_restarts,
+	         (unsigned long)acq_pair_timeouts);
+	Serial.println(buf);
 
 	acq_measure_end();
 	Serial.flush();

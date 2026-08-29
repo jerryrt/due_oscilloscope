@@ -236,16 +236,45 @@ void acq_measure_end(void)
  * the same ordering the PDC path sees - which is what makes a polled
  * reading comparable with a streamed one.
  */
+volatile uint32_t acq_pair_restarts;   /* issue #23 */
+volatile uint32_t acq_pair_timeouts;
+
 void acq_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
 {
 	uint32_t mask = (1u << cha) | (1u << chb);
+	unsigned attempt;
 
 	ADC->ADC_CHDR = 0xffffu;
 	ADC->ADC_CHER = mask;
 
-	ADC->ADC_CR = ADC_CR_START;
-	while ((ADC->ADC_ISR & mask) != mask)
-		{ }
+	/*
+	 * Bounded, with re-kicks: one START occasionally converts only
+	 * part of the enabled pair. Measured on Track A (issue #23): the
+	 * second measurement session's first START completes ch7 and
+	 * never ch5 - ISR shows EOC7 set, EOC5 never arrives - and a
+	 * second START completes the pair immediately. The sequencer
+	 * mechanism is not established; the bound is the contract
+	 * (invariant 7: never spin unbounded on hardware), the counters
+	 * are the record, and the instrument prints them so a retried
+	 * conversion can never pass silently as a clean one.
+	 *
+	 * 1 ms per attempt is ~500x a two-channel conversion at 19.5 MHz
+	 * ADCclk; three attempts bound the worst case at ~3 ms.
+	 */
+	for (attempt = 0; attempt < 3u; attempt++) {
+		uint32_t t0 = micros();
+
+		if (attempt)
+			acq_pair_restarts++;
+		ADC->ADC_CR = ADC_CR_START;
+		while ((ADC->ADC_ISR & mask) != mask)
+			if (micros() - t0 > 1000u)
+				break;
+		if ((ADC->ADC_ISR & mask) == mask)
+			break;
+	}
+	if ((ADC->ADC_ISR & mask) != mask)
+		acq_pair_timeouts++;
 
 	*a = (uint16_t)(ADC->ADC_CDR[cha] & 0x0fffu);
 	*b = (uint16_t)(ADC->ADC_CDR[chb] & 0x0fffu);
