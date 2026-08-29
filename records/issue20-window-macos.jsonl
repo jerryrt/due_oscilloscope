@@ -1,0 +1,250 @@
+{"ts": "2026-08-29T14:00:00Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:00:14Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:00:28Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 12, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:00:42Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:00:56Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:01:10Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:01:25Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:01:38Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:01:52Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:02:06Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:02:20Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:02:34Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10]}
+{"ts": "2026-08-29T14:02:48Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:03:02Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:03:16Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:03:30Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 14, 10, 10]}
+{"ts": "2026-08-29T14:03:44Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:03:58Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:04:12Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:04:26Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:04:40Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:04:54Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:05:08Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:05:23Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:05:36Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:05:50Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:06:04Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:06:18Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:06:32Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:06:46Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:07:00Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:07:14Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:07:28Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:07:42Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 12, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:07:57Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:08:10Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:08:24Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:08:38Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:08:52Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:09:06Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:09:20Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:09:34Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:09:48Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:10:02Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:10:16Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 12, 10, 10, 10]}
+{"ts": "2026-08-29T14:10:31Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:10:44Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:10:58Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:11:12Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:11:26Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:11:40Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:11:54Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:12:08Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:12:22Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:12:36Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 12, 10, 10, 10]}
+{"ts": "2026-08-29T14:12:50Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:13:04Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:13:18Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:13:32Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:13:46Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [14]}
+{"ts": "2026-08-29T14:14:00Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:14:14Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:14:28Z", "arm": "b", "block": 1, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 12, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:15:00Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:15:24Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:15:38Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:15:52Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:16:06Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:16:20Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:16:34Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:16:48Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:17:02Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:17:16Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:17:30Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:17:44Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:17:58Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:18:12Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:18:26Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:18:40Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:18:54Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:19:08Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:19:22Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:19:36Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:19:50Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:20:04Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:20:18Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:20:32Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:20:46Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:21:00Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:21:14Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:21:29Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:21:42Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:21:56Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:22:10Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:22:24Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:22:38Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:22:52Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:23:06Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:23:20Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:23:34Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:23:48Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:24:02Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:24:16Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:24:30Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:24:44Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:24:58Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:25:12Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:25:27Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:25:40Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:25:54Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:26:08Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:26:22Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:26:36Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:26:50Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:27:04Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:27:18Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:27:32Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:27:46Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:28:01Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:28:14Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:28:28Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:28:42Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:28:56Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:29:10Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:29:24Z", "arm": "a", "block": 2, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:30:00Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:30:20Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:30:34Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:30:48Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [12, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:31:02Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:31:16Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 12]}
+{"ts": "2026-08-29T14:31:30Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:31:44Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:31:58Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:32:12Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:32:26Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:32:40Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:32:54Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:33:08Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:33:22Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:33:36Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:33:50Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 12]}
+{"ts": "2026-08-29T14:34:04Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:34:18Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:34:32Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:34:46Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:35:00Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:35:14Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:35:28Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:35:42Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:35:56Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:36:10Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:36:25Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [12, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:36:38Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 12, 10]}
+{"ts": "2026-08-29T14:36:52Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:37:06Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:37:20Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:37:34Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:37:48Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:38:02Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:38:16Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:38:30Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:38:44Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:38:58Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:39:12Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:39:26Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:39:40Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:39:54Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:40:08Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:40:22Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:40:36Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:40:50Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:41:04Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:41:18Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:41:32Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:41:46Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:42:00Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:42:14Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:42:28Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 12]}
+{"ts": "2026-08-29T14:42:42Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:42:56Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [12, 10, 10, 14, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:43:10Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:43:24Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:43:38Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:43:52Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10, 10, 10, 10, 10]}
+{"ts": "2026-08-29T14:44:06Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:44:20Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:44:34Z", "arm": "b", "block": 3, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:45:06Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:45:30Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:45:44Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:45:58Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:46:12Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:46:26Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:46:40Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:46:54Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10]}
+{"ts": "2026-08-29T14:47:08Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:47:23Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:47:36Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:47:50Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:48:04Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10]}
+{"ts": "2026-08-29T14:48:18Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:48:32Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:48:47Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:49:00Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:49:14Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:49:28Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:49:42Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:49:56Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:50:10Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:50:24Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:50:38Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:50:52Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:51:06Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:51:20Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:51:34Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:51:48Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:52:02Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:52:16Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:52:30Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:52:44Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:52:58Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [12]}
+{"ts": "2026-08-29T14:53:12Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:53:26Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:53:40Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:53:54Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:54:08Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:54:22Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:54:36Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:54:50Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:55:04Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:55:18Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:55:32Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:55:46Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:56:00Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:56:14Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:56:28Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:56:42Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:56:56Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10]}
+{"ts": "2026-08-29T14:57:10Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:57:24Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:57:39Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:57:52Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:58:06Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10, 10]}
+{"ts": "2026-08-29T14:58:20Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device"}
+{"ts": "2026-08-29T14:58:34Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
+{"ts": "2026-08-29T14:58:48Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:59:02Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10, 10, 10]}
+{"ts": "2026-08-29T14:59:16Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "pass"}
+{"ts": "2026-08-29T14:59:30Z", "arm": "a", "block": 4, "bench": "macos", "mode": "shared-window", "cadence_s": 14, "result": "fail_device", "loss_bytes": [10]}
