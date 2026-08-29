@@ -203,6 +203,27 @@ that no bench has run recently. The last recorded Track A figure is
 tests existed, so there is nothing to compare against. Asked on the
 status issue.
 
+**Answered from windows-desk, and it is not Track A.** Track A flashed
+at `412935d`'s tree on that bench, full `pytest --track=a`:
+**505 passed, 19 skipped, 1 xfailed, 0 failed.** The five were then
+re-run by name rather than inferred from the total - all five execute
+there and pass, none is skipped - so a green total is not hiding them:
+
+    test_the_dac_ceiling_is_refused_not_attempted[a-27-False]  PASSED
+    test_the_dac_ceiling_is_refused_not_attempted[a-20-False]  PASSED
+    test_sweep_ratio_is_one_above_the_cliff[a-1]               PASSED
+    test_sweep_ratio_is_one_above_the_cliff[a-2]               PASSED
+    test_aggregate_conversion_rate_at_the_floor[a-2-two_ch..]  PASSED
+
+So the locus above is the right one and the remaining question is this
+platform's console read, not a Track A gap. One datum from windows-desk
+that may be the same shape at a different constant: `measure.Board()` at
+its default settle reads back an **empty string** on Track A there and
+answers `v` after about 3 s, and `host/ports.py` run too soon after a
+flash reports `native = None`. Track A's boot is slower than Track B's
+on both hosts; if the five failures are timing rather than mechanism,
+the settle and drain constants are what to vary first.
+
 ### Track A wedged once, and it recovers over NRSTB
 
 Separately and once: after a suite run, Track A stopped answering **both**
