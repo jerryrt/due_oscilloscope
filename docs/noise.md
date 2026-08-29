@@ -293,6 +293,38 @@ is actually driving A1 - which is true on the DSO bench, where DAC1 goes
 to the scope's external trigger, and not true on the bench where DAC1 is
 wired to A1.
 
+## A bare pad reads its own relaxation, settled (issue #16)
+
+**Closed 2026-08-29 with one number on two tracks and two benches.**
+An unconnected analog pad, pull-up off, is an RC node: conversions
+charge it toward an attractor near the previously converted channel's
+level; any pause lets it sag, saturating within ~2 ms (~86 codes at
+8 ms settle on A2, plus ~0.5 codes/ms of slow tail out to 40 ms), and
+its absolute level walks with the read pattern (raw lo/hi: ~1700/1615
+at 8 ms, down toward ~1100 at 40 ms). The `x` control arm measures
+exactly this on a bare channel - **a bare-channel "control" is a
+relaxation instrument, not a zero** - and reads -88/-90/-91/-93
+across Track A/B x macOS/windows-desk, one number to a few codes.
+
+The rule that survives: **drive your channels, or disregard
+bare-channel codes.** A driven pin's control reads 0-2 codes
+everywhere; nothing here touches a driven measurement.
+
+It cost three instrument diffs to see one physical effect: the bleed
+follows conversion *position*, not the pin; Track B's pull-up (reset
+default, core-disabled on A) was worth 3.3x until b8d5509 equalized
+it; and Track B's control arm hardcoded A1 while its bleed arms
+honoured `=2C` (c17a576), so B's famous clean zero was the driven
+pin, read by mistake - caught by the raw-level line, which can say
+which pin a number was taken on when a delta cannot. When two tracks
+disagree, diff the instruments before modelling the silicon - applied
+three times on one issue. Conditions attest in-line now: `pioa:` pad
+state, `adcmr`, raw lo/hi pairs, pair-conv retries (#23).
+
+The one item deliberately left open when #16 closed: the 64 ms beat
+in the excursion cadence (section below) was never excluded from
+being USB-host-coupled; it too has never touched a driven channel.
+
 ## The die warms, so a sweep is confounded with time
 
 Three separate measurements on this project have read as a clean
