@@ -446,6 +446,50 @@ comb's amplitude and refuses the conclusion below 2:1, because at 12 s
 captures the floor was 0.98 against a 1.04 code comb and "detectable by
 6%" is the same mistake one step further along.
 
+### The unit the comb counts, and the three constraints on it
+
+Open, and worth stating precisely because it has been answered three
+different ways.
+
+The question is whether the lattice counts **DAC updates** or **ADC
+conversions**. Most arms cannot tell: at ratio 1 they are the same
+number, and at any *odd* period a comb of 21 conversions and a comb of
+21 updates both come out of a DAC-indexed fold as a comb of 21.
+
+Three measurements bear on it and they do not currently fit one model.
+
+1. **Ratio 3, host path, decimating reader** (windows-desk). RC 585 is
+   exactly three times the ADC's RC 195, so the hold is exactly three
+   with no rounding. The gap is 7 bins = 7 DAC updates = **21 ADC
+   conversions**. One path, one variable, and the ratio where the two
+   units finally disagree by more than a factor the other arms could
+   separate.
+2. **Ratio 2, internal path, non-decimating reader.** `gen` NORMAL
+   alternates DAC0 and DAC1 while A0 converts every trigger, so the
+   internal path IS a hold of two - it has never been independent of the
+   host path here, only differently read. Over 243 channel-captures on
+   both benches the gap census is **21 x358, 11 x5, 10 x1**. Under 21
+   ADC conversions, a reader that discards nothing should show
+   alternating gaps of 10 and 11, because 21 conversions is 10.5 levels.
+   It does not.
+3. **Offset agreement at ratio 2** (windows-desk). The artifact appears
+   at whichever sample of the hold is read, values matching to a tenth
+   of a code.
+
+(1) and (2) reconcile if the artifact only manifests at a fixed position
+within the hold, since then half its firings are invisible at hold 2 and
+the survivors sit 21 levels apart. (3) says the opposite - both
+positions carry it.
+
+The arm that would settle it is **ratio 3 with a non-decimating reader**:
+21 conversions puts sites at levels 0, 7, 14, 21 and 21 updates puts
+them at 0, 21, and at ratio 3 a reader that discards no phase separates
+those cleanly.
+
+Until then, quote the unit as unsettled. "21 DAC0 updates" was published
+here twice and withdrawn twice, once for the odd-period degeneracy and
+once for reading a comparison channel that has a gate of its own.
+
 ### The draw happens at every stream start
 
 The comb is on in some captures and absent in others, and this was read
