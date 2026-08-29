@@ -208,8 +208,14 @@ say which one a number came from rather than assuming a default.
    0.763-0.915% at 600,000 while the constant-size feed loses **0 B in
    every run**, with no overlap and every deficit a whole 128-byte
    chunk. It also costs runway: 7-12 underruns against 0. So the rule is
-   current on this platform. Whether it is *macOS-specific* is the half
-   still open, and it is the same tool on the Windows bench.
+   current on this platform. **And it is macOS-specific - the other
+   half is answered.** Same tool, same design on windows-desk
+   2026-08-29 (records/writepolicy-windows.jsonl): deficit 0 B in all
+   24 runs, both policies, at 200,000, 397,959 and 600,000 sps,
+   under=0 throughout. Windows never had the defect - its driver
+   applies backpressure instead of silently shedding (docs/windows.md)
+   - so WRITE_SIZE is a documented macOS platform rule, and the honest
+   byte-conservation figures above 200 ksps are the Windows ones.
 4. **A standing decision, not a task:** whether Track B adopts the
    datasheet's `DACC_ACR` value. It is spec conformance and Track A
    parity - **not** an issue #5 fix, measurably. `=<ch>,<core>I`. Take
