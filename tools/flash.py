@@ -126,6 +126,25 @@ def touch_1200(port):
     s = open_port(port, 1200)
     s.dtr = False                     # the erase+reset trigger
     time.sleep(0.1)
+    # Leave 115200 behind on the way out, not on a later open.
+    #
+    # restore_115200() below exists to stop the next open of this port
+    # re-triggering the 16U2, and on Linux it cannot: os.open() applies
+    # the tty's stored termios - still 1200 at that point - and the
+    # kernel drives the modem lines before pyserial can set the speed,
+    # so the function fires the hazard it was written to disarm. It runs
+    # after wait_for_boot(), so flash.py then reports a successful flash
+    # and exits leaving an erased board with the GPNVM boot bit clear.
+    #
+    # Measured on linux-x1: 3 of 3 boards running after bossac went to
+    # SAM-BA on that one open, against 2 of 2 still running with the same
+    # wait and no open. Setting the speed back here, on the fd that is
+    # already open, means the stored termios is 115200 and the next open
+    # is ordinary.
+    try:
+        s.baudrate = 115200
+    except Exception:                                    # noqa: BLE001
+        pass
     s.close()
     # The programming port's CDC belongs to the 16U2, which is not itself
     # reset, so the node normally persists. Give it a moment regardless.

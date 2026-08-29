@@ -21,63 +21,82 @@ The wiring is the same cabling as `macos` and `windows-desk`, and is
 **not** the DSO bench's. Declared in `bench.json`, which is gitignored
 per `host/provenance.py`.
 
-## Retracted: "opening the programming port erases the board"
+## `flash.py` left every board erased here, and the cause is its own last line
 
-**This section claimed a defect that does not exist. It is kept because
-the retraction is the useful part.**
+This took two wrong diagnoses to reach, and both are kept because the
+route matters more than the answer.
 
-What was claimed, and committed, and pushed: that Linux has no callout
-node, that the tty layer raises DTR and RTS in `tty_port_open()`, that on
-the Due those are the 16U2's RESET and **ERASE**, and that an ordinary
-open of the programming port therefore erases the flash. `docs/hardware.md`
-gained a paragraph and `host/transport.py` gained a `sys.platform` branch
-clearing both lines.
+**The symptom.** `tools/flash.py` writes, verifies, resets, watches the
+native port come up, reports success - and the board is in SAM-BA with
+`Boot Flash: false` moments later. Every tool that then opens the console
+finds silence and no native port, which reads exactly like firmware that
+will not boot.
 
-**Measured afterwards, all four arms survive.** Open the console with DTR
-alone, with RTS alone, with both, or with neither: the board keeps running
-and answers `v` every time, and six consecutive pyserial opens with library
-defaults answer six times. There is no erase-on-open. The `transport.py`
-branch was reverted; it fixed nothing and an unjustified platform branch is
-debt.
+**Wrong diagnosis 1: "opening the programming port erases the board."**
+Committed, documented and pushed before it was tested. The claim was that
+Linux has no callout node, that the tty layer raises DTR and RTS in
+`tty_port_open()`, and that on the Due those are the 16U2's RESET and
+ERASE. Measured afterwards, **all four arms survive**: DTR alone, RTS
+alone, both, neither - the board answers `v` every time, and six
+consecutive pyserial opens at library defaults answer six times. The
+`transport.py` branch it produced was reverted.
 
-**What was actually happening.** The board could not boot from flash.
-`tools/flash.py`'s first run here wrote and verified, reported "Set boot
-flash true", and left `Boot Flash: false` on readback. A Due whose GPNVM
-boot bit is clear returns to SAM-BA on *every* reset - including the
-documented NRSTB reset that opening the programming port legitimately
-causes. So each console open appeared to erase the board, and the console
-was silent because no firmware was running. One clean
-`bossac -e -w -v -b` fixed the boot bit and every symptom with it.
+**Wrong diagnosis 2: "`-R` in the same bossac invocation races the GPNVM
+write."** Tested before writing this time: `-e -w -v -b file -R` against
+`-e -w -v -b file` then a separate `-R`, three reps each. **Both set the
+bit, 6 of 6.** bossac's arguments were never the problem.
 
-**One observation is still unexplained**, and it is recorded rather than
-resolved: at t=19401 the board dropped to SAM-BA after a console open
-*while* `Boot Flash` read true and the firmware had just enumerated
-correctly. Under the same conditions now it survives repeatedly. If a
-Linux bench sees this again, that is the thread to pull.
+**What it actually is.** `touch_1200()` leaves `/dev/ttyACM0` configured
+at 1200 baud, and `restore_115200()` - the function written specifically
+to stop the next open re-triggering the 16U2 - is on Linux the open that
+triggers it. `os.open()` applies the tty's stored termios, still 1200,
+and the kernel drives the modem lines before pyserial can set the speed.
+It runs *after* `wait_for_boot()`, so the boot check passes, flash.py
+prints success, and the erase lands on the way out.
 
-**The lesson, and it is the one already written at the top of `CLAUDE.md`
-in a different accent.** Two cheap readings would have killed this in
-minutes: `bossac -i` says `Boot Flash:` in one line, and the four-arm
-modem-line test takes four minutes and needs no theory. Instead a
-mechanism was inferred from a correlation - "it died right after I opened
-the port" - and the inference was written into two documents and a commit
-before it was tested. *Ask what state the board was in before blaming the
-transport.*
+Measured, with a control:
 
-### What is true, and useful
+| arm | after bossac | after the one open |
+|---|---|---|
+| `restore_115200()` | running (3/3) | **SAM-BA (3/3)** |
+| same wait, no open | running (2/2) | **running (2/2)** |
 
-- **Linux has no callout node.** `/dev/ttyACM0` is the only node; there is
-  no `cu.*` to prefer. Opening it does assert DTR/RTS and does reset the
-  board over NRSTB, which is documented and harmless.
-- **`find_all_ports()` returns as soon as the programming port is found**
-  and does not wait for the native pair, so a call inside the ~1 s
-  re-enumeration window returns `(ttyACM0, None, None)`. That is the
-  documented "re-glob after opening control", not a fault.
-- **`bossac -b 1` is not the spelling.** `-b` takes an optional attached
-  value, so `-b 1` parses `1` as a stray positional and exits with "extra
-  arguments found". Use `--boot=1`.
-- **Check `Boot Flash: true` before diagnosing anything else.** A clear
-  boot bit imitates dead firmware exactly.
+**The fix is at the source**: `touch_1200()` sets the speed back to
+115200 on the fd it already holds, so the stored termios is never left at
+1200 and the next open is ordinary. Three full `tools/flash.sh` runs end
+with the board **running** where they previously ended dead every time.
+It is not a platform branch - leaving sane line coding behind is right
+everywhere, and it is what `restore_115200`'s own docstring always asked
+for.
+
+**What is *not* true**, and was asserted here in an earlier version of
+this file: there is no erase-on-open in general. An ordinary console open
+is harmless. What is dangerous is exactly one open - the first one after
+a 1200-baud touch - and the precise trigger condition inside the 16U2 was
+not isolated here.
+
+**The lesson.** `restore_115200`'s docstring already described this
+symptom in one sentence - *"presents as the board mysteriously restarting
+whenever a tool attaches"* - and it was read only after two mechanisms
+had been invented, one of them committed. The cheap readings that would
+have ended it: `bossac -i` prints `Boot Flash:` in one line, and the
+function's own docstring names the failure. *Ask what state the board was
+left in before blaming the transport.*
+
+### Other things that are true and useful
+
+- **Linux has no callout node.** `/dev/ttyACM0` is the only node; there
+  is no `cu.*` to prefer. Opening it resets the board over NRSTB, which
+  is documented and harmless.
+- **A clear GPNVM boot bit imitates dead firmware exactly** - silent
+  console, native port that will not enumerate, SAM-BA on every reset.
+  Read `bossac -p <native> -i` before diagnosing anything else.
+- **`bossac -b 1` is not the spelling.** `-b` takes an optional
+  *attached* value, so `-b 1` parses `1` as a stray positional and exits
+  "extra arguments found". Use `--boot=1`.
+- **`find_all_ports()` returns as soon as the programming port is
+  found** and does not wait for the native pair, so a call inside the
+  ~1 s re-enumeration window returns `(ttyACM0, None, None)`.
 
 ## Byte conservation: Linux is Windows, not macOS
 
@@ -190,22 +209,10 @@ the docs and was needed here:
    uses. `requirements-gui.txt` then installs **unchanged** - the pins
    resolve on Linux/3.13 as they do on macOS/3.13 and Windows/3.12.
 
-### bossac left the boot bit clear once
+### flash.py's boot-bit failures are explained
 
-`tools/flash.py`'s first run here wrote and verified, reported "Set boot
-flash true", and the board still came back in SAM-BA with
-`Boot Flash: false` on readback. An explicit `bossac --boot=1` set it,
-and a later identical `flash.py`-shaped invocation worked correctly.
-
-Its bossac arguments are right (`-U true -e -w -v -b ... -R`), and it has
-not reproduced, so the *cause* is still unattributed. Its **consequence**
-is not: this is what produced every symptom the retracted section above
-chased. A clear boot bit sends the board to SAM-BA on every reset, and
-the reset that opening the programming port causes is documented and
-expected, so the board appeared to be erased by the act of talking to it.
-
-**Read `Boot Flash:` first.** `bossac -p <native> -i` prints it in one
-line and would have ended that diagnosis before it started. Note that
-`-b 1` is *not* the spelling: bossac takes `-b` with an optional attached
-value, so `-b 1` parses the `1` as a stray positional and exits with
-"extra arguments found". Use `--boot=1`.
+All three `Boot Flash: false` boards here came from `tools/flash.py` or
+`tools/sketch.sh`, and none from a direct bossac run. That is not a
+coincidence and not bossac: it is `restore_115200()` erasing the board
+after the boot check, as measured above. The fix in `touch_1200()`
+removes it.

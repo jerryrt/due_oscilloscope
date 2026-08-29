@@ -557,13 +557,20 @@ Native Linux is **tier 1 and no longer deferred** as of 2026-08-29:
 under WSL2. A WSL2 pass still does not stand in for a native one - the
 stability defect above is the tunnel's and has not been seen here.
 
-One caution for that bench, and it is a diagnostic trap rather than a
-defect: a Due whose GPNVM boot bit is clear returns to SAM-BA on **every**
-reset, including the documented NRSTB reset that opening the programming
-port causes. It then presents as a silent console and a native port that
-will not enumerate - which reads exactly like firmware that will not
-boot, and cost a whole wrong diagnosis here. Check `bossac -i` for
-`Boot Flash: true` before theorising. `docs/linux.md`.
+Bringing it up found one real defect in `tools/flash.py`, and it is not
+Linux-specific in principle: `touch_1200()` left the programming port at
+1200 baud, so `restore_115200()` - the function written to stop the next
+open re-triggering the 16U2 - was itself that open. It runs after the
+boot check, so flash.py reported success and left an erased board with
+the GPNVM boot bit clear, 3 of 3 against a 2 of 2 no-open control.
+`touch_1200()` now restores the speed on the fd it already holds.
+
+The diagnostic trap around it is worth knowing anywhere: **a clear GPNVM
+boot bit imitates dead firmware exactly** - silent console, native port
+that will not enumerate, SAM-BA on every reset. `bossac -i` prints
+`Boot Flash:` in one line. Read it before theorising; two mechanisms were
+invented here before anyone did, and one of them was committed.
+`docs/linux.md`.
 
 ## Ports on the development host
 
