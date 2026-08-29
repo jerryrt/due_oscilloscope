@@ -419,7 +419,7 @@ Check here before reasoning from general Arduino knowledge.
 | Tier | Platform | Standard |
 |---|---|---|
 | **1** | **Windows** | Develop, test and deploy. 100% correctness; a failure here is a bug to fix, not a platform quirk to document |
-| **1, deferred** | native Linux | Intended tier 1. **No host, nothing measured.** Not a claim until a Linux machine has a board on it |
+| **1** | native Linux | Bench `linux-x1`, board attached 2026-08-29. Track B suite 505 passed / 1 context-only failure; byte conservation 0 B in 40 runs at five rates; `rt.py` promotes natively. `docs/linux.md` |
 | **2** | macOS | Porting target. May compromise where the OS forces it, and does. **Also the provenance of every figure in `docs/status.md` until the 0-series is re-taken** |
 | **2** | WSL2 | Porting target for the *software* path only. Real Linux kernel, but no native USB - see below |
 
@@ -538,14 +538,30 @@ conclusion that it is good. "Linux buffers ahead without discarding" and
 "usbip supplies the elasticity" predict the same numbers, and only a
 native host separates them. Full data in `docs/windows.md`.
 
+**A native host has now separated them, and the tunnel was innocent.**
+`linux-x1` reads median **0 underruns at both RC 44 and RC 39** with no
+tunnel in the path - the same as WSL2, against native Windows' 6 and 8.
+The elasticity is Linux's own. That does not prove usbip contributes
+nothing, and the kernels differ, but it removes the reason to suspect
+it: native Linux reaches 0 unaided, so no tunnel is needed to explain 0.
+Byte conservation is 0 B in all 40 runs at five rates, both write
+policies. `docs/linux.md`.
+
 Stability, not fidelity, is the real defect: the tunnel dropped twice
 unprompted (`vhci_hcd: connection closed`) and needed a manual
 re-attach.
 
-Native Linux stays **tier 1, deferred**: `transport.py`'s POSIX backend
-and `rt.py`'s `SCHED_FIFO` path are exercised under WSL2, but no Linux
-machine has had a board on it. Treat the first native Linux run as
-bring-up, and do not let a WSL2 pass stand in for it.
+Native Linux is **tier 1 and no longer deferred** as of 2026-08-29:
+`linux-x1` has a board on it, and `transport.py`'s POSIX backend and
+`rt.py`'s `SCHED_FIFO` path are now exercised natively rather than only
+under WSL2. A WSL2 pass still does not stand in for a native one - the
+stability defect above is the tunnel's and has not been seen here.
+
+Bringing that bench up cost one fix that no other platform needs:
+**opening the programming port on Linux erases the board**, because
+Linux has no callout node and the Due reads DTR/RTS as RESET and ERASE.
+`docs/linux.md`, and `docs/hardware.md` next to the `cu.*` rule it is
+the Linux spelling of.
 
 ## Ports on the development host
 

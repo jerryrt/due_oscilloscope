@@ -1,0 +1,16 @@
+{"rc": 44, "hz": 886363, "arm": "const", "tx": 5236224, "in": 5236224, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039097.4986122, "round": 0}
+{"rc": 44, "hz": 886363, "arm": "due", "tx": 5341696, "in": 5341696, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039103.7008674, "round": 0}
+{"rc": 44, "hz": 886363, "arm": "due", "tx": 5344256, "in": 5344256, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039109.9159975, "round": 0}
+{"rc": 44, "hz": 886363, "arm": "const", "tx": 5277184, "in": 5277184, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039116.0767994, "round": 0}
+{"rc": 44, "hz": 886363, "arm": "due", "tx": 5340672, "in": 5340672, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039122.3071356, "round": 1}
+{"rc": 44, "hz": 886363, "arm": "const", "tx": 5234176, "in": 5234176, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039128.472798, "round": 1}
+{"rc": 44, "hz": 886363, "arm": "const", "tx": 5275136, "in": 5275136, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039134.6303449, "round": 1}
+{"rc": 44, "hz": 886363, "arm": "due", "tx": 5341184, "in": 5341184, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039140.798515, "round": 1}
+{"rc": 39, "hz": 1000000, "arm": "const", "tx": 5902848, "in": 5902848, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039146.963779, "round": 0}
+{"rc": 39, "hz": 1000000, "arm": "due", "tx": 6024192, "in": 6024192, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039153.1330142, "round": 0}
+{"rc": 39, "hz": 1000000, "arm": "due", "tx": 6026752, "in": 6026752, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039159.3288975, "round": 0}
+{"rc": 39, "hz": 1000000, "arm": "const", "tx": 5901312, "in": 5901312, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039165.4830828, "round": 0}
+{"rc": 39, "hz": 1000000, "arm": "due", "tx": 6023168, "in": 6023168, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039171.673582, "round": 1}
+{"rc": 39, "hz": 1000000, "arm": "const", "tx": 5900800, "in": 5900800, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039177.8343203, "round": 1}
+{"rc": 39, "hz": 1000000, "arm": "const", "tx": 5900800, "in": 5900800, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039183.9960177, "round": 1}
+{"rc": 39, "hz": 1000000, "arm": "due", "tx": 6022656, "in": 6022656, "deficit": 0, "pct": 0.0, "chunks": 0, "mod128": 0, "under": 0, "drained": true, "t_wall": 1788039190.1684208, "round": 1}

@@ -50,6 +50,16 @@ stack reports `B-01`, which is why its node enumerates as
 Always use `/dev/cu.*`, never `/dev/tty.*`, for host-side serial clients
 on macOS. The native port ignores baud rate entirely (CDC).
 
+**Linux has no callout node, and needs the same rule spelled
+differently.** `/dev/ttyACM0` is the only node and it behaves like
+`tty.*`: the tty layer raises DTR and RTS in `tty_port_open()` before
+userspace sees the fd. On the Due those are the 16U2's RESET and
+**ERASE**, so an ordinary open of the programming port erases the flash
+and drops the board into SAM-BA - which reads exactly like firmware
+that will not boot. `host/transport.py` clears both on Linux; passing
+`dtr=False` is not enough, because nothing was asserted by us and the
+lines are high anyway. See `docs/linux.md`.
+
 ### CDC endpoint configuration *(verified from core source)*
 
 Read from `arduino:sam@1.6.12`. The endpoints are **already optimally
