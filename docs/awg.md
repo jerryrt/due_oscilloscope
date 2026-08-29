@@ -318,6 +318,26 @@ and 177 have none at 128 and 167), and the ten-bin offset is inferred
 from those three coincidences rather than measured against the table
 directly.
 
+**And windows-desk closed the other half of the same question from the
+other direction.** Their board's strong sites are {96, 156, 177}
+against this board's {117, 198, 219} - *different positions, same
+firmware*. Put the two experiments together:
+
+| held fixed | varied | positions |
+|---|---|---|
+| board | firmware (Track A vs B) | **same**, to a constant fold offset |
+| firmware | board | **different** |
+
+So the site positions are a property of **the board**, not of the
+design and not of the code. That is as close to "analog, and specific
+to this piece of silicon" as this issue can get without an instrument
+inside the DAC, and neither bench could have established it alone.
+
+What *does* travel between boards is the co-movement: their 96 and 117
+correlate at r = +0.90 and both anti-correlate with 156, the same rigid
+coupling this bench measured at |r| = 0.97-0.99. **The structure is the
+design's; the positions are the board's.**
+
 **The strong sites are rigidly coupled, and the earlier "two
 independent populations" reading here was wrong.** Twelve Track B
 captures in one session, with site 138 swinging -5.11 to +2.14 across
@@ -363,11 +383,15 @@ minutes, not a state that is entered and held. Designing an experiment
 against "it is stable now" is how a drifting probability gets read as
 an effect.
 
-Two things that are **not** the draw event, both tested rather than
-assumed. A table rebuild is not: the eight rebuild captures above are
-indistinguishable from the sixteen without. Nor is the NRSTB reset that
-opening the control port performs. A power cycle has not been tried, so
-"a fresh draw across reboots" is narrowed rather than refuted.
+Three things that are **not** the draw event, all tested rather than
+assumed. A table rebuild is not - the eight rebuild captures above are
+indistinguishable from the sixteen without, **and windows-desk
+reproduced that on their board**, 24 captures with runs 9-16 rebuilt
+and the three strong sites holding position and value through all of
+them. Nor is the NRSTB reset that opening the control port performs.
+Nor is an amplitude excursion. A power cycle is the one candidate never
+tried on either bench, so "a fresh draw across reboots" is narrowed
+three times over rather than refuted.
 
 One reading trap, since it cost a first pass here. `spike` subtracts
 each bin's neighbours because `fold_profile` must survive a waveform
