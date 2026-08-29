@@ -269,6 +269,62 @@ session - fails a run rather than hiding under the tolerance. If that
 fires, reopen #5; the fold instruments and the retracted-hypothesis
 record live on the issue.
 
+## The same shape on the host-fed ramp (issue #24)
+
+**One sample per DAC table wrap comes back low by ~17-30 ADC codes on
+the host-fed ramp too, and it is what the "bidirectional jitter storm"
+is made of.** The ramp encodes its own position, so a single
+wrong-valued sample reads as a jump out and a jump straight back at
+adjacent indices - a matched forward/backward pair. Thousands of those
+per window is one displaced sample per wrap, counted twice each, and
+not jitter at all. Read off the codes rather than inferred:
+
+    codes [780, 784, 791, 796, 784, 807, 812, 818, 823, 829]
+    diffs [4, 7, 5, -12, 23, 5, 6, 5, 6]
+
+with consecutive pairs at 199586, 200098, 200610, 201122, 201634 -
+exactly 512 apart, one ramp wrap each.
+
+**Two things follow, and both are traps the issue fell into first.**
+
+*The "+-5-9 samples" is a property of `RAMP_STEP`, not of the defect.*
+A fixed code error divided by a steeper ramp is fewer samples: mean
+|n| reads 10.4 at step 4, 5.5 at step 8, and nothing at step 16, where
+the same codes fall under the analysis's 3-sample tolerance. Quote the
+codes; the sample count is an artifact of the instrument.
+
+*It is periodic in the table, not in the clock.* Hold every rate fixed
+and change only the ramp step and the spacing follows the table period
+(512 captured samples at step 8, 1024 at step 4). Halve `dac_sps` and
+the count halves with the wrap count - 3128 events becomes 1564, both
+exactly 4 per wrap. Events per wrap are integers: 2.0, 4.0, 6.0, 8.0.
+A residual spectrum has **no line at 522 Hz** - 1.4-3.8x the noise
+floor there in storm and clean runs alike - and the only line present
+is the wrap rate, tracking `dac_sps` at 390.6 Hz and 195.3 Hz.
+
+The "~522 Hz, rate-invariant wall time" reading that this replaces is
+worth keeping as arithmetic. Counts were divided by a nominal 3 s
+window; the analysis starts at `SETTLE_US`, so the window is ~2.0 s -
+782 wraps at 200 ksps, 391 at 100 ksps. A full-rate *forward* count of
+1567 is 2/wrap and a half-rate *total* of 1565 is 4/wrap, and 2 x 782
+and 4 x 391 are the same number. Comparing a forward count against a
+total made a count that halves look like one that does not.
+
+**Not windows-only, and the record that said so could not have said
+it.** Storms fire on the macOS bench at roughly half of all draws,
+including one of 223,557 events against windows-desk's 228,893. The
+250-draw macOS record quoted for "zero here" carries only
+`pass`/`fail_device` and has no field that could have held the class.
+
+`tools/issue24_phase.py` is the instrument, stdlib-only so both benches
+run the same one; 46 runs in `records/issue24-phase-macos.jsonl`. What
+is **not** settled is the mechanism, and whether this is literally #5's
+displacement at a different magnitude: #5 is 1-8 codes on a 256-point
+sine with the host out of the DAC path, this is ~17-30 codes on a
+512-point host-fed ramp. `tools/splices.py` measures 26-32 codes for
+the `M` preset - the same magnitude as this, on the path with no host
+in it - which is the first thread to pull.
+
 ## The gap
 
 **The internal generator has no control-channel command.** `=<shape>,<pts>W`

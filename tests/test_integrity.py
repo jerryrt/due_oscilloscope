@@ -379,12 +379,15 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
 
     # Three classes, and only one of them is this test's own defect.
     #
-    #   noise      |n| <= JITTER samples. A0 is captured at half the DAC
-    #              rate, so a clean interval reads 2, and the analysis
-    #              flags anything outside [-2, 4]. Values of exactly +3
-    #              and -3 turn up in matched pairs, which is a sampling
-    #              instant drifting across a boundary and not data: a
-    #              ring can only ever skip forward.
+    #   noise      |n| <= JITTER samples. The analysis flags anything
+    #              outside [-2, 4]. Values of exactly +3 and -3 turn up
+    #              in matched pairs, and a ring can only ever skip
+    #              forward, so a matched pair is not data loss. It is
+    #              also not a drifting sampling instant, which is what
+    #              this comment used to say: issue #24 measured it as
+    #              one sample per DAC table wrap arriving ~17-30 codes
+    #              low, which the position arithmetic reports as a jump
+    #              out and a jump straight back. See docs/awg.md.
     #   host drop  whole multiples of 128 bytes. macOS's CDC-ACM output
     #              path discards ~128-byte chunks from a pressured tty
     #              queue with write() having counted them. Open, and
@@ -398,21 +401,25 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
 
     # Bidirectional jitter - forward and backward events in matched
     # volume - is issue #24's class, not a loss: a ring can only skip
-    # forward, so matched pairs are the sampling instant moving, and a
-    # #24 storm must not hide under the loss tolerance below (nor
-    # nearly move that bound, which it did once - see #20).
+    # forward, so a matched pair is one sample whose *value* is wrong
+    # (~17-30 codes low, once per DAC table wrap) counted twice, not a
+    # sample that moved. A #24 storm must not hide under the loss
+    # tolerance below, nor nearly move that bound, which it did once -
+    # see #20. The name is kept because the issue is; "jitter" is what
+    # it looked like, not what it is.
     if real and big_repeat:
         fwd, back = sum(real), sum(big_repeat)
         if min(fwd, back) * 5 >= max(fwd, back):
             pytest.xfail(
                 f"bidirectional jitter: {len(real)} forward / "
                 f"{len(big_repeat)} backward events, {fwd} vs {back} "
-                f"samples - matched pairs, not a loss. Issue #24")
+                f"samples - matched pairs, so one wrong-valued sample "
+                f"per DAC table wrap counted twice, not a loss. "
+                f"Issue #24")
 
-    # A backward event barely over the allowance is the sampling
-    # instant drifting with its forward twin hidden inside +-JITTER -
-    # #24's class at its smallest, not a slot re-emit (a slot is 256
-    # samples). Kept visible as an xfail; the hard assert below stays
+    # A backward event barely over the allowance is #24's class at its
+    # smallest - one low sample whose forward twin fell inside
+    # +-JITTER - and not a slot re-emit (a slot is 256 samples). Kept visible as an xfail; the hard assert below stays
     # for anything approaching slot scale.
     slot_repeat = [n for n in big_repeat if n > 2 * JITTER]
     assert not slot_repeat, (
@@ -423,7 +430,8 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
         pytest.xfail(
             f"boundary jitter: {len(big_repeat)} backward events of "
             f"{big_repeat} samples, forward twin inside the +-{JITTER} "
-            f"allowance. Issue #24's class at its smallest")
+            f"allowance. Issue #24's class at its smallest - a low "
+            f"sample, not a moved one")
 
     stray = [n * 2 for n in real if (n * 2) % 128]
 
