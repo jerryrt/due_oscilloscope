@@ -599,9 +599,23 @@ def flat_census(vals, threshold=FLAT_DEV_CODES):
     reproducing it. Do not census a flat channel with a staircase tool.
 
     A flat channel is also where the defect is unmistakable rather than
-    merely detectable: preset `M` drives DAC1 with DC 2048, so anything
-    that moves A1 was made by the board and no waveform can be blamed
-    for it.
+    merely detectable, because anything that moves it was made by the
+    board and no waveform can be blamed for it.
+
+    **Preset `M` is no longer such a channel, and this docstring said it
+    was.** It read "preset `M` drives DAC1 with DC 2048", which was true
+    before the sync landed: `gen_sync` now defaults to `GEN_SYNC_CYCLE`
+    at full amplitude, unscaled by `gen_amp`, so DAC1 carries a
+    full-scale square. Measured rather than inferred - A1's standard
+    deviation in preset M is 1372.5 codes against A0's 968.8, which is a
+    square and a sine of the same span, not DC and a sine. A DC channel
+    would read a few codes.
+
+    So an A1 reading in preset M has a waveform underneath it and needs
+    an instrument that survives one - `pair_fold`, whose differencing
+    within the DAC hold cancels the square as readily as the staircase,
+    or `fold_profile`'s neighbour-subtracted `spike`. Do not read a
+    census threshold against it. `records/issue5-a1-macos.jsonl`.
 
     Returns `count` (samples further than `threshold` from the median),
     `max_dev`, `sd`, `median`, `samples`, the void around the threshold
