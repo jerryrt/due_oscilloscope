@@ -218,6 +218,14 @@ def main():
     ap.add_argument("-n", "--runs", type=int, default=8)
     ap.add_argument("-s", "--seconds", type=float, default=3.0)
     ap.add_argument("--dac-sps", type=int, default=200000)
+    ap.add_argument("--adc-hz", type=int, default=200000,
+                    help="ADC trigger rate. Scaled WITH --dac-sps it "
+                         "keeps one captured sample per DAC update, so "
+                         "the fold still locks, while changing the "
+                         "wall-clock time one update takes. That is the "
+                         "arm that tells a comb counted in DAC updates "
+                         "from one sitting at a fixed frequency: the "
+                         "first keeps its spacing, the second scales it")
     ap.add_argument("--step", type=int, default=measure.RAMP_STEP)
     ap.add_argument("--arms", default="host",
                     help="host, gen, or host,gen - interleaved run by run "
@@ -241,7 +249,7 @@ def main():
                 board.drain_console(0.3)
                 continue
             res = measure.run_loop(board, dac_sps=args.dac_sps,
-                                   adc_hz=200000, channels=2,
+                                   adc_hz=args.adc_hz, channels=2,
                                    ramp=args.step, seconds=args.seconds)
             ps = res.stream
             vals = ps.series.get(measure.CH_A0) or []
@@ -255,6 +263,7 @@ def main():
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                    "arm": "host", "bench": args.bench,
                    "dac_sps": args.dac_sps,
+                   "adc_hz": args.adc_hz,
                    "ramp_step": args.step, "period": period,
                    "events": len(ev),
                    "seq_gaps": ps.seq_gaps, "crc_bad": ps.crc_bad,
