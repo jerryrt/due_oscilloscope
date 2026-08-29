@@ -354,7 +354,7 @@ could have followed the table while ignoring the fold.
 | **wall-clock rate**, halved with the sampling geometry held | 21 does not follow it, so **not a frequency** - no supply, clock, or anything with a period in seconds |
 | **ADC channels**, 2 against 1 | the comb is there at one channel, 20 gaps of exactly 21, so the multiplexer need not move |
 | **position within one capture** | step 0 in 30 of 30 transitions, 44 of 46 sites matching, so **not a marching event** |
-| **the other DAC channel**, A1 read at a 2.6x margin | no comb, so the period counts **DAC0 writes**, not DACC conversions |
+| **the other DAC channel**, A1 read at a 2.6x margin | ~~no comb, so the period counts DAC0 writes~~ - **withdrawn, see below** |
 
 Two of those need their own note, because they were each published
 wrong first.
@@ -365,6 +365,22 @@ two arms disagreeing about what a bin is.** 21 is odd, so a period of 21
 the half-integers are DAC1 conversions an A0 fold cannot see. What
 survives is 0, 21, 42 - a comb of 21, exactly what the other hypothesis
 predicts. A1 is what separates them.
+
+**Both channels carry the comb, and the claim that only DAC0 does was
+withdrawn twice over.** The first reading had A1 blind - see the floor
+below. The second had A1's floor fixed and still concluded "no comb on
+A1", from three captures in which A0 drew one and A1 did not. That is a
+statement about A1's draw, not about what A1 can carry: **A1 has its own
+gate.** Over 46 sync-off captures A0 draws a comb in 8 and A1 in **16** -
+A1 more often - and the two co-occur twice against 2.8 expected under
+independence. So each channel carries a comb of 21 in its own updates,
+drawn independently of the other, and the period is not DAC0-specific.
+
+The transferable form: **on a gated defect, an absence is evidence only
+when the number of captures is large against the gate's own rate.** A
+noise floor is not the only way for an instrument to be blind, and
+`tools/issue5_a1.py` now reports draws per channel over every capture
+rather than reading the ones where the other channel happened to fire.
 
 **And A1 could not see it for two rounds.** A1 reads a full-scale square
 where A0 reads a sine, so its MAD runs ~1.8x higher and its detection

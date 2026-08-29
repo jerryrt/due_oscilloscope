@@ -104,6 +104,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-n", "--runs", type=int, default=12)
     ap.add_argument("-s", "--seconds", type=float, default=3.0)
+    ap.add_argument("--amp-alt", default="",
+                    help="alternate DAC0 amplitudes run by run, e.g. "
+                         "256,64. This is the clean crosstalk arm: if "
+                         "A1's displacement is A0's swing carried "
+                         "through an unsettled sample-and-hold, it must "
+                         "scale with A0's amplitude. Channel count, both "
+                         "rates and the whole ADC load are identical "
+                         "between the arms, which is exactly what the "
+                         "channel-count arm could not manage. "
+                         "Interleaved, because the configuration redraws "
+                         "every capture")
     ap.add_argument("--nch-alt", action="store_true",
                     help="alternate 2 and 3 channels run by run. "
                          "Interleaved rather than blocked because this "
@@ -143,6 +154,12 @@ def main():
         for i in range(1, args.runs + 1):
             if args.nch_alt:
                 args.nch = 2 if (i % 2) else 3
+            amp = None
+            if args.amp_alt:
+                amps = [int(x) for x in args.amp_alt.split(",")]
+                amp = amps[(i - 1) % len(amps)]
+                measure.set_gen(board, "sine",
+                                points=measure.GEN_TABLE_POINTS, amp=amp)
             preset = ("M" if args.nch == 2
                       else f"=200000,200000,{args.nch}M")
             res = measure.run_capture(board, preset=preset,
@@ -166,7 +183,7 @@ def main():
                 continue
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                    "bench": args.bench, "nch": args.nch,
-                   "sync": args.sync, "phase0": phase0,
+                   "sync": args.sync, "amp": amp, "phase0": phase0,
                    "fundamental_codes": round(fund, 1),
                    "a0": out["a0"], "a1": out["a1"]}
             if "a2" in out:
@@ -193,6 +210,10 @@ def main():
             # reconfigures the next person's baseline silently.
             if args.sync is not None:
                 measure.set_sync(board, "cycle")
+            if args.amp_alt:
+                measure.set_gen(board, "sine",
+                                points=measure.GEN_TABLE_POINTS,
+                                amp=measure.GEN_AMP_FULL)
             board.stop()
         finally:
             board.close()
@@ -243,12 +264,31 @@ def main():
                   "the comb for its silence to be evidence. The floor "
                   f"falls as 1/sqrt(wraps), so -s {need} would give the "
                   "2:1 margin this asks for.")
-        elif tot1 <= tot0 // 3:
-            print("\nA1 is silent where it COULD have seen it: the comb "
-                  "counts DAC0 writes, not DACC conversions.")
         else:
-            print("\nA1 carries it too: the period counts DACC "
-                  "conversions, both channels.")
+            # The floor is not the only way to be blind. A1 draws its
+            # OWN comb, gated per capture like A0's, so "A1 was silent
+            # in the captures where A0 drew" is a statement about A1's
+            # draw and not about whether A1 can carry one. Measured over
+            # 46 sync-off captures: A0 draws in 8, A1 in 16, and the two
+            # co-occur 2 times against 2.8 expected under independence.
+            #
+            # This tool concluded the opposite from three captures, and
+            # the mistake was reading an absence without asking how
+            # often the thing is present at all. So the verdict is over
+            # ALL captures now, per channel, and it says so.
+            a0n = sum(1 for r in rows if r["a0"]["gaps21"] >= 3)
+            a1n = sum(1 for r in rows if r["a1"]["gaps21"] >= 3)
+            print(f"\ncombs drawn over all {len(rows)} captures: "
+                  f"A0 {a0n}, A1 {a1n}")
+            if a1n == 0 and a0n >= 5:
+                print("A1 never draws one while A0 does: the comb is "
+                      "DAC0's.")
+            elif a1n:
+                print("BOTH channels draw combs. The period is not "
+                      "DAC0-specific - it is each channel's own "
+                      "updates, gated independently.")
+            else:
+                print("too few draws either way; run more captures.")
     else:
         print("A0 never drew the comb, so this run says nothing about A1. "
               "Run again - p(on) is about 0.2 per stream.")
