@@ -644,6 +644,37 @@ int ctl_bleed_values(char *buf, unsigned long n, const char *label,
 	return (int)used;
 }
 
+/*
+ * The two conversions each observation subtracted, in order. Issue #16:
+ * a difference hides the absolute level, and on a bare channel the
+ * "control" partly measures relaxation from the previous arm's epoch -
+ * visible only in the raw values. About 10 bytes per observation.
+ */
+int ctl_bleed_raw(char *buf, unsigned long n, const char *label,
+                  const uint16_t *lo, const uint16_t *hi, unsigned count)
+{
+	unsigned long used;
+	int written;
+	unsigned i;
+
+	if (count > CTL_BLEED_MAX)
+		count = CTL_BLEED_MAX;
+
+	written = snprintf(buf, n, "# %s raw lo/hi, in order:", label);
+	if (written < 0)
+		return written;
+	used = (unsigned long)written;
+
+	for (i = 0; i < count && used < n; i++) {
+		written = snprintf(buf + used, n - used, " %u/%u",
+		                   (unsigned)lo[i], (unsigned)hi[i]);
+		if (written < 0)
+			return written;
+		used += (unsigned long)written;
+	}
+	return (int)used;
+}
+
 /* ------------------------------------------------------------------ */
 /* Receive                                                             */
 /* ------------------------------------------------------------------ */

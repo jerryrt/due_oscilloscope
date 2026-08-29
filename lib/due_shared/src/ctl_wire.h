@@ -682,6 +682,10 @@ int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
 int ctl_bleed_values(char *buf, unsigned long n, const char *label,
                      const int16_t *vals, unsigned count);
 
+/* The raw conversion pairs behind each difference, same order. */
+int ctl_bleed_raw(char *buf, unsigned long n, const char *label,
+                  const uint16_t *lo, const uint16_t *hi, unsigned count);
+
 #ifdef __cplusplus
 }
 #endif

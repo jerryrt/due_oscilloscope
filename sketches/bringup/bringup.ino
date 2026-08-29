@@ -388,6 +388,10 @@ static void cmd_crosstalk(void)
 {
 	int16_t a1_bleed[CTL_BLEED_MAX], a0_bleed[CTL_BLEED_MAX];
 	int16_t a1_still[CTL_BLEED_MAX], a0_still[CTL_BLEED_MAX];
+	uint16_t a1b_lo[CTL_BLEED_MAX], a1b_hi[CTL_BLEED_MAX];
+	uint16_t a1s_lo[CTL_BLEED_MAX], a1s_hi[CTL_BLEED_MAX];
+	uint16_t a0b_lo[CTL_BLEED_MAX], a0b_hi[CTL_BLEED_MAX];
+	uint16_t a0s_lo[CTL_BLEED_MAX], a0s_hi[CTL_BLEED_MAX];
 	unsigned n = crosstalk_repeats ? crosstalk_repeats : CTL_BLEED_DEFAULT;
 	uint32_t ms = crosstalk_settle_ms ? crosstalk_settle_ms
 	                                  : CTL_BLEED_SETTLE_MS;
@@ -426,6 +430,24 @@ static void cmd_crosstalk(void)
 	Serial.flush();
 
 	/*
+	 * The pads too - main.c's twin says why (issue #16(b)): the
+	 * pull-up was the dominant term of the tracks' bare-channel
+	 * disagreement, and the instrument never said what the pads were
+	 * configured as. On this track the Arduino core walks every pin
+	 * at init and analogRead's own path can rewrite one, so the
+	 * attestation matters more here, not less. PUSR reads 1 where
+	 * the pull-up is DISABLED. A0=PA16, A1=PA24, A2=PA23, all PIOA.
+	 */
+	snprintf(buf, sizeof(buf),
+	         "# pioa: psr=%08lx osr=%08lx pusr=%08lx ifsr=%08lx",
+	         (unsigned long)PIOA->PIO_PSR,
+	         (unsigned long)PIOA->PIO_OSR,
+	         (unsigned long)PIOA->PIO_PUSR,
+	         (unsigned long)PIOA->PIO_IFSR);
+	Serial.println(buf);
+	Serial.flush();
+
+	/*
 	 * The pair `C` selected, so issue #16's pin-versus-position test
 	 * can be asked on this track too. See main.c for why `=2C` is the
 	 * one variable worth moving.
@@ -453,6 +475,7 @@ static void cmd_crosstalk(void)
 		bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &a0, &hi);
 		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
+		a1b_lo[i] = lo; a1b_hi[i] = hi;
 
 		/* Same arm with nothing swung: DAC0 is written twice at the
 		 * same code. Identical writes, waits and conversions, so a
@@ -464,6 +487,7 @@ static void cmd_crosstalk(void)
 		bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &a0, &hi);
 		a1_still[i] = (int16_t)((int)hi - (int)lo);
+		a1s_lo[i] = lo; a1s_hi[i] = hi;
 
 		gen_write_dac(0, 2048);
 		gen_write_dac(1, 0);
@@ -473,6 +497,7 @@ static void cmd_crosstalk(void)
 		bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &hi, &a1);
 		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
+		a0b_lo[i] = lo; a0b_hi[i] = hi;
 
 		/* And its control. */
 		gen_write_dac(1, 2048);
@@ -482,6 +507,7 @@ static void cmd_crosstalk(void)
 		bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &hi, &a1);
 		a0_still[i] = (int16_t)((int)hi - (int)lo);
+		a0s_lo[i] = lo; a0s_hi[i] = hi;
 	}
 
 	/* Name the channel watched: with `=2C` these rows are about A2. */
@@ -494,11 +520,15 @@ static void cmd_crosstalk(void)
 	snprintf(label, sizeof(label), "%s bleed", sname);
 	ctl_bleed_values(buf, sizeof(buf), label, a1_bleed, n);
 	Serial.println(buf);
+	ctl_bleed_raw(buf, sizeof(buf), label, a1b_lo, a1b_hi, n);
+	Serial.println(buf);
 	snprintf(label, sizeof(label), "%s control (nothing swung)", sname);
 	ctl_bleed_describe(buf, sizeof(buf), label, a1_still, n);
 	Serial.println(buf);
 	snprintf(label, sizeof(label), "%s control", sname);
 	ctl_bleed_values(buf, sizeof(buf), label, a1_still, n);
+	Serial.println(buf);
+	ctl_bleed_raw(buf, sizeof(buf), label, a1s_lo, a1s_hi, n);
 	Serial.println(buf);
 	Serial.flush();
 
@@ -508,10 +538,14 @@ static void cmd_crosstalk(void)
 	Serial.println(buf);
 	ctl_bleed_values(buf, sizeof(buf), "A0 bleed", a0_bleed, n);
 	Serial.println(buf);
+	ctl_bleed_raw(buf, sizeof(buf), "A0 bleed", a0b_lo, a0b_hi, n);
+	Serial.println(buf);
 	ctl_bleed_describe(buf, sizeof(buf),
 	                   "A0 control (nothing swung)", a0_still, n);
 	Serial.println(buf);
 	ctl_bleed_values(buf, sizeof(buf), "A0 control", a0_still, n);
+	Serial.println(buf);
+	ctl_bleed_raw(buf, sizeof(buf), "A0 control", a0s_lo, a0s_hi, n);
 	Serial.println(buf);
 
 	/* Which bench this is, read rather than assumed. */

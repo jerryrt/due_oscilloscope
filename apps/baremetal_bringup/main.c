@@ -305,6 +305,10 @@ static void cmd_crosstalk(void)
 {
 	int16_t a1_bleed[CTL_BLEED_MAX], a0_bleed[CTL_BLEED_MAX];
 	int16_t a1_still[CTL_BLEED_MAX], a0_still[CTL_BLEED_MAX];
+	uint16_t a1b_lo[CTL_BLEED_MAX], a1b_hi[CTL_BLEED_MAX];
+	uint16_t a1s_lo[CTL_BLEED_MAX], a1s_hi[CTL_BLEED_MAX];
+	uint16_t a0b_lo[CTL_BLEED_MAX], a0b_hi[CTL_BLEED_MAX];
+	uint16_t a0s_lo[CTL_BLEED_MAX], a0s_hi[CTL_BLEED_MAX];
 	unsigned n = crosstalk_repeats ? crosstalk_repeats : CTL_BLEED_DEFAULT;
 	uint32_t ms = crosstalk_settle_ms ? crosstalk_settle_ms
 	                                  : CTL_BLEED_SETTLE_MS;
@@ -379,6 +383,7 @@ static void cmd_crosstalk(void)
 		bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &a0, &hi);
 		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
+		a1b_lo[i] = lo; a1b_hi[i] = hi;
 
 		/* Same arm with nothing swung: DAC0 is written twice at the
 		 * same code. Identical writes, waits and conversions, so a
@@ -391,6 +396,7 @@ static void cmd_crosstalk(void)
 		bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &hi);
 		a1_still[i] = (int16_t)((int)hi - (int)lo);
+		a1s_lo[i] = lo; a1s_hi[i] = hi;
 
 		/* Hold DAC0 mid scale; swing DAC1. Watch A0. */
 		dac_write(0, 2048);
@@ -402,6 +408,7 @@ static void cmd_crosstalk(void)
 		bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &hi, &a1);
 		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
+		a0b_lo[i] = lo; a0b_hi[i] = hi;
 
 		/* And its control. */
 		dac_write(1, 2048);
@@ -412,6 +419,7 @@ static void cmd_crosstalk(void)
 		bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &hi, &a1);
 		a0_still[i] = (int16_t)((int)hi - (int)lo);
+		a0s_lo[i] = lo; a0s_hi[i] = hi;
 	}
 
 	/*
@@ -429,11 +437,15 @@ static void cmd_crosstalk(void)
 	snprintf(label, sizeof(label), "%s bleed", sname);
 	ctl_bleed_values(line, sizeof(line), label, a1_bleed, n);
 	printf("%s\n", line);
+	ctl_bleed_raw(line, sizeof(line), label, a1b_lo, a1b_hi, n);
+	printf("%s\n", line);
 	snprintf(label, sizeof(label), "%s control (nothing swung)", sname);
 	ctl_bleed_describe(line, sizeof(line), label, a1_still, n);
 	printf("%s\n", line);
 	snprintf(label, sizeof(label), "%s control", sname);
 	ctl_bleed_values(line, sizeof(line), label, a1_still, n);
+	printf("%s\n", line);
+	ctl_bleed_raw(line, sizeof(line), label, a1s_lo, a1s_hi, n);
 	printf("%s\n", line);
 	uart_flush();
 
@@ -443,10 +455,14 @@ static void cmd_crosstalk(void)
 	printf("%s\n", line);
 	ctl_bleed_values(line, sizeof(line), "A0 bleed", a0_bleed, n);
 	printf("%s\n", line);
+	ctl_bleed_raw(line, sizeof(line), "A0 bleed", a0b_lo, a0b_hi, n);
+	printf("%s\n", line);
 	ctl_bleed_describe(line, sizeof(line),
 	                   "A0 control (nothing swung)", a0_still, n);
 	printf("%s\n", line);
 	ctl_bleed_values(line, sizeof(line), "A0 control", a0_still, n);
+	printf("%s\n", line);
+	ctl_bleed_raw(line, sizeof(line), "A0 control", a0s_lo, a0s_hi, n);
 	printf("%s\n", line);
 
 	/*
