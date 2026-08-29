@@ -141,6 +141,29 @@ and the three rates that used to starve - 600,000, 1,218,750 and
 1,392,857 - report `under=0` with the ring sitting at 21 to 30 slots
 instead of 5. `Feeder.WRITE_SIZE` is where this lives.
 
+**Re-taken 2026-08-29 against the current feed, and it holds - larger,
+if anything.** `tools/writepolicy.py`, four runs per arm per rate, ABBA
+within each rate so a drifting machine cannot favour one:
+
+| DAC rate | due-sized | constant 512 B |
+|---|---|---|
+| 200,000 sps | 0.000% (4/4) | 0.000% (4/4) |
+| 397,959 | 0.605-0.633% | **0 B, 4/4** |
+| 600,000 | 0.763-0.915% | **0 B, 4/4** |
+
+No overlap between the arms at either rate, every deficit a whole
+number of 128-byte chunks, and the 200 ksps threshold in the claim above
+is exactly where it says it is. So `Feeder.WRITE_SIZE` is a **current
+rule on this platform, not a stale workaround** - which is the macOS
+half of the oldest debt in `docs/HANDOFF.md`. What it does not settle is
+whether the rule is *macOS-specific*; that needs the same tool on the
+Windows bench.
+
+One thing the original table does not carry: at 600,000 sps the
+due-sized arm also **starves the ring**, 7 to 12 underruns against 0 in
+every constant-size run. The write policy costs bytes and runway, not
+bytes alone.
+
 **Size alone is not the mechanism**, and this is the part that is still
 not understood. Capping the due-sized path at 1024 bytes leaves
 0.47-0.84% - with or without a finer idle sleep - even though every

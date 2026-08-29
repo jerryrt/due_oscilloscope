@@ -199,8 +199,17 @@ say which one a number came from rather than assuming a default.
    parities are 24x apart on device data, so its selection rule is not
    a coin flip. Both write-ups are in this file and in `docs/testing.md`.
 3. **The 0-series Windows re-validation.** 0h's figures above 200 ksps
-   are still suspect and `Feeder.WRITE_SIZE` may be a macOS workaround
-   rather than a rule. This is the oldest real debt here.
+   are still suspect. This is the oldest real debt here.
+
+   **Half of one question is now answered.** `Feeder.WRITE_SIZE` is not
+   a stale workaround: re-taken on macOS 2026-08-29 with
+   `tools/writepolicy.py`, four runs per arm per rate and ABBA within
+   each rate, the due-sized feed loses 0.605-0.633% at 397,959 sps and
+   0.763-0.915% at 600,000 while the constant-size feed loses **0 B in
+   every run**, with no overlap and every deficit a whole 128-byte
+   chunk. It also costs runway: 7-12 underruns against 0. So the rule is
+   current on this platform. Whether it is *macOS-specific* is the half
+   still open, and it is the same tool on the Windows bench.
 4. **A standing decision, not a task:** whether Track B adopts the
    datasheet's `DACC_ACR` value. It is spec conformance and Track A
    parity - **not** an issue #5 fix, measurably. `=<ch>,<core>I`. Take
