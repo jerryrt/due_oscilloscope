@@ -292,6 +292,36 @@ that sentence is what made a single IN reading look quotable. OUT and
 duplex do hold to about 1% across every round, which is why the gap that
 matters shows up in them and not in IN.
 
+**OUT has since moved, on both tracks, and the table above is the old
+value.** Re-taken across the shared-framer move - Track B at `ed62111`
+on #25, Track A on windows-desk 2026-08-29 - both read **37.3-37.5
+MB/s** against the 32.2-32.6 recorded here:
+
+| arm | Track A, 08-29 | Track B, #25 | this table |
+|---|---|---|---|
+| OUT | **37.28** | **37.51** | 32.38-32.62 (A) |
+| IN | 26.22 | 29.69 | 22.21-30.54 (A) |
+| duplex | **48.20** | **48.25** | 46.41-46.76 (A) |
+
+A 15% shift in the one arm this section documents as stable to 1%,
+reproduced on two tracks that share no hardware source and agreeing to
+0.6%, is not run spread. #29 carried Track B's figure as "n=1 against a
+documented 35-59% spread, quote nothing until re-taken" - but that
+spread is **IN's**, not OUT's, and a second track is the re-take. What
+moved it is untested; the framer move is the obvious candidate only
+because it is what these were re-taken across.
+
+**IN is unchanged and must not be read from those two numbers.** 26.22
+against 29.69 is 11.7% and looks like a track gap; it is inside the
+range already above, and this is one un-interleaved run per track, which
+the paragraph above says is not a measurement of IN at all. Duplex is up
+about 3% - larger than the 1% claimed for it, smaller than OUT's shift,
+and wanting an interleaved re-take rather than a claim.
+
+Both benched with `tools/bench.py`, whose play arm was reporting an
+unread counter as a 100% deficit on Track A until `412935d`; the
+transport arms above were never affected by it.
+
 The macOS figures, for reference:
 
 | Direction | Track A | Track B |
