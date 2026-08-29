@@ -355,9 +355,63 @@ could have followed the table while ignoring the fold.
 | **ADC channels**, 2 against 1 | the comb is there at one channel, 20 gaps of exactly 21, so the multiplexer need not move |
 | **position within one capture** | step 0 in 30 of 30 transitions, 44 of 46 sites matching, so **not a marching event** |
 | **the other DAC channel**, A1 read at a 2.6x margin | ~~no comb, so the period counts DAC0 writes~~ - **withdrawn, see below** |
+| **the DAC:ADC ratio**, 1 / 2 / 3 / 4 with the ADC held fixed | the gap is 21 / 21 / **7** / 5 bins, so it is **not a fixed number of DAC0 updates** - see below |
 
 Two of those need their own note, because they were each published
 wrong first.
+
+#### The ratio arm, and the unit it settles
+
+The ratio axis was a labelled hole: above ratio 1 the converter samples
+one held level several times, the repeats disagree as a function of the
+held voltage, and that buries the artifact. Both differencing pairings
+were spent.
+
+**The way through is not to difference at all.** Differencing is
+`pair_fold`'s trick and exists to keep a profile flat; the host-fed
+reader takes a neighbour residual and never needed it. Decimate to one
+sample per DAC update - the same position in every hold - and the series
+is back in its ratio-1 shape, with whatever the repeats disagree about
+never read at all. `tools/issue24_hold.py`.
+
+Ratio 3 is settable exactly, which is what makes the arm work: rates
+come from RC, and RC 585 is three times the ADC's RC 195, so the hold is
+exactly three samples. "66,667 Hz is not an integer divider" is the
+wrong way to ask.
+
+| ratio | gap | = DAC updates | = ADC samples |
+|---|---|---|---|
+| 1 | 21 bins | 21 | 21 |
+| 2 | 21 | 21 | 42 |
+| **3** | **7** | **7** | **21** |
+| 4 | 5 | 5 | 20 |
+
+The DAC-update column reads 21, 21, 7, 5, so the comb is **not** a fixed
+count of DAC0 updates. Ratio 3 decides it - seven bins is seven DAC
+updates against twenty-one conversions, and 21/3 = 7 exactly, gap 7
+appearing 48 times against 14 six times. The ADC column is ~21 three
+times over: ratio 2 reads 42 because 21/2 = 10.5 cannot be a bin
+spacing, and ratio 4 reads 20 because 21/4 = 5.25 gives gaps of 5 with
+6s making up the difference.
+
+**Ratio 4 loses the comb entirely, and that survives its power control** -
+5.5x the averaging (n/bin 195 to 1075) and still no 21, with sites
+recurring as near-equal pairs five bins apart.
+
+**A control of mine that did not survive, recorded because it was
+published twice.** I read the two hold offsets as agreeing on site
+positions and called it evidence the artifact is locked to the DAC
+update. Checked against the records rather than the console line, they
+share 3-6 sites of 8 in one session and **0 of 8 in each of two others**.
+The inference is withdrawn. Disagreement is what a per-conversion comb
+predicts - `gcd(2,21) = 1`, so each offset solves `2d + o = c (mod 21)`
+for a different residue - so the dominant behaviour supports the
+conversion reading, and the session that agreed is the unexplained one.
+
+**Not settled against the gen-versus-host cut above**, which has a
+two-path independence this lacks. The honest statement is that the
+ADC-conversion reading fits every arm and the DAC-update reading fits
+only the arms where the ratio hides the difference.
 
 **"21 DAC0 writes rather than conversions" cannot be inferred from the
 two arms disagreeing about what a bin is.** 21 is odd, so a period of 21
