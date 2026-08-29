@@ -43,11 +43,36 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure  # noqa: E402
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+from issue5_absphase import _fold, _pair, table_zero_dft  # noqa: E402
 
 
 def comb_gaps(bins):
     return collections.Counter(bins[i + 1] - bins[i]
                                for i in range(len(bins) - 1))
+
+
+def rotation(vals, start):
+    """Table index 0, from A0's own waveform.
+
+    Without this every site here is a bin in a frame whose zero is the
+    capture start, and comparing bins across two configurations is the
+    error retracted in dfbb34f - the frame moves between images, and it
+    moves between channel counts for the same reason. A0 carries the
+    sine, so it carries the reference; see tools/issue5_absphase.py.
+
+    The one residue is parity: pair_fold picks the pairing per channel,
+    so A1's frame can sit one bin from A0's. One bin, and it is recorded
+    rather than corrected.
+    """
+    got = _pair(list(vals[start:]))
+    if not got:
+        return None, 0.0
+    _spread, _off, _d, levels = got
+    prof = _fold(levels, measure.GEN_TABLE_LEN // 2)
+    if prof is None:
+        return None, 0.0
+    return table_zero_dft(prof)
 
 
 def read(vals, start):
@@ -71,6 +96,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-n", "--runs", type=int, default=12)
     ap.add_argument("-s", "--seconds", type=float, default=3.0)
+    ap.add_argument("--nch", type=int, default=2,
+                    help="ADC channels in preset M. The sequencer "
+                         "converts in channel-index order, so 2 gives "
+                         "A1 then A0 - A1 immediately after A0 - and 3 "
+                         "gives A2, A1, A0, which puts the bare pin "
+                         "between them and takes A0 out of A1's "
+                         "predecessor slot. That is the arm separating "
+                         "a DAC artifact on A1 from ADC multiplexer "
+                         "crosstalk out of A0's sample-and-hold")
     ap.add_argument("--sync", default=None,
                     help="gen sync mode for the run, restored on exit. "
                          "'off' puts DC on DAC1, which makes A1 the flat "
@@ -91,10 +125,20 @@ def main():
         if args.sync is not None:
             print(measure.set_sync(board, args.sync).strip(), flush=True)
         for i in range(1, args.runs + 1):
-            res = measure.run_capture(board, preset="M", seconds=args.seconds)
+            preset = ("M" if args.nch == 2
+                      else f"=200000,200000,{args.nch}M")
+            res = measure.run_capture(board, preset=preset,
+                                      seconds=args.seconds)
             ps = res.stream
             out = {}
-            for name, tag in (("a0", measure.CH_A0), ("a1", measure.CH_A1)):
+            a0v = ps.series.get(measure.CH_A0) or []
+            phase0, fund = rotation(
+                a0v, ps._index_at(measure.CH_A0, measure.SETTLE_US)) \
+                if a0v else (None, 0.0)
+            chans = [("a0", measure.CH_A0), ("a1", measure.CH_A1)]
+            if args.nch >= 3:
+                chans.append(("a2", measure.CH_A2))
+            for name, tag in chans:
                 vals = ps.series.get(tag) or []
                 if not vals:
                     continue
@@ -103,15 +147,25 @@ def main():
                 print(f"run {i}: short capture", flush=True)
                 continue
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                   "bench": args.bench, "a0": out["a0"], "a1": out["a1"]}
+                   "bench": args.bench, "nch": args.nch,
+                   "sync": args.sync, "phase0": phase0,
+                   "fundamental_codes": round(fund, 1),
+                   "a0": out["a0"], "a1": out["a1"]}
+            if "a2" in out:
+                row["a2"] = out["a2"]
             rows.append(row)
-            for name in ("a0", "a1"):
+            P = measure.GEN_TABLE_LEN // 2
+            for name, _t in chans:
                 r = out[name]
+                if phase0 is not None:
+                    r["sites_table"] = [[(b - phase0) % P, v, z]
+                                        for b, v, z in r["sites"]]
+                tab = r.get("sites_table") or r["sites"]
                 print(f"run {i:2d} {name.upper()}: sites {r['n_sites']:3d}  "
                       f"gaps21 {r['gaps21']:3d}  sd {r['flat_sd']:7.1f}  "
-                      f"hold_ok={r['hold_ok']}  "
+                      f"hold_ok={r['hold_ok']}  p0={phase0}  table "
                       + ", ".join(f"{b}:{v:+.2f}"
-                                  for b, v, _ in r["sites"][:4]), flush=True)
+                                  for b, v, _ in tab[:4]), flush=True)
             board.stop()
             board.drain_console(0.3)
     finally:
