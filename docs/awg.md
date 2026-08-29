@@ -243,47 +243,74 @@ distinction the arm exists to make.
 
 ## The wrap displacement, settled within tolerance (issue #5)
 
-**One sample per 256-point table wrap is displaced, and the issue was
-closed on a 1-8 code bound rather than on a mechanism.** Both tracks
-show it.
+**Samples near the 256-point table wrap are displaced - several of
+them, at fixed positions - and the issue was closed on a 1-8 code bound
+rather than on a mechanism.** Both tracks show it. It closed as "one
+sample"; that was the largest one.
 
-**The displacement is a discrete two-state draw, and it is redrawn per
-capture.** This paragraph used to say "phase stable per session - the
-same wrap position within a run, a fresh draw across reboots", and the
-second half is wrong: no reboot is needed. Twelve consecutive captures
-on one board in one session, full amplitude, nothing touched between
-them, landed six times at phase 138 and six times at phase 177,
-alternating freely:
+**There is more than one displaced sample per wrap, and `peak_phase` is
+an argmax over all of them.** This paragraph has been wrong twice, in
+opposite directions, and both errors came from summarising a profile by
+its maximum.
 
-| landing phase | displacement | draws |
+`fold_profile` reports the largest bin. Read the *whole* folded profile
+instead - `tools/issue5_sites.py` - and a single capture shows several
+fixed sites, each reproducible to about a tenth of a code:
+
+| phase | seen in | values |
 |---|---|---|
-| 138 | -5.05 to -5.16 codes | 6 |
-| 177 | -14.06 to -14.54 codes | 6 |
+| 138 | 22/24 | -5.32 .. +1.89 |
+| 198 | 18/24 | +1.96 .. +12.68 |
+| 177 | 6/24 | -14.43 .. -14.17 |
+| 117 | 6/24 | -2.27 .. -2.02 |
+| 219 | 15/24 | -1.32 .. -0.89 |
 
-Each state is reproducible to a tenth of a code; what varies is which
-one a capture gets. So the magnitude does not "vary per session" - it
-is a function of the landing phase, and the phase is drawn per capture.
+Each run shows a subset, with its own values, and the argmax reports
+whichever site currently dominates. **That is why two benches read the
+same statistic and disagreed**: this bench saw the argmax alternate
+between 138 and 177 and called it a phase redraw; windows-desk saw the
+argmax hold at 156 while its value flipped sign and called it a value
+flip. Both are the argmax following a multi-site profile whose values
+move on a minutes scale. Neither "the artifact moves" nor "the artifact
+is one sample whose value flips" is right.
 
-**The two states straddle `STEP_SPLICE_CODES`, and that explains a
+**So every figure this issue has ever quoted is an argmax over an
+unknown number of sites**, including the 1-8 codes it closed on and the
+14.4 quoted for its reopening. What survives that is the thing the
+tolerance argument is actually about - the largest displacement in a
+wrap - which is 12.3-14.5 codes routinely today against a closing
+record of 1.0-7.3. Quote the site table, not the peak.
+
+One reading trap, since it cost a first pass here. `spike` subtracts
+each bin's neighbours because `fold_profile` must survive a waveform
+underneath it. After `pair_fold`'s differencing within the DAC hold
+there is no waveform left, so the subtraction only adds a shadow: a
+single spike of A becomes A at its bin and -A/2 at each neighbour, and
+reading that as three sites reported 176 and 178 alongside the one real
+site at 177. Read the profile directly on a differenced series.
+
+**The largest site straddles `STEP_SPLICE_CODES`, and that explains a
 mystery already written down.** The sine's own largest staircase step is
-~38 codes and the census line is 45, so the phase-177 state (38 + 14.6)
-crosses it and the phase-138 state (38 + 5.1) does not - measured in one
-session, 776 steps over 45 codes in one state and **0** in the other.
+~38 codes and the census line is 45, so a capture whose largest site is
+14.6 (38 + 14.6) crosses it and one whose largest is 5.1 does not -
+measured in one session, 776 steps over 45 codes in the first case and
+**0** in the second.
 `tools/splices.py`'s docstring records "ten runs reported 0 splices on
 A0 across a period when six runs in ten were dirty on A1", and calls it
 the tool saying "does not reproduce" about a board that was
-reproducing. Six in ten is the draw. A threshold sitting between two
-states of a bimodal artifact reports which state was drawn, not whether
-the artifact is there.
+reproducing. Six in ten is how often the largest site was above the
+line. A threshold sitting inside the range an artifact's amplitude
+moves through reports where in that range the capture landed, not
+whether the artifact is there.
 
 **That is a trap for every A/B measurement on this artifact**, and it
 has already caught one. `tools/acr_issue5.py` compares two DACC_ACR
-arms by mean |peak| over a handful of captures; with a bimodal draw
-between 5 and 14 codes, six captures per arm sample the draw rather
-than the arm. Its 0x000 span of 2.9-14.1 codes against 0x10A's
-9.7-14.4 is what two samples of one distribution look like. Compare
-within a landing phase, or count how often each state is drawn - never
-the mean of the peak. It is attributed to a DAC output pin effect,
+arms by mean |peak| over a handful of captures; when the peak is an
+argmax over sites whose values move between 1 and 14 codes, six
+captures per arm sample that movement rather than the arm. Its 0x000
+span of 2.9-14.1 codes against 0x10A's 9.7-14.4 is what two samples of
+one distribution look like. Compare per site, never the mean of the
+peak. It is attributed to a DAC output pin effect,
 not a splice and not stream_stop: the capture-side accounting is clean
 through every observation.
 
