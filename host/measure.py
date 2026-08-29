@@ -2127,6 +2127,18 @@ class Feeder:
     # converters run slow by nearly the same fraction and the surplus
     # is shed however it is written. That is rate matching and is
     # tracked separately.
+    #
+    # A macOS rule, applied uniformly, and labelled as such (issue
+    # #27). Windows loses nothing under either policy - 0 bytes in 48
+    # runs across 200,000 to 1,392,857 sps, due-sized and constant
+    # alike (records/writepolicy-windows.jsonl) - because its driver
+    # blocks the writer instead of shedding counted bytes. The
+    # constant size is kept everywhere anyway: it is measurably free
+    # on Windows, and one feed policy means a feed bug reproduces on
+    # both platforms instead of becoming one platform's ghost. This is
+    # a uniform conservative policy motivated by one platform's
+    # defect, not a platform branch - the seam rule in CLAUDE.md says
+    # why that distinction matters.
     WRITE_SIZE = 512
 
     # Only the legacy due-sized path uses this, and that path is kept

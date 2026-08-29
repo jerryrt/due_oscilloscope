@@ -471,6 +471,12 @@ next paragraph says all platform difference belongs in.
 `host/rt.py`.** Everything above them - `measure.py`, the daemon, the
 front end, `tests/` - is written once. If a change needs to know the OS
 anywhere else, that is the seam failing and the fix belongs in the seam.
+The rule governs *branching*, not caution: a uniform conservative
+policy motivated by one platform's defect may live above the seam -
+`Feeder.WRITE_SIZE` is the standing, labelled example (issue #27), kept
+uniform because it is measured free on the platforms that do not need
+it and one feed policy keeps a feed bug reproducible on both. The
+moment such a policy wants a `sys.platform` test, it moves down.
 `host/` is no longer stdlib-only: it takes pyserial, which is declared
 in `requirements-dev.txt`. The old rule was always "a fact about the
 code, not a rule new code inherits".
