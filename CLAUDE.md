@@ -557,11 +557,13 @@ Native Linux is **tier 1 and no longer deferred** as of 2026-08-29:
 under WSL2. A WSL2 pass still does not stand in for a native one - the
 stability defect above is the tunnel's and has not been seen here.
 
-Bringing that bench up cost one fix that no other platform needs:
-**opening the programming port on Linux erases the board**, because
-Linux has no callout node and the Due reads DTR/RTS as RESET and ERASE.
-`docs/linux.md`, and `docs/hardware.md` next to the `cu.*` rule it is
-the Linux spelling of.
+One caution for that bench, and it is a diagnostic trap rather than a
+defect: a Due whose GPNVM boot bit is clear returns to SAM-BA on **every**
+reset, including the documented NRSTB reset that opening the programming
+port causes. It then presents as a silent console and a native port that
+will not enumerate - which reads exactly like firmware that will not
+boot, and cost a whole wrong diagnosis here. Check `bossac -i` for
+`Boot Flash: true` before theorising. `docs/linux.md`.
 
 ## Ports on the development host
 

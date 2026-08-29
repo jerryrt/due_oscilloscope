@@ -21,41 +21,63 @@ The wiring is the same cabling as `macos` and `windows-desk`, and is
 **not** the DSO bench's. Declared in `bench.json`, which is gitignored
 per `host/provenance.py`.
 
-## Opening the programming port erases the board
+## Retracted: "opening the programming port erases the board"
 
-The one finding that makes a Linux bench unusable until it is fixed, and
-it is invisible unless you are watching `lsusb`.
+**This section claimed a defect that does not exist. It is kept because
+the retraction is the useful part.**
 
-`docs/hardware.md` says *"always `/dev/cu.*`, never `/dev/tty.*`"* and
-scopes it to macOS. The reason is the callout node: `cu.*` does not touch
-modem-control lines and `tty.*` does. **Linux has no callout node.**
-`/dev/ttyACM0` is the only node and behaves like `tty.*`, because the tty
-layer raises DTR and RTS in `tty_port_open()` before userspace sees the
-fd.
+What was claimed, and committed, and pushed: that Linux has no callout
+node, that the tty layer raises DTR and RTS in `tty_port_open()`, that on
+the Due those are the 16U2's RESET and **ERASE**, and that an ordinary
+open of the programming port therefore erases the flash. `docs/hardware.md`
+gained a paragraph and `host/transport.py` gained a `sys.platform` branch
+clearing both lines.
 
-On the Due those two lines are the 16U2's **RESET and ERASE**. So an
-ordinary open of the programming port erases the flash and drops the
-board into SAM-BA. Observed three times before it was understood: the
-board ran Track B for 39 s, `ports.py` opened the console to ask what it
-was, and it came back as `03eb:6124` with a blank chip and a silent
-console - which reads exactly like a firmware that will not boot.
+**Measured afterwards, all four arms survive.** Open the console with DTR
+alone, with RTS alone, with both, or with neither: the board keeps running
+and answers `v` every time, and six consecutive pyserial opens with library
+defaults answer six times. There is no erase-on-open. The `transport.py`
+branch was reverted; it fixed nothing and an unjustified platform branch is
+debt.
 
-`dtr=False` does not help, and that is the part worth remembering: nothing
-has been asserted *by us* and the lines are high anyway. The fix clears
-them rather than declining to set them (`host/transport.py`, the seam
-`CLAUDE.md` names for a policy that needs a `sys.platform` test). Cleared,
-the same open returns the identity line and the board keeps running; the
-documented NRSTB reset still happens and the native pair re-enumerates
-about a second later.
+**What was actually happening.** The board could not boot from flash.
+`tools/flash.py`'s first run here wrote and verified, reported "Set boot
+flash true", and left `Boot Flash: false` on readback. A Due whose GPNVM
+boot bit is clear returns to SAM-BA on *every* reset - including the
+documented NRSTB reset that opening the programming port legitimately
+causes. So each console open appeared to erase the board, and the console
+was silent because no firmware was running. One clean
+`bossac -e -w -v -b` fixed the boot bit and every symptom with it.
 
-**macOS is untouched** - it keeps opening `cu.*` and never enters the
-branch. This is the Linux spelling of a rule that already existed.
+**One observation is still unexplained**, and it is recorded rather than
+resolved: at t=19401 the board dropped to SAM-BA after a console open
+*while* `Boot Flash` read true and the firmware had just enumerated
+correctly. Under the same conditions now it survives repeatedly. If a
+Linux bench sees this again, that is the thread to pull.
 
-A corollary for discovery: `find_all_ports()` returns as soon as the
-programming port is found and does not wait for the native pair, so a
-call made inside that ~1 s re-enumeration window returns
-`(ttyACM0, None, None)`. That is the documented "re-glob after opening
-control", not a fault.
+**The lesson, and it is the one already written at the top of `CLAUDE.md`
+in a different accent.** Two cheap readings would have killed this in
+minutes: `bossac -i` says `Boot Flash:` in one line, and the four-arm
+modem-line test takes four minutes and needs no theory. Instead a
+mechanism was inferred from a correlation - "it died right after I opened
+the port" - and the inference was written into two documents and a commit
+before it was tested. *Ask what state the board was in before blaming the
+transport.*
+
+### What is true, and useful
+
+- **Linux has no callout node.** `/dev/ttyACM0` is the only node; there is
+  no `cu.*` to prefer. Opening it does assert DTR/RTS and does reset the
+  board over NRSTB, which is documented and harmless.
+- **`find_all_ports()` returns as soon as the programming port is found**
+  and does not wait for the native pair, so a call inside the ~1 s
+  re-enumeration window returns `(ttyACM0, None, None)`. That is the
+  documented "re-glob after opening control", not a fault.
+- **`bossac -b 1` is not the spelling.** `-b` takes an optional attached
+  value, so `-b 1` parses `1` as a stray positional and exits with "extra
+  arguments found". Use `--boot=1`.
+- **Check `Boot Flash: true` before diagnosing anything else.** A clear
+  boot bit imitates dead firmware exactly.
 
 ## Byte conservation: Linux is Windows, not macOS
 
@@ -175,9 +197,15 @@ flash true", and the board still came back in SAM-BA with
 `Boot Flash: false` on readback. An explicit `bossac --boot=1` set it,
 and a later identical `flash.py`-shaped invocation worked correctly.
 
-Its bossac arguments are right (`-U true -e -w -v -b ... -R`), so this is
-**recorded, not attributed** - it happened once, against an unknown
-firmware that was on the board at the time, and has not reproduced. Note
-that `-b 1` is *not* the spelling: bossac takes `-b` with an optional
-attached value, so `-b 1` parses the `1` as a stray positional and exits.
-Use `--boot=1`.
+Its bossac arguments are right (`-U true -e -w -v -b ... -R`), and it has
+not reproduced, so the *cause* is still unattributed. Its **consequence**
+is not: this is what produced every symptom the retracted section above
+chased. A clear boot bit sends the board to SAM-BA on every reset, and
+the reset that opening the programming port causes is documented and
+expected, so the board appeared to be erased by the act of talking to it.
+
+**Read `Boot Flash:` first.** `bossac -p <native> -i` prints it in one
+line and would have ended that diagnosis before it started. Note that
+`-b 1` is *not* the spelling: bossac takes `-b` with an optional attached
+value, so `-b 1` parses the `1` as a stray positional and exits with
+"extra arguments found". Use `--boot=1`.

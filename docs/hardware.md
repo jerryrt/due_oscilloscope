@@ -50,15 +50,13 @@ stack reports `B-01`, which is why its node enumerates as
 Always use `/dev/cu.*`, never `/dev/tty.*`, for host-side serial clients
 on macOS. The native port ignores baud rate entirely (CDC).
 
-**Linux has no callout node, and needs the same rule spelled
-differently.** `/dev/ttyACM0` is the only node and it behaves like
-`tty.*`: the tty layer raises DTR and RTS in `tty_port_open()` before
-userspace sees the fd. On the Due those are the 16U2's RESET and
-**ERASE**, so an ordinary open of the programming port erases the flash
-and drops the board into SAM-BA - which reads exactly like firmware
-that will not boot. `host/transport.py` clears both on Linux; passing
-`dtr=False` is not enough, because nothing was asserted by us and the
-lines are high anyway. See `docs/linux.md`.
+**Linux has no callout node**, so `/dev/ttyACM0` is the only node and
+there is no `cu.*` to prefer. Opening it asserts DTR and RTS, and on
+the Due that is the documented NRSTB reset. It is **not** an erase:
+measured on `linux-x1` with DTR alone, RTS alone and both, the board
+survives every arm and answers `v`. A Linux bench that keeps landing
+in SAM-BA has a boot-bit problem, not a modem-line problem - see
+`docs/linux.md`.
 
 ### CDC endpoint configuration *(verified from core source)*
 
