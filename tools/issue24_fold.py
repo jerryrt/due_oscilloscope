@@ -235,6 +235,16 @@ def main():
                          "from one sitting at a fixed frequency: the "
                          "first keeps its spacing, the second scales it")
     ap.add_argument("--step", type=int, default=measure.RAMP_STEP)
+    ap.add_argument("--period", type=int, default=0,
+                    help="captured samples per table wrap, overriding "
+                         "4096/step. Needed when adc_hz is not equal to "
+                         "dac_sps: the default assumes one captured "
+                         "sample per DAC update, and at a ratio of 2 "
+                         "there are two. That ratio is the one thing "
+                         "the earlier rate arm did NOT vary - it scaled "
+                         "both clocks together, which holds the ratio "
+                         "fixed, so a beat between the DAC and ADC "
+                         "timers would have survived it unchanged")
     ap.add_argument("--arms", default="host",
                     help="host, gen, or host,gen - interleaved run by run "
                          "so warm-up and weather cannot favour one")
@@ -242,7 +252,7 @@ def main():
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    period = 4096 // args.step          # captured samples per table wrap
+    period = args.period or (4096 // args.step)          # captured samples per table wrap
     arms = [a.strip() for a in args.arms.split(",") if a.strip()]
     board = measure.Board(settle=3.0)
     rows = []
