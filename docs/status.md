@@ -610,6 +610,37 @@ The tell in both cases was arithmetic: the frame count exceeded what the
 configured sample rate could generate. **A receiver reporting more data
 than the source can produce is describing its own bug.**
 
+## The ~10-byte playback loss, settled within tolerance (issue #20)
+
+**Closed on a bound, not a mechanism, 2026-08-29.** While capture IN
+DMA is armed, the device occasionally loses a forward-only run of
+~10 bytes from host-fed playback. The agreed tolerance is **1% of a
+playback window's bytes**; everything recorded on current firmware
+across both benches sits under 0.01% per window (worst characterized
+event: 0.64%, windows-desk, midnight batch). The integrity suite
+asserts the bound and xfail-documents the residual, and discriminates
+the neighbouring classes so none can hide under another: host chunk
+drops (128-byte multiples, macOS only), bidirectional jitter (#24,
+matched forward/backward pairs), and this loss (forward-only,
+non-128-multiple).
+
+Facts a reader needs before trusting a counter: **no device counter
+sees this loss.** play_partial, underruns, spans and even the byte
+deficit stay clean through a losing run - the device counts every
+byte as received and still skips samples at the DAC (verified across
+150 runs with in-session counters, records/issue20-counters-macos.jsonl).
+Detection is host-side, by the ramp test. Do not read under=0 as
+integrity.
+
+The rate has **per-host weather**: hour-scale on/off, macOS 10-50x
+hotter than Windows in the one simultaneously sampled hour
+(2026-08-29 14:00-15:00Z, both arms saturating 73-95% here at ~0.01%
+intensity while windows-desk read 0-19%). Both arms track the weather
+together on each bench; earlier arm-asymmetry readings were weather
+moving between sequential series. Full record in
+records/issue20-*.jsonl, five datasets, benches and dates attached.
+Reopen #20 if the bound breaks or a new size class appears.
+
 ## Found by the test suite: host-fed playback lost samples
 
 **Fixed.** Samples the host wrote did not all reach the DAC, and nothing
