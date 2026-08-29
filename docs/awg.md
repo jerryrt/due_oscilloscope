@@ -340,6 +340,106 @@ design's; the positions are the board's** - **and the second half of
 that sentence was retracted the next day. Read the next section before
 quoting this one.**
 
+### What the lattice of 21 is not, and the four ways it was asked
+
+The wrap displacement sits on a comb of period 21, and the useful work
+of one session was excluding things rather than finding the mechanism.
+Every arm below varies **one** thing, and each was needed - a spacing
+could have followed the table while ignoring the fold.
+
+| varied | result |
+|---|---|
+| **fold** length, 256 against 512 | 21 does not follow it, so not an aliasing artifact |
+| **table** length, ramp period 256/512/1024 | 21 does not follow it, so not the table |
+| **wall-clock rate**, halved with the sampling geometry held | 21 does not follow it, so **not a frequency** - no supply, clock, or anything with a period in seconds |
+| **ADC channels**, 2 against 1 | the comb is there at one channel, 20 gaps of exactly 21, so the multiplexer need not move |
+| **position within one capture** | step 0 in 30 of 30 transitions, 44 of 46 sites matching, so **not a marching event** |
+| **the other DAC channel**, A1 read at a 2.6x margin | no comb, so the period counts **DAC0 writes**, not DACC conversions |
+
+Two of those need their own note, because they were each published
+wrong first.
+
+**"21 DAC0 writes rather than conversions" cannot be inferred from the
+two arms disagreeing about what a bin is.** 21 is odd, so a period of 21
+*conversions* puts events at DAC0-level indices 0, 10.5, 21, 31.5, and
+the half-integers are DAC1 conversions an A0 fold cannot see. What
+survives is 0, 21, 42 - a comb of 21, exactly what the other hypothesis
+predicts. A1 is what separates them.
+
+**And A1 could not see it for two rounds.** A1 reads a full-scale square
+where A0 reads a sine, so its MAD runs ~1.8x higher and its detection
+floor sat *above* the ~1 code comb. Its silence meant nothing. The
+margin was bought by making A1 flat - `--sync off` puts DC on DAC1 and
+A1's standard deviation falls from 1372.5 codes to 1.0 - not by
+averaging longer. `tools/issue5_a1.py` prints both floors beside the
+comb's amplitude and refuses the conclusion below 2:1, because at 12 s
+captures the floor was 0.98 against a 1.04 code comb and "detectable by
+6%" is the same mistake one step further along.
+
+### The draw happens at every stream start
+
+The comb is on in some captures and absent in others, and this was read
+for a long time as a configuration drawn rarely and drifting on
+tens-of-minutes scales. Both readings put on and off captures in one
+session; they differ in **order**.
+
+Twenty consecutive captures, classified by structure rather than by
+count - three or more gaps of exactly 21 is the comb, one large site is
+not:
+
+    .XX......X.X........
+    n=20  on=4  off=16  runs=7
+    expected if independent 7.40 (sd 1.35)  ->  z = -0.30
+
+No clustering. With the segment measurement above - a comb-on capture
+has it on in every segment and a comb-off capture in none - the
+configuration is **drawn at stream start, independently each time**, at
+p(on) about 0.2.
+
+Read that with its power: n=20 with 4 on gives an sd of 1.35, so it
+detects heavy clustering and little else, and a z near zero is a failure
+to detect clustering rather than a demonstration of independence.
+
+**It re-reads three of this issue's null results.** The table rebuild,
+the NRSTB reset and the amplitude excursion were each tested as
+something that might redraw an otherwise-stable configuration, and each
+returned nothing. If the configuration is redrawn at every stream start
+regardless, none of those experiments could have shown anything whatever
+the candidate did - one explanation for three nulls rather than three
+independent exclusions. The exclusions are not wrong; the inference that
+the draw is rare does not follow from them.
+
+It also sizes the power-cycle test, which is the last candidate
+standing: a power cycle has to beat a per-stream draw to be visible, so
+the protocol wants at least a dozen captures per arm compared by the
+*rate* p(on), not one site set per arm.
+
+### A channel held at DC still carries displaced samples
+
+With `--sync off` DAC1 is a constant code, and A1 is then the flat
+channel `flat_census`'s docstring has always assumed - it is not one in
+preset M by default, where the sync is a full-scale square.
+
+Flat, and with DAC0 driven, A1 still shows persistent displaced samples
+of about 8 codes at fixed positions. On a channel whose output never
+moves.
+
+That refines "a changing output is needed" rather than contradicting it:
+that was measured on `all-DC`, where **neither** channel moves. What is
+needed is a changing output *somewhere*, not on the channel that shows
+the artifact.
+
+**And the size tracks what the ADC is doing.** Interleaved 2 against 3
+channels, ten captures each, on the folded profile's total absolute
+deviation: A0 rises 1.43x when a third channel is added, with nothing
+about A0's own neighbourhood changed - its predecessor is A1 in both.
+A1 rises 1.27x. That arm was built to test ADC multiplexer crosstalk and
+is confounded for that purpose, because a third channel is also 50% more
+conversions per second; what it does establish is that the magnitude
+depends on total ADC activity. This issue attributes the artifact to a
+DAC output on the strength of it being present with no host in the DAC
+path - which excludes the host, not the converter reading the pin.
+
 ### The offset was measured, and it is not the fold's rotation
 
 Every position above is a **bin number in a frame whose zero is where
