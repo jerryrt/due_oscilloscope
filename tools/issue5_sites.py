@@ -58,16 +58,35 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-n", "--runs", type=int, default=12)
     ap.add_argument("-s", "--seconds", type=float, default=3.0)
+    ap.add_argument("--regen", default="",
+                    help="run numbers (e.g. 9-16) to precede with a "
+                         "set_gen, so a table rebuild can be tested as "
+                         "the event that draws the configuration - all "
+                         "inside one board session, because opening the "
+                         "control port resets the board and a reset is "
+                         "itself a candidate")
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "macos"))
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
 
+    regen = set()
+    if args.regen:
+        for part in args.regen.split(","):
+            if "-" in part:
+                a, b = part.split("-")
+                regen.update(range(int(a), int(b) + 1))
+            else:
+                regen.add(int(part))
     board = measure.Board(settle=3.0)
     rows = []
     try:
         board.stop()
         board.drain_console(0.5)
         for i in range(1, args.runs + 1):
+            if i in regen:
+                measure.set_gen(board, "sine",
+                                points=measure.GEN_TABLE_POINTS,
+                                amp=measure.GEN_AMP_FULL)
             res = measure.run_capture(board, preset="M", seconds=args.seconds)
             ps = res.stream
             vals = ps.series.get(measure.CH_A0)
@@ -77,8 +96,16 @@ def main():
             start = ps._index_at(measure.CH_A0, measure.SETTLE_US)
             fold = measure.pair_fold(list(vals[start:]))
             found, mad = sites(fold.get("profile") or [])
+            # A threshold-free total, so the conservation question -
+            # do the sites share a budget, or move independently? -
+            # does not depend on which of them happened to clear z.
+            prof = fold.get("profile") or []
+            pmed = statistics.median(prof) if prof else 0.0
+            total_abs = sum(abs(v - pmed) for v in prof)
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                   "bench": args.bench,
+                   "bench": args.bench, "regen": i in regen,
+                   "total_abs": round(total_abs, 2),
+                   "site_abs": round(sum(abs(v) for _b, v, _z in found), 2),
                    "argmax_phase": fold.get("peak_phase"),
                    "argmax_peak": round(fold.get("peak", 0.0), 2),
                    "hold_ok": bool(fold.get("hold_ok")),
@@ -86,8 +113,10 @@ def main():
                    "sites": [[b, round(v, 2), round(z, 1)]
                              for b, v, z in found[:6]]}
             rows.append(row)
-            print(f"run {i:2d}: argmax phase {row['argmax_phase']:3d} "
-                  f"({row['argmax_peak']:+7.2f})   sites "
+            print(f"run {i:2d}{'*' if i in regen else ' '}: "
+                  f"argmax {row['argmax_phase']:3d} "
+                  f"({row['argmax_peak']:+7.2f})  total|dev| "
+                  f"{row['total_abs']:7.1f}  sites "
                   + ", ".join(f"{b}:{v:+.2f}" for b, v, _ in found[:5]),
                   flush=True)
             board.stop()
@@ -112,6 +141,33 @@ def main():
             vs = [v for r in rows for bb, v, _z in r["sites"] if bb == b]
             print(f"  phase {b:3d}: {len(vs):2d}/{len(rows)}  "
                   f"values {min(vs):+.2f} .. {max(vs):+.2f}")
+
+    if len(rows) > 2:
+        tot = [r["total_abs"] for r in rows]
+        print(f"\ntotal |deviation| over the whole profile: "
+              f"{min(tot):.1f} .. {max(tot):.1f}, "
+              f"median {sorted(tot)[len(tot) // 2]:.1f}")
+        # Co-variation, on the sites present often enough to have one.
+        common = [b for b in seen
+                  if sum(1 for r in rows
+                         if any(bb == b for bb, _v, _z in r["sites"]))
+                  >= max(4, len(rows) // 2)]
+        if len(common) > 1:
+            series = {}
+            for b in common:
+                series[b] = [next((v for bb, v, _z in r["sites"] if bb == b),
+                                  0.0) for r in rows]
+            print("pairwise correlation of site values across runs:")
+            for i2 in range(len(common)):
+                for j in range(i2 + 1, len(common)):
+                    x, y = series[common[i2]], series[common[j]]
+                    n = len(x)
+                    mx, my = sum(x) / n, sum(y) / n
+                    sxy = sum((a - mx) * (b2 - my) for a, b2 in zip(x, y))
+                    sxx = sum((a - mx) ** 2 for a in x)
+                    syy = sum((b2 - my) ** 2 for b2 in y)
+                    r_ = sxy / ((sxx * syy) ** 0.5) if sxx and syy else 0.0
+                    print(f"  {common[i2]:3d} vs {common[j]:3d}: r = {r_:+.2f}")
 
     if args.json:
         with open(args.json, "a") as fh:

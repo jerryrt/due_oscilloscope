@@ -293,6 +293,31 @@ period 21, offset by 3 in bin terms, rather than one wandering phase.
 Stated as the arithmetic of five sites on one bench and one on another,
 which is not enough to call it the mechanism.
 
+**Two independent populations, and the fork "do the sites move
+together or independently" has an answer for each.** 24 captures inside
+one board session, 8 of them preceded by a `set_gen` table rebuild:
+
+- The **strong sites do not move**. 198 read +12.24 to +12.76 and 138
+  read -1.17 to -1.85 in all 24, rebuild or not.
+- A **weak comb switches on as a unit**. {50, 71, 92, 113} appear
+  together at about +1.0 each in 6 captures of 24 and are absent in the
+  rest, and the profile's total absolute deviation - a threshold-free
+  number that does not care which sites cleared z - is bimodal with
+  them: ~38-44 when the comb is off, ~60-64 when it is on. The strong
+  sites are untouched either way.
+
+So sites move together *within* a population and the populations are
+independent of each other. That is one mechanism gating the weak comb,
+not many separate events, and something else entirely holding 198.
+
+Two things that are **not** the draw event, both tested rather than
+assumed. A table rebuild is not: the eight rebuild captures above are
+indistinguishable from the sixteen without. Nor is the NRSTB reset that
+opening the control port performs - the same configuration came back
+across three separate tool invocations, each of which reset the board.
+A power cycle has not been tried, so "a fresh draw across reboots" is
+narrowed rather than refuted.
+
 One reading trap, since it cost a first pass here. `spike` subtracts
 each bin's neighbours because `fold_profile` must survive a waveform
 underneath it. After `pair_fold`'s differencing within the DAC hold
