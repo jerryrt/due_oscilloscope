@@ -88,6 +88,34 @@ def _fold(series, period):
     return [sums[b] / cnt[b] for b in range(period)]
 
 
+def table_zero_dft(levels_profile):
+    """Table index 0 from the whole profile, not from one crossing.
+
+    The crossing estimate below uses two bins, and this waveform gives
+    it a reason to be wrong: the DAC is not rail-to-rail, the sine's
+    trough is asked for at code 23, and a compressed trough raises
+    `(max+min)/2` and drags the crossing with it. The attestation
+    catches it - Track B's trough landed 5 bins from where an aligned
+    sine puts it while Track A's landed on 0 - which is the attestation
+    doing its job and also a warning not to trust the number it passed.
+
+    The fundamental is estimated over all 256 bins instead. Clipping at
+    one extreme still biases it, but by far less than it biases a single
+    crossing, and the two estimates disagreeing is itself the signal
+    that the profile is not a clean sine.
+
+    `level[i] = C + A*sin(2*pi*(i - phase0)/N)`, so phase0 comes
+    straight from the argument of the k=1 bin.
+    """
+    import cmath
+    n = len(levels_profile)
+    x = sum(levels_profile[i] * cmath.exp(-2j * cmath.pi * i / n)
+            for i in range(n))
+    # sin(2*pi*(i-p)/N) has k=1 argument -(pi/2) - 2*pi*p/N.
+    p = (-cmath.phase(x) - cmath.pi / 2.0) * n / (2.0 * cmath.pi)
+    return int(round(p)) % n, 2.0 * abs(x) / n
+
+
 def table_zero(levels_profile):
     """Table index 0: the sine's rising crossing of its own centre.
 
@@ -151,13 +179,19 @@ def main():
             if z is None:
                 print(f"run {i}: no crossing", flush=True)
                 continue
-            phase0, amp, peak, trough = z
+            phase0_x, amp, peak, trough = z
+            phase0, amp_f = table_zero_dft(lprof)
+            # The two estimates must agree, or the profile is not the
+            # sine this reads it as and neither number is usable.
+            dphase = ((phase0 - phase0_x + POINTS // 2) % POINTS
+                      - POINTS // 2)
             # The check that makes the rotation a measurement rather
             # than a hope: a sine aligned at 0 peaks a quarter later.
             dpeak = ((peak - phase0) % POINTS - POINTS // 4)
             dtrough = ((trough - phase0) % POINTS - 3 * POINTS // 4)
             align_ok = (abs(dpeak) <= POINTS // 32
                         and abs(dtrough) <= POINTS // 32
+                        and abs(dphase) <= 2
                         and amp > 200.0)
             abs_sites = [[(b - phase0) % POINTS, round(v, 2), round(zz, 1)]
                          for b, v, zz in found[:8]]
@@ -165,15 +199,20 @@ def main():
                    "bench": args.bench, "parity": off,
                    "pair_spread": round(spread, 2),
                    "hold_ok": spread <= 4.0,
-                   "phase0": phase0, "sine_amp_codes": round(amp, 1),
+                   "phase0": phase0, "phase0_crossing": phase0_x,
+                   "phase0_disagree": dphase,
+                   "fundamental_codes": round(amp_f, 1),
+                   "sine_amp_codes": round(amp, 1),
                    "peak_bin": peak, "trough_bin": trough,
                    "peak_err": dpeak, "trough_err": dtrough,
                    "align_ok": align_ok,
                    "mad": round(mad, 4),
                    "sites_bin": [[b, round(v, 2)] for b, v, _ in found[:8]],
-                   "sites_table": abs_sites}
+                   "sites_table": abs_sites,
+                   "level_profile": [round(v, 2) for v in lprof]}
             rows.append(row)
-            print(f"run {i:2d}: phase0={phase0:3d} amp={amp:6.1f} "
+            print(f"run {i:2d}: phase0={phase0:3d} (crossing {phase0_x:3d}, "
+                  f"d={dphase:+d}) amp={amp:6.1f} "
                   f"align_ok={str(align_ok):5s} (peak err {dpeak:+3d}, "
                   f"trough err {dtrough:+3d})  hold_ok={row['hold_ok']}\n"
                   f"        bin   " +
