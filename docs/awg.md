@@ -453,23 +453,37 @@ behaviour: the fold reports the *average* displacement over the wraps
 it folds, so a quiet draw is the artifact appearing in a minority of
 wraps rather than a smaller artifact.
 
-**The displacement is not proportional to the signal - it grows as the
-signal shrinks.** Held at the phase-177 state and moving only the
-internal generator's amplitude:
+**Each site answers the amplitude question differently, which is the
+strongest evidence they are not one phenomenon.** Moving only the
+internal generator's amplitude and reading per site rather than by
+argmax:
 
-| generator amplitude | signal span | displacement |
-|---|---|---|
-| 256/256 | 2749 codes | 14.1-14.5 |
-| 128/256 | 1377 codes | 28.07, 28.11 |
-| 64/256 | 693 codes | 35.4, 36.2 |
+| site | 256/256 | 128/256 | 64/256 | behaviour |
+|---|---|---|---|---|
+| 198 | +12.2 .. +12.7 | - | +1.7 .. +1.9 | scales **with** the signal |
+| 138 | -1.3 .. -1.8 | - | -1.1 .. -1.6 | **independent** of it |
+| 177 | 14.1 .. 14.5 | 28.07, 28.11 | 35.4, 36.2 | grows as the signal **shrinks** |
 
-So it is not a slew or settling character on this path - the ADC
-catching the converter mid-transition would shrink with the slew, and
-this does the opposite. It is not a fixed code offset either. On the
-host-fed ramp the same question reads additive: changing `RAMP_STEP`
-moves the per-sample step by 2x while `n * slope * step` stays at
-~28-30 codes. Small n on the amplitude arms (1, 2, 2 draws) - treat the
-direction as measured and the coefficient as not.
+`hold_ok` is true throughout, so the pairing is cancelling the
+staircase at every amplitude and the readings stand.
+
+Three sites, three dependencies: one proportional, one flat, one
+inverse. **This paragraph previously said "the displacement is not
+proportional to the signal - it grows as the signal shrinks", which was
+site 177 measured by argmax and stated as a property of the artifact.**
+It is a property of one site. On the host-fed ramp the same question
+reads additive - changing `RAMP_STEP` moves the per-sample step by 2x
+while `n * slope * step` stays at ~28-30 codes - and that too is one
+number over an unknown mixture of sites.
+
+**The draw event is still not found, and an amplitude excursion is not
+it.** Eighteen captures in one session, six at full amplitude, four at
+quarter, eight at full again: site 198 reads +12.24 to +12.71 before
+and +12.37 to +12.68 after, and 138 is unchanged across all of it. That
+retires the lead recorded here that "having run at reduced generator
+amplitude" coincided with the strong-site set changing - it does not.
+Together with the table rebuild and the NRSTB reset, three candidates
+are now excluded and none proposed.
 
 Still open: whether the doubling on the host-fed path is the same
 effect modulated or a larger sibling, and the mechanism for either.

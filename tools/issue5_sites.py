@@ -65,6 +65,12 @@ def main():
                          "inside one board session, because opening the "
                          "control port resets the board and a reset is "
                          "itself a candidate")
+    ap.add_argument("--amp-plan", default="",
+                    help="amplitude per block, e.g. 256x6,64x4,256x8 - "
+                         "all inside one board session, so an excursion "
+                         "to a reduced amplitude can be tested as the "
+                         "event that redraws the site set. Compare the "
+                         "blocks at the same amplitude either side of it")
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "macos"))
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
@@ -77,12 +83,21 @@ def main():
                 regen.update(range(int(a), int(b) + 1))
             else:
                 regen.add(int(part))
+    plan = []
+    if args.amp_plan:
+        for part in args.amp_plan.split(","):
+            a, n = part.lower().split("x")
+            plan.extend([int(a)] * int(n))
     board = measure.Board(settle=3.0)
     rows = []
     try:
         board.stop()
         board.drain_console(0.5)
         for i in range(1, args.runs + 1):
+            amp = plan[i - 1] if i <= len(plan) else None
+            if amp is not None and (i == 1 or plan[i - 2] != amp):
+                measure.set_gen(board, "sine",
+                                points=measure.GEN_TABLE_POINTS, amp=amp)
             if i in regen:
                 measure.set_gen(board, "sine",
                                 points=measure.GEN_TABLE_POINTS,
@@ -104,6 +119,7 @@ def main():
             total_abs = sum(abs(v - pmed) for v in prof)
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                    "bench": args.bench, "regen": i in regen,
+                   "amp": amp,
                    "total_abs": round(total_abs, 2),
                    "site_abs": round(sum(abs(v) for _b, v, _z in found), 2),
                    "argmax_phase": fold.get("peak_phase"),
@@ -113,7 +129,8 @@ def main():
                    "sites": [[b, round(v, 2), round(z, 1)]
                              for b, v, z in found[:6]]}
             rows.append(row)
-            print(f"run {i:2d}{'*' if i in regen else ' '}: "
+            print(f"run {i:2d}{'*' if i in regen else ' '}"
+                  f"{('a%d' % amp) if amp is not None else '':>5}: "
                   f"argmax {row['argmax_phase']:3d} "
                   f"({row['argmax_peak']:+7.2f})  total|dev| "
                   f"{row['total_abs']:7.1f}  sites "
@@ -123,6 +140,10 @@ def main():
             board.drain_console(0.3)
     finally:
         try:
+            if plan:
+                measure.set_gen(board, "sine",
+                                points=measure.GEN_TABLE_POINTS,
+                                amp=measure.GEN_AMP_FULL)
             board.stop()
         finally:
             board.close()
