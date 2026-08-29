@@ -145,20 +145,49 @@ def table_zero(levels_profile):
     return phase0, amp, peak, trough
 
 
+def align_ok_pre(peak, trough, phase0, n):
+    """Is this single-cycle run aligned well enough to carry forward?"""
+    return (abs((peak - phase0) % n - n // 4) <= n // 32
+            and abs((trough - phase0) % n - 3 * n // 4) <= n // 32)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-n", "--runs", type=int, default=12)
     ap.add_argument("-s", "--seconds", type=float, default=3.0)
+    ap.add_argument("--points-plan", default="",
+                    help="generator resolution per block, e.g. "
+                         "256x3,128x6,256x3 - the wrap-versus-waveform "
+                         "discriminator. At 128 the table holds two "
+                         "sine cycles inside one 256-entry PDC wrap, so "
+                         "a wrap-locked site keeps its entry and a "
+                         "waveform-locked one appears at i and i+128. "
+                         "Bracket it with 256 blocks: the rotation is "
+                         "only measurable from a single-cycle table and "
+                         "is carried into the 128 block from the "
+                         "bracket either side of it")
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "macos"))
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
 
+    pplan = []
+    if args.points_plan:
+        for part in args.points_plan.split(","):
+            a, n = part.lower().split("x")
+            pplan.extend([int(a)] * int(n))
+
     board = measure.Board(settle=3.0)
     rows = []
+    carried = None
     try:
         board.stop()
         board.drain_console(0.5)
-        for i in range(1, args.runs + 1):
+        runs = max(args.runs, len(pplan))
+        for i in range(1, runs + 1):
+            pts = pplan[i - 1] if i <= len(pplan) else None
+            if pts is not None and (i == 1 or pplan[i - 2] != pts):
+                measure.set_gen(board, "sine", points=pts,
+                                amp=measure.GEN_AMP_FULL)
             res = measure.run_capture(board, preset="M", seconds=args.seconds)
             ps = res.stream
             vals = ps.series.get(measure.CH_A0) or []
@@ -181,6 +210,20 @@ def main():
                 continue
             phase0_x, amp, peak, trough = z
             phase0, amp_f = table_zero_dft(lprof)
+            # A multi-cycle table has no k=1 fundamental, so the
+            # rotation is not measurable from it. Carry the bracket's
+            # instead, and say so in the row rather than letting a
+            # carried number read like a measured one.
+            src = "measured"
+            if pts is not None and pts != POINTS:
+                src = "carried"
+                if carried is None:
+                    print(f"run {i}: no bracket - run a {POINTS}-point "
+                          f"block first", flush=True)
+                    continue
+                phase0, phase0_x = carried, carried
+            elif align_ok_pre(peak, trough, phase0, POINTS):
+                carried = phase0
             # The two estimates must agree, or the profile is not the
             # sine this reads it as and neither number is usable.
             dphase = ((phase0 - phase0_x + POINTS // 2) % POINTS
@@ -189,14 +232,17 @@ def main():
             # than a hope: a sine aligned at 0 peaks a quarter later.
             dpeak = ((peak - phase0) % POINTS - POINTS // 4)
             dtrough = ((trough - phase0) % POINTS - 3 * POINTS // 4)
-            align_ok = (abs(dpeak) <= POINTS // 32
-                        and abs(dtrough) <= POINTS // 32
-                        and abs(dphase) <= 2
-                        and amp > 200.0)
+            # A two-cycle table peaks twice, so the quarter-period
+            # attestation is a single-cycle test and does not apply.
+            align_ok = (abs(dphase) <= 2 and amp > 200.0
+                        and (src == "carried"
+                             or (abs(dpeak) <= POINTS // 32
+                                 and abs(dtrough) <= POINTS // 32)))
             abs_sites = [[(b - phase0) % POINTS, round(v, 2), round(zz, 1)]
                          for b, v, zz in found[:8]]
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                    "bench": args.bench, "parity": off,
+                   "points": pts or POINTS, "phase0_source": src,
                    "pair_spread": round(spread, 2),
                    "hold_ok": spread <= 4.0,
                    "phase0": phase0, "phase0_crossing": phase0_x,
@@ -224,6 +270,14 @@ def main():
             board.drain_console(0.3)
     finally:
         try:
+            # Leave the generator where every other instrument on this
+            # issue expects to find it. A tool that changes resolution
+            # and exits is a tool that silently reconfigures the next
+            # person's baseline.
+            if pplan:
+                measure.set_gen(board, "sine",
+                                points=measure.GEN_TABLE_POINTS,
+                                amp=measure.GEN_AMP_FULL)
             board.stop()
         finally:
             board.close()
