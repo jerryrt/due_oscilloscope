@@ -232,6 +232,29 @@ ring dump, the snapshot diagnostic, the USB-free mimic loop, the duplex
 bench, the UART transport, the register dump and the three DMA
 benchmarks.
 
+**Two parity breaks are open, both found 2026-08-29 on windows-desk.**
+
+**1. Long host-fed playback wedges Track A and not Track B.** At RC 195,
+`tools/bench.py --only play --mb 8` hangs with the host at 0.25 s of CPU
+after four minutes; the same command at `--mb 2` completes in about five
+seconds of feed. Track B on the same host, harness and rate completes
+8 MB in 20.9 s at 0 B deficit, **3 of 3**, against Track A's **2 of 2**
+wedged. Only the track differs, so this is not the harness and not
+Windows' backpressure - that was the first hypothesis and the control
+killed it. Not yet bisected to a rate threshold or a duration threshold;
+five seconds of feed works and twenty-one does not.
+
+**2. The `# play:` line is not the same on both tracks**, which the
+"same output format" claim above does not survive. Track B prints
+`... endtx spans partial occmin`; Track A puts `svc` between `endtx` and
+`spans` and adds `rebuilds`, `act-in`, `act-out`. `tools/bench.py`
+parsed positionally and reported the miss as a **100% byte deficit**
+until `412935d`. Which line is canonical is a firmware-side call.
+
+Neither is a Track A capability gap - the suite is green on Track A here
+(505 passed / 19 skipped / 1 xfailed) - but invariant 3 makes both debt
+with a date on it rather than a property of the track.
+
 ### The bulk path no longer goes through the core
 
 Track A used to starve above roughly 62 ksps of host-fed playback, and
