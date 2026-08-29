@@ -281,6 +281,18 @@ tolerance argument is actually about - the largest displacement in a
 wrap - which is 12.3-14.5 codes routinely today against a closing
 record of 1.0-7.3. Quote the site table, not the peak.
 
+**The sites sit on a spacing of 21, which is a fact this project
+already had and had filed under the wrong heading.**
+`tools/acr_issue5.py` records "the phases sit on a lattice of 21 and a
+lattice is what a periodic process looks like when the run start is
+arbitrary" - written about phases drawn *across* captures. They are not
+drawn across captures: 117 and 138 are 21 apart, and 177, 198, 219 are
+21 apart, all of them **within one capture**. windows-desk's 156 is 39
+from 117, the same offset that separates 138 from 177. Two combs of
+period 21, offset by 3 in bin terms, rather than one wandering phase.
+Stated as the arithmetic of five sites on one bench and one on another,
+which is not enough to call it the mechanism.
+
 One reading trap, since it cost a first pass here. `spike` subtracts
 each bin's neighbours because `fold_profile` must survive a waveform
 underneath it. After `pair_fold`'s differencing within the DAC hold
