@@ -367,7 +367,10 @@ Check here before reasoning from general Arduino knowledge.
     200 ksps unless every `write()` is *the same size*. A constant 512
     bytes is lossless; "whatever is due" is not, even when every write
     it emits is 512 or 1024. The mechanism is unknown; the measurement
-    is not. `Feeder.WRITE_SIZE`.
+    is not. `Feeder.WRITE_SIZE`. Re-taken 2026-08-29 and current -
+    0.605-0.633% at 397,959 sps, 0.763-0.915% at 600,000 - and it also
+    costs runway, 7-12 underruns against 0. **Windows has none of it**,
+    0 B on both arms at every rate, so this bullet is macOS's alone.
 
   The safe feed is therefore: constant-size writes, clock-paced, with a
   bounded lead against the DMA-fed ring, sleeping until the next write
@@ -451,9 +454,18 @@ it.
 Nothing else in this file is invalidated. Everything measured here was
 measured on macOS and stays true of macOS; what changes is which host's
 numbers are the project's numbers. Re-taking the 0-series in
-`docs/HANDOFF.md` comes before building on top of it, and
-`Feeder.WRITE_SIZE` may turn out to be a macOS workaround rather than a
-rule.
+`docs/HANDOFF.md` comes before building on top of it.
+
+**`Feeder.WRITE_SIZE` is settled, and it is a macOS workaround.** Both
+benches ran `tools/writepolicy.py` on 2026-08-29, four runs per arm per
+rate, ABBA within each rate. macOS due-sized writes lose 0.605-0.633% at
+397,959 sps and 0.763-0.915% at 600,000 while constant-size loses 0 B in
+every run; Windows loses **0 B in all 24 runs, both arms, every rate**,
+because its driver blocks the writer instead of counting bytes it will
+shed. So the constant-size rule is a tier-2 platform rule, the honest
+high-rate byte-conservation figures are the Windows ones, and the
+constant that enforces it lives in `measure.py` - above the seam the
+next paragraph says all platform difference belongs in.
 
 **All platform difference lives in `host/transport.py` and
 `host/rt.py`.** Everything above them - `measure.py`, the daemon, the
