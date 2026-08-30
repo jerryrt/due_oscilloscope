@@ -21,3 +21,22 @@ has one.
 The names carry the method because the method changed between them, and
 a spread taken across two methods is not a spread.
 `docs/measurement-suite.md` has the argument and the verdict.
+
+## Rows that are known bad, and why they are still here
+
+A record is append-only. A row that turned out to be corrupt is
+annotated rather than deleted, because a gap in a series is worse than a
+labelled bad row: the gap invites the next reader to wonder what was
+there, and the label tells them.
+
+| file | rows | what happened |
+|---|---|---|
+| `issue5-a1-macos.jsonl` | `bench` = `macos-long2` | The pytest suite was run against the board while this series was capturing. The ports fought and the captures are corrupt - equal-and-opposite pairs of *thousands* of codes, 128 bins apart, where the same instrument reads single codes everywhere else. Excluded by name in `tools/issue24_outliers.py`. |
+
+**If you write a tool that walks these files, exclude that `bench` value.**
+The corruption is large and would dominate any statistic it entered.
+
+The mechanism is worth knowing beyond the one block: a second process
+opening the ports mid-capture does not fail loudly, it produces
+plausible-looking numbers. Do not run the suite against a board another
+tool is holding.
