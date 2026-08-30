@@ -773,6 +773,18 @@ static void cmd_occ_hist(void)
 			uart_flush();
 	}
 	printf("\n");
+#else
+	/*
+	 * Say it is absent rather than printing nothing.
+	 *
+	 * With the trace compiled out this printed no line at all, and a
+	 * host cannot tell that from a run that captured nothing - which
+	 * is the defect CTL_ERR_OPCODE exists to avoid on the control
+	 * channel, in CLAUDE.md's words: zero is a measurement, and a
+	 * host cannot otherwise tell it from "not counted here". Silence
+	 * is the same trap with less information in it.
+	 */
+	printf("# acq_rate: not built (ACQ_RATE_TRACE_ENABLED is 0)\n");
 #endif
 	uart_flush();
 }
