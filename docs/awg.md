@@ -1381,6 +1381,33 @@ this is the opposite at both ends. Whatever selects the affected rates is
 not "too fast for the DACC", and sizing a design against the nominal rate
 at RC 39 or 44 will be 1.6-2.3% wrong every time.
 
+**The affected rates are a contiguous band with soft edges.** Ten rates,
+8 reps each, underrun-free runs only:
+
+| RC | nominal sps | slow runs | ratio |
+|---|---|---|---|
+| 28 | 1,392,857 | 0/7 | full rate |
+| 30 | 1,300,000 | 0/7 | full rate |
+| **32** | 1,218,750 | **1/8** | 0.93750 |
+| 34 | 1,147,059 | **8/8** | 0.98431 |
+| 36 | 1,083,333 | **8/8** | 0.98428 |
+| 39 | 1,000,000 | **8/8** | 0.97653 |
+| 44 | 886,364 | **8/8** | 0.98428 |
+| **48** | 812,500 | **1/8** | 0.96858 |
+| 52 | 750,000 | 0/8 | full rate |
+| 56 | 696,429 | 0/8 | full rate |
+
+So the band is **RC 32 to 48** - about 812,500 to 1,218,750 sps - and it
+is clean on both sides of that, at 28/30 above and 52/56 below. The
+*edges* of the band, RC 32 and RC 48, are the intermittent ones; the
+middle is persistent on every run. That is the shape of a window a
+process falls into rather than a threshold it crosses, and any mechanism
+proposed for this has to produce both the band and its soft edges.
+
+It also means the affected range is most of the useful high-rate span,
+which is worth knowing before sizing anything against a nominal rate
+between 812 k and 1.22 M sps.
+
 **Only RC 32's fraction is a reading; the others are not.** The table
 above used to name 125/128 for RC 39 and 63/64 for RC 44. Those came out
 of `Fraction.limit_denominator(64)` applied to a *measured* ratio, which
