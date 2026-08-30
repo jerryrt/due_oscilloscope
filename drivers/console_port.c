@@ -8,6 +8,7 @@
 
 #include "bsp.h"
 #include "console_port.h"
+#include "stream.h"
 
 void console_write(const char *s)
 {
@@ -22,4 +23,14 @@ void console_write(const char *s)
 void console_flush(void)
 {
 	uart_flush();
+}
+
+/*
+ * The one name console_cmd_stream() needs from this track. The rate
+ * ceiling is a measured floor per channel count, which is why the
+ * decision stays here and only the wording is shared.
+ */
+bool console_port_stream_start(uint32_t trigger_hz)
+{
+	return stream_start(trigger_hz);
 }

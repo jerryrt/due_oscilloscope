@@ -45,6 +45,9 @@
 #ifndef CONSOLE_PORT_H
 #define CONSOLE_PORT_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -70,6 +73,22 @@ void console_write(const char *s);
  * not change the byte count.
  */
 void console_flush(void);
+
+/*
+ * Start a capture stream at `trigger_hz`; false if the rate is past
+ * this track's measured ADC ceiling.
+ *
+ * The one name console_cmd_stream() needs that is not already shared.
+ * Everything else it says - the shape name, the output frequency, the
+ * sync wording - comes from ctl_wire.h and ctl_port_gen_get(), which
+ * were shared before this.
+ *
+ * The rate ceiling is per track by construction: ACQ_MIN_RC_FOR() is a
+ * measured floor and each track measures its own, which is why this is
+ * a port name and not a shared function. Track B currently accepts one
+ * to three channels and Track A one or two - see issue #46.
+ */
+bool console_port_stream_start(uint32_t trigger_hz);
 
 #ifdef __cplusplus
 }

@@ -27,6 +27,8 @@
  * console_write()/console_flush(), which is the difference that made
  * these two copies look different while saying the same thing.
  */
+#include <stdio.h>
+
 #include "console.h"
 #include "console_port.h"
 #include "ctl_port.h"
@@ -109,4 +111,77 @@ void console_bleed_settle(uint32_t ms)
 
 	while (ctl_port_micros() - t0 < ms * 1000u)
 		{ }
+}
+
+/*
+ * `1`..`5`: start a capture stream, and say what it is about to do.
+ *
+ * BANNER FIRST, THEN START. Issue #41, and the order is the whole
+ * point of this function existing once.
+ *
+ * Capture is device-driven: the ring fills from the moment the timer
+ * runs and nothing has to ask it to. Invariant 8 prices a console line
+ * at 13-20 ms of blocked main loop - this banner is ~160 characters and
+ * was measured at 17.9-20.2 ms - while the ring holds STREAM_NBUF
+ * frames, which at 453,488 Hz is 8.96 ms of runway. Printing after the
+ * start spent the whole runway before the first drain and everything
+ * past it was gone: exactly 3 frames, nine runs of nine, on three
+ * benches and three hosts, with zero growth afterwards because the loss
+ * is spent before the first transfer rather than leaking.
+ *
+ * The shape is h_mimic's, which already printed before starting for
+ * this reason and is the preset whose zero-at-every-rate localised the
+ * defect. The banner announces intent; a refusal follows it if the
+ * start fails. No host reads the banner as success - measure.py takes
+ * success as the *absence* of "refused" - so the refusal arriving
+ * second changes nothing above it.
+ *
+ * Two sites are NOT hazards and must not be "fixed": h_play prints
+ * after a host-driven start that flows nothing until fed, and
+ * cmd_stream_uart has 2019 ms of margin. docs/debugging.md carries the
+ * table.
+ *
+ * The generator half needs no port: ctl_port_gen_get() already returns
+ * the shape, points and sync that the two copies read out of their own
+ * file-scope globals, and gen_shape_name()/gen_hz_for() have been
+ * shared since the control channel landed. Only the start is per track.
+ */
+void console_cmd_stream(uint32_t trigger_hz)
+{
+	char line[192];
+	ctl_gen_t g;
+	bool have_gen = ctl_port_gen_get(&g);
+
+	if (have_gen)
+		snprintf(line, sizeof(line),
+		         "# streaming: trigger %lu Hz, %lu sps aggregate, "
+		         "%s %lu Hz (%u pts/cycle)\n",
+		         (unsigned long)trigger_hz,
+		         (unsigned long)(trigger_hz * 2u),
+		         gen_shape_name(g.shape),
+		         (unsigned long)gen_hz_for(trigger_hz, g.points,
+		                                   g.sync),
+		         (unsigned)g.points);
+	else
+		snprintf(line, sizeof(line),
+		         "# streaming: trigger %lu Hz, %lu sps aggregate\n",
+		         (unsigned long)trigger_hz,
+		         (unsigned long)(trigger_hz * 2u));
+	console_write(line);
+
+	if (have_gen)
+		console_write(g.sync == GEN_SYNC_OFF
+		              ? "# DAC1 holds mid scale: A1 must read flat, "
+		                "or demux is wrong\n"
+		              : "# DAC1 carries the sync: A1 must show a "
+		                "square, not the waveform\n");
+	console_flush();
+
+	if (!console_port_stream_start(trigger_hz)) {
+		snprintf(line, sizeof(line),
+		         "# refused: %lu Hz is past the measured ADC "
+		         "ceiling\n", (unsigned long)trigger_hz);
+		console_write(line);
+		console_flush();
+	}
 }

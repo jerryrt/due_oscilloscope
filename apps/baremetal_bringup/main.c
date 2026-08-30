@@ -587,56 +587,12 @@ static void cmd_stream_uart(uint32_t trigger_hz)
  */
 /* console_gen_report() is shared - lib/due_shared/src/console_cmds.c */
 
-static void cmd_stream(uint32_t trigger_hz)
-{
-	/*
-	 * Banner first, then start. Issue #41, and the order is the fix.
-	 *
-	 * Capture is device-driven: the ring fills from the moment the
-	 * timer runs, and nothing has to ask it to. Invariant 8 prices a
-	 * console line at 13-20 ms of blocked main loop - this banner is
-	 * ~160 characters and measured at 17.9-20.2 ms - while the ring
-	 * holds STREAM_NBUF frames, which at 453,488 Hz is 8.96 ms of
-	 * runway. Printing after the start spent the whole runway and
-	 * more before the first drain, and everything past it was gone:
-	 * exactly 3 frames, on three benches and three hosts, with zero
-	 * growth afterwards because the loss is spent before the first
-	 * transfer rather than leaking.
-	 *
-	 * The shape is h_mimic's, which already prints before starting
-	 * for this reason and is the preset whose zero-at-every-rate
-	 * localised the defect. The banner announces intent; a refusal
-	 * follows it if the start fails. No host reads the banner as
-	 * success - measure.py takes success as the *absence* of
-	 * "refused" - so the refusal arriving second changes nothing
-	 * above.
-	 *
-	 * Figures and the full site table are in docs/debugging.md,
-	 * including the two sites that are NOT hazards and must not be
-	 * "fixed": h_play prints after a host-driven start that flows
-	 * nothing until fed, and cmd_stream_uart has 2019 ms of margin.
-	 */
-	printf("# streaming: trigger %lu Hz, %lu sps aggregate, %s %lu Hz "
-	       "(%u pts/cycle)\n",
-	       (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
-	       gen_shape_name(gen_shape),
-	       (unsigned long)gen_hz_for(trigger_hz, gen_points, gen_sync),
-	       (unsigned)gen_points);
-	if (gen_sync == GEN_SYNC_OFF)
-		printf("# DAC1 holds mid scale: A1 must read flat, or demux "
-		       "is wrong\n");
-	else
-		printf("# DAC1 carries the sync: A1 must show a square, not "
-		       "the waveform\n");
-	uart_flush();
+/*
+ * console_cmd_stream() is shared - lib/due_shared/src/
+ * console_cmds.c. Issue #41's ordering lives there now, once.
+ * This track supplies console_port_stream_start() below.
+ */
 
-	if (!stream_start(trigger_hz)) {
-		printf("# refused: %lu Hz is past the measured ADC ceiling\n",
-		       (unsigned long)trigger_hz);
-		uart_flush();
-		return;
-	}
-}
 
 /*
  * Loop diagnostic: periodic snapshots taken while both service loops run.
@@ -1102,10 +1058,10 @@ static void h_dac_15m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(1500000
 static void h_dac_30m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(3000000); }
 static void h_epstate(const uint32_t *a)   { (void)a; cmd_endpoint_state(); }
 
-static void h_s50(const uint32_t *a)  { (void)a; cmd_stream(50000); }
-static void h_s100(const uint32_t *a) { (void)a; cmd_stream(100000); }
-static void h_s200(const uint32_t *a) { (void)a; cmd_stream(200000); }
-static void h_s400(const uint32_t *a) { (void)a; cmd_stream(400000); }
+static void h_s50(const uint32_t *a)  { (void)a; console_cmd_stream(50000); }
+static void h_s100(const uint32_t *a) { (void)a; console_cmd_stream(100000); }
+static void h_s200(const uint32_t *a) { (void)a; console_cmd_stream(200000); }
+static void h_s400(const uint32_t *a) { (void)a; console_cmd_stream(400000); }
 /*
  * The top preset is derived, not written down: the highest rate the
  * ADC sustains follows from the measured cliff at RC 86, and that
@@ -1117,7 +1073,7 @@ static void h_s400(const uint32_t *a) { (void)a; cmd_stream(400000); }
 static void h_smax(const uint32_t *a)
 {
 	(void)a;
-	cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC);
+	console_cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC);
 }
 
 static void h_stop(const uint32_t *a)

@@ -41,24 +41,36 @@ TRACKS = [
 #: -5.89 ms and left unfixed for a day while `cmd_stream` was covered by
 #: this very file. A per-site test that only knows about the site someone
 #: happened to fix reproduces exactly that gap.
+SHARED = os.path.join("lib", "due_shared", "src", "console_cmds.c")
+
+#: (handler, where it lives, signature, banner, start, refusal).
+#:
+#: `cmd_stream` has ONE site now. Issue #45 moved the body into
+#: `lib/due_shared/src/console_cmds.c` as `console_cmd_stream()`, so
+#: what this file was asking for - "one decision here and not two" - is
+#: now true by construction rather than by a test noticing when it
+#: stopped being. The guard is kept and pointed at the one home: the
+#: ordering is still a source property, and a rewrite of the shared body
+#: can still get it wrong once for both tracks.
+#:
+#: `loop` is still two sites and still needs both. It was listed at
+#: margin -5.89 ms in docs/debugging.md's class audit and fixed per
+#: track, which is exactly the gap this file was written to close.
 HANDLERS = [
-    ("cmd_stream",
-     r"static void cmd_stream\(uint32_t trigger_hz\)\s*\{",
-     r'"# streaming:', r"stream_start\(trigger_hz\)", r"# refused:"),
-    ("loop",
+    ("cmd_stream", [("shared", SHARED)],
+     r"void console_cmd_stream\(uint32_t trigger_hz\)\s*\{",
+     r'"# streaming:',
+     r"console_port_stream_start\(trigger_hz\)", r"# refused:"),
+    ("loop", TRACKS,
      r"static void h?a?_?loop\(const uint32_t \*a\)\s*\{",
      r'"# loop: DAC %lu sps from USB',
      r"stream_start_capture_only\(adc_hz, nch\)",
      r"# loop: ADC %lu Hz"),
 ]
 
-#: Every handler x every track. Both tracks, because invariant 3 wants
-#: one decision here and not two: each fix landed on both in one change
-#: and has to stay that way, or the oracle carries a defect the project
-#: keeps it to detect.
-SITES = [(f"{h} {t}", path, sig, banner, start, refusal)
-         for (h, sig, banner, start, refusal) in HANDLERS
-         for (t, path) in TRACKS]
+SITES = [(f"{h} {where}", path, sig, banner, start, refusal)
+         for (h, places, sig, banner, start, refusal) in HANDLERS
+         for (where, path) in places]
 
 
 def _body(path, signature):

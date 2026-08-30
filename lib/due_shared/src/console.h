@@ -140,6 +140,19 @@ void console_trigger_fault(void);
 void console_gen_report(void);
 
 /*
+ * `1`..`5`: start a capture stream and say what it will be doing.
+ *
+ * Shared because its two copies had one defect between them. Issue #41:
+ * both printed the banner *after* starting, capture is device-driven so
+ * the ring was filling while the console blocked for 17.9-20.2 ms
+ * against 8.96 ms of runway, and exactly 3 frames were gone before the
+ * first transfer - on three benches and three hosts. The fix was an
+ * ordering, applied by hand to both tracks; one body is why it cannot
+ * come apart again.
+ */
+void console_cmd_stream(uint32_t trigger_hz);
+
+/*
  * The crosstalk settle wait. Shared so the two tracks cannot drift
  * apart on it - issue #16 measures what happens between conversions,
  * so a differing wait changes the measurement. See console_cmds.c.
