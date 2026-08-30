@@ -44,6 +44,32 @@ def load(path):
         return [json.loads(x) for x in f if x.strip()]
 
 
+def fold_artifacts(gaps, period, tol=2):
+    """Gaps that are period/k - k evenly spaced sites round the wrap.
+
+    The signature of a fold artifact rather than a lattice, and it has
+    swamped whole arms on this issue: the macOS bench found gap 64 (512
+    over 8) dominating every census at ADC 150,000 and 133,561, and a
+    census swamped by an unmodelled feature reports absences for
+    everything it cannot resolve.
+
+    Reported *above* the --max-gap filter, deliberately. The default
+    cuts at 60 and the commonest artifact is 64, so the filter hid the
+    one thing that decides whether a census is readable - I read a
+    hold-6 histogram here, saw no 64s in it, and called the arm clean
+    when a fifth of its gaps were fold artifacts.
+    """
+    out = {}
+    for k in (2, 4, 8, 16, 32):
+        want = period // k
+        if want < 4:
+            continue
+        n = sum(1 for g in gaps if abs(g - want) <= tol)
+        if n:
+            out[k] = (want, n)
+    return out
+
+
 def census(rows, key):
     """Pooled spacings, MAD and n_per_bin for one (hold, dac, adc) arm.
 
@@ -196,6 +222,29 @@ def main():
             print(f"   gaps of 20/21/22 (update-locked): {n21}"
                   + ("   [degenerate with the mode here]"
                      if abs(mode - UPDATE_LOCKED_UPDATES) <= 1 else ""))
+
+            # Whether this census is readable at all, printed before
+            # anyone reads a number out of it. Counted over EVERY gap,
+            # not the filtered ones: the default --max-gap is 60 and the
+            # commonest artifact is 64, so the filter hides exactly the
+            # feature that decides the question.
+            period = next((r.get("period") for r in rows
+                           if r.get("period")), None)
+            if period:
+                art = fold_artifacts(gaps, period)
+                n_art = sum(n for _w, n in art.values())
+                frac = 100.0 * n_art / max(len(gaps), 1)
+                if art:
+                    bits = ", ".join(f"{period}/{k}={w}: {n}"
+                                     for k, (w, n) in sorted(art.items()))
+                    print(f"   fold artifacts ({bits}) = {n_art} of "
+                          f"{len(gaps)} gaps, {frac:.1f}%")
+                if frac >= 10.0:
+                    print(f"   !! {frac:.0f}% of the gaps here are evenly "
+                          f"spaced sites round the wrap. A census swamped "
+                          f"by an unmodelled feature reports absences for "
+                          f"everything it cannot resolve - do not read an "
+                          f"absence out of this arm")
 
 
 if __name__ == "__main__":
