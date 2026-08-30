@@ -181,3 +181,83 @@ The JTAG header is populated and nothing in this design forecloses it. A
 CMSIS-DAP probe would add breakpoints, memory inspection and thread-aware
 RTOS views. The mechanisms above remain useful regardless — particularly
 GPIO timing, which stays more accurate than any halt-based measurement.
+
+## An overrun count is a stopwatch
+
+Issue #41 is worth keeping as a method rather than as one bug. Capture
+lost exactly 3 frames at the start of every run above 200 kHz, nine
+times of nine, and the count turned out to be a *measurement of a
+duration* rather than a symptom.
+
+Each lost frame is one ring slot the main loop failed to service, so
+
+    blocking = runway + lost / frames_per_second
+
+with `runway = STREAM_NBUF * STREAM_BUF_SAMPLES / (channels * rate)`.
+At 453,488 Hz over two channels that runway is 8.96 ms, and 4 lost
+frames implies about 18 ms of blocked loop. The same arithmetic run
+backwards predicts the rate at which losses start.
+
+**The cause was `cmd_stream` printing its banner AFTER `stream_start`.**
+Invariant 8 costs 13-20 ms of blocked main loop for a console line, and
+the ring is already filling while it prints. Moving the two prints
+before the start took the count to zero at every rate, nine runs of
+nine - mechanism demonstrated by intervention, not inference.
+
+**The model, measured on two independent code paths:**
+
+    T = about 6 ms of formatting and uart_flush
+      + the UART time of whatever that path prints
+
+`cmd_stream` prints ~160 characters after starting and blocks
+[17.9, 20.2] ms; `h_loop` prints ~102 and blocks [14.5, 15.2]. The
+difference matches the extra characters at 115200 8N1 (5.0 ms) and the
+two paths agree on the fixed part to within 0.6 ms. That is CLAUDE.md's
+console cost arrived at from the capture ring instead of the load
+monitor - two instruments sharing nothing landing on one number.
+
+### The class, not the instance
+
+Every site that starts a converter and then prints, with margin = runway
+minus predicted blocking:
+
+| site | rate | runway | banner | margin |
+|---|---|---|---|---|
+| `cmd_stream` | 453,488 | 8.96 ms | ~160 ch | **-10.93 ms** |
+| `h_loop` / `ha_loop` | 453,488 | 8.96 ms | ~102 ch | **-5.89 ms** |
+| `cmd_dac_crosscheck` | 200,000 | 20.32 ms | ~110 ch | +4.77 ms |
+| `cmd_stream_uart` | 2,000 | 2032 ms | ~74 ch | +2019 ms |
+
+`cmd_dac_crosscheck` survives on margin alone - about one added banner
+line from biting - and only because it starts capture at a fixed
+200,000 Hz where the runway is largest.
+
+**Two sites are NOT hazards and should not be "fixed".** `h_play` prints
+after a successful `play_start`, but playback is *host*-driven: nothing
+flows until the host feeds, which happens after the command returns.
+Capture is *device*-driven and fills the moment the timer runs. That
+asymmetry is the whole mechanism. And `h_mimic` already prints before
+starting, with a comment recording that ~7 ms of banner was once found
+lying over the first samples of every capture on that preset - which is
+why preset M reads zero at every rate, and is what localised #41.
+
+### first, max, and where a loss actually sits
+
+`first_overrun` and `max_overrun` cannot locate a loss in time, and two
+issues turn on the difference. #41 loses its frames *before the first
+frame ships*, so first equals max. #44 loses them later, so first is 0
+and max is not.
+
+`ParsedStream.overrun_steps` records `(frame index, device timestamp,
+new count)` at each change - a handful of tuples per run, because the
+counter moves rarely. Read it rather than the aggregates whenever the
+question is *when*.
+
+Two cautions paid for on #44 within one hour of writing that trace.
+`first == max` does **not** separate a single stall from spread
+contention: at 200 kHz the first frame reaches the host at 5.08 ms while
+the playback priming window closes at 61.4 ms, so `first` is sampled
+long before the window of interest opens. And a distribution cannot be
+read off one draw - one traced cycle put every loss after 2 seconds, and
+twenty-four more found onsets from 15 ms to 752 ms with the heavy cycles
+losing steadily throughout the run.
