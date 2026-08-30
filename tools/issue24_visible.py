@@ -40,6 +40,38 @@ from issue24_hold import decimate                        # noqa: E402
 N = 20000
 
 
+def predicted_gap(model, period, hold, dac_hz=None):
+    """The gap a decimating reader reports, in DAC updates.
+
+    Closed form, checked against the simulation below for every hold
+    this issue has used. Cheap enough that no arm ever needs running to
+    find out whether it could have answered the question.
+
+      conversion-locked   period / gcd(period, hold)
+          Sites sit every `period` ADC conversions; decimation keeps
+          those at raw indices divisible by `hold`, i.e. the multiples
+          of lcm(period, hold), and dividing back into update space
+          gives period/gcd. The gcd is the whole story: it is why 21
+          conversions reads as 7 at hold 3 and as 21 everywhere else.
+
+      update-locked       period
+          The decimated index *is* the update number, so the gap is the
+          period at every hold. No rate in it, and no hold either.
+
+      time-locked         seconds * dac_hz
+          The only one of the three carrying a rate, which is what makes
+          a gap that moves with the ADC rate at a fixed hold diagnostic.
+    """
+    from math import gcd
+    if model == "conversion":
+        return period / gcd(int(period), int(hold))
+    if model == "update":
+        return float(period)
+    if model == "time":
+        return period * dac_hz            # period in seconds
+    raise ValueError(model)
+
+
 def _gaps(marks, hold, offset, want=6):
     dec = decimate(marks, hold, offset)
     idx = [i for i, v in enumerate(dec) if v]
@@ -87,6 +119,18 @@ def main():
     # offsets, so finding sites at ALL of them there rules that period
     # out on its own - without needing the gap at all. Where it draws at
     # every offset anyway, the check says nothing and is marked so.
+    print("\nThe closed form, checked against the simulation above:")
+    bad = []
+    for hold in holds:
+        c = conversion_lattice(args.conversions, hold, 0)
+        want = predicted_gap("conversion", args.conversions, hold)
+        got = c[0] if c else None
+        if got is not None and abs(got - want) > 1e-9:
+            bad.append((hold, got, want))
+    print(f"   period/gcd(period, hold) reproduces the simulated gap at "
+          f"every hold tested"
+          if not bad else f"   MISMATCH: {bad}")
+
     print("\nPer-offset, a second and independent signature:")
     for hold in holds:
         live = [o for o in range(hold)
