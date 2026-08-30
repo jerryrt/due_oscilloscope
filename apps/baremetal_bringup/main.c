@@ -609,12 +609,33 @@ static void gen_report(void)
 
 static void cmd_stream(uint32_t trigger_hz)
 {
-	if (!stream_start(trigger_hz)) {
-		printf("# refused: %lu Hz is past the measured ADC ceiling\n",
-		       (unsigned long)trigger_hz);
-		uart_flush();
-		return;
-	}
+	/*
+	 * Banner first, then start. Issue #41, and the order is the fix.
+	 *
+	 * Capture is device-driven: the ring fills from the moment the
+	 * timer runs, and nothing has to ask it to. Invariant 8 prices a
+	 * console line at 13-20 ms of blocked main loop - this banner is
+	 * ~160 characters and measured at 17.9-20.2 ms - while the ring
+	 * holds STREAM_NBUF frames, which at 453,488 Hz is 8.96 ms of
+	 * runway. Printing after the start spent the whole runway and
+	 * more before the first drain, and everything past it was gone:
+	 * exactly 3 frames, on three benches and three hosts, with zero
+	 * growth afterwards because the loss is spent before the first
+	 * transfer rather than leaking.
+	 *
+	 * The shape is h_mimic's, which already prints before starting
+	 * for this reason and is the preset whose zero-at-every-rate
+	 * localised the defect. The banner announces intent; a refusal
+	 * follows it if the start fails. No host reads the banner as
+	 * success - measure.py takes success as the *absence* of
+	 * "refused" - so the refusal arriving second changes nothing
+	 * above.
+	 *
+	 * Figures and the full site table are in docs/debugging.md,
+	 * including the two sites that are NOT hazards and must not be
+	 * "fixed": h_play prints after a host-driven start that flows
+	 * nothing until fed, and cmd_stream_uart has 2019 ms of margin.
+	 */
 	printf("# streaming: trigger %lu Hz, %lu sps aggregate, %s %lu Hz "
 	       "(%u pts/cycle)\n",
 	       (unsigned long)trigger_hz, (unsigned long)(trigger_hz * 2u),
@@ -628,6 +649,13 @@ static void cmd_stream(uint32_t trigger_hz)
 		printf("# DAC1 carries the sync: A1 must show a square, not "
 		       "the waveform\n");
 	uart_flush();
+
+	if (!stream_start(trigger_hz)) {
+		printf("# refused: %lu Hz is past the measured ADC ceiling\n",
+		       (unsigned long)trigger_hz);
+		uart_flush();
+		return;
+	}
 }
 
 /*

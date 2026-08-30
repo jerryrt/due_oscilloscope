@@ -682,14 +682,28 @@ static void cmd_stream(uint32_t trigger_hz)
 {
 	char buf[128];
 
-	if (!stream_start(trigger_hz)) {
-		snprintf(buf, sizeof(buf),
-		         "# refused: %lu Hz is past the measured ADC ceiling",
-		         (unsigned long)trigger_hz);
-		Serial.println(buf);
-		Serial.flush();
-		return;
-	}
+	/*
+	 * Banner first, then start. Issue #41, and the order is the fix.
+	 *
+	 * Capture is device-driven: the ring fills from the moment the
+	 * timer runs. Invariant 8 prices a console line at 13-20 ms of
+	 * blocked main loop while the ring holds STREAM_NBUF frames -
+	 * 8.96 ms of runway at 453,488 Hz - so printing after the start
+	 * spent the runway before the first drain and lost everything
+	 * past it. Measured at 3 frames on Track B and 3-4 here, with
+	 * zero growth after, because it is spent before the first
+	 * transfer rather than leaking.
+	 *
+	 * Same shape as Track B's cmd_stream and as h_mimic, which
+	 * already printed before starting for this reason. Invariant 3
+	 * wants one decision here, not two: if this ordering is revisited
+	 * on either track it is revisited on both. No host reads the
+	 * banner as success - success is the absence of "refused" - so
+	 * the refusal arriving second changes nothing above.
+	 *
+	 * docs/debugging.md has the site table, including the two that
+	 * are NOT hazards and must not be "fixed".
+	 */
 	snprintf(buf, sizeof(buf),
 	         "# streaming: trigger %lu Hz, %lu sps aggregate, %s %lu Hz on "
 	         "DAC0 (%u pts/cycle)",
@@ -702,6 +716,15 @@ static void cmd_stream(uint32_t trigger_hz)
 	               ? "# DAC1 holds mid scale: A1 must read flat, or demux is wrong"
 	               : "# DAC1 carries the sync: A1 must show a square, not the waveform");
 	Serial.flush();
+
+	if (!stream_start(trigger_hz)) {
+		snprintf(buf, sizeof(buf),
+		         "# refused: %lu Hz is past the measured ADC ceiling",
+		         (unsigned long)trigger_hz);
+		Serial.println(buf);
+		Serial.flush();
+		return;
+	}
 }
 
 /*
