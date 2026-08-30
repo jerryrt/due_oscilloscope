@@ -168,8 +168,18 @@ def test_nothing_else_builds_behind_the_enforcement():
         for name in files:
             if not name.endswith(".py"):
                 continue
-            rel = os.path.relpath(os.path.join(root, name), REPO)
-            if rel in ALLOWED or rel == os.path.relpath(__file__, REPO):
+            # Forward slashes on every platform. ALLOWED is written
+            # with them, and `os.path.relpath` hands back `host\measure.py`
+            # on win32 - so the allowlist matched nothing there and the
+            # test reported an *allowed* file as an offender. It failed
+            # on windows-desk for the whole of 2026-08-30 and was read as
+            # a pre-existing failure to work around rather than a defect
+            # in the test, which is what a tier-1 platform failure gets
+            # if nobody looks at it.
+            rel = os.path.relpath(os.path.join(root, name),
+                                  REPO).replace(os.sep, "/")
+            here = os.path.relpath(__file__, REPO).replace(os.sep, "/")
+            if rel in ALLOWED or rel == here:
                 continue
             text = _read(rel)
             for m in SPAWN.finditer(text):
