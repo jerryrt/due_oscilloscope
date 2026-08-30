@@ -29,6 +29,7 @@ rediscovered.
     python3 tools/issue24_us.py records/issue24-hold-linux.jsonl
 """
 import argparse
+from math import gcd
 import collections
 import json
 import statistics
@@ -115,9 +116,23 @@ def main():
             gaps, mads, nbin, dac, adc = census(rows, key)
             if not dac:
                 continue
-            conv = UPDATE_LOCKED_UPDATES / hold
+            # period / gcd(period, hold), NOT period / hold.
+            #
+            # issue24_hold.py reads a decimated series - vals[offset::hold],
+            # one sample per DAC update - so a lattice every `period` ADC
+            # conversions only lands on the kept samples at the multiples
+            # of lcm(period, hold), and the gap in update space is
+            # period/gcd. period/hold is what an undecimated reader would
+            # see, and printing it here has been telling three benches
+            # that hold 2 predicts 10.5 and hold 6 predicts 3.5 when the
+            # instrument can only produce 21 and 7. I put a pre-registered
+            # "alternating 10/11 at hold 2" on issue #24 from this line
+            # and it was untestable. tools/issue24_visible.py checks the
+            # closed form against a simulation.
+            conv = UPDATE_LOCKED_UPDATES / gcd(UPDATE_LOCKED_UPDATES, hold)
             time = TIME_LOCKED_US * 1e-6 * dac
             degenerate = abs(conv - time) < 0.01
+            upd_degenerate = abs(conv - UPDATE_LOCKED_UPDATES) < 0.01
             # Not every writer records a MAD - issue24_holdavg.py does
             # not - and taking a median of nothing raised
             # StatisticsError and killed the whole report rather than
@@ -131,7 +146,10 @@ def main():
                   f"   conversion-locked {conv:.2f}"
                   f"   time-locked {time:.2f}"
                   + ("   <- the last two are the SAME number here, this "
-                     "arm cannot separate them" if degenerate else ""))
+                     "arm cannot separate them" if degenerate else "")
+                  + ("   <- conversion and update are the SAME number "
+                     "here, this arm cannot separate THOSE"
+                     if upd_degenerate else ""))
             small = collections.Counter(g for g in gaps
                                         if 0 < g <= args.max_gap)
             if not small:
