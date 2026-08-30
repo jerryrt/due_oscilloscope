@@ -32,26 +32,75 @@ def _read(*parts):
 
 
 def test_track_b_cmake_forces_a_full_build():
-    """CMake cleans before every build of the firmware target.
+    """CMake cleans before every build of the firmware, in that order.
 
     Checked at the source rather than by building, so it fails on the
     change that removes it rather than on the measurement that trusts
-    it. Both halves matter: a target nothing depends on does nothing.
+    it.
+
+    The shape matters as much as the presence, and that is what this
+    file got wrong the first time. The original spelling was
+    `add_dependencies(baremetal_bringup enforce_clean_build)`, which
+    asks the build system to run a clean inside the same graph it is
+    about to link. Make re-evaluates between steps and honoured it - 25
+    of 25 objects recompiled per invocation, measured - while Ninja
+    plans the whole graph first and deleted the objects the same plan
+    was about to link, so windows-desk could not build at all and
+    `flash.py` then flashed the previous image (issue #35). It had been
+    silently Make-works / Ninja-broken since it landed, and neither half
+    was visible from either bench alone.
+
+    So the clean and the build are two *child* invocations of CMake,
+    sequenced by the shell rather than by the generator, and this pins
+    every part of that arrangement - including the absence of the shape
+    that failed.
     """
     cml = _read("CMakeLists.txt")
 
-    assert "add_custom_target(enforce_clean_build" in cml, (
-        "CMakeLists.txt no longer defines enforce_clean_build, so "
+    assert re.search(r"add_custom_target\(\s*firmware\s+ALL", cml), (
+        "CMakeLists.txt no longer defines the `firmware ALL` driver, so "
         "`cmake --build build` is incremental again and can link a "
         "mixed-revision image")
     assert re.search(r"--target\s+clean", cml), (
-        "enforce_clean_build no longer invokes CMake's clean target; an "
-        "rm -rf of the object directory is not equivalent, it removes "
-        "build.make and the build fails outright")
-    assert re.search(r"add_dependencies\(\s*baremetal_bringup\s+"
-                     r"enforce_clean_build\s*\)", cml), (
-        "enforce_clean_build exists but baremetal_bringup does not "
-        "depend on it, so it never runs")
+        "the driver no longer invokes CMake's clean target; an rm -rf of "
+        "the object directory is not equivalent, it removes build.make "
+        "and the build fails outright")
+    assert re.search(r"--target\s+baremetal_bringup", cml), (
+        "the driver cleans but never builds the firmware; `all` would "
+        "now produce no image at all")
+    assert re.search(r"add_executable\(\s*baremetal_bringup\s+"
+                     r"EXCLUDE_FROM_ALL", cml), (
+        "baremetal_bringup is back in `all`, so `cmake --build build` "
+        "builds it directly and incrementally, stepping past the clean")
+
+    assert not re.search(r"add_dependencies\(\s*baremetal_bringup\s+"
+                         r"\w*clean\w*\s*\)", cml), (
+        "the clean is a dependency of the executable again. That is the "
+        "shape that broke under Ninja: the generator plans the whole "
+        "graph, then the clean deletes the objects the same plan is "
+        "about to link. See issue #35")
+
+
+def test_flashing_track_b_also_gets_a_clean_build():
+    """The flash target must not route around the driver.
+
+    `flash` used to say `DEPENDS baremetal_bringup`, which now names a
+    target outside `all` and would build it incrementally - a clean
+    build for anyone typing `cmake --build build` and a stale one for
+    anyone typing `--target flash`, which is the more dangerous of the
+    two because its output goes on a board and into the flash log.
+    """
+    cml = _read("CMakeLists.txt")
+    assert re.search(r"add_dependencies\(\s*flash\s+firmware\s*\)", cml), (
+        "the flash target does not depend on the `firmware` driver, so "
+        "`cmake --build build --target flash` can put an incrementally "
+        "built image on the board")
+    flash_block = cml[cml.index("add_custom_target(flash\n"):] \
+        if "add_custom_target(flash\n" in cml else cml[cml.index("add_custom_target(flash"):]
+    flash_block = flash_block[:flash_block.index("add_dependencies(flash")]
+    assert "DEPENDS baremetal_bringup" not in flash_block, (
+        "the flash target depends on baremetal_bringup directly again, "
+        "which bypasses the clean")
 
 
 def test_track_a_arduino_cli_is_told_not_to_use_its_cache():

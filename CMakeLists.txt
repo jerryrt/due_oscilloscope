@@ -36,7 +36,7 @@ include_directories(SYSTEM
 
 set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/linker/sam3x8e_flash.ld)
 
-add_executable(baremetal_bringup
+add_executable(baremetal_bringup EXCLUDE_FROM_ALL
     apps/baremetal_bringup/main.c
     bsp/startup_sam3x8e.c
     bsp/uart.c
@@ -97,16 +97,37 @@ set_target_properties(baremetal_bringup PROPERTIES
 #
 # Delete the object directory rather than depend on the compiler: it is
 # the one step that cannot be fooled by a timestamp.
+# Every build of the firmware is a full build, and the ordering is
+# process sequencing rather than graph planning.
+#
+# This used to be `add_dependencies(baremetal_bringup
+# enforce_clean_build)`, which asks the build system to run a clean
+# inside the same graph that is about to link. Make re-evaluates between
+# steps and got away with it - measured on linux-x1, 25 of 25 objects
+# recompiled on every invocation - but Ninja plans the whole graph first
+# and then deletes the objects the same plan is about to link:
+#
+#     ld: cannot find CMakeFiles/baremetal_bringup.dir/drivers/stream.c.obj
+#
+# Not a parallelism race; -j 1 fails identically (issue #35). It was my
+# mechanism relying on an ordering guarantee CMake does not offer, and it
+# had been silently Make-works / Ninja-broken since it landed.
+#
+# So the clean and the build are two *child* invocations of CMake,
+# sequenced by the shell rather than by the generator. `firmware` is what
+# `all` builds; `baremetal_bringup` leaves `all` so the inner invocation
+# cannot recurse into this target, and naming it explicitly is what makes
+# the second command build the firmware rather than the driver.
+#
 # CMake's own clean target, not `rm -rf` on the object directory: that
 # also removes build.make, which the generator needs, and the build then
-# fails with "No rule to make target". Invoking the clean target is the
-# portable spelling and works under every generator, which matters
-# because this has to run on windows-desk too.
-add_custom_target(enforce_clean_build
+# fails with "No rule to make target".
+add_custom_target(firmware ALL
     COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
+    COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"
+            --target baremetal_bringup --parallel
     COMMENT "Enforcing a clean build (see tests/test_clean_build.py)"
-    VERBATIM)
-add_dependencies(baremetal_bringup enforce_clean_build)
+    USES_TERMINAL VERBATIM)
 
 add_custom_command(TARGET baremetal_bringup POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:baremetal_bringup>
@@ -187,9 +208,12 @@ if(BOSSAC)
         COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/flash.py"
                 --bin  "$<TARGET_FILE_DIR:baremetal_bringup>/baremetal_bringup.bin"
                 --bossac "${BOSSAC}"
-        DEPENDS baremetal_bringup
         COMMENT "Flashing Track B over the programming port"
         USES_TERMINAL VERBATIM)
+    # The driver, not the executable: depending on baremetal_bringup
+    # directly would build it incrementally and step straight past the
+    # clean, which is the hole this whole arrangement exists to close.
+    add_dependencies(flash firmware)
 else()
     message(STATUS "bossac:        not found -- the flash target is unavailable")
 endif()
