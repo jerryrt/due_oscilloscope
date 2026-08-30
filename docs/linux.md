@@ -162,7 +162,7 @@ but still underruns 6-8 times at these rates, and Linux does not.
 |---|---|
 | Track B, board attached | **505 passed, 1 failed, 16 skipped, 1 xfailed** (8:47) |
 | GUI (`.venv-gui`, offscreen) | **100 passed** (23 s) |
-| Track A, board attached | **502 passed, 5 failed, 17 skipped, 1 xfailed** (8:55), twice, identical |
+| Track A, board attached | **502 passed, 5 failed, 17 skipped, 1 xfailed** (8:55), twice - all five are issue #33 downstream, and pass in isolation |
 
 The failure is
 `test_control.py::test_stream_stats_says_what_the_console_says[b]` -
@@ -174,68 +174,64 @@ documented on macOS. Not a Linux defect.
 The xfail is issue #5's gate, drawing +13.5 codes at phase 156, inside
 the recorded range.
 
-### Track A's five failures, unattributed
+### Track A's five failures were #33, and there is no separate Linux defect
 
-Reproducible: the same five, twice, the second time on a freshly reset
-board.
+Recorded here first as five reproducible Linux-only failures, and
+separately as a wedge that "did not reproduce". They are one thing.
 
-    test_contract.py::test_the_dac_ceiling_is_refused_not_attempted[a-27-False]
-    test_contract.py::test_the_dac_ceiling_is_refused_not_attempted[a-20-False]
-    test_channels.py::test_sweep_ratio_is_one_above_the_cliff[a-1]
-    test_channels.py::test_sweep_ratio_is_one_above_the_cliff[a-2]
-    test_channels.py::test_aggregate_conversion_rate_at_the_floor[a-2-two_ch_aggregate]
+**All five pass in isolation on a healthy board** - `test_contract`
+3 of 3, `test_channels` 11 of 11 - and the earlier "reproduces in
+isolation" reading was taken while the board was already wedged, which
+made it worthless. In the full suite they fail because the board has
+wedged earlier in the run and everything main-loop-served is dark from
+that point: the refusal text the harness looks for, the sweep rows, the
+stream window.
 
-**The firmware is not what is failing.** Objective 0g's refusal works
-when the board is asked by hand - `# play only: 1950000 sps refused (max
-1392857)` and the RC 27 equivalent, 6 of 6 across three repetitions, with
-the console still answering afterwards. The test sends the same command
-and finds no "refused" in `drain_console(1.2)`. The other three fail as
-"the sweep produced no parseable rows" and "device timestamps span 0.92 s
-of a 2.00 s host window", which is the same shape: console output the
-harness did not get.
+windows-desk settled the attribution by running all five **by name** on
+their bench and passing 7 of 7, which is what made this falsifiable
+rather than a suspicion about `drain_console`.
 
-So the locus is between Track A's console and `board.drain_console()`,
-and Track A's console is the Arduino core's `Serial` rather than Track
-B's UART path. **Whether that is this platform's is not established** -
-this bench cannot tell a Linux-specific read problem from a Track A gap
-that no bench has run recently. The last recorded Track A figure is
-290 passed / 25 skipped / 0 failed from 2026-08-27, taken before these
-tests existed, so there is nothing to compare against. Asked on the
-status issue.
+So the entry is: **issue #33**, Track A stops servicing under sustained
+host-fed playback.
 
-**Answered from windows-desk, and it is not Track A.** Track A flashed
-at `412935d`'s tree on that bench, full `pytest --track=a`:
-**505 passed, 19 skipped, 1 xfailed, 0 failed.** The five were then
-re-run by name rather than inferred from the total - all five execute
-there and pass, none is skipped - so a green total is not hiding them:
+### #33: the native-Linux arm, and it is not duration alone
 
-    test_the_dac_ceiling_is_refused_not_attempted[a-27-False]  PASSED
-    test_the_dac_ceiling_is_refused_not_attempted[a-20-False]  PASSED
-    test_sweep_ratio_is_one_above_the_cliff[a-1]               PASSED
-    test_sweep_ratio_is_one_above_the_cliff[a-2]               PASSED
-    test_aggregate_conversion_rate_at_the_floor[a-2-two_ch..]  PASSED
+`tools/bench.py --only play --rc 195`, board reset between runs, console
+liveness checked after each.
 
-So the locus above is the right one and the remaining question is this
-platform's console read, not a Track A gap. One datum from windows-desk
-that may be the same shape at a different constant: `measure.Board()` at
-its default settle reads back an **empty string** on Track A there and
-answers `v` after about 3 s, and `host/ports.py` run too soon after a
-flash reports `native = None`. Track A's boot is slower than Track B's
-on both hosts; if the five failures are timing rather than mechanism,
-the settle and drain constants are what to vary first.
+| track | 0.5 MB (1.3 s) | 1 MB (2.6 s) | 2 MB (5.2 s) | 4 MB (10.5 s) |
+|---|---|---|---|---|
+| Track A | completed | **wedged** | **wedged** | **wedged** |
+| Track B | - | completed | completed | completed |
 
-### Track A wedged once, and it recovers over NRSTB
+The turnover here is between **1.3 s and 2.6 s** of feed, against
+windows-desk's **6.4/8.6 s**, and their Track B control reproduces
+cleanly on this host. Their bisect concluded the wedge is "governed by
+feed duration and nothing else" across a 7x rate span; a second host
+shows duration is not sufficient, because the same 2.6 s that is safe
+there wedges here. Linux applies backpressure like Windows - 0 B lost in
+40 runs - so a discarding host does not explain it either.
 
-Separately and once: after a suite run, Track A stopped answering **both**
-the console and the control channel while still enumerating - the core's
-USB stack keeps running when the main loop does not. `ping` timed out at
-1.0 s and the console read 0 bytes in 10 of 10 trials. A DTR toggle on the
-programming port resets it over NRSTB and it comes back clean.
+**It is not a hang.** Watched on the bench: heartbeat LED off and RX/TX
+LED solid during the stall, and **killing the host feeder brings the
+heartbeat back**. The main loop has stopped while interrupts and the
+core's USB stack keep running, which is why it still enumerates, and it
+recovers when host pressure is removed. That is invariant 7's failure
+mode - a peer flooding an endpoint costing an unbounded slice of a pass -
+with Track B bounded and Track A apparently not.
 
-Not reproduced: the refusal sequence that preceded it runs 6 of 6 with the
-console alive after each. Issue #23 - "a bare `=2C` wedges it permanently"
-- is the same class and was closed on 2026-08-29, so this is recorded in
-case it is a recurrence rather than a new one.
+Host-side it presents as pyserial's `write()` blocking for ever in
+`select([], [fd], [], None)`.
+
+**The blind spot, and the instrument it wants.** Everything observable
+here is main-loop-served, so PING, `GET_LOAD` and the console all go dark
+together and nothing can say *why* the loop stopped. The cheap fix is
+timer-interrupt telemetry that survives the stall: a TC ISR increments a
+counter, `bsp/load.c` already counts main-loop passes, and the ratio read
+after recovery proves the loop stopped while interrupts did not - no
+live transmission and no printf from an ISR, so invariant 6 holds.
+Proposed on #33; not built, because it is a change to both tracks and
+both benches are mid-diagnosis elsewhere.
 
 `rt.py`'s `SCHED_FIFO` path works natively - `sched=fifo:10`, policy
 confirmed with `sched_getscheduler`. It had only ever run under WSL2
