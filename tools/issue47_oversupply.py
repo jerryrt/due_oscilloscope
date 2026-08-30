@@ -39,6 +39,9 @@ import argparse, json, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
 
+#: drivers/play.h - `consumed` is a buffer count.
+PLAY_BUF_SAMPLES = 512
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
@@ -59,7 +62,12 @@ def main():
         d = int(r.host_deficit)
         cons = r.play.consumed
         us = r.play.raw.get("runus")
-        dev = cons / (us / 1e6) if us else None
+        # `consumed` counts BUFFERS, not samples. Read as samples it
+        # gives 2,380 sps against a nominal 1,218,750 and the whole
+        # discriminator reads as '+99.8% vs nominal' on every row -
+        # a number so wrong it is obvious, which is the only reason
+        # it was caught. PLAY_BUF_SAMPLES is the conversion.
+        dev = cons * PLAY_BUF_SAMPLES / (us / 1e6) if us else None
         pct_lost = 100 * d / r.host_tx_bytes if r.host_tx_bytes else 0.0
         pct_slow = 100 * (1 - dev / hz) if dev else None
         rows.append(dict(bench="macos", host="macOS 12.6", track="b", issue=47,
@@ -68,7 +76,7 @@ def main():
                          host_tx_bytes=r.host_tx_bytes,
                          dev_bytes_in=r.play.bytes_in,
                          host_deficit_bytes=d, pct_lost=round(pct_lost, 3),
-                         consumed=cons, run_us=us,
+                         consumed_bufs=cons, run_us=us,
                          device_sps=round(dev, 1) if dev else None,
                          pct_slow=round(pct_slow, 3) if pct_slow else None,
                          underruns=r.play.underruns,

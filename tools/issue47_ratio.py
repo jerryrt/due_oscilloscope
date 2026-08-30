@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""Is the 15/16 rate specific to RC 32, or does every rate have one?
+
+At RC 32 the DACC intermittently converts at **exactly 15/16** of the
+rate it was programmed for. Measured entirely device-side, so no host
+clock is involved:
+
+    run_us    ~3,003,000 us in BOTH modes - the same window
+    consumed   7,150 buffers normally, 6,703 and 6,702 in the two
+               affected runs.  6702/7150 = 0.93748
+    underruns  0 in every run, affected ones included
+
+Zero underruns is what makes this the converter and not the host. If the
+host had merely discarded 6% of the stream, a ring clocked at the
+programmed rate would drain by ~76,000 samples/s - 445 buffers over 3 s
+against a 32-slot ring - and starve loudly. It did not, so the ring was
+being emptied more slowly, which only the timer can do.
+
+`tests/test_integrity.py` already carries OVERSUPPLIED = {44, 39} with
+the comment "feeding a converter that runs slow", and CLAUDE.md records
+those two at 1.6% slow on Windows as well. That is a different number
+from 6.25%, and it is *persistent* where this is intermittent, so the
+two are not obviously the same effect.
+
+This sweeps the ladder and reports the device-side ratio per run, so
+the question "does every rate have a slow mode, and is its ratio a
+round binary fraction too" is answered by a table rather than by
+argument. 15/16 is exact enough to be a divider rather than a drift.
+
+    python3 tools/issue47_ratio.py --reps 8
+"""
+import argparse, json, statistics, sys, pathlib
+from fractions import Fraction
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
+import measure
+
+PLAY_BUF_SAMPLES = 512          # drivers/play.h - `consumed` is buffers
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--reps", type=int, default=8)
+    ap.add_argument("--rcs", type=int, nargs="+", default=[28, 32, 39, 44, 56])
+    ap.add_argument("--seconds", type=float, default=3.0)
+    ap.add_argument("--out", default="records/issue47-ratio-macos.jsonl")
+    a = ap.parse_args()
+
+    board = measure.Board(settle=3.0)
+    rows = []
+    for rc in a.rcs:
+        hz = measure.hz_for(rc)
+        print(f"\n=== RC {rc}: nominal {hz:,} sps ===")
+        ratios = []
+        for i in range(1, a.reps + 1):
+            r = measure.run_play(board, dac_sps=hz, seconds=a.seconds,
+                                 drain_s=1.5)
+            cons = r.play.consumed
+            us = r.play.raw.get("runus")
+            if not us or not cons:
+                print(f"  run {i}: no counters"); continue
+            dev = cons * PLAY_BUF_SAMPLES / (us / 1e6)
+            ratio = dev / hz
+            ratios.append(ratio)
+            fr = Fraction(ratio).limit_denominator(64)
+            d = int(r.host_deficit)
+            rows.append(dict(bench="macos", host="macOS 12.6", track="b",
+                             issue=47, test="device-rate-ratio", rc=rc,
+                             run=i, dac_sps=hz, seconds=a.seconds,
+                             consumed_bufs=cons, run_us=us,
+                             device_sps=round(dev, 1), ratio=round(ratio, 6),
+                             nearest_fraction=f"{fr.numerator}/{fr.denominator}",
+                             host_deficit_bytes=d,
+                             pct_lost=round(100 * d / r.host_tx_bytes, 3)
+                                      if r.host_tx_bytes else None,
+                             underruns=r.play.underruns))
+            print(f"  run {i}: device {dev:>10,.0f} sps   ratio {ratio:.5f} "
+                  f"(~{fr})   lost {d:>8,} B   und {r.play.underruns}")
+        if ratios:
+            slow = [x for x in ratios if x < 0.99]
+            print(f"  -> {len(slow)}/{len(ratios)} slow; "
+                  f"median ratio {statistics.median(ratios):.5f}"
+                  + (f"; median slow ratio {statistics.median(slow):.5f} "
+                     f"(~{Fraction(statistics.median(slow)).limit_denominator(64)})"
+                     if slow else ""))
+
+    with open(a.out, "a", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    print(f"\nwrote {len(rows)} rows to {a.out}")
+
+
+if __name__ == "__main__":
+    main()
