@@ -234,188 +234,51 @@ benchmarks.
 
 **Two parity breaks are open, both found 2026-08-29 on windows-desk.**
 
-**1. Sustained host-fed playback stops Track A servicing, and not
-Track B.** Issue #33. Track B on the same host, harness and rate
-completes 8 MB in 20.9 s at 0 B deficit, **3 of 3**, against Track A
-wedged. Only the track differs, so it is neither the harness nor
-Windows' backpressure - that was the first hypothesis and the control
-killed it.
+**1. Sustained host-fed playback stopped Track A servicing - FIXED**
+(`a7ef102`), issue #33. Kept in full below because the diagnosis cost
+three benches an evening and the shape of it generalises.
 
-**Refined to a wall-clock constant, with one variable moved at a time.**
-The sweep above moves the DAC rate, which also moves device-side work.
-Holding the DAC at 200,000 sps and moving only the host feed rate, then
-moving the DAC rate alone:
+**The cause.** The playback-status block writes a record on bulk IN once
+per `PLAYSTAT_MS` while `play_active()`. Its comment claimed the write
+"returns short rather than spinning"; `Serial_::write()` reaches
+`UDD_Send()`, whose first statement is an unbounded
+`while (TXINI != ...)`. A host that feeds bulk OUT and never drains bulk
+IN fills both banks and the main loop spins there until reset. **Track B
+already carried the guard** (`0e0189b`), with a comment saying
+"blocking here is precisely the failure that wedges the Arduino CDC
+path" - invariant 3 delivering exactly what it is for, and nobody had
+compared the two lines.
 
-| DAC | feed | stall | bytes |
-|---|---|---|---|
-| 200 k | 400 kB/s | 8.41 s | 3,385,344 |
-| 200 k | 200 kB/s | 8.42 s | 1,699,840 |
-| 200 k | 100 kB/s | 8.42 s | 862,208 |
-| **400 k** | 400 kB/s | **8.42 s** | 3,388,928 |
+**Verified on windows-desk** at `48d2894`, mechanism first and patch
+second:
 
-Invariant across 4x of feed rate and 2x of DAC rate while the bytes
-scale exactly with the feed. A fixed DAC-update count predicts 4.21 s
-for the last row. **Ring occupancy is excluded too**: the slower arms
-under-feed the device, so the ring runs down instead of staying full,
-and the stall lands at the same moment.
+| arm | image | result |
+|---|---|---|
+| feed, **drain IN** | unfixed | no stall in 25 s |
+| feed, no drain | unfixed | stalls ~8.9 s, every run |
+| feed, no drain | **fixed** | no stall, 10 MB, 2 of 2 |
+| `bench.py --only play --rc 195 --mb 8` | **fixed** | 0 B deficit, `occmin=21`, `endtx=8166` - Track B's own figures |
 
-**Absolute value, and a correction to the figures above.** Console
-"dark" detection can false-positive - the detector waits 0.2 s for a `v`
-reply and a merely *loaded* loop can exceed that without being dead. Read
-with a 30 ms `GET_LOAD` poll, which costs ~0.015 ms against a console
-command's 13-20 ms (invariant 8), the stall interval is
-**[8.844, 9.141] s**; the host write blocks later still, at 8.859-8.860 s,
-once buffering drains. The *invariance* stands because every arm used
-one detector; the *number* should be quoted from the control channel.
+The drained volume is the quantitative confirmation: **1,373 B/s
+measured against 1,400 B/s predicted** from 28-byte `playstat_t` records
+at 50/s. The IN stream *is* the status records.
 
-**2^23 us = 8.388608 s is excluded** - what a 24-bit microsecond
-quantity crossing its top bit would look like, 0.4% from the console
-figure, and outside the measured interval. Recorded because the
-coincidence is good enough to cost someone an evening.
+**Why it looked like everything except what it was.** Every property
+measured on this bench was the 20 ms status timer wearing a disguise:
+wall-clock rather than bytes; invariant to a 4x span of feed rate and a
+2x span of DAC rate; invariant to ring occupancy, so deliberately
+under-fed arms stalled on schedule; playback-relative not boot-relative,
+with a 20 s pre-delay moving it not at all. And **the device could not
+report it**: console, control channel and `GET_LOAD` are all
+main-loop-served and go dark together.
 
-**It is deterministic to the packet**: 3,562,496 B at stall on two runs,
-write-block reproducing to 1 ms.
-
-**It is governed by feed duration, and by nothing else measured.** Seven
-runs across three rates spanning 7x:
-
-| rate | `--mb` | feed | outcome |
-|---|---|---|---|
-| RC 28 (1,392,857) | 8 | 3.0 s | completed |
-| RC 39 (1,000,000) | 8 | 4.3 s | completed |
-| RC 195 (200,000) | 2 | 5.2 s | completed |
-| RC 39 | 12 | **6.4 s** | completed |
-| RC 39 | 16 | **8.6 s** | wedged |
-| RC 195 | 4 | 10.4 s | wedged |
-| RC 28 | 32 | 12.0 s | wedged |
-
-**Threshold 6.4-8.6 s of sustained feed, at every rate tried. Bytes and
-ring turns are both excluded**, which matters because they are the two
-quantities that scale with duration at a fixed rate and separate across
-rates: 8 MB completes at RC 39 (8192 ring turns) while **4 MB wedges at
-RC 195 at 4096 turns** - half the bytes and half the turns, failing
-because it took twice as long. Wedging byte counts span 4 MB to 32 MB
-with no threshold in them.
-
-Note the direction, because it is the inverse of the reading that solved
-`PLAY_PRIME_BUFS`: there a count that *failed* to scale with duration
-proved a startup condition. This scales with duration alone, so it is
-something accumulating in wall time while the feed runs rather than a
-buffer filling or a priming depth.
-
-**The main loop halts, and that is measured rather than inferred.** The
-instrument is the one that settled objective 0c - `OP_LOAD` over the
-control channel - with the **UART** console's own `passes=` sampled on
-the same timeline, because UART owes nothing to USB and is the arm that
-separates "the loop stopped" from "only USB stopped".
-
-| t_s | ctl passes | uart passes | uart per s |
-|---|---|---|---|
-| 0.02 | 553133 | 553156 | - |
-| 4.42 | 868290 | 868316 | 71953 |
-| 8.84 | 1183226 | 1183260 | 70989 |
-| **9.94** | **no answer** | **silent** | - |
-
-Two independent runs agree to 0.1% at every sample and both die in the
-same 8.84-9.94 s window. **Both channels stop together**, so the halt is
-the loop's; the two independent transports reporting the same counter to
-within 0.01% is also what says neither reading is an instrument
-artifact. It is **abrupt** - ~71,000 passes/s flat to within 2%, and
-`max_us` never moves off 44447.4 - so nothing winds down first and this
-is not a leak slowing the loop.
-
-**It is the inverse of objective 0c**, which is the comparison worth
-carrying: there the same instrument found the loop running at 143 k
-passes/s while the host sat in `close()`, and that moved the diagnosis
-host-side. Here the device is what stops.
-
-Unresolved: the **ordering**. Sampling is ~0.6 s per point against a
-1.1 s gap, so whether the control channel dies just before the console
-is not visible; one sample from a worse-instrumented run suggested it
-might, and is recorded rather than dismissed. Also **time against
-accumulated passes** - the pass rate is ~71 k/s in every run, so 8.8 s
-and ~630,000 passes are the same event here.
-
-**Not a fault and not a self-reset - but "hang" was an inference too
-far, and the recovery behaviour splits by host.** `fault.cpp` writes
-the programming port by *polled* UART - `UART_SR`/`UART_THR` only, no
-`Serial`, no ring buffer, no interrupts - precisely so it still speaks
-when the loop is dead, and it prints before it blinks. So a HardFault
-announces itself even mid-halt. Listening on the console for the whole
-window, writing nothing to it:
-
-    positive control          console delivered 134 chars
-    during the run (26 s)     0 chars
-    "*** HARD FAULT ***"      absent
-    "BOOT #" / "cause="       absent
-
-The positive control is what makes that null readable: Track A prints
-nothing unsolicited, so zero bytes is also what a broken listener looks
-like, and the run refuses to proceed unless the console has just
-demonstrably delivered text. An earlier attempt could not have seen a
-fault at all - it called `reset_input_buffer()` before each poll, which
-discards exactly the one-shot dump it was looking for.
-
-So: no fault reported, no reset taken, on a path proven working seconds
-earlier. That much is solid. **What does not follow from it is "hang"**,
-which this file said first: every probe behind it either let the feed
-run out or timed out with the feeder still pushing, so host pressure was
-never removed and a recovery could not have been seen.
-
-`linux-x1` removed it and reports the heartbeat returning when the
-feeder is killed - invariant 7's failure mode, the loop starved rather
-than stopped. **That does not reproduce on windows-desk.** Two removal
-methods, console polled throughout, positive control passing immediately
-before each run, dark onset reproducible at 9.03 and 9.02 s:
-
-| method | result |
-|---|---|
-| stop writing and `close()` the native port | dark 25 s later |
-| `taskkill /T /F` on the whole feeder process tree | dark 45 s later |
-
-    linux-x1      turnover 1.3-2.6 s   recovers when the feeder is killed
-    windows-desk  turnover 6.4-8.6 s   does not recover in 45 s
-
-**Both benches now agree, and the fork above is closed.** `linux-x1`
-withdrew its recovery observation (`764f741`): the process it killed
-held the programming port, and closing that fd drops DTR, which is
-NRSTB - so the heartbeat returning was a *reset*, not a resume. Re-run
-with a feeder that never touches the console, it reads silent 4 s after
-the feeder dies, silent minutes later, and returns only on a deliberate
-DTR toggle. The windows-desk measurement was immune by construction -
-feeder in its own process on the native node only, parent holding COM7
-open throughout and never closing it - so the two are independent
-results rather than one method run twice.
-
-**On this project "it came back when I killed something" is a reset
-until proven otherwise.** Anything holding the programming port resets
-the board on close; the recovery procedure here is a console open, which
-is the same NRSTB.
-
-The queued-bytes reading also dies on arithmetic: the feed is 400,000
-B/s, Windows applies backpressure so the queue is *bounded*, and the
-largest driver buffer this project has measured is macOS's 55-450 KB -
-1.1 s of data at that rate. The device sees the feed stop within a
-second or two and is still dark 45 s later.
-
-So: **the stall does not end on its own, does not end when the feed
-stops, reports no fault, takes no reset, and ends only on NRSTB.** Hang
-and starvation are both still open - invariant 7's failure mode fits
-what is seen but predicts a resume nobody has observed.
-
-Two caveats kept on the fault evidence: a stall *inside* an ISR at a
-priority that never returns produces the same silence, and the override
-is `HardFault_Handler` specifically.
-
-This is the same signature `docs/linux.md` records as an unreproduced
-one-off ("answering neither the console nor the control channel while
-still enumerating, because the core's USB stack keeps running when the
-main loop does not"), and feeding Track A for more than ~9 s reproduces
-it on demand. It recovers over NRSTB.
-
-**No test reaches it.** Track A's suite is green here - 505 passed / 19
-skipped / 1 xfailed - because the suite's AWG windows are shorter than
-this threshold.
+It also explains the cross-host split that was briefly read as two
+phenomena. 28 B at 50/s stalling at ~8.9 s here is ~445 records, about
+**12.5 KB** of host-side IN buffering; `linux-x1`'s 5.2 s is the same
+mechanism with a smaller buffer. Candidates excluded on the way, all
+recorded on #33: bytes, ring turns, ring occupancy, DAC-update count,
+a HardFault (`fault.cpp` prints by polled UART and said nothing), a
+self-reset, and 2^23 us = 8.388608 s.
 
 **2. The `# play:` line is not the same on both tracks**, which the
 "same output format" claim above does not survive. Track B prints
