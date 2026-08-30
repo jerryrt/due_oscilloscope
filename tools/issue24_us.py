@@ -241,10 +241,16 @@ def main():
                           f"{len(gaps)} gaps, {frac:.1f}%")
                 if frac >= 10.0:
                     print(f"   !! {frac:.0f}% of the gaps here are evenly "
-                          f"spaced sites round the wrap. A census swamped "
-                          f"by an unmodelled feature reports absences for "
-                          f"everything it cannot resolve - do not read an "
-                          f"absence out of this arm")
+                          f"spaced sites round the wrap.")
+                    print(f"      NO ABSENCE may be read out of this arm: "
+                          f"a census swamped by an unmodelled feature "
+                          f"reports absences for everything it cannot "
+                          f"resolve.")
+                    print(f"      A strong PRESENCE at a predicted gap is "
+                          f"still readable, provided that gap is not one "
+                          f"of the artifact spacings above - the comb "
+                          f"crowds a census, it does not manufacture "
+                          f"counts at unrelated spacings.")
 
 
 if __name__ == "__main__":
