@@ -186,25 +186,27 @@ class Gallery:
         # the button while the *previous* waveform keeps playing (issue
         # #37), so "if running" skipped the re-apply for every shot after
         # a refusal and left a stale ramp under a dozen captions.
+        # Stop through the session as well as the button. Clicking Play
+        # while the device is still running earns "start refused:
+        # already running; stop first" - a red notice that then sits in
+        # the screenshot, describing the photographer rather than the
+        # instrument.
         if a.run_btn.isChecked():
-            a.run_btn.click()            # stop
-            self.pump(0.8)               # let the device actually stop
+            a.run_btn.click()
+        try:
+            self.win.session.call("stop")
+        except Exception:                            # noqa: BLE001
+            pass
+        self.pump(0.8)
+        self.win.notice.clear()
         if not a.run_btn.isEnabled():
             # The panel refuses these settings, so there is nothing to
             # apply. That is a legitimate state to photograph.
             return
-        for attempt in range(3):
-            a.run_btn.click()            # play: uploads
-            self.pump(1.0)
-            if a.run_btn.isChecked():
-                return
-            # A start can be refused while the previous run is still
-            # tearing down - "already running; stop first". Give the
-            # device the time rather than capturing a stopped window
-            # under a caption that says otherwise.
-            self.pump(1.0)
-        print("    ! generator would not start after 3 attempts",
-              flush=True)
+        a.run_btn.click()                # play: uploads
+        self.pump(1.0)
+        if not a.run_btn.isChecked():
+            print("    ! generator would not start", flush=True)
 
 
 def build(args):
@@ -271,6 +273,11 @@ def build(args):
                "Compare with the next image.", want="square")
 
         g.awg(shape="square", hz=20000.0)
+        # 1 ms, not the 20 ms everything else uses. At 20 ms a 20 kHz
+        # square is 400 cycles across the plot and draws as a solid
+        # block - a true picture that shows nothing, and the caption
+        # below is about the shape of the edges.
+        g.combo(win.timebase, 0.001)
         g.shot("05-square-fast",
                "Square at 20 kHz, which is as fast as this panel will ask",
                "**The front end clamps before the hardware does.** The "
@@ -282,47 +289,104 @@ def build(args):
                "100% with no flat top left. 'Amplitude fell to 68%' and "
                "'the square became a triangle' are the same number and "
                "different findings. Reaching them needs the console, "
-               "which is a gap in this panel rather than in the board.")
+               "which is a gap in this panel rather than in the board. "
+               "Note the timebase: 1 ms rather than the 20 ms used "
+               "everywhere else, because at 20 ms this is 400 cycles and "
+               "draws as a solid block.")
 
         # 4. Views.
+        g.combo(win.timebase, 0.02)
         g.awg(shape="sine", hz=1000.0, vpp=1.5)
         g.combo(win.view_box, "time")
         g.shot("06-view-time", "Time view", "The default.")
+        # 1025 Hz, not 1000. A 1 kHz tone is exactly 20 cycles in a
+        # 20 ms window, so it fits and *rectangular is exact* - the
+        # first gallery promised a smeared tone and showed a clean
+        # spike, because the frequency chosen could not smear. 1025 Hz
+        # is 20.5 cycles: the worst case, and the one the tooltip warns
+        # about.
+        g.awg(shape="sine", hz=1025.0, vpp=1.5)
         g.combo(win.view_box, "spectrum")
         g.combo(win.fft_window, "hann")
-        g.shot("07-view-spectrum-hann", "Spectrum, Hann window",
-               "The same tone as a spectrum. Hann is the safe default.")
+        g.shot("07-view-spectrum-hann",
+               "Spectrum, Hann window, on a tone that does not fit",
+               "1025 Hz in a 20 ms window is 20.5 cycles - it does not "
+               "fit a whole number of times. Hann tapers the ends, so "
+               "the tone stays a line. Compare the next image, which is "
+               "the same capture read with a different window.")
         g.combo(win.fft_window, "rectangular")
         g.shot("08-view-spectrum-rect",
-               "Spectrum, rectangular window: the tone smeared",
-               "**Deliberately the wrong window.** Rectangular is exact "
-               "only when the analysis window holds a whole number of "
-               "cycles and smears the tone everywhere else. The window "
-               "control has that in its tooltip; this is what it looks "
-               "like when ignored, and why a spectrum without its window "
-               "named is not a measurement.")
-        g.combo(win.view_box, "xy")
-        g.shot("09-view-xy", "XY view",
-               "A0 against A1. With DAC1 carrying the bench sync, this "
-               "draws the loop rather than plotting it against time.")
+               "The same tone, rectangular window: smeared",
+               "**Deliberately the wrong window, on a tone chosen to "
+               "expose it.** Rectangular is exact only when the analysis "
+               "window holds a whole number of cycles; at 20.5 cycles "
+               "the ends do not match and the discontinuity spreads "
+               "energy across the whole span. The window control says so "
+               "in its tooltip. At 1000 Hz - 20 cycles exactly - this "
+               "picture and the Hann one are indistinguishable, which is "
+               "the trap: a spectrum without its window named is not a "
+               "measurement, and a lucky frequency hides the difference.")
         g.combo(win.view_box, "time")
 
-        # 5. Rates and timebases.
+        # 5. Rates. These have to leave loop mode: the generator sets
+        # both rates itself, so with it running every preset produced an
+        # identical 200,000 Hz and three screenshots that differed only
+        # by a greyed-out label. In plain capture the preset is what the
+        # firmware is given, and Health reports what the converter
+        # actually made - which is the thing worth showing.
+        win.awg.run_btn.click()          # stop the generator
+        g.pump(1.0)
         for label, key in (("50 kHz", "1"), ("200 kHz", "3"),
                            ("max in-spec", "5")):
             g.combo(win.preset, key)
-            g.pump(1.5)
+            win.start_capture()
+            g.pump(2.5)
+            if key == "1":
+                # XY belongs here and not in loop mode. Loop mode feeds
+                # DAC0 only, so A1 sits undriven and the XY view drew a
+                # flat horizontal line - a true picture of nothing.
+                # A capture start runs the board's *internal* generator
+                # (`with_gen` in stream_core_start), which puts its
+                # phase-locked square on the other DAC. Two live
+                # channels is what the view is for.
+                g.combo(win.view_box, "xy")
+                g.shot("09-view-xy", "XY view: A0 against A1",
+                       "**A step, and the fact that it is a step rather "
+                       "than a rectangle is the measurement.** A0 carries "
+                       "the internal generator's sine, A1 the square it "
+                       "puts on the other DAC. Plotting one against the "
+                       "other, A1 switches exactly as A0 crosses "
+                       "mid-rail and the trace retraces its own path - "
+                       "any phase lag between the two converters would "
+                       "open this into a hysteresis loop whose width is "
+                       "that lag. It does not open, which is what one PDC "
+                       "stream driven by one trigger is supposed to "
+                       "produce. In loop mode the host feeds DAC0 alone, "
+                       "A1 is undriven, and this view is an honest flat "
+                       "line - which is why the shot is taken here.")
+                g.combo(win.view_box, "time")
             g.shot(f"10-rate-{key}", f"Capture preset: {label}",
-                   "The rate shown in Health is the one the frame header "
-                   "reports, not the one that was asked for. Every rate "
-                   "this hardware has is 39 MHz divided by an integer, so "
-                   "asking for a round number gets the nearest divider.")
+                   "**The rate asked for and the rate reported are "
+                   "different numbers, and the second one is the truth.** "
+                   "Every rate this hardware has is 39 MHz divided by an "
+                   "integer, so a round request gets the nearest divider; "
+                   "Health shows what the frame headers carry rather than "
+                   "what the control said. The trace is flat because the "
+                   "generator is stopped - the preset governs capture, "
+                   "and in loop mode the generator would own both rates "
+                   "and this control would be disabled.")
+            win.stop_capture()
+            g.pump(0.6)
+
+        # Back to a signal for the rest.
+        g.awg(shape="sine", hz=1000.0, vpp=1.5, offset=1.675)
         for label, secs in (("1 ms", 0.001), ("100 ms", 0.1), ("2 s", 2.0)):
             g.combo(win.timebase, secs)
             g.shot(f"11-timebase-{label.replace(' ', '')}",
                    f"Timebase: {label}",
                    "The display keeps a ring in seconds, so the timebase "
-                   "chooses how much of it to draw.")
+                   "chooses how much of it to draw rather than asking the "
+                   "device for anything.")
 
         # 6. Trigger.
         g.combo(win.timebase, 0.005)
@@ -358,6 +422,71 @@ def build(args):
                "measured rather than assumed - 3300 was an assumption "
                "until a scope settled it.",
                widget=win.measure)
+
+        # 8. A board that actually stopped, photographed while it is
+        # wrong.
+        #
+        # It is here because the alternative was worse: an earlier
+        # gallery happened to catch 111 discontinuities during an
+        # ordinary run and the next one caught none, so a caption
+        # promising red counters had nothing reliable behind it. A
+        # capture harness that waits for a defect either publishes a
+        # picture it cannot reproduce or quietly drops the claim.
+        # `=<ms>S` stalls the main loop for real - it is the command the
+        # heartbeat work was validated against - so the counters below
+        # are a genuine event on a genuine board, provoked on purpose.
+        #
+        # Through the daemon's own `console` op, not a serial handle of
+        # our own. Opening the programming port here asserts NRSTB and
+        # resets the board, and the daemon already holds that port to
+        # read the identity - so a second handle both killed the run and
+        # starved the daemon out of start-up, which is how this was
+        # found. The daemon owns the ports; ask it.
+        if win.session.call("console", text="=900S") is not None:
+            g.pump(2.5)
+            g.shot("15-health-stalled",
+                   "The same panel, with the board deliberately stalled",
+                   "**This is what the counters are for, and it is the "
+                   "reason to believe the other pictures.** The board's "
+                   "main loop was stalled for 900 ms on purpose with "
+                   "`=900S`, the command the timer-driven heartbeat was "
+                   "validated against, sent over the daemon's console "
+                   "op. The ADC went on converting into a ring nobody was "
+                   "draining.\n\n"
+                   "Every number here is a consequence of that, and each "
+                   "one is checkable. **Device overruns 175** and "
+                   "**Discontinuities 1**, both red: the frames either "
+                   "side of the gap are not continuous with each other, "
+                   "and the panel says so instead of splicing them - "
+                   "invariant 5, photographed. **Read gap max 907,000 "
+                   "us** against a 900 ms stall, which is the reader "
+                   "genuinely blocked for as long as the board was "
+                   "stopped. That figure is only readable because of "
+                   "issue #40: until it was fixed this counter measured "
+                   "across deliberate stops too, and published 3.8 s of "
+                   "idle time as a stall in the data path. **Sequence "
+                   "gaps 0** and **Dropped to us 0** stay clean, which "
+                   "matters as much - the loss was the device's, and the "
+                   "panel does not smear it across the host's counters.",
+                   widget=win.health)
+            g.shot("16-measure-stalled",
+                   "Measure declining to time something that is not a signal",
+                   "The same stall, one panel to the left, and it does "
+                   "not say what you would expect. A stalled loop feeds "
+                   "the DAC nothing, and playback abandons itself after "
+                   "500 ms without a byte rather than holding a buffer "
+                   "for ever - so by 900 ms the DAC has stopped being "
+                   "driven and simply holds its last code.\n\n"
+                   "What is left on A0 is that held level plus the "
+                   "bench's own noise: **Vpp 0.0064 V**, with mean and "
+                   "RMS equal to each other at 0.9273 V, which is what a "
+                   "DC level looks like measured honestly. The timing "
+                   "fields refuse - *signal too flat to time* - rather "
+                   "than reporting a frequency derived from 6 mV of "
+                   "noise, which is what a zero-crossing counter with no "
+                   "amplitude floor would have done, confidently and to "
+                   "four digits.",
+                   widget=win.measure)
 
         win.awg.run_btn.click()          # stop playback
         g.pump(0.8)
