@@ -18,6 +18,7 @@ bench here, against measurement runs of nine minutes to eight hours that
 quote the resulting image by commit. `tools/metrics.py` already warns
 "a build cache probably served a stale object"; this stops it happening.
 """
+import fnmatch
 import os
 import re
 
@@ -29,6 +30,36 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def _read(*parts):
     with open(os.path.join(REPO, *parts), encoding="utf-8") as fh:
         return fh.read()
+
+
+def _ignored_dirs():
+    """Directory patterns .gitignore already excludes.
+
+    The scan below walks the tree looking for project Python, and a
+    vendored toolchain unpacked in place is not project Python. This
+    bench has `tools/xpack-arm-none-eabi-gcc-15.2.1-1.1/` - 1.0 GB and
+    **102 .py files**, one of which is CPython's own
+    `badsyntax_pep3120.py`, deliberately not UTF-8. Reading it raised
+    UnicodeDecodeError and failed this test outright.
+
+    `.gitignore` already says those directories are not ours -
+    `tools/xpack-*/`, `tools/arm-gnu-toolchain-*/`, `tools/toolchain/` -
+    so the patterns are read from there rather than copied here. A
+    second list would drift from the first, and this test exists to
+    stop exactly that kind of drift elsewhere.
+
+    CLAUDE.md tells everyone to use the xPack toolchain, so any bench
+    that unpacks it under tools/ hits this.
+    """
+    pats = []
+    try:
+        for line in _read(".gitignore").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and line.endswith("/"):
+                pats.append(line.rstrip("/"))
+    except OSError:
+        pass
+    return pats
 
 
 def test_track_b_cmake_forces_a_full_build():
@@ -160,11 +191,21 @@ def test_nothing_else_builds_behind_the_enforcement():
     ALLOWED = {"tools/sketch.py", "host/measure.py", "tools/toolchain.py",
                "tools/flash.py"}
 
+    ignored = _ignored_dirs()
+
     offenders = []
     for root, dirs, files in os.walk(REPO):
-        dirs[:] = [d for d in dirs
-                   if d not in {".git", "build", ".venv", ".venv-gui",
-                                "vendor", "__pycache__", "records"}]
+        keep = []
+        for d in dirs:
+            if d in {".git", "build", ".venv", ".venv-gui",
+                     "vendor", "__pycache__", "records"}:
+                continue
+            rel_d = os.path.relpath(os.path.join(root, d),
+                                    REPO).replace(os.sep, "/")
+            if any(fnmatch.fnmatch(rel_d, pat) for pat in ignored):
+                continue
+            keep.append(d)
+        dirs[:] = keep
         for name in files:
             if not name.endswith(".py"):
                 continue
