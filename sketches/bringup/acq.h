@@ -170,9 +170,10 @@ int      acq_read_temp(ctl_temp_t *out, uint16_t samples);
  * In the header because the console prints which pair is selected and
  * would otherwise spell the index a second time.
  */
-#define ACQ_CH_A0  7u
-#define ACQ_CH_A1  6u
-#define ACQ_CH_A2  5u
+/* Wire contract; frame.h carries the table explaining the values. */
+#define ACQ_CH_A0  FRAME_CH_A0
+#define ACQ_CH_A1  FRAME_CH_A1
+#define ACQ_CH_A2  FRAME_CH_A2
 
 /*
  * Which channel pairs with A0 in a two-channel capture: ADC channel

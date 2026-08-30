@@ -95,6 +95,39 @@ FRAME_STATIC_ASSERT(FRAME_BYTES % 512u == 0,
                     "a frame must be a whole number of 512-byte packets");
 
 /*
+ * The channel tag values, which are wire contract because the host
+ * demultiplexes by them.
+ *
+ * Every sample carries its channel index and the header carries
+ * `channel_mask` over the same indices, so these numbers are what a
+ * reader on the far end matches against. They were written down three
+ * times - `drivers/analog.h` as ADC_CH_*, `sketches/bringup/acq.h` as
+ * ACQ_CH_*, and `host/measure.py` as CH_* - which is one wire fact in
+ * three homes, two of them firmware.
+ *
+ * They are not obvious numbers and that is the point. Arduino's A0..A7
+ * labels map to ADC channels in DESCENDING order, so A0 is AD7 and code
+ * assuming A0 == AD0 reads the wrong pin:
+ *
+ *   A0 = PA16 = AD7      A4 = PA6  = AD3      A8  = PB17 = AD10
+ *   A1 = PA24 = AD6      A5 = PA4  = AD2      A9  = PB18 = AD11
+ *   A2 = PA23 = AD5      A6 = PA3  = AD1      A10 = PB19 = AD12
+ *   A3 = PA22 = AD4      A7 = PA2  = AD0      A11 = PB20 = AD13
+ *
+ * That table lived in Track B's analog.h alone; Track A carried the
+ * three values with no note of where they came from. The sequencer
+ * converts in ascending channel-index order, which is not label order,
+ * so the table is load-bearing for anyone extending the set - see #46.
+ *
+ * Only the three currently in use are defined. The rest are deliberately
+ * absent rather than written out: an unused constant is a claim nothing
+ * checks, and #46 will add them against measured rate floors.
+ */
+#define FRAME_CH_A0       7u
+#define FRAME_CH_A1       6u
+#define FRAME_CH_A2       5u
+
+/*
  * C linkage, because this header is shared and the two tracks are not
  * the same language. Track B is C throughout; Track A is C++ - every
  * sketch translation unit is .cpp or .ino. Without this the shared

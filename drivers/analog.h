@@ -24,19 +24,16 @@
 #include <stdbool.h>
 
 #include "ctl_wire.h"   /* ctl_temp_t: the temperature report is a wire format */
+#include "frame.h"      /* FRAME_CH_*: the channel tags are wire contract */
 
 /*
- * Arduino's A0..A7 labels map to ADC channels in DESCENDING order. Code
- * that assumes A0 == AD0 reads the wrong pin.
- *
- *   A0 = PA16 = AD7      A4 = PA6  = AD3      A8  = PB17 = AD10
- *   A1 = PA24 = AD6      A5 = PA4  = AD2      A9  = PB18 = AD11
- *   A2 = PA23 = AD5      A6 = PA3  = AD1      A10 = PB19 = AD12
- *   A3 = PA22 = AD4      A7 = PA2  = AD0      A11 = PB20 = AD13
+ * The tag values are wire contract and live in frame.h, which carries
+ * the A-label-to-AD-channel table explaining why they are 7, 6 and 5.
+ * These are this track's spelling of them.
  */
-#define ADC_CH_A0  7u
-#define ADC_CH_A1  6u
-#define ADC_CH_A2  5u
+#define ADC_CH_A0  FRAME_CH_A0
+#define ADC_CH_A1  FRAME_CH_A1
+#define ADC_CH_A2  FRAME_CH_A2
 
 void     dac_init(void);
 void     dac_write(unsigned ch, uint16_t code12);   /* ch 0 or 1 */

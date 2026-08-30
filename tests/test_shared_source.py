@@ -286,3 +286,63 @@ def test_track_specific_play_counters_only_trail():
         assert not (set(extra) & set(shared)), (
             f"Track {track} re-prints a shared field: "
             f"{sorted(set(extra) & set(shared))}")
+
+
+# ------------------------------------------- the wire values the host matches
+
+def test_the_host_channel_tags_match_the_firmware():
+    """The third home for one wire fact, and the only one outside C.
+
+    Every sample carries its channel index and the frame header carries
+    `channel_mask` over the same indices, so these numbers are what the
+    host demultiplexes by. They were written down three times - twice in
+    firmware, which `frame.h` now holds in one place, and once in
+    `host/measure.py`, which cannot include a C header.
+
+    That third copy is why this is a test rather than a `#define`. A
+    firmware change to a tag value would leave the host matching the old
+    one and every capture would demultiplex into the wrong channel -
+    silently, because a tag that matches nothing produces an empty
+    series rather than an error.
+
+    They are not obvious numbers: Arduino's A0..A7 map to ADC channels
+    in descending order, so A0 is AD7. Code assuming A0 == AD0 reads the
+    wrong pin, which is why the table travels with the values.
+    """
+    import re
+    import sys
+
+    frame_h = _read(os.path.join(SHARED, "frame.h"))
+    fw = {}
+    for name in ("A0", "A1", "A2"):
+        m = re.search(rf"#define\s+FRAME_CH_{name}\s+(\d+)u", frame_h)
+        assert m, f"frame.h no longer defines FRAME_CH_{name}"
+        fw[name] = int(m.group(1))
+
+    sys.path.insert(0, os.path.join(REPO, "host"))
+    import measure
+
+    host = {"A0": measure.CH_A0, "A1": measure.CH_A1, "A2": measure.CH_A2}
+    assert host == fw, (
+        f"host/measure.py matches channel tags {host} while the firmware "
+        f"sends {fw}. Captures would demultiplex into the wrong channel, "
+        f"and a tag matching nothing gives an empty series rather than "
+        f"an error")
+
+
+def test_the_channel_tags_are_not_written_out_twice_in_firmware():
+    """Neither track may define the tag values again.
+
+    `drivers/analog.h` and `sketches/bringup/acq.h` each carried the
+    literals 7, 6 and 5. Both now spell them from `FRAME_CH_*`, and a
+    track that writes a number back is the drift this seam exists to
+    stop.
+    """
+    import re
+    for rel in ("drivers/analog.h", os.path.join("sketches", "bringup",
+                                                 "acq.h")):
+        text = _read(rel)
+        bad = re.findall(r"#define\s+(?:ADC|ACQ)_CH_A[012]\s+(\d+)u", text)
+        assert not bad, (
+            f"{rel} defines a channel tag as a literal again ({bad}); it "
+            f"must come from FRAME_CH_* so the wire value has one home")

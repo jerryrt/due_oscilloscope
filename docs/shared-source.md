@@ -338,3 +338,65 @@ Track B's two start functions and not the other, so every capture-only
 stream ran the CPU path for six days (`db08d76` fixed it, and the fix
 in turn handed issue #20 its strongest constraint yet). One shared
 start function is why that cannot recur.
+
+## Phase 9: the frame's own numbers, 2026-08-30 (issue #45)
+
+The boundary above says the wire is shared. Three of the wire's numbers
+were not.
+
+**The geometry.** `ACQ_BUF_SAMPLES` 2032, `ACQ_HDR_BYTES` 32 and the
+frame-size expression sat in `drivers/acq.h` *and*
+`sketches/bringup/acq.h`. `frame.h` described them in prose - including
+why the size is load-bearing, since moving `ACQ_BUF_SAMPLES` off 2032
+cost the ramp test 4 runs in 15 against 0 in 15 - while defining none of
+them. They now live in `frame.h` and each track's `acq.h` keeps its own
+spelling.
+
+Two things improved rather than moved. `FRAME_HDR_BYTES` is derived from
+`sizeof(frame_header_t)` instead of asserted by a comment: both copies
+wrote `32` with a comment *claiming* it was the struct's size and
+nothing checked it, so a field added to the header would have left the
+number behind on both tracks at once and the payload would have started
+inside the header. And the static assert that a frame is a whole number
+of 512-byte packets travels with the constants, which matters because
+**only Track B had one**.
+
+**The channel tags.** `ADC_CH_A0/A1/A2` in `drivers/analog.h`,
+`ACQ_CH_A0/A1/A2` in `sketches/bringup/acq.h`, and `CH_A0/A1/A2` in
+`host/measure.py` - one wire fact in three homes. Every sample carries
+its channel index and the header carries `channel_mask` over the same
+indices, so these are precisely what a reader on the far end matches
+against. The two firmware copies now spell them from `FRAME_CH_*`.
+
+The third home is the host and cannot include a C header, so it is held
+by a test instead (`test_the_host_channel_tags_match_the_firmware`).
+That failure mode deserves the test: a tag the host does not recognise
+produces an **empty series rather than an error**, so a divergence would
+read as a dead channel rather than as a bug.
+
+The A-label table moved with the values, because the numbers are not
+obvious - Arduino's A0..A7 map to ADC channels in *descending* order, so
+A0 is AD7 - and it existed only in Track B's header. Track A carried
+7, 6 and 5 with no note of where they came from.
+
+**What was deliberately left alone.** The TC and ADC register bit
+constants (`WAVSEL_UP_RC`, `ACPA_CLEAR`, `TRGSEL_TIOA0`) differ in
+comments between the tracks and could trivially be shared. They are not,
+and should not be: a datasheet bit transcribed twice is two independent
+readings of the datasheet, which is the oracle doing its job. Sharing
+them would buy tidiness with the thing invariant 3 exists to protect.
+
+The measured rate floors (`ACQ_MIN_RC` 86, `ACQ_MIN_RC_1CH` 44,
+`ACQ_MIN_RC_3CH` 132) are left per track for the same reason: each is a
+measurement, and one measurement reaching both tracks is not two
+measurements.
+
+**A capability gap this surfaced, deferred rather than fixed.** Track B
+accepts 1, 2 or 3 channels; Track A refuses more than 2 and therefore
+has no three-channel floor. That is invariant 3's "debt with a date on
+it", and it already cost something: issue #43's three-channel
+measurement - A0 driven, A1 undriven, A2 bare, one matched capture -
+**cannot be reproduced on Track A**, so the oracle cannot check it.
+Tracked in issue #46, which the owner will schedule; the headers and
+this document were consolidated first so the gap is visible rather than
+implied.
