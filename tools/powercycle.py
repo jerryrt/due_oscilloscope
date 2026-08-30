@@ -1,28 +1,32 @@
 #!/usr/bin/env python3
-"""Power-cycle the board from software, where the hub allows it.
+"""Power-cycle the board from software - IF the hub really cuts power.
 
-Issue #5 has one untried draw-event candidate left - a power cycle - and
-it has sat untried on both benches because it was taken to need hands.
-On a bench where the board hangs off a hub whose ports can be switched,
-it does not.
+Issue #5's last untried draw-event candidate is a power cycle, and on a
+bench where the board hangs off a switchable hub it should not need
+hands. **On this bench it does.** The hub carrying the Due (Bridgesil
+35d6:2510, ports 2 and 3) advertises `ganged` rather than `ppps`,
+accepts an off request, reports its ports off - and does not cut power.
 
-    uhubctl -f -l <hub> -a cycle -d <seconds>
+That is why every path here verifies the cut instead of trusting the
+acknowledgement. `uhubctl` returning "Port 3: 00a0 off" means the hub
+said yes, not that the rail dropped.
 
-Two things have to be true and both are checkable rather than assumed.
-BOTH of the Due's connectors must be on the switched hub, or the board
-keeps its rail from the other one - locate() reports what it finds. And
-the hub must actually cut power: this one advertises `ganged` rather
-than `ppps`, so uhubctl needs -f, and plenty of hubs accept the request
-and do nothing.
+**How the lie was caught, because I published the opposite first.** I
+committed that a cycle had cleared a wedged 16U2 and therefore proved
+the rail dropped. It had not: `tools/sketch.sh` retries three times on
+its own, and one of those retries landed at about the moment I cycled.
+The disproof is two-fold and neither part needs firmware - the device
+nodes are still present *during* the off window, and the board's LED
+keeps blinking through it, which the bench operator could see and I
+could not.
 
-**How this bench knows the cycle is real**, since it is not obvious.
-Firmware state cannot show it: opening the control port asserts NRSTB
-and resets the SAM3X anyway, so anything volatile is cleared by the act
-of measuring. The evidence is the programming port's 16U2 - a SEPARATE
-chip that NRSTB cannot touch. Its 1200-baud erase/reset path had wedged
-after about ten flashes, failing identically for both flashers over
-half an hour, and one uhubctl cycle cleared it. Only losing the 5 V rail
-does that.
+The general form, worth more than this tool: **a device that reports
+success is not evidence the physical thing happened.** Check the
+consequence, not the acknowledgement.
+
+So `--cycle` here reports failure and changes nothing. A bench with a
+genuine `ppps` hub can use it; this one cannot, and #5's power-cycle
+arm still needs hands on a cable.
 
     .venv/bin/python tools/powercycle.py --locate
     .venv/bin/python tools/powercycle.py --cycle --off 10
@@ -74,9 +78,23 @@ def locate():
 
 
 def cycle(hub, off_s):
+    """Cut power, and CHECK the device actually went away.
+
+    Returns True only if the nodes disappeared while the ports were
+    off. A hub that ignores the request looks identical from the
+    request's side, which is how this bench briefly believed it had a
+    software power cycle.
+    """
+    before = set(glob.glob("/dev/cu.usbmodem*"))
     _run(["-f", "-l", hub, "-a", "off"])
-    time.sleep(off_s)
+    dropped = False
+    end = time.time() + max(3.0, off_s)
+    while time.time() < end:
+        time.sleep(0.5)
+        if not (set(glob.glob("/dev/cu.usbmodem*")) & before):
+            dropped = True
     _run(["-f", "-l", hub, "-a", "on"])
+    return dropped
 
 
 def main():
@@ -105,7 +123,14 @@ def main():
 
     before = sorted(glob.glob("/dev/cu.usbmodem*"))
     print(f"nodes before: {before}")
-    cycle(hub, args.off)
+    dropped = cycle(hub, args.off)
+    if not dropped:
+        print("FAILED: the nodes never went away while the ports were "
+              "off, so the hub did not cut power. It acknowledged the "
+              "request and ignored it - `ganged` hubs do. This bench "
+              "cannot power-cycle in software; the arm needs hands.")
+        return 1
+    print("power was actually cut (nodes disappeared while off)")
     end = time.time() + args.wait
     while time.time() < end:
         time.sleep(0.5)
