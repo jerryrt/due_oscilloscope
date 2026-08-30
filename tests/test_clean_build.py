@@ -64,6 +64,35 @@ def test_track_a_arduino_cli_is_told_not_to_use_its_cache():
         "how a Track A image shipped with a stale lib/due_shared object")
 
 
+def test_track_a_upload_builds_before_it_flashes():
+    """`sketch.py upload` compiles rather than reusing an artifact.
+
+    This one is not hypothetical. `upload` used to flash whatever .bin
+    was in the build path, which is the image for whatever tree last
+    compiled and not the image for this one. It put an experimental
+    firmware - with issue #33's guard deliberately removed - onto a
+    bench whose working tree was clean, and the only tell was that the
+    recorded sha did not change.
+
+    A flash is the single moment the tree and the board are supposed to
+    agree, so it is the last place to reuse an artifact. `--bin` is
+    still honoured, because flash.py and the harness pass an explicit
+    path and mean it.
+    """
+    sk = _read("tools", "sketch.py")
+
+    assert "def compile_sketch(" in sk, (
+        "the compile path is no longer a function, so upload cannot "
+        "call it and will go back to flashing whatever it finds")
+    m = re.search(r'if args\.action == "upload":(.*?)\n    variant|'
+                  r'if args\.action == "upload":(.*?)\Z', sk, re.S)
+    body = sk[sk.index('if args.action == "upload":'):]
+    body = body[:body.index("def compile_sketch(")]
+    assert re.search(r"if not args\.bin:\s*\n\s*rc = compile_sketch\(", body), (
+        "sketch.py upload no longer compiles before flashing, so it can "
+        "put an image on the board that does not match the tree")
+
+
 def test_nothing_else_builds_behind_the_enforcement():
     """No other caller spawns a compiler.
 

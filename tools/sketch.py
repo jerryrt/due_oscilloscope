@@ -138,6 +138,23 @@ def main() -> int:
         # tools/flash.py already knows how to find SAM-BA and attribute
         # it to the right board, so hand it the binary arduino-cli built
         # rather than keeping a second, worse flash path here.
+        # Build first, always, unless the caller named a binary.
+        #
+        # This used to flash whatever .bin was lying in the build path,
+        # which is not "the image for this tree" - it is the image for
+        # whatever tree last compiled. It flashed an experimental
+        # firmware onto a bench whose working tree was clean, and the
+        # only tell was that the recorded sha did not change. A flash is
+        # the one moment the tree and the board are supposed to agree,
+        # so it is the last place to reuse an artifact.
+        #
+        # --bin is still honoured untouched: tools/flash.py and the test
+        # harness pass an explicit path and mean it.
+        if not args.bin:
+            rc = compile_sketch(cli, args, passthrough)
+            if rc != 0:
+                return rc
+
         binary = args.bin
         if not binary:
             build = args.build_path or BUILD_PATH
@@ -158,6 +175,11 @@ def main() -> int:
         finally:
             sys.argv = saved
 
+    return compile_sketch(cli, args, passthrough)
+
+
+def compile_sketch(cli, args, passthrough) -> int:
+    """One clean compile. Returns arduino-cli's exit code."""
     variant = variant_path(cli)
     # platform.txt links with -T{build.variant.path}/{build.ldscript}, so
     # this has to be relative and there is no absolute escape hatch. On
