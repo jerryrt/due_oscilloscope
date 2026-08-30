@@ -92,6 +92,14 @@ int main(void)
                cap_len, CON_STR_MAX);
     }
 
+    BOUND("con_u32w",  CON_PAD_MAX, con_u32w(7u, 9999u, ' '));
+    reset(); con_u32w(42u, 5, ' ');   EXACT("u32w space", "   42");
+    reset(); con_u32w(42u, 5, '0');   EXACT("u32w zero",  "00042");
+    reset(); con_u32w(1u, 3, '0');    EXACT("u32w 003",   "001");
+    /* Too wide for its field prints in full: a clipped number is wrong,
+     * a misaligned column is only ugly. */
+    reset(); con_u32w(123456u, 3, '0'); EXACT("u32w over", "123456");
+
     printf("%d checks, %d failures\n", checks, fails);
     return fails != 0;
 }

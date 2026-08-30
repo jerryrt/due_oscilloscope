@@ -15,6 +15,7 @@
 #include "stream.h"
 #include "stream_bench.h"
 #include "stream_core.h"
+#include "console_out.h"
 #include "stream_port.h"
 #include "usb_cdc.h"
 #include <stdio.h>
@@ -245,25 +246,35 @@ void stream_report(void)
 	 * 3.8 ms, a fifth of what `?` cost in total. Invariant 8 is about
 	 * exactly that. The host decodes instead.
 	 */
-	printf("# dma-frames=%lu dma-stalls=%lu adcmr=%08lx acr=%08lx\n",
-	       (unsigned long)cs.dma_frames, (unsigned long)cs.dma_stalls,
-	       (unsigned long)acq_mr(), (unsigned long)gen_acr());
-	printf("# frames=%lu bytes=%lu %lu.%03lu MB/s prod=%lu cons=%lu "
-	       "ringovf=%lu resync=%lu refused=%lu rxbuff=%lu govre=%lu "
-	       "endtx=%lu rst=%lu setup=%lu stall=%lu cfg=%lu dtr=%lu cfgfail=%lu\n"
-	       "# usb isr=%lu devisr=%08lx ep0isr=%08lx devimr=%08lx\n",
-	       (unsigned long)cs.frames, (unsigned long)cs.bytes,
-	       (unsigned long)(kbps / 1000u), (unsigned long)(kbps % 1000u),
-	       (unsigned long)acq_produced, (unsigned long)acq_consumed,
-	       (unsigned long)acq_ring_overflow, (unsigned long)cs.resync,
-	       (unsigned long)refused,
-	       (unsigned long)acq_rxbuff_overruns, (unsigned long)acq_govre,
-	       (unsigned long)gen_endtx_count,
-	       (unsigned long)usb_reset_count, (unsigned long)usb_setup_count,
-	       (unsigned long)usb_stall_count, (unsigned long)usb_configured,
-	       (unsigned long)usb_line_state, (unsigned long)usb_cfg_fail,
-	       (unsigned long)usb_isr_count, (unsigned long)usb_last_devisr,
-	       (unsigned long)usb_last_ep0isr, (unsigned long)usb_devier_snap);
+	con_str("# ");
+	con_kv_u32("dma-frames", cs.dma_frames);  con_ch(' ');
+	con_kv_u32("dma-stalls", cs.dma_stalls);  con_ch(' ');
+	con_str("adcmr=");  con_hex32(acq_mr(), 8);   con_ch(' ');
+	con_str("acr=");    con_hex32(gen_acr(), 8);  con_nl();
+	con_str("# ");
+	con_kv_u32("frames", cs.frames);            con_ch(' ');
+	con_kv_u32("bytes", cs.bytes);              con_ch(' ');
+	con_u32(kbps / 1000u); con_ch('.');
+	con_u32w(kbps % 1000u, 3, '0');             con_str(" MB/s ");
+	con_kv_u32("prod", acq_produced);           con_ch(' ');
+	con_kv_u32("cons", acq_consumed);           con_ch(' ');
+	con_kv_u32("ringovf", acq_ring_overflow);   con_ch(' ');
+	con_kv_u32("resync", cs.resync);            con_ch(' ');
+	con_kv_u32("refused", refused);             con_ch(' ');
+	con_kv_u32("rxbuff", acq_rxbuff_overruns);  con_ch(' ');
+	con_kv_u32("govre", acq_govre);             con_ch(' ');
+	con_kv_u32("endtx", gen_endtx_count);       con_ch(' ');
+	con_kv_u32("rst", usb_reset_count);         con_ch(' ');
+	con_kv_u32("setup", usb_setup_count);       con_ch(' ');
+	con_kv_u32("stall", usb_stall_count);       con_ch(' ');
+	con_kv_u32("cfg", usb_configured);          con_ch(' ');
+	con_kv_u32("dtr", usb_line_state);          con_ch(' ');
+	con_kv_u32("cfgfail", usb_cfg_fail);        con_nl();
+	con_str("# usb ");
+	con_kv_u32("isr", usb_isr_count);           con_ch(' ');
+	con_str("devisr="); con_hex32(usb_last_devisr, 8);   con_ch(' ');
+	con_str("ep0isr="); con_hex32(usb_last_ep0isr, 8);   con_ch(' ');
+	con_str("devimr="); con_hex32(usb_devier_snap, 8);   con_nl();
 	uart_flush();
 }
 
@@ -304,17 +315,18 @@ void stream_bench_report(void)
 	stream_bench_stats_t bs;
 
 	stream_bench_get_stats(&bs);
-	printf("# bench=%s  IN %lu B   OUT %lu B  passes=%lu arms-in=%lu arms-out=%lu\n",
-	       bs.mode == STREAM_BENCH_FLOOD  ? "flood"  :
-	       bs.mode == STREAM_BENCH_SINK   ? "sink"   :
-	       bs.mode == STREAM_BENCH_DUPLEX ? "duplex" :
-	       bs.mode == STREAM_BENCH_FLOOD_DMA ? "flood-dma" :
-	       bs.mode == STREAM_BENCH_SINK_DMA ? "sink-dma" :
-	       bs.mode == STREAM_BENCH_DUPLEX_DMA ? "duplex-dma" : "off",
-	       (unsigned long)bs.in_bytes,
-	       (unsigned long)bs.out_bytes,
-	       (unsigned long)stream_loop_passes,
-	       (unsigned long)bs.dma_in_arms,
-	       (unsigned long)bs.dma_out_arms);
+	con_str("# ");
+	con_kvs("bench",
+	        bs.mode == STREAM_BENCH_FLOOD  ? "flood"  :
+	        bs.mode == STREAM_BENCH_SINK   ? "sink"   :
+	        bs.mode == STREAM_BENCH_DUPLEX ? "duplex" :
+	        bs.mode == STREAM_BENCH_FLOOD_DMA ? "flood-dma" :
+	        bs.mode == STREAM_BENCH_SINK_DMA ? "sink-dma" :
+	        bs.mode == STREAM_BENCH_DUPLEX_DMA ? "duplex-dma" : "off");
+	con_str("  IN ");   con_u32(bs.in_bytes);   con_str(" B   OUT ");
+	con_u32(bs.out_bytes);                      con_str(" B  ");
+	con_kv_u32("passes", stream_loop_passes);   con_ch(' ');
+	con_kv_u32("arms-in", bs.dma_in_arms);      con_ch(' ');
+	con_kv_u32("arms-out", bs.dma_out_arms);    con_nl();
 	uart_flush();
 }

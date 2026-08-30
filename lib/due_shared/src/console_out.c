@@ -107,6 +107,22 @@ void con_pad(char c, unsigned n)
 		con_ch(c);
 }
 
+void con_u32w(uint32_t v, unsigned width, char fill)
+{
+	uint32_t t = v;
+	unsigned n = 1;
+
+	while (t >= 10u) {
+		t /= 10u;
+		n++;
+	}
+	if (width > CON_PAD_MAX)
+		width = CON_PAD_MAX;
+	if (width > n)
+		con_pad(fill, width - n);
+	con_u32(v);
+}
+
 void con_nl(void)
 {
 	console_write("\n");

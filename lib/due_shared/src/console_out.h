@@ -72,6 +72,20 @@ void con_u32(uint32_t v);
 void con_i32(int32_t v);
 void con_hex32(uint32_t v, unsigned digits);
 void con_pad(char c, unsigned n);
+
+/*
+ * A number in a field of `width`, filled with `fill` on the left.
+ *
+ * `%5lu` and `%03lu` appear in forty-odd places and the columns they
+ * make are read by eye and by host parsers, so the width is not
+ * decoration. Bounded like everything else: width clamps to
+ * CON_PAD_MAX, and a value too wide for its field is printed in full
+ * rather than truncated - a clipped number is a wrong number, where a
+ * misaligned column is only ugly.
+ *
+ * Emits at most max(width, 10) bytes.
+ */
+void con_u32w(uint32_t v, unsigned width, char fill);
 void con_nl(void);
 
 /*
