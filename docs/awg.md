@@ -1390,6 +1390,33 @@ nothing here tests it, and the three fractions are quoted as
 theirs, which several other fractions would also satisfy. Only RC 32's
 15/16 is exact enough (0.2 sd) to be more than a coincidence of digits.
 
+**One defect, two expressions - confirmed on two hosts.** `windows-desk`
+ran the RC 32 arm and found 3 of 12 runs at 0.93738-0.93751 with
+**0 bytes lost in every run**, slow ones included. Same fraction, second
+operating system, so the slow converter is the device's and not
+macOS-conditioned.
+
+Their zero column is what separates the device behaviour from the host
+accounting, which neither bench could do alone:
+
+| host | what a 15/16 converter looks like |
+|---|---|
+| macOS | buffers ahead, sheds the surplus: a **6% byte loss** |
+| Windows | applies backpressure, feeds less: a **93.6% short feed** |
+
+Those are the same number. `test_awg_ladder_play_only`'s 95% assertion
+fires only on the host where the loss channel is closed, which is why
+issue #47 was filed as a host feed defect on `windows-desk` and as a
+byte deficit here. It is neither. **The macOS "loss" at RC 32 is not
+loss** - it is this, rendered by a stack that counts bytes it will not
+deliver.
+
+Do not pool the two slow modes. There is also a **first-cycle** mode -
+run 1 after a rate change, ratio ~0.95 with 30-360 underruns - seen on
+both benches. It is not this, and averaging the two turns three clean
+0.9374s into a "mean 0.9518". Discard cycle 1 explicitly; a per-rate
+block that keeps it carries one outlier per rate.
+
 Reproduce with `tools/issue47_ratio.py`. **One trap:** `consumed` counts
 *buffers*, not samples. Read as samples it reports 2,380 sps against a
 nominal 1,218,750 - wrong enough to be obvious, which is the only reason
