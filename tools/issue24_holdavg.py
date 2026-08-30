@@ -127,18 +127,29 @@ def main():
                 spread, off, avg = got
                 found = masked_sites(avg, period)
                 sites = sorted(s[0] for s in (found[0] if found else []))
+                # Record the noise floor and the wraps per bin. Without
+                # them the readability gate can only say an arm is not
+                # SWAMPED; it cannot say the arm was sensitive enough to
+                # see anything, and "no gaps of 21" from a blind arm
+                # reads exactly like "no 21 lattice". Every other reader
+                # on this issue records a MAD and mine did not.
+                mad = found[1] if found else None
+                nbin = found[2] if found and len(found) > 2 else None
                 gaps = collections.Counter(sites[k + 1] - sites[k]
                                            for k in range(len(sites) - 1))
                 row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                        "bench": args.bench, "hold": hold, "dac_sps": dac,
                        "adc_rc": rc, "adc_hz": adc_hz, "period": period,
                        "group_spread": round(spread, 2), "align": off,
+                       "mad": round(mad, 4) if mad is not None else None,
+                       "n_per_bin": nbin,
                        "n_sites": len(sites),
                        "gaps": dict(gaps.most_common(6)),
                        "sites": sites[:24]}
                 rows.append(row)
                 print(f"run {i} rc{rc} hold {hold} (dac {dac}): sites "
-                      f"{len(sites):3d} spread {spread:5.1f}  gaps "
+                      f"{len(sites):3d} spread {spread:5.1f} "
+                      f"mad {mad if mad is None else round(mad, 3)}  gaps "
                       f"{dict(gaps.most_common(4))}", flush=True)
                 board.stop()
                 board.drain_console(0.3)
