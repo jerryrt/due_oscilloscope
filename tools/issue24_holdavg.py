@@ -82,6 +82,14 @@ def main():
     ap.add_argument("-n", "--runs", type=int, default=6)
     ap.add_argument("-s", "--seconds", type=float, default=12.0)
     ap.add_argument("--holds", default="1,2,3")
+    ap.add_argument("--arms", default="",
+                    help="explicit RC:HOLD arms, interleaved, e.g. "
+                         "'195:3,292:2'. The hold and the DAC rate are "
+                         "confounded in a --holds sweep - a bigger hold "
+                         "at a fixed ADC rate IS a slower DAC - and RC "
+                         "292 at hold 2 puts the DAC at 66,780 Hz "
+                         "against RC 195 at hold 3's 66,666, which "
+                         "separates them to 0.17 per cent")
     ap.add_argument("--adc-hz", type=int, default=200000)
     ap.add_argument("--step", type=int, default=measure.RAMP_STEP)
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "macos"))
@@ -89,18 +97,25 @@ def main():
     args = ap.parse_args()
 
     period = 4096 // args.step
-    holds = [int(x) for x in args.holds.split(",")]
+    if args.arms:
+        arms = []
+        for part in args.arms.split(","):
+            rc, h = part.split(":")
+            arms.append((int(rc), int(h)))
+    else:
+        arms = [(ADC_RC, int(x)) for x in args.holds.split(",")]
     board = measure.Board(settle=3.0)
     rows = []
     try:
         board.stop()
         board.drain_console(0.5)
         for i in range(1, args.runs + 1):
-            for hold in holds:
+            for rc, hold in arms:
                 # RC scales exactly; Hz would not.
-                dac = (39_000_000 // (ADC_RC * hold))
+                adc_hz = 39_000_000 // rc
+                dac = (39_000_000 // (rc * hold))
                 res = measure.run_loop(board, dac_sps=dac,
-                                       adc_hz=args.adc_hz, channels=2,
+                                       adc_hz=adc_hz, channels=2,
                                        ramp=args.step, seconds=args.seconds)
                 ps = res.stream
                 vals = ps.series.get(measure.CH_A0) or []
@@ -116,13 +131,13 @@ def main():
                                            for k in range(len(sites) - 1))
                 row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                        "bench": args.bench, "hold": hold, "dac_sps": dac,
-                       "adc_hz": args.adc_hz, "period": period,
+                       "adc_rc": rc, "adc_hz": adc_hz, "period": period,
                        "group_spread": round(spread, 2), "align": off,
                        "n_sites": len(sites),
                        "gaps": dict(gaps.most_common(6)),
                        "sites": sites[:24]}
                 rows.append(row)
-                print(f"run {i} hold {hold} (dac {dac}): sites "
+                print(f"run {i} rc{rc} hold {hold} (dac {dac}): sites "
                       f"{len(sites):3d} spread {spread:5.1f}  gaps "
                       f"{dict(gaps.most_common(4))}", flush=True)
                 board.stop()
@@ -133,13 +148,13 @@ def main():
         finally:
             board.close()
 
-    print("\ngap census per hold, non-decimating reader:")
-    for h in holds:
+    print("\ngap census per arm, non-decimating reader:")
+    for rc, h in arms:
         tot = collections.Counter()
         for r in rows:
-            if r["hold"] == h:
+            if r["hold"] == h and r.get("adc_rc") == rc:
                 tot.update(r["gaps"])
-        print(f"  hold {h}: {dict(tot.most_common(6))}")
+        print(f"  rc {rc} hold {h}: {dict(tot.most_common(6))}")
     print("\n  hold 2 showing 10s and 11s -> the comb counts ADC conversions")
     print("  hold 2 showing 21s          -> it counts DAC updates")
     if args.out:
