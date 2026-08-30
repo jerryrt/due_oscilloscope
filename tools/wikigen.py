@@ -155,9 +155,6 @@ are the reason to trust the rest:
   the board, and it is better shown than described.
 - **A spectrum with the wrong window**, on a tone that does not fit a
   whole number of cycles into the analysis window.
-- **A capture rate whose counters will not come clean**, because above
-  200 kHz the stream loses exactly three frames at start - every time,
-  and then runs clean for as long as anyone has watched.
 - **A board stalled on purpose**, with the counters going red - and,
   next to it, the one picture here of the front end getting something
   *wrong*. With the DAC no longer driven, the measurement panel will
