@@ -446,6 +446,64 @@ comb's amplitude and refuses the conclusion below 2:1, because at 12 s
 captures the floor was 0.98 against a 1.04 code comb and "detectable by
 6%" is the same mistake one step further along.
 
+### There are two lattices, and they are drawn per capture
+
+The section below this one records the unit as unsettled, with three
+constraints that did not fit one model. They fit two.
+
+Sixty captures on the host-fed path, twenty at each of holds 1, 2 and 3,
+classified by **which lattice each capture drew** rather than by a
+pooled census. Pooling averages over draws, and that is precisely what
+produced contradictory answers from one configuration:
+
+| hold | conversion-locked | update-locked | weak | none |
+|---|---|---|---|---|
+| 1 | *(coincide)* | 6 | 12 | 2 |
+| **2** | **5** (gaps 10/11) | **4** (gaps 21) | 11 | 0 |
+| 3 | **17** (gaps 7) | **0** | 2 | 1 |
+
+At hold 2 individual captures draw **either** lattice and **none draws
+both**. So there are two, drawn per capture and mutually exclusively:
+one locked to DAC updates, which gives 21 at every hold, and one locked
+to ADC conversions, which gives 21 divided by the hold.
+
+**At hold 1 the two coincide by construction** - one DAC update is one
+ADC conversion - which is why nothing separated them until the ratio
+axis opened, and why every arm before that was blind to the distinction.
+
+That reconciles the constraints below without anyone having measured
+wrongly. The hold-2 tens and elevens were real and so were the
+twenty-ones that appeared in their place on more captures; the internal
+path's 21 over 243 channel-captures is real; the ratio-3 sevens are real
+and are the conversion-locked lattice read at the hold where the two
+units finally differ by three.
+
+**The methodological form, which cost four retractions to arrive at.**
+On a defect whose configuration is redrawn at every stream start, a
+census pooled over a handful of captures is not a measurement of what is
+present - it is a sample of what was drawn. Classify per capture and
+report the distribution. "21 DAC0 updates" was published and withdrawn
+twice, and "21 ADC conversions" once, all from pooled counts over four
+to twelve captures.
+
+Two things unexplained and not smoothed over. The update-locked lattice
+is **absent at hold 3** - 0 of 20, against 4 of 20 at hold 2 - and
+nothing here accounts for that. And "weak" is the largest class at holds
+1 and 2, 12 and 11 of 20, so most captures draw neither lattice clearly
+and the classifier reports a minority in each; only hold 3 has a lattice
+dominating its own arm.
+
+Two further arms, both negative, are worth keeping so they are not
+re-run. The **TAG interleave is not what separates the host and internal
+paths**: `measure.build_ramp_tagged` puts gen NORMAL's DAC0/DAC1
+alternation on the host path with transport, instrument, fold and rates
+all held, and six paired runs are indistinguishable from plain. And the
+readers are not equivalent on the internal path - `pair_fold` with
+`fold_sites` reads MAD 0.12 and sites 138/198/219 where an averaged hold
+with `masked_sites` reads MAD 0.43 and 175/198/209, so the averaging
+reader is the worse instrument there and its numbers should not be
+compared with the differencing one's.
+
 ### The unit the comb counts, and the three constraints on it
 
 Open, and worth stating precisely because it has been answered three
