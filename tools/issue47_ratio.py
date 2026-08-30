@@ -79,6 +79,19 @@ def main():
         for i in range(1, a.reps + 1):
             r = measure.run_play(board, dac_sps=hz, seconds=a.seconds,
                                  drain_s=1.5)
+            if r.play.consumed is None:
+                # Objective 0c: close() wedges, measure.close_native()
+                # releases it with a software detach, and the native
+                # port then RE-ENUMERATES under a new path. The Board
+                # holds the old one, so every later run reports "no
+                # counters" - not a device fault and not a rate
+                # property, but it silently truncated two sweeps here
+                # before it was recognised. Rediscover and retry once.
+                print("    (no counters - re-discovering ports after a "
+                      "0c detach, then retrying this run)")
+                board = measure.Board(settle=4.0)
+                r = measure.run_play(board, dac_sps=hz, seconds=a.seconds,
+                                     drain_s=1.5)
             cons = r.play.consumed
             us = r.play.raw.get("runus")
             if not us or not cons:
