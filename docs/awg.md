@@ -1427,6 +1427,56 @@ summary called it full rate, and the summary was believed. **Report the
 measured quantity, not a count of how many runs cleared a threshold
 nobody justified.**
 
+**The deficits are quantised, and n is chosen per run.** Taking the
+clean rates as the instrument's zero - their mean deficit is 0.000070,
+which is the measurement's offset and not a device effect - every rate
+loses an integer number of conversions out of **256**.
+
+Read run by run rather than as medians, across 140 underrun-free runs at
+18 rates:
+
+    worst distance from an integer   0.0305 of one unit
+    median distance                  0.0103
+
+**Every individual run averages to an integer.** That is the
+load-bearing fact, because a run whose n changed part-way through would
+average to a non-integer blend. It does not, at any rate, in any run. So
+**n is fixed for the duration of a run and chosen when the run starts** -
+which is the shape of a phase relationship established at start and then
+held. What the phase is between is not established here.
+
+Several rates offer two values and a run picks one:
+
+| rate | available n | | rate | available n |
+|---|---|---|---|---|
+| RC 30 | 1 or 2 | | RC 40 | 4 or 8 |
+| RC 32 | **0 or 16** | | RC 48 | **0 or 8** |
+| RC 34 | 3 or 4 | | RC 50 | 1 or 2 |
+| RC 36 | 4 or 6 | | RC 52 | 0 or 2 |
+| RC 38 | 5 or 6 | | | |
+
+and others offer only one: RC 31 always 2, RC 39 always 6, RC 44 always
+4, RC 28 and 56 always 0.
+
+**So "RC 32 and 48 are the intermittent rates" was an artefact.** Half
+the ladder is bimodal; those two are simply the only ones with a mode at
+n = 0, which is the one a pass/fail test notices. For the same reason,
+"the peak is at RC 40" reports how often a mode was taken rather than a
+property of the rate - 6 of its 8 runs took n = 8 and 2 took n = 4.
+
+The two deep modes are on the same lattice: RC 32's 15/16 is exactly
+16/256 and RC 48's is 8/256.
+
+256 is not a denominator chosen to fit. Sweeping every value from 16 to
+1200, the residual minimises at 253-257 and 508-511, and at 512 every n
+comes out even - which is what a real quantum of 1/256 looks like
+sampled at twice the resolution.
+
+**Confirmed blind.** The prediction was posted to issue #48 while RC 37,
+38, 40 and 41 were still running, claiming integer n/256 with worst
+residual under about 0.02 of a unit and deliberately not saying which n.
+All four landed: 5.002, 5.011, 7.993, 5.987.
+
 **Only RC 32's fraction is a reading; the others are not.** The table
 above used to name 125/128 for RC 39 and 63/64 for RC 44. Those came out
 of `Fraction.limit_denominator(64)` applied to a *measured* ratio, which
