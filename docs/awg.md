@@ -446,6 +446,51 @@ comb's amplitude and refuses the conclusion below 2:1, because at 12 s
 captures the floor was 0.98 against a 1.04 code comb and "detectable by
 6%" is the same mistake one step further along.
 
+### The second lattice is 105 microseconds, not 21 of anything
+
+Every arm on this issue was taken at **ADC RC 195** - 200,000
+conversions a second, where 21 conversions is exactly 105 us. The count
+and the time were never separable, so "21 ADC conversions" and "105 us"
+fitted every measurement equally and nobody had reason to prefer one.
+
+RC 292 at hold 2 separates them: it puts the DAC at 66,780 Hz against RC
+195 at hold 3's 66,666 - the same DAC rate to 0.17 per cent - with the
+ADC at 133,561 instead of 200,000.
+
+| arm | gap (updates) | in conversions | in time |
+|---|---|---|---|
+| RC195 hold 1 | 21 | 21 | **105.00 us** |
+| RC195 hold 2 | 10.5 | 21 | **105.00 us** |
+| RC195 hold 3 | 7 | 21 | **105.00 us** |
+| **RC292 hold 2** | **7** | **14** | **104.82 us** |
+
+The conversion count is not invariant. The time is, to 0.2 per cent.
+
+Both benches' existing data already said so in a unit nobody had
+converted. windows-desk's ratio-3 gap of 7 at DAC 66,666 is 105.00 us,
+and their ratio-4 census - gaps of 5 dominant with 6s making up the
+difference, mean 5.25 at DAC 50,000 - is 105.00 us exactly. The 5-and-6
+alternation IS a non-integer gap of 5.25. Six arms, two benches, two
+boards, one number.
+
+**So the two lattices are:**
+
+- **update-locked** - 21 DAC updates, invariant to rate, which is 105 us
+  at 200 kHz and 315 us at 66 kHz. Device-side: present with no host in
+  the DAC path.
+- **time-locked** - about 105 us, invariant to both rates. Seen only on
+  the host-fed path, 0 in 432 internal captures.
+
+They coincide at 200 kHz, which is the rate this issue was born at and
+the reason one number described both for so long.
+
+Offered as somewhere to look and NOT as a finding: 8192 MCK cycles at 78
+MHz is 105.026 us. A 13-bit counter at MCK would fit and there is no
+independent evidence of one. What matters is that 105 us is a number
+worth searching the datasheet and the USB stack for, which "21" never
+was - and since the lattice is host-fed-path-only, the USB side is where
+to start.
+
 ### Only one of the two lattices is device-side
 
 The section below establishes two lattices drawn per capture. They do
