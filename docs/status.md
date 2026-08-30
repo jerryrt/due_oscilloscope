@@ -341,13 +341,32 @@ before each run, dark onset reproducible at 9.03 and 9.02 s:
     linux-x1      turnover 1.3-2.6 s   recovers when the feeder is killed
     windows-desk  turnover 6.4-8.6 s   does not recover in 45 s
 
-Two readings, unseparated: either **Windows keeps delivering queued
-bytes after the handle dies**, so the device is still fed and starvation
-never ends - making both benches the same device behaviour under
-different teardown - or the device states genuinely differ and #33 is
-not one phenomenon across hosts. `play_abandoned` incrementing after a
-kill would decide it, and cannot be read here because everything that
-reports counters is main-loop-served and a reset zeroes them.
+**Both benches now agree, and the fork above is closed.** `linux-x1`
+withdrew its recovery observation (`764f741`): the process it killed
+held the programming port, and closing that fd drops DTR, which is
+NRSTB - so the heartbeat returning was a *reset*, not a resume. Re-run
+with a feeder that never touches the console, it reads silent 4 s after
+the feeder dies, silent minutes later, and returns only on a deliberate
+DTR toggle. The windows-desk measurement was immune by construction -
+feeder in its own process on the native node only, parent holding COM7
+open throughout and never closing it - so the two are independent
+results rather than one method run twice.
+
+**On this project "it came back when I killed something" is a reset
+until proven otherwise.** Anything holding the programming port resets
+the board on close; the recovery procedure here is a console open, which
+is the same NRSTB.
+
+The queued-bytes reading also dies on arithmetic: the feed is 400,000
+B/s, Windows applies backpressure so the queue is *bounded*, and the
+largest driver buffer this project has measured is macOS's 55-450 KB -
+1.1 s of data at that rate. The device sees the feed stop within a
+second or two and is still dark 45 s later.
+
+So: **the stall does not end on its own, does not end when the feed
+stops, reports no fault, takes no reset, and ends only on NRSTB.** Hang
+and starvation are both still open - invariant 7's failure mode fits
+what is seen but predicts a resume nobody has observed.
 
 Two caveats kept on the fault evidence: a stall *inside* an ISR at a
 priority that never returns produces the same silence, and the override
