@@ -211,3 +211,96 @@ def test_the_source_list_is_the_provenance_one(tmp_path):
     assert rel.split(os.sep)[0] in provenance.FW_SOURCE_TRACKS["B"], (
         f"flash.py looked at {rel}, which is not in the provenance "
         f"list for Track B")
+
+
+def test_the_log_says_which_dirty_not_merely_that_it_was(tmp_path,
+                                                         monkeypatch):
+    """Issue #35: two dirty images from one commit were indistinguishable.
+
+    `sha256` is the binary's, and the binary changes on every rebuild
+    because the identity line carries `__DATE__` and `__TIME__` - so it
+    cannot say two images were built from the same source. That left
+    `repo_rev` carrying the whole weight, and `repo_rev` is identical
+    for every dirty state of one commit.
+
+    mac-bench's log has a deliberately-reverted control image and a
+    `main` image on adjacent lines, both `(dirty)`, with nothing to tell
+    them apart. A hash of the working-tree delta tells them apart: same
+    commit and same edits share it, a revert changes it.
+
+    Driven through the real `_log_flash` with a fake `git`, because the
+    property under test is what the record contains and not what git
+    says - and a test that shelled out to a real repository would be
+    measuring this checkout's tidiness.
+    """
+    import json
+
+    binary = tmp_path / "img.bin"
+    binary.write_bytes(b"\x00" * 32)
+    log = tmp_path / "flash-log.jsonl"
+    monkeypatch.setattr(flash, "FLASH_LOG", str(log))
+
+    state = {"diff": "--- a/drivers/acq.c\n+++ b/drivers/acq.c\n+one\n"}
+
+    def fake_run(cmd, **kw):
+        class R:
+            pass
+        r = R()
+        if cmd[:2] == ("git", "diff"):
+            r.stdout = state["diff"]
+        elif cmd[:2] == ("git", "status"):
+            r.stdout = " M drivers/acq.c\n"
+        elif "rev-parse" in cmd:
+            r.stdout = "abc1234\n"
+        else:
+            r.stdout = ""
+        return r
+
+    monkeypatch.setattr(flash.subprocess, "run", fake_run)
+
+    flash._log_flash(str(binary))
+    state["diff"] = "--- a/drivers/acq.c\n+++ b/drivers/acq.c\n+two\n"
+    flash._log_flash(str(binary))
+
+    rows = [json.loads(x) for x in log.read_text().splitlines() if x.strip()]
+    assert len(rows) == 2
+    a, b = rows
+
+    assert a["repo_rev"] == b["repo_rev"], "the fake git moved; test is wrong"
+    assert a["dirty"] is True and b["dirty"] is True
+    assert a["sha256"] == b["sha256"], (
+        "the binary differs, so this proves nothing about the delta hash")
+
+    assert a["dirty_sha"] != b["dirty_sha"], (
+        "two different working trees at one commit produced the same "
+        "dirty_sha; the log still cannot say which dirty an image was "
+        "built from, which is the whole of issue #35's open item")
+
+
+def test_a_clean_tree_logs_no_dirty_sha(tmp_path, monkeypatch):
+    """None rather than the hash of an empty diff.
+
+    A hash of "" is a real-looking value that would compare equal
+    between two clean builds and unequal to nothing, which invites
+    reading it as evidence. Absence is the honest spelling.
+    """
+    import json
+
+    binary = tmp_path / "img.bin"
+    binary.write_bytes(b"\x00" * 32)
+    log = tmp_path / "flash-log.jsonl"
+    monkeypatch.setattr(flash, "FLASH_LOG", str(log))
+
+    def fake_run(cmd, **kw):
+        class R:
+            pass
+        r = R()
+        r.stdout = "abc1234\n" if "rev-parse" in cmd else ""
+        return r
+
+    monkeypatch.setattr(flash.subprocess, "run", fake_run)
+    flash._log_flash(str(binary))
+
+    rec = json.loads(log.read_text().splitlines()[0])
+    assert rec["dirty"] is False
+    assert rec["dirty_sha"] is None

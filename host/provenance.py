@@ -169,6 +169,11 @@ def firmware(build_stamp=None, track=None):
             "fw_repo_rev": (rec.get("repo_rev") or "") +
                            ("-dirty" if rec.get("dirty") else ""),
             "fw_sha256": rec.get("sha256"),
+            # Which dirty, not merely that it was dirty. None on a clean
+            # tree. tools/flash.py says why sha256 alone cannot answer
+            # it: the identity line carries __DATE__/__TIME__, so the
+            # binary hash changes on every rebuild of one source state.
+            "fw_dirty_sha": rec.get("dirty_sha"),
             "fw_flashed_at": rec.get("when"),
             "fw_provenance": ("matched" if stamp is not None
                               else "latest, unmatched build stamp"),

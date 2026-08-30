@@ -356,19 +356,45 @@ def _log_flash(binary) -> None:
                                       timeout=5).stdout.strip() or None
             except Exception:
                 return None
+        # What "dirty" actually was, not merely that it was.
+        #
+        # mac-bench's gap, raised on #35: sha256 of the binary changes on
+        # every rebuild because the identity line carries __DATE__ and
+        # __TIME__, so it cannot say two images were built from the same
+        # source. That leaves repo_rev carrying the whole weight, and
+        # repo_rev is identical for every dirty state of one commit. Their
+        # log has a deliberately-reverted control image and a main image
+        # on adjacent lines, both `(dirty)`, and nothing distinguishes
+        # them.
+        #
+        # A hash of the working-tree delta does. Two images from the same
+        # commit and the same edits share it; a revert changes it. It
+        # answers "same dirty or different dirty", which is the question
+        # that was unanswerable.
+        #
+        # `git diff HEAD` is tracked content; `git status --porcelain`
+        # adds the names of untracked files, which the diff omits. An
+        # untracked file's *content* is still invisible - CMakeLists lists
+        # its sources explicitly so an untracked .c is not built, but that
+        # is an argument about this repository rather than a guarantee.
+        porcelain = git("status", "--porcelain")
+        delta = (git("diff", "HEAD") or "") + "\n" + (porcelain or "")
         rec = {
             "when": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "binary": os.path.relpath(binary, REPO),
             "sha256": h,
             "repo_rev": git("rev-parse", "--short", "HEAD"),
-            "dirty": bool(git("status", "--porcelain")),
+            "dirty": bool(porcelain),
+            "dirty_sha": (hashlib.sha256(delta.encode()).hexdigest()
+                          if porcelain else None),
         }
         os.makedirs(os.path.dirname(FLASH_LOG), exist_ok=True)
         with open(FLASH_LOG, "a") as f:
             f.write(json.dumps(rec, sort_keys=True) + "\n")
             f.flush()
-        print(f"==> logged: {rec['repo_rev']}"
-              f"{' (dirty)' if rec['dirty'] else ''} sha {h[:12]}")
+        dirt = (f" (dirty {rec['dirty_sha'][:8]})" if rec["dirty"]
+                else "")
+        print(f"==> logged: {rec['repo_rev']}{dirt} sha {h[:12]}")
     except Exception as e:                                    # noqa: BLE001
         print(f"==> could not log the flash: {e}", file=sys.stderr)
 
