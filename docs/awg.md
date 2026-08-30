@@ -1343,13 +1343,21 @@ each, drained. Every figure here is the **device's own**
 `consumed x PLAY_BUF_SAMPLES / run_us` against nominal, so no host
 clock is in it.
 
-| RC | nominal sps | slow runs | device ratio | nearest simple fraction |
+| RC | nominal sps | slow runs | device ratio (**mean** of the slow runs) | nearest simple fraction |
 |---|---|---|---|---|
 | 28 | 1,392,857 | 0 / 7 | 1.0000 | — |
 | 32 | 1,218,750 | **1 / 8** | **0.937504** | 15/16 = 0.937500 |
 | 39 | 1,000,000 | 8 / 8 | 0.976518 | *(see below)* |
 | 44 | 886,363 | 8 / 8 | 0.984288 | *(see below)* |
 | 56 | 696,428 | 0 / 8 | 1.0000 | — |
+
+The two tables in this section quote **different statistics** and it is
+worth saying so rather than leaving a reader to notice that RC 39 is
+0.976518 here and 0.97653 below. This one is the mean of the slow runs;
+the band table is the median, which is what `tools/issue47_ratio.py`
+prints. They differ in the fifth decimal and neither is more correct -
+but two unlabelled numbers for one quantity is how a reader starts
+wondering which measurement changed.
 
 Three things follow, and the third is the one to design against.
 
@@ -1384,7 +1392,7 @@ at RC 39 or 44 will be 1.6-2.3% wrong every time.
 **The affected rates are a contiguous band with soft edges.** Ten rates,
 8 reps each, underrun-free runs only:
 
-| RC | nominal sps | slow runs | ratio |
+| RC | nominal sps | slow runs | ratio (**median** of the slow runs) |
 |---|---|---|---|
 | 28 | 1,392,857 | 0/7 | full rate |
 | 30 | 1,300,000 | 0/7 | full rate |
