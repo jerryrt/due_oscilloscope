@@ -127,6 +127,18 @@ void console_missing(void);
  */
 void console_identity(char track, unsigned long mck_hz);
 
+/*
+ * Handler bodies that are application logic, in console_cmds.c.
+ *
+ * They live behind the same rule as everything else here: what they
+ * reach outside themselves is named in a port header, and nothing they
+ * do touches a register. A handler that programs one stays in its
+ * track's own source - see the note at the top of console_cmds.c for
+ * which, and why the split is drawn by measurement rather than taste.
+ */
+void console_trigger_fault(void);
+void console_gen_report(void);
+
 #ifdef __cplusplus
 }
 #endif

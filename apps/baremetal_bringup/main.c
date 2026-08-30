@@ -593,20 +593,7 @@ static void cmd_stream_uart(uint32_t trigger_hz)
  * the two tracks cannot drift apart in how they say it. This function
  * is the part that is genuinely this track's: where the bytes go.
  */
-static void gen_report(void)
-{
-	char line[160];
-	ctl_gen_t g;
-
-	if (!ctl_port_gen_get(&g)) {
-		printf("# no generator on this track\n");
-		uart_flush();
-		return;
-	}
-	ctl_gen_describe(line, sizeof(line), &g);
-	printf("# %s\n", line);
-	uart_flush();
-}
+/* console_gen_report() is shared - lib/due_shared/src/console_cmds.c */
 
 static void cmd_stream(uint32_t trigger_hz)
 {
@@ -914,16 +901,7 @@ static void cmd_stall(uint32_t ms)
 		;
 }
 
-static void trigger_fault(void)
-{
-	printf("# triggering deliberate hard fault (INVSTATE)...\n");
-	uart_flush();
-
-	void (*bad)(void) = (void (*)(void))0x20000000;
-	bad();
-
-	printf("# unreachable\n");
-}
+/* console_trigger_fault() is shared - lib/due_shared/src/console_cmds.c */
 
 /*
  * Find the DACC's maximum update rate.
@@ -1093,7 +1071,7 @@ static void h_help(const uint32_t *a)  { (void)a; cmd_help(); }
 static void h_ident(const uint32_t *a) { (void)a; identity_line(); }
 static void h_printf(const uint32_t *a){ (void)a; measure_printf(); }
 static void h_gpio(const uint32_t *a)  { (void)a; measure_gpio(); }
-static void h_fault(const uint32_t *a) { (void)a; trigger_fault(); }
+static void h_fault(const uint32_t *a) { (void)a; console_trigger_fault(); }
 static void h_read(const uint32_t *a)  { (void)a; cmd_read(); }
 static void h_sweep(const uint32_t *a) { (void)a; cmd_sweep(); }
 static void h_xtalk(const uint32_t *a)
@@ -1458,7 +1436,7 @@ static void h_wave(const uint32_t *a)
 	 * amplitude. */
 	if (a[2])
 		gen_set_amp(a[2]);
-	gen_report();
+	console_gen_report();
 }
 
 /*
@@ -1484,7 +1462,7 @@ static void h_sync(const uint32_t *a)
 	 * about. */
 	if (a[1])
 		gen_set_sync_amp(a[1]);
-	gen_report();
+	console_gen_report();
 }
 
 /*

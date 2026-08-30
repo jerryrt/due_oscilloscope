@@ -379,3 +379,80 @@ def test_the_identity_line_has_one_format_string():
             f"measure.parse_identity depends on")
         assert "console_identity(" in text, (
             f"Track {track} does not call console_identity()")
+
+
+#: Handler bodies that have moved into lib/due_shared/src/console_cmds.c.
+#: A track defining one again is the duplication coming back.
+MOVED_HANDLER_BODIES = ("trigger_fault", "gen_report")
+
+
+def test_moved_handler_bodies_do_not_come_back_per_track():
+    """Issue #45's C-share, held open.
+
+    Measured before any of it moved, because "the handlers are
+    duplicated" was true and not specific enough to plan from. Of 48
+    handlers per track - and all 48 share a command letter - 17 have a
+    paired named body. Four of those program registers directly
+    (`cmd_crosstalk`, `cmd_profile`, `cmd_rate_sweep`, `measure_gpio`)
+    and stay per track, which is invariant 3 working rather than
+    failing. The other 13 touch no register at all: 269 lines on Track B
+    and 260 on Track A, about 529 lines expressing one logic.
+
+    So the boundary is drawn by what a body *does*, not by taste, and
+    this pins the ones that have crossed it.
+    """
+    shared = _read(PLAY_REPORT_C.replace("play_report.c", "console_cmds.c"))
+    for name in MOVED_HANDLER_BODIES:
+        assert f"console_{name}(" in shared, (
+            f"console_cmds.c no longer defines console_{name}()")
+
+    for track, rel in (("B", os.path.join("apps", "baremetal_bringup",
+                                          "main.c")),
+                       ("A", os.path.join("sketches", "bringup",
+                                          "bringup.ino"))):
+        text = _read(rel)
+        for name in MOVED_HANDLER_BODIES:
+            import re
+            assert not re.search(rf"^static \w+ {name}\s*\(", text, re.M), (
+                f"Track {track} defines {name}() again; it lives in "
+                f"console_cmds.c and a second definition is the "
+                f"duplication this seam removed")
+            assert f"console_{name}(" in text, (
+                f"Track {track} does not call console_{name}()")
+
+
+def test_register_touching_bodies_stay_per_track():
+    """The other half of the boundary, and the more important one.
+
+    `cmd_crosstalk` alone is 183 lines with direct ADC and DACC access
+    on both tracks. Moving it would buy tidiness with exactly what
+    invariant 3 protects: two independent programmings of one
+    peripheral is what makes a behavioural divergence point at one of
+    them. This fails if one is ever moved into the shared library.
+    """
+    import re
+
+    def code_only(text):
+        """Strings and comments are not register access.
+
+        The console's own help table contains "full loop
+        HOST->DAC->ADC->HOST", which a naive substring search reads as
+        an ADC access. A guard that cries wolf on its own help text is
+        one people learn to switch off.
+        """
+        text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+        text = re.sub(r"//[^\n]*", " ", text)
+        text = re.sub(r'"(?:\\.|[^"\\])*"', '""', text)
+        return text
+
+    for f in sorted(os.listdir(SHARED)):
+        if not f.endswith(".c"):
+            continue
+        text = code_only(_read(os.path.join("lib", "due_shared", "src", f)))
+        for reg in ("ADC->", "DACC->", "UOTGHS->", "PIOB->", "PMC->",
+                    "REG_ADC", "REG_DACC"):
+            assert reg not in text, (
+                f"lib/due_shared/src/{f} touches {reg}. Register "
+                f"programming stays per track - two independent "
+                f"programmings of one peripheral is what makes a "
+                f"behavioural divergence point at one of them")

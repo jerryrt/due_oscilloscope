@@ -738,21 +738,7 @@ static void cmd_stream(uint32_t trigger_hz)
  * the two tracks cannot drift apart in how they say it. What is here is
  * the part that is genuinely this track's: where the bytes go.
  */
-static void gen_report(void)
-{
-	char line[160];
-	ctl_gen_t g;
-
-	if (!ctl_port_gen_get(&g)) {
-		Serial.println("# no generator on this track");
-		Serial.flush();
-		return;
-	}
-	ctl_gen_describe(line, sizeof(line), &g);
-	Serial.print("# ");
-	Serial.println(line);
-	Serial.flush();
-}
+/* console_gen_report() is shared - lib/due_shared/src/console_cmds.c */
 
 static void cmd_stream_uart(uint32_t trigger_hz)
 {
@@ -1219,16 +1205,7 @@ static void cmd_profile(void)
  * every branch target, so this raises INVSTATE, which escalates to a
  * HardFault because UsageFault is not separately enabled.
  */
-static void trigger_fault(void)
-{
-	Serial.println("# triggering deliberate hard fault (INVSTATE)...");
-	Serial.flush();
-
-	void (*bad)(void) = (void (*)(void))0x20000000;
-	bad();
-
-	Serial.println("# unreachable");
-}
+/* console_trigger_fault() is shared - lib/due_shared/src/console_cmds.c */
 
 /*
  * Override the core's weak serialEventRun(), which runs after every
@@ -1463,7 +1440,7 @@ static void ha_gpio(const uint32_t *a)
 static void ha_fault(const uint32_t *a)
 {
 	(void)a;
-	trigger_fault();
+	console_trigger_fault();
 }
 
 static void ha_read(const uint32_t *a)
@@ -1854,7 +1831,7 @@ static void ha_wave(const uint32_t *a)
 	 * every update without spanning its range. */
 	if (a[2])
 		gen_set_amp(a[2]);
-	gen_report();
+	console_gen_report();
 }
 
 /*
@@ -1875,7 +1852,7 @@ static void ha_sync(const uint32_t *a)
 	/* "=<mode>,<amp>J". The sync's own swing, in 256ths. */
 	if (a[1])
 		gen_set_sync_amp(a[1]);
-	gen_report();
+	console_gen_report();
 }
 
 /*
