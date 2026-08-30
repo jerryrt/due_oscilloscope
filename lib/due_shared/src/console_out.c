@@ -123,6 +123,22 @@ void con_u32w(uint32_t v, unsigned width, char fill)
 	con_u32(v);
 }
 
+void con_u32l(uint32_t v, unsigned width)
+{
+	uint32_t t = v;
+	unsigned n = 1;
+
+	while (t >= 10u) {
+		t /= 10u;
+		n++;
+	}
+	con_u32(v);
+	if (width > CON_PAD_MAX)
+		width = CON_PAD_MAX;
+	if (width > n)
+		con_pad(' ', width - n);
+}
+
 void con_nl(void)
 {
 	console_write("\n");

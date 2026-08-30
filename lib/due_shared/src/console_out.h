@@ -86,6 +86,19 @@ void con_pad(char c, unsigned n);
  * Emits at most max(width, 10) bytes.
  */
 void con_u32w(uint32_t v, unsigned width, char fill);
+
+/*
+ * The same, padded on the RIGHT: `%-4lu`.
+ *
+ * One site uses it - diag_service's tpr=slot+off column, where the
+ * offset varies in width and the columns after it must not move. It
+ * exists rather than being open-coded there because "number then some
+ * spaces" needs the digit count, and a call site that computes the
+ * digit count is a call site that can get it wrong.
+ *
+ * Emits at most max(width, 10) bytes.
+ */
+void con_u32l(uint32_t v, unsigned width);
 void con_nl(void);
 
 /*

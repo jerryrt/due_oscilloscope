@@ -27,6 +27,7 @@
 #include "play_report.h"
 #include "playstat.h"
 #include "ctl.h"
+#include "console_out.h"
 #include "console.h"          /* the shared command surface */
 #include "ctl_port.h"   /* ctl_port_gen_get: the console reads the
                             * generator through the same hook the control
@@ -667,25 +668,33 @@ static void diag_service(void)
 	{
 		uint32_t base = (uint32_t)play_ring_base();
 
-		printf("# diag: play ring base=%08lx slot=%u B nslots=%u\n",
-		       (unsigned long)base, PLAY_BUF_BYTES, PLAY_NBUF);
-		printf("#    ms  prod  cons endtx    svc  tpr=slot+off  tcr"
-		       "  next(tag,code)  cdr7 cdr6  aprod acons\n");
+		con_str("# diag: play ring base=");
+		con_hex32(base, 8);
+		con_str(" slot="); con_u32(PLAY_BUF_BYTES);
+		con_str(" B nslots="); con_u32(PLAY_NBUF); con_nl();
+		con_str("#    ms  prod  cons endtx    svc  tpr=slot+off  tcr"
+		        "  next(tag,code)  cdr7 cdr6  aprod acons\n");
 		for (unsigned i = 0; i < DIAG_N; i++) {
 			struct diag_snap *s = &diag[i];
 			uint32_t off = s->tpr - base;
 
-			printf("# %5lu %5lu %5lu %5lu %6lu  %lu+%-4lu %4lu"
-			       "  %04x(t%u,%4u)  %4u %4u  %5lu %5lu\n",
-			       (unsigned long)(s->ms - diag[0].ms),
-			       (unsigned long)s->prod, (unsigned long)s->cons,
-			       (unsigned long)s->endtx, (unsigned long)s->svc,
-			       (unsigned long)(off / PLAY_BUF_BYTES),
-			       (unsigned long)(off % PLAY_BUF_BYTES),
-			       (unsigned long)s->tcr,
-			       s->next, (s->next >> 12) & 3u, s->next & 0x0fffu,
-			       s->cdr7 & 0x0fffu, s->cdr6 & 0x0fffu,
-			       (unsigned long)s->aprod, (unsigned long)s->acons);
+			con_str("# ");
+			con_u32w(s->ms - diag[0].ms, 5, ' '); con_ch(' ');
+			con_u32w(s->prod, 5, ' ');            con_ch(' ');
+			con_u32w(s->cons, 5, ' ');            con_ch(' ');
+			con_u32w(s->endtx, 5, ' ');           con_ch(' ');
+			con_u32w(s->svc, 6, ' ');             con_str("  ");
+			con_u32(off / PLAY_BUF_BYTES);        con_ch('+');
+			con_u32l(off % PLAY_BUF_BYTES, 4);    con_ch(' ');
+			con_u32w(s->tcr, 4, ' ');             con_str("  ");
+			con_hex32(s->next, 4);
+			con_str("(t"); con_u32((s->next >> 12) & 3u);
+			con_ch(','); con_u32w(s->next & 0x0fffu, 4, ' ');
+			con_str(")  ");
+			con_u32w(s->cdr7 & 0x0fffu, 4, ' ');  con_ch(' ');
+			con_u32w(s->cdr6 & 0x0fffu, 4, ' ');  con_str("  ");
+			con_u32w(s->aprod, 5, ' ');           con_ch(' ');
+			con_u32w(s->acons, 5, ' ');           con_nl();
 		}
 		uart_flush();
 	}
