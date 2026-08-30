@@ -72,8 +72,9 @@ limit rather than saying no.
 | `hello` | no | `{role: "control"\|"observer"}`. Returns the role granted, `granted`, the protocol version and the device |
 | `ping` | no | `pong` |
 | `status` | no | Everything below under [Status](#status). Host-side only; safe to poll |
-| `counters` | no | The device's own counters, over the console |
+| `counters` | no | The device's own counters, over the control channel (console only as a fallback) |
 | `trace` | no | Playback occupancy and the converter's own rate trace |
+| `load` | no | The device's main-loop load. Control channel only - never the console |
 | `caps` | no | Rate limits, modes, device description |
 | `rate` | no | Snap `adc_hz`/`dac_sps` without touching the device |
 | `subscribe` | no | `{frames: bool}` - start or stop receiving `FRAME` |
@@ -276,6 +277,44 @@ changes is a number the hardware never produced. The trace is keyed on
 consumed buffers rather than on ENDTX, so a window is exactly
 `rate_decim` buffers of data whatever the underruns, and a run that ends
 starved - a drained run, deliberately - writes no misleading samples.
+
+### `load` asks whether the main loop is keeping up
+
+`counters` asks what went wrong on the sample path and `trace` asks what
+rate the converter held. `load` asks the third question, and it is the
+one no host-side figure can answer: is the device's main loop keeping
+up at all. It returns `passes`, `dev_us`, the per-pass cycle histogram
+and `max_us`.
+
+**A rate comes from differencing two of these.** `passes` and `dev_us`
+are cumulative since boot or the last clear, so the caller picks its own
+interval. `max_us` is the exception and it is a trap worth naming: a
+maximum cannot be differenced, so it is the worst pass since the last
+clear and it persists. A board that was deliberately stalled once with
+`=<ms>S` reports that stall in `max_us` for the rest of its uptime -
+measured on `windows-desk`, where a 1.5 s stall run for a screenshot was
+still the reported maximum hours later. Read it as a high-water mark,
+never as a live figure.
+
+**No console fallback, unlike `counters` and `trace`.** `CLAUDE.md`'s
+rule is that printf is a debug method and not an instrument: one console
+status command blocks the main loop for 13-20 ms, where twenty GET_LOAD
+queries cost 0.29 ms in total. A load figure taken by a method that
+blocks the loop for 15 ms would be measuring the instrument rather than
+the device, so a board without a control channel gets an error instead
+of a misleading number.
+
+Like `counters` and `trace`, `status` never drags it in.
+
+**What it cannot see.** Invariant 1 is that the CPU never touches sample
+data - PDC writes the buffer, USB DMA reads the same buffer - so a loop
+that is not perturbed is *not* evidence that the sample path is healthy.
+Measured on `windows-desk` against issue #44: across twelve loop runs
+losing between 0 and 259 inbound frames, `passes` moved by one per
+second and the mean pass time was identical to the hundredth of a
+microsecond. Everything that goes through the processor reads clean
+while the DMA path loses data, which is the design working as intended
+and a reason not to read a healthy load as an all-clear.
 
 ## Versioning
 
