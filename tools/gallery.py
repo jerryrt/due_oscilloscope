@@ -244,6 +244,11 @@ class Gallery:
             self.win.awg.run_btn.click()
             self.pump(1.5)
             self.win.awg.run_btn.click()
+            # No need to invalidate the "already playing" cache: this
+            # restarts the *same* waveform, so a later awg() asking for
+            # it is right to skip. Anything that stops the generator
+            # without restarting it leaves the button unchecked, which
+            # the cache check already requires.
         else:
             self.win.stop_capture()
             self.pump(1.5)
@@ -284,6 +289,25 @@ class Gallery:
         self.app.processEvents()
         if not apply:
             return
+
+        # Nothing to re-send if nothing changed, and the saving is not
+        # cosmetic. Every stop/start is a fresh roll against issue #44 -
+        # measured on this bench, a loop start loses tens to hundreds of
+        # inbound frames on roughly a third of attempts, and a run that
+        # starts lossy stays lossy - so a re-upload that changes nothing
+        # is a chance to fail for no benefit. A capture run took nine
+        # restarts before this check; the shots that needed them were
+        # mostly ones where the waveform was already correct.
+        #
+        # Safe precisely because of the defect in the docstring above:
+        # the panel only sends on a Play toggle, so if the controls
+        # match what is playing, the device already has it.
+        want = (a.shape.currentData(), a.hz.value(), a.vpp.value(),
+                a.offset.value())
+        if a.run_btn.isChecked() and getattr(self, "_playing", None) == want:
+            return
+        self._playing = None
+
         # Unconditionally, not "if running". A refused request unchecks
         # the button while the *previous* waveform keeps playing (issue
         # #37), so "if running" skipped the re-apply for every shot after
@@ -307,6 +331,8 @@ class Gallery:
             return
         a.run_btn.click()                # play: uploads
         self.pump(1.0)
+        if a.run_btn.isChecked():
+            self._playing = want
         if not a.run_btn.isChecked():
             print("    ! generator would not start", flush=True)
 
