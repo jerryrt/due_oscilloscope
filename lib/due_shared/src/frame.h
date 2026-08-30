@@ -53,6 +53,48 @@ typedef struct __attribute__((packed)) {
 } frame_header_t;
 
 /*
+ * The frame's geometry, which is the wire contract and therefore lives
+ * here rather than in each track's acq.h.
+ *
+ * It was written down twice - `drivers/acq.h` and
+ * `sketches/bringup/acq.h` each carried ACQ_BUF_SAMPLES 2032,
+ * ACQ_HDR_BYTES 32 and the expression deriving the frame size. Three
+ * numbers defining the layout a host parses, in two hand-maintained
+ * copies, which is the exact arrangement docs/shared-source.md moved
+ * the rest of the wire contract out of: "two hand-copies written from
+ * the same document by the same author are not independent - they are
+ * two homes for one misreading, plus drift."
+ *
+ * FRAME_HDR_BYTES is now *derived* from the struct instead of asserted
+ * by a comment. Both copies wrote 32 with a comment claiming it was the
+ * size of the header struct, and nothing checked it; a field added to
+ * the header would have left
+ * the number behind on both tracks at once, and the payload would have
+ * overlapped it.
+ *
+ * The static assert travels with them, which matters because only Track
+ * B had it. `frame.h` already records why the size is load-bearing -
+ * moving ACQ_BUF_SAMPLES off 2032 cost the ramp test 4 runs in 15
+ * against 0 in 15 - so the check belongs where the constant does.
+ */
+#ifdef __cplusplus
+#define FRAME_STATIC_ASSERT(c, m) static_assert(c, m)
+#else
+#define FRAME_STATIC_ASSERT(c, m) _Static_assert(c, m)
+#endif
+
+#define FRAME_SAMPLES     2032u
+#define FRAME_HDR_BYTES   ((unsigned)sizeof(frame_header_t))
+#define FRAME_BYTES       (FRAME_HDR_BYTES + FRAME_SAMPLES * 2u)
+
+FRAME_STATIC_ASSERT(sizeof(frame_header_t) == 32,
+                    "the frame header is 32 bytes; the payload starts "
+                    "immediately after it and both tracks size buffers "
+                    "from FRAME_HDR_BYTES");
+FRAME_STATIC_ASSERT(FRAME_BYTES % 512u == 0,
+                    "a frame must be a whole number of 512-byte packets");
+
+/*
  * C linkage, because this header is shared and the two tracks are not
  * the same language. Track B is C throughout; Track A is C++ - every
  * sketch translation unit is .cpp or .ino. Without this the shared

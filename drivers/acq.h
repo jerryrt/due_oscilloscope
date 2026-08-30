@@ -37,10 +37,15 @@
 #define TRGSEL_TIOA0          (1u << 1)
 #define TRGSEL_TIOA1          (2u << 1)
 
+#include "frame.h"
+
 #define ACQ_NBUF              4
-#define ACQ_BUF_SAMPLES       2032   /* 4064 B payload + 32 B header = 8 x 512 */
-#define ACQ_HDR_BYTES         32     /* sizeof(frame_header_t) */
-#define ACQ_FRAME_BYTES       (ACQ_HDR_BYTES + ACQ_BUF_SAMPLES * 2)
+/* The geometry is the wire contract and lives in the shared frame.h,
+ * which derives the header size from the struct and carries the
+ * 512-byte assert. These are the track-local spellings of it. */
+#define ACQ_BUF_SAMPLES       FRAME_SAMPLES
+#define ACQ_HDR_BYTES         FRAME_HDR_BYTES
+#define ACQ_FRAME_BYTES       FRAME_BYTES
 
 /*
  * A capture buffer with its frame header in front of it.
@@ -62,9 +67,6 @@ typedef struct __attribute__((aligned(4))) {
 
 /* If the header ever grows, the frame stops being 8 x 512 bytes and
  * every short-packet rule in docs/protocol.md breaks quietly. */
-_Static_assert(ACQ_FRAME_BYTES % 512 == 0,
-               "a frame must be a whole number of 512-byte packets");
-
 /*
  * Measured on this board: with two channels enabled, RC 86 works and
  * RC 85 drops every other trigger with no status bit set. Refuse

@@ -45,10 +45,15 @@ extern "C" {
 #define TC_CLOCK1_HZ          (SystemCoreClock / 2u)
 
 /* 4 buffers gives two spare while one fills and one drains. */
+#include "frame.h"
+
 #define ACQ_NBUF              4
-#define ACQ_BUF_SAMPLES       2032   /* 4064 B payload + 32 B header = 8 x 512 */
-#define ACQ_HDR_BYTES         32     /* sizeof(frame_header_t) */
-#define ACQ_FRAME_BYTES       (ACQ_HDR_BYTES + ACQ_BUF_SAMPLES * 2)
+/* The geometry is the wire contract and lives in the shared frame.h,
+ * which derives the header size from the struct and carries the
+ * 512-byte assert. These are the track-local spellings of it. */
+#define ACQ_BUF_SAMPLES       FRAME_SAMPLES
+#define ACQ_HDR_BYTES         FRAME_HDR_BYTES
+#define ACQ_FRAME_BYTES       FRAME_BYTES
 
 /*
  * A capture buffer with its frame header in front of it.
