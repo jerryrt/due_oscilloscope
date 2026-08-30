@@ -26,6 +26,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import toolchain                                        # noqa: E402
+sys.path.insert(0, os.path.join(toolchain.REPO, "host"))
+import provenance                                       # noqa: E402
 
 REPO = toolchain.REPO
 VID, PID_CONSOLE = 0x2341, 0x003D          # programming port (the 16U2)
@@ -371,6 +373,93 @@ def _log_flash(binary) -> None:
         print(f"==> could not log the flash: {e}", file=sys.stderr)
 
 
+def newest_source(binary):
+    """(path, mtime) of the newest firmware source for `binary`'s track.
+
+    Which paths those are comes from `provenance.fw_source_paths()`, so
+    this and the provenance report cannot disagree about what a firmware
+    image is built from - and the track comes from the binary's own
+    path, the same rule `provenance.track_of_binary()` applies to the
+    flash log.
+    """
+    track = provenance.track_of_binary(binary)
+    newest, newest_at = None, 0.0
+    for rel in provenance.fw_source_paths(track):
+        base = os.path.join(REPO, rel)
+        if os.path.isfile(base):
+            cands = [base]
+        elif os.path.isdir(base):
+            cands = [os.path.join(r, f)
+                     for r, _d, fs in os.walk(base) for f in fs
+                     if not f.startswith(".")]
+        else:
+            continue
+        for path in cands:
+            try:
+                at = os.path.getmtime(path)
+            except OSError:
+                continue
+            if at > newest_at:
+                newest, newest_at = path, at
+    return newest, newest_at
+
+
+def check_not_stale(binary, allow):
+    """Refuse an image older than the source it is supposed to contain.
+
+    Issue #35, and it is the flash log's integrity rather than a
+    convenience. `enforce_clean_build` runs `--target clean` as a
+    dependency of the link, and Ninja plans the whole graph before
+    running any of it, so the clean deletes the objects the same plan is
+    about to link. Two shapes, both measured:
+
+      windows-desk, Ninja       the link fails loudly, and `flash.py`
+                                then flashed the previous image and
+                                logged the current commit against it
+      linux-x1, Ninja 1.13.2    worse - the build **exits 0**, cleans 26
+                                objects, never relinks, and leaves the
+                                previous .bin and .elf in place. There
+                                is no failure to ignore
+
+    Make re-evaluates as it goes and relinks correctly on both benches,
+    which is why this went unseen.
+
+    Neither shape is flash.py's fault and both end here, because this is
+    the last thing that touches the image before `_log_flash` writes a
+    commit next to a sha. A log that says a board runs a commit it does
+    not run is worse than no log, and `host/provenance.py` is built on
+    believing it.
+
+    mtimes, not git: a dirty tree is the normal state on a bench, and
+    "the file changed after the image was built" is the question. A
+    checkout can move an mtime backwards and produce a false alarm,
+    which is the safe direction and is what --stale-ok is for.
+    """
+    try:
+        built = os.path.getmtime(binary)
+    except OSError:
+        return
+    newest, at = newest_source(binary)
+    if newest is None or at <= built:
+        return
+    rel = os.path.relpath(newest, REPO)
+    shown = binary if os.path.relpath(binary, REPO).startswith("..") \
+        else os.path.relpath(binary, REPO)
+    age = at - built
+    msg = (f"the image is older than the firmware source it should "
+           f"contain:\n"
+           f"    {shown}  built {time.ctime(built)}\n"
+           f"    {rel}  changed {time.ctime(at)}  ({age:.0f}s later)\n"
+           f"Rebuild before flashing, and check the build actually "
+           f"relinked rather than only reporting success - issue #35, "
+           f"where a failed link left the previous .bin in place and "
+           f"this script flashed it under the current commit.")
+    if not allow:
+        sys.exit("refusing to flash: " + msg +
+                 "\n(--stale-ok flashes anyway and logs it as stale)")
+    print("==> WARNING, flashing a stale image on request: " + msg)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin", default=os.path.join(REPO, "build",
@@ -388,11 +477,18 @@ def main() -> int:
                     help="skip the post-flash boot check; for a program "
                          "that is expected not to run, or a second board "
                          "in SAM-BA that would confuse the attribution")
+    ap.add_argument("--stale-ok", action="store_true",
+                    help="flash an image older than its own sources. For "
+                         "deliberately re-flashing a known-old build; it "
+                         "is refused by default because the flash log "
+                         "would otherwise record the current commit "
+                         "against it (issue #35)")
     args = ap.parse_args()
 
     binary = os.path.abspath(args.bin)
     if not os.path.isfile(binary):
         sys.exit(f"no such binary: {binary}\nbuild it first: cmake --build build")
+    check_not_stale(binary, args.stale_ok)
 
     bossac = args.bossac
     if not bossac:

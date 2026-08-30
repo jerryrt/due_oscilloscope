@@ -133,3 +133,81 @@ def test_a_real_failure_is_not_retried(monkeypatch):
     monkeypatch.setattr(serial, "Serial", _Missing)
     with pytest.raises(serial.SerialException):
         flash.open_port("COM99", 1200, tries=6, delay=0.0)
+
+
+# ------------------------------------------------ the image against its source
+
+def test_an_image_older_than_its_sources_is_refused(tmp_path, monkeypatch):
+    """Issue #35: a stale image logged under the current commit.
+
+    `enforce_clean_build` runs `--target clean` as a dependency of the
+    link. On windows-desk's Ninja the clean deleted the objects the same
+    plan was about to link, the build failed, and `flash.py` then
+    flashed the *previous* image and `_log_flash` wrote the current
+    commit beside its sha. Anyone reading `records/flash-log.jsonl`
+    afterwards would conclude the board ran a commit it had never run.
+
+    That is the one thing the flash log must not do, because
+    `host/provenance.py` and every baseline are built on believing it.
+    So the last thing that touches the image checks it.
+    """
+    binary = tmp_path / "baremetal_bringup.bin"
+    binary.write_bytes(b"\x00" * 16)
+    src = tmp_path / "src" / "clock.c"
+    src.parent.mkdir()
+    src.write_text("int x;\n")
+    os.utime(binary, (1000, 1000))
+    os.utime(src, (2000, 2000))
+
+    monkeypatch.setattr(flash, "newest_source",
+                        lambda b: (str(src), 2000.0))
+    with pytest.raises(SystemExit) as e:
+        flash.check_not_stale(str(binary), allow=False)
+    assert "older than the firmware source" in str(e.value)
+
+
+def test_a_current_image_is_not_refused(tmp_path, monkeypatch):
+    binary = tmp_path / "baremetal_bringup.bin"
+    binary.write_bytes(b"\x00" * 16)
+    os.utime(binary, (3000, 3000))
+    monkeypatch.setattr(flash, "newest_source", lambda b: ("whatever", 2000.0))
+    flash.check_not_stale(str(binary), allow=False)     # must not raise
+
+
+def test_stale_ok_flashes_but_says_so(tmp_path, monkeypatch, capsys):
+    """The override exists because a checkout can move an mtime back.
+
+    A false alarm is the safe direction, so it must be escapable - but
+    never silently, because the log entry it produces is the thing at
+    stake.
+    """
+    binary = tmp_path / "baremetal_bringup.bin"
+    binary.write_bytes(b"\x00" * 16)
+    os.utime(binary, (1000, 1000))
+    monkeypatch.setattr(flash, "newest_source", lambda b: ("src.c", 2000.0))
+    flash.check_not_stale(str(binary), allow=True)      # must not raise
+    assert "stale image on request" in capsys.readouterr().out
+
+
+def test_the_source_list_is_the_provenance_one(tmp_path):
+    """One definition of what a firmware image is built from.
+
+    If this script and `host/provenance.py` kept separate lists they
+    would drift, and the drift would be invisible: the flash would pass
+    a check the provenance report would have failed, or the reverse.
+    `bsp/` was missing from the provenance list until 2026-08-30 and
+    nothing noticed for months.
+    """
+    sys.path.insert(0, os.path.join(flash.REPO, "host"))
+    import provenance
+
+    # A Track B binary is checked against Track B's sources, and the
+    # track comes from the binary's own path.
+    b = os.path.join(flash.REPO, "build", "baremetal_bringup.bin")
+    assert provenance.track_of_binary(b) == "B"
+    newest, at = flash.newest_source(b)
+    assert newest is not None and at > 0
+    rel = os.path.relpath(newest, flash.REPO)
+    assert rel.split(os.sep)[0] in provenance.FW_SOURCE_TRACKS["B"], (
+        f"flash.py looked at {rel}, which is not in the provenance "
+        f"list for Track B")
