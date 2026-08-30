@@ -201,6 +201,29 @@ Check here before reasoning from general Arduino knowledge.
   per-channel-count floors are measured, never scaled.
 - **Aggregate data rate is ~1.81 MB/s regardless of channel count.**
   More channels cost per-channel rate, not USB bandwidth.
+- **That figure is capture alone, and playback is not free on top of
+  it.** Measured on `windows-desk` 2026-08-30 with the ADC trigger held
+  at 402,061 Hz on two channels - 1.61 MB/s inbound, unchanged in every
+  row - and only the outbound DAC feed varied:
+
+  | DAC feed | total | device overruns |
+  |---|---|---|
+  | none | 1.61 MB/s | 3 at start, **no growth** |
+  | 50 ksps | 1.71 MB/s | ~1 per second |
+  | 100 ksps | 1.81 MB/s | ~5-6 per second |
+  | 200 ksps | 2.01 MB/s | ~17 per second |
+
+  The converter was doing identical work throughout, and the daemon's
+  own read-gap maximum was 16,000 us in every row, so the host reader
+  was not more starved either. **Loss appears at 1.71 MB/s combined,
+  below the 1.81 the capture-only figure would let you predict**, and
+  climbs steeply after. So do not size a duplex design by subtracting
+  the playback rate from 1.81: full duplex costs more than the sum of
+  its directions, by an amount that has not been characterised beyond
+  these four points. `records/issue41-windows-duplex.jsonl`.
+
+  Not reachable from the front end, which pins loop mode at 200 kHz
+  where both arms are clean. It is reachable from the daemon API.
 - **Not simultaneous sampling.** Consecutive conversions are ~0.95 us
   apart; channel skew is real and must be corrected host-side.
 - **The DAC is not rail-to-rail.** Output spans roughly 0.55–2.75 V.
