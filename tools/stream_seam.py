@@ -72,10 +72,47 @@ CORE_FILES = [os.path.join("lib", "due_shared", "src", "stream_core.c"),
 PORT = os.path.join("lib", "due_shared", "src", "stream_port.h")
 CORE_ALLOWED_OTHER = {"memcpy"}
 
+# The same check, for every shared file that reaches a track through a
+# port header. There is more than one now: issue #45 moved console
+# handler bodies into lib/due_shared, and the rescope of
+# console_port.h - from "two functions and no more" to "a record of
+# exactly what the shared code calls" - is only safe because that
+# record is pinned the way stream_port.h's is.
+#
+# A second copy of this module would have been the duplication #45
+# exists to remove, so the seam is a parameter instead.
+SEAMS = {
+    "stream": {
+        "files": CORE_FILES,
+        "port": PORT,
+        # The framer copies payload bytes; nothing else is allowed to
+        # reach outside the shared headers.
+        "allowed_other": {"memcpy"},
+    },
+    "console": {
+        "files": [os.path.join("lib", "due_shared", "src", "console.c"),
+                  os.path.join("lib", "due_shared", "src",
+                               "console_cmds.c")],
+        "port": os.path.join("lib", "due_shared", "src",
+                             "console_port.h"),
+        # snprintf builds the identity line and the generator report;
+        # both are debug-console output, which invariant 8 already
+        # governs, and neither is on the sample path.
+        "allowed_other": {"snprintf"},
+    },
+}
+
 KEYWORDS = {"if", "while", "for", "switch", "return", "sizeof", "do",
             "else", "defined",
             # compiler syntax that parses like a call and is not one
-            "__attribute__", "aligned", "_Static_assert", "static_assert"}
+            "__attribute__", "aligned", "_Static_assert", "static_assert",
+            # Type names in a cast through a function pointer:
+            # `(void (*)(void))addr` puts `void` in call position, which
+            # is syntax rather than a dependency.
+            "void", "char", "int", "long", "short", "unsigned", "signed",
+            "float", "double", "const", "volatile", "struct", "union",
+            "enum", "bool", "uint8_t", "uint16_t", "uint32_t", "int8_t",
+            "int16_t", "int32_t", "size_t"}
 
 
 def _strip(text):
@@ -92,12 +129,47 @@ def _read(relpath):
         return f.read()
 
 
-def called_names(text):
+def fnptr_typedefs(text):
+    """Function-pointer typedef names declared in a header.
+
+    `typedef void (*console_fn)(const uint32_t *arg);` makes
+    `console_fn` a type, and a variable of that type is called like a
+    function while being nobody's external symbol.
+    """
+    return set(re.findall(
+        r"typedef\s+[\w \t\*]+?\(\s*\*\s*([A-Za-z_]\w*)\s*\)\s*\(",
+        text))
+
+
+def local_pointer_names(text, fnptr_types=()):
+    """Function-pointer variables declared in this file.
+
+    `void (*bad)(void) = ...; bad();` is a call, but to something this
+    file made - not a name any header must declare. Without this the
+    extractor asks a port header to declare a local variable, which it
+    can never do, and the seam check can never go green.
+
+    Also covers a parameter spelled `void (*fn)(void)`: same reasoning,
+    the caller supplied it.
+    """
+    names = set(re.findall(r"\(\s*\*\s*([A-Za-z_]\w*)\s*\)\s*\(", text))
+    # And variables whose *type* is a function-pointer typedef, where
+    # the star is hidden inside the typedef: `console_fn fn;` then
+    # `fn(arg)`. The typedef names come from the headers this file
+    # includes, so the extractor learns them rather than being told.
+    for t in fnptr_types:
+        names |= set(re.findall(rf"\b{re.escape(t)}\s+([A-Za-z_]\w*)",
+                                text))
+    return names
+
+
+def called_names(text, fnptr_types=()):
     """Every identifier used as a call: name followed by an open paren,
-    not reached through . or -> (a member is the pointer's business)."""
-    return {m.group(1)
-            for m in re.finditer(r"(?<![\w.>])([A-Za-z_]\w*)\s*\(", text)
-            } - KEYWORDS
+    not reached through . or -> (a member is the pointer's business),
+    and not a function pointer this file declared for itself."""
+    names = {m.group(1)
+             for m in re.finditer(r"(?<![\w.>])([A-Za-z_]\w*)\s*\(", text)}
+    return names - KEYWORDS - local_pointer_names(text, fnptr_types)
 
 
 def defined_names(text):
@@ -188,8 +260,14 @@ def extract(relpath):
         for name in extern_data_decls(htext):
             data.setdefault(name, rp)
 
+    fnptr_types = set()
+    for inc in includes(raw):
+        rp = _resolve(inc, srcdir)
+        if rp:
+            fnptr_types |= fnptr_typedefs(_strip(_read(rp)))
+
     out = {}
-    for name in called_names(text) - defined_names(text):
+    for name in called_names(text, fnptr_types) - defined_names(text):
         out[(name, "fn")] = decls.get(name, "other")
 
     # Extern data the file reaches is seam surface exactly as a call is
@@ -256,14 +334,14 @@ def check(list_path=LIST_PATH):
     return drift
 
 
-def port_decls(port_text=None):
-    """Everything stream_port.h offers: functions and extern data."""
+def port_decls(port_text=None, seam="stream"):
+    """Everything the seam's port header offers: functions and data."""
     if port_text is None:
-        port_text = _strip(_read(PORT))
+        port_text = _strip(_read(SEAMS[seam]["port"]))
     return declared_in_header(port_text) | extern_data_decls(port_text)
 
 
-def core_check(port_text=None):
+def core_check(port_text=None, seam="stream"):
     """Drift between the shared stream files and stream_port.h, both
     directions.
 
@@ -271,9 +349,10 @@ def core_check(port_text=None):
     port_text parameter exists for the test that proves this check can
     fail; the default is the real header.
     """
+    cfg = SEAMS[seam]
     ext = {}
     origins = {}
-    for f in CORE_FILES:
+    for f in cfg["files"]:
         e = extract(f)
         if not e:
             return [f"extraction of {f} produced nothing; "
@@ -281,20 +360,22 @@ def core_check(port_text=None):
         for k, origin in e.items():
             ext[k] = origin
             origins.setdefault(k, f)
-    declared = port_decls(port_text)
+    declared = port_decls(port_text, seam)
     used = {name for (name, _kind) in ext}
     drift = []
     for (name, kind), origin in sorted(ext.items()):
-        undeclared = (origin == "other" and name not in CORE_ALLOWED_OTHER) \
-            or (os.path.basename(origin) == "stream_port.h"
+        undeclared = (origin == "other"
+                      and name not in cfg["allowed_other"]) \
+            or (os.path.basename(origin) == os.path.basename(cfg["port"])
                 and name not in declared)
         if undeclared:
             drift.append(f"{os.path.basename(origins[(name, kind)])} "
                          f"reaches {name} ({kind}), which no shared "
                          "header declares")
     for name in sorted(declared - used):
-        drift.append(f"stream_port.h declares {name}, which "
-                     "no shared stream file uses")
+        drift.append(f"{os.path.basename(cfg['port'])} declares "
+                     f"{name}, which no shared file of the "
+                     f"'{seam}' seam uses")
     return drift
 
 
@@ -307,7 +388,9 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.check:
-        drift = check() + core_check()
+        drift = check()
+        for name in SEAMS:
+            drift += core_check(seam=name)
         for line in drift:
             print(line)
         return 1 if drift else 0

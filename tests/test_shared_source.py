@@ -456,3 +456,77 @@ def test_register_touching_bodies_stay_per_track():
                 f"programming stays per track - two independent "
                 f"programmings of one peripheral is what makes a "
                 f"behavioural divergence point at one of them")
+
+
+def test_the_console_seam_is_pinned_like_the_stream_seam():
+    """The rescoped console_port.h is only safe because this exists.
+
+    `console_port.h` used to say "two functions, and no more". Issue
+    #45 rescoped it to "a record of exactly what the shared code calls",
+    which is a better rule *and* a weaker one until something checks it:
+    a size limit needs no test, and a record does.
+
+    So the console gets the same check `stream_port.h` has had since
+    issue #14, through the same code rather than a second copy of it -
+    a parallel `console_seam.py` would have been the duplication #45
+    exists to remove.
+    """
+    ss = _stream_seam()
+    assert "console" in ss.SEAMS, (
+        "the console seam is no longer registered; console_port.h is "
+        "back to being unchecked")
+    drift = ss.core_check(seam="console")
+    assert not drift, "\n".join(drift)
+
+
+def test_the_console_seam_check_can_fail(tmp_path):
+    """A check that cannot fail is decoration.
+
+    Proven in both directions, the way #14 step 2 proved the stream
+    one: a port that declares something nothing calls, and shared code
+    reaching a name the port does not declare.
+    """
+    ss = _stream_seam()
+    port = ss._strip(ss._read(ss.SEAMS["console"]["port"]))
+
+    padded = port.replace("void console_flush(void);",
+                          "void console_flush(void);\n"
+                          "void console_nobody_calls_this(void);")
+    drift = ss.core_check(padded, seam="console")
+    assert any("nobody_calls_this" in d for d in drift), (
+        f"a port declaring an unused name did not register as drift: "
+        f"{drift}")
+
+    cut = port.replace("void console_write(const char *s);", "")
+    drift = ss.core_check(cut, seam="console")
+    assert any("console_write" in d for d in drift), (
+        f"removing console_write from the port did not register as "
+        f"drift, though the shared console calls it: {drift}")
+
+
+def test_the_extractor_ignores_indirect_calls():
+    """Calls through a pointer are not seam surface.
+
+    Three shapes appear in the shared console and none is an external
+    dependency: a cast through a function pointer
+    (`(void (*)(void))addr`), a local function pointer (`bad()`), and a
+    variable whose type is a function-pointer typedef (`console_fn fn;`
+    then `fn(arg)`). Each one asked the port header to declare something
+    it never could, so the seam could not go green until the extractor
+    learned them.
+    """
+    ss = _stream_seam()
+    src = """
+    typedef void (*thing_fn)(int);
+    void f(void) {
+        void (*bad)(void) = (void (*)(void))0x20000000;
+        thing_fn fn = pick();
+        bad(); fn(1); real_call();
+    }
+    """
+    names = ss.called_names(src, ss.fnptr_typedefs(src))
+    assert "real_call" in names and "pick" in names
+    for indirect in ("bad", "fn", "void"):
+        assert indirect not in names, (
+            f"{indirect!r} was read as an external call; it is an "
+            f"indirect call or a cast")
