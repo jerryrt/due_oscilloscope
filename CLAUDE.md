@@ -343,6 +343,31 @@ Check here before reasoning from general Arduino knowledge.
   min/max off a long record with suspicion: one stray sample above a
   rail defeated the filter written to catch exactly this.
 
+- **Discard the first run of any repeated measurement.** The first
+  run after a board or daemon start is an outlier, and it has now been
+  seen six times on `windows-desk` across four different quantities:
+  playback `occ_min` 17 against 21 and `consumed` 2512 against ~2100;
+  37-47 underruns in the first run of two rate sweeps where every later
+  run had 0; a deficit ratio off the 1/256 lattice at 4.703 against a
+  worst residual of 0.022 everywhere else, carrying 45 underruns; and an
+  `n=7` at a rate whose only other modes are 4 and 6.
+
+  **The mechanism is visible rather than inferred.** The first run
+  carries underruns that later runs do not, and an underrun perturbs
+  `consumed / run_us` directly - so any figure derived from the
+  playback counters is wrong on run 1 in a way it is not wrong
+  afterwards.
+
+  It has already cost one wrong conclusion here: an `occ_min`
+  asymmetry between a "good" and a "bad" run was published as a lead on
+  issue #44 and retracted, because the good sample was cycle 1 and the
+  bad one was cycle 4. The difference was first-versus-later, not
+  good-versus-bad. **Two samples that differ are not two populations
+  until the first cycle is out of both.**
+
+  Take one more repetition than the table needs and throw the first
+  away.
+
 - **Fold to phase before calling anything jitter.** "The crossing
   nearest screen centre" flips between adjacent cycles whenever the
   trigger's phase differs from the crossing's, and reports ~100% of a
