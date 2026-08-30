@@ -11,6 +11,7 @@
  * load.c for the monitor.
  */
 #include "ctl_port.h"
+#include "ctl.h"
 #include <string.h>
 
 #include "track_id.h"
@@ -259,4 +260,64 @@ int ctl_port_rate_page(uint8_t *body, size_t max, uint16_t offset)
 		p += sizeof(v);
 	}
 	return (int)(p - body);
+}
+
+/*
+ * The heartbeat's timer, Track B's own programming.
+ *
+ * TC0 channel 2. Channels 0 and 1 belong to acq and gen, and nothing
+ * else on this track wants a timer, so the choice costs nothing.
+ *
+ * Deliberately not shared with Track A, which programs the same channel
+ * for the same purpose a few lines away in its own file. Invariant 3:
+ * two independent programmings of one peripheral is what makes a
+ * behavioural divergence point at one of them, and that is worth more
+ * than the twenty lines it saves.
+ *
+ * TIMER_CLOCK4 is MCK/128, so 78 MHz gives 609,375 Hz and a 16-bit RC
+ * covers 1 ms to 60 s at this cadence without a prescaler change. The
+ * protocol clamps the period before it ever gets here.
+ */
+void ctl_port_heartbeat_timer(uint32_t period_ms)
+{
+	uint32_t rc;
+
+	if (period_ms == 0u) {
+		NVIC_DisableIRQ(TC2_IRQn);
+		TC0->TC_CHANNEL[2].TC_IDR = TC_IDR_CPCS;
+		TC0->TC_CHANNEL[2].TC_CCR = TC_CCR_CLKDIS;
+		return;
+	}
+
+	PMC->PMC_PCER0 = (1u << ID_TC2);
+
+	TC0->TC_CHANNEL[2].TC_CCR = TC_CCR_CLKDIS;
+	TC0->TC_CHANNEL[2].TC_IDR = 0xFFFFFFFFu;
+	(void)TC0->TC_CHANNEL[2].TC_SR;          /* clear a pending CPCS */
+
+	TC0->TC_CHANNEL[2].TC_CMR = TC_CMR_TCCLKS_TIMER_CLOCK4
+	                          | TC_CMR_WAVE
+	                          | TC_CMR_WAVSEL_UP_RC;
+
+	rc = ((SystemCoreClock / 128u) / 1000u) * period_ms;
+	if (rc < 2u)
+		rc = 2u;
+	TC0->TC_CHANNEL[2].TC_RC = rc;
+
+	TC0->TC_CHANNEL[2].TC_IER = TC_IER_CPCS;
+	/*
+	 * Below the sample path. The PDC and USB interrupts move data and
+	 * must not wait behind a frame being built; this only reports.
+	 */
+	NVIC_SetPriority(TC2_IRQn, 3);
+	NVIC_ClearPendingIRQ(TC2_IRQn);
+	NVIC_EnableIRQ(TC2_IRQn);
+
+	TC0->TC_CHANNEL[2].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+}
+
+void TC2_Handler(void)
+{
+	(void)TC0->TC_CHANNEL[2].TC_SR;          /* ack, or it re-enters */
+	ctl_heartbeat_emit_isr();
 }

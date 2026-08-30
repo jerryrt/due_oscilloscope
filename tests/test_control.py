@@ -598,3 +598,57 @@ def test_the_heartbeat_is_the_device_talking_first(link, track):
     assert link.beats(0.6) == [], (
         "beats kept arriving after the cadence was set to 0; a device "
         "that cannot be told to stop pushing is one a host cannot own")
+
+
+def test_the_heartbeat_outlives_a_stalled_main_loop(link, board, track):
+    """The beat keeps arriving while the loop that answers everything is dead.
+
+    This is the property the feature exists for, and until the beat moved
+    into a timer interrupt it was not true. Issue #33 stalled a main loop
+    and the console, the control channel and GET_LOAD went dark together,
+    because all three are answered *by* that loop - so the board looked
+    exactly like one that had been unplugged, and the only recovery
+    anyone reached for also reset it and erased the evidence.
+
+    The trigger is the console's own `=<ms>S`, which is deterministic,
+    capped at 2000 ms by both tracks and recovers by itself. The earlier
+    way to produce a stall was to feed bulk OUT until the firmware hung,
+    which needed megabytes, a specific host buffering behaviour and a
+    reset afterwards - far too heavy to assert on.
+
+    What is checked is not that beats arrive, but that they arrive
+    *carrying the stall*: `seq` advances, so the timer is running, while
+    `loop_passes` does not, so the loop is not. A beat that only proved
+    the first would be a liveness signal for the interrupt controller.
+    """
+    requires(link, control.OP_HEARTBEAT)
+
+    link.heartbeat(50)
+    try:
+        board.poll_console()
+        board.cmd("=2000S")
+        beats = link.beats(2.0)
+
+        assert len(beats) >= 15, (
+            f"{len(beats)} beats during a 2000 ms stall at a 50 ms "
+            f"cadence; the beat is not surviving the stall, which is the "
+            f"whole reason it is driven from a timer")
+
+        gaps = {b["seq"] - a["seq"] for a, b in zip(beats, beats[1:])}
+        assert gaps == {1}, (
+            f"sequence gaps {sorted(gaps)} while stalled: beats are being "
+            f"dropped, so the endpoint or the emitter is not independent "
+            f"of the loop after all")
+
+        passes = [b["counters"]["loop_passes"] for b in beats]
+        assert len(set(passes)) <= 2, (
+            f"loop_passes took {len(set(passes))} distinct values during "
+            f"the stall ({sorted(set(passes))[:4]}...); the loop was still "
+            f"running, so this run proves nothing about surviving a stall")
+
+        uptimes = [b["uptime_ms"] for b in beats]
+        assert uptimes[-1] > uptimes[0], (
+            "uptime_ms did not advance across the stall, so the beats "
+            "are stale copies rather than a timer still firing")
+    finally:
+        link.heartbeat(0)

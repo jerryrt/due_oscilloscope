@@ -13,6 +13,7 @@
  * docs/shared-source.md.
  */
 #include "ctl_port.h"
+#include "ctl.h"
 #include "load.h"
 
 #include <Arduino.h>
@@ -317,4 +318,64 @@ bool ctl_port_load_sample(load_report_t *out)
 	 */
 	load_sample(out);
 	return true;
+}
+
+/*
+ * The heartbeat's timer, Track A's own programming.
+ *
+ * TC0 channel 2, the same channel Track B uses for the same job - and
+ * written separately on purpose. Invariant 3 keeps register programming
+ * per track because two independent programmings of one peripheral is
+ * what makes a behavioural divergence point at one of them; a shared
+ * setup would trade that away for twenty lines. The frame the interrupt
+ * sends is protocol and is shared.
+ *
+ * Channels 0 and 1 are acq's and gen's on this track too.
+ *
+ * pmc_enable_periph_clk() rather than a direct PMC_PCER0 write: this
+ * track has the Arduino core's libsam under it and uses its accessors
+ * where they exist, which is itself part of the divergence being kept.
+ */
+void ctl_port_heartbeat_timer(uint32_t period_ms)
+{
+	uint32_t rc;
+
+	if (period_ms == 0u) {
+		NVIC_DisableIRQ(TC2_IRQn);
+		TC0->TC_CHANNEL[2].TC_IDR = TC_IDR_CPCS;
+		TC0->TC_CHANNEL[2].TC_CCR = TC_CCR_CLKDIS;
+		return;
+	}
+
+	pmc_enable_periph_clk(ID_TC2);
+
+	TC0->TC_CHANNEL[2].TC_CCR = TC_CCR_CLKDIS;
+	TC0->TC_CHANNEL[2].TC_IDR = 0xFFFFFFFFu;
+	(void)TC0->TC_CHANNEL[2].TC_SR;
+
+	TC0->TC_CHANNEL[2].TC_CMR = TC_CMR_TCCLKS_TIMER_CLOCK4
+	                          | TC_CMR_WAVE
+	                          | TC_CMR_WAVSEL_UP_RC;
+
+	/* TIMER_CLOCK4 is MCK/128; SystemCoreClock is 78 MHz here, not the
+	 * 84 boards.txt believes, so derive it rather than hard-coding. */
+	rc = ((SystemCoreClock / 128u) / 1000u) * period_ms;
+	if (rc < 2u)
+		rc = 2u;
+	TC0->TC_CHANNEL[2].TC_RC = rc;
+
+	TC0->TC_CHANNEL[2].TC_IER = TC_IER_CPCS;
+	/* Below the core's USB and the PDC: this reports, it does not move
+	 * samples, and it must never delay something that does. */
+	NVIC_SetPriority(TC2_IRQn, 3);
+	NVIC_ClearPendingIRQ(TC2_IRQn);
+	NVIC_EnableIRQ(TC2_IRQn);
+
+	TC0->TC_CHANNEL[2].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+}
+
+extern "C" void TC2_Handler(void)
+{
+	(void)TC0->TC_CHANNEL[2].TC_SR;
+	ctl_heartbeat_emit_isr();
 }

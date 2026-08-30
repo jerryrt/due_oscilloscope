@@ -219,6 +219,28 @@ void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
 int ctl_port_temp(ctl_temp_t *out, uint16_t samples);
 
 /*
+ * Start, retune or stop the timer that drives the heartbeat.
+ *
+ * `period_ms` of 0 stops it; anything else is a cadence the caller has
+ * already clamped. The track programs a spare timer channel so that its
+ * interrupt calls ctl_heartbeat_emit_isr() at that rate, and nothing
+ * else.
+ *
+ * **This is the one function here whose per-track split is required
+ * rather than convenient.** Both tracks would spell the register
+ * sequence almost identically - same silicon, same free channel - and
+ * invariant 3 refuses exactly that: two independent programmings of one
+ * peripheral is what makes a divergence point at one of them, and a
+ * shared timer setup would take that away for the sake of twenty lines.
+ * The frame the interrupt sends is protocol and stays shared; the
+ * registers that make it fire are not.
+ *
+ * Called from the main loop only, and never from the interrupt it
+ * controls.
+ */
+void ctl_port_heartbeat_timer(uint32_t period_ms);
+
+/*
  * Flush the debug console. Only ctl_dump() uses this, it is never
  * called while the sample path is running, and a track whose console
  * needs no flushing implements it empty.

@@ -36,6 +36,17 @@ extern "C" {
  */
 void ctl_service(void);
 
+/*
+ * Send one heartbeat. Called from the track's timer interrupt, and from
+ * nowhere else.
+ *
+ * This is the whole application half of the feature: the frame, the
+ * counters it carries, the sequence number and the CRC are one piece of
+ * code that both tracks run. What differs per track is only the timer
+ * that calls it - see ctl_port_heartbeat_timer().
+ */
+void ctl_heartbeat_emit_isr(void);
+
 /* Counters, for `u`. Frames that arrived, frames rejected, and
  * responses that could not be written because the host stopped
  * reading - the last one is the only way a dropped answer is visible,
