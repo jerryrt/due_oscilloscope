@@ -93,7 +93,23 @@ def main():
                         for r in rows if "hold" in r},
                        key=lambda k: (k[0], k[1] or 0))
         bench = next((r.get("bench") for r in rows if r.get("bench")), "?")
-        print(f"\n=== {path}   bench={bench}   {len(rows)} rows ===")
+        # Both, and loudly if they disagree. The tracks are two
+        # independent programmings of the same silicon, so a lattice may
+        # differ between them, and a file pooling both is not one
+        # measurement - the same reason this tool already refuses to
+        # pool two ADC rates under one hold.
+        tracks = sorted({str(r.get("track")) for r in rows
+                         if r.get("track") is not None})
+        label = "/".join(tracks) if tracks else "unrecorded"
+        print(f"\n=== {path}   bench={bench}   track={label}   "
+              f"{len(rows)} rows ===")
+        if len(tracks) > 1:
+            print(f"    !! this file pools tracks {tracks} - the arms are "
+                  f"not comparable, split it before reading anything below")
+        if not tracks:
+            print("    !! no track recorded; written before "
+                  "tools/issue24_hold.py logged one. Which board built "
+                  "this is not recoverable from the file")
         for key in holds:
             hold, dac, adc = key
             gaps, mads, nbin, dac, adc = census(rows, key)

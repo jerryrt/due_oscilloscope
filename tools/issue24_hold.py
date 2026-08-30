@@ -86,6 +86,19 @@ def main():
     try:
         board.stop()
         board.drain_console(0.5)
+        # Which track produced the record, asked rather than assumed.
+        # The tracks are two independent programmings of the same
+        # silicon by design (invariant 3), so a lattice is free to
+        # differ between them, and the file carried only `bench`. On
+        # 2026-08-30 that nearly put a Track A arm into a Track B record
+        # set on linux-x1: the board had been reflashed to Track A to
+        # verify something else and nothing in the tool or the file
+        # would have said so. Same rule as "say which bench a number
+        # came from", one level down.
+        try:
+            track, _ = measure.which_track(board)
+        except Exception:
+            track = None
         for i in range(1, args.runs + 1):
             for hold in holds:                 # interleaved, not blocked
                 # `adc_hz` is the per-channel A0 rate, not the aggregate
@@ -104,7 +117,7 @@ def main():
                 start = ps._index_at(measure.CH_A0, measure.SETTLE_US)
                 tail = list(vals[start:])
                 row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                       "bench": args.bench, "hold": hold,
+                       "bench": args.bench, "track": track, "hold": hold,
                        "adc_hz": args.adc_hz, "dac_sps": dac_sps,
                        "ramp_step": args.step, "period": period,
                        "seq_gaps": ps.seq_gaps, "crc_bad": ps.crc_bad,
