@@ -41,6 +41,25 @@ from daemon import client as clientmod          # noqa: E402
 #: client and count it.
 FRAME_CAPACITY = 512
 
+#: How long to wait for a reply before declaring the daemon unreachable.
+#:
+#: **This has to exceed the daemon's own worst case, and that worst case
+#: is a constant over there rather than an unknown.** `BoardDevice.start`
+#: drains the console with `cap=5.0` before issuing the run command, and
+#: the first start after a connect pays close to the whole cap: the
+#: programming port was just opened, which asserts NRSTB, so the board is
+#: resetting and printing its banner. Measured on windows-desk, first
+#: start 5.53 s and every later one 0.93 s.
+#:
+#: At 5.0 the two numbers were equal and the first Start therefore lost
+#: the race every time, and reported "daemon stopped answering" about a
+#: board that was working and whose reply arrived correctly a moment
+#: later. Issue #42: the deeper fix is to drain the banner when the port
+#: is opened rather than on the first start, which removes the 5 s wait
+#: instead of tolerating it - but that sits on the path every mode start
+#: takes, so it is the daemon owner's call and this is not it.
+CALL_TIMEOUT = 15.0
+
 
 class DaemonSession(QtCore.QObject):
     """One daemon connection, or none.
@@ -112,7 +131,7 @@ class DaemonSession(QtCore.QObject):
         if self.client is not None:
             return True
         try:
-            c = clientmod.Client(self.host, self.port, timeout=5.0,
+            c = clientmod.Client(self.host, self.port, timeout=CALL_TIMEOUT,
                                  frame_capacity=FRAME_CAPACITY)
             c.connect()
             hello = c.hello(role)

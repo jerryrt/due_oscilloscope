@@ -2188,3 +2188,27 @@ def test_starting_a_capture_replaces_the_previous_run_s_message(
     qapp.processEvents()
     assert win.statusBar().currentMessage() == "stopped", (
         "stopping left the running message on screen")
+
+
+def test_the_call_timeout_outlives_the_daemon_s_own_worst_case():
+    """Issue #42.
+
+    `BoardDevice.start` drains the console with `cap=5.0` before issuing
+    the run command, and the first start after a connect pays close to
+    the whole cap - the programming port was just opened, which asserts
+    NRSTB, so the board is resetting and printing its banner. Measured
+    on windows-desk: first start 5.53 s, every later one 0.93 s.
+
+    The client timeout was also 5.0, so the first Start lost the race
+    every time and the window reported "daemon stopped answering" about
+    a board whose correct reply arrived half a second later.
+
+    The two numbers are not independent, and this test is here to say so
+    out loud: one of them is a bound on the other.
+    """
+    from gui import session as sessionmod
+    drain_cap = 5.0                      # devmod's own constant
+    assert sessionmod.CALL_TIMEOUT > drain_cap, (
+        f"a call timeout of {sessionmod.CALL_TIMEOUT} cannot outlast a "
+        f"daemon that is allowed to spend {drain_cap} draining before it "
+        f"even sends the command")
