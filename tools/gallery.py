@@ -104,6 +104,22 @@ class Gallery:
             self.win.tick()
             time.sleep(0.02)
 
+    ALARMS = ("dropped", "gaps", "breaks", "overruns")
+
+    def alarms(self):
+        """The Health counters that mean the picture is not the signal.
+
+        Returns the non-zero ones, as {field: text}. `gui/health.py`
+        turns exactly these red.
+        """
+        bad = {}
+        for key in self.ALARMS:
+            text = (self.win.health.value(key) or "").strip()
+            digits = text.replace(",", "")
+            if digits.isdigit() and int(digits) != 0:
+                bad[key] = text
+        return bad
+
     def settle_clean(self, want=None, secs=8.0):
         """Wait for the window to actually show what was asked for.
 
@@ -129,7 +145,33 @@ class Gallery:
         return False, last
 
     def shot(self, name, title, why, settle=1.2, widget=None, want=None,
-             require=True):
+             require=True, clean=True, restarts=2):
+        """Capture one image, having first checked it says what it will
+        be captioned as saying.
+
+        `clean` is the check that was missing and it is the expensive
+        one to be without. `04-square-clean` published 245 device
+        overruns and 245 discontinuities, both red, under a caption
+        reading "well inside the DAC's step rate, so the edges are
+        edges" - a picture contradicting its own words, in the panel
+        whose entire purpose is to contradict the trace when the trace
+        is wrong.
+
+        Measured afterwards with no GUI in the path, six 9-second runs
+        at a matched 200,000 Hz produced zero overruns in both capture
+        and loop, so the loss is host-side and this harness is a strong
+        suspect: grabbing a 2400x1463 PNG thirty times a second is the
+        same load that already cost an earlier gallery 77 overruns and
+        a 1.47 s read gap when the daemon ran in-process. That is a
+        hypothesis rather than a finding. What is not in doubt is that
+        a *clean* caption must not be published over red counters, and
+        the fix for that does not depend on knowing whose fault they
+        are: restart the run and try again, and fail loudly rather than
+        quietly if it will not come up clean.
+
+        Pass `clean=False` for the shots that are *supposed* to be
+        alarming - the stalled board, and anything downstream of it.
+        """
         ok, seen = self.settle_clean(want) if want else (True, "")
         if not ok:
             msg = (f"{name}: window never showed {want!r} with a clean "
@@ -137,6 +179,18 @@ class Gallery:
             if require:
                 raise RuntimeError(msg)
             print(f"  ! {msg}", flush=True)
+        if clean:
+            for attempt in range(restarts + 1):
+                bad = self.alarms()
+                if not bad:
+                    break
+                if attempt == restarts:
+                    raise RuntimeError(
+                        f"{name}: captioned clean, but Health reports "
+                        f"{bad} after {restarts} restarts")
+                print(f"    ! {name}: {bad}, restarting the run",
+                      flush=True)
+                self.restart()
         self.pump(settle)
         w = widget or self.win
         path = os.path.join(self.out, f"{name}.png")
@@ -145,8 +199,27 @@ class Gallery:
         self.index.append({"file": f"{name}.png", "title": title,
                            "why": why, "bench": self.bench,
                            "verified": bool(ok), "status_bar": seen,
+                           "alarms": self.alarms(),
                            "at": time.strftime("%Y-%m-%d %H:%M:%S")})
         print(f"  {name}.png  {title}", flush=True)
+
+    def restart(self):
+        """Start the current run over, so its counters describe it alone.
+
+        Whichever of the two things is running: the generator owns the
+        device in loop mode and a plain capture owns it otherwise, and
+        re-clicking the wrong one would stop the device rather than
+        refresh it.
+        """
+        if self.win.awg.run_btn.isChecked():
+            self.win.awg.run_btn.click()
+            self.pump(0.5)
+            self.win.awg.run_btn.click()
+        else:
+            self.win.stop_capture()
+            self.pump(0.5)
+            self.win.start_capture()
+        self.pump(2.0)
 
     # -- helpers over the window's own controls ----------------------
     def combo(self, box, data):
@@ -365,16 +438,46 @@ def build(args):
                        "A1 is undriven, and this view is an honest flat "
                        "line - which is why the shot is taken here.")
                 g.combo(win.view_box, "time")
-            g.shot(f"10-rate-{key}", f"Capture preset: {label}",
-                   "**The rate asked for and the rate reported are "
-                   "different numbers, and the second one is the truth.** "
-                   "Every rate this hardware has is 39 MHz divided by an "
-                   "integer, so a round request gets the nearest divider; "
-                   "Health shows what the frame headers carry rather than "
-                   "what the control said. The trace is flat because the "
-                   "generator is stopped - the preset governs capture, "
-                   "and in loop mode the generator would own both rates "
-                   "and this control would be disabled.")
+            # The top of the ladder cannot come up clean, and that is
+            # issue #41 rather than a flaw in the check: capture loses
+            # exactly 3 frames at start above 200 kHz, reproducibly,
+            # nine runs out of nine, so every restart re-incurs them.
+            why = (
+                "**The rate asked for and the rate reported are "
+                "different numbers, and the second one is the truth.** "
+                "Every rate this hardware has is 39 MHz divided by an "
+                "integer, so a round request gets the nearest divider - "
+                "which is why the top of this ladder reads 453,488 Hz "
+                "and not a round number. Health shows what the frame "
+                "headers carry, never what the control asked for.\n\n"
+                "There is a signal here even though the generator is "
+                "stopped, and it is not left over from the last run: a "
+                "capture start runs the board's *internal* table "
+                "generator, whose frequency is the trigger rate divided "
+                "by twice its 256 points. So it tracks the preset "
+                "exactly - 50,000/512 is 97.7 Hz, about two cycles in "
+                "this 20 ms window, and 453,488/512 is 885.7 Hz, which "
+                "is what Measure reads to the digit. The rate control "
+                "is greyed out in loop mode instead, because there the "
+                "generator owns both rates.")
+            if key == "5":
+                why += (
+                    "\n\n**This one does not have clean counters, and "
+                    "that is issue #41.** Above 200 kHz the capture "
+                    "stream loses exactly 3 frames at start - three "
+                    "runs each at 402,061 and 453,488 Hz, nine out of "
+                    "nine, always 3 - and then runs clean for as long "
+                    "as anyone has watched, with zero growth over nine "
+                    "seconds. The count not scaling with duration is "
+                    "what makes it a startup condition rather than a "
+                    "leak, the same shape as the playback-side bug that "
+                    "turned out to be one constant of ring runway. "
+                    "Every other picture in this gallery is verified "
+                    "clean before it is saved; this one is published "
+                    "with the defect visible because restarting the run "
+                    "just incurs it again.")
+            g.shot(f"10-rate-{key}", f"Capture preset: {label}", why,
+                   clean=(key != "5"))
             win.stop_capture()
             g.pump(0.6)
 
@@ -468,7 +571,7 @@ def build(args):
                    "gaps 0** and **Dropped to us 0** stay clean, which "
                    "matters as much - the loss was the device's, and the "
                    "panel does not smear it across the host's counters.",
-                   widget=win.health)
+                   widget=win.health, clean=False)
             g.shot("16-measure-stalled",
                    "Measure declining to time something that is not a signal",
                    "The same stall, one panel to the left, and it does "
@@ -486,7 +589,7 @@ def build(args):
                    "noise, which is what a zero-crossing counter with no "
                    "amplitude floor would have done, confidently and to "
                    "four digits.",
-                   widget=win.measure)
+                   widget=win.measure, clean=False)
 
         win.awg.run_btn.click()          # stop playback
         g.pump(0.8)
