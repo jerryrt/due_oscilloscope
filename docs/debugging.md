@@ -260,6 +260,30 @@ starting, with a comment recording that ~7 ms of banner was once found
 lying over the first samples of every capture on that preset - which is
 why preset M reads zero at every rate, and is what localised #41.
 
+### The class is closed, and here is the enumeration
+
+The table above was written from the sites someone thought of. Grepping
+every capture start on both tracks gives five each, and they account for
+all of them:
+
+| call site | status |
+|---|---|
+| `cmd_stream` | **fixed** - `67d3990` |
+| `h_loop` / `ha_loop` | **fixed** - `0978e7f` |
+| `h_mimic` / `ha_mimic` | already prints before starting |
+| `cmd_dac_crosscheck` | +4.77 ms, survives on margin |
+| `cmd_stream_uart` | +2019 ms |
+
+plus `h_play` / `ha_play`, which starts playback rather than capture and
+is not in this class at all.
+
+`cmd_dac_crosscheck` is the one left running on margin, and the audit's
+own words are "about one added banner line from biting". That margin is
+now known to be trustworthy - the -5.89 ms prediction for `h_loop` was
+right at two rates before anyone measured it - so +4.77 ms is a real
+cushion rather than a hopeful one. It is also a debug-only command. Add
+a line to its banner and it becomes a defect.
+
 ### first, max, and where a loss actually sits
 
 `first_overrun` and `max_overrun` cannot locate a loss in time, and two
