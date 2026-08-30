@@ -272,8 +272,11 @@ Check here before reasoning from general Arduino knowledge.
   `PLAY_PRIME_BUFS` and the PDC hand-off are all excluded, and no
   host-side change can move the band.
 
-  It is `DACC_MR_REFRESH`: setting it to 2 or 3 clears every affected
-  rate, restoring 1 brings them all back, p = 3.3e-11 across the ladder.
+  It is `DACC_MR_REFRESH`, and it is **three call sites, not one** -
+  `drivers/play.c`, `drivers/gen.c` and `drivers/dac.c` each set it.
+  Setting it to 2 or 3 clears every affected rate and restoring 1 brings
+  them all back: p = 3.3e-11 across the playback ladder, and 12 of 12
+  runs clean on the generator read as an output frequency instead.
   The ripple that refresh defends against is **0.22 codes = 0.18 mV**,
   and during playback the sample stream rewrites the DAC 18-37x more
   often than refresh does, so while streaming refresh protects nothing.
