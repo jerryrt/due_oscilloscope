@@ -1979,3 +1979,93 @@ def test_scope_trace_returns_what_is_drawn(win, daemon):
 
     assert win.scope.trace("not a channel") == (None, None)
     assert win.scope.trace_color("not a channel") is None
+
+
+# ------------------------------------------------ the daemon's pushed events
+
+def test_a_pushed_device_error_reaches_the_notice_bar(win, daemon):
+    """The event stream had no reader in the window at all.
+
+    `client.events` was drained only by `wait_event()`, which lives in
+    `tests/test_daemon_api.py`, so every event the daemon pushed to the
+    front end accumulated in a 1024-entry deque and expired when it
+    wrapped. `device_error` is the one message `docs/frontend.md` rule 4
+    says to show, and it was reaching the client object and stopping
+    there.
+    """
+    win.connect_to_daemon()
+    assert win.client is not None
+    daemon.broadcast_event("device_error", message="the converter stopped")
+
+    for _ in range(50):
+        win.poll_status()
+        if win.notice.showing:
+            break
+        time.sleep(0.02)
+
+    assert win.notice.showing, (
+        "a device_error the daemon pushed never reached the notice bar")
+    assert "the converter stopped" in win.notice.text
+
+
+def test_a_waveform_refusal_surfaces_rather_than_expiring(win, daemon):
+    """The case `Session.send_awg`'s docstring already claimed.
+
+    It says a waveform refusal "surfaces through the daemon's event
+    stream and not here". The daemon does push it - `_handle_awg`
+    answers with `error/refused` and no `id`, so the client files it
+    under events rather than replies - and before the drain existed it
+    surfaced nowhere. The docstring was the only place the behaviour
+    was.
+    """
+    win.connect_to_daemon()
+    daemon.broadcast_event("error", code="refused",
+                           message="this build has no generator")
+
+    for _ in range(50):
+        win.poll_status()
+        if win.notice.showing:
+            break
+        time.sleep(0.02)
+
+    assert "this build has no generator" in win.notice.text
+
+
+def test_an_error_reply_is_not_rendered_twice(win, daemon):
+    """An `error` carrying an `id` is a reply, and has its own path.
+
+    `host/daemon/client.py` files anything with an `id` under replies,
+    where `Session._call` turns it into the `refused` signal. Only
+    unsolicited events reach `_on_event`, so the two renderers cannot
+    both fire for one refusal.
+    """
+    win.connect_to_daemon()
+    c = win.client
+    before = len(c.events)
+    # An op the daemon will refuse, sent as a call so the refusal
+    # carries our id.
+    try:
+        c.call("nonsense_op")
+    except Exception:
+        pass
+    assert len(c.events) == before, (
+        "a refusal answering a call landed in the event stream; it would "
+        "now be rendered by both _on_refused and _on_event")
+
+
+def test_state_events_do_not_reach_the_notice_bar(win, daemon):
+    """`started`/`stopped`/`recording` are already on the health panel.
+
+    Repeating them in the notice bar is the noise that made
+    `statusBar().showMessage()` useless, which is why `gui/notice.py`
+    exists at all.
+    """
+    win.connect_to_daemon()
+    win.notice.clear()
+    for name in ("started", "stopped", "recording", "recorded", "awg_ok"):
+        daemon.broadcast_event(name)
+    for _ in range(5):
+        win.poll_status()
+        time.sleep(0.02)
+    assert not win.notice.showing, (
+        f"a state event was rendered as a notice: {win.notice.text!r}")
