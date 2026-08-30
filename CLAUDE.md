@@ -740,8 +740,20 @@ One logical change per commit. Every commit should build.
 
 ## Build
 
-Both tracks work. `~/.local/bin` must be on `PATH` (holds `arduino-cli`
-and `cmake`).
+Both tracks work. **Ask `tools/toolchain.py` where the tools are; do
+not assume `PATH`.** `toolchains.json` resolves `arm-none-eabi-gcc`,
+`bossac`, `arduino-cli`, `cmake` and `ninja` by pattern, and on Windows
+none of them is on `PATH`: cmake and ninja come from the copies bundled
+with Visual Studio, `arduino-cli` from inside the Arduino IDE
+installation, and the ARM toolchain from wherever it was unpacked. On
+macOS `~/.local/bin` holds `arduino-cli` and `cmake`, which is what this
+line used to say without saying it was one platform's arrangement.
+
+That mattered on 2026-08-30: an agent on `windows-desk` checked `PATH`,
+guessed a couple of install directories, concluded `arduino-cli` was
+absent, and told another bench that this bench could not build Track A -
+which took it off a two-track firmware fix on a false premise. Both
+tracks build there and `docs/windows.md` already said so.
 
 **Every build is a full build, and it is enforced rather than
 remembered.** `CMakeLists.txt`'s `enforce_clean_build` target cleans
