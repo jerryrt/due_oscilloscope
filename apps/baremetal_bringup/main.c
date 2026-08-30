@@ -748,6 +748,32 @@ static void cmd_occ_hist(void)
 			uart_flush();
 	}
 	printf("\n");
+
+	/*
+	 * The capture side of the same question (#44). Absolute
+	 * microseconds at each completed PDC buffer, and the ring
+	 * occupancy at that instant - so a run that lost frames can be
+	 * read for whether the converter fell behind or the transfer
+	 * failed to collect. The frame header's timestamp_us cannot
+	 * separate those: it is taken when the frame is queued for USB.
+	 */
+#if ACQ_RATE_TRACE_ENABLED
+	printf("# acq_rate n=%lu us=", (unsigned long)acq_traced);
+	for (unsigned i = 0; i < acq_traced; i++) {
+		printf("%lu%s", (unsigned long)acq_trace_us[i],
+		       i + 1u < acq_traced ? "," : "");
+		if ((i & 15u) == 15u)
+			uart_flush();
+	}
+	printf(" occ=");
+	for (unsigned i = 0; i < acq_traced; i++) {
+		printf("%u%s", (unsigned)acq_trace_occ[i],
+		       i + 1u < acq_traced ? "," : "");
+		if ((i & 31u) == 31u)
+			uart_flush();
+	}
+	printf("\n");
+#endif
 	uart_flush();
 }
 

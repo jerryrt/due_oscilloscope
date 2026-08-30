@@ -146,4 +146,40 @@ const uint16_t *acq_frame_data(void);
 uint8_t *acq_frame_bytes(void);
 void acq_frame_release(void);
 
+/*
+ * Capture-side completion trace, off by default (issue #44).
+ *
+ * windows-desk asked for the one thing every host-side instrument on
+ * #44 is blind to: whether a lost frame is the converter falling behind
+ * or the transfer failing to collect it. `timestamp_us` in the frame
+ * header cannot separate those - it is taken when the frame is queued
+ * for USB, so a late conversion and a late transfer look the same.
+ *
+ * So this records, per completed PDC buffer:
+ *
+ *   acq_trace_us   micros() at ENDRX, which is the conversion side
+ *   acq_trace_occ  acq_produced - acq_consumed at that same instant,
+ *                  so a run that loses frames can be read for whether
+ *                  the ring was full when it happened
+ *
+ * Same shape as play.h's PLAY_RATE_TRACE and for the same reasons: a
+ * fixed array, a saturating count, written in the ISR and drained by
+ * `Q` after the run. Never printed during it - invariant 6, and
+ * h_mimic's pattern.
+ *
+ * Off by default because it perturbs the path it measures. One micros()
+ * per completed buffer is ~1.4 us against a 2.24 ms buffer at the full
+ * rate, so 0.06% - but "small" is not "free", and the play trace made
+ * the same call. Build with -DACQ_RATE_TRACE_ENABLED=1.
+ */
+#ifndef ACQ_RATE_TRACE_ENABLED
+#define ACQ_RATE_TRACE_ENABLED 0
+#endif
+
+#define ACQ_RATE_TRACE 256
+
+extern volatile uint32_t acq_trace_us[ACQ_RATE_TRACE];
+extern volatile uint8_t  acq_trace_occ[ACQ_RATE_TRACE];
+extern volatile uint32_t acq_traced;   /* entries written, saturating */
+
 #endif /* ACQ_H */

@@ -1,6 +1,7 @@
 #include "sam.h"
 #include "acq.h"
 #include "analog.h"
+#include "bsp.h"   /* micros(), for the ACQ_RATE_TRACE */
 
 /*
  * Bank 1, deliberately.
@@ -62,6 +63,9 @@ void acq_set_pair(uint32_t a_number)
 
 
 volatile uint32_t acq_buffers_done;
+volatile uint32_t acq_trace_us[ACQ_RATE_TRACE];
+volatile uint8_t  acq_trace_occ[ACQ_RATE_TRACE];
+volatile uint32_t acq_traced;
 volatile uint32_t acq_rxbuff_overruns;
 volatile uint32_t acq_govre;
 volatile uint32_t acq_produced;
@@ -189,6 +193,7 @@ bool acq_start(uint32_t trigger_hz, unsigned n_channels)
 	ADC->ADC_CHER = configured_mask;
 
 	acq_buffers_done = 0;
+	acq_traced = 0;
 	acq_rxbuff_overruns = 0;
 	acq_govre = 0;
 	acq_produced = 0;
@@ -247,6 +252,20 @@ void ADC_Handler(void)
 		if (acq_produced - acq_consumed >= ACQ_NBUF - 1u)
 			acq_ring_overflow++;
 		acq_produced++;
+
+#if ACQ_RATE_TRACE_ENABLED
+		/*
+		 * Occupancy first, then the clock: the occupancy is the
+		 * state at completion and the timestamp may lag it by a
+		 * few hundred nanoseconds without costing anything, since
+		 * the host differences the timestamps.
+		 */
+		if (acq_traced < ACQ_RATE_TRACE) {
+			acq_trace_occ[acq_traced] =
+				(uint8_t)(acq_produced - acq_consumed);
+			acq_trace_us[acq_traced++] = micros();
+		}
+#endif
 	}
 }
 
