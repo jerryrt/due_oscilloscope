@@ -57,15 +57,18 @@ def census(rows, key):
     """
     hold, dac, adc = key
     gaps, mads, nbin = [], [], None
+    decimating = None
     for r in rows:
         if (r.get("hold"), r.get("dac_sps"), r.get("adc_hz")) != key:
             continue
         if r.get("offsets"):
+            decimating = True
             for o in r["offsets"]:
                 gaps.extend(o.get("spacings", ()))
                 mads.append(o.get("mad"))
                 nbin = o.get("n_per_bin", nbin)
         elif isinstance(r.get("gaps"), dict):
+            decimating = False
             # tools/issue24_holdavg.py and issue24_taginterleave.py
             # write a pooled {gap: count} per capture instead of one
             # entry per decimation offset. Reading only `offsets` made
@@ -74,7 +77,7 @@ def census(rows, key):
             for k, v in r["gaps"].items():
                 gaps.extend([int(k)] * int(v))
             mads.append(r.get("mad"))
-    return gaps, mads, nbin, dac, adc
+    return gaps, mads, nbin, dac, adc, decimating
 
 
 def main():
@@ -113,7 +116,7 @@ def main():
                   "this is not recoverable from the file")
         for key in holds:
             hold, dac, adc = key
-            gaps, mads, nbin, dac, adc = census(rows, key)
+            gaps, mads, nbin, dac, adc, decimating = census(rows, key)
             if not dac:
                 continue
             # period / gcd(period, hold), NOT period / hold.
@@ -129,7 +132,27 @@ def main():
             # "alternating 10/11 at hold 2" on issue #24 from this line
             # and it was untestable. tools/issue24_visible.py checks the
             # closed form against a simulation.
-            conv = UPDATE_LOCKED_UPDATES / gcd(UPDATE_LOCKED_UPDATES, hold)
+            # WHICH READER wrote these rows decides the formula, and
+            # the two differ at exactly the holds this issue argues
+            # about. A decimating reader keeps one sample per update, so
+            # a lattice every `period` conversions only lands on a kept
+            # sample at multiples of lcm(period, hold) and the gap is
+            # period/gcd. A reader that AVERAGES the hold discards no
+            # phase, so the event lands in the bin containing it and the
+            # gap is period/hold - fractional, showing as alternating
+            # floor and ceil.
+            #
+            # 421e6d4 corrected the formula to the decimating one and
+            # applied it to every record. issue24_holdavg.py and
+            # issue24_taginterleave.py average, so their hold-2 rows
+            # were then told to expect 21 when the instrument that wrote
+            # them produces 10.5. Same class of error as the one that
+            # commit fixed, one layer along.
+            if decimating is False:
+                conv = UPDATE_LOCKED_UPDATES / hold
+            else:
+                conv = UPDATE_LOCKED_UPDATES / gcd(UPDATE_LOCKED_UPDATES,
+                                                   hold)
             time = TIME_LOCKED_US * 1e-6 * dac
             degenerate = abs(conv - time) < 0.01
             upd_degenerate = abs(conv - UPDATE_LOCKED_UPDATES) < 0.01
@@ -140,8 +163,10 @@ def main():
             # has to survive a missing field.
             have = [m for m in mads if m is not None]
             mad_s = f"{statistics.median(have):.3f}" if have else "n/a"
+            reader = ("decimating" if decimating
+                      else "averaging" if decimating is False else "?")
             print(f"\n-- hold {hold}  ADC {adc} Hz  DAC {dac} Hz  "
-                  f"MAD {mad_s}  n/bin {nbin}")
+                  f"MAD {mad_s}  n/bin {nbin}  reader={reader}")
             print(f"   predicts: update-locked {UPDATE_LOCKED_UPDATES}"
                   f"   conversion-locked {conv:.2f}"
                   f"   time-locked {time:.2f}"
