@@ -104,6 +104,31 @@ A client displays what comes back, never what it asked for. A header
 that once declared the requested rate rather than the produced one was
 a defect, and this is the same mistake at the other end of the wire.
 
+**And `actual_hz` is still what the timer was programmed for, not what
+the converter delivers.** Between roughly **750,000 and 1,300,000 sps**
+the DACC converts below its programmed rate - by 0.4% to 3.1% depending
+on the rate, and *which* deficit a run gets is chosen when playback
+starts, so two runs at one rate can differ. Issue #48 has the map and
+`docs/awg.md` the detail; `DACC_MR_REFRESH` is the register and the
+effect is the silicon's, on both tracks and both hosts.
+
+So the chain a client sees is:
+
+    requested   ->   actual_hz (RC truncation, reported here)
+                ->   what the DAC actually converts (NOT reported)
+
+The daemon does not measure the third and does not refuse rates in that
+band - a refusal would be wrong, since the rates work and most
+applications will not care about 1.6%. **A client that must know the
+delivered rate has to read the playback counters** (`consumed` and
+`run_us` from `trace`) and compute it, which is what
+`tools/issue47_ratio.py` does.
+
+The front end is unaffected: it pins loop mode at 200,000 sps, which is
+RC 195 and measured clean - median ratio 0.99947 over eight runs. This
+is reachable from the API and not from the GUI, which is the same
+division the duplex-cost note in CLAUDE.md draws.
+
 Rates past a limit are refused with the limit named: the trigger floor
 (RC 86 for two channels, RC 44 for one - measured, not derived, and not
 halvable) and the DACC ceiling at RC 28. The board's own refusals are
