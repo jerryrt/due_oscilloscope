@@ -704,6 +704,16 @@ class ParsedStream:
     dropped_frames: int = 0
     crc_bad: int = 0
     overrun_frames: int = 0
+    # Where the overrun counter MOVED, not just what it reached.
+    # (frame_index, device_timestamp_us, new_count) per change.
+    #
+    # first/last/max cannot locate a loss in time, and on this project
+    # that has mattered twice in one night: issue 41 loses its frames
+    # before the first frame ships, and issue 44 loses them after it,
+    # and the two are different mechanisms. Only the step list tells
+    # them apart, and it is a handful of tuples per run because the
+    # counter moves rarely.
+    overrun_steps: list = None
     first_overrun: int = None
     last_overrun: int = None
     max_overrun: int = 0
@@ -862,6 +872,10 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
             ps.overrun_frames += 1
         if ps.first_overrun is None:
             ps.first_overrun = overruns
+        if ps.overrun_steps is None:
+            ps.overrun_steps = []
+        if overruns != ps.last_overrun:
+            ps.overrun_steps.append((ps.frames, ts, overruns))
         ps.last_overrun = overruns
         ps.max_overrun = max(ps.max_overrun, overruns)
         if seq_prev is not None and seq != seq_prev + 1:
