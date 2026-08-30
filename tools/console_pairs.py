@@ -67,13 +67,40 @@ def bodies(relpath):
 
 
 def normalise(s):
-    """Code lines, with the output mechanism made common."""
+    """Code lines, with the output mechanism made common.
+
+    Renaming the calls is not enough, and the residue is not random - it
+    is structural, so it biases every printing body the same way:
+
+      Track B      printf("text\n");
+      Track A      snprintf(buf, sizeof(buf), "text");
+                   Serial.println(buf);
+
+    One line against two, and a trailing newline on one side that the
+    other's println supplies implicitly. Renaming alone leaves those, so
+    a body whose two copies say exactly the same thing scores as
+    diverged - `cmd_help` is six lines that differ in nothing else and
+    came out at 0.67.
+
+    So the two-step is folded to one and the trailing newline dropped.
+    What is left is what the function *does*.
+    """
     s = re.sub(r"/\*.*?\*/", "", s, flags=re.S)
     s = re.sub(r"//[^\n]*", "", s)
+
+    # Track A's snprintf-into-buf followed by println(buf) is one output,
+    # not two. Fold before renaming, while the shape is still visible.
+    s = re.sub(r"snprintf\(\s*buf\s*,\s*sizeof\(buf\)\s*,\s*",
+               "printf(", s)
+    s = re.sub(r"\n\s*Serial\.println\(buf\);", "", s)
+
     for a, b in (("Serial.println", "OUT"), ("Serial.print", "OUT"),
                  ("snprintf", "OUT"), ("printf", "OUT"),
                  ("uart_flush", "FLUSH"), ("Serial.flush", "FLUSH")):
         s = s.replace(a, b)
+
+    # println supplies the newline the printf side spells out.
+    s = s.replace('\\n"', '"')
     return [ln.strip() for ln in s.splitlines() if ln.strip()]
 
 
