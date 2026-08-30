@@ -446,6 +446,42 @@ comb's amplitude and refuses the conclusion below 2:1, because at 12 s
 captures the floor was 0.98 against a 1.04 code comb and "detectable by
 6%" is the same mistake one step further along.
 
+### The second lattice is a count. The time reading is dead.
+
+**Settled since the section below was written, by two benches moving the
+ADC rate in opposite directions:**
+
+| bench | arm | time-locked predicts | measured |
+|---|---|---|---|
+| windows-desk | ADC 100,000 / DAC 100,000 | 10.50 | **21.000**, MAD 0.102, n/bin 2151 |
+| macOS | ADC 397,959 / DAC 397,959 | 41.79 | **21**, 130 of them, zero 41/42 |
+
+One went down in ADC rate and one went up; both land on 21 where a
+fixed period predicts something else. So the lattice is a **count**, and
+105 microseconds - proposed here and withdrawn the same night - is
+buried by measurement rather than by its author's doubt.
+
+What remains is the two-lattice picture with both members counts: 21 DAC
+updates and 21 ADC conversions, each drawn in its own captures. The
+ledger of refutations, ranked by whether they replicated:
+
+| reading | refuted by | replicated |
+|---|---|---|
+| time-locked | macOS RC 98 h1, windows ADC 100k h1 | yes, both directions |
+| update-locked | RC 195 h3 | yes - macOS 258 sevens of 375 with one 21, linux-x1 87 of 139 with zero |
+| conversion-locked | RC 292 h2 only | **no** - macOS mode 7.000 against linux-x1's 14.08 at identical rates |
+
+**Rank arms by whether they replicate, not by whether they are yours.**
+Every wrong turn on this issue has been a single arm read as settled,
+and the one still unreplicated is the one refuting conversion-locked.
+
+One reading trap that survives all of it. A DECIMATING reader cannot
+show a fractional spacing: 10.5 cannot be a bin gap, so alternate sites
+land on the discarded phase and the survivors sit 21 apart, which looks
+like the update lattice and is not. A non-decimating reader shows the
+same captures as alternating 10s and 11s. Both are correct about what
+they measured; only the second can see the distinction.
+
 ### The second lattice: a time or a count, and still undecided
 
 **The section that follows claimed 105 microseconds and is WITHDRAWN.**
