@@ -34,6 +34,7 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -125,6 +126,32 @@ void console_missing(void);
  * recompiled every time and the stamp still says when the image was
  * built - and now says it once instead of twice.
  */
+/*
+ * The console's own formatter: bounded, allocation-free, no FILE.
+ *
+ * Issue #49 and the owner's rule that the image must link no malloc.
+ * `printf` reaches a real stdio stream and newlib allocates that
+ * stream's buffer; `snprintf` allocates nothing but still drags the
+ * whole engine and is still variable-time. Neither size nor determinism
+ * is available from libc at any setting.
+ *
+ * Named `console_fmt` rather than `printf` deliberately: a ban that
+ * cannot be spelled cannot be enforced, and with a different name the
+ * guard reads "no libc stdio in the image at all" and is checkable with
+ * nm rather than by review.
+ *
+ * The format attribute is kept, so gcc still type-checks every call
+ * site against the format string even though this is not libc's.
+ * Conversions supported are measured rather than chosen - see
+ * console_fmt.c - and there is no floating point in this firmware.
+ *
+ * Returns the length it WOULD have written, like snprintf, so a caller
+ * can append at the offset it gets back.
+ */
+int console_fmt(char *buf, unsigned n, const char *fmt, ...)
+	__attribute__((format(printf, 3, 4)));
+int console_vfmt(char *buf, unsigned n, const char *fmt, va_list ap);
+
 void console_identity(char track, unsigned long mck_hz);
 
 /*
