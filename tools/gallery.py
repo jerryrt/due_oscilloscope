@@ -206,8 +206,26 @@ class Gallery:
                            "why": why, "bench": self.bench,
                            "verified": bool(ok), "status_bar": seen,
                            "alarms": self.alarms(),
+                           "measure": self.measured(),
                            "at": time.strftime("%Y-%m-%d %H:%M:%S")})
         print(f"  {name}.png  {title}", flush=True)
+
+    def measured(self):
+        """What the Measure panel was showing at the grab, as text.
+
+        Recorded so that prose elsewhere can quote a measurement instead
+        of remembering one. The wiki's front page used to carry
+        "measured 1.5001 V at 1,000.0 Hz" as a hand-typed sentence, and
+        by the next capture it was 1.4993 - a small number, wrong in the
+        one place a reader has no way to check it.
+        """
+        out = {}
+        for key in ("vpp_v", "mean_v", "rms_v", "freq_hz", "period_s",
+                    "duty"):
+            text = (self.win.measure.value(key) or "").strip()
+            if text and text != "-":
+                out[key] = text
+        return out
 
     def restart(self):
         """Start the current run over, so its counters describe it alone.
