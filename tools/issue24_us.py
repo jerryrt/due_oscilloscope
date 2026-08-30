@@ -43,17 +43,36 @@ def load(path):
         return [json.loads(x) for x in f if x.strip()]
 
 
-def census(rows, hold):
-    """Pooled spacings, MAD and n_per_bin for one hold."""
-    gaps, mads, nbin, dac, adc = [], [], None, None, None
+def census(rows, key):
+    """Pooled spacings, MAD and n_per_bin for one (hold, dac, adc) arm.
+
+    Grouping by HOLD ALONE pools arms taken at different rates and then
+    labels the result with whichever row happened to come last. On a
+    file holding both RC 195 hold 2 (DAC 100,000) and RC 292 hold 2
+    (DAC 66,780) that mixes two different lattice spacings into one
+    histogram and prints one rate over it - which is the same class of
+    error as reading a count at a single ADC rate and calling it
+    invariant.
+    """
+    hold, dac, adc = key
+    gaps, mads, nbin = [], [], None
     for r in rows:
-        if r.get("hold") != hold:
+        if (r.get("hold"), r.get("dac_sps"), r.get("adc_hz")) != key:
             continue
-        dac, adc = r.get("dac_sps"), r.get("adc_hz")
-        for o in r.get("offsets", ()):
-            gaps.extend(o.get("spacings", ()))
-            mads.append(o.get("mad"))
-            nbin = o.get("n_per_bin", nbin)
+        if r.get("offsets"):
+            for o in r["offsets"]:
+                gaps.extend(o.get("spacings", ()))
+                mads.append(o.get("mad"))
+                nbin = o.get("n_per_bin", nbin)
+        elif isinstance(r.get("gaps"), dict):
+            # tools/issue24_holdavg.py and issue24_taginterleave.py
+            # write a pooled {gap: count} per capture instead of one
+            # entry per decimation offset. Reading only `offsets` made
+            # this tool report "no gaps within range" on those files -
+            # silently, which on this issue is how a null gets made.
+            for k, v in r["gaps"].items():
+                gaps.extend([int(k)] * int(v))
+            mads.append(r.get("mad"))
     return gaps, mads, nbin, dac, adc
 
 
@@ -70,19 +89,28 @@ def main():
 
     for path in args.records:
         rows = load(path)
-        holds = sorted({r["hold"] for r in rows if "hold" in r})
+        holds = sorted({(r["hold"], r.get("dac_sps"), r.get("adc_hz"))
+                        for r in rows if "hold" in r},
+                       key=lambda k: (k[0], k[1] or 0))
         bench = next((r.get("bench") for r in rows if r.get("bench")), "?")
         print(f"\n=== {path}   bench={bench}   {len(rows)} rows ===")
-        for hold in holds:
-            gaps, mads, nbin, dac, adc = census(rows, hold)
+        for key in holds:
+            hold, dac, adc = key
+            gaps, mads, nbin, dac, adc = census(rows, key)
             if not dac:
                 continue
             conv = UPDATE_LOCKED_UPDATES / hold
             time = TIME_LOCKED_US * 1e-6 * dac
             degenerate = abs(conv - time) < 0.01
+            # Not every writer records a MAD - issue24_holdavg.py does
+            # not - and taking a median of nothing raised
+            # StatisticsError and killed the whole report rather than
+            # one column of it. A tool that reads other tools' records
+            # has to survive a missing field.
+            have = [m for m in mads if m is not None]
+            mad_s = f"{statistics.median(have):.3f}" if have else "n/a"
             print(f"\n-- hold {hold}  ADC {adc} Hz  DAC {dac} Hz  "
-                  f"MAD {statistics.median(m for m in mads if m is not None):.3f}  "
-                  f"n/bin {nbin}")
+                  f"MAD {mad_s}  n/bin {nbin}")
             print(f"   predicts: update-locked {UPDATE_LOCKED_UPDATES}"
                   f"   conversion-locked {conv:.2f}"
                   f"   time-locked {time:.2f}"
