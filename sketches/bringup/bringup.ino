@@ -325,21 +325,6 @@ static uint32_t crosstalk_settle_ms;
 /*
  * The settle wait, spun on micros() rather than delay().
  *
- * delay() calls yield() and snaps to the SysTick millisecond, so it is
- * neither the same duration nor the same activity as Track B's wait -
- * and issue #16 is a measurement of what happens *between* two
- * conversions, which is exactly what a differing wait changes. Two
- * instruments that disagree by a factor of three should not also
- * disagree about how they wait. Same spin as bleed_settle() in main.c.
- */
-static void bleed_settle(uint32_t ms)
-{
-	uint32_t t0 = micros();
-
-	while (micros() - t0 < ms * 1000u)
-		{ }
-}
-
 /*
  * Multiplexer bleed, repeated - "=<n>,<ms>x".
  *
@@ -467,10 +452,10 @@ static void cmd_crosstalk(void)
 	for (i = 0; i < n; i++) {
 		gen_write_dac(1, 2048);
 		gen_write_dac(0, 0);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &a0, &lo);
 		gen_write_dac(0, 4095);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &a0, &hi);
 		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
 		a1b_lo[i] = lo; a1b_hi[i] = hi;
@@ -479,30 +464,30 @@ static void cmd_crosstalk(void)
 		 * same code. Identical writes, waits and conversions, so a
 		 * difference here is not crosstalk from a moving neighbour. */
 		gen_write_dac(0, 2048);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &a0, &lo);
 		gen_write_dac(0, 2048);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &a0, &hi);
 		a1_still[i] = (int16_t)((int)hi - (int)lo);
 		a1s_lo[i] = lo; a1s_hi[i] = hi;
 
 		gen_write_dac(0, 2048);
 		gen_write_dac(1, 0);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &lo, &a1);
 		gen_write_dac(1, 4095);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &hi, &a1);
 		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
 		a0b_lo[i] = lo; a0b_hi[i] = hi;
 
 		/* And its control. */
 		gen_write_dac(1, 2048);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &lo, &a1);
 		gen_write_dac(1, 2048);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		acq_read_pair(ACQ_CH_A0, second, &hi, &a1);
 		a0_still[i] = (int16_t)((int)hi - (int)lo);
 		a0s_lo[i] = lo; a0s_hi[i] = hi;
@@ -548,7 +533,7 @@ static void cmd_crosstalk(void)
 
 	/* Which bench this is, read rather than assumed. */
 	gen_write_dac(1, 2048);
-	bleed_settle(ms);
+	console_bleed_settle(ms);
 	acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
 	snprintf(buf, sizeof(buf),
 	         "# A1 reads %u with DAC1 held at 2048: %s", a1,

@@ -257,14 +257,6 @@ static void cmd_sweep(void)
  */
 static uint32_t crosstalk_settle_ms;
 
-static void bleed_settle(uint32_t ms)
-{
-	uint32_t t0 = micros();
-
-	while (micros() - t0 < ms * 1000u)
-		{ }
-}
-
 /*
  * Multiplexer bleed, repeated - "=<n>,<ms>x".
  *
@@ -378,11 +370,11 @@ static void cmd_crosstalk(void)
 		/* Hold DAC1 mid scale; swing DAC0. Watch the second channel. */
 		dac_write(1, 2048);
 		dac_write(0, 0);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &a0, &lo);
 
 		dac_write(0, 4095);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &a0, &hi);
 		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
 		a1b_lo[i] = lo; a1b_hi[i] = hi;
@@ -391,11 +383,11 @@ static void cmd_crosstalk(void)
 		 * same code. Identical writes, waits and conversions, so a
 		 * difference here is not crosstalk from a moving neighbour. */
 		dac_write(0, 2048);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &a0, &lo);
 
 		dac_write(0, 2048);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &a0, &hi);
 		a1_still[i] = (int16_t)((int)hi - (int)lo);
 		a1s_lo[i] = lo; a1s_hi[i] = hi;
@@ -403,22 +395,22 @@ static void cmd_crosstalk(void)
 		/* Hold DAC0 mid scale; swing DAC1. Watch A0. */
 		dac_write(0, 2048);
 		dac_write(1, 0);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &lo, &a1);
 
 		dac_write(1, 4095);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &hi, &a1);
 		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
 		a0b_lo[i] = lo; a0b_hi[i] = hi;
 
 		/* And its control. */
 		dac_write(1, 2048);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &lo, &a1);
 
 		dac_write(1, 2048);
-		bleed_settle(ms);
+		console_bleed_settle(ms);
 		adc_read_pair(ADC_CH_A0, second, &hi, &a1);
 		a0_still[i] = (int16_t)((int)hi - (int)lo);
 		a0s_lo[i] = lo; a0s_hi[i] = hi;
@@ -473,7 +465,7 @@ static void cmd_crosstalk(void)
 	 * with A1 free it sits wherever the mux left it.
 	 */
 	dac_write(1, 2048);
-	bleed_settle(ms);
+	console_bleed_settle(ms);
 	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
 	printf("# A1 reads %u with DAC1 held at 2048: %s\n", a1,
 	       (a1 > 1800u && a1 < 2300u) ? "DAC1 -> A1 is fitted"

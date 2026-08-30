@@ -81,3 +81,32 @@ void console_gen_report(void)
 	console_write("\n");
 	console_flush();
 }
+
+
+/*
+ * The crosstalk settle wait, spun on the device clock rather than any
+ * track's delay().
+ *
+ * Shared because the two copies **must not differ**, not merely because
+ * they were duplicated. Issue #16 measures what happens *between* two
+ * conversions, so a wait that differs between the tracks changes the
+ * thing being measured - and the two figures then are not comparable,
+ * which is exactly what happened when Track B spun 400,000 iterations
+ * and Track A called delay(10). Both were corrected to a micros() spin
+ * and a comment on each side asked the other to stay that way.
+ *
+ * A comment is not a mechanism. One body is.
+ *
+ * ctl_port_micros() rather than a direct micros(): Track A's comes from
+ * the Arduino core and Track B's from bsp.h, and the port already
+ * exists to name that difference. delay() is what must not be used -
+ * it calls yield() and snaps to the SysTick millisecond, so it is
+ * neither the same duration nor the same activity as a spin.
+ */
+void console_bleed_settle(uint32_t ms)
+{
+	uint32_t t0 = ctl_port_micros();
+
+	while (ctl_port_micros() - t0 < ms * 1000u)
+		{ }
+}

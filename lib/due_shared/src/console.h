@@ -139,6 +139,13 @@ void console_identity(char track, unsigned long mck_hz);
 void console_trigger_fault(void);
 void console_gen_report(void);
 
+/*
+ * The crosstalk settle wait. Shared so the two tracks cannot drift
+ * apart on it - issue #16 measures what happens between conversions,
+ * so a differing wait changes the measurement. See console_cmds.c.
+ */
+void console_bleed_settle(uint32_t ms);
+
 #ifdef __cplusplus
 }
 #endif
