@@ -29,7 +29,7 @@ argument. 15/16 is exact enough to be a divider rather than a drift.
 
     python3 tools/issue47_ratio.py --reps 8
 """
-import argparse, json, statistics, sys, pathlib
+import argparse, json, os, platform, statistics, sys, pathlib
 from fractions import Fraction
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
@@ -43,8 +43,23 @@ def main():
     ap.add_argument("--reps", type=int, default=8)
     ap.add_argument("--rcs", type=int, nargs="+", default=[28, 32, 39, 44, 56])
     ap.add_argument("--seconds", type=float, default=3.0)
-    ap.add_argument("--out", default="records/issue47-ratio-macos.jsonl")
+    ap.add_argument("--bench", default=os.environ.get("DUE_BENCH"),
+                    help="which bench this is; defaults to $DUE_BENCH")
+    ap.add_argument("--out", default=None,
+                    help="defaults to records/issue47-ratio-<bench>.jsonl")
     a = ap.parse_args()
+
+    # The bench and host are read, not hard-coded. This tool shipped
+    # with bench="macos" and host="macOS 12.6" written into every row
+    # and a matching default filename, so running it on windows-desk
+    # appended twelve Windows rows to mac-bench's record under
+    # mac-bench's label - which is the one thing CLAUDE.md says a figure
+    # must never lose. Caught and reverted, and the shape fixed here so
+    # the next bench cannot repeat it.
+    bench = a.bench or platform.node() or "unknown-bench"
+    host = f"{platform.system()} {platform.release()}"
+    out = a.out or f"records/issue47-ratio-{bench}.jsonl"
+
 
     board = measure.Board(settle=3.0)
     rows = []
@@ -64,7 +79,7 @@ def main():
             ratios.append(ratio)
             fr = Fraction(ratio).limit_denominator(64)
             d = int(r.host_deficit)
-            rows.append(dict(bench="macos", host="macOS 12.6", track="b",
+            rows.append(dict(bench=bench, host=host, track="b",
                              issue=47, test="device-rate-ratio", rc=rc,
                              run=i, dac_sps=hz, seconds=a.seconds,
                              consumed_bufs=cons, run_us=us,
@@ -84,10 +99,10 @@ def main():
                      f"(~{Fraction(statistics.median(slow)).limit_denominator(64)})"
                      if slow else ""))
 
-    with open(a.out, "a", encoding="utf-8") as f:
+    with open(out, "a", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
-    print(f"\nwrote {len(rows)} rows to {a.out}")
+    print(f"\nwrote {len(rows)} rows to {out}")
 
 
 if __name__ == "__main__":
