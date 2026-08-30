@@ -13,6 +13,7 @@ grows one they must pass unchanged against both, because the wire
 format is the only thing the two tracks share.
 """
 
+import re
 import struct
 import time
 import zlib
@@ -307,10 +308,23 @@ def test_stream_stats_says_what_the_console_says(link, board, track):
     one. So the two are read against the same running stream and
     compared field by field.
 
-    Only the fields that cannot move between two reads are asserted.
-    `produced`, `consumed` and `gen_endtx` are free-running at 200 kHz
-    and advance measurably in the time it takes the console form to
-    print twenty-four numbers - which is the reason the opcode exists.
+    **The opcode read is bracketed by two console reads, and nothing is
+    classified as settled.** The earlier form split the fields into ones
+    that "cannot move between two reads" and three free-running ones,
+    and that split was wrong: with no consumer on the native port the
+    ring overflows continuously, so `ringovf` free-runs too - measured
+    at 197/s on linux-x1, where the failing delta was exactly the
+    inter-read sleep times that rate. It passed elsewhere only because
+    the counter happened to be still on those hosts, which is luck and
+    not a property the test may rest on.
+
+    Bracketing removes the need to classify, and it is *stronger* than
+    what it replaces. A stationary field still pins the opcode exactly,
+    because both console reads return the same number. A moving field is
+    pinned to the interval it moved through, which catches an opcode
+    reporting a different quantity - where the old "did not go
+    backwards" check on `produced` and friends caught only an opcode
+    reporting a smaller one.
     """
     requires(link, control.OP_STREAM_STATS)
     board.stop()
@@ -318,34 +332,35 @@ def test_stream_stats_says_what_the_console_says(link, board, track):
     board.cmd("3")
     time.sleep(1.5)
     try:
-        st = link.stream_stats()
-        board.drain_console(0.2)
         board.cmd("?")
-        text = board.drain_console(0.8)
+        before = board.drain_console(0.8)
+        st = link.stream_stats()
+        board.cmd("?")
+        after = board.drain_console(0.8)
     finally:
         board.stop()
 
-    kv = dict((k, int(v)) for k, v in
-              __import__("re").findall(r"([A-Za-z_][A-Za-z0-9_-]*)=(-?\d+)",
-                                       text))
-    settled = [("frames", "frames"), ("resync", "resync"),
-               ("refused", "refused"), ("ring_overflow", "ringovf"),
-               ("govre", "govre"), ("rxbuff_overruns", "rxbuff"),
-               ("dma_frames", "dma-frames"), ("dma_stalls", "dma-stalls"),
-               ("usb_configured", "cfg"), ("usb_line_state", "dtr")]
-    for op_key, con_key in settled:
-        if con_key in kv:
-            assert st[op_key] == kv[con_key], (
-                f"{op_key}: control channel says {st[op_key]}, console "
-                f"says {con_key}={kv[con_key]}")
+    def console_kv(text):
+        return dict((k, int(v)) for k, v in
+                    re.findall(r"([A-Za-z_][A-Za-z0-9_-]*)=(-?\d+)", text))
 
-    # The moving ones must at least be moving in the right direction.
-    for op_key, con_key in (("produced", "prod"), ("consumed", "cons"),
-                            ("gen_endtx", "endtx")):
-        if con_key in kv:
-            assert kv[con_key] >= st[op_key], (
-                f"{op_key} went backwards between the control read and "
-                f"the console read: {st[op_key]} -> {kv[con_key]}")
+    kv0, kv1 = console_kv(before), console_kv(after)
+    fields = [("frames", "frames"), ("resync", "resync"),
+              ("refused", "refused"), ("ring_overflow", "ringovf"),
+              ("govre", "govre"), ("rxbuff_overruns", "rxbuff"),
+              ("dma_frames", "dma-frames"), ("dma_stalls", "dma-stalls"),
+              ("usb_configured", "cfg"), ("usb_line_state", "dtr"),
+              ("produced", "prod"), ("consumed", "cons"),
+              ("gen_endtx", "endtx")]
+    for op_key, con_key in fields:
+        if con_key not in kv0 or con_key not in kv1:
+            continue
+        lo, hi = sorted((kv0[con_key], kv1[con_key]))
+        assert lo <= st[op_key] <= hi, (
+            f"{op_key}: the control channel says {st[op_key]}, which is "
+            f"outside the interval the console bracketed it with - "
+            f"{con_key} went {kv0[con_key]} -> {kv1[con_key]} around the "
+            f"opcode read. The two are not reporting the same quantity.")
 
 
 def test_bench_leaves_the_division_to_the_host(link, track):
