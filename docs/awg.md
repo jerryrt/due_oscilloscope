@@ -1445,6 +1445,23 @@ average to a non-integer blend. It does not, at any rate, in any run. So
 which is the shape of a phase relationship established at start and then
 held. What the phase is between is not established here.
 
+**The lattice is not an artefact of the offset.** That is the obvious
+objection - subtract a free parameter and anything can be made to land
+on integers - so it is worth answering with numbers rather than
+assurance:
+
+    offset 0.000070 (from the clean rates)   worst residual 0.031
+    offset 0                                  worst residual 0.048
+    offset 0.0005                             worst residual 0.133
+    offset 0.002                              worst residual 0.500
+
+**With no offset correction at all the fit is still good.** The
+correction tightens 0.048 to 0.031; it does not create the result. And
+the signed residuals are centred - mean -0.00095 of a unit over 140 runs,
+sd 0.0124 - where a wrong zero would push them all the same way. The
+offset is a refinement whose value is independently measured from the
+three rates that lose nothing.
+
 Several rates offer two values and a run picks one:
 
 | rate | available n | | rate | available n |
