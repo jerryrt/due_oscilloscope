@@ -129,6 +129,24 @@ RC 195 and measured clean - median ratio 0.99947 over eight runs. This
 is reachable from the API and not from the GUI, which is the same
 division the duplex-cost note in CLAUDE.md draws.
 
+**Capture has no equivalent gap, and that is measured rather than
+assumed.** The capture side reports its rate the same computed way -
+`(SystemCoreClock/2) / acq_configured_rc()` - so the question applies to
+it just as much, and a reader who has got this far will ask. On
+`windows-desk`, all five presets deliver exactly what they declare:
+50,000 / 100,000 / 200,000 / 402,061 / 453,488 sps all at ratio
+**1.00000**, in thirty runs, including both rates adjacent to the
+playback band. So the warning above is about playback and only
+playback, and `rate_hz` in a frame header can be taken at face value.
+
+The check is the sample count over the span between the first and last
+frame's own `timestamp_us`, which is `micros()` - a free-running MCK
+timer, not derived from the sample count, so a missed conversion shows
+as fewer samples per microsecond exactly as the DACC's does.
+`PortStats.measured_rate_hz()`. It cannot see a wrong MCK, since the
+trigger and `micros()` share it; that is a different question from this
+one. `records/issue48-adc-rate-windows.jsonl`.
+
 Rates past a limit are refused with the limit named: the trigger floor
 (RC 86 for two channels, RC 44 for one - measured, not derived, and not
 halvable) and the DACC ceiling at RC 28. The board's own refusals are
