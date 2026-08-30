@@ -131,7 +131,7 @@ def bench():
     return got
 
 
-def firmware(build_stamp=None):
+def firmware(build_stamp=None, track=None):
     """Which commit produced the image the board is running.
 
     Reads the flash log newest-first and returns the entry that could
@@ -155,28 +155,96 @@ def firmware(build_stamp=None):
     stamp = _build_epoch(build_stamp)
     for rec in reversed(lines):
         when = _iso_epoch(rec.get("when"))
-        if stamp is None or when is None or when >= stamp - 60:
-            return {
-                "fw_repo_rev": (rec.get("repo_rev") or "") +
-                               ("-dirty" if rec.get("dirty") else ""),
-                "fw_sha256": rec.get("sha256"),
-                "fw_flashed_at": rec.get("when"),
-                "fw_provenance": ("matched" if stamp is not None
-                                  else "latest, unmatched build stamp"),
-                "fw_source_current": fw_source_current(rec.get("repo_rev")),
-                "fw_build_is_current": build_is_current(build_stamp),
-            }
+        if stamp is not None and when is not None and when < stamp - 60:
+            continue
+        # A record that flashed the *other* track cannot be the image
+        # the board is reporting. Without this the newest record wins on
+        # timing alone, and a bench that alternates tracks - this one
+        # does, several times a session - can attribute a Track B board
+        # to a Track A flash and never say so.
+        rec_track = track_of_binary(rec.get("binary"))
+        if track and rec_track and rec_track != str(track).strip().upper():
+            continue
+        return {
+            "fw_repo_rev": (rec.get("repo_rev") or "") +
+                           ("-dirty" if rec.get("dirty") else ""),
+            "fw_sha256": rec.get("sha256"),
+            "fw_flashed_at": rec.get("when"),
+            "fw_provenance": ("matched" if stamp is not None
+                              else "latest, unmatched build stamp"),
+            "fw_source_current": fw_source_current(rec.get("repo_rev"),
+                                                  rec_track),
+            "fw_build_is_current": build_is_current(build_stamp, rec_track),
+            "fw_source_track": rec_track,
+        }
     return {"fw_provenance": "unlogged"}
 
 
-#: What a firmware image is built from. If none of this moved between
-#: the flashed commit and the tree, the board is running current
-#: firmware however far the host tools have travelled.
-FW_SOURCE = ("drivers", "apps", "lib", "linker", "cmake", "CMakeLists.txt",
-             "sketches")
+#: What a firmware image is built from, **per track**.
+#:
+#: Split because one tuple covering both tracks cries wolf across them: a
+#: Track A commit marked a Track B image as "predates a firmware commit"
+#: while `firmware source since flashed` read unchanged on the same run,
+#: and a flag that cries wolf costs the provenance discipline everything
+#: it is for.
+#:
+#: `lib` and `linker` are in both by construction. `lib/due_shared/src`
+#: is the wire contract both builds compile (invariant 3), and `linker/`
+#: holds both scripts - `sam3x8e_flash.ld` for CMake and
+#: `arduino_due_x_sram1.ld`, which `tools/sketch.py` pins Track A's
+#: capture ring to SRAM bank 1 with.
+FW_SOURCE_COMMON = ("lib", "linker")
+
+#: Track B is CMake's source list; Track A is the sketch plus the shared
+#: dirs. Verified against `CMakeLists.txt` and `tools/sketch.py` rather
+#: than assumed: Track A compiles no `bsp/`, no `drivers/` and no
+#: `apps/`, and CMake compiles no `sketches/`.
+FW_SOURCE_TRACKS = {
+    "B": FW_SOURCE_COMMON + ("bsp", "drivers", "apps", "cmake",
+                             "CMakeLists.txt"),
+    "A": FW_SOURCE_COMMON + ("sketches",),
+}
+
+#: Every path that builds *either* image, and the answer when the track
+#: is not known. Over-reporting is the safe direction for a provenance
+#: flag: a false "check your image" costs a rebuild, a false "your image
+#: is current" costs a published figure.
+#:
+#: `bsp` was missing from this tuple until 2026-08-29, which was a false
+#: *negative* and strictly worse than the cross-track false positive
+#: above - `bsp/clock.c` sets MCK, and a flag reporting "current" across
+#: a change to it is the one failure this whole module exists to stop.
+FW_SOURCE = tuple(sorted(set(FW_SOURCE_TRACKS["A"] + FW_SOURCE_TRACKS["B"])))
 
 
-def fw_source_current(fw_rev):
+def fw_source_paths(track):
+    """The paths an image of `track` is built from.
+
+    An unknown or unrecognised track gets the union, never a guess and
+    never an empty set: see FW_SOURCE on which direction is safe.
+    """
+    if track is None:
+        return FW_SOURCE
+    return FW_SOURCE_TRACKS.get(str(track).strip().upper(), FW_SOURCE)
+
+
+def track_of_binary(path):
+    """Which track a flash-log `binary` field names, or None.
+
+    The log has recorded the path since it existed, so this needs no new
+    field and no re-flash to become useful on records already written.
+    """
+    if not path:
+        return None
+    p = str(path).replace("\\", "/")
+    if "track_a" in p or "bringup.ino" in p:
+        return "A"
+    if "baremetal_bringup" in p:
+        return "B"
+    return None
+
+
+def fw_source_current(fw_rev, track=None):
     """Has any firmware source changed since the image was built?
 
     The honest answer to "the firmware commit and the host tree differ,
@@ -198,7 +266,8 @@ def fw_source_current(fw_rev):
     # tell, on a tree where it could.
     try:
         out = subprocess.run(
-            ("git", "diff", "--name-only", f"{rev}..HEAD", "--") + FW_SOURCE,
+            ("git", "diff", "--name-only", f"{rev}..HEAD", "--")
+            + fw_source_paths(track),
             cwd=REPO, capture_output=True, text=True, timeout=5)
     except Exception:                                        # pragma: no cover
         return None
@@ -207,7 +276,7 @@ def fw_source_current(fw_rev):
     return out.stdout.strip() == ""
 
 
-def build_is_current(build_stamp):
+def build_is_current(build_stamp, track=None):
     """Was the image compiled after the newest firmware source commit?
 
     `fw_source_current()` asks whether the *commit that was flashed* is
@@ -232,7 +301,8 @@ def build_is_current(build_stamp):
         return None
     try:
         out = subprocess.run(
-            ("git", "log", "-1", "--format=%at", "--") + FW_SOURCE,
+            ("git", "log", "-1", "--format=%at", "--")
+            + fw_source_paths(track),
             cwd=REPO, capture_output=True, text=True, timeout=5)
     except Exception:                                        # pragma: no cover
         return None
@@ -325,7 +395,7 @@ def collect(board=None, inst=None, channels=(1, 2), extra=None):
             import measure
             ident = measure.identity(board)
             if ident:
-                p.update(firmware(ident.get("build")))
+                p.update(firmware(ident.get("build"), ident.get("track")))
                 p.update({
                     "track": ident["track"],
                     "fw_version": ident["fw_version"],
