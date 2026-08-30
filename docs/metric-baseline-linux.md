@@ -25,8 +25,9 @@ third reading of quantities that had two, and on the ones that matter it
 | `tone_amplitude_codes` | 1368.3 | 1369.2 | **1376.6** |
 | ladder deficit, RC 44 / 39 | 1.4-2.2% | ~0.010% | **0.176% / 0.147%** |
 
-`advref_mv` is 3270 on all three, so the amplitude column is not a
-reference-voltage artefact.
+`advref_mv` reads 3270 on all three because all three read the same
+committed `calibration.json`, so that column says nothing about the
+boards - see the amplitude note below.
 
 **Replicated, and the amplitude reading is stable.** A second Track B
 generation three minutes later (`records/metrics.jsonl`, 22:21) read
@@ -50,14 +51,36 @@ findings.**
   n=9. Whether that is the host's read scheduling or the macOS bench's
   own capture path is not something this bench can decide alone.
 - **`tone_amplitude_codes` is 1376.6 here against ~1368-1369 on both
-  others**, with identical `advref_mv`. `CLAUDE.md` puts the loop at
-  "1371 +/- 2 codes (theoretical 1370.5)", so this median sits about six
-  codes above the band. It is inside one spread (6.23) and the gate it
-  is judged by (`windows_at_or_above_1340`) is identical on all three
-  benches, so nothing fails - but a median above the theoretical maximum
-  is the kind of thing this project has learned to look at twice.
-  **Board and host are confounded here**: this is a third board as well
-  as a third host, and nothing separates them yet.
+  others, and that is board-to-board gain, not an anomaly.** An earlier
+  version of this file called it "about six codes above the theoretical
+  maximum" and asked for an analog eye. That was wrong twice over and
+  the correction is the useful part.
+
+  The "theoretical 1370.5" is not a ceiling. `build_waveform()` sends a
+  digital sine of amplitude **2047 DAC codes**, and `calibration.json`
+  stores `loop_slope_adc_per_dac_code` = **0.67053**; 2047 x 0.67053 is
+  1372.6, and the figure exists only in prose - nothing computes it at
+  runtime. That slope is a measured property of **one board**, the one
+  `calibration.json` describes, read from a committed file by every
+  bench. A board with a slightly wider DAC swing reads higher and
+  exceeds nothing.
+
+  What this bench actually shows: an implied slope of 1376.61 / 2047 =
+  **0.67251**, which is **+0.30%** on the stored figure. `calibration.json`
+  records `span_tolerance_mv` 40 against a 2193 mV span, or **+/-1.8%**,
+  so it is well inside the tolerance that file states for itself.
+
+  It was also wrong to write "`advref_mv` is 3270 on all three, so the
+  amplitude column is not a reference artefact". `advref_mv` comes from
+  the same committed `calibration.json` on every bench, so it carries no
+  information about the three boards at all. The conclusion survives for
+  a different reason, which `host/calibration.py` gives: the loop is
+  **ratiometric** - the DAC's reference is the ADC's - so a reference
+  shift moves both ends and cancels in the code domain.
+
+  The one thing worth keeping: it is **stable and track-independent**,
+  1376.12 / 1376.61 / 1376.69 across three generations and both tracks,
+  which is what a fixed board property should look like.
 
 **The playback ladder disagrees with this bench's own `writepolicy`
 runs, and the disagreement is recorded rather than resolved.** The table

@@ -21,17 +21,20 @@ metric run of a Track A that cannot hang on a full IN pipe.
 | `overrun_frames_per_run` | 6 | 32 | **35** | 63 |
 | ladder deficit RC 44 / 39 | - | - | **0.165% / 0.147%** | 0.176% / 0.147% |
 
-**The amplitude excess is this bench's, and it is not firmware.**
-`docs/metric-baseline-linux.md` flagged a `tone_amplitude_codes` median
-about six codes above the "1371 +/- 2, theoretical 1370.5" this project
-quotes, and noted board and host were confounded. Track A reads
-**1376.69 against Track B's 1376.61** - two independent register
-programmings agreeing to 0.08 codes - while both other benches read
-1368-1372 on *their* two tracks. So firmware is excluded by the oracle,
-exactly as invariant 3 promises. What is left is this board, this
-wiring, or this host's measurement of them, and nothing here separates
-those three. `advref_mv` is 3270 on all six reports, so it is not the
-reference.
+**The amplitude difference is this bench's board, and it is inside
+tolerance.** The Track B report first called it "about six codes above
+the theoretical maximum"; that framing is withdrawn there and here.
+1370.5 is not a ceiling - it is 2047 digital DAC codes times
+`calibration.json`'s `loop_slope_adc_per_dac_code` of 0.67053, a gain
+measured on **one** board and read from a committed file by every bench.
+This bench implies 1376.65 / 2047 = 0.6725, **+0.30%**, against a span
+tolerance that file states as +/-1.8%.
+
+What the second track adds is still worth having: Track A reads
+**1376.69 against Track B's 1376.61**, two independent register
+programmings agreeing to 0.08 codes, so whatever the 0.30% is, it is not
+firmware - which is what the oracle is for. Board or wiring, and nothing
+here separates those.
 
 **Overruns are track-dependent and the two hosts agree about it.** Track
 A 32 (windows) against 35 (linux); Track B 55 against 63. Same ordering,
