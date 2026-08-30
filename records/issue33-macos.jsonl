@@ -1,0 +1,5 @@
+{"bench":"macos","track":"a","rc":195,"mb":8,"policy":"design","runs":4,"feed_s":20.9,"wedges":0,"deficits_B":[0,384,896,0],"note":"design feed, 8 MB"}
+{"bench":"macos","track":"a","rc":195,"mb":6,"policy":"design","runs":4,"feed_s":15.7,"wedges":0,"deficits_B":[11776,0,0,0],"note":"design feed, 6 MB"}
+{"bench":"macos","track":"a","rc":195,"mb":4,"policy":"design","runs":4,"feed_s":10.4,"wedges":0,"deficits_B":[0,0,0,384],"note":"design feed, 4 MB"}
+{"bench":"macos","track":"a","rc":195,"mb":2,"policy":"design","runs":1,"feed_s":5.2,"wedges":0,"deficits_B":[0],"note":"design feed, 2 MB"}
+{"bench":"macos","track":"a","rc":195,"mb":8,"policy":"bulk","runs":3,"feed_s":20.9,"wedges":0,"deficits_B":[0,0,0],"under":[0,1,0],"occmin":[30,2,30],"note":"bulk 256 KB free-run; measured 0.40 MB/s so the writer was paced by the device, i.e. this host did apply backpressure at this rate"}
