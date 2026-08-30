@@ -264,6 +264,14 @@ Check here before reasoning from general Arduino knowledge.
   (Track A 2/24 against Track B 7/32, p = 0.16, so it is the silicon and
   not one track's register programming) and **two hosts**.
 
+  **The data path is not involved.** The same deficit appears with the
+  device's own table and no USB at all - preset M, DAC on TIOA1, read as
+  the generator's output frequency: 0.97640 against playback's 0.97653
+  at 1,000,000 sps, 0.98440 against 0.98428 at 886,363, and 1.00000 at
+  two clean rates. So bulk OUT, the endpoint DMA, the ring,
+  `PLAY_PRIME_BUFS` and the PDC hand-off are all excluded, and no
+  host-side change can move the band.
+
   It is `DACC_MR_REFRESH`: setting it to 2 or 3 clears every affected
   rate, restoring 1 brings them all back, p = 3.3e-11 across the ladder.
   The ripple that refresh defends against is **0.22 codes = 0.18 mV**,
