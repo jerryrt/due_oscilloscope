@@ -1529,7 +1529,7 @@ worst residual **0.030 of one unit**:
 
 | RC | n | | RC | n | | RC | n |
 |---|---|---|---|---|---|---|---|
-| 28 | 0 | | 38 | 5 or 6 | | 48 | **0 or 8** |
+| 28 | 0 | | 38 | 5 or 6 | | 48 | 0 *(see below)* |
 | 29 | 1 | | 39 | 6 | | 49 | 2 |
 | 30 | 1 or 2 | | 40 | **4 or 8** | | 50 | 1 or 2 |
 | 31 | 2 | | 41 | 6 | | 51 | 1 |
@@ -1552,6 +1552,24 @@ give ~2; RC 48 (denom 3) offers 0 or 8 where the arc gives ~3; RC 40
 (denom 5) offers 4 or 8 around an arc value of ~6. So the arc is the
 baseline behaviour and the simple clock ratios perturb it, in both
 directions and by a power of two.
+
+**RC 48's second mode is withdrawn, and how it failed extends the
+first-run rule.** Its n = 8 came from **run 1 and nothing else**; with
+first runs excluded RC 48 shows only n = 0. windows-desk documented the
+first-run outlier in `1d88438` and attributed it to the underruns run 1
+carries, which perturb `consumed / run_us` directly.
+
+**This run carried zero underruns and was still an outlier** - ratio
+0.96858, a mode no later run at that rate took, with `underruns = 0` so
+it passed every filter written to catch a disturbed first run. So the
+first-cycle effect is not only mediated by underruns, and a filter on
+underruns is not sufficient to exclude it. **Drop run 1 by index.**
+
+Excluding first runs everywhere, both regularities above survive on
+cleaner data and slightly weaker: gaps still all powers of two (four
+non-trivial, p = 5.1e-3) and still perfectly ordered by denominator
+(1/2520, p = 4.0e-4). The lattice itself is unchanged - worst residual
+0.0305 either way.
 
 **A near-miss worth keeping.** RC 46's *median* ratio puts it at 3.517
 of a unit - off the lattice, and it would have read as a violation of
