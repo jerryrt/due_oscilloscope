@@ -1713,10 +1713,19 @@ int main(void)
 	adc_init();
 	usb_cdc_init();
 
-	/* Unbuffered, so output appears as it is produced rather than at
-	 * flush points that would distort the printf measurement. */
-	setvbuf(stdout, NULL, _IONBF, 0);
-
+	/*
+	 * There was a setvbuf(stdout, NULL, _IONBF, 0) here, to stop
+	 * stdio buffering distorting the printf measurement. Nothing
+	 * writes to stdout any longer - console output goes through the
+	 * emitters and console_write, which is the UART directly - so it
+	 * was configuring a stream with no users.
+	 *
+	 * It was not free. That one call is what pulled __sinit,
+	 * _fflush_r, __swhatbuf_r and **malloc** into the image: setvbuf
+	 * allocates the buffer it is asked about. So after all 121 printf
+	 * call sites were gone the heap was still linked, and this line
+	 * was one of the two reasons. Issue #49.
+	 */
 	banner();
 	heartbeat_at = millis();
 
