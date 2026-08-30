@@ -301,6 +301,32 @@ might, and is recorded rather than dismissed. Also **time against
 accumulated passes** - the pass rate is ~71 k/s in every run, so 8.8 s
 and ~630,000 passes are the same event here.
 
+**It is a hang, not a fault and not a self-reset.** `fault.cpp` writes
+the programming port by *polled* UART - `UART_SR`/`UART_THR` only, no
+`Serial`, no ring buffer, no interrupts - precisely so it still speaks
+when the loop is dead, and it prints before it blinks. So a HardFault
+announces itself even mid-halt. Listening on the console for the whole
+window, writing nothing to it:
+
+    positive control          console delivered 134 chars
+    during the run (26 s)     0 chars
+    "*** HARD FAULT ***"      absent
+    "BOOT #" / "cause="       absent
+
+The positive control is what makes that null readable: Track A prints
+nothing unsolicited, so zero bytes is also what a broken listener looks
+like, and the run refuses to proceed unless the console has just
+demonstrably delivered text. An earlier attempt could not have seen a
+fault at all - it called `reset_input_buffer()` before each poll, which
+discards exactly the one-shot dump it was looking for.
+
+So: no fault reported, no reset taken, on a path proven working seconds
+earlier. The loop is **stuck**, not faulted - an infinite loop or a
+blocking wait - which is a different part of the code from where a fault
+would point. Two caveats kept: a hang *inside* an ISR at a priority that
+never returns produces the same silence, and the override is
+`HardFault_Handler` specifically.
+
 This is the same signature `docs/linux.md` records as an unreproduced
 one-off ("answering neither the console nor the control channel while
 still enumerating, because the core's USB stack keeps running when the
