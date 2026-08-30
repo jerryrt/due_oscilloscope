@@ -273,6 +273,17 @@ Check here before reasoning from general Arduino knowledge.
   `PLAY_PRIME_BUFS` and the PDC hand-off are all excluded, and no
   host-side change can move the band.
 
+  **The deficits are quantised.** Taking the clean rates as the
+  instrument's zero, every rate loses an integer number of conversions
+  out of every **256** - n = 0,1,2,3,4,5,6,8 across the ladder, worst
+  residual 0.013 of a unit, and the two deep intermittent modes land on
+  the same lattice (RC 32 = 16/256, RC 48 = 8/256). Confirmed blind: the
+  prediction was posted on issue #48 before RC 37/38/40/41 had been
+  read, and all four landed on integers. So the profile is a **staircase
+  in steps of 0.39%**, not a smooth band - and it is not monotone, since
+  RC 40 (n=8) sits between RC 39 and RC 41 (both n=6). Do not fit a
+  curve to it.
+
   It is `DACC_MR_REFRESH`, and it is **three call sites, not one** -
   `drivers/play.c`, `drivers/gen.c` and `drivers/dac.c` each set it.
   Setting it to 2 or 3 clears every affected rate and restoring 1 brings
