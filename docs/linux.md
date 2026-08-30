@@ -212,16 +212,48 @@ shows duration is not sufficient, because the same 2.6 s that is safe
 there wedges here. Linux applies backpressure like Windows - 0 B lost in
 40 runs - so a discarding host does not explain it either.
 
-**It is not a hang.** Watched on the bench: heartbeat LED off and RX/TX
-LED solid during the stall, and **killing the host feeder brings the
-heartbeat back**. The main loop has stopped while interrupts and the
-core's USB stack keep running, which is why it still enumerates, and it
-recovers when host pressure is removed. That is invariant 7's failure
-mode - a peer flooding an endpoint costing an unbounded slice of a pass -
-with Track B bounded and Track A apparently not.
+**The main loop stops while interrupts do not.** Watched on the bench:
+heartbeat LED off and RX/TX LED solid during the stall, while the device
+keeps enumerating - so the core's USB stack and the interrupts are still
+running and the loop is not.
+
+**Whether it recovers is unsettled, and an earlier version of this file
+said it did.** That came from the heartbeat returning when the bench
+owner killed the host processes, read as a graceful resume. It was
+almost certainly a reset: killing a process that holds the *programming*
+port closes that fd and drops DTR, which is NRSTB on the Due. Measured
+since, with a feeder that writes the **native** node only and never
+touches the console: the console is still silent 4 s after the feeder
+dies, still silent minutes later, and comes back only on a deliberate
+DTR toggle. So removing host pressure does **not** demonstrably bring it
+back on this bench.
+
+That leaves hang and starvation both open. Invariant 7's failure mode -
+a peer flooding an endpoint costing an unbounded slice of a pass, Track
+B bounded and Track A not - fits what is seen, but it predicts a resume
+that has not been observed here, so it is a hypothesis and not the
+finding.
 
 Host-side it presents as pyserial's `write()` blocking for ever in
 `select([], [fd], [], None)`.
+
+**One hypothesis killed, recorded so it is not re-run.** The DPRAM
+re-allocation hazard - `usbdma_keepalive()` rewriting EP2/EP3 while the
+control channel's EP4-6 sit above them - is **already handled**.
+`ep_apply_autosw()` calls `ctlusb_realloc_endpoints()` after its
+`DEVEPTCFG` write, and the other two calls in that path (`ep_take`,
+`ep_reset_fifo`) write `DEVEPTIDR`/`DEVIDR` and `EPRST` only. The file
+knows about the hazard and says so.
+
+Idle endpoint telemetry, for whoever reads this state next:
+
+    # usbdma mode in=0 out=0 rebuilds=0 dtr=0
+    # ep2(OUT) CFG=00003066 AUTOSW=0  ep3(IN) CFG=00003166 DEVIMR=00005008
+
+`DEVIMR` bit 14 is `PEP_2`, so the core's interrupt on the sample OUT
+endpoint is live at idle - which is what `usbdma_keepalive()` takes away
+once playback arms. Whether the core wins it back under flood is the
+open measurement.
 
 **The blind spot, and the instrument it wants.** Everything observable
 here is main-loop-served, so PING, `GET_LOAD` and the console all go dark
