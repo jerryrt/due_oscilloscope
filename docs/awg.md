@@ -1529,7 +1529,7 @@ worst residual **0.030 of one unit**:
 
 | RC | n | | RC | n | | RC | n |
 |---|---|---|---|---|---|---|---|
-| 28 | 0 | | 38 | 5 or 6 | | 48 | 0 *(see below)* |
+| 28 | 0 | | 38 | 5 or 6 | | 48 | 0 or 8 *(see below)* |
 | 29 | 1 | | 39 | 6 | | 49 | 2 |
 | 30 | 1 or 2 | | 40 | **4 or 8** | | 50 | 1 or 2 |
 | 31 | 2 | | 41 | 6 | | 51 | 1 |
@@ -1553,8 +1553,32 @@ give ~2; RC 48 (denom 3) offers 0 or 8 where the arc gives ~3; RC 40
 baseline behaviour and the simple clock ratios perturb it, in both
 directions and by a power of two.
 
-**RC 48's second mode is withdrawn, and how it failed extends the
-first-run rule.** Its n = 8 came from **run 1 and nothing else**; with
+**Confirmed on a second bench, and the mode sets are sampling-limited
+while the lattice is not.** windows-desk ran the lattice check on
+Windows 11 and their worst residual is **0.021 of one unit** across six
+rates - the quantisation reproduces on another host and another board.
+
+| RC | mac-bench | windows-desk |
+|---|---|---|
+| 30 | 1 or 2 | 1, 2 **or 3** |
+| 32 | 0 or 16 | 0 or 16 |
+| 34 | 3 or 4 | 3 or 4 |
+| 36 | 4 or 6 | 4 only (9 runs) |
+| 48 | 0 only | **0 or 8** (4 runs at 8) |
+| 52 | 0 or 2 | 0 or 2 |
+
+The disagreements are all one bench not having sampled a mode the other
+did: RC 30's n=3 appeared once in their runs and never in mine, RC 36's
+n=6 in mine and not in their nine. **Which mode a run takes is
+probabilistic; which lattice point it lands on is not.** So quote a mode
+*set* as a lower bound on what a rate can do.
+
+Combining both benches, both regularities get stronger: gaps all powers
+of two (six non-trivial, p = 3.6e-4) and perfectly ordered by
+denominator across eleven rates (1/55440, p = 1.8e-5).
+
+**RC 48's second mode: withdrawn here, restored by them, and how it
+failed extends the first-run rule.** Its n = 8 came from **run 1 and nothing else**; with
 first runs excluded RC 48 shows only n = 0. windows-desk documented the
 first-run outlier in `1d88438` and attributed it to the underruns run 1
 carries, which perturb `consumed / run_us` directly.
