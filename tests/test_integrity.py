@@ -530,6 +530,16 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
 #   report under=0 while losing the most of any rate in the ladder,
 #   which is why this test exists and the underrun counter cannot
 #   stand in for it.
+#
+# Issue #48 has since named the cause and it is `DACC_MR_REFRESH`:
+# setting it to 2 or 3 clears every affected rate and restoring 1 brings
+# them all back (p = 3.3e-11 across the ladder), the effect appears with
+# no USB in the DAC path at all, and it reproduces on both tracks and
+# both hosts. So these two are not special rates - they are two points
+# inside a band running roughly 750,000 to 1,300,000 sps, and they are
+# the two this parametrisation happens to sample. The deficits are
+# quantised: every rate loses an integer number of conversions out of
+# 256, which is 4/256 at RC 44 and 6/256 at RC 39.
 OVERSUPPLIED = {44, 39}
 
 # Rates where a small residual loss survives the constant-size feed.
@@ -542,6 +552,18 @@ OVERSUPPLIED = {44, 39}
 #
 # Handled by outcome rather than by mark, so a clean run passes and
 # reports: this turns green by itself when the residual is fixed.
+#
+# **RC 32 carries two different losses and they should not be confused.**
+# The 384 B here is the host residual this comment describes. Separately,
+# RC 32 sits at the upper edge of #48's band and takes one of two modes
+# per run - 0 or 16 conversions lost per 256 - and the 16 mode sheds
+# about 450,000 B in a 3 s run, three orders of magnitude more. A run
+# that loses 384 B and a run that loses 450 kB at this rate are not the
+# same defect measured twice; the first is macOS's chunk drop and the
+# second is the converter delivering 15/16 of its programmed rate.
+#
+# RC 28 is outside that band and measures clean device-side (n = 0), so
+# whatever it loses here is the host's alone.
 RESIDUAL = {32, 28}
 
 
