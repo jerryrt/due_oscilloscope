@@ -1184,6 +1184,29 @@ static void h_loop(const uint32_t *a)
 		uart_flush();
 		return;
 	}
+	/*
+	 * Banner before the CAPTURE start, for issue #41's reason - and
+	 * this site is the one 67d3990 did not fix. docs/debugging.md's
+	 * class audit priced it at the time: ~102 characters of banner
+	 * against 8.96 ms of ring, margin **-5.89 ms**, and it was left
+	 * because only cmd_stream had been measured.
+	 *
+	 * Measured here before the change, four runs at each of two
+	 * rates: `first_overrun` was 2 at 453,488 Hz and 1 at 402,061 in
+	 * every single run - frames lost before the first frame ships,
+	 * which is #41's signature exactly and close to what the margin
+	 * predicts (2.6 and 1.8 frames).
+	 *
+	 * The play_start above stays where it is. Playback is
+	 * host-driven and nothing flows until the host feeds, which is
+	 * why h_play is explicitly NOT a hazard in that audit; capture
+	 * is device-driven and fills the moment the timer runs. Only the
+	 * capture start needs the banner ahead of it.
+	 */
+	printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch\n",
+	       (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
+	printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
+	uart_flush();
 	if (!stream_start_capture_only(adc_hz, nch)) {
 		play_stop();
 		printf("# loop: ADC %lu Hz x%u ch refused (max %lu)\n",
@@ -1193,10 +1216,6 @@ static void h_loop(const uint32_t *a)
 		uart_flush();
 		return;
 	}
-	printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch\n",
-	       (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
-	printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
-	uart_flush();
 }
 
 /* Playback with NO capture stream, to separate a fault in the DAC path

@@ -1623,6 +1623,23 @@ static void ha_loop(const uint32_t *a)
 		Serial.flush();
 		return;
 	}
+	/*
+	 * Banner before the CAPTURE start - issue #41's ordering, at the
+	 * site 67d3990 did not reach. docs/debugging.md's class audit
+	 * names `h_loop / ha_loop` at margin -5.89 ms and it was left
+	 * because only cmd_stream had been measured. Track B carries the
+	 * same change and the same reasoning.
+	 *
+	 * play_start stays above: playback is host-driven and nothing
+	 * flows until the host feeds. Capture is device-driven and fills
+	 * the moment the timer runs.
+	 */
+	snprintf(buf, sizeof(buf),
+	         "# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch",
+	         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
+	Serial.println(buf);
+	Serial.println("# DAC0 carries the waveform, DAC1 holds mid scale");
+	Serial.flush();
 	if (!stream_start_capture_only(adc_hz, nch)) {
 		play_stop();
 		snprintf(buf, sizeof(buf),
@@ -1634,12 +1651,6 @@ static void ha_loop(const uint32_t *a)
 		Serial.flush();
 		return;
 	}
-	snprintf(buf, sizeof(buf),
-	         "# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch",
-	         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
-	Serial.println(buf);
-	Serial.println("# DAC0 carries the waveform, DAC1 holds mid scale");
-	Serial.flush();
 }
 
 /* Playback with NO capture stream, to separate a fault in the DAC

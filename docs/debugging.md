@@ -224,13 +224,32 @@ minus predicted blocking:
 | site | rate | runway | banner | margin |
 |---|---|---|---|---|
 | `cmd_stream` | 453,488 | 8.96 ms | ~160 ch | **-10.93 ms** |
-| `h_loop` / `ha_loop` | 453,488 | 8.96 ms | ~102 ch | **-5.89 ms** |
+| `h_loop` / `ha_loop` | 453,488 | 8.96 ms | ~102 ch | **-5.89 ms** — **fixed, see below** |
 | `cmd_dac_crosscheck` | 200,000 | 20.32 ms | ~110 ch | +4.77 ms |
 | `cmd_stream_uart` | 2,000 | 2032 ms | ~74 ch | +2019 ms |
 
 `cmd_dac_crosscheck` survives on margin alone - about one added banner
 line from biting - and only because it starts capture at a fixed
 200,000 Hz where the runway is largest.
+
+**`h_loop` was priced here and then left unfixed for a day**, because
+`67d3990` only moved `cmd_stream`'s banner - the audit had already
+identified the class and the fix went to the instance. Measured before
+touching it, four runs at each of two rates:
+
+| | `first_overrun` before | after |
+|---|---|---|
+| ADC 453,488 Hz | **2, 2, 2, 2** | 0, 0, 0, 0 |
+| ADC 402,061 Hz | **1, 1, 1, 1** | 0, 0, 0, 0 |
+
+8 of 8 against 0 of 8, Fisher p = 7.8e-5. The counts also match what the
+margin predicts - -5.89 ms is 2.6 frames of a 2.24 ms frame at 453,488,
+and the larger runway at 402,061 gives 1.8 - so the model priced a site
+it had not measured and was right at both rates.
+
+`max_overrun` is unchanged by the reorder, which is the point: that is
+issue #44's separate, later loss, and moving a banner does not touch it.
+`first` and `max` really do locate a loss in time.
 
 **Two sites are NOT hazards and should not be "fixed".** `h_play` prints
 after a successful `play_start`, but playback is *host*-driven: nothing
