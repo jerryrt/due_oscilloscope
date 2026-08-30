@@ -21,8 +21,14 @@ heartbeat - that demonstrates an instrument whose limits are known and
 displayed. Each of those is captioned with why it looks that way, so a
 reader learns the limit rather than mistaking it for a defect.
 
+**A real board only.** There is no fake-device option, deliberately.
+The suite has board-free tests because framing, ownership and
+backpressure are not properties of the Due - but a *gallery* is a claim
+about an instrument, and a picture of a synthetic device making a
+synthetic sine would be the most misleading artifact this repository
+could publish. If there is no board, there is no gallery.
+
     .venv-gui/Scripts/python.exe tools/gallery.py --out wiki/img
-    .venv-gui/Scripts/python.exe tools/gallery.py --fake      # no board
 """
 import argparse
 import json
@@ -60,7 +66,39 @@ class Gallery:
             self.win.tick()
             time.sleep(0.02)
 
-    def shot(self, name, title, why, settle=1.2, widget=None):
+    def settle_clean(self, want=None, secs=8.0):
+        """Wait for the window to actually show what was asked for.
+
+        Two conditions, and both were learned by publishing a gallery
+        without them. `want` is matched against the status bar, which is
+        the only place that reports the waveform the device is *playing*
+        rather than the one the panel is displaying - the first gallery
+        captured four shapes that were all one sine because nothing
+        checked. And the Measure panel must carry numbers rather than
+        "discontinuity in window": a capture with a splice in the window
+        cannot be measured, so a screenshot taken then shows an
+        instrument that appears unable to measure anything.
+        """
+        end = time.time() + secs
+        last = ""
+        while time.time() < end:
+            self.pump(0.3)
+            last = self.win.statusBar().currentMessage()
+            named = want is None or want in last
+            measured = "discontinuity" not in (self.win.measure.value("vpp_v") or "")
+            if named and measured:
+                return True, last
+        return False, last
+
+    def shot(self, name, title, why, settle=1.2, widget=None, want=None,
+             require=True):
+        ok, seen = self.settle_clean(want) if want else (True, "")
+        if not ok:
+            msg = (f"{name}: window never showed {want!r} with a clean "
+                   f"measurement window - status bar says {seen!r}")
+            if require:
+                raise RuntimeError(msg)
+            print(f"  ! {msg}", flush=True)
         self.pump(settle)
         w = widget or self.win
         path = os.path.join(self.out, f"{name}.png")
@@ -68,6 +106,7 @@ class Gallery:
             raise RuntimeError(f"could not save {path}")
         self.index.append({"file": f"{name}.png", "title": title,
                            "why": why, "bench": self.bench,
+                           "verified": bool(ok), "status_bar": seen,
                            "at": time.strftime("%Y-%m-%d %H:%M:%S")})
         print(f"  {name}.png  {title}", flush=True)
 
@@ -103,23 +142,25 @@ class Gallery:
         if offset is not None:
             a.offset.setValue(offset)
         self.app.processEvents()
-        if apply and a.run_btn.isChecked():
+        if not apply:
+            return
+        # Unconditionally, not "if running". A refused request unchecks
+        # the button while the *previous* waveform keeps playing (issue
+        # #37), so "if running" skipped the re-apply for every shot after
+        # a refusal and left a stale ramp under a dozen captions.
+        if a.run_btn.isChecked():
             a.run_btn.click()            # stop
-            self.pump(0.4)
-            a.run_btn.click()            # play: re-uploads
-            self.pump(0.6)
+            self.pump(0.5)
+        a.run_btn.click()                # play: uploads
+        self.pump(0.8)
 
 
 def build(args):
     index = []
-    if args.fake:
-        dev = devmod.FakeDevice(pace=True)
-        bench = "fake device (no board)"
-    else:
-        import measure
-        board = measure.Board(settle=3.0)
-        dev = devmod.BoardDevice(board)
-        bench = os.environ.get("DUE_BENCH", "windows-desk")
+    import measure
+    board = measure.Board(settle=3.0)
+    dev = devmod.BoardDevice(board)
+    bench = os.environ.get("DUE_BENCH", "windows-desk")
 
     srv = srvmod.Server(dev, host="127.0.0.1", port=0).start()
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -142,7 +183,7 @@ def build(args):
                "on A0 in the same window. Nothing else here is a "
                "simulation: the host builds the samples, the DAC plays "
                "them, the ADC reads the pin, and the trace is what came "
-               "back over USB.")
+               "back over USB.", want="sine")
 
         # 2. Shapes.
         for shape in ("sine", "square", "triangle", "ramp"):
@@ -150,7 +191,8 @@ def build(args):
             g.shot(f"02-shape-{shape}", f"Generator: {shape}",
                    f"A {shape} at 1 kHz, 1.5 Vpp, captured through the "
                    f"loop. The shape is built on the host and streamed to "
-                   f"the DAC, so an arbitrary waveform is the same path.")
+                   f"the DAC, so an arbitrary waveform is the same path.",
+                   want=shape)
 
         # 3. The limits, which is where the broken shots start.
         g.awg(shape="sine", hz=1000.0, vpp=3.0, offset=1.675)
@@ -168,7 +210,7 @@ def build(args):
         g.awg(shape="square", hz=1000.0, vpp=1.5)
         g.shot("04-square-clean", "Square at 1 kHz: a square",
                "Well inside the DAC's step rate, so the edges are edges. "
-               "Compare with the next image.")
+               "Compare with the next image.", want="square")
 
         g.awg(shape="square", hz=20000.0)
         g.shot("05-square-fast",
@@ -282,9 +324,6 @@ def build(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(REPO, "build", "gallery"))
-    ap.add_argument("--fake", action="store_true",
-                    help="synthetic device, for checking the script "
-                         "without occupying a bench")
     return build(ap.parse_args())
 
 

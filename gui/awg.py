@@ -171,6 +171,12 @@ class AwgPanel(QtWidgets.QGroupBox):
         self.run_btn.setEnabled(why is None)
         if why is not None and self.run_btn.isChecked():
             self.run_btn.setChecked(False)
+            # And say so. Issue #37: the text is only written in
+            # `_emit`, so unchecking here left the button reading "Stop"
+            # while the panel showed values the device had refused and a
+            # *previous* waveform went on playing. Three statements, two
+            # of them wrong, and the button was the loudest.
+            self.run_btn.setText("Play")
 
     def _emit(self, running):
         _lo, _hi, why = self.code_range()

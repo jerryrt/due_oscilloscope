@@ -766,6 +766,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not running:
             if self.session.call("stop") is not None:
                 self.statusBar().showMessage("generator stopped")
+            self._rate_control_follows_generator(False)
             return
 
         lo, hi, why = self.awg.code_range()
@@ -803,9 +804,35 @@ class MainWindow(QtWidgets.QMainWindow):
                              adc_hz=dac_sps, channels=2) is None:
             self.awg.run_btn.setChecked(False)
             return
+        self._rate_control_follows_generator(True)
         self.statusBar().showMessage(
             f"{shape} {actual_hz:,.1f} Hz, {vpp:.3f} Vpp at {offset:.3f} V "
             f"(codes {lo}-{hi})")
+
+    def _rate_control_follows_generator(self, generating):
+        """The Rate control must not offer a rate that is not in force.
+
+        Issue #36. `start_capture` sends the preset, but the generator
+        runs the device in **loop** mode, where `BoardDevice.start`
+        builds `=<dac>,<adc>,<ch>L` and the preset is ignored - so while
+        the generator is running the converter is at the generator's
+        rate and the combo was still displaying whatever the user had
+        picked. In one screenshot: `Rate 50 kHz` in the toolbar,
+        `Rate (actual) 200,000 Hz` in Health, a factor of four apart.
+
+        Disabled rather than hidden or silently re-pointed, and for the
+        same reason `setEnabled(not replay)` disables it for a
+        recording: a control that cannot take effect should not look
+        like one that can. Health continues to report the rate the frame
+        headers carry, which is the honest source either way.
+        """
+        if getattr(self, "replaying", False):
+            return                      # a recording owns it already
+        self.preset.setEnabled(not generating)
+        self.preset.setToolTip(
+            "The generator sets the capture rate while it is running - "
+            "see Health for the rate actually in force" if generating
+            else "")
 
     def _sync_trig_line(self, *_):
         """Show the trigger level on the plot when it means something.

@@ -2069,3 +2069,91 @@ def test_state_events_do_not_reach_the_notice_bar(win, daemon):
         time.sleep(0.02)
     assert not win.notice.showing, (
         f"a state event was rendered as a notice: {win.notice.text!r}")
+
+
+# -- the window must not state a device state that is not the device's --
+#
+# Two faults found by photographing the front end for the wiki, which
+# turns out to be a good way to catch them: a screenshot puts two panels
+# side by side and they either agree or they do not. Both were the same
+# shape - a control asserting something the hardware was not doing.
+
+def test_a_refused_generator_request_does_not_leave_the_button_reading_stop(
+        qapp):
+    """Issue #37.
+
+    `_validate` unchecks Play when the settings become impossible, but
+    the button's text is written only in `_emit` - so it kept reading
+    "Stop" while the panel showed refused values and the *previous*
+    waveform went on playing. Three statements about the generator, two
+    of them wrong, and the button was the loudest of the three.
+
+    The panel alone, with nothing connected to `requested`: attaching a
+    window means the request round-trips to a device that cannot play
+    it, which unchecks the button for a different reason and hides the
+    thing under test.
+    """
+    from gui import awg
+
+    panel = awg.AwgPanel()
+    mid = (panel.lo_mv + panel.hi_mv) / 2000.0
+    panel.vpp.setValue(0.5)
+    panel.offset.setValue(mid)
+    qapp.processEvents()
+    assert panel.code_range()[2] is None, "precondition: settings are legal"
+
+    panel.run_btn.setChecked(True)
+    qapp.processEvents()
+    assert panel.run_btn.text() == "Stop", "precondition: it reads as running"
+
+    # More swing than the DAC has. The panel refuses locally, before
+    # anything reaches a device.
+    panel.vpp.setValue(3.0)
+    qapp.processEvents()
+
+    assert panel.run_btn.isChecked() is False
+    assert panel.run_btn.isEnabled() is False
+    assert panel.run_btn.text() == "Play", (
+        "a refused request left the button claiming the generator is "
+        "running")
+    assert "span" in panel.note.text(), "the refusal should name the limit"
+
+
+def test_the_rate_control_is_disabled_while_the_generator_owns_the_rate(
+        win, daemon, qapp):
+    """Issue #36.
+
+    `start_capture` sends the Rate preset, but the generator runs the
+    device in loop mode where the preset is ignored and the rate comes
+    from the generator. The combo went on displaying the user's pick:
+    one screenshot had `Rate 50 kHz` in the toolbar against
+    `Rate (actual) 200,000 Hz` in Health, a factor of four apart.
+    """
+    win.connect_to_daemon()
+    assert win.preset.isEnabled(), "precondition: selectable when idle"
+
+    win._rate_control_follows_generator(True)
+    assert not win.preset.isEnabled(), (
+        "the Rate control still offers a rate the generator has "
+        "overridden")
+    assert "Health" in win.preset.toolTip(), (
+        "a disabled control should say where the real rate is")
+
+    win._rate_control_follows_generator(False)
+    assert win.preset.isEnabled()
+    assert win.preset.toolTip() == ""
+
+
+def test_a_replay_still_owns_the_rate_control(win, qapp):
+    """The generator fix must not undo the replay one.
+
+    `setEnabled(not replay)` disabled this for recordings first, and a
+    recording has exactly one rate - it is in the frames. Re-enabling it
+    when the generator stops would hand back a control the file does not
+    honour.
+    """
+    win.replaying = True
+    win.preset.setEnabled(False)
+    win._rate_control_follows_generator(False)
+    assert not win.preset.isEnabled(), (
+        "stopping the generator re-enabled a control a recording owns")
