@@ -145,7 +145,7 @@ class Gallery:
         return False, last
 
     def shot(self, name, title, why, settle=1.2, widget=None, want=None,
-             require=True, clean=True, restarts=2):
+             require=True, clean=True, restarts=3):
         """Capture one image, having first checked it says what it will
         be captioned as saying.
 
@@ -179,21 +179,27 @@ class Gallery:
             if require:
                 raise RuntimeError(msg)
             print(f"  ! {msg}", flush=True)
-        if clean:
-            for attempt in range(restarts + 1):
-                bad = self.alarms()
-                if not bad:
-                    break
-                if attempt == restarts:
-                    raise RuntimeError(
-                        f"{name}: captioned clean, but Health reports "
-                        f"{bad} after {restarts} restarts")
-                print(f"    ! {name}: {bad}, restarting the run",
-                      flush=True)
-                self.restart()
-        self.pump(settle)
+
+        # Settle first, then check, then grab - in that order and as
+        # close together as possible. Checking before the settle pump
+        # was worse than useless: the pump is when the load that causes
+        # the overruns happens, so a shot could pass the check and then
+        # accumulate a hundred of them before the grab.
         w = widget or self.win
         path = os.path.join(self.out, f"{name}.png")
+        for attempt in range(restarts + 1):
+            self.pump(settle)
+            bad = self.alarms() if clean else {}
+            if not bad:
+                break
+            if attempt == restarts:
+                raise RuntimeError(
+                    f"{name}: captioned clean, but Health reports "
+                    f"{bad} after {restarts} restarts")
+            print(f"    ! {name}: {bad}, restarting the run", flush=True)
+            self.restart()
+            if want:
+                ok, seen = self.settle_clean(want)
         if not w.grab().save(path):
             raise RuntimeError(f"could not save {path}")
         self.index.append({"file": f"{name}.png", "title": title,
@@ -211,15 +217,20 @@ class Gallery:
         re-clicking the wrong one would stop the device rather than
         refresh it.
         """
+        # Unhurried on purpose. A stop and a start are each a console
+        # round trip on a board that prints slowly, and hammering them
+        # is how this got "no reply to start within 5.0s" and a wedged
+        # generator: the retry was doing more damage than the thing it
+        # was retrying.
         if self.win.awg.run_btn.isChecked():
             self.win.awg.run_btn.click()
-            self.pump(0.5)
+            self.pump(1.5)
             self.win.awg.run_btn.click()
         else:
             self.win.stop_capture()
-            self.pump(0.5)
+            self.pump(1.5)
             self.win.start_capture()
-        self.pump(2.0)
+        self.pump(3.0)
 
     # -- helpers over the window's own controls ----------------------
     def combo(self, box, data):
@@ -303,14 +314,26 @@ def build(args):
 
     try:
         win.connect_to_daemon()
-        g.pump(1.0)
+        # Not 1 s. The daemon has just opened the programming port,
+        # which asserts NRSTB, so the board is resetting and printing
+        # its banner - and `start` drains the console until quiet with a
+        # 5 s cap, which is the same 5 s the session waits for a reply.
+        # A first start issued into that races its own timeout and the
+        # window reports "daemon stopped answering" about a board that
+        # is merely still talking.
+        g.pump(8.0)
 
         # 1. The loop, which is what this instrument *is*.
         # No explicit click here: `awg()` applies. Adding one toggled
         # playback straight back off, which the shot verifier caught as
         # "status bar says 'generator stopped'" - the check earning its
         # keep on the very first image.
+        # Warm up before the first shot. The first seconds after a
+        # connect are the loaded ones - Qt is still realising widgets,
+        # pyqtgraph is building its first curves - and taking image one
+        # into that reliably cost it the clean-counter check.
         g.awg(shape="sine", hz=1000.0, vpp=1.5, offset=1.675)
+        g.pump(4.0)
         g.shot("01-loop-sine", "The closed loop: HOST -> DAC0 -> A0 -> HOST",
                "A sine asked for in the Generator panel and captured back "
                "on A0 in the same window. Nothing else here is a "
@@ -485,11 +508,27 @@ def build(args):
         g.awg(shape="sine", hz=1000.0, vpp=1.5, offset=1.675)
         for label, secs in (("1 ms", 0.001), ("100 ms", 0.1), ("2 s", 2.0)):
             g.combo(win.timebase, secs)
+            tb_why = (
+                "The display keeps a ring in seconds, so the timebase "
+                "chooses how much of that ring to draw and asks the "
+                "device for nothing. Changing it costs no restart and "
+                "loses no data.")
+            if label == "1 ms":
+                tb_why += (
+                    " At 1 ms a 1 kHz tone is exactly one period, and "
+                    "the timing fields say so - *fewer than two periods "
+                    "in window* - while Vpp, mean and RMS still report. "
+                    "A frequency derived from a single period is a "
+                    "guess with a decimal point on it.")
+            if label == "2 s":
+                tb_why += (
+                    " At 2 s it is 2,000 periods drawn into about 1,600 "
+                    "pixels, so the trace is a solid block. That is an "
+                    "honest picture of what the ring holds rather than a "
+                    "rendering fault, and the counters beside it stay at "
+                    "zero to prove the block is data and not damage.")
             g.shot(f"11-timebase-{label.replace(' ', '')}",
-                   f"Timebase: {label}",
-                   "The display keeps a ring in seconds, so the timebase "
-                   "chooses how much of it to draw rather than asking the "
-                   "device for anything.")
+                   f"Timebase: {label}", tb_why)
 
         # 6. Trigger.
         g.combo(win.timebase, 0.005)
@@ -515,7 +554,11 @@ def build(args):
                "wrong - a clean `seq_gaps=0 crc_bad=0 under=0` has "
                "coexisted with a badly degraded signal more than once "
                "here. Invariant 5: overruns are counted and flagged, "
-               "never silently spliced.",
+               "never silently spliced. This is the panel healthy - "
+               "every alarm at zero, and every other picture in this "
+               "gallery was verified against these four counters before "
+               "it was saved. Compare it with the stalled board further "
+               "down, which is the same panel doing its job.",
                widget=win.health)
 
         g.shot("14-measure", "Measure, with its reference stated",
@@ -554,41 +597,53 @@ def build(args):
                    "main loop was stalled for 900 ms on purpose with "
                    "`=900S`, the command the timer-driven heartbeat was "
                    "validated against, sent over the daemon's console "
-                   "op. The ADC went on converting into a ring nobody was "
-                   "draining.\n\n"
-                   "Every number here is a consequence of that, and each "
-                   "one is checkable. **Device overruns 175** and "
-                   "**Discontinuities 1**, both red: the frames either "
-                   "side of the gap are not continuous with each other, "
-                   "and the panel says so instead of splicing them - "
-                   "invariant 5, photographed. **Read gap max 907,000 "
-                   "us** against a 900 ms stall, which is the reader "
-                   "genuinely blocked for as long as the board was "
-                   "stopped. That figure is only readable because of "
-                   "issue #40: until it was fixed this counter measured "
-                   "across deliberate stops too, and published 3.8 s of "
-                   "idle time as a stall in the data path. **Sequence "
-                   "gaps 0** and **Dropped to us 0** stay clean, which "
-                   "matters as much - the loss was the device's, and the "
-                   "panel does not smear it across the host's counters.",
+                   "op. The ADC went on converting into a ring nobody "
+                   "was draining.\n\n"
+                   "Read it against the healthy panel above. **Device "
+                   "overruns** and **discontinuities** have both gone "
+                   "red: the frames either side of the gap are not "
+                   "continuous with each other, and the panel says so "
+                   "instead of splicing them - invariant 5, "
+                   "photographed. **Read gap max** is close to the "
+                   "900 ms that was asked for, because the reader "
+                   "genuinely was blocked for as long as the board was "
+                   "stopped; that figure is only readable as a "
+                   "measurement because of issue #40, which until it "
+                   "was fixed had this counter measuring across "
+                   "deliberate stops and publishing idle time as a "
+                   "stall. And **sequence gaps** and **dropped to us** "
+                   "stay at zero, which matters as much: the loss was "
+                   "the device's, and the panel does not smear it "
+                   "across the host's counters.",
                    widget=win.health, clean=False)
             g.shot("16-measure-stalled",
-                   "Measure declining to time something that is not a signal",
-                   "The same stall, one panel to the left, and it does "
-                   "not say what you would expect. A stalled loop feeds "
-                   "the DAC nothing, and playback abandons itself after "
-                   "500 ms without a byte rather than holding a buffer "
-                   "for ever - so by 900 ms the DAC has stopped being "
-                   "driven and simply holds its last code.\n\n"
-                   "What is left on A0 is that held level plus the "
-                   "bench's own noise: **Vpp 0.0064 V**, with mean and "
-                   "RMS equal to each other at 0.9273 V, which is what a "
-                   "DC level looks like measured honestly. The timing "
-                   "fields refuse - *signal too flat to time* - rather "
-                   "than reporting a frequency derived from 6 mV of "
-                   "noise, which is what a zero-crossing counter with no "
-                   "amplitude floor would have done, confidently and to "
-                   "four digits.",
+                   "Measure, on a pin that is no longer carrying a signal",
+                   "The same stall, one panel to the left, and this is "
+                   "the one picture in the gallery that shows the front "
+                   "end getting something wrong.\n\n"
+                   "A stalled loop feeds the DAC nothing, and playback "
+                   "abandons itself after 500 ms without a byte rather "
+                   "than holding a buffer for ever - so by 900 ms the "
+                   "DAC has stopped being driven and holds its last "
+                   "code. What is left on A0 is that level plus the "
+                   "bench's own noise, which `CLAUDE.md` records as "
+                   "about 15 mV with the DAC not driven at all. Mean "
+                   "and RMS agree with each other exactly, which is "
+                   "what a DC level looks like measured honestly, and "
+                   "Vpp is tens of millivolts.\n\n"
+                   "**The timing fields should refuse, and they do not "
+                   "always.** The guard is a minimum swing of 10 codes, "
+                   "about 8 mV at this reference - set below the noise "
+                   "it exists to reject. Below it the panel says "
+                   "*signal too flat to time*; above it, it reports a "
+                   "frequency to five figures, a period, and a duty "
+                   "cycle, all computed from noise. The duty is the "
+                   "tell: measured against the window's own midpoint, a "
+                   "real periodic signal cannot come out at one per "
+                   "cent. Filed as issue #43, and left visible here "
+                   "rather than captured around, because an instrument "
+                   "that can manufacture a confident number is worth "
+                   "showing doing it.",
                    widget=win.measure, clean=False)
 
         win.awg.run_btn.click()          # stop playback
