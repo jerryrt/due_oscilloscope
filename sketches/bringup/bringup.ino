@@ -2351,13 +2351,35 @@ void loop()
 	 * not touch an endpoint DMA owns. stream_in_in_use() is the
 	 * guard and it is new on this track too.
 	 *
-	 * SerialUSB.write returns short rather than spinning when no
-	 * bank is free, and dtr() is checked first, so a host that has
-	 * stopped reading costs a dropped record and not a stalled main
-	 * loop - invariant 7. The host tolerates gaps: it differences
-	 * whichever records arrive.
+	 * The host tolerates gaps: it differences whichever records
+	 * arrive. That is what makes the TXINI test below safe to fail.
+	 *
+	 * TXINI IS THE INVARIANT 7 GUARD, AND IT USED TO BE ABSENT.
+	 * This comment used to claim "SerialUSB.write returns short
+	 * rather than spinning when no bank is free", and that is not
+	 * true of this core. Serial_::write() calls USBD_Send() ->
+	 * UDD_Send(), whose first statement is
+	 *
+	 *     while (TXINI != (UOTGHS->UOTGHS_DEVEPTISR[ep] & TXINI)) {}
+	 *
+	 * an unbounded spin, exactly as docs/hardware.md records from the
+	 * same source. availableForWrite() cannot stand in for it either:
+	 * it returns the constant EPX_SIZE - 1 whatever the banks are
+	 * doing. So when a host fed the OUT pipe and stopped draining IN,
+	 * both banks filled and the main loop spun here for ever - issue
+	 * #33. Measured on linux-x1: hangs after 5.2 s of feed with no IN
+	 * reader, at 1,317,888 bytes; with a reader draining IN, 15 s and
+	 * 6,030,848 bytes with no stall. A stall watchdog on a TC
+	 * interrupt caught the loop in this stage, with CFSR clean, which
+	 * is how it was found at all - everything that could have
+	 * reported it is main-loop-served and died with it.
+	 *
+	 * Testing TXINI first makes the write bounded: a free bank means
+	 * UDD_Send's spin exits immediately, and no free bank means the
+	 * record is dropped, which the host already tolerates.
 	 */
-	if (play_active() && !stream_in_in_use() && SerialUSB.dtr()) {
+	if (play_active() && !stream_in_in_use() && SerialUSB.dtr()
+	    && (UOTGHS->UOTGHS_DEVEPTISR[CDC_TX] & UOTGHS_DEVEPTISR_TXINI)) {
 		static uint32_t last_stat_ms;
 
 		if ((uint32_t)(now - last_stat_ms) >= PLAYSTAT_MS) {
