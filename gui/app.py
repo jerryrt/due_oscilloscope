@@ -620,10 +620,22 @@ class MainWindow(QtWidgets.QMainWindow):
         extra = ({} if self.replaying else
                  {"preset": self.preset.currentData(),
                   "adc_hz": 200000, "channels": 2})
-        self.session.call("start", mode="capture", **extra)
+        if self.session.call("start", mode="capture", **extra) is None:
+            return
+        # And say what is now running. Issue #39: the comment eight
+        # lines up argues that a notice must not outlive the thing it
+        # was about, and then only `self.notice` was cleared - so a
+        # capture started after the generator stopped ran underneath
+        # "generator stopped", which is a sentence about a different
+        # run. The status bar is the other thing on screen that outlives
+        # its subject, and it is the one a user reads for the summary.
+        self.statusBar().showMessage(
+            "replaying" if self.replaying else
+            f"capturing at {self.preset.currentText()}")
 
     def stop_capture(self):
-        self.session.call("stop")
+        if self.session.call("stop") is not None:
+            self.statusBar().showMessage("stopped")
 
     def toggle_run(self):
         """Whatever the device is doing, do the other thing.

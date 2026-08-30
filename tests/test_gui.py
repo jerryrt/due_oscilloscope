@@ -2157,3 +2157,34 @@ def test_a_replay_still_owns_the_rate_control(win, qapp):
     win._rate_control_follows_generator(False)
     assert not win.preset.isEnabled(), (
         "stopping the generator re-enabled a control a recording owns")
+
+
+def test_starting_a_capture_replaces_the_previous_run_s_message(
+        win, daemon, qapp):
+    """Issue #39.
+
+    `start_capture` clears the refusal notice and then said nothing, so
+    the status bar kept whatever the last run had put there. The gallery
+    caught the plainest form of it: stop the generator, start a plain
+    capture, and a live run at 50,000 Hz sits underneath the words
+    "generator stopped".
+
+    Same family as #36 and #37 - a widget stating a device state that is
+    not the device's - and the argument is already written three lines
+    above the omission, about `self.notice`.
+    """
+    win.connect_to_daemon()
+    win.statusBar().showMessage("generator stopped")
+
+    win.start_capture()
+    qapp.processEvents()
+    said = win.statusBar().currentMessage()
+    assert "generator" not in said, (
+        f"a capture is running under a sentence about the generator: "
+        f"{said!r}")
+    assert "capturing" in said, said
+
+    win.stop_capture()
+    qapp.processEvents()
+    assert win.statusBar().currentMessage() == "stopped", (
+        "stopping left the running message on screen")
