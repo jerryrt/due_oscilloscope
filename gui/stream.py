@@ -227,11 +227,50 @@ class ChannelRing:
 #: enough that the search stays inside the frame budget.
 SEARCH_SPAN = 4
 
-#: Below this peak-to-peak, midpoint crossings are noise rather than
-#: the waveform and any frequency from them is invented. Ten codes is
-#: about 5 mV, comfortably above the ~1-2 codes a quiet channel shows
-#: and far below any signal worth timing.
+#: A last-resort floor on peak-to-peak, and **not** the guard that
+#: rejects noise - see MEASURE_MIN_PEAKEDNESS below, which is.
+#:
+#: Issue #43: this was the noise guard and it could not be one. Ten
+#: codes is about 8 mV at the measured 3270 mV reference, and CLAUDE.md
+#: records ~15 mV sitting on an undriven DAC pin - so the floor was
+#: below the idle noise of the bench it runs on. Measured on linux-x1,
+#: an undriven DAC1 spans 39-42 codes over 25 windows, clearing this
+#: floor by four times, and windows-desk measured 45-52 over 1240
+#: windows. It did not reject noise; it rejected *quiet* noise, and
+#: which you got was decided by where the noise happened to land.
+#:
+#: It is kept because a dead-flat trace deserves a clearer message than
+#: "no periodic component", and because it costs nothing. It is no
+#: longer load-bearing.
 MEASURE_MIN_SWING_CODES = 10
+
+#: How peaked the spectrum must be before a frequency is reported:
+#: the largest bin over the median bin, after removing DC.
+#:
+#: **This is the guard that rejects noise, and it is a ratio**, so it
+#: has no code amplitude in it and cannot be below the bench's noise the
+#: way an absolute floor was. That property is the whole point:
+#: `windows-desk` failed three times to choose an absolute constant
+#: because the noise takes several discrete values within a session and
+#: drifts between sessions, and an amplitude constant has to track that.
+#: A shape statistic does not.
+#:
+#: Measured rather than chosen, 4000-sample windows:
+#:
+#:   real undriven DAC1, linux-x1, 25 windows   9.4 - 14.1   (max 14.1)
+#:   real driven ramp,   linux-x1, 25 windows   344 - 398    (min 344)
+#:   synthetic white noise, five amplitudes     3.0 - 3.4
+#:   synthetic sine 4 codes pk-pk in 1.1 of noise      52
+#:
+#: 30 sits 2.1x above the worst real noise measured and still accepts a
+#: 4-code sine at a signal-to-noise ratio of about 1.8, which is far
+#: below anything worth putting a number on. The real signal floor is
+#: 11x above it.
+#:
+#: Noise is flat by definition and a periodic signal is not, which is
+#: why the separation is three orders of magnitude rather than a factor
+#: of two, and why this is not a threshold anyone has to tune.
+MEASURE_MIN_PEAKEDNESS = 30.0
 
 #: Hysteresis for the period measurement, as a fraction of the
 
@@ -604,6 +643,20 @@ def measure(sweep, rate_hz):
         out["note"] = "signal too flat to time"
         return out
 
+    # Is there a periodic component at all? Issue #43: an undriven pin
+    # satisfies every amplitude-based guard by construction, because
+    # both the swing floor and the hysteresis band scale with whatever
+    # they are handed, so noise is self-similar and passes. This one
+    # asks a question noise cannot pass: is the spectrum peaked?
+    #
+    # The panel read 9,523.8 Hz at 1.2 % duty off 24 mV of noise on a
+    # pin nothing was driving, to five significant figures. "Do not
+    # invent numbers" is a rule in CLAUDE.md; this is where the display
+    # was breaking it.
+    if _spectral_peakedness(codes) < MEASURE_MIN_PEAKEDNESS:
+        out["note"] = "no periodic component"
+        return out
+
     # Hysteresis, and it is not optional on real data. A sine crosses
     # its midpoint once per period in theory; through an ADC it wanders
     # across that level several times on the way, and every wobble is
@@ -633,6 +686,41 @@ def measure(sweep, rate_hz):
     out["freq_hz"] = float(rate_hz) / period_samples
     out["duty"] = float(np.count_nonzero(codes > mid)) / float(codes.size)
     return out
+
+
+def _spectral_peakedness(codes):
+    """Largest spectral bin over the median bin, DC removed.
+
+    Dimensionless twice over - a ratio of two magnitudes from the same
+    transform - so it is invariant to gain, to the reference voltage and
+    to the bench's noise amplitude. Measured invariant to noise
+    amplitude across a 38x range: white noise reads 3.0-3.4 whether it
+    spans 8 codes or 2000.
+
+    The median rather than the mean as the reference: one large bin is
+    exactly what a signal is, and a mean would let the peak inflate its
+    own denominator.
+
+    Hann rather than rectangular, for the reason the FFT_WINDOWS note
+    below gives - a rectangular window smears a tone that does not fit
+    the window a whole number of times, which would understate the
+    peakedness of the very signals nearest the threshold.
+    """
+    v = np.asarray(codes, dtype=np.float64)
+    if v.size < 64:
+        return 0.0
+    v = v - v.mean()
+    if not np.any(v):
+        return 0.0
+    mag = np.abs(np.fft.rfft(v * np.hanning(v.size)))
+    mag[0] = 0.0
+    med = float(np.median(mag[1:]))
+    if med <= 0.0:
+        # A pure tone at exactly one bin with nothing else at all. Not
+        # reachable from an ADC, but "0/0 is not noise" is the right
+        # answer if it ever is.
+        return float("inf")
+    return float(mag.max() / med)
 
 
 def _hysteretic_ups(codes, mid, band):

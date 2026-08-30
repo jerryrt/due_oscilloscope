@@ -2214,9 +2214,6 @@ def test_the_call_timeout_outlives_the_daemon_s_own_worst_case():
         f"even sends the command")
 
 
-@pytest.mark.xfail(reason="issue #43: MEASURE_MIN_SWING_CODES is 10, "
-                          "which is below the noise it exists to reject",
-                   strict=True)
 def test_noise_on_an_undriven_pin_is_not_a_signal_to_be_timed():
     """Issue #43, as a target rather than as a description.
 
@@ -2260,3 +2257,84 @@ def test_noise_on_an_undriven_pin_is_not_a_signal_to_be_timed():
     assert m["period_s"] is None
     assert m["duty"] is None
     assert m["note"], "a refusal has to say why"
+
+
+def test_the_noise_guard_is_a_ratio_not_an_amplitude():
+    """Issue #43: why the fix is a shape statistic and not a constant.
+
+    The old guard was `MEASURE_MIN_SWING_CODES`, an absolute number of
+    codes, and `windows-desk` failed three times to choose a defensible
+    value because the quantity it gates is not stable: several discrete
+    levels within a session, drifting between sessions, and not selected
+    by capture rate, by prior DAC activity or by source amplitude.
+
+    An amplitude constant has to track all of that. A ratio does not, and
+    this pins the property: white noise reads the same peakedness across
+    a 250x range of amplitude, so no bench's noise level can put it on
+    the wrong side of the threshold.
+    """
+    rng = np.random.default_rng(43)
+    seen = []
+    for pk in (8, 52, 200, 800, 2000):
+        codes = rng.integers(2048 - pk // 2, 2048 + pk // 2 + 1,
+                             size=4000, dtype=np.uint16)
+        seen.append(stream._spectral_peakedness(codes.astype(np.int32)))
+    assert max(seen) < stream.MEASURE_MIN_PEAKEDNESS, (
+        f"noise peakedness {max(seen):.1f} reaches the threshold "
+        f"{stream.MEASURE_MIN_PEAKEDNESS}")
+    assert max(seen) / min(seen) < 2.0, (
+        f"peakedness moved from {min(seen):.2f} to {max(seen):.2f} across "
+        f"a 250x amplitude range; it is not scale-free after all, which "
+        f"is the whole reason it replaced an absolute floor")
+
+
+def test_a_real_waveform_still_gets_timed():
+    """The guard must not cost the measurements it protects.
+
+    Including a narrow pulse train, which the duty-cycle check proposed
+    on #43 would have rejected - a 2 % duty signal is a legitimate
+    waveform with a real period, and its midpoint-referenced duty is
+    genuinely 2 %.
+    """
+    rate = 200000
+    n = 4000
+    t = np.arange(n)
+    rng = np.random.default_rng(44)
+    p = n / 20.0
+    cases = {
+        "sine": 2048 + 800 * np.sin(2 * np.pi * t / p),
+        "square": 2048 + 800 * np.sign(np.sin(2 * np.pi * t / p)),
+        "ramp": 1248 + 1600 * ((t % p) / p),
+        "narrow pulse 2% duty": np.where((t % p) < 0.02 * p, 2848, 1248),
+    }
+    for name, wave in cases.items():
+        codes = np.clip(wave + rng.normal(0, 3, n), 0, 4095)
+        codes = codes.round().astype(np.uint16)
+        r = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+        r.append(codes)
+        m = stream.measure(stream.select(r, n), rate)
+        assert m["freq_hz"] is not None, (
+            f"{name} was refused a frequency: note={m['note']!r}, "
+            f"peakedness="
+            f"{stream._spectral_peakedness(codes.astype(np.int32)):.1f}")
+        assert abs(m["freq_hz"] - rate / p) / (rate / p) < 0.05, (
+            f"{name} timed at {m['freq_hz']:.1f} Hz, expected "
+            f"{rate / p:.1f}")
+
+
+def test_a_small_but_real_signal_survives_the_guard():
+    """The threshold has to leave room below anything worth timing.
+
+    12 codes peak-to-peak is under 10 mV and well inside the noise of
+    the benches measured on #43, and it is still unmistakably periodic.
+    A guard that rejected this would have traded one wrong answer for
+    another.
+    """
+    rate, n = 200000, 4000
+    t = np.arange(n)
+    rng = np.random.default_rng(45)
+    codes = (2048 + 6 * np.sin(2 * np.pi * t / (n / 20.0))
+             + rng.normal(0, 0.5, n))
+    codes = np.clip(codes, 0, 4095).round().astype(np.uint16)
+    assert stream._spectral_peakedness(codes.astype(np.int32)) > \
+        stream.MEASURE_MIN_PEAKEDNESS
