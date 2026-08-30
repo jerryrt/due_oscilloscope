@@ -1087,3 +1087,37 @@ def test_only_the_server_reports_jitter(srv):
             f"{cls.__name__} has a jitter() again. It has no read_gap "
             f"and no fanout, so it is dead code that raises on call and "
             f"drifts from Server.jitter() in the meantime")
+
+
+def test_load_is_its_own_operation_and_never_rides_on_status(srv, connect):
+    """`Control.load` existed and no host could reach it.
+
+    The device has a load metric - `bsp/load.c`, GET_LOAD - and CLAUDE.md
+    is explicit that new instrumentation goes there rather than into a
+    printf, because one console status command blocks the main loop for
+    13-20 ms while twenty GET_LOAD queries cost 0.29 ms in total. The
+    control-channel client implemented it. The daemon never exposed it,
+    so the only way to ask a running board how hard its loop was working
+    was the method the rule exists to forbid.
+
+    It is its own op for the same reason `trace` is, and it stays off
+    the poll path: `docs/daemon-api.md` guarantees status asks the
+    device nothing.
+    """
+    c = connect("control")
+    load = c.call("load")["load"]
+    assert load["passes"] > 0
+    assert load["hist"] and any(load["hist"])
+    # The fake must answer with the device's own keys and nothing else.
+    # It did not, at first: it invented `mean_us`, and the first script
+    # written against it failed on a board instead of in this suite.
+    for key in ("dev_us", "passes", "max_cycles", "max_us", "mck_hz",
+                "hist", "hist_us"):
+        assert key in load, f"the fake is missing {key!r}"
+    assert "mean_us" not in load, (
+        "the device does not return mean_us; a fake that does teaches "
+        "callers a field that is not there")
+
+    status = c.call("status")["status"]
+    assert "load" not in status, (
+        "status must stay answerable without asking the device anything")

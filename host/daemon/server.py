@@ -720,6 +720,24 @@ def _op_trace(srv, ses, msg):
     return {"event": "trace", "trace": srv.device.trace()}
 
 
+def _op_load(srv, ses, msg):
+    """How hard the device's main loop is working.
+
+    Its own operation rather than part of `counters` or `status`, for
+    the reason those two are already separate: a different device
+    command and a different question. `counters` asks what went wrong
+    on the sample path, `trace` asks what rate the converter held, and
+    this asks whether the loop is keeping up - which no host-side figure
+    can answer, and which was unreachable from any host before this
+    existed even though `Control.load` had been implemented for it.
+
+    Never on a poll path. `docs/daemon-api.md` guarantees that status
+    asks the device nothing, and that guarantee is what makes status
+    cheap enough to call four times a second.
+    """
+    return {"event": "load", "load": srv.device.load()}
+
+
 def _op_caps(srv, ses, msg):
     return {"event": "caps", "rates": ratemod.describe(),
             "device": srv.description(),
@@ -824,6 +842,7 @@ OPS = {
     "status": _op_status,
     "counters": _op_counters,
     "trace": _op_trace,
+    "load": _op_load,
     "caps": _op_caps,
     "rate": _op_rate,
     "subscribe": _op_subscribe,

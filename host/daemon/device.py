@@ -103,6 +103,17 @@ class Device:
         """
         return {}
 
+    def load(self):
+        """Main-loop load: how hard the device is working.
+
+        Its own operation for the same reason `trace` is: a different
+        device command and a different question. `counters` asks what
+        went wrong on the sample path; this asks whether the main loop
+        is keeping up at all, which is the question no host-side figure
+        can answer.
+        """
+        return {}
+
     def stats(self):
         """What the host knows without asking the device anything.
 
@@ -318,6 +329,30 @@ class FakeDevice(Device):
                 "beats": self._hb_seq, "stalled": bool(self._hb_stalled),
                 "late": False, "seq": self._hb_seq,
                 "loop_passes": self._hb_passes}
+
+    def load(self):
+        """A loop that is comfortably keeping up, deterministically.
+
+        Structurally real like the rest of this device: the shape a
+        client parses is the shape a board returns, so the op can be
+        exercised without one. Every pass in one bucket is what a
+        healthy idle board actually looks like - `Control.load` says so
+        - and an outlier several buckets to the right is the thing a
+        caller is watching for.
+        """
+        # The keys are `Control.load`'s, exactly. A fake that invents a
+        # field is worse than no fake: this one had `mean_us`, which the
+        # device does not return, and the first script written against
+        # it failed on a board rather than in the suite.
+        mck = 78_000_000
+        per_us = mck / 1e6
+        hist = [0] * 16
+        hist[9] = 140_000
+        return {"dev_us": 1_000_000, "passes": 140_000,
+                "max_cycles": 1638, "max_us": 1638 / per_us,
+                "mck_hz": mck, "hist": hist,
+                "hist_us": [(1 << i) / per_us for i in range(len(hist))],
+                "via": "fake"}
 
     def trace(self):
         """A structurally real trace: a converter holding one exact rate.
@@ -1042,6 +1077,38 @@ class BoardDevice(Device):
                     "via": "console"}
         except Exception:                            # noqa: BLE001
             return {"rx_bytes": self._rx, "via": "none"}
+
+    def load(self):
+        """Main-loop load, over the control channel and nowhere else.
+
+        `CLAUDE.md` is explicit that printf is a debug method and not an
+        instrument, and that anything read while the sample path is
+        running goes over the control channel: one console status
+        command blocks the main loop for 13-20 ms, and twenty GET_LOAD
+        queries cost 0.29 ms in total. So there is deliberately no
+        console fallback here - a load figure taken by a method that
+        itself blocks the loop for 15 ms would be measuring the
+        instrument.
+
+        Cumulative since boot or since the last clear, so a *rate* comes
+        from differencing two of these over whatever interval the caller
+        wants. `max_us` is the exception: a maximum cannot be
+        differenced, and is the worst pass since the last clear.
+        """
+        c = self.control()
+        if c is None:
+            raise DeviceError(
+                "this device has no control channel, and load is not "
+                "readable any other way without blocking the main loop "
+                "it is trying to measure")
+        try:
+            with self._ctl_lock:                    # see counters()
+                out = dict(c.load())
+        except Exception:                            # noqa: BLE001
+            self._drop_control()
+            raise
+        out["via"] = "control"
+        return out
 
     def trace(self):
         """The occupancy histogram, its trace, and the rate trace.
