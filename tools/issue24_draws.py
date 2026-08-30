@@ -33,15 +33,64 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXCLUDE = {"macos-long2"}
 
 
-def classify(g):
+def _gaps(d):
+    """Gap census for one channel-capture, or None if unreadable.
+
+    The record files do not agree on how sites are stored, and the first
+    version of this tool read only one of the shapes and SILENTLY
+    SKIPPED the rest. It therefore reported zero conversion-locked
+    captures over the host-path records - the very rows that had
+    produced them - because tools/issue24_holdavg.py writes `sites` as
+    plain bin numbers and carries its own precomputed `gaps`.
+
+    An instrument that cannot see a row must say so, not score it as an
+    absence. Hence the skipped-row report, which is not optional
+    decoration: a silent skip is how this issue keeps manufacturing
+    nulls.
+    """
+    g = d.get("gaps")
+    if isinstance(g, dict) and g:
+        return collections.Counter({int(k): v for k, v in g.items()})
+    key = "sites_table" if d.get("sites_table") else "sites"
+    raw = d.get(key)
+    if not raw:
+        return None
+    bins = []
+    for s in raw:
+        if isinstance(s, (list, tuple)) and s:
+            bins.append(s[0])
+        elif isinstance(s, (int, float)):
+            bins.append(s)
+    bins = sorted(bins)
+    if len(bins) < 2:
+        return None
+    return collections.Counter(bins[i + 1] - bins[i]
+                               for i in range(len(bins) - 1))
+
+
+def classify(g, hold=1):
     """Sub-combs of a 21 lattice count as update-locked.
 
     A lattice of 21 routinely arrives as two interleaved combs whose
     gaps sum to 21 - 8+13, 4+17 - so counting only literal 21s
     undercounts it badly.
+
+    The conversion-locked signature is HOLD-DEPENDENT and the first
+    version of this hard-coded hold 2's. A comb of 21 ADC conversions
+    lands at 21/hold DAC updates: 10 or 11 at hold 2, 7 at hold 3, 5 or
+    6 at hold 4. Scoring every capture against 10/11 classified every
+    hold-3 conversion-locked capture as "weak" - a null manufactured by
+    the classifier, in a tool written to stop exactly that.
+
+    At hold 1 the two lattices coincide by construction and no rule can
+    separate them, so nothing is ever called conversion-locked there.
     """
     upd = sum(g.get(k, 0) for k in (21, 4, 17, 8, 13))
-    conv = g.get(10, 0) + g.get(11, 0)
+    if hold <= 1:
+        conv = 0
+    else:
+        lo, hi = int(21 // hold), -(-21 // hold)   # floor and ceil
+        conv = sum(g.get(k, 0) for k in {lo, hi})
     if conv >= 3 and upd >= 3:
         return "BOTH"
     if conv >= 3:
@@ -54,8 +103,18 @@ def classify(g):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--glob", default="records/issue5-*.jsonl")
+    ap.add_argument("--hold", type=int, default=0,
+                    help="hold for records that do not carry one. The "
+                         "internal-path files do not: gen NORMAL "
+                         "alternates DAC0/DAC1 while A0 converts every "
+                         "trigger, so it is a hold of 2 and must be "
+                         "given as one. Defaulting those to 1 sets the "
+                         "conversion-locked count to zero BY "
+                         "CONSTRUCTION, which is a null the tool "
+                         "invents rather than measures.")
     args = ap.parse_args()
     per, pooled, n = collections.Counter(), collections.Counter(), 0
+    skipped = collections.Counter()
     for path in sorted(glob.glob(os.path.join(ROOT, args.glob))):
         for line in open(path):
             try:
@@ -64,23 +123,32 @@ def main():
                 continue
             if r.get("bench") in EXCLUDE:
                 continue
-            chans = ([("A0", r["a0"]), ("A1", r.get("a1") or {})]
-                     if "a0" in r else [("A0", r)])
+            hold = int(r.get("hold") or r.get("ratio") or args.hold or 1)
+            # windows-desk's issue24_hold.py nests one entry per
+            # decimation offset; each is its own reading of the capture.
+            if isinstance(r.get("offsets"), list):
+                chans = [(f"off{o.get('offset')}", o) for o in r["offsets"]]
+            elif "a0" in r:
+                chans = [("A0", r["a0"]), ("A1", r.get("a1") or {})]
+            else:
+                chans = [("A0", r)]
             for _tag, d in chans:
-                key = "sites_table" if d.get("sites_table") else "sites"
-                b = sorted(s[0] for s in (d.get(key) or [])
-                           if isinstance(s, list))
-                if len(b) < 2:
+                g = _gaps(d)
+                if g is None:
+                    skipped[os.path.basename(path)] += 1
                     continue
                 n += 1
-                g = collections.Counter(b[i + 1] - b[i]
-                                        for i in range(len(b) - 1))
                 pooled.update(g)
-                per[classify(g)] += 1
+                per[classify(g, hold)] += 1
     print(f"channel-captures classified: {n}\n")
     for k, v in per.most_common():
         print(f"   {k:20s} {v:4d}   ({100 * v / n:.0f}%)" if n else "")
     print("\npooled gap census:", dict(pooled.most_common(8)))
+    if skipped:
+        print(f"\nrows this tool could NOT read ({sum(skipped.values())}) - "
+              f"these are NOT counted as absences:")
+        for f, c in skipped.most_common():
+            print(f"   {f:44s} {c:4d}")
     print("\n  quote the per-capture table, not the pooled census - the "
           "pooled one is a sample of draws")
 
