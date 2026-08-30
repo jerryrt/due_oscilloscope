@@ -101,7 +101,19 @@ def main():
                              underruns=r.play.underruns))
             print(f"  run {i}: device {dev:>10,.0f} sps   ratio {ratio:.5f} "
                   f"(~{fr})   lost {d:>8,} B   und {r.play.underruns}")
+        # Report the MEASURED quantity first. An earlier version led with
+        # a count of runs below 0.99, and that threshold - picked to
+        # separate an obvious 6% effect at RC 32 - hid a real 0.79%
+        # deficit at RC 30, 31 and 49 for an afternoon. The median was
+        # printed on the same line and read past. A derived count is a
+        # convenience; the ratio is the result.
         if ratios:
+            med = statistics.median(ratios)
+            print(f"  -> MEDIAN RATIO {med:.5f}  ({100 * (1 - med):+.2f}% "
+                  f"against nominal)")
+            if med < 0.999:
+                print(f"     that is a real deficit at this rate, whatever "
+                      f"the count below says")
             slow = [x for x in ratios if x < 0.99]
             print(f"  -> {len(slow)}/{len(ratios)} slow; "
                   f"median ratio {statistics.median(ratios):.5f}"
