@@ -9,8 +9,21 @@ Run standalone and this resolves the same registry itself.
 The Due enters SAM-BA when the programming port is opened at 1200 baud:
 the 16U2 sees the baud change followed by DTR dropping, and asserts ERASE
 then RESET. That baud rate is a control signal here, not a data rate.
-pyserial performs that identically on every platform, which is why there
-is no OS branch in this file.
+
+**That last sentence used to end "pyserial performs that identically on
+every platform, which is why there is no OS branch in this file", and it
+is measured wrong** - issue #35. What reaches the 16U2 is not the same on
+every host: Linux and Windows deliver the explicit mid-session DTR drop,
+so the erase fires there and the speed must be restored on the fd that is
+already open or the *next* open erases the board that was just flashed
+(3 of 3 on linux-x1). macOS delivers no such transition - four arms, and
+only the two that close while still at 1200 erase anything - so there the
+speed must NOT be restored before the close.
+
+The two requirements are contradictory, so there is a branch now. It is
+taken on **evidence rather than on sys.platform**: the default arm is the
+one measured working on Linux and Windows, and the other is reached only
+when the bus shows that the touch did nothing at all.
 
     python3 tools/flash.py                        # discover everything
     python3 tools/flash.py --port COM7
@@ -37,6 +50,12 @@ SAMBA = (0x03EB, 0x6124)                   # SAM3X ROM bootloader
 # an optimisation - the programming port is tried regardless - so this is
 # patience, not a deadline anything depends on.
 SAMBA_WAIT_S = 15.0
+
+# How long bossac gets before it is killed. It is not a performance
+# budget - a whole erase-write-verify-reset is seconds - it is a bound on
+# a hang: bossac given a port that does not exist spins forever at 100%
+# CPU with no output, and unbounded means the flash never returns.
+BOSSAC_TIMEOUT_S = 120.0
 
 # How long to wait, after bossac has reset the board, for the ROM
 # bootloader node to go away - which is the only evidence available here
@@ -123,11 +142,50 @@ def open_port(port, baud, tries=6, delay=0.75):
         f"on Windows: Get-Process python* | Stop-Process -Force")
 
 
-def touch_1200(port):
-    print(f"==> 1200-baud touch on {port} (erase + reset)")
+def usb_nodes():
+    """Every USB-backed serial node on the system.
+
+    The discriminator for "did the touch actually take". A real erase and
+    reset changes this set - the firmware's native port goes away and the
+    ROM monitor's 03EB:6124 arrives - while a touch the 16U2 ignored
+    leaves it byte-identical. Built-in UARTs (`/dev/ttyS*`, vid None) are
+    excluded because they are always there and would only add noise.
+    """
+    try:
+        from serial.tools import list_ports
+    except ImportError:
+        return set()
+    return {p.device for p in list_ports.comports() if p.vid}
+
+
+def touch_1200(port, restore=True):
+    """Fire the 16U2's erase-and-reset by dropping DTR at 1200 baud.
+
+    `restore` picks *when* the speed goes back to 115200, and the two
+    platforms measured so far want opposite answers - see the block
+    below and issue #35. It is never selected from `sys.platform`;
+    `_flash_attempt` tries the default and falls back on the evidence.
+    """
+    print(f"==> 1200-baud touch on {port} (erase + reset)"
+          f"{'' if restore else ', closing at 1200'}")
     s = open_port(port, 1200)
     s.dtr = False                     # the erase+reset trigger
     time.sleep(0.1)
+    if not restore:
+        # macOS shape. The explicit DTR drop above does not reach the
+        # wire there - measured by mac-bench across four arms on #35:
+        # dropping DTR and then setting 115200 before the close does not
+        # erase (nor does waiting 1.5 s first), and closing while still
+        # at 1200 does. So on that host the 16U2 only ever sees the
+        # transition the close performs, and it reads the line coding
+        # that is current at that moment.
+        #
+        # This leaves the port stored at 1200, which is the hazard the
+        # restore path exists to avoid - so the caller clears it while
+        # the board is already erased and has nothing left to lose.
+        s.close()
+        time.sleep(1.5)
+        return
     # Leave 115200 behind on the way out, not on a later open.
     #
     # restore_115200() below exists to stop the next open of this port
@@ -208,6 +266,68 @@ def wait_for_boot(watched, timeout=BOOT_WAIT_S):
     return False
 
 
+def wait_for_quiet_bus(settle=1.5, timeout=10.0):
+    """Block until the USB serial nodes stop changing.
+
+    A touch that resets the board more than once - which the
+    close-at-1200 arm does on a host that also re-fires on the reopen -
+    churns the bus for several seconds, and every node seen during that
+    window is provisional. Waiting for quiet is cheaper and more honest
+    than guessing how many resets are in flight.
+    """
+    deadline = time.time() + timeout
+    last, since = None, time.time()
+    while time.time() < deadline:
+        now = usb_nodes()
+        if now != last:
+            last, since = now, time.time()
+        elif time.time() - since >= settle:
+            return
+        time.sleep(0.25)
+
+
+def _await_samba(before, timeout=SAMBA_WAIT_S):
+    """Wait for a ROM-bootloader node that was not there before.
+
+    The touch erases; the chip then boots ROM SAM-BA on the native port.
+    Take only a node that was NOT there beforehand - that is what makes
+    it ours rather than whichever blank board happened to be plugged in.
+
+    Poll gently and for longer. 5 s of 0.25 s polling was not enough on
+    macOS - measured failing about one run in three - and re-enumerating
+    every serial device four times a second while the board is itself
+    re-enumerating is not free. Missing the node is no longer fatal,
+    because the programming port is tried too, so this can afford to be
+    patient rather than eager.
+
+    Returns the node, or None - which means "not seen", never "the touch
+    failed". Those are different claims and only usb_nodes() separates
+    them.
+
+    **The node has to still be there when this returns, and that is not
+    automatic.** Any sequence that resets the board twice - the
+    close-at-1200 arm on a host that also re-fires on the reopen - brings
+    a bootloader node up, tears it down and brings a *differently named*
+    one up. Taking the first sighting hands bossac a `/dev/ttyACM1` that
+    no longer exists, and bossac does not fail on that: measured here, it
+    spins at 100% CPU indefinitely on a named port that is absent. So a
+    sighting is confirmed on a second poll before it is believed.
+    """
+    deadline = time.time() + timeout
+    seen = None
+    while time.time() < deadline:
+        fresh = set(samba_nodes()) - before
+        if len(fresh) > 1:
+            sys.exit(f"the touch brought up {len(fresh)} bootloader "
+                     f"nodes: {sorted(fresh)}. Refusing to guess.")
+        node = fresh.pop() if len(fresh) == 1 else None
+        if node is not None and node == seen:
+            return node                  # same node twice: it has settled
+        seen = node
+        time.sleep(0.5)
+    return None
+
+
 def _flash_attempt(bossac, binary, args):
     """One erase-write-verify-reset cycle. Returns (rc, booted)."""
     # A bootloader node is only used if it can be attributed to the board
@@ -234,29 +354,57 @@ def _flash_attempt(bossac, binary, args):
     if target is None:
         console = find_console(args.port)
         print(f"==> port   : {console}")
-        touch_1200(console)
         target, native_usb = console, "false"
-        # The touch erases; the chip then boots ROM SAM-BA on the native
-        # port. Take only a node that was NOT there beforehand - that is
-        # what makes it ours rather than whichever blank board happened
-        # to be plugged in.
-        # Poll gently and for longer. 5 s of 0.25 s polling was not
-        # enough on macOS - measured failing about one run in three - and
-        # re-enumerating every serial device four times a second while
-        # the board is itself re-enumerating is not free. Missing the
-        # node is no longer fatal, because the programming port is tried
-        # too, so this can afford to be patient rather than eager.
-        deadline = time.time() + SAMBA_WAIT_S
-        while time.time() < deadline:
-            fresh = set(samba_nodes()) - before
-            if len(fresh) == 1:
-                target, native_usb = fresh.pop(), "true"
-                print(f"==> SAM-BA came up on {target} (native USB)")
-                break
-            if len(fresh) > 1:
-                sys.exit(f"the touch brought up {len(fresh)} bootloader "
-                         f"nodes: {sorted(fresh)}. Refusing to guess.")
-            time.sleep(0.5)
+        # Snapshot the bus before the touch, so that "the touch did
+        # nothing at all" is a measurement rather than an inference. See
+        # the fallback below.
+        usb_before = usb_nodes()
+        if args.close_at_1200:
+            touch_1200(console, restore=False)
+            restore_115200(console)
+            wait_for_quiet_bus()
+        else:
+            touch_1200(console)
+        fresh = _await_samba(before)
+
+        if (fresh is None and usb_nodes() == usb_before
+                and not args.close_at_1200):
+            # Nothing on the bus moved: no bootloader node arrived and
+            # the firmware's own nodes are all still there. The board
+            # never reset, so the 16U2 did not see the trigger.
+            #
+            # This is macOS, and it is issue #35. The two shapes of the
+            # touch are host-specific and they conflict - Linux needs the
+            # speed restored on the open fd or the *next* open erases the
+            # board it just flashed (measured 3 of 3 on linux-x1), while
+            # macOS needs the close to happen at 1200 or nothing erases
+            # at all (mac-bench's four arms). There is no one sequence
+            # that is right on both.
+            #
+            # So it is chosen on evidence rather than on sys.platform.
+            # The default arm is the one measured working on Linux and
+            # Windows and it is not perturbed; this branch is reached
+            # only where today's code already fails outright, which is
+            # what makes it safe to add without a macOS bench to test on.
+            print("==> nothing on the bus moved: the 16U2 did not take "
+                  "the trigger.")
+            print("    Retrying with the close-at-1200 shape (issue #35).")
+            touch_1200(console, restore=False)
+            # Clear the stored 1200 immediately. It is the hazard the
+            # restore path exists to avoid, and here it is cheap: the
+            # board is erased and in the ROM monitor, so even a host that
+            # re-fires the trigger on this open costs one more reset of a
+            # board with nothing left on it.
+            restore_115200(console)
+            # That open re-fires the trigger on some hosts, so the board
+            # may be on its second reset. Let the bus stop moving before
+            # asking what is on it.
+            wait_for_quiet_bus()
+            fresh = _await_samba(before)
+
+        if fresh is not None:
+            target, native_usb = fresh, "true"
+            print(f"==> SAM-BA came up on {target} (native USB)")
         else:
             print(f"==> no native SAM-BA node in {SAMBA_WAIT_S:.0f} s; "
                   f"the programming port serves the ROM monitor too")
@@ -281,11 +429,29 @@ def _flash_attempt(bossac, binary, args):
 
     rc = 1
     for node, usb, label in routes:
+        if not os.path.exists(node):
+            # The node was there when the route list was built and is not
+            # now. Say so and move on rather than handing bossac a name
+            # it will hang on - see BOSSAC_TIMEOUT_S.
+            print(f"==> {label} {node} has gone from the bus; skipping it")
+            continue
         print(f"==> bossac: writing {os.path.basename(binary)} via {node} "
               f"({label})")
-        rc = subprocess.call([bossac, "-i", "-d",
-                              f"--port={os.path.basename(node)}",
-                              "-U", usb, "-e", "-w", "-v", "-b", binary, "-R"])
+        try:
+            rc = subprocess.call(
+                [bossac, "-i", "-d", f"--port={os.path.basename(node)}",
+                 "-U", usb, "-e", "-w", "-v", "-b", binary, "-R"],
+                timeout=BOSSAC_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            # Measured on linux-x1: given --port=ttyACM1 for a node that
+            # had gone away, bossac burned 100% of a core for four
+            # minutes and would not have stopped. There is no diagnostic
+            # and no exit - the flash simply never returns, which reads
+            # as a wedged board rather than a wrong argument. A bound is
+            # the only thing that turns it back into a failure.
+            print(f"    {label} did not return in {BOSSAC_TIMEOUT_S:.0f}s "
+                  f"and was killed; the port was probably gone")
+            rc = 1
         if rc == 0:
             break
         print(f"    {label} failed ({rc})")
@@ -499,6 +665,11 @@ def main() -> int:
                     help="re-flash this many times if the board comes back "
                          "in the bootloader instead of running the program "
                          "(default 3; 0 to report and stop)")
+    ap.add_argument("--close-at-1200", action="store_true",
+                    help="take the macOS-shaped touch straight away "
+                         "instead of falling back to it (issue #35). "
+                         "Use to test that arm on its own; the automatic "
+                         "path needs no flag")
     ap.add_argument("--no-boot-check", action="store_true",
                     help="skip the post-flash boot check; for a program "
                          "that is expected not to run, or a second board "

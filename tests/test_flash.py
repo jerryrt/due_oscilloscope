@@ -304,3 +304,52 @@ def test_a_clean_tree_logs_no_dirty_sha(tmp_path, monkeypatch):
     rec = json.loads(log.read_text().splitlines()[0])
     assert rec["dirty"] is False
     assert rec["dirty_sha"] is None
+
+
+# ---------------------------------------------------------------------
+# The two defects found on linux-x1 while building #35's fallback arm.
+# Neither is macOS-specific, and neither was reachable before a touch
+# that resets the board twice existed.
+
+
+def test_a_bootloader_node_seen_once_is_not_believed(monkeypatch):
+    """A sighting during the churn is provisional.
+
+    The close-at-1200 arm resets the board, and on a host that also
+    re-fires on the reopen it resets a second time. The first bootloader
+    node then appears, goes, and comes back under a different name. Take
+    the first sighting and bossac is handed a path that no longer
+    exists.
+    """
+    monkeypatch.setattr(flash, "samba_nodes",
+                        _nodes([[], ["/dev/ttyACM1"], [], [],
+                                ["/dev/ttyACM2"], ["/dev/ttyACM2"]]))
+    assert flash._await_samba(set(), timeout=5.0) == "/dev/ttyACM2"
+
+
+def test_a_settled_bootloader_node_is_returned(monkeypatch):
+    monkeypatch.setattr(flash, "samba_nodes",
+                        _nodes([["/dev/ttyACM1"], ["/dev/ttyACM1"]]))
+    assert flash._await_samba(set(), timeout=5.0) == "/dev/ttyACM1"
+
+
+def test_no_bootloader_node_is_not_seen_rather_than_failed(monkeypatch):
+    """None means "not seen". It never means "the touch failed" - only
+    usb_nodes() separates those, and the caller does that itself."""
+    monkeypatch.setattr(flash, "samba_nodes", _nodes([[]]))
+    assert flash._await_samba(set(), timeout=1.5) is None
+
+
+def test_bossac_is_bounded(monkeypatch):
+    """bossac given a port that is not there spins at 100% CPU for ever
+    with no output and no exit - measured on linux-x1, four minutes
+    before it was killed by hand. Unbounded, the flash simply never
+    returns, which reads as a wedged board rather than a wrong argument.
+    """
+    assert flash.BOSSAC_TIMEOUT_S > 0
+    src = open(os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "tools", "flash.py")).read()
+    assert "timeout=BOSSAC_TIMEOUT_S" in src, \
+        "the bossac invocation lost its bound"
+    assert "subprocess.TimeoutExpired" in src, \
+        "the bound is not caught, so it raises instead of failing the route"
