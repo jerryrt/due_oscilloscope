@@ -1407,18 +1407,55 @@ REFRESH(2)" would have been worth nothing on a bench that had changed
 track, firmware and the #41 reorder the same morning. Putting REFRESH(1)
 back and watching all three rows return is the experiment.
 
-**This is not a licence to change the constant.** DACC refresh exists to
-counteract output droop between conversions, and the analog cost of
-REFRESH(2) is **unmeasured** - it needs a scope. Which register the
-defect lives behind is settled; what to set it to is an analog question
-and is not answered here.
+**The analog cost is 0.18 mV, and it did not need a scope.** A0 is
+jumpered to DAC0, so the converter under test is already wired to an
+instrument, and the refresh rate is exactly known - which makes it a
+Goertzel. Measured on a DC held at 5,000 sps, slow on purpose so refresh
+fires between updates:
+
+| image | refresh line | magnitude |
+|---|---|---|
+| `REFRESH(1)` | MCK/2048 = 38,086 Hz | 0.207-0.217 codes |
+| `REFRESH(2)` | MCK/4096 = 19,043 Hz | 0.146 codes |
+
+**The line halves when REFRESH doubles**, which is what identifies it as
+the refresh rather than a bin someone chose. The whole ripple is 0.22
+codes = **0.18 mV** at ADVREF 3270; doubling the period at most doubles
+the droop, so the worst case is ~0.4 codes against 0.97-1.76 codes of
+held-level noise.
+
+**And during playback refresh protects nothing.** At every rate on the
+ladder the sample stream rewrites the DAC 18 to 37 times more often than
+the refresh cycle does, so while streaming its entire effect is the
+conversion slots it costs. Refresh earns its keep only when the DAC is
+left holding - which `play_stop()` deliberately allows, leaving DACC_MR
+and the channels enabled.
+
+That sizes the objection; it does not decide the constant, which is
+still a firmware choice with a real function behind it.
+
+**Two measurement traps, both of which nearly became findings.**
+`stream_start()` passes `with_gen = true`, so capture presets 1-5 run the
+internal generator into DAC0 and are not an idle DAC - a first attempt
+reported a held DC of sd **1372 codes**, the figure this document
+already gives for a full-scale square. And "the first channel with
+enough samples" is ADC channel 6 = **A1**, carrying DAC1's sync at sd
+555; **A0 is channel 7**.
 
 **A pre-registered prediction failed here and the failure is on the
 record.** The reasoning that found the register was that
-`1024 x REFRESH / MCK` is an integer number of conversion periods at RC
-32 - exactly 16.000 - so refresh would recur at a fixed phase and cost
-one slot in sixteen. That predicted REFRESH(2) would move the mode to
-31/32. It removes it entirely, at every rate, including two where the
+`2048 x REFRESH / MCK` is an integer number of conversion periods at RC
+32 - exactly 32.000 - so refresh would recur at a fixed phase and cost
+a fixed number of slots per cycle. That predicted REFRESH(2) would move
+the mode rather than remove it.
+
+(The period is **2048** x REFRESH, not the 1024 first published here.
+The measured refresh line settles it: 38,086 Hz = MCK/2048 at
+REFRESH(1), halving to 19,043 Hz at REFRESH(2). RC 32 remains the only
+rate on the ladder where the ratio is a whole number, so the coincidence
+that found the register survives the correction - at twice the count,
+which would make the measured 1/16 loss two slots per refresh rather
+than one.) It removes it entirely, at every rate, including two where the
 ratio was never an integer. So the integer-ratio story is **not** the
 mechanism; it pointed at the right register for the wrong reason, and
 "why RC 32 is intermittent where 39 and 44 are persistent" is again
