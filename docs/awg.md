@@ -1392,7 +1392,15 @@ at RC 39 or 44 will be 1.6-2.3% wrong every time.
 **The affected rates are a band, and it is wider than this document
 first said.** Fourteen rates, 7-8 underrun-free runs each, median of the
 device-side ratio - **not** a count above a threshold, which is how the
-first version of this table got it wrong:
+first version of this table got it wrong.
+
+**Read this table for the band only, and the per-rate mode sets further
+down for what a rate actually does.** It reports one number per rate,
+which was the best this section could do before the per-run reading
+below, and a median cannot represent a rate with two modes: RC 36 shows
+as "8/8 at 1.57%" here and as "4 or 6" there, and the second is right.
+linux-x1 noticed the disagreement from outside, which is what a
+document with two tables in it earns.
 
 | RC | nominal sps | median ratio | deficit | mode |
 |---|---|---|---|---|
