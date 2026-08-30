@@ -1335,3 +1335,62 @@ channel:
 A still trace needs `rate/tone` to divide 1024. Every other frequency
 moves on every redraw. **This is a missing feature - the front end has no
 software trigger - and it is unrelated to the bench-scope finding above.**
+
+## The playback rate ladder does not deliver every rate it accepts
+
+Measured on `mac-bench` (macOS 12.6, Track B), 8 runs per rate, 3 s
+each, drained. Every figure here is the **device's own**
+`consumed x PLAY_BUF_SAMPLES / run_us` against nominal, so no host
+clock is in it.
+
+| RC | nominal sps | slow runs | device ratio | nearest simple fraction |
+|---|---|---|---|---|
+| 28 | 1,392,857 | 0 / 7 | 1.0000 | — |
+| 32 | 1,218,750 | **1 / 8** | **0.937504** | 15/16 = 0.937500 |
+| 39 | 1,000,000 | 8 / 8 | 0.976518 | 125/128 = 0.976562 |
+| 44 | 886,363 | 8 / 8 | 0.984288 | 63/64 = 0.984375 |
+| 56 | 696,428 | 0 / 8 | 1.0000 | — |
+
+Three things follow, and the third is the one to design against.
+
+**RC 39 and 44 run slow on every run.** This is the effect
+`tests/test_integrity.py` already carries as `OVERSUPPLIED = {44, 39}`,
+"feeding a converter that runs slow", and which `docs/windows.md`
+reproduces on Windows. It is the device's, it is persistent, and the
+host's "lost" bytes at those rates are surplus it wrote for a converter
+that could not take them - **oversupply, not loss**. RC 44's 1.57% here
+matches the 1.6% already on record.
+
+**RC 32 has an intermittent version of the same thing**, and that is new.
+One run in eight, and 8 of 52 across every arm taken this session, the
+converter runs at 0.937504 of nominal - 15/16 to four decimal places,
+over a `run_us` window identical to the fast runs, **with zero
+underruns**. The zero is what places it in the converter rather than the
+host: had the host merely discarded 6%, a ring clocked at the programmed
+rate would drain by ~76,000 samples/s - 445 buffers over 3 s against a
+32-slot ring - and starve loudly. It does not. The ring is being emptied
+more slowly, and only the timer does that.
+
+It is **not** the neighbouring RC. RC 34 is 5.882% slow and this is
+6.250%, so "the timer got programmed one step out" does not fit.
+
+**The ladder is not monotonic, which rules out a ceiling.** 28 and 56
+deliver in full, 39 and 44 never do, and 32 usually does. A maximum
+update rate would make the fast rates suffer and the slow ones safe;
+this is the opposite at both ends. Whatever selects the affected rates is
+not "too fast for the DACC", and sizing a design against the nominal rate
+at RC 39 or 44 will be 1.6-2.3% wrong every time.
+
+**What is not established.** Why those rates, and what produces a ratio
+that keeps landing on a binary fraction. `DACC_MR_REFRESH(1)` in
+`play_start()` is a candidate worth checking - the refresh cycle
+re-writes the output periodically and can take a conversion slot - but
+nothing here tests it, and the three fractions are quoted as
+*consistent with* rather than *equal to*: RC 39 and 44 sit 1.7 sd from
+theirs, which several other fractions would also satisfy. Only RC 32's
+15/16 is exact enough (0.2 sd) to be more than a coincidence of digits.
+
+Reproduce with `tools/issue47_ratio.py`. **One trap:** `consumed` counts
+*buffers*, not samples. Read as samples it reports 2,380 sps against a
+nominal 1,218,750 - wrong enough to be obvious, which is the only reason
+it was caught before it became a conclusion.
