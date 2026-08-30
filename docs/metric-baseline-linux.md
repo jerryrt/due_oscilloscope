@@ -28,6 +28,16 @@ third reading of quantities that had two, and on the ones that matter it
 `advref_mv` is 3270 on all three, so the amplitude column is not a
 reference-voltage artefact.
 
+**Replicated, and the amplitude reading is stable.** A second Track B
+generation three minutes later (`records/metrics.jsonl`, 22:21) read
+`effective_bits` 10.5038, `noise_rms_codes` 0.814361,
+`tone_amplitude_codes` **1376.12** and `overrun_frames_per_run` 66,
+against this report's 10.4989 / 0.817092 / 1376.61 / 63. It is not the
+tracked baseline because its flash carried a `-dirty` tree stamp where
+this one is clean, but as a replication it matters: **three independent
+generations on this bench - two Track B, one Track A - read
+1376.12, 1376.61 and 1376.69.** The excess below is stable, not a draw.
+
 **Three things worth someone's attention, none of them claimed as
 findings.**
 
