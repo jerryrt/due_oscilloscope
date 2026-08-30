@@ -24,6 +24,7 @@
 #include "stream.h"
 #include "frame.h"
 #include "play.h"
+#include "play_report.h"
 #include "playstat.h"
 #include "ctl.h"
 #include "console.h"          /* the shared command surface */
@@ -1516,16 +1517,23 @@ static void h_bench(const uint32_t *a)
 {
 	(void)a;
 	stream_bench_report();
-	printf("# play: in=%lu produced=%lu consumed=%lu under=%lu isr=%lu endtx=%lu spans=%lu partial=%lu occmin=%lu\n",
-	       (unsigned long)play_bytes_in,
-	       (unsigned long)play_produced,
-	       (unsigned long)play_consumed,
-	       (unsigned long)play_underruns,
-	       (unsigned long)play_isr_calls,
-	       (unsigned long)play_endtx_seen,
-	       (unsigned long)play_spans,
-	       (unsigned long)play_partial,
-	       (unsigned long)play_occ_min);
+	{
+		char line[192];
+		play_report_t r = {
+			.bytes_in   = play_bytes_in,
+			.produced   = play_produced,
+			.consumed   = play_consumed,
+			.underruns  = play_underruns,
+			.isr_calls  = play_isr_calls,
+			.endtx_seen = play_endtx_seen,
+			.svc_calls  = play_svc_calls,
+			.spans      = play_spans,
+			.partial    = play_partial,
+			.occ_min    = play_occ_min,
+		};
+		play_report_format(line, sizeof line, &r);
+		printf("%s\n", line);
+	}
 	uart_flush();
 }
 

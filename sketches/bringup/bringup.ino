@@ -35,6 +35,7 @@
  * Loopback wiring: DAC0 -> A0, DAC1 -> A1.
  */
 
+#include "play_report.h"
 #include "clock.h"
 #include "bootlog.h"
 #include "acq.h"
@@ -2145,23 +2146,32 @@ static void ha_bench(const uint32_t *a)
 	(void)a;
 	stream_bench_report(buf, sizeof(buf));
 	Serial.println(buf);
-	snprintf(buf, sizeof(buf),
-	         "# play: in=%lu produced=%lu consumed=%lu under=%lu "
-	         "isr=%lu endtx=%lu svc=%lu spans=%lu partial=%lu "
-	         "occmin=%lu rebuilds=%lu act-in=%lu act-out=%lu",
-	         (unsigned long)play_bytes_in,
-	         (unsigned long)play_produced,
-	         (unsigned long)play_consumed,
-	         (unsigned long)play_underruns,
-	         (unsigned long)play_isr_calls,
-	         (unsigned long)play_endtx_seen,
-	         (unsigned long)play_svc_calls,
-	         (unsigned long)play_spans,
-	         (unsigned long)play_partial,
-	         (unsigned long)play_occ_min,
-	         (unsigned long)usbdma_rebuilds,
-	         (unsigned long)usb_in_activity,
-	         (unsigned long)usb_out_activity);
+	{
+		play_report_t r = {
+			.bytes_in   = play_bytes_in,
+			.produced   = play_produced,
+			.consumed   = play_consumed,
+			.underruns  = play_underruns,
+			.isr_calls  = play_isr_calls,
+			.endtx_seen = play_endtx_seen,
+			.svc_calls  = play_svc_calls,
+			.spans      = play_spans,
+			.partial    = play_partial,
+			.occ_min    = play_occ_min,
+		};
+		/* The shared prefix, then this track's own counters at the
+		 * offset it hands back. usbdma_rebuilds and the two activity
+		 * counters are Track A's UOTGHS DMA stack and Track B has
+		 * nothing to put there - a real per-track capability, unlike
+		 * the `svc` that used to sit mid-line here. */
+		int n = play_report_format(buf, sizeof(buf), &r);
+		if (n > 0 && (unsigned)n < sizeof(buf))
+			snprintf(buf + n, sizeof(buf) - n,
+			         " rebuilds=%lu act-in=%lu act-out=%lu",
+			         (unsigned long)usbdma_rebuilds,
+			         (unsigned long)usb_in_activity,
+			         (unsigned long)usb_out_activity);
+	}
 	Serial.println(buf); Serial.flush();
 }
 

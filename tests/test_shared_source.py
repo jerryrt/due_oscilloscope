@@ -198,3 +198,91 @@ def test_a_wrong_stream_port_header_fails_the_check(tmp_path):
     drift = ss.core_check(cut)
     assert any("usb_dma_in_busy" in d and "no shared header declares" in d
                for d in drift), drift
+
+
+# --------------------------------------------- console lines the host parses
+
+#: The one file allowed to hold the `# play:` format string.
+PLAY_REPORT_C = os.path.join(SHARED, "play_report.c")
+
+#: The two call sites that print it.
+PLAY_LINE_CALLERS = {
+    "B": os.path.join(REPO, "apps", "baremetal_bringup", "main.c"),
+    "A": os.path.join(REPO, "sketches", "bringup", "bringup.ino"),
+}
+
+#: Counters only one track can keep, appended after the shared prefix.
+#: Track A's are its UOTGHS DMA stack; Track B has nothing to put there.
+PLAY_TRACK_ONLY = {"A": ["rebuilds", "act-in", "act-out"], "B": []}
+
+
+def _read(path):
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def test_the_play_line_has_exactly_one_home():
+    """`# play:` is surface, so it is written once.
+
+    Issue #13's split - the surface is shared, the handlers are not -
+    applied to a status line. The counters behind these fields are each
+    track's own and stay two independent programmings, which invariant 3
+    requires. The line is application formatting and was written twice
+    by hand, and it had already drifted: Track A printed `svc` between
+    `endtx` and `spans` while Track B printed no `svc` at all, though
+    `play_svc_calls` is counted in `drivers/play.c` and was already
+    going out over its control channel. Every field after `endtx` sat
+    one position out between the tracks, and `tools/bench.py` read one
+    track's line into the other's columns and reported an unread counter
+    as a 100%% byte deficit.
+
+    Two copies agreeing today is not the property worth testing. One
+    copy is.
+    """
+    assert "# play:" in _read(PLAY_REPORT_C), (
+        "the shared formatter no longer holds the `# play:` format "
+        "string; the tracks have taken it back")
+    for track, path in PLAY_LINE_CALLERS.items():
+        assert "# play:" not in _read(path), (
+            f"Track {track} ({os.path.relpath(path, REPO)}) writes its own "
+            f"`# play:` format string again. That is the second copy this "
+            f"seam exists to prevent - build it from "
+            f"play_report_format() and append only what this track alone "
+            f"can count.")
+
+
+def test_both_tracks_reach_the_line_through_the_shared_formatter():
+    for track, path in PLAY_LINE_CALLERS.items():
+        text = _read(path)
+        assert "play_report_format(" in text, (
+            f"Track {track} does not call play_report_format()")
+        assert '#include "play_report.h"' in text, (
+            f"Track {track} does not include play_report.h")
+
+
+def test_track_specific_play_counters_only_trail():
+    """A per-track counter is appended, never interleaved.
+
+    A positional reader then degrades to "the fields I know" instead of
+    silently reading the wrong column, and a new field on one track
+    fails this until someone has said which track it belongs to and
+    why the other cannot have it.
+    """
+    import re
+    shared = re.findall(r"([A-Za-z][A-Za-z0-9_-]*)=%lu", _read(PLAY_REPORT_C))
+    assert shared[0] == "in" and "svc" in shared, shared
+
+    for track, path in PLAY_LINE_CALLERS.items():
+        text = _read(path)
+        # Whatever this track appends after the shared prefix.
+        extra = []
+        for m in re.finditer(r'"\s+((?:[A-Za-z][A-Za-z0-9_-]*=%lu\s*)+)"', text):
+            extra += re.findall(r"([A-Za-z][A-Za-z0-9_-]*)=%lu", m.group(1))
+        assert extra == PLAY_TRACK_ONLY[track], (
+            f"Track {track} appends {extra} to the `# play:` line; "
+            f"declared {PLAY_TRACK_ONLY[track]}. Add it here with a "
+            f"reason the other track cannot have it, or move it into "
+            f"the shared prefix in play_report.c.")
+        assert not (set(extra) & set(shared)), (
+            f"Track {track} re-prints a shared field: "
+            f"{sorted(set(extra) & set(shared))}")
