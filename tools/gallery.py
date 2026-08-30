@@ -45,9 +45,47 @@ sys.path.insert(0, os.path.join(REPO, "host"))
 os.environ.pop("QT_QPA_PLATFORM", None)
 
 from PySide6 import QtWidgets                       # noqa: E402
-from daemon import device as devmod                 # noqa: E402
-from daemon import server as srvmod                 # noqa: E402
 from gui.app import MainWindow                      # noqa: E402
+
+
+class _Daemon:
+    """A daemon in its own process, and a port to reach it on."""
+
+    def __init__(self, proc, port):
+        self.proc, self.port = proc, port
+
+    def stop(self):
+        self.proc.terminate()
+        try:
+            self.proc.wait(timeout=5.0)
+        except Exception:                            # noqa: BLE001
+            self.proc.kill()
+
+
+def _spawn_daemon(port):
+    import socket
+    import subprocess
+    if not port:
+        s = socket.socket()
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        s.close()
+    env = dict(os.environ, PYTHONPATH=os.path.join(REPO, "host"))
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "daemon", "--host", "127.0.0.1",
+         "--port", str(port)],
+        cwd=os.path.join(REPO, "host"), env=env,
+        stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    for _ in range(60):
+        time.sleep(0.5)
+        try:
+            import socket as sk
+            with sk.create_connection(("127.0.0.1", port), timeout=0.5):
+                return _Daemon(proc, port)
+        except OSError:
+            if proc.poll() is not None:
+                raise RuntimeError("the daemon exited during start-up")
+    raise RuntimeError("the daemon never accepted a connection")
 
 
 class Gallery:
@@ -150,19 +188,37 @@ class Gallery:
         # a refusal and left a stale ramp under a dozen captions.
         if a.run_btn.isChecked():
             a.run_btn.click()            # stop
-            self.pump(0.5)
-        a.run_btn.click()                # play: uploads
-        self.pump(0.8)
+            self.pump(0.8)               # let the device actually stop
+        if not a.run_btn.isEnabled():
+            # The panel refuses these settings, so there is nothing to
+            # apply. That is a legitimate state to photograph.
+            return
+        for attempt in range(3):
+            a.run_btn.click()            # play: uploads
+            self.pump(1.0)
+            if a.run_btn.isChecked():
+                return
+            # A start can be refused while the previous run is still
+            # tearing down - "already running; stop first". Give the
+            # device the time rather than capturing a stopped window
+            # under a caption that says otherwise.
+            self.pump(1.0)
+        print("    ! generator would not start after 3 attempts",
+              flush=True)
 
 
 def build(args):
     index = []
-    import measure
-    board = measure.Board(settle=3.0)
-    dev = devmod.BoardDevice(board)
     bench = os.environ.get("DUE_BENCH", "windows-desk")
 
-    srv = srvmod.Server(dev, host="127.0.0.1", port=0).start()
+    # The daemon runs in its own process, which is how it is deployed
+    # and - it turns out - the only way to photograph it honestly. In
+    # process with the window, the GUI's redraws and grabs starve the
+    # daemon's device read thread through the GIL: an early gallery
+    # carried Read gap max 1,467,999 us and 77 device overruns in every
+    # frame, so the Health panel was reporting damage the capture
+    # harness had caused. `python -m gui` spawns a daemon the same way.
+    srv = _spawn_daemon(args.port)
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MainWindow(host="127.0.0.1", port=srv.port)
     win.resize(1600, 950)
@@ -175,9 +231,11 @@ def build(args):
         g.pump(1.0)
 
         # 1. The loop, which is what this instrument *is*.
+        # No explicit click here: `awg()` applies. Adding one toggled
+        # playback straight back off, which the shot verifier caught as
+        # "status bar says 'generator stopped'" - the check earning its
+        # keep on the very first image.
         g.awg(shape="sine", hz=1000.0, vpp=1.5, offset=1.675)
-        win.awg.run_btn.click()
-        g.pump(2.0)
         g.shot("01-loop-sine", "The closed loop: HOST -> DAC0 -> A0 -> HOST",
                "A sine asked for in the Generator panel and captured back "
                "on A0 in the same window. Nothing else here is a "
@@ -309,10 +367,6 @@ def build(args):
         except Exception:                            # noqa: BLE001
             pass
         srv.stop()
-        try:
-            dev.close()
-        except Exception:                            # noqa: BLE001
-            pass
 
     with open(os.path.join(args.out, "index.json"), "w") as fh:
         json.dump(index, fh, indent=2)
@@ -324,6 +378,8 @@ def build(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(REPO, "build", "gallery"))
+    ap.add_argument("--port", type=int, default=0,
+                    help="daemon port; 0 picks a free one")
     return build(ap.parse_args())
 
 

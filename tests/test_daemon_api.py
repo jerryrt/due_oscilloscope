@@ -974,3 +974,35 @@ def test_heartbeat_needs_control(srv, connect):
     with pytest.raises(clientmod.Refused) as e:
         obs.call("heartbeat", period_ms=50)
     assert "control" in e.value.message
+
+
+def test_the_description_names_the_track_without_the_whole_banner():
+    """Issue #38.
+
+    `measure.which_track` returns `(track, the text it read it from)`,
+    and `describe()` stored the pair whole - so `track` was a tuple
+    where every consumer expects a string. The front end formatted it
+    straight into its Source line, complete with the escaped CRLF, the
+    label's width hint followed its text, and the window blew out to
+    22,727 pixels wide. A string comparison elsewhere (`track != "fake"`)
+    was silently comparing a tuple and never matching.
+    """
+    class OneLineBoard:
+        def poll_console(self):
+            pass
+
+    class M:
+        FRAME_BYTES = 4096
+        FRAME_SAMPLES = 2032
+
+        @staticmethod
+        def which_track(board, **kw):
+            return "b", "# id: track=B fw=0.2.0 ctlver=3\r\n"
+
+    dev = devmod.BoardDevice(OneLineBoard(), measure_mod=M())
+    info = dev.describe()
+    assert info["track"] == "b", "the track must be the letter alone"
+    assert isinstance(info["track"], str)
+    assert "\r\n" not in str(info["track"])
+    # The text is still available, just not masquerading as the track.
+    assert info["identity"].startswith("# id:")

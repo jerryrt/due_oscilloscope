@@ -926,7 +926,17 @@ class BoardDevice(Device):
             info["track_note"] = "not asked: the banner costs underruns "
             return info
         try:
-            info["track"] = self.m.which_track(self.board)
+            # `which_track` returns (track, the text it read it from),
+            # because tools/ callers want the raw reply. Storing the
+            # pair whole put a Python tuple where every consumer expects
+            # a string: the front end's Source line rendered
+            # `board (track ['b'], '# id: ...\r\n'])`, the label's width
+            # hint followed its text and blew the window out to 22,727
+            # pixels, and `track != "fake"` elsewhere compared a tuple
+            # to a string and was quietly always true. Issue #38.
+            track, ident_text = self.m.which_track(self.board)
+            info["track"] = track
+            info["identity"] = (ident_text or "").strip()
         except Exception as e:                      # noqa: BLE001
             info["track"] = None
             info["track_error"] = str(e)
