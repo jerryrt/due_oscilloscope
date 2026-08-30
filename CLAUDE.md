@@ -352,11 +352,26 @@ Check here before reasoning from general Arduino knowledge.
   worst residual of 0.022 everywhere else, carrying 45 underruns; and an
   `n=7` at a rate whose only other modes are 4 and 6.
 
-  **The mechanism is visible rather than inferred.** The first run
-  carries underruns that later runs do not, and an underrun perturbs
-  `consumed / run_us` directly - so any figure derived from the
-  playback counters is wrong on run 1 in a way it is not wrong
+  **One mechanism is visible, and it is not the only one.** The first
+  run often carries underruns that later runs do not, and an underrun
+  perturbs `consumed / run_us` directly - so any figure derived from
+  the playback counters is wrong on run 1 in a way it is not wrong
   afterwards.
+
+  **But an underrun filter is not sufficient, and this is the part that
+  cost a claim.** `mac-bench` found a first run at RC 48 sitting on a
+  mode no later run at that rate took, with `underruns = 0` - so it
+  passed every filter written to catch a disturbed first cycle,
+  including the one this note originally implied, and survived into
+  four separate analyses before the index caught it. **Drop run 1 by
+  index, not by a filter on what you think run 1 does wrong.**
+
+  It cost them one claim - RC 48's second mode, withdrawn on their data
+  once first runs were excluded - and it did not cost windows-desk the
+  same claim, because that mode appears there in runs 3, 4 and 8 as
+  well. So the exclusion removes a bench's artifact without removing
+  the effect, which is the behaviour a rule like this has to have to be
+  safe to apply.
 
   It has already cost one wrong conclusion here: an `occ_min`
   asymmetry between a "good" and a "bad" run was published as a lead on
