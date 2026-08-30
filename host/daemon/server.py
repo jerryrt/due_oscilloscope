@@ -214,26 +214,6 @@ class _Session(threading.Thread):
         except OSError:
             pass
 
-    def jitter(self):
-        """Where the latency actually is, host-side.
-
-        `read_gap` is the interval between reads that returned data - a
-        long one means the reader was descheduled while the kernel
-        buffer filled. `fanout` is what one frame costs to hand to every
-        client and the recorder, which is the work that competes with
-        the reader for the same thread.
-
-        `feed` comes from the writer when playback is running, and is
-        the one with a deadline: the device ring drains in about 18 ms
-        at the full rate.
-        """
-        out = {"read_gap": self.read_gap.summary(),
-               "fanout": self.fanout.summary()}
-        feeder = getattr(self.device, "feeder", None)
-        if feeder is not None and getattr(feeder, "gap", None) is not None:
-            out["feed"] = feeder.gap.summary()
-        return out
-
     def status(self):
         return {"addr": f"{self.addr[0]}:{self.addr[1]}", "role": self.role,
                 "subscribed": self.subscribed, "dropped": self.dropped,
@@ -313,26 +293,6 @@ class _Recorder:
             json.dump(side, f, indent=2, sort_keys=True)
         return side
 
-    def jitter(self):
-        """Where the latency actually is, host-side.
-
-        `read_gap` is the interval between reads that returned data - a
-        long one means the reader was descheduled while the kernel
-        buffer filled. `fanout` is what one frame costs to hand to every
-        client and the recorder, which is the work that competes with
-        the reader for the same thread.
-
-        `feed` comes from the writer when playback is running, and is
-        the one with a deadline: the device ring drains in about 18 ms
-        at the full rate.
-        """
-        out = {"read_gap": self.read_gap.summary(),
-               "fanout": self.fanout.summary()}
-        feeder = getattr(self.device, "feeder", None)
-        if feeder is not None and getattr(feeder, "gap", None) is not None:
-            out["feed"] = feeder.gap.summary()
-        return out
-
     def status(self):
         return {"path": self.path, "frames": self.frames, "bytes": self.bytes,
                 "dropped": self.dropped, "error": self.error}
@@ -369,6 +329,10 @@ class Server:
         # average hides exactly that.
         self.read_gap = jitter.Histogram("device-read-gap")
         self.fanout = jitter.Histogram("fanout")
+        # Which run these belong to. Bumped by new_run(); the reader
+        # compares it and treats the first frame of a new run as having
+        # no predecessor, so no gap is ever measured across a stop.
+        self._run_gen = 0
         # The waveform a client uploaded, held for the next play. The
         # device loops it; the daemon does not generate signals.
         self.waveform = b""
@@ -471,9 +435,33 @@ class Server:
                 self.sessions.append(s)
             s.start()
 
+    def new_run(self):
+        """Scope the jitter metrics to the run that is starting.
+
+        Issue #40. The reader thread runs for the daemon's lifetime and
+        the device does not, so without this the first frame of a run
+        measures its gap against the last frame of the *previous* one -
+        reporting the idle time between them as a data-path stall. The
+        gallery produced `Read gap max 3,797,000 us` that way: 3.8 s of
+        deliberate idle, displayed in a column of per-run counters next
+        to Discontinuities and Device overruns, which the GUI resets on
+        every start.
+
+        The histograms go with it for the same reason. `max` over the
+        daemon's whole lifetime is not a fact about the trace on screen,
+        and nothing in the panel said which it was.
+
+        Reset on start and not on stop, deliberately: the numbers for a
+        run must survive it, or they cannot be read after stopping.
+        """
+        self.read_gap.reset()
+        self.fanout.reset()
+        self._run_gen += 1
+
     def _read_loop(self):
         """Drain the device forever, whoever is or is not listening."""
         last_read = None
+        gen = self._run_gen
         while not self._stop.is_set():
             try:
                 data = self.device.read(timeout=0.2)
@@ -483,6 +471,12 @@ class Server:
                 continue
             if not data:
                 continue
+            # A generation counter rather than clearing last_read from
+            # new_run(): that would race this thread, and the race is
+            # exactly the measurement being protected.
+            if self._run_gen != gen:
+                gen = self._run_gen
+                last_read = None
             now = time.monotonic()
             if last_read is not None:
                 self.read_gap.add(now - last_read)
@@ -767,6 +761,9 @@ def _op_start(srv, ses, msg):
     waveform = None
     if mode in ("play", "loop"):
         waveform = srv.waveform or None
+    # Before the device starts, so no frame of this run can be measured
+    # against the previous one (issue #40).
+    srv.new_run()
     srv.device.start(mode, dac_sps=dac_sps, adc_hz=adc_hz, channels=channels,
                      waveform=waveform, preset=msg.get("preset"))
     srv.broadcast_event("started", mode=mode, rates=actual)

@@ -1006,3 +1006,84 @@ def test_the_description_names_the_track_without_the_whole_banner():
     assert "\r\n" not in str(info["track"])
     # The text is still available, just not masquerading as the track.
     assert info["identity"].startswith("# id:")
+
+
+# ---------------------------------------------- per-run jitter metrics (#40)
+
+def test_read_gap_is_not_measured_across_a_deliberate_stop(srv, connect):
+    """Issue #40: 3.8 s of idle reported as a data-path stall.
+
+    The reader thread runs for the daemon's lifetime and the device does
+    not. Without scoping, the first frame of a run measures its gap
+    against the last frame of the *previous* run, so the idle time
+    between them lands in `read_gap` - and it lands in a column of
+    per-run counters, beside Discontinuities and Device overruns, which
+    the GUI resets on every start. `tools/gallery.py` produced
+    `Read gap max 3,797,000 us` exactly this way.
+
+    The gap here is deliberately long relative to any real one: at
+    200 ksps the device produces a frame every few milliseconds, so a
+    0.6 s idle is two orders of magnitude above anything the running
+    path can generate.
+    """
+    c = connect("control")
+    c.subscribe()
+    c.call("start", mode="capture", adc_hz=200000, channels=2)
+    c.wait_frames(4, timeout=10.0)
+    c.call("stop")
+
+    time.sleep(0.6)
+
+    c.call("start", mode="capture", adc_hz=200000, channels=2)
+    c.wait_frames(4, timeout=10.0)
+    gap = c.call("status")["status"]["jitter"]["read_gap"]
+    c.call("stop")
+
+    assert gap["max_us"] < 300_000, (
+        f"read_gap max is {gap['max_us']} us after a 0.6 s stop; the "
+        f"idle between two runs has been measured as a read gap")
+
+
+def test_starting_a_run_resets_the_jitter_histograms(srv, connect):
+    """`max` must be this run's, not the daemon's lifetime maximum.
+
+    Two runs, and the second one's summary must not carry the first
+    one's sample count. Otherwise the panel reports a maximum over every
+    run the daemon has ever served while sitting next to counters that
+    are per-run, with nothing on screen to distinguish them.
+    """
+    c = connect("control")
+    c.subscribe()
+    c.call("start", mode="capture", adc_hz=200000, channels=2)
+    c.wait_frames(8, timeout=10.0)
+    first = c.call("status")["status"]["jitter"]["read_gap"]["n"]
+    c.call("stop")
+    assert first > 0, "no read gaps recorded at all; the test proves nothing"
+
+    c.call("start", mode="capture", adc_hz=200000, channels=2)
+    c.wait_frames(2, timeout=10.0)
+    second = c.call("status")["status"]["jitter"]["read_gap"]["n"]
+    c.call("stop")
+
+    assert second < first, (
+        f"the second run reports {second} read-gap samples against the "
+        f"first run's {first}; the histogram was never reset, so `max` "
+        f"is a lifetime figure in a per-run column")
+
+
+def test_only_the_server_reports_jitter(srv):
+    """One home for the metric, because there used to be three.
+
+    `_Session` and `_Recorder` each carried a byte-identical copy of
+    `jitter()` referring to `self.read_gap` and `self.fanout`, which
+    neither class has ever defined. Both were dead and both would have
+    raised AttributeError if anything had called them - and a metric
+    added to the live copy would have drifted from two silent ones.
+    """
+    from daemon import server as servermod
+    assert hasattr(servermod.Server, "jitter")
+    for cls in (servermod._Session, servermod._Recorder):
+        assert not hasattr(cls, "jitter"), (
+            f"{cls.__name__} has a jitter() again. It has no read_gap "
+            f"and no fanout, so it is dead code that raises on call and "
+            f"drifts from Server.jitter() in the meantime")
