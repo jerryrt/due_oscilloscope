@@ -446,6 +446,53 @@ comb's amplitude and refuses the conclusion below 2:1, because at 12 s
 captures the floor was 0.98 against a 1.04 code comb and "detectable by
 6%" is the same mistake one step further along.
 
+### Only one of the two lattices is device-side
+
+The section below establishes two lattices drawn per capture. They do
+not have the same provenance, and this issue's device-side argument
+reaches only one of them.
+
+Classified per capture across every committed record, both benches, no
+new bench time:
+
+| record set | captures | conversion-locked | update-locked | weak |
+|---|---|---|---|---|
+| internal (`issue5-*`, hold 2) | 432 | **0** | 90 | 342 |
+| host, macOS (`issue24-*`) | 172 | **38** | 35 | 94 |
+| host, windows-desk | 106 | **31** | 39 | 32 |
+
+Both benches' host records draw both; neither bench's internal records
+draw the conversion-locked one at all. So the **update-locked** lattice
+is device-side - present with no host in the DAC path, which is the
+argument #24 rests on - and the **conversion-locked** lattice has only
+ever been seen when the host feeds the DAC, on two boards and two hosts.
+
+The standing device-side conclusion therefore holds for one lattice and
+never reached the other. Nobody had separated them to notice.
+
+**`tools/issue24_draws.py` needed three fixes before it could say this,
+and every one of them had manufactured a null.** They are worth knowing
+because the same three shapes are available to any tool that reads these
+records:
+
+- It read one of the several site formats the record files use and
+  **silently skipped the rest**, dropping exactly the host-path rows
+  that carry the conversion-locked draws. Unreadable rows are now
+  reported by file and count, and are explicitly not scored as
+  absences.
+- It scored every capture against **hold 2's** conversion signature, so
+  every hold-3 capture drawing 7s - which is 21/3 - was classified
+  "weak". The rule is derived from each row's own hold now.
+- The internal-path files carry **no hold field**, so they defaulted to
+  hold 1, where the two lattices coincide by construction and the
+  conversion count is zero whatever the data says. That default made
+  the result true by arithmetic. The internal path is a hold of 2,
+  because gen NORMAL alternates DAC0/DAC1 while A0 converts every
+  trigger.
+
+The finding survives all three. It did not survive the first version,
+which reported zero conversion-locked captures on the host path as well.
+
 ### There are two lattices, and they are drawn per capture
 
 The section below this one records the unit as unsettled, with three
