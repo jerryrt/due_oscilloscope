@@ -165,7 +165,8 @@ uint32_t ctl_port_capabilities(void)
 {
 	uint32_t caps = CTL_CAP_STREAM_STATS | CTL_CAP_BENCH
 	              | CTL_CAP_OCCUPANCY | CTL_CAP_LOAD
-	              | CTL_CAP_TEMP | CTL_CAP_GEN;
+	              | CTL_CAP_TEMP | CTL_CAP_GEN
+	              | CTL_CAP_HEARTBEAT;
 
 #if PLAY_RATE_TRACE_ENABLED
 	caps |= CTL_CAP_RATE_TRACE;

@@ -63,6 +63,15 @@ static uint32_t rx_last_us;
 /* Transmit                                                            */
 /* ------------------------------------------------------------------ */
 
+/*
+ * The heartbeat's whole state. Off until a host asks for it - see
+ * ctl_wire.h for why a board does not decide on its own to push.
+ */
+static uint32_t hb_period_ms;    /* 0 = off */
+static uint32_t hb_last_ms;
+static uint32_t hb_seq;
+static uint32_t hb_dropped;
+
 static void ctl_respond(uint16_t req_id, uint16_t opcode, uint8_t flags,
                         const void *payload, uint16_t len)
 {
@@ -180,6 +189,7 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 			{ CTL_OP_LOAD,         CTL_CAP_LOAD },
 			{ CTL_OP_BENCH,        CTL_CAP_BENCH },
 			{ CTL_OP_TEMP,         CTL_CAP_TEMP },
+			{ CTL_OP_HEARTBEAT,    CTL_CAP_HEARTBEAT },
 		};
 		ctl_capability_t out;
 		uint32_t caps;
@@ -382,6 +392,53 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		ctl_respond(h->req_id, h->opcode, 0, &r, sizeof(r));
 		return;
 	}
+	case CTL_OP_HEARTBEAT: {
+		ctl_heartbeat_t hb;
+		uint32_t want;
+
+		if (!ctl_have(CTL_CAP_HEARTBEAT)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_OPCODE,
+			          "no heartbeat on this track");
+			return;
+		}
+		/*
+		 * Zero length reads the setting and takes one beat now; four
+		 * bytes set the cadence, 0 to stop. Both answer with the same
+		 * snapshot, so "what is it doing" and "make it do this" return
+		 * the one description and cannot disagree.
+		 */
+		if (len != 0 && len != sizeof(uint32_t)) {
+			ctl_error(h->req_id, h->opcode, CTL_ERR_LENGTH,
+			          "heartbeat takes no payload or a uint32 "
+			          "period in ms");
+			return;
+		}
+		if (len == sizeof(uint32_t)) {
+			memcpy(&want, payload, sizeof(want));
+			if (want != CTL_HEARTBEAT_OFF_MS) {
+				/* Clamped, not refused: invariant 7 wants a
+				 * bounded cadence whatever a host asked for,
+				 * and the reply says what it actually got. */
+				if (want < CTL_HEARTBEAT_MIN_MS)
+					want = CTL_HEARTBEAT_MIN_MS;
+				else if (want > CTL_HEARTBEAT_MAX_MS)
+					want = CTL_HEARTBEAT_MAX_MS;
+			}
+			hb_period_ms = want;
+			/* Start the schedule from now, so the first beat is
+			 * one period away rather than immediate-and-then-late. */
+			hb_last_ms = ctl_port_millis();
+		}
+
+		hb.seq       = hb_seq;
+		hb.uptime_ms = ctl_port_millis();
+		hb.period_ms = hb_period_ms;
+		hb.dropped   = hb_dropped;
+		ctl_port_counters(&hb.counters);
+		ctl_respond(h->req_id, h->opcode, 0, &hb, sizeof(hb));
+		return;
+	}
+
 	case CTL_OP_TEMP: {
 		ctl_temp_t t;
 		uint16_t n = CTL_TEMP_SAMPLES_DEFAULT;
@@ -803,6 +860,65 @@ static uint8_t  rx_buf[512];
 static uint32_t rx_buf_len;
 static uint32_t rx_buf_at;
 
+/*
+ * One beat, if one is due. Called from ctl_service(), which is called
+ * from the main loop - so the beat stops when the loop does, and that
+ * silence is the signal the whole feature exists to produce.
+ *
+ * Deliberately *not* driven from an interrupt. A timer ISR could keep
+ * beating through a stalled loop and report more, but it would be
+ * writing a USB endpoint from interrupt context on the deployed path,
+ * which invariant 6 forbids for reasons that still apply here. The
+ * absence of a beat already carries the fact that matters; what an ISR
+ * would add is *where* it stopped, and that belongs in a debug-only
+ * instrument rather than in the protocol every board runs.
+ */
+static void ctl_heartbeat_due(void)
+{
+	ctl_heartbeat_t hb;
+	uint32_t now;
+
+	if (hb_period_ms == CTL_HEARTBEAT_OFF_MS)
+		return;
+
+	now = ctl_port_millis();
+	if (now - hb_last_ms < hb_period_ms)
+		return;
+
+	/*
+	 * Advance by the period rather than to `now`, so a beat delayed by
+	 * a busy pass does not shift the whole schedule after it. If the
+	 * loop was away for longer than a whole period, resynchronise
+	 * instead of emitting a burst to catch up: a burst is exactly the
+	 * unbounded work invariant 7 refuses, and the gap in `seq` has
+	 * already told the host what happened.
+	 */
+	if (now - hb_last_ms >= 2u * hb_period_ms)
+		hb_last_ms = now;
+	else
+		hb_last_ms += hb_period_ms;
+
+	hb.seq       = ++hb_seq;
+	hb.uptime_ms = now;
+	hb.period_ms = hb_period_ms;
+	hb.dropped   = hb_dropped;
+	ctl_port_counters(&hb.counters);
+
+	/*
+	 * ctl_respond counts a refused write in ctl_tx_dropped, but that
+	 * counter is shared with answers and a lost *beat* is a different
+	 * fact - it means the host is not reading, which is worth knowing
+	 * separately from a lost reply. Sample it around the call.
+	 */
+	{
+		uint32_t before = ctl_tx_dropped;
+
+		ctl_respond(0, CTL_OP_HEARTBEAT, 0, &hb, sizeof(hb));
+		if (ctl_tx_dropped != before)
+			hb_dropped++;
+	}
+}
+
 void ctl_service(void)
 {
 	/* Abandon a frame that stopped arriving. Unsigned subtraction is
@@ -813,6 +929,11 @@ void ctl_service(void)
 		rx_magic_at = 0;
 		ctl_rx_bad++;
 	}
+
+	/* Before the early return below: a beat is due whether or not the
+	 * host has sent anything, and the quiet channel is exactly the case
+	 * it exists for. */
+	ctl_heartbeat_due();
 
 	if (rx_buf_at >= rx_buf_len) {
 		rx_buf_len = ctl_port_read(rx_buf, sizeof(rx_buf));

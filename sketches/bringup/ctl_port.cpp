@@ -240,7 +240,8 @@ void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
  */
 uint32_t ctl_port_capabilities(void)
 {
-	return CTL_CAP_OCCUPANCY | CTL_CAP_LOAD | CTL_CAP_TEMP | CTL_CAP_GEN;
+	return CTL_CAP_OCCUPANCY | CTL_CAP_LOAD | CTL_CAP_TEMP | CTL_CAP_GEN
+	     | CTL_CAP_HEARTBEAT;
 }
 
 bool ctl_port_stream_stats(ctl_stream_stats_t *out)

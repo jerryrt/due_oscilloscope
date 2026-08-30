@@ -93,6 +93,7 @@
 #define CTL_OP_STREAM_STATS 0x0023u   /* what `?` prints */
 #define CTL_OP_BENCH      0x0025u   /* what `B`'s bench half prints */
 #define CTL_OP_TEMP       0x0026u   /* the SAM3X's internal temperature sensor */
+#define CTL_OP_HEARTBEAT  0x0027u   /* the device's own periodic liveness beat */
 #define CTL_OP_CAPABILITY 0x0003u   /* which optional opcodes this build has */
 
 /*
@@ -128,6 +129,7 @@
 #define CTL_CAP_LOAD          (1u << 4)
 #define CTL_CAP_TEMP          (1u << 5)
 #define CTL_CAP_GEN           (1u << 6)
+#define CTL_CAP_HEARTBEAT     (1u << 7)
 
 /*
  * The reply carries the opcodes themselves, ascending - not the bitmask.
@@ -214,6 +216,61 @@ typedef struct __attribute__((packed)) {
 	uint32_t abandoned;      /* playback stopped itself; host went away */
 	uint32_t drain_polls;    /* main-loop fallback drains attempted */
 } ctl_counters_t;
+
+/*
+ * HEARTBEAT: the one frame the device sends without being asked.
+ *
+ * Every other opcode here is host-initiated, and that is a blind spot
+ * rather than a design: the things worth knowing about a board are
+ * exactly the things it cannot answer questions during. Issue #33 hung
+ * Track A's main loop, and console, control channel and GET_LOAD went
+ * dark together because all three are answered *by* that loop - so the
+ * device looked identical to a board that had been unplugged, and the
+ * only recovery anyone tried also reset it and erased the evidence.
+ *
+ * A beat the device sends on its own schedule turns that silence into
+ * a signal. `seq` is what makes it one: a host that sees 41, 42, 45
+ * knows two beats were lost, and a host that sees nothing at all knows
+ * the loop stopped - neither of which it can learn by asking.
+ *
+ * Sent as the notification form docs/control-protocol.md already
+ * specifies - CTL_FLAG_RESPONSE set, `req_id` zero - so no version bump
+ * is needed and a host that does not know the opcode drops it: every
+ * existing caller matches replies by req_id and discards the rest.
+ *
+ * It carries ctl_counters_t whole rather than a summary. The host
+ * already parses that layout for CTL_OP_COUNTERS, and a second, smaller
+ * account of the same counters is how two numbers for one quantity get
+ * into a codebase.
+ */
+typedef struct __attribute__((packed)) {
+	uint32_t seq;             /* beats since boot; a gap is a dropped beat */
+	uint32_t uptime_ms;
+	uint32_t period_ms;       /* the cadence the device believes it keeps */
+	uint32_t dropped;         /* beats the endpoint refused, cumulative */
+	ctl_counters_t counters;  /* the existing layout, parsed by the same code */
+} ctl_heartbeat_t;
+
+/* host/control.py parses this as "<IIII" + the counters format; a layout
+ * that drifts from that is a silent misparse, not a link error. */
+CTL_STATIC_ASSERT(sizeof(ctl_heartbeat_t) == 16u + sizeof(ctl_counters_t),
+                  "ctl_heartbeat_t is a wire format, not a struct layout");
+
+/*
+ * Off by default, and the reason is invariant 7 rather than caution.
+ *
+ * A beat is a write to an endpoint the host may not be reading. Both
+ * tracks refuse rather than block there, so an unread beat costs a
+ * counter and not the main loop - but a board that pushes at a host
+ * which never asked is still a board deciding for itself what the wire
+ * carries. The host enables it, names the cadence, and can stop it.
+ *
+ * The clamp exists for the same reason every other request is clamped:
+ * the cost of a pass must not depend on what a host sent.
+ */
+#define CTL_HEARTBEAT_OFF_MS       0u
+#define CTL_HEARTBEAT_MIN_MS      20u
+#define CTL_HEARTBEAT_MAX_MS   60000u
 
 /*
  * `?` over the control channel. Twenty-four counters and a uart_flush is

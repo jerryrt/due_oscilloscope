@@ -44,6 +44,7 @@ OP_STREAM_STATS = 0x0023
 OP_LOAD = 0x0024
 OP_BENCH = 0x0025
 OP_TEMP = 0x0026
+OP_HEARTBEAT = 0x0027
 
 LOAD_BUCKETS = 32
 
@@ -66,6 +67,8 @@ _COUNTERS = struct.Struct("<15I")
 _OCC = struct.Struct("<IIIIIBBH")
 _RATE_PAGE = struct.Struct("<BBHHH")
 _TEMP = struct.Struct("<IIHHHBBII")
+#: seq, uptime_ms, period_ms, dropped, then ctl_counters_t whole.
+_HEARTBEAT = struct.Struct("<4I" + _COUNTERS.format.lstrip("<"))
 
 # Matches CTL_TEMP_SAMPLES_* in lib/due_shared/src/ctl_wire.h. Passed
 # through rather than enforced here: the device clamps and reports what
@@ -524,6 +527,61 @@ class Control:
             "adc_acr": adc_acr,
             "tson": bool(adc_acr & (1 << 4)),
         }
+
+    def _decode_heartbeat(self, payload):
+        f = _HEARTBEAT.unpack(payload)
+        seq, uptime_ms, period_ms, dropped = f[:4]
+        c = f[4:]
+        return {
+            "seq": seq, "uptime_ms": uptime_ms, "period_ms": period_ms,
+            "dropped": dropped,
+            "counters": {
+                "dev_us": c[0], "bytes_in": c[1], "produced": c[2],
+                "consumed": c[3], "underruns": c[4], "isr_calls": c[5],
+                "endtx": c[6], "spans": c[7], "partial": c[8],
+                "occ_min": c[9], "svc_calls": c[10], "loop_passes": c[11],
+                "run_us": c[12], "abandoned": c[13], "drain_polls": c[14],
+            },
+        }
+
+    def heartbeat(self, period_ms=None):
+        """Read the beat setting, or set it. Returns the device's answer.
+
+        `period_ms=0` stops it. Anything else is clamped by the device
+        to [CTL_HEARTBEAT_MIN_MS, CTL_HEARTBEAT_MAX_MS] and the reply
+        says what it actually took, so the caller never has to assume
+        its request was honoured.
+        """
+        payload = b"" if period_ms is None else struct.pack("<I", period_ms)
+        frame = self.call(OP_HEARTBEAT, payload)
+        return self._decode_heartbeat(frame.payload)
+
+    def beats(self, seconds, limit=None):
+        """Collect unsolicited heartbeats for `seconds`.
+
+        The device sends these on its own schedule with `req_id` zero,
+        which every request() drops as "not my answer" - so they have to
+        be read somewhere that is looking for them, and this is it.
+
+        The point of the sequence number is what this returns: gaps mean
+        beats the endpoint refused because nothing was reading, and no
+        beats at all means the main loop stopped, which is the one thing
+        a request-response channel can never tell you.
+        """
+        end = time.time() + seconds
+        out = []
+        while time.time() < end:
+            frame = self.recv(timeout=max(0.0, end - time.time()))
+            if frame is None:
+                break
+            if frame.req_id != 0 or frame.opcode != OP_HEARTBEAT:
+                continue
+            if not frame.crc_ok:
+                raise ProtocolError(f"bad checksum on {frame!r}")
+            out.append(self._decode_heartbeat(frame.payload))
+            if limit is not None and len(out) >= limit:
+                break
+        return out
 
     def capabilities(self):
         """The opcodes this build dispatches, as a set of numbers.

@@ -541,3 +541,60 @@ def test_the_capability_list_matches_what_the_device_actually_does(link, track):
         f"dispatch on {len(wrong)} opcode(s): {'; '.join(wrong)}. The list "
         f"is built from the word the dispatch refuses on, so this means "
         f"ctl_port_capabilities() and the handler disagree.")
+
+
+def test_the_heartbeat_is_the_device_talking_first(link, track):
+    """The one frame the device sends without being asked.
+
+    Every other opcode here is host-initiated, which is a blind spot
+    rather than a design: what is worth knowing about a board is exactly
+    what it cannot answer questions during. Issue #33 stopped Track A's
+    main loop and the console, the control channel and GET_LOAD went
+    dark together, because all three are answered *by* that loop.
+
+    So this asserts the properties that make a beat useful rather than
+    the fact that one arrived. It is periodic to the cadence the device
+    agreed to; `seq` increments by one, which is what turns a lost beat
+    into a visible gap rather than a slightly stale number; and it
+    carries a loop-pass counter that moves, which is the liveness signal
+    itself.
+    """
+    requires(link, control.OP_HEARTBEAT)
+
+    assert link.heartbeat(0)["period_ms"] == 0, "the beat must start off"
+
+    period = 100
+    got = link.heartbeat(period)
+    assert got["period_ms"] == period, (
+        f"asked for {period} ms and the device reports "
+        f"{got['period_ms']}; the reply is meant to say what it took")
+    try:
+        beats = link.beats(1.5)
+
+        assert len(beats) >= 8, (
+            f"{len(beats)} beats in 1.5 s at a {period} ms cadence; the "
+            f"device stopped talking or the notification form is not "
+            f"reaching the host")
+
+        gaps = {b["seq"] - a["seq"] for a, b in zip(beats, beats[1:])}
+        assert gaps == {1}, (
+            f"sequence gaps {sorted(gaps)}: a beat is only a liveness "
+            f"signal if a missing one is visible, which is what seq is for")
+
+        spans = [b["uptime_ms"] - a["uptime_ms"]
+                 for a, b in zip(beats, beats[1:])]
+        assert all(abs(s - period) <= period // 2 for s in spans), (
+            f"intervals {spans} ms against a {period} ms cadence: the "
+            f"device is not keeping its own schedule")
+
+        passes = [b["counters"]["loop_passes"] for b in beats]
+        assert passes[-1] > passes[0], (
+            "loop_passes did not move across the run, so the beat is "
+            "arriving but reports nothing about whether the loop is "
+            "running - which is the whole point of carrying it")
+    finally:
+        link.heartbeat(0)
+
+    assert link.beats(0.6) == [], (
+        "beats kept arriving after the cadence was set to 0; a device "
+        "that cannot be told to stop pushing is one a host cannot own")
