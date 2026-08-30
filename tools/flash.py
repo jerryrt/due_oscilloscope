@@ -515,9 +515,12 @@ def _log_flash(binary) -> None:
         import hashlib
         import json
         h = hashlib.sha256(open(binary, "rb").read()).hexdigest()
+        root = image_work_tree(binary)
         def git(*a):
+            if root is None:
+                return None
             try:
-                return subprocess.run(("git",) + a, cwd=REPO, text=True,
+                return subprocess.run(("git",) + a, cwd=root, text=True,
                                       capture_output=True,
                                       timeout=5).stdout.strip() or None
             except Exception:
@@ -550,6 +553,9 @@ def _log_flash(binary) -> None:
             "binary": os.path.relpath(binary, REPO),
             "sha256": h,
             "repo_rev": git("rev-parse", "--short", "HEAD"),
+            "source_root": (os.path.relpath(root, REPO)
+                            if root and os.path.abspath(root)
+                            != os.path.abspath(REPO) else None),
             "dirty": bool(porcelain),
             "dirty_sha": (hashlib.sha256(delta.encode()).hexdigest()
                           if porcelain else None),
@@ -560,9 +566,46 @@ def _log_flash(binary) -> None:
             f.flush()
         dirt = (f" (dirty {rec['dirty_sha'][:8]})" if rec["dirty"]
                 else "")
-        print(f"==> logged: {rec['repo_rev']}{dirt} sha {h[:12]}")
+        rev = rec["repo_rev"] or "no-commit (image outside any work tree)"
+        where = f" from {rec['source_root']}" if rec["source_root"] else ""
+        print(f"==> logged: {rev}{dirt}{where} sha {h[:12]}")
     except Exception as e:                                    # noqa: BLE001
         print(f"==> could not log the flash: {e}", file=sys.stderr)
+
+
+def image_work_tree(binary):
+    """The git work tree that *contains* `binary`, or None.
+
+    Everything below used to ask `REPO` - the checkout flash.py itself
+    lives in - what commit an image was built from. That is right only
+    while the image was built here, and this bench is the one that
+    flashes images that were not: it is the only bench that can reflash
+    freely, so it is where a bisect happens, and a bisect builds in a
+    second work tree on purpose.
+
+    Measured on windows-desk 2026-08-30, reflashing three images to
+    settle issue #5: the log recorded `repo_rev` b76f3c1, the current
+    HEAD, against an image built from 8e300d2 in another work tree. The
+    docstring on check_not_stale already names this exact failure - "a
+    log that says a board runs a commit it does not run is worse than no
+    log" - for a different cause. The cause is the same assumption, and
+    it also made the staleness guard compare a historical image against
+    today's sources, which refuses every correct bisect flash.
+
+    `--show-toplevel` resolves a linked work tree to its own root, which
+    is what a `git worktree add` bisect needs. An image outside every
+    work tree - a copy in a scratch directory, which is also how a
+    bisect gets done - has no commit, and saying so is the point: the
+    caller writes null rather than the wrong answer.
+    """
+    try:
+        top = subprocess.run(("git", "rev-parse", "--show-toplevel"),
+                             cwd=os.path.dirname(os.path.abspath(binary)),
+                             text=True, capture_output=True,
+                             timeout=5).stdout.strip()
+    except Exception:                                        # noqa: BLE001
+        return None
+    return top or None
 
 
 def newest_source(binary):
@@ -575,9 +618,10 @@ def newest_source(binary):
     flash log.
     """
     track = provenance.track_of_binary(binary)
+    root = image_work_tree(binary) or REPO
     newest, newest_at = None, 0.0
     for rel in provenance.fw_source_paths(track):
-        base = os.path.join(REPO, rel)
+        base = os.path.join(root, rel)
         if os.path.isfile(base):
             cands = [base]
         elif os.path.isdir(base):
