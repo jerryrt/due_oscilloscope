@@ -1298,6 +1298,28 @@ def parse_play(text):
 # behind a working-looking measurement taken the slow way.
 _LINK_GONE = (OSError, ValueError)
 
+
+def _note_fallback(board, what):
+    """Say out loud that a measurement came off printf instead.
+
+    The control channel reads a counter in 146 us; `B` and `O` cost
+    13.14 ms and 15.40 ms of blocked main loop, taken while the sample
+    path is running. That is invariant 8, and swapping one instrument
+    for the other mid-suite in silence is how a run ends up holding two
+    populations of measurements with nothing to tell them apart.
+
+    A warning rather than a print, for the reason `ctl()` already gives:
+    pytest captures stdout per test and shows it only on failure, so a
+    downgrade that did not fail anything would be swallowed. A warning
+    reaches the run summary either way.
+    """
+    warnings.warn(
+        "%s fell back to the console: the control link dropped (%s). "
+        "This measurement was taken with printf blocking the main loop "
+        "- invariant 8 - and is not comparable with one taken over the "
+        "control channel." % (what, board.ctl_why or "reason not recorded"),
+        RuntimeWarning, stacklevel=3)
+
 # Console key names, so the control channel produces a PlayCounters
 # indistinguishable from the console's and no caller has to know which
 # path it came from.
@@ -1332,6 +1354,7 @@ def play_counters(board, secs=1.2):
             # printf and report the wrong instrument as working - which
             # is what this whole migration exists to stop. It escapes.
             board.drop_ctl()
+            _note_fallback(board, "play_counters()")
     board.cmd("B")
     time.sleep(0.5)
     got = parse_play(board.drain_console(secs))
@@ -1357,6 +1380,7 @@ def occupancy(board, secs=1.2):
             return got
         except _LINK_GONE:
             board.drop_ctl()
+            _note_fallback(board, "occupancy()")
     board.cmd("O")
     time.sleep(0.3)
     got = parse_occ(board.drain_console(secs))
@@ -1528,12 +1552,46 @@ class Board:
         return self._ctl_why
 
     def drop_ctl(self):
+        """Drop the control link, and let the next caller re-establish it.
+
+        `_ctl_tried` is cleared deliberately, and that is the whole
+        point of this function having a docstring. It used to survive
+        the drop, so `ctl()`'s cache returned None for ever after: one
+        transient transport error - or one objective-0c close() wedge,
+        which re-enumerates the native port and is *guaranteed* to
+        produce one - silently turned into "this board has no control
+        channel" for the rest of the session.
+
+        Measured on mac-bench, twelve runs of `run_play` at RC 65/44/39
+        with the phases timed: before the wedge a run billed 4.58-4.75 s
+        and read its counters in 2-167 ms; after it, every run billed
+        7.80-7.88 s and spent 1.72 s in `play_counters` and 1.52 s in
+        `occupancy`. **+3.2 s on every subsequent run**, dead stable, and
+        nothing in the output said the instrument had changed.
+
+        The time is the smaller half. The fallback reads the counters
+        with `B` and `O` over the console, which is 13.14 ms and
+        15.40 ms of blocked main loop *during the thing being measured* -
+        invariant 8, and precisely what the control channel exists to
+        stop. A suite that wedges once therefore contains two
+        populations of measurements taken with two different
+        instruments, with no marker separating them.
+        `test_control.py` already asserts `via == "control"`, but it
+        runs seventh in `FILE_ORDER` and the wedge happens in the
+        playback tests that run after it.
+
+        Re-arming costs at most one further `ctl()` attempt cycle: a
+        genuine failure sets `_ctl_tried` again and is cached from then
+        on, so a board whose command port is really gone pays this once
+        and not per call.
+        """
         if self._ctl is not None:
             try:
                 self._ctl.close()
             except Exception:                                # noqa: BLE001
                 pass
         self._ctl = None
+        self._ctl_tried = False
 
     # -- control port ------------------------------------------------
     def cmd(self, text):
