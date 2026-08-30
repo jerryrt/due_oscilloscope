@@ -27,6 +27,7 @@ exactly that.
 import os
 import re
 import shutil
+import sys
 import subprocess
 
 import pytest
@@ -51,17 +52,47 @@ _BUILD_HINT = ("build the firmware first: cmake --build build "
 
 
 def _nm():
-    for exe in ("arm-none-eabi-nm", "nm"):
+    """arm-none-eabi-nm, asked for rather than assumed to be on PATH.
+
+    CLAUDE.md: "Ask tools/toolchain.py where the tools are; do not
+    assume PATH... on Windows none of them is on PATH". This bench is
+    macOS with the xPack toolchain unpacked under tools/, and it is not
+    on PATH either - so a PATH-only lookup skipped this test here, and
+    would skip it on windows-desk for the same reason.
+
+    That matters more than an ordinary skip. This is the guard for the
+    owner's hard rule - no malloc, it must not break - and a guard that
+    silently skips on two of three benches is not enforcing anything. It
+    would have gone green on every run that never linked the toolchain
+    into PATH, which is most of them.
+
+    PATH first, because it is free when it works; the registry second.
+    """
+    for exe in ("arm-none-eabi-nm",):
         p = shutil.which(exe)
-        if p and "arm-none-eabi" in exe:
+        if p:
             return p
-    return shutil.which("arm-none-eabi-nm")
+    try:
+        sys.path.insert(0, os.path.join(REPO, "tools"))
+        import toolchain                              # noqa: PLC0415
+        # "arm_toolchain" is the registry's name for it, and the entry
+        # resolves to the bin directory plus the gcc inside it. nm is
+        # its sibling; asking for "arm-none-eabi-gcc" raises KeyError.
+        bindir, _gcc = toolchain.resolve("arm_toolchain")
+        for name in ("arm-none-eabi-nm", "arm-none-eabi-nm.exe"):
+            cand = os.path.join(bindir, name)
+            if os.path.exists(cand):
+                return cand
+    except Exception:                                 # noqa: BLE001
+        pass
+    return None
 
 
 def _defined_symbols(elf):
     nm = _nm()
     if not nm:
-        pytest.skip("arm-none-eabi-nm not on PATH; run tools/toolchain.py")
+        pytest.skip("arm-none-eabi-nm not found on PATH or in "
+                    "toolchains.json - the heap guard cannot run")
     out = subprocess.run([nm, "--defined-only", elf],
                          capture_output=True, text=True, timeout=30)
     assert out.returncode == 0, out.stderr[-500:]
