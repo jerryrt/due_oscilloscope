@@ -3421,4 +3421,15 @@ def flash(track, control=None, retries=2, build=False):
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             last = e
             time.sleep(2.0)
-    raise BoardError(f"flashing track {track} failed: {last}")
+    # The child's output, not only its exit status. stdout and stderr are
+    # captured here so a flash does not spray into a test run, and
+    # CalledProcessError does not put them in its str(), so "returned
+    # non-zero exit status 1" was the whole diagnosis. flash.py refuses
+    # for reasons worth reading - a stale image, no bossac, a held port -
+    # and every one of them was arriving as that one sentence.
+    out = getattr(last, "output", None) or getattr(last, "stdout", None) or b""
+    if isinstance(out, bytes):
+        out = out.decode("utf-8", "replace")
+    tail = "\n".join(out.strip().splitlines()[-12:])
+    raise BoardError(f"flashing track {track} failed: {last}"
+                     + (f"\n{tail}" if tail else ""))
