@@ -446,7 +446,15 @@ comb's amplitude and refuses the conclusion below 2:1, because at 12 s
 captures the floor was 0.98 against a 1.04 code comb and "detectable by
 6%" is the same mistake one step further along.
 
-### The second lattice is 105 microseconds, not 21 of anything
+### The second lattice: a time or a count, and still undecided
+
+**The section that follows claimed 105 microseconds and is WITHDRAWN.**
+It is kept because the reasoning is right up to the point where it
+fails, and because the arm that refutes it is worth as much as the arm
+that suggested it. Read the retraction at the end of the section before
+quoting any of it.
+
+#### The original claim, which does not hold
 
 Every arm on this issue was taken at **ADC RC 195** - 200,000
 conversions a second, where 21 conversions is exactly 105 us. The count
@@ -490,6 +498,43 @@ independent evidence of one. What matters is that 105 us is a number
 worth searching the datasheet and the USB stack for, which "21" never
 was - and since the lattice is host-fed-path-only, the USB side is where
 to start.
+
+#### Why it fails, and what is actually left
+
+RC 98 at hold 1 puts the DAC at 397,959 Hz. There the three candidate
+readings separate cleanly: 21 DAC updates predicts a gap of 21, 21 ADC
+conversions also predicts 21 (one update IS one conversion at hold 1),
+and 105 us predicts 41.8, so 41 or 42.
+
+**Thirty-eight captures. Gaps of 41 or 42: zero. Gap 21: 130.**
+
+At the per-capture draw rate of about 0.2 that is a probability of
+0.0002, so it is not a missed draw. And the arm is healthy - underruns
+0, occmin 24, the same as RC 195 - so it is not a starved feed either.
+
+So the position is:
+
+- Every arm at **RC 195** fits "21 ADC conversions" and "105 us"
+  equally, because at a fixed ADC rate they are the same prediction.
+  Nothing taken there can decide it, and nearly everything was taken
+  there.
+- **RC 292 at hold 2** gave 7 updates, which fits 105 us (7.0) and not
+  21 conversions (10.5). But its DOMINANT gap was 64, at 47 occurrences
+  against the 7's 42, and 64 is 512/8 - a plausible artifact of the fold
+  length rather than a feature of the signal. That arm is not clean.
+- **RC 98 at hold 1** refutes 105 us outright.
+
+**So the unit is undecided, and "21 ADC conversions" is the reading with
+more support.** What is established is narrower and worth stating on its
+own: at a fixed ADC rate, the gap in DAC updates is 21 divided by the
+hold, over holds 1 to 4 and on two benches.
+
+The lesson is the one this issue keeps teaching in new clothes. Four
+arms agreeing did not mean four independent confirmations - they shared
+a fixed ADC rate, which made them one arm repeated. The RC 292 result
+looked like the fifth, independent one and turned out to rest on a
+minority feature of a census whose majority is probably a fold artifact.
+**Count the assumptions the arms share before counting the arms.**
 
 ### Only one of the two lattices is device-side
 
