@@ -241,6 +241,41 @@ wedged. Only the track differs, so it is neither the harness nor
 Windows' backpressure - that was the first hypothesis and the control
 killed it.
 
+**Refined to a wall-clock constant, with one variable moved at a time.**
+The sweep above moves the DAC rate, which also moves device-side work.
+Holding the DAC at 200,000 sps and moving only the host feed rate, then
+moving the DAC rate alone:
+
+| DAC | feed | stall | bytes |
+|---|---|---|---|
+| 200 k | 400 kB/s | 8.41 s | 3,385,344 |
+| 200 k | 200 kB/s | 8.42 s | 1,699,840 |
+| 200 k | 100 kB/s | 8.42 s | 862,208 |
+| **400 k** | 400 kB/s | **8.42 s** | 3,388,928 |
+
+Invariant across 4x of feed rate and 2x of DAC rate while the bytes
+scale exactly with the feed. A fixed DAC-update count predicts 4.21 s
+for the last row. **Ring occupancy is excluded too**: the slower arms
+under-feed the device, so the ring runs down instead of staying full,
+and the stall lands at the same moment.
+
+**Absolute value, and a correction to the figures above.** Console
+"dark" detection can false-positive - the detector waits 0.2 s for a `v`
+reply and a merely *loaded* loop can exceed that without being dead. Read
+with a 30 ms `GET_LOAD` poll, which costs ~0.015 ms against a console
+command's 13-20 ms (invariant 8), the stall interval is
+**[8.844, 9.141] s**; the host write blocks later still, at 8.859-8.860 s,
+once buffering drains. The *invariance* stands because every arm used
+one detector; the *number* should be quoted from the control channel.
+
+**2^23 us = 8.388608 s is excluded** - what a 24-bit microsecond
+quantity crossing its top bit would look like, 0.4% from the console
+figure, and outside the measured interval. Recorded because the
+coincidence is good enough to cost someone an evening.
+
+**It is deterministic to the packet**: 3,562,496 B at stall on two runs,
+write-block reproducing to 1 ms.
+
 **It is governed by feed duration, and by nothing else measured.** Seven
 runs across three rates spanning 7x:
 
