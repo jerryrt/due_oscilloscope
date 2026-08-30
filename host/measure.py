@@ -3368,6 +3368,12 @@ def flash(track, control=None, retries=2, build=False):
             if track == "b":
                 env = _tool_env()
                 if build:
+                    # No --clean-first here: CMakeLists.txt's
+                    # enforce_clean_build target already makes every
+                    # build of baremetal_bringup a full one, so this
+                    # would clean twice. The enforcement lives in one
+                    # place per build system and tests/test_clean_build.py
+                    # fails if either is removed.
                     subprocess.run([_exe("cmake", env), "--build", "build",
                                     "-j"],
                                    cwd=REPO, check=True, env=env,

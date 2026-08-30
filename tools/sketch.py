@@ -177,7 +177,22 @@ def main() -> int:
             f"Arduino data directory, or move that with ARDUINO_DIRECTORIES_DATA.")
     print(f"==> variant  : {variant}")
     print(f"==> ldscript : {ldscript}")
-    cmd = [cli, "compile", "--fqbn", FQBN,
+    # --clean, always.
+    #
+    # arduino-cli caches object files per build path and does not notice
+    # every change under --libraries. On 2026-08-29 that shipped a Track
+    # A image built from the *new* ctl_port.cpp and a *stale* ctl.c: the
+    # capability word had CTL_CAP_HEARTBEAT set, so the opcode worked,
+    # while the capability *report* omitted it, because that table lives
+    # in the file the cache reused. A board that answers correctly and
+    # describes itself wrongly is worse than one that fails, and nothing
+    # in the output said a cached object had been used - the only tell
+    # was 8 bytes of flash. `rm -rf build/track_a` fixed it.
+    #
+    # This project builds in seconds and measures for hours; a cache
+    # that can silently mix two revisions is not worth the seconds. See
+    # also metrics.py's "a build cache probably served a stale object".
+    cmd = [cli, "compile", "--clean", "--fqbn", FQBN,
            "--build-property", "build.f_cpu=78000000L",
            "--build-property", f"build.ldscript={ldscript}",
            # Where the shared wire contract lives. arduino-cli searches

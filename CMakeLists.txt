@@ -76,6 +76,37 @@ set_target_properties(baremetal_bringup PROPERTIES
     LINK_DEPENDS ${LINKER_SCRIPT}
 )
 
+# Every build of this target is a full build, and that is deliberate.
+#
+# An incremental build here has already shipped a mixed-revision image.
+# On 2026-08-29 arduino-cli's cache produced a Track A binary from a new
+# ctl_port.cpp and a stale ctl.c: the capability word had the new bit set
+# so the opcode worked, while the capability *report* omitted it, because
+# that table lived in the file the cache reused. A board that answers
+# correctly and describes itself wrongly is worse than one that fails,
+# and nothing in the build output said a cached object had been used -
+# the only tell was 8 bytes of flash.
+#
+# CMake's dependency tracking is better than that cache, but the failure
+# is not worth the saving: a full build of this target is about 0.6 s on
+# the slowest bench, against measurement runs of nine minutes to eight
+# hours that quote the resulting image by commit. tools/sketch.py passes
+# --clean for the same reason on the other track, and
+# tests/test_clean_build.py fails if either is removed.
+#
+# Delete the object directory rather than depend on the compiler: it is
+# the one step that cannot be fooled by a timestamp.
+# CMake's own clean target, not `rm -rf` on the object directory: that
+# also removes build.make, which the generator needs, and the build then
+# fails with "No rule to make target". Invoking the clean target is the
+# portable spelling and works under every generator, which matters
+# because this has to run on windows-desk too.
+add_custom_target(enforce_clean_build
+    COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
+    COMMENT "Enforcing a clean build (see tests/test_clean_build.py)"
+    VERBATIM)
+add_dependencies(baremetal_bringup enforce_clean_build)
+
 add_custom_command(TARGET baremetal_bringup POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:baremetal_bringup>
             $<TARGET_FILE_DIR:baremetal_bringup>/baremetal_bringup.bin

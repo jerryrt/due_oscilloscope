@@ -720,6 +720,18 @@ One logical change per commit. Every commit should build.
 Both tracks work. `~/.local/bin` must be on `PATH` (holds `arduino-cli`
 and `cmake`).
 
+**Every build is a full build, and it is enforced rather than
+remembered.** `CMakeLists.txt`'s `enforce_clean_build` target cleans
+before every build of the firmware, and `tools/sketch.py` passes
+`--clean` to arduino-cli; `tests/test_clean_build.py` fails if either is
+removed or if a third build path appears. The cost is 0.6 s for Track B
+and 2.2 s for Track A against measurement runs of nine minutes to eight
+hours - and an incremental build has already shipped a mixed-revision
+image here, where the capability word carried a new bit and the
+capability *report* did not, because that table sat in the file the
+cache reused. Nothing in the output said so; the only tell was 8 bytes
+of flash.
+
 ```sh
 # Track B: bare metal
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
