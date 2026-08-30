@@ -301,7 +301,8 @@ might, and is recorded rather than dismissed. Also **time against
 accumulated passes** - the pass rate is ~71 k/s in every run, so 8.8 s
 and ~630,000 passes are the same event here.
 
-**It is a hang, not a fault and not a self-reset.** `fault.cpp` writes
+**Not a fault and not a self-reset - but "hang" was an inference too
+far, and the recovery behaviour splits by host.** `fault.cpp` writes
 the programming port by *polled* UART - `UART_SR`/`UART_THR` only, no
 `Serial`, no ring buffer, no interrupts - precisely so it still speaks
 when the loop is dead, and it prints before it blinks. So a HardFault
@@ -321,11 +322,36 @@ fault at all - it called `reset_input_buffer()` before each poll, which
 discards exactly the one-shot dump it was looking for.
 
 So: no fault reported, no reset taken, on a path proven working seconds
-earlier. The loop is **stuck**, not faulted - an infinite loop or a
-blocking wait - which is a different part of the code from where a fault
-would point. Two caveats kept: a hang *inside* an ISR at a priority that
-never returns produces the same silence, and the override is
-`HardFault_Handler` specifically.
+earlier. That much is solid. **What does not follow from it is "hang"**,
+which this file said first: every probe behind it either let the feed
+run out or timed out with the feeder still pushing, so host pressure was
+never removed and a recovery could not have been seen.
+
+`linux-x1` removed it and reports the heartbeat returning when the
+feeder is killed - invariant 7's failure mode, the loop starved rather
+than stopped. **That does not reproduce on windows-desk.** Two removal
+methods, console polled throughout, positive control passing immediately
+before each run, dark onset reproducible at 9.03 and 9.02 s:
+
+| method | result |
+|---|---|
+| stop writing and `close()` the native port | dark 25 s later |
+| `taskkill /T /F` on the whole feeder process tree | dark 45 s later |
+
+    linux-x1      turnover 1.3-2.6 s   recovers when the feeder is killed
+    windows-desk  turnover 6.4-8.6 s   does not recover in 45 s
+
+Two readings, unseparated: either **Windows keeps delivering queued
+bytes after the handle dies**, so the device is still fed and starvation
+never ends - making both benches the same device behaviour under
+different teardown - or the device states genuinely differ and #33 is
+not one phenomenon across hosts. `play_abandoned` incrementing after a
+kill would decide it, and cannot be read here because everything that
+reports counters is main-loop-served and a reset zeroes them.
+
+Two caveats kept on the fault evidence: a stall *inside* an ISR at a
+priority that never returns produces the same silence, and the override
+is `HardFault_Handler` specifically.
 
 This is the same signature `docs/linux.md` records as an unreproduced
 one-off ("answering neither the console nor the control channel while
