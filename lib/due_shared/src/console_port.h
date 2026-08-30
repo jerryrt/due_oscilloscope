@@ -6,18 +6,41 @@
  * no register and knows nothing about either track's drivers; grep it
  * for UOTGHS, DACC, ADC->, PIO or REG_ and the count is zero.
  *
- * Two functions, and no more. ctl_port.h's warning applies here word
- * for word: **this is not an abstraction layer and must not grow into
- * one.** It exists so that one command surface serves two tracks.
- * Anything a track genuinely does differently is a *handler*, bound by
- * console_bindings[] in console.h, not a function added here.
+ * **This is not an abstraction layer.** It is a *record* of exactly
+ * what the shared console code reaches outside itself - the same shape
+ * as stream_port.h, and for the same reason: "a seam that cannot grow
+ * without a test failing".
+ *
+ * It used to say "two functions, and no more", and that rule was
+ * rescoped on 2026-08-30 (issue #45). The count was a proxy for the
+ * property that actually matters, and it stopped being the right proxy
+ * the moment the ruling on #45 said the application layer is shared
+ * maximally: moving a handler body down means shared code calling
+ * stream_start(), which cannot be reached by include on Track A and so
+ * must be named here. Under the old rule that growth was forbidden;
+ * under this one it is allowed and *checked*.
+ *
+ * The difference is that "no more than two" is only countable, while
+ * "exactly what the shared code calls" is testable - and the test is
+ * what stops a seam becoming an abstraction layer. Adding a name here
+ * that nothing calls fails; calling something not named here fails to
+ * link. Neither is a matter of anybody's restraint.
+ *
+ * What still does NOT belong here: anything a track genuinely does
+ * *differently*. A name in this header is a contract both tracks
+ * implement with the same meaning, which is invariant 3's peer
+ * requirement made checkable at compile time. Two independent register
+ * programmings behind one name is the point; one programming reached
+ * through a wrapper is not.
  *
  * The build fact that shapes it, the same one ctl_port.h records: a
  * file inside the shared library cannot include a header from a
  * track's own folder. arduino-cli compiles a library with the library's
  * include path, so console.c cannot reach acq.h, gen.h, stream.h or
- * play.h on Track A. That is why the handlers stay in each track's own
- * source and only their names are shared.
+ * play.h on Track A. That build fact is why a moved handler needs its
+ * dependencies *named here* rather than included - it is the mechanism
+ * that forces the seam to be explicit, and it is the reason this header
+ * is a record rather than a convenience.
  */
 #ifndef CONSOLE_PORT_H
 #define CONSOLE_PORT_H

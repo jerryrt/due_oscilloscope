@@ -109,17 +109,14 @@ static void led_rx(int on)
  * paying for the banner (89 ms of blocked main loop, invariant 8). `v`
  * prints exactly this and nothing else.
  */
+/*
+ * The line itself is console_identity() in lib/due_shared - see the
+ * note beside its declaration. This track supplies FW_TRACK and the
+ * clock and nothing else.
+ */
 static void identity_line(void)
 {
-	char buf[192];
-
-	snprintf(buf, sizeof(buf), FW_ID_FORMAT,
-	         FW_TRACK, FW_VERSION_STR, CTL_VERSION, FRAME_VERSION,
-	         (unsigned long)SystemCoreClock,
-	         (unsigned long)(SystemCoreClock / 4u),
-	         (unsigned)ACQ_FRAME_BYTES, (unsigned)ACQ_BUF_SAMPLES,
-	         __DATE__, __TIME__);
-	Serial.println(buf);
+	console_identity(FW_TRACK, (unsigned long)SystemCoreClock);
 }
 
 /*

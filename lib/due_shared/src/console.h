@@ -102,6 +102,31 @@ void console_help(void);
  */
 void console_missing(void);
 
+/*
+ * The identity line, built once for both tracks.
+ *
+ * `# id: track=B fw=0.2.0 ctlver=3 framever=3 mck=...` is what
+ * `measure.parse_identity` reads and what a host refuses a pairing on,
+ * so the format string and the order of its ten arguments are wire
+ * contract. They were written twice - printf in Track B's main.c,
+ * snprintf plus Serial.println in Track A's sketch - identical
+ * argument for argument, differing only in how the line reached the
+ * wire, which is exactly what console_write() is for.
+ *
+ * `track` and `mck_hz` are passed rather than reached for. FW_TRACK is
+ * deliberately the one per-track constant (fw_version.h says so and
+ * does not include it), and SystemCoreClock lives in each track's
+ * device headers, which shared code cannot include on Track A. Passing
+ * two values keeps both out of console_port.h - the seam does not grow
+ * for this.
+ *
+ * The build stamp is now this file's rather than each track's. Every
+ * build is a full build and a test enforces it, so the shared object is
+ * recompiled every time and the stamp still says when the image was
+ * built - and now says it once instead of twice.
+ */
+void console_identity(char track, unsigned long mck_hz);
+
 #ifdef __cplusplus
 }
 #endif

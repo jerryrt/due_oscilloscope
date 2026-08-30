@@ -8,9 +8,13 @@
  */
 
 #include <stddef.h>
+#include <stdio.h>
 
 #include "console.h"
 #include "console_port.h"
+#include "ctl.h"        /* CTL_VERSION */
+#include "frame.h"      /* FRAME_VERSION, FRAME_BYTES/SAMPLES */
+#include "fw_version.h" /* FW_ID_FORMAT, FW_VERSION_STR */
 
 /*
  * ---------------------------------------------------------------------
@@ -297,4 +301,25 @@ void console_feed(int c)
 	for (arg_idx = 0; arg_idx < CONSOLE_NARGS; arg_idx++)
 		arg[arg_idx] = 0;
 	arg_idx = 0;
+}
+
+
+void console_identity(char track, unsigned long mck_hz)
+{
+	char line[192];
+
+	/*
+	 * The ADC clock is MCK/4 by PRESCAL=1, which is why 78 MHz was
+	 * chosen: 19.5 MHz sits inside the datasheet's 20 MHz limit. It
+	 * is derived here rather than passed so that a track cannot
+	 * report a divider it does not use.
+	 */
+	snprintf(line, sizeof(line), FW_ID_FORMAT,
+	         track, FW_VERSION_STR, CTL_VERSION, FRAME_VERSION,
+	         mck_hz, mck_hz / 4u,
+	         (unsigned)FRAME_BYTES, (unsigned)FRAME_SAMPLES,
+	         __DATE__, __TIME__);
+	console_write(line);
+	console_write("\n");
+	console_flush();
 }

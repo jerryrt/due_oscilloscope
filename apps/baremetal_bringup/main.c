@@ -45,14 +45,15 @@
  * without paying for the banner (89 ms of blocked main loop, invariant
  * 8). `v` prints exactly this and nothing else.
  */
+/*
+ * The line itself is console_identity() in lib/due_shared: the format
+ * and the order of its arguments are what measure.parse_identity reads,
+ * so they are wire contract and have one home. FW_TRACK and the clock
+ * are this track's to supply.
+ */
 static void identity_line(void)
 {
-	printf(FW_ID_FORMAT "\n",
-	       FW_TRACK, FW_VERSION_STR, CTL_VERSION, FRAME_VERSION,
-	       (unsigned long)SystemCoreClock,
-	       (unsigned long)(SystemCoreClock / 4u),
-	       (unsigned)ACQ_FRAME_BYTES, (unsigned)ACQ_BUF_SAMPLES,
-	       __DATE__, __TIME__);
+	console_identity(FW_TRACK, (unsigned long)SystemCoreClock);
 }
 
 /*

@@ -346,3 +346,36 @@ def test_the_channel_tags_are_not_written_out_twice_in_firmware():
         assert not bad, (
             f"{rel} defines a channel tag as a literal again ({bad}); it "
             f"must come from FRAME_CH_* so the wire value has one home")
+
+
+def test_the_identity_line_has_one_format_string():
+    """`# id:` is what a host refuses a pairing on, so it is wire contract.
+
+    It was built twice - `printf(FW_ID_FORMAT ...)` in Track B's main.c
+    and `snprintf` plus `Serial.println` in Track A's sketch - identical
+    argument for argument, differing only in how the line reached the
+    wire. Ten arguments in one order, maintained in two places, feeding
+    `measure.parse_identity` and every pairing check.
+
+    `FW_VERSION_STR` disagreeing with `FW_VERSION_MAJOR/MINOR/PATCH` is
+    the precedent: the same value written twice, wrong identically on
+    both tracks, so a board answered "which firmware are you" two ways
+    and copying kept the copies in perfect agreement at the wrong value.
+    """
+    shared = _read(os.path.join(SHARED, "console.c"))
+    assert "FW_ID_FORMAT" in shared, (
+        "console.c no longer builds the identity line; the tracks have "
+        "taken the format string back")
+
+    for track, rel in (("B", os.path.join("apps", "baremetal_bringup",
+                                          "main.c")),
+                       ("A", os.path.join("sketches", "bringup",
+                                          "bringup.ino"))):
+        text = _read(rel)
+        assert "FW_ID_FORMAT" not in text, (
+            f"Track {track} ({rel}) references FW_ID_FORMAT again. The "
+            f"line is built by console_identity(); a second use of the "
+            f"format is a second home for the argument order that "
+            f"measure.parse_identity depends on")
+        assert "console_identity(" in text, (
+            f"Track {track} does not call console_identity()")
