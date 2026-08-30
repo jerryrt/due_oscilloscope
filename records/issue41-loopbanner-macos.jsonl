@@ -6,3 +6,5 @@
 {"bench":"mac-bench","host":"macOS 12.6","issue":41,"test":"h_loop-banner-order","track":"a","image":"before","adc_hz":402061,"dac_sps":200000,"first_overrun":[1,1,1,1],"max_overrun":[4,2,6,3]}
 {"bench":"mac-bench","host":"macOS 12.6","issue":41,"test":"h_loop-banner-order","track":"a","image":"after","adc_hz":453488,"dac_sps":200000,"first_overrun":[0,0,0,0],"max_overrun":[6,9,14,6]}
 {"bench":"mac-bench","host":"macOS 12.6","issue":41,"test":"h_loop-banner-order","track":"a","image":"after","adc_hz":402061,"dac_sps":200000,"first_overrun":[0,0,0,0],"max_overrun":[3,2,2,2]}
+{"bench":"mac-bench","host":"macOS 12.6","test":"full-suite-after-0978e7f","track":"b","result":"1 failed, 557 passed, 9 skipped, 5 xfailed","failure":"test_clean_build.py::test_nothing_else_builds_behind_the_enforcement","failure_cause":"walked tools/xpack-*/ and hit CPython badsyntax_pep3120.py","firmware_regression":false}
+{"bench":"mac-bench","host":"macOS 12.6","test":"full-suite-after-0978e7f","track":"a","result":"557 passed, 10 skipped, 5 xfailed","failure":null,"firmware_regression":false}
