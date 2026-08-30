@@ -714,6 +714,8 @@ class ParsedStream:
     # them apart, and it is a handful of tuples per run because the
     # counter moves rarely.
     overrun_steps: list = None
+    # (frame_index, ts_before, ts_after, n_lost) per sequence gap.
+    seq_steps: list = None
     first_overrun: int = None
     last_overrun: int = None
     max_overrun: int = 0
@@ -826,6 +828,7 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
     """
     ps = ParsedStream(raw_bytes=len(buf))
     seq_prev = None
+    ts_prev = None
     keep_from = None
     first_shape = None
     pos = 0
@@ -880,8 +883,22 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
         ps.max_overrun = max(ps.max_overrun, overruns)
         if seq_prev is not None and seq != seq_prev + 1:
             ps.seq_gaps += 1
-            ps.dropped_frames += (seq - seq_prev - 1) & 0xFFFFFFFF
+            n_lost = (seq - seq_prev - 1) & 0xFFFFFFFF
+            ps.dropped_frames += n_lost
+            # WHERE each gap is and what the device clock did across
+            # it, not just how many there were. `seq` advances only
+            # when a frame has been handed to the USB DMA, so a gap
+            # means the device sent frames the host never saw - and
+            # the device timestamps either side then say whether it
+            # kept cadence while they vanished (a transport loss) or
+            # stalled (a loop-ordering fault). Two very different
+            # defects that `seq_gaps` alone cannot tell apart, which
+            # is the question issue #44 is stuck on.
+            if ps.seq_steps is None:
+                ps.seq_steps = []
+            ps.seq_steps.append((ps.frames, ts_prev, ts, n_lost))
         seq_prev = seq
+        ts_prev = ts
 
         settled = keep_from is None or ts >= keep_from
         _accumulate(ps, body, ts, settled, settle_cap, keep_series)
