@@ -629,7 +629,22 @@ class Server:
             "waveform_bytes": len(self.waveform),
             "stats": self.device.stats(),
             "jitter": self.jitter(),
+            # Costs the device nothing: beats arrive unbidden, so this
+            # is the newest one already in hand. `status` asking the
+            # device nothing is a documented property and this keeps it.
+            "heartbeat": self.device.heartbeat_state(),
         }
+
+    def on_heartbeat(self, hb, stalled):
+        """One beat from the device, on the pump thread.
+
+        Broadcast to every client, and to *every* client rather than
+        only subscribers: a subscriber is someone who wants sample
+        frames, and whether the board's main loop is alive is not a
+        sample. An observer watching a board it does not stream from is
+        exactly who needs this.
+        """
+        self.broadcast_event("heartbeat", beat=hb, stalled=bool(stalled))
 
 
 # -- operations ------------------------------------------------------
@@ -664,6 +679,29 @@ def _op_ping(srv, ses, msg):
 
 def _op_status(srv, ses, msg):
     return {"event": "status", "status": srv.status()}
+
+
+def _op_heartbeat(srv, ses, msg):
+    """Turn the device's beat on or off, and name its cadence.
+
+    Mutating, because it changes what the board does with its own
+    timer. The device clamps the period and the reply carries what it
+    actually took, so a client never has to assume its ask was honoured.
+
+    Off by default is the firmware's decision and this does not
+    second-guess it: a board that pushes at a host which never asked is
+    a board deciding for itself what the wire carries.
+    """
+    period = msg.get("period_ms")
+    if period is not None:
+        period = int(period)
+    state = srv.device.heartbeat(period, sink=srv.on_heartbeat)
+    if not state:
+        raise devmod.DeviceError(
+            "this device has no heartbeat: no control channel, or "
+            "firmware predating it")
+    return {"event": "heartbeat", "heartbeat": srv.device.heartbeat_state(),
+            "device": state}
 
 
 def _op_counters(srv, ses, msg):
@@ -797,8 +835,10 @@ OPS = {
     "record.start": _op_record_start,
     "record.stop": _op_record_stop,
     "console": _op_console,
+    "heartbeat": _op_heartbeat,
 }
 
 # Ops that change the device or the daemon's state. Everything else is
 # readable by any observer.
-MUTATING = {"start", "stop", "record.start", "record.stop", "console"}
+MUTATING = {"start", "stop", "record.start", "record.stop", "console",
+            "heartbeat"}

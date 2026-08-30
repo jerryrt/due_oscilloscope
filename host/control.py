@@ -169,7 +169,7 @@ class Control:
     would be read as samples.
     """
 
-    def __init__(self, path, timeout=1.0):
+    def __init__(self, path, timeout=1.0, on_unsolicited=None):
         from ports import open_raw
 
         self.path = path
@@ -177,6 +177,13 @@ class Control:
         self.fd = open_raw(path, 115200, dtr=True)
         self._buf = b""
         self._next_id = 1
+        # Called with any frame the device sent unasked - req_id 0, which
+        # is the heartbeat's form. Without it `request()` drops those on
+        # the floor while waiting for its own answer, so a caller that
+        # wants beats and replies from one port loses every beat that
+        # happens to land mid-request. Defaults to None, which is
+        # exactly the old behaviour.
+        self.on_unsolicited = on_unsolicited
 
     def close(self, wedge_s=5.0):
         """Flush, then close, and do not hang for ever if it wedges.
@@ -298,6 +305,13 @@ class Control:
                     f"no response to opcode 0x{opcode:04x} within "
                     f"{self.timeout if timeout is None else timeout:.1f} s")
             if frame.req_id != req_id:
+                # req_id 0 is not a stale answer, it is a frame nobody
+                # asked for - the heartbeat. Hand it over if anyone is
+                # listening, because this is where most beats arrive
+                # once a caller is polling counters on the same port.
+                if frame.req_id == 0 and self.on_unsolicited is not None:
+                    self.on_unsolicited(frame)
+                    continue
                 # A stale answer to an abandoned request. Drop it and
                 # keep waiting rather than returning it as this one's.
                 continue

@@ -103,6 +103,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.session.refused.connect(self._on_refused)
         self.session.status.connect(self._on_status)
         self.session.counters.connect(self._on_counters)
+        self.session.heartbeat.connect(self._on_heartbeat)
+        self.session.event.connect(self._on_event)
 
         # Everything one run accumulates, in one object with one
         # `reset()`. See `stream.AcquisitionState` for what having it in
@@ -150,6 +152,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Where a refusal goes, now that there is somewhere for it to
         # stay. See `gui/notice.py`.
         self.notice = NoticeBar()
+        # Counted from construction, not from connect: a beat can
+        # arrive on the first drain after `hello`, before the
+        # connect handler has run.
+        self._hb_seen = 0
 
         # Only ever shown while the source is a recording: a board has
         # no position, and a progress bar against one would be inventing
@@ -488,6 +494,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return self.session.client
 
     def _on_connected(self, dev, role):
+        self._hb_seen = 0
         self.health.set("link", f"{self.host}:{self.port}")
         self.health.set("source", describe_source(dev))
         self.health.set("role", role)
@@ -844,6 +851,46 @@ class MainWindow(QtWidgets.QMainWindow):
         discontinuity rules can be exercised without a widget.
         """
         return self.acq.ingest(f)
+
+    def _on_heartbeat(self, beat, stalled):
+        """One beat the device sent unasked.
+
+        This is the only thing in the window that can distinguish "the
+        board's main loop has stopped" from "the board is gone". The
+        beat is emitted from a timer interrupt while `loop_passes` comes
+        from the main loop, so a beat that keeps arriving with a frozen
+        count is the stall reporting itself - see issue #33, where every
+        other channel went dark together because all of them were
+        answered by the loop that had stopped.
+        """
+        self._hb_seen += 1
+        if stalled:
+            self.health.set("beat", f"STALLED seq {beat.get('seq', '?')}",
+                            alarm=True)
+            # Persistent, not the status bar: the 4 Hz poll would
+            # overwrite it inside 250 ms, which is what `notice.py`
+            # exists for.
+            self.notice.error(
+                "the board's main loop has stopped - beats are still "
+                "arriving from its timer, and loop_passes is frozen. "
+                "Only a reset clears this.")
+        else:
+            self.health.set("beat", f"seq {beat.get('seq', '?')}")
+
+    def _on_event(self, name, obj):
+        """Everything else the daemon pushed.
+
+        Nothing read these before: the client sorted them into a deque
+        and the window never drained it, so a refused waveform and a
+        `device_error` both expired there. `error` and `device_error`
+        are the two that carry something a poll cannot reconstruct.
+        """
+        if name == "device_error":
+            self.notice.error(f"device: {obj.get('message', '')}")
+        elif name == "error" and obj.get("id") is None:
+            # Unsolicited errors only. One carrying an id is a reply and
+            # already surfaces through the call that asked.
+            self.notice.error(f"daemon: {obj.get('message', '')}")
 
     def poll_status(self):
         """Ask; the answers arrive on `_on_status` and `_on_counters`.

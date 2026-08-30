@@ -66,6 +66,14 @@ class DaemonSession(QtCore.QObject):
     status = QtCore.Signal(dict)
     #: A `counters` reply, already unwrapped.
     counters = QtCore.Signal(dict)
+    #: One heartbeat the device sent unasked, and whether the daemon
+    #: reads it as a stalled main loop. Pushed, not polled - so it can
+    #: arrive while nothing is being asked, which is the whole point.
+    heartbeat = QtCore.Signal(dict, bool)
+    #: Any other event the daemon pushed: `started`, `stopped`,
+    #: `recording`, `recorded`, `device_error`, `error`, `awg_ok`.
+    #: Carries the event name and the whole object.
+    event = QtCore.Signal(str, dict)
 
     def __init__(self, host="127.0.0.1", port=45454, parent=None):
         super().__init__(parent)
@@ -178,6 +186,33 @@ class DaemonSession(QtCore.QObject):
             self.close(f"daemon stopped answering ({e})")
             return None
 
+    def drain_events(self):
+        """Hand over everything the daemon pushed since the last call.
+
+        The client's receive thread has been sorting these into
+        `client.events` all along - frames to one deque, replies matched
+        by id, and anything with no id here, because nobody asked for
+        it. **Nothing in the window ever read that deque**, so every
+        `device_error`, every refused waveform and now every heartbeat
+        expired in it when the 1024 wrapped.
+
+        Drained on the existing timer rather than from the receive
+        thread: Qt signals must be emitted where the widgets live.
+        """
+        c = self.client
+        if c is None:
+            return
+        while True:
+            try:
+                obj = c.events.popleft()
+            except IndexError:
+                break
+            name = obj.get("event") or ""
+            if name == "heartbeat":
+                self.heartbeat.emit(obj.get("beat") or {},
+                                    bool(obj.get("stalled")))
+            self.event.emit(name, obj)
+
     def poll(self):
         """`status`, then `counters`. Emits what came back.
 
@@ -186,6 +221,7 @@ class DaemonSession(QtCore.QObject):
         device nothing, which is what makes polling it safe at all, and
         `counters` is the one that can cost a console round trip.
         """
+        self.drain_events()
         st = self.call_quiet("status")
         if st is None:
             return

@@ -875,3 +875,102 @@ def test_a_paced_replay_follows_the_recorded_timestamps(recording,
     # replay that ignores the timestamps entirely.
     assert elapsed > 0.04, f"eight frames in {elapsed:.3f}s is not paced"
     assert elapsed < 2.0
+
+
+# -- the device's own heartbeat --------------------------------------
+#
+# Issue #33 is why these exist. When Track A's main loop stopped, the
+# console, the control channel and GET_LOAD went dark *together* -
+# every one of them is answered by that loop - so the board became
+# indistinguishable from one that had been unplugged. The beat is
+# emitted from a timer interrupt instead, which is what lets it carry
+# the failure rather than only vanish with it.
+
+def test_the_heartbeat_is_off_until_a_client_asks(srv, connect):
+    """The firmware's decision, and the daemon does not second-guess it.
+
+    A board that pushes at a host which never asked is a board deciding
+    for itself what the wire carries.
+    """
+    c = connect("control")
+    assert srv.status()["heartbeat"]["period_ms"] == 0
+    time.sleep(0.3)
+    assert not [e for e in list(c.events) if e.get("event") == "heartbeat"]
+
+
+def test_beats_reach_every_client_not_only_subscribers(srv, connect):
+    """A subscriber is someone who wants sample frames. Whether the
+    board's loop is alive is not a sample, and an observer watching a
+    board it does not stream from is exactly who needs to know."""
+    ctl = connect("control")
+    obs = connect("observer")          # never subscribes
+    ctl.call("heartbeat", period_ms=20)
+    time.sleep(0.4)
+    for who, c in (("controller", ctl), ("observer", obs)):
+        beats = [e for e in list(c.events) if e.get("event") == "heartbeat"]
+        assert beats, f"{who} got no beats"
+        assert "seq" in beats[0]["beat"]
+
+
+def test_a_frozen_loop_is_reported_while_beats_keep_arriving(srv, connect):
+    """The whole point of moving the emitter into a timer interrupt.
+
+    `seq` and `uptime_ms` come from the interrupt and keep advancing;
+    `loop_passes` comes from the main loop and stops. A beat arriving
+    with a frozen count is the stall reporting itself, live, on a board
+    with no console and no debugger.
+    """
+    c = connect("control")
+    c.call("heartbeat", period_ms=20)
+    time.sleep(0.2)
+    assert srv.status()["heartbeat"]["stalled"] is False
+    srv.device.stall_loop = True
+    time.sleep(0.4)
+    assert srv.status()["heartbeat"]["stalled"] is True
+    stalled = [e for e in list(c.events)
+               if e.get("event") == "heartbeat" and e.get("stalled")]
+    assert stalled, "no beat carried the stall to the clients"
+    # And the beats did not stop - that is the difference between this
+    # and a board that has simply gone.
+    seqs = [e["beat"]["seq"] for e in stalled]
+    assert seqs == sorted(seqs) and seqs[-1] > seqs[0]
+
+
+def test_status_still_asks_the_device_nothing(srv, connect):
+    """`docs/daemon-api.md` promises it, and the heartbeat must not be
+    the thing that breaks it: beats arrive unbidden, so reporting the
+    newest one is reading a variable, not a round trip."""
+    c = connect("control")
+    c.call("heartbeat", period_ms=20)
+    time.sleep(0.2)
+    before = srv.device.counters()["frames"]
+    for _ in range(20):
+        srv.status()
+    assert srv.device.counters()["frames"] == before
+
+
+def test_a_device_without_a_heartbeat_says_so(make_server, connect):
+    """Not a body of zeroes. A caller cannot tell that from a board
+    whose loop has stopped, which is the distinction this whole feature
+    exists to make."""
+    class Mute(devmod.FakeDevice):
+        def heartbeat(self, period_ms=None, sink=None):
+            return {}
+
+        def heartbeat_state(self):
+            return devmod.Device.heartbeat_state(self)
+
+    srv = make_server(device=Mute())
+    c = connect("control", server=srv)
+    assert srv.status()["heartbeat"] == {"supported": False}
+    with pytest.raises(clientmod.Refused):
+        c.call("heartbeat", period_ms=50)
+
+
+def test_heartbeat_needs_control(srv, connect):
+    """It changes what the board does with its own timer."""
+    connect("control")
+    obs = connect("observer")
+    with pytest.raises(clientmod.Refused) as e:
+        obs.call("heartbeat", period_ms=50)
+    assert "control" in e.value.message

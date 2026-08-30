@@ -69,6 +69,30 @@ class Device:
         it is never called on a status poll - see `stats`."""
         return {}
 
+    def heartbeat(self, period_ms=None, sink=None):
+        """Read or set the device's unsolicited beat. `{}` if it has none.
+
+        `period_ms=0` stops it, `None` only reads. `sink` is called with
+        each beat as it arrives, which is how the server broadcasts them
+        without the device knowing what a client is.
+
+        Default is "this device has no heartbeat", which is the honest
+        answer for a recording, a fake, or firmware predating it -
+        rather than a body of zeroes that a caller cannot tell from a
+        board whose loop has stopped.
+        """
+        return {}
+
+    def heartbeat_state(self):
+        """The newest beat and what it implies, without asking anything.
+
+        Safe on a status poll by construction: beats arrive unbidden, so
+        reporting the last one costs the device nothing. That is the
+        property `docs/daemon-api.md` promises of `status` and this must
+        not be the thing that breaks it.
+        """
+        return {"supported": False}
+
     def trace(self):
         """The playback ring's occupancy and the converter's own rate.
 
@@ -126,6 +150,20 @@ class FakeDevice(Device):
         self.mode = None
         self.rates = None
         self.closed = False
+        # A synthetic beat, so the whole board -> daemon -> client path
+        # is exercisable with no hardware. `stall_loop` freezes
+        # loop_passes while seq and uptime keep advancing, which is
+        # exactly what the timer-driven beat does on a real board when
+        # the main loop stops - the one behaviour worth being able to
+        # test without wedging a board to produce it.
+        self._hb_period_ms = 0
+        self._hb_seq = 0
+        self._hb_passes = 1000
+        self._hb_sink = None
+        self._hb_thread = None
+        self._hb_stop = threading.Event()
+        self._hb_stalled = False
+        self.stall_loop = False
 
     # -- control -----------------------------------------------------
     def describe(self):
@@ -231,6 +269,55 @@ class FakeDevice(Device):
         with self._lock:
             return {"frames": self._sent_frames, "awg_bytes": self._awg_bytes,
                     "underruns": 0, "overruns": 0, "seq_gaps": 0}
+
+    # -- heartbeat ----------------------------------------------------
+    def _hb_run(self):
+        prev = None
+        frozen = 0
+        while not self._hb_stop.is_set():
+            self._hb_stop.wait(self._hb_period_ms / 1000.0)
+            if self._hb_stop.is_set() or not self._hb_period_ms:
+                break
+            self._hb_seq += 1
+            if not self.stall_loop:
+                self._hb_passes += 14284      # a real board's rough rate
+            passes = self._hb_passes
+            frozen = frozen + 1 if prev == passes else 0
+            prev = passes
+            self._hb_stalled = frozen >= 2
+            hb = {"seq": self._hb_seq,
+                  "uptime_ms": int(time.monotonic() * 1000) % 2**32,
+                  "period_ms": self._hb_period_ms, "dropped": 0,
+                  "counters": {"loop_passes": passes}}
+            sink = self._hb_sink
+            if sink is not None:
+                try:
+                    sink(dict(hb), self._hb_stalled)
+                except Exception:                    # noqa: BLE001
+                    pass
+
+    def heartbeat(self, period_ms=None, sink=None):
+        if sink is not None:
+            self._hb_sink = sink
+        if period_ms is not None:
+            # Clamped the way the device clamps, so a client that tests
+            # against this learns the same rules the board enforces.
+            self._hb_period_ms = (0 if period_ms == 0
+                                  else max(20, min(60000, int(period_ms))))
+            if self._hb_period_ms and self._hb_thread is None:
+                self._hb_stop.clear()
+                self._hb_thread = threading.Thread(target=self._hb_run,
+                                                   daemon=True)
+                self._hb_thread.start()
+        return {"seq": self._hb_seq, "uptime_ms": 0,
+                "period_ms": self._hb_period_ms, "dropped": 0,
+                "counters": {"loop_passes": self._hb_passes}}
+
+    def heartbeat_state(self):
+        return {"supported": True, "period_ms": self._hb_period_ms,
+                "beats": self._hb_seq, "stalled": bool(self._hb_stalled),
+                "late": False, "seq": self._hb_seq,
+                "loop_passes": self._hb_passes}
 
     def trace(self):
         """A structurally real trace: a converter holding one exact rate.
@@ -710,6 +797,25 @@ class BoardDevice(Device):
         self._ctl_note = None
         self._ident = None
         self._ident_tried = False
+        # One lock over the control channel. `Control` is one serial fd
+        # with a request/response model, so a pump thread reading it
+        # while `counters()` is mid-request would have two readers on
+        # one port stealing each other's frames. Serialising is enough
+        # because a beat that arrives *during* a request is not lost -
+        # `Control.on_unsolicited` hands it over from inside
+        # `request()`, which is where most of them land once anything
+        # is polling.
+        self._ctl_lock = threading.RLock()
+        self._hb_period_ms = 0
+        self._hb_last = None          # newest beat, whole
+        self._hb_prev_passes = None
+        self._hb_stalled = False
+        self._hb_frozen = 0           # consecutive beats with a frozen loop
+        self._hb_count = 0
+        self._hb_at = None            # monotonic time of the newest beat
+        self._hb_sink = None          # set by the server, to broadcast
+        self._hb_thread = None
+        self._hb_stop = threading.Event()
 
     def control(self):
         """The native port's command channel, or None.
@@ -909,7 +1015,10 @@ class BoardDevice(Device):
         c = self.control()
         if c is not None:
             try:
-                ct = c.counters()
+                # Under the lock: the heartbeat pump reads this same fd,
+                # and two readers on one port steal each other's frames.
+                with self._ctl_lock:
+                    ct = c.counters()
                 return {"underruns": ct["underruns"], "spans": ct["spans"],
                         "partial": ct["partial"], "consumed": ct["consumed"],
                         "occ_min": ct["occ_min"], "dev_us": ct["dev_us"],
@@ -942,8 +1051,9 @@ class BoardDevice(Device):
         c = self.control()
         if c is not None:
             try:
-                occ = c.occupancy()
-                rate = c.rate_trace()
+                with self._ctl_lock:                # see counters()
+                    occ = c.occupancy()
+                    rate = c.rate_trace()
                 return {"occ_min": occ["occ_min"], "endtx": occ["endtx"],
                         "run_us": occ["run_us"],
                         "consumed": occ["consumed"],
@@ -993,7 +1103,115 @@ class BoardDevice(Device):
                 pass
             self.fd = None
 
+    # -- heartbeat ----------------------------------------------------
+    def _hb_on_frame(self, frame):
+        """One beat, from whichever thread happened to read it.
+
+        Called from the pump when the channel is idle and from inside
+        `Control.request()` when a beat lands mid-request. Both hold
+        `_ctl_lock`, so the state below is only ever touched by one.
+        """
+        c = self.control()
+        if c is None:
+            return
+        try:
+            hb = c._decode_heartbeat(frame.payload)
+        except Exception:                            # noqa: BLE001
+            return
+        passes = hb.get("counters", {}).get("loop_passes")
+        prev = self._hb_prev_passes
+        # The whole point of driving the beat from a timer: `seq` and
+        # `uptime_ms` come from the ISR and keep advancing, while
+        # `loop_passes` comes from the main loop and stops. A beat that
+        # arrives with a frozen count is the stall reporting itself.
+        if prev is not None and passes is not None and passes == prev:
+            self._hb_frozen += 1
+        else:
+            self._hb_frozen = 0
+        self._hb_prev_passes = passes
+        # Two in a row, not one: a single repeat is a beat that landed
+        # inside one main-loop pass, which at a fast cadence is
+        # ordinary rather than a stall.
+        self._hb_stalled = self._hb_frozen >= 2
+        self._hb_last = hb
+        self._hb_at = time.monotonic()
+        self._hb_count += 1
+        sink = self._hb_sink
+        if sink is not None:
+            try:
+                sink(dict(hb), self._hb_stalled)
+            except Exception:                        # noqa: BLE001
+                pass
+
+    def _hb_pump(self):
+        """Read the control channel while nobody else wants it.
+
+        Short waits under the lock rather than one long one, so a
+        `counters()` call is never left queueing behind a beat that may
+        not come.
+        """
+        while not self._hb_stop.is_set():
+            c = self.control()
+            if c is None:
+                self._hb_stop.wait(0.5)
+                continue
+            try:
+                with self._ctl_lock:
+                    frame = c.recv(timeout=0.05)
+                if frame is not None and frame.req_id == 0:
+                    with self._ctl_lock:
+                        self._hb_on_frame(frame)
+            except Exception:                        # noqa: BLE001
+                self._hb_stop.wait(0.2)
+
+    def heartbeat(self, period_ms=None, sink=None):
+        c = self.control()
+        if c is None:
+            return {}
+        if sink is not None:
+            self._hb_sink = sink
+        with self._ctl_lock:
+            c.on_unsolicited = self._hb_on_frame
+            try:
+                state = c.heartbeat(period_ms)
+            except Exception as e:                   # noqa: BLE001
+                raise DeviceError(f"heartbeat: {e}")
+        # The device clamps, so believe its answer rather than the ask.
+        self._hb_period_ms = state.get("period_ms", 0)
+        if self._hb_period_ms and self._hb_thread is None:
+            self._hb_stop.clear()
+            self._hb_thread = threading.Thread(target=self._hb_pump,
+                                               daemon=True)
+            self._hb_thread.start()
+        return state
+
+    def heartbeat_state(self):
+        hb = self._hb_last
+        if not self._hb_period_ms and hb is None:
+            c = self.control()
+            return {"supported": c is not None, "period_ms": 0}
+        age = None if self._hb_at is None else time.monotonic() - self._hb_at
+        # Late is not the same as stalled and must not be reported as
+        # it: a beat that stopped arriving says the channel or the
+        # timer went, and one that arrives with a frozen loop_passes
+        # says the main loop went. They have different causes.
+        late = (self._hb_period_ms > 0 and age is not None
+                and age > max(1.0, 4.0 * self._hb_period_ms / 1000.0))
+        return {"supported": True, "period_ms": self._hb_period_ms,
+                "beats": self._hb_count, "age_s": age,
+                "stalled": bool(self._hb_stalled), "late": bool(late),
+                "seq": None if hb is None else hb.get("seq"),
+                "uptime_ms": None if hb is None else hb.get("uptime_ms"),
+                "dropped": None if hb is None else hb.get("dropped"),
+                "loop_passes": None if hb is None else
+                hb.get("counters", {}).get("loop_passes")}
+
     def close(self):
+        self._hb_stop.set()
+        t = self._hb_thread
+        if t is not None:
+            t.join(timeout=1.0)
+            self._hb_thread = None
         self.stop()
 
 
