@@ -60,7 +60,7 @@ add_executable(baremetal_bringup EXCLUDE_FROM_ALL
     lib/due_shared/src/crc32.c
     lib/due_shared/src/play_report.c
     lib/due_shared/src/console_cmds.c
-    lib/due_shared/src/console_fmt.c
+    lib/due_shared/src/console_out.c
     lib/due_shared/src/stream_core.c
     lib/due_shared/src/stream_bench.c
     ${DEVICE}/source/system_sam3xa.c

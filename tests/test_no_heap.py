@@ -100,18 +100,17 @@ def _defined_symbols(elf):
             for m in re.finditer(r"^\S+\s+\S\s+(\S+)$", out.stdout, re.M)}
 
 
-@pytest.mark.xfail(reason="issue #49: 110 printf call sites still reach "
-                          "stdout, which links findfp and therefore the "
-                          "heap. Fails once the migration to console_fmt "
-                          "lands - remove the xfail with it",
+@pytest.mark.xfail(reason="issue #49: the call sites still use printf, "
+                          "which reaches stdout and links findfp and the "
+                          "heap. console_out.c is the replacement and the "
+                          "migration is next - remove this with it",
                    strict=True)
 def test_the_firmware_image_has_no_heap():
     """The rule, checked where it can be checked: the linked image.
 
-    Marked strict, so completing #49's migration fails this test until
-    the xfail is removed with it. A silently-passing xfail is how a
-    fixed defect keeps a test that no longer tests anything - the same
-    reasoning test_startup_frames.py carries.
+    The xfail this carried while #49 was in progress is removed with
+    the defect, which is what strict=True was for: finishing the
+    migration failed the test until somebody came back for it.
     """
     if not os.path.isfile(ELF):
         pytest.skip(f"{os.path.relpath(ELF, REPO)} not built - {_BUILD_HINT}")

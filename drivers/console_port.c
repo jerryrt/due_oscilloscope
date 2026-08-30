@@ -13,11 +13,29 @@
 void console_write(const char *s)
 {
 	/*
-	 * fputs rather than printf: the shared layer passes literal text
-	 * that may contain a '%', and a format string taken from data is
-	 * a defect waiting for the first help line that mentions one.
+	 * Straight to the UART, not through stdio (issue #49).
+	 *
+	 * This was fputs(s, stdout), which is correct about the thing it
+	 * was worried about - a format string taken from data is a defect
+	 * waiting for the first help line containing a '%' - and wrong
+	 * about the heap. `stdout` is a real FILE, so fputs pulls
+	 * newlib's findfp exactly as printf does, and findfp allocates
+	 * that stream's buffer with _malloc_r on first use.
+	 *
+	 * So migrating the console's callers off printf would not have
+	 * removed the heap on its own: the port they migrate *to* was
+	 * pulling it in. Found by reading this file after writing the
+	 * formatter, not by the guard, which cannot say why.
+	 *
+	 * The CRLF translation moves here with it. It was in _write()
+	 * because that was the only path to the wire; now this is, and a
+	 * host on a raw terminal still wants both characters.
 	 */
-	fputs(s, stdout);
+	for (; *s; s++) {
+		if (*s == '\n')
+			uart_putc_polled('\r');
+		uart_putc_polled(*s);
+	}
 }
 
 void console_flush(void)
