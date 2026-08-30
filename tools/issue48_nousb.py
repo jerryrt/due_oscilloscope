@@ -28,9 +28,16 @@ ratio at a rate OUTSIDE the band is used as the baseline. So this runs
 band rates and clean rates in the same session and compares them, rather
 than trusting a formula.
 
+**`--bench` is not cosmetic.** windows-desk ran a sibling of this tool
+with `bench="macos"` baked in and appended twelve Windows rows to the
+macOS record file under the macOS label. On a cross-bench question that
+is the one error that makes data actively misleading rather than merely
+absent - so bench comes from `--bench`, then `$DUE_BENCH`, then the
+hostname, and the output file is named after it.
+
     python3 tools/issue48_nousb.py
 """
-import argparse, json, statistics, sys, pathlib
+import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
 
@@ -62,8 +69,15 @@ def main():
     ap.add_argument("--clean", type=int, nargs="+",
                     default=[696428, 650000],
                     help="DAC update rates outside it, as the reference")
-    ap.add_argument("--out", default="records/issue48-nousb-macos.jsonl")
+    ap.add_argument("--bench", default=os.environ.get("DUE_BENCH"),
+                    help="which bench this is; defaults to $DUE_BENCH")
+    ap.add_argument("--out", default=None,
+                    help="defaults to records/issue48-nousb-<bench>.jsonl")
     a = ap.parse_args()
+
+    bench = a.bench or platform.node() or "unknown-bench"
+    host = f"{platform.system()} {platform.release()}"
+    out_path = a.out or f"records/issue48-nousb-{bench}.jsonl"
 
     board = measure.Board(settle=3.0)
     rows = []
@@ -80,7 +94,7 @@ def main():
                 vals = list(v)[:200000]
                 fs = st.declared_rate_hz or a.adc_hz
                 f, mag = tone_of(vals, fs, f_nom)
-                rows.append(dict(bench="mac-bench", host="macOS 12.6",
+                rows.append(dict(bench=bench, host=host,
                                  track="b", issue=48, test="internal-gen-rate",
                                  arm=label, dac_update_hz=dac, run=i,
                                  points=a.points, adc_hz=a.adc_hz, fs=fs,
@@ -105,10 +119,10 @@ def main():
         print(f"  ~1.00 here means the deficit NEEDS the USB feed;")
         print(f"  ~0.98 means it is the DACC alone.")
 
-    with open(a.out, "a", encoding="utf-8") as f:
+    with open(out_path, "a", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
-    print(f"\nwrote {len(rows)} rows to {a.out}")
+    print(f"\nwrote {len(rows)} rows to {out_path}")
 
 
 if __name__ == "__main__":

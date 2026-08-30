@@ -21,9 +21,16 @@ Both come out of ONE `run_play`, so this is co-occurrence within a run
 rather than a comparison across two tests - the same discipline
 windows-desk used and named.
 
+**`--bench` is not cosmetic.** windows-desk ran a sibling of this tool
+with `bench="macos"` baked in and appended twelve Windows rows to the
+macOS record file under the macOS label. On a cross-bench question that
+is the one error that makes data actively misleading rather than merely
+absent - so bench comes from `--bench`, then `$DUE_BENCH`, then the
+hostname, and the output file is named after it.
+
     python3 tools/issue47_cooccur.py --reps 24
 """
-import argparse, json, statistics, sys, pathlib
+import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
 
@@ -34,8 +41,15 @@ def main():
     ap.add_argument("--reps", type=int, default=24)
     ap.add_argument("--rc", type=int, default=32)
     ap.add_argument("--seconds", type=float, default=3.0)
-    ap.add_argument("--out", default="records/issue47-cooccurrence-macos.jsonl")
+    ap.add_argument("--bench", default=os.environ.get("DUE_BENCH"),
+                    help="which bench this is; defaults to $DUE_BENCH")
+    ap.add_argument("--out", default=None,
+                    help="defaults to records/issue47-cooccurrence-<bench>.jsonl")
     a = ap.parse_args()
+
+    bench = a.bench or platform.node() or "unknown-bench"
+    host = f"{platform.system()} {platform.release()}"
+    out_path = a.out or f"records/issue47-cooccurrence-{bench}.jsonl"
 
     hz = measure.hz_for(a.rc)
     want = hz * 2.0
@@ -57,7 +71,7 @@ def main():
         fed = r.host_tx_bytes / r.elapsed_s
         d = r.host_deficit
         short = fed < 0.95 * want
-        row = dict(bench="macos", host="macOS 12.6", track="b", issue=47,
+        row = dict(bench=bench, host=host, track="b", issue=47,
                    test="short-feed-vs-byte-deficit-one-run", run=i,
                    rc=a.rc, dac_sps=hz, seconds=a.seconds,
                    feed_target_mbs=want / 1e6, fed_mbs=round(fed / 1e6, 4),
@@ -86,10 +100,10 @@ def main():
         print("  !! no short run occurred - the intermittency did not "
               "reproduce in this many reps; no co-occurrence readable")
 
-    with open(a.out, "a", encoding="utf-8") as f:
+    with open(out_path, "a", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
-    print(f"\nwrote {len(rows)} rows to {a.out}")
+    print(f"\nwrote {len(rows)} rows to {out_path}")
 
 
 if __name__ == "__main__":

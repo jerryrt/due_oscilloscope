@@ -20,9 +20,16 @@ Three durations, several reps each, everything else held. Nothing here
 is new instrumentation - it is the existing deficit read at three
 window lengths.
 
+**`--bench` is not cosmetic.** windows-desk ran a sibling of this tool
+with `bench="macos"` baked in and appended twelve Windows rows to the
+macOS record file under the macOS label. On a cross-bench question that
+is the one error that makes data actively misleading rather than merely
+absent - so bench comes from `--bench`, then `$DUE_BENCH`, then the
+hostname, and the output file is named after it.
+
     python3 tools/issue47_tail.py --reps 6
 """
-import argparse, json, statistics, sys, pathlib
+import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
 
@@ -34,8 +41,15 @@ def main():
     ap.add_argument("--rc", type=int, default=32)
     ap.add_argument("--seconds", type=float, nargs="+", default=[1.0, 3.0, 9.0])
     ap.add_argument("--drain", type=float, default=1.5)
-    ap.add_argument("--out", default="records/issue47-tail-macos.jsonl")
+    ap.add_argument("--bench", default=os.environ.get("DUE_BENCH"),
+                    help="which bench this is; defaults to $DUE_BENCH")
+    ap.add_argument("--out", default=None,
+                    help="defaults to records/issue47-tail-<bench>.jsonl")
     a = ap.parse_args()
+
+    bench = a.bench or platform.node() or "unknown-bench"
+    host = f"{platform.system()} {platform.release()}"
+    out_path = a.out or f"records/issue47-tail-{bench}.jsonl"
 
     hz = measure.hz_for(a.rc)
     board = measure.Board(settle=3.0)
@@ -47,7 +61,7 @@ def main():
             r = measure.run_play(board, dac_sps=hz, seconds=secs,
                                  drain_s=a.drain)
             d = r.host_deficit
-            row = dict(bench="macos", host="macOS 12.6", track="b", issue=47,
+            row = dict(bench=bench, host=host, track="b", issue=47,
                        test="deficit-vs-duration", run=i, rc=a.rc,
                        dac_sps=hz, seconds=secs, drain_s=a.drain,
                        host_tx_bytes=r.host_tx_bytes,
@@ -66,10 +80,10 @@ def main():
 
     print("  VERDICT: a loss rate scales the large deficit with duration; "
           "a fixed tail does not.")
-    with open(a.out, "a", encoding="utf-8") as f:
+    with open(out_path, "a", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
-    print(f"wrote {len(rows)} rows to {a.out}")
+    print(f"wrote {len(rows)} rows to {out_path}")
 
 
 if __name__ == "__main__":

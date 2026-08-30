@@ -51,7 +51,7 @@ scope. If REFRESH(2) is measurably worse, that is the cost, quantified.
 
     python3 tools/issue48_droop.py --reps 6
 """
-import argparse, json, statistics, sys, pathlib
+import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
 
@@ -69,11 +69,17 @@ def main():
     ap.add_argument("--dac-sps", type=int, default=5000,
                     help="slow on purpose - refresh must fire "
                          "between updates to have any effect")
-    ap.add_argument("--bench", default="mac-bench")
+    ap.add_argument("--bench", default=os.environ.get("DUE_BENCH"),
+                    help="which bench this is; defaults to $DUE_BENCH")
     ap.add_argument("--label", required=True,
                     help="which refresh setting this image has, e.g. R1 or R2")
-    ap.add_argument("--out", default="records/issue48-droop-macos.jsonl")
+    ap.add_argument("--out", default=None,
+                    help="defaults to records/issue48-droop-<bench>.jsonl")
     a = ap.parse_args()
+
+    bench = a.bench or platform.node() or "unknown-bench"
+    host = f"{platform.system()} {platform.release()}"
+    out_path = a.out or f"records/issue48-droop-{bench}.jsonl"
 
     board = measure.Board(settle=3.0)
     rows = []
@@ -103,7 +109,7 @@ def main():
         c1 = measure.goertzel(v, fs, 61000.0)
         c2 = measure.goertzel(v, fs, 91000.0)
         floor = (c1 + c2) / 2.0
-        rows.append(dict(bench=a.bench, host="macOS 12.6", track="b",
+        rows.append(dict(bench=bench, host=host, track="b",
                          issue=48, test="idle-hold-droop", image=a.label,
                          run=i, dc=a.dc, seconds=a.seconds, fs=fs,
                          dac_sps=a.dac_sps, n=n, sd=round(statistics.pstdev(v), 3),
@@ -122,10 +128,10 @@ def main():
               f"38.1kHz SNR {statistics.median(r['snr_38086'] for r in rows):.2f}")
         print("  An SNR near 1 means that bin is indistinguishable from "
               "the bench floor.")
-    with open(a.out, "a", encoding="utf-8") as f:
+    with open(out_path, "a", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
-    print(f"\nwrote {len(rows)} rows to {a.out}")
+    print(f"\nwrote {len(rows)} rows to {out_path}")
 
 
 if __name__ == "__main__":

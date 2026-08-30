@@ -33,9 +33,16 @@ The discriminator is one number per run and needs no new firmware:
 
     device_sps = consumed / (run_us / 1e6)      vs      nominal
 
+**`--bench` is not cosmetic.** windows-desk ran a sibling of this tool
+with `bench="macos"` baked in and appended twelve Windows rows to the
+macOS record file under the macOS label. On a cross-bench question that
+is the one error that makes data actively misleading rather than merely
+absent - so bench comes from `--bench`, then `$DUE_BENCH`, then the
+hostname, and the output file is named after it.
+
     python3 tools/issue47_oversupply.py --reps 12
 """
-import argparse, json, statistics, sys, pathlib
+import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
 
@@ -49,8 +56,15 @@ def main():
     ap.add_argument("--reps", type=int, default=12)
     ap.add_argument("--rc", type=int, default=32)
     ap.add_argument("--seconds", type=float, default=3.0)
-    ap.add_argument("--out", default="records/issue47-oversupply-macos.jsonl")
+    ap.add_argument("--bench", default=os.environ.get("DUE_BENCH"),
+                    help="which bench this is; defaults to $DUE_BENCH")
+    ap.add_argument("--out", default=None,
+                    help="defaults to records/issue47-oversupply-<bench>.jsonl")
     a = ap.parse_args()
+
+    bench = a.bench or platform.node() or "unknown-bench"
+    host = f"{platform.system()} {platform.release()}"
+    out_path = a.out or f"records/issue47-oversupply-{bench}.jsonl"
 
     hz = measure.hz_for(a.rc)
     board = measure.Board(settle=3.0)
@@ -70,7 +84,7 @@ def main():
         dev = cons * PLAY_BUF_SAMPLES / (us / 1e6) if us else None
         pct_lost = 100 * d / r.host_tx_bytes if r.host_tx_bytes else 0.0
         pct_slow = 100 * (1 - dev / hz) if dev else None
-        rows.append(dict(bench="macos", host="macOS 12.6", track="b", issue=47,
+        rows.append(dict(bench=bench, host=host, track="b", issue=47,
                          test="oversupply-vs-discard", run=i, rc=a.rc,
                          dac_sps=hz, seconds=a.seconds, drain_s=1.5,
                          host_tx_bytes=r.host_tx_bytes,
@@ -102,10 +116,10 @@ def main():
         print(f"           if both sit at the same device rate, the host "
               f"is DISCARDING.")
 
-    with open(a.out, "a", encoding="utf-8") as f:
+    with open(out_path, "a", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
-    print(f"\nwrote {len(rows)} rows to {a.out}")
+    print(f"\nwrote {len(rows)} rows to {out_path}")
 
 
 if __name__ == "__main__":
