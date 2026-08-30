@@ -1381,6 +1381,49 @@ this is the opposite at both ends. Whatever selects the affected rates is
 not "too fast for the DACC", and sizing a design against the nominal rate
 at RC 39 or 44 will be 1.6-2.3% wrong every time.
 
+**The mechanism is `DACC_MR_REFRESH`, and it explains the whole table.**
+One field in `play_start()`, changed from `REFRESH(1)` to `REFRESH(2)`,
+ABBA on one board in one session:
+
+| RC | `REFRESH(1)` | `REFRESH(2)` | p |
+|---|---|---|---|
+| 28 | full rate | full rate | — |
+| 32 | 7/32 slow at 15/16 | **0/32** | 0.0054 |
+| 39 | **8/8** slow at 0.97653 | **0/8** | 0.000078 |
+| 44 | **8/8** slow at 0.98428 | **0/8** | 0.000078 |
+| 56 | full rate | full rate | — |
+
+Combined 3.3e-11. The seven RC 32 events have sd 0.000049 and every one
+sits within 0.0001 of 15/16 - a constant hit repeatedly, not a
+distribution.
+
+So `OVERSUPPLIED = {44, 39}` in `tests/test_integrity.py`, and its
+comment "feeding a converter that runs slow", have an explanation: the
+converter is spending conversion slots on refresh cycles. It has been
+in the suite as a documented xfail since before this was measured.
+
+**The control is what makes it readable.** "The mode vanished under
+REFRESH(2)" would have been worth nothing on a bench that had changed
+track, firmware and the #41 reorder the same morning. Putting REFRESH(1)
+back and watching all three rows return is the experiment.
+
+**This is not a licence to change the constant.** DACC refresh exists to
+counteract output droop between conversions, and the analog cost of
+REFRESH(2) is **unmeasured** - it needs a scope. Which register the
+defect lives behind is settled; what to set it to is an analog question
+and is not answered here.
+
+**A pre-registered prediction failed here and the failure is on the
+record.** The reasoning that found the register was that
+`1024 x REFRESH / MCK` is an integer number of conversion periods at RC
+32 - exactly 16.000 - so refresh would recur at a fixed phase and cost
+one slot in sixteen. That predicted REFRESH(2) would move the mode to
+31/32. It removes it entirely, at every rate, including two where the
+ratio was never an integer. So the integer-ratio story is **not** the
+mechanism; it pointed at the right register for the wrong reason, and
+"why RC 32 is intermittent where 39 and 44 are persistent" is again
+unexplained.
+
 **What is not established.** Why those rates, and what produces a ratio
 that keeps landing on a binary fraction. `DACC_MR_REFRESH(1)` in
 `play_start()` is a candidate worth checking - the refresh cycle
