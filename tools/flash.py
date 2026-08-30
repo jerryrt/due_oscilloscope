@@ -158,6 +158,43 @@ def usb_nodes():
     return {p.device for p in list_ports.comports() if p.vid}
 
 
+def samba_nodes():
+    """Every ROM-bootloader node currently on the bus."""
+    try:
+        from serial.tools import list_ports
+    except ImportError:
+        return []
+    return sorted(p.device for p in list_ports.comports()
+                  if (p.vid, p.pid) == SAMBA)
+
+
+def port_present(node):
+    """Is `node` still on the bus? Cross-platform.
+
+    `os.path.exists()` answers this only where a serial node is a
+    filesystem path. On Windows a port is named `COM10` and is not a
+    path, so `os.path.exists("COM10")` is False for every port that
+    exists - including one pyserial is enumerating at that moment.
+
+    Measured on windows-desk 2026-08-30, immediately after 38e2cd4: the
+    native SAM-BA route was skipped as "gone from the bus" while COM10
+    was listed by `list_ports.comports()`, then the programming-port
+    route was skipped for the same reason, and all three retries failed
+    with the board left erased in the bootloader. That is the whole
+    flash path on this platform, and it is also the recovery path, so a
+    board could not be flashed back out of it.
+
+    `usb_nodes()` is the set the discriminator above already builds, and
+    it is pyserial's view rather than the filesystem's. The
+    `os.path.exists` arm is kept for a POSIX node pyserial does not
+    enumerate - a udev symlink, say - so this is strictly more
+    permissive than the check it replaces and cannot newly skip a route
+    on Linux or macOS. A node that has genuinely gone fails both arms
+    and is still skipped, which is what BOSSAC_TIMEOUT_S is about.
+    """
+    return node in usb_nodes() or os.path.exists(node)
+
+
 def touch_1200(port, restore=True):
     """Fire the 16U2's erase-and-reset by dropping DTR at 1200 baud.
 
@@ -406,8 +443,37 @@ def _flash_attempt(bossac, binary, args):
             target, native_usb = fresh, "true"
             print(f"==> SAM-BA came up on {target} (native USB)")
         else:
-            print(f"==> no native SAM-BA node in {SAMBA_WAIT_S:.0f} s; "
-                  f"the programming port serves the ROM monitor too")
+            # A board that is ALREADY in the bootloader never produces a
+            # node that "was not there before", so the rule above can
+            # never fire for it - and that is exactly the board that
+            # needs flashing most. Measured on windows-desk 2026-08-30:
+            # a failed flash left the board erased in ROM SAM-BA on
+            # COM10, and every subsequent attempt reported "no native
+            # SAM-BA node" while COM10 sat in `list_ports.comports()`.
+            # The recovery path could not recognise the state it exists
+            # to recover from, and only --samba got the board back.
+            #
+            # Adopt it, but keep the reason the freshness rule exists:
+            # it is there so a *different* blank board plugged into the
+            # same host is not flashed by accident. So adopt only when
+            # there is exactly one bootloader node to adopt, and say
+            # that it is being adopted rather than seen to arrive -
+            # those are different claims and the operator should get the
+            # weaker one.
+            stuck = samba_nodes()
+            if len(stuck) == 1:
+                target, native_usb = stuck[0], "true"
+                print(f"==> no NEW SAM-BA node, but {target} is already "
+                      f"one and is the only one: adopting it (a board "
+                      f"already in the bootloader cannot produce a fresh "
+                      f"node)")
+            else:
+                why = ("none on the bus" if not stuck
+                       else f"{len(stuck)} on the bus, so which is ours "
+                            f"is not decidable: " + ", ".join(stuck))
+                print(f"==> no native SAM-BA node in {SAMBA_WAIT_S:.0f} s "
+                      f"({why}); the programming port serves the ROM "
+                      f"monitor too")
 
     # Try every route before giving up, because by this point the touch
     # has already erased the board: a failure here is not "nothing
@@ -429,7 +495,7 @@ def _flash_attempt(bossac, binary, args):
 
     rc = 1
     for node, usb, label in routes:
-        if not os.path.exists(node):
+        if not port_present(node):
             # The node was there when the route list was built and is not
             # now. Say so and move on rather than handing bossac a name
             # it will hang on - see BOSSAC_TIMEOUT_S.
