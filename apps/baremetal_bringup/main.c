@@ -73,16 +73,18 @@ static void identity_line(void)
  */
 static void banner(void)
 {
-	printf("#\n");
-	printf("# due_oscilloscope :: Track B bare-metal bring-up\n");
+	con_str("#"); con_nl();
+	con_str("# due_oscilloscope :: Track B bare-metal bring-up"); con_nl();
 	identity_line();
-	printf("# SystemCoreClock = %lu  ADC clk = %lu (max 20000000)\n",
-	       (unsigned long)SystemCoreClock, (unsigned long)(SystemCoreClock / 4u));
-	printf("# max in-spec trigger = %lu Hz (RC %u); presets 1..4 are 50k/100k/200k/400k\n",
-	       (unsigned long)((SystemCoreClock / 2u) / ACQ_MIN_RC),
-	       (unsigned)ACQ_MIN_RC);
-	printf("# h for the command list\n");
-	printf("#\n");
+	con_str("# SystemCoreClock = "); con_u32(SystemCoreClock);
+	con_str("  ADC clk = ");         con_u32(SystemCoreClock / 4u);
+	con_str(" (max 20000000)");      con_nl();
+	con_str("# max in-spec trigger = ");
+	con_u32((SystemCoreClock / 2u) / ACQ_MIN_RC);
+	con_str(" Hz (RC "); con_u32(ACQ_MIN_RC);
+	con_str("); presets 1..4 are 50k/100k/200k/400k"); con_nl();
+	con_str("# h for the command list"); con_nl();
+	con_str("#"); con_nl();
 }
 
 /*
@@ -99,9 +101,9 @@ static void banner(void)
 static void cmd_help(void)
 {
 	banner();
-	printf("# commands:\n");
+	con_str("# commands:"); con_nl();
 	console_help();
-	printf("#\n");
+	con_str("#"); con_nl();
 }
 
 /* Fixed-point ns with two decimals, avoiding a float-enabled printf. */
@@ -109,9 +111,10 @@ static void print_ns(const char *label, uint32_t us, uint32_t n)
 {
 	uint32_t ns_x100 = (uint32_t)(((uint64_t)us * 100000ull) / n);
 
-	printf("# %s: %lu.%02lu ns per set+clear pair\n", label,
-	       (unsigned long)(ns_x100 / 100u),
-	       (unsigned long)(ns_x100 % 100u));
+	con_str("# "); con_str(label); con_str(": ");
+	con_u32(ns_x100 / 100u); con_ch('.');
+	con_u32w(ns_x100 % 100u, 2, '0');
+	con_str(" ns per set+clear pair"); con_nl();
 }
 
 static void measure_printf(void)
@@ -119,18 +122,19 @@ static void measure_printf(void)
 	const int n = 20;
 	const char *line = "0123456789012345678901234567890123456789";
 
-	printf("# measuring printf cost, 20 x 40-char lines\n");
+	con_str("# measuring printf cost, 20 x 40-char lines"); con_nl();
 	uart_flush();
 
 	uint32_t t0 = micros();
-	for (int i = 0; i < n; i++)
-		printf("%s\n", line);
+	for (int i = 0; i < n; i++) {
+		con_str(line); con_nl();
+	}
 	uart_flush();
 	uint32_t t1 = micros();
 
-	printf("# printf: %lu us per 40-char line (polled, synchronous)\n",
-	       (unsigned long)((t1 - t0) / n));
-	printf("# this is why printf never goes in an ISR\n");
+	con_str("# printf: "); con_u32((t1 - t0) / n);
+	con_str(" us per 40-char line (polled, synchronous)"); con_nl();
+	con_str("# this is why printf never goes in an ISR"); con_nl();
 	uart_flush();
 }
 
@@ -138,7 +142,7 @@ static void measure_gpio(void)
 {
 	const uint32_t n = 100000;
 
-	printf("# measuring GPIO toggle cost, 100k pairs\n");
+	con_str("# measuring GPIO toggle cost, 100k pairs"); con_nl();
 	uart_flush();
 
 	uint32_t t0 = micros();
@@ -157,7 +161,7 @@ static void measure_gpio(void)
 
 	print_ns("direct PIO ", t1 - t0, n);
 	print_ns("via bsp led", t3 - t2, n);
-	printf("# use direct PIO writes for ISR instrumentation\n");
+	con_str("# use direct PIO writes for ISR instrumentation"); con_nl();
 	uart_flush();
 }
 /* The M preset's ADC-start-to-DAC-start gap. See case 'K'. */
@@ -181,11 +185,13 @@ static void cmd_read(void)
 	 * tracking time, so this is a DC reading and not a sample of
 	 * the artifact.
 	 */
-	printf("# A0(AD7) = %4u  %4lu mV    A1(AD6) = %4u  %4lu mV    "
-	       "A2(AD5) = %4u  %4lu mV\n",
-	       a0, (unsigned long)code_to_mv(a0),
-	       a1, (unsigned long)code_to_mv(a1),
-	       a2, (unsigned long)code_to_mv(a2));
+	con_str("# A0(AD7) = "); con_u32w(a0, 4, ' ');
+	con_str("  ");           con_u32w(code_to_mv(a0), 4, ' ');
+	con_str(" mV    A1(AD6) = "); con_u32w(a1, 4, ' ');
+	con_str("  ");           con_u32w(code_to_mv(a1), 4, ' ');
+	con_str(" mV    A2(AD5) = "); con_u32w(a2, 4, ' ');
+	con_str("  ");           con_u32w(code_to_mv(a2), 4, ' ');
+	con_str(" mV"); con_nl();
 	uart_flush();
 }
 
@@ -200,8 +206,8 @@ static void cmd_read(void)
  */
 static void cmd_sweep(void)
 {
-	printf("# DAC sweep. DAC1 is driven inverse to DAC0.\n");
-	printf("# code   DAC0mV   A0code   A0mV  |  DAC1mV   A1code   A1mV\n");
+	con_str("# DAC sweep. DAC1 is driven inverse to DAC0."); con_nl();
+	con_str("# code   DAC0mV   A0code   A0mV  |  DAC1mV   A1code   A1mV"); con_nl();
 	uart_flush();
 
 	for (uint32_t code = 0; code <= 4095u; code += 256u) {
@@ -218,14 +224,17 @@ static void cmd_sweep(void)
 
 		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
 
-		printf("# %4u   %6lu   %6u  %5lu  |  %6lu   %6u  %5lu\n",
-		       c, (unsigned long)code_to_mv(c), a0,
-		       (unsigned long)code_to_mv(a0),
-		       (unsigned long)code_to_mv(inv), a1,
-		       (unsigned long)code_to_mv(a1));
+		con_str("# ");   con_u32w(c, 4, ' ');
+		con_str("   ");  con_u32w(code_to_mv(c), 6, ' ');
+		con_str("   ");  con_u32w(a0, 6, ' ');
+		con_str("  ");   con_u32w(code_to_mv(a0), 5, ' ');
+		con_str("  |  "); con_u32w(code_to_mv(inv), 6, ' ');
+		con_str("   ");  con_u32w(a1, 6, ' ');
+		con_str("  ");   con_u32w(code_to_mv(a1), 5, ' ');
+		con_nl();
 		uart_flush();
 	}
-	printf("# note: A0/A1 columns are the DAC output as actually measured\n");
+	con_str("# note: A0/A1 columns are the DAC output as actually measured"); con_nl();
 	uart_flush();
 }
 
@@ -317,15 +326,16 @@ static void cmd_crosstalk(void)
 		ms = CTL_BLEED_SETTLE_MAX_MS;
 
 	if (adc_measure_begin() != 0) {
-		printf("# crosstalk: refused, the ADC is hardware-triggered - stop the capture first (0)\n");
+		con_str("# crosstalk: refused, the ADC is hardware-triggered - stop the capture first (0)"); con_nl();
 	uart_flush();
 	return;
 	}
 
-	printf("# crosstalk: hold one channel, swing the other, %u times,"
-	       " %lu ms settle\n", n, (unsigned long)ms);
-	printf("# each arm has a control that writes the same code twice, so"
-	       " the swing is the only difference\n");
+	con_str("# crosstalk: hold one channel, swing the other, ");
+	con_u32(n); con_str(" times, "); con_u32(ms);
+	con_str(" ms settle"); con_nl();
+	con_str("# each arm has a control that writes the same code twice, so"
+	        " the swing is the only difference"); con_nl();
 	/*
 	 * The conditions as the hardware holds them, not as this function
 	 * believes it set them. Issue #16 spent a bench session on two
@@ -334,8 +344,8 @@ static void cmd_crosstalk(void)
 	 * from what was measured. Raw, and decoded by the host - the cost
 	 * of a console command is the bytes it puts on the wire.
 	 */
-	printf("# adcmr=%08lx (this command's own; restored after)\n",
-	       (unsigned long)acq_mr());
+	con_str("# adcmr="); con_hex32(acq_mr(), 8);
+	con_str(" (this command's own; restored after)"); con_nl();
 	uart_flush();
 
 	/*
@@ -348,11 +358,11 @@ static void cmd_crosstalk(void)
 	 * DISABLED, PSR 1 where the PIO (not the peripheral) owns the
 	 * pin. A0=PA16, A1=PA24, A2=PA23, all PIOA.
 	 */
-	printf("# pioa: psr=%08lx osr=%08lx pusr=%08lx ifsr=%08lx\n",
-	       (unsigned long)PIOA->PIO_PSR,
-	       (unsigned long)PIOA->PIO_OSR,
-	       (unsigned long)PIOA->PIO_PUSR,
-	       (unsigned long)PIOA->PIO_IFSR);
+	con_str("# pioa: psr="); con_hex32(PIOA->PIO_PSR, 8);
+	con_str(" osr=");        con_hex32(PIOA->PIO_OSR, 8);
+	con_str(" pusr=");       con_hex32(PIOA->PIO_PUSR, 8);
+	con_str(" ifsr=");       con_hex32(PIOA->PIO_IFSR, 8);
+	con_nl();
 	uart_flush();
 
 	/*
@@ -428,37 +438,37 @@ static void cmd_crosstalk(void)
 
 	snprintf(label, sizeof(label), "%s bleed (DAC1 held, DAC0 swung)", sname);
 	ctl_bleed_describe(line, sizeof(line), label, a1_bleed, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	snprintf(label, sizeof(label), "%s bleed", sname);
 	ctl_bleed_values(line, sizeof(line), label, a1_bleed, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	ctl_bleed_raw(line, sizeof(line), label, a1b_lo, a1b_hi, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	snprintf(label, sizeof(label), "%s control (nothing swung)", sname);
 	ctl_bleed_describe(line, sizeof(line), label, a1_still, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	snprintf(label, sizeof(label), "%s control", sname);
 	ctl_bleed_values(line, sizeof(line), label, a1_still, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	ctl_bleed_raw(line, sizeof(line), label, a1s_lo, a1s_hi, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	uart_flush();
 
 	snprintf(label, sizeof(label),
 	         "A0 bleed (DAC0 held, DAC1 swung, %s in pair)", sname);
 	ctl_bleed_describe(line, sizeof(line), label, a0_bleed, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	ctl_bleed_values(line, sizeof(line), "A0 bleed", a0_bleed, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	ctl_bleed_raw(line, sizeof(line), "A0 bleed", a0b_lo, a0b_hi, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	ctl_bleed_describe(line, sizeof(line),
 	                   "A0 control (nothing swung)", a0_still, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	ctl_bleed_values(line, sizeof(line), "A0 control", a0_still, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 	ctl_bleed_raw(line, sizeof(line), "A0 control", a0s_lo, a0s_hi, n);
-	printf("%s\n", line);
+	con_str(line); con_nl();
 
 	/*
 	 * Which bench this is, read rather than assumed. With DAC1
@@ -468,15 +478,19 @@ static void cmd_crosstalk(void)
 	dac_write(1, 2048);
 	console_bleed_settle(ms);
 	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
-	printf("# A1 reads %u with DAC1 held at 2048: %s\n", a1,
-	       (a1 > 1800u && a1 < 2300u) ? "DAC1 -> A1 is fitted"
-	                                  : "A1 looks undriven - see docs/noise.md");
-	printf("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes.\n");
-	printf("# taken at TRACKTIM 15, SETTLING 3 - this command's own, not"
-	       " whatever ADC_MR held\n");
-	printf("# pair-conv: restarts=%lu timeouts=%lu (nonzero: see #23)\n",
-	       (unsigned long)adc_pair_restarts,
-	       (unsigned long)adc_pair_timeouts);
+	con_str("# A1 reads "); con_u32(a1);
+	con_str(" with DAC1 held at 2048: ");
+	con_str((a1 > 1800u && a1 < 2300u)
+	        ? "DAC1 -> A1 is fitted"
+	        : "A1 looks undriven - see docs/noise.md");
+	con_nl();
+	con_str("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes."); con_nl();
+	con_str("# taken at TRACKTIM 15, SETTLING 3 - this command's own, not"
+	        " whatever ADC_MR held"); con_nl();
+	con_str("# pair-conv: ");
+	con_kv_u32("restarts", adc_pair_restarts); con_ch(' ');
+	con_kv_u32("timeouts", adc_pair_timeouts);
+	con_str(" (nonzero: see #23)"); con_nl();
 	uart_flush();
 
 	adc_measure_end();
@@ -508,16 +522,18 @@ static void cmd_rate_sweep(unsigned n_channels)
 
 	acq_init();
 
-	printf("# TC->ADC->PDC rate sweep, %u channel%s, min RC %lu\n",
-	       n_channels, n_channels == 1 ? " (A0=AD7)" : "s (A0=AD7, A1=AD6)",
-	       (unsigned long)ACQ_MIN_RC_FOR(n_channels));
-	printf("#   want      RC   TCexact   measured    ratio  RXBUFF GOVRE\n");
+	con_str("# TC->ADC->PDC rate sweep, "); con_u32(n_channels);
+	con_str(" channel");
+	con_str(n_channels == 1 ? " (A0=AD7)" : "s (A0=AD7, A1=AD6)");
+	con_str(", min RC "); con_u32(ACQ_MIN_RC_FOR(n_channels)); con_nl();
+	con_str("#   want      RC   TCexact   measured    ratio  RXBUFF GOVRE"); con_nl();
 	uart_flush();
 
 	for (unsigned i = 0; i < n_list; i++) {
 		if (!acq_start(list[i], n_channels)) {
-			printf("# %7lu       -         -    REFUSED (below ACQ_MIN_RC)\n",
-			       (unsigned long)list[i]);
+			con_str("# "); con_u32w(list[i], 7, ' ');
+			con_str("       -         -    REFUSED "
+			        "(below ACQ_MIN_RC)"); con_nl();
 			uart_flush();
 			continue;
 		}
@@ -546,16 +562,18 @@ static void cmd_rate_sweep(unsigned n_channels)
 		uint32_t ratio_x1000 = tcexact ?
 			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
 
-		printf("# %7lu %7lu %9lu %10lu   %2lu.%03lu %7lu %5lu\n",
-		       (unsigned long)list[i], (unsigned long)rc,
-		       (unsigned long)tcexact, (unsigned long)measured,
-		       (unsigned long)(ratio_x1000 / 1000u),
-		       (unsigned long)(ratio_x1000 % 1000u),
-		       (unsigned long)acq_rxbuff_overruns,
-		       (unsigned long)acq_govre);
+		con_str("# "); con_u32w(list[i], 7, ' ');
+		con_ch(' ');   con_u32w(rc, 7, ' ');
+		con_ch(' ');   con_u32w(tcexact, 9, ' ');
+		con_ch(' ');   con_u32w(measured, 10, ' ');
+		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
+		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
+		con_ch(' ');   con_u32w(acq_rxbuff_overruns, 7, ' ');
+		con_ch(' ');   con_u32w(acq_govre, 5, ' ');
+		con_nl();
 		uart_flush();
 	}
-	printf("# rates past the measured ceiling are refused, not attempted\n");
+	con_str("# rates past the measured ceiling are refused, not attempted"); con_nl();
 	uart_flush();
 }
 
@@ -568,13 +586,14 @@ static void cmd_rate_sweep(unsigned n_channels)
 static void cmd_stream_uart(uint32_t trigger_hz)
 {
 	if (!stream_start_uart(trigger_hz)) {
-		printf("# refused\n");
+		con_str("# refused"); con_nl();
 		uart_flush();
 		return;
 	}
-	printf("# uart-stream: trigger %lu Hz, %s %lu Hz - binary follows\n",
-	       (unsigned long)trigger_hz, gen_shape_name(gen_shape),
-	       (unsigned long)gen_hz_for(trigger_hz, gen_points, gen_sync));
+	con_str("# uart-stream: trigger "); con_u32(trigger_hz);
+	con_str(" Hz, "); con_str(gen_shape_name(gen_shape)); con_ch(' ');
+	con_u32(gen_hz_for(trigger_hz, gen_points, gen_sync));
+	con_str(" Hz - binary follows"); con_nl();
 	uart_flush();
 }
 
@@ -720,27 +739,31 @@ static void diag_service(void)
  */
 static void cmd_occ_hist(void)
 {
-	printf("# play_occ min=%lu endtx=%lu runus=%lu consumed=%lu hist=",
-	       (unsigned long)play_occ_min,
-	       (unsigned long)play_endtx_seen,
-	       (unsigned long)play_run_us,
-	       (unsigned long)play_consumed);
-	for (unsigned i = 0; i < PLAY_NBUF; i++)
-		printf("%lu%s", (unsigned long)play_occ_hist[i],
-		       i + 1u < PLAY_NBUF ? "," : "");
-	printf("\n");
+	con_str("# play_occ ");
+	con_kv_u32("min", play_occ_min);        con_ch(' ');
+	con_kv_u32("endtx", play_endtx_seen);   con_ch(' ');
+	con_kv_u32("runus", play_run_us);       con_ch(' ');
+	con_kv_u32("consumed", play_consumed);  con_str(" hist=");
+	for (unsigned i = 0; i < PLAY_NBUF; i++) {
+		con_u32(play_occ_hist[i]);
+		if (i + 1u < PLAY_NBUF)
+			con_ch(',');
+	}
+	con_nl();
 	uart_flush();
 
-	printf("# play_occ_trace decim=%u n=%lu v=", PLAY_OCC_DECIM,
-	       (unsigned long)play_occ_traced);
+	con_str("# play_occ_trace ");
+	con_kv_u32("decim", PLAY_OCC_DECIM);   con_ch(' ');
+	con_kv_u32("n", play_occ_traced);      con_str(" v=");
 	for (unsigned i = 0; i < play_occ_traced; i++) {
-		printf("%u%s", (unsigned)play_occ_trace[i],
-		       i + 1u < play_occ_traced ? "," : "");
+		con_u32(play_occ_trace[i]);
+		if (i + 1u < play_occ_traced)
+			con_ch(',');
 		/* 256 entries is more than one UART buffer holds. */
 		if ((i & 31u) == 31u)
 			uart_flush();
 	}
-	printf("\n");
+	con_nl();
 	uart_flush();
 
 	/*
@@ -748,15 +771,17 @@ static void cmd_occ_hist(void)
 	 * buffer. The host differences them; sending deltas here would
 	 * throw away the only reading that survives a disturbed sample.
 	 */
-	printf("# play_rate decim=%u n=%lu us=", (unsigned)PLAY_RATE_DECIM,
-	       (unsigned long)play_rate_traced);
+	con_str("# play_rate ");
+	con_kv_u32("decim", PLAY_RATE_DECIM);  con_ch(' ');
+	con_kv_u32("n", play_rate_traced);     con_str(" us=");
 	for (unsigned i = 0; i < play_rate_traced; i++) {
-		printf("%lu%s", (unsigned long)play_rate_us[i],
-		       i + 1u < play_rate_traced ? "," : "");
+		con_u32(play_rate_us[i]);
+		if (i + 1u < play_rate_traced)
+			con_ch(',');
 		if ((i & 15u) == 15u)
 			uart_flush();
 	}
-	printf("\n");
+	con_nl();
 
 	/*
 	 * The capture side of the same question (#44). Absolute
@@ -767,21 +792,24 @@ static void cmd_occ_hist(void)
 	 * separate those: it is taken when the frame is queued for USB.
 	 */
 #if ACQ_RATE_TRACE_ENABLED
-	printf("# acq_rate n=%lu us=", (unsigned long)acq_traced);
+	con_str("# acq_rate "); con_kv_u32("n", acq_traced);
+	con_str(" us=");
 	for (unsigned i = 0; i < acq_traced; i++) {
-		printf("%lu%s", (unsigned long)acq_trace_us[i],
-		       i + 1u < acq_traced ? "," : "");
+		con_u32(acq_trace_us[i]);
+		if (i + 1u < acq_traced)
+			con_ch(',');
 		if ((i & 15u) == 15u)
 			uart_flush();
 	}
-	printf(" occ=");
+	con_str(" occ=");
 	for (unsigned i = 0; i < acq_traced; i++) {
-		printf("%u%s", (unsigned)acq_trace_occ[i],
-		       i + 1u < acq_traced ? "," : "");
+		con_u32(acq_trace_occ[i]);
+		if (i + 1u < acq_traced)
+			con_ch(',');
 		if ((i & 31u) == 31u)
 			uart_flush();
 	}
-	printf("\n");
+	con_nl();
 #else
 	/*
 	 * Say it is absent rather than printing nothing.
@@ -793,7 +821,7 @@ static void cmd_occ_hist(void)
 	 * host cannot otherwise tell it from "not counted here". Silence
 	 * is the same trap with less information in it.
 	 */
-	printf("# acq_rate: not built (ACQ_RATE_TRACE_ENABLED is 0)\n");
+	con_str("# acq_rate: not built (ACQ_RATE_TRACE_ENABLED is 0)"); con_nl();
 #endif
 	uart_flush();
 }
@@ -803,7 +831,7 @@ static void cmd_profile(void)
 	const uint32_t n = 20000;
 	uint32_t t0, t1;
 
-	printf("# main-loop profile, ns per call\n");
+	con_str("# main-loop profile, ns per call"); con_nl();
 	uart_flush();
 
 #define PROF(label, expr)                                            \
@@ -811,8 +839,10 @@ static void cmd_profile(void)
 		t0 = micros();                                       \
 		for (uint32_t i = 0; i < n; i++) { expr; }            \
 		t1 = micros();                                       \
-		printf("# %-22s %6lu ns\n", label,                   \
-		       (unsigned long)(((uint64_t)(t1 - t0) * 1000ull) / n)); \
+		con_str("# "); con_strl(label, 22); con_ch(' ');       \
+		con_u32w((uint32_t)(((uint64_t)(t1 - t0) * 1000ull)    \
+		                    / n), 6, ' ');                     \
+		con_str(" ns"); con_nl();                              \
 		uart_flush();                                        \
 	} while (0)
 
@@ -847,7 +877,7 @@ static void cmd_profile(void)
 	}
 #undef PROF
 
-	printf("# note: services early-return unless started\n");
+	con_str("# note: services early-return unless started"); con_nl();
 	uart_flush();
 }
 
@@ -920,8 +950,8 @@ static void cmd_dac_sweep(void)
 	};
 
 	gen_init();
-	printf("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode\n");
-	printf("#     want      RC   TCexact    measured    ratio\n");
+	con_str("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode"); con_nl();
+	con_str("#     want      RC   TCexact    measured    ratio"); con_nl();
 	uart_flush();
 
 	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
@@ -930,8 +960,8 @@ static void cmd_dac_sweep(void)
 		uint64_t convs;
 
 		if (!gen_start_independent(rates[i])) {
-			printf("# %8lu       -         -    REFUSED\n",
-			       (unsigned long)rates[i]);
+			con_str("# "); con_u32w(rates[i], 8, ' ');
+			con_str("       -         -    REFUSED"); con_nl();
 			uart_flush();
 			continue;
 		}
@@ -961,14 +991,16 @@ static void cmd_dac_sweep(void)
 		ratio_x1000 = tcexact
 			? (uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0u;
 
-		printf("# %8lu %7lu %9lu %11lu   %2lu.%03lu\n",
-		       (unsigned long)rates[i], (unsigned long)rc,
-		       (unsigned long)tcexact, (unsigned long)measured,
-		       (unsigned long)(ratio_x1000 / 1000u),
-		       (unsigned long)(ratio_x1000 % 1000u));
+		con_str("# "); con_u32w(rates[i], 8, ' ');
+		con_ch(' ');   con_u32w(rc, 7, ' ');
+		con_ch(' ');   con_u32w(tcexact, 9, ' ');
+		con_ch(' ');   con_u32w(measured, 11, ' ');
+		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
+		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
+		con_nl();
 		uart_flush();
 	}
-	printf("# ratio 1.000 means every trigger produced a DAC update\n");
+	con_str("# ratio 1.000 means every trigger produced a DAC update"); con_nl();
 	uart_flush();
 }
 
@@ -985,13 +1017,13 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 {
 	gen_init();
 	if (!gen_start_independent(dac_hz)) {
-		printf("# refused\n");
+		con_str("# refused"); con_nl();
 		uart_flush();
 		return;
 	}
 	if (!stream_start_capture_only(200000, 2)) {
 		gen_stop();
-		printf("# capture refused\n");
+		con_str("# capture refused"); con_nl();
 		uart_flush();
 		return;
 	}
@@ -1020,11 +1052,12 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 	 * were. If a print is ever needed here, put it above
 	 * gen_start_independent() where it costs nothing.
 	 */
-	printf("# DAC indep %lu Hz (RC %lu), capture 200000 Hz\n",
-	       (unsigned long)dac_hz, (unsigned long)gen_configured_rc());
-	printf("# if the DAC truly runs at the trigger, tone = %lu Hz\n",
-	       (unsigned long)(dac_hz / GEN_TABLE_LEN));
-	printf("# if it saturates near 1539700, tone = 3007 Hz instead\n");
+	con_str("# DAC indep "); con_u32(dac_hz);
+	con_str(" Hz (RC "); con_u32(gen_configured_rc());
+	con_str("), capture 200000 Hz"); con_nl();
+	con_str("# if the DAC truly runs at the trigger, tone = ");
+	con_u32(dac_hz / GEN_TABLE_LEN); con_str(" Hz"); con_nl();
+	con_str("# if it saturates near 1539700, tone = 3007 Hz instead"); con_nl();
 	uart_flush();
 }
 
@@ -1059,13 +1092,18 @@ static void cmd_endpoint_state(void)
 		         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
 	ok[7] = 0;
 
-	printf("# ep cfgok[0..6]=%s devept=%08lx devctrl=%08lx\n",
-	       ok, (unsigned long)UOTGHS->UOTGHS_DEVEPT,
-	       (unsigned long)UOTGHS->UOTGHS_DEVCTRL);
-	printf("# epcfg: ");
-	for (unsigned e = 0; e < 7; e++)
-		printf("%08lx%s", (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[e],
-		       e == 6 ? "\n" : " ");
+	con_str("# ep cfgok[0..6]="); con_str(ok);
+	con_str(" devept=");  con_hex32(UOTGHS->UOTGHS_DEVEPT, 8);
+	con_str(" devctrl="); con_hex32(UOTGHS->UOTGHS_DEVCTRL, 8);
+	con_nl();
+	con_str("# epcfg: ");
+	for (unsigned e = 0; e < 7; e++) {
+		con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[e], 8);
+		if (e == 6)
+			con_nl();
+		else
+			con_ch(' ');
+	}
 	uart_flush();
 }
 
@@ -1128,7 +1166,7 @@ static void h_stop(const uint32_t *a)
 	(void)a;
 	stream_stop();
 	play_stop();
-	printf("# stream stopped\n");
+	con_str("# stream stopped"); con_nl();
 	uart_flush();
 }
 
@@ -1140,7 +1178,7 @@ static void h_flood(const uint32_t *a)
 {
 	(void)a;
 	stream_flood_start();
-	printf("# flood: IN only\n");
+	con_str("# flood: IN only"); con_nl();
 	uart_flush();
 }
 
@@ -1148,7 +1186,7 @@ static void h_sink(const uint32_t *a)
 {
 	(void)a;
 	stream_sink_start();
-	printf("# sink: OUT only\n");
+	con_str("# sink: OUT only"); con_nl();
 	uart_flush();
 }
 
@@ -1156,7 +1194,7 @@ static void h_duplex(const uint32_t *a)
 {
 	(void)a;
 	stream_duplex_start();
-	printf("# duplex: IN and OUT together\n");
+	con_str("# duplex: IN and OUT together"); con_nl();
 	uart_flush();
 }
 
@@ -1164,7 +1202,7 @@ static void h_flood_dma(const uint32_t *a)
 {
 	(void)a;
 	stream_flood_dma_start();
-	printf("# flood: IN via DMA\n");
+	con_str("# flood: IN via DMA"); con_nl();
 	uart_flush();
 }
 
@@ -1172,7 +1210,7 @@ static void h_sink_dma(const uint32_t *a)
 {
 	(void)a;
 	stream_sink_dma_start();
-	printf("# sink: OUT via DMA\n");
+	con_str("# sink: OUT via DMA"); con_nl();
 	uart_flush();
 }
 
@@ -1180,7 +1218,7 @@ static void h_duplex_dma(const uint32_t *a)
 {
 	(void)a;
 	stream_duplex_dma_start();
-	printf("# duplex: IN+OUT via DMA\n");
+	con_str("# duplex: IN+OUT via DMA"); con_nl();
 	uart_flush();
 }
 
@@ -1198,8 +1236,10 @@ static void h_loop(const uint32_t *a)
 	unsigned nch    = a[2] ? a[2] : 2u;
 
 	if (!play_start(dac_hz)) {
-		printf("# loop: DAC %lu sps refused (max %lu)\n",
-		       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
+		con_str("# loop: DAC "); con_u32(dac_hz);
+		con_str(" sps refused (max ");
+		con_u32((SystemCoreClock / 2u) / PLAY_MIN_RC);
+		con_ch(')'); con_nl();
 		uart_flush();
 		return;
 	}
@@ -1222,16 +1262,18 @@ static void h_loop(const uint32_t *a)
 	 * is device-driven and fills the moment the timer runs. Only the
 	 * capture start needs the banner ahead of it.
 	 */
-	printf("# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch\n",
-	       (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
-	printf("# DAC0 carries the waveform, DAC1 holds mid scale\n");
+	con_str("# loop: DAC "); con_u32(dac_hz);
+	con_str(" sps from USB, ADC "); con_u32(adc_hz);
+	con_str(" Hz/ch x"); con_u32(nch); con_str(" ch"); con_nl();
+	con_str("# DAC0 carries the waveform, DAC1 holds mid scale"); con_nl();
 	uart_flush();
 	if (!stream_start_capture_only(adc_hz, nch)) {
 		play_stop();
-		printf("# loop: ADC %lu Hz x%u ch refused (max %lu)\n",
-		       (unsigned long)adc_hz, nch,
-		       (unsigned long)((SystemCoreClock / 2u)
-		                       / ACQ_MIN_RC_FOR(nch)));
+		con_str("# loop: ADC "); con_u32(adc_hz);
+		con_str(" Hz x"); con_u32(nch);
+		con_str(" ch refused (max ");
+		con_u32((SystemCoreClock / 2u) / ACQ_MIN_RC_FOR(nch));
+		con_ch(')'); con_nl();
 		uart_flush();
 		return;
 	}
@@ -1243,12 +1285,15 @@ static void h_play(const uint32_t *a)
 {
 	uint32_t dac_hz = a[0] ? a[0] : 200000u;
 
-	if (play_start(dac_hz))
-		printf("# play only: DAC %lu sps from USB, no capture\n",
-		       (unsigned long)dac_hz);
-	else
-		printf("# play only: %lu sps refused (max %lu)\n",
-		       (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
+	if (play_start(dac_hz)) {
+		con_str("# play only: DAC "); con_u32(dac_hz);
+		con_str(" sps from USB, no capture"); con_nl();
+	} else {
+		con_str("# play only: "); con_u32(dac_hz);
+		con_str(" sps refused (max ");
+		con_u32((SystemCoreClock / 2u) / PLAY_MIN_RC);
+		con_ch(')'); con_nl();
+	}
 	uart_flush();
 }
 
@@ -1285,8 +1330,8 @@ static void h_stall(const uint32_t *a) { cmd_stall(a[0]); }
  */
 static void h_detach(const uint32_t *a)
 {
-	printf("# detaching the native port for %lu ms\n",
-	       (unsigned long)(a[0] ? a[0] : 250u));
+	con_str("# detaching the native port for ");
+	con_u32(a[0] ? a[0] : 250u); con_str(" ms"); con_nl();
 	uart_flush();
 	usb_cdc_detach_cycle(a[0]);
 }
@@ -1294,7 +1339,7 @@ static void h_detach(const uint32_t *a)
 static void h_reset(const uint32_t *a)
 {
 	(void)a;
-	printf("# software reset now\n");
+	con_str("# software reset now"); con_nl();
 	uart_flush();
 	RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
 }
@@ -1322,8 +1367,8 @@ static void h_diag(const uint32_t *a) { (void)a; diag_start(); }
 static void h_mimic_gap(const uint32_t *a)
 {
 	mimic_start_delay_us = a[0];
-	printf("# mimic start delay: %lu us (next M)\n",
-	       (unsigned long)mimic_start_delay_us);
+	con_str("# mimic start delay: "); con_u32(mimic_start_delay_us);
+	con_str(" us (next M)"); con_nl();
 	uart_flush();
 }
 
@@ -1385,10 +1430,11 @@ static void h_mimic(const uint32_t *a)
 	 * later. gen_shape_name() is the shared spelling, so the two
 	 * tracks cannot drift on the word either.
 	 */
-	printf("# mimic loop: gen %s on TIOA1 at %lu sps, capture %lu Hz\n",
-	       gen_shape_name(gen_shape),
-	       (unsigned long)dac_hz, (unsigned long)adc_hz);
-	printf("# press D and read cdr7: swing = USB at fault, frozen = trigger path\n");
+	con_str("# mimic loop: gen "); con_str(gen_shape_name(gen_shape));
+	con_str(" on TIOA1 at "); con_u32(dac_hz);
+	con_str(" sps, capture "); con_u32(adc_hz);
+	con_str(" Hz"); con_nl();
+	con_str("# press D and read cdr7: swing = USB at fault, frozen = trigger path"); con_nl();
 	uart_flush();
 	play_stop();
 	gen_init();
@@ -1402,7 +1448,7 @@ static void h_mimic(const uint32_t *a)
 	 * as a clean run.
 	 */
 	if (!stream_start_capture_only(adc_hz, nch)) {
-		printf("# mimic loop: refused, the ADC would not start\n");
+		con_str("# mimic loop: refused, the ADC would not start"); con_nl();
 		uart_flush();
 		return;
 	}
@@ -1422,8 +1468,9 @@ static void h_mimic(const uint32_t *a)
 static void h_pair(const uint32_t *a)
 {
 	acq_set_pair(a[0]);
-	printf("# capture pair: A0 + A%u (next 2ch stream)\n",
-	       acq_pair_second == ADC_CH_A2 ? 2u : 1u);
+	con_str("# capture pair: A0 + A");
+	con_u32(acq_pair_second == ADC_CH_A2 ? 2u : 1u);
+	con_str(" (next 2ch stream)"); con_nl();
 	uart_flush();
 }
 
@@ -1442,7 +1489,8 @@ static void h_layout(const uint32_t *a)
 	};
 
 	gen_set_layout(a[0]);
-	printf("# gen layout %u = %s\n", (unsigned)gen_layout, names[gen_layout]);
+	con_str("# gen layout "); con_u32(gen_layout);
+	con_str(" = "); con_str(names[gen_layout]); con_nl();
 	uart_flush();
 }
 
@@ -1512,8 +1560,10 @@ static void h_sync(const uint32_t *a)
 static void h_ibctl(const uint32_t *a)
 {
 	gen_set_ibctl(a[0], a[1]);
-	printf("# dacc ibctl: ch=%u core=%u (next DACC init)\n",
-	       (unsigned)gen_ibctl_ch, (unsigned)gen_ibctl_core);
+	con_str("# dacc ibctl: ");
+	con_kv_u32("ch", gen_ibctl_ch);     con_ch(' ');
+	con_kv_u32("core", gen_ibctl_core);
+	con_str(" (next DACC init)"); con_nl();
 	uart_flush();
 }
 
@@ -1526,8 +1576,10 @@ static void h_ibctl(const uint32_t *a)
 static void h_adc_timing(const uint32_t *a)
 {
 	acq_set_timing(a[0], a[1]);
-	printf("# adc timing: tracktim=%u settling=%u (next stream)\n",
-	       (unsigned)acq_tracktim, (unsigned)acq_settling);
+	con_str("# adc timing: ");
+	con_kv_u32("tracktim", acq_tracktim); con_ch(' ');
+	con_kv_u32("settling", acq_settling);
+	con_str(" (next stream)"); con_nl();
 	uart_flush();
 }
 
@@ -1546,15 +1598,18 @@ static void h_temp(const uint32_t *a)
 	ctl_temp_t t;
 
 	if (adc_read_temp(&t, (uint16_t)a[0]) != CTL_TEMP_OK) {
-		printf("# temp: refused - a capture is armed, or no sensor here\n");
+		con_str("# temp: refused - a capture is armed, or no sensor here"); con_nl();
 		uart_flush();
 		return;
 	}
-	printf("# temp: code %lu.%02lu (min %u max %u, n=%u) adcmr=%08lx adcacr=%08lx\n",
-	       (unsigned long)(t.code_x16 / 16u),
-	       (unsigned long)((t.code_x16 % 16u) * 100u / 16u),
-	       (unsigned)t.code_min, (unsigned)t.code_max, (unsigned)t.samples,
-	       (unsigned long)t.adc_mr, (unsigned long)t.adc_acr);
+	con_str("# temp: code "); con_u32(t.code_x16 / 16u); con_ch('.');
+	con_u32w((t.code_x16 % 16u) * 100u / 16u, 2, '0');
+	con_str(" (min "); con_u32(t.code_min);
+	con_str(" max ");  con_u32(t.code_max);
+	con_str(", n=");   con_u32(t.samples);
+	con_str(") adcmr="); con_hex32(t.adc_mr, 8);
+	con_str(" adcacr="); con_hex32(t.adc_acr, 8);
+	con_nl();
 	uart_flush();
 }
 
@@ -1577,7 +1632,7 @@ static void h_bench(const uint32_t *a)
 			.occ_min    = play_occ_min,
 		};
 		play_report_format(line, sizeof line, &r);
-		printf("%s\n", line);
+		con_str(line); con_nl();
 	}
 	uart_flush();
 }

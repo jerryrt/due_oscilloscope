@@ -99,6 +99,12 @@ void con_u32w(uint32_t v, unsigned width, char fill);
  * Emits at most max(width, 10) bytes.
  */
 void con_u32l(uint32_t v, unsigned width);
+
+/*
+ * A string in a field of `width`, padded on the RIGHT: `%-22s`.
+ * cmd_profile's label column. Emits at most max(width, CON_STR_MAX).
+ */
+void con_strl(const char *s, unsigned width);
 void con_nl(void);
 
 /*
