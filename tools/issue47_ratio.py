@@ -27,6 +27,15 @@ the question "does every rate have a slow mode, and is its ratio a
 round binary fraction too" is answered by a table rather than by
 argument. 15/16 is exact enough to be a divider rather than a drift.
 
+**`nearest_fraction` is a hint, not a reading.** It is
+`Fraction.limit_denominator(64)` applied to a *measured* ratio, so it
+fits the noise as readily as the signal: RC 39 comes back as 42/43 at
+limit 64 and 83/85 at limit 128, and neither is a fact about the device.
+Only RC 32's 15/16 survives being checked properly - its seven events
+have sd 0.000049 and sit within 1e-4 of the fraction. For every other
+rate, **read the ratio and compare it against candidate fractions
+yourself**; do not quote this column.
+
     python3 tools/issue47_ratio.py --reps 8
 """
 import argparse, json, os, platform, statistics, sys, pathlib
@@ -85,6 +94,7 @@ def main():
                              consumed_bufs=cons, run_us=us,
                              device_sps=round(dev, 1), ratio=round(ratio, 6),
                              nearest_fraction=f"{fr.numerator}/{fr.denominator}",
+                             fraction_is_a_hint=True,
                              host_deficit_bytes=d,
                              pct_lost=round(100 * d / r.host_tx_bytes, 3)
                                       if r.host_tx_bytes else None,

@@ -1347,8 +1347,8 @@ clock is in it.
 |---|---|---|---|---|
 | 28 | 1,392,857 | 0 / 7 | 1.0000 | — |
 | 32 | 1,218,750 | **1 / 8** | **0.937504** | 15/16 = 0.937500 |
-| 39 | 1,000,000 | 8 / 8 | 0.976518 | 125/128 = 0.976562 |
-| 44 | 886,363 | 8 / 8 | 0.984288 | 63/64 = 0.984375 |
+| 39 | 1,000,000 | 8 / 8 | 0.976518 | *(see below)* |
+| 44 | 886,363 | 8 / 8 | 0.984288 | *(see below)* |
 | 56 | 696,428 | 0 / 8 | 1.0000 | — |
 
 Three things follow, and the third is the one to design against.
@@ -1380,6 +1380,24 @@ update rate would make the fast rates suffer and the slow ones safe;
 this is the opposite at both ends. Whatever selects the affected rates is
 not "too fast for the DACC", and sizing a design against the nominal rate
 at RC 39 or 44 will be 1.6-2.3% wrong every time.
+
+**Only RC 32's fraction is a reading; the others are not.** The table
+above used to name 125/128 for RC 39 and 63/64 for RC 44. Those came out
+of `Fraction.limit_denominator(64)` applied to a *measured* ratio, which
+fits noise as readily as signal - windows-desk showed that raising the
+limit to 128 gives 83/85 and 125/127 for the same numbers. A fraction
+that changes when you change the search is not a fact about the device.
+**Read the ratio.** RC 32's 15/16 is different in kind: its seven events
+have a standard deviation of 0.000049 and every one sits within 1e-4 of
+the fraction.
+
+**Reproduced on a second host at every rate.** windows-desk, 9 reps per
+rate, Track B, device-side only: RC 28 0/9, RC 32 3/9 slow at 0.93742,
+RC 39 9/9 at 0.97647, RC 44 9/9 at 0.98426, RC 56 0/9. Same two
+always-slow rates, same intermittent one, same two clean ones, same
+values. Every row has `host_deficit` 0, because Windows applies
+backpressure rather than discarding - which is why it is the better
+bench for this and why one host was not enough.
 
 **The mechanism is `DACC_MR_REFRESH`, and it explains the whole table.**
 One field in `play_start()`, changed from `REFRESH(1)` to `REFRESH(2)`,
