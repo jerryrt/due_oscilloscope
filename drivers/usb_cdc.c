@@ -25,7 +25,7 @@
 #include "sam.h"
 #include "usb_cdc.h"
 #include "bsp.h"
-#include <stdio.h>
+#include "console_out.h"
 
 #define EP_CTRL   0u
 #define EP_ACM    1u
@@ -1085,15 +1085,17 @@ void usb_cdc_dump(void)
 		unsigned n = setup_log_at < SETUP_LOG_N
 		           ? setup_log_at : SETUP_LOG_N;
 
-		printf("# setup log, oldest first (%lu total)\n",
-		       (unsigned long)setup_log_at);
+		con_str("# setup log, oldest first (");
+		con_u32(setup_log_at); con_str(" total)"); con_nl();
 		for (unsigned k = 0; k < n; k++) {
 			unsigned i = (setup_log_at - n + k) % SETUP_LOG_N;
 
-			printf("#   bm=%02x req=%02x val=%04x idx=%04x len=%u\n",
-			       setup_log[i].bm, setup_log[i].req,
-			       setup_log[i].val, setup_log[i].idx,
-			       setup_log[i].len);
+			con_str("#   bm="); con_hex32(setup_log[i].bm, 2);
+			con_str(" req=");   con_hex32(setup_log[i].req, 2);
+			con_str(" val=");   con_hex32(setup_log[i].val, 4);
+			con_str(" idx=");   con_hex32(setup_log[i].idx, 4);
+			con_str(" len=");   con_u32(setup_log[i].len);
+			con_nl();
 		}
 		uart_flush();
 	}
@@ -1102,35 +1104,36 @@ void usb_cdc_dump(void)
 	uint32_t dctl = UOTGHS->UOTGHS_DEVCTRL;
 	uint32_t sr   = UOTGHS->UOTGHS_SR;
 
-	printf("# usb CTRL=%08lx USBE=%d OTGPADE=%d FRZCLK=%d UIMOD=%d UIDE=%d\n",
-	       (unsigned long)ctrl,
-	       (int)!!(ctrl & UOTGHS_CTRL_USBE),
-	       (int)!!(ctrl & UOTGHS_CTRL_OTGPADE),
-	       (int)!!(ctrl & UOTGHS_CTRL_FRZCLK),
-	       (int)!!(ctrl & UOTGHS_CTRL_UIMOD),
-	       (int)!!(ctrl & UOTGHS_CTRL_UIDE));
-	printf("# usb DEVCTRL=%08lx DETACH=%d SPDCONF=%lu  SR=%08lx CLKUSABLE=%d\n",
-	       (unsigned long)dctl,
-	       (int)!!(dctl & UOTGHS_DEVCTRL_DETACH),
-	       (unsigned long)((dctl & UOTGHS_DEVCTRL_SPDCONF_Msk) >>
-	                       UOTGHS_DEVCTRL_SPDCONF_Pos),
-	       (unsigned long)sr,
-	       (int)!!(sr & UOTGHS_SR_CLKUSABLE));
-	printf("# usb DEVIMR=%08lx DEVISR=%08lx EPT=%08lx EP0CFG=%08lx EP0ISR=%08lx\n",
-	       (unsigned long)UOTGHS->UOTGHS_DEVIMR,
-	       (unsigned long)UOTGHS->UOTGHS_DEVISR,
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPT,
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[0],
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[0]);
-	printf("# pmc PMC_USB=%08lx SR_LOCKU=%d SCSR=%08lx\n",
-	       (unsigned long)PMC->PMC_USB,
-	       (int)!!(PMC->PMC_SR & PMC_SR_LOCKU),
-	       (unsigned long)PMC->PMC_SCSR);
-	printf("# ep2(OUT) CFG=%08lx ISR=%08lx  ep3(IN) CFG=%08lx ISR=%08lx\n",
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[2],
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3],
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[3]);
+	con_str("# usb CTRL=");  con_hex32(ctrl, 8);
+	con_str(" USBE=");       con_u32(!!(ctrl & UOTGHS_CTRL_USBE));
+	con_str(" OTGPADE=");    con_u32(!!(ctrl & UOTGHS_CTRL_OTGPADE));
+	con_str(" FRZCLK=");     con_u32(!!(ctrl & UOTGHS_CTRL_FRZCLK));
+	con_str(" UIMOD=");      con_u32(!!(ctrl & UOTGHS_CTRL_UIMOD));
+	con_str(" UIDE=");       con_u32(!!(ctrl & UOTGHS_CTRL_UIDE));
+	con_nl();
+	con_str("# usb DEVCTRL="); con_hex32(dctl, 8);
+	con_str(" DETACH=");       con_u32(!!(dctl & UOTGHS_DEVCTRL_DETACH));
+	con_str(" SPDCONF=");
+	con_u32((dctl & UOTGHS_DEVCTRL_SPDCONF_Msk) >>
+	        UOTGHS_DEVCTRL_SPDCONF_Pos);
+	con_str("  SR=");          con_hex32(sr, 8);
+	con_str(" CLKUSABLE=");    con_u32(!!(sr & UOTGHS_SR_CLKUSABLE));
+	con_nl();
+	con_str("# usb DEVIMR="); con_hex32(UOTGHS->UOTGHS_DEVIMR, 8);
+	con_str(" DEVISR=");      con_hex32(UOTGHS->UOTGHS_DEVISR, 8);
+	con_str(" EPT=");         con_hex32(UOTGHS->UOTGHS_DEVEPT, 8);
+	con_str(" EP0CFG=");      con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[0], 8);
+	con_str(" EP0ISR=");      con_hex32(UOTGHS->UOTGHS_DEVEPTISR[0], 8);
+	con_nl();
+	con_str("# pmc PMC_USB="); con_hex32(PMC->PMC_USB, 8);
+	con_str(" SR_LOCKU=");     con_u32(!!(PMC->PMC_SR & PMC_SR_LOCKU));
+	con_str(" SCSR=");         con_hex32(PMC->PMC_SCSR, 8);
+	con_nl();
+	con_str("# ep2(OUT) CFG="); con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[2], 8);
+	con_str(" ISR=");           con_hex32(UOTGHS->UOTGHS_DEVEPTISR[2], 8);
+	con_str("  ep3(IN) CFG=");  con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[3], 8);
+	con_str(" ISR=");           con_hex32(UOTGHS->UOTGHS_DEVEPTISR[3], 8);
+	con_nl();
 	/*
 	 * The control function. CFGOK is the whole verification for the
 	 * DPRAM budget: the controller sets it only if the requested size
@@ -1138,24 +1141,35 @@ void usb_cdc_dump(void)
 	 * DPRAM, so three ones here is the hardware agreeing that the
 	 * layout in docs/control-protocol.md is affordable.
 	 */
-	printf("# ep4(cACM) ok=%d  ep5(cOUT) CFG=%08lx ok=%d  ep6(cIN) CFG=%08lx ok=%d\n",
-	       (int)!!(UOTGHS->UOTGHS_DEVEPTISR[EP_CACM] & UOTGHS_DEVEPTISR_CFGOK),
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[EP_COUT],
-	       (int)!!(UOTGHS->UOTGHS_DEVEPTISR[EP_COUT] & UOTGHS_DEVEPTISR_CFGOK),
-	       (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[EP_CIN],
-	       (int)!!(UOTGHS->UOTGHS_DEVEPTISR[EP_CIN] & UOTGHS_DEVEPTISR_CFGOK));
-	printf("# ctl dtr=%d cfgfail=%lu realloc=%lu in=%lu out=%lu\n",
-	       (int)!!(usb_ctl_line_state & 0x01),
-	       (unsigned long)usb_cfg_fail,
-	       (unsigned long)usb_ctl_reallocs,
-	       (unsigned long)usb_ctl_in_activity,
-	       (unsigned long)usb_ctl_out_activity);
-	printf("# dma ch1(OUT) ADDR=%08lx CTRL=%08lx ST=%08lx  ch2(IN) ADDR=%08lx CTRL=%08lx ST=%08lx\n",
-	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMAADDRESS,
-	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMACONTROL,
-	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMASTATUS,
-	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMAADDRESS,
-	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMACONTROL,
-	       (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMASTATUS);
+	con_str("# ep4(cACM) ok=");
+	con_u32(!!(UOTGHS->UOTGHS_DEVEPTISR[EP_CACM] & UOTGHS_DEVEPTISR_CFGOK));
+	con_str("  ep5(cOUT) CFG=");
+	con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[EP_COUT], 8);
+	con_str(" ok=");
+	con_u32(!!(UOTGHS->UOTGHS_DEVEPTISR[EP_COUT] & UOTGHS_DEVEPTISR_CFGOK));
+	con_str("  ep6(cIN) CFG=");
+	con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[EP_CIN], 8);
+	con_str(" ok=");
+	con_u32(!!(UOTGHS->UOTGHS_DEVEPTISR[EP_CIN] & UOTGHS_DEVEPTISR_CFGOK));
+	con_nl();
+	con_str("# ctl ");
+	con_kv_u32("dtr", !!(usb_ctl_line_state & 0x01));  con_ch(' ');
+	con_kv_u32("cfgfail", usb_cfg_fail);               con_ch(' ');
+	con_kv_u32("realloc", usb_ctl_reallocs);           con_ch(' ');
+	con_kv_u32("in", usb_ctl_in_activity);             con_ch(' ');
+	con_kv_u32("out", usb_ctl_out_activity);           con_nl();
+	con_str("# dma ch1(OUT) ADDR=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMAADDRESS, 8);
+	con_str(" CTRL=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMACONTROL, 8);
+	con_str(" ST=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMASTATUS, 8);
+	con_str("  ch2(IN) ADDR=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMAADDRESS, 8);
+	con_str(" CTRL=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMACONTROL, 8);
+	con_str(" ST=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMASTATUS, 8);
+	con_nl();
 	uart_flush();
 }

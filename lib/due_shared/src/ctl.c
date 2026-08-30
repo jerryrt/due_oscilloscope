@@ -7,6 +7,7 @@
 #include "ctl_port.h"
 #include "fw_version.h"
 #include "frame.h"
+#include "console_out.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -991,11 +992,11 @@ void ctl_dump(void)
 	 * parser stuck mid-frame answers nothing and looks exactly like a
 	 * dead channel, and the two are fixed by different things.
 	 */
-	printf("# ctl frames=%lu bad=%lu txdrop=%lu state=%u ping=%lu\n",
-	       (unsigned long)ctl_rx_frames,
-	       (unsigned long)ctl_rx_bad,
-	       (unsigned long)ctl_tx_dropped,
-	       (unsigned)rx_state,
-	       (unsigned long)ping_seq);
+	con_str("# ctl ");
+	con_kv_u32("frames", ctl_rx_frames);   con_ch(' ');
+	con_kv_u32("bad", ctl_rx_bad);         con_ch(' ');
+	con_kv_u32("txdrop", ctl_tx_dropped);  con_ch(' ');
+	con_kv_u32("state", rx_state);         con_ch(' ');
+	con_kv_u32("ping", ping_seq);          con_nl();
 	ctl_port_console_flush();
 }

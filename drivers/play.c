@@ -518,7 +518,7 @@ void DACC_Handler(void)
 		gen_endtx();
 }
 
-#include <stdio.h>
+#include "console_out.h"
 #include "bsp.h"
 
 /*
@@ -533,23 +533,29 @@ void play_dump(void)
 {
 	const uint16_t *b = play_buf[1];   /* one the host filled */
 
-	printf("# DACC_MR=%08lx TAG=%d MAXS=%d WORD=%d TRGEN=%d TRGSEL=%lu CHSR=%08lx\n",
-	       (unsigned long)DACC->DACC_MR,
-	       (int)!!(DACC->DACC_MR & DACC_MR_TAG),
-	       (int)!!(DACC->DACC_MR & DACC_MR_MAXS),
-	       (int)!!(DACC->DACC_MR & DACC_MR_WORD),
-	       (int)!!(DACC->DACC_MR & DACC_MR_TRGEN),
-	       (unsigned long)((DACC->DACC_MR & DACC_MR_TRGSEL_Msk) >> 1),
-	       (unsigned long)DACC->DACC_CHSR);
-	printf("# play_dump buf1 fill_off=%lu produced=%lu:\n",
-	       (unsigned long)fill_off, (unsigned long)play_produced);
+	con_str("# DACC_MR="); con_hex32(DACC->DACC_MR, 8);
+	con_str(" TAG=");      con_u32(!!(DACC->DACC_MR & DACC_MR_TAG));
+	con_str(" MAXS=");     con_u32(!!(DACC->DACC_MR & DACC_MR_MAXS));
+	con_str(" WORD=");     con_u32(!!(DACC->DACC_MR & DACC_MR_WORD));
+	con_str(" TRGEN=");    con_u32(!!(DACC->DACC_MR & DACC_MR_TRGEN));
+	con_str(" TRGSEL=");
+	con_u32((DACC->DACC_MR & DACC_MR_TRGSEL_Msk) >> 1);
+	con_str(" CHSR=");     con_hex32(DACC->DACC_CHSR, 8);
+	con_nl();
+	con_str("# play_dump buf1 ");
+	con_kv_u32("fill_off", fill_off);       con_ch(' ');
+	con_kv_u32("produced", play_produced);  con_ch(':'); con_nl();
 	for (int row = 0; row < 2; row++) {
-		printf("#  ");
+		con_str("#  ");
 		for (int i = 0; i < 8; i++) {
 			uint16_t v = b[row * 8 + i];
-			printf(" %04x(t%u,%4u)", v, (v >> 12) & 3u, v & 0x0fffu);
+
+			con_ch(' ');  con_hex32(v, 4);
+			con_str("(t"); con_u32((v >> 12) & 3u);
+			con_ch(',');   con_u32w(v & 0x0fffu, 4, ' ');
+			con_ch(')');
 		}
-		printf("\n");
+		con_nl();
 	}
 	uart_flush();
 }
