@@ -29,24 +29,44 @@ import pytest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-#: (label, path, how the banner is emitted). Both tracks, because
-#: invariant 3 wants one decision here and not two: the fix landed on
-#: both in one change and it has to stay that way, or the oracle carries
-#: a defect the project keeps it to detect.
-SITES = [
-    ("track B", os.path.join("apps", "baremetal_bringup", "main.c"),
-     r'printf\("# streaming:'),
-    ("track A", os.path.join("sketches", "bringup", "bringup.ino"),
-     r'"# streaming:'),
+TRACKS = [
+    ("track B", os.path.join("apps", "baremetal_bringup", "main.c")),
+    ("track A", os.path.join("sketches", "bringup", "bringup.ino")),
 ]
 
+#: (handler, signature, banner, the capture start, the refusal it guards).
+#:
+#: Both handlers, because the audit in docs/debugging.md priced the class
+#: and the first fix went to one instance: `h_loop` was listed at margin
+#: -5.89 ms and left unfixed for a day while `cmd_stream` was covered by
+#: this very file. A per-site test that only knows about the site someone
+#: happened to fix reproduces exactly that gap.
+HANDLERS = [
+    ("cmd_stream",
+     r"static void cmd_stream\(uint32_t trigger_hz\)\s*\{",
+     r'"# streaming:', r"stream_start\(trigger_hz\)", r"# refused:"),
+    ("loop",
+     r"static void h?a?_?loop\(const uint32_t \*a\)\s*\{",
+     r'"# loop: DAC %lu sps from USB',
+     r"stream_start_capture_only\(adc_hz, nch\)",
+     r"# loop: ADC %lu Hz"),
+]
 
-def _cmd_stream(path):
-    """The body of cmd_stream, from its opening brace to the matching one."""
+#: Every handler x every track. Both tracks, because invariant 3 wants
+#: one decision here and not two: each fix landed on both in one change
+#: and has to stay that way, or the oracle carries a defect the project
+#: keeps it to detect.
+SITES = [(f"{h} {t}", path, sig, banner, start, refusal)
+         for (h, sig, banner, start, refusal) in HANDLERS
+         for (t, path) in TRACKS]
+
+
+def _body(path, signature):
+    """One function body, from its opening brace to the matching one."""
     with open(os.path.join(REPO, path), encoding="utf-8") as f:
         text = f.read()
-    m = re.search(r"static void cmd_stream\(uint32_t trigger_hz\)\s*\{", text)
-    assert m, f"cmd_stream not found in {path}"
+    m = re.search(signature, text)
+    assert m, f"{signature} not found in {path}"
     depth, i = 1, m.end()
     while depth and i < len(text):
         depth += (text[i] == "{") - (text[i] == "}")
@@ -54,27 +74,29 @@ def _cmd_stream(path):
     return text[m.end():i]
 
 
-@pytest.mark.parametrize("label,path,banner", SITES,
+@pytest.mark.parametrize("label,path,sig,banner,start,refusal", SITES,
                          ids=[s[0] for s in SITES])
-def test_the_banner_is_printed_before_the_capture_starts(label, path, banner):
-    body = _cmd_stream(path)
+def test_the_banner_is_printed_before_the_capture_starts(
+        label, path, sig, banner, start, refusal):
+    body = _body(path, sig)
 
     at_banner = re.search(banner, body)
-    at_start = re.search(r"stream_start\(trigger_hz\)", body)
-    assert at_banner, f"{label}: no streaming banner in cmd_stream"
-    assert at_start, f"{label}: cmd_stream no longer calls stream_start"
+    at_start = re.search(start, body)
+    assert at_banner, f"{label}: no banner found"
+    assert at_start, f"{label}: no longer starts the capture"
 
     assert at_banner.start() < at_start.start(), (
-        f"{label} ({path}): cmd_stream starts the capture before it "
-        f"prints its banner. That is issue #41 - the print costs 13-20 ms "
+        f"{label} ({path}): the capture starts before the banner "
+        f"is printed. That is issue #41 - the print costs 13-20 ms "
         f"of blocked main loop against 8.96 ms of ring runway at "
         f"453,488 Hz, so the frames that arrive during it are lost before "
         f"the host sees any. See docs/debugging.md.")
 
 
-@pytest.mark.parametrize("label,path,banner", SITES,
+@pytest.mark.parametrize("label,path,sig,banner,start,refusal", SITES,
                          ids=[s[0] for s in SITES])
-def test_the_refusal_still_follows_the_start(label, path, banner):
+def test_the_refusal_still_follows_the_start(
+        label, path, sig, banner, start, refusal):
     """The banner moving up must not take the refusal with it.
 
     A refusal is only knowable from `stream_start`'s return, so it has to
@@ -84,10 +106,10 @@ def test_the_refusal_still_follows_the_start(label, path, banner):
     silent one, because the host reads success as the *absence* of
     "refused".
     """
-    body = _cmd_stream(path)
-    at_start = re.search(r"stream_start\(trigger_hz\)", body)
-    at_refusal = re.search(r"# refused:", body)
-    assert at_refusal, f"{label}: cmd_stream no longer reports a refusal"
+    body = _body(path, sig)
+    at_start = re.search(start, body)
+    at_refusal = re.search(refusal, body)
+    assert at_refusal, f"{label}: no longer reports a refusal"
     assert at_start.start() < at_refusal.start(), (
         f"{label} ({path}): the refusal is printed before the start whose "
         f"return decides it, so the device would announce a refusal it "
