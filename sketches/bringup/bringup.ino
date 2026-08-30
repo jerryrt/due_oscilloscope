@@ -871,6 +871,30 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 		return;
 	}
 
+	/*
+	 * These three lines print AFTER the capture start, which is the
+	 * shape #41 was about - and they stay that way deliberately.
+	 *
+	 * docs/debugging.md prices this site at +4.77 ms of margin
+	 * against a 20.32 ms runway, "about one added banner line from
+	 * biting". It survives only because the capture here is fixed at
+	 * 200,000 Hz, where the ring holds longest. Add a fourth line and
+	 * it becomes cmd_stream: frames lost before the host sees any.
+	 *
+	 * Moving them above stream_start_capture_only() - which is what
+	 * cmd_stream and h_loop did - would fix the margin and break the
+	 * measurement. The interval between gen_start_independent() and
+	 * the capture start sets the sampling phase against the DAC's
+	 * table wrap, and h_mimic's comment records that as a free
+	 * variable fixed for a run by the instruction timing between the
+	 * two starts. Putting ~110 characters of UART in there would move
+	 * it by milliseconds, and this command is an instrument for issue
+	 * #5, which is about one sample per table wrap.
+	 *
+	 * So: not an oversight, and not safe to "fix" the way the others
+	 * were. If a print is ever needed here, put it above
+	 * gen_start_independent() where it costs nothing.
+	 */
 	snprintf(buf, sizeof(buf),
 	         "# DAC indep %lu Hz (RC %lu), capture 200000 Hz",
 	         (unsigned long)dac_hz, (unsigned long)gen_configured_rc());
