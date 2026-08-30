@@ -254,6 +254,32 @@ Check here before reasoning from general Arduino knowledge.
   68%" and "the square became a triangle" are the same number and
   different findings; quote the one that matches what the output is
   for. `docs/awg.md`.
+- **Playback does not deliver every rate it accepts, and the affected
+  band is wide.** Between roughly **812,500 and 1,218,750 sps** the DACC
+  converts *below* the rate it was programmed for - persistently in the
+  interior (RC 34/36/39/44, ratios 0.977-0.984) and intermittently at
+  the two edges (RC 32 at exactly 15/16, RC 48 at 0.9686). Outside the
+  band - RC 28, 30, 52, 56 - it delivers in full. Measured device-side
+  from `consumed / run_us` with no host clock in it, on **two tracks**
+  (Track A 2/24 against Track B 7/32, p = 0.16, so it is the silicon and
+  not one track's register programming) and **two hosts**.
+
+  It is `DACC_MR_REFRESH`: setting it to 2 or 3 clears every affected
+  rate, restoring 1 brings them all back, p = 3.3e-11 across the ladder.
+  The ripple that refresh defends against is **0.22 codes = 0.18 mV**,
+  and during playback the sample stream rewrites the DAC 18-37x more
+  often than refresh does, so while streaming refresh protects nothing.
+  The mechanism is **not** explained; four candidate models are dead on
+  issue #48, all of them measured rather than argued away.
+
+  **What this costs you:** `OVERSUPPLIED = {44, 39}` in
+  `tests/test_integrity.py` is this, and so is the macOS "byte loss" at
+  those rates - a host that buffers ahead sheds the surplus it wrote for
+  a converter that could not take it, while Windows applies backpressure
+  and simply feeds less. **Do not size anything against a nominal
+  playback rate in that band**, and do not read a byte deficit there as
+  loss. `docs/awg.md`.
+
 - **The generator's 113 kHz ceiling is the ADC's, not the DAC's.** Every
   ordinary path triggers the DACC from TIOA0 so generation and capture
   stay phase-coherent, and TIOA0 is capped by `ACQ_MIN_RC` = 86 at
