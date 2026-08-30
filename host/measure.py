@@ -2004,6 +2004,33 @@ def build_ramp(step=RAMP_STEP, period=None):
     return bytes(out), 0.0
 
 
+def build_ramp_tagged(step=RAMP_STEP, period=None, dc1=2048):
+    """A ramp on DAC0 with DAC1 written between every pair, TAG style.
+
+    build_ramp() tags every entry DAC0, so the DACC updates DAC0 on
+    every trigger and nothing happens between two captured samples of
+    one level. gen NORMAL interleaves: DAC0, DAC1, DAC0, DAC1, so the
+    converter writes the other channel in that gap.
+
+    That interleave is the ONLY structural difference left between the
+    host-fed path and the internal generator, and the two disagree about
+    what the issue-24 comb counts - 21 ADC conversions on the host path
+    against 21 DAC0 updates internally, measured with readers that
+    discard nothing on both sides. This builder puts the interleave on
+    the host path so the question can be asked within one path, with one
+    instrument, changing one thing.
+
+    DAC1 gets a constant, so it contributes conversions without
+    contributing a waveform.
+    """
+    period = period or (4096 // step)
+    out = bytearray()
+    for i in range(period):
+        out += struct.pack("<H", (0 << 12) | ((i * step) % 4096))
+        out += struct.pack("<H", (1 << 12) | (int(dc1) & 0xFFF))
+    return bytes(out), 0.0
+
+
 def ramp_discontinuities(ps, tag=CH_A0, step=RAMP_STEP, period=None,
                          from_us=SETTLE_US, tolerance=3):
     """Sample offsets where a captured ramp did not advance by one step.
@@ -2477,15 +2504,20 @@ class LoopResult:
 def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
              tone=1000.0, seconds=3.0, dc=None, ramp=None, square=None,
              diag=False, drain=True, notify=None, scale=1.0,
-             write_size=None, closed_loop=False):
+             write_size=None, closed_loop=False, wave=None):
     """The complete loop: HOST -> USB -> DAC -> wire -> ADC -> USB -> HOST.
 
     Because the host authored the signal, any discrepancy in what comes
     back is a fault in the path rather than an unknown property of a
     signal.
     """
-    wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc, ramp=ramp,
-                                   square=square)
+    if wave is None:
+        wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc,
+                                       ramp=ramp, square=square)
+    else:
+        # A caller that has built its own table owns its own tone; the
+        # only user so far is the TAG-interleave arm, which has none.
+        tone_hz = 0.0
 
     fd = board.open_native(blocking_writes=True, notify=notify)
     stale = drain_until_quiet(fd) if drain else 0
