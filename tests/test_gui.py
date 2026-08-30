@@ -2212,3 +2212,51 @@ def test_the_call_timeout_outlives_the_daemon_s_own_worst_case():
         f"a call timeout of {sessionmod.CALL_TIMEOUT} cannot outlast a "
         f"daemon that is allowed to spend {drain_cap} draining before it "
         f"even sends the command")
+
+
+@pytest.mark.xfail(reason="issue #43: MEASURE_MIN_SWING_CODES is 10, "
+                          "which is below the noise it exists to reject",
+                   strict=True)
+def test_noise_on_an_undriven_pin_is_not_a_signal_to_be_timed():
+    """Issue #43, as a target rather than as a description.
+
+    Nothing in the suite fails while the swing floor is wrong, so
+    whoever sets the constant has nothing to check against. This is that
+    check, and it deliberately encodes the *requirement* rather than
+    this bench's number: noise of a realistic amplitude must not be
+    reported as a waveform, whatever the reference or the gain.
+
+    The amplitude is taken from a measurement, not invented. On
+    `windows-desk`, 1240 consecutive 20 ms windows of an undriven DAC
+    output pin - A1 while the host feeds DAC0 only - spanned 45 to 52
+    codes peak-to-peak, and the whole distribution fits inside seven
+    codes. `records/issue43-quiet-window-windows.jsonl`. The floor is
+    10, so every one of those windows clears it by a factor of four and
+    the panel will happily time them: measured on the board, an
+    undriven pin read 9,523.8 Hz at 1.2 % duty, to five figures, with
+    nothing on screen marking it as different from a real reading.
+
+    Uniform noise rather than a captured window on purpose - a
+    board-free test should not carry one bench's samples, and the
+    property under test is not specific to this bench's noise shape.
+
+    Marked strict, so that fixing #43 fails this test until the xfail is
+    removed with it. A silently-passing xfail is how a fixed defect
+    keeps a test that no longer tests anything.
+    """
+    rng = np.random.default_rng(20260830)
+    rate = 200000
+    # 52 codes peak-to-peak about mid-scale: the worst quiet window
+    # measured, and still four times the floor.
+    codes = rng.integers(2048 - 26, 2048 + 27, size=4000, dtype=np.uint16)
+
+    r = stream.ChannelRing(seconds=0.05, rate_hz=rate)
+    r.append(codes)
+    m = stream.measure(stream.select(r, 4000), rate)
+
+    assert m["freq_hz"] is None, (
+        f"timed an undriven pin at {m['freq_hz']} Hz from "
+        f"{int(codes.max() - codes.min())} codes of noise")
+    assert m["period_s"] is None
+    assert m["duty"] is None
+    assert m["note"], "a refusal has to say why"
