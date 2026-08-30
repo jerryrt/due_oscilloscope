@@ -1573,6 +1573,23 @@ n=6 in mine and not in their nine. **Which mode a run takes is
 probabilistic; which lattice point it lands on is not.** So quote a mode
 *set* as a lower bound on what a rate can do.
 
+**That was then tested rather than assumed.** windows-desk ran a 24-rep
+census at the two rates that disagreed, and RC 36's missing n=6 appeared
+in **10 of 24** runs - a mode their nine-run sample had missed entirely,
+not a bench difference. With that many repetitions the modes are also
+roughly balanced rather than rare:
+
+| RC | modes | split |
+|---|---|---|
+| 34 | 3 or 4 | 15 / 8 |
+| 36 | 4 or 6 | 14 / 10 |
+
+So a rate does not have a rare fault mode and a normal one. It has two
+outcomes of comparable likelihood, chosen per run - which is a stronger
+constraint than "sometimes it goes wrong", and it is why an 8-run sample
+can miss a mode that occurs 40% of the time in nine tries (p = 0.02, and
+it happened).
+
 Combining both benches, both regularities get stronger: gaps all powers
 of two (six non-trivial, p = 3.6e-4) and perfectly ordered by
 denominator across eleven rates (1/55440, p = 1.8e-5).
