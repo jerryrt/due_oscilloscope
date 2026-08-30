@@ -1475,6 +1475,36 @@ Several rates offer two values and a run picks one:
 and others offer only one: RC 31 always 2, RC 39 always 6, RC 44 always
 4, RC 28 and 56 always 0.
 
+**Two regularities in those pairs, offered as constraints and not as a
+model.** The conversions per refresh is exactly `C = 1024 / RC`, whose
+denominator in lowest terms is `RC / gcd(1024, RC)`. Against that:
+
+| RC | denominator of C | mode gap |
+|---|---|---|
+| 32 | 1 | **16** |
+| 48 | 3 | **8** |
+| 40 | 5 | **4** |
+| 36 | 9 | 2 |
+| 52 | 13 | 2 |
+| 30 | 15 | 1 |
+| 34 | 17 | 1 |
+| 38 | 19 | 1 |
+| 50 | 25 | 1 |
+
+**Every gap is a power of two** - 9 of 9, and the five non-trivial ones
+(2, 2, 4, 8, 16) would arise by chance with p = 1.3e-3 if gaps were
+uniform over 2..16. **And the gap falls monotonically as the denominator
+rises** - a perfect ordering, which the observed multiset would produce
+by chance in 1 of 7560 arrangements, p = 1.3e-4.
+
+Nine rates is a small sample and both figures assume a null nobody has
+justified, so treat them as "worth explaining" rather than as
+established law. What they say is that the two states a run can fall
+into are separated by a power of two, and that rates whose refresh and
+conversion clocks are in a *simpler* rational ratio have states further
+apart. That is the shape of a divider or a counter, and it is a
+narrower target than "something in the DACC".
+
 **So "RC 32 and 48 are the intermittent rates" was an artefact.** Half
 the ladder is bimodal; those two are simply the only ones with a mode at
 n = 0, which is the one a pass/fail test notices. For the same reason,
