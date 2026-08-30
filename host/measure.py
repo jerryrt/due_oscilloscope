@@ -896,6 +896,8 @@ def parse_frames(buf, settle_us=0, settle_cap=8192, keep_series=True):
             # is the question issue #44 is stuck on.
             if ps.seq_steps is None:
                 ps.seq_steps = []
+            # ps.frames is the 1-based index of the frame that
+            # FOLLOWS the gap - it has already been counted above.
             ps.seq_steps.append((ps.frames, ts_prev, ts, n_lost))
         seq_prev = seq
         ts_prev = ts
