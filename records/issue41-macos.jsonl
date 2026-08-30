@@ -1,3 +1,4 @@
 {"bench":"macos","track":"a","host":"macOS","preset":"3","rate_hz":200000,"reps":3,"first_overrun":[0,0,0],"max_overrun":[0,0,0],"frames":1768,"seq_gaps":0,"seconds":9.0}
 {"bench":"macos","track":"a","host":"macOS","preset":"4","rate_hz":402061,"reps":3,"first_overrun":[3,3,3],"max_overrun":[3,3,3],"frames":3552,"seq_gaps":0,"seconds":9.0}
 {"bench":"macos","track":"a","host":"macOS","preset":"5","rate_hz":453488,"reps":3,"first_overrun":[4,4,4],"max_overrun":[4,4,4],"frames":4006,"seq_gaps":0,"seconds":9.0}
+{"bench":"macos","track":"a","host":"macOS","preset":"=200000,<adc>M","note":"mimic path, prints BEFORE starting the converters","adc_sweep":[200000,260000,300000,350000,402061,453488],"first_overrun":[0,0,0,0,0,0],"max_overrun":[0,0,0,0,0,0],"reps":2,"seconds":6.0}
