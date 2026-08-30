@@ -1584,11 +1584,33 @@ roughly balanced rather than rare:
 | 34 | 3 or 4 | 15 / 8 |
 | 36 | 4 or 6 | 14 / 10 |
 
-So a rate does not have a rare fault mode and a normal one. It has two
-outcomes of comparable likelihood, chosen per run - which is a stronger
-constraint than "sometimes it goes wrong", and it is why an 8-run sample
-can miss a mode that occurs 40% of the time in nine tries (p = 0.02, and
-it happened).
+**Those percentages are a snapshot and do not survive.** windows-desk
+re-ran RC 36 about twenty minutes later, same rate, firmware, bench and
+tool, 48 reps: n = 6 fell to **4 of 48 (8%)** against the 42% above,
+declining from 12% in the first half to **none at all in the last 18
+runs**. Their sequence is in
+`records/issue48-incidence-drift-windows.jsonl`.
+
+So a mode's incidence **drifts** - by a factor of five between sessions
+and monotonically downward inside one continuous run. Two consequences,
+and the first retracts something this document said:
+
+**A rate does not have a mode probability.** It has a mode *set*, and how
+often a run takes each one is not a property of the rate at all. An
+earlier version of this paragraph read those 15/8 and 14/10 splits as
+"two outcomes of comparable likelihood" and treated that as a constraint
+on the mechanism. It is not; it is one session.
+
+**A before/after at one rate is worthless without an interleaved
+control.** If incidence falls through a run on its own, any change made
+half way through will look like it helped. windows-desk declined to read
+a before/after for exactly this reason, which is the right call.
+`linux-x1` reports no such drift across two sessions of their own arm,
+so the caution is not obviously universal - but two points is not a
+claim about stability either.
+
+What survives is the lattice and the mode *sets*: which n a run can land
+on. Not how often.
 
 Combining both benches, both regularities get stronger: gaps all powers
 of two (six non-trivial, p = 3.6e-4) and perfectly ordered by
