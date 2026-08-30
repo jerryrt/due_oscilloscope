@@ -194,48 +194,70 @@ rather than a suspicion about `drain_console`.
 So the entry is: **issue #33**, Track A stops servicing under sustained
 host-fed playback.
 
-### #33: the native-Linux arm, and it is not duration alone
+### #33 characterised from this bench
 
-`tools/bench.py --only play --rc 195`, board reset between runs, console
-liveness checked after each.
+Feeder self-limits (pyserial blocking writes with a `write_timeout`) and
+liveness is PING on the **command** node, which resets nothing - the
+console lives on the programming port and closing that drops DTR, which
+is NRSTB and looks exactly like a recovery.
 
-| track | 0.5 MB (1.3 s) | 1 MB (2.6 s) | 2 MB (5.2 s) | 4 MB (10.5 s) |
-|---|---|---|---|---|
-| Track A | completed | **wedged** | **wedged** | **wedged** |
-| Track B | - | completed | completed | completed |
+**It is a hang, not starvation.**
 
-The turnover here is between **1.3 s and 2.6 s** of feed, against
-windows-desk's **6.4/8.6 s**, and their Track B control reproduces
-cleanly on this host. Their bisect concluded the wedge is "governed by
-feed duration and nothing else" across a 7x rate span; a second host
-shows duration is not sufficient, because the same 2.6 s that is safe
-there wedges here. Linux applies backpressure like Windows - 0 B lost in
-40 runs - so a discarding host does not explain it either.
+| step | PING |
+|---|---|
+| armed, before feed | alive |
+| immediately after the flood | dead |
+| +10 s, +20 s, +30 s, +60 s idle, console untouched | dead, dead, dead, dead |
+| after NRSTB | alive |
 
-**The main loop stops while interrupts do not.** Watched on the bench:
-heartbeat LED off and RX/TX LED solid during the stall, while the device
-keeps enumerating - so the core's USB stack and the interrupts are still
-running and the loop is not.
+Two minutes of complete idle does not clear it. Only a reset does.
 
-**Whether it recovers is unsettled, and an earlier version of this file
-said it did.** That came from the heartbeat returning when the bench
-owner killed the host processes, read as a graceful resume. It was
-almost certainly a reset: killing a process that holds the *programming*
-port closes that fd and drops DTR, which is NRSTB on the Due. Measured
-since, with a feeder that writes the **native** node only and never
-touches the console: the console is still silent 4 s after the feeder
-dies, still silent minutes later, and comes back only on a deliberate
-DTR toggle. So removing host pressure does **not** demonstrably bring it
-back on this bench.
+**Duration-governed, which confirms windows-desk's bisect on a second
+host.**
 
-That leaves hang and starvation both open. Invariant 7's failure mode -
-a peer flooding an endpoint costing an unbounded slice of a pass, Track
-B bounded and Track A not - fits what is seen, but it predicts a resume
-that has not been observed here, so it is a hypothesis and not the
-finding.
+| dac_hz | bytes at stall | time |
+|---|---|---|
+| 200,000 | 1,317,888 (2574 x 512) | 5.2 s |
+| 397,959 | 2,590,720 (5060 x 512) | 5.2 s |
+| 600,000 | 3,890,176 (7598 x 512) | 5.2 s |
 
-Host-side it presents as pyserial's `write()` blocking for ever in
-`select([], [fd], [], None)`.
+Time constant over a 3x rate span, bytes linear in rate, and the byte
+count repeats **to the byte** across runs. An earlier version of this
+file said "it is not duration alone" on the strength of `--mb` values
+read as durations; that is withdrawn.
+
+**The threshold is feed-policy-dependent, and that is probably why the
+two benches disagree.** `bench.py`'s paced `design` feeder wedges at
+about 2.6 s of data on this host while the unpaced blocking feeder
+survives to 5.2 s - same board, same rate, same machine. windows-desk
+reads 6.4/8.6 s with the paced feeder. So "the threshold" is a property
+of the feeder as much as of the device, and a single number should not
+be quoted without saying which feeder produced it.
+
+**The clock starts at the first byte, not at arm.** Arm, wait 3 s, then
+feed: stalls after 5.2 s *of feeding*, byte-identical to the no-delay
+run.
+
+**It is not a HardFault.** The console was held open *through* the stall
+- every earlier read here was taken after an open that resets the board,
+so a dump could never have been seen. Zero console bytes across 25 s
+spanning the stall, and `fault.cpp` prints `*** HARD FAULT ***` with a
+register dump over polled UART before `blink_forever()`.
+
+**The leading candidate, flagged as a candidate.** `bringup.ino`'s own
+comment at the unconditional `ctlusb_quiesce_interrupts()` call
+describes the syndrome: the core re-enables EP4-6 interrupts at
+SET_CONFIGURATION and on bus reset, its ISR has no case for them, and
+the handler then "re-enters for ever. The board keeps enumerating,
+because that is all the ISR is still doing, and answers nothing else."
+Symptom for symptom, including that the guard runs from the main loop
+and so cannot win a race it has already lost.
+
+What does not fit: an interrupt storm should be a race, and this is
+deterministic to the byte. The command node was never opened during
+these runs either, so no EP5 OUT traffic was in play. Nothing periodic
+at ~5.2 s has been found - there is no 5000-ish constant in the Track A
+sources.
 
 **One hypothesis killed, recorded so it is not re-run.** The DPRAM
 re-allocation hazard - `usbdma_keepalive()` rewriting EP2/EP3 while the
