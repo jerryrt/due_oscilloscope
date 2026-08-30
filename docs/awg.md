@@ -1524,6 +1524,42 @@ sampled at twice the resolution.
 residual under about 0.02 of a unit and deliberately not saying which n.
 All four landed: 5.002, 5.011, 7.993, 5.987.
 
+**The complete map, RC 28 to 56.** Every rate, 203 underrun-free runs,
+worst residual **0.030 of one unit**:
+
+| RC | n | | RC | n | | RC | n |
+|---|---|---|---|---|---|---|---|
+| 28 | 0 | | 38 | 5 or 6 | | 48 | **0 or 8** |
+| 29 | 1 | | 39 | 6 | | 49 | 2 |
+| 30 | 1 or 2 | | 40 | **4 or 8** | | 50 | 1 or 2 |
+| 31 | 2 | | 41 | 6 | | 51 | 1 |
+| 32 | **0 or 16** | | 42 | 5 or 6 | | 52 | **0 or 2** |
+| 33 | 3 | | 43 | 5 | | 53 | 0 |
+| 34 | 3 or 4 | | 44 | 4 | | 54 | 0 |
+| 35 | 4 | | 45 | 4 | | 55 | 0 |
+| 36 | **4 or 6** | | 46 | 3 or 4 | | 56 | 0 |
+| 37 | 5 | | 47 | 3 | | | |
+
+**Two populations.** At rates whose denominator is large (>13) the n
+values form a single smooth arc - 1,1,2,3,3,4,5,5,6,6,5,5,4,3,3,2,1,1,0
+- rising to **n = 6 around RC 39-42 (1,000,000 to 928,571 sps)** and
+falling symmetrically to zero at both ends. That is the whole effect for
+most of the ladder, and it is well behaved.
+
+The rates with a **small** denominator sit off that arc and are the ones
+with a second mode: RC 32 (denom 1) offers 0 or 16 where the arc would
+give ~2; RC 48 (denom 3) offers 0 or 8 where the arc gives ~3; RC 40
+(denom 5) offers 4 or 8 around an arc value of ~6. So the arc is the
+baseline behaviour and the simple clock ratios perturb it, in both
+directions and by a power of two.
+
+**A near-miss worth keeping.** RC 46's *median* ratio puts it at 3.517
+of a unit - off the lattice, and it would have read as a violation of
+everything above. Per run it is three runs at n = 3 and three at n = 4, a
+perfect split. The rule that caught it is the one stated above: **a rate
+does not have a deficit, a run does.** Read this table as "which n are
+available", never as "the rate's deficit".
+
 **Only RC 32's fraction is a reading; the others are not.** The table
 above used to name 125/128 for RC 39 and 63/64 for RC 44. Those came out
 of `Fraction.limit_denominator(64)` applied to a *measured* ratio, which
