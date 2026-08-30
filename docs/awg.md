@@ -1389,32 +1389,43 @@ this is the opposite at both ends. Whatever selects the affected rates is
 not "too fast for the DACC", and sizing a design against the nominal rate
 at RC 39 or 44 will be 1.6-2.3% wrong every time.
 
-**The affected rates are a contiguous band with soft edges.** Ten rates,
-8 reps each, underrun-free runs only:
+**The affected rates are a band, and it is wider than this document
+first said.** Fourteen rates, 7-8 underrun-free runs each, median of the
+device-side ratio - **not** a count above a threshold, which is how the
+first version of this table got it wrong:
 
-| RC | nominal sps | slow runs | ratio (**median** of the slow runs) |
-|---|---|---|---|
-| 28 | 1,392,857 | 0/7 | full rate |
-| 30 | 1,300,000 | 0/7 | full rate |
-| **32** | 1,218,750 | **1/8** | 0.93750 |
-| 34 | 1,147,059 | **8/8** | 0.98431 |
-| 36 | 1,083,333 | **8/8** | 0.98428 |
-| 39 | 1,000,000 | **8/8** | 0.97653 |
-| 44 | 886,364 | **8/8** | 0.98428 |
-| **48** | 812,500 | **1/8** | 0.96858 |
-| 52 | 750,000 | 0/8 | full rate |
-| 56 | 696,429 | 0/8 | full rate |
+| RC | nominal sps | median ratio | deficit | mode |
+|---|---|---|---|---|
+| 28 | 1,392,857 | 0.99996 | 0.00% | clean |
+| **30** | 1,300,000 | 0.99212 | **0.79%** | 5/7 deep, 2/7 shoulder |
+| **31** | 1,258,065 | 0.99215 | **0.79%** | 7/7 |
+| 32 | 1,218,750 | 0.99999 | 0.00% | **1/8 at 15/16** |
+| 33 | 1,181,818 | 0.98824 | 1.18% | 8/8 |
+| 34 | 1,147,059 | 0.98431 | 1.57% | 8/8 |
+| 36 | 1,083,333 | 0.98428 | 1.57% | 8/8 |
+| 39 | 1,000,000 | 0.97653 | **2.35%** | 8/8 - the peak |
+| 44 | 886,364 | 0.98428 | 1.57% | 8/8 |
+| 48 | 812,500 | 0.99987 | 0.01% | **1/8 at 31/32** |
+| **49** | 795,918 | 0.99210 | **0.79%** | 8/8 |
+| **50** | 780,000 | 0.99598 | 0.40% | 3/8 deep, 5/8 shoulder |
+| 52 | 750,000 | 0.99991 | 0.01% | 1/8 |
+| 56 | 696,429 | 0.99992 | 0.01% | clean |
 
-So the band is **RC 32 to 48** - about 812,500 to 1,218,750 sps - and it
-is clean on both sides of that, at 28/30 above and 52/56 below. The
-*edges* of the band, RC 32 and RC 48, are the intermittent ones; the
-middle is persistent on every run. That is the shape of a window a
-process falls into rather than a threshold it crosses, and any mechanism
-proposed for this has to produce both the band and its soft edges.
+**Only RC 28 and RC 56 deliver in full.** Everything from RC 30 to RC 52
+- roughly **750,000 to 1,300,000 sps** - is short by something, and the
+profile is graded rather than rectangular: a 0.79% shoulder at 30/31 and
+49, rising to a 2.35% peak at RC 39, with two rates (32 and 48) that are
+usually clean but intermittently drop much further, to 15/16 and 31/32.
 
-It also means the affected range is most of the useful high-rate span,
-which is worth knowing before sizing anything against a nominal rate
-between 812 k and 1.22 M sps.
+**An earlier version of this table said the band was RC 32-48 and that
+28, 30, 52 and 56 delivered in full. That was wrong about RC 30, 31, 49
+and 50, and the error was in the analysis rather than the data.** The
+summary counted runs below a ratio of 0.99 and called the rest clean;
+the shoulder sits at 0.992 and passed the filter. The raw tool output
+printed `median ratio 0.99212` for RC 30 on the same screen that the
+summary called it full rate, and the summary was believed. **Report the
+measured quantity, not a count of how many runs cleared a threshold
+nobody justified.**
 
 **Only RC 32's fraction is a reading; the others are not.** The table
 above used to name 125/128 for RC 39 and 63/64 for RC 44. Those came out

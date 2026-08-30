@@ -255,11 +255,12 @@ Check here before reasoning from general Arduino knowledge.
   different findings; quote the one that matches what the output is
   for. `docs/awg.md`.
 - **Playback does not deliver every rate it accepts, and the affected
-  band is wide.** Between roughly **812,500 and 1,218,750 sps** the DACC
-  converts *below* the rate it was programmed for - persistently in the
-  interior (RC 34/36/39/44, ratios 0.977-0.984) and intermittently at
-  the two edges (RC 32 at exactly 15/16, RC 48 at 0.9686). Outside the
-  band - RC 28, 30, 52, 56 - it delivers in full. Measured device-side
+  band is wide.** Between roughly **750,000 and 1,300,000 sps** the DACC
+  converts *below* the rate it was programmed for. The profile is graded:
+  a 0.79% shoulder at RC 30/31 and 49, rising to a **2.35% peak at RC
+  39**, with two rates - RC 32 and 48 - usually clean but intermittently
+  dropping much further, to exactly 15/16 and to 31/32. Of the rates
+  tested only **RC 28 and RC 56 deliver in full**. Measured device-side
   from `consumed / run_us` with no host clock in it, on **two tracks**
   (Track A 2/24 against Track B 7/32, p = 0.16, so it is the silicon and
   not one track's register programming) and **two hosts**.
