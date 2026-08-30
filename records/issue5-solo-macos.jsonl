@@ -1,0 +1,20 @@
+{"run": 1, "t": "2026-08-29T20:46:54", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 3, "sites": [330, 351, 398], "gaps": {"21": 1, "47": 1}, "mad": 0.4862}
+{"run": 2, "t": "2026-08-29T20:47:09", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 0, "sites": [], "gaps": {}, "mad": 17.4899}
+{"run": 3, "t": "2026-08-29T20:47:24", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 1, "sites": [398], "gaps": {}, "mad": 0.4857}
+{"run": 4, "t": "2026-08-29T20:47:38", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 0, "sites": [], "gaps": {}, "mad": 17.6655}
+{"run": 5, "t": "2026-08-29T20:47:53", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 1, "sites": [398], "gaps": {}, "mad": 0.5276}
+{"run": 6, "t": "2026-08-29T20:48:08", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 0, "sites": [], "gaps": {}, "mad": 17.585}
+{"run": 7, "t": "2026-08-29T20:48:23", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 1, "sites": [398], "gaps": {}, "mad": 0.4956}
+{"run": 8, "t": "2026-08-29T20:48:38", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 0, "sites": [], "gaps": {}, "mad": 17.5862}
+{"run": 1, "t": "2026-08-29T20:49:25", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 2, "sites": [330, 351], "hold": 1, "gaps": {"21": 1}, "mad": 0.5075}
+{"run": 2, "t": "2026-08-29T20:49:41", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 3, "sites": [175, 198, 209], "hold": 2, "gaps": {"46": 1, "22": 1}, "mad": 0.4852}
+{"run": 3, "t": "2026-08-29T20:49:56", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 2, "sites": [330, 351], "hold": 1, "gaps": {"21": 1}, "mad": 0.4959}
+{"run": 4, "t": "2026-08-29T20:50:12", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 3, "sites": [175, 198, 209], "hold": 2, "gaps": {"46": 1, "22": 1}, "mad": 0.4262}
+{"run": 5, "t": "2026-08-29T20:50:27", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 2, "sites": [330, 351], "hold": 1, "gaps": {"21": 1}, "mad": 0.4722}
+{"run": 6, "t": "2026-08-29T20:50:43", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 3, "sites": [175, 198, 209], "hold": 2, "gaps": {"46": 1, "22": 1}, "mad": 0.4219}
+{"run": 7, "t": "2026-08-29T20:50:58", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 3, "sites": [196, 217, 264], "hold": 1, "gaps": {"21": 1, "47": 1}, "mad": 0.5529}
+{"run": 8, "t": "2026-08-29T20:51:14", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 3, "sites": [175, 198, 209], "hold": 2, "gaps": {"46": 1, "22": 1}, "mad": 0.4515}
+{"run": 9, "t": "2026-08-29T20:51:28", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 2, "sites": [330, 351], "hold": 1, "gaps": {"21": 1}, "mad": 0.5016}
+{"run": 10, "t": "2026-08-29T20:51:44", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 3, "sites": [175, 198, 209], "hold": 2, "gaps": {"46": 1, "22": 1}, "mad": 0.4398}
+{"run": 11, "t": "2026-08-29T20:51:59", "bench": "macos", "arm": "solo", "fold": 512, "n_sites": 2, "sites": [330, 351], "hold": 1, "gaps": {"21": 1}, "mad": 0.4822}
+{"run": 12, "t": "2026-08-29T20:52:15", "bench": "macos", "arm": "cycle", "fold": 512, "n_sites": 3, "sites": [175, 198, 209], "hold": 2, "gaps": {"46": 1, "22": 1}, "mad": 0.446}
