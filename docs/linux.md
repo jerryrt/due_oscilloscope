@@ -266,6 +266,31 @@ Track B control's figures. Track A suite goes from 502 passed / 5 failed
 to **506 passed / 1 failed**, the remainder being the documented
 `test_awg_ladder_play_only[a-32]`.
 
+### Track B already knew, which is invariant 3 working
+
+`drivers/usb_cdc.c`'s `ep_fifo_write()` carries the guard this bug
+needed, written first, on the oracle track:
+
+    /*
+     * No spinning. If no bank is free the host is not draining,
+     * and blocking here is precisely the failure that wedges the
+     * Arduino CDC path.
+     */
+    if (!(UOTGHS->UOTGHS_DEVEPTISR[ep] & UOTGHS_DEVEPTISR_TXINI))
+            break;
+
+Byte for byte what Track A now does, **with the failure mode named in
+the comment**. Track B's own playback-status block then says
+"usb_cdc_write never spins - it gives up when no bank is free", and
+unlike Track A's version of that sentence it is true of its own code.
+
+So the two tracks carried opposite claims about one hazard: Track B's
+correct and demonstrated, Track A's asserted and false. The oracle was
+right and had been for as long as the file existed - nobody was
+comparing the two lines. That is invariant 3 delivering exactly what it
+promises, and it is worth knowing that the *comments* diverge as well as
+the register programming.
+
 ### Why it looked platform-specific, and mostly was not
 
 Worth writing down, because the framing cost time.
