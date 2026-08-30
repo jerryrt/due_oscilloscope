@@ -244,20 +244,58 @@ so a dump could never have been seen. Zero console bytes across 25 s
 spanning the stall, and `fault.cpp` prints `*** HARD FAULT ***` with a
 register dump over polled UART before `blink_forever()`.
 
-**The leading candidate, flagged as a candidate.** `bringup.ino`'s own
-comment at the unconditional `ctlusb_quiesce_interrupts()` call
-describes the syndrome: the core re-enables EP4-6 interrupts at
-SET_CONFIGURATION and on bus reset, its ISR has no case for them, and
-the handler then "re-enters for ever. The board keeps enumerating,
-because that is all the ISR is still doing, and answers nothing else."
-Symptom for symptom, including that the guard runs from the main loop
-and so cannot win a race it has already lost.
+**Root cause, found and fixed (`a7ef102`).** The playback-status block
+writes a record on bulk IN once per `PLAYSTAT_MS` while `play_active()`,
+and its comment claimed the write was bounded - "SerialUSB.write returns
+short rather than spinning when no bank is free". It is not. On this
+core `Serial_::write()` reaches `UDD_Send()`, whose first statement is
 
-What does not fit: an interrupt storm should be a race, and this is
-deterministic to the byte. The command node was never opened during
-these runs either, so no EP5 OUT traffic was in play. Nothing periodic
-at ~5.2 s has been found - there is no 5000-ish constant in the Track A
-sources.
+    while (TXINI != (UOTGHS->UOTGHS_DEVEPTISR[ep] & TXINI)) {}
+
+an unbounded spin, which `docs/hardware.md` already records from the
+same source. `availableForWrite()` cannot serve as the guard either - it
+returns the constant `EPX_SIZE - 1` whatever the banks are doing. So a
+host that feeds bulk OUT and stops draining bulk **IN** fills both banks
+and the main loop spins there until the board is reset. Testing TXINI
+first makes it bounded; a dropped record is something the host already
+tolerates, because it differences whichever records arrive.
+
+Before: hangs at 1,317,888 B / 5.2 s, 3 of 3. After: 8,030,720 B over
+20 s, no stall, 2 of 2, and windows-desk's own reproducer lands on their
+Track B control's figures. Track A suite goes from 502 passed / 5 failed
+to **506 passed / 1 failed**, the remainder being the documented
+`test_awg_ladder_play_only[a-32]`.
+
+### Why it looked platform-specific, and mostly was not
+
+Worth writing down, because the framing cost time.
+
+**It is not a Linux bug.** windows-desk opened #33 from Windows. This
+bench found the *cause*, not the defect.
+
+What genuinely differs between hosts is the **threshold**, and it is set
+host-side by how deep the IN direction buffers before the host stops
+draining it, plus how the feeder is paced:
+
+- `host/transport.py` requests `RX_BUFFER` of 4 MB on Windows and
+  nothing on POSIX, which takes the kernel tty default. A deeper buffer
+  stalls later.
+- Feed pacing moves it on one host: `bench.py`'s paced feeder wedges at
+  about 2.6 s here where an unpaced blocking feeder survives to 5.2 s.
+
+That gives Linux 5.2 s against Windows' 6.4-8.6 s - the same order,
+which is what one firmware defect modulated by buffer depth should look
+like. **Scheduler differences are not implicated.**
+
+**Why it went undiagnosed everywhere is not platform at all: the failure
+destroys its own evidence.** Console, control channel and `GET_LOAD` are
+all main-loop-served and die with the loop, so the device goes dark
+while still enumerating; and the natural next move - kill the process,
+or open the console to look - resets the board and erases the state.
+Diagnosis needed an observer that outlives the loop it watches, which is
+what the TC-interrupt stall watchdog was: it caught the loop in this
+stage with `CFSR` clean. **The missing instrument was the whole problem,
+and the platform was incidental.**
 
 **One hypothesis killed, recorded so it is not re-run.** The DPRAM
 re-allocation hazard - `usbdma_keepalive()` rewriting EP2/EP3 while the
