@@ -872,12 +872,30 @@ generators. `mac-bench` is on xPack GCC 15.2.1, `linux-x1` on Debian's
 arduino-cli's bundled 4.8.3. None of that was recorded anywhere before
 2026-08-31, and **nobody had noticed it was three rather than two.**
 
-It is not bookkeeping, because of what it does to issue #5. That defect
-draws from a lottery over code layout, and the compiler is what deals
-the hand. So an experiment that pins a commit across two benches and
-compares site tables has pinned the *source* and left the *variable*
-free - which is exactly the shape of the pinned comparison that was
-open on #5 when this was written.
+It was recorded here for what it does to issue #5, and **within the
+hour the measurement it motivated corrected this paragraph** - which is
+worth keeping visible rather than tidying away. The reasoning was: #5
+draws from a lottery over code layout, the compiler deals the hand, so
+a pinned commit compared across two benches pins the *source* and
+leaves the *variable* free.
+
+**The site set is not the part that is a lottery.** `linux-x1` (GCC
+14.2.1, layout `c4cd8445987b5261`) and `windows-desk` (ARM GNU 14.3.1,
+layout `be84df15f77a3e36`) ran one pinned commit and matched on **22 of
+31 sites with 0 of 31 of the translated prediction**, p about 1e-32 -
+across two *different* layouts. So the site set survives a layout
+change and the cross-bench agreement never rested on a shared one.
+What remains a layout draw is the **severity**, which is what the
+original note on four images at four phases actually measured, and
+which nobody has yet compared across benches.
+
+Four builds of `3aadf90` produced **four different layouts** - and two
+of them are the same compiler version (xPack 15.2.1) on two host OSes,
+so layout is not even a function of (source, compiler version) and
+"put two benches on one layout" may not be reachable by installing a
+matching toolchain. Record the compiler because it is cheap and
+because a figure that *does* turn out to depend on layout can then be
+re-read rather than re-measured. Do not assume a figure depends on it.
 
 **`sha256` cannot serve as the discriminator, and it is the first thing
 anyone reaches for.** The identity line carries `__DATE__`/`__TIME__`,
