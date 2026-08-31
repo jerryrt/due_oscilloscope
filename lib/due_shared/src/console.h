@@ -154,6 +154,13 @@ void console_gen_report(void);
 void console_cmd_stream(uint32_t trigger_hz);
 
 /*
+ * The TC -> ADC -> PDC rate sweep. One implementation for both
+ * tracks; the merge of the two that preceded it, and why each half
+ * was chosen, is in console_cmds.c. Issue #45.
+ */
+void console_cmd_rate_sweep(unsigned n_channels);
+
+/*
  * The crosstalk settle wait. Shared so the two tracks cannot drift
  * apart on it - issue #16 measures what happens between conversions,
  * so a differing wait changes the measurement. See console_cmds.c.

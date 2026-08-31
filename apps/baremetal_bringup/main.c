@@ -487,86 +487,7 @@ static void cmd_crosstalk(void)
 	adc_measure_end();
 }
 
-/*
- * Verify that the ADC converts at the rate the timer was told to
- * produce. Everything downstream is sized against this, and the failure
- * mode is silent: an over-fast trigger is ignored with no status bit
- * set, which looks exactly like clean data at half the rate.
- */
-static void cmd_rate_sweep(unsigned n_channels)
-{
-	static const uint32_t rates[] = {
-		100000, 400000,
-		466666, 471910, 477272, 482758, 488372,
-		494117, 500000
-	};
-	/* RC 48 down to 43, to bracket the single-channel cliff. */
-	static const uint32_t rates1[] = {
-		200000, 780000, 795918, 812500, 829787,
-		847826, 866666, 886363, 906976
-	};
-	const uint32_t *list = (n_channels == 1) ? rates1 : rates;
-	unsigned n_list = (n_channels == 1)
-	                ? sizeof(rates1) / sizeof(rates1[0])
-	                : sizeof(rates) / sizeof(rates[0]);
-	const uint32_t nbuf_target = 8;
 
-	acq_init();
-
-	con_str("# TC->ADC->PDC rate sweep, "); con_u32(n_channels);
-	con_str(" channel");
-	con_str(n_channels == 1 ? " (A0=AD7)" : "s (A0=AD7, A1=AD6)");
-	con_str(", min RC "); con_u32(ACQ_MIN_RC_FOR(n_channels)); con_nl();
-	con_str("#   want      RC   TCexact   measured    ratio  RXBUFF GOVRE"); con_nl();
-	uart_flush();
-
-	for (unsigned i = 0; i < n_list; i++) {
-		if (!acq_start(list[i], n_channels)) {
-			con_str("# "); con_u32w(list[i], 7, ' ');
-			con_str("       -         -    REFUSED "
-			        "(below ACQ_MIN_RC)"); con_nl();
-			uart_flush();
-			continue;
-		}
-
-		uint32_t sync = acq_buffers_done;
-		uint32_t guard = micros();
-		while (acq_buffers_done == sync && (micros() - guard) < 2000000u)
-			{ }
-
-		uint32_t t0 = micros();
-		uint32_t b0 = acq_buffers_done;
-		while (acq_buffers_done - b0 < nbuf_target &&
-		       (micros() - t0) < 2000000u)
-			{ }
-		uint32_t t1 = micros();
-		uint32_t got = acq_buffers_done - b0;
-
-		acq_stop();
-
-		uint32_t rc      = acq_configured_rc();
-		uint32_t tcexact = (SystemCoreClock / 2u) / rc;
-		uint32_t us      = t1 - t0;
-		uint64_t samples = (uint64_t)got * ACQ_BUF_SAMPLES;
-		uint32_t agg     = us ? (uint32_t)((samples * 1000000ull) / us) : 0;
-		uint32_t measured = agg / n_channels;
-		uint32_t ratio_x1000 = tcexact ?
-			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
-
-		con_str("# "); con_u32w(list[i], 7, ' ');
-		con_ch(' ');   con_u32w(rc, 7, ' ');
-		con_ch(' ');   con_u32w(tcexact, 9, ' ');
-		con_ch(' ');   con_u32w(measured, 10, ' ');
-		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
-		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
-		con_ch(' ');   con_u32w(acq_rxbuff_overruns, 7, ' ');
-		con_ch(' ');   con_u32w(acq_govre, 5, ' ');
-		con_nl();
-		uart_flush();
-	}
-	con_str("# rates past the measured ceiling are refused, not attempted"); con_nl();
-	uart_flush();
-}
 
 /*
  * Stream over the programming-port UART. Bandwidth-limited: 115200 baud
@@ -1128,7 +1049,10 @@ static void h_xtalk(const uint32_t *a)
 	crosstalk_settle_ms = a[1];
 	cmd_crosstalk();
 }
-static void h_ratesweep(const uint32_t *a) { cmd_rate_sweep(a[2] ? a[2] : 2u); }
+static void h_ratesweep(const uint32_t *a)
+{
+	console_cmd_rate_sweep(a[2] ? a[2] : 2u);
+}
 static void h_dac_sweep(const uint32_t *a) { (void)a; cmd_dac_sweep(); }
 static void h_dac_15m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(1500000); }
 static void h_dac_30m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(3000000); }

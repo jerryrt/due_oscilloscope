@@ -574,105 +574,7 @@ static void cmd_crosstalk(void)
 	Serial.flush();
 }
 
-/*
- * Verify that the ADC actually converts at the rate the TC was told to
- * produce. Everything downstream is sized against this number, and a
- * wrong trigger rate corrupts every later measurement while presenting
- * as an analog fault, so it is checked before anything is built on it.
- *
- * Two channels are enabled, so each trigger yields two conversions and
- * the aggregate rate is twice the trigger rate.
- */
-static void cmd_rate_sweep(unsigned n_channels)
-{
-	/*
-	 * Sweep the timer compare value rather than a frequency, so the test
-	 * is independent of the master clock. An earlier version listed
-	 * fixed frequencies chosen for a 42 MHz timer clock, and silently
-	 * lost resolution around the cliff once MCK changed.
-	 */
-	static const uint32_t rcs2[] = {
-		390, 100, 96, 92, 90, 88, 87, 86, 85, 84, 83, 82, 80, 78
-	};
-	/* One channel converts once per trigger, so its cliff sits near
-	 * half the compare value. Bracketed rather than assumed. */
-	static const uint32_t rcs1[] = {
-		195, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40
-	};
-	const uint32_t *rcs = (n_channels == 1) ? rcs1 : rcs2;
-	const unsigned n_rcs = (n_channels == 1)
-	                     ? sizeof(rcs1) / sizeof(rcs1[0])
-	                     : sizeof(rcs2) / sizeof(rcs2[0]);
-	const uint32_t nbuf_target = 8;
-	uint32_t tc_clock = SystemCoreClock / 2u;
-	char buf[160];
 
-	acq_init();
-
-	con_str("# TC->ADC->PDC sweep, "); con_u32(n_channels);
-	con_str(" ch, MCK "); con_u32(SystemCoreClock);
-	con_str(" Hz, ADC clk "); con_u32(SystemCoreClock / 4u);
-	con_str(" Hz, min RC "); con_u32(ACQ_MIN_RC_FOR(n_channels));
-	con_nl();
-	Serial.println("#     RC   trigger   aggregate    ratio  RXBUFF GOVRE");
-	Serial.flush();
-
-	for (unsigned i = 0; i < n_rcs; i++) {
-		uint32_t hz = tc_clock / rcs[i];
-
-		/*
-		 * Rates past the measured cliff are refused rather than
-		 * attempted: the ADC drops those triggers with no status bit
-		 * set, so the sweep would report clean data at half the rate.
-		 * The cliff itself was found before the guard existed and is
-		 * recorded in docs/hardware.md.
-		 */
-		if (!acq_start(hz, n_channels)) {
-			con_str("# "); con_u32w(rcs[i], 6, ' ');
-			con_ch(' ');   con_u32w(hz, 9, ' ');
-			con_str("           -        -       -     -"
-			        "   REFUSED (RC < ");
-			con_u32(ACQ_MIN_RC_FOR(n_channels));
-			con_ch(')'); con_nl();
-			Serial.flush();
-			continue;
-		}
-
-		uint32_t sync = acq_buffers_done;
-		uint32_t guard = micros();
-		while (acq_buffers_done == sync && (micros() - guard) < 2000000u)
-			{ }
-
-		uint32_t t0 = micros();
-		uint32_t b0 = acq_buffers_done;
-		while (acq_buffers_done - b0 < nbuf_target &&
-		       (micros() - t0) < 2000000u)
-			{ }
-		uint32_t t1 = micros();
-		uint32_t got = acq_buffers_done - b0;
-
-		acq_stop();
-
-		uint32_t us = t1 - t0;
-		uint64_t samples = (uint64_t)got * ACQ_BUF_SAMPLES;
-		uint32_t agg = us ? (uint32_t)((samples * 1000000ull) / us) : 0;
-		uint32_t expect = hz * n_channels;   /* one per enabled channel */
-		uint32_t ratio_x1000 = expect ?
-			(uint32_t)(((uint64_t)agg * 1000ull) / expect) : 0;
-
-		con_str("# "); con_u32w(rcs[i], 6, ' ');
-		con_ch(' ');   con_u32w(hz, 9, ' ');
-		con_ch(' ');   con_u32w(agg, 11, ' ');
-		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
-		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
-		con_ch(' ');   con_u32w(acq_rxbuff_overruns, 7, ' ');
-		con_ch(' ');   con_u32w(acq_govre, 5, ' ');
-		con_nl();
-		Serial.flush();
-	}
-	Serial.println("# ratio 1.000 = every trigger produced a conversion pair");
-	Serial.flush();
-}
 
 /*
  * console_cmd_stream() is shared - lib/due_shared/src/
@@ -1431,7 +1333,7 @@ static void ha_xtalk(const uint32_t *a)
 
 static void ha_ratesweep(const uint32_t *a)
 {
-	cmd_rate_sweep(a[2] ? a[2] : 2u);
+	console_cmd_rate_sweep(a[2] ? a[2] : 2u);
 }
 
 static void ha_dac_sweep(const uint32_t *a)

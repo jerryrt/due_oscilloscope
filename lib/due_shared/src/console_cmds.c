@@ -175,3 +175,139 @@ void console_cmd_stream(uint32_t trigger_hz)
 		console_flush();
 	}
 }
+
+/*
+ * `=,,<nch>t`: the TC -> ADC -> PDC rate sweep, in one place.
+ *
+ * ONE IMPLEMENTATION, and the choice between the two it replaces was
+ * the owner's on issue #45. The two tracks had the same name and
+ * genuinely different experiments - Track B swept a list of target
+ * RATES and Track A a list of RC VALUES - so this was the one body on
+ * the paired list that `tools/console_pairs.py` called "DIFFERENT
+ * diagnostics" and meant it. It is a merge of the better half of each,
+ * and the reasoning is recorded because the losing half of each was
+ * better at something:
+ *
+ * FROM TRACK A: the ladder, and it is not a close call. Track A walks
+ * RC one step at a time through the cliff - 88, 87, 86, 85 - so it
+ * measures either side of ACQ_MIN_RC. Track B's rate list resolved to
+ * RC 390, 97 and then 84 down to 78, every one of the last seven below
+ * the floor: on the board it printed **two measured rows and seven
+ * REFUSED**. A sweep whose job is to find a cliff must have points on
+ * both sides of it.
+ *
+ * FROM TRACK B: the columns. `trigger` and `measured` are different
+ * questions - what the integer divisor produces, and what the converter
+ * actually delivered - and `measured` is PER CHANNEL. The first fact in
+ * CLAUDE.md's "easy to get wrong" list is that channel count divides
+ * the aggregate, so a column called `measured` has to be the
+ * per-channel number a user asks for. Track A reported the aggregate.
+ *
+ * FROM TRACK A: the header carries MCK and the ADC clock. Issue #52 has
+ * made MCK a measured quantity rather than a register readback - it
+ * reads about -11 ppm from 78 MHz - so a rate sweep that does not
+ * record the clock it divided is missing its own provenance.
+ *
+ * The ratio is unchanged and was never in dispute: both tracks computed
+ * delivered-over-programmed and got there by different algebra that
+ * cancels to the same number.
+ */
+void console_cmd_rate_sweep(unsigned n_channels)
+{
+	/*
+	 * RC values, not rates. The trigger is TC_CLOCK / RC with RC an
+	 * integer, so an RC ladder walks the hardware's own steps and a
+	 * rate ladder only approximates them - and can land two entries
+	 * on one RC without saying so.
+	 *
+	 * Dense either side of the 2-channel floor at 86 and the
+	 * 1-channel floor at 44, because the floor is what this command
+	 * exists to find. The wide first entry is the low-rate anchor.
+	 */
+	static const uint32_t rcs2[] = {
+		390, 100, 96, 92, 90, 88, 87, 86, 85, 84, 83, 82, 80, 78
+	};
+	static const uint32_t rcs1[] = {
+		195, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40
+	};
+	const uint32_t *rcs  = (n_channels == 1) ? rcs1 : rcs2;
+	const unsigned  nrcs = (n_channels == 1)
+	                     ? sizeof(rcs1) / sizeof(rcs1[0])
+	                     : sizeof(rcs2) / sizeof(rcs2[0]);
+	const uint32_t  nbuf_target = 8;
+	uint32_t tc_clock = console_port_mck_hz() / 2u;
+	uint32_t min_rc   = console_port_acq_min_rc(n_channels);
+
+	console_port_acq_init();
+
+	con_str("# TC->ADC->PDC rate sweep, "); con_u32(n_channels);
+	con_str(" channel");
+	con_str(n_channels == 1 ? " (A0=AD7)" : "s (A0=AD7, A1=AD6)");
+	con_str(", MCK ");     con_u32(console_port_mck_hz());
+	con_str(" Hz, ADC clk "); con_u32(console_port_mck_hz() / 4u);
+	con_str(" Hz, min RC "); con_u32(min_rc); con_nl();
+	con_str("#     RC   trigger  measured    ratio  RXBUFF GOVRE"); con_nl();
+	console_flush();
+
+	for (unsigned i = 0; i < nrcs; i++) {
+		uint32_t want = tc_clock / rcs[i];
+		uint32_t sync, guard, t0, t1, b0, got, rc, trigger, us;
+		uint32_t measured, ratio_x1000, rxbuff, govre;
+		uint64_t samples;
+
+		if (!console_port_acq_start(want, n_channels)) {
+			con_str("# "); con_u32w(rcs[i], 6, ' ');
+			con_ch(' ');   con_u32w(want, 9, ' ');
+			con_str("         -        -       -     -"
+			        "   REFUSED (RC < ");
+			con_u32(min_rc); con_ch(')'); con_nl();
+			console_flush();
+			continue;
+		}
+
+		/* Wait out the buffer in flight, then time a whole number
+		 * of completions: a partial first buffer would make the
+		 * short arm read fast. */
+		sync  = console_port_acq_buffers_done();
+		guard = ctl_port_micros();
+		while (console_port_acq_buffers_done() == sync &&
+		       (ctl_port_micros() - guard) < 2000000u)
+			{ }
+		t0 = ctl_port_micros();
+		b0 = console_port_acq_buffers_done();
+		while (console_port_acq_buffers_done() - b0 < nbuf_target &&
+		       (ctl_port_micros() - t0) < 2000000u)
+			{ }
+		t1  = ctl_port_micros();
+		got = console_port_acq_buffers_done() - b0;
+		console_port_acq_stop();
+
+		rc      = console_port_acq_configured_rc();
+		trigger = rc ? tc_clock / rc : 0u;
+		us      = t1 - t0;
+		samples = (uint64_t)got * console_port_acq_buf_samples();
+		/* Per channel, not aggregate. One ADC behind a multiplexer:
+		 * channel count divides the rate, and the column a reader
+		 * compares against `trigger` has to be the same quantity. */
+		measured = us
+		         ? (uint32_t)((samples * 1000000ull) / us) / n_channels
+		         : 0u;
+		ratio_x1000 = trigger
+		            ? (uint32_t)(((uint64_t)measured * 1000ull) / trigger)
+		            : 0u;
+		console_port_acq_overruns(&rxbuff, &govre);
+
+		con_str("# "); con_u32w(rcs[i], 6, ' ');
+		con_ch(' ');   con_u32w(trigger, 9, ' ');
+		con_ch(' ');   con_u32w(measured, 9, ' ');
+		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
+		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
+		con_ch(' ');   con_u32w(rxbuff, 7, ' ');
+		con_ch(' ');   con_u32w(govre, 5, ' ');
+		con_nl();
+		console_flush();
+	}
+	con_str("# ratio 1.000 = every trigger produced a conversion");
+	con_nl();
+	console_flush();
+}

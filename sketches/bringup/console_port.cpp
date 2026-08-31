@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 
+#include "acq.h"
 #include "console_port.h"
 #include "stream.h"
 
@@ -68,4 +69,60 @@ void console_flush(void)
 bool console_port_stream_start(uint32_t trigger_hz)
 {
 	return stream_start(trigger_hz);
+}
+
+/* ------------------------------------------------------------------ */
+/* The acquisition surface console_cmd_rate_sweep() speaks through.    */
+/*                                                                     */
+/* The same eight names Track B implements, against this track's own   */
+/* acq.cpp. That is the point of the seam: the sweep's logic has one    */
+/* home (issue #45 ruled it application logic) while the register       */
+/* programming behind each name stays two independent implementations,  */
+/* which is what invariant 3 is protecting.                             */
+/* ------------------------------------------------------------------ */
+
+uint32_t console_port_mck_hz(void)
+{
+	return (uint32_t)SystemCoreClock;
+}
+
+void console_port_acq_init(void)
+{
+	acq_init();
+}
+
+bool console_port_acq_start(uint32_t trigger_hz, unsigned n_channels)
+{
+	return acq_start(trigger_hz, n_channels);
+}
+
+void console_port_acq_stop(void)
+{
+	acq_stop();
+}
+
+uint32_t console_port_acq_buffers_done(void)
+{
+	return acq_buffers_done;
+}
+
+uint32_t console_port_acq_configured_rc(void)
+{
+	return acq_configured_rc();
+}
+
+uint32_t console_port_acq_buf_samples(void)
+{
+	return ACQ_BUF_SAMPLES;
+}
+
+uint32_t console_port_acq_min_rc(unsigned n_channels)
+{
+	return ACQ_MIN_RC_FOR(n_channels);
+}
+
+void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
+{
+	*rxbuff = acq_rxbuff_overruns;
+	*govre  = acq_govre;
 }

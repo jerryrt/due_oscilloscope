@@ -6,7 +6,9 @@
 
 #include <stdio.h>
 
+#include "sam.h"          /* SystemCoreClock */
 #include "bsp.h"
+#include "acq.h"
 #include "console_port.h"
 #include "stream.h"
 
@@ -51,4 +53,60 @@ void console_flush(void)
 bool console_port_stream_start(uint32_t trigger_hz)
 {
 	return stream_start(trigger_hz);
+}
+
+/* ------------------------------------------------------------------ */
+/* The acquisition surface console_cmd_rate_sweep() speaks through.    */
+/*                                                                     */
+/* Thin by design: a port name that computed something would be        */
+/* application logic hiding on the wrong side of the seam. The sweep's  */
+/* logic is shared (issue #45); these are the register reaches it      */
+/* cannot make for itself, and Track A implements the same eight names */
+/* against its own acq.c.                                              */
+/* ------------------------------------------------------------------ */
+
+uint32_t console_port_mck_hz(void)
+{
+	return (uint32_t)SystemCoreClock;
+}
+
+void console_port_acq_init(void)
+{
+	acq_init();
+}
+
+bool console_port_acq_start(uint32_t trigger_hz, unsigned n_channels)
+{
+	return acq_start(trigger_hz, n_channels);
+}
+
+void console_port_acq_stop(void)
+{
+	acq_stop();
+}
+
+uint32_t console_port_acq_buffers_done(void)
+{
+	return acq_buffers_done;
+}
+
+uint32_t console_port_acq_configured_rc(void)
+{
+	return acq_configured_rc();
+}
+
+uint32_t console_port_acq_buf_samples(void)
+{
+	return ACQ_BUF_SAMPLES;
+}
+
+uint32_t console_port_acq_min_rc(unsigned n_channels)
+{
+	return ACQ_MIN_RC_FOR(n_channels);
+}
+
+void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
+{
+	*rxbuff = acq_rxbuff_overruns;
+	*govre  = acq_govre;
 }

@@ -90,6 +90,57 @@ void console_flush(void);
  */
 bool console_port_stream_start(uint32_t trigger_hz);
 
+/*
+ * The acquisition surface the rate sweep needs.
+ *
+ * `cmd_rate_sweep` is application logic - it decides which ladder to
+ * walk, how long to dwell, what to compute and what to print - and the
+ * owner ruled on issue #45 that application logic is shared. What it
+ * cannot be is a direct caller of acq.h: a file inside the shared
+ * library cannot include a header from a track's own folder, which is
+ * the build fact this whole header exists to record.
+ *
+ * So the eight names below. Each is a contract both tracks implement
+ * with the same meaning, and the register programming behind each stays
+ * two independent implementations - invariant 3 intact, because what
+ * moved is the sweep's logic and not its hardware.
+ *
+ * They are deliberately thin. A port name that computed something would
+ * be application logic hiding on the wrong side of the seam.
+ */
+/*
+ * MCK, which shared code cannot reach for itself.
+ *
+ * SystemCoreClock lives behind each track's own device header, and
+ * console_identity() already works around that by taking mck_hz as a
+ * parameter. The sweep needs it twice - to derive the trigger a divisor
+ * gives, and to print the clock it divided - so it takes a port name
+ * rather than three arguments.
+ *
+ * Issue #52 measures MCK at about -11 ppm from the nominal 78 MHz, so
+ * what this returns is the register-derived figure and a reader should
+ * treat it as such.
+ */
+uint32_t console_port_mck_hz(void);
+
+void     console_port_acq_init(void);
+bool     console_port_acq_start(uint32_t trigger_hz, unsigned n_channels);
+void     console_port_acq_stop(void);
+uint32_t console_port_acq_buffers_done(void);
+uint32_t console_port_acq_configured_rc(void);
+uint32_t console_port_acq_buf_samples(void);
+
+/*
+ * The measured per-channel RC floor. Per track by construction and by
+ * measurement - each track measures its own, and Track B accepts one to
+ * three channels where Track A accepts one or two (issue #46).
+ */
+uint32_t console_port_acq_min_rc(unsigned n_channels);
+
+/* The two overrun counters, read together so a row cannot mix a
+ * reading of one with a later reading of the other. */
+void     console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre);
+
 #ifdef __cplusplus
 }
 #endif
