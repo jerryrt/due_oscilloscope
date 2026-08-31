@@ -308,14 +308,16 @@ static void c_help(const uint32_t *a)
 /* Terminated by a zero key and scanned rather than indexed - the shared
  * table decides the help's order, so this one may list what it likes. */
 /*
- * `k`: the time source, read twice about a millisecond apart.
+ * `y`: the time source, read twice about a millisecond apart.
  *
  * It was bound to `T` and that was a conflict, not a free choice:
  * Track B's `T` is stream_sink_dma_start(). Two tracks answering one
  * letter with two different actions is precisely what CLAUDE.md's
  * "same commands and output format" rule exists to stop, and a host
  * cannot discover it - both tracks answer, neither errors, and only
- * the behaviour differs. `k` is unused on both tracks.
+ * the behaviour differs. `y` is unused on both tracks - `k` is
+ * Track B's h_dac_30m, which is what I picked first and what
+ * tools/track_parity.py caught within the hour.
  *
  * C2 groundwork rather than a convenience. millis() and micros() are
  * provided by the application on this track (apps/rtos_bringup/
@@ -499,7 +501,7 @@ static void c_sink_dma(const uint32_t *a)
 	console_flush();
 }
 
-static void c_ctl(const uint32_t *a)
+static void c_usb(const uint32_t *a)
 {
 	(void)a;
 	/* Track B's `u` is usb_cdc_dump() then ctl_dump(). This one had
@@ -524,7 +526,7 @@ const console_binding_t console_bindings[] = {
 	{ 'T', c_sink_dma },
 	{ 'z', c_reset },
 	{ 'Z', c_detach },
-	{ 'k', c_time  },
+	{ 'y', c_time  },
 	{ 'v', c_ident },
 	{ 'h', c_help  },
 	{ '0', c_stop  },
@@ -534,7 +536,7 @@ const console_binding_t console_bindings[] = {
 	{ '4', c_s400  },
 	{ '?', c_stats },
 	{ 'B', c_bench },
-	{ 'u', c_ctl   },
+	{ 'u', c_usb   },
 	{ 'M', c_mimic },
 	{ 'q', c_fws   },
 	{ 0,   NULL    },
