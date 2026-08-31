@@ -323,10 +323,23 @@ typedef struct __attribute__((packed)) {
  * often it reports it. The beat cadence is the host's to choose; this is
  * not, for invariant 7's reason - a host must not be able to scale the
  * device's work, or change what a published figure means, by picking a
- * parameter. One second is far shorter than a cumulative estimate takes
- * to move by a ppm, so nothing is lost to staleness.
+ * parameter.
+ *
+ * Ten seconds, on the owner's instruction: this figure is for health
+ * observation, and a number that moves every second reads as unstable
+ * whether or not it is.
+ *
+ * **What that does and does not buy, stated so nobody expects the wrong
+ * thing.** The estimate is CUMULATIVE, so each recomputation is over the
+ * whole span since the epoch and the interval does not change how large
+ * a step is - only how often one happens. What quiets the number is the
+ * window growing: the residual is about one frame over the span, so
+ * 16 ppm at a minute, 1.6 at ten, 0.3 at an hour. Measured over two
+ * minutes it moved +9.7 to +17.0 ppm; by an hour that is sub-ppm on its
+ * own. A ten-second update means a health display is not redrawing a
+ * figure that is still settling.
  */
-#define CTL_SOF_CALC_INTERVAL_US  1000000u
+#define CTL_SOF_CALC_INTERVAL_US  10000000u
 
 /* host/control.py parses this as "<IIII" + the counters format + "<IIIB3xI";
  * a layout that drifts from that is a silent misparse, not a link error. */
