@@ -51,9 +51,31 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--reps", type=int, default=40)
-    ap.add_argument("--adc-hz", type=int, default=402061)
+    # No defaults, deliberately, and linux-x1 ruled it this way on #44.
+    #
+    # The headline incidence here was 11 of 32, pooled from mac-bench's
+    # 7/20 at 402,061 Hz and 6.0 s and windows-desk's 4/12 at 4.0 s. So
+    # **no single arm was ever run at the conditions the number is
+    # quoted at**, and there is no correct value to default these to.
+    # Re-defaulting picks one half and re-creates the same trap facing
+    # the other way: the next person runs with defaults, gets a clean 0
+    # of 20, and believes they failed to reproduce *the* number when
+    # they have not run *the* experiment, because it does not exist as a
+    # single arm.
+    #
+    # Refusing also cannot silently change what an already-published row
+    # means. Every figure on #44 was taken with the old defaults in
+    # force; removing them makes future rows state their conditions and
+    # leaves past rows exactly as comparable as they were. Re-defaulting
+    # would make two rows written a week apart, both "with defaults",
+    # mean different things - which is the failure mode rather than a
+    # fix for it.
+    ap.add_argument("--adc-hz", type=int, required=True,
+                    help="ADC trigger, Hz. Required: the pooled 11/32 "
+                         "has no single set of conditions to default to")
     ap.add_argument("--dac-sps", type=int, default=200000)
-    ap.add_argument("--seconds", type=float, default=3.0)
+    ap.add_argument("--seconds", type=float, required=True,
+                    help="seconds per rep. Required, same reason")
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH"),
                     help="which bench this is; defaults to $DUE_BENCH")
     ap.add_argument("--out", default=None,
