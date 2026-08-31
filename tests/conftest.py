@@ -76,6 +76,8 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     for m, desc in (
+        ("board", "needs the board attached; applied automatically to "
+                  "any test that resolves the board fixture"),
         ("smoke", "fast enough to run on every iteration"),
         ("slow", "tens of seconds; transport benchmarks"),
         ("awg", "drives the DAC"),
@@ -95,12 +97,30 @@ def pytest_generate_tests(metafunc):
 
 
 def pytest_collection_modifyitems(config, items):
-    """Run the files in FILE_ORDER, and keep each track's tests together.
+    """Mark what needs the board, then run the files in FILE_ORDER.
 
     pytest already groups by a session-scoped parametrised fixture, but
     the grouping is what stops the suite reflashing between every test,
     so it is made explicit rather than relied on.
+
+    **The `board` marker is applied here rather than written on each
+    test, because a fixture cannot be forgotten and a marker can.**
+    Issue #50 wants "the ones that would catch this change" to be
+    selectable, and the first cut of that is board-free against
+    board-required. A test needs the board exactly when it resolves the
+    `board` fixture - directly or through any fixture that does - and
+    `fixturenames` already knows, so asking it is exact where a
+    hand-written marker would drift the first time a helper grew a
+    dependency.
+
+    Measured on mac-bench: 12 of 36 files hold every board test, and
+    they are about 88% of the Track B clock. So `-m "not board"` is the
+    fast loop the issue is asking for, and it needs no hardware at all.
     """
+    for item in items:
+        if "board" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.board)
+
     def key(item):
         mod = item.module.__name__.rsplit(".", 1)[-1]
         try:
