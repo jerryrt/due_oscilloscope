@@ -75,5 +75,15 @@ print(f"  host  SOF   vs UTC : {sof_ppm:+.2f} ppm")
 print(f"  MCK vs SOF (device): {ratio[-1]:+.2f} ppm cumulative")
 print(f"  predicted ratio    : {mck_ppm - sof_ppm:+.2f} ppm  "
       f"(board - host, should match the device)")
-json.dump(dict(rows=rows, mck_ppm=mck_ppm, sof_ppm=sof_ppm,
-               ratio_ppm=ratio), open(sys.argv[1], 'w'), indent=1)
+# The output path is optional: the run costs 15 minutes and losing it to
+# an IndexError after the numbers are already on screen is a poor trade.
+# It threw here on the first Windows run, after printing everything.
+out = sys.argv[1] if len(sys.argv) > 1 else None
+payload = dict(rows=rows, mck_ppm=mck_ppm, sof_ppm=sof_ppm, ratio_ppm=ratio,
+               closure_ppm=(mck_ppm - sof_ppm) - ratio[-1],
+               span_s=xs[-1], max_round_trip_us=max(r['rt_us'] for r in rows))
+if out:
+    json.dump(payload, open(out, 'w'), indent=1)
+    print(f"  wrote {out}")
+else:
+    print("  (no output path given; pass one to keep the rows)")
