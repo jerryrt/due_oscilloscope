@@ -593,7 +593,9 @@ def _log_flash(binary) -> None:
         import hashlib
         import json
         h = hashlib.sha256(open(binary, "rb").read()).hexdigest()
-        root = image_work_tree(binary)
+        found = image_work_tree(binary)
+        # UNKNOWN must not become a null commit - see image_work_tree.
+        root = REPO if found is UNKNOWN_WORK_TREE else found
         def git(*a):
             if root is None:
                 return None
@@ -631,6 +633,7 @@ def _log_flash(binary) -> None:
             "binary": os.path.relpath(binary, REPO),
             "sha256": h,
             "repo_rev": git("rev-parse", "--short", "HEAD"),
+            "work_tree_known": found is not UNKNOWN_WORK_TREE,
             "source_root": (os.path.relpath(root, REPO)
                             if root and os.path.abspath(root)
                             != os.path.abspath(REPO) else None),
@@ -649,6 +652,9 @@ def _log_flash(binary) -> None:
         print(f"==> logged: {rev}{dirt}{where} sha {h[:12]}")
     except Exception as e:                                    # noqa: BLE001
         print(f"==> could not log the flash: {e}", file=sys.stderr)
+
+
+UNKNOWN_WORK_TREE = "unknown"      # git could not be asked, or did not answer
 
 
 def image_work_tree(binary):
@@ -675,15 +681,52 @@ def image_work_tree(binary):
     work tree - a copy in a scratch directory, which is also how a
     bisect gets done - has no commit, and saying so is the point: the
     caller writes null rather than the wrong answer.
+
+    **Three outcomes, not two, and the first version of this had two.**
+    It returned None both for "positively outside every work tree" and
+    for "git did not answer", and `_log_flash` turned either into a null
+    `repo_rev`. mac-bench then hit the second case on an ordinary in-repo
+    build - intermittently, only under a flash's load - and a null
+    `repo_rev` makes `fw_repo_rev` unresolvable, so `provenance.collect()`
+    reported it missing and the fixture **refused to record the point at
+    all**: 5 of 14 rows lost, surfacing three steps from the cause. That
+    is the exact failure `fw_repo_rev` exists to prevent, delivered by
+    the tool meant to supply it, and it was a regression I introduced.
+
+    So: UNKNOWN when git could not be asked or did not answer, and the
+    caller falls back to REPO - which is what this code did for years
+    before it learned about work trees, and is right whenever the image
+    is in REPO. None is reserved for the case git positively answered,
+    and only then does a null reach the log.
+
+    An image inside REPO short-circuits with no subprocess at all. That
+    is the common path, it is the one mac-bench lost rows on, and a call
+    that is never made cannot fail under load.
     """
+    path = os.path.abspath(binary)
     try:
-        top = subprocess.run(("git", "rev-parse", "--show-toplevel"),
-                             cwd=os.path.dirname(os.path.abspath(binary)),
-                             text=True, capture_output=True,
-                             timeout=5).stdout.strip()
+        inside = not os.path.relpath(path, REPO).startswith(os.pardir)
+    except ValueError:                  # different drive on Windows
+        inside = False
+    if inside:
+        return REPO
+    try:
+        proc = subprocess.run(("git", "rev-parse", "--show-toplevel"),
+                              cwd=os.path.dirname(path),
+                              text=True, capture_output=True, timeout=5)
     except Exception:                                        # noqa: BLE001
-        return None
-    return top or None
+        return UNKNOWN_WORK_TREE
+    # getattr, because the flash tests stub subprocess.run with an object
+    # carrying only `stdout`. Defaulting a missing returncode to 0 keeps
+    # that stub meaning what it always meant.
+    if getattr(proc, "returncode", 0) != 0:
+        # git answered, and the answer is "not a work tree" - which is
+        # what its own message says. Anything else is git failing to
+        # answer, and that must not be recorded as an absent commit.
+        if "not a git repository" in (getattr(proc, "stderr", "") or "").lower():
+            return None
+        return UNKNOWN_WORK_TREE
+    return (proc.stdout or "").strip() or None
 
 
 def newest_source(binary):
@@ -696,7 +739,8 @@ def newest_source(binary):
     flash log.
     """
     track = provenance.track_of_binary(binary)
-    root = image_work_tree(binary) or REPO
+    found = image_work_tree(binary)
+    root = REPO if found in (None, UNKNOWN_WORK_TREE) else found
     newest, newest_at = None, 0.0
     for rel in provenance.fw_source_paths(track):
         base = os.path.join(root, rel)
