@@ -289,11 +289,11 @@ static void cmd_read(void)
 
 	acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
 
-	snprintf(buf, sizeof(buf),
-	         "# A0(AD7) = %4u  %4lu mV    A1(AD6) = %4u  %4lu mV",
-	         a0, (unsigned long)code_to_mv(a0),
-	         a1, (unsigned long)code_to_mv(a1));
-	Serial.println(buf);
+	con_str("# A0(AD7) = "); con_u32w(a0, 4, ' ');
+	con_str("  ");           con_u32w(code_to_mv(a0), 4, ' ');
+	con_str(" mV    A1(AD6) = "); con_u32w(a1, 4, ' ');
+	con_str("  ");           con_u32w(code_to_mv(a1), 4, ' ');
+	con_str(" mV"); con_nl();
 	Serial.flush();
 }
 
@@ -321,13 +321,14 @@ static void cmd_sweep(void)
 
 		acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
 
-		snprintf(buf, sizeof(buf),
-		         "# %4u   %6lu   %6u  %5lu  |  %6lu   %6u  %5lu",
-		         c, (unsigned long)code_to_mv(c), a0,
-		         (unsigned long)code_to_mv(a0),
-		         (unsigned long)code_to_mv(inv), a1,
-		         (unsigned long)code_to_mv(a1));
-		Serial.println(buf);
+		con_str("# ");   con_u32w(c, 4, ' ');
+		con_str("   ");  con_u32w(code_to_mv(c), 6, ' ');
+		con_str("   ");  con_u32w(a0, 6, ' ');
+		con_str("  ");   con_u32w(code_to_mv(a0), 5, ' ');
+		con_str("  |  "); con_u32w(code_to_mv(inv), 6, ' ');
+		con_str("   ");  con_u32w(a1, 6, ' ');
+		con_str("  ");   con_u32w(code_to_mv(a1), 5, ' ');
+		con_nl();
 		Serial.flush();
 	}
 	Serial.println("# note: A0/A1 columns are the DAC output as actually measured");
@@ -426,10 +427,9 @@ static void cmd_crosstalk(void)
 	return;
 	}
 
-	snprintf(buf, sizeof(buf),
-	         "# crosstalk: hold one channel, swing the other, %u times,"
-	         " %lu ms settle", n, (unsigned long)ms);
-	Serial.println(buf);
+	con_str("# crosstalk: hold one channel, swing the other, ");
+	con_u32(n); con_str(" times, "); con_u32(ms);
+	con_str(" ms settle"); con_nl();
 	Serial.println("# each arm has a control that writes the same code"
 	               " twice, so the swing is the only difference");
 	/*
@@ -439,10 +439,8 @@ static void cmd_crosstalk(void)
 	 * same prose; the register is the only account that cannot drift
 	 * from what was measured.
 	 */
-	snprintf(buf, sizeof(buf),
-	         "# adcmr=%08lx (this command's own; restored after)",
-	         (unsigned long)acq_mr());
-	Serial.println(buf);
+	con_str("# adcmr="); con_hex32(acq_mr(), 8);
+	con_str(" (this command's own; restored after)"); con_nl();
 	Serial.flush();
 
 	/*
@@ -454,13 +452,11 @@ static void cmd_crosstalk(void)
 	 * attestation matters more here, not less. PUSR reads 1 where
 	 * the pull-up is DISABLED. A0=PA16, A1=PA24, A2=PA23, all PIOA.
 	 */
-	snprintf(buf, sizeof(buf),
-	         "# pioa: psr=%08lx osr=%08lx pusr=%08lx ifsr=%08lx",
-	         (unsigned long)PIOA->PIO_PSR,
-	         (unsigned long)PIOA->PIO_OSR,
-	         (unsigned long)PIOA->PIO_PUSR,
-	         (unsigned long)PIOA->PIO_IFSR);
-	Serial.println(buf);
+	con_str("# pioa: psr="); con_hex32(PIOA->PIO_PSR, 8);
+	con_str(" osr=");        con_hex32(PIOA->PIO_OSR, 8);
+	con_str(" pusr=");       con_hex32(PIOA->PIO_PUSR, 8);
+	con_str(" ifsr=");       con_hex32(PIOA->PIO_IFSR, 8);
+	con_nl();
 	Serial.flush();
 
 	/*
@@ -560,19 +556,19 @@ static void cmd_crosstalk(void)
 	gen_write_dac(1, 2048);
 	console_bleed_settle(ms);
 	acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
-	snprintf(buf, sizeof(buf),
-	         "# A1 reads %u with DAC1 held at 2048: %s", a1,
-	         (a1 > 1800u && a1 < 2300u) ? "DAC1 -> A1 is fitted"
-	                                    : "A1 looks undriven - see docs/noise.md");
-	Serial.println(buf);
+	con_str("# A1 reads "); con_u32(a1);
+	con_str(" with DAC1 held at 2048: ");
+	con_str((a1 > 1800u && a1 < 2300u)
+	        ? "DAC1 -> A1 is fitted"
+	        : "A1 looks undriven - see docs/noise.md");
+	con_nl();
 	Serial.println("# bleed is in ADC codes; 1 code = 0.8 mV. Full swing is 2747 codes.");
 	Serial.println("# taken at TRACKTIM 15, SETTLING 3 - this command's own,"
 	               " not whatever ADC_MR held");
-	snprintf(buf, sizeof(buf),
-	         "# pair-conv: restarts=%lu timeouts=%lu (nonzero: see #23)",
-	         (unsigned long)acq_pair_restarts,
-	         (unsigned long)acq_pair_timeouts);
-	Serial.println(buf);
+	con_str("# pair-conv: ");
+	con_kv_u32("restarts", acq_pair_restarts); con_ch(' ');
+	con_kv_u32("timeouts", acq_pair_timeouts);
+	con_str(" (nonzero: see #23)"); con_nl();
 
 	acq_measure_end();
 	Serial.flush();
@@ -613,12 +609,11 @@ static void cmd_rate_sweep(unsigned n_channels)
 
 	acq_init();
 
-	snprintf(buf, sizeof(buf),
-	         "# TC->ADC->PDC sweep, %u ch, MCK %lu Hz, ADC clk %lu Hz, min RC %lu",
-	         n_channels,
-	         (unsigned long)SystemCoreClock, (unsigned long)(SystemCoreClock / 4u),
-	         (unsigned long)ACQ_MIN_RC_FOR(n_channels));
-	Serial.println(buf);
+	con_str("# TC->ADC->PDC sweep, "); con_u32(n_channels);
+	con_str(" ch, MCK "); con_u32(SystemCoreClock);
+	con_str(" Hz, ADC clk "); con_u32(SystemCoreClock / 4u);
+	con_str(" Hz, min RC "); con_u32(ACQ_MIN_RC_FOR(n_channels));
+	con_nl();
 	Serial.println("#     RC   trigger   aggregate    ratio  RXBUFF GOVRE");
 	Serial.flush();
 
@@ -633,12 +628,12 @@ static void cmd_rate_sweep(unsigned n_channels)
 		 * recorded in docs/hardware.md.
 		 */
 		if (!acq_start(hz, n_channels)) {
-			snprintf(buf, sizeof(buf),
-			         "# %6lu %9lu           -        -       -     -"
-			         "   REFUSED (RC < %lu)",
-			         (unsigned long)rcs[i], (unsigned long)hz,
-			         (unsigned long)ACQ_MIN_RC_FOR(n_channels));
-			Serial.println(buf);
+			con_str("# "); con_u32w(rcs[i], 6, ' ');
+			con_ch(' ');   con_u32w(hz, 9, ' ');
+			con_str("           -        -       -     -"
+			        "   REFUSED (RC < ");
+			con_u32(ACQ_MIN_RC_FOR(n_channels));
+			con_ch(')'); con_nl();
 			Serial.flush();
 			continue;
 		}
@@ -665,15 +660,14 @@ static void cmd_rate_sweep(unsigned n_channels)
 		uint32_t ratio_x1000 = expect ?
 			(uint32_t)(((uint64_t)agg * 1000ull) / expect) : 0;
 
-		snprintf(buf, sizeof(buf),
-		         "# %6lu %9lu %11lu   %2lu.%03lu %7lu %5lu",
-		         (unsigned long)rcs[i], (unsigned long)hz,
-		         (unsigned long)agg,
-		         (unsigned long)(ratio_x1000 / 1000u),
-		         (unsigned long)(ratio_x1000 % 1000u),
-		         (unsigned long)acq_rxbuff_overruns,
-		         (unsigned long)acq_govre);
-		Serial.println(buf);
+		con_str("# "); con_u32w(rcs[i], 6, ' ');
+		con_ch(' ');   con_u32w(hz, 9, ' ');
+		con_ch(' ');   con_u32w(agg, 11, ' ');
+		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
+		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
+		con_ch(' ');   con_u32w(acq_rxbuff_overruns, 7, ' ');
+		con_ch(' ');   con_u32w(acq_govre, 5, ' ');
+		con_nl();
 		Serial.flush();
 	}
 	Serial.println("# ratio 1.000 = every trigger produced a conversion pair");
@@ -947,29 +941,32 @@ static void diag_service(void)
 		uint32_t base = (uint32_t)play_ring_base();
 		char buf[192];
 
-		snprintf(buf, sizeof(buf),
-		         "# diag: play ring base=%08lx slot=%u B nslots=%u",
-		         (unsigned long)base, PLAY_BUF_BYTES, PLAY_NBUF);
-		Serial.println(buf);
+		con_str("# diag: play ring base="); con_hex32(base, 8);
+		con_str(" slot="); con_u32(PLAY_BUF_BYTES);
+		con_str(" B nslots="); con_u32(PLAY_NBUF); con_nl();
 		Serial.println("#    ms  prod  cons endtx    svc  tpr=slot+off  tcr"
 		               "  next(tag,code)  cdr7 cdr6  aprod acons");
 		for (unsigned i = 0; i < DIAG_N; i++) {
 			struct diag_snap *s = &diag[i];
 			uint32_t off = s->tpr - base;
 
-			snprintf(buf, sizeof(buf),
-			         "# %5lu %5lu %5lu %5lu %6lu  %lu+%-4lu %4lu"
-			         "  %04x(t%u,%4u)  %4u %4u  %5lu %5lu",
-			         (unsigned long)(s->ms - diag[0].ms),
-			         (unsigned long)s->prod, (unsigned long)s->cons,
-			         (unsigned long)s->endtx, (unsigned long)s->svc,
-			         (unsigned long)(off / PLAY_BUF_BYTES),
-			         (unsigned long)(off % PLAY_BUF_BYTES),
-			         (unsigned long)s->tcr,
-			         s->next, (s->next >> 12) & 3u, s->next & 0x0fffu,
-			         s->cdr7 & 0x0fffu, s->cdr6 & 0x0fffu,
-			         (unsigned long)s->aprod, (unsigned long)s->acons);
-			Serial.println(buf);
+			con_str("# "); con_u32w(s->ms - diag[0].ms, 5, ' ');
+			con_ch(' ');   con_u32w(s->prod, 5, ' ');
+			con_ch(' ');   con_u32w(s->cons, 5, ' ');
+			con_ch(' ');   con_u32w(s->endtx, 5, ' ');
+			con_ch(' ');   con_u32w(s->svc, 6, ' ');
+			con_str("  ");
+			con_u32(off / PLAY_BUF_BYTES); con_ch('+');
+			con_u32l(off % PLAY_BUF_BYTES, 4);
+			con_ch(' ');   con_u32w(s->tcr, 4, ' ');
+			con_str("  ");  con_hex32(s->next, 4);
+			con_str("(t");  con_u32((s->next >> 12) & 3u);
+			con_ch(',');    con_u32w(s->next & 0x0fffu, 4, ' ');
+			con_str(")  "); con_u32w(s->cdr7 & 0x0fffu, 4, ' ');
+			con_ch(' ');    con_u32w(s->cdr6 & 0x0fffu, 4, ' ');
+			con_str("  ");  con_u32w(s->aprod, 5, ' ');
+			con_ch(' ');    con_u32w(s->acons, 5, ' ');
+			con_nl();
 		}
 		Serial.flush();
 	}
@@ -989,59 +986,52 @@ static void cmd_usb_dump(void)
 	uint32_t sr   = UOTGHS->UOTGHS_SR;
 	char buf[176];
 
-	snprintf(buf, sizeof(buf),
-	         "# usb CTRL=%08lx USBE=%d OTGPADE=%d FRZCLK=%d UIMOD=%d UIDE=%d",
-	         (unsigned long)ctrl,
-	         (int)!!(ctrl & UOTGHS_CTRL_USBE),
-	         (int)!!(ctrl & UOTGHS_CTRL_OTGPADE),
-	         (int)!!(ctrl & UOTGHS_CTRL_FRZCLK),
-	         (int)!!(ctrl & UOTGHS_CTRL_UIMOD),
-	         (int)!!(ctrl & UOTGHS_CTRL_UIDE));
-	Serial.println(buf);
+	con_str("# usb CTRL=");  con_hex32(ctrl, 8);
+	con_str(" USBE=");       con_u32(!!(ctrl & UOTGHS_CTRL_USBE));
+	con_str(" OTGPADE=");    con_u32(!!(ctrl & UOTGHS_CTRL_OTGPADE));
+	con_str(" FRZCLK=");     con_u32(!!(ctrl & UOTGHS_CTRL_FRZCLK));
+	con_str(" UIMOD=");      con_u32(!!(ctrl & UOTGHS_CTRL_UIMOD));
+	con_str(" UIDE=");       con_u32(!!(ctrl & UOTGHS_CTRL_UIDE));
+	con_nl();
 
-	snprintf(buf, sizeof(buf),
-	         "# usb DEVCTRL=%08lx DETACH=%d SPDCONF=%lu  SR=%08lx CLKUSABLE=%d",
-	         (unsigned long)dctl,
-	         (int)!!(dctl & UOTGHS_DEVCTRL_DETACH),
-	         (unsigned long)((dctl & UOTGHS_DEVCTRL_SPDCONF_Msk) >>
-	                         UOTGHS_DEVCTRL_SPDCONF_Pos),
-	         (unsigned long)sr,
-	         (int)!!(sr & UOTGHS_SR_CLKUSABLE));
-	Serial.println(buf);
+	con_str("# usb DEVCTRL="); con_hex32(dctl, 8);
+	con_str(" DETACH=");       con_u32(!!(dctl & UOTGHS_DEVCTRL_DETACH));
+	con_str(" SPDCONF=");
+	con_u32((dctl & UOTGHS_DEVCTRL_SPDCONF_Msk) >>
+	        UOTGHS_DEVCTRL_SPDCONF_Pos);
+	con_str("  SR=");          con_hex32(sr, 8);
+	con_str(" CLKUSABLE=");    con_u32(!!(sr & UOTGHS_SR_CLKUSABLE));
+	con_nl();
 
-	snprintf(buf, sizeof(buf),
-	         "# usb DEVIMR=%08lx DEVISR=%08lx EPT=%08lx EP0CFG=%08lx EP0ISR=%08lx",
-	         (unsigned long)UOTGHS->UOTGHS_DEVIMR,
-	         (unsigned long)UOTGHS->UOTGHS_DEVISR,
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPT,
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[0],
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[0]);
-	Serial.println(buf);
+	con_str("# usb DEVIMR="); con_hex32(UOTGHS->UOTGHS_DEVIMR, 8);
+	con_str(" DEVISR=");      con_hex32(UOTGHS->UOTGHS_DEVISR, 8);
+	con_str(" EPT=");         con_hex32(UOTGHS->UOTGHS_DEVEPT, 8);
+	con_str(" EP0CFG=");      con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[0], 8);
+	con_str(" EP0ISR=");      con_hex32(UOTGHS->UOTGHS_DEVEPTISR[0], 8);
+	con_nl();
 
-	snprintf(buf, sizeof(buf),
-	         "# pmc PMC_USB=%08lx SR_LOCKU=%d SCSR=%08lx",
-	         (unsigned long)PMC->PMC_USB,
-	         (int)!!(PMC->PMC_SR & PMC_SR_LOCKU),
-	         (unsigned long)PMC->PMC_SCSR);
-	Serial.println(buf);
+	con_str("# pmc PMC_USB="); con_hex32(PMC->PMC_USB, 8);
+	con_str(" SR_LOCKU=");     con_u32(!!(PMC->PMC_SR & PMC_SR_LOCKU));
+	con_str(" SCSR=");         con_hex32(PMC->PMC_SCSR, 8);
+	con_nl();
 
-	snprintf(buf, sizeof(buf),
-	         "# ep2(OUT) CFG=%08lx ISR=%08lx  ep3(IN) CFG=%08lx ISR=%08lx",
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[2],
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3],
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTISR[3]);
-	Serial.println(buf);
+	con_str("# ep2(OUT) CFG="); con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[2], 8);
+	con_str(" ISR=");           con_hex32(UOTGHS->UOTGHS_DEVEPTISR[2], 8);
+	con_str("  ep3(IN) CFG=");  con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[3], 8);
+	con_str(" ISR=");           con_hex32(UOTGHS->UOTGHS_DEVEPTISR[3], 8);
+	con_nl();
 
 	/* The core never arms these; usbdma.cpp does. Printed in the same
 	 * layout as Track B's dump so the two can be read side by side. */
-	snprintf(buf, sizeof(buf),
-	         "# dma ch1(OUT) CTRL=%08lx ST=%08lx  ch2(IN) CTRL=%08lx ST=%08lx",
-	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMACONTROL,
-	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMASTATUS,
-	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMACONTROL,
-	         (unsigned long)UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMASTATUS);
-	Serial.println(buf);
+	con_str("# dma ch1(OUT) CTRL=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMACONTROL, 8);
+	con_str(" ST=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[1].UOTGHS_DEVDMASTATUS, 8);
+	con_str("  ch2(IN) CTRL=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMACONTROL, 8);
+	con_str(" ST=");
+	con_hex32(UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMASTATUS, 8);
+	con_nl();
 
 	/*
 	 * The activity LEDs, so a dark indicator can be told apart from a
@@ -1049,15 +1039,13 @@ static void cmd_usb_dump(void)
 	 * it, OSR set means it is an output, ODSR is the driven level -
 	 * and these are active low, so 0 is lit.
 	 */
-	snprintf(buf, sizeof(buf),
-	         "# leds TXL(PA21) pio=%d out=%d lit=%d   RXL(PC30) pio=%d out=%d lit=%d",
-	         (int)!!(PIOA->PIO_PSR & TXL_MASK),
-	         (int)!!(PIOA->PIO_OSR & TXL_MASK),
-	         (int)!(PIOA->PIO_ODSR & TXL_MASK),
-	         (int)!!(PIOC->PIO_PSR & RXL_MASK),
-	         (int)!!(PIOC->PIO_OSR & RXL_MASK),
-	         (int)!(PIOC->PIO_ODSR & RXL_MASK));
-	Serial.println(buf);
+	con_str("# leds TXL(PA21) pio="); con_u32(!!(PIOA->PIO_PSR & TXL_MASK));
+	con_str(" out=");                 con_u32(!!(PIOA->PIO_OSR & TXL_MASK));
+	con_str(" lit=");                 con_u32(!(PIOA->PIO_ODSR & TXL_MASK));
+	con_str("   RXL(PC30) pio=");     con_u32(!!(PIOC->PIO_PSR & RXL_MASK));
+	con_str(" out=");                 con_u32(!!(PIOC->PIO_OSR & RXL_MASK));
+	con_str(" lit=");                 con_u32(!(PIOC->PIO_ODSR & RXL_MASK));
+	con_nl();
 
 	usbdma_dump();
 	Serial.flush();
@@ -1093,26 +1081,29 @@ static void cmd_occ_hist(void)
 {
 	char buf[64];
 
-	snprintf(buf, sizeof(buf), "# play_occ min=%lu endtx=%lu runus=%lu consumed=%lu hist=",
-	         (unsigned long)play_occ_min,
-	         (unsigned long)play_endtx_seen,
-	         (unsigned long)play_run_us,
-	         (unsigned long)play_consumed);
+	con_str("# play_occ ");
+	con_kv_u32("min", play_occ_min);        con_ch(' ');
+	con_kv_u32("endtx", play_endtx_seen);   con_ch(' ');
+	con_kv_u32("runus", play_run_us);       con_ch(' ');
+	con_kv_u32("consumed", play_consumed);  con_str(" hist=");
 	Serial.print(buf);
 	for (unsigned i = 0; i < PLAY_NBUF; i++) {
-		snprintf(buf, sizeof(buf), "%lu%s", (unsigned long)play_occ_hist[i],
-		         i + 1u < PLAY_NBUF ? "," : "");
+		con_u32(play_occ_hist[i]);
+		if (i + 1u < PLAY_NBUF)
+			con_ch(',');
 		Serial.print(buf);
 	}
 	Serial.println();
 	Serial.flush();
 
-	snprintf(buf, sizeof(buf), "# play_occ_trace decim=%u n=%lu v=",
-	         PLAY_OCC_DECIM, (unsigned long)play_occ_traced);
+	con_str("# play_occ_trace ");
+	con_kv_u32("decim", PLAY_OCC_DECIM);  con_ch(' ');
+	con_kv_u32("n", play_occ_traced);     con_str(" v=");
 	Serial.print(buf);
 	for (unsigned i = 0; i < play_occ_traced; i++) {
-		snprintf(buf, sizeof(buf), "%u%s", (unsigned)play_occ_trace[i],
-		         i + 1u < play_occ_traced ? "," : "");
+		con_u32(play_occ_trace[i]);
+		if (i + 1u < play_occ_traced)
+			con_ch(',');
 		Serial.print(buf);
 		/* 256 entries is more than one buffer holds. */
 		if ((i & 31u) == 31u)
@@ -1137,10 +1128,11 @@ static void cmd_profile(void)
 		t0 = micros();                                       \
 		for (uint32_t i = 0; i < n; i++) { expr; }            \
 		t1 = micros();                                       \
-		snprintf(buf, sizeof(buf), "# %-22s %6lu ns", label,  \
-		         (unsigned long)(((uint64_t)(t1 - t0) * 1000ull) / n)); \
-		Serial.println(buf);                                 \
-		Serial.flush();                                      \
+		con_str("# "); con_strl(label, 22); con_ch(' ');      \
+		con_u32w((uint32_t)(((uint64_t)(t1 - t0) * 1000ull)   \
+		                    / n), 6, ' ');                    \
+		con_str(" ns"); con_nl();                             \
+		console_flush();                                      \
 	} while (0)
 
 	PROF("empty loop", __asm__ volatile(""));
@@ -1591,10 +1583,10 @@ static void ha_loop(const uint32_t *a)
 	unsigned nch    = a[2] ? a[2] : 2u;
 
 	if (!play_start(dac_hz)) {
-		snprintf(buf, sizeof(buf),
-		         "# loop: DAC %lu sps refused (max %lu)",
-		         (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
-		Serial.println(buf);
+		con_str("# loop: DAC "); con_u32(dac_hz);
+		con_str(" sps refused (max ");
+		con_u32((SystemCoreClock / 2u) / PLAY_MIN_RC);
+		con_ch(')'); con_nl();
 		Serial.flush();
 		return;
 	}
@@ -1609,20 +1601,18 @@ static void ha_loop(const uint32_t *a)
 	 * flows until the host feeds. Capture is device-driven and fills
 	 * the moment the timer runs.
 	 */
-	snprintf(buf, sizeof(buf),
-	         "# loop: DAC %lu sps from USB, ADC %lu Hz/ch x%u ch",
-	         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
-	Serial.println(buf);
+	con_str("# loop: DAC "); con_u32(dac_hz);
+	con_str(" sps from USB, ADC "); con_u32(adc_hz);
+	con_str(" Hz/ch x"); con_u32(nch); con_str(" ch"); con_nl();
 	Serial.println("# DAC0 carries the waveform, DAC1 holds mid scale");
 	Serial.flush();
 	if (!stream_start_capture_only(adc_hz, nch)) {
 		play_stop();
-		snprintf(buf, sizeof(buf),
-		         "# loop: ADC %lu Hz x%u ch refused (max %lu)",
-		         (unsigned long)adc_hz, nch,
-		         (unsigned long)((SystemCoreClock / 2u)
-		                         / ACQ_MIN_RC_FOR(nch)));
-		Serial.println(buf);
+		con_str("# loop: ADC "); con_u32(adc_hz);
+		con_str(" Hz x"); con_u32(nch);
+		con_str(" ch refused (max ");
+		con_u32((SystemCoreClock / 2u) / ACQ_MIN_RC_FOR(nch));
+		con_ch(')'); con_nl();
 		Serial.flush();
 		return;
 	}
@@ -1632,20 +1622,18 @@ static void ha_loop(const uint32_t *a)
  * path from an interaction between the two service loops. */
 static void ha_play(const uint32_t *a)
 {
-	char buf[192];
-
 	uint32_t dac_hz = a[0] ? a[0] : 200000u;
 
-	if (play_start(dac_hz))
-		snprintf(buf, sizeof(buf),
-		         "# play only: DAC %lu sps from USB, no capture",
-		         (unsigned long)dac_hz);
-	else
-		snprintf(buf, sizeof(buf),
-		         "# play only: %lu sps refused (max %lu)",
-		         (unsigned long)dac_hz, (unsigned long)((SystemCoreClock / 2u) / PLAY_MIN_RC));
-	Serial.println(buf);
-	Serial.flush();
+	if (play_start(dac_hz)) {
+		con_str("# play only: DAC "); con_u32(dac_hz);
+		con_str(" sps from USB, no capture"); con_nl();
+	} else {
+		con_str("# play only: "); con_u32(dac_hz);
+		con_str(" sps refused (max ");
+		con_u32((SystemCoreClock / 2u) / PLAY_MIN_RC);
+		con_ch(')'); con_nl();
+	}
+	console_flush();
 }
 
 static void ha_occ(const uint32_t *a)
@@ -1666,18 +1654,17 @@ static void ha_epstate(const uint32_t *a)
 	 * once ep_apply_autosw() and the control-endpoint realloc have
 	 * been running against each other for a few thousand passes.
 	 */
-	char buf2[128], ok[16];
+	char ok[16];
 	for (unsigned e = 0; e < 7; e++)
 		ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
 		         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
 	ok[7] = 0;
-	snprintf(buf2, sizeof(buf2),
-	         "# ep cfgok=%s reallocs=%lu cfgfail=%lu ep2=%08lx ep3=%08lx",
-	         ok, (unsigned long)ctlusb_reallocs,
-	         (unsigned long)ctlusb_cfg_fail,
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[2],
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[3]);
-	Serial.println(buf2); Serial.flush();
+	con_str("# ep cfgok="); con_str(ok);
+	con_str(" reallocs=");  con_u32(ctlusb_reallocs);
+	con_str(" cfgfail=");   con_u32(ctlusb_cfg_fail);
+	con_str(" ep2=");       con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[2], 8);
+	con_str(" ep3=");       con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[3], 8);
+	con_nl(); console_flush();
 
 	/*
 	 * The table the core actually scans, and the count it
@@ -1698,16 +1685,15 @@ static void ha_epstate(const uint32_t *a)
 	 */
 	{
 		extern uint32_t EndPoints[];
-		char eb[160];
-		int  n = 0;
 		unsigned count = 0;
 		while (EndPoints[count] != 0)
 			count++;
-		n = snprintf(eb, sizeof(eb), "# eptab count=%u :", count);
-		for (unsigned e = 0; e < 10 && n < (int)sizeof(eb) - 12; e++)
-			n += snprintf(eb + n, sizeof(eb) - n, " %lu",
-			              (unsigned long)EndPoints[e]);
-		Serial.println(eb); Serial.flush();
+		con_str("# eptab count="); con_u32(count); con_str(" :");
+		for (unsigned e = 0; e < 10; e++) {
+			con_ch(' ');
+			con_u32(EndPoints[e]);
+		}
+		con_nl(); console_flush();
 
 		/*
 		 * Did SET_CONFIGURATION ever run?
@@ -1722,13 +1708,11 @@ static void ha_epstate(const uint32_t *a)
 		 */
 		{
 			extern volatile uint32_t _usbConfiguration;
-			char cb[80];
-			snprintf(cb, sizeof(cb),
-			         "# usbcfg _usbConfiguration=%lu deveptseen=%08lx now=%08lx",
-			         (unsigned long)_usbConfiguration,
-			         (unsigned long)devept_seen,
-			         (unsigned long)UOTGHS->UOTGHS_DEVEPT);
-			Serial.println(cb); Serial.flush();
+			con_str("# usbcfg _usbConfiguration=");
+			con_u32(_usbConfiguration);
+			con_str(" deveptseen="); con_hex32(devept_seen, 8);
+			con_str(" now=");        con_hex32(UOTGHS->UOTGHS_DEVEPT, 8);
+			con_nl(); console_flush();
 		}
 
 		/*
@@ -1743,52 +1727,46 @@ static void ha_epstate(const uint32_t *a)
 		 * reset explains.
 		 */
 		{
-			char tb[160];
-			int  tn = snprintf(tb, sizeof(tb),
-			         "# usbrestore n=%lu after:",
-			         (unsigned long)devept_restores);
+			con_str("# usbrestore n="); con_u32(devept_restores);
+			con_str(" after:");
 			for (unsigned i = 0; i < devept_restores
-			                  && i < DEVEPT_RESTORE_MAX; i++)
-				tn += snprintf(tb + tn, sizeof(tb) - tn, " %08lx",
-				               (unsigned long)devept_after[i]);
-			Serial.println(tb); Serial.flush();
-			snprintf(tb, sizeof(tb),
-			         "# ctlout banks=%lu bytes=%lu",
-			         (unsigned long)ctlusb_out_banks,
-			         (unsigned long)ctlusb_out_bytes);
-			Serial.println(tb); Serial.flush();
-			tn = snprintf(tb, sizeof(tb),
-			         "# usbsetup n=%lu dropped=%lu",
-			         (unsigned long)ctlusb_setup_n,
-			         (unsigned long)ctlusb_setup_drop);
-			Serial.println(tb); Serial.flush();
+			                  && i < DEVEPT_RESTORE_MAX; i++) {
+				con_ch(' ');
+				con_hex32(devept_after[i], 8);
+			}
+			con_nl(); console_flush();
+			con_str("# ctlout ");
+			con_kv_u32("banks", ctlusb_out_banks); con_ch(' ');
+			con_kv_u32("bytes", ctlusb_out_bytes);
+			con_nl(); console_flush();
+			con_str("# usbsetup ");
+			con_kv_u32("n", ctlusb_setup_n);       con_ch(' ');
+			con_kv_u32("dropped", ctlusb_setup_drop);
+			con_nl(); console_flush();
 			for (unsigned i = 0; i < ctlusb_setup_n
 			                  && i < CTLUSB_SETUP_N; i++) {
-				snprintf(tb, sizeof(tb),
-				         "# s%02u type=%02x req=%02x val=%04x idx=%04x len=%u claimed=%u",
-				         i, ctlusb_setups[i].bmRequestType,
-				         ctlusb_setups[i].bRequest,
-				         ctlusb_setups[i].wValue,
-				         ctlusb_setups[i].wIndex,
-				         ctlusb_setups[i].wLength,
-				         ctlusb_setups[i].claimed);
-				Serial.println(tb); Serial.flush();
+				con_str("# s"); con_u32w(i, 2, '0');
+				con_str(" type="); con_hex32(ctlusb_setups[i].bmRequestType, 2);
+				con_str(" req=");  con_hex32(ctlusb_setups[i].bRequest, 2);
+				con_str(" val=");  con_hex32(ctlusb_setups[i].wValue, 4);
+				con_str(" idx=");  con_hex32(ctlusb_setups[i].wIndex, 4);
+				con_str(" len=");  con_u32(ctlusb_setups[i].wLength);
+				con_str(" claimed="); con_u32(ctlusb_setups[i].claimed);
+				con_nl(); console_flush();
 			}
-			snprintf(tb, sizeof(tb),
-			         "# usbtrace n=%lu dropped=%lu (us pass devept devctrl cfg)",
-			         (unsigned long)usbtrace_n,
-			         (unsigned long)usbtrace_drop);
-			Serial.println(tb); Serial.flush();
+			con_str("# usbtrace ");
+			con_kv_u32("n", usbtrace_n);           con_ch(' ');
+			con_kv_u32("dropped", usbtrace_drop);
+			con_str(" (us pass devept devctrl cfg)");
+			con_nl(); console_flush();
 			for (unsigned i = 0; i < usbtrace_n && i < USBTRACE_N; i++) {
-				snprintf(tb, sizeof(tb),
-				         "# t%02u %10lu %10lu %08lx %08lx %lu",
-				         i,
-				         (unsigned long)usbtrace[i].us,
-				         (unsigned long)usbtrace[i].pass,
-				         (unsigned long)usbtrace[i].devept,
-				         (unsigned long)usbtrace[i].devctrl,
-				         (unsigned long)usbtrace[i].cfg);
-				Serial.println(tb); Serial.flush();
+				con_str("# t"); con_u32w(i, 2, '0');
+				con_ch(' ');    con_u32w(usbtrace[i].us, 10, ' ');
+				con_ch(' ');    con_u32w(usbtrace[i].pass, 10, ' ');
+				con_ch(' ');    con_hex32(usbtrace[i].devept, 8);
+				con_ch(' ');    con_hex32(usbtrace[i].devctrl, 8);
+				con_ch(' ');    con_u32(usbtrace[i].cfg);
+				con_nl(); console_flush();
 			}
 		}
 	}
@@ -1934,11 +1912,10 @@ static void ha_mimic(const uint32_t *a)
 	 * gen_shape_name() is the shared spelling, so the two tracks
 	 * cannot drift on the word either.
 	 */
-	snprintf(buf, sizeof(buf),
-	         "# mimic loop: gen %s on TIOA1 at %lu sps, capture %lu Hz x%u ch",
-	         gen_shape_name(gen_shape),
-	         (unsigned long)dac_hz, (unsigned long)adc_hz, nch);
-	Serial.println(buf);
+	con_str("# mimic loop: gen "); con_str(gen_shape_name(gen_shape));
+	con_str(" on TIOA1 at "); con_u32(dac_hz);
+	con_str(" sps, capture "); con_u32(adc_hz);
+	con_str(" Hz x"); con_u32(nch); con_str(" ch"); con_nl();
 	Serial.println("# press D and read cdr7: swing = USB at fault, frozen = trigger path");
 	Serial.flush();
 
@@ -1978,13 +1955,14 @@ static void ha_temp(const uint32_t *a)
 		Serial.flush();
 		return;
 	}
-	snprintf(buf, sizeof(buf),
-	         "# temp: code %lu.%02lu (min %u max %u, n=%u) adcmr=%08lx adcacr=%08lx",
-	         (unsigned long)(t.code_x16 / 16u),
-	         (unsigned long)((t.code_x16 % 16u) * 100u / 16u),
-	         (unsigned)t.code_min, (unsigned)t.code_max, (unsigned)t.samples,
-	         (unsigned long)t.adc_mr, (unsigned long)t.adc_acr);
-	Serial.println(buf);
+	con_str("# temp: code "); con_u32(t.code_x16 / 16u); con_ch('.');
+	con_u32w((t.code_x16 % 16u) * 100u / 16u, 2, '0');
+	con_str(" (min "); con_u32(t.code_min);
+	con_str(" max ");  con_u32(t.code_max);
+	con_str(", n=");   con_u32(t.samples);
+	con_str(") adcmr="); con_hex32(t.adc_mr, 8);
+	con_str(" adcacr="); con_hex32(t.adc_acr, 8);
+	con_nl();
 	Serial.flush();
 }
 
@@ -2043,9 +2021,8 @@ static void ha_mimic_gap(const uint32_t *a)
 	char buf[96];
 
 	mimic_start_delay_us = a[0];
-	snprintf(buf, sizeof(buf), "# mimic start delay: %lu us (next M)",
-	         (unsigned long)mimic_start_delay_us);
-	Serial.println(buf);
+	con_str("# mimic start delay: "); con_u32(mimic_start_delay_us);
+	con_str(" us (next M)"); con_nl();
 	Serial.flush();
 }
 
@@ -2060,10 +2037,10 @@ static void ha_ibctl(const uint32_t *a)
 	char buf[96];
 
 	gen_set_ibctl(a[0], a[1]);
-	snprintf(buf, sizeof(buf),
-	         "# dacc ibctl: ch=%u core=%u (next DACC init)",
-	         (unsigned)gen_ibctl_ch, (unsigned)gen_ibctl_core);
-	Serial.println(buf);
+	con_str("# dacc ibctl: ");
+	con_kv_u32("ch", gen_ibctl_ch);     con_ch(' ');
+	con_kv_u32("core", gen_ibctl_core);
+	con_str(" (next DACC init)"); con_nl();
 	Serial.flush();
 }
 
@@ -2078,10 +2055,10 @@ static void ha_adc_timing(const uint32_t *a)
 	char buf[96];
 
 	acq_set_timing(a[0], a[1]);
-	snprintf(buf, sizeof(buf),
-	         "# adc timing: tracktim=%u settling=%u (next stream)",
-	         (unsigned)acq_tracktim, (unsigned)acq_settling);
-	Serial.println(buf);
+	con_str("# adc timing: ");
+	con_kv_u32("tracktim", acq_tracktim); con_ch(' ');
+	con_kv_u32("settling", acq_settling);
+	con_str(" (next stream)"); con_nl();
 	Serial.flush();
 }
 
