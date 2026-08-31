@@ -3564,28 +3564,52 @@ def flash(track, control=None, retries=2, build=False):
                 if control:
                     cmd += ["--port", control]
             elif track == "a":
-                # tools/sketch.py, and through this interpreter.
+                # Track A builds the way Track B and Track C do (#55).
                 #
-                # Not the .sh shim: it is not executable on win32, where
-                # CreateProcess answers "%1 is not a valid Win32
-                # application" and the whole track becomes unreachable
-                # from the suite. Not a bare arduino-cli call either -
-                # Track A needs two build properties, both silent when
-                # missing (a wrong f_cpu makes micros() lie, a missing
-                # ldscript leaves the capture ring in bank 0), and
-                # `arduino-cli upload` cannot flash a Due on this host
-                # and fails destructively. sketch.py decides the
-                # properties and routes the upload through flash.py,
-                # which works everywhere.
-                sk = os.path.join(REPO, "tools", "sketch.py")
+                # It used to shell out to tools/sketch.py, which drove
+                # arduino-cli and its bundled GCC 4.8.3. The two build
+                # properties that path existed to supply - build.f_cpu,
+                # because micros() divides by it, and build.ldscript,
+                # because without it the capture ring is not in SRAM
+                # bank 1 - are lines in cmake/track_a.cmake now, so
+                # neither can be silently forgotten and there is one
+                # place that knows them rather than two.
+                #
+                # Its own tree, for Track C's reason: a bench that never
+                # asked for Track A must not have the Arduino core
+                # compiled into the tree it builds Track B in.
+                # `firmware_track_a` is the clean-build wrapper, the
+                # same shape `firmware` and `firmware_rtos` have.
+                env = _tool_env()
+                build_a = os.path.join(REPO, "build-a")
                 if build:
-                    subprocess.run(
-                        [sys.executable, sk, "compile"],
-                        cwd=REPO, check=True, env=_tool_env(),
-                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                cmd = [sys.executable, sk, "upload"]
+                    if not os.path.isdir(build_a):
+                        # Say what to run rather than letting cmake fail
+                        # with "not a directory". A bench that has not
+                        # configured Track A yet meets this once, and a
+                        # confusing subprocess error here reads as a
+                        # board fault three steps away.
+                        raise BoardError(
+                            "Track A is not configured on this bench. "
+                            "Run:\n"
+                            "  cmake -B build-a -DCMAKE_TOOLCHAIN_FILE="
+                            "cmake/arm-none-eabi-toolchain.cmake "
+                            "-DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON\n"
+                            "It needs the Arduino SAM core *sources* "
+                            "only - no arduino-cli, no bundled compiler. "
+                            "Pass -DARDUINO_SAM_CORE= if it is not where "
+                            "toolchains.json looks; python3 "
+                            "tools/toolchain.py shows what resolved.")
+                    subprocess.run([_exe("cmake", env), "--build", build_a,
+                                    "--target", "firmware_track_a"],
+                                   cwd=REPO, check=True, env=env,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+                cmd = [sys.executable, os.path.join(REPO, "tools", "flash.py"),
+                       "--bin",
+                       os.path.join(build_a, "track_a_bringup.bin")]
                 if control:
-                    cmd.append(control)
+                    cmd += ["--port", control]
             else:
                 raise ValueError(f"unknown track {track!r}")
             subprocess.run(cmd, cwd=REPO, check=True, env=_tool_env(),
