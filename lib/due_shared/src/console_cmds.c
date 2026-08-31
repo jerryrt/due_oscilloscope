@@ -31,6 +31,7 @@
 
 #include "console.h"
 #include "console_port.h"
+#include "console_out.h"
 #include "ctl_port.h"
 #include "ctl_wire.h"
 
@@ -148,26 +149,19 @@ void console_bleed_settle(uint32_t ms)
  */
 void console_cmd_stream(uint32_t trigger_hz)
 {
-	char line[192];
 	ctl_gen_t g;
 	bool have_gen = ctl_port_gen_get(&g);
 
-	if (have_gen)
-		snprintf(line, sizeof(line),
-		         "# streaming: trigger %lu Hz, %lu sps aggregate, "
-		         "%s %lu Hz (%u pts/cycle)\n",
-		         (unsigned long)trigger_hz,
-		         (unsigned long)(trigger_hz * 2u),
-		         gen_shape_name(g.shape),
-		         (unsigned long)gen_hz_for(trigger_hz, g.points,
-		                                   g.sync),
-		         (unsigned)g.points);
-	else
-		snprintf(line, sizeof(line),
-		         "# streaming: trigger %lu Hz, %lu sps aggregate\n",
-		         (unsigned long)trigger_hz,
-		         (unsigned long)(trigger_hz * 2u));
-	console_write(line);
+	con_str("# streaming: trigger "); con_u32(trigger_hz);
+	con_str(" Hz, "); con_u32(trigger_hz * 2u);
+	con_str(" sps aggregate");
+	if (have_gen) {
+		con_str(", "); con_str(gen_shape_name(g.shape)); con_ch(' ');
+		con_u32(gen_hz_for(trigger_hz, g.points, g.sync));
+		con_str(" Hz ("); con_u32(g.points);
+		con_str(" pts/cycle)");
+	}
+	con_nl();
 
 	if (have_gen)
 		console_write(g.sync == GEN_SYNC_OFF
@@ -178,10 +172,8 @@ void console_cmd_stream(uint32_t trigger_hz)
 	console_flush();
 
 	if (!console_port_stream_start(trigger_hz)) {
-		snprintf(line, sizeof(line),
-		         "# refused: %lu Hz is past the measured ADC "
-		         "ceiling\n", (unsigned long)trigger_hz);
-		console_write(line);
+		con_str("# refused: "); con_u32(trigger_hz);
+		con_str(" Hz is past the measured ADC ceiling"); con_nl();
 		console_flush();
 	}
 }

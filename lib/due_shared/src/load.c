@@ -21,6 +21,7 @@
 #include "load.h"
 #include "ctl_port.h"
 #include "console_port.h"
+#include "console_out.h"
 
 /*
  * The CMSIS global, declared rather than included. Both tracks define
@@ -100,16 +101,14 @@ void load_dump(void)
 {
 	load_report_t r;
 	uint32_t per_us = SystemCoreClock / 1000000u;
-	char line[96];
 
 	load_sample(&r);
-	snprintf(line, sizeof(line),
-	         "# load available=%u passes=%lu max=%lu cyc (%lu us)\n",
-	         (unsigned)r.available,
-	         (unsigned long)r.passes,
-	         (unsigned long)r.max_cycles,
-	         (unsigned long)(r.max_cycles / per_us));
-	console_write(line);
+	con_str("# load ");
+	con_kv_u32("available", r.available);   con_ch(' ');
+	con_kv_u32("passes", r.passes);         con_ch(' ');
+	con_kv_u32("max", r.max_cycles);        con_str(" cyc (");
+	con_u32(r.max_cycles / per_us);         con_str(" us)");
+	con_nl();
 
 	/*
 	 * Only the occupied buckets, and in microseconds as well as
@@ -123,13 +122,13 @@ void load_dump(void)
 			continue;
 		lo = 1u << i;
 		hi = (i < 31u) ? (1u << (i + 1u)) - 1u : 0xffffffffu;
-		snprintf(line, sizeof(line),
-		         "#   %2u: %10lu passes  %lu-%lu cyc  %lu-%lu us\n",
-		         i, (unsigned long)load_hist[i],
-		         (unsigned long)lo, (unsigned long)hi,
-		         (unsigned long)(lo / per_us),
-		         (unsigned long)(hi / per_us));
-		console_write(line);
+		con_str("#   ");  con_u32w(i, 2, ' ');
+		con_str(": ");    con_u32w(load_hist[i], 10, ' ');
+		con_str(" passes  ");
+		con_u32(lo); con_ch('-'); con_u32(hi); con_str(" cyc  ");
+		con_u32(lo / per_us); con_ch('-');
+		con_u32(hi / per_us); con_str(" us");
+		con_nl();
 	}
 	console_flush();
 }
