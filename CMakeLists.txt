@@ -139,6 +139,81 @@ add_custom_command(TARGET baremetal_bringup POST_BUILD
 )
 
 # ---------------------------------------------------------------------------
+# Track C: the FreeRTOS build (issue #45).
+#
+# OPT-IN, and that is not timidity. FreeRTOS is fetched at configure
+# time by the owner's ruling on decision (3), so a bench that configures
+# without this flag never needs a network to build Track B - which is
+# every bench, today, on every existing workflow. The ruling also says
+# Track C "should build on all platforms given the current setup, when
+# Track C is ready": ready is C4, this is C1, and the flag is how those
+# two facts live together until then.
+#
+#     cmake -B build -DCMAKE_TOOLCHAIN_FILE=... -DBUILD_TRACK_C=ON
+#
+option(BUILD_TRACK_C "Fetch FreeRTOS and build the Track C image" OFF)
+
+if(BUILD_TRACK_C)
+    include(cmake/freertos.cmake)
+
+    add_executable(rtos_bringup EXCLUDE_FROM_ALL
+        apps/rtos_bringup/main.c
+        apps/rtos_bringup/console_port_rtos.c
+        bsp/startup_sam3x8e.c
+        bsp/uart.c
+        bsp/led.c
+        bsp/clock.c
+        bsp/fault.c
+        bsp/syscalls.c
+        lib/due_shared/src/console.c
+        lib/due_shared/src/console_out.c
+        ${DEVICE}/source/system_sam3xa.c
+        ${FREERTOS_SOURCES}
+    )
+    # bsp/systick.c is ABSENT and must stay absent: it defines
+    # SysTick_Handler strongly, and FreeRTOSConfig.h routes that name to
+    # the kernel's handler. Two strong definitions are a duplicate
+    # symbol, not an override. millis() and micros() live there too, so
+    # anything Track C links must not need them until the kernel offers
+    # an equivalent - see FreeRTOSConfig.h.
+
+    target_include_directories(rtos_bringup PRIVATE
+        apps/rtos_bringup ${FREERTOS_INCLUDE})
+
+    target_link_options(rtos_bringup PRIVATE
+        -mcpu=cortex-m3 -mthumb
+        -T${LINKER_SCRIPT}
+        -Wl,--gc-sections
+        -Wl,-Map=${CMAKE_BINARY_DIR}/rtos_bringup.map
+        -specs=nano.specs
+        -nostartfiles
+    )
+    set_target_properties(rtos_bringup PROPERTIES
+        SUFFIX ".elf"
+        LINK_DEPENDS ${LINKER_SCRIPT}
+    )
+
+    # The same full-build enforcement as `firmware`, and for the same
+    # reason - see the long comment above it. A third build path that
+    # skipped it would be exactly the silent drift
+    # tests/test_clean_build.py exists to catch, so the shape is copied
+    # deliberately rather than the target being left to `all`.
+    add_custom_target(firmware_rtos
+        COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
+        COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"
+                --target rtos_bringup --parallel
+        COMMENT "Enforcing a clean build of Track C (tests/test_clean_build.py)"
+        USES_TERMINAL VERBATIM)
+
+    add_custom_command(TARGET rtos_bringup POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:rtos_bringup>
+                $<TARGET_FILE_DIR:rtos_bringup>/rtos_bringup.bin
+        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:rtos_bringup>
+        COMMENT "Generating Track C .bin and reporting size"
+    )
+endif()
+
+# ---------------------------------------------------------------------------
 # One build system, two tracks.
 #
 # CMake is the single entry point, but it does NOT build Track A itself: it

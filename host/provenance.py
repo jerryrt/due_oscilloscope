@@ -208,6 +208,19 @@ FW_SOURCE_TRACKS = {
     "B": FW_SOURCE_COMMON + ("bsp", "drivers", "apps", "cmake",
                              "CMakeLists.txt"),
     "A": FW_SOURCE_COMMON + ("sketches",),
+    # Track C links Track B's bsp/, drivers/ and lib/ unchanged and adds
+    # only its own application under apps/. So its source set is the
+    # SAME as Track B's, and that is not an oversight - it is the first
+    # time two tracks legitimately share a provenance answer.
+    #
+    # "Has the firmware changed since this image was flashed" therefore
+    # answers identically for B and C on most commits, which is correct:
+    # a change to drivers/adc.c really does invalidate both images. What
+    # it means is that provenance can no longer distinguish which image
+    # a stale flag is about, and a caller that needs to know must ask
+    # the board with `v` rather than infer it from the paths.
+    "C": FW_SOURCE_COMMON + ("bsp", "drivers", "apps", "cmake",
+                             "CMakeLists.txt"),
 }
 
 #: Every path that builds *either* image, and the answer when the track
@@ -219,7 +232,8 @@ FW_SOURCE_TRACKS = {
 #: *negative* and strictly worse than the cross-track false positive
 #: above - `bsp/clock.c` sets MCK, and a flag reporting "current" across
 #: a change to it is the one failure this whole module exists to stop.
-FW_SOURCE = tuple(sorted(set(FW_SOURCE_TRACKS["A"] + FW_SOURCE_TRACKS["B"])))
+FW_SOURCE = tuple(sorted(set(FW_SOURCE_TRACKS["A"] + FW_SOURCE_TRACKS["B"]
+                            + FW_SOURCE_TRACKS["C"])))
 
 
 def fw_source_paths(track):

@@ -232,3 +232,66 @@ def test_nothing_else_builds_behind_the_enforcement():
         "these spawn a build tool outside the two enforced paths, so "
         "they can produce an image from a stale cache: "
         + ", ".join(sorted(set(offenders))))
+
+
+def test_track_c_cmake_forces_a_full_build_too():
+    """The third build path gets the same enforcement as the other two.
+
+    Track C (issue #45) is a third way to produce an image, and the
+    docstring at the top of this file says the enforcement "is two lines
+    in two files". It is three now, and a build path that skipped it
+    would be exactly the silent drift this file exists to catch - worse
+    for Track C than for the others, because Track C links Track B's
+    drivers unchanged, so a stale object there produces two images that
+    disagree about hardware neither of them programmes differently.
+
+    Guarded only when the target exists: Track C is behind
+    `option(BUILD_TRACK_C ...)` while it is at stage C1, and a test that
+    demanded the target unconditionally would fail on every bench that
+    has not opted in.
+    """
+    cml = _read("CMakeLists.txt")
+    if "rtos_bringup" not in cml:
+        pytest.skip("Track C is not in this tree yet")
+
+    assert "add_custom_target(firmware_rtos" in cml, (
+        "Track C has a build target but no clean-build wrapper. Every "
+        "image in this project is built from scratch; see the comment "
+        "above `firmware`.")
+
+    body = cml[cml.index("add_custom_target(firmware_rtos"):]
+    body = body[:body.index("VERBATIM")]
+    clean_at = body.find("--target clean")
+    build_at = body.find("--target rtos_bringup")
+    assert clean_at >= 0, "firmware_rtos does not clean"
+    assert build_at >= 0, "firmware_rtos does not build rtos_bringup"
+    assert clean_at < build_at, (
+        "firmware_rtos builds before it cleans, which cleans away the "
+        "image it just produced")
+
+    assert "add_dependencies(rtos_bringup" not in cml, (
+        "the clean is expressed as a dependency again. That is the shape "
+        "that was Make-works / Ninja-broken for Track B - see the test "
+        "above and issue #35.")
+
+
+def test_track_c_freertos_is_pinned_to_a_commit_not_a_tag():
+    """A tag can be moved upstream; a hash cannot.
+
+    The owner's ruling on issue #45 decision (3) was "fetch at configure
+    time, locked version, for build stability". A tag satisfies the
+    letter of that and not the intent: `GIT_TAG V11.1.0` resolves to
+    whatever V11.1.0 points at the day the fetch happens, and nothing in
+    this tree would record that it moved.
+    """
+    path = os.path.join(REPO, "cmake", "freertos.cmake")
+    if not os.path.isfile(path):
+        pytest.skip("Track C is not in this tree yet")
+    text = _read("cmake", "freertos.cmake")
+
+    m = re.search(r'GIT_TAG\s+\$\{FREERTOS_COMMIT\}', text)
+    assert m, "FreeRTOS is not fetched at a pinned commit"
+    m = re.search(r'set\(FREERTOS_COMMIT\s+"([0-9a-f]{40})"\)', text)
+    assert m, (
+        "FREERTOS_COMMIT is not a full 40-character SHA. A tag or a "
+        "short hash is not a lock.")

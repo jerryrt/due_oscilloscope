@@ -3223,7 +3223,11 @@ TRACK_MARK = {"a": "Track A", "b": "Track B"}
 # The identity line, emitted by `v` and by the banner on both tracks.
 # See lib/due_shared/src/fw_version.h; the format is fixed and identical on the two.
 _ID_LINE = re.compile(
-    r"#\s*id:\s*track=(?P<track>[AB])\s+fw=(?P<fw>[0-9]+\.[0-9]+\.[0-9]+)"
+    # [ABC]: Track C is the FreeRTOS build (issue #45). A host that
+    # cannot read a board's identity cannot pair with it at all, so this
+    # is the first thing a new track needs and the cheapest to forget -
+    # the board answers correctly and every tool reports "no identity".
+    r"#\s*id:\s*track=(?P<track>[ABC])\s+fw=(?P<fw>[0-9]+\.[0-9]+\.[0-9]+)"
     r"\s+ctlver=(?P<ctlver>\d+)\s+framever=(?P<framever>\d+)"
     r"\s+mck=(?P<mck>\d+)\s+adcclk=(?P<adcclk>\d+)"
     r"\s+framebytes=(?P<framebytes>\d+)\s+framesamples=(?P<framesamples>\d+)"
