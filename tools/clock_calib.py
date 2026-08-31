@@ -49,6 +49,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "host"))
 
 import measure                                             # noqa: E402
+import provenance                                          # noqa: E402
 
 TC_CLOCK_HZ = 39_000_000        # SystemCoreClock / 2 at MCK 78 MHz
 MCK_NOMINAL_HZ = 78_000_000
@@ -125,7 +126,26 @@ def main():
     print("  agreement, not correctness. Compare across benches.")
 
     if a.out:
-        json.dump({"bench": a.bench, "rc": a.rc, "sps": sps,
+        # Provenance, and not by hand. #53 found nine tools hardcoding
+        # track="b", so Track A datasets say Track B - including the one
+        # CLAUDE.md quotes for "it is the silicon and not one track's
+        # register programming". Asking provenance.collect() means this
+        # tool cannot drift from what the fixture requires, and the
+        # firmware commit comes from the board rather than from whoever
+        # is typing.
+        #
+        # This file needed the lesson: its first record carried a bench
+        # and nothing else - no track, no firmware commit - written an
+        # hour after I committed the doc rule saying a figure carries
+        # its bench, its commit and its instrument (f953876).
+        prov = provenance.collect(board=board)
+        missing = provenance.missing(prov) if hasattr(provenance, "missing") else []
+        json.dump({"bench": a.bench or prov.get("bench"),
+                   "team": "windows-platform-team",
+                   "instrument": "tools/clock_calib.py",
+                   "provenance": prov,
+                   "provenance_missing": list(missing),
+                   "rc": a.rc, "sps": sps,
                    "lengths_s": [a.short, a.long], "reps": a.reps,
                    "n": len(rows), "rows": rows,
                    "slope_device_over_host": slope,
