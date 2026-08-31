@@ -59,6 +59,24 @@ void clockref_poll(void)
 	fn = UOTGHS->UOTGHS_DEVFNUM;
 	cur = (uint16_t)((fn & UOTGHS_DEVFNUM_FNUM_Msk) >>
 	                 UOTGHS_DEVFNUM_FNUM_Pos);
+
+	/*
+	 * The common pass ends here: one register read and a comparison.
+	 *
+	 * micros() used to be called on EVERY pass, and load.h says exactly
+	 * why that is wrong - it costs 869 ns, which is why the load monitor
+	 * reads the cycle counter instead. On a 7 us idle pass that is 12%,
+	 * and it showed up as the shape it is: tests/test_load.py's
+	 * uniformity guard went from every pass in one log2 bucket to 98.5%
+	 * spread over buckets 9, 10 and 14, against a 99% floor. The guard
+	 * caught it, which is what it is for.
+	 *
+	 * A frame arrives once a millisecond and a pass is ~7 us, so the
+	 * expensive half now runs on about one pass in 140.
+	 */
+	if (cur == last_fnum)
+		return;
+
 	now = micros();
 
 	if (!started) {
@@ -100,6 +118,9 @@ void clockref_poll(void)
 	 * reader must be able to see that a restart happened; what changes
 	 * is that the NEXT span is clean and usable.
 	 */
+	/* Edge to edge, because that is now the only place time is read.
+	 * A stall long enough to be ambiguous cannot hide: it makes the gap
+	 * between two observed edges large whether or not FNUM wrapped. */
 	if ((uint32_t)(now - last_us) > CLOCKREF_STALL_US) {
 		ambiguous++;
 		restarts++;

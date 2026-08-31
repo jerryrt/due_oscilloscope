@@ -411,6 +411,11 @@ void ctl_port_sof_poll(void)
 	uint32_t fn = UOTGHS->UOTGHS_DEVFNUM;
 	uint16_t cur = (uint16_t)((fn & UOTGHS_DEVFNUM_FNUM_Msk) >>
 	                          UOTGHS_DEVFNUM_FNUM_Pos);
+	/* Common pass ends here - see drivers/clockref.c: micros() costs
+	 * 869 ns and must not run on every pass. */
+	if (cur == sof_last_fnum && sof_started)
+		return;
+
 	uint32_t now = micros();
 
 	if (!sof_started) {
