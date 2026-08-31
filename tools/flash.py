@@ -405,10 +405,22 @@ def _flash_attempt(bossac, binary, args):
         fresh = _await_samba(before)
 
         if (fresh is None and usb_nodes() == usb_before
-                and not args.close_at_1200):
+                and not before and not args.close_at_1200):
             # Nothing on the bus moved: no bootloader node arrived and
             # the firmware's own nodes are all still there. The board
             # never reset, so the 16U2 did not see the trigger.
+            #
+            # `not before` is load-bearing and was missing. A board that
+            # is ALREADY in the bootloader has no firmware nodes to lose
+            # and its SAM-BA node is not fresh, so the bus looks
+            # unchanged however well the touch worked - the
+            # discriminator has nothing to measure and says "nothing
+            # happened" about a board that reset perfectly. Measured on
+            # linux-x1: `--port` given against a board sitting in ROM
+            # SAM-BA took the macOS arm on Linux, harmlessly but for the
+            # wrong reason. When a bootloader node was there beforehand
+            # the board is already where the flash needs it and there is
+            # nothing to diagnose.
             #
             # This is macOS, and it is issue #35. The two shapes of the
             # touch are host-specific and they conflict - Linux needs the

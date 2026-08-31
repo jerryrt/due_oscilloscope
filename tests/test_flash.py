@@ -353,3 +353,21 @@ def test_bossac_is_bounded(monkeypatch):
         "the bossac invocation lost its bound"
     assert "subprocess.TimeoutExpired" in src, \
         "the bound is not caught, so it raises instead of failing the route"
+
+
+def test_a_board_already_in_the_bootloader_is_not_diagnosed(monkeypatch):
+    """The discriminator has nothing to measure on an erased board.
+
+    "Nothing on the bus moved" means the touch was not seen - but only
+    when there was something to move. A board already in ROM SAM-BA has
+    no firmware nodes to lose and its bootloader node is not fresh, so
+    the bus looks identical however well the touch worked. Measured on
+    linux-x1: `--port` against such a board took the macOS-shaped
+    fallback on Linux, harmlessly and for the wrong reason.
+    """
+    src = open(os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "tools", "flash.py")).read()
+    assert "and not before and not args.close_at_1200" in src, (
+        "the fallback no longer excludes a board that was already in "
+        "the bootloader; it will report 'nothing on the bus moved' "
+        "about a board that reset perfectly")
