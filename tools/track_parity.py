@@ -163,6 +163,43 @@ def check(left="B", right="C"):
     return bad
 
 
+# Console commands the suite and the host harness actually send. The
+# two forms cover `cmd("X")`, `cmd("=<n>X")` and `cmd("=%dX" % n)`.
+_USE = re.compile(r'(?:cmd|ask)\(\s*[fr]?"(?:=[^"]*?)?([A-Za-z0-9])"')
+_USE_FMT = re.compile(r'(?:cmd|ask)\(\s*[fr]?"=%[^"]*?([A-Za-z])"')
+
+
+def needed(left="B", right="C"):
+    """Unbound commands the suite/host actually uses, most-used first.
+
+    The point is to size a porting decision honestly. "Track C is
+    missing 34 of Track B's commands" reads as a large piece of work;
+    most of those 34 are Track B debug knobs that nothing outside
+    Track B's own main.c has ever sent, and the suite cannot fail for
+    want of them.
+
+    Textual, so it is a LOWER bound: a command assembled at runtime
+    from a variable would not be seen here. Every form currently in
+    tests/ and host/ is a literal.
+    """
+    import collections
+    lt, rt = table(MAINS[left]), table(MAINS[right])
+    if lt is None or rt is None:
+        return []
+    unbound = set(lt) - set(rt)
+    use, where = collections.Counter(), collections.defaultdict(set)
+    for d in ("tests", "host"):
+        for path in sorted((ROOT / d).glob("*.py")):
+            text = path.read_text(errors="replace")
+            for m in list(_USE.finditer(text)) + list(_USE_FMT.finditer(text)):
+                ch = m.group(1)
+                use[ch] += 1
+                where[ch].add(path.name)
+    out = [(use[c], c, lt[c], sorted(where[c])) for c in unbound if use[c]]
+    out.sort(key=lambda t: (-t[0], t[1]))
+    return out
+
+
 def main(argv):
     left, right = (argv + ["B", "C"])[:2]
     print("console table and main() init: track %s against track %s\n"
@@ -173,6 +210,16 @@ def main(argv):
     if not bad:
         print("  parity")
     print("\n%d divergence(s)" % len(bad))
+
+    need = needed(left, right)
+    if need:
+        print("\nof the unbound commands, these are ones tests/ or host/ "
+              "actually send:\n")
+        for n, ch, handler, files in need:
+            print("  %r  %-14s %2d call site(s)   %s"
+                  % (ch, handler, n, " ".join(files)))
+        print("\n  %d needed; the rest are never sent by anything outside "
+              "track %s's own main()" % (len(need), left))
     return 1 if bad else 0
 
 
