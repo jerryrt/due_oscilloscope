@@ -951,10 +951,36 @@ severity reproduces at 0.90-1.01 of itself on one image and moves to
 other-compiler runs sharing **no value at all** at FWS 5 and FWS 6
 (Mann-Whitney p = 6e-12). Severity is drawn by the image too.
 
-What is still uncompared is severity **across FWS within one image**,
-which varies by a factor of 8.7 here - far larger than any compiler
-effect - so "magnitude cannot be compared across tracks" still holds,
-for the reason that two tracks are two images.
+**Severity across FWS within one image is not a property of the
+defect.** It was recorded here as varying by a factor of 8.7, "far
+larger than any compiler effect", and that figure was taken on Track B.
+Measured on both tracks on one board with one compiler, counterbalanced
+`4,5,6,6,5,4` inside each arm: **Track B spans 9.3x across FWS 4/5/6
+and Track A spans 1.5x**, replicated at 2.1x on a second Track A arm
+run after the Track B one. So the wait states barely move Track A at
+all.
+
+FWS is instruction fetch timing and `docs/awg.md` attributes #5's
+mechanism to instruction fetch timing, so this says the two tracks'
+DAC paths are differently **exposed** to the mechanism, not merely
+differently severe under it - a statement about the mechanism rather
+than the magnitude. It is also the one #5 comparison that is immune to
+between-arm drift, because each arm's FWS visits are counterbalanced
+within it.
+
+"Magnitude cannot be compared across tracks" still holds, for the
+reason that two tracks are two images, and it now has a number: at
+FWS 5 and 6 Track B is **7.4x and 8.9x** Track A, drift-controlled.
+**At FWS 4 it is 1.0x** - a 1.67x difference at p = 0.006 that
+evaporated when the control arm ran, and the only one of the three
+that did not survive it.
+
+**Quote a repeatability with its sample size.** The cross-track site
+sets are Jaccard 0.033 apart, which reads as near-disjoint against
+windows-desk's 0.885 same-image ceiling and is not measured against it:
+that arm ran n=24 per wait state and this one n=12, whose own ceiling
+is **0.450**. The conclusion survives at a 13x margin and was published
+as 27x. Two benches sharing an instrument do not share its precision.
 
 **Four builds of `3aadf90` produced four different layouts and only
 TWO different code generators.** The two xPack 15.2.1 builds - macOS
