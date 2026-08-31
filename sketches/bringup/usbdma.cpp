@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include "USB/USBDesc.h"          /* CDC_RX, CDC_TX */
 #include "usbdma.h"
+#include "console_out.h"
+#include "console_port.h"
 #include "ctlusb.h"
 
 /*
@@ -386,22 +388,20 @@ void usbdma_detach_cycle(uint32_t ms)
 
 void usbdma_dump(void)
 {
-	char buf[176];
-
-	snprintf(buf, sizeof(buf),
-	         "# usbdma mode in=%d out=%d rebuilds=%lu dtr=%d",
-	         (int)mode_in, (int)mode_out,
-	         (unsigned long)usbdma_rebuilds, (int)SerialUSB.dtr());
-	Serial.println(buf);
-	snprintf(buf, sizeof(buf),
-	         "# ep%u(OUT) CFG=%08lx AUTOSW=%d  ep%u(IN) CFG=%08lx AUTOSW=%d  DEVIMR=%08lx",
-	         (unsigned)CDC_RX,
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX],
-	         (int)!!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX] & UOTGHS_DEVEPTCFG_AUTOSW),
-	         (unsigned)CDC_TX,
-	         (unsigned long)UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX],
-	         (int)!!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX] & UOTGHS_DEVEPTCFG_AUTOSW),
-	         (unsigned long)UOTGHS->UOTGHS_DEVIMR);
-	Serial.println(buf);
-	Serial.flush();
+	con_str("# usbdma mode ");
+	con_kv_u32("in", (uint32_t)mode_in);              con_ch(' ');
+	con_kv_u32("out", (uint32_t)mode_out);            con_ch(' ');
+	con_kv_u32("rebuilds", usbdma_rebuilds);          con_ch(' ');
+	con_kv_u32("dtr", (uint32_t)SerialUSB.dtr());     con_nl();
+	con_str("# ep"); con_u32(CDC_RX);
+	con_str("(OUT) CFG="); con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX], 8);
+	con_str(" AUTOSW=");
+	con_u32(!!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_RX] & UOTGHS_DEVEPTCFG_AUTOSW));
+	con_str("  ep"); con_u32(CDC_TX);
+	con_str("(IN) CFG="); con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX], 8);
+	con_str(" AUTOSW=");
+	con_u32(!!(UOTGHS->UOTGHS_DEVEPTCFG[CDC_TX] & UOTGHS_DEVEPTCFG_AUTOSW));
+	con_str("  DEVIMR="); con_hex32(UOTGHS->UOTGHS_DEVIMR, 8);
+	con_nl();
+	console_flush();
 }

@@ -23,6 +23,7 @@
 #include "frame.h"
 #include "play.h"
 #include "stream.h"
+#include "console_out.h"
 #include "stream_bench.h"
 #include "stream_core.h"
 #include "stream_port.h"
@@ -209,17 +210,17 @@ void stream_service(void)
 }
 
 
-int stream_dma_report(char *buf, size_t n)
+void stream_dma_report(void)
 {
 	stream_core_stats_t cs;
 
 	stream_core_get_stats(&cs);
-	return snprintf(buf, n, "# dma-frames=%lu dma-stalls=%lu",
-	                (unsigned long)cs.dma_frames,
-	                (unsigned long)cs.dma_stalls);
+	con_str("# ");
+	con_kv_u32("dma-frames", cs.dma_frames);  con_ch(' ');
+	con_kv_u32("dma-stalls", cs.dma_stalls);
 }
 
-void stream_report(char *buf, size_t n)
+void stream_report(void)
 {
 	stream_core_stats_t cs;
 	uint32_t us, kbps;
@@ -228,24 +229,30 @@ void stream_report(char *buf, size_t n)
 	us = micros() - cs.started_us;
 	kbps = us ? (uint32_t)(((uint64_t)cs.bytes * 1000ull) / us) : 0;
 
-	snprintf(buf, n,
-	         "# frames=%lu bytes=%lu %lu.%03lu MB/s prod=%lu cons=%lu "
-	         "ringovf=%lu resync=%lu rxbuff=%lu govre=%lu endtx=%lu "
-	         "wfail=%lu wshort=%lu dtr=%d inwrite=%lu.%03lu MB/s (cpu path)",
-	         (unsigned long)cs.frames, (unsigned long)cs.bytes,
-	         (unsigned long)(kbps / 1000u), (unsigned long)(kbps % 1000u),
-	         (unsigned long)acq_produced, (unsigned long)acq_consumed,
-	         (unsigned long)acq_ring_overflow,
-	         (unsigned long)cs.resync,
-	         (unsigned long)acq_rxbuff_overruns,
-	         (unsigned long)acq_govre,
-	         (unsigned long)gen_endtx_count,
-	         (unsigned long)cs.write_fail, (unsigned long)cs.short_write,
-	         /* dtr() reads lineState directly; (bool)SerialUSB would
-	          * report the same thing after a delay(10). */
-	         (int)SerialUSB.dtr(),
-	         (unsigned long)(cs.usb_us ? ((uint64_t)cs.usb_bytes * 1000ull / cs.usb_us) / 1000u : 0),
-	         (unsigned long)(cs.usb_us ? ((uint64_t)cs.usb_bytes * 1000ull / cs.usb_us) % 1000u : 0));
+	uint32_t inkbps = cs.usb_us
+	        ? (uint32_t)(((uint64_t)cs.usb_bytes * 1000ull) / cs.usb_us)
+	        : 0u;
+
+	con_str("# ");
+	con_kv_u32("frames", cs.frames);            con_ch(' ');
+	con_kv_u32("bytes", cs.bytes);              con_ch(' ');
+	con_u32(kbps / 1000u); con_ch('.');
+	con_u32w(kbps % 1000u, 3, '0');             con_str(" MB/s ");
+	con_kv_u32("prod", acq_produced);           con_ch(' ');
+	con_kv_u32("cons", acq_consumed);           con_ch(' ');
+	con_kv_u32("ringovf", acq_ring_overflow);   con_ch(' ');
+	con_kv_u32("resync", cs.resync);            con_ch(' ');
+	con_kv_u32("rxbuff", acq_rxbuff_overruns);  con_ch(' ');
+	con_kv_u32("govre", acq_govre);             con_ch(' ');
+	con_kv_u32("endtx", gen_endtx_count);       con_ch(' ');
+	con_kv_u32("wfail", cs.write_fail);         con_ch(' ');
+	con_kv_u32("wshort", cs.short_write);       con_ch(' ');
+	/* dtr() reads lineState directly; (bool)SerialUSB would report the
+	 * same thing after a delay(10). */
+	con_kv_u32("dtr", (uint32_t)SerialUSB.dtr()); con_ch(' ');
+	con_str("inwrite="); con_u32(inkbps / 1000u); con_ch('.');
+	con_u32w(inkbps % 1000u, 3, '0');
+	con_str(" MB/s (cpu path)");
 }
 
 /* ------------------------------------------------------------------ */
@@ -268,7 +275,7 @@ void stream_duplex_dma_start(void)
 	stream_bench_start(STREAM_BENCH_DUPLEX_DMA);
 }
 
-void stream_bench_report(char *buf, size_t n)
+void stream_bench_report(void)
 {
 	/*
 	 * Report byte counts only, never a rate.
@@ -282,20 +289,19 @@ void stream_bench_report(char *buf, size_t n)
 	stream_bench_stats_t bs;
 
 	stream_bench_get_stats(&bs);
-	snprintf(buf, n,
-	         "# bench=%s  IN %lu B   OUT %lu B  passes=%lu arms-in=%lu arms-out=%lu "
-	         "rebuilds=%lu inbusy=%d",
-	         bs.mode == STREAM_BENCH_FLOOD  ? "flood"  :
-	         bs.mode == STREAM_BENCH_SINK   ? "sink"   :
-	         bs.mode == STREAM_BENCH_DUPLEX ? "duplex" :
-	         bs.mode == STREAM_BENCH_FLOOD_DMA  ? "flood-dma"  :
-	         bs.mode == STREAM_BENCH_SINK_DMA   ? "sink-dma"   :
-	         bs.mode == STREAM_BENCH_DUPLEX_DMA ? "duplex-dma" : "off",
-	         (unsigned long)bs.in_bytes,
-	         (unsigned long)bs.out_bytes,
-	         (unsigned long)stream_loop_passes,
-	         (unsigned long)bs.dma_in_arms,
-	         (unsigned long)bs.dma_out_arms,
-	         (unsigned long)usbdma_rebuilds,
-	         (int)usb_dma_in_busy());
+	con_str("# ");
+	con_kvs("bench",
+	        bs.mode == STREAM_BENCH_FLOOD  ? "flood"  :
+	        bs.mode == STREAM_BENCH_SINK   ? "sink"   :
+	        bs.mode == STREAM_BENCH_DUPLEX ? "duplex" :
+	        bs.mode == STREAM_BENCH_FLOOD_DMA  ? "flood-dma"  :
+	        bs.mode == STREAM_BENCH_SINK_DMA   ? "sink-dma"   :
+	        bs.mode == STREAM_BENCH_DUPLEX_DMA ? "duplex-dma" : "off");
+	con_str("  IN ");   con_u32(bs.in_bytes);   con_str(" B   OUT ");
+	con_u32(bs.out_bytes);                      con_str(" B  ");
+	con_kv_u32("passes", stream_loop_passes);   con_ch(' ');
+	con_kv_u32("arms-in", bs.dma_in_arms);      con_ch(' ');
+	con_kv_u32("arms-out", bs.dma_out_arms);    con_ch(' ');
+	con_kv_u32("rebuilds", usbdma_rebuilds);    con_ch(' ');
+	con_kv_u32("inbusy", (uint32_t)usb_dma_in_busy());
 }

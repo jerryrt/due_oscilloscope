@@ -13,6 +13,8 @@
 #include "acq.h"          /* TCCLKS_/WAVSEL_/ACPA_/ACPC_ */
 #include "gen.h"
 #include "play.h"
+#include "console_out.h"
+#include "console_port.h"
 #include "usbdma.h"
 
 #define TRGSEL_TIOA1 (2u << 1)   /* DACC_MR.TRGSEL: 2 = TIOA1 */
@@ -461,33 +463,31 @@ void DACC_Handler(void)
 void play_dump(void)
 {
 	const uint16_t *b = play_buf[1];   /* one the host filled */
-	char line[160];
 
-	snprintf(line, sizeof(line),
-	         "# DACC_MR=%08lx TAG=%d MAXS=%d WORD=%d TRGEN=%d TRGSEL=%lu CHSR=%08lx",
-	         (unsigned long)DACC->DACC_MR,
-	         (int)!!(DACC->DACC_MR & DACC_MR_TAG),
-	         (int)!!(DACC->DACC_MR & DACC_MR_MAXS),
-	         (int)!!(DACC->DACC_MR & DACC_MR_WORD),
-	         (int)!!(DACC->DACC_MR & DACC_MR_TRGEN),
-	         (unsigned long)((DACC->DACC_MR & DACC_MR_TRGSEL_Msk) >> 1),
-	         (unsigned long)DACC->DACC_CHSR);
-	Serial.println(line);
-	snprintf(line, sizeof(line),
-	         "# play_dump buf1 fill_off=%lu produced=%lu:",
-	         (unsigned long)fill_off, (unsigned long)play_produced);
-	Serial.println(line);
+	con_str("# DACC_MR="); con_hex32(DACC->DACC_MR, 8);
+	con_str(" TAG=");      con_u32(!!(DACC->DACC_MR & DACC_MR_TAG));
+	con_str(" MAXS=");     con_u32(!!(DACC->DACC_MR & DACC_MR_MAXS));
+	con_str(" WORD=");     con_u32(!!(DACC->DACC_MR & DACC_MR_WORD));
+	con_str(" TRGEN=");    con_u32(!!(DACC->DACC_MR & DACC_MR_TRGEN));
+	con_str(" TRGSEL=");
+	con_u32((DACC->DACC_MR & DACC_MR_TRGSEL_Msk) >> 1);
+	con_str(" CHSR=");     con_hex32(DACC->DACC_CHSR, 8);
+	con_nl();
+	con_str("# play_dump buf1 ");
+	con_kv_u32("fill_off", fill_off);       con_ch(' ');
+	con_kv_u32("produced", play_produced);  con_ch(':'); con_nl();
 
 	for (int row = 0; row < 2; row++) {
-		int n = snprintf(line, sizeof(line), "#  ");
-
+		con_str("#  ");
 		for (int i = 0; i < 8; i++) {
 			uint16_t v = b[row * 8 + i];
 
-			n += snprintf(line + n, sizeof(line) - n, " %04x(t%u,%4u)",
-			              v, (v >> 12) & 3u, v & 0x0fffu);
+			con_ch(' ');  con_hex32(v, 4);
+			con_str("(t"); con_u32((v >> 12) & 3u);
+			con_ch(',');   con_u32w(v & 0x0fffu, 4, ' ');
+			con_ch(')');
 		}
-		Serial.println(line);
+		con_nl();
 	}
-	Serial.flush();
+	console_flush();
 }

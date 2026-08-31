@@ -5,9 +5,14 @@ a sketches/bringup/acq.h data acq_govre
 a sketches/bringup/acq.h data acq_produced
 a sketches/bringup/acq.h data acq_ring_overflow
 a sketches/bringup/acq.h data acq_rxbuff_overruns
+a lib/due_shared/src/console_out.h fn con_ch
+a lib/due_shared/src/console_out.h fn con_kv_u32
+a lib/due_shared/src/console_out.h fn con_kvs
+a lib/due_shared/src/console_out.h fn con_str
+a lib/due_shared/src/console_out.h fn con_u32
+a lib/due_shared/src/console_out.h fn con_u32w
 a sketches/bringup/gen.h data gen_endtx_count
 a lib/due_shared/src/stream_port.h fn micros
-a other fn snprintf
 a lib/due_shared/src/stream_bench.h fn stream_bench_get_stats
 a lib/due_shared/src/stream_bench.h fn stream_bench_mode
 a lib/due_shared/src/stream_bench.h data stream_bench_mode_t

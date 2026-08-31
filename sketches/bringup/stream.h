@@ -15,10 +15,10 @@ bool stream_active(void);
 bool stream_in_in_use(void);    /* anything is writing bulk IN */
 bool stream_out_in_use(void);   /* a bench mode is consuming bulk OUT */
 void stream_service(void);
-void stream_report(char *buf, size_t n);
+void stream_report(void);
 /* Returns what snprintf did, so a caller may append to the same line
  * rather than spend another one - see cmd_stream_stats(). */
-int  stream_dma_report(char *buf, size_t n);
+void stream_dma_report(void);
 
 /*
  * Transport benchmarks, decoupled from the converters.
@@ -31,7 +31,7 @@ int  stream_dma_report(char *buf, size_t n);
 void stream_flood_start(void);      /* IN  : device -> host */
 void stream_sink_start(void);       /* OUT : host -> device */
 void stream_duplex_start(void);     /* both at once, the real target */
-void stream_bench_report(char *buf, size_t n);
+void stream_bench_report(void);
 
 /*
  * Main-loop passes, bumped by the sketch's loop(). The DMA benches

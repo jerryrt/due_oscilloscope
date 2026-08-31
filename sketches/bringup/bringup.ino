@@ -719,10 +719,6 @@ static void cmd_stream_uart(uint32_t trigger_hz)
 
 static void cmd_stream_stats(void)
 {
-	char buf[192];
-	int  n;
-
-	n = stream_dma_report(buf, sizeof(buf));
 	/*
 	 * The two registers the console can set and nothing else can
 	 * confirm, read from the peripheral rather than echoed. `A` and
@@ -733,13 +729,13 @@ static void cmd_stream_stats(void)
 	 * Sharing this line rather than adding one: the cost of a console
 	 * command is the bytes it puts on the wire, and `?` is polled.
 	 */
-	if (n > 0 && n < (int)sizeof(buf))
-		snprintf(buf + n, sizeof(buf) - n, " adcmr=%08lx acr=%08lx",
-		         (unsigned long)acq_mr(), (unsigned long)gen_acr());
-	Serial.println(buf);
-	stream_report(buf, sizeof(buf));
-	Serial.println(buf);
-	Serial.flush();
+	stream_dma_report();
+	con_str(" adcmr="); con_hex32(acq_mr(), 8);
+	con_str(" acr=");   con_hex32(gen_acr(), 8);
+	con_nl();
+	stream_report();
+	con_nl();
+	console_flush();
 }
 
 /*
@@ -2128,11 +2124,9 @@ static void ha_reset(const uint32_t *a)
 
 static void ha_bench(const uint32_t *a)
 {
-	char buf[192];
-
 	(void)a;
-	stream_bench_report(buf, sizeof(buf));
-	Serial.println(buf);
+	stream_bench_report();
+	con_nl();
 	{
 		play_report_t r = {
 			.bytes_in   = play_bytes_in,
