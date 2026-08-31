@@ -152,6 +152,39 @@ def main():
                                           else f"  THEIRS {theirs}")
         print(f"{rc:>4}{TC_CLOCK_HZ // rc:>10}{med:>10.6f}{d:>13.6f}"
               f"{x:>9.3f}{n:>4}{abs(x - n):>8.3f}{mark}")
+    # A negative n is not a measurement. It is proof the offset is wrong.
+    #
+    # n counts conversions LOST out of every 256, so it cannot be below
+    # zero: a rate cannot deliver more than it was asked for. If one
+    # comes out negative the zero this batch computed is too large, and
+    # every integer above has moved with it.
+    #
+    # The known way that happens is this tool's own CLEAN set. RC 28 and
+    # RC 52 are bimodal with a second mode 2/256 down - 2.03 and 2.05
+    # steps of spread, on two benches over n=38-62 - and only RC 56 is
+    # single-moded. When a batch draws enough low reps for one of those
+    # medians to flip, that rate contributes a deficit it does not have
+    # and the 3-rate mean offset moves by (2/256)/3, two thirds of a
+    # lattice step. At the default 8 reps and RC 28's measured ~27%
+    # incidence, one of the two flips about a quarter of the time.
+    #
+    # Measured on this bench's own rows: with one flipped, RC 36 reports
+    # n=3 where the clean offset gives n=4, and RC 28 reports n=-1.
+    # So it is loud rather than silent in two independent ways - the
+    # residuals go from ~0.03 to ~0.36, and an impossible integer
+    # appears - but only if someone reads the column. This says it.
+    neg = [rc for rc in sorted(by)
+           if round((1.0 - statistics.median(by[rc]) - offset) * 256.0) < 0]
+    if neg:
+        print(f"\n  REFUSING the integers above: RC {neg} came out "
+              f"NEGATIVE, and a rate cannot deliver more than it was")
+        print(f"  asked for. The offset is too large, so every n has "
+              f"moved with it. The usual cause is a CLEAN rate whose")
+        print(f"  median landed on its low mode - RC 28 and RC 52 are "
+              f"both bimodal. Re-run with more reps, or take the")
+        print(f"  offset from RC 56, which is single-moded on two "
+              f"benches.")
+
     print(f"\nwrote {len(rows)} rows to {out}")
 
 
