@@ -2001,6 +2001,39 @@ static void ha_reset(const uint32_t *a)
 	RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
 }
 
+static void ha_fws(const uint32_t *a)
+{
+	/*
+	 * Issue #5's fetch-timing arm, on the oracle. Debug-only, the class
+	 * invariant 7 carves out.
+	 *
+	 * Track B showed that changing EEFC FMR FWS - and nothing else, on
+	 * one image, with no rebuild - moves both the phase and the
+	 * magnitude of #5's displacement, with the three phase sets not
+	 * overlapping at all. Invariant 3 keeps this track for exactly that
+	 * kind of claim, and it is a stronger check here than usual: Track A
+	 * is built by a different compiler eleven years older (issue #55),
+	 * so its layout is independent rather than merely different.
+	 *
+	 * Clamped 4..6 for the same reason as Track B: SystemInit sets 4 at
+	 * MCK 78 MHz, lower reads flash faster than the part guarantees, and
+	 * higher is always safe.
+	 */
+	uint32_t fws = a[0] ? a[0] : 4u;
+
+	if (fws < 4u)
+		fws = 4u;
+	if (fws > 6u)
+		fws = 6u;
+	EFC0->EEFC_FMR = EEFC_FMR_FWS(fws);
+	EFC1->EEFC_FMR = EEFC_FMR_FWS(fws);
+	Serial.print("# fws: "); Serial.print(fws);
+	Serial.print(" (fmr0=0x"); Serial.print(EFC0->EEFC_FMR, HEX);
+	Serial.print(" fmr1=0x"); Serial.print(EFC1->EEFC_FMR, HEX);
+	Serial.println(")");
+	Serial.flush();
+}
+
 static void ha_bench(const uint32_t *a)
 {
 	(void)a;
@@ -2070,6 +2103,7 @@ const console_binding_t console_bindings[] = {
 
 	{ 'Q', ha_profile },    { 'l', ha_load },       { 'S', ha_stall },
 	{ 'K', ha_mimic_gap },  { 'Z', ha_detach },     { 'z', ha_reset },
+	{ 'q', ha_fws },
 
 	{ 0, 0 },
 };
