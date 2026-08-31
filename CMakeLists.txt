@@ -203,6 +203,14 @@ if(BUILD_TRACK_C)
     target_include_directories(rtos_bringup PRIVATE
         apps/rtos_bringup ${FREERTOS_INCLUDE})
 
+    # State the track at the build rather than leaving it to whichever
+    # track_id.h the include path reaches first. drivers/ctl_port.c is
+    # linked by this target and includes "track_id.h" from its own
+    # directory, so without this Track C's control channel answers
+    # track=b while its console answers track=C - measured, not
+    # hypothetical.
+    target_compile_definitions(rtos_bringup PRIVATE FW_TRACK='C')
+
     target_link_options(rtos_bringup PRIVATE
         -mcpu=cortex-m3 -mthumb
         -T${LINKER_SCRIPT}
