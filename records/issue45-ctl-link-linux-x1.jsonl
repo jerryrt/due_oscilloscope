@@ -1,3 +1,6 @@
 {"bench":"linux-x1","issue":45,"test":"ctl-link-sustained","track":"c","runs":12,"runs_with_loss":6,"pattern":"101010101010","fw_repo_rev":"47c8969","note":"load4 gap sweep: identity + 6 link.load() calls at gaps 0,0.2,0.5,1,2,5 s"}
 {"bench":"linux-x1","issue":45,"test":"ctl-link-sustained","track":"b","runs":12,"runs_with_loss":0,"pattern":"000000000000","fw_repo_rev":"47c8969","note":"identical script, matched run count, same session"}
 {"bench":"linux-x1","issue":45,"test":"ctl-link-sustained","track":"b","runs":6,"runs_with_loss":0,"pattern":"000000","fw_repo_rev":"47c8969","note":"earlier control, before the matched 12"}
+{"bench":"linux-x1","issue":45,"test":"ctl-link-oneopen","track":"c","runs":4,"runs_with_loss":4,"failed_at_calls":[22,22,22,22],"fw_repo_rev":"2f830e1","note":"one open, two 6-gap sweeps = 24 load() calls; deterministic"}
+{"bench":"linux-x1","issue":45,"test":"ctl-link-oneopen","track":"b","runs":4,"runs_with_loss":0,"failed_at_calls":[],"fw_repo_rev":"2f830e1","note":"identical script, 24 of 24 calls, matched"}
+{"bench":"linux-x1","issue":45,"test":"ctl-link-oneopen","track":"c","variant":"yield-disabled","runs":3,"runs_with_loss":3,"failed_at_calls":[20,22,22],"fw_repo_rev":"2f830e1","note":"service task never yields; defect unchanged, so the two-task split is not the cause"}

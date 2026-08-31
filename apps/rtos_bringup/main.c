@@ -376,6 +376,22 @@ static void c_stats(const uint32_t *a)
  * path gets done per second with a scheduler underneath it - and it is
  * the only figure that should differ between the tracks at all.
  */
+/*
+ * `u`: the control channel's own counters, for the defect on #45 where
+ * Track C loses the link after a fixed number of transactions.
+ *
+ * ctl_dump() is shared (lib/due_shared/src/ctl.c) and prints frames,
+ * bad, txdrop, the parser state and the ping sequence - which between
+ * them say whether the device stopped receiving, stopped answering, or
+ * answered into a pipe nobody drained.
+ */
+static void c_ctl(const uint32_t *a)
+{
+	(void)a;
+	ctl_dump();
+	console_flush();
+}
+
 static void c_bench(const uint32_t *a)
 {
 	(void)a;
@@ -397,6 +413,7 @@ const console_binding_t console_bindings[] = {
 	{ '4', c_s400  },
 	{ '?', c_stats },
 	{ 'B', c_bench },
+	{ 'u', c_ctl   },
 	{ 0,   NULL    },
 };
 
