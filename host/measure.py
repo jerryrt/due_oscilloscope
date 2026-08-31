@@ -1380,7 +1380,7 @@ def play_counters(board, secs=1.2):
             # mapping bug, and swallowing it would degrade silently to
             # printf and report the wrong instrument as working - which
             # is what this whole migration exists to stop. It escapes.
-            board.drop_ctl()
+            board.ctl_invalidate()
             _note_fallback(board, "play_counters()")
     board.cmd("B")
     time.sleep(0.5)
@@ -1406,7 +1406,7 @@ def occupancy(board, secs=1.2):
             got.via = _count_read("control")
             return got
         except _LINK_GONE:
-            board.drop_ctl()
+            board.ctl_invalidate()
             _note_fallback(board, "occupancy()")
     board.cmd("O")
     time.sleep(0.3)
@@ -1515,6 +1515,33 @@ class Board:
         method's docstring already records from 2026-08-27, one level
         further out, and it is why invalidation is explicit here rather
         than left to a retry.
+
+        **`_ctl_tried` must be cleared, and that is the older half of
+        this.** It used to survive the drop, so `ctl()`'s cache returned
+        None for ever after: one transient transport error - or one
+        objective-0c close() wedge, which re-enumerates the native port
+        and is *guaranteed* to produce one - silently became "this board
+        has no control channel" for the rest of the session. Measured on
+        mac-bench over twelve phase-timed `run_play` calls: before, a run
+        billed 4.58-4.75 s and read its counters in 2-167 ms; after, every
+        run billed 7.80-7.88 s, spending 1.72 s in `play_counters` and
+        1.52 s in `occupancy`. **+3.2 s per run, for ever**, and the
+        measurement quietly moved onto printf - 13.14 ms and 15.40 ms of
+        blocked main loop taken *while the sample path runs*, which is
+        invariant 8 and what the control channel exists to prevent.
+
+        **`_ctl_why` must be cleared too**, and that was a real bug in
+        the version this replaces. It named the error behind the
+        *previous* drop, and `_note_fallback()` prints it - so a later
+        fallback could report a stale reason for a fresh failure. A true
+        sentence about the wrong event costs more than no sentence: 26
+        setup errors were read as "ProtocolError: no response to opcode
+        0x0001" when the port had simply moved.
+
+        This is the one invalidator. It replaced `drop_ctl()`, which did
+        the same job without the `_ctl_why` clear; the two were written
+        a day apart by two benches that did not know of each other, and
+        collapsing them was agreed on issue #51.
         """
         link, self._ctl = self._ctl, None
         self._ctl_tried = False
@@ -1606,47 +1633,6 @@ class Board:
         """Why the command port did not open, or None if it did."""
         return self._ctl_why
 
-    def drop_ctl(self):
-        """Drop the control link, and let the next caller re-establish it.
-
-        `_ctl_tried` is cleared deliberately, and that is the whole
-        point of this function having a docstring. It used to survive
-        the drop, so `ctl()`'s cache returned None for ever after: one
-        transient transport error - or one objective-0c close() wedge,
-        which re-enumerates the native port and is *guaranteed* to
-        produce one - silently turned into "this board has no control
-        channel" for the rest of the session.
-
-        Measured on mac-bench, twelve runs of `run_play` at RC 65/44/39
-        with the phases timed: before the wedge a run billed 4.58-4.75 s
-        and read its counters in 2-167 ms; after it, every run billed
-        7.80-7.88 s and spent 1.72 s in `play_counters` and 1.52 s in
-        `occupancy`. **+3.2 s on every subsequent run**, dead stable, and
-        nothing in the output said the instrument had changed.
-
-        The time is the smaller half. The fallback reads the counters
-        with `B` and `O` over the console, which is 13.14 ms and
-        15.40 ms of blocked main loop *during the thing being measured* -
-        invariant 8, and precisely what the control channel exists to
-        stop. A suite that wedges once therefore contains two
-        populations of measurements taken with two different
-        instruments, with no marker separating them.
-        `test_control.py` already asserts `via == "control"`, but it
-        runs seventh in `FILE_ORDER` and the wedge happens in the
-        playback tests that run after it.
-
-        Re-arming costs at most one further `ctl()` attempt cycle: a
-        genuine failure sets `_ctl_tried` again and is cached from then
-        on, so a board whose command port is really gone pays this once
-        and not per call.
-        """
-        if self._ctl is not None:
-            try:
-                self._ctl.close()
-            except Exception:                                # noqa: BLE001
-                pass
-        self._ctl = None
-        self._ctl_tried = False
 
     # -- control port ------------------------------------------------
     def cmd(self, text):
@@ -1964,7 +1950,7 @@ class Board:
             "the port is still held by a thread inside this process.")
 
     def close(self):
-        self.drop_ctl()
+        self.ctl_invalidate()
         if self.cfd is not None:
             self.cfd.close()
             self.cfd = None
