@@ -81,6 +81,12 @@ def pytest_addoption(parser):
                 help="do not fail the board-free tier for exceeding its "
                      "five-minute ceiling (issue #50); for a bench slower "
                      "than the one the constant was measured on")
+    g.addoption("--mixed-instruments-ok", action="store_true",
+                help="do not fail a session that read counters over both "
+                     "the control channel and the console (issue #51). "
+                     "For deliberately exercising the fallback; a session "
+                     "that hits it by accident holds two populations of "
+                     "measurements and should say so")
 
 
 def pytest_configure(config):
@@ -345,3 +351,68 @@ def pytest_sessionfinish(session, exitstatus):
                 f"- do not let it drift the way section 8 of "
                 f"docs/testing.md did.", red=True)
         session.exitstatus = 1
+    _check_one_instrument(session)
+
+
+def _check_one_instrument(session):
+    """Did this session measure with one instrument or two? Issue #51.
+
+    `play_counters()` and `occupancy()` read over the control channel
+    where there is one and fall back to `B` and `O` on the console.
+    Control reads a counter in 146 us; the fallback costs 13.14 ms and
+    15.40 ms of blocked main loop **taken while the sample path is
+    running**, which is invariant 8. They are two experiments, not two
+    tolerances of one.
+
+    A link that drops mid-suite therefore leaves a run holding two
+    populations with nothing marking the boundary. That is #51, it cost
+    a whole session once, and the trigger here is an objective-0c
+    `close()` wedge - which re-enumerates the native port and is
+    *guaranteed* to drop the link, on the bench where 0c happens.
+
+    **Why this is a session hook and not a test.** `test_control.py`
+    already asserts `via == "control"`, but it runs seventh in
+    `FILE_ORDER` and the wedge happens in the playback tests after it.
+    Moving it is a reorder of a load-bearing list and is the owner's
+    call on #51; asking the question again at the end is additive and
+    is not.
+
+    **The `ctlver=0` exemption falls out of the counters and needs no
+    new state.** If `control` is above zero the link demonstrably
+    existed this session, so a `console` read is a *drop*. If `control`
+    is zero the board never had one - an image built before 2026-08-27,
+    or a track without the opcode - and the console is not a downgrade,
+    it is the only instrument. Only the first fails.
+
+    Failing rather than warning, for the reason the ceiling above gives:
+    a warning is what this already was. `_note_fallback()` raises a
+    `RuntimeWarning` at the moment it happens, and #51 happened anyway.
+    """
+    if getattr(session.config.option, "mixed_instruments_ok", False):
+        return
+    reads = dict(measure.INSTRUMENT_READS)
+    control, console = reads.get("control", 0), reads.get("console", 0)
+    if not console:
+        return
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if not control:
+        # No control channel this session. Honest, and not a drop.
+        if reporter is not None:
+            reporter.write_line(
+                f"instrument: {console} counter read(s) over the console, "
+                f"none over the control channel - this board has no "
+                f"control channel, so that is the only instrument and "
+                f"not a downgrade (issue #51).")
+        return
+    if reporter is not None:
+        reporter.write_line(
+            f"instrument: this session read counters BOTH ways - "
+            f"{control} over the control channel and {console} over the "
+            f"console (issue #51). The link dropped mid-run, so these "
+            f"figures are two populations with nothing marking the "
+            f"boundary: the console reads cost 13-20 ms of blocked main "
+            f"loop taken while the sample path was running, which is "
+            f"invariant 8. Check `Board.ctl_why`. Re-run before "
+            f"quoting any number from it; --mixed-instruments-ok if the "
+            f"fallback was the point.", red=True)
+    session.exitstatus = 1
