@@ -22,6 +22,11 @@ of the original defects, and each report clears at the fix -
     9829719~1   COLLISION 'T': h_sink_dma on B, c_time on C
     96b3c23~1   COLLISION 'k': h_dac_30m on B, c_time on C
 
+What it deliberately does NOT compare is the init sequence, and the
+comment above `test_the_comparison_still_parses_every_main` says why:
+invariant 3 makes a per-track symbol difference the design rather than a
+defect, and asserting on it once produced a wrong finding here (#56).
+
 Board-free and textual: no compiler, no build, no board.
 """
 
@@ -72,38 +77,36 @@ def test_track_a_and_b_consoles_agree():
     )
 
 
-# Drivers that are not a track's own business: shared code every track is
-# required to run, where an absence is a defect and not a decomposition.
-# `clockref` is the whole of the list because it is the whole of what has
-# been ruled so far - #52 requires the board to report its own clock, and
-# the instruction was "all tracks". Add to it when another shared driver
-# earns the same ruling; do not add track-local init here.
-SHARED_INIT = ["clockref_init()"]
-
-
-@pytest.mark.xfail(strict=True, reason=(
-    "Track A does not run clockref at all - see issue #56. Only Track B "
-    "and Track C call clockref_init()/clockref_poll(); in sketches/ the "
-    "name appears in three comments and no code. strict=True so this "
-    "starts failing the day Track A is fixed and the marker is not "
-    "removed with it."))
-def test_every_track_runs_the_shared_init():
-    """Shared drivers reach every track, or the suite says which one they missed.
-
-    This is the exact defect class that produced four Track C failures in
-    a day - `clockref` among them - and it was invisible because nothing
-    fails when an init call does not propagate. Not the build, not the
-    link, not a board test.
-    """
-    missing = {}
-    for track in sorted(track_parity.MAINS):
-        seq = track_parity.init_sequence(track_parity.MAINS[track])
-        gaps = [c for c in SHARED_INIT if c not in (seq or [])]
-        if gaps:
-            missing[track] = gaps
-    assert not missing, "shared init absent: " + "; ".join(
-        "track %s does not call %s" % (t, " ".join(g))
-        for t, g in sorted(missing.items()))
+# THERE IS NO "SHARED INIT" LIST HERE, AND THERE MUST NOT BE ONE.
+#
+# A previous version of this file asserted that every track calls
+# `clockref_init()`, as xfail(strict=True) against #56, on the finding
+# that Track A does not call it anywhere. The finding was wrong and the
+# assertion was worse than wrong - it would have driven a fix that
+# **violates invariant 3**.
+#
+# Track A has issue #52's reference. It is `ctl_port_sof_poll()` in
+# `sketches/bringup/ctl_port.cpp`, reading the same `UOTGHS_DEVFNUM`,
+# programmed independently, and its own comment says so:
+#
+#     "The same reference Track B keeps, programmed independently as
+#      invariant 3 requires. Both tracks read UOTGHS_DEVFNUM; neither
+#      shares the code that does it."
+#
+# The search that produced the wrong finding was `grep -rn clockref
+# sketches/`, which returns three comments and no code - because Track A's
+# implementation is correctly not named after Track B's driver. **A grep
+# for a name was read as evidence about a behaviour.** Invariant 3 makes
+# that inference invalid by construction on exactly the code this file
+# compares: register programming is meant to be per-track, so a symbol
+# present on one track and absent on another is the design, not a defect.
+#
+# So this file compares what is genuinely required to agree - the console
+# surface, which is a shared contract - and does not compare init, which
+# is not. A behavioural assertion about the two references agreeing is
+# worth having and belongs where it can measure behaviour rather than
+# spelling; `linux-x1` is landing the Track A gate fix on #56 and that is
+# the point at which one can be written.
 
 
 def test_the_comparison_still_parses_every_main():
