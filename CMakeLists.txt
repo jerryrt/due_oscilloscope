@@ -24,11 +24,26 @@ add_compile_definitions(__SAM3X8E__)
 # lib/due_shared/src is the wire contract both tracks compile.
 # arduino-cli reaches the same files as an Arduino library, via
 # --libraries lib in tools/sketch.py.
-include_directories(bsp drivers lib/due_shared/src)
+# Per target, NOT per directory, and that is load-bearing rather than
+# tidiness. `include_directories()` applies to every target defined
+# afterwards, including Track A's - and Track A brings its own Arduino
+# core, which ships `Stream.h`, `Print.h` and a whole second CMSIS.
+#
+# On a case-insensitive filesystem - macOS, and Windows - the core's
+# `#include "Stream.h"` then resolved to this project's `drivers/stream.h`
+# and the build failed with a linkage conflict three headers away from
+# the cause (issue #55). The CMSIS pair would have collided the same way
+# and had no reason to fail loudly.
+#
+# Invariant 3 already says the two tracks share no hardware source.
+# Scoping the include path to the target is that invariant made
+# mechanical: Track A cannot reach `drivers/` or `bsp/` even by
+# accident, because they are not on its path at all.
+set(TRACK_B_INCLUDES bsp drivers lib/due_shared/src)
 
 # SYSTEM: vendor headers are not ours to fix, and -Wall -Wextra otherwise
 # buries real diagnostics under warnings from the CMSIS pack.
-include_directories(SYSTEM
+set(TRACK_B_SYSTEM_INCLUDES
     ${CMSIS}/Include
     ${CMSIS}/Device/ATMEL          # sam.h -> sam3.h -> sam3xa/include/
     ${DEVICE}/include
@@ -66,6 +81,9 @@ add_executable(baremetal_bringup EXCLUDE_FROM_ALL
     lib/due_shared/src/stream_bench.c
     ${DEVICE}/source/system_sam3xa.c
 )
+
+target_include_directories(baremetal_bringup PRIVATE ${TRACK_B_INCLUDES})
+target_include_directories(baremetal_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})
 
 target_link_options(baremetal_bringup PRIVATE
     -mcpu=cortex-m3 -mthumb
@@ -154,6 +172,21 @@ add_custom_command(TARGET baremetal_bringup POST_BUILD
 #
 option(BUILD_TRACK_C "Fetch FreeRTOS and build the Track C image" OFF)
 
+# Track A, built here rather than by arduino-cli (issue #55).
+#
+# Opt-in for the same reason BUILD_TRACK_C is: it needs the Arduino SAM
+# core *sources* installed, and a bench without them should not fail to
+# configure a Track B build over it. Nothing is fetched and no compiler
+# but this project's own is used - see cmake/track_a.cmake, which also
+# records what aligning the toolchains costs.
+#
+#     cmake -B build -DCMAKE_TOOLCHAIN_FILE=... -DBUILD_TRACK_A=ON
+option(BUILD_TRACK_A "Build the Track A image from CMake, without arduino-cli" OFF)
+
+if(BUILD_TRACK_A)
+    include(cmake/track_a.cmake)
+endif()
+
 if(BUILD_TRACK_C)
     include(cmake/freertos.cmake)
 
@@ -212,6 +245,9 @@ if(BUILD_TRACK_C)
     # track=b while its console answers track=C - measured, not
     # hypothetical.
     target_compile_definitions(rtos_bringup PRIVATE FW_TRACK='C')
+
+    target_include_directories(rtos_bringup PRIVATE ${TRACK_B_INCLUDES})
+    target_include_directories(rtos_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})
 
     target_link_options(rtos_bringup PRIVATE
         -mcpu=cortex-m3 -mthumb
