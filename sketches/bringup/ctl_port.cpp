@@ -433,10 +433,18 @@ void ctl_port_sof_poll(void)
 	if ((uint32_t)(now - sof_last_us) > 1500000u)
 		sof_ambiguous_n++;
 
-	if (cur != sof_last_fnum) {
-		sof_frames_ext += (uint32_t)((cur - sof_last_fnum) & 2047u);
-		sof_edge_frames = sof_frames_ext;
-		sof_edge_us = now;
+	{
+		uint32_t step = (uint32_t)((cur - sof_last_fnum) & 2047u);
+
+		sof_frames_ext += step;
+		/* Latch only on a single-frame advance - see
+		 * drivers/clockref.c for the measurement that motivates it.
+		 * A longer pass leaves the edge unlocated, and a stale
+		 * timestamp is worse than a later one. */
+		if (step == 1u) {
+			sof_edge_frames = sof_frames_ext;
+			sof_edge_us = now;
+		}
 	}
 	sof_last_fnum = cur;
 	sof_last_us = now;

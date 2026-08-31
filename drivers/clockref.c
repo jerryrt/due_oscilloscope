@@ -101,11 +101,32 @@ void clockref_poll(void)
 	 * the quantisation onto the loop period instead, ~8 us here, which
 	 * is 0.27 ppm over 30 s.
 	 */
-	if (cur != last_fnum) {
-		frames += (uint32_t)((cur - last_fnum) &
-		                     (CLOCKREF_FRAME_WRAP - 1u));
-		edge_frames = frames;
-		edge_us = now;
+	{
+		uint32_t step = (uint32_t)((cur - last_fnum) &
+		                           (CLOCKREF_FRAME_WRAP - 1u));
+
+		frames += step;
+		/*
+		 * Latch only on a SINGLE-frame advance.
+		 *
+		 * The latch is worth having because it bounds the edge by
+		 * the poll interval - but only when the poll SAW that one
+		 * frame. If two or more elapsed, the pass was longer than a
+		 * frame and the edge could have been anywhere in it, so the
+		 * pair would be stale by up to the pass length.
+		 *
+		 * This is not hypothetical on this track: the load monitor
+		 * measures a worst-case pass of 13 ms here, thirteen frames.
+		 * Before this line Track B read +9.7 to +24.1 ppm while
+		 * Track A - same board, same minute, its own programming of
+		 * the same register - read +13.67 to +13.72, a spread of
+		 * 0.05. The frames themselves are never lost; only the
+		 * timestamp is refused.
+		 */
+		if (step == 1u) {
+			edge_frames = frames;
+			edge_us = now;
+		}
 	}
 	last_fnum = cur;
 	last_us = now;
