@@ -106,6 +106,103 @@ stacks and the DMA capture ring all come out of the same 96 KB. Size the
 capture ring first — it has a hard throughput deadline — and give
 FreeRTOS what remains.
 
+## Stage C1, built and measured (2026-08-30)
+
+Track C exists. `apps/rtos_bringup`, `cmake/freertos.cmake`, built by
+`cmake --build build-c --target firmware_rtos` after configuring with
+`-DBUILD_TRACK_C=ON`. FreeRTOS V11.1.0, pinned by 40-character commit
+rather than by tag, fetched at configure time (issue #45 decision 3).
+
+    # id: track=C fw=0.2.0 ctlver=3 framever=3 mck=78000000 ...
+
+    text 11,596   data 8   bss 4,468     Track B: 38,372 / 32 / 72,904
+
+It answers a **typed** `v`, `h` and `T`, which is the claim worth
+making: the identity printed from `main()` would prove only that
+`main()` ran, while a reply to a keystroke proves `console_task` is
+being scheduled.
+
+**No allocator in the image**, by the same `nm --defined-only` check
+`tests/test_no_heap.py` applies to Track B. Static allocation, no
+MemMang file compiled at all.
+
+**Vector aliasing needed no change to `startup_sam3x8e.c`.** This note
+predicted "a one-line change here"; in the event the handlers were
+already declared as *weak* aliases of `Default_Handler`, so defining
+`vPortSVCHandler`/`xPortPendSVHandler`/`xPortSysTickHandler` to the
+CMSIS names in `FreeRTOSConfig.h` is enough - `port.c` then emits strong
+definitions that win. Verified in the link map, where `SysTick_Handler`
+resolves to `port.c.obj`, rather than from the symbol name alone.
+
+### The time source, and why it may not call FreeRTOS
+
+`bsp/systick.c` cannot be linked: it defines `SysTick_Handler` strongly
+and two strong definitions are a duplicate symbol, not an override.
+`millis()` and `micros()` live in that file and almost everything calls
+them - `drivers/adc.c` alone has ten sites. So the application provides
+them (`apps/rtos_bringup/time_rtos.c`), which is invariant 4's shape.
+
+**The obvious implementation is `xTaskGetTickCount()` and it is wrong.**
+`drivers/acq.c` calls `micros()` from inside `ADC_Handler()`, behind
+`#if ACQ_RATE_TRACE_ENABLED` which defaults to 0. That ISR sits *above*
+`configMAX_SYSCALL_INTERRUPT_PRIORITY` and may call no FreeRTOS API at
+all. A kernel-calling `micros()` would put an API call in that ISR the
+day someone set the flag, and the failure would be corrupted kernel
+state rather than a compile error.
+
+The counter is therefore a plain volatile advanced from
+`vApplicationTickHook()`, readable from any context at any priority.
+The interpolation is byte-for-byte `bsp/systick.c`'s, valid because
+FreeRTOS programmes `SysTick->LOAD` as
+`configCPU_CLOCK_HZ / configTICK_RATE_HZ - 1` - 77,999 at 78 MHz and
+1000 Hz, the identical value `systick_init()` writes.
+
+Measured on the board, because a time source that returns 0 or ticks at
+the wrong rate neither fails to link nor fails to run:
+
+    # time millis=9776 micros=9776008 d_ms=100 d_us=99998 (asked 100 ms)
+
+`d_us` of 99,998 rather than a round 100,000 is the evidence that
+matters - the microsecond interpolation is live, not `millis()` times a
+thousand.
+
+**One genuine behavioural difference between the tracks.** Time does not
+advance until the scheduler starts. Bare metal calls `systick_init()`
+early in `main()`; here `xTaskIncrementTick()` only runs after
+`vTaskStartScheduler()`, so anything timed during initialisation reads 0
+and a duration measured across the scheduler start is wrong rather than
+merely coarse.
+
+### What C2 has left, at the symbol level
+
+Invariant 4 says bare-metal and RTOS builds "link identical driver code
+and differ only in `main()`". That is now checked rather than asserted.
+Comparing what the kernel defines against what `bsp/`, `drivers/` and
+`lib/due_shared` define:
+
+    symbols defined by the FreeRTOS objects        148
+    symbols defined by bsp/ + drivers/             277
+    defined by BOTH                                  1   SysTick_Handler
+
+**One collision, and it is the one already handled.** Nothing else in
+the BSP or the drivers competes with the kernel for a name.
+
+And taking everything `bsp/`, `drivers/` and `lib/` *reference*, minus
+everything they, the kernel and Track C's application define, sixteen
+symbols remain and every one is the toolchain's or the linker script's:
+
+    __aeabi_ldivmod  __aeabi_uldivmod  __libc_init_array  errno
+    memcpy  memset  strlen
+    _sdata _edata _sbss _ebss _etext _estack _heap_start _heap_end
+
+**None is a Track C problem.** So with `millis()`/`micros()` provided
+there is no remaining symbol-level obstacle to linking the whole driver
+set under the kernel, and C2 is a question of task decomposition and
+priorities rather than of missing pieces.
+
+Stated as what it is: a symbol-level analysis, not a link test. The
+drivers link but are not yet *called*, and calling them is C2.
+
 ## What the comparison should measure
 
 The point of building both is data, not preference:
