@@ -62,6 +62,20 @@ def main():
                          "to a reduced amplitude can be tested as the "
                          "event that redraws the site set. Compare the "
                          "blocks at the same amplitude either side of it")
+    ap.add_argument("--fws-plan", default="",
+                    help="flash wait states per block, e.g. "
+                         "4x6,5x6,6x6,6x6,5x6,4x6 - all inside one board "
+                         "session, and counterbalanced so a drift over "
+                         "the session cannot masquerade as an FWS "
+                         "effect. FWS changes instruction fetch timing, "
+                         "which #5 is a lottery over; the readback is "
+                         "checked because `=<n>q` is silent when it "
+                         "does not take")
+    ap.add_argument("--preset", default="M",
+                    help="capture preset, e.g. '=200000,200000M' to pin "
+                         "both clocks. Bare 'M' leaves whatever the "
+                         "board booted with, which is not comparable "
+                         "across benches")
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "macos"))
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
@@ -74,6 +88,11 @@ def main():
                 regen.update(range(int(a), int(b) + 1))
             else:
                 regen.add(int(part))
+    fws_plan = []
+    if args.fws_plan:
+        for part in args.fws_plan.split(","):
+            f, n = part.lower().split("x")
+            fws_plan.extend([int(f)] * int(n))
     plan = []
     if args.amp_plan:
         for part in args.amp_plan.split(","):
@@ -89,11 +108,22 @@ def main():
             if amp is not None and (i == 1 or plan[i - 2] != amp):
                 measure.set_gen(board, "sine",
                                 points=measure.GEN_TABLE_POINTS, amp=amp)
+            fws = fws_plan[i - 1] if i <= len(fws_plan) else None
+            if fws is not None and (i == 1 or fws_plan[i - 2] != fws):
+                board.cmd(f"={fws}q")
+                txt = board.drain_console(0.5) or ""
+                if f"fws: {fws}" not in txt:
+                    raise SystemExit(
+                        f"run {i}: FWS readback {txt.strip()[:60]!r} - "
+                        f"asked for {fws}. `=<n>q` is silent when it does "
+                        f"not take, so this stops rather than recording "
+                        f"runs under an unknown wait-state count.")
             if i in regen:
                 measure.set_gen(board, "sine",
                                 points=measure.GEN_TABLE_POINTS,
                                 amp=measure.GEN_AMP_FULL)
-            res = measure.run_capture(board, preset="M", seconds=args.seconds)
+            res = measure.run_capture(board, preset=args.preset,
+                                      seconds=args.seconds)
             ps = res.stream
             vals = ps.series.get(measure.CH_A0)
             if not vals:
@@ -110,7 +140,7 @@ def main():
             total_abs = sum(abs(v - pmed) for v in prof)
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                    "bench": args.bench, "regen": i in regen,
-                   "amp": amp,
+                   "amp": amp, "fws": fws, "preset": args.preset,
                    "total_abs": round(total_abs, 2),
                    "site_abs": round(sum(abs(v) for _b, v, _z in found), 2),
                    "argmax_phase": fold.get("peak_phase"),
@@ -121,7 +151,8 @@ def main():
                              for b, v, z in found[:6]]}
             rows.append(row)
             print(f"run {i:2d}{'*' if i in regen else ' '}"
-                  f"{('a%d' % amp) if amp is not None else '':>5}: "
+                  f"{('a%d' % amp) if amp is not None else '':>5}"
+                  f"{('f%d' % fws) if fws is not None else '':>3}: "
                   f"argmax {row['argmax_phase']:3d} "
                   f"({row['argmax_peak']:+7.2f})  total|dev| "
                   f"{row['total_abs']:7.1f}  sites "
@@ -153,6 +184,23 @@ def main():
             vs = [v for r in rows for bb, v, _z in r["sites"] if bb == b]
             print(f"  phase {b:3d}: {len(vs):2d}/{len(rows)}  "
                   f"values {min(vs):+.2f} .. {max(vs):+.2f}")
+
+    # Per-FWS site tables. The cross-bench comparison on #5 is quoted
+    # per FWS, so pooling them here would hide exactly the structure the
+    # comparison is about.
+    if fws_plan and rows:
+        for f in sorted({r["fws"] for r in rows if r["fws"] is not None}):
+            sub = [r for r in rows if r["fws"] == f]
+            strong = []
+            for b in sorted({b for r in sub for b, _v, _z in r["sites"]}):
+                k = sum(1 for r in sub
+                        if any(bb == b for bb, _v, _z in r["sites"]))
+                if k >= max(2, len(sub) // 2):
+                    strong.append((b, k))
+            print(f"\nFWS {f}: n={len(sub)}, strong sites "
+                  f"(>= {max(2, len(sub) // 2)} of {len(sub)}): "
+                  + (", ".join(f"{b}({k})" for b, k in strong) or "none"))
+            print(f"  bare list: {[b for b, _k in strong]}")
 
     if len(rows) > 2:
         tot = [r["total_abs"] for r in rows]
