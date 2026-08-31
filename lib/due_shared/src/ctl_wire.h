@@ -249,11 +249,88 @@ typedef struct __attribute__((packed)) {
 	uint32_t period_ms;       /* the cadence the device believes it keeps */
 	uint32_t dropped;         /* beats the endpoint refused, cumulative */
 	ctl_counters_t counters;  /* the existing layout, parsed by the same code */
+	/*
+	 * The USB host's frame clock, issue #52. Every rate in this project
+	 * descends from MCK, and CLAUDE.md states MCK is 78 MHz as a figure
+	 * read back from the PLL settings rather than one anybody measured.
+	 *
+	 * It rides the heartbeat rather than an opcode of its own because a
+	 * clock reference is not a thing you ask for: it is only useful
+	 * *continuously*, and the beat is already the one frame the device
+	 * sends unasked. A host that wants MCK differences two beats -
+	 *
+	 *     mck = (d_sof_frames * 1000 * mck_nominal) / d_sof_dev_us
+	 *
+	 * with mck_nominal from the identity line, which the host has
+	 * already parsed - no second copy of it on this wire
+	 *
+	 * - and needs no clock of its own anywhere in it, which is the whole
+	 * advantage over timing a run from the host.
+	 *
+	 * The pair is latched AT a frame edge, so the two fields describe
+	 * one instant. Read at an arbitrary moment they would not: the frame
+	 * count steps in whole milliseconds while dev_us does not, which was
+	 * measured at +/-33 ppm over 30 s before the latch went in.
+	 *
+	 * `sof_available` is 0 where the port has never been configured, and
+	 * is a flag rather than a zero count for the reason CTL_ERR_OPCODE
+	 * exists: zero is a measurement and a host cannot tell it from an
+	 * absence. `sof_ambiguous` counts polls too far apart to resolve
+	 * FNUM's 2.048 s wrap - non-zero means sof_frames is a LOWER BOUND
+	 * and no frequency may be computed from it.
+	 */
+	uint32_t sof_frames;      /* SOF frames since the port was configured */
+	uint32_t sof_dev_us;      /* micros() latched at that frame's edge */
+	uint32_t sof_ambiguous;   /* unresolvable wraps; non-zero invalidates */
+	uint8_t  sof_available;   /* 0 = never configured; sof_frames is void */
+	uint8_t  sof_reserved[3];
+	/*
+	 * The device's own working frequency, computed on the beat.
+	 *
+	 * A host CAN difference two beats itself, and should for a windowed
+	 * figure. This is the other thing: a running estimate over the whole
+	 * span since the port was configured, which needs no two beats and
+	 * gets better the longer the board has been up - after an hour the
+	 * frame count is 3.6 million and the edge latch's ~8 us of jitter is
+	 * 0.002 ppm.
+	 *
+	 * Cost, because "the device computes it" invites the objection:
+	 * two 32-bit subtractions, one 64-bit multiply and one divide, ONCE
+	 * PER BEAT. UDIV on the Cortex-M3 is 2-12 cycles, so about 0.26 us
+	 * at 78 MHz against a beat cadence clamped at 20 ms minimum - and
+	 * against a main-loop pass measured at 8.2 us. It is a fraction of
+	 * one pass, once per beat. Measured rather than argued: see the
+	 * load-monitor figures on issue #52.
+	 *
+	 * Zero means "not yet", not "zero hertz": it is emitted until there
+	 * are CTL_SOF_MIN_FRAMES of span, because a frequency from a shorter
+	 * one is quantisation rather than a measurement. Zero also stands
+	 * where sof_available is 0 or sof_ambiguous is non-zero, for the
+	 * same reason the flag exists at all.
+	 */
+	uint32_t mck_meas_hz;
 } ctl_heartbeat_t;
 
-/* host/control.py parses this as "<IIII" + the counters format; a layout
- * that drifts from that is a silent misparse, not a link error. */
-CTL_STATIC_ASSERT(sizeof(ctl_heartbeat_t) == 16u + sizeof(ctl_counters_t),
+/*
+ * Below this many frames a computed frequency is quantisation, not a
+ * measurement: one frame in 1000 is 1000 ppm, and the effect being
+ * looked for is tens.
+ */
+#define CTL_SOF_MIN_FRAMES  60000u   /* one minute of beats */
+
+/*
+ * How often the device recomputes its own frequency, independent of how
+ * often it reports it. The beat cadence is the host's to choose; this is
+ * not, for invariant 7's reason - a host must not be able to scale the
+ * device's work, or change what a published figure means, by picking a
+ * parameter. One second is far shorter than a cumulative estimate takes
+ * to move by a ppm, so nothing is lost to staleness.
+ */
+#define CTL_SOF_CALC_INTERVAL_US  1000000u
+
+/* host/control.py parses this as "<IIII" + the counters format + "<IIIB3xI";
+ * a layout that drifts from that is a silent misparse, not a link error. */
+CTL_STATIC_ASSERT(sizeof(ctl_heartbeat_t) == 36u + sizeof(ctl_counters_t),
                   "ctl_heartbeat_t is a wire format, not a struct layout");
 
 /*

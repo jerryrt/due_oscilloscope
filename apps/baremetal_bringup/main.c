@@ -23,6 +23,7 @@
 #include "gen.h"
 #include "stream.h"
 #include "frame.h"
+#include "clockref.h"
 #include "play.h"
 #include "play_report.h"
 #include "playstat.h"
@@ -773,6 +774,7 @@ static void cmd_profile(void)
 	PROF("usb_cdc_ready()", (void)usb_cdc_ready());
 	PROF("usb_dma_out_busy()", (void)usb_dma_out_busy());
 	PROF("usb_cdc_poll()", usb_cdc_poll());
+	PROF("clockref_poll()", clockref_poll());
 	PROF("play_service()", play_service());
 	PROF("stream_service()", stream_service());
 	PROF("diag_service()", diag_service());
@@ -1626,6 +1628,7 @@ int main(void)
 	dac_init();
 	adc_init();
 	usb_cdc_init();
+	clockref_init();
 
 	/*
 	 * There was a setvbuf(stdout, NULL, _IONBF, 0) here, to stop
@@ -1706,6 +1709,7 @@ int main(void)
 		if (now != usb_ms) {
 			usb_ms = now;
 			usb_cdc_poll();
+			clockref_poll();
 		}
 		play_service();
 		stream_service();

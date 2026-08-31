@@ -25,6 +25,18 @@ void   usb_cdc_poll(void);
 void   usb_cdc_detach_cycle(uint32_t ms);
 
 bool   usb_cdc_ready(void);
+
+/*
+ * Enumerated and configured, whether or not anyone has OPENED the port.
+ *
+ * usb_cdc_ready() additionally requires DTR, because a writer must not
+ * push at a host that is not reading. The USB frame clock is a different
+ * question: SOF arrives from the moment the host configures the device,
+ * and a frequency reference that switched off when an application closed
+ * a serial port would be useless for exactly the long unattended runs it
+ * exists to serve. Issue #52.
+ */
+bool   usb_cdc_configured(void);
 extern volatile uint32_t usb_in_activity;   /* bytes/transfers, IN  */
 extern volatile uint32_t usb_out_activity;  /* bytes/transfers, OUT */
 /* Times the main loop took its fallback-drain branch. Frozen while the

@@ -157,6 +157,84 @@ static bool ctl_have(uint32_t cap)
 	return (ctl_port_capabilities() & cap) != 0u;
 }
 
+
+/*
+ * Fill the SOF reference and the running frequency, issue #52.
+ *
+ * Shared because both fill sites - the polled reply and the unasked beat
+ * - must carry the same numbers, and two copies of this arithmetic is
+ * how one quantity gets two values in a codebase.
+ *
+ * Cost: two subtractions, a 64-bit multiply and one divide, once per
+ * beat. Everything expensive was already done by the poll that latched
+ * the pair.
+ */
+static void ctl_fill_sof(ctl_heartbeat_t *hb)
+{
+	uint32_t frames = 0u, dev_us = 0u, ambiguous = 0u;
+	int ok = ctl_port_sof(&frames, &dev_us, &ambiguous);
+
+	hb->sof_available = ok ? 1u : 0u;
+	hb->sof_frames    = ok ? frames : 0u;
+	hb->sof_dev_us    = ok ? dev_us : 0u;
+	hb->sof_ambiguous = ambiguous;
+	hb->mck_meas_hz   = 0u;
+
+	/*
+	 * Zero is "not yet", and every refusal below is deliberate. A
+	 * frequency from a short span is quantisation - one frame in a
+	 * thousand is 1000 ppm - and an unresolved wrap makes `frames` a
+	 * lower bound, so a figure computed from it would be wrong low and
+	 * look like a real slow clock.
+	 */
+	if (!ok || ambiguous != 0u || frames < CTL_SOF_MIN_FRAMES ||
+	    dev_us == 0u)
+		return;
+
+	/*
+	 * Recomputed at most once a second, and cached between - reported in
+	 * every beat, updated on the device's own tick.
+	 *
+	 * Not for the cost. Measured on windows-desk: the whole beat is
+	 * about 110 us and this divide is about 0.26 us of it, so riding the
+	 * beat would save nothing worth having.
+	 *
+	 * The reason is invariant 7's, applied to a measurement rather than
+	 * to a pass. The beat cadence is HOST-SETTABLE from 20 ms to 60 s,
+	 * so a calculation that rides it does work - and produces a figure
+	 * whose meaning changes - at a rate the caller picked. The cost of a
+	 * pass must not depend on what a host sent, and neither should the
+	 * quality of a number the device publishes about itself.
+	 *
+	 * And it makes the value identical for every consumer within a
+	 * second. Recomputing per beat gives two hosts reading adjacent
+	 * beats two numbers for one quantity, which is the failure this
+	 * struct's own docstring refuses when it declines to carry a second
+	 * account of the counters.
+	 *
+	 * The estimate is CUMULATIVE, so a second of staleness costs well
+	 * under a ppm. If it is ever made windowed, this interval stops
+	 * being a nicety and becomes required: a 1 s window recomputed every
+	 * 20 ms emits overlapping windows that read as independent samples.
+	 */
+	{
+		static uint32_t last_calc_us;
+		static uint32_t cached_hz;
+		uint32_t age = dev_us - last_calc_us;
+
+		if (cached_hz == 0u || age >= CTL_SOF_CALC_INTERVAL_US) {
+			/* SOF is 1 kHz, so `frames` milliseconds of real time
+			 * have passed while the device counted `dev_us` of its
+			 * own microseconds. */
+			cached_hz = (uint32_t)(((uint64_t)ctl_port_mck_hz() *
+			                        (uint64_t)dev_us) /
+			                       ((uint64_t)frames * 1000u));
+			last_calc_us = dev_us;
+		}
+		hb->mck_meas_hz = cached_hz;
+	}
+}
+
 static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
                          uint16_t len)
 {
@@ -452,9 +530,11 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		hb.period_ms = hb_period_ms;
 		hb.dropped   = hb_dropped;
 		ctl_port_counters(&hb.counters);
+		ctl_fill_sof(&hb);
 		ctl_respond(h->req_id, h->opcode, 0, &hb, sizeof(hb));
 		return;
 	}
+
 
 	case CTL_OP_TEMP: {
 		ctl_temp_t t;
@@ -933,6 +1013,7 @@ void ctl_heartbeat_emit_isr(void)
 	hb.period_ms = hb_period_ms;
 	hb.dropped   = hb_dropped;
 	ctl_port_counters(&hb.counters);
+	ctl_fill_sof(&hb);
 
 	memcpy(h->magic, ctl_magic, sizeof(h->magic));
 	h->version = CTL_VERSION;

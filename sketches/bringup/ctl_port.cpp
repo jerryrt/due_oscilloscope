@@ -379,3 +379,84 @@ extern "C" void TC2_Handler(void)
 	(void)TC0->TC_CHANNEL[2].TC_SR;
 	ctl_heartbeat_emit_isr();
 }
+
+/* ------------------------------------------------------------------ */
+/* Issue #52: the USB host's frame clock                               */
+/* ------------------------------------------------------------------ */
+/*
+ * The same reference Track B keeps, programmed independently as
+ * invariant 3 requires. Both tracks read UOTGHS_DEVFNUM; neither shares
+ * the code that does it.
+ *
+ * The gate differs on purpose. Track B asks usb_cdc_configured(),
+ * because it owns its enumeration state. This track does not - the
+ * Arduino core owns it - so the reference is gated on EVIDENCE instead:
+ * FNUM advancing is what a host emitting SOF looks like, and nothing
+ * else produces it. That is the better test of the two and it is only
+ * an accident of ownership that Track B does not use it.
+ */
+static uint32_t sof_frames_ext;
+static uint32_t sof_edge_frames;
+static uint32_t sof_edge_us;
+static uint32_t sof_epoch_us;   /* micros() at the FIRST edge */
+static uint32_t sof_ambiguous_n;
+static uint16_t sof_last_fnum;
+static uint32_t sof_last_us;
+static bool     sof_started;
+
+/* Called once per main-loop pass. One register read and a comparison. */
+void ctl_port_sof_poll(void)
+{
+	uint32_t fn = UOTGHS->UOTGHS_DEVFNUM;
+	uint16_t cur = (uint16_t)((fn & UOTGHS_DEVFNUM_FNUM_Msk) >>
+	                          UOTGHS_DEVFNUM_FNUM_Pos);
+	uint32_t now = micros();
+
+	if (!sof_started) {
+		/* Not "configured" but "moving": two polls that differ are a
+		 * host emitting SOF, and a stuck value is not. */
+		if (cur != sof_last_fnum && sof_last_fnum != 0u) {
+			sof_started = true;
+			/* frames count from here, so dev_us must too - see
+			 * drivers/clockref.c for what a wrong epoch looks
+			 * like when measured. */
+			sof_epoch_us = now;
+			sof_edge_us = now;
+		}
+		sof_last_fnum = cur;
+		sof_last_us = now;
+		return;
+	}
+
+	/* FNUM wraps every 2048 frames; a pass that blocked longer than
+	 * that cannot be resolved, so it is counted rather than guessed. */
+	if ((uint32_t)(now - sof_last_us) > 1500000u)
+		sof_ambiguous_n++;
+
+	if (cur != sof_last_fnum) {
+		sof_frames_ext += (uint32_t)((cur - sof_last_fnum) & 2047u);
+		sof_edge_frames = sof_frames_ext;
+		sof_edge_us = now;
+	}
+	sof_last_fnum = cur;
+	sof_last_us = now;
+}
+
+extern "C" int ctl_port_sof(uint32_t *frames, uint32_t *dev_us,
+                            uint32_t *ambiguous)
+{
+	if (ambiguous)
+		*ambiguous = sof_ambiguous_n;
+	if (!sof_started)
+		return 0;
+	if (frames)
+		*frames = sof_edge_frames;
+	if (dev_us)
+		*dev_us = (uint32_t)(sof_edge_us - sof_epoch_us);
+	return 1;
+}
+
+extern "C" uint32_t ctl_port_mck_hz(void)
+{
+	return SystemCoreClock;
+}

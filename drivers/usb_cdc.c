@@ -903,6 +903,11 @@ bool usb_cdc_ready(void)
 	return usb_configured != 0 && (usb_line_state & 0x01) != 0;
 }
 
+bool usb_cdc_configured(void)
+{
+	return usb_configured != 0;
+}
+
 /* ------------------------------------------------------------------ */
 /* Interrupt and init                                                  */
 /* ------------------------------------------------------------------ */

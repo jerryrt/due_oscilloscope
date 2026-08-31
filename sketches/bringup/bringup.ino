@@ -2074,6 +2074,8 @@ const console_binding_t console_bindings[] = {
 	{ 0, 0 },
 };
 
+void ctl_port_sof_poll(void);
+
 void loop()
 {
 	/*
@@ -2083,6 +2085,11 @@ void loop()
 	 * loop it measures by a fifth.
 	 */
 	load_tick();
+
+	/* Issue #52: one register read, extending FNUM past its 11
+	 * bits. Must be more often than its 2.048 s wrap; this loop
+	 * runs at ~75 k passes/s, so that is not in doubt. */
+	ctl_port_sof_poll();
 
 	static uint32_t led_usb_at;
 	static uint32_t led_in_last, led_out_last;

@@ -68,7 +68,9 @@ _OCC = struct.Struct("<IIIIIBBH")
 _RATE_PAGE = struct.Struct("<BBHHH")
 _TEMP = struct.Struct("<IIHHHBBII")
 #: seq, uptime_ms, period_ms, dropped, then ctl_counters_t whole.
-_HEARTBEAT = struct.Struct("<4I" + _COUNTERS.format.lstrip("<"))
+#: ctl_heartbeat_t. The trailing "IIIB3xI" is issue #52's USB frame
+#: reference and the device's running estimate of its own MCK.
+_HEARTBEAT = struct.Struct("<4I" + _COUNTERS.format.lstrip("<") + "IIIB3xI")
 
 # Matches CTL_TEMP_SAMPLES_* in lib/due_shared/src/ctl_wire.h. Passed
 # through rather than enforced here: the device clamps and reports what
@@ -545,7 +547,8 @@ class Control:
     def _decode_heartbeat(self, payload):
         f = _HEARTBEAT.unpack(payload)
         seq, uptime_ms, period_ms, dropped = f[:4]
-        c = f[4:]
+        c = f[4:-5]
+        sof_frames, sof_dev_us, sof_ambiguous, sof_available, mck_meas = f[-5:]
         return {
             "seq": seq, "uptime_ms": uptime_ms, "period_ms": period_ms,
             "dropped": dropped,
@@ -555,6 +558,31 @@ class Control:
                 "endtx": c[6], "spans": c[7], "partial": c[8],
                 "occ_min": c[9], "svc_calls": c[10], "loop_passes": c[11],
                 "run_us": c[12], "abandoned": c[13], "drain_polls": c[14],
+            },
+            # Issue #52. The USB host emits SOF at 1 kHz whenever this
+            # board is powered, because it is powered BY that host - so a
+            # frequency reference is a standing property of the design.
+            #
+            # `mck_meas_hz` is CUMULATIVE since the port was configured,
+            # and 0 means "not yet" rather than zero hertz: the device
+            # suppresses it below a minute of span, because the edge
+            # latch resolves to one main-loop pass (~8 us at each end)
+            # and that is 600 ppm over a 20 ms beat against a ~10 ppm
+            # effect.
+            #
+            # Difference two beats for a WINDOWED figure; the raw pair is
+            # here for exactly that. The device reports the cumulative
+            # one because it is the figure a host that connected late
+            # cannot reconstruct for itself.
+            #
+            # `sof_ambiguous` non-zero means `sof_frames` is a lower
+            # bound, not a count - refuse to compute a frequency then,
+            # or it reads slow and looks like a real result.
+            "sof": {
+                "frames": sof_frames, "dev_us": sof_dev_us,
+                "ambiguous": sof_ambiguous,
+                "available": bool(sof_available),
+                "mck_meas_hz": mck_meas or None,
             },
         }
 

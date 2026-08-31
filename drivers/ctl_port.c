@@ -17,6 +17,7 @@
 #include "track_id.h"
 #include "acq.h"
 #include "bsp.h"
+#include "clockref.h"
 #include "load.h"
 #include "analog.h"
 #include "stream.h"
@@ -320,4 +321,27 @@ void TC2_Handler(void)
 {
 	(void)TC0->TC_CHANNEL[2].TC_SR;          /* ack, or it re-enters */
 	ctl_heartbeat_emit_isr();
+}
+
+
+/* Issue #52. The pair the main loop latched at a SOF edge. */
+int ctl_port_sof(uint32_t *frames, uint32_t *dev_us, uint32_t *ambiguous)
+{
+	uint32_t f = 0u, us = 0u;
+	bool ok = clockref_read(&f, &us, (uint16_t *)0, (uint8_t *)0);
+
+	if (ambiguous)
+		*ambiguous = clockref_ambiguous();
+	if (!ok)
+		return 0;
+	if (frames)
+		*frames = f;
+	if (dev_us)
+		*dev_us = us;
+	return 1;
+}
+
+uint32_t ctl_port_mck_hz(void)
+{
+	return SystemCoreClock;
 }

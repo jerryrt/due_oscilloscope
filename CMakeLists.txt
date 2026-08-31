@@ -52,6 +52,7 @@ add_executable(baremetal_bringup EXCLUDE_FROM_ALL
     drivers/gen.c
     drivers/play.c
     drivers/usb_cdc.c
+    drivers/clockref.c
     drivers/stream.c
     lib/due_shared/src/ctl.c
     drivers/ctl_port.c

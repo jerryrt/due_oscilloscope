@@ -219,6 +219,26 @@ void ctl_port_gen_set(uint8_t shape, uint16_t points, uint8_t sync,
 int ctl_port_temp(ctl_temp_t *out, uint16_t samples);
 
 /*
+ * The USB frame reference, issue #52. Fills `frames` and `dev_us` from a
+ * pair latched AT a SOF edge, and `ambiguous` with the count of polls too
+ * far apart to resolve FNUM's 2.048 s wrap. Returns 0 when the port has
+ * never been configured - and MUST NOT fill zeroes and return non-zero,
+ * because zero is a measurement and a host cannot tell it from an
+ * absence.
+ *
+ * Every track implements this: the reference is a property of being
+ * USB-powered, which both tracks are, and a capability on one track and
+ * not the other is debt with a date on it rather than a property of the
+ * track (invariant 3).
+ */
+int ctl_port_sof(uint32_t *frames, uint32_t *dev_us, uint32_t *ambiguous);
+
+/* The clock every rate here descends from, as the track knows it. Shared
+ * code must not assume 78 MHz - that assumption is what issue #52 exists
+ * to check. */
+uint32_t ctl_port_mck_hz(void);
+
+/*
  * Start, retune or stop the timer that drives the heartbeat.
  *
  * `period_ms` of 0 stops it; anything else is a cadence the caller has
