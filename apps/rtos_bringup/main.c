@@ -532,6 +532,16 @@ void vApplicationGetTimerTaskMemory(StaticTask_t **tcb, StackType_t **stack,
 int main(void)
 {
 	SystemInit();
+
+	/* WDT is enabled out of reset on this part and will reset the board
+	 * roughly every 15 s if not serviced. Nothing here services it -
+	 * and FreeRTOS does not service it either, which is the trap: a
+	 * kernel that keeps ticking through the reset looks like a healthy
+	 * board right up to the moment the link dies. Track B disables it
+	 * in the same place and this track did not, which is objective
+	 * 0-C's control-link defect in one line. */
+	WDT->WDT_MR = WDT_MR_WDDIS;
+
 	clock_set_mck(MCK_MULA_DEFAULT);
 
 	/*
