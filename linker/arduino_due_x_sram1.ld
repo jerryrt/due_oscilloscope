@@ -9,8 +9,12 @@
  *
  * because platform.txt links with "-T{build.variant.path}/{build.ldscript}"
  * and boards.txt sets build.ldscript to the stock script - an ordinary
- * build property, substitutable exactly like build.f_cpu. tools/sketch.sh
- * computes the relative path; do not hand-write it.
+ * build property, substitutable exactly like build.f_cpu.
+ *
+ * Nothing computes a relative path any more. cmake/track_a.cmake links
+ * this script directly (#55), so the arduino-cli wrapper that had to
+ * resolve it against the *installed variant directory* - and its
+ * silence when it got that wrong - is gone with it.
  *
  * The two changes, both required and neither optional:
  *

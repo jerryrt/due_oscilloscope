@@ -219,8 +219,7 @@ def test_nothing_else_builds_behind_the_enforcement():
     SPAWN = re.compile(r"subprocess\.(run|call|check_call|check_output|Popen)"
                        r"\(", re.S)
     TOOL = re.compile(r"arduino-cli|\bcmake\b")
-    ALLOWED = {"tools/sketch.py", "host/measure.py", "tools/toolchain.py",
-               "tools/flash.py"}
+    ALLOWED = {"host/measure.py", "tools/toolchain.py", "tools/flash.py"}
 
     ignored = _ignored_dirs()
 

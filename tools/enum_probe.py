@@ -8,21 +8,26 @@ On failure, capture `u` and `E` from the programming port BEFORE
 re-flashing - that is the evidence the first two occurrences did not
 produce.
 """
-import os, subprocess, sys, time
+import os, sys, time
 REPO = r"C:\Jerry.Projects\due_oscilloscope"
 sys.path.insert(0, os.path.join(REPO, "host"))
 import measure
 
-PY_EXE = os.path.join(REPO, ".venv", "Scripts", "python.exe")
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 12
 fails = 0
 
 for i in range(N):
-    r = subprocess.run([PY_EXE, os.path.join(REPO, "tools", "sketch.py"),
-                        "upload", "COM7"],
-                       capture_output=True, text=True, cwd=REPO)
-    if r.returncode != 0:
-        print("%2d  FLASH FAILED: %s" % (i, r.stdout[-200:]))
+    # measure.flash() rather than sketch.py, which is gone (#55).
+    #
+    # windows-desk's tool and windows-desk's hardcoded COM7, left as
+    # they are - only the flash call is changed, because sketch.py was
+    # deleted underneath it and a hardcoded caller is how a deletion
+    # becomes a broken tool nobody finds until they next need it.
+    # measure.flash() is the one place that knows how each track builds.
+    try:
+        measure.flash(track="a", build=True, control="COM7")
+    except Exception as e:                               # noqa: BLE001
+        print("%2d  FLASH FAILED: %s" % (i, e))
         continue
     time.sleep(1.0)
     b = None

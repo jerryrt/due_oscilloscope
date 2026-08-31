@@ -20,13 +20,10 @@ import argparse, json, os, re, statistics, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(HERE, "host"))
+import measure                                           # noqa: E402
 import serial                                            # noqa: E402
 
 PROG = "/dev/cu.usbmodem141201"
-FLASH = {
-    "a": ["tools/sketch.sh", "upload"],
-    "b": ["tools/flash.sh", "build/baremetal_bringup.bin"],
-}
 
 
 def read_temp(samples):
@@ -47,8 +44,15 @@ def read_temp(samples):
 
 
 def arm(track, samples):
-    subprocess.run(FLASH[track], cwd=HERE, check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # measure.flash() rather than a per-track argv table.
+    #
+    # This held its own {"a": sketch.sh, "b": flash.sh} map, which is a
+    # second place that knows how each track is built - and #55 has just
+    # spent a session establishing that a second way to build Track A is
+    # exactly the thing to remove. It was also about to break: sketch.sh
+    # is being deleted, and a hardcoded caller is how a deletion turns
+    # into a broken tool nobody notices until they next need it.
+    measure.flash(track=track, build=True)
     return read_temp(samples)
 
 

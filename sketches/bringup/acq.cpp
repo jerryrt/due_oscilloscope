@@ -16,9 +16,10 @@
  * 4096-byte transfer out of bank 0 costs 439 ADC overruns per 4 s at
  * the full rate, and moving the ring halved it.
  *
- * The placement needs linker/arduino_due_x_sram1.ld, passed with
- * --build-property build.ldscript=... - see tools/sketch.sh. Building
- * without it puts this in .bss, which still links and still runs.
+ * The placement needs linker/arduino_due_x_sram1.ld, which
+ * cmake/track_a.cmake links directly (#55). Building without it puts
+ * this in .bss, which still links and still runs - which is why the
+ * script is a line in the build rather than a caller's argument.
  */
 acq_slot_t acq_slot[ACQ_NBUF] __attribute__((section(".sram1")));
 

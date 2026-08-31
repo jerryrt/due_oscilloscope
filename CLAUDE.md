@@ -1023,9 +1023,10 @@ tracks build there and `docs/windows.md` already said so.
 
 **Every build is a full build, and it is enforced rather than
 remembered.** `CMakeLists.txt`'s `enforce_clean_build` target cleans
-before every build of the firmware, and `tools/sketch.py` passes
-`--clean` to arduino-cli; `tests/test_clean_build.py` fails if either is
-removed or if a third build path appears. The cost is 0.6 s for Track B
+before every build of the firmware, and every track goes through it -
+`firmware`, `firmware_track_a` and `firmware_rtos` are the same shape;
+`tests/test_clean_build.py` fails if the clean step is removed or if a
+second build path appears. The cost is 0.6 s for Track B
 and 2.2 s for Track A against measurement runs of nine minutes to eight
 hours - and an incremental build has already shipped a mixed-revision
 image here, where the capability word carried a new bit and the
@@ -1040,19 +1041,13 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
 cmake --build build -j
 tools/flash.sh build/baremetal_bringup.bin
 
-# Track A: reference oracle. Use the wrapper - the sketch needs two
-# build properties and both are silent when missing. build.f_cpu MUST
-# match the runtime clock, because micros() divides by it; and
-# build.ldscript pins the capture ring to SRAM bank 1, whose path has to
-# be computed relative to the *installed variant directory*.
-tools/sketch.sh compile
-tools/sketch.sh upload
-
-# Track A, the same way Track B is built (issue #55). Opt-in, and it
-# does not invoke arduino-cli or its bundled GCC 4.8.3 at all - only the
-# Arduino core *sources*, compiled by this project's own xPack 15.2.1.
-# The two build properties above become lines in cmake/track_a.cmake,
-# so neither can be silently forgotten.
+# Track A: reference oracle, built the same way Track B is (issue #55).
+# arduino-cli and its bundled GCC 4.8.3 are not invoked at all - only the
+# Arduino core *sources*, compiled by this project's own xPack. The two
+# build properties that used to be a wrapper's job are lines in
+# cmake/track_a.cmake, so neither can be silently forgotten: build.f_cpu
+# MUST match the runtime clock because micros() divides by it, and
+# build.ldscript pins the capture ring to SRAM bank 1.
 cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
       -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
 cmake --build build-a --target firmware_track_a
@@ -1111,13 +1106,23 @@ platform-specific wheels and does not travel.
 host; the driver still reports a version, so the failure only appears
 when something is actually compiled. See `docs/toolchain.md`.
 
-**Track A has two build paths right now, and that is temporary.** The
-`arduino-cli` one above is still what `measure.flash()` and the suite
-use; the CMake one is verified (Track A suite 572 passed / 1 failure
-that is not the toolchain's, against 557 passed for arduino-cli) but
-switching the suite over changes what every bench needs installed, so it
-is waiting on windows-desk and linux-x1 confirming they can build it -
-issue #55. **Do not add a third.**
+**Track A has one build path, as of 2026-08-31 (issue #55).**
+`measure.flash()` and the suite build `firmware_track_a` in `build-a`;
+`tools/sketch.py` and its shim are deleted and `arduino-cli` is not
+invoked by anything. **A bench needs `build-a` configured**, exactly as
+it already needs `build-c` for Track C - `measure.flash()` raises a
+`BoardError` naming the configure line if it is not. **Do not add a
+second.**
+
+What that costs, said plainly: **the project no longer has a second
+compiler for Track A.** GCC 4.8.3 was the only other code generator here
+and #5's severity is a lottery over code layout, so it looked like a
+reason to keep the old path. It is not - three benches on one xPack
+release already produce three different layouts, and the same release on
+two hosts produced two (`be2de31867bfca8a` here against
+`a49d8fb51ba4c391` on windows-desk, with `text`/`data`/`bss` identical
+to the byte). Layout diversity is not scarce and did not need a 2014
+compiler.
 
 Two things that cost real time there and are not Track A's alone:
 `include_directories()` in CMake applies to every target defined after
