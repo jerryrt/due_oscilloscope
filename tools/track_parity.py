@@ -94,6 +94,27 @@ def init_sequence(path):
     is an Arduino sketch - the core supplies main() and calls setup()
     once, so they are the same position in the program under different
     names.
+
+    **This compares call NAMES, so read a divergence before acting on
+    it.** A track that does the same job better under another name reads
+    as divergent here, and two of the three currently reported are that:
+
+      "track C main() does not do: banner()"
+
+    Track C ends with console_identity() and console_flush() instead.
+    That is the *better* arrangement - CLAUDE.md says "ask a board what
+    it is with `v`, not with the banner", and invariant 8 prices the
+    banner at 89 ms of blocked main loop. Adding banner() to Track C to
+    silence this line would make the image worse.
+
+    A-vs-B init is the same story at larger scale: Track A is an Arduino
+    sketch, so pinMode/analogReadResolution stand where Track B writes
+    registers, and acq_init/gen_init are adc_init/dac_init renamed. Five
+    of its six differences are decomposition.
+
+    This is why tests/test_track_parity.py asserts nothing about init.
+    The console table is a shared contract and is asserted; init is not
+    one, is reported only, and needs a reader.
     """
     if not path.exists():
         return None
