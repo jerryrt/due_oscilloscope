@@ -1,0 +1,89 @@
+{
+ "bench": "windows-desk",
+ "rc": 56,
+ "sps": 696428,
+ "lengths_s": [
+  3.0,
+  45.0
+ ],
+ "reps": 5,
+ "n": 10,
+ "rows": [
+  {
+   "rep": 0,
+   "requested_s": 3.0,
+   "device_s": 2.99037,
+   "host_s": 3.006194591522217,
+   "under": 0
+  },
+  {
+   "rep": 0,
+   "requested_s": 45.0,
+   "device_s": 44.988811,
+   "host_s": 45.00669193267822,
+   "under": 0
+  },
+  {
+   "rep": 1,
+   "requested_s": 45.0,
+   "device_s": 44.98963,
+   "host_s": 45.005552530288696,
+   "under": 0
+  },
+  {
+   "rep": 1,
+   "requested_s": 3.0,
+   "device_s": 2.991777,
+   "host_s": 3.007575750350952,
+   "under": 0
+  },
+  {
+   "rep": 2,
+   "requested_s": 3.0,
+   "device_s": 2.991778,
+   "host_s": 3.006976366043091,
+   "under": 0
+  },
+  {
+   "rep": 2,
+   "requested_s": 45.0,
+   "device_s": 44.989652,
+   "host_s": 45.0055365562439,
+   "under": 0
+  },
+  {
+   "rep": 3,
+   "requested_s": 45.0,
+   "device_s": 44.990304,
+   "host_s": 45.00558638572693,
+   "under": 0
+  },
+  {
+   "rep": 3,
+   "requested_s": 3.0,
+   "device_s": 2.990262,
+   "host_s": 3.006696939468384,
+   "under": 0
+  },
+  {
+   "rep": 4,
+   "requested_s": 3.0,
+   "device_s": 2.98884,
+   "host_s": 3.005546808242798,
+   "under": 0
+  },
+  {
+   "rep": 4,
+   "requested_s": 45.0,
+   "device_s": 44.988898,
+   "host_s": 45.00572943687439,
+   "under": 0
+  }
+ ],
+ "slope_device_over_host": 0.9999912454686211,
+ "intercept_s": -0.015966366636344986,
+ "host_overhead_ms": 15.966506415626414,
+ "residual_sd_ms": 0.7427331600720293,
+ "implied_mck_hz": 77999317.14655244,
+ "ppm_from_nominal": -8.754531378940555
+}
