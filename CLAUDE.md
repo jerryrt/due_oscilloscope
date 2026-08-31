@@ -829,6 +829,33 @@ One logical change per commit. Every commit should build.
 
 ## Build
 
+**GCC only, and MSVC never.** Owner ruling, 2026-08-30. `arm-gcc` is the
+compiler this project installs on every platform, and no second C dialect
+is admitted anywhere - not for firmware, not for a host-side test, not
+because one is already on the machine.
+
+It was proposed once, from `windows-desk`, on the grounds that `cl.exe`
+was installed there and using it would avoid a machine-setup step for
+`tests/test_framer_close.py`. Measured before it was refused, and both
+premises failed: `cl.exe` needs `INCLUDE`/`LIB` for the CRT and Windows
+SDK, so it does not work standalone; and with those supplied it still
+cannot build `lib/due_shared/src`, because `frame.h` declares the frame
+header `__attribute__((packed))` and MSVC wants `#pragma pack`. The
+wire-layout `static_assert`s fail under it, correctly.
+
+So admitting MSVC would have meant changing the packing semantics of the
+shared wire-contract header - the file invariant 3 carved out as shared
+precisely to stop the frame layout acquiring second homes. "A compiler is
+already installed" is not a reason to acquire one.
+
+**A cross compiler is not a host compiler.** `arm-none-eabi-gcc`
+`-dumpmachine` says `arm-none-eabi` and the toolchain ships no native
+binaries alongside it, so it cannot serve a test that *runs* what it
+builds. `test_framer_close.py` builds and executes the harness twice, real
+and mutant, because its power is the point of it. A bench with no host
+GNU compiler skips that test; on 2026-08-30 that is `windows-desk`, and
+it is a known capability gap rather than an oversight.
+
 Both tracks work. **Ask `tools/toolchain.py` where the tools are; do
 not assume `PATH`.** `toolchains.json` resolves `arm-none-eabi-gcc`,
 `bossac`, `arduino-cli`, `cmake` and `ninja` by pattern, and on Windows
