@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""Per-function mnemonic hashes: what the compiler GENERATED, not where it put it.
+
+Companion to `tools/image_fingerprint.py`, and it answers the question
+that one could not.
+
+`image_fingerprint.py` hashes the defined-symbol address map, which is
+the right instrument for "is this the same image". It is the wrong one
+for "does this image run the same instructions", and #5 needs the
+second. Measured on 2026-08-31, one commit, three benches:
+
+    linux-x1      GCC 14.2.1 Debian   layout c4cd8445987b5261
+    windows-desk  ARM GNU 14.3.1      layout be84df15f77a3e36
+    windows-desk  xPack 15.2.1        layout a49d8fb51ba4c391
+
+All three layouts differ. The first two produce **identical #5 site
+sets** and the third does not, so the site set is not a function of the
+layout. Two builds can disagree about every address and agree about
+every instruction; that is the common case across a compiler point
+release, and it is invisible to an address-map hash.
+
+**Mnemonics, not bytes, and not addresses.** The byte column moves under
+relocation - CLAUDE.md records objdump reporting 152 differing functions
+where 5 differ - and the operand column carries addresses for the same
+reason. The mnemonic sequence is what the core fetches and executes, and
+it is stable under relocation by construction.
+
+Per function rather than whole-image, because a whole-image hash says
+only "different" and the useful answer is *which* code differs. On the
+pair above, 251 of 294 shared functions are identical and 43 differ; the
+43 include `DACC_Handler`, `acq_start` and `build_table` - the DAC path
+#5 draws from - while `ADC_Handler`, `UOTGHS_Handler` and `main` are
+identical. That is a finding. "The images differ" is not.
+
+Two benches can compare without sharing an ELF: the hashes travel in a
+comment and the disassembly does not have to.
+
+    python3 tools/image_mnemonics.py build/baremetal_bringup.elf
+    python3 tools/image_mnemonics.py a.elf --only DACC_Handler,acq_start
+    python3 tools/image_mnemonics.py a.elf --compare b.elf
+"""
+import argparse
+import collections
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+
+# `0800012c <DACC_Handler>:`
+_FUNC = re.compile(r"^[0-9a-fA-F]+\s+<([^>]+)>:")
+
+# `    8000130:\t4770      \tbx\tlr`  - fields are tab separated, and the
+# mnemonic is the first token of the third field. A line with only two
+# fields is a raw-data word inside a literal pool and carries no
+# mnemonic, which is why this is not a blind split.
+_INSN = re.compile(r"^\s*[0-9a-fA-F]+:\s*\t[^\t]*\t\s*(\S+)")
+
+
+def _objdump():
+    """The objdump beside the ARM toolchain this repo resolves.
+
+    Not `objdump` off PATH: on a bench with a host binutils that is the
+    wrong architecture, and on Windows there is usually none at all.
+    """
+    try:
+        import toolchain
+        d = toolchain.arm_toolchain_dir()
+    except Exception:                                        # noqa: BLE001
+        d = None
+    if not d:
+        return "arm-none-eabi-objdump"
+    for cand in ("arm-none-eabi-objdump.exe", "arm-none-eabi-objdump"):
+        p = os.path.join(d, cand)
+        if os.path.isfile(p):
+            return p
+    return "arm-none-eabi-objdump"
+
+
+def mnemonics(elf):
+    """{function: [mnemonic, ...]} in program order."""
+    out = subprocess.run([_objdump(), "-d", elf],
+                         capture_output=True, text=True, check=True).stdout
+    funcs = collections.OrderedDict()
+    cur = None
+    for line in out.splitlines():
+        m = _FUNC.match(line)
+        if m:
+            cur = m.group(1)
+            funcs.setdefault(cur, [])
+            continue
+        if cur is None:
+            continue
+        i = _INSN.match(line)
+        if i:
+            funcs[cur].append(i.group(1))
+    return funcs
+
+
+def _h(seq):
+    return hashlib.sha256(" ".join(seq).encode()).hexdigest()[:12]
+
+
+def report(elf, only=None):
+    f = mnemonics(elf)
+    if only:
+        f = collections.OrderedDict((k, v) for k, v in f.items() if k in only)
+    whole = hashlib.sha256(
+        "|".join(f"{k}:{' '.join(v)}" for k, v in sorted(f.items()))
+        .encode()).hexdigest()[:16]
+    return {
+        "elf": os.path.basename(elf),
+        "n_functions": len(f),
+        "n_instructions": sum(len(v) for v in f.values()),
+        "mnemonics": whole,
+        "per_function": {k: {"n": len(v), "sha": _h(v)} for k, v in f.items()},
+    }
+
+
+def compare(a, b):
+    fa, fb = mnemonics(a), mnemonics(b)
+    shared = sorted(set(fa) & set(fb))
+    same = [k for k in shared if fa[k] == fb[k]]
+    diff = [k for k in shared if fa[k] != fb[k]]
+    return {
+        "a": os.path.basename(a),
+        "b": os.path.basename(b),
+        "shared": len(shared),
+        "identical": len(same),
+        "differing": len(diff),
+        "only_in_a": sorted(set(fa) - set(fb)),
+        "only_in_b": sorted(set(fb) - set(fa)),
+        # Same length and a different sequence is the interesting case:
+        # the compiler chose other instructions rather than more of them,
+        # which a size comparison reports as no change at all.
+        "differing_functions": [
+            {"name": k, "n_a": len(fa[k]), "n_b": len(fb[k]),
+             "same_length": len(fa[k]) == len(fb[k])}
+            for k in diff],
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("elf")
+    ap.add_argument("--compare", help="a second ELF; report per-function agreement")
+    ap.add_argument("--only", help="comma-separated function names")
+    args = ap.parse_args()
+
+    only = set(args.only.split(",")) if args.only else None
+    if args.compare:
+        print(json.dumps(compare(args.elf, args.compare), indent=2))
+    else:
+        print(json.dumps(report(args.elf, only), indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
