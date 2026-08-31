@@ -160,6 +160,28 @@ def fisher(a, b, c, d):
     return min(total, 1.0)
 
 
+def _ratio(r):
+    """The device-side ratio, whichever producer wrote the row.
+
+    `issue48_lattice.py` and `issue48_nousb.py` write `ratio`;
+    `issue48_hostfeed.py` writes `dev_ratio` beside a `host_ratio`. Only
+    the device-side one belongs in this analysis - it is
+    `consumed / run_us` with no host clock in it, which is what makes the
+    modes the silicon's rather than the host's, and on a backpressuring
+    host `host_ratio` is flat at 1.000 and would cluster into one mode
+    and report "single-moded" on a rate that is plainly bimodal.
+
+    So this prefers `dev_ratio` and never falls back to `host_ratio`.
+    A row with neither is an error rather than a default.
+    """
+    for k in ("ratio", "dev_ratio"):
+        if k in r:
+            return r[k]
+    raise KeyError(
+        "row has no device-side ratio (looked for 'ratio', 'dev_ratio'); "
+        "keys present: %s" % sorted(r))
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -210,7 +232,7 @@ def main():
             print("too few clean reps to say anything\n")
             continue
 
-        groups = cluster([r["ratio"] for r in rs], args.gap)
+        groups = cluster([_ratio(r) for r in rs], args.gap)
         print(f"modes found: {len(groups)}")
         for g in groups:
             print(f"  ratio {sum(g)/len(g):.6f}  n={len(g):>3}  "
@@ -222,8 +244,8 @@ def main():
 
         # The deep mode is the lowest-ratio cluster: most conversions lost.
         deep = set(groups[0])
-        deep_reps = [r["rep"] for r in rs if r["ratio"] in deep]
-        rest_reps = [r["rep"] for r in rs if r["ratio"] not in deep]
+        deep_reps = [r["rep"] for r in rs if _ratio(r) in deep]
+        rest_reps = [r["rep"] for r in rs if _ratio(r) not in deep]
         print(f"\ndeep mode at ratio {sum(groups[0])/len(groups[0]):.6f}: "
               f"{len(deep_reps)} of {len(rs)} reps "
               f"({100.0*len(deep_reps)/len(rs):.1f}%)")
@@ -241,7 +263,7 @@ def main():
                   + f" — {'significant' if p < 0.05 else 'NOT significant'} "
                     f"at 0.05")
 
-        seq = [1 if r["ratio"] in deep else 0 for r in rs]
+        seq = [1 if _ratio(r) in deep else 0 for r in rs]
         nr, exp, rz, rp = runs_test(seq)
         if rz is None:
             print("\nruns test: too few of one mode")
