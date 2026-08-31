@@ -66,6 +66,70 @@ Implement `_write()`, plus stubs for `_sbrk`, `_close`, `_fstat`,
 `-specs=nano.specs`. Add `-u _printf_float` only if `%f` is genuinely
 needed; it pulls in a large amount of code.
 
+### Track B does not use printf at all any more
+
+Issue #49, landed 2026-08-30. The image contains **no `printf` and no
+`snprintf`**, and therefore **no allocator**: `nm --defined-only` finds
+none of `malloc`, `_malloc_r`, `free`, `realloc`, `calloc`, `_sbrk` or
+`sbrk_aligned`. `tests/test_no_heap.py` fails the build if any of them
+comes back, so this is enforced rather than remembered.
+
+What replaced it is `lib/due_shared/src/console_out.{h,c}` — typed
+emitters with a stated per-call byte budget and no format string, since
+a format string is parsed at runtime and makes the cost of a call a
+function of the string as well as the values. Both tracks compile it.
+Text went 44,124 → 38,372 bytes.
+
+The retargeting above is still how output reaches the UART; what changed
+is that nothing goes through a `FILE` any more. `console_write` is the
+port and it is not `fputs(s, stdout)`.
+
+**The lesson, which is about searching and not about printf.** The plan
+on the issue was "delete the printf calls, that drops `findfp`, that
+drops the heap". It took **four** removals and only the first was
+predicted:
+
+1. **The console port had to come off stdio first.** `console_write` was
+   `fputs(s, stdout)`, so migrating 121 call sites off `printf` would
+   have removed nothing at all — the thing they migrate *to* pulled
+   `findfp` and therefore `_malloc_r`.
+2. The 121 `printf` calls themselves.
+3. **One `setvbuf(stdout, NULL, _IONBF, 0)`** in `main()`, configuring a
+   stream that no longer had a single writer. setvbuf allocates the
+   buffer it is asked about, so that one line held `__sinit`,
+   `_fflush_r`, `__swhatbuf_r` and `malloc`. **Deleting it was worth
+   2,196 bytes** — a little under half of the whole exercise.
+4. Every `snprintf`. `nano-svfprintf.o` references `_malloc_r`,
+   `_free_r` and `_realloc_r` *whether or not the path is reachable*, so
+   the linker takes the allocator on a call that provably never
+   allocates. "snprintf builds a fake FILE on the stack and never
+   allocates" is true about runtime behaviour and false about what gets
+   linked, and only the second matters to a guard that reads the image.
+
+**So: the link map names what pulls the allocator, and the call sites
+only answer it by inference.**
+
+    grep -n -B1 -A1 malloc build/baremetal_bringup.map | head -40
+
+The line **under** each archive member names the object that asked for
+it. Both of the unpredicted pulls were found that way in seconds, after
+a first pass reasoning from call sites got it wrong twice.
+
+**One migration hazard worth knowing, because a compiler catches only
+some of it.** Replacing one statement with several turns a braceless
+body into a bug:
+
+    for (int i = 0; i < n; i++)
+            con_str(line); con_nl();
+
+That is `printf("%s\n", line)` translated correctly and then destroyed
+by the missing braces — n lines become n strings and a single newline.
+Three such sites failed to compile because they orphaned a following
+`if`; **two compiled clean and were wrong**, and one of those two was
+`measure_printf`, whose entire output is the 3618 µs figure this file
+quotes. **The check is "did any braceless body gain a statement", not
+"did it build".**
+
 ### The trap
 
 **printf is slow and blocking.** At 115200 baud a 40-character line takes
