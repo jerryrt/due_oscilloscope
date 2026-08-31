@@ -32,6 +32,7 @@ hostname, and the output file is named after it.
 import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
+import provenance
 
 
 def main():
@@ -53,6 +54,8 @@ def main():
 
     hz = measure.hz_for(a.rc)
     board = measure.Board(settle=3.0)
+    # What the board actually is, and what produced it (issue #53).
+    prov = provenance.run_fields(board)
     rows = []
     print(f"RC {a.rc} = {hz} sps, drain {a.drain}s\n")
     for secs in a.seconds:
@@ -61,7 +64,7 @@ def main():
             r = measure.run_play(board, dac_sps=hz, seconds=secs,
                                  drain_s=a.drain)
             d = r.host_deficit
-            row = dict(bench=bench, host=host, track="b", issue=47,
+            row = dict(bench=bench, host=host, **prov, issue=47,
                        test="deficit-vs-duration", run=i, rc=a.rc,
                        dac_sps=hz, seconds=secs, drain_s=a.drain,
                        host_tx_bytes=r.host_tx_bytes,

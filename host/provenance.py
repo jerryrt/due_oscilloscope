@@ -468,3 +468,31 @@ def check_probe(p, ch, seen_vpp, expected_vpp, tolerance=0.15):
             f"check what is fitted")
     p.setdefault("warnings", []).append(note)
     return note
+
+
+def run_fields(board=None):
+    """The per-row provenance a record-writing tool should carry.
+
+    Nine tools wrote `track="b"` as a literal, so every Track A run they
+    recorded was labelled Track B (issue #53). A missing field is a gap;
+    a wrong one is a trap, because a reader has no reason to distrust
+    it - and `records/issue48-tracka-macos.jsonl` is 24 rows of Track A
+    data saying `"b"`, supporting a commit whose claim is about which
+    track it was.
+
+    Ask the board instead. It is one identity query, it cannot disagree
+    with itself, and it costs nothing next to the runs these tools make.
+
+    The commit comes too, for #44's reason: the gaps files carried no
+    image, so when an incidence stopped reproducing nobody could get
+    back to the conditions that produced it. `fw_repo_rev` is what
+    `tools/flash.py` logged for the image on the board; `repo_rev` is
+    the tree the instrument ran from. They are different questions.
+    """
+    p = collect(board=board)
+    return {
+        "track": p.get("track") or "unknown",
+        "fw_repo_rev": p.get("fw_repo_rev"),
+        "repo_rev": p.get("repo_rev"),
+        "fw_build": p.get("build"),
+    }

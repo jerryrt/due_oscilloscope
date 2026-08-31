@@ -48,6 +48,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure  # noqa: E402
+import provenance  # noqa: E402
 
 PLAY_BUF_SAMPLES = 512
 TC_CLOCK_HZ = 39_000_000          # SystemCoreClock / 2 at MCK 78 MHz
@@ -91,6 +92,10 @@ def main():
     rcs = [int(x) for x in args.rcs.split(",") if x.strip()]
 
     board = measure.Board(settle=3.0)
+
+    # What the board actually is, and what produced it (issue #53).
+
+    prov = provenance.run_fields(board)
     rows = []
     try:
         # Interleaved by rep, not blocked by rate, so a drift over the
@@ -100,7 +105,7 @@ def main():
                 row = both_ratios(board, rc, args.seconds)
                 if row is None:
                     continue
-                row.update(rep=rep, bench=args.bench, track="b")
+                row.update(rep=rep, bench=args.bench, **prov)
                 rows.append(row)
                 h = row["host_ratio"]
                 print(f"rep {rep} RC {rc:>3}: dev {row['dev_ratio']:.5f}  "

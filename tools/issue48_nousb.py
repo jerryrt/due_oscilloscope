@@ -40,6 +40,7 @@ hostname, and the output file is named after it.
 import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
+import provenance
 
 A0_CH = 7          # ADC channel 7 is A0; channel 6 is A1 - see docs/awg.md
 
@@ -80,6 +81,10 @@ def main():
     out_path = a.out or f"records/issue48-nousb-{bench}.jsonl"
 
     board = measure.Board(settle=3.0)
+
+    # What the board actually is, and what produced it (issue #53).
+
+    prov = provenance.run_fields(board)
     rows = []
     for label, rates in (("clean", a.clean), ("band", a.band)):
         for dac in rates:
@@ -95,7 +100,7 @@ def main():
                 fs = st.declared_rate_hz or a.adc_hz
                 f, mag = tone_of(vals, fs, f_nom)
                 rows.append(dict(bench=bench, host=host,
-                                 track="b", issue=48, test="internal-gen-rate",
+                                 **prov, issue=48, test="internal-gen-rate",
                                  arm=label, dac_update_hz=dac, run=i,
                                  points=a.points, adc_hz=a.adc_hz, fs=fs,
                                  f_nominal=round(f_nom, 3),

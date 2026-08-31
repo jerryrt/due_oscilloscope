@@ -54,6 +54,7 @@ scope. If REFRESH(2) is measurably worse, that is the cost, quantified.
 import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
+import provenance
 
 MCK = 78e6
 F_R1 = MCK / 1024.0
@@ -82,6 +83,10 @@ def main():
     out_path = a.out or f"records/issue48-droop-{bench}.jsonl"
 
     board = measure.Board(settle=3.0)
+
+    # What the board actually is, and what produced it (issue #53).
+
+    prov = provenance.run_fields(board)
     rows = []
     print(f"idle-hold droop, image={a.label}, dc={a.dc}\n")
     for i in range(1, a.reps + 1):
@@ -109,7 +114,7 @@ def main():
         c1 = measure.goertzel(v, fs, 61000.0)
         c2 = measure.goertzel(v, fs, 91000.0)
         floor = (c1 + c2) / 2.0
-        rows.append(dict(bench=bench, host=host, track="b",
+        rows.append(dict(bench=bench, host=host, **prov,
                          issue=48, test="idle-hold-droop", image=a.label,
                          run=i, dc=a.dc, seconds=a.seconds, fs=fs,
                          dac_sps=a.dac_sps, n=n, sd=round(statistics.pstdev(v), 3),

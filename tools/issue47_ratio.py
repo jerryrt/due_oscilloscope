@@ -42,6 +42,7 @@ import argparse, json, os, platform, statistics, sys, pathlib
 from fractions import Fraction
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
+import provenance
 
 PLAY_BUF_SAMPLES = 512          # drivers/play.h - `consumed` is buffers
 
@@ -71,6 +72,12 @@ def main():
 
 
     board = measure.Board(settle=3.0)
+
+
+    # What the board actually is, and what produced it (issue #53).
+
+
+    prov = provenance.run_fields(board)
     rows = []
     for rc in a.rcs:
         hz = measure.hz_for(rc)
@@ -101,7 +108,7 @@ def main():
             ratios.append(ratio)
             fr = Fraction(ratio).limit_denominator(64)
             d = int(r.host_deficit)
-            rows.append(dict(bench=bench, host=host, track="b",
+            rows.append(dict(bench=bench, host=host, **prov,
                              issue=47, test="device-rate-ratio", rc=rc,
                              run=i, dac_sps=hz, seconds=a.seconds,
                              consumed_bufs=cons, run_us=us,

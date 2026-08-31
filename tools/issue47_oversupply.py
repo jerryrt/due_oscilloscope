@@ -45,6 +45,7 @@ hostname, and the output file is named after it.
 import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
+import provenance
 
 #: drivers/play.h - `consumed` is a buffer count.
 PLAY_BUF_SAMPLES = 512
@@ -68,6 +69,8 @@ def main():
 
     hz = measure.hz_for(a.rc)
     board = measure.Board(settle=3.0)
+    # What the board actually is, and what produced it (issue #53).
+    prov = provenance.run_fields(board)
     rows = []
     print(f"RC {a.rc}: nominal {hz:,} sps\n")
     for i in range(1, a.reps + 1):
@@ -84,7 +87,7 @@ def main():
         dev = cons * PLAY_BUF_SAMPLES / (us / 1e6) if us else None
         pct_lost = 100 * d / r.host_tx_bytes if r.host_tx_bytes else 0.0
         pct_slow = 100 * (1 - dev / hz) if dev else None
-        rows.append(dict(bench=bench, host=host, track="b", issue=47,
+        rows.append(dict(bench=bench, host=host, **prov, issue=47,
                          test="oversupply-vs-discard", run=i, rc=a.rc,
                          dac_sps=hz, seconds=a.seconds, drain_s=1.5,
                          host_tx_bytes=r.host_tx_bytes,

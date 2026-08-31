@@ -33,6 +33,7 @@ hostname, and the output file is named after it.
 import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
+import provenance
 
 
 def main():
@@ -54,6 +55,8 @@ def main():
     hz = measure.hz_for(a.rc)
     want = hz * 2.0
     board = measure.Board(settle=3.0)
+    # What the board actually is, and what produced it (issue #53).
+    prov = provenance.run_fields(board)
     rows = []
     print(f"RC {a.rc} = {hz} sps, threshold {0.95*want:,.0f} B/s\n")
     for i in range(1, a.reps + 1):
@@ -71,7 +74,7 @@ def main():
         fed = r.host_tx_bytes / r.elapsed_s
         d = r.host_deficit
         short = fed < 0.95 * want
-        row = dict(bench=bench, host=host, track="b", issue=47,
+        row = dict(bench=bench, host=host, **prov, issue=47,
                    test="short-feed-vs-byte-deficit-one-run", run=i,
                    rc=a.rc, dac_sps=hz, seconds=a.seconds,
                    feed_target_mbs=want / 1e6, fed_mbs=round(fed / 1e6, 4),
