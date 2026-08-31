@@ -3510,6 +3510,24 @@ def flash(track, control=None, retries=2, build=False):
                        os.path.join(REPO, "build", "baremetal_bringup.bin")]
                 if control:
                     cmd += ["--port", control]
+            elif track == "c":
+                # Track C is behind -DBUILD_TRACK_C, so its build tree is
+                # its own: a bench that never asked for Track C must not
+                # have FreeRTOS fetched into the tree it builds Track B
+                # in. `firmware_rtos` is the clean-build wrapper, the
+                # same shape `firmware` has for Track B.
+                env = _tool_env()
+                if build:
+                    subprocess.run([_exe("cmake", env), "--build", "build-c",
+                                    "--target", "firmware_rtos"],
+                                   cwd=REPO, check=True, env=env,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+                cmd = [sys.executable, os.path.join(REPO, "tools", "flash.py"),
+                       "--bin",
+                       os.path.join(REPO, "build-c", "rtos_bringup.bin")]
+                if control:
+                    cmd += ["--port", control]
             elif track == "a":
                 # tools/sketch.py, and through this interpreter.
                 #

@@ -181,6 +181,7 @@ if(BUILD_TRACK_C)
         drivers/play.c
         drivers/usb_cdc.c
         drivers/stream.c
+        drivers/clockref.c
         lib/due_shared/src/ctl.c
         drivers/ctl_port.c
         lib/due_shared/src/console.c

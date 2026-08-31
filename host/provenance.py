@@ -258,6 +258,12 @@ def track_of_binary(path):
     p = str(path).replace("\\", "/")
     if "track_a" in p or "bringup.ino" in p:
         return "A"
+    # Before baremetal_bringup, because Track C's binary lives in
+    # build-c/ and its name shares no substring with Track B's - but a
+    # future rename that made it "rtos_baremetal_bringup" would match
+    # both, and the order is the cheap guard against that.
+    if "rtos_bringup" in p:
+        return "C"
     if "baremetal_bringup" in p:
         return "B"
     return None

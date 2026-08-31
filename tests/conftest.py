@@ -57,8 +57,12 @@ FILE_ORDER = ["test_ports", "test_waveforms", "test_jitter",
 def pytest_addoption(parser):
     g = parser.getgroup("due")
     g.addoption("--track", action="store", default="both",
-                choices=("a", "b", "both"),
-                help="which firmware to test; default both")
+                choices=("a", "b", "c", "both"),
+                help="which firmware to test; default both. `c` is the "
+                     "FreeRTOS build (issue #45) and is NOT in `both`: "
+                     "it is opt-in until it passes, so a track still "
+                     "growing its command surface cannot turn every "
+                     "bench's suite red")
     g.addoption("--reflash", action="store_true",
                 help="flash even when the board already runs the right track")
     g.addoption("--no-flash", action="store_true",
@@ -97,6 +101,7 @@ def pytest_configure(config):
 def pytest_generate_tests(metafunc):
     if "track" in metafunc.fixturenames:
         opt = metafunc.config.getoption("--track")
+        # `both` stays A and B deliberately - see --track's help.
         tracks = ["a", "b"] if opt == "both" else [opt]
         metafunc.parametrize("track", tracks, scope="session", indirect=True)
 
