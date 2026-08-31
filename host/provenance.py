@@ -490,7 +490,7 @@ def check_probe(p, ch, seen_vpp, expected_vpp, tolerance=0.15):
     return note
 
 
-def run_fields(board=None):
+def run_fields(board=None, ident=None):
     """The per-row provenance a record-writing tool should carry.
 
     Nine tools wrote `track="b"` as a literal, so every Track A run they
@@ -508,8 +508,25 @@ def run_fields(board=None):
     back to the conditions that produced it. `fw_repo_rev` is what
     `tools/flash.py` logged for the image on the board; `repo_rev` is
     the tree the instrument ran from. They are different questions.
+
+    `ident` is for a tool that holds the *command port* rather than a
+    measure.Board. The control channel's IDENTITY carries the same
+    track, and asking over the link a tool already has beats opening
+    the programming port just to label a row - which for some tools
+    would perturb the very thing being measured. Without either,
+    `track` is "unknown": honest, but still a row nobody can attribute.
     """
     p = collect(board=board)
+    if ident:
+        # The control channel's IDENTITY carries the same track and
+        # build string the console does, so it can fill every field
+        # here - not just the track. firmware() is what turns a build
+        # string into the commit tools/flash.py logged for that image.
+        if ident.get("track"):
+            p["track"] = ident["track"]
+        if ident.get("build"):
+            p["build"] = ident["build"]
+            p.update(firmware(ident.get("build"), ident.get("track")))
     return {
         "track": p.get("track") or "unknown",
         "fw_repo_rev": p.get("fw_repo_rev"),

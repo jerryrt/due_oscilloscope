@@ -16,7 +16,7 @@ minutes puts that well below the effect.
 """
 import sys, time, json
 sys.path.insert(0, 'host')
-import ports, control
+import ports, control, provenance
 
 def _utc_now():
     """The UTC-disciplined system clock, on every platform.
@@ -43,7 +43,8 @@ def _utc_now():
 
 nodes = ports.native_nodes()
 c = control.Control(nodes[1])
-print("identity", c.identity()['track'], c.identity()['build'], flush=True)
+ident = c.identity()
+print("identity", ident['track'], ident['build'], flush=True)
 
 rows = []
 t_end = time.time() + 15 * 60

@@ -18,7 +18,7 @@ is recorded so "the boot changed" is evidence rather than assumption.
 """
 import sys, collections, json, os, time
 sys.path.insert(0, "host")
-import measure
+import measure, provenance
 
 HZ, FWS, CAPS = 200000, 5, 12
 label, path = sys.argv[1], sys.argv[2]
@@ -58,5 +58,6 @@ finally:
 
 print(f"  {label}: {dict(collections.Counter(p for p, _ in got))}", flush=True)
 all_ = json.load(open(path)) if os.path.exists(path) else {}
-all_[label] = got
+# issue #53: ask the board, never write a track literal.
+all_[label] = {"captures": got, **provenance.run_fields(b)}
 json.dump(all_, open(path, "w"), indent=1)
