@@ -125,15 +125,46 @@ def test_awg_ladder_play_only(board, seconds, calibration, baseline, rc):
     assert res.play.consumed, "the DAC consumed nothing at all"
 
     # The host has to keep up for the underrun count to mean anything.
+    #
+    # Measured against what the device CONSUMED, not against nominal, and
+    # the difference is not pedantry - it is the whole of issue #48.
+    #
+    # The device does not always take the rate it accepts. At RC 32 it
+    # draws a mode that consumes 15/16 of nominal, and RC 39 and 44 run
+    # 1.6-2.4% slow persistently. On a host that applies backpressure the
+    # feed then matches the converter, so `fed/nominal` lands at 0.936 and
+    # a gate at 0.95 fails a run in which nothing whatever went wrong.
+    # Measured on windows-desk: fed 2.283 MB/s against a nominal 2.438,
+    # ratio 0.93641 where RC 32's lattice value is 15/16 = 0.93750.
+    #
+    # It is a platform-shaped false positive, which is why it had not been
+    # seen: mac-bench's host buffers ahead, so `host_tx_bytes` counts what
+    # was *written* and `fed/nominal` sits at 1.003-1.004 whatever the
+    # converter does - the gate cannot fire there even in principle, and
+    # passed for a reason unrelated to what it checks.
+    #
+    # Comparing against `consumed` keeps the assertion's actual job on
+    # both: a host that fails to keep up still fails it, because then the
+    # device consumes more than the host sent. `helpers.py` makes this
+    # same correction five times for the same platform fact.
+    # consumed counts BUFFERS, and run_us is the device's own clock, so
+    # this rate has no host term in it. Writing `consumed * 2` for bytes
+    # makes it come out 512x low and the assertion then passes whatever
+    # happens - which it did here, green six times, before the units were
+    # checked.
     fed = res.host_tx_bytes / res.elapsed_s
+    took = (res.play.consumed * measure.PLAY_BUF_SAMPLES * 2.0
+            / (res.play.run_us / 1e6))
     want = hz * 2.0
     record(calibration, f"awg_rc{rc}",
            {"sps": hz, "fed_mbs": round(fed / 1e6, 3),
+            "took_mbs": round(took / 1e6, 3),
             "underruns": under})
-    assert fed >= 0.95 * want, (
-        f"host fed {fed/1e6:.3f} MB/s against the {want/1e6:.3f} MB/s that "
-        f"{hz} sps needs; under=0 proves nothing if the device was never "
-        f"asked for the rate")
+    assert fed >= 0.95 * took, (
+        f"host fed {fed/1e6:.3f} MB/s against the {took/1e6:.3f} MB/s the "
+        f"device consumed at RC {rc} ({hz} sps, nominal {want/1e6:.3f}); "
+        f"under=0 proves nothing if the host never supplied what the "
+        f"device took")
 
 
 @pytest.mark.smoke

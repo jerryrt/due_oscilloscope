@@ -50,7 +50,9 @@ sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure  # noqa: E402
 import provenance  # noqa: E402
 
-PLAY_BUF_SAMPLES = 512
+#: One home, in measure.py. This file had its own copy; the constant is
+#: the DACC PDC transfer count and consumed counts BUFFERS of it.
+PLAY_BUF_SAMPLES = measure.PLAY_BUF_SAMPLES
 TC_CLOCK_HZ = 39_000_000          # SystemCoreClock / 2 at MCK 78 MHz
 
 #: Two bytes per sample on the wire.

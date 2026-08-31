@@ -994,6 +994,21 @@ def _counters(text, marker):
     return got
 
 
+#: Samples in one playback buffer - the DACC's PDC transfer count.
+#:
+#: `consumed` counts BUFFERS, not samples, which is the single easiest
+#: thing to get wrong about these counters: reading it as samples makes
+#: a device rate come out 512x low, and an assertion built on it passes
+#: whatever happens. Measured that way once on windows-desk before this
+#: constant had a host-side home.
+#:
+#: The firmware's own copies are `drivers/play.h:44` and
+#: `sketches/bringup/play.h:48` - per-track by invariant 3. This is the
+#: host's one copy; `tools/issue48_hostfeed.py` had a second and now
+#: imports this instead.
+PLAY_BUF_SAMPLES = 512
+
+
 @dataclass
 class PlayCounters:
     raw: dict = field(default_factory=dict)
@@ -1027,6 +1042,11 @@ class PlayCounters:
     act_in     = property(lambda s: s._g("act-in"))
     act_out    = property(lambda s: s._g("act-out"))
     occ_min    = property(lambda s: s._g("occmin"))
+    # The device's own elapsed microseconds. Every other counter here had
+    # an accessor and this one did not, so callers reached for `_g` or
+    # `raw` and a private name spread. It is the denominator of the only
+    # playback rate with no host clock in it - see PLAY_BUF_SAMPLES.
+    run_us     = property(lambda s: s._g("runus"))
 
 
 @dataclass
