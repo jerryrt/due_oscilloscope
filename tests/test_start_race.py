@@ -47,17 +47,26 @@ class _Fd:
 
     The point of the test is that nobody asks. If `read()` ever reaches
     this, the gate is open when it should be shut and `used` says so.
+
+    `log` is optional and only the ordering cases pass one: they need to
+    know *when* the descriptor was read, not merely whether.
     """
 
-    def __init__(self):
+    def __init__(self, log=None):
         self.used = False
+        self.log = log
+
+    def _note(self):
+        self.used = True
+        if self.log is not None:
+            self.log.append("fd-read")
 
     def fileno(self):
-        self.used = True
+        self._note()
         return 0
 
     def read(self, _n):
-        self.used = True
+        self._note()
         return b"x" * 4096
 
 
@@ -148,7 +157,7 @@ class _Recorder:
 
     def open_native(self, blocking_writes=False):
         self.log.append("open")
-        return _Fd()
+        return _Fd(self.log)
 
     def cmd(self, text):
         self.log.append("cmd")
@@ -159,6 +168,10 @@ class _Recorder:
 
     # -- measure module ------------------------------------------------
     def drain_until_quiet(self, fd, quiet=0.0, cap=0.0):
+        # Reads the descriptor, as the real one does. That read has to
+        # be visible or the "no reads after the gate opens" case below
+        # would be asserting over an empty list and passing for free.
+        fd.read(4096)
         self.log.append("drain_until_quiet")
 
 
@@ -234,3 +247,31 @@ def test_the_drain_finishes_before_the_gate_opens():
         f"the gate opened before drain_until_quiet finished, so two "
         f"readers share the descriptor - issue #44. Order was {log}")
     assert d._readable is True
+
+
+def test_start_reads_nothing_from_the_port_after_the_gate_opens():
+    """Once the reader thread has the descriptor, `start()` lets go.
+
+    The fix opens the gate when `drain_until_quiet` returns, and that is
+    only single-reader for as long as `start()` does no further native
+    reads afterwards. Today it does none - the feeder writes, and
+    `drain_console` is the programming port - but windows-desk named
+    this as the thing that would break silently:
+
+        the earlier sketch rested on "start() does no native reads after
+        cmd()", which is true today and which a future settle-read would
+        break silently.
+
+    It is true of the landed fix too. So it is checked rather than
+    relied on: a `time.sleep`-and-read added to `start()` for any good
+    reason at all would put two readers back on one descriptor and no
+    other test here would notice.
+    """
+    log, _d = _start_a_capture()
+    assert "gate-already-open" in log, log
+    opened = log.index("gate-already-open")
+    late = [i for i, ev in enumerate(log) if ev == "fd-read" and i > opened]
+    assert not late, (
+        f"start() read the native port after handing it to the reader "
+        f"thread, so two readers share it - issue #44 returning by a "
+        f"different door. Order was {log}")
