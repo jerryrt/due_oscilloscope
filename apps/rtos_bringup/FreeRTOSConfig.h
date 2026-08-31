@@ -68,7 +68,10 @@ extern uint32_t SystemCoreClock;
 #define configMAX_TASK_NAME_LEN       (12)
 #define configUSE_PREEMPTION          1
 #define configUSE_IDLE_HOOK           0
-#define configUSE_TICK_HOOK           0
+/* The tick hook is Track C's millisecond counter - see
+ * apps/rtos_bringup/time_rtos.c for why it is not
+ * xTaskGetTickCount(). */
+#define configUSE_TICK_HOOK           1
 #define configUSE_16_BIT_TICKS        0
 #define configIDLE_SHOULD_YIELD       1
 #define configUSE_MUTEXES             1

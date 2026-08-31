@@ -159,6 +159,7 @@ if(BUILD_TRACK_C)
     add_executable(rtos_bringup EXCLUDE_FROM_ALL
         apps/rtos_bringup/main.c
         apps/rtos_bringup/console_port_rtos.c
+        apps/rtos_bringup/time_rtos.c
         bsp/startup_sam3x8e.c
         bsp/uart.c
         bsp/led.c

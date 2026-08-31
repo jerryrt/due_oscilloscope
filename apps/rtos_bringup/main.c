@@ -127,6 +127,7 @@ static void c_help(const uint32_t *a)
 	con_nl();
 	con_str("#   v = identity line");        con_nl();
 	con_str("#   h = this list");            con_nl();
+	con_str("#   T = time source check (millis/micros)"); con_nl();
 	con_str("# C1 is build-and-boot only: no capture, no playback,");
 	con_nl();
 	con_str("#   no control channel. See issue #45.");
@@ -136,9 +137,45 @@ static void c_help(const uint32_t *a)
 
 /* Terminated by a zero key and scanned rather than indexed - the shared
  * table decides the help's order, so this one may list what it likes. */
+/*
+ * `T`: the time source, read twice about a millisecond apart.
+ *
+ * C2 groundwork rather than a convenience. millis() and micros() are
+ * provided by the application on this track (apps/rtos_bringup/
+ * time_rtos.c) because bsp/systick.c cannot be linked, and almost every
+ * driver in the tree calls them - drivers/adc.c alone has ten sites. A
+ * time source that silently returned 0, or that advanced at the wrong
+ * rate, would not fail to link and would not fail to run: it would make
+ * every duration C2 measures wrong, quietly.
+ *
+ * So it is checked on the wire before anything depends on it. Two reads
+ * with a known delay between them: the delta is the measurement, and
+ * the absolute values say the counter is live rather than stuck.
+ */
+static void c_time(const uint32_t *a)
+{
+	uint32_t m0, u0, m1, u1;
+
+	(void)a;
+	m0 = millis();  u0 = micros();
+	vTaskDelay(pdMS_TO_TICKS(100));
+	m1 = millis();  u1 = micros();
+
+	con_str("# time ");
+	con_kv_u32("millis", m1);            con_ch(' ');
+	con_kv_u32("micros", u1);            con_ch(' ');
+	con_kv_u32("d_ms", m1 - m0);         con_ch(' ');
+	con_kv_u32("d_us", u1 - u0);
+	con_str("  (asked for 100 ms)");     con_nl();
+	console_flush();
+}
+
+/* Terminated by a zero key and scanned rather than indexed - the shared
+ * table decides the help's order, so this one may list what it likes. */
 const console_binding_t console_bindings[] = {
 	{ 'v', c_ident },
 	{ 'h', c_help  },
+	{ 'T', c_time  },
 	{ 0,   NULL    },
 };
 
