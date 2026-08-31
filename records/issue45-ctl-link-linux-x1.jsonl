@@ -1,0 +1,3 @@
+{"bench":"linux-x1","issue":45,"test":"ctl-link-sustained","track":"c","runs":12,"runs_with_loss":6,"pattern":"101010101010","fw_repo_rev":"47c8969","note":"load4 gap sweep: identity + 6 link.load() calls at gaps 0,0.2,0.5,1,2,5 s"}
+{"bench":"linux-x1","issue":45,"test":"ctl-link-sustained","track":"b","runs":12,"runs_with_loss":0,"pattern":"000000000000","fw_repo_rev":"47c8969","note":"identical script, matched run count, same session"}
+{"bench":"linux-x1","issue":45,"test":"ctl-link-sustained","track":"b","runs":6,"runs_with_loss":0,"pattern":"000000","fw_repo_rev":"47c8969","note":"earlier control, before the matched 12"}
