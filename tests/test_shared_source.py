@@ -15,6 +15,7 @@ else so a divergence fails the same run that introduced it.
 """
 
 import os
+import sys
 
 import pytest
 
@@ -553,3 +554,41 @@ def test_the_extractor_ignores_indirect_calls():
         assert indirect not in names, (
             f"{indirect!r} was read as an external call; it is an "
             f"indirect call or a cast")
+
+
+# ------------------------------------------- the paired-body instrument
+
+def test_console_pairs_survives_a_one_track_migration():
+    """`cmd_help` is six identical lines. It must score 1.00.
+
+    It is the canary for `tools/console_pairs.py`, and it has already
+    failed once. Issue #49 migrated Track B's console output to the
+    `con_*` emitters while Track A still used `Serial.print`, and the
+    tool - which compares text - reported `cmd_help` at **0.67** and
+    three other unchanged bodies as "DIFFERENT diagnostics", the row
+    whose remedy is deleting one of them. Nothing about any of those
+    bodies had changed.
+
+    The tool normalises dialects for exactly this reason; it simply did
+    not know the third one. This asserts the property that matters -
+    **a body that is identical in two dialects reads as identical** -
+    rather than any particular normalisation, so it will fail again when
+    Track C introduces a fourth and not before.
+
+    Kept cheap deliberately: no board, no build, one file parsed twice.
+    """
+    sys.path.insert(0, os.path.join(REPO, "tools"))
+    import console_pairs
+
+    a = console_pairs.bodies(console_pairs.TRACKS["a"])
+    b = console_pairs.bodies(console_pairs.TRACKS["b"])
+    import difflib
+    ratio = difflib.SequenceMatcher(
+        None, console_pairs.normalise(a["cmd_help"]),
+        console_pairs.normalise(b["cmd_help"])).ratio()
+    assert ratio > console_pairs.SAME, (
+        f"cmd_help scores {ratio:.2f}, below the 'same logic' threshold "
+        f"of {console_pairs.SAME}. The two copies are six identical "
+        f"lines, so this is the normalisation failing to fold a dialect "
+        f"- not divergence. See issue #45; #49's emitter migration broke "
+        f"it this way once already.")
