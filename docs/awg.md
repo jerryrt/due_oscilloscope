@@ -225,6 +225,17 @@ stops being the right period the moment the resolution moves: it becomes
 an issue-#5 sweep taken at a resolution other than 256 without saying
 so.**
 
+**A fold at the wrong period returns a large, stable, entirely
+meaningless number, and z is the tell.** Folding at a period the signal
+does not have just averages the waveform, so the "peak" it reports is
+the sine's own amplitude - `linux-x1` measured +/-1377 codes at every
+wait-state setting on 2026-08-31 before spotting it, which is plausible
+enough to write down. **The tell is z ~= 1.0**: a real lock reads a high
+z against a low `control_z`, and z at unity means the fold found nothing
+and is reporting the waveform. `pair_fold()` takes its period from
+`gen_fold_len()` and does not have this failure mode; `fold_profile()`
+called directly does.
+
 ### Shape and layout are different axes
 
 `gen_layout` (`=<n>N`, Track B only) is not a shape selector, however
