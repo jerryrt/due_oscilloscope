@@ -55,11 +55,28 @@
  * the image links no allocator at all.
  */
 /* The service task carries a playstat_t and a 512-byte scrap buffer in
- * its frame, so it is not the minimal stack. */
+ * its frame, so it is not the minimal stack. The console task runs the
+ * command bodies, some of which are register dumps with their own
+ * locals. */
 #define SERVICE_STACK     (configMINIMAL_STACK_SIZE * 6)
+#define CONSOLE_STACK     (configMINIMAL_STACK_SIZE * 6)
 
 static StaticTask_t service_tcb;
 static StackType_t  service_stack[SERVICE_STACK];
+static StaticTask_t console_tcb;
+static StackType_t  console_stack[CONSOLE_STACK];
+
+/*
+ * Set by the console task around a command, read by the service task.
+ *
+ * The service task free-runs and never blocks, which is what keeps the
+ * bulk OUT drain at full throughput - and a task that never blocks also
+ * never lets a lower-priority one run. So it yields, but only while
+ * there is console work: `volatile` and one word, written by one task
+ * and read by the other, so no lock is needed and none is taken on the
+ * sample path.
+ */
+static volatile uint32_t console_busy;
 
 static StaticTask_t idle_tcb;
 static StackType_t  idle_stack[configMINIMAL_STACK_SIZE];
@@ -196,7 +213,59 @@ static void service_task(void *arg)
 				usb_cdc_write((const uint8_t *)&st, sizeof(st));
 			}
 		}
-		console_feed(uart_getc());
+		/*
+		 * THE SPLIT, and the whole reason for two tasks.
+		 *
+		 * Track B calls console_feed() here and pays for it: a
+		 * console command runs *inside* the loop, so `diag_service`'s
+		 * 107,893 us print and the 89 ms banner stop the sample path
+		 * dead for that long. Issue #49's proposal C was going to fix
+		 * that with a non-blocking TX ring; a scheduler fixes it by
+		 * construction instead, and without changing when output
+		 * reaches the wire - which is the property test_banner_order
+		 * asserts and a TX ring would have quietly broken.
+		 *
+		 * So the console lives in a lower-priority task and this one
+		 * yields to it only while there is work: idle, nothing yields
+		 * and the drain runs at full rate; busy, this task gives up a
+		 * tick at a time and the sample path keeps running while the
+		 * print takes as long as the UART takes.
+		 *
+		 * uart_rx_ready() is one register read and is the cheapest
+		 * question that answers "is anything about to happen".
+		 */
+		if (console_busy || uart_rx_ready())
+			vTaskDelay(1);
+	}
+}
+
+/*
+ * The console: everything that prints, at a priority the sample path
+ * outranks.
+ *
+ * console_feed() dispatches the command bodies, so putting it here puts
+ * every console print here with it - which is the point. Nothing in
+ * this task touches sample data, and the acquisition ISR sits above
+ * configMAX_SYSCALL_INTERRUPT_PRIORITY, so neither this task's priority
+ * nor any critical section it takes can delay a conversion.
+ */
+static void console_task(void *arg)
+{
+	(void)arg;
+	for (;;) {
+		int c = uart_getc();
+
+		if (c < 0) {
+			console_busy = 0;
+			vTaskDelay(1);
+			continue;
+		}
+		/* Raised before the dispatch and cleared only when the
+		 * input has drained, so a multi-line command keeps the
+		 * service task yielding for its whole duration rather
+		 * than for the first byte of it. */
+		console_busy = 1;
+		console_feed(c);
 	}
 }
 
@@ -415,8 +484,17 @@ int main(void)
 	 * one, which is the bare-metal duty cycle plus the kernel's own
 	 * overhead - and that overhead is exactly what C4 measures.
 	 */
+	/*
+	 * Two tasks, split on the DEADLINE boundary rather than the
+	 * service boundary. The sample path has one and the console does
+	 * not, which is the only distinction the hardware forces; a
+	 * five-way split by service would be five priority decisions
+	 * nothing has yet asked for.
+	 */
 	xTaskCreateStatic(service_task, "svc", SERVICE_STACK, NULL,
-	                  2, service_stack, &service_tcb);
+	                  3, service_stack, &service_tcb);
+	xTaskCreateStatic(console_task, "con", CONSOLE_STACK, NULL,
+	                  1, console_stack, &console_tcb);
 
 	vTaskStartScheduler();
 
