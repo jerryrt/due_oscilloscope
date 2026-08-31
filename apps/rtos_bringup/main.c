@@ -46,6 +46,7 @@
 #include "playstat.h"
 #include "stream.h"
 #include "usb_cdc.h"
+#include "clockref.h"
 #include "ctl.h"
 #include "frame.h"
 
@@ -156,6 +157,7 @@ static void service_task(void *arg)
 		if (now != usb_ms) {
 			usb_ms = now;
 			usb_cdc_poll();
+			clockref_poll();
 		}
 		play_service();
 		stream_service();
@@ -562,6 +564,7 @@ int main(void)
 	dac_init();
 	adc_init();
 	usb_cdc_init();
+	clockref_init();
 
 	/*
 	 * The identity line before the scheduler starts, not after.
