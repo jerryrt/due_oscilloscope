@@ -940,6 +940,16 @@ tools/flash.sh build/baremetal_bringup.bin
 tools/sketch.sh compile
 tools/sketch.sh upload
 
+# Track A, the same way Track B is built (issue #55). Opt-in, and it
+# does not invoke arduino-cli or its bundled GCC 4.8.3 at all - only the
+# Arduino core *sources*, compiled by this project's own xPack 15.2.1.
+# The two build properties above become lines in cmake/track_a.cmake,
+# so neither can be silently forgotten.
+cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
+cmake --build build-a --target firmware_track_a
+tools/flash.sh build-a/track_a_bringup.bin
+
 # Talk to either (discover the port first; the path moves with cables)
 python3 tools/serial_probe.py /dev/cu.usbmodem14201 --send h --seconds 3
 ```
@@ -992,6 +1002,22 @@ platform-specific wheels and does not travel.
 `cc1` against Homebrew's zstd at an absolute path and cannot run on this
 host; the driver still reports a version, so the failure only appears
 when something is actually compiled. See `docs/toolchain.md`.
+
+**Track A has two build paths right now, and that is temporary.** The
+`arduino-cli` one above is still what `measure.flash()` and the suite
+use; the CMake one is verified (Track A suite 572 passed / 1 failure
+that is not the toolchain's, against 557 passed for arduino-cli) but
+switching the suite over changes what every bench needs installed, so it
+is waiting on windows-desk and linux-x1 confirming they can build it -
+issue #55. **Do not add a third.**
+
+Two things that cost real time there and are not Track A's alone:
+`include_directories()` in CMake applies to every target defined after
+it, and on a case-insensitive filesystem the Arduino core's
+`#include "Stream.h"` then resolves to `drivers/stream.h`; and
+`USB_PID` must come from `boards.txt`'s `build.pid` (0x003e), never
+`pid.0` (0x003d), or the image enumerates as the programming port and
+`find_all_ports()` quietly returns no native node.
 
 Keep the tracks feature-equivalent. Anything added to one gets added to
 the other, with the same commands and output format.
