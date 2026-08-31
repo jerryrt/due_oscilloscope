@@ -125,6 +125,32 @@ Violating any of these is a design regression, not a style preference.
    zeroes**: zero is a measurement, and a host cannot otherwise tell it
    from "not counted here".
 
+   **The same rule governs the console surface, and it was learned there
+   the hard way.** Track C bound no handler for `z`, so
+   `measure.Board.reset()` sent it, got nothing, timed out waiting for a
+   banner and **returned** - and every caller believed the board had been
+   reset. It cost `linux-x1` a six-reset experiment that produced six
+   identical no-ops before anyone looked at the command table. **A no-op
+   that returns cleanly is worse than an unimplemented command**, for
+   exactly the reason a body of zeroes is worse than `CTL_ERR_OPCODE`.
+
+   A worse variant is a letter that means two different things. Track B's
+   `T` starts the DMA sink; Track C's ran a `millis()`/`micros()`
+   self-test. Both answered, neither errored, and **no host could
+   discover the difference** - only the behaviour differed. Two tracks
+   answering one letter two ways is the console's version of the frame
+   layout having two homes.
+
+   **`main()` is the one file per track that is not shared**, and both
+   board init and the command table live in it, so nothing fails when an
+   addition does not propagate. Four divergences were found in one
+   afternoon on 2026-08-31: a missing watchdog disable, a missing
+   `clockref_init()`/`clockref_poll()` (added to Tracks A and B two hours
+   after Track C's `main()` existed, by someone who did not check for a
+   third track), the `T` collision, and `z`/`Z` unbound. **When you add
+   to one track's `main()`, grep the others** - the comment in Track C's
+   promising its init sequence matches Track B's is not a mechanism.
+
    But they must be comparable in **design, feature set and
    performance**. Both are bare-metal on the same silicon; Arduino is an
    abstraction layer, not a different architecture, and nothing it
