@@ -234,3 +234,29 @@ Considered and set aside, recorded so the reasoning is not relitigated:
 
 FreeRTOS is chosen because it drops into an existing CMake build as plain
 source and leaves the bare-metal architecture intact underneath.
+
+## Track D: RTEMS — queued, not started
+
+**Decision recorded 2026-08-30. Nothing is being built, scoped or
+designed for it yet, and this section is deliberately the only place it
+appears.**
+
+A fourth track will be an **RTEMS** build of the same firmware. The
+reason is that RTEMS is space-qualified and used on flight hardware,
+which makes it a different *kind* of comparison from Track C: FreeRTOS
+answers "does the architecture survive a scheduler", RTEMS asks what the
+same drivers look like under a kernel with that pedigree.
+
+It is **not** in the "Other RTOS options" list above. Those were
+considered and set aside; this is queued.
+
+**The precondition is explicit: Track D is picked up only when A, B and
+C are all stable.** Track C is at C1 and C2 is unfinished, so that
+condition is not close to met. Anyone reaching for this before then is
+reading it wrong — the value of a fourth track is a comparison against
+three that already hold, and three moving targets would produce a
+fourth.
+
+Nothing follows from this entry: no issue, no scoping document, no
+directory, no build target. It exists so the intent is written down
+where the tracks are defined rather than carried in someone's head.
