@@ -395,6 +395,22 @@ def collect(board=None, inst=None, channels=(1, 2), extra=None):
     }
     if b.get("bench_error"):
         p["bench_error"] = b["bench_error"]
+    # Which instrument took this session's counter reads.
+    #
+    # Emitted always, and not added to REQUIRED, because a run that read
+    # no counter honestly has none to report and a required field that
+    # is legitimately absent trains people to ignore `missing()`. What
+    # makes a figure unattributable is a `console` count nobody noticed,
+    # not a zero.
+    #
+    # `console` above zero means some measurement in this session was
+    # taken with printf blocking the main loop it was measuring - see
+    # measure.INSTRUMENT_READS and issue #51.
+    try:
+        import measure
+        p["instrument"] = dict(measure.INSTRUMENT_READS)
+    except Exception:                                     # pragma: no cover
+        pass
     if board is not None:
         try:
             import measure

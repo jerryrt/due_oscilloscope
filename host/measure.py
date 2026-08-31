@@ -1298,6 +1298,33 @@ def parse_play(text):
 # behind a working-looking measurement taken the slow way.
 _LINK_GONE = (OSError, ValueError)
 
+#: How this session's counter reads were actually taken.
+#:
+#: windows-desk's finding on issue #51, and it is the sharper form of
+#: the problem: it is not merely that the boundary between two
+#: populations of measurements is unmarked *within* a session, it is
+#: that **no record this project writes carried the instrument at all**,
+#: so the boundary was unrecoverable afterwards even in principle. Not
+#: one file in `records/` stored it, so no published figure said which
+#: instrument produced it and no bench could answer "has your link ever
+#: dropped" about anything already committed.
+#:
+#: `control` reads a counter in 146 us. `console` reads it with `B` or
+#: `O`, which is 13.14 ms and 15.40 ms of blocked main loop taken while
+#: the sample path is running. Those are not two tolerances of one
+#: instrument, they are two experiments.
+#:
+#: This project already requires a figure to carry its bench, and #5
+#: established it must carry its firmware commit. This is the same rule
+#: a third time: a figure must carry its instrument.
+#: `provenance.collect()` emits it.
+INSTRUMENT_READS = {"control": 0, "console": 0}
+
+
+def _count_read(via):
+    INSTRUMENT_READS[via] = INSTRUMENT_READS.get(via, 0) + 1
+    return via
+
 
 def _note_fallback(board, what):
     """Say out loud that a measurement came off printf instead.
@@ -1346,7 +1373,7 @@ def play_counters(board, secs=1.2):
             ct = link.counters()
             got = PlayCounters({v: ct[k] for k, v in _CTL_TO_CONSOLE.items()
                                 if k in ct})
-            got.via = "control"
+            got.via = _count_read("control")
             return got
         except _LINK_GONE:
             # Only a transport failure falls back. A KeyError here is a
@@ -1358,7 +1385,7 @@ def play_counters(board, secs=1.2):
     board.cmd("B")
     time.sleep(0.5)
     got = parse_play(board.drain_console(secs))
-    got.via = "console"
+    got.via = _count_read("console")
     return got
 
 
@@ -1376,7 +1403,7 @@ def occupancy(board, secs=1.2):
                           consumed=o["consumed"])
             got.decim = o.get("decim", 0)
             got.trace = list(o.get("trace", []))
-            got.via = "control"
+            got.via = _count_read("control")
             return got
         except _LINK_GONE:
             board.drop_ctl()
@@ -1384,7 +1411,7 @@ def occupancy(board, secs=1.2):
     board.cmd("O")
     time.sleep(0.3)
     got = parse_occ(board.drain_console(secs))
-    got.via = "console"
+    got.via = _count_read("console")
     return got
 
 
