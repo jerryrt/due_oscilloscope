@@ -756,6 +756,49 @@ against it and the resulting failure looks like an analog problem.
 Mark uncertain figures *(check)* in documentation, matching the existing
 convention in `docs/hardware.md`.
 
+## Break a new check on purpose before you trust it
+
+**A guard that passes because it cannot fail is worse than no guard**,
+because it reports the thing it was written to protect as protected. The
+suite goes green, the property goes unwatched, and nobody looks again.
+
+Four of them were written on `windows-desk` on 2026-08-31, in one day, by
+someone who spent that day correcting other people's:
+
+- `assert "firmware_track_a" in body` over a window of `measure.py` -
+  passed a mutation that bypassed the clean-build wrapper, because the
+  name also appears in a comment four lines above.
+- `re.compile(r"arduino-cli|\bcmake\b")` written through a shell
+  heredoc that ate the backslashes, producing **literal 0x08 backspace
+  bytes**. It matched no `cmake` spawn at all. `grep` prints it
+  correctly, the file reads correctly, and only `repr()` on the compiled
+  pattern shows it.
+- `took = consumed * 2` for a device byte rate, when `consumed` counts
+  **buffers**. The rate came out 512x low and the assertion was satisfied
+  whatever happened - green six times.
+- A shell tally, `case "$r" in *failed*) ... *) pass`, scoring
+  `1 skipped, 6 deselected` as a pass. Ten green lines, zero tests
+  executed, because the board was on the other track.
+
+**Not one was caught by reading**, and three were caught only because
+something else forced a second look. The habit that catches all four
+costs about thirty seconds:
+
+> **Break the thing the check guards, and watch the check fail. Then put
+> it back.**
+
+Remove the clean step and the clean-build test must fail. Halve the fed
+term and the feed guard must fail. Point the source glob elsewhere and
+the provenance test must fail. A new assertion is not trusted until it
+has failed once on purpose.
+
+The same applies to a *null* result, which is a check on the world rather
+than on the code: **a null is worth exactly what the experiment could
+have detected.** `linux-x1` built a positive control for #57 by loading
+the machine, and only then was their 0-of-10 a null from an instrument
+known to be able to fire. Before that it was indistinguishable from a
+blind one.
+
 ## Working alongside other agents
 
 **You are not the only one in this repository.** Several agents work it
