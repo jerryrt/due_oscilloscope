@@ -337,9 +337,17 @@ because it stays right the first time a helper grows a dependency.
 
 | tier | select with | tests | mac-bench | needs |
 |---|---|---|---|---|
-| smoke | `-m smoke` | 149 of 584 | **104 s** | the board |
-| board-free | `-m "not board"` | 441 of 584 | **95 s** | nothing |
-| full | (no marker) | 584 | **642-646 s** | the board |
+| smoke | `-m smoke` | 151 of 587 | **104 s** | the board |
+| board-free | `-m "not board"` | 448 of 587 | **98 s** | nothing |
+| full | (no marker) | 587 | **646 s** | the board |
+
+Re-measured at `1eec02b` on 2026-08-31, because the suite had grown
+since these were first written and a table nobody re-reads is how the
+five-minute budget this section replaced went stale in the first place.
+**The times held; the counts did not** - 584 collected became 587, and
+board-free 441 became 448. Collection counts come from
+`--collect-only`, not from adding up a run summary, because a summary
+counts passed/skipped/xfailed separately and it is easy to drop one.
 
 `smoke` is the one tier this section used to describe that turned out
 to be accurate: it claimed "near 2 minutes" and it is 104.2-104.9 s
