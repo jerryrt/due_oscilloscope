@@ -824,6 +824,15 @@ class BoardDevice(Device):
         self.fd = None
         self.feeder = None
         self.running = False
+        #: May the reader thread take bytes off `fd` yet? Issue #57.
+        #:
+        #: Not the same question as `running`, which means a stream is
+        #: active and is set once `start()` has finished. Gating the
+        #: read on `running` left the descriptor unread for the whole
+        #: tail of `start()` - the mode command, a 0.2 s settle, the
+        #: feeder, a console drain - while the device was already
+        #: producing, and that cost a frame under load.
+        self._readable = False
         self.mode = None
         self.rates = None
         self._rx = 0
@@ -989,6 +998,29 @@ class BoardDevice(Device):
         self.fd = self.board.open_native(blocking_writes=(mode != "capture"))
         self.m.drain_until_quiet(self.fd, quiet=0.3, cap=5.0)
 
+        # The reader thread takes the descriptor HERE, not at the end of
+        # start(). Issues #44 and #57, which pull in opposite directions
+        # and are both right.
+        #
+        # Two invariants have to hold at once. Only one reader may touch
+        # the descriptor - `drain_until_quiet` above and `_read_loop`
+        # cannot both have it, which is #44 - and the descriptor must be
+        # drained the whole time the device is producing, which is #57.
+        #
+        # This line is the only instant that satisfies both. Before it,
+        # `drain_until_quiet` owns the fd exclusively and the device is
+        # not streaming yet. After it, `_read_loop` owns it exclusively:
+        # `start()` performs no further reads on the native port - the
+        # feeder only writes, and `drain_console` is the programming
+        # port, not this one.
+        #
+        # Gating on `running` instead left ~0.5 s of full-rate stream
+        # unread, and windows-desk bisected a lost frame to exactly that
+        # (#57: 0 of 10 before, 6 of 10 after, p = 0.011). The frames
+        # were being read pre-#44 - by the second reader, which is what
+        # made that fix necessary and this one insufficient.
+        self._readable = True
+
         if mode == "capture":
             # `=<dac>,<adc>` applies to L and P only; the numbered
             # presets carry their own rates, so a capture-only stream
@@ -1030,7 +1062,7 @@ class BoardDevice(Device):
         return text
 
     def read(self, timeout=0.2):
-        # Gated on `running`, not only on `fd is None` - issue #44.
+        # Gated on `_readable`, not on `fd is None` - issues #44, #57.
         #
         # `Server._read_loop` drains this device for the daemon's whole
         # lifetime and asks only this method whether there is anything
@@ -1051,13 +1083,18 @@ class BoardDevice(Device):
         # why no board-free test could see this: the fake implements the
         # contract and the real device did not.
         #
-        # Nothing is lost by waiting. The frames stay in the kernel
-        # buffer and are read as soon as `start()` sets `running`; what
-        # stops is one of the two readers.
+        # But `running` is the wrong flag, and gating on it cost a frame
+        # elsewhere (#57). It is set at the END of start(), leaving the
+        # descriptor unread through the mode command, the settle, the
+        # feeder and the console drain - about half a second of
+        # full-rate stream that nothing was taking. `_readable` opens at
+        # the one instant that gives exactly one reader AND no unread
+        # window: after `drain_until_quiet` returns and before the
+        # device is commanded to stream.
         #
-        # Safe on the way out too: `stop()` calls `_teardown()`, which
-        # clears `self.fd`, *before* it sets `running = False`.
-        if self.fd is None or not self.running:
+        # Safe on the way out too: `_teardown()` shuts the gate before
+        # it closes the fd.
+        if self.fd is None or not self._readable:
             time.sleep(min(timeout, 0.05))
             return b""
         r = transport.wait_any([self.fd], timeout)
@@ -1191,6 +1228,9 @@ class BoardDevice(Device):
         self.mode = None
 
     def _teardown(self):
+        # Shut the gate first. The fd is about to close under the
+        # reader thread, and it must not be read between here and that.
+        self._readable = False
         if self.feeder is not None:
             try:
                 self.feeder.stop()

@@ -72,7 +72,15 @@ def _board_device_not_running():
 
     d = object.__new__(dev.BoardDevice)
     d.fd = _Fd()
-    d.running = False          # start() has not finished
+    d.running = False
+    # The gate is `_readable`, not `running` - issue #57. `running` is
+    # set at the END of start(), and gating the read on it left ~0.5 s
+    # of full-rate stream unread while the device was already producing,
+    # which cost a frame under load on a host that does not absorb it.
+    # `_readable` opens the instant `drain_until_quiet` releases the
+    # descriptor, which is the only point with exactly one reader and no
+    # unread window.
+    d._readable = False        # drain_until_quiet still owns the fd
     d._rx = 0
     return d
 
@@ -87,27 +95,142 @@ def test_board_device_reads_nothing_before_start_finishes():
     assert d._rx == 0
 
 
-def test_the_gate_is_running_and_not_only_the_descriptor():
-    """A live descriptor is not sufficient; `running` is required.
+def test_the_gate_is_readable_and_not_only_the_descriptor():
+    """A live descriptor is not sufficient; `_readable` is required.
 
-    Written as its own case because the previous gate passed a test that
-    only ever set `fd = None`. Every value here is the *permissive* one
-    except `running`, so nothing but the flag can be what stops it.
+    Written as its own case because the first gate here passed a test
+    that only ever set `fd = None`. Every value below is the
+    *permissive* one except the flag, so nothing else can be what stops
+    it.
     """
     d = _board_device_not_running()
     assert d.fd is not None
     assert d.read(timeout=0.01) == b""
 
 
-def test_fake_device_gates_the_same_way():
-    """The stand-in and the thing agree, which is what was missing.
+def test_fake_device_still_refuses_before_it_runs():
+    """The stand-in and the thing still agree on the observable.
 
-    `FakeDevice` was already right. Asserting it here means a future
-    change to either one has to keep them in step, rather than the fake
-    silently continuing to model a contract the real device abandoned.
+    They no longer gate on the same *flag* - `BoardDevice` opens at
+    `_readable`, which has no meaning for a fake with no descriptor -
+    but the behaviour a caller sees is the one that matters: a device
+    that is not streaming hands the reader nothing.
     """
     from daemon import device as dev
 
     f = dev.FakeDevice()
     assert not f.running
     assert f.read(timeout=0.01) == b""
+
+
+# --- the other half of the gate, which the cases above do not cover ----
+#
+# Everything above asserts the gate is SHUT early. None of it asserts the
+# gate is OPEN in time, and that omission has a bisect against it: gating
+# on `running` passed every case above and left ~0.5 s of full-rate
+# stream unread, which windows-desk bisected to a lost frame (#57, 0 of
+# 10 against 6 of 10, p = 0.011).
+#
+# A test that only checks one direction of a two-sided invariant reads as
+# coverage and is not. So this checks the order directly.
+
+
+class _Recorder:
+    """A board and a measure module that write down what happened."""
+
+    def __init__(self, log):
+        self.log = log
+        self.RAMP_STEP = 0
+
+    # -- board ---------------------------------------------------------
+    def poll_console(self):
+        return ""
+
+    def open_native(self, blocking_writes=False):
+        self.log.append("open")
+        return _Fd()
+
+    def cmd(self, text):
+        self.log.append("cmd")
+
+    def drain_console(self, secs=0.0):
+        self.log.append("drain_console")
+        return ""
+
+    # -- measure module ------------------------------------------------
+    def drain_until_quiet(self, fd, quiet=0.0, cap=0.0):
+        self.log.append("drain_until_quiet")
+
+
+def _start_a_capture():
+    """Run BoardDevice.start() against stubs and return the event log."""
+    from daemon import device as dev
+
+    log = []
+    rec = _Recorder(log)
+    d = object.__new__(dev.BoardDevice)
+    d.m = rec
+    d.board = rec
+    d.fd = None
+    d.feeder = None
+    d.running = False
+    d._readable = False
+    d.mode = None
+    d.rates = None
+    d._rx = 0
+    d._ctl = None
+    d._described = None
+
+    # The gate opening is what this test is about, so record it as an
+    # event rather than inspecting the flag afterwards - afterwards it is
+    # True either way and the whole question is *when*.
+    class _Watch:
+        def __set_name__(self, owner, name):
+            pass
+
+    real_cmd = rec.cmd
+
+    def cmd_and_note(text):
+        if d._readable:
+            log.append("gate-already-open")
+        real_cmd(text)
+
+    rec.cmd = cmd_and_note
+    d.start("capture", preset="1")
+    return log, d
+
+
+def test_the_gate_is_open_before_the_device_is_told_to_stream():
+    """Nothing may command the device while the descriptor is unread.
+
+    This is #57. The device begins producing the moment `cmd()` lands,
+    so if the gate is still shut there, every frame until it opens has
+    no reader at all - and on a host that does not absorb the backlog,
+    one of them does not survive.
+    """
+    log, d = _start_a_capture()
+    assert "gate-already-open" in log, (
+        "start() commanded the device while BoardDevice.read() was still "
+        "refusing to read: the stream has no reader for the rest of "
+        "start(). That is issue #57, bisected to 0 of 10 against 6 of 10")
+
+
+def test_the_drain_finishes_before_the_gate_opens():
+    """And the other side of it: never two readers. That is #44.
+
+    `drain_until_quiet` owns the descriptor exclusively; the reader
+    thread may not be taking bytes off it at the same time. Together
+    with the case above this pins the gate to a single instant.
+    """
+    log, d = _start_a_capture()
+    # Check presence before ordering: without this the assertion below
+    # raises ValueError instead of saying what went wrong, which is a
+    # worse failure than the one it is written to report.
+    assert "gate-already-open" in log, (
+        f"the gate never opened before the device was commanded, so "
+        f"there is no ordering to check - see the previous test. "
+        f"Order was {log}")
+    assert log.index("drain_until_quiet") < log.index("gate-already-open"), (
+        f"the gate opened before drain_until_quiet finished, so two "
+        f"readers share the descriptor - issue #44. Order was {log}")
+    assert d._readable is True
