@@ -516,6 +516,15 @@ Check here before reasoning from general Arduino knowledge.
   attached and the host none the wiser, and twenty seconds of it changed
   nothing. `measure.close_native` tries this automatically before giving
   up, so a wedge costs a re-enumeration rather than the session.
+
+  **`z` also *causes* a native-port wedge, and reflashing does not clear
+  it.** After a processor reset the device runs its presets and prints
+  its banners normally while every capture returns zero frames and an
+  empty channel set - so it reads as "the trigger path is dead" rather
+  than as a USB fault, and the console gives no hint. Two reflashes did
+  not shift it and one `=200Z` did, immediately: 0 frames to 587.
+  **If captures come back empty on a board whose console answers,
+  bounce the native port before believing anything else.**
 - **A host that closes the port without stopping playback used to strand
   the device.** The drain guard is `!play_active() && !stream_out_in_use()`,
   and playback stayed "active" for ever with its OUT DMA armed for bytes
