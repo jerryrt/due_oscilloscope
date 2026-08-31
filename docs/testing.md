@@ -337,8 +337,26 @@ because it stays right the first time a helper grows a dependency.
 
 | tier | select with | tests | mac-bench | needs |
 |---|---|---|---|---|
+| smoke | `-m smoke` | 149 of 584 | **104 s** | the board |
 | board-free | `-m "not board"` | 441 of 584 | **95 s** | nothing |
 | full | (no marker) | 584 | **642-646 s** | the board |
+
+`smoke` is the one tier this section used to describe that turned out
+to be accurate: it claimed "near 2 minutes" and it is 104.2-104.9 s
+across five runs. It is *not* a subset of the board-free tier - it
+holds board tests and needs hardware - so the two are different
+questions and neither replaces the other. `-m "not board"` answers
+"did I break the host code", `-m smoke` answers "is the board still
+doing the basics".
+
+**One flake is on record against `smoke` and is not diagnosed.**
+`test_daemon_api.py::test_a_recording_is_the_frames_verbatim` failed
+once in five runs of the selection, and passes isolated (0.29 s) and
+in its own whole file (70 passed). It is **board-free**, so an
+intermittent failure in it is not hardware weather and should not be
+written off as such. The detail was lost to a truncated capture and it
+has not reproduced since; `records/issue50-tiers-macos.jsonl` carries
+the observation so the next sighting is the second and not the first.
 
 Board tests are 12 of 36 files and about **88% of the clock**. So the
 board-free tier is the per-change loop: it is a minute and a half, it
