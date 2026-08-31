@@ -784,6 +784,32 @@ differ - this one has DAC1 wired to A1, the DSO bench has it on the
 scope's external trigger. `docs/HANDOFF.md`'s status table carries both.
 A figure without its bench is not comparable with anything.
 
+**And its firmware commit, and its instrument.** Three parts, each added
+after it was learned expensively, and the second two on 2026-08-30.
+
+*The commit*, because the binary selects what several open defects draw
+and not merely how large they are. Issue #5's displacement was measured
+at four phases on four images that day - 135, 156, 177 and 5 - with zero
+variance within an image, so a session that read four values across the
+day and plotted them as a trend was plotting four binaries. **Two claims
+about "main" were published on #5 that evening and both expired within
+the hour**, because main's firmware moved under them; the fix is to
+write the commit rather than the branch. #48's incidence has the same
+property from the other direction: an incidence that cannot be
+re-entered, because nobody recorded the image it was measured on, is not
+a measurement anybody can return to.
+
+*The instrument*, because there is more than one and they are not
+equivalent. `play_counters()` and `occupancy()` read over the control
+channel where there is one and fall back to `B` and `O` on the console,
+reporting which in `.via` - and the console fallback puts **13-20 ms of
+blocked main loop inside the measurement it is taking**. Issue #51 was a
+dropped link sticking for a whole session, silently swapping the
+instrument mid-suite; what made it unanswerable afterwards was that **no
+record this project writes carries `via`**, so no stored figure says
+which instrument produced it. A figure taken with printf in the loop and
+one taken over the control channel are two experiments.
+
 ## Branches
 
 **`main` is the branch, and every other branch is short-lived: used and
