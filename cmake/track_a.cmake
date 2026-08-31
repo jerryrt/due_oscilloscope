@@ -258,3 +258,31 @@ add_custom_command(TARGET track_a_bringup POST_BUILD
             $<TARGET_FILE_DIR:track_a_bringup>/track_a_bringup.bin
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:track_a_bringup>
     COMMENT "Generating .bin and reporting size")
+
+# Every build of the firmware is a full build, and Track A is firmware.
+#
+# The same shape as `firmware` for Track B and `firmware_rtos` for Track
+# C, and for the same reason spelled out at length in CMakeLists.txt: the
+# clean and the build are two *child* invocations of CMake, sequenced by
+# the shell rather than by the generator, because Ninja plans the whole
+# graph first and would delete the objects the same plan is about to
+# link. `add_dependencies(track_a_bringup <a clean target>)` is the
+# version of this that works under Make and fails under Ninja, which is
+# how it stayed broken unnoticed once before (issue #35).
+#
+# Not ALL: Track A is opt-in behind BUILD_TRACK_A, and a bench that asked
+# for it by configuring should still get it by asking for it by name,
+# the way Track C does. `track_a_bringup` stays EXCLUDE_FROM_ALL so this
+# target's inner invocation cannot recurse into the wrapper.
+#
+# This was missing from the first cut of this file. The image it
+# produced was correct - the tree was configured fresh each time while
+# it was being developed - but an incremental build of it would not have
+# been clean, and "it happened to be fresh" is exactly the reasoning the
+# rule exists to remove.
+add_custom_target(firmware_track_a
+    COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
+    COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"
+            --target track_a_bringup --parallel
+    COMMENT "Enforcing a clean build of Track A (see tests/test_clean_build.py)"
+    VERBATIM)
