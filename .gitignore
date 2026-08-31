@@ -63,3 +63,4 @@ bench.json
 # The flash log is one desk's history of what it put on its board.
 records/flash-log.jsonl
 build-c/
+records/issue35-reflash-transcripts.log

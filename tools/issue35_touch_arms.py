@@ -96,10 +96,33 @@ ARMS = {"restore": arm_restore,
         "at1200": arm_at1200}
 
 
-def reflash():
+#: Where each repair flash's transcript goes.
+#:
+#: This captured to a variable and threw it away, and then a board came
+#: back blank an hour later with the only transcript that could have
+#: explained it already discarded. That is the standing rule in
+#: CLAUDE.md - capture failure output to a file, always - broken inside
+#: a tool written to investigate a flashing defect.
+#:
+#: A repair flash is exactly the run whose output is wanted later: it is
+#: the one nobody is watching.
+REFLASH_LOG = os.path.join(ROOT, "records", "issue35-reflash-transcripts.log")
+
+
+def reflash(tag):
     r = subprocess.run([sys.executable, os.path.join(ROOT, "tools",
                                                      "flash.py")],
                        capture_output=True, text=True)
+    with open(REFLASH_LOG, "a") as fh:
+        fh.write(f"\n===== repair flash after {tag} : rc={r.returncode} "
+                 f"=====\n")
+        fh.write(r.stdout or "")
+        fh.write(r.stderr or "")
+    # The lines that matter are few; print those and leave the rest on
+    # disk, so a run stays readable and a post-mortem stays possible.
+    for line in (r.stdout or "").splitlines():
+        if line.startswith("==>") or "Verify" in line:
+            print(f"      | {line}")
     return r.returncode
 
 
@@ -119,8 +142,9 @@ def main():
         for name in arms:
             if state() != "running":
                 print(f"  (board not running - reflashing first)")
-                if reflash() != 0:
-                    print("reflash failed; stopping", file=sys.stderr)
+                if reflash(f"pre-rep{rep}-{name}") != 0:
+                    print("reflash failed; stopping - transcript in "
+                          f"{REFLASH_LOG}", file=sys.stderr)
                     return 2
                 time.sleep(2.0)
             port = flash.find_console()
@@ -136,8 +160,9 @@ def main():
             print(f"rep {rep} {name:>13}: {before} -> {after}   "
                   f"{'ERASED' if erased else 'did not erase'}", flush=True)
             if erased:
-                if reflash() != 0:
-                    print("reflash failed; stopping", file=sys.stderr)
+                if reflash(f"rep{rep}-{name}") != 0:
+                    print("reflash failed; stopping - transcript in "
+                          f"{REFLASH_LOG}", file=sys.stderr)
                     return 2
                 time.sleep(2.0)
             else:
