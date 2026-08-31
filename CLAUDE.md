@@ -749,6 +749,22 @@ repository, both of which changed what got built:
   ran for days, several hypotheses died in it, and the conclusion - that
   it was the *image*, not the board or the wiring - came out of one side
   proposing a test and the other running a cheaper one.
+
+  **The mechanism is now known and it is instruction fetch timing** -
+  `docs/awg.md`. Nine hypotheses were tested and eight refuted, and the
+  eight failed for one reason worth carrying: every one of them compared
+  *images* that differ in many ways at once. The arm that worked varied
+  a single thing on a single image, by writing a register. **If an issue
+  has resisted a dozen comparisons, look for the knob rather than the
+  next candidate.**
+
+  Two of its consequences are load-bearing elsewhere. **#5's severity is
+  a lottery over code layout**, so "which commit caused it" is not a
+  question with an answer - a console commit pushed it past its bound.
+  And **its magnitude cannot be compared across tracks**, because the
+  two tracks are built by compilers eleven years apart (#55) and that
+  difference is layout, not the register programming invariant 3 keeps
+  the oracle to adjudicate.
 - **#6** splits a plan two agents had arrived at independently, so that
   the mechanical half and the analog half were not both built twice.
 
