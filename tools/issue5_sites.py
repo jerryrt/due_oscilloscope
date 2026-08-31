@@ -30,6 +30,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure  # noqa: E402
+import provenance  # noqa: E402
 
 
 def sites(profile, z_min=measure.FOLD_Z_DIRTY):
@@ -103,6 +104,20 @@ def main():
     try:
         board.stop()
         board.drain_console(0.5)
+        # Issue #53: ask the board, never write a literal - and this
+        # tool wrote no provenance at all. Its rows carried `bench` from
+        # a command-line string and nothing else, so a site table taken
+        # here could not be attributed to a track, a commit or an image.
+        # That is the tool #5 is argued with, and #5's site is a lottery
+        # over code layout, so `fw_layout` is not decoration on these
+        # rows - it is the variable.
+        #
+        # Collected once, before the loop, rather than per capture: it
+        # is a console query, and invariant 8 keeps console traffic out
+        # of a running sample path. The image cannot change mid-session.
+        prov = provenance.run_fields(board)
+        print("provenance: " + ", ".join(f"{k}={v}" for k, v in prov.items()),
+              flush=True)
         for i in range(1, args.runs + 1):
             amp = plan[i - 1] if i <= len(plan) else None
             if amp is not None and (i == 1 or plan[i - 2] != amp):
@@ -139,7 +154,7 @@ def main():
             pmed = statistics.median(prof) if prof else 0.0
             total_abs = sum(abs(v - pmed) for v in prof)
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                   "bench": args.bench, "regen": i in regen,
+                   "bench": args.bench, "regen": i in regen, **prov,
                    "amp": amp, "fws": fws, "preset": args.preset,
                    "total_abs": round(total_abs, 2),
                    "site_abs": round(sum(abs(v) for _b, v, _z in found), 2),
