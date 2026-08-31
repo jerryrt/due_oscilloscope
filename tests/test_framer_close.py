@@ -31,6 +31,8 @@ import sys
 
 import pytest
 
+import hostcc
+
 pytestmark = pytest.mark.smoke
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,56 +49,14 @@ GUARD = ("\t\tif (tx_phase == TX_DMA && usb_dma_in_busy())\n"
          "\t\t\treturn;\n")
 
 
+# Both live in tests/hostcc.py now, shared with test_console_out.py,
+# which had a weaker PATH-only copy of the first and none of the second.
 def _cc():
-    """A host C compiler, or None. GNU dialect only.
-
-    PATH first, which is every POSIX bench and costs nothing. Then the
-    registry, because on Windows nothing is on PATH - the same reason
-    `tools/toolchain.py` exists for cmake, ninja and the ARM toolchain,
-    and the rule CLAUDE.md states for all of them.
-
-    Windows benches had no host compiler at all until 2026-08-30, so
-    this file skipped there: a **tier 1** test, whose whole documented
-    purpose is measurable power over 5d6e7ab, contributed nothing and
-    said nothing about it. MSVC is not the answer and is ruled out -
-    `frame.h` declares the frame header `__attribute__((packed))` and
-    MSVC wants `#pragma pack`, so admitting it would mean changing the
-    packing semantics of the shared wire contract. See CLAUDE.md.
-    """
-    for name in ("cc", "gcc", "clang"):
-        path = shutil.which(name)
-        if path:
-            return path
-    try:
-        sys.path.insert(0, os.path.join(REPO, "tools"))
-        import toolchain
-        _dir, exe = toolchain.resolve("host_cc")
-        if exe:
-            return exe
-    except Exception:                                        # noqa: BLE001
-        pass
-    return None
+    return hostcc.cc()
 
 
 def _cc_env():
-    """The environment a MinGW gcc needs, and the reason it is not optional.
-
-    A MinGW toolchain's driver loads its own DLLs - libisl, libmpc,
-    libgmp, libwinpthread - from the directory it lives in, and finds
-    them only if that directory is on PATH. Invoked by absolute path
-    from a process without it, `gcc` exits **1 with an empty stderr**:
-    no diagnostic, no missing-DLL dialog, nothing to read. The build
-    assertion below prints `proc.stderr` and would have shown a blank
-    failure, which is a bad half-hour for whoever meets it next.
-
-    Harmless where the compiler came off PATH already, which is every
-    POSIX bench: prepending its own directory changes nothing there.
-    """
-    cc = _cc()
-    env = dict(os.environ)
-    if cc:
-        env["PATH"] = os.path.dirname(cc) + os.pathsep + env.get("PATH", "")
-    return env
+    return hostcc.cc_env()
 
 
 def _build(tmp_path, core_c, name):

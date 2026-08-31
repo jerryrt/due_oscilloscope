@@ -25,6 +25,8 @@ import subprocess
 
 import pytest
 
+import hostcc
+
 pytestmark = pytest.mark.smoke
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -56,12 +58,12 @@ def _code(path):
     return re.sub(r"//[^\n]*", " ", t)
 
 
+# Resolving a host compiler lives in tests/hostcc.py, shared with
+# test_framer_close.py. This file had its own PATH-only copy, which is
+# why it went on skipping with "install gcc or clang" on windows-desk
+# after the compiler was installed and the registry resolved it.
 def _cc():
-    for name in ("cc", "gcc", "clang"):
-        path = shutil.which(name)
-        if path:
-            return path
-    return None
+    return hostcc.cc()
 
 
 def test_no_floating_point_conversions_in_the_firmware():
@@ -101,7 +103,7 @@ def budget(tmp_path_factory):
         [cc, "-std=c11", "-Wall", "-I", SHARED, "-o", exe,
          os.path.join(HERE, "fmt", "budget.c"),
          os.path.join(SHARED, "console_out.c")],
-        capture_output=True, text=True)
+        capture_output=True, text=True, env=hostcc.cc_env())
     assert proc.returncode == 0, f"budget harness build failed:\n{proc.stderr}"
     return exe
 
