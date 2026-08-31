@@ -177,6 +177,79 @@ void console_cmd_stream(uint32_t trigger_hz)
 }
 
 /*
+ * `=<dac>P`: playback with no capture.
+ *
+ * One body for three tracks. Track A's and Track B's were
+ * byte-identical apart from the flush - `Serial.flush()` against
+ * `uart_flush()` - and Track C had none at all, which is how the suite
+ * came to fail on it. Nothing in it is track-specific: it is a refusal
+ * message and a ceiling, and the ceiling is now one port call instead
+ * of `(SystemCoreClock / 2u) / PLAY_MIN_RC` written out per track.
+ */
+void console_cmd_play(uint32_t dac_hz)
+{
+	if (console_port_play_start(dac_hz)) {
+		con_str("# play only: DAC "); con_u32(dac_hz);
+		con_str(" sps from USB, no capture"); con_nl();
+	} else {
+		con_str("# play only: "); con_u32(dac_hz);
+		con_str(" sps refused (max ");
+		con_u32(console_port_play_max_hz());
+		con_ch(')'); con_nl();
+	}
+	console_flush();
+}
+
+/*
+ * `=<dac>[,<adc>[,<nch>]]L`: host-fed playback with simultaneous
+ * capture.
+ *
+ * **The banner order is load-bearing and is not style.** It goes out
+ * before the CAPTURE start, never between it and the first frame,
+ * because capture is device-driven and the ring fills the moment the
+ * timer runs: docs/debugging.md priced this site at ~102 characters of
+ * banner against 8.96 ms of ring, margin -5.89 ms, and measured
+ * `first_overrun` at 2 and 1 across four runs at two rates before it
+ * was moved. That is issue #41's signature exactly.
+ *
+ * `play_start` stays ahead of the banner and that is deliberate too.
+ * Playback is host-driven and nothing flows until the host feeds, so
+ * it is not a hazard in that audit - only the capture start is.
+ *
+ * Keeping one copy is what keeps that ordering true on every track.
+ * Three copies is three chances for someone to tidy the banner into
+ * the wrong place, and only one of them would be measured.
+ */
+void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch)
+{
+	if (!console_port_play_start(dac_hz)) {
+		con_str("# loop: DAC "); con_u32(dac_hz);
+		con_str(" sps refused (max ");
+		con_u32(console_port_play_max_hz());
+		con_ch(')'); con_nl();
+		console_flush();
+		return;
+	}
+
+	con_str("# loop: DAC "); con_u32(dac_hz);
+	con_str(" sps from USB, ADC "); con_u32(adc_hz);
+	con_str(" Hz/ch x"); con_u32(nch); con_str(" ch"); con_nl();
+	con_str("# DAC0 carries the waveform, DAC1 holds mid scale"); con_nl();
+	console_flush();
+
+	if (!console_port_capture_only_start(adc_hz, nch)) {
+		console_port_play_stop();
+		con_str("# loop: ADC "); con_u32(adc_hz);
+		con_str(" Hz x"); con_u32(nch);
+		con_str(" ch refused (max ");
+		con_u32((console_port_mck_hz() / 2u)
+		        / console_port_acq_min_rc(nch));
+		con_ch(')'); con_nl();
+		console_flush();
+	}
+}
+
+/*
  * `=,,<nch>t`: the TC -> ADC -> PDC rate sweep, in one place.
  *
  * ONE IMPLEMENTATION, and the choice between the two it replaces was

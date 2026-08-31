@@ -29,10 +29,12 @@ import pytest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-TRACKS = [
-    ("track B", os.path.join("apps", "baremetal_bringup", "main.c")),
-    ("track A", os.path.join("sketches", "bringup", "bringup.ino")),
-]
+# Both per-track main()s used to be listed here, because `loop` had a
+# copy in each. They are gone rather than kept "in case": every command
+# this file guards now has one home in lib/due_shared, and a list of
+# paths nothing indexes is a thing that goes stale silently. `git log`
+# has the old table if a command is ever un-shared.
+
 
 #: (handler, signature, banner, the capture start, the refusal it guards).
 #:
@@ -53,26 +55,36 @@ SHARED = os.path.join("lib", "due_shared", "src", "console_cmds.c")
 #: ordering is still a source property, and a rewrite of the shared body
 #: can still get it wrong once for both tracks.
 #:
-#: `loop` is still two sites and still needs both. It was listed at
+#: `loop` has now joined it, and for the same reason. It was listed at
 #: margin -5.89 ms in docs/debugging.md's class audit and fixed per
-#: track, which is exactly the gap this file was written to close.
+#: track - which is exactly the gap this file was written to close, and
+#: which sharing the body closes by construction. Issue #45 moved it to
+#: `console_cmd_loop()` when Track C needed `L` and could not have it
+#: without a third copy of the same forty lines.
+#:
+#: **So this file now guards one home per command rather than three, and
+#: that is a stronger guarantee than it was ever able to make.** The
+#: guard is still worth keeping for the reason given above: a rewrite of
+#: a shared body can still get the ordering wrong once, for every track
+#: at once.
 HANDLERS = [
     ("cmd_stream", [("shared", SHARED)],
      r"void console_cmd_stream\(uint32_t trigger_hz\)\s*\{",
      r'"# streaming:',
      r"console_port_stream_start\(trigger_hz\)", r"# refused:"),
-    # The two `loop` patterns must match BOTH dialects, because Track B
-    # emits with con_* (issue #49) while Track A still uses a printf
-    # format string, and they must stay **banner-specific**: h_loop also
+    # The patterns must stay **banner-specific**: console_cmd_loop also
     # says "# loop: DAC ... sps refused" earlier in the same body, and a
     # pattern loose enough to match that would find its "banner" before
     # the start unconditionally and pass for the wrong reason.
     #
-    # So the text matched is the part only the banner has.
-    ("loop", TRACKS,
-     r"static void h?a?_?loop\(const uint32_t \*a\)\s*\{",
+    # So the text matched is the part only the banner has. The dialect
+    # note that used to be here - Track B on con_* and Track A on a
+    # printf format string - is moot now there is one body.
+    ("loop", [("shared", SHARED)],
+     r"void console_cmd_loop\(uint32_t dac_hz, uint32_t adc_hz,\s*"
+     r"unsigned nch\)\s*\{",
      r"sps from USB, ADC ",
-     r"stream_start_capture_only\(adc_hz, nch\)",
+     r"console_port_capture_only_start\(adc_hz, nch\)",
      r"# loop: ADC "),
 ]
 

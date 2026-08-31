@@ -465,6 +465,18 @@ static void c_mimic(const uint32_t *a)
  * them say whether the device stopped receiving, stopped answering, or
  * answered into a pipe nobody drained.
  */
+static void c_play(const uint32_t *a)
+{
+	console_cmd_play(a[0] ? a[0] : 200000u);
+}
+
+static void c_loop(const uint32_t *a)
+{
+	console_cmd_loop(a[0] ? a[0] : 200000u,
+	                 a[1] ? a[1] : (a[0] ? a[0] : 200000u),
+	                 a[2] ? a[2] : 2u);
+}
+
 /*
  * `z` and `Z`, both verbatim from Track B.
  *
@@ -524,6 +536,8 @@ static void c_bench(const uint32_t *a)
  * table decides the help's order, so this one may list what it likes. */
 const console_binding_t console_bindings[] = {
 	{ 'T', c_sink_dma },
+	{ 'P', c_play },
+	{ 'L', c_loop },
 	{ 'z', c_reset },
 	{ 'Z', c_detach },
 	{ 'y', c_time  },

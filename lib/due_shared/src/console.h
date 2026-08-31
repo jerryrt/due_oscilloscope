@@ -158,6 +158,9 @@ void console_cmd_stream(uint32_t trigger_hz);
  * tracks; the merge of the two that preceded it, and why each half
  * was chosen, is in console_cmds.c. Issue #45.
  */
+void console_cmd_play(uint32_t dac_hz);
+void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
+
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*

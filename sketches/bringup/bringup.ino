@@ -1478,64 +1478,16 @@ static void ha_duplex_dma(const uint32_t *a)
  */
 static void ha_loop(const uint32_t *a)
 {
-	char buf[192];
-
-	uint32_t dac_hz = a[0] ? a[0] : 200000u;
-	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
-	unsigned nch    = a[2] ? a[2] : 2u;
-
-	if (!play_start(dac_hz)) {
-		con_str("# loop: DAC "); con_u32(dac_hz);
-		con_str(" sps refused (max ");
-		con_u32((SystemCoreClock / 2u) / PLAY_MIN_RC);
-		con_ch(')'); con_nl();
-		Serial.flush();
-		return;
-	}
-	/*
-	 * Banner before the CAPTURE start - issue #41's ordering, at the
-	 * site 67d3990 did not reach. docs/debugging.md's class audit
-	 * names `h_loop / ha_loop` at margin -5.89 ms and it was left
-	 * because only cmd_stream had been measured. Track B carries the
-	 * same change and the same reasoning.
-	 *
-	 * play_start stays above: playback is host-driven and nothing
-	 * flows until the host feeds. Capture is device-driven and fills
-	 * the moment the timer runs.
-	 */
-	con_str("# loop: DAC "); con_u32(dac_hz);
-	con_str(" sps from USB, ADC "); con_u32(adc_hz);
-	con_str(" Hz/ch x"); con_u32(nch); con_str(" ch"); con_nl();
-	Serial.println("# DAC0 carries the waveform, DAC1 holds mid scale");
-	Serial.flush();
-	if (!stream_start_capture_only(adc_hz, nch)) {
-		play_stop();
-		con_str("# loop: ADC "); con_u32(adc_hz);
-		con_str(" Hz x"); con_u32(nch);
-		con_str(" ch refused (max ");
-		con_u32((SystemCoreClock / 2u) / ACQ_MIN_RC_FOR(nch));
-		con_ch(')'); con_nl();
-		Serial.flush();
-		return;
-	}
+	console_cmd_loop(a[0] ? a[0] : 200000u,
+	                 a[1] ? a[1] : (a[0] ? a[0] : 200000u),
+	                 a[2] ? a[2] : 2u);
 }
 
 /* Playback with NO capture stream, to separate a fault in the DAC
  * path from an interaction between the two service loops. */
 static void ha_play(const uint32_t *a)
 {
-	uint32_t dac_hz = a[0] ? a[0] : 200000u;
-
-	if (play_start(dac_hz)) {
-		con_str("# play only: DAC "); con_u32(dac_hz);
-		con_str(" sps from USB, no capture"); con_nl();
-	} else {
-		con_str("# play only: "); con_u32(dac_hz);
-		con_str(" sps refused (max ");
-		con_u32((SystemCoreClock / 2u) / PLAY_MIN_RC);
-		con_ch(')'); con_nl();
-	}
-	console_flush();
+	console_cmd_play(a[0] ? a[0] : 200000u);
 }
 
 static void ha_occ(const uint32_t *a)

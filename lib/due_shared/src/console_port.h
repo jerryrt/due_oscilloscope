@@ -91,6 +91,24 @@ void console_flush(void);
 bool console_port_stream_start(uint32_t trigger_hz);
 
 /*
+ * The playback and capture-only surface `P` and `L` speak through.
+ *
+ * Same reasoning as above and the same shape: the bodies of those two
+ * commands were byte-identical across three tracks apart from which
+ * flush they called, so they are shared (issue #45), and these are the
+ * register reaches the shared bodies cannot make for themselves.
+ *
+ * `console_port_play_max_hz()` exists rather than exposing PLAY_MIN_RC
+ * because the constant is a driver's and the arithmetic around it -
+ * (MCK/2)/RC - was written out at four call sites across the tracks.
+ * A ceiling is one question and every caller asked it the same way.
+ */
+bool     console_port_play_start(uint32_t dac_hz);
+void     console_port_play_stop(void);
+uint32_t console_port_play_max_hz(void);
+bool     console_port_capture_only_start(uint32_t adc_hz, unsigned nch);
+
+/*
  * The acquisition surface the rate sweep needs.
  *
  * `cmd_rate_sweep` is application logic - it decides which ladder to

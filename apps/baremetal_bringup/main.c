@@ -1147,71 +1147,16 @@ static void h_duplex_dma(const uint32_t *a)
  */
 static void h_loop(const uint32_t *a)
 {
-	/* "=<dac>[,<adc>]L"; one number sets both, none = 200k. */
-	uint32_t dac_hz = a[0] ? a[0] : 200000u;
-	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
-	unsigned nch    = a[2] ? a[2] : 2u;
-
-	if (!play_start(dac_hz)) {
-		con_str("# loop: DAC "); con_u32(dac_hz);
-		con_str(" sps refused (max ");
-		con_u32((SystemCoreClock / 2u) / PLAY_MIN_RC);
-		con_ch(')'); con_nl();
-		uart_flush();
-		return;
-	}
-	/*
-	 * Banner before the CAPTURE start, for issue #41's reason - and
-	 * this site is the one 67d3990 did not fix. docs/debugging.md's
-	 * class audit priced it at the time: ~102 characters of banner
-	 * against 8.96 ms of ring, margin **-5.89 ms**, and it was left
-	 * because only cmd_stream had been measured.
-	 *
-	 * Measured here before the change, four runs at each of two
-	 * rates: `first_overrun` was 2 at 453,488 Hz and 1 at 402,061 in
-	 * every single run - frames lost before the first frame ships,
-	 * which is #41's signature exactly and close to what the margin
-	 * predicts (2.6 and 1.8 frames).
-	 *
-	 * The play_start above stays where it is. Playback is
-	 * host-driven and nothing flows until the host feeds, which is
-	 * why h_play is explicitly NOT a hazard in that audit; capture
-	 * is device-driven and fills the moment the timer runs. Only the
-	 * capture start needs the banner ahead of it.
-	 */
-	con_str("# loop: DAC "); con_u32(dac_hz);
-	con_str(" sps from USB, ADC "); con_u32(adc_hz);
-	con_str(" Hz/ch x"); con_u32(nch); con_str(" ch"); con_nl();
-	con_str("# DAC0 carries the waveform, DAC1 holds mid scale"); con_nl();
-	uart_flush();
-	if (!stream_start_capture_only(adc_hz, nch)) {
-		play_stop();
-		con_str("# loop: ADC "); con_u32(adc_hz);
-		con_str(" Hz x"); con_u32(nch);
-		con_str(" ch refused (max ");
-		con_u32((SystemCoreClock / 2u) / ACQ_MIN_RC_FOR(nch));
-		con_ch(')'); con_nl();
-		uart_flush();
-		return;
-	}
+	console_cmd_loop(a[0] ? a[0] : 200000u,
+	                 a[1] ? a[1] : (a[0] ? a[0] : 200000u),
+	                 a[2] ? a[2] : 2u);
 }
 
 /* Playback with NO capture stream, to separate a fault in the DAC path
  * from an interaction between the two service loops. */
 static void h_play(const uint32_t *a)
 {
-	uint32_t dac_hz = a[0] ? a[0] : 200000u;
-
-	if (play_start(dac_hz)) {
-		con_str("# play only: DAC "); con_u32(dac_hz);
-		con_str(" sps from USB, no capture"); con_nl();
-	} else {
-		con_str("# play only: "); con_u32(dac_hz);
-		con_str(" sps refused (max ");
-		con_u32((SystemCoreClock / 2u) / PLAY_MIN_RC);
-		con_ch(')'); con_nl();
-	}
-	uart_flush();
+	console_cmd_play(a[0] ? a[0] : 200000u);
 }
 
 static void h_profile(const uint32_t *a) { (void)a; cmd_profile(); }

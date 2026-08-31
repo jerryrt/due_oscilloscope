@@ -8,6 +8,7 @@
 
 #include "acq.h"
 #include "console_port.h"
+#include "play.h"
 #include "stream.h"
 
 /*
@@ -125,4 +126,32 @@ void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 {
 	*rxbuff = acq_rxbuff_overruns;
 	*govre  = acq_govre;
+}
+
+/*
+ * The playback and capture-only surface `P` and `L` speak through.
+ *
+ * Track A's own registers behind the same four names Track B and
+ * Track C implement in drivers/console_port.c - which is the whole
+ * point of the seam: one command body, three independent programmings
+ * of the silicon underneath it (invariant 3).
+ */
+bool console_port_play_start(uint32_t dac_hz)
+{
+	return play_start(dac_hz);
+}
+
+void console_port_play_stop(void)
+{
+	play_stop();
+}
+
+uint32_t console_port_play_max_hz(void)
+{
+	return (SystemCoreClock / 2u) / PLAY_MIN_RC;
+}
+
+bool console_port_capture_only_start(uint32_t adc_hz, unsigned nch)
+{
+	return stream_start_capture_only(adc_hz, nch);
 }
