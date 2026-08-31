@@ -105,6 +105,36 @@ def main():
 
     print(f"\noffset from RC {[c for c in CLEAN if c in by]} = "
           f"{offset:.6f}  (this instrument's, not a constant)")
+
+    # A single number computed from a bimodal input is the failure mode,
+    # and it is silent. Measured on linux-x1 2026-08-30: RC 28 and RC 52
+    # sit at n=0 most of the time and drop to *exactly* n=2 in 2 of 9
+    # and 3 of 9 reps - six low readings spanning 0.00013, so a mode and
+    # not scatter. The median reports all three CLEAN rates at n=0 and
+    # hides it completely; a batch that happens to draw more low reps
+    # gets a larger offset, and every n in that batch shifts with it.
+    #
+    # So say it. The offset stays the median-based one - this warns, it
+    # does not correct, because what the right offset is when a zero is
+    # bimodal is a question for whoever reads this and not for a tool.
+    for rc in (c for c in CLEAN if c in by):
+        vals = sorted(by[rc])
+        if len(vals) < 4:
+            continue
+        spread = vals[-1] - vals[0]
+        # A clean rate should sit inside one lattice step of itself.
+        if spread > 0.5 / 256.0:
+            lo = statistics.median(vals[:len(vals) // 2])
+            hi = statistics.median(vals[len(vals) // 2:])
+            print(f"  WARNING: RC {rc} is not single-moded over "
+                  f"{len(vals)} reps - spread {spread:.6f}, low half "
+                  f"{lo:.6f}, high half {hi:.6f}")
+            print(f"           ({(hi - lo) * 256.0:+.2f} of a lattice step "
+                  f"between the halves). The offset above is drawn from "
+                  f"this,")
+            print(f"           so every n below moves with however many "
+                  f"low reps this batch happened to draw. More reps, or "
+                  f"a different zero.")
     print(f"\n{'RC':>4}{'sps':>10}{'ratio':>10}{'deficit-off':>13}"
           f"{'x256':>9}{'n':>4}{'resid':>8}   theirs")
     for rc in sorted(by):
