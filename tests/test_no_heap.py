@@ -100,17 +100,29 @@ def _defined_symbols(elf):
             for m in re.finditer(r"^\S+\s+\S\s+(\S+)$", out.stdout, re.M)}
 
 
-@pytest.mark.xfail(reason="issue #49: the call sites still use printf, "
-                          "which reaches stdout and links findfp and the "
-                          "heap. console_out.c is the replacement and the "
-                          "migration is next - remove this with it",
-                   strict=True)
 def test_the_firmware_image_has_no_heap():
     """The rule, checked where it can be checked: the linked image.
 
-    The xfail this carried while #49 was in progress is removed with
-    the defect, which is what strict=True was for: finishing the
-    migration failed the test until somebody came back for it.
+    This carried a strict xfail while #49 was in progress, and the
+    xfail is gone because the defect is. strict=True is what made that
+    work: the moment the last allocator reference left the image the
+    test XPASSed and *failed the suite*, so finishing the migration
+    could not quietly leave a stale expectation behind.
+
+    **Three separate things had to go, and only the first was
+    predicted.** The issue's plan was "delete printf and the heap goes
+    with findfp". In the event: the console port had to come off stdio
+    first, or the sites migrated *to* the thing that pulled the heap;
+    then 121 printf calls; then a `setvbuf(stdout, ...)` configuring a
+    stream that no longer had a writer, which allocates the buffer it
+    is asked about; and finally every `snprintf`, whose
+    nano-svfprintf.o references _malloc_r, _free_r and _realloc_r
+    whether or not the path is reachable.
+
+    So the useful lesson for whoever this fails on: **the link map
+    names what pulls the allocator, and the call sites only imply it.**
+    `grep malloc build/baremetal_bringup.map` and read the line under
+    each archive member - it says which object asked for it.
     """
     if not os.path.isfile(ELF):
         pytest.skip(f"{os.path.relpath(ELF, REPO)} not built - {_BUILD_HINT}")

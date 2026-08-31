@@ -12,9 +12,10 @@
 
 #include "console.h"
 #include "console_port.h"
+#include "console_out.h"
 #include "ctl.h"        /* CTL_VERSION */
 #include "frame.h"      /* FRAME_VERSION, FRAME_BYTES/SAMPLES */
-#include "fw_version.h" /* FW_ID_FORMAT, FW_VERSION_STR */
+#include "fw_version.h" /* FW_VERSION_STR */
 
 /*
  * ---------------------------------------------------------------------
@@ -306,20 +307,38 @@ void console_feed(int c)
 
 void console_identity(char track, unsigned long mck_hz)
 {
-	char line[192];
-
 	/*
+	 * The identity line, emitted by the banner and by `v` on both
+	 * tracks, in this exact format.
+	 *
+	 * One line, key=value, same keys and same order everywhere, so a
+	 * host reads one regular expression instead of matching prose.
+	 * `build=` is last because it is the only value containing
+	 * spaces. This is what `measure.parse_identity` parses and what a
+	 * host refuses a pairing on, so it is wire contract: **this
+	 * function is its only home, and a second one anywhere is the
+	 * defect tests/test_shared_source.py exists to catch.**
+	 *
+	 * It was a printf format string, FW_ID_FORMAT, until issue #49 -
+	 * a format string is the last thing in the shared tree that
+	 * needed the libc formatter and with it the allocator. The
+	 * contract did not change; ten arguments in one order became ten
+	 * emitter calls in one order, in the same single home.
+	 *
 	 * The ADC clock is MCK/4 by PRESCAL=1, which is why 78 MHz was
 	 * chosen: 19.5 MHz sits inside the datasheet's 20 MHz limit. It
 	 * is derived here rather than passed so that a track cannot
 	 * report a divider it does not use.
 	 */
-	snprintf(line, sizeof(line), FW_ID_FORMAT,
-	         track, FW_VERSION_STR, CTL_VERSION, FRAME_VERSION,
-	         mck_hz, mck_hz / 4u,
-	         (unsigned)FRAME_BYTES, (unsigned)FRAME_SAMPLES,
-	         __DATE__, __TIME__);
-	console_write(line);
-	console_write("\n");
+	con_str("# id: track=");   con_ch(track);
+	con_str(" fw=");           con_str(FW_VERSION_STR);
+	con_str(" ctlver=");       con_u32(CTL_VERSION);
+	con_str(" framever=");     con_u32(FRAME_VERSION);
+	con_str(" mck=");          con_u32(mck_hz);
+	con_str(" adcclk=");       con_u32(mck_hz / 4u);
+	con_str(" framebytes=");   con_u32(FRAME_BYTES);
+	con_str(" framesamples="); con_u32(FRAME_SAMPLES);
+	con_str(" build=" __DATE__ " " __TIME__);
+	con_nl();
 	console_flush();
 }

@@ -626,38 +626,55 @@ uint32_t gen_hz_for(uint32_t trigger_hz, uint16_t points, uint8_t sync)
 	return u ? trigger_hz / u : 0u;
 }
 
-int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g)
+/*
+ * A signed value with its sign always shown - `%+d`.
+ *
+ * Local rather than a con_* emitter: three call sites, all in this
+ * file, and console_out.h's rule for the composites is that they earn
+ * their place across the firmware rather than in one function.
+ */
+static void con_plus(int v)
 {
-	if (!g->trigger_hz)
-		return snprintf(buf, n,
-		                "gen shape %u = %s, %u pts/cycle, amp %u/256, "
-		                "sync %u = %s at %u/256 (no trigger running)",
-		                g->shape, gen_shape_name(g->shape), g->points,
-		                g->amp, g->sync, gen_sync_name(g->sync),
-		                g->sync_amp);
-	return snprintf(buf, n,
-	                "gen shape %u = %s, %u pts/cycle, amp %u/256, "
-	                "sync %u = %s at %u/256 -> %lu Hz at trigger %lu Hz",
-	                g->shape, gen_shape_name(g->shape), g->points,
-	                g->amp, g->sync, gen_sync_name(g->sync), g->sync_amp,
-	                (unsigned long)g->output_hz,
-	                (unsigned long)g->trigger_hz);
+	if (v >= 0)
+		con_ch('+');
+	con_i32(v);
+}
+
+void ctl_gen_describe(const ctl_gen_t *g)
+{
+	con_str("gen shape ");   con_u32(g->shape);
+	con_str(" = ");          con_str(gen_shape_name(g->shape));
+	con_str(", ");           con_u32(g->points);
+	con_str(" pts/cycle, amp "); con_u32(g->amp);
+	con_str("/256, sync ");  con_u32(g->sync);
+	con_str(" = ");          con_str(gen_sync_name(g->sync));
+	con_str(" at ");         con_u32(g->sync_amp);
+	con_str("/256");
+	if (!g->trigger_hz) {
+		con_str(" (no trigger running)");
+		return;
+	}
+	con_str(" -> ");         con_u32(g->output_hz);
+	con_str(" Hz at trigger "); con_u32(g->trigger_hz);
+	con_str(" Hz");
 }
 
 /*
  * Median, range and the shape of the distribution - never one number.
  * See ctl_wire.h for why, which is issue #16.
  */
-int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
-                       const int16_t *vals, unsigned count)
+void ctl_bleed_describe(const char *label, const int16_t *vals,
+                        unsigned count)
 {
 	int16_t sorted[CTL_BLEED_MAX];
 	int lo, hi, median;
 	unsigned i, j;
-	int written;
 
-	if (count == 0u)
-		return snprintf(buf, n, "# %s: no observations", label);
+	if (count == 0u) {
+		con_str("# "); con_str(label);
+		con_str(": no observations"); con_nl();
+		return;
+	}
 	if (count > CTL_BLEED_MAX)
 		count = CTL_BLEED_MAX;
 
@@ -675,47 +692,41 @@ int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
 	hi = sorted[count - 1u];
 	median = sorted[count / 2u];
 
-	written = snprintf(buf, n,
-	                   "# %s: median %+d codes, range %+d..%+d, n=%u",
-	                   label, median, lo, hi, count);
+	con_str("# "); con_str(label); con_str(": median ");
+	con_plus(median); con_str(" codes, range ");
+	con_plus(lo); con_str(".."); con_plus(hi);
+	con_str(", n="); con_u32(count);
 	/*
 	 * Say when the range is wide, rather than leaving a reader to
 	 * notice. A spread this size is not scatter around a value - issue
 	 * #16 measured two modes - and a median alone would hide it just
 	 * as effectively as the single draw did.
 	 */
-	if (hi - lo > 20 && written > 0 && (unsigned long)written < n)
-		snprintf(buf + written, n - (unsigned long)written,
-		         "  <- SPREAD %d codes, not one quantity", hi - lo);
-	return written;
+	if (hi - lo > 20) {
+		con_str("  <- SPREAD "); con_i32(hi - lo);
+		con_str(" codes, not one quantity");
+	}
+	con_nl();
 }
 
 /*
  * The same observations unsorted, so a host can see where in the run
  * each one landed. See ctl_wire.h for why the summary is not enough.
  */
-int ctl_bleed_values(char *buf, unsigned long n, const char *label,
-                     const int16_t *vals, unsigned count)
+void ctl_bleed_values(const char *label, const int16_t *vals,
+                      unsigned count)
 {
-	unsigned long used;
-	int written;
 	unsigned i;
 
 	if (count > CTL_BLEED_MAX)
 		count = CTL_BLEED_MAX;
 
-	written = snprintf(buf, n, "# %s, in order:", label);
-	if (written < 0)
-		return written;
-	used = (unsigned long)written;
-
-	for (i = 0; i < count && used < n; i++) {
-		written = snprintf(buf + used, n - used, " %+d", vals[i]);
-		if (written < 0)
-			return written;
-		used += (unsigned long)written;
+	con_str("# "); con_str(label); con_str(", in order:");
+	for (i = 0; i < count; i++) {
+		con_ch(' ');
+		con_plus(vals[i]);
 	}
-	return (int)used;
+	con_nl();
 }
 
 /*
@@ -724,29 +735,20 @@ int ctl_bleed_values(char *buf, unsigned long n, const char *label,
  * "control" partly measures relaxation from the previous arm's epoch -
  * visible only in the raw values. About 10 bytes per observation.
  */
-int ctl_bleed_raw(char *buf, unsigned long n, const char *label,
-                  const uint16_t *lo, const uint16_t *hi, unsigned count)
+void ctl_bleed_raw(const char *label, const uint16_t *lo,
+                   const uint16_t *hi, unsigned count)
 {
-	unsigned long used;
-	int written;
 	unsigned i;
 
 	if (count > CTL_BLEED_MAX)
 		count = CTL_BLEED_MAX;
 
-	written = snprintf(buf, n, "# %s raw lo/hi, in order:", label);
-	if (written < 0)
-		return written;
-	used = (unsigned long)written;
-
-	for (i = 0; i < count && used < n; i++) {
-		written = snprintf(buf + used, n - used, " %u/%u",
-		                   (unsigned)lo[i], (unsigned)hi[i]);
-		if (written < 0)
-			return written;
-		used += (unsigned long)written;
+	con_str("# "); con_str(label); con_str(" raw lo/hi, in order:");
+	for (i = 0; i < count; i++) {
+		con_ch(' ');
+		con_u32(lo[i]); con_ch('/'); con_u32(hi[i]);
 	}
-	return (int)used;
+	con_nl();
 }
 
 /* ------------------------------------------------------------------ */

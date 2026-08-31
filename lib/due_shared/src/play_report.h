@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 /* The counters both tracks keep. Field order here is documentation
- * only; the wire order is play_report_format()'s format string. */
+ * only; the wire order is play_report_print()'s emit order. */
 typedef struct {
 	uint32_t bytes_in;    /* bytes the OUT path has received      */
 	uint32_t produced;    /* buffers filled from the host feed    */
@@ -57,18 +57,26 @@ typedef struct {
 } play_report_t;
 
 /*
- * Write the shared `# play:` prefix into `buf`, with no trailing
- * newline. Returns the number of characters written, so a track may
- * append its own counters there:
+ * Emit the shared `# play:` prefix, with no trailing newline, so a
+ * track may append the counters only it can produce and then end the
+ * line itself:
  *
- *     int n = play_report_format(buf, sizeof buf, &r);
- *     snprintf(buf + n, sizeof buf - n, " rebuilds=%lu", ...);
+ *     play_report_print(&r);
+ *     con_str(" rebuilds="); con_u32(usbdma_rebuilds);
+ *     con_nl();
  *
- * Returns a value < 0 on encoding failure, and never writes more than
- * `n` bytes including the terminator - snprintf's contract, kept so a
- * caller with a fixed buffer has a bounded worst case (invariant 7).
+ * Bounded by construction rather than by a buffer size: every emitter
+ * has a compile-time worst case in bytes (console_out.h), so invariant
+ * 7 holds without a caller having to size anything.
  */
-int play_report_format(char *buf, unsigned n, const play_report_t *r);
+/*
+ * Emit the shared prefix - no newline, so a track can append the
+ * counters only it can produce and then end the line itself. It was
+ * play_report_format(buf, n, r) returning the length for exactly that
+ * append; with emitters the offset is implicit and there is no buffer
+ * to size. Issue #49.
+ */
+void play_report_print(const play_report_t *r);
 
 #ifdef __cplusplus
 }

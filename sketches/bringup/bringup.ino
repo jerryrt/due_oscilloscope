@@ -36,6 +36,7 @@
  */
 
 #include "play_report.h"
+#include "console_out.h"          /* the shared debug emitters */
 #include "clock.h"
 #include "bootlog.h"
 #include "acq.h"
@@ -494,42 +495,34 @@ static void cmd_crosstalk(void)
 	}
 
 	/* Name the channel watched: with `=2C` these rows are about A2. */
-	const char *sname = (second == ACQ_CH_A2) ? "A2" : "A1";
-	char label[64];
+	/*
+	 * Whole literals rather than a label built at runtime - the same
+	 * change as Track B's, and for the same reason: it was the last
+	 * thing here needing a formatter and a 64-byte buffer for a
+	 * string with two possible values. Issue #49.
+	 */
+	const bool a2 = (second == ACQ_CH_A2);
 
-	snprintf(label, sizeof(label), "%s bleed (DAC1 held, DAC0 swung)", sname);
-	ctl_bleed_describe(buf, sizeof(buf), label, a1_bleed, n);
-	Serial.println(buf);
-	snprintf(label, sizeof(label), "%s bleed", sname);
-	ctl_bleed_values(buf, sizeof(buf), label, a1_bleed, n);
-	Serial.println(buf);
-	ctl_bleed_raw(buf, sizeof(buf), label, a1b_lo, a1b_hi, n);
-	Serial.println(buf);
-	snprintf(label, sizeof(label), "%s control (nothing swung)", sname);
-	ctl_bleed_describe(buf, sizeof(buf), label, a1_still, n);
-	Serial.println(buf);
-	snprintf(label, sizeof(label), "%s control", sname);
-	ctl_bleed_values(buf, sizeof(buf), label, a1_still, n);
-	Serial.println(buf);
-	ctl_bleed_raw(buf, sizeof(buf), label, a1s_lo, a1s_hi, n);
-	Serial.println(buf);
+	ctl_bleed_describe(a2 ? "A2 bleed (DAC1 held, DAC0 swung)"
+	                      : "A1 bleed (DAC1 held, DAC0 swung)",
+	                   a1_bleed, n);
+	ctl_bleed_values(a2 ? "A2 bleed" : "A1 bleed", a1_bleed, n);
+	ctl_bleed_raw(a2 ? "A2 bleed" : "A1 bleed", a1b_lo, a1b_hi, n);
+	ctl_bleed_describe(a2 ? "A2 control (nothing swung)"
+	                      : "A1 control (nothing swung)",
+	                   a1_still, n);
+	ctl_bleed_values(a2 ? "A2 control" : "A1 control", a1_still, n);
+	ctl_bleed_raw(a2 ? "A2 control" : "A1 control", a1s_lo, a1s_hi, n);
 	Serial.flush();
 
-	snprintf(label, sizeof(label),
-	         "A0 bleed (DAC0 held, DAC1 swung, %s in pair)", sname);
-	ctl_bleed_describe(buf, sizeof(buf), label, a0_bleed, n);
-	Serial.println(buf);
-	ctl_bleed_values(buf, sizeof(buf), "A0 bleed", a0_bleed, n);
-	Serial.println(buf);
-	ctl_bleed_raw(buf, sizeof(buf), "A0 bleed", a0b_lo, a0b_hi, n);
-	Serial.println(buf);
-	ctl_bleed_describe(buf, sizeof(buf),
-	                   "A0 control (nothing swung)", a0_still, n);
-	Serial.println(buf);
-	ctl_bleed_values(buf, sizeof(buf), "A0 control", a0_still, n);
-	Serial.println(buf);
-	ctl_bleed_raw(buf, sizeof(buf), "A0 control", a0s_lo, a0s_hi, n);
-	Serial.println(buf);
+	ctl_bleed_describe(a2 ? "A0 bleed (DAC0 held, DAC1 swung, A2 in pair)"
+	                      : "A0 bleed (DAC0 held, DAC1 swung, A1 in pair)",
+	                   a0_bleed, n);
+	ctl_bleed_values("A0 bleed", a0_bleed, n);
+	ctl_bleed_raw("A0 bleed", a0b_lo, a0b_hi, n);
+	ctl_bleed_describe("A0 control (nothing swung)", a0_still, n);
+	ctl_bleed_values("A0 control", a0_still, n);
+	ctl_bleed_raw("A0 control", a0s_lo, a0s_hi, n);
 
 	/* Which bench this is, read rather than assumed. */
 	gen_write_dac(1, 2048);
@@ -2134,15 +2127,13 @@ static void ha_bench(const uint32_t *a)
 		 * counters are Track A's UOTGHS DMA stack and Track B has
 		 * nothing to put there - a real per-track capability, unlike
 		 * the `svc` that used to sit mid-line here. */
-		int n = play_report_format(buf, sizeof(buf), &r);
-		if (n > 0 && (unsigned)n < sizeof(buf))
-			snprintf(buf + n, sizeof(buf) - n,
-			         " rebuilds=%lu act-in=%lu act-out=%lu",
-			         (unsigned long)usbdma_rebuilds,
-			         (unsigned long)usb_in_activity,
-			         (unsigned long)usb_out_activity);
+		play_report_print(&r);
+		con_str(" rebuilds=");  con_u32(usbdma_rebuilds);
+		con_str(" act-in=");    con_u32(usb_in_activity);
+		con_str(" act-out=");   con_u32(usb_out_activity);
+		con_nl();
 	}
-	Serial.println(buf); Serial.flush();
+	Serial.flush();
 }
 
 /*

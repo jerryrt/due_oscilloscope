@@ -95,19 +95,20 @@
 #define FW_VERSION_STR  FW__STR(FW_VERSION_MAJOR) "." FW__STR(FW_VERSION_MINOR) "." FW__STR(FW_VERSION_PATCH)
 
 /*
- * The identity line, emitted by the banner and by the `v` command on
- * both tracks, in this exact format.
+ * The identity line used to be a printf format string here,
+ * FW_ID_FORMAT. It is now emitted key by key in console_identity()
+ * (lib/due_shared/src/console.c), which is still its one and only
+ * home - issue #49 removed the formatter from the shared tree, not the
+ * contract.
  *
- * One line, key=value, same keys and same order everywhere, so a host
- * reads one regular expression instead of matching prose. `build=` is
- * last because it is the only value containing spaces.
+ * The macro is deliberately not left behind as documentation. An
+ * unused copy of a wire format is exactly the second home this seam
+ * exists to prevent: it would drift silently, because nothing compiles
+ * it and nothing tests it.
  *
  * `v` exists separately from the banner because the banner is 89 ms of
- * blocked main loop (invariant 8) and this is one short line. Asking
- * "what are you" should not cost a measurement.
+ * blocked main loop (invariant 8) and the identity is one short line.
+ * Asking "what are you" should not cost a measurement.
  */
-#define FW_ID_FORMAT \
-	"# id: track=%c fw=%s ctlver=%u framever=%u mck=%lu adcclk=%lu " \
-	"framebytes=%u framesamples=%u build=%s %s"
 
 #endif /* FW_VERSION_H */

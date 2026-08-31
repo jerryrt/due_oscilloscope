@@ -61,11 +61,19 @@ HANDLERS = [
      r"void console_cmd_stream\(uint32_t trigger_hz\)\s*\{",
      r'"# streaming:',
      r"console_port_stream_start\(trigger_hz\)", r"# refused:"),
+    # The two `loop` patterns must match BOTH dialects, because Track B
+    # emits with con_* (issue #49) while Track A still uses a printf
+    # format string, and they must stay **banner-specific**: h_loop also
+    # says "# loop: DAC ... sps refused" earlier in the same body, and a
+    # pattern loose enough to match that would find its "banner" before
+    # the start unconditionally and pass for the wrong reason.
+    #
+    # So the text matched is the part only the banner has.
     ("loop", TRACKS,
      r"static void h?a?_?loop\(const uint32_t \*a\)\s*\{",
-     r'"# loop: DAC %lu sps from USB',
+     r"sps from USB, ADC ",
      r"stream_start_capture_only\(adc_hz, nch\)",
-     r"# loop: ADC %lu Hz"),
+     r"# loop: ADC "),
 ]
 
 SITES = [(f"{h} {where}", path, sig, banner, start, refusal)

@@ -1,6 +1,5 @@
-#include <stdio.h>
-
 #include "play_report.h"
+#include "console_out.h"
 
 /*
  * One format string, one field order, one home.
@@ -12,20 +11,17 @@
  * command costs the bytes it puts on the wire, and this is a debug
  * command already measured at 13.14 ms.
  */
-int play_report_format(char *buf, unsigned n, const play_report_t *r)
+void play_report_print(const play_report_t *r)
 {
-	return snprintf(buf, n,
-			"# play: in=%lu produced=%lu consumed=%lu under=%lu "
-			"isr=%lu endtx=%lu svc=%lu spans=%lu partial=%lu "
-			"occmin=%lu",
-			(unsigned long)r->bytes_in,
-			(unsigned long)r->produced,
-			(unsigned long)r->consumed,
-			(unsigned long)r->underruns,
-			(unsigned long)r->isr_calls,
-			(unsigned long)r->endtx_seen,
-			(unsigned long)r->svc_calls,
-			(unsigned long)r->spans,
-			(unsigned long)r->partial,
-			(unsigned long)r->occ_min);
+	con_str("# play: ");
+	con_kv_u32("in", r->bytes_in);        con_ch(' ');
+	con_kv_u32("produced", r->produced);  con_ch(' ');
+	con_kv_u32("consumed", r->consumed);  con_ch(' ');
+	con_kv_u32("under", r->underruns);    con_ch(' ');
+	con_kv_u32("isr", r->isr_calls);      con_ch(' ');
+	con_kv_u32("endtx", r->endtx_seen);   con_ch(' ');
+	con_kv_u32("svc", r->svc_calls);      con_ch(' ');
+	con_kv_u32("spans", r->spans);        con_ch(' ');
+	con_kv_u32("partial", r->partial);    con_ch(' ');
+	con_kv_u32("occmin", r->occ_min);
 }

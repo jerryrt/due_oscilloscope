@@ -254,8 +254,8 @@ def test_the_play_line_has_exactly_one_home():
 def test_both_tracks_reach_the_line_through_the_shared_formatter():
     for track, path in PLAY_LINE_CALLERS.items():
         text = _read(path)
-        assert "play_report_format(" in text, (
-            f"Track {track} does not call play_report_format()")
+        assert "play_report_print(" in text, (
+            f"Track {track} does not call play_report_print()")
         assert '#include "play_report.h"' in text, (
             f"Track {track} does not include play_report.h")
 
@@ -269,15 +269,32 @@ def test_track_specific_play_counters_only_trail():
     why the other cannot have it.
     """
     import re
-    shared = re.findall(r"([A-Za-z][A-Za-z0-9_-]*)=%lu", _read(PLAY_REPORT_C))
+    # The fields used to be `name=%lu` inside a printf format string.
+    # Issue #49 replaced the formatter with emitters, so the shared
+    # prefix is now a con_kv_u32("name", v) per field and a track's own
+    # trailing fields are con_str(" name=") followed by the value. The
+    # property under test is unchanged - order in the shared prefix,
+    # append-only per track, no overlap - so only these two patterns
+    # move.
+    shared = re.findall(r'con_kv_u32\("([A-Za-z][A-Za-z0-9_-]*)"',
+                        _read(PLAY_REPORT_C))
     assert shared[0] == "in" and "svc" in shared, shared
 
     for track, path in PLAY_LINE_CALLERS.items():
         text = _read(path)
-        # Whatever this track appends after the shared prefix.
-        extra = []
-        for m in re.finditer(r'"\s+((?:[A-Za-z][A-Za-z0-9_-]*=%lu\s*)+)"', text):
-            extra += re.findall(r"([A-Za-z][A-Za-z0-9_-]*)=%lu", m.group(1))
+        # Whatever this track appends after the shared prefix - which is
+        # literally "between play_report_print() and the con_nl() that
+        # ends the line", so read exactly that window rather than the
+        # whole file. `con_str(" name=")` is a common enough shape that a
+        # file-wide scan picks up unrelated register dumps.
+        call = text.find("play_report_print(")
+        assert call >= 0, f"Track {track} does not call play_report_print()"
+        end = text.find("con_nl()", call)
+        assert end > call, (
+            f"Track {track} calls play_report_print() but never ends the "
+            f"line with con_nl()")
+        extra = re.findall(r'con_str\("\s+([A-Za-z][A-Za-z0-9_-]*)="\)',
+                           text[call:end])
         assert extra == PLAY_TRACK_ONLY[track], (
             f"Track {track} appends {extra} to the `# play:` line; "
             f"declared {PLAY_TRACK_ONLY[track]}. Add it here with a "
@@ -362,21 +379,27 @@ def test_the_identity_line_has_one_format_string():
     both tracks, so a board answered "which firmware are you" two ways
     and copying kept the copies in perfect agreement at the wrong value.
     """
+    # This asserted on the name FW_ID_FORMAT until issue #49, when the
+    # printf format string became a sequence of emitter calls and the
+    # macro was deleted rather than left behind - an uncompiled, untested
+    # copy of a wire format is the second home this seam exists to
+    # prevent. It now asserts on the wire text itself, which is both
+    # stronger and the same shape as the `# play:` check above.
     shared = _read(os.path.join(SHARED, "console.c"))
-    assert "FW_ID_FORMAT" in shared, (
+    assert "# id: track=" in shared, (
         "console.c no longer builds the identity line; the tracks have "
-        "taken the format string back")
+        "taken it back")
 
     for track, rel in (("B", os.path.join("apps", "baremetal_bringup",
                                           "main.c")),
                        ("A", os.path.join("sketches", "bringup",
                                           "bringup.ino"))):
         text = _read(rel)
-        assert "FW_ID_FORMAT" not in text, (
-            f"Track {track} ({rel}) references FW_ID_FORMAT again. The "
-            f"line is built by console_identity(); a second use of the "
-            f"format is a second home for the argument order that "
-            f"measure.parse_identity depends on")
+        assert "# id: track=" not in text and "FW_ID_FORMAT" not in text, (
+            f"Track {track} ({rel}) builds the identity line again. It "
+            f"is built by console_identity(); a second copy is a second "
+            f"home for the field order that measure.parse_identity "
+            f"depends on")
         assert "console_identity(" in text, (
             f"Track {track} does not call console_identity()")
 

@@ -317,7 +317,6 @@ static void cmd_crosstalk(void)
 	uint32_t ms = crosstalk_settle_ms ? crosstalk_settle_ms
 	                                  : CTL_BLEED_SETTLE_MS;
 	uint16_t a0, a1, lo, hi;
-	char line[224];
 	unsigned i;
 
 	if (n > CTL_BLEED_MAX)
@@ -433,42 +432,34 @@ static void cmd_crosstalk(void)
 	 * attributed to the wrong pin - which is the class of error this
 	 * whole issue is about.
 	 */
-	const char *sname = (second == ADC_CH_A2) ? "A2" : "A1";
-	char label[64];
+	/*
+	 * Whole literals rather than a label built at runtime. The label
+	 * used to be snprintf'd from `sname`, which is the last thing in
+	 * this function that needed a formatter and a 64-byte buffer for
+	 * a string with two possible values. Issue #49.
+	 */
+	const bool a2 = (second == ADC_CH_A2);
 
-	snprintf(label, sizeof(label), "%s bleed (DAC1 held, DAC0 swung)", sname);
-	ctl_bleed_describe(line, sizeof(line), label, a1_bleed, n);
-	con_str(line); con_nl();
-	snprintf(label, sizeof(label), "%s bleed", sname);
-	ctl_bleed_values(line, sizeof(line), label, a1_bleed, n);
-	con_str(line); con_nl();
-	ctl_bleed_raw(line, sizeof(line), label, a1b_lo, a1b_hi, n);
-	con_str(line); con_nl();
-	snprintf(label, sizeof(label), "%s control (nothing swung)", sname);
-	ctl_bleed_describe(line, sizeof(line), label, a1_still, n);
-	con_str(line); con_nl();
-	snprintf(label, sizeof(label), "%s control", sname);
-	ctl_bleed_values(line, sizeof(line), label, a1_still, n);
-	con_str(line); con_nl();
-	ctl_bleed_raw(line, sizeof(line), label, a1s_lo, a1s_hi, n);
-	con_str(line); con_nl();
+	ctl_bleed_describe(a2 ? "A2 bleed (DAC1 held, DAC0 swung)"
+	                      : "A1 bleed (DAC1 held, DAC0 swung)",
+	                   a1_bleed, n);
+	ctl_bleed_values(a2 ? "A2 bleed" : "A1 bleed", a1_bleed, n);
+	ctl_bleed_raw(a2 ? "A2 bleed" : "A1 bleed", a1b_lo, a1b_hi, n);
+	ctl_bleed_describe(a2 ? "A2 control (nothing swung)"
+	                      : "A1 control (nothing swung)",
+	                   a1_still, n);
+	ctl_bleed_values(a2 ? "A2 control" : "A1 control", a1_still, n);
+	ctl_bleed_raw(a2 ? "A2 control" : "A1 control", a1s_lo, a1s_hi, n);
 	uart_flush();
 
-	snprintf(label, sizeof(label),
-	         "A0 bleed (DAC0 held, DAC1 swung, %s in pair)", sname);
-	ctl_bleed_describe(line, sizeof(line), label, a0_bleed, n);
-	con_str(line); con_nl();
-	ctl_bleed_values(line, sizeof(line), "A0 bleed", a0_bleed, n);
-	con_str(line); con_nl();
-	ctl_bleed_raw(line, sizeof(line), "A0 bleed", a0b_lo, a0b_hi, n);
-	con_str(line); con_nl();
-	ctl_bleed_describe(line, sizeof(line),
-	                   "A0 control (nothing swung)", a0_still, n);
-	con_str(line); con_nl();
-	ctl_bleed_values(line, sizeof(line), "A0 control", a0_still, n);
-	con_str(line); con_nl();
-	ctl_bleed_raw(line, sizeof(line), "A0 control", a0s_lo, a0s_hi, n);
-	con_str(line); con_nl();
+	ctl_bleed_describe(a2 ? "A0 bleed (DAC0 held, DAC1 swung, A2 in pair)"
+	                      : "A0 bleed (DAC0 held, DAC1 swung, A1 in pair)",
+	                   a0_bleed, n);
+	ctl_bleed_values("A0 bleed", a0_bleed, n);
+	ctl_bleed_raw("A0 bleed", a0b_lo, a0b_hi, n);
+	ctl_bleed_describe("A0 control (nothing swung)", a0_still, n);
+	ctl_bleed_values("A0 control", a0_still, n);
+	ctl_bleed_raw("A0 control", a0s_lo, a0s_hi, n);
 
 	/*
 	 * Which bench this is, read rather than assumed. With DAC1
@@ -1618,7 +1609,6 @@ static void h_bench(const uint32_t *a)
 	(void)a;
 	stream_bench_report();
 	{
-		char line[192];
 		play_report_t r = {
 			.bytes_in   = play_bytes_in,
 			.produced   = play_produced,
@@ -1631,8 +1621,8 @@ static void h_bench(const uint32_t *a)
 			.partial    = play_partial,
 			.occ_min    = play_occ_min,
 		};
-		play_report_format(line, sizeof line, &r);
-		con_str(line); con_nl();
+		play_report_print(&r);
+		con_nl();
 	}
 	uart_flush();
 }

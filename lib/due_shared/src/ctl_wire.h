@@ -672,7 +672,7 @@ typedef struct __attribute__((packed)) {
  * on each track prints the same words without either one owning them.
  * Returns the length written, excluding the NUL.
  */
-int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g);
+void ctl_gen_describe(const ctl_gen_t *g);
 
 /*
  * How many observations `x` may take. Bounded because a host picks it:
@@ -721,7 +721,7 @@ int ctl_gen_describe(char *buf, unsigned long n, const ctl_gen_t *g);
  * against a 64 ms period, and intermediate values turn up either side.
  * See ctl_bleed_values() and docs/noise.md.
  */
-int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
+void ctl_bleed_describe(const char *label,
                        const int16_t *vals, unsigned count);
 
 /*
@@ -736,11 +736,11 @@ int ctl_bleed_describe(char *buf, unsigned long n, const char *label,
  * Order is the whole point, so this never sorts. Returns the length
  * written; needs about 6 bytes per observation plus the label.
  */
-int ctl_bleed_values(char *buf, unsigned long n, const char *label,
+void ctl_bleed_values(const char *label,
                      const int16_t *vals, unsigned count);
 
 /* The raw conversion pairs behind each difference, same order. */
-int ctl_bleed_raw(char *buf, unsigned long n, const char *label,
+void ctl_bleed_raw(const char *label,
                   const uint16_t *lo, const uint16_t *hi, unsigned count);
 
 #ifdef __cplusplus

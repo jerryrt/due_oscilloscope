@@ -70,7 +70,6 @@ void console_trigger_fault(void)
  */
 void console_gen_report(void)
 {
-	char line[160];
 	ctl_gen_t g;
 
 	if (!ctl_port_gen_get(&g)) {
@@ -78,10 +77,9 @@ void console_gen_report(void)
 		console_flush();
 		return;
 	}
-	ctl_gen_describe(line, sizeof(line), &g);
-	console_write("# ");
-	console_write(line);
-	console_write("\n");
+	con_str("# ");
+	ctl_gen_describe(&g);
+	con_nl();
 	console_flush();
 }
 
