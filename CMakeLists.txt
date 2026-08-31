@@ -156,9 +156,15 @@ option(BUILD_TRACK_C "Fetch FreeRTOS and build the Track C image" OFF)
 if(BUILD_TRACK_C)
     include(cmake/freertos.cmake)
 
+    # C2: the same driver set Track B links, plus the application.
+    #
+    # This is invariant 4's claim made literal - "bare-metal and FreeRTOS
+    # builds link identical driver code and differ only in main()". The
+    # list below is baremetal_bringup's with exactly two substitutions:
+    # apps/rtos_bringup/main.c for apps/baremetal_bringup/main.c, and
+    # apps/rtos_bringup/time_rtos.c for bsp/systick.c.
     add_executable(rtos_bringup EXCLUDE_FROM_ALL
         apps/rtos_bringup/main.c
-        apps/rtos_bringup/console_port_rtos.c
         apps/rtos_bringup/time_rtos.c
         bsp/startup_sam3x8e.c
         bsp/uart.c
@@ -166,8 +172,24 @@ if(BUILD_TRACK_C)
         bsp/clock.c
         bsp/fault.c
         bsp/syscalls.c
+        lib/due_shared/src/load.c
+        drivers/dac.c
+        drivers/adc.c
+        drivers/acq.c
+        drivers/gen.c
+        drivers/play.c
+        drivers/usb_cdc.c
+        drivers/stream.c
+        lib/due_shared/src/ctl.c
+        drivers/ctl_port.c
         lib/due_shared/src/console.c
+        drivers/console_port.c
+        lib/due_shared/src/crc32.c
+        lib/due_shared/src/play_report.c
+        lib/due_shared/src/console_cmds.c
         lib/due_shared/src/console_out.c
+        lib/due_shared/src/stream_core.c
+        lib/due_shared/src/stream_bench.c
         ${DEVICE}/source/system_sam3xa.c
         ${FREERTOS_SOURCES}
     )

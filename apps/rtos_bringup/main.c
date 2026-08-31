@@ -1,5 +1,5 @@
 /*
- * Track C: the FreeRTOS application, stage C1.
+ * Track C: the FreeRTOS application, stage C2.
  *
  * C1 is build-and-boot only, and deliberately so. Issue #45's phasing:
  *
@@ -36,69 +36,167 @@
 #include "console_port.h" /* console_flush - the seam, not the port */
 #include "track_id.h"
 
+/* The five services, and the counters the loop keeps. The same
+ * declarations Track B's main.c reaches for - invariant 4's "differ
+ * only in main()" made literal. */
+#include "load.h"
+#include "analog.h"
+#include "play.h"
+#include "playstat.h"
+#include "stream.h"
+#include "usb_cdc.h"
+#include "ctl.h"
+#include "frame.h"
+
 /*
  * Static allocation everywhere - issue #45 decision (4). Every task's
  * stack and control block is a fixed object here, so invariant 7's
  * "every buffer is fixed and known at build time" holds literally and
  * the image links no allocator at all.
  */
-#define HEARTBEAT_STACK   configMINIMAL_STACK_SIZE
-#define CONSOLE_STACK     (configMINIMAL_STACK_SIZE * 3)
+/* The service task carries a playstat_t and a 512-byte scrap buffer in
+ * its frame, so it is not the minimal stack. */
+#define SERVICE_STACK     (configMINIMAL_STACK_SIZE * 6)
 
-static StaticTask_t heartbeat_tcb;
-static StackType_t  heartbeat_stack[HEARTBEAT_STACK];
-static StaticTask_t console_tcb;
-static StackType_t  console_stack[CONSOLE_STACK];
+static StaticTask_t service_tcb;
+static StackType_t  service_stack[SERVICE_STACK];
 
 static StaticTask_t idle_tcb;
 static StackType_t  idle_stack[configMINIMAL_STACK_SIZE];
 static StaticTask_t timer_tcb;
 static StackType_t  timer_stack[configTIMER_TASK_STACK_DEPTH];
 
+
+
 /*
- * The heartbeat, which under an RTOS is a different claim from the
- * bare-metal one.
+ * The service task: Track B's main loop, verbatim, in one task.
  *
- * On Track B a blinking LED says "the main loop is running". Here it
- * says only "a task at this priority is being scheduled", which is
- * weaker: the scheduler can be running perfectly while a lower-priority
- * task starves. That distinction is C2's problem - issue #45 lists the
- * timer-driven heartbeat as an open question about which task, or no
- * task at all - and it is written down here so the LED is not read as
- * more than it is.
+ * ================== WHY ONE TASK AND NOT FIVE =====================
+ *
+ * Issue #45's C2 says "the five services as tasks". This is one, and
+ * the deviation is deliberate rather than a shortcut.
+ *
+ * C4 - the deliverable - asks whether a scheduler underneath changes
+ * the timing of a data path that is otherwise byte-identical. Splitting
+ * the services across tasks answers a different question, because the
+ * priorities and yield points are *my* choices: a throughput difference
+ * would then be the kernel, or my policy, and nothing in the
+ * measurement separates them. One task running the same statements in
+ * the same order isolates the kernel's own cost - the tick ISR, the
+ * context save, the port layer - which is the only part that is not a
+ * design decision.
+ *
+ * It is also the only shape that respects the loop's own constraint.
+ * The bulk OUT drain below runs EVERY pass, and Track B's comment
+ * prices that exactly: gating it to 1 kHz "buys 1.68 us of a 6.77 us
+ * pass - and the suite went from 233 passed to 223 passed and a wedge",
+ * because four banks per millisecond is ~2 MB/s of drain against a host
+ * writing ~1.8 MB/s. **Its throughput is the guarantee, not its
+ * existence.** A task that blocks on the 1 kHz tick cannot deliver
+ * 143,000 passes a second, so any split has to keep the drain in a
+ * free-running task - and a free-running task at the top priority
+ * starves everything below it unless it yields, which is a policy
+ * choice again.
+ *
+ * So: one task now as a measured baseline, and the split as a later
+ * experiment against it. Raised on #45 rather than decided quietly.
+ *
+ * console_feed() is the last statement here for the same reason it is
+ * last in Track B's loop, and it is what lets this be one task without
+ * starving the console.
  */
-static void heartbeat_task(void *arg)
+static void service_task(void *arg)
 {
-	TickType_t last = xTaskGetTickCount();
+	uint32_t heartbeat_at = millis();
+	uint32_t led_usb_at = 0, led_in_last = 0, led_out_last = 0;
+	uint32_t usb_ms = 0, ctl_ms = 0;
+	bool led_state = false;
 
 	(void)arg;
 	for (;;) {
-		led_toggle();
-		vTaskDelayUntil(&last, pdMS_TO_TICKS(500));
-	}
-}
+		uint32_t now;
 
-/*
- * The console, polled from a task rather than from a superloop.
- *
- * uart_getc() returns -1 when nothing is pending, so this is a poll and
- * not a block, and the vTaskDelay is what stops it starving everything
- * below it. A blocking UART receive belongs behind a semaphore and an
- * ISR, which is C2's shape; doing it here would be the "day a driver
- * takes a semaphore" that issue #45 says stops Track C measuring the
- * kernel and starts it measuring a rewrite.
- */
-static void console_task(void *arg)
-{
-	(void)arg;
-	for (;;) {
-		int c = uart_getc();
+		load_tick();
+		now = millis();
+		stream_loop_passes++;
 
-		if (c >= 0) {
-			console_feed(c);
-			continue;               /* drain what is already here */
+		if (now - heartbeat_at >= (led_state ? 100u : 900u)) {
+			led_state = !led_state;
+			if (led_state)
+				led_on();
+			else
+				led_off();
+			heartbeat_at = now;
 		}
-		vTaskDelay(pdMS_TO_TICKS(5));
+		if (now - led_usb_at >= 50u) {
+			led_tx(usb_in_activity != led_in_last);
+			led_rx(usb_out_activity != led_out_last);
+			led_in_last = usb_in_activity;
+			led_out_last = usb_out_activity;
+			led_usb_at = now;
+		}
+		if (now != usb_ms) {
+			usb_ms = now;
+			usb_cdc_poll();
+		}
+		play_service();
+		stream_service();
+		/*
+		 * diag_service() is NOT called here, and that corrects
+		 * issue #45's inventory.
+		 *
+		 * That issue lists "exactly five callables" as the seam -
+		 * usb_cdc_poll, play_service, stream_service, diag_service,
+		 * ctl_service - and I verified it by reading main.c. But
+		 * diag_service is `static` in Track B's main.c and appears
+		 * in no header: it is an application diagnostic (the `D`
+		 * trace), not a driver service. **Four of the five are
+		 * shared; the fifth is Track B's own.**
+		 *
+		 * Found by the linker rather than by reading, which is the
+		 * point - grepping for the name found it in a *comment* in
+		 * console_out.h and I took that for a declaration.
+		 */
+
+		/* Every pass. The drain's throughput is the guarantee that
+		 * the pipe never NAKs indefinitely - see the note above. */
+		if (!play_active() && !stream_out_in_use()) {
+			static uint8_t scrap[512];
+
+			usb_out_drain_polls++;
+			for (int b = 0; b < 4; b++)
+				if (usb_cdc_read(scrap, sizeof(scrap)) == 0)
+					break;
+		}
+		if (now != ctl_ms) {
+			ctl_ms = now;
+			ctl_service();
+		}
+		if (play_active() && !stream_in_in_use()) {
+			static uint32_t last_stat_ms;
+			uint32_t now_ms = millis();
+
+			if ((uint32_t)(now_ms - last_stat_ms) >= PLAYSTAT_MS) {
+				playstat_t st;
+
+				last_stat_ms = now_ms;
+				st.magic[0] = PLAYSTAT_MAGIC0;
+				st.magic[1] = PLAYSTAT_MAGIC1;
+				st.magic[2] = PLAYSTAT_MAGIC2;
+				st.magic[3] = PLAYSTAT_MAGIC3;
+				st.version = PLAYSTAT_VERSION;
+				st.pad[0] = st.pad[1] = st.pad[2] = 0;
+				st.consumed = play_consumed;
+				st.underruns = play_underruns;
+				st.bytes_in = play_bytes_in;
+				st.dev_us = micros();
+				st.crc32 = frame_crc32((const uint8_t *)&st,
+				                       sizeof(st)
+				                       - sizeof(st.crc32));
+				usb_cdc_write((const uint8_t *)&st, sizeof(st));
+			}
+		}
+		console_feed(uart_getc());
 	}
 }
 
@@ -123,14 +221,14 @@ static void c_ident(const uint32_t *a)
 static void c_help(const uint32_t *a)
 {
 	(void)a;
-	con_str("# due_oscilloscope :: Track C (FreeRTOS) stage C1");
+	con_str("# due_oscilloscope :: Track C (FreeRTOS) stage C2");
 	con_nl();
 	con_str("#   v = identity line");        con_nl();
 	con_str("#   h = this list");            con_nl();
 	con_str("#   T = time source check (millis/micros)"); con_nl();
-	con_str("# C1 is build-and-boot only: no capture, no playback,");
+	con_str("#   1..4 = stream 50k/100k/200k/400k, 0 = stop, ? = stats");
 	con_nl();
-	con_str("#   no control channel. See issue #45.");
+	con_str("# C2: the five services run in one task. See issue #45.");
 	con_nl();
 	console_flush();
 }
@@ -170,12 +268,66 @@ static void c_time(const uint32_t *a)
 	console_flush();
 }
 
+/*
+ * C2's capture surface.
+ *
+ * The bodies are `console_cmd_stream()` and `stream_stop()`, both
+ * shared, so these are adapters and nothing else - which is the shape
+ * issue #45's C-share-1 established for all 48 letters. The full
+ * surface follows the same way; what is here is what C2 needs to be
+ * measured against Track B.
+ */
+static void c_s50(const uint32_t *a)  { (void)a; console_cmd_stream(50000); }
+static void c_s100(const uint32_t *a) { (void)a; console_cmd_stream(100000); }
+static void c_s200(const uint32_t *a) { (void)a; console_cmd_stream(200000); }
+static void c_s400(const uint32_t *a) { (void)a; console_cmd_stream(400000); }
+
+static void c_stop(const uint32_t *a)
+{
+	(void)a;
+	stream_stop();
+	con_str("# stream stopped"); con_nl();
+	console_flush();
+}
+
+static void c_stats(const uint32_t *a)
+{
+	(void)a;
+	stream_report();
+	con_nl();
+	console_flush();
+}
+
+/*
+ * `B`: the transport counters, and the one number C4 actually wants.
+ *
+ * stream_bench_report() carries `passes`, which is the service loop's
+ * own iteration count. Against Track B's it is the kernel's overhead
+ * expressed as the thing that matters - how much less work the sample
+ * path gets done per second with a scheduler underneath it - and it is
+ * the only figure that should differ between the tracks at all.
+ */
+static void c_bench(const uint32_t *a)
+{
+	(void)a;
+	stream_bench_report();
+	con_nl();
+	console_flush();
+}
+
 /* Terminated by a zero key and scanned rather than indexed - the shared
  * table decides the help's order, so this one may list what it likes. */
 const console_binding_t console_bindings[] = {
 	{ 'v', c_ident },
 	{ 'h', c_help  },
 	{ 'T', c_time  },
+	{ '0', c_stop  },
+	{ '1', c_s50   },
+	{ '2', c_s100  },
+	{ '3', c_s200  },
+	{ '4', c_s400  },
+	{ '?', c_stats },
+	{ 'B', c_bench },
 	{ 0,   NULL    },
 };
 
@@ -225,8 +377,24 @@ int main(void)
 	SystemInit();
 	clock_set_mck(MCK_MULA_DEFAULT);
 
+	/*
+	 * The same init sequence as Track B's main(), in the same order,
+	 * because invariant 4 says the two builds differ only in main()
+	 * and an init order is exactly the kind of difference that would
+	 * make a later comparison meaningless.
+	 *
+	 * systick_init() is the documented no-op on this track - the
+	 * kernel owns SysTick. It is called anyway so the sequence reads
+	 * the same as Track B's and nobody has to notice its absence.
+	 */
 	led_init();
+	led_aux_init();
 	uart_init(115200);
+	systick_init();
+	load_init();
+	dac_init();
+	adc_init();
+	usb_cdc_init();
 
 	/*
 	 * The identity line before the scheduler starts, not after.
@@ -241,10 +409,14 @@ int main(void)
 	console_identity(FW_TRACK, (unsigned long)SystemCoreClock);
 	console_flush();
 
-	xTaskCreateStatic(heartbeat_task, "heartbeat", HEARTBEAT_STACK, NULL,
-	                  1, heartbeat_stack, &heartbeat_tcb);
-	xTaskCreateStatic(console_task, "console", CONSOLE_STACK, NULL,
-	                  2, console_stack, &console_tcb);
+	/*
+	 * One task, and it never blocks - see the note on service_task().
+	 * The idle task therefore runs only when the tick preempts this
+	 * one, which is the bare-metal duty cycle plus the kernel's own
+	 * overhead - and that overhead is exactly what C4 measures.
+	 */
+	xTaskCreateStatic(service_task, "svc", SERVICE_STACK, NULL,
+	                  2, service_stack, &service_tcb);
 
 	vTaskStartScheduler();
 
