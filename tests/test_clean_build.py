@@ -134,43 +134,74 @@ def test_flashing_track_b_also_gets_a_clean_build():
         "which bypasses the clean")
 
 
-def test_track_a_arduino_cli_is_told_not_to_use_its_cache():
-    """sketch.py passes --clean, which is the one that has bitten us."""
-    sk = _read("tools", "sketch.py")
+def test_track_a_build_is_clean_by_construction():
+    """Track A's target cleans first, as `firmware` and `firmware_rtos` do.
 
-    assert re.search(r'"compile",\s*"--clean"', sk), (
-        "tools/sketch.py no longer passes --clean to arduino-cli. Its "
-        "cache does not notice every change under --libraries, which is "
-        "how a Track A image shipped with a stale lib/due_shared object")
+    Ported from the guard that asserted `tools/sketch.py` passed
+    `--clean` to arduino-cli (#55). The reason is unchanged and is not
+    hypothetical: arduino-cli's cache did not notice every change under
+    `--libraries`, which is how a Track A image once shipped with a stale
+    `lib/due_shared` object. Under CMake the same failure is available -
+    an incremental build of a tree whose shared sources moved - and the
+    same answer applies, so the assertion moves rather than retires.
+
+    `cmake/track_a.cmake` says it itself: the first cut of the file had
+    no wrapper, and the image was correct only because the tree happened
+    to be configured fresh each time.
+    """
+    ta = _read("cmake", "track_a.cmake")
+
+    m = re.search(r"add_custom_target\(firmware_track_a(.*?)VERBATIM\)",
+                  ta, re.S)
+    assert m, ("cmake/track_a.cmake no longer defines firmware_track_a, "
+               "so there is no clean-build wrapper for Track A")
+    body = m.group(1)
+    assert "--target clean" in body, (
+        "firmware_track_a no longer cleans before it builds. An "
+        "incremental Track A build can carry a stale lib/due_shared "
+        "object, which has shipped an image here before")
+    assert body.index("--target clean") < body.index("track_a_bringup"), (
+        "firmware_track_a builds before it cleans")
 
 
-def test_track_a_upload_builds_before_it_flashes():
-    """`sketch.py upload` compiles rather than reusing an artifact.
+def test_track_a_flash_builds_before_it_flashes():
+    """`measure.flash(track='a')` compiles rather than reusing an artifact.
 
-    This one is not hypothetical. `upload` used to flash whatever .bin
-    was in the build path, which is the image for whatever tree last
-    compiled and not the image for this one. It put an experimental
-    firmware - with issue #33's guard deliberately removed - onto a
-    bench whose working tree was clean, and the only tell was that the
-    recorded sha did not change.
+    Ported from the guard on `sketch.py upload` (#55), and this one is
+    not hypothetical either. `upload` used to flash whatever .bin was in
+    the build path, which is the image for whatever tree last compiled
+    and not the image for this one. It put an experimental firmware -
+    with issue #33's guard deliberately removed - onto a bench whose
+    working tree was clean, and the only tell was that the recorded sha
+    did not change.
 
     A flash is the single moment the tree and the board are supposed to
-    agree, so it is the last place to reuse an artifact. `--bin` is
-    still honoured, because flash.py and the harness pass an explicit
-    path and mean it.
+    agree, so it is the last place to reuse an artifact. The CMake path
+    moved the risk rather than removing it: `build-a/` persists between
+    runs exactly as arduino-cli's cache did.
     """
-    sk = _read("tools", "sketch.py")
+    mp = _read("host", "measure.py")
 
-    assert "def compile_sketch(" in sk, (
-        "the compile path is no longer a function, so upload cannot "
-        "call it and will go back to flashing whatever it finds")
-    m = re.search(r'if args\.action == "upload":(.*?)\n    variant|'
-                  r'if args\.action == "upload":(.*?)\Z', sk, re.S)
-    body = sk[sk.index('if args.action == "upload":'):]
-    body = body[:body.index("def compile_sketch(")]
-    assert re.search(r"if not args\.bin:\s*\n\s*rc = compile_sketch\(", body), (
-        "sketch.py upload no longer compiles before flashing, so it can "
-        "put an image on the board that does not match the tree")
+    i = mp.index('elif track == "a":')
+    body = mp[i:i + 4000]
+
+    # Match the argv, not the word. The first version of this asserted
+    # `"firmware_track_a" in body`, and a mutation that pointed the build
+    # at the raw `track_a_bringup` target - bypassing the clean wrapper,
+    # exactly the defect - still passed, because the name also appears in
+    # the comment four lines above. A guard that cannot fail is the thing
+    # this file exists to prevent, so it is checked by mutation now.
+    built = re.search(r'"--build",\s*build_a,\s*"--target",\s*"([a-z_]+)"',
+                      body)
+    assert built, (
+        "measure.flash()'s Track A branch no longer runs a cmake --build "
+        "on build_a, so it can put an image on the board that does not "
+        "match the tree")
+    assert built.group(1) == "firmware_track_a", (
+        f"measure.flash() builds the {built.group(1)!r} target directly "
+        "instead of firmware_track_a, which bypasses the clean wrapper")
+    assert built.start() < body.index("flash.py"), (
+        "measure.flash() flashes Track A before building it")
 
 
 def test_nothing_else_builds_behind_the_enforcement():

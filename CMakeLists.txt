@@ -22,8 +22,9 @@ add_compile_options(
 add_compile_definitions(__SAM3X8E__)
 
 # lib/due_shared/src is the wire contract both tracks compile.
-# arduino-cli reaches the same files as an Arduino library, via
-# --libraries lib in tools/sketch.py.
+# Track A reaches the same files by compiling them directly - the
+# A_SHARED_C glob in cmake/track_a.cmake (#55). It used to reach them as
+# an Arduino library via arduino-cli's --libraries.
 # Per target, NOT per directory, and that is load-bearing rather than
 # tidiness. `include_directories()` applies to every target defined
 # afterwards, including Track A's - and Track A brings its own Arduino
@@ -112,9 +113,9 @@ set_target_properties(baremetal_bringup PROPERTIES
 # CMake's dependency tracking is better than that cache, but the failure
 # is not worth the saving: a full build of this target is about 0.6 s on
 # the slowest bench, against measurement runs of nine minutes to eight
-# hours that quote the resulting image by commit. tools/sketch.py passes
-# --clean for the same reason on the other track, and
-# tests/test_clean_build.py fails if either is removed.
+# hours that quote the resulting image by commit. `firmware_track_a` in
+# cmake/track_a.cmake cleans first for the same reason on the other
+# track, and tests/test_clean_build.py fails if either is removed.
 #
 # Delete the object directory rather than depend on the compiler: it is
 # the one step that cannot be fooled by a timestamp.
@@ -318,32 +319,31 @@ add_custom_target(tools
     COMMENT "Host tools resolved from toolchains.json"
     USES_TERMINAL VERBATIM)
 
-# Track A -- the reference oracle, built by arduino-cli against the Arduino
-# core. build.f_cpu MUST match the runtime clock: micros() divides by it,
-# and MCK is 78 MHz here so the ADC clock stays inside its 20 MHz limit.
-if(ARDUINO_CLI)
-    message(STATUS "arduino-cli:   ${ARDUINO_CLI}")
-    # Both targets go through tools/sketch.py, which is the single place
-    # that knows Track A's build properties. Repeating build.f_cpu here -
-    # as this file did - builds a Track A that links, runs, and silently
-    # costs 35-44 ADC overruns per 4 s, because build.ldscript is missing
-    # and the capture ring is not in SRAM bank 1.
-    add_custom_target(track_a
-        COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/sketch.py" compile
-                --arduino-cli "${ARDUINO_CLI}"
-                --build-path "${CMAKE_BINARY_DIR}/track_a"
-        COMMENT "Track A (arduino-cli, Arduino core -- the oracle)"
-        USES_TERMINAL VERBATIM)
-
-    add_custom_target(flash_track_a
-        COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/sketch.py" upload
-                --arduino-cli "${ARDUINO_CLI}"
-                --build-path "${CMAKE_BINARY_DIR}/track_a"
-        COMMENT "Flashing Track A"
-        USES_TERMINAL VERBATIM)
-else()
-    message(STATUS "arduino-cli:   not found -- Track A targets unavailable")
-endif()
+# Track A -- the reference oracle. Built here the way Track B and Track C
+# are, by cmake/track_a.cmake, under -DBUILD_TRACK_A=ON (#55).
+#
+# The `track_a` and `flash_track_a` targets that used to live here shelled
+# out to tools/sketch.py and arduino-cli, and they were the last live
+# callers of it. They are gone rather than re-pointed: `firmware_track_a`
+# already builds Track A with a clean-build wrapper, `tools/flash.py`
+# already flashes any .bin, and a second target that does the same thing
+# by another route is precisely the "third path" tests/test_clean_build.py
+# forbids -- the criterion #55 is written against says two ways to build
+# Track A must not both exist.
+#
+# What those targets knew and this must not lose: build.f_cpu MUST match
+# the runtime clock, because micros() divides by it and MCK is 78 MHz
+# here; and build.ldscript pins the capture ring to SRAM bank 1. Passed
+# to arduino-cli they were silent when missing and cost 35-44 ADC
+# overruns per 4 s. They are now two lines in cmake/track_a.cmake, under
+# version control, where neither can be forgotten.
+#
+#   cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake #         -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
+#   cmake --build build-a --target firmware_track_a
+#
+# arduino-cli is still resolved above, because bossac and the port
+# discovery come from the same install and Track A's *sources* are the
+# Arduino core's.
 
 # Track B -- this project. The 1200-baud touch and bossac call live in
 # tools/flash.py because pyserial does them identically everywhere; CMake

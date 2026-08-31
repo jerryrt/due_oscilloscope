@@ -211,13 +211,14 @@ def firmware(build_stamp=None, track=None):
 #: `lib` and `linker` are in both by construction. `lib/due_shared/src`
 #: is the wire contract both builds compile (invariant 3), and `linker/`
 #: holds both scripts - `sam3x8e_flash.ld` for CMake and
-#: `arduino_due_x_sram1.ld`, which `tools/sketch.py` pins Track A's
-#: capture ring to SRAM bank 1 with.
+#: `arduino_due_x_sram1.ld`, which `cmake/track_a.cmake` pins Track A's
+#: capture ring to SRAM bank 1 with (#55; it was `tools/sketch.py`'s
+#: build.ldscript property before Track A moved onto CMake).
 FW_SOURCE_COMMON = ("lib", "linker")
 
 #: Track B is CMake's source list; Track A is the sketch plus the shared
-#: dirs. Verified against `CMakeLists.txt` and `tools/sketch.py` rather
-#: than assumed: Track A compiles no `bsp/`, no `drivers/` and no
+#: dirs. Verified against `CMakeLists.txt` and `cmake/track_a.cmake`
+#: rather than assumed: Track A compiles no `bsp/`, no `drivers/` and no
 #: `apps/`, and CMake compiles no `sketches/`.
 FW_SOURCE_TRACKS = {
     "B": FW_SOURCE_COMMON + ("bsp", "drivers", "apps", "cmake",

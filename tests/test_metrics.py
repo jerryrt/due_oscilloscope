@@ -13,6 +13,7 @@ absence, the same shape as the GUI suite's "importing `gui.stream` must
 not pull in PySide6".
 """
 import os
+import re
 import subprocess
 import sys
 
@@ -131,14 +132,19 @@ def test_fw_source_covers_every_directory_each_track_builds_from():
         f"provenance does not watch it: fw_source_current would report "
         f"'current' across a change to it")
 
-    # Track A: the sketch directory and the shared library dir that
-    # tools/sketch.py passes with --libraries.
-    sk = _repo_read("tools/sketch.py")
-    assert 'SKETCH = os.path.join(REPO, "sketches"' in sk, (
-        "tools/sketch.py no longer builds from sketches/; the Track A "
+    # Track A: the sketch directory and the shared library dir, which
+    # cmake/track_a.cmake globs (#55). This read tools/sketch.py's
+    # arduino-cli argv until Track A moved onto CMake; the question is
+    # unchanged - does provenance watch what actually gets compiled -
+    # and only the file that answers it moved.
+    ta = _repo_read("cmake/track_a.cmake")
+    assert re.search(r"file\(GLOB\s+\w+\s+\$\{CMAKE_SOURCE_DIR\}/sketches/",
+                     ta), (
+        "cmake/track_a.cmake no longer globs sketches/; the Track A "
         "provenance list is now guessing")
-    assert '"--libraries", os.path.join(REPO, "lib")' in sk, (
-        "tools/sketch.py no longer passes lib/ as --libraries; the "
+    assert re.search(r"file\(GLOB\s+\w+\s+\$\{CMAKE_SOURCE_DIR\}/lib/due_shared/",
+                     ta), (
+        "cmake/track_a.cmake no longer compiles lib/due_shared; the "
         "shared wire contract has left Track A's provenance list")
     for d in ("sketches", "lib"):
         assert d in prov.FW_SOURCE_TRACKS["A"], (

@@ -300,9 +300,9 @@ rather than an artefact of two different harnesses.
 | LED heartbeat | `PIO_SODR`/`PIO_CODR` | `bsp/led.c` |
 | HardFault report | `sketches/bringup/fault.cpp` | `bsp/fault.c` |
 | Commands | `h` `p` `g` `f` | `h` `p` `g` `f` |
-| Build | `cmake --build build --target track_a` | `cmake --build build` |
-| Flash | `cmake --build build --target flash_track_a` | `cmake --build build --target flash` |
-| Underneath | `tools/sketch.sh compile` / `upload` | `tools/flash.sh` |
+| Build | `cmake --build build-a --target firmware_track_a` | `cmake --build build` |
+| Flash | `python3 tools/flash.py --bin build-a/track_a_bringup.bin` | `cmake --build build --target flash` |
+| Underneath | `cmake/track_a.cmake` (no arduino-cli) | `tools/flash.sh` |
 | Link map | `linker/arduino_due_x_sram1.ld` | `linker/sam3x8e_flash.ld` |
 
 Track A goes through a wrapper rather than `arduino-cli` directly
