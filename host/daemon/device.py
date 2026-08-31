@@ -1030,7 +1030,34 @@ class BoardDevice(Device):
         return text
 
     def read(self, timeout=0.2):
-        if self.fd is None:
+        # Gated on `running`, not only on `fd is None` - issue #44.
+        #
+        # `Server._read_loop` drains this device for the daemon's whole
+        # lifetime and asks only this method whether there is anything
+        # to read. `start()` assigns `self.fd` and then spends seconds
+        # before it is done: `drain_until_quiet` with `cap=5.0`, the
+        # `=<dac>,<adc>L` command, a 0.2 s settle, and a console drain.
+        #
+        # With the old gate the reader thread began consuming that
+        # descriptor the instant `self.fd` was assigned, so for that
+        # whole window **two threads split one stream**. Both harms are
+        # real and the second is this issue's headline: the drain does
+        # not drain, because bytes it was meant to discard went to
+        # subscribers instead; and frames from the new run that arrive
+        # inside the window are eaten by `drain_until_quiet` and thrown
+        # away - tens to hundreds of them, at the start of a run.
+        #
+        # `FakeDevice.read()` has always gated on `running`, which is
+        # why no board-free test could see this: the fake implements the
+        # contract and the real device did not.
+        #
+        # Nothing is lost by waiting. The frames stay in the kernel
+        # buffer and are read as soon as `start()` sets `running`; what
+        # stops is one of the two readers.
+        #
+        # Safe on the way out too: `stop()` calls `_teardown()`, which
+        # clears `self.fd`, *before* it sets `running = False`.
+        if self.fd is None or not self.running:
             time.sleep(min(timeout, 0.05))
             return b""
         r = transport.wait_any([self.fd], timeout)
