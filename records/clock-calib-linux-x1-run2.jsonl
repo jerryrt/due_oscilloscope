@@ -1,0 +1,122 @@
+{
+ "bench": "linux-x1",
+ "team": "windows-platform-team",
+ "instrument": "tools/clock_calib.py",
+ "provenance": {
+  "taken_at": "2026-08-30T22:36:51-0400",
+  "host_os": "Linux 7.0.0-30-generic",
+  "host_machine": "x86_64",
+  "python": "3.14.4",
+  "repo_rev": "5a5ab3c-dirty",
+  "wiring": "DAC0->A0, DAC1->A1, A2 bare",
+  "wiring_since": "2026-08-29",
+  "wiring_source": "declared",
+  "bench": "linux-x1",
+  "instrument": {
+   "control": 20,
+   "console": 0
+  },
+  "fw_repo_rev": "3353d76-dirty",
+  "fw_sha256": "fa99ac5469876b752a8fd348c1a6f344be62cba9050b7380bbbbf4fbfadd88b5",
+  "fw_dirty_sha": "56b137c81662168c4727c8949cae68ff3aafb24328a1f0bcc3655a3501eda917",
+  "fw_flashed_at": "2026-08-30T22:17:00-0400",
+  "fw_provenance": "matched",
+  "fw_source_current": false,
+  "fw_build_is_current": false,
+  "fw_source_track": "B",
+  "track": "b",
+  "fw_version": "0.2.0",
+  "ctl_version": 3,
+  "frame_version": 3,
+  "mck_hz": 78000000,
+  "adc_clock_hz": 19500000,
+  "build": "Aug 30 2026 21:35:55"
+ },
+ "provenance_missing": [],
+ "rc": 56,
+ "sps": 696428,
+ "lengths_s": [
+  3.0,
+  45.0
+ ],
+ "reps": 5,
+ "n": 10,
+ "rows": [
+  {
+   "rep": 0,
+   "requested_s": 3.0,
+   "device_s": 3.002031,
+   "host_s": 3.004326820373535,
+   "under": 0
+  },
+  {
+   "rep": 0,
+   "requested_s": 45.0,
+   "device_s": 45.002383,
+   "host_s": 45.005244970321655,
+   "under": 0
+  },
+  {
+   "rep": 1,
+   "requested_s": 45.0,
+   "device_s": 45.002919,
+   "host_s": 45.005836486816406,
+   "under": 0
+  },
+  {
+   "rep": 1,
+   "requested_s": 3.0,
+   "device_s": 3.002459,
+   "host_s": 3.0049781799316406,
+   "under": 0
+  },
+  {
+   "rep": 2,
+   "requested_s": 3.0,
+   "device_s": 3.002756,
+   "host_s": 3.0051958560943604,
+   "under": 0
+  },
+  {
+   "rep": 2,
+   "requested_s": 45.0,
+   "device_s": 45.001682,
+   "host_s": 45.00475859642029,
+   "under": 0
+  },
+  {
+   "rep": 3,
+   "requested_s": 45.0,
+   "device_s": 45.003157,
+   "host_s": 45.0060772895813,
+   "under": 0
+  },
+  {
+   "rep": 3,
+   "requested_s": 3.0,
+   "device_s": 3.002981,
+   "host_s": 3.0055360794067383,
+   "under": 0
+  },
+  {
+   "rep": 4,
+   "requested_s": 3.0,
+   "device_s": 3.003587,
+   "host_s": 3.0060763359069824,
+   "under": 0
+  },
+  {
+   "rep": 4,
+   "requested_s": 45.0,
+   "device_s": 45.002505,
+   "host_s": 45.005470752716064,
+   "under": 0
+  }
+ ],
+ "slope_device_over_host": 0.999988367554785,
+ "intercept_s": -0.0024248958365618023,
+ "host_overhead_ms": 2.4249240443578985,
+ "residual_sd_ms": 0.08167795132004078,
+ "implied_mck_hz": 77999092.66927323,
+ "ppm_from_nominal": -11.632445214959652
+}
