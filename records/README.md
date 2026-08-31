@@ -40,3 +40,49 @@ The mechanism is worth knowing beyond the one block: a second process
 opening the ports mid-capture does not fail loudly, it produces
 plausible-looking numbers. Do not run the suite against a board another
 tool is holding.
+
+## Rows whose `track` field is wrong, and how to read them
+
+**Nine record-writing tools carried `track="b"` as a literal until
+2026-08-30** (`a263a75`, `1e3d270`, issue #53). They did not ask the
+board what was on it, so **every Track A run they wrote is labelled
+Track B**. The tools ask now, via `provenance.run_fields()`; these
+files predate that.
+
+A missing field is a gap. A wrong one is a trap, because a reader has
+no reason to distrust it — so these are named here rather than left to
+be discovered.
+
+| file | rows | actually |
+|---|---|---|
+| `issue48-tracka-macos.jsonl` | 24 | **Track A**, `mac-bench` |
+| `issue48-lattice-tracka-macos.jsonl` | 32 | **Track A**, `mac-bench` |
+| `issue44-gaps-mac-bench-trackA.jsonl` | 40 | **Track A**, `mac-bench` |
+| `issue44-gaps-linux-x1-trackA.jsonl` | 40 | Track A *(linux-x1's; asked on #53, not yet confirmed by them)* |
+
+**For these files the filename and the `bench` value are authoritative
+over the `track` field.** They are not rewritten, for the reason the
+section above gives and one more: correcting them would mean asserting
+provenance for runs nobody now present was there for. The first three
+are this bench's and I can vouch for them; the fourth is named as
+pending rather than asserted.
+
+**Why the `bench` value is doing the work.** Because `track` could not
+be recorded, whoever ran these put the condition in the bench name —
+`mac-bench-trackA`, `linux-x1-trackA`. That is a sensible workaround
+and it is why the data is recoverable at all. It also means **`bench`
+is not reliably a bench**: `records/` holds 32 values that name a
+condition rather than a desk (`mac-bench-refresh2`, `macos-rc98`,
+`macos-draws`, …), so **grouping by `bench` across these files will
+split one desk into several**. `CLAUDE.md`'s rule that a figure without
+its bench is not comparable with anything still holds; what has to be
+checked first is whether the field says which desk or which arm.
+
+**One claim leans on a file in this table.** `issue48-tracka-macos.jsonl`
+is the Track A arm behind `fe4ec0b` — *"the oracle agrees - RC 32's
+15/16 is the silicon, not a track"* — and the `2/24` in `CLAUDE.md`'s
+*"Track A 2/24 against Track B 7/32, p = 0.16"*. The finding is very
+probably sound: the filename, the `bench` value and the commit message
+all say Track A, and whoever ran it knew which binary was on the board.
+**But do not recompute that statistic from the `track` field**, which
+would silently pool both arms as Track B.
