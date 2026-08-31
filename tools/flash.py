@@ -640,6 +640,7 @@ def _log_flash(binary) -> None:
             "dirty": bool(porcelain),
             "dirty_sha": (hashlib.sha256(delta.encode()).hexdigest()
                           if porcelain else None),
+            **_image_identity(binary),
         }
         os.makedirs(os.path.dirname(FLASH_LOG), exist_ok=True)
         with open(FLASH_LOG, "a") as f:
@@ -652,6 +653,46 @@ def _log_flash(binary) -> None:
         print(f"==> logged: {rev}{dirt}{where} sha {h[:12]}")
     except Exception as e:                                    # noqa: BLE001
         print(f"==> could not log the flash: {e}", file=sys.stderr)
+
+
+def _image_identity(binary) -> dict:
+    """The compiler and the code layout, read off the ELF beside the .bin.
+
+    `repo_rev` answers "which commit", and a commit does not determine
+    an image: the three benches build this repository with three
+    different code generators - xPack GCC 15.2.1, Debian's 14.2.1, and
+    arduino-cli's bundled 4.8.3 on the legacy Track A path - and until
+    now no field anywhere named which one produced the binary.
+
+    That is not bookkeeping. CLAUDE.md records issue #5's displacement
+    site as "a lottery over code layout", so an experiment that pins a
+    commit across two benches and compares site tables has pinned the
+    source and left the variable free. `layout` is what makes that
+    checkable after the fact rather than only by prior arrangement.
+
+    `sha256` cannot serve. The identity line carries __DATE__/__TIME__,
+    so it changes on every rebuild of one source state - the docstring
+    above already says so for `dirty_sha`, and it is the same reason.
+    The defined-symbol address map carries no timestamp: two builds of
+    3aadf90 on linux-x1, minutes apart, hashed alike while their .bin
+    hashes differed.
+
+    Never raises, and returns the keys with null values when it cannot
+    read them - a bench with no binutils on the path still gets a log
+    line, and an absent field is then a stated absence rather than a
+    field nobody added.
+    """
+    blank = {"cc": None, "layout": None}
+    elf = os.path.splitext(binary)[0] + ".elf"
+    if not os.path.exists(elf):
+        return blank
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import image_fingerprint
+        return {"cc": image_fingerprint.compiler(elf),
+                "layout": image_fingerprint.layout(elf)}
+    except Exception:                                         # noqa: BLE001
+        return blank
 
 
 UNKNOWN_WORK_TREE = "unknown"      # git could not be asked, or did not answer

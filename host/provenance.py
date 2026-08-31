@@ -174,6 +174,21 @@ def firmware(build_stamp=None, track=None):
             # it: the identity line carries __DATE__/__TIME__, so the
             # binary hash changes on every rebuild of one source state.
             "fw_dirty_sha": rec.get("dirty_sha"),
+            # Which code generator, and where it put things.
+            #
+            # `fw_repo_rev` was added because a version string is not a
+            # commit. The same argument runs one step further: a commit
+            # is not an image. Three benches build this repository with
+            # three different compilers, and #5's displacement site is
+            # "a lottery over code layout" - so a cross-bench comparison
+            # that pins the commit has pinned the source and left the
+            # variable free.
+            #
+            # None on any row written before tools/flash.py recorded
+            # them, which is honest: those runs are attributable to a
+            # commit and not to an image, and nothing can recover it now.
+            "fw_cc": rec.get("cc"),
+            "fw_layout": rec.get("layout"),
             "fw_flashed_at": rec.get("when"),
             "fw_provenance": ("matched" if stamp is not None
                               else "latest, unmatched build stamp"),
@@ -532,4 +547,10 @@ def run_fields(board=None, ident=None):
         "fw_repo_rev": p.get("fw_repo_rev"),
         "repo_rev": p.get("repo_rev"),
         "fw_build": p.get("build"),
+        # A commit is not an image - see fw_cc/fw_layout in firmware().
+        # Carried on every row a tool writes, so a figure that turns out
+        # to depend on code layout can be re-read for it rather than
+        # re-measured. Null on rows whose flash predates the field.
+        "fw_cc": p.get("fw_cc"),
+        "fw_layout": p.get("fw_layout"),
     }
