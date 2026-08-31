@@ -209,13 +209,28 @@ def touch_1200(port, restore=True):
     s.dtr = False                     # the erase+reset trigger
     time.sleep(0.1)
     if not restore:
-        # macOS shape. The explicit DTR drop above does not reach the
-        # wire there - measured by mac-bench across four arms on #35:
-        # dropping DTR and then setting 115200 before the close does not
-        # erase (nor does waiting 1.5 s first), and closing while still
-        # at 1200 does. So on that host the 16U2 only ever sees the
-        # transition the close performs, and it reads the line coding
-        # that is current at that moment.
+        # The macOS shape, and its premise did not survive re-testing.
+        #
+        # It was added because mac-bench reported across four arms that
+        # dropping DTR and restoring 115200 before the close does not
+        # erase on that host, nor does waiting 1.5 s first, and that only
+        # closing at 1200 does.
+        #
+        # RE-MEASURED 2026-08-31 on the same bench and it does not
+        # reproduce: all three shapes erase, 3 of 3 each, read from
+        # enumeration rather than from a return code
+        # (records/issue35-touch-arms-mac-bench.jsonl). Both explanations
+        # for the discrepancy are eliminated - a board already in the
+        # bootloader never reaches the touch, and the code has not
+        # changed, since 38e2cd4 CREATED restore=True and the pre-38e2cd4
+        # touch_1200 is line-for-line today's restore path with open_port
+        # untouched. What is left is that the four arms were wrong.
+        #
+        # Kept rather than deleted: linux-x1 needs restore=True for a
+        # separate and unaffected reason, three benches share this file,
+        # and a branch that never fires costs nothing. What it must not
+        # do is assert a refuted premise, because a comment is what the
+        # next person reasons from.
         #
         # This leaves the port stored at 1200, which is the hazard the
         # restore path exists to avoid - so the caller clears it while
@@ -422,13 +437,22 @@ def _flash_attempt(bossac, binary, args):
             # the board is already where the flash needs it and there is
             # nothing to diagnose.
             #
-            # This is macOS, and it is issue #35. The two shapes of the
-            # touch are host-specific and they conflict - Linux needs the
-            # speed restored on the open fd or the *next* open erases the
-            # board it just flashed (measured 3 of 3 on linux-x1), while
-            # macOS needs the close to happen at 1200 or nothing erases
-            # at all (mac-bench's four arms). There is no one sequence
-            # that is right on both.
+            # Issue #35. Linux needs the speed restored on the open fd
+            # or the *next* open erases the board it just flashed,
+            # measured 3 of 3 on linux-x1 and unaffected by anything
+            # below.
+            #
+            # The macOS half of that argument is withdrawn. It read
+            # "macOS needs the close to happen at 1200 or nothing erases
+            # at all (mac-bench's four arms)", and re-measurement on that
+            # bench has all three shapes erasing 3 of 3 - see touch_1200
+            # above. So this fallback has no demonstrated host that needs
+            # it, and on macOS it has never been reached: the ordinary
+            # touch moves the bus, twice on record.
+            #
+            # It stays because it is free, it is the only recovery path
+            # if some host does behave that way, and removing a branch
+            # from a file three benches share is not a drive-by.
             #
             # So it is chosen on evidence rather than on sys.platform.
             # The default arm is the one measured working on Linux and
