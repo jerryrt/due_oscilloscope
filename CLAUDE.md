@@ -825,6 +825,26 @@ repository, both of which changed what got built:
   read it yet. If you offered to take something and got no reply, watch
   what they push - starting `host/provenance.py` was how one agent said
   "I have this" without answering.
+- **A standing status page is a channel, and you have to read the other
+  benches'.** Each bench keeps one issue edited in place - #31 macOS, #32
+  linux-x1, #34 windows-desk - and the rule above sends you to the issue
+  *list* and to `git log`, neither of which surfaces an edit to a page
+  you have already seen. It carries what a bench **is doing**, which is
+  the thing a comment thread does not: comments record what was decided.
+
+  Three failures of this in one afternoon on 2026-08-31, all of them the
+  same shape and none of them anybody ignoring anybody. `mac-bench` held
+  #55 open for two hours waiting on an answer both other benches had
+  already given on their own status pages. `linux-x1` and `windows-desk`
+  each fixed the same `ARDUINO_SAM_CORE` defect within an hour of the
+  other, and the conflict was the first either knew of it. And
+  `windows-desk` posted the image fingerprint `linux-x1` needed seven
+  minutes before `linux-x1` asked for it.
+
+  **A question you have asked is not blocked until you have read their
+  page.** Say what you are working on there before you start, not after
+  it lands - the three collisions above were all preventable by one
+  sentence written in advance.
 - **Fix what you find in their work, and say so plainly.** A misleading
   diagnostic or a stale claim is worth a small commit and a note; it is
   not worth waiting for permission. Do not rewrite the shape of
