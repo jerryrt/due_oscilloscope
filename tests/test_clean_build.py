@@ -204,26 +204,22 @@ def test_track_a_flash_builds_before_it_flashes():
         "measure.flash() flashes Track A before building it")
 
 
-def test_nothing_else_builds_behind_the_enforcement():
-    """No other caller spawns a compiler.
+def _spawn_windows(rel, text):
+    """(line, window) for each subprocess spawn in a file.
 
-    The enforcement is one line per build system, which only holds while
-    those are the only two ways to produce an image. A third path added
-    later would bypass both silently, so this fails on its appearance.
-
-    Matches a build tool named inside a process spawn, not merely the
-    word: `host/provenance.py` lists "cmake" as a *directory* in
-    FW_SOURCE, and a test that cannot tell those apart is one people
+    The window is the command list rather than the rest of the file:
+    `host/provenance.py` lists "cmake" as a *directory* in FW_SOURCE, and
+    a test that cannot tell a directory from a spawned tool is one people
     learn to ignore.
     """
-    SPAWN = re.compile(r"subprocess\.(run|call|check_call|check_output|Popen)"
-                       r"\(", re.S)
-    TOOL = re.compile(r"arduino-cli|\bcmake\b")
-    ALLOWED = {"host/measure.py", "tools/toolchain.py", "tools/flash.py"}
+    for m in _SPAWN.finditer(text):
+        yield text[:m.start()].count(chr(10)) + 1, text[m.end():m.end() + 300]
 
+
+def _project_py():
+    """Every .py in the project, excluding vendored and gitignored trees."""
     ignored = _ignored_dirs()
-
-    offenders = []
+    out = {}
     for root, dirs, files in os.walk(REPO):
         keep = []
         for d in dirs:
@@ -249,18 +245,73 @@ def test_nothing_else_builds_behind_the_enforcement():
             # if nobody looks at it.
             rel = os.path.relpath(os.path.join(root, name),
                                   REPO).replace(os.sep, "/")
-            here = os.path.relpath(__file__, REPO).replace(os.sep, "/")
-            if rel in ALLOWED or rel == here:
-                continue
-            text = _read(rel)
-            for m in SPAWN.finditer(text):
-                # The command list, not the rest of the file.
-                window = text[m.end():m.end() + 300]
-                if TOOL.search(window):
-                    offenders.append(f"{rel}:{text[:m.start()].count(chr(10)) + 1}")
+            out[rel] = _read(rel)
+    return out
+
+
+#: Files permitted to spawn a build tool directly. Everything else that
+#: reaches one, at any depth, is a build path that skipped the clean.
+ALLOWED = {"host/measure.py", "tools/toolchain.py", "tools/flash.py"}
+
+_SPAWN = re.compile(r"subprocess\.(run|call|check_call|check_output|Popen)"
+                    r"\(", re.S)
+_TOOL = re.compile(r"arduino-cli|\bcmake\b")
+
+
+def test_nothing_else_builds_behind_the_enforcement():
+    """No other caller spawns a compiler, at any depth.
+
+    The enforcement is one line per build system, which only holds while
+    those are the only ways to produce an image. A third path added later
+    would bypass both silently, so this fails on its appearance.
+
+    **Transitive, and it was not until 2026-08-31.** This matched
+    `arduino-cli|cmake` in the spawn window and nothing else, so a file
+    that spawned a file that spawned a build tool was invisible - and the
+    allowlist entry permitting the legitimate middle file also hid every
+    caller behind it. `tools/enum_probe.py` spawned `tools/sketch.py`,
+    which drove arduino-cli, and this test passed for as long as both
+    existed. It surfaced during #55 only because `sketch.py` was being
+    deleted and somebody re-grepped; the deletion would otherwise have
+    left a bench tool broken for whoever next needed it.
+
+    A one-off bench tool with a hardcoded path is invisible to every
+    other check here - not imported, not collected, not exercised on any
+    other bench - so this scan is the only thing that reads it at all.
+
+    The builder set is computed rather than listed, so it cannot go
+    stale: pass one finds every file that reaches a build tool directly,
+    pass two finds every file that spawns one of those.
+    """
+    files = _project_py()
+    here = os.path.relpath(__file__, REPO).replace(os.sep, "/")
+
+    direct = {rel for rel, text in files.items()
+              if rel != here
+              and any(_TOOL.search(w) for _ln, w in _spawn_windows(rel, text))}
+
+    offenders = [f"{rel} (spawns a build tool directly)"
+                 for rel in sorted(direct - ALLOWED)]
+
+    # Pass two: anything spawning a file that builds. Match on basename,
+    # because callers spell the path every way - os.path.join(REPO, ...),
+    # a bare "tools/x.py", a module constant.
+    builder_names = {os.path.basename(r) for r in (direct | ALLOWED)}
+    builder_names.discard("toolchain.py")   # reports paths, builds nothing
+    builder_names.discard("flash.py")       # flashes a .bin, builds nothing
+    for rel, text in sorted(files.items()):
+        if rel in ALLOWED or rel == here or rel in direct:
+            continue
+        for ln, window in _spawn_windows(rel, text):
+            hit = next((b for b in builder_names if b in window), None)
+            if hit:
+                offenders.append(
+                    f"{rel}:{ln} (spawns {hit}, which builds)")
+
     assert not offenders, (
-        "these spawn a build tool outside the two enforced paths, so "
-        "they can produce an image from a stale cache: "
+        "these reach a build tool outside the enforced paths, so they "
+        "can produce an image from a stale cache. Call measure.flash() "
+        "rather than spawning a builder: "
         + ", ".join(sorted(set(offenders))))
 
 
