@@ -218,3 +218,43 @@ def approx_rate(measured, declared, tol=0.005):
         f"measured {measured:.0f} Hz against a declared {declared} Hz "
         f"(ratio {ratio:.4f}, tolerance {tol})")
     return ratio
+
+
+def shared_run(cache, fn, board, **kw):
+    """One board run, serving every test that asks for the same one.
+
+    Several tests state a claim *about a single run* - the per-window
+    rate is flat within a run, two rate estimators agree on a run, the
+    bulk-IN carrier and the console `O` trace describe the same run, A0
+    carries the tone *while* A1 stays flat - and each was starting its
+    own three-second run to read a different field of the same result.
+    Eight runs at three distinct parameter sets in `test_play_counters`,
+    five runs at one in `test_integrity`; between them a half of the
+    suite's clock.
+
+    Sharing them is not a speed-for-coverage trade. Taking the two sides
+    of an agreement claim from two different board runs is the *weaker*
+    test, and at RC 44 it is misleading: the converter latches one of two
+    discrete states per run (issue #48), so two runs at one commanded
+    rate can be two different converters. This makes the comparison
+    within-run by construction. The time it saves is the side effect.
+
+    A key is the run function plus its parameters, so a test that
+    varies any of them gets its own run and nothing has to be
+    remembered about who shares with whom.
+
+    **Do not use it where a test wants two independent runs.**
+    `test_playback_counters_describe_one_run_not_several` is exactly
+    that - its subject is whether the counters are per-run or cumulative
+    - and it calls `measure.run_play` directly for that reason.
+
+    The cost of sharing, stated so a failure is not misread: when a
+    shared run is bad, every test keyed to it fails together. That is
+    one measurement failing several assertions, not several
+    measurements agreeing. Check the key before concluding a defect
+    reproduced.
+    """
+    key = (fn.__name__,) + tuple(sorted((k, repr(v)) for k, v in kw.items()))
+    if key not in cache:
+        cache[key] = fn(board, **kw)
+    return cache[key]

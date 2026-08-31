@@ -16,7 +16,7 @@ import statistics
 import pytest
 
 import measure
-from helpers import needs_a_buffering_host, record, window
+from helpers import needs_a_buffering_host, record, shared_run, window
 
 
 @pytest.mark.smoke
@@ -67,7 +67,8 @@ def test_playback_counters_describe_one_run_not_several(board, seconds, track):
 
 @pytest.mark.parametrize("rc", [65, 44, 39])
 def test_the_converter_holds_one_rate_for_a_whole_run(board, seconds,
-                                                      calibration, rc):
+                                                      calibration,
+                                                      run_cache, rc):
     """The per-window rate is flat, so a whole-run figure means something.
 
     play_run_us over play_consumed is an average, and an average is only
@@ -83,7 +84,8 @@ def test_the_converter_holds_one_rate_for_a_whole_run(board, seconds,
     movement in the converter.
     """
     hz = measure.hz_for(rc)
-    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0))
+    res = shared_run(run_cache, measure.run_play, board, dac_sps=hz,
+                     seconds=window(seconds, 3.0))
     assert not res.refused, res.console
 
     if not res.occ.rate_us:
@@ -118,7 +120,7 @@ def test_the_converter_holds_one_rate_for_a_whole_run(board, seconds,
 
 
 @pytest.mark.parametrize("rc", [65, 39])
-def test_the_two_rate_estimators_agree(board, seconds, rc):
+def test_the_two_rate_estimators_agree(board, seconds, run_cache, rc):
     """Whole-run counters against a trace taken during the run.
 
     device_byte_rate() divides the device's own counters by its own run
@@ -129,7 +131,8 @@ def test_the_two_rate_estimators_agree(board, seconds, rc):
     shutdown reached.
     """
     hz = measure.hz_for(rc)
-    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0))
+    res = shared_run(run_cache, measure.run_play, board, dac_sps=hz,
+                     seconds=window(seconds, 3.0))
     assert not res.refused, res.console
 
     whole = res.occ.device_byte_rate()
@@ -249,7 +252,8 @@ def test_the_deficit_is_the_oversupply(board, seconds, calibration, rc):
 
 @pytest.mark.parametrize("rc", [65, 44, 39])
 def test_the_carrier_reports_what_the_console_trace_reports(board, seconds,
-                                                            calibration, rc):
+                                                            calibration,
+                                                            run_cache, rc):
     """Playback status over bulk IN agrees with the console `O` trace.
 
     These are the two ends of objective 0i's carrier problem. The rate
@@ -267,7 +271,8 @@ def test_the_carrier_reports_what_the_console_trace_reports(board, seconds,
     # run_play then withholds the occupancy line - the oracle - because
     # it would describe the shutdown. The deficit is not wanted here.
     hz = measure.hz_for(rc)
-    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0))
+    res = shared_run(run_cache, measure.run_play, board, dac_sps=hz,
+                     seconds=window(seconds, 3.0))
     assert not res.refused, res.console
 
     assert len(res.stats) > 20, (

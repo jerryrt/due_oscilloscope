@@ -245,3 +245,15 @@ def quiesce(request):
 def seconds(request):
     """Streaming window, overridable for a quick pass."""
     return request.config.getoption("--seconds")
+
+
+@pytest.fixture(scope="session")
+def run_cache():
+    """Board runs shared by tests that ask for identical parameters.
+
+    Session-scoped because the runs it holds are the expensive thing in
+    the suite, and function-scoped would defeat the point. See
+    `helpers.shared_play` for when sharing is correct and when it is
+    not.
+    """
+    return {}

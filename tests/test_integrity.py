@@ -15,7 +15,7 @@ import pytest
 import measure
 from helpers import (assert_fresh, assert_no_underruns, assert_slew,
                      assert_stream_clean, assert_tone, loop_cmd, record,
-                     window, window_purity)
+                     shared_run, window, window_purity)
 
 pytestmark = [pytest.mark.scope, pytest.mark.awg]
 
@@ -159,7 +159,7 @@ def test_device_generated_waveform_is_continuous(board, seconds,
 
 @pytest.mark.smoke
 def test_no_sample_step_exceeds_the_waveform_slope(board, seconds, baseline,
-                                                   calibration):
+                                                   calibration, run_cache):
     """Invariant 5, tested directly and without any spectral analysis.
 
     Data spliced across two points in time still passes its header CRC
@@ -169,8 +169,8 @@ def test_no_sample_step_exceeds_the_waveform_slope(board, seconds, baseline,
     lands somewhere else on the waveform and jumps.
     """
     secs = window(seconds, 3.0)
-    res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
-                           tone=TONE, seconds=secs)
+    res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
+                     adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
     assert_stream_clean(res)
 
@@ -219,7 +219,8 @@ def test_no_sample_step_exceeds_the_waveform_slope(board, seconds, baseline,
         "analytic": round(measure.slew_limit(res.tone_hz, amplitude, fs), 1)})
 
 
-def test_tone_amplitude_per_window(board, seconds, baseline, calibration):
+def test_tone_amplitude_per_window(board, seconds, baseline, calibration,
+                                   run_cache):
     """Purity judged per window, never over the whole run.
 
     At 453,488 sps a whole-run Goertzel reads 232 codes against a
@@ -228,8 +229,8 @@ def test_tone_amplitude_per_window(board, seconds, baseline, calibration):
     a collapse that is not happening.
     """
     secs = window(seconds, 3.0)
-    res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
-                           tone=TONE, seconds=secs)
+    res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
+                     adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
     assert_no_underruns(res)
 
@@ -249,7 +250,8 @@ def test_tone_amplitude_per_window(board, seconds, baseline, calibration):
         f"the signal")
 
 
-def test_every_window_reaches_the_amplitude_floor(board, seconds, baseline):
+def test_every_window_reaches_the_amplitude_floor(board, seconds, baseline,
+                                                  run_cache):
     """The median says the signal is right; this says it is right *all
     the time*.
 
@@ -260,15 +262,15 @@ def test_every_window_reaches_the_amplitude_floor(board, seconds, baseline):
     percent of the 90% requirement either way.
     """
     secs = window(seconds, 3.0)
-    res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
-                           tone=TONE, seconds=secs)
+    res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
+                     adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
     amp = baseline["amplitude"]
     assert_tone(res, measure.CH_A0, amp["window_floor_codes"],
                 fraction=amp["window_fraction"])
 
 
-def test_the_other_channel_stays_flat(board, seconds, baseline):
+def test_the_other_channel_stays_flat(board, seconds, baseline, run_cache):
     """A1 carries no tone.
 
     DAC1 is never driven with the waveform, so a tone on A1 means the
@@ -278,8 +280,8 @@ def test_the_other_channel_stays_flat(board, seconds, baseline):
     previously converted channel.
     """
     secs = window(seconds, 3.0)
-    res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
-                           tone=TONE, seconds=secs)
+    res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
+                     adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
 
     ceiling = baseline["amplitude"]["crosstalk_ceiling_codes"]
@@ -291,7 +293,7 @@ def test_the_other_channel_stays_flat(board, seconds, baseline):
         f"wrongly or the multiplexer is bleeding")
 
 
-def test_recovered_frequency_is_the_one_sent(board, seconds):
+def test_recovered_frequency_is_the_one_sent(board, seconds, run_cache):
     """A rate error hides behind a good amplitude.
 
     The Goertzel is evaluated with the header's declared rate, so if the
@@ -299,8 +301,8 @@ def test_recovered_frequency_is_the_one_sent(board, seconds):
     while the amplitude at that wrong frequency still looks perfect.
     """
     secs = window(seconds, 3.0)
-    res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
-                           tone=TONE, seconds=secs)
+    res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
+                     adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
 
     fs = res.stream.declared_rate_hz
