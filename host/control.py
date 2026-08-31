@@ -70,7 +70,7 @@ _TEMP = struct.Struct("<IIHHHBBII")
 #: seq, uptime_ms, period_ms, dropped, then ctl_counters_t whole.
 #: ctl_heartbeat_t. The trailing "IIIB3xI" is issue #52's USB frame
 #: reference and the device's running estimate of its own MCK.
-_HEARTBEAT = struct.Struct("<4I" + _COUNTERS.format.lstrip("<") + "IIIB3xI")
+_HEARTBEAT = struct.Struct("<4I" + _COUNTERS.format.lstrip("<") + "IQIIB3xI")
 
 # Matches CTL_TEMP_SAMPLES_* in lib/due_shared/src/ctl_wire.h. Passed
 # through rather than enforced here: the device clamps and reports what
@@ -547,8 +547,9 @@ class Control:
     def _decode_heartbeat(self, payload):
         f = _HEARTBEAT.unpack(payload)
         seq, uptime_ms, period_ms, dropped = f[:4]
-        c = f[4:-5]
-        sof_frames, sof_dev_us, sof_ambiguous, sof_available, mck_meas = f[-5:]
+        c = f[4:-6]
+        (sof_frames, sof_dev_us, sof_ambiguous, sof_restarts,
+         sof_available, mck_meas) = f[-6:]
         return {
             "seq": seq, "uptime_ms": uptime_ms, "period_ms": period_ms,
             "dropped": dropped,
@@ -581,6 +582,12 @@ class Control:
             "sof": {
                 "frames": sof_frames, "dev_us": sof_dev_us,
                 "ambiguous": sof_ambiguous,
+                # A restart is the metric HEALING, not an error: the span
+                # begins again after an unresolvable poll gap instead of
+                # staying a lower bound for ever. Non-zero means `frames`
+                # counts from the last restart rather than from
+                # enumeration.
+                "restarts": sof_restarts,
                 "available": bool(sof_available),
                 "mck_meas_hz": mck_meas or None,
             },

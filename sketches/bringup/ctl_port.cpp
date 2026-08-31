@@ -397,8 +397,9 @@ extern "C" void TC2_Handler(void)
  */
 static uint32_t sof_frames_ext;
 static uint32_t sof_edge_frames;
-static uint32_t sof_edge_us;
-static uint32_t sof_epoch_us;   /* micros() at the FIRST edge */
+static uint64_t sof_elapsed_us;   /* accumulated wrap-safe; micros() wraps at 71.6 min */
+static uint64_t sof_edge_elapsed;
+static uint32_t sof_restarts_n;
 static uint32_t sof_ambiguous_n;
 static uint16_t sof_last_fnum;
 static uint32_t sof_last_us;
@@ -415,14 +416,8 @@ void ctl_port_sof_poll(void)
 	if (!sof_started) {
 		/* Not "configured" but "moving": two polls that differ are a
 		 * host emitting SOF, and a stuck value is not. */
-		if (cur != sof_last_fnum && sof_last_fnum != 0u) {
+		if (cur != sof_last_fnum && sof_last_fnum != 0u)
 			sof_started = true;
-			/* frames count from here, so dev_us must too - see
-			 * drivers/clockref.c for what a wrong epoch looks
-			 * like when measured. */
-			sof_epoch_us = now;
-			sof_edge_us = now;
-		}
 		sof_last_fnum = cur;
 		sof_last_us = now;
 		return;
@@ -430,8 +425,24 @@ void ctl_port_sof_poll(void)
 
 	/* FNUM wraps every 2048 frames; a pass that blocked longer than
 	 * that cannot be resolved, so it is counted rather than guessed. */
-	if ((uint32_t)(now - sof_last_us) > 1500000u)
+	/* Restart the span rather than poison it - see drivers/clockref.c.
+	 * A health figure that goes dark for ever after one stall is the
+	 * wrong shape. */
+	if ((uint32_t)(now - sof_last_us) > 1500000u) {
 		sof_ambiguous_n++;
+		sof_restarts_n++;
+		sof_frames_ext = 0u;
+		sof_edge_frames = 0u;
+		sof_elapsed_us = 0u;
+		sof_edge_elapsed = 0u;
+		sof_last_fnum = cur;
+		sof_last_us = now;
+		return;
+	}
+
+	/* 64-bit from small wrap-safe deltas: micros() wraps at 71.6 min and
+	 * a difference of two absolute readings is wrong across two wraps. */
+	sof_elapsed_us += (uint64_t)(uint32_t)(now - sof_last_us);
 
 	{
 		uint32_t step = (uint32_t)((cur - sof_last_fnum) & 2047u);
@@ -443,24 +454,26 @@ void ctl_port_sof_poll(void)
 		 * timestamp is worse than a later one. */
 		if (step == 1u) {
 			sof_edge_frames = sof_frames_ext;
-			sof_edge_us = now;
+			sof_edge_elapsed = sof_elapsed_us;
 		}
 	}
 	sof_last_fnum = cur;
 	sof_last_us = now;
 }
 
-extern "C" int ctl_port_sof(uint32_t *frames, uint32_t *dev_us,
-                            uint32_t *ambiguous)
+extern "C" int ctl_port_sof(uint32_t *frames, uint64_t *dev_us,
+                            uint32_t *ambiguous, uint32_t *restarts)
 {
 	if (ambiguous)
 		*ambiguous = sof_ambiguous_n;
+	if (restarts)
+		*restarts = sof_restarts_n;
 	if (!sof_started)
 		return 0;
 	if (frames)
 		*frames = sof_edge_frames;
 	if (dev_us)
-		*dev_us = (uint32_t)(sof_edge_us - sof_epoch_us);
+		*dev_us = sof_edge_elapsed;
 	return 1;
 }
 

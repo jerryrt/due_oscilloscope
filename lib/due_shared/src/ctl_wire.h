@@ -279,9 +279,27 @@ typedef struct __attribute__((packed)) {
 	 * FNUM's 2.048 s wrap - non-zero means sof_frames is a LOWER BOUND
 	 * and no frequency may be computed from it.
 	 */
-	uint32_t sof_frames;      /* SOF frames since the port was configured */
-	uint32_t sof_dev_us;      /* micros() latched at that frame's edge */
-	uint32_t sof_ambiguous;   /* unresolvable wraps; non-zero invalidates */
+	uint32_t sof_frames;      /* SOF frames in the CURRENT span */
+	/*
+	 * Elapsed device microseconds over the same span, 64-bit.
+	 *
+	 * It was uint32 for one evening and that was wrong: micros() wraps
+	 * every 71.6 minutes, so a difference of two absolute readings is
+	 * correct across one wrap and silently wrong across two. A
+	 * seven-hour soak read 25,499,813 frames - 7.08 h, right - against a
+	 * dev_us of 4,025,307,502, which is 7.08 h modulo 2^32 and looks
+	 * like 1.12 h. The device accumulates small wrap-safe deltas now.
+	 */
+	uint64_t sof_dev_us;
+	uint32_t sof_ambiguous;   /* unresolvable poll gaps, cumulative */
+	/*
+	 * Spans abandoned because a poll gap could not be resolved. The span
+	 * RESTARTS rather than being poisoned: a health figure that goes
+	 * dark for ever after one stall is the wrong shape, and the first
+	 * version did exactly that. Non-zero means `sof_frames` counts from
+	 * the last restart, not from enumeration.
+	 */
+	uint32_t sof_restarts;
 	uint8_t  sof_available;   /* 0 = never configured; sof_frames is void */
 	uint8_t  sof_reserved[3];
 	/*
@@ -341,9 +359,9 @@ typedef struct __attribute__((packed)) {
  */
 #define CTL_SOF_CALC_INTERVAL_US  10000000u
 
-/* host/control.py parses this as "<IIII" + the counters format + "<IIIB3xI";
+/* host/control.py parses this as "<IIII" + the counters format + "<IQIIB3xI";
  * a layout that drifts from that is a silent misparse, not a link error. */
-CTL_STATIC_ASSERT(sizeof(ctl_heartbeat_t) == 36u + sizeof(ctl_counters_t),
+CTL_STATIC_ASSERT(sizeof(ctl_heartbeat_t) == 44u + sizeof(ctl_counters_t),
                   "ctl_heartbeat_t is a wire format, not a struct layout");
 
 /*

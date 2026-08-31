@@ -171,13 +171,15 @@ static bool ctl_have(uint32_t cap)
  */
 static void ctl_fill_sof(ctl_heartbeat_t *hb)
 {
-	uint32_t frames = 0u, dev_us = 0u, ambiguous = 0u;
-	int ok = ctl_port_sof(&frames, &dev_us, &ambiguous);
+	uint32_t frames = 0u, ambiguous = 0u, restarts = 0u;
+	uint64_t dev_us = 0u;
+	int ok = ctl_port_sof(&frames, &dev_us, &ambiguous, &restarts);
 
 	hb->sof_available = ok ? 1u : 0u;
 	hb->sof_frames    = ok ? frames : 0u;
 	hb->sof_dev_us    = ok ? dev_us : 0u;
 	hb->sof_ambiguous = ambiguous;
+	hb->sof_restarts  = restarts;
 	hb->mck_meas_hz   = 0u;
 
 	/*
@@ -187,8 +189,9 @@ static void ctl_fill_sof(ctl_heartbeat_t *hb)
 	 * lower bound, so a figure computed from it would be wrong low and
 	 * look like a real slow clock.
 	 */
-	if (!ok || ambiguous != 0u || frames < CTL_SOF_MIN_FRAMES ||
-	    dev_us == 0u)
+	/* A restart is not a reason to refuse - the CURRENT span is clean.
+	 * Only a span too short to measure, or no reference at all, is. */
+	if (!ok || frames < CTL_SOF_MIN_FRAMES || dev_us == 0u)
 		return;
 
 	/*
@@ -218,16 +221,16 @@ static void ctl_fill_sof(ctl_heartbeat_t *hb)
 	 * 20 ms emits overlapping windows that read as independent samples.
 	 */
 	{
-		static uint32_t last_calc_us;
+		static uint64_t last_calc_us;
 		static uint32_t cached_hz;
-		uint32_t age = dev_us - last_calc_us;
+		uint64_t age = dev_us - last_calc_us;
 
 		if (cached_hz == 0u || age >= CTL_SOF_CALC_INTERVAL_US) {
 			/* SOF is 1 kHz, so `frames` milliseconds of real time
 			 * have passed while the device counted `dev_us` of its
 			 * own microseconds. */
 			cached_hz = (uint32_t)(((uint64_t)ctl_port_mck_hz() *
-			                        (uint64_t)dev_us) /
+			                        dev_us) /
 			                       ((uint64_t)frames * 1000u));
 			last_calc_us = dev_us;
 		}

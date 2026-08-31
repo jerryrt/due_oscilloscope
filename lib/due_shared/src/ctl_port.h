@@ -231,7 +231,8 @@ int ctl_port_temp(ctl_temp_t *out, uint16_t samples);
  * not the other is debt with a date on it rather than a property of the
  * track (invariant 3).
  */
-int ctl_port_sof(uint32_t *frames, uint32_t *dev_us, uint32_t *ambiguous);
+int ctl_port_sof(uint32_t *frames, uint64_t *dev_us, uint32_t *ambiguous,
+                 uint32_t *restarts);
 
 /* The clock every rate here descends from, as the track knows it. Shared
  * code must not assume 78 MHz - that assumption is what issue #52 exists

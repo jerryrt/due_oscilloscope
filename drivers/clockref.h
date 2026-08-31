@@ -57,8 +57,16 @@ void clockref_poll(void);
 /* frames since init, extended past FNUM's 11 bits; false if the port has
  * never enumerated, in which case there is no reference and the caller
  * must say so rather than report zero. */
-bool clockref_read(uint32_t *frames, uint32_t *dev_us,
+bool clockref_read(uint32_t *frames, uint64_t *dev_us,
                    uint16_t *fnum, uint8_t *mfnum);
+
+/*
+ * How many times the span has been restarted because a poll gap could
+ * not be resolved. Non-zero is not an error - it is the metric healing
+ * rather than staying dark - but it means `frames` counts from the last
+ * restart and not from enumeration.
+ */
+uint32_t clockref_restarts(void);
 
 /* Polls that were too far apart to resolve a wrap. Non-zero means the
  * frame count is a lower bound, not a count. */

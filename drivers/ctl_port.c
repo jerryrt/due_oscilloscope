@@ -325,13 +325,17 @@ void TC2_Handler(void)
 
 
 /* Issue #52. The pair the main loop latched at a SOF edge. */
-int ctl_port_sof(uint32_t *frames, uint32_t *dev_us, uint32_t *ambiguous)
+int ctl_port_sof(uint32_t *frames, uint64_t *dev_us, uint32_t *ambiguous,
+                 uint32_t *restarts)
 {
-	uint32_t f = 0u, us = 0u;
+	uint32_t f = 0u;
+	uint64_t us = 0u;
 	bool ok = clockref_read(&f, &us, (uint16_t *)0, (uint8_t *)0);
 
 	if (ambiguous)
 		*ambiguous = clockref_ambiguous();
+	if (restarts)
+		*restarts = clockref_restarts();
 	if (!ok)
 		return 0;
 	if (frames)

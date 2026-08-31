@@ -13,8 +13,9 @@ static uint32_t ambiguous;     /* polls too far apart to resolve a wrap */
 static uint16_t last_fnum;
 static uint32_t last_us;
 static uint32_t edge_frames;   /* frames at the last observed SOF edge */
-static uint32_t edge_us;       /* micros() when that edge was seen */
-static uint32_t epoch_us;      /* micros() at the FIRST edge */
+static uint64_t elapsed_us;    /* accumulated, wrap-safe: see the poll */
+static uint64_t edge_elapsed;  /* elapsed_us latched at the last clean edge */
+static uint32_t restarts;      /* spans abandoned after an unresolvable gap */
 static bool     started;
 
 void clockref_init(void)
@@ -24,8 +25,9 @@ void clockref_init(void)
 	last_fnum = 0u;
 	last_us = 0u;
 	edge_frames = 0u;
-	edge_us = 0u;
-	epoch_us = 0u;
+	elapsed_us = 0u;
+	edge_elapsed = 0u;
+	restarts = 0u;
 	started = false;
 }
 
@@ -73,8 +75,6 @@ void clockref_poll(void)
 		 * seconds - a fixed offset divided by a growing window,
 		 * which is exactly what a wrong epoch looks like.
 		 */
-		epoch_us = now;
-		edge_us = now;
 		return;
 	}
 
@@ -87,8 +87,42 @@ void clockref_poll(void)
 	 * lower bound. Guessing here would be the same mistake as a
 	 * classifier with two outcomes for a three-outcome world.
 	 */
-	if ((uint32_t)(now - last_us) > CLOCKREF_STALL_US)
+	/*
+	 * An unresolvable gap RESTARTS the span rather than poisoning it.
+	 *
+	 * The first version counted the ambiguity and left `frames` a lower
+	 * bound for ever, so mck_meas_hz went dark permanently. Found by
+	 * leaving a board up for seven hours: two gaps in 25 million frames
+	 * and the figure never came back. That is the wrong behaviour for a
+	 * health metric - it should heal.
+	 *
+	 * The ambiguity is still counted and still reported, because a
+	 * reader must be able to see that a restart happened; what changes
+	 * is that the NEXT span is clean and usable.
+	 */
+	if ((uint32_t)(now - last_us) > CLOCKREF_STALL_US) {
 		ambiguous++;
+		restarts++;
+		frames = 0u;
+		edge_frames = 0u;
+		elapsed_us = 0u;
+		edge_elapsed = 0u;
+		last_fnum = cur;
+		last_us = now;
+		return;
+	}
+
+	/*
+	 * 64-bit, accumulated from small wrap-safe deltas.
+	 *
+	 * micros() is uint32 and wraps every 71.6 minutes. Reporting
+	 * `edge_us - epoch_us` is correct across ONE wrap and wrong across
+	 * two, which a seven-hour soak duly demonstrated: 25,499,813 frames
+	 * - 7.08 h, correct - against a dev_us of 4,025,307,502, which is
+	 * 7.08 h modulo 2^32 and reads as 1.12 h. Every delta added here is
+	 * one poll apart, so each is tiny and each subtraction is safe.
+	 */
+	elapsed_us += (uint64_t)(uint32_t)(now - last_us);
 
 	/*
 	 * Latch the pair AT a frame edge, not at read time.
@@ -125,14 +159,14 @@ void clockref_poll(void)
 		 */
 		if (step == 1u) {
 			edge_frames = frames;
-			edge_us = now;
+			edge_elapsed = elapsed_us;
 		}
 	}
 	last_fnum = cur;
 	last_us = now;
 }
 
-bool clockref_read(uint32_t *out_frames, uint32_t *out_us,
+bool clockref_read(uint32_t *out_frames, uint64_t *out_us,
                    uint16_t *out_fnum, uint8_t *out_mfnum)
 {
 	uint32_t fn;
@@ -147,7 +181,7 @@ bool clockref_read(uint32_t *out_frames, uint32_t *out_us,
 	if (out_frames)
 		*out_frames = edge_frames;
 	if (out_us)
-		*out_us = (uint32_t)(edge_us - epoch_us);
+		*out_us = edge_elapsed;
 	if (out_fnum)
 		*out_fnum = (uint16_t)((fn & UOTGHS_DEVFNUM_FNUM_Msk) >>
 		                       UOTGHS_DEVFNUM_FNUM_Pos);
@@ -160,4 +194,9 @@ bool clockref_read(uint32_t *out_frames, uint32_t *out_us,
 uint32_t clockref_ambiguous(void)
 {
 	return ambiguous;
+}
+
+uint32_t clockref_restarts(void)
+{
+	return restarts;
 }
