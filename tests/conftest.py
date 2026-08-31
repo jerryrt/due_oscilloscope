@@ -26,6 +26,7 @@ Run it from the project venv:
 import json
 import os
 import sys
+import time
 
 import pytest
 
@@ -72,6 +73,10 @@ def pytest_addoption(parser):
                      "of asserting against it")
     g.addoption("--seconds", action="store", type=float, default=None,
                 help="override the streaming window for every measurement")
+    g.addoption("--no-ceiling", action="store_true",
+                help="do not fail the board-free tier for exceeding its "
+                     "five-minute ceiling (issue #50); for a bench slower "
+                     "than the one the constant was measured on")
 
 
 def pytest_configure(config):
@@ -273,7 +278,65 @@ def run_cache():
 
     Session-scoped because the runs it holds are the expensive thing in
     the suite, and function-scoped would defeat the point. See
-    `helpers.shared_play` for when sharing is correct and when it is
+    `helpers.shared_run` for when sharing is correct and when it is
     not.
     """
     return {}
+
+
+# The board-free tier's ceiling, in seconds. Measured at 94.56 s and
+# 95.49 s on mac-bench at b24ccdb for 441 tests, so this is 3x headroom
+# rather than a number the tier is already pressed against.
+BOARD_FREE_CEILING_S = 300.0
+
+
+def pytest_sessionstart(session):
+    session._due_t0 = time.time()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Hold the board-free tier to five minutes, enforced not intended.
+
+    Issue #50 exists because section 8 of docs/testing.md claimed a
+    five-minute budget as an *intention* and it had drifted to fifteen
+    without anything noticing. An intention that nothing checks is how
+    that happens, so this checks.
+
+    **Only the board-free tier is enforced here, and that is deliberate
+    rather than timid.** The full suite is ~88% board tests, several of
+    which are irreducibly slow because they are measuring something slow
+    - test_rates.py's 22 distinct rates cost 105-108 s on two benches
+    with nothing to share - and the issue's own constraint says such a
+    test gets marked and kept out of the default run, never weakened.
+    Putting a ceiling on the full suite would mean hitting a number by
+    moving tests out of it, which is the same thing with worse
+    bookkeeping. Whether the full suite gets one, and at what, is on
+    #50 for the owner.
+
+    A failing ceiling is reported as a session failure rather than a
+    warning because a warning is what section 8 already was.
+    `--no-ceiling` exists for a bench slower than this one, so the
+    escape is deliberate and visible rather than a quiet edit to the
+    constant.
+    """
+    if getattr(session.config.option, "no_ceiling", False):
+        return
+    t0 = getattr(session, "_due_t0", None)
+    if t0 is None or session.testscollected == 0:
+        return
+    # Board tests set their own pace and are not what this bounds.
+    if any("board" in getattr(i, "fixturenames", ())
+           for i in getattr(session, "items", ())):
+        return
+    elapsed = time.time() - t0
+    if elapsed > BOARD_FREE_CEILING_S:
+        reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+        if reporter is not None:
+            reporter.write_line(
+                f"board-free tier took {elapsed:.1f}s against a "
+                f"{BOARD_FREE_CEILING_S:.0f}s ceiling (issue #50). This is "
+                f"the per-change loop; if it is genuinely this slow now, "
+                f"move work out of it or raise the constant deliberately "
+                f"- do not let it drift the way section 8 of "
+                f"docs/testing.md did.", red=True)
+        session.exitstatus = 1
