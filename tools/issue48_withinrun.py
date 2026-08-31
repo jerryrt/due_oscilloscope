@@ -101,6 +101,41 @@ def mannwhitney(a, b):
     return u1, z, p
 
 
+def runs_test(seq):
+    """Wald-Wolfowitz on a binary sequence. Returns (runs, expected, z, p).
+
+    This is the question the rank test cannot ask. The rank test says
+    whether the deep mode happens *earlier*; this says whether it
+    happens in *clumps*.
+
+    They separate two families of mechanism. Anything that varies
+    slowly - a temperature, a settling, a state that accumulates over a
+    run - makes consecutive reps agree, which is fewer runs than chance
+    and a negative z. An independent per-rep draw gives z near zero
+    whatever the incidence is.
+
+    A null result here is only worth as much as its power, so quote the
+    power with it. Simulated at N=61 and stationary p=0.23, two-state
+    Markov, 20k trials: a state with a mean dwell of 2.0 reps is caught
+    with probability 0.72, 2.5 reps with 0.91, and 3.3 reps with 0.96 -
+    but 1.3 reps only with 0.05. So "no clustering" bounds the dwell of
+    any selecting state at roughly one rep; it does not reach below
+    that.
+    """
+    n1 = seq.count(1)
+    n2 = len(seq) - n1
+    n = len(seq)
+    if n1 < 2 or n2 < 2:
+        return None, None, None, None
+    r = 1 + sum(1 for i in range(1, n) if seq[i] != seq[i - 1])
+    exp = 2.0 * n1 * n2 / n + 1.0
+    var = 2.0 * n1 * n2 * (2.0 * n1 * n2 - n) / (n * n * (n - 1))
+    if var <= 0:
+        return r, exp, None, None
+    z = (r - exp) / math.sqrt(var)
+    return r, exp, z, math.erfc(abs(z) / math.sqrt(2.0))
+
+
 def fisher(a, b, c, d):
     """Two-tailed Fisher exact on [[a,b],[c,d]]."""
     def logf(n):
@@ -205,6 +240,28 @@ def main():
                           "deep reps sit LATER in the run")
                   + f" — {'significant' if p < 0.05 else 'NOT significant'} "
                     f"at 0.05")
+
+        seq = [1 if r["ratio"] in deep else 0 for r in rs]
+        nr, exp, rz, rp = runs_test(seq)
+        if rz is None:
+            print("\nruns test: too few of one mode")
+        else:
+            print(f"\nWald-Wolfowitz runs test: {nr} runs, {exp:.1f} "
+                  f"expected, z={rz:+.3f} p={rp:.4f}")
+            if rz < -1.96:
+                print("  CLUSTERED - consecutive reps agree more than "
+                      "chance, so a slowly-varying state is selecting "
+                      "the mode")
+            elif rz > 1.96:
+                print("  ALTERNATING - more runs than chance")
+            else:
+                print("  no serial correlation: consistent with an "
+                      "INDEPENDENT draw per rep. At N=61 and p=0.23 this "
+                      "test catches a state dwelling 2.5 reps with "
+                      "probability 0.91 and 1.3 reps with 0.05, so it "
+                      "bounds such a state at about one rep and no lower")
+            print(f"  mode sequence: "
+                  f"{''.join('D' if x else 'S' for x in seq)}")
 
         mid = (min(r["rep"] for r in rs) + max(r["rep"] for r in rs)) / 2.0
         h1d = sum(1 for x in deep_reps if x <= mid)
