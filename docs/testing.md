@@ -349,6 +349,19 @@ board-free 441 became 448. Collection counts come from
 `--collect-only`, not from adding up a run summary, because a summary
 counts passed/skipped/xfailed separately and it is easy to drop one.
 
+**"needs nothing" is checked two ways, because it is the claim another
+bench acts on.** The `board` marker comes from `fixturenames`, which is
+transitive - so no fixture chain can reach the `board` fixture without
+being marked, and the tier cannot leak a hardware test through a helper.
+That covers the fixture path. The other path is code that opens a port
+without going through a fixture at all, and a grep over every board-free
+file for `measure.Board(`, `ports.find_*` and `open_raw(` finds none.
+
+What is *not* verified is the obvious thing: nobody has run this tier
+with the board physically unplugged. Both checks above are static. If
+you are the first to run it on a machine with no Due attached and it
+wants hardware, that is a bug in the marker and worth saying so.
+
 `smoke` is the one tier this section used to describe that turned out
 to be accurate: it claimed "near 2 minutes" and it is 104.2-104.9 s
 across five runs. It is *not* a subset of the board-free tier - it
