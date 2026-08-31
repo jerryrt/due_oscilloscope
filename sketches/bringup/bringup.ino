@@ -37,6 +37,7 @@
 
 #include "play_report.h"
 #include "console_out.h"          /* the shared debug emitters */
+#include "console_port.h"         /* console_write / console_flush */
 #include "clock.h"
 #include "bootlog.h"
 #include "acq.h"
@@ -188,9 +189,9 @@ static void banner(void)
 static void cmd_help(void)
 {
 	banner();
-	Serial.println("# commands:");
+	con_str("# commands:"); con_nl();
 	console_help();
-	Serial.println("#");
+	con_str("#"); con_nl();
 }
 
 static void measure_printf(void)
@@ -198,28 +199,49 @@ static void measure_printf(void)
 	const int n = 20;
 	const char *line = "0123456789012345678901234567890123456789";
 
-	Serial.println("# measuring printf cost, 20 x 40-char lines");
-	Serial.flush();
+	con_str("# measuring printf cost, 20 x 40-char lines"); con_nl();
+	console_flush();
 
 	uint32_t t0 = micros();
-	for (int i = 0; i < n; i++)
-		Serial.println(line);
-	Serial.flush();          /* include actual transmission, not just buffering */
+	/* Braces are load-bearing: con_nl() must stay INSIDE the loop, or
+	 * this times n strings and one newline. Two sites on Track B
+	 * compiled clean and were wrong exactly this way (issue #49). */
+	for (int i = 0; i < n; i++) {
+		con_str(line); con_nl();
+	}
+	console_flush();         /* include actual transmission, not just buffering */
 	uint32_t t1 = micros();
 
-	Serial.print("# printf: ");
-	Serial.print((t1 - t0) / n);
-	Serial.println(" us per 40-char line (flushed to the wire)");
-	Serial.println("# this is why printf never goes in an ISR");
-	Serial.flush();
+	con_str("# printf: "); con_u32((t1 - t0) / n);
+	con_str(" us per 40-char line (flushed to the wire)"); con_nl();
+	con_str("# this is why printf never goes in an ISR"); con_nl();
+	console_flush();
+}
+
+/*
+ * "N.NN ns per set+clear pair", from hundredths of a nanosecond.
+ *
+ * Track B's equivalent is print_ns() in main.c, and the arithmetic here
+ * is deliberately identical so the two tracks' figures are comparable
+ * to the digit. It exists as a helper rather than open-coded twice for
+ * the reason console_out.h gives for con_u32w: a call site that
+ * computes its own field is a call site that can get it wrong.
+ */
+static void print_ns_x100(uint32_t ns_x100)
+{
+	con_u32(ns_x100 / 100u);
+	con_ch('.');
+	con_u32w(ns_x100 % 100u, 2, '0');
+	con_str(" ns per set+clear pair");
+	con_nl();
 }
 
 static void measure_gpio(void)
 {
 	const uint32_t n = 100000;
 
-	Serial.println("# measuring GPIO toggle cost, 100k pairs");
-	Serial.flush();
+	con_str("# measuring GPIO toggle cost, 100k pairs"); con_nl();
+	console_flush();
 
 	uint32_t t0 = micros();
 	for (uint32_t i = 0; i < n; i++) {
@@ -235,14 +257,24 @@ static void measure_gpio(void)
 	}
 	uint32_t t3 = micros();
 
-	Serial.print("# direct PIO : ");
-	Serial.print(((t1 - t0) * 1000.0) / n);
-	Serial.println(" ns per set+clear pair");
-	Serial.print("# digitalWrite: ");
-	Serial.print(((t3 - t2) * 1000.0) / n);
-	Serial.println(" ns per set+clear pair");
-	Serial.println("# use direct PIO writes for ISR instrumentation");
-	Serial.flush();
+	/*
+	 * Fixed point, not float. This used to be
+	 * `Serial.print(((t1 - t0) * 1000.0) / n)`, which pulled the
+	 * float formatter into an image whose only use for it was two
+	 * debug lines - and issue #49 records that Track B has no `%f`,
+	 * `%g` or `%e` anywhere. Same arithmetic as Track B's print_ns()
+	 * and the same two decimals Serial.print(float) defaulted to, so
+	 * the printed value is unchanged.
+	 *
+	 * What is deliberately NOT changed is what is measured: Track A
+	 * times digitalWrite() where Track B times led_toggle(). That is
+	 * a real divergence, it is on issue #45's reconciliation list,
+	 * and it is not mine to settle by rewriting one side.
+	 */
+	con_str("# direct PIO : ");  print_ns_x100(((t1 - t0) * 100000ull) / n);
+	con_str("# digitalWrite: "); print_ns_x100(((t3 - t2) * 100000ull) / n);
+	con_str("# use direct PIO writes for ISR instrumentation"); con_nl();
+	console_flush();
 }
 
 static uint32_t code_to_mv(uint16_t code)
@@ -673,19 +705,16 @@ static void cmd_rate_sweep(unsigned n_channels)
 
 static void cmd_stream_uart(uint32_t trigger_hz)
 {
-	char buf[128];
-
 	if (!stream_start_uart(trigger_hz)) {
-		Serial.println("# refused");
-		Serial.flush();
+		con_str("# refused"); con_nl();
+		console_flush();
 		return;
 	}
-	snprintf(buf, sizeof(buf),
-	         "# uart-stream: trigger %lu Hz, %s %lu Hz - binary follows",
-	         (unsigned long)trigger_hz, gen_shape_name(gen_shape),
-	         (unsigned long)gen_hz_for(trigger_hz, gen_points, gen_sync));
-	Serial.println(buf);
-	Serial.flush();
+	con_str("# uart-stream: trigger "); con_u32(trigger_hz);
+	con_str(" Hz, "); con_str(gen_shape_name(gen_shape)); con_ch(' ');
+	con_u32(gen_hz_for(trigger_hz, gen_points, gen_sync));
+	con_str(" Hz - binary follows"); con_nl();
+	console_flush();
 }
 
 static void cmd_stream_stats(void)
@@ -727,19 +756,16 @@ static void cmd_dac_sweep(void)
 		 100000,  500000,  800000, 1000000, 1200000,
 		1500000, 1750000, 2000000, 2500000, 3000000
 	};
-	char buf[144];
-
 	gen_init();
-	Serial.println("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode");
-	Serial.println("#     want      RC   TCexact    measured    ratio");
-	Serial.flush();
+	con_str("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode"); con_nl();
+	con_str("#     want      RC   TCexact    measured    ratio"); con_nl();
+	console_flush();
 
 	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
 		if (!gen_start_independent(rates[i])) {
-			snprintf(buf, sizeof(buf), "# %8lu       -         -    REFUSED",
-			         (unsigned long)rates[i]);
-			Serial.println(buf);
-			Serial.flush();
+			con_str("# "); con_u32w(rates[i], 8, ' ');
+			con_str("       -         -    REFUSED"); con_nl();
+			console_flush();
 			continue;
 		}
 
@@ -765,16 +791,18 @@ static void cmd_dac_sweep(void)
 		uint32_t ratio_x1000 = tcexact ?
 			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
 
-		snprintf(buf, sizeof(buf), "# %8lu %7lu %9lu %11lu   %2lu.%03lu",
-		         (unsigned long)rates[i], (unsigned long)rc,
-		         (unsigned long)tcexact, (unsigned long)measured,
-		         (unsigned long)(ratio_x1000 / 1000u),
-		         (unsigned long)(ratio_x1000 % 1000u));
-		Serial.println(buf);
-		Serial.flush();
+		con_str("# "); con_u32w(rates[i], 8, ' ');
+		con_ch(' ');   con_u32w(rc, 7, ' ');
+		con_ch(' ');   con_u32w(tcexact, 9, ' ');
+		con_ch(' ');   con_u32w(measured, 11, ' ');
+		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
+		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
+		con_nl();
+		console_flush();
 	}
-	Serial.println("# ratio 1.000 means every trigger produced a DAC update");
-	Serial.flush();
+	con_str("# ratio 1.000 means every trigger produced a DAC update");
+	con_nl();
+	console_flush();
 }
 
 /*
@@ -788,17 +816,15 @@ static void cmd_dac_sweep(void)
  */
 static void cmd_dac_crosscheck(uint32_t dac_hz)
 {
-	char buf[144];
-
 	gen_init();
 	if (!gen_start_independent(dac_hz)) {
-		Serial.println("# refused");
-		Serial.flush();
+		con_str("# refused"); con_nl();
+		console_flush();
 		return;
 	}
 	if (!stream_start_capture_only(200000, 2)) {
-		Serial.println("# capture refused");
-		Serial.flush();
+		con_str("# capture refused"); con_nl();
+		console_flush();
 		return;
 	}
 
@@ -826,16 +852,14 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 	 * were. If a print is ever needed here, put it above
 	 * gen_start_independent() where it costs nothing.
 	 */
-	snprintf(buf, sizeof(buf),
-	         "# DAC indep %lu Hz (RC %lu), capture 200000 Hz",
-	         (unsigned long)dac_hz, (unsigned long)gen_configured_rc());
-	Serial.println(buf);
-	snprintf(buf, sizeof(buf),
-	         "# if the DAC truly runs at the trigger, tone = %lu Hz",
-	         (unsigned long)(dac_hz / GEN_TABLE_LEN));
-	Serial.println(buf);
-	Serial.println("# if it saturates near 1539700, tone = 3007 Hz instead");
-	Serial.flush();
+	con_str("# DAC indep "); con_u32(dac_hz);
+	con_str(" Hz (RC "); con_u32(gen_configured_rc());
+	con_str("), capture 200000 Hz"); con_nl();
+	con_str("# if the DAC truly runs at the trigger, tone = ");
+	con_u32(dac_hz / GEN_TABLE_LEN); con_str(" Hz"); con_nl();
+	con_str("# if it saturates near 1539700, tone = 3007 Hz instead");
+	con_nl();
+	console_flush();
 }
 
 /*

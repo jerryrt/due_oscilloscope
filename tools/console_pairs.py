@@ -206,7 +206,14 @@ def normalise(s):
 
     for a, b in (("Serial.println", "OUT"), ("Serial.print", "OUT"),
                  ("snprintf", "OUT"), ("printf", "OUT"),
-                 ("uart_flush", "FLUSH"), ("Serial.flush", "FLUSH")):
+                 ("uart_flush", "FLUSH"), ("Serial.flush", "FLUSH"),
+                 # console_flush() is the SHARED seam's flush, and a body
+                 # that has been moved onto the emitters calls it rather
+                 # than either track's own. Without this line such a body
+                 # reads as diverged from its pair on one token:
+                 # cmd_stream_uart fell 1.00 -> 0.78 with FLUSH() against
+                 # console_flush() as the only difference in nine lines.
+                 ("console_flush", "FLUSH")):
         s = s.replace(a, b)
 
     # println supplies the newline the printf side spells out.
