@@ -101,6 +101,48 @@ def mnemonics(elf):
     return funcs
 
 
+SHARED_SRC = "lib/due_shared/src/*.c"
+
+
+def shared_source_functions(root=ROOT):
+    """Function names defined in lib/due_shared, for #54's question.
+
+    Whether the two tracks still differ on the SHARED source is the
+    oracle question, and a whole-image comparison cannot answer it: most
+    of what differs between the tracks is per-track register
+    programming, which invariant 3 requires to differ. Restricting to
+    the shared library is what makes the number mean anything.
+
+    Measured on windows-desk 2026-08-31, after #55 put both tracks on
+    one toolchain: 64 shared-source functions present in both images,
+    64 identical, 0 differing. Across the two toolchains this project
+    installs - ARM GNU 14.3.1 and xPack 15.2.1 - 18 of 63 differ,
+    including frame_crc32_update and the stream_core pair. So the
+    codegen axis did not disappear; it moved from within a bench to
+    between benches.
+
+    Textual, and a LOWER bound on coverage: definitions at column zero,
+    so anything declared unusually is missed. That is the safe direction
+    for the question asked - a list that is too small cannot manufacture
+    an "identical everywhere" result, only fail to notice a difference.
+    """
+    import glob
+    pat = re.compile(r"^[A-Za-z_][\w \t \*]*?\b([a-z_]\w*)\s*\(", re.M)
+    out = set()
+    for path in sorted(glob.glob(os.path.join(root, *SHARED_SRC.split("/")))):
+        text = open(path, encoding="utf-8", errors="replace").read()
+        for m in pat.finditer(text):
+            eol = text.find(chr(10), m.start())
+            line = text[m.start():eol if eol >= 0 else len(text)]
+            if line.rstrip().endswith(";"):
+                continue
+            if line.lstrip().startswith(("if", "for", "while", "return",
+                                         "}", "#", "switch")):
+                continue
+            out.add(m.group(1))
+    return out
+
+
 def _h(seq):
     return hashlib.sha256(" ".join(seq).encode()).hexdigest()[:12]
 
@@ -121,9 +163,12 @@ def report(elf, only=None):
     }
 
 
-def compare(a, b):
+def compare(a, b, only=None):
     fa, fb = mnemonics(a), mnemonics(b)
-    shared = sorted(set(fa) & set(fb))
+    keys = set(fa) & set(fb)
+    if only:
+        keys &= set(only)
+    shared = sorted(keys)
     same = [k for k in shared if fa[k] == fb[k]]
     diff = [k for k in shared if fa[k] != fb[k]]
     return {
@@ -132,8 +177,8 @@ def compare(a, b):
         "shared": len(shared),
         "identical": len(same),
         "differing": len(diff),
-        "only_in_a": sorted(set(fa) - set(fb)),
-        "only_in_b": sorted(set(fb) - set(fa)),
+        "only_in_a": [] if only else sorted(set(fa) - set(fb)),
+        "only_in_b": [] if only else sorted(set(fb) - set(fa)),
         # Same length and a different sequence is the interesting case:
         # the compiler chose other instructions rather than more of them,
         # which a size comparison reports as no change at all.
@@ -149,11 +194,17 @@ def main():
     ap.add_argument("elf")
     ap.add_argument("--compare", help="a second ELF; report per-function agreement")
     ap.add_argument("--only", help="comma-separated function names")
+    ap.add_argument("--shared-source", action="store_true",
+                    help="restrict to functions defined in lib/due_shared - the oracle question on #54, which a whole-image "
+                         "comparison cannot answer because invariant 3 requires the per-track code to differ")
     args = ap.parse_args()
 
     only = set(args.only.split(",")) if args.only else None
+    if args.shared_source:
+        shared = shared_source_functions()
+        only = (only & shared) if only else shared
     if args.compare:
-        print(json.dumps(compare(args.elf, args.compare), indent=2))
+        print(json.dumps(compare(args.elf, args.compare, only), indent=2))
     else:
         print(json.dumps(report(args.elf, only), indent=2))
     return 0
