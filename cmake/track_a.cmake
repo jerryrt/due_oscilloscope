@@ -42,17 +42,53 @@
 # `Reset_Handler` and `system_sam3xa.c` for `SystemInit`, and the
 # prebuilt archive is not linked at all.
 
-set(ARDUINO_SAM_CORE "$ENV{HOME}/Library/Arduino15/packages/arduino/hardware/sam/1.6.12"
+# WHERE THE CORE IS INSTALLED IS PLATFORM-SPECIFIC, and this defaulted
+# to macOS's path only. arduino-cli's data directory is
+# `~/Library/Arduino15` on macOS, `~/.arduino15` on Linux and
+# `%LOCALAPPDATA%/Arduino15` on Windows, so a bench that had the core
+# installed and every tool on hand still got "Arduino SAM core not
+# found" - which reads as a missing dependency rather than as a wrong
+# guess, and the suggested fix (install it) is the one thing that does
+# not help. Found on `linux-x1`, issue #55.
+#
+# The candidates are searched, not guessed: the first one holding
+# `Arduino.h` wins, and -DARDUINO_SAM_CORE= still overrides the lot.
+# The version stays pinned - 1.6.12 is what both toolchains build
+# against and a silently different core is exactly the mixed-revision
+# hazard the clean-build rule exists for.
+set(_A_CORE_VERSION 1.6.12)
+set(_A_CORE_CANDIDATES
+    "$ENV{HOME}/Library/Arduino15"          # macOS
+    "$ENV{HOME}/.arduino15"                 # Linux
+    "$ENV{LOCALAPPDATA}/Arduino15"          # Windows
+)
+
+set(_A_CORE_DEFAULT "")
+foreach(_root IN LISTS _A_CORE_CANDIDATES)
+    set(_try "${_root}/packages/arduino/hardware/sam/${_A_CORE_VERSION}")
+    if(EXISTS "${_try}/cores/arduino/Arduino.h")
+        set(_A_CORE_DEFAULT "${_try}")
+        break()
+    endif()
+    if(_A_CORE_DEFAULT STREQUAL "")
+        set(_A_CORE_DEFAULT "${_try}")   # first candidate, for the error message
+    endif()
+endforeach()
+
+set(ARDUINO_SAM_CORE "${_A_CORE_DEFAULT}"
     CACHE PATH "Installed Arduino SAM core (arduino:sam), the vendored source Track A builds from")
 
 if(NOT EXISTS "${ARDUINO_SAM_CORE}/cores/arduino/Arduino.h")
     message(FATAL_ERROR
-        "Arduino SAM core not found at ${ARDUINO_SAM_CORE}. "
+        "Arduino SAM core ${_A_CORE_VERSION} not found. Searched: "
+        "${_A_CORE_CANDIDATES}. "
         "Install it (arduino-cli core install arduino:sam) or pass "
-        "-DARDUINO_SAM_CORE=/path/to/hardware/sam/1.6.12. Only the "
+        "-DARDUINO_SAM_CORE=/path/to/hardware/sam/${_A_CORE_VERSION}. Only the "
         "*sources* are used - no arduino-cli invocation and no bundled "
         "compiler.")
 endif()
+
+message(STATUS "Arduino SAM core: ${ARDUINO_SAM_CORE}")
 
 enable_language(CXX)
 
