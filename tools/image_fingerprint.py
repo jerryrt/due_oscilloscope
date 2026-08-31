@@ -106,6 +106,46 @@ def layout(elf: str) -> str:
     return hashlib.sha256(out.encode()).hexdigest()[:16]
 
 
+def layout_parts(elf: str) -> dict:
+    """`layout`, split into the two things that can differ inside it.
+
+    A single hash says two images disagree and never says how, and that
+    is the whole question when two benches compare. Measured on
+    `3aadf90` with xPack 15.2.1 on two benches: identical `text`, `data`
+    and `bss` - 39212/32/72992 to the byte - and different `layout`.
+    That is either the same symbols at different addresses, or different
+    symbols; sizes cannot tell them apart and neither can one hash.
+
+    So hash them separately:
+
+    `symbols`   the sorted symbol names alone. Differs when the two
+                builds do not contain the same things.
+    `addresses` the address column alone, in order. Differs when the
+                same things were put in different places.
+
+    **A caveat this exposed and cannot fix.** `nm -n` sorts by address,
+    and 8 addresses in this image carry more than one symbol - 46 of
+    them share `Default_Handler`'s, since every unused vector is a weak
+    alias for it. The order *within* a tie is nm's, not the linker's. It
+    is alphabetical in GNU nm and both benches run GNU nm, so this is a
+    latent fragility rather than a known error; `symbols` is sorted
+    explicitly here and does not inherit it.
+    """
+    out = _run([_tool("arm-none-eabi-nm"), "-n", "--defined-only", elf])
+    names, addrs = [], []
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) >= 3:
+            addrs.append(parts[0])
+            names.append(parts[2])
+    def h(x):
+        return hashlib.sha256("\n".join(x).encode()).hexdigest()[:16]
+    return {"symbols": h(sorted(names)),
+            "addresses": h(addrs),
+            "n_symbols": len(names),
+            "n_addresses": len(set(addrs))}
+
+
 def repo_rev(elf: str) -> str:
     """The commit of the tree that produced *this ELF*, not of the cwd.
 
@@ -130,6 +170,7 @@ def fingerprint(elf: str) -> dict:
         "repo_rev": repo_rev(elf),
         "cc": compiler(elf),
         "layout": layout(elf),
+        **layout_parts(elf),
         **sizes(elf),
     }
 
