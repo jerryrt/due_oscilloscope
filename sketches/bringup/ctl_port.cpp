@@ -392,8 +392,32 @@ extern "C" void TC2_Handler(void)
  * because it owns its enumeration state. This track does not - the
  * Arduino core owns it - so the reference is gated on EVIDENCE instead:
  * FNUM advancing is what a host emitting SOF looks like, and nothing
- * else produces it. That is the better test of the two and it is only
- * an accident of ownership that Track B does not use it.
+ * else produces it.
+ *
+ * This used to claim the evidence gate was "the better test of the two
+ * and it is only an accident of ownership that Track B does not use
+ * it". Measured on linux-x1, issue #56, and it was false: Track A read
+ * -30,777 ppm where Track B read -9.8 on the same board in the same
+ * afternoon.
+ *
+ * FNUM advancing detects a host that STARTS emitting SOF. It cannot
+ * detect one that STOPS, because a frozen FNUM is indistinguishable
+ * from "no new frame has arrived yet" - and the fast path below returns
+ * on exactly that comparison, so a whole outage was swallowed without
+ * ever reaching a check. Track B's gate resets `started` and takes a
+ * fresh epoch when the port de-configures; this one carried a single
+ * span straight across the discontinuity.
+ *
+ * The cost was quantised and silent: one 2048-frame FNUM wrap at cold
+ * boot and exactly two per native-port bounce, over a 20x range of
+ * outage, with `ambiguous` and `restarts` both left at 0 - so the
+ * device reported a poisoned span as a clean one. clockref.c's epoch
+ * comment describes this same signature from before Track B was fixed:
+ * a fixed offset divided by a growing window.
+ *
+ * The idea was right and half the evidence was being thrown away.
+ * FNUM staying frozen is itself evidence of a host that has stopped,
+ * and the fast path discarded it. It is counted now.
  */
 static uint32_t sof_frames_ext;
 static uint32_t sof_edge_frames;
@@ -404,6 +428,31 @@ static uint32_t sof_ambiguous_n;
 static uint16_t sof_last_fnum;
 static uint32_t sof_last_us;
 static bool     sof_started;
+static uint32_t sof_still;        /* consecutive polls with FNUM unchanged */
+
+/*
+ * How many unchanged polls mean the host has stopped rather than simply
+ * not arrived yet.
+ *
+ * A frame lands every 1 ms and an idle pass is ~7 us, so a NORMAL gap
+ * between frames is on the order of 143 polls. This is more than an
+ * order of magnitude above that, and still only ~35 ms of outage - far
+ * below the 1.5 s stall guard, which is the band where the defect
+ * lived.
+ *
+ * Deliberately a POLL count and not a duration. micros() costs 869 ns
+ * and must not run on the fast path: drivers/clockref.c records that it
+ * did once, and tests/test_load.py's uniformity guard is what caught it
+ * - 98.5% spread across three log2 buckets against a 99% floor. An
+ * integer increment costs nothing and keeps that guard green.
+ *
+ * The consequence of being wrong in either direction is mild, which is
+ * why a round number is enough: too low restarts a healthy span and
+ * loses a little history, too high leaves a small window in which the
+ * old defect survives. Neither reports a wrong number, because a
+ * restarted span is clean by construction.
+ */
+#define SOF_STILL_RESTART   5000u
 
 /* Called once per main-loop pass. One register read and a comparison. */
 void ctl_port_sof_poll(void)
@@ -413,8 +462,31 @@ void ctl_port_sof_poll(void)
 	                          UOTGHS_DEVFNUM_FNUM_Pos);
 	/* Common pass ends here - see drivers/clockref.c: micros() costs
 	 * 869 ns and must not run on every pass. */
-	if (cur == sof_last_fnum && sof_started)
+	if (cur == sof_last_fnum && sof_started) {
+		/*
+		 * The other half of the evidence, and issue #56 is what it
+		 * costs to discard it. A host that stopped emitting SOF
+		 * looks exactly like one whose next frame has not arrived,
+		 * for one poll. It does not look like that for 5000.
+		 *
+		 * Dropping `started` here is the same act as Track B's
+		 * `if (!usb_cdc_configured()) started = false;` - the span
+		 * ends and the next one takes a fresh epoch, rather than
+		 * being carried across a discontinuity that nothing
+		 * downstream can see.
+		 */
+		if (++sof_still >= SOF_STILL_RESTART) {
+			sof_still = 0u;
+			sof_started = false;
+			sof_frames_ext = 0u;
+			sof_edge_frames = 0u;
+			sof_elapsed_us = 0u;
+			sof_edge_elapsed = 0u;
+			sof_restarts_n++;
+		}
 		return;
+	}
+	sof_still = 0u;
 
 	uint32_t now = micros();
 
