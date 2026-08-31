@@ -1,0 +1,1 @@
+{"bench": "mac-bench", "host": "macOS 12.6", "issue": 52, "test": "usb-topology", "devices": [{"device": "Due Scope B", "location_id": "0x14200000", "behind_hub": false, "hub": null}, {"device": "Arduino Due Prog. Port", "location_id": "0x14120000", "behind_hub": true, "hub": "USB2.1 Hub 0x14100000"}]}
