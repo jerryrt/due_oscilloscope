@@ -796,10 +796,15 @@ repository, both of which changed what got built:
   Two of its consequences are load-bearing elsewhere. **#5's severity is
   a lottery over code layout**, so "which commit caused it" is not a
   question with an answer - a console commit pushed it past its bound.
-  And **its magnitude cannot be compared across tracks**, because the
-  two tracks are built by compilers eleven years apart (#55) and that
-  difference is layout, not the register programming invariant 3 keeps
-  the oracle to adjudicate.
+  And **its magnitude cannot be compared across tracks** - but the
+  reason given here was retired on 2026-08-31 and the conclusion was
+  not. It used to read "because the two tracks are built by compilers
+  eleven years apart (#55)". They are not any more: `tools/sketch.py`
+  is deleted and both tracks build with one compiler per bench, so the
+  eleven-year gap is gone and this sentence outlived it by hours. The
+  claim still holds for a different reason, given at the end of "Say
+  which bench a number came from": **two tracks are two images**, and
+  severity is drawn by the image.
 - **#6** splits a plan two agents had arrived at independently, so that
   the mechanical half and the analog half were not both built twice.
 
