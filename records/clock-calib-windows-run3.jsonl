@@ -1,0 +1,148 @@
+{
+ "bench": "windows-desk",
+ "team": "windows-platform-team",
+ "instrument": "tools/clock_calib.py",
+ "provenance": {
+  "taken_at": "2026-08-30T23:11:25-0400",
+  "host_os": "Windows 11",
+  "host_machine": "AMD64",
+  "python": "3.12.10",
+  "repo_rev": "a6354a7-dirty",
+  "wiring": "DAC0->A0, DAC1->A1, A2 bare",
+  "wiring_since": "2026-08-27",
+  "wiring_source": "declared",
+  "bench": "windows-desk",
+  "instrument": {
+   "control": 24,
+   "console": 0
+  },
+  "fw_repo_rev": "e3f7b69",
+  "fw_sha256": "2839687830155cb32cdb0c413c13beb86d0accee928cce4cba295ed5983d5429",
+  "fw_dirty_sha": null,
+  "fw_flashed_at": "2026-08-30T22:47:35-0400",
+  "fw_provenance": "matched",
+  "fw_source_current": true,
+  "fw_build_is_current": true,
+  "fw_source_track": "B",
+  "track": "b",
+  "fw_version": "0.2.0",
+  "ctl_version": 3,
+  "frame_version": 3,
+  "mck_hz": 78000000,
+  "adc_clock_hz": 19500000,
+  "build": "Aug 30 2026 22:47:28"
+ },
+ "provenance_missing": [],
+ "rc": 56,
+ "sps": 696428,
+ "lengths_s": [
+  3.0,
+  45.0
+ ],
+ "reps": 6,
+ "n": 10,
+ "rows": [
+  {
+   "rep": 0,
+   "requested_s": 3.0,
+   "device_s": 2.989555,
+   "host_s": 3.005798816680908,
+   "under": 0
+  },
+  {
+   "rep": 0,
+   "requested_s": 45.0,
+   "device_s": 44.989604,
+   "host_s": 45.00708723068237,
+   "under": 0
+  },
+  {
+   "rep": 1,
+   "requested_s": 45.0,
+   "device_s": 44.990366,
+   "host_s": 45.00745868682861,
+   "under": 0
+  },
+  {
+   "rep": 1,
+   "requested_s": 3.0,
+   "device_s": 2.990408,
+   "host_s": 3.007498264312744,
+   "under": 0
+  },
+  {
+   "rep": 2,
+   "requested_s": 3.0,
+   "device_s": 2.989629,
+   "host_s": 3.005798816680908,
+   "under": 0
+  },
+  {
+   "rep": 2,
+   "requested_s": 45.0,
+   "device_s": 44.991133,
+   "host_s": 45.006760358810425,
+   "under": 0
+  },
+  {
+   "rep": 3,
+   "requested_s": 45.0,
+   "device_s": 44.989447,
+   "host_s": 45.00691080093384,
+   "under": 0
+  },
+  {
+   "rep": 3,
+   "requested_s": 3.0,
+   "device_s": 2.989487,
+   "host_s": 3.005957841873169,
+   "under": 0
+  },
+  {
+   "rep": 4,
+   "requested_s": 3.0,
+   "device_s": 2.990538,
+   "host_s": 3.0060412883758545,
+   "under": 0
+  },
+  {
+   "rep": 4,
+   "requested_s": 45.0,
+   "device_s": 44.991028,
+   "host_s": 45.00650095939636,
+   "under": 0
+  },
+  {
+   "rep": 5,
+   "requested_s": 45.0,
+   "device_s": 44.991085,
+   "host_s": 45.00674033164978,
+   "under": 0
+  },
+  {
+   "rep": 5,
+   "requested_s": 3.0,
+   "device_s": 2.988826,
+   "host_s": 3.006390333175659,
+   "under": 0
+  }
+ ],
+ "reps_dropped_by_index": [
+  0
+ ],
+ "verdict": "ok",
+ "rejected_because": [],
+ "slope_device_over_host": 1.0000070775375725,
+ "intercept_s": -0.01658097585804441,
+ "host_overhead_ms": 16.580858506395348,
+ "residual_sd_ms": 0.7806723999865304,
+ "implied_mck_hz": 78000552.04793066,
+ "ppm_from_nominal": 7.0775375724529965,
+ "host_clock": {
+  "reference_used_by_measure_py": "time.time()",
+  "implementation": "GetSystemTimeAsFileTime()",
+  "nominal_resolution_s": 0.015625,
+  "observed_step_s": 0.0009920597076416016,
+  "free_running_vs_disciplined_ppm": -81.07839774562642
+ }
+}

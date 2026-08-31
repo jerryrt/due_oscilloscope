@@ -44,6 +44,7 @@ import json
 import os
 import statistics as st
 import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "host"))
@@ -53,9 +54,14 @@ import provenance                                          # noqa: E402
 
 TC_CLOCK_HZ = 39_000_000        # SystemCoreClock / 2 at MCK 78 MHz
 MCK_NOMINAL_HZ = 78_000_000
+#: A fit whose residual scatter is this large is not measuring a
+#: clock. mac-bench's good runs sit at 0.073-0.090 ms and this
+#: bench's at 0.7 ms, limited by time.time()'s ~1 ms step; the
+#: rejected run was 10.494.
+MAX_RESID_SD_MS = 3.0
 
 
-def host_clock_discipline(seconds=20.0):
+def host_clock_discipline(seconds=60.0):
     """Is this host's reference traceable to UTC, or free-running?
 
     linux-x1 found the caveat this file used to print - "accuracy is
@@ -83,10 +89,19 @@ def host_clock_discipline(seconds=20.0):
     its crystal happens to be excellent; a large value means the two
     clocks genuinely differ and the disciplined one is the reference.
     """
+    step = clock_resolution("time") or 1e-3
     p0, w0 = time.perf_counter(), time.time()
     time.sleep(seconds)
     dp, dw = time.perf_counter() - p0, time.time() - w0
-    return 1e6 * (dp / dw - 1.0) if dw else None
+    if not dw:
+        return None, None
+    # One clock step over the window is the floor on what this can
+    # resolve, and saying it matters: a 20 s window on a host whose
+    # time.time() steps by ~1 ms cannot see better than 50 ppm, so two
+    # such readings differing by 59 ppm are one reading twice. This bench
+    # produced exactly that pair - -22 over 300 s and -81 over 20 - and
+    # briefly read it as the host's discipline changing.
+    return 1e6 * (dp / dw - 1.0), 1e6 * step / dw
 
 
 def clock_resolution(which):
@@ -158,29 +173,62 @@ def main():
                   f"host {row['host_s']:10.6f}  "
                   f"ratio {row['device_s'] / row['host_s']:.6f}", flush=True)
 
-    if len(rows) < 4:
-        sys.exit("not enough runs to fit")
+    # Drop rep 0 by index, not by a filter on what it does wrong.
+    # CLAUDE.md's first-run rule, and mac-bench found this quantity is the
+    # fifth to need it: their first invocation read 30 ppm off while runs
+    # 2-4 agreed to 1.7. The rule is by index precisely so nobody has to
+    # decide whether a particular first run "looks" bad.
+    fitted = [r for r in rows if r["rep"] > 0]
+    if len(fitted) < 4:
+        sys.exit("not enough runs to fit after dropping rep 0")
 
-    xs = [r["host_s"] for r in rows]
-    ys = [r["device_s"] for r in rows]
+    xs = [r["host_s"] for r in fitted]
+    ys = [r["device_s"] for r in fitted]
     slope, icept = fit(xs, ys)
     resid = [y - (slope * x + icept) for x, y in zip(xs, ys)]
     mck = MCK_NOMINAL_HZ * slope
+    overhead_ms = -icept / slope * 1000.0
+    resid_sd_ms = st.pstdev(resid) * 1e3
+
+    # Refuse a fit that refutes its own model, rather than printing a
+    # number. mac-bench had one run read -192 ppm from a single perturbed
+    # 3 s row - maximum leverage - and the fit said so twice: a NEGATIVE
+    # fixed overhead, which cannot exist, and a residual sd 144x the
+    # other runs'. Both were already in the JSON and nothing looked at
+    # them. Five benches should not each rediscover that.
+    verdict, why = "ok", []
+    if overhead_ms < 0:
+        why.append(f"fitted host overhead is negative ({overhead_ms:.1f} ms); "
+                   f"a fixed per-run cost cannot be, so the model is refuted "
+                   f"by its own parameter")
+    if resid_sd_ms > MAX_RESID_SD_MS:
+        why.append(f"residual sd {resid_sd_ms:.3f} ms exceeds "
+                   f"{MAX_RESID_SD_MS:.1f} ms; one perturbed row on a short "
+                   f"arm carries maximum leverage")
+    if why:
+        verdict = "REJECTED"
     ppm = (slope - 1.0) * 1e6
 
     print()
-    print(f"  n = {len(rows)}   device clock / host clock = {slope:.7f}")
-    print(f"  fixed host overhead        {-icept / slope * 1000:8.1f} ms per run")
-    print(f"  residual sd                {st.pstdev(resid) * 1e3:8.3f} ms"
+    print(f"  n = {len(fitted)} of {len(rows)} (rep 0 dropped by index)"
+          f"   device clock / host clock = {slope:.7f}")
+    print(f"  fixed host overhead        {overhead_ms:8.1f} ms per run")
+    print(f"  residual sd                {resid_sd_ms:8.3f} ms"
           f"   max |resid| {max(abs(r) for r in resid) * 1e3:.3f} ms")
     print(f"  implied MCK                {mck:,.0f} Hz  ({ppm:+.1f} ppm)")
+    if verdict != "ok":
+        print()
+        print("  *** RUN REJECTED - do not quote the figure above ***")
+        for w in why:
+            print(f"    - {w}")
     print()
-    qpc_ppm = host_clock_discipline()
+    qpc_ppm, qpc_err = host_clock_discipline()
     res_t = clock_resolution("time")
     print(f"  host reference   time.time() = {time.get_clock_info('time').implementation}")
     print(f"  observed step    {res_t * 1e6:8.1f} us   (nominal "
           f"{time.get_clock_info('time').resolution * 1e6:.0f} us)")
-    print(f"  free-running counter vs it: {qpc_ppm:+.2f} ppm")
+    print(f"  free-running counter vs it: {qpc_ppm:+.1f} ppm "
+          f"(+/- {qpc_err:.0f} ppm from one clock step over the window)")
     print()
     print("  measure.run_play() times with time.time(), the UTC-disciplined")
     print("  system clock - NOT monotonic/perf_counter. So this figure is an")
@@ -210,11 +258,13 @@ def main():
                    "provenance_missing": list(missing),
                    "rc": a.rc, "sps": sps,
                    "lengths_s": [a.short, a.long], "reps": a.reps,
-                   "n": len(rows), "rows": rows,
+                   "n": len(fitted), "rows": rows,
+                   "reps_dropped_by_index": [0],
+                   "verdict": verdict, "rejected_because": why,
                    "slope_device_over_host": slope,
                    "intercept_s": icept,
-                   "host_overhead_ms": -icept / slope * 1000,
-                   "residual_sd_ms": st.pstdev(resid) * 1e3,
+                   "host_overhead_ms": overhead_ms,
+                   "residual_sd_ms": resid_sd_ms,
                    "implied_mck_hz": mck, "ppm_from_nominal": ppm,
                    "host_clock": {
                        "reference_used_by_measure_py": "time.time()",
@@ -223,7 +273,8 @@ def main():
                        "nominal_resolution_s":
                            time.get_clock_info("time").resolution,
                        "observed_step_s": res_t,
-                       "free_running_vs_disciplined_ppm": qpc_ppm}},
+                       "free_running_vs_disciplined_ppm": qpc_ppm,
+                       "free_running_vs_disciplined_ppm_floor": qpc_err}},
                   open(a.out, "w"), indent=1)
         print(f"  wrote {a.out}")
     return 0
