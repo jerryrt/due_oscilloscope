@@ -1253,6 +1253,46 @@ static void h_detach(const uint32_t *a)
 	usb_cdc_detach_cycle(a[0]);
 }
 
+static void h_fws(const uint32_t *a)
+{
+	/*
+	 * Issue #5, and this is a debug-only knob in the class invariant 7
+	 * carves out - Q, l, the sweeps. It is never on the deployed path.
+	 *
+	 * #5's displacement sits at a fixed phase per firmware image, with
+	 * zero variance within an image, and EIGHT mechanisms have been
+	 * refuted: the build stamp, sample-path placement, sample-path code,
+	 * buffer placement, main-loop timing, the DAC table's contents, the
+	 * allocator, and a naive alignment model. Between an image reading
+	 * phase 156 and one reading 177 the ENTIRE difference in the start
+	 * path is where stream_core_start and its siblings sit in flash -
+	 * their code is identical.
+	 *
+	 * What that family predicts is that instruction FETCH timing sets
+	 * the gap between arming the DAC timer and arming the ADC trigger,
+	 * which is what a phase is. Every arm so far compares two images
+	 * that differ in many ways at once; this varies fetch timing and
+	 * nothing else, on ONE image, with no rebuild.
+	 *
+	 * Clamped to 4..6. SystemInit sets 4 for MCK 78 MHz; going lower
+	 * would read flash faster than the part guarantees, which is a way
+	 * to crash rather than an experiment. Higher is always safe: more
+	 * wait states are slower and never wrong.
+	 */
+	uint32_t fws = a[0] ? a[0] : 4u;
+
+	if (fws < 4u)
+		fws = 4u;
+	if (fws > 6u)
+		fws = 6u;
+	EFC0->EEFC_FMR = EEFC_FMR_FWS(fws);
+	EFC1->EEFC_FMR = EEFC_FMR_FWS(fws);
+	con_str("# fws: "); con_u32(fws);
+	con_str(" (fmr0="); con_hex32(EFC0->EEFC_FMR, 8);
+	con_str(" fmr1="); con_hex32(EFC1->EEFC_FMR, 8);
+	con_ch(')'); con_nl();
+}
+
 static void h_reset(const uint32_t *a)
 {
 	(void)a;
@@ -1601,6 +1641,7 @@ const console_binding_t console_bindings[] = {
 
 	{ 'Q', h_profile },     { 'l', h_load },        { 'S', h_stall },
 	{ 'K', h_mimic_gap },   { 'Z', h_detach },      { 'z', h_reset },
+	{ 'q', h_fws },
 
 	{ 0, 0 },
 };
