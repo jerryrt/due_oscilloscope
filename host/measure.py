@@ -1497,6 +1497,34 @@ class Board:
             time.sleep(settle)
 
     # -- command channel ----------------------------------------------
+    def ctl_invalidate(self):
+        """Drop the cached command link, so the next ctl() re-opens.
+
+        The command channel is the native port's second CDC function,
+        so a detach cycle re-enumerates it along with the sample
+        function - and the node name moves with it (ttyACM2 -> ttyACM3,
+        observed). close_native() already clears `self.native` for that
+        reason and did not clear this, which left a live-looking
+        `Control` object pointing at a node that no longer exists.
+
+        The consequence was out of all proportion to the cause, because
+        ctl() caches: one dead link became a cached None and then 26
+        setup errors reading "the board does not present a command
+        port" - the message for a missing capability, not for a port
+        that moved. That is the same shape as the transient this
+        method's docstring already records from 2026-08-27, one level
+        further out, and it is why invalidation is explicit here rather
+        than left to a retry.
+        """
+        link, self._ctl = self._ctl, None
+        self._ctl_tried = False
+        self._ctl_why = None
+        if link is not None:
+            try:
+                link.close()
+            except Exception:                        # noqa: BLE001
+                pass
+
     def ctl(self, attempts=3):
         """The native port's control channel, or None where there is none.
 
@@ -1916,6 +1944,10 @@ class Board:
                             f"({attempt + 1} attempt(s)); the native port "
                             f"is re-enumerating")
                 self.native = None
+                # The command function re-enumerates with the sample
+                # function - same cable, same detach - so the held link
+                # is stale from here on.
+                self.ctl_invalidate()
                 time.sleep(2.0)
                 return
 
