@@ -79,12 +79,49 @@ The project has already paid for each of these:
 | instrument `*IDN?` | "the bench is not promised to keep the same scope" |
 | trigger source, coupling, level | an EXT level is discovered, not assumed |
 | generator state - shape, points, sync | `CTL_OP_GEN` reports it; the console prints it |
+| **which instrument read the counters** (`via`) | control reads one in 146 us; the `B`/`O` fallback costs 13.14 and 15.40 ms of blocked main loop **taken while the sample path is running**. Two experiments, not two tolerances. Issue #51, and it was unanswerable after the fact precisely because no record carried this |
 
 The probe row is the awkward one and should be honest about it: the
 scope reports what it has been **told**, not what is fitted, and there
 is no way to ask. The suite records both the told value and a
 sanity-check against a known-amplitude output, and flags a mismatch
 rather than pretending to know.
+
+### An arm structure cannot vary time since reset
+
+**Opening the control port resets the board**, and this is measured
+rather than inherited from the docstring that says so. `uptime_ms`
+rides the control channel's heartbeat and the command port is the
+native port's *second* CDC function, so the board can be asked without
+touching NRSTB (`tools/uptime_reset_probe.py`):
+
+    65812 -> 67847 over 2 s idle -> 2884 after a measure.Board open
+    climbs while idle 3/3 · went backwards on open 3/3
+
+The idle pair is the control and it is not decoration: without it,
+*"uptime went backwards"* and *"this counter does not mean what I think
+it means"* are the same reading.
+
+**So every run of every tool that opens a `measure.Board` starts at
+uptime zero.** An experiment whose arms are separate runs of such a
+tool cannot vary time since reset at all - the arms may differ in rest,
+in whether a flash happened, and in what ran before, but not in that.
+Issue #48 spent two sessions on arms labelled 0, 12, 15 and 63 minutes
+since reset that were, on this bench, all zero.
+
+**This is macOS's measurement, not the project's.** The reset is NRSTB
+driven by the 16U2 off DTR, and whether a host asserts DTR on open
+belongs to the host stack - the same seam every other platform
+difference lives on. Run the probe on your own bench rather than
+inheriting this one; if it says NO RESET there, the axis is real there
+and that difference is worth more than either result alone.
+
+**What can vary it is one run.** A single held `Board` and N
+consecutive reps makes the rep index a continuous time-since-reset axis
+that no arm structure can confound. `tools/issue48_withinrun.py` reads
+such a record back, and tests it with a rank test rather than a
+first-half/second-half split - halving is a bin chosen after seeing the
+data.
 
 ## Phase 0: measure the ruler before the thing
 
