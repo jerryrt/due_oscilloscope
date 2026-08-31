@@ -27,6 +27,7 @@ Board-free, and about a second.
 import os
 import shutil
 import subprocess
+import sys
 
 import pytest
 
@@ -47,11 +48,55 @@ GUARD = ("\t\tif (tx_phase == TX_DMA && usb_dma_in_busy())\n"
 
 
 def _cc():
+    """A host C compiler, or None. GNU dialect only.
+
+    PATH first, which is every POSIX bench and costs nothing. Then the
+    registry, because on Windows nothing is on PATH - the same reason
+    `tools/toolchain.py` exists for cmake, ninja and the ARM toolchain,
+    and the rule CLAUDE.md states for all of them.
+
+    Windows benches had no host compiler at all until 2026-08-30, so
+    this file skipped there: a **tier 1** test, whose whole documented
+    purpose is measurable power over 5d6e7ab, contributed nothing and
+    said nothing about it. MSVC is not the answer and is ruled out -
+    `frame.h` declares the frame header `__attribute__((packed))` and
+    MSVC wants `#pragma pack`, so admitting it would mean changing the
+    packing semantics of the shared wire contract. See CLAUDE.md.
+    """
     for name in ("cc", "gcc", "clang"):
         path = shutil.which(name)
         if path:
             return path
+    try:
+        sys.path.insert(0, os.path.join(REPO, "tools"))
+        import toolchain
+        _dir, exe = toolchain.resolve("host_cc")
+        if exe:
+            return exe
+    except Exception:                                        # noqa: BLE001
+        pass
     return None
+
+
+def _cc_env():
+    """The environment a MinGW gcc needs, and the reason it is not optional.
+
+    A MinGW toolchain's driver loads its own DLLs - libisl, libmpc,
+    libgmp, libwinpthread - from the directory it lives in, and finds
+    them only if that directory is on PATH. Invoked by absolute path
+    from a process without it, `gcc` exits **1 with an empty stderr**:
+    no diagnostic, no missing-DLL dialog, nothing to read. The build
+    assertion below prints `proc.stderr` and would have shown a blank
+    failure, which is a bad half-hour for whoever meets it next.
+
+    Harmless where the compiler came off PATH already, which is every
+    POSIX bench: prepending its own directory changes nothing there.
+    """
+    cc = _cc()
+    env = dict(os.environ)
+    if cc:
+        env["PATH"] = os.path.dirname(cc) + os.pathsep + env.get("PATH", "")
+    return env
 
 
 def _build(tmp_path, core_c, name):
@@ -60,7 +105,7 @@ def _build(tmp_path, core_c, name):
     proc = subprocess.run(
         [cc, "-std=c11", "-Wall", "-I", SHARED, "-o", exe,
          HARNESS, core_c, os.path.join(SHARED, "crc32.c")],
-        capture_output=True, text=True)
+        capture_output=True, text=True, env=_cc_env())
     assert proc.returncode == 0, f"harness build failed:\n{proc.stderr}"
     return exe
 
@@ -82,7 +127,8 @@ def test_close_mid_transfer_does_not_touch_the_active_buffer(tmp_path):
     released and the framer returns to idle.
     """
     exe = _build(tmp_path, os.path.join(SHARED, "stream_core.c"), "real")
-    proc = subprocess.run([exe], capture_output=True, text=True)
+    proc = subprocess.run([exe], capture_output=True, text=True,
+                          env=_cc_env())
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "PASS" in proc.stdout
 
@@ -104,7 +150,8 @@ def test_the_harness_catches_the_bug_it_was_written_for(tmp_path, core_src):
     mutant.write_text(core_src.replace(GUARD, "", 1))
 
     exe = _build(tmp_path, str(mutant), "mutant")
-    proc = subprocess.run([exe], capture_output=True, text=True)
+    proc = subprocess.run([exe], capture_output=True, text=True,
+                          env=_cc_env())
     assert proc.returncode != 0, (
         "the pre-fix framer passed the harness, so the harness has no "
         "power over this bug:\n" + proc.stdout)

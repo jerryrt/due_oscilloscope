@@ -22,7 +22,6 @@
     "ARM_TOOLCHAIN_DIR in the environment, or -DARM_TOOLCHAIN_DIR, still wins",
     "over both."
   ],
-
   "tools": {
     "arm_toolchain": {
       "what": "Track B cross compiler: the bin/ holding arm-none-eabi-gcc",
@@ -66,7 +65,6 @@
         "ARM's mingw-w64 build is self-contained and is what Windows uses here."
       ]
     },
-
     "bossac": {
       "what": "SAM flash programmer, shipped with the Arduino sam core",
       "requires": "bossac",
@@ -82,7 +80,6 @@
         ]
       }
     },
-
     "arduino_cli": {
       "what": "Track A build/upload. The Arduino IDE 2.x bundles one",
       "requires": "arduino-cli",
@@ -101,7 +98,6 @@
         ]
       }
     },
-
     "cmake": {
       "what": "Track B build driver. Only needed if cmake is not already on PATH",
       "optional": true,
@@ -122,7 +118,6 @@
         ]
       }
     },
-
     "ninja": {
       "what": "Optional generator. Unix Makefiles is the default and needs no entry",
       "optional": true,
@@ -138,6 +133,28 @@
         "Linux": [
           "/usr/bin",
           "/usr/local/bin"
+        ]
+      }
+    },
+    "host_cc": {
+      "what": "Host C compiler for the board-free framer seam test (tests/test_framer_close.py), which builds and RUNS its harness. GNU only - see CLAUDE.md, MSVC cannot build lib/due_shared. Only consulted when cc/gcc/clang are not already on PATH, which is the Windows case.",
+      "optional": true,
+      "requires": "gcc",
+      "search": {
+        "Darwin": [
+          "/usr/bin",
+          "/opt/local/bin",
+          "/usr/local/bin"
+        ],
+        "Linux": [
+          "/usr/bin",
+          "/usr/local/bin"
+        ],
+        "Windows": [
+          "C:/msys64/ucrt64/bin",
+          "C:/msys64/mingw64/bin",
+          "C:/mingw64/bin",
+          "{repo}/tools/mingw64/bin"
         ]
       }
     }
