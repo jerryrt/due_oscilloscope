@@ -835,8 +835,9 @@ differ - this one has DAC1 wired to A1, the DSO bench has it on the
 scope's external trigger. `docs/HANDOFF.md`'s status table carries both.
 A figure without its bench is not comparable with anything.
 
-**And its firmware commit, and its instrument.** Three parts, each added
-after it was learned expensively, and the second two on 2026-08-30.
+**And its firmware commit, its instrument, and its compiler.** Four
+parts, each added after it was learned expensively - the middle two on
+2026-08-30 and the last on 2026-08-31.
 
 *The commit*, because the binary selects what several open defects draw
 and not merely how large they are. Issue #5's displacement was measured
@@ -860,6 +861,40 @@ instrument mid-suite; what made it unanswerable afterwards was that **no
 record this project writes carries `via`**, so no stored figure says
 which instrument produced it. A figure taken with printf in the loop and
 one taken over the control channel are two experiments.
+
+*The compiler*, because **a commit does not determine an image** - which
+is the same argument that made `fw_repo_rev` necessary, run one step
+further. `fw_version` was not an answer because a version string is
+bumped by hand; `fw_repo_rev` is not a complete answer either, because
+the three benches build this repository with three different code
+generators. `mac-bench` is on xPack GCC 15.2.1, `linux-x1` on Debian's
+14.2.1, `windows-desk` on 14.3.1, and the legacy Track A path on
+arduino-cli's bundled 4.8.3. None of that was recorded anywhere before
+2026-08-31, and **nobody had noticed it was three rather than two.**
+
+It is not bookkeeping, because of what it does to issue #5. That defect
+draws from a lottery over code layout, and the compiler is what deals
+the hand. So an experiment that pins a commit across two benches and
+compares site tables has pinned the *source* and left the *variable*
+free - which is exactly the shape of the pinned comparison that was
+open on #5 when this was written.
+
+**`sha256` cannot serve as the discriminator, and it is the first thing
+anyone reaches for.** The identity line carries `__DATE__`/`__TIME__`,
+so the hash changes on every rebuild of one source state: two builds of
+`3aadf90` in one directory on one machine, minutes apart, gave
+`a3e551b4` and `f02aeb9a`. A cross-bench `sha256` mismatch is evidence
+of nothing at all, and was nearly published here as if it were
+decisive. `tools/flash.py` already said so in `dirty_sha`'s docstring.
+
+What does serve is the **defined-symbol address map**, which carries no
+timestamp - those same two builds both hashed to `c4cd8445987b5261`
+with identical text, data and bss. `tools/image_fingerprint.py` reports
+it, `tools/flash.py` logs `cc` and `layout` with every flash, and
+`provenance.run_fields()` carries `fw_cc`/`fw_layout` onto every row a
+tool writes. Rows recorded before that land null, which is honest: they
+are attributable to a commit and not to an image, and nothing can
+recover it now.
 
 ## Branches
 
