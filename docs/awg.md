@@ -241,6 +241,56 @@ recorded results still describe the thing they were taken on. Resolution
 and the two differ only in where the fold lands - which is exactly the
 distinction the arm exists to make.
 
+## The wrap displacement: instruction fetch timing (issue #5)
+
+**The mechanism is instruction fetch timing, measured on 2026-08-31.**
+Everything below this heading was written before that was known and
+describes the artifact rather than its cause; it is kept because the
+measurements in it stand.
+
+A phase here is a **gap** - the interval between arming the DAC timer and
+arming the ADC trigger - and how long the flash takes to answer sets how
+many cycles that path costs. Change the flash wait states and nothing
+else, on one image with no rebuild (`=<n>q`, a debug-only console command
+clamped 4..6):
+
+| FWS | Track A phases | Track B phases | B past the 25-code bound? |
+|---:|---|---|---|
+| 4 | {240, 230} | {219, 75} | no |
+| 5 | {194, 134} | {16, 251} | **yes** |
+| 6 | {130, 190, 10} | {12, 138} | **yes** |
+
+Nine captures per setting, visits interleaved. **Three settings, three
+non-overlapping phase sets on both tracks - and no overlap between the
+tracks either.** Records `issue5-fws-arm-windows.jsonl` and
+`issue5-fws-arm-tracka-windows.jsonl`.
+
+**Eight other mechanisms were refuted first**, and this explains why each
+failed rather than joining them: the ISRs can be byte-identical at
+identical addresses, the DMA buffers in the same place, the DAC table the
+same table, and the main loop running at the same rate to 0.16% - none of
+those is what sets a gap. The one thing that differed between an image
+reading phase 156 and one reading 177 was where `stream_core_start` and
+its siblings sit in flash.
+
+### Two consequences, and they matter more than the mechanism
+
+**#5's severity is a lottery over code layout.** That is why `398ac94` - a
+console commit touching no DAC, no ADC and no timer - pushed the
+displacement past a bound it had sat under for weeks, and why *"which
+commit caused it"* was never the right question. It also means a green
+run is weaker evidence than it looks: the tip passes because this build's
+layout happens to land well, not because anything was fixed.
+
+**#5's magnitude cannot be compared across tracks.** Track A stays inside
+the bound at every wait-state setting (-13.9 .. +8.6) while Track B
+breaches it at two of three. That difference is layout, not register
+programming - and register programming is the only thing invariant 3
+keeps the oracle to adjudicate. The oracle can confirm the mechanism, and
+it did; it cannot arbitrate the severity. Any earlier cross-track
+comparison of displacement magnitude was measuring the two compilers,
+which are eleven years apart (issue #55).
+
 ## The wrap displacement, settled within tolerance (issue #5)
 
 **Samples near the 256-point table wrap are displaced - several of
