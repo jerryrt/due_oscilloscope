@@ -251,11 +251,19 @@ It is **not** in the "Other RTOS options" list above. Those were
 considered and set aside; this is queued.
 
 **The precondition is explicit: Track D is picked up only when A, B and
-C are all stable.** Track C is at C1 and C2 is unfinished, so that
-condition is not close to met. Anyone reaching for this before then is
-reading it wrong — the value of a fourth track is a comparison against
-three that already hold, and three moving targets would produce a
-fourth.
+C are all stable.** Anyone reaching for this before then is reading it
+wrong — the value of a fourth track is a comparison against three that
+already hold, and three moving targets would produce a fourth.
+
+**Where Track C actually is lives in the stage sections above and on
+issue #45, not here.** This entry originally said "Track C is at C1 and
+C2 is unfinished", which was true when it was written on 2026-08-30 and
+was being overtaken within the day - `057f60b` split the application
+into two tasks, which is the decomposition C2 was defined as. A queued
+entry that pins itself to another track's stage number has to be
+re-verified every time that track moves, and the person who wrote it is
+not usually the person who moves it. So it points at the owner's own
+sections instead.
 
 Nothing follows from this entry: no issue, no scoping document, no
 directory, no build target. It exists so the intent is written down
