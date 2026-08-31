@@ -1,0 +1,9 @@
+{"rep": 0, "arm": "restore", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
+{"rep": 0, "arm": "restore_wait", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
+{"rep": 0, "arm": "at1200", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
+{"rep": 1, "arm": "restore", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
+{"rep": 1, "arm": "restore_wait", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
+{"rep": 1, "arm": "at1200", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
+{"rep": 2, "arm": "restore", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
+{"rep": 2, "arm": "restore_wait", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
+{"rep": 2, "arm": "at1200", "before": "running", "after": "samba", "erased": true, "nodes_after": ["/dev/cu.usbmodem141201", "/dev/cu.usbmodem141301"], "bench": "mac-bench", "issue": 35}
