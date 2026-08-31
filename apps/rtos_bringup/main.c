@@ -41,6 +41,7 @@
  * only in main()" made literal. */
 #include "load.h"
 #include "analog.h"
+#include "gen.h"
 #include "play.h"
 #include "playstat.h"
 #include "stream.h"
@@ -377,6 +378,74 @@ static void c_stats(const uint32_t *a)
  * the only figure that should differ between the tracks at all.
  */
 /*
+ * `M` and `=<n>q`: issue #5's instruments, and the reason Track C has
+ * them at all.
+ *
+ * windows-desk showed (5ba0be0) that #5's phase is set by instruction
+ * fetch timing, by varying flash wait states on ONE image. Their arm
+ * then compared Track A against Track B - but those differ in
+ * **compiler and layout at once**, so it cannot separate them.
+ *
+ * **Track C separates them.** Its driver objects are byte-identical
+ * `.text` to Track B's - acq, adc, dac, gen, play, stream, usb_cdc, all
+ * of them - and its layout is completely different, because `main()`
+ * is. Same compiler, same machine code, different arrangement: the
+ * clean version of the experiment, and the only one this project can
+ * currently run.
+ *
+ * It also answers a caution mac-bench raised on #55, that aligning
+ * Track A's toolchain would cost the ability to confirm a layout-driven
+ * mechanism. Track C provides that today with no toolchain change.
+ *
+ * Both bodies are copied from Track B's h_mimic and h_fws rather than
+ * shared, and that is debt: they belong behind the console seam like
+ * the rate sweep now is. Copied here because #5 is live and the
+ * measurement was worth more than the tidiness - recorded so it is not
+ * mistaken for a decision.
+ */
+static void c_fws(const uint32_t *a)
+{
+	uint32_t fws = a[0] ? a[0] : 4u;
+
+	if (fws < 4u)
+		fws = 4u;
+	if (fws > 6u)
+		fws = 6u;
+	EFC0->EEFC_FMR = EEFC_FMR_FWS(fws);
+	EFC1->EEFC_FMR = EEFC_FMR_FWS(fws);
+	con_str("# fws: "); con_u32(fws);
+	con_str(" (fmr0="); con_hex32(EFC0->EEFC_FMR, 8);
+	con_str(" fmr1="); con_hex32(EFC1->EEFC_FMR, 8);
+	con_ch(')'); con_nl();
+	console_flush();
+}
+
+static void c_mimic(const uint32_t *a)
+{
+	uint32_t dac_hz = a[0] ? a[0] : 200000u;
+	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
+	unsigned nch    = a[2] ? a[2] : 2u;
+
+	/* Banner before the starts, for the reason Track B's carries:
+	 * ~7 ms of blocked loop laid over the first samples otherwise. */
+	con_str("# mimic loop: gen "); con_str(gen_shape_name(gen_shape));
+	con_str(" on TIOA1 at "); con_u32(dac_hz);
+	con_str(" sps, capture "); con_u32(adc_hz);
+	con_str(" Hz"); con_nl();
+	console_flush();
+	play_stop();
+	gen_init();
+	gen_prepare_tioa1(dac_hz);
+	if (!stream_start_capture_only(adc_hz, nch)) {
+		con_str("# mimic loop: refused, the ADC would not start");
+		con_nl();
+		console_flush();
+		return;
+	}
+	gen_go_tioa1();
+}
+
+/*
  * `u`: the control channel's own counters, for the defect on #45 where
  * Track C loses the link after a fixed number of transactions.
  *
@@ -414,6 +483,8 @@ const console_binding_t console_bindings[] = {
 	{ '?', c_stats },
 	{ 'B', c_bench },
 	{ 'u', c_ctl   },
+	{ 'M', c_mimic },
+	{ 'q', c_fws   },
 	{ 0,   NULL    },
 };
 
