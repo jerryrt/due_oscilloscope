@@ -18,6 +18,29 @@ import sys, time, json
 sys.path.insert(0, 'host')
 import ports, control
 
+def _utc_now():
+    """The UTC-disciplined system clock, on every platform.
+
+    This file used `time.clock_gettime(time.CLOCK_REALTIME)`, which
+    does not exist on Windows - the tool aborted at import on windows-desk with
+    AttributeError before taking a sample. Same class as #53's os.path
+    problem and flash.py's os.path.exists(COM10): a POSIX name standing in
+    for a portable idea.
+
+    time.time() IS CLOCK_REALTIME. It is the UTC-disciplined system clock
+    everywhere, which is exactly the third clock this measurement needs -
+    the one thing that must NOT be substituted here is monotonic or
+    perf_counter, because those are free-running and the whole method
+    rests on the reference being steered to UTC.
+
+    Resolution differs and matters. On Linux the call is nanosecond-ish;
+    on windows-desk the observed step of time.time() is ~1 ms against a
+    nominal 15.625 ms, and the round-trip column in each row is what says
+    whether that is small enough for the sample it took.
+    """
+    return time.time()
+
+
 nodes = ports.native_nodes()
 c = control.Control(nodes[1])
 print("identity", c.identity()['track'], c.identity()['build'], flush=True)
@@ -25,9 +48,9 @@ print("identity", c.identity()['track'], c.identity()['build'], flush=True)
 rows = []
 t_end = time.time() + 15 * 60
 while time.time() < t_end:
-    t0 = time.clock_gettime(time.CLOCK_REALTIME)
+    t0 = _utc_now()
     s = c.heartbeat()['sof']
-    t1 = time.clock_gettime(time.CLOCK_REALTIME)
+    t1 = _utc_now()
     rows.append(dict(t=(t0 + t1) / 2.0, rt_us=(t1 - t0) * 1e6, **s))
     time.sleep(30)
 c.close()
