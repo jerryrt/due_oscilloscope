@@ -249,9 +249,17 @@ def main():
         # and nothing else - no track, no firmware commit - written an
         # hour after I committed the doc rule saying a figure carries
         # its bench, its commit and its instrument (f953876).
+        # run_fields() is the shape the other eight tools settled on after
+        # #53 (1e3d270), so this one follows it rather than inventing a
+        # second arrangement - a convention with an exception in it is
+        # how the track field went wrong in the first place. collect()
+        # is kept alongside because this tool's whole subject is the host
+        # clock, and the host fields are not in run_fields().
         prov = provenance.collect(board=board)
+        fields = provenance.run_fields(board=board)
         missing = provenance.missing(prov) if hasattr(provenance, "missing") else []
         json.dump({"bench": a.bench or prov.get("bench"),
+                   **fields,
                    "team": "windows-platform-team",
                    "instrument": "tools/clock_calib.py",
                    "provenance": prov,
