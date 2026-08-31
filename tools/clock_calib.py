@@ -55,6 +55,60 @@ TC_CLOCK_HZ = 39_000_000        # SystemCoreClock / 2 at MCK 78 MHz
 MCK_NOMINAL_HZ = 78_000_000
 
 
+def host_clock_discipline(seconds=20.0):
+    """Is this host's reference traceable to UTC, or free-running?
+
+    linux-x1 found the caveat this file used to print - "accuracy is
+    bounded by this host's crystal, which is not frequency-disciplined"
+    - was false on Linux, where CLOCK_MONOTONIC is slewed by the
+    kernel's NTP correction. They then reasoned that Windows and macOS
+    are free-running because `time.monotonic()` is QueryPerformanceCounter
+    and mach_absolute_time.
+
+    That is right about those clocks and wrong about this measurement,
+    because `measure.run_play()` times with **`time.time()`**, not with
+    monotonic. On every platform `time.time()` is the UTC-disciplined
+    system clock, so the reference is traceable wherever the host is
+    actually synced - and this is the one number that says whether it
+    is, instead of leaving the reader to argue about it.
+
+    Measured on windows-desk 2026-08-30: QueryPerformanceCounter runs
+    **-22 ppm** against the disciplined clock here. If this tool had
+    used perf_counter, the MCK figure would have been wrong by 22 ppm -
+    twice the effect being looked for - and nothing in the output would
+    have said so.
+
+    Returns ppm by which the free-running counter differs from the
+    disciplined clock. Near zero means the host is not disciplining, or
+    its crystal happens to be excellent; a large value means the two
+    clocks genuinely differ and the disciplined one is the reference.
+    """
+    p0, w0 = time.perf_counter(), time.time()
+    time.sleep(seconds)
+    dp, dw = time.perf_counter() - p0, time.time() - w0
+    return 1e6 * (dp / dw - 1.0) if dw else None
+
+
+def clock_resolution(which):
+    """Smallest non-zero step the clock actually reports.
+
+    The nominal figure lies on Windows: `time.get_clock_info('time')`
+    says 15.625 ms while the observed step here is ~1 ms, because the
+    system timer resolution is raised. It matters because the fit's
+    residual is dominated by it - 0.7 ms over a 42 s lever arm across
+    ten points is about 5 ppm, which is this bench's whole repeatability.
+    """
+    f = time.time if which == "time" else time.perf_counter
+    best = None
+    for _ in range(200000):
+        a = f(); b = f()
+        if b > a:
+            best = (b - a) if best is None else min(best, b - a)
+            if which != "time":
+                break
+    return best
+
+
 def fit(xs, ys):
     """Least squares slope and intercept, written out rather than pulled
     in, because this file must run on a bench with no numpy."""
@@ -121,9 +175,18 @@ def main():
           f"   max |resid| {max(abs(r) for r in resid) * 1e3:.3f} ms")
     print(f"  implied MCK                {mck:,.0f} Hz  ({ppm:+.1f} ppm)")
     print()
-    print("  Precision is a few ppm; ACCURACY is bounded by this host's")
-    print("  crystal, which is not frequency-disciplined. One bench shows")
-    print("  agreement, not correctness. Compare across benches.")
+    qpc_ppm = host_clock_discipline()
+    res_t = clock_resolution("time")
+    print(f"  host reference   time.time() = {time.get_clock_info('time').implementation}")
+    print(f"  observed step    {res_t * 1e6:8.1f} us   (nominal "
+          f"{time.get_clock_info('time').resolution * 1e6:.0f} us)")
+    print(f"  free-running counter vs it: {qpc_ppm:+.2f} ppm")
+    print()
+    print("  measure.run_play() times with time.time(), the UTC-disciplined")
+    print("  system clock - NOT monotonic/perf_counter. So this figure is an")
+    print("  accuracy statement wherever the host is actually NTP-synced.")
+    print("  Check that it is; an unsynced host makes it an agreement")
+    print("  statement again, and the line above cannot tell the difference.")
 
     if a.out:
         # Provenance, and not by hand. #53 found nine tools hardcoding
@@ -152,7 +215,15 @@ def main():
                    "intercept_s": icept,
                    "host_overhead_ms": -icept / slope * 1000,
                    "residual_sd_ms": st.pstdev(resid) * 1e3,
-                   "implied_mck_hz": mck, "ppm_from_nominal": ppm},
+                   "implied_mck_hz": mck, "ppm_from_nominal": ppm,
+                   "host_clock": {
+                       "reference_used_by_measure_py": "time.time()",
+                       "implementation":
+                           time.get_clock_info("time").implementation,
+                       "nominal_resolution_s":
+                           time.get_clock_info("time").resolution,
+                       "observed_step_s": res_t,
+                       "free_running_vs_disciplined_ppm": qpc_ppm}},
                   open(a.out, "w"), indent=1)
         print(f"  wrote {a.out}")
     return 0
