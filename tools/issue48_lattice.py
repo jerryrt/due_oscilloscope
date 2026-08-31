@@ -59,7 +59,7 @@ def ratio_for(board, rc, seconds):
     delivered = consumed * PLAY_BUF_SAMPLES / (runus / 1e6)
     return {"rc": rc, "nominal_sps": sps, "ratio": delivered / sps,
             "under": raw.get("under"), "consumed": consumed,
-            "runus": runus}
+            "runus": runus, "via": r.play.via}
 
 
 def main():

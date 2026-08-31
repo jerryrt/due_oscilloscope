@@ -156,7 +156,8 @@ def m_playback(board, args):
                      "underruns": r.play.underruns,
                      "host_tx_bytes": r.host_tx_bytes,
                      "device_bytes_in": r.play.bytes_in,
-                     "refused": r.refused})
+                     "refused": r.refused,
+                     "via": r.play.via})
     return {"ladder": rows,
             "units": "underruns per run; bytes"}
 

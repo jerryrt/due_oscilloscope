@@ -97,7 +97,8 @@ def main():
                          device_sps=round(dev, 1) if dev else None,
                          pct_slow=round(pct_slow, 3) if pct_slow else None,
                          underruns=r.play.underruns,
-                         abandoned=r.play.raw.get("abandoned")))
+                         abandoned=r.play.raw.get("abandoned"),
+                         via=r.play.via))
         print(f"  run {i:2d}: lost {pct_lost:5.2f}%   device "
               f"{dev:,.0f} sps ({pct_slow:+.2f}% vs nominal)   "
               f"und {r.play.underruns}")

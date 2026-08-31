@@ -76,7 +76,8 @@ def both_ratios(board, rc, seconds):
     return {"rc": rc, "nominal_sps": sps, "dev_ratio": dev,
             "host_ratio": host, "under": raw.get("under"),
             "consumed": consumed, "runus": runus,
-            "host_tx_bytes": fed, "elapsed_s": secs}
+            "host_tx_bytes": fed, "elapsed_s": secs,
+            "via": r.play.via}
 
 
 def main():

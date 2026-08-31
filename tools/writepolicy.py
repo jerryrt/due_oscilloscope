@@ -54,6 +54,7 @@ def one(board, rc, arm, seconds):
             "mod128": deficit % 128,
             "under": res.play.underruns if res.play else None,
             "drained": bool(res.drained),
+            "via": res.play.via if res.play else None,
             "t_wall": time.time()}
 
 

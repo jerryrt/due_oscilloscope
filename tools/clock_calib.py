@@ -167,7 +167,7 @@ def main():
                 continue
             row = {"rep": rep, "requested_s": secs,
                    "device_s": raw["runus"] / 1e6, "host_s": r.elapsed_s,
-                   "under": raw.get("under")}
+                   "under": raw.get("under"), "via": r.play.via}
             rows.append(row)
             print(f"  rep {rep} {secs:>5g}s: device {row['device_s']:10.6f}  "
                   f"host {row['host_s']:10.6f}  "

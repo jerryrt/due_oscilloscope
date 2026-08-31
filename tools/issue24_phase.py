@@ -292,6 +292,7 @@ def main():
                 "events": len(ev), "fwd": len(fwd), "back": len(back),
                 "fwd_samples": sum(fwd), "back_samples": sum(back),
                 "under": res.play.underruns if res.play else None,
+                "via": res.play.via if res.play else None,
                 "deficit_bytes": res.host_tx_bytes - (res.play.bytes_in or 0),
                 "seq_gaps": ps.seq_gaps, "crc_bad": ps.crc_bad,
                 "overrun": ps.overrun_frames,

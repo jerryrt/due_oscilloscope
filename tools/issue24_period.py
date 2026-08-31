@@ -122,7 +122,8 @@ def main():
                        "play_buf": PLAY_BUF_SAMPLES,
                        "dac_sps": args.dac_sps,
                        "seq_gaps": ps.seq_gaps, "crc_bad": ps.crc_bad,
-                       "under": res.play.underruns if res.play else None}
+                       "under": res.play.underruns if res.play else None,
+                       "via": res.play.via if res.play else None}
                 for label, per in (("ramp", ramp_period),
                                    ("play", PLAY_BUF_SAMPLES)):
                     got = fold_at(tail, per)

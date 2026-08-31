@@ -118,7 +118,8 @@ def main():
                              host_deficit_bytes=d,
                              pct_lost=round(100 * d / r.host_tx_bytes, 3)
                                       if r.host_tx_bytes else None,
-                             underruns=r.play.underruns))
+                             underruns=r.play.underruns,
+                             via=r.play.via))
             print(f"  run {i}: device {dev:>10,.0f} sps   ratio {ratio:.5f} "
                   f"(~{fr})   lost {d:>8,} B   und {r.play.underruns}")
         # Report the MEASURED quantity first. An earlier version led with

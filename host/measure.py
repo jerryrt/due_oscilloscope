@@ -998,6 +998,19 @@ def _counters(text, marker):
 class PlayCounters:
     raw: dict = field(default_factory=dict)
 
+    #: Which instrument read these counters - "control" or "console".
+    #:
+    #: Declared rather than attached by `play_counters()`, which is what
+    #: it used to be. An attribute that only exists on the objects that
+    #: happened to pass through one constructor cannot be recorded by a
+    #: caller without a getattr guard, and issue #51 is precisely a
+    #: figure whose instrument nobody could establish afterwards.
+    #:
+    #: `None` is honest and is not the same as "console": it means this
+    #: object was built by a parser directly and no instrument was
+    #: recorded. A reader must not resolve that to either value.
+    via: str = None
+
     def _g(self, key):
         return self.raw.get(key)
 
@@ -1049,6 +1062,10 @@ class OccHist:
     decim: int = 0
     run_us: int = 0
     consumed: int = 0
+
+    #: Which instrument read this histogram. Same contract as
+    #: PlayCounters.via, including that None is not "console".
+    via: str = None
     rate_us: list = field(default_factory=list)
     rate_decim: int = 0
 

@@ -287,7 +287,8 @@ def main():
                    "ramp_step": args.step, "period": period,
                    "events": len(ev),
                    "seq_gaps": ps.seq_gaps, "crc_bad": ps.crc_bad,
-                   "under": res.play.underruns if res.play else None}
+                   "under": res.play.underruns if res.play else None,
+                   "via": res.play.via if res.play else None}
             if got:
                 spike, phase, z, n = got
                 row.update({"spike_codes": round(spike, 3),

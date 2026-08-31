@@ -80,7 +80,8 @@ def main():
                    feed_target_mbs=want / 1e6, fed_mbs=round(fed / 1e6, 4),
                    pct_of_target=round(100 * fed / want, 1),
                    feed_short=bool(short), host_deficit_bytes=int(d),
-                   underruns=r.play.underruns, drained=True)
+                   underruns=r.play.underruns, drained=True,
+                   via=r.play.via)
         rows.append(row)
         print(f"  run {i:2d}: {100*fed/want:5.1f}% of target  "
               f"{'SHORT' if short else '  ok '}  deficit {d:6d} B  "

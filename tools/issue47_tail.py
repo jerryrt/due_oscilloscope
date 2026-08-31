@@ -72,7 +72,8 @@ def main():
                        host_deficit_bytes=int(d),
                        pct=round(100 * d / r.host_tx_bytes, 3)
                            if r.host_tx_bytes else None,
-                       underruns=r.play.underruns)
+                       underruns=r.play.underruns,
+                       via=r.play.via)
             rows.append(row)
             big.append(d)
             print(f"  {secs:4.1f}s run {i}: tx {r.host_tx_bytes:9,d}  "
