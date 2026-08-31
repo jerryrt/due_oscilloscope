@@ -308,7 +308,14 @@ static void c_help(const uint32_t *a)
 /* Terminated by a zero key and scanned rather than indexed - the shared
  * table decides the help's order, so this one may list what it likes. */
 /*
- * `T`: the time source, read twice about a millisecond apart.
+ * `k`: the time source, read twice about a millisecond apart.
+ *
+ * It was bound to `T` and that was a conflict, not a free choice:
+ * Track B's `T` is stream_sink_dma_start(). Two tracks answering one
+ * letter with two different actions is precisely what CLAUDE.md's
+ * "same commands and output format" rule exists to stop, and a host
+ * cannot discover it - both tracks answer, neither errors, and only
+ * the behaviour differs. `k` is unused on both tracks.
  *
  * C2 groundwork rather than a convenience. millis() and micros() are
  * provided by the application on this track (apps/rtos_bringup/
@@ -456,9 +463,49 @@ static void c_mimic(const uint32_t *a)
  * them say whether the device stopped receiving, stopped answering, or
  * answered into a pipe nobody drained.
  */
+/*
+ * `z` and `Z`, both verbatim from Track B.
+ *
+ * Their absence was not a design choice, it was drift, and `z`'s was
+ * the expensive one: measure.Board.reset() sends `z` and waits for a
+ * banner, so on this track it silently did nothing and every caller
+ * believed it had reset the board. A no-op that returns cleanly is
+ * worse than an unimplemented command, which is why invariant 3 says
+ * an unimplemented opcode must answer CTL_ERR_OPCODE rather than
+ * succeed emptily - the same argument applies to the console.
+ */
+static void c_reset(const uint32_t *a)
+{
+	(void)a;
+	con_str("# software reset now"); con_nl();
+	console_flush();
+	RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
+}
+
+static void c_detach(const uint32_t *a)
+{
+	con_str("# detaching the native port for ");
+	con_u32(a[0] ? a[0] : 250u); con_str(" ms"); con_nl();
+	console_flush();
+	usb_cdc_detach_cycle(a[0]);
+}
+
+/* Track B's `T`, verbatim - same driver call, same line on the wire. */
+static void c_sink_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_sink_dma_start();
+	con_str("# sink: OUT via DMA"); con_nl();
+	console_flush();
+}
+
 static void c_ctl(const uint32_t *a)
 {
 	(void)a;
+	/* Track B's `u` is usb_cdc_dump() then ctl_dump(). This one had
+	 * only the second half, so the same letter returned less on this
+	 * track without saying so. */
+	usb_cdc_dump();
 	ctl_dump();
 	console_flush();
 }
@@ -474,9 +521,12 @@ static void c_bench(const uint32_t *a)
 /* Terminated by a zero key and scanned rather than indexed - the shared
  * table decides the help's order, so this one may list what it likes. */
 const console_binding_t console_bindings[] = {
+	{ 'T', c_sink_dma },
+	{ 'z', c_reset },
+	{ 'Z', c_detach },
+	{ 'k', c_time  },
 	{ 'v', c_ident },
 	{ 'h', c_help  },
-	{ 'T', c_time  },
 	{ '0', c_stop  },
 	{ '1', c_s50   },
 	{ '2', c_s100  },
