@@ -931,19 +931,40 @@ fetches, not where the linker put it.
 
 **Two consequences.** `image_fingerprint.py` answers "is this the same
 image" and **cannot** answer this: a layout difference is the ordinary
-case across a point release and says nothing about codegen. And the
-old wording here - "#5's severity is a lottery over code layout" - is
-too loose in both halves: it is codegen rather than layout, and every
-measurement above is of the site **set**, while severity has still not
-been compared across anything.
+case across a point release and says nothing about codegen. What does
+answer it is `tools/image_mnemonics.py`, which hashes each function's
+**mnemonic sequence** - stable under relocation, where the byte and
+operand columns are not. Keep both; they answer different questions and
+neither substitutes for the other.
 
-Four builds of `3aadf90` produced **four different layouts** - and two
-of them are the same compiler version (xPack 15.2.1) on two host OSes,
-so layout is not even a function of (source, compiler version) and
-"put two benches on one layout" may not be reachable by installing a
-matching toolchain. Record the compiler because it is cheap and
-because a figure that *does* turn out to depend on layout can then be
-re-read rather than re-measured. Do not assume a figure depends on it.
+And the old wording here - "#5's severity is a lottery over code layout"
+- was too loose in both halves. It is codegen rather than layout, and
+the site set and the severity had to be separated. **Both have now been
+measured, and they behave the same way.** On the same A-B-A arm:
+severity reproduces at 0.90-1.01 of itself on one image and moves to
+0.41-1.19 across compilers, with the 48 same-image runs and the 24
+other-compiler runs sharing **no value at all** at FWS 5 and FWS 6
+(Mann-Whitney p = 6e-12). Severity is drawn by the image too.
+
+What is still uncompared is severity **across FWS within one image**,
+which varies by a factor of 8.7 here - far larger than any compiler
+effect - so "magnitude cannot be compared across tracks" still holds,
+for the reason that two tracks are two images.
+
+**Four builds of `3aadf90` produced four different layouts and only
+TWO different code generators.** The two xPack 15.2.1 builds - macOS
+`darwin-x64` and Windows `win32-x64`, different `layout` - are
+byte-identical in every function: 319 functions, 12,441 instructions,
+mnemonics `3be1163b2c06c650` on both. The layout difference is the
+bundled `newlib`/`libgcc` archives, which are separate builds in the two
+packages; nothing of ours differs. So **counting layouts and reporting
+them as code generators is itself the error this section is about**, and
+it was made here. The project has two draws: ARM GNU 14.3.1 and xPack
+15.2.1, the second wearing two hostnames.
+
+Record the compiler because it is cheap and because a figure that *does*
+turn out to depend on layout can then be re-read rather than
+re-measured. Do not assume a figure depends on it.
 
 **`sha256` cannot serve as the discriminator, and it is the first thing
 anyone reaches for.** The identity line carries `__DATE__`/`__TIME__`,
