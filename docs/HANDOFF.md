@@ -2021,8 +2021,8 @@ the bump rule.
 **What the 2026-08-25 (later) session changed:** objective 1b, which
 had been recorded for weeks as blocked by the Arduino linker. It was
 not. Track A now sends capture frames by endpoint DMA out of a ring
-pinned to SRAM bank 1, with `linker/arduino_due_x_sram1.ld` and
-`tools/sketch.sh`, and it measures zero ADC overruns at the full rate
+pinned to SRAM bank 1, with `linker/arduino_due_x_sram1.ld` named in
+`cmake/track_a.cmake`, and it measures zero ADC overruns at the full rate
 where the same port in bank 0 costs 35-44. The invariant-1 violation on
 that track is gone. Read 1b for the two build properties, the trap in
 the stock `ram` region, and the purity result that Track B's version of
@@ -2298,10 +2298,12 @@ publishing.
   headroom in front of its payload, so a finished frame is contiguous
   and goes out in packet-sized transfers the processor never reads. The
   ring is pinned to SRAM bank 1 for that reason - see the hard-won
-  facts. Track A gets there with `linker/arduino_due_x_sram1.ld`, passed
-  by `tools/sketch.sh`; build it any other way and the ring lands in
+  facts. Track A gets there with `linker/arduino_due_x_sram1.ld`, named
+  in `cmake/track_a.cmake`; build it any other way and the ring lands in
   bank 0, which still links, still runs, and costs 35-44 ADC overruns
-  per 4 s at the full rate.
+  per 4 s at the full rate. It was `tools/sketch.sh`'s `build.ldscript`
+  property until #55 moved it into the CMake file, where a caller cannot
+  forget it.
 - **Host feed** (`host/loopback.py`): real-time thread (`host/rt.py`,
   QoS + Mach time-constraint; XNU has no core pinning), clock-paced at
   the DAC byte rate with a 20 KB lead, blocking writes of whole
@@ -3314,10 +3316,12 @@ sub-question: RC 44 reads one of two discrete converter rates.
    placed *last* in the script, so `_end` - the heap base
    `syscalls_sam3.c`'s `_sbrk()` starts from - stays in bank 0.
 
-   The path has to be relative to the *installed variant directory*, so
-   it is computed rather than written down: `tools/sketch.sh` is the one
-   place that knows both build properties, and `measure.flash("a",
-   build=True)` calls it.
+   The path used to have to be relative to the *installed variant
+   directory*, so it was computed rather than written down.
+   `cmake/track_a.cmake` is the one place that knows both build
+   properties now, and `measure.flash("a", build=True)` builds the
+   `firmware_track_a` target (#55). `tools/sketch.sh` held that role
+   until 2026-08-31.
 
    **Measured, three firmwares in one session, capture-only at the full
    rate, 4 s, three runs each:**
@@ -3787,10 +3791,13 @@ unplugging the board.
   `tools/flash.sh build/baremetal_bringup.bin` (discovers the port; an
   interrupted flash leaves SAM-BA enumerated and the banner silent -
   just flash again with the port given explicitly).
-- Track A: `tools/sketch.sh compile` / `tools/sketch.sh upload`. Never
-  a bare `arduino-cli compile` - it needs `build.f_cpu=78000000L`
-  (MCK is 78) and `build.ldscript` (the capture ring in bank 1), and
-  both are silent when missing.
+- Track A: `cmake --build build-a --target firmware_track_a`, flash with
+  `tools/flash.py --bin build-a/track_a_bringup.bin`. Configure once with
+  `-DBUILD_TRACK_A=ON`. `arduino-cli` is not involved at all now (#55) -
+  only the Arduino core's *sources*. It needs `build.f_cpu=78000000L`
+  (MCK is 78) and `build.ldscript` (the capture ring in bank 1), both
+  silent when missing, and both are lines in `cmake/track_a.cmake`
+  rather than arguments a caller has to remember.
 - Use the **xPack** ARM toolchain; ARM's own macOS build cannot run
   here.
 - Wiring: **DAC0 -> A0**, DAC1 -> A1.
@@ -3876,11 +3883,13 @@ Climbing means the link is resetting, which otherwise reads as data
 corruption.
 
 ```sh
-tools/sketch.sh compile      # both build properties, ldscript path computed
-tools/sketch.sh upload       # discovers the control port itself
+cmake --build build-a --target firmware_track_a          # clean-build wrapper
+python3 tools/flash.py --bin build-a/track_a_bringup.bin  # discovers the port
 ```
 
-Do not call `arduino-cli compile` by hand. Track A needs two build
+Configure once with `-DBUILD_TRACK_A=ON`. Do not call `arduino-cli
+compile` by hand - it is not in this path at all any more (#55), and
+Track A needs two build
 properties and each is silent when it is missing: a wrong `build.f_cpu`
 makes `micros()` lie by 7.7%, and a missing `build.ldscript` leaves the
 capture ring in bank 0, which links, runs, and costs 35-44 ADC overruns

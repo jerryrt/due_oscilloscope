@@ -3,9 +3,19 @@
 **Track A's tracked baseline for the `linux-x1` bench**, the counterpart
 to `docs/metric-baseline-linux.md`. Regenerate with
 
-    tools/sketch.sh upload
+    cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
+    cmake --build build-a --target firmware_track_a
+    python3 tools/flash.py --bin build-a/track_a_bringup.bin
     python3 tools/metrics.py --repeats 9 --seconds 3 \
         --out docs/metric-baseline-linux-track-a.md
+
+The figures below were taken with `tools/sketch.sh`, which drove
+arduino-cli and its bundled GCC 4.8.3; #55 replaced it and deleted it on
+2026-08-31. **So a regenerated baseline is not comparable to this one
+without saying so** - it is a different code generator, and #5 measured
+both the site set and the severity to be properties of the generated
+code.
 
 This block is re-added by hand, as on every other baseline. The firmware
 here carries the issue #33 fix (`a7ef102`), so it is also the first

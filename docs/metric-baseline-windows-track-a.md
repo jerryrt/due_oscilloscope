@@ -4,10 +4,19 @@
 invariant 3's "comparable in design, feature set and performance" has
 numbers on this bench rather than an assertion. Regenerate with
 
-    python3 tools/sketch.py compile
-    python3 tools/sketch.py upload COM7
+    cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
+    cmake --build build-a --target firmware_track_a
+    python3 tools/flash.py --bin build-a/track_a_bringup.bin --port COM7
     python3 tools/metrics.py --repeats 9 --seconds 3 \
         --out docs/metric-baseline-windows-track-a.md
+
+The figures below were taken with `tools/sketch.py`, which drove
+arduino-cli and its bundled GCC 4.8.3; #55 replaced it and deleted it on
+2026-08-31. **So a regenerated baseline is not comparable to this one
+without saying so** - it is a different code generator, and #5 measured
+both the site set and the severity to be properties of the generated
+code.
 
 `--out` overwrites, so this block is re-added by hand. **Delete
 `build/track_a` before compiling**: `arduino-cli` served this bench a

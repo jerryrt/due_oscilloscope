@@ -403,9 +403,10 @@ programming port with `-U false`. That works on macOS, where ROM SAM-BA
 answers through the 16U2's UART; here the erased chip brings SAM-BA up
 on the *native* port as `03EB:6124`, so bossac reports "No device found
 on COM7" **having already erased the board**. Measured: it wiped Track B
-and left nothing behind. `tools/sketch.py upload` now hands the binary
-arduino-cli built to `tools/flash.py`, which knows where SAM-BA is and
-which board it belongs to.
+and left nothing behind. The fix was to route the upload through
+`tools/flash.py`, which knows where SAM-BA is and which board it belongs
+to, rather than letting arduino-cli flash. `tools/sketch.py upload` did
+that until #55; `measure.flash(track="a")` does it now.
 
 One test was skipped rather than fixed:
 `test_playback_counters_describe_one_run_not_several` reads its identity

@@ -184,8 +184,14 @@ constant, so a clock change that the build does not know about silently
 skews every timing measurement. Track A must be built with:
 
 ```sh
-tools/sketch.sh compile     # passes it, along with build.ldscript
+cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
+cmake --build build-a --target firmware_track_a
 ```
+
+`build.f_cpu` and `build.ldscript` are lines in `cmake/track_a.cmake`
+now, so neither can be silently forgotten (#55). `tools/sketch.sh`
+passed them as arduino-cli properties until 2026-08-31 and is deleted.
 
 The firmware prints both values at start-up and warns if they disagree,
 so a stale build property is caught immediately rather than corrupting

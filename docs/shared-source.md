@@ -88,8 +88,10 @@ lib/due_shared/
   src/                      # the shared translation units
 ```
 
-- **Track A**: `tools/sketch.py` passes `--libraries <repo>/lib`.
-  `arduino-cli` finds `due_shared` and compiles `src/` into the sketch.
+- **Track A**: `cmake/track_a.cmake` globs `lib/due_shared/src/*.c` into
+  the image directly (`A_SHARED_C`). It reached the same files as an
+  Arduino library via `tools/sketch.py --libraries <repo>/lib` until #55
+  retired arduino-cli from this track.
 - **Track B**: `CMakeLists.txt` adds `lib/due_shared/src` to
   `include_directories` and lists the sources explicitly.
 
