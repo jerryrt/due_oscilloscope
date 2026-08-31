@@ -44,6 +44,7 @@ hostname, and the output file is named after it.
 import argparse, json, os, platform, statistics, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
+import provenance
 
 
 def main():
@@ -64,6 +65,24 @@ def main():
     out_path = a.out or f"records/issue44-gaps-{bench}.jsonl"
 
     board = measure.Board(settle=3.0)
+
+    # Ask the board what it is, and ask the tree what produced it.
+    #
+    # `track` used to be the literal "b" in every row this tool wrote,
+    # so a Track A run was recorded as Track B - which is not a missing
+    # field but a wrong one, and it is worse. It mattered on 2026-08-30:
+    # #44's headline 11 of 32 pools a mac-bench Track A arm with a
+    # windows-desk Track B arm, and no row here could have said so.
+    #
+    # The commit is recorded for the reason #44 itself established. The
+    # gaps files carried no image, so when the incidence stopped
+    # reproducing nobody could get back to the conditions that produced
+    # it, and re-entering the arm cost a bisect that should have been a
+    # grep. `fw_repo_rev` is what tools/flash.py logged for the image on
+    # the board; `repo_rev` is the tree this instrument ran from, and
+    # they are different questions.
+    prov = provenance.collect(board=board)
+    track = prov.get("track") or "unknown"
     rows, all_gaps = [], []
     print(f"loop: ADC {a.adc_hz:,} Hz, DAC {a.dac_sps:,} sps, "
           f"{a.seconds}s x {a.reps}\n")
@@ -89,7 +108,10 @@ def main():
                      ratio=round(got / expect, 4) if expect else None,
                      frac_into_run=round(idx / max(st.frames, 1), 4))
             all_gaps.append(g)
-        rows.append(dict(bench=bench, host=host, track="b",
+        rows.append(dict(bench=bench, host=host, track=track,
+                         fw_repo_rev=prov.get("fw_repo_rev"),
+                         repo_rev=prov.get("repo_rev"),
+                         fw_build=prov.get("build"),
                          issue=44, test="seq-gap-cadence", run=i,
                          adc_hz=a.adc_hz, dac_sps=a.dac_sps,
                          seconds=a.seconds, frames=st.frames,
