@@ -320,9 +320,83 @@ tolerance that then hides the next regression.
 
 ## 8. Runtime budget
 
-Roughly 5 minutes per track, 12 for both including flashes. `-m smoke`
-should stay near 2 minutes for iteration. Transport benchmarks are
-`slow`: about 40 s each, with ~5% spread.
+**The "roughly 5 minutes per track" this section used to claim was an
+intention, not a measurement, and it had drifted to fifteen.** Issue #50
+measured it. What follows is measured, with the bench and the commit
+attached, because a budget quoted without them encodes whatever was
+broken that week - see the warning at the end of this section, which is
+not hypothetical.
+
+### The two tiers
+
+Every test that resolves the `board` fixture - directly or through any
+fixture that does - is marked `board` at collection time by
+`pytest_collection_modifyitems`. It is applied there rather than written
+on each test because a fixture cannot be forgotten and a marker can, and
+because it stays right the first time a helper grows a dependency.
+
+| tier | select with | tests | mac-bench | needs |
+|---|---|---|---|---|
+| board-free | `-m "not board"` | 441 of 584 | **95 s** | nothing |
+| full | (no marker) | 584 | **642-646 s** | the board |
+
+Board tests are 12 of 36 files and about **88% of the clock**. So the
+board-free tier is the per-change loop: it is a minute and a half, it
+needs no hardware, and it is the tier that catches the class of thing
+that otherwise hides. windows-desk found two board-free failures in
+`test_banner_order.py` - 0.05 s, red on three benches for days - and
+found them only because they happened to be reading a duration profile,
+then discovered someone else had fixed them in parallel. **A fifteen
+-minute suite is read for its total and not for its failures.**
+
+### What the fifteen minutes actually was
+
+Two thirds of it, on this bench, was a defect rather than a cost.
+
+`Board.ctl()` caches on `_ctl_tried` and `drop_ctl()` used to leave it
+set, so one dropped control link disabled it for the rest of the
+session and every later `run_play` fell back to reading its counters
+over the console: **+3.22 s per run, permanently** (issue #51,
+`5f8e186`). The trigger is an objective-0c `close()` wedge, which
+re-enumerates the native port and so is guaranteed to drop the link -
+and 0c is macOS's, 9 wedges in 30 cycles here against 0 in 52 on
+windows-desk.
+
+That is why the profile disagreed across hosts, and the disagreement is
+what found it: `test_play_counters.py` read 273.8 s here against 78.1 s
+on windows-desk while `test_integrity` and `test_rates` agreed within
+4%. It lands on that one file because it runs last (it is not in
+`FILE_ORDER`), so it is downstream of every wedge the suite has had, and
+because it is the most `run_play`-dense file there is. The cross-host
+gap went 260 s to 90 s when it was fixed.
+
+The rest was real duplication: thirteen board runs in the two heaviest
+files were nine distinct ones (`8416ad4`). See `helpers.shared_run`,
+whose docstring carries the rule for when sharing is right - and the
+caution that a bad shared run fails every test keyed to it, which is one
+measurement failing several assertions rather than several measurements
+agreeing.
+
+### What is irreducible
+
+Not everything slow is duplication, and the ladders are the clean
+example. `test_rates.py` parametrises 22 cases over distinct RC values;
+each is a different rate and needs its own run, there is nothing to
+share, and it costs 105-108 s **on both benches**. Where a test is slow
+because it is measuring something slow, the answer is to mark it and
+keep it out of the default selection - never to weaken it. Several tests
+here encode measurements that took days to establish: `OVERSUPPLIED`,
+`RESIDUAL`, the banner-order guards and `test_no_heap` *are* the
+finding, not a check on it.
+
+### Quoting a budget
+
+**Attach the bench and the commit, or do not quote it.** This bench was
+the slowest of the three, and it was the slowest *because of a defect* -
+so a ceiling enforced against it the day before `5f8e186` would have
+been calibrated against `_ctl_tried` and would have looked perfectly
+reasonable. Enforce against the slowest bench, and record which host and
+which commit made it the slowest.
 
 ## 9. Risks
 
