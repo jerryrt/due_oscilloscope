@@ -42,48 +42,60 @@
 # `Reset_Handler` and `system_sam3xa.c` for `SystemInit`, and the
 # prebuilt archive is not linked at all.
 
-# WHERE THE CORE IS INSTALLED IS PLATFORM-SPECIFIC, and this defaulted
-# to macOS's path only. arduino-cli's data directory is
-# `~/Library/Arduino15` on macOS, `~/.arduino15` on Linux and
-# `%LOCALAPPDATA%/Arduino15` on Windows, so a bench that had the core
-# installed and every tool on hand still got "Arduino SAM core not
-# found" - which reads as a missing dependency rather than as a wrong
-# guess, and the suggested fix (install it) is the one thing that does
-# not help. Found on `linux-x1`, issue #55.
+# WHERE THE CORE LIVES IS A PROPERTY OF THE MACHINE, NOT OF THE PROJECT.
 #
-# The candidates are searched, not guessed: the first one holding
-# `Arduino.h` wins, and -DARDUINO_SAM_CORE= still overrides the lot.
-# The version stays pinned - 1.6.12 is what both toolchains build
-# against and a silently different core is exactly the mixed-revision
-# hazard the clean-build rule exists for.
-set(_A_CORE_VERSION 1.6.12)
-set(_A_CORE_CANDIDATES
-    "$ENV{HOME}/Library/Arduino15"          # macOS
-    "$ENV{HOME}/.arduino15"                 # Linux
-    "$ENV{LOCALAPPDATA}/Arduino15"          # Windows
-)
+# This defaulted to `$ENV{HOME}/Library/Arduino15/...` - macOS's arduino-cli
+# data directory and nobody else's - hardcoded on the one file whose purpose
+# is to stop Track A's build depending on how a machine happens to be set up.
+# Found independently on `linux-x1` and on `windows-desk` within the hour,
+# both while answering #55's question "can your bench build this target".
+#
+# The failure mode is worse than a missing dependency because it reads as
+# one: the message says to install the core, and installing it does not
+# help. On windows-desk configure died having looked in
+# `C:/Users/<user>/Library/Arduino15/...`, which Windows never creates,
+# while the core sat installed under `AppData/Local` the whole time.
+#
+# RESOLVED TO THE REGISTRY rather than to a candidate list in CMake, which
+# is what `hosttools.cmake` exists for and says in its own header: "where
+# each host keeps its build tools... adding a host means adding a search
+# pattern there, not editing CMake". `toolchains.json` already carried the
+# per-platform Arduino15 root for `bossac`, so the fact was in the repo and
+# this file was not asking for it - and `tools/toolchain.py` reads the same
+# file, so the build and the tooling around it cannot disagree about where
+# the core is. `python3 tools/toolchain.py` now lists it alongside the rest.
+#
+# THE VERSION STAYS PINNED at 1.6.12 - linux-x1's point, and it is right.
+# The registry pattern names the version rather than globbing `sam/*`: a
+# bench that silently built against a different core is the mixed-revision
+# hazard the clean-build rule exists for, and cross-bench figures are only
+# comparable if the vendored source is the same. A bench on another version
+# adds a pattern to the registry, or a `toolchains.local.json`, which is the
+# documented escape hatch and leaves a trace where a glob would not.
+#
+# Order, as for the ARM toolchain: -D wins, then the shared registry, then
+# a failure that names what it looked for.
+include("${CMAKE_CURRENT_LIST_DIR}/hosttools.cmake")
 
-set(_A_CORE_DEFAULT "")
-foreach(_root IN LISTS _A_CORE_CANDIDATES)
-    set(_try "${_root}/packages/arduino/hardware/sam/${_A_CORE_VERSION}")
-    if(EXISTS "${_try}/cores/arduino/Arduino.h")
-        set(_A_CORE_DEFAULT "${_try}")
-        break()
-    endif()
-    if(_A_CORE_DEFAULT STREQUAL "")
-        set(_A_CORE_DEFAULT "${_try}")   # first candidate, for the error message
-    endif()
-endforeach()
+if(NOT ARDUINO_SAM_CORE)
+    hosttools_find(arduino_sam_core ARDUINO_SAM_CORE)
+endif()
 
-set(ARDUINO_SAM_CORE "${_A_CORE_DEFAULT}"
+set(ARDUINO_SAM_CORE "${ARDUINO_SAM_CORE}"
     CACHE PATH "Installed Arduino SAM core (arduino:sam), the vendored source Track A builds from")
 
-if(NOT EXISTS "${ARDUINO_SAM_CORE}/cores/arduino/Arduino.h")
+if(NOT ARDUINO_SAM_CORE OR NOT EXISTS "${ARDUINO_SAM_CORE}/cores/arduino/Arduino.h")
+    hosttools_platform(_plat)
     message(FATAL_ERROR
-        "Arduino SAM core ${_A_CORE_VERSION} not found. Searched: "
-        "${_A_CORE_CANDIDATES}. "
-        "Install it (arduino-cli core install arduino:sam) or pass "
-        "-DARDUINO_SAM_CORE=/path/to/hardware/sam/${_A_CORE_VERSION}. Only the "
+        "Arduino SAM core 1.6.12 not found for host '${_plat}' "
+        "(tried '${ARDUINO_SAM_CORE}', then every arduino_sam_core pattern "
+        "in toolchains.json).
+"
+        "Install it (arduino-cli core install arduino:sam), add a pattern "
+        "there, create toolchains.local.json, or pass "
+        "-DARDUINO_SAM_CORE=/path/to/hardware/sam/1.6.12.
+"
+        "Run  python3 tools/toolchain.py  to see what resolved. Only the "
         "*sources* are used - no arduino-cli invocation and no bundled "
         "compiler.")
 endif()

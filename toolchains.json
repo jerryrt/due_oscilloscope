@@ -136,6 +136,34 @@
         ]
       }
     },
+    "arduino_sam_core": {
+      "what": "Track A's vendored source: the installed arduino:sam hardware core. Only its SOURCES are used - no arduino-cli invocation and no bundled 2014 compiler (see cmake/track_a.cmake).",
+      "requires": "cores/arduino/Arduino.h",
+      "requires_why": [
+        "A directory, not an executable. Both resolvers join `requires` onto the",
+        "hit and test for a file, so a nested path works and is the honest check:",
+        "the core's own header is what track_a.cmake actually needs to exist."
+      ],
+      "version_why": [
+        "The patterns name 1.6.12 rather than globbing sam/*. linux-x1's point,",
+        "and it is right: a bench silently building against a different core is",
+        "the mixed-revision hazard the clean-build rule exists for, and cross-",
+        "bench figures are comparable only if the vendored source is the same.",
+        "A bench on another version adds a pattern here or a toolchains.local",
+        ".json - which leaves a trace, where a glob would not."
+      ],
+      "search": {
+        "Darwin": [
+          "{home}/Library/Arduino15/packages/arduino/hardware/sam/1.6.12"
+        ],
+        "Windows": [
+          "{home}/AppData/Local/Arduino15/packages/arduino/hardware/sam/1.6.12"
+        ],
+        "Linux": [
+          "{home}/.arduino15/packages/arduino/hardware/sam/1.6.12"
+        ]
+      }
+    },
     "host_cc": {
       "what": "Host C compiler for the board-free framer seam test (tests/test_framer_close.py), which builds and RUNS its harness. GNU only - see CLAUDE.md, MSVC cannot build lib/due_shared. Only consulted when cc/gcc/clang are not already on PATH, which is the Windows case.",
       "optional": true,
