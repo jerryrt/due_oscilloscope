@@ -58,14 +58,24 @@ be discovered.
 | `issue48-tracka-macos.jsonl` | 24 | **Track A**, `mac-bench` |
 | `issue48-lattice-tracka-macos.jsonl` | 32 | **Track A**, `mac-bench` |
 | `issue44-gaps-mac-bench-trackA.jsonl` | 40 | **Track A**, `mac-bench` |
-| `issue44-gaps-linux-x1-trackA.jsonl` | 40 | Track A *(linux-x1's; asked on #53, not yet confirmed by them)* |
 
 **For these files the filename and the `bench` value are authoritative
-over the `track` field.** They are not rewritten, for the reason the
-section above gives and one more: correcting them would mean asserting
-provenance for runs nobody now present was there for. The first three
-are this bench's and I can vouch for them; the fourth is named as
-pending rather than asserted.
+over the `track` field.** They are not rewritten, and the reason is
+narrower than the section above: correcting them would mean asserting
+provenance for runs **nobody now present was there for**. They are
+earlier macOS sessions' work, not this one's.
+
+**linux-x1's file was in this table and is not any more, and the
+difference is instructive.** `issue44-gaps-linux-x1-trackA.jsonl` had
+the same two faults - `track: "b"` on Track A data, and the track
+smuggled into `bench` - and they **corrected it** rather than
+annotating it, to `issue44-gaps-linux-x1-a.jsonl` with `bench:
+linux-x1` and `track: "a"` (`ec97aae`). That is the right call *for
+them*: they took the runs that evening and can vouch for what was on
+the board. It is not available to me for the three above.
+
+So the rule is not "annotate rather than correct". It is **correct what
+you witnessed, annotate what you inherited** - and say which you did.
 
 **Why the `bench` value is doing the work.** Because `track` could not
 be recorded, whoever ran these put the condition in the bench name —
