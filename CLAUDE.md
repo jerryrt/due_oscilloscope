@@ -899,15 +899,43 @@ draws from a lottery over code layout, the compiler deals the hand, so
 a pinned commit compared across two benches pins the *source* and
 leaves the *variable* free.
 
-**The site set is not the part that is a lottery.** `linux-x1` (GCC
-14.2.1, layout `c4cd8445987b5261`) and `windows-desk` (ARM GNU 14.3.1,
-layout `be84df15f77a3e36`) ran one pinned commit and matched on **22 of
-31 sites with 0 of 31 of the translated prediction**, p about 1e-32 -
-across two *different* layouts. So the site set survives a layout
-change and the cross-bench agreement never rested on a shared one.
-What remains a layout draw is the **severity**, which is what the
-original note on four images at four phases actually measured, and
-which nobody has yet compared across benches.
+**The site set follows the generated code. It does not follow the
+layout, and it does not follow the bench.** Three findings in one
+afternoon, each correcting the one before it, and the third is an
+A-B-A on a single board.
+
+*Not the bench.* `linux-x1` (GCC 14.2.1) and `windows-desk` (ARM GNU
+14.3.1) ran one pinned commit and matched on **22 of 31 sites with 0
+of 31 of a translated prediction**, p about 1e-32.
+
+*Not the layout.* Those two images have **different** layouts
+(`c4cd8445987b5261` against `be84df15f77a3e36`), and four builds of
+that one commit produced four layouts - two of them the same compiler
+version on two host OSes. Layout is not even a function of (source,
+compiler version), so "put two benches on one layout" may not be
+reachable by installing a matching toolchain.
+
+*The code generator.* One board, one session, one commit, two images
+differing only in which arm-gcc built them, A-B-A with 72 runs a
+block. Jaccard over the FWS 4/5/6 site sets: **0.885** for the same
+image against itself with the other arm in between, **0.862** against
+the other bench's different compiler and different board, and
+**0.154** for xPack 15.2.1 against ARM GNU 14.3.1 **on the same
+board with nothing else changed**. FWS 5 is the cleanest: 8 of 8
+shared with the other bench, **0 of 7** with the other compiler.
+Repeatability and cross-bench agreement are the same number; the
+cross-compiler comparison is a sixth of it.
+
+So GCC 14.2 and 14.3 agree and 15.2 does not - it is what the core
+fetches, not where the linker put it.
+
+**Two consequences.** `image_fingerprint.py` answers "is this the same
+image" and **cannot** answer this: a layout difference is the ordinary
+case across a point release and says nothing about codegen. And the
+old wording here - "#5's severity is a lottery over code layout" - is
+too loose in both halves: it is codegen rather than layout, and every
+measurement above is of the site **set**, while severity has still not
+been compared across anything.
 
 Four builds of `3aadf90` produced **four different layouts** - and two
 of them are the same compiler version (xPack 15.2.1) on two host OSes,
