@@ -768,15 +768,35 @@ that it answered, and `24488b4` removed that because probing opens the
 port. **The paths in the table are macOS's**: Linux is `/dev/ttyACM*`,
 and on macOS always `/dev/cu.*`, never `/dev/tty.*`.
 
-**"Opening the control port resets the board over NRSTB" is not true of
-a plain open, and this bench measured it.** On `linux-x1`, opening
-`/dev/ttyACM0` at 115200 and closing it left `dev_us` running - 16410.9
-s before, 16415.9 s after, which is the sleep and nothing else. An
-explicit DTR toggle does reset it: 16433.8 s to 5.7 s. So the reset
-depends on how the port is opened, not on the fact of opening it, and
-anything relying on an open to get a *fresh* board may not be getting
-one. It cost a void experiment here before it was checked, and the
-check is one heartbeat read either side.
+**Whether opening the control port resets the board is a PLATFORM
+difference, and the same code path goes both ways.** Both benches
+measured it, on `measure.Board`'s own open - `open_raw(control, 115200)`
+with `dtr=False`, which is all `Board.__init__` does before it sleeps.
+
+| host | plain open at 115200 | uptime |
+|---|---|---|
+| `linux-x1` | **does not reset** | 16410.9 s -> 16415.9 s, the sleep and nothing else |
+| `mac-bench` | **resets, 3 of 3** | 65812 ms -> 2884 ms, with an idle control climbing 2035 ms over 2 s |
+
+An explicit DTR toggle resets on Linux too - 16433.8 s to 5.7 s - so
+*there* the reset depends on how the port is opened. **On macOS it does
+not: the plain open is enough**, even on `/dev/cu.*`, which is the node
+that is supposed not to assert DTR.
+
+So neither "an open resets it" nor "an open does not reset it" is a fact
+about this project. It is a fact about the host, it lives on the
+`host/transport.py` seam like every other one, and **it inverts the
+consequence**: on macOS every tool that opens a `measure.Board` starts
+its run at uptime 0, so an experiment whose arms are separate runs
+cannot vary time since reset at all; on Linux those arms keep whatever
+uptime the board had, and anything relying on an open to get a *fresh*
+board is not getting one.
+
+Both readings have cost an experiment - a void arm on #58 for assuming
+the reset, and two sessions on #48 for arms that could not vary the axis
+they were built around. **The check is one heartbeat read either side of
+an open, it takes fifteen seconds, and it must be run on your own bench:
+`tools/uptime_reset_probe.py`.**
 
 ## Do not invent numbers
 
