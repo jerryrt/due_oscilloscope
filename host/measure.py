@@ -3302,6 +3302,12 @@ def parse_identity(text):
         # 0 means "this track has no control channel" - Track A today.
         "ctl_version": int(g["ctlver"]),
         "frame_version": int(g["framever"]),
+        # NOMINAL, both of them - the board derives them from its
+        # register configuration and has never measured either. Issue
+        # #52 measured the real MCK a few ppm low on every bench; that
+        # figure is `mck_meas_hz`, from the heartbeat, and it is a
+        # per-board reading rather than a constant. These two stay
+        # nominal because RC arithmetic round-trips through them.
         "mck_hz": int(g["mck"]),
         "adc_clock_hz": int(g["adcclk"]),
         "frame_bytes": int(g["framebytes"]),

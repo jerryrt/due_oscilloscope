@@ -109,7 +109,16 @@ void console_missing(void);
  * `# id: track=B fw=0.2.0 ctlver=3 framever=3 mck=...` is what
  * `measure.parse_identity` reads and what a host refuses a pairing on,
  * so the format string and the order of its ten arguments are wire
- * contract. They were written twice - printf in Track B's main.c,
+ * contract - which is why `mck` cannot be renamed to say what it is.
+ * **It is NOMINAL: register-derived, never measured.** Issue #52 read
+ * the real MCK a few ppm low on three benches with unrelated crystals
+ * (-5.13 windows-desk, -9.79 linux-x1); the measured figure lives in
+ * the telemetry heartbeat as `mck_meas_hz`. The nominal is what belongs
+ * in this line - the board reports its sample rate as integer division
+ * on it, so a host inverting a rate back to an RC must divide by the
+ * same value. See console.c, where the line is emitted.
+ *
+ * They were written twice - printf in Track B's main.c,
  * snprintf plus Serial.println in Track A's sketch - identical
  * argument for argument, differing only in how the line reached the
  * wire, which is exactly what console_write() is for.

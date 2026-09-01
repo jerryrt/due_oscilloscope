@@ -137,6 +137,50 @@ Relaxing tracking to suppress crosstalk lowers this further.
 The project runs the master clock at **78 MHz**, not the Due's usual 84,
 so that the ADC clock lands inside its datasheet limit.
 
+**78 MHz is nominal, and it has now been measured.** Everything below
+this paragraph, every rate the board reports, and the `mck=78000000`
+field in the identity line are *register-derived*: what the PLL and
+prescaler settings should produce, never what the crystal does. Issue
+#52 built the instrument - the board counts USB start-of-frame markers
+against its own clock and reports `mck_meas_hz` in the telemetry
+heartbeat, on all three tracks - and measured it on three benches with
+unrelated crystals:
+
+| bench | board vs UTC | that bench's host controller |
+|---|---|---|
+| `windows-desk` | **-5.13 +/- 0.33 ppm** | -18.80 +/- 0.23 |
+| `linux-x1` | **-9.79 ppm** (chrony-disciplined, authoritative) | -1.99 |
+| `mac-bench` | retired as a source - `timed` applies a constant correction and the probe was not atomic | - |
+
+So MCK is 78 MHz to within about 10 ppm, the boards agree with each
+other to about 4 ppm, and **the large number anyone reads off a
+device-versus-host ratio is mostly their own USB controller**, which
+differ by 17.5 ppm between these two. A ratio taken against one host is
+not a measurement of the board.
+
+**The nominal stays, everywhere a divisor is computed.** A ppm-level
+error cannot be corrected by changing the divisor - the divisor is an
+integer - and the firmware reports its sample rate as
+`(SystemCoreClock / 2) / RC`, integer arithmetic on the nominal. So any
+host that turns a rate into an RC, or an RC back into the board's
+reported rate, must use the same nominal or the round-trip breaks. **RC
+is the board's real unit and the measured cliffs sit at a fixed RC
+whatever MCK is.**
+
+What changed instead is that the board no longer *asserts* an exact
+figure it has never checked: the rate-sweep header prints `MCK 78000000
+Hz nominal`, and the identity line's `mck` field is documented as
+nominal at its single home in `lib/due_shared/src/console.c`. The field
+name itself is wire contract and cannot carry the label.
+
+**Reporting measured rates to a user was considered and deliberately not
+built** (owner's decision, 2026-09-01). It would make every reported
+frequency a per-board, per-session *reading* rather than a constant, and
+at ~10 ppm the error is about 3 Hz on a 300 kHz sample rate - far below
+what this instrument resolves. It also depends on whether the clock
+drifts with temperature, which is issue #18's question. Revisit it
+there, not here.
+
 The crystal and Table 46-22 leave very little choice. `FIN` must be
 8-16 MHz, so with a 12 MHz crystal `DIVA` can only be 1, making
 `PLLA = 12 MHz x (MULA+1)` a multiple of 12 within 96-192 MHz. With the

@@ -330,6 +330,24 @@ void console_identity(char track, unsigned long mck_hz)
 	 * chosen: 19.5 MHz sits inside the datasheet's 20 MHz limit. It
 	 * is derived here rather than passed so that a track cannot
 	 * report a divider it does not use.
+	 *
+	 * **`mck` and `adcclk` are NOMINAL - register-derived, never
+	 * measured.** The field name cannot say so without breaking the
+	 * wire contract it is part of, so it is said here, in the one
+	 * place both a firmware and a host author read. Issue #52 built
+	 * the instrument and measured the real MCK on three benches with
+	 * unrelated crystals: -5.13 ppm on windows-desk, -9.79 on
+	 * linux-x1. So this field is a few ppm wrong and always has been.
+	 *
+	 * It stays nominal deliberately. stream_core.c computes the
+	 * reported sample rate as integer division on this same figure,
+	 * so a host inverting a rate back to an RC must divide by what
+	 * the board divided by or the round-trip breaks - the RC is the
+	 * board's real unit and the measured cliffs sit at fixed RC
+	 * whatever MCK actually is. The measured clock is `mck_meas_hz`
+	 * in the telemetry heartbeat, and it is a per-board, per-session
+	 * reading rather than a constant. Nothing user-facing consumes it
+	 * yet; that was #52's other half and the owner held it.
 	 */
 	con_str("# id: track=");   con_ch(track);
 	con_str(" fw=");           con_str(FW_VERSION_STR);

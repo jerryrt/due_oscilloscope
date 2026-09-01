@@ -154,7 +154,7 @@ between the markers - regeneration discards it.
 | one channel | 44 | 886,363 |
 | DAC top | 28 | 1,392,857 |
 
-TC clock 39,000,000 Hz, MCK 78,000,000 Hz, ADC clock 19,500,000 Hz.
+TC clock 39,000,000 Hz, MCK 78,000,000 Hz, ADC clock 19,500,000 Hz (nominal, register-derived).
 <!-- end generated -->
 
 ### Frame geometry and amplitude

@@ -276,10 +276,14 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch)
  * the aggregate, so a column called `measured` has to be the
  * per-channel number a user asks for. Track A reported the aggregate.
  *
- * FROM TRACK A: the header carries MCK and the ADC clock. Issue #52 has
- * made MCK a measured quantity rather than a register readback - it
- * reads about -11 ppm from 78 MHz - so a rate sweep that does not
- * record the clock it divided is missing its own provenance.
+ * FROM TRACK A: the header carries MCK and the ADC clock, so a rate
+ * sweep that does not record the clock it divided is missing its own
+ * provenance. Both are printed NOMINAL and now say so on the wire.
+ * Issue #52 measured the real MCK on three benches with unrelated
+ * crystals - -5.13 ppm on windows-desk, -9.79 on linux-x1 - so the
+ * figure is a few ppm wrong and always has been. It stays nominal
+ * because the divisor arithmetic below is integer on this same value;
+ * the measured clock is `mck_meas_hz` in the telemetry heartbeat.
  *
  * The ratio is unchanged and was never in dispute: both tracks computed
  * delivered-over-programmed and got there by different algebra that
@@ -317,8 +321,8 @@ void console_cmd_rate_sweep(unsigned n_channels)
 	con_str(" channel");
 	con_str(n_channels == 1 ? " (A0=AD7)" : "s (A0=AD7, A1=AD6)");
 	con_str(", MCK ");     con_u32(console_port_mck_hz());
-	con_str(" Hz, ADC clk "); con_u32(console_port_mck_hz() / 4u);
-	con_str(" Hz, min RC "); con_u32(min_rc); con_nl();
+	con_str(" Hz nominal, ADC clk "); con_u32(console_port_mck_hz() / 4u);
+	con_str(" Hz nominal, min RC "); con_u32(min_rc); con_nl();
 	con_str("#     RC   trigger  measured    ratio  RXBUFF GOVRE"); con_nl();
 	console_flush();
 

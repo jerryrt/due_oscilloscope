@@ -502,6 +502,21 @@ Check here before reasoning from general Arduino knowledge.
   inside the 20 MHz datasheet limit. Costs 7.2% of sample rate. Track A
   must be built with `--build-property build.f_cpu=78000000L` or
   `micros()` is silently wrong.
+
+  **And 78 MHz is *nominal* - register-derived, measured for the first
+  time in issue #52 and a few ppm off.** -5.13 ppm on `windows-desk`,
+  -9.79 on `linux-x1`, boards agreeing to about 4 ppm; the far larger
+  number in a device-versus-host ratio is mostly the *host's* USB
+  controller, which differ by 17.5 ppm between those two benches. The
+  measured figure is `mck_meas_hz`, in the telemetry heartbeat on all
+  three tracks. **Keep using the nominal for anything that computes or
+  inverts an RC** - the firmware divides by it in integer arithmetic, so
+  a host that uses a different value breaks the round-trip, and the
+  measured cliffs sit at a fixed RC whatever MCK is. Nothing
+  user-facing consumes the measured value: that was #52's second half
+  and the owner declined it, because it turns every reported frequency
+  into a per-session reading and 10 ppm is 3 Hz at 300 ksps.
+  `docs/hardware.md`.
 - **`A0` is ADC channel 7, not 0.** The Arduino A0..A7 labels map to
   AD7..AD0, descending. A8..A11 then map to AD10..AD13 ascending. Code
   assuming `A0 == AD0` reads the wrong pin, and sequencer conversion

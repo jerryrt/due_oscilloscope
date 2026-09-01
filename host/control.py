@@ -684,6 +684,9 @@ class Control:
             "fw": (fw_maj, fw_min, fw_pat),
             "frame_bytes": frame_bytes,
             "frame_samples": frame_samples,
+            # NOMINAL, not measured - same field as the console
+            # identity line and the same caveat: see parse_identity in
+            # measure.py, and `mck_meas_hz` for the measured clock.
             "mck_hz": mck_hz,
             "adc_clock_hz": adc_clock_hz,
             "build": build.rstrip(b"\x00").decode("ascii", "replace"),

@@ -109,7 +109,7 @@ them if they are ever in doubt.
 
 | Quantity | Value | How to re-measure |
 |---|---|---|
-| MCK | 78 MHz | banner |
+| MCK | 78 MHz *(nominal; measured -5 to -10 ppm, #52)* | banner |
 | TC clock (TIMER_CLOCK1) | 39 MHz = MCK/2 | - |
 | ADC clock | 19.5 MHz = MCK/4 | banner |
 | 2ch floor | **RC 86** -> 453,488 Hz/ch, 906,976 aggregate | `t` |

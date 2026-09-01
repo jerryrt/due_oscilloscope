@@ -94,7 +94,11 @@ def t_rates(b, c):
         {"what": "DAC top", "RC": rc["dac_top"],
          "sps": "{:,}".format(hz["dac_top"])},
     ]
-    tail = ("\n\nTC clock {:,} Hz, MCK {:,} Hz, ADC clock {:,} Hz."
+    # All three are nominal: the board derives them from registers and
+    # has never measured them (issue #52). Said here because this table
+    # is read as a specification.
+    tail = ("\n\nTC clock {:,} Hz, MCK {:,} Hz, ADC clock {:,} Hz"
+            " (nominal, register-derived)."
             .format(clk["tc_clock_hz"], clk["mck_hz"], clk["adc_clock_hz"]))
     return _rows(rows) + tail
 

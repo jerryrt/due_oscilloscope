@@ -323,7 +323,7 @@ Grouped so the ranges mean something, and every one of them maps onto a
 | op | name | payload in | payload out |
 |---|---|---|---|
 | `0x0001` | `PING` | — | `dev_us` u32, `dev_ms` u32, `seq` u32 |
-| `0x0002` | `IDENTITY` | — | track, firmware version, both protocol versions, frame bytes, samples/frame, MCK, ADC clock, build date |
+| `0x0002` | `IDENTITY` | — | track, firmware version, both protocol versions, frame bytes, samples/frame, MCK, ADC clock, build date. **MCK and the ADC clock are nominal** — register-derived, never measured; see `docs/hardware.md`. The measured clock is `mck_meas_hz` in the telemetry heartbeat |
 | `0x0003` | `CAPABILITY` | — | `n_opcodes` u16 then that many `u16` opcodes, ascending — **implemented**; the RC limits, channel map and ring depths this row originally sketched are later slices and append to the same body |
 | `0x0010` | `GET_RATES` | — | dac RC + hz, adc RC + hz, channels |
 | `0x0011` | `SET_RATES` | dac_sps u32, adc_hz u32, channels u8 | the *snapped* values actually set |
