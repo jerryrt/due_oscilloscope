@@ -1,21 +1,8 @@
-# Test Suite: design and implementation guide
+# Testing
 
-**Status: implemented, and since extended past the hardware.** The
-original four files still talk to a real board for everything about
-signals, timing and transport. Three more do not, deliberately:
-`test_daemon_protocol.py`, `test_daemon_api.py` and `test_jitter.py`
-judge framing, ownership, refusals, backpressure and recording, which
-are not properties of the Due, and `test_gui.py` drives the front end
-headlessly in the GUI venv. They cost seconds and run first, so a
-protocol regression fails before anything has been flashed.
-
-That is not a retreat from the no-simulator rule. The synthetic device
-produces frames in the device's own format - same header, same CRC,
-same sequence numbers - and `measure.parse_frames` is what checks they
-arrived intact, so the real parser is exercised on synthetic bytes
-rather than a second definition of the format being written.
-
-`host/measure.py` plus `tests/`. Run it with
+`host/measure.py` is the measurement library and `tests/` is the suite
+over it. Both tracks run the same tests; a divergence between them is
+the oracle working.
 
 ```sh
 python3 -m venv .venv
@@ -23,641 +10,307 @@ python3 -m venv .venv
 .venv/bin/python -m pytest --track=b -q
 ```
 
-pytest is not stdlib, so the suite needs the venv. Everything under
-`host/` stays stdlib only: those tools have to run from the system
-interpreter during bring-up.
+pytest is not stdlib, so the suite needs the venv. Read
+`docs/HANDOFF.md` first for the board, the ports and the build
+environment.
 
-This document remains the design. Read `docs/HANDOFF.md` first for the
-board, ports and build environment.
+## 1. What the suite is for
 
-### What building it found
+Every regression before it existed was caught by a person noticing an
+odd figure in a manual run, and several were caught late. **The
+counters have lied more than once.** A clean
+`seq_gaps=0 crc_bad=0 under=0` has coexisted with a badly degraded
+signal, and a whole-run tone average has reported a collapse that was
+not happening.
 
-Four defects, none of which the manual runs had shown, all four now
-fixed. They are written up in `docs/status.md`; briefly: the native port
-took 51 s to open because `SET_LINE_CODING` was answered before its
-data stage, the console silently dropped commands sent while it was
-printing, the frame header declared the requested rate rather than the
-one the hardware makes, and host-fed playback lost samples that no
-counter on either side saw.
-
-The fourth is why the suite exists. `seq_gaps=0 crc_bad=0 under=0`
-was true for every one of those runs, and the DAC was still skipping
-forward a few times a second. It took a ramp - a waveform where every
+The defect that settles the argument: host-fed playback lost samples
+with every counter on both sides green while the DAC skipped forward a
+few times a second. Finding it took a **ramp** - a waveform where every
 sample encodes its own position - to turn "the output jumped" into "313
 bytes never arrived", and the fact that every loss was smaller than one
-ring slot to name the cause: two reads of a DMA status register where
-there should have been one. The instrument that found it,
-`measure.build_ramp` / `ramp_discontinuities`, is worth reaching for
-again the next time a counter says everything is fine.
+ring slot to name the cause. `measure.build_ramp` and
+`ramp_discontinuities` are worth reaching for the next time a counter
+says everything is fine.
 
-It also left the suite able to say *which side* lost data. With the
-device's byte accounting exact, an arbitrary-sized forward jump is the
-device and a whole 128-byte chunk is macOS's output path, so
-`test_host_fed_ramp_loses_no_samples` fails outright for the first and
-reports an xfail naming the host for the second.
+So the suite exists to make the oracles automatic, and to let the two
+tracks check each other without a person holding both sets of numbers
+in their head.
 
-### One rule added while building it
+## 2. Running it
 
-**Every rate is `hz_for(RC)` for an integer RC, never a round decimal
-number.** The trigger is a TC compare against RC and the DAC update is
-the same timer on another channel, so `39 MHz / RC` is the entire set of
-rates the hardware has; asking for anything between two of them just
-rounds down. The ladders are therefore RC and the Hz are derived, and
-`test_every_ladder_rate_is_a_real_divider_value` checks that they
-round-trip.
+Three selections. They answer different questions and none substitutes
+for another.
 
-Two decisions are settled and are not open for re-litigation:
+| tier | select with | needs | answers |
+|---|---|---|---|
+| board-free | `-m "not board"` | nothing | did I break the host code |
+| smoke | `-m smoke` | the board | is the board still doing the basics |
+| full | *(no selection)* | the board | everything |
 
-1. **Refactor first.** The measurement logic moves into a library; the
-   three CLI scripts become thin wrappers over it. Tests import the
-   library. They do not shell out and parse stdout.
-2. **All four test files** get built: rates, integrity, channels,
-   transport.
+`smoke` is **not** a subset of board-free - it holds board tests and
+needs hardware.
 
-## Why a suite at all
+**Board-free is the per-change loop.** It is about a minute and a half,
+needs no hardware, and it is the tier that catches the class of thing
+that otherwise hides: two failures in `test_banner_order.py` cost 0.05 s
+each and sat red on three benches for days, because a fifteen-minute run
+is read for its total and not for its failures.
 
-Both tracks now run the full instrument loop and the numbers are good,
-but every regression so far has been caught by a human noticing an odd
-figure in a manual run. Several were caught late, and two were caught
-only because a *different* measurement disagreed. The counters alone
-have lied more than once: a clean `seq_gaps=0 crc_bad=0 under=0` run has
-coexisted with a badly degraded signal, and a whole-run tone average has
-reported a collapse that was not happening.
+Board tests are roughly a third of the files and the large majority of
+the clock. **Ask the suite for counts and durations rather than reading
+them here** - a number written down is a number that rots:
 
-So the suite exists to make the oracles automatic, and to make the two
-tracks check each other without a person holding both sets of numbers in
-their head.
+```sh
+pytest --track=b -m "not board" --collect-only -q | tail -1
+pytest --track=b --durations=25
+```
 
-## 0. Ground rules
+`--track=a|b|both`, defaulting to both. Track is a session fixture that
+flashes once and yields a `Board`. Markers: `smoke`, `slow`, `awg`,
+`scope`, `track_a`, `track_b`.
+
+**Quote a duration with its bench and its commit, or do not quote it.**
+The slowest bench was once slowest because of a defect (#51), so a
+ceiling enforced against it that week would have been calibrated against
+the bug and would have looked perfectly reasonable.
+
+## 3. Design
+
+### Ground rules
 
 Each of these cost real time to learn. They are requirements on the
 suite, not style preferences.
 
 | Rule | Why |
 |---|---|
-| Judge tone purity **per window**, never whole-run | At 453,488 sps the whole-run Goertzel reads 232 against a theoretical 1370.5 while nearly every window reads above 1360. A phase discontinuity cancels the average. |
-| Prove **freshness** on every measurement | Stale kernel-buffered frames from a previous run once manufactured a "frozen DAC" that cost a full session. |
-| Express rates as **RC**, not Hz | Rates that do not divide 39 MHz truncate in RC and shift every derived frequency. |
-| Never scale a measured ceiling arithmetically | Halving the two-channel RC 86 gives 43, which is off the cliff. The measured one-channel floor is 44. |
-| Assert **refusals**, not only successes | An over-fast trigger is silently halved with no status bit set. The guard is the only thing between that and corrupt data presented as clean. |
-| Tolerances come from **measured spread** | Measure the spread, do not assume it. The ~5% recorded here was wrong: five runs per mode give 35-59% on the DMA benchmarks, so the floors come from the minima and are justified by what they must catch, not by how close they sit to the typical figure. |
-
-## 1. Constants the tests need
-
-Measured on this board at MCK 78. Do not re-derive these; re-measure
-them if they are ever in doubt.
-
-| Quantity | Value | How to re-measure |
-|---|---|---|
-| MCK | 78 MHz *(nominal; measured -5 to -10 ppm, #52)* | banner |
-| TC clock (TIMER_CLOCK1) | 39 MHz = MCK/2 | - |
-| ADC clock | 19.5 MHz = MCK/4 | banner |
-| 2ch floor | **RC 86** -> 453,488 Hz/ch, 906,976 aggregate | `t` |
-| 2ch cliff | RC 85 -> ratio 0.500 | `t` |
-| 1ch floor | **RC 44** -> 886,363 sps | `=0,0,1t` |
-| 1ch cliff | RC 43 -> ratio 0.500 | `=0,0,1t` |
-| ADC clocks per conversion | 22 isolated, 43 per 2ch pair | derived from the two cliffs |
-| DACC top exact rate | RC 28 -> 1,392,857 sps | `d` |
-| Full-scale sine amplitude | ~1370.5 codes | theoretical |
-| DAC output span | 546-2760 mV (not rail to rail) | `s` |
-| Frame | 32 B header + 2032 samples = 4096 B | `frame.h` |
-| USB OUT / IN / duplex | ~27 / ~31-32 / ~15-16 MB/s, ~5% spread | `G` `T` `Y` |
-
-One-channel capture is **slower** in conversions per second than two
-(886,363 against 906,976): a two-channel trigger converts its pair back
-to back and amortises the per-trigger overhead a lone conversion pays in
-full. A test that assumes one channel runs at twice the two-channel
-trigger rate encodes a bug.
-
-## 2. Prerequisite refactor
-
-`host/ports.py` and `host/rt.py` are already importable libraries and do
-not change. `host/loopback.py`, `host/receive.py` and `host/usbbench.py`
-are `main()` monoliths that print; their measurement logic moves to
-`host/measure.py`.
-
-**Nothing about the measurement behaviour may change in this step.** The
-clock-paced feeder with its 20 KB lead, the real-time thread promotion,
-the freshness drain and the whole-packet write discipline are all
-load-bearing and hard-won - see `docs/usb.md` before touching any of
-them. Verify the refactor by running each CLI before and after and
-diffing the output.
-
-```python
-# host/measure.py
-
-@dataclass
-class ChannelStats:
-    tag: int; n: int; lo: int; hi: int; mean: float
-
-@dataclass
-class LoopResult:
-    frames: int; first_seq: int; last_seq: int
-    seq_gaps: int; crc_bad: int; max_overrun: int
-    elapsed_s: float; dev_span_s: float
-    declared_rate_hz: int; channel_mask: int
-    per_channel: dict[int, ChannelStats]
-    windows: dict[int, list[tuple[float, float]]]   # tag -> (dev_t, amplitude)
-    settled: dict[int, list[int]]                   # tag -> samples, for slew
-    play: PlayCounters      # bytes_in produced consumed underruns
-                            # isr endtx svc rebuilds act_in act_out
-    host_tx_bytes: int; host_rx_bytes: int
-
-def run_loop(board, *, dac_sps, adc_hz, channels=2, tone=1000.0,
-             seconds=3.0, dc=None) -> LoopResult
-def run_capture(board, *, preset, seconds, expect_hz) -> CaptureResult
-def run_bench(board, *, mode, seconds) -> BenchResult
-def sweep_rates(board, *, channels) -> list[SweepRow]   # parses `t`
-def sweep_dac(board) -> list[SweepRow]                  # parses `d`
-def profile(board) -> dict[str, int]                    # parses `Q`
-```
-
-### The Board object matters more than it looks
-
-```python
-class Board:
-    def flash(self, track: str) -> None      # retry on SAM-BA
-    def cmd(self, text: str) -> None         # write to the control port
-    def drain_console(self, secs) -> str
-    native: str                              # re-globbed after reset
-```
-
-Opening the control port asserts NRSTB and resets the board, which also
-re-enumerates the native port under a possibly new name. Today every
-measurement pays that: a reset, a 3 s settle and a re-glob, about 15 s
-of fixed cost. A **session-scoped Board that opens the control port once
-and keeps it open** turns that into roughly half a second per test. That
-single decision is what makes a sixty-test suite finish in minutes
-instead of half an hour, so build it that way from the start.
-
-## 3. Layout
-
-```
-tests/
-  conftest.py        # --track, Board fixture, the board marker, FILE_ORDER
-  helpers.py         # shared assertions
-  hostcc.py          # finds a HOST gcc, for the one test that needs one
-  baseline.json      # calibrated thresholds for THIS board
-  framer/harness.c   # firmware C, built and run on the host - see below
-  test_*.py          # named for what they test; the set moves
-host/measure.py      # extracted library
-```
-
-**Do not maintain a file list here.** This block used to name eight
-files and there are now about forty; a list of filenames is the part of
-a design document that rots first, and it rotted here. The tree answers
-what exists, and `-m board` / `-m "not board"` answers which of it needs
-hardware. What is worth writing down is not *which* files but *what a
-test without a board is testing against*, which is the next section.
-
-`pytest --track=a|b|both`, defaulting to both. Track is a session
-fixture that flashes once and yields a `Board`. Markers: `smoke`,
-`slow`, `awg`, `scope`, `track_a`, `track_b`.
+| Judge tone purity **per window**, never whole-run | At 453,488 sps the whole-run Goertzel reads 232 against a theoretical 1370.5 while nearly every window reads above 1360. One phase discontinuity cancels the average |
+| Prove **freshness** on every measurement | Stale kernel-buffered frames from a previous run once manufactured a "frozen DAC" that cost a full session |
+| Express rates as **RC**, not Hz | A TC compare against an integer RC is the entire set of rates the hardware has. Anything between two of them rounds down and shifts every derived frequency |
+| Never scale a measured ceiling arithmetically | Halving the two-channel RC 86 gives 43, which is off the cliff. The measured one-channel floor is 44 |
+| Assert **refusals**, not only successes | An over-fast trigger is silently halved with no status bit set. The guard is the only thing between that and corrupt data presented as clean |
+| Tolerances come from **measured spread** | Five runs per mode give 35-59% spread on the DMA benchmarks. Floors come from the minima, justified by what they must catch rather than by how close they sit to the typical figure |
 
 ### What a board-free test runs against
 
-**§8 says how the tier is selected and what it costs. This says what is
-on the other side of the assertion** - the question a newcomer actually
-asks, which is: with no board attached, what is being tested?
+§2 says how the tier is selected and what it costs. This says what is on
+the other side of the assertion - with no board attached, what is being
+tested?
 
-Four substitutes for the hardware. **The last column is the useful one**
-- each substitute fails in its own way, and every failure listed there
-has happened in this project rather than being imagined for the table.
+Four substitutes for the hardware. **The last column is the useful one:**
+each fails in its own way, and every failure listed there has happened
+here rather than being imagined for the table.
 
-| substitute | what it is | used by | what it CANNOT prove |
-|---|---|---|---|
-| **synthetic signals** | waveforms whose answer is known by construction, with the thresholds taken from real runs - `level_census` asserts 778-780 on a defective run and 0 on a healthy one because that is what 25 runs on hardware gave | the analysis and instrument tests | that an instrument survives the **nuisance**. A synthetic built only from the hypotheses certifies a detector the real artifact walks straight through - #24's void arm, where `e = (i // 2) % entries` meant no synthetic pair ever straddled a DAC level change, which was then the thing that dominated every real capture |
-| **a fake device** | `host/daemon/device.py`, answering the same API a board answers, deterministically. `test_gui` drives the front end against a synthetic daemon the same way | the daemon and its protocol, and the GUI | anything about the board. And **a fake that invents a field is worse than no fake**: this one once returned `mean_us`, which the device does not, so the first script written against it failed on hardware instead of in the suite |
-| **the built image, and the source tree** | `nm` over the linked ELF, and greps over CMake and the sources. `test_no_heap` reads the ELF rather than grepping for `printf`, because a grep misses `puts`, `fwrite` and `fputs` and fires on a comment | the rules that have to survive people | anything about runtime. And a static check is the **easiest kind to write so that it cannot fail** - four were written here in one day, all green, none of them able to fail. Break it on purpose before trusting it |
-| **firmware C on the host compiler** | `lib/due_shared/src/stream_core.c` compiled and run natively, its whole seam mocked. Only possible because `stream_port.h` is a complete record of what the framer touches outside itself (#14). Built twice, real and mutant; the mutant must fail | `test_framer_close` alone | anything about registers or timing - the mocked seam is the point. It needs a **host** GNU compiler: a cross compiler cannot run what it builds, so a bench without one skips it |
-
-**The limit of the whole tier, stated against itself.** "Needs nothing"
-is verified two ways and **both are static** - the `board` marker comes
-from `fixturenames`, which is transitive, and a grep over every
-board-free file finds no `measure.Board(`, `ports.find_*` or
-`open_raw(`. Nobody has run this tier on a machine with no Due attached.
-If you are the first, and it wants hardware, that is a bug in the marker
-and worth saying so.
-
-## 4. Domain 1 - sample rate, low to high
-
-Ladders in RC, every entry an exact divisor of 39 MHz:
-
-| Mode | RC ladder | Range |
+| substitute | what it is | what it CANNOT prove |
 |---|---|---|
-| 2ch loop | 780, 390, 200, 195, 130, 98, 88, **86** | 50k - 453,488/ch |
-| 1ch loop | 390, 195, 98, 65, 50, 45, **44** | 100k - 886,363 |
-| AWG play-only | 195, 98, 65, 44, 39, 32, **28** | 200k - 1,392,857 |
+| **synthetic signals** | waveforms whose answer is known by construction, with thresholds taken from real runs - `level_census` asserts 778-780 on a defective run and 0 on a healthy one because that is what 25 runs on hardware gave | that an instrument survives the **nuisance**. A synthetic built only from the hypotheses certifies a detector the real artifact walks straight through - #24's void arm, where the pairs were built in perfect alignment so none ever straddled a DAC level change, which then dominated every real capture |
+| **a fake device** | `host/daemon/device.py`, answering the same API a board answers, deterministically. `test_gui` drives the front end against a synthetic daemon the same way | anything about the board. And **a fake that invents a field is worse than no fake**: this one once returned `mean_us`, which the device does not, so the first script written against it failed on hardware instead of in the suite |
+| **the built image, and the source tree** | `nm` over the linked ELF, and greps over CMake and the sources. `test_no_heap` reads the ELF rather than grepping for `printf`, because a grep misses `puts`, `fwrite` and `fputs` and fires on a comment | anything about runtime. And a static check is the **easiest kind to write so that it cannot fail** - four were written here in one day, all green, none able to fail |
+| **firmware C on the host compiler** | `lib/due_shared/src/stream_core.c` compiled and run natively with its seam mocked, which is possible only because `stream_port.h` is a complete record of what the framer touches outside itself (#14). Built twice, real and mutant; the mutant must fail | anything about registers or timing - the mocked seam is the point. It needs a **host** GNU compiler: a cross compiler cannot run what it builds, so a bench without one skips it |
 
-Per rate: `seq_gaps == 0`, `crc_bad == 0`, `under == 0`,
-`measured_rate` within 0.5% of declared.
+**The tier's limit, stated against itself.** "Needs nothing" is verified
+two ways and **both are static** - the `board` marker comes from
+`fixturenames`, which is transitive, and a grep over every board-free
+file finds no `measure.Board(`, `ports.find_*` or `open_raw(`. Nobody
+has run the tier on a machine with no Due attached. If you are the
+first and it wants hardware, that is a bug in the marker.
 
-Plus a **rate-exactness** test, which is the one that catches
-truncation: `header.sample_rate_hz == 39_000_000 // RC`.
+### The board marker is derived, not written
 
-The AWG ladder is play-only (`P`), with no capture running, so a DAC
-fault cannot be masked by, or blamed on, the capture path.
+`pytest_collection_modifyitems` marks a test `board` when it resolves
+the `board` fixture, directly or through any fixture that does. It is
+applied there rather than written on each test because **a fixture
+cannot be forgotten and a marker can**, and because it stays right the
+first time a helper grows a dependency.
 
-## 5. Domain 2 - signal integrity
+### `test_link_health` runs first
 
-The most important domain and the easiest to under-build. Counters have
-been clean while the signal was wrong.
+The native cable has failed hard - VBUS present, D+/D- dead - and a
+physical fault imitates a firmware regression exactly. `FILE_ORDER` in
+`conftest.py` puts the link check first so that failure is diagnosed
+rather than attributed. Flashing is flaky for the same reason the
+fixture retries it: SAM-BA drops, and a retry-less fixture reports false
+failures.
 
-| Test | Assertion | Catches |
-|---|---|---|
-| Tone amplitude per window | median >= threshold, >=90% of windows above | real purity |
-| **Slew limit** | max abs delta between consecutive same-tag samples <= analytic `2*pi*f*A/fs` | spliced data, without the Goertzel - tests invariant 5 directly |
-| Demux / crosstalk | 2ch with DAC1 at mid scale: A1 tone < a few codes | channel tags read wrong |
-| Tag hygiene | every sample tag is in the configured mask; header `channel_mask` agrees | channel confusion |
-| DC transfer | `--dc` sweep tracks the code; span ~546-2760 mV | analog path, needs no tone |
-| Frequency accuracy | recovered peak == tone sent | a rate error hiding behind good amplitude |
-| **Negative control** | playback stopped -> A0 shows **no** tone | stale data; this is the test that would have caught the "frozen DAC" |
-| Freshness | `first_seq` near 0 and device timestamps span the host window | shared helper on *every* measurement, not a standalone test |
+### One board, held open
 
-The slew test is worth building first. It needs no spectral analysis, it
-is cheap, and it fails loudly on exactly the failure the protocol exists
-to prevent: data spliced across two points in time that still passes its
-header CRC.
+Whether opening the control port resets the board is a **platform
+difference** - measured both ways, and `CLAUDE.md` carries the table. A
+reset also re-enumerates the native port under a possibly new name.
 
-### The device-waveform gate, re-verified after the pair_fold fix (2026-08-26)
+Either way the fixture is session-scoped and holds the port open for the
+whole run. Paid per test, that cost is a reset, a settle and a re-glob -
+about 15 s each. Held open it is about half a second. **That one
+decision is the difference between a suite that finishes in minutes and
+one that takes half an hour.**
 
-`b96368e` changed `pair_fold()` to try both parities *after* the gate in
-`test_device_generated_waveform_is_continuous` had been rewritten to
-depend on it, so the gate was resting on an instrument that had moved
-under it. Re-measured on Track B `main`, four captures at preset `M`
-plus four suite runs:
+`measure.Board` is a context manager. A script that dies holding the
+control port makes every later run fail with "Access is denied", which
+looks exactly like a board fault.
 
-| | parity 0 | parity 1 |
-|---|---|---|
-| `pair_spread` (median abs difference) | **1.00 codes** | 24.00 codes |
-| fold z | 43-60 | 1.2 |
-| fold peak | -5.3 to -5.6 codes | +42.6 to +43.2 codes |
+## 4. What each domain tests
 
-**The selection rule is not close on device data - the two parities are
-24x apart, identically on every run.** That is the separation the rule
-assumes: within a held DAC level the difference is noise, across a level
-boundary it is a whole DAC step. A rule that picked the smaller of two
-similar numbers would be a coin flip and the gate would be unstable; it
-is not.
+What each domain is for and the trap in it. The ladders,
+parametrisations and assertions are in the test files; do not copy them
+here.
 
-Two things follow that are worth writing down. **Parity 0 is what wins
-here, which is what the pre-fix code assumed** - so at preset `M` on this
-board the fix changes nothing, and the gate's recorded verdicts before
-and after it are comparable. The fix's effect was on the layout sweep's
-sine arms, where the trim landed on the other side. And **the wrong
-parity does not merely misreport, it reports something plausible**: z 1.2
-at +43 codes, which is a DAC step wearing the artifact's units. `hold_ok`
-refuses it at 24 against a limit of 4, which is the guard doing its job
-rather than the measurement failing.
+**Rates** - `test_rates.py`. Ladders are RC and the Hz are derived,
+because `39 MHz / RC` for integer RC is the whole set of rates the
+hardware has. `test_every_ladder_rate_is_a_real_divider_value` holds the
+round-trip, and a rate-exactness test catches truncation:
+`header.sample_rate_hz == 39_000_000 // RC`. The AWG ladder is play-only
+so a DAC fault cannot be masked by, or blamed on, the capture path.
+*The trap:* one channel is **slower** in conversions per second than two
+(886,363 against 906,976), because a two-channel trigger converts its
+pair back to back and amortises overhead a lone conversion pays in full.
+A test assuming one channel runs at twice the two-channel trigger rate
+encodes a bug.
 
-The gate itself is stable across seven consecutive runs: `hold_ok` true,
-xfail on issue #5 every time, peak -5.4 to -5.6 codes at phase 192, z
-41-60 against a control z of 2.7-4.1. The census count under it moves
-between 0, 1 and 5 steps over 45 codes run to run, which is exactly why
-the gate stopped thresholding that number and started identifying the
-state instead.
+**Signal integrity** - `test_integrity.py`. The most important domain
+and the easiest to under-build, because counters have been clean while
+the signal was wrong. The **slew test** is the one to understand first:
+maximum absolute delta between consecutive same-tag samples against the
+analytic `2*pi*f*A/fs`. It needs no spectral analysis, it is cheap, and
+it fails on exactly what invariant 5 exists to prevent - data spliced
+across two points in time that still passes its header CRC. The
+**negative control** matters as much: with playback stopped, A0 must
+show no tone. That is the test that would have caught the frozen DAC.
+*The trap:* the gate identifies issue #5's state with `pair_fold()`
+rather than thresholding a count. The two parities are 24x apart on
+device data, so the selection is not a coin flip - but the wrong parity
+does not merely misreport, it reports something plausible, and `hold_ok`
+is what refuses it.
 
-## 6. Domain 3 - channels and ceilings
-
+**Channels and ceilings** - `test_channels.py`, `test_contract.py`.
 Cheap, mostly contract, so it runs before the long streaming tests.
+*The trap:* assert the refusal and assert that the loop does not start.
+A ceiling that is accepted and silently halved is the failure this
+domain exists for.
 
-- 2ch accepts RC 86 and **refuses** RC 85; 1ch accepts RC 44 and
-  **refuses** RC 43. Assert the refusal is reported on the console and
-  that the loop does not start.
-- Aggregate conversion rates: 2ch -> 906,976, 1ch -> 886,363, and
-  explicitly assert `1ch_aggregate < 2ch_aggregate`.
-- `t` and `=0,0,1t` parsed: ratio ~1.000 for every row above the cliff,
-  and the first row past it reads 0.500 or REFUSED.
-- Matched full-rate loop in both modes, on both tracks.
+**Transport** - `test_transport.py`, marked slow.
+*The trap:* see the tolerance rule above. These are the benchmarks whose
+spread was assumed at 5% and measured at 35-59%.
 
-## 7. Thresholds
+**Freshness is not a domain.** It is a shared helper on *every*
+measurement, not a standalone test.
 
-`pytest --calibrate` runs the ladders and writes `tests/baseline.json`;
-tests assert against it with a tolerance band. Commit it, labelled as
-this board's figures - it is a record of one board, not a datasheet.
+## 5. Baselines
 
-Divergences between the tracks go in an explicit `KNOWN_DIFFERENCES`
-table with the cause written down, **never** as a loosened global
-tolerance. Current entry:
+`tests/baseline.json` holds this board's calibrated thresholds. It is
+committed, and it is **a record of one board, not a datasheet.** The
+constants tests need live there and in `docs/hardware.md`; they are not
+copied into this file.
 
-| Case | Track A | Track B | Cause |
-|---|---|---|---|
-| Capture resyncs, 2ch full-rate pair, 6 s | 1241 | 21 | Track A's capture IN still goes through the core's blocking `USBD_Send`, which stalls the service loop long enough for the capture ring to lap. Objective 1 removes it. |
+`pytest --calibrate` writes the measured figures. **It writes only at
+session end**, so a run that hangs at 90% yields nothing - a full
+calibrated run once took twelve minutes and produced no data at all.
+Run it per file instead, each flushing its own `baseline.measured.json`,
+and merge. That file is not in `.gitignore`: it is for a human to
+promote into `baseline.json`, never to land as it is.
 
-Keeping it in a table means it stays visible and closes itself when
-capture IN moves to endpoint DMA, instead of silently widening a
-tolerance that then hides the next regression.
+**A track divergence gets an explicit entry with its cause written
+down, never a loosened global tolerance.** A widened tolerance hides the
+next regression; a named divergence closes itself when the cause is
+fixed. There is no such table in the tree today, and that is the correct
+state rather than an omission - the last one recorded was Track A's
+capture resyncs, caused by the core's blocking `USBD_Send`, and it
+closed when Track A moved to endpoint DMA.
 
-## 8. Runtime budget
+## 6. Working on the suite
 
-**The "roughly 5 minutes per track" this section used to claim was an
-intention, not a measurement, and it had drifted to fifteen.** Issue #50
-measured it. What follows is measured, with the bench and the commit
-attached, because a budget quoted without them encodes whatever was
-broken that week - see the warning at the end of this section, which is
-not hypothetical.
+Rules that apply to everything here.
 
-### The two tiers
+**Interleave before believing, especially when the first numbers look
+decisive.** A cyclic-GC hypothesis separated perfectly on its first four
+measurements and fell apart at five rounds interleaved. Two sequential
+batches of eight on the ramp test disagreed by a factor of two and a
+half. Any claim about a flaky test - including "my change fixed it" -
+needs interleaved arms, exactly as a firmware A/B does. `tools/ab.py`.
 
-Every test that resolves the `board` fixture - directly or through any
-fixture that does - is marked `board` at collection time by
-`pytest_collection_modifyitems`. It is applied there rather than written
-on each test because a fixture cannot be forgotten and a marker can, and
-because it stays right the first time a helper grows a dependency.
+**Break a new check on purpose and watch it fail, then put it back.** A
+guard that passes because it cannot fail is worse than no guard: the
+suite goes green, the property goes unwatched, and nobody looks again.
+Four such were written here in one day, all green, none able to fail,
+and not one was caught by reading.
 
-| tier | select with | tests | mac-bench | needs |
-|---|---|---|---|---|
-| smoke | `-m smoke` | 151 of 587 | **104 s** | the board |
-| board-free | `-m "not board"` | 448 of 587 | **98 s** | nothing |
-| full | (no marker) | 587 | **646 s** | the board |
+**Score a run by grepping for the PASS, never for the absence of the
+failure.** `1 skipped` does not match `1 failed` and lands in whichever
+bucket the harness defaults to. That voided a ten-step bisect;
+`--require-board` refuses the substitution for the board case, but a
+test that errors or is deselected by a stale `-k` is the same trap
+uncovered.
 
-Re-measured at `1eec02b` on 2026-08-31, because the suite had grown
-since these were first written and a table nobody re-reads is how the
-five-minute budget this section replaced went stale in the first place.
-**The times held; the counts did not** - 584 collected became 587, and
-board-free 441 became 448. Collection counts come from
-`--collect-only`, not from adding up a run summary, because a summary
-counts passed/skipped/xfailed separately and it is easy to drop one.
+**Coverage is not traded away for speed.** Where a test is slow because
+it is measuring something slow, mark it and keep it out of the default
+selection - never weaken it. The rate ladders are the clean example:
+each case is a distinct RC needing its own run, there is nothing to
+share, and the cost is the same on every bench. And several tests here
+*are* the finding rather than a check on it - `OVERSUPPLIED`,
+`RESIDUAL`, the banner-order guards, `test_no_heap`. Speed comes from
+removing duplication and from moving work out of the per-run path.
 
-**"needs nothing" is checked two ways, because it is the claim another
-bench acts on.** The `board` marker comes from `fixturenames`, which is
-transitive - so no fixture chain can reach the `board` fixture without
-being marked, and the tier cannot leak a hardware test through a helper.
-That covers the fixture path. The other path is code that opens a port
-without going through a fixture at all, and a grep over every board-free
-file for `measure.Board(`, `ports.find_*` and `open_raw(` finds none.
+**Never truncate a suite run's output.** One failure was lost to a
+`| tail -3` and never reproduced. `-rf --tb=short`, keep all of it.
 
-What is *not* verified is the obvious thing: nobody has run this tier
-with the board physically unplugged. Both checks above are static. If
-you are the first to run it on a machine with no Due attached and it
-wants hardware, that is a bug in the marker and worth saying so.
+**Sharing a board run is right when the measurement is the same
+measurement** - see `helpers.shared_run`, whose docstring carries the
+rule. The caution is that a bad shared run fails every test keyed to it,
+which is one measurement failing several assertions rather than several
+measurements agreeing.
 
-`smoke` is the one tier this section used to describe that turned out
-to be accurate: it claimed "near 2 minutes" and it is 104.2-104.9 s
-across five runs. It is *not* a subset of the board-free tier - it
-holds board tests and needs hardware - so the two are different
-questions and neither replaces the other. `-m "not board"` answers
-"did I break the host code", `-m smoke` answers "is the board still
-doing the basics".
+**A listed serial node is not an openable one.** `CreateFile` can accept
+the open and never return, so a generous deadline never gets tested.
+`Board.open_native()` runs each attempt in a daemon thread and abandons
+it rather than hanging the run.
 
-**One flake is on record against `smoke` and is not diagnosed.**
-`test_daemon_api.py::test_a_recording_is_the_frames_verbatim` failed
-once in five runs of the selection, and passes isolated (0.29 s) and
-in its own whole file (70 passed). It is **board-free**, so an
-intermittent failure in it is not hardware weather and should not be
-written off as such. The detail was lost to a truncated capture and it
-has not reproduced since; `records/issue50-tiers-macos.jsonl` carries
-the observation so the next sighting is the second and not the first.
+**Heal the ports before believing a board fault**, in this order. The
+bench is a test rig, not a patient.
 
-**What a board-free test actually runs against - the four substitutes
-and what each one cannot prove - is in §3**, because it is a design
-question rather than a budget one. This section is only the selection
-and the clock.
+1. **Close what you opened.** `measure.Board` is a context manager.
+   Most of one session's "unstable enumeration" was a dead process
+   holding the control port.
+2. **Kill any stray process** still holding a node - a blocked open
+   holds the port until its process exits. One force-kill made five
+   consecutive per-file runs error at fixture setup in 0.05 s each,
+   reading as five broken files rather than one unreleased port.
+3. **Reflash.** `tools/flash.py` does a 1200-baud touch and a full
+   re-enumeration, and reliably clears a device that has stopped
+   answering.
 
-Board tests are 12 of 36 files and about **88% of the clock**. So the
-board-free tier is the per-change loop: it is a minute and a half, it
-needs no hardware, and it is the tier that catches the class of thing
-that otherwise hides. windows-desk found two board-free failures in
-`test_banner_order.py` - 0.05 s, red on three benches for days - and
-found them only because they happened to be reading a duration profile,
-then discovered someone else had fixed them in parallel. **A fifteen
--minute suite is read for its total and not for its failures.**
+## 7. Tests known to fail intermittently
 
-### What the fifteen minutes actually was
+**Do not wave any of these away as known flakiness.** Read the next
+failure before re-running it - everything in this table came from
+someone doing that.
 
-Two thirds of it, on this bench, was a defect rather than a cost.
+| test | established | ruled out |
+|---|---|---|
+| `test_host_fed_ramp_loses_no_samples` | Real, unexplained, and its rate drifts by era: 5, then 2, then 1 of 8 in sequential batches on one firmware, and 0 of 10 against 1 of 10 when two firmwares were interleaved with a reflash between arms. Fails byte conservation with losses that are *not* whole 128-byte chunks, which the assertion reads as the device losing data it received | Attribution to any build. The sequential batches were measuring the hour, not the image |
+| `test_a_client_that_stops_reading...` (#58) | **Two disjoint host levers for one assertion**: CPU contention on Linux (0/33 → 11/18), suite context on Windows (3/20 → 6/10), each inert on the other host. Blast radius is **1 of 7** tests in the file on both. Signature is `first_seq=5`, one gap mid-stream | That a cheap standalone reproducer can stand in for it - the Windows lever fires 3 of 4 full suites and **0 of 38** reproducer runs |
+| `test_the_fanout_cost_is_recorded_per_frame` | Board-free, off by one on a tolerance, and only inside a full run: 6 of 6 standalone and 47 of 47 within its own file, on the same tree | Nothing yet |
 
-`Board.ctl()` caches on `_ctl_tried` and `drop_ctl()` used to leave it
-set, so one dropped control link disabled it for the rest of the
-session and every later `run_play` fell back to reading its counters
-over the console: **+3.22 s per run, permanently** (issue #51,
-`5f8e186`). The trigger is an objective-0c `close()` wedge, which
-re-enumerates the native port and so is guaranteed to drop the link -
-and 0c is macOS's, 9 wedges in 30 cycles here against 0 in 52 on
-windows-desk.
+These share only that none reproduces outside a long session. **Do not
+assume a shared cause** - one is a host feed rate against real hardware,
+one is a daemon under contention, one is accounting over a fake device.
 
-That is why the profile disagreed across hosts, and the disagreement is
-what found it: `test_play_counters.py` read 273.8 s here against 78.1 s
-on windows-desk while `test_integrity` and `test_rates` agreed within
-4%. It lands on that one file because it runs last (it is not in
-`FILE_ORDER`), so it is downstream of every wedge the suite has had, and
-because it is the most `run_play`-dense file there is. The cross-host
-gap went 260 s to 90 s when it was fixed.
+### One that is resolved, kept because the resolution is instructive
 
-The rest was real duplication: thirteen board runs in the two heaviest
-files were nine distinct ones (`8416ad4`). See `helpers.shared_run`,
-whose docstring carries the rule for when sharing is right - and the
-caution that a bad shared run fails every test keyed to it, which is one
-measurement failing several assertions rather than several measurements
-agreeing.
+`test_awg_ladder_play_only[*-32]` was on this list for weeks as a
+bimodal host feed rate: `fed_mbs` landed at 2.431-2.434 or 2.281-2.283
+and never between, across three sessions and two suite compositions, and
+the entry concluded that something discrete was switching and that it
+was host-side because Track A showed the same low mode.
 
-### What is irreducible
+**Both halves were right about the data and wrong about the cause.**
+The discrete thing is the device: at RC 32 the DACC draws a mode that
+consumes 15/16 of nominal, behind `DACC_MR_REFRESH`, and 2.283/2.438 is
+0.9364 against a lattice value of 0.9375. Track A showed it because it
+is the **silicon**, not because it is the host. And the test failed
+because it compared the feed against *nominal* on a host that
+backpressures, so a correct run read 93.6% against a 95% gate.
 
-Not everything slow is duplication, and the ladders are the clean
-example. `test_rates.py` parametrises 22 cases over distinct RC values;
-each is a different rate and needs its own run, there is nothing to
-share, and it costs 105-108 s **on both benches**. Where a test is slow
-because it is measuring something slow, the answer is to mark it and
-keep it out of the default selection - never to weaken it. Several tests
-here encode measurements that took days to establish: `OVERSUPPLIED`,
-`RESIDUAL`, the banner-order guards and `test_no_heap` *are* the
-finding, not a check on it.
-
-### Quoting a budget
-
-**Attach the bench and the commit, or do not quote it.** This bench was
-the slowest of the three, and it was the slowest *because of a defect* -
-so a ceiling enforced against it the day before `5f8e186` would have
-been calibrated against `_ctl_tried` and would have looked perfectly
-reasonable. Enforce against the slowest bench, and record which host and
-which commit made it the slowest.
-
-## 9. Risks
-
-- **The native cable is marginal.** It failed hard twice on 2026-08-21,
-  VBUS present and D+/D- dead. Add `test_link_health` first in the run
-  so a physical fault is diagnosed rather than blamed on firmware.
-- **Flashing is flaky.** SAM-BA drops happened twice in one session. The
-  fixture needs retry with the port given explicitly, or the suite
-  reports false failures.
-- **Opening the control port resets the board.** Any test that opens it
-  independently of the session Board invalidates whatever was running.
-- **`test_host_fed_ramp_loses_no_samples` is intermittent, and its rate
-  drifts by era.** Measured 2026-08-26 rather than guessed: 5 of 8, then
-  2 of 8, then 1 of 8 in sequential batches on the same firmware - and
-  **0 of 10 against 1 of 10 when the two firmwares were interleaved with
-  a reflash between arms.** So the failure is real, unexplained, and
-  *not* attributable to anything changed that day; the sequential
-  batches were measuring the hour, not the build. It fails on byte
-  conservation with losses that are not whole 128-byte chunks
-  (`[10, 12, 10, ...]` bytes), which the assertion reads as the device
-  losing data it received.
-
-  **The lesson is the method, not the number.** Two sequential batches
-  of eight disagreed with each other by a factor of two and a half. Any
-  claim about this test - including "my change broke it" and "my change
-  fixed it" - needs the arms interleaved, exactly as a firmware A/B
-  does. See `tools/ab.py` for why.
-
-- **`test_matched_full_rate_loop[b-2-906976-453488]` and
-  `test_awg_ladder_play_only[b-32]` also fail occasionally** - and the
-  second one is characterised below and is **not** Track B's: it fails
-  the same way on Track A, one
-  sequence gap or one uncounted repeat, at the top of the ladder where
-  `docs/HANDOFF.md` already records an intermittent residual and
-  oversupply. Neither has been characterised the way the ramp test now
-  has. Do not quote any of this as "known flakiness" to wave away a
-  failure there - the next one should be read before it is re-run.
-
-  **The next one was read, 2026-08-26.** `test_awg_ladder_play_only[b-32]`
-  failed in a full run at **2.283 MB/s against the 2.438 MB/s that
-  1,218,750 sps needs** - 93.7% against a 95% gate, so a 1.3-point miss
-  rather than a collapse. It is the *host* short of the rate, not the
-  device: `under=0`, and the assertion exists precisely because a device
-  that was never asked for the rate cannot underrun.
-
-  **Then it passed 6 of 6 standalone, 8 s each, on the same binary and
-  the same host minutes later.** So whatever this is, it is not an
-  intrinsic ceiling at RC 32 - it depends on running inside a full
-  suite. Two hypotheses that are *not* it, both checked rather than
-  assumed: `rt.promote()` is not a no-op on Windows (it does
-  `timeBeginPeriod(1)` and `SetThreadPriority`), and the `Feeder` thread
-  does promote itself - `Feeder._run` calls it first thing.
-
-  **Characterised the same day, and the useful finding is that the rate
-  is bimodal.** Read `fed_mbs` from `--calibrate` instead of pass/fail -
-  the test records it on passing runs too - and it lands in one of two
-  tight clusters and never between them:
-
-  | mode | `fed_mbs` | against the 2.438 needed | gate at 0.95 |
-  |---|---|---|---|
-  | high | **2.431-2.434** | 99.8% | passes |
-  | low | **2.281-2.283** | 93.6% | fails |
-
-  Fourteen runs, seven of each arm of the A/B below, plus three failures
-  seen in full-suite runs at 2.282274, 2.282930 and 2.283142 - a spread
-  of 0.04% across three different sessions and two different suite
-  compositions. **A scheduling or jitter story predicts a distribution;
-  two clusters 6.3% apart with nothing between them means something
-  discrete is switching.** That is the thing to chase, and it is not
-  "occasional flakiness".
-
-  **A hypothesis that died, recorded because the way it died is the
-  point.** `test_jitter.py` immediately before `test_rates.py`
-  reproduces it in 110 s, where `test_rates.py` alone does not and
-  `test_census.py` before it does not either - so it looked specific to
-  that file, and `test_jitter.py` is pure computation that builds
-  histograms. Cyclic-GC pressure was the obvious mechanism, and
-  disabling the collector made the first four measurements separate
-  perfectly: 2.282/2.283 with it on, 2.432/2.433 with it off.
-
-  **Interleaved to five rounds, it fell apart.** `gc=off` produced 2.281
-  in round 4, and pooled the low mode appears 3 of 7 times with the
-  collector on and 1 of 7 with it off - not separable at that n. The
-  first four points were the exact trap the ramp-test entry above warns
-  about, on the same suite, three paragraphs later. **Interleave before
-  believing, including when the first numbers look decisive - especially
-  then.**
-
-  Two mechanisms are ruled out by direct check rather than by argument:
-  `rt.promote()` is not a no-op on Windows (it does `timeBeginPeriod(1)`
-  and `SetThreadPriority`), and `Feeder._run` promotes its own thread
-  before its first write.
-
-  **And it is host-side, which is now shown rather than inferred: the
-  same low mode appears on Track A.** `test_awg_ladder_play_only[a-32]`
-  fed 2.282286 MB/s in a full Track A run - inside the 2.281-2.283
-  cluster the Track B failures sit in, matching to 0.05%. The two tracks
-  share no firmware source, enumerate through different USB stacks, and
-  reach the DAC by different code; what they share is this host and this
-  feeder. **So the entry above should not be read as a Track B
-  property**, and any explanation that starts in the firmware has to
-  account for two independent implementations landing on the same two
-  numbers.
-- **Two tests now fail only inside a full run, and it is worth
-  watching whether that is one thing or two.**
-  `test_awg_ladder_play_only[*-32]` is characterised above.
-  `test_daemon_api.py::test_the_fanout_cost_is_recorded_per_frame`
-  joined it on 2026-08-27: `assert 33 <= (30 + 2)`, off by one on a
-  tolerance, in a full Track B run. It passed 6 of 6 standalone and 47
-  of 47 with its own file, three times each, on the same tree.
-
-  They have almost nothing else in common - one is a host feed rate
-  against real hardware, the other is board-free accounting over a fake
-  device - so **do not assume a shared cause**. What they share is that
-  neither reproduces outside a long session, which is the property that
-  makes both expensive to chase and is why both are written down rather
-  than re-run until green. The suite grew ~27 tests on 2026-08-26 when
-  the bench-scope work landed, which changes ordering and timing for
-  everything after it; that is a candidate and not a finding.
-
-- **`--calibrate` writes only at session end, so a run that hangs at
-  90% yields nothing.** Collect per file instead - one pytest session
-  per test file, each flushing its own `baseline.measured.json` - and
-  merge. A full calibrated run took twelve minutes and produced no data
-  at all on 2026-08-27; the per-file sweep produced 51 keys and every
-  file completed.
-
-  `tests/baseline.measured.json` is also not in `.gitignore`, so it can
-  be committed by accident. It is meant for a human to promote into
-  `baseline.json`, never to land as it is.
-
-- **After force-killing a suite, heal the ports before running anything
-  else.** A killed pytest can leave a process holding the control port,
-  and every later run then fails with `could not open port 'COM7':
-  Access is denied` - which looks exactly like a board fault and is not.
-  Measured on 2026-08-27: one force-kill made five consecutive per-file
-  runs error out at fixture setup in 0.05 s each, reading as five broken
-  files rather than one unreleased port. Killing the two stray processes
-  was enough; the reflash in the healing order below was not needed.
-
-- **Never truncate a suite run's output.** The first of those two was
-  lost to a `| tail -3` on the pytest invocation, which threw away the
-  traceback and left nothing to diagnose; the re-run was green and the
-  evidence was gone for good. Run with `-rf --tb=short` and keep the
-  whole thing.
-- **The native port can accept an open and never return from it**, and
-  that is not the same as being absent. Measured on Windows after a
-  NRSTB reset: `ports.native_nodes()` lists the node, Device Manager
-  reports it healthy, and `CreateFile` blocks - so a caller with a
-  generous deadline still hangs, because control never comes back to
-  test the deadline. Seen as `OSError(22)`, Windows `ERROR_SEM_TIMEOUT`,
-  and as error 31 on the sibling node.
-
-  `Board.open_native()` runs each attempt in a daemon thread and
-  abandons it after `attempt_timeout`, re-globbing every pass, for up to
-  45 s. An abandoned thread leaks a handle in a process that is about to
-  exit; that is a straight trade against hanging the run.
-
-- **Healing, in the order to try it.** Any of these is acceptable - the
-  bench is a test rig, not a patient.
-  1. **Close what you opened.** `measure.Board` is a context manager;
-     use `with`. A script that dies holding the control port makes every
-     later run fail with "Access is denied" on it, and that looks
-     exactly like a board fault. Most of one session's "unstable
-     enumeration" was this.
-  2. **Kill any stray process** still holding a node. A blocked open in
-     an abandoned process holds the port until that process exits.
-  3. **Reflash.** `tools/flash.py` does a 1200-baud touch and a full
-     re-enumeration and reliably clears a device that has stopped
-     answering. Verified: five consecutive capture cycles afterwards,
-     4.8 s each, byte-identical.
-
-## 10. Implementation order
-
-Each step builds and is independently verifiable, in the same spirit as
-the bring-up order.
-
-1. `host: extract the measurement library from the CLI tools` - add
-   `host/measure.py`, make the three scripts wrappers. Verify by
-   diffing each CLI's output before and after.
-2. `tests: add the pytest harness and board fixture` - conftest, the
-   session Board with a held control port, flashing with retry, and
-   `test_link_health`.
-3. `tests: cover channel modes and ceiling refusals` - domain 3 first;
-   it is cheap and catches contract regressions before the long tests
-   have run.
-4. `tests: cover the rate ladders` - domain 1.
-5. `tests: cover signal integrity` - domain 2, slew test first.
-6. `tests: cover USB transport` - domain 4, marked slow.
-7. `tests: record the calibrated baseline for this board`.
+The guard now measures the feed against what the device actually
+consumed, and the test is not flaky. **The general lesson is that a
+test asserting a rate must assert it against what the other end took,
+not against what was asked for** - `helpers.py` makes the same
+correction five times for the same platform fact. Issue #48 and
+`docs/awg.md` carry the mechanism.
