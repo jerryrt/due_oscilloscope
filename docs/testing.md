@@ -6,8 +6,7 @@ them is the oracle working - they are two independent programmings of
 one silicon, so a disagreement points at one of them. Track C is a
 third track and **not** a third oracle: it shares Track B's drivers, so
 a C-versus-B divergence points at `main()` or at the kernel, never at
-the register programming. See invariants 3 and 4 in `CLAUDE.md`, and
-issue #45 for the ruling.
+the register programming. See invariants 3 and 4 in `CLAUDE.md`.
 
 ```sh
 python3 -m venv .venv
@@ -73,7 +72,7 @@ gap rather than evidence about the test's subject. Run it with
 oracle result.
 
 **Quote a duration with its bench and its commit, or do not quote it.**
-The slowest bench was once slowest because of a defect (#51), so a
+The slowest bench was once slowest because of a defect, so a
 ceiling enforced against it that week would have been calibrated against
 the bug and would have looked perfectly reasonable.
 
@@ -105,10 +104,10 @@ here rather than being imagined for the table.
 
 | substitute | what it is | what it CANNOT prove |
 |---|---|---|
-| **synthetic signals** | waveforms whose answer is known by construction, with thresholds taken from real runs - `level_census` asserts 778-780 on a defective run and 0 on a healthy one because that is what 25 runs on hardware gave | that an instrument survives the **nuisance**. A synthetic built only from the hypotheses certifies a detector the real artifact walks straight through - #24's void arm, where the pairs were built in perfect alignment so none ever straddled a DAC level change, which then dominated every real capture |
+| **synthetic signals** | waveforms whose answer is known by construction, with thresholds taken from real runs - `level_census` asserts 778-780 on a defective run and 0 on a healthy one because that is what 25 runs on hardware gave | that an instrument survives the **nuisance**. A synthetic built only from the hypotheses certifies a detector the real artifact walks straight through. One arm here was voided for exactly that: its synthetic pairs were built in perfect alignment, so not one ever straddled a DAC level change - which was then the thing that dominated every real capture |
 | **a fake device** | `host/daemon/device.py`, answering the same API a board answers, deterministically. `test_gui` drives the front end against a synthetic daemon the same way | anything about the board. And **a fake that invents a field is worse than no fake**: this one once returned `mean_us`, which the device does not, so the first script written against it failed on hardware instead of in the suite |
 | **the built image, and the source tree** | `nm` over the linked ELF, and greps over CMake and the sources. `test_no_heap` reads the ELF rather than grepping for `printf`, because a grep misses `puts`, `fwrite` and `fputs` and fires on a comment | anything about runtime. And a static check is the **easiest kind to write so that it cannot fail** - four were written here in one day, all green, none able to fail |
-| **firmware C on the host compiler** | `lib/due_shared/src/stream_core.c` compiled and run natively with its seam mocked, which is possible only because `stream_port.h` is a complete record of what the framer touches outside itself (#14). Built twice, real and mutant; the mutant must fail | anything about registers or timing - the mocked seam is the point. It needs a **host** GNU compiler: a cross compiler cannot run what it builds, so a bench without one skips it |
+| **firmware C on the host compiler** | `lib/due_shared/src/stream_core.c` compiled and run natively with its seam mocked, which is possible only because `stream_port.h` is a complete record of what the framer touches outside itself. Built twice, real and mutant; the mutant must fail | anything about registers or timing - the mocked seam is the point. It needs a **host** GNU compiler: a cross compiler cannot run what it builds, so a bench without one skips it |
 
 **The tier's limit, stated against itself.** "Needs nothing" is verified
 two ways and **both are static** - the `board` marker comes from
@@ -182,8 +181,8 @@ counter says everything is fine while the signal disagrees, reach for a
 sample encodes its own position, which is what turned "the output
 jumped" into "313 bytes never arrived"; `docs/status.md` has that
 defect.
-*The trap:* the gate identifies issue #5's state with `pair_fold()`
-rather than thresholding a count. The two parities are 24x apart on
+*The trap:* the gate identifies the displaced-sample artifact
+(`docs/awg.md`) with `pair_fold()` rather than thresholding a count. The two parities are 24x apart on
 device data, so the selection is not a coin flip - but the wrong parity
 does not merely misreport, it reports something plausible, and `hold_ok`
 is what refuses it.
@@ -293,7 +292,7 @@ someone doing that.
 | test | established | ruled out |
 |---|---|---|
 | `test_host_fed_ramp_loses_no_samples` | Real, unexplained, and its rate drifts by era: 5, then 2, then 1 of 8 in sequential batches on one firmware, and 0 of 10 against 1 of 10 when two firmwares were interleaved with a reflash between arms. Fails byte conservation with losses that are *not* whole 128-byte chunks, which the assertion reads as the device losing data it received | Attribution to any build. The sequential batches were measuring the hour, not the image |
-| `test_a_client_that_stops_reading...` (#58) | **Two disjoint host levers for one assertion**: CPU contention on Linux (0/33 → 11/18), suite context on Windows (3/20 → 6/10), each inert on the other host. Blast radius is **1 of 7** tests in the file on both. Signature is `first_seq=5`, one gap mid-stream | That a cheap standalone reproducer can stand in for it - the Windows lever fires 3 of 4 full suites and **0 of 38** reproducer runs |
+| `test_a_client_that_stops_reading...` | **Two disjoint host levers for one assertion**: CPU contention on Linux (0/33 → 11/18), suite context on Windows (3/20 → 6/10), each inert on the other host. Blast radius is **1 of 7** tests in the file on both. Signature is `first_seq=5`, one gap mid-stream | That a cheap standalone reproducer can stand in for it - the Windows lever fires 3 of 4 full suites and **0 of 38** reproducer runs |
 | `test_the_fanout_cost_is_recorded_per_frame` | Board-free, off by one on a tolerance, and only inside a full run: 6 of 6 standalone and 47 of 47 within its own file, on the same tree | Nothing yet |
 
 These share only that none reproduces outside a long session. **Do not
@@ -320,5 +319,5 @@ The guard now measures the feed against what the device actually
 consumed, and the test is not flaky. **The general lesson is that a
 test asserting a rate must assert it against what the other end took,
 not against what was asked for** - `helpers.py` makes the same
-correction five times for the same platform fact. Issue #48 and
-`docs/awg.md` carry the mechanism.
+correction five times for the same platform fact. `docs/awg.md`
+carries the mechanism.
