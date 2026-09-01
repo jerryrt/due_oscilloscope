@@ -736,11 +736,22 @@ nodes and `ports.native_order()` is the rule. Track A still has one.
 
 Paths are enumeration-dependent and change whenever a cable moves; the
 table is an example, not a reference. Discover with
-`python3 host/ports.py`, which identifies the programming port by the
-fact that it answers and the native pair by asking IOKit. Always
-`/dev/cu.*`, never `/dev/tty.*`. Opening the control port resets the
-board over NRSTB and re-enumerates the native port, so open control
-first and re-glob the native nodes after.
+`python3 host/ports.py`, which identifies **every** node by USB VID/PID
+on every platform - the programming port is 2341:003D and the native
+pair 2341:003E. It used to identify the programming port by the fact
+that it answered, and `24488b4` removed that because probing opens the
+port. **The paths in the table are macOS's**: Linux is `/dev/ttyACM*`,
+and on macOS always `/dev/cu.*`, never `/dev/tty.*`.
+
+**"Opening the control port resets the board over NRSTB" is not true of
+a plain open, and this bench measured it.** On `linux-x1`, opening
+`/dev/ttyACM0` at 115200 and closing it left `dev_us` running - 16410.9
+s before, 16415.9 s after, which is the sleep and nothing else. An
+explicit DTR toggle does reset it: 16433.8 s to 5.7 s. So the reset
+depends on how the port is opened, not on the fact of opening it, and
+anything relying on an open to get a *fresh* board may not be getting
+one. It cost a void experiment here before it was checked, and the
+check is one heartbeat read either side.
 
 ## Do not invent numbers
 
