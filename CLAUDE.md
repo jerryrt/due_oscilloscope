@@ -913,6 +913,7 @@ since you last looked, because it usually has.
 |---|---|
 | **git** | what changed and why. A commit body is where a finding *lives* - the measurement, the number, the hypothesis that died. `docs/` on `main` is where it survives the branch that produced it |
 | **issues** | discussion. Anything that needs another party: a question, a proposal, dividing work so two people do not build the same thing, a measurement only their bench can take, a disagreement about method |
+| **`docs/`** | what is settled and will be needed again. **`docs/writing.md` is how to write one** - general to detailed, point at the code rather than copying it, no issue numbers, and never narrate the document's own corrections |
 
 The split matters because they decay differently. A commit message is
 read by whoever runs `git log` on that file in six months; an issue is
