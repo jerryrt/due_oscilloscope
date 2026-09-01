@@ -123,6 +123,63 @@ such a record back, and tests it with a rank test rather than a
 first-half/second-half split - halving is a bin chosen after seeing the
 data.
 
+### The unit of independence is the board session, not the capture
+
+**A tool that takes N captures inside one `measure.Board` has not made N
+independent draws**, and treating it as though it had is the same error
+as counting a bench's repeated runs as a second bench. It cost a
+published claim on 2026-08-31 and it took two hours to find.
+
+The shape it makes is specific and convincing. Two instruments, same
+image, same preset, same command sequence, apparently disagreeing:
+
+    issue5_sites, N captures in ONE session       0 breaches / 40
+    test_integrity, one capture per pytest run    7 breaches / 37
+
+    Fisher on captures, the wrong unit            p = 0.013
+    Fisher on sessions, the right unit            p = 1.00
+
+The first number is **0 of two sessions**, not 0 of 40, and at the
+second arm's ~19% per-session rate two clean sessions is a p = 0.66
+outcome. The instruments never disagreed. A mechanism was invented to
+explain the discrepancy - that writing `EEFC_FMR` moved the board into a
+different regime - and it survived for an hour on data that never
+contained a discrepancy at all.
+
+**What follows for a harness.** A within-session manipulation is fine
+and is often the *right* design: `tools/issue5_sites.py --fws-plan`
+alternates blocks inside one session precisely so a session-level drift
+lands on every arm equally, and its site-set result is unaffected by any
+of this. What must not be done is quoting the *incidence* from such a
+run as though each capture were a draw. **A within-session arm bounds
+what varies within a session; only repeated sessions bound what varies
+between them.**
+
+This is `linux-x1`'s rule from the same day - *two benches sharing an
+instrument do not share its precision* - one level further down: **one
+bench sharing an instrument with itself does not get N independent
+draws by running it N times.**
+
+### And when a load is the variable, record it per run
+
+Three arms on 2026-08-31 were spoiled by load that had already stopped
+before the arm finished: CPU burners with a fixed duration that expired
+mid-run, and once a foreground command that timed out and took the
+burners it had started as its own children. Each produced a clean null
+that read as a result.
+
+**`uptime` at the end of a run is not a witness** - a load average is a
+lagging mean and recovers slowly enough to look plausible either way.
+**Per-run wall time is**, and it costs nothing: on that bench the same
+test read 10.5-11.0 s unloaded, 11.4-11.8 s at 1x oversubscription and
+12.2-12.6 s at 2x, cleanly separated. A null whose runs all sat at the
+loaded time is a null about the load; a null whose runs drifted toward
+the idle time is a null about nothing.
+
+Put the load *inside* the same script as the arms, and clean up with a
+`trap ... EXIT INT TERM` rather than a line at the end, so an
+interruption cannot leave either the load or a patched tree behind.
+
 ## Phase 0: measure the ruler before the thing
 
 **No tolerance gets written until its own repeatability has been
