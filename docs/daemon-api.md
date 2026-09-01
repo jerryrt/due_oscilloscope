@@ -193,6 +193,36 @@ missed. Nothing is ever spliced, and the drop count is the client's
 proof that a gap exists - the display rule and the device's own
 invariant 5 are the same rule.
 
+### That isolation needs a core, and this is its bound
+
+**Accepted limit, ruled 2026-09-01.** The promise above holds on a host
+with a core to spare. It does not hold under CPU contention, and the
+reading client can lose a frame too - about half the time once the
+lever is pulled.
+
+| host | what pulls it |
+|---|---|
+| Linux | ~2x CPU oversubscription |
+| macOS | contention, and it is **more sensitive** - it breaks around 1x where Linux needs 2x |
+| Windows | not contention. It appears inside a full suite run with load held constant |
+
+**The bound is two-sided, and the second half is why this is a limit
+rather than a fragility.** Measured on two hosts with two different
+levers: **one** of the seven daemon multi-client tests fails, and it is
+the same one each time. Everything else the daemon does is untouched by
+the same load.
+
+**No mechanism is identified**, on either route. One thing is known and
+untried: the daemon's reader thread never calls `host/rt.py`, which
+exists for time-sensitive I/O threads and which `measure.py` does use.
+A promoted reader may remove the contention route; nobody has run that
+arm at a load that fires the lever.
+
+Do not read a clean run as proof this is fixed. **A null taken with the
+wrong lever for your host reads exactly like a pass** - the two benches
+that found these levers each spent an afternoon proving the other's
+lever did nothing.
+
 The device is drained whether or not anyone is listening. A CDC device
 that stops draining bulk OUT hangs the host in `close()` waiting on
 write URBs that never complete.

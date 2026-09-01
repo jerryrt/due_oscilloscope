@@ -191,7 +191,7 @@ someone doing that.
 | test | established | ruled out |
 |---|---|---|
 | `test_host_fed_ramp_loses_no_samples` | Real, unexplained, and its rate drifts by era: 5, then 2, then 1 of 8 in sequential batches on one firmware, and 0 of 10 against 1 of 10 with two firmwares interleaved and a reflash between arms. Fails byte conservation with losses that are *not* whole 128-byte chunks, which the assertion reads as the device losing data it received | Attribution to any build. The sequential batches were measuring the hour, not the image |
-| `test_a_client_that_stops_reading...` | **Two disjoint host levers for one assertion**: CPU contention on Linux (0/33 to 11/18), suite context on Windows (3/20 to 6/10), each inert on the other host. Blast radius **1 of 7** tests in the file on both. Signature `first_seq=5`, one gap mid-stream | That a cheap standalone reproducer can stand in for it. The Windows lever fires 3 of 4 full suites and **0 of 38** reproducer runs |
+| `test_a_client_that_stops_reading...` | **Not a mystery - an accepted limit**, with its bound in `docs/daemon-api.md`. Two disjoint host levers for one assertion: contention on Linux and macOS, suite context on Windows, each inert on the other hosts. Blast radius **1 of 7** tests in the file, the same one, on two hosts | That a cheap standalone reproducer can stand in for it. The Windows lever fires 3 of 4 full suites and **0 of 38** reproducer runs |
 | `test_the_fanout_cost_is_recorded_per_frame` | Board-free, off by one on a tolerance, only inside a full run: 6 of 6 standalone and 47 of 47 within its own file, on the same tree | Nothing yet |
 
 These share only that none reproduces outside a long session. **Do not
