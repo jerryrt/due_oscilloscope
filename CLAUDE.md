@@ -799,6 +799,36 @@ the machine, and only then was their 0-of-10 a null from an instrument
 known to be able to fire. Before that it was indistinguishable from a
 blind one.
 
+**And a positive control has to be able to exhibit the *nuisance*, not
+just the signal.** A control built only from the hypotheses will certify
+a detector that the real artifact walks straight through, and it will do
+it while raising your confidence, which is the worst way for a check to
+fail.
+
+Measured on `windows-desk`, 2026-08-31, on #24's per-wrap question. The
+detector counted within-pair discontinuities, and was mutation-tested
+against both hypotheses before any board time:
+
+    per-wrap synthetic     59 : 117 : 234    (1 : 1.98 : 3.97)
+    per-second synthetic   40 :  40 :  40
+
+Flawless, and worthless. The synthetic series built pairs in perfect
+alignment - `e = (i // 2) % entries` - so **no synthetic pair ever
+straddled a DAC level change**, which is the thing that then dominated
+every real capture. On the board the counts were thousands, disagreed
+across every threshold, and measured the scan variable rather than the
+phenomenon: varying the ramp step changes the wrap rate *and* the step
+height, and the step height is exactly what a straddled pair reads. The
+arm is void, `records/issue24-wrap-rate-VOID-windows.jsonl`.
+
+So the question to ask of a positive control is not "does it show the
+effect" but **"what is the most likely wrong answer, and can this
+control produce it?"** A control that cannot produce the artifact cannot
+rule it out - and the same day, the same bench told two others that a
+null from an instrument known not to fire is worth nothing. This is that
+error one layer up, in the instrument's certification rather than in its
+output.
+
 ## Working alongside other agents
 
 **You are not the only one in this repository.** Several agents work it
