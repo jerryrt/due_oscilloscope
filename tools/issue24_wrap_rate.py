@@ -158,6 +158,11 @@ def main():
                        "n_samples": len(tail),
                        "seq_gaps": ps.seq_gaps, "crc_bad": ps.crc_bad,
                        "underruns": res.play.underruns if res.play else None,
+                       # Issue #51: which instrument read the
+                       # counters. A figure taken with printf in
+                       # the loop and one taken over the control
+                       # channel are two experiments.
+                       "via": res.play.via if res.play else None,
                        "events": ev}
                 row.update(prov)
                 rows.append(row)
