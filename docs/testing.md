@@ -194,20 +194,50 @@ instead of half an hour, so build it that way from the start.
 
 ```
 tests/
-  conftest.py          # --track, Board fixture, freshness + window helpers
-  baseline.json        # calibrated thresholds for THIS board
-  test_contract.py     # refusals, header self-consistency   (fast, first)
-  test_rates.py        # domain 1
-  test_integrity.py    # domain 2
-  test_channels.py     # domain 3
-  test_play_counters.py # the device's own instruments, not the signal
-  test_transport.py    # USB benchmarks                      (slow)
-host/measure.py        # extracted library
+  conftest.py        # --track, Board fixture, the board marker, FILE_ORDER
+  helpers.py         # shared assertions
+  hostcc.py          # finds a HOST gcc, for the one test that needs one
+  baseline.json      # calibrated thresholds for THIS board
+  framer/harness.c   # firmware C, built and run on the host - see below
+  test_*.py          # named for what they test; the set moves
+host/measure.py      # extracted library
 ```
+
+**Do not maintain a file list here.** This block used to name eight
+files and there are now about forty; a list of filenames is the part of
+a design document that rots first, and it rotted here. The tree answers
+what exists, and `-m board` / `-m "not board"` answers which of it needs
+hardware. What is worth writing down is not *which* files but *what a
+test without a board is testing against*, which is the next section.
 
 `pytest --track=a|b|both`, defaulting to both. Track is a session
 fixture that flashes once and yields a `Board`. Markers: `smoke`,
 `slow`, `awg`, `scope`, `track_a`, `track_b`.
+
+### What a board-free test runs against
+
+**§8 says how the tier is selected and what it costs. This says what is
+on the other side of the assertion** - the question a newcomer actually
+asks, which is: with no board attached, what is being tested?
+
+Four substitutes for the hardware. **The last column is the useful one**
+- each substitute fails in its own way, and every failure listed there
+has happened in this project rather than being imagined for the table.
+
+| substitute | what it is | used by | what it CANNOT prove |
+|---|---|---|---|
+| **synthetic signals** | waveforms whose answer is known by construction, with the thresholds taken from real runs - `level_census` asserts 778-780 on a defective run and 0 on a healthy one because that is what 25 runs on hardware gave | the analysis and instrument tests | that an instrument survives the **nuisance**. A synthetic built only from the hypotheses certifies a detector the real artifact walks straight through - #24's void arm, where `e = (i // 2) % entries` meant no synthetic pair ever straddled a DAC level change, which was then the thing that dominated every real capture |
+| **a fake device** | `host/daemon/device.py`, answering the same API a board answers, deterministically. `test_gui` drives the front end against a synthetic daemon the same way | the daemon and its protocol, and the GUI | anything about the board. And **a fake that invents a field is worse than no fake**: this one once returned `mean_us`, which the device does not, so the first script written against it failed on hardware instead of in the suite |
+| **the built image, and the source tree** | `nm` over the linked ELF, and greps over CMake and the sources. `test_no_heap` reads the ELF rather than grepping for `printf`, because a grep misses `puts`, `fwrite` and `fputs` and fires on a comment | the rules that have to survive people | anything about runtime. And a static check is the **easiest kind to write so that it cannot fail** - four were written here in one day, all green, none of them able to fail. Break it on purpose before trusting it |
+| **firmware C on the host compiler** | `lib/due_shared/src/stream_core.c` compiled and run natively, its whole seam mocked. Only possible because `stream_port.h` is a complete record of what the framer touches outside itself (#14). Built twice, real and mutant; the mutant must fail | `test_framer_close` alone | anything about registers or timing - the mocked seam is the point. It needs a **host** GNU compiler: a cross compiler cannot run what it builds, so a bench without one skips it |
+
+**The limit of the whole tier, stated against itself.** "Needs nothing"
+is verified two ways and **both are static** - the `board` marker comes
+from `fixturenames`, which is transitive, and a grep over every
+board-free file finds no `measure.Board(`, `ports.find_*` or
+`open_raw(`. Nobody has run this tier on a machine with no Due attached.
+If you are the first, and it wants hardware, that is a bug in the marker
+and worth saying so.
 
 ## 4. Domain 1 - sample rate, low to high
 
@@ -378,6 +408,11 @@ intermittent failure in it is not hardware weather and should not be
 written off as such. The detail was lost to a truncated capture and it
 has not reproduced since; `records/issue50-tiers-macos.jsonl` carries
 the observation so the next sighting is the second and not the first.
+
+**What a board-free test actually runs against - the four substitutes
+and what each one cannot prove - is in §3**, because it is a design
+question rather than a budget one. This section is only the selection
+and the clock.
 
 Board tests are 12 of 36 files and about **88% of the clock**. So the
 board-free tier is the per-change loop: it is a minute and a half, it
