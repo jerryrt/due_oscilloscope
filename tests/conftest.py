@@ -81,6 +81,13 @@ def pytest_addoption(parser):
                 help="do not fail the board-free tier for exceeding its "
                      "five-minute ceiling (issue #50); for a bench slower "
                      "than the one the constant was measured on")
+    g.addoption("--require-board", action="store_true",
+                help="fail rather than skip when the board is absent or "
+                     "on the wrong track (issue #58). For measurement "
+                     "harnesses that score runs by matching pytest's "
+                     "summary: a skip matches no failure pattern, so it "
+                     "scores as a pass and an arm that never executed "
+                     "reads as green. Same shape as --dso for the scope")
     g.addoption("--mixed-instruments-ok", action="store_true",
                 help="do not fail a session that read counters over both "
                      "the control channel and the console (issue #51). "
@@ -229,15 +236,44 @@ def board(request, track):
     """The board, with its control port held open for the session."""
     want = track
     b = None
+    # Issue #58. An experiment harness scores runs by pattern-matching
+    # pytest's summary line, and a skip is the outcome nobody writes a
+    # pattern for: `*failed*` does not match "1 skipped", so a skipped
+    # run scores as a pass. It has now cost two benches on one day -
+    # ten green lines and zero tests executed on windows-desk, and ten
+    # bisect steps on linux-x1, where a live control certified the
+    # lever while the test arm was not executing at all.
+    #
+    # --require-board turns both board skips into failures. Same shape
+    # as --dso above, which already does it for the scope. Measuring
+    # code should pass it; the suite should not.
+    #
+    # WHAT IT DOES AND DOES NOT FIX, measured rather than assumed - a
+    # fixture failure is an ERROR to pytest, not a failure:
+    #
+    #   without it   exit 0, "1 skipped in 4.04s"
+    #   with it      exit 1, "1 error in 4.10s"
+    #
+    # So it fixes the EXIT CODE and not the text: a harness matching
+    # `*failed*` mis-scores BOTH of those as a pass. This flag is
+    # defence in depth and does not remove the need for the harness to
+    # test positively - match "1 passed", or check the exit code. Do
+    # not let it be quoted as making a text-matching harness safe.
+    require = request.config.getoption("--require-board")
     try:
         b = measure.Board(settle=3.0)
     except measure.BoardError as e:
+        if require:
+            pytest.fail(f"--require-board given but no board: {e}")
         pytest.skip(f"no board: {e}")
 
     have, banner = measure.which_track(b)
     if have != want or request.config.getoption("--reflash"):
         if request.config.getoption("--no-flash"):
             b.close()
+            if require:
+                pytest.fail(f"--require-board given but board runs track "
+                            f"{have}, wanted {want}, and --no-flash was given")
             pytest.skip(f"board runs track {have}, wanted {want}, "
                         f"and --no-flash was given")
         b.close()
