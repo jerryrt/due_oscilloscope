@@ -140,6 +140,27 @@ def main():
                        adc_mr=t["adc_mr"], adc_acr=t["adc_acr"],
                        tson=t["tson"], channel=t["channel"],
                        uptime_ms=hb["uptime_ms"], issue=18,
+                       # A second, independent thermometer for free -
+                       # windows-desk's point on #18. This heartbeat is
+                       # already paid for, and since #52 it carries the
+                       # SOF pair the board's own MCK is measured from.
+                       # A crystal's frequency moves with temperature,
+                       # so an ambient excursion has two witnesses here
+                       # instead of one, and they fail differently.
+                       #
+                       # The RAW PAIR, not mck_meas_hz. That figure is
+                       # cumulative since the port was configured, so it
+                       # converges and cannot show a shift - it would
+                       # silently produce a flat line. Differencing
+                       # consecutive rows on the host gives a windowed
+                       # figure; the cumulative one is kept only so a
+                       # reader can see it is not what was used.
+                       sof_frames=hb["sof"]["frames"],
+                       sof_dev_us=hb["sof"]["dev_us"],
+                       sof_ambiguous=hb["sof"]["ambiguous"],
+                       sof_restarts=hb["sof"]["restarts"],
+                       sof_available=hb["sof"]["available"],
+                       mck_meas_hz_cumulative=hb["sof"]["mck_meas_hz"],
                        test="room-signal-with-build-and-activity-fixed")
             rows.append(row)
             if first is None:
@@ -174,6 +195,39 @@ def main():
                   f"the room: a reset, a build change or any activity "
                   f"would do this too, which is what the uptime and "
                   f"adc_mr columns are for")
+        # The second thermometer, differenced on the host.
+        #
+        # Refusals are not decoration. `ambiguous` non-zero means
+        # `frames` is a LOWER BOUND, which reads slow and looks exactly
+        # like a real negative tempco; and a row across a `restarts`
+        # change counts from the restart, so differencing it is
+        # meaningless rather than merely noisy.
+        wins, refused_amb, refused_restart = [], 0, 0
+        for a, b in zip(rows, rows[1:]):
+            if a["sof_ambiguous"] or b["sof_ambiguous"]:
+                refused_amb += 1
+                continue
+            if a["sof_restarts"] != b["sof_restarts"]:
+                refused_restart += 1
+                continue
+            df = b["sof_frames"] - a["sof_frames"]
+            du = b["sof_dev_us"] - a["sof_dev_us"]
+            if df > 0 and du > 0:
+                wins.append(df / (du / 1e6))
+        print()
+        if wins:
+            lo, hi = min(wins), max(wins)
+            mean = statistics.mean(wins)
+            print(f"second thermometer, windowed SOF rate: n={len(wins)}")
+            print(f"  {lo:.4f} .. {hi:.4f} Hz, span {hi - lo:.4f}, "
+                  f"mean {mean:.4f}")
+            print(f"  as ppm of the mean: span {(hi - lo) / mean * 1e6:.2f}")
+        else:
+            print("second thermometer: no usable windows")
+        if refused_amb or refused_restart:
+            print(f"  refused {refused_amb} window(s) for ambiguous "
+                  f"frames and {refused_restart} across a restart")
+
         print(f"wrote {len(rows)} rows to {out}")
     finally:
         link.close()
