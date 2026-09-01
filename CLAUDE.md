@@ -369,6 +369,31 @@ Check here before reasoning from general Arduino knowledge.
   min/max off a long record with suspicion: one stray sample above a
   rail defeated the filter written to catch exactly this.
 
+- **A test that did not run is not a test that passed, and a live
+  control will certify it.** Score a run by grepping for the PASS, never
+  for the absence of the failure: `1 skipped` does not match `1 failed`
+  and lands in whichever bucket the harness defaults to.
+
+  It voided a ten-step bisect here on 2026-09-01. Before `24488b4` the
+  POSIX branch of `find_all_ports()` globbed `/dev/cu.usbmodem*`, a
+  macOS path, so on Linux every commit before it skipped with "no
+  board" - and each skip scored as a clean run. The search landed
+  confidently on `24488b4`, which is simply the first commit at which
+  the test can run on this platform.
+
+  **The interleaved control did not catch it and could not have.** It
+  ran at a known-bad commit *after* the boundary, so it fired 5-7 of 8
+  on every step and certified that the defect was reproducible while the
+  arm under test was not executing at all. The safeguard was working
+  perfectly and vouching for nothing. A defect that fades impersonates
+  the answer; **a test that skips is worse, because the control endorses
+  it.**
+
+  `--require-board` (`fcc2227`) now refuses the substitution at the
+  harness level. The habit still belongs here, because the next version
+  of this is a test that errors, or one deselected by a `-k` that
+  stopped matching, and no flag covers those.
+
 - **Discard the first run of any repeated measurement.** The first
   run after a board or daemon start is an outlier, and it has now been
   seen six times on `windows-desk` across four different quantities:
