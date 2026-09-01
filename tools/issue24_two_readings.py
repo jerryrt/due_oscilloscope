@@ -123,6 +123,12 @@ def main():
     ap.add_argument("--ramp", type=int, default=8)
     ap.add_argument("--dac-sps", type=int, default=200000)
     ap.add_argument("--adc-hz", type=int, default=200000)
+    ap.add_argument("--fold-period", type=int, default=None,
+                    help="override the derived ADC-side fold period. Use to "
+                         "fold at the PLAY BUFFER length instead of the DAC "
+                         "table wrap: at ramp 8 / hold 2 the two are both "
+                         "1024 samples and cannot be told apart, so a "
+                         "different ramp step is needed to separate them.")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -149,6 +155,11 @@ def main():
                          "= %s. A fractional hold has no fold period."
                          % (hold,))
     period = dac_entries * int(round(hold))
+    table_period = period
+    if args.fold_period:
+        period = args.fold_period
+        print("fold period OVERRIDDEN: %d (DAC table wrap would be %d)"
+              % (period, table_period), flush=True)
     board = measure.Board(settle=3.0)
     rows, dropped = [], 0
     try:
