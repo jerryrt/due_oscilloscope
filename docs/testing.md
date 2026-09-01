@@ -1,8 +1,13 @@
 # Testing
 
 `host/measure.py` is the measurement library and `tests/` is the suite
-over it. Both tracks run the same tests; a divergence between them is
-the oracle working.
+over it. Tracks A and B run the same tests, and a divergence between
+them is the oracle working - they are two independent programmings of
+one silicon, so a disagreement points at one of them. Track C is a
+third track and **not** a third oracle: it shares Track B's drivers, so
+a C-versus-B divergence points at `main()` or at the kernel, never at
+the register programming. See invariants 3 and 4 in `CLAUDE.md`, and
+issue #45 for the ruling.
 
 ```sh
 python3 -m venv .venv
@@ -32,9 +37,9 @@ ring slot to name the cause. `measure.build_ramp` and
 `ramp_discontinuities` are worth reaching for the next time a counter
 says everything is fine.
 
-So the suite exists to make the oracles automatic, and to let the two
-tracks check each other without a person holding both sets of numbers
-in their head.
+So the suite exists to make the oracles automatic, and to let A and B
+check each other without a person holding both sets of numbers in their
+head.
 
 ## 2. Running it
 
@@ -65,9 +70,18 @@ pytest --track=b -m "not board" --collect-only -q | tail -1
 pytest --track=b --durations=25
 ```
 
-`--track=a|b|both`, defaulting to both. Track is a session fixture that
-flashes once and yields a `Board`. Markers: `smoke`, `slow`, `awg`,
-`scope`, `track_a`, `track_b`.
+`--track=a|b|c|both`, defaulting to `both`. Track is a session fixture
+that flashes once and yields a `Board`. Markers: `smoke`, `slow`,
+`awg`, `scope`, `track_a`, `track_b`.
+
+**`both` means A and B, deliberately - Track C is opt-in.** It is
+excluded from the default until it passes, so that a track still
+growing its command surface cannot turn every bench's suite red. Most
+of what fails there today is one cause counted many times: a test
+drives a console letter Track C does not bind, which is a capability
+gap rather than evidence about the test's subject. Run it with
+`--track=c` when working on it, and do not read its totals as an
+oracle result.
 
 **Quote a duration with its bench and its commit, or do not quote it.**
 The slowest bench was once slowest because of a defect (#51), so a
