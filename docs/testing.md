@@ -21,25 +21,14 @@ environment.
 
 ## 1. What the suite is for
 
-Every regression before it existed was caught by a person noticing an
-odd figure in a manual run, and several were caught late. **The
-counters have lied more than once.** A clean
-`seq_gaps=0 crc_bad=0 under=0` has coexisted with a badly degraded
-signal, and a whole-run tone average has reported a collapse that was
-not happening.
+Ordinary TDD, with one local reason it is not optional: **the counters
+lie.** A clean `seq_gaps=0 crc_bad=0 under=0` has coexisted with a
+badly degraded signal, and a whole-run tone average has reported a
+collapse that was not happening. Before the suite, every regression was
+caught by a person noticing an odd figure, and several were caught
+late.
 
-The defect that settles the argument: host-fed playback lost samples
-with every counter on both sides green while the DAC skipped forward a
-few times a second. Finding it took a **ramp** - a waveform where every
-sample encodes its own position - to turn "the output jumped" into "313
-bytes never arrived", and the fact that every loss was smaller than one
-ring slot to name the cause. `measure.build_ramp` and
-`ramp_discontinuities` are worth reaching for the next time a counter
-says everything is fine.
-
-So the suite exists to make the oracles automatic, and to let A and B
-check each other without a person holding both sets of numbers in their
-head.
+So the oracles are automatic, and A and B check each other.
 
 ## 2. Running it
 
@@ -187,7 +176,12 @@ analytic `2*pi*f*A/fs`. It needs no spectral analysis, it is cheap, and
 it fails on exactly what invariant 5 exists to prevent - data spliced
 across two points in time that still passes its header CRC. The
 **negative control** matters as much: with playback stopped, A0 must
-show no tone. That is the test that would have caught the frozen DAC.
+show no tone. That is the test that would have caught the frozen DAC. And when a
+counter says everything is fine while the signal disagrees, reach for a
+**ramp** - `measure.build_ramp` and `ramp_discontinuities`. Every
+sample encodes its own position, which is what turned "the output
+jumped" into "313 bytes never arrived"; `docs/status.md` has that
+defect.
 *The trap:* the gate identifies issue #5's state with `pair_fold()`
 rather than thresholding a count. The two parities are 24x apart on
 device data, so the selection is not a coin flip - but the wrong parity
