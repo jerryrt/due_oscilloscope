@@ -270,24 +270,26 @@ target_compile_options(${t} PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-std=gnu11>
     $<$<COMPILE_LANGUAGE:CXX>:-std=gnu++11;-fno-rtti;-fno-exceptions;-fno-threadsafe-statics>
     -mcpu=cortex-m3 -mthumb -g -Os -ffunction-sections -fdata-sections
-    -nostdlib -Dprintf=iprintf --param max-inline-insns-single=500
-    # The vendored core is not warning-clean under a modern compiler and
-    # is not ours to fix.
-    #
-    # `-w` REACHES THE SKETCH TOO, and it is the whole of Track A's own
-    # code. Both targets are in this loop, so the sketch and the
-    # lib/due_shared sources it compiles are unchecked as well - and
-    # `-w` is not positional, so appending `-Wall -Wextra` after it
-    # re-enables nothing. It disarms `-Werror`, and every diagnostic
-    # any analyser reports as a warning, on this track with it.
-    #
-    # What that hides today is 11 `-Wunused-variable` in
-    # sketches/bringup/bringup.ino, measured on GCC 14.2.1. Splitting
-    # the loop so only track_a_core is silenced is the fix, and it needs
-    # those eleven gone first or Track A stops building under the
-    # project default of -Werror.
-    -w)
+    -nostdlib -Dprintf=iprintf --param max-inline-insns-single=500)
 endforeach()
+
+# The vendored core is not warning-clean under a modern compiler and is
+# not ours to fix, so it is silenced - and only it.
+#
+# `-w` IS NOT POSITIONAL AND IT IS NOT ONE FLAG'S WORTH OF SILENCE. A
+# target carrying it inhibits every warning wherever the flag sits on
+# the command line, so appending `-Wall -Wextra` after it re-enables
+# nothing; and because -Werror and -fanalyzer both act through
+# warnings, a target with `-w` is outside both. That is a whole target's
+# diagnostics, not a class of them, which is why it must not reach
+# `track_a_bringup` - the sketch and the lib/due_shared sources are the
+# project's own code and are held to the directory-wide
+# `-Wall -Wextra -Werror` in CMakeLists.txt like every other track.
+#
+# The core's headers reach the sketch anyway; they are silent there
+# because target_include_directories marks them SYSTEM, which suppresses
+# their diagnostics in the consumer without suppressing the consumer's.
+target_compile_options(track_a_core PRIVATE -w)
 
 # The capture ring lives in SRAM bank 1, and the stock flash.ld declares
 # `ram` as all 96 KB - bank 0 and bank 1 - so `.bss` grows straight into
