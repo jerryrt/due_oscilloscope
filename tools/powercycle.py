@@ -13,8 +13,9 @@ said yes, not that the rail dropped.
 
 **How the lie was caught, because I published the opposite first.** I
 committed that a cycle had cleared a wedged 16U2 and therefore proved
-the rail dropped. It had not: `tools/sketch.sh` retries three times on
-its own, and one of those retries landed at about the moment I cycled.
+the rail dropped. It had not: the flash tool of the day (`tools/sketch.sh`,
+since deleted - #55) retried three times on its own, and one of those
+retries landed at about the moment I cycled.
 The disproof is two-fold and neither part needs firmware - the device
 nodes are still present *during* the off window, and the board's LED
 keeps blinking through it, which the bench operator could see and I
