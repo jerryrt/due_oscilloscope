@@ -78,16 +78,8 @@ volatile uint32_t usb_last_devisr;
 volatile uint32_t usb_last_ep0isr;
 volatile uint32_t usb_devier_snap;
 
-/*
- * The last few SETUP packets, for `u`.
- *
- * Opening this port from macOS costs about 25 s in open() and another
- * 25 s in tcsetattr(), during which the host issues SETUP after SETUP
- * and the device answers every one without stalling. Track A does not
- * do this on the same cable and the same host, so it is this stack.
- * Counting SETUPs was not enough to say which request is being retried,
- * and instrumenting the suspect region beats reasoning about it.
- */
+/* The last few SETUP packets, for `u` - lets a SETUP retry storm be
+ * read back as which request is being retried, not just counted. */
 #define SETUP_LOG_N 16u
 static struct {
 	uint8_t  bm, req;
@@ -321,11 +313,9 @@ static bool ep_configure(uint32_t ep, uint32_t type, uint32_t dir_in,
  * is rebuilt on every bus reset and SET_CONFIGURATION, and a rebuild
  * that forgot the mode would silently recreate the one-transfer DMA
  * stall this flag exists to prevent.
- */
-/*
+ *
  * UOTGHS_DEVDMA is indexed from endpoint 1, so endpoint n uses index
- * n-1. Endpoint 0 has no DMA channel, which is fine: control transfers
- * are tiny and rare.
+ * n-1; endpoint 0 has no DMA channel.
  */
 #define DMA_IN_CH   (EP_IN  - 1u)
 #define DMA_OUT_CH  (EP_OUT - 1u)
@@ -556,10 +546,9 @@ size_t usb_cdc_write(const uint8_t *data, size_t len)
 /*
  * Bytes already taken from the bank currently held. The bank is a RAM
  * window, not a popping FIFO, and BYCT is fixed while the bank is held,
- * so a partial read can resume at an offset. Releasing the bank on a
- * partial read - as an earlier version did - silently discards the tail,
- * and one short packet from the host then shifts every later sample by
- * an odd byte count, which scrambles the playback channel tags.
+ * so a partial read must resume at an offset rather than release the
+ * bank - releasing early silently discards the tail, shifting every
+ * later sample by an odd byte count and scrambling the channel tags.
  */
 static uint32_t out_rd_off;
 
@@ -670,27 +659,17 @@ size_t usb_ctl_write(const uint8_t *data, size_t len)
  * explicitly and never mix them on the same endpoint at the same time.
  */
 /*
- * Put the control endpoints back where they belong.
+ * Put the control endpoints back where they belong: any write to
+ * DEVEPTCFG with ALLOC set re-allocates that endpoint, and per the
+ * datasheet (40.5.1.6) the x+1 window then slides up and loses its
+ * data while x+2 and above stay put. So endpoints above one that was
+ * reconfigured must be re-established, in ascending order.
  *
- * Any write to DEVEPTCFG with ALLOC set re-allocates that endpoint, and
- * the datasheet is explicit about the consequence (40.5.1.6): the x+1
- * window slides up and loses its data, while x+2 and above stay where
- * they are. Note 3 adds that re-allocating the *same* configuration is
- * harmless "as far as nothing has been written or received into" the
- * higher endpoints while it happens - which is precisely the condition
- * a control channel in use violates.
- *
- * Until this file grew a second CDC function, EP3 was the last endpoint
- * and the hazard was inert. It is not inert now, and the fix is what the
- * hardware asks for: allocate in ascending order, so re-establish
- * everything above the endpoint that moved.
- *
- * Only the control endpoints, deliberately. EP3 is also above EP2 and
- * has always been exposed to this, but it carries frames on DMA and
- * re-allocating it would disturb an armed transfer - a bigger change
- * than the defect being fixed, and one with its own history. These
- * three are manual-FIFO always, so restoring them costs nothing but a
- * frame in flight, which the parser's idle timeout already recovers.
+ * Only the control endpoints, deliberately: EP3 is also above EP2 but
+ * carries frames on DMA, and re-allocating it would disturb an armed
+ * transfer. These three are manual-FIFO always, so restoring them
+ * costs at most a frame in flight, which the parser's idle timeout
+ * already recovers.
  */
 static void ep_configure_control(void)
 {
@@ -712,13 +691,9 @@ static void ep_apply_autosw(uint32_t ep, bool on)
 {
 	uint32_t cfg = UOTGHS->UOTGHS_DEVEPTCFG[ep];
 
-	/*
-	 * A write that changes nothing must not happen at all, because on
-	 * this controller there is no such thing: every DEVEPTCFG write
-	 * carries ALLOC and re-allocates. Most calls here are redundant -
-	 * usb_dma_mode(false, false) on a stop that was already
-	 * stopped - and they were paying full price for it.
-	 */
+	/* A write that changes nothing must not happen at all: every
+	 * DEVEPTCFG write carries ALLOC and re-allocates, and most calls
+	 * here are redundant (e.g. stopping an already-stopped mode). */
 	if (!!(cfg & UOTGHS_DEVEPTCFG_AUTOSW) == on)
 		return;
 
@@ -857,10 +832,8 @@ bool usb_dma_out_start_stream(void *buf, uint32_t len)
 	 * No END_TR_EN: a continuous sample stream never legitimately
 	 * ends, and a short packet - which host-side pacing produces
 	 * whenever a write is not a multiple of 512 - must not terminate
-	 * the transfer. Ending it there forced a re-arm through the main
-	 * loop every couple of kilobytes, and the re-arm latency was a
-	 * measured throughput ceiling. The DMA just keeps filling; the
-	 * caller tracks progress through BUFF_COUNT.
+	 * the transfer. The DMA just keeps filling; the caller tracks
+	 * progress through BUFF_COUNT.
 	 */
 	return dma_out_start_ctl(buf, len, 0);
 }
@@ -869,16 +842,8 @@ void usb_cdc_detach_cycle(uint32_t ms)
 {
 	/*
 	 * Drop the pull-up, wait, put it back: a disconnect and reconnect
-	 * the host cannot tell from someone pulling the cable.
-	 *
-	 * This exists to answer one question about objective 0c. The host
-	 * hangs in close() while this device is demonstrably draining -
-	 * 145 k main-loop passes a second, a drain on every one - so it is
-	 * not waiting for the device to accept data. The recorded recovery
-	 * is physical: unplug and replug. If a software detach does the
-	 * same, the host is waiting on the USB pipe and a wedge is
-	 * recoverable without touching the cable; if it does not, the host
-	 * is stuck on something no device action can reach.
+	 * the host cannot tell from someone pulling the cable, so a wedged
+	 * close() is recoverable without touching it.
 	 *
 	 * Commanded from the *programming* port, necessarily: detaching
 	 * takes the control channel down with it, since both CDC functions
@@ -913,17 +878,10 @@ bool usb_cdc_configured(void)
 /* ------------------------------------------------------------------ */
 
 /*
- * Poll the same events the interrupt handles.
- *
- * Diagnostic first: if enumeration succeeds when polled but not when
- * interrupt-driven, then SETUP packets are arriving and the NVIC path is
- * at fault, which is a completely different bug from the device never
- * being addressed at all.
- *
- * It is also a legitimate implementation. Control transfers happen a few
- * dozen times at enumeration and essentially never afterwards, so
- * servicing them from the main loop costs nothing. Only the bulk path
- * needs to be fast.
+ * Poll the same events the interrupt handles. Control transfers happen
+ * a few dozen times at enumeration and essentially never afterwards,
+ * so servicing them from the main loop costs nothing - only the bulk
+ * path needs to be fast.
  */
 void usb_cdc_poll(void)
 {

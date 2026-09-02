@@ -34,7 +34,7 @@ bool   usb_cdc_ready(void);
  * question: SOF arrives from the moment the host configures the device,
  * and a frequency reference that switched off when an application closed
  * a serial port would be useless for exactly the long unattended runs it
- * exists to serve. Issue #52.
+ * exists to serve.
  */
 bool   usb_cdc_configured(void);
 extern volatile uint32_t usb_in_activity;   /* bytes/transfers, IN  */
