@@ -77,18 +77,35 @@ def _run(argv: list[str]) -> str:
                           check=True).stdout
 
 
+#: Producer strings a compiler leaves in `.comment`, in the order they
+#: are reported. An image built by clang and linked through the GCC
+#: driver carries both, because newlib and libgcc are GCC's.
+PRODUCERS = (r"[A-Za-z ]*clang version[^\n]*", r"GCC:[^\n]*")
+
+
 def compiler(elf: str) -> str:
     """The code generator, read out of .comment rather than off PATH.
 
     PATH says which compiler would be used next; .comment says which one
     produced this file. They disagree exactly when it matters.
+
+    EVERY producer, not the first one matched. A clang-built image links
+    the GCC toolchain's newlib and libgcc, so its `.comment` carries a
+    GCC string as well - and a reader that stops at the first `GCC:`
+    reports a clang image as a GCC one, which is the single question
+    this field exists to answer.
     """
     try:
         out = _run([_tool("arm-none-eabi-readelf"), "-p", ".comment", elf])
     except subprocess.CalledProcessError:
         return "unknown"
-    hit = re.search(r"GCC[^\n]*", out)
-    return hit.group(0).strip() if hit else "unknown"
+    found = []
+    for pattern in PRODUCERS:
+        for hit in re.findall(pattern, out):
+            hit = hit.strip()
+            if hit not in found:
+                found.append(hit)
+    return "; ".join(found) if found else "unknown"
 
 
 def sizes(elf: str) -> dict:
