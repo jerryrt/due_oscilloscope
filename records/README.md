@@ -88,6 +88,21 @@ split one desk into several**. `CLAUDE.md`'s rule that a figure without
 its bench is not comparable with anything still holds; what has to be
 checked first is whether the field says which desk or which arm.
 
+**And a desk can be renamed under you.** `macos-dso` and `mac-bench` are
+the same desk: it declared itself `macos-dso` in `bench.json` while a
+DS1102E sat on it, and was renamed on 2026-09-01 when the scope went
+away and the name stopped being true. So 83 rows across
+`noise-codes.jsonl`, `noise-activity.jsonl` and `metrics.jsonl` say
+`macos-dso` and everything that desk writes from now on says
+`mac-bench`. **They are joinable and nothing in the files says so.**
+
+The same swap moved DAC1 from the scope's EXT TRIG to **A1**, so
+`A1 free` is true of the `macos-dso` rows and false of the `mac-bench`
+ones. A noise figure that used A1 as its quiet reference is measuring a
+driven pin on one side of that date and a floating one on the other -
+`wiring` and `wiring_since` are the only fields that carry it, and rows
+that predate `collect()` carry neither.
+
 **One claim leans on a file in this table.** `issue48-tracka-macos.jsonl`
 is the Track A arm behind `fe4ec0b` — *"the oracle agrees - RC 32's
 15/16 is the silicon, not a track"* — and the `2/24` in `CLAUDE.md`'s
