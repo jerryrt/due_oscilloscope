@@ -1,0 +1,75 @@
+# What clang-tidy checks on this tree. Run by docker/run-clang-tidy.sh,
+# which is where the mechanics and the exit-code contract are written.
+#
+# THE DEFAULT IS ALMOST NOTHING, so this file is not a preference - it
+# is the whole configuration. Three families are on:
+#
+#   clang-diagnostic-* the compiler's own warnings, as clang sees them
+#                      under the flags gcc was given. Named EXPLICITLY,
+#                      and the leading -* is why: it turns these off
+#                      too, silently, leaving a run that reports
+#                      analyser findings and no warnings at all. The
+#                      canary in docker/run-clang-tidy.sh caught that on
+#                      its first execution, which is what a canary is
+#                      for
+#   clang-analyzer-*   symbolic execution across a translation unit.
+#                      The one thing here that is not a pattern match,
+#                      and the reason a C analyser is worth running on
+#                      firmware at all - it reasons about paths through
+#                      an ISR-and-main-loop shape that no grep reaches.
+#   bugprone-*         narrow, high-yield pattern checks. Mostly about
+#                      C semantics rather than taste.
+#
+# readability-* and cppcoreguidelines-* are OFF and are not an oversight.
+# They are written for application C++ and would bury the two families
+# above under naming, const-correctness and "avoid C arrays" on code
+# whose whole job is to write hardware registers.
+#
+# THREE CHECKS ARE OFF INSIDE THOSE FAMILIES. Each is off because its
+# entire output on this tree is inapplicable by construction, not
+# because a finding was inconvenient - and each carries the count it was
+# measured at, so the next reader can re-run it and disagree. Nothing
+# else is silenced anywhere: there is no baseline file, no
+# NOLINT is honoured by policy, and a finding a reader disputes is
+# argued rather than filtered.
+
+Checks: >
+  -*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-dynamic-static-initializers,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+
+# bugprone-easily-swappable-parameters - 29 findings, all of the form
+# "these adjacent uint32_t parameters could be transposed by a caller".
+# True of nearly every register-programming function here and of the
+# whole console and control surface; it is an API-shape opinion, not a
+# defect report.
+#
+# bugprone-dynamic-static-initializers - 62 findings, Track A only, and
+# every one is a FALSE POSITIVE. It fires on plain extern declarations
+# with no initializer at all - `extern volatile uint32_t ctl_rx_frames;`
+# in ctl.h, `extern const console_binding_t console_bindings[];` in
+# console.h - because Track A compiles the shared C headers into C++
+# translation units and the check does not look for an initializer
+# before warning. There is no dynamic initialization in any of them.
+#
+# clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling -
+# 20 findings, every one "replace memcpy with memcpy_s". The C11 Annex K
+# bounds-checked functions are optional, newlib does not implement them,
+# and the check fires on every memcpy and memset regardless of whether
+# the length is bounded - it is not a bounds analysis. The advice cannot
+# be taken on this target.
+
+# Report findings in our own headers as well as our own .c and .cpp, and
+# nowhere else. vendor/CMSIS, the Arduino SAM core and newlib all reach
+# the compiler through -isystem, so they are excluded twice over: once by
+# being system headers and once by not matching this.
+HeaderFilterRegex: '^.*/(apps|bsp|drivers|sketches/bringup|lib/due_shared/src)/'
+
+# The exit code is the script's job, not clang-tidy's: it has to tell
+# "found something" from "could not analyse", and --warnings-as-errors
+# collapses both into 1.
+WarningsAsErrors: ''
