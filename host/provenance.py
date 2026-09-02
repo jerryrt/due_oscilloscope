@@ -265,19 +265,18 @@ def firmware(build_stamp=None, track=None):
                            ("-dirty" if rec.get("dirty") else ""),
             "fw_sha256": rec.get("sha256"),
             # Which dirty, not merely that it was dirty. None on a clean
-            # tree. tools/flash.py says why sha256 alone cannot answer
-            # it: the identity line carries __DATE__/__TIME__, so the
-            # binary hash changes on every rebuild of one source state.
+            # tree, and the full form of what `build=` carries eight
+            # characters of - so the log and the board name one state.
             "fw_dirty_sha": rec.get("dirty_sha"),
             # Which code generator, and where it put things.
             #
             # `fw_repo_rev` was added because a version string is not a
             # commit. The same argument runs one step further: a commit
-            # is not an image. Three benches build this repository with
-            # three different compilers, and #5's displacement site is
-            # "a lottery over code layout" - so a cross-bench comparison
-            # that pins the commit has pinned the source and left the
-            # variable free.
+            # is not an image. The benches build this repository with
+            # different compilers, and #5's displacement site follows
+            # the generated code - so a cross-bench comparison that pins
+            # the commit has pinned the source and left the variable
+            # free.
             #
             # None on any row written before tools/flash.py recorded
             # them, which is honest: those runs are attributable to a

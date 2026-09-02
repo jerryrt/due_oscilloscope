@@ -1345,7 +1345,7 @@ def _no_instrument(board, what):
         "`B` and `O` cost 13-20 ms of blocked main loop taken while the "
         "sample path runs, which is invariant 8, so they are a "
         "different experiment rather than a slower one. All three "
-        "tracks carry a control channel and report ctlver=3, so this is "
+        "tracks carry a control channel and report ctlver=4, so this is "
         "a fault to fix and not a track to work around: see "
         "`Board.ctl_why`." % (what, board.ctl_why or "reason not recorded"))
 
@@ -1537,7 +1537,7 @@ class Board:
         never raises, because the suite has to keep working in those
         states. `self.control` is the *programming* port and is a
         different thing entirely. None is a fault, never a track: both
-        tracks carry a control channel and both report ctlver=3, and
+        tracks carry a control channel and both report ctlver=4, and
         what differs between them is which opcodes each implements - an
         unimplemented one answers CTL_ERR_OPCODE rather than nothing.
 
@@ -1773,7 +1773,7 @@ class Board:
         that costs a reset is not discovery a running daemon can do.
 
         None on firmware with one CDC function. No track is in that
-        state - all three enumerate a command port and report ctlver=3 -
+        state - all three enumerate a command port and report ctlver=4 -
         so None here is a fault to diagnose rather than a track to work
         around, and callers that need counters refuse rather than
         reaching for the console (#51 q3).
@@ -3253,7 +3253,9 @@ def parse_identity(text):
     return {
         "track": g["track"].lower(),
         "fw_version": g["fw"],
-        # 0 means "this track has no control channel" - Track A today.
+        # 0 means "this track has no control channel". No track
+        # reports it; all three run the same parser out of
+        # lib/due_shared, and what differs is which opcodes they bind.
         "ctl_version": int(g["ctlver"]),
         "frame_version": int(g["framever"]),
         # NOMINAL, both of them - the board derives them from its

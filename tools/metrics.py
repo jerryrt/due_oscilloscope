@@ -25,18 +25,19 @@ and one of them published a noise floor a whole bit wrong because of it.
 So the report carries all of:
 
     track, fw_version, ctl_version, frame_version   the contracts
-    build              __DATE__ " " __TIME__ off the device itself
+    build              FW_GIT_REV, off the device itself: the commit,
+                       plus the working-tree delta hash when dirty
     fw_repo_rev        the commit that produced the image
     fw_sha256          the exact bytes that were flashed
-    fw_flashed_at      when, so the build stamp can be matched to it
-    fw_provenance      "matched", or an admission
+    fw_flashed_at      when the image went on the board
+    fw_provenance      which question was answered, or an admission
 
-The commit is deliberately *not* baked into the firmware -
-`lib/due_shared/src/fw_version.h` argues that two toolchains would need
-build plumbing that can silently disagree, and it is right. It is
-recorded by `tools/flash.py` instead, which is the one place that knows
-the binary and the tree at the same instant, and matched back here
-against the build stamp the board reports.
+The commit is compiled into the firmware, so the board states it rather
+than a reader inferring it - `lib/due_shared/src/fw_version.h` gives the
+reasoning. `provenance.firmware()` then resolves it against
+`tools/flash.py`'s log by equality, which is where the bytes, the
+compiler and the flash time come from: those are facts about a build
+that the image itself does not carry.
 
 **This pipeline is firmware only, deliberately.** Every metric here
 opens the board directly and measures the device; nothing runs through
@@ -214,14 +215,14 @@ def render(run):
       f"*(bumped by hand; not an identifier on its own)* |")
     A(f"| **firmware commit** | `{p.get('fw_repo_rev')}` |")
     A(f"| **firmware sha256** | `{(p.get('fw_sha256') or '')[:16]}...` |")
-    A(f"| **build stamp** | {p.get('build')} |")
+    A(f"| **build identity (`build=`)** | `{p.get('build')}` |")
     A(f"| flashed at | {p.get('fw_flashed_at')} |")
     A(f"| build/commit match | **{p.get('fw_provenance')}** |")
     bcur = p.get("fw_build_is_current")
-    A("| image built after newest fw commit | " + (
+    A("| image holds the newest fw source | " + (
         "**yes**" if bcur is True else
-        "**NO - the image predates a firmware commit; a build cache "
-        "probably served a stale object**" if bcur is False
+        "**NO - the image was not built from a tree holding the newest "
+        "firmware source**" if bcur is False
         else "could not be checked") + " |")
     cur = p.get("fw_source_current")
     A("| firmware source since flashed | " + (

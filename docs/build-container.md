@@ -5,10 +5,10 @@ so the build environment stops being an unrecorded variable and this
 repository can have a CI at all. **It does not touch the board tier.**
 Nothing here changes how a measurement is taken.
 
-Before any of it, the image has to be able to say what it is, and today
-it cannot: the build is byte-deterministic apart from a wall-clock
-stamp that carries no timezone. That is phase 0 and it is source-side,
-independent of every container question below it.
+Before any of it, the image has to be able to say what it is. That is
+phase 0, it is source-side and independent of every container question
+below it, and it has landed: an image names the commit it was built
+from and two builds of one clean commit are identical to the byte.
 
 This document is live work: it names open issues, and the decisions it
 records have been taken rather than proposed.
@@ -21,7 +21,7 @@ records have been taken rather than proposed.
 | Track A and Track B firmware builds | the board tests |
 | the board-free tier, `-m "not board"` | flashing - `bossac`, the 1200-baud touch, re-enumeration |
 | static analysers over firmware and shared source | measurement of any kind |
-| build provenance: commit, compiler, layout, image digest | |
+| build provenance: commit, compiler, image digest, and the symbol map with the caveat #63 puts on `layout` | |
 
 ## What this is not
 
@@ -54,57 +54,37 @@ expose, never its justification.
 | **Build provenance exists as fields and is empty as data.** #59: of 6,658 stored rows, 1 carries a layout and 8 carry a compiler; `fw_layout` is present on 64 rows and null on all 64 | a commit read off the board, plus an image digest, makes the field mechanical instead of remembered |
 | **The board-free tier has never run without a board.** `docs/testing.md` says the `board` marker is verified two ways and both are static | a container is the dynamic check, and the marker is what the whole tier rests on |
 
-## Build identity: the stamp goes, the commit arrives
+## Build identity
 
-**The build is already bit-deterministic except for one string.** Four
-consecutive clean builds of Track B on one bench differ by **2 bytes in
-39,716** in the `.bin` and 2 in 175,116 in the `.elf`, at two fixed
-offsets: the seconds digit of `__TIME__`, once in the console identity
-line and once in the `DUEC` control-channel IDENTITY body. Neither
-artifact carries an absolute build path or a `__FILE__`. Over a longer
-window more of the same two strings diverges and nothing else moves.
+**An image names its own commit and the build is byte-reproducible.**
+`FW_GIT_REV` is the short revision, plus `+` and eight characters of the
+working-tree delta hash on a dirty tree, or `unknown` where git could
+not answer; `cmake/fw_git_rev.cmake` writes it from a `cmake -P` step
+run by every firmware build of every track, because a configure-time
+value is right on the day the tree was configured and silently wrong
+every day after. It reaches the `v` identity line and the `DUEC`
+control-channel IDENTITY body, and `tools/reproducible.py` reports 0
+differing bytes on both tracks.
 
-**A wall-clock stamp cannot be compared, because it carries no
-timezone.** `provenance._build_epoch()` parses it with `mktime` -
-reader-local - and `_iso_epoch()` slices the flash log's `when` to 19
-characters, discarding the `-0400` the log took care to write. One
-stamp and one log line, parsed in four zones, span **twelve hours**
-against a sixty-second comparison window:
+Every question a build identity is asked is then a graph question, with
+no clock in it:
 
-| TZ | `_build_epoch` | `_iso_epoch` |
-|---|---|---|
-| America/New_York | 1788365035 | 1788208488 |
-| Europe/Paris | 1788343435 | 1788186888 |
-| Asia/Shanghai | 1788321835 | 1788165288 |
-| UTC | 1788350635 | 1788194088 |
-
-All 139 records in `records/flash-log.jsonl` are `-0400`, so writer and
-reader agree today and this is latent. Its two consumers then part
-company: `firmware()` compares two reader-local values and is invariant,
-while **`build_is_current()` compares one against `git log --format=%at`,
-a true epoch, and nothing cancels.** US Eastern moves to `-0500` on
-2026-11-01, after which an image built before the transition parses one
-hour *late* - so a stale image reads as newer than the commit and is
-reported current. That is the unsafe direction, in the one check that
-exists because a cached build shipped a stale image.
-
-**What the stamp is for, and what does each job better.** `fw_version.h`
-gives it three, and a commit answers all three:
-
-| job | better answer |
+| question | how it is answered |
 |---|---|
-| distinguish two builds of one version | with a reproducible build, two builds of one source state **are** one image. The case that remains is a dirty tree, and `tools/flash.py` already hashes the working-tree delta as `dirty_sha` |
-| recover the commit on the board (`firmware()`) | state it, rather than infer it from wall-clock proximity within 60 s of a log entry |
-| detect a stale image from a build cache (`build_is_current()`) | ask whether the newest commit touching that track's firmware source is **reachable** from the image's commit - a graph question, with no clock, no slack and no DST. Equality would be wrong: most images are built at a commit that touched no firmware source at all, and would read stale every afternoon. The cache that motivated the check is also gone: `arduino-cli` is invoked by nothing and `enforce_clean_build` cleans every build of every track |
+| distinguish two builds of one version | two builds of one clean source state **are** one image. The case that remains is a dirty tree, and the delta hash covers it - `tools/flash.py` logs it in full as `dirty_sha`, the image carries its first eight characters |
+| recover the commit on the board (`firmware()`) | the board states it; the flash log is matched by equality against it |
+| detect a stale image (`build_is_current()`) | whether the newest commit touching that track's firmware source is **reachable** from the image's commit. Equality would be wrong: most images are built at a commit that touched no firmware source at all, and would read stale every afternoon |
 
-`fw_version.h` refuses a git SHA because "both toolchains need build
-plumbing that can silently disagree". There is one build system now, and
-one `add_compile_definitions` reaches all three targets.
-
-The wrinkle worth naming: a configure-time value goes stale the moment
-HEAD moves. It needs a build-time step - a `cmake -P` script rewriting a
-generated header only when the value changes - or the feature ships
-right on the day it was configured and wrong every day after.
+Reachability rather than a clock is what makes the answer the same in
+every timezone. A wall clock carries no zone: `_build_epoch()` parses
+one reader-local while `build_is_current()` compares it against `git
+log --format=%at`, a true epoch, so nothing cancels and one image reads
+current in one zone and stale in another. US Eastern moves to `-0500`
+on 2026-11-01, and an image parsed an hour late reads as *newer* than
+the commit that obsoleted it - the unsafe direction, in the one check
+that exists because a build cache shipped a stale image. Images built
+before the field carried a commit still go down that path; nothing new
+does.
 
 ## Decisions taken
 
@@ -138,25 +118,25 @@ and a bench's own build are not expected to agree byte for byte, and
 | A second-compiler pass must **not** go in the test suite | #34; roughly doubles it, against #50's ceiling |
 | MSVC never. `frame.h` is `__attribute__((packed))` and MSVC wants `#pragma pack`, so admitting it would change the packing semantics of the shared wire contract | `CLAUDE.md` |
 | Sanitizers cannot run on bare metal. They belong on the host-run tier, which already exists behind `stream_port.h` | `tests/test_framer_close.py`, `tests/test_console_out.py` |
-| `ctl_wire.h`'s `build[24]` is a wire field holding 20 characters today. A short SHA and a dirty marker fit; the layout does not change and the meaning does | `docs/control-protocol.md` |
+| `ctl_wire.h`'s `build[24]` is a wire field. `FW_GIT_REV` fits in 16 characters and `cmake/fw_git_rev.cmake` fails the build rather than truncating past 23, because a silently shortened commit is a wrong commit | `docs/control-protocol.md` |
 
 ## Phases
 
 Each phase lands on `main` on its own and is useful alone.
 
-| # | phase | exit criterion | how it is broken on purpose |
-|---|---|---|---|
-| 0 | Build identity: the commit and a dirty marker replace `__DATE__ __TIME__`; `firmware()` resolves by commit and `build_is_current()` by reachability; `parse_identity` follows | build twice with no commit between and `cmp` reports **0** differing bytes, where it reports 2 today | `git commit --allow-empty` and rebuild: the embedded value must change |
-| 1 | The image: xPack plus the SAM core, building Track A and Track B, with the bit-identity script under `tools/` run by the build | two builds in the image are byte-identical, and a second machine building from the same pinned inputs reproduces them | unpin one input - the base image tag, an apt version - and watch the bytes move |
-| 2 | The board-free tier in the image | `-m "not board"` collects and passes with no board reachable; then the **whole** suite in the image, where every board test must **skip** and none error | move one board test's marker and watch the tier fail; a test that errors instead of skipping is the marker bug `docs/testing.md` predicts |
-| 3 | Analysers that do not change codegen: `-fanalyzer`, `cppcheck`, `clang-tidy`, `-fstack-usage`, and `-Werror` with its off switch | each finds a real finding or is proven able to, **and** the analysed build stays byte-identical to the plain one | introduce a defect of the class the analyser claims to catch, and watch it fire; delete the tool from the image and watch the step fail rather than pass empty |
-| 4 | Provenance: commit read off the board, image digest and compiler recorded with the build | a row written after a containerised build carries a non-null commit, compiler and layout, which #59 says 696, 8 and 1 rows respectively manage today | build from a second image and watch the digest change |
-| 5 | Clang as an optional firmware compiler: target triple, sysroot at the GCC toolchain, linking through the GCC driver | both tracks build and the images run on the board, with the compiler read back out of the ELF | build with the sysroot removed and watch the link fail rather than silently pick up host headers |
-| 6 | Host-run tier hardening: UBSan and a fuzzer over `stream_core.c` and the control parser | the mutant harness still fails, as `test_framer_close.py` requires | as that test already does |
+| # | state | phase | exit criterion | how it is broken on purpose |
+|---|---|---|---|---|
+| 0 | **done** | Build identity: the image carries the commit and a dirty marker; `firmware()` resolves by commit and `build_is_current()` by reachability; `parse_identity` follows | build twice with no commit between and `tools/reproducible.py` reports **0** differing bytes | `git commit --allow-empty` and rebuild: the embedded value must change |
+| 1 | | The image: xPack plus the SAM core, building Track A and Track B, with the bit-identity script under `tools/` run by the build | two builds in the image are byte-identical, and a second machine building from the same pinned inputs reproduces them | unpin one input - the base image tag, an apt version - and watch the bytes move |
+| 2 | | The board-free tier in the image | `-m "not board"` collects and passes with no board reachable; then the **whole** suite in the image, where every board test must **skip** and none error | move one board test's marker and watch the tier fail; a test that errors instead of skipping is the marker bug `docs/testing.md` predicts |
+| 3 | | Analysers that do not change codegen: `-fanalyzer`, `cppcheck`, `clang-tidy`, `-fstack-usage`, and `-Werror` with its off switch | each finds a real finding or is proven able to, **and** the analysed build stays byte-identical to the plain one | introduce a defect of the class the analyser claims to catch, and watch it fire; delete the tool from the image and watch the step fail rather than pass empty |
+| 4 | | Provenance: commit read off the board, image digest and compiler recorded with the build | a row written after a containerised build carries a non-null commit, compiler and layout, which #59 says 696, 8 and 1 rows respectively manage today. `layout` is the weak one of the three - it is partly a property of the reader's `nm`, and #63 is open on it | build from a second image and watch the digest change |
+| 5 | | Clang as an optional firmware compiler: target triple, sysroot at the GCC toolchain, linking through the GCC driver | both tracks build and the images run on the board, with the compiler read back out of the ELF | build with the sysroot removed and watch the link fail rather than silently pick up host headers |
+| 6 | | Host-run tier hardening: UBSan and a fuzzer over `stream_core.c` and the control parser | the mutant harness still fails, as `test_framer_close.py` requires | as that test already does |
 
-Phase 0 changes phase 1's exit criterion from a layout hash to a byte
-comparison, which is why it comes first. Phases 0-4 are the plan;
-5 and 6 are what is worth doing after it.
+Phase 1's exit criterion is a byte comparison rather than a layout
+hash because phase 0 made one possible, which is why it came first.
+Phases 0-4 are the plan; 5 and 6 are what is worth doing after it.
 
 ## What this plan does not answer
 

@@ -453,24 +453,32 @@ Check here before reasoning from general Arduino knowledge.
   limits live in the CDC-ACM stack, not the PHY.
 - **Nothing is 5 V tolerant.** No clamps, no series resistors, no
   protection of any kind.
-- **Three version numbers, and none substitutes for another.**
-  `FRAME_VERSION` (`frame.h`) is the sample-stream wire format,
-  `CTL_VERSION` (`ctl.h`) the control-channel wire format, and
-  `FW_VERSION_*` (`version.h`, one byte-identical copy per track) says
-  which build is on the board when both contracts are unchanged. A host
-  *refuses a pairing* on the first two and *reports* the third. Bumping
-  `CTL_VERSION` is a hard break by design: the device rejects a frame
-  whose version is not its own, so a mismatched host fails on the first
-  exchange rather than misparsing every one after it.
+- **Three version numbers and a build identity, and none substitutes
+  for another.** `FRAME_VERSION` (`frame.h`) is the sample-stream wire
+  format, `CTL_VERSION` (`ctl.h`) the control-channel wire format, and
+  `FW_VERSION_*` (`lib/due_shared/src/fw_version.h`, one shared copy
+  every track compiles) says which release is on the board when both
+  contracts are unchanged. **Which *build* of that release is
+  `FW_GIT_REV`, not any of the three** - the commit, plus the
+  working-tree delta hash when the tree was dirty, written by
+  `cmake/fw_git_rev.cmake` before every firmware build of every track
+  and reported in `build=`. A host *refuses a pairing* on the two wire
+  formats and *reports* the other two. Bumping `CTL_VERSION` is a hard
+  break by design: the device rejects a frame whose version is not its
+  own, so a mismatched host fails on the first exchange rather than
+  misparsing every one after it.
 - **Ask a board what it is with `v`, not with the banner.** Both tracks
-  emit one identity line in one fixed format - `# id: track=B fw=0.1.0
-  ctlver=2 framever=3 mck=... build=...` - and `measure.parse_identity`
-  reads it. `ctlver=0` means "this track has no control channel", and
-  **no track reports it any more**: Track A gained one on 2026-08-27 and
-  reports `ctlver=4`, the same as Track B, because both run the same
-  parser out of `lib/due_shared`. What still differs is which *opcodes*
-  a track implements - an unimplemented one answers `CTL_ERR_OPCODE`
-  rather than a body of zeroes. See `docs/shared-source.md`. The banner says the track only in prose and costs
+  emit one identity line in one fixed format - `# id: track=B fw=0.2.0
+  ctlver=4 framever=3 mck=... build=...` - and `measure.parse_identity`
+  reads it. `build=` is matched opaquely to the end of the line, and
+  `host/provenance.py` is the only place that decides what a given
+  value can answer. `ctlver=0` means "this track has no control
+  channel", and **no track reports it any more**: Track A gained one on
+  2026-08-27 and reports `ctlver=4`, the same as Track B, because both
+  run the same parser out of `lib/due_shared`. What still differs is
+  which *opcodes* a track implements - an unimplemented one answers
+  `CTL_ERR_OPCODE` rather than a body of zeroes. See
+  `docs/shared-source.md`. The banner says the track only in prose and costs
   89 ms of blocked main loop; matching `"Track A"` in a paragraph is the
   old fallback and is kept only for images built before `v` existed. On
   a deployed board - native port only - the answer comes from the
@@ -1167,18 +1175,32 @@ Record the compiler because it is cheap and because a figure that *does*
 turn out to depend on layout can then be re-read rather than
 re-measured. Do not assume a figure depends on it.
 
-**`sha256` cannot serve as the discriminator, and it is the first thing
-anyone reaches for.** The identity line carries `__DATE__`/`__TIME__`,
-so the hash changes on every rebuild of one source state: two builds of
-`3aadf90` in one directory on one machine, minutes apart, gave
-`a3e551b4` and `f02aeb9a`. A cross-bench `sha256` mismatch is evidence
-of nothing at all, and was nearly published here as if it were
-decisive. `tools/flash.py` already said so in `dirty_sha`'s docstring.
+**`sha256` of the image is an identity, and it is an identity only for
+as long as the build stays reproducible.** Two builds of one clean
+commit are identical to the byte on both tracks;
+`tools/reproducible.py` builds twice, a second apart, and reports the
+differing-byte count, so the property is checked rather than assumed.
+A hash is worth nothing the day a wall clock, an absolute build path or
+an unpinned container input leaks in, and that guard is what notices.
 
-What does serve is the **defined-symbol address map**, which carries no
-timestamp - those same two builds both hashed to `c4cd8445987b5261`
-with identical text, data and bss. `tools/image_fingerprint.py` reports
-it, `tools/flash.py` logs `cc` and `layout` with every flash, and
+**It is still a bare yes or no.** Two benches whose hashes disagree
+learn that they disagree and nothing about whether the compiler, the
+source or the placement moved - and the code generator is the one they
+have to detect. `tools/image_fingerprint.py` reports the parts a hash
+cannot: `cc` out of `.comment`, the section sizes, and the
+defined-symbol address map. Whether two images run the same
+*instructions* is a third question and `tools/image_mnemonics.py` is
+the only thing that answers it, which is what issue #5 needs.
+
+**Read `symbols` and `addresses` across benches, not `layout`.**
+`layout` hashes `nm -n` output whole, 8 addresses in the image carry
+more than one symbol - most of them weak aliases for
+`Default_Handler` - and the order within a tie is the tool's rather
+than the linker's. One ELF read by two binutils builds therefore hashes
+to two `layout` values while `symbols` and `addresses` agree exactly.
+Issue #63 is open on it; do not close it by quietly changing the hash.
+
+`tools/flash.py` logs `cc` and `layout` with every flash, and
 `provenance.run_fields()` carries `fw_cc`/`fw_layout` onto every row a
 tool writes. Rows recorded before that land null, which is honest: they
 are attributable to a commit and not to an image, and nothing can

@@ -897,7 +897,7 @@ class BoardDevice(Device):
         The same readings over this channel cost 146 and 274 us.
 
         None on firmware with one CDC function. No track is in that
-        state - all three enumerate a command port and report ctlver=3 -
+        state - all three enumerate a command port and report ctlver=4 -
         so None is a fault to diagnose. `counters()`, `trace()` and
         `load()` all refuse when it is None rather than reading the same
         numbers off printf at 13-20 ms of blocked main loop apiece.

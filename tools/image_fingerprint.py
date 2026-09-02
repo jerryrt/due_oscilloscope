@@ -2,39 +2,41 @@
 """What is actually on the board, in a form two benches can compare.
 
 `records/` requires `fw_repo_rev` because a version string says what
-someone intended and a commit says what was compiled. That was the right
-fix and it is not sufficient: **a commit does not determine an image
-either.** Three benches build this repository with three different code
-generators - xPack GCC 15.2.1 on mac-bench, Debian's 14.2.1 on linux-x1,
-and arduino-cli's bundled 4.8.3 on whichever Track A path is in use -
-and none of it is recorded anywhere. Two benches building "the same
-commit" produce two different layouts and no field in any record says
+someone intended and a commit says what was compiled. That is not
+sufficient: **a commit does not determine an image either.** The benches
+build this repository with different code generators - `docs/toolchain.md`
+names them - so two benches building "the same commit" produce two
+different images, and a record that carries only the commit does not say
 so.
 
 That matters for one open defect in particular. Issue #5's displacement
-site is, in CLAUDE.md's own words, "a lottery over code layout": the
-same source built differently draws a different site. So an experiment
-that pins a commit across two benches and compares site tables has
-pinned the *source* and left the *image* free, which is the variable.
+site follows the generated code: the same source built by a different
+compiler draws a different site. So an experiment that pins a commit
+across two benches and compares site tables has pinned the *source* and
+left the *image* free, which is the variable.
 
-The obvious fingerprint does not work, and it is worth saying why so
-nobody reaches for it twice. **sha256 of the .bin is not stable on one
-machine**, let alone across two: the image carries `__DATE__ __TIME__`,
-so two builds of one commit in one directory differ. Measured here -
-a3e551b4 and f02aeb9a, same tree, same compiler, minutes apart. A
-sha256 mismatch between benches therefore proves nothing at all.
+**A byte hash is an identity and not a description.** The build is
+byte-reproducible - `tools/reproducible.py` builds twice and holds it -
+so `sha256` of the .bin is stable for one source state and moves when
+the source, the working tree or the compiler does. What it will not do
+is say *which*: two benches whose hashes disagree learn that they
+disagree, and the code generator is the thing they have to tell apart
+from a source difference.
 
-What is stable is the *layout*: the defined-symbol address map, which
-carries no timestamp. Two builds of 3aadf90 on linux-x1 gave layout
-c4cd8445987b5261 twice, with identical text/data/bss. So this is a
-fingerprint that is silent when nothing has changed and loud when the
-code generator has - which is what a cross-bench comparison needs.
+This reports what a hash cannot. `cc` comes out of `.comment`, so it
+names the compiler that produced the file rather than the one PATH
+would reach for next; `text`/`data`/`bss` size it; and the
+defined-symbol address map says where things were put. Whether two
+images run the same *instructions* is a third question, and
+`tools/image_mnemonics.py` is what answers it.
 
     python3 tools/image_fingerprint.py build/baremetal_bringup.elf
 
-Prints one JSON object. Compare `layout`, `text` and `cc` across
-benches; if they differ, the two boards were not running the same image
-however well the commit matched.
+Prints one JSON object. Across benches compare `cc`, `text`, and
+`symbols`/`addresses` rather than `layout` - `layout_parts` says why
+`layout` is partly a property of the reader's `nm`. If they differ, the
+two boards were not running the same image however well the commit
+matched.
 """
 from __future__ import annotations
 
@@ -99,8 +101,12 @@ def layout(elf: str) -> str:
     """Hash of the defined-symbol address map.
 
     `-n` sorts by address and `--defined-only` drops undefined symbols,
-    so this is where the code generator put things - the quantity #5 is
-    a lottery over - and nothing else. No build stamp reaches it.
+    so this is where the code generator put things and nothing else.
+
+    One hash over both columns, which is what makes it cheap and what
+    makes it fragile across benches - see `layout_parts`, which splits
+    it and is the pair to compare when the two benches' binutils are not
+    the same build.
     """
     out = _run([_tool("arm-none-eabi-nm"), "-n", "--defined-only", elf])
     return hashlib.sha256(out.encode()).hexdigest()[:16]
@@ -123,13 +129,18 @@ def layout_parts(elf: str) -> dict:
     `addresses` the address column alone, in order. Differs when the
                 same things were put in different places.
 
-    **A caveat this exposed and cannot fix.** `nm -n` sorts by address,
-    and 8 addresses in this image carry more than one symbol - 46 of
-    them share `Default_Handler`'s, since every unused vector is a weak
-    alias for it. The order *within* a tie is nm's, not the linker's. It
-    is alphabetical in GNU nm and both benches run GNU nm, so this is a
-    latent fragility rather than a known error; `symbols` is sorted
-    explicitly here and does not inherit it.
+    **A caveat this exposed and cannot fix, and it reaches `layout`.**
+    `nm -n` sorts by address, and 8 addresses in this image carry more
+    than one symbol - most of them share `Default_Handler`'s, since
+    every unused vector is a weak alias for it. The order *within* a tie
+    is the tool's, not the linker's, and two binutils builds order it
+    differently: one ELF read by two of them hashes to two `layout`
+    values while `symbols` and `addresses` agree exactly. So `layout` is
+    a property of the reader as well as of the image, and the pair below
+    is what a cross-bench comparison should read. Which of the two
+    orderings `layout` should adopt is an open decision, so do not
+    quietly settle it by changing this hash; `symbols` is sorted
+    explicitly here and does not inherit the tie at all.
     """
     out = _run([_tool("arm-none-eabi-nm"), "-n", "--defined-only", elf])
     names, addrs = [], []

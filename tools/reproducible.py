@@ -3,18 +3,17 @@
 
 A build that is not reproducible cannot be identified. Two builds of one
 source state that differ have no single answer to "which image is on the
-board", so the commit, the layout hash and the compiler recorded against
-a measurement describe a *class* of images rather than one. Everything
-that wants to pin an image to a source state rests on this property, and
-nothing in the tree measured it.
+board", so the commit, the compiler and the image hash recorded against
+a measurement would describe a *class* of images rather than one.
+Everything that pins an image to a source state rests on this property,
+and this is the only thing that checks it.
 
-Today it reports a difference and the difference is known: `__DATE__
-__TIME__` reaches the console identity line
-(`lib/due_shared/src/console.c`) and the `DUEC` control-channel IDENTITY
-body (`drivers/ctl_port.c`), so a seconds digit moves in two places and
-nothing else does. When a commit replaces that stamp this reports 0, and
-then it is a standing guard against whatever arrives next - a build path
-that leaks an absolute path, a container that left an input unpinned.
+Both tracks build to the byte on a clean tree, so this reports 0 and is
+a standing guard rather than a measurement: what it watches for is the
+next thing to leak in - an absolute build path, a wall clock, a
+container that left an input unpinned. Everything that identifies an
+image by its bytes stops working the day one of those arrives, and it
+arrives silently.
 
     python3 tools/reproducible.py                  # Track B
     python3 tools/reproducible.py --track a        # Track A
@@ -27,13 +26,13 @@ any differs, so it can be a build step.
 them, which is how two benches - or a container and its host - compare
 images neither of them can build in the same place.
 
-**A second-resolution stamp needs the two builds a second apart.** A
-Track B build is well under a second on this bench, so two back-to-back
-builds can capture one `__TIME__` and come out identical for a reason
-that has nothing to do with reproducibility - a green result from a
-check that could not have gone red. `--gap` separates them, and its
-default of one second is enough that a stamp of that resolution must
-differ; defeating a coarser one is what a larger value is for.
+**The two builds are separated in time on purpose.** A Track B build is
+well under a second, so two back-to-back builds can capture one reading
+of a clock and come out identical for a reason that has nothing to do
+with reproducibility - a green result from a check that could not have
+gone red. `--gap` separates them, and its default of one second is
+enough that a stamp of one-second resolution must differ; defeating a
+coarser one is what a larger value is for.
 
 No clean step of its own. `enforce_clean_build` already makes every
 build of every track a full build, and a second clean here would mask a
@@ -171,7 +170,7 @@ def show_region(first: bytes, second: bytes, span: tuple[int, int],
     """One differing run, with enough context to see what changed.
 
     The point of the context is that a reader should not have to go and
-    look anything up: a build stamp, a path or a version string is
+    look anything up: a clock, a path or a version string is
     self-evident once the bytes around it are decoded.
     """
     lo, hi = span
@@ -215,7 +214,7 @@ def main() -> int:
                     help="which firmware to build twice (default: b)")
     ap.add_argument("--gap", type=float, default=1.0, metavar="SECONDS",
                     help="wait between the two builds, so a wall-clock "
-                         "stamp of one-second resolution cannot be "
+                         "reading of one-second resolution cannot be "
                          "captured identically twice (default: 1.0)")
     ap.add_argument("--max-regions", type=int, default=12, metavar="N",
                     help="context blocks printed per artifact; the byte "

@@ -217,16 +217,13 @@ def test_the_log_says_which_dirty_not_merely_that_it_was(tmp_path,
                                                          monkeypatch):
     """Issue #35: two dirty images from one commit were indistinguishable.
 
-    `sha256` is the binary's, and the binary changes on every rebuild
-    because the identity line carries `__DATE__` and `__TIME__` - so it
-    cannot say two images were built from the same source. That left
-    `repo_rev` carrying the whole weight, and `repo_rev` is identical
-    for every dirty state of one commit.
-
-    mac-bench's log has a deliberately-reverted control image and a
-    `main` image on adjacent lines, both `(dirty)`, with nothing to tell
-    them apart. A hash of the working-tree delta tells them apart: same
-    commit and same edits share it, a revert changes it.
+    `repo_rev` is identical for every dirty state of one commit, so on
+    its own it says only that the tree was dirty. mac-bench's log has a
+    deliberately-reverted control image and a `main` image on adjacent
+    lines, both `(dirty)`, with nothing to tell them apart. A hash of
+    the working-tree delta tells them apart: same commit and same edits
+    share it, a revert changes it. It is the quantity the board reports
+    the first eight characters of, after the `+` in `build=`.
 
     Driven through the real `_log_flash` with a fake `git`, because the
     property under test is what the record contains and not what git

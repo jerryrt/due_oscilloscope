@@ -593,25 +593,24 @@ FLASH_LOG = os.path.join(REPO, "records", "flash-log.jsonl")
 
 
 def _log_flash(binary) -> None:
-    """Record which commit produced the image that was just flashed.
+    """Record what the image that was just flashed was built from.
 
-    The firmware deliberately does **not** carry a git SHA -
-    `lib/due_shared/src/fw_version.h` gives the reason, and it is a good
-    one: two toolchains would need build plumbing that can silently
-    disagree, and `__DATE__ " " __TIME__` already answers "is this the
-    image I just flashed".
+    The board states its own commit: `FW_GIT_REV` reaches the `v`
+    identity line and the control channel's IDENTITY. What it cannot
+    state is what that commit was built *into* - the exact bytes, the
+    code generator, where the linker put things - or when they went on.
+    The tool that does the flashing is the one place that knows the
+    binary and the tree at the same moment, and it cannot disagree with
+    itself.
 
-    It does not answer "which commit is this", and those are different
-    questions. On 2026-08-27 a bench published a noise floor a whole bit
-    wrong because its board carried a build five minutes older than a DAC
-    fix; both benches reported `fw 0.2.0` four hours and three commits
-    apart, and nothing on the device could have said so.
+    A version string answers none of it. On 2026-08-27 a bench published
+    a noise floor a whole bit wrong because its board carried a build
+    five minutes older than a DAC fix; both benches reported `fw 0.2.0`
+    four hours and three commits apart, and nothing on the device could
+    have said so.
 
-    So the mapping is recorded here instead of baked in there: the tool
-    that does the flashing is the one place that knows the binary and the
-    tree at the same moment, and it cannot disagree with itself. Never
-    raises - a measurement tool that fails at the bookkeeping step has
-    still flashed the board.
+    Never raises - a measurement tool that fails at the bookkeeping step
+    has still flashed the board.
     """
     try:
         import hashlib
@@ -631,19 +630,19 @@ def _log_flash(binary) -> None:
                 return None
         # What "dirty" actually was, not merely that it was.
         #
-        # mac-bench's gap, raised on #35: sha256 of the binary changes on
-        # every rebuild because the identity line carries __DATE__ and
-        # __TIME__, so it cannot say two images were built from the same
-        # source. That leaves repo_rev carrying the whole weight, and
-        # repo_rev is identical for every dirty state of one commit. Their
-        # log has a deliberately-reverted control image and a main image
-        # on adjacent lines, both `(dirty)`, and nothing distinguishes
+        # repo_rev is identical for every dirty state of one commit, so
+        # on its own it cannot separate a deliberately-reverted control
+        # image from a main image: mac-bench's log has the two on
+        # adjacent lines, both `(dirty)`, and nothing else distinguished
         # them.
         #
         # A hash of the working-tree delta does. Two images from the same
-        # commit and the same edits share it; a revert changes it. It
-        # answers "same dirty or different dirty", which is the question
-        # that was unanswerable.
+        # commit and the same edits share it; a revert changes it.
+        #
+        # It is also the quantity the board itself reports: FW_GIT_REV
+        # appends its first eight characters after a `+`, and
+        # cmake/fw_git_rev.cmake copies the definition down to the strip
+        # so the two cannot drift. The log holds it in full.
         #
         # `git diff HEAD` is tracked content; `git status --porcelain`
         # adds the names of untracked files, which the diff omits. An
@@ -683,23 +682,22 @@ def _image_identity(binary) -> dict:
     """The compiler and the code layout, read off the ELF beside the .bin.
 
     `repo_rev` answers "which commit", and a commit does not determine
-    an image: the three benches build this repository with three
-    different code generators - xPack GCC 15.2.1, Debian's 14.2.1, and
-    arduino-cli's bundled 4.8.3 on the legacy Track A path - and until
-    now no field anywhere named which one produced the binary.
+    an image: the benches build this repository with different code
+    generators, which `docs/toolchain.md` names. Issue #5's displacement
+    site follows the generated code, so an experiment that pins a commit
+    across two benches and compares site tables has pinned the source
+    and left the variable free.
 
-    That is not bookkeeping. CLAUDE.md records issue #5's displacement
-    site as "a lottery over code layout", so an experiment that pins a
-    commit across two benches and compares site tables has pinned the
-    source and left the variable free. `layout` is what makes that
-    checkable after the fact rather than only by prior arrangement.
+    `sha256` of the binary is a sound identity - the build is
+    byte-reproducible, and `tools/reproducible.py` holds it - but it is
+    a bare yes or no. It never says whether the compiler, the source or
+    the placement is what moved, and the code generator is the one these
+    benches have to detect. `cc` and `layout` split it.
 
-    `sha256` cannot serve. The identity line carries __DATE__/__TIME__,
-    so it changes on every rebuild of one source state - the docstring
-    above already says so for `dirty_sha`, and it is the same reason.
-    The defined-symbol address map carries no timestamp: two builds of
-    3aadf90 on linux-x1, minutes apart, hashed alike while their .bin
-    hashes differed.
+    Read `layout` against another bench with the caveat in
+    `image_fingerprint.layout_parts`: it hashes `nm -n` output, ties in
+    the address column are broken by the tool rather than by the linker,
+    and two binutils builds therefore hash one ELF two ways.
 
     Never raises, and returns the keys with null values when it cannot
     read them - a bench with no binutils on the path still gets a log

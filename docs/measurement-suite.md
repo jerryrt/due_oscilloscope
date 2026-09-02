@@ -71,7 +71,7 @@ The project has already paid for each of these:
 
 | field | why it is load-bearing |
 |---|---|
-| firmware identity - track, `FW_VERSION`, `CTL_VERSION`, `FRAME_VERSION`, build stamp | "The binary selects which state issue #5 draws." Points across a reflash are not comparable |
+| firmware identity - track, `FW_VERSION`, `CTL_VERSION`, `FRAME_VERSION`, and the commit the image was built from | "The binary selects which state issue #5 draws." Points across a reflash are not comparable |
 | host OS and version | tier 1 is Windows; every existing figure is macOS's |
 | `host/` revision (git describe) | a recorded pass outlived the `measure.py` that produced it once already |
 | wiring | per desk, and declared in `bench.json` rather than assumed. DAC1 has been on A1, on a scope's EXT TRIG, and unconnected, on different desks and on the same desk at different dates - and "A1 free" read off the wrong desk turns a driven pin into a noise control |

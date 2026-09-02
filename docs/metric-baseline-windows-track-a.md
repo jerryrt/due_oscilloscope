@@ -18,10 +18,11 @@ without saying so** - it is a different code generator, and #5 measured
 both the site set and the severity to be properties of the generated
 code.
 
-`--out` overwrites, so this block is re-added by hand. **Delete
-`build/track_a` before compiling**: `arduino-cli` served this bench a
-cached image once already, and because `__DATE__` is compiled in, the
-sha256 changes on any rebuild whether or not the code did.
+`--out` overwrites, so this block is re-added by hand. There is no
+build cache to clear: `enforce_clean_build` makes every build of every
+track a full build, and the image is byte-reproducible, so `sha256`
+moves when and only when the source, the working tree or the compiler
+does.
 
 **The settling metric works here now, and on 2026-08-27 it did not.**
 That run refused the row - `fold_margin` 1.009, phase coverage 33.3%,
