@@ -74,7 +74,7 @@ The project has already paid for each of these:
 | firmware identity - track, `FW_VERSION`, `CTL_VERSION`, `FRAME_VERSION`, build stamp | "The binary selects which state issue #5 draws." Points across a reflash are not comparable |
 | host OS and version | tier 1 is Windows; every existing figure is macOS's |
 | `host/` revision (git describe) | a recorded pass outlived the `measure.py` that produced it once already |
-| wiring | DAC0→A0, DAC1→**EXT TRIG** now, not A1. A2 bare unless someone says otherwise |
+| wiring | per desk, and declared in `bench.json` rather than assumed. DAC1 has been on A1, on a scope's EXT TRIG, and unconnected, on different desks and on the same desk at different dates - and "A1 free" read off the wrong desk turns a driven pin into a noise control |
 | probe ratio per channel, as fitted *and* as told | ×10 vs ×1 changed the EXT window by 10× and cost three runs |
 | instrument `*IDN?` | "the bench is not promised to keep the same scope" |
 | trigger source, coupling, level | an EXT level is discovered, not assumed |
