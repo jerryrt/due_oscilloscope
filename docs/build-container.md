@@ -113,6 +113,7 @@ and a bench's own build are not expected to agree byte for byte, and
 
 | constraint | source |
 |---|---|
+| **A change to a wire contract is proven on hardware before it merges**, not after. `FRAME_VERSION`, `CTL_VERSION`, and the meaning of any field they carry. A version bump is a commitment every bench must act on: it obliges a reflash of all three tracks and takes the control channel down until they do, so a board on the old firmware cannot answer while the new host is asking. A merge is the wrong gate for that. Phase 0's bump landed with the round trip unexercised, and the board went out of contact with `main` until it was reflashed - the bump was right and its ordering was not | D9 |
 | **Every input to the image is pinned by digest** - base image, apt package versions, the xPack tarball, the SAM core. Otherwise two benches build one `Dockerfile` weeks apart and get different compilers, which silently destroys the property D2 was chosen for | D5 |
 | Every build is a full build, enforced by `enforce_clean_build` and `tests/test_clean_build.py`. A container must not become the reason to relax it | an incremental build shipped a mixed-revision image here |
 | A second-compiler pass must **not** go in the test suite | #34; roughly doubles it, against #50's ceiling |
