@@ -1,12 +1,11 @@
 /*
- * stream_bench.h - the transport benchmarks, shared (issue #14 step 4).
+ * stream_bench.h - the transport benchmarks, shared.
  *
  * The arms push synthetic frames so the link can be measured without
  * the converters bounding it. Policy - budgets, alternation, the
  * double-buffered DMA scheme - lives once here; the transport and the
- * registers stay per track behind stream_port.h. Reports stay per
- * track too (they are per-track surface, #7): they read the counters
- * through stream_bench_get_stats.
+ * registers stay per track behind stream_port.h. Reports stay per track
+ * too: they read the counters through stream_bench_get_stats.
  */
 #ifndef STREAM_BENCH_H
 #define STREAM_BENCH_H

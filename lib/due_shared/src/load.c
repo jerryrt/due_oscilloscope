@@ -3,13 +3,10 @@
  *
  * Shared by both tracks. This is an instrument, not register
  * programming: the only register it touches is DWT's cycle counter,
- * which is core rather than peripheral and is the same counter on both
- * builds by construction. Invariant 3 keeps usb, acq, adc, dac, gen,
- * play, clock and fault independent per track because two programmings
- * of one peripheral is what makes a divergence point at one of them -
- * an argument that does not transfer to a counter neither track
- * configures differently, and would only buy two places for the
- * histogram arithmetic to be wrong.
+ * which is core rather than peripheral and identical on both builds by
+ * construction - invariant 3's independence argument for usb, acq, adc,
+ * dac, gen, play, clock and fault does not transfer to a counter
+ * neither track configures differently.
  *
  * micros() and the console come from the track, through the seams that
  * already exist for them: ctl_port_micros() and console_write().

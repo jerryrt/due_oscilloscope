@@ -1,18 +1,11 @@
 /*
- * The framer, shared (issue #14).
+ * The framer, shared.
  *
- * This file was drivers/stream.c's and sketches/bringup/stream.cpp's
- * middle 200 lines, written twice and diverging - the two copies had
- * already grown different counters and one of them had lost DMA on the
- * capture-only path. What moved here is policy: frame building,
- * sequencing, overrun accounting, the resync rule. What did not move
- * is hardware: everything this file touches outside itself goes
- * through the names stream_port.h declares, and each track provides
- * those over its own register programming.
- *
- * Instrumentation is the union of what the two copies had grown:
- * write_fail/short_write and the usb_us/usb_bytes transport timing
- * were Track A's, and Track B gains them by the move.
+ * What lives here is policy: frame building, sequencing, overrun
+ * accounting, the resync rule. What does not is hardware: everything
+ * this file touches outside itself goes through the names
+ * stream_port.h declares, and each track provides those over its own
+ * register programming.
  */
 #include <string.h>
 
@@ -42,14 +35,10 @@ static bool     tx_dma;
 static uint32_t dma_frames, dma_stalls;
 
 /*
- * How much of a frame goes out per DMA transfer.
- *
- * One 4096-byte transfer measurably starves the ADC's PDC: 439 general
- * overruns in a 4 s run at the full rate against none on the CPU-copy
- * path, because the USB DMA holds the bus matrix while the PDC is
- * trying to write the next conversion into SRAM. Moving the capture
- * ring to the other bank halved it, which named the mechanism, and
- * smaller transfers give the PDC gaps to win arbitration in.
+ * How much of a frame goes out per DMA transfer. A large transfer
+ * measurably starves the ADC's PDC, since the USB DMA holds the bus
+ * matrix while the PDC is trying to write the next conversion into
+ * SRAM - smaller transfers give the PDC gaps to win arbitration in.
  *
  * 512 keeps every transfer exactly one bulk packet, so the stream stays
  * packet-aligned and no short packet is ever emitted mid-frame.
@@ -92,12 +81,9 @@ bool stream_core_start(uint32_t trigger_hz, bool with_gen,
 	 * Take the IN endpoint onto DMA for the duration. Only this path
 	 * writes IN while streaming, and the two modes must never be
 	 * mixed on one endpoint: the FIFO path owns FIFOCON by hand and
-	 * DMA needs the hardware to switch banks itself.
-	 *
-	 * Every USB start arms it, capture-only included: Track B ran the
-	 * host-fed loop's capture on the CPU path for six days because
-	 * 6c96eed armed DMA in one of its two start functions and missed
-	 * the other. One start function, so it cannot happen again.
+	 * DMA needs the hardware to switch banks itself. Every USB start
+	 * arms it, capture-only included - one start function, so a mode
+	 * cannot be armed on one path and missed on another.
 	 */
 	tx_dma = usb;
 	dma_frames = dma_stalls = 0;
@@ -113,17 +99,14 @@ void stream_core_stop(void)
 	active = false;
 	if (tx_dma) {
 		/*
-		 * Do NOT spin on "is the channel still busy" here. It was
-		 * written that way first and it is an unbounded wait on a
-		 * peer: if the host has stopped reading IN, the transfer
-		 * never completes and the stop command never returns, which
-		 * is invariant 7 broken on the one path a wedged host is
-		 * most likely to reach. usb_dma_mode_in(false) aborts the
-		 * channel through a bounded stop, and an aborted transfer
-		 * stops reading the buffer just as surely as a finished one
-		 * does. The worst case is one corrupted frame already on the
-		 * wire; the alternative is a board that has to be
-		 * power-cycled.
+		 * Do NOT spin on "is the channel still busy" here: that is
+		 * an unbounded wait on a peer, since if the host has stopped
+		 * reading IN the transfer never completes and the stop
+		 * command never returns (invariant 7, broken on the one path
+		 * a wedged host is most likely to reach). usb_dma_mode_in(false)
+		 * aborts the channel through a bounded stop instead, and an
+		 * aborted transfer stops reading the buffer just as surely
+		 * as a finished one does.
 		 */
 		usb_dma_mode_in(false);
 		tx_dma = false;
@@ -136,26 +119,18 @@ void stream_core_stop(void)
 	 * gen_stop() unconditionally, though gen_init()/gen_start() above
 	 * are conditional on with_gen. That asymmetry is deliberate and
 	 * load-bearing, and it reads like a bug, so: do not make it
-	 * conditional.
-	 *
-	 * cmd_dac_crosscheck() ('j'/'k') calls gen_start_independent()
-	 * itself and then stream_start_capture_only(), which is
-	 * with_gen=false. It stops nothing when it returns - the console's
-	 * '0' is what ends it, and '0' reaches the generator only through
-	 * this line. Gate it on with_gen and those two commands leave the
-	 * DACC running with no way to stop it short of a reset.
+	 * conditional. A caller that starts the generator independently
+	 * of this capture (with_gen=false) still relies on this line to be
+	 * the only path that stops it, so gating it on with_gen would leave
+	 * that generator running with no way to stop it short of a reset.
 	 *
 	 * The reverse hazard - tearing down a DACC that play.c owns, since
-	 * gen_stop() clears TRGEN, disables the PDC transmitter and calls
-	 * NVIC_DisableIRQ(DACC_IRQn) on a vector play.c owns - is not
-	 * reachable today: every capture start already claims the DACC
-	 * (the presets run with_gen=true and 'L' hands it to play.c), and
-	 * h_stop() calls play_stop() straight after this. It would become
-	 * reachable the day something stops a capture while leaving
-	 * playback running, which is exactly what independent AWG and
-	 * capture control in the front end would do. Checked on the bench
-	 * 2026-08-29 rather than assumed: no current command sequence
-	 * separates the two.
+	 * gen_stop() disables a PDC transmitter and IRQ vector play.c also
+	 * uses - is not reachable today because every capture start already
+	 * claims the DACC and stop() is always followed by play_stop(). It
+	 * would become reachable the day something stops a capture while
+	 * leaving playback running - check for that sequence before relying
+	 * on this staying safe.
 	 */
 	gen_stop();
 }
@@ -193,32 +168,27 @@ void stream_core_service(void)
 		return;
 
 	/*
-	 * With the port closed, discard rather than queue. The transport
-	 * already returns 0 without blocking when the host is not
-	 * listening, but a frame half-way through transmission would then
-	 * sit in TX_HEADER forever while the PDC laps the ring behind it.
-	 * Dropping keeps the counters honest: the frames are gone either
-	 * way, and the ones that follow stay continuous.
-	 *
-	 * The genuine hazard is a host that holds the port open and stops
-	 * reading, and no API here detects that.
+	 * With the port closed, discard rather than queue: a frame
+	 * half-way through transmission would sit in TX_HEADER forever
+	 * while the PDC laps the ring behind it. Dropping keeps the
+	 * counters honest, since the frames are gone either way and the
+	 * ones that follow stay continuous. The genuine hazard is a host
+	 * that holds the port open and stops reading, which no API here
+	 * detects.
 	 */
 	if (!stream_port_ready()) {
 		/*
 		 * A DMA in flight owns the head buffer, and the head is
 		 * exactly what acq_frame_release() hands back. Discarding
 		 * here would give the PDC a buffer the USB controller is
-		 * still reading - the hazard named below - and the next
-		 * pass would then memcpy a fresh header into it, which is
-		 * the processor writing into an active DMA source.
+		 * still reading, and the next pass would then memcpy a
+		 * fresh header into it - the processor writing into an
+		 * active DMA source.
 		 *
-		 * So wait for the transfer instead of corrupting it. This
-		 * is not the unbounded wait stream_core_stop() warns about:
-		 * nothing is blocked on it, the loop returns immediately
-		 * and keeps draining bulk OUT, and stop() remains the one
-		 * path that may abort a channel. The cost of a peer that
-		 * never drains is one buffer held out of four, which shows
-		 * up as resync rather than as silent corruption.
+		 * So wait for the transfer instead of corrupting it. This is
+		 * not the unbounded wait stream_core_stop() warns about:
+		 * nothing is blocked on it, the loop returns immediately and
+		 * keeps draining bulk OUT.
 		 */
 		if (tx_phase == TX_DMA && usb_dma_in_busy())
 			return;
@@ -253,13 +223,12 @@ void stream_core_service(void)
 					n = DMA_CHUNK_BYTES;
 				/*
 				 * Deliberately not counted into usb_us /
-				 * usb_bytes. Arming a DMA is four register
-				 * writes and returns long before the bytes
-				 * are on the wire, so timing it and dividing
-				 * reports the speed of the register file:
-				 * 145 MB/s on a 1.8 MB/s link, which is
-				 * worse than no figure at all. The CPU write
-				 * path is the only thing those two describe.
+				 * usb_bytes: arming a DMA returns long before
+				 * the bytes are on the wire, so timing it and
+				 * dividing would report the speed of the
+				 * register file rather than the link. Those
+				 * two counters describe the CPU write path
+				 * only.
 				 */
 				if (!usb_dma_in_start(frame + tx_off, n)) {
 					dma_stalls++;

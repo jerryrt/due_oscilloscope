@@ -1,12 +1,10 @@
 /*
  * Playback status on bulk IN: the carrier for the host's rate loop.
  *
- * Objective 0i needs the host to know what the converter is actually
- * consuming, and the console cannot carry it. Polling `B` at 20 Hz took
- * RC 65 from 6 underruns to 30 when the ring was short, because a
- * printf holds the main loop for milliseconds against a 0.95 us
- * conversion. So the signal goes out on the native port's bulk IN,
- * which is idle in play-only.
+ * The host needs to know what the converter is actually consuming, and
+ * the console cannot carry it cheaply - a printf holds the main loop
+ * for milliseconds against a 0.95 us conversion. So the signal goes out
+ * on the native port's bulk IN, which is idle in play-only.
  *
  * Play-only, and nowhere else. In loop mode bulk IN carries capture
  * frames and the IN endpoint is on DMA; mixing the FIFO path with DMA
@@ -17,9 +15,8 @@
  * instead - it has room and costs nothing.
  *
  * dev_us is sampled at emit time rather than taken from play_run_us,
- * which play_service updates and which can therefore be a main-loop
- * pass stale. The host differences consecutive records, so it needs the
- * timestamp paired with the counter, not the run total.
+ * which can be a main-loop pass stale: the host differences consecutive
+ * records, so it needs the timestamp paired with the counter.
  *
  * The magic differs from FRAME_MAGIC deliberately, and the record
  * carries a CRC: a host parser that meets one of these in a stream it

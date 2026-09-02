@@ -1,26 +1,12 @@
 /*
  * The `# play:` console line, shared by both tracks.
  *
- * Issue #13's finding applied to a status line rather than a command
- * table: **the surface is shared, the handlers are not.** The counters
- * behind these fields are each track's own - `drivers/play.c` against
- * `sketches/bringup`, two independent programmings of one peripheral,
- * which invariant 3 requires. The *line* is not. It is application
- * formatting, and it was written twice by hand.
- *
- * It had already drifted, in the way hand-copies do. Track A printed
- * `svc` between `endtx` and `spans`; Track B printed no `svc` at all,
- * though `play_svc_calls` is counted in `drivers/play.c` and was
- * already going out over its control channel. So every field after
- * `endtx` sat one position out between the tracks, and `tools/bench.py`
- * - whose regex was written against Track B - read Track A's line into
- * the wrong columns and reported an unread counter as a 100% byte
- * deficit (fixed in `412935d` by parsing names, which was right and
- * left the divergence itself in place).
- *
- * That is not a per-track capability. `CLAUDE.md` calls a capability on
- * one track and not the other debt with a date on it, and this one
- * turned out to be a missing printf argument.
+ * The surface is shared, the handlers are not: the counters behind
+ * these fields are each track's own (invariant 3's two independent
+ * programmings of one peripheral), but the *line* is application
+ * formatting and had no business being written twice by hand - two
+ * hand-copies had already drifted a field out of step with each other
+ * before this was shared.
  *
  * What genuinely is per-track trails at the end, appended by the track
  * at the offset this returns: Track A's `rebuilds`, `act-in` and
@@ -29,8 +15,8 @@
  * rather than silently reading the wrong column.
  *
  * No I/O here. The caller owns the buffer and the sink, because the two
- * tracks reach the console through different ports - which is
- * `stream_port.h`'s rule and the same reason.
+ * tracks reach the console through different ports - `stream_port.h`'s
+ * rule and the same reason.
  */
 #ifndef PLAY_REPORT_H
 #define PLAY_REPORT_H
@@ -68,13 +54,6 @@ typedef struct {
  * Bounded by construction rather than by a buffer size: every emitter
  * has a compile-time worst case in bytes (console_out.h), so invariant
  * 7 holds without a caller having to size anything.
- */
-/*
- * Emit the shared prefix - no newline, so a track can append the
- * counters only it can produce and then end the line itself. It was
- * play_report_format(buf, n, r) returning the length for exactly that
- * append; with emitters the offset is implicit and there is no buffer
- * to size. Issue #49.
  */
 void play_report_print(const play_report_t *r);
 

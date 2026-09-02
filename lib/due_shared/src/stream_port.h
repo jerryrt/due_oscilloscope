@@ -1,16 +1,15 @@
 /*
  * stream_port.h - what the shared framer reaches outside itself.
  *
- * This is a record, not an abstraction layer (issue #14): it declares
- * exactly the functions and extern data stream_core.c uses, and
- * tests/test_shared_source.py asserts the two are equal, so nothing
- * can be added here without the framer actually calling it - a seam
- * that cannot grow without a test failing.
+ * This is a record, not an abstraction layer: it declares exactly the
+ * functions and extern data stream_core.c uses, and
+ * tests/test_shared_source.py asserts the two are equal, so nothing can
+ * be added here without the framer actually calling it - a seam that
+ * cannot grow without a test failing.
  *
  * Every declaration is a name both tracks must provide with the same
- * meaning. That is invariant 3's peer requirement made checkable at
- * compile time: the five one-underscore drifts the seam work started
- * from could not have happened past this header.
+ * meaning - invariant 3's peer requirement made checkable at compile
+ * time.
  *
  * The one asymmetry worth naming: on Track A, usb_dma_* is
  * sketches/bringup/usbdma.cpp taking the endpoints away from the
@@ -69,8 +68,8 @@ void gen_stop(void);
 extern volatile uint32_t play_consumed;
 
 /* --- transport ---------------------------------------------------- */
-/* Endpoint DMA: the sample path. Identical names since the #14
- * renames; register programming independent per track. */
+/* Endpoint DMA: the sample path. Identical names, register programming
+ * independent per track. */
 bool     usb_dma_in_busy(void);
 bool     usb_dma_in_start(const void *buf, uint32_t len);
 void     usb_dma_mode_in(bool on);
@@ -85,25 +84,23 @@ void     usb_dma_mode_in(bool on);
 size_t stream_port_write(const uint8_t *p, size_t n);
 bool   stream_port_ready(void);
 
-/* The bench arms' transport (issue #14 step 4). Always the USB bulk
- * pair, CPU path - the UART switch above is the framer's business, not
- * the bench's. A short return is the bank refusing, never an error. */
+/* The bench arms' transport. Always the USB bulk pair, CPU path - the
+ * UART switch above is the framer's business, not the bench's. A short
+ * return is the bank refusing, never an error. */
 size_t usb_port_write(const uint8_t *p, size_t n);
 size_t usb_port_read(uint8_t *p, size_t n);
 
 /* Endpoint DMA, bench side. usb_dma_out_done decodes one raw status
- * read per call - byte count and channel-enabled share the register,
- * and two reads ask two different instants (see drivers/play.c):
- * false while the channel still runs, else *bytes_left holds the
- * residue and the channel is idle. The decode lives per track because
- * the register does.
+ * read per call - byte count and channel-enabled share the register -
+ * returning false while the channel still runs, else *bytes_left holds
+ * the residue and the channel is idle. The decode lives per track
+ * because the register does.
  *
  * usb_dma_keepalive: on Track A the Arduino core rebuilds endpoint
- * configuration on bus reset and SET_CONFIGURATION, and this repairs
- * it on the bench's schedule. Track B has no core, so there is nothing
- * to repair: its implementation is an empty function with that reason
- * next to it, which is the honest shape - an #ifdef would hide the
- * asymmetry this header exists to record.
+ * configuration on bus reset and SET_CONFIGURATION, and this repairs it
+ * on the bench's schedule. Track B has no core, so its implementation
+ * is an empty function - the honest shape, since an #ifdef would hide
+ * the asymmetry this header exists to record.
  */
 uint32_t usb_dma_in_residue(void);
 bool     usb_dma_out_start_stream(void *buf, uint32_t len);

@@ -18,25 +18,19 @@
 #include "fw_version.h" /* FW_VERSION_STR */
 
 /*
- * ---------------------------------------------------------------------
- * The command surface. One definition, both tracks.
- * ---------------------------------------------------------------------
- *
- * Order is the help's order, so this list is also the document. Group
- * by what a command is for rather than by letter: someone reading `h`
- * on a bench is looking for a capability, not an alphabet.
+ * The command surface. One definition, both tracks. Order is the
+ * help's order, so this list is also the document; group by what a
+ * command is for rather than by letter.
  *
  * `syntax` is the "=" prefix a command takes, or NULL for one that
- * takes none. It is printed rather than parsed - the parser accepts up
- * to CONSOLE_NARGS numbers before any letter, because a uniform entry
- * is what makes an unrecognised combination inert instead of
- * surprising.
+ * takes none - printed rather than parsed, since the parser accepts up
+ * to CONSOLE_NARGS numbers before any letter regardless of which
+ * command follows.
  *
- * No number in the help text is computed. The rate a preset asks for
- * is a fact about that track's acq.h, and this file cannot reach it -
- * so `5` says "max in-spec" and each track's banner prints the figure
- * next to its own clocks, where it can. A shared help line carrying a
- * number would be a number written down twice.
+ * No number in the help text is computed: the rate a preset asks for
+ * is a fact about that track's acq.h, which this file cannot reach, so
+ * `5` says "max in-spec" and each track's banner prints the figure
+ * next to its own clocks where it can.
  */
 struct cmd_entry {
 	char        key;
@@ -171,22 +165,14 @@ void console_help(void)
 	unsigned i;
 
 	for (i = 0; i < TABLE_N; i++) {
-		/*
-		 * A command this track has not got is listed and marked,
-		 * not hidden. Hiding it would make the two boards answer
-		 * `h` with different lists, which is the divergence this
-		 * file exists to remove; marking it says which board is
-		 * short of what, which is the thing worth knowing.
-		 */
+		/* A command this track has not got is listed and marked,
+		 * not hidden - hiding it would make the two boards answer
+		 * `h` with different lists. */
 		help_line(table[i].syntax, table[i].key, table[i].help,
 		          bound(table[i].key) != NULL);
 	}
-	/*
-	 * The parity line closes the list, in a fixed format a host can
-	 * parse. `h` is where someone looks to find out what a board can
-	 * do, so "and here is what it cannot" belongs in the same answer
-	 * rather than behind a letter they would have to know about.
-	 */
+	/* The parity line closes the list, in a fixed format a host can
+	 * parse. */
 	console_missing();
 }
 
@@ -272,18 +258,12 @@ void console_feed(int c)
 		fn(arg);
 	} else if ((e = entry_of((char)c)) != NULL) {
 		/*
-		 * The console's CTL_ERR_OPCODE, and it is the reason this
-		 * file exists rather than a courtesy. Before this, a
-		 * command the track had not got was consumed by `default:
-		 * break` and answered with nothing - and nothing is what a
-		 * command that ran and printed no output also looks like.
-		 * Typing `Z` at Track A was indistinguishable from a board
-		 * that had detached and come back, which is how issue #13's
-		 * missing metric was lost rather than noticed.
-		 *
-		 * Silence stays the answer for a letter that is not a
-		 * command at all, which is what makes stray CR, LF and
-		 * spaces free.
+		 * The console's CTL_ERR_OPCODE: a command the track has not
+		 * got must say so rather than answer with nothing, since
+		 * nothing is indistinguishable from a command that ran and
+		 * printed no output. Silence stays the answer for a letter
+		 * that is not a command at all, which is what makes stray
+		 * CR, LF and spaces free.
 		 */
 		char k[2];
 
@@ -310,44 +290,25 @@ void console_identity(char track, unsigned long mck_hz)
 {
 	/*
 	 * The identity line, emitted by the banner and by `v` on both
-	 * tracks, in this exact format.
-	 *
-	 * One line, key=value, same keys and same order everywhere, so a
-	 * host reads one regular expression instead of matching prose.
-	 * `build=` is last because it is the only value containing
-	 * spaces. This is what `measure.parse_identity` parses and what a
-	 * host refuses a pairing on, so it is wire contract: **this
-	 * function is its only home, and a second one anywhere is the
-	 * defect tests/test_shared_source.py exists to catch.**
-	 *
-	 * It was a printf format string, FW_ID_FORMAT, until issue #49 -
-	 * a format string is the last thing in the shared tree that
-	 * needed the libc formatter and with it the allocator. The
-	 * contract did not change; ten arguments in one order became ten
-	 * emitter calls in one order, in the same single home.
+	 * tracks, in this exact format. One line, key=value, same keys and
+	 * same order everywhere, so a host reads one regular expression
+	 * instead of matching prose. `build=` is last because it is the
+	 * only value containing spaces. This is what measure.parse_identity
+	 * parses and what a host refuses a pairing on - wire contract, and
+	 * this function is its only home.
 	 *
 	 * The ADC clock is MCK/4 by PRESCAL=1, which is why 78 MHz was
-	 * chosen: 19.5 MHz sits inside the datasheet's 20 MHz limit. It
-	 * is derived here rather than passed so that a track cannot
-	 * report a divider it does not use.
+	 * chosen: 19.5 MHz sits inside the datasheet's 20 MHz limit. It is
+	 * derived here rather than passed so a track cannot report a
+	 * divider it does not use.
 	 *
-	 * **`mck` and `adcclk` are NOMINAL - register-derived, never
-	 * measured.** The field name cannot say so without breaking the
-	 * wire contract it is part of, so it is said here, in the one
-	 * place both a firmware and a host author read. Issue #52 built
-	 * the instrument and measured the real MCK on three benches with
-	 * unrelated crystals: -5.13 ppm on windows-desk, -9.79 on
-	 * linux-x1. So this field is a few ppm wrong and always has been.
-	 *
-	 * It stays nominal deliberately. stream_core.c computes the
-	 * reported sample rate as integer division on this same figure,
-	 * so a host inverting a rate back to an RC must divide by what
-	 * the board divided by or the round-trip breaks - the RC is the
-	 * board's real unit and the measured cliffs sit at fixed RC
-	 * whatever MCK actually is. The measured clock is `mck_meas_hz`
-	 * in the telemetry heartbeat, and it is a per-board, per-session
-	 * reading rather than a constant. Nothing user-facing consumes it
-	 * yet; that was #52's other half and the owner held it.
+	 * `mck` and `adcclk` are NOMINAL - register-derived, never
+	 * measured - and stay that way deliberately: stream_core.c computes
+	 * the reported sample rate as integer division on this same figure,
+	 * so a host inverting a rate back to an RC must divide by what the
+	 * board divided by, not by a measured value, or the round-trip
+	 * breaks. The measured clock lives separately, as mck_meas_hz in
+	 * the telemetry heartbeat.
 	 */
 	con_str("# id: track=");   con_ch(track);
 	con_str(" fw=");           con_str(FW_VERSION_STR);
