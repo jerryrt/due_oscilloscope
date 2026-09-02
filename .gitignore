@@ -64,3 +64,8 @@ bench.json
 records/flash-log.jsonl
 build-c/
 records/issue35-reflash-transcripts.log
+
+# Agent worktrees: transient copies of the whole tree. Source-scanning
+# guards (tests/test_clean_build.py) otherwise see one "second build path"
+# per live agent.
+.claude/worktrees/
