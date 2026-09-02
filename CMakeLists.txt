@@ -32,6 +32,8 @@ set(DEVICE ${CMSIS}/Device/ATMEL/sam3xa)
 #
 #     -DFIRMWARE_WERROR=OFF        stop promoting warnings to errors
 #     -DFIRMWARE_ANALYZER=ON       GCC's symbolic execution pass
+#     -DFIRMWARE_STACK_USAGE=ON    a .su per object, read by
+#                                  tools/stack_frames.py
 #
 # Directory-wide, so every track gets them - except that Track A's two
 # targets carry `-w`, which inhibits every warning and disarms -Werror
@@ -39,6 +41,7 @@ set(DEVICE ${CMSIS}/Device/ATMEL/sam3xa)
 # cost, both recorded at the `-w` in cmake/track_a.cmake.
 option(FIRMWARE_WERROR      "Treat firmware compiler warnings as errors" ON)
 option(FIRMWARE_ANALYZER    "Run GCC's -fanalyzer over the C sources"    OFF)
+option(FIRMWARE_STACK_USAGE "Emit per-function stack frame sizes (.su)"  OFF)
 
 # The analyser is a pass somebody asks for, in a build directory of its
 # own, and it REPORTS. It is expensive and noisy by design, and one new
@@ -60,6 +63,7 @@ add_compile_options(
     -Wall -Wextra
     $<$<BOOL:${_fw_werror}>:-Werror>
     $<$<AND:$<BOOL:${FIRMWARE_ANALYZER}>,$<COMPILE_LANGUAGE:C>>:-fanalyzer>
+    $<$<AND:$<BOOL:${FIRMWARE_STACK_USAGE}>,$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>>:-fstack-usage>
     $<$<CONFIG:Debug>:-Og> $<$<CONFIG:Debug>:-g3>
     $<$<CONFIG:Release>:-Os>
 )
