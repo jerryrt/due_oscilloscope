@@ -5,16 +5,7 @@ measured constants that describe the analog path: the DAC's output span,
 and ADVREF - the reference the DAC and the ADC *share*, which is why the
 board cannot measure it and an external instrument had to.
 
-**These used to live in `tests/baseline.json` and that was wrong.** Not
-because the numbers were wrong - they are the same numbers, moved
-unchanged - but because four things outside the test suite were reaching
-into a test fixture to get them: `host/receive.py`, `gui/stream.py`,
-`gui/awg.py` and `tools/dso_metrics.py`. Every volt the front end drew
-came out of a file whose stated job is regression tolerances, and the
-day someone treated that file as the suite's own working state, the
-application's Y axis would have moved with it.
-
-The split that now holds:
+The split:
 
     calibration.json    what the hardware IS - measured against an
                         instrument that is not the ADC, changes when
@@ -28,9 +19,9 @@ the other end, and Phase 0 is where the record needed a home anyway.
 
 **One home, not two.** The rule that got invariant 3 rescoped applies
 here too: two copies of one number is the failure, and this file exists
-so there is one. `dso_metrics.py` used to carry a third copy of the DAC
-span as a bench note, 26-60 mV from the other two, and every "codes"
-figure it printed was about 4% out because of it.
+so there is one. `host/receive.py`, `gui/stream.py`, `gui/awg.py` and
+`tools/dso_metrics.py` all read the DAC span and ADVREF from here, and
+nowhere else should carry its own copy.
 
 Accessors come in two flavours on purpose. `advref_mv()` and
 `dac_span_mv()` return `(value, source)` and never raise, because a

@@ -268,10 +268,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _build_toolbar(self):
         """The five verbs, and only those.
 
-        They used to sit in the control row under the plot, where
-        fifteen widgets competed for 1100 px. Moving them up frees about
-        two fifths of that row for the controls that actually describe
-        what is on screen.
+        Isolated on their own toolbar rather than sharing the control
+        row under the plot, which frees about two fifths of that row
+        for the controls that actually describe what is on screen.
         """
         bar = QtWidgets.QToolBar("Main", self)
         bar.setMovable(False)
@@ -519,8 +518,7 @@ class MainWindow(QtWidgets.QMainWindow):
         still owns is repairing its own widget - a checkable button that
         asked for something and did not get it has to come back up - and
         it learns that from `call()` returning None rather than by
-        catching an exception and inventing its own wording, which is
-        what the five call sites here used to do five different ways.
+        catching an exception and inventing its own wording.
 
         It goes to the notice bar and not to a dialog. A refusal here
         names a limit worth reading twice - the rate the hardware will
@@ -599,9 +597,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.replay_bar.reset()
         self.setWindowTitle("due_oscilloscope")
         # The reason when the link went away underneath us, the bare
-        # word when we closed it. Which of the two happened is the
-        # session's to know; the window used to infer it from which of
-        # its own methods it happened to be standing in.
+        # word when we closed it - which of the two happened is the
+        # session's to know, not something inferred here from which
+        # method this is.
         self.statusBar().showMessage(reason or "disconnected")
 
     # -- device -------------------------------------------------------
@@ -622,13 +620,9 @@ class MainWindow(QtWidgets.QMainWindow):
                   "adc_hz": 200000, "channels": 2})
         if self.session.call("start", mode="capture", **extra) is None:
             return
-        # And say what is now running. Issue #39: the comment eight
-        # lines up argues that a notice must not outlive the thing it
-        # was about, and then only `self.notice` was cleared - so a
-        # capture started after the generator stopped ran underneath
-        # "generator stopped", which is a sentence about a different
-        # run. The status bar is the other thing on screen that outlives
-        # its subject, and it is the one a user reads for the summary.
+        # And say what is now running: the status bar is the other
+        # thing on screen that can outlive its subject, the same way a
+        # notice can, and it is the one a user reads for the summary.
         self.statusBar().showMessage(
             "replaying" if self.replaying else
             f"capturing at {self.preset.currentText()}")
@@ -824,13 +818,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def _rate_control_follows_generator(self, generating):
         """The Rate control must not offer a rate that is not in force.
 
-        Issue #36. `start_capture` sends the preset, but the generator
-        runs the device in **loop** mode, where `BoardDevice.start`
-        builds `=<dac>,<adc>,<ch>L` and the preset is ignored - so while
-        the generator is running the converter is at the generator's
-        rate and the combo was still displaying whatever the user had
-        picked. In one screenshot: `Rate 50 kHz` in the toolbar,
-        `Rate (actual) 200,000 Hz` in Health, a factor of four apart.
+        `start_capture` sends the preset, but the generator runs the
+        device in **loop** mode, where `BoardDevice.start` builds
+        `=<dac>,<adc>,<ch>L` and the preset is ignored - so while the
+        generator is running, the converter is at the generator's rate
+        regardless of what the combo displays.
 
         Disabled rather than hidden or silently re-pointed, and for the
         same reason `setEnabled(not replay)` disables it for a
@@ -898,9 +890,9 @@ class MainWindow(QtWidgets.QMainWindow):
         board's main loop has stopped" from "the board is gone". The
         beat is emitted from a timer interrupt while `loop_passes` comes
         from the main loop, so a beat that keeps arriving with a frozen
-        count is the stall reporting itself - see issue #33, where every
-        other channel went dark together because all of them were
-        answered by the loop that had stopped.
+        count is the stall reporting itself - a stopped main loop takes
+        every other channel dark with it, because all of them are
+        answered by that same loop.
         """
         self._hb_seen += 1
         if stalled:

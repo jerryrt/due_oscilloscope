@@ -8,7 +8,7 @@ is not allowed to be is a guess: the point of this module is to put a
 number on it, so that an AFE, an external converter or a layout change
 can be judged by how much the number moves.
 
-**Everything here is in volts and bits, never in Due codes.** The LSB
+Everything here is in volts and bits, never in Due codes. The LSB
 size is a parameter. That is the whole reason the results will still
 mean something when the converter changes, which is the point of having
 a standard at all - and it is the same rule `host/trace.py` was rebuilt
@@ -17,7 +17,7 @@ thresholds calibrated in an accident of the instrument's settings.
 
 ## The physics being used
 
-**Splitting random noise from coupled noise.** Averaging N independent
+Splitting random noise from coupled noise. Averaging N independent
 acquisitions divides *uncorrelated* noise by sqrt(N) and does nothing at
 all to anything phase-locked to the trigger. So
 
@@ -27,7 +27,7 @@ is a straight line in 1/N, and a least-squares fit of rms^2 against 1/N
 returns the random power as its slope and the coupled power as its
 intercept. `split_by_averaging()`.
 
-**The same split from one capture, with no averaging at all.** Random
+The same split from one capture, with no averaging at all. Random
 noise is spread across every frequency bin; coupled noise from a clock,
 a switching supply or a USB microframe is a *line*. So the spectrum of a
 held DC level separates them directly: the broadband floor is thermal
@@ -36,7 +36,7 @@ better instrument of the two, because it also says *which* aggressor -
 a line at 8 kHz is the USB microframe and a line at the conversion
 cadence is the converter's own mux.
 
-**Bits, not millivolts.** An ideal N-bit converter has quantisation
+Bits, not millivolts. An ideal N-bit converter has quantisation
 noise of 1/sqrt(12) LSB rms and nothing else, so observed rms noise
 converts straight into an equivalent resolution. Two conventions, both
 standard, both reported, because they answer different questions:
@@ -153,10 +153,10 @@ def hann(n):
     Both corrections are returned because they apply in different
     places and mixing them up is silent:
 
-    **Coherent gain** scales a single bin, so that a line reads its own
+    Coherent gain scales a single bin, so that a line reads its own
     amplitude. Applied inside `spectrum()`.
 
-    **Equivalent noise bandwidth** scales a *sum* of bins. A window
+    Equivalent noise bandwidth scales a *sum* of bins. A window
     spreads power into neighbouring bins, so adding bin powers
     overcounts by exactly this factor - 1.5 for Hann, measured here at
     1.5000 for a coherent tone on-bin and off-bin and 1.5050 for white
@@ -176,9 +176,9 @@ def hann(n):
 def fft(x):
     """Iterative radix-2 Cooley-Tukey, on a power-of-two length.
 
-    Pure stdlib on purpose: `host/` runs from the system interpreter
-    during bring-up, and 4096 points costs about a millisecond, which is
-    nothing against a capture that takes seconds to acquire.
+    Implemented in pure Python rather than pulled in from a library:
+    4096 points costs about a millisecond, which is nothing against a
+    capture that takes seconds to acquire.
     """
     n = len(x)
     if n & (n - 1):
@@ -437,9 +437,9 @@ def scaling_fit(points):
     makes a fixed fraction of ADVREF and the ADC reads it as a fraction
     of the same ADVREF: the level cancels, and the board cannot measure
     its reference directly. What does not cancel is the *signature*.
-    Reference noise - and gain noise generally - is **multiplicative**,
+    Reference noise - and gain noise generally - is multiplicative,
     so it grows in proportion to the output level. Noise from the ADC's
-    input, its comparator or thermal sources is **additive** and does
+    input, its comparator or thermal sources is additive and does
     not.
 
     Fits `rms = a + b * level` and reports what each term is worth at

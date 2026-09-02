@@ -11,13 +11,13 @@ The programming port is identified by the only reliable means available:
 it answers. Sending 'h' provokes the firmware banner, and only the port
 carrying the command UART will produce it.
 
-The native port is no longer "whichever other node is present": it now
-offers two CDC functions on one cable, samples and commands, so there
-are two other nodes and picking either by position is a coin flip that
-happens to land right. They are told apart by USB interface number,
-which is a contract pinned in docs/control-protocol.md - interfaces 0
-and 1 carry samples, 2 and 3 carry commands - and IOKit is asked for it
-rather than the node name being pattern-matched.
+The native port offers two CDC functions on one cable, samples and
+commands, so there are two other nodes and picking either by position
+is a coin flip that happens to land right. They are told apart by USB
+interface number, which is a contract pinned in
+docs/control-protocol.md - interfaces 0 and 1 carry samples, 2 and 3
+carry commands - and IOKit is asked for it rather than the node name
+being pattern-matched.
 """
 
 import re
@@ -45,12 +45,11 @@ PID_NATIVE = 0x003E                   # native port, the SAM3X's own USB
 def answers_banner(dev, timeout=1.5):
     """Does this node produce the firmware banner?
 
-    No longer used for discovery - that is VID/PID now, on every
-    platform, because probing opens the programming port and opening it
-    resets the board. Kept because "is there working firmware behind
-    this node" is a different and still useful question from "which node
-    is this", and the two were conflated for as long as discovery
-    probed.
+    Not used for discovery - that is VID/PID now, on every platform,
+    because probing opens the programming port and opening it resets
+    the board. Kept because "is there working firmware behind this
+    node" is a different and still useful question from "which node is
+    this".
     """
     return _responds(dev, timeout)
 
@@ -180,23 +179,19 @@ def native_order(nodes):
 def native_nodes(exclude=None):
     """The native port's nodes, sample function first.
 
-    One discovery path for every caller. measure.py used to glob
-    /dev/cu.usbmodem* itself in two places, which is a second
-    implementation of this and macOS-only besides. Ordering is by USB
-    interface number - samples on 0/1, commands on 2/3 - which is a
-    contract pinned in docs/control-protocol.md rather than a property
-    of any one OS's device naming.
+    One discovery path for every caller, rather than each caller
+    globbing device paths itself. Ordering is by USB interface number -
+    samples on 0/1, commands on 2/3 - which is a contract pinned in
+    docs/control-protocol.md rather than a property of any one OS's
+    device naming.
 
     Discovery here never opens a port. Opening the programming port
     asserts NRSTB and resets the board, so a running daemon cannot
     afford to probe.
 
-    Filtered by USB VID/PID on every platform. The POSIX branch used to
-    glob /dev/cu.usbmodem* with no VID/PID test at all, which matches the
-    programming port and a second board's ROM SAM-BA node (03eb:6124 is
-    a cu.usbmodem* too) - and native_order sorted the programming port
-    *first*, because its serial sorts before B-01. Latent only because
-    both callers pass exclude=self.control.
+    Filtered by USB VID/PID on every platform, not by a path glob: a
+    bare /dev/cu.usbmodem* glob also matches the programming port and a
+    second board's ROM SAM-BA node (03eb:6124 is a cu.usbmodem* too).
     """
     nodes = [d for d, v, p, _i, _s in _pyserial_nodes()
              if (v, p) == (VID, PID_NATIVE) and d != exclude]

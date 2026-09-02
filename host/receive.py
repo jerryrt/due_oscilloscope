@@ -6,9 +6,8 @@ Reads binary frames from the NATIVE port. Control and logs live on the
 programming port and are never mixed in here, except in --uart mode
 where the one port carries both.
 
-Stdlib only: this machine has no package manager, and the bring-up path
-should not need one. Tone detection uses Goertzel rather than an FFT,
-which is enough to verify a known generated frequency.
+Tone detection uses Goertzel rather than an FFT, which is enough to
+verify a known generated frequency.
 
 The measurement lives in measure.py; this script is the command line and
 the report.
@@ -30,15 +29,21 @@ from ports import find_ports
 
 # ADVREF as measured, not a nominal 3300. The DAC->ADC loop is
 # ratiometric - one shared reference - so the board cannot measure its
-# own reference; calibration.json holds what the scope said.
-#
-# It used to be read out of tests/baseline.json by a copy of this
-# function living here, and the comment promised to "say which it used"
-# and then did not. Both are fixed: one reader, and the source travels
-# with the number.
+# own reference; calibration.json holds what the scope said, and
+# `ADVREF_SOURCE` says which file that number actually came from.
 ADVREF_MV, ADVREF_SOURCE = calibration.advref_mv()
 
 def main():
+    """Parse CLI args, run one capture, and print the report.
+
+    Resolves both ports before opening either (opening the control port
+    can reset the board and re-enumerate the native one), runs
+    `measure.run_capture` for `--seconds`, then prints the device
+    console output followed by the summary: frame/CRC/sequence-gap
+    counts, declared vs. measured rate, per-channel min/max/mean, and -
+    when `--scan-hz` or `--expect-hz` is given - Goertzel amplitudes at
+    the requested frequencies, in codes and millivolts.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", default=None)
     ap.add_argument("--seconds", type=float, default=5.0)

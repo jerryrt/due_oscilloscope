@@ -7,9 +7,9 @@ main() monoliths that measured and printed in one pass, so the only way
 to test against them was to parse stdout. Everything that measures now
 lives here and returns data; the scripts only format it.
 
-Stdlib only, deliberately. The pytest suite runs from a venv because
-pytest is not stdlib, but nothing in here may need one: these tools have
-to work from the system interpreter during bring-up.
+Not stdlib-only: this module takes pyserial through host/transport.py,
+declared in requirements-dev.txt. It runs from the venv like the rest
+of host/.
 
 Nothing here may change measurement behaviour. The clock-paced feeder
 with its 20 KB lead, the real-time thread promotion, the freshness
@@ -469,13 +469,13 @@ def fold_sites(series, z_min=FOLD_Z_DIRTY, keep=None, absorb=False):
     the same statistic two different ways - one saw the phase alternate
     with the magnitude following, the other saw the phase hold while the
     value flipped sign. Both were watching the argmax follow whichever
-    site currently dominated. **Quote the site table.**
+    site currently dominated. Quote the site table.
 
     The caller decides what to hand in, and the choice is not cosmetic:
 
       * `pair_fold`'s `profile` - already flat, because differencing
         within the DAC hold cancels the staircase. Pass it directly. Do
-        **not** neighbour-subtract it first: a single spike of A becomes
+        not neighbour-subtract it first: a single spike of A becomes
         A at its own bin and -A/2 at each neighbour, and reading that as
         three sites is how 176 and 178 were briefly reported alongside a
         real site at 177.
@@ -602,14 +602,12 @@ def flat_census(vals, threshold=FLAT_DEV_CODES):
     merely detectable, because anything that moves it was made by the
     board and no waveform can be blamed for it.
 
-    **Preset `M` is no longer such a channel, and this docstring said it
-    was.** It read "preset `M` drives DAC1 with DC 2048", which was true
-    before the sync landed: `gen_sync` now defaults to `GEN_SYNC_CYCLE`
-    at full amplitude, unscaled by `gen_amp`, so DAC1 carries a
-    full-scale square. Measured rather than inferred - A1's standard
-    deviation in preset M is 1372.5 codes against A0's 968.8, which is a
-    square and a sine of the same span, not DC and a sine. A DC channel
-    would read a few codes.
+    Preset `M` is not such a channel: `gen_sync` defaults to
+    `GEN_SYNC_CYCLE` at full amplitude, unscaled by `gen_amp`, so DAC1
+    carries a full-scale square rather than DC. Measured rather than
+    inferred - A1's standard deviation in preset M is 1372.5 codes
+    against A0's 968.8, which is a square and a sine of the same span,
+    not DC and a sine. A DC channel would read a few codes.
 
     So an A1 reading in preset M has a waveform underneath it and needs
     an instrument that survives one - `pair_fold`, whose differencing
@@ -1015,11 +1013,12 @@ class PlayCounters:
 
     #: Which instrument read these counters - "control" or "console".
     #:
-    #: Declared rather than attached by `play_counters()`, which is what
-    #: it used to be. An attribute that only exists on the objects that
-    #: happened to pass through one constructor cannot be recorded by a
-    #: caller without a getattr guard, and issue #51 is precisely a
-    #: figure whose instrument nobody could establish afterwards.
+    #: Declared on the dataclass rather than attached ad hoc by
+    #: `play_counters()`: an attribute that only exists on objects that
+    #: happened to pass through one particular constructor cannot be
+    #: recorded by a caller without a getattr guard, and a figure whose
+    #: instrument cannot be established is unattributable after the
+    #: fact.
     #:
     #: `None` is honest and is not the same as "console": it means this
     #: object was built by a parser directly and no instrument was
@@ -1337,14 +1336,10 @@ _LINK_GONE = (OSError, ValueError)
 
 #: How this session's counter reads were actually taken.
 #:
-#: windows-desk's finding on issue #51, and it is the sharper form of
-#: the problem: it is not merely that the boundary between two
-#: populations of measurements is unmarked *within* a session, it is
-#: that **no record this project writes carried the instrument at all**,
-#: so the boundary was unrecoverable afterwards even in principle. Not
-#: one file in `records/` stored it, so no published figure said which
-#: instrument produced it and no bench could answer "has your link ever
-#: dropped" about anything already committed.
+#: Recorded because no other record this project writes carries the
+#: instrument: without this field a published figure cannot say which
+#: method produced it, and nobody can answer "has your link ever
+#: dropped" about a run already committed.
 #:
 #: `control` reads a counter in 146 us. `console` reads it with `B` or
 #: `O`, which is 13.14 ms and 15.40 ms of blocked main loop taken while
@@ -1499,12 +1494,12 @@ class Board:
     """The control port, held open.
 
     Opening it asserts NRSTB and resets the board, which also
-    re-enumerates the native port under a possibly new name. Every
-    measurement used to pay that: a reset, a 3 s settle and a re-glob,
-    about 15 s of fixed cost. Holding one open port for a whole session
-    turns that into roughly half a second per measurement, which is the
-    difference between a suite that runs in minutes and one that runs in
-    half an hour.
+    re-enumerates the native port under a possibly new name. Paying
+    that per measurement - a reset, a 3 s settle and a re-glob, about
+    15 s of fixed cost - would be the difference between a suite that
+    runs in minutes and one that runs in half an hour. Holding one open
+    port for a whole session brings it down to roughly half a second
+    per measurement.
     """
 
     def __init__(self, control=None, native=None, settle=0.0, wait=8.0):
@@ -1541,44 +1536,20 @@ class Board:
         so a detach cycle re-enumerates it along with the sample
         function - and the node name moves with it (ttyACM2 -> ttyACM3,
         observed). close_native() already clears `self.native` for that
-        reason and did not clear this, which left a live-looking
-        `Control` object pointing at a node that no longer exists.
+        reason; this clears the control-channel state to match, so a
+        live-looking `Control` object never points at a node that no
+        longer exists.
 
-        The consequence was out of all proportion to the cause, because
-        ctl() caches: one dead link became a cached None and then 26
-        setup errors reading "the board does not present a command
-        port" - the message for a missing capability, not for a port
-        that moved. That is the same shape as the transient this
-        method's docstring already records from 2026-08-27, one level
-        further out, and it is why invalidation is explicit here rather
-        than left to a retry.
-
-        **`_ctl_tried` must be cleared, and that is the older half of
-        this.** It used to survive the drop, so `ctl()`'s cache returned
-        None for ever after: one transient transport error - or one
-        objective-0c close() wedge, which re-enumerates the native port
-        and is *guaranteed* to produce one - silently became "this board
-        has no control channel" for the rest of the session. Measured on
-        mac-bench over twelve phase-timed `run_play` calls: before, a run
-        billed 4.58-4.75 s and read its counters in 2-167 ms; after, every
-        run billed 7.80-7.88 s, spending 1.72 s in `play_counters` and
-        1.52 s in `occupancy`. **+3.2 s per run, for ever**, and the
-        measurement quietly moved onto printf - 13.14 ms and 15.40 ms of
-        blocked main loop taken *while the sample path runs*, which is
-        invariant 8 and what the control channel exists to prevent.
-
-        **`_ctl_why` must be cleared too**, and that was a real bug in
-        the version this replaces. It named the error behind the
-        *previous* drop, and `_note_fallback()` prints it - so a later
-        fallback could report a stale reason for a fresh failure. A true
-        sentence about the wrong event costs more than no sentence: 26
-        setup errors were read as "ProtocolError: no response to opcode
-        0x0001" when the port had simply moved.
-
-        This is the one invalidator. It replaced `drop_ctl()`, which did
-        the same job without the `_ctl_why` clear; the two were written
-        a day apart by two benches that did not know of each other, and
-        collapsing them was agreed on issue #51.
+        All three of `_ctl`, `_ctl_tried` and `_ctl_why` must be
+        cleared together. Leaving `_ctl_tried` set makes `ctl()`'s
+        cache return None for ever after a single transient failure -
+        including the close() wedge that re-enumerates the native port
+        - and a caller falls back from the control channel to console
+        polling, which blocks the main loop for 13-20 ms per query
+        while the sample path runs (invariant 8). Leaving `_ctl_why`
+        set reports the *previous* drop's error against the current
+        failure, so `_note_fallback()` prints a true sentence about the
+        wrong event.
         """
         link, self._ctl = self._ctl, None
         self._ctl_tried = False
@@ -1596,23 +1567,15 @@ class Board:
         enumerated, or one whose command function did not come up. It
         never raises, because the suite has to keep working in those
         states. `self.control` is the *programming* port and is a
-        different thing entirely.
+        different thing entirely. None is a fault, never a track: both
+        tracks carry a control channel and both report ctlver=3, and
+        what differs between them is which opcodes each implements - an
+        unimplemented one answers CTL_ERR_OPCODE rather than nothing.
 
-        **This used to say "None means Track A", and that stopped being
-        true on 2026-08-27.** Both tracks carry a control channel and
-        both report ctlver=3. What differs is which opcodes each
-        implements, and an unimplemented one answers CTL_ERR_OPCODE
-        rather than nothing - so None is now a fault, never a track.
-
-        **A failure is retried before it is cached, and the retry is
-        reported.** `_ctl_tried` was set on the first attempt whatever
-        happened and the exception was swallowed, so one transient open
-        became 23 errors saying "the board does not present a command
-        port" - the message for a missing capability, not for an
-        accident. That has happened twice on this bench, both times
-        after flashing Track A, both times cured by re-flashing the
-        same binary; the second cost nothing only because the first was
-        written down.
+        A failure is retried before it is cached, so that one transient
+        open does not get cached as "the board does not present a
+        command port" - the message for a missing capability, not for
+        an accident - for the rest of the session.
 
         Retrying is not the same as hiding. `ctl_retries` counts the
         attempts it took and a line goes to stderr when it took more
@@ -1760,7 +1723,7 @@ class Board:
         Its name changes whenever the board resets, so it is discovered
         every time rather than remembered.
 
-        **The open itself can block for ever**, which is why this is
+        The open itself can block for ever, which is why this is
         more than a retry loop. A COM node whose device has not finished
         coming back after a reset accepts the `CreateFile` and never
         returns from it, so a caller with a generous timeout still hangs:
@@ -1848,12 +1811,25 @@ class Board:
         return cands[1] if len(cands) > 1 else None
 
     def close_native(self, fd):
-        # Objective 0c: close() hangs here, and when it does the process
-        # holds both ports so nothing outside can ask the board what
-        # happened. The board itself stays healthy, so the state that
-        # would explain it is readable right up to the moment of the
-        # call - but only from in here.
-        #
+        """Close the native-port fd through the objective-0c wedge ladder.
+
+        On macOS `close()` on this port can hang forever: the OS waits
+        for in-flight write URBs, and a device that has stopped draining
+        bulk OUT never completes them, so a naive close can strand the
+        process holding both ports with no way to ask the board what
+        happened. The wedge is rare and has never been reproduced on
+        demand, so the ladder below runs unconditionally rather than
+        only when hunting for it. Escalates in order: flush the queued
+        bytes so the plain close is not itself blocked by them; close on
+        a timeout so a hang doesn't take the caller down with it; on a
+        timeout, read the device's own state over the *separate* control
+        fd and re-send the stop command, in case the device still
+        believes something owns bulk OUT; if that does not clear it,
+        force a software USB detach/re-attach, which is the one recovery
+        that has worked on every wedge seen so far; and if even that
+        fails, mark the board unusable for the rest of this session
+        rather than let the next `open()` hang too.
+        """
         # Off unless DUE_EP_DUMP_ON_CLOSE is set, because it costs a
         # console round trip on every close.
         if os.environ.get("DUE_EP_DUMP_ON_CLOSE"):
@@ -1864,9 +1840,7 @@ class Board:
                 # - so a device still marked as running a bench or a
                 # playback, with nothing actually consuming, is the one
                 # state that produces a NAKing pipe with a healthy
-                # endpoint. That is what the first captured wedge looked
-                # like: ep2(OUT) ISR bit-identical to a healthy close,
-                # but the OUT DMA holding 16896 bytes outstanding.
+                # endpoint.
                 txt = self.ask("B", secs=0.8) + self.ask("u", secs=0.8)
                 for line in txt.splitlines():
                     if ("ep2(OUT)" in line or "dma ch1(OUT)" in line
@@ -1882,27 +1856,11 @@ class Board:
         # in close() forever, holding the port and leaving the board
         # streaming into the void for the next run to trip over.
         # flush_both() swallows the platform's own flush error itself:
-        # termios.error is not an OSError - it derives straight from
-        # Exception - so `except OSError` never caught it, and a port
-        # that had gone away (ENXIO) aborted the whole measurement from
-        # inside the cleanup. That guard now lives in transport.py.
+        # termios.error is not an OSError, so `except OSError` alone
+        # would miss it and a port that had gone away (ENXIO) would
+        # abort the whole measurement from inside the cleanup.
         fd.flush_both()
 
-        # Closing this port is the hang in objective 0c: macOS
-        # waits for in-flight write URBs and a device that has stopped
-        # draining bulk OUT never completes them. Four occurrences are
-        # on record and none has ever been reproduced on demand, so the
-        # trap has to be armed all the time rather than during a hunt.
-        #
-        # It costs nothing on a healthy close - the wait returns
-        # immediately - and on a wedge it does the two things that were
-        # impossible before. It reads the device's state, which works
-        # because the *control* port is a different fd and the board
-        # stays healthy throughout; every diagnosis so far had to guess
-        # at this. And it re-sends the stop, because the leading theory
-        # is that the device still believes something owns bulk OUT, so
-        # the main loop is not running its fallback drain. If that is
-        # right the close completes and the run continues.
         done = threading.Event()
 
         def _close():
@@ -1916,12 +1874,11 @@ class Board:
         if done.wait(CLOSE_WEDGE_S):
             return
 
-        # To a file, not just stderr. The first wedge caught with this
-        # armed produced nothing readable: pytest captures stderr per
-        # test and only prints it in the failure report, and the report
-        # never came because the session hung afterwards. A diagnosis
-        # that only survives a clean exit is no use for a defect whose
-        # whole signature is not exiting.
+        # To a file, not just stderr: pytest captures stderr per test and
+        # only prints it in the failure report, and a session that hangs
+        # afterwards never produces that report. A diagnosis that only
+        # survives a clean exit is no use for a defect whose whole
+        # signature is not exiting.
         _wedge_note(f"close() has not returned in {CLOSE_WEDGE_S}s")
         try:
             txt = self.ask("B", secs=0.8) + self.ask("u", secs=0.8)
@@ -1943,19 +1900,12 @@ class Board:
                             f"not stopped")
                 return
 
-        # A software unplug, which is the thing that actually works.
-        #
-        # The host is not waiting for the device to accept data: read
-        # over the control channel during a wedge it is running 145 k
-        # main-loop passes a second and draining bulk OUT on every one
-        # of them. It is waiting on the USB pipe, and only a disconnect
-        # aborts that. The recorded recovery was physical - unplug and
-        # replug - and `Z` is that in software, commanded over the
+        # A software unplug, which is the thing that actually works: the
+        # host is not waiting for the device to accept data - it is
+        # waiting on the USB pipe, and only a disconnect aborts that. `Z`
+        # does a detach/re-attach in software, commanded over the
         # programming port because detaching takes the control channel
-        # down with it.
-        #
-        # Measured: 9 wedges out of 30 open/close cycles, 9 released,
-        # 0.01 to 0.23 s. It costs a re-enumeration, which open_native
+        # down with it. Costs a re-enumeration, which open_native
         # already re-globs for.
         for attempt in range(2):
             try:
@@ -1976,9 +1926,7 @@ class Board:
 
         # The fd is leaked and a thread is stuck on it, so this process
         # can never use the port again. Say so once, here, rather than
-        # letting the next open() block forever - which is what happened
-        # the first time this fired: the close hang became an open hang
-        # and the suite sat for eleven hours instead of twelve minutes.
+        # letting the next open() block forever too.
         self.wedged = True
         _wedge_note("board marked unusable for the rest of this session")
         raise BoardError(
@@ -2700,19 +2648,17 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     board.poll_console()
     board.cmd(f"={dac_sps},{adc_hz},{channels}L")
 
-    # Settle, but drain while settling instead of sleeping blind.
-    #
-    # There used to be a bare 0.2 s sleep here. The device starts
-    # capturing the moment it takes the command, and its ADC ring is
-    # four 4 KB buffers - 16 KB, or 20 ms at 800 KB/s - so not reading
-    # for 0.2 s overruns that ring by an order of magnitude and the
-    # device drops frames it has already numbered. Measured: overrun
-    # 33-35 per run and a frame lost in three runs out of four.
-    #
-    # macOS hid it. Its CDC driver buffers 55-450 KB below the tty layer
-    # and absorbed the burst, so the device overran and the host never
-    # saw the consequence. Windows has no such cushion, which is how
-    # this surfaced at all.
+    # Settle, but drain while settling instead of sleeping blind. The
+    # device starts capturing the moment it takes the command, and its
+    # ADC ring is four 4 KB buffers - 16 KB, or 20 ms at 800 KB/s - so
+    # sleeping this 0.2 s without reading would overrun that ring by an
+    # order of magnitude and the device would drop frames it has
+    # already numbered: measured as overrun_count 33-35 per run and a
+    # lost frame in three runs out of four. macOS hides this failure
+    # mode because its CDC driver buffers 55-450 KB below the tty layer
+    # and absorbs the burst - the device still overruns, the host just
+    # never sees the consequence - so do not assume a bare sleep is
+    # safe just because it reads clean on macOS.
     #
     # The settle itself has to stay: removing it starts the feed before
     # the device has armed playback, and the device then receives fewer
@@ -2728,19 +2674,6 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     while time.time() - _t < 0.2:
         if transport.wait_any([fd], 0.02):
             settle_bytes += len(fd.read(262144))
-    #
-    # There used to be a 0.2 s sleep here, to let the device settle
-    # before the feed began. But the device starts capturing the moment
-    # it takes the command, and its ADC ring is four 4 KB buffers - 16 KB,
-    # or 20 ms at 800 KB/s. Sleeping 0.2 s without reading overruns that
-    # ring by an order of magnitude, and the device drops frames it has
-    # already numbered: measured as overrun_count 33-35 per run and a
-    # lost frame in three runs out of four.
-    #
-    # macOS hid it because its CDC driver buffers 55-450 KB below the tty
-    # layer and absorbed the burst; the device still overran, the host
-    # just never saw the consequence. Windows has no such cushion.
-    #
     feeder = Feeder(fd, wave, dac_sps * 2, scale=scale,
                     write_size=write_size)
     feeder.start()
@@ -2885,6 +2818,29 @@ TRIM_PERIOD_S = 0.5
 def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
              ramp=None, square=None, scale=1.0, drain_s=0.0,
              write_size=None, closed_loop=False):
+    """Feed a waveform to the DAC over USB and read back what it consumed.
+
+    Builds the requested waveform (sine/DC/ramp/square, whichever
+    keyword is given), arms play mode at `dac_sps`, and hands it to a
+    `Feeder` running for `seconds`. While the feeder runs, playback
+    status records arriving on the IN endpoint are kept so the rate
+    trace and, with `closed_loop=True`, the feed's own rate model can
+    be retuned to what the device says it actually consumed - off by
+    default, because it changes what every measurement in this module
+    means and the ladders that established the baseline must keep
+    meaning what they meant.
+
+    `drain_s > 0` waits that long after the feeder stops before reading
+    the device's counters, so bytes still in the host-to-device pipeline
+    (measured at 55-450 KB) are given time to arrive rather than reading
+    as loss; the device is left playing throughout to keep draining
+    bulk OUT, so the counters this costs describe the shutdown and not
+    the run, and only the byte count from a drained read is trusted.
+
+    Returns a `PlayResult` carrying elapsed time, bytes fed and
+    consumed, the device's play counters and occupancy histogram, the
+    console output, and `retunes` if closed-loop was used.
+    """
     wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc, ramp=ramp,
                                    square=square)
 
@@ -3335,8 +3291,8 @@ def which_track(board, *, secs=1.5):
 
     `v` first, because it is one line and it states the track as a field
     rather than as prose. The banner is the fallback, for an image built
-    before `v` existed - matching "Track A" in a paragraph is what this
-    used to do and it is kept only for that case.
+    before `v` existed, and only matches "Track A" in a paragraph
+    because that is all such an image can answer.
     """
     text = board.ask("v", secs=min(secs, 1.0))
     ident = parse_identity(text)
@@ -3590,16 +3546,14 @@ def flash(track, control=None, retries=2, build=False):
                 if control:
                     cmd += ["--port", control]
             elif track == "a":
-                # Track A builds the way Track B and Track C do (#55).
-                #
-                # It used to shell out to tools/sketch.py, which drove
-                # arduino-cli and its bundled GCC 4.8.3. The two build
-                # properties that path existed to supply - build.f_cpu,
-                # because micros() divides by it, and build.ldscript,
-                # because without it the capture ring is not in SRAM
-                # bank 1 - are lines in cmake/track_a.cmake now, so
-                # neither can be silently forgotten and there is one
-                # place that knows them rather than two.
+                # Track A builds the same way Track B and Track C do:
+                # CMake drives arm-gcc directly, with no arduino-cli
+                # step. The two build properties that micros() and the
+                # capture ring depend on - build.f_cpu, because
+                # micros() divides by it, and build.ldscript, which
+                # pins the capture ring to SRAM bank 1 - are lines in
+                # cmake/track_a.cmake, so neither can be silently
+                # forgotten and there is one place that knows them.
                 #
                 # Its own tree, for Track C's reason: a bench that never
                 # asked for Track A must not have the Arduino core

@@ -8,8 +8,8 @@ thread out of timer coalescing and background demotion, and the Mach
 THREAD_TIME_CONSTRAINT policy is the actual real-time band - the one
 CoreAudio's I/O threads run in - which tells the scheduler this thread
 needs `computation` time out of every `period`, finished within
-`constraint`. Neither needs privileges, and ctypes keeps this
-stdlib-only, which the host tools require.
+`constraint`. Neither needs privileges, and ctypes reaches both without
+an extra dependency.
 
 Failure is reported, never raised: a measurement must run identically
 with and without the promotion, or the promotion itself becomes an
