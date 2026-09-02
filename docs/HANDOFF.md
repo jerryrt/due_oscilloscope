@@ -7,11 +7,6 @@ This file is **state, not findings.** A finding lives in the `docs/`
 file that owns it and in the commit that made it; this one goes stale
 by design and should be short enough to rewrite rather than amend.
 
-It names open issues, which `docs/writing.md` forbids elsewhere — and
-that is the point of the exception: everything here is live work a
-reader has to go and join, not a settled fact they should be able to
-read in place.
-
 ## Where things stand
 
 | | |

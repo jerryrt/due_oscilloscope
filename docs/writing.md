@@ -11,7 +11,7 @@ this one, and these are the rules for filling it.
 | **General to detailed, top to bottom** | The first section is read most, so it should be the shortest. A reader who stops after one screen should still have the answer |
 | **Detail lives in the code. Point at it** | A copied signature, file list or constant table drifts silently and nothing fails when it does. The tree cannot drift from itself |
 | **State what is true, never how it changed** | "This section used to say five minutes" is the document keeping books on itself. That belongs in `git log`, which is durable and is where people look |
-| **No issue numbers** | Issues carry what is being argued; `docs/` carries what is settled. A document that says "see #48" tells the reader the answer lives somewhere it does not |
+| **No issue numbers** | Issues carry what is being argued; `docs/` carries what is settled. A document that says "see #48" tells the reader the answer lives somewhere it does not. **Unless the document's subject is live work** - `HANDOFF.md` names open issues, because there the reader does have to go and join them |
 | **Prefer a table** | A cell will not hold a sentence that is acquiring qualifications. The format does the editing |
 | **Plain, short, accurate** | Check a claim against the tree before writing it. "Both tracks" was true once and there are three |
 
