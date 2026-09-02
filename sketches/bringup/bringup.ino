@@ -282,7 +282,6 @@ static uint32_t code_to_mv(uint16_t code)
 static void cmd_read(void)
 {
 	uint16_t a0, a1;
-	char buf[96];
 
 	acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
 
@@ -300,8 +299,6 @@ static void cmd_read(void)
  */
 static void cmd_sweep(void)
 {
-	char buf[128];
-
 	Serial.println("# DAC sweep. DAC1 is driven inverse to DAC0.");
 	Serial.println("# code   DAC0mV   A0code   A0mV  |  DAC1mV   A1code   A1mV");
 	Serial.flush();
@@ -408,7 +405,6 @@ static void cmd_crosstalk(void)
 	unsigned n = crosstalk_repeats ? crosstalk_repeats : CTL_BLEED_DEFAULT;
 	uint32_t ms = crosstalk_settle_ms ? crosstalk_settle_ms
 	                                  : CTL_BLEED_SETTLE_MS;
-	char buf[224];
 	uint16_t a0, a1, lo, hi;
 	unsigned i;
 
@@ -821,7 +817,6 @@ static void diag_service(void)
 
 	{
 		uint32_t base = (uint32_t)play_ring_base();
-		char buf[192];
 
 		con_str("# diag: play ring base="); con_hex32(base, 8);
 		con_str(" slot="); con_u32(PLAY_BUF_BYTES);
@@ -866,7 +861,6 @@ static void cmd_usb_dump(void)
 	uint32_t ctrl = UOTGHS->UOTGHS_CTRL;
 	uint32_t dctl = UOTGHS->UOTGHS_DEVCTRL;
 	uint32_t sr   = UOTGHS->UOTGHS_SR;
-	char buf[176];
 
 	con_str("# usb CTRL=");  con_hex32(ctrl, 8);
 	con_str(" USBE=");       con_u32(!!(ctrl & UOTGHS_CTRL_USBE));
@@ -999,7 +993,6 @@ static void cmd_occ_hist(void)
 static void cmd_profile(void)
 {
 	const uint32_t n = 20000;
-	char buf[128];
 	uint32_t t0, t1;
 
 	Serial.println("# main-loop profile, ns per call");
@@ -1717,7 +1710,6 @@ static void ha_mimic(const uint32_t *a)
 	uint32_t dac_hz = a[0] ? a[0] : 200000u;
 	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
 	unsigned nch    = a[2] ? a[2] : 2u;
-	char buf[192];
 
 	/*
 	 * Everything the console has to say is said before the converters
@@ -1766,7 +1758,6 @@ static void ha_mimic(const uint32_t *a)
 static void ha_temp(const uint32_t *a)
 {
 	ctl_temp_t t;
-	char buf[160];
 
 	if (acq_read_temp(&t, (uint16_t)a[0]) != CTL_TEMP_OK) {
 		Serial.println("# temp: refused - a capture is armed, or no sensor here");
@@ -1836,8 +1827,6 @@ static void ha_stall(const uint32_t *a)
  */
 static void ha_mimic_gap(const uint32_t *a)
 {
-	char buf[96];
-
 	mimic_start_delay_us = a[0];
 	con_str("# mimic start delay: "); con_u32(mimic_start_delay_us);
 	con_str(" us (next M)"); con_nl();
@@ -1852,8 +1841,6 @@ static void ha_mimic_gap(const uint32_t *a)
  */
 static void ha_ibctl(const uint32_t *a)
 {
-	char buf[96];
-
 	gen_set_ibctl(a[0], a[1]);
 	con_str("# dacc ibctl: ");
 	con_kv_u32("ch", gen_ibctl_ch);     con_ch(' ');
@@ -1870,8 +1857,6 @@ static void ha_ibctl(const uint32_t *a)
  */
 static void ha_adc_timing(const uint32_t *a)
 {
-	char buf[96];
-
 	acq_set_timing(a[0], a[1]);
 	con_str("# adc timing: ");
 	con_kv_u32("tracktim", acq_tracktim); con_ch(' ');
