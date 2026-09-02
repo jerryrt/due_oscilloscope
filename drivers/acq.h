@@ -16,10 +16,9 @@
 /*
  * TC_CMR fields.
  *
- * TIMER_CLOCK1 is MCK/2, so 39 MHz at the MCK 78 this project runs -
- * not the 42 MHz an earlier version of this comment claimed from the
- * 84 MHz era. Every RC figure here divides 39 MHz: RC 86 is 453,488 Hz,
- * RC 44 is 886,363. The stale number made the arithmetic look wrong.
+ * TIMER_CLOCK1 is MCK/2, so 39 MHz at the MCK 78 this project runs.
+ * Every RC figure here divides 39 MHz: RC 86 is 453,488 Hz, RC 44 is
+ * 886,363.
  *
  * The trigger is TIOA0 from TC0 channel 0 in waveform mode: the counter
  * counts up and resets on RC compare, so trigger rate = 39 MHz / RC,
@@ -89,19 +88,19 @@ typedef struct __attribute__((aligned(4))) {
  * conversions per second against 906,976 for two, because a two-channel
  * trigger converts its pair back to back and amortises the per-trigger
  * overhead that a single conversion pays in full. Scaling the
- * two-channel floor arithmetically gives 43 and walks straight off the
- * cliff, which is what the first version of this did.
+ * two-channel floor arithmetically gives 43 and walks straight off
+ * the cliff.
  */
 #define ACQ_MIN_RC_1CH        44u
 
 /*
- * Three channels, for the issue #5 impedance rig on A2. **Provisional -
- * derived, not measured**, which is exactly what the note above says not
- * to do, so it is deliberately conservative rather than tight: 906,976
+ * Three channels, for the impedance rig on A2. Provisional - derived,
+ * not measured - which is exactly what the note above says not to
+ * do, so it is deliberately conservative rather than tight: 906,976
  * conversions per second over three channels is 302,325 triggers, RC
- * 129, and this rounds up. The measured floor belongs here as soon as
- * the sweep has been run; nothing in the rig needs the top of the range,
- * which is why the placeholder is safe to work behind. *(check)*
+ * 129, rounded up. The measured floor belongs here once the sweep has
+ * been run; nothing in the rig needs the top of the range, which is
+ * why the placeholder is safe to work behind. *(check)*
  */
 #define ACQ_MIN_RC_3CH        132u
 
@@ -136,9 +135,9 @@ extern volatile uint32_t acq_ring_overflow;
 
 /*
  * Real functions, not static inlines, since the framer moved to
- * lib/due_shared (issue #14): the shared file cannot include this
- * header, so it links against these through stream_port.h's identical
- * declarations. They run once per frame; inlining never mattered.
+ * lib/due_shared: the shared file cannot include this header, so it
+ * links against these through stream_port.h's identical declarations.
+ * They run once per frame; inlining never mattered.
  */
 bool acq_frame_available(void);
 const uint16_t *acq_frame_data(void);
@@ -147,13 +146,13 @@ uint8_t *acq_frame_bytes(void);
 void acq_frame_release(void);
 
 /*
- * Capture-side completion trace, off by default (issue #44).
+ * Capture-side completion trace, off by default.
  *
- * windows-desk asked for the one thing every host-side instrument on
- * #44 is blind to: whether a lost frame is the converter falling behind
- * or the transfer failing to collect it. `timestamp_us` in the frame
- * header cannot separate those - it is taken when the frame is queued
- * for USB, so a late conversion and a late transfer look the same.
+ * Answers the one thing host-side instruments are blind to: whether
+ * a lost frame is the converter falling behind or the transfer
+ * failing to collect it. `timestamp_us` in the frame header cannot
+ * separate those - it is taken when the frame is queued for USB, so
+ * a late conversion and a late transfer look the same.
  *
  * So this records, per completed PDC buffer:
  *
@@ -164,13 +163,12 @@ void acq_frame_release(void);
  *
  * Same shape as play.h's PLAY_RATE_TRACE and for the same reasons: a
  * fixed array, a saturating count, written in the ISR and drained by
- * `Q` after the run. Never printed during it - invariant 6, and
- * h_mimic's pattern.
+ * `Q` after the run. Never printed during it - invariant 6.
  *
- * Off by default because it perturbs the path it measures. One micros()
- * per completed buffer is ~1.4 us against a 2.24 ms buffer at the full
- * rate, so 0.06% - but "small" is not "free", and the play trace made
- * the same call. Build with -DACQ_RATE_TRACE_ENABLED=1.
+ * Off by default because it perturbs the path it measures: one
+ * micros() per completed buffer is ~1.4 us against a 2.24 ms buffer
+ * at the full rate (0.06%), but "small" is not "free". Build with
+ * -DACQ_RATE_TRACE_ENABLED=1.
  */
 #ifndef ACQ_RATE_TRACE_ENABLED
 #define ACQ_RATE_TRACE_ENABLED 0

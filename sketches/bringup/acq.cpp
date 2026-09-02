@@ -17,8 +17,8 @@
  * the full rate, and moving the ring halved it.
  *
  * The placement needs linker/arduino_due_x_sram1.ld, which
- * cmake/track_a.cmake links directly (#55). Building without it puts
- * this in .bss, which still links and still runs - which is why the
+ * cmake/track_a.cmake links directly. Building without it puts this
+ * in .bss, which still links and still runs - which is why the
  * script is a line in the build rather than a caller's argument.
  */
 acq_slot_t acq_slot[ACQ_NBUF] __attribute__((section(".sram1")));
@@ -140,25 +140,20 @@ uint32_t acq_mr(void)
 /*
  * Software-triggered polled reads, this track's own.
  *
- * **Not `analogRead()`, and that is a bug fix rather than a preference.**
- * `acq_init()` sets `ADC_EMR_TAG`, which puts the channel index in
- * LCDR[15:12] so the streaming path can demultiplex without being told
- * the mode. The Arduino core's `analogRead()` reads LCDR and does not
- * mask that, so once TAG is on it returns tag|value: `r` printed
- * "A0(AD7) = 24584" - 0x6008, tag 6 with a value of 8 - for a converter
- * that cannot exceed 4095.
+ * Not `analogRead()`: acq_init() sets ADC_EMR_TAG, which puts the
+ * channel index in LCDR[15:12] so the streaming path can demultiplex
+ * without being told the mode. The Arduino core's analogRead() reads
+ * LCDR and does not mask that, so once TAG is on it returns
+ * tag|value - for a converter that cannot exceed 4095, and worse,
+ * the tag can name the wrong channel: the sequencer converts every
+ * enabled channel per trigger in ascending index order, so the
+ * core's single-channel read can land on whichever conversion
+ * finished last.
  *
- * Worse than the arithmetic, the tag says the value came from the wrong
- * channel. The sequencer converts every enabled channel per trigger in
- * ascending index order, so the core's single-channel read can land on
- * whichever conversion finished last. A0 came back carrying A1's tag.
- *
- * It became the default state on 2026-08-28 when `acq_init()` started
- * running at boot (issue #13); before that it needed a stream to have
- * run first, which is why it was not noticed. Reading through the core
- * while this track programs the same peripheral itself is the divergence
- * invariant 3 names - `acq`/`adc` internals stay per track - and Track B
- * has had `adc_read`/`adc_read_pair` all along.
+ * Reading through the core while this track programs the same
+ * peripheral itself is the divergence invariant 3 names - `acq`/`adc`
+ * internals stay per track - and Track B has had `adc_read` /
+ * `adc_read_pair` all along.
  *
  * Masked to 12 bits at the source, so no caller has to know TAG is on.
  */
@@ -178,15 +173,13 @@ uint16_t acq_read_one(unsigned ch)
  * Measurement conditions for a polled reading, set here rather than
  * inherited, and restored afterwards.
  *
- * Same argument as acq_read_temp() and the same one issue #15 settled:
- * **the variable is not which track, it is whatever last touched the
- * register.** Issue #16 then measured what that is worth on a quantity
- * more sensitive than a temperature. `x` ran at TRACKTIM 0 /
- * SETTLING 0 here and TRACKTIM 15 / SETTLING 3 on Track B - the two
- * ends of the range - because each track's `x` inherited whatever its
- * own init had left. On the `=2C` arm that was worth a *sign flip and
- * a factor of four* between two builds of the same command on the same
- * board minutes apart.
+ * Same argument as acq_read_temp(): the variable is not which track,
+ * it is whatever last touched the register. `x` used to run at
+ * TRACKTIM 0 / SETTLING 0 here and TRACKTIM 15 / SETTLING 3 on
+ * Track B - the two ends of the range - because each track's `x`
+ * inherited whatever its own init had left. On the `=2C` arm that
+ * was worth a sign flip and a factor of four between two builds of
+ * the same command on the same board minutes apart.
  *
  * Tracking time is the dominant term for multiplexer bleed, so a
  * crosstalk measurement that inherits it is measuring its own history.
@@ -237,7 +230,7 @@ void acq_measure_end(void)
  * the same ordering the PDC path sees - which is what makes a polled
  * reading comparable with a streamed one.
  */
-volatile uint32_t acq_pair_restarts;   /* issue #23 */
+volatile uint32_t acq_pair_restarts;
 volatile uint32_t acq_pair_timeouts;
 
 void acq_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
@@ -250,8 +243,8 @@ void acq_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
 
 	/*
 	 * Bounded, with re-kicks: one START occasionally converts only
-	 * part of the enabled pair. Measured on Track A (issue #23): the
-	 * second measurement session's first START completes ch7 and
+	 * part of the enabled pair. Measured on Track A: the second
+	 * measurement session's first START completes ch7 and
 	 * never ch5 - ISR shows EOC7 set, EOC5 never arrives - and a
 	 * second START completes the pair immediately. The sequencer
 	 * mechanism is not established; the bound is the contract
@@ -310,13 +303,12 @@ int acq_read_temp(ctl_temp_t *out, uint16_t samples)
 		samples = CTL_TEMP_SAMPLES_MAX;
 
 	/*
-	 * Whatever was enabled goes back afterwards. Leaving channel 15 in
+	 * Whatever was enabled goes back afterwards: leaving channel 15 in
 	 * the sequencer would change the conversion order of the next
 	 * stream, and channel count divides the aggregate rate - a silent
 	 * change to every number a run reports.
-	 */
-	/*
-	 * Refuse while the ADC is hardware-triggered. Reading the sensor
+	 *
+	 * Refused while the ADC is hardware-triggered. Reading the sensor
 	 * disables the capture's channels and enables channel 15, which
 	 * would put sensor conversions into the capture ring -
 	 * discontinuous data presented as continuous, invariant 5. TRGEN
@@ -332,12 +324,11 @@ int acq_read_temp(ctl_temp_t *out, uint16_t samples)
 	/*
 	 * The sensor's own tracking time, set here rather than inherited.
 	 *
-	 * Issue #15 measured the two tracks reading the die sensor
-	 * **0.84 codes apart** - four times the ~0.20 codes that
+	 * The two tracks were measured reading the die sensor 0.84 codes
+	 * apart - four times the ~0.20 codes that
 	 * `records/advref-temp.jsonl` bounds ADVREF's whole short-term
 	 * noise at - purely because they idle at different ADC_MR: Track A
 	 * at TRACKTIM 0 from acq_init(), Track B at 15 from adc_init().
-	 *
 	 * Converging the idle configs would not have fixed it, only moved
 	 * it: both tracks *stream* at TRACKTIM 0, so a reading taken after
 	 * a capture would still differ from one taken after boot. The
@@ -352,7 +343,7 @@ int acq_read_temp(ctl_temp_t *out, uint16_t samples)
 	 * undriven input reading its neighbour. On a debug path that
 	 * already spends 1 ms on TSON startup they cost nothing.
 	 *
-	 * This also changes what `adc_mr` in the report is *for*: it was a
+	 * This also changes what `adc_mr` in the report is for: it was a
 	 * variable to be recorded, and it is now a constant to be checked.
 	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
@@ -462,19 +453,11 @@ void acq_init(void)
 	ADC->ADC_CR = ADC_CR_SWRST;
 
 	/*
-	 * ADCClock = MCK / ((PRESCAL+1) * 2) = 78/4 = 19.5 MHz, *under* the
+	 * ADCClock = MCK / ((PRESCAL+1) * 2) = 78/4 = 19.5 MHz, under the
 	 * 20 MHz datasheet maximum (Table 46-28); see docs/hardware.md.
 	 *
-	 * This comment used to read "84/4 = 21 MHz, under the ABOVE the
-	 * 20 MHz maximum", which is the MCK 84 arithmetic and a sentence
-	 * with both answers in it. MCK is 78 here precisely so this
-	 * division lands inside the limit - CLAUDE.md's first correction -
-	 * and a comment saying the clock is out of spec on the register
-	 * that sets it is the one place that misreading would be believed.
-	 *
-	 * Tracking is minimal because this is the fast path, and the
-	 * crosstalk cost of that is a thing to be measured, not avoided -
-	 * which is what acq_set_timing() is for.
+	 * Tracking is minimal because this is the fast path; the crosstalk
+	 * cost is measured, not avoided - see acq_set_timing().
 	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)

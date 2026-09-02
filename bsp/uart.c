@@ -9,15 +9,10 @@
  * works with interrupts disabled and from fault context, which is
  * exactly when diagnostics matter most.
  *
- * Input is the other way round, and has to be. uart_getc() used to read
- * UART_RHR directly, so a character that arrived while the main loop
- * was inside a printf was simply lost - and a printf costs about 3.5 ms
- * against one character every 87 us at 115200, so "# stream stopped"
- * alone swallows the next seventeen. A command sent straight after one
- * that prints was therefore dropped, silently and intermittently, which
- * is exactly what a rate argument typed before a command letter looks
- * like. Track A never had this because Arduino's Serial is interrupt
- * buffered; this is the same thing, smaller.
+ * Input is the other way round: RX is interrupt-buffered into a ring,
+ * because a printf costs ~3.5 ms against one character every 87 us at
+ * 115200, and reading UART_RHR only when polled would lose whatever
+ * arrives during that window.
  */
 
 #include "sam.h"
@@ -69,8 +64,8 @@ void uart_init(uint32_t baud)
 	 * Parity none, normal channel mode. */
 	UART->UART_MR = UART_MR_PAR_NO | UART_MR_CHMODE_NORMAL;
 
-	/* Baud = MCK / (16 * CD). At 84 MHz and 115200 this is 45.57, so
-	 * CD = 46 gives ~114130 baud, an error of -0.9%. Well inside the
+	/* Baud = MCK / (16 * CD). At 78 MHz and 115200 this is 42.32, so
+	 * CD = 42 gives ~116071 baud, an error of +0.76%. Well inside the
 	 * ~2-3% a UART tolerates. */
 	UART->UART_BRGR = (SystemCoreClock / baud) / 16u;
 

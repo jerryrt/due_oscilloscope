@@ -7,12 +7,12 @@
  *
  * Loopback wiring:  DAC0 -> A0,  DAC1 -> A1
  *
- * A2 carries no DAC. It was the impedance arm of the issue #5 rig on
- * 2026-08-26 - two equal resistors between 3.3 V and GND with the tap on
- * the pin, swept 50 ohm to 5.5k against A1 at the same voltage behind a
- * DAC output, which is what made the pair a matched comparison.
+ * A2 carries no DAC. It was the impedance arm of a fetch-timing rig -
+ * two equal resistors between 3.3 V and GND with the tap on the pin,
+ * swept 50 ohm to 5.5k against A1 at the same voltage behind a DAC
+ * output, which is what made the pair a matched comparison.
  *
- * **The rig was removed when the sweep ended and A2 is disconnected.**
+ * The rig was removed when the sweep ended and A2 is disconnected.
  * ADC_CH_A2 and the three-channel capture path stay, because the next
  * impedance question will want them and they cost nothing idle.
  */
@@ -71,7 +71,7 @@ void     adc_measure_end(void);
 
 void     adc_read_pair(unsigned cha, unsigned chb,
                        uint16_t *a, uint16_t *b);   /* one sequence */
-extern volatile uint32_t adc_pair_restarts;  /* issue #23: STARTs re-kicked */
+extern volatile uint32_t adc_pair_restarts;  /* STARTs re-kicked */
 extern volatile uint32_t adc_pair_timeouts;  /* pairs abandoned incomplete */
 
 /* 12-bit code to millivolts against a 3.3 V reference. */

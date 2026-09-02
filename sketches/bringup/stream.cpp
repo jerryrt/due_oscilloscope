@@ -43,8 +43,8 @@ volatile uint32_t stream_loop_passes;
 
 /* The framer - frame building, sequencing, overrun accounting, the
  * resync rule - is lib/due_shared/src/stream_core.c now, one copy for
- * both tracks (issue #14). Its view of the capture ring layout must be
- * this track's. */
+ * both tracks. Its view of the capture ring layout must be this
+ * track's. */
 static_assert(STREAM_NBUF == ACQ_NBUF &&
               STREAM_BUF_SAMPLES == ACQ_BUF_SAMPLES &&
               STREAM_HDR_BYTES == ACQ_HDR_BYTES &&

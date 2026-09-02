@@ -8,14 +8,11 @@
 #define TRGSEL_TIOA1 (2u << 1)   /* DACC_MR.TRGSEL: 2 = TIOA1 */
 
 /*
- * Bank 1, not bank 0: the 32-slot ring no longer fits bank 0 next to
- * the capture ring, and separating the two DMA rings across banks is
- * what the linker regions exist for anyway.
- */
-/*
- * Bank 0, since the capture ring now needs bank 1 - see acq.c. The
- * playback pairing is the DACC's PDC reading while the USB DMA writes,
- * which is the same shape and now has bank 0 to itself.
+ * Bank 0: the capture ring pins itself to bank 1 (see acq.c), and
+ * separating the two DMA rings across banks is what the linker
+ * regions exist for. The playback pairing is the DACC's PDC reading
+ * while the USB DMA writes - the same shape as capture, now with
+ * bank 0 to itself.
  */
 static uint16_t play_buf[PLAY_NBUF][PLAY_BUF_SAMPLES]
 	__attribute__((aligned(4)));
@@ -48,11 +45,10 @@ static uint32_t dma_published;       /* slots already published from it */
 static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
 
 /*
- * How full the ring must be before the DAC's timer is started.
- *
- * This is the whole of the playback underrun problem on a host that does
- * not buffer ahead of the device, and it was set to 4 - an eighth of the
- * ring, and 1.4 ms of runway at the top rate.
+ * How full the ring must be before the DAC's timer is started. Was 4
+ * - an eighth of the ring, 1.4 ms of runway at the top rate - which
+ * was the whole of the playback underrun problem on a host that does
+ * not buffer ahead of the device.
  *
  * Measured on Windows, five runs per rate, underruns per run:
  *
@@ -64,19 +60,15 @@ static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
  *     24     0            0             0
  *     28     0            0             0
  *
- * Zero at every rate from 22 upward, and occupancy stops living at the
- * ENDTX guard: occmin goes from 2 to 21-26. The threshold is sharp
- * because while the timer is stopped nothing drains, so the ring fills
- * to exactly this many slots and that is where it then sits - the prime
- * sets the operating point, not just the start.
+ * Zero at every rate from 22 upward, and occupancy stops living at
+ * the ENDTX guard: occmin goes from 2 to 21-26. While the timer is
+ * stopped nothing drains, so the ring fills to exactly this many
+ * slots and stays there - the prime sets the operating point, not
+ * just the start.
  *
- * The count is a startup burst and nothing else, which is what says this
- * is the right knob: at prime 4 a 1 s run and a 9 s run at RC 28 both
- * produce 21-24 underruns. Nine times the duration, the same count.
- *
- * 24 rather than 22: above the measured threshold with margin, and eight
- * slots clear of the ring so a multi-slot DMA span still has somewhere
- * to land while priming.
+ * 24 rather than 22: margin above the measured threshold, with eight
+ * slots clear of the ring so a multi-slot DMA span still has
+ * somewhere to land while priming.
  */
 #define PLAY_PRIME_BUFS 24u
 
@@ -91,28 +83,19 @@ bool play_active(void) { return active; }
 
 /*
  * Playback that is receiving nothing is not playback, and leaving it
- * "active" is what hangs the host.
+ * "active" is what hangs the host: the main loop drains bulk OUT only
+ * when nothing owns it (!play_active() && !stream_out_in_use()), so a
+ * host that closes the port without stopping playback first leaves
+ * the device active forever with its OUT DMA armed for bytes nobody
+ * will send - nothing drains, and the host is stuck (objective 0c).
  *
- * The main loop drains bulk OUT only when nothing owns it -
- * !play_active() && !stream_out_in_use() - because during playback the
- * DMA owns the endpoint and the FIFO path must not touch it. That guard
- * has a hole the host can fall into: close the port without stopping
- * playback first, and the device stays active for ever with its OUT DMA
- * armed for bytes nobody will send. Nothing drains, macOS waits in
- * close() for write URBs that can never complete, and the port is held
- * until the board is unplugged. That is objective 0c, and it reproduces
- * in eight open/close cycles.
+ * So the device stops depending on being told. Half a second without
+ * a byte arriving is enormous - the ring is 32 KB, ~18 ms at the full
+ * rate - so this cannot fire on a host that is merely slow.
  *
- * So the device stops depending on being told. Half a second without a
- * single byte arriving is enormous - the ring is 32 KB, about 18 ms at
- * the full rate - so this cannot fire on a host that is merely slow. It
- * fires on a host that has gone.
- *
- * The cost is a behaviour change worth stating: an AWG whose feed stops
- * used to hold its last buffer for ever, repeating and counting
- * underruns. Now it stops after half a second. A device that cannot be
- * closed is worse than one that stops, and play_abandoned counts it so
- * the difference is never silent.
+ * Behaviour change worth stating: an AWG whose feed stops used to
+ * hold its last buffer forever. Now it stops after half a second, and
+ * play_abandoned counts it so the difference is never silent.
  */
 #define PLAY_ABANDON_MS 500u
 
@@ -407,45 +390,22 @@ static void play_endtx(void)
 	play_endtx_seen++;
 
 	/*
-	 * Consumer half of a single-producer/single-consumer ring.
+	 * Consumer half of a single-producer/single-consumer ring:
+	 * play_consumed is written only here, play_produced only by
+	 * play_service. One writer per counter makes this lock-free, and
+	 * addressing is derived from play_consumed alone.
 	 *
-	 * play_consumed is written here and nowhere else; play_produced is
-	 * written by play_service and nowhere else. One writer per counter
-	 * is what makes this lock-free without a critical section, and an
-	 * earlier version broke it by keeping a third index for addressing
-	 * that drifted out of step with the availability counters.
+	 * Three, not two: ENDTX fires once the PDC has already latched
+	 * TNPR into TPR, so the buffer just finished is play_consumed, the
+	 * one now emitting is play_consumed + 1, and TNPR must be loaded
+	 * with play_consumed + 2 - so latching it needs play_produced >=
+	 * play_consumed + 3. At two, ENDTX could latch a slot the DMA was
+	 * still filling: a phase jump in the analog output with no
+	 * underrun counted, the exact discontinuity invariant 5 exists to
+	 * make impossible. Falling one short now counts an underrun and
+	 * repeats instead.
 	 *
-	 * Addressing is now derived from play_consumed alone, so the buffer
-	 * the guard protects is by construction the buffer the PDC reads.
-	 */
-	/*
-	 * Three, not two.
-	 *
-	 * ENDTX fires once the PDC has already latched TNPR into TPR, so at
-	 * this point the buffer just finished is play_consumed, the one now
-	 * being emitted is play_consumed + 1, and TNPR has to be loaded
-	 * with play_consumed + 2. Filled slots are those below
-	 * play_produced, so latching that buffer needs play_produced to be
-	 * at least play_consumed + 3.
-	 *
-	 * At two it latched a slot the DMA was still filling and the DAC
-	 * emitted whatever the previous lap of the ring had left there - a
-	 * phase jump in the analog output, with no underrun counted and
-	 * every other counter clean, which is precisely the discontinuity
-	 * invariant 5 exists to make impossible. It showed up as steps of
-	 * 1000-2500 codes a few times a second in a captured 1 kHz sine
-	 * whose largest legitimate step is 43. The producer publishes a
-	 * multi-slot DMA span in one go while the consumer drains steadily,
-	 * so the margin sawtooths down to exactly this boundary even when
-	 * the ring looks comfortable on average.
-	 *
-	 * Falling one short now counts an underrun and repeats, which is
-	 * the honest outcome: a repeated buffer is flagged, unfilled memory
-	 * is not.
-	 */
-	/*
-	 * Sample before the decision, not after: this is the occupancy the
-	 * guard below is about to judge, and it is the only quantity that
+	 * Sample before the decision, not after: the only quantity that
 	 * distinguishes a run that starves from one that does not.
 	 */
 	{

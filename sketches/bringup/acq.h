@@ -22,10 +22,9 @@ extern "C" {
 /*
  * TC_CMR fields.
  *
- * TIMER_CLOCK1 is MCK/2, so 39 MHz at the MCK 78 this project runs -
- * not the 42 MHz an earlier version of this comment claimed from the
- * 84 MHz era. Every RC figure here divides 39 MHz: RC 86 is 453,488 Hz,
- * RC 44 is 886,363. The stale number made the arithmetic look wrong.
+ * TIMER_CLOCK1 is MCK/2, so 39 MHz at the MCK 78 this project runs.
+ * Every RC figure here divides 39 MHz: RC 86 is 453,488 Hz, RC 44 is
+ * 886,363.
  *
  * The trigger is TIOA0 from TC0 channel 0 in waveform mode: the counter
  * counts up and resets on RC compare, so trigger rate = 39 MHz / RC,
@@ -134,12 +133,12 @@ uint16_t acq_read_one(unsigned ch);
  * _end. Returns -1 and changes nothing if a capture is running or a
  * measurement is already open.
  *
- * Issue #16: `x` inherited whatever last wrote ADC_MR, which was
- * TRACKTIM 0 on one track and 15 on the other, and that was worth a
- * sign flip and a factor of four on the same board. Tracking time is
- * the dominant term for multiplexer bleed, so a bleed figure taken at
- * an inherited tracking time is a figure about the previous command.
- * Same argument as acq_read_temp(); see acq.cpp.
+ * `x` used to inherit whatever last wrote ADC_MR, which was TRACKTIM
+ * 0 on one track and 15 on the other - worth a sign flip and a factor
+ * of four on the same board, since tracking time is the dominant term
+ * for multiplexer bleed and a bleed figure taken at an inherited
+ * tracking time is a figure about the previous command. Same
+ * argument as acq_read_temp(); see acq.cpp.
  */
 int      acq_measure_begin(void);
 void     acq_measure_end(void);
@@ -155,8 +154,8 @@ void     acq_read_pair(unsigned cha, unsigned chb,
  * the ADC is hardware-triggered, because switching channels under a
  * running capture would corrupt it.
  *
- * ctl_temp_t carries what the reading may and may not be used to claim -
- * read it before quoting a number from here. Issue #11.
+ * ctl_temp_t carries what the reading may and may not be used to
+ * claim - read it before quoting a number from here.
  */
 int      acq_read_temp(ctl_temp_t *out, uint16_t samples);
 
@@ -204,14 +203,14 @@ extern volatile uint32_t acq_govre;
 extern volatile uint32_t acq_produced;
 extern volatile uint32_t acq_consumed;
 extern volatile uint32_t acq_ring_overflow;
-extern volatile uint32_t acq_pair_restarts;  /* issue #23: STARTs re-kicked */
+extern volatile uint32_t acq_pair_restarts;  /* STARTs re-kicked */
 extern volatile uint32_t acq_pair_timeouts;  /* pairs abandoned incomplete */
 
 /*
  * Real functions, not static inlines, since the framer moved to
- * lib/due_shared (issue #14): the shared file cannot include this
- * header, so it links against these through stream_port.h's identical
- * declarations. They run once per frame; inlining never mattered.
+ * lib/due_shared: the shared file cannot include this header, so it
+ * links against these through stream_port.h's identical declarations.
+ * They run once per frame; inlining never mattered.
  */
 bool acq_frame_available(void);
 const uint16_t *acq_frame_data(void);

@@ -177,18 +177,12 @@ int CtlUSB::getInterface(uint8_t *interfaceCount)
  * indices - 0, IPRODUCT, IMANUFACTURER and ISERIAL - and returns false
  * for everything else.
  *
- * False is not a benign refusal on this core. USBCore answers it with
- * UDD_Stall(), and UDD_Stall() is
- *
- *     UOTGHS->UOTGHS_DEVEPT = (UOTGHS_DEVEPT_EPEN0 << EP0);
- *
- * an assignment rather than a set, so a protocol stall on EP0 disables
- * every other endpoint on the device. That is the whole of this
- * branch's "the endpoints are enabled at SET_CONFIGURATION and then
- * cleared": Windows asks for string 5 about 2.4 ms after configuring,
- * the core cannot supply it, and EP1-6 go away with the address and
- * _usbConfiguration untouched - which is why it never looked like a
- * bus reset.
+ * False is not a benign refusal on this core: USBCore answers it with
+ * UDD_Stall(), which disables every other endpoint on the device (see
+ * the note on ctlusb_setups below). Windows asks for string 5 about
+ * 2.4 ms after configuring, so an unclaimed request here made EP1-6
+ * go away with the address and _usbConfiguration untouched - which is
+ * why it never looked like a bus reset.
  *
  * PluggableUSB is asked first (USBCore.cpp:397), before the core's own
  * string handling, and a positive return claims the request. So the
@@ -220,8 +214,8 @@ int CtlUSB::getDescriptor(USBSetup &setup)
 /*
  * Every setup packet PluggableUSB offers us, and whether we claimed it.
  *
- * USBCore answers an unclaimed class-interface request with UDD_Stall(),
- * and UDD_Stall() on this core is
+ * USBCore answers an unclaimed class-interface request with
+ * UDD_Stall(), which on this core is
  *
  *     UOTGHS->UOTGHS_DEVEPT = (UOTGHS_DEVEPT_EPEN0 << EP0);
  *
@@ -281,23 +275,17 @@ bool CtlUSB::setup_inner(USBSetup &setup)
 	case 0x20:                                    /* SET_LINE_CODING */
 		/*
 		 * Read the data stage, then answer. Discarding the value is
-		 * fine; skipping the transfer is not.
-		 *
-		 * SET_LINE_CODING carries seven bytes host-to-device. Returning
-		 * true without collecting them leaves the control transfer
-		 * unfinished, and the host retries the whole thing until it
-		 * gives up. Measured here: opening the command node took
-		 * **60.0 s**, against milliseconds once this line existed.
-		 *
-		 * This project has paid for this once already. docs/testing.md
-		 * records the native port taking 51 s to open for exactly this
-		 * reason, on the first CDC function, and it was one of the four
-		 * defects that justified building the suite. It came back the
-		 * moment a second function was added, because the new function
-		 * answers its own class requests and this one was written from
-		 * the shape of SET_CONTROL_LINE_STATE - which has no data stage
-		 * - rather than from the core's own CDC_Setup, which does
-		 * exactly this at CDC.cpp:127.
+		 * fine; skipping the transfer is not: SET_LINE_CODING carries
+		 * seven bytes host-to-device, and returning true without
+		 * collecting them leaves the control transfer unfinished, so
+		 * the host retries the whole thing until it gives up -
+		 * measured here at 60.0 s to open the command node, against
+		 * milliseconds once this line existed. docs/testing.md
+		 * records the same defect on the first CDC function's native
+		 * port, at 51 s; it came back here because this function
+		 * answers its own class requests, written from the shape of
+		 * SET_CONTROL_LINE_STATE (no data stage) rather than from the
+		 * core's own CDC_Setup, which does exactly this at CDC.cpp:127.
 		 */
 		USBD_RecvControl(line_coding, sizeof(line_coding));
 		return true;
@@ -313,19 +301,12 @@ bool CtlUSB::setup_inner(USBSetup &setup)
  *
  * Any DEVEPTCFG write with ALLOC set re-allocates that endpoint, and
  * 40.5.1.6 is explicit about the consequence: the x+1 window slides up
- * and loses its data while x+2 and above stay put. Note 3 adds that
- * re-allocating the same configuration is harmless "as far as nothing
- * has been written or received into" the higher endpoints - which is
- * exactly the condition a control channel in use violates.
- *
- * Until this sketch grew a second CDC function, EP3 was the last
- * endpoint and the hazard was inert. It is live from the commit that
- * added EP4-6, which is why this lands with that change and not after
- * it. drivers/usb_cdc.c's ep_configure_control() is the model, down to
- * which endpoints are restored: EP3 is also above EP2 and always has
- * been exposed, but it carries frames on DMA and re-establishing it
- * would disturb an armed transfer - a bigger change than the defect.
- * These three are manual FIFO always.
+ * and loses its data while x+2 and above stay put - exactly the
+ * condition a control channel in use violates. drivers/usb_cdc.c's
+ * ep_configure_control() is the model, down to which endpoints are
+ * restored: EP3 is also above EP2 and always exposed, but it carries
+ * frames on DMA and re-establishing it would disturb an armed
+ * transfer, so only these three (always manual FIFO) are restored.
  */
 /*
  * Keep the control endpoints out of the core's interrupt handler.
@@ -334,10 +315,9 @@ bool CtlUSB::setup_inner(USBSetup &setup)
  * their interrupts along with everyone else's - but USBCore's ISR has a
  * case for CDC_RX and nothing else, so an OUT packet arriving on EP5
  * raises an interrupt no one acknowledges. The controller keeps it
- * asserted, the ISR re-enters for ever, and the main loop stops running:
+ * asserted, the ISR re-enters forever, and the main loop stops running:
  * the board still enumerates, because that is all the ISR is doing, and
- * answers nothing. Measured here as a console that goes silent the
- * moment a host opens the command node.
+ * answers nothing.
  *
  * These endpoints are manual FIFO and polled from the main loop, which
  * is how drivers/usb_cdc.c drives them too, so the interrupt is not
@@ -346,34 +326,21 @@ bool CtlUSB::setup_inner(USBSetup &setup)
  * keepalive has the same shape for the same reason.
  */
 /*
- * Drain bulk OUT, even though nothing consumes it yet.
- *
- * This endpoint is declared in ctl_desc and configured by
- * ctlusb_realloc_endpoints, and until now nothing ever read it. An
- * allocated bulk OUT that nobody drains NAKs for ever: CLAUDE.md says
- * so in bold, drivers/usb_cdc.c does the same thing for Track B's
- * control endpoint, and tests/test_link_health.py exists to assert it -
- * "without the drain, adding the endpoint would have turned a port that
- * does nothing into a port that hangs the machine".
- *
- * Measured before this landed, writing at the command node from
- * Windows: 16 KB, 32 KB, then a stall and a write timeout at 48 KB,
- * with the device itself perfectly healthy - _usbConfiguration 1,
- * DEVEPT 0000007f, console answering. That is objective 0c's shape, and
- * on macOS it is close() waiting on write URBs that never complete
- * rather than a write that reports an error.
+ * Drain bulk OUT, even though nothing consumes it yet: an allocated
+ * bulk OUT that nobody drains NAKs forever, which is what wedges a
+ * host in close() (objective 0c's shape). drivers/usb_cdc.c does the
+ * same thing for Track B's control endpoint.
  *
  * Discard, not read. Nothing speaks docs/control-protocol.md over this
- * node yet (ctlver=0), so there is no consumer to hand bytes to; what
- * matters is that the bank goes back to the controller. When the
- * protocol lands this becomes the read path and the discard becomes its
- * empty case.
+ * node yet, so there is no consumer to hand bytes to; what matters is
+ * that the bank goes back to the controller. When the protocol lands
+ * this becomes the read path and the discard becomes its empty case.
  *
- * One bank per call, which is what keeps invariant 7. A single 512-byte
- * bank released per main-loop pass is ~115 MB/s of headroom against a
- * 1.8 MB/s wire, so bounding it costs nothing real - and the alternative,
- * "drain everything that arrived", is a main-loop pass whose length the
- * peer chooses.
+ * One bank per call, which is what keeps invariant 7. A single
+ * 512-byte bank released per main-loop pass is ~115 MB/s of headroom
+ * against a 1.8 MB/s wire, so bounding it costs nothing real - and the
+ * alternative, "drain everything that arrived", is a main-loop pass
+ * whose length the peer chooses.
  */
 volatile uint32_t ctlusb_out_bytes;
 volatile uint32_t ctlusb_out_banks;

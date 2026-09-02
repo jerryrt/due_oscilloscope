@@ -52,44 +52,33 @@ static uint32_t dma_counted;         /* bytes of it already in play_bytes_in */
  * Enough queued to ride out host scheduling jitter before the first
  * conversion, so priming never emits a burst of stale repeats.
  *
- * 24, matching drivers/play.c, and measured on this track rather than
- * copied from it. Three runs per rate, two builds verified distinct by
- * checksum, counters read inside the run:
+ * 24, matching drivers/play.c, measured independently on this track.
+ * Three runs per rate, counters read inside the run:
  *
  *   prime   underruns          occmin
  *      4    0-7                2-8
  *     24    0 in all nine      21-29
  *
- * Which is objective 0i's Track B result exactly: the ring stops living
- * at the ENDTX guard and the startup burst goes away.
+ * Matches objective 0i's Track B result: the ring stops living at the
+ * ENDTX guard and the startup burst goes away.
  *
- * It first appeared not to transfer, and the reason is worth keeping.
- * The first sweep read the counters with `B` after run_loop returned -
- * which is after the drain, and this track has no playback-abandon
- * timeout, so it keeps repeating for ~2 s of deliberate starvation
- * after the feeder stops. Every underrun and the whole of occmin came
- * from that tail: 3382 "underruns" at RC 44 that were the shutdown, not
- * the run, and occmin pinned at 2 whatever the prime was. run_loop
- * already snapshots the counters before it drains, under a comment
- * saying "counters first, while they still describe the run". Read
- * those. A counter read after the drain describes the drain.
+ * Read the counters before run_loop drains them, not after - this
+ * track repeats its last buffer for ~2 s after the feeder stops (see
+ * PLAY_ABANDON_MS below), and a post-drain read describes that
+ * shutdown tail, not the run, which made this constant look inert
+ * when it was not.
  */
 #define PLAY_PRIME_BUFS 24u
 
 /*
- * How long the host may be silent before playback gives up.
- *
- * Ported from drivers/play.c, same constant and same rule. Without it
- * this track keeps repeating its last buffer for as long as nothing
- * stops it: run_us measured 5.00 s for a 3 s run where Track B's was
- * 3.5 s, and every underrun and the whole of occmin came from that
- * tail. A counter read after the feeder stops was describing the
- * shutdown, which is how PLAY_PRIME_BUFS looked inert on this track
- * when it is not.
+ * How long the host may be silent before playback gives up. Ported
+ * from drivers/play.c, same constant and same rule: without it this
+ * track repeats its last buffer indefinitely once the feed stops,
+ * which is what made PLAY_PRIME_BUFS look inert above.
  *
  * Half a second is many hundreds of buffers at every rate on the
- * ladder, so it cannot fire on a host that is merely slow; it fires on
- * a host that has gone. play_abandoned counts it so the behaviour
+ * ladder, so it cannot fire on a host that is merely slow; it fires
+ * on a host that has gone. play_abandoned counts it so the behaviour
  * change is never silent.
  */
 #define PLAY_ABANDON_MS 500u
@@ -377,37 +366,24 @@ static void play_endtx(void)
 	play_endtx_seen++;
 
 	/*
-	 * Consumer half of a single-producer/single-consumer ring.
+	 * Consumer half of a single-producer/single-consumer ring:
+	 * play_consumed is written only here, play_produced only by
+	 * play_service. One writer per counter makes this lock-free, and
+	 * addressing is derived from play_consumed alone.
 	 *
-	 * play_consumed is written here and nowhere else; play_produced is
-	 * written by play_service and nowhere else. One writer per counter
-	 * is what makes this lock-free without a critical section, and
-	 * addressing is derived from play_consumed alone, so the buffer the
-	 * guard protects is by construction the buffer the PDC reads.
-	 */
-	/*
-	 * Three, not two.
-	 *
-	 * ENDTX fires once the PDC has already latched TNPR into TPR, so
-	 * at this point the buffer just finished is play_consumed, the one
-	 * now being emitted is play_consumed + 1, and TNPR has to be
-	 * loaded with play_consumed + 2. Filled slots are those below
-	 * play_produced, so latching that buffer needs play_produced to be
-	 * at least play_consumed + 3.
-	 *
-	 * At two it latched a slot the DMA was still filling and the DAC
-	 * emitted whatever the previous lap of the ring had left there - a
-	 * phase jump with no underrun counted, which is precisely the
+	 * Three, not two: ENDTX fires once the PDC has already latched
+	 * TNPR into TPR, so the buffer just finished is play_consumed, the
+	 * one now emitting is play_consumed + 1, and TNPR must be loaded
+	 * with play_consumed + 2 - so latching it needs play_produced >=
+	 * play_consumed + 3. At two, ENDTX could latch a slot the DMA was
+	 * still filling: a phase jump with no underrun counted, the exact
 	 * discontinuity invariant 5 exists to make impossible. Falling one
-	 * short now counts an underrun and repeats, which is the honest
-	 * outcome: a repeated buffer is flagged, unfilled memory is not.
-	 */
-	/*
-	 * Sample before the decision, not after: this is the occupancy
-	 * the guard below is about to judge, and it is the only
-	 * quantity that distinguishes a run that starves from one that
-	 * does not. Same place in the ISR as drivers/play.c, because
-	 * sampling it anywhere else measures a different moment.
+	 * short now counts an underrun and repeats instead.
+	 *
+	 * Sample before the decision, not after: the only quantity that
+	 * distinguishes a run that starves from one that does not. Same
+	 * place in the ISR as drivers/play.c, since sampling it anywhere
+	 * else measures a different moment.
 	 */
 	{
 		uint32_t occ = play_produced - play_consumed;

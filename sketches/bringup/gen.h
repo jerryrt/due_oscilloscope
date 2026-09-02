@@ -97,48 +97,33 @@ uint32_t gen_trigger_hz(void);
 
 /*
  * DACC_ACR: the output stage's bias current, and it had never been
- * written on this track. Track B's gen.c carries the same control under
- * the same command.
+ * written on this track. Track B's gen.c carries the same control
+ * under the same command.
  *
  * Datasheet 45.7.11 calls IBCTLCHx "Analog Output Current Control -
- * allows to adapt the slew rate of the analog output", and Tables 46-38
- * and 46-40 specify every published DAC figure - INL, DNL, SNR, THD,
- * SINAD - at IBCTLDACCORE=01 with IBCTLCHx=10. At reset the field is 0,
- * so the part has been running outside the conditions its own numbers
+ * allows to adapt the slew rate of the analog output", and Tables
+ * 46-38 and 46-40 specify every published DAC figure at
+ * IBCTLDACCORE=01 with IBCTLCHx=10. At reset the field is 0, so the
+ * part has been running outside the conditions its own numbers
  * describe.
  *
  * The Arduino core writes exactly the characterised value in
- * wiring_analog.c the first time a DAC channel is enabled - which this
- * track does not go through, because gen and play program the DACC
- * themselves. So a sketch built on the core still runs at reset bias
- * unless it writes ACR, and that is worth saying plainly: being on the
- * core is not the same as getting the core's register writes.
+ * wiring_analog.c the first time a DAC channel is enabled - which
+ * this track does not go through, because gen and play program the
+ * DACC themselves. So a sketch built on the core still runs at reset
+ * bias unless it writes ACR: being on the core is not the same as
+ * getting the core's register writes.
  *
- * It has to be applied *after* DACC_CR_SWRST and by every path that
- * issues one - gen_init() and play_init() both do. Setting it from a
- * console command alone would be silently undone by the next capture.
- */
-/*
- * The datasheet's characterisation condition, and the default.
+ * Applied *after* DACC_CR_SWRST and by every path that issues one -
+ * gen_init() and play_init() both do. Setting it from a console
+ * command alone would be silently undone by the next capture.
  *
- * Tables 46-38 and 46-40 specify every published DAC figure - INL, DNL,
- * SNR, THD, SINAD - at IBCTLDACCORE=01 with IBCTLCHx=10. Anything else
- * is the part running outside the conditions its own numbers describe.
- *
- * **These were 0 until 2026-08-28, and that was worse than not writing
- * ACR at all.** Measured on Track B, which has no Arduino core anywhere
- * in the image: a booted board that has never written ACR reads
- * 0x000001AA, and 0x1AA decodes to IBCTLCH0=2, IBCTLCH1=2,
- * IBCTLDACCORE=1 - the characterised condition already - plus bits 5
- * and 7, which the SAM3X datasheet does not define. So gen_apply_acr()
- * with a zero default was not the no-op it looked like: it moved the
- * converter *off* the characterised bias every time gen_init() ran,
- * which is every capture.
- *
- * Writing 2/1 gives 0x10A: the same three defined fields as the
- * untouched value, with bits 5 and 7 cleared. Whether those two matter
- * is not known here and is not claimed - what is known is that 0x10A is
- * the documented condition and 0x000 is not.
+ * Not the same as the reset default: a booted board that has never
+ * written ACR reads 0x1AA (IBCTLCH0=2, IBCTLCH1=2, IBCTLDACCORE=1,
+ * plus two bits the datasheet leaves undefined), so writing 0 here
+ * would not be a no-op - it would move the converter off the
+ * characterised bias on every gen_init(). Writing 2/1 gives 0x10A,
+ * the same three defined fields with the two undefined bits cleared.
  */
 #define GEN_IBCTL_CH_CHARACTERISED    2u
 #define GEN_IBCTL_CORE_CHARACTERISED  1u
@@ -154,11 +139,12 @@ uint32_t    gen_acr(void);        /* as the hardware holds it */
  * gen.h carries the same four arms under the same names and the same
  * command; the table builder below is this track's own.
  *
- * One image and one code path for every arm, because the binary selects
- * which state issue #5 draws: two builds would change the layout as
- * well as the waveform, and an absent artifact in the second arm could
- * not then be read. The table lives in RAM and gen_init() rebuilds it,
- * so an arm costs a branch and nothing else.
+ * One image and one code path for every arm, because the binary
+ * selects which state a code-layout change draws: two builds would
+ * change the layout as well as the waveform, and an absent artifact
+ * in the second arm could not then be read. The table lives in RAM
+ * and gen_init() rebuilds it, so an arm costs a branch and nothing
+ * else.
  *
  * NORMAL     sine on DAC0, sync on DAC1 - what this project has always
  *            run
@@ -171,10 +157,10 @@ uint32_t    gen_acr(void);        /* as the hardware holds it */
  * Every arm keeps DAC0 on even slots and DAC1 on odd, so a swap moves
  * the values and not the update timing.
  *
- * Why Track A needs them at all: this track is the oracle, and the
- * issue-#5 arms are most of what an oracle is for. Without them the
- * sweeps could be run on one track only, which is a divergence that
- * defeats the reason the second track exists - issue #13.
+ * Why Track A needs them at all: this track is the oracle, and these
+ * fetch-timing arms are most of what an oracle is for. Without them
+ * the sweeps could be run on one track only, which is a divergence
+ * that defeats the reason the second track exists.
  */
 #define GEN_LAYOUT_NORMAL    0u
 #define GEN_LAYOUT_SWAPPED   1u

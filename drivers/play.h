@@ -29,14 +29,10 @@
  */
 /*
  * The DACC's own ceiling, measured: RC 28 is 1,392,857 updates per
- * second and the converter needs about 54.7 MCK cycles each, so faster
- * is not a rate it can make. The trigger will happily run there and the
- * DAC will simply not keep up, which reads downstream as an underrun
- * storm rather than as a refusal.
- *
- * The ADC path has refused past its floor since bring-up. This one did
- * not, so `=1950000,200000,2P` was acknowledged rather than refused
- * until the daemon's tests went looking for the device's own words.
+ * second and the converter needs about 54.7 MCK cycles each, so
+ * faster is not a rate it can make. The trigger will happily run
+ * there and the DAC will simply not keep up, which reads downstream
+ * as an underrun storm rather than as a refusal.
  */
 #define PLAY_MIN_RC      28u
 
@@ -67,14 +63,10 @@ extern volatile uint32_t play_partial;     /* spans that ended off a slot edge *
 
 /*
  * Ring occupancy sampled at the instant that decides an underrun.
- *
- * The end-of-run figure the host can compute from produced - consumed
- * is a frozen snapshot taken after playback stopped, and the only way
- * to sample it during a run from the host is to ask over the console -
- * which at the rates where the ring is actually short costs more
- * underruns than it measures. So the device keeps its own distribution:
- * one array increment in the ENDTX path, no console traffic, and the
- * histogram is read out afterwards with `O`.
+ * The host could ask over the console during a run instead, but at
+ * the rates where the ring is short that costs more underruns than
+ * it measures - so the device keeps its own distribution, one array
+ * increment in the ENDTX path, read out afterwards with `O`.
  *
  * Indexed by occupancy in slots, saturating at the top bucket.
  */
@@ -108,50 +100,23 @@ extern volatile uint32_t play_run_us;
 
 /*
  * A decimated trace of the converter's own clock, so the rate can be
- * read *within* a run and not only across one.
+ * read *within* a run and not only across one - play_run_us over
+ * play_consumed cannot tell a converter that held one rate from one
+ * that changed state part-way through.
  *
- * play_run_us over play_consumed answers "what did this run average",
- * which cannot tell a converter that held one rate from one that
- * changed state part-way through. RC 44 reads one of two discrete
- * rates from run to run, and the whole-run figure alone cannot say
- * whether the state is latched at start or wandering during it.
+ * Sampled every PLAY_RATE_DECIM-th *consumed* buffer rather than
+ * every ENDTX, so a window is exactly PLAY_RATE_DECIM buffers of data
+ * regardless of underruns inside it. Absolute microseconds, not
+ * deltas, so the span stays exact even if one sample is disturbed.
+ * micros() is safe in the ENDTX handler because SysTick stays at
+ * reset priority 0 while DACC is priority 1, so this handler cannot
+ * hold off the tick it reads.
  *
- * Sampled every PLAY_RATE_DECIM-th *consumed* buffer rather than every
- * ENDTX, so a window is exactly PLAY_RATE_DECIM buffers of data no
- * matter how many underruns fell inside it and the per-window rate
- * needs no correction. play_occ_trace samples on ENDTX instead,
- * because occupancy is a property of the event and not of the data.
- *
- * Absolute microseconds, not deltas: the span across the whole trace
- * stays exact even if one sample is disturbed, and deltas are
- * derivable from absolutes while the converse is not.
- *
- * micros() is safe in the ENDTX handler. It interpolates SysTick,
- * which is left at reset priority 0 while DACC is set to 1, so the
- * tick it reads cannot be held off by this handler.
- */
-/*
- * OFF by default, and that is a correctness decision rather than a
- * cost one.
- *
- * Sampling micros() in the ENDTX handler perturbs the path it measures.
- * Placed between play_consumed++ and the TNPR store - inside the window
- * this handler exists to keep short - it broke the ramp test in 2 runs
- * of 6 with 1,600 to 2,500 forward jumps of 10 to 12 bytes, the
- * sub-slot signature of a late pointer load, while under=0 and the
- * frame stream stayed clean. Moved after the PDC re-arm it fell to
- * about 1 run in 8, which is better and still not nothing. At the
- * commit before it existed the same test was clean 6 of 6.
- *
- * It is kept because it answered a question nothing else could - that
- * the converter holds one rate for a whole run, latched at play_start -
- * and it would be needed again to re-check that. It is not kept on,
- * because the production signal is the playstat carrier
- * (lib/due_shared/src/playstat.h) and the frame header's play_consumed, both
- * sampled in the main loop at no cost to the real-time path.
- *
- * Turn it on for an investigation; do not judge sample integrity on a
- * build that has it on.
+ * OFF by default, and that is a correctness decision, not a cost one:
+ * sampling micros() inside the ENDTX handler perturbs the
+ * timing-critical window it measures and has produced forward-jump
+ * corruption on the ramp test. Turn it on for an investigation only;
+ * do not judge sample integrity on a build that has it on.
  */
 #ifndef PLAY_RATE_TRACE_ENABLED
 #define PLAY_RATE_TRACE_ENABLED 0

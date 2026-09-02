@@ -107,13 +107,14 @@ uint16_t acq_channel_mask(void)
 /*
  * ADC_MR as the hardware holds it, not as acq_init() meant to write it.
  *
- * The track/settling sweep is a negative result - neither register moves
- * issue #5 - and a negative result is only as good as the proof that the
- * knob was connected. Nothing in this project could show that: the `A`
- * command echoes the variables it just set, acq_start() then does a
- * read-modify-write on the same register, and every reading came back
- * through a printf of a variable rather than of the peripheral. So the
- * sweep and the conversion-time check both rest on an assumption.
+ * The track/settling sweep is a negative result - neither register
+ * moves the DAC displacement it was tested against - and a negative
+ * result is only as good as the proof that the knob was connected.
+ * Nothing in this project could show that: the `A` command echoes
+ * the variables it just set, acq_start() then does a read-modify-write
+ * on the same register, and every reading came back through a printf
+ * of a variable rather than of the peripheral. So the sweep and the
+ * conversion-time check both rest on an assumption.
  *
  * This is the register itself. TRACKTIM is bits 27:24 and SETTLING 21:20.
  */
@@ -128,10 +129,8 @@ void acq_init(void)
 	ADC->ADC_CR = ADC_CR_SWRST;
 
 	/*
-	 * ADCClock = MCK / ((PRESCAL+1) * 2) = 84/4 = 21 MHz, which is ABOVE
-	 * the 20 MHz maximum in datasheet Table 46-28. The prescaler is
-	 * coarse: PRESCAL=2 gives 14 MHz and is in spec, at roughly 650 ksps
-	 * aggregate instead of 976,744. Deliberate; see docs/hardware.md.
+	 * ADCClock = MCK / ((PRESCAL+1) * 2) = 78/4 = 19.5 MHz, under the
+	 * 20 MHz datasheet maximum (Table 46-28); see docs/hardware.md.
 	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)

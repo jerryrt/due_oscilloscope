@@ -16,23 +16,11 @@
 void console_write(const char *s)
 {
 	/*
-	 * Straight to the UART, not through stdio (issue #49).
-	 *
-	 * This was fputs(s, stdout), which is correct about the thing it
-	 * was worried about - a format string taken from data is a defect
-	 * waiting for the first help line containing a '%' - and wrong
-	 * about the heap. `stdout` is a real FILE, so fputs pulls
-	 * newlib's findfp exactly as printf does, and findfp allocates
-	 * that stream's buffer with _malloc_r on first use.
-	 *
-	 * So migrating the console's callers off printf would not have
-	 * removed the heap on its own: the port they migrate *to* was
-	 * pulling it in. Found by reading this file after writing the
-	 * formatter, not by the guard, which cannot say why.
-	 *
-	 * The CRLF translation moves here with it. It was in _write()
-	 * because that was the only path to the wire; now this is, and a
-	 * host on a raw terminal still wants both characters.
+	 * Straight to the UART, not through stdio: fputs(s, stdout) would
+	 * still pull newlib's findfp on first use, which allocates that
+	 * stream's buffer with _malloc_r - an unwanted heap allocation,
+	 * not just a format-string risk. CRLF translation lives here for
+	 * the same reason: this is the only path to the wire.
 	 */
 	for (; *s; s++) {
 		if (*s == '\n')
@@ -76,15 +64,12 @@ bool console_port_capture_only_start(uint32_t adc_hz, unsigned nch)
 	return stream_start_capture_only(adc_hz, nch);
 }
 
-/* ------------------------------------------------------------------ */
-/* The acquisition surface console_cmd_rate_sweep() speaks through.    */
-/*                                                                     */
-/* Thin by design: a port name that computed something would be        */
-/* application logic hiding on the wrong side of the seam. The sweep's  */
-/* logic is shared (issue #45); these are the register reaches it      */
-/* cannot make for itself, and Track A implements the same eight names */
-/* against its own acq.c.                                              */
-/* ------------------------------------------------------------------ */
+/*
+ * The acquisition surface console_cmd_rate_sweep() speaks through.
+ * Thin by design: a port name that computed something would be
+ * application logic on the wrong side of the seam. Track A
+ * implements the same eight names against its own acq.c.
+ */
 
 uint32_t console_port_mck_hz(void)
 {
