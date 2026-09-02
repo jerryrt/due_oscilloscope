@@ -73,6 +73,7 @@ volatile uint32_t usb_stall_count;
 volatile uint32_t usb_configured;
 volatile uint32_t usb_line_state;
 volatile uint32_t usb_cfg_fail;
+volatile uint32_t usb_dma_stop_fail;
 volatile uint32_t usb_isr_count;
 volatile uint32_t usb_last_devisr;
 volatile uint32_t usb_last_ep0isr;
@@ -716,6 +717,19 @@ static void ep_apply_autosw(uint32_t ep, bool on)
 	ep_realloc_control();
 }
 
+/*
+ * Iterations rather than microseconds, deliberately. This runs from the
+ * bus-reset path, and on the RTOS track that path executes before the
+ * scheduler starts, where the tick counter does not advance: a wait
+ * bounded by micros() would never expire there. An iteration ceiling
+ * needs no time source and cannot wedge the board, which is the
+ * property this file's header requires.
+ *
+ * The cost is that what the ceiling is worth in real time depends on
+ * how the loop was generated, so it is a bound and not a duration.
+ */
+#define DMA_STOP_SPINS  100000u
+
 static void dma_channel_stop(uint32_t ch)
 {
 	if (!(UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMASTATUS
@@ -723,10 +737,17 @@ static void dma_channel_stop(uint32_t ch)
 		return;
 	UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMACONTROL = 0;
 	/* The controller stops at the next packet boundary. */
-	for (uint32_t spin = 0; spin < 100000u; spin++)
+	for (uint32_t spin = 0; spin < DMA_STOP_SPINS; spin++)
 		if (!(UOTGHS->UOTGHS_DEVDMA[ch].UOTGHS_DEVDMASTATUS
 		      & UOTGHS_DEVDMASTATUS_CHANN_ENB))
-			break;
+			return;
+	/*
+	 * Falling out of the loop means the channel is still enabled. The
+	 * caller re-arms from what it believes is a stopped channel, so a
+	 * silent return here is indistinguishable from success and the
+	 * direction wedges with nothing recorded.
+	 */
+	usb_dma_stop_fail++;
 }
 
 void usb_dma_mode_in(bool on)
@@ -1133,6 +1154,8 @@ void usb_cdc_dump(void)
 	con_hex32(UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMACONTROL, 8);
 	con_str(" ST=");
 	con_hex32(UOTGHS->UOTGHS_DEVDMA[2].UOTGHS_DEVDMASTATUS, 8);
+	con_str("  ");
+	con_kv_u32("stopfail", usb_dma_stop_fail);
 	con_nl();
 	uart_flush();
 }

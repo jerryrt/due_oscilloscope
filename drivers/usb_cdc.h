@@ -131,6 +131,7 @@ extern volatile uint32_t usb_stall_count;
 extern volatile uint32_t usb_configured;
 extern volatile uint32_t usb_line_state;
 extern volatile uint32_t usb_cfg_fail;
+extern volatile uint32_t usb_dma_stop_fail;
 extern volatile uint32_t usb_isr_count;
 extern volatile uint32_t usb_last_devisr;
 extern volatile uint32_t usb_last_ep0isr;
