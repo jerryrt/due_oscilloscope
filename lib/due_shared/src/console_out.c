@@ -34,13 +34,19 @@ void con_str(const char *s)
 	 * applied here or it is not applied at all. A string longer than
 	 * CON_STR_MAX is truncated rather than trusted - which is the
 	 * difference between a worst case and a hope.
+	 *
+	 * The index is tested before it is read, so CON_STR_MAX is the
+	 * number of bytes this may touch and s[CON_STR_MAX] is not one of
+	 * them. Stopping on the bound therefore means no terminator was
+	 * seen, and handing console_write a pointer it would walk past is
+	 * the same over-read one call deeper.
 	 */
 	{
 		unsigned n = 0;
 
-		while (s[n] && n < CON_STR_MAX)
+		while (n < CON_STR_MAX && s[n])
 			n++;
-		if (s[n] == '\0') {
+		if (n < CON_STR_MAX) {
 			console_write(s);
 			return;
 		}
@@ -149,7 +155,7 @@ void con_strl(const char *s, unsigned width)
 {
 	unsigned n = 0;
 
-	while (s && s[n] && n < CON_STR_MAX)
+	while (s && n < CON_STR_MAX && s[n])
 		n++;
 	con_str(s);
 	if (width > CON_PAD_MAX)
