@@ -42,16 +42,16 @@
 
 /*
  * One line saying which firmware this is. Same format on both tracks -
- * see lib/due_shared/src/fw_version.h - so a host reads one regular expression rather
- * than matching the banner's prose, and so a board can be identified
- * without paying for the banner (89 ms of blocked main loop, invariant
- * 8). `v` prints exactly this and nothing else.
+ * see version.h - so a host reads one regular expression rather than
+ * matching the banner's prose, and so a board can be identified without
+ * paying for the banner (89 ms of blocked main loop, invariant 8). `v`
+ * prints exactly this and nothing else.
  */
 /*
- * The line itself is console_identity() in lib/due_shared: the format
- * and the order of its arguments are what measure.parse_identity reads,
- * so they are wire contract and have one home. FW_TRACK and the clock
- * are this track's to supply.
+ * The line itself is console_identity() in lib/due_shared: its format
+ * and argument order are what measure.parse_identity reads, so they
+ * are wire contract with one home. FW_TRACK and the clock are this
+ * track's to supply.
  */
 static void identity_line(void)
 {
@@ -59,18 +59,10 @@ static void identity_line(void)
 }
 
 /*
- * This track's own facts, then the shared command list.
- *
- * The list used to be twenty-eight printf lines here and twenty-eight
- * more in Track A's sketch, which is how the two command sets came to
- * differ by twelve without anyone deciding they should - issue #13.
- * console_help() prints one table, so a command that exists on one
- * track and not the other now says so on both.
- *
- * The numbers stay here, where they can be computed. A shared help line
- * carrying "453488" would be a figure written down a second time, and
- * this project's rule about invented numbers applies hardest to the
- * ones that look derived.
+ * This track's own facts, then the shared command list -
+ * console_help() prints one table, so a command missing on one track
+ * says so on both. Numbers are computed here rather than written as
+ * literals, so a help line can't drift from what the hardware does.
  */
 static void banner(void)
 {
@@ -89,15 +81,10 @@ static void banner(void)
 }
 
 /*
- * `h`: the facts, then the list.
- *
- * They are split because boot prints the banner and `h` is typed. The
- * list is 47 lines now that it names what this track has *not* got, and
- * every one of them is UART time the main loop is not draining bulk OUT
- * for - invariant 8, and the banner was already the most expensive
- * thing on the console at 89 ms. Boot pays for the identity it has to
- * print and nothing else; the list costs what it costs, to whoever asks
- * for it.
+ * `h`: the facts, then the list. Split because boot prints the banner
+ * and `h` is typed - the list costs UART time the main loop is not
+ * draining bulk OUT for (invariant 8), so boot pays only for the
+ * identity it has to print.
  */
 static void cmd_help(void)
 {
@@ -242,9 +229,8 @@ static void cmd_sweep(void)
 /*
  * Measure multiplexer crosstalk properly: hold one channel's DAC fixed
  * and swing the other, then look at whether the held channel moved.
- *
- * An earlier version swung both DACs at once, which cannot isolate
- * anything: each channel's change was fully explained by its own DAC.
+ * Swinging both at once cannot isolate anything, since each channel's
+ * change would be fully explained by its own DAC.
  *
  * The ADC has one sample-and-hold behind a 16:1 multiplexer, so residual
  * charge from the previously converted channel contaminates the next.
@@ -257,54 +243,37 @@ static void cmd_sweep(void)
  * How long to wait for a DAC output to settle before converting -
  * "=<n>,<ms>x", default CTL_BLEED_SETTLE_MS.
  *
- * It is a knob because the excursion issue #16 is about recurs on a
- * fixed *cadence* rather than at random, and only moving the cadence
- * separates a beat against something periodic from a count kept in
- * software. Moving it is what measured the 64 ms period.
- *
- * This used to be a busy loop of 400,000 iterations here and delay(10)
- * on Track A, so the same command waited different times on the two
- * tracks and their figures were not comparable. Wall clock on both now.
+ * It is a knob because the excursion recurs on a fixed *cadence*
+ * rather than at random, and only moving the cadence can separate a
+ * beat against something periodic from a count kept in software.
  */
 static uint32_t crosstalk_settle_ms;
 
 /*
- * Multiplexer bleed, repeated - "=<n>,<ms>x".
+ * Multiplexer bleed, repeated - "=<n>,<ms>x". It prints a
+ * distribution, never one number, and in the order taken: this
+ * quantity is bimodal on an otherwise idle board, so a single draw
+ * reported as a measurement is the defect whichever value it lands on.
  *
- * **It prints a distribution, never one number, and in the order taken.**
- * Issue #16 measured this quantity to be spread on an otherwise idle
- * board: about 0 codes or about 160, the loud ones 10-15% of
- * observations, with ADC_MR read back identical in both. 160 codes is
- * 5.8% of the 2747-code full swing, so the two answers disagree about
- * whether the multiplexer is clean, and a single draw reported as a
- * measurement is the defect whichever value is right.
+ * The loud observations recur on a fixed cadence tied to the settle
+ * time - a beat against something periodic, not a coin flip or a
+ * startup condition.
  *
- * **It is not two modes, which is what the order settled.** The loud
- * observations recur on a fixed cadence inside a run, and the cadence
- * moves with the settle time so that gap x observation-duration is a
- * multiple of 64 ms at every setting tested. A beat against something
- * periodic, then - not a coin flip and not a startup condition.
+ * Which channel is watched is set by the conversion position, not the
+ * pin - see the `=<n>C` note below.
  *
- * **Which channel is set by the conversion position, not the pin** -
- * see the `=<n>C` note below. The A0 arm has never shown it on either
- * track in any pairing.
- *
- * **Each arm carries a control that swings nothing**, writing the same
+ * Each arm carries a control that swings nothing, writing the same
  * DAC code twice where the real arm writes 0 then 4095. Same writes,
- * same waits, same conversions. On the *driven* channel it has never
- * once been loud - 0 in 1,005 observations on Track A and 0 in 225 on
- * Track B - which is what makes that excursion about the swing rather
- * than the reading. On a *bare* channel it is loud: `=2C` reads a
- * standing +37 codes with nothing swung and +95 with, so those are two
- * effects and the control is what tells them apart. docs/noise.md.
+ * same waits, same conversions, so a difference between arm and
+ * control isolates the swing from the reading itself. docs/noise.md.
  *
- * **What it assumes about the bench, which differs between ours.** The
- * A1 arm holds DAC1 at mid scale and swings DAC0. Where DAC1 is
- * jumpered to A1 that pin is *driven* to the held level; where DAC1
- * goes to a scope's external trigger it is *free*, and one
- * sample-and-hold behind a 16:1 mux makes a free input read a smeared
- * copy of whatever was converted before it. The command works either
- * way and does not measure the same thing - so it says which it found.
+ * What it assumes about the bench, which differs between ours: the A1
+ * arm holds DAC1 at mid scale and swings DAC0. Where DAC1 is jumpered
+ * to A1 that pin is *driven* to the held level; where DAC1 goes to a
+ * scope's external trigger it is *free*, and the ADC's one
+ * sample-and-hold behind a 16:1 mux then reads a smeared copy of
+ * whatever converted before it. The command reports which case it
+ * found rather than assuming one.
  */
 static void cmd_crosstalk(void)
 {
@@ -338,25 +307,19 @@ static void cmd_crosstalk(void)
 	        " the swing is the only difference"); con_nl();
 	/*
 	 * The conditions as the hardware holds them, not as this function
-	 * believes it set them. Issue #16 spent a bench session on two
-	 * tracks disagreeing about a bleed figure while both printed the
-	 * same prose; the register is the only account that cannot drift
-	 * from what was measured. Raw, and decoded by the host - the cost
-	 * of a console command is the bytes it puts on the wire.
+	 * believes it set them - a register cannot drift from what was
+	 * measured. Raw, decoded by the host: the cost of a console
+	 * command is the bytes it puts on the wire.
 	 */
 	con_str("# adcmr="); con_hex32(acq_mr(), 8);
 	con_str(" (this command's own; restored after)"); con_nl();
 	uart_flush();
 
 	/*
-	 * The pads too, not only the converter. Issue #16(b)'s leading
-	 * suspect for the tracks' 3.3x disagreement on a bare channel is
-	 * what the two startups leave on the pins: the Arduino core walks
-	 * every pin at init, this build touches none, and a pull-up is
-	 * ~100k toward VDDIO on a pin nothing drives. Raw registers,
-	 * decoded by the reader - PUSR reads 1 where the pull-up is
-	 * DISABLED, PSR 1 where the PIO (not the peripheral) owns the
-	 * pin. A0=PA16, A1=PA24, A2=PA23, all PIOA.
+	 * The pads too, not only the converter: a pull-up left enabled on
+	 * an undriven pin is ~100k toward VDDIO. PUSR reads 1 where the
+	 * pull-up is DISABLED, PSR reads 1 where the PIO (not the
+	 * peripheral) owns the pin. A0=PA16, A1=PA24, A2=PA23, all PIOA.
 	 */
 	con_str("# pioa: psr="); con_hex32(PIOA->PIO_PSR, 8);
 	con_str(" osr=");        con_hex32(PIOA->PIO_OSR, 8);
@@ -366,14 +329,12 @@ static void cmd_crosstalk(void)
 	uart_flush();
 
 	/*
-	 * The pair `C` selected, not a hardcoded A1. Issue #16's named
-	 * test is whether the excursion follows the *pin* or the
-	 * *position*, and only `=2C` can ask it: A2 is 5 and A1 is 6, so
-	 * either way the second channel converts BEFORE A0 (7) - the
-	 * sequencer goes by channel index and `adc_read_pair`'s argument
-	 * order only chooses which CDR is read out afterwards. So `=2C`
-	 * swaps the pin while holding the conversion position fixed,
-	 * which is exactly the one variable worth moving.
+	 * The pair `C` selected, not a hardcoded A1. A2 is channel 5 and
+	 * A1 is 6, so either way the second channel converts BEFORE A0
+	 * (7) - the sequencer goes by channel index, and
+	 * `adc_read_pair`'s argument order only chooses which CDR is read
+	 * out afterwards. So `=2C` swaps the pin while holding the
+	 * conversion position fixed.
 	 */
 	const unsigned second = acq_pair_second;
 
@@ -428,16 +389,9 @@ static void cmd_crosstalk(void)
 	}
 
 	/*
-	 * Name the channel that was watched. With `=2C` selected these
-	 * rows are about A2 and a label saying A1 would be a figure
-	 * attributed to the wrong pin - which is the class of error this
-	 * whole issue is about.
-	 */
-	/*
-	 * Whole literals rather than a label built at runtime. The label
-	 * used to be snprintf'd from `sname`, which is the last thing in
-	 * this function that needed a formatter and a 64-byte buffer for
-	 * a string with two possible values. Issue #49.
+	 * Name the channel that was watched: with `=2C` selected these
+	 * rows are about A2, and a label saying A1 would attribute the
+	 * figure to the wrong pin.
 	 */
 	const bool a2 = (second == ADC_CH_A2);
 
@@ -511,21 +465,10 @@ static void cmd_stream_uart(uint32_t trigger_hz)
 }
 
 /*
- * What the generator is doing, in the contract's words.
- *
- * The sentence itself is ctl_gen_describe() in the shared layer, so the
- * console and CTL_OP_GEN cannot describe the same state differently and
- * the two tracks cannot drift apart in how they say it. This function
- * is the part that is genuinely this track's: where the bytes go.
+ * console_gen_report() and console_cmd_stream() are shared -
+ * lib/due_shared/src/console_cmds.c. This track supplies
+ * console_port_stream_start() below.
  */
-/* console_gen_report() is shared - lib/due_shared/src/console_cmds.c */
-
-/*
- * console_cmd_stream() is shared - lib/due_shared/src/
- * console_cmds.c. Issue #41's ordering lives there now, once.
- * This track supplies console_port_stream_start() below.
- */
-
 
 /*
  * Loop diagnostic: periodic snapshots taken while both service loops run.
@@ -633,17 +576,6 @@ static void diag_service(void)
 }
 
 /*
- * Where the main loop's time goes.
- *
- * The DMA benches re-arm at most one transfer per main-loop pass, so
- * the cost of a pass is a throughput ceiling, not a curiosity. Track A
- * carries the identical command so the two can be compared directly -
- * which is the only way to tell a real difference from a difference in
- * how the two were built.
- *
- * Results are ns per call.
- */
-/*
  * Dump the playback ring's occupancy distribution.
  *
  * Printed as a bare comma-separated list rather than key=value pairs:
@@ -697,7 +629,7 @@ static void cmd_occ_hist(void)
 	con_nl();
 
 	/*
-	 * The capture side of the same question (#44). Absolute
+	 * The capture side of the same question: absolute
 	 * microseconds at each completed PDC buffer, and the ring
 	 * occupancy at that instant - so a run that lost frames can be
 	 * read for whether the converter fell behind or the transfer
@@ -739,6 +671,12 @@ static void cmd_occ_hist(void)
 	uart_flush();
 }
 
+/*
+ * Where the main loop's time goes, in ns per call. The DMA benches
+ * re-arm at most one transfer per main-loop pass, so the cost of a
+ * pass is a throughput ceiling, not a curiosity. Track A carries the
+ * identical command so the two can be compared directly.
+ */
 static void cmd_profile(void)
 {
 	const uint32_t n = 20000;
@@ -796,11 +734,6 @@ static void cmd_profile(void)
 }
 
 /*
- * Branch to an even address. Cortex-M3 requires the Thumb bit set in
- * every branch target, so this raises INVSTATE, which escalates to a
- * HardFault because UsageFault is not separately enabled.
- */
-/*
  * Block the main loop for a known number of milliseconds.
  *
  * Exists to validate the load monitor, and it is the only way to do
@@ -830,16 +763,21 @@ static void cmd_stall(uint32_t ms)
 	 * Deliberately silent. A printf here lands in the very pass this
 	 * command exists to measure - 36 characters at 115200 baud is
 	 * 3.1 ms - and the monitor would faithfully report the stall plus
-	 * the announcement of it. That was measured, not guessed: with the
-	 * message in, a 5 ms stall read 7.2 ms and a 1500 ms stall read
-	 * 1502.7 ms, the same 2-3 ms offset at both ends. The answer to
-	 * "did it work" is the load report, not an echo.
+	 * the announcement of it. Measured, not guessed: with the message
+	 * in, a 5 ms stall read 7.2 ms and a 1500 ms stall read 1502.7 ms,
+	 * the same 2-3 ms offset at both ends. The answer to "did it work"
+	 * is the load report, not an echo.
 	 */
 	until = millis() + ms;
 	while ((int32_t)(millis() - until) < 0)
 		;
 }
 
+/*
+ * Branch to an even address. The Cortex-M3 requires the Thumb bit set
+ * in every branch target, so this raises INVSTATE, which escalates to
+ * a HardFault because UsageFault is not separately enabled.
+ */
 /* console_trigger_fault() is shared - lib/due_shared/src/console_cmds.c */
 
 /*
@@ -850,11 +788,9 @@ static void cmd_stall(uint32_t ms)
  * peripheral's own completions avoids needing the ADC to observe the
  * output, and gives the same kind of hard number the ADC sweep produced.
  *
- * Track A has carried this since DAC bring-up and this track had no
- * equivalent - issue #13. Independent source, same command, same
- * printed format, which is invariant 3: two programmings of one
- * converter disagreeing is the finding, and it cannot be had if only
- * one of them can be asked.
+ * Same command, same printed format on both tracks - invariant 3: two
+ * independent programmings of one converter disagreeing is the
+ * finding, and it cannot be had if only one of them can be asked.
  */
 static void cmd_dac_sweep(void)
 {
@@ -943,27 +879,17 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 	}
 
 	/*
-	 * These three lines print AFTER the capture start, which is the
-	 * shape #41 was about - and they stay that way deliberately.
+	 * These three lines print AFTER the capture start, deliberately -
+	 * not an oversight. Moving them earlier (as cmd_stream and h_loop
+	 * do) would look like a cleanup but breaks the measurement: the
+	 * interval between gen_start_independent() and the capture start
+	 * sets the sampling phase against the DAC's table wrap (see
+	 * h_mimic below), so the print's UART time is part of what fixes
+	 * that phase for a run. It survives only because the capture here
+	 * is fixed at 200,000 Hz, where the ring holds the longest
+	 * runway (docs/debugging.md); a fourth line would cost frames.
 	 *
-	 * docs/debugging.md prices this site at +4.77 ms of margin
-	 * against a 20.32 ms runway, "about one added banner line from
-	 * biting". It survives only because the capture here is fixed at
-	 * 200,000 Hz, where the ring holds longest. Add a fourth line and
-	 * it becomes cmd_stream: frames lost before the host sees any.
-	 *
-	 * Moving them above stream_start_capture_only() - which is what
-	 * cmd_stream and h_loop did - would fix the margin and break the
-	 * measurement. The interval between gen_start_independent() and
-	 * the capture start sets the sampling phase against the DAC's
-	 * table wrap, and h_mimic's comment records that as a free
-	 * variable fixed for a run by the instruction timing between the
-	 * two starts. Putting ~110 characters of UART in there would move
-	 * it by milliseconds, and this command is an instrument for issue
-	 * #5, which is about one sample per table wrap.
-	 *
-	 * So: not an oversight, and not safe to "fix" the way the others
-	 * were. If a print is ever needed here, put it above
+	 * If a print is ever needed here, put it above
 	 * gen_start_independent() where it costs nothing.
 	 */
 	con_str("# DAC indep "); con_u32(dac_hz);
@@ -976,22 +902,13 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 }
 
 /*
- * Endpoint state, readable while a stream is running.
- *
- * The banner reports CFGOK once, at boot, which is exactly when nothing
- * is wrong yet. The question this exists for is whether the sample
- * endpoints are still configured *during* a capture, after the AUTOSW
- * writes and the control-endpoint re-allocations have been running
- * against each other for a few thousand passes.
- *
- * It matters more here than it did on the track it came from. Any write
- * to UOTGHS_DEVEPTCFG re-allocates that endpoint's DPRAM - the ALLOC bit
- * is in the same register - and datasheet 40.5.1.6 says the x+1 window
- * then slides up and loses its data. That was inert while EP3 was the
- * last endpoint and became a wedge the day EP4-EP6 appeared, which is
- * this track. CFGOK is the controller's own answer to "did the
- * allocation take", and guessing at DPRAM arithmetic is how an endpoint
- * that never configured gets blamed on software.
+ * Endpoint state, readable while a stream is running. The banner
+ * reports CFGOK once, at boot; this asks whether the sample endpoints
+ * are still configured *during* a capture, once AUTOSW writes and
+ * control-endpoint re-allocations have run against each other for a
+ * while (any write to UOTGHS_DEVEPTCFG re-allocates that endpoint's
+ * DPRAM - see CLAUDE.md). CFGOK is the controller's own answer to
+ * "did the allocation take", rather than guessing at DPRAM arithmetic.
  *
  * EPEN and CFGOK are different questions and both are printed: CFGOK
  * describes a configuration, DEVEPT says which endpoints are actually
@@ -1021,22 +938,19 @@ static void cmd_endpoint_state(void)
 	uart_flush();
 }
 
-/* ------------------------------------------------------------------ */
-/* The command layer                                                   */
-/*                                                                     */
-/* The *surface* - which letters are commands, what arguments they     */
-/* take, what `h` prints and what happens to a letter this track has   */
-/* not got - is lib/due_shared/src/console.c, compiled by both tracks. */
-/* Everything below is this track's handlers, which is where the       */
-/* registers are. See console.h for why the line falls there.          */
-/*                                                                     */
-/* Parsing and execution stay separated for the reason they always     */
-/* were: the native port carries a binary framed protocol              */
-/* (docs/control-protocol.md) with a different parser, and both reach  */
-/* the same handlers. Two implementations of "start playback" would    */
-/* drift, and the refusal wording is part of what the host is told,    */
-/* not decoration.                                                     */
-/* ------------------------------------------------------------------ */
+/*
+ * The command layer.
+ *
+ * The *surface* - which letters are commands, what arguments they
+ * take, what `h` prints, and what happens to a letter this track has
+ * not got - is lib/due_shared/src/console.c, compiled by both tracks.
+ * Everything below is this track's handlers, where the registers are.
+ *
+ * Parsing and execution stay separated because the native port also
+ * carries a binary framed protocol (docs/control-protocol.md) with a
+ * different parser, and both reach the same handlers - so there is
+ * only one implementation of "start playback" to drift.
+ */
 
 static void h_help(const uint32_t *a)  { (void)a; cmd_help(); }
 static void h_ident(const uint32_t *a) { (void)a; identity_line(); }
@@ -1068,9 +982,7 @@ static void h_s400(const uint32_t *a) { (void)a; console_cmd_stream(400000); }
  * The top preset is derived, not written down: the highest rate the
  * ADC sustains follows from the measured cliff at RC 86, and that
  * compare value holds across master clock settings because the timer
- * and the ADC clock scale together. A literal 500000 here was from the
- * MCK=84 MHz era and was silently refused by the ACQ_MIN_RC guard at
- * 78 MHz - the guard doing its job on a stale preset.
+ * and the ADC clock scale together.
  */
 static void h_smax(const uint32_t *a)
 {
@@ -1179,12 +1091,6 @@ static void h_load(const uint32_t *a)
 static void h_stall(const uint32_t *a) { cmd_stall(a[0]); }
 
 /*
- * Software reset. The test suite holds the control port open for a
- * whole session, because opening it asserts NRSTB and costs a reset
- * plus a native-port re-glob every time; this is how it recovers a
- * wedged device without giving that up.
- */
-/*
  * A software unplug of the native port. `z` is a processor reset only -
  * RSTC_CR_PROCRST leaves the UOTGHS running and its pull-up attached,
  * so the host never sees a disconnect and a wedged close() is not
@@ -1201,23 +1107,10 @@ static void h_detach(const uint32_t *a)
 static void h_fws(const uint32_t *a)
 {
 	/*
-	 * Issue #5, and this is a debug-only knob in the class invariant 7
-	 * carves out - Q, l, the sweeps. It is never on the deployed path.
-	 *
-	 * #5's displacement sits at a fixed phase per firmware image, with
-	 * zero variance within an image, and EIGHT mechanisms have been
-	 * refuted: the build stamp, sample-path placement, sample-path code,
-	 * buffer placement, main-loop timing, the DAC table's contents, the
-	 * allocator, and a naive alignment model. Between an image reading
-	 * phase 156 and one reading 177 the ENTIRE difference in the start
-	 * path is where stream_core_start and its siblings sit in flash -
-	 * their code is identical.
-	 *
-	 * What that family predicts is that instruction FETCH timing sets
-	 * the gap between arming the DAC timer and arming the ADC trigger,
-	 * which is what a phase is. Every arm so far compares two images
-	 * that differ in many ways at once; this varies fetch timing and
-	 * nothing else, on ONE image, with no rebuild.
+	 * A debug-only knob in the class invariant 7 carves out - Q, l,
+	 * the sweeps - never on the deployed path. Varies flash wait
+	 * states to probe the instruction-fetch-timing mechanism behind
+	 * the DAC displacement finding in docs/awg.md.
 	 *
 	 * Clamped to 4..6. SystemInit sets 4 for MCK 78 MHz; going lower
 	 * would read flash faster than the part guarantees, which is a way
@@ -1238,6 +1131,12 @@ static void h_fws(const uint32_t *a)
 	con_ch(')'); con_nl();
 }
 
+/*
+ * Software reset. The test suite holds the control port open for a
+ * whole session, because opening it asserts NRSTB and costs a reset
+ * plus a native-port re-glob every time; this is how it recovers a
+ * wedged device without giving that up.
+ */
 static void h_reset(const uint32_t *a)
 {
 	(void)a;
@@ -1253,18 +1152,15 @@ static void h_diag(const uint32_t *a) { (void)a; diag_start(); }
  * "=<us>K". The gap between the ADC start and the DAC start, in
  * microseconds, held across runs and applied by the M preset.
  *
- * The two states this issue draws are selected by the binary and not by
- * anything the host does - three states on one image and one on the
- * next, with the changed code never executed. The M preset's comment
- * below names the only free variable that layout could plausibly move:
- * gen sits on TIOA1 while the ADC sits on TIOA0, so the sampling phase
- * relative to the DAC table wrap is fixed for a run by the instruction
- * timing between the two starts, and a different layout is a different
- * number of instructions.
+ * gen sits on TIOA1 while the ADC sits on TIOA0, so the sampling
+ * phase relative to the DAC table's wrap is fixed for a run by the
+ * instruction timing between the two starts - a different flash
+ * layout is a different number of instructions there. This makes
+ * that gap settable, so the effect can be probed inside one image
+ * instead of by flashing two.
  *
- * This makes that variable settable, so the hypothesis can be tested
- * inside one image instead of by flashing two. Debug-only, on a preset
- * that is already debug-only, and it busy-waits.
+ * Debug-only, on a preset that is already debug-only, and it
+ * busy-waits.
  */
 static void h_mimic_gap(const uint32_t *a)
 {
@@ -1284,53 +1180,37 @@ static void h_mimic_gap(const uint32_t *a)
 static void h_mimic(const uint32_t *a)
 {
 	/*
-	 * "=<dac>[,<adc>]M", defaulting to 200000 for both, which is
-	 * what this preset always did.
+	 * "=<dac>[,<adc>]M", defaulting to 200000 for both.
 	 *
-	 * Settable because this is the only path in the firmware where
-	 * the DAC update clock and the ADC trigger are two independent
-	 * timers - gen_prepare_tioa1() selects TIOA1 where every other
-	 * path leaves the DACC on the ADC's TIOA0. That makes the
-	 * sampling phase relative to the DAC's table wrap a free
-	 * variable, fixed for a run by the instruction timing between the
-	 * two starts, and it is the one structural difference between
-	 * this preset and the ordinary capture path that issue #5 does
-	 * not appear on.
+	 * Settable because this is the only path where the DAC update
+	 * clock and the ADC trigger are two independent timers -
+	 * gen_prepare_tioa1() selects TIOA1 where every other path leaves
+	 * the DACC on the ADC's TIOA0. That makes the sampling phase
+	 * relative to the DAC's table wrap a free variable, fixed for a
+	 * run by the instruction timing between the two starts.
 	 *
 	 * Giving the two clocks slightly different rates walks that phase
 	 * through a full period within one capture, so one run samples
-	 * the whole phase space instead of whichever point a run happened
-	 * to start at. A defect that is bimodal per run and constant
-	 * within it is what a fixed free variable looks like; this is how
-	 * to test that without needing a board that is currently
-	 * reproducing.
+	 * the whole phase space instead of whichever point it happened
+	 * to start at.
 	 */
 	uint32_t dac_hz = a[0] ? a[0] : 200000u;
 	uint32_t adc_hz = a[1] ? a[1] : dac_hz;
 	/*
-	 * "=<dac>,<adc>,<nch>M". Three channels puts the issue #5
-	 * impedance arm on A2 into the same capture as A1 and the sine on
-	 * A0, so the arms are matched inside one run instead of compared
-	 * across runs that draw different states.
+	 * "=<dac>,<adc>,<nch>M". Three channels puts the impedance arm on
+	 * A2 into the same capture as A1 and the sine on A0, so the arms
+	 * are matched inside one run instead of compared across runs.
 	 */
 	unsigned nch    = a[2] ? a[2] : 2u;
 
 	/*
 	 * Everything the console has to say is said before the converters
-	 * start. These two lines used to run after gen_go_tioa1(), which
-	 * is ~7 ms of blocked main loop laid over the first samples of
-	 * every capture this preset takes - invariant 8, on the path the
-	 * suite calls its continuity control. Measured not to change what
-	 * that path reports, on one image with the two orders alternated;
-	 * moved anyway, because it had no business being there.
+	 * start - invariant 8, since UART time here lands over the first
+	 * samples of every capture this preset takes.
 	 */
 	/*
-	 * The shape as it is, not as this line used to assume. It said
-	 * "sine" whatever `W` had put in the table, so a square capture
-	 * came with a banner claiming a sine over it - issue #9 flagged it
-	 * twice, and it is the kind of stale claim that gets read as data
-	 * later. gen_shape_name() is the shared spelling, so the two
-	 * tracks cannot drift on the word either.
+	 * The shape as it is, via gen_shape_name() - the shared spelling,
+	 * so the banner cannot claim a shape the table doesn't hold.
 	 */
 	con_str("# mimic loop: gen "); con_str(gen_shape_name(gen_shape));
 	con_str(" on TIOA1 at "); con_u32(dac_hz);
@@ -1342,12 +1222,10 @@ static void h_mimic(const uint32_t *a)
 	gen_init();
 	gen_prepare_tioa1(dac_hz);
 	/*
-	 * Checked, unlike every earlier version of this line. A refusal is
-	 * silent otherwise: gen still runs, the banner above has already
-	 * claimed a capture, and the host reads an empty stream from a
-	 * device that reported success. This is the preset the splice
-	 * census measures, so a refusal that says nothing would be scored
-	 * as a clean run.
+	 * Checked: an unhandled refusal here is silent otherwise - gen
+	 * still runs, the banner above has already claimed a capture, and
+	 * the host reads an empty stream from a device that reported
+	 * success.
 	 */
 	if (!stream_start_capture_only(adc_hz, nch)) {
 		con_str("# mimic loop: refused, the ADC would not start"); con_nl();
@@ -1492,8 +1370,7 @@ static void h_adc_timing(const uint32_t *a)
  * wants no host, and because the two paths going through one
  * implementation is what makes them comparable. ctl_temp_t carries what
  * this may and may not be used to claim - it is an upper bound on
- * ADVREF noise, not a value, and not a temperature in degrees. Issue
- * #11.
+ * ADVREF noise, not a value, and not a temperature in degrees.
  */
 static void h_temp(const uint32_t *a)
 {
@@ -1546,18 +1423,10 @@ static void h_bench(const uint32_t *a)
 static void h_occ(const uint32_t *a) { (void)a; cmd_occ_hist(); }
 
 /*
- * What this track implements, in the shared surface's terms.
- *
- * Order is this file's convenience - console.c scans by key and the
- * help's order comes from its own table - so these are grouped the way
- * the handlers above are written.
- *
- * A letter absent from here is answered "not implemented on this
- * track", which is the console's CTL_ERR_OPCODE. Four are absent today
- * and every one of them is Track A's: `d`, `j` and `k` are the DAC
- * bring-up sweeps and `E` reads endpoint state during a stream, which
- * this track has no equivalent of. Issue #13 has the list; `console_missing()`
- * prints it from this table rather than from anyone's memory.
+ * What this track implements, in the shared surface's terms. A letter
+ * absent from here is answered "not implemented on this track" - the
+ * console's CTL_ERR_OPCODE - and console_missing() prints the list
+ * from this table rather than from anyone's memory.
  */
 const console_binding_t console_bindings[] = {
 	{ 'h', h_help },        { 'v', h_ident },       { 'p', h_printf },
@@ -1616,19 +1485,6 @@ int main(void)
 	usb_cdc_init();
 	clockref_init();
 
-	/*
-	 * There was a setvbuf(stdout, NULL, _IONBF, 0) here, to stop
-	 * stdio buffering distorting the printf measurement. Nothing
-	 * writes to stdout any longer - console output goes through the
-	 * emitters and console_write, which is the UART directly - so it
-	 * was configuring a stream with no users.
-	 *
-	 * It was not free. That one call is what pulled __sinit,
-	 * _fflush_r, __swhatbuf_r and **malloc** into the image: setvbuf
-	 * allocates the buffer it is asked about. So after all 121 printf
-	 * call sites were gone the heap was still linked, and this line
-	 * was one of the two reasons. Issue #49.
-	 */
 	banner();
 	heartbeat_at = millis();
 
@@ -1671,26 +1527,18 @@ int main(void)
 		}
 
 		/*
-		 * Control transfers, at most once a millisecond.
+		 * Control transfers, at most once a millisecond - same
+		 * argument as the control channel below: this reads
+		 * UOTGHS_DEVISR every pass and costs about 1.2 us of a
+		 * 7.8 us one, all clock-domain-crossing bus cost rather
+		 * than instruction cost, to ask about an event that happens
+		 * a few dozen times at enumeration and essentially never
+		 * after. USB allows 500 ms for most control requests
+		 * (50 ms for SET_ADDRESS), so a millisecond of latency is
+		 * invisible against either.
 		 *
-		 * Same argument as the control channel below, and the same
-		 * measurement behind it: this reads UOTGHS_DEVISR every pass
-		 * and costs about 1.2 us of a 7.8 us one. The expense is not
-		 * the instruction, it is the peripheral bus and its
-		 * clock-domain crossing - the CPU stalls, and nothing in the
-		 * pipeline can hide that.
-		 *
-		 * It is asking about an event that happens a few dozen times
-		 * at enumeration and essentially never afterwards, so at one
-		 * pass in a hundred thousand it was oversampled by about that
-		 * factor. USB allows 500 ms for most control requests and
-		 * 50 ms for the SET_ADDRESS status stage; a millisecond of
-		 * added latency is invisible against either, and costs about
-		 * twenty milliseconds spread across a whole enumeration.
-		 *
-		 * The real fix is UOTGHS_IRQn, which is written
-		 * (UOTGHS_Handler) and has never been enabled. This is the
-		 * one-line version of it.
+		 * The real fix is UOTGHS_IRQn (written as UOTGHS_Handler,
+		 * never enabled). This is the one-line version of it.
 		 */
 		if (now != usb_ms) {
 			usb_ms = now;
@@ -1702,23 +1550,13 @@ int main(void)
 		diag_service();
 
 		/*
-		 * Keep bulk OUT drained when nothing is consuming it. A CDC
-		 * device that lets the pipe NAK indefinitely wedges the host:
-		 * macOS's close() waits for in-flight write URBs to complete,
-		 * and tcflush cannot recall a URB already at the controller,
-		 * so the host process hangs in close() holding the port.
-		 */
-		/*
-		 * Every pass, and it was tried the other way.
-		 *
-		 * Gating this to 1 kHz like the two polls above buys 1.68 us
-		 * of a 6.77 us pass - and the suite went from 233 passed to
-		 * 223 passed and a wedge. Four banks per millisecond is about
-		 * 2 MB/s of drain capacity against a host that writes at
-		 * ~1.8 MB/s during playback, so the margin was gone. This is
-		 * not a poll that finds nothing; it is the guarantee that the
-		 * pipe never NAKs indefinitely, and its *throughput* is the
-		 * guarantee, not just its existence.
+		 * Keep bulk OUT drained when nothing is consuming it, every
+		 * pass. Gating this to 1 kHz like the two polls above was
+		 * tried and cost the suite ten failures and a wedge: four
+		 * banks/ms is ~2 MB/s of drain capacity against a host
+		 * writing ~1.8 MB/s during playback, so gating erodes the
+		 * margin that keeps the pipe from NAKing indefinitely and
+		 * stranding the host in close().
 		 */
 		if (!play_active() && !stream_out_in_use()) {
 			static uint8_t scrap[512];
@@ -1733,26 +1571,18 @@ int main(void)
 		}
 
 		/*
-		 * The control channel, at most once a millisecond.
+		 * The control channel, at most once a millisecond. Servicing
+		 * it every pass cost 2141 ns of a 9700 ns pass - a UOTGHS
+		 * register read is far dearer than an SRAM one (`Q` measures
+		 * usb_ctl_read() alone at 1205 ns doing nothing) - against an
+		 * endpoint that receives a command ten times a second. A
+		 * millisecond is still 100x faster than any host can notice
+		 * on a status poll.
 		 *
-		 * Servicing it every pass cost 2141 ns of a 9700 ns pass -
-		 * more than stream_service() - to poll an endpoint that
-		 * receives a command ten times a second. The cost is a UOTGHS
-		 * register read, which is far dearer than an SRAM one:
-		 * usb_ctl_read() alone measures 1205 ns doing nothing. `Q`
-		 * reports both, which is how this was found rather than
-		 * argued.
-		 *
-		 * A millisecond is still 100x faster than any host can
-		 * notice on a status poll, and it leaves the drain with
-		 * 2 KB/ms of capacity against command traffic measured in
-		 * bytes. It is gated here rather than inside ctl_service
-		 * because `now` is already in a register, so the check is
-		 * free where a second millis() would not be.
-		 *
-		 * The drain still has to happen: an allocated OUT endpoint
-		 * that nobody reads NAKs forever and hangs the host in
-		 * close(). Once a millisecond is draining; never is not.
+		 * Gated here rather than inside ctl_service() because `now`
+		 * is already in a register. The drain still has to happen
+		 * every pass: an unread OUT endpoint NAKs forever and hangs
+		 * the host in close().
 		 */
 		if (now != ctl_ms) {
 			ctl_ms = now;
