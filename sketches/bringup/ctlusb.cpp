@@ -300,46 +300,42 @@ bool CtlUSB::setup_inner(USBSetup &setup)
  * Put the control endpoints back after something below them moved.
  *
  * Any DEVEPTCFG write with ALLOC set re-allocates that endpoint, and
- * 40.5.1.6 is explicit about the consequence: the x+1 window slides up
- * and loses its data while x+2 and above stay put - exactly the
- * condition a control channel in use violates. drivers/usb_cdc.c's
- * ep_configure_control() is the model, down to which endpoints are
- * restored: EP3 is also above EP2 and always exposed, but it carries
- * frames on DMA and re-establishing it would disturb an armed
- * transfer, so only these three (always manual FIFO) are restored.
+ * 40.5.1.6 says the x+1 window then slides up and loses its data while
+ * x+2 and above stay put - exactly what an in-use control channel
+ * cannot survive. drivers/usb_cdc.c's ep_configure_control() is the
+ * model, down to which endpoints are restored: EP3 is also above EP2
+ * and always exposed, but it carries frames on DMA and re-establishing
+ * it would disturb an armed transfer, so only these three - always
+ * manual FIFO - are restored.
  */
+
 /*
  * Keep the control endpoints out of the core's interrupt handler.
  *
- * PluggableUSB hands the core three more endpoints and the core enables
- * their interrupts along with everyone else's - but USBCore's ISR has a
- * case for CDC_RX and nothing else, so an OUT packet arriving on EP5
- * raises an interrupt no one acknowledges. The controller keeps it
- * asserted, the ISR re-enters forever, and the main loop stops running:
- * the board still enumerates, because that is all the ISR is doing, and
- * answers nothing.
+ * PluggableUSB hands the core three more endpoints and it enables their
+ * interrupts with everyone else's, but USBCore's ISR has a case for
+ * CDC_RX and nothing else. An OUT packet on EP5 then raises an
+ * interrupt no one acknowledges: the controller holds it asserted, the
+ * ISR re-enters forever, and the main loop stops running. The board
+ * still enumerates, because that is all the ISR is doing, and answers
+ * nothing.
  *
- * These endpoints are manual FIFO and polled from the main loop, which
- * is how drivers/usb_cdc.c drives them too, so the interrupt is not
- * wanted at all. The core re-enables on bus reset and SET_CONFIGURATION,
- * so this has to be re-applied rather than done once - usbdma.cpp's
- * keepalive has the same shape for the same reason.
+ * These endpoints are polled from the main loop, as drivers/usb_cdc.c
+ * polls Track B's, so the interrupt is not wanted at all. The core
+ * re-enables on bus reset and SET_CONFIGURATION, so this is re-applied
+ * rather than done once - usbdma.cpp's keepalive has the same shape.
  */
+
 /*
- * Drain bulk OUT, even though nothing consumes it yet: an allocated
- * bulk OUT that nobody drains NAKs forever, which is what wedges a
- * host in close() (objective 0c's shape). drivers/usb_cdc.c does the
- * same thing for Track B's control endpoint.
+ * Superseded and uncalled. ctl_port.cpp reads this endpoint for the
+ * control protocol and counts through the two variables below;
+ * --gc-sections drops ctlusb_drain_out() from the image.
  *
- * Discard, not read. Nothing speaks docs/control-protocol.md over this
- * node yet, so there is no consumer to hand bytes to; what matters is
- * that the bank goes back to the controller. When the protocol lands
- * this becomes the read path and the discard becomes its empty case.
- *
- * One bank per call, which is what keeps invariant 7. A single
- * 512-byte bank released per main-loop pass is ~115 MB/s of headroom
- * against a 1.8 MB/s wire, so bounding it costs nothing real - and the
- * alternative, "drain everything that arrived", is a main-loop pass
+ * It is kept because what it documents is still true of whatever drains
+ * this endpoint: an allocated bulk OUT that nobody drains NAKs forever,
+ * which is objective 0c's shape, and one bank per call is what keeps
+ * invariant 7 - a 512-byte bank per main-loop pass is ~115 MB/s against
+ * a 1.8 MB/s wire, where "drain everything that arrived" is a pass
  * whose length the peer chooses.
  */
 volatile uint32_t ctlusb_out_bytes;

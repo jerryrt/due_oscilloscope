@@ -458,15 +458,12 @@ static void cmd_crosstalk(void)
 	 * asked on this track too. See main.c for why `=2C` is the one
 	 * variable worth moving.
 	 *
-	 * Every read is the two-channel sequence, which it was not: this
-	 * used to call acq_read_one() and convert the watched channel
-	 * with every other disabled, while Track B converted the pair.
-	 * That was worth a sign and a factor of twelve - on `=2C` the
-	 * same board minutes apart read a plateau of +95 codes with a
-	 * loud +37 control on this track and -1205 with a clean control
-	 * on Track B, so a bleed figure was not comparable across tracks.
-	 * Same sequence on both now; the conversion preceding the
-	 * watched one is the same conversion.
+	 * Every read is the two-channel sequence, as Track B's is. The
+	 * conversion preceding the watched one is what bleeds into it, so
+	 * converting the watched channel alone measures a different thing
+	 * entirely - worth a sign and a factor of twelve when the two
+	 * tracks did it differently, which made a bleed figure
+	 * incomparable across them.
 	 */
 	const unsigned second = acq_pair_second;
 
@@ -1974,8 +1971,8 @@ static void ha_bench(const uint32_t *a)
 		/* The shared prefix, then this track's own counters at the
 		 * offset it hands back. usbdma_rebuilds and the two activity
 		 * counters are Track A's UOTGHS DMA stack and Track B has
-		 * nothing to put there - a real per-track capability, unlike
-		 * the `svc` that used to sit mid-line here. */
+		 * nothing to put there, which is a real per-track capability
+		 * rather than a field one track happens not to fill. */
 		play_report_print(&r);
 		con_str(" rebuilds=");  con_u32(usbdma_rebuilds);
 		con_str(" act-in=");    con_u32(usb_in_activity);

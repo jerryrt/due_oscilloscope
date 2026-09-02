@@ -212,8 +212,8 @@ void play_stop(void)
 
 /*
  * Fill the ring by endpoint DMA: bulk OUT data moves from the FIFO into
- * the playback buffers with no CPU copy at all, which is the invariant
- * the architecture rests on and the one this path used to break.
+ * the playback buffers with no CPU copy at all. Invariant 1, which this
+ * path is the most tempting place in the firmware to break.
  *
  * One transfer is in flight at a time, aimed at as many contiguous free
  * slots as the ring allows. Single-slot transfers cap throughput at

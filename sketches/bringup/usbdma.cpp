@@ -69,9 +69,9 @@ static void ep_apply_autosw(uint32_t ep, bool on)
 	 * carries ALLOC and re-allocates. Most calls here are redundant -
 	 * releasing a mode that was never claimed - and they were paying
 	 * full price for it. That is half of the fix named in the warning
-	 * above; the other half is below, and it is no longer inert - the
-	 * control channel brought EP4-6 into existence, so a write here
-	 * really does slide a window that matters.
+	 * above; the other half is below, and it matters because EP4-6
+	 * exist for the control channel, so a write here really does slide
+	 * a window with data in it.
 	 */
 	if (!!(cfg & UOTGHS_DEVEPTCFG_AUTOSW) == on)
 		return;

@@ -133,12 +133,11 @@ uint16_t acq_read_one(unsigned ch);
  * _end. Returns -1 and changes nothing if a capture is running or a
  * measurement is already open.
  *
- * `x` used to inherit whatever last wrote ADC_MR, which was TRACKTIM
- * 0 on one track and 15 on the other - worth a sign flip and a factor
- * of four on the same board, since tracking time is the dominant term
- * for multiplexer bleed and a bleed figure taken at an inherited
- * tracking time is a figure about the previous command. Same
- * argument as acq_read_temp(); see acq.cpp.
+ * Set rather than inherited because tracking time is the dominant
+ * term for multiplexer bleed: a figure taken at whatever ADC_MR the
+ * previous command left is a figure about that command, and the two
+ * tracks do not idle at the same TRACKTIM. Worth a sign flip and a
+ * factor of four on one board. Same argument as acq_read_temp().
  */
 int      acq_measure_begin(void);
 void     acq_measure_end(void);

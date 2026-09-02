@@ -174,12 +174,11 @@ uint16_t acq_read_one(unsigned ch)
  * inherited, and restored afterwards.
  *
  * Same argument as acq_read_temp(): the variable is not which track,
- * it is whatever last touched the register. `x` used to run at
- * TRACKTIM 0 / SETTLING 0 here and TRACKTIM 15 / SETTLING 3 on
- * Track B - the two ends of the range - because each track's `x`
- * inherited whatever its own init had left. On the `=2C` arm that
- * was worth a sign flip and a factor of four between two builds of
- * the same command on the same board minutes apart.
+ * it is whatever last touched the register. Inherited, the two tracks
+ * sit at opposite ends of the range - TRACKTIM 0 / SETTLING 0 against
+ * TRACKTIM 15 / SETTLING 3 - which on the `=2C` arm is worth a sign
+ * flip and a factor of four between two builds of one command on one
+ * board.
  *
  * Tracking time is the dominant term for multiplexer bleed, so a
  * crosstalk measurement that inherits it is measuring its own history.

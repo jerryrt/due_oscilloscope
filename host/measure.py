@@ -2696,15 +2696,14 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
 
     # Stop the device before reading its counters, for run_play()'s
     # reason: the loop keeps capturing and playing after the feeder
-    # stops, so anything read in between describes ~2 s of deliberate
+    # stops, so anything read in between describes seconds of deliberate
     # starvation rather than the run, and reads downstream as a fault in
-    # the feed. This used to issue `B` here and stop afterwards.
+    # the feed.
     board.cmd("0")
     time.sleep(0.2)
 
-    # Over the control channel. As `B` this was 13.14 ms of blocked main
-    # loop taken while the loop was still running - the instrument
-    # inside its own measurement, which is invariant 8.
+    # Over the control channel: 146 us, against 13.14 ms of blocked
+    # main loop for `B` (invariant 8).
     play = play_counters(board)
 
     board.cmd("B")

@@ -434,62 +434,44 @@ typedef struct __attribute__((packed)) {
 } load_report_t;
 
 /*
- * CTL_OP_TEMP's payload: the SAM3X's on-die temperature sensor, ADC
- * channel 15, enabled by ADC_ACR.TSON.
+ * CTL_OP_TEMP's payload: the on-die temperature sensor, ADC channel 15,
+ * behind ADC_ACR.TSON.
  *
- * Why it exists, and it is not about temperature: ADVREF is the
- * reference for the ADC *and* the DAC, so the DAC-to-ADC loopback this
- * project measures everything with is ratiometric and cannot see its
- * own reference - a shift in ADVREF divides out exactly, moving the
- * loop by zero codes. The sensor is a bandgap-derived *absolute*
- * voltage instead, so fractional reference noise appears in it
- * directly, at full weight - the one term the loop divides away.
+ * It is not here for temperature. ADVREF is the reference for both
+ * converters, so the DAC-to-ADC loopback is ratiometric and a shift in
+ * ADVREF divides out to zero codes; the sensor is a bandgap-derived
+ * absolute, so that term appears in it at full weight. What the reading
+ * can and cannot support - no degrees without a per-part calibration,
+ * an upper bound rather than a value, and nothing about the fast part
+ * of reference noise - is in docs/noise.md.
  *
- * What this does not claim:
+ * `code_x16` carries four fractional bits because a single conversion
+ * is ~4 codes rms against a question about a fraction of one, so the
+ * averaging has to happen here; `samples` is how many went into it.
  *
- * - No degrees. `code` is what the converter returned; turning it into
- *   a temperature needs a per-part offset uncalibrated on this board,
- *   so a degrees field would be sized against an assumption. The host
- *   applies a calibration when one exists.
- * - An upper bound on ADVREF noise, not a value: one channel cannot
- *   separate the sensor's own noise from the reference's, but a
- *   comparison *between benches* is a difference in which the sensor's
- *   contribution is common.
- * - Bandwidth: the sensor is slow and filtered, and may see none of the
- *   fast part of reference noise - where ratiometric cancellation is
- *   weakest - so a null result here does not close that question.
+ * Refused with CTL_ERR_BUSY while a capture is armed: TSON would put
+ * sensor conversions into the capture ring, which is invariant 5. The
+ * device tests ADC_MR's TRGEN rather than a software flag, because the
+ * hardware trigger being armed is the actual condition.
  *
- * `samples` is how many conversions were averaged into `code_x16`,
- * which carries four fractional bits so the average is not thrown away
- * by the integer it is reported in; a single conversion is ~4 codes rms
- * against a question about a fraction of a code, so the averaging has
- * to happen on the device.
- *
- * Refused while a capture is armed, with CTL_ERR_BUSY: reading the
- * sensor means enabling channel 15 for the duration, which would put
- * sensor conversions into the capture ring - discontinuous data
- * presented as continuous, invariant 5. The device tests ADC_MR's
- * TRGEN rather than a software flag, since the hardware trigger being
- * armed is the actual condition.
- *
- * `adc_mr` and `adc_acr` are the registers as the hardware holds them,
- * not an echo - a reading taken at a track/settling time nobody
- * recorded is not comparable with one taken at another, and the two
- * tracks do not necessarily idle at the same ADC_MR.
+ * `adc_mr` and `adc_acr` are read back from the hardware, not echoed. A
+ * reading taken at a track/settling time nobody recorded is not
+ * comparable with one taken at another, and the tracks do not
+ * necessarily idle at the same ADC_MR.
  */
+
 /*
- * How many conversions a temperature reading averages. The default is
- * sized so the averaged noise falls below the quantisation floor (see
- * docs/noise.md); the maximum is a bound rather than a recommendation -
- * invariant 7 wants the worst case of one main-loop pass independent of
- * what a host asked for, so a request past this is clamped and the
- * report says what was actually averaged.
+ * How many conversions a reading averages. The default puts the
+ * averaged noise below the quantisation floor (docs/noise.md); the
+ * maximum is a bound, not a recommendation, because invariant 7 wants
+ * one main-loop pass's worst case independent of what a host asked for.
+ * A request past it is clamped and the report says what was averaged.
  */
+
 /*
- * What ctl_port_temp() returns. Three outcomes rather than a bool,
- * because "this track has no sensor" and "not right now" are different
- * facts with different remedies and the caller has to answer them with
- * different error codes.
+ * Three outcomes rather than a bool: "this track has no sensor" and
+ * "not right now" are different facts with different remedies, and the
+ * caller answers them with different error codes.
  */
 #define CTL_TEMP_OK          1
 #define CTL_TEMP_UNSUPPORTED 0
@@ -680,9 +662,8 @@ void ctl_gen_describe(const ctl_gen_t *g);
 /*
  * How long a DAC output is given to settle before the conversion that
  * reads it, and the ceiling a host may ask for. Both tracks wait wall
- * clock for this; Track B used to spin a 400,000-iteration busy loop
- * and Track A to call delay(10), which is the same command measuring
- * two different things and their figures being quietly incomparable.
+ * clock, in the same units: one command measuring two different things
+ * is two sets of figures that look comparable and are not.
  *
  * It is settable because the excursion in issue #16 recurs on a fixed
  * cadence - every fourth observation, measured on this bench - and

@@ -653,7 +653,7 @@ size_t usb_ctl_write(const uint8_t *data, size_t len)
  * (and frees a drained OUT bank) by itself, which is what lets one DMA
  * transfer span many packets. Without it the DMA fills or drains the
  * first bank and then waits forever for a bank switch that never
- * comes - the exact one-transfer stall the primitives used to exhibit.
+ * comes, which reads as a transfer that moves one packet and stops.
  * The manual FIFO path needs the opposite: AUTOSW off and explicit
  * FIFOCON handling. The two are per-endpoint modes, so switch
  * explicitly and never mix them on the same endpoint at the same time.

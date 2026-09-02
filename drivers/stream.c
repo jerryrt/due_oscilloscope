@@ -304,14 +304,12 @@ void stream_bench_report(void)
 	/*
 	 * Report byte counts only, never a rate.
 	 *
-	 * The device cannot time its own benchmark reliably: opening the
-	 * control port resets the board, so the window start is not related
-	 * to when the host began measuring. An earlier version divided by
-	 * that bogus window and reported 0.27 MB/s for a transfer the host
-	 * had clocked at 3.05 MB/s, with both agreeing on the byte count.
+	 * The device cannot time its own benchmark: opening the control
+	 * port resets the board, so the window start bears no relation to
+	 * when the host began measuring. Dividing by it is wrong by an
+	 * order of magnitude while the byte counts stay exact.
 	 *
-	 * The byte counts are trustworthy and are what the host needs; it
-	 * has its own clock.
+	 * The byte counts are what the host needs; it has its own clock.
 	 */
 	stream_bench_stats_t bs;
 

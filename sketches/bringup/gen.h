@@ -30,57 +30,49 @@ extern "C" {
 #define GEN_TABLE_LEN     (GEN_SINE_POINTS * 2)   /* interleaved */
 
 /*
- * Shape and resolution: the same two axes Track B's gen.c carries, the
- * same command, the same printed format.
+ * Shape and resolution: the same two axes, the same command and the
+ * same printed format as Track B's gen.c.
  *
- * Independent source, and deliberately so. Invariant 3 shares the wire
- * contract between the tracks and keeps *register programming* apart,
- * naming gen among the internals that stay independent: two
- * programmings of one converter is what makes a behavioural divergence
- * point at one of them. So this file uses libm's sin() where Track B
- * hand-rolls a fixed-point one, and the two agreeing on the analog
- * output is then evidence rather than a tautology. What must NOT differ
- * is the feature or the way it is asked for.
+ * Independent source by invariant 3, which keeps register programming
+ * apart so that two programmings of one converter agreeing on the
+ * analog output is evidence rather than a tautology. This file uses
+ * libm's sin() where Track B hand-rolls a fixed-point one. What must
+ * not differ is the feature or the way it is asked for.
  *
- * Resolution is points per cycle and must divide GEN_SINE_POINTS, so a
- * cycle never straddles the PDC wrap: powers of two, 2 to 256. The
- * output frequency follows directly -
+ * Resolution is points per cycle and must divide GEN_SINE_POINTS -
+ * powers of two, 2 to 256 - so a cycle never straddles the PDC wrap.
+ * The output frequency follows:
  *
  *     f = trigger_hz / (2 * gen_points)
  *
- * - the 2 because TAG mode spends half of every update on DAC1. Fewer
- * points buys frequency and costs staircase resolution; that trade is
- * the point of exposing it.
+ * The 2 is TAG mode spending half of every update on DAC1. Fewer points
+ * buys frequency and costs staircase resolution.
  */
+
 /*
- * The sync output on DAC1: a trigger for the bench, and the same three
- * modes Track B's gen.c carries under the same command.
+ * The sync output on DAC1: a bench trigger, same three modes and same
+ * command as Track B's gen.c.
  *
- * Why, measured. Triggering a scope on the signal itself divides the
- * pin's amplitude noise - ~20 mV here, 15 mV of it with the DAC idle -
- * by the waveform's slew rate at the trigger level, so a ramp rising
- * 4.5 mV per sample shakes 27 us where a square does not shake at all.
- * A sync edge is full scale every time, so the same noise buys almost
- * no jitter, and the signal channel is measured rather than also being
- * asked to trigger. `docs/awg.md`.
+ * Triggering a scope on the signal itself divides the pin's ~20 mV of
+ * amplitude noise by the slew rate at the trigger level, so a ramp
+ * rising 4.5 mV per sample shakes where a square does not. A sync edge
+ * is full scale every time. docs/awg.md.
  *
- * Phase-locked by construction: one PDC stream, one trigger, both
- * channels. It lags the waveform by exactly one trigger period, which
- * is the TAG interleave and a fixed offset.
+ * Phase-locked by construction - one PDC stream, one trigger, both
+ * channels - so it lags the waveform by exactly one trigger period.
  *
- * OFF     mid scale - the demux arm this project has always run.
+ * OFF     mid scale. The demux arm this project has always run.
  * CYCLE   50% square, one per waveform cycle, rising at phase 0. The
  *         default, and a better demux check than OFF: a flat line is
- *         also what an unwritten channel looks like, and a square is
- *         not.
- * WRAP    50% square, one per table wrap. Same as CYCLE at the default
- *         resolution, different at every other, because the wrap is the
- *         PDC reload rather than the waveform.
+ *         also what an undriven channel looks like.
+ * WRAP    50% square, one per table wrap. Differs from CYCLE at every
+ *         resolution but the default, because the wrap is the PDC
+ *         reload rather than the waveform.
  *
- * 50% duty and not a narrow pulse: the scope's EXT input tops out at
- * 1.2 V here against a 0.52-2.82 V DAC, so the trigger has to be AC
- * coupled, and AC coupling makes a narrow pulse's baseline droop with
- * its duty cycle. A square does not droop.
+ * 50% duty rather than a narrow pulse: the scope's EXT input tops out
+ * at 1.2 V against a 0.52-2.82 V DAC, so the trigger has to be AC
+ * coupled, and AC coupling droops a narrow pulse's baseline with its
+ * duty cycle. A square does not droop.
  */
 extern uint16_t gen_amp;      /* 1..256, 256 = full scale */
 void gen_set_amp(uint32_t amp);

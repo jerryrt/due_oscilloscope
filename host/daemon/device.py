@@ -1233,13 +1233,9 @@ class BoardDevice(Device):
             if _is_transport_failure(e):
                 self._drop_control()
             raise
-        # Built as an OccHist rather than returned field by field,
-        # because the derived rates are methods on it. The console
-        # branch that used to stand here supplied `window_rates`,
-        # `byte_rate` and `traced_byte_rate` and the control branch
-        # beside it did not, so the reply's shape depended on which
-        # instrument answered - the same defect one layer up from the
-        # one #51 q3 is about. One path now, and it carries all of them.
+        # Built as an OccHist rather than field by field, because
+        # `window_rates`, `byte_rate` and `traced_byte_rate` are methods
+        # on it and every caller of this reply expects all three.
         o = self.m.OccHist(
             buckets=list(occ["hist"]), min=occ["occ_min"],
             endtx=occ["endtx"], run_us=occ["run_us"],

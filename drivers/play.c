@@ -93,9 +93,9 @@ bool play_active(void) { return active; }
  * a byte arriving is enormous - the ring is 32 KB, ~18 ms at the full
  * rate - so this cannot fire on a host that is merely slow.
  *
- * Behaviour change worth stating: an AWG whose feed stops used to
- * hold its last buffer forever. Now it stops after half a second, and
- * play_abandoned counts it so the difference is never silent.
+ * An AWG whose feed stops therefore goes quiet after half a second
+ * rather than holding its last buffer, and play_abandoned counts it so
+ * the difference is never silent.
  */
 #define PLAY_ABANDON_MS 500u
 

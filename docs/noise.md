@@ -267,12 +267,18 @@ its limits the first place to look, not the reference. Not chased here.
 
 ### What would actually see the reference
 
-An input not derived from ADVREF. The board has exactly one on chip - the
-ADC's internal temperature sensor, a bandgap-derived absolute whose
-reading is proportional to `1/ADVREF` - and it is not enabled in either
-firmware. Issue #11. That is the only route short of external hardware,
-and it would also settle whether the ~0.44-bit gap between the two
-benches lives in the reference.
+An input not derived from ADVREF. The board has exactly one on chip -
+the ADC's internal temperature sensor, a bandgap-derived absolute whose
+reading is proportional to `1/ADVREF`. It is the only route short of
+external hardware, and it would also settle whether the ~0.44-bit gap
+between the two benches lives in the reference.
+
+Both tracks now enable it behind `ADC_ACR.TSON` and report it over
+`CTL_OP_TEMP`, refusing while a capture is armed so sensor conversions
+cannot enter the capture ring. The reading is an upper bound on
+reference noise rather than a value: one channel cannot separate the
+sensor's own noise from the reference's, though a comparison *between
+benches* is a difference in which the sensor's contribution is common.
 
 ## An unused ADC channel reads its neighbour
 

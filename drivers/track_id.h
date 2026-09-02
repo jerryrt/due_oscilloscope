@@ -4,10 +4,9 @@
  * The one fact about a firmware image that is legitimately per-track,
  * so it is the one thing left with a copy in each track's own tree -
  * three of them: this one, sketches/bringup/track_id.h, and
- * apps/rtos_bringup/track_id.h. Everything else that used to live
- * beside it in version.h is now one shared file,
- * lib/due_shared/src/fw_version.h, which does NOT include this: each
- * track includes its own track_id.h alongside it instead.
+ * apps/rtos_bringup/track_id.h. Every other version field is shared,
+ * in lib/due_shared/src/fw_version.h, which does NOT include this file
+ * - each track includes its own track_id.h alongside it.
  *
  * 'A' = CMake + this project's own arm-gcc, built from the Arduino
  * core sources (enumeration only; arduino-cli is not invoked).
