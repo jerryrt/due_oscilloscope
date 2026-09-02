@@ -1,17 +1,9 @@
 /*
- * Debug console output: typed emitters with stated budgets.
- *
- * Issue #49, second design. The first was a printf-compatible
- * formatter, chosen so the 130-odd call sites could migrate by rename.
- * That optimised for the migration rather than for the property the
- * issue is about, and the owner's direction is the other way round:
- * clean house, deterministic time and memory, no obligation to the
- * printf feature set, call sites rewritten to suit.
- *
- * So there is no format string here. A format string is parsed at
- * runtime, which makes the cost of a call a function of the string as
- * well as the values, and it carries flags and widths that exist to
- * satisfy a standard nothing here needs to satisfy.
+ * Debug console output: typed emitters with stated budgets, no format
+ * string. A format string is parsed at runtime, which makes the cost of
+ * a call a function of the string as well as the values, and it carries
+ * flags and widths that exist to satisfy a standard nothing here needs
+ * to satisfy.
  *
  * ================= THE BUDGETS, WHICH ARE THE POINT ==================
  *
@@ -33,10 +25,9 @@
  *     con_nl          1 byte, 2 on the wire after CRLF
  *
  * At 115200 8N1 a byte is 86.8 us, so the byte count IS the time
- * budget: the arithmetic is ~1% of it and the wire is the rest. That
- * is measured - a 42-byte line costs 3618 us against 3646 us of pure
- * transmission - and it is why this file does not try to be clever
- * about the conversion.
+ * budget: the arithmetic is a small fraction of it and the wire is the
+ * rest, which is why this file does not try to be clever about the
+ * conversion.
  *
  * WHAT IS NOT HERE, and will not be added: floating point, %n,
  * positional arguments, dynamic width. Each of those is either
@@ -75,29 +66,15 @@ void con_pad(char c, unsigned n);
 
 /*
  * A number in a field of `width`, filled with `fill` on the left.
- *
- * `%5lu` and `%03lu` appear in forty-odd places and the columns they
- * make are read by eye and by host parsers, so the width is not
- * decoration. Bounded like everything else: width clamps to
- * CON_PAD_MAX, and a value too wide for its field is printed in full
- * rather than truncated - a clipped number is a wrong number, where a
- * misaligned column is only ugly.
- *
- * Emits at most max(width, 10) bytes.
+ * Bounded like everything else: width clamps to CON_PAD_MAX, and a
+ * value too wide for its field is printed in full rather than
+ * truncated - a clipped number is a wrong number, where a misaligned
+ * column is only ugly. Emits at most max(width, 10) bytes.
  */
 void con_u32w(uint32_t v, unsigned width, char fill);
 
-/*
- * The same, padded on the RIGHT: `%-4lu`.
- *
- * One site uses it - diag_service's tpr=slot+off column, where the
- * offset varies in width and the columns after it must not move. It
- * exists rather than being open-coded there because "number then some
- * spaces" needs the digit count, and a call site that computes the
- * digit count is a call site that can get it wrong.
- *
- * Emits at most max(width, 10) bytes.
- */
+/* The same, padded on the RIGHT: `%-4lu`. Emits at most max(width, 10)
+ * bytes. */
 void con_u32l(uint32_t v, unsigned width);
 
 /*

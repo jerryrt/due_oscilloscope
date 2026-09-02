@@ -140,17 +140,10 @@ void con_u32l(uint32_t v, unsigned width)
 }
 
 /*
- * A string in a field of `width`, padded on the RIGHT: `%-22s`.
- *
- * One site uses it - cmd_profile's label column, where every row must
- * line up and the labels are of different lengths. It exists rather
- * than being open-coded there for the same reason con_u32l does: a call
- * site that computes its own pad width is a call site that can get it
- * wrong, and it would need a strlen that is not itself bounded.
- *
- * The length walk stops at CON_STR_MAX like every other, and a string
- * wider than its field is emitted in full - a clipped label is a wrong
- * label, where a misaligned column is only ugly.
+ * A string in a field of `width`, padded on the RIGHT: `%-22s`. The
+ * length walk stops at CON_STR_MAX like every other, and a string wider
+ * than its field is emitted in full - a clipped label is a wrong label,
+ * where a misaligned column is only ugly.
  */
 void con_strl(const char *s, unsigned width)
 {

@@ -1,16 +1,11 @@
 /*
  * The native port's control channel: framing and dispatch.
  *
- * Why this exists at all is in docs/control-protocol.md, and the short
- * version is that a deployed board is one cable and that cable is the
- * native port, so a control path behind the programming port does not
- * exist in deployment. The transport is a second CDC function
- * (usb_ctl_read/usb_ctl_write); this is the protocol on top of it.
- *
- * The wire format is a contract shared with Track A, which reaches it
- * through different code. It is defined here and in the document, and
- * changing one without the other is what the --track=both tests exist
- * to catch.
+ * A deployed board is one cable and that cable is the native port, so a
+ * control path behind the programming port does not exist in
+ * deployment - see docs/control-protocol.md. The transport is a second
+ * CDC function (usb_ctl_read/usb_ctl_write); this is the protocol on
+ * top of it.
  */
 
 #ifndef CTL_H

@@ -1,12 +1,8 @@
 /*
  * The control channel's wire format, and nothing else.
  *
- * Split out of drivers/ctl.h so both tracks compile the same bytes
- * rather than two transcriptions of docs/control-protocol.md. The
- * document said the format "is defined here and in the document, and
- * changing one without the other is what the --track=both tests exist
- * to catch" - which was true, and was also a description of a contract
- * with two homes. This file is the one home; see docs/shared-source.md.
+ * Compiled by both tracks so the format has one home rather than two
+ * transcriptions of docs/control-protocol.md; see docs/shared-source.md.
  *
  * Types and constants only. Everything that *does* something with them
  * - the parser, the dispatcher, the counters - is per-track for now and
@@ -38,28 +34,22 @@
 #define CTL_MAGIC1   'U'
 #define CTL_MAGIC2   'E'
 #define CTL_MAGIC3   'C'
-/*
- * 2: IDENTITY grew fw_major/fw_minor/fw_patch over the reserved byte,
- *    so its response is 42 bytes where 1 sent 40. A host built for 1
- *    would read frame_bytes out of the version fields.
- */
+/* Bump on any change a host built for the old version would misparse -
+ * e.g. a struct growing over what used to be reserved bytes. */
 #define CTL_VERSION  3
 
 #define CTL_HDR_BYTES     16u
 
 /*
- * One response is one packet, and that is the constraint this number
- * comes from rather than from how big any payload happens to be.
+ * One response is one packet - the constraint this number comes from,
+ * not the size of any particular payload. The command endpoints are
+ * 512 bytes and single-banked and usb_ctl_write refuses rather than
+ * blocks, so a response spanning two packets would be silently
+ * truncated whenever the host had not yet drained the first.
+ * 16 + 448 = 464 fits one packet with room to spare.
  *
- * The command endpoints are 512 bytes and single-banked, and
- * usb_ctl_write refuses rather than blocks. A response spanning two
- * packets would therefore be truncated whenever the host had not yet
- * drained the first, and the loss would be silent. 16 + 448 = 464 fits
- * one packet with room to spare, so every answer either goes whole or
- * is counted in ctl_tx_dropped.
- *
- * Anything larger than this is paged by the opcode that carries it -
- * see GET_RATE_TRACE - rather than by growing the buffer.
+ * Anything larger is paged by the opcode that carries it (see
+ * GET_RATE_TRACE) rather than by growing the buffer.
  */
 #define CTL_MAX_PAYLOAD   448u
 
@@ -71,16 +61,13 @@
  * liveness, 0x001x state the host both reads and writes, 0x002x
  * counters, 0x003x faults and resets.
  *
- * LOAD is in the counter range and is the one metric here that is about
- * the device rather than about the data. Everything else this board
- * exports says the loop was too slow *afterwards* - an underrun, an
- * overrun, a ring that ran dry. LOAD says how close to the edge it is
- * on a run that passes, and it is readable while the sample path is
- * blocked, which is the case the programming port has always been
- * needed for and a deployed board does not have.
+ * LOAD is in the counter range but is about the device rather than the
+ * data: everything else here says the loop was too slow *afterwards* -
+ * an underrun, an overrun, a ring that ran dry - while LOAD says how
+ * close to the edge it is on a run that passes.
  *
  * The rest are listed in docs/control-protocol.md and reach
- * cmd_execute() when they land, so that a command means the same thing
+ * cmd_execute() when they land, so a command means the same thing
  * whichever transport delivered it.
  */
 #define CTL_OP_PING       0x0001u
@@ -100,27 +87,19 @@
  * Which optional opcodes a build implements, so a host can grey out what
  * a track has not got instead of discovering it through CTL_ERR_OPCODE.
  *
- * **This cannot be derived from ctl_dispatch().** The switch is
- * universal - every opcode has a case, on both tracks - and what differs
- * is that the track's ctl_port_* answers false and the shared code then
- * returns CTL_ERR_OPCODE. So the switch says "known to the protocol",
- * never "implemented here", and a list read off it would claim every
+ * This cannot be derived from ctl_dispatch(): the switch is universal
+ * (every opcode has a case on both tracks) and what differs is that the
+ * track's ctl_port_* answers false and the shared code then returns
+ * CTL_ERR_OPCODE - so a list read off the switch would claim every
  * track implements everything.
  *
- * **Nor can it be probed by calling.** CTL_OP_LOAD has a
- * report-and-clear variant, so a capability query that ran each handler
- * to see which succeeded would destroy the measurement it was asking
- * about. Asking what exists must not change what exists.
+ * Nor can it be probed by calling: CTL_OP_LOAD has a report-and-clear
+ * variant, so running each handler to see which succeeded would destroy
+ * the measurement it was asking about.
  *
  * So each track answers one word - ctl_port_capabilities() - and
  * ctl_dispatch() consults *that same word* before dispatching an
- * optional opcode. One source, so the reply and the refusal cannot
- * disagree. A capability list that can drift from the dispatch is worse
- * than no list, because it is believed.
- *
- * One function rather than a predicate per opcode on purpose:
- * ctl_port.h warns against growing into an abstraction layer, and seven
- * ctl_port_have_x() would be that.
+ * optional opcode, so the reply and the refusal cannot disagree.
  */
 #define CTL_CAP_STREAM_STATS  (1u << 0)
 #define CTL_CAP_BENCH         (1u << 1)
@@ -132,15 +111,11 @@
 #define CTL_CAP_HEARTBEAT     (1u << 7)
 
 /*
- * The reply carries the opcodes themselves, ascending - not the bitmask.
- *
- * A bitmask on the wire is silent about every opcode added after the
- * host that reads it was written: an unknown bit reads as "not
- * implemented", which is the same defect as a body of zeroes one level
- * up, and this whole issue is about a device that cannot say "I do not
- * know". A length-prefixed list can only ever say what it does say.
- *
- * The mask is the internal representation; this is what it means.
+ * The reply carries the opcodes themselves, ascending - not the
+ * bitmask. A bitmask on the wire is silent about every opcode added
+ * after the host that reads it was written: an unknown bit reads as
+ * "not implemented", the same defect a body of zeroes has one level up.
+ * A length-prefixed list can only ever say what it does say.
  */
 #define CTL_CAP_MAX_OPCODES  16u
 
@@ -162,14 +137,11 @@ typedef struct __attribute__((packed)) {
 /*
  * The command is implemented and well-formed, and the device will not
  * do it *now* because doing it would damage something already running.
+ * Distinct from CTL_ERR_OPCODE because "this firmware cannot" and "not
+ * while a capture is armed" have different remedies: a retry fixes this
+ * one and never fixes that one.
  *
- * Distinct from CTL_ERR_OPCODE for the same reason that answers a body
- * of zeroes: "this firmware cannot" and "not while a capture is armed"
- * are different facts and a host that cannot tell them apart will
- * conclude the wrong one. A retry fixes this one and never fixes that
- * one.
- *
- * Additive, so no CTL_VERSION bump. A host that does not know the code
+ * Additive, so no CTL_VERSION bump - a host that does not know the code
  * still gets an error frame with its text.
  */
 #define CTL_ERR_BUSY      5u   /* implemented, but not while that is running */
@@ -188,12 +160,8 @@ CTL_STATIC_ASSERT(sizeof(ctl_header_t) == CTL_HDR_BYTES,
                "the control header is a wire format, not a struct layout");
 
 /*
- * COUNTERS: what `B` prints, without printing it.
- *
- * This is the one that is polled while the board is working, and that
- * is the whole reason it exists: the console form costs 13.14 ms of
- * blocked main loop, during all of which no bulk OUT is drained. See
- * objective 0c.
+ * COUNTERS: what `B` prints, without the cost of printing it - this is
+ * the form polled while the board is working (invariant 8).
  *
  * dev_us is sampled with the counters rather than fetched separately,
  * so a host differencing two of these divides by the interval the
@@ -220,26 +188,21 @@ typedef struct __attribute__((packed)) {
 /*
  * HEARTBEAT: the one frame the device sends without being asked.
  *
- * Every other opcode here is host-initiated, and that is a blind spot
- * rather than a design: the things worth knowing about a board are
- * exactly the things it cannot answer questions during. Issue #33 hung
- * Track A's main loop, and console, control channel and GET_LOAD went
- * dark together because all three are answered *by* that loop - so the
- * device looked identical to a board that had been unplugged, and the
- * only recovery anyone tried also reset it and erased the evidence.
+ * Every other opcode here is host-initiated, which is a blind spot: the
+ * things worth knowing about a board are exactly the things it cannot
+ * answer questions during (a hung main loop takes the console, control
+ * channel and GET_LOAD dark together, since all three are answered *by*
+ * that loop). A beat on its own schedule turns that silence into a
+ * signal - `seq` is what makes it one: a host that sees 41, 42, 45
+ * knows two beats were lost, and a host that sees nothing knows the
+ * loop stopped.
  *
- * A beat the device sends on its own schedule turns that silence into
- * a signal. `seq` is what makes it one: a host that sees 41, 42, 45
- * knows two beats were lost, and a host that sees nothing at all knows
- * the loop stopped - neither of which it can learn by asking.
+ * Sent as the notification form docs/control-protocol.md specifies -
+ * CTL_FLAG_RESPONSE set, `req_id` zero - so no version bump is needed
+ * and a host that does not know the opcode drops it.
  *
- * Sent as the notification form docs/control-protocol.md already
- * specifies - CTL_FLAG_RESPONSE set, `req_id` zero - so no version bump
- * is needed and a host that does not know the opcode drops it: every
- * existing caller matches replies by req_id and discards the rest.
- *
- * It carries ctl_counters_t whole rather than a summary. The host
- * already parses that layout for CTL_OP_COUNTERS, and a second, smaller
+ * It carries ctl_counters_t whole rather than a summary, since the host
+ * already parses that layout for CTL_OP_COUNTERS and a second, smaller
  * account of the same counters is how two numbers for one quantity get
  * into a codebase.
  */
@@ -250,27 +213,24 @@ typedef struct __attribute__((packed)) {
 	uint32_t dropped;         /* beats the endpoint refused, cumulative */
 	ctl_counters_t counters;  /* the existing layout, parsed by the same code */
 	/*
-	 * The USB host's frame clock, issue #52. Every rate in this project
-	 * descends from MCK, and CLAUDE.md states MCK is 78 MHz as a figure
-	 * read back from the PLL settings rather than one anybody measured.
+	 * The USB host's frame clock. Every rate in this project descends
+	 * from MCK, and CLAUDE.md states MCK is 78 MHz as a figure read back
+	 * from the PLL settings rather than one anybody measured.
 	 *
 	 * It rides the heartbeat rather than an opcode of its own because a
-	 * clock reference is not a thing you ask for: it is only useful
-	 * *continuously*, and the beat is already the one frame the device
-	 * sends unasked. A host that wants MCK differences two beats -
+	 * clock reference is only useful *continuously*, and the beat is
+	 * already the one frame the device sends unasked. A host that wants
+	 * MCK differences two beats -
 	 *
 	 *     mck = (d_sof_frames * 1000 * mck_nominal) / d_sof_dev_us
 	 *
-	 * with mck_nominal from the identity line, which the host has
-	 * already parsed - no second copy of it on this wire
-	 *
-	 * - and needs no clock of its own anywhere in it, which is the whole
-	 * advantage over timing a run from the host.
+	 * with mck_nominal from the identity line - and needs no clock of
+	 * its own anywhere in it, the advantage over timing a run from the
+	 * host.
 	 *
 	 * The pair is latched AT a frame edge, so the two fields describe
-	 * one instant. Read at an arbitrary moment they would not: the frame
-	 * count steps in whole milliseconds while dev_us does not, which was
-	 * measured at +/-33 ppm over 30 s before the latch went in.
+	 * one instant; read at an arbitrary moment they would not, since the
+	 * frame count steps in whole milliseconds while dev_us does not.
 	 *
 	 * `sof_available` is 0 where the port has never been configured, and
 	 * is a flag rather than a zero count for the reason CTL_ERR_OPCODE
@@ -281,50 +241,36 @@ typedef struct __attribute__((packed)) {
 	 */
 	uint32_t sof_frames;      /* SOF frames in the CURRENT span */
 	/*
-	 * Elapsed device microseconds over the same span, 64-bit.
-	 *
-	 * It was uint32 for one evening and that was wrong: micros() wraps
-	 * every 71.6 minutes, so a difference of two absolute readings is
-	 * correct across one wrap and silently wrong across two. A
-	 * seven-hour soak read 25,499,813 frames - 7.08 h, right - against a
-	 * dev_us of 4,025,307,502, which is 7.08 h modulo 2^32 and looks
-	 * like 1.12 h. The device accumulates small wrap-safe deltas now.
+	 * Elapsed device microseconds over the same span, 64-bit because
+	 * micros() wraps every 71.6 minutes: a uint32 difference of two
+	 * absolute readings is correct across one wrap and silently wrong
+	 * across two. The device accumulates small wrap-safe deltas instead.
 	 */
 	uint64_t sof_dev_us;
 	uint32_t sof_ambiguous;   /* unresolvable poll gaps, cumulative */
 	/*
 	 * Spans abandoned because a poll gap could not be resolved. The span
-	 * RESTARTS rather than being poisoned: a health figure that goes
-	 * dark for ever after one stall is the wrong shape, and the first
-	 * version did exactly that. Non-zero means `sof_frames` counts from
-	 * the last restart, not from enumeration.
+	 * RESTARTS rather than being poisoned - a health figure that goes
+	 * dark for ever after one stall is the wrong shape. Non-zero means
+	 * `sof_frames` counts from the last restart, not from enumeration.
 	 */
 	uint32_t sof_restarts;
 	uint8_t  sof_available;   /* 0 = never configured; sof_frames is void */
 	uint8_t  sof_reserved[3];
 	/*
-	 * The device's own working frequency, computed on the beat.
+	 * The device's own working frequency, computed on the beat: a
+	 * running estimate over the whole span since the port was
+	 * configured, which needs no two beats and gets better the longer
+	 * the board has been up.
 	 *
-	 * A host CAN difference two beats itself, and should for a windowed
-	 * figure. This is the other thing: a running estimate over the whole
-	 * span since the port was configured, which needs no two beats and
-	 * gets better the longer the board has been up - after an hour the
-	 * frame count is 3.6 million and the edge latch's ~8 us of jitter is
-	 * 0.002 ppm.
-	 *
-	 * Cost, because "the device computes it" invites the objection:
-	 * two 32-bit subtractions, one 64-bit multiply and one divide, ONCE
-	 * PER BEAT. UDIV on the Cortex-M3 is 2-12 cycles, so about 0.26 us
-	 * at 78 MHz against a beat cadence clamped at 20 ms minimum - and
-	 * against a main-loop pass measured at 8.2 us. It is a fraction of
-	 * one pass, once per beat. Measured rather than argued: see the
-	 * load-monitor figures on issue #52.
+	 * Cost is two 32-bit subtractions, one 64-bit multiply and one
+	 * divide, once per beat - a fraction of one main-loop pass at the
+	 * beat cadence's 20 ms minimum.
 	 *
 	 * Zero means "not yet", not "zero hertz": it is emitted until there
 	 * are CTL_SOF_MIN_FRAMES of span, because a frequency from a shorter
 	 * one is quantisation rather than a measurement. Zero also stands
-	 * where sof_available is 0 or sof_ambiguous is non-zero, for the
-	 * same reason the flag exists at all.
+	 * where sof_available is 0 or sof_ambiguous is non-zero.
 	 */
 	uint32_t mck_meas_hz;
 } ctl_heartbeat_t;
@@ -338,24 +284,15 @@ typedef struct __attribute__((packed)) {
 
 /*
  * How often the device recomputes its own frequency, independent of how
- * often it reports it. The beat cadence is the host's to choose; this is
- * not, for invariant 7's reason - a host must not be able to scale the
- * device's work, or change what a published figure means, by picking a
- * parameter.
+ * often it reports it. The beat cadence is the host's to choose; this
+ * is not, for invariant 7's reason - a host must not be able to scale
+ * the device's work by picking a parameter.
  *
- * Ten seconds, on the owner's instruction: this figure is for health
- * observation, and a number that moves every second reads as unstable
- * whether or not it is.
- *
- * **What that does and does not buy, stated so nobody expects the wrong
- * thing.** The estimate is CUMULATIVE, so each recomputation is over the
- * whole span since the epoch and the interval does not change how large
- * a step is - only how often one happens. What quiets the number is the
- * window growing: the residual is about one frame over the span, so
- * 16 ppm at a minute, 1.6 at ten, 0.3 at an hour. Measured over two
- * minutes it moved +9.7 to +17.0 ppm; by an hour that is sub-ppm on its
- * own. A ten-second update means a health display is not redrawing a
- * figure that is still settling.
+ * The estimate is CUMULATIVE, so each recomputation is over the whole
+ * span since the epoch and the interval only changes how often a step
+ * happens, not how large it is - the residual shrinks as the window
+ * grows, which is why a ten-second update is quiet enough for a health
+ * display without redrawing a figure that is still settling.
  */
 #define CTL_SOF_CALC_INTERVAL_US  10000000u
 
@@ -365,16 +302,11 @@ CTL_STATIC_ASSERT(sizeof(ctl_heartbeat_t) == 44u + sizeof(ctl_counters_t),
                   "ctl_heartbeat_t is a wire format, not a struct layout");
 
 /*
- * Off by default, and the reason is invariant 7 rather than caution.
- *
- * A beat is a write to an endpoint the host may not be reading. Both
- * tracks refuse rather than block there, so an unread beat costs a
- * counter and not the main loop - but a board that pushes at a host
- * which never asked is still a board deciding for itself what the wire
- * carries. The host enables it, names the cadence, and can stop it.
- *
- * The clamp exists for the same reason every other request is clamped:
- * the cost of a pass must not depend on what a host sent.
+ * Off by default, and the reason is invariant 7 rather than caution: a
+ * board that pushes at a host which never asked is still a board
+ * deciding for itself what the wire carries. The host enables it, names
+ * the cadence, and can stop it. The clamp exists so the cost of a pass
+ * cannot depend on what a host sent.
  */
 #define CTL_HEARTBEAT_OFF_MS       0u
 #define CTL_HEARTBEAT_MIN_MS      20u
@@ -505,52 +437,40 @@ typedef struct __attribute__((packed)) {
  * CTL_OP_TEMP's payload: the SAM3X's on-die temperature sensor, ADC
  * channel 15, enabled by ADC_ACR.TSON.
  *
- * **Why it exists, and it is not about temperature.** ADVREF is the
- * reference for the ADC *and* the DAC, so the loopback this project
- * measures everything with is ratiometric and cannot see its own
- * reference: the DAC emits ADVREF * (1/6 + code/4096 * 2/3) and the ADC
- * returns 4096 * V / ADVREF, so ADVREF divides out exactly and a 1%
- * excursion moves the loop by zero codes at every code. Measured as
- * well as derived - swept across a 5.1x lever in output level the
- * residual is a U with its minimum at mid-scale, which is what a
- * cancelling reference predicts and what reference-dominated noise
- * contradicts. Issue #11.
- *
- * The sensor is a bandgap-derived *absolute* voltage, so its reading is
- * proportional to 1/ADVREF and fractional reference noise appears in it
+ * Why it exists, and it is not about temperature: ADVREF is the
+ * reference for the ADC *and* the DAC, so the DAC-to-ADC loopback this
+ * project measures everything with is ratiometric and cannot see its
+ * own reference - a shift in ADVREF divides out exactly, moving the
+ * loop by zero codes. The sensor is a bandgap-derived *absolute*
+ * voltage instead, so fractional reference noise appears in it
  * directly, at full weight - the one term the loop divides away.
  *
- * **What this does not claim, stated here because the field will outlive
- * the thread.**
+ * What this does not claim:
  *
- * - **No degrees.** `code` is what the converter returned. Turning it
- *   into a temperature needs the datasheet slope *and* a per-part
- *   offset that is uncalibrated on this board, so a degrees field would
- *   be a number sized against an assumption. The host applies a
- *   calibration when one exists.
- * - **An upper bound on ADVREF noise, not a value.** One channel cannot
- *   separate the sensor's own noise from the reference's. A comparison
- *   *between benches* is a difference in which the sensor's
- *   contribution is common, which is what makes it useful anyway.
- * - **Bandwidth.** The sensor is slow and filtered. It will see
- *   low-frequency reference noise and may see none of the fast part -
- *   and the fast part is where ratiometric cancellation is weakest, so
- *   a null result here does not close the question.
+ * - No degrees. `code` is what the converter returned; turning it into
+ *   a temperature needs a per-part offset uncalibrated on this board,
+ *   so a degrees field would be sized against an assumption. The host
+ *   applies a calibration when one exists.
+ * - An upper bound on ADVREF noise, not a value: one channel cannot
+ *   separate the sensor's own noise from the reference's, but a
+ *   comparison *between benches* is a difference in which the sensor's
+ *   contribution is common.
+ * - Bandwidth: the sensor is slow and filtered, and may see none of the
+ *   fast part of reference noise - where ratiometric cancellation is
+ *   weakest - so a null result here does not close that question.
  *
  * `samples` is how many conversions were averaged into `code_x16`,
  * which carries four fractional bits so the average is not thrown away
- * by the integer it is reported in. One conversion is ~4 codes rms
- * against a question about a fraction of a code, so a single reading
- * answers nothing; the averaging is on the device because the host
- * cannot ask for conversions fast enough to do it there.
+ * by the integer it is reported in; a single conversion is ~4 codes rms
+ * against a question about a fraction of a code, so the averaging has
+ * to happen on the device.
  *
- * **Refused while a capture is armed**, with CTL_ERR_BUSY. Reading the
- * sensor means disabling the capture's channels and enabling channel 15
- * for the duration, which would put sensor conversions into the capture
- * ring - discontinuous data presented as continuous, which is the one
- * thing invariant 5 exists to prevent. The device tests ADC_MR's TRGEN
- * rather than a software flag, because the hardware trigger being armed
- * is the actual condition and a flag is a second account of it.
+ * Refused while a capture is armed, with CTL_ERR_BUSY: reading the
+ * sensor means enabling channel 15 for the duration, which would put
+ * sensor conversions into the capture ring - discontinuous data
+ * presented as continuous, invariant 5. The device tests ADC_MR's
+ * TRGEN rather than a software flag, since the hardware trigger being
+ * armed is the actual condition.
  *
  * `adc_mr` and `adc_acr` are the registers as the hardware holds them,
  * not an echo - a reading taken at a track/settling time nobody
@@ -558,18 +478,12 @@ typedef struct __attribute__((packed)) {
  * tracks do not necessarily idle at the same ADC_MR.
  */
 /*
- * How many conversions a temperature reading averages.
- *
- * The default is sized on docs/noise.md: a single conversion is ~4
- * codes rms and averaging n of them divides that by sqrt(n), so 256
- * gives ~0.25 codes - below the quantisation floor, which is the regime
- * the ADVREF question lives in. At ~1 us a conversion that is well
- * under a millisecond of main loop, on a debug path, once per request.
- *
- * The maximum is a bound rather than a recommendation. Invariant 7:
- * the worst case of one main-loop pass must not depend on what a host
- * chose to send, so a request past this is clamped and the report says
- * what was actually averaged.
+ * How many conversions a temperature reading averages. The default is
+ * sized so the averaged noise falls below the quantisation floor (see
+ * docs/noise.md); the maximum is a bound rather than a recommendation -
+ * invariant 7 wants the worst case of one main-loop pass independent of
+ * what a host asked for, so a request past this is clamped and the
+ * report says what was actually averaged.
  */
 /*
  * What ctl_port_temp() returns. Three outcomes rather than a bool,
@@ -613,31 +527,20 @@ CTL_STATIC_ASSERT(sizeof(ctl_temp_t) == 24u,
  * down - and a host that echoed its own request would report a setting
  * the converter is not running.
  *
- * Written once, here, rather than twice. The generator itself is two
- * independent implementations on purpose - invariant 3 names gen among
- * the register programming the tracks must not share - but "what does
- * =<shape>,<pts>W mean" is protocol, not register programming, and two
- * hand-copies of it are two homes for one misreading. ctl_dispatch()
- * carries the semantics; ctl_port_gen_get/set is the only per-track
- * part, and it is four lines that call each track's own gen driver.
+ * Written once, here, rather than twice: the generator itself stays two
+ * independent implementations (invariant 3), but "what does
+ * =<shape>,<pts>W mean" is protocol, and ctl_port_gen_get/set is the
+ * only per-track part - four lines that call each track's own driver.
  *
  * Additive, so no CTL_VERSION bump. A build without this opcode answers
- * CTL_ERR_OPCODE, which is exactly the capability signal invariant 3
- * requires and is distinguishable from a body of zeroes. The version
- * bumps when a payload layout changes - see the v2 note above - not
- * when a command is added.
+ * CTL_ERR_OPCODE, distinguishable from a body of zeroes.
  */
 /*
- * The generator's value space. Shared, because it is what travels on
- * the wire and what the console prints - not because the generator is
+ * The generator's value space. Shared because it is what travels on the
+ * wire and what the console prints - not because the generator is
  * shared. The two tracks keep separate table builders and separate
- * register programming, which is what invariant 3 protects and what
- * makes Track A an oracle; what they must not keep separate is the
- * meaning of the number 1 in "=1W".
- *
- * These were written twice for about an hour. `library.properties`
- * already said it: "Not hardware: register programming stays
- * independent per track."
+ * register programming (invariant 3); what they must not keep separate
+ * is the meaning of the number 1 in "=1W".
  */
 #define GEN_SHAPE_SINE      0u
 #define GEN_SHAPE_SQUARE    1u
@@ -651,22 +554,18 @@ CTL_STATIC_ASSERT(sizeof(ctl_temp_t) == 24u,
 #define GEN_SYNC_WRAP       2u
 /*
  * SOLO is not a third kind of sync, it is the absence of the second
- * channel altogether - and it belongs on this axis because it is the
- * same question, "what is the other DAC doing", taken to its end.
- *
- * OFF, CYCLE and WRAP all still spend every other DACC update on DAC1,
- * because TAG mode interleaves and the table alternates tags. SOLO tags
- * every entry for DAC0, so DAC0 updates on *every* trigger rather than
- * every other one, and the output frequency doubles:
+ * channel altogether. OFF, CYCLE and WRAP all still spend every other
+ * DACC update on DAC1, because TAG mode interleaves and the table
+ * alternates tags; SOLO tags every entry for DAC0, so DAC0 updates on
+ * *every* trigger and the output frequency doubles:
  *
  *     OFF/CYCLE/WRAP   f = trigger_hz / (2 * points)
  *     SOLO             f = trigger_hz / points
  *
  * The cost is the sync, and with it the bench trigger and the
- * demultiplexing check. That is a real trade and not a strictly better
- * mode: it is worth taking for the square, whose own edge triggers a
- * scope better than any sync does (0.007 us of jitter against the
- * sync's 1.471), and worth refusing for anything slower-slewing.
+ * demultiplexing check - worth taking for the square, whose own edge
+ * triggers a scope better than any sync does, and worth refusing for
+ * anything slower-slewing.
  *
  * It also doubles the table's useful length: 512 DAC0 points per wrap
  * instead of 256. Every legal resolution still divides that, so the
@@ -685,39 +584,27 @@ CTL_STATIC_ASSERT(sizeof(ctl_temp_t) == 24u,
 /*
  * Output amplitude, in 1/256ths of full scale, about mid scale.
  *
- * Every shape was full scale until now, and that made one measurement
- * impossible. Issue #5's artifact is 5-15 DAC codes; a full-swing
- * waveform needs 0.5 V/div to fit on screen, where one 8-bit screen
- * level is 29 codes - so the excursion is a fraction of one level and
- * no averaging recovers it, because the quantiser is the floor.
+ * A full-swing waveform makes a small artifact (a few DAC codes) a
+ * fraction of one screen level, which no averaging recovers because the
+ * quantiser is the floor - so a smaller amplitude can bring the
+ * vertical resolution up without losing the motion the artifact needs.
  *
- * The artifact is reported to need the output in motion, and motion
- * does not require the full range. At 1/16th of full scale the
- * converter still updates every trigger and the vertical can come up
- * tenfold.
- *
- * Centred on mid scale so the DC operating point does not move with
- * the amplitude: comparing two amplitudes is then comparing two
- * amplitudes, not two amplitudes and two bias points.
+ * Centred on mid scale so the DC operating point does not move with the
+ * amplitude: comparing two amplitudes is then comparing two amplitudes,
+ * not two amplitudes and two bias points.
  */
 #define GEN_AMP_FULL        256u
 #define GEN_AMP_MIN         1u
 
 /*
- * The sync's own amplitude, separately from the waveform's.
- *
- * It defaults to full scale because a trigger wants every volt of edge
- * it can get. But a full-scale square switching on the pin next to the
- * signal is also the obvious suspect for a disturbance that does not
- * scale with the signal - measured here at 35-80 mV beside a 34 mV
- * waveform, which is larger than the signal itself. Being able to shrink
- * the sync is how that suspicion gets tested rather than argued about:
- * if the disturbance follows the sync down, the sync is the source.
- *
- * A DS1102E's EXT input needs of order a hundred millivolts with a x1
- * probe, not two volts, so there is room to shrink it a long way before
- * the trigger stops working - and where it stops is itself worth
- * knowing.
+ * The sync's own amplitude, separately from the waveform's. It defaults
+ * to full scale because a trigger wants every volt of edge it can get,
+ * but a full-scale square switching on the pin next to the signal is
+ * also a candidate source of disturbance that does not scale with the
+ * signal - being able to shrink it is how that gets tested rather than
+ * argued about. A DS1102E's EXT input needs of order a hundred
+ * millivolts with a x1 probe, so there is room to shrink it a long way
+ * before the trigger stops working.
  */
 #define GEN_SYNC_AMP_FULL   256u
 
@@ -809,40 +696,24 @@ void ctl_gen_describe(const ctl_gen_t *g);
  * Summarise repeated crosstalk observations, so the two tracks print
  * the same words about the same quantity. Same pattern as
  * ctl_gen_describe(): the measurement is register work and stays per
- * track, the description is not and had no business being written
- * twice.
+ * track, the description is not.
  *
- * **Why repeats at all.** `x` printed a single draw, and issue #16
- * measured the quantity to be spread - about 0 codes or about 160 on
- * otherwise identical runs, the loud ones 10-15% of the time. 160 codes
- * is 5.8% of full swing, so the two answers are not a disagreement
- * about a detail: one says the multiplexer is clean and the other says
- * it bleeds badly. A single draw of that reported as a measurement is
- * the defect, whichever value is right.
- *
- * So this prints the median, the range and how many observations landed
- * in each, and never one number alone. Returns the length written.
- *
- * It was *bimodal* on both benches until the observations were printed
- * in order and a wider n was taken, and it is not two modes: the loud
- * ones recur on a fixed cadence that moves with the settle time,
- * against a 64 ms period, and intermediate values turn up either side.
- * See ctl_bleed_values() and docs/noise.md.
+ * Why repeats at all: a single draw of this quantity is bimodal across
+ * runs, so one reading can say "the multiplexer is clean" or "it bleeds
+ * badly" depending which mode it landed on. This prints the median, the
+ * range and how many observations landed in each, never one number
+ * alone. Returns the length written. See docs/noise.md.
  */
 void ctl_bleed_describe(const char *label,
                        const int16_t *vals, unsigned count);
 
 /*
- * The observations themselves, in the order they were taken.
- *
- * A summary cannot answer the question the summary raised. Median and
- * range say *that* the quantity is spread; they cannot say whether the
- * high observations arrive at random, cluster into consecutive runs, or
- * only ever land first - and those are three different defects. Issue
- * #5 turned on exactly this distinction and was got wrong by pooling.
- *
- * Order is the whole point, so this never sorts. Returns the length
- * written; needs about 6 bytes per observation plus the label.
+ * The observations themselves, in the order they were taken. A summary
+ * cannot say whether the high observations arrive at random, cluster
+ * into consecutive runs, or only ever land first - three different
+ * defects a median and range cannot distinguish. Order is the whole
+ * point, so this never sorts. Returns the length written; needs about 6
+ * bytes per observation plus the label.
  */
 void ctl_bleed_values(const char *label,
                      const int16_t *vals, unsigned count);

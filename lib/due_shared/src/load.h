@@ -1,32 +1,21 @@
 /*
  * Main-loop load, measured continuously and cheaply.
  *
- * Everything this project exports about how hard the board is working
- * is after the fact: underruns, overruns, a ring that ran dry. All of
- * them say the loop was too slow *somewhere*, and none of them says
- * when, for how long, or whether it is close to the edge on a run that
- * happens to pass. The wedge in objective 0c is diagnosed today by
- * reading endpoint registers over the programming port, which a
- * deployed board does not have.
+ * Everything else this project exports about how hard the board is
+ * working is after the fact - underruns, overruns, a ring that ran
+ * dry - and none of it says when, for how long, or whether it is close
+ * to the edge on a run that happens to pass. So: count main-loop passes
+ * and time each one, and let the host difference two snapshots. A
+ * blocked loop is then a low pass rate and a large maximum, visible
+ * while it is happening rather than inferred from the damage
+ * afterwards.
  *
- * So: count main-loop passes and time each one, and let the host
- * difference two snapshots. A blocked loop is then a low pass rate and
- * a large maximum, visible while it is happening rather than inferred
- * from the damage afterwards.
- *
- * WHY THE CYCLE COUNTER AND NOT micros().
- *
- * micros() costs 869 ns, measured by `Q` on this board - it does a
- * runtime division. The idle loop is about 4 us a pass, so sampling
- * micros() once per pass would tax the loop it is measuring by more
- * than a fifth. An instrument that changes what it measures by 20% is
- * not an instrument.
- *
- * DWT's cycle counter is one load from a free-running 32-bit register:
- * no division, no critical section, no wrap handling beyond unsigned
- * subtraction, and cycle rather than microsecond resolution. It costs
- * what `Q` says it costs, which is the point - load_tick() is profiled
- * by the same command that condemned micros().
+ * Why the cycle counter and not micros(): micros() does a runtime
+ * division and costs a meaningful fraction of an idle pass, so sampling
+ * it once per pass would tax the loop it is measuring. DWT's cycle
+ * counter is one load from a free-running 32-bit register - no
+ * division, no critical section, no wrap handling beyond unsigned
+ * subtraction.
  *
  * CYCCNT is optional in the Cortex-M3 architecture. If this part did
  * not have it every delta would read zero, which a host would read as
@@ -95,18 +84,11 @@ extern uint32_t load_prev_cycles;
 /*
  * Compiled out entirely, for an A/B against an uninstrumented loop.
  *
- * It earned its place. `Q` reported load_tick at 410 ns of a 7900 ns
- * pass and the arithmetic said that was 5%, which was enough to suspect
- * it of the loop-mode test failures at the full-rate pair. Building it
- * out and reading the loop rate over the control channel said
- * otherwise: 128.1 k passes/s with it against 127.4 k without, the
- * difference in the noise and the wrong way round.
- *
- * So `Q` over-reports a cheap inline by several times - it calls it in
- * a tight loop where every iteration serially depends on the previous
- * DWT read, while the real loop has 7.8 us of other work between them
- * and hides the cost in peripheral-read stalls. Price anything this
- * small by A/B on the loop rate, never by `Q` alone.
+ * `Q` over-reports a cheap inline like this one by several times - it
+ * calls it in a tight loop where every iteration serially depends on
+ * the previous DWT read, while the real loop has other work between
+ * them that hides the cost in peripheral-read stalls. Price anything
+ * this small by A/B on the loop rate, never by `Q` alone.
  */
 #ifndef LOAD_TICK_DISABLED
 #define LOAD_TICK_DISABLED 0

@@ -23,18 +23,13 @@
 #define FRAME_FLAG_CONTINUOUS  (1u << 3)
 
 /*
- * play_consumed is paid for out of fields that never varied.
- *
+ * play_consumed is paid for out of fields that never varied:
  * bits_per_sample was always 12, packing always 0, and n_samples always
  * ACQ_BUF_SAMPLES - the frame is a fixed 4096 bytes because that is
  * 8 x 512 and one DMA sends whole packets, so its sample count is
- * architecture, not data. Four bytes of constants bought the one field
- * that is neither.
- *
- * The alternative was to grow the header and take two samples out of
- * the payload. That was tried, and moving ACQ_BUF_SAMPLES off 2032
- * cost the ramp test 4 runs in 15 against 0 in 15 before it. The
- * geometry is load-bearing; leave it alone.
+ * architecture, not data. Growing the header to fit play_consumed
+ * instead - taking samples out of the payload - measurably increases
+ * ramp-test failures, so this geometry is load-bearing; leave it alone.
  *
  * sample_rate_hz stays, because it is the one field here that genuinely
  * varies run to run and cannot be reconstructed from a recording.
@@ -56,26 +51,11 @@ typedef struct __attribute__((packed)) {
  * The frame's geometry, which is the wire contract and therefore lives
  * here rather than in each track's acq.h.
  *
- * It was written down twice - `drivers/acq.h` and
- * `sketches/bringup/acq.h` each carried ACQ_BUF_SAMPLES 2032,
- * ACQ_HDR_BYTES 32 and the expression deriving the frame size. Three
- * numbers defining the layout a host parses, in two hand-maintained
- * copies, which is the exact arrangement docs/shared-source.md moved
- * the rest of the wire contract out of: "two hand-copies written from
- * the same document by the same author are not independent - they are
- * two homes for one misreading, plus drift."
- *
- * FRAME_HDR_BYTES is now *derived* from the struct instead of asserted
- * by a comment. Both copies wrote 32 with a comment claiming it was the
- * size of the header struct, and nothing checked it; a field added to
- * the header would have left
- * the number behind on both tracks at once, and the payload would have
- * overlapped it.
- *
- * The static assert travels with them, which matters because only Track
- * B had it. `frame.h` already records why the size is load-bearing -
- * moving ACQ_BUF_SAMPLES off 2032 cost the ramp test 4 runs in 15
- * against 0 in 15 - so the check belongs where the constant does.
+ * FRAME_HDR_BYTES is *derived* from the struct rather than a separate
+ * hand-maintained constant: a field added to the header cannot leave a
+ * stale size behind, which would otherwise make the payload overlap it.
+ * The static assert below travels with it, so the check lives where the
+ * constant does.
  */
 #ifdef __cplusplus
 #define FRAME_STATIC_ASSERT(c, m) static_assert(c, m)
@@ -96,14 +76,8 @@ FRAME_STATIC_ASSERT(FRAME_BYTES % 512u == 0,
 
 /*
  * The channel tag values, which are wire contract because the host
- * demultiplexes by them.
- *
- * Every sample carries its channel index and the header carries
- * `channel_mask` over the same indices, so these numbers are what a
- * reader on the far end matches against. They were written down three
- * times - `drivers/analog.h` as ADC_CH_*, `sketches/bringup/acq.h` as
- * ACQ_CH_*, and `host/measure.py` as CH_* - which is one wire fact in
- * three homes, two of them firmware.
+ * demultiplexes by them: every sample carries its channel index and the
+ * header carries `channel_mask` over the same indices.
  *
  * They are not obvious numbers and that is the point. Arduino's A0..A7
  * labels map to ADC channels in DESCENDING order, so A0 is AD7 and code
@@ -114,14 +88,13 @@ FRAME_STATIC_ASSERT(FRAME_BYTES % 512u == 0,
  *   A2 = PA23 = AD5      A6 = PA3  = AD1      A10 = PB19 = AD12
  *   A3 = PA22 = AD4      A7 = PA2  = AD0      A11 = PB20 = AD13
  *
- * That table lived in Track B's analog.h alone; Track A carried the
- * three values with no note of where they came from. The sequencer
- * converts in ascending channel-index order, which is not label order,
- * so the table is load-bearing for anyone extending the set - see #46.
+ * The sequencer converts in ascending channel-index order, which is not
+ * label order either, so this table is load-bearing for anyone
+ * extending the channel set.
  *
  * Only the three currently in use are defined. The rest are deliberately
  * absent rather than written out: an unused constant is a claim nothing
- * checks, and #46 will add them against measured rate floors.
+ * checks.
  */
 #define FRAME_CH_A0       7u
 #define FRAME_CH_A1       6u
@@ -129,12 +102,10 @@ FRAME_STATIC_ASSERT(FRAME_BYTES % 512u == 0,
 
 /*
  * C linkage, because this header is shared and the two tracks are not
- * the same language. Track B is C throughout; Track A is C++ - every
- * sketch translation unit is .cpp or .ino. Without this the shared
- * crc32.c would export unmangled symbols that Track A's callers cannot
- * link against, and the failure arrives at link time with a mangled
- * name in it rather than at the include. Every shared header that
- * declares a function needs this; see docs/shared-source.md.
+ * the same language: Track B is C throughout, Track A is C++. Without
+ * this the shared crc32.c would export mangled symbols that Track A's
+ * C++ callers cannot link against. Every shared header that declares a
+ * function needs this.
  */
 #ifdef __cplusplus
 extern "C" {

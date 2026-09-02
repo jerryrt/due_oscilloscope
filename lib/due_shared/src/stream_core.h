@@ -1,12 +1,12 @@
 /*
- * stream_core.h - the shared framer (issue #14).
+ * stream_core.h - the shared framer.
  *
  * Frame building, sequencing, overrun accounting and the resync rule,
  * written once. Each track's stream file wraps this with its own
  * transport shims, bench arms and reporting - those stay per track on
  * purpose: the bench numbers are each file's own, and the reports are
- * per-track surface (#7). Dependencies are declared in stream_port.h
- * and nowhere else.
+ * per-track surface. Dependencies are declared in stream_port.h and
+ * nowhere else.
  */
 #ifndef STREAM_CORE_H
 #define STREAM_CORE_H

@@ -1,11 +1,11 @@
 /*
- * The transport benchmarks, shared (issue #14 step 4).
+ * The transport benchmarks, shared.
  *
  * Two families. The CPU arms copy through the FIFO path and exist to
  * measure what that path costs; the DMA arms are double-buffered so
- * nothing blocks - one frame in flight while the next is prepared,
- * the processor writing only the 32-byte header - which is the
- * property the architecture actually asks for.
+ * nothing blocks - one frame in flight while the next is prepared, the
+ * processor writing only the 32-byte header - which is the property
+ * the architecture actually asks for.
  *
  * Everything here reaches outside itself through stream_port.h, the
  * same rule as the framer, and the same test holds it to that.
@@ -27,26 +27,16 @@ static uint8_t  bench_scratch[512];
 static uint32_t dma_in_arms, dma_out_arms;
 
 /*
- * Budgets are expressed in bytes and kept equal between directions.
- *
- * The first duplex measurement gave a 3.4:1 ratio that turned out to
- * be very close to the 4:1 ratio of the budgets the two loops had
- * been given. An asymmetry produced by the scheduler is not a property
- * of the transport, so the budgets are matched and the order
- * alternates.
+ * Budgets are expressed in bytes and kept equal between directions:
+ * an asymmetry produced by unequal budgets is not a property of the
+ * transport, so the two are matched and the order alternates.
  */
 #define BENCH_FRAME_BYTES  (32u + STREAM_BUF_SAMPLES * 2u)
 
 /*
- * Frames per DMA transfer.
- *
- * One. The re-arm gap between a completed transfer and the main-loop
- * pass that starts the next looked like it should cost several percent
- * on IN, so this was tried at two - and Track A got measurably slower,
- * 28.7-29.7 MB/s against 30.2-31.2. Building a second header per arm
- * costs more than the gap it removes, micros() alone being 1427 ns on
- * that track. Kept as a knob because the experiment is worth being
- * able to repeat, and set to the value that measured best.
+ * Frames per DMA transfer. One measured best: building a second header
+ * per arm costs more than the re-arm gap it would remove. Kept as a
+ * knob so the experiment can be repeated.
  */
 #define DMA_FRAME_BYTES     (32u + STREAM_BUF_SAMPLES * 2u)
 #define DMA_FRAMES_PER_XFER 1u
@@ -226,12 +216,11 @@ static void dma_pull_out(void)
 		dma_out_inflight = 0;
 	}
 	/*
-	 * Stream variant, no END_TR_EN. With it, every short packet the
-	 * host's pacing produces ended the transfer, so a 2048-byte buffer
-	 * absorbed an average of 347 bytes before needing a re-arm through
-	 * the main loop - and that re-arm latency, not the wire, was what
-	 * the OUT number measured. The playback ring learned this already;
-	 * the bench had not.
+	 * Stream variant, no END_TR_EN: with it, every short packet the
+	 * host's pacing produces ends the transfer, so a large buffer
+	 * absorbs only a fraction of its capacity before needing a re-arm -
+	 * and re-arm latency, not the wire, is what the OUT number would
+	 * then measure.
 	 */
 	if (usb_dma_out_start_stream(dma_rx[dma_rx_slot], sizeof(dma_rx[0]))) {
 		dma_out_inflight = sizeof(dma_rx[0]);
