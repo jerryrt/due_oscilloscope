@@ -21,6 +21,41 @@ add_compile_options(
 # include, which is where SystemInit and SystemCoreClock are declared.
 add_compile_definitions(__SAM3X8E__)
 
+# ---------------------------------------------------------------------------
+# FW_GIT_REV: which commit an image was built from.
+#
+# The header is written by cmake/fw_git_rev.cmake, which is a script and
+# not an `include()` because it has to run again on every build. A SHA
+# resolved at configure time is correct on the day the tree was
+# configured and silently wrong every day after, and a stale commit on a
+# board is worse than none: measurements get attributed to source that
+# did not produce them. The script leaves the file untouched when the
+# value has not moved, so restamping costs no recompilation.
+#
+# All three firmware wrappers run it, between the clean and the build.
+# The header lands in the build tree, where .gitignore already keeps it
+# out of the working-tree delta it reports.
+#
+# find_package(Git) rather than PATH: on Windows git is where CMake's
+# own FindGit looks and PATH often does not carry it. toolchains.json
+# does not list git because nothing else in this project shells out to
+# it from CMake.
+find_package(Git QUIET)
+
+set(FW_GIT_REV_DIR    "${CMAKE_BINARY_DIR}/generated")
+set(FW_GIT_REV_HEADER "${FW_GIT_REV_DIR}/fw_git_rev.h")
+set(FW_GIT_REV_COMMAND
+    "${CMAKE_COMMAND}"
+    "-DREPO_DIR=${CMAKE_SOURCE_DIR}"
+    "-DOUT_FILE=${FW_GIT_REV_HEADER}"
+    "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
+    -P "${CMAKE_SOURCE_DIR}/cmake/fw_git_rev.cmake")
+
+# Once here as well, so the header exists for anything that reaches the
+# executable target without going through its wrapper - an IDE indexing
+# the tree, or a `--target baremetal_bringup` typed by hand.
+execute_process(COMMAND ${FW_GIT_REV_COMMAND} COMMAND_ERROR_IS_FATAL ANY)
+
 # lib/due_shared/src is the wire contract both tracks compile.
 # Track A reaches the same files by compiling them directly - the
 # A_SHARED_C glob in cmake/track_a.cmake (#55). It used to reach them as
@@ -83,7 +118,8 @@ add_executable(baremetal_bringup EXCLUDE_FROM_ALL
     ${DEVICE}/source/system_sam3xa.c
 )
 
-target_include_directories(baremetal_bringup PRIVATE ${TRACK_B_INCLUDES})
+target_include_directories(baremetal_bringup PRIVATE
+    ${TRACK_B_INCLUDES} ${FW_GIT_REV_DIR})
 target_include_directories(baremetal_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})
 
 target_link_options(baremetal_bringup PRIVATE
@@ -146,6 +182,7 @@ set_target_properties(baremetal_bringup PROPERTIES
 # fails with "No rule to make target".
 add_custom_target(firmware ALL
     COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
+    COMMAND ${FW_GIT_REV_COMMAND}
     COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"
             --target baremetal_bringup --parallel
     COMMENT "Enforcing a clean build (see tests/test_clean_build.py)"
@@ -247,7 +284,8 @@ if(BUILD_TRACK_C)
     # hypothetical.
     target_compile_definitions(rtos_bringup PRIVATE FW_TRACK='C')
 
-    target_include_directories(rtos_bringup PRIVATE ${TRACK_B_INCLUDES})
+    target_include_directories(rtos_bringup PRIVATE
+        ${TRACK_B_INCLUDES} ${FW_GIT_REV_DIR})
     target_include_directories(rtos_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})
 
     target_link_options(rtos_bringup PRIVATE
@@ -270,6 +308,7 @@ if(BUILD_TRACK_C)
     # deliberately rather than the target being left to `all`.
     add_custom_target(firmware_rtos
         COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
+        COMMAND ${FW_GIT_REV_COMMAND}
         COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"
                 --target rtos_bringup --parallel
         COMMENT "Enforcing a clean build of Track C (tests/test_clean_build.py)"

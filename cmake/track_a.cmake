@@ -202,7 +202,8 @@ add_executable(track_a_bringup EXCLUDE_FROM_ALL
 # core's, but the core is entitled to be found first.
 target_include_directories(track_a_bringup PRIVATE
     ${CMAKE_SOURCE_DIR}/lib/due_shared/src
-    ${CMAKE_SOURCE_DIR}/sketches/bringup)
+    ${CMAKE_SOURCE_DIR}/sketches/bringup
+    ${FW_GIT_REV_DIR})
 target_link_libraries(track_a_bringup PRIVATE track_a_core)
 
 # Exactly what boards.txt and platform.txt hand the compiler for
@@ -330,6 +331,7 @@ add_custom_command(TARGET track_a_bringup POST_BUILD
 # rule exists to remove.
 add_custom_target(firmware_track_a
     COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
+    COMMAND ${FW_GIT_REV_COMMAND}
     COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"
             --target track_a_bringup --parallel
     COMMENT "Enforcing a clean build of Track A (see tests/test_clean_build.py)"
