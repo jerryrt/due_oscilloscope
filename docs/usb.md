@@ -383,6 +383,23 @@ alternating order the same test gives 1.93 and 1.65.
 **An asymmetry produced by the scheduler is not a property of the
 transport.** Budgets on the host matter too, for the same reason.
 
+## What the device is doing during a wedge
+
+Read over the control channel while a host process is stuck in
+`close()`: the main loop runs at ~143 k passes/s and takes the drain
+branch on **every one of them**, both banks free, nothing pending. It is
+draining an empty pipe as fast as the hardware allows.
+
+The host side is the stuck one, and it is stuck *idle*: CPU time frozen
+at 44.18 s across two samples while wall clock ran on, and 3.63 s of CPU
+unchanged across 21 s of wall clock. Not a spin — a wait. The wedge's
+OUT DMA showed `BUFF_COUNT` of 16,896 bytes outstanding with
+`ep2(OUT) CFG=00003066 ISR=00044188`.
+
+**Stop attributing this to the device.** `=<ms>Z` from the *programming*
+port detaches and re-attaches the native port and released it in
+0.01-0.23 s on 9 of 9 attempts.
+
 ## Opening the programming port may reset the board — it is a platform difference
 
 This is normal where it happens, and it invalidated several device-side
@@ -418,6 +435,29 @@ time, unchanged by topology.
 **Consequence for measurement**: the device cannot time its own
 benchmark, because its window begins at a boot the host knows nothing
 about. It reports byte counts; the host keeps the clock.
+
+## The playback ring's floor is a servo, not a resting place
+
+The ENDTX guard needs three slots; below that it repeats a buffer, and a
+repeat consumes time but not data, so device consumption falls until it
+matches whatever the host actually delivered. **A ring pinned near five
+slots with a steady underrun rate is measuring the feed deficit, not a
+scheduling problem.** At RC 65, 0.0031 of 3516 ENDTX events found fewer
+than three slots — the 11 underruns reported.
+
+Every run starts at 20 slots, where the lead puts it, and then decays or
+does not: RC 32 falls to 4 over 850 ms, RC 65 over 2 s. **What differs
+between rates is the slope, not the start.**
+
+**The shortfall is a constant fraction, not a rate-dependent quirk.**
+Sweeping a deliberate feed-rate offset puts the balance point — where
+the ring neither fills nor drains — at **1.0077 for both RC 65 and
+RC 32**, two rates a factor of two apart.
+
+**Do not "fix" this by over-feeding.** Feed 1-5% surplus and every
+failing rate reaches `under=0` while the dropped samples stay missing.
+The counter goes green and the waveform stays broken, which is what
+invariant 5 exists to prevent.
 
 ## Oversupply: the host feeds the rate, the converter cannot take it
 

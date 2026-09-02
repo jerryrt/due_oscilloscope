@@ -1135,8 +1135,11 @@ rate where it would bite the hardware declines to lengthen the cycle.
 ### It is not the ADC input network — the impedance sweep
 
 Two matched resistors from 3.3 V to GND with the tap on A2, giving
-1.65 V behind a chosen impedance. One binary for all four points, with
-A1 riding in every frame as a per-run reference:
+1.65 V behind a chosen impedance — pairs of 100, 470, 5k and 11k ohm,
+for source impedances of 50, 235, 2500 and 5500. Equal legs put the tap
+at V/2 whatever the value, so one pair sets level and impedance
+together. One binary for all four points, with A1 riding in every frame
+as a per-run reference:
 
 | A2 source | A2 \|peak\| | A2 z | A2 sd | A1 \|peak\|, same frames |
 |---|---|---|---|---|
@@ -1212,6 +1215,20 @@ displacement moves to A0 with it. **And it follows the wrap, not the
 waveform**: `two-cycle` halves the sine's period while leaving the table
 wrap at 512 and never once produced two events 256 apart. The wrap is a
 **PDC reload**.
+
+The same sweep on the **other host and board**, same image, three
+interleaved rounds — and all four arms are indistinguishable there:
+
+| arm | A0 carries | \|peak\| on A0 | z | control z |
+|---|---|---|---|---|
+| `normal` | sine | 6.61 | 54-60 | 2.2-3.4 |
+| `swapped` | DC | 7.91 | 88-113 | 2.9-3.2 |
+| `two-cycle` | sine | 8.17 | 63-93 | 3.0-5.0 |
+| `all-DC` | DC | 7.84 | 29-32 | 2.6-3.4 |
+
+`all-DC` is **not null** there — 7.84 codes at z 29-32 against a clean
+control. That was read as a board difference for a while; it is the
+image, and the next table is why.
 
 The same four arms re-run on a later image, and **the ordering inverts**:
 
