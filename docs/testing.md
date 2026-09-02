@@ -171,6 +171,7 @@ endpoint DMA.
 | **Never truncate output.** `-rf --tb=short` | One failure was lost to a `\| tail -3` and never reproduced |
 | **Coverage is not traded for speed** | A test slow because it measures something slow gets marked and kept out of the default selection, never weakened. Some tests *are* the finding rather than a check on it - `OVERSUPPLIED`, `RESIDUAL`, the banner-order guards, `test_no_heap` |
 | **Share a board run only when it is the same measurement** | `helpers.shared_run` carries the rule. A bad shared run fails every test keyed to it: one measurement failing several assertions, not several measurements agreeing |
+| **`image_mnemonics.py` gates Track A and B, not Track C** | A comment-only change to `apps/rtos_bringup/` moved the RTOS image by 42 instructions, which reads as an agent editing code while claiming not to. It was the instrument: a control build from byte-identical source gave a *third* value, and the whole delta sits in `__libc_init_array`, which nobody wrote. The RTOS image is not reproducible across build directories; the other two are, and reproduced exactly from a different filesystem path. Verify a firmware refactor on Track A or B and read a Track C hash as noise |
 | **A listed serial node is not an openable one** | `CreateFile` can accept the open and never return, so a generous deadline never gets tested. `Board.open_native()` abandons each attempt in a daemon thread |
 
 **Heal the ports before believing a board fault.** The bench is a test
