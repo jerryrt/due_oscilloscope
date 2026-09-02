@@ -394,16 +394,13 @@ extern "C" void TC2_Handler(void)
  * FNUM advancing is what a host emitting SOF looks like, and nothing
  * else produces it.
  *
- * This used to claim the evidence gate was "the better test of the two
- * and it is only an accident of ownership that Track B does not use
- * it". Measured on linux-x1, issue #56, and it was false: Track A read
- * -30,777 ppm where Track B read -9.8 on the same board in the same
- * afternoon.
- *
- * FNUM advancing detects a host that STARTS emitting SOF. It cannot
- * detect one that STOPS, because a frozen FNUM is indistinguishable
- * from "no new frame has arrived yet" - and the fast path below returns
- * on exactly that comparison, so a whole outage was swallowed without
+ * That evidence gate is not simply an equally valid alternative to
+ * Track B's: measured on linux-x1, Track A read -30,777 ppm where
+ * Track B read -9.8 on the same board in the same afternoon, because
+ * FNUM advancing detects a host that STARTS emitting SOF but cannot
+ * detect one that STOPS - a frozen FNUM is indistinguishable from "no
+ * new frame has arrived yet", and the fast path below returns on
+ * exactly that comparison, so a whole outage was swallowed without
  * ever reaching a check. Track B's gate resets `started` and takes a
  * fresh epoch when the port de-configures; this one carried a single
  * span straight across the discontinuity.
@@ -464,7 +461,7 @@ void ctl_port_sof_poll(void)
 	 * 869 ns and must not run on every pass. */
 	if (cur == sof_last_fnum && sof_started) {
 		/*
-		 * The other half of the evidence, and issue #56 is what it
+		 * The other half of the evidence, and this is what it
 		 * costs to discard it. A host that stopped emitting SOF
 		 * looks exactly like one whose next frame has not arrived,
 		 * for one poll. It does not look like that for 5000.
