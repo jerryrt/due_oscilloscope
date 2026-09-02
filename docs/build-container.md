@@ -30,7 +30,7 @@ container facts, measured on `linux-x1` rather than assumed:
 
 | fact | consequence |
 |---|---|
-| `/sys` is the host's and is not namespaced: a container with no `--device` still lists `ttyACM0/1/2` with `vid=2341 pid=003d/003e` | `ports.find_all_ports()` is pure sysfs through pyserial, so discovery **succeeds** and every open then fails. The board fixture skips, and a skip matches no failure pattern |
+| `/sys` is the host's and is not namespaced - a container with no `--device` lists `ttyACM0/1/2` under `/sys/class/tty` with `vid=2341 pid=003d/003e` - but `/dev` holds no node, and pyserial's Linux backend globs `/dev` before it annotates from sysfs | so `comports()` returns nothing and `find_all_ports()` returns `(None, None, None)`. The board fixture skips, and a skip matches no failure pattern. **Pass `/dev` in and discovery starts working**, which is where the trap moves to: the row below recommends exactly that for surviving re-enumeration |
 | `--device` binds the node that existed at container start | the 1200-baud touch destroys and re-creates it, and `wait_for_quiet_bus()` exists because it can return under another name. Surviving that needs `-v /dev:/dev:rslave`, which is most of the isolation back |
 | default caps give `ulimit -r` 0 and `SCHED_FIFO` EPERM | `rt.py` degrades and reports rather than raising, so a run produces numbers with the promotion silently absent |
 
