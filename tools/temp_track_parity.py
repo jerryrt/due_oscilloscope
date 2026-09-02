@@ -50,8 +50,9 @@ def arm(track, samples):
     # second place that knows how each track is built - and #55 has just
     # spent a session establishing that a second way to build Track A is
     # exactly the thing to remove. It was also about to break: sketch.sh
-    # is being deleted, and a hardcoded caller is how a deletion turns
-    # into a broken tool nobody notices until they next need it.
+    # was deleted in that same commit (bf041e3), and a hardcoded caller
+    # is how a deletion turns into a broken tool nobody notices until
+    # they next need it.
     measure.flash(track=track, build=True)
     return read_temp(samples)
 

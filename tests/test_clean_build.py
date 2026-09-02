@@ -137,8 +137,8 @@ def test_flashing_track_b_also_gets_a_clean_build():
 def test_track_a_build_is_clean_by_construction():
     """Track A's target cleans first, as `firmware` and `firmware_rtos` do.
 
-    Ported from the guard that asserted `tools/sketch.py` passed
-    `--clean` to arduino-cli (#55). The reason is unchanged and is not
+    Ported from the guard that asserted `tools/sketch.py` (deleted,
+    #55) passed `--clean` to arduino-cli. The reason is unchanged and is not
     hypothetical: arduino-cli's cache did not notice every change under
     `--libraries`, which is how a Track A image once shipped with a stale
     `lib/due_shared` object. Under CMake the same failure is available -
@@ -167,8 +167,8 @@ def test_track_a_build_is_clean_by_construction():
 def test_track_a_flash_builds_before_it_flashes():
     """`measure.flash(track='a')` compiles rather than reusing an artifact.
 
-    Ported from the guard on `sketch.py upload` (#55), and this one is
-    not hypothetical either. `upload` used to flash whatever .bin was in
+    Ported from the guard on `sketch.py upload`, deleted in #55, and
+    this one is not hypothetical either. `upload` used to flash whatever .bin was in
     the build path, which is the image for whatever tree last compiled
     and not the image for this one. It put an experimental firmware -
     with issue #33's guard deliberately removed - onto a bench whose
@@ -272,8 +272,9 @@ def test_nothing_else_builds_behind_the_enforcement():
     caller behind it. `tools/enum_probe.py` spawned `tools/sketch.py`,
     which drove arduino-cli, and this test passed for as long as both
     existed. It surfaced during #55 only because `sketch.py` was being
-    deleted and somebody re-grepped; the deletion would otherwise have
-    left a bench tool broken for whoever next needed it.
+    deleted and somebody re-grepped; both are gone now (bf041e3), and
+    the deletion would otherwise have left a bench tool broken for
+    whoever next needed it.
 
     A one-off bench tool with a hardcoded path is invisible to every
     other check here - not imported, not collected, not exercised on any

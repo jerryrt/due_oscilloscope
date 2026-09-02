@@ -7,10 +7,8 @@ byte, and captures output for a bounded time.
 
 The port itself comes from `host/transport.py`, which is the one seam
 the rest of `host/` already goes through: raw termios on POSIX, pyserial
-on Windows. This file used to open the fd itself with `termios` and
-`select` imported at module scope, so it did not import at all on a
-tier-1 platform - while `CLAUDE.md` still quoted it as the way to talk
-to either board.
+on Windows. So this file imports cleanly on every tier-1 platform,
+matching what `CLAUDE.md` quotes as the way to talk to either board.
 
 Never opens the programming port at 1200 baud: that triggers the Due's
 erase-and-reset path.

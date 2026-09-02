@@ -5,8 +5,8 @@ capture. A function of K repeats across passes; a function of elapsed
 time does not, and the timestamp says which.
 """
 import json, os, sys, time
-REPO = r"C:\Jerry.Projects\due_oscilloscope"
-sys.path.insert(0, os.path.join(REPO, "host"))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure
 
 KS = list(range(0, 11))
@@ -35,7 +35,7 @@ finally:
         b.poll_console(); b.cmd("=0K"); b.drain_console(0.4)
     finally:
         b.close()
-with open(os.path.join(REPO, "records", "issue5-k-passes.jsonl"), "w",
+with open(os.path.join(ROOT, "records", "issue5-k-passes.jsonl"), "w",
           newline="\n") as fh:
     for r in rows:
         fh.write(json.dumps(r, sort_keys=True) + "\n")

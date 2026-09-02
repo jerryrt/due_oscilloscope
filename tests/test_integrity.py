@@ -434,12 +434,12 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
     #   noise      |n| <= JITTER samples. The analysis flags anything
     #              outside [-2, 4]. Values of exactly +3 and -3 turn up
     #              in matched pairs, and a ring can only ever skip
-    #              forward, so a matched pair is not data loss. It is
-    #              also not a drifting sampling instant, which is what
-    #              this comment used to say: issue #24 measured it as
-    #              one sample per DAC table wrap arriving ~17-30 codes
-    #              low, which the position arithmetic reports as a jump
-    #              out and a jump straight back. See docs/awg.md.
+    #              forward, so a matched pair is not data loss - it is
+    #              issue #24's mechanism, not a drifting sampling
+    #              instant: one sample per DAC table wrap arrives
+    #              ~17-30 codes low, which the position arithmetic
+    #              reports as a jump out and a jump straight back. See
+    #              docs/awg.md.
     #   host drop  whole multiples of 128 bytes. macOS's CDC-ACM output
     #              path discards ~128-byte chunks from a pressured tty
     #              queue with write() having counted them. Open, and

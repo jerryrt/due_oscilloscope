@@ -134,9 +134,9 @@ def test_fw_source_covers_every_directory_each_track_builds_from():
 
     # Track A: the sketch directory and the shared library dir, which
     # cmake/track_a.cmake globs (#55). This read tools/sketch.py's
-    # arduino-cli argv until Track A moved onto CMake; the question is
-    # unchanged - does provenance watch what actually gets compiled -
-    # and only the file that answers it moved.
+    # arduino-cli argv before Track A moved onto CMake and sketch.py was
+    # deleted; the question is unchanged - does provenance watch what
+    # actually gets compiled - and only the file that answers it moved.
     ta = _repo_read("cmake/track_a.cmake")
     assert re.search(r"file\(GLOB\s+\w+\s+\$\{CMAKE_SOURCE_DIR\}/sketches/",
                      ta), (

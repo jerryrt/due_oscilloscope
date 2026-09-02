@@ -6,8 +6,8 @@ single-K run should show structure in the sequence - runs of one value,
 or a return period - rather than an independent draw each time.
 """
 import json, os, sys, time
-REPO = r"C:\Jerry.Projects\due_oscilloscope"
-sys.path.insert(0, os.path.join(REPO, "host"))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 60
@@ -37,7 +37,7 @@ try:
                      "peak": abs(f["peak"])})
 finally:
     b.close()
-with open(os.path.join(REPO, "records", "issue5-phase-vs-time.jsonl"), "w",
+with open(os.path.join(ROOT, "records", "issue5-phase-vs-time.jsonl"), "w",
           newline="\n") as fh:
     for r in rows:
         fh.write(json.dumps(r, sort_keys=True) + "\n")

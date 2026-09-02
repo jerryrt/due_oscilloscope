@@ -7,8 +7,8 @@ should move it deterministically, and the two benches differ in how
 repeatable their start is rather than in anything analog.
 """
 import os, sys
-REPO = r"C:\Jerry.Projects\due_oscilloscope"
-sys.path.insert(0, os.path.join(REPO, "host"))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure
 
 b = measure.Board(settle=3.0)
