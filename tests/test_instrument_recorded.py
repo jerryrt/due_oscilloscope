@@ -1,16 +1,17 @@
 """A recorded figure must say which instrument produced it.
 
 Issue #51. `play_counters()` and `occupancy()` read over the control
-channel where there is one and fall back to `B` and `O` on the console,
-and they say which they used in `.via`. The two are not two tolerances
-of one instrument: control reads a counter in 146 us, the console
-fallback costs 13.14 ms and 15.40 ms of blocked main loop **taken while
-the sample path is running**, which is invariant 8. They are two
-experiments.
+channel and say so in `.via`. They used to fall back to `B` and `O` on
+the console instead, which was never two tolerances of one instrument:
+control reads a counter in 146 us, the console costs 13.14 ms and
+15.40 ms of blocked main loop **taken while the sample path is
+running**, which is invariant 8. They are two experiments.
 
 A dropped link used to stick for a whole session, so a session could
-hold two populations of measurements with nothing marking the boundary.
-That bug is fixed. What was not fixed, and is what made #51
+hold two populations with nothing marking the boundary. That bug is
+fixed, and q3 removed the substitution itself - the functions now
+raise. `via` outlives both, because the reason it exists is the
+records rather than the fallback. What was not fixed, and is what made #51
 unanswerable after the fact, is that **no record this project wrote
 carried `via`** - so no stored figure said which instrument produced
 it, and the question "did your numbers move when your link dropped?"

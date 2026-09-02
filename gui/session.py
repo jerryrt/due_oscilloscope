@@ -178,11 +178,12 @@ class DaemonSession(QtCore.QObject):
     def call_quiet(self, op, **kw):
         """The same, without reporting a refusal.
 
-        For the poll path only. `counters` costs the board a console
-        round trip and may legitimately refuse while playback runs; a
-        refusal there is a dash on a panel, not something to say out
-        loud four times a second. A lost link is still reported - that
-        one is never routine.
+        For the poll path only. `counters` asks the device over the
+        control channel and refuses outright when there is none - it
+        has no console fallback (#51 q3) - so a refusal there is a dash
+        on a panel rather than something to say out loud four times a
+        second. A lost link is still reported: that one is never
+        routine.
         """
         return self._call(op, kw, quiet=True)
 
@@ -233,7 +234,7 @@ class DaemonSession(QtCore.QObject):
         Two calls rather than one because the daemon keeps them apart on
         purpose: `status` is answerable from the host alone and costs the
         device nothing, which is what makes polling it safe at all, and
-        `counters` is the one that can cost a console round trip.
+        `counters` is the one that asks the device.
         """
         self.drain_events()
         st = self.call_quiet("status")

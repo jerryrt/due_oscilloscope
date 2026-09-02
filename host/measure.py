@@ -1292,46 +1292,27 @@ def playstat_rate(stats):
     return (stats[hi].consumed - stats[lo].consumed) * 1024 * 1e6 / dt
 
 
-_OCC = re.compile(r"play_occ min=(\d+) endtx=(\d+) runus=(\d+) consumed=(\d+) hist=([\d,]+)")
-_OCC_TRACE = re.compile(r"play_occ_trace decim=(\d+) n=(\d+) v=([\d,]*)")
-_RATE = re.compile(r"play_rate decim=(\d+) n=(\d+) us=([\d,]*)")
-
-
-def parse_occ(text):
-    got = OccHist()
-    for line in text.splitlines():
-        m = _OCC.search(line)
-        if m:
-            got = OccHist(buckets=[int(v) for v in m.group(5).split(",")],
-                          min=int(m.group(1)), endtx=int(m.group(2)),
-                          run_us=int(m.group(3)), consumed=int(m.group(4)))
-        t = _OCC_TRACE.search(line)
-        if t and t.group(3):
-            got.decim = int(t.group(1))
-            got.trace = [int(v) for v in t.group(3).split(",")]
-        rt = _RATE.search(line)
-        if rt and rt.group(3):
-            got.rate_decim = int(rt.group(1))
-            got.rate_us = [int(v) for v in rt.group(3).split(",")]
-    return got
-
-
 def parse_play(text):
-    """Track A's path, and Track B's fallback. Prefer play_counters().
+    """Scrape the counters out of what `B` printed. Prefer play_counters().
+
+    This is no longer any function's fallback - `play_counters()` reads
+    the control channel or raises. What is left is the callers that
+    drain a console report for other reasons and read the counters out
+    of text they already have, which costs no extra `B`.
 
     Reading counters by printing them costs 13.14 ms of blocked main
-    loop for `B` and 15.40 ms for `O` - invariant 8 - and run_loop used
-    to spend two of those *inside* the run it was measuring. It stays
-    because Track A has no control channel (objective 1c) and this is
-    the only thing that works there.
+    loop for `B` and 15.40 ms for `O`, which is invariant 8. A caller
+    that issues one of those *during* a run is measuring its own
+    instrument; `run_loop()` still does, and that is a separate question
+    from #51 q3 rather than something this docstring settles.
     """
     return PlayCounters(_counters(text, "play:"))
 
 
-# What counts as "the link is gone" and may fall back to the console.
-# Deliberately not Exception: a KeyError or TypeError from the control
-# path is a bug in this file, and falling back on it would hide the bug
-# behind a working-looking measurement taken the slow way.
+# What counts as "the link is gone" and may invalidate it. Deliberately
+# not Exception: a KeyError or TypeError from the control path is a bug
+# in this file, and treating it as a transport failure would re-open a
+# healthy link and blame the wire for a host-side defect.
 _LINK_GONE = (OSError, ValueError)
 
 #: How this session's counter reads were actually taken.
@@ -1358,26 +1339,32 @@ def _count_read(via):
     return via
 
 
-def _note_fallback(board, what):
-    """Say out loud that a measurement came off printf instead.
+def _no_instrument(board, what):
+    """There is no control link, so there is no counter read. Issue #51.
 
-    The control channel reads a counter in 146 us; `B` and `O` cost
-    13.14 ms and 15.40 ms of blocked main loop, taken while the sample
-    path is running. That is invariant 8, and swapping one instrument
-    for the other mid-suite in silence is how a run ends up holding two
-    populations of measurements with nothing to tell them apart.
+    These two functions used to substitute `B` and `O` on the console
+    when the link was unavailable. They do not any more, and the
+    argument is `load()`'s in the daemon, applied to counters: `B` costs
+    13.14 ms of blocked main loop and `O` costs 15.40 ms, taken while
+    the sample path is running, so a figure read that way is partly a
+    measurement of its own instrument. Returning it as though it were
+    the same number is what left a session holding two populations with
+    nothing marking the boundary.
 
-    A warning rather than a print, for the reason `ctl()` already gives:
-    pytest captures stdout per test and shows it only on failure, so a
-    downgrade that did not fail anything would be swallowed. A warning
-    reaches the run summary either way.
+    Refusing is not a loss of capability. The console commands still
+    exist and still print; what is gone is the *silent substitution* of
+    one instrument for the other inside a function whose caller asked
+    for a counter and cannot see which way it was read.
     """
-    warnings.warn(
-        "%s fell back to the console: the control link dropped (%s). "
-        "This measurement was taken with printf blocking the main loop "
-        "- invariant 8 - and is not comparable with one taken over the "
-        "control channel." % (what, board.ctl_why or "reason not recorded"),
-        RuntimeWarning, stacklevel=3)
+    return BoardError(
+        "%s has no instrument: the command port did not answer (%s). "
+        "Counters are read over the control channel and nowhere else - "
+        "`B` and `O` cost 13-20 ms of blocked main loop taken while the "
+        "sample path runs, which is invariant 8, so they are a "
+        "different experiment rather than a slower one. All three "
+        "tracks carry a control channel and report ctlver=3, so this is "
+        "a fault to fix and not a track to work around: see "
+        "`Board.ctl_why`." % (what, board.ctl_why or "reason not recorded"))
 
 # Console key names, so the control channel produces a PlayCounters
 # indistinguishable from the console's and no caller has to know which
@@ -1391,59 +1378,58 @@ _CTL_TO_CONSOLE = {
 }
 
 
-def play_counters(board, secs=1.2):
-    """The playback counters, over the control channel where there is one.
+def play_counters(board):
+    """The playback counters, over the control channel and nowhere else.
 
-    Falls back to `B` and the console scraper, and says which it used via
-    `.via`. The fallback is not a preference - it is what Track A still
-    has, and the day Track A grows a control channel this function stops
-    having two halves.
+    Raises `BoardError` when the command port did not answer, rather
+    than reading the same numbers off `B`. `load()` in the daemon has
+    always worked this way and gives the reason: a figure taken by a
+    method that blocks the main loop for 13-20 ms while the sample path
+    runs is measuring its own instrument as well as the device.
+
+    `.via` still says which instrument read it, because a record has to
+    carry that (#51) - it is now always `control` on this path, and the
+    field earns its keep on the records rather than here.
     """
     link = board.ctl()
-    if link is not None:
-        try:
-            ct = link.counters()
-            got = PlayCounters({v: ct[k] for k, v in _CTL_TO_CONSOLE.items()
-                                if k in ct})
-            got.via = _count_read("control")
-            return got
-        except _LINK_GONE:
-            # Only a transport failure falls back. A KeyError here is a
-            # mapping bug, and swallowing it would degrade silently to
-            # printf and report the wrong instrument as working - which
-            # is what this whole migration exists to stop. It escapes.
-            board.ctl_invalidate()
-            _note_fallback(board, "play_counters()")
-    board.cmd("B")
-    time.sleep(0.5)
-    got = parse_play(board.drain_console(secs))
-    got.via = _count_read("console")
+    if link is None:
+        raise _no_instrument(board, "play_counters()")
+    try:
+        ct = link.counters()
+    except _LINK_GONE:
+        # A transport failure invalidates the link so the next caller
+        # re-establishes it. It does not produce a number: there is no
+        # second instrument to fall back to. A KeyError is a mapping bug
+        # in this file and escapes untouched, which is the distinction
+        # this narrow tuple exists to draw.
+        board.ctl_invalidate()
+        raise
+    got = PlayCounters({v: ct[k] for k, v in _CTL_TO_CONSOLE.items()
+                        if k in ct})
+    got.via = _count_read("control")
     return got
 
 
-def occupancy(board, secs=1.2):
-    """The occupancy histogram and traces, control channel first.
+def occupancy(board):
+    """The occupancy histogram and traces, over the control channel only.
 
-    Same split and the same reason as play_counters().
+    Same rule and the same reason as play_counters(). `O` is the more
+    expensive of the two console reads at 15.40 ms.
     """
     link = board.ctl()
-    if link is not None:
-        try:
-            o = link.occupancy()
-            got = OccHist(buckets=list(o["hist"]), min=o["occ_min"],
-                          endtx=o["endtx"], run_us=o["run_us"],
-                          consumed=o["consumed"])
-            got.decim = o.get("decim", 0)
-            got.trace = list(o.get("trace", []))
-            got.via = _count_read("control")
-            return got
-        except _LINK_GONE:
-            board.ctl_invalidate()
-            _note_fallback(board, "occupancy()")
-    board.cmd("O")
-    time.sleep(0.3)
-    got = parse_occ(board.drain_console(secs))
-    got.via = _count_read("console")
+    if link is None:
+        raise _no_instrument(board, "occupancy()")
+    try:
+        o = link.occupancy()
+    except _LINK_GONE:
+        board.ctl_invalidate()
+        raise
+    got = OccHist(buckets=list(o["hist"]), min=o["occ_min"],
+                  endtx=o["endtx"], run_us=o["run_us"],
+                  consumed=o["consumed"])
+    got.decim = o.get("decim", 0)
+    got.trace = list(o.get("trace", []))
+    got.via = _count_read("control")
     return got
 
 
@@ -1543,13 +1529,13 @@ class Board:
         All three of `_ctl`, `_ctl_tried` and `_ctl_why` must be
         cleared together. Leaving `_ctl_tried` set makes `ctl()`'s
         cache return None for ever after a single transient failure -
-        including the close() wedge that re-enumerates the native port
-        - and a caller falls back from the control channel to console
-        polling, which blocks the main loop for 13-20 ms per query
-        while the sample path runs (invariant 8). Leaving `_ctl_why`
-        set reports the *previous* drop's error against the current
-        failure, so `_note_fallback()` prints a true sentence about the
-        wrong event.
+        including the close() wedge that re-enumerates the native port.
+        Since #51 q3 that no longer silently degrades a measurement to
+        console polling; it refuses one instead, which is louder but is
+        still a session's worth of counters lost to one transient open.
+        Leaving `_ctl_why` set reports the *previous* drop's error
+        against the current failure, so the refusal names the wrong
+        event.
         """
         link, self._ctl = self._ctl, None
         self._ctl_tried = False
@@ -1803,9 +1789,11 @@ class Board:
         and probing it asserts NRSTB and resets the board. Discovery
         that costs a reset is not discovery a running daemon can do.
 
-        None on firmware with one CDC function - Track A today - and
-        every caller must cope, because the fallback is the console and
-        the console still works.
+        None on firmware with one CDC function. No track is in that
+        state - all three enumerate a command port and report ctlver=3 -
+        so None here is a fault to diagnose rather than a track to work
+        around, and callers that need counters refuse rather than
+        reaching for the console (#51 q3).
         """
         cands = ports.native_nodes(exclude=self.control)
         return cands[1] if len(cands) > 1 else None

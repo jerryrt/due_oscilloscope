@@ -485,16 +485,19 @@ def test_measurement_does_not_come_from_the_console_on_this_track(board, track):
         f"track {track.upper()} reports a control channel but the suite's "
         f"helpers did not use it")
 
+    # These raise rather than falling back (#51 q3), so reaching the
+    # assertion at all means the control channel answered. `via` is
+    # checked anyway because it is what a *record* carries, and a
+    # record mislabelled "control" is the failure this cannot see.
     counters = measure.play_counters(board)
     assert counters.via == "control", (
-        "play_counters() fell back to the console on a board that has a "
-        "control channel: measurement is coming from printf again, which "
-        "is invariant 8. Check why the control link dropped.")
+        f"play_counters() returned via={counters.via!r} on a board with a "
+        f"control channel. It no longer has a console path, so this is a "
+        f"mislabelled record rather than a fallback.")
 
     occ = measure.occupancy(board)
     assert occ.via == "control", (
-        "occupancy() fell back to the console on a board that has a "
-        "control channel - see above")
+        f"occupancy() returned via={occ.via!r} - see above")
 
 
 # The capability list is only worth having if it is true, and "true" is

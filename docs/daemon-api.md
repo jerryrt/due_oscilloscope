@@ -72,8 +72,8 @@ limit rather than saying no.
 | `hello` | no | `{role: "control"\|"observer"}`. Returns the role granted, `granted`, the protocol version and the device |
 | `ping` | no | `pong` |
 | `status` | no | Everything below under [Status](#status). Host-side only; safe to poll |
-| `counters` | no | The device's own counters, over the control channel (console only as a fallback) |
-| `trace` | no | Playback occupancy and the converter's own rate trace |
+| `counters` | no | The device's own counters. Control channel only - never the console |
+| `trace` | no | Playback occupancy and the converter's own rate trace. Control channel only |
 | `load` | no | The device's main-loop load. Control channel only - never the console |
 | `caps` | no | Rate limits, modes, device description |
 | `rate` | no | Snap `adc_hz`/`dac_sps` without touching the device |
@@ -369,13 +369,15 @@ measured on `windows-desk`, where a 1.5 s stall run for a screenshot was
 still the reported maximum hours later. Read it as a high-water mark,
 never as a live figure.
 
-**No console fallback, unlike `counters` and `trace`.** `CLAUDE.md`'s
+**No console fallback - and since #51 q3 neither has `counters` or
+`trace`.** `CLAUDE.md`'s
 rule is that printf is a debug method and not an instrument: one console
 status command blocks the main loop for 13-20 ms, where twenty GET_LOAD
 queries cost 0.29 ms in total. A load figure taken by a method that
 blocks the loop for 15 ms would be measuring the instrument rather than
 the device, so a board without a control channel gets an error instead
-of a misleading number.
+of a misleading number. That argument was always general; it now
+governs all three.
 
 Like `counters` and `trace`, `status` never drags it in.
 

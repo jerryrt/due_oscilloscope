@@ -801,6 +801,31 @@ class FileDevice(Device):
                     "loops": self.loops, "at_end": self.at_end,
                     "awg_bytes": 0}
 
+def _is_transport_failure(exc):
+    """Did the wire fail, or did this host ask a bad question?
+
+    Only the first may drop the control link. The three readers below
+    used to catch bare `Exception` and drop on all of it, which blames
+    the transport for a host-side defect: a `KeyError` from a renamed
+    counter field would tear down a healthy link and re-open it on the
+    next call, hiding a mapping bug behind an intermittent-looking
+    reconnect. `measure.py` draws this distinction with `_LINK_GONE`
+    and its comment says why; the daemon did not, and that asymmetry is
+    what #51 q3 found while removing the console fallback.
+
+    `ControlError` is deliberately excluded. It means the device
+    answered and the answer was a refusal - `CTL_ERR_OPCODE` for an
+    opcode this track does not implement, say - so the link is healthy
+    and dropping it would be wrong.
+    """
+    if isinstance(exc, (OSError, ValueError)):
+        return True
+    try:
+        import control as control_mod
+    except Exception:                                # noqa: BLE001
+        return False
+    return isinstance(exc, control_mod.ProtocolError)
+
 class BoardDevice(Device):
     """The real board, driven through `host/measure.py`.
 
@@ -871,10 +896,11 @@ class BoardDevice(Device):
         drained - which is the NAKing pipe that hangs macOS in close().
         The same readings over this channel cost 146 and 274 us.
 
-        None on firmware with one CDC function, which is Track A today.
-        Callers fall back to the console and are slower and rougher on
-        the board, which is the honest behaviour rather than refusing to
-        report anything at all.
+        None on firmware with one CDC function. No track is in that
+        state - all three enumerate a command port and report ctlver=3 -
+        so None is a fault to diagnose. `counters()`, `trace()` and
+        `load()` all refuse when it is None rather than reading the same
+        numbers off printf at 13-20 ms of blocked main loop apiece.
 
         A node is not a protocol: whether `command_node()` returns a
         node says only that a second CDC function enumerated, not that
@@ -1108,36 +1134,43 @@ class BoardDevice(Device):
         return self.board.poll_console()
 
     def counters(self):
-        """The device's own counters, over the control channel.
+        """The device's own counters, over the control channel and nowhere else.
 
         The console alternative, `B`, costs 13.14 ms of blocked main
         loop - measured, not estimated - and drains no bulk OUT for any
         of it, which is how a host ends up stuck in close(); see
         objective 0c. GET_COUNTERS reports the same numbers for 146 us.
 
-        The console remains the fallback for firmware without a command
-        port. It is not a preference: it is what Track A still has.
+        There is deliberately no console fallback, for `load()`'s reason
+        one method over: a counter read that blocks the loop for 13 ms
+        while the sample path runs is a different experiment from one
+        that costs 146 us, not a slower version of it, and substituting
+        one for the other inside this method hides the swap from the
+        caller. All three tracks carry a control channel, so a missing
+        one is a fault rather than a track (#51 q3).
+
+        A failure raises. The server turns that into a refusal, and the
+        GUI's poll path already treats a refusal as a dash on a panel.
         """
         c = self.control()
-        if c is not None:
-            try:
-                # Under the lock: the heartbeat pump reads this same fd,
-                # and two readers on one port steal each other's frames.
-                with self._ctl_lock:
-                    ct = c.counters()
-                return {"underruns": ct["underruns"], "spans": ct["spans"],
-                        "partial": ct["partial"], "consumed": ct["consumed"],
-                        "occ_min": ct["occ_min"], "dev_us": ct["dev_us"],
-                        "rx_bytes": self._rx, "via": "control"}
-            except Exception:                        # noqa: BLE001
-                self._drop_control()
+        if c is None:
+            raise DeviceError(
+                "this device has no control channel, and counters are "
+                "not readable any other way without blocking the main "
+                "loop for 13 ms while the sample path runs")
         try:
-            play = self.m.parse_play(self.board.ask("B", secs=1.0))
-            return {"underruns": play.underruns, "spans": play.spans,
-                    "partial": play.partial, "rx_bytes": self._rx,
-                    "via": "console"}
-        except Exception:                            # noqa: BLE001
-            return {"rx_bytes": self._rx, "via": "none"}
+            # Under the lock: the heartbeat pump reads this same fd,
+            # and two readers on one port steal each other's frames.
+            with self._ctl_lock:
+                ct = c.counters()
+        except Exception as e:                       # noqa: BLE001
+            if _is_transport_failure(e):
+                self._drop_control()
+            raise
+        return {"underruns": ct["underruns"], "spans": ct["spans"],
+                "partial": ct["partial"], "consumed": ct["consumed"],
+                "occ_min": ct["occ_min"], "dev_us": ct["dev_us"],
+                "rx_bytes": self._rx, "via": "control"}
 
     def load(self):
         """Main-loop load, over the control channel and nowhere else.
@@ -1165,8 +1198,9 @@ class BoardDevice(Device):
         try:
             with self._ctl_lock:                    # see counters()
                 out = dict(c.load())
-        except Exception:                            # noqa: BLE001
-            self._drop_control()
+        except Exception as e:                       # noqa: BLE001
+            if _is_transport_failure(e):
+                self._drop_control()
             raise
         out["via"] = "control"
         return out
@@ -1176,31 +1210,42 @@ class BoardDevice(Device):
 
         Over the control channel, for the same reason as `counters`:
         `O` is three long console lines and blocks the main loop for
-        15.40 ms, where GET_OCCUPANCY costs 274 us. Asking during a run
-        costs underruns at exactly the rates where the answer matters
-        only on the console fallback; the control channel can be asked
-        whenever the answer is wanted.
+        15.40 ms, where GET_OCCUPANCY costs 274 us. Asking on the
+        console during a run costs underruns at exactly the rates where
+        the answer matters; the control channel can be asked whenever
+        the answer is wanted, which is why it is the only way in.
 
         The rate trace is paged: PLAY_RATE_TRACE entries of four bytes
         do not fit a packet, and a response spanning packets can be
         truncated by a single-banked endpoint without saying so.
         """
         c = self.control()
-        if c is not None:
-            try:
-                with self._ctl_lock:                # see counters()
-                    occ = c.occupancy()
-                    rate = c.rate_trace()
-                return {"occ_min": occ["occ_min"], "endtx": occ["endtx"],
-                        "run_us": occ["run_us"],
-                        "consumed": occ["consumed"],
-                        "hist": occ["hist"], "trace": occ["trace"],
-                        "decim": occ["decim"],
-                        "rate_decim": rate["decim"],
-                        "rate_us": rate["us"], "via": "control"}
-            except Exception:                        # noqa: BLE001
+        if c is None:
+            raise DeviceError(
+                "this device has no control channel, and the occupancy "
+                "trace is not readable any other way without blocking "
+                "the main loop for 15 ms while the sample path runs")
+        try:
+            with self._ctl_lock:                    # see counters()
+                occ = c.occupancy()
+                rate = c.rate_trace()
+        except Exception as e:                       # noqa: BLE001
+            if _is_transport_failure(e):
                 self._drop_control()
-        o = self.m.parse_occ(self.board.ask("O", secs=2.0))
+            raise
+        # Built as an OccHist rather than returned field by field,
+        # because the derived rates are methods on it. The console
+        # branch that used to stand here supplied `window_rates`,
+        # `byte_rate` and `traced_byte_rate` and the control branch
+        # beside it did not, so the reply's shape depended on which
+        # instrument answered - the same defect one layer up from the
+        # one #51 q3 is about. One path now, and it carries all of them.
+        o = self.m.OccHist(
+            buckets=list(occ["hist"]), min=occ["occ_min"],
+            endtx=occ["endtx"], run_us=occ["run_us"],
+            consumed=occ["consumed"], trace=list(occ["trace"]),
+            decim=occ["decim"], rate_us=list(rate["us"]),
+            rate_decim=rate["decim"], via="control")
         return {"occ_min": o.min, "endtx": o.endtx, "run_us": o.run_us,
                 "consumed": o.consumed, "hist": list(o.buckets),
                 "trace": list(o.trace), "decim": o.decim,
@@ -1208,7 +1253,7 @@ class BoardDevice(Device):
                 "window_rates": o.window_rates(),
                 "byte_rate": o.device_byte_rate(),
                 "traced_byte_rate": o.traced_byte_rate(),
-                "via": "console"}
+                "via": "control"}
 
     def stats(self):
         return {"rx_bytes": self._rx}

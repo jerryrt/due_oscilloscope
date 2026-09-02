@@ -391,38 +391,41 @@ def pytest_sessionfinish(session, exitstatus):
 
 
 def _check_one_instrument(session):
-    """Did this session measure with one instrument or two? Issue #51.
+    """Did any counter read come off printf? Issue #51, and now q3.
 
     `play_counters()` and `occupancy()` read over the control channel
-    where there is one and fall back to `B` and `O` on the console.
-    Control reads a counter in 146 us; the fallback costs 13.14 ms and
-    15.40 ms of blocked main loop **taken while the sample path is
-    running**, which is invariant 8. They are two experiments, not two
-    tolerances of one.
+    and **raise** when there is none. They used to substitute `B` and
+    `O` instead, and the substitution was silent: control reads a
+    counter in 146 us, the console costs 13.14 ms and 15.40 ms of
+    blocked main loop **taken while the sample path is running**, which
+    is invariant 8. They are two experiments, not two tolerances of one,
+    and a link that dropped mid-suite left a run holding two populations
+    with nothing marking the boundary. That cost a whole session once.
 
-    A link that drops mid-suite therefore leaves a run holding two
-    populations with nothing marking the boundary. That is #51, it cost
-    a whole session once, and the trigger here is an objective-0c
-    `close()` wedge - which re-enumerates the native port and is
-    *guaranteed* to drop the link, on the bench where 0c happens.
+    **This is now a tripwire rather than a detector, and that is worth
+    saying plainly.** With the fallback deleted nothing in the working
+    path increments `console`, so in a healthy tree this hook cannot
+    fire. What it catches is the fallback being *reintroduced* - by a
+    new helper that scrapes `B` and counts itself as a counter read, or
+    by someone restoring the old two-halves shape. It is cheap, it is
+    exact, and it fails the run rather than warning, because a warning
+    is what this already was: the deleted `_note_fallback()` raised a
+    `RuntimeWarning` at the moment it happened and #51 happened anyway.
 
-    **Why this is a session hook and not a test.** `test_control.py`
-    already asserts `via == "control"`, but it runs seventh in
-    `FILE_ORDER` and the wedge happens in the playback tests after it.
-    Moving it is a reorder of a load-bearing list and is the owner's
-    call on #51; asking the question again at the end is additive and
-    is not.
+    A guard that cannot fail is worse than no guard, so this one was
+    broken on purpose before it was trusted -
+    `test_instrument_guard.py` drives `INSTRUMENT_READS` to each of the
+    four states and asserts what this hook does with them, which is the
+    only reason to believe the branches below still work now that the
+    world stopped producing the input.
 
-    **The `ctlver=0` exemption falls out of the counters and needs no
-    new state.** If `control` is above zero the link demonstrably
-    existed this session, so a `console` read is a *drop*. If `control`
-    is zero the board never had one - an image built before 2026-08-27,
-    or a track without the opcode - and the console is not a downgrade,
-    it is the only instrument. Only the first fails.
-
-    Failing rather than warning, for the reason the ceiling above gives:
-    a warning is what this already was. `_note_fallback()` raises a
-    `RuntimeWarning` at the moment it happens, and #51 happened anyway.
+    **The `ctlver=0` branch is kept and is now unreachable from this
+    codebase.** It described a board that never had a control channel -
+    an image built before 2026-08-27, or a track without the opcode -
+    for which the console was the only instrument and not a downgrade.
+    No track is in that state: all three carry a control channel and
+    report ctlver=3. It stays because it costs one branch and it is the
+    correct answer if a pre-2026-08-27 image is ever put on a bench.
     """
     if getattr(session.config.option, "mixed_instruments_ok", False):
         return
