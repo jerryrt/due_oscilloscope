@@ -1251,13 +1251,55 @@ One logical change per commit. Every commit should build.
 
 ## Build
 
-**GCC only, and MSVC never.** Owner ruling, 2026-08-30. `arm-gcc` is the
-compiler this project installs on every platform, and no second C dialect
-is admitted anywhere - not for firmware, not for a host-side test, not
-because one is already on the machine.
+**GCC builds the images. clang is admitted as an optional firmware
+compiler, and MSVC never.** `arm-gcc` is the compiler this project
+installs on every platform, it is what every default build uses, and it
+is what produced every figure in the tree.
 
-It was proposed once, from `windows-desk`, on the grounds that `cl.exe`
-was installed there and using it would avoid a machine-setup step for
+**clang is opt-in and additive**, on the same toolchain file:
+
+```sh
+cmake -B build-clang \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CLANG=ON
+cmake --build build-clang -j
+```
+
+It supplies a front end and a code generator and nothing else. The libc
+headers are harvested from the resolved `arm-none-eabi-gcc` with
+`-E -v` rather than written down, the link goes through that same GCC
+driver, and newlib, libgcc and the linker script are the ones a GCC
+image carries - so a clang image is this project's runtime with clang's
+objects in it, not a second runtime. A build directory belongs to one
+compiler; configure another rather than flipping the flag in a
+configured tree.
+
+**`-fshort-enums` is an ABI flag there, not a preference.** GCC's
+arm-none-eabi default is variable-size enums and clang's is `int`, and
+without it the link says so against every newlib and libgcc member it
+pulls in.
+
+**Read the compiler back out of the ELF, never off `PATH`.**
+`tools/image_fingerprint.py` reports every producer string in
+`.comment`, so a clang image names clang *and* the GCC toolchain whose
+runtime it links; a GCC image names GCC alone.
+
+**Track B and Track C build under clang. Track A does not, and the
+cause is the vendored Arduino core.** GCC's arm-none-eabi
+`__INT32_TYPE__` is `long int` where clang's is `int`, so `uint32_t`
+and `unsigned long` are one type under GCC and two under clang - and
+`cores/arduino/USB/CDC.cpp` declares `uint32_t Serial_::baud()` while
+defining `unsigned long Serial_::baud()`. Redefining clang's
+predefined type macros compiles it, and is refused for the reason
+given at the flag in `cmake/arm-none-eabi-toolchain.cmake`: it changes
+what `uint32_t` *is* in the shared wire-contract sources.
+
+**No clang image has been run on a board.** Nothing measured has been
+taken on one, and nothing may be until one has.
+
+**MSVC never**, and the argument is specific to it. It was proposed
+once, from `windows-desk`, on the grounds that `cl.exe` was installed
+there and using it would avoid a machine-setup step for
 `tests/test_framer_close.py`. Measured before it was refused, and both
 premises failed: `cl.exe` needs `INCLUDE`/`LIB` for the CRT and Windows
 SDK, so it does not work standalone; and with those supplied it still
@@ -1268,7 +1310,9 @@ wire-layout `static_assert`s fail under it, correctly.
 So admitting MSVC would have meant changing the packing semantics of the
 shared wire-contract header - the file invariant 3 carved out as shared
 precisely to stop the frame layout acquiring second homes. "A compiler is
-already installed" is not a reason to acquire one.
+already installed" is not a reason to acquire one. Clang honours
+`__attribute__((packed))` and the wire-layout `static_assert`s hold
+under it, which is why that argument does not reach it.
 
 **A cross compiler is not a host compiler.** `arm-none-eabi-gcc`
 `-dumpmachine` says `arm-none-eabi` and the toolchain ships no native
