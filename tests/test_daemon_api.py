@@ -877,6 +877,85 @@ def test_a_paced_replay_follows_the_recorded_timestamps(recording,
     assert elapsed < 2.0
 
 
+# -- what the device holds while it waits -----------------------------
+#
+# A device that sleeps holding its own lock blocks every client thread
+# for as long as it sleeps, and nothing above notices: the frames still
+# arrive, and the cost lands on whoever calls `start`, `stop` or
+# `status` next. Nor is it visible on an interpreter that hands a
+# contended lock over fairly - CPython 3.14 makes a waiter here wait
+# 1-11 ms and 3.12 makes it wait 0.3-4.3 s for the same code, so the
+# suite trips over this on one interpreter and not the other. These
+# assert the property directly instead.
+
+
+def worst_lock_wait(dev, attempts=20):
+    """The longest a client thread waits for a device that is pacing.
+
+    `stats()` is the cheapest client-side call that takes the same lock
+    `read()` does, which is the whole content of the measurement: how
+    long a reader in its pacing wait keeps everyone else out.
+    """
+    stop = threading.Event()
+
+    def reader():
+        while not stop.is_set():
+            dev.read(timeout=0.1)
+
+    t = threading.Thread(target=reader, daemon=True)
+    t.start()
+    try:
+        time.sleep(0.05)                  # let it reach the pacing wait
+        worst = 0.0
+        for _ in range(attempts):
+            t0 = time.monotonic()
+            dev.stats()
+            worst = max(worst, time.monotonic() - t0)
+            time.sleep(0.005)
+        return worst
+    finally:
+        stop.set()
+        t.join(timeout=2.0)
+
+
+# Held well below the 0.1 s a reader spends in one wait, and well above
+# the sub-millisecond an uncontended acquire costs, so neither a slow
+# bench nor a starved container decides the answer.
+LOCK_WAIT_MAX_S = 0.03
+
+
+def test_a_paced_fake_does_not_hold_its_lock_while_it_waits():
+    dev = devmod.FakeDevice(pace=True)
+    # 2032 samples over two channels at 2 kHz is half a second a frame,
+    # so a reader on a 0.1 s timeout is inside its wait for essentially
+    # all of the measurement: the lock is either free throughout or
+    # held throughout, and there is no middle reading to interpret.
+    dev.start("capture", adc_hz=2000, channels=2)
+    try:
+        worst = worst_lock_wait(dev)
+    finally:
+        dev.stop()
+    assert worst < LOCK_WAIT_MAX_S, (
+        f"a client waited {worst * 1000:.0f} ms for the fake's lock; "
+        f"the reader is holding it across its pacing sleep")
+
+
+def test_a_paced_replay_does_not_hold_its_lock_while_it_waits(recording):
+    path, blob, side = recording(frames=8, adc_hz=100000)
+    # `speed` rather than a slower recording: 10.16 ms a frame replayed
+    # at 1/50 speed is about half a second, which puts this device in
+    # the same regime as the fake above with nothing else changed.
+    dev = devmod.FileDevice(path, pace=True, speed=0.02)
+    dev.start("capture")
+    try:
+        worst = worst_lock_wait(dev)
+    finally:
+        dev.close()
+    assert worst < LOCK_WAIT_MAX_S, (
+        f"a client waited {worst * 1000:.0f} ms for the replay's lock; "
+        f"the reader is holding it across its pacing sleep")
+
+
 # -- the device's own heartbeat --------------------------------------
 #
 # Issue #33 is why these exist. When Track A's main loop stopped, the

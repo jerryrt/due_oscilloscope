@@ -151,6 +151,12 @@ class FakeDevice(Device):
         self.amplitude = amplitude
         self.tone_hz = tone_hz
         self._lock = threading.Lock()
+        # Bumped by every start and every stop, so `read()` can tell
+        # whether the run it snapshotted is still the run it is
+        # delivering into. Same device as `Server._run_gen`, one layer
+        # down, and for the same reason: the state moves under a thread
+        # that must not hold a lock while it waits.
+        self._run_gen = 0
         self._seq = 0
         self._t0 = 0.0
         self._phase = 0.0
@@ -201,12 +207,14 @@ class FakeDevice(Device):
             self._seq = 0
             self._t0 = time.monotonic()
             self._phase = 0.0
+            self._run_gen += 1
             self._console.append(f"started {mode}\n")
 
     def stop(self):
         with self._lock:
             self.running = False
             self.mode = None
+            self._run_gen += 1
             self._console.append("stopped\n")
 
     def close(self):
@@ -219,32 +227,64 @@ class FakeDevice(Device):
 
     # -- stream ------------------------------------------------------
     def read(self, timeout=0.2):
+        """Nothing slow happens under the lock, and that is the point.
+
+        `BoardDevice.read()` holds no lock at all - it sleeps on the
+        descriptor - so a lock held across a sleep here was never
+        fidelity to the device, and it starved every client thread that
+        wants `stats()` or `start()`. What the lock protects is the run:
+        `running`/`mode`/`rates` against `start` and `stop`, and the
+        generator's `_seq`/`_phase`/`_sent_frames` against `counters`.
+        So the run is snapshotted under it, the waiting and the
+        2032-sample build happen outside it, and the result is committed
+        under it only if the run it belongs to is still the current one.
+
+        A frame whose run ended while it was being built is dropped
+        rather than delivered. That direction is the safe one - it is
+        invariant 5 at the daemon's scale - and it is a race the board
+        has anyway, where `_teardown` shuts the gate on a read already
+        in flight.
+        """
         with self._lock:
-            if not self.running or self.mode == "play":
-                # Play-only produces no capture stream, exactly as the
-                # device does not.
-                if timeout:
-                    time.sleep(min(timeout, 0.01))
+            gen = self._run_gen
+            idle = not self.running or self.mode == "play"
+            if not idle:
+                rate = self.rates.get("adc_hz") or 200000
+                channels = self.rates.get("channels") or 2
+                seq, phase = self._seq, self._phase
+                wait = 0.0
+                if self.pace:
+                    per_frame = FRAME_SAMPLES / float(rate * channels)
+                    due = self._t0 + (seq + 1) * per_frame
+                    wait = due - time.monotonic()
+        if idle:
+            # Play-only produces no capture stream, exactly as the
+            # device does not.
+            if timeout:
+                time.sleep(min(timeout, 0.01))
+            return b""
+        if wait > 0:
+            time.sleep(min(wait, timeout))
+            if wait > timeout:
+                # Still not due. Nothing has advanced, so the next call
+                # asks the same question.
                 return b""
-            rate = self.rates.get("adc_hz") or 200000
-            channels = self.rates.get("channels") or 2
-            if self.pace:
-                per_frame = FRAME_SAMPLES / float(rate * channels)
-                due = self._t0 + (self._seq + 1) * per_frame
-                wait = due - time.monotonic()
-                if wait > 0:
-                    if wait > timeout:
-                        time.sleep(timeout)
-                        return b""
-                    time.sleep(wait)
-            frame = self._make_frame(rate, channels)
+        frame, phase = self._make_frame(seq, phase, rate, channels)
+        with self._lock:
+            if self._run_gen != gen or not self.running:
+                return b""
+            self._seq = seq + 1
+            self._phase = phase
             self._sent_frames += 1
             return frame
 
-    def _make_frame(self, rate, channels):
+    def _make_frame(self, seq, phase, rate, channels):
+        """One frame and the phase it leaves behind, from arguments only.
+
+        It takes no lock and touches no state, so `read()` can build it
+        outside the lock and commit the advance afterwards.
+        """
         import math
-        seq = self._seq
-        self._seq += 1
         ts = int(seq * FRAME_SAMPLES * 1e6 / (rate * channels))
         mask = 0
         tags = [7, 6][:channels]
@@ -253,8 +293,8 @@ class FakeDevice(Device):
         body = bytearray()
         step = 2.0 * math.pi * self.tone_hz / rate
         for i in range(FRAME_SAMPLES // channels):
-            v = int(2048 + self.amplitude * math.sin(self._phase))
-            self._phase += step
+            v = int(2048 + self.amplitude * math.sin(phase))
+            phase += step
             for t in tags:
                 # 12-bit right aligned, tag in the top nibble, exactly as
                 # the ADC delivers it with TAG enabled.
@@ -263,7 +303,7 @@ class FakeDevice(Device):
                           seq, rate, ts, 0, 0, 0)
         crc = zlib.crc32(hdr[:HDR_LEN - 4]) & 0xFFFFFFFF
         hdr = hdr[:HDR_LEN - 4] + struct.pack("<I", crc)
-        return bytes(hdr) + bytes(body)
+        return bytes(hdr) + bytes(body), phase
 
     def write_awg(self, data):
         with self._lock:
@@ -657,28 +697,45 @@ class FileDevice(Device):
 
     # -- stream ------------------------------------------------------
     def read(self, timeout=0.2):
+        """Paced outside the lock, for `FakeDevice.read()`'s reasons.
+
+        The file work stays under it - reading a chunk is bounded and
+        cannot wait - and only the pacing sleep is lifted out. The frame
+        stays in `_hold` while that happens, which is what it was there
+        for. That is also what makes the wait safe without a generation
+        counter of `FakeDevice`'s kind: `_open()` and `_close_fh()` are
+        the only things that end a run and both clear `_hold`, so a
+        frame whose run has been stopped, restarted or exhausted under
+        the sleep finds nothing to commit into and is dropped.
+        """
         with self._lock:
-            if not self.running:
-                if timeout:
-                    time.sleep(min(timeout, 0.01))
-                return b""
-            if self._hold is None:
-                got = self._next()
-                if got is None:
-                    self._finish()
-                    return b""
-                frame, hdr = got
-                self._hold = (frame, hdr, self._schedule(hdr))
-            frame, hdr, due = self._hold
-            if self.pace:
-                wait = due - time.monotonic()
-                if wait > 0:
-                    time.sleep(min(wait, timeout))
-                    if wait > timeout:
-                        # Still not due. The server asks again in a
-                        # moment, and the frame stays held so its place
-                        # in the recording's own timeline is not lost.
+            idle = not self.running
+            wait = 0.0
+            if not idle:
+                if self._hold is None:
+                    got = self._next()
+                    if got is None:
+                        self._finish()
                         return b""
+                    frame, hdr = got
+                    self._hold = (frame, hdr, self._schedule(hdr))
+                frame, hdr, due = self._hold
+                if self.pace:
+                    wait = due - time.monotonic()
+        if idle:
+            if timeout:
+                time.sleep(min(timeout, 0.01))
+            return b""
+        if wait > 0:
+            time.sleep(min(wait, timeout))
+            if wait > timeout:
+                # Still not due. The server asks again in a moment, and
+                # the frame stays held so its place in the recording's
+                # own timeline is not lost.
+                return b""
+        with self._lock:
+            if not self.running or self._hold is None:
+                return b""
             self._hold = None
             self._count(hdr)
             self._replayed += 1
