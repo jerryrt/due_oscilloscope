@@ -51,13 +51,9 @@ FRAME_CAPACITY = 512
 #: resetting and printing its banner. Measured on windows-desk, first
 #: start 5.53 s and every later one 0.93 s.
 #:
-#: At 5.0 the two numbers were equal and the first Start therefore lost
-#: the race every time, and reported "daemon stopped answering" about a
-#: board that was working and whose reply arrived correctly a moment
-#: later. Issue #42: the deeper fix is to drain the banner when the port
-#: is opened rather than on the first start, which removes the 5 s wait
-#: instead of tolerating it - but that sits on the path every mode start
-#: takes, so it is the daemon owner's call and this is not it.
+#: At 5.0 the two numbers are equal, so the first Start would lose the
+#: race every time and report "daemon stopped answering" about a board
+#: that is working and whose reply arrives correctly a moment later.
 CALL_TIMEOUT = 15.0
 
 
@@ -65,10 +61,9 @@ class DaemonSession(QtCore.QObject):
     """One daemon connection, or none.
 
     Deliberately not a wrapper that re-raises: a front end cannot do
-    anything useful with an exception in a slot, and the five call sites
-    that used to catch their own proved it by each inventing a different
-    answer. Calls return the reply or `None`, and what went wrong comes
-    out as a signal that exactly one place in the window renders.
+    anything useful with an exception in a slot. Calls return the reply
+    or `None`, and what went wrong comes out as a signal that exactly
+    one place in the window renders.
     """
 
     #: The daemon accepted us. Carries its device block and the role we
@@ -151,10 +146,10 @@ class DaemonSession(QtCore.QObject):
     def close(self, reason=""):
         """Drop the link. Idempotent, and safe from inside a failed call.
 
-        `reason` is empty when we closed it and populated when it closed
-        under us, because those are different things to tell a user and
-        the window used to have to work out which had happened from
-        which method it was standing in.
+        `reason` is empty when we closed it and populated when it
+        closed under us - two different things to tell a user,
+        distinguished explicitly here rather than inferred from which
+        method is calling.
         """
         c, self.client = self.client, None
         if c is None:

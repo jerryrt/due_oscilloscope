@@ -51,9 +51,8 @@ def _advref_mv():
     cursors and the trigger level were all 0.91% high until this.
 
     The number lives in `calibration.json` and is read through
-    `host/calibration.py` - one home, one reader. It used to be read
-    straight out of `tests/baseline.json`, which is a test fixture, by a
-    copy of this loader that only this file had.
+    `host/calibration.py` - one home, one reader, not a copy of this
+    loader kept only for this window.
 
     Falls back to the nominal reference if the record is unreadable,
     because a display is not worth refusing to start over - and says so
@@ -227,33 +226,27 @@ class ChannelRing:
 #: enough that the search stays inside the frame budget.
 SEARCH_SPAN = 4
 
-#: A last-resort floor on peak-to-peak, and **not** the guard that
-#: rejects noise - see MEASURE_MIN_PEAKEDNESS below, which is.
+#: A last-resort floor on peak-to-peak, not the guard that rejects
+#: noise - see MEASURE_MIN_PEAKEDNESS below, which is. Ten codes is
+#: about 8 mV at the measured 3270 mV reference, well below the ~15 mV
+#: CLAUDE.md records sitting on an undriven DAC pin, so this floor sits
+#: below the idle noise of the bench it runs on and cannot reject it:
+#: it would reject only *quiet* noise, and which you got would depend
+#: on where the noise happened to land.
 #:
-#: Issue #43: this was the noise guard and it could not be one. Ten
-#: codes is about 8 mV at the measured 3270 mV reference, and CLAUDE.md
-#: records ~15 mV sitting on an undriven DAC pin - so the floor was
-#: below the idle noise of the bench it runs on. Measured on linux-x1,
-#: an undriven DAC1 spans 39-42 codes over 25 windows, clearing this
-#: floor by four times, and windows-desk measured 45-52 over 1240
-#: windows. It did not reject noise; it rejected *quiet* noise, and
-#: which you got was decided by where the noise happened to land.
-#:
-#: It is kept because a dead-flat trace deserves a clearer message than
-#: "no periodic component", and because it costs nothing. It is no
-#: longer load-bearing.
+#: Kept because a dead-flat trace deserves a clearer message than "no
+#: periodic component", and because it costs nothing.
 MEASURE_MIN_SWING_CODES = 10
 
 #: How peaked the spectrum must be before a frequency is reported:
 #: the largest bin over the median bin, after removing DC.
 #:
-#: **This is the guard that rejects noise, and it is a ratio**, so it
-#: has no code amplitude in it and cannot be below the bench's noise the
-#: way an absolute floor was. That property is the whole point:
-#: `windows-desk` failed three times to choose an absolute constant
-#: because the noise takes several discrete values within a session and
-#: drifts between sessions, and an amplitude constant has to track that.
-#: A shape statistic does not.
+#: This is the guard that rejects noise, and it is a ratio, so it has
+#: no code amplitude in it and cannot sit below the bench's noise the
+#: way an absolute floor can. That property is the whole point: the
+#: noise takes several discrete values within a session and drifts
+#: between sessions, so an amplitude constant would have to track it
+#: and a shape statistic does not.
 #:
 #: Measured rather than chosen, 4000-sample windows:
 #:
@@ -293,19 +286,13 @@ DEFAULT_RATE_HZ = 200000
 class AcquisitionState:
     """What one run accumulates, and the single place a new run clears it.
 
-    These seven numbers used to be flat attributes on the window, reset
-    from two places that were not the same two. `reset_counters()` had
-    exactly one caller - Start - while Play also starts the device, so
-    pressing Play carried the previous run's rings, sequence-gap count
-    and discontinuity count into the next one and drew the old samples
-    as the new run's. That is `docs/frontend.md` rule 2's own failure
-    mode reached from a button, and it was a defect of *shape*: nothing
-    was wrong with any line of it, only with there being two places to
-    remember and no way to tell they had diverged.
-
-    So the state lives together and `reset()` is the whole answer to
-    "what does a new run clear?". Adding an eighth number is one line
-    here instead of an audit of the window.
+    All seven numbers live together here, rather than as attributes on
+    the window reset from more than one call site: `docs/frontend.md`
+    rule 2 is that a new run must not draw a previous run's data, and
+    that is only guaranteed if every caller that starts a run resets
+    the same single object. `reset()` is the whole answer to "what does
+    a new run clear?", and adding an eighth number is one line here
+    instead of an audit of the window.
 
     Qt-free on purpose, like everything else in this module: the gap and
     discontinuity logic below is the part most worth testing and the
@@ -334,15 +321,14 @@ class AcquisitionState:
     def ingest(self, frame):
         """One decoded frame into the rings. Returns True on a break.
 
-        **A missed frame is a discontinuity, exactly like an overrun.**
-        Only the device's own overrun flag used to reach the ring, so
-        frames dropped *between the daemon and the window* were counted
-        on the health panel and then drawn straight across as though the
-        samples either side were adjacent. Rule 3 says never join across
-        a discontinuity and invariant 5 says never present discontinuous
-        data as continuous; a sequence gap is one, and it is the
-        *expected* one rather than a rare fault, because rule 5 has the
-        daemon drop toward a slow client by design.
+        A missed frame is a discontinuity, exactly like an overrun, so
+        a sequence gap between the daemon and the window breaks the
+        ring exactly as the device's own overrun flag does. Rule 3 says
+        never join across a discontinuity and invariant 5 says never
+        present discontinuous data as continuous; a sequence gap is
+        one, and it is the *expected* one rather than a rare fault,
+        because rule 5 has the daemon drop toward a slow client by
+        design.
 
         Found by validating against the board rather than the synthetic
         device, which never drops anything: seven gaps in a six-second
@@ -602,7 +588,7 @@ def measure(sweep, rate_hz):
     CLAUDE.md because a guessed value that later reads as established
     fact is the most expensive error this project makes.
 
-    **A window containing a discontinuity measures nothing.** An
+    A window containing a discontinuity measures nothing: an
     overrun-flagged frame is not continuous with the one before it, so
     the largest excursion may span two unrelated moments and the
     interval between crossings is not a period. Invariant 5 forbids
@@ -610,7 +596,7 @@ def measure(sweep, rate_hz):
     lie further than a plot does, because the plot at least shows the
     break.
 
-    **There is deliberately no rise or fall time.** The DAC's step was
+    There is deliberately no rise or fall time. The DAC's step was
     measured with a scope at 789-938 ns (`docs/awg.md`), and this ADC's
     sample interval is 1.1 us at its very fastest and 5 us at 200 ksps.
     A 10-90% time computed from these samples would be one sample wide

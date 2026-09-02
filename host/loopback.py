@@ -28,6 +28,16 @@ from ports import find_ports
 
 
 def main():
+    """Parse CLI args, run one loop measurement, and print the report.
+
+    Opens the board, runs `measure.run_loop` for `--seconds`, then
+    prints the summary a human reads at the console: throughput both
+    ways, frame/CRC/sequence-gap counts, per-channel min/max/mean, and
+    - once the stream has a declared rate - the Goertzel amplitude of
+    the tone on each channel, an amplitude-over-time trace for A0, and
+    an optional frequency scan. Exits non-zero if the ports cannot be
+    found or no frames arrive.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, default=5.0)
     ap.add_argument("--tone", type=float, default=1000.0)

@@ -876,20 +876,17 @@ class BoardDevice(Device):
         the board, which is the honest behaviour rather than refusing to
         report anything at all.
 
-        **A node is not a protocol.** This used to open whatever
-        `command_node()` returned and speak to it, which is correct only
-        while "has a second CDC function" and "answers CTL frames" are
-        the same firmware. They stopped being the same the moment Track
-        A's control channel was enumerated ahead of being implemented:
-        the node appears, opens, and answers nothing, and every call
-        made through it then blocks until its caller's timeout - 20 s in
-        the daemon suite, against a board that is working perfectly.
-
-        The identity line already carries the discriminator and
-        `CLAUDE.md` already names it: `ctlver=0` means "this track has no
-        control channel". So ask. `v` is one short line rather than the
-        banner, and the answer is cached for the same reason `describe`
-        caches the track: it cannot change without a reflash.
+        A node is not a protocol: whether `command_node()` returns a
+        node says only that a second CDC function enumerated, not that
+        it answers CTL frames. The two can differ - a control channel
+        can enumerate ahead of being implemented - and speaking to a
+        node that answers nothing blocks every call until the caller's
+        timeout. So this checks the identity line's `ctl_version`
+        before opening the node at all: `CLAUDE.md` documents
+        `ctlver=0` as "this track has no control channel". `v` is one
+        short line rather than the banner, and the answer is cached for
+        the same reason `describe` caches the track: it cannot change
+        without a reflash.
         """
         if self._ctl is not None or self._ctl_tried:
             return self._ctl
@@ -1062,7 +1059,7 @@ class BoardDevice(Device):
         return text
 
     def read(self, timeout=0.2):
-        # Gated on `_readable`, not on `fd is None` - issues #44, #57.
+        # Gated on `_readable`, not on `fd is None` or on `running`.
         #
         # `Server._read_loop` drains this device for the daemon's whole
         # lifetime and asks only this method whether there is anything
@@ -1070,27 +1067,27 @@ class BoardDevice(Device):
         # before it is done: `drain_until_quiet` with `cap=5.0`, the
         # `=<dac>,<adc>L` command, a 0.2 s settle, and a console drain.
         #
-        # With the old gate the reader thread began consuming that
-        # descriptor the instant `self.fd` was assigned, so for that
-        # whole window **two threads split one stream**. Both harms are
-        # real and the second is this issue's headline: the drain does
-        # not drain, because bytes it was meant to discard went to
-        # subscribers instead; and frames from the new run that arrive
-        # inside the window are eaten by `drain_until_quiet` and thrown
-        # away - tens to hundreds of them, at the start of a run.
+        # Gating on `fd is None` alone would let the reader thread
+        # begin consuming the descriptor the instant `self.fd` is
+        # assigned, so for that whole window two threads would split
+        # one stream: the drain would not drain, because bytes it
+        # means to discard would go to subscribers instead, and frames
+        # from the new run arriving inside the window would be eaten by
+        # `drain_until_quiet` and thrown away - tens to hundreds of
+        # them, at the start of a run.
         #
-        # `FakeDevice.read()` has always gated on `running`, which is
-        # why no board-free test could see this: the fake implements the
-        # contract and the real device did not.
+        # `running` is also the wrong flag, for the opposite reason: it
+        # is set at the END of start(), leaving the descriptor unread
+        # through the mode command, the settle, the feeder and the
+        # console drain - about half a second of full-rate stream that
+        # nothing would be taking. `_readable` opens at the one instant
+        # that gives exactly one reader AND no unread window: after
+        # `drain_until_quiet` returns and before the device is commanded
+        # to stream.
         #
-        # But `running` is the wrong flag, and gating on it cost a frame
-        # elsewhere (#57). It is set at the END of start(), leaving the
-        # descriptor unread through the mode command, the settle, the
-        # feeder and the console drain - about half a second of
-        # full-rate stream that nothing was taking. `_readable` opens at
-        # the one instant that gives exactly one reader AND no unread
-        # window: after `drain_until_quiet` returns and before the
-        # device is commanded to stream.
+        # `FakeDevice.read()` gates on `running`, so a board-free test
+        # alone cannot see either failure mode - the fake implements the
+        # contract but not the real device's timing.
         #
         # Safe on the way out too: `_teardown()` shuts the gate before
         # it closes the fd.
@@ -1113,10 +1110,10 @@ class BoardDevice(Device):
     def counters(self):
         """The device's own counters, over the control channel.
 
-        This used to poll `B`, and `B` costs 13.14 ms of blocked main
-        loop - measured, not estimated. Nothing drains bulk OUT for any
+        The console alternative, `B`, costs 13.14 ms of blocked main
+        loop - measured, not estimated - and drains no bulk OUT for any
         of it, which is how a host ends up stuck in close(); see
-        objective 0c. GET_COUNTERS is the same numbers for 146 us.
+        objective 0c. GET_COUNTERS reports the same numbers for 146 us.
 
         The console remains the fallback for firmware without a command
         port. It is not a preference: it is what Track A still has.
@@ -1179,10 +1176,9 @@ class BoardDevice(Device):
 
         Over the control channel, for the same reason as `counters`:
         `O` is three long console lines and blocks the main loop for
-        15.40 ms, where GET_OCCUPANCY costs 274 us. The old docstring
-        said asking during a run "costs underruns at exactly the rates
-        where the answer matters" - that caveat is now about the
-        console fallback only, and the control channel can be asked
+        15.40 ms, where GET_OCCUPANCY costs 274 us. Asking during a run
+        costs underruns at exactly the rates where the answer matters
+        only on the console fallback; the control channel can be asked
         whenever the answer is wanted.
 
         The rate trace is paged: PLAY_RATE_TRACE entries of four bytes

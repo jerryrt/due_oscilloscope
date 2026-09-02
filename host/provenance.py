@@ -75,14 +75,12 @@ REQUIRED = ("track", "fw_version", "ctl_version", "frame_version",
 
 #: `bench` is required, which means an undeclared bench cannot record.
 #:
-#: That is a deliberate answer to the question raised on issue #10 when
-#: `WIRING` stopped being a module constant. A default is worse than a
-#: blank here: the Windows bench's first records claimed `A1 free` on a
-#: desk where DAC1 is jumpered to A1, so anyone comparing the two benches
-#: would have taken A1 for the free-pin control on both. And that is not
-#: a hypothetical detail - a bare neighbour was later measured to cost
-#: its neighbour 0.347 bits, so the two desks were never the same
-#: circuit.
+#: A default is worse than a blank here: a bench's first records once
+#: claimed `A1 free` on a desk where DAC1 is jumpered to A1, so anyone
+#: comparing benches would have taken A1 for the free-pin control on
+#: both - not a hypothetical risk, since a bare neighbour has been
+#: measured to cost its neighbour 0.347 bits, so two such desks are not
+#: the same circuit.
 #:
 #: This module's own docstring says a run records its conditions or it
 #: does not record. A wiring string that might be someone else's is not
@@ -212,8 +210,7 @@ def firmware(build_stamp=None, track=None):
 #: is the wire contract both builds compile (invariant 3), and `linker/`
 #: holds both scripts - `sam3x8e_flash.ld` for CMake and
 #: `arduino_due_x_sram1.ld`, which `cmake/track_a.cmake` pins Track A's
-#: capture ring to SRAM bank 1 with (#55; it was `tools/sketch.py`'s
-#: build.ldscript property before Track A moved onto CMake).
+#: capture ring to SRAM bank 1 with.
 FW_SOURCE_COMMON = ("lib", "linker")
 
 #: Track B is CMake's source list; Track A is the sketch plus the shared
@@ -441,7 +438,7 @@ def collect(board=None, inst=None, channels=(1, 2), extra=None):
     #
     # `console` above zero means some measurement in this session was
     # taken with printf blocking the main loop it was measuring - see
-    # measure.INSTRUMENT_READS and issue #51.
+    # measure.INSTRUMENT_READS.
     try:
         import measure
         p["instrument"] = dict(measure.INSTRUMENT_READS)
@@ -509,21 +506,19 @@ def check_probe(p, ch, seen_vpp, expected_vpp, tolerance=0.15):
 def run_fields(board=None, ident=None):
     """The per-row provenance a record-writing tool should carry.
 
-    Nine tools wrote `track="b"` as a literal, so every Track A run they
-    recorded was labelled Track B (issue #53). A missing field is a gap;
-    a wrong one is a trap, because a reader has no reason to distrust
-    it - and `records/issue48-tracka-macos.jsonl` is 24 rows of Track A
-    data saying `"b"`, supporting a commit whose claim is about which
-    track it was.
+    Reads the board rather than trusting a literal track label: a
+    hardcoded `track="b"` silently mislabels every run made on the
+    other track, and a reader has no reason to distrust a wrong field
+    the way they would a missing one.
 
     Ask the board instead. It is one identity query, it cannot disagree
     with itself, and it costs nothing next to the runs these tools make.
 
-    The commit comes too, for #44's reason: the gaps files carried no
-    image, so when an incidence stopped reproducing nobody could get
-    back to the conditions that produced it. `fw_repo_rev` is what
-    `tools/flash.py` logged for the image on the board; `repo_rev` is
-    the tree the instrument ran from. They are different questions.
+    The commit comes too: a record naming only a track and no image
+    cannot be traced back to the conditions that produced it once an
+    incidence stops reproducing. `fw_repo_rev` is what `tools/flash.py`
+    logged for the image on the board; `repo_rev` is the tree the
+    instrument ran from. They are different questions.
 
     `ident` is for a tool that holds the *command port* rather than a
     measure.Board. The control channel's IDENTITY carries the same

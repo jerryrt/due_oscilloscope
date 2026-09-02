@@ -1,6 +1,7 @@
-# Test-suite dependencies. The host CLI tools under host/ are stdlib
-# only on purpose - they have to run from the system interpreter during
-# bring-up - but pytest is not stdlib, so the suite runs from a venv:
+# Dependencies for the host tools and the test suite. host/ is not
+# stdlib-only - it takes pyserial (below) and, in host/scope.py, pyusb
+# and libusb-package - but none of it is on the system interpreter, so
+# everything runs from a venv:
 #
 #   python3 -m venv .venv
 #   .venv/bin/pip install -r requirements-dev.txt
