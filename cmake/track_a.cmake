@@ -271,9 +271,21 @@ target_compile_options(${t} PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-std=gnu++11;-fno-rtti;-fno-exceptions;-fno-threadsafe-statics>
     -mcpu=cortex-m3 -mthumb -g -Os -ffunction-sections -fdata-sections
     -nostdlib -Dprintf=iprintf --param max-inline-insns-single=500
-    # The vendored core is not warning-clean under a 2025 compiler and
-    # is not ours to fix. Warnings are silenced for THIS target only so
-    # they cannot drown the sketch's own, which are worth reading.
+    # The vendored core is not warning-clean under a modern compiler and
+    # is not ours to fix.
+    #
+    # `-w` REACHES THE SKETCH TOO, and it is the whole of Track A's own
+    # code. Both targets are in this loop, so the sketch and the
+    # lib/due_shared sources it compiles are unchecked as well - and
+    # `-w` is not positional, so appending `-Wall -Wextra` after it
+    # re-enables nothing. It disarms `-Werror`, and every diagnostic
+    # any analyser reports as a warning, on this track with it.
+    #
+    # What that hides today is 11 `-Wunused-variable` in
+    # sketches/bringup/bringup.ino, measured on GCC 14.2.1. Splitting
+    # the loop so only track_a_core is silenced is the fix, and it needs
+    # those eleven gone first or Track A stops building under the
+    # project default of -Werror.
     -w)
 endforeach()
 

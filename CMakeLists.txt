@@ -13,10 +13,36 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMSIS vendor/CMSIS)
 set(DEVICE ${CMSIS}/Device/ATMEL/sam3xa)
 
+# ---------------------------------------------------------------------------
+# Diagnostics.
+#
+# NONE OF THESE MAY CHANGE THE GENERATED CODE, and that is a constraint
+# rather than a preference. A flag that moved a byte would produce a new
+# image, and a new image is a fresh draw of the DAC-phase defect's site
+# set and of its severity - so a hygiene pass would arrive as an
+# unrecorded experiment. `tools/reproducible.py --compare` is what
+# settles it: 0 differing bytes, Track A and Track B, analysed against
+# plain.
+#
+# -Werror IS ON EVERYWHERE AND THE OFF SWITCH IS NOT DECORATION. Three
+# benches build this tree with three GCC majors, warning sets differ
+# across them, and a warning only one of them emits must not fail
+# another bench's build while somebody is mid-diagnosis on something
+# unrelated. The container never passes it.
+#
+#     -DFIRMWARE_WERROR=OFF        stop promoting warnings to errors
+#
+# Directory-wide, so every track gets it - except that Track A's two
+# targets carry `-w`, which inhibits every warning and disarms -Werror
+# with it. That is a capability gap with a cause and a cost, both
+# recorded at the `-w` in cmake/track_a.cmake.
+option(FIRMWARE_WERROR      "Treat firmware compiler warnings as errors" ON)
+
 add_compile_options(
     -mcpu=cortex-m3 -mthumb
     -ffunction-sections -fdata-sections
     -Wall -Wextra
+    $<$<BOOL:${FIRMWARE_WERROR}>:-Werror>
     $<$<CONFIG:Debug>:-Og> $<$<CONFIG:Debug>:-g3>
     $<$<CONFIG:Release>:-Os>
 )
