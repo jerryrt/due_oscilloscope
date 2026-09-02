@@ -424,7 +424,7 @@ def _check_one_instrument(session):
     an image built before 2026-08-27, or a track without the opcode -
     for which the console was the only instrument and not a downgrade.
     No track is in that state: all three carry a control channel and
-    report ctlver=3. It stays because it costs one branch and it is the
+    report ctlver=4. It stays because it costs one branch and it is the
     correct answer if a pre-2026-08-27 image is ever put on a bench.
     """
     if getattr(session.config.option, "mixed_instruments_ok", False):

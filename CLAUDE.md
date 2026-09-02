@@ -467,7 +467,7 @@ Check here before reasoning from general Arduino knowledge.
   ctlver=2 framever=3 mck=... build=...` - and `measure.parse_identity`
   reads it. `ctlver=0` means "this track has no control channel", and
   **no track reports it any more**: Track A gained one on 2026-08-27 and
-  reports `ctlver=3`, the same as Track B, because both run the same
+  reports `ctlver=4`, the same as Track B, because both run the same
   parser out of `lib/due_shared`. What still differs is which *opcodes*
   a track implements - an unimplemented one answers `CTL_ERR_OPCODE`
   rather than a body of zeroes. See `docs/shared-source.md`. The banner says the track only in prose and costs
@@ -1037,7 +1037,7 @@ the control channel and **raise** where there is none, as
 `SerialDevice.load()` always has and as `counters()` and `trace()` now
 do too. The justification for the fallback had expired: its docstring
 said it was "what Track A still has", and Track A has carried a control
-channel since 2026-08-27. All three tracks report `ctlver=3`, so a
+channel since 2026-08-27. All three tracks report `ctlver=4`, so a
 missing command port is a fault to diagnose rather than a track to
 work around.
 

@@ -282,7 +282,7 @@ static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
 		}
 		memset(&id, 0, sizeof(id));
 		/* The track fills in what only it knows - which track it
-		 * is, its clocks, its frame geometry, its build stamp. */
+		 * is, its clocks, its frame geometry, its build commit. */
 		ctl_port_identity(&id);
 		/* The three versions are answered here and never by the
 		 * track: a board that reported its own idea of CTL_VERSION

@@ -997,7 +997,7 @@ def test_the_description_names_the_track_without_the_whole_banner():
 
         @staticmethod
         def which_track(board, **kw):
-            return "b", "# id: track=B fw=0.2.0 ctlver=3\r\n"
+            return "b", "# id: track=B fw=0.2.0 ctlver=4\r\n"
 
     dev = devmod.BoardDevice(OneLineBoard(), measure_mod=M())
     info = dev.describe()

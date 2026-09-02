@@ -387,7 +387,7 @@ def test_parse_identity_carries_a_commit_build_field():
     import measure
     import provenance as prov
 
-    head = ("# id: track=B fw=0.2.0 ctlver=3 framever=3 mck=78000000 "
+    head = ("# id: track=B fw=0.2.0 ctlver=4 framever=3 mck=78000000 "
             "adcclk=19500000 framebytes=1024 framesamples=496 build=")
     for value in ("a905380", "a905380+1f2e3d4a", "unknown",
                   "Aug 27 2026 16:14:27"):

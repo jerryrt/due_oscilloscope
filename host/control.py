@@ -22,11 +22,14 @@ import zlib
 import transport
 
 MAGIC = b"DUEC"
-# 2: IDENTITY grew the firmware version over its reserved byte, so its
-# response is 42 bytes where 1 sent 40. The device refuses a frame whose
-# version is not its own (drivers/ctl.c), which is the point: a host and
-# a board that disagree fail immediately instead of misparsing.
-VERSION = 3
+# The device refuses a frame whose version is not its own
+# (lib/due_shared/src/ctl.c), which is the point: a host and a board that
+# disagree fail immediately instead of misparsing. 4 is IDENTITY's
+# `build` carrying the commit the image was built from where it carried
+# a wall-clock date - the layout does not move, so without the bump an
+# old host would report a commit as a date and nothing would fail. The
+# history is in docs/control-protocol.md.
+VERSION = 4
 HDR_BYTES = 16
 MAX_PAYLOAD = 448
 

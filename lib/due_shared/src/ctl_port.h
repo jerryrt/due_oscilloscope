@@ -106,7 +106,7 @@ bool ctl_port_load_sample(load_report_t *out);
 
 /*
  * The identity fields only a track knows: track letter, clocks, frame
- * geometry and build stamp. The caller fills in the three version
+ * geometry and build commit. The caller fills in the three version
  * numbers, which are shared and must not be answered locally.
  */
 void ctl_port_identity(ctl_identity_t *out);

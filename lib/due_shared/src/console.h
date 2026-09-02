@@ -83,7 +83,7 @@ void console_missing(void);
 /*
  * The identity line, built once for both tracks.
  *
- * `# id: track=B fw=0.2.0 ctlver=3 framever=3 mck=...` is what
+ * `# id: track=B fw=0.2.0 ctlver=4 framever=3 mck=...` is what
  * measure.parse_identity reads and what a host refuses a pairing on, so
  * the format and the order of its arguments are wire contract - which
  * is why `mck` cannot be renamed to say what it is. It is NOMINAL:

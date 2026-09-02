@@ -35,8 +35,12 @@
 #define CTL_MAGIC2   'E'
 #define CTL_MAGIC3   'C'
 /* Bump on any change a host built for the old version would misparse -
- * e.g. a struct growing over what used to be reserved bytes. */
-#define CTL_VERSION  3
+ * a struct growing over what used to be reserved bytes, or a field
+ * keeping its layout and changing its meaning. The second is the one
+ * that needs the bump most: nothing about it fails on its own, so
+ * without it an old host parses the new value as the old thing and
+ * reports it. */
+#define CTL_VERSION  4
 
 #define CTL_HDR_BYTES     16u
 
@@ -405,7 +409,13 @@ typedef struct __attribute__((packed)) {
 	uint16_t frame_samples;
 	uint32_t mck_hz;
 	uint32_t adc_clock_hz;
-	uint8_t  build[24];        /* __DATE__ " " __TIME__, NUL-padded */
+	/*
+	 * FW_GIT_REV, NUL-padded: the commit the image was built from,
+	 * with `+` and the working-tree delta hash when the tree was
+	 * dirty, or `unknown`. 23 characters and a NUL, and the generator
+	 * fails the build rather than truncating - cmake/fw_git_rev.cmake.
+	 */
+	uint8_t  build[24];
 } ctl_identity_t;
 
 /*

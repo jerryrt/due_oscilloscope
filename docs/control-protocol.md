@@ -285,7 +285,7 @@ and a fixed layout the host mirrors.
 off sz  field      notes
 ---------------------------------------------------------------------
  0   4  magic      "DUEC"
- 4   1  version    = 2
+ 4   1  version    = 4
  5   1  flags      bit0 1 = response, bit1 1 = error
  6   2  req_id     echoed in the response, so a late reply to an
                    abandoned request cannot be read as the answer to
@@ -305,6 +305,8 @@ first exchange instead of misparsing every one after it.
 |---|---|
 | 1 | first |
 | 2 | `IDENTITY` grew `fw_major`/`fw_minor`/`fw_patch` over its reserved byte: the response is 42 bytes where 1 sent 40. A host built for 1 would read `frame_bytes` out of the version fields. |
+| 3 | `STREAM_STATS` and `BENCH`, so the counters a benchmark reads stop coming from printf. |
+| 4 | `IDENTITY`'s `build` carries the commit the image was built from - `FW_GIT_REV` - where it carried a wall-clock date. **The layout does not move**, so this is the case the bump exists for: nothing fails on its own, and a host built for 3 would report a commit as a date. |
 
 On error, `flags` bit1 is set and the payload is a `u16` code followed
 by ASCII text - the same words the console prints today, because the
@@ -323,7 +325,7 @@ Grouped so the ranges mean something, and every one of them maps onto a
 | op | name | payload in | payload out |
 |---|---|---|---|
 | `0x0001` | `PING` | — | `dev_us` u32, `dev_ms` u32, `seq` u32 |
-| `0x0002` | `IDENTITY` | — | track, firmware version, both protocol versions, frame bytes, samples/frame, MCK, ADC clock, build date. **MCK and the ADC clock are nominal** — register-derived, never measured; see `docs/hardware.md`. The measured clock is `mck_meas_hz` in the telemetry heartbeat |
+| `0x0002` | `IDENTITY` | — | track, firmware version, both protocol versions, frame bytes, samples/frame, MCK, ADC clock, build commit. **MCK and the ADC clock are nominal** — register-derived, never measured; see `docs/hardware.md`. The measured clock is `mck_meas_hz` in the telemetry heartbeat |
 | `0x0003` | `CAPABILITY` | — | `n_opcodes` u16 then that many `u16` opcodes, ascending — **implemented**; the RC limits, channel map and ring depths this row originally sketched are later slices and append to the same body |
 | `0x0010` | `GET_RATES` | — | dac RC + hz, adc RC + hz, channels |
 | `0x0011` | `SET_RATES` | dac_sps u32, adc_hz u32, channels u8 | the *snapped* values actually set |

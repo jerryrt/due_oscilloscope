@@ -12,6 +12,7 @@
  */
 #include "ctl_port.h"
 #include "ctl.h"
+#include "fw_git_rev.h"
 #include <string.h>
 
 #include "track_id.h"
@@ -91,7 +92,7 @@ void ctl_port_console_flush(void)
 
 void ctl_port_identity(ctl_identity_t *out)
 {
-	static const char build[] = __DATE__ " " __TIME__;
+	static const char build[] = FW_GIT_REV;
 
 	out->track         = FW_TRACK;
 	out->frame_bytes   = ACQ_FRAME_BYTES;

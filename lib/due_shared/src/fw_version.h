@@ -20,11 +20,24 @@
  *   MINOR  a new command, counter, or capability on either track
  *   MAJOR  reserved; nothing has earned it yet
  *
- * __DATE__/__TIME__ distinguish two builds of the same version, which is
- * the common case during a session. There is deliberately no git SHA:
- * baking one in means both toolchains need build plumbing that can
- * silently disagree, and the date already answers "is this the image I
- * just flashed".
+ * Which build of a version an image is comes from FW_GIT_REV, not from
+ * here: the commit the image was built from, plus the working-tree
+ * delta hash when the tree was dirty. It reaches the `v` identity line
+ * and the control channel's IDENTITY, and cmake/fw_git_rev.cmake writes
+ * it before every firmware build of every track.
+ *
+ * A commit rather than a wall clock, because the two questions a build
+ * stamp is asked are both graph questions. "Which source produced this
+ * image" is answered by stating the commit; inferring it from wall-clock
+ * proximity to a flash-log entry needs a comparison window and a
+ * timezone the stamp does not carry. "Is this image stale" is whether
+ * the newest commit touching that track's firmware source is reachable
+ * from the image's commit - no clock, no slack, and nothing that moves
+ * when the reader's zone does. host/provenance.py asks both.
+ *
+ * A commit does not distinguish two builds of one source state, and it
+ * does not have to: the build is byte-reproducible, so two builds of
+ * one clean tree ARE one image. tools/reproducible.py holds that.
  */
 
 #ifndef FW_VERSION_H

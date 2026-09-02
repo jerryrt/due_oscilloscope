@@ -15,6 +15,7 @@
 #include "console_out.h"
 #include "ctl.h"        /* CTL_VERSION */
 #include "frame.h"      /* FRAME_VERSION, FRAME_BYTES/SAMPLES */
+#include "fw_git_rev.h" /* FW_GIT_REV */
 #include "fw_version.h" /* FW_VERSION_STR */
 
 /*
@@ -292,10 +293,17 @@ void console_identity(char track, unsigned long mck_hz)
 	 * The identity line, emitted by the banner and by `v` on both
 	 * tracks, in this exact format. One line, key=value, same keys and
 	 * same order everywhere, so a host reads one regular expression
-	 * instead of matching prose. `build=` is last because it is the
-	 * only value containing spaces. This is what measure.parse_identity
-	 * parses and what a host refuses a pairing on - wire contract, and
-	 * this function is its only home.
+	 * instead of matching prose. `build=` is last and is matched to the
+	 * end of the line, opaque: what a board puts there is the build
+	 * system's business, and a parser that spelled out its shape would
+	 * have to be edited on the day that changed. This is what
+	 * measure.parse_identity parses and what a host refuses a pairing
+	 * on - wire contract, and this function is its only home.
+	 *
+	 * `build=` is FW_GIT_REV: the commit the image was built from, with
+	 * a `+` and the working-tree delta hash when the tree was dirty.
+	 * host/provenance.py turns it into a source state; see fw_version.h
+	 * for why a wall clock could not.
 	 *
 	 * The ADC clock is MCK/4 by PRESCAL=1, which is why 78 MHz was
 	 * chosen: 19.5 MHz sits inside the datasheet's 20 MHz limit. It is
@@ -318,7 +326,7 @@ void console_identity(char track, unsigned long mck_hz)
 	con_str(" adcclk=");       con_u32(mck_hz / 4u);
 	con_str(" framebytes=");   con_u32(FRAME_BYTES);
 	con_str(" framesamples="); con_u32(FRAME_SAMPLES);
-	con_str(" build=" __DATE__ " " __TIME__);
+	con_str(" build=" FW_GIT_REV);
 	con_nl();
 	console_flush();
 }

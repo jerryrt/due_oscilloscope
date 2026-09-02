@@ -113,7 +113,7 @@ Track C exists. `apps/rtos_bringup`, `cmake/freertos.cmake`, built by
 `-DBUILD_TRACK_C=ON`. FreeRTOS V11.1.0, pinned by 40-character commit
 rather than by tag, fetched at configure time (issue #45 decision 3).
 
-    # id: track=C fw=0.2.0 ctlver=3 framever=3 mck=78000000 ...
+    # id: track=C fw=0.2.0 ctlver=4 framever=3 mck=78000000 ...
 
     text 11,596   data 8   bss 4,468     Track B: 38,372 / 32 / 72,904
 

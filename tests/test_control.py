@@ -477,7 +477,7 @@ def test_measurement_does_not_come_from_the_console_on_this_track(board, track):
 
     Track A used to be exempt because it had no control channel at all,
     and the exemption said it was meant to disappear when objective 1c
-    landed. It landed on 2026-08-27: Track A reports ctlver=3 and runs
+    landed. It landed on 2026-08-27: Track A reports ctlver=4 and runs
     the same parser. The skip is deleted and this covers both tracks
     unchanged, which is exactly what the old comment promised.
     """
