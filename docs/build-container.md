@@ -95,7 +95,7 @@ gives it three, and a commit answers all three:
 |---|---|
 | distinguish two builds of one version | with a reproducible build, two builds of one source state **are** one image. The case that remains is a dirty tree, and `tools/flash.py` already hashes the working-tree delta as `dirty_sha` |
 | recover the commit on the board (`firmware()`) | state it, rather than infer it from wall-clock proximity within 60 s of a log entry |
-| detect a stale image from a build cache (`build_is_current()`) | equality against HEAD - no clock, no slack, no DST. The cache that motivated it is also gone: `arduino-cli` is invoked by nothing and `enforce_clean_build` cleans every build of every track |
+| detect a stale image from a build cache (`build_is_current()`) | ask whether the newest commit touching that track's firmware source is **reachable** from the image's commit - a graph question, with no clock, no slack and no DST. Equality would be wrong: most images are built at a commit that touched no firmware source at all, and would read stale every afternoon. The cache that motivated the check is also gone: `arduino-cli` is invoked by nothing and `enforce_clean_build` cleans every build of every track |
 
 `fw_version.h` refuses a git SHA because "both toolchains need build
 plumbing that can silently disagree". There is one build system now, and
@@ -146,7 +146,7 @@ Each phase lands on `main` on its own and is useful alone.
 
 | # | phase | exit criterion | how it is broken on purpose |
 |---|---|---|---|
-| 0 | Build identity: the commit and a dirty marker replace `__DATE__ __TIME__`; `firmware()` and `build_is_current()` become equality tests; `parse_identity` follows | build twice with no commit between and `cmp` reports **0** differing bytes, where it reports 2 today | `git commit --allow-empty` and rebuild: the embedded value must change |
+| 0 | Build identity: the commit and a dirty marker replace `__DATE__ __TIME__`; `firmware()` resolves by commit and `build_is_current()` by reachability; `parse_identity` follows | build twice with no commit between and `cmp` reports **0** differing bytes, where it reports 2 today | `git commit --allow-empty` and rebuild: the embedded value must change |
 | 1 | The image: xPack plus the SAM core, building Track A and Track B, with the bit-identity script under `tools/` run by the build | two builds in the image are byte-identical, and a second machine building from the same pinned inputs reproduces them | unpin one input - the base image tag, an apt version - and watch the bytes move |
 | 2 | The board-free tier in the image | `-m "not board"` collects and passes with no board reachable; then the **whole** suite in the image, where every board test must **skip** and none error | move one board test's marker and watch the tier fail; a test that errors instead of skipping is the marker bug `docs/testing.md` predicts |
 | 3 | Analysers that do not change codegen: `-fanalyzer`, `cppcheck`, `clang-tidy`, `-fstack-usage`, and `-Werror` with its off switch | each finds a real finding or is proven able to, **and** the analysed build stays byte-identical to the plain one | introduce a defect of the class the analyser claims to catch, and watch it fire; delete the tool from the image and watch the step fail rather than pass empty |
