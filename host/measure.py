@@ -3224,12 +3224,28 @@ _ID_LINE = re.compile(
     r"\s+ctlver=(?P<ctlver>\d+)\s+framever=(?P<framever>\d+)"
     r"\s+mck=(?P<mck>\d+)\s+adcclk=(?P<adcclk>\d+)"
     r"\s+framebytes=(?P<framebytes>\d+)\s+framesamples=(?P<framesamples>\d+)"
+    # `build` is the last field and is matched as opaque text to the end
+    # of the line, on purpose: what a board puts there is the firmware's
+    # business and provenance.build_commit() is the one place that
+    # decides what a given value can answer. A pattern that spelled out
+    # a date would have to be edited on the day the format changed, and
+    # a board whose identity fails to parse reports no track, no
+    # versions and no image - the whole line, for one field.
     r"\s+build=(?P<build>.+?)\s*$", re.M)
 
 
 def parse_identity(text):
     """The identity line, or None. Same shape as the control channel's
-    IDENTITY record, so a caller can use either interchangeably."""
+    IDENTITY record, so a caller can use either interchangeably.
+
+    `build` comes back verbatim. It is a short commit, optionally `+`
+    and the first 8 hex of the working-tree delta, on an image whose
+    build knew its git state; `unknown` on one that did not; and a
+    `__DATE__ " " __TIME__` wall clock on an image built before the
+    field carried a commit. `host/provenance.py` interprets it - see
+    `build_commit()` and `firmware()` - and nothing here or in its
+    callers depends on the shape.
+    """
     m = _ID_LINE.search(text)
     if not m:
         return None

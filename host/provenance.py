@@ -44,6 +44,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 import subprocess
 import sys
 import time
@@ -70,8 +71,8 @@ REQUIRED = ("track", "fw_version", "ctl_version", "frame_version",
 #: would need build plumbing that can silently disagree. It is recorded
 #: by `tools/flash.py` instead, which is the one place that knows the
 #: binary and the tree at the same instant and so cannot disagree with
-#: itself, and matched back here against the build stamp the device
-#: reports.
+#: itself, and matched back here against the `build` field the device
+#: reports - see `build_commit()` for the two things that field can be.
 
 #: `bench` is required, which means an undeclared bench cannot record.
 #:
@@ -129,13 +130,92 @@ def bench():
     return got
 
 
+#: The `build` field of the identity line, when it states a commit.
+#:
+#: Clean tree: the short revision. Dirty tree: the short revision, `+`,
+#: and the first 8 hex of the working-tree delta hash - the same
+#: quantity `tools/flash.py` logs as `dirty_sha`, so the two can be
+#: compared without either side deriving it a second way.
+#:
+#: An image built outside a work tree says `unknown`, and a legacy image
+#: says `__DATE__ " " __TIME__`. Neither matches, which is what routes
+#: them to the wall-clock path.
+_BUILD_COMMIT = re.compile(r"^([0-9a-f]{7,40})(?:\+([0-9a-f]{8}))?$")
+
+
+def build_commit(build):
+    """`(rev, delta8)` when the identity states a commit, else None.
+
+    `delta8` is None on a clean tree. This is the one place that decides
+    which of the two provenance questions a board's `build` field can
+    answer, so callers ask it rather than sniffing the string.
+    """
+    if not build:
+        return None
+    m = _BUILD_COMMIT.match(str(build).strip().lower())
+    if not m:
+        return None
+    return m.group(1), m.group(2)
+
+
+def _rev_eq(a, b):
+    """Do two abbreviated revisions name one commit?
+
+    Both sides come from `git rev-parse --short` on this repository, but
+    git lengthens an abbreviation as the object count grows, so equal
+    length is not something either side can promise across a year. The
+    shorter being a prefix of the longer is the same claim about
+    identity without that assumption.
+    """
+    if not a or not b:
+        return False
+    a = str(a).strip().lower()
+    b = str(b).strip().lower()
+    if len(a) < 7 or len(b) < 7:
+        return False
+    return a.startswith(b) or b.startswith(a)
+
+
+def _same_image(want, rec):
+    """Does this flash record name the image the identity describes?
+
+    Commit equality, plus which dirty. A dirty image names its delta and
+    the record hashes the same delta, so two dirty builds of one commit
+    are told apart instead of conflated - which `repo_rev` alone cannot
+    do, and which mac-bench's log needed on adjacent lines carrying a
+    deliberately-reverted control and a `main` image.
+
+    A record written before `tools/flash.py` hashed the delta cannot
+    answer that, and is refused rather than accepted on the commit
+    alone: an image that can name its delta was built by a tree that
+    also logs one, so a record without the field is a different era and
+    not this image.
+    """
+    rev, delta = want
+    if not _rev_eq(rec.get("repo_rev"), rev):
+        return False
+    if delta is None:
+        return not rec.get("dirty")
+    logged = rec.get("dirty_sha")
+    return bool(logged) and str(logged)[:8] == delta
+
+
 def firmware(build_stamp=None, track=None):
     """Which commit produced the image the board is running.
 
-    Reads the flash log newest-first and returns the entry that could
-    have produced `build_stamp` - i.e. flashed at or after the moment
-    the image was compiled. Anything else is a guess, and this returns
-    a stated absence instead:
+    An identity that carries a commit answers this by equality: the
+    flash log's `repo_rev` either names that commit, with the dirty
+    marker agreeing, or no logged flash produced this image.
+
+    A legacy `__DATE__ " " __TIME__` identity carries no commit, so it
+    is resolved by proximity instead - the newest entry flashed at or
+    after the moment the image was compiled, within a minute's slack.
+    That comparison is a difference between two wall clocks parsed the
+    same reader-local way, so the reader's zone cancels out of it; the
+    writer's zone appears in neither string and cannot be recovered,
+    which is the whole reason the field carries a commit now.
+
+    Anything unresolved is a stated absence:
 
         {"fw_provenance": "unlogged"}    nothing in the log fits
 
@@ -150,11 +230,9 @@ def firmware(build_stamp=None, track=None):
         return {"fw_provenance": "unlogged"}
     if not lines:
         return {"fw_provenance": "unlogged"}
-    stamp = _build_epoch(build_stamp)
+    want = build_commit(build_stamp)
+    stamp = None if want else _build_epoch(build_stamp)
     for rec in reversed(lines):
-        when = _iso_epoch(rec.get("when"))
-        if stamp is not None and when is not None and when < stamp - 60:
-            continue
         # A record that flashed the *other* track cannot be the image
         # the board is reporting. Without this the newest record wins on
         # timing alone, and a bench that alternates tracks - this one
@@ -163,6 +241,13 @@ def firmware(build_stamp=None, track=None):
         rec_track = track_of_binary(rec.get("binary"))
         if track and rec_track and rec_track != str(track).strip().upper():
             continue
+        if want is not None:
+            if not _same_image(want, rec):
+                continue
+        elif stamp is not None:
+            when = _iso_epoch(rec.get("when"))
+            if when is not None and when < stamp - 60:
+                continue
         return {
             "fw_repo_rev": (rec.get("repo_rev") or "") +
                            ("-dirty" if rec.get("dirty") else ""),
@@ -188,7 +273,12 @@ def firmware(build_stamp=None, track=None):
             "fw_cc": rec.get("cc"),
             "fw_layout": rec.get("layout"),
             "fw_flashed_at": rec.get("when"),
-            "fw_provenance": ("matched" if stamp is not None
+            # Which question was answered, not merely that one was. An
+            # equality against the commit and a wall clock within a
+            # minute are two different claims, and a reader of a stored
+            # row has no other way to tell them apart.
+            "fw_provenance": ("matched by commit" if want is not None else
+                              "matched by build stamp" if stamp is not None
                               else "latest, unmatched build stamp"),
             "fw_source_current": fw_source_current(rec.get("repo_rev"),
                                                   rec_track),
@@ -298,24 +388,15 @@ def fw_source_current(fw_rev, track=None):
     if not fw_rev:
         return None
     rev = fw_rev.split("-dirty")[0]
-    # Not via `_git()`: that returns None for empty output, and an empty
-    # diff is precisely the answer being asked for here. Collapsing "no
-    # changes" into "could not check" made this report say it could not
-    # tell, on a tree where it could.
-    try:
-        out = subprocess.run(
-            ("git", "diff", "--name-only", f"{rev}..HEAD", "--")
-            + fw_source_paths(track),
-            cwd=REPO, capture_output=True, text=True, timeout=5)
-    except Exception:                                        # pragma: no cover
-        return None
-    if out.returncode != 0:
+    out = _git_run("diff", "--name-only", f"{rev}..HEAD", "--",
+                   *fw_source_paths(track))
+    if out is None or out.returncode != 0:
         return None
     return out.stdout.strip() == ""
 
 
 def build_is_current(build_stamp, track=None):
-    """Was the image compiled after the newest firmware source commit?
+    """Was the image built from a tree holding the newest firmware source?
 
     `fw_source_current()` asks whether the *commit that was flashed* is
     still current, and that is not the same question: a build system can
@@ -330,29 +411,73 @@ def build_is_current(build_stamp, track=None):
     recorded the current commit both times, because the flash *was*
     current; the image was not.
 
-    So this compares the image's own stamp against the newest commit
-    touching firmware source. Returns True, False, or None when it
-    cannot tell.
+    **An identity that carries a commit is answered out of the object
+    graph and consults no clock**: the newest commit touching this
+    track's firmware source is either reachable from the image's commit
+    or it is not. The answer is therefore the same in every timezone and
+    across a DST transition.
+
+    Reachability rather than equality with HEAD, deliberately. HEAD moves
+    several times a day for host tools and documentation, so an image
+    built at a descendant of the newest firmware commit is current, and
+    strict equality would call it stale every afternoon - a flag that
+    cries wolf costs the provenance discipline everything it is for.
+
+    **A legacy `__DATE__ " " __TIME__` identity has to be compared as a
+    clock, and that comparison is not timezone-invariant.** The stamp is
+    parsed reader-local against `git log --format=%at`, which is a true
+    epoch, so nothing cancels: one image reads current in one zone and
+    stale in another, and a zone whose offset moves - US Eastern on
+    2026-11-01 - shifts the answer under a single reader. The unsafe
+    direction is reachable that way, because an image parsed an hour
+    late reads as newer than the commit that obsoleted it.
+
+    Returns True, False, or None when it cannot tell.
     """
+    want = build_commit(build_stamp)
+    if want is not None:
+        return _holds_newest_source(want[0], track)
     stamp = _build_epoch(build_stamp)
     if stamp is None:
         return None
-    try:
-        out = subprocess.run(
-            ("git", "log", "-1", "--format=%at", "--")
-            + fw_source_paths(track),
-            cwd=REPO, capture_output=True, text=True, timeout=5)
-    except Exception:                                        # pragma: no cover
-        return None
-    if out.returncode != 0 or not out.stdout.strip():
+    out = _git_run("log", "-1", "--format=%at", "--",
+                   *fw_source_paths(track))
+    if out is None or out.returncode != 0 or not out.stdout.strip():
         return None
     # A minute of slack: the stamp has second resolution and a commit
     # made during a build is not evidence of staleness.
     return stamp + 60 >= int(out.stdout.strip())
 
 
+def _holds_newest_source(rev, track=None):
+    """Is the newest firmware source commit reachable from `rev`?"""
+    out = _git_run("log", "-1", "--format=%H", "--", *fw_source_paths(track))
+    if out is None or out.returncode != 0 or not out.stdout.strip():
+        return None
+    newest = out.stdout.strip()
+    # A commit this checkout does not have cannot be placed in its
+    # history, and "I could not check" is not "it is stale".
+    have = _git_run("cat-file", "-e", rev + "^{commit}")
+    if have is None or have.returncode != 0:
+        return None
+    anc = _git_run("merge-base", "--is-ancestor", newest, rev)
+    if anc is None:
+        return None
+    if anc.returncode == 0:
+        return True
+    if anc.returncode == 1:
+        return False
+    return None
+
+
 def _build_epoch(stamp):
-    """`__DATE__ " " __TIME__` as an epoch, or None."""
+    """`__DATE__ " " __TIME__` as an epoch, or None.
+
+    Reader-local, because the string names a wall clock and no zone.
+    Only a difference against another reader-local value means anything;
+    see `build_is_current()` for what happens when it is compared with a
+    true epoch instead.
+    """
     if not stamp:
         return None
     for fmt in ("%b %d %Y %H:%M:%S", "%b  %d %Y %H:%M:%S"):
@@ -364,6 +489,13 @@ def _build_epoch(stamp):
 
 
 def _iso_epoch(s):
+    """A flash log `when` as an epoch, or None.
+
+    The slice drops the `-0400` the log wrote, which makes this
+    reader-local too - matching `_build_epoch()` deliberately, since the
+    one comparison it feeds is a difference between the two and the
+    reader's zone has to cancel out of it.
+    """
     if not s:
         return None
     try:
@@ -381,13 +513,27 @@ def wiring():
     return DEFAULT_WIRING, DEFAULT_WIRING_SINCE, "default"
 
 
-def _git(*args):
+def _git_run(*args):
+    """The completed `git` process, or None when it could not be run.
+
+    Separate from `_git()` because that collapses empty output into
+    None, and several questions here answer with exactly that: an empty
+    diff is `fw_source_current`'s "nothing changed", and
+    `merge-base --is-ancestor` carries its whole answer in the return
+    code and prints nothing either way.
+    """
     try:
-        out = subprocess.run(("git",) + args, cwd=REPO, capture_output=True,
-                             text=True, timeout=5)
-        return out.stdout.strip() or None
+        return subprocess.run(("git",) + args, cwd=REPO, capture_output=True,
+                              text=True, timeout=5)
     except Exception:                                     # pragma: no cover
         return None
+
+
+def _git(*args):
+    out = _git_run(*args)
+    if out is None:
+        return None
+    return out.stdout.strip() or None
 
 
 def repo_rev():

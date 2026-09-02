@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -23,11 +24,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 
 
-def _in_subprocess(code):
+def _in_subprocess(code, env=None):
     """Import in a clean interpreter: this one has already imported the
-    world, so `sys.modules` here proves nothing."""
+    world, so `sys.modules` here proves nothing.
+
+    `env` overlays the current environment, which is how a zone is set:
+    `TZ` is read once per process by the C library and `time.tzset()`
+    in this interpreter would leak into every test after it.
+    """
+    e = dict(os.environ, **env) if env else None
     out = subprocess.run([sys.executable, "-c", code], cwd=REPO,
-                         capture_output=True, text=True, timeout=120)
+                         capture_output=True, text=True, timeout=120, env=e)
     assert out.returncode == 0, out.stderr[-2000:]
     return out.stdout.strip()
 
@@ -189,3 +196,232 @@ def test_a_flash_record_for_the_other_track_is_not_this_boards_image():
     assert prov.track_of_binary(r"build\track_a\bringup.ino.bin") == "A"
     assert prov.track_of_binary(None) is None
     assert prov.track_of_binary("build/something_else.bin") is None
+
+
+# ------------------------------------------ the build field of an identity
+#
+# The identity's `build` field states the commit that produced the image
+# - the short revision, plus `+` and the first 8 hex of the working-tree
+# delta when the tree was dirty. `records/flash-log.jsonl` holds 139
+# records written against the wall-clock stamp that preceded it, so both
+# forms have to resolve and the tests below hold each one open.
+
+_B = "build/baremetal_bringup.bin"
+
+
+def _rec(rev, when, dirty_sha=None, binary=_B):
+    """One flash-log record, in the shape `tools/flash.py` writes."""
+    return {"binary": binary, "repo_rev": rev, "when": when,
+            "dirty": dirty_sha is not None, "dirty_sha": dirty_sha,
+            "sha256": "0" * 64, "cc": "GCC 14.2.1", "layout": "cafef00d"}
+
+
+def _with_log(tmp_path, monkeypatch, *records):
+    """`provenance`, reading a log holding exactly these records.
+
+    `REPO` is left alone so the repository questions still run against
+    the real checkout; only the log moves.
+    """
+    import json
+    sys.path.insert(0, os.path.join(REPO, "host"))
+    import provenance as prov
+    path = tmp_path / "flash-log.jsonl"
+    with open(path, "w", encoding="utf-8") as fh:
+        for r in records:
+            fh.write(json.dumps(r, sort_keys=True) + "\n")
+    monkeypatch.setattr(prov, "FLASH_LOG", str(path))
+    return prov
+
+
+def test_build_commit_tells_a_commit_from_a_wall_clock():
+    """One place decides which question a `build` field can answer.
+
+    A caller that sniffed the string itself would be a second decision
+    that drifts, and the two forms have to coexist for as long as the
+    139 stamped records do.
+    """
+    sys.path.insert(0, os.path.join(REPO, "host"))
+    import provenance as prov
+
+    assert prov.build_commit("a905380") == ("a905380", None)
+    assert prov.build_commit("a905380+1f2e3d4a") == ("a905380", "1f2e3d4a")
+    assert prov.build_commit(" A905380 ") == ("a905380", None)
+    # The legacy stamp, the no-repository answer, and nothing at all.
+    assert prov.build_commit("Aug 27 2026 16:14:27") is None
+    assert prov.build_commit("unknown") is None
+    assert prov.build_commit("") is None
+    assert prov.build_commit(None) is None
+    # Too short to name a commit, and a delta that is not eight hex.
+    assert prov.build_commit("a90538") is None
+    assert prov.build_commit("a905380+1f2e3d") is None
+
+
+def test_a_commit_identity_resolves_by_equality(tmp_path, monkeypatch):
+    """The image states its commit, so the log is asked to match it.
+
+    Not "which flash is newest, and did it happen after the build" -
+    that is an inference from two wall clocks, and it lands on the
+    newest record whenever the arithmetic cannot rule it out.
+    """
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        _rec("beefbee", "2026-09-01T09:00:00-0400"),
+        _rec("cafecaf", "2026-09-01T10:00:00-0400"))
+
+    fw = prov.firmware("beefbee", "b")
+    assert fw["fw_repo_rev"] == "beefbee"
+    assert fw["fw_provenance"] == "matched by commit"
+    assert fw["fw_flashed_at"] == "2026-09-01T09:00:00-0400"
+    # The newer record is the one a timing rule would have returned.
+    fw = prov.firmware("cafecaf", "b")
+    assert fw["fw_repo_rev"] == "cafecaf"
+
+
+def test_a_commit_absent_from_the_log_is_a_stated_absence(tmp_path,
+                                                          monkeypatch):
+    """The plausible wrong answer here is the newest record.
+
+    A board running an image nobody logged has unknown provenance, and
+    `missing()` refuses it. Handing back the newest flash instead would
+    attribute a figure to a commit the board never ran.
+    """
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        _rec("beefbee", "2026-09-01T09:00:00-0400"),
+        _rec("cafecaf", "2026-09-01T10:00:00-0400"))
+
+    assert prov.firmware("deadbee", "b") == {"fw_provenance": "unlogged"}
+    assert "fw_repo_rev" in prov.missing(prov.firmware("deadbee", "b"))
+
+
+def test_a_dirty_identity_names_which_dirty(tmp_path, monkeypatch):
+    """Two dirty builds of one commit are two images.
+
+    `repo_rev` is identical for every dirty state of a commit, so the
+    delta hash is the whole discriminator - the same quantity
+    `tools/flash.py` logs as `dirty_sha`, which is why neither side
+    derives it a second way.
+    """
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        _rec("beefbee", "2026-09-01T09:00:00-0400", "1" * 64),
+        _rec("beefbee", "2026-09-01T10:00:00-0400", "2" * 64))
+
+    fw = prov.firmware("beefbee+" + "1" * 8, "b")
+    assert fw["fw_dirty_sha"] == "1" * 64
+    assert fw["fw_flashed_at"] == "2026-09-01T09:00:00-0400"
+    assert fw["fw_repo_rev"] == "beefbee-dirty"
+
+    # A clean image is not either of them, and neither is a third delta.
+    assert prov.firmware("beefbee", "b") == {"fw_provenance": "unlogged"}
+    assert (prov.firmware("beefbee+" + "3" * 8, "b")
+            == {"fw_provenance": "unlogged"})
+
+
+def test_a_legacy_stamp_still_resolves_by_wall_clock(tmp_path, monkeypatch):
+    """139 stored records can be resolved no other way.
+
+    They predate the commit in the identity, so removing the timing path
+    would make every one of them unattributable - and an unattributable
+    record is what this module exists to refuse.
+    """
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        _rec("beefbee", "2026-09-01T09:00:00-0400"),
+        _rec("cafecaf", "2026-09-01T10:00:00-0400"))
+
+    fw = prov.firmware("Sep 01 2026 09:30:00", "b")
+    assert fw["fw_repo_rev"] == "cafecaf"
+    assert fw["fw_provenance"] == "matched by build stamp"
+
+    # An image compiled after every logged flash was flashed by nobody.
+    assert (prov.firmware("Sep 01 2026 10:30:00", "b")
+            == {"fw_provenance": "unlogged"})
+
+
+def test_a_track_a_flash_is_not_a_track_b_commit(tmp_path, monkeypatch):
+    """The track filter survives the move to equality.
+
+    A bench that alternates tracks can hold one commit flashed to both,
+    and the binary path is the only thing in the record that separates
+    them.
+    """
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        _rec("beefbee", "2026-09-01T09:00:00-0400",
+             binary="build-a/track_a_bringup.bin"))
+
+    assert prov.firmware("beefbee", "a")["fw_source_track"] == "A"
+    assert prov.firmware("beefbee", "b") == {"fw_provenance": "unlogged"}
+
+
+def test_parse_identity_carries_a_commit_build_field():
+    """The identity line's last field is opaque to the parser.
+
+    A board whose identity fails to parse reports no track, no versions
+    and no image at all - the whole line is lost for one field - so the
+    parser must not be the thing that has to be edited when the field's
+    meaning changes.
+    """
+    sys.path.insert(0, os.path.join(REPO, "host"))
+    import measure
+    import provenance as prov
+
+    head = ("# id: track=B fw=0.2.0 ctlver=3 framever=3 mck=78000000 "
+            "adcclk=19500000 framebytes=1024 framesamples=496 build=")
+    for value in ("a905380", "a905380+1f2e3d4a", "unknown",
+                  "Aug 27 2026 16:14:27"):
+        ident = measure.parse_identity(head + value + "\n")
+        assert ident is not None, f"identity unparsed with build={value}"
+        assert ident["build"] == value
+        assert ident["track"] == "b"
+        assert ident["mck_hz"] == 78000000
+    assert prov.build_commit(
+        measure.parse_identity(head + "a905380+1f2e3d4a\n")["build"]) == (
+            "a905380", "1f2e3d4a")
+
+
+#: Asks both paths of `build_is_current()` in one interpreter whose zone
+#: the caller sets. The legacy stamp is rendered from the newest
+#: firmware commit through `gmtime`, so the *string* is identical in
+#: every zone and only the reading of it can move.
+_TZ_PROBE = """
+import subprocess, sys, time
+time.tzset()
+sys.path.insert(0, 'host')
+import provenance as prov
+g = lambda *a: subprocess.run(('git',) + a, capture_output=True,
+                              text=True).stdout.strip()
+rev = g('rev-parse', '--short', 'HEAD')
+at = int(g('log', '-1', '--format=%at', '--', *prov.fw_source_paths('B')))
+stamp = time.strftime('%b %d %Y %H:%M:%S', time.gmtime(at))
+print(prov.build_is_current(rev, 'B'), prov.build_is_current(stamp, 'B'))
+"""
+
+
+@pytest.mark.skipif(not hasattr(time, "tzset"),
+                    reason="TZ is not settable per process on this platform")
+def test_build_is_current_on_a_commit_consults_no_clock():
+    """The commit path answers out of the object graph, in any zone.
+
+    The wall-clock path cannot: the stamp is parsed reader-local against
+    a true epoch and nothing cancels, so an image reads current in one
+    zone and stale in another - and US Eastern moves to `-0500` on
+    2026-11-01, which shifts the answer under a single reader in the
+    unsafe direction. That is why the field carries a commit.
+
+    The legacy answers are the positive control. If they agreed, this
+    test would be an instrument that cannot see zone dependence, and the
+    commit half of it would be worth nothing.
+    """
+    ny = _in_subprocess(_TZ_PROBE, {"TZ": "America/New_York"}).split()
+    sh = _in_subprocess(_TZ_PROBE, {"TZ": "Asia/Shanghai"}).split()
+
+    assert ny[1] != sh[1], (
+        f"the legacy stamp read {ny[1]} in America/New_York and {sh[1]} "
+        f"in Asia/Shanghai; if those agree this test cannot detect a "
+        f"timezone-dependent answer and proves nothing about the other")
+    assert ny[0] == sh[0] == "True", (
+        f"a commit-bearing build read {ny[0]} in America/New_York and "
+        f"{sh[0]} in Asia/Shanghai; HEAD holds the newest firmware "
+        f"commit by construction and no zone may change that")
