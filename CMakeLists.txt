@@ -5,6 +5,11 @@ project(due_oscilloscope C ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# clang-tidy and every other out-of-tree analyser reads the compile
+# database, and producing one is a line. Makefile and Ninja generators
+# only - it is silently nothing under any other.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMSIS vendor/CMSIS)
 set(DEVICE ${CMSIS}/Device/ATMEL/sam3xa)
 
