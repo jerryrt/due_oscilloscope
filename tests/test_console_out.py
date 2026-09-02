@@ -100,7 +100,8 @@ def budget(tmp_path_factory):
         pytest.skip("no host C compiler; install gcc or clang to run this")
     exe = str(tmp_path_factory.mktemp("bud") / "budget")
     proc = subprocess.run(
-        [cc, "-std=c11", "-Wall", "-I", SHARED, "-o", exe,
+        [cc, "-std=c11", "-Wall", *hostcc.sanitize_flags(),
+         "-I", SHARED, "-o", exe,
          os.path.join(HERE, "fmt", "budget.c"),
          os.path.join(SHARED, "console_out.c")],
         capture_output=True, text=True, env=hostcc.cc_env())
@@ -156,7 +157,8 @@ def guardpage(tmp_path_factory):
         pytest.skip("no host C compiler; install gcc or clang to run this")
     exe = str(tmp_path_factory.mktemp("guard") / "guardpage")
     proc = subprocess.run(
-        [cc, "-std=c11", "-Wall", "-I", SHARED, "-o", exe,
+        [cc, "-std=c11", "-Wall", *hostcc.sanitize_flags(),
+         "-I", SHARED, "-o", exe,
          os.path.join(HERE, "fmt", "guardpage.c"),
          os.path.join(SHARED, "console_out.c")],
         capture_output=True, text=True, env=hostcc.cc_env())

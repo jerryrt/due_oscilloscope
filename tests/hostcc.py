@@ -1,9 +1,11 @@
 """Finding, and correctly invoking, a host C compiler.
 
-Two board-free tests build and *run* a harness on the host -
+Several board-free tests build and *run* firmware C on the host -
 `test_framer_close.py`, whose measurable power over `5d6e7ab` is the
-point of it, and `test_console_out.py`'s byte-budget harness. Both need
-the same two things, and both had to learn them separately.
+point of it, `test_console_out.py`'s byte-budget and guard-page
+harnesses, and `test_ctl_fuzz.py`'s control-parser fuzz target. They
+need the same three things: where the compiler is, the environment it
+has to be invoked in, and the sanitizer flags they all share.
 
 They are here rather than in `helpers.py` because `helpers` imports
 `measure`, and these are the board-free tier: a tier-1 file should not
@@ -17,10 +19,32 @@ of the shared wire contract. See CLAUDE.md.
 
 import os
 import shutil
+import subprocess
 import sys
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
+
+#: What every native harness is built with, in one place so a harness
+#: cannot quietly be the one that is not instrumented.
+#:
+#: `-fno-sanitize-recover=all` is the half that is easy to leave out and
+#: costs the most: without it UBSan prints its finding and lets the
+#: program run on to exit 0, so a suite that reads exit status sees a
+#: pass. `tests/test_sanitizers.py` builds a deliberate signed overflow
+#: and requires a non-zero exit, which is that flag and nothing else.
+#:
+#: -O1 rather than -O0 because at -O0 gcc keeps every dead store and the
+#: sanitizers then spend their time on code the real build deletes;
+#: -fno-omit-frame-pointer is what makes an ASan report name the frame
+#: that wrote the byte.
+SANITIZE = ("-g", "-O1",
+            "-fsanitize=address,undefined",
+            "-fno-sanitize-recover=all",
+            "-fno-omit-frame-pointer")
+
+_sanitize_probe = None
 
 
 def cc():
@@ -74,3 +98,49 @@ def cc_env():
     if found:
         env["PATH"] = os.path.dirname(found) + os.pathsep + env.get("PATH", "")
     return env
+
+
+def sanitize_flags():
+    """`SANITIZE` if this compiler links it, `()` if it does not.
+
+    Probed by building and running a program, once per session, rather
+    than inferred from the compiler's name: a MinGW gcc accepts
+    `-fsanitize=address` on the command line and fails at the link, and
+    a GCC whose `libasan` was never installed does the same. The probe
+    *runs* what it built, because the ASan runtime can link and then
+    refuse to start.
+
+    Returning `()` rather than raising is deliberate: a bench without
+    the runtimes still gets the harnesses, unsanitized, which is what it
+    had before. What it must not get is a silent claim that they were
+    instrumented, and `tests/test_sanitizers.py` is what says so out
+    loud - it skips with the compiler named.
+    """
+    global _sanitize_probe
+
+    if _sanitize_probe is not None:
+        return _sanitize_probe
+    _sanitize_probe = ()
+    found = cc()
+    if not found:
+        return _sanitize_probe
+
+    with tempfile.TemporaryDirectory() as d:
+        src = os.path.join(d, "probe.c")
+        exe = os.path.join(d, "probe" + (".exe" if os.name == "nt" else ""))
+        with open(src, "w") as fh:
+            fh.write("int main(void) { return 0; }\n")
+        try:
+            build = subprocess.run([found, "-std=c11", *SANITIZE,
+                                    "-o", exe, src],
+                                   capture_output=True, text=True,
+                                   env=cc_env(), timeout=120)
+            if build.returncode != 0:
+                return _sanitize_probe
+            run = subprocess.run([exe], capture_output=True, text=True,
+                                 env=cc_env(), timeout=120)
+            if run.returncode == 0:
+                _sanitize_probe = SANITIZE
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return _sanitize_probe

@@ -60,10 +60,20 @@ def _cc_env():
 
 
 def _build(tmp_path, core_c, name):
+    """Built with ASan and UBSan where the compiler links them.
+
+    The framer walks a ring of fixed buffers and writes a header into
+    headroom, so a bound it gets wrong is a write into the buffer next
+    door - which the harness's canary sees only where it happens to be
+    looking. The sanitizers see it wherever it lands, and cost about a
+    second here. `hostcc.sanitize_flags()` is the one definition of
+    what "sanitized" means for every native harness.
+    """
     exe = str(tmp_path / name)
     cc = _cc()
     proc = subprocess.run(
-        [cc, "-std=c11", "-Wall", "-I", SHARED, "-o", exe,
+        [cc, "-std=c11", "-Wall", *hostcc.sanitize_flags(),
+         "-I", SHARED, "-o", exe,
          HARNESS, core_c, os.path.join(SHARED, "crc32.c")],
         capture_output=True, text=True, env=_cc_env())
     assert proc.returncode == 0, f"harness build failed:\n{proc.stderr}"
