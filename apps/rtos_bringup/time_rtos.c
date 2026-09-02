@@ -10,46 +10,34 @@
  * So the application provides them instead, which is invariant 4's shape
  * exactly - the drivers are unchanged and only the application differs.
  *
- * ================== WHY NOT xTaskGetTickCount() =====================
- *
- * The obvious implementation is `xTaskGetTickCount() ` and it is wrong
- * here, for a reason that is invisible until someone turns on a debug
- * flag eighteen months from now.
- *
- * `drivers/acq.c:266` calls micros() from inside ADC_Handler():
- *
- *     acq_trace_us[acq_traced++] = micros();
- *
- * It is behind `#if ACQ_RATE_TRACE_ENABLED`, which defaults to 0, so the
- * default build never reaches it. But the acquisition ISR sits **above**
+ * The obvious implementation is `xTaskGetTickCount()`, and it is wrong
+ * here for a reason that is invisible until someone turns on a debug
+ * flag eighteen months from now: `drivers/acq.c:266` calls micros()
+ * from inside ADC_Handler() (behind `#if ACQ_RATE_TRACE_ENABLED`,
+ * default 0), and that ISR sits *above*
  * configMAX_SYSCALL_INTERRUPT_PRIORITY and may call no FreeRTOS API at
- * all - that is the architecture docs/rtos.md settles and the whole
- * reason Track C is tractable without rewriting the data path. A
- * micros() that called into the kernel would put an API call in that
- * ISR the moment the flag was set, and the failure would be a corrupted
+ * all - the architecture docs/rtos.md settles, and the whole reason
+ * Track C is tractable without rewriting the data path. A micros()
+ * that called into the kernel would put an API call in that ISR the
+ * moment the flag was set, and the failure would be a corrupted
  * kernel state rather than a compile error.
  *
- * A plain volatile counter has no such hazard. It is readable from any
- * context, at any priority, exactly as the bare-metal one is - so the
+ * A plain volatile counter has no such hazard: readable from any
+ * context, at any priority, exactly as the bare-metal one is, so the
  * drivers keep working unmodified whatever they are compiled with.
- *
- * The tick hook is how the counter advances: FreeRTOS calls
+ * The tick hook is how it advances - FreeRTOS calls
  * vApplicationTickHook() from xTaskIncrementTick(), which runs in the
- * SysTick interrupt. One increment, no API, same as bsp/systick.c's
+ * SysTick interrupt, one increment, no API, same as bsp/systick.c's
  * handler.
  *
- * ===================== THE ONE REAL DIFFERENCE ======================
- *
- * **Time does not advance until the scheduler starts.** Bare metal
- * calls systick_init() early in main() and millis() is live from that
- * point; here xTaskIncrementTick() only runs once vTaskStartScheduler()
- * has, so anything timed during initialisation reads 0 and a duration
- * measured across the scheduler start is wrong rather than merely
- * coarse.
- *
- * That is a genuine behavioural difference between the tracks and it is
- * stated rather than discovered: C2 brings up services that time their
- * own startup, and this is the first thing that will bite.
+ * The one real difference: time does not advance until the scheduler
+ * starts. Bare metal calls systick_init() early in main() and
+ * millis() is live from that point; here xTaskIncrementTick() only
+ * runs once vTaskStartScheduler() has, so anything timed during
+ * initialisation reads 0 and a duration measured across the scheduler
+ * start is wrong rather than merely coarse. C2 brings up services
+ * that time their own startup, and this is the first thing that will
+ * bite.
  */
 #include "sam.h"
 

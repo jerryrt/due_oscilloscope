@@ -1,9 +1,8 @@
 /*
  * FreeRTOS configuration for Track C on the SAM3X8E.
  *
- * The choices here are the ones docs/rtos.md settled, plus the two the
- * owner ruled on in issue #45. Where this file departs from that note,
- * it says so.
+ * The choices here are the ones docs/rtos.md settled. Where this file
+ * departs from that note, it says so.
  */
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
@@ -46,7 +45,7 @@ extern uint32_t SystemCoreClock;
 #define configTICK_RATE_HZ            ((TickType_t)1000)
 
 /*
- * NO HEAP. Issue #45 decision (4).
+ * NO HEAP.
  *
  * docs/rtos.md proposed heap_4 with a sized configTOTAL_HEAP_SIZE.
  * Invariant 7 says "every buffer is fixed and known at build time... No

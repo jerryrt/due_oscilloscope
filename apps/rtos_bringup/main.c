@@ -1,7 +1,7 @@
 /*
  * Track C: the FreeRTOS application, stage C2.
  *
- * C1 is build-and-boot only, and deliberately so. Issue #45's phasing:
+ * C1 is build-and-boot only, and deliberately so:
  *
  *   C1  build only - the kernel as a CMake target, vector aliasing,
  *       configPRIO_BITS, an image that boots, blinks and answers `v`
@@ -51,10 +51,10 @@
 #include "frame.h"
 
 /*
- * Static allocation everywhere - issue #45 decision (4). Every task's
- * stack and control block is a fixed object here, so invariant 7's
- * "every buffer is fixed and known at build time" holds literally and
- * the image links no allocator at all.
+ * Static allocation everywhere. Every task's stack and control block
+ * is a fixed object here, so invariant 7's "every buffer is fixed and
+ * known at build time" holds literally and the image links no
+ * allocator at all.
  */
 /* The service task carries a playstat_t and a 512-byte scrap buffer in
  * its frame, so it is not the minimal stack. The console task runs the
@@ -88,41 +88,32 @@ static StackType_t  timer_stack[configTIMER_TASK_STACK_DEPTH];
 
 
 /*
- * The service task: Track B's main loop, verbatim, in one task.
+ * The service task: Track B's main loop, verbatim, in one task - not
+ * split into the five services it runs, deliberately.
  *
- * ================== WHY ONE TASK AND NOT FIVE =====================
+ * C4 asks whether a scheduler underneath changes the timing of a data
+ * path that is otherwise byte-identical. Splitting the services
+ * across tasks would answer a different question, since the
+ * priorities and yield points become policy choices of their own: a
+ * throughput difference would then be the kernel, or the policy, with
+ * nothing in the measurement to separate them. One task running the
+ * same statements in the same order isolates the kernel's own cost -
+ * the tick ISR, the context save, the port layer - which is the only
+ * part that is not a design decision.
  *
- * Issue #45's C2 says "the five services as tasks". This is one, and
- * the deviation is deliberate rather than a shortcut.
- *
- * C4 - the deliverable - asks whether a scheduler underneath changes
- * the timing of a data path that is otherwise byte-identical. Splitting
- * the services across tasks answers a different question, because the
- * priorities and yield points are *my* choices: a throughput difference
- * would then be the kernel, or my policy, and nothing in the
- * measurement separates them. One task running the same statements in
- * the same order isolates the kernel's own cost - the tick ISR, the
- * context save, the port layer - which is the only part that is not a
- * design decision.
- *
- * It is also the only shape that respects the loop's own constraint.
- * The bulk OUT drain below runs EVERY pass, and Track B's comment
- * prices that exactly: gating it to 1 kHz "buys 1.68 us of a 6.77 us
- * pass - and the suite went from 233 passed to 223 passed and a wedge",
- * because four banks per millisecond is ~2 MB/s of drain against a host
- * writing ~1.8 MB/s. **Its throughput is the guarantee, not its
- * existence.** A task that blocks on the 1 kHz tick cannot deliver
- * 143,000 passes a second, so any split has to keep the drain in a
- * free-running task - and a free-running task at the top priority
+ * It is also the only shape that respects the loop's own constraint:
+ * the bulk OUT drain below runs EVERY pass (see Track B's main.c -
+ * gating it to 1 kHz cost the suite several failures and a wedge, for
+ * about 2 MB/s of drain against a host writing ~1.8 MB/s), and a task
+ * that blocks on a tick cannot deliver that. So the drain has to stay
+ * in a free-running task, and a free-running task at the top priority
  * starves everything below it unless it yields, which is a policy
  * choice again.
  *
- * So: one task now as a measured baseline, and the split as a later
- * experiment against it. Raised on #45 rather than decided quietly.
- *
- * console_feed() is the last statement here for the same reason it is
- * last in Track B's loop, and it is what lets this be one task without
- * starving the console.
+ * One task now, as a measured baseline; a split is a later experiment
+ * against it. console_feed() is the last statement here for the same
+ * reason it is last in Track B's loop, and it is what lets this be
+ * one task without starving the console.
  */
 static void service_task(void *arg)
 {
@@ -162,20 +153,10 @@ static void service_task(void *arg)
 		play_service();
 		stream_service();
 		/*
-		 * diag_service() is NOT called here, and that corrects
-		 * issue #45's inventory.
-		 *
-		 * That issue lists "exactly five callables" as the seam -
-		 * usb_cdc_poll, play_service, stream_service, diag_service,
-		 * ctl_service - and I verified it by reading main.c. But
-		 * diag_service is `static` in Track B's main.c and appears
-		 * in no header: it is an application diagnostic (the `D`
-		 * trace), not a driver service. **Four of the five are
-		 * shared; the fifth is Track B's own.**
-		 *
-		 * Found by the linker rather than by reading, which is the
-		 * point - grepping for the name found it in a *comment* in
-		 * console_out.h and I took that for a declaration.
+		 * diag_service() is deliberately not called here: it is
+		 * `static` in Track B's main.c and appears in no header,
+		 * so it is Track B's own application diagnostic (the `D`
+		 * trace) rather than a shared driver service.
 		 */
 
 		/* Every pass. The drain's throughput is the guarantee that
@@ -217,16 +198,12 @@ static void service_task(void *arg)
 			}
 		}
 		/*
-		 * THE SPLIT, and the whole reason for two tasks.
-		 *
-		 * Track B calls console_feed() here and pays for it: a
-		 * console command runs *inside* the loop, so `diag_service`'s
-		 * 107,893 us print and the 89 ms banner stop the sample path
-		 * dead for that long. Issue #49's proposal C was going to fix
-		 * that with a non-blocking TX ring; a scheduler fixes it by
-		 * construction instead, and without changing when output
-		 * reaches the wire - which is the property test_banner_order
-		 * asserts and a TX ring would have quietly broken.
+		 * The whole reason for two tasks: Track B calls
+		 * console_feed() inline and pays for it - a console command
+		 * runs *inside* the loop, so a long print stops the sample
+		 * path dead for its duration. A scheduler fixes that by
+		 * construction, and without changing when output reaches
+		 * the wire (test_banner_order depends on that ordering).
 		 *
 		 * So the console lives in a lower-priority task and this one
 		 * yields to it only while there is work: idle, nothing yields
@@ -281,8 +258,7 @@ static void console_task(void *arg)
  * human who types it is not met with silence.
  *
  * The full 48-letter surface arrives with the C-share work, not by
- * being copied here - copying it is precisely what issue #45 exists to
- * stop.
+ * being copied here.
  */
 static void c_ident(const uint32_t *a)
 {
@@ -305,19 +281,10 @@ static void c_help(const uint32_t *a)
 	console_flush();
 }
 
-/* Terminated by a zero key and scanned rather than indexed - the shared
- * table decides the help's order, so this one may list what it likes. */
 /*
- * `y`: the time source, read twice about a millisecond apart.
- *
- * It was bound to `T` and that was a conflict, not a free choice:
- * Track B's `T` is stream_sink_dma_start(). Two tracks answering one
- * letter with two different actions is precisely what CLAUDE.md's
- * "same commands and output format" rule exists to stop, and a host
- * cannot discover it - both tracks answer, neither errors, and only
- * the behaviour differs. `y` is unused on both tracks - `k` is
- * Track B's h_dac_30m, which is what I picked first and what
- * tools/track_parity.py caught within the hour.
+ * `y`: the time source, read twice about a millisecond apart. Picked
+ * to avoid colliding with Track B's own bindings (`T` and `k` are
+ * both taken).
  *
  * C2 groundwork rather than a convenience. millis() and micros() are
  * provided by the application on this track (apps/rtos_bringup/
@@ -350,13 +317,9 @@ static void c_time(const uint32_t *a)
 }
 
 /*
- * C2's capture surface.
- *
- * The bodies are `console_cmd_stream()` and `stream_stop()`, both
- * shared, so these are adapters and nothing else - which is the shape
- * issue #45's C-share-1 established for all 48 letters. The full
- * surface follows the same way; what is here is what C2 needs to be
- * measured against Track B.
+ * C2's capture surface. The bodies are `console_cmd_stream()` and
+ * `stream_stop()`, both shared, so these are adapters and nothing
+ * else. What is here is what C2 needs to be measured against Track B.
  */
 static void c_s50(const uint32_t *a)  { (void)a; console_cmd_stream(50000); }
 static void c_s100(const uint32_t *a) { (void)a; console_cmd_stream(100000); }
@@ -380,39 +343,19 @@ static void c_stats(const uint32_t *a)
 }
 
 /*
- * `B`: the transport counters, and the one number C4 actually wants.
+ * `M` and `=<n>q`: instruments for the DAC/ADC-timing displacement
+ * mechanism (docs/awg.md), and the reason Track C carries them at all.
  *
- * stream_bench_report() carries `passes`, which is the service loop's
- * own iteration count. Against Track B's it is the kernel's overhead
- * expressed as the thing that matters - how much less work the sample
- * path gets done per second with a scheduler underneath it - and it is
- * the only figure that should differ between the tracks at all.
- */
-/*
- * `M` and `=<n>q`: issue #5's instruments, and the reason Track C has
- * them at all.
- *
- * windows-desk showed (5ba0be0) that #5's phase is set by instruction
- * fetch timing, by varying flash wait states on ONE image. Their arm
- * then compared Track A against Track B - but those differ in
- * **compiler and layout at once**, so it cannot separate them.
- *
- * **Track C separates them.** Its driver objects are byte-identical
- * `.text` to Track B's - acq, adc, dac, gen, play, stream, usb_cdc, all
- * of them - and its layout is completely different, because `main()`
- * is. Same compiler, same machine code, different arrangement: the
- * clean version of the experiment, and the only one this project can
- * currently run.
- *
- * It also answers a caution mac-bench raised on #55, that aligning
- * Track A's toolchain would cost the ability to confirm a layout-driven
- * mechanism. Track C provides that today with no toolchain change.
+ * Track C's driver objects are byte-identical `.text` to Track B's -
+ * acq, adc, dac, gen, play, stream, usb_cdc, all of them - and its
+ * layout is completely different, because `main()` is. Same compiler,
+ * same machine code, different arrangement: comparing Track C against
+ * Track B isolates layout from codegen, which comparing Track A
+ * against Track B cannot, since those differ in both at once.
  *
  * Both bodies are copied from Track B's h_mimic and h_fws rather than
  * shared, and that is debt: they belong behind the console seam like
- * the rate sweep now is. Copied here because #5 is live and the
- * measurement was worth more than the tidiness - recorded so it is not
- * mistaken for a decision.
+ * the rate sweep now is.
  */
 static void c_fws(const uint32_t *a)
 {
@@ -456,15 +399,6 @@ static void c_mimic(const uint32_t *a)
 	gen_go_tioa1();
 }
 
-/*
- * `u`: the control channel's own counters, for the defect on #45 where
- * Track C loses the link after a fixed number of transactions.
- *
- * ctl_dump() is shared (lib/due_shared/src/ctl.c) and prints frames,
- * bad, txdrop, the parser state and the ping sequence - which between
- * them say whether the device stopped receiving, stopped answering, or
- * answered into a pipe nobody drained.
- */
 static void c_play(const uint32_t *a)
 {
 	console_cmd_play(a[0] ? a[0] : 200000u);
@@ -478,15 +412,10 @@ static void c_loop(const uint32_t *a)
 }
 
 /*
- * `z` and `Z`, both verbatim from Track B.
- *
- * Their absence was not a design choice, it was drift, and `z`'s was
- * the expensive one: measure.Board.reset() sends `z` and waits for a
- * banner, so on this track it silently did nothing and every caller
- * believed it had reset the board. A no-op that returns cleanly is
- * worse than an unimplemented command, which is why invariant 3 says
- * an unimplemented opcode must answer CTL_ERR_OPCODE rather than
- * succeed emptily - the same argument applies to the console.
+ * `z` and `Z`, both verbatim from Track B. An absent letter here must
+ * error like CTL_ERR_OPCODE does on the control channel - never
+ * return cleanly as a no-op - so a caller can tell "not implemented"
+ * from "nothing happened" (see CLAUDE.md).
  */
 static void c_reset(const uint32_t *a)
 {
@@ -513,17 +442,33 @@ static void c_sink_dma(const uint32_t *a)
 	console_flush();
 }
 
+/*
+ * `u`: the control channel's own counters, for the defect where
+ * Track C loses the link after a fixed number of transactions.
+ *
+ * ctl_dump() is shared (lib/due_shared/src/ctl.c) and prints frames,
+ * bad, txdrop, the parser state and the ping sequence - which between
+ * them say whether the device stopped receiving, stopped answering, or
+ * answered into a pipe nobody drained.
+ */
 static void c_usb(const uint32_t *a)
 {
 	(void)a;
-	/* Track B's `u` is usb_cdc_dump() then ctl_dump(). This one had
-	 * only the second half, so the same letter returned less on this
-	 * track without saying so. */
+	/* Matches Track B's `u`: usb_cdc_dump() then ctl_dump(). */
 	usb_cdc_dump();
 	ctl_dump();
 	console_flush();
 }
 
+/*
+ * `B`: the transport counters, and the one number C4 actually wants.
+ *
+ * stream_bench_report() carries `passes`, which is the service loop's
+ * own iteration count. Against Track B's it is the kernel's overhead
+ * expressed as the thing that matters - how much less work the sample
+ * path gets done per second with a scheduler underneath it - and it is
+ * the only figure that should differ between the tracks at all.
+ */
 static void c_bench(const uint32_t *a)
 {
 	(void)a;
@@ -601,13 +546,9 @@ int main(void)
 {
 	SystemInit();
 
-	/* WDT is enabled out of reset on this part and will reset the board
-	 * roughly every 15 s if not serviced. Nothing here services it -
-	 * and FreeRTOS does not service it either, which is the trap: a
-	 * kernel that keeps ticking through the reset looks like a healthy
-	 * board right up to the moment the link dies. Track B disables it
-	 * in the same place and this track did not, which is objective
-	 * 0-C's control-link defect in one line. */
+	/* WDT is enabled out of reset on this part and resets the board
+	 * roughly every 15 s if not serviced; FreeRTOS does not service
+	 * it either. Disabled here, in the same place Track B does. */
 	WDT->WDT_MR = WDT_MR_WDDIS;
 
 	clock_set_mck(MCK_MULA_DEFAULT);
@@ -633,30 +574,21 @@ int main(void)
 	clockref_init();
 
 	/*
-	 * The identity line before the scheduler starts, not after.
-	 *
-	 * Issue #41's finding is that printing after starting the capture
-	 * costs exactly three frames, and the rule it produced is that the
-	 * banner goes first. There is no capture here yet, but the
-	 * ordering is established now rather than discovered again at C2:
-	 * whatever this image says about itself, it says before anything
-	 * is scheduled.
+	 * The identity line before the scheduler starts, not after -
+	 * establishing that ordering now, before C2 needs it: whatever
+	 * this image says about itself, it says before anything is
+	 * scheduled.
 	 */
 	console_identity(FW_TRACK, (unsigned long)SystemCoreClock);
 	console_flush();
 
 	/*
-	 * One task, and it never blocks - see the note on service_task().
-	 * The idle task therefore runs only when the tick preempts this
-	 * one, which is the bare-metal duty cycle plus the kernel's own
-	 * overhead - and that overhead is exactly what C4 measures.
-	 */
-	/*
 	 * Two tasks, split on the DEADLINE boundary rather than the
-	 * service boundary. The sample path has one and the console does
-	 * not, which is the only distinction the hardware forces; a
-	 * five-way split by service would be five priority decisions
-	 * nothing has yet asked for.
+	 * service boundary: the sample path has one and the console does
+	 * not, which is the only distinction the hardware forces. The
+	 * service task never blocks (see the note on service_task()), so
+	 * the idle task runs only when the tick preempts it, and that
+	 * overhead is exactly what C4 measures.
 	 */
 	xTaskCreateStatic(service_task, "svc", SERVICE_STACK, NULL,
 	                  3, service_stack, &service_tcb);
