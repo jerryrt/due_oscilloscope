@@ -64,12 +64,12 @@ MAX_RESID_SD_MS = 3.0
 def host_clock_discipline(seconds=60.0):
     """Is this host's reference traceable to UTC, or free-running?
 
-    linux-x1 found the caveat this file used to print - "accuracy is
-    bounded by this host's crystal, which is not frequency-disciplined"
-    - was false on Linux, where CLOCK_MONOTONIC is slewed by the
-    kernel's NTP correction. They then reasoned that Windows and macOS
-    are free-running because `time.monotonic()` is QueryPerformanceCounter
-    and mach_absolute_time.
+    The flat claim - "accuracy is bounded by this host's crystal, which
+    is not frequency-disciplined" - is false on Linux, where
+    CLOCK_MONOTONIC is slewed by the kernel's NTP correction; linux-x1
+    found it. They then reasoned that Windows and macOS are free-running
+    because `time.monotonic()` is QueryPerformanceCounter and
+    mach_absolute_time.
 
     That is right about those clocks and wrong about this measurement,
     because `measure.run_play()` times with **`time.time()`**, not with
