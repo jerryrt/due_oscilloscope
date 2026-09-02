@@ -147,3 +147,44 @@ def test_the_emitters_have_no_line_buffer():
         f"have no line buffer by design - each builds only the bytes it "
         f"owns - and an array outside {sorted(allowed)} is either a line "
         f"buffer or a budget nobody has stated")
+
+
+@pytest.fixture(scope="module")
+def guardpage(tmp_path_factory):
+    cc = _cc()
+    if not cc:
+        pytest.skip("no host C compiler; install gcc or clang to run this")
+    exe = str(tmp_path_factory.mktemp("guard") / "guardpage")
+    proc = subprocess.run(
+        [cc, "-std=c11", "-Wall", "-I", SHARED, "-o", exe,
+         os.path.join(HERE, "fmt", "guardpage.c"),
+         os.path.join(SHARED, "console_out.c")],
+        capture_output=True, text=True, env=hostcc.cc_env())
+    assert proc.returncode == 0, (
+        f"guard-page harness build failed:\n{proc.stderr}")
+    return exe
+
+
+@pytest.mark.parametrize("mode,emitted", [("str", 256),
+                                          ("strl", 256),
+                                          ("terminated", 255)])
+def test_the_string_walk_reads_nothing_past_its_bound(guardpage, mode,
+                                                      emitted):
+    """CON_STR_MAX is the last index an emitter may read, not the first.
+
+    A bound tested after the dereference is off by one, and the byte it
+    reads is returned like any other: the output is right, the budget is
+    met, and the suite is green. Nothing above the walk can see it, so
+    the check is arranged below - the string sits against a page that
+    faults on read, and the walk is scored by whether the process
+    survived.
+
+    `str` and `strl` are separate cases because they are separate
+    walks. cppcheck reported one of them and not the other, which is the
+    argument for covering both rather than the tool's list.
+    """
+    proc = subprocess.run([guardpage, mode], capture_output=True, text=True)
+    assert proc.returncode == 0, (
+        f"con_{mode} walked off the end of its bound: exit "
+        f"{proc.returncode}\n{proc.stdout}{proc.stderr}")
+    assert f"emitted {emitted}" in proc.stdout, proc.stdout
