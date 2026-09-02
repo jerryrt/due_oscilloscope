@@ -10,8 +10,8 @@ it cannot: the build is byte-deterministic apart from a wall-clock
 stamp that carries no timezone. That is phase 0 and it is source-side,
 independent of every container question below it.
 
-This document is live work: it names open issues, and one sub-choice at
-the end is still the owner's.
+This document is live work: it names open issues, and the decisions it
+records have been taken rather than proposed.
 
 ## Scope
 
@@ -111,7 +111,7 @@ right on the day it was configured and wrong every day after.
 | # | decision | what follows from it |
 |---|---|---|
 | **D1** | **Docker.** | Installed on `linux-x1` and working. The `docker` group is root-equivalent, so a shared CI runner would later want rootless; that is a migration, not a blocker |
-| **D2** | **xPack, not the host's Debian toolchain.** | The container and the host therefore **do not** agree byte for byte, and are not meant to. The property is that two container builds agree, and two benches on the same pinned inputs agree. GCC 15's `gnu23` default cannot drift in: `CMAKE_C_STANDARD 11 REQUIRED` and `track_a.cmake`'s explicit `-std=gnu11`/`-std=gnu++11` pin it |
+| **D2** | **xPack 15.2.1-1.1, not the host's Debian toolchain.** | The container and the host therefore **do not** agree byte for byte, and are not meant to. The property is that two container builds agree, and two benches on the same pinned inputs agree. GCC 15's `gnu23` default cannot drift in: `CMAKE_C_STANDARD 11 REQUIRED` and `track_a.cmake`'s explicit `-std=gnu11`/`-std=gnu++11` pin it |
 | **D3** | **Track A is in scope; the Arduino SAM core 1.6.12 ships in the image.** | `ARDUINO_SAM_CORE` is a `-D` and `cmake/track_a.cmake` errors with the install line when it is absent, so no code changes. `toolchains.json` rejects `*/packages/arduino/tools/arm-none-eabi-gcc/*` by pattern, so the core cannot shadow the xPack with the bundled 4.8.3 |
 | **D4** | **`clang` and `clang-tidy` ship in the image. `clang-tidy` runs now; clang as a firmware compiler is optional and later.** | The two halves cost differently. `clang-tidy` needs a `compile_commands.json` and a filter for arm-gcc-only flags it rejects. Clang as a *firmware* compiler is a port - target triple, a sysroot at the GCC toolchain's newlib and libgcc, and linking through the GCC driver - so it is phase 5, with its own exit criterion. `CLAUDE.md`'s "no second C dialect" is amended in the same change: its argument was MSVC's `#pragma pack` against `__attribute__((packed))`, and clang honours the GCC attribute |
 | **D5** | **Built from a `Dockerfile` in the tree, cached locally, no registry.** | "Same Dockerfile" is then not "same image" unless every input is pinned - see the constraint below. With no registry there is no shared digest, so the cross-bench claim is **same pinned inputs**, not same image ID |
@@ -120,10 +120,14 @@ right on the day it was configured and wrong every day after.
 | **D9** | **`CTL_VERSION` is bumped when `build[24]` changes meaning.** | The layout is unchanged, so an old host does not fail - it silently parses a SHA as a date, which is what the hard break exists to prevent. `ctlver` 3 to 4 on all three tracks, reflashed together, with `docs/control-protocol.md`, `measure.parse_identity` and the suite's version assertions moving in the same change |
 | **D10** | **Bit-identity is a script under `tools/`, run by the image build, not a test.** | Keeps a second build out of the board-free tier and away from #50's ceiling. It must still *run*: a check living in a stage nobody executes is the guard that cannot fail, which this project has already paid for |
 
-**Still open:** which xPack release. 15.2.1 is `mac-bench`'s code
-generator, so choosing it makes container images comparable with that
-bench's rows and not with `linux-x1`'s or `windows-desk`'s. Either is
-defensible; it should be deliberate.
+The release is **xpack-arm-none-eabi-gcc-15.2.1-1.1**, which this project
+already uses: `docs/toolchain.md` records it as `mac-bench`'s Track B
+compiler and as `windows-desk`'s opt-in second arm. The container
+therefore introduces no fourth code generator - it standardises on one
+already characterised here. Its images carry that generator while both
+other benches' default builds carry ARM GNU 14.x, so a container image
+and a bench's own build are not expected to agree byte for byte, and
+`docs/toolchain.md` is where the two generators are told apart.
 
 ## Constraints carried in
 
