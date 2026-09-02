@@ -124,14 +124,13 @@ static void identity_line(void)
 /*
  * This track's own facts, then the shared command list.
  *
- * The list used to be twenty-eight Serial.println lines here and
- * twenty-eight more in Track B's main.c, which is how the two command
- * sets came to differ by twelve without anyone deciding they should -
- * issue #13. console_help() prints one table, so a command that exists
- * on one track and not the other now says so on both.
+ * console_help() prints one shared table, so a command that exists on
+ * one track and not the other says so on both, rather than the two
+ * per-track command sets silently drifting apart.
  *
- * The numbers stay here, where they can be computed. A shared help line
- * carrying "453488" would be a figure written down a second time.
+ * The numbers stay here, where they can be computed. A shared help
+ * line carrying "453488" would be a figure written down a second
+ * time.
  */
 static void banner(void)
 {
@@ -204,8 +203,8 @@ static void measure_printf(void)
 
 	uint32_t t0 = micros();
 	/* Braces are load-bearing: con_nl() must stay INSIDE the loop, or
-	 * this times n strings and one newline. Two sites on Track B
-	 * compiled clean and were wrong exactly this way (issue #49). */
+	 * this times n strings and one newline - a mistake that compiles
+	 * clean, and has been made twice on Track B already. */
 	for (int i = 0; i < n; i++) {
 		con_str(line); con_nl();
 	}
@@ -258,18 +257,16 @@ static void measure_gpio(void)
 	uint32_t t3 = micros();
 
 	/*
-	 * Fixed point, not float. This used to be
-	 * `Serial.print(((t1 - t0) * 1000.0) / n)`, which pulled the
-	 * float formatter into an image whose only use for it was two
-	 * debug lines - and issue #49 records that Track B has no `%f`,
-	 * `%g` or `%e` anywhere. Same arithmetic as Track B's print_ns()
-	 * and the same two decimals Serial.print(float) defaulted to, so
-	 * the printed value is unchanged.
+	 * Fixed point, not float: a float formatter would be pulled into
+	 * an image whose only use for it is two debug lines, and Track B
+	 * has no %f, %g or %e anywhere. Same arithmetic as Track B's
+	 * print_ns() and the same two decimals a float default would
+	 * give, so the printed value is unchanged.
 	 *
 	 * What is deliberately NOT changed is what is measured: Track A
 	 * times digitalWrite() where Track B times led_toggle(). That is
-	 * a real divergence, it is on issue #45's reconciliation list,
-	 * and it is not mine to settle by rewriting one side.
+	 * a real, tracked divergence, not one to settle here by
+	 * rewriting one side.
 	 */
 	con_str("# direct PIO : ");  print_ns_x100(((t1 - t0) * 100000ull) / n);
 	con_str("# digitalWrite: "); print_ns_x100(((t3 - t2) * 100000ull) / n);
@@ -336,66 +333,65 @@ static void cmd_sweep(void)
 }
 
 /*
- * Hold one channel's DAC fixed and swing the other; any movement in the
- * held channel is multiplexer bleed. Swinging both at once, as an
- * earlier version did, isolates nothing.
+ * Hold one channel's DAC fixed and swing the other; any movement in
+ * the held channel is multiplexer bleed. Swinging both at once
+ * isolates nothing.
  */
 /*
- * "=<n>,<ms>x": how many crosstalk observations, and how long to let a
- * DAC output settle before converting.
+ * "=<n>,<ms>x": how many crosstalk observations, and how long to let
+ * a DAC output settle before converting.
  *
- * The settle time is a knob because the excursion issue #16 is about
+ * The settle time is a knob because the excursion this measures
  * recurs on a fixed *cadence* rather than at random, and only moving
- * the cadence separates a beat against something periodic from a count
- * kept in software. Moving it is what measured the 64 ms period.
+ * the cadence separates a beat against something periodic from a
+ * count kept in software.
  *
- * Track B waited a 400,000-iteration busy loop where this waited
- * delay(10), so the same command waited different times on the two
- * tracks and their figures were not comparable. Wall clock on both now.
+ * Timed by wall clock (micros()), not delay(), so run times stay
+ * comparable against Track B's own busy-wait loop for the same
+ * command.
  */
 static uint32_t crosstalk_repeats;
 static uint32_t crosstalk_settle_ms;
 
 /*
- * The settle wait, spun on micros() rather than delay().
- *
-/*
  * Multiplexer bleed, repeated - "=<n>,<ms>x".
  *
- * **It prints a distribution, never one number, and in the order taken.**
- * Issue #16 measured this quantity to be spread on an otherwise idle
- * board: about 0 codes or about 160, the loud ones 10-15% of
- * observations, with ADC_MR read back identical in both. 160 codes is
- * 5.8% of the 2747-code full swing, so the two answers disagree about
- * whether the multiplexer is clean, and a single draw reported as a
- * measurement is the defect whichever value is right.
+ * It prints a distribution, never one number, and in the order taken.
+ * This quantity is spread on an otherwise idle board: about 0 codes
+ * or about 160, the loud ones 10-15% of observations, with ADC_MR
+ * read back identical in both. 160 codes is 5.8% of the 2747-code
+ * full swing, so the two answers disagree about whether the
+ * multiplexer is clean, and a single draw reported as a measurement
+ * is the defect whichever value is right.
  *
- * **It is not two modes, which is what the order settled.** The loud
- * observations recur on a fixed cadence inside a run, and the cadence
- * moves with the settle time so that gap x observation-duration is a
- * multiple of 64 ms at every setting tested. A beat against something
- * periodic, then - not a coin flip and not a startup condition.
+ * It is not two modes: the loud observations recur on a fixed
+ * cadence inside a run, and the cadence moves with the settle time
+ * so that gap x observation-duration is a multiple of 64 ms at every
+ * setting tested. A beat against something periodic, then - not a
+ * coin flip and not a startup condition.
  *
- * **Which channel is set by the conversion position, not the pin** -
- * see the `=<n>C` note below. The A0 arm has never shown it on either
+ * Which channel is set by the conversion position, not the pin - see
+ * the `=<n>C` note below. The A0 arm has never shown it on either
  * track in any pairing.
  *
- * **Each arm carries a control that swings nothing**, writing the same
+ * Each arm carries a control that swings nothing, writing the same
  * DAC code twice where the real arm writes 0 then 4095. Same writes,
  * same waits, same conversions. On the *driven* channel it has never
- * once been loud - 0 in 1,005 observations on Track A and 0 in 225 on
- * Track B - which is what makes that excursion about the swing rather
- * than the reading. On a *bare* channel it is loud: `=2C` reads a
- * standing +37 codes with nothing swung and +95 with, so those are two
- * effects and the control is what tells them apart. docs/noise.md.
+ * once been loud - 0 in 1,005 observations on Track A and 0 in 225
+ * on Track B - which is what makes that excursion about the swing
+ * rather than the reading. On a *bare* channel it is loud: `=2C`
+ * reads a standing +37 codes with nothing swung and +95 with, so
+ * those are two effects and the control is what tells them apart.
+ * docs/noise.md.
  *
- * **What it assumes about the bench, which differs between ours.** The
+ * What it assumes about the bench, which differs between ours: the
  * A1 arm holds DAC1 at mid scale and swings DAC0. Where DAC1 is
  * jumpered to A1 that pin is *driven* to the held level; where DAC1
  * goes to a scope's external trigger it is *free*, and one
- * sample-and-hold behind a 16:1 mux makes a free input read a smeared
- * copy of whatever was converted before it. The command works either
- * way and does not measure the same thing, so it says which it found.
+ * sample-and-hold behind a 16:1 mux makes a free input read a
+ * smeared copy of whatever was converted before it. The command
+ * works either way and does not measure the same thing, so it says
+ * which it found.
  *
  * Track B's main.c carries the same command with the same arguments and
  * the same printed format; the summary wording is ctl_bleed_describe()
@@ -434,19 +430,17 @@ static void cmd_crosstalk(void)
 	               " twice, so the swing is the only difference");
 	/*
 	 * The conditions as the hardware holds them, not as this function
-	 * believes it set them. Issue #16 spent a bench session on two
-	 * tracks disagreeing about a bleed figure while both printed the
-	 * same prose; the register is the only account that cannot drift
-	 * from what was measured.
+	 * believes it set them: the register is the only account that
+	 * cannot drift from what was measured.
 	 */
 	con_str("# adcmr="); con_hex32(acq_mr(), 8);
 	con_str(" (this command's own; restored after)"); con_nl();
 	Serial.flush();
 
 	/*
-	 * The pads too - main.c's twin says why (issue #16(b)): the
-	 * pull-up was the dominant term of the tracks' bare-channel
-	 * disagreement, and the instrument never said what the pads were
+	 * The pads too - main.c's twin says why: the pull-up was the
+	 * dominant term of an earlier bare-channel disagreement between
+	 * tracks, and the instrument never said what the pads were
 	 * configured as. On this track the Arduino core walks every pin
 	 * at init and analogRead's own path can rewrite one, so the
 	 * attestation matters more here, not less. PUSR reads 1 where
@@ -460,20 +454,18 @@ static void cmd_crosstalk(void)
 	Serial.flush();
 
 	/*
-	 * The pair `C` selected, so issue #16's pin-versus-position test
-	 * can be asked on this track too. See main.c for why `=2C` is the
-	 * one variable worth moving.
+	 * The pair `C` selected, so a pin-versus-position test can be
+	 * asked on this track too. See main.c for why `=2C` is the one
+	 * variable worth moving.
 	 *
-	 * **Every read is the two-channel sequence, which it was not.** This
-	 * called acq_read_one() and converted the watched channel with every
-	 * other disabled, while Track B converted the pair. That is one
-	 * difference and it was worth a sign and a factor of twelve: on
-	 * `=2C` the same board minutes apart read a plateau of **+95 codes
-	 * with a loud +37 control** on this track and **-1205 with a clean
-	 * control** on Track B. The two were not the same measurement, so a
-	 * bleed figure was not comparable across tracks - which is the class
-	 * of error issue #16 exists to remove, one level up from the pin
-	 * label. Same sequence on both now; the conversion preceding the
+	 * Every read is the two-channel sequence, which it was not: this
+	 * used to call acq_read_one() and convert the watched channel
+	 * with every other disabled, while Track B converted the pair.
+	 * That was worth a sign and a factor of twelve - on `=2C` the
+	 * same board minutes apart read a plateau of +95 codes with a
+	 * loud +37 control on this track and -1205 with a clean control
+	 * on Track B, so a bleed figure was not comparable across tracks.
+	 * Same sequence on both now; the conversion preceding the
 	 * watched one is the same conversion.
 	 */
 	const unsigned second = acq_pair_second;
@@ -721,27 +713,22 @@ static void cmd_dac_crosscheck(uint32_t dac_hz)
 	}
 
 	/*
-	 * These three lines print AFTER the capture start, which is the
-	 * shape #41 was about - and they stay that way deliberately.
-	 *
+	 * These three lines print AFTER the capture start, deliberately.
 	 * docs/debugging.md prices this site at +4.77 ms of margin
-	 * against a 20.32 ms runway, "about one added banner line from
-	 * biting". It survives only because the capture here is fixed at
-	 * 200,000 Hz, where the ring holds longest. Add a fourth line and
-	 * it becomes cmd_stream: frames lost before the host sees any.
+	 * against a 20.32 ms runway - about one added banner line from
+	 * biting. It survives only because capture here is fixed at
+	 * 200,000 Hz, where the ring holds longest; a fourth line turns
+	 * this into cmd_stream, losing frames before the host sees any.
 	 *
-	 * Moving them above stream_start_capture_only() - which is what
-	 * cmd_stream and h_loop did - would fix the margin and break the
-	 * measurement. The interval between gen_start_independent() and
-	 * the capture start sets the sampling phase against the DAC's
-	 * table wrap, and h_mimic's comment records that as a free
-	 * variable fixed for a run by the instruction timing between the
-	 * two starts. Putting ~110 characters of UART in there would move
-	 * it by milliseconds, and this command is an instrument for issue
-	 * #5, which is about one sample per table wrap.
+	 * Moving them above stream_start_capture_only() would fix the
+	 * margin and break the measurement: the interval between
+	 * gen_start_independent() and the capture start sets the sampling
+	 * phase against the DAC's table wrap, and this command exists to
+	 * measure exactly that phase, one sample per table wrap. Putting
+	 * ~110 characters of UART in there would move it by milliseconds.
 	 *
-	 * So: not an oversight, and not safe to "fix" the way the others
-	 * were. If a print is ever needed here, put it above
+	 * Not an oversight, and not safe to "fix" like the others. If a
+	 * print is ever needed here, put it above
 	 * gen_start_independent() where it costs nothing.
 	 */
 	con_str("# DAC indep "); con_u32(dac_hz);
@@ -798,16 +785,12 @@ static void diag_start(void)
 static void diag_service(void)
 {
 	/*
-	 * No buffer here. It used to be declared at the top, before the
-	 * early return, so every idle main-loop pass paid to set up a
-	 * 192-byte stack frame for a function that returns immediately -
-	 * `Q` measured this at 590 ns against Track B's 115 for the same
-	 * function with the same body and no buffer. That is 475 ns on a
-	 * ~9 us pass, for nothing, and it is issue #13's performance
-	 * parity in miniature: the tracks are transliterations, so a
-	 * difference this size is a defect in one of them rather than a
-	 * property of either. It lives in the reporting block below,
-	 * which is the only thing that uses it.
+	 * No buffer here, above the early return: declaring one there
+	 * would set up a 192-byte stack frame on every idle main-loop
+	 * pass for a function that returns immediately - `Q` measured
+	 * this at 590 ns against Track B's 115 ns for the same function
+	 * with no buffer, 475 ns on a ~9 us pass for nothing. It lives in
+	 * the reporting block below, the only thing that uses it.
 	 */
 	if (!diag_run)
 		return;
@@ -1039,14 +1022,13 @@ static void cmd_profile(void)
 
 	PROF("empty loop", __asm__ volatile(""));
 	/*
-	 * The per-pass diagnostics, profiled because issue #13 measured
-	 * this loop at 75.1 k passes/s against Track B's 160.4 k and
-	 * invariant 3 wants the two comparable. Each of these reads a
-	 * UOTGHS register on every pass to ask about an event that
-	 * happens tens of times a second - which is the exact shape of
-	 * cost CLAUDE.md records Track B removing when gating ctl_service
-	 * and usb_cdc_poll to 1 kHz took its idle pass from 9.72 to
-	 * 6.70 us.
+	 * The per-pass diagnostics, profiled because this loop once ran
+	 * at 75.1 k passes/s against Track B's 160.4 k and invariant 3
+	 * wants the two comparable. Each of these reads a UOTGHS register
+	 * on every pass to ask about an event that happens tens of times
+	 * a second - which is the exact shape of cost CLAUDE.md records
+	 * Track B removing when gating ctl_service and usb_cdc_poll to
+	 * 1 kHz took its idle pass from 9.72 to 6.70 us.
 	 */
 	PROF("UOTGHS_DEVEPT read", (void)UOTGHS->UOTGHS_DEVEPT);
 	PROF("usbtrace_sample()", usbtrace_sample(0));
@@ -1080,27 +1062,22 @@ static void cmd_profile(void)
  * Override the core's weak serialEventRun(), which runs after every
  * loop() and is invisible to `Q`.
  *
- * The stock one polls UARTClass::available() on **all four** hardware
+ * The stock one polls UARTClass::available() on all four hardware
  * serials - Serial, Serial1, Serial2, Serial3 - so it can dispatch a
  * serialEvent() handler. This sketch opens one of them and defines no
- * such handler, so three of those four calls ask a UART that was never
- * begun whether it has data, and the fourth duplicates what
+ * such handler, so three of those four calls ask a UART that was
+ * never begun whether it has data, and the fourth duplicates what
  * console_feed() already does at the bottom of loop().
  *
  * Measured: Serial.available() is 372 ns on this board, so the stock
- * version is about 1.5 us of a 8.6 us pass - 17%, spent outside loop()
- * where the profiler cannot see it. It was found by disassembling the
- * symbol rather than by measuring, because there is no way to measure
- * it from inside the loop it sits after.
+ * version is about 1.5 us of an 8.6 us pass (17%), spent outside
+ * loop() where the profiler cannot see it. The cost is the core's
+ * default policy, not anything the silicon requires, and a sketch
+ * may decline it.
  *
- * This is issue #13's performance parity and it is also the concrete
- * case for CLAUDE.md's claim that "Arduino is an abstraction layer, not
- * a different architecture": the cost is the core's *default policy*,
- * not anything the silicon requires, and a sketch may decline it.
- *
- * Nothing is lost. serialEvent() and friends are weak empty stubs in
- * this image - the console is read by console_feed(), which is where
- * both tracks read theirs.
+ * Nothing is lost: serialEvent() and friends are weak empty stubs in
+ * this image, and the console is read by console_feed() on both
+ * tracks.
  */
 void serialEventRun(void)
 {
@@ -1129,25 +1106,10 @@ void setup()
 
 	/*
 	 * The converters, so this board holds its own configuration from
-	 * boot rather than the Arduino core's.
-	 *
-	 * Found by #13's readback: before a stream, `?` on this track
-	 * answered adcmr=10380200 - written by analogRead() inside the
-	 * core, not by anything here - while Track B, which calls
-	 * adc_init() in main(), answered 2f3f0100, its own. Two boards
-	 * asked what their ADC is set to gave different answers while
-	 * idle, and any idle measurement inherited whichever one it
-	 * happened to be on. That is a confound for issue #11's
-	 * temperature reading in particular, which is taken with nothing
-	 * streaming.
-	 *
-	 * **The DAC half of that finding was wrong and is retracted
-	 * here.** The idle acr=000001aa was reported as the core's too.
-	 * It is not: Track B, which contains no Arduino core anywhere in
-	 * the image, reads the same 000001aa at boot after its own
-	 * dac_init()'s DACC_CR_SWRST. So 0x1aa is what the DACC holds
-	 * when nothing has written ACR, on either track. Only the ADC
-	 * half was ever a divergence.
+	 * boot rather than the Arduino core's: before a stream, `?` on
+	 * this track shows the core's own ADC_MR from analogRead(), which
+	 * differs from Track B's - a confound for an idle-state
+	 * measurement such as temperature.
 	 *
 	 * Neither call starts anything: acq_init() configures the ADC and
 	 * leaves the timer stopped, gen_init() configures the DACC and
@@ -1278,8 +1240,14 @@ static uint32_t mimic_start_delay_us;
 /* take, what `h` prints and what happens to a letter this track has   */
 /* not got - is lib/due_shared/src/console.c, compiled by both tracks. */
 /* Everything below is this track's handlers, which is where the       */
-/* registers are. See console.h for why the line falls there, and      */
-/* issue #13 for what it cost to have the line nowhere at all.         */
+/* registers are. See console.h for why the line falls there.          */
+/*                                                                     */
+/* Parsing and execution stay separated for the reason they always     */
+/* were: the native port carries a binary framed protocol              */
+/* (docs/control-protocol.md) with a different parser, and both reach  */
+/* the same handlers. Two implementations of "start playback" would    */
+/* drift, and the refusal wording is part of what the host is told,    */
+/* not decoration.                                                     */
 /* ------------------------------------------------------------------ */
 
 static void ha_help(const uint32_t *a)
@@ -1756,15 +1724,14 @@ static void ha_mimic(const uint32_t *a)
 
 	/*
 	 * Everything the console has to say is said before the converters
-	 * start. These lines used to run after gen_go_tioa1(), which lays
-	 * milliseconds of blocked main loop over the first samples of
-	 * every capture this preset takes - invariant 8, on the path the
-	 * suite calls its continuity control.
+	 * start: printing after gen_go_tioa1() would lay milliseconds of
+	 * blocked main loop over the first samples of every capture this
+	 * preset takes - invariant 8, on the path the suite calls its
+	 * continuity control.
 	 */
 	/*
-	 * The shape as it is, not as this line used to assume - issue #9.
-	 * gen_shape_name() is the shared spelling, so the two tracks
-	 * cannot drift on the word either.
+	 * The shape as it is. gen_shape_name() is the shared spelling, so
+	 * the two tracks cannot drift on the word either.
 	 */
 	con_str("# mimic loop: gen "); con_str(gen_shape_name(gen_shape));
 	con_str(" on TIOA1 at "); con_u32(dac_hz);
@@ -1863,12 +1830,12 @@ static void ha_stall(const uint32_t *a)
  * "=<us>K". The gap between the ADC start and the DAC start, in
  * microseconds, held across runs and applied by the M preset above.
  *
- * The two states issue #5 draws are selected by the binary and not by
- * anything the host does. M's comment names the only free variable a
- * layout change could plausibly move, and this makes that variable
- * settable, so the hypothesis can be tested inside one image instead of
- * by flashing two. Debug-only, on a preset that is already debug-only,
- * and it busy-waits.
+ * The states a code-layout change can draw are selected by the binary
+ * and not by anything the host does. M's comment names the only free
+ * variable a layout change could plausibly move, and this makes that
+ * variable settable, so a hypothesis can be tested inside one image
+ * instead of by flashing two. Debug-only, on a preset that is already
+ * debug-only, and it busy-waits.
  */
 static void ha_mimic_gap(const uint32_t *a)
 {
@@ -1956,16 +1923,16 @@ static void ha_reset(const uint32_t *a)
 static void ha_fws(const uint32_t *a)
 {
 	/*
-	 * Issue #5's fetch-timing arm, on the oracle. Debug-only, the class
-	 * invariant 7 carves out.
+	 * An instruction-fetch-timing arm, on the oracle. Debug-only, the
+	 * class invariant 7 carves out.
 	 *
 	 * Track B showed that changing EEFC FMR FWS - and nothing else, on
 	 * one image, with no rebuild - moves both the phase and the
-	 * magnitude of #5's displacement, with the three phase sets not
-	 * overlapping at all. Invariant 3 keeps this track for exactly that
-	 * kind of claim, and it is a stronger check here than usual: Track A
-	 * is built by a different compiler eleven years older (issue #55),
-	 * so its layout is independent rather than merely different.
+	 * magnitude of the sensitivity to fetch timing seen elsewhere,
+	 * with the three phase sets not overlapping at all. Invariant 3
+	 * keeps this track for exactly that kind of claim: two tracks are
+	 * two images, so a result that reproduces on both is independent
+	 * rather than a property of one build.
 	 *
 	 * Clamped 4..6 for the same reason as Track B: SystemInit sets 4 at
 	 * MCK 78 MHz, lower reads flash faster than the part guarantees, and
@@ -2024,9 +1991,8 @@ static void ha_bench(const uint32_t *a)
  * A letter absent from here is answered "not implemented on this
  * track", which is the console's CTL_ERR_OPCODE. `console_missing()`
  * prints the list from this table, so the parity count is computed
- * rather than remembered - issue #13's 29/8/4 was arrived at by diffing
- * two dispatchers by hand, and a number arrived at that way is stale
- * the first time either track moves.
+ * rather than remembered - a count arrived at by diffing two
+ * dispatchers by hand goes stale the first time either track moves.
  */
 const console_binding_t console_bindings[] = {
 	{ 'h', ha_help },       { 'v', ha_ident },      { 'p', ha_printf },
@@ -2099,68 +2065,32 @@ void loop()
 
 	/*
 	 * The control channel, which is also what keeps its bulk OUT
-	 * drained. This used to be ctlusb_drain_out(), which released the
-	 * bank and discarded what was in it because nothing here spoke the
-	 * protocol; ctl_service() reads the same endpoint and answers.
-	 * The drain obligation is unchanged and is why this runs every
-	 * pass whether or not a host is talking - an allocated bulk OUT
-	 * that nobody hands back NAKs for ever.
-	 */
-	/*
-	 * At most once a millisecond, which is the gate Track B's main.c
-	 * put on the same call and for the same measured reason: it costs
-	 * 1964 ns of this pass - more than stream_service() - to poll an
-	 * endpoint that receives a command ten times a second, and the
-	 * cost is a UOTGHS register read rather than an SRAM one.
+	 * drained: ctl_service() reads the endpoint and answers, fulfilling
+	 * the same drain obligation as any other endpoint - an allocated
+	 * bulk OUT that nobody hands back NAKs forever and hangs the host
+	 * in close().
 	 *
-	 * A millisecond is 100x faster than a host can notice on a status
-	 * poll, and it leaves the drain with 2 KB/ms of capacity against
-	 * command traffic measured in bytes. **The drain obligation is
-	 * unchanged**: an allocated bulk OUT that nobody hands back NAKs
-	 * for ever and hangs the host in close(). Once a millisecond is
-	 * draining; never is not.
+	 * At most once a millisecond, matching Track B's gate on the same
+	 * call: it costs 1964 ns to poll an endpoint that receives a
+	 * command ten times a second, a hundredfold faster than a host
+	 * can notice, and the drain obligation above is unchanged - once
+	 * a millisecond is draining, never is not. Gated here rather than
+	 * inside ctl_service() because `now` is already in a register.
 	 *
-	 * Gated here rather than inside ctl_service() because `now` is
-	 * already in a register, so the check is free where a second
-	 * millis() would not be.
-	 */
-	/*
-	 * Two once-a-millisecond jobs, deliberately on *different passes*.
+	 * ctl_service() and the diag sampling below are two once-a-
+	 * millisecond jobs kept on *different* passes deliberately: gating
+	 * both on the same `now != <last>` fires them together on the
+	 * first pass of each millisecond, which then costs 15 us against
+	 * the usual 10 - enough to widen the idle-loop timing distribution
+	 * and break test_load.py::test_the_idle_loop_is_fast_and_uniform,
+	 * which exists to keep that distribution narrow enough for one
+	 * slow pass to be unmistakable. The `else` below puts each job on
+	 * its own pass instead, at 1 kHz each, a hundredfold margin under
+	 * the ~100 k passes/s loop rate.
 	 *
-	 * Each is a UOTGHS poll asking about an event that happens tens of
-	 * times a second, and between them they were 5.2 us of a 10 us
-	 * pass - issue #13's 2.14x gap against Track B, which had already
-	 * gated its own equivalents.
-	 *
-	 * **Why the else, which is the part that is not obvious.** Gating
-	 * both on `now != <last>` fires them on the same pass, the first
-	 * of each millisecond, and that pass then costs 15 us against 10.
-	 * At ~100 k passes/s that is 1% of passes one log2 bucket to the
-	 * right - measured at 1.02% against 0.93% predicted - and
-	 * test_load.py::test_the_idle_loop_is_fast_and_uniform failed on
-	 * exactly that. It was right to: the instrument's value is that
-	 * the idle distribution is narrow enough for one slow pass to be
-	 * unmistakable, and a gate that manufactures a second mode spends
-	 * that for speed.
-	 *
-	 * The `else` puts the diagnostics on the *second* pass of each
-	 * millisecond instead. Same 1 kHz for both, neither pass carries
-	 * both, and both stay inside the bucket the ungated pass is in.
-	 * It needs two passes per millisecond to keep up, which at 100 k
-	 * passes/s is a hundredfold margin; a loop slow enough to break
-	 * that has already failed the floor assertion above it.
-	 *
-	 * ctl_service at 1 kHz is Track B's gate and its reasoning: it
-	 * costs 1964 ns to poll an endpoint that receives a command ten
-	 * times a second, a millisecond is 100x faster than a host can
-	 * notice, and **the drain obligation is unchanged** - an allocated
-	 * bulk OUT that nobody hands back NAKs for ever and hangs the host
-	 * in close(). Once a millisecond is draining; never is not.
-	 *
-	 * The sample-path OUT drain further down is NOT gated and must not
-	 * be: CLAUDE.md records that gating it to 1 kHz narrows it to
-	 * ~2 MB/s against a host that writes ~1.8 MB/s, and that margin is
-	 * the guarantee.
+	 * The sample-path OUT drain further down is NOT gated and must
+	 * not be: gating it to 1 kHz would narrow it to ~2 MB/s against a
+	 * host that writes ~1.8 MB/s, and that margin is the guarantee.
 	 */
 	if (now != ctl_ms) {
 		ctl_ms = now;
@@ -2207,37 +2137,24 @@ void loop()
 	 * byte-for-byte copy in playstat.h, because the host parses one
 	 * magic and one CRC for both tracks.
 	 *
-	 * Play-only, and nowhere else. In loop mode bulk IN carries
-	 * capture frames and the endpoint is on DMA; the FIFO path must
-	 * not touch an endpoint DMA owns. stream_in_in_use() is the
-	 * guard and it is new on this track too.
+	 * Play-only: in loop mode bulk IN carries capture frames and the
+	 * endpoint is on DMA, so the FIFO path must not touch it -
+	 * stream_in_in_use() is the guard. The host tolerates gaps, which
+	 * is what makes it safe for the TXINI test below to fail and drop
+	 * a record.
 	 *
-	 * The host tolerates gaps: it differences whichever records
-	 * arrive. That is what makes the TXINI test below safe to fail.
-	 *
-	 * TXINI IS THE INVARIANT 7 GUARD, AND IT USED TO BE ABSENT.
-	 * This comment used to claim "SerialUSB.write returns short
-	 * rather than spinning when no bank is free", and that is not
-	 * true of this core. Serial_::write() calls USBD_Send() ->
-	 * UDD_Send(), whose first statement is
+	 * TXINI is the invariant 7 guard, and testing it first is what
+	 * makes the write bounded. Serial_::write() -> USBD_Send() ->
+	 * UDD_Send() begins with an unbounded spin on TXINI -
 	 *
 	 *     while (TXINI != (UOTGHS->UOTGHS_DEVEPTISR[ep] & TXINI)) {}
 	 *
-	 * an unbounded spin, exactly as docs/hardware.md records from the
-	 * same source. availableForWrite() cannot stand in for it either:
-	 * it returns the constant EPX_SIZE - 1 whatever the banks are
-	 * doing. So when a host fed the OUT pipe and stopped draining IN,
-	 * both banks filled and the main loop spun here for ever - issue
-	 * #33. Measured on linux-x1: hangs after 5.2 s of feed with no IN
-	 * reader, at 1,317,888 bytes; with a reader draining IN, 15 s and
-	 * 6,030,848 bytes with no stall. A stall watchdog on a TC
-	 * interrupt caught the loop in this stage, with CFSR clean, which
-	 * is how it was found at all - everything that could have
-	 * reported it is main-loop-served and died with it.
-	 *
-	 * Testing TXINI first makes the write bounded: a free bank means
-	 * UDD_Send's spin exits immediately, and no free bank means the
-	 * record is dropped, which the host already tolerates.
+	 * - and availableForWrite() cannot stand in for it either: it
+	 * returns the constant EPX_SIZE - 1 regardless of bank state. So a
+	 * host that fed OUT and stopped draining IN fills both banks and
+	 * spins this loop forever unless TXINI is checked first: a free
+	 * bank then lets the spin exit immediately, and no free bank drops
+	 * the record instead.
 	 */
 	if (play_active() && !stream_in_in_use() && SerialUSB.dtr()
 	    && (UOTGHS->UOTGHS_DEVEPTISR[CDC_TX] & UOTGHS_DEVEPTISR_TXINI)) {
