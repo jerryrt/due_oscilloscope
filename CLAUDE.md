@@ -1130,8 +1130,17 @@ as 27x. Two benches sharing an instrument do not share its precision.
 **Four builds of `3aadf90` produced four different layouts and only
 TWO different code generators.** The two xPack 15.2.1 builds - macOS
 `darwin-x64` and Windows `win32-x64`, different `layout` - are
-byte-identical in every function: 319 functions, 12,441 instructions,
-mnemonics `3be1163b2c06c650` on both. The layout difference is the
+byte-identical in every function: 319 functions, and the same mnemonic
+hash on both. **The instruction count and the hash first published here
+were taken with a buggy `image_mnemonics.py`** - it let a symbol absorb
+whatever followed it - and are superseded: re-taken on `mac-bench` under
+the fixed tool, `3aadf90` is 319 functions and **10,343 instructions,
+`277017c287f1ee65`**, against the 12,441 and `3be1163b2c06c650` this
+line used to carry. The *identity* survives the correction, because the
+bug added the same trailing data to both sides and two sequences that
+hashed equal with it still hash equal without it; only the figures
+move. `windows-desk` has not re-taken its half, so quote
+`277017c287f1ee65` as macOS's until it has. The layout difference is the
 bundled `newlib`/`libgcc` archives, which are separate builds in the two
 packages; nothing of ours differs. So **counting layouts and reporting
 them as code generators is itself the error this section is about**, and
