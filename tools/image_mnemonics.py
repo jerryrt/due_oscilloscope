@@ -32,6 +32,11 @@ pair above, 251 of 294 shared functions are identical and 43 differ; the
 #5 draws from - while `ADC_Handler`, `UOTGHS_Handler` and `main` are
 identical. That is a finding. "The images differ" is not.
 
+The per-function counts above were taken before symbols were bounded by
+their declared size, so a symbol that absorbed trailing data carries a
+larger count there than it does now. Which functions differ is
+unaffected.
+
 Two benches can compare without sharing an ELF: the hashes travel in a
 comment and the disassembly does not have to.
 
@@ -52,13 +57,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 # `0800012c <DACC_Handler>:`
-_FUNC = re.compile(r"^[0-9a-fA-F]+\s+<([^>]+)>:")
+_FUNC = re.compile(r"^([0-9a-fA-F]+)\s+<([^>]+)>:")
+
+# `00086314 l     F .text\t00000050 __libc_init_array` - address, size, name
+# from the symbol table, used to stop a symbol absorbing what follows it.
+_SYM = re.compile(r"^([0-9a-fA-F]+)\s.*\s([0-9a-fA-F]+)\s+(\S+)\s*$")
 
 # `    8000130:\t4770      \tbx\tlr`  - fields are tab separated, and the
 # mnemonic is the first token of the third field. A line with only two
 # fields is a raw-data word inside a literal pool and carries no
 # mnemonic, which is why this is not a blind split.
-_INSN = re.compile(r"^\s*[0-9a-fA-F]+:\s*\t[^\t]*\t\s*(\S+)")
+_INSN = re.compile(r"^\s*([0-9a-fA-F]+):\s*\t[^\t]*\t\s*(\S+)")
 
 
 def _objdump():
@@ -81,23 +90,57 @@ def _objdump():
     return "arm-none-eabi-objdump"
 
 
+def _sizes(elf):
+    """{symbol: declared size} from the symbol table.
+
+    objdump -d disassembles a whole section and labels each run with the
+    symbol that starts it, so a symbol absorbs whatever follows it up to
+    the next symbol - including trailing .rodata. Bounding each symbol by
+    its declared size is what stops that.
+    """
+    out = subprocess.run([_objdump(), "-t", elf],
+                         capture_output=True, text=True, check=True).stdout
+    sizes = {}
+    for line in out.splitlines():
+        m = _SYM.match(line)
+        if m:
+            sizes[m.group(3)] = int(m.group(2), 16)
+    return sizes
+
+
 def mnemonics(elf):
-    """{function: [mnemonic, ...]} in program order."""
+    """{function: [mnemonic, ...]} in program order.
+
+    Bounded by each symbol's declared size. Without that bound a symbol
+    followed by data reports it as instructions: on the RTOS image
+    __libc_init_array is 0x50 bytes of code and absorbed 5,156 bytes of
+    .rodata, four strings of which are absolute source paths, so the
+    "instruction" count tracked the length of the build directory - one
+    per character, exactly - and the image was not comparable between
+    two checkouts of the same commit.
+    """
     out = subprocess.run([_objdump(), "-d", elf],
                          capture_output=True, text=True, check=True).stdout
+    sizes = _sizes(elf)
     funcs = collections.OrderedDict()
     cur = None
+    end = None
     for line in out.splitlines():
         m = _FUNC.match(line)
         if m:
-            cur = m.group(1)
+            cur = m.group(2)
+            start = int(m.group(1), 16)
+            size = sizes.get(cur)
+            end = start + size if size else None
             funcs.setdefault(cur, [])
             continue
         if cur is None:
             continue
         i = _INSN.match(line)
         if i:
-            funcs[cur].append(i.group(1))
+            if end is not None and int(i.group(1), 16) >= end:
+                continue
+            funcs[cur].append(i.group(2))
     return funcs
 
 
