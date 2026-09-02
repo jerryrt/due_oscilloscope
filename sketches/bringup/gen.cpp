@@ -49,13 +49,12 @@ static int32_t shape_code(unsigned t, unsigned period)
 /*
  * One code to one DAC channel, software-written.
  *
- * **Not `analogWrite()`, for the reason docs/hardware.md now records.**
- * The core's `analogWrite()` on a DAC pin calls
+ * Not `analogWrite()`: the core's version on a DAC pin calls
  * `dacc_set_analog_control()` with its own `DACC_ACR` - IBCTLCH0/1 = 2,
- * IBCTLDACCORE = 1 - so a console command that used it silently
- * overwrote whatever `=<ch>,<core>I` had set, and did it on a register
- * whose value is worth 2.71x on the settling edge (issue #13). It also
- * enables and configures the channel behind this driver's back.
+ * IBCTLDACCORE = 1 - so a console command that used it would silently
+ * overwrite whatever `=<ch>,<core>I` had set, on a register whose
+ * value is worth 2.71x on the settling edge. It also enables and
+ * configures the channel behind this driver's back.
  *
  * TAG mode is on, so the channel goes in bits 13:12 of the data word
  * exactly as the PDC stream carries it - one path, one encoding.
