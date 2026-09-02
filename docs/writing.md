@@ -29,6 +29,27 @@ that loses it in the wrong direction.
 A number that dates a **finding** is provenance and stays. A number that
 dates the **document** is bookkeeping and goes.
 
+## Code comments
+
+The rules above are written for `docs/`; they hold for a comment in code
+too, and the same failure shows up there in the same shape.
+
+A comment exists to help someone read the code. The history of a bug
+fix or a decision change is not that - it belongs in `git log`, which is
+durable and is where people look. Where a piece of history is genuinely
+load-bearing - it explains why the obvious implementation is wrong, and
+a reader who does not know it will break the code - it stays. Those are
+exceptions and must not become the norm.
+
+| keep | cut |
+|---|---|
+| `drivers/play.c`'s "Three, not two": the ENDTX guard needs `play_produced >= play_consumed + 3`, and a reader who does not know why will "fix" it to 2 and silently corrupt the analog output | `drivers/adc.c`'s comment that quotes its own earlier, wrong arithmetic back at the reader |
+| a name that points at the thing that would break | an issue number standing in for the explanation - hundreds of these sit across the tree, and the issue is not where the reader is |
+
+`tests/test_comment_style.py` catches the first cut column - a comment
+or docstring narrating what it used to say. It cannot catch the second;
+that one is read, not grepped.
+
 ## Shape
 
 | prefer | over | because |
