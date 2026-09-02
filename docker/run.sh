@@ -3,6 +3,7 @@
 #
 #     docker/run.sh                            # an interactive shell
 #     docker/run.sh docker/build-firmware.sh   # both tracks, clean
+#     docker/run.sh docker/run-tests.sh        # the board-free tier
 #     docker/run.sh python3 tools/toolchain.py
 #
 # The flags below are the whole reason this script exists; none of them

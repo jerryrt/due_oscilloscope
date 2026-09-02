@@ -1,0 +1,52 @@
+# The Python environment the image installs, pinned to exact versions
+# and to the sha256 of every artifact. Installed with --require-hashes,
+# so a resolution that drifts fails the build instead of producing a
+# different image from the same Dockerfile.
+#
+# WHY THIS FILE EXISTS RATHER THAN requirements-dev.txt DIRECTLY.
+# That file is the project's declaration and says `pytest>=7.0`, which
+# is a floor and not a pin: it states what the suite needs of a bench,
+# and a bench is entitled to whatever pytest it has. An image cannot
+# live on a floor - "same Dockerfile" would stop meaning "same image"
+# the next time pytest releases - so the floor is resolved once, here,
+# and the resolution is the thing that is pinned. requirements-dev.txt
+# keeps its meaning for benches unchanged.
+#
+# Transitive dependencies are listed too, because --require-hashes
+# refuses a requirement it cannot name. So this is the whole closure,
+# not just the four direct lines.
+#
+# TO REGENERATE, when requirements-dev.txt changes or a pin is bumped:
+# resolve it in the base image and hash what pip fetched.
+#
+#     docker run --rm -v "$PWD/requirements-dev.txt:/req.txt:ro" \
+#         ubuntu@sha256:<the digest in the Dockerfile> bash -c '
+#         apt-get update -qq && apt-get install -y --no-install-recommends \
+#             python3-venv ca-certificates >/dev/null &&
+#         python3 -m venv /v && /v/bin/pip install -q -r /req.txt &&
+#         /v/bin/pip freeze > /f.txt &&
+#         /v/bin/pip download -q --no-deps -r /f.txt -d /d &&
+#         cd /d && sha256sum *'
+#
+# Resolve in the base image, not on a bench: the wheel a bench picks is
+# chosen for its own interpreter and platform, and this image is
+# CPython 3.12 on linux-x86_64.
+
+importlib_resources==7.1.0 \
+    --hash=sha256:1bd7b48b4088eddb2cd16382150bb515af0bd2c70128194392725f82ad2c96a1
+iniconfig==2.3.0 \
+    --hash=sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12
+libusb-package==1.0.30.0 \
+    --hash=sha256:f502ad5a0527b8c0431de817662325c88a1bba2cc334173665b04ad168d7b6d3
+packaging==26.3 \
+    --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
+pluggy==1.6.0 \
+    --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
+Pygments==2.21.0 \
+    --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9
+pyserial==3.5 \
+    --hash=sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0
+pytest==9.1.1 \
+    --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
+pyusb==1.3.1 \
+    --hash=sha256:bf9b754557af4717fe80c2b07cc2b923a9151f5c08d17bdb5345dac09d6a0430

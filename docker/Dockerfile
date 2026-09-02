@@ -1,8 +1,10 @@
-# A pinned environment that builds both firmware tracks.
+# A pinned environment that builds both firmware tracks and runs the
+# board-free test tier.
 #
 # The image exists so the build environment stops being an unrecorded
-# variable: docs/build-container.md, phase 1. It compiles the repository
-# that is bind-mounted at /work; nothing of the project is baked in.
+# variable: docs/build-container.md, phases 1 and 2. It compiles and
+# tests the repository that is bind-mounted at /work; nothing of the
+# project is baked in.
 #
 # EVERY INPUT IS PINNED, and that is the whole property. Two benches
 # building this file weeks apart must get the same compiler, or the
@@ -14,10 +16,29 @@
 # checksum-verified is a defect here, not a shortcut.
 #
 # WHAT IT DELIBERATELY DOES NOT DO. Nothing opens a serial port and no
-# USB device is passed in. /sys is the host's and is not namespaced, so
-# port discovery inside a container succeeds and every open then fails -
-# a board test would skip, and a skip is scored as a pass by whichever
-# harness reads it. The board tier stays on metal.
+# USB device is passed in, and the board tier stays on metal. A board
+# test with no board SKIPS, and a skip is scored as a pass by whichever
+# harness greps for failures - so the whole-suite run in here is worth
+# only what --require-board beside it is worth.
+#
+# /dev IS WHAT HIDES THE BOARD, NOT /sys, and the difference decides
+# which container arrangements are safe. Measured on linux-x1 with a
+# board attached and enumerated on the host:
+#
+#   default run   /sys/class/tty lists ttyACM0/1/2 and their idVendor
+#                 and idProduct read 2341:003d and 2341:003e - sysfs is
+#                 the host's and is not namespaced. But /dev carries no
+#                 ttyACM node, and pyserial's Linux backend GLOBS /dev
+#                 first and only then annotates from sysfs, so
+#                 comports() returns 0 ports and find_all_ports()
+#                 returns (None, None, None)
+#   -v /dev:/dev  all three appear with the right ids and discovery
+#                 succeeds; an open is then the thing that fails
+#
+# So discovery is a /dev glob wearing sysfs metadata, not a sysfs walk,
+# and this image is blind to the board because of the device nodes it
+# does not have. Mount /dev - which is what surviving a re-enumeration
+# would need - and the board is discoverable again.
 
 FROM ubuntu@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
 
@@ -58,6 +79,24 @@ ARG CURL_VERSION=8.5.0-2ubuntu10.13
 ARG XZ_UTILS_VERSION=5.6.1+really5.4.5-1ubuntu0.3
 ARG BZIP2_VERSION=1.0.8-5.1ubuntu0.1
 
+# A HOST compiler, which is a different tool from the cross compiler
+# above and is not substitutable for it: arm-none-eabi-gcc -dumpmachine
+# says arm-none-eabi and cannot run what it builds. Two board-free tests
+# build a native harness and execute it - tests/test_framer_close.py
+# builds it twice, real and mutant, and the mutant must fail - so
+# without gcc here they skip, and a silent skip inside the tier whose
+# honesty this image exists to test would be self-defeating.
+#
+# libc6-dev is named because --no-install-recommends does not pull it,
+# and gcc without headers compiles nothing.
+ARG GCC_VERSION=4:13.2.0-7ubuntu1
+ARG LIBC6_DEV_VERSION=2.39-0ubuntu8.8
+
+# The suite is not stdlib: pytest and pyserial at least, and host/scope.py
+# imports pyusb. python3-venv carries ensurepip, which is what builds the
+# venv below.
+ARG PYTHON3_VENV_VERSION=3.12.3-0ubuntu2.1
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -81,7 +120,10 @@ RUN set -eux; \
         "python3=${PYTHON3_VERSION}" \
         "curl=${CURL_VERSION}" \
         "xz-utils=${XZ_UTILS_VERSION}" \
-        "bzip2=${BZIP2_VERSION}"; \
+        "bzip2=${BZIP2_VERSION}" \
+        "gcc=${GCC_VERSION}" \
+        "libc6-dev=${LIBC6_DEV_VERSION}" \
+        "python3-venv=${PYTHON3_VENV_VERSION}"; \
     rm -rf /var/lib/apt/lists/*
 
 # /opt/xpack-arm-none-eabi-gcc-*/bin is already a Linux search pattern in
@@ -120,6 +162,28 @@ RUN set -eux; \
     rm /tmp/sam.tar.bz2; \
     test -f "${HOME}/.arduino15/packages/arduino/hardware/sam/${SAM_CORE_VERSION}/cores/arduino/Arduino.h"; \
     chmod -R a+rX "${HOME}"
+
+# The suite's venv, built at image time because docker/run.sh runs with
+# --network none and pip cannot reach an index from there. It lives
+# outside /work on purpose: /work is a bind mount of the bench's own
+# tree, so a venv written there would collide with the bench's .venv,
+# and a venv holds absolute paths and does not travel anyway.
+#
+# ON PATH, unlike the cross compiler. The toolchain is kept off PATH so
+# that toolchains.json has to do the resolving; nothing resolves a venv
+# through a registry, so the alternative here is every caller spelling
+# out an absolute path. `python3` in this image is therefore the venv's,
+# and `pip freeze` says so.
+COPY requirements-lock.txt /tmp/requirements-lock.txt
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH=/opt/venv/bin:$PATH
+RUN set -eux; \
+    /usr/bin/python3 -m venv "$VIRTUAL_ENV"; \
+    "$VIRTUAL_ENV/bin/pip" install --no-cache-dir --require-hashes \
+        -r /tmp/requirements-lock.txt; \
+    rm /tmp/requirements-lock.txt; \
+    chmod -R a+rX "$VIRTUAL_ENV"; \
+    "$VIRTUAL_ENV/bin/python" -m pytest --version
 
 # The container runs as the invoking user - docker/run.sh passes --user -
 # so anything it writes into the mounted tree stays that user's. git then
