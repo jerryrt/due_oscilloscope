@@ -25,16 +25,8 @@ void adc_init(void)
 
 	/*
 	 * ADCClock = MCK / ((PRESCAL + 1) * 2) = 78 MHz / 4 = 19.5 MHz,
-	 * *under* the 20 MHz datasheet maximum (Table 46-28); see
+	 * under the 20 MHz datasheet maximum (Table 46-28); see
 	 * docs/hardware.md.
-	 *
-	 * This comment used to read "84 MHz / 4 = 21 MHz, ABOVE the 20 MHz
-	 * maximum". That is the MCK 84 arithmetic, and MCK is 78 here
-	 * precisely so this division lands inside the limit - CLAUDE.md's
-	 * first correction. The same sentence was on Track A's acq.cpp and
-	 * was fixed there in ede3a69; a comment claiming the clock is out
-	 * of spec, on the register that sets it, is the one place the
-	 * misreading gets believed.
 	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
 	            | (0xfu << ADC_MR_STARTUP_Pos)
@@ -52,12 +44,12 @@ void adc_init(void)
 	 * Pad pull-ups off on every analog pin, as Track A has always run:
 	 * the Arduino core's init() disables the pull-up on every pin, and
 	 * bare metal inherits the reset default, which is enabled. That
-	 * difference was worth a factor of 3.3 on issue #16's bare-channel
-	 * bleed - a floating pad reads its neighbour through the
-	 * multiplexer at -282 codes (Track A) against -937 here, and
-	 * dropping the pull-up takes this track to -338. It also unloads
-	 * every driven pin: 50-150k to 3.3 V hangs on the DAC outputs and
-	 * the jumpered inputs otherwise.
+	 * difference is worth a factor of 3.3 on bare-channel bleed - a
+	 * floating pad reads its neighbour through the multiplexer at
+	 * -282 codes (Track A) against -937 here, and dropping the
+	 * pull-up takes this track to -338. It also unloads every driven
+	 * pin: 50-150k to 3.3 V hangs on the DAC outputs and the jumpered
+	 * inputs otherwise.
 	 *
 	 * AD0-7 = PA2,3,4,6,16,22,23,24 (descending A7..A0); AD10-13 =
 	 * PB17-20; DAC0/1 = PB15/16. Disabling pull-ups on the remaining
@@ -87,7 +79,7 @@ uint16_t adc_read(unsigned ch)
  * channel per trigger event, in ascending channel index order, so this
  * is the same ordering the PDC path will see.
  */
-volatile uint32_t adc_pair_restarts;   /* issue #23 */
+volatile uint32_t adc_pair_restarts;
 volatile uint32_t adc_pair_timeouts;
 
 void adc_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
@@ -100,8 +92,8 @@ void adc_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
 
 	/*
 	 * Bounded, with re-kicks: one START occasionally converts only
-	 * part of the enabled pair. Measured on Track A (issue #23): the
-	 * second measurement session's first START completes ch7 and
+	 * part of the enabled pair. Measured on Track A: the second
+	 * measurement session's first START completes ch7 and
 	 * never ch5 - ISR shows EOC7 set, EOC5 never arrives - and a
 	 * second START completes the pair immediately. The sequencer
 	 * mechanism is not established; the bound is the contract
@@ -135,14 +127,13 @@ void adc_read_pair(unsigned cha, unsigned chb, uint16_t *a, uint16_t *b)
  * Measurement conditions for a polled reading, set here rather than
  * inherited, and restored afterwards.
  *
- * Same argument as adc_read_temp() below and the same one issue #15
- * settled: **the variable is not which track, it is whatever last
- * touched the register.** Issue #16 then measured what that is worth on
- * a quantity more sensitive than a temperature. `x` ran at
+ * Same argument as adc_read_temp() below: the variable is not which
+ * track, it is whatever last touched the register, and that is worth
+ * more on a quantity more sensitive than a temperature. `x` ran at
  * TRACKTIM 0 / SETTLING 0 on Track A and TRACKTIM 15 / SETTLING 3 on
  * Track B - the two ends of the range - because each track's `x`
  * inherited whatever its own init had left. On the `=2C` arm that was
- * worth a *sign flip and a factor of four* between two builds of the
+ * worth a sign flip and a factor of four between two builds of the
  * same command on the same board minutes apart, which makes a bleed
  * figure meaningless across tracks and across "before or after a
  * capture" within one.
@@ -242,12 +233,11 @@ int adc_read_temp(ctl_temp_t *out, uint16_t samples)
 	/*
 	 * The sensor's own tracking time, set here rather than inherited.
 	 *
-	 * Issue #15 measured the two tracks reading the die sensor
-	 * **0.84 codes apart** - four times the ~0.20 codes that
+	 * The two tracks were measured reading the die sensor 0.84 codes
+	 * apart - four times the ~0.20 codes that
 	 * `records/advref-temp.jsonl` bounds ADVREF's whole short-term
 	 * noise at - purely because they idle at different ADC_MR: Track A
 	 * at TRACKTIM 0 from acq_init(), Track B at 15 from adc_init().
-	 *
 	 * Converging the idle configs would not have fixed it, only moved
 	 * it: both tracks *stream* at TRACKTIM 0, so a reading taken after
 	 * a capture would still differ from one taken after boot. The
@@ -262,7 +252,7 @@ int adc_read_temp(ctl_temp_t *out, uint16_t samples)
 	 * undriven input reading its neighbour. On a debug path that
 	 * already spends 1 ms on TSON startup they cost nothing.
 	 *
-	 * This also changes what `adc_mr` in the report is *for*: it was a
+	 * This also changes what `adc_mr` in the report is for: it was a
 	 * variable to be recorded, and it is now a constant to be checked.
 	 */
 	ADC->ADC_MR = ADC_MR_PRESCAL(1)
