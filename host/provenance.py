@@ -142,6 +142,11 @@ def bench():
 #: them to the wall-clock path.
 _BUILD_COMMIT = re.compile(r"^([0-9a-f]{7,40})(?:\+([0-9a-f]{8}))?$")
 
+#: What the build emits when it cannot name the commit - no git, or a
+#: source tree outside any work tree. It is an answer, not a missing
+#: value, and it must not be resolved against the flash log.
+UNIDENTIFIED = "unknown"
+
 
 def build_commit(build):
     """`(rev, delta8)` when the identity states a commit, else None.
@@ -231,6 +236,13 @@ def firmware(build_stamp=None, track=None):
     if not lines:
         return {"fw_provenance": "unlogged"}
     want = build_commit(build_stamp)
+    # `unknown` is the build system stating it could not identify the
+    # image, which is a fact rather than a stamp to match. Falling
+    # through would hand back the newest record, naming a commit the
+    # board may never have run - and a wrong field is trusted where a
+    # missing one is questioned.
+    if want is None and str(build_stamp).strip().lower() == UNIDENTIFIED:
+        return {"fw_provenance": "unlogged"}
     stamp = None if want else _build_epoch(build_stamp)
     for rec in reversed(lines):
         # A record that flashed the *other* track cannot be the image

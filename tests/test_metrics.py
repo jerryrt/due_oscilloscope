@@ -294,6 +294,26 @@ def test_a_commit_absent_from_the_log_is_a_stated_absence(tmp_path,
     assert "fw_repo_rev" in prov.missing(prov.firmware("deadbee", "b"))
 
 
+def test_an_unidentified_image_is_not_attributed(tmp_path, monkeypatch):
+    """`unknown` is an answer, and the plausible wrong reading is a row.
+
+    A build with no git behind it says so. Resolving that against the
+    log hands back the newest record, which fills `fw_repo_rev`,
+    `fw_cc` and `fw_layout` for a board that just stated it cannot be
+    identified - and a wrong field is trusted where a missing one is
+    questioned.
+    """
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        _rec("beefbee", "2026-09-01T09:00:00-0400"),
+        _rec("cafecaf", "2026-09-01T10:00:00-0400"))
+
+    got = prov.firmware(prov.UNIDENTIFIED, "b")
+    assert got == {"fw_provenance": "unlogged"}, (
+        "an unidentified image was attributed to a commit: %r" % (got,))
+    assert "fw_repo_rev" in prov.missing(got)
+
+
 def test_a_dirty_identity_names_which_dirty(tmp_path, monkeypatch):
     """Two dirty builds of one commit are two images.
 
