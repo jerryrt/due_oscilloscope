@@ -565,20 +565,29 @@ asking the daemon to start something already started.
 
 Each of these is a defect this project has already paid for once.
 
-1. **Rate controls snap to an integer RC and display `hz_for(RC)`, not
+1. **Never drain a queue with an unbounded loop.** When the producer is
+   faster than the display it never returns — it hung this GUI's first
+   test run for ten minutes. The daemon is built to drop toward a slow
+   client and count it, so **leaving frames queued is the designed
+   behaviour**, not a backlog to clear.
+2. **Do not derive a ring's write position from a running total.** It
+   is correct until one append is larger than the ring, and then the
+   window silently returns samples that are not the newest — no error,
+   no gap, just a stale view that looks live.
+3. **Rate controls snap to an integer RC and display `hz_for(RC)`, not
    what was typed.** The hardware's entire set of rates is 39 MHz / RC.
    A frame header once declared the requested rate instead of the real
    one, and that was a defect the suite caught.
-2. **Prove freshness before drawing.** Stale kernel-buffered frames
+4. **Prove freshness before drawing.** Stale kernel-buffered frames
    from a previous run once manufactured a "frozen DAC" that was not
    happening and cost a full session. Sequence numbers near zero and
    device timestamps spanning the host window are the proof, and
    `host/loopback.py` already enforces both.
-3. **Draw a visible break at a discontinuity.** Overrun-flagged frames
+5. **Draw a visible break at a discontinuity.** Overrun-flagged frames
    are not continuous with the previous frame. Never join across one.
-4. **Refusals come from the device.** When a rate is refused, show the
+6. **Refusals come from the device.** When a rate is refused, show the
    device's own message naming the limit.
-5. **The GUI never blocks the feeder.** Drop frames toward the display
+7. **The GUI never blocks the feeder.** Drop frames toward the display
    instead, and count what was dropped.
 
 ## Safety

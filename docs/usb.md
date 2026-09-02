@@ -383,10 +383,20 @@ alternating order the same test gives 1.93 and 1.65.
 **An asymmetry produced by the scheduler is not a property of the
 transport.** Budgets on the host matter too, for the same reason.
 
-## The board resets when the programming port is opened
+## Opening the programming port may reset the board — it is a platform difference
 
-This is normal, and it invalidated several device-side measurements
-before it was understood.
+This is normal where it happens, and it invalidated several device-side
+measurements before it was understood.
+
+**It is not universal, and neither reading is a fact about this
+project.** Measured on `measure.Board`'s own plain open at 115200 with
+`dtr=False`: macOS resets, 3 of 3, uptime 65,812 ms to 2,884. Linux does
+**not** — 16,410.9 s to 16,415.9 s, the sleep and nothing else — though
+an explicit DTR toggle resets there too. So on macOS every tool that
+opens a Board starts at uptime 0, and on Linux it keeps whatever uptime
+the board had. Check your own bench with
+`tools/uptime_reset_probe.py`; `CLAUDE.md` carries the table. The
+mechanism below is what happens when it does reset.
 
 Opening the programming port produces a General Reset: `RSTTYP = 0`, and
 the backup domain is cleared, so the boot counter in GPBR starts over.
@@ -408,6 +418,84 @@ time, unchanged by topology.
 **Consequence for measurement**: the device cannot time its own
 benchmark, because its window begins at a boot the host knows nothing
 about. It reports byte counts; the host keeps the clock.
+
+## Oversupply: the host feeds the rate, the converter cannot take it
+
+At some rates the DACC converts below the rate it was programmed for, so
+a host feeding the declared rate offers more than the device can take
+and the surplus is discarded rather than queued. **The deficit follows
+the converter, not the rate**, which is what makes it oversupply rather
+than loss.
+
+The controlled version, because RC 44 draws one of two converter states
+per run — same commanded rate, same feed, same policy, and the state is
+the only thing that moves. Eight drained runs: seven took the fast state
+and lost 1.35% against a converter 1.56% slow; one took the slow state
+and lost 2.13% against a converter 2.34% slow. Control at RC 65: six
+runs, 0.00% both. Held by `test_the_deficit_is_the_oversupply`.
+
+**One loose end, unexplained.** The deficit is consistently **0.21 pp
+less** than the converter's shortfall, in both states, reproducible to
+0.01 pp. Do not design against it, and do not assume it holds at other
+rates — it has only been measured at RC 44.
+
+### The closed loop works, and is off by default
+
+`run_play(closed_loop=True)`. The device reports a monotonic total of
+buffers consumed; a slow outer loop trims the feed's *rate* model —
+never its position — while the inner loop stays clock-paced and
+constant-size. Interleaved against its own open-loop control:
+
+| rate | open loop | closed loop |
+|---|---|---|
+| 600,000 (RC 65) | 0.000% | 0.000% |
+| 886,363 (RC 44) | 1.344%, 1.352% | 0.434%, 0.213% |
+| 1,000,000 (RC 39) | 2.151%, 2.151% | 0.480%, 0.472% |
+
+`under=0` in every closed-loop run, which matters: the loop trims *down*
+toward the converter, so the failure it could have bought is starvation
+— and the opposite trap, over-feeding until the counter reads zero while
+the samples stay missing, is what this file warns about above. Neither
+happened.
+
+**Off by default**, because turning it on changes what every existing
+measurement measures.
+
+**What is left is startup, not rate error.** The feed runs open loop
+until the first trim, and those bytes are lost once per run rather than
+continuously. At RC 39: 27,648 B over 3 s and 28,544 B over 6 s — the
+*bytes* are flat and the percentage halves, 0.466% to 0.242%. A wrong
+rate model would lose proportionally, so the residual shrinks with run
+length and matters least where it matters least.
+
+## Why a constant write size is lossless and a varying one is not
+
+Unexplained, and the contradiction is sharp. A constant 512 B loses
+nothing. A constant 1024 B loses nothing. `min(due, 1024) & ~511`, which
+can only ever emit 512 or 1024, loses 0.47-0.84%. Same sizes, same rate,
+same pacing, same real-time thread, and a 50x finer idle sleep changes
+nothing.
+
+Ruled out: **not a startup artifact** — the deficit scales with run
+length, 19,840 B at 2 s, 36,096 B at 4 s, 67,712 B at 8 s, so ~8-10 kB/s
+continuously. **Not queue pressure** — feeding 4% *under* the device's
+rate, ring draining and the queue certainly empty, still loses 0.68%.
+
+**The experiment that isolates it, and it is cheap:** strictly alternate
+512 B and 1024 B writes at a rate that is clean with either size alone.
+If alternation alone reproduces the loss with nothing else changed the
+mechanism is cornered. The untested guess to aim at is that the driver
+packs payloads into fixed-size internal buffers that a uniform stream
+stays aligned to.
+
+This is macOS only. Windows loses 0 B on every policy at every rate.
+
+## An intermittent large loss at 1,218,750 sps
+
+Exact on most runs, then 384 B, then 452,352 B, with no pattern found.
+Always a whole multiple of 128. Tracked as `RESIDUAL` in
+`tests/test_integrity.py` **by outcome rather than by mark**, so a clean
+run passes and it turns green by itself.
 
 ## Instrumentation rules earned here
 

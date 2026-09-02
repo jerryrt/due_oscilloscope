@@ -1032,6 +1032,239 @@ ignorable is that it sits under the ~25 codes of standing noise every
 sample already carries, so the guard fires when it stops doing so. **A
 bench that trips it should reopen #5, not raise the number.**
 
+## How the mechanism was established
+
+The conclusions are above. This is the evidence behind them, kept
+because most of these tables are the only record of the arm that
+produced them, and because the traps in them recur. Two hosts, two
+boards, many images.
+
+**Amplitudes do not compare across images.** The binary selects which
+state the artifact draws, so every table below is valid within its own
+run and nowhere else.
+
+### It is not digital — the jumper test
+
+A1 tied to **GND** instead of DAC1, eight RCs including four that had
+folded at +54 to +66 codes an hour earlier:
+
+| A1 at GND | A0 in the same captures |
+|---|---|
+| **0 nonzero samples in ~3.2 M**, sd 0.00, fold z 0.0 at every RC | median 2051, sd 969 — the sine, converting normally |
+
+A0 is the liveness control: a dead channel also reads zero, and only the
+grounded channel is silent. **Nothing digital can be switched off by
+holding an input at a rail** — a corrupted result register, a stale IN
+transfer racing the PDC, a TAG mix-up all appear whatever the pin does.
+
+### Presence is constant; RC sets amplitude
+
+Folded at the table length, **14 of 15 RCs carry it** — including every
+RC that threshold instruments on both hosts had called clean:
+
+| rc | peak, codes | z | control z | old census verdict |
+|---|---|---|---|---|
+| 187 | **-4.31** | 36.2 | 3.5 | clean |
+| 190 | +4.51 | 24.6 | 3.0 | clean |
+| 191 | +4.32 | 38.5 | 3.0 | clean |
+| 192 | -0.39 | **2.5** | 2.8 | clean |
+| 195 | +3.33 | 27.7 | 3.0 | clean |
+| 198 | +5.35 | 28.3 | 3.1 | clean |
+| 199 | +5.29 | 33.1 | 3.7 | clean |
+
+So the RC scans on both hosts measured **detector floors, not physics**,
+and the nesting between their dirty sets is evidence about the
+instruments. The displacement is also **signed** and the sign varies
+with RC, which rules out any mechanism that can only add — every earlier
+account said "one sample displaced upward" because every detector keyed
+on absolute deviation.
+
+### It is two states, not dirty against clean
+
+Fourteen runs at fixed conditions, macOS; and the Windows replication on
+the other channel:
+
+| host | state | peak, codes | phase | runs |
+|---|---|---|---|---|
+| macOS | A | -77.9 to -80.3 | 63 | 7 of 14 |
+| macOS | B | +1.8 to +2.4 | 211 | 7 of 14 |
+| Windows | A | -13.04 to -13.16 | — | 20 of 35 |
+| Windows | B | -2.19 to -2.56 | — | 15 of 35 |
+
+Control z was 2.5-3.8 throughout, so **both** states are the artifact.
+The ratio is 40x on one host and 5.5x on the other, so the two-state
+structure replicates and the amplitudes do not. `sd` separates the
+states perfectly on both — 1.067-1.072 against 0.831-0.841 on Windows.
+
+**State B has always been reported as a clean run.** +2 codes is under
+every threshold ever used here, and everything follows from that: "6 of
+10 dirty" is the coin flip rather than an incidence rate, the
+session-long "fade" is a run of B draws, and every A/B sampled the coin
+in both arms. **Report which state a run drew and its amplitude; never
+dirty or clean.**
+
+### Neither TRACKTIM nor SETTLING moves it — and that is a fact about the registers
+
+Interleaved, baseline in the rotation, seven conditions:
+
+```
+TRACKTIM= 0 SETTLING=0:  -77.8  -77.9   +1.9
+TRACKTIM= 2 SETTLING=0:   +1.9  -77.8  -80.2
+TRACKTIM= 4 SETTLING=0:  -80.3  -80.2   +2.4
+TRACKTIM= 8 SETTLING=0:   +1.9  -80.2   +2.4
+TRACKTIM=15 SETTLING=0:  -80.2   +2.0  -77.9
+TRACKTIM= 0 SETTLING=3:   +1.9  -80.3   +2.4
+TRACKTIM=15 SETTLING=3:  -77.9   +1.9   +2.4
+```
+
+Every condition draws from the same values and the maximum of both
+registers looks exactly like the minimum. Replicated on the other host,
+other channel, other instrument: 35 runs, the condition predicts
+nothing.
+
+**But it is a negative about the registers, not about the front end.**
+`?` reads ADC_MR back from the hardware, so the knob is connected — and
+the knob is *free*: TRACKTIM(15) with SETTLING(3) sustains the whole
+ladder to 907 ksps aggregate at `govre=0`, rates identical to
+TRACKTIM(0) to the sample, where an additive tracking time would have
+had to drop every other trigger. TRACKTIM sets a *minimum*, the
+converter is already idle for longer at every rate here, and at the one
+rate where it would bite the hardware declines to lengthen the cycle.
+**The acquisition window never moved in either arm.**
+
+### It is not the ADC input network — the impedance sweep
+
+Two matched resistors from 3.3 V to GND with the tap on A2, giving
+1.65 V behind a chosen impedance. One binary for all four points, with
+A1 riding in every frame as a per-run reference:
+
+| A2 source | A2 \|peak\| | A2 z | A2 sd | A1 \|peak\|, same frames |
+|---|---|---|---|---|
+| 50 ohm | 0.50 | 10.4 | 0.768 | 4.70 |
+| 235 ohm | 0.48 | 11.3 | 0.684 | 4.69 |
+| 2.5k | 0.38 | 9.6 | 0.726 | 4.55 |
+| 5.5k | 0.37 | 8.9 | 1.094 | 4.49 |
+
+**A 110x change in source impedance moves it by 0.13 codes, downward.**
+The null is powered: A2's own `sd` rises to 1.094 at 5.5k, so the
+impedance does reach the converter and settling does begin to degrade —
+and the artifact is smallest exactly there.
+
+The slot control, because the sweep alone could not separate source from
+conversion position — `=<n>C` puts the channel under test in slot 0 with
+the sine in slot 1:
+
+| in slot 0 | \|peak\|, codes | z | control z | phase |
+|---|---|---|---|---|
+| A1, the DAC1 pin | **10.64** (10.55-10.80) | 73.4 | 3.0-3.5 | **486, all six** |
+| A2, 2.5k divider | **0.22** (0.19-0.27) | **2.0** | 2.4-3.7 | six different |
+| A2, 50 ohm divider | **0.26** (0.22-0.33) | **2.3** | 2.6-4.4 | three different |
+
+A2's z is *below its own control z* in both arms. **Not impedance, not
+conversion slot — only the pin.**
+
+Two corrections that came out of this. The DAC's output impedance is
+**unknown and was never matched** — the datasheet gives none and
+`docs/hardware.md` has a warning where a figure should be; what the
+sweep shows is that no source from 50 ohm to 5.5k produces the artifact
+while the DAC pin produces it at every one. And `ADC_MR.USEQ` **does not
+work on this part**: with `ADC_SEQR1` reading back exactly as written,
+every sample returns tag 0 and floating-pin values near full scale.
+
+### It is not the output bias — DACC_ACR
+
+Track B had never written `DACC_ACR`, so the output stage ran at minimum
+bias on every capture this project ever took, while the Arduino core
+sets the datasheet's characterisation condition. Three settings, three
+gaps, three reps, interleaved, one binary, readback asserted:
+
+| ACR | \|peak\| med | z med | A1 sd | peak phase |
+|---|---|---|---|---|
+| `00000000` reset | 6.12 | 52.3 | 0.893 | 188, consistently |
+| `0000010a` Arduino / datasheet | 8.70 | 62.5 | 0.937 | 378 or 486 |
+| `0000030f` maximum | 8.84 | 71.9 | 0.970 | 378, 486, 88 |
+
+**No bias setting removes it**, and the amplitude does not fall with
+more drive. The null is powered by the phase column: reset sits on 188
+every run and both raised settings move to 378 or 486, so the register
+reaches the analog path and changes the timing of what the ADC catches.
+That also means **the amplitude column is not a size comparison** — the
+sampling instant moved with the arm.
+
+Adopting the datasheet value is **spec conformance and Track A parity,
+not an issue #5 fix**, and should be decided on that.
+
+### The four generator arms
+
+`=<n>N` selects what `build_table()` puts on each DAC at runtime, in one
+image — because two builds would change the layout as well as the
+waveform. Twelve runs per arm, three gaps, interleaved:
+
+| arm | flat ch | \|peak\| | z | 2nd peak / 1st | control z |
+|---|---|---|---|---|---|
+| `normal` (sine on DAC0) | A1 | **2.41** | **17.2** | 0.29 | 3.1 |
+| `swapped` (sine on DAC1) | A0 | **1.54** | **15.8** | 0.84 | 3.1 |
+| `two-cycle` | A1 | 1.58 | 10.7 | 0.82 | 3.0 |
+| `all-DC` | A0 | 0.48 | 6.1 | 0.95 | 3.1 |
+
+**It is a DAC output pin, not DAC1** — put the DC on DAC0 and the
+displacement moves to A0 with it. **And it follows the wrap, not the
+waveform**: `two-cycle` halves the sine's period while leaving the table
+wrap at 512 and never once produced two events 256 apart. The wrap is a
+**PDC reload**.
+
+The same four arms re-run on a later image, and **the ordering inverts**:
+
+| arm | \|peak\| | z | control z | phase |
+|---|---|---|---|---|
+| `normal` | 5.34 | 40-42 | 2.8-3.5 | 192 |
+| `swapped` | **12.23** | 89-121 | 3.1-4.0 | 301 |
+| `two-cycle` | **14.71** | 128-149 | 2.9-3.6 | 150 |
+| `all-DC` | 8.26 | 75-125 | 2.8-3.4 | 280, 301 |
+
+`swapped` is now more than twice `normal`, and `two-cycle` — the weakest
+arm before — is the strongest. **No conclusion may rest on one arm being
+stronger than another unless both were measured in the same image.**
+
+**"A changing output is needed" is dead.** It rested on `all-DC` reading
+null, and the same board with the same jumper gives 0.43-0.52 on one
+image and 8.02-8.23 on the next. The reload alone produces the event.
+`docs/issue5-impact.md` no longer tells a user that an AWG holding DC is
+safe.
+
+One instrument correction from that arm: the second-peak ratio is a
+discriminator **only against a single event**. On the later image
+`all-DC` reads a ratio of 1.00 on a structure 60-150x the MAD, because
+there is more than one event per wrap.
+
+### What selects the state — the start gap and the image
+
+`=<us>K` sets the gap between the ADC start and the DAC start.
+Interleaved, five rounds, gap 0 in the rotation as the untreated arm:
+
+| gap, us | peak, codes (5 reps) | phases | median |
+|---|---|---|---|
+| 0 | +2.29 .. +2.37 | 272 | **+2.32** |
+| 620 | -12.41 .. +2.09 | 272, 386 | +2.00 |
+| 1085 | -12.84 .. -8.49 | 272, 386 | **-8.56** |
+| 1551 | -15.00 .. -1.89 | 164, 272 | **-14.91** |
+
+**Gap 0 is deterministic; every nonzero gap is not.** The busy-wait polls
+`micros()`, so a nonzero gap ends on a systick edge asynchronous to both
+timers — the lottery is something the wait *introduces*. A TC-derived
+gap should be deterministic at every value. **Do not sweep this with
+`micros()` and call the result a curve**: one unrepeated pass over
+sixteen gaps looked like a clean dose-response and the interleaved
+repeat shows a distribution.
+
+And the count of states is a property of the binary. Interleaved A/B
+with the flash **inside** the rotation, 16 runs per image:
+
+| image | states drawn in 16 runs |
+|---|---|
+| `c9efd53` | phase 58 at +34.8 (4), phase 172 at -13.1 (3), phase 386 at -2.4 (9) |
+| `f6bf644` | phase 272 at +2.4, **16 of 16** |
+
 ## The same shape on the host-fed ramp (issue #24)
 
 **One sample per DAC table wrap comes back low by ~17-30 ADC codes on
