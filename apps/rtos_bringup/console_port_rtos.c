@@ -12,12 +12,11 @@
  * console_port_stream_start() and nothing else - which is the
  * property the seam exists to give.
  *
- * console_write is NOT fputs(s, stdout). That was the shape on Track B
- * until issue #49, and it is what pulled findfp and therefore the heap
- * into an image whose call sites had all been migrated away from
- * printf. Writing to the UART directly is what keeps
- * tests/test_no_heap.py green here from the first commit rather than
- * after a migration.
+ * console_write is NOT fputs(s, stdout). That shape on Track B once
+ * pulled findfp and therefore the heap into an image whose call sites
+ * had all been migrated away from printf. Writing to the UART
+ * directly is what keeps tests/test_no_heap.py green here from the
+ * first commit rather than after a migration.
  */
 #include <stdbool.h>
 #include <stdint.h>
