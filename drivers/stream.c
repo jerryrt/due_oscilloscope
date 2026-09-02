@@ -42,8 +42,8 @@ static uint32_t refused;
 
 /* The framer - frame building, sequencing, overrun accounting, the
  * resync rule - is lib/due_shared/src/stream_core.c now, one copy for
- * both tracks (issue #14). Its view of the capture ring layout must be
- * this track's. */
+ * both tracks. Its view of the capture ring layout must be this
+ * track's. */
 _Static_assert(STREAM_NBUF == ACQ_NBUF &&
                STREAM_BUF_SAMPLES == ACQ_BUF_SAMPLES &&
                STREAM_HDR_BYTES == ACQ_HDR_BYTES &&
@@ -236,9 +236,10 @@ void stream_report(void)
 	/*
 	 * ADC_MR read back from the peripheral, not echoed from the
 	 * variable that was meant to reach it: the track/settling sweep
-	 * found neither TRACKTIM nor SETTLING moving issue #5, and a
-	 * negative result is only as good as the proof that the knob was
-	 * connected. TRACKTIM is bits 27:24, SETTLING 21:20.
+	 * found neither TRACKTIM nor SETTLING moving the DAC displacement
+	 * it was tested against, and a negative result is only as good as
+	 * the proof that the knob was connected. TRACKTIM is bits 27:24,
+	 * SETTLING 21:20.
 	 *
 	 * Raw, and sharing this printf, because the cost of a console
 	 * command is the bytes it puts on the UART and not the number of
