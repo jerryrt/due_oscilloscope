@@ -1292,23 +1292,6 @@ def playstat_rate(stats):
     return (stats[hi].consumed - stats[lo].consumed) * 1024 * 1e6 / dt
 
 
-def parse_play(text):
-    """Scrape the counters out of what `B` printed. Prefer play_counters().
-
-    This is no longer any function's fallback - `play_counters()` reads
-    the control channel or raises. What is left is the callers that
-    drain a console report for other reasons and read the counters out
-    of text they already have, which costs no extra `B`.
-
-    Reading counters by printing them costs 13.14 ms of blocked main
-    loop for `B` and 15.40 ms for `O`, which is invariant 8. A caller
-    that issues one of those *during* a run is measuring its own
-    instrument; `run_loop()` still does, and that is a separate question
-    from #51 q3 rather than something this docstring settles.
-    """
-    return PlayCounters(_counters(text, "play:"))
-
-
 # What counts as "the link is gone" and may invalidate it. Deliberately
 # not Exception: a KeyError or TypeError from the control path is a bug
 # in this file, and treating it as a transport failure would re-open a
@@ -2711,6 +2694,19 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
 
     tx = feeder.stop()
 
+    # Stop the device before reading its counters, for run_play()'s
+    # reason: the loop keeps capturing and playing after the feeder
+    # stops, so anything read in between describes ~2 s of deliberate
+    # starvation rather than the run, and reads downstream as a fault in
+    # the feed. This used to issue `B` here and stop afterwards.
+    board.cmd("0")
+    time.sleep(0.2)
+
+    # Over the control channel. As `B` this was 13.14 ms of blocked main
+    # loop taken while the loop was still running - the instrument
+    # inside its own measurement, which is invariant 8.
+    play = play_counters(board)
+
     board.cmd("B")
     time.sleep(0.5)
     report = b""
@@ -2724,7 +2720,6 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
                     report += d
             except OSError:
                 pass
-    board.cmd("0")
     board.close_native(fd)
 
     buf = b"".join(chunks)
@@ -2738,7 +2733,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
         stream=ps, elapsed_s=elapsed, host_tx_bytes=tx, host_rx_bytes=len(buf),
         dac_sps=dac_sps, adc_hz=adc_hz, channels=channels, tone_hz=tone_hz,
         refused="refused" in text, console=text, report=rep,
-        play=parse_play(rep), bench=parse_bench(rep),
+        play=play, bench=parse_bench(rep),
         rt_note=feeder.note, stale_bytes=stale, retunes=feeder.retunes,
         settle_frames=settle_bytes // FRAME_BYTES)
 
