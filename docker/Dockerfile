@@ -97,6 +97,29 @@ ARG LIBC6_DEV_VERSION=2.39-0ubuntu8.8
 # venv below.
 ARG PYTHON3_VENV_VERSION=3.12.3-0ubuntu2.1
 
+# THE EXTERNAL ANALYSERS, and they are pinned for a second reason on top
+# of the one every other line here is pinned for. An unpinned analyser
+# breaks "same Dockerfile, same image"; it also makes a *finding set*
+# unreproducible, because a different version reports a different set and
+# nobody can then tell a new defect from a new check. A backlog that
+# moves under the reader is a backlog nobody reads.
+#
+# `clang` is here because `clang-tidy` is a clang front end: the builtin
+# headers it parses against - stddef.h, stdint.h, the ones the freestanding
+# target needs - ship with clang-18, and clang-tidy without them reports
+# a wall of missing includes instead of findings. Installing it is NOT
+# adopting clang as a firmware compiler; that is a port (target triple, a
+# sysroot at the GCC toolchain's newlib and libgcc, linking through the
+# GCC driver) and is a later phase.
+#
+# `clang` and `clang-tidy` are the default-version metapackages, so the
+# version below says which LLVM series the image carries and the snapshot
+# fixes the point release underneath it, exactly as it does for every
+# other package here.
+ARG CPPCHECK_VERSION=2.13.0-2ubuntu3
+ARG CLANG_VERSION=1:18.0-59~exp2
+ARG CLANG_TIDY_VERSION=1:18.0-59~exp2
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -123,7 +146,10 @@ RUN set -eux; \
         "bzip2=${BZIP2_VERSION}" \
         "gcc=${GCC_VERSION}" \
         "libc6-dev=${LIBC6_DEV_VERSION}" \
-        "python3-venv=${PYTHON3_VENV_VERSION}"; \
+        "python3-venv=${PYTHON3_VENV_VERSION}" \
+        "cppcheck=${CPPCHECK_VERSION}" \
+        "clang=${CLANG_VERSION}" \
+        "clang-tidy=${CLANG_TIDY_VERSION}"; \
     rm -rf /var/lib/apt/lists/*
 
 # /opt/xpack-arm-none-eabi-gcc-*/bin is already a Linux search pattern in
