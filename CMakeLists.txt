@@ -31,18 +31,35 @@ set(DEVICE ${CMSIS}/Device/ATMEL/sam3xa)
 # unrelated. The container never passes it.
 #
 #     -DFIRMWARE_WERROR=OFF        stop promoting warnings to errors
+#     -DFIRMWARE_ANALYZER=ON       GCC's symbolic execution pass
 #
-# Directory-wide, so every track gets it - except that Track A's two
+# Directory-wide, so every track gets them - except that Track A's two
 # targets carry `-w`, which inhibits every warning and disarms -Werror
-# with it. That is a capability gap with a cause and a cost, both
-# recorded at the `-w` in cmake/track_a.cmake.
+# and the analyser with it. That is a capability gap with a cause and a
+# cost, both recorded at the `-w` in cmake/track_a.cmake.
 option(FIRMWARE_WERROR      "Treat firmware compiler warnings as errors" ON)
+option(FIRMWARE_ANALYZER    "Run GCC's -fanalyzer over the C sources"    OFF)
 
+# The analyser is a pass somebody asks for, in a build directory of its
+# own, and it REPORTS. It is expensive and noisy by design, and one new
+# diagnostic that stopped every bench from building would be the fastest
+# route to having the whole thing switched off. So -Werror stands down
+# where -fanalyzer stands up. Nothing is silenced either way: a finding
+# is read, and answered or explained.
+set(_fw_werror ${FIRMWARE_WERROR})
+if(FIRMWARE_ANALYZER AND _fw_werror)
+    set(_fw_werror OFF)
+    message(STATUS "diagnostics:   -fanalyzer on, so -Werror is off here")
+endif()
+
+# C only. GCC's analyser is a C pass; the Arduino core Track A compiles
+# is C++, where it costs time and reports nothing.
 add_compile_options(
     -mcpu=cortex-m3 -mthumb
     -ffunction-sections -fdata-sections
     -Wall -Wextra
-    $<$<BOOL:${FIRMWARE_WERROR}>:-Werror>
+    $<$<BOOL:${_fw_werror}>:-Werror>
+    $<$<AND:$<BOOL:${FIRMWARE_ANALYZER}>,$<COMPILE_LANGUAGE:C>>:-fanalyzer>
     $<$<CONFIG:Debug>:-Og> $<$<CONFIG:Debug>:-g3>
     $<$<CONFIG:Release>:-Os>
 )
