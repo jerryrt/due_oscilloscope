@@ -35,10 +35,14 @@ set(DEVICE ${CMSIS}/Device/ATMEL/sam3xa)
 #     -DFIRMWARE_STACK_USAGE=ON    a .su per object, read by
 #                                  tools/stack_frames.py
 #
-# Directory-wide, so every track gets them - except that Track A's two
-# targets carry `-w`, which inhibits every warning and disarms -Werror
-# and the analyser with it. That is a capability gap with a cause and a
-# cost, both recorded at the `-w` in cmake/track_a.cmake.
+# Directory-wide, so every track gets them. Track A's vendored core
+# carries `-w` and is exempt by design; Track A's own code is not, and
+# the reason that distinction has to be made by target rather than by
+# directory is recorded at the `-w` in cmake/track_a.cmake.
+#
+# -fanalyzer is gated on COMPILE_LANGUAGE:C, so it sees the C sources
+# and never the C++ ones. On Track A that is the shared library and not
+# the sketch.
 option(FIRMWARE_WERROR      "Treat firmware compiler warnings as errors" ON)
 option(FIRMWARE_ANALYZER    "Run GCC's -fanalyzer over the C sources"    OFF)
 option(FIRMWARE_STACK_USAGE "Emit per-function stack frame sizes (.su)"  OFF)
