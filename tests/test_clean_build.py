@@ -251,7 +251,12 @@ def _project_py():
 
 #: Files permitted to spawn a build tool directly. Everything else that
 #: reaches one, at any depth, is a build path that skipped the clean.
-ALLOWED = {"host/measure.py", "tools/toolchain.py", "tools/flash.py"}
+#: `tools/reproducible.py` builds twice on purpose and compares the
+#: bytes, and it goes through the same enforced target every other
+#: caller does - its whole subject is that a build is what its source
+#: says it is, so a stale cache is the last thing it can tolerate.
+ALLOWED = {"host/measure.py", "tools/toolchain.py", "tools/flash.py",
+           "tools/reproducible.py"}
 
 _SPAWN = re.compile(r"subprocess\.(run|call|check_call|check_output|Popen)"
                     r"\(", re.S)
