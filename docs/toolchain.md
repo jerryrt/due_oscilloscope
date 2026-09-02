@@ -1,12 +1,27 @@
 # Toolchain
 
-Two independent toolchains, with different jobs. They do **not** share
-source, and no attempt should be made to unify them.
+Three tracks, one compiler, one build system. `arm-none-eabi-gcc` and
+CMake build all of them, and `arduino-cli` is invoked by nothing.
 
-| Track | Build | Purpose |
+| Track | Target | Purpose |
 |---|---|---|
-| A | `arduino-cli` | Reference oracle. Known-good behaviour to compare against |
-| B | `arm-none-eabi-gcc` + CMake | The actual project. Bare metal and RTOS |
+| A | `firmware_track_a` in `build-a` | Reference oracle. Known-good behaviour to compare against |
+| B | `firmware` in `build` | The actual project. Bare metal |
+| C | `firmware_rtos` in `build-c` | The RTOS variant |
+
+Track A compiles the Arduino core *sources* with this project's own
+toolchain; the two build properties that used to be a wrapper's job —
+`build.f_cpu` and `build.ldscript` — are lines in `cmake/track_a.cmake`,
+so neither can be silently forgotten.
+
+**What the tracks share is the wire contract, and only that.** The
+frame and playback-status layouts, the CRC, the control protocol and
+its parser, the console surface and the stream framer live in
+`lib/due_shared/src` and every build compiles them. Register
+programming stays independent per track, which is what makes a
+behavioural divergence point at one of them. `main()` is shared by
+nothing. Invariant 3 in `CLAUDE.md` is the rule; `docs/shared-source.md`
+is the reasoning.
 
 ## Why two
 
@@ -93,7 +108,17 @@ End-to-end flash verified: `sketches/blink` compiles (10692 bytes) and
 uploads over the programming port. `bossac` reports Atmel SMART device
 `0x285e0a60`, writes 47 pages, sets the boot flash flag and resets.
 
-## Track A — arduino-cli
+## arduino-cli — the core sources, not a build path
+
+**`arduino-cli` does not build Track A and is invoked by nothing in
+this repository.** What it is still installed for is what it *puts on
+disk*: the `arduino:sam` core sources that `cmake/track_a.cmake`
+compiles, and `bossac`. `toolchains.json` resolves both as
+`arduino_sam_core` and `bossac`.
+
+The `compile`/`upload` commands below remain useful for a bring-up
+sketch such as `sketches/blink`. They are not how Track A firmware is
+built — that is `firmware_track_a` in `build-a`, above.
 
 ### Install
 
@@ -392,3 +417,82 @@ cmake --build build
 cmake --build build --target tools     # what resolved
 cmake --build build --target flash     # Track B over the programming port
 ```
+
+---
+
+## A second code generator on one bench
+
+The project has **two** code generators, not three. ARM GNU 14.3.1 and
+Debian 14.2.1 generate the same instructions for this source; xPack
+15.2.1 does not. Three installs, two draws.
+
+That matters because the shared-source oracle is a codegen comparison.
+Track A against Track B has no oracle power on `lib/due_shared/src` —
+it is one source compiled once — so the only thing left that can
+disagree about shared source is a second code generator. For a while
+that rested on a single bench happening to be on xPack, which is a
+single point of failure nobody chose.
+
+**A bench can host both.** The second toolchain is installed
+**deliberately outside every `toolchains.json` search pattern** and
+selected per build:
+
+```sh
+# linux-x1: the default stays Debian 14.2.1 from /usr/bin
+cmake -B build-xpack \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DARM_TOOLCHAIN_DIR=$HOME/toolchains-optin/xpack-arm-none-eabi-gcc-15.2.1-1.1/bin
+```
+
+`windows-desk` uses the same arrangement at `C:/toolchains-optin/`.
+
+**Outside the globs is the whole design.** The Linux patterns include
+`{repo}/tools/xpack-arm-none-eabi-gcc-*/bin` and
+`/opt/xpack-arm-none-eabi-gcc-*/bin`, both searched ahead of
+`/usr/bin`. Unpacking xPack into either would silently make it the
+default and **replace** the bench's generator rather than add one — the
+opposite of what a second toolchain is for, and it would do it without
+a diagnostic. A `toolchains.local.json` entry has the same effect,
+since a local entry prepends. Opt-in per build is the only form that
+adds a draw without removing one.
+
+### What it buys, measured
+
+Track B at `766c951` on `linux-x1`, one board, one source tree, the
+compiler the only variable:
+
+| | mnemonics | instructions |
+|---|---|---|
+| Debian 14.2.1 (default) | `759d3fc4fd2129b4` | 10,510 |
+| xPack 15.2.1 (opt-in) | `ccfad36a8a72516b` | 10,345 |
+
+Shared source only — the oracle question:
+
+```
+65 functions shared      46 identical      19 differing
+```
+
+The 19: `bench_push_in`, `con_ch`, `con_hex32`, `con_pad`, `con_u32`,
+`con_u32w`, `console_cmd_loop`, `console_cmd_rate_sweep`,
+`console_cmd_stream`, `console_gen_report`, `ctl_bleed_describe`,
+`ctl_error`, `ctl_have`, `dma_seed_payloads`, `frame_crc32_update`,
+`gen_updates_per_cycle`, `stream_bench_stop`, `stream_core_service`,
+`stream_core_start`.
+
+**So one bench now reproduces what previously took two.** The
+cross-bench comparison that established the oracle was 18 of 63 on
+shared source; this is 19 of 65 from two toolchains on one machine.
+
+**Control, because a fingerprint claim here was wrong once for exactly
+this reason.** The same xPack configuration built in a directory with a
+much longer path gives `ccfad36a8a72516b` / 10,345 — identical. Track B
+embeds no absolute path, so it is not exposed to what Track C is;
+running the control costs one build and is the difference between a
+hash and a hash that means something.
+
+**A whole-image hash cannot answer this question** and is not the
+number to quote. Invariant 3 requires the per-track code to differ, so
+two images differ for reasons that have nothing to do with the code
+generator. `tools/image_mnemonics.py --shared-source` is the form that
+restricts to `lib/due_shared`.
