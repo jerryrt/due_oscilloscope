@@ -422,9 +422,21 @@ cmake --build build --target flash     # Track B over the programming port
 
 ## A second code generator on one bench
 
-The project has **two** code generators, not three. ARM GNU 14.3.1 and
-Debian 14.2.1 generate the same instructions for this source; xPack
-15.2.1 does not. Three installs, two draws.
+The project has three installs of `arm-none-eabi-gcc` and fewer than
+three independent draws from them. `linux-x1` is on Debian 14.2.1,
+`windows-desk` on ARM GNU 14.3.1, `mac-bench` on xPack 15.2.1, and on
+issue #5's site sets the first two behave alike where the third does
+not - Jaccard 0.862 across those two benches against 0.154 across
+compilers on one board.
+
+**How close the first two are has not been measured directly, and one
+figure says "not identical".** Track B at `766c951` is 10,510
+instructions here and 10,342 on `windows-desk`. That gap may be
+`newlib`/`libgcc`, which differ between packages without any of our
+code differing - the two xPack 15.2.1 builds are the worked example,
+byte-identical in every function across two host OSes. It is settled by
+comparing the shared-source subset per function, not by comparing whole
+images.
 
 That matters because the shared-source oracle is a codegen comparison.
 Track A against Track B has no oracle power on `lib/due_shared/src` —
@@ -480,9 +492,12 @@ The 19: `bench_push_in`, `con_ch`, `con_hex32`, `con_pad`, `con_u32`,
 `gen_updates_per_cycle`, `stream_bench_stop`, `stream_core_service`,
 `stream_core_start`.
 
-**So one bench now reproduces what previously took two.** The
-cross-bench comparison that established the oracle was 18 of 63 on
-shared source; this is 19 of 65 from two toolchains on one machine.
+**So one bench can now take a two-generator comparison alone**, without
+a second machine and without the host, board and bench varying
+alongside the compiler. The shared-source subset here is
+`05fae44f8c761b60`, 65 functions and 2,657 instructions, under Debian
+14.2.1 - published so another bench can diff per function rather than
+compare totals.
 
 **Control, because a fingerprint claim here was wrong once for exactly
 this reason.** The same xPack configuration built in a directory with a
