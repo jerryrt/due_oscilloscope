@@ -71,9 +71,9 @@
  * CTL_OP_IDENTITY sends the numbers, the `v` console line sends the
  * string.
  */
-#define FW__STR2(x) #x
-#define FW__STR(x)  FW__STR2(x)
-#define FW_VERSION_STR  FW__STR(FW_VERSION_MAJOR) "." FW__STR(FW_VERSION_MINOR) "." FW__STR(FW_VERSION_PATCH)
+#define FW_STR_2(x) #x
+#define FW_STR_(x)  FW_STR_2(x)
+#define FW_VERSION_STR  FW_STR_(FW_VERSION_MAJOR) "." FW_STR_(FW_VERSION_MINOR) "." FW_STR_(FW_VERSION_PATCH)
 
 /* The identity line itself is emitted key by key in console_identity()
  * (console.c), not from a format macro here - keep it that way, or an
