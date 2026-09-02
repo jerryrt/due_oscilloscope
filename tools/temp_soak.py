@@ -12,8 +12,8 @@ flash and are kept rather than trimmed, because where the warm-up ends
 is itself part of the answer.
 """
 import json, os, sys, time
-REPO = r"C:\Jerry.Projects\due_oscilloscope"
-sys.path.insert(0, os.path.join(REPO, "host"))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure
 
 MINUTES = float(sys.argv[1]) if len(sys.argv) > 1 else 30.0
@@ -25,7 +25,7 @@ EVERY_S = 20.0
 OUT_NAME = sys.argv[2] if len(sys.argv) > 2 else "temp-soak.jsonl"
 
 b = measure.Board(settle=3.0)
-out = os.path.join(REPO, "records", OUT_NAME)
+out = os.path.join(ROOT, "records", OUT_NAME)
 n = 0
 # Append and flush per reading rather than writing at the end. The run
 # this is for is hours long, and a file that only exists on a clean exit

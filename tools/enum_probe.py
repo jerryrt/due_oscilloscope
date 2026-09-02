@@ -9,8 +9,8 @@ re-flashing - that is the evidence the first two occurrences did not
 produce.
 """
 import os, sys, time
-REPO = r"C:\Jerry.Projects\due_oscilloscope"
-sys.path.insert(0, os.path.join(REPO, "host"))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 12
