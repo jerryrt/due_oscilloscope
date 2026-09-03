@@ -120,6 +120,19 @@ ARG CPPCHECK_VERSION=2.13.0-2ubuntu3
 ARG CLANG_VERSION=1:18.0-59~exp2
 ARG CLANG_TIDY_VERSION=1:18.0-59~exp2
 
+# libFuzzer, and the sanitizer runtimes clang links against. NOT part of
+# the clang metapackage: `clang -fsanitize=fuzzer` without this fails at
+# the LINK with `cannot find libclang_rt.fuzzer-x86_64.a`, which names a
+# path rather than a package and reads as a broken toolchain. The
+# version is the real one - the metapackages above carry the 18.0-59
+# series number and this carries the point release underneath it.
+#
+# gcc's own libasan and libubsan need no line here: libgcc-13-dev pulls
+# them, and docker/run-tests.sh's tier builds its native harnesses with
+# gcc. This package is what makes a libFuzzer CAMPAIGN possible, which
+# the tier deliberately does not run - docker/run-fuzz.sh does.
+ARG LIBCLANG_RT_VERSION=1:18.1.3-1ubuntu1
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -149,7 +162,8 @@ RUN set -eux; \
         "python3-venv=${PYTHON3_VENV_VERSION}" \
         "cppcheck=${CPPCHECK_VERSION}" \
         "clang=${CLANG_VERSION}" \
-        "clang-tidy=${CLANG_TIDY_VERSION}"; \
+        "clang-tidy=${CLANG_TIDY_VERSION}" \
+        "libclang-rt-18-dev=${LIBCLANG_RT_VERSION}"; \
     rm -rf /var/lib/apt/lists/*
 
 # /opt/xpack-arm-none-eabi-gcc-*/bin is already a Linux search pattern in
