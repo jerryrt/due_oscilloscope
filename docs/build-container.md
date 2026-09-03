@@ -50,7 +50,7 @@ expose, never its justification.
 
 | reason | the evidence, checked in this tree |
 |---|---|
-| **There is no CI, and no analysis beyond warnings.** No workflow directory, no `-Werror`, no `-fanalyzer`, no `cppcheck`, `clang-tidy`, `-fstack-usage` or sanitizer anywhere. `-Wall -Wextra` in `CMakeLists.txt` is the entire surface | a pinned image is what makes any of it runnable on every bench at once |
+| **The checks run from one entry point.** `docker/run-ci.sh` builds both tracks, runs the board-free tier, proves the board absent, checks byte reproducibility, runs `cppcheck`, `clang-tidy` and a deterministic fuzz pass. Five states in one column - PASS, FINDINGS, FAIL, **DID NOT RUN**, NOT SELECTED - and an exit code a classifier does not recognise is DID NOT RUN, never PASS | a pinned image is what makes any of it runnable on every bench at once, and one entry point is what makes it get run |
 | **Build provenance exists as fields and is empty as data.** #59: of 6,658 stored rows, 1 carries a layout and 8 carry a compiler; `fw_layout` is present on 64 rows and null on all 64 | a commit read off the board, plus an image digest, makes the field mechanical instead of remembered |
 | **The board-free tier has never run without a board.** `docs/testing.md` says the `board` marker is verified two ways and both are static | a container is the dynamic check, and the marker is what the whole tier rests on |
 
