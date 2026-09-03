@@ -1082,12 +1082,12 @@ A-B-A on a single board.
 14.3.1) ran one pinned commit and matched on **22 of 31 sites with 0
 of 31 of a translated prediction**, p about 1e-32.
 
-*Not the layout.* Those two images have **different** layouts
-(`c4cd8445987b5261` against `be84df15f77a3e36`), and four builds of
-that one commit produced four layouts - two of them the same compiler
-version on two host OSes. Layout is not even a function of (source,
-compiler version), so "put two benches on one layout" may not be
-reachable by installing a matching toolchain.
+*Not the layout.* Those two images have **different** address maps, and
+four builds of that one commit produced four - two of them the same
+compiler version on two host OSes, differing in the `newlib`/`libgcc`
+archives their packages bundle. Layout is not even a function of
+(source, compiler version), so "put two benches on one layout" may not
+be reachable by installing a matching toolchain.
 
 *The code generator.* One board, one session, one commit, two images
 differing only in which arm-gcc built them, A-B-A with 72 runs a
@@ -1192,13 +1192,23 @@ defined-symbol address map. Whether two images run the same
 *instructions* is a third question and `tools/image_mnemonics.py` is
 the only thing that answers it, which is what issue #5 needs.
 
-**Read `symbols` and `addresses` across benches, not `layout`.**
-`layout` hashes `nm -n` output whole, 8 addresses in the image carry
-more than one symbol - most of them weak aliases for
-`Default_Handler` - and the order within a tie is the tool's rather
-than the linker's. One ELF read by two binutils builds therefore hashes
-to two `layout` values while `symbols` and `addresses` agree exactly.
-Issue #63 is open on it; do not close it by quietly changing the hash.
+**`layout` compares across benches, and keeping it comparable took
+work.** 8 addresses in the image carry more than one symbol - most of
+them weak aliases for `Default_Handler` - and `nm` emits a tie in
+whatever order it pleases, so a hash over its raw output is a hash of
+the reader as much as of the file: one ELF read by Debian's binutils
+and by xPack's gave two `layout` values while `symbols` and `addresses`
+agreed exactly. `image_fingerprint.symbol_table` sorts on the whole
+record - address, name and type - before anything is hashed, and a key
+covering less than the whole record puts the defect straight back.
+**A `layout` hash is comparable only with one taken under that sort.**
+`records/flash-log.jsonl` spans the change, so a stored `layout` older
+than it answers about the bench's `nm` and not about the image; no
+figure quoted anywhere else survived it.
+
+The general form is worth more than the fix: **a hash taken over a
+tool's output inherits every choice that tool made.** Ask what the tool
+was free to decide before treating its output as the artifact.
 
 `tools/flash.py` logs `cc` and `layout` with every flash, and
 `provenance.run_fields()` carries `fw_cc`/`fw_layout` onto every row a
@@ -1435,10 +1445,8 @@ compiler for Track A.** GCC 4.8.3 was the only other code generator here
 and #5's severity is a lottery over code layout, so it looked like a
 reason to keep the old path. It is not - three benches on one xPack
 release already produce three different layouts, and the same release on
-two hosts produced two (`be2de31867bfca8a` here against
-`a49d8fb51ba4c391` on windows-desk, with `text`/`data`/`bss` identical
-to the byte). Layout diversity is not scarce and did not need a 2014
-compiler.
+two hosts produced two, with `text`/`data`/`bss` identical to the byte.
+Layout diversity is not scarce and did not need a 2014 compiler.
 
 Two things that cost real time there and are not Track A's alone:
 `include_directories()` in CMake applies to every target defined after

@@ -9,11 +9,11 @@ the right instrument for "is this the same image". It is the wrong one
 for "does this image run the same instructions", and #5 needs the
 second. Measured on 2026-08-31, one commit, three benches:
 
-    linux-x1      GCC 14.2.1 Debian   layout c4cd8445987b5261
-    windows-desk  ARM GNU 14.3.1      layout be84df15f77a3e36
-    windows-desk  xPack 15.2.1        layout a49d8fb51ba4c391
+    linux-x1      GCC 14.2.1 Debian
+    windows-desk  ARM GNU 14.3.1
+    windows-desk  xPack 15.2.1
 
-All three layouts differ. The first two produce **identical #5 site
+Three different address maps. The first two produce **identical #5 site
 sets** and the third does not, so the site set is not a function of the
 layout. Two builds can disagree about every address and agree about
 every instruction; that is the common case across a compiler point

@@ -172,11 +172,12 @@ def layout_parts(elf: str) -> dict:
     """`layout`, split into the two things that can differ inside it.
 
     A single hash says two images disagree and never says how, and that
-    is the whole question when two benches compare. Measured on
-    `3aadf90` with xPack 15.2.1 on two benches: identical `text`, `data`
-    and `bss` - 39212/32/72992 to the byte - and different `layout`.
-    That is either the same symbols at different addresses, or different
-    symbols; sizes cannot tell them apart and neither can one hash.
+    is the whole question when two benches compare. Two builds can agree
+    on `text`, `data` and `bss` to the byte - 39212/32/72992, measured
+    on `3aadf90` with xPack 15.2.1 on two benches - and still disagree
+    on `layout`. That is either the same symbols at different addresses
+    or different symbols; sizes cannot tell them apart and neither can
+    one hash.
 
     So hash them separately:
 
