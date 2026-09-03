@@ -32,11 +32,12 @@ images run the same *instructions* is a third question, and
 
     python3 tools/image_fingerprint.py build/baremetal_bringup.elf
 
-Prints one JSON object. Across benches compare `cc`, `text`, and
-`symbols`/`addresses` rather than `layout` - `layout_parts` says why
-`layout` is partly a property of the reader's `nm`. If they differ, the
-two boards were not running the same image however well the commit
-matched.
+Prints one JSON object. Every field in it is a property of the ELF and
+not of the tools that read it, so two benches compare them directly:
+`cc`, `text` and `layout` first, and `symbols`/`addresses` when
+`layout` disagrees and the question is which half moved. If they
+differ, the two boards were not running the same image however well the
+commit matched.
 """
 from __future__ import annotations
 
@@ -114,19 +115,57 @@ def sizes(elf: str) -> dict:
     return {"text": int(text), "data": int(data), "bss": int(bss)}
 
 
-def layout(elf: str) -> str:
-    """Hash of the defined-symbol address map.
+def symbol_table(elf: str) -> list:
+    """The defined symbols as `(address, name, type)`, in a total order.
 
-    `-n` sorts by address and `--defined-only` drops undefined symbols,
-    so this is where the code generator put things and nothing else.
+    `--defined-only` drops the undefined ones, so what is left is where
+    the code generator put things and nothing else.
 
-    One hash over both columns, which is what makes it cheap and what
-    makes it fragile across benches - see `layout_parts`, which splits
-    it and is the pair to compare when the two benches' binutils are not
-    the same build.
+    **Sorted here, and on every field, because `nm`'s own order is not a
+    property of the image.** Addresses are shared - 8 of them in a
+    Track B image, most of those weak aliases for `Default_Handler` at
+    one address - and the order within a tie is whatever the tool
+    emitted. Two binutils builds reading one ELF emit those ties
+    differently, so a hash taken over `nm -n` output is partly a hash of
+    the reader rather than of the file.
+
+    Sorting on the whole tuple is what makes the order total: the only
+    records that can tie are records equal in all three fields, and a
+    tie between identical records cannot change what is hashed. A key
+    covering less than the whole record - address alone, or address and
+    name - leaves the residue to input order and is this defect again.
     """
     out = _run([_tool("arm-none-eabi-nm"), "-n", "--defined-only", elf])
-    return hashlib.sha256(out.encode()).hexdigest()[:16]
+    table = []
+    for line in out.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) != 3:
+            continue
+        addr, kind, name = parts
+        try:
+            table.append((int(addr, 16), name, kind))
+        except ValueError:
+            continue
+    return sorted(table)
+
+
+def _hash(lines) -> str:
+    return hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16]
+
+
+def layout(elf: str) -> str:
+    """Hash of the defined-symbol address map: one image, one value.
+
+    Both columns in one hash, which is what makes it cheap. It is a
+    property of the image alone - `symbol_table` holds that and says
+    what it costs - so two benches may compare it directly whatever
+    binutils each of them read the ELF with.
+
+    `layout_parts` splits it into the two things that can differ inside
+    it, which is what a disagreement then needs.
+    """
+    return _hash("%08x %s %s" % (addr, kind, name)
+                 for addr, name, kind in symbol_table(elf))
 
 
 def layout_parts(elf: str) -> dict:
@@ -143,35 +182,17 @@ def layout_parts(elf: str) -> dict:
 
     `symbols`   the sorted symbol names alone. Differs when the two
                 builds do not contain the same things.
-    `addresses` the address column alone, in order. Differs when the
-                same things were put in different places.
+    `addresses` the address column alone, in address order. Differs when
+                the same things were put in different places.
 
-    **A caveat this exposed and cannot fix, and it reaches `layout`.**
-    `nm -n` sorts by address, and 8 addresses in this image carry more
-    than one symbol - most of them share `Default_Handler`'s, since
-    every unused vector is a weak alias for it. The order *within* a tie
-    is the tool's, not the linker's, and two binutils builds order it
-    differently: one ELF read by two of them hashes to two `layout`
-    values while `symbols` and `addresses` agree exactly. So `layout` is
-    a property of the reader as well as of the image, and the pair below
-    is what a cross-bench comparison should read. Which of the two
-    orderings `layout` should adopt is an open decision, so do not
-    quietly settle it by changing this hash; `symbols` is sorted
-    explicitly here and does not inherit the tie at all.
+    Both read the table `layout` hashes, so the three answer one
+    question about one ordering and cannot drift apart.
     """
-    out = _run([_tool("arm-none-eabi-nm"), "-n", "--defined-only", elf])
-    names, addrs = [], []
-    for line in out.splitlines():
-        parts = line.split()
-        if len(parts) >= 3:
-            addrs.append(parts[0])
-            names.append(parts[2])
-    def h(x):
-        return hashlib.sha256("\n".join(x).encode()).hexdigest()[:16]
-    return {"symbols": h(sorted(names)),
-            "addresses": h(addrs),
-            "n_symbols": len(names),
-            "n_addresses": len(set(addrs))}
+    table = symbol_table(elf)
+    return {"symbols": _hash(sorted(name for _, name, _ in table)),
+            "addresses": _hash("%08x" % addr for addr, _, _ in table),
+            "n_symbols": len(table),
+            "n_addresses": len({addr for addr, _, _ in table})}
 
 
 def repo_rev(elf: str) -> str:

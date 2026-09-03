@@ -694,10 +694,11 @@ def _image_identity(binary) -> dict:
     the placement is what moved, and the code generator is the one these
     benches have to detect. `cc` and `layout` split it.
 
-    Read `layout` against another bench with the caveat in
-    `image_fingerprint.layout_parts`: it hashes `nm -n` output, ties in
-    the address column are broken by the tool rather than by the linker,
-    and two binutils builds therefore hash one ELF two ways.
+    Both come from `image_fingerprint`, which is the one definition of
+    either: a second copy of the layout hash here would be a second
+    answer to "is this the same image", and the field exists to have
+    one. `layout` compares directly against another bench's, whatever
+    binutils each of them read the ELF with.
 
     Never raises, and returns the keys with null values when it cannot
     read them - a bench with no binutils on the path still gets a log

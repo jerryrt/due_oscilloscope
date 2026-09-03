@@ -368,3 +368,113 @@ def test_a_board_already_in_the_bootloader_is_not_diagnosed(monkeypatch):
         "the fallback no longer excludes a board that was already in "
         "the bootloader; it will report 'nothing on the bus moved' "
         "about a board that reset perfectly")
+
+
+# ------------------------------------------ the layout field in the log
+#
+# Every flash logs `layout`, and the field's whole job is to say whether
+# two benches ran the same image. It can only do that if it is a
+# property of the ELF. `nm` emits symbols that share an address in
+# whatever order it pleases - 8 addresses in a Track B image carry more
+# than one symbol, most of them weak aliases for `Default_Handler` - so
+# a hash over its raw output is partly a hash of the reader, and one ELF
+# read by Debian's binutils and by xPack's hashed two ways.
+
+import image_fingerprint  # noqa: E402
+
+#: One symbol table, as `nm --defined-only` prints it. Two addresses
+#: carry more than one symbol, and one of those pairs differs only in
+#: the type column - so a key of (address, name) is not total over it.
+_TIED = [
+    "00080000 T exception_table",
+    "00080000 T _sfixed",
+    "00080000 W Default_Handler",
+    "000800f4 t h_fws",
+    "20070000 D _sdata",
+    "20070000 B _sdata",
+    "20071000 B ring",
+]
+
+
+def _layout(monkeypatch, lines):
+    monkeypatch.setattr(image_fingerprint, "_run",
+                        lambda argv: "\n".join(lines))
+    return image_fingerprint.layout("no-such.elf")
+
+
+def _parts(monkeypatch, lines):
+    monkeypatch.setattr(image_fingerprint, "_run",
+                        lambda argv: "\n".join(lines))
+    return image_fingerprint.layout_parts("no-such.elf")
+
+
+def test_one_symbol_table_hashes_one_way_however_it_arrived(monkeypatch):
+    """The same records in a different order are the same image.
+
+    Reversing each tie group is what the two binutils builds actually
+    differ by; the full reversal is the stronger statement, that no
+    ordering of these records reaches a second hash.
+    """
+    ties_swapped = [_TIED[2], _TIED[1], _TIED[0], _TIED[3],
+                    _TIED[5], _TIED[4], _TIED[6]]
+
+    first = _layout(monkeypatch, _TIED)
+    assert _layout(monkeypatch, ties_swapped) == first, \
+        "symbols sharing an address hash differently depending on order"
+    assert _layout(monkeypatch, list(reversed(_TIED))) == first
+    assert _layout(monkeypatch, sorted(_TIED)) == first
+
+
+def test_a_moved_symbol_still_moves_the_hash(monkeypatch):
+    """The guard above passes trivially if the hash stops watching.
+
+    An order-independent hash that is also content-independent is worse
+    than none, so hold the three ways an image can actually differ:
+    an address, a name, and the type column that (address, name) alone
+    would drop.
+    """
+    first = _layout(monkeypatch, _TIED)
+    moved = list(_TIED)
+    moved[6] = "20071004 B ring"
+    renamed = list(_TIED)
+    renamed[3] = "000800f4 t h_reset"
+    retyped = list(_TIED)
+    retyped[2] = "00080000 T Default_Handler"
+
+    assert _layout(monkeypatch, moved) != first, "a moved symbol went unseen"
+    assert _layout(monkeypatch, renamed) != first
+    assert _layout(monkeypatch, retyped) != first, \
+        "the type column is not hashed, so the sort key is not total"
+
+
+def test_the_parts_read_the_table_the_layout_hashes(monkeypatch):
+    """`symbols` and `addresses` split `layout`, so they share its order.
+
+    Two readers of `nm` in one file is how the split acquires a
+    disagreement of its own.
+    """
+    parts = _parts(monkeypatch, _TIED)
+    assert parts["n_symbols"] == len(_TIED)
+    assert parts["n_addresses"] == 4
+    assert _parts(monkeypatch, list(reversed(_TIED))) == parts
+
+
+def test_the_flash_log_does_not_compute_a_layout_of_its_own(tmp_path,
+                                                            monkeypatch):
+    """One definition, or two answers to "is this the same image".
+
+    `tools/flash.py` writes the field and `image_fingerprint` defines
+    it; a copy there would drift from the one the fingerprint tool
+    prints, and the two are compared across benches by hand.
+    """
+    binary = tmp_path / "baremetal_bringup.bin"
+    binary.write_bytes(b"\x00")
+    (tmp_path / "baremetal_bringup.elf").write_bytes(b"\x7fELF")
+
+    monkeypatch.setattr(image_fingerprint, "compiler",
+                        lambda elf: "CC-SENTINEL")
+    monkeypatch.setattr(image_fingerprint, "layout",
+                        lambda elf: "LAYOUT-SENTINEL")
+
+    assert flash._image_identity(str(binary)) == {
+        "cc": "CC-SENTINEL", "layout": "LAYOUT-SENTINEL"}
