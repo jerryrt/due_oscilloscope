@@ -18,6 +18,7 @@ bench here, against measurement runs of nine minutes to eight hours that
 quote the resulting image by commit. `tools/metrics.py` already warns
 "a build cache probably served a stale object"; this stops it happening.
 """
+import ast
 import fnmatch
 import os
 import re
@@ -204,16 +205,181 @@ def test_track_a_flash_builds_before_it_flashes():
         "measure.flash() flashes Track A before building it")
 
 
-def _spawn_windows(rel, text):
-    """(line, window) for each subprocess spawn in a file.
+_TOOL = re.compile(r"arduino-cli|\bcmake\b")
 
-    The window is the command list rather than the rest of the file:
-    `host/provenance.py` lists "cmake" as a *directory* in FW_SOURCE, and
-    a test that cannot tell a directory from a spawned tool is one people
-    learn to ignore.
-    """
+#: Spawn surfaces, by the module that owns them. `shutil` is not one:
+#: `which()` resolves a path without running it, so what it hands back
+#: is caught at the spawn that follows.
+_SPAWN_FUNCS = {
+    "subprocess": {"run", "call", "check_call", "check_output", "Popen"},
+    "os": {"system", "popen",
+           "execv", "execve", "execvp", "execvpe",
+           "execl", "execle", "execlp", "execlpe",
+           "spawnv", "spawnve", "spawnvp", "spawnvpe",
+           "spawnl", "spawnle", "spawnlp", "spawnlpe"},
+    "asyncio": {"create_subprocess_exec", "create_subprocess_shell"},
+}
+
+#: Keywords that can carry a program or an argv, and no others. `cwd=`
+#: and `env=` name directories, and one of this project's directories is
+#: called `cmake`.
+_ARGV_KWARGS = {"args", "cmd", "command", "argv", "executable"}
+
+#: Levels of local binding a command is followed back through. One is
+#: what the known shape needs - `argv = [...]` on the line above the
+#: spawn - and three covers a name bound to a name bound to a resolved
+#: path without turning this into an interprocedural analysis. A binding
+#: that crosses a function boundary is not followed; the transitive pass
+#: is what catches the caller instead.
+_RESOLVE_DEPTH = 3
+
+#: Fallback only, for source that will not parse.
+_SPAWN = re.compile(r"subprocess\.(run|call|check_call|check_output|Popen)"
+                    r"\(", re.S)
+
+
+def _regex_spawns(text):
+    """(line, the 300 characters after each spawn) in unparsable source."""
     for m in _SPAWN.finditer(text):
         yield text[:m.start()].count(chr(10)) + 1, text[m.end():m.end() + 300]
+
+
+def _iter_scope(node):
+    """Every node inside one scope, without descending into a nested one.
+
+    The nested scope's own node is still yielded, so a caller can
+    recurse into it with that scope's bindings in front of the chain.
+    """
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        n = stack.pop()
+        yield n
+        if not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef,
+                              ast.ClassDef)):
+            stack.extend(ast.iter_child_nodes(n))
+
+
+def _bindings(scope):
+    """name -> every expression bound to it in this scope.
+
+    Every assignment rather than the last one: a name assigned in two
+    branches has two values, and a static scan has no idea which of them
+    runs.
+    """
+    out = {}
+    for n in _iter_scope(scope):
+        if isinstance(n, ast.Assign):
+            for t in n.targets:
+                if isinstance(t, ast.Name):
+                    out.setdefault(t.id, []).append(n.value)
+        elif isinstance(n, (ast.AnnAssign, ast.AugAssign)):
+            if isinstance(n.target, ast.Name) and n.value is not None:
+                out.setdefault(n.target.id, []).append(n.value)
+        elif isinstance(n, ast.NamedExpr) and isinstance(n.target, ast.Name):
+            out.setdefault(n.target.id, []).append(n.value)
+    return out
+
+
+def _spawn_names(tree):
+    """Local names that reach a spawn, after import aliasing.
+
+    `import subprocess as sp` still has to match `sp.run`, and
+    `from subprocess import Popen as P` has to match `P(...)`. The bare
+    module names are seeded whether or not an import was found, because
+    an import inside a function body is one this does not look for.
+    """
+    attr_bases = {m: m for m in _SPAWN_FUNCS}
+    plain = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                if a.name in _SPAWN_FUNCS:
+                    attr_bases[a.asname or a.name] = a.name
+        elif isinstance(node, ast.ImportFrom):
+            if node.module in _SPAWN_FUNCS:
+                for a in node.names:
+                    if a.name in _SPAWN_FUNCS[node.module]:
+                        plain[a.asname or a.name] = node.module
+    return attr_bases, plain
+
+
+def _is_spawn(call, attr_bases, plain):
+    f = call.func
+    if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name):
+        mod = attr_bases.get(f.value.id)
+        return bool(mod) and f.attr in _SPAWN_FUNCS.get(mod, ())
+    return isinstance(f, ast.Name) and f.id in plain
+
+
+def _spawns(tree):
+    """(call node, scope chain) for every spawn, innermost scope first."""
+    attr_bases, plain = _spawn_names(tree)
+    found = []
+
+    def walk(scope, chain):
+        chain = [_bindings(scope)] + chain
+        for n in _iter_scope(scope):
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef,
+                              ast.ClassDef)):
+                walk(n, chain)
+            elif isinstance(n, ast.Call) and _is_spawn(n, attr_bases, plain):
+                found.append((n, chain))
+
+    walk(tree, [])
+    return found
+
+
+def _lookup(name, chain):
+    for scope in chain:
+        if name in scope:
+            return scope[name]
+    return []
+
+
+def _resolved(call, chain):
+    """The spawn's command, with the local names in it substituted in.
+
+    The command expression rather than a window of source, because
+    `host/provenance.py` lists "cmake" as a *directory* in FW_SOURCE and
+    a test that cannot tell a directory from a spawned tool is one
+    people learn to ignore. `cwd=` and `env=` are excluded for the same
+    reason; the keywords that can carry a program are not.
+
+    The whole command matches, not argv[0]: `["sh", "-c", "cmake ..."]`
+    puts the tool in an argument, and reading only the program would
+    miss it. The cost is that a spawn passed a path *through* the cmake
+    directory reads as a build tool and has to be allowed or spelled
+    differently.
+    """
+    exprs = list(call.args)
+    exprs += [kw.value for kw in call.keywords
+              if kw.arg in _ARGV_KWARGS or kw.arg is None]
+    texts, seen, frontier = [], set(), exprs
+    for _ in range(_RESOLVE_DEPTH + 1):
+        nxt = []
+        for e in frontier:
+            texts.append(ast.unparse(e))
+            for n in ast.walk(e):
+                if isinstance(n, ast.Name) and n.id not in seen:
+                    seen.add(n.id)
+                    nxt.extend(_lookup(n.id, chain))
+        if not nxt:
+            break
+        frontier = nxt
+    return "\n".join(texts)
+
+
+def _spawn_commands(text):
+    """(line, resolved command text) for every spawn in one file."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        # A file this cannot parse must not become an invisible one, so
+        # it falls back to reading the source after each spawn.
+        yield from _regex_spawns(text)
+        return
+    for call, chain in _spawns(tree):
+        yield call.lineno, _resolved(call, chain)
 
 
 def _project_py():
@@ -258,10 +424,6 @@ def _project_py():
 ALLOWED = {"host/measure.py", "tools/toolchain.py", "tools/flash.py",
            "tools/reproducible.py"}
 
-_SPAWN = re.compile(r"subprocess\.(run|call|check_call|check_output|Popen)"
-                    r"\(", re.S)
-_TOOL = re.compile(r"arduino-cli|\bcmake\b")
-
 
 def test_nothing_else_builds_behind_the_enforcement():
     """No other caller spawns a compiler, at any depth.
@@ -288,13 +450,28 @@ def test_nothing_else_builds_behind_the_enforcement():
     The builder set is computed rather than listed, so it cannot go
     stale: pass one finds every file that reaches a build tool directly,
     pass two finds every file that spawns one of those.
+
+    **The scan walks the AST because a regex could not see argv in a
+    variable.** Two probe files driving the identical build were
+    measured on 2026-09-02, one binding the command first and one
+    spelling it inside the call:
+
+        argv = [cmake, "--build", "build", "-j"]
+        subprocess.run(argv, check=True)
+
+    Reading the source after the spawn passed the first and failed the
+    second, so which of two equivalent spellings a caller happened to
+    choose decided whether the guard existed at all. Names are resolved
+    through `_RESOLVE_DEPTH` levels of local binding, and a build tool
+    named only inside a shell script is out of reach of any .py scan -
+    `docker/*.sh` spawns cmake and nothing here reads it.
     """
     files = _project_py()
     here = os.path.relpath(__file__, REPO).replace(os.sep, "/")
 
     direct = {rel for rel, text in files.items()
               if rel != here
-              and any(_TOOL.search(w) for _ln, w in _spawn_windows(rel, text))}
+              and any(_TOOL.search(c) for _ln, c in _spawn_commands(text))}
 
     offenders = [f"{rel} (spawns a build tool directly)"
                  for rel in sorted(direct - ALLOWED)]
@@ -308,8 +485,8 @@ def test_nothing_else_builds_behind_the_enforcement():
     for rel, text in sorted(files.items()):
         if rel in ALLOWED or rel == here or rel in direct:
             continue
-        for ln, window in _spawn_windows(rel, text):
-            hit = next((b for b in builder_names if b in window), None)
+        for ln, cmd in _spawn_commands(text):
+            hit = next((b for b in builder_names if b in cmd), None)
             if hit:
                 offenders.append(
                     f"{rel}:{ln} (spawns {hit}, which builds)")
