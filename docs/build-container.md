@@ -21,7 +21,7 @@ records have been taken rather than proposed.
 | Track A and Track B firmware builds | the board tests |
 | the board-free tier, `-m "not board"` | flashing - `bossac`, the 1200-baud touch, re-enumeration |
 | static analysers over firmware and shared source | measurement of any kind |
-| build provenance: commit, compiler, image digest, and the symbol map with the caveat #63 puts on `layout` | |
+| build provenance: commit, compiler, image digest, and the symbol map - `layout` hashes in a total order, so it compares across benches and across `nm` builds | |
 
 ## What this is not
 
