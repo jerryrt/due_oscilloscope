@@ -21,7 +21,7 @@ records have been taken rather than proposed.
 | Track A and Track B firmware builds | the board tests |
 | the board-free tier, `-m "not board"` | flashing - `bossac`, the 1200-baud touch, re-enumeration |
 | static analysers over firmware and shared source | measurement of any kind |
-| build provenance: commit, compiler, image digest, and the symbol map - `layout` hashes in a total order, so it compares across benches and across `nm` builds | |
+| build provenance: commit, compiler, the environment that ran the compiler, and the symbol map - `layout` hashes in a total order, so it compares across benches and across `nm` builds | |
 
 ## What this is not
 
@@ -51,7 +51,7 @@ expose, never its justification.
 | reason | the evidence, checked in this tree |
 |---|---|
 | **The checks run from one entry point.** `docker/run-ci.sh` builds both tracks, runs the board-free tier, proves the board absent, checks byte reproducibility, runs `cppcheck`, `clang-tidy` and a deterministic fuzz pass. Five states in one column - PASS, FINDINGS, FAIL, **DID NOT RUN**, NOT SELECTED - and an exit code a classifier does not recognise is DID NOT RUN, never PASS | a pinned image is what makes any of it runnable on every bench at once, and one entry point is what makes it get run |
-| **Build provenance exists as fields and is empty as data.** #59: of 6,658 stored rows, 1 carries a layout and 8 carry a compiler; `fw_layout` is present on 64 rows and null on all 64 | a commit read off the board, plus an image digest, makes the field mechanical instead of remembered |
+| **Build provenance exists as fields and is empty as data.** #59: of 6,658 stored rows, 1 carries a layout and 8 carry a compiler; `fw_layout` is present on 64 rows and null on all 64 | a commit read off the board, plus the environment that built the artifact, makes the field mechanical instead of remembered |
 | **The board-free tier has never run without a board.** `docs/testing.md` says the `board` marker is verified two ways and both are static | a container is the dynamic check, and the marker is what the whole tier rests on |
 
 ## Build identity
@@ -85,6 +85,40 @@ the commit that obsoleted it - the unsafe direction, in the one check
 that exists because a build cache shipped a stale image. Images built
 before the field carried a commit still go down that path; nothing new
 does.
+
+## What ran the compiler
+
+A commit is not an image and a compiler is not an environment.
+`docker/build-firmware.sh` writes what it was running inside beside the
+artifacts, `tools/flash.py` copies it into the flash log, and
+`provenance.run_fields()` carries it onto every row a tool writes.
+
+A process in a container cannot ask docker what it is running in, so
+`docker/run.sh` reads the two values and passes them in as environment.
+That file already holds every other piece of container knowledge, and
+one home for it is the right number.
+
+| recorded | what it proves | what it does not |
+|---|---|---|
+| `build_env` - `container`, `host`, or `unrecorded` | which kind of build produced these bytes, stated by the build | `unrecorded` is a build that did not say, and **null** is a flash logged before the field existed. Neither may be read as `host` |
+| `build_image` - the tag | what the bench called it | a tag moves |
+| `build_image_id` - docker's `.Id` | which object ran | not content, and not even one environment: four builds of this `Dockerfile` from a full cache gave four ids |
+| `build_image_content` - a hash of the layer chain and the image config | the environment. Equal across those same four builds, and it moves when the recipe's content does | not a registry digest - D5 takes no registry. It is a hash over what `docker image inspect` printed, so it inherits docker's choices, and compares across benches only as far as their docker agrees |
+
+Layers alone would not do: `ENV` adds no layer, and `HOME` is what
+points the Track A build at the SAM core.
+
+**The record is accepted only when it hashes to the binary being
+flashed.** A build directory outlives the build that filled it, so a
+record that merely sits in the right place names the environment of
+whatever was built there last - and a stale field reads as a
+measurement, where a missing one gets questioned. Two builds producing
+identical bytes stay indistinguishable, here as everywhere else in this
+project.
+
+A build that does not go through `docker/build-firmware.sh` writes no
+record and lands as `unrecorded`, which is what a plain `cmake --build`
+is.
 
 ## Decisions taken
 
@@ -131,7 +165,7 @@ Each phase lands on `main` on its own and is useful alone.
 | 1 | **done** | The image: xPack plus the SAM core, building Track A and Track B, with the bit-identity script under `tools/` run by the build | two builds in the image are byte-identical, and a second machine building from the same pinned inputs reproduces them | unpin one input - the base image tag, an apt version - and watch the bytes move |
 | 2 | **done** | The board-free tier in the image | `-m "not board"` collects and passes with no board reachable; then the **whole** suite in the image, where every board test must **skip** and none error | move one board test's marker and watch the tier fail; a test that errors instead of skipping is the marker bug `docs/testing.md` predicts |
 | 3 | **done** | Analysers that do not change codegen. `-Werror` is on by default with `-DFIRMWARE_WERROR=OFF` to leave; `-DFIRMWARE_ANALYZER=ON` and `-DFIRMWARE_STACK_USAGE=ON` are opt-in, because a noisy pass on by default stops every bench building the day a new compiler disagrees; `cppcheck` runs from `docker/run-cppcheck.sh`, which separates *found nothing* from *analysed nothing*; `clang-tidy` runs from `docker/run-clang-tidy.sh`, which rewrites the compile database rather than passing extra arguments - it has to select which target's copy of a shared source to analyse, and clang-tidy takes the first match without saying so | each finds a real finding or is proven able to, **and** the analysed build stays byte-identical to the plain one | introduce a defect of the class the analyser claims to catch, and watch it fire; delete the tool from the image and watch the step fail rather than pass empty |
-| 4 | | Provenance: commit read off the board, image digest and compiler recorded with the build | a row written after a containerised build carries a non-null commit, compiler and layout, which #59 says 696, 8 and 1 rows respectively manage today. `layout` is the weak one of the three - it is partly a property of the reader's `nm`, and #63 is open on it | build from a second image and watch the digest change |
+| 4 | **done** | Provenance: commit read off the board, compiler and build environment recorded with the build | a row written after a containerised build carries a non-null commit, compiler and layout, which #59 says 696, 8 and 1 rows respectively manage today. `layout` is the weak one of the three - it is partly a property of the reader's `nm`, and #63 is open on it | build from a second image and watch the recorded environment move while the artifact's bytes do not; rebuild in the directory and watch the record refuse to describe the new binary |
 | 5 | **builds; not executed** | Clang as an optional firmware compiler, `-DFIRMWARE_CLANG=ON`: explicit triple, libc headers harvested from the resolved cross compiler rather than hardcoded, `-fshort-enums` to match GCC's arm-none-eabi enum ABI, and linking through `arm-none-eabi-gcc` so newlib, libgcc and the linker script come from the toolchain that owns them | Tracks B and C build and `image_fingerprint.py` reads clang back out of `.comment`. **Track A does not build**: the Arduino core declares `uint32_t baud()` and defines `unsigned long Serial_::baud()`, which is one type under GCC and two under clang. **No clang image has run on a board** | build with the harvested include list removed and the build fails rather than reaching `/usr/include` |
 | 6 | **done** | Host-run tier hardening: ASan and UBSan over every native harness, and a fuzzer over the shared control parser behind `ctl_port.h`. The fast tier gets a deterministic corpus and a fixed-seed grind; a coverage-fed campaign is `docker/run-fuzz.sh`, one target with two entry points so the halves cannot drift | no defect found, and the null has a denominator: 4.05M executions, 89.9% of `ctl.c`'s wire-reachable lines, and a positive control the campaign crashes in 42 units. Four oracles, not only the sanitizers - a reply is re-parsed and its CRC recomputed, at most one reply may leave one `ctl_service()` call, and a pass must consume a byte or ask for more | inject one defect per check and watch each caught; run the campaign against a parser with its length check removed and require the crash |
 

@@ -34,6 +34,12 @@
 # that cannot name its commit, which is what phase 1 exists to fix. The
 # common directory is mounted at the identical path so the pointer
 # resolves.
+#
+# WHICH IMAGE RAN CROSSES THE BOUNDARY HERE, and only here: a process
+# inside a container cannot ask docker what it is running in, and this
+# is the one file that sees both sides. The two values below go in as
+# environment; docker/build-firmware.sh writes them beside the artifacts
+# and tools/flash.py copies them into the flash log.
 set -euo pipefail
 
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -45,6 +51,33 @@ if ! docker image inspect "$image" >/dev/null 2>&1; then
     echo "build it:  docker/build-image.sh" >&2
     exit 2
 fi
+
+# TWO IDENTITIES, BECAUSE NEITHER ANSWERS THE OTHER'S QUESTION.
+#
+# `.Id` names the object that is about to run, and it is a BUILD EVENT
+# rather than an environment. Measured on linux-x1: four builds of this
+# Dockerfile - the tagged one, one with no --build-arg, one with the
+# same --build-arg build-image.sh passes, and a repeat of the first -
+# produced four different `.Id` values from a fully cached build, and
+# one layer chain. Recorded rows keyed on it would read as four
+# environments where there is one.
+#
+# The content hash is the environment. It covers the layer chain and the
+# image config, which is what a build can actually see: layers alone
+# miss an `ENV` change, because ENV adds no layer and HOME is what
+# points the Track A build at the SAM core. Equal across all four builds
+# above, and it moves when the recipe's content does.
+#
+# D5 takes no registry, so neither value is a registry digest and this
+# one is not called one. It is a hash over what `docker image inspect`
+# chose to print, so it inherits docker's choices - the same caveat that
+# `layout` carries about `nm` - and it compares within a bench with
+# certainty and across benches only as far as their docker agrees.
+image_id=$(docker image inspect "$image" --format '{{.Id}}')
+image_content=$(docker image inspect "$image" \
+    --format '{{range .RootFS.Layers}}{{println .}}{{end}}{{json .Config}}' |
+    python3 -c 'import hashlib,sys
+print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())')
 
 # Both ends of every bind mount, created as this user before docker sees
 # them. A mount point the daemon has to create is created by the daemon,
@@ -61,6 +94,9 @@ flags=(
     --volume "$here/out/build:/work/build"
     --volume "$here/out/build-a:/work/build-a"
     --workdir /work
+    --env "DUE_BUILD_IMAGE=$image"
+    --env "DUE_BUILD_IMAGE_ID=$image_id"
+    --env "DUE_BUILD_IMAGE_CONTENT=$image_content"
 )
 
 common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)

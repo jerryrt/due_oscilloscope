@@ -603,6 +603,10 @@ def _log_flash(binary) -> None:
     binary and the tree at the same moment, and it cannot disagree with
     itself.
 
+    What the image was built *inside* is the same question one step out,
+    and `_build_env()` answers it: a containerised build is otherwise
+    attributable to a commit and a compiler and to nothing else.
+
     A version string answers none of it. On 2026-08-27 a bench published
     a noise floor a whole bit wrong because its board carried a build
     five minutes older than a DAC fix; both benches reported `fw 0.2.0`
@@ -664,6 +668,7 @@ def _log_flash(binary) -> None:
             "dirty_sha": (hashlib.sha256(delta.encode()).hexdigest()
                           if porcelain else None),
             **_image_identity(binary),
+            **_build_env(binary),
         }
         os.makedirs(os.path.dirname(FLASH_LOG), exist_ok=True)
         with open(FLASH_LOG, "a") as f:
@@ -673,7 +678,8 @@ def _log_flash(binary) -> None:
                 else "")
         rev = rec["repo_rev"] or "no-commit (image outside any work tree)"
         where = f" from {rec['source_root']}" if rec["source_root"] else ""
-        print(f"==> logged: {rev}{dirt}{where} sha {h[:12]}")
+        env = " ".join(x for x in (rec["build_env"], rec["build_image"]) if x)
+        print(f"==> logged: {rev}{dirt}{where} sha {h[:12]} env {env}")
     except Exception as e:                                    # noqa: BLE001
         print(f"==> could not log the flash: {e}", file=sys.stderr)
 
@@ -714,6 +720,68 @@ def _image_identity(binary) -> dict:
         import image_fingerprint
         return {"cc": image_fingerprint.compiler(elf),
                 "layout": image_fingerprint.layout(elf)}
+    except Exception:                                         # noqa: BLE001
+        return blank
+
+
+#: Written beside the artifacts by `docker/build-firmware.sh`: which
+#: environment ran the compiler, and the sha256 of everything that build
+#: produced.
+BUILD_ENV_FILE = "build-env.json"
+
+#: What a build that never stated its environment is recorded as.
+#:
+#: Not `host`. This cannot tell a bench build from a container build
+#: whose record was lost or overwritten, and guessing the commoner of
+#: the two is how a wrong field gets trusted where a missing one gets
+#: questioned. It is a stated absence, the same shape as
+#: `provenance.firmware()`'s `unlogged`, and it differs from a **null**:
+#: null is a flash logged before the field existed, and 139 records in
+#: `records/flash-log.jsonl` are that.
+UNRECORDED_ENV = "unrecorded"
+
+
+def _build_env(binary) -> dict:
+    """Which environment produced this image, read beside the binary.
+
+    `cc` says which compiler and `layout` says where it put things;
+    neither says what the compiler was running inside, and a
+    containerised build is otherwise attributable to a commit and a
+    compiler and to nothing else. A process inside a container cannot
+    ask docker what it is, so the value is carried in from
+    `docker/run.sh` and written down by `docker/build-firmware.sh`.
+
+    **The record is accepted only when it hashes to this binary.** A
+    build directory outlives the build that filled it, so a record that
+    merely sits in the right place names the environment of whatever was
+    built there last - and that is the one failure mode worth guarding,
+    because a stale field reads as a measurement. The consequence worth
+    stating: two builds that produce identical bytes are indistinguishable
+    here, as they are to everything else in this project.
+
+    Never raises: a missing or unreadable record is a run with no
+    container claim, not a failed flash.
+    """
+    blank = {"build_env": UNRECORDED_ENV, "build_image": None,
+             "build_image_id": None, "build_image_content": None}
+    try:
+        import hashlib
+        import json
+        path = os.path.join(os.path.dirname(os.path.abspath(binary)),
+                            BUILD_ENV_FILE)
+        with open(path) as f:
+            rec = json.load(f)
+        want = rec.get("artifacts", {}).get(os.path.basename(binary))
+        with open(binary, "rb") as f:
+            got = hashlib.sha256(f.read()).hexdigest()
+        if not want or want != got:
+            return blank
+        if rec.get("build_env") not in ("container", "host"):
+            return blank
+        return {"build_env": rec["build_env"],
+                "build_image": rec.get("build_image"),
+                "build_image_id": rec.get("build_image_id"),
+                "build_image_content": rec.get("build_image_content")}
     except Exception:                                         # noqa: BLE001
         return blank
 

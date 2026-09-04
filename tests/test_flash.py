@@ -478,3 +478,122 @@ def test_the_flash_log_does_not_compute_a_layout_of_its_own(tmp_path,
 
     assert flash._image_identity(str(binary)) == {
         "cc": "CC-SENTINEL", "layout": "LAYOUT-SENTINEL"}
+
+
+# --------------------------------------- which environment built the image
+#
+# `cc` says which compiler and `layout` says where it put things. Neither
+# says what the compiler was running inside, so a containerised build is
+# otherwise attributable to a commit and a compiler and to nothing else.
+# `docker/build-firmware.sh` writes the answer beside the artifacts and
+# `_build_env` reads it back.
+#
+# Three states, and the third is the one that needs a mechanism: a build
+# directory outlives the build that filled it, so a record that merely
+# sits in the right place names the environment of whatever was built
+# there last. Every artifact is hashed into the record for that reason.
+
+import hashlib                                              # noqa: E402
+import json                                                 # noqa: E402
+
+CONTAINER = {
+    "build_env": "container",
+    "build_image": "due-build:15.2.1-1.1",
+    "build_image_id": "sha256:" + "e" * 64,
+    "build_image_content": "c" * 64,
+}
+
+
+def _built(tmp_path, body=b"firmware", record=None, name=None):
+    """A binary, optionally beside the record a build would have left."""
+    binary = tmp_path / "baremetal_bringup.bin"
+    binary.write_bytes(body)
+    if record is not None:
+        rec = dict(record)
+        rec.setdefault("artifacts", {
+            name or binary.name: hashlib.sha256(body).hexdigest()})
+        (tmp_path / flash.BUILD_ENV_FILE).write_text(json.dumps(rec))
+    return str(binary)
+
+
+def test_a_container_build_names_the_image_that_ran_it(tmp_path):
+    assert flash._build_env(_built(tmp_path, record=CONTAINER)) == CONTAINER
+
+
+def test_a_build_outside_a_container_says_so(tmp_path):
+    """`host` is a claim the build made, not one this inferred."""
+    got = flash._build_env(_built(tmp_path, record={"build_env": "host"}))
+    assert got == {"build_env": "host", "build_image": None,
+                   "build_image_id": None, "build_image_content": None}
+
+
+def test_a_build_that_said_nothing_is_not_called_a_host_build(tmp_path):
+    """The plausible wrong answer is `host`, because most builds are.
+
+    It would also be right most of the time, which is what makes it
+    dangerous: this cannot tell a bench build from a container build
+    whose record was lost, and a field that is there gets trusted where
+    a missing one gets questioned.
+    """
+    got = flash._build_env(_built(tmp_path))
+    assert got["build_env"] == flash.UNRECORDED_ENV
+    assert got["build_image"] is None
+    assert got["build_image_content"] is None
+
+
+def test_a_rebuild_does_not_inherit_the_previous_builds_container(tmp_path):
+    """The failure this whole binding exists for.
+
+    A container build leaves its record in the directory; a later build
+    there overwrites the binary and not the record, and every field
+    would then name an environment that did not produce these bytes.
+    """
+    binary = _built(tmp_path, record=CONTAINER)
+    assert flash._build_env(binary)["build_env"] == "container"
+
+    with open(binary, "wb") as f:
+        f.write(b"rebuilt by something else")
+
+    got = flash._build_env(binary)
+    assert got["build_env"] == flash.UNRECORDED_ENV, (
+        f"a rebuilt binary kept the previous build's environment: {got!r}")
+    assert got["build_image_id"] is None
+
+
+def test_a_record_that_describes_another_artifact_is_not_this_ones(tmp_path):
+    """One record covers a whole build directory, so the name is part of
+    the match. Track A's binary must not answer for Track B's."""
+    binary = _built(tmp_path, record=CONTAINER, name="track_a_bringup.bin")
+    assert flash._build_env(binary)["build_env"] == flash.UNRECORDED_ENV
+
+
+def test_the_flashing_host_cannot_supply_the_container_itself(monkeypatch,
+                                                              tmp_path):
+    """`flash.py` runs on the bench, outside any container.
+
+    Reading the environment here rather than the record would let it
+    claim whichever shell it was launched from - and a shell that has
+    exported these is exactly where a flash gets run.
+    """
+    monkeypatch.setenv("DUE_BUILD_IMAGE", "due-build:15.2.1-1.1")
+    monkeypatch.setenv("DUE_BUILD_IMAGE_ID", "sha256:" + "e" * 64)
+    monkeypatch.setenv("DUE_BUILD_IMAGE_CONTENT", "c" * 64)
+    got = flash._build_env(_built(tmp_path))
+    assert got["build_env"] == flash.UNRECORDED_ENV, (
+        f"the flashing host's environment reached the log: {got!r}")
+
+
+def test_the_log_records_the_environment_that_built_the_image(tmp_path,
+                                                              monkeypatch):
+    """Through the real `_log_flash`, because the fields are worth
+    something only if they reach the file a reader opens."""
+    binary = _built(tmp_path, record=CONTAINER)
+    monkeypatch.setattr(flash, "FLASH_LOG", str(tmp_path / "log.jsonl"))
+    monkeypatch.setattr(flash, "image_work_tree", lambda b: None)
+
+    flash._log_flash(binary)
+
+    with open(tmp_path / "log.jsonl", encoding="utf-8") as fh:
+        rec = json.loads(fh.readline())
+    for k, v in CONTAINER.items():
+        assert rec[k] == v, f"{k} reached the log as {rec[k]!r}"

@@ -283,6 +283,25 @@ def firmware(build_stamp=None, track=None):
             # commit and not to an image, and nothing can recover it now.
             "fw_cc": rec.get("cc"),
             "fw_layout": rec.get("layout"),
+            # And which environment ran that compiler.
+            #
+            # `fw_build_env` is `container`, `host`, or `unrecorded` when
+            # the build stated nothing - a stated absence, and not the
+            # same as **null**, which is a flash logged before the field
+            # existed. A reader of a stored row has to be able to tell
+            # "the build did not say" from "nobody was asking yet".
+            #
+            # `fw_build_image_id` names the object docker ran and moves
+            # on every rebuild of one Dockerfile, so it dates a build
+            # event; `fw_build_image_content` hashes the layer chain and
+            # the image config and is the one that answers "same
+            # environment". Neither is a registry digest - there is no
+            # registry - so both compare within a bench and across
+            # benches only as far as their docker agrees.
+            "fw_build_env": rec.get("build_env"),
+            "fw_build_image": rec.get("build_image"),
+            "fw_build_image_id": rec.get("build_image_id"),
+            "fw_build_image_content": rec.get("build_image_content"),
             "fw_flashed_at": rec.get("when"),
             # Which question was answered, not merely that one was. An
             # equality against the commit and a wall clock within a
@@ -706,4 +725,10 @@ def run_fields(board=None, ident=None):
         # re-measured. Null on rows whose flash predates the field.
         "fw_cc": p.get("fw_cc"),
         "fw_layout": p.get("fw_layout"),
+        # A compiler is not an environment. `fw_build_env` says whether a
+        # container produced the image at all, and the content hash says
+        # which one; the tag and the object id stay in the flash log,
+        # where the row's commit reaches them.
+        "fw_build_env": p.get("fw_build_env"),
+        "fw_build_image_content": p.get("fw_build_image_content"),
     }

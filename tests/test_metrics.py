@@ -375,6 +375,84 @@ def test_a_track_a_flash_is_not_a_track_b_commit(tmp_path, monkeypatch):
     assert prov.firmware("beefbee", "b") == {"fw_provenance": "unlogged"}
 
 
+# ------------------------------------- the environment a build ran inside
+#
+# A commit is not an image and a compiler is not an environment, which is
+# the same argument run one step further. `tools/flash.py` logs what
+# `docker/build-firmware.sh` recorded beside the artifacts; these hold
+# what a stored row can then say, and the three answers apart.
+
+_ENV = {"build_env": "container",
+        "build_image": "due-build:15.2.1-1.1",
+        "build_image_id": "sha256:" + "e" * 64,
+        "build_image_content": "c" * 64}
+
+
+def test_a_containerised_build_reaches_the_provenance(tmp_path, monkeypatch):
+    """Both identities, because neither answers the other's question.
+
+    The object id dates a build event - four builds of one Dockerfile
+    from a full cache gave four ids and one layer chain - and the
+    content hash is the environment. A row carrying only the first would
+    read as four environments where there is one.
+    """
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        dict(_rec("beefbee", "2026-09-01T09:00:00-0400"), **_ENV))
+
+    fw = prov.firmware("beefbee", "b")
+    assert fw["fw_build_env"] == "container"
+    assert fw["fw_build_image"] == "due-build:15.2.1-1.1"
+    assert fw["fw_build_image_id"] == "sha256:" + "e" * 64
+    assert fw["fw_build_image_content"] == "c" * 64
+
+
+def test_a_build_that_stated_no_container_is_not_one(tmp_path, monkeypatch):
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        dict(_rec("beefbee", "2026-09-01T09:00:00-0400"),
+             build_env="host", build_image=None, build_image_id=None,
+             build_image_content=None))
+
+    fw = prov.firmware("beefbee", "b")
+    assert fw["fw_build_env"] == "host"
+    assert fw["fw_build_image_content"] is None
+
+
+def test_a_flash_logged_before_the_field_claims_nothing(tmp_path,
+                                                        monkeypatch):
+    """139 records predate this, and they must not acquire an answer.
+
+    `null` and `unrecorded` are different claims: null is a flash logged
+    before anyone was asking, `unrecorded` is a build that was asked and
+    did not say. Filling either in with `host` - which is what those 139
+    almost certainly were - would put a guess where a gap belongs.
+    """
+    prov = _with_log(tmp_path, monkeypatch,
+                     _rec("beefbee", "2026-09-01T09:00:00-0400"))
+
+    fw = prov.firmware("beefbee", "b")
+    assert fw["fw_build_env"] is None
+    assert fw["fw_build_image"] is None
+    assert fw["fw_build_image_id"] is None
+    assert fw["fw_build_image_content"] is None
+
+
+def test_the_environment_reaches_a_row_a_tool_writes(tmp_path, monkeypatch):
+    """`run_fields()` is what every record-writing tool carries.
+
+    A field that resolves in `firmware()` and stops there is the shape
+    #59 measured: `fw_layout` present on 64 rows and null on all 64.
+    """
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        dict(_rec("beefbee", "2026-09-01T09:00:00-0400"), **_ENV))
+
+    row = prov.run_fields(ident={"track": "B", "build": "beefbee"})
+    assert row["fw_build_env"] == "container"
+    assert row["fw_build_image_content"] == "c" * 64
+
+
 def test_parse_identity_carries_a_commit_build_field():
     """The identity line's last field is opaque to the parser.
 
