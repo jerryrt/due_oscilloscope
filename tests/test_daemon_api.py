@@ -66,11 +66,25 @@ def connect(srv):
     made = []
 
     def _connect(role=None, server=None, timeout=5.0):
-        c = clientmod.Client("127.0.0.1", (server or srv).port,
+        target = server or srv
+        c = clientmod.Client("127.0.0.1", target.port,
                              timeout=timeout).connect()
+        made.append(c)
+        # A TCP connect completes in the kernel's backlog, so returning
+        # from it says nothing about whether the daemon has accepted the
+        # socket. Until the accept loop has, the client is not in
+        # `sessions`, and a broadcast issued in that window does not
+        # queue for it - it is addressed to the sessions that exist and
+        # the client never learns there was one. Wait for the session by
+        # the address the kernel gave this socket, or a test that
+        # expects an event it did not ask for is racing the accept
+        # thread over a window of a millisecond or two.
+        mine = c.sock.getsockname()[:2]
+        wait_until(lambda: any(s.addr[:2] == mine
+                               for s in list(target.sessions)),
+                   what="the daemon to accept the connection")
         if role:
             c.hello(role)
-        made.append(c)
         return c
 
     yield _connect
