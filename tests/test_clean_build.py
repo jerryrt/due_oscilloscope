@@ -421,8 +421,55 @@ def _project_py():
 #: bytes, and it goes through the same enforced target every other
 #: caller does - its whole subject is that a build is what its source
 #: says it is, so a stale cache is the last thing it can tolerate.
-ALLOWED = {"host/measure.py", "tools/toolchain.py", "tools/flash.py",
-           "tools/reproducible.py"}
+#:
+#: **Every entry spawns a build tool, and that is asserted rather than
+#: intended.** An exemption for a file that needs none costs nothing on
+#: the day it is written and everything on the day that file gains a
+#: build spawn: it is then permitted silently, by a line nobody re-read.
+#: Two entries here were in exactly that state - a tool that reports
+#: where the compiler resolved, and one that puts a .bin on a board -
+#: and dropping either from this set changed no result.
+ALLOWED = {"host/measure.py", "tools/reproducible.py"}
+
+#: Memo for the tree walk below. Two tests want the same answer and the
+#: walk reads every .py in the project to produce it.
+_DIRECT = {}
+
+
+def _project_direct_builders():
+    """Every project .py, this file's path, and the set that builds.
+
+    The third is the files that spawn a build tool with no other file
+    in between - pass one of the scan below, and the set an allowlist
+    entry has to belong to.
+    """
+    if not _DIRECT:
+        files = _project_py()
+        here = os.path.relpath(__file__, REPO).replace(os.sep, "/")
+        _DIRECT["files"] = files
+        _DIRECT["here"] = here
+        _DIRECT["direct"] = {
+            rel for rel, text in files.items()
+            if rel != here
+            and any(_TOOL.search(c) for _ln, c in _spawn_commands(text))}
+    return _DIRECT["files"], _DIRECT["here"], _DIRECT["direct"]
+
+
+def test_every_allowlist_entry_actually_builds():
+    """A file exempted from the scan must be a file the scan would catch.
+
+    Break it the other way to see what it is for: add any file at all to
+    ALLOWED and the suite stays green, because an exemption costs
+    nothing until it is needed. This makes the set self-describing - an
+    entry is here because that file spawns a compiler today, and it goes
+    when that stops being true rather than a release later.
+    """
+    _files, _here, direct = _project_direct_builders()
+    dead = sorted(ALLOWED - direct)
+    assert not dead, (
+        f"{dead} are on the build-tool allowlist and spawn no build tool. "
+        "An exemption for a file that does not need one is a blanket "
+        "permission nobody will re-read on the day it starts to matter")
 
 
 def test_nothing_else_builds_behind_the_enforcement():
@@ -466,22 +513,18 @@ def test_nothing_else_builds_behind_the_enforcement():
     named only inside a shell script is out of reach of any .py scan -
     `docker/*.sh` spawns cmake and nothing here reads it.
     """
-    files = _project_py()
-    here = os.path.relpath(__file__, REPO).replace(os.sep, "/")
-
-    direct = {rel for rel, text in files.items()
-              if rel != here
-              and any(_TOOL.search(c) for _ln, c in _spawn_commands(text))}
+    files, here, direct = _project_direct_builders()
 
     offenders = [f"{rel} (spawns a build tool directly)"
                  for rel in sorted(direct - ALLOWED)]
 
     # Pass two: anything spawning a file that builds. Match on basename,
     # because callers spell the path every way - os.path.join(REPO, ...),
-    # a bare "tools/x.py", a module constant.
+    # a bare "tools/x.py", a module constant. The set is exactly the
+    # files that build, which is why ALLOWED may hold no entry that does
+    # not: a name in here flags every caller of it, so a file listed
+    # above for tidiness would make its callers offenders.
     builder_names = {os.path.basename(r) for r in (direct | ALLOWED)}
-    builder_names.discard("toolchain.py")   # reports paths, builds nothing
-    builder_names.discard("flash.py")       # flashes a .bin, builds nothing
     for rel, text in sorted(files.items()):
         if rel in ALLOWED or rel == here or rel in direct:
             continue
