@@ -92,6 +92,34 @@ ARG BZIP2_VERSION=1.0.8-5.1ubuntu0.1
 ARG GCC_VERSION=4:13.2.0-7ubuntu1
 ARG LIBC6_DEV_VERSION=2.39-0ubuntu8.8
 
+# THE 32-BIT ABI, WHICH IS THE TARGET'S AND NOT THE BENCH'S. Every
+# machine this project runs on is x86-64 LP64; the SAM3X8E is a 32-bit
+# Cortex-M3 where size_t, unsigned long, uintptr_t and every pointer are
+# four bytes. So a defect in shared firmware C that needs 32-bit widths -
+# a length that wraps, a cast that truncates, a struct that pads
+# differently - cannot be reached by a harness built the way the bench
+# is, and it is hidden in the direction that matters, because LP64 is
+# the wider type in each case.
+#
+# gcc-multilib is what makes `gcc -m32` link: without it the front end
+# accepts the flag and the LINK fails with "cannot find Scrt1.o", which
+# names a path rather than a package. It drags gcc-13-multilib,
+# lib32gcc-13-dev and libc6-dev-i386 with it and the snapshot pins those.
+#
+# The two lib32 sanitizer runtimes are NOT among them and are named here
+# for the same reason libclang-rt-18-dev is: a harness that silently
+# loses its instrumentation looks exactly like clean code. Their version
+# is not gcc's - the compat runtimes for the gcc-13 ABI are built from
+# the gcc-14 source package on this release, so 14.2.0 beside a 13.2.0
+# compiler is correct and not a mismatch.
+#
+# tests/hostcc.py probes by building and running rather than trusting
+# this line, and DUE_HOSTCC_ABI=32 re-runs the board-free tier's native
+# harnesses against it.
+ARG GCC_MULTILIB_VERSION=4:13.2.0-7ubuntu1
+ARG LIB32ASAN_VERSION=14.2.0-4ubuntu2~24.04.1
+ARG LIB32UBSAN_VERSION=14.2.0-4ubuntu2~24.04.1
+
 # The suite is not stdlib: pytest and pyserial at least, and host/scope.py
 # imports pyusb. python3-venv carries ensurepip, which is what builds the
 # venv below.
@@ -159,6 +187,9 @@ RUN set -eux; \
         "bzip2=${BZIP2_VERSION}" \
         "gcc=${GCC_VERSION}" \
         "libc6-dev=${LIBC6_DEV_VERSION}" \
+        "gcc-multilib=${GCC_MULTILIB_VERSION}" \
+        "lib32asan8=${LIB32ASAN_VERSION}" \
+        "lib32ubsan1=${LIB32UBSAN_VERSION}" \
         "python3-venv=${PYTHON3_VENV_VERSION}" \
         "cppcheck=${CPPCHECK_VERSION}" \
         "clang=${CLANG_VERSION}" \
