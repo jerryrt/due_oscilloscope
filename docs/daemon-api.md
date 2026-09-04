@@ -163,6 +163,15 @@ between a console user and a rate the converter cannot make.
 
 ## Events
 
+**A broadcast reaches the sessions that exist when it is issued.** A TCP
+connect completes in the kernel's backlog, so returning from it says
+nothing about whether the daemon has accepted the socket - and until the
+accept loop has, the client is not a session and a broadcast in that
+window is not queued for it, it is never addressed to it. The window is
+one round trip wide. A client that must not miss an event issues a
+command of its own first and waits for the reply; every client that does
+so is already a session by the time anything can be broadcast.
+
 | event | When |
 |---|---|
 | `hello`, `pong`, `status`, `caps`, `rate`, `subscribed`, `ok` | replies |
