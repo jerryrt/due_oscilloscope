@@ -20,8 +20,10 @@ quote the resulting image by commit. `tools/metrics.py` already warns
 """
 import ast
 import fnmatch
+import glob
 import os
 import re
+import shlex
 
 import pytest
 
@@ -431,6 +433,26 @@ def _project_py():
 #: and dropping either from this set changed no result.
 ALLOWED = {"host/measure.py", "tools/reproducible.py"}
 
+#: Programs that can produce an image. `cmake` covers the wrappers;
+#: `make` and `ninja` are the generators underneath them, and naming an
+#: executable target to one of those is the way around a wrapper that no
+#: `cmake --build` audit would see.
+_BUILD_TOOLS = {"cmake", "make", "gmake", "ninja"}
+
+#: Shell operators that end a simple command. A token equal to one of
+#: these starts a new argv, so a builder invoked after a `&&` or inside
+#: `$( )` is read as a builder and not as an argument to whatever came
+#: before it.
+_SHELL_OPS = {";", "&", "&&", "||", "|", "|&", "(", ")", "{", "}",
+              "<", ">", ">>", "<<", "<<<", "<&", ">&", "\n"}
+
+#: How far a line with an open quote may reach for its closing one. The
+#: longest in this tree is the clang-tidy canary body at 31 lines; the
+#: bound is here so a genuinely unterminated quote is reported rather
+#: than swallowing the rest of the file.
+_JOIN_LIMIT = 60
+
+
 #: Memo for the tree walk below. Two tests want the same answer and the
 #: walk reads every .py in the project to produce it.
 _DIRECT = {}
@@ -539,6 +561,221 @@ def test_nothing_else_builds_behind_the_enforcement():
         "can produce an image from a stale cache. Call measure.flash() "
         "rather than spawning a builder: "
         + ", ".join(sorted(set(offenders))))
+
+
+# ---------------------------------------------------------------------
+# The container scripts
+#
+# Everything above walks Python, and a shell script is not Python.
+# `docker/*.sh` is a build path too: `docker/build-firmware.sh` drives
+# the enforced targets today, and one word of it is the difference
+# between that and an image built incrementally.
+# ---------------------------------------------------------------------
+
+def _cmake_custom_targets(text):
+    """(name, body) for every add_custom_target, by parenthesis balance.
+
+    Balance rather than a match ending at `VERBATIM)`: every wrapper in
+    this tree happens to end that way and nothing requires the next one
+    to. A pattern that assumed it would run past the end of any target
+    that did not, and read the target after it as part of the body.
+    """
+    for m in re.finditer(r"add_custom_target\(\s*([A-Za-z0-9_]+)", text):
+        i = text.index("(", m.start())
+        depth, j = 0, i
+        while j < len(text):
+            if text[j] == "(":
+                depth += 1
+            elif text[j] == ")":
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        yield m.group(1), text[m.end():j]
+
+
+def _clean_build_wrappers():
+    """wrapper name -> {"builds": executable, "all": in the default target}.
+
+    Read out of the CMake sources rather than listed here. There are
+    three wrappers and Track C's arrived after the first two; a fourth
+    track adds one to CMake, and a list written down in this file would
+    not know about it while the scripts calling it would.
+    """
+    sources = ["CMakeLists.txt"]
+    sources += sorted("cmake/" + n
+                      for n in os.listdir(os.path.join(REPO, "cmake"))
+                      if n.endswith(".cmake"))
+    out = {}
+    for rel in sources:
+        text = _read(rel)
+        for name, body in _cmake_custom_targets(text):
+            if "--target clean" not in body:
+                continue
+            built = [t for t in re.findall(r"--target\s+(\S+)", body)
+                     if t != "clean"]
+            if not built:
+                continue
+            out[name] = {
+                "builds": built[-1],
+                "all": bool(re.search(r"add_custom_target\(\s*" + name
+                                      + r"\s+ALL", text)),
+            }
+    return out
+
+
+def _logical_lines(text):
+    """(first line number, line) with backslash continuations joined."""
+    out, buf, start = [], "", 1
+    for i, raw in enumerate(text.splitlines(), 1):
+        if not buf:
+            start = i
+        if raw.endswith("\\"):
+            buf += raw[:-1] + " "
+            continue
+        out.append((start, buf + raw))
+        buf = ""
+    if buf:
+        out.append((start, buf))
+    return out
+
+
+def _shell_commands(text):
+    """(line, argv) per simple command, plus the lines that would not read.
+
+    Tokenised rather than grepped, and the difference is not academic.
+    `docker/run-clang-tidy.sh` passes `--target-dir` to a Python script
+    three lines below a `cmake` invocation, and a pattern hunting for
+    `--target` in a window of source reads that as a cmake target. What
+    the guard has to see is an argument vector, so it builds one.
+
+    Line by line, because `shlex` treats a newline as ordinary
+    whitespace: lexed whole, a script collapses into one enormous
+    command whose argv[0] is the shebang and no builder is ever at the
+    head of anything. A line that will not tokenise on its own has an
+    open quote, so the following lines are folded in until it closes -
+    `die` messages and the clang-tidy canary body are written that way.
+
+    What still will not read is returned rather than dropped. A guard
+    that silently skips what it cannot see passes for the wrong reason,
+    so the caller fails on an unread line that names a build tool.
+    """
+    lines = _logical_lines(text)
+    commands, blind, i = [], [], 0
+    while i < len(lines):
+        ln, first = lines[i]
+        joined, tokens, end = first, None, i
+        for j in range(i, min(i + _JOIN_LIMIT, len(lines))):
+            if j > i:
+                joined += " " + lines[j][1]
+            try:
+                lex = shlex.shlex(joined, posix=True, punctuation_chars=True)
+                lex.whitespace_split = True
+                tokens = list(lex)
+            except ValueError:
+                continue
+            end = j
+            break
+        i = end + 1
+        if tokens is None:
+            blind.append((ln, first))
+            continue
+        argv = []
+        for tok in tokens:
+            if tok in _SHELL_OPS:
+                if argv:
+                    commands.append((ln, argv))
+                argv = []
+            else:
+                argv.append(tok)
+        if argv:
+            commands.append((ln, argv))
+    return commands, blind
+
+
+def _cmake_targets(argv):
+    """The targets a `cmake --build` names, in every spelling of it."""
+    out = []
+    for i, tok in enumerate(argv):
+        if tok in ("--target", "-t") and i + 1 < len(argv):
+            out.append(argv[i + 1])
+        elif tok.startswith("--target="):
+            out.append(tok.split("=", 1)[1])
+    return out
+
+
+def test_the_container_scripts_build_only_through_the_wrappers():
+    """No shell script produces an image outside a clean-build wrapper.
+
+    The scan above walks the AST of every project `.py` and catches a
+    spawn however its argv is built, which is everything a Python caller
+    can do and nothing a shell script can. `docker/*.sh` is the
+    project's other build path - one entry point runs every check the
+    build image can make, and its firmware step is a shell script - and
+    the enforcement it can step around is the same one, for the same
+    reason: an incremental build has shipped a mixed-revision image
+    here, and the only tell was eight bytes of flash.
+
+    Two rules, and the second is not implied by the first. A
+    `cmake --build` that names a target must name a wrapper. And no
+    build tool at all may name a wrapped executable, because
+    `ninja track_a_bringup` reaches the same object directory with no
+    `--target` in it to audit.
+
+    A `cmake --build` naming nothing builds the default target, which is
+    where `firmware ALL` lives - so that spelling is enforced only while
+    some wrapper is in `all`, and this asserts that rather than assuming
+    it.
+    """
+    wrappers = _clean_build_wrappers()
+    assert len(wrappers) >= 2, (
+        f"only {sorted(wrappers)} read as clean-build wrappers. Either the "
+        "wrappers have changed shape or this test can no longer find them, "
+        "and it must not go quiet either way")
+    wrapped = {w["builds"] for w in wrappers.values()}
+
+    scripts = sorted(glob.glob(os.path.join(REPO, "docker", "*.sh")))
+    assert scripts, (
+        "docker/ holds no shell script, so this guard reads nothing at all")
+
+    offenders = []
+    for path in scripts:
+        rel = os.path.relpath(path, REPO).replace(os.sep, "/")
+        commands, blind = _shell_commands(_read(rel))
+
+        for ln, line in blind:
+            if any(t in line for t in _BUILD_TOOLS):
+                offenders.append(
+                    f"{rel}:{ln} names a build tool on a line this cannot "
+                    f"tokenise, so it goes unread: {line.strip()[:60]}")
+
+        for ln, argv in commands:
+            tool = os.path.basename(argv[0])
+            if tool not in _BUILD_TOOLS:
+                continue
+            named = [a for a in argv[1:] if a in wrapped]
+            if named:
+                offenders.append(
+                    f"{rel}:{ln} builds {named[0]} directly, which is the "
+                    "executable a wrapper cleans before it builds")
+            if tool != "cmake" or "--build" not in argv:
+                continue
+            targets = _cmake_targets(argv)
+            if not targets:
+                assert any(w["all"] for w in wrappers.values()), (
+                    f"{rel}:{ln} builds the default target and no wrapper is "
+                    "in `all` any more, so it builds nothing, or builds "
+                    "around the clean")
+                continue
+            for t in targets:
+                if t not in wrappers:
+                    offenders.append(
+                        f"{rel}:{ln} builds --target {t}, which is not one "
+                        f"of the clean-build wrappers {sorted(wrappers)}")
+
+    assert not offenders, (
+        "these produce an image outside the enforced targets, so a "
+        "container build can carry a stale object: " + "; ".join(offenders))
 
 
 def test_track_c_cmake_forces_a_full_build_too():
