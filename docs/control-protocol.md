@@ -1,24 +1,23 @@
 # Control over the native port
 
-**Status: the transport exists on Track B; nothing speaks over it yet.**
+**Status: built, on all three tracks, at `CTL_VERSION` 4.**
 
 | | |
 |---|---|
-| Command layer split out of the main loop | done, Track B |
-| Second CDC function on the native cable | done, Track B |
-| Host discovers the two nodes by interface number | done |
-| Frame parser, executor binding, opcodes | not started |
-| Heartbeat and asynchronous notifications | not started |
-| Track A | not started |
+| Second CDC function on the native cable | all tracks; Track A through the core's `PluggableUSB` (`sketches/bringup/ctlusb.cpp`) |
+| Host discovers the two nodes by interface number | `host/ports.py` |
+| Frame parser and dispatcher | one shared copy, `lib/due_shared/src/ctl.c`, over per-track `ctl_port_*` hooks |
+| Opcodes | the set in `lib/due_shared/src/ctl_wire.h`; what a track has not got answers `CTL_ERR_OPCODE`, and `CAPABILITY` lists what it has |
+| Heartbeat | `HEARTBEAT`, the device's unsolicited beat, carrying the counters and the USB frame clock |
+| Other asynchronous notifications | not built |
+| Rates, mode, faults, reset over this channel | not built; the console still carries them |
 
-What that means concretely today: the board enumerates two serial nodes
-on one cable, `usb_ctl_read()` and `usb_ctl_write()` carry bytes both
-ways byte-exact, and the main loop drains the command endpoint and
-throws the bytes away. The framing below is still a design and is still
-worth arguing with; the numbering above it is now a measured fact.
+The host side is `host/control.py`, and the suite parses every response
+without knowing which track produced it.
 
-The rest of this document is written as the proposal it was, because the
-reasoning is what makes the parts that are not built yet decidable.
+The reasoning that shaped the design is kept, because it is what makes
+the parts not yet built decidable. Where a section describes a
+mechanism, the code named beside it is the authority on how it landed.
 
 ## Why
 
@@ -27,16 +26,11 @@ Making an end user plug in two cables to use it is not acceptable. The
 programming port and everything built on it stay for development and
 validation, but nothing in the shipped design may depend on them.
 
-Today that means the deployed board has **no control path at all**:
-
-- Commands are read only from `uart_getc()`
-  (`apps/baremetal_bringup/main.c`), which is the UART on the
-  programming port.
-- The native port's descriptor (`drivers/usb_cdc.c`) exposes one
-  CDC-ACM function: a comm interface with an interrupt endpoint, and a
-  data interface with bulk OUT (playback) and bulk IN (frames). Nothing
-  parses commands from either.
-- Bulk OUT is drained and discarded when nothing consumes it.
+Without this channel the deployed board has **no control path at all**.
+Console commands arrive on the UART behind the programming port, and
+the native port's first CDC function carries bulk OUT (playback) and
+bulk IN (frames) with nothing parsing commands from either - bulk OUT
+is drained and discarded when nothing consumes it.
 
 A second motivation, and the one that decides the shape: the protocol
 should export **more device state and finer-grained control** than the
@@ -223,19 +217,25 @@ line-oriented ASCII (`h`, `P`, `=..L`), the native side is binary and
 framed — but each transport only *parses into a common command
 representation* and hands it to one executor.
 
-Today `main.c` tangles parsing and execution in a `switch` over
-`uart_getc()`, so this means extracting a command layer **before**
-adding the second transport, not after:
+How that landed differs from the sketch and keeps its point. There is
+no single `cmd_t`; instead each transport's *surface* is shared source
+and only what touches a register is per track:
 
 ```
-uart_getc() ──► ascii_parse ──┐
-                              ├──► cmd_t ──► cmd_execute() ──► drivers
-usb ctrl EP ──► frame_parse ──┘
+uart_getc() ──► console.c (shared table) ──► this track's handlers ──┐
+                                                                     ├──► drivers
+usb ctrl EP ──► ctl.c (shared parser, dispatch) ──► ctl_port_*() ────┘
 ```
 
-`cmd_execute()` returns a result the transport renders: the UART prints
-it as the text a human reads today, the native port packs it into a
-response frame. That is what keeps the two from drifting.
+`lib/due_shared/src/console.c` owns which letters exist, their
+arguments and their help; each track's `main` binds the handlers.
+`lib/due_shared/src/ctl.c` owns framing, CRC, version check and
+dispatch, and reaches the hardware only through the hooks in
+`lib/due_shared/src/ctl_port.h`. The two meet at those hooks - the
+console's stream command reads the generator through
+`ctl_port_gen_get()`, the same function `GEN` answers with - so a value
+reaches both transports from one place, which is what keeps them from
+drifting.
 
 ## Framing
 
@@ -319,35 +319,44 @@ device, which is the failure this project has spent the most time on.
 
 ### Opcodes
 
-Grouped so the ranges mean something, and every one of them maps onto a
-`cmd_execute()` case that the UART transport reaches too.
+Grouped so the ranges mean something: `0x00xx` identity and liveness,
+`0x001x` state the host both reads and writes, `0x002x` counters. The
+layouts are the packed structs in `lib/due_shared/src/ctl_wire.h`, which
+both tracks compile and `host/control.py` mirrors; this table is the
+map, not the definition.
 
-| op | name | payload in | payload out |
-|---|---|---|---|
-| `0x0001` | `PING` | — | `dev_us` u32, `dev_ms` u32, `seq` u32 |
-| `0x0002` | `IDENTITY` | — | track, firmware version, both protocol versions, frame bytes, samples/frame, MCK, ADC clock, build commit. **MCK and the ADC clock are nominal** — register-derived, never measured; see `docs/hardware.md`. The measured clock is `mck_meas_hz` in the telemetry heartbeat |
-| `0x0003` | `CAPABILITY` | — | `n_opcodes` u16 then that many `u16` opcodes, ascending — **implemented**; the RC limits, channel map and ring depths this row originally sketched are later slices and append to the same body |
-| `0x0010` | `GET_RATES` | — | dac RC + hz, adc RC + hz, channels |
-| `0x0011` | `SET_RATES` | dac_sps u32, adc_hz u32, channels u8 | the *snapped* values actually set |
-| `0x0012` | `GET_MODE` | — | mode u8 |
-| `0x0013` | `SET_MODE` | mode u8, flags u8 | mode actually entered |
-| `0x0020` | `GET_COUNTERS` | — | the `play:` and stream counters, with `dev_us` |
-| `0x0021` | `GET_OCCUPANCY` | — | `occ_min`, `endtx`, `run_us`, `consumed`, histogram |
-| `0x0022` | `GET_RATE_TRACE` | — | the decimated trace, empty when compiled out |
-| `0x0023` | `GET_LINK` | — | endpoint and DMA status, activity counters, cfg failures |
-| `0x0024` | `GET_LOAD` | — | `dev_us`, main-loop passes, worst pass, MCK, a 32-bucket log2 histogram of pass duration in cycles |
-| `0x0030` | `GET_FAULT` | — | the last HardFault record, or empty |
-| `0x0031` | `CLEAR_COUNTERS` | — | — |
-| `0x0032` | `RESET` | magic u32 | — (no response; the device is gone) |
+| op | name | payload in | payload out | tracks |
+|---|---|---|---|---|
+| `0x0001` | `PING` | — | `ctl_ping_t`: `dev_us`, `dev_ms`, `seq` | all |
+| `0x0002` | `IDENTITY` | — | `ctl_identity_t`: track, both protocol versions, firmware version, frame bytes, samples/frame, MCK, ADC clock, build commit. **MCK and the ADC clock are nominal** - register-derived; the measured clock is derived from `HEARTBEAT`'s frame-clock fields | all |
+| `0x0003` | `CAPABILITY` | — | `n_opcodes` u16 then that many `u16` opcodes, ascending: the optional opcodes this build answers | all |
+| `0x0010` | `GEN` | empty to read; `ctl_gen_t` to set | `ctl_gen_t` as adopted - shape, sync, points, amplitudes, trigger and output frequency, clamped rather than echoed | all |
+| `0x0020` | `COUNTERS` | — | `ctl_counters_t`: the `play:` counters with `dev_us` | all |
+| `0x0021` | `OCCUPANCY` | — | `ctl_occupancy_t`: `occ_min`, `endtx_seen`, `run_us`, `consumed`, histogram, trace | all |
+| `0x0022` | `RATE_TRACE` | `offset` u16 | one `ctl_rate_page_t` page of the decimated trace | B, when `PLAY_RATE_TRACE_ENABLED` |
+| `0x0023` | `STREAM_STATS` | — | `ctl_stream_stats_t`: what `?` prints, including the USB stack's own counters | B, C |
+| `0x0024` | `LOAD` | — | `load_report_t`: `dev_us`, passes, worst pass, MCK, the log2 histogram of pass duration in cycles. Read only; clearing is the console's | all |
+| `0x0025` | `BENCH` | — | `ctl_bench_t`: the bench half of `B` | B, C |
+| `0x0026` | `TEMP` | — | `ctl_temp_t`: the internal temperature sensor's mean code and spread | all |
+| `0x0027` | `HEARTBEAT` | empty to read and beat once; `period_ms` u32 to set the cadence, 0 to stop | `ctl_heartbeat_t`, also sent unasked at that cadence: `seq`, uptime, period, the counters, and the USB frame clock against device microseconds | all |
 
-`SET_RATES` returning the snapped value rather than an acknowledgement
-is deliberate. Every rate here is `39 MHz / RC` for integer RC, the
-host already has to know what it actually got, and a protocol that
-answers "yes" to a request it silently altered is how a project ends up
-quoting rates the hardware never ran at.
+The "tracks" column is `ctl_port_capabilities()` in each track's
+`ctl_port` file, and `CAPABILITY` reports the same word, so the list a
+host reads and the refusal it would get cannot disagree. `STREAM_STATS`
+and `BENCH` carry Track B's USB stack counters, which Track C shares
+through `drivers/` and Track A does not have; the rate trace is a
+compile-time option on Track B alone.
 
-`RESET` is the one command with no response, and it takes a magic
-argument so a corrupted frame cannot reboot the instrument.
+**Not built, and still the design's shape for when they are.** Rates
+and mode - `GET_RATES`/`SET_RATES`, `GET_MODE`/`SET_MODE` in `0x001x` -
+the HardFault record, a counter clear and a reset in `0x003x`. Two rules
+written for them still bind: a setter returns the *snapped* value rather
+than an acknowledgement, because every rate here is `39 MHz / RC` for
+integer RC and a protocol that answers "yes" to a request it silently
+altered is how a project ends up quoting rates the hardware never ran
+at; and a reset, if one is ever added, is the one command with no
+response and takes a magic argument so a corrupted frame cannot reboot
+the instrument. The console carries all of these meanwhile.
 
 ### What stays on the UART
 
@@ -362,12 +371,15 @@ expose runs the same code.
 
 The device may send an unsolicited response - `flags` bit0 set,
 `req_id` zero - on the control IN endpoint. That is the whole reason
-this is an endpoint pair rather than EP0. The first users:
+this is an endpoint pair rather than EP0. `HEARTBEAT` is the one built:
+a beat on the device's own schedule whose `seq` turns silence into a
+signal, carrying the counters whole and the USB frame clock. The others
+this form was designed for are not built:
 
 - overrun or underrun crossing a threshold, so the host learns without
   polling;
-- mode changed by the device itself, which today happens on a refusal
-  the host has to go looking for;
+- mode changed by the device itself, which happens on a refusal the
+  host has to go looking for;
 - fault captured, so a HardFault reaches the host rather than waiting
   for someone to ask.
 
@@ -444,10 +456,13 @@ reason for the console to exist on the shipped path.
 
 **Both tracks must behave identically.** Not merely
 feature-equivalent: the same command on either track produces the same
-response bytes, the same refusals, and the same state. The tracks share
-no source by invariant 3, so this is a contract enforced by tests
-rather than by a shared header - the wire format is the only thing they
-are allowed to have in common, and it belongs in this document.
+response bytes, the same refusals, and the same state. The parser, the
+dispatcher and the wire format are one shared source
+(`lib/due_shared/src/ctl.c`, `ctl_wire.h`) under invariant 3 as
+rescoped, so what the tests hold equal is the per-track half - the
+`ctl_port_*` hooks that reach the registers - and the oracle for the
+wire is the host, which parses a response without knowing which track
+emitted it. `docs/shared-source.md` has the reasoning.
 
 The suite already runs `--track=both`; every command added here needs a
 test that runs on both and compares, not two tests that each assert
@@ -458,9 +473,9 @@ using the Arduino core for enumeration, which would have cost it its
 value as an independent oracle. It does not: the SAM core at 1.6.12
 defines `PLUGGABLE_USB_ENABLED` and ships `PluggableUSB.{h,cpp}`, so a
 second interface is added through the core's own extension mechanism
-rather than by patching it *(check: PluggableUSB has not been exercised
-on this board yet)*. Track A keeps the core for enumeration exactly as
-invariant 3 intends.
+rather than by patching it - `sketches/bringup/ctlusb.cpp` is that
+interface, and it enumerates and answers on this board. Track A keeps
+the core for enumeration exactly as invariant 3 intends.
 
 ## The wedge the second function introduced - one cause found, not the last
 
@@ -628,8 +643,7 @@ contract, and the DPRAM budget - the one figure this document opened
 without - is now read off the datasheet: 4096 bytes, 2240 in use, 1088
 more for this channel.
 
-What remains unverified is not a number but two behaviours, and both are
-marked *(check)* where they are stated: whether libusb can open a device
-macOS's CDC-ACM driver has already claimed, which only matters if the
-EP0 route is ever revisited, and whether PluggableUSB works on this
-board, which Track A will answer the first time it is asked to.
+What remains unverified is not a number but one behaviour, marked
+*(check)* where it is stated: whether libusb can open a device macOS's
+CDC-ACM driver has already claimed, which only matters if the EP0 route
+is ever revisited.

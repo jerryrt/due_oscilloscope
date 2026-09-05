@@ -6,7 +6,7 @@ meaningful rather than two unrelated projects.
 
 ```
 apps/baremetal_bringup/main.c     superloop + ISRs (exists, working)
-apps/rtos_bringup/main.c          FreeRTOS tasks + the same ISRs (not started)
+apps/rtos_bringup/main.c          FreeRTOS tasks + the same ISRs (exists, working)
 ```
 
 ## Order of work
@@ -201,7 +201,9 @@ set under the kernel, and C2 is a question of task decomposition and
 priorities rather than of missing pieces.
 
 Stated as what it is: a symbol-level analysis, not a link test. The
-drivers link but are not yet *called*, and calling them is C2.
+link test is `apps/rtos_bringup/main.c`, whose tasks call the stream,
+playback and generator drivers and run the same suite the other tracks
+do.
 
 ## What the comparison should measure
 

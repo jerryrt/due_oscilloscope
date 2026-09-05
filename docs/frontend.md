@@ -301,11 +301,12 @@ count, capture presets.
    Saved *setups* are a separate matter and stay host-side: they are
    the user's workspace, not a property of the board.
 
-Every firmware item costs double. The tracks share no source by design
-and must stay feature-equivalent, so each lands twice with the same
-command letter and output format. Item 1 is the partial exception: a
-capability report lets the GUI tolerate one track being behind the
-other.
+Every firmware item costs at least double. The tracks share the wire
+contract and the command surface but not the register programming, and
+must stay feature-equivalent, so each item's protocol half lands once in
+`lib/due_shared` and its hardware half lands once per track. Item 1 is
+the partial exception: the capability report lets the GUI tolerate one
+track being behind the other.
 
 ### Explicitly out of scope
 

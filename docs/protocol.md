@@ -6,7 +6,7 @@ them with `python3 host/ports.py`, never hardcode):
 | Port | Traffic |
 |---|---|
 | Native, function 1 (High Speed) | **Binary sample frames** in; playback samples out |
-| Native, function 2 (High Speed) | Commands and responses. **Track B only, and nothing speaks over it yet** - see `docs/control-protocol.md` |
+| Native, function 2 (High Speed) | Binary, framed commands and responses, all tracks - `host/control.py` speaks it; see `docs/control-protocol.md` |
 | Programming | ASCII control commands, status, debug logs. **Development only** |
 
 Keeping logs off the data pipe means a stray `printf` cannot corrupt a
