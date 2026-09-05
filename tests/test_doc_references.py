@@ -1,25 +1,28 @@
-"""`CLAUDE.md` is loaded into every session, and nothing else reads it.
+"""The documents name paths; the paths must still exist.
 
-Needs no board and opens nothing. It reads one file and the output of
+Needs no board and opens nothing. It reads `CLAUDE.md`, `README.md`,
+`CONTRIBUTING.md` and every `docs/*.md`, and the output of
 `git ls-files`.
 
-Every other document in this tree is read when someone goes looking for
-it; `CLAUDE.md` is read by every agent on every task whether they went
+`CLAUDE.md` is read by every agent on every task whether they went
 looking or not, which makes a stale line in it more expensive than a
 stale line anywhere else - it is repeated into work rather than found
-during it. Nothing was watching it. `docs/HANDOFF.md` was deleted while
-eleven `docs/` files and `CLAUDE.md` cited it and the suite stayed
-green; `tests/test_census.py` reads a function, and
-`tests/test_comment_style.py` scans source directories.
+during it. The rest of the documents are read when someone goes looking,
+and what they find has to point at something: `docs/HANDOFF.md` was
+deleted while eleven `docs/` files and `CLAUDE.md` cited it, and
+`tools/sketch.sh` outlived its deletion in four documents for five days,
+while the suite stayed green. `tests/test_census.py` reads a function,
+and `tests/test_comment_style.py` scans source directories; nothing was
+reading the prose.
 
 Two properties are cheap enough to hold mechanically:
 
-  * every path it names still exists, and
-  * every constant it states still has that value in the code.
+  * every path a document names still exists, and
+  * every constant `CLAUDE.md` states still has that value in the code.
 
-Everything else in the file is prose, measurement and judgement, and no
-test can hold those. Do not try: a guard that pretends to check a claim
-it cannot check is worse than the claim going unchecked.
+Everything else in these files is prose, measurement and judgement, and
+no test can hold those. Do not try: a guard that pretends to check a
+claim it cannot check is worse than the claim going unchecked.
 
 **What the reference scan reads, and what it does not.** Inline code
 spans only, split on whitespace so a path inside a command line is seen.
@@ -30,12 +33,23 @@ they do yield are build outputs and venv paths that no fresh checkout
 has. Scanning them would buy two real references for six standing
 exemptions and a tokeniser that misses things without saying so.
 
+A token with a slash is a path candidate when its last segment carries
+a source extension or its first segment is a tracked top-level
+directory. Prose elides with slashes too - `rate/tone`, `ADC_SEQR1/2`,
+`origin/main`, `ttyACM0/1/2` - and none of those starts with a
+directory this tree has, so the rule drops them without an allowlist
+entry each. What it cannot see is a reference whose whole top-level
+directory has gone; that shape has not happened here, and a scan that
+read every slash would cost a dozen exemptions to catch it.
+
 **A path is resolved against `git ls-files`, not the filesystem**, so
 the answer is the same on every bench: a build directory, a venv and a
 per-bench record file are not the tree. The basename fallback is
 deliberate - the prose writes `frame.h` for
 `lib/due_shared/src/frame.h`, and a rule refusing that would mean twelve
-false positives here or an unreadable file.
+false positives here or an unreadable file. It also means a document
+naming a deleted path whose basename survives elsewhere is not caught;
+that is the price of the fallback, and it is paid knowingly.
 """
 import collections
 import os
@@ -53,18 +67,25 @@ def _read(*parts):
 
 
 # ---------------------------------------------------------------------
-# Check 1 - every path CLAUDE.md names resolves
+# Check 1 - every path a document names resolves
 # ---------------------------------------------------------------------
+
+#: What is scanned. Every Markdown document a reader is routed to; the
+#: standing pages live on the issue tracker and are not in the tree.
+DOCUMENTS = tuple(["CLAUDE.md", "README.md", "CONTRIBUTING.md"]
+                  + sorted("docs/" + f for f in os.listdir(
+                      os.path.join(REPO, "docs")) if f.endswith(".md")))
 
 #: A token that could be a repository path. Relative only: a leading `/`
 #: or `~` is a device node, a MacPorts prefix or a home directory, and
 #: none of those is this tree's to guarantee.
 _PATHISH = re.compile(r"^(?![/~])[A-Za-z0-9_.+-]+(?:/[A-Za-z0-9_.+-]+)*/?$")
 
-#: Extensions that make a slash-free token a file reference. Without
-#: this, `CMakeLists.txt` and `toolchains.json` - both named in
-#: CLAUDE.md, both at the repository root - would not be candidates at
-#: all.
+#: Extensions that make a token a file reference. Without this,
+#: `CMakeLists.txt` and `toolchains.json` - both named in CLAUDE.md, both
+#: at the repository root - would not be candidates at all. A slash-free
+#: token also needs a stem: a bare `.json` or `.c` in prose is a kind of
+#: file, not a file.
 _EXT = re.compile(r"\.(?:c|h|cpp|py|md|sh|json|jsonl|txt|ld|cmake|ini|yml)$")
 
 #: Inline code spans. The lookarounds keep the fence markers of a
@@ -72,54 +93,72 @@ _EXT = re.compile(r"\.(?:c|h|cpp|py|md|sh|json|jsonl|txt|ld|cmake|ini|yml)$")
 #: then pair up wrongly.
 _SPAN = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
 
-#: Paths CLAUDE.md names on purpose that this tree does not contain, and
-#: why each one is not a defect. Every entry is asserted still absent and
-#: still cited: an exemption that has quietly become resolvable, or whose
-#: sentence has gone, is a standing permission nobody re-reads.
+#: Paths the documents name on purpose that this tree does not contain,
+#: and why each one is not a defect. Every entry is asserted still absent
+#: and still cited: an exemption that has quietly become resolvable, or
+#: whose sentence has gone, is a standing permission nobody re-reads.
 ALLOWED = {
     # The Arduino core, which is fetched by the SAM package and lives
-    # under ~/.arduino15. CLAUDE.md names these to say what the core
+    # under ~/.arduino15. The documents name these to say what the core
     # does, or gets wrong, about the hardware.
     "boards.txt": "Arduino SAM package, outside this repository",
     "platform.txt": "Arduino SAM package, outside this repository",
     "flash.ld": "Arduino SAM core linker script, outside this repository",
     "variant.cpp": "Arduino SAM variant table, outside this repository",
+    "Arduino.h": "Arduino SAM core header, outside this repository",
+    "wiring_analog.c": "Arduino SAM core source, outside this repository",
+    "syscalls_sam3.c": "Arduino SAM core source, outside this repository",
+    "USBCore.cpp": "Arduino SAM core source, outside this repository",
+    "uotghs_device.h": "Arduino SAM libsam header, outside this repository",
     "cores/arduino/USB/CDC.cpp":
         "Arduino SAM core source, outside this repository",
+    "system/libsam/source/uotghs_device.c":
+        "Arduino SAM libsam source, outside this repository",
 
-    # Deleted on purpose, and the sentence naming it says so.
+    # Deleted on purpose, and the two CLAUDE.md sentences naming it
+    # record that: CLAUDE.md is the one document that carries recorded
+    # mistakes, and a Track A build path that was retired is one.
     "tools/sketch.py":
-        "deleted with issue #55; the sentence naming it records that",
+        "deleted with the arduino-cli build path; CLAUDE.md records that",
 
-    # Written per bench and gitignored, so it is absent from a fresh
-    # checkout by design rather than by accident.
+    # The FreeRTOS kernel, fetched at configure time by Track C's build.
+    "heap_4.c": "FreeRTOS kernel source, fetched at configure time",
+    "port.c": "FreeRTOS kernel port, fetched at configure time",
+
+    # Written per bench and gitignored, so each is absent from a fresh
+    # checkout by design rather than by accident. `.gitignore` says why
+    # for every one of them.
     "records/flash-log.jsonl":
         "written by tools/flash.py per bench; gitignored",
-
-    # Not paths. The scan cannot tell a slash in prose from a separator,
-    # and narrowing it enough to exclude these would also drop
-    # `lib/due_shared` and every other extension-free directory the file
-    # names.
-    "origin/main": "a git ref, not a path",
-    "wip/track-a-control-channel": "a deleted git branch, not a path",
-    "rate/tone": "a ratio in prose, not a path",
-    "FW_VERSION_MAJOR/MINOR/PATCH":
-        "three macro names elided with slashes, not a path",
+    "bench.json": "one desk's cabling, per host/provenance.py; gitignored",
+    "toolchains.local.json":
+        "per-machine tool locations beside toolchains.json; gitignored",
+    "compile_commands.json": "CMake build output; gitignored",
+    "baseline.measured.json":
+        "written by --calibrate for a human to promote; gitignored",
+    "tests/baseline.measured.json":
+        "written by --calibrate for a human to promote; gitignored",
 }
 
-#: References that must survive any reformatting of CLAUDE.md, so a
-#: pattern that has stopped matching fails by name instead of going
-#: quiet. One of each shape the scan has to see: a path with a slash, a
-#: slash-free file recognised by its extension, and a path written
-#: inside a command line.
-_ANCHORS = ("docs/scope.md", "CMakeLists.txt", "host/ports.py")
+#: References that must survive any reformatting, so a pattern that has
+#: stopped matching fails by name instead of going quiet. One of each
+#: shape the scan has to see: a path with a slash, a slash-free file
+#: recognised by its extension, a path written inside a command line,
+#: and one from a document other than CLAUDE.md.
+_ANCHORS = {
+    "CLAUDE.md": ("docs/scope.md", "CMakeLists.txt", "host/ports.py"),
+    "docs/testing.md": ("host/measure.py",),
+}
 
 #: What the scan currently reads. A pattern that stops matching, or a
-#: CLAUDE.md that loses half its references, has to be loud rather than
-#: green - the bounds are wide enough not to fail on ordinary editing
-#: and narrow enough that reading nothing cannot pass.
-_MIN_REFS, _MAX_REFS = 55, 140
-_MIN_RESOLVED = 45
+#: document set that loses half its references, has to be loud rather
+#: than green - the bounds are wide enough not to fail on ordinary
+#: editing and narrow enough that reading nothing cannot pass. The
+#: CLAUDE.md row is separate because that file is the one every session
+#: loads, and a scan of it going quiet should say so by name.
+_MIN_REFS = {"CLAUDE.md": 55, "*": 400}
+_MAX_REFS = {"CLAUDE.md": 140, "*": 1000}
+_MIN_RESOLVED = {"CLAUDE.md": 45, "*": 350}
 
 
 def _git_files():
@@ -135,8 +174,8 @@ def _git_files():
                          capture_output=True, text=True)
     assert out.returncode == 0, (
         f"`git ls-files` failed in {REPO}: {out.stderr.strip()!r}. This "
-        "guard resolves CLAUDE.md's paths against the index rather than "
-        "the filesystem, so it cannot run without one")
+        "guard resolves the documents' paths against the index rather "
+        "than the filesystem, so it cannot run without one")
     files = [p for p in out.stdout.split("\0") if p]
     assert len(files) > 100, (
         f"`git ls-files` returned {len(files)} paths, which is not this "
@@ -155,15 +194,39 @@ def _index():
     return set(files), dirs, {os.path.basename(p) for p in files}
 
 
-def _references():
+def _top_dirs():
+    return {d for d in _index()[1] if "/" not in d}
+
+
+def _candidate(tok, tops):
+    """Whether one whitespace-split token from a code span is a path."""
+    if not _PATHISH.match(tok):
+        return False
+    if "/" in tok:
+        return bool(_EXT.search(tok)) or tok.split("/", 1)[0] in tops
+    return bool(_EXT.search(tok)) and not tok.startswith(".")
+
+
+def _references(doc, tops=None):
     """token -> line numbers, for every path-like inline code span."""
+    if tops is None:
+        tops = _top_dirs()
     found = collections.defaultdict(list)
-    for lineno, line in enumerate(_read("CLAUDE.md").splitlines(), 1):
+    for lineno, line in enumerate(_read(*doc.split("/")).splitlines(), 1):
         for span in _SPAN.findall(line):
             for tok in span.split():
-                if _PATHISH.match(tok) and ("/" in tok or _EXT.search(tok)):
+                if _candidate(tok, tops):
                     found[tok].append(lineno)
     return dict(found)
+
+
+def _all_references(tops):
+    """(doc, token) -> line numbers, across every document."""
+    out = {}
+    for doc in DOCUMENTS:
+        for tok, lines in _references(doc, tops).items():
+            out[(doc, tok)] = lines
+    return out
 
 
 def _resolve(tok, files, dirs, bases):
@@ -176,67 +239,103 @@ def _resolve(tok, files, dirs, bases):
     return "nowhere"
 
 
-def test_the_reference_scan_reads_what_it_claims_to():
-    """The count, and three references by name.
+def test_the_document_set_is_what_it_claims_to_be():
+    """The list is built from the filesystem, so hold its shape.
 
-    Without this the check below is satisfied by a pattern that matches
-    nothing: reformat CLAUDE.md, or break the regex, and an empty
-    candidate set passes every assertion about it. This project has four
-    recorded guards that went green while checking zero of what they
-    named, and `docker/run-cppcheck.sh` draws the same distinction in
-    its exit codes - found nothing is not analysed nothing.
+    A `docs/` that has been moved, or a listing that returns nothing,
+    would leave every test below parametrised over CLAUDE.md alone and
+    green.
+    """
+    assert len(DOCUMENTS) >= 20, (
+        f"only {len(DOCUMENTS)} documents found: {DOCUMENTS}. The scan is "
+        "meant to cover every docs/*.md plus the three at the root")
+    assert "docs/testing.md" in DOCUMENTS and "docs/scope.md" in DOCUMENTS
+    tracked = set(_git_files())
+    untracked = [d for d in DOCUMENTS if d not in tracked]
+    assert not untracked, (
+        f"{untracked} are scanned but not tracked; either add them or "
+        "they are one bench's scratch and do not belong in docs/")
+
+
+def test_the_reference_scan_reads_what_it_claims_to():
+    """The counts, and a few references by name.
+
+    Without this the checks below are satisfied by a pattern that
+    matches nothing: reformat a document, or break the regex, and an
+    empty candidate set passes every assertion about it. This project
+    has four recorded guards that went green while checking zero of
+    what they named, and `docker/run-cppcheck.sh` draws the same
+    distinction in its exit codes - found nothing is not analysed
+    nothing.
 
     The anchors are the half a count cannot give. A pattern narrowed
     until it reads only slash-free filenames would still produce a
     plausible number.
     """
-    refs = _references()
-    assert _MIN_REFS <= len(refs) <= _MAX_REFS, (
-        f"CLAUDE.md yields {len(refs)} distinct path references, outside "
-        f"the expected {_MIN_REFS}-{_MAX_REFS}. Either the file changed "
-        "shape or this scan has stopped reading it; a reference check "
-        "over nothing passes for the wrong reason")
+    tops = _top_dirs()
+    every = _all_references(tops)
+    claude = {tok for (doc, tok) in every if doc == "CLAUDE.md"}
+    counts = {"CLAUDE.md": len(claude), "*": len(every)}
+    for key, n in counts.items():
+        assert _MIN_REFS[key] <= n <= _MAX_REFS[key], (
+            f"{key} yields {n} path references, outside the expected "
+            f"{_MIN_REFS[key]}-{_MAX_REFS[key]}. Either the documents "
+            "changed shape or this scan has stopped reading them; a "
+            "reference check over nothing passes for the wrong reason")
 
-    missing = [a for a in _ANCHORS if a not in refs]
+    missing = [f"{doc}: {a}" for doc, anchors in _ANCHORS.items()
+               for a in anchors if (doc, a) not in every]
     assert not missing, (
-        f"{missing} are no longer parsed out of CLAUDE.md. Each is one "
-        "shape this scan has to see - a path with a slash, a slash-free "
-        "file known by its extension, and a path inside a command line - "
-        "so losing one means the pattern reads less than it claims. If "
-        "CLAUDE.md genuinely stopped naming it, pick another anchor of "
-        "the same shape rather than deleting the assertion")
+        f"{missing} are no longer parsed out of the documents. Each is "
+        "one shape this scan has to see - a path with a slash, a "
+        "slash-free file known by its extension, a path inside a command "
+        "line, and one outside CLAUDE.md - so losing one means the "
+        "pattern reads less than it claims. If the document genuinely "
+        "stopped naming it, pick another anchor of the same shape rather "
+        "than deleting the assertion")
 
 
-def test_every_path_claude_md_names_resolves():
-    """A path in CLAUDE.md points at something, or it is on the allowlist.
+@pytest.mark.parametrize("doc", DOCUMENTS)
+def test_every_path_a_document_names_resolves(doc):
+    """A path in a document points at something, or it is allowlisted.
 
-    `docs/HANDOFF.md` was deleted while twelve files cited
-    it, and nothing in the suite noticed. That is the failure this
-    catches, and it is cheap to catch because a path is the one claim in
-    the file that has a mechanical answer.
+    `docs/HANDOFF.md` was deleted while twelve files cited it, and
+    nothing in the suite noticed. That is the failure this catches, and
+    it is cheap to catch because a path is the one claim in a document
+    that has a mechanical answer.
     """
     files, dirs, bases = _index()
-    refs = _references()
+    refs = _references(doc, {d for d in dirs if "/" not in d})
 
-    resolved = 0
     broken = []
     for tok, lines in sorted(refs.items()):
         where = _resolve(tok, files, dirs, bases)
-        if where != "nowhere":
-            resolved += 1
-        elif tok not in ALLOWED:
+        if where == "nowhere" and tok not in ALLOWED:
             at = ", ".join(f"line {n}" for n in lines)
             broken.append(f"{tok} ({at})")
 
     assert not broken, (
-        "CLAUDE.md names paths that are not in the tree: "
+        f"{doc} names paths that are not in the tree: "
         + "; ".join(broken)
         + ". Correct the reference, or - if the path is deliberately "
         "outside this repository - add it to ALLOWED with the reason")
 
-    assert resolved >= _MIN_RESOLVED, (
-        f"only {resolved} references resolved, against {len(refs)} read. "
-        "The check above is vacuous if almost everything is allowlisted")
+
+def test_enough_references_resolve_for_the_check_to_mean_anything():
+    """The check above is vacuous if almost everything is allowlisted."""
+    files, dirs, bases = _index()
+    every = _all_references({d for d in dirs if "/" not in d})
+    resolved = {
+        "CLAUDE.md": sum(1 for (doc, tok) in every if doc == "CLAUDE.md"
+                         and _resolve(tok, files, dirs, bases) != "nowhere"),
+        "*": sum(1 for (doc, tok) in every
+                 if _resolve(tok, files, dirs, bases) != "nowhere"),
+    }
+    for key, n in resolved.items():
+        assert n >= _MIN_RESOLVED[key], (
+            f"only {n} references in {key} resolved, against "
+            f"{_MIN_RESOLVED[key]} expected; the allowlist is carrying "
+            "the check")
 
 
 def test_every_allowlist_entry_is_still_absent_and_still_cited():
@@ -247,11 +346,12 @@ def test_every_allowlist_entry_is_still_absent_and_still_cited():
     exemption costs nothing on the day it is written and everything on
     the day the thing it exempts changes. Two ways for that to happen
     and both are checked - a path that has appeared in the tree, so the
-    entry now hides a real reference from the scan, and a path CLAUDE.md
-    has stopped naming, so the entry is a permission for nothing.
+    entry now hides a real reference from the scan, and a path no
+    document names any more, so the entry is a permission for nothing.
     """
     files, dirs, bases = _index()
-    refs = _references()
+    cited = {tok for (_doc, tok)
+             in _all_references({d for d in dirs if "/" not in d})}
 
     now_resolvable = sorted(
         f"{tok} (resolves as {_resolve(tok, files, dirs, bases)}; "
@@ -263,9 +363,9 @@ def test_every_allowlist_entry_is_still_absent_and_still_cited():
         "hiding a reference the scan would otherwise check: "
         + "; ".join(now_resolvable))
 
-    uncited = sorted(tok for tok in ALLOWED if tok not in refs)
+    uncited = sorted(tok for tok in ALLOWED if tok not in cited)
     assert not uncited, (
-        f"{uncited} are allowlisted and CLAUDE.md no longer names them. "
+        f"{uncited} are allowlisted and no document names them any more. "
         "An entry nobody re-reads is how an exemption outlives its "
         "reason; delete it")
 
