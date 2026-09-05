@@ -1,8 +1,31 @@
 # Agent Instructions
 
-Working notes for AI agents on this repository. Read `docs/scope.md` and
-`docs/architecture.md` before making non-trivial changes, and
-`docs/testing.md` before touching the host tools or adding tests.
+Working notes for AI agents on this repository. What is not in this
+file is one row away.
+
+## Which document answers what
+
+| question | where |
+|---|---|
+| Invariants, and facts that are easy to get wrong | `CLAUDE.md` |
+| Goals, phases, targets, non-goals | `docs/scope.md` - **read before a non-trivial change** |
+| DMA datapath, timebase, buffering | `docs/architecture.md` - **read before a non-trivial change** |
+| The suite: tiers, domains, what a board-free test runs against | `docs/testing.md` - **read before touching the host tools or adding a test** |
+| What works, measured figures, recorded mistakes | `docs/status.md` |
+| Transport ceilings, host I/O policy, the loss findings | `docs/usb.md` |
+| The generator, and the issue #5 mechanism with its evidence | `docs/awg.md` |
+| What #5 costs the instrument | `docs/issue5-impact.md` |
+| Daemon protocol and its guarantees | `docs/daemon-api.md` |
+| Front-end design and the rules the UI must obey | `docs/frontend.md` |
+| What the tracks share, and why | `docs/shared-source.md` |
+| The pinned build container, and what it will not do | `docs/build-container.md` |
+| Per-host validation | `docs/windows.md`, `docs/linux.md` |
+| Board, clocks, converters | `docs/hardware.md` |
+| How to write one of these | `docs/writing.md` |
+| **What is current, and what to pick up** | **standing issues, one per bench: #31 mac-bench, #32 linux-x1, #34 windows-desk, and #71 across all of them** |
+
+`README.md` carries the full document list; this table is the routing
+an agent needs.
 
 ## What this project is
 
@@ -29,14 +52,14 @@ what `write()` counted on the playback path, and an underrun counter
 stays at zero through exactly that. The feed is fixed - a constant
 512-byte write, `Feeder.WRITE_SIZE` - but most figures measured above
 200 ksps predate the fix and have not been re-read against byte
-conservation. See objective 0h in `docs/HANDOFF.md` before quoting
-any of them.
+conservation. See objective 0h on the cross-bench handoff page (#71)
+before quoting any of them.
 
 The host side is a daemon that owns the ports (`host/daemon/`) and a Qt
 window that draws from it (`gui/`), and both have test suites that need
 no board. See `docs/status.md` for numbers, `docs/frontend.md` and
-`docs/daemon-api.md` for the host architecture, and `docs/HANDOFF.md`
-for the current objectives.
+`docs/daemon-api.md` for the host architecture, and #71 for the
+current objectives.
 
 ## Ask what the buffer was doing before blaming the transport
 
@@ -648,8 +671,8 @@ it.
 
 Nothing else in this file is invalidated. Everything measured here was
 measured on macOS and stays true of macOS; what changes is which host's
-numbers are the project's numbers. Re-taking the 0-series in
-`docs/HANDOFF.md` comes before building on top of it.
+numbers are the project's numbers. Re-taking the 0-series (#71) comes
+before building on top of it.
 
 **`Feeder.WRITE_SIZE` is settled, and it is a macOS workaround.** Both
 benches ran `tools/writepolicy.py` on 2026-08-29, four runs per arm per
@@ -915,19 +938,21 @@ at once, on different machines and different benches, and they push to
 the same `main` while you are mid-task. Assume `origin/main` has moved
 since you last looked, because it usually has.
 
-**There are two channels and they carry different things.**
+**There are four channels and they carry different things.**
 
 | channel | what belongs in it |
 |---|---|
 | **git** | what changed and why. A commit body is where a finding *lives* - the measurement, the number, the hypothesis that died. `docs/` on `main` is where it survives the branch that produced it |
 | **issues** | discussion. Anything that needs another party: a question, a proposal, dividing work so two people do not build the same thing, a measurement only their bench can take, a disagreement about method |
+| **standing pages** | state: what is current, and what to pick up. One issue per bench - **#31** mac-bench, **#32** linux-x1, **#34** windows-desk - and **#71** across all of them. **Edited in place, never commented on.** A page is rewritten to say what is true now; a reply on it is discussion, and discussion belongs on an issue of its own. It goes stale by design, which is why it is not in `docs/` |
 | **`docs/`** | what is settled and will be needed again. **`docs/writing.md` is how to write one** - general to detailed, point at the code rather than copying it, no issue numbers, and never narrate the document's own corrections |
 
 The split matters because they decay differently. A commit message is
 read by whoever runs `git log` on that file in six months; an issue is
-read by whoever is working *now*. Putting a finding only in an issue
-loses it, and putting a coordination question only in a commit means
-nobody answers it.
+read by whoever is working *now*; a standing page is read by whoever
+starts next, and only if it was rewritten rather than appended to.
+Putting a finding only in an issue loses it, and putting a coordination
+question only in a commit means nobody answers it.
 
 **Use issues for the things a commit cannot do.** Two examples from this
 repository, both of which changed what got built:
@@ -983,12 +1008,11 @@ repository, both of which changed what got built:
   read it yet. If you offered to take something and got no reply, watch
   what they push - starting `host/provenance.py` was how one agent said
   "I have this" without answering.
-- **A standing status page is a channel, and you have to read the other
-  benches'.** Each bench keeps one issue edited in place - #31 macOS, #32
-  linux-x1, #34 windows-desk - and the rule above sends you to the issue
-  *list* and to `git log`, neither of which surfaces an edit to a page
-  you have already seen. It carries what a bench **is doing**, which is
-  the thing a comment thread does not: comments record what was decided.
+- **You have to read the other benches' standing pages.** The rule above
+  sends you to the issue *list* and to `git log`, neither of which
+  surfaces an edit to a page you have already seen. A page carries what
+  a bench **is doing**, which is the thing a comment thread does not:
+  comments record what was decided.
 
   Three failures of this in one afternoon on 2026-08-31, all of them the
   same shape and none of them anybody ignoring anybody. `mac-bench` held
@@ -1010,8 +1034,9 @@ repository, both of which changed what got built:
 
 **Say which bench a number came from.** There is more than one, and they
 differ - this one has DAC1 wired to A1, the DSO bench has it on the
-scope's external trigger. `docs/HANDOFF.md`'s status table carries both.
-A figure without its bench is not comparable with anything.
+scope's external trigger. Each bench's standing page carries its own
+wiring - #31, #32, #34. A figure without its bench is not comparable
+with anything.
 
 **And its firmware commit, its instrument, and its compiler.** Four
 parts, each added after it was learned expensively - the middle two on
@@ -1379,9 +1404,38 @@ cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
 cmake --build build-a --target firmware_track_a
 tools/flash.sh build-a/track_a_bringup.bin
 
-# Talk to either (discover the port first; the path moves with cables)
+# Track C: FreeRTOS. Fetches FreeRTOS at configure time, so it needs the
+# network once - which is why the container, running --network none,
+# does not analyse it.
+cmake -B build-c -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_C=ON
+cmake --build build-c --target firmware_rtos
+tools/flash.sh build-c/rtos_bringup.bin
+
+# Talk to any of them (discover the port first; the path moves with
+# cables). `h` lists what the board actually binds and no document's
+# copy of that list is authoritative; `v` is the cheap one, one line in
+# a fixed format saying which track is on the board.
 python3 tools/serial_probe.py /dev/cu.usbmodem14201 --send h --seconds 3
 ```
+
+**One command runs every check there is.** `docker/run.sh
+docker/run-ci.sh` builds both tracks, runs the board-free tier, runs
+that tier's positive control to prove the board absent, checks byte
+reproducibility with `tools/reproducible.py`, and runs cppcheck,
+clang-tidy and a fuzz pass - 217 s on `linux-x1`. It reports five
+states in one column, and an exit code no classifier recognises is DID
+NOT RUN, never PASS. The container is pinned with every input
+checksum-verified and never touches the board; `docs/build-container.md`
+says why, and `docker/run-ci.sh`'s own header says what each state
+means and what gates.
+
+Three firmware build options exist, all directory-wide and each wanting
+a build directory of its own: `-DFIRMWARE_WERROR=OFF` when one bench's
+GCC major emits a warning another's does not,
+`-DFIRMWARE_ANALYZER=ON` for GCC's symbolic execution pass, and
+`-DFIRMWARE_STACK_USAGE=ON` for a `.su` per object. `CMakeLists.txt`
+carries the reasoning at each one.
 
 ### Python
 
@@ -1395,6 +1449,7 @@ platform-specific wheels and does not travel.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python -m pytest --track=b -q
+.venv/bin/python -m pytest --track=b -m "not board" -q   # no hardware
 ```
 
 **Providing a usable, modern Python is the OS user's job**, not the
@@ -1458,6 +1513,17 @@ it, and on a case-insensitive filesystem the Arduino core's
 
 Keep the tracks feature-equivalent. Anything added to one gets added to
 the other, with the same commands and output format.
+
+### A new bench, or a second board
+
+Three things do not travel, and only one of them is a surprise. The
+venvs and the toolchain paths are the two settled above.
+
+The third is `tests/baseline.json`, which is calibrated against one
+specific board and says so in its own header. On a second Due, expect
+the timing-sensitive thresholds to need re-measuring - and **a failure
+there is a recalibration, not a regression.** Re-measure and record;
+never widen a tolerance to make a test pass.
 
 ## Bring-up order
 

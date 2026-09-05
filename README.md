@@ -30,9 +30,13 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/hardware-next.md](docs/hardware-next.md) | Options for a more powerful successor |
 | [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
 | [docs/windows.md](docs/windows.md) | Windows validation: 0c settled, byte loss is macOS's |
-| [docs/HANDOFF.md](docs/HANDOFF.md) | Current state and next objectives |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Commit conventions |
 | [CLAUDE.md](CLAUDE.md) | Agent working instructions |
+
+**Current state is not in the checkout.** What is current and what to
+pick up live on standing GitHub issues, edited in place: **#71** across
+all benches, **#31** mac-bench, **#32** linux-x1, **#34** windows-desk.
+They go stale by design, which is why they are issues and not files.
 
 ## Status
 
@@ -65,7 +69,7 @@ python3 -m daemon --fake                     # from host/
 |---|---|
 | Matched loop up to 453,488 sps each way | 1371 +/- 2 codes in every window, `under=0`, gapless |
 | AWG play-only up to 1.383 Msps (DACC hardware limit) | `under=0` at a 2.81 MB/s DMA-fed stream |
-| Full-rate pair: DAC 907 k + capture 907 k aggregate | runs with `under=0`; purity work remains (see handoff) |
+| Full-rate pair: DAC 907 k + capture 907 k aggregate | runs with `under=0`; purity work remains (#71) |
 | Capture path (Track B) | sent by endpoint DMA; the processor never reads a sample |
 | USB via endpoint DMA (IN / OUT / duplex) | **32.0 / 26.6 / 16.95 MB/s** on macOS; bytes *offered*, see objective 0h |
 | The same three on Windows 11 | IN **29 median (26-34 over 9 runs)** / OUT **37.6-37.8** / duplex **47.7-48.5 MB/s**, OUT with 0 B deficit |
