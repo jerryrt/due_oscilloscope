@@ -224,7 +224,7 @@ Violating any of these is a design regression, not a style preference.
    objective 0c, where console polling during playback turned out to be
    a participant in the wedge rather than a witness to it. Twenty
    `GET_LOAD` queries over the control channel cost 0.29 ms *in total*.
-   **New instrumentation goes in the metric system** (`bsp/load.c`,
+   **New instrumentation goes in the metric system** (`lib/due_shared/src/load.c`,
    `GET_LOAD`), never in a printf, and anything read while the sample
    path is running goes over the control channel.
 
@@ -478,7 +478,7 @@ Check here before reasoning from general Arduino knowledge.
   protection of any kind.
 - **Three version numbers and a build identity, and none substitutes
   for another.** `FRAME_VERSION` (`frame.h`) is the sample-stream wire
-  format, `CTL_VERSION` (`ctl.h`) the control-channel wire format, and
+  format, `CTL_VERSION` (`ctl_wire.h`) the control-channel wire format, and
   `FW_VERSION_*` (`lib/due_shared/src/fw_version.h`, one shared copy
   every track compiles) says which release is on the board when both
   contracts are unchanged. **Which *build* of that release is
