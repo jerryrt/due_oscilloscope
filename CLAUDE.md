@@ -796,14 +796,17 @@ invented here before anyone did, and one of them was committed.
 |---|---|---|
 | Flash + control + debug | `/dev/cu.usbmodem14201` | Programming port, Full Speed. Development only |
 | Sample data | `/dev/cu.usbmodemB_011` | Native port, High Speed; Track B's stack reports serial `B-01` |
-| Commands | `/dev/cu.usbmodemB_013` | Native port, second CDC function. **Track B only**, and nothing speaks over it yet |
+| Commands | `/dev/cu.usbmodemB_013` | Native port, second CDC function: the control channel, `host/control.py` |
 
-**The native port is two device nodes, not one** (Track B). It presents
-two CDC functions on one cable so that a deployed board needs no second
-cable, and they are told apart by USB interface number - 0 and 1 carry
-samples, 2 and 3 carry commands, pinned in `docs/control-protocol.md`.
-Do not pick one by position: `ports.find_all_ports()` returns all three
-nodes and `ports.native_order()` is the rule. Track A still has one.
+**The native port is two device nodes, not one, on every track.** It
+presents two CDC functions on one cable so that a deployed board needs
+no second cable, and they are told apart by USB interface number - 0
+and 1 carry samples, 2 and 3 carry commands, pinned in
+`docs/control-protocol.md`. Do not pick one by position:
+`ports.find_all_ports()` returns all three nodes and
+`ports.native_order()` is the rule. Track A's second function is
+`sketches/bringup/ctlusb.cpp`, added to the Arduino core through
+PluggableUSB.
 
 Paths are enumeration-dependent and change whenever a cable moves; the
 table is an example, not a reference. Discover with

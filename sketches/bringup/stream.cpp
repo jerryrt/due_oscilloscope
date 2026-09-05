@@ -5,8 +5,8 @@
  * the header written into the headroom in front of the payload - read
  * straight out of the capture ring by the controller, with the
  * processor never touching a sample. Same shape as Track B, which is
- * the point; the two tracks share no source and stay comparable by
- * being transliterations of each other.
+ * the point; the tracks share no hardware source, and their sample
+ * paths stay comparable by being transliterations of each other.
  *
  * The SerialUSB path below it stays for the UART transport and for a
  * host that has not configured the endpoints. It copies into the

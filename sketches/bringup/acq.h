@@ -65,9 +65,9 @@ extern "C" {
  * the CPU does to a sample is decide which buffer it lives in.
  *
  * Aligned to 4 because both the PDC and the UOTGHS DMA want word
- * addresses. Identical to Track B's acq_slot_t, deliberately: the two
- * tracks share no source, so the way they stay comparable is by being
- * transliterations of each other.
+ * addresses. Identical to Track B's acq_slot_t, deliberately: the
+ * tracks share no hardware source, so the way their capture paths stay
+ * comparable is by being transliterations of each other.
  */
 typedef struct __attribute__((aligned(4))) {
 	uint8_t  hdr[ACQ_HDR_BYTES];

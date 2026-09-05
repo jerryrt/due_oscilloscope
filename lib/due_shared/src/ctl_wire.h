@@ -1,12 +1,13 @@
 /*
  * The control channel's wire format, and nothing else.
  *
- * Compiled by both tracks so the format has one home rather than two
+ * Compiled by every track so the format has one home rather than three
  * transcriptions of docs/control-protocol.md; see docs/shared-source.md.
  *
- * Types and constants only. Everything that *does* something with them
- * - the parser, the dispatcher, the counters - is per-track for now and
- * lives in each track's own ctl.h.
+ * Types and constants only. The parser and dispatcher that act on them
+ * are ctl.c, shared too; what stays per track is the ctl_port_* hooks
+ * it calls, declared in ctl_port.h and implemented against each track's
+ * own drivers.
  */
 
 #ifndef CTL_WIRE_H
@@ -389,7 +390,7 @@ typedef struct __attribute__((packed)) {
  * refusal is decided on.
  */
 typedef struct __attribute__((packed)) {
-	uint8_t  track;            /* 'A' or 'B' */
+	uint8_t  track;            /* 'A', 'B' or 'C': FW_TRACK */
 	uint8_t  ctl_version;
 	uint8_t  frame_version;
 	/*
