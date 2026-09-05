@@ -140,10 +140,9 @@ def test_flashing_track_b_also_gets_a_clean_build():
 def test_track_a_build_is_clean_by_construction():
     """Track A's target cleans first, as `firmware` and `firmware_rtos` do.
 
-    Ported from the guard that asserted `tools/sketch.py` (deleted,
-    #55) passed `--clean` to arduino-cli. The reason is unchanged and is not
-    hypothetical: arduino-cli's cache did not notice every change under
-    `--libraries`, which is how a Track A image once shipped with a stale
+    The reason is not hypothetical: under the arduino-cli build path
+    Track A once had, the cache did not notice every change under
+    `--libraries`, which is how a Track A image shipped with a stale
     `lib/due_shared` object. Under CMake the same failure is available -
     an incremental build of a tree whose shared sources moved - and the
     same answer applies, so the assertion moves rather than retires.
@@ -170,10 +169,10 @@ def test_track_a_build_is_clean_by_construction():
 def test_track_a_flash_builds_before_it_flashes():
     """`measure.flash(track='a')` compiles rather than reusing an artifact.
 
-    Ported from the guard on `sketch.py upload`, deleted in #55, and
-    this one is not hypothetical either. `upload` used to flash whatever .bin was in
-    the build path, which is the image for whatever tree last compiled
-    and not the image for this one. It put an experimental firmware -
+    Not hypothetical either. The Track A upload path this replaced
+    flashed whatever .bin was in the build directory, which is the image
+    for whatever tree last compiled and not the image for this one. It
+    put an experimental firmware -
     with issue #33's guard deliberately removed - onto a bench whose
     working tree was clean, and the only tell was that the recorded sha
     did not change.
@@ -501,15 +500,13 @@ def test_nothing_else_builds_behind_the_enforcement():
     those are the only ways to produce an image. A third path added later
     would bypass both silently, so this fails on its appearance.
 
-    **Transitive, and it was not until 2026-08-31.** This matched
-    `arduino-cli|cmake` in the spawn window and nothing else, so a file
-    that spawned a file that spawned a build tool was invisible - and the
-    allowlist entry permitting the legitimate middle file also hid every
-    caller behind it. `tools/enum_probe.py` spawned `tools/sketch.py`,
-    which drove arduino-cli, and this test passed for as long as both
-    existed. It surfaced during #55 only because `sketch.py` was being
-    deleted and somebody re-grepped; both are gone now (bf041e3), and
-    the deletion would otherwise have left a bench tool broken for
+    **Transitive.** Matching `arduino-cli|cmake` in the spawn window and
+    nothing else leaves a file that spawns a file that spawns a build
+    tool invisible - and an allowlist entry permitting the legitimate
+    middle file hides every caller behind it. `tools/enum_probe.py`
+    spawned the Track A wrapper that drove arduino-cli, and a scan that
+    stopped one hop short passed for as long as both existed; the
+    wrapper's deletion would then have left a bench tool broken for
     whoever next needed it.
 
     A one-off bench tool with a hardcoded path is invisible to every

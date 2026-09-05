@@ -112,11 +112,9 @@ set(FW_GIT_REV_COMMAND
 # the tree, or a `--target baremetal_bringup` typed by hand.
 execute_process(COMMAND ${FW_GIT_REV_COMMAND} COMMAND_ERROR_IS_FATAL ANY)
 
-# lib/due_shared/src is the wire contract both tracks compile.
-# Track A reaches the same files by compiling them directly - the
-# A_SHARED_C glob in cmake/track_a.cmake (#55). It used to reach them as
-# an Arduino library via arduino-cli's --libraries.
-# Per target, NOT per directory, and that is load-bearing rather than
+# lib/due_shared/src is the wire contract every track compiles; Track A
+# reaches the same files through the A_SHARED_C glob in
+# cmake/track_a.cmake. Per target, NOT per directory, and that is load-bearing rather than
 # tidiness. `include_directories()` applies to every target defined
 # afterwards, including Track A's - and Track A brings its own Arduino
 # core, which ships `Stream.h`, `Print.h` and a whole second CMSIS.
@@ -124,7 +122,7 @@ execute_process(COMMAND ${FW_GIT_REV_COMMAND} COMMAND_ERROR_IS_FATAL ANY)
 # On a case-insensitive filesystem - macOS, and Windows - the core's
 # `#include "Stream.h"` then resolved to this project's `drivers/stream.h`
 # and the build failed with a linkage conflict three headers away from
-# the cause (issue #55). The CMSIS pair would have collided the same way
+# the cause. The CMSIS pair would have collided the same way
 # and had no reason to fail loudly.
 #
 # Invariant 3 already says the two tracks share no hardware source.
@@ -266,7 +264,7 @@ add_custom_command(TARGET baremetal_bringup POST_BUILD
 #
 option(BUILD_TRACK_C "Fetch FreeRTOS and build the Track C image" OFF)
 
-# Track A, built here rather than by arduino-cli (issue #55).
+# Track A, built here rather than by arduino-cli.
 #
 # Opt-in for the same reason BUILD_TRACK_C is: it needs the Arduino SAM
 # core *sources* installed, and a bench without them should not fail to
@@ -379,13 +377,15 @@ if(BUILD_TRACK_C)
 endif()
 
 # ---------------------------------------------------------------------------
-# One build system, two tracks.
+# One build system, three tracks.
 #
-# CMake is the single entry point, but it does NOT build Track A itself: it
-# drives arduino-cli. Invariant 3 - the two toolchains share no source, and
-# Track A is a reference oracle only for as long as a different compiler and
-# a different USB stack produce it. Consolidating the *interface* is free;
-# consolidating the *toolchains* would destroy the thing Track A is for.
+# CMake is the single entry point and builds every track with the same
+# arm-gcc; Track A differs in its sources (the vendored Arduino core), not
+# in its compiler. Invariant 3 - the tracks share the wire contract and
+# nothing that programs a register - is what keeps Track A a reference
+# oracle for the hardware paths, and it holds whichever compiler produces
+# the images. cmake/track_a.cmake records what aligning the toolchains
+# cost.
 #
 # Tool locations come from toolchains.json via cmake/hosttools.cmake, so
 # platform differences are resolved here rather than inside the scripts.
@@ -415,30 +415,26 @@ add_custom_target(tools
     USES_TERMINAL VERBATIM)
 
 # Track A -- the reference oracle. Built here the way Track B and Track C
-# are, by cmake/track_a.cmake, under -DBUILD_TRACK_A=ON (#55).
+# are, by cmake/track_a.cmake, under -DBUILD_TRACK_A=ON. There is no
+# separate build or flash target for it: `firmware_track_a` builds it
+# with the clean-build wrapper, `tools/flash.py` flashes any .bin, and a
+# second target doing the same by another route is the "third path"
+# tests/test_clean_build.py forbids -- two ways to build Track A must not
+# both exist.
 #
-# The `track_a` and `flash_track_a` targets that used to live here shelled
-# out to tools/sketch.py and arduino-cli, and they were the last live
-# callers of it. They are gone rather than re-pointed: `firmware_track_a`
-# already builds Track A with a clean-build wrapper, `tools/flash.py`
-# already flashes any .bin, and a second target that does the same thing
-# by another route is precisely the "third path" tests/test_clean_build.py
-# forbids -- the criterion #55 is written against says two ways to build
-# Track A must not both exist.
-#
-# What those targets knew and this must not lose: build.f_cpu MUST match
-# the runtime clock, because micros() divides by it and MCK is 78 MHz
-# here; and build.ldscript pins the capture ring to SRAM bank 1. Passed
-# to arduino-cli they were silent when missing and cost 35-44 ADC
-# overruns per 4 s. They are now two lines in cmake/track_a.cmake, under
-# version control, where neither can be forgotten.
+# What a Track A build must not lose: build.f_cpu MUST match the
+# runtime clock, because micros() divides by it and MCK is 78 MHz here;
+# and build.ldscript pins the capture ring to SRAM bank 1. As arduino-cli
+# build properties both were silent when missing and cost 35-44 ADC
+# overruns per 4 s; here they are two lines in cmake/track_a.cmake,
+# under version control, where neither can be forgotten.
 #
 #   cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake #         -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
 #   cmake --build build-a --target firmware_track_a
 #
-# arduino-cli is still resolved above, because bossac and the port
-# discovery come from the same install and Track A's *sources* are the
-# Arduino core's.
+# arduino-cli is resolved above but never invoked: `arduino-cli core
+# install arduino:sam` is how the core sources Track A compiles get onto
+# a bench, and toolchains.json is the one registry for every host tool.
 
 # Track B -- this project. The 1200-baud touch and bossac call live in
 # tools/flash.py because pyserial does them identically everywhere; CMake

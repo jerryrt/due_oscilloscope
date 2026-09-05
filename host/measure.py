@@ -1484,9 +1484,9 @@ class Board:
         # and a thread is stuck on it, so nothing in this process can
         # open it again.
         self.wedged = False
-        # Opened lazily and only once. Track A has no control channel, so
-        # None is an ordinary answer here and every caller falls back to
-        # the console rather than failing.
+        # Opened lazily and only once, by ctl(). None after that means
+        # the command port did not answer - a fault, never a track; the
+        # methods that need it raise rather than read the console.
         self._ctl = None
         self._ctl_tried = False
         self._ctl_why = None

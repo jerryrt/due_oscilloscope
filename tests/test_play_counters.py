@@ -35,10 +35,8 @@ def test_playback_counters_describe_one_run_not_several(board, seconds, track):
     at any rate. Testing it on the *second* run is the whole point: the
     first run passes even with the bug present.
     """
-    # Ran on Track B only until 2026-08-25, because the identity is read
-    # off the `O` occupancy line and Track A had no `O`. It has one now -
-    # objective 1c's first half - so this covers both tracks, which is
-    # what the skip it replaced said would happen.
+    # Both tracks: the identity is read off the `O` occupancy line, and
+    # both bind `O`.
 
     hz = measure.hz_for(65)
     secs = window(seconds, 2.0)

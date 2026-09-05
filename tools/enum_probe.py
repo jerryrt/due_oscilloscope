@@ -17,13 +17,10 @@ N = int(sys.argv[1]) if len(sys.argv) > 1 else 12
 fails = 0
 
 for i in range(N):
-    # measure.flash() rather than sketch.py, which is gone (#55).
-    #
-    # windows-desk's tool and windows-desk's hardcoded COM7, left as
-    # they are - only the flash call is changed, because sketch.py was
-    # deleted underneath it and a hardcoded caller is how a deletion
-    # becomes a broken tool nobody finds until they next need it.
-    # measure.flash() is the one place that knows how each track builds.
+    # measure.flash() is the one place that knows how each track is
+    # built. windows-desk's tool and windows-desk's hardcoded COM7; a
+    # hardcoded build path here would be how a build tool's deletion
+    # becomes a broken bench tool nobody finds until they next need it.
     try:
         measure.flash(track="a", build=True, control="COM7")
     except Exception as e:                               # noqa: BLE001

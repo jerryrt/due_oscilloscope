@@ -44,15 +44,10 @@ def read_temp(samples):
 
 
 def arm(track, samples):
-    # measure.flash() rather than a per-track argv table.
-    #
-    # This held its own {"a": sketch.sh, "b": flash.sh} map, which is a
-    # second place that knows how each track is built - and #55 has just
-    # spent a session establishing that a second way to build Track A is
-    # exactly the thing to remove. It was also about to break: sketch.sh
-    # was deleted in that same commit (bf041e3), and a hardcoded caller
-    # is how a deletion turns into a broken tool nobody notices until
-    # they next need it.
+    # measure.flash() is the one place that knows how each track is
+    # built; a per-track argv table here would be a second, and a
+    # hardcoded caller is how a build tool's deletion becomes a broken
+    # bench tool nobody finds until they next need it.
     measure.flash(track=track, build=True)
     return read_temp(samples)
 

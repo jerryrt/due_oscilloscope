@@ -13,7 +13,8 @@ device was never told, the device is made to block for it, and the
 monitor has to report it. Agreeing with a printf or a sweep would only
 prove that two unknowns match.
 
-Track B only. Track A has no monitor yet.
+Both tracks: the monitor is `lib/due_shared/src/load.c` and both
+compile it.
 """
 
 import re
@@ -30,15 +31,11 @@ pytestmark = pytest.mark.smoke
 @pytest.fixture
 def link(board, track):
     # No skip. The monitor is lib/due_shared/src/load.c and both tracks
-    # compile it, so this file runs on both.
-    #
-    # It used to skip everything but Track B, because the monitor lived
-    # in bsp/ and the reason given was that the Arduino core does not
-    # enable the Cortex-M3 cycle counter. That was true and was not a
-    # reason: what the core does not do is *enable* CYCCNT, and
-    # load_init() does that itself - on either track. The counter is
-    # core rather than peripheral and is the same on both builds, which
-    # is why the monitor could be shared at all.
+    # compile it, so this file runs on both. The Arduino core does not
+    # enable the Cortex-M3 cycle counter, and does not need to:
+    # load_init() enables CYCCNT itself on either track, because the
+    # counter is core rather than peripheral and is the same on both
+    # builds - which is why the monitor could be shared at all.
     #
     # The floors below are deliberately loose and cover both tracks. They
     # are not the same loop: Track A idles at ~75 k passes/s against
