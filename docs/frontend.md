@@ -45,8 +45,8 @@ loss, not a dropped frame.
 The socket is a crash boundary. If the GUI dies, the daemon keeps
 draining bulk OUT. A device that stops draining while the host has
 writes in flight hangs the host process in `close()` holding the port -
-that is the hazard in `docs/usb.md` and it is objective 0c in
-`docs/HANDOFF.md`, seen once in the wild.
+that is the hazard in `docs/usb.md` and it is objective 0c (#71), seen
+once in the wild.
 
 The two halves want different interpreters, and that is not a
 hypothetical: PySide6 6.9.3 declares `>=3.9,<3.14` while the test venv

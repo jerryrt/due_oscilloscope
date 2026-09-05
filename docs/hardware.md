@@ -370,8 +370,8 @@ back from the peripheral carries the field. `TRACKTIM` sets a *minimum*
 tracking time and the converter is idle for longer than that at every
 rate here; at rc 86, where the minimum would have to lengthen the cycle,
 the hardware declines to. So this is not a usable knob on tracking in
-this design, and not a throughput cost either. See `docs/HANDOFF.md`,
-"Track and settling do nothing".
+this design, and not a throughput cost either. See `docs/awg.md`,
+"Neither TRACKTIM nor SETTLING moves it".
 
 That tradeoff was expected to be the determinant of the real
 per-channel rate, ahead of USB bandwidth. On the measurement above it is
@@ -411,7 +411,7 @@ configuration will behave.
 from a DAC output is displaced by up to ~80 codes, which is -49 dB
 against full scale where the part is specified at -64 to -80 dB THD. It
 is an AWG defect and does not affect ordinary ADC inputs. See
-`docs/issue5-impact.md` for what it bounds and `docs/HANDOFF.md` for the
+`docs/issue5-impact.md` for what it bounds and `docs/awg.md` for the
 investigation.
 
 The non-rail-to-rail output surprises everyone. `analogWrite(DAC0, 0)`

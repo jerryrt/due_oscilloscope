@@ -88,8 +88,8 @@ slow converter is real and is a property of the device. But no bytes are
 lost at those rates, because Windows never oversupplies. Oversupply plus
 shedding is the right diagnosis, and closing the loop on the device's
 own consumption is the right fix; Windows simply does it in the driver.
-(HANDOFF records 1.58% and 2.35% for these two. The first agrees, the
-second does not, and is worth re-deriving.)
+(`docs/usb.md` records 1.58% and 2.35% for these two. The first agrees,
+the second does not, and is worth re-deriving.)
 
 ## A correction to the IN figure, wrong in two ways
 

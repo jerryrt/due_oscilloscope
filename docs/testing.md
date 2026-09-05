@@ -14,9 +14,10 @@ python3 -m venv .venv
 .venv/bin/python -m pytest --track=b -q
 ```
 
-pytest is not stdlib, so the suite needs the venv. Read
-`docs/HANDOFF.md` first for the board, the ports and the build
-environment.
+pytest is not stdlib, so the suite needs the venv. `CLAUDE.md` has the
+interpreters; the board, the ports and the toolchain differ per bench
+and live on that bench's standing page - #31 mac-bench, #32 linux-x1,
+#34 windows-desk.
 
 ## 1. What the suite is for
 

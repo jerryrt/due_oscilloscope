@@ -1,6 +1,6 @@
 # Status and Known Issues
 
-> **2026-08-23: read `docs/HANDOFF.md` objective 0h before quoting
+> **2026-08-23: read objective 0h on issue #71 before quoting
 > anything below that was measured above 200 ksps.** The host's USB
 > stack was silently discarding 0.45-0.85% of what `write()` counted on
 > the playback path, and the underrun counter - which most figures here
@@ -414,7 +414,7 @@ Two traps for whoever measures next. Loop rate must be measured with the
 bench armed and **no traffic** - under load the arming path is skipped
 whenever a channel is busy, and the loop reads far faster than it is.
 And the IN flood counters read far above the wire on both tracks, which
-is the bank overcommit standing as objective 6 in `docs/HANDOFF.md`.
+is the bank overcommit parked under "Next" below.
 
 ### The DMA endpoints must be recovered after a rebuild
 
@@ -889,7 +889,8 @@ Measured after the fix, five play-only runs each, underruns per 3 s:
 | **28** | 1,392,857 | 1/5 clean | **1/5 clean, 38-39 when it fails** |
 
 Unchanged, and `partial` is zero in all of them. It is a feed-policy
-problem, tracked on its own in `docs/HANDOFF.md`.
+problem - `docs/usb.md`, "The playback ring's floor is a servo, not a
+resting place".
 
 The new `spans` counter says something useful about it: a run that
 starves arms *few, large* spans (RC 32, failing: 464 spans in 3 s) and a
@@ -1358,10 +1359,8 @@ stop. Full context and caveats in `docs/windows.md`.
 
 ## Next
 
-The live objective list is in `docs/HANDOFF.md`: capture IN over
-endpoint DMA, the cable swap, the second pair, the dual-DAC purity
-signatures, equivalent-time reconstruction. Longer-horizon items parked
-here:
+The live objective list is issue #71, the standing cross-bench handoff.
+Longer-horizon items parked here:
 
 1. Understand why the UOTGHS interrupt stops firing after the first
    reset. Polling works, but the cause is unknown and may bite

@@ -8,14 +8,14 @@ pointers and nothing else. Every design decision below follows from that.
 > DMA: bulk OUT data lands in the ring with no CPU byte-copy,
 > multi-slot spans keep the transfer independent of main-loop latency,
 > and progress publishes from the channel's BUFF_COUNT mid-flight. The
-> capture USB hop is the one remaining CPU FIFO copy (it measurably
-> sustains full rate; converting it - header contiguous with payload,
-> one DMA per frame - is the top objective in `docs/HANDOFF.md`). Two
-> details also differ from the sketches below, from measurement rather
-> than accident: host-fed playback runs the DACC from its own timer
-> channel (TIOA1) so the AWG rate is independent of the capture rate,
-> and the playback stream uses half-word transfers with TAG rather
-> than `WORD=1`.
+> capture USB hop runs on it too: `stream_core_start()` arms IN DMA on
+> every USB start, and the header is written into the headroom in front
+> of that buffer's payload, so a frame is one transfer and the header is
+> the only thing the processor writes into it. Two details also differ
+> from the sketches below, from measurement rather than accident:
+> host-fed playback runs the DACC from its own timer channel (TIOA1) so
+> the AWG rate is independent of the capture rate, and the playback
+> stream uses half-word transfers with TAG rather than `WORD=1`.
 
 ## Datapath
 

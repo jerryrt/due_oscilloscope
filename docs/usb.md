@@ -292,8 +292,8 @@ reproducible on demand. The candidate is
 but never issues `EPRST` - a DMA stopped mid-bank leaves a bank
 nothing frees, and the endpoint NAKs for good. Track A does reset the
 endpoint (`ep_reset_fifo()`); Track B has no `EPRST` anywhere. See
-objective 0c in `docs/HANDOFF.md` before changing it: `EPRST` also
-clears the data toggle.
+objective 0c (#71) before changing it: `EPRST` also clears the data
+toggle.
 
 Diagnosing it from the outside: a host tool making no progress while
 the board's heartbeat still flashes and both activity LEDs stay dark

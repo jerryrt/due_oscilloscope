@@ -417,8 +417,7 @@ Everything here carries the platform caveat and the 0-series
 re-validation debt. Already covered by `tests/`.
 
 Throughput, byte conservation, underruns per rate, `close()` behaviour,
-load monitor, daemon and GUI. Objective 0h in `docs/HANDOFF.md` gates
-these.
+load monitor, daemon and GUI. Objective 0h (#71) gates these.
 
 ## What to build, in order
 
@@ -453,8 +452,8 @@ response.
 **6. Give the wrap fold a control arm.** Run the identical fold with
 `sync=cycle`, where nothing is locked to the reload, and with a screen
 holding a whole number of cycles. Without a control the 9.5× is not
-evidence. `docs/HANDOFF.md` already says this about issue #5 sweeps
-generally; it applies here.
+evidence - `tools/ab.py` refuses a run whose control arm never
+reproduced, for any issue #5 sweep, and this is one.
 
 **7. Report generator.** One command turning the recorded run into the
 tables in `docs/status.md`, so the prose stops being hand-copied.
@@ -490,9 +489,9 @@ it is worth building deliberately.
 ### The loop is ratiometric, and that is the whole lever
 
 **The DAC's reference is ADVREF, the ADC's reference** - datasheet Table
-46-39's note, recorded in `docs/HANDOFF.md`. One shared node, so a DAC
-code produces a fixed fraction of ADVREF and the ADC reads it as a
-fraction of the same ADVREF. The code-to-code ratio is therefore
+46-39's note, and `docs/noise.md` works the arithmetic through. One
+shared node, so a DAC code produces a fixed fraction of ADVREF and the
+ADC reads it as a fraction of the same ADVREF. The code-to-code ratio is therefore
 **immune to what the 3.3 V rail actually is** - and, by exactly the same
 token, **blind to it**. The board cannot measure its own reference, ever,
 by any amount of cleverness.

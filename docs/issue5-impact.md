@@ -1,6 +1,6 @@
 # Issue #5: what it means for the instrument
 
-`docs/HANDOFF.md` carries the investigation - how the artifact was found,
+`docs/awg.md` carries the investigation - how the artifact was found,
 what was ruled out, and how to reproduce it. This file answers a
 different question, and the one a user of the instrument actually asks:
 **which half of this thing does the defect affect, how big is it, and
@@ -17,7 +17,7 @@ apart - one ADC sample taken from a **DAC output pin** reads displaced by
 somewhere between a fraction of a code and about 80. It is analog and it
 is made at the DAC pin rather than in the ADC. It does **not** need a
 moving output: the reload alone produces it, measured on two boards and
-two hosts. See `docs/HANDOFF.md` for the evidence behind each of those
+two hosts. See `docs/awg.md` for the evidence behind each of those
 clauses, and for why the earlier "a changing output is needed" was an
 artifact of one image.
 
@@ -116,5 +116,6 @@ written as though the transient's height were known.
 ## What this does not bound
 
 The AWG's *underrun* behaviour, byte conservation and rate accuracy are
-separate matters and are covered in `docs/status.md` and the 0-series in
-`docs/HANDOFF.md`. This file is only about the once-per-wrap artifact.
+separate matters and are covered in `docs/status.md`, and the USB loss
+series in `docs/usb.md`. This file is only about the once-per-wrap
+artifact.
