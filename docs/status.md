@@ -1256,10 +1256,7 @@ otherwise, and neither had ever been checked:
   relies on.
 
 `linker/arduino_due_x_sram1.ld` is that script with two changes, named
-in `cmake/track_a.cmake`. It was a computed relative path passed by
-`tools/sketch.sh` as `build.ldscript` until #55; the path had to be
-relative to the installed variant directory, which is why it was
-computed rather than written down. Both changes are load-bearing:
+in `cmake/track_a.cmake`. Both changes are load-bearing:
 
 1. **`ram` shrinks from 96K to bank 0's 64K.** The stock region spans
    0x20070000..0x20088000, which *includes* bank 1 - so `.bss` grows

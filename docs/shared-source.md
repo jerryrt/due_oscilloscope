@@ -5,10 +5,11 @@ this plan: Track A has no rate trace, and answers
 that opcode with `CTL_ERR_OPCODE`. That is honest rather than
 missing.
 
-Invariant 3 says the two toolchains share no source. This document
-narrows that rule to the layer its own rationale is about, and plans the
-move. Read `CLAUDE.md`'s invariant 3 first; this supersedes its blanket
-wording, not its purpose.
+Invariant 3 keeps the two toolchains' *hardware* source apart and
+shares the rest. This document is the reasoning behind that line, the
+plan that moved the code across it, and what the move found. Read
+`CLAUDE.md`'s invariant 3 first; the boundary is stated there, and this
+is why it sits where it does.
 
 ## Why, and it is not a preference
 
@@ -20,13 +21,14 @@ hand-copies written from the same `docs/control-protocol.md` by the same
 author are not independent. They are two homes for one misreading, plus
 drift.
 
-And the tracks already share protocol source. They just do it by hand:
+And before the move the tracks already shared protocol source. They
+did it by hand:
 
-- `sketches/bringup/playstat.h` says so in its own header - "Track A's
+- `sketches/bringup/playstat.h` said so in its own header - "Track A's
   copy of drivers/playstat.h, and deliberately a copy... byte-for-byte
   the other one and any edit belongs in both on the same day."
-- `version.h` differs across tracks by one character (`FW_TRACK`) and a
-  comment pointing at the other copy.
+- each track's `fw_version.h` differed from the other's by one character
+  (`FW_TRACK`) and a comment pointing at the other copy.
 
 **It has already drifted, twice, and both were found rather than
 predicted.**
@@ -89,9 +91,7 @@ lib/due_shared/
 ```
 
 - **Track A**: `cmake/track_a.cmake` globs `lib/due_shared/src/*.c` into
-  the image directly (`A_SHARED_C`). It reached the same files as an
-  Arduino library via `tools/sketch.py --libraries <repo>/lib` until #55
-  retired arduino-cli from this track.
+  the image directly (`A_SHARED_C`).
 - **Track B**: `CMakeLists.txt` adds `lib/due_shared/src` to
   `include_directories` and lists the sources explicitly.
 

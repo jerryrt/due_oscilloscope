@@ -10,10 +10,11 @@ to `docs/metric-baseline-linux.md`. Regenerate with
     python3 tools/metrics.py --repeats 9 --seconds 3 \
         --out docs/metric-baseline-linux-track-a.md
 
-The figures below were taken with `tools/sketch.sh`, which drove
-arduino-cli and its bundled GCC 4.8.3; #55 replaced it and deleted it on
-2026-08-31. **So a regenerated baseline is not comparable to this one
-without saying so** - it is a different code generator, and #5 measured
+The figures below were taken on an image built by arduino-cli and its
+bundled GCC 4.8.3, a build path this repository no longer has: Track A
+is built by `cmake/track_a.cmake` with the same arm-gcc as Track B. **So
+a regenerated baseline is not comparable to this one without saying
+so** - it is a different code generator, and #5 measured
 both the site set and the severity to be properties of the generated
 code.
 

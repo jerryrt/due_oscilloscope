@@ -387,8 +387,9 @@ the docs and was needed here:
 
 ### flash.py's boot-bit failures are explained
 
-All three `Boot Flash: false` boards here came from `tools/flash.py` or
-`tools/sketch.sh`, and none from a direct bossac run. That is not a
+All three `Boot Flash: false` boards here came through `tools/flash.py`
+- two of them from the Track A upload wrapper of the day, which
+delegated to it - and none from a direct bossac run. That is not a
 coincidence and not bossac: it is `restore_115200()` erasing the board
 after the boot check, as measured above. The fix in `touch_1200()`
 removes it.

@@ -233,9 +233,8 @@ cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
 cmake --build build-a --target firmware_track_a
 ```
 
-`build.f_cpu` and `build.ldscript` are lines in `cmake/track_a.cmake`
-now, so neither can be silently forgotten (#55). `tools/sketch.sh`
-passed them as arduino-cli properties until 2026-08-31 and is deleted.
+`build.f_cpu` and `build.ldscript` are lines in `cmake/track_a.cmake`,
+so neither can be silently forgotten.
 
 The firmware prints both values at start-up and warns if they disagree,
 so a stale build property is caught immediately rather than corrupting
