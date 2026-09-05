@@ -1,7 +1,7 @@
 """The bench oscilloscope. Optional, and model-independent where it can be.
 
 Everything this project knows about issue #5 came from the converter
-under investigation. `docs/HANDOFF.md` records the consequence: the
+under investigation. `docs/issue5-impact.md` carries what that costs: the
 voltage at the DAC pin actually moving stays *inference*, and every
 amplitude a lower bound, until an instrument that is not the ADC says
 otherwise. This is the driver for that instrument.

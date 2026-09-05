@@ -56,8 +56,8 @@ that bench to generalise, not a defect this pass corrects.
 | `dso_metrics.py` | Device metrics for the DAC, measured with an instrument that is not the board. | live - docs/awg.md, docs/measurement-suite.md |
 | `dso_sweep.py` | Drive every supported waveform at every supported rate, and watch. | live - docs/awg.md |
 | `enum_probe.py` | Does Track A's command port fail to come up after a flash on Windows? | live - tests/test_clean_build.py |
-| `flash.py` | Flash a bare-metal .bin to the Due, on any host. | live - docs/HANDOFF.md, docs/linux.md, docs/windows.md, docs/toolchain.md |
-| `flash.sh` | Shell shim that runs flash.py from the repo venv. | live - docs/HANDOFF.md, docs/frontend.md, docs/daemon-api.md, docs/linux.md, docs/toolchain.md |
+| `flash.py` | Flash a bare-metal .bin to the Due, on any host. | live - docs/linux.md, docs/windows.md, docs/toolchain.md |
+| `flash.sh` | Shell shim that runs flash.py from the repo venv. | live - docs/frontend.md, docs/daemon-api.md, docs/linux.md, docs/toolchain.md |
 | `gallery.py` | Capture the wiki's screenshot gallery, reproducibly, from a live board. | live - tests/test_daemon_api.py, tests/test_startup_frames.py |
 | `image_fingerprint.py` | What is actually on the board, in a form two benches can compare. | live - CLAUDE.md |
 | `image_mnemonics.py` | Per-function mnemonic hashes: what the compiler generated, not where it put it. | live - CLAUDE.md |
@@ -117,7 +117,7 @@ that bench to generalise, not a defect this pass corrects.
 | `report.py` | Generate the figure tables that documentation would otherwise hand-copy. | live - docs/status.md |
 | `serial_probe.py` | Minimal serial probe for bring-up. | live - CLAUDE.md |
 | `settletime.py` | Settle to one code, by equivalent-time sampling with the ADC. | live - docs/metric-baseline-windows-track-a.md |
-| `soak0c.py` | Soak port open/close cycles, which is the thing objective 0c hangs in. | archived - docs/HANDOFF.md (objective 0c, diagnosed) |
+| `soak0c.py` | Soak port open/close cycles, which is the thing objective 0c hangs in. | archived - docs/usb.md, docs/windows.md (objective 0c, diagnosed) |
 | `soak0c_portable.py` | Objective 0c, reproduced without any POSIX-only code. | live - docs/windows.md |
 | `soak_close_stream.py` | Close the native port mid-capture, without stopping the stream. | live - tests/test_framer_close.py |
 | `splices.py` | Count the splices in a device-generated capture, run after run. | live - docs/awg.md |
@@ -126,7 +126,7 @@ that bench to generalise, not a defect this pass corrects.
 | `temp_soak.py` | Is there a room-temperature signal left once build and activity are fixed? | live - issue #18 open |
 | `temp_track_parity.py` | Do the two tracks now read the die sensor the same? | archived - issue #15 closed; docs/noise.md |
 | `temp_workload.py` | Does the die sensor read the workload rather than the room? | archived - issue #15 closed; docs/measurement-suite.md |
-| `toolchain.py` | Resolve build tools from toolchains.json. | live - docs/HANDOFF.md, docs/toolchain.md |
+| `toolchain.py` | Resolve build tools from toolchains.json. | live - docs/toolchain.md |
 | `track_parity.py` | Compare the tracks' console tables and main() init, as lists. | live - tests/test_track_parity.py |
 | `uptime_reset_probe.py` | Does opening the control port reset the board? Ask the board. | live - docs/usb.md, docs/measurement-suite.md |
 | `verify_track_parity_history.py` | Would track_parity.py have caught the five main() divergences? | unknown - no issue, doc or test reference found |

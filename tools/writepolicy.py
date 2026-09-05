@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Is `Feeder.WRITE_SIZE` still a rule, or a stale workaround?
 
-`docs/HANDOFF.md` calls the 0-series re-validation "the oldest real debt
-here", and one half of it is a claim only this platform can test:
+The 0-series re-validation is the oldest debt this project carries, and
+one half of it is a claim only this platform can test - `docs/usb.md`
+owns the loss investigation and the evidence behind this:
 
     macOS loses 0.45-0.85% of what write() counted, at every rate above
     200 ksps, unless every write is the same size. A constant 512 bytes

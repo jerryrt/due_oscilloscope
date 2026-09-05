@@ -1,10 +1,10 @@
 """A bench oscilloscope, whichever one is on the bench.
 
 Why this exists. Everything this project knows about issue #5 is what
-the *converter under investigation* returned; `docs/HANDOFF.md` records
-the consequence - that the voltage at the DAC pin actually moves stays
-inference, and every amplitude a lower bound, until an instrument that
-is not the ADC says otherwise. This is that instrument.
+the *converter under investigation* returned, and `docs/issue5-impact.md`
+carries what that costs: the voltage at the DAC pin actually moving stays
+inference, and every amplitude a lower bound, until an instrument that is
+not the ADC says otherwise. This is that instrument.
 
 Three layers, because the bench is not promised to keep the same scope:
 

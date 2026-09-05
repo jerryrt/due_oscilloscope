@@ -466,15 +466,15 @@ class FileDevice(Device):
     a second implementation of the same parsing believes it showed.
 
     Two facts about this project make that worth building rather than
-    merely convenient. There are two benches here, wired differently,
-    and `docs/HANDOFF.md` says plainly that a figure taken on one is not
-    comparable with a figure taken on the other; a recording is the one
-    thing one bench can hand the other and have re-analysed by the same
-    code, instead of a number quoted in an issue. And numbers quoted as
-    prose have been withdrawn twice this week - the reload figures on #5
-    were the instrument handing back the previous vertical gain's data -
-    where a capture would still have been re-readable by whoever doubted
-    it.
+    merely convenient. The benches are wired differently - one has DAC1
+    on A1, another has it on a scope's external trigger - so a figure
+    taken on one is not comparable with a figure taken on another, and a
+    recording is the one thing one bench can hand the next and have
+    re-analysed by the same code instead of a number quoted in an issue.
+    And numbers quoted as prose have been withdrawn twice this week - the
+    reload figures on #5 were the instrument handing back the previous
+    vertical gain's data - where a capture would still have been
+    re-readable by whoever doubted it.
 
     What it will not do is pass for a board. `describe()` says
     `kind="file"` and carries the sidecar's own device block beside it;

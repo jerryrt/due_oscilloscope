@@ -12,8 +12,11 @@
  * reset and SET_CONFIGURATION, with AUTOSW clear and its own receive
  * interrupt re-enabled. A sketch gets no hook into either event, so the
  * mode is re-asserted by polling instead: usbdma_keepalive() notices a
- * rebuild and puts the endpoint back. Missing that recreates exactly the
- * one-transfer stall documented in docs/HANDOFF.md.
+ * rebuild and puts the endpoint back. Missing that stalls the direction
+ * after exactly one short transfer, for good: a rebuild under a transfer
+ * already in flight leaves that transfer unable to complete, and every
+ * caller polls for the channel to go idle before it re-arms. The
+ * diagnosis is in docs/status.md.
  */
 
 #ifndef USBDMA_H
