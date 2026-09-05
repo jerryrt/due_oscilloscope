@@ -4,8 +4,9 @@
     python -m gui --spawn-fake        # start one with no hardware, and connect
     python -m gui --spawn-file cap.due   # replay a recording, and connect
 
-The daemon is stdlib only, so the spawning forms run it on this same
-interpreter - no second environment to install for a demo.
+The fake and file sources import nothing outside stdlib, so the
+spawning forms run the daemon on this same interpreter - no second
+environment to install for a demo.
 
 Which source the daemon serves is the daemon's argument rather than a
 control in this window, because the daemon owns the device and a front

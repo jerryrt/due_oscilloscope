@@ -1071,8 +1071,9 @@ free-threaded build the same load is invisible - underruns zero, frames
 identical to a quiet run, and the quiet runs either side of it agree.
 
 **Why this was cheap to try.** The free-threaded ABI needs its own
-wheels and most projects do not ship them yet. The daemon is stdlib
-only, so it needs none: `python3.14t -m venv` and it runs. The property
+wheels and most projects do not ship them yet. The daemon imports
+nothing compiled - pyserial is pure Python - so it needs none:
+`python3.14t -m venv`, `pip install pyserial`, and it runs. The property
 that looked like an inconvenience earlier in the evening is what made
 the experiment a five-minute change.
 

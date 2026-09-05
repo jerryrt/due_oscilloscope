@@ -1463,12 +1463,13 @@ which is all "no package manager" ever meant in this file, and it was
 wrong as written. `/usr/bin/python3` is the Xcode Command Line Tools
 3.9.6 and is no longer what anything is built on.
 
-`host/` currently imports only stdlib - `termios` and `fcntl` rather
-than pyserial, a Goertzel rather than an FFT library, `zlib.crc32`
-rather than a checksum package - and there is no reason to churn
-working code. Treat that as a fact about the code, not a rule new code
-inherits: everything runs from the venv now, and anything that needs a
-dependency may take one.
+`host/` takes pyserial - `host/ports.py` finds the board by USB VID/PID
+with it on every platform, and `host/transport.py` is built on it on
+Windows - and otherwise leans on stdlib where stdlib serves: `termios`
+and `fcntl` for the POSIX transport, a Goertzel rather than an FFT
+library, `zlib.crc32` rather than a checksum package. There is no
+reason to churn working code, and no rule against a dependency that
+earns its place: everything runs from the venv.
 
 **Two venvs, two interpreters, and both exist here.** PySide6 6.9.3 is
 `cp39-abi3` and declares `>=3.9,<3.14`, so it will not install on 3.14.

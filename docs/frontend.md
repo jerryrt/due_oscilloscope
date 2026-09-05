@@ -17,7 +17,7 @@ Windows, Linux and macOS.
 
 ## The decision
 
-**Two processes: a stdlib daemon and a Qt GUI, over a loopback TCP
+**Two processes: a pure-Python daemon and a Qt GUI, over a loopback TCP
 socket.** This is what `docs/scope.md` already anticipated - "a
 streaming daemon owning the ports and real-time threads, a GUI as a
 separate process over a local socket" - and it is confirmed here rather
@@ -25,7 +25,7 @@ than reopened.
 
 | | Owns | Dependencies |
 |---|---|---|
-| Daemon | both serial ports, the real-time feeder thread, the device console | stdlib, plus a serial backend on Windows |
+| Daemon | both serial ports, the real-time feeder thread, the device console | stdlib plus pyserial: port discovery everywhere, the serial backend on Windows |
 | GUI | display, DSP, user interaction | PySide6, pyqtgraph, numpy, scipy |
 
 ### Why the split is load-bearing
@@ -93,8 +93,9 @@ imports `serial` where the POSIX one imports `termios`. Without it the
 whole GUI test file fails to *collect*, which reads as a broken test
 file rather than a missing wheel.
 
-The daemon is stdlib only, so `--spawn-fake` starts one on the same
-interpreter - there is no second environment to install for a demo. The
+The daemon's fake and file sources import nothing outside stdlib, so
+`--spawn-fake` starts one on the same interpreter - there is no second
+environment to install for a demo. The
 front end's own tests run headlessly in the same venv:
 
 ```sh
@@ -125,7 +126,7 @@ The aggregate rate is ~907 ksps, about 1.81 MB/s. A plot two thousand
 pixels wide cannot show 907,000 points per second, so the GUI never
 draws raw samples: it reduces each pixel column to a min/max pair and
 draws the envelope. That is what a real DSO does, and it is why numpy
-lives in the GUI process while the daemon stays stdlib.
+lives in the GUI process and not in the daemon.
 
 ## Wire protocol between daemon and GUI
 
@@ -792,21 +793,16 @@ be attributed is not a measurement.
 
 ## Dependencies and environments
 
-Settled, and it revises what `CLAUDE.md` used to say. Everything with
-dependencies runs from a venv: the test suite already does, the GUI
-will, and a Windows serial backend may. `host/` stays stdlib, but as a
-property preserved rather than a rule extended - it buys a diagnostic
-that needs no install step on the bring-up machine, and it already
-holds, so keeping it is free.
+Everything with dependencies runs from a venv: the test suite, the
+GUI, and `host/`, which takes pyserial for port discovery on every
+platform and for its serial backend on Windows. What `host/` keeps is
+narrower than "stdlib only" and still worth having: the daemon's fake
+and file sources import nothing outside stdlib, so a daemon can be
+demonstrated when the venv is the broken thing. Serving the board needs
+pyserial, because without it port discovery finds nothing.
 
-The distinction that resolves the apparent conflict: `python3 -m venv`
-works offline and `pip install` does not. The venv was never the
-hazard. Tools in `host/` may be run from one; being import-clean only
-means they also run when the venv is the broken thing.
-
-The daemon therefore stays stdlib on macOS and Linux because it already
-is, and takes a venv on Windows if its backend needs pyserial. Neither
-weakens anything, because bring-up does not happen on Windows.
+The distinction that makes this consistent: `python3 -m venv` works
+offline and `pip install` does not. The venv was never the hazard.
 
 What is self-contained is the **lockfile**, not the venv. A venv holds
 absolute paths and platform-specific wheels; it does not travel between
@@ -815,7 +811,7 @@ declaration committed, one venv per machine created from it, none of
 them committed. Extras keep it to a single declaration:
 
 ```sh
-pip install -e .            # daemon: stdlib, nothing pulled
+pip install -e .            # daemon: pyserial, nothing compiled
 pip install -e .[gui]       # PySide6, pyqtgraph, numpy, scipy
 pip install -e .[dev]       # pytest
 ```

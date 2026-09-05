@@ -18,9 +18,10 @@ python3 -m daemon                # the real thing
 **Run it on a free-threaded interpreter.** With four busy Python
 threads in the process, the GIL build underran playback 13 times and
 read 132 frames where a quiet run reads ~890; the free-threaded build
-of the same version underran zero times and read 891. The daemon is
-stdlib only, so it needs no free-threaded wheels - `python3.14t -m venv
-.venv-ft` is the whole setup. Measured in `docs/status.md`.
+of the same version underran zero times and read 891. The daemon
+imports nothing compiled - pyserial is pure Python - so it needs no
+free-threaded wheels: `python3.14t -m venv .venv-ft` and
+`pip install pyserial` is the whole setup. Measured in `docs/status.md`.
 
 ## Transport
 
@@ -410,7 +411,7 @@ refuses what it does not understand rather than guessing.
 
 - **No authentication.** See the trusted-network decision.
 - **No DSP.** The daemon moves bytes and owns timing. Analysis belongs
-  to the client, which has numpy; the daemon is stdlib.
+  to the client, which has numpy; the daemon has none.
 - **No firmware flashing.** Out of scope; `tools/flash.sh` keeps it.
 - **No signal generation.** A client uploads a waveform; the daemon
   loops it through `measure.Feeder`, whose clock-paced policy is

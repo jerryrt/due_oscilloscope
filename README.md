@@ -101,9 +101,10 @@ python3 -m venv .venv
 .venv/bin/python -m pytest -m smoke -q       # the fast subset
 ```
 
-Everything under `host/` stays stdlib only and runs from the system
-interpreter: those tools are used during bring-up on a machine with no
-package manager. Only the tests need the venv.
+`host/` runs from the same venv: it takes pyserial, which finds the
+board's ports by USB VID/PID on every platform and is the serial backend
+on Windows. `host/scope.py` adds pyusb for the bench oscilloscope. All
+of it is declared in `requirements-dev.txt`.
 
 See [docs/testing.md](docs/testing.md).
 

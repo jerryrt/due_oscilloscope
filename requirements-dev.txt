@@ -7,7 +7,7 @@
 #   .venv/bin/pip install -r requirements-dev.txt
 #   .venv/bin/python -m pytest tests -v
 pytest>=7.0
-pyserial==3.5   # tools/soak0c_portable.py: the only cross-platform serial client here
+pyserial==3.5   # host/ports.py discovery everywhere; host/transport.py's backend on Windows; tools/flash.py
 
 # The bench oscilloscope, for the measurements the ADC under
 # investigation cannot make about itself. USBTMC needs raw USB access
