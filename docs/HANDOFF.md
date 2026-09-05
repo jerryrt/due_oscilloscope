@@ -17,6 +17,9 @@ by design and should be short enough to rewrite rather than amend.
 | **Bring-up** | Stages 1-6 done. Stage 7 (FreeRTOS) is Track C, in progress |
 | **Branch** | `main` only. Everything else is short-lived — `CONTRIBUTING.md` |
 | **Board** | Ask it: `v`, or `measure.which_track`. Never assume from this file |
+| **Build identity** | Every image states its commit. `v` and the control channel's IDENTITY carry `build=<sha>`, or `<sha>+<8 hex>` when the tree was dirty. A clean build is byte-reproducible - `tools/reproducible.py` |
+| **Checks** | `docker/run-ci.sh` runs the lot from one entry point in about three minutes: both tracks, the board-free tier, a control proving the board absent, byte reproducibility, cppcheck, clang-tidy, a fuzz pass. Five states in one column, and an exit code no classifier recognises is DID NOT RUN, never PASS |
+| **Container** | `docker/`, pinned to xPack 15.2.1-1.1 with every input checksum-verified. It builds and tests; it does **not** touch the board, and `docs/build-container.md` says why |
 
 **Per-bench state is on the status boards, not here** — #31 macOS, #32
 linux-x1, #34 windows-desk. Each carries its own toolchain, ports,
@@ -32,6 +35,9 @@ this file used to pretend otherwise.
 | **The 0-series re-validation** (0h) | The oldest debt. Figures above 200 ksps predate a feed fix. Half answered — see below |
 | **printf stages 3-4** (#49) | Design accepted. A 110-site migration, and it will redraw every issue #5 figure on every bench at once |
 | **Native-port control channel** (objective 8) | Transport and six opcodes built. Left: the state-changing commands |
+| **A shared divide with no guard** (#68) | `console_cmd_rate_sweep()` divides by an argument it does not check; both tracks that bind `t` clamp it in their own `main()`. One line, and the test that fails without it is already written |
+| **Wire the last two arms in** | `DUE_HOSTCC_ABI=32` and the console fuzz campaign both work and neither is run by anything. One line each, in `docker/run-ci.sh` and `docker/run-fuzz.sh` |
+| **Cross-bench reproduction** (#61) | Two benches building `docker/` from the same pinned inputs must produce one `.bin`. Needs a second bench and nothing else |
 
 ## The 0-series
 
