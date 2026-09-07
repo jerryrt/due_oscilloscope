@@ -68,11 +68,11 @@
  *   a clamped argument so the poll oracle measures the parser rather
  *   than the wait.
  *
- *   console_cmd_rate_sweep() is bound the way both tracks that carry it
- *   bind it, `a[2] ? a[2] : 2u`. It divides by its argument and does
- *   not check it, so binding it raw would report a divide-by-zero no
- *   track can reach - and a control that produces the nuisance instead
- *   of the signal is worse than none.
+ *   console_cmd_rate_sweep() is bound raw, as the tracks bind it. It
+ *   divides by its argument, and the default for a missing or zero
+ *   channel count is its own - one home in shared source rather than a
+ *   copy in every main() - so `t` and `=,,0t` are corpus entries here
+ *   and a track that binds the letter cannot reach the divide.
  *
  * Two entry points, one body: libFuzzer drives LLVMFuzzerTestOneInput,
  * and the standalone main() replays files, runs the built-in corpus or
@@ -557,8 +557,7 @@ static void h_loop(const uint32_t *a)
 static void h_ratesweep(const uint32_t *a)
 {
 	note_dispatch(a);
-	/* Bound as both tracks bind it. See the note at the top. */
-	console_cmd_rate_sweep(a[2] ? a[2] : 2u);
+	console_cmd_rate_sweep(a[2]);
 }
 
 static void h_xtalk(const uint32_t *a)
@@ -845,6 +844,8 @@ static size_t build_corpus(struct seed *out, size_t max)
 
 	SEED("sweep-2ch",          0x00u, 0x00u, 0u, "=,,2t");
 	SEED("sweep-1ch",          0x00u, 0x00u, 0u, "=,,1t");
+	SEED("sweep-0ch",          0x00u, 0x00u, 0u, "=,,0t");
+	SEED("sweep-bare",         0x00u, 0x00u, 0u, "t");
 	SEED("sweep-refused",      W_ACQ_REFUSES, 0u, 0u, "=,,2t");
 	SEED("sweep-stalled",      W_ACQ_STALLED, 0u, 0u, "=,,1t");
 	SEED("sweep-zero-rc",      W_ACQ_ZERO_RC, 0u, 0u, "=,,2t");

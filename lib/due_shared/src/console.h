@@ -124,7 +124,9 @@ void console_cmd_play(uint32_t dac_hz);
 void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 
 /* The TC -> ADC -> PDC rate sweep, one implementation for both tracks;
- * see console_cmds.c for the design choices behind it. */
+ * see console_cmds.c for the design choices behind it. Bind it raw:
+ * a zero (or omitted) channel count defaults inside, so no track's
+ * main() has to guard the divide it feeds. */
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*

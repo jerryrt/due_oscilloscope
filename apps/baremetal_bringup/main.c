@@ -967,7 +967,7 @@ static void h_xtalk(const uint32_t *a)
 }
 static void h_ratesweep(const uint32_t *a)
 {
-	console_cmd_rate_sweep(a[2] ? a[2] : 2u);
+	console_cmd_rate_sweep(a[2]);
 }
 static void h_dac_sweep(const uint32_t *a) { (void)a; cmd_dac_sweep(); }
 static void h_dac_15m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(1500000); }

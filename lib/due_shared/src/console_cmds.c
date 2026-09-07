@@ -219,6 +219,15 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch)
  */
 void console_cmd_rate_sweep(unsigned n_channels)
 {
+	/* The default for `=,,t` is here and nowhere else. The argument
+	 * divides `measured` below, so a zero has to be resolved in the
+	 * function that divides, not in the main() of each track that
+	 * binds the letter - a copy per track is a guard a new track can
+	 * omit without anything failing. Two channels is the sweep the
+	 * ACQ_MIN_RC cliff was found on. */
+	if (n_channels == 0)
+		n_channels = 2;
+
 	/* RC values, not rates: the trigger is TC_CLOCK / RC with RC an
 	 * integer, so an RC ladder walks the hardware's own steps. Dense
 	 * either side of the 2-channel floor at 86 and the 1-channel floor

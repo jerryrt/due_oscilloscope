@@ -1291,7 +1291,7 @@ static void ha_xtalk(const uint32_t *a)
 
 static void ha_ratesweep(const uint32_t *a)
 {
-	console_cmd_rate_sweep(a[2] ? a[2] : 2u);
+	console_cmd_rate_sweep(a[2]);
 }
 
 static void ha_dac_sweep(const uint32_t *a)
