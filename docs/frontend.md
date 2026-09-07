@@ -1,9 +1,12 @@
 # Front End: design
 
-**Status: proposal. Nothing here is built.** This document settles the
-architecture so that the work can start from a decision rather than a
-preference. Read `docs/scope.md` for where this sits in the plan and
-`docs/protocol.md` for the wire format it consumes.
+**Status: built.** `gui/` is the window, `host/daemon/` is the process
+it draws from, and `tests/test_gui.py` runs the window headlessly. This
+document carries the decisions the front end was built from and the
+rules it must obey. The socket it consumes is specified in
+`docs/daemon-api.md`, the device frames that cross that socket verbatim
+in `docs/protocol.md`, and where this sits in the plan in
+`docs/scope.md`.
 
 A terminology warning, because this repository uses the phrase both
 ways: *front end* here means the **software** front end, the GUI. The
@@ -26,7 +29,7 @@ than reopened.
 | | Owns | Dependencies |
 |---|---|---|
 | Daemon | both serial ports, the real-time feeder thread, the device console | stdlib plus pyserial: port discovery everywhere, the serial backend on Windows |
-| GUI | display, DSP, user interaction | PySide6, pyqtgraph, numpy, scipy |
+| GUI | display, DSP, user interaction | PySide6, pyqtgraph, numpy |
 
 ### Why the split is load-bearing
 
@@ -45,15 +48,14 @@ loss, not a dropped frame.
 The socket is a crash boundary. If the GUI dies, the daemon keeps
 draining bulk OUT. A device that stops draining while the host has
 writes in flight hangs the host process in `close()` holding the port -
-that is the hazard in `docs/usb.md` and it is objective 0c (#71), seen
-once in the wild.
+that is the hazard in `docs/usb.md` and it is objective 0c (#71),
+reproduced on macOS and on no other host.
 
 The two halves want different interpreters, and that is not a
 hypothetical: PySide6 6.9.3 declares `>=3.9,<3.14` while the test venv
-here runs 3.14.6. A process boundary makes that a non-issue - two
-venvs, two Pythons, one socket between them - where a single process
-would force the whole project onto whichever interpreter Qt supports
-this year.
+runs 3.14. A process boundary makes that a non-issue - two venvs, two
+Pythons, one socket between them - where a single process would force
+the whole project onto whichever interpreter Qt supports this year.
 
 ### The two alternatives, and why not
 
@@ -169,100 +171,64 @@ The board itself cannot be damaged through it - the DAC drives its own
 pin into a jumper - but the instrument can be taken over mid-measurement
 by anything that can open a socket.
 
-Two consequences to build in rather than discover:
+Two consequences, both built in rather than discovered:
 
-- **Make the bind address a setting, defaulting to all interfaces.**
-  One line now, and the day this runs somewhere less trusted it is a
-  config change instead of a rewrite.
+- **The bind address is a setting**, the daemon's `--host`, defaulting
+  to all interfaces. The day this runs somewhere less trusted it is a
+  flag instead of a rewrite.
 - **One control owner at a time.** Additional clients may attach and
-  watch, but only one may command the board. Two front ends issuing
-  rate changes into the same device console is a class of confusion
-  worth designing out at the start.
+  watch, but only one may command the board; `docs/daemon-api.md` has
+  the ownership rules. Two front ends issuing rate changes into the
+  same device console is a class of confusion designed out at the
+  start rather than debugged later.
 
-## Portability: the work is not in the GUI
+## Portability: the work was not in the GUI
 
-Every line of `host/` is POSIX-only. `host/ports.py` opens with
-`os.open`, configures with `termios`, asserts DTR through
-`fcntl`/`TIOCM_DTR`, discovers by globbing `/dev/cu.usbmodem*`, and
-waits with `select` on raw descriptors. None of that exists on Windows.
-`host/rt.py` is explicit about the same thing - it returns "no
-promotion (not macOS)" everywhere else.
+The platform difference lives in two files, and nothing above them
+knows the operating system - `CLAUDE.md` carries that as a rule.
 
-So the daemon needs a backend split:
+| | where | what differs |
+|---|---|---|
+| serial I/O | `host/transport.py` | POSIX keeps the original termios and `select` code, moved rather than rewritten, because the measured record depends on its exact write semantics; Windows is pyserial, and `wait_any` polls because a COM port has no selectable handle |
+| port discovery | `host/ports.py` | every node found by USB VID/PID on every platform, and the native pair told apart by interface number - never by which one answers, because probing opens the port |
+| real-time promotion | `host/rt.py` | the QoS class plus the Mach time-constraint band on macOS, `SCHED_FIFO` on Linux, a real-time priority class on Windows. It reports what stuck and never raises, so the promotion cannot become an unmeasured variable |
 
-- **macOS**: today's code, unchanged.
-- **Linux**: the same POSIX code with a different glob (`/dev/ttyACM*`,
-  and `/dev/serial/by-id` for stable names) and no `cu`/`tty`
-  distinction. Small.
-- **Windows**: real work. Either pyserial, or ctypes over
-  `CreateFile`/`ReadFile` with overlapped I/O; COM ports enumerate
-  through SetupAPI or the registry. Whether the daemon may take
-  pyserial as a dependency on Windows is an open question below.
+The daemon takes pyserial on every platform, declared in
+`requirements-dev.txt`; whether `host/` could stay stdlib-only was
+settled by needing the wheel.
 
-Port *identification* stays as it is and is already portable: the
-control port is the one that answers `h` with the banner. Nothing about
-that depends on the operating system, and it has already prevented two
-classes of bug that hardcoded paths caused.
-
-Real-time promotion needs a per-OS implementation - SCHED_FIFO through
-`os.sched_setscheduler` on Linux, `timeBeginPeriod` plus a
-time-critical thread priority on Windows - under the rule `host/rt.py`
-already follows: report what actually stuck, never raise, so the
-promotion cannot become an unmeasured variable.
-
-The macOS 128-byte drop is a macOS defect. Linux and Windows will have
-their own, and the defence is already built: the device's byte
-accounting is exact, so `play_bytes_in` is compared against the host's
-`write()` count on every platform. That is how the next one gets found
-instead of argued about.
+The macOS byte loss is a macOS defect, and the defence was built before
+the other hosts were: the device's byte accounting is exact, so its
+`bytes_in` is compared against the host's `write()` count on every
+platform. Linux and Windows were measured against it and lose nothing.
+`docs/usb.md`, `docs/linux.md` and `docs/windows.md` have the runs.
 
 ## Features
 
-### Available against today's firmware
+### In the window
 
-**Self-test.** Most of this exists already in `tests/` and
-`host/measure.py`; the front end runs it and reports it.
+| panel | built | not built |
+|---|---|---|
+| scope | timebase 1 ms to 2 s; the firmware's capture presets, displaying the rate the header reports; edge trigger - off, auto, normal - with slope and a level in volts; cursors; Vpp, RMS, frequency and duty; the spectrum with a choice of window; XY; roll; record; CSV export | single-shot and pulse triggers, math, spectrogram, persistence. Volts per division: the trace is drawn over the ADC's full scale |
+| generator | sine, square, triangle and ramp; frequency; amplitude and offset in volts, mapped through the DAC's measured **578-2771 mV** span - the scope-measured pair in `calibration.json` - and refused rather than clamped; the underrun count | arbitrary upload from file or drawn by hand, DAC1 through tag interleaving, sweep, burst, one-shot |
+| health | `gui/health.py`: link, source, actual rate, frames shown and read, frames dropped toward the window, sequence gaps, discontinuities, device overruns, the daemon's read and feed gaps, recording state | |
+| self-test | nothing. Identity, loopback integrity, the ramp test, the rate sweep, the transport benchmarks and the tone-amplitude oracle live in `tests/` and `host/measure.py`, and the window does not run them | a pass/fail report carrying the measured numbers |
 
-- port discovery and identity, which track is flashed, firmware banner
-- DAC0 to A0 and DAC1 to A1 loopback integrity, per channel
-- ADC linearity sweep and multiplexer crosstalk
-- the ramp test - every sample encodes its own position, so it proves
-  byte-exactness rather than plausibility. This is the instrument that
-  found the lost-sample defect.
-- trigger-rate sweep, including the silent decimation cliff
-- transport benchmarks, CPU-FIFO and DMA, IN, OUT and duplex
-- counter health: sequence gaps, overruns, underruns, spans, partial,
-  and Track A's endpoint rebuilds
-- the tone-amplitude oracle, per 50 ms window, against the theoretical
-  maximum for a full-scale sine
-- a pass/fail report carrying the measured numbers, not just ticks
-
-**Scope.** Timebase and volts per division, software trigger (edge,
-level, pulse; auto, normal, single), cursors, automatic measurements
-(Vpp, RMS, frequency, duty, rise and fall), math including A-B, FFT
-with a choice of window, spectrogram, XY mode, persistence, roll mode,
-record and export.
-
-**AWG.** Waveform library and arbitrary upload from file or drawn by
-hand, amplitude and offset entered in volts and mapped through the
-DAC's real **578-2771 mV** span - the scope-measured pair in
-`calibration.json`, not the 546-2760 this line used to quote, which
-was ADC-derived and low by about the ADC's own offset - per-channel
-DAC0 and DAC1 via tag
-interleaving, sweep, burst, one-shot, and a visible underrun count.
-
-**Parameters already settable**: sample rate on both sides, channel
-count, capture presets.
+Channel count is not a control: both channels are always drawn, and
+the channel box picks which one the trigger and the measurements
+follow.
 
 ### Requiring firmware work, in priority order
 
-1. **A machine-readable capability report.** Without it the GUI
-   hardcodes the device's limits - the `ACQ_MIN_RC` table, the DACC
-   ceiling, the channel map, MCK, the frame layout - and lies the
-   moment firmware changes. A command that returns them as data makes
-   the GUI's refusals *be* the device's refusals rather than a copy
-   that drifts. Cheapest item here and everything else is safer behind
-   it.
+1. **A machine-readable capability report.** Without it the host
+   carries the device's limits - `host/daemon/rates.py` is the copy of
+   the `ACQ_MIN_RC` floors, and the DACC ceiling, the channel map, MCK
+   and the frame layout sit beside it - and lies the moment firmware
+   changes. A command that returns them as data makes the daemon's
+   refusals *be* the device's refusals rather than a copy that drifts.
+   `IDENTITY` and `CAPABILITY` on the control channel answer which
+   firmware and which *opcodes* a board has, not what its converters
+   can do. Cheapest item here and everything else is safer behind it.
 2. **Per-channel analog gain and offset.** `ADC_CGR` carries a gain
    field per channel and `ADC_COR` an offset (both present in the
    device header). That is a hardware volts-per-division and vertical
@@ -277,19 +243,19 @@ count, capture presets.
    anticipated this; the firmware needs a rolling pre-trigger buffer
    armed by item 3. Single-shot capture of a one-off event is the
    feature continuous streaming cannot provide.
-5. **Resolution and tracking time.** `ADC_MR` carries `LOWRES` and the
-   tracking, settling and startup fields. Ten-bit mode buys rate;
-   longer tracking buys accuracy from higher-impedance sources.
+5. **Resolution.** `ADC_MR` carries `LOWRES`; ten-bit mode buys rate.
+   Tracking and settling time are already settable at the next stream
+   with the console's `A`, so that half is a daemon command away rather
+   than firmware.
 6. **Sync output.** A GPIO pulse at waveform start so an external
    instrument, or the second channel, can lock to the generator.
-7. **Track B's missing DAC update-rate sweep.** Track A has `d` and
-   `j`/`k` and Track B has never had them; `CLAUDE.md` requires the
-   tracks stay feature-equivalent, so this is owed regardless.
-8. **Calibration constants in device flash.** Decided: they live on
+7. **Calibration constants in device flash.** Decided: they live on
    the board, not in a host file, so calibration follows the board
    between machines and a front end on a fresh install is correct
    immediately. The device reports them through item 1's capability
-   report, which means the GUI never carries a second copy.
+   report, which means the GUI never carries a second copy. Today they
+   are `calibration.json`, read through `host/calibration.py`, and
+   every volt on screen is scaled by that file.
 
    The SAM3X has no EEPROM, so this is an EEFC page write, and two
    things need checking before it is designed: whether a page can be
@@ -376,7 +342,7 @@ disk copes.
 
 ### Playing a recording back
 
-**Built, 2026-08-27.** `python3 -m daemon --file cap.due` serves a
+`python3 -m daemon --file cap.due` serves a
 recording in place of a board, and the front end connects to it exactly
 as it connects to one:
 
@@ -451,9 +417,9 @@ is a change to `FileDevice` rather than to the window.
 
 ## Where a change goes
 
-`gui/` is worked by more than one person now, which is why this section
-exists at all. Issue #8 has the full survey; this is the part a
-contributor needs before touching anything.
+`gui/` is worked by more than one person, which is why this section
+exists at all. This is the part a contributor needs before touching
+anything.
 
 | Module | What belongs in it | What must never be in it |
 |---|---|---|
@@ -464,11 +430,11 @@ contributor needs before touching anything.
 | `gui/app.py` | Wiring. Which widget is connected to which slot, and what a signal renders as | Arithmetic, unit conversion, and `daemon.client` |
 
 Two objects carry most of the weight, and both were pulled out of the
-window in 2026-08-27 rather than designed in:
+window rather than designed in:
 
 **`DaemonSession` owns the socket.** The window had thirteen `try:`
 blocks, five of them catching bare `Exception`, and each ended in its
-own hand-written status message - so rule 4 below, "refusals come from
+own hand-written status message - so rule 6 below, "refusals come from
 the device", was implemented five times and the five did not agree. The
 distinction the session exists to keep is between three outcomes rather
 than one: a **reply**, a **refusal** (the device said no and its own
@@ -500,14 +466,13 @@ point: there is one writer.
 
 ## Menus, toolbar and keys
 
-Added 2026-08-27, with the survey in issue #8. The five verbs - Connect,
-Start, Stop, Record, Export - used to sit in the control row under the
-plot, where fifteen widgets competed for the window's width. They are
-now a menu bar and a toolbar, and what is left under the plot is
-grouped by function with separators rather than running flat: **source,
-timebase and rate**, then **trigger**, then **view**. Measured in the
-same font, the strip went from 2094 px of preferred width to 1564, and
-the window's own minimum from 2616 to 2086.
+The five verbs - Connect, Start, Stop, Record, Export - are a menu bar
+and a toolbar, and what sits under the plot is grouped by function with
+separators rather than running flat: **source, timebase and rate**,
+then **trigger**, then **view**. With the verbs in that row too,
+fifteen widgets competed for the window's width: measured in the same
+font, the strip wanted 2094 px against 1564, and the window's own
+minimum was 2616 against 2086.
 
 Each verb is one `QAction` appearing in the menu, on the toolbar and on
 a shortcut. Three objects would have to be enabled three times, and the
@@ -536,27 +501,22 @@ holds if something checks.
 
 ## Where a message goes
 
-`statusBar().showMessage()` was the window's only error channel, and
-every message overwrote the last - including the ones the 4 Hz status
-poll writes. The device's own refusal, which rule 4 below says is the
-one message that must be shown, could be gone in 250 ms.
-
-`gui/notice.py` is a bar under the plot that keeps it until something
-replaces it or it is dismissed. The pattern is not new: `gui/awg.py`
-already kept a persistent wrapped red label for the generator's own
-local refusals, and reserved the height a wrapped one needs because "a
-truncated explanation is worse than a bare no - it reads as the whole
-answer". This is that label generalised, so there is one answer to
-"where does a message go" rather than two.
+`gui/notice.py` is a bar under the plot that keeps a message until
+something replaces it or it is dismissed. A status bar cannot do that
+job: every `showMessage()` overwrites the last, including the ones the
+4 Hz status poll writes, so the device's own refusal - which rule 6
+below says is the one message that must be shown - would be gone in
+250 ms. The bar reserves the height a wrapped message needs, because a
+truncated explanation is worse than a bare no: it reads as the whole
+answer.
 
 **A refusal is not a dialog.** It names a limit worth reading twice -
 the rate the hardware will actually make, the offset that would fit -
-and a modal is the one presentation that cannot be read twice. `start`
-used to raise one while the same refusal of the same op from the
-generator panel went to the status bar; now everything renders in
-`_on_refused`, and the status bar keeps a copy that it is free to lose.
-A new run clears the notice, because a notice that outlived the thing
-it was about would be the same defect as a counter that did.
+and a modal is the one presentation that cannot be read twice. Every
+refusal renders in `_on_refused`, wherever it came from, and the status
+bar keeps a copy that it is free to lose. A new run clears the notice,
+because a notice that outlived the thing it was about would be the
+same defect as a counter that did.
 
 Run/Stop follows the device's own `running`, not which button was
 pressed last. A replay that reaches the end of its file stops without
@@ -603,28 +563,18 @@ signal here" are precisely the features that invite wiring a real
 signal to an unprotected pin. Those panels stay disabled until the
 Phase 3 analog front end exists. A warning label is not sufficient.
 
-## Phasing
+## What is not built
 
-- **G0** - **done.** The daemon, the wire protocol and the client exist
-  and are tested; see `docs/daemon-api.md`. The Windows serial backend
-  this line used to except is landed - `host/transport.py` is the seam
-  and both backends are behind it.
-- **G1** - **done**: Qt shell, live trace with min/max decimation, roll
-  mode, health panel. `gui/`, 14 headless tests. Logging mode is
-  daemon-side and already available through the API; wiring a button to
-  it is G2 work.
-- **G2** - **done**: trigger, measurements, FFT. 38 headless tests, up
-  from 14. See "The trigger" and "Measurements and the spectrum" below.
-- **G3** - **panel done**: shape, frequency, amplitude and offset in
-  volts, mapped through the measured DAC span, with a refusal instead of
-  a clamp. Arbitrary upload from file or drawn by hand is still open.
-- **G4** - **dual channel, XY, cursors, recording, file playback and
-  CSV export done**; calibration open, and scrubbing a replay with it.
+| | |
+|---|---|
+| arbitrary waveforms | upload from file or drawn by hand; the panel offers four shapes |
+| calibration on the board | firmware item 7; the constants stay in `calibration.json` until then |
+| the capability report | firmware item 1; until it lands `host/daemon/rates.py` is a copy that can drift |
+| scrubbing a replay | `FileDevice` would need to start at an offset; Restart and `--replay-speed` are the only handles |
+| single-shot and pulse triggers, math, spectrogram, persistence, volts per division | ordinary UI work, none started |
+| self-test in the window | the instruments exist in `tests/` and `host/measure.py`; nothing runs them from a panel |
 
-G0 carries the real risk, and it is the Windows serial backend rather
-than anything about the GUI. G1 to G4 are ordinary UI work.
-
-### The trigger
+## The trigger
 
 **The defect it fixes, and why it is not cosmetic.** `CLAUDE.md`: the
 GUI "draws the most recent N samples every 33 ms with no trigger at all,
@@ -676,7 +626,7 @@ Four decisions a later session should not have to rediscover:
 which keeps an external trigger *input* disabled until the Phase 3
 analog front end exists.
 
-### Measurements and the spectrum
+## Measurements and the spectrum
 
 **Every value is a number or a reason, never a plausible-looking
 figure.** The panel shows the reason where the number would be - not a
@@ -722,7 +672,7 @@ even when its logic is testable without one.
 - **A sequence gap reached the health panel and reached the ring as
   nothing.** Only the device's own overrun flag marked a break, so
   frames dropped *between the daemon and the window* were counted and
-  then drawn straight across. Rule 5 has the daemon drop toward a slow
+  then drawn straight across. Rule 7 has the daemon drop toward a slow
   client by design, so this was the common case, not a rare fault:
   61 gaps in a six-second run, every one joined.
 - **Noise at the midpoint was counted as crossings.** A sine crosses its
@@ -793,44 +743,26 @@ be attributed is not a measurement.
 
 ## Dependencies and environments
 
-Everything with dependencies runs from a venv: the test suite, the
-GUI, and `host/`, which takes pyserial for port discovery on every
-platform and for its serial backend on Windows. What `host/` keeps is
-narrower than "stdlib only" and still worth having: the daemon's fake
-and file sources import nothing outside stdlib, so a daemon can be
-demonstrated when the venv is the broken thing. Serving the board needs
-pyserial, because without it port discovery finds nothing.
+Everything with dependencies runs from a venv, and there are two,
+because PySide6 is `cp39-abi3` and declares `>=3.9,<3.14` while the
+test venv runs a newer interpreter. `requirements-dev.txt` is the test
+venv's declaration and `requirements-gui.txt` the front end's: PySide6,
+pyqtgraph, numpy, pytest so that `tests/test_gui.py` runs there, and
+pyserial so that the file *collects* on Windows. There is no scipy -
+nothing imports it, and an unused pin is a version to keep true for no
+reason.
 
-The distinction that makes this consistent: `python3 -m venv` works
-offline and `pip install` does not. The venv was never the hazard.
+What `host/` keeps is narrower than "stdlib only" and still worth
+having: the daemon's fake and file sources import nothing outside
+stdlib, so a daemon can be demonstrated when the venv is the broken
+thing. Serving the board needs pyserial, because without it port
+discovery finds nothing.
 
-What is self-contained is the **lockfile**, not the venv. A venv holds
+What is self-contained is the declaration, not the venv. A venv holds
 absolute paths and platform-specific wheels; it does not travel between
-operating systems, architectures, or Python versions. So: one pinned
+operating systems, architectures or Python versions. So: one pinned
 declaration committed, one venv per machine created from it, none of
-them committed. Extras keep it to a single declaration:
-
-```sh
-pip install -e .            # daemon: pyserial, nothing compiled
-pip install -e .[gui]       # PySide6, pyqtgraph, numpy, scipy
-pip install -e .[dev]       # pytest
-```
-
-**Which interpreter, settled by installing it.** The GUI venv is
-`.venv-gui` on Python 3.13.14, carrying PySide6 6.9.3 (Qt 6.9.3),
-pyqtgraph 0.14.0, numpy 2.5.2 and scipy 1.18.1 - installed on this
-machine and imported, not inferred from metadata. PySide6 is
-`cp39-abi3` and declares `>=3.9,<3.14`, so 3.14 is out for the GUI
-while the test venv is happy there; its wheel is
-`macosx_12_0_universal2`, which this host satisfies. The front end can
-be developed here.
-
-Providing the interpreter is the OS user's job - the project declares
-what it needs and does not work around an old one.
-
+them committed. Providing the interpreter is the OS user's job - the
+project declares what it needs and does not work around an old one.
 For a machine with no package manager, vendor the wheels and install
-with `--no-index --find-links`. That is a better offline story than
-having no dependencies, because it covers the GUI too.
-
-## Open questions
-
+with `--no-index --find-links`.

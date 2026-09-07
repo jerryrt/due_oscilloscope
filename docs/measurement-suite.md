@@ -48,20 +48,19 @@ is precisely the state `docs/status.md` was in before it was a problem.
 
 ### The example that shows why it matters
 
-The DAC's output span, right now, has three values in this repository:
-
-| source | span | where |
-|---|---|---|
-| `calibration.json` | 546 - 2760 mV | `adc_derived_*`, kept as history |
-| `tools/dso_metrics.py` | 520 - 2820 mV | `DAC_LO_V`/`DAC_HI_V`, a bench note |
-| the scope, this session | Vmax 2.82-2.86, Vpp 2.42-2.44 V | measured, unrecorded |
-
-They disagree by 26-60 mV. Every "codes" figure `dso_metrics` prints is
-scaled by the middle one, so its linearity and noise numbers are ~4% off
-in a way nothing catches. **The scope can settle this**, and the
-difference between the ADC's view and the scope's view of the same pin
-is not an annoyance - it is an ADC gain-and-offset measurement, the
-first one this project can make against something that is not the ADC.
+The DAC's output span had three values in this repository before the
+scope settled it: `calibration.json`'s ADC-derived 546-2760 mV, a
+520-2820 mV bench note hard-coded in `tools/dso_metrics.py`, and the
+scope's own unrecorded reading. They disagreed by 26-60 mV, and every
+"codes" figure `dso_metrics` printed was scaled by the middle one, so
+its linearity and noise numbers were ~4% off in a way nothing caught.
+Now `dso_metrics transfer` measures the span and `calibration.json`
+holds it, 578-2771 mV, with the ADC-derived pair kept beside it as
+`adc_derived_*`; `dso_metrics` reads that one home through
+`host/calibration.py`. The difference between the ADC's view and the
+scope's view of the same pin is not an annoyance - it is an ADC
+gain-and-offset measurement, the first one this project can make
+against something that is not the ADC.
 
 ## Provenance: what makes a run void
 
@@ -404,9 +403,9 @@ The loop, and the ADC measured against something other than itself.
 
 | metric | state |
 |---|---|
-| DAC→scope→ADC three-way transfer | **not built.** The important one |
-| ADC gain and offset against the scope | not built; the span dispute is the first instance |
-| ADC INL against the scope | not built; ~±1 code resolution after averaging, enough for issue #5's scale |
+| DAC→scope→ADC three-way transfer | `dso_metrics transfer`: ten DC codes, repeated, fitted both ways. Good to about a code; it is what set `ADVREF` at 3270 mV |
+| ADC gain and offset against the scope | the same fit; `adc_transfer` in `calibration.json` and `docs/status.md` |
+| ADC INL against the scope | not built as a curve. `transfer`'s ten-point residuals bound it at ~±4 codes over the measured range, and `dso_metrics lin` is the DAC's straightness, quantiser-limited at ~11 codes |
 | channel skew A0/A1 | ~0.95 us, from the ADC's own timing |
 | issue #5 fold z | `pair_fold`, in `tests/test_integrity.py` |
 | ramp discontinuities | `ramp_discontinuities`, in the suite |
@@ -431,16 +430,17 @@ reflash, written to `baseline.measured.json`. Promote tolerances from
 the observed spread. Nothing before this is a baseline; it is a
 snapshot.
 
-**3. Settle the span.** A DC sweep at high vertical gain with averaging,
-against the ADC reading the same pin. Produces the absolute span, the
-ADC's gain and offset, and one authoritative `dac_mv` that
-`baseline.json` and `dso_metrics` both read - deleting the third copy.
+**3. Settle the span** - done. `dso_metrics transfer` is the DC sweep
+at high vertical gain with averaging, against the ADC reading the same
+pin, and `calibration.json`'s `dac_mv` is the one home for the result
+that `dso_metrics` and the front end both read.
 
-**4. The three-way.** Host commands code C, the scope measures volts V,
-the ADC reports code A, over a code sweep. First ADC transfer function
-referenced to a non-ADC instrument. Bounded by the scope's 8 bits and
-the averaging - state the floor with the result, expect ~±1 code, which
-is an order finer than issue #5's 30-45 code signature.
+**4. The three-way** - done, in the same command. Host commands code
+C, the scope measures volts V, the ADC reports code A, over ten codes:
+the first ADC transfer function referenced to a non-ADC instrument,
+bounded by the scope's 8 bits and the averaging at about a code, which
+is an order finer than issue #5's 30-45 code signature. What remains
+of it is recording the run rather than quoting it - item 1.
 
 **5. Turn the eye-judgements into numbers.** "Recognisable square" is
 currently a person looking at a screenshot. A flat-top fraction - the

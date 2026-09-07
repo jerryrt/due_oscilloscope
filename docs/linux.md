@@ -344,11 +344,10 @@ open measurement.
 here is main-loop-served, so PING, `GET_LOAD` and the console all go dark
 together and nothing can say *why* the loop stopped. The cheap fix is
 timer-interrupt telemetry that survives the stall: a TC ISR increments a
-counter, `bsp/load.c` already counts main-loop passes, and the ratio read
-after recovery proves the loop stopped while interrupts did not - no
-live transmission and no printf from an ISR, so invariant 6 holds.
-Proposed on #33; not built, because it is a change to both tracks and
-both benches are mid-diagnosis elsewhere.
+counter, `lib/due_shared/src/load.c` already counts main-loop passes,
+and the ratio read after recovery proves the loop stopped while
+interrupts did not - no live transmission and no printf from an ISR, so
+invariant 6 holds. Not built: it is a change to every track.
 
 `rt.py`'s `SCHED_FIFO` path works natively - `sched=fifo:10`, policy
 confirmed with `sched_getscheduler`. It had only ever run under WSL2
