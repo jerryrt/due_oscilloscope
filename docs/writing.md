@@ -50,6 +50,20 @@ exceptions and must not become the norm.
 or docstring narrating what it used to say. It cannot catch the second;
 that one is read, not grepped.
 
+Length is held rather than targeted. A comment:code ratio is the wrong
+instrument for firmware: the blocks that would go to meet one are the
+ones the keep column protects - the ISR-priority warning in
+`apps/rtos_bringup/time_rtos.c`, the byte budgets in
+`lib/due_shared/src/console_out.h`, the `DEVEPTCFG` trap - and `host/`
+is a different kind of code whose ratio says nothing about a driver.
+What is checkable is the count: `tests/comment_blocks.json` records how
+many comment blocks of 20 lines or more each firmware file carries, and
+`tests/test_comment_blocks.py` fails when a file's count moves in either
+direction. A new long block lands with its baseline entry in the same
+commit, and the commit body says what a reader would break without it;
+a block that goes takes its entry with it, so the slack cannot be spent
+by the next one.
+
 ## Shape
 
 | prefer | over | because |
