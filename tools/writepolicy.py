@@ -105,6 +105,13 @@ SHAPES = {
     # constant this is clean; if it is clean because every write lands
     # on a boundary the driver also uses, this one does not.
     "const1536": {"first": 1536, "cycle": (1536,),      "split": None},
+    # 2048 is the one constant that separates a 1 KiB internal boundary
+    # from any larger one: it spans a 1 KiB boundary on every write and
+    # a 2 KiB or 4 KiB boundary on none. 4096 spans 1 KiB and 2 KiB
+    # boundaries and no 4 KiB one, so the pair reads the size off two
+    # points rather than one.
+    "const2048": {"first": 2048, "cycle": (2048,),      "split": None},
+    "const4096": {"first": 4096, "cycle": (4096,),      "split": None},
     "pair512":   {"first": 1024, "cycle": (1024,),      "split": 512},
     "alt":       {"first": 512,  "cycle": (512, 1024),  "split": None},
     "due":       {"first": 0,    "cycle": None,         "split": None},
@@ -135,6 +142,9 @@ ARM_SETS = {
     # clean.
     "parity": ("const512", "const1536", "alt", "alt2", "alt3", "alt5",
                "duehist"),
+    # If the boundary is 1 KiB both of these lose; if it is 2 KiB only
+    # 4096 does; if it is 4 KiB neither does.
+    "boundary": ("const512", "const2048", "const4096", "duehist"),
 }
 
 #: `altN` - runs of N writes at each size. Built on demand so the
