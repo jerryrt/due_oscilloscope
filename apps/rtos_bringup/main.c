@@ -326,10 +326,18 @@ static void c_s100(const uint32_t *a) { (void)a; console_cmd_stream(100000); }
 static void c_s200(const uint32_t *a) { (void)a; console_cmd_stream(200000); }
 static void c_s400(const uint32_t *a) { (void)a; console_cmd_stream(400000); }
 
+/*
+ * `0`, and it stops both halves for the reason Track B's does. Stopping
+ * the stream alone leaves a host-fed playback running until
+ * PLAY_ABANDON_MS elapses with no byte arriving, so the run outlives
+ * its own stop by 500 ms and `abandoned` counts it - which reads as a
+ * device that ran slow rather than as a command that did half its job.
+ */
 static void c_stop(const uint32_t *a)
 {
 	(void)a;
 	stream_stop();
+	play_stop();
 	con_str("# stream stopped"); con_nl();
 	console_flush();
 }
