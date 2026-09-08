@@ -197,13 +197,31 @@ RUN set -eux; \
         "libclang-rt-18-dev=${LIBCLANG_RT_VERSION}"; \
     rm -rf /var/lib/apt/lists/*
 
-# /opt/xpack-arm-none-eabi-gcc-*/bin is already a Linux search pattern in
-# toolchains.json, so unpacking here needs no registry change.
+# /opt/xpack-arm-none-eabi-gcc-*/bin is a Linux search pattern in
+# toolchains.json, and relying on that alone was wrong: the pattern is
+# THIRD, behind {repo}/tools/xpack-*/bin and {repo}/tools/arm-gnu-*/bin,
+# and docker/run.sh bind-mounts the repository at /work. A bench that
+# keeps its toolchain in-tree therefore shadows the image's own, and the
+# container compiles with the host's compiler instead of the pinned one.
 #
-# NOT ON PATH, deliberately. If the toolchain were on PATH a build could
-# find it while the registry lookup was broken, and the image would then
-# be certifying a resolution it never performed. `hosttools_find` has to
-# do the work, and `python3 tools/toolchain.py` reports what it resolved.
+# Measured on mac-bench, where the in-tree toolchain is a macOS build and
+# Linux tried to execute Mach-O: `arm-none-eabi-gcc: 6: Syntax error: ")"
+# unexpected`. That failure is loud only because the binary is foreign.
+# On a Linux bench with a Linux toolchain in-tree the build SUCCEEDS with
+# the wrong compiler while build-env.json credits the image - a
+# mixed-provenance image carrying the container's name, which is the one
+# thing this image exists to make impossible.
+#
+# So the image states its compiler rather than hoping to be found. The
+# CMake toolchain file documents ARM_TOOLCHAIN_DIR as precedence 2, ahead
+# of the registry, and prints which one it took; tools/toolchain.py
+# reports it as an override rather than as a search result.
+#
+# STILL NOT ON PATH. The original reason holds: a toolchain on PATH could
+# be picked up by something that never asked for it, and the image would
+# then be certifying a resolution it never performed. An environment
+# variable that one documented lookup reads is not that - it is a
+# declaration, and it is inspectable in the build log.
 RUN set -eux; \
     url="https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v${XPACK_VERSION}/xpack-arm-none-eabi-gcc-${XPACK_VERSION}-linux-x64.tar.gz"; \
     curl -fsSL "$url" -o /tmp/xpack.tar.gz; \
@@ -211,6 +229,7 @@ RUN set -eux; \
     tar -xzf /tmp/xpack.tar.gz -C /opt; \
     rm /tmp/xpack.tar.gz; \
     "/opt/xpack-arm-none-eabi-gcc-${XPACK_VERSION}/bin/arm-none-eabi-gcc" --version
+ENV ARM_TOOLCHAIN_DIR=/opt/xpack-arm-none-eabi-gcc-${XPACK_VERSION}/bin
 
 # HOME is a container path holding only the vendored core, because that
 # is where toolchains.json looks for it on Linux -
