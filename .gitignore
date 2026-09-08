@@ -69,3 +69,10 @@ records/issue35-reflash-transcripts.log
 # guards (tests/test_clean_build.py) otherwise see one "second build path"
 # per live agent.
 .claude/worktrees/
+
+# Core dumps. A crashing native harness drops `core` in the working
+# directory, and under an emulated ABI the emulator drops its own -
+# qemu-i386 wrote 101 MB of them here in one container run, which then
+# appear in every other agent's `git status` as untracked source.
+core
+*.core
