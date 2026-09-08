@@ -5,7 +5,13 @@
           -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CALLGRAPH=ON
     cmake --build build -j
     python3 tools/stack_depth.py build --elf build/baremetal_bringup.elf \
-            --table console_bindings
+            --indirect console.c:260=console_bindings \
+            --indirect console_cmds.c:44=noreturn
+
+and, for the same graph as a picture rather than a bound,
+
+    ... --mermaid > graph.md          # renders in a GitHub issue as-is
+    ... --dot | dot -Tsvg > graph.svg # if graphviz is installed
 
 WHAT THIS IS FOR. `tools/stack_frames.py` reports one function's frame and
 says so about itself: "It is not a worst-case stack depth: depth is the sum of
@@ -381,6 +387,91 @@ def find_cycle(g, frames, indirect_by_src, title_of):
     return None
 
 
+def cost_below(g, frames, indirect_by_src, title_of):
+    """{title: the deepest total from here down, including its own frame}.
+
+    The number a diagram has to be pruned on. Pruning on a function's OWN frame
+    would keep every fat leaf and drop the cheap frames that lead to them,
+    which is the opposite of what a reader needs: `h_occ` has a 0-byte frame
+    and is the only way to reach a 504-byte one.
+    """
+    below = {}
+
+    def walk(title, seen=()):
+        if title in below:
+            return below[title]
+        if title in seen:
+            return 0                       # a cycle is caught elsewhere
+        best = 0
+        for dst in g.edges.get(title, ()):
+            targets = [title_of[t] for t in indirect_by_src.get(title, ())] \
+                if dst == INDIRECT else [dst]
+            for tgt in targets:
+                if tgt in frames:
+                    best = max(best, walk(tgt, seen + (title,)))
+        below[title] = frames.get(title, 0) + best
+        return below[title]
+
+    for title in frames:
+        walk(title)
+    return below
+
+
+def _pruned(g, frames, below, floor, indirect_by_src, title_of):
+    """(kept titles, [(src, dst)] edges between them)."""
+    keep = {t for t in frames if below.get(t, 0) >= floor}
+    edges = []
+    for src in sorted(keep):
+        for dst in sorted(g.edges.get(src, ())):
+            targets = [title_of[t] for t in indirect_by_src.get(src, ())] \
+                if dst == INDIRECT else [dst]
+            for tgt in targets:
+                if tgt in keep:
+                    edges.append((src, tgt))
+    return sorted(keep), edges
+
+
+def emit_graph(g, frames, below, floor, edges, keep, critical, fmt, deepest_of):
+    """The pruned call graph as DOT or Mermaid.
+
+    IT SAYS WHAT IT LEFT OUT. A diagram that quietly drops two thirds of the
+    graph is the same failure as a depth that quietly drops an edge - the
+    reader cannot tell a small graph from a filtered one, so the node count and
+    the threshold are printed as part of the picture, not beside it.
+    """
+    ids = {t: f"n{i}" for i, t in enumerate(keep)}
+    crit = set(zip(critical, critical[1:]))
+    note = (f"{len(keep)} of {len(frames)} functions, "
+            f"those carrying >= {floor} B; deepest {deepest_of} B")
+
+    if fmt == "dot":
+        print("digraph stack {")
+        print('  rankdir=LR; node [shape=box, fontname="monospace"];')
+        print(f'  label="{note}"; labelloc=b; fontname="monospace";')
+        for t in keep:
+            heavy = ", penwidth=2" if t in set(critical) else ""
+            print(f'  {ids[t]} [label="{g.name.get(t, t)}\\n'
+                  f'{frames.get(t, 0)} B  ({below[t]} total)"{heavy}];')
+        for src, dst in edges:
+            style = " [penwidth=3, color=red]" if (src, dst) in crit else ""
+            print(f"  {ids[src]} -> {ids[dst]}{style};")
+        print("}")
+        return
+
+    print("```mermaid")
+    print("graph LR")
+    for t in keep:
+        print(f'  {ids[t]}["{g.name.get(t, t)}<br/>'
+              f'{frames.get(t, 0)} B &middot; {below[t]} total"]')
+    for src, dst in edges:
+        print(f"  {ids[src]} {'==>' if (src, dst) in crit else '-->'} "
+              f"{ids[dst]}")
+    for t in set(critical) & set(keep):
+        print(f"  style {ids[t]} stroke-width:3px")
+    print(f"  %% {note}")
+    print("```")
+
+
 def roots_of(g, named, indirect_by_src, title_of):
     """Explicitly named roots, else every node nothing calls.
 
@@ -431,6 +522,16 @@ def main(argv=None):
                     help="how many roots to list (default 10, 0 for all)")
     ap.add_argument("--json", action="store_true",
                     help="emit the result as JSON instead of a table")
+    ap.add_argument("--dot", action="store_true",
+                    help="emit the pruned call graph as graphviz DOT")
+    ap.add_argument("--mermaid", action="store_true",
+                    help="emit the pruned call graph as Mermaid, which renders "
+                         "in a GitHub issue with no local tool")
+    ap.add_argument("--prune", type=int, default=None, metavar="BYTES",
+                    help="keep only functions carrying at least this much "
+                         "worst-case depth below them. Default: half the "
+                         "deepest root, which is a readability heuristic and "
+                         "nothing more - the picture states what it dropped")
     args = ap.parse_args(argv)
 
     missing = [d for d in args.build if not os.path.isdir(d)]
@@ -581,6 +682,25 @@ def main(argv=None):
     rows.sort(key=lambda r: -r[0])
 
     state = "exact" if exact_indirect else "upper bound"
+
+    if args.dot or args.mermaid:
+        # AFTER the refusals, deliberately. A diagram is an output like any
+        # other: drawing one from a graph with an edge we could not follow
+        # would put a confident picture on top of an unknown, which is worse
+        # than printing nothing because a picture is believed harder.
+        below = cost_below(g, frames, indirect_by_src, title_of)
+        deepest_total, critical = rows[0][0], rows[0][2]
+        floor = args.prune if args.prune is not None else deepest_total // 2
+        keep, edges = _pruned(g, frames, below, floor, indirect_by_src,
+                              title_of)
+        if not keep:
+            print(f"nothing carries {floor} B or more; lower --prune",
+                  file=sys.stderr)
+            return 1
+        emit_graph(g, frames, below, floor, edges, keep, critical,
+                   "dot" if args.dot else "mermaid", deepest_total)
+        return 0
+
     if args.json:
         print(json.dumps({
             "state": state,

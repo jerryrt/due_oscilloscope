@@ -220,6 +220,73 @@ def test_a_function_reached_only_indirectly_is_not_a_root(tmp_path):
         "once the indirect edge resolves, the handler has a caller")
 
 
+# --- the diagram ------------------------------------------------------------
+
+def _graph_fixture(tmp_path):
+    """main -> {cheap, deep -> leaf}, so pruning has something to drop."""
+    return _ci(tmp_path, "t", [
+        _node("main", "main", "t.c:1:1", 24),
+        _node("t.c:deep", "deep", "t.c:2:1", 80),
+        _node("t.c:leaf", "leaf", "t.c:3:1", 48),
+        _node("t.c:cheap", "cheap", "t.c:4:1", 8),
+        _edge("main", "t.c:cheap", "t.c:10:1"),
+        _edge("main", "t.c:deep", "t.c:11:1"),
+        _edge("t.c:deep", "t.c:leaf", "t.c:12:1"),
+    ])
+
+
+def test_the_diagram_says_what_it_pruned(tmp_path, capsys):
+    """A picture that quietly drops two thirds of the graph is the same
+    failure as a depth that quietly drops an edge: the reader cannot tell a
+    small graph from a filtered one. The count and the threshold are inside
+    the output, not beside it."""
+    build = _graph_fixture(tmp_path)
+    assert sd.main([build, "--mermaid", "--prune", "100"]) == 0
+    out = capsys.readouterr().out
+    assert "of 4 functions" in out and ">= 100 B" in out
+    assert "cheap" not in out, "8 B under a 100 B floor should be gone"
+    assert "deep" in out, "128 B below it should survive"
+
+
+def test_the_diagram_marks_the_deepest_path(tmp_path, capsys):
+    """Otherwise it is a picture of the call graph rather than of the cost."""
+    build = _graph_fixture(tmp_path)
+    assert sd.main([build, "--mermaid", "--prune", "0"]) == 0
+    out = capsys.readouterr().out
+    assert "==>" in out, "the critical path needs a distinct edge"
+    assert "-->" in out, "and the rest needs a plain one, or nothing is marked"
+
+
+def test_the_diagram_refuses_on_the_same_terms_as_the_number(tmp_path):
+    """The one that matters.
+
+    A diagram is an output like any other and shares the refusal gate. Drawing
+    from a graph with an edge we could not follow would put a confident picture
+    on top of an unknown - worse than printing nothing, because a picture is
+    believed harder than a table.
+    """
+    build = _ci(tmp_path, "t", [
+        _node("main", "main", "t.c:1:1", 24),
+        _node(sd.INDIRECT, "Indirect Call Placeholder", "", shape="ellipse"),
+        _edge("main", sd.INDIRECT, "t.c:9:3"),
+    ])
+    assert sd.main([build, "--mermaid"]) == 3
+    assert sd.main([build, "--dot"]) == 3
+
+
+def test_dot_and_mermaid_describe_one_graph(tmp_path, capsys):
+    """Two renderings, one pruning. A reader comparing them must not find
+    different graphs."""
+    build = _graph_fixture(tmp_path)
+    sd.main([build, "--dot", "--prune", "0"])
+    dot = capsys.readouterr().out
+    sd.main([build, "--mermaid", "--prune", "0"])
+    mer = capsys.readouterr().out
+    for name in ("main", "deep", "leaf", "cheap"):
+        assert name in dot and name in mer
+    assert dot.count("->") == mer.count("==>") + mer.count("-->")
+
+
 def test_an_empty_scan_does_not_pass(tmp_path):
     """A report that prints nothing and exits 0 is the guard that cannot fail.
 
