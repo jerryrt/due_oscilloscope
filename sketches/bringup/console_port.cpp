@@ -230,3 +230,17 @@ bool console_port_stream_uart_start(uint32_t trigger_hz)
 {
 	return stream_start_uart(trigger_hz);
 }
+
+
+/*
+ * This track keeps no capture-side rate trace. Answered rather than
+ * left empty, for the same reason an unimplemented opcode answers
+ * CTL_ERR_OPCODE: zero entries is a measurement, and a host cannot
+ * otherwise tell it from "not counted here".
+ */
+bool console_port_acq_rate_trace(uint32_t *n, const uint32_t **us,
+                                 const uint8_t **occ)
+{
+	(void)n; (void)us; (void)occ;
+	return false;
+}

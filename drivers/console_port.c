@@ -218,3 +218,24 @@ bool console_port_stream_uart_start(uint32_t trigger_hz)
 {
 	return stream_start_uart(trigger_hz);
 }
+
+
+/*
+ * The capture-side rate trace. Compiled out by default -
+ * ACQ_RATE_TRACE_ENABLED - because it perturbs the path it measures,
+ * and `O` says which of "not built" and "traced nothing" it is looking
+ * at rather than printing an empty line for both.
+ */
+bool console_port_acq_rate_trace(uint32_t *n, const uint32_t **us,
+                                 const uint8_t **occ)
+{
+#if ACQ_RATE_TRACE_ENABLED
+	*n   = acq_traced;
+	*us  = (const uint32_t *)acq_trace_us;
+	*occ = (const uint8_t *)acq_trace_occ;
+	return true;
+#else
+	(void)n; (void)us; (void)occ;
+	return false;
+#endif
+}

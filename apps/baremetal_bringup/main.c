@@ -430,102 +430,6 @@ static void diag_service(void)
 }
 
 /*
- * Dump the playback ring's occupancy distribution.
- *
- * Printed as a bare comma-separated list rather than key=value pairs:
- * 32 buckets as `occ0=..` would be a long line for a parse that gains
- * nothing, and the index is the occupancy, so position is the key.
- */
-static void cmd_occ_hist(void)
-{
-	con_str("# play_occ ");
-	con_kv_u32("min", play_occ_min);        con_ch(' ');
-	con_kv_u32("endtx", play_endtx_seen);   con_ch(' ');
-	con_kv_u32("runus", play_run_us);       con_ch(' ');
-	con_kv_u32("consumed", play_consumed);  con_str(" hist=");
-	for (unsigned i = 0; i < PLAY_NBUF; i++) {
-		con_u32(play_occ_hist[i]);
-		if (i + 1u < PLAY_NBUF)
-			con_ch(',');
-	}
-	con_nl();
-	uart_flush();
-
-	con_str("# play_occ_trace ");
-	con_kv_u32("decim", PLAY_OCC_DECIM);   con_ch(' ');
-	con_kv_u32("n", play_occ_traced);      con_str(" v=");
-	for (unsigned i = 0; i < play_occ_traced; i++) {
-		con_u32(play_occ_trace[i]);
-		if (i + 1u < play_occ_traced)
-			con_ch(',');
-		/* 256 entries is more than one UART buffer holds. */
-		if ((i & 31u) == 31u)
-			uart_flush();
-	}
-	con_nl();
-	uart_flush();
-
-	/*
-	 * Absolute microseconds at every PLAY_RATE_DECIM-th consumed
-	 * buffer. The host differences them; sending deltas here would
-	 * throw away the only reading that survives a disturbed sample.
-	 */
-	con_str("# play_rate ");
-	con_kv_u32("decim", PLAY_RATE_DECIM);  con_ch(' ');
-	con_kv_u32("n", play_rate_traced);     con_str(" us=");
-	for (unsigned i = 0; i < play_rate_traced; i++) {
-		con_u32(play_rate_us[i]);
-		if (i + 1u < play_rate_traced)
-			con_ch(',');
-		if ((i & 15u) == 15u)
-			uart_flush();
-	}
-	con_nl();
-
-	/*
-	 * The capture side of the same question: absolute
-	 * microseconds at each completed PDC buffer, and the ring
-	 * occupancy at that instant - so a run that lost frames can be
-	 * read for whether the converter fell behind or the transfer
-	 * failed to collect. The frame header's timestamp_us cannot
-	 * separate those: it is taken when the frame is queued for USB.
-	 */
-#if ACQ_RATE_TRACE_ENABLED
-	con_str("# acq_rate "); con_kv_u32("n", acq_traced);
-	con_str(" us=");
-	for (unsigned i = 0; i < acq_traced; i++) {
-		con_u32(acq_trace_us[i]);
-		if (i + 1u < acq_traced)
-			con_ch(',');
-		if ((i & 15u) == 15u)
-			uart_flush();
-	}
-	con_str(" occ=");
-	for (unsigned i = 0; i < acq_traced; i++) {
-		con_u32(acq_trace_occ[i]);
-		if (i + 1u < acq_traced)
-			con_ch(',');
-		if ((i & 31u) == 31u)
-			uart_flush();
-	}
-	con_nl();
-#else
-	/*
-	 * Say it is absent rather than printing nothing.
-	 *
-	 * With the trace compiled out this printed no line at all, and a
-	 * host cannot tell that from a run that captured nothing - which
-	 * is the defect CTL_ERR_OPCODE exists to avoid on the control
-	 * channel, in CLAUDE.md's words: zero is a measurement, and a
-	 * host cannot otherwise tell it from "not counted here". Silence
-	 * is the same trap with less information in it.
-	 */
-	con_str("# acq_rate: not built (ACQ_RATE_TRACE_ENABLED is 0)"); con_nl();
-#endif
-	uart_flush();
-}
-
-/*
  * Where the main loop's time goes, in ns per call. The DMA benches
  * re-arm at most one transfer per main-loop pass, so the cost of a
  * pass is a throughput ceiling, not a curiosity. Track A carries the
@@ -1093,7 +997,7 @@ static void h_bench(const uint32_t *a)
  * mid-stream by the daemon and must stay one short line; this is 32
  * buckets and belongs where `V` already lives, which is between runs.
  */
-static void h_occ(const uint32_t *a) { (void)a; cmd_occ_hist(); }
+static void h_occ(const uint32_t *a) { (void)a; console_cmd_occ_hist(); }
 
 /*
  * What this track implements, in the shared surface's terms. A letter

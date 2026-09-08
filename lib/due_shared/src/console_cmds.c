@@ -14,6 +14,7 @@
  * console_write()/console_flush().
  */
 #include <stdio.h>
+#include <string.h>
 
 #include "console.h"
 #include "console_port.h"
@@ -731,6 +732,165 @@ void console_cmd_stream_uart(uint32_t trigger_hz)
 
 	if (!console_port_stream_uart_start(trigger_hz)) {
 		con_str("# refused"); con_nl();
+		console_flush();
+	}
+}
+
+
+/*
+ * `O`: the playback ring's occupancy, its rate trace, and the capture
+ * side of the same question.
+ *
+ * READ THROUGH THE CONTROL CHANNEL'S OWN FILLERS, not through the
+ * counters directly. ctl_port_occupancy() and ctl_port_rate_page()
+ * exist on every track because CTL_OP_OCCUPANCY and CTL_OP_RATE_TRACE
+ * do, so calling them here costs one buffer and buys the guarantee
+ * that the console and the command port cannot report different
+ * numbers for one run. That matters more here than anywhere: `O` is
+ * the ORACLE tests/test_play_counters.py holds the bulk-IN carrier
+ * against, and an oracle that reads its own copy of the counters is
+ * checking a transcription rather than the instrument.
+ *
+ * Printed as a bare comma-separated list rather than key=value pairs:
+ * 32 buckets as `occ0=..` would be a long line for a parse that gains
+ * nothing, and the index is the occupancy, so position is the key.
+ *
+ * The absolute microseconds are sent, not the deltas. The host
+ * differences them; sending deltas would throw away the only reading
+ * that survives a disturbed sample.
+ */
+void console_cmd_occ_hist(void)
+{
+	uint8_t body[CTL_MAX_PAYLOAD];
+	ctl_occupancy_t o;
+	const uint8_t *p;
+	unsigned i;
+	int n;
+
+	n = ctl_port_occupancy(body, sizeof(body));
+	if (n < (int)sizeof(o)) {
+		con_str("# play_occ: not available on this track"); con_nl();
+		console_flush();
+		return;
+	}
+	memcpy(&o, body, sizeof(o));
+	p = body + sizeof(o);
+
+	con_str("# play_occ ");
+	con_kv_u32("min", o.occ_min);          con_ch(' ');
+	con_kv_u32("endtx", o.endtx_seen);     con_ch(' ');
+	con_kv_u32("runus", o.run_us);         con_ch(' ');
+	con_kv_u32("consumed", o.consumed);    con_str(" hist=");
+	for (i = 0; i < o.nbuf; i++) {
+		uint32_t v;
+
+		memcpy(&v, p + i * sizeof(v), sizeof(v));
+		con_u32(v);
+		if (i + 1u < o.nbuf)
+			con_ch(',');
+	}
+	con_nl();
+	console_flush();
+
+	p += (size_t)o.nbuf * sizeof(uint32_t);
+	con_str("# play_occ_trace ");
+	con_kv_u32("decim", o.trace_decim);    con_ch(' ');
+	con_kv_u32("n", o.trace_n);            con_str(" v=");
+	for (i = 0; i < o.trace_n; i++) {
+		con_u32(p[i]);
+		if (i + 1u < o.trace_n)
+			con_ch(',');
+		/* 256 entries is more than one UART buffer holds. */
+		if ((i & 31u) == 31u)
+			console_flush();
+	}
+	con_nl();
+	console_flush();
+
+	/* The playback rate trace, page by page - it does not fit one
+	 * packet, and the pager is the control channel's, so the console
+	 * cannot disagree with it about where the trace ends. */
+	{
+		ctl_rate_page_t pg;
+		uint16_t off = 0;
+		bool opened = false;
+
+		for (;;) {
+			int r = ctl_port_rate_page(body, sizeof(body), off);
+
+			if (r < (int)sizeof(pg)) {
+				if (!opened) {
+					con_str("# play_rate: not built on "
+					        "this track"); con_nl();
+					console_flush();
+				}
+				break;
+			}
+			memcpy(&pg, body, sizeof(pg));
+			if (!opened) {
+				con_str("# play_rate ");
+				con_kv_u32("decim", pg.decim);  con_ch(' ');
+				con_kv_u32("n", pg.total);      con_str(" us=");
+				opened = true;
+			}
+			for (i = 0; i < pg.count; i++) {
+				uint32_t v;
+
+				memcpy(&v, body + sizeof(pg) + i * sizeof(v),
+				       sizeof(v));
+				con_u32(v);
+				if (pg.offset + i + 1u < pg.total)
+					con_ch(',');
+				if ((i & 15u) == 15u)
+					console_flush();
+			}
+			off = (uint16_t)(pg.offset + pg.count);
+			if (pg.count == 0 || off >= pg.total)
+				break;
+		}
+		if (opened) {
+			con_nl();
+			console_flush();
+		}
+	}
+
+	/*
+	 * The capture side. Said to be absent rather than printed as
+	 * nothing: with the trace compiled out this used to print no line
+	 * at all, and a host cannot tell that from a run that captured
+	 * nothing - which is the defect CTL_ERR_OPCODE exists to avoid on
+	 * the control channel. Silence is the same trap with less
+	 * information in it.
+	 */
+	{
+		const uint32_t *us;
+		const uint8_t *occ;
+		uint32_t an;
+
+		if (!console_port_acq_rate_trace(&an, &us, &occ)) {
+			con_str("# acq_rate: not built on this track");
+			con_nl();
+			console_flush();
+			return;
+		}
+		con_str("# acq_rate "); con_kv_u32("n", an);
+		con_str(" us=");
+		for (i = 0; i < an; i++) {
+			con_u32(us[i]);
+			if (i + 1u < an)
+				con_ch(',');
+			if ((i & 15u) == 15u)
+				console_flush();
+		}
+		con_str(" occ=");
+		for (i = 0; i < an; i++) {
+			con_u32(occ[i]);
+			if (i + 1u < an)
+				con_ch(',');
+			if ((i & 31u) == 31u)
+				console_flush();
+		}
+		con_nl();
 		console_flush();
 	}
 }

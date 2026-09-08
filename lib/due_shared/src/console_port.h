@@ -174,6 +174,24 @@ void     console_port_stall(uint32_t ms);
  * converter, which is what the oracle is for - but it is exactly why
  * a shared body cannot include either header.
  */
+/*
+ * The CAPTURE-side rate trace: absolute microseconds at each completed
+ * PDC buffer and the ring occupancy at that instant, which is what
+ * separates a converter that fell behind from a transfer that failed
+ * to collect. The frame header's timestamp_us cannot: it is taken when
+ * the frame is queued for USB.
+ *
+ * false means this track does not build the trace at all, which is NOT
+ * the same as a run that traced nothing - `O` prints the difference,
+ * for the reason CTL_ERR_OPCODE exists. Nothing else in `O` needs a
+ * port name: the playback half is ctl_port_occupancy() and
+ * ctl_port_rate_page(), which both tracks already implement for the
+ * control channel, so the console and the command port report one set
+ * of numbers by construction.
+ */
+bool console_port_acq_rate_trace(uint32_t *n, const uint32_t **us,
+                                 const uint8_t **occ);
+
 /* `w`'s start. Separate from console_port_stream_start() because the
  * sink is the UART rather than the bulk endpoint, which is a different
  * framer path on both tracks and not a parameter of one. */

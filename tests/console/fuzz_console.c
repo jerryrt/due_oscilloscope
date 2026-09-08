@@ -355,6 +355,15 @@ bool console_port_stream_uart_start(uint32_t trigger_hz)
 	return false;
 }
 
+/* No capture-side trace off the board. `O` then prints the "not built"
+ * line, which is the branch worth exercising here anyway. */
+bool console_port_acq_rate_trace(uint32_t *n, const uint32_t **us,
+                                 const uint8_t **occ)
+{
+	(void)n; (void)us; (void)occ;
+	return false;
+}
+
 
 void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 {

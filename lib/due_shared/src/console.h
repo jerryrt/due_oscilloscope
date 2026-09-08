@@ -130,6 +130,14 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*
+ * `O`: the playback ring's occupancy distribution and the two rate
+ * traces, off the `B` path deliberately - `B` is polled mid-stream by
+ * the daemon and must stay one short line, where this is 32 buckets
+ * and belongs between runs.
+ */
+void console_cmd_occ_hist(void);
+
+/*
  * `w`: stream frames over the programming-port UART instead of USB.
  *
  * Bandwidth-limited and deliberately so - 115200 baud carries about

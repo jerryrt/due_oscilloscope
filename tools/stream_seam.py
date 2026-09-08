@@ -98,7 +98,15 @@ SEAMS = {
         # snprintf builds the identity line and the generator report;
         # both are debug-console output, which invariant 8 already
         # governs, and neither is on the sample path.
-        "allowed_other": {"snprintf"},
+        #
+        # memcpy on the same terms the stream seam already grants it,
+        # and for the same job: `O` reads its numbers out of the
+        # buffers ctl_port_occupancy() and ctl_port_rate_page() fill,
+        # which are packed wire layouts, so the fields come out through
+        # memcpy rather than through a cast the alignment does not
+        # justify. It is the C library, not a track, which is the whole
+        # distinction this record draws.
+        "allowed_other": {"snprintf", "memcpy"},
     },
 }
 

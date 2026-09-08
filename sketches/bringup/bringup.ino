@@ -697,41 +697,6 @@ static void cmd_usb_dump(void)
  * parser treats that line as optional, so its absence reads as "not
  * sampled" rather than as a malformed record.
  */
-static void cmd_occ_hist(void)
-{
-	char buf[64];
-
-	con_str("# play_occ ");
-	con_kv_u32("min", play_occ_min);        con_ch(' ');
-	con_kv_u32("endtx", play_endtx_seen);   con_ch(' ');
-	con_kv_u32("runus", play_run_us);       con_ch(' ');
-	con_kv_u32("consumed", play_consumed);  con_str(" hist=");
-	Serial.print(buf);
-	for (unsigned i = 0; i < PLAY_NBUF; i++) {
-		con_u32(play_occ_hist[i]);
-		if (i + 1u < PLAY_NBUF)
-			con_ch(',');
-		Serial.print(buf);
-	}
-	Serial.println();
-	Serial.flush();
-
-	con_str("# play_occ_trace ");
-	con_kv_u32("decim", PLAY_OCC_DECIM);  con_ch(' ');
-	con_kv_u32("n", play_occ_traced);     con_str(" v=");
-	Serial.print(buf);
-	for (unsigned i = 0; i < play_occ_traced; i++) {
-		con_u32(play_occ_trace[i]);
-		if (i + 1u < play_occ_traced)
-			con_ch(',');
-		Serial.print(buf);
-		/* 256 entries is more than one buffer holds. */
-		if ((i & 31u) == 31u)
-			Serial.flush();
-	}
-	Serial.println();
-	Serial.flush();
-}
 
 
 static void cmd_profile(void)
@@ -1195,7 +1160,7 @@ static void ha_play(const uint32_t *a)
 static void ha_occ(const uint32_t *a)
 {
 	(void)a;
-	cmd_occ_hist();
+	console_cmd_occ_hist();
 }
 
 static void ha_epstate(const uint32_t *a)
