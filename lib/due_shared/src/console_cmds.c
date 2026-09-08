@@ -1093,3 +1093,35 @@ void console_cmd_crosstalk(unsigned repeats, uint32_t settle_ms)
 	console_port_measure_end();
 	console_flush();
 }
+
+
+/*
+ * `Q`'s frame and its rows. The list between them is each track's own -
+ * see console.h for why that is the right split and not a shortcut.
+ *
+ * Integer nanoseconds from microseconds and a count, in one place, so
+ * two tracks' rows are the same quantity. The label is padded to a
+ * fixed width for the same reason the numbers are: a column that moves
+ * between tracks is a column nobody diffs.
+ */
+void console_profile_begin(void)
+{
+	con_str("# main-loop profile, ns per call"); con_nl();
+	console_flush();
+}
+
+void console_profile_row(const char *label, uint32_t us, uint32_t n)
+{
+	con_str("# ");
+	con_strl(label, 22);
+	con_ch(' ');
+	con_u32w((uint32_t)(((uint64_t)us * 1000ull) / n), 6, ' ');
+	con_str(" ns"); con_nl();
+	console_flush();
+}
+
+void console_profile_end(void)
+{
+	con_str("# note: services early-return unless started"); con_nl();
+	console_flush();
+}

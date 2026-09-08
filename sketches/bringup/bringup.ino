@@ -460,27 +460,16 @@ static void cmd_usb_dump(void)
  */
 
 
+/*
+ * The list is this track's; the harness is console.h's
+ * CONSOLE_PROFILE(). What is profiled here is what THIS loop pays for,
+ * which is mostly the Arduino core's per-pass questions.
+ */
 static void cmd_profile(void)
 {
-	const uint32_t n = 20000;
-	uint32_t t0, t1;
+	console_profile_begin();
 
-	Serial.println("# main-loop profile, ns per call");
-	Serial.flush();
-
-#define PROF(label, expr)                                            \
-	do {                                                         \
-		t0 = micros();                                       \
-		for (uint32_t i = 0; i < n; i++) { expr; }            \
-		t1 = micros();                                       \
-		con_str("# "); con_strl(label, 22); con_ch(' ');      \
-		con_u32w((uint32_t)(((uint64_t)(t1 - t0) * 1000ull)   \
-		                    / n), 6, ' ');                    \
-		con_str(" ns"); con_nl();                             \
-		console_flush();                                      \
-	} while (0)
-
-	PROF("empty loop", __asm__ volatile(""));
+	CONSOLE_PROFILE("empty loop", __asm__ volatile(""));
 	/*
 	 * The per-pass diagnostics, profiled because this loop once ran
 	 * at 75.1 k passes/s against Track B's 160.4 k and invariant 3
@@ -490,25 +479,23 @@ static void cmd_profile(void)
 	 * Track B removing when gating ctl_service and usb_cdc_poll to
 	 * 1 kHz took its idle pass from 9.72 to 6.70 us.
 	 */
-	PROF("UOTGHS_DEVEPT read", (void)UOTGHS->UOTGHS_DEVEPT);
-	PROF("usbtrace_sample()", usbtrace_sample(0));
-	PROF("devept_restore()", devept_restore());
-	PROF("ctlusb_quiesce_int()", ctlusb_quiesce_interrupts());
-	PROF("ctl_service()", ctl_service());
-	PROF("millis()", (void)millis());
-	PROF("micros()", (void)micros());
-	PROF("Serial.available()", (void)Serial.available());
-	PROF("SerialUSB.available()", (void)SerialUSB.available());
-	PROF("SerialUSB.dtr()", (void)SerialUSB.dtr());
-	PROF("usbdma_out_busy()", (void)usbdma_out_busy());
-	PROF("usbdma_keepalive()", usbdma_keepalive());
-	PROF("play_service()", play_service());
-	PROF("stream_service()", stream_service());
-	PROF("diag_service()", diag_service());
-#undef PROF
+	CONSOLE_PROFILE("UOTGHS_DEVEPT read", (void)UOTGHS->UOTGHS_DEVEPT);
+	CONSOLE_PROFILE("usbtrace_sample()", usbtrace_sample(0));
+	CONSOLE_PROFILE("devept_restore()", devept_restore());
+	CONSOLE_PROFILE("ctlusb_quiesce_int()", ctlusb_quiesce_interrupts());
+	CONSOLE_PROFILE("ctl_service()", ctl_service());
+	CONSOLE_PROFILE("millis()", (void)millis());
+	CONSOLE_PROFILE("micros()", (void)micros());
+	CONSOLE_PROFILE("Serial.available()", (void)Serial.available());
+	CONSOLE_PROFILE("SerialUSB.available()", (void)SerialUSB.available());
+	CONSOLE_PROFILE("SerialUSB.dtr()", (void)SerialUSB.dtr());
+	CONSOLE_PROFILE("usbdma_out_busy()", (void)usbdma_out_busy());
+	CONSOLE_PROFILE("usbdma_keepalive()", usbdma_keepalive());
+	CONSOLE_PROFILE("play_service()", play_service());
+	CONSOLE_PROFILE("stream_service()", stream_service());
+	CONSOLE_PROFILE("diag_service()", diag_service());
 
-	Serial.println("# note: services early-return unless started");
-	Serial.flush();
+	console_profile_end();
 }
 
 /*

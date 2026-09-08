@@ -7,7 +7,7 @@
     "block is load-bearing; lower it in the commit that removes one."
   ],
   "apps/rtos_bringup/console_port_rtos.c": 1,
-  "apps/rtos_bringup/main.c": 3,
+  "apps/rtos_bringup/main.c": 4,
   "apps/rtos_bringup/time_rtos.c": 1,
   "drivers/acq.h": 1,
   "drivers/adc.c": 2,

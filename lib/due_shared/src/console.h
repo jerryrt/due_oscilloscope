@@ -17,6 +17,7 @@
 #define CONSOLE_H
 
 #include <stdarg.h>
+#include "ctl_port.h"   /* ctl_port_micros, for CONSOLE_PROFILE */
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -128,6 +129,50 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
  * a zero (or omitted) channel count defaults inside, so no track's
  * main() has to guard the divide it feeds. */
 void console_cmd_rate_sweep(unsigned n_channels);
+
+/*
+ * `Q`: where the main loop's time goes, in ns per call.
+ *
+ * The HARNESS is shared and the LIST is not, which is the split this
+ * command needs rather than a compromise. The rows are compared
+ * between tracks - the DMA benches re-arm at most one transfer per
+ * pass, so the cost of a pass is a throughput ceiling - and two tracks
+ * dividing by different counts or printing different widths cannot be
+ * read against each other. But WHAT to profile is the track's own
+ * loop: Track A pays for the Arduino core's per-pass questions, Track
+ * B for its own USB stack's, and Track C runs the same five services
+ * under a scheduler. A shared list would have to be the union, and
+ * every track would report zeros for the rows it does not run - which
+ * is the body-of-zeroes failure CTL_ERR_OPCODE exists to avoid.
+ *
+ * So each track's main() writes its own list out of CONSOLE_PROFILE(),
+ * between console_profile_begin() and console_profile_end().
+ */
+#define CONSOLE_PROFILE_N  20000u
+
+void console_profile_begin(void);
+void console_profile_row(const char *label, uint32_t us, uint32_t n);
+void console_profile_end(void);
+
+/*
+ * One row: `expr` CONSOLE_PROFILE_N times, timed by the device clock.
+ *
+ * A macro rather than a function because the whole point is to measure
+ * the call as the loop makes it - a function taking a pointer would
+ * measure an indirect call instead, and inlining decisions would then
+ * differ per row.
+ */
+#define CONSOLE_PROFILE(label, expr)                                   \
+	do {                                                           \
+		uint32_t _cp_t0 = ctl_port_micros();                   \
+		for (uint32_t _cp_i = 0; _cp_i < CONSOLE_PROFILE_N;    \
+		     _cp_i++) {                                        \
+			expr;                                          \
+		}                                                      \
+		console_profile_row((label),                           \
+		                    ctl_port_micros() - _cp_t0,        \
+		                    CONSOLE_PROFILE_N);                \
+	} while (0)
 
 /*
  * `=<n>,<ms>x`: multiplexer bleed, n observations at ms settle.

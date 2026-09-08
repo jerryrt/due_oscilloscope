@@ -212,32 +212,21 @@ static void diag_service(void)
 /*
  * Where the main loop's time goes, in ns per call. The DMA benches
  * re-arm at most one transfer per main-loop pass, so the cost of a
- * pass is a throughput ceiling, not a curiosity. Track A carries the
- * identical command so the two can be compared directly.
+ * pass is a throughput ceiling, not a curiosity. All three tracks
+ * carry the command so the loops can be compared directly.
+ *
+ * The list is this track's; the harness - the count, the timing and
+ * the row format - is console.h's CONSOLE_PROFILE(). See there for why
+ * a shared list would have to be the union of three loops and would
+ * report zeros for the rows a track does not run.
  */
 static void cmd_profile(void)
 {
-	const uint32_t n = 20000;
-	uint32_t t0, t1;
+	console_profile_begin();
 
-	con_str("# main-loop profile, ns per call"); con_nl();
-	uart_flush();
-
-#define PROF(label, expr)                                            \
-	do {                                                         \
-		t0 = micros();                                       \
-		for (uint32_t i = 0; i < n; i++) { expr; }            \
-		t1 = micros();                                       \
-		con_str("# "); con_strl(label, 22); con_ch(' ');       \
-		con_u32w((uint32_t)(((uint64_t)(t1 - t0) * 1000ull)    \
-		                    / n), 6, ' ');                     \
-		con_str(" ns"); con_nl();                              \
-		uart_flush();                                        \
-	} while (0)
-
-	PROF("empty loop", __asm__ volatile(""));
-	PROF("millis()", (void)millis());
-	PROF("micros()", (void)micros());
+	CONSOLE_PROFILE("empty loop", __asm__ volatile(""));
+	CONSOLE_PROFILE("millis()", (void)millis());
+	CONSOLE_PROFILE("micros()", (void)micros());
 	/*
 	 * load_tick() is measured by the same command that condemned
 	 * micros(). It runs on every pass of this loop, so if it ever
@@ -246,15 +235,15 @@ static void cmd_profile(void)
 	 * while profiling is deliberate: the profile is not a normal pass
 	 * and it should be visible in the histogram as one.
 	 */
-	PROF("load_tick()", load_tick());
-	PROF("usb_cdc_ready()", (void)usb_cdc_ready());
-	PROF("usb_dma_out_busy()", (void)usb_dma_out_busy());
-	PROF("usb_cdc_poll()", usb_cdc_poll());
-	PROF("clockref_poll()", clockref_poll());
-	PROF("play_service()", play_service());
-	PROF("stream_service()", stream_service());
-	PROF("diag_service()", diag_service());
-	PROF("ctl_service()", ctl_service());
+	CONSOLE_PROFILE("load_tick()", load_tick());
+	CONSOLE_PROFILE("usb_cdc_ready()", (void)usb_cdc_ready());
+	CONSOLE_PROFILE("usb_dma_out_busy()", (void)usb_dma_out_busy());
+	CONSOLE_PROFILE("usb_cdc_poll()", usb_cdc_poll());
+	CONSOLE_PROFILE("clockref_poll()", clockref_poll());
+	CONSOLE_PROFILE("play_service()", play_service());
+	CONSOLE_PROFILE("stream_service()", stream_service());
+	CONSOLE_PROFILE("diag_service()", diag_service());
+	CONSOLE_PROFILE("ctl_service()", ctl_service());
 	{
 		static uint8_t scratch[64];
 
@@ -262,13 +251,11 @@ static void cmd_profile(void)
 		 * doing nothing, which is more than stream_service(). The
 		 * question is whether the cost is the endpoint read or the
 		 * wrapper around it, and guessing has a poor record here. */
-		PROF("usb_ctl_read()", (void)usb_ctl_read(scratch,
-		                                          sizeof(scratch)));
+		CONSOLE_PROFILE("usb_ctl_read()",
+		                (void)usb_ctl_read(scratch, sizeof(scratch)));
 	}
-#undef PROF
 
-	con_str("# note: services early-return unless started"); con_nl();
-	uart_flush();
+	console_profile_end();
 }
 
 /*

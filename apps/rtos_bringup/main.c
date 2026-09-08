@@ -774,6 +774,56 @@ static void c_occ(const uint32_t *a) { (void)a; console_cmd_occ_hist(); }
 
 static void c_xtalk(const uint32_t *a) { console_cmd_crosstalk(a[0], a[1]); }
 
+/*
+ * `Q`: where THIS loop's time goes. The harness is console.h's
+ * CONSOLE_PROFILE() so the rows read against Track B's directly; the
+ * list is this track's, and the two differences from Track B's are the
+ * whole reason C4 exists.
+ *
+ * diag_service() is absent because service_task() does not call it -
+ * it is `static` in Track B's main.c and appears in no header, so it
+ * is Track B's own application diagnostic rather than a shared driver
+ * service. A row of zeros for it would claim this loop runs something
+ * it does not.
+ *
+ * uart_rx_ready() and xTaskGetTickCount() are present because this
+ * loop pays for them and Track B's does not: the first is the one
+ * register read that answers "is the console about to want the CPU",
+ * asked on every pass to decide whether to yield, and the second is
+ * what a tick costs to read. They are the scheduler's price, itemised.
+ *
+ * vTaskDelay() is deliberately NOT profiled. Twenty thousand of them
+ * is twenty seconds of yielding, and what it would measure is the tick
+ * period rather than a call.
+ */
+static void c_profile(const uint32_t *a)
+{
+	(void)a;
+	console_profile_begin();
+
+	CONSOLE_PROFILE("empty loop", __asm__ volatile(""));
+	CONSOLE_PROFILE("millis()", (void)millis());
+	CONSOLE_PROFILE("micros()", (void)micros());
+	CONSOLE_PROFILE("load_tick()", load_tick());
+	CONSOLE_PROFILE("xTaskGetTickCount()", (void)xTaskGetTickCount());
+	CONSOLE_PROFILE("uart_rx_ready()", (void)uart_rx_ready());
+	CONSOLE_PROFILE("usb_cdc_ready()", (void)usb_cdc_ready());
+	CONSOLE_PROFILE("usb_dma_out_busy()", (void)usb_dma_out_busy());
+	CONSOLE_PROFILE("usb_cdc_poll()", usb_cdc_poll());
+	CONSOLE_PROFILE("clockref_poll()", clockref_poll());
+	CONSOLE_PROFILE("play_service()", play_service());
+	CONSOLE_PROFILE("stream_service()", stream_service());
+	CONSOLE_PROFILE("ctl_service()", ctl_service());
+	{
+		static uint8_t scratch[64];
+
+		CONSOLE_PROFILE("usb_ctl_read()",
+		                (void)usb_ctl_read(scratch, sizeof(scratch)));
+	}
+
+	console_profile_end();
+}
+
 static void c_mimic_gap(const uint32_t *a)
 {
 	mimic_start_delay_us = a[0];
@@ -814,7 +864,7 @@ const console_binding_t console_bindings[] = {
 	{ 'p', c_printf },      { 'g', c_gpio },        { 'r', c_read },
 	{ 's', c_sweep },       { 'd', c_dac_sweep },   { 'j', c_dac_15m },
 	{ 'k', c_dac_30m },     { 'w', c_uart_stream }, { 'E', c_epstate },
-	{ 'O', c_occ },         { 'x', c_xtalk },
+	{ 'O', c_occ },         { 'x', c_xtalk },       { 'Q', c_profile },
 	{ 0,   NULL    },
 };
 
