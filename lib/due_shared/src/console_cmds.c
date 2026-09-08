@@ -20,6 +20,7 @@
 #include "console_out.h"
 #include "ctl_port.h"
 #include "ctl_wire.h"
+#include "frame.h"    /* FRAME_CH_A0..A2, the channel tags the wire uses */
 
 /*
  * `f`: prove the fault handler by taking one deliberately.
@@ -449,5 +450,109 @@ void console_cmd_gpio_cost(void)
 	print_ns("direct PIO ", t1 - t0, n);
 	print_ns(console_port_toggle_bsp_name(), t3 - t2, n);
 	con_str("# use direct PIO writes for ISR instrumentation"); con_nl();
+	console_flush();
+}
+
+
+/*
+ * ADC codes to millivolts at the nominal 3.3 V reference.
+ *
+ * NOMINAL, and the arithmetic is integer for the reason every other
+ * printed figure on this console is: a float formatter would be pulled
+ * into the image for one column. A bench that has measured its own
+ * ADVREF corrects host-side - host/calibration.py owns that - and this
+ * stays the reading the board can defend on its own.
+ */
+static uint32_t code_to_mv(uint16_t code)
+{
+	return ((uint32_t)code * 3300u) / 4095u;
+}
+
+/*
+ * `r`: one DC reading of A0, A1 and A2.
+ *
+ * A2 is read on its own rather than as a pair, because it is the
+ * impedance arm and pairing it would convert it straight after another
+ * channel - which is the one thing this rig exists to hold still.
+ * Software-triggered with a generous tracking time, so this is a DC
+ * reading and not a sample of the artifact.
+ *
+ * That paragraph was true of Track B only. Track A's copy of this
+ * command read A0 and A1 and stopped, so the two boards answered `r`
+ * with different amounts of information and nothing said so - the
+ * oracle cannot check a column it does not print. Sharing the body is
+ * what makes the two answers the same question.
+ */
+void console_cmd_read(void)
+{
+	uint16_t a0, a1, a2;
+
+	console_port_adc_read_pair(FRAME_CH_A0, FRAME_CH_A1, &a0, &a1);
+	a2 = console_port_adc_read(FRAME_CH_A2);
+
+	con_str("# A0(AD7) = "); con_u32w(a0, 4, ' ');
+	con_str("  ");           con_u32w(code_to_mv(a0), 4, ' ');
+	con_str(" mV    A1(AD6) = "); con_u32w(a1, 4, ' ');
+	con_str("  ");           con_u32w(code_to_mv(a1), 4, ' ');
+	con_str(" mV    A2(AD5) = "); con_u32w(a2, 4, ' ');
+	con_str("  ");           con_u32w(code_to_mv(a2), 4, ' ');
+	con_str(" mV"); con_nl();
+	console_flush();
+}
+
+/*
+ * `s`: step both DACs across the range and read both ADCs back.
+ *
+ * DAC1 is driven inverse to DAC0 so a swapped pair of jumpers shows up
+ * immediately rather than reading plausibly. The endpoints of this
+ * table are the measurement that matters: the DAC is not rail to rail
+ * and the true limits on a given board have to be measured rather than
+ * assumed.
+ *
+ * THE SETTLE IS THE SHARED PART, and it is why this body could not
+ * stay in two places. The two tracks waited differently between
+ * writing a code and converting it - Track A `delay(5)`, Track B an
+ * untimed busy loop of 200,000 volatile iterations whose duration
+ * nobody ever established - and this command measures what the output
+ * has settled to. Two settle times are two experiments, and the whole
+ * point of the second track is that its answer to one experiment can
+ * be compared with the first's. console_bleed_settle() already exists
+ * and already says this about itself; it is the same argument, one
+ * command over.
+ */
+void console_cmd_dac_sweep_dc(void)
+{
+	con_str("# DAC sweep. DAC1 is driven inverse to DAC0."); con_nl();
+	con_str("# code   DAC0mV   A0code   A0mV  |  DAC1mV   A1code   A1mV");
+	con_nl();
+	console_flush();
+
+	for (uint32_t code = 0; code <= 4095u; code += 256u) {
+		uint16_t c = (uint16_t)(code > 4095u ? 4095u : code);
+		uint16_t inv = (uint16_t)(4095u - c);
+		uint16_t a0, a1;
+
+		console_port_dac_write(0, c);
+		console_port_dac_write(1, inv);
+
+		/* REFRESH and the RC of the pin are far slower than the
+		 * conversion itself. One named constant, one duration, both
+		 * tracks. */
+		console_bleed_settle(CTL_BLEED_SETTLE_MS);
+
+		console_port_adc_read_pair(FRAME_CH_A0, FRAME_CH_A1, &a0, &a1);
+
+		con_str("# ");    con_u32w(c, 4, ' ');
+		con_str("   ");   con_u32w(code_to_mv(c), 6, ' ');
+		con_str("   ");   con_u32w(a0, 6, ' ');
+		con_str("  ");    con_u32w(code_to_mv(a0), 5, ' ');
+		con_str("  |  "); con_u32w(code_to_mv(inv), 6, ' ');
+		con_str("   ");   con_u32w(a1, 6, ' ');
+		con_str("  ");    con_u32w(code_to_mv(a1), 5, ' ');
+		con_nl();
+		console_flush();
+	}
+	con_str("# note: A0/A1 columns are the DAC output as actually measured");
+	con_nl();
 	console_flush();
 }

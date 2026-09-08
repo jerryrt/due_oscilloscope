@@ -130,6 +130,17 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*
+ * `r` and `s`: one DC reading of the three analog inputs, and the DAC
+ * sweep that establishes what the converter's real endpoints are.
+ *
+ * Shared because both are *measurements* rather than adapters, and
+ * both had already drifted between the tracks in ways a diff of the
+ * two files does not draw attention to - see console_cmds.c.
+ */
+void console_cmd_read(void);
+void console_cmd_dac_sweep_dc(void);
+
+/*
  * `p` and `g`: what a line of console output costs, and what a GPIO
  * toggle costs. The two figures invariant 8's "printf is a debug
  * method, not an instrument" rests on, so they are quoted across

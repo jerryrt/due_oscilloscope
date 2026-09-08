@@ -160,6 +160,25 @@ void     console_port_stall(uint32_t ms);
  * and stay shared - two tracks quoting ns-per-pair figures at each
  * other must have divided by the same thing.
  */
+/*
+ * Software-triggered analog access: one conversion, a matched pair,
+ * and one DAC code. Between runs only - `r`, `s` and `x` all refuse or
+ * misread while a capture is armed, which is the converter's business
+ * and stays behind these names.
+ *
+ * Named rather than included for the usual reason: the two tracks
+ * spell them differently. Track B has adc_read/adc_read_pair/dac_write
+ * in analog.h; Track A has acq_read_one/acq_read_pair in acq.h and
+ * gen_write_dac in gen.h, and no analog.h at all. That is not a
+ * divergence to fix - they are two independent programmings of one
+ * converter, which is what the oracle is for - but it is exactly why
+ * a shared body cannot include either header.
+ */
+uint16_t console_port_adc_read(unsigned ch);
+void     console_port_adc_read_pair(unsigned cha, unsigned chb,
+                                    uint16_t *a, uint16_t *b);
+void     console_port_dac_write(unsigned ch, uint16_t code);
+
 void        console_port_toggle_direct(uint32_t n);
 void        console_port_toggle_bsp(uint32_t n);
 const char *console_port_toggle_bsp_name(void);

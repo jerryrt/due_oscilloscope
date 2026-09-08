@@ -8,6 +8,7 @@
 
 #include "acq.h"
 #include "console_port.h"
+#include "gen.h"
 #include "play.h"
 #include "stream.h"
 
@@ -161,4 +162,28 @@ void console_port_toggle_bsp(uint32_t n)
 const char *console_port_toggle_bsp_name(void)
 {
 	return "digitalWrite";
+}
+
+
+/*
+ * The software-triggered analog surface. Spelled acq_read_one,
+ * acq_read_pair and gen_write_dac here, against Track B's
+ * adc_read/adc_read_pair/dac_write - two independent programmings of
+ * one converter, which is the point, and the reason the shared body
+ * reaches them by name rather than by include.
+ */
+uint16_t console_port_adc_read(unsigned ch)
+{
+	return acq_read_one(ch);
+}
+
+void console_port_adc_read_pair(unsigned cha, unsigned chb,
+                                uint16_t *a, uint16_t *b)
+{
+	acq_read_pair(cha, chb, a, b);
+}
+
+void console_port_dac_write(unsigned ch, uint16_t code)
+{
+	gen_write_dac(ch, code);
 }

@@ -193,61 +193,6 @@ static void cmd_help(void)
 	con_str("#"); con_nl();
 }
 
-static uint32_t code_to_mv(uint16_t code)
-{
-	return ((uint32_t)code * 3300u) / 4095u;
-}
-
-static void cmd_read(void)
-{
-	uint16_t a0, a1;
-
-	acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
-
-	con_str("# A0(AD7) = "); con_u32w(a0, 4, ' ');
-	con_str("  ");           con_u32w(code_to_mv(a0), 4, ' ');
-	con_str(" mV    A1(AD6) = "); con_u32w(a1, 4, ' ');
-	con_str("  ");           con_u32w(code_to_mv(a1), 4, ' ');
-	con_str(" mV"); con_nl();
-	Serial.flush();
-}
-
-/*
- * DAC1 is driven inverse to DAC0, so a swapped pair of jumpers shows up
- * at once instead of reading plausibly.
- */
-static void cmd_sweep(void)
-{
-	Serial.println("# DAC sweep. DAC1 is driven inverse to DAC0.");
-	Serial.println("# code   DAC0mV   A0code   A0mV  |  DAC1mV   A1code   A1mV");
-	Serial.flush();
-
-	for (uint32_t code = 0; code <= 4095u; code += 256u) {
-		uint16_t c = (uint16_t)(code > 4095u ? 4095u : code);
-		uint16_t inv = (uint16_t)(4095u - c);
-
-		gen_write_dac(0, c);
-		gen_write_dac(1, inv);
-		delay(5);
-
-		uint16_t a0, a1;
-
-		acq_read_pair(ACQ_CH_A0, ACQ_CH_A1, &a0, &a1);
-
-		con_str("# ");   con_u32w(c, 4, ' ');
-		con_str("   ");  con_u32w(code_to_mv(c), 6, ' ');
-		con_str("   ");  con_u32w(a0, 6, ' ');
-		con_str("  ");   con_u32w(code_to_mv(a0), 5, ' ');
-		con_str("  |  "); con_u32w(code_to_mv(inv), 6, ' ');
-		con_str("   ");  con_u32w(a1, 6, ' ');
-		con_str("  ");   con_u32w(code_to_mv(a1), 5, ' ');
-		con_nl();
-		Serial.flush();
-	}
-	Serial.println("# note: A0/A1 columns are the DAC output as actually measured");
-	Serial.flush();
-}
-
 /*
  * Hold one channel's DAC fixed and swing the other; any movement in
  * the held channel is multiplexer bleed. Swinging both at once
@@ -1192,13 +1137,13 @@ static void ha_fault(const uint32_t *a)
 static void ha_read(const uint32_t *a)
 {
 	(void)a;
-	cmd_read();
+	console_cmd_read();
 }
 
 static void ha_sweep(const uint32_t *a)
 {
 	(void)a;
-	cmd_sweep();
+	console_cmd_dac_sweep_dc();
 }
 
 static void ha_xtalk(const uint32_t *a)

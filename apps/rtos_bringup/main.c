@@ -750,6 +750,11 @@ static void c_stall(const uint32_t *a) { console_cmd_stall(a[0]); }
 static void c_printf(const uint32_t *a) { (void)a; console_cmd_printf_cost(); }
 static void c_gpio(const uint32_t *a)   { (void)a; console_cmd_gpio_cost(); }
 
+/* `r` and `s`: shared bodies over drivers/analog.c, which this track
+ * links unchanged. */
+static void c_read(const uint32_t *a)  { (void)a; console_cmd_read(); }
+static void c_sweep(const uint32_t *a) { (void)a; console_cmd_dac_sweep_dc(); }
+
 static void c_mimic_gap(const uint32_t *a)
 {
 	mimic_start_delay_us = a[0];
@@ -787,7 +792,8 @@ const console_binding_t console_bindings[] = {
 	{ 'W', c_wave  },       { 'J', c_sync },        { 'N', c_layout },
 	{ 'I', c_ibctl },       { 'C', c_pair },        { 'A', c_adc_timing },
 	{ 'e', c_temp  },       { 'K', c_mimic_gap },   { 'S', c_stall },
-	{ 'p', c_printf },      { 'g', c_gpio },
+	{ 'p', c_printf },      { 'g', c_gpio },        { 'r', c_read },
+	{ 's', c_sweep },
 	{ 0,   NULL    },
 };
 

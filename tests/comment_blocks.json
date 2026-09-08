@@ -17,7 +17,7 @@
   "drivers/play.h": 1,
   "drivers/usb_cdc.c": 1,
   "lib/due_shared/src/console.c": 1,
-  "lib/due_shared/src/console_cmds.c": 2,
+  "lib/due_shared/src/console_cmds.c": 3,
   "lib/due_shared/src/console_out.h": 1,
   "lib/due_shared/src/console_port.h": 1,
   "lib/due_shared/src/ctl.c": 1,

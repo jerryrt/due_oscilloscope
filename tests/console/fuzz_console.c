@@ -319,6 +319,20 @@ void console_port_toggle_direct(uint32_t n) { (void)n; }
 void console_port_toggle_bsp(uint32_t n)    { (void)n; }
 const char *console_port_toggle_bsp_name(void) { return "stub"; }
 
+/* The analog surface: no converter here, so a fixed code that is
+ * neither rail and cannot be mistaken for one. */
+uint16_t console_port_adc_read(unsigned ch) { (void)ch; return 2048u; }
+void console_port_adc_read_pair(unsigned cha, unsigned chb,
+                                uint16_t *a, uint16_t *b)
+{
+	(void)cha; (void)chb;
+	*a = 2048u; *b = 2048u;
+}
+void console_port_dac_write(unsigned ch, uint16_t code)
+{
+	(void)ch; (void)code;
+}
+
 
 void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 {

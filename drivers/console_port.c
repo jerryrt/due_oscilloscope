@@ -12,6 +12,7 @@
 #include "console_port.h"
 #include "stream.h"
 #include "play.h"
+#include "analog.h"
 
 void console_write(const char *s)
 {
@@ -148,4 +149,28 @@ void console_port_toggle_bsp(uint32_t n)
 const char *console_port_toggle_bsp_name(void)
 {
 	return "via bsp led";
+}
+
+
+/*
+ * The software-triggered analog surface `r`, `s` and `x` speak
+ * through. Thin, like the acquisition names above: this track spells
+ * them adc_read/adc_read_pair/dac_write in analog.h, Track A spells
+ * them acq_read_one/acq_read_pair/gen_write_dac, and neither header is
+ * reachable from shared code.
+ */
+uint16_t console_port_adc_read(unsigned ch)
+{
+	return adc_read(ch);
+}
+
+void console_port_adc_read_pair(unsigned cha, unsigned chb,
+                                uint16_t *a, uint16_t *b)
+{
+	adc_read_pair(cha, chb, a, b);
+}
+
+void console_port_dac_write(unsigned ch, uint16_t code)
+{
+	dac_write(ch, code);
 }

@@ -100,73 +100,6 @@ static uint32_t mimic_start_delay_us;
 static uint32_t crosstalk_repeats;
 
 
-static void cmd_read(void)
-{
-	uint16_t a0, a1, a2;
-
-	adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
-	a2 = adc_read(ADC_CH_A2);
-	/*
-	 * A2 is read separately rather than as a pair, because it is
-	 * the impedance arm and pairing it would convert it straight
-	 * after another channel - which is the one thing this rig
-	 * exists to hold still. Software-triggered with a generous
-	 * tracking time, so this is a DC reading and not a sample of
-	 * the artifact.
-	 */
-	con_str("# A0(AD7) = "); con_u32w(a0, 4, ' ');
-	con_str("  ");           con_u32w(code_to_mv(a0), 4, ' ');
-	con_str(" mV    A1(AD6) = "); con_u32w(a1, 4, ' ');
-	con_str("  ");           con_u32w(code_to_mv(a1), 4, ' ');
-	con_str(" mV    A2(AD5) = "); con_u32w(a2, 4, ' ');
-	con_str("  ");           con_u32w(code_to_mv(a2), 4, ' ');
-	con_str(" mV"); con_nl();
-	uart_flush();
-}
-
-/*
- * Step both DACs and read both ADCs. DAC1 is driven inverse to DAC0 so a
- * swapped pair of jumpers shows up immediately rather than reading
- * plausibly.
- *
- * The endpoints of this table are the measurement that matters: the DAC
- * is not rail to rail, and the true limits on this board have to be
- * measured rather than assumed.
- */
-static void cmd_sweep(void)
-{
-	con_str("# DAC sweep. DAC1 is driven inverse to DAC0."); con_nl();
-	con_str("# code   DAC0mV   A0code   A0mV  |  DAC1mV   A1code   A1mV"); con_nl();
-	uart_flush();
-
-	for (uint32_t code = 0; code <= 4095u; code += 256u) {
-		uint16_t c = (uint16_t)(code > 4095u ? 4095u : code);
-		uint16_t inv = (uint16_t)(4095u - c);
-		uint16_t a0, a1;
-
-		dac_write(0, c);
-		dac_write(1, inv);
-
-		/* Let the output settle; REFRESH and the RC of the pin are
-		 * far slower than the conversion itself. */
-		for (volatile uint32_t d = 0; d < 200000u; d++) { }
-
-		adc_read_pair(ADC_CH_A0, ADC_CH_A1, &a0, &a1);
-
-		con_str("# ");   con_u32w(c, 4, ' ');
-		con_str("   ");  con_u32w(code_to_mv(c), 6, ' ');
-		con_str("   ");  con_u32w(a0, 6, ' ');
-		con_str("  ");   con_u32w(code_to_mv(a0), 5, ' ');
-		con_str("  |  "); con_u32w(code_to_mv(inv), 6, ' ');
-		con_str("   ");  con_u32w(a1, 6, ' ');
-		con_str("  ");   con_u32w(code_to_mv(a1), 5, ' ');
-		con_nl();
-		uart_flush();
-	}
-	con_str("# note: A0/A1 columns are the DAC output as actually measured"); con_nl();
-	uart_flush();
-}
-
 /*
  * Measure multiplexer crosstalk properly: hold one channel's DAC fixed
  * and swing the other, then look at whether the held channel moved.
@@ -875,8 +808,8 @@ static void h_ident(const uint32_t *a) { (void)a; identity_line(); }
 static void h_printf(const uint32_t *a){ (void)a; console_cmd_printf_cost(); }
 static void h_gpio(const uint32_t *a)  { (void)a; console_cmd_gpio_cost(); }
 static void h_fault(const uint32_t *a) { (void)a; console_trigger_fault(); }
-static void h_read(const uint32_t *a)  { (void)a; cmd_read(); }
-static void h_sweep(const uint32_t *a) { (void)a; cmd_sweep(); }
+static void h_read(const uint32_t *a)  { (void)a; console_cmd_read(); }
+static void h_sweep(const uint32_t *a) { (void)a; console_cmd_dac_sweep_dc(); }
 static void h_xtalk(const uint32_t *a)
 {
 	crosstalk_repeats = a[0];
