@@ -94,7 +94,7 @@ void diag_service(void)
 		con_str("#    ms  prod  cons endtx    svc  tpr=slot+off  tcr"
 		        "  next(tag,code)  cdr7 cdr6  aprod acons\n");
 		for (unsigned i = 0; i < DIAG_N; i++) {
-			struct diag_snap *s = &diag[i];
+			const struct diag_snap *s = &diag[i];
 			uint32_t off = s->tpr - base;
 
 			con_str("# ");
