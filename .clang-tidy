@@ -20,10 +20,28 @@
 #   bugprone-*         narrow, high-yield pattern checks. Mostly about
 #                      C semantics rather than taste.
 #
-# readability-* and cppcoreguidelines-* are OFF and are not an oversight.
-# They are written for application C++ and would bury the two families
-# above under naming, const-correctness and "avoid C arrays" on code
-# whose whole job is to write hardware registers.
+# readability-* and cppcoreguidelines-* are OFF WHOLESALE and that is
+# not an oversight. They are written for application C++ and would bury
+# the two families above under naming, const-correctness and "avoid C
+# arrays" on code whose whole job is to write hardware registers.
+#
+# TWO readability CHECKS ARE NAMED BACK IN, one at a time and each with
+# its measured output written down below. They are the exception because
+# they measure CONTROL FLOW rather than taste, and control flow is the
+# one readability opinion this tree shares:
+#
+#   readability-function-cognitive-complexity
+#                      8 findings at the default threshold of 25, and
+#                      nothing at all in bsp/. Straight-line register
+#                      writes cost cognitive complexity nothing, which
+#                      is exactly why this check behaves on firmware
+#                      where the rest of its family does not.
+#   readability-function-size
+#                      branch and nesting thresholds ONLY, and set
+#                      explicitly. Its four other thresholds report
+#                      LENGTH, and its defaults report nothing at all.
+#                      The numbers, and the trial they came from, are
+#                      under CheckOptions below.
 #
 # THREE CHECKS ARE OFF INSIDE THOSE FAMILIES. Each is off because its
 # entire output on this tree is inapplicable by construction, not
@@ -40,7 +58,9 @@ Checks: >
   bugprone-*,
   -bugprone-easily-swappable-parameters,
   -bugprone-dynamic-static-initializers,
-  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  readability-function-cognitive-complexity,
+  readability-function-size
 
 # bugprone-easily-swappable-parameters - 29 findings, all of the form
 # "these adjacent uint32_t parameters could be transposed by a caller".
@@ -62,6 +82,80 @@ Checks: >
 # and the check fires on every memcpy and memset regardless of whether
 # the length is bounded - it is not a bounds analysis. The advice cannot
 # be taken on this target.
+
+# THE THRESHOLDS BELOW ARE WRITTEN OUT BECAUSE THE DEFAULTS DO NOT WORK
+# HERE, and one of them fails in the precise way this project keeps a
+# section of CLAUDE.md about.
+#
+# readability-function-size AT ITS DEFAULTS REPORTS ZERO ON THIS TREE.
+# Its default StatementThreshold is 800, the largest function in this
+# firmware is 225 statements, and every other threshold it has is off
+# unless it is named. Enabled as it comes, it is a guard that cannot
+# fail: permanently green, with the property it advertises unwatched.
+# That is the reason the numbers are here rather than inherited, and the
+# reason the trial ran before this file was edited.
+#
+# LineThreshold, StatementThreshold, VariableThreshold - OFF (-1).
+# Measured at Line 60 / Statement 50 alongside the two options that are
+# on, the check reports 34 functions, and they are two populations in
+# one list: the branchy dispatchers named below, and long-but-flat
+# sequenced hardware setup - adc_read_temp, clockref_poll, acq_start,
+# build_table - that would be WORSE if it were cut into pieces. Those
+# thresholds report length rather than complexity, and the length
+# findings outnumber and bury the ones that mean something.
+# hard_fault_report at 51 statements against a threshold of 50 is the
+# whole population in one row.
+#
+# ParameterThreshold - OFF (-1). Measured at 6: zero findings, because
+# nothing in either track takes more than six arguments. Another guard
+# that cannot fail, off for that reason and not because a finding was
+# unwelcome.
+#
+# BranchThreshold 15 - 5 findings, and the number comes from a gap in
+# the measured distribution rather than from taste. Branch counts run
+# 1, 2, 3 ... 12, 13 and then jump straight to 20, 22, 26, 32, 37, so a
+# threshold anywhere in that gap separates the five widest functions -
+# ctl_dispatch 37, cmd_profile 32 on Track A and 26 on Track B,
+# console_cmd_occ_hist 22, stream_core_service 20 - from the tail, with
+# no judgement about where in the tail to cut. Lowering it to 10 would
+# pull adc_read_temp (11) and acq_read_temp (12) back in, which is the
+# flat-setup population again.
+#
+# WHAT A BRANCH IS HERE WAS MEASURED, not assumed, and it is not what
+# the name suggests: the check counts if / for / while / do / switch
+# STATEMENTS, and a planted 21-case switch scored ONE. So this option
+# does not see a wide dispatcher at all, and any argument for it that
+# rests on case counts is wrong.
+#
+# What it does see, and cognitive complexity does not, is a FLAT
+# function. Cognitive complexity charges +1 per branch at nesting level
+# 0 and grows only with depth, so 18 sequential ifs score 18 and pass
+# its threshold of 25 while tripping this one. That is the whole band
+# this option covers - 16 to 25 branches with no nesting - and a planted
+# function of exactly that shape was watched to fire before the option
+# was trusted.
+#
+# NestingThreshold 4 - 6 findings, and three of them - handle_setup,
+# usb_cdc_poll and UOTGHS_Handler - are reported by nesting alone, with
+# a branch count in the tail. Measured at 2 the option reports 35 and at
+# 3 it reports 13, and those 13 include led_blink_forever and
+# blink_forever: a for(;;) around a delay loop, which is depth with no
+# complexity in it. 4 drops those and keeps the deep USB and control
+# paths.
+#
+# Together the two checks add 16 findings over 10 distinct functions, 6
+# of which both checks name. They are ADVISORY like everything else in
+# this file: no baseline, no ratchet, no NOLINT, and a finding is
+# answered or argued rather than filed.
+
+CheckOptions:
+  readability-function-cognitive-complexity.Threshold: 25
+  readability-function-size.BranchThreshold: 15
+  readability-function-size.NestingThreshold: 4
+  readability-function-size.LineThreshold: -1
+  readability-function-size.StatementThreshold: -1
+  readability-function-size.ParameterThreshold: -1
+  readability-function-size.VariableThreshold: -1
 
 # Report findings in our own headers as well as our own .c and .cpp, and
 # nowhere else. vendor/CMSIS, the Arduino SAM core and newlib all reach
