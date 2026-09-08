@@ -438,6 +438,36 @@ byte-identical in every function across two host OSes. It is settled by
 comparing the shared-source subset per function, not by comparing whole
 images.
 
+### What the `newlib`/`libgcc` difference actually costs
+
+Two host packages of one xPack release now have a direct answer, from
+the build container: `mac-bench` builds with the **darwin-x64** package
+and the container with the **linux-x64** one, same release, same commit,
+nothing else differing.
+
+**Track B is byte-identical between them** — `4b77bc00…` at `b474598`,
+and `a8b6dab5…` at `29d0e54` before it, so it reproduces across two
+commits. Whole `.bin`, not a per-function subset.
+
+**Track A is not**, at identical `text`, `data` and `bss` and an
+identical `symbols` hash. The whole difference is a permuted run of
+`newlib` libm: the block opens at `sin` and closes at `scalbn`, both at
+the same address in both images, and inside it `__ieee754_rem_pio2`,
+`__kernel_rem_pio2`, `__kernel_cos`, `__kernel_sin` and `fabs` are laid
+down in a different order. Same members, same total size, different
+order.
+
+So "the packages bundle different `newlib`/`libgcc`" is confirmed and
+**narrower than it reads**: it moves only an image that links the
+affected archive members. Track B links none of them and reproduces
+across packages; Track A pulls libm through the Arduino core and does
+not. The Arduino SAM core is not the variable — the two 1.6.12 trees
+are byte-identical apart from `installed.json`, which the Arduino CLI
+writes on install and nothing compiles.
+
+The practical rule: **compare Track A container-to-container.** Its host
+build is attributable to a commit and a compiler, not to an image.
+
 That matters because the shared-source oracle is a codegen comparison.
 Track A against Track B has no oracle power on `lib/due_shared/src` —
 it is one source compiled once — so the only thing left that can

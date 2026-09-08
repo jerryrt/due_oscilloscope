@@ -110,6 +110,10 @@ ALLOWED = {
     "syscalls_sam3.c": "Arduino SAM core source, outside this repository",
     "USBCore.cpp": "Arduino SAM core source, outside this repository",
     "uotghs_device.h": "Arduino SAM libsam header, outside this repository",
+    "installed.json": "written by the Arduino CLI on install, outside this "
+                      "repository - and named because it is the one file by "
+                      "which a CLI-installed core differs from an unpacked "
+                      "tarball, which the container comparison had to exclude",
     "cores/arduino/USB/CDC.cpp":
         "Arduino SAM core source, outside this repository",
     "system/libsam/source/uotghs_device.c":
