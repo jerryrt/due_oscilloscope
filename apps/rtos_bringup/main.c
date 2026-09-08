@@ -49,6 +49,7 @@
 #include "usb_cdc.h"
 #include "clockref.h"
 #include "ctl.h"
+#include "diag.h"
 #include "frame.h"
 
 /*
@@ -176,11 +177,37 @@ static void service_task(void *arg)
 		play_service();
 		stream_service();
 		/*
-		 * diag_service() is deliberately not called here: it is
-		 * `static` in Track B's main.c and appears in no header,
-		 * so it is Track B's own application diagnostic (the `D`
-		 * trace) rather than a shared driver service.
+		 * diag_service() IS called here, and it did not used to be.
+		 *
+		 * The note that stood here was accurate and is no longer:
+		 * it was `static` in Track B's main.c and appeared in no
+		 * header, so it read as Track B's own application
+		 * diagnostic. But it is a read of DACC's PDC registers and
+		 * the ADC's conversion registers over the ring this track
+		 * shares - drivers/diag.c now - and `D` is the one command
+		 * that separates a stalled ring from a PDC on a stale
+		 * address, which is a question C4 has to be able to ask.
+		 *
+		 * The guard is inline for the reason load.h gives about
+		 * load_tick(), and that was measured rather than assumed.
+		 * Calling diag_service() unconditionally, as Track B did,
+		 * took this loop from 145,228 to 139,978 idle passes/s -
+		 * 3.6%, where `Q` prices the disarmed call at about 115 ns
+		 * and the pass only lengthened by 259. Guarding it inline
+		 * reads 148,266, which is FASTER than not having the
+		 * diagnostic at all. Neither surprise is a cost model:
+		 * both are the binary being redrawn, which is issue #5's
+		 * mechanism showing up in the loop rate. What survives is
+		 * the design argument - a call that does nothing has no
+		 * business running 140,000 times a second.
+		 *
+		 * Binding `D` to a start function whose service never ran
+		 * would have been worse than leaving it unbound, which is
+		 * the whole of CLAUDE.md's rule about a no-op that returns
+		 * cleanly.
 		 */
+		if (diag_armed())
+			diag_service();
 
 		/* Every pass. The drain's throughput is the guarantee that
 		 * the pipe never NAKs indefinitely - see the note above. */
@@ -780,12 +807,6 @@ static void c_xtalk(const uint32_t *a) { console_cmd_crosstalk(a[0], a[1]); }
  * list is this track's, and the two differences from Track B's are the
  * whole reason C4 exists.
  *
- * diag_service() is absent because service_task() does not call it -
- * it is `static` in Track B's main.c and appears in no header, so it
- * is Track B's own application diagnostic rather than a shared driver
- * service. A row of zeros for it would claim this loop runs something
- * it does not.
- *
  * uart_rx_ready() and xTaskGetTickCount() are present because this
  * loop pays for them and Track B's does not: the first is the one
  * register read that answers "is the console about to want the CPU",
@@ -796,6 +817,8 @@ static void c_xtalk(const uint32_t *a) { console_cmd_crosstalk(a[0], a[1]); }
  * is twenty seconds of yielding, and what it would measure is the tick
  * period rather than a call.
  */
+static void c_diag(const uint32_t *a) { (void)a; diag_start(); }
+
 static void c_profile(const uint32_t *a)
 {
 	(void)a;
@@ -813,6 +836,7 @@ static void c_profile(const uint32_t *a)
 	CONSOLE_PROFILE("clockref_poll()", clockref_poll());
 	CONSOLE_PROFILE("play_service()", play_service());
 	CONSOLE_PROFILE("stream_service()", stream_service());
+	CONSOLE_PROFILE("diag_service()", diag_service());
 	CONSOLE_PROFILE("ctl_service()", ctl_service());
 	{
 		static uint8_t scratch[64];
@@ -865,6 +889,7 @@ const console_binding_t console_bindings[] = {
 	{ 's', c_sweep },       { 'd', c_dac_sweep },   { 'j', c_dac_15m },
 	{ 'k', c_dac_30m },     { 'w', c_uart_stream }, { 'E', c_epstate },
 	{ 'O', c_occ },         { 'x', c_xtalk },       { 'Q', c_profile },
+	{ 'D', c_diag },
 	{ 0,   NULL    },
 };
 

@@ -159,6 +159,7 @@ add_executable(baremetal_bringup EXCLUDE_FROM_ALL
     drivers/usb_cdc.c
     drivers/clockref.c
     drivers/stream.c
+    drivers/diag.c
     lib/due_shared/src/ctl.c
     drivers/ctl_port.c
     lib/due_shared/src/console.c
@@ -306,6 +307,7 @@ if(BUILD_TRACK_C)
         drivers/play.c
         drivers/usb_cdc.c
         drivers/stream.c
+        drivers/diag.c
         drivers/clockref.c
         lib/due_shared/src/ctl.c
         drivers/ctl_port.c
