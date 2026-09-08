@@ -122,11 +122,12 @@ stays wrong, which is the precise failure mode invariant 5 exists to
 prevent. The device cannot flag it: it counts and reports what *it*
 drops, and these bytes never reached it.
 
-**The fix: write a constant size.** Writing a constant 512 bytes per
-`write()` is lossless where writing "whatever is due" is not - same
-sizes on the wire, same pacing, same rate, different result. Measured
-with the pipeline drained, interleaved so a drifting machine cannot
-favour one arm:
+**The fix: write 512 bytes every time.** A constant 512 is lossless
+where "whatever is due" is not - same sizes on the wire, same pacing,
+same rate, different result. What makes 512 the right constant rather
+than any constant is the boundary rule below. Measured with the
+pipeline drained, interleaved so a drifting machine cannot favour one
+arm:
 
 | DAC rate | due-sized writes | constant 512 B |
 |---|---|---|
@@ -182,12 +183,11 @@ ladder, both policies, deficit 0 throughout
 architecture on that pair of records: free where it is not needed,
 load-bearing where it is.
 
-**Size alone is not the mechanism**, and this is the part that is still
-not understood. Capping the due-sized path at 1024 bytes leaves
-0.47-0.84% - with or without a finer idle sleep - even though every
-write it then issues is 512 or 1024, the same sizes the constant-size
-path uses. Something about *how* the writes are issued matters and it
-is not their size. What is established is which policy is clean.
+**Size alone is not the mechanism.** Capping the due-sized path at 1024
+bytes leaves 0.47-0.84% - with or without a finer idle sleep - even
+though every write it then issues is 512 or 1024, the same sizes the
+constant-size path uses. What decides it is where in the byte stream
+each write lands, below.
 
 **A residual survives at the top of the ladder.** 1,218,750 sps is
 exact in most runs, and occasionally loses a little (384 B) or a lot
@@ -203,9 +203,10 @@ explains the floor:
   at every forced size from 512 B to 16384 B - but that rate is one of
   the oversupplied ones below, which no write policy fixes, so it was
   the wrong rate to test the idea at. At 200,000 sps, which loses
-  nothing by default, forcing the size shows the threshold plainly:
-  0.000% at 512 B and 1024 B, 0.28-0.39% at 2048 B, 0.56-0.76% at
-  4096 B and above.
+  nothing by default, forcing the size gives 0.000% at 512 B and
+  1024 B, 0.28-0.39% at 2048 B and 0.56-0.76% at 4096 B and above -
+  which reads as a threshold in size and is the boundary rule below,
+  reproduced at 600,000 sps to within 0.05 pp.
 - *Not queue pressure, for the floor.* Feeding deliberately **under**
   the device's rate, so the ring drains hard and the tty queue is
   certainly empty, does not reduce it. At 600,000 sps the deficit is
@@ -508,25 +509,51 @@ continuously. At RC 39: 27,648 B over 3 s and 28,544 B over 6 s — the
 rate model would lose proportionally, so the residual shrinks with run
 length and matters least where it matters least.
 
-## Why a constant write size is lossless and a varying one is not
+## A write is shed when it spans a 1 KiB boundary
 
-Unexplained, and the contradiction is sharp. A constant 512 B loses
-nothing. A constant 1024 B loses nothing. `min(due, 1024) & ~511`, which
-can only ever emit 512 or 1024, loses 0.47-0.84%. Same sizes, same rate,
-same pacing, same real-time thread, and a 50x finer idle sleep changes
-nothing.
+`Feeder.WRITE_SIZE` keeps this path lossless, and not because the size
+never changes. `tools/writepolicy.py` builds a write stream of a chosen
+shape by wrapping the port the feeder writes to, and counts both the
+sizes issued and the offsets they land on. Measured at 600,000 sps,
+five rounds counterbalanced with the first dropped by index, n=4 per
+arm, deficit read over the control channel after a 1.5 s drain:
 
-Ruled out: **not a startup artifact** — the deficit scales with run
-length, 19,840 B at 2 s, 36,096 B at 4 s, 67,712 B at 8 s, so ~8-10 kB/s
-continuously. **Not queue pressure** — feeding 4% *under* the device's
-rate, ring draining and the queue certainly empty, still loses 0.68%.
+| the host's write stream | writes spanning a 1 KiB boundary | deficit |
+|---|---|---|
+| constant 512 B | none | 0 B |
+| constant 1024 B | none | 0 B |
+| two 512 B writes 5.8 us apart, at half the cadence | none | 0 B |
+| runs of 2, 4, 16 or 64 at each of 512 and 1024 | none | 0 B |
+| 512 and 1024 alternating | a quarter | 0.45-0.52% |
+| runs of 3 or 5 at each of 512 and 1024 | a quarter | 0.35-0.53% |
+| constant 2048 B | all | 0.28-0.33% |
+| constant 4096 B | all | 0.46-0.56% |
+| constant 1536 B | all | 0.69-0.73% |
+| the legacy due-sized feed | two thirds | 0.65-0.87% |
 
-**The experiment that isolates it, and it is cheap:** strictly alternate
-512 B and 1024 B writes at a rate that is clean with either size alone.
-If alternation alone reproduces the loss with nothing else changed the
-mechanism is cornered. The untested guess to aim at is that the driver
-packs payloads into fixed-size internal buffers that a uniform stream
-stays aligned to.
+Three things that look like the variable are not. **Size** is not: a
+constant 1536 B loses, while 512 and 1024 are each clean as a constant
+and lose when they alternate. **Cadence** is not: two 512 B writes
+issued 5.8 us apart lose nothing, and the alternating stream that does
+lose issues every write at its due time. **Run length** is not: runs of
+3 and 5 lose where runs of 2 and 4 do not, because a run of N 512s
+followed by N 1024s spans a boundary for every odd N and for no even
+one.
+
+What separates the halves of the table is whether any write spans a
+multiple of 1024 in the byte stream the host has written so far, and
+across 15 arms and 96 runs there is no exception in either direction.
+1024 B is the smallest boundary size that fits every arm; the rest are
+odd multiples of it, 5 and 7 and 11 KiB. A constant 512 B satisfies the
+rule by construction, since no 512 B write starting at a multiple of
+512 can contain a multiple of 1024.
+
+**How much is shed is not explained.** Bytes lost per spanning write run
+6 to 16 across the arms rather than settling on a figure, and the three
+odd-run arms span identically often and lose 0.35, 0.49 and 0.52%. So
+the boundary decides whether bytes go, not how many. Every deficit is a
+whole multiple of 128 B except one constant-1536 run that ended 76 B off
+it.
 
 This is macOS only. Windows loses 0 B on every policy at every rate.
 

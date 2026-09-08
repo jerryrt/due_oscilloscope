@@ -2349,21 +2349,19 @@ class Feeder:
 
     LEAD = 20480
 
-    # Every write is this size, and that is what keeps the path
-    # lossless - not the size on its own.
+    # Every write is this size, and 512 is load-bearing: macOS sheds a
+    # write that spans a 1024-byte boundary in the stream the host has
+    # written so far, and no 512-byte write starting at a multiple of
+    # 512 can contain one. Any constant will not do - a constant 1536
+    # loses 0.69-0.73% where this loses 0 B - and neither will "512 or
+    # 1024, whichever is due", which straddles on a quarter of its
+    # writes. `docs/usb.md` has the arms and the figures.
     #
     # Measured with the pipeline drained, interleaved so a drifting
     # machine cannot favour one arm. Writing a constant 512 bytes:
     # 0.000% lost at 200,000, 600,000, 1,218,750 and 1,392,857 sps.
     # Writing "whatever is due, capped at 512 or 1024": 0.45-0.65% lost
-    # at the same rates in every run. Same sizes on the wire, same
-    # pacing, different result - so the mechanism is in how the writes
-    # are issued rather than how big they are, and it is not yet
-    # understood. What is established is which one is clean.
-    #
-    # Size alone was tested and is not sufficient: capping MAX_WRITE at
-    # 1024 in the due-sized path leaves 0.47-0.84%, with or without a
-    # finer idle sleep.
+    # at the same rates in every run.
     #
     # This does not fix a feed that genuinely oversupplies. 1,000,000
     # and 886,363 sps still lose ~2.2% and ~1.5%, because their
