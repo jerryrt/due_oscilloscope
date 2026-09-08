@@ -175,6 +175,29 @@ void     console_port_stall(uint32_t ms);
  * a shared body cannot include either header.
  */
 /*
+ * What `x` needs beyond a conversion and a DAC write.
+ *
+ * console_port_measure_begin() takes the converter off the hardware
+ * trigger and puts it in the timing this command specifies; it returns
+ * non-zero when a capture is armed, which is a refusal and not a
+ * failure. _end() puts back what was there.
+ *
+ * The pad state is here because a pull-up left enabled on an undriven
+ * pin is about 100k toward VDDIO, and that was the dominant term of an
+ * earlier bare-channel disagreement between the tracks while the
+ * instrument said nothing about how the pads were configured. Read as
+ * registers and decoded by the host - the cost of a console command is
+ * the bytes it puts on the wire.
+ */
+int      console_port_measure_begin(void);
+void     console_port_measure_end(void);
+uint32_t console_port_acq_mr(void);
+unsigned console_port_acq_pair_second(void);
+void     console_port_pad_state(uint32_t *psr, uint32_t *osr,
+                                uint32_t *pusr, uint32_t *ifsr);
+void     console_port_pair_faults(uint32_t *restarts, uint32_t *timeouts);
+
+/*
  * The CAPTURE-side rate trace: absolute microseconds at each completed
  * PDC buffer and the ring occupancy at that instant, which is what
  * separates a converter that fell behind from a transfer that failed

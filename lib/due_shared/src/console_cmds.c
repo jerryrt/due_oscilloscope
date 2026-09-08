@@ -894,3 +894,202 @@ void console_cmd_occ_hist(void)
 		console_flush();
 	}
 }
+
+
+/*
+ * `=<n>,<ms>x`: multiplexer bleed, measured properly.
+ *
+ * Hold one channel's DAC fixed and swing the other, then look at
+ * whether the held channel moved. Swinging both at once cannot isolate
+ * anything, since each channel's change would be fully explained by
+ * its own DAC. The ADC has one sample-and-hold behind a 16:1
+ * multiplexer, so residual charge from the previously converted
+ * channel contaminates the next, and any movement in the held channel
+ * is that bleed.
+ *
+ * It prints a distribution, never one number, and in the order taken:
+ * this quantity is bimodal on an otherwise idle board, so a single
+ * draw reported as a measurement is the defect whichever value it
+ * lands on. The loud observations recur on a fixed cadence tied to the
+ * settle time - a beat against something periodic, not a coin flip and
+ * not a startup condition - which is why the settle is a knob.
+ *
+ * Each arm carries a control that swings nothing, writing the same DAC
+ * code twice where the real arm writes 0 then 4095. Same writes, same
+ * waits, same conversions, so a difference between arm and control
+ * isolates the swing from the reading itself. docs/noise.md.
+ *
+ * EVERY READ IS THE TWO-CHANNEL SEQUENCE, and that is not a detail.
+ * The conversion preceding the watched one is what bleeds into it, so
+ * converting the watched channel alone measures something else
+ * entirely - worth a sign and a factor of twelve when the two tracks
+ * once did it differently, which made a bleed figure incomparable
+ * across them. Which channel is watched follows the conversion
+ * position, not the pin: A2 is channel 5 and A1 is 6, so either way
+ * the second converts BEFORE A0 at 7, and `=2C` swaps the pin while
+ * holding the position fixed.
+ *
+ * What it assumes about the bench differs between ours, so it reports
+ * which it found rather than assuming: the A1 arm holds DAC1 at mid
+ * scale and swings DAC0, and where DAC1 is jumpered to A1 that pin is
+ * *driven* to the held level, while where DAC1 goes to a scope's
+ * external trigger it is free and reads a smeared copy of whatever
+ * converted before it.
+ */
+void console_cmd_crosstalk(unsigned repeats, uint32_t settle_ms)
+{
+	int16_t a1_bleed[CTL_BLEED_MAX], a0_bleed[CTL_BLEED_MAX];
+	int16_t a1_still[CTL_BLEED_MAX], a0_still[CTL_BLEED_MAX];
+	uint16_t a1b_lo[CTL_BLEED_MAX], a1b_hi[CTL_BLEED_MAX];
+	uint16_t a1s_lo[CTL_BLEED_MAX], a1s_hi[CTL_BLEED_MAX];
+	uint16_t a0b_lo[CTL_BLEED_MAX], a0b_hi[CTL_BLEED_MAX];
+	uint16_t a0s_lo[CTL_BLEED_MAX], a0s_hi[CTL_BLEED_MAX];
+	unsigned n  = repeats ? repeats : CTL_BLEED_DEFAULT;
+	uint32_t ms = settle_ms ? settle_ms : CTL_BLEED_SETTLE_MS;
+	uint32_t psr, osr, pusr, ifsr, restarts, timeouts;
+	uint16_t a0, a1, lo, hi;
+	unsigned second;
+	unsigned i;
+	bool a2;
+
+	if (n > CTL_BLEED_MAX)
+		n = CTL_BLEED_MAX;
+	if (ms > CTL_BLEED_SETTLE_MAX_MS)
+		ms = CTL_BLEED_SETTLE_MAX_MS;
+
+	if (console_port_measure_begin() != 0) {
+		con_str("# crosstalk: refused, the ADC is hardware-triggered"
+		        " - stop the capture first (0)"); con_nl();
+		console_flush();
+		return;
+	}
+
+	con_str("# crosstalk: hold one channel, swing the other, ");
+	con_u32(n); con_str(" times, "); con_u32(ms);
+	con_str(" ms settle"); con_nl();
+	con_str("# each arm has a control that writes the same code twice,"
+	        " so the swing is the only difference"); con_nl();
+	/*
+	 * The conditions as the hardware holds them, not as this function
+	 * believes it set them - a register cannot drift from what was
+	 * measured. Raw, decoded by the host.
+	 */
+	con_str("# adcmr="); con_hex32(console_port_acq_mr(), 8);
+	con_str(" (this command's own; restored after)"); con_nl();
+	console_flush();
+
+	/* PUSR reads 1 where the pull-up is DISABLED, PSR reads 1 where
+	 * the PIO (not the peripheral) owns the pin. A0=PA16, A1=PA24,
+	 * A2=PA23, all PIOA. */
+	console_port_pad_state(&psr, &osr, &pusr, &ifsr);
+	con_str("# pioa: psr="); con_hex32(psr, 8);
+	con_str(" osr=");        con_hex32(osr, 8);
+	con_str(" pusr=");       con_hex32(pusr, 8);
+	con_str(" ifsr=");       con_hex32(ifsr, 8);
+	con_nl();
+	console_flush();
+
+	second = console_port_acq_pair_second();
+
+	for (i = 0; i < n; i++) {
+		/* Hold DAC1 mid scale; swing DAC0. Watch the second channel. */
+		console_port_dac_write(1, 2048);
+		console_port_dac_write(0, 0);
+		console_bleed_settle(ms);
+		console_port_adc_read_pair(FRAME_CH_A0, second, &a0, &lo);
+
+		console_port_dac_write(0, 4095);
+		console_bleed_settle(ms);
+		console_port_adc_read_pair(FRAME_CH_A0, second, &a0, &hi);
+		a1_bleed[i] = (int16_t)((int)hi - (int)lo);
+		a1b_lo[i] = lo; a1b_hi[i] = hi;
+
+		/* Same arm with nothing swung: DAC0 written twice at the
+		 * same code. Identical writes, waits and conversions, so a
+		 * difference here is not crosstalk from a moving neighbour. */
+		console_port_dac_write(0, 2048);
+		console_bleed_settle(ms);
+		console_port_adc_read_pair(FRAME_CH_A0, second, &a0, &lo);
+
+		console_port_dac_write(0, 2048);
+		console_bleed_settle(ms);
+		console_port_adc_read_pair(FRAME_CH_A0, second, &a0, &hi);
+		a1_still[i] = (int16_t)((int)hi - (int)lo);
+		a1s_lo[i] = lo; a1s_hi[i] = hi;
+
+		/* Hold DAC0 mid scale; swing DAC1. Watch A0. */
+		console_port_dac_write(0, 2048);
+		console_port_dac_write(1, 0);
+		console_bleed_settle(ms);
+		console_port_adc_read_pair(FRAME_CH_A0, second, &lo, &a1);
+
+		console_port_dac_write(1, 4095);
+		console_bleed_settle(ms);
+		console_port_adc_read_pair(FRAME_CH_A0, second, &hi, &a1);
+		a0_bleed[i] = (int16_t)((int)hi - (int)lo);
+		a0b_lo[i] = lo; a0b_hi[i] = hi;
+
+		/* And its control. */
+		console_port_dac_write(1, 2048);
+		console_bleed_settle(ms);
+		console_port_adc_read_pair(FRAME_CH_A0, second, &lo, &a1);
+
+		console_port_dac_write(1, 2048);
+		console_bleed_settle(ms);
+		console_port_adc_read_pair(FRAME_CH_A0, second, &hi, &a1);
+		a0_still[i] = (int16_t)((int)hi - (int)lo);
+		a0s_lo[i] = lo; a0s_hi[i] = hi;
+	}
+
+	/* Name the channel that was watched: with `=2C` selected these
+	 * rows are about A2, and a label saying A1 would attribute the
+	 * figure to the wrong pin. Whole literals rather than a label
+	 * built at runtime - issue #49. */
+	a2 = (second == FRAME_CH_A2);
+
+	ctl_bleed_describe(a2 ? "A2 bleed (DAC1 held, DAC0 swung)"
+	                      : "A1 bleed (DAC1 held, DAC0 swung)",
+	                   a1_bleed, n);
+	ctl_bleed_values(a2 ? "A2 bleed" : "A1 bleed", a1_bleed, n);
+	ctl_bleed_raw(a2 ? "A2 bleed" : "A1 bleed", a1b_lo, a1b_hi, n);
+	ctl_bleed_describe(a2 ? "A2 control (nothing swung)"
+	                      : "A1 control (nothing swung)",
+	                   a1_still, n);
+	ctl_bleed_values(a2 ? "A2 control" : "A1 control", a1_still, n);
+	ctl_bleed_raw(a2 ? "A2 control" : "A1 control", a1s_lo, a1s_hi, n);
+	console_flush();
+
+	ctl_bleed_describe(a2 ? "A0 bleed (DAC0 held, DAC1 swung, A2 in pair)"
+	                      : "A0 bleed (DAC0 held, DAC1 swung, A1 in pair)",
+	                   a0_bleed, n);
+	ctl_bleed_values("A0 bleed", a0_bleed, n);
+	ctl_bleed_raw("A0 bleed", a0b_lo, a0b_hi, n);
+	ctl_bleed_describe("A0 control (nothing swung)", a0_still, n);
+	ctl_bleed_values("A0 control", a0_still, n);
+	ctl_bleed_raw("A0 control", a0s_lo, a0s_hi, n);
+
+	/* Which bench this is, read rather than assumed. With DAC1
+	 * jumpered to A1, holding DAC1 at 2048 drives A1 to about 2048;
+	 * with A1 free it sits wherever the mux left it. */
+	console_port_dac_write(1, 2048);
+	console_bleed_settle(ms);
+	console_port_adc_read_pair(FRAME_CH_A0, FRAME_CH_A1, &a0, &a1);
+	con_str("# A1 reads "); con_u32(a1);
+	con_str(" with DAC1 held at 2048: ");
+	con_str((a1 > 1800u && a1 < 2300u)
+	        ? "DAC1 -> A1 is fitted"
+	        : "A1 looks undriven - see docs/noise.md");
+	con_nl();
+	con_str("# bleed is in ADC codes; 1 code = 0.8 mV."
+	        " Full swing is 2747 codes."); con_nl();
+	con_str("# taken at TRACKTIM 15, SETTLING 3 - this command's own,"
+	        " not whatever ADC_MR held"); con_nl();
+	console_port_pair_faults(&restarts, &timeouts);
+	con_str("# pair-conv: ");
+	con_kv_u32("restarts", restarts); con_ch(' ');
+	con_kv_u32("timeouts", timeouts);
+	con_str(" (nonzero: see #23)"); con_nl();
+
+	console_port_measure_end();
+	console_flush();
+}

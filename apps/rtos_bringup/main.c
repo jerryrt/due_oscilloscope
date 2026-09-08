@@ -772,6 +772,8 @@ static void c_epstate(const uint32_t *a)     { (void)a; usb_cdc_endpoint_state()
 
 static void c_occ(const uint32_t *a) { (void)a; console_cmd_occ_hist(); }
 
+static void c_xtalk(const uint32_t *a) { console_cmd_crosstalk(a[0], a[1]); }
+
 static void c_mimic_gap(const uint32_t *a)
 {
 	mimic_start_delay_us = a[0];
@@ -812,7 +814,7 @@ const console_binding_t console_bindings[] = {
 	{ 'p', c_printf },      { 'g', c_gpio },        { 'r', c_read },
 	{ 's', c_sweep },       { 'd', c_dac_sweep },   { 'j', c_dac_15m },
 	{ 'k', c_dac_30m },     { 'w', c_uart_stream }, { 'E', c_epstate },
-	{ 'O', c_occ },
+	{ 'O', c_occ },         { 'x', c_xtalk },
 	{ 0,   NULL    },
 };
 

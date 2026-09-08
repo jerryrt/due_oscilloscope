@@ -364,6 +364,23 @@ bool console_port_acq_rate_trace(uint32_t *n, const uint32_t **us,
 	return false;
 }
 
+/* `x`'s surface. measure_begin() succeeds so the body runs to the end
+ * rather than taking its refusal path every time - the arms and the
+ * label arithmetic are what the fuzzer is here to walk. */
+int console_port_measure_begin(void) { return 0; }
+void console_port_measure_end(void) { }
+uint32_t console_port_acq_mr(void) { return 0x2f3f0100u; }
+unsigned console_port_acq_pair_second(void) { return 6u; }
+void console_port_pad_state(uint32_t *psr, uint32_t *osr,
+                            uint32_t *pusr, uint32_t *ifsr)
+{
+	*psr = 0; *osr = 0; *pusr = 0; *ifsr = 0;
+}
+void console_port_pair_faults(uint32_t *restarts, uint32_t *timeouts)
+{
+	*restarts = 0; *timeouts = 0;
+}
+
 
 void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 {

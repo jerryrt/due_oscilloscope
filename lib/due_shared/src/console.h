@@ -130,6 +130,16 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*
+ * `=<n>,<ms>x`: multiplexer bleed, n observations at ms settle.
+ *
+ * Bind it raw. Both defaults resolve inside, for the reason #68 gave
+ * for the rate sweep's channel count: a guard written once per track
+ * is a guard a new track can omit with nothing failing, and here the
+ * settle time is part of the measurement rather than a convenience.
+ */
+void console_cmd_crosstalk(unsigned repeats, uint32_t settle_ms);
+
+/*
  * `O`: the playback ring's occupancy distribution and the two rate
  * traces, off the `B` path deliberately - `B` is polled mid-stream by
  * the daemon and must stay one short line, where this is 32 buckets

@@ -239,3 +239,43 @@ bool console_port_acq_rate_trace(uint32_t *n, const uint32_t **us,
 	return false;
 #endif
 }
+
+
+/*
+ * What `x` needs beyond a conversion and a DAC write. Every name ends
+ * at a register or a driver counter in this track's own drivers/.
+ */
+int console_port_measure_begin(void)
+{
+	return adc_measure_begin();
+}
+
+void console_port_measure_end(void)
+{
+	adc_measure_end();
+}
+
+uint32_t console_port_acq_mr(void)
+{
+	return acq_mr();
+}
+
+unsigned console_port_acq_pair_second(void)
+{
+	return acq_pair_second;
+}
+
+void console_port_pad_state(uint32_t *psr, uint32_t *osr,
+                            uint32_t *pusr, uint32_t *ifsr)
+{
+	*psr  = PIOA->PIO_PSR;
+	*osr  = PIOA->PIO_OSR;
+	*pusr = PIOA->PIO_PUSR;
+	*ifsr = PIOA->PIO_IFSR;
+}
+
+void console_port_pair_faults(uint32_t *restarts, uint32_t *timeouts)
+{
+	*restarts = adc_pair_restarts;
+	*timeouts = adc_pair_timeouts;
+}
