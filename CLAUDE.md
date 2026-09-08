@@ -49,8 +49,9 @@ core for enumeration only.
 **But "zero underruns" is not the guarantee it reads as.** Until
 2026-08-23 the host's USB stack was silently discarding 0.45-0.85% of
 what `write()` counted on the playback path, and an underrun counter
-stays at zero through exactly that. The feed is fixed - a constant
-512-byte write, `Feeder.WRITE_SIZE` - but most figures measured above
+stays at zero through exactly that. The feed is fixed - a 512-byte
+write from a 512-aligned start, `Feeder.WRITE_SIZE`, which is lossless
+because it cannot straddle a 1 KiB boundary - but most figures above
 200 ksps predate the fix and have not been re-read against byte
 conservation. See objective 0h on the cross-bench handoff page (#71)
 before quoting any of them.
@@ -572,16 +573,36 @@ Check here before reasoning from general Arduino knowledge.
   behaviours, and both are measured:
   - **Under pressure** it drops ~128-byte chunks. Never free-run writes
     into saturation.
-  - **Regardless of pressure**, it loses 0.45-0.85% at every rate above
-    200 ksps unless every `write()` is *the same size*. A constant 512
-    bytes is lossless; "whatever is due" is not, even when every write
-    it emits is 512 or 1024. The mechanism is unknown; the measurement
-    is not. `Feeder.WRITE_SIZE`. Re-taken 2026-08-29 and current -
-    0.605-0.633% at 397,959 sps, 0.763-0.915% at 600,000 - and it also
-    costs runway, 7-12 underruns against 0. **Windows has none of it**,
-    0 B on both arms at every rate, so this bullet is macOS's alone.
+  - **Regardless of pressure**, it sheds any `write()` that spans a
+    multiple of **1024 bytes** in the stream written so far. That costs
+    0.45-0.85% at every rate above 200 ksps. `Feeder.WRITE_SIZE` = 512
+    is lossless *because of its alignment*, not its constancy: no
+    512-byte write starting at a multiple of 512 can contain a multiple
+    of 1024. Re-taken 2026-08-29 and current - 0.605-0.633% at 397,959
+    sps, 0.763-0.915% at 600,000 - and it also costs runway, 7-12
+    underruns against 0. **Windows has none of it**, 0 B on both arms at
+    every rate, so this bullet is macOS's alone.
 
-  The safe feed is therefore: constant-size writes, clock-paced, with a
+    **"A constant write size is lossless" was this line's rule until
+    2026-09-07, and it is false.** A constant **1536** is constant, is
+    whole USB packets, is the size the old due-sized path emitted most
+    often - and loses 0.69-0.73%, straddling the boundary on every
+    write. Constant 2048 and 4096 lose too. Meanwhile two 512s issued
+    5.8 us apart lose nothing, so it is not cadence either. Do not
+    reason from "keep the writes uniform"; reason from where the write
+    *lands*. Fifteen arms, 96 analysed runs, no exception either way,
+    and a boundary search over 64 B to 128 KiB leaves 1024 and its odd
+    multiples alone. Objective 0j, `docs/usb.md`.
+
+    What the 1024-byte object is has **not** been established - it is
+    inferred from behaviour, with no kernel source read - and the
+    magnitude is not explained either: arms that straddle equally often
+    lose 0.353% to 0.522%. The boundary decides *whether*, not *how
+    much*. One rate, one host, so far.
+
+  The safe feed is therefore: writes aligned so none straddles a 1 KiB
+  boundary - constant 512 from a 512-aligned start is the one in use -
+  clock-paced, with a
   bounded lead against the DMA-fed ring, sleeping until the next write
   is due rather than on a fixed tick. Against a manual-FIFO device the
   old empty-queue gate applies instead. **A byte comparison against the
@@ -677,13 +698,17 @@ before building on top of it.
 **`Feeder.WRITE_SIZE` is settled, and it is a macOS workaround.** Both
 benches ran `tools/writepolicy.py` on 2026-08-29, four runs per arm per
 rate, ABBA within each rate. macOS due-sized writes lose 0.605-0.633% at
-397,959 sps and 0.763-0.915% at 600,000 while constant-size loses 0 B in
-every run; Windows loses **0 B in all 24 runs, both arms, every rate**,
-because its driver blocks the writer instead of counting bytes it will
-shed. So the constant-size rule is a tier-2 platform rule, the honest
-high-rate byte-conservation figures are the Windows ones, and the
-constant that enforces it lives in `measure.py` - above the seam the
-next paragraph says all platform difference belongs in.
+397,959 sps and 0.763-0.915% at 600,000 while the 512-byte arm loses 0 B
+in every run; Windows loses **0 B in all 24 runs, both arms, every
+rate**, because its driver blocks the writer instead of counting bytes
+it will shed. So it is a tier-2 platform rule, the honest high-rate
+byte-conservation figures are the Windows ones, and the constant that
+enforces it lives in `measure.py` - above the seam the next paragraph
+says all platform difference belongs in.
+
+Read that arm as **512 is aligned**, not as "constant beats varying" -
+the 2026-09-07 boundary work refuted the constancy reading, and this
+paragraph asserted it for nine days.
 
 **All platform difference lives in `host/transport.py` and
 `host/rt.py`.** Everything above them - `measure.py`, the daemon, the

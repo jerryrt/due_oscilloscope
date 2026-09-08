@@ -430,11 +430,19 @@ CONSTANTS = [
        r"#define\s+FW_VERSION_PATCH\s+(\d+)\s*$",
        r"\bfw=(\d+\.\d+\.\d+)\b"),
 
-    # "a constant 512-byte write, `Feeder.WRITE_SIZE`", and "A constant
-    # 512 bytes is lossless". Both are read; both have to agree.
+    # "a 512-byte write from a 512-aligned start" and "`Feeder.WRITE_SIZE`
+    # = 512 is lossless *because of its alignment*". Both are read; both
+    # have to agree.
+    #
+    # The pattern used to key on the word "constant", and that wording is
+    # gone on purpose: 0j established that a constant size is NOT what
+    # makes the feed lossless - a constant 1536 loses 0.69-0.73% - so the
+    # sentences were rewritten around alignment. This row is keyed on the
+    # size itself for that reason, which is the part that must track the
+    # code, rather than on prose that a later finding can overturn again.
     _c("Feeder.WRITE_SIZE", "host/measure.py",
        r"^\s+WRITE_SIZE\s*=\s*(\d+)\s*$",
-       r"constant\s+(\d+)[\s-]+bytes?"),
+       r"(\d+)-byte\s+write"),
 
     # "`OVERSUPPLIED = {44, 39}` in `tests/test_integrity.py` is this".
     _c("OVERSUPPLIED", "tests/test_integrity.py",
