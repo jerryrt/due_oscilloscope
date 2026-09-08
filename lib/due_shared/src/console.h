@@ -131,6 +131,24 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*
+ * `y`: read the time source twice across a known wait.
+ *
+ * It arrived on Track C, where millis() and micros() are the
+ * application's own (apps/rtos_bringup/time_rtos.c) because
+ * bsp/systick.c cannot be linked there, and almost every driver in the
+ * tree calls them - drivers/adc.c alone has ten sites. A time source
+ * that silently returned 0, or advanced at the wrong rate, would not
+ * fail to link and would not fail to run: it would make every duration
+ * wrong, quietly.
+ *
+ * It is on every track because the question is not Track C's. Each
+ * track's time source is different code - the Arduino core's, the
+ * board support's, the application's - and only a board that answers
+ * the question can be compared with one that does.
+ */
+void console_cmd_time_check(void);
+
+/*
  * `Q`: where the main loop's time goes, in ns per call.
  *
  * The HARNESS is shared and the LIST is not, which is the split this

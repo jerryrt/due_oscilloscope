@@ -342,6 +342,8 @@ static void h_detach(const uint32_t *a)
 	usb_cdc_detach_cycle(a[0]);
 }
 
+static void h_time(const uint32_t *a) { (void)a; console_cmd_time_check(); }
+
 static void h_fws(const uint32_t *a)
 {
 	/*
@@ -693,7 +695,7 @@ const console_binding_t console_bindings[] = {
 
 	{ 'Q', h_profile },     { 'l', h_load },        { 'S', h_stall },
 	{ 'K', h_mimic_gap },   { 'Z', h_detach },      { 'z', h_reset },
-	{ 'q', h_fws },
+	{ 'q', h_fws },         { 'y', h_time },
 
 	{ 0, 0 },
 };

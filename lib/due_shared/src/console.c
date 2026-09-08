@@ -107,6 +107,7 @@ static const struct cmd_entry table[] = {
 	{ 'Z', "=<ms>",     "detach the native port (software unplug)" },
 	{ 'z', NULL,        "software reset (leaves USB attached; see Z)" },
 	{ 'q', "=<4..6>",   "flash wait states; issue #5's fetch-timing arm" },
+	{ 'y', NULL,        "time source: millis and micros over a known wait" },
 };
 
 #define TABLE_N  (sizeof(table) / sizeof(table[0]))

@@ -1125,3 +1125,39 @@ void console_profile_end(void)
 	con_str("# note: services early-return unless started"); con_nl();
 	console_flush();
 }
+
+
+/*
+ * `y`: two reads of the time source about 100 ms apart.
+ *
+ * The delta is the measurement and the absolute values say the counter
+ * is live rather than stuck. Both are needed: a source frozen at a
+ * large value passes a liveness check that only looks at the reading,
+ * and one that advances at the wrong rate passes one that only looks
+ * for movement.
+ *
+ * The wait is console_bleed_settle(), which spins on the device clock -
+ * so this reads millis() against a micros()-derived wait, and the two
+ * disagreeing is exactly the failure it is here to catch. Not each
+ * track's own sleep: Track C's vTaskDelay() would test the tick
+ * instead, which is a different question and not one the other two
+ * can be asked.
+ */
+void console_cmd_time_check(void)
+{
+	uint32_t m0, u0, m1, u1;
+
+	m0 = ctl_port_millis();
+	u0 = ctl_port_micros();
+	console_bleed_settle(100);
+	m1 = ctl_port_millis();
+	u1 = ctl_port_micros();
+
+	con_str("# time ");
+	con_kv_u32("millis", m1);            con_ch(' ');
+	con_kv_u32("micros", u1);            con_ch(' ');
+	con_kv_u32("d_ms", m1 - m0);         con_ch(' ');
+	con_kv_u32("d_us", u1 - u0);
+	con_str("  (asked for 100 ms)");     con_nl();
+	console_flush();
+}

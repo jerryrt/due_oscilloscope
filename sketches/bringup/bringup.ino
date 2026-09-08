@@ -1349,6 +1349,8 @@ static void ha_reset(const uint32_t *a)
 	RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST;
 }
 
+static void ha_time(const uint32_t *a) { (void)a; console_cmd_time_check(); }
+
 static void ha_fws(const uint32_t *a)
 {
 	/*
@@ -1450,7 +1452,7 @@ const console_binding_t console_bindings[] = {
 
 	{ 'Q', ha_profile },    { 'l', ha_load },       { 'S', ha_stall },
 	{ 'K', ha_mimic_gap },  { 'Z', ha_detach },     { 'z', ha_reset },
-	{ 'q', ha_fws },
+	{ 'q', ha_fws },        { 'y', ha_time },
 
 	{ 0, 0 },
 };
