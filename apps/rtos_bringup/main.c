@@ -223,7 +223,36 @@ static void service_task(void *arg)
 			ctl_ms = now;
 			ctl_service();
 		}
-		if (play_active() && !stream_in_in_use()) {
+		/*
+		 * The status carrier, and the `&& !console_busy` is not
+		 * belt and braces - it is the whole reason a two-task
+		 * console needs a guard Track B does not.
+		 *
+		 * `L` starts playback, prints its banner, and then starts
+		 * the capture, in that order and for a measured reason
+		 * (console_cmds.c). On Track B the three run inside the
+		 * main loop, so nothing can emit between them. Here they
+		 * run in the console task while this one keeps going, and
+		 * the banner is milliseconds of UART - so for that window
+		 * play_active() is already true and stream_in_in_use() is
+		 * still false, which is exactly this branch's condition.
+		 * The records then land in the IN endpoint AHEAD of the
+		 * first frame and the host parses them as samples.
+		 *
+		 * Measured: after a one-channel loop at RC 44, the next
+		 * two-channel capture carried a 30-sample hole at offset
+		 * 240 of frame 1 - impossible channel tags, mostly zero
+		 * codes - against 236,728 samples on each of two channels
+		 * and no strays otherwise. It appeared the day `0` began
+		 * stopping playback, because a play_start() that follows a
+		 * real stop is the case where this branch has something to
+		 * say the moment playback comes back.
+		 *
+		 * Isolated by suppressing one thing at a time, with the
+		 * drain branch as the control: suppressing this branch
+		 * gives 3 clean cycles of 3, suppressing the drain gives 0.
+		 */
+		if (play_active() && !stream_in_in_use() && !console_busy) {
 			static uint32_t last_stat_ms;
 			uint32_t now_ms = millis();
 
