@@ -116,3 +116,36 @@ void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 	*rxbuff = acq_rxbuff_overruns;
 	*govre  = acq_govre;
 }
+
+
+/*
+ * `g`'s two arms. Tracks B and C share them because they share this
+ * file, the board support under it and the pin: the LED is PB27 on
+ * both, and neither track has an abstraction between it and PIOB.
+ *
+ * The loop lives here rather than in the shared body because each
+ * iteration is a register write, and invariant 3 keeps those with the
+ * track. `n` and the timing around it come from console_cmd_gpio_cost().
+ */
+#define LED_MASK (1u << 27)   /* pin 13 = PB27 */
+
+void console_port_toggle_direct(uint32_t n)
+{
+	for (uint32_t i = 0; i < n; i++) {
+		PIOB->PIO_SODR = LED_MASK;
+		PIOB->PIO_CODR = LED_MASK;
+	}
+}
+
+void console_port_toggle_bsp(uint32_t n)
+{
+	for (uint32_t i = 0; i < n; i++) {
+		led_on();
+		led_off();
+	}
+}
+
+const char *console_port_toggle_bsp_name(void)
+{
+	return "via bsp led";
+}

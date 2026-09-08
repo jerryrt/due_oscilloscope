@@ -360,3 +360,94 @@ void console_cmd_stall(uint32_t ms)
 
 	console_port_stall(ms);
 }
+
+
+/*
+ * "N.NN ns per set+clear pair", from hundredths of a nanosecond.
+ *
+ * Fixed point, not float: a float formatter would be pulled into an
+ * image whose only use for it is two debug lines, and no track has a
+ * %f, %g or %e anywhere. The two decimals are what a float default
+ * would have given, so the printed value is unchanged from when each
+ * track computed this for itself.
+ */
+static void print_ns(const char *label, uint32_t us, uint32_t n)
+{
+	uint32_t ns_x100 = (uint32_t)(((uint64_t)us * 100000ull) / n);
+
+	con_str("# "); con_str(label); con_str(": ");
+	con_u32(ns_x100 / 100u); con_ch('.');
+	con_u32w(ns_x100 % 100u, 2, '0');
+	con_str(" ns per set+clear pair"); con_nl();
+}
+
+/*
+ * `p`: what one 40-character console line costs, end to end.
+ *
+ * This is the measurement invariant 8 rests on - "printf is a debug
+ * method, not an instrument" - so it is quoted between tracks and had
+ * to be taken identically on each. It was not. Both tracks timed the
+ * same twenty lines and then labelled the result differently, one
+ * "polled, synchronous" and the other "flushed to the wire", which is
+ * the ordinary way two hand-written copies of one measurement drift:
+ * not in the arithmetic, where a diff would show it, but in what the
+ * number is said to mean.
+ */
+void console_cmd_printf_cost(void)
+{
+	const int n = 20;
+	const char *line = "0123456789012345678901234567890123456789";
+	uint32_t t0, t1;
+
+	con_str("# measuring printf cost, 20 x 40-char lines"); con_nl();
+	console_flush();
+
+	t0 = ctl_port_micros();
+	/* Braces are load-bearing: con_nl() must stay INSIDE the loop, or
+	 * this times n strings and one newline - a mistake that compiles
+	 * clean, and has been made twice on Track B already. */
+	for (int i = 0; i < n; i++) {
+		con_str(line); con_nl();
+	}
+	/* Inside the interval: the cost is the bytes on the wire, not the
+	 * bytes handed to a buffer. */
+	console_flush();
+	t1 = ctl_port_micros();
+
+	con_str("# printf: "); con_u32((t1 - t0) / (uint32_t)n);
+	con_str(" us per 40-char line (flushed to the wire)"); con_nl();
+	con_str("# this is why printf never goes in an ISR"); con_nl();
+	console_flush();
+}
+
+/*
+ * `g`: what a GPIO toggle costs, direct and through this track's
+ * board-support call.
+ *
+ * The pair is the point. Direct PIO is the only thing cheap enough to
+ * put inside an ISR - about 12 ns - and the second arm says what the
+ * convenient call costs instead. What the second arm IS differs
+ * between tracks on purpose, so it comes back from the port with its
+ * own name.
+ */
+void console_cmd_gpio_cost(void)
+{
+	const uint32_t n = 100000;
+	uint32_t t0, t1, t2, t3;
+
+	con_str("# measuring GPIO toggle cost, 100k pairs"); con_nl();
+	console_flush();
+
+	t0 = ctl_port_micros();
+	console_port_toggle_direct(n);
+	t1 = ctl_port_micros();
+
+	t2 = ctl_port_micros();
+	console_port_toggle_bsp(n);
+	t3 = ctl_port_micros();
+
+	print_ns("direct PIO ", t1 - t0, n);
+	print_ns(console_port_toggle_bsp_name(), t3 - t2, n);
+	con_str("# use direct PIO writes for ISR instrumentation"); con_nl();
+	console_flush();
+}

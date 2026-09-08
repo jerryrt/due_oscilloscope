@@ -38,7 +38,6 @@
 #include "track_id.h"
 #include "fw_version.h"
 
-#define LED_MASK (1u << 27)
 
 /*
  * One line saying which firmware this is. Same format on both tracks -
@@ -94,64 +93,6 @@ static void cmd_help(void)
 	con_str("#"); con_nl();
 }
 
-/* Fixed-point ns with two decimals, avoiding a float-enabled printf. */
-static void print_ns(const char *label, uint32_t us, uint32_t n)
-{
-	uint32_t ns_x100 = (uint32_t)(((uint64_t)us * 100000ull) / n);
-
-	con_str("# "); con_str(label); con_str(": ");
-	con_u32(ns_x100 / 100u); con_ch('.');
-	con_u32w(ns_x100 % 100u, 2, '0');
-	con_str(" ns per set+clear pair"); con_nl();
-}
-
-static void measure_printf(void)
-{
-	const int n = 20;
-	const char *line = "0123456789012345678901234567890123456789";
-
-	con_str("# measuring printf cost, 20 x 40-char lines"); con_nl();
-	uart_flush();
-
-	uint32_t t0 = micros();
-	for (int i = 0; i < n; i++) {
-		con_str(line); con_nl();
-	}
-	uart_flush();
-	uint32_t t1 = micros();
-
-	con_str("# printf: "); con_u32((t1 - t0) / n);
-	con_str(" us per 40-char line (polled, synchronous)"); con_nl();
-	con_str("# this is why printf never goes in an ISR"); con_nl();
-	uart_flush();
-}
-
-static void measure_gpio(void)
-{
-	const uint32_t n = 100000;
-
-	con_str("# measuring GPIO toggle cost, 100k pairs"); con_nl();
-	uart_flush();
-
-	uint32_t t0 = micros();
-	for (uint32_t i = 0; i < n; i++) {
-		PIOB->PIO_SODR = LED_MASK;
-		PIOB->PIO_CODR = LED_MASK;
-	}
-	uint32_t t1 = micros();
-
-	uint32_t t2 = micros();
-	for (uint32_t i = 0; i < n; i++) {
-		led_on();
-		led_off();
-	}
-	uint32_t t3 = micros();
-
-	print_ns("direct PIO ", t1 - t0, n);
-	print_ns("via bsp led", t3 - t2, n);
-	con_str("# use direct PIO writes for ISR instrumentation"); con_nl();
-	uart_flush();
-}
 /* The M preset's ADC-start-to-DAC-start gap. See case 'K'. */
 static uint32_t mimic_start_delay_us;
 
@@ -931,8 +872,8 @@ static void cmd_endpoint_state(void)
 
 static void h_help(const uint32_t *a)  { (void)a; cmd_help(); }
 static void h_ident(const uint32_t *a) { (void)a; identity_line(); }
-static void h_printf(const uint32_t *a){ (void)a; measure_printf(); }
-static void h_gpio(const uint32_t *a)  { (void)a; measure_gpio(); }
+static void h_printf(const uint32_t *a){ (void)a; console_cmd_printf_cost(); }
+static void h_gpio(const uint32_t *a)  { (void)a; console_cmd_gpio_cost(); }
 static void h_fault(const uint32_t *a) { (void)a; console_trigger_fault(); }
 static void h_read(const uint32_t *a)  { (void)a; cmd_read(); }
 static void h_sweep(const uint32_t *a) { (void)a; cmd_sweep(); }

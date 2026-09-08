@@ -129,3 +129,36 @@ bool console_port_capture_only_start(uint32_t adc_hz, unsigned nch)
 {
 	return stream_start_capture_only(adc_hz, nch);
 }
+
+
+/*
+ * `g`'s two arms. The second one is digitalWrite(), not the board
+ * support's led_on()/led_off(), and that is the tracked divergence
+ * console_port.h names: the two tracks time different calls here on
+ * purpose, so the label travels with the arm rather than being
+ * written once in the shared report.
+ *
+ * The loop is here because every iteration is a register write.
+ */
+#define LED_MASK (1u << 27)   /* pin 13 = PB27 */
+
+void console_port_toggle_direct(uint32_t n)
+{
+	for (uint32_t i = 0; i < n; i++) {
+		PIOB->PIO_SODR = LED_MASK;
+		PIOB->PIO_CODR = LED_MASK;
+	}
+}
+
+void console_port_toggle_bsp(uint32_t n)
+{
+	for (uint32_t i = 0; i < n; i++) {
+		digitalWrite(LED_BUILTIN, HIGH);
+		digitalWrite(LED_BUILTIN, LOW);
+	}
+}
+
+const char *console_port_toggle_bsp_name(void)
+{
+	return "digitalWrite";
+}

@@ -313,6 +313,13 @@ uint32_t console_port_acq_min_rc(unsigned n_channels)
  * console's (invariant 7). */
 void console_port_stall(uint32_t ms) { (void)ms; }
 
+/* `g`'s arms: nothing to toggle off the board, and 100k iterations of
+ * nothing is still bounded work the fuzzer does not want to pay for. */
+void console_port_toggle_direct(uint32_t n) { (void)n; }
+void console_port_toggle_bsp(uint32_t n)    { (void)n; }
+const char *console_port_toggle_bsp_name(void) { return "stub"; }
+
+
 void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 {
 	note_port();

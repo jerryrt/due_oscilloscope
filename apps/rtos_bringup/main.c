@@ -742,6 +742,14 @@ void console_port_stall(uint32_t ms)
 
 static void c_stall(const uint32_t *a) { console_cmd_stall(a[0]); }
 
+/*
+ * `p` and `g`. The arms are drivers/console_port.c's, which this track
+ * links unchanged, so the figures are directly comparable with Track
+ * B's - which is the whole point of asking a scheduler what it costs.
+ */
+static void c_printf(const uint32_t *a) { (void)a; console_cmd_printf_cost(); }
+static void c_gpio(const uint32_t *a)   { (void)a; console_cmd_gpio_cost(); }
+
 static void c_mimic_gap(const uint32_t *a)
 {
 	mimic_start_delay_us = a[0];
@@ -779,6 +787,7 @@ const console_binding_t console_bindings[] = {
 	{ 'W', c_wave  },       { 'J', c_sync },        { 'N', c_layout },
 	{ 'I', c_ibctl },       { 'C', c_pair },        { 'A', c_adc_timing },
 	{ 'e', c_temp  },       { 'K', c_mimic_gap },   { 'S', c_stall },
+	{ 'p', c_printf },      { 'g', c_gpio },
 	{ 0,   NULL    },
 };
 

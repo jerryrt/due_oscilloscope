@@ -193,87 +193,6 @@ static void cmd_help(void)
 	con_str("#"); con_nl();
 }
 
-static void measure_printf(void)
-{
-	const int n = 20;
-	const char *line = "0123456789012345678901234567890123456789";
-
-	con_str("# measuring printf cost, 20 x 40-char lines"); con_nl();
-	console_flush();
-
-	uint32_t t0 = micros();
-	/* Braces are load-bearing: con_nl() must stay INSIDE the loop, or
-	 * this times n strings and one newline - a mistake that compiles
-	 * clean, and has been made twice on Track B already. */
-	for (int i = 0; i < n; i++) {
-		con_str(line); con_nl();
-	}
-	console_flush();         /* include actual transmission, not just buffering */
-	uint32_t t1 = micros();
-
-	con_str("# printf: "); con_u32((t1 - t0) / n);
-	con_str(" us per 40-char line (flushed to the wire)"); con_nl();
-	con_str("# this is why printf never goes in an ISR"); con_nl();
-	console_flush();
-}
-
-/*
- * "N.NN ns per set+clear pair", from hundredths of a nanosecond.
- *
- * Track B's equivalent is print_ns() in main.c, and the arithmetic here
- * is deliberately identical so the two tracks' figures are comparable
- * to the digit. It exists as a helper rather than open-coded twice for
- * the reason console_out.h gives for con_u32w: a call site that
- * computes its own field is a call site that can get it wrong.
- */
-static void print_ns_x100(uint32_t ns_x100)
-{
-	con_u32(ns_x100 / 100u);
-	con_ch('.');
-	con_u32w(ns_x100 % 100u, 2, '0');
-	con_str(" ns per set+clear pair");
-	con_nl();
-}
-
-static void measure_gpio(void)
-{
-	const uint32_t n = 100000;
-
-	con_str("# measuring GPIO toggle cost, 100k pairs"); con_nl();
-	console_flush();
-
-	uint32_t t0 = micros();
-	for (uint32_t i = 0; i < n; i++) {
-		PIOB->PIO_SODR = LED_MASK;
-		PIOB->PIO_CODR = LED_MASK;
-	}
-	uint32_t t1 = micros();
-
-	uint32_t t2 = micros();
-	for (uint32_t i = 0; i < n; i++) {
-		digitalWrite(LED_BUILTIN, HIGH);
-		digitalWrite(LED_BUILTIN, LOW);
-	}
-	uint32_t t3 = micros();
-
-	/*
-	 * Fixed point, not float: a float formatter would be pulled into
-	 * an image whose only use for it is two debug lines, and Track B
-	 * has no %f, %g or %e anywhere. Same arithmetic as Track B's
-	 * print_ns() and the same two decimals a float default would
-	 * give, so the printed value is unchanged.
-	 *
-	 * What is deliberately NOT changed is what is measured: Track A
-	 * times digitalWrite() where Track B times led_toggle(). That is
-	 * a real, tracked divergence, not one to settle here by
-	 * rewriting one side.
-	 */
-	con_str("# direct PIO : ");  print_ns_x100(((t1 - t0) * 100000ull) / n);
-	con_str("# digitalWrite: "); print_ns_x100(((t3 - t2) * 100000ull) / n);
-	con_str("# use direct PIO writes for ISR instrumentation"); con_nl();
-	console_flush();
-}
-
 static uint32_t code_to_mv(uint16_t code)
 {
 	return ((uint32_t)code * 3300u) / 4095u;
@@ -1255,13 +1174,13 @@ static void ha_ident(const uint32_t *a)
 static void ha_printf(const uint32_t *a)
 {
 	(void)a;
-	measure_printf();
+	console_cmd_printf_cost();
 }
 
 static void ha_gpio(const uint32_t *a)
 {
 	(void)a;
-	measure_gpio();
+	console_cmd_gpio_cost();
 }
 
 static void ha_fault(const uint32_t *a)

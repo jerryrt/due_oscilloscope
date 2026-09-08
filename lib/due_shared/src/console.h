@@ -130,6 +130,17 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*
+ * `p` and `g`: what a line of console output costs, and what a GPIO
+ * toggle costs. The two figures invariant 8's "printf is a debug
+ * method, not an instrument" rests on, so they are quoted across
+ * tracks and have to be taken the same way on each - which is why the
+ * timing, the arithmetic and the format are here and only the two
+ * toggle arms are per track.
+ */
+void console_cmd_printf_cost(void);
+void console_cmd_gpio_cost(void);
+
+/*
  * `=<ms>S`: block the loop the load monitor measures, for a duration
  * the HOST chose.
  *

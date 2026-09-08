@@ -143,6 +143,27 @@ void     console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre);
  */
 void     console_port_stall(uint32_t ms);
 
+/*
+ * `g`'s two arms: `n` set-and-clear pairs each, one straight at the
+ * port register and one through whatever this track offers instead.
+ *
+ * Two names rather than one because the answer is the *difference*
+ * between them, and because the tracks deliberately time different
+ * things in the second arm - Track B and Track C call the board
+ * support's led_on()/led_off(), Track A calls the Arduino core's
+ * digitalWrite(). That is a tracked divergence and not one to settle
+ * by rewriting a side, so the label travels with the arm:
+ * console_port_toggle_bsp_name() is what the report calls it.
+ *
+ * The loop is behind the port because every iteration of it is a
+ * register write. The count, the timing and the arithmetic are not,
+ * and stay shared - two tracks quoting ns-per-pair figures at each
+ * other must have divided by the same thing.
+ */
+void        console_port_toggle_direct(uint32_t n);
+void        console_port_toggle_bsp(uint32_t n);
+const char *console_port_toggle_bsp_name(void);
+
 #ifdef __cplusplus
 }
 #endif
