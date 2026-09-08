@@ -15,6 +15,16 @@ cannot-fail guards had. So the flags are demonstrated: four deliberate
 defects, one per check the harnesses rely on, each of which must be
 caught, plus a clean build of the same file that must not be.
 
+**The guard that decides whether to run them asks the probe, not the
+command line.** `hostcc.sanitize_flags()` is the command line and mixes
+two things: the sanitizer flags, and the ABI flag. Under
+`DUE_HOSTCC_ABI=32` a bench whose 32-bit ASan does not run gets
+`('-m32',)` from it - non-empty, so a guard reading it stays silent
+while every harness in the run is built with no instrumentation at all,
+and these four canaries then report four defects the sanitizers missed.
+`hostcc.selected_sanitize_probe()` is the sanitizer half alone and is
+what the guard reads.
+
 The fourth defect is about `-fno-sanitize-recover=all` rather than about
 UBSan. A signed overflow is diagnosed either way; without that flag
 UBSan prints its line and the program runs on to return 0, so every
@@ -62,10 +72,12 @@ WHAT = {
 def _require():
     if hostcc.cc() is None:
         pytest.skip("no host C compiler")
-    if not hostcc.sanitize_flags():
+    abi = hostcc.selected_abi()
+    if not hostcc.selected_sanitize_probe():
         pytest.skip(
-            f"{hostcc.cc()} does not link -fsanitize=address,undefined, so "
-            f"the native harnesses in this run are NOT instrumented")
+            f"{hostcc.cc()} does not build and run "
+            f"-fsanitize=address,undefined for the {abi!r} ABI, so the "
+            f"native harnesses in this run are NOT instrumented")
 
 
 def _build(tmp_path, defect):

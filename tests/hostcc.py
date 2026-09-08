@@ -198,7 +198,12 @@ def sanitize_probe(abi="native"):
     the runtimes still gets the harnesses, unsanitized, which is what it
     had before. What it must not get is a silent claim that they were
     instrumented, and `tests/test_sanitizers.py` is what says so out
-    loud - it skips with the compiler named.
+    loud - it skips with the compiler and the ABI named.
+
+    **This is the only function that answers "are they linked".** Ask it
+    rather than `build_flags()` or `sanitize_flags()`, both of which
+    carry the ABI flag as well and are therefore non-empty for `-m32`
+    whatever this returns.
     """
     if abi not in _sanitize_probe:
         _sanitize_probe[abi] = (SANITIZE
@@ -249,5 +254,29 @@ def sanitize_flags():
     to all of them at once, which is why the flag lives here rather than
     beside a name that only says "sanitize". `DUE_HOSTCC_ABI` picks it;
     unset, this is exactly what it always was.
+
+    **Its truthiness is not evidence that the sanitizers are linked**,
+    because the ABI flag is in it: with `DUE_HOSTCC_ABI=32` and a
+    compiler whose 32-bit sanitizer runtimes do not work, this returns
+    `('-m32',)` - non-empty, and every harness built from it
+    uninstrumented. A caller asking whether it got instrumentation must
+    ask `selected_sanitize_probe()`, which is that question and nothing
+    else.
     """
     return build_flags(selected_abi())
+
+
+def selected_sanitize_probe():
+    """The sanitizer half of `sanitize_flags()`, and only that half.
+
+    `sanitize_flags()` is what a harness is *built* with; this is what
+    the build was *instrumented* with, `()` when it was not. They are
+    two questions and the composed tuple cannot answer the second, which
+    is the whole reason this exists: `test_sanitizers.py`'s guard read
+    `sanitize_flags()` and so could not fire for any ABI carrying a
+    flag of its own. Under `DUE_HOSTCC_ABI=32` on a bench whose 32-bit
+    ASan does not run, it stayed silent and the four injected defects
+    were reported as uncaught - a canary suite scoring the absence of
+    the sanitizers as four defects the sanitizers missed.
+    """
+    return sanitize_probe(selected_abi())
