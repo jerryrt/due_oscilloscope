@@ -94,12 +94,35 @@ def resolve(tool: str, reg: dict | None = None,
     return None, None
 
 
+def resolve_effective(tool: str, reg: dict | None = None
+                      ) -> tuple[str | None, str | None]:
+    """What a build will actually use, the environment override included.
+
+    `resolve()` answers what the registry says. This answers what runs,
+    and the two differ whenever ARM_TOOLCHAIN_DIR is set - which the
+    CMake toolchain file honours ahead of the registry. Anything that
+    reports, gates on, or reads a tool alongside a build must use this
+    one, or it names a compiler that never ran.
+
+    That is not hypothetical. Inside the build container the registry
+    resolves arm_toolchain to `{repo}/tools/xpack-*/bin`, because the
+    repository is bind-mounted and that pattern is first on Linux; the
+    image supplies its own at /opt and states it in ARM_TOOLCHAIN_DIR.
+    A report built on `resolve()` alone printed the mounted host path
+    while the compiler that ran was the image's.
+    """
+    if tool == "arm_toolchain":
+        env = os.environ.get("ARM_TOOLCHAIN_DIR")
+        if env and os.path.isdir(env):
+            directory = env.replace("\\", "/")
+            spec = (reg if reg is not None else load())["tools"].get(tool, {})
+            return directory, _has_exe(directory, spec.get("requires", tool))
+    return resolve(tool, reg)
+
+
 def arm_toolchain_dir() -> str | None:
     """The one tool with an environment override, because CMake has one too."""
-    env = os.environ.get("ARM_TOOLCHAIN_DIR")
-    if env and os.path.isdir(env):
-        return env.replace("\\", "/")
-    return resolve("arm_toolchain")[0]
+    return resolve_effective("arm_toolchain")[0]
 
 
 def main() -> int:
@@ -110,7 +133,7 @@ def main() -> int:
 
     reg = load()
     if args.dir or args.exe:
-        directory, exe = resolve(args.dir or args.exe, reg)
+        directory, exe = resolve_effective(args.dir or args.exe, reg)
         found = directory if args.dir else exe
         if not found:
             print(f"not found: {args.dir or args.exe}", file=sys.stderr)
@@ -129,11 +152,16 @@ def main() -> int:
     # `cmake --build build --target tools` down with it.
     missing = 0
     for name, spec in reg["tools"].items():
-        directory, _ = resolve(name, reg)
+        directory, _ = resolve_effective(name, reg)
         optional = bool(spec.get("optional"))
         if directory is None and not optional:
             missing += 1
         mark = "" if directory else ("  (optional)" if optional else "")
+        # Say when the answer did not come from the registry, so a
+        # report that disagrees with the search order reads as an
+        # override rather than as a bug in the search order.
+        if directory and directory != resolve(name, reg)[0]:
+            mark = "  (ARM_TOOLCHAIN_DIR)"
         print(f"{name:15} {directory or '-- NOT FOUND --'}{mark}")
         if directory is None:
             print(f"{'':15} {spec.get('what', '')}")

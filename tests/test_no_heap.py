@@ -78,7 +78,11 @@ def _nm():
         # "arm_toolchain" is the registry's name for it, and the entry
         # resolves to the bin directory plus the gcc inside it. nm is
         # its sibling; asking for "arm-none-eabi-gcc" raises KeyError.
-        bindir, _gcc = toolchain.resolve("arm_toolchain")
+        #
+        # resolve_effective, not resolve: this nm reads an ELF that a
+        # compiler produced, so it must come from the same toolchain
+        # that produced it. In the container those differ.
+        bindir, _gcc = toolchain.resolve_effective("arm_toolchain")
         for name in ("arm-none-eabi-nm", "arm-none-eabi-nm.exe"):
             cand = os.path.join(bindir, name)
             if os.path.exists(cand):
