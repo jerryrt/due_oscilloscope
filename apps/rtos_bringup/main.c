@@ -760,6 +760,16 @@ static void c_dac_sweep(const uint32_t *a) { (void)a; console_cmd_dac_rate_sweep
 static void c_dac_15m(const uint32_t *a)   { (void)a; console_cmd_dac_crosscheck(1500000); }
 static void c_dac_30m(const uint32_t *a)   { (void)a; console_cmd_dac_crosscheck(3000000); }
 
+/*
+ * `w` and `E`. `E` is not a shared body and must not become one: it
+ * reports what THIS track's USB stack knows, and Track A's reports the
+ * Arduino core's endpoint bookkeeping instead. Track C links this
+ * driver unchanged, so it gets Track B's answer because it is running
+ * Track B's stack.
+ */
+static void c_uart_stream(const uint32_t *a) { (void)a; console_cmd_stream_uart(2000); }
+static void c_epstate(const uint32_t *a)     { (void)a; usb_cdc_endpoint_state(); }
+
 static void c_mimic_gap(const uint32_t *a)
 {
 	mimic_start_delay_us = a[0];
@@ -799,7 +809,7 @@ const console_binding_t console_bindings[] = {
 	{ 'e', c_temp  },       { 'K', c_mimic_gap },   { 'S', c_stall },
 	{ 'p', c_printf },      { 'g', c_gpio },        { 'r', c_read },
 	{ 's', c_sweep },       { 'd', c_dac_sweep },   { 'j', c_dac_15m },
-	{ 'k', c_dac_30m },
+	{ 'k', c_dac_30m },     { 'w', c_uart_stream }, { 'E', c_epstate },
 	{ 0,   NULL    },
 };
 

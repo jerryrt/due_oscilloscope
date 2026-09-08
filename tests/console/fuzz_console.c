@@ -347,6 +347,14 @@ uint32_t console_port_gen_endtx_count(void) { return 0; }
 uint32_t console_port_gen_configured_rc(void) { return 0; }
 uint32_t console_port_gen_table_len(void) { return 512u; }
 
+/* `w`: refuses, so the harness prints the banner and the refusal and
+ * never starts a framer it has no wire for. */
+bool console_port_stream_uart_start(uint32_t trigger_hz)
+{
+	(void)trigger_hz;
+	return false;
+}
+
 
 void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 {

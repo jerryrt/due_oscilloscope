@@ -319,26 +319,6 @@ static void cmd_crosstalk(void)
 
 
 /*
- * Stream over the programming-port UART. Bandwidth-limited: 115200 baud
- * carries about 11.5 kB/s, so 2 kHz of trigger (2 channels, 2 bytes)
- * at 8 kB/s fits with margin. ASCII output must stay silent while this
- * runs, since frames and logs share the one port here.
- */
-static void cmd_stream_uart(uint32_t trigger_hz)
-{
-	if (!stream_start_uart(trigger_hz)) {
-		con_str("# refused"); con_nl();
-		uart_flush();
-		return;
-	}
-	con_str("# uart-stream: trigger "); con_u32(trigger_hz);
-	con_str(" Hz, "); con_str(gen_shape_name(gen_shape)); con_ch(' ');
-	con_u32(gen_hz_for(trigger_hz, gen_points, gen_sync));
-	con_str(" Hz - binary follows"); con_nl();
-	uart_flush();
-}
-
-/*
  * console_gen_report() and console_cmd_stream() are shared -
  * lib/due_shared/src/console_cmds.c. This track supplies
  * console_port_stream_start() below.
@@ -632,43 +612,6 @@ void console_port_stall(uint32_t ms)
 /* console_trigger_fault() is shared - lib/due_shared/src/console_cmds.c */
 
 /*
- * Endpoint state, readable while a stream is running. The banner
- * reports CFGOK once, at boot; this asks whether the sample endpoints
- * are still configured *during* a capture, once AUTOSW writes and
- * control-endpoint re-allocations have run against each other for a
- * while (any write to UOTGHS_DEVEPTCFG re-allocates that endpoint's
- * DPRAM - see CLAUDE.md). CFGOK is the controller's own answer to
- * "did the allocation take", rather than guessing at DPRAM arithmetic.
- *
- * EPEN and CFGOK are different questions and both are printed: CFGOK
- * describes a configuration, DEVEPT says which endpoints are actually
- * enabled, and an endpoint can read configured while disabled.
- */
-static void cmd_endpoint_state(void)
-{
-	char ok[8];
-
-	for (unsigned e = 0; e < 7; e++)
-		ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
-		         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
-	ok[7] = 0;
-
-	con_str("# ep cfgok[0..6]="); con_str(ok);
-	con_str(" devept=");  con_hex32(UOTGHS->UOTGHS_DEVEPT, 8);
-	con_str(" devctrl="); con_hex32(UOTGHS->UOTGHS_DEVCTRL, 8);
-	con_nl();
-	con_str("# epcfg: ");
-	for (unsigned e = 0; e < 7; e++) {
-		con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[e], 8);
-		if (e == 6)
-			con_nl();
-		else
-			con_ch(' ');
-	}
-	uart_flush();
-}
-
-/*
  * The command layer.
  *
  * The *surface* - which letters are commands, what arguments they
@@ -702,7 +645,7 @@ static void h_ratesweep(const uint32_t *a)
 static void h_dac_sweep(const uint32_t *a) { (void)a; console_cmd_dac_rate_sweep(); }
 static void h_dac_15m(const uint32_t *a)   { (void)a; console_cmd_dac_crosscheck(1500000); }
 static void h_dac_30m(const uint32_t *a)   { (void)a; console_cmd_dac_crosscheck(3000000); }
-static void h_epstate(const uint32_t *a)   { (void)a; cmd_endpoint_state(); }
+static void h_epstate(const uint32_t *a)   { (void)a; usb_cdc_endpoint_state(); }
 
 static void h_s50(const uint32_t *a)  { (void)a; console_cmd_stream(50000); }
 static void h_s100(const uint32_t *a) { (void)a; console_cmd_stream(100000); }
@@ -731,7 +674,7 @@ static void h_stop(const uint32_t *a)
 
 static void h_stats(const uint32_t *a) { (void)a; stream_report(); }
 static void h_usb(const uint32_t *a)   { (void)a; usb_cdc_dump(); ctl_dump(); }
-static void h_uart_stream(const uint32_t *a) { (void)a; cmd_stream_uart(2000); }
+static void h_uart_stream(const uint32_t *a) { (void)a; console_cmd_stream_uart(2000); }
 
 static void h_flood(const uint32_t *a)
 {

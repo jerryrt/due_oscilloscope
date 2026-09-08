@@ -698,3 +698,39 @@ void console_cmd_dac_crosscheck(uint32_t dac_hz)
 	con_nl();
 	console_flush();
 }
+
+
+/*
+ * `w`: the capture stream over the programming-port UART.
+ *
+ * The banner names the waveform the same way `1`..`5` do, and through
+ * the same accessor, so the two cannot describe one generator
+ * differently. It goes out BEFORE the start for the reason
+ * console_cmd_stream() gives at length: capture is device-driven and
+ * the ring fills the moment the timer runs.
+ *
+ * Except it did not, on either track: both printed after the start.
+ * That is safe here in a way it is not elsewhere - 2 kHz is a hundredth
+ * of the rate the runway was priced at - but it is the same ordering
+ * written the wrong way twice, and one body is how it stops being a
+ * thing to remember.
+ */
+void console_cmd_stream_uart(uint32_t trigger_hz)
+{
+	ctl_gen_t g;
+	bool have_gen = ctl_port_gen_get(&g);
+
+	con_str("# uart-stream: trigger "); con_u32(trigger_hz);
+	if (have_gen) {
+		con_str(" Hz, "); con_str(gen_shape_name(g.shape)); con_ch(' ');
+		con_u32(gen_hz_for(trigger_hz, g.points, g.sync));
+		con_str(" Hz");
+	}
+	con_str(" - binary follows"); con_nl();
+	console_flush();
+
+	if (!console_port_stream_uart_start(trigger_hz)) {
+		con_str("# refused"); con_nl();
+		console_flush();
+	}
+}

@@ -448,19 +448,6 @@ static void cmd_crosstalk(void)
  */
 /* console_gen_report() is shared - lib/due_shared/src/console_cmds.c */
 
-static void cmd_stream_uart(uint32_t trigger_hz)
-{
-	if (!stream_start_uart(trigger_hz)) {
-		con_str("# refused"); con_nl();
-		console_flush();
-		return;
-	}
-	con_str("# uart-stream: trigger "); con_u32(trigger_hz);
-	con_str(" Hz, "); con_str(gen_shape_name(gen_shape)); con_ch(' ');
-	con_u32(gen_hz_for(trigger_hz, gen_points, gen_sync));
-	con_str(" Hz - binary follows"); con_nl();
-	console_flush();
-}
 
 static void cmd_stream_stats(void)
 {
@@ -1125,7 +1112,7 @@ static void ha_usb(const uint32_t *a)
 static void ha_uart_stream(const uint32_t *a)
 {
 	(void)a;
-	cmd_stream_uart(2000);
+	console_cmd_stream_uart(2000);
 }
 
 static void ha_flood(const uint32_t *a)

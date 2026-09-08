@@ -1159,3 +1159,40 @@ void usb_cdc_dump(void)
 	con_nl();
 	uart_flush();
 }
+
+/*
+ * Endpoint state, readable while a stream is running. The banner
+ * reports CFGOK once, at boot; this asks whether the sample endpoints
+ * are still configured *during* a capture, once AUTOSW writes and
+ * control-endpoint re-allocations have run against each other for a
+ * while (any write to UOTGHS_DEVEPTCFG re-allocates that endpoint's
+ * DPRAM - see CLAUDE.md). CFGOK is the controller's own answer to
+ * "did the allocation take", rather than guessing at DPRAM arithmetic.
+ *
+ * EPEN and CFGOK are different questions and both are printed: CFGOK
+ * describes a configuration, DEVEPT says which endpoints are actually
+ * enabled, and an endpoint can read configured while disabled.
+ */
+void usb_cdc_endpoint_state(void)
+{
+	char ok[8];
+
+	for (unsigned e = 0; e < 7; e++)
+		ok[e] = (UOTGHS->UOTGHS_DEVEPTISR[e]
+		         & UOTGHS_DEVEPTISR_CFGOK) ? '1' : '0';
+	ok[7] = 0;
+
+	con_str("# ep cfgok[0..6]="); con_str(ok);
+	con_str(" devept=");  con_hex32(UOTGHS->UOTGHS_DEVEPT, 8);
+	con_str(" devctrl="); con_hex32(UOTGHS->UOTGHS_DEVCTRL, 8);
+	con_nl();
+	con_str("# epcfg: ");
+	for (unsigned e = 0; e < 7; e++) {
+		con_hex32(UOTGHS->UOTGHS_DEVEPTCFG[e], 8);
+		if (e == 6)
+			con_nl();
+		else
+			con_ch(' ');
+	}
+	uart_flush();
+}

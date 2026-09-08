@@ -174,6 +174,11 @@ void     console_port_stall(uint32_t ms);
  * converter, which is what the oracle is for - but it is exactly why
  * a shared body cannot include either header.
  */
+/* `w`'s start. Separate from console_port_stream_start() because the
+ * sink is the UART rather than the bulk endpoint, which is a different
+ * framer path on both tracks and not a parameter of one. */
+bool console_port_stream_uart_start(uint32_t trigger_hz);
+
 /*
  * The internal generator driven on its OWN timebase - TIOA1 rather than
  * the ADC's TIOA0 - which is what `d`, `j` and `k` measure the DACC

@@ -16,6 +16,25 @@
 
 void   usb_cdc_init(void);
 void   usb_cdc_dump(void);
+
+/*
+ * `E`: endpoint configuration as the controller holds it, readable
+ * while a stream is running.
+ *
+ * NOT shared with Track A, deliberately, and it is the console's
+ * version of the per-track opcodes on the control channel. Track A
+ * enumerates through the Arduino core and its `E` reports the core's
+ * own bookkeeping - ctlusb_reallocs, ctlusb_cfg_fail, the EndPoints[]
+ * table USBCore scans - none of which exists here. This one reports
+ * what THIS stack knows. Two tracks answering one letter about two
+ * different USB stacks is the honest arrangement; two tracks answering
+ * it with one hand-copied body would not be.
+ *
+ * It lives beside usb_cdc_dump() because Track C links this driver
+ * unchanged and needs the same answer, and a second copy in Track C's
+ * main() is exactly the hand-copy invariant 3 was rescoped over.
+ */
+void   usb_cdc_endpoint_state(void);
 void   usb_cdc_poll(void);
 
 /* True once the host has configured the device and raised DTR. */

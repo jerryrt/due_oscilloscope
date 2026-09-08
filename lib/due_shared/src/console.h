@@ -130,6 +130,16 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*
+ * `w`: stream frames over the programming-port UART instead of USB.
+ *
+ * Bandwidth-limited and deliberately so - 115200 baud carries about
+ * 11.5 kB/s, and 2 kHz of trigger on two channels is 8 kB/s. ASCII
+ * output must stay silent while it runs, since frames and logs share
+ * the one port.
+ */
+void console_cmd_stream_uart(uint32_t trigger_hz);
+
+/*
  * `d`, `j` and `k`: the DACC's own update-rate ceiling, and the
  * cross-check that reads it as an emitted frequency rather than as a
  * PDC completion count.

@@ -212,3 +212,9 @@ uint32_t console_port_gen_table_len(void)
 {
 	return GEN_TABLE_LEN;
 }
+
+
+bool console_port_stream_uart_start(uint32_t trigger_hz)
+{
+	return stream_start_uart(trigger_hz);
+}
