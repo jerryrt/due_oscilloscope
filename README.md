@@ -28,6 +28,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/frontend.md](docs/frontend.md) | Front end architecture: daemon, GUI, recording |
 | [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
 | [docs/hardware-next.md](docs/hardware-next.md) | Options for a more powerful successor |
+| [docs/stack-depth.md](docs/stack-depth.md) | Worst-case stack depth: the bounds, and what refuses to be guessed |
 | [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
 | [docs/windows.md](docs/windows.md) | Windows validation: 0c settled, byte loss is macOS's |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Commit conventions |
