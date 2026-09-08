@@ -59,8 +59,16 @@ message(STATUS "ARM toolchain: ${ARM_TOOLCHAIN_DIR}")
 set(CMAKE_C_COMPILER   "${ARM_TOOLCHAIN_DIR}/arm-none-eabi-gcc${_exe}")
 set(CMAKE_CXX_COMPILER "${ARM_TOOLCHAIN_DIR}/arm-none-eabi-g++${_exe}")
 set(CMAKE_ASM_COMPILER "${ARM_TOOLCHAIN_DIR}/arm-none-eabi-gcc${_exe}")
-set(CMAKE_OBJCOPY      "${ARM_TOOLCHAIN_DIR}/arm-none-eabi-objcopy${_exe}" CACHE FILEPATH "")
-set(CMAKE_SIZE         "${ARM_TOOLCHAIN_DIR}/arm-none-eabi-size${_exe}"    CACHE FILEPATH "")
+# FORCE, because a plain CACHE set is a no-op once the entry exists and
+# these two would then outlive the ARM_TOOLCHAIN_DIR they were derived
+# from. A configure that resolved the wrong toolchain leaves objcopy and
+# size pinned to it, and re-configuring with the right one does not
+# repair them: the compile succeeds and the LINK fails, naming a tool
+# nobody has just changed. Measured on mac-bench in the build container.
+# Deleting the build directory was the only cure, and the clean-build
+# wrapper does not do that - it cleans artifacts, not the cache.
+set(CMAKE_OBJCOPY      "${ARM_TOOLCHAIN_DIR}/arm-none-eabi-objcopy${_exe}" CACHE FILEPATH "" FORCE)
+set(CMAKE_SIZE         "${ARM_TOOLCHAIN_DIR}/arm-none-eabi-size${_exe}"    CACHE FILEPATH "" FORCE)
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
