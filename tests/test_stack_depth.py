@@ -220,6 +220,57 @@ def test_a_function_reached_only_indirectly_is_not_a_root(tmp_path):
         "once the indirect edge resolves, the handler has a caller")
 
 
+# --- the tracked claims ----------------------------------------------------
+
+def test_declarations_are_read_per_track(tmp_path):
+    """One file, three tracks; a track gets its own lines and no others."""
+    f = tmp_path / "d.list"
+    f.write_text("b indirect console.c:260 console_bindings  # a table\n"
+                 "c indirect timers.c none\n"
+                 "\n"
+                 "# a whole-line comment\n"
+                 "b leaf vendor_blob 16\n")
+    assert sd.read_declarations(str(f), "b") == [
+        ("indirect", "console.c:260", "console_bindings"),
+        ("leaf", "vendor_blob", "16")]
+    assert sd.read_declarations(str(f), "c") == [
+        ("indirect", "timers.c", "none")]
+    assert sd.read_declarations(str(f), "a") == []
+
+
+def test_a_malformed_declaration_stops_rather_than_being_skipped(tmp_path):
+    """A skipped line is a claim nobody made being treated as one nobody
+    needed - the site it was meant to cover silently goes back to being
+    refused, or worse, another line's spec reaches it."""
+    f = tmp_path / "d.list"
+    f.write_text("b indirect console.c:260\n")          # three fields, not four
+    with pytest.raises(ValueError) as exc:
+        sd.read_declarations(str(f), "b")
+    assert "d.list:1" in str(exc.value), "name the line, not just the file"
+
+    f.write_text("b nonsense console.c:260 x\n")
+    with pytest.raises(ValueError):
+        sd.read_declarations(str(f), "b")
+
+
+def test_the_committed_declarations_parse(tmp_path):
+    """The file in the tree is the one the canonical invocation reads.
+
+    A syntax error in it would surface as a build-report failure on
+    whichever bench ran next, which is a long way from the commit that
+    caused it.
+    """
+    for track, want in (("b", True), ("c", True), ("a", False)):
+        got = sd.read_declarations(sd.DECLARATIONS, track)
+        assert bool(got) is want, (
+            f"track {track}: {'expected' if want else 'expected no'} "
+            f"declarations, got {got}")
+    b = dict((k, v) for _kind, k, v in
+             sd.read_declarations(sd.DECLARATIONS, "b"))
+    assert b.get("console.c:260") == "console_bindings", (
+        "the console dispatch must resolve exactly, not by assertion")
+
+
 # --- the diagram ------------------------------------------------------------
 
 def _graph_fixture(tmp_path):

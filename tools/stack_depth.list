@@ -1,0 +1,61 @@
+# What each indirect call site reaches, per track, for tools/stack_depth.py.
+#
+# HAND-WRITTEN, and the opposite of tools/stream_seam.list in one
+# important way: that file is generated from the source and a test holds
+# it equal to a fresh extraction. This one cannot be. Every line here is
+# a CLAIM about what a function pointer can point at, made by a person,
+# and no extraction can confirm it - which is exactly why it is tracked
+# rather than retyped into a shell each time. A claim in shell history
+# is a claim nobody can review.
+#
+# Format, whitespace separated, `#` to end of line is a comment:
+#
+#     <track>  indirect  <location substring>  <table|noreturn|none>
+#     <track>  leaf      <symbol>              <bytes>
+#
+# `indirect` specs, in descending order of how much they are worth:
+#
+#   <symbol>   a const dispatch table. EXACT - the tool reads the array
+#              out of the linked ELF, masks the Thumb bit and maps the
+#              addresses back through the symbol table, so the target
+#              set is re-derived from every build and cannot drift from
+#              the source the way an annotation can.
+#   noreturn   the site does not come back, so it contributes no chain.
+#   none       no target is ever registered. The weakest of the three
+#              and the only one resting on nothing but the writer: it
+#              needs a reason on the line, and the reason needs to name
+#              what would falsify it.
+#
+# A site with no line here is REFUSED, not assumed. That is the point of
+# the file: adding a function pointer to this firmware breaks the build
+# report until somebody says what it reaches.
+
+# --- Track B -----------------------------------------------------------
+# The console's 50-letter dispatch. `console_bindings` is `const`, so the
+# table is in .rodata and resolves exactly: 50 entries, 50 targets, 0
+# unknown.
+b  indirect  console.c:260        console_bindings
+# `f` proves the fault handler by branching to an address that is not
+# code. It faults rather than returning, so there is no chain past it.
+b  indirect  console_cmds.c:44    noreturn
+
+# --- Track C -----------------------------------------------------------
+# Same two, from the same shared source.
+c  indirect  console.c:260        console_bindings
+c  indirect  console_cmds.c:44    noreturn
+# FreeRTOS's software-timer dispatch, three sites in timers.c. This build
+# sets configUSE_TIMERS 1 - so the timer task exists and the callback
+# call sites are compiled - but nothing anywhere calls xTimerCreate, so
+# no callback is ever registered and the list the sites walk is empty.
+#
+# WHAT WOULD FALSIFY THIS: the first xTimerCreate() in apps/rtos_bringup.
+# At that point this line is wrong and the honest replacement is a table
+# spec naming wherever the callbacks come from, or nothing at all - and
+# the tool refusing is the correct outcome until one exists.
+c  indirect  timers.c             none
+
+# --- Track A -----------------------------------------------------------
+# Nothing yet. The vendored Arduino core is a separate CMake target
+# compiled `-w`, so -fcallgraph-info does not reach track_a_core and the
+# graph would be missing every core function rather than merely
+# unresolved. Named here so the gap is visible rather than implied.

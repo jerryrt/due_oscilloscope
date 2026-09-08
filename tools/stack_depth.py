@@ -114,6 +114,40 @@ _FRAME = re.compile(r"\\n(\d+) bytes \((?P<qual>[^)]*)\)")
 INDIRECT = "__indirect_call"
 
 
+#: The tracked claims. Read by default so the canonical invocation is
+#: short and the declarations are reviewable, rather than living in
+#: whoever-ran-it-last's shell history.
+DECLARATIONS = os.path.join(os.path.dirname(HERE), "tools", "stack_depth.list")
+
+
+def read_declarations(path, track):
+    """[(kind, key, value)] for `track`, from the tracked list.
+
+    Missing file is not an error: a bench analysing a tree without one
+    can still pass every declaration on the command line. A file that
+    exists and cannot be parsed IS an error, because a silently skipped
+    line is a claim nobody made being treated as one nobody needed.
+    """
+    out = []
+    if not os.path.exists(path):
+        return out
+    with open(path, encoding="utf-8") as fh:
+        for n, raw in enumerate(fh, 1):
+            line = raw.split("#", 1)[0].strip()
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) != 4:
+                raise ValueError(f"{path}:{n}: want "
+                                 f"'<track> <kind> <key> <value>', got {line!r}")
+            trk, kind, key, value = parts
+            if kind not in ("indirect", "leaf"):
+                raise ValueError(f"{path}:{n}: unknown kind {kind!r}")
+            if trk == track:
+                out.append((kind, key, value))
+    return out
+
+
 def _short(path):
     """The source path relative to the working directory where that is
     shorter. GCC writes whatever path it was handed, which under CMake is
@@ -472,6 +506,62 @@ def emit_graph(g, frames, below, floor, edges, keep, critical, fmt, deepest_of):
     print("```")
 
 
+def _record(args, g, frames, rows, state, sites, targets, files,
+            indirect_by_src, title_of):
+    """The row a report is generated from. Schema version travels with it."""
+    import hashlib
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), "host"))
+    prov, cc = {}, "unknown"
+    try:
+        import provenance
+        prov = provenance.collect()
+    except Exception:                                        # noqa: BLE001
+        prov = {}
+    if args.elf:
+        try:
+            import image_fingerprint
+            cc = image_fingerprint.compiler(args.elf)
+        except Exception:                                    # noqa: BLE001
+            cc = "unknown"
+
+    # WITH the resolved indirect edges. Computing this on an empty map
+    # silently drops the console dispatch and every figure below
+    # console_feed comes out too small - which is the under-report this
+    # whole tool exists to refuse, arriving through the back door of a
+    # convenience argument.
+    below = cost_below(g, frames, indirect_by_src, title_of)
+    sha = None
+    if args.elf and os.path.exists(args.elf):
+        with open(args.elf, "rb") as fh:
+            sha = hashlib.sha256(fh.read()).hexdigest()[:16]
+
+    return {
+        "schema": "stack-depth/1",
+        "tool": "tools/stack_depth.py",
+        "track": args.track,
+        "state": state,
+        "bench": prov.get("bench"),
+        "repo_rev": prov.get("repo_rev"),
+        "host_os": prov.get("host_os"),
+        "taken_at": prov.get("taken_at"),
+        "elf": os.path.basename(args.elf) if args.elf else None,
+        "elf_sha256": sha,
+        "cc": cc,
+        "ci_files": files,
+        "functions": len(g.frame),
+        "indirect_sites": len(sites),
+        "indirect_targets": len(targets),
+        "declarations": os.path.relpath(args.declarations,
+                                        os.path.dirname(HERE))
+                        if args.track else None,
+        "roots": [{"root": r, "bytes": b,
+                   "chain": [{"function": g.name.get(t, t),
+                              "frame": frames[t],
+                              "below": below.get(t, frames[t])} for t in c]}
+                  for b, r, c in rows],
+    }
+
+
 def roots_of(g, named, indirect_by_src, title_of):
     """Explicitly named roots, else every node nothing calls.
 
@@ -504,6 +594,16 @@ def main(argv=None):
                     help="build directories to scan (default: build)")
     ap.add_argument("--elf", help="the linked image, for dispatch tables and "
                                   "library leaf frames")
+    ap.add_argument("--track", choices=("a", "b", "c"),
+                    help="read this track's declarations from "
+                         "tools/stack_depth.list, which is where they belong: "
+                         "they are claims, and a claim in shell history is a "
+                         "claim nobody can review")
+    ap.add_argument("--declarations", default=DECLARATIONS, metavar="PATH",
+                    help="where those live (default: tools/stack_depth.list)")
+    ap.add_argument("--record", action="store_true",
+                    help="emit one provenance-stamped JSON row describing this "
+                         "IMAGE, for records/ and tools/stack_report.py")
     ap.add_argument("--indirect", action="append", default=[],
                     metavar="LOC=SPEC",
                     help="what one indirect call site reaches, matched on its "
@@ -539,6 +639,21 @@ def main(argv=None):
         print(f"no such build directory: {', '.join(missing)}", file=sys.stderr)
         return 2
 
+    # The tracked claims first: everything below consumes them, and a
+    # bad line is a hard stop rather than a silently skipped declaration.
+    want, declared_leaf_specs = [], []
+    if args.track:
+        try:
+            for kind, key, value in read_declarations(args.declarations,
+                                                      args.track):
+                if kind == "leaf":
+                    declared_leaf_specs.append(f"{key}={value}")
+                else:
+                    want.append((key, value))
+        except (OSError, ValueError) as exc:
+            print(f"{exc}", file=sys.stderr)
+            return 2
+
     g, files = parse(args.build)
     if not files:
         # A report that prints nothing and exits 0 is the guard that cannot
@@ -550,7 +665,7 @@ def main(argv=None):
 
     frames = dict(g.frame)
     declared = {}
-    for spec in args.leaf:
+    for spec in list(declared_leaf_specs) + list(args.leaf):
         sym, _, val = spec.partition("=")
         if not val.isdigit():
             print(f"--leaf wants SYM=BYTES, got {spec!r}", file=sys.stderr)
@@ -586,7 +701,6 @@ def main(argv=None):
         if dst == INDIRECT:
             indirect_sites.extend((src, loc) for loc in locs)
 
-    want = []
     for spec in args.indirect:
         loc, _, how = spec.partition("=")
         if not how:
@@ -682,6 +796,21 @@ def main(argv=None):
     rows.sort(key=lambda r: -r[0])
 
     state = "exact" if exact_indirect else "upper bound"
+
+    if args.record:
+        # ONE ROW, DESCRIBING AN IMAGE, and that is why it does not use
+        # provenance.run_fields(): that reads a *board* to label a run,
+        # and nothing here has one. What makes this row attributable is
+        # the ELF - its sha256 and the compiler out of .comment, which is
+        # the producer that actually made these frames rather than the one
+        # PATH would use next. `bench` and `repo_rev` come from
+        # host/provenance.py, which requires a bench: an undeclared bench
+        # cannot record, here as everywhere else.
+        print(json.dumps(_record(args, g, frames, rows, state,
+                                 indirect_sites, all_targets, files,
+                                 indirect_by_src, title_of),
+                         sort_keys=True))
+        return 0
 
     if args.dot or args.mermaid:
         # AFTER the refusals, deliberately. A diagram is an output like any
