@@ -41,6 +41,35 @@ VID = 0x2341
 PID_CONSOLE = 0x003D                  # programming port, via the 16U2
 PID_NATIVE = 0x003E                   # native port, the SAM3X's own USB
 
+# Why discovery cannot enumerate at all, or None. A missing pyserial and
+# an empty bench used to be the same return value - three Nones - and
+# the documented first move against a board that looks dead is to bounce
+# the native port and reflash it. That is the GPNVM trap one layer up:
+# the cheap fact that would have stopped it is one line, so say it.
+_no_enumeration = None
+
+PYSERIAL_HINT = (
+    "pyserial is not installed for this interpreter, so no serial port "
+    "can be enumerated and no board can be found however many are "
+    "attached. Run host/ tools from the venv - .venv/bin/python - or "
+    "install the dependency: pip install -r requirements-dev.txt"
+)
+
+
+def pyserial_missing():
+    """The import error that stopped enumeration, or None.
+
+    Callers keep their empty result - nothing here starts raising, and
+    the daemon, the suite and docker/run-ci.sh all treat an empty bench
+    as a legitimate state. This is how one of them tells "nothing is
+    attached" from "nothing can be seen" when it wants to know.
+
+    None until discovery has been attempted at least once, because the
+    import is lazy and answering before it has been tried would be a
+    guess.
+    """
+    return _no_enumeration
+
 
 def answers_banner(dev, timeout=1.5):
     """Does this node produce the firmware banner?
@@ -139,8 +168,21 @@ def _pyserial_nodes():
     Note that pyserial's `hwid` does NOT carry the MI_00 that the Win32
     DeviceID has, so matching on that substring finds nothing here.
     """
+    global _no_enumeration
     try:
         from serial.tools import list_ports
+    except ImportError as e:
+        # NOT the same as an enumeration that answered with nothing.
+        # This interpreter cannot look at all, and every caller above
+        # would otherwise read that as an empty bench - which reads in
+        # turn as dead firmware, and the response to dead firmware here
+        # is to bounce the port and reflash. Said once per process, on
+        # stderr so nothing parsing stdout changes shape.
+        if _no_enumeration is None:
+            _no_enumeration = str(e)
+            print(f"host/ports.py: {PYSERIAL_HINT} ({e})", file=sys.stderr)
+        return []
+    try:
         out = []
         for p in list_ports.comports():
             iface = None
@@ -240,6 +282,11 @@ def find_all_ports(wait=8.0):
             return (ctl,
                     rest[0] if rest else None,
                     rest[1] if len(rest) > 1 else None)
+        if _no_enumeration is not None:
+            # Nothing can be enumerated, so waiting for a board to
+            # appear is eight seconds spent watching a blind eye. Same
+            # return shape; pyserial_missing() carries the reason.
+            return None, None, None
         if time.time() >= end:
             return None, None, None
         time.sleep(0.5)
@@ -250,4 +297,12 @@ if __name__ == "__main__":
     print(f"control = {c}")
     print(f"native  = {n}")
     print(f"command = {cmd}")
+    # Three statuses, because there are three outcomes and the middle
+    # one used to wear the last one's clothes. 0 found it, 1 looked and
+    # the bench is empty - unchanged, and the common case - and 2 could
+    # not look, which _pyserial_nodes() has already explained on stderr.
+    # The stdout lines keep their shape either way: docs/toolchain.md
+    # pipes them through awk.
+    if pyserial_missing() is not None:
+        sys.exit(2)
     sys.exit(0 if c else 1)

@@ -9,6 +9,9 @@ fallback is sane, because the fallback is what runs anywhere IOKit is
 not available and nothing else in the suite would exercise it.
 """
 
+import sys
+import time
+
 import ports
 import pytest
 
@@ -82,3 +85,41 @@ def test_usb_interfaces_survives_an_unreadable_enumeration(monkeypatch):
     else:
         monkeypatch.setattr(ports, "_pyserial_nodes", boom)
     assert ports.usb_interfaces() == {}
+
+
+def test_missing_pyserial_is_not_an_empty_bench(monkeypatch):
+    """A dependency this interpreter lacks must not read as no board.
+
+    The two used to be one answer - three Nones - and the documented
+    response to a board that looks dead is to bounce the native port and
+    reflash it. So discovery keeps its empty return, and says on stderr
+    and through pyserial_missing() that it could not look.
+    """
+    monkeypatch.setattr(ports, "_no_enumeration", None)
+    monkeypatch.setitem(sys.modules, "serial", None)
+    monkeypatch.setitem(sys.modules, "serial.tools", None)
+
+    assert ports._pyserial_nodes() == []
+    assert ports.pyserial_missing() is not None
+
+    # And it does not spend the wait, because no amount of waiting
+    # gives this interpreter a pyserial.
+    t0 = time.monotonic()
+    assert ports.find_all_ports(wait=30.0) == (None, None, None)
+    assert time.monotonic() - t0 < 5.0
+
+
+def test_an_empty_bench_stays_quiet(monkeypatch, capsys):
+    """No board attached is a legitimate state and reports as one.
+
+    The control for the test above: with pyserial importable, an empty
+    enumeration must not cry dependency, must print nothing, and must
+    still return three Nones.
+    """
+    monkeypatch.setattr(ports, "_no_enumeration", None)
+    monkeypatch.setattr(ports, "_pyserial_nodes", lambda: [])
+    capsys.readouterr()
+
+    assert ports.find_all_ports(wait=0.0) == (None, None, None)
+    assert ports.pyserial_missing() is None
+    assert capsys.readouterr().err == ""
