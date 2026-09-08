@@ -169,7 +169,10 @@ and LF free.
 
 `console_missing()` computes the parity list from the binding table, so
 the count is never again something anyone holds in their head. Both
-tracks now print `not implemented on this track: none`.
+tracks printed `not implemented on this track: none` from this phase,
+and all three do from 2026-09-08 - Track C arrived at 17 letters of 49
+and was brought level, which is what that line is for: the gap was a
+number the board reported rather than one anybody had to count.
 
 **The load monitor moved for a different reason and it is worth keeping
 the two apart.** `load.c` is an instrument, not a surface. The only

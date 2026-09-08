@@ -63,14 +63,25 @@ pytest --track=b --durations=25
 that flashes once and yields a `Board`. Markers: `smoke`, `slow`,
 `awg`, `scope`, `track_a`, `track_b`.
 
-**`both` means A and B, deliberately - Track C is opt-in.** It is
-excluded from the default until it passes, so that a track still
-growing its command surface cannot turn every bench's suite red. Most
-of what fails there today is one cause counted many times: a test
-drives a console letter Track C does not bind, which is a capability
-gap rather than evidence about the test's subject. Run it with
-`--track=c` when working on it, and do not read its totals as an
-oracle result.
+**`both` means A and B, deliberately - Track C is opt-in.** The
+original reason was that a track still growing its command surface
+would turn every bench's suite red, and that reason has expired: Track
+C binds the whole console table and passes the board suite with the
+same count as Track B. What keeps it out of the default now is only
+cost - three flashes and three nine-minute runs where two will do - and
+the standing rule that its totals are not an oracle result, because it
+links Track B's drivers unchanged and so cannot disagree with Track B
+about a register.
+
+The old wording said most of what failed there was "a test drives a
+console letter Track C does not bind, which is a capability gap rather
+than evidence about the test's subject". Half of that was right and the
+half that was wrong cost the most: the letters were the cause, but two
+of them - `l` and `S` - are the load monitor's own controls, so the
+failures they produced were evidence about the test's subject exactly.
+`=1l` is the clear, and with the letter unbound every run read the same
+since-boot maximum. A capability gap in an instrument is not the same
+kind of gap as one in a feature.
 
 **Quote a duration with its bench and its commit, or do not quote it.**
 The slowest bench was once slowest because of a defect, so a
