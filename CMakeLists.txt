@@ -34,6 +34,9 @@ set(DEVICE ${CMSIS}/Device/ATMEL/sam3xa)
 #     -DFIRMWARE_ANALYZER=ON       GCC's symbolic execution pass
 #     -DFIRMWARE_STACK_USAGE=ON    a .su per object, read by
 #                                  tools/stack_frames.py
+#     -DFIRMWARE_CALLGRAPH=ON      a .ci per object - the same frame
+#                                  sizes PLUS the call edges between
+#                                  them, read by tools/stack_depth.py
 #
 # Directory-wide, so every track gets them. Track A's vendored core
 # carries `-w` and is exempt by design; Track A's own code is not, and
@@ -46,6 +49,7 @@ set(DEVICE ${CMSIS}/Device/ATMEL/sam3xa)
 option(FIRMWARE_WERROR      "Treat firmware compiler warnings as errors" ON)
 option(FIRMWARE_ANALYZER    "Run GCC's -fanalyzer over the C sources"    OFF)
 option(FIRMWARE_STACK_USAGE "Emit per-function stack frame sizes (.su)"  OFF)
+option(FIRMWARE_CALLGRAPH   "Emit per-unit call graphs with frames (.ci)" OFF)
 
 # The analyser is a pass somebody asks for, in a build directory of its
 # own, and it REPORTS. It is expensive and noisy by design, and one new
@@ -68,6 +72,7 @@ add_compile_options(
     $<$<BOOL:${_fw_werror}>:-Werror>
     $<$<AND:$<BOOL:${FIRMWARE_ANALYZER}>,$<COMPILE_LANGUAGE:C>>:-fanalyzer>
     $<$<AND:$<BOOL:${FIRMWARE_STACK_USAGE}>,$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>>:-fstack-usage>
+    $<$<AND:$<BOOL:${FIRMWARE_CALLGRAPH}>,$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>>:-fcallgraph-info=su,da>
     $<$<CONFIG:Debug>:-Og> $<$<CONFIG:Debug>:-g3>
     $<$<CONFIG:Release>:-Os>
 )
