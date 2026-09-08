@@ -218,7 +218,7 @@ def r_diagram(recs):
                       _cell(deep.get("bytes"))))
         out.append("  direction TB")
         for i, step in enumerate(chain):
-            out.append('    %s["%s<br/>%s B &middot; %s total"]'
+            out.append('    %s["%s<br/>%s B · %s total"]'
                        % (ids[(track, i)], _cell(step.get("function")),
                           _cell(step.get("frame")), _cell(step.get("below"))))
         for i in range(len(chain) - 1):

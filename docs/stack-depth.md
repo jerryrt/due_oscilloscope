@@ -131,18 +131,18 @@ out; it does not arise here.
 graph TD
   subgraph sg_b["track b - Reset_Handler - 916 B"]
   direction TB
-    b0["Reset_Handler<br/>8 B &middot; 916 total"]
-    b1["main<br/>80 B &middot; 908 total"]
-    b2["console_feed<br/>24 B &middot; 828 total"]
-    b3["h_profile<br/>24 B &middot; 804 total"]
-    b4["ctl_service<br/>40 B &middot; 780 total"]
-    b5["ctl_frame_complete<br/>8 B &middot; 740 total"]
-    b6["ctl_dispatch.constprop<br/>184 B &middot; 732 total"]
-    b7["ctl_error<br/>488 B &middot; 548 total"]
-    b8["ctl_respond<br/>24 B &middot; 60 total"]
-    b9["ctl_port_write<br/>0 B &middot; 36 total"]
-    b10["usb_ctl_write<br/>8 B &middot; 36 total"]
-    b11["ep_fifo_write.constprop<br/>28 B &middot; 28 total"]
+    b0["Reset_Handler<br/>8 B · 916 total"]
+    b1["main<br/>80 B · 908 total"]
+    b2["console_feed<br/>24 B · 828 total"]
+    b3["h_profile<br/>24 B · 804 total"]
+    b4["ctl_service<br/>40 B · 780 total"]
+    b5["ctl_frame_complete<br/>8 B · 740 total"]
+    b6["ctl_dispatch.constprop<br/>184 B · 732 total"]
+    b7["ctl_error<br/>488 B · 548 total"]
+    b8["ctl_respond<br/>24 B · 60 total"]
+    b9["ctl_port_write<br/>0 B · 36 total"]
+    b10["usb_ctl_write<br/>8 B · 36 total"]
+    b11["ep_fifo_write.constprop<br/>28 B · 28 total"]
     b0 ==> b1
     b1 ==> b2
     b2 ==> b3
@@ -157,15 +157,15 @@ graph TD
   end
   subgraph sg_c["track c - service_task - 860 B"]
   direction TB
-    c0["service_task<br/>80 B &middot; 860 total"]
-    c1["ctl_service<br/>40 B &middot; 780 total"]
-    c2["ctl_frame_complete<br/>8 B &middot; 740 total"]
-    c3["ctl_dispatch.constprop<br/>184 B &middot; 732 total"]
-    c4["ctl_error<br/>488 B &middot; 548 total"]
-    c5["ctl_respond<br/>24 B &middot; 60 total"]
-    c6["ctl_port_write<br/>0 B &middot; 36 total"]
-    c7["usb_ctl_write<br/>8 B &middot; 36 total"]
-    c8["ep_fifo_write.constprop<br/>28 B &middot; 28 total"]
+    c0["service_task<br/>80 B · 860 total"]
+    c1["ctl_service<br/>40 B · 780 total"]
+    c2["ctl_frame_complete<br/>8 B · 740 total"]
+    c3["ctl_dispatch.constprop<br/>184 B · 732 total"]
+    c4["ctl_error<br/>488 B · 548 total"]
+    c5["ctl_respond<br/>24 B · 60 total"]
+    c6["ctl_port_write<br/>0 B · 36 total"]
+    c7["usb_ctl_write<br/>8 B · 36 total"]
+    c8["ep_fifo_write.constprop<br/>28 B · 28 total"]
     c0 ==> c1
     c1 ==> c2
     c2 ==> c3
