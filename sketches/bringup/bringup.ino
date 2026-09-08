@@ -491,113 +491,6 @@ static void cmd_stream_stats(void)
  * peripheral's own completions avoids needing the ADC to observe the
  * output, and gives the same kind of hard number the ADC sweep produced.
  */
-static void cmd_dac_sweep(void)
-{
-	static const uint32_t rates[] = {
-		 100000,  500000,  800000, 1000000, 1200000,
-		1500000, 1750000, 2000000, 2500000, 3000000
-	};
-	gen_init();
-	con_str("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode"); con_nl();
-	con_str("#     want      RC   TCexact    measured    ratio"); con_nl();
-	console_flush();
-
-	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
-		if (!gen_start_independent(rates[i])) {
-			con_str("# "); con_u32w(rates[i], 8, ' ');
-			con_str("       -         -    REFUSED"); con_nl();
-			console_flush();
-			continue;
-		}
-
-		uint32_t sync = gen_endtx_count;
-		uint32_t guard = micros();
-		while (gen_endtx_count == sync && (micros() - guard) < 500000u)
-			{ }
-
-		uint32_t t0 = micros();
-		uint32_t e0 = gen_endtx_count;
-		while (gen_endtx_count - e0 < 64u && (micros() - t0) < 1000000u)
-			{ }
-		uint32_t t1 = micros();
-		uint32_t got = gen_endtx_count - e0;
-
-		gen_stop();
-
-		uint32_t rc      = gen_configured_rc();
-		uint32_t tcexact = (SystemCoreClock / 2u) / rc;
-		uint32_t us      = t1 - t0;
-		uint64_t convs   = (uint64_t)got * GEN_TABLE_LEN;
-		uint32_t measured = us ? (uint32_t)((convs * 1000000ull) / us) : 0;
-		uint32_t ratio_x1000 = tcexact ?
-			(uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0;
-
-		con_str("# "); con_u32w(rates[i], 8, ' ');
-		con_ch(' ');   con_u32w(rc, 7, ' ');
-		con_ch(' ');   con_u32w(tcexact, 9, ' ');
-		con_ch(' ');   con_u32w(measured, 11, ' ');
-		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
-		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
-		con_nl();
-		console_flush();
-	}
-	con_str("# ratio 1.000 means every trigger produced a DAC update");
-	con_nl();
-	console_flush();
-}
-
-/*
- * Cross-check the DAC ceiling against the frequency it actually emits.
- *
- * ENDTX counts PDC completions, which equal conversions only if the DACC
- * back-pressures the PDC when it cannot keep up. Driving the DAC on its
- * own timebase and capturing the result gives an independent measure: a
- * 512-entry table played at R conversions per second must produce a tone
- * at R/512, whatever the trigger was set to.
- */
-static void cmd_dac_crosscheck(uint32_t dac_hz)
-{
-	gen_init();
-	if (!gen_start_independent(dac_hz)) {
-		con_str("# refused"); con_nl();
-		console_flush();
-		return;
-	}
-	if (!stream_start_capture_only(200000, 2)) {
-		con_str("# capture refused"); con_nl();
-		console_flush();
-		return;
-	}
-
-	/*
-	 * These three lines print AFTER the capture start, deliberately.
-	 * docs/debugging.md prices this site at +4.77 ms of margin
-	 * against a 20.32 ms runway - about one added banner line from
-	 * biting. It survives only because capture here is fixed at
-	 * 200,000 Hz, where the ring holds longest; a fourth line turns
-	 * this into cmd_stream, losing frames before the host sees any.
-	 *
-	 * Moving them above stream_start_capture_only() would fix the
-	 * margin and break the measurement: the interval between
-	 * gen_start_independent() and the capture start sets the sampling
-	 * phase against the DAC's table wrap, and this command exists to
-	 * measure exactly that phase, one sample per table wrap. Putting
-	 * ~110 characters of UART in there would move it by milliseconds.
-	 *
-	 * Not an oversight, and not safe to "fix" like the others. If a
-	 * print is ever needed here, put it above
-	 * gen_start_independent() where it costs nothing.
-	 */
-	con_str("# DAC indep "); con_u32(dac_hz);
-	con_str(" Hz (RC "); con_u32(gen_configured_rc());
-	con_str("), capture 200000 Hz"); con_nl();
-	con_str("# if the DAC truly runs at the trigger, tone = ");
-	con_u32(dac_hz / GEN_TABLE_LEN); con_str(" Hz"); con_nl();
-	con_str("# if it saturates near 1539700, tone = 3007 Hz instead");
-	con_nl();
-	console_flush();
-}
-
 /*
  * Loop diagnostic: periodic snapshots taken while both service loops run.
  *
@@ -1161,19 +1054,19 @@ static void ha_ratesweep(const uint32_t *a)
 static void ha_dac_sweep(const uint32_t *a)
 {
 	(void)a;
-	cmd_dac_sweep();
+	console_cmd_dac_rate_sweep();
 }
 
 static void ha_dac_15m(const uint32_t *a)
 {
 	(void)a;
-	cmd_dac_crosscheck(1500000);
+	console_cmd_dac_crosscheck(1500000);
 }
 
 static void ha_dac_30m(const uint32_t *a)
 {
 	(void)a;
-	cmd_dac_crosscheck(3000000);
+	console_cmd_dac_crosscheck(3000000);
 }
 
 static void ha_s50(const uint32_t *a)

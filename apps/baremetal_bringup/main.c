@@ -632,127 +632,6 @@ void console_port_stall(uint32_t ms)
 /* console_trigger_fault() is shared - lib/due_shared/src/console_cmds.c */
 
 /*
- * Find the DACC's maximum update rate.
- *
- * In TAG mode one trigger produces one conversion, so the achieved rate
- * is table length times ENDTX count over elapsed time. Counting the
- * peripheral's own completions avoids needing the ADC to observe the
- * output, and gives the same kind of hard number the ADC sweep produced.
- *
- * Same command, same printed format on both tracks - invariant 3: two
- * independent programmings of one converter disagreeing is the
- * finding, and it cannot be had if only one of them can be asked.
- */
-static void cmd_dac_sweep(void)
-{
-	static const uint32_t rates[] = {
-		 100000,  500000,  800000, 1000000, 1200000,
-		1500000, 1750000, 2000000, 2500000, 3000000
-	};
-
-	gen_init();
-	con_str("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode"); con_nl();
-	con_str("#     want      RC   TCexact    measured    ratio"); con_nl();
-	uart_flush();
-
-	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
-		uint32_t sync, guard, t0, t1, e0, got;
-		uint32_t rc, tcexact, us, measured, ratio_x1000;
-		uint64_t convs;
-
-		if (!gen_start_independent(rates[i])) {
-			con_str("# "); con_u32w(rates[i], 8, ' ');
-			con_str("       -         -    REFUSED"); con_nl();
-			uart_flush();
-			continue;
-		}
-
-		/* Start counting on a table boundary, so the first interval
-		 * is a whole number of passes rather than whatever remained
-		 * of the one in flight. */
-		sync  = gen_endtx_count;
-		guard = micros();
-		while (gen_endtx_count == sync && (micros() - guard) < 500000u)
-			;
-
-		t0 = micros();
-		e0 = gen_endtx_count;
-		while (gen_endtx_count - e0 < 64u && (micros() - t0) < 1000000u)
-			;
-		t1 = micros();
-		got = gen_endtx_count - e0;
-
-		gen_stop();
-
-		rc      = gen_configured_rc();
-		tcexact = rc ? (SystemCoreClock / 2u) / rc : 0u;
-		us      = t1 - t0;
-		convs   = (uint64_t)got * GEN_TABLE_LEN;
-		measured = us ? (uint32_t)((convs * 1000000ull) / us) : 0u;
-		ratio_x1000 = tcexact
-			? (uint32_t)(((uint64_t)measured * 1000ull) / tcexact) : 0u;
-
-		con_str("# "); con_u32w(rates[i], 8, ' ');
-		con_ch(' ');   con_u32w(rc, 7, ' ');
-		con_ch(' ');   con_u32w(tcexact, 9, ' ');
-		con_ch(' ');   con_u32w(measured, 11, ' ');
-		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
-		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
-		con_nl();
-		uart_flush();
-	}
-	con_str("# ratio 1.000 means every trigger produced a DAC update"); con_nl();
-	uart_flush();
-}
-
-/*
- * Cross-check the DAC ceiling against the frequency it actually emits.
- *
- * ENDTX counts PDC completions, which equal conversions only if the DACC
- * back-pressures the PDC when it cannot keep up. Driving the DAC on its
- * own timebase and capturing the result gives an independent measure: a
- * GEN_TABLE_LEN-entry table played at R conversions per second must
- * produce a tone at R/GEN_TABLE_LEN, whatever the trigger was set to.
- */
-static void cmd_dac_crosscheck(uint32_t dac_hz)
-{
-	gen_init();
-	if (!gen_start_independent(dac_hz)) {
-		con_str("# refused"); con_nl();
-		uart_flush();
-		return;
-	}
-	if (!stream_start_capture_only(200000, 2)) {
-		gen_stop();
-		con_str("# capture refused"); con_nl();
-		uart_flush();
-		return;
-	}
-
-	/*
-	 * These three lines print AFTER the capture start, deliberately -
-	 * not an oversight. Moving them earlier (as cmd_stream and h_loop
-	 * do) would look like a cleanup but breaks the measurement: the
-	 * interval between gen_start_independent() and the capture start
-	 * sets the sampling phase against the DAC's table wrap (see
-	 * h_mimic below), so the print's UART time is part of what fixes
-	 * that phase for a run. It survives only because the capture here
-	 * is fixed at 200,000 Hz, where the ring holds the longest
-	 * runway (docs/debugging.md); a fourth line would cost frames.
-	 *
-	 * If a print is ever needed here, put it above
-	 * gen_start_independent() where it costs nothing.
-	 */
-	con_str("# DAC indep "); con_u32(dac_hz);
-	con_str(" Hz (RC "); con_u32(gen_configured_rc());
-	con_str("), capture 200000 Hz"); con_nl();
-	con_str("# if the DAC truly runs at the trigger, tone = ");
-	con_u32(dac_hz / GEN_TABLE_LEN); con_str(" Hz"); con_nl();
-	con_str("# if it saturates near 1539700, tone = 3007 Hz instead"); con_nl();
-	uart_flush();
-}
-
-/*
  * Endpoint state, readable while a stream is running. The banner
  * reports CFGOK once, at boot; this asks whether the sample endpoints
  * are still configured *during* a capture, once AUTOSW writes and
@@ -820,9 +699,9 @@ static void h_ratesweep(const uint32_t *a)
 {
 	console_cmd_rate_sweep(a[2]);
 }
-static void h_dac_sweep(const uint32_t *a) { (void)a; cmd_dac_sweep(); }
-static void h_dac_15m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(1500000); }
-static void h_dac_30m(const uint32_t *a)   { (void)a; cmd_dac_crosscheck(3000000); }
+static void h_dac_sweep(const uint32_t *a) { (void)a; console_cmd_dac_rate_sweep(); }
+static void h_dac_15m(const uint32_t *a)   { (void)a; console_cmd_dac_crosscheck(1500000); }
+static void h_dac_30m(const uint32_t *a)   { (void)a; console_cmd_dac_crosscheck(3000000); }
 static void h_epstate(const uint32_t *a)   { (void)a; cmd_endpoint_state(); }
 
 static void h_s50(const uint32_t *a)  { (void)a; console_cmd_stream(50000); }

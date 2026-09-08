@@ -187,3 +187,40 @@ void console_port_dac_write(unsigned ch, uint16_t code)
 {
 	gen_write_dac(ch, code);
 }
+
+
+/*
+ * The generator on its own timebase, which is what `d`, `j` and `k`
+ * measure the DACC with. Thin, like the rest of this file: the shared
+ * bodies decide the ladder, the dwell and the arithmetic, and every
+ * name below ends at a register in sketches/bringup/gen.cpp.
+ */
+void console_port_gen_init(void)
+{
+	gen_init();
+}
+
+bool console_port_gen_start_independent(uint32_t dac_hz)
+{
+	return gen_start_independent(dac_hz);
+}
+
+void console_port_gen_stop(void)
+{
+	gen_stop();
+}
+
+uint32_t console_port_gen_endtx_count(void)
+{
+	return gen_endtx_count;
+}
+
+uint32_t console_port_gen_configured_rc(void)
+{
+	return gen_configured_rc();
+}
+
+uint32_t console_port_gen_table_len(void)
+{
+	return GEN_TABLE_LEN;
+}

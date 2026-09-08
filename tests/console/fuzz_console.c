@@ -333,6 +333,20 @@ void console_port_dac_write(unsigned ch, uint16_t code)
 	(void)ch; (void)code;
 }
 
+/* The independent generator. Refuses every rate, which is the cheap
+ * arm: the sweeps then print their REFUSED row and return without
+ * spinning on a counter nothing advances. */
+void console_port_gen_init(void) { }
+bool console_port_gen_start_independent(uint32_t dac_hz)
+{
+	(void)dac_hz;
+	return false;
+}
+void console_port_gen_stop(void) { }
+uint32_t console_port_gen_endtx_count(void) { return 0; }
+uint32_t console_port_gen_configured_rc(void) { return 0; }
+uint32_t console_port_gen_table_len(void) { return 512u; }
+
 
 void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 {

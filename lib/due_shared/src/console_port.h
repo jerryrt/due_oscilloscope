@@ -174,6 +174,21 @@ void     console_port_stall(uint32_t ms);
  * converter, which is what the oracle is for - but it is exactly why
  * a shared body cannot include either header.
  */
+/*
+ * The internal generator driven on its OWN timebase - TIOA1 rather than
+ * the ADC's TIOA0 - which is what `d`, `j` and `k` measure the DACC
+ * with. `console_port_gen_endtx_count()` is the PDC completion counter
+ * those commands time; the table length converts completions to
+ * conversions and is a driver constant, not arithmetic, so it comes
+ * through the port rather than being written out again.
+ */
+void     console_port_gen_init(void);
+bool     console_port_gen_start_independent(uint32_t dac_hz);
+void     console_port_gen_stop(void);
+uint32_t console_port_gen_endtx_count(void);
+uint32_t console_port_gen_configured_rc(void);
+uint32_t console_port_gen_table_len(void);
+
 uint16_t console_port_adc_read(unsigned ch);
 void     console_port_adc_read_pair(unsigned cha, unsigned chb,
                                     uint16_t *a, uint16_t *b);

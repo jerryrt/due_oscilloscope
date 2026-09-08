@@ -556,3 +556,145 @@ void console_cmd_dac_sweep_dc(void)
 	con_nl();
 	console_flush();
 }
+
+
+/*
+ * `d`: find the DACC's maximum update rate.
+ *
+ * In TAG mode one trigger produces one conversion, so the achieved
+ * rate is table length times ENDTX count over elapsed time. Counting
+ * the peripheral's own completions avoids needing the ADC to observe
+ * the output, and gives the same kind of hard number the ADC sweep
+ * produced.
+ *
+ * Timed over a whole number of table passes, starting on a boundary,
+ * so the first interval is not whatever remained of the pass already
+ * in flight.
+ *
+ * One body for every track, and invariant 3 is the reason rather than
+ * an obstacle: two independent programmings of one converter
+ * disagreeing is the finding, and it cannot be had if the two boards
+ * are asked slightly different questions. They were. Track B guarded
+ * the division by the configured RC and Track A did not, so a refusal
+ * that still reported RC 0 would have divided by zero on one track and
+ * printed a dash on the other.
+ */
+void console_cmd_dac_rate_sweep(void)
+{
+	static const uint32_t rates[] = {
+		 100000,  500000,  800000, 1000000, 1200000,
+		1500000, 1750000, 2000000, 2500000, 3000000
+	};
+	const uint32_t tc_clock = console_port_mck_hz() / 2u;
+	const uint32_t table_len = console_port_gen_table_len();
+
+	console_port_gen_init();
+	con_str("# DACC update-rate sweep, TC0 ch1 (TIOA1), TAG mode"); con_nl();
+	con_str("#     want      RC   TCexact    measured    ratio"); con_nl();
+	console_flush();
+
+	for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
+		uint32_t sync, guard, t0, t1, e0, got;
+		uint32_t rc, tcexact, us, measured, ratio_x1000;
+		uint64_t convs;
+
+		if (!console_port_gen_start_independent(rates[i])) {
+			con_str("# "); con_u32w(rates[i], 8, ' ');
+			con_str("       -         -    REFUSED"); con_nl();
+			console_flush();
+			continue;
+		}
+
+		/* Start counting on a table boundary, so the first interval
+		 * is a whole number of passes rather than whatever remained
+		 * of the one in flight. */
+		sync  = console_port_gen_endtx_count();
+		guard = ctl_port_micros();
+		while (console_port_gen_endtx_count() == sync &&
+		       (ctl_port_micros() - guard) < 500000u)
+			{ }
+
+		t0 = ctl_port_micros();
+		e0 = console_port_gen_endtx_count();
+		while (console_port_gen_endtx_count() - e0 < 64u &&
+		       (ctl_port_micros() - t0) < 1000000u)
+			{ }
+		t1  = ctl_port_micros();
+		got = console_port_gen_endtx_count() - e0;
+
+		console_port_gen_stop();
+
+		rc      = console_port_gen_configured_rc();
+		tcexact = rc ? tc_clock / rc : 0u;
+		us      = t1 - t0;
+		convs   = (uint64_t)got * table_len;
+		measured = us ? (uint32_t)((convs * 1000000ull) / us) : 0u;
+		ratio_x1000 = tcexact
+		            ? (uint32_t)(((uint64_t)measured * 1000ull) / tcexact)
+		            : 0u;
+
+		con_str("# "); con_u32w(rates[i], 8, ' ');
+		con_ch(' ');   con_u32w(rc, 7, ' ');
+		con_ch(' ');   con_u32w(tcexact, 9, ' ');
+		con_ch(' ');   con_u32w(measured, 11, ' ');
+		con_str("   "); con_u32w(ratio_x1000 / 1000u, 2, ' ');
+		con_ch('.');   con_u32w(ratio_x1000 % 1000u, 3, '0');
+		con_nl();
+		console_flush();
+	}
+	con_str("# ratio 1.000 means every trigger produced a DAC update");
+	con_nl();
+	console_flush();
+}
+
+/*
+ * `j` and `k`: cross-check the DAC ceiling against the frequency it
+ * actually emits.
+ *
+ * ENDTX counts PDC completions, which equal conversions only if the
+ * DACC back-pressures the PDC when it cannot keep up. Driving the DAC
+ * on its own timebase and capturing the result gives an independent
+ * measure: a table of N entries played at R conversions per second
+ * must produce a tone at R/N, whatever the trigger was set to.
+ *
+ * THE PRINT ORDER IS THE MEASUREMENT, and this is the one command
+ * where a tidy-up would be a regression. The three lines below go out
+ * AFTER the capture start, not before it as `1`..`5` and `L` do. The
+ * interval between the generator start and the capture start fixes the
+ * sampling phase against the DAC table's wrap - which is the quantity
+ * this command exists to read, one sample per wrap - so the print's
+ * UART time is part of what sets it. docs/debugging.md prices the site
+ * at +4.77 ms of margin against a 20.32 ms runway: about one more
+ * banner line from losing frames. It survives only because the capture
+ * is pinned at 200,000 Hz, where the ring holds its longest runway. If
+ * a print is ever needed here, put it ABOVE the generator start, where
+ * it costs nothing.
+ */
+void console_cmd_dac_crosscheck(uint32_t dac_hz)
+{
+	console_port_gen_init();
+	if (!console_port_gen_start_independent(dac_hz)) {
+		con_str("# refused"); con_nl();
+		console_flush();
+		return;
+	}
+	if (!console_port_capture_only_start(200000, 2)) {
+		/* Stopped, not left running. Track A returned here with the
+		 * generator still driving TIOA1, so a refused cross-check
+		 * left the DAC emitting into every measurement after it. */
+		console_port_gen_stop();
+		con_str("# capture refused"); con_nl();
+		console_flush();
+		return;
+	}
+
+	con_str("# DAC indep "); con_u32(dac_hz);
+	con_str(" Hz (RC "); con_u32(console_port_gen_configured_rc());
+	con_str("), capture 200000 Hz"); con_nl();
+	con_str("# if the DAC truly runs at the trigger, tone = ");
+	con_u32(dac_hz / console_port_gen_table_len());
+	con_str(" Hz"); con_nl();
+	con_str("# if it saturates near 1539700, tone = 3007 Hz instead");
+	con_nl();
+	console_flush();
+}

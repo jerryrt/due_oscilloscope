@@ -755,6 +755,11 @@ static void c_gpio(const uint32_t *a)   { (void)a; console_cmd_gpio_cost(); }
 static void c_read(const uint32_t *a)  { (void)a; console_cmd_read(); }
 static void c_sweep(const uint32_t *a) { (void)a; console_cmd_dac_sweep_dc(); }
 
+/* `d`, `j`, `k`: the DACC's ceiling, both ways of asking. */
+static void c_dac_sweep(const uint32_t *a) { (void)a; console_cmd_dac_rate_sweep(); }
+static void c_dac_15m(const uint32_t *a)   { (void)a; console_cmd_dac_crosscheck(1500000); }
+static void c_dac_30m(const uint32_t *a)   { (void)a; console_cmd_dac_crosscheck(3000000); }
+
 static void c_mimic_gap(const uint32_t *a)
 {
 	mimic_start_delay_us = a[0];
@@ -793,7 +798,8 @@ const console_binding_t console_bindings[] = {
 	{ 'I', c_ibctl },       { 'C', c_pair },        { 'A', c_adc_timing },
 	{ 'e', c_temp  },       { 'K', c_mimic_gap },   { 'S', c_stall },
 	{ 'p', c_printf },      { 'g', c_gpio },        { 'r', c_read },
-	{ 's', c_sweep },
+	{ 's', c_sweep },       { 'd', c_dac_sweep },   { 'j', c_dac_15m },
+	{ 'k', c_dac_30m },
 	{ 0,   NULL    },
 };
 

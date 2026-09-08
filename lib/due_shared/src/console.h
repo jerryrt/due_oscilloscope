@@ -130,6 +130,18 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*
+ * `d`, `j` and `k`: the DACC's own update-rate ceiling, and the
+ * cross-check that reads it as an emitted frequency rather than as a
+ * PDC completion count.
+ *
+ * Two ways of asking one question, which is the point: ENDTX equals
+ * conversions only if the converter back-pressures the PDC, so `d`
+ * alone cannot tell a DACC that kept up from one that did not.
+ */
+void console_cmd_dac_rate_sweep(void);
+void console_cmd_dac_crosscheck(uint32_t dac_hz);
+
+/*
  * `r` and `s`: one DC reading of the three analog inputs, and the DAC
  * sweep that establishes what the converter's real endpoints are.
  *
