@@ -41,6 +41,7 @@
  * only in main()" made literal. */
 #include "load.h"
 #include "analog.h"
+#include "acq.h"
 #include "gen.h"
 #include "play.h"
 #include "playstat.h"
@@ -250,15 +251,21 @@ static void console_task(void *arg)
 }
 
 /*
- * C1's command surface, which is deliberately two letters.
+ * `v` and `h`.
  *
  * `v` is the one that matters: CLAUDE.md's rule is "ask a board what it
  * is with `v`, not with the banner", and a Track C image that cannot
- * answer it is not testable by any host tool. `h` is here so that a
- * human who types it is not met with silence.
+ * answer it is not testable by any host tool.
  *
- * The full 48-letter surface arrives with the C-share work, not by
- * being copied here.
+ * `h` prints this track's own facts and then console_help(), which is
+ * the shared table plus the parity line - so the three boards answer
+ * `h` with one list and a letter this track has not bound says so
+ * rather than being absent. It used to print a hand-written list of
+ * five letters, and that list had already gone stale: it described `T`
+ * as the time-source check months after `T` became the DMA sink bench
+ * and `y` became the time check, which is precisely the "two tracks
+ * answering one letter two ways" hazard in CLAUDE.md wearing a
+ * documentation costume.
  */
 static void c_ident(const uint32_t *a)
 {
@@ -269,15 +276,22 @@ static void c_ident(const uint32_t *a)
 static void c_help(const uint32_t *a)
 {
 	(void)a;
-	con_str("# due_oscilloscope :: Track C (FreeRTOS) stage C2");
-	con_nl();
-	con_str("#   v = identity line");        con_nl();
-	con_str("#   h = this list");            con_nl();
-	con_str("#   T = time source check (millis/micros)"); con_nl();
-	con_str("#   1..4 = stream 50k/100k/200k/400k, 0 = stop, ? = stats");
-	con_nl();
+	con_str("#"); con_nl();
+	con_str("# due_oscilloscope :: Track C (FreeRTOS) stage C2"); con_nl();
+	console_identity(FW_TRACK, (unsigned long)SystemCoreClock);
+	con_str("# SystemCoreClock = "); con_u32(SystemCoreClock);
+	con_str("  ADC clk = ");         con_u32(SystemCoreClock / 4u);
+	con_str(" (max 20000000)");      con_nl();
+	con_str("# max in-spec trigger = ");
+	con_u32((SystemCoreClock / 2u) / ACQ_MIN_RC);
+	con_str(" Hz (RC "); con_u32(ACQ_MIN_RC);
+	con_str("); presets 1..4 are 50k/100k/200k/400k"); con_nl();
 	con_str("# C2: the five services run in one task. See issue #45.");
 	con_nl();
+	con_str("#"); con_nl();
+	con_str("# commands:"); con_nl();
+	console_help();
+	con_str("#"); con_nl();
 	console_flush();
 }
 
@@ -365,6 +379,12 @@ static void c_stats(const uint32_t *a)
  * shared, and that is debt: they belong behind the console seam like
  * the rate sweep now is.
  */
+/* `=<us>K`: the M preset's ADC-start-to-DAC-start gap, held across
+ * runs. Track B's h_mimic_gap keeps the same variable for the same
+ * reason - the gap fixes M's sampling phase against the DAC table's
+ * wrap, so making it settable probes issue #5 inside one image. */
+static uint32_t mimic_start_delay_us;
+
 static void c_fws(const uint32_t *a)
 {
 	uint32_t fws = a[0] ? a[0] : 4u;
@@ -403,6 +423,12 @@ static void c_mimic(const uint32_t *a)
 		con_nl();
 		console_flush();
 		return;
+	}
+	if (mimic_start_delay_us) {
+		uint32_t t0 = micros();
+
+		while (micros() - t0 < mimic_start_delay_us)
+			;
 	}
 	gen_go_tioa1();
 }
@@ -485,6 +511,196 @@ static void c_bench(const uint32_t *a)
 	console_flush();
 }
 
+/*
+ * The rest of the surface, in the terms console_cmds.c set: a handler
+ * whose whole body is one call into drivers/ or lib/ is an adapter and
+ * lives here, exactly as c_s50..c_s400, c_play and c_loop already do.
+ * Track C links Track B's drivers/ unchanged, so every name below is
+ * the same object Track B calls - there is no second programming of
+ * anything here for invariant 3 to be about.
+ *
+ * The handlers whose bodies are static functions in Track B's own
+ * main.c are NOT here. Copying those would put one measurement in two
+ * places, which is the failure mode invariant 3 was rescoped over; they
+ * are hoisted into lib/due_shared and bound on all three tracks.
+ */
+
+/* `f`, `t`: already shared. Binding is the whole of the work. */
+static void c_fault(const uint32_t *a) { (void)a; console_trigger_fault(); }
+static void c_ratesweep(const uint32_t *a) { console_cmd_rate_sweep(a[2]); }
+
+/*
+ * `5`: derived, not written down, and derived from THIS track's own
+ * ACQ_MIN_RC - the floor is a measurement and each track keeps its own
+ * (docs/shared-source.md). The formula is Track B's h_smax verbatim
+ * because it is the same converter behind the same timer.
+ */
+static void c_smax(const uint32_t *a)
+{
+	(void)a;
+	console_cmd_stream((SystemCoreClock / 2u) / ACQ_MIN_RC);
+}
+
+/* The transport benches. One driver call and one line each. */
+static void c_flood(const uint32_t *a)
+{
+	(void)a;
+	stream_flood_start();
+	con_str("# flood: IN only"); con_nl();
+	console_flush();
+}
+
+static void c_sink(const uint32_t *a)
+{
+	(void)a;
+	stream_sink_start();
+	con_str("# sink: OUT only"); con_nl();
+	console_flush();
+}
+
+static void c_duplex(const uint32_t *a)
+{
+	(void)a;
+	stream_duplex_start();
+	con_str("# duplex: IN and OUT together"); con_nl();
+	console_flush();
+}
+
+static void c_flood_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_flood_dma_start();
+	con_str("# flood: IN via DMA"); con_nl();
+	console_flush();
+}
+
+static void c_duplex_dma(const uint32_t *a)
+{
+	(void)a;
+	stream_duplex_dma_start();
+	con_str("# duplex: IN+OUT via DMA"); con_nl();
+	console_flush();
+}
+
+static void c_ring(const uint32_t *a) { (void)a; play_dump(); }
+
+/*
+ * `l` reports; `=1l` reports and then clears. The clear is explicit
+ * rather than a side effect of reading for the reason Track B's h_load
+ * gives: max_cycles is a maximum, not a counter, so two consumers of
+ * this channel would otherwise silently steal each other's worst case.
+ *
+ * Absent here until now, which is worse than it reads: every host that
+ * sent `=1l` to Track C got the refusal line and went on to read a
+ * max_us that had never been reset, so tests/test_load.py was reading
+ * the since-boot 14,122 us on every pass.
+ */
+static void c_load(const uint32_t *a)
+{
+	load_dump();
+	if (a[0])
+		load_clear();
+}
+
+/* The internal generator. Every body is a setter plus the shared
+ * report, so the description of a waveform has one home. */
+static void c_wave(const uint32_t *a)
+{
+	gen_set_shape(a[0]);
+	if (a[1])
+		gen_set_points(a[1]);
+	if (a[2])
+		gen_set_amp(a[2]);
+	console_gen_report();
+}
+
+static void c_sync(const uint32_t *a)
+{
+	gen_set_sync(a[0]);
+	if (a[1])
+		gen_set_sync_amp(a[1]);
+	console_gen_report();
+}
+
+static void c_layout(const uint32_t *a)
+{
+	static const char *const names[] = {
+		"normal: sine DAC0, DC DAC1",
+		"swapped: DC DAC0, sine DAC1",
+		"two-cycle: two sine periods per wrap",
+		"all-DC: no sine on either",
+	};
+
+	gen_set_layout(a[0]);
+	con_str("# gen layout "); con_u32(gen_layout);
+	con_str(" = "); con_str(names[gen_layout]); con_nl();
+	console_flush();
+}
+
+static void c_ibctl(const uint32_t *a)
+{
+	gen_set_ibctl(a[0], a[1]);
+	con_str("# dacc ibctl: ");
+	con_kv_u32("ch", gen_ibctl_ch);     con_ch(' ');
+	con_kv_u32("core", gen_ibctl_core);
+	con_str(" (next DACC init)"); con_nl();
+	console_flush();
+}
+
+/* Acquisition settings, both applied at the next stream. */
+static void c_pair(const uint32_t *a)
+{
+	acq_set_pair(a[0]);
+	con_str("# capture pair: A0 + A");
+	con_u32(acq_pair_second == ADC_CH_A2 ? 2u : 1u);
+	con_str(" (next 2ch stream)"); con_nl();
+	console_flush();
+}
+
+static void c_adc_timing(const uint32_t *a)
+{
+	acq_set_timing(a[0], a[1]);
+	con_str("# adc timing: ");
+	con_kv_u32("tracktim", acq_tracktim); con_ch(' ');
+	con_kv_u32("settling", acq_settling);
+	con_str(" (next stream)"); con_nl();
+	console_flush();
+}
+
+/*
+ * `=<n>e`: the on-die sensor, n conversions averaged. ctl_temp_t
+ * carries what this may be used to claim - an upper bound on ADVREF
+ * noise, not a value and not a temperature.
+ */
+static void c_temp(const uint32_t *a)
+{
+	ctl_temp_t t;
+
+	if (adc_read_temp(&t, (uint16_t)a[0]) != CTL_TEMP_OK) {
+		con_str("# temp: refused - a capture is armed, or no sensor here");
+		con_nl();
+		console_flush();
+		return;
+	}
+	con_str("# temp: code "); con_u32(t.code_x16 / 16u); con_ch('.');
+	con_u32w((t.code_x16 % 16u) * 100u / 16u, 2, '0');
+	con_str(" (min "); con_u32(t.code_min);
+	con_str(" max ");  con_u32(t.code_max);
+	con_str(", n=");   con_u32(t.samples);
+	con_str(") adcmr="); con_hex32(t.adc_mr, 8);
+	con_str(" adcacr="); con_hex32(t.adc_acr, 8);
+	con_nl();
+	console_flush();
+}
+
+static void c_mimic_gap(const uint32_t *a)
+{
+	mimic_start_delay_us = a[0];
+	con_str("# mimic start delay: "); con_u32(mimic_start_delay_us);
+	con_str(" us (next M)"); con_nl();
+	console_flush();
+}
+
 /* Terminated by a zero key and scanned rather than indexed - the shared
  * table decides the help's order, so this one may list what it likes. */
 const console_binding_t console_bindings[] = {
@@ -506,6 +722,14 @@ const console_binding_t console_bindings[] = {
 	{ 'u', c_usb   },
 	{ 'M', c_mimic },
 	{ 'q', c_fws   },
+
+	{ '5', c_smax  },       { 't', c_ratesweep },   { 'f', c_fault },
+	{ 'F', c_flood },       { 'R', c_sink },        { 'X', c_duplex },
+	{ 'G', c_flood_dma },   { 'Y', c_duplex_dma },
+	{ 'V', c_ring  },       { 'l', c_load },
+	{ 'W', c_wave  },       { 'J', c_sync },        { 'N', c_layout },
+	{ 'I', c_ibctl },       { 'C', c_pair },        { 'A', c_adc_timing },
+	{ 'e', c_temp  },       { 'K', c_mimic_gap },
 	{ 0,   NULL    },
 };
 
