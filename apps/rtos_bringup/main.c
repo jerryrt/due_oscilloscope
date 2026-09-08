@@ -81,6 +81,13 @@ static StackType_t  console_stack[CONSOLE_STACK];
  */
 static volatile uint32_t console_busy;
 
+/*
+ * The stall `=<ms>S` asked for, written by the console task and taken
+ * by the service task. See console_port_stall() for why it crosses
+ * tasks at all. Already clamped to 1..2000 ms by console_cmd_stall().
+ */
+static volatile uint32_t service_stall_ms;
+
 static StaticTask_t idle_tcb;
 static StackType_t  idle_stack[configMINIMAL_STACK_SIZE];
 static StaticTask_t timer_tcb;
@@ -128,6 +135,21 @@ static void service_task(void *arg)
 		uint32_t now;
 
 		load_tick();
+		/*
+		 * The stall the console asked for, taken here because this
+		 * task is what the load monitor measures. At the top of the
+		 * pass so the spin and the vTaskDelay(1) at the bottom fall
+		 * in different passes - a stall reported as its own duration
+		 * plus a scheduler tick would be off by a tick, against a
+		 * 2 ms tolerance.
+		 */
+		if (service_stall_ms) {
+			uint32_t until = millis() + service_stall_ms;
+
+			service_stall_ms = 0;
+			while ((int32_t)(millis() - until) < 0)
+				;
+		}
 		now = millis();
 		stream_loop_passes++;
 
@@ -693,6 +715,33 @@ static void c_temp(const uint32_t *a)
 	console_flush();
 }
 
+/*
+ * `S`'s per-track half, and the one place where Track C's answer to a
+ * console letter is not Track B's.
+ *
+ * The console is a task of its own here, at a priority the sample path
+ * outranks. A spin in the handler would therefore block the console and
+ * nothing else - the service task would keep running, load_tick() would
+ * report ordinary passes, and the heartbeat's loop_passes would keep
+ * advancing throughout. `S` would answer, cleanly, and every test built
+ * on it would certify nothing. That was measured, not assumed: with the
+ * spin here, `=25S`, `=100S` and `=400S` all reported a worst pass of
+ * about 1 ms and the heartbeat saw loop_passes advance through a
+ * 2000 ms stall.
+ *
+ * So the console task asks and the service task stalls. One word,
+ * written by one task and read by the other, like console_busy above.
+ * `ms` is already clamped to 1..2000 by console_cmd_stall(), which is
+ * what makes a plain word safe here: the service task cannot be handed
+ * a duration that reaches the watchdog.
+ */
+void console_port_stall(uint32_t ms)
+{
+	service_stall_ms = ms;
+}
+
+static void c_stall(const uint32_t *a) { console_cmd_stall(a[0]); }
+
 static void c_mimic_gap(const uint32_t *a)
 {
 	mimic_start_delay_us = a[0];
@@ -729,7 +778,7 @@ const console_binding_t console_bindings[] = {
 	{ 'V', c_ring  },       { 'l', c_load },
 	{ 'W', c_wave  },       { 'J', c_sync },        { 'N', c_layout },
 	{ 'I', c_ibctl },       { 'C', c_pair },        { 'A', c_adc_timing },
-	{ 'e', c_temp  },       { 'K', c_mimic_gap },
+	{ 'e', c_temp  },       { 'K', c_mimic_gap },   { 'S', c_stall },
 	{ 0,   NULL    },
 };
 

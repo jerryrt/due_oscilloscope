@@ -130,6 +130,17 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 void console_cmd_rate_sweep(unsigned n_channels);
 
 /*
+ * `=<ms>S`: block the loop the load monitor measures, for a duration
+ * the HOST chose.
+ *
+ * Shared for the clamp and for the silence, both of which are
+ * measurements rather than taste - see console_cmds.c. Where the block
+ * lands is console_port_stall(), because the three tracks genuinely
+ * differ there and only there.
+ */
+void console_cmd_stall(uint32_t ms);
+
+/*
  * The crosstalk settle wait. Shared so the two tracks cannot drift
  * apart on it - this measures what happens between conversions, so a
  * differing wait would change the measurement. See console_cmds.c.

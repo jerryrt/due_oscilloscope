@@ -307,6 +307,12 @@ uint32_t console_port_acq_min_rc(unsigned n_channels)
 	return n_channels == 1u ? 44u : 86u;
 }
 
+/* The stall is a busy-wait on the device; here it is nothing at all.
+ * The fuzzer's subject is the parser and the dispatch, and a harness
+ * that actually slept would bound its own throughput rather than the
+ * console's (invariant 7). */
+void console_port_stall(uint32_t ms) { (void)ms; }
+
 void console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre)
 {
 	note_port();

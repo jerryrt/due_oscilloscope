@@ -1791,28 +1791,20 @@ static void ha_load(const uint32_t *a)
 }
 
 /*
- * "=<ms>S": block the main loop, to validate that `l` sees it.
- *
- * Deliberately silent. A printf here lands in the very pass this
- * command exists to measure - 36 characters at 115200 baud is 3.1 ms -
- * and the monitor would faithfully report the stall plus the
- * announcement of it. Measured on Track B, not guessed: with the
- * message in, a 5 ms stall read 7.2 ms and a 1500 ms stall read
- * 1502.7 ms, the same 2-3 ms offset at both ends. The answer to "did it
- * work" is the load report, not an echo.
+ * `S`'s per-track half: this track has one loop and the handler runs
+ * inside it, so blocking here blocks exactly what the load monitor
+ * measures. The clamp, the reason the command exists and the reason it
+ * prints nothing are all in console_cmd_stall().
  */
-static void ha_stall(const uint32_t *a)
+void console_port_stall(uint32_t ms)
 {
-	uint32_t ms = a[0] ? a[0] : 10u;
-	uint32_t until;
+	uint32_t until = millis() + ms;
 
-	if (ms > 2000u)
-		ms = 2000u;    /* long enough to see, short of a watchdog */
-
-	until = millis() + ms;
 	while ((int32_t)(millis() - until) < 0)
 		;
 }
+
+static void ha_stall(const uint32_t *a) { console_cmd_stall(a[0]); }
 
 /*
  * "=<us>K". The gap between the ADC start and the DAC start, in

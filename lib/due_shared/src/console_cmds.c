@@ -319,3 +319,44 @@ void console_cmd_rate_sweep(unsigned n_channels)
 	con_nl();
 	console_flush();
 }
+
+
+/*
+ * `=<ms>S`: block the main loop for a number of milliseconds the host
+ * chose.
+ *
+ * It exists to validate the load monitor, and it is the only way to do
+ * that honestly: every other long pass on this board - a printf, a
+ * sweep, the profile itself - has a duration nobody knows
+ * independently, so agreeing with it would prove only that two unknowns
+ * match. This one has a duration the *host* chose, so the monitor can
+ * be checked against a number it was not told.
+ *
+ * Development only, like console_trigger_fault(). It is not in the
+ * control protocol's command set and must not be: a deployed
+ * instrument with a remote "stop responding for a while" is a defect,
+ * not a feature.
+ *
+ * DELIBERATELY SILENT, and that is measured rather than tidy. A printf
+ * here lands in the very pass this command exists to measure - 36
+ * characters at 115200 baud is 3.1 ms - and the monitor would
+ * faithfully report the stall plus the announcement of it. With the
+ * message in, a 5 ms stall read 7.2 ms and a 1500 ms stall read
+ * 1502.7 ms: the same 2-3 ms offset at both ends. The answer to "did it
+ * work" is the load report, not an echo.
+ *
+ * The clamp is here rather than in each track's binding for the reason
+ * #68 gave for the rate sweep's channel count: a guard written once per
+ * track is a guard a new track can omit with nothing failing. The upper
+ * bound is long enough to see and short of the watchdog, and
+ * test_control.py's heartbeat test asks for exactly it.
+ */
+void console_cmd_stall(uint32_t ms)
+{
+	if (ms == 0u)
+		ms = 10u;
+	if (ms > 2000u)
+		ms = 2000u;    /* long enough to see, short of a watchdog */
+
+	console_port_stall(ms);
+}

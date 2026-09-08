@@ -734,41 +734,18 @@ static void cmd_profile(void)
 }
 
 /*
- * Block the main loop for a known number of milliseconds.
- *
- * Exists to validate the load monitor, and it is the only way to do
- * that honestly: every other long pass on this board - a printf, a
- * sweep, the profile itself - has a duration nobody knows independently,
- * so agreeing with it would prove only that two unknowns match. This
- * one has a duration the *host* chose, so the monitor can be checked
- * against a number it was not told.
+ * `S`'s per-track half: this track has one loop and the handler runs
+ * inside it, so blocking here blocks exactly what the load monitor
+ * measures. The clamp, the reason the command exists and the reason it
+ * prints nothing are all in console_cmd_stall().
  *
  * Busy-waits on millis() rather than sleeping: the point is to occupy
  * the loop, which is exactly what a wedged pass does.
- *
- * Development only, like trigger_fault. It is not in the control
- * protocol's command set and must not be: a deployed instrument with a
- * remote "stop responding for a while" is a defect, not a feature.
  */
-static void cmd_stall(uint32_t ms)
+void console_port_stall(uint32_t ms)
 {
-	uint32_t until;
+	uint32_t until = millis() + ms;
 
-	if (ms == 0u)
-		ms = 10u;
-	if (ms > 2000u)
-		ms = 2000u;    /* long enough to see, short of a watchdog */
-
-	/*
-	 * Deliberately silent. A printf here lands in the very pass this
-	 * command exists to measure - 36 characters at 115200 baud is
-	 * 3.1 ms - and the monitor would faithfully report the stall plus
-	 * the announcement of it. Measured, not guessed: with the message
-	 * in, a 5 ms stall read 7.2 ms and a 1500 ms stall read 1502.7 ms,
-	 * the same 2-3 ms offset at both ends. The answer to "did it work"
-	 * is the load report, not an echo.
-	 */
-	until = millis() + ms;
 	while ((int32_t)(millis() - until) < 0)
 		;
 }
@@ -1088,7 +1065,7 @@ static void h_load(const uint32_t *a)
 		load_clear();
 }
 
-static void h_stall(const uint32_t *a) { cmd_stall(a[0]); }
+static void h_stall(const uint32_t *a) { console_cmd_stall(a[0]); }
 
 /*
  * A software unplug of the native port. `z` is a processor reset only -

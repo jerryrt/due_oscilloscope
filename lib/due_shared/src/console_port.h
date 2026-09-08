@@ -124,6 +124,25 @@ uint32_t console_port_acq_min_rc(unsigned n_channels);
  * reading of one with a later reading of the other. */
 void     console_port_acq_overruns(uint32_t *rxbuff, uint32_t *govre);
 
+/*
+ * Block, for `ms`, the thing the load monitor is measuring - already
+ * clamped by console_cmd_stall(), which is where that policy lives.
+ *
+ * This is a port name rather than a shared spin because the three
+ * tracks do not agree on what "the loop" is, and the difference is the
+ * whole content of the command. Tracks A and B have one loop and stall
+ * it where the handler runs. Track C's console is a task of its own at
+ * a priority the sample path outranks, so a spin in the handler blocks
+ * the console and nothing else: load_tick() would report a normal pass,
+ * the heartbeat's loop_passes would keep advancing, and every test
+ * built on `S` would pass while certifying nothing. So Track C hands
+ * the stall to its service task, which is the task that IS the loop.
+ *
+ * Same meaning on all three - "make the monitored loop miss `ms`" -
+ * which is what console_port.h's own rule asks of a name in it.
+ */
+void     console_port_stall(uint32_t ms);
+
 #ifdef __cplusplus
 }
 #endif
