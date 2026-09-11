@@ -55,7 +55,33 @@ c  indirect  console_cmds.c:44    noreturn
 c  indirect  timers.c             none
 
 # --- Track A -----------------------------------------------------------
-# Nothing yet. The vendored Arduino core is a separate CMake target
-# compiled `-w`, so -fcallgraph-info does not reach track_a_core and the
-# graph would be missing every core function rather than merely
-# unresolved. Named here so the gap is visible rather than implied.
+# Nothing yet, and the reason written here first was WRONG. It said the
+# vendored core is compiled `-w` so -fcallgraph-info does not reach it.
+# `-w` inhibits warnings and has nothing to do with this flag; measured,
+# the flag reaches the core fine - 79 .ci files, 58 of them from
+# track_a_core. That claim was asserted rather than tested, which is the
+# thing CLAUDE.md says to do to "the core will not let us" before
+# believing it.
+#
+# Two real reasons, and only the second is Track A's own.
+#
+# C++ NAME MANGLING. Track A is C++, so GCC writes the DEMANGLED
+# signature into the .ci label - `void watchdogSetup()`,
+# `RingBuffer::RingBuffer()` - while nm and `objdump --disassemble=`
+# want the mangled symbol. Every leaf lookup misses and the tool
+# refuses. 12 of the 33 unresolved leaves are only this, and are
+# defined in the image. It is the same defect issue #45 hit doing
+# dead-function analysis on this track, recurring in a new tool: a
+# plain-name match against C++ is wrong in both directions.
+#
+# NEWLIB, which is the substantive one. Track A links the C library and
+# calls into it - malloc, free, atof, memcmp, memmove, isspace - and
+# none of those is compiled here, so 21 leaves have no frame anywhere in
+# the tree. Track B avoids the C library on the working path and has
+# six. That is a real difference between the tracks rather than a
+# tooling gap, and closing it means declaring those frames with `leaf`
+# lines, each carrying how it was measured.
+#
+# So Track A is reachable, at the cost of demangling plus 21 measured
+# declarations. It is debt with a date on it, not a property of the
+# track.

@@ -26,10 +26,17 @@ that runs once at boot is harmless, and three 200-byte frames nested
 under an ISR are not, and the census reports the same number for both.
 
 Track A is absent from every table below, and that is a stated gap
-rather than a zero. Its vendored Arduino core is a separate CMake target
-compiled `-w`, so `-fcallgraph-info` does not reach it and the graph
-would be missing every core function rather than merely unable to follow
-an edge into one.
+rather than a zero. The build flag reaches it perfectly well; what stops
+it is two things, one of them a tooling limit and one of them a real
+difference between the tracks.
+
+The first is C++ name mangling. Track A is C++, so the compiler writes a
+demangled signature into the call graph while the symbol table carries
+the mangled name, and every library-leaf lookup misses. The second
+matters more: Track A links the C library and calls into it, so its
+frames end in functions compiled elsewhere, where Track B keeps the C
+library off the working path entirely. Bounding Track A therefore needs
+those frames declared and measured rather than derived.
 
 ## Three states, and why refusing beats guessing
 
