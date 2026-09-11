@@ -43,6 +43,15 @@ THREE KINDS OF EDGE HAVE TO BE RESOLVED, and each has its own rung.
 dispatch table; its entries are read out of the linked ELF's read-only data,
 Thumb bit masked, and mapped back through the symbol table, which is exact and
 is re-derived from every build rather than being an annotation that can drift.
+`vtable:Class` resolves a C++ virtual call, and it is the EASY case
+rather than the hard one this tool first assumed. C++ emits the target
+set into the binary: a vtable is a named, typed, const array of function
+pointers with a fixed layout, which is exactly what a dispatch table is.
+A raw function pointer assigned at runtime has no such structure
+anywhere - so it is C, not C++, that defeats a static call graph. Bare
+`vtable` takes every vtable in the image, which is sound for a virtual
+call and tight enough to be useful, and marks the answer a ceiling.
+
 `noreturn` declares a site that does not come back - the deliberate jump to a
 bad address that proves the fault handler - and `none` asserts that no target
 is ever registered, which is what a FreeRTOS software-timer callback dispatch
@@ -283,6 +292,37 @@ def _name_key(label):
     return head.split()[-1] if head else head
 
 
+def mangled_index(elf):
+    """{demangled key: mangled symbol} for every defined function.
+
+    `objdump --disassemble=` matches the MANGLED name, the call graph
+    writes a demangled signature, and `nm -C` writes a third spelling
+    with no return type. Paired BY ADDRESS rather than by line order,
+    because the two nm runs are only guaranteed to agree on what is at
+    each address, not on how they sorted it.
+    """
+    def table(flags):
+        out = {}
+        for ln in _run([_tool("arm-none-eabi-nm"), *flags, "--defined-only",
+                        elf]).splitlines():
+            parts = ln.split(None, 2)
+            if len(parts) >= 3 and parts[1] in ("t", "T", "w", "W"):
+                out[int(parts[0], 16)] = parts[2].strip()
+        return out
+
+    try:
+        plain, demangled = table([]), table(["-C"])
+    except subprocess.CalledProcessError:
+        return {}
+    idx = {}
+    for addr, mangled in plain.items():
+        pretty = demangled.get(addr)
+        if pretty:
+            idx.setdefault(_name_key(pretty), mangled)
+        idx.setdefault(mangled, mangled)
+    return idx
+
+
 def survives_link(name, present):
     """Is `name` still in the linked image?
 
@@ -332,13 +372,22 @@ def image_names(elf):
 
 
 def symbols(elf):
-    """{address without the Thumb bit: name} for defined .text symbols."""
+    """{address without the Thumb bit: name} for defined .text symbols.
+
+    DEMANGLED, so that what comes out of a table or a vtable is in the
+    same vocabulary the call graph writes. `nm` gives
+    `_ZN9UARTClass5writeEh` where the graph says
+    `UARTClass::write(unsigned char)`, and a target that cannot be
+    matched to a node is refused - so reading a vtable in the mangled
+    vocabulary refuses on every slot it resolves, which is the worst of
+    both. For C the two spellings are the same and nothing changes.
+    """
     out = {}
-    for ln in _run([_tool("arm-none-eabi-nm"), "-n", "--defined-only",
+    for ln in _run([_tool("arm-none-eabi-nm"), "-nC", "--defined-only",
                     elf]).splitlines():
-        parts = ln.split()
+        parts = ln.split(None, 2)
         if len(parts) >= 3 and parts[1] in ("t", "T", "w", "W"):
-            out[int(parts[0], 16) & ~1] = parts[2]
+            out.setdefault(int(parts[0], 16) & ~1, parts[2].strip())
     return out
 
 
@@ -357,6 +406,18 @@ def table_targets(elf, table, syms):
     if base is None:
         raise LookupError(f"no symbol {table!r} in {elf}")
 
+    found, unknown = set(), []
+    for word in _read_words(elf, base, size):
+        if word & 1 and (word & ~1) in syms:      # a Thumb code address
+            found.add(syms[word & ~1])
+    return sorted(found), unknown
+
+
+def _read_words(elf, base, size):
+    """The bytes of a const array in the image, as 32-bit little-endian
+    words. One place, because a vtable and a dispatch table are the same
+    thing to a reader: an array of function pointers the linker laid
+    down."""
     dump = _run([_tool("arm-none-eabi-objdump"), "-s",
                  f"--start-address={base}", f"--stop-address={base + size}",
                  elf])
@@ -365,13 +426,67 @@ def table_targets(elf, table, syms):
         m = re.match(r"\s+([0-9a-f]+)\s((?:[0-9a-f]{2,8}\s){1,4})", ln)
         if m:
             raw += bytes.fromhex(m.group(2).replace(" ", ""))
+    return [int.from_bytes(raw[i:i + 4], "little")
+            for i in range(0, len(raw) - 3, 4)]
 
-    found, unknown = set(), []
-    for off in range(0, len(raw) - 3, 4):
-        word = int.from_bytes(raw[off:off + 4], "little")
-        if word & 1 and (word & ~1) in syms:      # a Thumb code address
-            found.add(syms[word & ~1])
-    return sorted(found), unknown
+
+def vtables(elf):
+    """{class name: (address, size)} for every vtable in the image.
+
+    Located by the DEMANGLED symbol - `nm -C` writes "vtable for
+    UARTClass" - rather than by rebuilding `_ZTV9UARTClass` from the
+    class name. Reconstructing the mangling works for a plain class and
+    stops working the moment one is namespaced or templated, and a
+    lookup that silently finds nothing would read as "this class has no
+    virtual methods".
+    """
+    out = {}
+    for ln in _run([_tool("arm-none-eabi-nm"), "-SC", "--defined-only",
+                    elf]).splitlines():
+        parts = ln.split(None, 3)
+        if len(parts) == 4 and parts[3].startswith("vtable for "):
+            out[parts[3][len("vtable for "):].strip()] = (int(parts[0], 16),
+                                                          int(parts[1], 16))
+    return out
+
+
+def vtable_targets(elf, cls, syms):
+    """The virtual methods `cls` dispatches to, read out of its vtable.
+
+    A VIRTUAL CALL IS THE EASY CASE, which is the opposite of what this
+    tool assumed at first. C++ emits the target set into the binary: a
+    vtable is a named, typed, const array of function pointers with a
+    fixed layout, which is exactly the shape a dispatch table is. A raw
+    function pointer assigned at runtime has no such structure anywhere,
+    so it is C - not C++ - that defeats this analysis.
+
+    The first two slots of an Itanium-ABI vtable are the offset-to-top
+    and the typeinfo pointer. Neither is a code address, so neither
+    survives the Thumb-bit-and-known-symbol filter every table read here
+    goes through; nothing special is done about them.
+
+    `cls` of None means every vtable in the image, which is a SOUND
+    over-approximation for a virtual call whose static type the call
+    graph does not record: a virtual call reaches a virtual method, and
+    every virtual method of an instantiated class is in one of these.
+    Tight, too - this firmware has four.
+    """
+    found, missing = set(), []
+    tabs = vtables(elf)
+    names = list(tabs) if cls is None else [cls]
+    for name in names:
+        if name not in tabs:
+            missing.append(name)
+            continue
+        base, size = tabs[name]
+        for word in _read_words(elf, base, size):
+            if word & 1 and (word & ~1) in syms:
+                found.add(syms[word & ~1])
+    if missing:
+        raise LookupError("no vtable for " + ", ".join(missing)
+                          + " in " + os.path.basename(elf)
+                          + "; the image has: " + ", ".join(sorted(tabs)))
+    return sorted(found), []
 
 
 #: `push {r4, r5, lr}` is 4 bytes per register; `sub sp, #N` is N. Only the
@@ -382,7 +497,37 @@ _PUSH = re.compile(r"\bpush\s+\{([^}]*)\}")
 _SUBSP = re.compile(r"\bsub\s+sp,\s*(?:sp,\s*)?#(\d+)")
 
 
-def leaf_frame(elf, sym):
+def symbol_extents(elf):
+    """{name: (address, size)} for defined functions, under every spelling.
+
+    Address and size rather than name alone, because that is what lets a
+    prologue be read for a symbol `objdump --disassemble=` will not
+    print. It declines on small weak stubs - `watchdogSetup` is 4 bytes
+    and `svcHook` is 2 - emitting section headers and no instructions, so
+    a name-based read calls them unreadable and the tool refuses on two
+    functions that plainly have no frame.
+    """
+    out = {}
+    for flags in ([], ["-C"]):
+        try:
+            dump = _run([_tool("arm-none-eabi-nm"), "-S", *flags,
+                         "--defined-only", elf])
+        except subprocess.CalledProcessError:
+            continue
+        for ln in dump.splitlines():
+            parts = ln.split(None, 3)
+            if len(parts) == 4 and parts[2] in ("t", "T", "w", "W"):
+                try:
+                    addr, size = int(parts[0], 16), int(parts[1], 16)
+                except ValueError:
+                    continue
+                name = parts[3].strip()
+                out.setdefault(name, (addr, size))
+                out.setdefault(_name_key(name), (addr, size))
+    return out
+
+
+def leaf_frame(elf, sym, extents=None):
     """Bytes `sym`'s prologue reserves, or None if it cannot be read."""
     # GCC names an unexpanded builtin `__builtin_memset` in the call graph
     # while the linker calls the thing `memset`. Looking the prefixed name up
@@ -390,11 +535,23 @@ def leaf_frame(elf, sym):
     # symbol that is sitting right there in the image.
     if sym.startswith("__builtin_"):
         sym = sym[len("__builtin_"):]
-    try:
-        dis = _run([_tool("arm-none-eabi-objdump"), "-d",
-                    f"--disassemble={sym}", elf])
-    except subprocess.CalledProcessError:
-        return None
+    where = None
+    if extents:
+        where = extents.get(sym) or extents.get(_name_key(sym))
+    if where and where[1]:
+        addr, size = where
+        try:
+            dis = _run([_tool("arm-none-eabi-objdump"), "-d",
+                        f"--start-address={addr}",
+                        f"--stop-address={addr + size}", elf])
+        except subprocess.CalledProcessError:
+            return None
+    else:
+        try:
+            dis = _run([_tool("arm-none-eabi-objdump"), "-d",
+                        f"--disassemble={sym}", elf])
+        except subprocess.CalledProcessError:
+            return None
     body = [ln for ln in dis.splitlines() if re.match(r"\s+[0-9a-f]+:", ln)]
     if not body:
         return None
@@ -673,10 +830,12 @@ def main(argv=None):
                     metavar="LOC=SPEC",
                     help="what one indirect call site reaches, matched on its "
                          "source location. SPEC is a const dispatch table's "
-                         "symbol (exact), `noreturn` for a site that does "
-                         "not come back, or `none` to assert that no target "
-                         "is ever registered. A site with no declaration is "
-                         "refused")
+                         "symbol (exact); `vtable:Class` for a C++ "
+                         "virtual call, or bare `vtable` for every vtable in "
+                         "the image (sound, an upper bound); `noreturn` for a "
+                         "site that does not come back; `none` to assert no "
+                         "target is ever registered. A site with no "
+                         "declaration is refused")
     ap.add_argument("--leaf", action="append", default=[], metavar="SYM=BYTES",
                     help="declare a library frame the disassembly will not "
                          "yield; say in the commit how it was measured")
@@ -753,6 +912,7 @@ def main(argv=None):
     # because a graph that quietly shrank is the thing this tool refuses
     # to be.
     gc_dropped = []
+    extents = symbol_extents(args.elf) if args.elf else {}
     if args.elf:
         present = image_names(args.elf)
         def _kept(title):
@@ -793,7 +953,7 @@ def main(argv=None):
         if plain in declared:
             frames[title] = declared[plain]
             continue
-        size = leaf_frame(args.elf, _name_key(plain)) if args.elf else None
+        size = leaf_frame(args.elf, plain, extents) if args.elf else None
         if size is None:
             unresolved.append((plain, "no frame: not compiled here, and its "
                                       "prologue could not be read"))
@@ -840,6 +1000,19 @@ def main(argv=None):
             got = []                       # it does not come back; no chain
         elif how == "none":
             got = []                       # asserted: no target is registered
+        elif how == "vtable" or how.startswith("vtable:"):
+            cls = how.split(":", 1)[1] if ":" in how else None
+            try:
+                got, _ = vtable_targets(args.elf, cls, syms)
+            except LookupError as exc:
+                unresolved.append((f"indirect call at {loc}", str(exc)))
+                continue
+            # Naming the class is exact. The bare form is every vtable in
+            # the image, which is sound for a virtual call - it reaches a
+            # virtual method and they are all in one of these - but is an
+            # over-approximation, so the whole answer becomes a ceiling.
+            if cls is None:
+                exact_indirect = False
         else:
             try:
                 got, _ = table_targets(args.elf, how, syms)
@@ -852,12 +1025,20 @@ def main(argv=None):
     # An indirect target is a linker symbol; the graph is keyed on .ci titles,
     # and a static's title carries its defining path. Map one to the other, and
     # refuse on any name that is ambiguous or absent rather than picking.
+    # Indexed under both spellings and under the reduced key, because the
+    # three sources disagree: the call graph writes a demangled signature
+    # WITH its return type, nm -C writes one without, and a constructor
+    # has none at all. Reducing to the qualified name is what makes them
+    # comparable.
     by_name = {}
     for title, plain in g.name.items():
         by_name.setdefault(plain, []).append(title)
+        key = _name_key(plain)
+        if key != plain:
+            by_name.setdefault(key, []).append(title)
     title_of = {}
     for t in sorted(all_targets):
-        hits = by_name.get(t, [])
+        hits = by_name.get(t) or by_name.get(_name_key(t)) or []
         if len(hits) == 1:
             title_of[t] = hits[0]
         elif len(hits) > 1:

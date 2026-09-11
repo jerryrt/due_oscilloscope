@@ -220,6 +220,75 @@ def test_a_function_reached_only_indirectly_is_not_a_root(tmp_path):
         "once the indirect edge resolves, the handler has a caller")
 
 
+# --- C++ virtual dispatch ---------------------------------------------------
+
+#: `nm -SC --defined-only`, as the reader parses it: address, size, type,
+#: demangled name. Canned rather than built, so the test needs no ELF and
+#: no toolchain - the pattern tests/test_flash.py uses on
+#: image_fingerprint.
+_NM_SC = """\
+0008d2dc 0000002c T vtable for UARTClass
+0008d308 00000028 T vtable for Serial_
+00087001 00000010 T UARTClass::write(unsigned char)
+00087011 00000010 T UARTClass::read()
+00087021 00000010 T Serial_::write(unsigned char)
+"""
+
+
+def test_a_vtable_is_located_by_its_demangled_name(monkeypatch):
+    """Not by rebuilding `_ZTV9UARTClass` from the class name.
+
+    Reconstructing the mangling works for a plain class and stops the
+    moment one is namespaced or templated - and a lookup that silently
+    found nothing would read as "this class has no virtual methods",
+    which is a wrong answer rather than no answer.
+    """
+    monkeypatch.setattr(sd, "_run", lambda argv: _NM_SC)
+    got = sd.vtables("x.elf")
+    assert got == {"UARTClass": (0x8d2dc, 0x2c),
+                   "Serial_": (0x8d308, 0x28)}
+
+
+def test_an_absent_vtable_names_the_ones_that_exist(monkeypatch):
+    """`Print` and `Stream` are abstract bases with no instances, so no
+    vtable is emitted for them and `vtable:Print` cannot resolve. The
+    refusal has to say so usefully, because the fix is to use the bare
+    spec and a reader cannot guess that from "not found"."""
+    monkeypatch.setattr(sd, "_run", lambda argv: _NM_SC)
+    with pytest.raises(LookupError) as exc:
+        sd.vtable_targets("x.elf", "Print", {})
+    assert "UARTClass" in str(exc.value) and "Serial_" in str(exc.value), (
+        "name what the image does have; 'no vtable for Print' alone "
+        "leaves the reader nowhere")
+
+
+def test_a_vtable_resolves_to_the_methods_it_holds(monkeypatch):
+    """The point of the whole exercise: C++ emits the target set into the
+    binary, so a virtual call is the EASY case and not the hard one."""
+    # Vtable slots carry the Thumb bit set; symbols() masks it off, so
+    # the two sides differ by exactly that bit and the reader has to
+    # bridge it. Getting this wrong in the fixture produced an empty
+    # result that looked like a parser bug.
+    words = {0x8d2dc: [0, 0, 0x87001, 0x87011],   # 2 header slots first
+             0x8d308: [0, 0, 0x87021]}
+
+    monkeypatch.setattr(sd, "_run", lambda argv: _NM_SC)
+    monkeypatch.setattr(sd, "_read_words",
+                        lambda elf, base, size: words[base])
+    syms = {0x87000: "UARTClass::write(unsigned char)",
+            0x87010: "UARTClass::read()",
+            0x87020: "Serial_::write(unsigned char)"}
+
+    got, _ = sd.vtable_targets("x.elf", "UARTClass", syms)
+    assert got == ["UARTClass::read()", "UARTClass::write(unsigned char)"]
+
+    # The bare form is every vtable, which is what an abstract base's
+    # virtual call needs: it lands in a concrete subclass, and they are
+    # all here. Sound, and the caller marks the answer a ceiling.
+    everything, _ = sd.vtable_targets("x.elf", None, syms)
+    assert set(everything) == set(syms.values())
+
+
 # --- what the linker threw away --------------------------------------------
 
 def test_a_clone_suffix_is_not_mistaken_for_a_missing_function():
