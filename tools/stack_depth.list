@@ -55,6 +55,58 @@ c  indirect  console_cmds.c:44    noreturn
 c  indirect  timers.c             none
 
 # --- Track A -----------------------------------------------------------
+# The console, same shared source and same two sites as B and C.
+a  indirect  console.c:260        console_bindings
+a  indirect  console_cmds.c:44    noreturn
+
+# The core's Print/Stream hierarchy. Print and Stream are abstract bases
+# with no instances, so no vtable exists for either and a class-named
+# spec cannot resolve; a virtual call through them lands in a concrete
+# subclass, and the union of the image's vtables is exactly that set.
+a  indirect  Print.cpp            vtable
+a  indirect  Print.h              vtable
+a  indirect  Stream.cpp           vtable
+a  indirect  UARTClass.cpp        vtable
+
+# Serial_::read() calling accept(), and Serial_::write(uint8_t) calling
+# write(buf,len). Both are `virtual` in USBAPI.h and dispatched through
+# `this`, whose static type is Serial_.
+a  indirect  CDC.cpp              vtable:Serial_
+
+# PluggableUSB's four virtuals over the plugged-module list. rootNode is
+# written only by PluggableUSB_::plug(), and this firmware calls it
+# exactly once - sketches/bringup/ctlusb.cpp, with a CtlUSB. The core's
+# other plug() is in libraries/HID, which Track A does not compile.
+a  indirect  PluggableUSB.cpp     vtable:CtlUSB
+
+# attachInterrupt's four PIO callback tables. PIOA-D_Handler are in the
+# image so the sites can execute, but attachInterrupt is NOT - nothing
+# under sketches/, lib/, drivers/ or apps/ calls it and --gc-sections
+# took it - and it is the only writer of the four `static interruptCB
+# [32]` arrays besides __initialize, which NULLs them.
+#
+# WHAT WOULD FALSIFY THIS: the first attachInterrupt() in Track A. The
+# replacement is not a table spec, because callbacksPioA is .bss and
+# reading it out of the ELF would report zero targets while claiming to
+# be exact.
+a  indirect  WInterrupts.c        none
+
+# UOTGHS's dispatch to the stack's ISR. `gpf_isr` is .bss, set by
+# UDD_SetStack(&USB_ISR) from USBDevice_'s constructor on the
+# static-init path, so `none` is provably FALSE and a table read finds a
+# NOBITS section. Named directly: the claim adds a chain rather than
+# removing one, so it cannot under-report, and this is the USB interrupt
+# stack - the site where an under-report would matter most.
+#
+# WHAT WOULD FALSIFY THIS: a second UDD_SetStack() call with a different
+# handler.
+a  indirect  uotghs.c:39          target:USB_ISR
+
+# libsam's EMAC and EFC callbacks need no line: neither emac_handler nor
+# efc_perform_command is in the linked image, so the tool drops their
+# sites with the rest of what --gc-sections discarded. Recorded here
+# because their absence from this file is a decision, not an oversight.
+
 # Nothing yet, and the reason written here first was WRONG. It said the
 # vendored core is compiled `-w` so -fcallgraph-info does not reach it.
 # `-w` inhibits warnings and has nothing to do with this flag; measured,

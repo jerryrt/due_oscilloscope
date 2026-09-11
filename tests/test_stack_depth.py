@@ -214,8 +214,11 @@ def test_a_function_reached_only_indirectly_is_not_a_root(tmp_path):
     g, _ = sd.parse([build])
     bare = sd.roots_of(g, [], {}, {})
     assert "t.c:h_one" in bare, "with nothing resolved it is unreachable"
+    # title_of maps a target name to EVERY candidate node, because a weak
+    # C++ method emitted into two units appears twice and they are one
+    # function; the walk maxes over them.
     resolved = sd.roots_of(g, [], {"main": {"h_one"}},
-                           {"h_one": "t.c:h_one"})
+                           {"h_one": ["t.c:h_one"]})
     assert resolved == ["main"], (
         "once the indirect edge resolves, the handler has a caller")
 
@@ -380,15 +383,17 @@ def test_the_committed_declarations_parse(tmp_path):
     whichever bench ran next, which is a long way from the commit that
     caused it.
     """
-    for track, want in (("b", True), ("c", True), ("a", False)):
+    for track in ("a", "b", "c"):
         got = sd.read_declarations(sd.DECLARATIONS, track)
-        assert bool(got) is want, (
-            f"track {track}: {'expected' if want else 'expected no'} "
-            f"declarations, got {got}")
-    b = dict((k, v) for _kind, k, v in
-             sd.read_declarations(sd.DECLARATIONS, "b"))
-    assert b.get("console.c:260") == "console_bindings", (
-        "the console dispatch must resolve exactly, not by assertion")
+        assert got, f"track {track} declares nothing"
+        # The console lives in shared source, so all three tracks compile
+        # the same two sites and all three must resolve the dispatch
+        # EXACTLY - by reading the table out of the image, never by
+        # asserting something about it.
+        by_key = dict((k, v) for _kind, k, v in got)
+        assert by_key.get("console.c:260") == "console_bindings", (
+            f"track {track}: the console dispatch must resolve exactly")
+        assert by_key.get("console_cmds.c:44") == "noreturn"
 
 
 # --- the diagram ------------------------------------------------------------

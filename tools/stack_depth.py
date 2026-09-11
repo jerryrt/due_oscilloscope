@@ -275,6 +275,24 @@ def parse(roots):
 
 # --- resolving what the .ci files cannot say -------------------------------
 
+def _qualified(head):
+    """The function's own name out of a declaration's head.
+
+    The last token is right for `void watchdogSetup` and wrong for
+    `virtual UARTClass::operator bool`, where it yields `bool`. So: from
+    the LAST token carrying `::` to the end, which keeps an operator's
+    two-token name together and still works when the RETURN type is the
+    qualified one (`std::size_t Foo::bar`).
+    """
+    toks = head.strip().split()
+    if not toks:
+        return ""
+    for i in range(len(toks) - 1, -1, -1):
+        if "::" in toks[i]:
+            return " ".join(toks[i:])
+    return toks[-1]
+
+
 def _name_key(label):
     """A comparable name from either a .ci label or `nm -C` output.
 
@@ -288,8 +306,7 @@ def _name_key(label):
     reported live functions as dead. A plain-name match against C++ is
     wrong in both directions; this is the same fix, one tool over.
     """
-    head = label.split("(")[0].strip()
-    return head.split()[-1] if head else head
+    return _qualified(label.split("(")[0])
 
 
 def mangled_index(elf):
@@ -348,6 +365,43 @@ def survives_link(name, present):
         if form in keys or form.split(".", 1)[0] in bases:
             return True
     return False
+
+
+def _sig_key(label):
+    """Qualified name and ARGUMENT COUNT - `Print::write/2`.
+
+    Not the argument types, and that is forced rather than chosen. The
+    call graph writes the SOURCE spelling and `nm -C` writes the
+    canonical ABI one:
+
+        .ci     virtual size_t Print::write(const uint8_t*, size_t)
+        nm -C           size_t Print::write(unsigned char const*, unsigned int)
+
+    One function, one signature, two vocabularies, and no string
+    normalisation bridges `const uint8_t*` to `unsigned char const*`
+    without a type parser.
+
+    Arity is what overloads actually differ by here, and it is spelled
+    identically on both sides. Where two overloads share a name AND an
+    arity this is still ambiguous - and then the edge is refused, which
+    is the safe direction.
+    """
+    head, sep, rest = label.partition("(")
+    name = _qualified(head)
+    if not sep:
+        return name
+    args = rest.rsplit(")", 1)[0].strip()
+    if not args or args == "void":
+        return name + "/0"
+    depth, n = 0, 1
+    for ch in args:
+        if ch in "<([":
+            depth += 1
+        elif ch in ">)]":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            n += 1
+    return f"{name}/{n}"
 
 
 def image_names(elf):
@@ -588,7 +642,8 @@ def deepest(g, root, frames, indirect_by_src, title_of):
         stack.append(title)
         best, chain = 0, []
         for dst in sorted(g.edges.get(title, ())):
-            targets = [title_of[t] for t in indirect_by_src.get(title, ())] \
+            targets = [h for t in indirect_by_src.get(title, ())
+                       for h in title_of.get(t, ())] \
                 if dst == INDIRECT else [dst]
             for tgt in targets:
                 sub, sub_chain = walk(tgt)
@@ -624,7 +679,8 @@ def find_cycle(g, frames, indirect_by_src, title_of):
         colour[title] = "open"
         stack.append(title)
         for dst in sorted(g.edges.get(title, ())):
-            targets = [title_of[t] for t in indirect_by_src.get(title, ())] \
+            targets = [h for t in indirect_by_src.get(title, ())
+                       for h in title_of.get(t, ())] \
                 if dst == INDIRECT else [dst]
             for tgt in targets:
                 if tgt not in frames:
@@ -660,7 +716,8 @@ def cost_below(g, frames, indirect_by_src, title_of):
             return 0                       # a cycle is caught elsewhere
         best = 0
         for dst in g.edges.get(title, ()):
-            targets = [title_of[t] for t in indirect_by_src.get(title, ())] \
+            targets = [h for t in indirect_by_src.get(title, ())
+                       for h in title_of.get(t, ())] \
                 if dst == INDIRECT else [dst]
             for tgt in targets:
                 if tgt in frames:
@@ -679,7 +736,8 @@ def _pruned(g, frames, below, floor, indirect_by_src, title_of):
     edges = []
     for src in sorted(keep):
         for dst in sorted(g.edges.get(src, ())):
-            targets = [title_of[t] for t in indirect_by_src.get(src, ())] \
+            targets = [h for t in indirect_by_src.get(src, ())
+                       for h in title_of.get(t, ())] \
                 if dst == INDIRECT else [dst]
             for tgt in targets:
                 if tgt in keep:
@@ -803,7 +861,8 @@ def roots_of(g, named, indirect_by_src, title_of):
         return sorted(set(out))
     called = {d for ds in g.edges.values() for d in ds if d != INDIRECT}
     for src, targets in indirect_by_src.items():
-        called.update(title_of[t] for t in targets if t in title_of)
+        for t in targets:
+            called.update(title_of.get(t, ()))
     return sorted(t for t in g.frame if t not in called)
 
 
@@ -830,7 +889,8 @@ def main(argv=None):
                     metavar="LOC=SPEC",
                     help="what one indirect call site reaches, matched on its "
                          "source location. SPEC is a const dispatch table's "
-                         "symbol (exact); `vtable:Class` for a C++ "
+                         "symbol (exact); `target:SYM` for one named "
+                         "function; `vtable:Class` for a C++ "
                          "virtual call, or bare `vtable` for every vtable in "
                          "the image (sound, an upper bound); `noreturn` for a "
                          "site that does not come back; `none` to assert no "
@@ -945,6 +1005,13 @@ def main(argv=None):
             g.edges.pop(title, None)
             for src in g.edges:
                 g.edges[src].discard(title)
+            # AND ITS CALL SITES. indirect_sites is built from g.sites,
+            # so dropping a discarded function from the frames and edges
+            # and leaving its sites behind still refuses on it - which
+            # is a claim demanded about code that cannot execute. It
+            # raised efc.c and four emac.c sites for exactly that reason.
+            for key in [k for k in g.sites if k[0] == title]:
+                g.sites.pop(key, None)
 
     # --- resolve the library leaves ---
     unresolved = []
@@ -975,12 +1042,19 @@ def main(argv=None):
         if dst == INDIRECT:
             indirect_sites.extend((src, loc) for loc in locs)
 
+    # PREPENDED, not appended. The first matching pattern wins, so a
+    # command-line declaration appended after the tracked list would
+    # never be reached when the list already matches - which makes
+    # overriding a line silently impossible, and made a break-on-purpose
+    # test of one inert.
+    cli = []
     for spec in args.indirect:
         loc, _, how = spec.partition("=")
         if not how:
             print(f"--indirect wants LOC=SPEC, got {spec!r}", file=sys.stderr)
             return 2
-        want.append((loc, how))
+        cli.append((loc, how))
+    want = cli + want
 
     exact_indirect = True
     indirect_by_src = {}
@@ -1000,6 +1074,16 @@ def main(argv=None):
             got = []                       # it does not come back; no chain
         elif how == "none":
             got = []                       # asserted: no target is registered
+        elif how.startswith("target:"):
+            # One named function. For a pointer that IS assigned, but
+            # from somewhere no table read can reach - uotghs.c's
+            # gpf_isr lives in .bss and is set by UDD_SetStack(&USB_ISR)
+            # on the static-init path, so reading it out of the image
+            # finds a NOBITS section and would report zero targets while
+            # claiming to be exact. Naming the target is a claim, like
+            # `none`, but it is a claim that ADDS a chain rather than
+            # removing one, so it cannot under-report.
+            got = [how.split(":", 1)[1]]
         elif how == "vtable" or how.startswith("vtable:"):
             cls = how.split(":", 1)[1] if ":" in how else None
             try:
@@ -1030,20 +1114,29 @@ def main(argv=None):
     # WITH its return type, nm -C writes one without, and a constructor
     # has none at all. Reducing to the qualified name is what makes them
     # comparable.
-    by_name = {}
+    # Three indexes, tried most specific first. The signature key is what
+    # separates C++ overloads; the bare name is the last resort and is
+    # only trusted when it is unambiguous.
+    exact, by_sig, by_name = {}, {}, {}
     for title, plain in g.name.items():
-        by_name.setdefault(plain, []).append(title)
-        key = _name_key(plain)
-        if key != plain:
-            by_name.setdefault(key, []).append(title)
+        exact.setdefault(plain, []).append(title)
+        by_sig.setdefault(_sig_key(plain), []).append(title)
+        by_name.setdefault(_name_key(plain), []).append(title)
     title_of = {}
     for t in sorted(all_targets):
-        hits = by_name.get(t) or by_name.get(_name_key(t)) or []
-        if len(hits) == 1:
-            title_of[t] = hits[0]
-        elif len(hits) > 1:
-            unresolved.append((t, "the name is defined in more than one unit, "
-                                  "so an indirect edge to it cannot be pinned"))
+        hits = (exact.get(t) or exact.get(_sig_key(t))
+                or by_sig.get(_sig_key(t)) or by_name.get(_name_key(t)) or [])
+        if hits:
+            # ALL OF THEM, not one. A weak C++ method emitted into two
+            # translation units appears twice with the same label and two
+            # titles; they are one function, so keeping both and letting
+            # the walk take its usual maximum is exact. Where the
+            # candidates genuinely differ the maximum is a ceiling, and
+            # the answer says so - which beats refusing on what is
+            # usually a duplicate.
+            title_of[t] = hits
+            if len({g.frame.get(h) for h in hits}) > 1:
+                exact_indirect = False
         else:
             # No .ci node at all - a vector-table entry into hand-written asm,
             # say. Refused rather than dropped: dropping it is the silent
@@ -1064,6 +1157,20 @@ def main(argv=None):
     if cycle:
         print(f"RECURSION: {cycle}\n\nA cycle has no worst-case depth, and "
               "invariant 7 forbids one on the working path.", file=sys.stderr)
+        if not exact_indirect:
+            # A vtable spec resolves a virtual call to every slot in the
+            # table, and it cannot see how many ARGUMENTS the call site
+            # passed - the call graph does not record that. So a method
+            # that makes a virtual call appears to reach every overload
+            # including itself: Print::write(buf, len) loops calling
+            # write(c), and the 2-argument write is an inherited slot in
+            # the very table that resolves it. The cycle is the
+            # approximation, not the firmware.
+            print("\nSome indirect edge here was over-approximated, so this "
+                  "cycle may be an artefact rather than real recursion. A "
+                  "virtual call resolved through a vtable reaches every slot "
+                  "in it, including overloads the call site cannot name.",
+                  file=sys.stderr)
         return 4
 
     roots = roots_of(g, args.root, indirect_by_src, title_of)
