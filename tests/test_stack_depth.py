@@ -220,6 +220,57 @@ def test_a_function_reached_only_indirectly_is_not_a_root(tmp_path):
         "once the indirect edge resolves, the handler has a caller")
 
 
+# --- what the linker threw away --------------------------------------------
+
+def test_a_clone_suffix_is_not_mistaken_for_a_missing_function():
+    """The regression that a control caught, pinned so it cannot return.
+
+    GCC writes `ctl_dispatch.constprop` in the call graph and
+    `ctl_dispatch.constprop.0` in the symbol table. Testing presence by
+    exact match therefore calls a live function discarded, and the bound
+    silently falls - Track B went 916 to 708 the first time this ran.
+
+    An under-report is the one direction that matters, so presence is
+    tested permissively: a false "absent" is a wrong answer, a false
+    "present" is only an edge left to resolve.
+    """
+    present = {"ctl_dispatch.constprop.0", "main", "watchdogSetup()"}
+    assert sd.survives_link("ctl_dispatch.constprop", present)
+    assert sd.survives_link("main", present)
+    assert sd.survives_link("void watchdogSetup()", present), (
+        "the call graph writes a return type the symbol table does not")
+    assert not sd.survives_link("malloc", present)
+
+
+def test_the_demangled_key_drops_the_return_type():
+    """A C++ track is unreadable without this, and issue #45 hit the same
+    wall doing dead-function analysis here."""
+    assert sd._name_key("void watchdogSetup()") == "watchdogSetup"
+    assert sd._name_key("int CDC_GetInterface(uint8_t*)") == "CDC_GetInterface"
+    assert sd._name_key("RingBuffer::RingBuffer()") == "RingBuffer::RingBuffer"
+    assert sd._name_key("memcpy") == "memcpy"
+
+
+def test_a_discarded_target_is_not_a_chain(tmp_path, capsys):
+    """The call graph is pre-link and the image is post-GC.
+
+    GCC records what each unit called; --gc-sections then discards what
+    nothing reaches. A function absent from the image cannot execute, so
+    it contributes no depth - but the drop is REPORTED, because a graph
+    that quietly shrank is what this tool refuses to be.
+    """
+    build = _ci(tmp_path, "t", [
+        _node("main", "main", "t.c:1:1", 24),
+        _node("malloc", "malloc", "stdlib.h:1:1", shape="ellipse"),
+        _edge("main", "malloc", "t.c:9:3"),
+    ])
+    g, _ = sd.parse([build])
+    assert "malloc" in g.externals
+    # With no ELF there is nothing to prune against, so it must refuse
+    # rather than assume the function is absent.
+    assert sd.main([build]) == 3
+
+
 # --- the tracked claims ----------------------------------------------------
 
 def test_declarations_are_read_per_track(tmp_path):

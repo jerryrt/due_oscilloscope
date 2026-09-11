@@ -82,6 +82,28 @@ c  indirect  timers.c             none
 # tooling gap, and closing it means declaring those frames with `leaf`
 # lines, each carrying how it was measured.
 #
-# So Track A is reachable, at the cost of demangling plus 21 measured
-# declarations. It is debt with a date on it, not a property of the
-# track.
+# AND THAT SECOND REASON WAS ALSO WRONG, measured a day later. Neither
+# track uses newlib's heap or stdio. Both link the same slice - memcpy,
+# memset, strlen, the __aeabi helpers - and `malloc`, `free`, `atof`,
+# `String::String` are in NEITHER image: the core's source references
+# them, and --gc-sections discards every one. 25 of the 33 leaves were
+# functions the linker had already deleted.
+#
+# The one real retained difference is that Track A pulls 18
+# double-precision soft-float helpers (__aeabi_dadd, __aeabi_ddiv, ...)
+# that Track B does not, which is the core's double-based API on a part
+# with no FPU.
+#
+# What actually stops Track A, third time of asking and this one
+# measured end to end: THE ARDUINO CORE IS BUILT ON C++ VIRTUAL DISPATCH
+# AND RUNTIME CALLBACK REGISTRATION. 29 indirect call sites in vendored
+# code - Print, Stream, UARTClass, PluggableUSB, CDC, attachInterrupt,
+# and libsam's emac/efc/uotghs - against Track B's 2 and Track C's 5. A
+# virtual call's target set is "every override of this method", which is
+# the one pattern a static call graph cannot follow without
+# devirtualisation.
+#
+# So Track A needs 29 declarations, most of them about code this project
+# did not write. Still debt with a date on it rather than a property of
+# the track, but the date is further out than the first two wrong
+# answers implied.

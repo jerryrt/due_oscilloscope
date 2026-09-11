@@ -266,6 +266,71 @@ def parse(roots):
 
 # --- resolving what the .ci files cannot say -------------------------------
 
+def _name_key(label):
+    """A comparable name from either a .ci label or `nm -C` output.
+
+    GCC writes a DEMANGLED SIGNATURE WITH ITS RETURN TYPE into the call
+    graph - `void watchdogSetup()`, `int CDC_GetInterface(uint8_t*)` -
+    while `nm -C` writes the signature without one. Neither matches the
+    mangled symbol `objdump --disassemble=` wants. Reducing both sides to
+    the qualified name is what lets a C++ track be looked up at all.
+
+    Issue #45 hit the same wall doing dead-function analysis here and
+    reported live functions as dead. A plain-name match against C++ is
+    wrong in both directions; this is the same fix, one tool over.
+    """
+    head = label.split("(")[0].strip()
+    return head.split()[-1] if head else head
+
+
+def survives_link(name, present):
+    """Is `name` still in the linked image?
+
+    PERMISSIVE ON PURPOSE, and the asymmetry is the whole design. A false
+    "absent" drops a live function and under-reports the bound; a false
+    "present" only leaves an edge to resolve, which at worst refuses. One
+    of those is a wrong answer and the other is no answer.
+
+    So three spellings are tried: the name as the call graph writes it,
+    the demangled key, and the name with GCC's clone suffix removed -
+    `ctl_dispatch.constprop` in the graph is `ctl_dispatch.constprop.0`
+    in the symbol table. An exact match alone took Track B's bound from
+    916 to 708 the first time this ran, and only the control caught it.
+    """
+    # BOTH SIDES ARE NORMALISED, not just this one. Relying on the
+    # caller to have keyed `present` already couples two functions
+    # silently, and the coupling is invisible until someone builds the
+    # set another way - at which point a live function reads as absent
+    # and the bound falls without a word.
+    keys = set(present) | {_name_key(n) for n in present}
+    bases = {n.split(".", 1)[0] for n in keys}
+    for form in (name, _name_key(name)):
+        if form in keys or form.split(".", 1)[0] in bases:
+            return True
+    return False
+
+
+def image_names(elf):
+    """Every function name the LINKED image actually contains.
+
+    Both spellings, because callers arrive with either: the mangled
+    symbol and the demangled one reduced by _name_key().
+    """
+    out = set()
+    for flag in ((), ("-C",)):
+        try:
+            dump = _run([_tool("arm-none-eabi-nm"), *flag, "--defined-only",
+                         elf])
+        except subprocess.CalledProcessError:
+            continue
+        for ln in dump.splitlines():
+            parts = ln.split(None, 2)
+            if len(parts) >= 3 and parts[1] in ("t", "T", "w", "W"):
+                out.add(parts[2].strip())
+                out.add(_name_key(parts[2]))
+    return out
+
+
 def symbols(elf):
     """{address without the Thumb bit: name} for defined .text symbols."""
     out = {}
@@ -672,6 +737,55 @@ def main(argv=None):
             return 2
         declared[sym] = int(val)
 
+    # --- drop what the linker threw away -------------------------------
+    #
+    # THE CALL GRAPH IS PRE-LINK AND THE IMAGE IS POST-GC, and until this
+    # existed the difference read as a tool failure. GCC records what each
+    # translation unit called; `--gc-sections` then discards every section
+    # nothing reaches. On Track A that is most of the Arduino core's
+    # reach into the C library - 25 of 33 unresolved leaves were malloc,
+    # free, atof, sin, strcpy, String::String, none of which is in the
+    # linked binary at all.
+    #
+    # A function that is not in the image cannot execute, so it
+    # contributes no depth, and neither does anything only it reaches.
+    # Dropping it is sound rather than lenient - and it is REPORTED,
+    # because a graph that quietly shrank is the thing this tool refuses
+    # to be.
+    gc_dropped = []
+    if args.elf:
+        present = image_names(args.elf)
+        def _kept(title):
+            return survives_link(g.name.get(title, title), present)
+
+        # Targets first: an edge to a discarded function is not a chain.
+        for title in list(g.externals):
+            if _kept(title):
+                continue
+            gc_dropped.append(g.name.get(title, title))
+            for src in g.edges:
+                g.edges[src].discard(title)
+
+        # Then SOURCES, which is the half that reaches the indirect
+        # sites. attachInterrupt(), emac_phy_read() and
+        # efc_perform_command() each call through a function pointer and
+        # each is discarded by the linker on this firmware, so their call
+        # sites cannot execute and refusing on them is refusing to bound
+        # code that is not there.
+        #
+        # A node is dropped only when NEITHER spelling is in the image.
+        # Over-pruning here would be an under-report, which is the one
+        # direction that matters, so Track B's bound is the control: it
+        # must not move.
+        for title in list(g.frame):
+            if _kept(title):
+                continue
+            gc_dropped.append(g.name.get(title, title))
+            g.frame.pop(title, None)
+            g.edges.pop(title, None)
+            for src in g.edges:
+                g.edges[src].discard(title)
+
     # --- resolve the library leaves ---
     unresolved = []
     for title in g.externals:
@@ -679,7 +793,7 @@ def main(argv=None):
         if plain in declared:
             frames[title] = declared[plain]
             continue
-        size = leaf_frame(args.elf, plain) if args.elf else None
+        size = leaf_frame(args.elf, _name_key(plain)) if args.elf else None
         if size is None:
             unresolved.append((plain, "no frame: not compiled here, and its "
                                       "prologue could not be read"))
@@ -863,6 +977,11 @@ def main(argv=None):
     print(f"\n{len(g.frame)} functions over {files} .ci file(s), "
           f"{len(indirect_sites)} indirect call site(s) "
           f"resolving to {len(all_targets)} target(s).")
+    if gc_dropped:
+        print(f"{len(gc_dropped)} call target(s) were compiled and then "
+              f"discarded by --gc-sections, so they cannot run: "
+              + ", ".join(sorted(gc_dropped)[:6])
+              + (" ..." if len(gc_dropped) > 6 else ""))
     print(f"State: {state}."
           + ("" if exact_indirect else
              " Some edge was over-approximated; the figure is a ceiling, "

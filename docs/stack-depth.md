@@ -71,20 +71,16 @@ empty table.
 <!-- generated: bounds -->
 | track | root | bytes | state | functions | indirect sites/targets |
 |---|---|---|---|---|---|
-| b | Reset_Handler | 916 | exact | 345 | 2 / 50 |
-| b | TC2_Handler | 236 | exact | 345 | 2 / 50 |
-| b | UOTGHS_Handler | 96 | exact | 345 | 2 / 50 |
-| b | hard_fault_report | 56 | exact | 345 | 2 / 50 |
-| b | UART_Handler | 16 | exact | 345 | 2 / 50 |
-| b | _write | 16 | exact | 345 | 2 / 50 |
-| b | usb_dma_out_start | 16 | exact | 345 | 2 / 50 |
-| b | DACC_Handler | 12 | exact | 345 | 2 / 50 |
-| b | SystemCoreClockUpdate | 8 | exact | 345 | 2 / 50 |
-| b | _read | 8 | exact | 345 | 2 / 50 |
-| c | service_task | 860 | exact | 466 | 5 / 50 |
-| c | console_task | 844 | exact | 466 | 5 / 50 |
+| b | Reset_Handler | 916 | exact | 328 | 2 / 50 |
+| b | TC2_Handler | 236 | exact | 328 | 2 / 50 |
+| b | UOTGHS_Handler | 96 | exact | 328 | 2 / 50 |
+| b | hard_fault_report | 56 | exact | 328 | 2 / 50 |
+| b | UART_Handler | 16 | exact | 328 | 2 / 50 |
+| b | DACC_Handler | 12 | exact | 328 | 2 / 50 |
+| c | service_task | 860 | exact | 379 | 5 / 50 |
+| c | console_task | 844 | exact | 379 | 5 / 50 |
 
-Roots whose bound is 0 B are not listed: 19 on track b, 0 on track c. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows.
+Roots whose bound is 0 B are not listed: 6 on track b, 0 on track c. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows.
 <!-- end generated -->
 
 ## The deepest chain
@@ -229,8 +225,8 @@ deepest-chain table structurally cannot reach.
 <!-- generated: provenance -->
 | track | bench | repo_rev | cc | elf | elf_sha256 | taken_at |
 |---|---|---|---|---|---|---|
-| b | linux-x1 | baa8039-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 604e50ee387862a3 | 2026-09-08T13:39:33-0400 |
-| c | linux-x1 | baa8039-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | dc74d7846c974002 | 2026-09-08T13:39:33-0400 |
+| b | linux-x1 | aed5740-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 604e50ee387862a3 | 2026-09-10T23:49:09-0400 |
+| c | linux-x1 | aed5740-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | dc74d7846c974002 | 2026-09-10T23:49:09-0400 |
 
 Schema `stack-depth/1`, written by `tools/stack_depth.py`, resolving its indirect call sites from `tools/stack_depth.list`.
 <!-- end generated -->
