@@ -25,18 +25,35 @@ depth bound finds a chain that does not fit. A 512-byte frame in a leaf
 that runs once at boot is harmless, and three 200-byte frames nested
 under an ISR are not, and the census reports the same number for both.
 
-Track A is absent from every table below, and that is a stated gap
-rather than a zero. The build flag reaches it perfectly well; what stops
-it is two things, one of them a tooling limit and one of them a real
-difference between the tracks.
+Both read the linked image and the compiler's own call graph. Neither
+runs the firmware, so neither can see a depth that only a particular
+input reaches: what they bound is the worst case the graph allows, which
+is the conservative side to be on and is the side invariant 7 asks
+about.
 
-The first is C++ name mangling. Track A is C++, so the compiler writes a
-demangled signature into the call graph while the symbol table carries
-the mangled name, and every library-leaf lookup misses. The second
-matters more: Track A links the C library and calls into it, so its
-frames end in functions compiled elsewhere, where Track B keeps the C
-library off the working path entirely. Bounding Track A therefore needs
-those frames declared and measured rather than derived.
+## Where the three tracks stand
+
+All three tracks are measured, and all three are in every table below.
+Two of them carry a bound and one does not.
+
+| track | image | answer |
+|---|---|---|
+| A | the Arduino core, `sketches/bringup/` | **no bound.** The walk finds a cycle through the core's virtual dispatch, and a cycle has no worst case |
+| B | bare metal, `apps/baremetal_bringup/` | exact, on every root |
+| C | FreeRTOS, `apps/rtos_bringup/` | exact, on both tasks |
+
+Track A's cycle is an artefact of how a virtual call is resolved rather
+than recursion in the firmware, and the section below says exactly which
+approximation produces it. It is still reported as a refusal, because a
+tool that cannot tell the two apart must answer with the weaker one.
+
+A track with no number is a row, never a gap. It appears in the bounds
+table with `(no bound)` where the others carry a figure and its blocker
+in the cell beside it, and in the diagram as a box saying what stopped
+the walk. Dropping it would make the comparison silently two-track, and
+an absent track reads as "not measured" or as "fine" depending on who is
+reading - which is the body-of-zeroes failure one level up, in a
+document instead of a protocol.
 
 ## Three states, and why refusing beats guessing
 
@@ -44,43 +61,80 @@ those frames declared and measured rather than derived.
 |---|---|
 | exact | every edge on the chain was resolved |
 | upper bound | an edge was over-approximated, and the report names it |
-| unresolved | an edge could not be followed - **no number is printed** |
+| refused, recursion | an edge could not be followed, or the graph has a cycle - **no number is printed** |
 
-A stack tool that prints a number when it could not follow an edge is
-the guard that cannot fail: the report is green, the property goes
-unwatched, and nobody looks again. Nobody notices a bound that is too
-generous until the stack is already through the heap. GCC makes the
-third state possible by being explicit - an indirect call is not dropped
-from the graph, it becomes an edge to a placeholder node carrying the
-source location, so an unfollowable edge is a loud unknown rather than a
-silent subtraction.
-
-What resolves such a site is a claim, and the claims are tracked in
-`tools/stack_depth.list` rather than retyped into a shell: a `const`
-dispatch table, whose entries are read back out of the linked image and
-so cannot drift; `noreturn`; or `none`, the weakest, which has to say on
-its line what would falsify it. A site with no line there is refused.
+An under-report is the dangerous direction. A bound that is too generous
+costs a warning nobody needed; a bound that is too small is a guarantee
+that fails in the field, and nobody notices until the stack is already
+through the heap. So a stack tool that prints a number when it could not
+follow an edge is the guard that cannot fail: the report is green, the
+property goes unwatched, and nobody looks again.
 
 The generator inherits that discipline at the last step. An absent field
-renders as `(absent)`, never as a zero or a dash that would read as a
-measurement, and a missing or empty record is an error rather than an
-empty table.
+renders as `(absent)`, a refused bound as `(no bound)` with its reason
+beside it - never as a zero or a dash that would read as a measurement -
+and a missing or empty record is an error rather than an empty table.
+
+## Why an indirect call is the whole problem
+
+A direct call is an edge in the call graph: the compiler knows the
+callee and writes its name down. A call through a function pointer is
+not an edge to anything - the target is a value chosen at run time - and
+that is where a naive walk silently subtracts everything below the call.
+
+GCC makes the third state possible by being explicit. An indirect call
+is not dropped from the graph; it becomes an edge to a placeholder node
+carrying the source location, so an unfollowable edge is a loud unknown.
+Every such site must be declared in `tools/stack_depth.list` or the walk
+refuses.
+
+**This is not a C++ problem**, which is the first guess and it is
+backwards. Track B is C and has two such sites: the console's dispatch
+table, and the deliberate jump to a bad address that proves the fault
+handler. C++ emits its target sets into the binary - a vtable is a
+named, `const`, fixed-layout array of function pointers, which is
+exactly what a dispatch table is - while a raw pointer assigned at run
+time has no such structure anywhere. What makes Track A hard is not the
+language but the core's design: virtual dispatch and runtime callback
+registration throughout, which multiplies the sites rather than making
+any one of them unresolvable. The `indirect sites/targets` column in the
+bounds table is the count per track.
+
+## The ladder of declarations
+
+In descending order of what a declaration is worth. Each site's line in
+`tools/stack_depth.list` carries the evidence for it, because these are
+claims a person made and no extraction can confirm them.
+
+| spec | what it is worth |
+|---|---|
+| a `const` dispatch table's symbol | **Exact.** The array is read out of the linked image, the Thumb bit masked and the addresses mapped back through the symbol table, so the target set is re-derived from every build and cannot drift from the source the way an annotation can |
+| `vtable:Class` | **Exact**, the same way and for the same reason: the class's table is a const array in the image, and the call site's static type names it |
+| `vtable` | Every vtable in the image. Sound for a virtual call and tight enough to be useful, but it is a **ceiling**, and the answer is labelled `upper bound` |
+| `target:SYM` | One named function. A claim rather than a deduction - but one that **adds** a chain, so it cannot under-report, which is why it is acceptable where the honest alternative is a `.bss` pointer no read can resolve |
+| `noreturn` | The site does not come back, so it contributes no chain |
+| `none` | No target is ever registered. The weakest, resting on nothing but the writer: its line must say **what would falsify it**, and that is a name in the tree rather than an argument |
+
+A site with no line there is refused, not assumed. Adding a function
+pointer to this firmware breaks the report until somebody says what it
+reaches.
 
 ## The bounds
 
 <!-- generated: bounds -->
-| track | root | bytes | state | functions | indirect sites/targets |
-|---|---|---|---|---|---|
-| b | Reset_Handler | 916 | exact | 328 | 2 / 50 |
-| b | TC2_Handler | 236 | exact | 328 | 2 / 50 |
-| b | UOTGHS_Handler | 96 | exact | 328 | 2 / 50 |
-| b | hard_fault_report | 56 | exact | 328 | 2 / 50 |
-| b | UART_Handler | 16 | exact | 328 | 2 / 50 |
-| b | DACC_Handler | 12 | exact | 328 | 2 / 50 |
-| c | service_task | 860 | exact | 379 | 5 / 50 |
-| c | console_task | 844 | exact | 379 | 5 / 50 |
+| track | root | bytes | state | blocked by | functions | indirect sites/targets |
+|---|---|---|---|---|---|---|
+| a | (no chain) | (no bound) | recursion | recursion: virtual int Serial_::read() -> virtual int Serial_::read() | 452 | 21 / 73 |
+| b | Reset_Handler | 916 | exact | none | 328 | 2 / 50 |
+| b | TC2_Handler | 236 | exact | none | 328 | 2 / 50 |
+| b | UOTGHS_Handler | 96 | exact | none | 328 | 2 / 50 |
+| b | hard_fault_report | 56 | exact | none | 328 | 2 / 50 |
+| b | UART_Handler | 16 | exact | none | 328 | 2 / 50 |
+| b | DACC_Handler | 12 | exact | none | 328 | 2 / 50 |
+| c | service_task | 860 | exact | none | 379 | 5 / 50 |
+| c | console_task | 844 | exact | none | 379 | 5 / 50 |
 
-Roots whose bound is 0 B are not listed: 6 on track b, 0 on track c. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows.
+Roots whose bound is 0 B are not listed: 6 on track b, 0 on track c. No root was walked on track a at all, so that row carries the state and the blocker where the others carry a number. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows and are counted for a track that reached no bound too.
 <!-- end generated -->
 
 ## The deepest chain
@@ -88,6 +142,7 @@ Roots whose bound is 0 B are not listed: 6 on track b, 0 on track c. `functions`
 <!-- generated: chains -->
 | track | # | function | frame B | total below B |
 |---|---|---|---|---|
+| a | (no chain) | recursion: virtual int Serial_::read() -> virtual int Serial_::read() | (no bound) | (no bound) |
 | b | 0 | Reset_Handler | 8 | 916 |
 | b | 1 | main | 80 | 908 |
 | b | 2 | console_feed | 24 | 828 |
@@ -110,7 +165,7 @@ Roots whose bound is 0 B are not listed: 6 on track b, 0 on track c. `functions`
 | c | 7 | usb_ctl_write | 8 | 36 |
 | c | 8 | ep_fifo_write.constprop | 28 | 28 |
 
-track b: Reset_Handler, 916 B; track c: service_task, 860 B.
+track a: no chain, recursion: virtual int Serial_::read() -> virtual int Serial_::read(); track b: Reset_Handler, 916 B; track c: service_task, 860 B.
 <!-- end generated -->
 
 ## Reading the diagram
@@ -129,9 +184,19 @@ that are not drawn. That is the ordinary case in the pruned picture
 carrying more than a floor and prints inside the image how many it left
 out; it does not arise here.
 
+A track with no chain has nothing to draw, so it is drawn as one dashed
+box carrying the state and the blocker, and the sentence under the
+diagram names it again. This is the one region that can skip a track,
+and it is the one that most needs to say so: a subgraph quietly missing
+reads as a track with no stack.
+
 <!-- generated: diagram -->
 ```mermaid
 graph TD
+  subgraph sg_a["track a - no chain to draw"]
+  direction TB
+    a_none["(no chain)<br/>recursion: virtual int Serial_::read() -#gt; virtual int Serial_::read()"]
+  end
   subgraph sg_b["track b - Reset_Handler - 916 B"]
   direction TB
     b0["Reset_Handler<br/>8 B · 916 total"]
@@ -199,8 +264,38 @@ graph TD
   style c6 stroke-width:3px
   style c7 stroke-width:3px
   style c8 stroke-width:3px
+  style a_none stroke-dasharray:4 3
 ```
+
+No chain is drawn for track a (recursion: virtual int Serial_::read() -> virtual int Serial_::read()): the walk reported no root, so there is no worst case to draw. The box says which state stopped it; the bounds table above carries the same reason.
 <!-- end generated -->
+
+## Why Track A carries no bound
+
+The walk stops at the first cycle it meets and names that one, which is
+why the table reports a virtual method reaching itself. Any of them
+would do: the mechanism is one, and `Print::write` is the clearest
+instance of it.
+
+`Print::write(buf, len)` loops calling `write(c)` virtually. That call
+site resolves through the vtable - and slot 3 of `UARTClass`'s own table
+is the **inherited** `Print::write(buf, len)`. So the method appears to
+call itself.
+
+A vtable read cannot see how many arguments a call site passed, because
+the call graph does not record it, so it reaches every slot including
+overloads the site could never name. The cycle is the approximation, not
+the firmware.
+
+Narrowing to a named class does not help: the offending slot is in every
+concrete class's table. Closing it needs call-site arity, or a
+link-time-optimised build with whole-program devirtualisation.
+
+So this is a tooling limit rather than a defect in the image, and it is
+still recorded as a refusal - the tool cannot distinguish this cycle
+from real recursion, and invariant 7 forbids the second. What it is not
+is an absence: Track A's row carries its graph size and its indirect
+site count next to the other two tracks', and only the bound is missing.
 
 ## What the graph shows and the chain cannot
 
@@ -225,13 +320,18 @@ deepest-chain table structurally cannot reach.
 <!-- generated: provenance -->
 | track | bench | repo_rev | cc | elf | elf_sha256 | taken_at |
 |---|---|---|---|---|---|---|
-| b | linux-x1 | aed5740-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 604e50ee387862a3 | 2026-09-10T23:49:09-0400 |
-| c | linux-x1 | aed5740-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | dc74d7846c974002 | 2026-09-10T23:49:09-0400 |
+| a | linux-x1 | b4b6fc0-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | track_a_bringup.elf | a9a026524970c303 | 2026-09-11T10:29:13-0400 |
+| b | linux-x1 | b4b6fc0-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 604e50ee387862a3 | 2026-09-11T10:29:13-0400 |
+| c | linux-x1 | b4b6fc0-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | dc74d7846c974002 | 2026-09-11T10:29:14-0400 |
 
 Schema `stack-depth/1`, written by `tools/stack_depth.py`, resolving its indirect call sites from `tools/stack_depth.list`.
 <!-- end generated -->
 
 ## Re-taking it
+
+One build per track, each with its own build directory, and one row
+appended per image. `--track` is what reads that track's declarations
+out of `tools/stack_depth.list`.
 
 ```sh
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
@@ -239,8 +339,25 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
 cmake --build build -j
 python3 tools/stack_depth.py build --elf build/baremetal_bringup.elf \
         --track b --record >> records/stack-depth.jsonl
+
+cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CALLGRAPH=ON -DBUILD_TRACK_A=ON
+cmake --build build-a --target firmware_track_a
+python3 tools/stack_depth.py build-a --elf build-a/track_a_bringup.elf \
+        --track a --record >> records/stack-depth.jsonl
+
+cmake -B build-c -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CALLGRAPH=ON -DBUILD_TRACK_C=ON
+cmake --build build-c --target firmware_rtos
+python3 tools/stack_depth.py build-c --elf build-c/rtos_bringup.elf \
+        --track c --record >> records/stack-depth.jsonl
+
 python3 tools/stack_report.py --write
 ```
+
+A refusal writes its row too, and exits non-zero: the row is what keeps
+a track in the comparison, and the exit code is what stops a refusal
+being mistaken for a pass.
 
 `python3 tools/stack_report.py --check` proves that this document
 matches the record. It cannot prove the record is current: the generator

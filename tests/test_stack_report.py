@@ -20,6 +20,7 @@ is the "guard that cannot fail" shape this project keeps finding.
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -193,8 +194,137 @@ def test_the_regions_carry_the_shapes_the_document_needs():
     bounds = sr.render("bounds", recs)
     assert bounds.count("\n|") >= 4 and "state" in bounds
     diagram = sr.render("diagram", recs)
-    assert diagram.startswith("```mermaid") and diagram.endswith("```")
+    assert diagram.startswith("```mermaid")
+    # The fence closes, and anything after it is the note naming a track
+    # that could not be drawn - so the region no longer ends at the fence.
+    assert len(diagram.split("```")) >= 3, "the mermaid block is not closed"
     assert "==>" in diagram, "the worst-case chain should be drawn heavy"
+    for track in recs:
+        assert "sg_%s" % track in diagram, (
+            "track %r is not in the diagram at all, drawn or declined"
+            % track)
     prov = sr.render("provenance", recs)
     for field in ("bench", "repo_rev", "cc", "elf_sha256", "taken_at"):
         assert field in prov
+
+
+def _blocked_row(recs, track="z"):
+    """A row in the state the producer uses when it will not give a number.
+
+    Built rather than taken from the record, so these assertions hold on a
+    bench whose every track happens to be bounded. Which track is blocked
+    is a property of the firmware and moves; that a blocked track is
+    rendered at all is a property of this tool and must not.
+    """
+    row = dict(recs[sorted(recs)[0]])
+    row.update(track=track, state="refused", roots=[],
+               blocked=[{"what": "emac_handler",
+                         "why": "an indirect target with no call-graph node"}])
+    return row
+
+
+def test_every_track_in_the_record_is_in_every_table():
+    """Three tracks compared in one place, which is the point of the doc.
+
+    A track missing from a table is not a smaller table - it is a
+    comparison that reads as agreement, and nothing in the document says
+    a track was left out.
+    """
+    recs = sr.load()
+    assert len(recs) >= 3, (
+        "fixture precondition: the record should carry all three tracks")
+    for name in ("bounds", "chains", "provenance"):
+        out = sr.render(name, recs)
+        for track in recs:
+            assert re.search(r"^\| %s \|" % re.escape(track), out, re.M), (
+                "track %r has no row in the %s table" % (track, name))
+
+
+def test_a_track_with_no_bound_renders_its_state_and_its_reason():
+    """`(no bound)` and the blocker, in the same table as the numbers.
+
+    Not a zero, not a dash, and not a table of its own: the producer
+    answers in three states and the report has to carry the two that are
+    not a number all the way to the page.
+    """
+    recs = sr.load()
+    row = _blocked_row(recs)
+    recs = dict(recs)
+    recs[row["track"]] = row
+
+    bounds = sr.render("bounds", recs)
+    line = [l for l in bounds.splitlines() if l.startswith("| z |")]
+    assert len(line) == 1, bounds
+    cells = [c.strip() for c in line[0].strip("|").split("|")]
+    assert sr.NO_BOUND in cells, cells
+    assert "refused" in cells, cells
+    assert not any(c.isdigit() and c not in ("452", "21", "73") for c in cells)
+    assert "emac_handler" in line[0] and "no call-graph node" in line[0]
+
+    chains = sr.render("chains", recs)
+    zrow = [l for l in chains.splitlines() if l.startswith("| z |")]
+    assert len(zrow) == 1 and sr.NO_BOUND in zrow[0], chains
+    assert "emac_handler" in zrow[0]
+
+
+def test_the_diagram_says_which_track_it_could_not_draw():
+    """Skipping is allowed here; skipping silently is not.
+
+    A missing subgraph reads as a track with no stack, which is the one
+    reading a stack document must never produce by accident.
+    """
+    recs = dict(sr.load())
+    row = _blocked_row(recs)
+    recs[row["track"]] = row
+    out = sr.render("diagram", recs)
+    assert out.startswith("```mermaid") and "```" in out
+    assert "sg_z" in out, "the skipped track has no box at all"
+    assert "emac_handler" in out, "the box does not say why it was skipped"
+    assert "track z" in out.split("```")[-1], (
+        "nothing under the diagram names the track that was not drawn")
+    assert "z0" not in out, "a track with no chain should have no chain nodes"
+
+
+def test_check_fails_when_a_blocked_row_reason_is_edited(tmp_path):
+    """The break-on-purpose, extended to the cells that carry no number.
+
+    The figures are watched by the test above; a refusal is watched by
+    nothing unless this fails. Built on a synthetic record so it runs on
+    every bench rather than only on one whose firmware happens to refuse
+    - a test that skips is worse than one that fails, because the rest of
+    the file endorses it.
+    """
+    recs = sr.load()
+    row = _blocked_row(recs)
+    bounded = recs[sorted(recs)[0]]
+    records = tmp_path / "stack-depth.jsonl"
+    records.write_text(json.dumps(bounded) + "\n" + json.dumps(row) + "\n",
+                       encoding="utf-8")
+
+    doc = tmp_path / "stack-depth.md"
+    doc.write_text("\n".join("%s\n%s" % (sr.BEGIN % n, sr.END)
+                             for n in sorted(sr.REGIONS)) + "\n",
+                   encoding="utf-8")
+    w = subprocess.run([sys.executable, REPORT, "--write",
+                        "--records", str(records), "--doc", str(doc)],
+                       capture_output=True, text=True)
+    assert w.returncode == 0, w.stdout + w.stderr
+
+    ok = subprocess.run([sys.executable, REPORT, "--check",
+                         "--records", str(records), "--doc", str(doc)],
+                        capture_output=True, text=True)
+    assert ok.returncode == 0, ok.stdout + ok.stderr
+
+    text = doc.read_text(encoding="utf-8")
+    assert "emac_handler: an indirect target with no call-graph node" in text
+    doc.write_text(text.replace("an indirect target with no call-graph node",
+                                "nothing at all, this is fine"),
+                   encoding="utf-8")
+    bad = subprocess.run([sys.executable, REPORT, "--check",
+                          "--records", str(records), "--doc", str(doc)],
+                         capture_output=True, text=True)
+    assert bad.returncode != 0, (
+        "the reason a track carries no bound was rewritten and --check "
+        "passed, so the refusal is the one thing in the document nobody "
+        "is watching")
+    assert "bounds" in bad.stderr, bad.stderr

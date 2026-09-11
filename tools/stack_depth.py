@@ -787,7 +787,7 @@ def emit_graph(g, frames, below, floor, edges, keep, critical, fmt, deepest_of):
 
 
 def _record(args, g, frames, rows, state, sites, targets, files,
-            indirect_by_src, title_of):
+            indirect_by_src, title_of, blocked=()):
     """The row a report is generated from. Schema version travels with it."""
     import hashlib
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), "host"))
@@ -834,6 +834,7 @@ def _record(args, g, frames, rows, state, sites, targets, files,
         "declarations": os.path.relpath(args.declarations,
                                         os.path.dirname(HERE))
                         if args.track else None,
+        "blocked": [{"what": w, "why": y} for w, y in blocked],
         "roots": [{"root": r, "bytes": b,
                    "chain": [{"function": g.name.get(t, t),
                               "frame": frames[t],
@@ -1145,6 +1146,17 @@ def main(argv=None):
 
     # --- the three-state contract ---
     if unresolved:
+        if args.record:
+            # A ROW, NOT A SILENCE. Omitting a track that refused leaves
+            # it absent from every comparison, and absence reads as "not
+            # measured" or "fine" depending on the reader - which is the
+            # body-of-zeroes failure one level up, in the record format.
+            # The row says refused, and says what blocked it.
+            print(json.dumps(_record(args, g, frames, [], "refused",
+                                     indirect_sites, all_targets, files,
+                                     indirect_by_src, title_of,
+                                     blocked=unresolved),
+                             sort_keys=True))
         print("REFUSED: the call graph has edges this cannot follow, so no "
               "depth is reported.\n", file=sys.stderr)
         for what, why in unresolved:
@@ -1157,6 +1169,12 @@ def main(argv=None):
     if cycle:
         print(f"RECURSION: {cycle}\n\nA cycle has no worst-case depth, and "
               "invariant 7 forbids one on the working path.", file=sys.stderr)
+        if args.record:
+            print(json.dumps(_record(args, g, frames, [], "recursion",
+                                     indirect_sites, all_targets, files,
+                                     indirect_by_src, title_of,
+                                     blocked=[("recursion", cycle)]),
+                             sort_keys=True))
         if not exact_indirect:
             # A vtable spec resolves a virtual call to every slot in the
             # table, and it cannot see how many ARGUMENTS the call site

@@ -39,6 +39,16 @@ than an empty table; and a row whose schema is not the one below stops
 the run instead of being read on the assumption that the fields did not
 move.
 
+EVERY TRACK IS IN EVERY TABLE. A track whose row carries no bound -
+`state` of `recursion` or `refused`, with `blocked` saying what stopped
+the walk - renders in the same table as the bounded ones, its bound cell
+reading `(no bound)` and its reason beside it. Dropping it would leave
+the comparison silently two-track, and absence reads as "not measured"
+or as "fine" depending on the reader: the same failure the record format
+refuses one level up by writing a row rather than staying silent. The
+diagram is the one region that cannot draw such a track, because there
+is no chain; it draws a node saying so instead of leaving a gap.
+
 The latest row per track wins, so re-recording a track appends rather
 than rewriting.
 
@@ -66,6 +76,16 @@ END = "<!-- end generated -->"
 #: measurement, and this tool sits downstream of one that refuses to
 #: print a number it could not derive.
 ABSENT = "(absent)"
+
+#: What a track that carries no bound renders as. Distinct from ABSENT
+#: on purpose: the field is not missing, the walk refused to produce it,
+#: and the reason is in the cell next to this one.
+NO_BOUND = "(no bound)"
+NO_CHAIN = "(no chain)"
+
+#: The states that come with a number. Anything else - `refused`,
+#: `recursion` - is a row without one.
+BOUNDED = ("exact", "upper bound")
 
 
 def load(path=RECORDS):
@@ -106,9 +126,11 @@ def load(path=RECORDS):
 
 
 def _cell(value):
+    """One table cell. A pipe inside a reason would end the column, so it
+    is escaped: a blocked row's text is a compiler's, not this tool's."""
     if value is None or value == "":
         return ABSENT
-    return str(value)
+    return str(value).replace("|", "\\|")
 
 
 def _table(rows):
@@ -130,7 +152,47 @@ def _roots(row):
                   key=lambda r: (-(r.get("bytes") or 0), r.get("root") or ""))
 
 
+def _bounded(row):
+    """Does this row carry a bound at all?
+
+    Two ways not to. The producer can answer `refused` or `recursion`,
+    which is the three-state contract doing its job; or it can answer
+    with a state that carries a number and no roots to hang it on, which
+    is a partial scan. Both render as a row saying so.
+    """
+    return row.get("state") in BOUNDED and bool(row.get("roots"))
+
+
+def _why(row):
+    """Why a row carries no bound, as one cell - or `none` when it does.
+
+    `none` rather than an empty cell, because `blocked: []` is a
+    measurement: the walk ran and nothing stopped it.
+    """
+    items = row.get("blocked") or []
+    if items:
+        # Unescaped: this goes through a cell renderer that escapes, and
+        # escaping twice writes the backslash into the document.
+        return "; ".join("%s: %s" % (b.get("what") or ABSENT,
+                                     b.get("why") or ABSENT) for b in items)
+    if not _bounded(row):
+        return ("state %s, and the row lists no blocker"
+                % (row.get("state") or ABSENT))
+    return "none"
+
+
+def _state_why(row):
+    """The state and the blocker, as one phrase and without saying the
+    same word twice: a recursion row's blocker is already labelled
+    `recursion`."""
+    state = row.get("state") or ABSENT
+    why = _why(row)
+    return why if why.startswith("%s:" % state) else "%s - %s" % (state, why)
+
+
 def _deepest(row):
+    if not _bounded(row):
+        return None
     got = _roots(row)
     return got[0] if got else None
 
@@ -140,39 +202,77 @@ def _deepest(row):
 def r_bounds(recs):
     """One row per root that carries a bound, with the graph it came from.
 
+    Every track appears. A track the walk could not bound gets one row
+    with `(no bound)` where the number would be and the blocker beside
+    it, in this table rather than under a heading of its own: a reader
+    comparing three tracks has to see all three without scrolling, and a
+    track quietly missing from a comparison reads as agreement.
+
     The zero-byte roots are omitted and the count of them is printed, on
     `tools/stack_depth.py --mermaid`'s rule: a reader cannot tell a short
     table from a filtered one unless the filter is part of the output.
     """
-    rows, elided = [], []
+    rows, elided, unbounded = [], [], []
     for track in sorted(recs):
         row = recs[track]
+        sites, targets = row.get("indirect_sites"), row.get("indirect_targets")
+        graph = ("%s / %s" % (_cell(sites), _cell(targets)),
+                 _cell(row.get("functions")))
+        if not _bounded(row):
+            unbounded.append("track %s" % track)
+            rows.append({
+                "track": track,
+                "root": NO_CHAIN,
+                "bytes": NO_BOUND,
+                "state": _cell(row.get("state")),
+                "blocked by": _why(row),
+                "functions": graph[1],
+                "indirect sites/targets": graph[0],
+            })
+            continue
         kept = [r for r in _roots(row) if (r.get("bytes") or 0) > 0]
         elided.append("%d on track %s" % (len(row["roots"]) - len(kept), track))
-        sites, targets = row.get("indirect_sites"), row.get("indirect_targets")
         for r in kept:
             rows.append({
                 "track": track,
                 "root": _cell(r.get("root")),
                 "bytes": _cell(r.get("bytes")),
                 "state": _cell(row.get("state")),
-                "functions": _cell(row.get("functions")),
-                "indirect sites/targets": "%s / %s" % (_cell(sites),
-                                                       _cell(targets)),
+                "blocked by": _why(row),
+                "functions": graph[1],
+                "indirect sites/targets": graph[0],
             })
-    tail = ("\n\nRoots whose bound is 0 B are not listed: %s. `functions` and "
-            "`indirect sites/targets` describe the whole graph the walk ran "
-            "over, so they repeat down a track's rows." % ", ".join(elided))
+    tail = "\n\nRoots whose bound is 0 B are not listed: %s." % (
+        ", ".join(elided) or "no track reported one")
+    if unbounded:
+        tail += (" No root was walked on %s at all, so that row carries the "
+                 "state and the blocker where the others carry a number."
+                 % ", ".join(unbounded))
+    tail += (" `functions` and `indirect sites/targets` describe the whole "
+             "graph the walk ran over, so they repeat down a track's rows and "
+             "are counted for a track that reached no bound too.")
     return _table(rows) + tail
 
 
 def r_chains(recs):
-    """The deepest root's chain per track, frame by frame."""
+    """The deepest root's chain per track, frame by frame.
+
+    A track with no chain is one row saying which state stopped it, for
+    the reason `r_bounds` gives: three tracks, one table.
+    """
     rows, heads = [], []
     for track in sorted(recs):
-        deep = _deepest(recs[track])
+        row = recs[track]
+        deep = _deepest(row)
         if deep is None:
-            heads.append("track %s: no root recorded" % track)
+            heads.append("track %s: no chain, %s" % (track, _why(row)))
+            rows.append({
+                "track": track,
+                "#": NO_CHAIN,
+                "function": _state_why(row),
+                "frame B": NO_BOUND,
+                "total below B": NO_BOUND,
+            })
             continue
         heads.append("track %s: %s, %s B"
                      % (track, _cell(deep.get("root")), _cell(deep.get("bytes"))))
@@ -197,6 +297,17 @@ def _ids(recs):
     return out
 
 
+def _label(text):
+    """Mermaid label text.
+
+    A quote ends the label and an angle bracket starts markup, so both
+    become the entities Mermaid renders back. `&` goes first or it
+    rewrites the entities the others just wrote.
+    """
+    out = str(text).replace("&", "#amp;").replace('"', "#quot;")
+    return out.replace("<", "#lt;").replace(">", "#gt;")
+
+
 def r_diagram(recs):
     """The deepest chain per track, as a Mermaid block GitHub renders.
 
@@ -204,29 +315,54 @@ def r_diagram(recs):
     chain and nothing beside it - so every edge is drawn heavy. The graph
     the bound was computed from, pruned and with the siblings on it, is
     `tools/stack_depth.py --mermaid`.
+
+    THIS IS THE ONE REGION THAT CAN SKIP A TRACK, because a track with no
+    chain has nothing to draw. It says so in the picture - a box carrying
+    the state and the blocker, where the other tracks have a column of
+    frames - and again in prose under it. A missing subgraph would read
+    as a track with no stack.
     """
     ids = _ids(recs)
     out = ["```mermaid", "graph TD"]
+    notes, skipped = [], []
     for track in sorted(recs):
-        deep = _deepest(recs[track])
+        row = recs[track]
+        deep = _deepest(row)
         if deep is None:
-            out.append("  %%%% track %s: no root recorded" % track)
+            why = _state_why(row)
+            node = "%s_none" % track
+            notes.append(node)
+            skipped.append("track %s (%s)" % (track, why))
+            out.append('  subgraph sg_%s["track %s - no chain to draw"]'
+                       % (track, track))
+            out.append("  direction TB")
+            out.append('    %s["%s<br/>%s"]' % (node, _label(NO_CHAIN),
+                                                _label(why)))
+            out.append("  end")
             continue
         chain = deep.get("chain") or []
         out.append('  subgraph sg_%s["track %s - %s - %s B"]'
-                   % (track, track, _cell(deep.get("root")),
+                   % (track, track, _label(deep.get("root")),
                       _cell(deep.get("bytes"))))
         out.append("  direction TB")
         for i, step in enumerate(chain):
             out.append('    %s["%s<br/>%s B · %s total"]'
-                       % (ids[(track, i)], _cell(step.get("function")),
+                       % (ids[(track, i)], _label(step.get("function")),
                           _cell(step.get("frame")), _cell(step.get("below"))))
         for i in range(len(chain) - 1):
             out.append("    %s ==> %s" % (ids[(track, i)], ids[(track, i + 1)]))
         out.append("  end")
     for key in sorted(ids.values()):
         out.append("  style %s stroke-width:3px" % key)
+    for key in sorted(notes):
+        out.append("  style %s stroke-dasharray:4 3" % key)
     out.append("```")
+    if skipped:
+        out.append("")
+        out.append("No chain is drawn for %s: the walk reported no root, so "
+                   "there is no worst case to draw. The box says which state "
+                   "stopped it; the bounds table above carries the same "
+                   "reason." % ", ".join(skipped))
     return "\n".join(out)
 
 
