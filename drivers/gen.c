@@ -287,6 +287,12 @@ static void build_table(void)
 				code = 0;
 			if (code > 4095)
 				code = 4095;
+			/* The `0u << 12` is the DACC channel tag and is
+			 * written out rather than dropped: bits 12-13 pick
+			 * DAC0 or DAC1, and the pair of lines is only
+			 * readable if both say which channel they mean.
+			 * cppcheck calls it a redundant operand, and by
+			 * arithmetic it is. */
 			gen_table[i] = (uint16_t)((0u << 12)
 			                          | gen_scale_code(code,
 			                                           gen_amp));
@@ -321,6 +327,7 @@ static void build_table(void)
 			v1 = sync_code(i, period);
 		}
 
+		/* Channel tag again - see above. DAC0 then DAC1. */
 		gen_table[2 * i]     = (uint16_t)((0u << 12) | v0);
 		gen_table[2 * i + 1] = (uint16_t)((1u << 12) | v1);
 	}

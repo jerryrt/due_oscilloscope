@@ -331,7 +331,7 @@ void play_service(void)
 		uint32_t until_wrap = PLAY_NBUF - slot;
 		uint32_t span = free_slots < until_wrap ? free_slots
 		                                        : until_wrap;
-		uint8_t *dst = (uint8_t *)play_buf[slot] + fill_off;
+		uint8_t *dst = reinterpret_cast<uint8_t *>(play_buf[slot]) + fill_off;
 
 		dma_asked = span * PLAY_BUF_BYTES - fill_off;
 		dma_start_off = fill_off;

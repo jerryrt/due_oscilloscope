@@ -41,7 +41,7 @@ size_t ctl_port_read(uint8_t *dst, size_t max)
 {
 	uint32_t st = UOTGHS->UOTGHS_DEVEPTISR[CTL_EP_OUT];
 	uint32_t byct, n;
-	volatile uint8_t *fifo;
+	const volatile uint8_t *fifo;
 
 	if (!ctlusb_ok())
 		return 0;
@@ -260,7 +260,7 @@ bool ctl_port_bench(ctl_bench_t *out)
 
 int ctl_port_occupancy(uint8_t *body, size_t max)
 {
-	ctl_occupancy_t *o = (ctl_occupancy_t *)body;
+	ctl_occupancy_t *o = reinterpret_cast<ctl_occupancy_t *>(body);
 	uint8_t *p = body + sizeof(*o);
 	uint32_t traced = play_occ_traced;
 

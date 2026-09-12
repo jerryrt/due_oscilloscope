@@ -127,6 +127,17 @@ void Reset_Handler(void)
 	const uint32_t *src;
 	uint32_t *dst;
 
+	/*
+	 * cppcheck reports `comparePointers` on both loops below and will
+	 * keep reporting it: comparing pointers into two different objects
+	 * is undefined by the letter of C, and `_sdata` and `_edata` are
+	 * two objects as far as any analyser can tell. They are the bounds
+	 * of one region in the linker script, which is knowledge no
+	 * translation unit has. There is no suppression list here on
+	 * purpose - docker/run-cppcheck.sh says why - so the finding
+	 * stands and this comment is the answer to it.
+	 */
+
 	/* Copy initialised data from its load address in flash. */
 	src = &_etext;
 	dst = &_sdata;

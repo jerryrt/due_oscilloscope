@@ -117,10 +117,10 @@ public:
 	bool contracted() const;
 
 protected:
-	bool setup(USBSetup &setup);
-	bool setup_inner(USBSetup &setup);
-	int  getInterface(uint8_t *interfaceCount);
-	int  getDescriptor(USBSetup &setup);
+	bool setup(USBSetup &setup) override;
+	bool setup_inner(const USBSetup &setup);
+	int  getInterface(uint8_t *interfaceCount) override;
+	int  getDescriptor(USBSetup &setup) override;
 
 private:
 	uint32_t eps[3];
@@ -251,7 +251,7 @@ bool CtlUSB::setup(USBSetup &setup)
 	return claimed;
 }
 
-bool CtlUSB::setup_inner(USBSetup &setup)
+bool CtlUSB::setup_inner(const USBSetup &setup)
 {
 	/*
 	 * Only our own interfaces, and only class requests.

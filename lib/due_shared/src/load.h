@@ -67,6 +67,13 @@ extern uint32_t load_prev_cycles;
  * and identical on both builds, which is the same reason the monitor
  * itself can be shared at all - see load.c.
  */
+/*
+ * These four stay C-style casts and cppcheck reports one of them at
+ * every use. This header is compiled as C by Tracks B and C and as C++
+ * by Track A, so `reinterpret_cast` would not build on two of the three
+ * - and a cast that has to be spelled twice behind a macro is worse
+ * than the finding it silences.
+ */
 #define LOAD_DWT_CTRL   (*(volatile uint32_t *)0xE0001000u)
 #define LOAD_DWT_CYCCNT (*(volatile uint32_t *)0xE0001004u)
 #define LOAD_DWT_CYCCNTENA (1u << 0)

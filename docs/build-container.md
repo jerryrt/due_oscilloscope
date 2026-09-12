@@ -229,6 +229,45 @@ not universal in what it can execute.** The one gap is a host's
 virtualisation reaching through an identical image, which is worth
 knowing before a null from a QEMU-backed bench is read as a clean run.
 
+### The analyser backlog, and what a standing count means
+
+`cppcheck` reported **33** findings on every run from the day it was
+installed until 2026-09-12, and nobody had acted on one. That is not the
+same as a backlog of defects: the script offers no suppression list and
+does not pass `--inline-suppr`, deliberately, so a finding can only be
+**fixed or left standing**. Triaging them is the only thing that moves
+the number.
+
+**33 to 9.** Twenty-four were the analyser being right - pointers only
+read through, a parameter reference never modified, three `override`s
+the compiler now checks against the Arduino core's vtable, two
+scope reductions, seven C-style casts named for what each actually is.
+
+**The nine that remain are decisions, and each says so where a reader
+meets it.** Three `comparePointers` on the linker-symbol bounds in the
+startup file and `_sbrk` - undefined by the letter of C and correct in a
+linked image, which is knowledge no translation unit has. Four
+`badBitmaskCheck` on the DACC channel tag, where `0u << 12` is written
+out so the DAC0 and DAC1 lines read as a pair. One `constParameterPointer`
+on `_write`, whose signature is newlib's. One `cstyleCast` in `load.h`,
+which Tracks B and C compile as C and Track A as C++, so
+`reinterpret_cast` would not build on two of the three.
+
+So the count is now a **statement rather than a queue**: nine findings,
+nine reasons, and the tenth would be new. That is what makes the number
+worth quoting on a status page, and it is the state in which gating on
+it becomes a decision somebody could take rather than an argument about
+a backlog.
+
+One habit came out of it and is worth more than the count. Two of the
+edits were refused by an exact-match replacement because the same line
+appeared twice in a file and cppcheck had flagged only one -
+`stream_core.c`'s two `acq_frame_bytes()` sites, where the other
+`memcpy`s into the buffer, and `ctl_port.cpp`'s two FIFO pointers, where
+the other stores through it. **The analyser was more precise than the
+summary count made it look**, and trusting the class rather than the
+line would have broken the build in both places.
+
 ## What a bench gives up by not using it
 
 Measured on `linux-x1` - the bench that owns the image - by running the

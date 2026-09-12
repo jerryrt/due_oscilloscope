@@ -309,7 +309,7 @@ static void diag_service(void)
 		s->tpr   = DACC->DACC_TPR;
 		s->tcr   = DACC->DACC_TCR;
 		s->tnpr  = DACC->DACC_TNPR;
-		s->next  = *(volatile uint16_t *)s->tpr;
+		s->next  = *reinterpret_cast<volatile uint16_t *>(s->tpr);
 		s->cdr7  = (uint16_t)ADC->ADC_CDR[7];
 		s->cdr6  = (uint16_t)ADC->ADC_CDR[6];
 		s->aprod = acq_produced;
@@ -329,7 +329,7 @@ static void diag_service(void)
 		Serial.println("#    ms  prod  cons endtx    svc  tpr=slot+off  tcr"
 		               "  next(tag,code)  cdr7 cdr6  aprod acons");
 		for (unsigned i = 0; i < DIAG_N; i++) {
-			struct diag_snap *s = &diag[i];
+			const struct diag_snap *s = &diag[i];
 			uint32_t off = s->tpr - base;
 
 			con_str("# "); con_u32w(s->ms - diag[0].ms, 5, ' ');
@@ -1475,7 +1475,6 @@ void loop()
 	ctl_port_sof_poll();
 
 	static uint32_t led_usb_at;
-	static uint32_t led_in_last, led_out_last;
 	static uint32_t diag_ms, ctl_ms;
 	uint32_t now = millis();
 
@@ -1550,6 +1549,8 @@ void loop()
 	 * 50 ms so even a slow trickle reads as a visible flicker.
 	 */
 	if (now - led_usb_at >= 50u) {
+		static uint32_t led_in_last, led_out_last;
+
 		led_tx(usb_in_activity != led_in_last);
 		led_rx(usb_out_activity != led_out_last);
 		led_in_last = usb_in_activity;
@@ -1605,9 +1606,10 @@ void loop()
 			st.underruns = play_underruns;
 			st.bytes_in  = play_bytes_in;
 			st.dev_us    = micros();
-			st.crc32     = frame_crc32((const uint8_t *)&st,
+			st.crc32     = frame_crc32(reinterpret_cast<const uint8_t *>(&st),
 			                           sizeof(st) - sizeof(st.crc32));
-			if (SerialUSB.write((const uint8_t *)&st, sizeof(st)))
+			if (SerialUSB.write(reinterpret_cast<const uint8_t *>(&st),
+			    sizeof(st)))
 				usb_in_activity++;
 		}
 	}

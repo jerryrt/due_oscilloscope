@@ -29,8 +29,9 @@ void console_write(const char *s)
 		if (*p != '\n')
 			continue;
 		if (p > run)
-			Serial.write((const uint8_t *)run, (size_t)(p - run));
-		Serial.write((const uint8_t *)"\r\n", 2);
+			Serial.write(reinterpret_cast<const uint8_t *>(run),
+			     static_cast<size_t>(p - run));
+		Serial.write(reinterpret_cast<const uint8_t *>("\r\n"), 2);
 		run = p + 1;
 	}
 	if (*run)

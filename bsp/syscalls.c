@@ -20,6 +20,12 @@ extern char _heap_end;
 #undef errno
 extern int errno;
 
+/*
+ * `ptr` cannot become `const char *`, though cppcheck correctly sees
+ * that nothing writes through it: this signature is newlib's, and the
+ * library declares it. Changing it here does not change the contract,
+ * it breaks agreement with it. The finding stands.
+ */
 int _write(int file, char *ptr, int len)
 {
 	(void)file;
@@ -49,6 +55,9 @@ caddr_t _sbrk(int incr)
 	static char *heap = &_heap_start;
 	char *prev = heap;
 
+	/* comparePointers again, and the same answer as the startup file:
+	 * `heap` walks a region whose end the linker script names, and
+	 * that relationship exists nowhere in the C. */
 	if (heap + incr > &_heap_end) {
 		errno = ENOMEM;
 		return (caddr_t)-1;
