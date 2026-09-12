@@ -542,11 +542,65 @@ one.
 
 What separates the halves of the table is whether any write spans a
 multiple of 1024 in the byte stream the host has written so far, and
-across 15 arms and 96 runs there is no exception in either direction.
-1024 B is the smallest boundary size that fits every arm; the rest are
-odd multiples of it, 5 and 7 and 11 KiB. A constant 512 B satisfies the
-rule by construction, since no 512 B write starting at a multiple of
-512 can contain a multiple of 1024.
+across 15 arms and 96 runs the systematic deficit has no exception in
+either direction. 1024 B is the smallest boundary size that fits every
+arm; the rest are odd multiples of it, 5 and 7 and 11 KiB. A constant
+512 B satisfies the rule by construction, since no 512 B write starting
+at a multiple of 512 can contain a multiple of 1024.
+
+### It is the same rule at a second rate
+
+Every figure above is 600,000 sps, and a rule read at one point on an
+axis is a rule about that point. The arms where alignment and run length
+disagree were re-read at **397,959 sps** as well, with the rate pair run
+in both orders so the rate is not confounded with the half-hour, five
+rounds each with the first dropped by index, n=4 per arm per rate per
+order.
+
+| arm | spans a boundary | 397,959 sps | 600,000 sps |
+|---|---|---|---|
+| constant 512 B | never | **0 B** | **0 B** |
+| runs of 2 | never | **0 B** | **0 B** in 17 of 18; see below |
+| runs of 5 | a quarter | 0.445-0.446% | 0.353-0.359% |
+| alternating | a quarter | 0.524-0.533% | 0.474-0.481% |
+| runs of 3 | a quarter | 0.552-0.577% | 0.531-0.532% |
+| constant 1536 B | every write | 0.740-0.780% | 0.734-0.749% |
+| the legacy due-sized feed | two thirds | 0.508-0.517% | 0.719-0.742% |
+
+Which arms lose is identical at both rates and in both orderings, and
+the positive control fires in every block. The predictions were
+registered before the run.
+
+**And the second rate settles something one rate could not.** A deficit
+can be a fixed fraction of the bytes written or a fixed number of shed
+events per second, and at a single rate those are the same measurement.
+The two rates differ by 1.508x, so an event rate would make the slower
+rate's percentage 1.508x the faster one's. Across the four matched arms
+the ratio is **0.99 to 1.26**, in both orderings - nowhere near 1.508,
+and reproducing when the order is reversed, so the small excess over 1.0
+is not drift. **The deficit is a fraction of the bytes, not a rate of
+events.** Bytes lost per spanning write are 11.3-16.9 at the faster rate
+and 12.0-16.9 at the slower one, which is the same unexplained spread as
+before and not a second figure.
+
+The legacy arm is the one row that moves the other way, and it is not a
+matched arm: its write sizes are whatever the feed had accumulated, so
+the mix itself differs by rate. It is in the table as the positive
+control it is, not as a point in the comparison.
+
+**One aligned run in seventy-two lost 384 B**, which is why the claim
+above is now about the *systematic* deficit. A `runs of 2` run at
+600,000 sps shed three 128 B chunks - 0.011%, thirty to seventy times
+below every systematic figure - with no underrun, a drained pipeline,
+and a write stream in which no write can contain a multiple of 1024. The
+other 71 aligned runs, across both shapes and both rates, shed nothing
+at all. 384 B is also exactly the intermittent loss recorded at
+1,218,750 sps in the next section, and always a whole multiple of 128.
+
+So alignment governs the systematic loss and does not exclude the rare
+one. The earlier arms could not have seen it: they ran five rounds per
+arm where the aligned shapes here ran eighteen analysed runs each, and
+one in seventy-two does not appear in four.
 
 **How much is shed is not explained.** Bytes lost per spanning write run
 6 to 16 across the arms rather than settling on a figure, and the three
