@@ -88,6 +88,20 @@ NO_CHAIN = "(no chain)"
 BOUNDED = ("exact", "upper bound")
 
 
+def _unreadable(message):
+    """Exit 2: the record could not be read at all.
+
+    TWO AND NOT ONE, because a gate has to tell "the document drifted"
+    from "there was nothing to compare it against". Both are non-zero
+    and only the first is an answer; the second is the DID NOT RUN state
+    docker/run-ci.sh exists to keep separate, and it cannot separate
+    them from one exit code. The analysers here already use 0/1/2 for
+    exactly this, so nothing new is being invented.
+    """
+    sys.stderr.write(message + "\n")
+    raise SystemExit(2)
+
+
 def load(path=RECORDS):
     """{track: row}, latest row per track.
 
@@ -96,7 +110,7 @@ def load(path=RECORDS):
     would then pass on a document that says so.
     """
     if not os.path.exists(path):
-        raise SystemExit(
+        _unreadable(
             "no record at %s - take one with `tools/stack_depth.py "
             "--record` from a -DFIRMWARE_CALLGRAPH=ON build" % path)
     rows = {}
@@ -108,20 +122,20 @@ def load(path=RECORDS):
             try:
                 row = json.loads(line)
             except ValueError as exc:
-                raise SystemExit("%s:%d: not JSON: %s" % (path, n, exc))
+                _unreadable("%s:%d: not JSON: %s" % (path, n, exc))
             if row.get("schema") != SCHEMA:
-                raise SystemExit(
+                _unreadable(
                     "%s:%d: schema %r, want %r - the fields may have moved, "
                     "so this stops rather than reading it as if they had not"
                     % (path, n, row.get("schema"), SCHEMA))
             track = row.get("track")
             if not track:
-                raise SystemExit("%s:%d: row carries no track" % (path, n))
+                _unreadable("%s:%d: row carries no track" % (path, n))
             if "roots" not in row:
-                raise SystemExit("%s:%d: row carries no roots" % (path, n))
+                _unreadable("%s:%d: row carries no roots" % (path, n))
             rows[track] = row
     if not rows:
-        raise SystemExit("%s holds no rows - nothing to report" % path)
+        _unreadable("%s holds no rows - nothing to report" % path)
     return rows
 
 
@@ -500,9 +514,10 @@ def main(argv=None):
     ap.add_argument("--write", action="store_true",
                     help="update the document in place")
     ap.add_argument("--check", action="store_true",
-                    help="exit non-zero if the document is not what this "
-                         "would generate. Proves the document matches the "
-                         "record, NOT that the record is current")
+                    help="exit 1 if the document is not what this would "
+                         "generate, 2 if the record could not be read at "
+                         "all. Proves the document matches the record, NOT "
+                         "that the record is current")
     ap.add_argument("--records", default=RECORDS)
     ap.add_argument("--doc", default=DOC)
     args = ap.parse_args(argv)

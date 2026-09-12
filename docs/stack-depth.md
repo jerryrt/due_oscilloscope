@@ -617,8 +617,26 @@ a track in the comparison, and the exit code is what stops a refusal
 being mistaken for a pass.
 
 `python3 tools/stack_report.py --check` proves that this document
-matches the record. It cannot prove the record is current: the generator
-reads JSON and writes Markdown with no ELF, no build and no toolchain in
-its path, so a stale record and a document generated from it agree
-perfectly and the check passes for ever. A bound is only as fresh as the
-image the row names.
+matches the record, and it runs in the container as the `stack report`
+step of `docker/run-ci.sh`. It cannot prove the record is current: the
+generator reads JSON and writes Markdown with no ELF, no build and no
+toolchain in its path, so a stale record and a document generated from
+it agree perfectly and the check passes for ever. A bound is only as
+fresh as the image the row names.
+
+It exits 1 when the document drifted and **2 when the record could not
+be read at all** - missing, empty, or a schema this generator does not
+know. One code for both would have made the container score "nothing to
+compare against" as a failure, and that is the DID NOT RUN state rather
+than an answer.
+
+**Re-taking the record is not in the container and will not be.** It
+needs `-DFIRMWARE_CALLGRAPH=ON` builds of all three tracks, and Track C
+cannot be built there at all: `apps/rtos_bringup` fetches FreeRTOS at
+configure time and `docker/run.sh` runs with `--network none`, which is
+the same reason neither analyser sees Track C. A re-take there would
+cover two tracks of three and then have to either refuse - a gate red on
+day one, which is a gate nobody reads - or skip the third and label a
+two-track record as a three-track one. What the container catches is a
+hand-edit to a generated table and a generator change nobody re-ran.
+Currency is on whoever runs `tools/stack_depth.py --record`.

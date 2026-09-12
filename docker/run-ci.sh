@@ -145,7 +145,12 @@ record() {  # record <name> <state> <seconds> <detail>
 
 now() { date +%s.%N; }
 
-took() { awk -v a="$1" -v b="$2" 'BEGIN { printf "%.1f", b - a }'; }
+# LC_ALL=C, because awk's printf follows LC_NUMERIC: on a bench whose
+# locale uses a decimal comma the seconds column came out "3,4", which
+# is the one column in the summary a reader is most likely to hand to
+# something else. The state words are already locale-independent; this
+# was the last cell that was not.
+took() { LC_ALL=C awk -v a="$1" -v b="$2" 'BEGIN { printf "%.1f", b - a }'; }
 
 # The last line of a log matching a pattern, for the detail column. An
 # empty answer says so rather than printing blank, because a missing
@@ -308,6 +313,20 @@ class_repro() {
 	esac
 }
 
+# tools/stack_report.py --check: 0 the document matches the record,
+# 1 it drifted, 2 the record could not be read at all. The third is a
+# DID NOT RUN and not a failure - there was nothing to compare against,
+# which is the distinction this whole script is about and the reason that
+# tool has three exit codes rather than two.
+class_stack_report() {
+	local rc=$1 log=$2
+	case "$rc" in
+	0) echo "$S_PASS"$'\t'"$(last_match "$log" 'generated regions match')" ;;
+	1) echo "$S_FAIL"$'\t'"$(last_match "$log" 'drifted|no region')" ;;
+	*) echo "$S_NORUN"$'\t'"exit $rc: $(last_match "$log" '.')" ;;
+	esac
+}
+
 analyser_step() {  # analyser_step <name> <script> <tool>
 	if [ "$fast" -eq 1 ]; then
 		skip_step "$1" "--fast"
@@ -384,6 +403,35 @@ for track in b a; do
 	fi
 done
 
+# --- the stack-depth report ------------------------------------------
+# WHAT THIS GATES ON, AND THE HALF IT CANNOT REACH. `--check` proves
+# docs/stack-depth.md is what the generator would write from
+# records/stack-depth.jsonl. It does NOT prove that record is current:
+# the generator reads JSON and writes Markdown with no ELF, no build and
+# no toolchain anywhere in its path, so a stale record and a document
+# generated from it agree perfectly and this step passes for ever.
+#
+# RE-TAKING THE RECORD IS A DIFFERENT STEP AND IS DELIBERATELY NOT HERE.
+# It needs -DFIRMWARE_CALLGRAPH=ON builds of all three tracks, and Track
+# C cannot be built in this container at all - apps/rtos_bringup fetches
+# FreeRTOS at configure time and docker/run.sh runs with --network none,
+# the same reason the analysers do not see it. So a re-take here would
+# cover two tracks of three and then have to decide what to do about the
+# third, and the honest options are to refuse (a gate red on day one) or
+# to skip it (a two-track record labelled as a three-track one). Folding
+# the two together would buy a gate that is green on a record nobody has
+# refreshed, which is the guard-that-cannot-fail this script exists to
+# avoid building.
+#
+# What that leaves is real but narrow: this catches a hand-edit to the
+# generated tables, and a generator change that nobody re-ran. Currency
+# is on whoever re-takes the record, and docs/stack-depth.md says so in
+# three places because one was not enough.
+# python3 is a precondition of this script itself - the banner above
+# already runs it - so there is nothing to guard here.
+run_step "stack report" class_stack_report \
+         python3 tools/stack_report.py --check
+
 # --- the analysers ---------------------------------------------------
 analyser_step "cppcheck" docker/run-cppcheck.sh cppcheck
 analyser_step "clang-tidy" docker/run-clang-tidy.sh clang-tidy
@@ -423,6 +471,12 @@ echo "                  host tier's count as host code and nothing else."
 echo "Track C           NOT ANALYSED. apps/rtos_bringup fetches FreeRTOS"
 echo "                  at configure time and docker/run.sh runs with"
 echo "                  --network none, so neither analyser sees it."
+echo "the stack record  NOT RE-TAKEN. The stack report step checks that"
+echo "                  docs/stack-depth.md matches"
+echo "                  records/stack-depth.jsonl, and nothing here"
+echo "                  re-measures either: a stale record and a document"
+echo "                  generated from it agree perfectly. Currency is on"
+echo "                  whoever last ran tools/stack_depth.py --record."
 echo "the shared source NOT ANALYSED twice. Both analysers read"
 echo "as C++            lib/due_shared/src once, in the Track B pass;"
 echo "                  Track A compiles those same files as C++."
