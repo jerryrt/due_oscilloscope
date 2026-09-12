@@ -32,7 +32,7 @@ static void put_kv(const char *k, uint32_t v)
 	uart_puts_polled("\r\n");
 }
 
-void hard_fault_report(uint32_t *sp)
+void hard_fault_report(const uint32_t *sp)
 {
 	uint32_t cfsr = SCB->CFSR;
 

@@ -212,7 +212,7 @@ void stream_core_service(void)
 		 * PDC a buffer the USB controller is still sending.
 		 */
 		if (tx_phase == TX_DMA) {
-			uint8_t *frame = acq_frame_bytes();
+			const uint8_t *frame = acq_frame_bytes();
 
 			if (usb_dma_in_busy())
 				return;

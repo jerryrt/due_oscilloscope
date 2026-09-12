@@ -233,7 +233,7 @@ static void ctrl_send_zlp(void);
  */
 static void ctrl_handle_out(void)
 {
-	volatile uint8_t *fifo = FIFO(EP_CTRL);
+	const volatile uint8_t *fifo = FIFO(EP_CTRL);
 	bool was_data = ctrl_out_expect != 0;
 
 	if (was_data) {
@@ -370,7 +370,7 @@ static void configure_data_endpoints(void)
 
 static void handle_setup(void)
 {
-	volatile uint8_t *fifo = FIFO(EP_CTRL);
+	const volatile uint8_t *fifo = FIFO(EP_CTRL);
 	uint8_t bmRequestType = fifo[0];
 	uint8_t bRequest      = fifo[1];
 	uint16_t wValue       = (uint16_t)(fifo[2] | (fifo[3] << 8));
@@ -558,7 +558,7 @@ static size_t ep_fifo_read(uint32_t ep, uint32_t *rd_off,
 {
 	uint32_t st = UOTGHS->UOTGHS_DEVEPTISR[ep];
 	uint32_t byct, n;
-	volatile uint8_t *fifo;
+	const volatile uint8_t *fifo;
 
 	if (!(st & UOTGHS_DEVEPTISR_RXOUTI))
 		return 0;

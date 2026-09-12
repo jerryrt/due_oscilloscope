@@ -124,7 +124,8 @@ void _fini(void) { }
 
 void Reset_Handler(void)
 {
-	uint32_t *src, *dst;
+	const uint32_t *src;
+	uint32_t *dst;
 
 	/* Copy initialised data from its load address in flash. */
 	src = &_etext;

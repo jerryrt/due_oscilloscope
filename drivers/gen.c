@@ -28,7 +28,6 @@ volatile uint32_t gen_endtx_count;
 static int32_t sine_q15(uint32_t i, uint32_t n)
 {
 	int32_t sign = 1;
-	int32_t num, den;
 	/* x scaled so that a half period spans 0..32768 */
 	int32_t x = (int32_t)((i * 65536u) / n);
 
@@ -41,8 +40,8 @@ static int32_t sine_q15(uint32_t i, uint32_t n)
 		int32_t t  = x;                       /* Q15 */
 		int32_t om = 32768 - t;               /* 1 - t */
 		int32_t tm = (t * om) >> 15;          /* t(1-t) */
-		num = 16 * tm;
-		den = 5 * 32768 - 4 * tm;
+		int32_t num = 16 * tm;
+		int32_t den = 5 * 32768 - 4 * tm;
 		/* num << 15 overflows int32 at the peak: at t = 0.5 it is
 		 * 2^17 << 15 = 2^32, which wraps to zero and flattens the
 		 * waveform to roughly a tenth of full scale. Widen first. */

@@ -66,7 +66,7 @@ static void blink_forever(int count)
 	}
 }
 
-extern "C" void hard_fault_report(uint32_t *sp)
+extern "C" void hard_fault_report(const uint32_t *sp)
 {
 	uint32_t cfsr = SCB->CFSR;
 
