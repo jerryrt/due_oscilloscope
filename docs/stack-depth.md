@@ -33,27 +33,29 @@ about.
 
 ## Where the three tracks stand
 
-All three tracks are measured, and all three are in every table below.
-Two of them carry a bound and one does not.
+All three tracks are measured, all three carry a bound, and all three
+are in every table below. They do not all carry the same *kind* of
+bound, and the difference is the point of the state column.
 
 | track | image | answer |
 |---|---|---|
-| A | the Arduino core, `sketches/bringup/` | **no bound.** The walk finds a cycle through the core's virtual dispatch, and a cycle has no worst case |
+| A | the Arduino core, `sketches/bringup/` | **upper bound**, on every root. A virtual call inside an abstract base can land in any concrete subclass, so the target set is a union over the image's vtables |
 | B | bare metal, `apps/baremetal_bringup/` | exact, on every root |
-| C | FreeRTOS, `apps/rtos_bringup/` | exact, on both tasks |
+| C | FreeRTOS, `apps/rtos_bringup/` | exact, on every root |
 
-Track A's cycle is an artefact of how a virtual call is resolved rather
-than recursion in the firmware, and the section below says exactly which
-approximation produces it. It is still reported as a refusal, because a
-tool that cannot tell the two apart must answer with the weaker one.
+Track A is a ceiling and the other two are measurements. Read its
+figure as "no more than", and do not compare it with B's as though both
+were the same quantity - the section on virtual dispatch below says
+what the union costs and what was measured about narrowing it.
 
-A track with no number is a row, never a gap. It appears in the bounds
-table with `(no bound)` where the others carry a figure and its blocker
-in the cell beside it, and in the diagram as a box saying what stopped
-the walk. Dropping it would make the comparison silently two-track, and
-an absent track reads as "not measured" or as "fine" depending on who is
-reading - which is the body-of-zeroes failure one level up, in a
-document instead of a protocol.
+**A track with no number would be a row, never a gap.** The format is
+built for that case whether or not one is in it: the bounds table
+carries `(no bound)` where the others carry a figure, with the blocker
+in the cell beside it, and the diagram draws a box saying what stopped
+the walk. Dropping the track instead would make the comparison silently
+two-track, and an absent track reads as "not measured" or as "fine"
+depending on who is reading - the body-of-zeroes failure one level up,
+in a document instead of a protocol.
 
 ## Three states, and why refusing beats guessing
 
@@ -111,6 +113,7 @@ claims a person made and no extraction can confirm them.
 | a `const` dispatch table's symbol | **Exact.** The array is read out of the linked image, the Thumb bit masked and the addresses mapped back through the symbol table, so the target set is re-derived from every build and cannot drift from the source the way an annotation can |
 | `vtable:Class` | **Exact**, the same way and for the same reason: the class's table is a const array in the image, and the call site's static type names it |
 | `vtable` | Every vtable in the image. Sound for a virtual call and tight enough to be useful, but it is a **ceiling**, and the answer is labelled `upper bound` |
+| either, with `/NAME/ARITY` | The same read, keeping only the slots that hold that method. **The one spec that removes chains**, so its evidence is the call site's own source line, and its guard is that a filter matching no slot is refused rather than resolved to nothing. It narrows a slot set and never widens one, so it cannot turn a ceiling into an exact answer |
 | `target:SYM` | One named function. A claim rather than a deduction - but one that **adds** a chain, so it cannot under-report, which is why it is acceptable where the honest alternative is a `.bss` pointer no read can resolve |
 | `noreturn` | The site does not come back, so it contributes no chain |
 | `none` | No target is ever registered. The weakest, resting on nothing but the writer: its line must say **what would falsify it**, and that is a name in the tree rather than an argument |
@@ -124,7 +127,45 @@ reaches.
 <!-- generated: bounds -->
 | track | root | bytes | state | blocked by | functions | indirect sites/targets |
 |---|---|---|---|---|---|---|
-| a | (no chain) | (no bound) | recursion | recursion: virtual int Serial_::read() -> virtual int Serial_::read() | 452 | 21 / 73 |
+| a | Reset_Handler | 880 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(int, int) | 224 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(long int, int) | 224 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(unsigned char, int) | 204 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(unsigned int, int) | 204 | upper bound | none | 452 | 21 / 61 |
+| a | con_u32l | 192 | upper bound | none | 452 | 21 / 61 |
+| a | void TC2_Handler() | 184 | upper bound | none | 452 | 21 / 61 |
+| a | UOTGHS_Handler | 160 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(double, int) | 152 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(char) | 144 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(const Printable&) | 144 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(const String&) | 144 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::println(const __FlashStringHelper*) | 144 | upper bound | none | 452 | 21 / 61 |
+| a | size_t Print::print(const __FlashStringHelper*) | 128 | upper bound | none | 452 | 21 / 61 |
+| a | bool CDC_Setup(USBSetup&) | 56 | upper bound | none | 452 | 21 / 61 |
+| a | int CDC_GetInterface(uint8_t*) | 48 | upper bound | none | 452 | 21 / 61 |
+| a | int CDC_GetOtherInterface(uint8_t*) | 48 | upper bound | none | 452 | 21 / 61 |
+| a | void hard_fault_report(uint32_t*) | 48 | upper bound | none | 452 | 21 / 61 |
+| a | USARTClass::USARTClass(Usart*, IRQn_Type, uint32_t, RingBuffer*, RingBuffer*) | 36 | upper bound | none | 452 | 21 / 61 |
+| a | CtlUSB::CtlUSB() | 24 | upper bound | none | 452 | 21 / 61 |
+| a | PIOA_Handler | 24 | upper bound | none | 452 | 21 / 61 |
+| a | PIOB_Handler | 24 | upper bound | none | 452 | 21 / 61 |
+| a | PIOC_Handler | 24 | upper bound | none | 452 | 21 / 61 |
+| a | PIOD_Handler | 24 | upper bound | none | 452 | 21 / 61 |
+| a | SysTick_Handler | 16 | upper bound | none | 452 | 21 / 61 |
+| a | USBDevice_::USBDevice_() | 16 | upper bound | none | 452 | 21 / 61 |
+| a | virtual void USARTClass::begin(uint32_t) | 16 | upper bound | none | 452 | 21 / 61 |
+| a | void UARTClass::begin(uint32_t, UARTModes) | 16 | upper bound | none | 452 | 21 / 61 |
+| a | void UART_Handler() | 16 | upper bound | none | 452 | 21 / 61 |
+| a | void USART0_Handler() | 16 | upper bound | none | 452 | 21 / 61 |
+| a | void USART1_Handler() | 16 | upper bound | none | 452 | 21 / 61 |
+| a | void USART3_Handler() | 16 | upper bound | none | 452 | 21 / 61 |
+| a | void USARTClass::begin(uint32_t, UARTClass::UARTModes) | 16 | upper bound | none | 452 | 21 / 61 |
+| a | void USARTClass::begin(uint32_t, USARTModes) | 16 | upper bound | none | 452 | 21 / 61 |
+| a | void DACC_Handler() | 12 | upper bound | none | 452 | 21 / 61 |
+| a | RingBuffer::RingBuffer() | 8 | upper bound | none | 452 | 21 / 61 |
+| a | virtual void Serial_::flush() | 8 | upper bound | none | 452 | 21 / 61 |
+| a | virtual void UARTClass::end() | 8 | upper bound | none | 452 | 21 / 61 |
+| a | void serialEventRun() | 8 | upper bound | none | 452 | 21 / 61 |
 | b | Reset_Handler | 916 | exact | none | 328 | 2 / 50 |
 | b | TC2_Handler | 236 | exact | none | 328 | 2 / 50 |
 | b | UOTGHS_Handler | 96 | exact | none | 328 | 2 / 50 |
@@ -133,8 +174,16 @@ reaches.
 | b | DACC_Handler | 12 | exact | none | 328 | 2 / 50 |
 | c | service_task | 860 | exact | none | 379 | 5 / 50 |
 | c | console_task | 844 | exact | none | 379 | 5 / 50 |
+| c | Reset_Handler | 288 | exact | none | 379 | 5 / 50 |
+| c | TC2_Handler | 236 | exact | none | 379 | 5 / 50 |
+| c | prvTimerTask | 232 | exact | none | 379 | 5 / 50 |
+| c | SysTick_Handler | 112 | exact | none | 379 | 5 / 50 |
+| c | UOTGHS_Handler | 96 | exact | none | 379 | 5 / 50 |
+| c | hard_fault_report | 56 | exact | none | 379 | 5 / 50 |
+| c | UART_Handler | 16 | exact | none | 379 | 5 / 50 |
+| c | DACC_Handler | 12 | exact | none | 379 | 5 / 50 |
 
-Roots whose bound is 0 B are not listed: 6 on track b, 0 on track c. No root was walked on track a at all, so that row carries the state and the blocker where the others carry a number. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows and are counted for a track that reached no bound too.
+Roots whose bound is 0 B are not listed: 19 on track a, 6 on track b, 8 on track c. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows and are counted for a track that reached no bound too.
 <!-- end generated -->
 
 ## The deepest chain
@@ -142,7 +191,17 @@ Roots whose bound is 0 B are not listed: 6 on track b, 0 on track c. No root was
 <!-- generated: chains -->
 | track | # | function | frame B | total below B |
 |---|---|---|---|---|
-| a | (no chain) | recursion: virtual int Serial_::read() -> virtual int Serial_::read() | (no bound) | (no bound) |
+| a | 0 | Reset_Handler | 8 | 880 |
+| a | 1 | int main() | 8 | 872 |
+| a | 2 | void loop() | 56 | 864 |
+| a | 3 | console_feed | 24 | 808 |
+| a | 4 | void ha_profile(const uint32_t*) | 16 | 784 |
+| a | 5 | ctl_service | 40 | 768 |
+| a | 6 | ctl_frame_complete | 8 | 728 |
+| a | 7 | ctl_dispatch.constprop | 184 | 720 |
+| a | 8 | ctl_error | 488 | 536 |
+| a | 9 | ctl_respond | 24 | 48 |
+| a | 10 | ctl_port_write | 24 | 24 |
 | b | 0 | Reset_Handler | 8 | 916 |
 | b | 1 | main | 80 | 908 |
 | b | 2 | console_feed | 24 | 828 |
@@ -165,7 +224,7 @@ Roots whose bound is 0 B are not listed: 6 on track b, 0 on track c. No root was
 | c | 7 | usb_ctl_write | 8 | 36 |
 | c | 8 | ep_fifo_write.constprop | 28 | 28 |
 
-track a: no chain, recursion: virtual int Serial_::read() -> virtual int Serial_::read(); track b: Reset_Handler, 916 B; track c: service_task, 860 B.
+track a: Reset_Handler, 880 B; track b: Reset_Handler, 916 B; track c: service_task, 860 B.
 <!-- end generated -->
 
 ## Reading the diagram
@@ -188,14 +247,35 @@ A track with no chain has nothing to draw, so it is drawn as one dashed
 box carrying the state and the blocker, and the sentence under the
 diagram names it again. This is the one region that can skip a track,
 and it is the one that most needs to say so: a subgraph quietly missing
-reads as a track with no stack.
+reads as a track with no stack. No track is in that state here, which
+is why all three subgraphs are columns of frames.
 
 <!-- generated: diagram -->
 ```mermaid
 graph TD
-  subgraph sg_a["track a - no chain to draw"]
+  subgraph sg_a["track a - Reset_Handler - 880 B"]
   direction TB
-    a_none["(no chain)<br/>recursion: virtual int Serial_::read() -#gt; virtual int Serial_::read()"]
+    a0["Reset_Handler<br/>8 B · 880 total"]
+    a1["int main()<br/>8 B · 872 total"]
+    a2["void loop()<br/>56 B · 864 total"]
+    a3["console_feed<br/>24 B · 808 total"]
+    a4["void ha_profile(const uint32_t*)<br/>16 B · 784 total"]
+    a5["ctl_service<br/>40 B · 768 total"]
+    a6["ctl_frame_complete<br/>8 B · 728 total"]
+    a7["ctl_dispatch.constprop<br/>184 B · 720 total"]
+    a8["ctl_error<br/>488 B · 536 total"]
+    a9["ctl_respond<br/>24 B · 48 total"]
+    a10["ctl_port_write<br/>24 B · 24 total"]
+    a0 ==> a1
+    a1 ==> a2
+    a2 ==> a3
+    a3 ==> a4
+    a4 ==> a5
+    a5 ==> a6
+    a6 ==> a7
+    a7 ==> a8
+    a8 ==> a9
+    a9 ==> a10
   end
   subgraph sg_b["track b - Reset_Handler - 916 B"]
   direction TB
@@ -243,6 +323,17 @@ graph TD
     c6 ==> c7
     c7 ==> c8
   end
+  style a0 stroke-width:3px
+  style a1 stroke-width:3px
+  style a10 stroke-width:3px
+  style a2 stroke-width:3px
+  style a3 stroke-width:3px
+  style a4 stroke-width:3px
+  style a5 stroke-width:3px
+  style a6 stroke-width:3px
+  style a7 stroke-width:3px
+  style a8 stroke-width:3px
+  style a9 stroke-width:3px
   style b0 stroke-width:3px
   style b1 stroke-width:3px
   style b10 stroke-width:3px
@@ -264,38 +355,74 @@ graph TD
   style c6 stroke-width:3px
   style c7 stroke-width:3px
   style c8 stroke-width:3px
-  style a_none stroke-dasharray:4 3
 ```
-
-No chain is drawn for track a (recursion: virtual int Serial_::read() -> virtual int Serial_::read()): the walk reported no root, so there is no worst case to draw. The box says which state stopped it; the bounds table above carries the same reason.
 <!-- end generated -->
 
-## Why Track A carries no bound
+## What a virtual call costs, and why arity is the whole of it
 
-The walk stops at the first cycle it meets and names that one, which is
-why the table reports a virtual method reaching itself. Any of them
-would do: the mechanism is one, and `Print::write` is the clearest
-instance of it.
+A virtual call reaches **one** slot. Which slot depends on the overload
+the call site named - and the call graph records a site's file, line and
+column and nothing whatever about its callee. So a vtable read that is
+handed only the class reaches every slot in the table, including
+overloads the site could not have named.
 
-`Print::write(buf, len)` loops calling `write(c)` virtually. That call
-site resolves through the vtable - and slot 3 of `UARTClass`'s own table
-is the **inherited** `Print::write(buf, len)`. So the method appears to
-call itself.
+That over-approximation does not merely inflate a figure, it
+manufactures a cycle. `Print::write(buf, len)` loops calling
+`write(c)`; slot 1 of every concrete table in the image is the
+**inherited** two-argument `Print::write`; so the method appears to call
+itself, and a cycle has no worst case. Narrowing to a named class does
+not help, because the offending slot is in every concrete class's table.
 
-A vtable read cannot see how many arguments a call site passed, because
-the call graph does not record it, so it reaches every slot including
-overloads the site could never name. The cycle is the approximation, not
-the firmware.
+What closes it is the arity, and the arity is in the source one line
+above the site the call graph already points at. `vtable/write/1` keeps
+the one-argument slots and the cycle is gone. It is a claim, and the
+only spec here that **removes** chains, so it carries the site's source
+line as evidence and the tool refuses a filter that matches no slot -
+a misspelt method and a method with no override are the same empty set
+from inside the tool, and one of them is a silent under-report.
 
-Narrowing to a named class does not help: the offending slot is in every
-concrete class's table. Closing it needs call-site arity, or a
-link-time-optimised build with whole-program devirtualisation.
+One place needs the class as well. Bare `vtable/write/2` inside
+`Serial_::write(uint8_t)` reaches `Print::write(buf, len)` as well as
+Serial_'s own override, and `Print::write(buf, len)` calls `write(c)`,
+which reaches back - a cycle through two tables belonging to two
+different objects. `vtable:Serial_/write/2` closes it, and the static
+type of `this` at that site is what justifies naming the class.
 
-So this is a tooling limit rather than a defect in the image, and it is
-still recorded as a refusal - the tool cannot distinguish this cycle
-from real recursion, and invariant 7 forbids the second. What it is not
-is an absence: Track A's row carries its graph size and its indirect
-site count next to the other two tracks', and only the bound is missing.
+**Why the answer is still a ceiling, and what narrowing it would buy.**
+The remaining over-approximation is the union over classes: a virtual
+call inside `Print` can land in any concrete subclass, so the filtered
+read takes that method's slot from every table. Narrowing each site to
+the receivers it can really have was tried on this image and **moved no
+root's figure at all** - 880 B either way. It buys the word `exact` and
+nothing else, at the price of a claim per site in the direction that
+under-reports, so it was declined on the measurement rather than on
+taste.
+
+## All three worst cases are the same chain, and it is shared source
+
+The deepest chain on every track ends in the control channel:
+`ctl_service` -> `ctl_frame_complete` -> `ctl_dispatch` -> `ctl_error`
+-> `ctl_respond` -> the port write, with `ctl_error`'s 488 B more than
+half of every total. Split each chain at `ctl_service`:
+
+| track | how it reaches the control channel | head | tail | total |
+|---|---|---|---|---|
+| A | `Reset_Handler` -> `main` -> `loop` -> `console_feed` -> `ha_profile` | 112 | 768 | 880 |
+| B | `Reset_Handler` -> `main` -> `console_feed` -> `h_profile` | 136 | 780 | 916 |
+| C | `service_task` | 80 | 780 | 860 |
+
+The tails are the same code and B's and C's are the same number. A's is
+12 B shorter because its port write is one 24 B frame where Track B's is
+`ctl_port_write` -> `usb_ctl_write` -> `ep_fifo_write` at 0 + 8 + 28 -
+the one place the three chains are not identical, and it is a USB stack
+difference rather than a protocol one.
+
+So 916, 880 and 860 B are largely one chain measured through three front
+doors, and the heads a track owns outright are 80 to 136 B of it. That
+is an invariant-3 consequence nobody set out to check: the wire contract
+is shared source, and sharing it shares the worst case with it. Shrink
+`ctl_error` and every track's bound moves at once; rewrite either
+track's `main()` and almost nothing moves.
 
 ## What the graph shows and the chain cannot
 
@@ -320,9 +447,9 @@ deepest-chain table structurally cannot reach.
 <!-- generated: provenance -->
 | track | bench | repo_rev | cc | elf | elf_sha256 | taken_at |
 |---|---|---|---|---|---|---|
-| a | linux-x1 | b4b6fc0-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | track_a_bringup.elf | a9a026524970c303 | 2026-09-11T10:29:13-0400 |
-| b | linux-x1 | b4b6fc0-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 604e50ee387862a3 | 2026-09-11T10:29:13-0400 |
-| c | linux-x1 | b4b6fc0-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | dc74d7846c974002 | 2026-09-11T10:29:14-0400 |
+| a | linux-x1 | e103858 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | track_a_bringup.elf | 357a27e89760b75e | 2026-09-12T12:25:20-0400 |
+| b | linux-x1 | e103858 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 69ae9dd367b7852b | 2026-09-12T12:25:19-0400 |
+| c | linux-x1 | e103858 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | fc5338dc81d4f9dc | 2026-09-12T12:25:20-0400 |
 
 Schema `stack-depth/1`, written by `tools/stack_depth.py`, resolving its indirect call sites from `tools/stack_depth.list`.
 <!-- end generated -->
