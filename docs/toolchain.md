@@ -386,9 +386,14 @@ If the vendor-class USB path is taken later, add `pyusb` (libusb).
 
 ---
 
-## Installed on the Windows host *(verified 2026-08-25)*
+## Installed on the retired Windows host *(verified 2026-08-25)*
 
 Everything Track B needs was already present; nothing was downloaded.
+That machine is retired and the Windows bench is a different one, which
+carries none of this yet - `docs/windows.md` has its state and the order
+to restore it in. The table stays because it is the arrangement
+`toolchains.json` resolves with no local override, so it is what a
+Windows bench should install rather than merely what one had.
 
 | Component | Version | Location |
 |---|---|---|

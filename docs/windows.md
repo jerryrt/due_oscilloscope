@@ -10,6 +10,70 @@ Two things came out of it. The board behaves the same everywhere, and
 the `close()` wedge and the playback byte loss are one behaviour seen
 twice.
 
+## The bench moved, and every figure below belongs to the retired one
+
+Windows development and test happen on this host from 2026-09-12. The
+machine everything below was measured on is gone, so a Windows figure in
+this document is attributable to a host that no longer exists: re-take
+it here rather than carrying it across. The hosts differ in the OS
+edition, in the board, and - once this one is provisioned - possibly in
+the code generator, which is the axis that decides a measurement.
+
+**The bench has no name yet, and it needs one before a record is
+written.** `provenance.run_fields()` stamps `bench` onto every row a
+tool writes, and a row whose bench nobody can identify is comparable
+with nothing. The board is in the same position: no record in this tree
+identifies a board by its programming port's USB serial, so the Due on
+this desk cannot be matched against the retired bench's by any means the
+repository offers.
+
+| | retired bench | this host |
+|---|---|---|
+| host | Windows 11 Pro 26200 | Windows 10 Home 19045, `DESKTOP-N9MGNON` |
+| board | a second, previously unused Due | programming port serial `1344847493935140A666` |
+| native port | both CDC functions, `SER=B-01` | one CDC function and an HID composite |
+
+As found on 2026-09-12, the host carries `git` and nothing else this
+project uses. No interpreter but the Microsoft Store stub, so no venv;
+no ARM toolchain, no CMake, no Ninja and no Visual Studio to bundle
+them; no `Arduino15` tree, so neither `bossac` nor the core sources
+Track A compiles; no host GNU compiler, so the framer seam test cannot
+build and run its harness; and no Docker, so the container runs none of
+its checks. `tools/toolchain.py` is what answers this question
+afterwards, and it answers it about the build rather than about `PATH`.
+
+### Restoring it
+
+| step | why this way |
+|---|---|
+| A real Python, then `.venv` from `requirements-dev.txt` | The board-free tier runs before any build tool exists, which separates a host fault from a toolchain one |
+| `.venv-gui` from `requirements-gui.txt`, on an interpreter below 3.14 | PySide6 pins itself there, which is why the front end has its own |
+| ARM GNU 14.3.rel1 mingw-w64, unpacked to the path `toolchains.json` already searches | Nothing local is then needed, and the version keeps this host's code generator alongside `linux-x1`'s rather than alongside `mac-bench`'s |
+| CMake, and a generator | `toolchains.json` finds CMake in its own install directory and finds Ninja only inside a Visual Studio tree. A standalone Ninja wants a pattern added rather than a local override |
+| Arduino IDE 2.x | The only source `toolchains.json` knows for `bossac`, and for the `arduino:sam` core sources Track A compiles. `arduino-cli` itself is invoked by nothing |
+| MSYS2, for a host GCC | Optional, and it closes a gap the retired bench had: the framer seam test skipped there for want of a compiler that can run what it builds |
+| `build`, `build-a` and `build-c`, configured | `measure.flash()` raises and names the configure line rather than guessing, so a missing one fails late |
+
+`CLAUDE.md` has what a new bench must expect of `tests/baseline.json`:
+it is calibrated against one board, and a timing failure there is a
+recalibration to measure and record.
+
+### The board attached here is not running this project
+
+The native port presents one CDC function and an HID composite carrying
+a keyboard and a mouse collection. Nothing in this tree presents HID,
+and the project's native port is two CDC functions. The programming
+port answers nothing at 115200, which needs no further explanation once
+the descriptors are read: the board carries an unrelated Arduino sketch.
+Reflash it before reading anything into its silence, and note that a
+board enumerating as a keyboard types into whatever window has focus.
+
+Whether opening a port resets the board is a per-host fact, and it is
+unmeasured here. `tools/uptime_reset_probe.py` settles it in one
+heartbeat either side of an open, and both readings have cost an
+experiment elsewhere.
+
+
 ## The headline
 
 | Claim | macOS (design) | Windows | |
