@@ -153,7 +153,7 @@ Asked of all three benches and answered by all three, one row each in
 | runtime | native daemon, docker 29.7.2 | colima + QEMU, docker 29.5.2 | WSL2, docker 29.8.0 |
 | steps that did not run | 0 | 0 | 0 |
 | verdict | 0 | **2** - the wall clock, below | 0 |
-| wall time | 194 s | 817 s | 410 s |
+| wall time *(from each run's summary, not from the rows - the row does not carry it)* | 194 s | 817 s | 410 s |
 | `cppcheck` / `clang-tidy` | 33 / 40 | 33 / 40 | 33 / 40 |
 | board-free tier | 657 / 5 / 141 | **654 / 8 / 141** | 657 / 5 / 141 |
 | board-absent control | 141 errors | 141 errors | 141 errors |
