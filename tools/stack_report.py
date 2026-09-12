@@ -366,6 +366,58 @@ def r_diagram(recs):
     return "\n".join(out)
 
 
+def r_nesting(recs):
+    """The worst case on a stack, which is not any row of the bounds table.
+
+    Two tables, because the total and the reason for it answer different
+    questions: the first says whether the firmware fits, the second says
+    which level to look at if it does not. A row whose record carries no
+    nesting at all renders `(absent)` rather than a zero - a track with
+    no interrupt accounting is the one thing that must not read as a
+    track with no interrupts.
+    """
+    totals, levels = [], []
+    for track in sorted(recs):
+        nest = recs[track].get("nesting")
+        if not nest:
+            blank = _cell(None)
+            totals.append({"track": track, "thread mode": blank,
+                           "levels": blank, "never enabled": blank,
+                           "worst case": blank, "state": blank})
+            continue
+        rows = nest.get("levels") or []
+        totals.append({
+            "track": track,
+            "thread mode": "%s through `%s`" % (_cell(nest.get(
+                "thread_bytes")), _cell(nest.get("thread_root"))),
+            "levels": _cell(len(rows)),
+            "never enabled": _cell(len(nest.get("off") or [])),
+            "worst case": "**%s**" % _cell(nest.get("total")),
+            "state": _cell(nest.get("state")),
+        })
+        for row in rows:
+            levels.append({
+                "track": track,
+                "level": (_cell(row.get("level"))
+                          if row.get("level") is not None else "undeclared"),
+                "bytes": _cell(row.get("bytes")),
+                "handlers": ", ".join("`%s`" % h
+                                      for h in row.get("handlers") or []),
+            })
+    frames = sorted({r["nesting"]["exc_frame"] for r in recs.values()
+                     if r.get("nesting")})
+    note = ("Every level's figure includes %s B of hardware exception frame - "
+            "eight words plus a word of STKALIGN padding - so a level costs "
+            "that much even where its handler is a counter increment. "
+            "Handlers at one level do not nest, so a level is charged one "
+            "frame and its deepest member; an `undeclared` row is a handler "
+            "with no declared level, assumed to nest on its own, which is "
+            "the ceiling the state column reports against."
+            % ", ".join(str(f) for f in frames) if frames else
+            "No record carries an interrupt accounting.")
+    return (_table(totals) + "\n\n" + _table(levels) + "\n\n" + note)
+
+
 def r_provenance(recs):
     """Which image each figure came off, so a cell can be chased."""
     rows = []
@@ -390,6 +442,7 @@ def r_provenance(recs):
 
 REGIONS = {
     "bounds": r_bounds,
+    "nesting": r_nesting,
     "chains": r_chains,
     "diagram": r_diagram,
     "provenance": r_provenance,

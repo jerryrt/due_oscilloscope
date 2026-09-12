@@ -397,6 +397,108 @@ def test_the_spec_parser_reads_every_form_and_rejects_a_half_written_one():
             sd.parse_vtable_spec(bad)
 
 
+# --- interrupt nesting -----------------------------------------------------
+#
+# The per-root table is not a worst case, and these are about the
+# arithmetic that makes it one. The dangerous answer here is the deepest
+# SINGLE handler, which is smaller than the truth.
+
+def test_a_frame_is_charged_per_LEVEL_and_not_per_handler():
+    """The positive control, small enough to add by hand.
+
+    Two handlers share a level and one sits above them. The hardware will
+    not preempt on equal priority, so the shared level contributes one
+    frame and its deeper member - not two frames and both.
+    """
+    chains = {"ADC": 40, "SysTick": 8, "TC2": 200}
+    levels = {"ADC": 0, "SysTick": 0, "TC2": 3}
+    total, rows = sd.nest_total(900, chains, levels)
+    assert total == 900 + (sd.EXC_FRAME + 40) + (sd.EXC_FRAME + 200)
+    assert [(r[0], r[2]) for r in rows] == [(0, ["ADC", "SysTick"]),
+                                            (3, ["TC2"])]
+    # And the wrong answer this exists to refuse: the deepest single ISR.
+    assert total > 900 + sd.EXC_FRAME + 200
+
+
+def test_an_undeclared_handler_nests_on_its_own():
+    """A missing level is read as "this might nest with anything", which
+    is the sound direction. It is the one declaration in this file whose
+    absence costs a ceiling rather than a refusal, so the ceiling has to
+    actually be larger than the declared answer."""
+    chains = {"A": 40, "B": 8}
+    declared, _ = sd.nest_total(0, chains, {"A": 0, "B": 0})
+    ceiling, rows = sd.nest_total(0, chains, {"A": None, "B": None})
+    assert declared == sd.EXC_FRAME + 40
+    assert ceiling == 2 * sd.EXC_FRAME + 48 > declared
+    assert [r[0] for r in rows] == [None, None], "each gets a level of its own"
+
+
+def test_a_handler_claimed_off_is_charged_nothing():
+    """`off` is a claim that REMOVES a chain, so it has to be visible in
+    the arithmetic: a handler left out of `levels` contributes neither a
+    frame nor a chain."""
+    total, rows = sd.nest_total(100, {"A": 40, "UOTGHS": 500}, {"A": 0})
+    assert total == 100 + sd.EXC_FRAME + 40
+    assert all("UOTGHS" not in r[2] for r in rows)
+
+
+def test_the_exception_frame_is_the_architecture_not_a_guess():
+    """Eight words of hardware frame plus a word of STKALIGN padding.
+
+    Pinned because it is the whole term a per-root table omits, and
+    because a reader who sees 32 has to be able to tell a wrong constant
+    from a deliberate one."""
+    assert sd.EXC_FRAME == 4 * 8 + 4
+
+
+def test_the_boot_entry_is_not_charged_as_an_interrupt(monkeypatch):
+    """Vector 1 is Reset_Handler. Nothing preempts anything to reach it,
+    so charging it a frame would double-count the thread chain it
+    starts."""
+    monkeypatch.setattr(sd, "table_targets",
+                        lambda elf, table, syms: (["ADC_Handler",
+                                                   "Reset_Handler"], []))
+    assert sd.vector_handlers("x.elf", {}) == ["ADC_Handler"]
+
+
+def test_a_declared_edge_joins_a_chain_the_compiler_could_not_see(tmp_path):
+    """HardFault_Handler is naked asm ending in `b hard_fault_report`, so
+    no .ci records the call. Without the edge the fault path is a
+    spurious root AND the vector contributes a chain of zero - wrong
+    twice, both times downward."""
+    build = _ci(tmp_path, "t", [
+        _node("HardFault_Handler", "HardFault_Handler", "fault.c:81:1", 0),
+        _node("t.c:hard_fault_report", "hard_fault_report", "fault.c:20:1",
+              56),
+    ])
+    g, _ = sd.parse([build])
+    frames = dict(g.frame)
+    assert sd.deepest(g, "HardFault_Handler", frames, {}, {})[0] == 0
+    g.edges.setdefault("HardFault_Handler", set()).add("t.c:hard_fault_report")
+    assert sd.deepest(g, "HardFault_Handler", frames, {}, {})[0] == 56
+
+
+def test_the_name_of_an_aliased_address_is_the_strong_definition(monkeypatch):
+    """One address, many names, and the choice is not nm's to make.
+
+    `Default_Handler` shares its address with 40-odd weak aliases, one per
+    unused vector. Reading them in file order made the reported name
+    depend on how a bench's binutils sorted a tie - the defect CLAUDE.md
+    records against a `layout` hash, one tool over.
+    """
+    dump = ("00080c2c W BusFault_Handler\n"
+            "00080c2c W CAN0_Handler\n"
+            "00080c2c t Default_Handler\n"
+            "00080c2c W WDT_Handler\n")
+    monkeypatch.setattr(sd, "_run", lambda argv: dump)
+    assert sd.symbols("x.elf") == {0x80c2c: "Default_Handler"}
+
+    # Reversed input, same answer. A test on one order proves nothing.
+    monkeypatch.setattr(sd, "_run",
+                        lambda argv: "\n".join(reversed(dump.splitlines())))
+    assert sd.symbols("x.elf") == {0x80c2c: "Default_Handler"}
+
+
 # --- what the linker threw away --------------------------------------------
 
 def test_a_clone_suffix_is_not_mistaken_for_a_missing_function():
@@ -499,6 +601,27 @@ def test_the_committed_declarations_parse(tmp_path):
         assert by_key.get("console.c:260") == "console_bindings", (
             f"track {track}: the console dispatch must resolve exactly")
         assert by_key.get("console_cmds.c:44") == "noreturn"
+
+        # bsp/fault.c is shared, so every track needs the naked branch
+        # declared or its fault path is a spurious root with the whole
+        # chain under it and the vector charged nothing.
+        edges = [(k, v) for kind, k, v in got if kind == "edge"]
+        assert ("HardFault_Handler", "hard_fault_report") in edges, (
+            f"track {track}: the naked fault branch must be declared")
+
+        # And every track must account for its interrupts. An empty `isr`
+        # set is not a refusal - it is a ceiling - so nothing else here
+        # would notice the whole block being deleted.
+        isrs = dict((k, v) for kind, k, v in got if kind == "isr")
+        assert isrs.get("HardFault_Handler") == "-1", (
+            f"track {track}: HardFault's level is architectural")
+        for want in ("ADC_Handler", "DACC_Handler", "TC2_Handler"):
+            assert want in isrs, f"track {track}: {want} has no level"
+        assert (isrs["ADC_Handler"], isrs["DACC_Handler"],
+                isrs["TC2_Handler"]) == ("0", "1", "3"), (
+            f"track {track}: the three levels this project sets itself are "
+            "the same on every track by design, so a divergence here is a "
+            "firmware change and not a declaration to update")
 
 
 # --- the diagram ------------------------------------------------------------

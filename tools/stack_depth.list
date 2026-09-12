@@ -12,6 +12,8 @@
 #
 #     <track>  indirect  <location substring>  <spec>
 #     <track>  leaf      <symbol>              <bytes>
+#     <track>  isr       <vector handler>      <level|off>
+#     <track>  edge      <caller>              <callee>
 #
 # `indirect` specs, in descending order of how much they are worth:
 #
@@ -46,6 +48,33 @@
 #              needs a reason on the line, and the reason needs to name
 #              what would falsify it.
 #
+# `isr` says which NVIC preemption level a vector-table handler runs at,
+# because the true worst case is the thread-mode chain PLUS one hardware
+# exception frame and one handler chain per level that can interrupt what
+# is already running - not the deepest single ISR. Handlers at ONE level
+# do not nest, so a level contributes one frame and its deepest member.
+#
+#   <n>   the level. Lower preempts higher; -1 is HardFault and -2 is
+#         NMI, both architectural and unmaskable.
+#   off   the interrupt is never enabled, so the handler cannot run. A
+#         claim that REMOVES a chain, so it needs what would falsify it.
+#
+# An UNDECLARED handler is assumed to nest on its own, which is the sound
+# reading and makes the total a ceiling rather than a refusal. That is
+# the one place this file is not all-or-nothing: a missing `indirect`
+# line refuses, a missing `isr` line costs 36 B and a label.
+#
+# `edge` declares a call the compiler did not record - a naked asm branch.
+# It ADDS a chain, so like `target:` it cannot under-report.
+#
+# THE HANDLER NAMES ARE THE TOOL'S, NOT THE DATASHEET'S. Unused vectors
+# all point at one halt loop that carries 40-odd weak aliases, and the
+# tool names that address by its strong definition - `Default_Handler` on
+# Tracks B and C, which use bsp/startup_sam3x8e.c, and `__halt` on Track
+# A, which uses the Arduino core's startup_sam3xa.c instead. A name here
+# that the vector table does not point at is a hard stop, so a stale
+# claim cannot sit unnoticed while the real handler runs undeclared.
+#
 # A site with no line here is REFUSED, not assumed. That is the point of
 # the file: adding a function pointer to this firmware breaks the build
 # report until somebody says what it reaches.
@@ -58,6 +87,39 @@ b  indirect  console.c:260        console_bindings
 # `f` proves the fault handler by branching to an address that is not
 # code. It faults rather than returning, so there is no chain past it.
 b  indirect  console_cmds.c:44    noreturn
+
+# The fault path, which the call graph cannot see at all.
+# HardFault_Handler is `naked` and ends in `b hard_fault_report`
+# (bsp/fault.c:81-90), so no .ci records the call: hard_fault_report
+# becomes a spurious root and the vector the table names has a chain of
+# zero. Both halves are wrong in the same direction.
+b  edge      HardFault_Handler    hard_fault_report
+
+# Preemption levels, every one read off the call that sets it.
+b  isr  ADC_Handler        0    # drivers/acq.c:215
+b  isr  DACC_Handler       1    # drivers/play.c:198, drivers/gen.c:361,409
+b  isr  TC2_Handler        3    # drivers/ctl_port.c:314
+b  isr  UART_Handler       15   # bsp/uart.c:77
+# bsp/systick.c sets TICKINT and ENABLE and never touches a priority, so
+# SysTick keeps SCB->SHP's reset value of 0 - the SAME level as the ADC
+# handler, which means neither preempts the other. Nothing calls
+# SysTick_Config here, which is what would have set it to 15.
+b  isr  SysTick_Handler    0
+# Architectural and unmaskable. -1 for HardFault, -2 for NMI - and NMI is
+# the highest-priority vector that reaches the halt loop, which is the
+# only way Default_Handler runs at all.
+b  isr  HardFault_Handler  -1
+b  isr  Default_Handler    -2
+# UOTGHS_Handler is defined (drivers/usb_cdc.c:959) and its interrupt is
+# never enabled: no NVIC_EnableIRQ(UOTGHS_IRQn) exists anywhere in bsp/,
+# drivers/, lib/ or apps/, and apps/baremetal_bringup/main.c:780 names
+# enabling it as "the real fix" for the 1 kHz control-transfer poll it
+# replaced. So the handler cannot run and is charged nothing.
+#
+# WHAT WOULD FALSIFY THIS: the first NVIC_EnableIRQ(UOTGHS_IRQn). The
+# chain under it is already measured - 96 B - so the replacement is the
+# level it is enabled at, not new analysis.
+b  isr  UOTGHS_Handler     off
 
 # --- Track C -----------------------------------------------------------
 # Same two, from the same shared source.
@@ -73,6 +135,30 @@ c  indirect  console_cmds.c:44    noreturn
 # spec naming wherever the callbacks come from, or nothing at all - and
 # the tool refusing is the correct outcome until one exists.
 c  indirect  timers.c             none
+
+# Same fault path, same naked branch - bsp/fault.c is shared.
+c  edge      HardFault_Handler    hard_fault_report
+
+# The four peripheral levels are the same drivers as Track B, and Track C
+# links bsp/uart.c too (uart_init at apps/rtos_bringup/main.c:968).
+c  isr  ADC_Handler        0    # drivers/acq.c:215
+c  isr  DACC_Handler       1    # drivers/play.c:198, drivers/gen.c:361,409
+c  isr  TC2_Handler        3    # drivers/ctl_port.c:314
+c  isr  UART_Handler       15   # bsp/uart.c:77
+# THE KERNEL OWNS THE THREE SYSTEM HANDLERS AND SETS THEM ITSELF, which
+# is why Track C's SysTick is not Track B's. FreeRTOS's ARM_CM3 port does
+# `portNVIC_SHPR3_REG |= portNVIC_PENDSV_PRI | portNVIC_SYSTICK_PRI` with
+# portMIN_INTERRUPT_PRIORITY = 15, and then `portNVIC_SHPR2_REG = 0`,
+# which is SVCall - so SVC lands at 0, the top of the NVIC range,
+# alongside the ADC handler.
+c  isr  SysTick_Handler    15
+c  isr  PendSV_Handler     15
+c  isr  SVC_Handler        0
+c  isr  HardFault_Handler  -1
+c  isr  Default_Handler    -2
+# As Track B: defined, never enabled.
+# WHAT WOULD FALSIFY THIS: the first NVIC_EnableIRQ(UOTGHS_IRQn).
+c  isr  UOTGHS_Handler     off
 
 # --- Track A -----------------------------------------------------------
 # The console, same shared source and same two sites as B and C.
@@ -151,6 +237,63 @@ a  indirect  UARTClass.cpp:87     vtable:UARTClass/flush/0
 # Print::write(const uint8_t*, size_t)`.
 a  indirect  CDC.cpp:252          vtable:Serial_/accept/0
 a  indirect  CDC.cpp:291          vtable:Serial_/write/2
+
+# Same fault path: Track A links bsp/fault.c, so the same naked branch is
+# invisible to the same call graph.
+a  edge      HardFault_Handler    hard_fault_report
+
+# Preemption levels. The three peripherals match Track B's by design and
+# the other differences are the Arduino core's, not choices made here.
+a  isr  ADC_Handler        0    # sketches/bringup/acq.cpp:531
+a  isr  DACC_Handler       1    # sketches/bringup/play.cpp:182, gen.cpp
+a  isr  TC2_Handler        3    # sketches/bringup/ctl_port.cpp:371
+# TWO LEVELS TRACK B DOES NOT HAVE, and both come from the core.
+#
+# UARTClass::init() calls NVIC_EnableIRQ(_dwIrq) and NEVER SetPriority -
+# setInterruptPriority() exists and nothing calls it - so Serial's RX
+# interrupt keeps the reset value 0. Serial.begin(115200) is at
+# sketches/bringup/bringup.ino:542. Track B puts the same UART at 15.
+a  isr  UART_Handler       0
+# And libsam's UDD_Init() does NVIC_SetPriority(ID_UOTGHS, 0) then
+# NVIC_EnableIRQ (uotghs_device.c:65-66). UDD_Init is in the image, so
+# unlike Track B this interrupt IS enabled, at the top of the range.
+a  isr  UOTGHS_Handler     0
+# sketches/bringup/clock.cpp:57 uses CMSIS SysTick_Config, which sets
+# NVIC_SetPriority(SysTick_IRQn, (1 << __NVIC_PRIO_BITS) - 1) = 15.
+# Track B writes the SysTick registers directly and leaves it at 0.
+a  isr  SysTick_Handler    15
+a  isr  HardFault_Handler  -1
+# The core's startup names the unused-vector halt loop __halt rather than
+# Default_Handler. Reached the same way and charged the same.
+a  isr  __halt             -2
+# The four PIO interrupts are enabled only by WInterrupts.c's
+# __initialize(), which nothing calls: attachInterrupt() is absent from
+# the image and --gc-sections took __initialize with it. The handlers
+# survive because the vector table names them.
+#
+# WHAT WOULD FALSIFY THIS: the first attachInterrupt() in Track A - the
+# same trigger as the WInterrupts.c indirect line above, which is the
+# other half of the same fact.
+a  isr  PIOA_Handler       off
+a  isr  PIOB_Handler       off
+a  isr  PIOC_Handler       off
+a  isr  PIOD_Handler       off
+# USART0/1/3 are Serial1, Serial2 and Serial3. Nothing under sketches/
+# or lib/ names any of them, so none is ever begun and none is enabled.
+#
+# WHAT WOULD FALSIFY THIS: the first Serial1/2/3.begin() in Track A.
+a  isr  USART0_Handler     off
+a  isr  USART1_Handler     off
+a  isr  USART3_Handler     off
+# PendSV and SVCall are software-triggered only - SCB->ICSR PENDSVSET and
+# the `svc` instruction - and Track A is bare metal with no scheduler, so
+# neither is ever raised. The core's pendSVHook and svcHook are the
+# bodies, and both are two-byte stubs.
+#
+# WHAT WOULD FALSIFY THIS: a write to SCB->ICSR PENDSVSET, or an `svc`
+# instruction. Track C raises both, which is why its lines say 15 and 0.
+a  isr  PendSV_Handler     off
+a  isr  SVC_Handler        off
 
 # Stream.cpp had a line here and has no site: Stream::timedRead() and
 # timedPeek() call read() and peek() virtually, and --gc-sections

@@ -144,7 +144,7 @@ reaches.
 | a | bool CDC_Setup(USBSetup&) | 56 | upper bound | none | 452 | 21 / 61 |
 | a | int CDC_GetInterface(uint8_t*) | 48 | upper bound | none | 452 | 21 / 61 |
 | a | int CDC_GetOtherInterface(uint8_t*) | 48 | upper bound | none | 452 | 21 / 61 |
-| a | void hard_fault_report(uint32_t*) | 48 | upper bound | none | 452 | 21 / 61 |
+| a | void HardFault_Handler() | 48 | upper bound | none | 452 | 21 / 61 |
 | a | USARTClass::USARTClass(Usart*, IRQn_Type, uint32_t, RingBuffer*, RingBuffer*) | 36 | upper bound | none | 452 | 21 / 61 |
 | a | CtlUSB::CtlUSB() | 24 | upper bound | none | 452 | 21 / 61 |
 | a | PIOA_Handler | 24 | upper bound | none | 452 | 21 / 61 |
@@ -169,7 +169,7 @@ reaches.
 | b | Reset_Handler | 916 | exact | none | 328 | 2 / 50 |
 | b | TC2_Handler | 236 | exact | none | 328 | 2 / 50 |
 | b | UOTGHS_Handler | 96 | exact | none | 328 | 2 / 50 |
-| b | hard_fault_report | 56 | exact | none | 328 | 2 / 50 |
+| b | HardFault_Handler | 56 | exact | none | 328 | 2 / 50 |
 | b | UART_Handler | 16 | exact | none | 328 | 2 / 50 |
 | b | DACC_Handler | 12 | exact | none | 328 | 2 / 50 |
 | c | service_task | 860 | exact | none | 379 | 5 / 50 |
@@ -179,12 +179,142 @@ reaches.
 | c | prvTimerTask | 232 | exact | none | 379 | 5 / 50 |
 | c | SysTick_Handler | 112 | exact | none | 379 | 5 / 50 |
 | c | UOTGHS_Handler | 96 | exact | none | 379 | 5 / 50 |
-| c | hard_fault_report | 56 | exact | none | 379 | 5 / 50 |
+| c | HardFault_Handler | 56 | exact | none | 379 | 5 / 50 |
 | c | UART_Handler | 16 | exact | none | 379 | 5 / 50 |
 | c | DACC_Handler | 12 | exact | none | 379 | 5 / 50 |
 
-Roots whose bound is 0 B are not listed: 19 on track a, 6 on track b, 8 on track c. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows and are counted for a track that reached no bound too.
+Roots whose bound is 0 B are not listed: 18 on track a, 5 on track b, 7 on track c. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows and are counted for a track that reached no bound too.
 <!-- end generated -->
+
+## What the bounds table is not: a worst case
+
+Every figure above is one chain. The stack holds more than one at a
+time.
+
+When an interrupt is taken the hardware pushes eight words - r0-r3, r12,
+LR, PC, xPSR - onto whichever stack was in use, plus a ninth word of
+padding when `SCB->CCR.STKALIGN` forces 8-byte alignment, which is the
+reset default on this part. Then the handler's own chain goes on top.
+Then a higher-priority interrupt can do it again. So the worst case on a
+stack is
+
+> the deepest thread-mode chain, **plus** one exception frame and one
+> handler chain for every preemption level that can interrupt what is
+> already running.
+
+**Handlers at one level do not nest.** The hardware will not preempt on
+equal priority, so a level is charged one frame and its deepest member,
+not one per handler. That is why the level is the unit here and the
+handler is not - and it is also why the levels have to be declared:
+nothing in the image records them, because `NVIC_SetPriority` is a call
+the firmware makes at run time.
+
+**An undeclared handler is assumed to nest on its own.** That is the
+sound reading of "this might nest with anything", and it makes the
+total a ceiling rather than a refusal - the one place
+`tools/stack_depth.list` is not all-or-nothing. A missing `indirect`
+line refuses; a missing `isr` line costs 36 B and the word `exact`.
+
+**The naked fault handler needed an `edge`.** `HardFault_Handler` is
+`__attribute__((naked))` and ends in `b hard_fault_report`, so no `.ci`
+records the call. Untold, the tool reported `hard_fault_report` as a
+root of its own *and* charged the vector a chain of zero - wrong twice,
+both times downward. An `edge` declaration adds the call; like
+`target:`, it cannot under-report.
+
+<!-- generated: nesting -->
+| track | thread mode | levels | never enabled | worst case | state |
+|---|---|---|---|---|---|
+| a | 880 through `Reset_Handler` | 6 | 9 | **1516** | upper bound |
+| b | 916 through `Reset_Handler` | 6 | 1 | **1452** | exact |
+| c | 860 through `service_task` | 6 | 1 | **1492** | exact |
+
+| track | level | bytes | handlers |
+|---|---|---|---|
+| a | -2 | 36 | `__halt` |
+| a | -1 | 84 | `HardFault_Handler` |
+| a | 0 | 196 | `ADC_Handler`, `UART_Handler`, `UOTGHS_Handler` |
+| a | 1 | 48 | `DACC_Handler` |
+| a | 3 | 220 | `TC2_Handler` |
+| a | 15 | 52 | `SysTick_Handler` |
+| b | -2 | 36 | `Default_Handler` |
+| b | -1 | 92 | `HardFault_Handler` |
+| b | 0 | 36 | `ADC_Handler`, `SysTick_Handler` |
+| b | 1 | 48 | `DACC_Handler` |
+| b | 3 | 272 | `TC2_Handler` |
+| b | 15 | 52 | `UART_Handler` |
+| c | -2 | 36 | `Default_Handler` |
+| c | -1 | 92 | `HardFault_Handler` |
+| c | 0 | 36 | `ADC_Handler`, `SVC_Handler` |
+| c | 1 | 48 | `DACC_Handler` |
+| c | 3 | 272 | `TC2_Handler` |
+| c | 15 | 148 | `PendSV_Handler`, `SysTick_Handler`, `UART_Handler` |
+
+Every level's figure includes 36 B of hardware exception frame - eight words plus a word of STKALIGN padding - so a level costs that much even where its handler is a counter increment. Handlers at one level do not nest, so a level is charged one frame and its deepest member; an `undeclared` row is a handler with no declared level, assumed to nest on its own, which is the ceiling the state column reports against.
+<!-- end generated -->
+
+### What the level table says about the firmware, not the stack
+
+Writing the levels down to get an arithmetic answer produced three
+findings that are not about stack depth at all, and one of them
+contradicts a comment in the source.
+
+**"Above everything else" is not true on either track.**
+`sketches/bringup/acq.cpp` sets the ADC handler to 0 with the comment
+*above everything else*, and `drivers/acq.c` does the same without one.
+On Track B `SysTick_Handler` is also at 0, because `bsp/systick.c`
+writes the SysTick registers directly and never touches a priority, so
+the reset value stands. On Track A level 0 holds **three** handlers -
+the ADC's, Serial's UART RX, and the USB controller's. Interrupts at
+one level do not preempt each other, so on Track A a USB or UART
+interrupt already in progress delays the ADC handler by its whole
+duration. The stack does not care - one level, one frame - but the
+0.95 us conversion cadence might.
+
+**The same UART sits at 15 on Track B and at 0 on Track A**, and neither
+track chose it. Track B's `bsp/uart.c` sets 15 explicitly, with the
+comment *below ADC 0 and DACC 1*. Track A uses the core's `UARTClass`,
+whose `init()` calls `NVIC_EnableIRQ` and never `NVIC_SetPriority` -
+`setInterruptPriority()` exists in the core and nothing calls it - so
+Serial's RX interrupt keeps the reset default of 0 and outranks the DAC.
+
+**And the USB interrupt is enabled on one track and not the other.**
+Track B defines `UOTGHS_Handler` and never enables it: control transfers
+are polled at 1 kHz from the main loop, and `apps/baremetal_bringup/main.c`
+names enabling the interrupt as "the real fix" for that poll. Track A
+gets it enabled at level 0 by libsam's `UDD_Init()`, which the core's
+enumeration path calls. So the two tracks are not the same instrument
+under interrupt load, which is worth knowing before a latency figure is
+compared across them.
+
+Two of the three come from the Arduino core rather than from this
+project, which is what invariant 3's "peers in everything else" has to
+mean in practice: the tracks agree on the three peripheral levels they
+set themselves - ADC 0, DACC 1, TC2 3 - and diverge on all three they
+inherit.
+
+### Does it fit
+
+| track | worst case on one stack | against | from |
+|---|---|---|---|
+| A | 1,516 B (ceiling) | **6,852 B** of stack and heap together, `__StackTop - _end` | `linker/arduino_due_x_sram1.ld`; the script's own comment says "roughly 9 KB", which was true of a smaller `.bss` |
+| B | 1,452 B | **8,192 B** reserved for the stack, `_estack - _heap_end` | `linker/sam3x8e_flash.ld` |
+| C | 1,492 B | **8,192 B** of MSP as B, and **3,072 B** per task | the same script; `service_stack` and `console_stack` are `0xc00` each in the image |
+
+All three fit with a factor of four or more in hand, and the smallest
+margin in the table is Track C's task stacks - where the one-stack
+figure of 1,492 B is itself an over-count, for the reason in the next
+paragraph.
+
+**One stack, and Track C has three.** The figure above is the worst case
+on a single stack. Track C runs tasks on PSP and handlers on MSP, so the
+thread chain and the *first* exception frame land on the task's stack
+while the handler bodies and every further nesting land on the main one.
+The one-stack total bounds each of them and is reached by neither, which
+is the safe direction and is why 1,492 B can be compared against 3,072
+without further arithmetic. Splitting it needs the per-stack sizes
+declared, and that is the half of this section still to do - not a
+number to derive by hand here.
 
 ## The deepest chain
 
@@ -447,9 +577,9 @@ deepest-chain table structurally cannot reach.
 <!-- generated: provenance -->
 | track | bench | repo_rev | cc | elf | elf_sha256 | taken_at |
 |---|---|---|---|---|---|---|
-| a | linux-x1 | e103858 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | track_a_bringup.elf | 357a27e89760b75e | 2026-09-12T12:25:20-0400 |
-| b | linux-x1 | e103858 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 69ae9dd367b7852b | 2026-09-12T12:25:19-0400 |
-| c | linux-x1 | e103858 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | fc5338dc81d4f9dc | 2026-09-12T12:25:20-0400 |
+| a | linux-x1 | e304c7d-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | track_a_bringup.elf | 357a27e89760b75e | 2026-09-12T12:42:29-0400 |
+| b | linux-x1 | e304c7d-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 69ae9dd367b7852b | 2026-09-12T12:42:28-0400 |
+| c | linux-x1 | e304c7d-dirty | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | fc5338dc81d4f9dc | 2026-09-12T12:42:29-0400 |
 
 Schema `stack-depth/1`, written by `tools/stack_depth.py`, resolving its indirect call sites from `tools/stack_depth.list`.
 <!-- end generated -->

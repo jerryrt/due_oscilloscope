@@ -103,6 +103,17 @@ RECURSION IS A FAILURE, not a large number. A cycle in the call graph has no
 worst-case depth, and invariant 7 forbids it on the working path, so a cycle
 is reported and the tool exits non-zero.
 
+A ROOT'S FIGURE IS ONE CHAIN, AND THE STACK HOLDS MORE THAN ONE. So the last
+thing printed is the worst case on a stack: the deepest thread-mode chain plus
+one hardware exception frame and one handler chain for every preemption level
+that can interrupt what is already running. The vector table is read out of
+the image, so no handler can be left off the sum by being forgotten; the
+LEVELS have to be declared, because NVIC_SetPriority is a call the firmware
+makes at run time and nothing in the image records the result. Handlers at one
+level do not nest. An undeclared handler is assumed to nest on its own, which
+makes the total a ceiling rather than a refusal - the one declaration here
+whose absence costs a label instead of the answer.
+
 Stdlib only, like the rest of the build-side tooling here.
 """
 from __future__ import annotations
@@ -161,7 +172,7 @@ def read_declarations(path, track):
                 raise ValueError(f"{path}:{n}: want "
                                  f"'<track> <kind> <key> <value>', got {line!r}")
             trk, kind, key, value = parts
-            if kind not in ("indirect", "leaf"):
+            if kind not in ("indirect", "leaf", "isr", "edge"):
                 raise ValueError(f"{path}:{n}: unknown kind {kind!r}")
             if trk == track:
                 out.append((kind, key, value))
@@ -510,14 +521,28 @@ def symbols(elf):
     matched to a node is refused - so reading a vtable in the mangled
     vocabulary refuses on every slot it resolves, which is the worst of
     both. For C the two spellings are the same and nothing changes.
+
+    ONE ADDRESS CARRIES MANY NAMES and the choice between them is not
+    nm's to make. `Default_Handler` shares its address with 44 weak
+    aliases, one per unused vector, and `setdefault` over nm's output
+    picked whichever the reader listed first - so the name this returned
+    depended on how a bench's binutils sorted a tie, which is the defect
+    CLAUDE.md records against a `layout` hash, one tool over. The strong
+    definition wins, then the shorter name, then alphabetical: the first
+    rung is semantic - `Default_Handler` is the function and the others
+    are aliases of it - and the rest only have to be deterministic.
     """
-    out = {}
+    seen = {}
     for ln in _run([_tool("arm-none-eabi-nm"), "-nC", "--defined-only",
                     elf]).splitlines():
         parts = ln.split(None, 2)
         if len(parts) >= 3 and parts[1] in ("t", "T", "w", "W"):
-            out.setdefault(int(parts[0], 16) & ~1, parts[2].strip())
-    return out
+            addr, kind, name = (int(parts[0], 16) & ~1, parts[1],
+                                parts[2].strip())
+            rank = (kind in ("w", "W"), len(name), name)
+            if addr not in seen or rank < seen[addr][0]:
+                seen[addr] = (rank, name)
+    return {addr: name for addr, (_rank, name) in seen.items()}
 
 
 def table_targets(elf, table, syms):
@@ -712,6 +737,71 @@ def leaf_frame(elf, sym, extents=None):
     return total
 
 
+# --- interrupt nesting -----------------------------------------------------
+
+#: Cortex-M3 exception entry pushes eight words - r0-r3, r12, LR, PC and
+#: xPSR - onto whichever stack was in use, plus up to one word of padding
+#: when SCB->CCR.STKALIGN forces the frame to an 8-byte boundary, which is
+#: the reset default on this part. 36 B is therefore the worst case per
+#: preemption level. It is a hardware constant out of the architecture
+#: reference manual, not a measurement, and it is the term a per-root table
+#: leaves out entirely.
+EXC_FRAME = 36
+
+#: The initial stack pointer is vector 0 and the boot entry is vector 1.
+#: Neither is an interrupt: nothing preempts anything to reach Reset_Handler,
+#: so charging it a frame would double-count the thread chain it starts.
+VECTOR_NOT_AN_INTERRUPT = ("Reset_Handler",)
+
+
+def vector_handlers(elf, syms):
+    """The distinct functions the vector table points at.
+
+    Read out of the linked image like any other const dispatch table -
+    `exception_table` is one - so the set is re-derived from every build
+    and cannot drift from a list somebody typed. That matters more here
+    than elsewhere: a handler left off a hand-written list is an entire
+    preemption level missing from the total, silently.
+    """
+    got, _ = table_targets(elf, "exception_table", syms)
+    return [g for g in got if g not in VECTOR_NOT_AN_INTERRUPT]
+
+
+def nest_total(thread_bytes, chains, levels):
+    """(total, [(level, bytes, [handlers])]) for the worst case on one stack.
+
+    THE PER-ROOT TABLE IS NOT A WORST CASE and this is the arithmetic it
+    leaves out. A root's figure is the depth of that chain alone; the
+    stack actually holds the thread-mode chain PLUS one hardware frame
+    and one handler chain for every preemption level that can interrupt
+    what is already running. Reporting the deepest single ISR instead is
+    an under-report of exactly the kind the three-state contract exists
+    to prevent.
+
+    `levels` maps a handler to its NVIC preemption level, to None for
+    "not declared", or leaves it out entirely for a handler declared
+    `off`. Handlers at the SAME level do not nest - the hardware will not
+    preempt on equal priority - so a level contributes one frame and its
+    deepest member. An UNDECLARED handler gets a level of its own, which
+    is the sound reading of "this might nest with anything": that is the
+    ceiling, and it is what the answer is labelled against.
+    """
+    groups = {}
+    for handler, level in sorted(levels.items()):
+        key = ("level", level) if level is not None else ("undeclared",
+                                                          handler)
+        groups.setdefault(key, []).append(handler)
+    rows, total = [], thread_bytes
+    for key in sorted(groups, key=lambda k: (k[0] != "level", k[1])):
+        members = groups[key]
+        deepest_here = max(chains.get(h, 0) for h in members)
+        cost = EXC_FRAME + deepest_here
+        total += cost
+        rows.append((key[1] if key[0] == "level" else None, cost,
+                     sorted(members)))
+    return total, rows
+
+
 # --- the walk --------------------------------------------------------------
 
 def deepest(g, root, frames, indirect_by_src, title_of):
@@ -879,7 +969,7 @@ def emit_graph(g, frames, below, floor, edges, keep, critical, fmt, deepest_of):
 
 
 def _record(args, g, frames, rows, state, sites, targets, files,
-            indirect_by_src, title_of, blocked=()):
+            indirect_by_src, title_of, blocked=(), nesting=None):
     """The row a report is generated from. Schema version travels with it."""
     import hashlib
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), "host"))
@@ -927,6 +1017,7 @@ def _record(args, g, frames, rows, state, sites, targets, files,
                                         os.path.dirname(HERE))
                         if args.track else None,
         "blocked": [{"what": w, "why": y} for w, y in blocked],
+        "nesting": nesting,
         "roots": [{"root": r, "bytes": b,
                    "chain": [{"function": g.name.get(t, t),
                               "frame": frames[t],
@@ -994,6 +1085,18 @@ def main(argv=None):
     ap.add_argument("--leaf", action="append", default=[], metavar="SYM=BYTES",
                     help="declare a library frame the disassembly will not "
                          "yield; say in the commit how it was measured")
+    ap.add_argument("--isr", action="append", default=[],
+                    metavar="HANDLER=LEVEL",
+                    help="the NVIC preemption level a vector-table handler "
+                         "runs at, or `off` if its interrupt is never "
+                         "enabled. Handlers at one level do not nest; an "
+                         "UNDECLARED handler is assumed to nest with "
+                         "everything, which is the sound ceiling and is what "
+                         "the nesting total is labelled against")
+    ap.add_argument("--edge", action="append", default=[], metavar="FROM=TO",
+                    help="a call the compiler did not record - a naked "
+                         "asm branch, say. A claim, but one that ADDS a "
+                         "chain, so it cannot under-report")
     ap.add_argument("--root", action="append", default=[], metavar="NAME",
                     help="entry point to measure (repeat). Default: every "
                          "function nothing calls")
@@ -1021,17 +1124,29 @@ def main(argv=None):
     # The tracked claims first: everything below consumes them, and a
     # bad line is a hard stop rather than a silently skipped declaration.
     want, declared_leaf_specs = [], []
+    isr_specs, edge_specs = [], []
     if args.track:
         try:
             for kind, key, value in read_declarations(args.declarations,
                                                       args.track):
                 if kind == "leaf":
                     declared_leaf_specs.append(f"{key}={value}")
+                elif kind == "isr":
+                    isr_specs.append((key, value))
+                elif kind == "edge":
+                    edge_specs.append((key, value))
                 else:
                     want.append((key, value))
         except (OSError, ValueError) as exc:
             print(f"{exc}", file=sys.stderr)
             return 2
+    for spec, into in ((args.isr, isr_specs), (args.edge, edge_specs)):
+        for one in spec:
+            key, sep, value = one.partition("=")
+            if not sep:
+                print(f"want KEY=VALUE, got {one!r}", file=sys.stderr)
+                return 2
+            into.insert(0, (key, value))
 
     g, files = parse(args.build)
     if not files:
@@ -1154,7 +1269,7 @@ def main(argv=None):
     exact_indirect = True
     indirect_by_src = {}
     all_targets = set()
-    syms = symbols(args.elf) if (indirect_sites and args.elf) else {}
+    syms = symbols(args.elf) if args.elf else {}
     for src, loc in indirect_sites:
         how = next((h for pat, h in want if pat in loc), None)
         if how is None:
@@ -1224,10 +1339,35 @@ def main(argv=None):
         exact.setdefault(plain, []).append(title)
         by_sig.setdefault(_sig_key(plain), []).append(title)
         by_name.setdefault(_name_key(plain), []).append(title)
+
+    def titles_of(name):
+        return (exact.get(name) or exact.get(_sig_key(name))
+                or by_sig.get(_sig_key(name)) or by_name.get(_name_key(name))
+                or [])
+
+    # --- edges the compiler could not see ---
+    #
+    # HardFault_Handler is `naked` and branches to hard_fault_report in
+    # asm, so no .ci records the call and the report grows a spurious
+    # root with the whole fault path under it - and the fault path then
+    # contributes nothing to the interrupt nesting total, because the
+    # only thing the vector table names has a chain of zero. A claim
+    # that ADDS an edge cannot under-report, which is the rung this sits
+    # on.
+    for src_name, dst_name in edge_specs:
+        src_titles, dst_titles = titles_of(src_name), titles_of(dst_name)
+        if not src_titles or not dst_titles:
+            unresolved.append((f"edge {src_name} -> {dst_name}",
+                               "no call-graph node for "
+                               + (src_name if not src_titles else dst_name)))
+            continue
+        for st in src_titles:
+            for dt in dst_titles:
+                g.edges.setdefault(st, set()).add(dt)
+
     title_of = {}
     for t in sorted(all_targets):
-        hits = (exact.get(t) or exact.get(_sig_key(t))
-                or by_sig.get(_sig_key(t)) or by_name.get(_name_key(t)) or [])
+        hits = titles_of(t)
         if hits:
             # ALL OF THEM, not one. A weak C++ method emitted into two
             # translation units appears twice with the same label and two
@@ -1316,6 +1456,74 @@ def main(argv=None):
         rows.append((total, g.name.get(root, root), chain))
     rows.sort(key=lambda r: -r[0])
 
+    # --- interrupt nesting, which the per-root table above is not ---
+    nest = None
+    if args.elf:
+        try:
+            handlers = vector_handlers(args.elf, syms)
+        except LookupError as exc:
+            print(f"REFUSED: {exc}\n\nWithout the vector table there is no "
+                  "way to tell an interrupt entry point from an ordinary "
+                  "root, so no nesting total is computed.", file=sys.stderr)
+            return 3
+        declared = {}
+        for name, value in isr_specs:
+            if value != "off":
+                try:
+                    declared[name] = int(value)
+                except ValueError:
+                    print(f"--isr wants a level or `off`, got {value!r} for "
+                          f"{name}", file=sys.stderr)
+                    return 2
+            else:
+                declared[name] = "off"
+        stale = sorted(set(declared) - set(handlers))
+        if stale:
+            # A typo here would leave the REAL handler undeclared, which
+            # is sound but silent, and would leave a claim in the tracked
+            # list that reads as covering something it does not.
+            print("--isr names something the vector table does not point "
+                  "at: " + ", ".join(stale)
+                  + "\nThe table holds: " + ", ".join(sorted(handlers)),
+                  file=sys.stderr)
+            return 2
+
+        handler_titles, chains, levels = set(), {}, {}
+        for h in handlers:
+            hits = titles_of(h)
+            handler_titles.update(hits)
+            if declared.get(h) == "off":
+                continue                    # claimed never enabled
+            best = 0
+            for t in hits:
+                try:
+                    total, _chain = deepest(g, t, frames, indirect_by_src,
+                                            title_of)
+                except (RecursionError, KeyError):
+                    total = 0               # refused above; unreachable here
+                best = max(best, total)
+            chains[h] = best
+            levels[h] = declared.get(h)
+
+        thread = [r for r in rows if r[1] not in
+                  {g.name.get(t, t) for t in handler_titles}]
+        thread_bytes, thread_root = (thread[0][0], thread[0][1]) if thread \
+            else (0, "(none)")
+        total, breakdown = nest_total(thread_bytes, chains, levels)
+        nest = {
+            "total": total,
+            "exc_frame": EXC_FRAME,
+            "thread_bytes": thread_bytes,
+            "thread_root": thread_root,
+            "state": ("upper bound"
+                      if (not exact_indirect
+                          or any(v is None for v in levels.values()))
+                      else "exact"),
+            "off": sorted(h for h in handlers if declared.get(h) == "off"),
+            "levels": [{"level": lvl, "bytes": cost, "handlers": members}
+                       for lvl, cost, members in breakdown],
+        }
+
     state = "exact" if exact_indirect else "upper bound"
 
     if args.record:
@@ -1329,7 +1537,7 @@ def main(argv=None):
         # cannot record, here as everywhere else.
         print(json.dumps(_record(args, g, frames, rows, state,
                                  indirect_sites, all_targets, files,
-                                 indirect_by_src, title_of),
+                                 indirect_by_src, title_of, nesting=nest),
                          sort_keys=True))
         return 0
 
@@ -1361,6 +1569,7 @@ def main(argv=None):
             "roots": [{"bytes": b, "root": r,
                        "chain": [g.name.get(t, t) for t in c]}
                       for b, r, c in rows],
+            "nesting": nest,
         }, indent=2))
         return 0
 
@@ -1381,6 +1590,29 @@ def main(argv=None):
             running += frames[title]
             print(f"  {frames[title]:>6}  {running:>10}  "
                   f"{g.name.get(title, title)}")
+    if nest:
+        print(f"\nWorst case on one stack: {nest['total']} B "
+              f"({nest['state']})")
+        print(f"  {'bytes':>7}  where")
+        print(f"  {nest['thread_bytes']:>7}  thread mode, through "
+              f"{nest['thread_root']}")
+        for row in nest["levels"]:
+            where = ("preemption level %s" % row["level"]
+                     if row["level"] is not None
+                     else "UNDECLARED, so assumed to nest on its own")
+            print(f"  {row['bytes']:>7}  {where}: "
+                  + ", ".join(row["handlers"]))
+        print(f"  Each line above a handler includes {EXC_FRAME} B of "
+              "hardware exception frame.")
+        if nest["off"]:
+            print("  Claimed never enabled, so charged nothing: "
+                  + ", ".join(nest["off"]))
+        print("  ONE STACK. Where a build runs threads on PSP and handlers "
+              "on MSP this\n  bounds each of them and is reached by "
+              "neither: the thread chain and the\n  first exception frame "
+              "land on the task stack, the handler bodies and\n  any "
+              "further nesting on the main stack.")
+
     print(f"\n{len(g.frame)} functions over {files} .ci file(s), "
           f"{len(indirect_sites)} indirect call site(s) "
           f"resolving to {len(all_targets)} target(s).")
@@ -1393,7 +1625,9 @@ def main(argv=None):
           + ("" if exact_indirect else
              " Some edge was over-approximated; the figure is a ceiling, "
              "not a measurement."))
-    print("Depth only. Interrupt nesting is not added here.")
+    if not nest:
+        print("No --elf, so no vector table and no nesting total: the "
+              "figures above are single chains and not a worst case.")
     return 0
 
 
