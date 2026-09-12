@@ -167,19 +167,19 @@ other pair: `mac-bench` and `windows-desk` both recorded at `f5db1e8`,
 and both artifacts agree there too - `baremetal_bringup.bin
 0218619e…` and `.elf 5bf536cb…`. So byte-identity holds pairwise
 across all three hosts and both commits, and macOS under colima and
-QEMU is inside the claim rather than beside it.
+QEMU is inside the claim rather than beside it. The layouts agree, the
+analyser counts agree exactly, and on two of the three benches the
+analyser logs agree to the **byte**: 3,899 and 7,056 in both. That is a
+stronger result than equal totals, because two totals can agree by
+coincidence and two logs cannot.
 
-That pair is also the sharpest thing said about `build_image_content`
-below, because it is the same comparison run twice with opposite
-results: the two benches' image hashes differ - `ec031e1b…` against
-`b3106b76…`, on docker 29.5.2 against 29.8.0 - while the firmware
-those images produced is identical to the byte. The value that was
-supposed to certify sameness disagrees; the artifacts it stood proxy
-for agree exactly. The layouts agree, the analyser
-counts agree exactly, and on two of the three benches the analyser logs
-agree to the **byte**: 3,899 and 7,056 in both. That is a stronger
-result than equal totals, because two totals can agree by coincidence
-and two logs cannot.
+That second pair is also the sharpest thing said about
+`build_image_content` below, because it is one comparison run twice with
+opposite results: the two benches' image hashes differ - `ec031e1b…`
+against `b3106b76…`, on docker 29.5.2 against 29.8.0 - while the
+firmware those two images produced is identical to the byte. The value
+that was supposed to certify sameness disagrees; the artifacts it stood
+proxy for agree exactly.
 
 **It is not the same check set, and the reason is below the image.**
 `mac-bench` skips three tests the other two run: the `needs_sanitizer`
@@ -253,7 +253,7 @@ container at all.
 |---|---|
 | `cppcheck`, `clang-tidy`, `fuzz` - three of nine steps, and the run reports `INCOMPLETE` | install all three per bench. It works, and then they are three versions on three benches and the finding counts stop comparing - which is the variable this image removes |
 | The **board-absent positive control**, on any bench with a board attached. It is `NOT SELECTED` there by design: running it would open the port it exists to prove absent | none. A machine with no board, or the container |
-| **Cross-bench reproduction.** The claim is *same pinned inputs*, and a host toolchain is deliberately not a pinned input | none. It is structural, and it is what phase 1's second half is still waiting for |
+| **Cross-bench reproduction.** The claim is *same pinned inputs*, and a host toolchain is deliberately not a pinned input | none, and it is structural - but it is no longer outstanding: phase 1's second half is met on both pairs that share a commit, `windows-desk` against `linux-x1` at `6a7d122` and against `mac-bench` at `f5db1e8` |
 | On `mac-bench`, the arm that proves the misaligned-load canary works: it fires under the image's GCC and not under Apple clang 14 | install another host compiler |
 | The 32-bit ABI arm, which has never executed on any bench natively - multilib absent on `linux-x1`, and a `qemu-i386` shadow-mapping hang on `mac-bench` | install the multilib runtimes |
 
