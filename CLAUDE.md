@@ -18,7 +18,7 @@ file is one row away.
 | Daemon protocol and its guarantees | `docs/daemon-api.md` |
 | Front-end design and the rules the UI must obey | `docs/frontend.md` |
 | What the tracks share, and why | `docs/shared-source.md` |
-| The build container: how to run it, the nine checks it carries, what it will not do, and what a bench gives up without it | `docs/build-container.md` |
+| The build container: how to run it, the checks it carries, what it will not do, and what a bench gives up without it | `docs/build-container.md` |
 | Per-host validation | `docs/windows.md`, `docs/linux.md` |
 | Board, clocks, converters | `docs/hardware.md` |
 | How to write one of these | `docs/writing.md` |

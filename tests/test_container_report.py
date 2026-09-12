@@ -116,7 +116,7 @@ def test_a_declared_bench_is_required_for_a_row(tmp_path, monkeypatch,
 
 def test_a_step_with_no_log_is_null_rather_than_missing(tmp_path,
                                                         monkeypatch):
-    """Nine steps, always nine keys.
+    """Every step, always a key.
 
     A step dropped from the mapping is indistinguishable from a step
     that ran and had no number to report, and the second is the common
@@ -128,7 +128,8 @@ def test_a_step_with_no_log_is_null_rather_than_missing(tmp_path,
     assert set(row["steps"]) == set(cr.STEPS)
     assert row["steps"]["host-tier"] is not None
     assert row["steps"]["cppcheck"] is None, "absent must be null, not 0"
-    assert sum(1 for v in row["steps"].values() if v is None) == 8
+    assert sum(1 for v in row["steps"].values() if v is None) == \
+        len(cr.STEPS) - 1
 
 
 # --- the numbers come off the right lines ---------------------------------
@@ -269,13 +270,13 @@ def test_a_dirty_tree_is_refused_because_nobody_can_reproduce_it(
     match - and a row carrying it answers nothing while looking exactly
     like a row that does.
 
-    IT IS ALSO THE ONLY GUARD THAT CATCHES A RUN DIRTYING ITS OWN TREE.
+    IT IS ALSO THE RECORDING HALF OF A RUN DIRTYING ITS OWN TREE.
     Found on windows-desk: `run-ci.sh`'s positive control crashes a
     harness on purpose, WSL2's kernel.core_pattern drops `core.<pid>` in
     the working directory, and the row came out `<rev>-dirty` carrying
     CLEAN artifact hashes - build-env.json is written by the firmware
-    step, before the host tier runs. Nothing else in the run reported a
-    problem.
+    step, before the host tier runs. The run half is `run-ci.sh`'s
+    `working tree` step, pinned in tests/test_ci_verdict.py.
     """
     logdir, build = _with_image(tmp_path, "f5db1e8")
     for rev in ("f5db1e8-dirty", "f5db1e8+ee5c634a"):

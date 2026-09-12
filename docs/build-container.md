@@ -39,7 +39,7 @@ it runs - `build-firmware.sh`, `run-tests.sh`, `run-cppcheck.sh`,
 `run-clang-tidy.sh`, `run-fuzz.sh`, `run-ci.sh` - carries no container
 knowledge and runs on a bench unchanged.
 
-Nine steps, in the order they run:
+Ten steps, in the order they run:
 
 | step | what it answers | gates |
 |---|---|---|
@@ -50,6 +50,7 @@ Nine steps, in the order they run:
 | `stack report` | does `docs/stack-depth.md` match the record it is generated from | yes |
 | `cppcheck`, `clang-tidy` | static analysis over firmware and shared source | findings are advisory; **analysing nothing** gates |
 | `fuzz` | a campaign over the shared control parser, with a positive control | a crash gates, and so does a fuzzer that could not be built |
+| `working tree` | did the run leave the tree as it found it. `FW_GIT_REV` stamps a delta hash into every image built from a dirty tree, so a step that drops a file into the repository changes every image after it while each still reproduces itself. The change is blamed on the step it happened in | yes, and after a change the reproducible steps do not run. A tree already dirty when the run began is watched for change, not refused |
 
 The five states and what each means are in that script's own header. The
 one to know is **DID NOT RUN**: an unanswered question is not a passing
@@ -67,9 +68,9 @@ and the two toolchains' artifacts cannot be confused for each other.
 |---|---|---|
 | `linux-x1` | a native daemon | 194 s |
 | `mac-bench` | **colima plus QEMU, from MacPorts.** Docker Desktop needs macOS 13+ and this desk is 12.7.6 | 774 s |
-| `windows-desk` | WSL2, which is a real Linux kernel and therefore the native case | not yet taken |
+| `windows-desk` | WSL2, which is a real Linux kernel and therefore the native case | 410 s |
 
-The spread is the runtime, not the work: the same nine steps, the same
+The spread is the runtime, not the work: the same steps, the same
 pinned tools, the same counts.
 
 **One trap, paid for on `mac-bench`.** `toolchains.json` searches
@@ -109,7 +110,8 @@ takes the verdict from the script's exit code, which is the one fact no
 artefact carries. It refuses a row whose image does not carry the
 tree's own commit, because `FW_GIT_REV` is compiled in and a row
 labelled with a commit the binary was not built from voids the
-comparison it feeds.
+comparison it feeds. It refuses a dirty tree too, because the delta
+hash is a function of the dirt and no other bench can reproduce it.
 
 ## What this is not
 
@@ -281,8 +283,8 @@ board absent       NOT SELECTED  a board is attached
 VERDICT: INCOMPLETE. 3 step(s) DID NOT RUN                       exit 1
 ```
 
-So the container is not a convenience on one platform. **Three of the
-nine steps are where it is, on every bench**, because the three tools
+So the container is not a convenience on one platform. **Three of its
+steps are where it is, on every bench**, because the three tools
 that are not compiler flags do not ship with a compiler. The four that
 are - `-Werror`, `-fanalyzer`, `-fstack-usage`, and the host-tier
 sanitizers - are CMake options and a host resolver, and never needed a
@@ -290,7 +292,7 @@ container at all.
 
 | given up | workaround |
 |---|---|
-| `cppcheck`, `clang-tidy`, `fuzz` - three of nine steps, and the run reports `INCOMPLETE` | install all three per bench. It works, and then they are three versions on three benches and the finding counts stop comparing - which is the variable this image removes |
+| `cppcheck`, `clang-tidy`, `fuzz` - three steps, and the run reports `INCOMPLETE` | install all three per bench. It works, and then they are three versions on three benches and the finding counts stop comparing - which is the variable this image removes |
 | The **board-absent positive control**, on any bench with a board attached. It is `NOT SELECTED` there by design: running it would open the port it exists to prove absent | none. A machine with no board, or the container |
 | **Cross-bench reproduction.** The claim is *same pinned inputs*, and a host toolchain is deliberately not a pinned input | none, and it is structural - but it is no longer outstanding: phase 1's second half is met on both pairs that share a commit, `windows-desk` against `linux-x1` at `6a7d122` and against `mac-bench` at `f5db1e8` |
 | On `mac-bench`, the arm that proves the misaligned-load canary works: it fires under the image's GCC and not under Apple clang 14 | install another host compiler |

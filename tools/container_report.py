@@ -54,12 +54,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 SCHEMA = "container-universality/1"
 
-#: The nine steps `docker/run-ci.sh` runs, in its own order, and the log
+#: The ten steps `docker/run-ci.sh` runs, in its own order, and the log
 #: each writes. A step absent from the log directory is reported absent
 #: rather than skipped over: a missing log and a step that passed are the
 #: same silence otherwise.
 STEPS = ("firmware", "host-tier", "board-absent", "reproducible-b",
-         "reproducible-a", "stack-report", "cppcheck", "clang-tidy", "fuzz")
+         "reproducible-a", "stack-report", "cppcheck", "clang-tidy", "fuzz",
+         "working-tree")
 
 #: pytest's own tail. Matched on the summary line and not on the body,
 #: for the reason class_board_absent gives: a clean run's log contains
@@ -257,15 +258,17 @@ def main(argv=None):
     # one is not a figure another bench can match, and a row carrying it
     # answers nothing while looking exactly like a row that does.
     #
-    # This is also the only guard that catches a run which dirties the
+    # It is also the recording half of catching a run which dirties the
     # tree UNDERNEATH itself. `docker/run-ci.sh`'s own positive control
     # crashes a harness on purpose, and where the kernel writes
     # `core.<pid>` into the working directory - WSL2's default - the
     # repository is dirty from that moment on. The row then came out
     # labelled `<rev>-dirty` with CLEAN artifact hashes in it, because
     # build-env.json is written by the firmware step before the host
-    # tier runs: a row nobody can interpret, and no step in the run
-    # reported anything wrong.
+    # tier runs: a row nobody can interpret. The run half is
+    # `run-ci.sh`'s `working tree` step, which fails such a run and names
+    # the step that changed the tree; this is what stops its row being
+    # recorded anyway.
     rev = row.get("repo_rev") or ""
     if "-dirty" in rev or "+" in rev:
         print(f"repo_rev is {rev!r}: this tree is dirty, so the image "

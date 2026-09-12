@@ -48,6 +48,7 @@
 # WHAT GATES, AND WHY NOT EVERYTHING.
 #
 #   firmware, host tier, board absent, reproducible   gate
+#   working tree: a change made during the run gates
 #   fuzz: a crash gates, and so does a fuzzer that could not be built
 #   cppcheck, clang-tidy: FINDINGS is advisory, DID NOT RUN gates
 #
@@ -82,6 +83,25 @@
 # first, so a broken tree is visible early anyway, and a step whose input
 # an earlier step failed to produce reports DID NOT RUN - the cascade
 # reading correctly rather than a second failure.
+#
+# THE RUN MAY NOT CHANGE THE TREE IT IS MEASURING. cmake/fw_git_rev.cmake
+# stamps a delta hash into every image built from a dirty tree, so a step
+# that drops a file into the repository changes every image built after
+# it - and each of those builds still reproduces itself, so both
+# reproducible steps pass. Measured on windows-desk, where WSL2's
+# kernel.core_pattern is the bare string `core`: the host tier's fuzz
+# positive control crashes a harness on purpose, three core.<pid> dumps
+# landed in the repository root, and the .bin left on disk at the end was
+# not the one build-env.json recorded. .gitignore covers core dumps now;
+# this is the guard for whatever does it next.
+#
+# So the tree is read before the first step and either side of every
+# step, and a change is blamed on the step it happened in. It fails the
+# `working tree` step, and the reproducible steps then DID NOT RUN rather
+# than build a tree no earlier step built, over the artifacts the
+# firmware step recorded. A tree already dirty when the run began is not
+# a failure - checking uncommitted work is what this script is for - and
+# tools/container_report.py is what refuses to record one.
 #
 # LOGS. Every step's full output is written to docker/out/ci/<step>.log
 # and echoed as it runs, so a count in the summary can be checked against
@@ -179,6 +199,73 @@ have_tool() {  # have_tool <registry name>
 have_pytest() { python3 -m pytest --version >/dev/null 2>&1; }
 
 # ---------------------------------------------------------------------
+# The working tree. What cmake/fw_git_rev.cmake stamps into an image is a
+# function of two readings, and these take the same two: `git status
+# --porcelain` and `git diff HEAD`. While neither moves, no image built
+# later can differ from one built earlier on that account. The diff is
+# carried as a checksum because only whether it moved is asked; the
+# porcelain is kept whole so that a change can name its paths.
+# ---------------------------------------------------------------------
+tree_read() {  # sets tree_paths and tree_sum; fails if git cannot answer
+	tree_paths=$(git status --porcelain 2>/dev/null) || return 1
+	tree_sum=$(git diff HEAD 2>/dev/null | cksum) || return 1
+}
+
+tree_begin() {
+	tree_start=
+	tree_changes=()
+	if ! tree_read; then
+		tree_note="git could not answer, so this run cannot say whether it changed the tree"
+		return 0
+	fi
+	tree_start=read
+	if [ -z "$tree_paths" ]; then
+		tree_note="clean at the start"
+	else
+		tree_note="dirty at the start, so watched for change rather than for dirt"
+	fi
+}
+
+# Compare the tree with its last reading and, if it moved, blame <who>.
+# run_step calls this either side of every step, so a change lands on the
+# step that made it and not on whichever step happened to look next.
+tree_watch() {  # tree_watch <who>
+	[ -n "$tree_start" ] || return 0
+	local was_paths=$tree_paths was_sum=$tree_sum what
+	if ! tree_read; then
+		tree_paths=$was_paths
+		tree_sum=$was_sum
+		tree_changes+=("$1 (git stopped answering)")
+		return 0
+	fi
+	if [ "$tree_paths" = "$was_paths" ] && [ "$tree_sum" = "$was_sum" ]; then
+		return 0
+	fi
+	what=$(LC_ALL=C comm -3 <(printf '%s\n' "$was_paths" | LC_ALL=C sort) \
+	                        <(printf '%s\n' "$tree_paths" | LC_ALL=C sort) |
+	       tr -d '\t' | cut -c4- | awk 'NF' | paste -sd' ' -)
+	tree_changes+=("$1 (${what:-tracked content})")
+	echo "---- THE WORKING TREE CHANGED during $1: ${what:-tracked content}"
+}
+
+# The working-tree step's command: 0 the run left the tree as it found
+# it, 1 a step changed it, 3 git could not read it at the start.
+tree_verdict() {
+	if [ -z "$tree_start" ]; then
+		echo "$tree_note"
+		return 3
+	fi
+	if [ "${#tree_changes[@]}" -eq 0 ]; then
+		echo "working tree: unchanged by the run, $tree_note"
+		return 0
+	fi
+	local joined
+	joined=$(printf '%s; ' "${tree_changes[@]}")
+	echo "working tree: changed by ${joined%; }"
+	return 1
+}
+
+# ---------------------------------------------------------------------
 # The step runner. Every step goes through it, so no step can hold its
 # own opinion about what its exit code meant.
 # ---------------------------------------------------------------------
@@ -189,6 +276,7 @@ run_step() {  # run_step <name> <classifier> <command...>
 
 	echo
 	echo "############ $name ############"
+	tree_watch "the script between steps, before $name"
 	start=$(now)
 	"$@" 2>&1 | tee "$log"
 	rc=${PIPESTATUS[0]}
@@ -200,6 +288,7 @@ run_step() {  # run_step <name> <classifier> <command...>
 	detail=${verdict#*$'\t'}
 	record "$name" "$state" "$(took "$start" "$stop")" "$detail"
 	echo "---- $name: $state ($detail)"
+	tree_watch "$name"
 }
 
 skip_step() {  # skip_step <name> <reason>
@@ -330,6 +419,18 @@ class_stack_report() {
 	esac
 }
 
+# The working-tree step: 0 the run left the tree as it found it, 1 a step
+# changed it, anything else the tree could not be read. The detail is the
+# verdict line, which names the steps and the paths.
+class_tree() {
+	local rc=$1 log=$2
+	case "$rc" in
+	0) echo "$S_PASS"$'\t'"$(last_match "$log" '^working tree:')" ;;
+	1) echo "$S_FAIL"$'\t'"$(last_match "$log" '^working tree:')" ;;
+	*) echo "$S_NORUN"$'\t'"exit $rc: $(last_match "$log" '.')" ;;
+	esac
+}
+
 analyser_step() {  # analyser_step <name> <script> <tool>
 	if [ "$fast" -eq 1 ]; then
 		skip_step "$1" "--fast"
@@ -351,6 +452,8 @@ if [ "$fast" -eq 1 ]; then
 else
 	echo "selection : everything, with a ${fuzz_seconds}s fuzz campaign"
 fi
+tree_begin
+echo "tree      : $tree_note"
 started=$(now)
 
 # --- firmware --------------------------------------------------------
@@ -400,6 +503,8 @@ fi
 for track in b a; do
 	if [ -n "$build_blocked" ]; then
 		norun_step "reproducible-$track" "$build_blocked"
+	elif [ "${#tree_changes[@]}" -gt 0 ]; then
+		norun_step "reproducible-$track" "the working tree changed during the run (${tree_changes[*]}), so a build now is of a tree no earlier step built, and would overwrite the artifacts the firmware step recorded"
 	else
 		run_step "reproducible-$track" class_repro \
 		         python3 tools/reproducible.py --track "$track"
@@ -455,6 +560,11 @@ else
 	export DUE_FUZZ_CORPUS="$logs/fuzz-corpus"
 	run_step "fuzz" class_fuzz docker/run-fuzz.sh "$fuzz_seconds"
 fi
+
+# --- the working tree ------------------------------------------------
+# Last, so that a change made by any step above is in it. tree_read says
+# what is compared and why those two readings.
+run_step "working tree" class_tree tree_verdict
 
 # ---------------------------------------------------------------------
 # The summary. Everything above prints as it goes; this is the part a

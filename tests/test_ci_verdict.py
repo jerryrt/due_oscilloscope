@@ -245,6 +245,10 @@ def test_the_documented_exit_codes_answer_as_documented(tmp_path):
         ("class_board_absent", 0, errored, s["S_FAIL"]),
         ("class_board_absent", 1, errored, s["S_PASS"]),
         ("class_board_absent", 1, clean, s["S_FAIL"]),
+        # The working-tree step: 0 the run left the tree as it found it,
+        # 1 a step changed it.
+        ("class_tree", 0, clean, s["S_PASS"]),
+        ("class_tree", 1, clean, s["S_FAIL"]),
     ]
     for name, rc, log, want in cases:
         state, detail = _classify(frag, name, rc, log)
@@ -392,3 +396,159 @@ def test_the_firmware_step_is_preflighted():
     assert 'norun_step "firmware"' in region, (
         "the firmware step has no DID NOT RUN branch any more, so a bench "
         "with no toolchain reports a build failure it never attempted")
+
+
+# ---------------------------------------------------------------------
+# The working tree
+# ---------------------------------------------------------------------
+
+#: What the tree-watch scenarios lift out of the script: the step runner,
+#: the watch, and everything either calls.
+_TREE_NEEDS = ["now", "took", "record", "last_match", "run_step",
+               "class_repro", "class_tree", "tree_read", "tree_begin",
+               "tree_watch", "tree_verdict"]
+
+
+def _tree_run(tmp_path, init, steps):
+    """Run `steps` through run_step in a fresh repository, then the
+    working-tree step, and return that step's (state, detail).
+
+    Executed in a real repository rather than against a mocked `git`,
+    because what the watch has to agree with is what git reports - which
+    is what cmake/fw_git_rev.cmake stamps into an image. Global and
+    system git configuration are shut out, so a bench whose own excludes
+    ignore `core.*` cannot make the dirtying step invisible here.
+    """
+    if not shutil.which("git"):
+        pytest.skip("no git on this bench, so the tree watch has nothing "
+                    "to ask")
+    text = _source()
+    funcs = _shell_functions(text)
+    missing = [n for n in _TREE_NEEDS if n not in funcs]
+    assert not missing, (
+        f"run-ci.sh no longer defines {missing}, so the tree watch cannot "
+        "be lifted out and this guard would test nothing")
+    consts = re.findall(r"^S_[A-Z]+='[^']*'$", text, re.M)
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    logs = tmp_path / "logs"             # outside the tree, as docker/out is
+    logs.mkdir()
+    lines = consts + [funcs[n] for n in _TREE_NEEDS] + [
+        "set -uo pipefail",
+        "export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1",
+        f"export GIT_CEILING_DIRECTORIES='{tmp_path.as_posix()}'",
+        f"cd '{repo.as_posix()}'",
+        f"logs='{logs.as_posix()}'",
+        "records=()",
+        init,
+        "tree_begin",
+    ]
+    for name, cmd in steps:
+        lines.append(f"run_step '{name}' class_repro {cmd}")
+    lines += ['run_step "working tree" class_tree tree_verdict',
+              "echo @@RECORDS@@",
+              'printf "%s\\n" "${records[@]}"']
+    out = _run("\n".join(lines) + "\n")
+    assert out.returncode == 0, out.stderr
+    recs = out.stdout.split("@@RECORDS@@\n", 1)[1].splitlines()
+    name, state, _secs, detail = recs[-1].split("\t", 3)
+    assert name == "working tree", recs
+    return state, detail
+
+
+#: A repository with one tracked file and one commit.
+_REPO = ("git init -q . && printf 'a\\n' > tracked && git add tracked && "
+         "git -c user.name=t -c user.email=t@t -c commit.gpgsign=false "
+         "commit -qm init")
+
+
+def test_a_step_that_changes_the_tree_fails_the_run_and_is_named(tmp_path):
+    """The defect this step exists for, in miniature.
+
+    Measured on windows-desk: the host tier's fuzz positive control
+    crashes a harness on purpose, WSL2 writes `core.<pid>` into the
+    repository root, every image built after that carries a delta hash -
+    and both reproducible steps still pass, because each of their builds
+    agrees with the other. A step that drops a file into the tree must
+    fail the run, and the blame must land on that step and no other.
+    """
+    s = _states(_source())
+    state, detail = _tree_run(tmp_path, _REPO, [
+        ("before", "true"),
+        ("dirtier", "sh -c 'echo x > core.4242'"),
+        ("after", "true"),
+    ])
+    assert state == s["S_FAIL"], detail
+    assert "dirtier" in detail and "core.4242" in detail, detail
+    assert "before" not in detail and "after" not in detail, (
+        f"{detail!r} - the change is attributed to a step that did not "
+        "make it")
+
+
+def test_a_tree_the_run_did_not_change_passes_even_if_dirty(tmp_path):
+    """Not vacuous, and not a cleanliness check.
+
+    Checking uncommitted work is what this script is for, so a tree
+    already dirty when the run began passes. What it must not do is
+    change underneath the run; container_report.py is what refuses to
+    record a dirty tree.
+    """
+    s = _states(_source())
+    state, detail = _tree_run(tmp_path, _REPO, [("quiet", "true")])
+    assert state == s["S_PASS"], detail
+
+    dirty = tmp_path / "dirty"
+    dirty.mkdir()
+    state, detail = _tree_run(dirty, _REPO + " && echo b >> tracked && "
+                              "echo u > untracked", [("quiet", "true")])
+    assert state == s["S_PASS"], detail
+
+
+def test_an_edit_git_status_cannot_see_still_counts(tmp_path):
+    """`git status --porcelain` says ` M tracked` before and after a
+    second edit to a file already modified, so a watch reading only that
+    misses a change the image stamp does not: fw_git_rev.cmake hashes
+    `git diff HEAD` as well."""
+    s = _states(_source())
+    state, detail = _tree_run(tmp_path, _REPO + " && echo b >> tracked", [
+        ("editor", "sh -c 'echo c >> tracked'"),
+    ])
+    assert state == s["S_FAIL"], detail
+    assert "editor" in detail, detail
+
+
+def test_no_repository_is_did_not_run_not_a_pass(tmp_path):
+    """A watch that could not read the tree has not established that the
+    tree is unchanged."""
+    s = _states(_source())
+    state, detail = _tree_run(tmp_path, "true", [("quiet", "true")])
+    assert state == s["S_NORUN"], detail
+
+
+def test_the_reproducible_steps_refuse_a_tree_the_run_has_changed():
+    """A reproducible build after the tree changed builds a tree no step
+    before it built, and writes over the artifacts build-env.json
+    recorded - which is how the `.bin` left on disk stopped being the one
+    the run reported."""
+    text = _source()
+    loop = text.index("for track in b a; do")
+    # Lookbehind for the reason test_the_firmware_step_is_preflighted
+    # has one: `run_step "x"` is a substring of `norun_step "x"`.
+    run = r'(?<![a-z_])run_step "{}'
+    m = re.compile(run.format("reproducible-")).search(text, loop)
+    assert m, "run-ci.sh no longer runs a reproducible step at all"
+    region = text[loop:m.start()]
+    # The condition itself, and not merely the variable's name: the
+    # refusal message quotes tree_changes, so a gutted condition would
+    # still satisfy a search for the name.
+    assert re.search(r'elif \[ "\$\{#tree_changes\[@\]\}" -gt 0 \]; then\s*'
+                     r'norun_step "reproducible-', region), (
+        "the reproducible steps no longer check whether the run changed "
+        "the tree before building it again")
+
+    last = re.search(run.format("working tree"), text)
+    fuzz = re.search(run.format("fuzz"), text)
+    assert last and fuzz and last.start() > fuzz.start(), (
+        "the working-tree step no longer runs after every other step, so "
+        "a change made by a later step goes unreported")

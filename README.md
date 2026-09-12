@@ -17,7 +17,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/scope.md](docs/scope.md) | Goals, phases, targets, non-goals |
 | [docs/hardware.md](docs/hardware.md) | SAM3X8E and Due facts, measured USB topology |
 | [docs/toolchain.md](docs/toolchain.md) | arduino-cli track and CMake/arm-gcc track |
-| [docs/build-container.md](docs/build-container.md) | The pinned build container: how to run it, the nine checks it carries, what it will not do, and what a bench gives up without it |
+| [docs/build-container.md](docs/build-container.md) | The pinned build container: how to run it, the checks it carries, what it will not do, and what a bench gives up without it |
 | [docs/architecture.md](docs/architecture.md) | DMA datapath, timebase, buffering |
 | [docs/protocol.md](docs/protocol.md) | Host streaming frame format |
 | [docs/awg.md](docs/awg.md) | Both generators, shapes, resolution, and why a trace shakes |
