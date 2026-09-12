@@ -64,23 +64,33 @@ def test_check_actually_fails_when_a_figure_is_edited(tmp_path):
     name the region that moved, because a failure that does not say
     where sends the reader to diff four regions by eye.
     """
+    # THE FIGURE IS READ OUT OF THE RECORD, NOT TYPED HERE. A bound is
+    # whatever the bench that recorded last measured - 916 B on Debian
+    # 14.2.1, 912 B on xPack 15.2.1 - so a hard-coded one makes this test
+    # fail on every bench but the one it was written on, and the failure
+    # reads as a broken check rather than as a stale fixture. It cost two
+    # reds the first time a second bench recorded.
     text = _doc()
-    assert "| b | Reset_Handler | 916 |" in text, (
+    recs = sr.load()
+    deepest = max(recs["b"]["roots"], key=lambda r: r["bytes"])
+    intact = "| b | %s | %d |" % (deepest["root"], deepest["bytes"])
+    assert intact in text, (
         "fixture precondition: the bounds region should carry Track B's "
-        "916 B root. Re-read the record before changing this")
+        "deepest root as the record has it. Regenerate the document: "
+        + intact)
 
     damaged = tmp_path / "stack-depth.md"
-    damaged.write_text(text.replace("| b | Reset_Handler | 916 |",
-                                    "| b | Reset_Handler | 216 |"),
+    damaged.write_text(text.replace(intact, "| b | %s | 216 |"
+                                    % deepest["root"]),
                        encoding="utf-8")
 
     r = subprocess.run([sys.executable, REPORT, "--check",
                         "--doc", str(damaged)],
                        capture_output=True, text=True)
     assert r.returncode != 0, (
-        "916 B was edited to 216 B and --check passed. The comparison is "
+        "%d B was edited to 216 B and --check passed. The comparison is "
         "not reaching the table, so every figure in the document is "
-        "unwatched")
+        "unwatched" % deepest["bytes"])
     assert "bounds" in r.stderr, (
         "--check failed but did not name the region that drifted; it said "
         + repr(r.stderr))
@@ -258,7 +268,17 @@ def test_a_track_with_no_bound_renders_its_state_and_its_reason():
     cells = [c.strip() for c in line[0].strip("|").split("|")]
     assert sr.NO_BOUND in cells, cells
     assert "refused" in cells, cells
-    assert not any(c.isdigit() and c not in ("452", "21", "73") for c in cells)
+    # The census columns legitimately carry numbers - how many functions
+    # the graph held, how many indirect sites and targets - and they are
+    # taken from the row rather than typed here, because they are a
+    # property of the IMAGE and differ by code generator: 452 functions
+    # on Debian 14.2.1 against 510 on xPack 15.2.1. What must not appear
+    # is a BOUND, which is the thing the row refused to give.
+    census = {str(row.get(k)) for k in
+              ("functions", "indirect_sites", "indirect_targets")}
+    assert not any(c.isdigit() and c not in census for c in cells), (
+        "a refused row carries a number that is not a census column: "
+        "%r, census %r" % (cells, sorted(census)))
     assert "emac_handler" in line[0] and "no call-graph node" in line[0]
 
     chains = sr.render("chains", recs)
