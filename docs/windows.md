@@ -19,13 +19,15 @@ it here rather than carrying it across. The hosts differ in the OS
 edition, in the board, and - once this one is provisioned - possibly in
 the code generator, which is the axis that decides a measurement.
 
-**The bench has no name yet, and it needs one before a record is
-written.** `provenance.run_fields()` stamps `bench` onto every row a
-tool writes, and a row whose bench nobody can identify is comparable
-with nothing. The board is in the same position: no record in this tree
-identifies a board by its programming port's USB serial, so the Due on
-this desk cannot be matched against the retired bench's by any means the
-repository offers.
+**The name `windows-desk` carries over, and the machine under it does
+not.** `provenance.run_fields()` stamps `bench` onto every row a tool
+writes, so two fields have to separate the two machines' rows: `host_os`,
+which reads Windows 11 Pro 26200 for the retired one and Windows 10 Home
+19045 for this one, and `fw_cc` once a compiler has built firmware here.
+A row carrying neither is attributable to the name only. The board is in
+a worse position: no record in this tree identifies a board by its
+programming port's USB serial, so the Due on this desk cannot be matched
+against the retired bench's by any means the repository offers.
 
 | | retired bench | this host |
 |---|---|---|
@@ -33,20 +35,31 @@ repository offers.
 | board | a second, previously unused Due | programming port serial `1344847493935140A666` |
 | native port | both CDC functions, `SER=B-01` | one CDC function and an HID composite |
 
-As found on 2026-09-12, the host carries `git` and nothing else this
-project uses. No interpreter but the Microsoft Store stub, so no venv;
-no ARM toolchain, no CMake, no Ninja and no Visual Studio to bundle
-them; no `Arduino15` tree, so neither `bossac` nor the core sources
-Track A compiles; no host GNU compiler, so the framer seam test cannot
-build and run its harness; and no Docker, so the container runs none of
-its checks. `tools/toolchain.py` is what answers this question
-afterwards, and it answers it about the build rather than about `PATH`.
+Windows itself, as found on 2026-09-12, carries `git` and nothing else
+this project uses. No interpreter but the Microsoft Store stub, so no
+venv; no ARM toolchain, no CMake, no Ninja and no Visual Studio to
+bundle them; no `Arduino15` tree, so neither `bossac` nor the core
+sources Track A compiles; and no host GNU compiler, so the framer seam
+test cannot build and run its harness. `tools/toolchain.py` is what
+answers this question afterwards, and it answers it about the build
+rather than about `PATH`.
+
+The WSL2 distro on the same host is a different inventory. It runs a
+Docker Engine daemon under systemd - not Docker Desktop, which is one
+way to get a daemon into WSL and not the only one - and so the pinned
+build container and its whole board-free check set run there before
+anything Windows-native exists. That is where this bench's software path
+lives. It is not where its measurements can live: WSL2 reaches a board
+only through `usbipd`, whose error is optimistic (see "WSL2: tier 2, and
+what that buys" below), so anything that opens a serial port waits for
+the Windows-native steps.
 
 ### Restoring it
 
 | step | why this way |
 |---|---|
-| A real Python, then `.venv` from `requirements-dev.txt` | The board-free tier runs before any build tool exists, which separates a host fault from a toolchain one |
+| The build container, in WSL2: `docker/build-image.sh`, then `docker/run.sh docker/run-ci.sh` | Needs no host toolchain, no host Python and no board, and delivers both firmware tracks and every board-free check. `docs/build-container.md` says what it will not do - Track C, flashing, and the board tier are among it |
+| A real Python, then `.venv` from `requirements-dev.txt` | Windows-native, because this is what opens a port. The board-free tier runs before any build tool exists, which separates a host fault from a toolchain one |
 | `.venv-gui` from `requirements-gui.txt`, on an interpreter below 3.14 | PySide6 pins itself there, which is why the front end has its own |
 | ARM GNU 14.3.rel1 mingw-w64, unpacked to the path `toolchains.json` already searches | Nothing local is then needed, and the version keeps this host's code generator alongside `linux-x1`'s rather than alongside `mac-bench`'s |
 | CMake, and a generator | `toolchains.json` finds CMake in its own install directory and finds Ninja only inside a Visual Studio tree. A standalone Ninja wants a pattern added rather than a local override |
