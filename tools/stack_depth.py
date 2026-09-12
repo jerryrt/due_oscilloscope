@@ -52,6 +52,17 @@ anywhere - so it is C, not C++, that defeats a static call graph. Bare
 `vtable` takes every vtable in the image, which is sound for a virtual
 call and tight enough to be useful, and marks the answer a ceiling.
 
+Either form takes `/NAME/ARITY`, and without it a virtual call resolves to
+every slot in the table rather than the one the site named - the `.ci`
+records a site's file, line and column and nothing about its callee, so the
+arity a reader can see in the source is invisible from here. That is what
+reported recursion on Track A for a fortnight: `Print::write(buf, len)` loops
+calling `write(c)`, and the two-argument write is an inherited slot in every
+concrete table, so the method appeared to call itself. A method filter is the
+one spec that REMOVES chains, which is the direction that can under-report, so
+its evidence is the call site's source line and its guard is that a filter
+matching no slot is refused rather than resolved to nothing.
+
 `noreturn` declares a site that does not come back - the deliberate jump to a
 bad address that proves the fault handler - and `none` asserts that no target
 is ever registered, which is what a FreeRTOS software-timer callback dispatch
@@ -404,6 +415,70 @@ def _sig_key(label):
     return f"{name}/{n}"
 
 
+def _method_key(label):
+    """`write/1` from `UARTClass::write(unsigned char)`.
+
+    The class thrown away and the arity kept, because that is the pair a
+    vtable slot can be filtered on. Two overrides of one virtual method
+    live in the same slot of two different tables and differ only in the
+    class, so the class is the part a method filter must ignore; and
+    ARITY rather than argument types for the reason _sig_key() gives -
+    the call graph writes the source spelling of a type and `nm -C`
+    writes the ABI one, and nothing bridges `const uint8_t*` to
+    `unsigned char const*` without a type parser.
+    """
+    name, _, arity = _sig_key(label).rpartition("/")
+    if not name:                            # no argument list to reduce
+        return arity.split("::")[-1]
+    return name.split("::")[-1] + "/" + arity
+
+
+def parse_vtable_spec(how):
+    """(classes or None, (name, arity) or None) from a `vtable` spec.
+
+        vtable                  every vtable, every slot
+        vtable:Serial_          one class, every slot
+        vtable/write/1          every vtable, only `write` taking one argument
+        vtable:Serial_/write/2  one class, one method
+
+    THE METHOD FILTER IS WHAT A VTABLE READ CANNOT DEDUCE. A virtual
+    call reaches one slot, and which slot depends on the overload the
+    call site named - which the `.ci` does not record, because it
+    records neither the arity nor the static type of the callee. So an
+    unfiltered read reaches every slot including overloads the site
+    could not name, and `Print::write(buf, len)` looping over
+    `write(c)` appears to call itself through the inherited slot 1 of
+    every concrete table.
+
+    It is therefore a CLAIM, and one that REMOVES chains rather than
+    adding them, which is the direction that can under-report. Its
+    evidence is the call site's own source line, and its guard is that
+    a filter matching no slot is refused rather than resolved to
+    nothing - a misspelt method and a method with no override are
+    indistinguishable from here, and one of them is a silent zero.
+
+    Raises ValueError on a malformed spec, which is a hard stop: a
+    declaration the tool half-understood is worse than none.
+    """
+    body = how[len("vtable"):]
+    classes = None
+    if body.startswith(":"):
+        head, slash, rest = body[1:].partition("/")
+        if not head:
+            raise ValueError(f"{how!r}: no class between ':' and '/'")
+        classes = head
+        body = "/" + rest if slash else ""
+    if not body:
+        return classes, None
+    if not body.startswith("/"):
+        raise ValueError(f"{how!r}: want vtable[:Class][/NAME/ARITY]")
+    parts = body[1:].split("/")
+    if len(parts) != 2 or not parts[0] or not parts[1].isdigit():
+        raise ValueError(f"{how!r}: a method filter is NAME/ARITY, "
+                         f"got {body[1:]!r}")
+    return classes, (parts[0], int(parts[1]))
+
+
 def image_names(elf):
     """Every function name the LINKED image actually contains.
 
@@ -504,7 +579,7 @@ def vtables(elf):
     return out
 
 
-def vtable_targets(elf, cls, syms):
+def vtable_targets(elf, cls, syms, method=None):
     """The virtual methods `cls` dispatches to, read out of its vtable.
 
     A VIRTUAL CALL IS THE EASY CASE, which is the opposite of what this
@@ -524,22 +599,39 @@ def vtable_targets(elf, cls, syms):
     graph does not record: a virtual call reaches a virtual method, and
     every virtual method of an instantiated class is in one of these.
     Tight, too - this firmware has four.
+
+    `method` of (name, arity) keeps only the slots holding that method.
+    An empty result is REFUSED, not returned: a misspelt name and a
+    method nothing overrides produce the same empty set, and returning
+    it would subtract every chain below the call with no diagnostic.
+    Where a method genuinely has no override the honest spec is `none`,
+    which says so out loud and carries what would falsify it.
     """
     found, missing = set(), []
     tabs = vtables(elf)
     names = list(tabs) if cls is None else [cls]
+    seen = {}
     for name in names:
         if name not in tabs:
             missing.append(name)
             continue
         base, size = tabs[name]
         for word in _read_words(elf, base, size):
-            if word & 1 and (word & ~1) in syms:
-                found.add(syms[word & ~1])
+            if not (word & 1) or (word & ~1) not in syms:
+                continue
+            sym = syms[word & ~1]
+            seen.setdefault(_method_key(sym), set()).add(sym)
+            if method is None or _method_key(sym) == f"{method[0]}/{method[1]}":
+                found.add(sym)
     if missing:
         raise LookupError("no vtable for " + ", ".join(missing)
                           + " in " + os.path.basename(elf)
                           + "; the image has: " + ", ".join(sorted(tabs)))
+    if method is not None and not found:
+        raise LookupError(
+            f"no slot for {method[0]}/{method[1]} in the vtable(s) for "
+            + ", ".join(sorted(names)) + "; they hold: "
+            + ", ".join(sorted(seen)))
     return sorted(found), []
 
 
@@ -893,7 +985,9 @@ def main(argv=None):
                          "symbol (exact); `target:SYM` for one named "
                          "function; `vtable:Class` for a C++ "
                          "virtual call, or bare `vtable` for every vtable in "
-                         "the image (sound, an upper bound); `noreturn` for a "
+                         "the image (sound, an upper bound), either of them "
+                         "with `/NAME/ARITY` appended to keep only the slots "
+                         "holding that method; `noreturn` for a "
                          "site that does not come back; `none` to assert no "
                          "target is ever registered. A site with no "
                          "declaration is refused")
@@ -1085,17 +1179,24 @@ def main(argv=None):
             # `none`, but it is a claim that ADDS a chain rather than
             # removing one, so it cannot under-report.
             got = [how.split(":", 1)[1]]
-        elif how == "vtable" or how.startswith("vtable:"):
-            cls = how.split(":", 1)[1] if ":" in how else None
+        elif how == "vtable" or how.startswith(("vtable:", "vtable/")):
             try:
-                got, _ = vtable_targets(args.elf, cls, syms)
+                cls, method = parse_vtable_spec(how)
+            except ValueError as exc:
+                print(f"{exc}", file=sys.stderr)
+                return 2
+            try:
+                got, _ = vtable_targets(args.elf, cls, syms, method)
             except LookupError as exc:
                 unresolved.append((f"indirect call at {loc}", str(exc)))
                 continue
-            # Naming the class is exact. The bare form is every vtable in
-            # the image, which is sound for a virtual call - it reaches a
-            # virtual method and they are all in one of these - but is an
-            # over-approximation, so the whole answer becomes a ceiling.
+            # Naming the receivers is exact. The bare form is every
+            # vtable in the image, which is sound for a virtual call -
+            # it reaches a virtual method and they are all in one of
+            # these - but is an over-approximation, so the whole answer
+            # becomes a ceiling. A method filter narrows a slot set and
+            # never widens one, so it cannot turn a ceiling into an
+            # exact answer and does not touch this flag.
             if cls is None:
                 exact_indirect = False
         else:

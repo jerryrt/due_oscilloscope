@@ -292,6 +292,111 @@ def test_a_vtable_resolves_to_the_methods_it_holds(monkeypatch):
     assert set(everything) == set(syms.values())
 
 
+# --- the method filter, which is the rung that removes chains --------------
+#
+# Every other spec either reads a target set out of the image or ADDS a
+# chain. This one subtracts, so it is the one that can under-report, and
+# these tests are mostly about the guard rather than the arithmetic.
+
+#: A base method that loops over a virtual call to a one-argument
+#: overload of ITSELF - the shape that reported recursion on Track A.
+#: Slot 1 of the derived class's table is the INHERITED two-argument
+#: method, so an unfiltered read hands `Print::write(buf, len)` its own
+#: address back.
+_NM_INHERITED = """\
+0008d2dc 0000002c T vtable for UARTClass
+00087001 00000010 T UARTClass::write(unsigned char)
+00087011 00000010 T Print::write(unsigned char const*, unsigned int)
+"""
+_SYMS_INHERITED = {0x87000: "UARTClass::write(unsigned char)",
+                   0x87010: "Print::write(unsigned char const*, unsigned int)"}
+
+
+def _inherited(monkeypatch):
+    monkeypatch.setattr(sd, "_run", lambda argv: _NM_INHERITED)
+    monkeypatch.setattr(sd, "_read_words",
+                        lambda elf, base, size: [0, 0, 0x87001, 0x87011])
+
+
+def test_an_unfiltered_vtable_read_manufactures_the_cycle(monkeypatch,
+                                                          tmp_path):
+    """The defect, pinned from both sides in one test.
+
+    This is the break-on-purpose that CLAUDE.md asks for, kept rather
+    than thrown away: remove the filter and the walk must refuse, put it
+    back and it must bound. A test of only the filtered case would pass
+    just as happily if the filter were ignored.
+    """
+    _inherited(monkeypatch)
+    build = _ci(tmp_path, "t", [
+        _node("Print::write(unsigned char const*, unsigned int)",
+              "Print::write(unsigned char const*, unsigned int)",
+              "Print.cpp:34:1", 16),
+        _node("UARTClass::write(unsigned char)",
+              "UARTClass::write(unsigned char)", "UARTClass.cpp:1:1", 8),
+        _edge("Print::write(unsigned char const*, unsigned int)",
+              "__indirect_call", "Print.cpp:38:14"),
+    ])
+    g, _ = sd.parse([build])
+    frames = dict(g.frame)
+    src = "Print::write(unsigned char const*, unsigned int)"
+
+    def resolved(spec):
+        cls, method = sd.parse_vtable_spec(spec)
+        got, _unknown = sd.vtable_targets("x.elf", cls, _SYMS_INHERITED,
+                                          method)
+        return {src: set(got)}, {t: [t] for t in got}
+
+    by_src, title_of = resolved("vtable:UARTClass")
+    assert sd.find_cycle(g, frames, by_src, title_of), (
+        "without the filter the inherited slot is a self-edge; if this "
+        "stops firing the fixture no longer reproduces the defect")
+
+    by_src, title_of = resolved("vtable:UARTClass/write/1")
+    assert sd.find_cycle(g, frames, by_src, title_of) is None
+    total, chain = sd.deepest(g, src, frames, by_src, title_of)
+    assert total == 16 + 8
+    assert [g.name[t] for t in chain] == [
+        src, "UARTClass::write(unsigned char)"]
+
+
+def test_a_filter_matching_no_slot_is_refused_not_resolved_to_nothing(
+        monkeypatch):
+    """The whole reason this rung is safe to have.
+
+    A misspelt method and a method with no override are the same empty
+    set from in here, and the empty set would subtract every chain below
+    the call with nothing printed. So it refuses - and it names the
+    slots the table does hold, because that is what tells the reader
+    which of the two it was.
+    """
+    _inherited(monkeypatch)
+    for spec, why in (("vtable:UARTClass/wirte/1", "a misspelt name"),
+                      ("vtable:UARTClass/write/3", "a wrong arity")):
+        cls, method = sd.parse_vtable_spec(spec)
+        with pytest.raises(LookupError) as exc:
+            sd.vtable_targets("x.elf", cls, _SYMS_INHERITED, method)
+        assert "write/1" in str(exc.value), (
+            f"{why} must name the slots that ARE there: {exc.value}")
+
+
+def test_the_spec_parser_reads_every_form_and_rejects_a_half_written_one():
+    """A declaration the tool half-understood is worse than none, so a
+    malformed spec is a hard stop rather than a looser reading of it."""
+    assert sd.parse_vtable_spec("vtable") == (None, None)
+    assert sd.parse_vtable_spec("vtable:Serial_") == ("Serial_", None)
+    assert sd.parse_vtable_spec("vtable/write/1") == (None, ("write", 1))
+    assert sd.parse_vtable_spec("vtable:Serial_/accept/0") == ("Serial_",
+                                                               ("accept", 0))
+    for bad in ("vtable:Serial_/accept",      # no arity
+                "vtable/write/two",           # arity not a number
+                "vtable/write/1/2",           # too many fields
+                "vtable/",                    # nothing after the slash
+                "vtable:/write/1"):           # nothing before it
+        with pytest.raises(ValueError):
+            sd.parse_vtable_spec(bad)
+
+
 # --- what the linker threw away --------------------------------------------
 
 def test_a_clone_suffix_is_not_mistaken_for_a_missing_function():

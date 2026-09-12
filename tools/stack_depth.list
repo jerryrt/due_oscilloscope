@@ -10,7 +10,7 @@
 #
 # Format, whitespace separated, `#` to end of line is a comment:
 #
-#     <track>  indirect  <location substring>  <table|noreturn|none>
+#     <track>  indirect  <location substring>  <spec>
 #     <track>  leaf      <symbol>              <bytes>
 #
 # `indirect` specs, in descending order of how much they are worth:
@@ -20,9 +20,29 @@
 #              addresses back through the symbol table, so the target
 #              set is re-derived from every build and cannot drift from
 #              the source the way an annotation can.
+#   vtable:C   a C++ virtual call, resolved from class C's vtable, which
+#              is a const array in the image and is read the same way.
+#              EXACT, and the claim in it is that C is the call site's
+#              static type.
+#   vtable     every vtable in the image. Sound for a virtual call and
+#              tight, but a union over classes, so the answer is
+#              labelled `upper bound`.
+#   .../N/A    either vtable spec with a method filter appended -
+#              `vtable/write/1`, `vtable:Serial_/accept/0` - keeping
+#              only the slots that hold that name at that arity. The
+#              one spec here that REMOVES chains, because a vtable read
+#              cannot see which overload a call site named and reaches
+#              every slot without it. So it needs the site's own source
+#              line as its evidence. Its guard is that a filter
+#              matching NO slot is refused rather than resolved to
+#              nothing: a misspelt method and a method with no override
+#              are the same empty set from in here, and one of them is
+#              a silent under-report.
+#   target:S   one named function. A claim, but one that ADDS a chain,
+#              so it cannot under-report.
 #   noreturn   the site does not come back, so it contributes no chain.
-#   none       no target is ever registered. The weakest of the three
-#              and the only one resting on nothing but the writer: it
+#   none       no target is ever registered. The weakest of these and
+#              the only one resting on nothing but the writer: it
 #              needs a reason on the line, and the reason needs to name
 #              what would falsify it.
 #
@@ -59,19 +79,85 @@ c  indirect  timers.c             none
 a  indirect  console.c:260        console_bindings
 a  indirect  console_cmds.c:44    noreturn
 
-# The core's Print/Stream hierarchy. Print and Stream are abstract bases
-# with no instances, so no vtable exists for either and a class-named
-# spec cannot resolve; a virtual call through them lands in a concrete
-# subclass, and the union of the image's vtables is exactly that set.
-a  indirect  Print.cpp            vtable
-a  indirect  Print.h              vtable
-a  indirect  Stream.cpp           vtable
-a  indirect  UARTClass.cpp        vtable
+# The core's Print/Stream hierarchy, ONE LINE PER CALL SITE, and the
+# method each one names is the whole reason these are not four lines.
+#
+# A vtable read cannot see which overload the call site resolved to:
+# the .ci records the site's file, line and column and nothing about
+# the callee, so an unfiltered read reaches every slot in the table.
+# Print::write(buf, len) loops calling write(c), and slot 1 of every
+# concrete table is the INHERITED Print::write(buf, len) - so the
+# method appears to call itself, and the walk reported recursion in
+# firmware that has none. `/NAME/ARITY` is the source's own overload
+# resolution written down; arity rather than types because the call
+# graph spells a type `const uint8_t*` and nm -C spells it
+# `unsigned char const*`.
+#
+# Print and Stream are abstract bases with no instances, so no vtable
+# exists for either and a class-named spec cannot resolve. A virtual
+# call through them lands in a concrete subclass, and the union of the
+# image's vtables is exactly that set - sound, and the answer is
+# labelled `upper bound` because it is a union over classes.
+#
+# WHAT WOULD FALSIFY ANY OF THESE: the call site changing which
+# overload it names. The tool refuses on a filter that matches no slot,
+# so a renamed or re-signatured method is a refusal and not a silent
+# zero - but a site edited to call a DIFFERENT existing overload would
+# resolve to the wrong slot and is what a reader should check these
+# lines against.
+#
+# Print::write(const uint8_t*, size_t):38 -> write(c), one argument.
+a  indirect  Print.cpp:38         vtable/write/1
+# Print::print(char):61, print(long, int):82 and print(unsigned long,
+# int):97 -> write(n), one argument by integral conversion; the other
+# three write() overloads take a pointer and are not viable.
+a  indirect  Print.cpp:61         vtable/write/1
+a  indirect  Print.cpp:82         vtable/write/1
+a  indirect  Print.cpp:97         vtable/write/1
+# Print::write(const char*):51 and write(const char*, size_t):55, both
+# inline in Print.h -> write(buf, size), two arguments.
+a  indirect  Print.h:51           vtable/write/2
+a  indirect  Print.h:55           vtable/write/2
+# Print::print(const Printable&):115 -> x.printTo(*this). No vtable in
+# the image holds printTo, because nothing here derives from Printable:
+# the core's only Printable subclass is IPAddress and --gc-sections
+# discarded every one of its methods. So the site has no reachable
+# target. Spelled `none` rather than a printTo filter deliberately - a
+# filter that matches nothing is refused, and it should be, because a
+# misspelt method looks identical to this from inside the tool. The
+# claim belongs in a line a reader can challenge.
+#
+# WHAT WOULD FALSIFY THIS: a `vtable for X` in the image whose slots
+# include printTo - equivalently, the first Printable subclass Track A
+# instantiates.
+a  indirect  Print.cpp:115        none
+# UARTClass::end():87 -> flush(). `this` is a UARTClass, which names
+# the table; USARTClass derives from it and does not override flush, so
+# its slot holds UARTClass::flush and the narrower read loses nothing.
+a  indirect  UARTClass.cpp:87     vtable:UARTClass/flush/0
 
-# Serial_::read() calling accept(), and Serial_::write(uint8_t) calling
-# write(buf,len). Both are `virtual` in USBAPI.h and dispatched through
-# `this`, whose static type is Serial_.
-a  indirect  CDC.cpp              vtable:Serial_
+# Serial_::read():252 calling accept(), and Serial_::write(uint8_t):291
+# calling write(buf, len). Both are `virtual` in USB/USBAPI.h and
+# dispatched through `this`, whose static type is Serial_, so the class
+# names the table; nothing derives from Serial_.
+#
+# THE CLASS IS LOAD-BEARING AT :291 and the method filter alone does
+# not close it. Bare `vtable/write/2` reaches Print::write(buf, len) as
+# well as Serial_'s override, and Print::write(buf, len) calls
+# write(c), which reaches back to Serial_::write(uint8_t) - a cycle
+# through two tables belonging to two different objects. Measured:
+# every site bare refuses with
+# `Print::write(const uint8_t*, size_t) -> Serial_::write(uint8_t) ->
+# Print::write(const uint8_t*, size_t)`.
+a  indirect  CDC.cpp:252          vtable:Serial_/accept/0
+a  indirect  CDC.cpp:291          vtable:Serial_/write/2
+
+# Stream.cpp had a line here and has no site: Stream::timedRead() and
+# timedPeek() call read() and peek() virtually, and --gc-sections
+# discarded both along with every parsing helper that reaches them.
+# Removed rather than kept as a dormant claim - the tool refuses on an
+# undeclared site, so the day one of them is linked in, the report
+# stops rather than resolving on a line nobody re-read.
 
 # PluggableUSB's four virtuals over the plugged-module list. rootNode is
 # written only by PluggableUSB_::plug(), and this firmware calls it
@@ -107,7 +193,15 @@ a  indirect  uotghs.c:39          target:USB_ISR
 # sites with the rest of what --gc-sections discarded. Recorded here
 # because their absence from this file is a decision, not an oversight.
 
-# Nothing yet, and the reason written here first was WRONG. It said the
+# --- How Track A got a bound, and the three wrong reasons on the way ---
+#
+# It has one now: 880 B on Reset_Handler, upper bound, linux-x1,
+# Debian arm-gcc 14.2.1. Every line above this point is what it took,
+# and the three explanations below are kept because each one was
+# asserted and then refuted by a short experiment - the first of them
+# from inside this file, where a guess reads as established.
+#
+# THE FIRST WAS WRONG. It said the
 # vendored core is compiled `-w` so -fcallgraph-info does not reach it.
 # `-w` inhibits warnings and has nothing to do with this flag; measured,
 # the flag reaches the core fine - 79 .ci files, 58 of them from
@@ -155,7 +249,29 @@ a  indirect  uotghs.c:39          target:USB_ISR
 # the one pattern a static call graph cannot follow without
 # devirtualisation.
 #
-# So Track A needs 29 declarations, most of them about code this project
-# did not write. Still debt with a date on it rather than a property of
-# the track, but the date is further out than the first two wrong
-# answers implied.
+# So Track A needs a declaration per virtual call site, most of them
+# about code this project did not write. That much was right. What was
+# wrong was the last sentence, which said the date was further out:
+# nineteen lines closed it, and the missing piece was one rung on the
+# ladder rather than a new analysis.
+#
+# THE FOURTH WRONG REASON WAS THE COST OF THE FIX, and it is the one
+# worth carrying. Closing the cycle looked as though it needed
+# call-site arity from somewhere the compiler does not record it, or an
+# LTO build with -fwhole-program-vtables. Neither was needed. The
+# arity is in the SOURCE, one line above the site the .ci already
+# names, and writing it down is the same act as every other line in
+# this file: a claim, with its evidence, that the tool then re-derives
+# from the image on every build. Asking the compiler for what a person
+# can read off the call site was three of the four wrong answers here
+# in a different costume.
+#
+# WHAT IT DOES NOT DO, so that nobody reads more into 880 B than is
+# there. The bound is an `upper bound`, not exact, and the reason is
+# the union over classes: a virtual call inside an abstract base can
+# land in any concrete subclass, so `vtable/write/1` takes the write
+# slot of every table in the image. Narrowing each site to the
+# receivers it can really have was tried and moved no root's figure at
+# all - 880 either way - so it buys the word `exact` and nothing else,
+# at the price of ten more claims that can under-report. Measured
+# rather than argued, and declined on the measurement.
