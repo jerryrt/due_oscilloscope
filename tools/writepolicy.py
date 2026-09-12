@@ -147,6 +147,51 @@ ARM_SETS = {
     "boundary": ("const512", "const2048", "const4096", "duehist"),
 }
 
+# --- the second rate -------------------------------------------------------
+#
+# EVERY 0j FIGURE IS ONE RATE, 600,000 sps, and a rule measured at one
+# point on an axis is a rule about that point. `parity` at two rates is
+# the cheapest reading that is not: it carries two arms alignment says
+# are clean, four it says lose, and the artifact as a positive control,
+# so the whole rule is re-read at the second rate rather than one arm of
+# it.
+#
+# Run it at RC 98 and RC 65 - 397,959 and 600,000 sps - and run the pair
+# in both orders. The tool blocks by rate, so a single ordering confounds
+# the rate with the half-hour, which is the reason the arms inside a
+# round are counterbalanced in the first place.
+#
+# RC 98 rather than a rate further away on purpose. It is above the
+# 200 ksps floor where loss appears at all, below the 750 kHz-1.3 MHz
+# band where the converter runs slow and sheds the surplus however it is
+# written, and it is the one other rate this bench has a due-sized figure
+# for - 0.605-0.633% on 2026-08-29 - so the positive control has an
+# expectation rather than a hope.
+#
+# WHAT ALIGNMENT PREDICTS AT THE SECOND RATE, written before the run:
+# const512 and alt2 lose nothing, because no write in either can contain
+# a multiple of 1024; const1536, alt, alt3, alt5 and duehist all lose.
+#
+# WHAT WOULD REFUTE IT, also written before the run. Either clean arm
+# losing at RC 98 makes the rule rate-dependent and therefore false as
+# stated. Any of the four straddling arms coming back clean while
+# duehist loses breaks the other half. And duehist clean voids the whole
+# block rather than supporting anything - a null is worth what the
+# instrument could have detected.
+#
+# AND THE SECOND RATE ANSWERS SOMETHING ONE RATE CANNOT. A deficit can
+# be a fixed fraction of the bytes written or a fixed number of shed
+# events per second, and at one rate those are the same number. The two
+# rates differ by 1.5x, so:
+#
+#   fraction  the percentage is equal at both rates
+#   events    the bytes lost per second are equal, so the percentage at
+#             397,959 sps is about 1.5x the percentage at 600,000
+#
+# No prediction is registered between those two: the magnitude has
+# resisted explanation across 15 arms at one rate, and guessing here
+# would be inventing a number.
+
 #: `altN` - runs of N writes at each size. Built on demand so the
 #: family is a scan rather than five hand-written table entries.
 _ALT_RE = re.compile(r"^alt(\d+)$")
