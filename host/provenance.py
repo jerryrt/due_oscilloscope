@@ -615,14 +615,34 @@ def collect(board=None, inst=None, channels=(1, 2), extra=None):
     # `console` above zero means some measurement in this session was
     # taken with printf blocking the main loop it was measuring - see
     # measure.INSTRUMENT_READS.
+    #
+    # THE FIELD IS RECORDED EVEN WHEN IT CANNOT BE COMPUTED. A row with
+    # no `instrument` key and a row whose instrument nobody could read
+    # are different facts, and only the first of them is a session that
+    # took no counter reads. `collect` promises never to raise, so the
+    # failure is written down rather than propagated - and absence is
+    # kept apart from every other reason, because `measure` is optional
+    # here on purpose and a module that exists but will not import is a
+    # defect rather than a bench without it. `bench_error` above is the
+    # same shape.
     try:
         import measure
-        p["instrument"] = dict(measure.INSTRUMENT_READS)
-    except Exception:                                     # pragma: no cover
-        pass
-    if board is not None:
+    except ImportError as exc:
+        measure = None
+        p["instrument_error"] = "measure is not importable: %s" % exc
+    except Exception as exc:                              # pragma: no cover
+        # NOT absence. Recorded rather than propagated only because this
+        # function promises never to raise; it must not be recorded as
+        # though the module were simply not installed.
+        measure = None
+        p["instrument_error"] = "%s: %s" % (type(exc).__name__, exc)
+    if measure is not None:
         try:
-            import measure
+            p["instrument"] = dict(measure.INSTRUMENT_READS)
+        except Exception as exc:                          # pragma: no cover
+            p["instrument_error"] = "%s: %s" % (type(exc).__name__, exc)
+    if board is not None and measure is not None:
+        try:
             ident = measure.identity(board)
             if ident:
                 p.update(firmware(ident.get("build"), ident.get("track")))

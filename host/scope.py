@@ -218,10 +218,20 @@ class UsbTmc:
         return self.ask_raw(cmd, **kw).decode(errors="replace").strip()
 
     def close(self):
+        # Two tolerated events, spelled apart so this does not read like
+        # the blanket swallow it used to be: pyusb absent, and a device
+        # that has already gone away under a teardown that is
+        # best-effort by definition. Anything else propagates - a
+        # `close` that hides a real fault is how a scope session ends
+        # with no diagnostic.
         try:
+            import usb.core
             import usb.util
+        except ImportError:                                   # pragma: no cover
+            return
+        try:
             usb.util.dispose_resources(self.dev)
-        except Exception:                                     # pragma: no cover
+        except usb.core.USBError:                             # pragma: no cover
             pass
 
 

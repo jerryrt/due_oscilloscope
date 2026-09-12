@@ -1557,9 +1557,13 @@ class Board:
             return self._ctl
         self._ctl_tried = True
         attempts = max(1, attempts)
+        # OUTSIDE THE RETRY, because a module that will not import is not
+        # a link that might come up on the next go: inside, it burned
+        # every attempt and both sleeps on a defect that cannot improve,
+        # and reported itself in `_ctl_why` as though it were the port.
+        import control as _control
         for i in range(attempts):
             try:
-                import control as _control
                 # Re-globbed every attempt. Enumeration can be late, and
                 # a node that was missing a moment ago is exactly the
                 # failure being retried - a cached node list would retry
@@ -3470,8 +3474,15 @@ def _tool_env():
             d, _exe = toolchain.resolve(tool, reg)
             if d:
                 extra.append(d.replace("/", os.sep))
-    except Exception:                                        # noqa: BLE001
-        pass                       # no registry is no information, not an error
+    except ImportError:
+        pass          # no resolver here is no information, not an error
+    except FileNotFoundError:
+        pass          # and neither is no registry - that is the shared
+                      # toolchains.json simply not being present
+    # A registry that exists and will not parse, or a resolver that
+    # raises, is NEITHER of those: it is a defect that would otherwise
+    # cost every tool on this bench its resolved paths, silently, on the
+    # two of three benches where the tools are not on PATH at all.
     have = env.get("PATH", "").split(os.pathsep)
     env["PATH"] = os.pathsep.join(
         [d for d in extra if d and d not in have] + have)

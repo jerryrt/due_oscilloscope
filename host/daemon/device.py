@@ -24,6 +24,7 @@ import threading
 import time
 import zlib
 
+import control as control_mod
 import transport
 
 # Frame layout, shared verbatim with lib/due_shared/src/frame.h and host/measure.py.
@@ -877,10 +878,6 @@ def _is_transport_failure(exc):
     """
     if isinstance(exc, (OSError, ValueError)):
         return True
-    try:
-        import control as control_mod
-    except Exception:                                # noqa: BLE001
-        return False
     return isinstance(exc, control_mod.ProtocolError)
 
 class BoardDevice(Device):
@@ -975,8 +972,6 @@ class BoardDevice(Device):
             return self._ctl
         self._ctl_tried = True
         try:
-            import control as control_mod
-
             node = self.board.command_node()
             if node is None:
                 self._ctl_note = "no command port; this firmware has one "\
