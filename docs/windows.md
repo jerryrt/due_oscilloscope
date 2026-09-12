@@ -442,9 +442,11 @@ flashes, and reports itself:
 # id: track=A fw=0.1.0 ctlver=0 framever=3 mck=78000000 adcclk=19500000 ...
 ```
 
-`ctlver=0` is correct - Track A has no control channel yet - and the
-native port presents one CDC function, so `find_all_ports()` returns no
-command node. Both are the contract behaving as documented.
+`ctlver=0` was correct of that image, which predates Track A's control
+channel: the native port presented one CDC function, so
+`find_all_ports()` returned no command node. Track A reports `ctlver=4`
+and presents both functions now, so a run of this section repeated
+today reads differently - see `docs/shared-source.md`.
 
 | Suite | Result |
 |---|---|
@@ -607,11 +609,11 @@ tunnel invites the conclusion that it is good.
 
 ## What was not measured
 
-- **Native Linux.** Tier 1 *deferred*: no Linux machine has had a board
-  on it. The POSIX backend and the `SCHED_FIFO` path are exercised under
-  WSL2, which is a real kernel, so the software results should carry -
-  but nothing about USB does, and a WSL2 pass must not stand in for a
-  native run.
+- **Native Linux**, at the time of this run: no Linux machine had a
+  board on it, and the POSIX backend and the `SCHED_FIFO` path were
+  exercised only under WSL2, whose USB results carry nothing. `linux-x1`
+  has had a board since 2026-08-29 and is tier 1; `docs/linux.md` is
+  that bench, and a WSL2 pass still does not stand in for a native one.
 - **macOS after the port.** The POSIX backend is the original code
   moved, not rewritten, but no Mac has run it since. That is the one
   thing the review of this branch most needs.
