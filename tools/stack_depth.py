@@ -1384,6 +1384,39 @@ def main(argv=None):
                 or by_sig.get(_sig_key(name)) or by_name.get(_name_key(name))
                 or [])
 
+    def every_title_of(name):
+        """Every node the name could mean, not the most specific tier.
+
+        `titles_of` stops at the first tier that hits, which is right when
+        one node is wanted and WRONG when a LINKER symbol is looked up in
+        an index keyed on `.ci` labels. A weak alias carries the bare
+        symbol as its label - `TC2_Handler` - and a C++ definition of the
+        same handler carries a signature - `void TC2_Handler()` - so the
+        exact tier hits the alias, short-circuits, and the real body is
+        never consulted.
+
+        That under-reports, and silently: the Arduino core's weak vector
+        definitions call `__halt` rather than aliasing `Default_Handler`,
+        so the walk terminates at a frameless dead end and the handler is
+        charged ZERO instead of its chain. Measured on Track A under xPack
+        15.2.1, which emits those alias nodes where Debian 14.2.1 emits
+        none: TC2 charged 0 against 184 B and DACC 0 against 12 B, a
+        196 B under-report of the worst case on one stack, with the real
+        chains printed in the per-root table on the same page.
+
+        A union can only ADD candidates to a `max`, so it cannot lower a
+        bound - the safe direction, and the same rung `target:SYM` sits on.
+        """
+        out, seen = [], set()
+        for tier in (exact.get(name), exact.get(_sig_key(name)),
+                     by_sig.get(_sig_key(name)),
+                     by_name.get(_name_key(name))):
+            for title in tier or ():
+                if title not in seen:
+                    seen.add(title)
+                    out.append(title)
+        return out
+
     # --- edges the compiler could not see ---
     #
     # HardFault_Handler is `naked` and branches to hard_fault_report in
@@ -1537,7 +1570,10 @@ def main(argv=None):
         handler_titles, chains, levels = set(), {}, {}
         nest_blocked = []
         for h in handlers:
-            hits = titles_of(h)
+            # EVERY node, not the most specific tier: a vector-table entry
+            # is a linker symbol and an alias node can shadow the real
+            # body. See every_title_of.
+            hits = every_title_of(h)
             handler_titles.update(hits)
             if declared.get(h) == "off":
                 continue                    # claimed never enabled

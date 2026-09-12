@@ -813,3 +813,47 @@ def test_an_empty_scan_does_not_pass(tmp_path):
     (tmp_path / "build").mkdir()
     assert sd.main([str(tmp_path / "build")]) == 1
     assert sd.main([str(tmp_path / "nope")]) == 2
+
+
+def test_an_alias_does_not_shadow_a_cxx_handler_of_the_same_name(
+        tmp_path, monkeypatch, capsys):
+    """The under-report xPack 15.2.1 exposed and Debian 14.2.1 hid.
+
+    A vector-table entry is a LINKER symbol - `TC2_Handler` - and the
+    indexes it is looked up in are keyed on `.ci` LABELS. A C++ handler's
+    label carries its return type, `void TC2_Handler()`, so the bare
+    symbol misses it; the core's weak definition of the same vector is
+    labelled with the bare name and hits exactly. Take the most specific
+    tier and the alias wins, the walk follows its edge to `__halt`, and
+    the handler is charged ZERO - while the per-root table on the same
+    page prints its real chain.
+
+    Only the alias half is compiler-dependent, which is what made this
+    quiet: Debian 14.2.1 emits no alias node, so the lookup falls through
+    to the bare-name tier and finds the real body. Measured on Track A as
+    196 B missing from the worst case, TC2 and DACC both.
+    """
+    build = _ci(tmp_path, "t", [
+        _node("main", "main", "t.c:1:1", 100),
+        # The real handler: C++, so its label is a signature.
+        _node("TC2_Handler", "void TC2_Handler()", "t.cpp:378:17", 64),
+        _node("t.cpp:emit", "emit", "t.cpp:9:1", 120),
+        _edge("TC2_Handler", "t.cpp:emit", "t.cpp:381:24"),
+        # The core's weak definition of the same vector, labelled bare.
+        # It calls __halt rather than aliasing Default_Handler, so
+        # following it is a dead end rather than a detour.
+        _node("core.c:TC2_Handler", "TC2_Handler", "sam3x8e.h:229:6",
+              shape="triangle"),
+        _node("core.c:__halt", "__halt", "core.c:5:1", 0),
+        _edge("core.c:TC2_Handler", "core.c:__halt", "sam3x8e.h:229:6"),
+    ])
+    _fake_elf(monkeypatch, ["main", "TC2_Handler", "emit", "__halt"],
+              vectors=["TC2_Handler"])
+    rc = sd.main([build, "--elf", "fake.elf"])
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    # 100 thread + 36 exception frame + 184 handler chain.
+    assert "Worst case on one stack: 320 B" in out, out
+    # And the handler is not ALSO counted as a thread root: its title is
+    # a handler title whichever label the lookup arrived by.
+    assert "184  thread mode" not in out, out
