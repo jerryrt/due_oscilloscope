@@ -162,7 +162,20 @@ Asked of all three benches and answered by all three, one row each in
 **It is the same build on all three.** `windows-desk` rebuilt
 `linux-x1`'s recorded commit and got both artifacts byte-identical -
 `baremetal_bringup.bin d791b858…` and `.elf facaa22e…` - which is
-phase 1's second half and closes it. The layouts agree, the analyser
+phase 1's second half and closes it. The third platform is in it by the
+other pair: `mac-bench` and `windows-desk` both recorded at `f5db1e8`,
+and both artifacts agree there too - `baremetal_bringup.bin
+0218619e…` and `.elf 5bf536cb…`. So byte-identity holds pairwise
+across all three hosts and both commits, and macOS under colima and
+QEMU is inside the claim rather than beside it.
+
+That pair is also the sharpest thing said about `build_image_content`
+below, because it is the same comparison run twice with opposite
+results: the two benches' image hashes differ - `ec031e1b…` against
+`b3106b76…`, on docker 29.5.2 against 29.8.0 - while the firmware
+those images produced is identical to the byte. The value that was
+supposed to certify sameness disagrees; the artifacts it stood proxy
+for agree exactly. The layouts agree, the analyser
 counts agree exactly, and on two of the three benches the analyser logs
 agree to the **byte**: 3,899 and 7,056 in both. That is a stronger
 result than equal totals, because two totals can agree by coincidence
