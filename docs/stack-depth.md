@@ -63,7 +63,7 @@ in a document instead of a protocol.
 |---|---|
 | exact | every edge on the chain was resolved |
 | upper bound | an edge was over-approximated, and the report names it |
-| refused, recursion | an edge could not be followed, or the graph has a cycle - **no number is printed** |
+| refused, recursion | an edge could not be followed, or the graph has a cycle - **no number is printed**. Per root for an unfollowable edge; the whole graph for a cycle |
 
 An under-report is the dangerous direction. A bound that is too generous
 costs a warning nobody needed; a bound that is too small is a guarantee
@@ -76,6 +76,43 @@ The generator inherits that discipline at the last step. An absent field
 renders as `(absent)`, a refused bound as `(no bound)` with its reason
 beside it - never as a zero or a dash that would read as a measurement -
 and a missing or empty record is an error rather than an empty table.
+
+### Refusal is per root
+
+A root is refused, not the report. An undeclared call site poisons the
+one function that makes it, so every chain through that function raises
+and every chain that does not is untouched: the roots whose reachable
+subgraph has nothing unfollowed in it keep their figures, and the rest
+are listed with the node that stopped each of them. The run still exits
+non-zero, so a partial answer cannot read as a clean one, and each
+refused root appears in the bounds table as its own `(no bound)` row
+beside the bounded ones.
+
+**A bounded row is not weakened by a refusal beside it.** Its figure
+came off a subgraph with every edge followed; the refusal is about a
+different part of the graph.
+
+The mechanism matters as much as the behaviour. What refuses is **the
+walk itself**, raising on a node with no frame - not a second pass
+deciding which subgraphs are clean. A second opinion can disagree with
+the walk, and the direction it would disagree in is a root reported as
+bounded whose subgraph had an edge nobody followed. One mechanism, so
+there is nothing to disagree with.
+
+**Two things are all-or-nothing, and both for stated reasons.** The
+diagram refuses if any root does, because a picture of the deepest chain
+has nowhere inside it to say that four other roots were never walked and
+the pruned graph it draws spans subgraphs that were never followed. And
+the worst case on a stack refuses if any chain it is made of refuses -
+a vector handler's, or the thread-mode root's.
+
+That second one was a defect this change introduced, and it is worth
+keeping visible: the thread term is the deepest root that is not a vector
+handler, taken from the bounded rows, so the moment refusal became per
+root a refused `Reset_Handler` fell out of those rows and the term
+dropped to whatever shallow root was left. The total came out 716 B
+*exact* against a true figure of at least 1,516. It was caught by reading
+the output rather than by a test, which is why there is a test now.
 
 ## Why an indirect call is the whole problem
 

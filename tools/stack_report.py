@@ -195,6 +195,20 @@ def _why(row):
     return "none"
 
 
+def _root_why(entry, row):
+    """One root's blocker, falling back to the track's.
+
+    A root recorded before per-root refusal existed carries neither a
+    state nor a blocker of its own, so it inherits the track's - which
+    is what those rows meant when they were written and is not a guess.
+    """
+    items = entry.get("blocked") or []
+    if items:
+        return "; ".join("%s: %s" % (b.get("what") or ABSENT,
+                                     b.get("why") or ABSENT) for b in items)
+    return _why(row)
+
+
 def _state_why(row):
     """The state and the blocker, as one phrase and without saying the
     same word twice: a recursion row's blocker is already labelled
@@ -226,7 +240,7 @@ def r_bounds(recs):
     `tools/stack_depth.py --mermaid`'s rule: a reader cannot tell a short
     table from a filtered one unless the filter is part of the output.
     """
-    rows, elided, unbounded = [], [], []
+    rows, elided, unbounded, partial = [], [], [], []
     for track in sorted(recs):
         row = recs[track]
         sites, targets = row.get("indirect_sites"), row.get("indirect_targets")
@@ -244,24 +258,41 @@ def r_bounds(recs):
                 "indirect sites/targets": graph[0],
             })
             continue
-        kept = [r for r in _roots(row) if (r.get("bytes") or 0) > 0]
+        # A REFUSED ROOT IS KEPT WHATEVER ITS BYTES ARE. Its bytes are
+        # null, so the zero-byte filter would drop it - and the document
+        # would then show a track's clean roots with nothing anywhere to
+        # say that some were not walked. That is the body-of-zeroes
+        # failure in a table: the reader cannot tell a short list from a
+        # filtered one.
+        kept = [r for r in _roots(row)
+                if (r.get("bytes") or 0) > 0 or r.get("state") == "refused"]
         elided.append("%d on track %s" % (len(row["roots"]) - len(kept), track))
         for r in kept:
+            per_root = r.get("state") == "refused"
             rows.append({
                 "track": track,
                 "root": _cell(r.get("root")),
-                "bytes": _cell(r.get("bytes")),
-                "state": _cell(row.get("state")),
-                "blocked by": _why(row),
+                "bytes": NO_BOUND if per_root else _cell(r.get("bytes")),
+                "state": _cell(r.get("state") or row.get("state")),
+                "blocked by": _root_why(r, row),
                 "functions": graph[1],
                 "indirect sites/targets": graph[0],
             })
+            if per_root:
+                partial.append("track %s" % track)
     tail = "\n\nRoots whose bound is 0 B are not listed: %s." % (
         ", ".join(elided) or "no track reported one")
     if unbounded:
         tail += (" No root was walked on %s at all, so that row carries the "
                  "state and the blocker where the others carry a number."
                  % ", ".join(unbounded))
+    if partial:
+        tail += (" Refusal is per root: %s carries both bounded rows and "
+                 "`%s` rows, and a refused root's own blocker is in the cell "
+                 "beside it. A bounded row's figure came off a subgraph with "
+                 "nothing unfollowed in it, so the refusals beside it do not "
+                 "weaken it."
+                 % (", ".join(sorted(set(partial))), NO_BOUND))
     tail += (" `functions` and `indirect sites/targets` describe the whole "
              "graph the walk ran over, so they repeat down a track's rows and "
              "are counted for a track that reached no bound too.")

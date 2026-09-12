@@ -397,6 +397,119 @@ def test_the_spec_parser_reads_every_form_and_rejects_a_half_written_one():
             sd.parse_vtable_spec(bad)
 
 
+# --- refusal is per root ---------------------------------------------------
+#
+# One undeclared site used to take every bound with it, including the
+# bounds of roots whose subgraphs had nothing wrong with them. These
+# check both halves: that a clean root still gets its number, and that a
+# dirty one still gets none.
+
+def _fake_elf(monkeypatch, names, vectors=()):
+    """Enough of a linked image for main() to run with no toolchain.
+
+    Only the four readers main() calls, and each returns the least that
+    makes the path under test reachable: the name set so nothing is
+    dropped as discarded by the linker, and the vector table so the
+    nesting total has something to be made of.
+    """
+    present = set(names) | {sd._name_key(n) for n in names}
+    monkeypatch.setattr(sd, "image_names", lambda elf: present)
+    monkeypatch.setattr(sd, "symbol_extents", lambda elf: {})
+    monkeypatch.setattr(sd, "symbols", lambda elf: {})
+    monkeypatch.setattr(sd, "leaf_frame",
+                        lambda elf, sym, extents=None: None)
+    monkeypatch.setattr(sd, "table_targets",
+                        lambda elf, table, syms: (list(vectors), []))
+
+
+def test_a_clean_root_keeps_its_bound_while_a_dirty_one_is_refused(
+        tmp_path, monkeypatch, capsys):
+    """The positive control for per-root refusal, both halves in one test.
+
+    A test of only the refusal would pass just as happily if refusal were
+    still global, and a test of only the bound would pass if refusal had
+    been dropped altogether.
+    """
+    build = _ci(tmp_path, "t", [
+        _node("dirty_root", "dirty_root", "t.c:1:1", 8),
+        _node("t.c:deep", "deep", "t.c:2:1", 800),
+        _node("clean_root", "clean_root", "t.c:3:1", 40),
+        _node(sd.INDIRECT, "Indirect Call Placeholder", "", shape="ellipse"),
+        _edge("dirty_root", "t.c:deep", "t.c:10:1"),
+        _edge("t.c:deep", sd.INDIRECT, "t.c:11:3"),
+    ])
+    _fake_elf(monkeypatch, ["dirty_root", "deep", "clean_root"])
+    rc = sd.main([build, "--elf", "fake.elf"])
+    out = capsys.readouterr().out
+    assert rc == 3, "a refused root must not let the run exit 0"
+    assert "40  clean_root" in out.replace("     ", "  "), out
+    assert "dirty_root" in out and "no --indirect declaration" in out
+    # And the refused root must carry NO number anywhere.
+    assert "808" not in out, "a refused root was given a figure anyway"
+
+
+def test_a_refused_thread_root_refuses_the_nesting_total(
+        tmp_path, monkeypatch, capsys):
+    """The defect per-root refusal INTRODUCED, pinned so it cannot return.
+
+    The nesting total's thread term is the deepest root that is not a
+    vector handler, taken from the bounded rows. So the moment refusal
+    became per root, a refused Reset_Handler fell out of those rows and
+    the term dropped to whatever shallow root was left - and the total
+    came out 716 B "exact" on Track A against a true figure of at least
+    1516. It was caught by reading the output, not by a test, which is
+    why there is one now.
+    """
+    build = _ci(tmp_path, "t", [
+        _node("Reset_Handler", "Reset_Handler", "t.c:1:1", 8),
+        _node("t.c:deep", "deep", "t.c:2:1", 800),
+        _node("shallow_root", "shallow_root", "t.c:3:1", 40),
+        _node("ADC_Handler", "ADC_Handler", "t.c:4:1", 16),
+        _node(sd.INDIRECT, "Indirect Call Placeholder", "", shape="ellipse"),
+        _edge("Reset_Handler", "t.c:deep", "t.c:10:1"),
+        _edge("t.c:deep", sd.INDIRECT, "t.c:11:3"),
+    ])
+    _fake_elf(monkeypatch,
+              ["Reset_Handler", "deep", "shallow_root", "ADC_Handler"],
+              vectors=["ADC_Handler", "Reset_Handler"])
+    rc = sd.main([build, "--elf", "fake.elf", "--isr", "ADC_Handler=0"])
+    out = capsys.readouterr().out
+    assert rc == 3
+    assert "NOT COMPUTED" in out, out
+    # The wrong answer, spelled out: 40 B of the shallow root that was
+    # left, plus one frame and the ADC handler's 16.
+    assert str(40 + sd.EXC_FRAME + 16) not in out, (
+        "the total was computed from the deepest root that happened to "
+        "survive, which is exactly the under-report")
+
+
+def test_the_diagram_refuses_when_any_root_does(tmp_path, monkeypatch):
+    """All-or-nothing where the table is per root, and for a reason a
+    table does not have: a picture of the deepest chain has nowhere
+    inside it to say that four other roots were never walked."""
+    build = _ci(tmp_path, "t", [
+        _node("dirty_root", "dirty_root", "t.c:1:1", 8),
+        _node("clean_root", "clean_root", "t.c:3:1", 40),
+        _node(sd.INDIRECT, "Indirect Call Placeholder", "", shape="ellipse"),
+        _edge("dirty_root", sd.INDIRECT, "t.c:11:3"),
+    ])
+    _fake_elf(monkeypatch, ["dirty_root", "clean_root"])
+    assert sd.main([build, "--elf", "fake.elf", "--mermaid"]) == 3
+
+
+def test_a_stale_edge_declaration_is_a_hard_stop(tmp_path, monkeypatch):
+    """Not a refusal. An `edge` line names two symbols in this tree; if
+    either is gone the claim is stale and wants re-reading, exactly as a
+    stale --isr does. A refusal would leave it in the tracked list
+    reading as though it still covered something."""
+    build = _ci(tmp_path, "t", [
+        _node("main", "main", "t.c:1:1", 24),
+    ])
+    _fake_elf(monkeypatch, ["main"])
+    assert sd.main([build, "--elf", "fake.elf",
+                    "--edge", "main=gone_from_the_tree"]) == 2
+
+
 # --- interrupt nesting -----------------------------------------------------
 #
 # The per-root table is not a worst case, and these are about the

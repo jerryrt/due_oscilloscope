@@ -748,6 +748,17 @@ def leaf_frame(elf, sym, extents=None):
 #: leaves out entirely.
 EXC_FRAME = 36
 
+#: Prefix of a node standing in for an edge that could not be followed.
+#: It carries NO FRAME, deliberately, so the ordinary walk raises on it and
+#: the refusal is the same code path as any other missing frame. The
+#: alternative - a separate reachability pass deciding which roots are
+#: clean - is a second opinion that can disagree with the walk, and the
+#: direction it would disagree in is a root reported as bounded whose
+#: subgraph had an edge nobody followed. One mechanism, so there is
+#: nothing to disagree with.
+UNRESOLVED = "__unresolved__:"
+
+
 #: The initial stack pointer is vector 0 and the boot entry is vector 1.
 #: Neither is an interrupt: nothing preempts anything to reach Reset_Handler,
 #: so charging it a frame would double-count the thread chain it starts.
@@ -969,7 +980,8 @@ def emit_graph(g, frames, below, floor, edges, keep, critical, fmt, deepest_of):
 
 
 def _record(args, g, frames, rows, state, sites, targets, files,
-            indirect_by_src, title_of, blocked=(), nesting=None):
+            indirect_by_src, title_of, blocked=(), nesting=None,
+            refused=()):
     """The row a report is generated from. Schema version travels with it."""
     import hashlib
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), "host"))
@@ -1018,11 +1030,19 @@ def _record(args, g, frames, rows, state, sites, targets, files,
                         if args.track else None,
         "blocked": [{"what": w, "why": y} for w, y in blocked],
         "nesting": nesting,
-        "roots": [{"root": r, "bytes": b,
+        # BOUNDED ROOTS AND REFUSED ONES IN ONE LIST, each carrying its
+        # own state. A refused root dropped from here would leave the
+        # document showing a track's clean roots and nothing to say some
+        # were not walked - the body-of-zeroes failure, one level up in a
+        # record format.
+        "roots": [{"root": r, "bytes": b, "state": state,
                    "chain": [{"function": g.name.get(t, t),
                               "frame": frames[t],
                               "below": below.get(t, frames[t])} for t in c]}
-                  for b, r, c in rows],
+                  for b, r, c in rows]
+                 + [{"root": r, "bytes": None, "state": "refused",
+                     "chain": [], "blocked": [{"what": w, "why": y}]}
+                    for r, w, y in refused],
     }
 
 
@@ -1224,7 +1244,15 @@ def main(argv=None):
                 g.sites.pop(key, None)
 
     # --- resolve the library leaves ---
-    unresolved = []
+    #
+    # REFUSAL IS PER ROOT, so a reason is filed against the NODE that
+    # carries it rather than into one global list. A root whose reachable
+    # subgraph contains none of these gets its bound; a root that reaches
+    # one is refused and told which node stopped it. Measured on Track A
+    # when its virtual calls were still undeclared: `main` could reach
+    # exactly one of the undeclared sites, and the other twenty roots
+    # were bounded by a walk that had nothing wrong with it.
+    blockers = {}                  # frameless title -> (what, why)
     for title in g.externals:
         plain = g.name.get(title, title)
         if plain in declared:
@@ -1232,8 +1260,8 @@ def main(argv=None):
             continue
         size = leaf_frame(args.elf, plain, extents) if args.elf else None
         if size is None:
-            unresolved.append((plain, "no frame: not compiled here, and its "
-                                      "prologue could not be read"))
+            blockers[title] = (plain, "no frame: not compiled here, and its "
+                                      "prologue could not be read")
         else:
             frames[title] = size
             g.qual[title] = "prologue"
@@ -1270,15 +1298,26 @@ def main(argv=None):
     indirect_by_src = {}
     all_targets = set()
     syms = symbols(args.elf) if args.elf else {}
+
+    def cannot_follow(src, what, why):
+        """File the reason against a frameless stand-in the caller reaches.
+
+        The site's SOURCE gets an edge to it, so every chain through that
+        function raises and every chain that does not is untouched.
+        """
+        stub = UNRESOLVED + what
+        blockers[stub] = (what, why)
+        indirect_by_src.setdefault(src, set()).add(stub)
+
     for src, loc in indirect_sites:
         how = next((h for pat, h in want if pat in loc), None)
         if how is None:
-            unresolved.append((f"indirect call at {loc}",
-                               "no --indirect declaration says what it reaches"))
+            cannot_follow(src, f"indirect call at {loc}",
+                          "no --indirect declaration says what it reaches")
             continue
         if not args.elf:
-            unresolved.append((f"indirect call at {loc}",
-                               "declared, but there is no --elf to resolve it"))
+            cannot_follow(src, f"indirect call at {loc}",
+                          "declared, but there is no --elf to resolve it")
             continue
         if how == "noreturn":
             got = []                       # it does not come back; no chain
@@ -1303,7 +1342,7 @@ def main(argv=None):
             try:
                 got, _ = vtable_targets(args.elf, cls, syms, method)
             except LookupError as exc:
-                unresolved.append((f"indirect call at {loc}", str(exc)))
+                cannot_follow(src, f"indirect call at {loc}", str(exc))
                 continue
             # Naming the receivers is exact. The bare form is every
             # vtable in the image, which is sound for a virtual call -
@@ -1318,7 +1357,7 @@ def main(argv=None):
             try:
                 got, _ = table_targets(args.elf, how, syms)
             except LookupError as exc:
-                unresolved.append((f"indirect call at {loc}", str(exc)))
+                cannot_follow(src, f"indirect call at {loc}", str(exc))
                 continue
         indirect_by_src.setdefault(src, set()).update(got)
         all_targets.update(got)
@@ -1357,10 +1396,14 @@ def main(argv=None):
     for src_name, dst_name in edge_specs:
         src_titles, dst_titles = titles_of(src_name), titles_of(dst_name)
         if not src_titles or not dst_titles:
-            unresolved.append((f"edge {src_name} -> {dst_name}",
-                               "no call-graph node for "
-                               + (src_name if not src_titles else dst_name)))
-            continue
+            # A HARD STOP, not a refusal. An `edge` line names two
+            # symbols in this tree; if either is gone the claim is stale
+            # and wants re-reading, exactly as a stale --isr does. A
+            # refusal would leave it sitting in the tracked list reading
+            # as though it covered something.
+            print(f"edge {src_name} -> {dst_name}: no call-graph node for "
+                  + (src_name if not src_titles else dst_name), file=sys.stderr)
+            return 2
         for st in src_titles:
             for dt in dst_titles:
                 g.edges.setdefault(st, set()).add(dt)
@@ -1382,29 +1425,15 @@ def main(argv=None):
         else:
             # No .ci node at all - a vector-table entry into hand-written asm,
             # say. Refused rather than dropped: dropping it is the silent
-            # under-report this tool exists to avoid.
-            unresolved.append((t, "an indirect target with no call-graph node"))
+            # under-report this tool exists to avoid. The stand-in goes in
+            # the target's place, so only the sites that reach it refuse.
+            stub = UNRESOLVED + t
+            blockers[stub] = (t, "an indirect target with no call-graph node")
+            title_of[t] = [stub]
 
-    # --- the three-state contract ---
-    if unresolved:
-        if args.record:
-            # A ROW, NOT A SILENCE. Omitting a track that refused leaves
-            # it absent from every comparison, and absence reads as "not
-            # measured" or "fine" depending on the reader - which is the
-            # body-of-zeroes failure one level up, in the record format.
-            # The row says refused, and says what blocked it.
-            print(json.dumps(_record(args, g, frames, [], "refused",
-                                     indirect_sites, all_targets, files,
-                                     indirect_by_src, title_of,
-                                     blocked=unresolved),
-                             sort_keys=True))
-        print("REFUSED: the call graph has edges this cannot follow, so no "
-              "depth is reported.\n", file=sys.stderr)
-        for what, why in unresolved:
-            print(f"  {what}: {why}", file=sys.stderr)
-        print("\nA number here would be an under-report. Resolve these with "
-              "--indirect / --leaf, or fix the call site.", file=sys.stderr)
-        return 3
+    for stub in blockers:
+        if stub.startswith(UNRESOLVED):
+            title_of[stub] = [stub]
 
     cycle = find_cycle(g, frames, indirect_by_src, title_of)
     if cycle:
@@ -1433,28 +1462,45 @@ def main(argv=None):
         return 4
 
     roots = roots_of(g, args.root, indirect_by_src, title_of)
+    roots = [r for r in roots if not r.startswith(UNRESOLVED)]
     if not roots:
         print("no entry points: every function in the graph has a caller.\n"
               "That is not a clean result - it means the scan is partial, or "
               "--root named something absent.", file=sys.stderr)
         return 1
 
-    rows = []
+    # --- one root at a time, and that is the whole of per-root refusal ---
+    #
+    # A ROOT IS REFUSED, NOT THE REPORT. Refusal used to be global: one
+    # undeclared site anywhere took every bound with it, including the
+    # bounds of roots whose subgraphs were clean and whose figures were
+    # already correct. Per root is strictly more informative and exactly
+    # as sound, because the thing that refuses is the walk itself
+    # raising on a frameless node rather than a second opinion about
+    # which subgraphs are clean.
+    rows, refused = [], []
     for root in roots:
+        name = g.name.get(root, root)
         try:
             total, chain = deepest(g, root, frames, indirect_by_src,
                                    title_of)
         except RecursionError as exc:
+            # find_cycle above scans every node, so reaching this means
+            # the two disagree - which is a defect in this tool, not an
+            # answer about the firmware.
             print(f"RECURSION: {exc}\n\nA cycle has no worst-case depth, and "
                   "invariant 7 forbids one on the working path.",
                   file=sys.stderr)
             return 4
         except KeyError as exc:
-            print(f"REFUSED: no frame for {g.name.get(exc.args[0], exc.args[0])}",
-                  file=sys.stderr)
-            return 3
-        rows.append((total, g.name.get(root, root), chain))
+            stopped = exc.args[0]
+            what, why = blockers.get(
+                stopped, (g.name.get(stopped, stopped), "no frame"))
+            refused.append((name, what, why))
+            continue
+        rows.append((total, name, chain))
     rows.sort(key=lambda r: -r[0])
+    refused.sort()
 
     # --- interrupt nesting, which the per-root table above is not ---
     nest = None
@@ -1489,42 +1535,84 @@ def main(argv=None):
             return 2
 
         handler_titles, chains, levels = set(), {}, {}
+        nest_blocked = []
         for h in handlers:
             hits = titles_of(h)
             handler_titles.update(hits)
             if declared.get(h) == "off":
                 continue                    # claimed never enabled
-            best = 0
+            best, stopped = 0, None
             for t in hits:
                 try:
                     total, _chain = deepest(g, t, frames, indirect_by_src,
                                             title_of)
-                except (RecursionError, KeyError):
-                    total = 0               # refused above; unreachable here
+                except (RecursionError, KeyError) as exc:
+                    # CHARGING ZERO HERE WOULD BE THE UNDER-REPORT, and
+                    # it is the one this whole tool is against: a handler
+                    # whose chain could not be walked is not a handler
+                    # with no chain. The level it sits at is unknown, so
+                    # the total is not computed at all.
+                    node = exc.args[0] if isinstance(exc, KeyError) else None
+                    stopped = blockers.get(node, (h, str(exc)))
+                    break
                 best = max(best, total)
+            if stopped:
+                nest_blocked.append((h, "%s: %s" % stopped))
+                continue
             chains[h] = best
             levels[h] = declared.get(h)
 
-        thread = [r for r in rows if r[1] not in
-                  {g.name.get(t, t) for t in handler_titles}]
+        # A REFUSED THREAD ROOT REFUSES THE TOTAL, and this was wrong
+        # before it was measured. The thread term is the deepest root
+        # that is not a vector handler, taken from the BOUNDED rows - so
+        # when per-root refusal took Reset_Handler out of those rows the
+        # term fell to the deepest root that was left and the total came
+        # out 716 B "exact" against a true figure of at least 1516.
+        # A silent under-report, introduced by the change that made
+        # refusal per root and caught only by looking at what it printed.
+        handler_names = {g.name.get(t, t) for t in handler_titles}
+        thread = [r for r in rows if r[1] not in handler_names]
+        nest_blocked += [(r, "%s: %s" % (w, y)) for r, w, y in refused
+                         if r not in handler_names]
         thread_bytes, thread_root = (thread[0][0], thread[0][1]) if thread \
             else (0, "(none)")
-        total, breakdown = nest_total(thread_bytes, chains, levels)
-        nest = {
-            "total": total,
-            "exc_frame": EXC_FRAME,
-            "thread_bytes": thread_bytes,
-            "thread_root": thread_root,
-            "state": ("upper bound"
-                      if (not exact_indirect
-                          or any(v is None for v in levels.values()))
-                      else "exact"),
-            "off": sorted(h for h in handlers if declared.get(h) == "off"),
-            "levels": [{"level": lvl, "bytes": cost, "handlers": members}
-                       for lvl, cost, members in breakdown],
-        }
+        if nest_blocked:
+            nest = {
+                "total": None,
+                "exc_frame": EXC_FRAME,
+                "thread_bytes": thread_bytes,
+                "thread_root": thread_root,
+                "state": "refused",
+                "off": sorted(h for h in handlers
+                              if declared.get(h) == "off"),
+                "levels": [],
+                "blocked": [{"what": w, "why": y} for w, y in nest_blocked],
+            }
+        else:
+            total, breakdown = nest_total(thread_bytes, chains, levels)
+            nest = {
+                "total": total,
+                "exc_frame": EXC_FRAME,
+                "thread_bytes": thread_bytes,
+                "thread_root": thread_root,
+                "state": ("upper bound"
+                          if (not exact_indirect
+                              or any(v is None for v in levels.values()))
+                          else "exact"),
+                "off": sorted(h for h in handlers
+                              if declared.get(h) == "off"),
+                "levels": [{"level": lvl, "bytes": cost, "handlers": members}
+                           for lvl, cost, members in breakdown],
+                "blocked": [],
+            }
 
+    # Refusing SOME roots does not make the bounded ones less exact: each
+    # bounded row's figure came off a subgraph with nothing unfollowed in
+    # it. So the state describes the chains that were walked, and each
+    # refused root carries its own `refused` and its own reason.
     state = "exact" if exact_indirect else "upper bound"
+    if not rows:
+        state = "refused"
 
     if args.record:
         # ONE ROW, DESCRIBING AN IMAGE, and that is why it does not use
@@ -1537,15 +1625,31 @@ def main(argv=None):
         # cannot record, here as everywhere else.
         print(json.dumps(_record(args, g, frames, rows, state,
                                  indirect_sites, all_targets, files,
-                                 indirect_by_src, title_of, nesting=nest),
+                                 indirect_by_src, title_of, nesting=nest,
+                                 refused=refused,
+                                 blocked=[(w, y) for _r, w, y in refused]),
                          sort_keys=True))
-        return 0
+        return 3 if refused else 0
 
     if args.dot or args.mermaid:
         # AFTER the refusals, deliberately. A diagram is an output like any
         # other: drawing one from a graph with an edge we could not follow
         # would put a confident picture on top of an unknown, which is worse
         # than printing nothing because a picture is believed harder.
+        #
+        # AND IT IS ALL-OR-NOTHING WHERE THE TABLE IS PER ROOT. A table
+        # can carry a refused row beside a bounded one and a reader sees
+        # both; a picture of the deepest chain cannot say "and four other
+        # roots were not walked" anywhere inside itself, and the pruned
+        # graph it draws spans subgraphs that were never followed. So any
+        # refusal refuses the diagram.
+        if refused:
+            print("REFUSED: %d root(s) could not be walked, so no diagram is "
+                  "drawn - a picture cannot carry the caveat a table row "
+                  "can.\n" % len(refused), file=sys.stderr)
+            for name, what, why in refused:
+                print(f"  {name}: {what}: {why}", file=sys.stderr)
+            return 3
         below = cost_below(g, frames, indirect_by_src, title_of)
         deepest_total, critical = rows[0][0], rows[0][2]
         floor = args.prune if args.prune is not None else deepest_total // 2
@@ -1566,12 +1670,14 @@ def main(argv=None):
             "functions": len(g.frame),
             "indirect_sites": len(indirect_sites),
             "indirect_targets": len(all_targets),
-            "roots": [{"bytes": b, "root": r,
+            "roots": [{"bytes": b, "root": r, "state": state,
                        "chain": [g.name.get(t, t) for t in c]}
                       for b, r, c in rows],
+            "refused": [{"root": r, "what": w, "why": y}
+                        for r, w, y in refused],
             "nesting": nest,
         }, indent=2))
-        return 0
+        return 3 if refused else 0
 
     shown = rows[:args.top] if args.top else rows
     width = max((len(r[1]) for r in shown), default=8)
@@ -1590,7 +1696,23 @@ def main(argv=None):
             running += frames[title]
             print(f"  {frames[title]:>6}  {running:>10}  "
                   f"{g.name.get(title, title)}")
-    if nest:
+    if refused:
+        print(f"\n{len(refused)} root(s) REFUSED, so they carry no number. "
+              "The rows above are the roots whose\nreachable subgraph had "
+              "nothing unfollowed in it; these did not.")
+        for name, what, why in refused:
+            print(f"  {name}\n      stopped at {what}: {why}")
+        print("\nA number for these would be an under-report. Resolve them "
+              "with --indirect / --leaf,\nor fix the call site.")
+
+    if nest and nest["state"] == "refused":
+        print("\nWorst case on one stack: NOT COMPUTED. A chain the total "
+              "is made of could not be\nwalked - a vector handler's, or the "
+              "thread-mode root's - and every way of\ncarrying on without "
+              "it is an under-report.")
+        for b in nest["blocked"]:
+            print(f"  {b['what']}: {b['why']}")
+    elif nest:
         print(f"\nWorst case on one stack: {nest['total']} B "
               f"({nest['state']})")
         print(f"  {'bytes':>7}  where")
@@ -1628,7 +1750,7 @@ def main(argv=None):
     if not nest:
         print("No --elf, so no vector table and no nesting total: the "
               "figures above are single chains and not a worst case.")
-    return 0
+    return 3 if refused else 0
 
 
 if __name__ == "__main__":
