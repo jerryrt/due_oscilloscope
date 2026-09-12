@@ -142,6 +142,80 @@ expose, never its justification.
 | **Build provenance exists as fields and is empty as data.** #59: of 6,658 stored rows, 1 carries a layout and 8 carry a compiler; `fw_layout` is present on 64 rows and null on all 64 | a commit read off the board, plus the environment that built the artifact, makes the field mechanical instead of remembered |
 | **The board-free tier has never run without a board.** `docs/testing.md` says the `board` marker is verified two ways and both are static | a container is the dynamic check, and the marker is what the whole tier rests on |
 
+## Is it the same thing on three platforms
+
+Asked of all three benches and answered by all three, one row each in
+`records/container-universality.jsonl` from `tools/container_report.py`.
+
+| | `linux-x1` | `mac-bench` | `windows-desk` |
+|---|---|---|---|
+| host | Debian, x86-64 metal | macOS 12.7.6, Intel | Windows 10, WSL2 Ubuntu 26.04 |
+| runtime | native daemon, docker 29.7.2 | colima + QEMU, docker 29.5.2 | WSL2, docker 29.8.0 |
+| steps that did not run | 0 | 0 | 0 |
+| verdict | 0 | **2** - the wall clock, below | 0 |
+| wall time | 194 s | 817 s | 410 s |
+| `cppcheck` / `clang-tidy` | 33 / 40 | 33 / 40 | 33 / 40 |
+| board-free tier | 657 / 5 / 141 | **654 / 8 / 141** | 657 / 5 / 141 |
+| board-absent control | 141 errors | 141 errors | 141 errors |
+| reproducibility | 0 differing bytes | 0 differing bytes | 0 differing bytes |
+
+**It is the same build on all three.** `windows-desk` rebuilt
+`linux-x1`'s recorded commit and got both artifacts byte-identical -
+`baremetal_bringup.bin d791b858…` and `.elf facaa22e…` - which is
+phase 1's second half and closes it. The layouts agree, the analyser
+counts agree exactly, and on two of the three benches the analyser logs
+agree to the **byte**: 3,899 and 7,056 in both. That is a stronger
+result than equal totals, because two totals can agree by coincidence
+and two logs cannot.
+
+**It is not the same check set, and the reason is below the image.**
+`mac-bench` skips three tests the other two run: the `needs_sanitizer`
+fuzz mutations, whose oracle is a sanitizer rather than a return code.
+A 32-bit ASan binary hangs under `qemu-i386`, reproduced there on a
+five-line program that only returns 0. The same 662 tests are selected
+on every bench and three of them cannot execute on a QEMU-backed host -
+so **an identical image does not guarantee an identical check set**, and
+what varies is the host's virtualisation. `windows-desk` runs them, which
+is what a real kernel on metal predicts.
+
+**Two questions turned out to be badly formed, and both were caught by a
+bench rather than by the person who wrote them.**
+
+`build_image_content` **cannot** match across benches, and two
+independent mechanisms say so. It hashes `RootFS.Layers`, which are
+diffIDs over the uncompressed layer tars, and those carry file mtimes -
+two builds of one instruction seconds apart on one bench give different
+values, measured. And it hashes what `docker image inspect` prints, so
+two docker versions disagree about the fields: 29.5.2, 29.7.2 and 29.8.0
+across the three benches, and three different hashes. `docker/run.sh`
+already said the value "compares within a bench with certainty and
+across benches only as far as their docker agrees"; it does not compare
+across benches at all. It is a within-bench environment identity.
+
+What **does** compare, and what the claim was always supposed to be, is
+the **recipe**: `docker/Dockerfile`'s own sha256 plus the pinned
+`XPACK_VERSION` and `XPACK_SHA256`, which every bench computes without
+building anything. All three agree -
+`4fc62fe9ae55ab081a173f4e1b53f007fe0c4b38a297e9df571e37a2bc709e00`,
+`15.2.1-1.1`, `da6a49ad…`. `docker/build-image.sh`'s header had it right
+from the start: *"same image across benches is not a claim this makes;
+same pinned inputs is."* The byte-identical artifacts are then the
+behavioural evidence that the pin did its job, which is a better answer
+than a layer hash would have been even if one had matched.
+
+`mac-bench`'s **exit 2 is the wall clock and nothing else**. Zero tests
+fail; the board-free tier took 538 s against a 300 s ceiling and the step
+is red on elapsed time. A slow bench therefore reports a gating failure
+for the one quantity everybody agrees is not a finding - the ratio shows
+up twice, once as a number a reader correctly ignores and once as a
+verdict they cannot. Whether the ceiling should be a property of the
+machine belongs to whoever owns the suite's time budget.
+
+**So: universal in what it builds, universal in what it analyses, and
+not universal in what it can execute.** The one gap is a host's
+virtualisation reaching through an identical image, which is worth
+knowing before a null from a QEMU-backed bench is read as a clean run.
+
 ## What a bench gives up by not using it
 
 Measured on `linux-x1` - the bench that owns the image - by running the
