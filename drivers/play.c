@@ -362,6 +362,16 @@ prime:
 	 * prime of 4, and it is the price of raising it - so it is paid
 	 * here rather than left for someone to find.
 	 */
+	/*
+	 * clang-tidy reports `bugprone-branch-clone` on these two arms and
+	 * it is right: both set `primed` and they collapse into one `if`
+	 * with a disjunction. It is left alone deliberately, and the
+	 * reason is sequencing rather than taste - this is the prime path
+	 * the 0-series measures, PLAY_PRIME_BUFS is the constant that took
+	 * underruns to zero, and a behaviour-preserving edit here lands in
+	 * the frame of every playback figure taken after it. Merge it when
+	 * no campaign is reading this function.
+	 */
 	if (!primed && play_produced >= PLAY_PRIME_BUFS) {
 		primed = true;
 	} else if (!primed && play_produced >= PLAY_PRIME_MIN

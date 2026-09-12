@@ -258,6 +258,14 @@ void console_feed(int c)
 	fn = bound((char)c);
 	if (fn) {
 		fn(arg);
+	/*
+	 * clang-tidy reports `bugprone-assignment-in-if-condition` on the
+	 * next line. The assignment is parenthesised and compared, which
+	 * is the form that check exists to steer people toward; what it
+	 * objects to is the idiom itself. Hoisting it would restructure
+	 * an else-if chain in wire-adjacent code that all three tracks
+	 * compile, which is a worse trade than the finding.
+	 */
 	} else if ((e = entry_of((char)c)) != NULL) {
 		/*
 		 * The console's CTL_ERR_OPCODE: a command the track has not

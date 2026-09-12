@@ -122,6 +122,14 @@ static void ctl_error(uint16_t req_id, uint16_t opcode, uint16_t code,
 		n = sizeof(body) - 2u;
 	body[0] = (uint8_t)(code & 0xff);
 	body[1] = (uint8_t)(code >> 8);
+	/*
+	 * clang-tidy reports `bugprone-not-null-terminated-result` here
+	 * and will keep reporting it. `body` is not a string: it is a
+	 * counted wire payload, handed to ctl_respond() with an explicit
+	 * length of n + 2, and the control protocol carries no terminator
+	 * on any field. A NUL appended to satisfy the check would be a
+	 * byte the peer does not expect and the length does not cover.
+	 */
 	memcpy(body + 2, text, n);
 
 	ctl_rx_bad++;
