@@ -614,9 +614,9 @@ deepest-chain table structurally cannot reach.
 <!-- generated: provenance -->
 | track | bench | repo_rev | cc | elf | elf_sha256 | taken_at |
 |---|---|---|---|---|---|---|
-| a | linux-x1 | e502834 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | track_a_bringup.elf | 3f930ec7867ec42a | 2026-09-12T12:45:33-0400 |
-| b | linux-x1 | e502834 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | c2ca4da81e302997 | 2026-09-12T12:45:32-0400 |
-| c | linux-x1 | e502834 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | 7b1b089c65047687 | 2026-09-12T12:45:34-0400 |
+| a | linux-x1 | 6cb4bf9 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | track_a_bringup.elf | 634a288807a8a137 | 2026-09-12T13:07:36-0400 |
+| b | linux-x1 | 6cb4bf9 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 6552e6a614b1fd45 | 2026-09-12T13:07:35-0400 |
+| c | linux-x1 | 6cb4bf9 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | 1528350e6c79b8f1 | 2026-09-12T13:07:36-0400 |
 
 Schema `stack-depth/1`, written by `tools/stack_depth.py`, resolving its indirect call sites from `tools/stack_depth.list`.
 <!-- end generated -->
