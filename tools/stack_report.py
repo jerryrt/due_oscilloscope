@@ -102,6 +102,26 @@ def _unreadable(message):
     raise SystemExit(2)
 
 
+class Records(dict):
+    """{track: latest row}, with `.by_bench` for the cross-bench view.
+
+    A dict subclass rather than a second loader, because every region
+    but one wants the collapsed view and the odd one out should not make
+    the others take an argument they ignore. `.by_bench` is
+    {(bench, track): latest row for that pair}.
+
+    THE COLLAPSED VIEW HIDES THE COMPARISON, which is why this exists.
+    `load()` keeps the latest row per track, so the moment a second
+    bench recorded, the whole document described that bench and nothing
+    said so - three benches' rows in the record and one bench's figures
+    on the page. That is the failure r_bounds' own docstring warns
+    about, one dimension over: a row quietly missing from a comparison
+    reads as agreement.
+    """
+
+    by_bench = {}
+
+
 def load(path=RECORDS):
     """{track: row}, latest row per track.
 
@@ -113,7 +133,7 @@ def load(path=RECORDS):
         _unreadable(
             "no record at %s - take one with `tools/stack_depth.py "
             "--record` from a -DFIRMWARE_CALLGRAPH=ON build" % path)
-    rows = {}
+    rows, pairs = {}, {}
     with io.open(path, encoding="utf-8") as fh:
         for n, raw in enumerate(fh, 1):
             line = raw.strip()
@@ -134,9 +154,14 @@ def load(path=RECORDS):
             if "roots" not in row:
                 _unreadable("%s:%d: row carries no roots" % (path, n))
             rows[track] = row
+            bench = row.get("bench")
+            if bench:
+                pairs[(bench, track)] = row
     if not rows:
         _unreadable("%s holds no rows - nothing to report" % path)
-    return rows
+    out = Records(rows)
+    out.by_bench = pairs
+    return out
 
 
 def _cell(value):
@@ -463,6 +488,59 @@ def r_nesting(recs):
     return (_table(totals) + "\n\n" + _table(levels) + "\n\n" + note)
 
 
+def r_benches(recs):
+    """The same question asked of every bench that has answered it.
+
+    One row per (bench, track), because the independent variable here is
+    the code generator and the collapsed view cannot show it. A bench
+    that has not recorded is simply not a row - this table cannot invent
+    one - so the note says how many benches are in it, which is what
+    stops a one-bench table reading as agreement between three.
+
+    AND IT SAYS WHETHER THE ROWS ARE COMPARABLE AT ALL. Frames compare
+    across benches only at one commit; rows taken at different ones may
+    differ because the firmware moved rather than because the compiler
+    did. So the revisions are a column and a mismatch is stated in the
+    note rather than left for a reader to notice.
+    """
+    pairs = getattr(recs, "by_bench", None)
+    if not pairs:
+        return ("*(no per-bench rows: the record carries no `bench` field, "
+                "which is older than this table)*")
+    rows, revs, benches = [], set(), set()
+    for (bench, track) in sorted(pairs, key=lambda k: (k[1], k[0])):
+        row = pairs[(bench, track)]
+        nest = row.get("nesting") or {}
+        deep = _deepest(row)
+        revs.add(row.get("repo_rev"))
+        benches.add(bench)
+        rows.append({
+            "track": track,
+            "bench": bench,
+            "cc": _cell(row.get("cc")),
+            "repo_rev": _cell(row.get("repo_rev")),
+            "deepest chain": (_cell(deep.get("bytes")) if deep else NO_BOUND),
+            "chain state": _cell(row.get("state")),
+            "one-stack worst case": _cell(nest.get("total")) if nest
+                                    else _cell(None),
+            "nesting state": _cell(nest.get("state")) if nest
+                             else _cell(None),
+        })
+    note = ("%d bench(es) and %d track-rows. "
+            % (len(benches), len(rows)))
+    if len(revs) == 1:
+        note += ("Every row is at `%s`, so the figures are comparable: one "
+                 "source, one set of frames, and the compiler is the only "
+                 "thing left varying." % sorted(revs)[0])
+    else:
+        note += ("**The rows are at %d different revisions** - %s - so a "
+                 "difference between benches may be the firmware moving "
+                 "rather than the compiler. Re-take them at one commit "
+                 "before reading a delta as a code-generator effect."
+                 % (len(revs), ", ".join("`%s`" % r for r in sorted(revs))))
+    return _table(rows) + "\n\n" + note
+
+
 def r_provenance(recs):
     """Which image each figure came off, so a cell can be chased."""
     rows = []
@@ -486,6 +564,7 @@ def r_provenance(recs):
 
 
 REGIONS = {
+    "benches": r_benches,
     "bounds": r_bounds,
     "nesting": r_nesting,
     "chains": r_chains,

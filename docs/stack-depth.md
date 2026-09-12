@@ -159,6 +159,82 @@ A site with no line there is refused, not assumed. Adding a function
 pointer to this firmware breaks the report until somebody says what it
 reaches.
 
+## Every bench that has answered, side by side
+
+The bounds table below describes **one** image per track - the latest row
+recorded. That is the right thing for "what is on the board", and it is
+the wrong thing for the question two benches were asked: whether a stack
+bound depends on the code generator. So the cross-bench view is its own
+table, and a bench that has not recorded is simply absent from it rather
+than represented by somebody else's figures.
+
+<!-- generated: benches -->
+| track | bench | cc | repo_rev | deepest chain | chain state | one-stack worst case | nesting state |
+|---|---|---|---|---|---|---|---|
+| a | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | 6cb4bf9 | 880 | upper bound | 1516 | upper bound |
+| a | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 880 | upper bound | 1516 | upper bound |
+| b | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | 6cb4bf9 | 916 | exact | 1452 | exact |
+| b | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 912 | exact | 1448 | exact |
+| c | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | 6cb4bf9 | 860 | exact | 1492 | exact |
+| c | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 856 | exact | 1488 | exact |
+
+2 bench(es) and 6 track-rows. **The rows are at 2 different revisions** - `221adb8`, `6cb4bf9` - so a difference between benches may be the firmware moving rather than the compiler. Re-take them at one commit before reading a delta as a code-generator effect.
+<!-- end generated -->
+
+### What the two benches settled
+
+**One function, four bytes, accounts for the whole difference.** Diffing
+the deepest chains frame by frame rather than comparing totals:
+
+| track | linux-x1 | mac-bench | the only frame that differs |
+|---|---|---|---|
+| B | 916 | 912 | `ep_fifo_write.constprop`, 28 B against 24 B |
+| C | 860 | 856 | the same frame, on the same shared tail |
+| A | 880 | 880 | none - every frame identical |
+
+Every other frame on every chain is equal to the byte. The 4 B
+propagates to both nesting totals unchanged - 1,452/1,448 and
+1,492/1,488 - so the level sums are identical too, and the entire
+cross-compiler delta in this project's stack figures is one function's
+prologue.
+
+**Track A is unaffected for a structural reason rather than by luck.**
+`ep_fifo_write` is not on its chain: Track A's port write is one 24 B
+frame where B's and C's are `ctl_port_write` -> `usb_ctl_write` ->
+`ep_fifo_write` at 0 + 8 + 28. The one track whose tail differs is the
+one track whose figure does not move.
+
+**So a bound does depend on the code generator, and by very little.**
+4 B on 916 is 0.4%, against the 8 KB the stack is given - which is the
+answer the comparison was for. It does *not* follow that any future
+difference will be this small: this is one function's frame on one pair
+of compilers, and the `upper bound` on Track A is a ceiling on both
+benches rather than a measurement agreeing twice.
+
+**What is still one bench's:** everything in the two sections below on
+`ctl_error` being reached three ways and the three large frames being
+siblings. Both were measured on `linux-x1` and neither has been re-taken
+on xPack.
+
+### The residual risk is the name matching, and it has fired once
+
+The tool looks a vector-table symbol up in three tiers of index, and a
+C++ handler's `.ci` label carries its return type where a C one does
+not - so the *spelling* of a label is compiler-dependent. On Track A the
+two benches' chains hold the same frames under different names:
+`int main()` against `main`, `console_feed` against
+`void console_feed(int)`.
+
+That is not cosmetic. It is the mechanism behind the one defect this
+comparison found: xPack emits 49 weak-alias nodes that Debian emits
+none of, the alias's bare name hit an earlier tier than the real
+handler's decorated one, and Track A's total came out **196 B short** -
+`TC2_Handler` charged 0 against 184 B and `DACC_Handler` 0 against 12 B -
+silently, with the real chains printed in the per-root table on the same
+page. **The bench that could not see the defect was the bench that took
+the record.** A vector handler is now looked up in every tier, which can
+only add candidates to a maximum and so cannot lower a bound.
+
 ## The bounds
 
 <!-- generated: bounds -->
