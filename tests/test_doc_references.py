@@ -142,6 +142,16 @@ ALLOWED = {
         "written by --calibrate for a human to promote; gitignored",
     "tests/baseline.measured.json":
         "written by --calibrate for a human to promote; gitignored",
+
+    # The container's own output tree. docker/.gitignore ignores `out/`
+    # wholesale, so these exist only after a run - and they are named
+    # because the one thing a reader has to know about them is that the
+    # container's build directories are NOT the bench's.
+    "docker/out/build": "container build output; docker/.gitignore",
+    "docker/out/build-a": "container build output; docker/.gitignore",
+    "build-env.json":
+        "written beside the artifacts by docker/build-firmware.sh, under "
+        "docker/out/; gitignored",
 }
 
 #: References that must survive any reformatting, so a pattern that has

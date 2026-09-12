@@ -121,12 +121,25 @@ here rather than being imagined for the table.
 | **the built image, and the source tree** | `nm` over the linked ELF, and greps over CMake and the sources. `test_no_heap` reads the ELF rather than grepping for `printf`, because a grep misses `puts`, `fwrite` and `fputs` and fires on a comment | anything about runtime. And a static check is the **easiest kind to write so that it cannot fail** - four were written here in one day, all green, none able to fail |
 | **firmware C on the host compiler** | `lib/due_shared/src/stream_core.c` compiled and run natively with its seam mocked, which is possible only because `stream_port.h` is a complete record of what the framer touches outside itself. Built twice, real and mutant; the mutant must fail | anything about registers or timing - the mocked seam is the point. It needs a **host** GNU compiler: a cross compiler cannot run what it builds, so a bench without one skips it |
 
-**The tier's limit, stated against itself.** "Needs nothing" is verified
-two ways and **both are static** - the `board` marker comes from
+**"Needs nothing" is verified three ways, and only one of them is
+dynamic.** Two are static: the `board` marker comes from
 `fixturenames`, which is transitive, and a grep over every board-free
-file finds no `measure.Board(`, `ports.find_*` or `open_raw(`. Nobody
-has run the tier on a machine with no Due attached. If you are the
-first and it wants hardware, that is a bug in the marker.
+file finds no `measure.Board(`, `ports.find_*` or `open_raw(`. A static
+check is the easiest kind to write so that it cannot fail, so neither
+is worth much alone.
+
+The dynamic one is the container. `docker/run-ci.sh`'s **`board absent`**
+step runs the tier on a machine with no Due, and then runs the board
+tier's own inverted control: the board tests under `--require-board`,
+which must **error** for want of hardware. A zero exit there means a
+board answered, which in an environment chosen because it has none is a
+fault in the environment rather than a pass. That is the check this
+paragraph used to have no way to make - `docs/build-container.md`.
+
+It is also why the step is `NOT SELECTED` rather than executed on a
+bench with a board attached: running it would open the port it exists to
+prove absent. So a bench cannot self-certify the tier, and the container
+is not optional for this particular claim.
 
 ### Three decisions worth knowing
 

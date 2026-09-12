@@ -86,6 +86,9 @@
 # LOGS. Every step's full output is written to docker/out/ci/<step>.log
 # and echoed as it runs, so a count in the summary can be checked against
 # the thing it was read from.
+#
+# What the container is for, what it will not do, and what a bench
+# gives up without it: docs/build-container.md
 set -uo pipefail
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."

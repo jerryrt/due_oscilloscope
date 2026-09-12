@@ -17,6 +17,9 @@
 #
 # Passing only the version is not a shortcut - the checksum then fails
 # and the build stops, which is the pin doing its job.
+#
+# What the container is for, what it will not do, and what a bench
+# gives up without it: docs/build-container.md
 set -euo pipefail
 
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)

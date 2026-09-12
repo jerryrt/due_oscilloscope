@@ -40,6 +40,9 @@
 # is the one file that sees both sides. The two values below go in as
 # environment; docker/build-firmware.sh writes them beside the artifacts
 # and tools/flash.py copies them into the flash log.
+#
+# What the container is for, what it will not do, and what a bench
+# gives up without it: docs/build-container.md
 set -euo pipefail
 
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)

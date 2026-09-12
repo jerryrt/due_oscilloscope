@@ -17,6 +17,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/scope.md](docs/scope.md) | Goals, phases, targets, non-goals |
 | [docs/hardware.md](docs/hardware.md) | SAM3X8E and Due facts, measured USB topology |
 | [docs/toolchain.md](docs/toolchain.md) | arduino-cli track and CMake/arm-gcc track |
+| [docs/build-container.md](docs/build-container.md) | The pinned build container: how to run it, the nine checks it carries, what it will not do, and what a bench gives up without it |
 | [docs/architecture.md](docs/architecture.md) | DMA datapath, timebase, buffering |
 | [docs/protocol.md](docs/protocol.md) | Host streaming frame format |
 | [docs/awg.md](docs/awg.md) | Both generators, shapes, resolution, and why a trace shakes |
@@ -25,12 +26,19 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/rtos.md](docs/rtos.md) | Bare-metal and FreeRTOS integration |
 | [docs/usb.md](docs/usb.md) | Measured transport ceilings and host I/O policy |
 | [docs/testing.md](docs/testing.md) | On-hardware pytest suite: design, and what it found |
+| [docs/control-protocol.md](docs/control-protocol.md) | Control over the native port's second CDC function |
+| [docs/shared-source.md](docs/shared-source.md) | What the tracks share, and why the wire contract is one of them |
+| [docs/issue5-impact.md](docs/issue5-impact.md) | What the one-sample displacement costs the instrument |
+| [docs/noise.md](docs/noise.md) | How much of the converter this board leaves you |
 | [docs/frontend.md](docs/frontend.md) | Front end architecture: daemon, GUI, recording |
 | [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
 | [docs/hardware-next.md](docs/hardware-next.md) | Options for a more powerful successor |
 | [docs/stack-depth.md](docs/stack-depth.md) | Worst-case stack depth: the bounds, and what refuses to be guessed |
 | [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
 | [docs/windows.md](docs/windows.md) | Windows validation: 0c settled, byte loss is macOS's |
+| [docs/linux.md](docs/linux.md) | Native Linux bring-up on `linux-x1`, tier 1 |
+| [docs/writing.md](docs/writing.md) | How to write one of these |
+| `docs/metric-baseline-*.md` | Generated metric reports, one per host and track. Written by the tool, not by hand |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Commit conventions |
 | [CLAUDE.md](CLAUDE.md) | Agent working instructions |
 

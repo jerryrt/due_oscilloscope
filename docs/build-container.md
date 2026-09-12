@@ -20,8 +20,96 @@ records have been taken rather than proposed.
 | build identity - what an image says it is | anything that opens a serial port |
 | Track A and Track B firmware builds | the board tests |
 | the board-free tier, `-m "not board"` | flashing - `bossac`, the 1200-baud touch, re-enumeration |
+| | **Track C's firmware.** `apps/rtos_bringup` fetches FreeRTOS at configure time and `docker/run.sh` runs `--network none`, so the RTOS track cannot be configured in the image at all. Neither analyser sees it either, and `docker/run-ci.sh` says so in its own summary rather than leaving the coverage implied |
 | static analysers over firmware and shared source | measurement of any kind |
 | build provenance: commit, compiler, the environment that ran the compiler, and the symbol map - `layout` hashes in a total order, so it compares across benches and across `nm` builds | |
+
+## Using it
+
+```sh
+docker/build-image.sh                    # once, and again when the Dockerfile changes
+docker/run.sh docker/run-ci.sh           # every check there is
+docker/run.sh docker/run-ci.sh --fast    # without the three elastic steps
+docker/run.sh docker/build-firmware.sh   # both tracks, clean, nothing else
+docker/run-ci.sh                         # on a bench, same shape, host tools
+```
+
+`docker/run.sh` is the only file that knows about the container. Everything
+it runs - `build-firmware.sh`, `run-tests.sh`, `run-cppcheck.sh`,
+`run-clang-tidy.sh`, `run-fuzz.sh`, `run-ci.sh` - carries no container
+knowledge and runs on a bench unchanged.
+
+Nine steps, in the order they run:
+
+| step | what it answers | gates |
+|---|---|---|
+| `firmware` | do Track B and Track A build, clean, from the pinned toolchain | yes |
+| `host tier` | `-m "not board"`, the whole board-free suite | yes |
+| `board absent` | the board tests, under `--require-board`, must **error** for want of hardware | yes |
+| `reproducible-b`, `reproducible-a` | two builds a second apart, differing bytes counted | yes |
+| `stack report` | does `docs/stack-depth.md` match the record it is generated from | yes |
+| `cppcheck`, `clang-tidy` | static analysis over firmware and shared source | findings are advisory; **analysing nothing** gates |
+| `fuzz` | a campaign over the shared control parser, with a positive control | a crash gates, and so does a fuzzer that could not be built |
+
+The five states and what each means are in that script's own header. The
+one to know is **DID NOT RUN**: an unanswered question is not a passing
+one, so it gates and the run reports `INCOMPLETE` rather than a verdict
+on the tree.
+
+**The build directories are not the bench's.** `docker/run.sh` mounts
+`docker/out/build` and `docker/out/build-a` over `/work/build` and
+`/work/build-a`, so a container run never touches a bench's own `build/`
+and the two toolchains' artifacts cannot be confused for each other.
+
+### It runs on every bench, and not the same way on each
+
+| bench | how | wall time |
+|---|---|---|
+| `linux-x1` | a native daemon | 194 s |
+| `mac-bench` | **colima plus QEMU, from MacPorts.** Docker Desktop needs macOS 13+ and this desk is 12.7.6 | 774 s |
+| `windows-desk` | WSL2, which is a real Linux kernel and therefore the native case | not yet taken |
+
+The spread is the runtime, not the work: the same nine steps, the same
+pinned tools, the same counts.
+
+**One trap, paid for on `mac-bench`.** `toolchains.json` searches
+`{repo}/tools/xpack-*/bin` before `/opt`, and `run.sh` mounts the repo -
+so a toolchain unpacked in-tree shadows the image's own. It was loud
+there only because that binary is Mach-O; on a Linux host with a Linux
+toolchain in-tree it would have built with the wrong compiler while
+`build_env` still said `container`. The image now declares
+`ARM_TOOLCHAIN_DIR` and the cache entry is `FORCE`d, so a mis-resolved
+tree is repairable rather than sticky.
+
+### The container may hold the checks; it must not hold the board
+
+Nothing in the image opens a serial port, and the section below says why
+that is a measurement rather than a preference. The consequence for a
+bench is a boundary: builds and every board-free check inside the
+container, and anything that opens a port - the board tier, `measure.py`,
+`tools/flash.py`, the daemon, the GUI - on the host. On Windows that
+distinction is sharpest, because WSL2 reaches a board only through
+`usbipd`, whose error is **optimistic** - `docs/windows.md`.
+
+### One row per run, so three benches can be compared
+
+`tools/container_report.py` writes one provenance-stamped row per run to
+`records/container-universality.jsonl`:
+
+```sh
+docker/run.sh docker/run-ci.sh; rc=$?
+python3 tools/container_report.py --exit "$rc" \
+        --append records/container-universality.jsonl
+```
+
+It reads the artefacts rather than the summary prose - `build-env.json`
+as the build wrote it, the counts the analysers print about themselves,
+the pytest summary lines, the per-artifact differing-byte counts - and
+takes the verdict from the script's exit code, which is the one fact no
+artefact carries. It refuses a row whose image does not carry the
+tree's own commit, because `FW_GIT_REV` is compiled in and a row
+labelled with a commit the binary was not built from voids the
+comparison it feeds.
 
 ## What this is not
 
@@ -50,9 +138,43 @@ expose, never its justification.
 
 | reason | the evidence, checked in this tree |
 |---|---|
-| **The checks run from one entry point.** `docker/run-ci.sh` builds both tracks, runs the board-free tier, proves the board absent, checks byte reproducibility, runs `cppcheck`, `clang-tidy` and a deterministic fuzz pass. Five states in one column - PASS, FINDINGS, FAIL, **DID NOT RUN**, NOT SELECTED - and an exit code a classifier does not recognise is DID NOT RUN, never PASS | a pinned image is what makes any of it runnable on every bench at once, and one entry point is what makes it get run |
+| **The checks run from one entry point.** `docker/run-ci.sh` builds both tracks, runs the board-free tier, proves the board absent, checks byte reproducibility, checks the stack-depth document against its record, and runs `cppcheck`, `clang-tidy` and a deterministic fuzz pass. Five states in one column - PASS, FINDINGS, FAIL, **DID NOT RUN**, NOT SELECTED - and an exit code a classifier does not recognise is DID NOT RUN, never PASS | a pinned image is what makes any of it runnable on every bench at once, and one entry point is what makes it get run |
 | **Build provenance exists as fields and is empty as data.** #59: of 6,658 stored rows, 1 carries a layout and 8 carry a compiler; `fw_layout` is present on 64 rows and null on all 64 | a commit read off the board, plus the environment that built the artifact, makes the field mechanical instead of remembered |
 | **The board-free tier has never run without a board.** `docs/testing.md` says the `board` marker is verified two ways and both are static | a container is the dynamic check, and the marker is what the whole tier rests on |
+
+## What a bench gives up by not using it
+
+Measured on `linux-x1` - the bench that owns the image - by running the
+same script with the container out of the path:
+
+```
+cppcheck           DID NOT RUN   cppcheck is not installed
+clang-tidy         DID NOT RUN   clang-tidy is not installed
+fuzz               DID NOT RUN   clang is not installed
+board absent       NOT SELECTED  a board is attached
+VERDICT: INCOMPLETE. 3 step(s) DID NOT RUN                       exit 1
+```
+
+So the container is not a convenience on one platform. **Three of the
+nine steps are where it is, on every bench**, because the three tools
+that are not compiler flags do not ship with a compiler. The four that
+are - `-Werror`, `-fanalyzer`, `-fstack-usage`, and the host-tier
+sanitizers - are CMake options and a host resolver, and never needed a
+container at all.
+
+| given up | workaround |
+|---|---|
+| `cppcheck`, `clang-tidy`, `fuzz` - three of nine steps, and the run reports `INCOMPLETE` | install all three per bench. It works, and then they are three versions on three benches and the finding counts stop comparing - which is the variable this image removes |
+| The **board-absent positive control**, on any bench with a board attached. It is `NOT SELECTED` there by design: running it would open the port it exists to prove absent | none. A machine with no board, or the container |
+| **Cross-bench reproduction.** The claim is *same pinned inputs*, and a host toolchain is deliberately not a pinned input | none. It is structural, and it is what phase 1's second half is still waiting for |
+| On `mac-bench`, the arm that proves the misaligned-load canary works: it fires under the image's GCC and not under Apple clang 14 | install another host compiler |
+| The 32-bit ABI arm, which has never executed on any bench natively - multilib absent on `linux-x1`, and a `qemu-i386` shadow-mapping hang on `mac-bench` | install the multilib runtimes |
+
+What is **not** given up is the project: all three tracks build on a
+host toolchain, Track C builds only there, every measurement is a host
+step, and every figure in this tree was taken on a host build. The
+container is where a third of the checks live, not where the work
+happens.
 
 ## Build identity
 
@@ -162,7 +284,7 @@ Each phase lands on `main` on its own and is useful alone.
 | # | state | phase | exit criterion | how it is broken on purpose |
 |---|---|---|---|---|
 | 0 | **done** | Build identity: the image carries the commit and a dirty marker; `firmware()` resolves by commit and `build_is_current()` by reachability; `parse_identity` follows | build twice with no commit between and `tools/reproducible.py` reports **0** differing bytes | `git commit --allow-empty` and rebuild: the embedded value must change |
-| 1 | **done** | The image: xPack plus the SAM core, building Track A and Track B, with the bit-identity script under `tools/` run by the build | two builds in the image are byte-identical, and a second machine building from the same pinned inputs reproduces them | unpin one input - the base image tag, an apt version - and watch the bytes move |
+| 1 | **built; half its exit criterion is open** | The image: xPack plus the SAM core, building Track A and Track B, with the bit-identity script under `tools/` run by the build | two builds in the image are byte-identical - **met**, 0 differing bytes on both tracks on every bench that has run it - and a second machine building from the same pinned inputs reproduces them, which **no two benches have yet compared**. One bench cannot: the comparison is one `sha256sum` against another bench's, and #61 carries the target hashes | unpin one input - the base image tag, an apt version - and watch the bytes move |
 | 2 | **done** | The board-free tier in the image | `-m "not board"` collects and passes with no board reachable; then the **whole** suite in the image, where every board test must **skip** and none error | move one board test's marker and watch the tier fail; a test that errors instead of skipping is the marker bug `docs/testing.md` predicts |
 | 3 | **done** | Analysers that do not change codegen. `-Werror` is on by default with `-DFIRMWARE_WERROR=OFF` to leave; `-DFIRMWARE_ANALYZER=ON` and `-DFIRMWARE_STACK_USAGE=ON` are opt-in, because a noisy pass on by default stops every bench building the day a new compiler disagrees; `cppcheck` runs from `docker/run-cppcheck.sh`, which separates *found nothing* from *analysed nothing*; `clang-tidy` runs from `docker/run-clang-tidy.sh`, which rewrites the compile database rather than passing extra arguments - it has to select which target's copy of a shared source to analyse, and clang-tidy takes the first match without saying so | each finds a real finding or is proven able to, **and** the analysed build stays byte-identical to the plain one | introduce a defect of the class the analyser claims to catch, and watch it fire; delete the tool from the image and watch the step fail rather than pass empty |
 | 4 | **done** | Provenance: commit read off the board, compiler and build environment recorded with the build | a row written after a containerised build carries a non-null commit, compiler and layout, which #59 says 696, 8 and 1 rows respectively manage today. `layout` is the weak one of the three - it is partly a property of the reader's `nm`, and #63 is open on it | build from a second image and watch the recorded environment move while the artifact's bytes do not; rebuild in the directory and watch the record refuse to describe the new binary |
