@@ -173,39 +173,53 @@ than represented by somebody else's figures.
 |---|---|---|---|---|---|---|---|
 | a | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | b3590f9 | 880 | upper bound | 1516 | upper bound |
 | a | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 880 | upper bound | 1516 | upper bound |
+| a | windows-desk | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | f5db1e8 | 880 | upper bound | 1516 | upper bound |
 | b | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | b3590f9 | 916 | exact | 1452 | exact |
 | b | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 912 | exact | 1448 | exact |
+| b | windows-desk | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | f5db1e8 | 916 | exact | 1452 | exact |
 | c | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | b3590f9 | 860 | exact | 1492 | exact |
 | c | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 856 | exact | 1488 | exact |
+| c | windows-desk | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | f5db1e8 | 860 | exact | 1492 | exact |
 
-2 bench(es) and 6 track-rows. **The rows are at 2 different revisions** - `221adb8`, `b3590f9` - so a difference between benches may be the firmware moving rather than the compiler. Re-take them at one commit before reading a delta as a code-generator effect.
+3 bench(es) and 9 track-rows. **The rows are at 3 different revisions** - `221adb8`, `b3590f9`, `f5db1e8` - so a difference between benches may be the firmware moving rather than the compiler. Re-take them at one commit before reading a delta as a code-generator effect.
 <!-- end generated -->
 
-### What the two benches settled
+### What the three benches settled
 
-The two benches' rows are at different revisions, which the table above
+The benches' rows are at different revisions, which the table above
 says and which would ordinarily void the comparison. It does not here,
 and the reason is checkable rather than assumed: **no commit between
 them touches firmware source** - only `tools/`, `tests/`, `docs/` and
-`records/` - so the two sets of frames come from the same C. Anyone
+`records/` - so every set of frames comes from the same C. Anyone
 re-reading this should check that again rather than trust the sentence;
-`git diff --name-only` between the two `repo_rev` values is the whole
+`git diff --name-only` between any two `repo_rev` values is the whole
 test.
 
 **One function, four bytes, accounts for the whole difference.** Diffing
 the deepest chains frame by frame rather than comparing totals:
 
-| track | linux-x1 | mac-bench | the only frame that differs |
-|---|---|---|---|
-| B | 916 | 912 | `ep_fifo_write.constprop`, 28 B against 24 B |
-| C | 860 | 856 | the same frame, on the same shared tail |
-| A | 880 | 880 | none - every frame identical |
+| track | linux-x1 | windows-desk | mac-bench | the only frame that differs |
+|---|---|---|---|---|
+| B | 916 | 916 | 912 | `ep_fifo_write.constprop`, 28 B against 24 B |
+| C | 860 | 860 | 856 | the same frame, on the same shared tail |
+| A | 880 | 880 | 880 | none - every frame identical |
 
 Every other frame on every chain is equal to the byte. The 4 B
 propagates to both nesting totals unchanged - 1,452/1,448 and
 1,492/1,488 - so the level sums are identical too, and the entire
 cross-compiler delta in this project's stack figures is one function's
 prologue.
+
+**The split is by code generator and not by bench**, which is what the
+third column buys. `windows-desk` is ARM GNU 14.3.1 and reads 28 B on
+that frame, landing on `linux-x1`'s figures rather than between them,
+and a second reading taken on that same desk with the distro 14.2.1
+agrees with both. So two 14.x releases on two machines and two
+operating systems give one answer and 15.2.1 gives the other: the
+within-draw spread is **zero on every track**, which is what licenses
+reading the 4 B as the generator rather than as the spread. Without a
+second 14.x reading the delta and the noise floor were the same
+measurement.
 
 **Track A is unaffected for a structural reason rather than by luck.**
 `ep_fifo_write` is not on its chain: Track A's port write is one 24 B
@@ -216,14 +230,23 @@ one track whose figure does not move.
 **So a bound does depend on the code generator, and by very little.**
 4 B on 916 is 0.4%, against the 8 KB the stack is given - which is the
 answer the comparison was for. It does *not* follow that any future
-difference will be this small: this is one function's frame on one pair
-of compilers, and the `upper bound` on Track A is a ceiling on both
-benches rather than a measurement agreeing twice.
+difference will be this small: this is one function's frame across two
+code generators, and the `upper bound` on Track A is a ceiling on all
+three benches rather than a measurement agreeing three times.
+
+**Only the bounds table above is cross-bench. Every other generated
+region on this page is the latest row per track**, which means it
+describes whichever bench recorded most recently rather than any chosen
+one - so the per-root table, the chain table and the diagram move from
+bench to bench as rows land, with nothing on the page saying they did.
+Read a figure below against the provenance table at the end, which names
+the row it came from. The bounds table is the only place a difference
+between benches is visible rather than overwritten.
 
 **What is still one bench's:** everything in the two sections below on
 `ctl_error` being reached three ways and the three large frames being
 siblings. Both were measured on `linux-x1` and neither has been re-taken
-on xPack.
+on another generator.
 
 ### The residual risk is the name matching, and it has fired once
 
@@ -254,7 +277,7 @@ only add candidates to a maximum and so cannot lower a bound.
 | a | size_t Print::println(long int, int) | 224 | upper bound | none | 452 | 21 / 61 |
 | a | size_t Print::println(unsigned char, int) | 204 | upper bound | none | 452 | 21 / 61 |
 | a | size_t Print::println(unsigned int, int) | 204 | upper bound | none | 452 | 21 / 61 |
-| a | con_u32l | 192 | upper bound | none | 452 | 21 / 61 |
+| a | void con_u32l(uint32_t, unsigned int) | 192 | upper bound | none | 452 | 21 / 61 |
 | a | void TC2_Handler() | 184 | upper bound | none | 452 | 21 / 61 |
 | a | UOTGHS_Handler | 160 | upper bound | none | 452 | 21 / 61 |
 | a | size_t Print::println(double, int) | 152 | upper bound | none | 452 | 21 / 61 |
@@ -296,7 +319,7 @@ only add candidates to a maximum and so cannot lower a bound.
 | b | DACC_Handler | 12 | exact | none | 328 | 2 / 50 |
 | c | service_task | 860 | exact | none | 379 | 5 / 50 |
 | c | console_task | 844 | exact | none | 379 | 5 / 50 |
-| c | Reset_Handler | 288 | exact | none | 379 | 5 / 50 |
+| c | Reset_Handler | 280 | exact | none | 379 | 5 / 50 |
 | c | TC2_Handler | 236 | exact | none | 379 | 5 / 50 |
 | c | prvTimerTask | 232 | exact | none | 379 | 5 / 50 |
 | c | SysTick_Handler | 112 | exact | none | 379 | 5 / 50 |
@@ -444,16 +467,16 @@ number to derive by hand here.
 | track | # | function | frame B | total below B |
 |---|---|---|---|---|
 | a | 0 | Reset_Handler | 8 | 880 |
-| a | 1 | int main() | 8 | 872 |
+| a | 1 | main | 8 | 872 |
 | a | 2 | void loop() | 56 | 864 |
-| a | 3 | console_feed | 24 | 808 |
+| a | 3 | void console_feed(int) | 24 | 808 |
 | a | 4 | void ha_profile(const uint32_t*) | 16 | 784 |
-| a | 5 | ctl_service | 40 | 768 |
+| a | 5 | void ctl_service() | 40 | 768 |
 | a | 6 | ctl_frame_complete | 8 | 728 |
 | a | 7 | ctl_dispatch.constprop | 184 | 720 |
 | a | 8 | ctl_error | 488 | 536 |
 | a | 9 | ctl_respond | 24 | 48 |
-| a | 10 | ctl_port_write | 24 | 24 |
+| a | 10 | size_t ctl_port_write(const uint8_t*, size_t) | 24 | 24 |
 | b | 0 | Reset_Handler | 8 | 916 |
 | b | 1 | main | 80 | 908 |
 | b | 2 | console_feed | 24 | 828 |
@@ -508,16 +531,16 @@ graph TD
   subgraph sg_a["track a - Reset_Handler - 880 B"]
   direction TB
     a0["Reset_Handler<br/>8 B · 880 total"]
-    a1["int main()<br/>8 B · 872 total"]
+    a1["main<br/>8 B · 872 total"]
     a2["void loop()<br/>56 B · 864 total"]
-    a3["console_feed<br/>24 B · 808 total"]
+    a3["void console_feed(int)<br/>24 B · 808 total"]
     a4["void ha_profile(const uint32_t*)<br/>16 B · 784 total"]
-    a5["ctl_service<br/>40 B · 768 total"]
+    a5["void ctl_service()<br/>40 B · 768 total"]
     a6["ctl_frame_complete<br/>8 B · 728 total"]
     a7["ctl_dispatch.constprop<br/>184 B · 720 total"]
     a8["ctl_error<br/>488 B · 536 total"]
     a9["ctl_respond<br/>24 B · 48 total"]
-    a10["ctl_port_write<br/>24 B · 24 total"]
+    a10["size_t ctl_port_write(const uint8_t*, size_t)<br/>24 B · 24 total"]
     a0 ==> a1
     a1 ==> a2
     a2 ==> a3
@@ -699,9 +722,9 @@ deepest-chain table structurally cannot reach.
 <!-- generated: provenance -->
 | track | bench | repo_rev | cc | elf | elf_sha256 | taken_at |
 |---|---|---|---|---|---|---|
-| a | linux-x1 | b3590f9 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | track_a_bringup.elf | da235aca0e711b0a | 2026-09-12T15:01:30-0400 |
-| b | linux-x1 | b3590f9 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | baremetal_bringup.elf | 6daab06f9b00637c | 2026-09-12T15:01:30-0400 |
-| c | linux-x1 | b3590f9 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | rtos_bringup.elf | ff7c995290373196 | 2026-09-12T15:01:31-0400 |
+| a | windows-desk | f5db1e8 | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | track_a_bringup.elf | 0b4cd0714ae20aa7 | 2026-09-12T16:27:47-0300 |
+| b | windows-desk | f5db1e8 | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | baremetal_bringup.elf | 25315b1c1fdb1320 | 2026-09-12T16:27:44-0300 |
+| c | windows-desk | f5db1e8 | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | rtos_bringup.elf | cfe417f885e6c706 | 2026-09-12T16:27:48-0300 |
 
 Schema `stack-depth/1`, written by `tools/stack_depth.py`, resolving its indirect call sites from `tools/stack_depth.list`.
 <!-- end generated -->
