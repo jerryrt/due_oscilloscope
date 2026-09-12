@@ -250,6 +250,32 @@ def main(argv=None):
               "Write bench.json - host/provenance.py says what it wants.",
               file=sys.stderr)
         return 2
+    # --- a dirty tree cannot produce a comparable row ---
+    #
+    # NOBODY CAN REPRODUCE A DIRTY BUILD, because the delta hash baked
+    # into the image is a function of the dirt. So an artifact hash from
+    # one is not a figure another bench can match, and a row carrying it
+    # answers nothing while looking exactly like a row that does.
+    #
+    # This is also the only guard that catches a run which dirties the
+    # tree UNDERNEATH itself. `docker/run-ci.sh`'s own positive control
+    # crashes a harness on purpose, and where the kernel writes
+    # `core.<pid>` into the working directory - WSL2's default - the
+    # repository is dirty from that moment on. The row then came out
+    # labelled `<rev>-dirty` with CLEAN artifact hashes in it, because
+    # build-env.json is written by the firmware step before the host
+    # tier runs: a row nobody can interpret, and no step in the run
+    # reported anything wrong.
+    rev = row.get("repo_rev") or ""
+    if "-dirty" in rev or "+" in rev:
+        print(f"repo_rev is {rev!r}: this tree is dirty, so the image "
+              f"carries a working-tree delta hash and no other bench can "
+              f"reproduce its artifacts.\nCommit or stash, rebuild, re-run, "
+              f"then record. If the run itself dirtied the tree - a core "
+              f"dump in the working directory will do it - that is the "
+              f"defect to fix, not this check.", file=sys.stderr)
+        return 2
+
     # --- the artifact and the tree must name one commit ---
     #
     # MECHANICAL RATHER THAN REMEMBERED. "Rebuild before you record" is
@@ -258,7 +284,12 @@ def main(argv=None):
     # built from is not merely mislabelled, it silently voids the
     # cross-bench artifact comparison it exists to feed. FW_GIT_REV is
     # a string in the image, so the artifact can be asked directly.
-    short = (row.get("repo_rev") or "").split("-")[0].split("+")[0]
+    #
+    # THE SUBSTRING CHECK ALONE IS NOT ENOUGH and the dirty guard above
+    # is what covers it: `f5db1e8+ee5c634a` contains `f5db1e8`, so a
+    # dirty image passed this check while the row asserted it matched
+    # HEAD. Found on windows-desk, where the run dirtied its own tree.
+    short = rev.split("-")[0].split("+")[0]
     blob = baked_revision(args.build)
     if blob is None:
         row["artifact_revision_checked"] = False

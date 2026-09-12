@@ -1,4 +1,8 @@
 # Build output
+# `build*` rather than `build/` and `build-*/`: a directory named
+# build142 matched neither, and a stray one was committed-adjacent long
+# enough to notice. Nothing tracked begins with `build`.
+build*/
 build/
 build-*/
 build-sketch/
@@ -74,5 +78,13 @@ records/issue35-reflash-transcripts.log
 # directory, and under an emulated ABI the emulator drops its own -
 # qemu-i386 wrote 101 MB of them here in one container run, which then
 # appear in every other agent's `git status` as untracked source.
+#
+# `core.<pid>` is the third form and it was missing: WSL2's
+# kernel.core_pattern is the bare string `core`, so the kernel appends
+# the pid and the dump lands as `core.1234`, which neither `core` nor
+# `*.core` matches. Three 39 MB dumps then made the tree dirty in the
+# middle of a container run, on a bench where `FW_GIT_REV` picks the
+# dirt up and bakes it into the image.
 core
+core.*
 *.core

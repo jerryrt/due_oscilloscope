@@ -85,8 +85,12 @@ def test_a_host_build_is_refused_rather_than_relabelled(tmp_path,
     logdir, build = _run_dir(tmp_path, build_env="host")
     real = cr.collect
     monkeypatch.setattr(cr, "runtime", lambda: {})
+    # repo_rev is pinned CLEAN as well as the bench, because the dirty
+    # guard runs before this one - without it the test passes or fails
+    # with the state of whoever's working tree is running it, which is
+    # the same class of defect as a guard that cannot fail.
     monkeypatch.setattr(cr, "collect", lambda l, b, e: dict(
-        real(l, b, e), bench="test-bench"))
+        real(l, b, e), bench="test-bench", repo_rev="0f40bb5"))
     rc = cr.main(["--exit", "0", "--logs", logdir, "--build", build])
     assert rc == 2
     err = capsys.readouterr().err
@@ -102,7 +106,7 @@ def test_a_declared_bench_is_required_for_a_row(tmp_path, monkeypatch,
     real = cr.collect
     monkeypatch.setattr(cr, "runtime", lambda: {})
     monkeypatch.setattr(cr, "collect", lambda l, b, e: dict(
-        real(l, b, e), bench=None))
+        real(l, b, e), bench=None, repo_rev="0f40bb5"))
     rc = cr.main(["--exit", "0", "--logs", logdir, "--build", build])
     assert rc == 2
     assert "bench" in capsys.readouterr().err
@@ -241,7 +245,7 @@ def test_a_matching_image_records_that_it_was_checked(tmp_path, monkeypatch):
     real = cr.collect
     monkeypatch.setattr(cr, "runtime", lambda: {})
     monkeypatch.setattr(cr, "collect", lambda l, b, e: dict(
-        real(l, b, e), bench="test-bench", repo_rev="0f40bb5-dirty"))
+        real(l, b, e), bench="test-bench", repo_rev="0f40bb5"))
     rc = cr.main(["--exit", "0", "--logs", logdir, "--build", build,
                   "--append", str(out)])
     assert rc == 0
@@ -256,3 +260,40 @@ def test_no_artifact_is_reported_unchecked_rather_than_passed(tmp_path,
     omitted the field would read as a row that checked and agreed."""
     logdir, build = _run_dir(tmp_path)           # no .bin written
     assert _main_with_rev(monkeypatch, logdir, build, "0f40bb5") == 0
+
+
+def test_a_dirty_tree_is_refused_because_nobody_can_reproduce_it(
+        tmp_path, monkeypatch, capsys):
+    """The delta hash baked into the image is a function of the dirt, so
+    an artifact hash from a dirty build is not a figure another bench can
+    match - and a row carrying it answers nothing while looking exactly
+    like a row that does.
+
+    IT IS ALSO THE ONLY GUARD THAT CATCHES A RUN DIRTYING ITS OWN TREE.
+    Found on windows-desk: `run-ci.sh`'s positive control crashes a
+    harness on purpose, WSL2's kernel.core_pattern drops `core.<pid>` in
+    the working directory, and the row came out `<rev>-dirty` carrying
+    CLEAN artifact hashes - build-env.json is written by the firmware
+    step, before the host tier runs. Nothing else in the run reported a
+    problem.
+    """
+    logdir, build = _with_image(tmp_path, "f5db1e8")
+    for rev in ("f5db1e8-dirty", "f5db1e8+ee5c634a"):
+        assert _main_with_rev(monkeypatch, logdir, build, rev) == 2, rev
+        assert "dirty" in capsys.readouterr().err
+
+
+def test_the_substring_check_alone_would_have_passed_a_dirty_image():
+    """Why the guard above is a separate check rather than a tighter
+    version of the revision one.
+
+    `f5db1e8+ee5c634a` contains `f5db1e8`, so the artifact-revision check
+    is satisfied by a dirty image and the row asserts it matched HEAD.
+    Pinned as arithmetic rather than as behaviour so that tightening one
+    check cannot quietly make the other redundant.
+    """
+    stamped = b"...FW_GIT_REV=f5db1e8+ee5c634a..."
+    short = "f5db1e8-dirty".split("-")[0].split("+")[0]
+    assert short.encode() in stamped, (
+        "if this ever stops being true the dirty guard is no longer "
+        "load-bearing and this test should be deleted with it")
