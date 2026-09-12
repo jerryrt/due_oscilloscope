@@ -85,6 +85,7 @@ MUTATIONS = {
     "con-str-tests-its-bound-too-late": dict(
         file="console_out.c",
         oracle="ASan over the emitter walks",
+        needs_sanitizer=True,
         find="""		while (n < CON_STR_MAX && s[n])
 			n++;
 		if (n < CON_STR_MAX) {
@@ -98,6 +99,7 @@ MUTATIONS = {
     "con-strl-tests-its-bound-too-late": dict(
         file="console_out.c",
         oracle="ASan over the emitter walks, at the second site",
+        needs_sanitizer=True,
         find="""	while (s && n < CON_STR_MAX && s[n])
 		n++;
 """,
@@ -109,6 +111,7 @@ MUTATIONS = {
     "digits-past-the-last-argument": dict(
         file="console.c",
         oracle="ASan over console.c's argument array",
+        needs_sanitizer=True,
         find="""	if (arg_entry && c >= '0' && c <= '9') {
 		if (arg_idx < CONSOLE_NARGS)
 			arg[arg_idx] = arg[arg_idx] * 10u + (uint32_t)(c - '0');
@@ -198,6 +201,38 @@ def _require(abi):
         pytest.skip("no host C compiler")
     if abi not in hostcc.abis():
         pytest.skip(f"this compiler cannot build and run {abi}-bit binaries")
+
+
+def _require_oracle(abi, m):
+    """AN ABI THAT BUILDS IS NOT AN ABI THAT CAN CARRY THE ORACLE.
+
+    `_require` asks whether the compiler can build and run this word
+    size. Three of the six mutations need more than that: their oracle is
+    a sanitizer, and a mutant built with no sanitizer runs clean whatever
+    the defect. The assertion then reads "this oracle has no power over
+    that mutation", which is TRUE and is a property of the bench rather
+    than of the code - a gating step red for ever on a machine where
+    nothing is wrong with the tree.
+
+    Measured on mac-bench, where the two gates disagree in exactly that
+    gap. `abis()` returns `32` in the build container because a plain
+    `-m32` binary builds and runs; `sanitize_probe('32')` returns `()`
+    because a 32-bit ASan binary HANGS - the shadow mapping against
+    qemu-i386 user-mode emulation, the same hang issue #69 recorded on
+    the host, one layer down. So the three sanitizer oracles failed and
+    the three behavioural ones passed, which is the split that named the
+    cause.
+
+    A skip, not a pass, and it says which of the two it could not get -
+    the distinction `DUE_HOSTCC_ABI` draws for a named ABI is the one
+    drawn here for a named oracle.
+    """
+    if m.get("needs_sanitizer") and not hostcc.sanitize_probe(abi):
+        where = "at the native word size" if abi == "native" else f"{abi}-bit"
+        pytest.skip(
+            f"this compiler can build and run {where} binaries but cannot "
+            f"arm a sanitizer for them, and this mutation's oracle is one: "
+            f"{m['oracle']}")
 
 
 def _gen_dir(tmp_path):
@@ -323,6 +358,7 @@ def test_the_harness_catches_a_console_broken_on_purpose(tmp_path, abi, name):
     """
     _require(abi)
     m = MUTATIONS[name]
+    _require_oracle(abi, m)
     original = os.path.join(SHARED, m["file"])
     with open(original) as fh:
         src = fh.read()
