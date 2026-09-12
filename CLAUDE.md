@@ -1060,11 +1060,22 @@ repository, both of which changed what got built:
   not worth waiting for permission. Do not rewrite the shape of
   something they are actively building.
 
-**Say which bench a number came from.** There is more than one, and they
-differ - this one has DAC1 wired to A1, the DSO bench has it on the
-scope's external trigger. Each bench's standing page carries its own
-wiring - #31, #32, #34. A figure without its bench is not comparable
-with anything.
+**Say which bench a number came from.** A figure without its bench is not
+comparable with anything, and until 2026-09-12 the benches were wired
+differently - one had DAC1 on A1 and the DSO bench had it on the scope's
+external trigger, so a cross-bench comparison of anything analog was not
+available at all.
+
+**They are the same now: three identical Dues, identically jumpered.**
+That is what makes a three-bench measurement possible for the first
+time, and it changes what a defaulted wiring costs. `DEFAULT_WIRING` in
+`host/provenance.py` still describes the **retired DSO arrangement**, so
+a bench with no `bench.json` records a scope EXT trigger it does not
+have on every row it writes, and `wiring_source` is the only tell. The
+default is left deliberately wrong rather than updated to the common
+wiring: a default that is silently right removes the reason to declare
+one, and every bench declaring its own cabling is the property worth
+having. Each bench's standing page carries its wiring - #31, #32, #34.
 
 **And its firmware commit, its instrument, and its compiler.** Four
 parts, each added after it was learned expensively - the middle two on
