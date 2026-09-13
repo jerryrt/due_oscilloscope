@@ -28,7 +28,8 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/testing.md](docs/testing.md) | On-hardware pytest suite: design, and what it found |
 | [docs/control-protocol.md](docs/control-protocol.md) | Control over the native port's second CDC function |
 | [docs/shared-source.md](docs/shared-source.md) | What the tracks share, and why the wire contract is one of them |
-| [docs/issue5-impact.md](docs/issue5-impact.md) | What the one-sample displacement costs the instrument |
+| [docs/issue5.md](docs/issue5.md) | The wrap displacement: the defect, its cause and the chain of evidence, and what the chase teaches |
+| [docs/issue5-impact.md](docs/issue5-impact.md) | What the displacement costs the instrument |
 | [docs/noise.md](docs/noise.md) | How much of the converter this board leaves you |
 | [docs/frontend.md](docs/frontend.md) | Front end architecture: daemon, GUI, recording |
 | [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
