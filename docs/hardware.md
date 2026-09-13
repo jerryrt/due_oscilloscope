@@ -566,6 +566,29 @@ conversion in the round robin. That is a far larger effect than anything
 between the jumpers, and it is the first suspect when one channel seems
 to show another's signal.
 
+**It follows the conversion order, not the pin order, and that is
+measured rather than reasoned.** The sequencer converts enabled channels
+by ascending index and wraps, so three channels convert A2, A1, A0 —
+`drivers/acq.c` says so at the mask — and A2's predecessor is A0. The
+lever is `=<n>N`, which swaps which DAC the generator drives:
+
+| arm | A0 p-p | A1 p-p | bare A2 | A2 tracks |
+|---|---|---|---|---|
+| sync off, gen → DAC0 | 2788 | 55 | **1547** | 55.5% of A0 |
+| sync off, gen → DAC1 | 55 | 2786 | **36** | **1.3% of A1** |
+
+When A0 goes quiet, **A2 collapses from 1547 codes to 36 while A1 is
+swinging full scale** — and **A1 is the pin physically between them on
+the header**. So the channel that is adjacent contributes nothing and
+the one that converts immediately before contributes 56%. Physical
+proximity is refuted as the mechanism; conversion order is not.
+
+Two things follow. A bare pin's reading is a property of **which channel
+converted before it**, so changing the channel count or the enabled set
+changes what it shows. And this is a second, independent reason the
+jumper geometry above does not matter: the pin whose wire runs nearest
+is the one contributing 1.3%.
+
 It is the same fraction on all three benches, which is what a property
 of the part rather than of a desk should look like:
 
