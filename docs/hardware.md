@@ -514,11 +514,26 @@ conversion in the round robin. That is a far larger effect than anything
 between the jumpers, and it is the first suspect when one channel seems
 to show another's signal.
 
-Measured on `linux-x1`, Track B at `1b2a2d1`, the container image;
-`records/crosstalk-trigger-square-linux-x1.jsonl` and
+It is the same fraction on all three benches, which is what a property
+of the part rather than of a desk should look like:
+
+| bench | bare A2 / driven A0 |
+|---|---|
+| `linux-x1` | 55.5% (55.4-55.6) |
+| `mac-bench` | 55.4% (55.2-55.5) |
+| `windows-desk` | 56.4% (56.2-56.5) |
+
+Nine driven rounds each out of `tools/wiring_probe.py`, first dropped by
+index. Each bench's own spread is two or three tenths of a point and the
+three sit within one point of each other, so the figure is the
+converter's and not a cable dress's.
+
+Coupling measured on `linux-x1`, Track B at `1b2a2d1`, the container
+image; `records/crosstalk-trigger-square-linux-x1.jsonl` and
 `records/crosstalk-dac1-into-a0-linux-x1.jsonl`. One bench, one cable
 dress, and the part cannot produce a faster edge than the 789-938 ns
-DAC step that was driven.
+DAC step that was driven. The multiplexer figure above is three benches;
+`records/wiring-verify-*.jsonl`.
 
 ## Timer Counter
 
