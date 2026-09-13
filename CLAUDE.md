@@ -14,7 +14,8 @@ file is one row away.
 | What works, measured figures, recorded mistakes | `docs/status.md` |
 | Transport ceilings, host I/O policy, the loss findings | `docs/usb.md` |
 | The generator, and the issue #5 mechanism with its evidence | `docs/awg.md` |
-| What #5 costs the instrument | `docs/issue5-impact.md` |
+| The wrap displacement: the defect, its cause, the fix, and what the chase teaches | `docs/issue5.md` |
+| What the displacement cost the instrument | `docs/issue5-impact.md` |
 | Daemon protocol and its guarantees | `docs/daemon-api.md` |
 | Front-end design and the rules the UI must obey | `docs/frontend.md` |
 | What the tracks share, and why | `docs/shared-source.md` |
@@ -344,6 +345,14 @@ Check here before reasoning from general Arduino knowledge.
   have a deficit, a run does** - read a mode set as "which n are
   available", never as the rate's figure, and take a zero only from
   RC 56, the one rate with no second mode in 80 runs. `docs/awg.md`.
+
+  **The wrap displacement was this register too, and the stream now
+  runs with it off.** A refresh conversion every 512 DACC clocks
+  collided with the triggered conversion; aliased against the RC-195
+  trigger that is a comb every 21st table entry, and at any other
+  rate the comb period follows RC. `GEN_REFRESH_STREAM` holds the
+  refresh at 0 from stream start to stop on both tracks, `docs/issue5.md`.
+  Restoring `REFRESH(1)` in a start path brings the comb back.
 
   It is `DACC_MR_REFRESH`, and it is **three call sites, not one** -
   `drivers/play.c`, `drivers/gen.c` and `drivers/dac.c` each set it.

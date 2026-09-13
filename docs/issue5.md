@@ -83,6 +83,27 @@ different things.
 What the dense mode is has not been established. The `K` sweep at fixed
 rate - 39 clocks per microsecond, no reflash - is the arm that can say.
 
+## The fix
+
+Refresh off while a PDC stream runs, restored at stop - the stream
+rewrites each channel every two triggers and is its own refresh. One
+constant per track, `GEN_REFRESH_STREAM`, applied by every start path
+and undone by every stop path; `docs/awg.md` carries the A/B/A that
+judged it. On one tree and one board, the constant at 0 leaves no
+comb at RC 195 or RC 192, at 1 the comb of 21 and the comb of 4 return
+(60 of 60 predicted sites, total_abs 1409 against 35), at 0 again on
+Track A neither returns; a held level shows no measurable decay down
+to 5 ksps with the refresh off, and less noise. `REFRESH(2)` removes
+the comb outright, which the free-running refresh picture does not
+predict and which matches the playback deficit's behaviour at the same
+setting - open on both, and not needed for the fix.
+
+The continuity test that stood behind this issue's xfail for nineteen
+days now runs to its end, and what it finds there is a second, smaller
+population the comb was hiding: about ten first-of-hold samples a
+second reading ahead of their level, no period, both tracks, present
+before the fix. It is issue #82.
+
 ## What the chase cost, and why
 
 Nine mechanisms were proposed and refuted before the tenth; each of the

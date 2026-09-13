@@ -312,6 +312,51 @@ been established; the `K` sweep at fixed rate, which moves the
 DAC-start-to-ADC-start gap in 39-clock steps and needs no reflash, is
 the arm that can say. `records/issue5-alias-sweep-*`.
 
+### The fix: no refresh while a stream runs
+
+`DACC_MR_REFRESH` is held at 0 from the moment a PDC stream is armed to
+the moment it stops, and restored to 1 at stop - `GEN_REFRESH_STREAM`
+and `GEN_REFRESH_IDLE` in `drivers/gen.h`, applied by every start and
+stop path on both tracks. A running stream rewrites each channel every
+two triggers, so the refresh protects nothing while streaming and only
+collides; an idle channel keeps it, because its held level decays after
+20 us without one.
+
+Judged as an A/B/A on that one constant, one tree, one board, read by
+`tools/issue5_alias_sweep.py` at the two rates with the sharpest
+signatures:
+
+| `GEN_REFRESH_STREAM` | RC 195 (comb 21) | RC 192 (comb 4) |
+|---|---|---|
+| 0, the fix | total_abs 35, no sites | 35, no sites |
+| 1, the control | comb of 21 back, 207 | comb of 4 back, 60 of 60 sites, 1409 |
+| 2 | 27-34, no sites | 34-49, no sites |
+| 0 again, Track A | 18, no sites | 21, no sites |
+
+`records/issue5-fix-aba-linux-x1.jsonl`. What the stream-only refresh
+costs a held level: nothing this instrument resolves. All-DC table, A0
+on DAC0, the within-hold pair difference is -0.03 to +0.07 codes at 5,
+20 and 200 ksps, and the noise on the held level is *lower* without the
+refresh (pair sd 1.93 against 2.39 at 200 ksps) - the refresh transient
+was visible on DC. `tools/issue5_fix_check.py droop`,
+`records/issue5-fix-droop-linux-x1.jsonl`.
+
+**`REFRESH(2)` removes the comb outright, where the free-running
+picture above predicts it would halve.** That is the same shape as the
+playback deficit clearing at `REFRESH(2)` rather than shrinking: the
+value 1 is degenerate in a way the datasheet's refresh sentence does
+not describe, and the question is open on both defects. The fix does
+not depend on the answer - 0 and 2 both remove it, 1 restores it.
+
+**What the comb was hiding.** With nothing locked to the wrap the
+continuity test reaches `level_census`, and about ten steps a second
+over 45 codes remain: a first-of-hold sample 13-24 codes *ahead* of its
+level near the sine's zero crossings, at no period, on both tracks, and
+present under the comb before the fix (75 in a low-mode control run
+against 1240 in a high one). It is not this defect - opposite sign, no
+lock, unmoved by the refresh - and it is issue #82, held visible in the
+suite as a strict xfail.
+
 The displaced sample reads about **-0.70 of the local DAC step** at every
 comb site (max residual 2.3 codes on +-35 across three boards), so it
 catches DAC0 partway through settling to its next level - which is why

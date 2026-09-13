@@ -1,0 +1,12 @@
+{"arm": "fix", "hz": 5000, "run": 1, "n": 10160, "mean": 2058.38, "sd": 1.273, "pair_mean": -0.026, "pair_sd": 1.466, "fw_build": "80b2986+9dc84ab0"}
+{"arm": "fix", "hz": 5000, "run": 2, "n": 10160, "mean": 2058.38, "sd": 1.371, "pair_mean": 0.003, "pair_sd": 1.49, "fw_build": "80b2986+9dc84ab0"}
+{"arm": "fix", "hz": 20000, "run": 1, "n": 39624, "mean": 2058.44, "sd": 1.337, "pair_mean": 0.049, "pair_sd": 1.918, "fw_build": "80b2986+9dc84ab0"}
+{"arm": "fix", "hz": 20000, "run": 2, "n": 39624, "mean": 2058.51, "sd": 1.368, "pair_mean": -0.038, "pair_sd": 1.972, "fw_build": "80b2986+9dc84ab0"}
+{"arm": "fix", "hz": 200000, "run": 1, "n": 397256, "mean": 2058.45, "sd": 1.36, "pair_mean": 0.07, "pair_sd": 1.934, "fw_build": "80b2986+9dc84ab0"}
+{"arm": "fix", "hz": 200000, "run": 2, "n": 397256, "mean": 2058.34, "sd": 1.356, "pair_mean": -0.003, "pair_sd": 1.935, "fw_build": "80b2986+9dc84ab0"}
+{"arm": "ctl", "hz": 5000, "run": 1, "n": 10160, "mean": 2058.44, "sd": 1.399, "pair_mean": 0.007, "pair_sd": 1.979, "fw_build": "80b2986+3f6c0462"}
+{"arm": "ctl", "hz": 5000, "run": 2, "n": 10160, "mean": 2058.43, "sd": 1.364, "pair_mean": 0.029, "pair_sd": 1.962, "fw_build": "80b2986+3f6c0462"}
+{"arm": "ctl", "hz": 20000, "run": 1, "n": 39624, "mean": 2058.51, "sd": 1.366, "pair_mean": 0.073, "pair_sd": 1.954, "fw_build": "80b2986+3f6c0462"}
+{"arm": "ctl", "hz": 20000, "run": 2, "n": 39624, "mean": 2058.26, "sd": 1.401, "pair_mean": 0.022, "pair_sd": 1.985, "fw_build": "80b2986+3f6c0462"}
+{"arm": "ctl", "hz": 200000, "run": 1, "n": 397256, "mean": 2058.6, "sd": 1.69, "pair_mean": 0.159, "pair_sd": 2.39, "fw_build": "80b2986+3f6c0462"}
+{"arm": "ctl", "hz": 200000, "run": 2, "n": 397256, "mean": 2058.55, "sd": 1.664, "pair_mean": -0.046, "pair_sd": 2.354, "fw_build": "80b2986+3f6c0462"}
