@@ -1012,7 +1012,7 @@ at once, on different machines and different benches, and they push to
 the same `main` while you are mid-task. Assume `origin/main` has moved
 since you last looked, because it usually has.
 
-**There are four channels and they carry different things.**
+**There are five channels and they carry different things.**
 
 | channel | what belongs in it |
 |---|---|
@@ -1020,6 +1020,27 @@ since you last looked, because it usually has.
 | **issues** | discussion. Anything that needs another party: a question, a proposal, dividing work so two people do not build the same thing, a measurement only their bench can take, a disagreement about method |
 | **standing pages** | state: what is current, and what to pick up. One issue per bench - **#31** mac-bench, **#32** linux-x1, **#34** windows-desk - and **#71** across all of them. **Edited in place, never commented on.** A page is rewritten to say what is true now; a reply on it is discussion, and discussion belongs on an issue of its own. It goes stale by design, which is why it is not in `docs/` |
 | **`docs/`** | what is settled and will be needed again. **`docs/writing.md` is how to write one** - general to detailed, point at the code rather than copying it, no issue numbers, and never narrate the document's own corrections |
+| **a direct message** | **urgency, and nothing else.** `SendMessage` to another bench's session - `ListAgents` gives the addresses. Scope it to what must be **timely** and can be **discarded**: go read this now, this affects your rows, do not take this twice. A few lines, pointing at where the substance is |
+
+**The fifth channel exists because an issue comment is a record, not a
+notification.** It informs whoever happens to read it, and three
+collisions in one afternoon on 2026-08-31 were all benches waiting on
+each other while the answer was already published - one held #55 open
+for two hours for an answer both other benches had posted on their own
+pages. A ping closes that gap and the other four cannot.
+
+**And it is scoped narrowly for the same reason the others are.** A
+message is short-lived and unindexed, so nothing in it survives - which
+means anything that needs to survive is in the wrong place. Put a finding
+in a message and it has a second home, which is the failure invariant 3
+and `docs/writing.md` are both built around. Write the finding on the
+issue, the state on the standing page, the settled part in `docs/`, the
+reasoning in the commit, and *then* send the ping.
+
+Learned by getting it wrong: on 2026-09-13 `linux-x1` sent both benches
+the whole #5 reading inline - tables, figures, the prediction - when the
+message's entire job was "this is on #5 now and it changes which of your
+rows you can quote".
 
 The split matters because they decay differently. A commit message is
 read by whoever runs `git log` on that file in six months; an issue is

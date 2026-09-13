@@ -208,8 +208,17 @@ def lattice(positions, period, bins=BINS):
     acc = sum(cmath.exp(2j * math.pi * (b % period) / period)
               for b in positions)
     off = (cmath.phase(acc) / (2 * math.pi) * period) % period
-    npts = bins // period + (1 if bins % period else 0)
-    pts = [round(off + period * k) % bins for k in range(npts)]
+    # Only the points that fit inside ONE cycle. This used to add
+    # `bins % period` as an extra k, which wraps: at period 21 in 256
+    # bins it emitted 12 + 21*12 = 264 -> 8, and 8 is not congruent to
+    # 12 mod 21. That phantom point went into a pre-registered
+    # prediction on #5 as "8, 54, 75, ...", so a real arm was asked to
+    # confirm a position the lattice never contained.
+    pts = []
+    k = 0
+    while round(off + period * k) < bins:
+        pts.append(round(off + period * k))
+        k += 1
     pts = sorted(set(pts))
     occupied, residual = [], []
     for b in positions:
@@ -384,9 +393,10 @@ def analyse(rows, fws, bins=BINS, seed=0, ndraw=NDRAW, cut=0.5):
 
 def arms():
     out = {}
-    for path in sorted(glob.glob(os.path.join(RECORDS, "issue5-onimage-*.jsonl"))
-                       + glob.glob(os.path.join(RECORDS,
-                                                "issue5-fws5-repeat-*.jsonl"))):
+    pats = ("issue5-onimage-*.jsonl", "issue5-fws5-repeat-*.jsonl",
+            "issue5-campaign-*.jsonl")
+    for path in sorted(sum((glob.glob(os.path.join(RECORDS, q))
+                            for q in pats), [])):
         with open(path) as fh:
             rows = [json.loads(l) for l in fh if l.strip()]
         if rows:

@@ -209,6 +209,14 @@ def main():
                    "sites": [[b, round(v, 2), round(z, 1)]
                              for b, v, z in found]}
             rows.append(row)
+            # Append as we go, not once at the end. Writing the whole
+            # session after the loop means a crash at run 70 of 73
+            # discards every row and leaves nothing saying how far it
+            # got - an hour of board time on each of three benches,
+            # against one open() per capture on a 3 s cadence.
+            if args.json:
+                with open(args.json, "a") as fh:
+                    fh.write(json.dumps(row) + "\n")
             print(f"run {i:2d}{'*' if i in regen else ' '}"
                   f"{('a%d' % amp) if amp is not None else '':>5}"
                   f"{('f%d' % fws) if fws is not None else '':>3}: "
@@ -290,10 +298,7 @@ def main():
                     print(f"  {common[i2]:3d} vs {common[j]:3d}: r = {r_:+.2f}")
 
     if args.json:
-        with open(args.json, "a") as fh:
-            for r in rows:
-                fh.write(json.dumps(r) + "\n")
-        print(f"\nwrote {len(rows)} rows to {args.json}")
+        print(f"\nwrote {len(rows)} rows to {args.json} (appended per run)")
 
 
 if __name__ == "__main__":

@@ -103,7 +103,10 @@ def test_the_page_carries_the_censoring_and_the_comb(data):
         "every FWS 6 arm is truncated; if this passes trivially the "
         "censoring section has nothing to draw")
     assert data["comb_period"] == 21
-    assert data["predicted_missing"] == [8, 54, 75, 96, 201, 222, 243]
+    # Six, not seven: the `8` this once carried was a wrap bug in
+    # `lattice()`, corrected after it had already gone into a
+    # pre-registered prediction on #5.
+    assert data["predicted_missing"] == [54, 75, 96, 201, 222, 243]
     for b in data["benches"]:
         c = data["spectrum"][b["id"]]["cross"]["by_fws"]["6"]
         assert c["R"] == pytest.approx(1.0, abs=1e-6), b["id"]

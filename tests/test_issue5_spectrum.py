@@ -99,7 +99,21 @@ def test_lattice_names_the_unoccupied_points():
     assert L["on_lattice"] == 6 and L["max_residual"] == 0
     assert L["occupied"] == REAL_FWS6
     # The pre-registered prediction, asserted so it cannot drift.
-    assert sp.predict_missing(REAL_FWS6, 21) == [8, 54, 75, 96, 201, 222, 243]
+    #
+    # It was registered on #5 as "8, 54, 75, 96, 201, 222, 243" and the
+    # 8 was a bug in `lattice()`, which ran one k too far and wrapped:
+    # 12 + 21*12 = 264 -> 8, and 8 is not congruent to 12 mod 21. So a
+    # real arm was asked to confirm a position the lattice never
+    # contained. Scored honestly rather than quietly corrected: 8 being
+    # absent from that arm neither confirms nor refutes anything, and
+    # the six real points are what the prediction was.
+    assert sp.predict_missing(REAL_FWS6, 21) == [54, 75, 96, 201, 222, 243]
+    assert 8 not in sp.lattice(REAL_FWS6, 21)["points"]
+    # Every point must actually be on the comb - the property the bug
+    # broke, and the one a wrap will break again.
+    for q in sp.lattice(REAL_FWS6, 21)["points"]:
+        assert q % 21 == 12 % 21, q
+        assert q < sp.BINS
 
 
 def test_a_dense_lattice_predicts_nothing():
