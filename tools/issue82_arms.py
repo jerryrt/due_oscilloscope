@@ -41,12 +41,26 @@ RESTORE = ["=0N", "=1J", "=2,1I"]
 THRESH = (6, 10, 15)
 
 
+def edge_parity(x, jump=2000):
+    """A square's edges settle the pairing outright: the new level's first
+    sample is the first sample of a hold. None if the channel has no edges."""
+    starts = [i % 2 for i in range(1, len(x)) if abs(x[i] - x[i - 1]) > jump]
+    if len(starts) < 8:
+        return None
+    even = sum(1 for s in starts if s == 0)
+    if even not in (0, len(starts)):
+        raise ValueError(f"edges disagree on the hold parity: {even} even of {len(starts)}")
+    return 0 if even else 1
+
+
 def parity(vals, known=None):
     """Which two samples form a hold. On a flat channel the two choices
     tie and a guess reads the DAC's update transient as a hold error, so
     a tie is refused unless the caller knows the answer - A1's parity is
     the complement of A0's, since the two channels update on alternate
     triggers."""
+    if known is None:
+        known = edge_parity(vals)
     if known is not None:
         return known, statistics.median(abs(vals[i] - vals[i + 1])
                                         for i in range(known, len(vals) - 1, 2))

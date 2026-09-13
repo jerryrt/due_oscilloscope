@@ -31,9 +31,24 @@ import provenance   # noqa: E402
 FRAME = 1016     # samples per channel per frame
 
 
+def edge_parity(x, jump=2000):
+    """A square's edges settle the pairing outright: the new level's first
+    sample is the first sample of a hold. None if the channel has no edges."""
+    starts = [i % 2 for i in range(1, len(x)) if abs(x[i] - x[i - 1]) > jump]
+    if len(starts) < 8:
+        return None
+    even = sum(1 for s in starts if s == 0)
+    if even not in (0, len(starts)):
+        raise ValueError(f"edges disagree on the hold parity: {even} even of {len(starts)}")
+    return 0 if even else 1
+
+
 def parity(x):
     """The unambiguous case only; a flat channel ties and must take the
     other channel's complement instead of a guess."""
+    e = edge_parity(x)
+    if e is not None:
+        return e
     med = {o: statistics.median(abs(x[i] - x[i + 1]) for i in range(o, len(x) - 1, 2))
            for o in (0, 1)}
     if abs(med[0] - med[1]) < 2.0:
@@ -92,12 +107,17 @@ def main():
         ps = res.stream
         gaps = [f for f, _t, o in ps.overrun_steps if o > 0]
         p0 = parity(ps.series.get(measure.CH_A0))
+        p1 = 1 - p0
+        try:
+            p1 = parity(ps.series.get(measure.CH_A1))   # the square's edges, when there is one
+        except ValueError:
+            pass
         windows = [((f * FRAME) // 2 - 2 * FRAME, (f * FRAME) // 2) for f in gaps]
         row = {"bench": args.bench, **prov, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                "stalls": args.stalls, "ms": args.ms, "gap_frames": gaps,
                "a0": rates(ps.series.get(measure.CH_A0), windows, p0),
-               "a1": rates(ps.series.get(measure.CH_A1), windows, 1 - p0),
-               "a0_parity": p0, "a1_parity": 1 - p0}
+               "a1": rates(ps.series.get(measure.CH_A1), windows, p1),
+               "a0_parity": p0, "a1_parity": p1}
         with open(out, "a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
         for ch in ("a0", "a1"):
