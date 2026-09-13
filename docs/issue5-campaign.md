@@ -144,14 +144,14 @@ dropped are the other six** — 54, 75, 96, 201, 222 and 243 — and that a
 dropped site anywhere else refutes it. Registered before the arm that
 tests it existed and asserted in `tests/test_issue5_spectrum.py`.
 
-It was registered with a thirteenth point, at 8, and that was a defect
-in `lattice()` rather than a claim: the generator ran one step past the
-end of the cycle and `% bins` wrapped it. Position 8 is at phase 8 of
-period 21, not the comb's 12, so a site found there would have scored
-**against** the comb the prediction was testing for. Three benches were
-asked to confirm a position the lattice never contained. Corrected
-rather than quietly dropped, and its absence from any arm confirms and
-refutes nothing.
+**Position 8 is not on the lattice**, and older postings that name it
+are quoting a generator that ran one step past the end of the cycle and
+wrapped. 8 is at phase 8 of period 21 against the comb's 12, so a site
+there would score **against** the structure the prediction tests for —
+which makes it the one position whose presence or absence says nothing
+either way. `tests/test_issue5_spectrum.py` asserts that every lattice
+point is congruent to the offset and inside one cycle, so a wrap cannot
+reach a prediction again.
 
 **The prediction is refuted on all three benches**, by the criterion as
 registered. The arms store whole profiles, so the dropped sites are now
@@ -311,13 +311,13 @@ that is not the bench difference and is not attributable to the metal.
 Every analytical step was registered before its rows existed, and
 several were still wrong — in the statistic rather than the data.
 `tools/issue5_crossover.py` carries each correction at the rule it
-changed. The one that generalises furthest: **a difference is only readable against a
-baseline measured at the same resolution and by the same procedure.**
-Per-position change has one, the untouched board's drift at that
-position, and it caught a wait-state result that had already been
-published and withdrawn on a worse statistic. A verdict-flip count does
-not, and three benches each published something from one before all
-three retracted it.
+changed. The one that generalises furthest: **a difference is only
+readable against a baseline measured at the same resolution and by the
+same procedure.** Per-position change has one, the untouched board's
+drift at that position, and it caught a wait-state result that had
+already been published and withdrawn on a worse statistic. A
+verdict-flip count does not, and three benches each published something
+from one before all three retracted it.
 
 The other, which cost four separate disagreements in an afternoon:
 **name the convention at the call site.** "The per-run value at a
