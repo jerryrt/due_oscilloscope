@@ -769,7 +769,38 @@ def check():
     # flips between modes reads as two states under one convention and
     # one state under the other - the same signed-versus-absolute split
     # that put two conventions in one file at 33813a0.
+    # WITHDRAWN: "the swap perturbs the two-state structure beyond the
+    # floor". 03a7ce4 read the swap legs flipping about twice as often
+    # as the same-wire legs and published that. linux-x1 then measured
+    # the floor the cheap way - split ONE arm's runs in half and compare
+    # the halves, no interval, no handling, no swap - and it is as large
+    # as any between-arm count. In this readout's own convention:
+    #
+    #     within-arm floors   12 to 58 per 768, median about 26
+    #     between-arm         swap 35 and 17, return 29, same-wire 14
+    #                         and 8, mac-bench untouched 16
+    #
+    # Every between-arm count sits inside the single-arm range, and
+    # linux-x1's swap count of 35 sits between its own two arms' floors
+    # of 34 and 39. So the flip counts are classifier sampling noise and
+    # the claim is not established. It is not shown to be absent either:
+    # the halves classify at n=12 against n=24, and classify() is
+    # noisier at lower n, so this is an UPPER bound on the floor rather
+    # than the floor. Settling it needs 48-run arms.
+    #
+    # This is precisely the error mac-bench's untouched control caught
+    # linux-x1 in earlier today - a change quoted without the drift that
+    # produces it - recurring one level up, in the statistic built to
+    # police that very thing, and published by the bench that had just
+    # made the point. A flip count without its own arm's floor is the
+    # same object as a per-position change without the control's drift.
+    #
+    # The column stays, with the floor printed beside it, because a
+    # number that cannot be read without its floor should not be
+    # printable without it.
     print("\n  GUARD STABILITY, two-state verdict flips per 768 cells")
+    print("    read each between-arm count against THAT ARM's own "
+          "within-arm floor, never against another board's")
     sys.path.insert(0, os.path.join(ROOT, "tools"))
     import issue5_modes
 
@@ -790,13 +821,32 @@ def check():
                  "issue5-crossover-{bench}.jsonl",
                  "issue5-return-{bench}.jsonl")]
             for b in BASELINE}
+    def within(path):
+        """linux-x1's floor: one arm's own halves against each other."""
+        t = 0
+        for f in (4, 5, 6):
+            rr = [json.loads(l) for l in open(path, encoding="utf-8")
+                  if l.strip()]
+            rr = [r for r in rr if r["run"] not in (1,) and r.get("fws") == f]
+            h = len(rr) // 2
+            def vs(sub):
+                return {p for p in range(BINS)
+                        if issue5_modes.classify(
+                            [abs(r["profile"][p]) for r in sub]
+                        ).get("modes") == 2}
+            t += len(vs(rr[:h]) ^ vs(rr[h:]))
+        return t
+
     for b, ps in sorted(legs.items()):
         if not all(os.path.exists(p) for p in ps):
             continue
-        tag = "UNTOUCHED (this is the floor)" if b == "mac-bench" else "swapped"
-        print(f"    {b:14s} leg1-leg2 {flips(ps[0], ps[1]):3d}   "
-              f"leg2-leg3 {flips(ps[1], ps[2]):3d}   "
-              f"leg1-leg3 {flips(ps[0], ps[2]):3d}   {tag}")
+        tag = "UNTOUCHED" if b == "mac-bench" else "swapped"
+        w = [within(p) for p in ps]
+        print(f"    {b:14s} between: {flips(ps[0], ps[1]):3d} "
+              f"{flips(ps[1], ps[2]):3d} {flips(ps[0], ps[2]):3d}   "
+              f"within-arm floor: {w[0]:3d} {w[1]:3d} {w[2]:3d}   {tag}")
+    print("    -> every between-arm count is inside its own arm's "
+          "within-arm range. Not established above noise.")
     return 0
 
 
