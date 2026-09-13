@@ -674,7 +674,9 @@ Check here before reasoning from general Arduino knowledge.
     inferred from behaviour, with no kernel source read - and the
     magnitude is not explained either: arms that straddle equally often
     lose 0.353% to 0.522%. The boundary decides *whether*, not *how
-    much*. One rate, one host, so far.
+    much*. Two rates, one host, so far: 397,959 sps reproduces 600,000's
+    arms, and the deficit is a fraction of the bytes rather than a rate of
+    shed events (`docs/usb.md`).
 
   The safe feed is therefore: writes aligned so none straddles a 1 KiB
   boundary - constant 512 from a 512-aligned start is the one in use -
