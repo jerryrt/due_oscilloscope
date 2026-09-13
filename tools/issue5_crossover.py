@@ -754,6 +754,49 @@ def check():
                 print(f"{'':20s}  sensitivity: {sens}")
     if not printed:
         print("\n  RETURN LEG: no return arms in records/ yet")
+        return 0
+
+    # windows-desk's (c): the guard's own verdict flips between arms,
+    # so report the rate and read it only against the SAME board's
+    # same-wire legs. The background differs by board, so one bench's
+    # figure is not another's floor.
+    #
+    # Convention matters here and has already cost one exchange: these
+    # classify |profile| per run, the deviation MAGNITUDE. Classifying
+    # the SIGNED value instead gives 45/768 where the magnitude gives
+    # 16/768 on the same untouched pair, which is most of the gap
+    # between this bench's counts and linux-x1's. A position whose sign
+    # flips between modes reads as two states under one convention and
+    # one state under the other - the same signed-versus-absolute split
+    # that put two conventions in one file at 33813a0.
+    print("\n  GUARD STABILITY, two-state verdict flips per 768 cells")
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import issue5_modes
+
+    def verdicts(path, fws):
+        rows = [json.loads(l) for l in open(path, encoding="utf-8")
+                if l.strip()]
+        rows = [r for r in rows if r["run"] not in (1,) and r.get("fws") == fws]
+        return {p for p in range(BINS)
+                if issue5_modes.classify(
+                    [abs(r["profile"][p]) for r in rows]).get("modes") == 2}
+
+    def flips(a, b):
+        return sum(len(verdicts(a, f) ^ verdicts(b, f)) for f in (4, 5, 6))
+
+    rec = os.path.join(ROOT, "records")
+    legs = {b: [os.path.join(rec, n.format(bench=b)) for n in
+                ("issue5-campaign-{bench}.jsonl",
+                 "issue5-crossover-{bench}.jsonl",
+                 "issue5-return-{bench}.jsonl")]
+            for b in BASELINE}
+    for b, ps in sorted(legs.items()):
+        if not all(os.path.exists(p) for p in ps):
+            continue
+        tag = "UNTOUCHED (this is the floor)" if b == "mac-bench" else "swapped"
+        print(f"    {b:14s} leg1-leg2 {flips(ps[0], ps[1]):3d}   "
+              f"leg2-leg3 {flips(ps[1], ps[2]):3d}   "
+              f"leg1-leg3 {flips(ps[0], ps[2]):3d}   {tag}")
     return 0
 
 
