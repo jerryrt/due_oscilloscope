@@ -31,15 +31,22 @@ import provenance   # noqa: E402
 FRAME = 1016     # samples per channel per frame
 
 
-def holds(x):
-    off = min((statistics.median(abs(x[i] - x[i + 1])
-                                 for i in range(o, len(x) - 1, 2)), o)
-              for o in (0, 1))[1]
+def parity(x):
+    """The unambiguous case only; a flat channel ties and must take the
+    other channel's complement instead of a guess."""
+    med = {o: statistics.median(abs(x[i] - x[i + 1]) for i in range(o, len(x) - 1, 2))
+           for o in (0, 1)}
+    if abs(med[0] - med[1]) < 2.0:
+        raise ValueError(f"hold parity is a tie ({med[0]} vs {med[1]})")
+    return min(med, key=med.get)
+
+
+def holds(x, off):
     return [(x[i] + x[i + 1]) / 2.0 for i in range(off, len(x) - 1, 2)]
 
 
-def rates(x, windows):
-    L = holds(x)
+def rates(x, windows, off):
+    L = holds(x, off)
     E = [L[h] - (L[h - 1] + L[h + 1]) / 2.0 for h in range(1, len(L) - 1)]
     edges = {h for h in range(1, len(L)) if abs(L[h] - L[h - 1]) > 1000}
     ok = lambda h: 1 <= h < len(L) - 1 and not any((h + k) in edges for k in range(-3, 4))
@@ -84,11 +91,13 @@ def main():
         th.join()
         ps = res.stream
         gaps = [f for f, _t, o in ps.overrun_steps if o > 0]
+        p0 = parity(ps.series.get(measure.CH_A0))
         windows = [((f * FRAME) // 2 - 2 * FRAME, (f * FRAME) // 2) for f in gaps]
         row = {"bench": args.bench, **prov, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                "stalls": args.stalls, "ms": args.ms, "gap_frames": gaps,
-               "a0": rates(ps.series.get(measure.CH_A0), windows),
-               "a1": rates(ps.series.get(measure.CH_A1), windows)}
+               "a0": rates(ps.series.get(measure.CH_A0), windows, p0),
+               "a1": rates(ps.series.get(measure.CH_A1), windows, 1 - p0),
+               "a0_parity": p0, "a1_parity": 1 - p0}
         with open(out, "a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
         for ch in ("a0", "a1"):
