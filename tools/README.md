@@ -31,9 +31,10 @@ only where the finding shows up in `docs/`; where it does not, that is
 
 ## Two things this table does not fix
 
-**Nine of these hardcode `track="b"`**, so a Track A run gets recorded
-as if it were Track B - issue #53's own subject, tracked there rather
-than duplicated here.
+**Every record-writing tool asks the board which track it runs**, via
+`provenance.run_fields()`. Record files written before those tools asked
+can carry `track: "b"` on Track A runs; `records/README.md` lists them
+and says how to read them.
 
 **A handful hardcode one bench's absolute repo path or serial port**
 (`COM7` and similar) instead of discovering either. The repo-path form
