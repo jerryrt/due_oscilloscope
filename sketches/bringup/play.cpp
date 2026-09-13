@@ -161,7 +161,7 @@ bool play_start(uint32_t dac_hz)
 	 * capture silently undoes what the console was told it set. */
 	gen_apply_acr();
 	DACC->DACC_MR = DACC_MR_TAG
-	              | DACC_MR_REFRESH(1)
+	              | DACC_MR_REFRESH(GEN_REFRESH_IDLE)
 	              | (0x10u << DACC_MR_STARTUP_Pos)
 	              | DACC_MR_MAXS;
 	DACC->DACC_CHER = DACC_CHER_CH0 | DACC_CHER_CH1;
@@ -183,7 +183,9 @@ bool play_start(uint32_t dac_hz)
 	NVIC_EnableIRQ(DACC_IRQn);
 
 	DACC->DACC_PTCR = DACC_PTCR_TXTEN;
-	DACC->DACC_MR |= DACC_MR_TRGEN | TRGSEL_TIOA1;
+	DACC->DACC_MR = (DACC->DACC_MR & ~DACC_MR_REFRESH_Msk)
+	              | DACC_MR_REFRESH(GEN_REFRESH_STREAM)
+	              | DACC_MR_TRGEN | TRGSEL_TIOA1;
 
 	/*
 	 * Do not start the timer yet. Starting an empty ring guarantees a
@@ -204,7 +206,9 @@ void play_stop(void)
 	primed = false;
 	dma_inflight = false;
 	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
-	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);
+	DACC->DACC_MR = (DACC->DACC_MR & ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk
+	                                   | DACC_MR_REFRESH_Msk))
+	              | DACC_MR_REFRESH(GEN_REFRESH_IDLE);
 	DACC->DACC_PTCR = DACC_PTCR_TXTDIS;
 	DACC->DACC_IDR = 0xffffffff;
 	NVIC_DisableIRQ(DACC_IRQn);

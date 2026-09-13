@@ -53,6 +53,28 @@
 #define GEN_IBCTL_CH_CHARACTERISED    2u
 #define GEN_IBCTL_CORE_CHARACTERISED  1u
 
+/*
+ * DACC_MR.REFRESH while a PDC stream is running, and while it is not.
+ *
+ * The refresh re-converts each channel's held value every 1024 DACC
+ * clocks; with both channels enabled that is one refresh conversion
+ * through the single DAC core every 512, and a trigger that lands on
+ * one is served a conversion late. The ADC samples A0 a fixed interval
+ * after the same trigger and reads DAC0 still settling, about 0.7 of
+ * the step short. Against the RC-195 trigger 390 * 21 = 16 * 512 - 2,
+ * so the collisions comb every 21st table entry; at any other rate the
+ * comb period follows RC. docs/issue5.md.
+ *
+ * A running stream rewrites each channel every two triggers, so the
+ * refresh protects nothing while streaming and only collides: it is
+ * off. It is restored at stop, because an idle channel's held level
+ * decays after 20 us without it (datasheet 45.6.7). Every start path
+ * sets the first and every stop path the second; "restoring"
+ * REFRESH(1) in a start path brings the comb back.
+ */
+#define GEN_REFRESH_STREAM  0u
+#define GEN_REFRESH_IDLE    1u
+
 extern uint8_t gen_ibctl_ch;
 extern uint8_t gen_ibctl_core;
 void     gen_set_ibctl(uint32_t ch, uint32_t core);

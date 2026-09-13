@@ -120,6 +120,20 @@ uint32_t gen_trigger_hz(void);
 #define GEN_IBCTL_CH_CHARACTERISED    2u
 #define GEN_IBCTL_CORE_CHARACTERISED  1u
 
+/*
+ * DACC_MR.REFRESH while a PDC stream runs, and while it does not. A
+ * refresh conversion through the shared DAC core lands every 512 DACC
+ * clocks with both channels on, and a trigger that meets one is served
+ * late - the ADC then reads DAC0 mid-settle, which is the comb of
+ * displaced samples at every 21st table entry at RC 195. A running
+ * stream rewrites each channel every two triggers, so refresh is off
+ * while streaming and restored at stop, where the held level would
+ * otherwise decay. docs/issue5.md. Restoring REFRESH(1) in a start path
+ * brings the comb back.
+ */
+#define GEN_REFRESH_STREAM  0u
+#define GEN_REFRESH_IDLE    1u
+
 extern uint8_t gen_ibctl_ch;      /* IBCTLCH0 and CH1, 0-3 */
 extern uint8_t gen_ibctl_core;    /* IBCTLDACCORE, 0-3     */
 void        gen_set_ibctl(uint32_t ch, uint32_t core);

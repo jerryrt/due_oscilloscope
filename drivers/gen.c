@@ -342,7 +342,7 @@ void gen_init(void)
 	gen_apply_acr();
 
 	DACC->DACC_MR = DACC_MR_TAG
-	              | DACC_MR_REFRESH(1)
+	              | DACC_MR_REFRESH(GEN_REFRESH_IDLE)
 	              | (0x10u << DACC_MR_STARTUP_Pos)
 	              | DACC_MR_MAXS;
 
@@ -368,7 +368,9 @@ void gen_start(void)
 	NVIC_EnableIRQ(DACC_IRQn);
 
 	DACC->DACC_PTCR = DACC_PTCR_TXTEN;
-	DACC->DACC_MR |= DACC_MR_TRGEN | TRGSEL_TIOA0;
+	DACC->DACC_MR = (DACC->DACC_MR & ~DACC_MR_REFRESH_Msk)
+	              | DACC_MR_REFRESH(GEN_REFRESH_STREAM)
+	              | DACC_MR_TRGEN | TRGSEL_TIOA0;
 }
 
 /*
@@ -416,7 +418,9 @@ void gen_prepare_tioa1(uint32_t dac_hz)
 	NVIC_EnableIRQ(DACC_IRQn);
 
 	DACC->DACC_PTCR = DACC_PTCR_TXTEN;
-	DACC->DACC_MR |= DACC_MR_TRGEN | TRGSEL_TIOA1;
+	DACC->DACC_MR = (DACC->DACC_MR & ~DACC_MR_REFRESH_Msk)
+	              | DACC_MR_REFRESH(GEN_REFRESH_STREAM)
+	              | DACC_MR_TRGEN | TRGSEL_TIOA1;
 }
 
 void gen_go_tioa1(void)
@@ -466,7 +470,9 @@ bool gen_start_independent(uint32_t dac_hz)
 
 void gen_stop(void)
 {
-	DACC->DACC_MR &= ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk);
+	DACC->DACC_MR = (DACC->DACC_MR & ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk
+	                                   | DACC_MR_REFRESH_Msk))
+	              | DACC_MR_REFRESH(GEN_REFRESH_IDLE);
 	DACC->DACC_PTCR = DACC_PTCR_TXTDIS;
 	DACC->DACC_IDR = 0xffffffff;
 	NVIC_DisableIRQ(DACC_IRQn);
