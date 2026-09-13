@@ -538,36 +538,16 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
             f"path, not the device. See docs/status.md")
 
 
-# Rates whose feed genuinely oversupplies, so the surplus is shed.
-#
-# The host's USB stack discards bytes write() has counted, silently.
-# Two separable causes were measured:
-#
-#   How the writes are issued. Writing a constant 512 bytes is
-#   lossless; writing "whatever is due" - the same sizes, the same
-#   pacing - loses 0.45-0.65% at every rate above 200 ksps. The feeder
-#   writes a constant size for that reason, and it took five of the
-#   seven rates here from losing to exact.
-#
-#   Genuine oversupply, which no write policy can fix. At 886,363 and
-#   1,000,000 sps the converter runs slow by 1.58% and 2.35% - measured
-#   against the device's own clock - so the host feeds more than the
-#   device can take and the excess is discarded rather than queued.
-#   The deficits, 1.35% and 2.15%, are those figures. These rates
-#   report under=0 while losing the most of any rate in the ladder,
-#   which is why this test exists and the underrun counter cannot
-#   stand in for it.
-#
-# Issue #48 has since named the cause and it is `DACC_MR_REFRESH`:
-# setting it to 2 or 3 clears every affected rate and restoring 1 brings
-# them all back (p = 3.3e-11 across the ladder), the effect appears with
-# no USB in the DAC path at all, and it reproduces on both tracks and
-# both hosts. So these two are not special rates - they are two points
-# inside a band running roughly 750,000 to 1,300,000 sps, and they are
-# the two this parametrisation happens to sample. The deficits are
-# quantised: every rate loses an integer number of conversions out of
-# 256, which is 4/256 at RC 44 and 6/256 at RC 39.
-OVERSUPPLIED = {44, 39}
+# RC 44 and 39 used to lose bytes here, and were an expected failure
+# under the name OVERSUPPLIED. The converter delivered 4/256 and 6/256
+# fewer conversions than it was programmed for, and a host that buffers
+# ahead shed the surplus it wrote for them. The cause was a DACC refresh
+# conversion taking a triggered conversion's slot, one every 512 DACC
+# clocks at DACC_MR_REFRESH(1), and the stream now runs with the refresh
+# held off (GEN_REFRESH_STREAM, docs/issue5.md). An A/B/A on that one
+# constant on mac-bench took both rates from 4 of 4 runs slow to 0 of 8,
+# so they are held to the same byte-exact standard as every other rate.
+# A deficit at either is the refresh running during a stream again.
 
 # Rates where a small residual loss survives the constant-size feed.
 #
@@ -580,17 +560,12 @@ OVERSUPPLIED = {44, 39}
 # Handled by outcome rather than by mark, so a clean run passes and
 # reports: this turns green by itself when the residual is fixed.
 #
-# **RC 32 carries two different losses and they should not be confused.**
-# The 384 B here is the host residual this comment describes. Separately,
-# RC 32 sits at the upper edge of #48's band and takes one of two modes
-# per run - 0 or 16 conversions lost per 256 - and the 16 mode sheds
-# about 450,000 B in a 3 s run, three orders of magnitude more. A run
-# that loses 384 B and a run that loses 450 kB at this rate are not the
-# same defect measured twice; the first is macOS's chunk drop and the
-# second is the converter delivering 15/16 of its programmed rate.
-#
-# RC 28 is outside that band and measures clean device-side (n = 0), so
-# whatever it loses here is the host's alone.
+# The 384 B here is macOS's chunk drop and nothing else. Before the
+# refresh was held off during a stream, RC 32 also had a second mode that
+# delivered 15/16 of its programmed rate and shed about 450,000 B in a
+# 3 s run, and RC 28 one that delivered 254/256. Neither exists with
+# GEN_REFRESH_STREAM at 0, so a loss of that size at either rate is not
+# this residual and should not be read as one.
 RESIDUAL = {32, 28}
 
 
@@ -640,11 +615,6 @@ def test_device_receives_every_byte_the_host_sent(board, seconds,
         f"128-byte chunks: that is the device losing data it received, "
         f"not the host's chunk drop. Read play_partial and docs/usb.md")
 
-    if deficit and rc in OVERSUPPLIED:
-        pytest.xfail(
-            f"RC {rc} ({hz} sps): host lost {deficit} B "
-            f"({deficit / res.host_tx_bytes * 100:.2f}%) feeding a "
-            f"converter that runs slow. See OVERSUPPLIED")
     if deficit and rc in RESIDUAL:
         pytest.xfail(
             f"RC {rc} ({hz} sps): host lost {deficit} B "
@@ -655,5 +625,6 @@ def test_device_receives_every_byte_the_host_sent(board, seconds,
         f"RC {rc} ({hz} sps) lost {deficit} B ({deficit // 128} chunks "
         f"of 128) that write() counted. This rate is byte-exact with a "
         f"constant-size feed; a loss here means the feeder stopped "
-        f"writing a constant size, or the oversupply that affects "
-        f"RC 44 and 39 has spread. Read Feeder.WRITE_SIZE")
+        f"writing a constant size, or the DACC refresh is running "
+        f"during a stream again, which is what made RC 44 and 39 lose "
+        f"bytes before. Read Feeder.WRITE_SIZE and GEN_REFRESH_STREAM")

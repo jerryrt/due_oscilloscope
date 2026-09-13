@@ -466,11 +466,6 @@ CONSTANTS = [
        r"^\s+WRITE_SIZE\s*=\s*(\d+)\s*$",
        r"(\d+)-byte\s+write"),
 
-    # "`OVERSUPPLIED = {44, 39}` in `tests/test_integrity.py` is this".
-    _c("OVERSUPPLIED", "tests/test_integrity.py",
-       r"^OVERSUPPLIED\s*=\s*(\{[^}]*\})\s*$",
-       r"`OVERSUPPLIED\s*=\s*(\{[^}]*\})`"),
-
     # "Track A must be built with `--build-property
     # build.f_cpu=78000000L` or `micros()` is silently wrong", and the
     # host divides by the same number to compute an RC.

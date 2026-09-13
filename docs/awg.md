@@ -1776,8 +1776,8 @@ wondering which measurement changed.
 
 Three things follow, and the third is the one to design against.
 
-**RC 39 and 44 run slow on every run.** This is the effect
-`tests/test_integrity.py` already carries as `OVERSUPPLIED = {44, 39}`,
+**RC 39 and 44 run slow on every run** at `REFRESH(1)`. This is the
+effect `tests/test_integrity.py` used to excuse as an expected failure,
 "feeding a converter that runs slow", and which `docs/windows.md`
 reproduces on Windows. It is the device's, it is persistent, and the
 host's "lost" bytes at those rates are surplus it wrote for a converter
@@ -2198,14 +2198,29 @@ mechanism; it pointed at the right register for the wrong reason, and
 "why RC 32 is intermittent where 39 and 44 are persistent" is again
 unexplained.
 
-**What is not established.** Why those rates, and what produces a ratio
-that keeps landing on a binary fraction. `DACC_MR_REFRESH(1)` in
-`play_start()` is a candidate worth checking - the refresh cycle
-re-writes the output periodically and can take a conversion slot - but
-nothing here tests it, and the three fractions are quoted as
-*consistent with* rather than *equal to*: RC 39 and 44 sit 1.7 sd from
-theirs, which several other fractions would also satisfy. Only RC 32's
-15/16 is exact enough (0.2 sd) to be more than a coincidence of digits.
+**Why those rates is now established, and the fix removes it.** A
+refresh conversion every 512 DACC clocks takes a triggered conversion's
+slot whenever a trigger meets it, which is the mechanism
+`docs/issue5.md` sets out for the wrap displacement. Which rates lose,
+and by how many 256ths, follows from where that 512-clock event aliases
+against the trigger. With the refresh held at 0 for the length of a
+stream (`GEN_REFRESH_STREAM`), an A/B/A on that one constant, one
+board, one tree, reads:
+
+| RC | fix, two arms | `REFRESH(1)` control | Fisher one-sided |
+|---|---|---|---|
+| 39 | 0 of 8 slow, median 0.99992 | **4 of 4** at 0.97644 | p = 0.002 |
+| 44 | 0 of 8 slow, median 0.99991 | **4 of 4** at 0.98424 | p = 0.002 |
+| 28 | 0 of 8 | 1 of 4 at 0.99214 = 254/256 | - |
+| 32, 56 | 0 of 8 | 0 of 4 | - |
+
+`tools/issue47_ratio.py`, run 1 dropped by index, 0 underruns in every
+counted run. `records/issue48-ladder-refresh-aba-mac-bench.jsonl`. RC
+32's 15/16 mode did not draw in the control's session, so this arm
+neither shows it nor rules it out, and `linux-x1` reads it absent on
+the fix image. **What is still open is `REFRESH(2)`**: it clears both
+this and the wrap displacement entirely, where a free-running refresh
+at twice the period predicts half the collisions.
 
 **One defect, two expressions - confirmed on two hosts.** `windows-desk`
 ran the RC 32 arm and found 3 of 12 runs at 0.93738-0.93751 with

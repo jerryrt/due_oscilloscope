@@ -362,16 +362,17 @@ Check here before reasoning from general Arduino knowledge.
   The ripple that refresh defends against is **0.22 codes = 0.18 mV**,
   and during playback the sample stream rewrites the DAC 18-37x more
   often than refresh does, so while streaming refresh protects nothing.
-  The mechanism is **not** explained; four candidate models are dead on
-  issue #48, all of them measured rather than argued away.
-
-  **What this costs you:** `OVERSUPPLIED = {44, 39}` in
-  `tests/test_integrity.py` is this, and so is the macOS "byte loss" at
-  those rates - a host that buffers ahead sheds the surplus it wrote for
-  a converter that could not take it, while Windows applies backpressure
-  and simply feeds less. **Do not size anything against a nominal
-  playback rate in that band**, and do not read a byte deficit there as
-  loss. `docs/awg.md`.
+  **And the band is gone with the refresh held off during a stream.**
+  Everything above describes `REFRESH(1)`. On the fix image the whole
+  ladder delivers in full: an A/B/A on `GEN_REFRESH_STREAM` alone on
+  `mac-bench` took RC 39 and RC 44 from 4 of 4 runs slow to 0 of 8, and
+  `linux-x1` reads the same ladder clean. So a nominal playback rate is
+  what the converter delivers again, and `tests/test_integrity.py` holds
+  RC 39 and 44 byte-exact rather than excusing them. A deficit in that
+  band now is a regression, most likely the refresh running during a
+  stream. **Why `REFRESH(2)` removes it outright rather than halving it
+  is still not explained**, and the idle DAC still runs `REFRESH(1)`.
+  `docs/awg.md`.
 
 - **The generator's 113 kHz ceiling is the ADC's, not the DAC's.** Every
   ordinary path triggers the DACC from TIOA0 so generation and capture
