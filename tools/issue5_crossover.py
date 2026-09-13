@@ -290,7 +290,44 @@ RETURN_DRIFT_FLOOR = 0.30
 #: So eligibility is judged on EACH COMPONENT against the untouched
 #: board's move in that same component at that same position. A
 #: position may be eligible on size and not on count.
-RETURN_COMPONENTS = ("count", "size")
+#: AND THE COUNT MUST BE A STATE, NOT SITE PRESENCE. windows-desk's
+#: second correction, and it settles 240 the other way from 735c3b8.
+#:
+#: Counting "how many runs list this position as a site" mixes large
+#: and small runs into the size column, because a site can be listed
+#: and small. The threshold-free version: pool that position's per-run
+#: |profile| over BOTH arms, cut at the largest gap, and report the
+#: count above it, the median size when large, and the median when
+#: small. Measured that way, with the untouched board beside each:
+#:
+#:   FWS 4 pos 219   untouched  large 11->15   size-large  9.78-> 9.73
+#:                   linux-x1   large  8->14   size-large  7.99->14.42
+#:   FWS 4 pos 240   untouched  large 13-> 9   size-large  4.88-> 4.79
+#:                   linux-x1   large 15->10   size-large  7.06-> 5.22
+#:   FWS 6 pos 169   untouched  large 11->16   size-large 21.75->22.00
+#:                   linux-x1   large 23->24   size-large 18.36->30.38
+#:
+#: 240 IS REINSTATED. 735c3b8 struck it because the untouched size fell
+#: 4.51 to 1.00 - but that was the mixture, not the size. Under the
+#: state rule the untouched size-large is 4.88 -> 4.79, flat, while
+#: linux-x1's falls 7.06 -> 5.22. And the COUNT falls on both boards,
+#: 13->9 untouched against 15->10, so the count is drift and the size
+#: is not. Exactly what windows-desk predicted before computing it.
+#:
+#: So both FWS 4 positions are eligible on SIZE and neither on count,
+#: and the ruling in 589329e that "FWS 4 has zero eligible positions"
+#: was an artifact of the statistic twice over - first the pooled
+#: median, then site-presence counting. The control was never wrong;
+#: what it was applied to was wrong, twice, and another bench caught
+#: both.
+#:
+#: Eligible on size: 219 and 240 at FWS 4, 134 at FWS 5, 169 and 180
+#: at FWS 6. Eligible on count: none - every count move is matched on
+#: the untouched board.
+RETURN_COMPONENTS = ("large_count", "size_when_large", "size_when_small")
+#: The state cut is the largest gap in the position's pooled values
+#: across the two arms being compared, so it is a property of the
+#: comparison and must be recomputed per comparison, never carried.
 
 
 def comb_sum(path, fws=6, drop=(1,)):
