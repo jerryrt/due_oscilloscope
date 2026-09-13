@@ -288,17 +288,24 @@ lattice is a count of 21" is the alias read at one rate, and
 `round(4096/RC)` is refuted with it - it predicts 21 at RC 192, where the
 board gives 4.
 
-**The window is a second axis and it is not yet a law.** Its *width* is
-set by the wait state - RC 190 reads a clean gap-31 comb at FWS 5 and a
-doubled one at FWS 6 (each tooth split into a pair 4 apart, 4 + 27 = 31),
-because the wider window catches two phases per tooth. Its *position* is
-the DAC-start-to-ADC-start gap - `h_mimic` starts TC0, waits `K`, starts
-TC1, and that gap is instruction and scheduling timing - so a rate's
-narrow window lands on one bench and not another on one image: RC 196
-resolved its comb of 17 on `mac-bench` and stayed dense on `linux-x1`.
-That gap redrawn per capture is the two run-level severity modes. The
-width/position law in clocks, and RC 196's period on `linux-x1`, want a
-`K` sweep at fixed rate; no reflash needed. `records/issue5-alias-sweep-*`.
+**The window is a second axis and it is not yet a law.** Its *position*
+is a property of the image and the rate, not of the bench or the run:
+the fitted rotation is identical on `linux-x1` and `mac-bench` at every
+rate (439, 94, 446, 126, 0 at RC 195, 186, 196, 190, 192) and identical
+on every run of a block. Its *width* is set by the wait state - RC 190
+reads a clean gap-31 comb at FWS 5 and a doubled one at FWS 6 (each
+tooth split into a pair 4 apart, 4 + 27 = 31), because the wider window
+catches two phases per tooth.
+
+**What is drawn per capture is a mode, at fixed position.** RC 196 at
+FWS 6 is bimodal on both benches: a sharp 13-site comb of 17, or a dense
+66-72-site profile, same rotation either way - one run in six sharp on
+`linux-x1`, four in six on `mac-bench`. That is occupancy of two states,
+not a window that moved, and it is the shape of the two run-level
+severity modes the campaign found. What the dense state *is* has not
+been established; the `K` sweep at fixed rate, which moves the
+DAC-start-to-ADC-start gap in 39-clock steps and needs no reflash, is
+the arm that can say. `records/issue5-alias-sweep-*`.
 
 The displaced sample reads about **-0.70 of the local DAC step** at every
 comb site (max residual 2.3 codes on +-35 across three boards), so it
