@@ -60,6 +60,35 @@ PERIOD, PHASE, BINS = 21, 12, 256
 LATTICE = [PHASE + PERIOD * k for k in range(BINS // PERIOD + 1)
            if PHASE + PERIOD * k < BINS]
 
+#: THE ESTIMATOR IS PART OF THE REGISTRATION. "The comb sum" names at
+#: least three quantities and they do not agree:
+#:
+#:                    profile/12   profile/10   sitelist/10
+#:     linux-x1          235.50       235.16        233.88
+#:     windows-desk      218.21       217.99        217.23
+#:     mac-bench         238.29       237.96        238.06
+#:
+#: The route used here is **profile/12**: all twelve period-21 lattice
+#: points, summed off the stored 256-point profile, median over runs,
+#: run 1 dropped by index. It is chosen because it needs no detection
+#: threshold - a site list is a threshold over a floor that is itself
+#: the thing moving between modes, so a site-list sum partly measures
+#: the floor. `comb_sum()` below is the only implementation, and both
+#: the baselines and every new arm go through it.
+#:
+#: `linux-x1` raised this before any crossover row was read, estimating
+#: the divergence at 3% and so at 40% of the decision cut. Measured on
+#: the committed rows it is 0.1-0.7%, at most 1.62 units against a cut
+#: of 17.30 - 9% of the cut, not 40%. Their 233.88 is exactly the
+#: sitelist/10 route on the same rows. Smaller than feared and still
+#: worth pinning, because two benches computing "the comb sum" two ways
+#: has already cost this project one exchange.
+#:
+#: `--verify-baseline` recomputes these from the committed records and
+#: refuses on disagreement, so the estimator is pinned by EXECUTION and
+#: not by this comment. A constant that only prose defends is a
+#: constant that drifts.
+#:
 #: Median comb sum and per-run sd, from the three committed arms.
 #: `linux-x1`'s excludes its run 31, whose comb collapsed to 0.283 of
 #: normal - a documented singular run, excluded as an outlier in the
@@ -88,6 +117,36 @@ D_MATERIAL = 2 * GAP
 D_DIE = 0.0
 #: Decision rule, fixed in advance.
 D_CUT = GAP
+
+#: THE RETURN LEG, registered while linux-x1's crossover arm was still
+#: capturing and before any crossover row was read.
+#:
+#: The swap physically handles both boards, so "the wire changed" and
+#: "the board was reseated" are confounded in the crossover exactly as
+#: board and material were confounded before it. Putting the ORIGINAL
+#: wires back and re-running is the only thing that separates them:
+#:
+#:     linux-x1 board      IRON   -> copper   (back to its own)
+#:     windows-desk board  COPPER -> iron     (back to its own)
+#:
+#: Let L2, W2 be those. The statistic is a hysteresis:
+#:
+#:     H = |L2 - L0| + |W2 - W0|
+#:
+#: Small H means the manipulation is REVERSIBLE, so whatever moved in
+#: the crossover moved back when the wire did, and handling is excluded.
+#: Large H with a large D means something changed and stayed changed -
+#: which is reseating, contact resistance, or drift, and is NOT the
+#: material however cleanly the crossover exchanged.
+#:
+#: A large D that does not return is the outcome that would otherwise
+#: have been published as "material", and it is the reason this leg is
+#: registered rather than offered afterwards. Approved by linux-x1's
+#: owner and by mac-bench's before it was written down.
+H_TOL = 8.18   # 3 * sqrt(sd_L^2 + sd_W^2), per-run sds, deliberately
+               # loose: it bounds a between-session quantity that has
+               # never been measured, and the control arm is what
+               # measures it.
 
 #: The control must reproduce itself or the comparison is void. Three
 #: sds of a single run, which is looser than the median of 24 needs and
@@ -166,10 +225,47 @@ def check():
     return 0
 
 
+def verify_baseline():
+    """Recompute the registered baselines from the committed records.
+
+    The estimator is part of the registration, so it is pinned by
+    running it rather than by the comment that describes it. If someone
+    changes `comb_sum` - to the site list, to ten points, to a mean -
+    these stop matching and this refuses.
+    """
+    bad = []
+    for b in BASELINE:
+        p = os.path.join(ROOT, "records", f"issue5-campaign-{b}.jsonl")
+        if not os.path.exists(p):
+            bad.append(f"{b}: no campaign record")
+            continue
+        v, n = comb_sum(p)
+        d = abs(v - BASELINE[b]["comb"])
+        mark = "ok" if d <= 0.05 else "MISMATCH"
+        print(f"  {b:14s} registered {BASELINE[b]['comb']:7.2f}  "
+              f"recomputed {v:7.2f}  (n={n})  {mark}")
+        if d > 0.05:
+            bad.append(f"{b}: registered {BASELINE[b]['comb']:.2f} but "
+                       f"comb_sum() gives {v:.2f}")
+    if bad:
+        print("\nREFUSING: the estimator has moved under the "
+              "registration:", file=sys.stderr)
+        for x in bad:
+            print(f"  {x}", file=sys.stderr)
+        return 1
+    print("\n  estimator pinned: profile/12, median, run 1 dropped")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--verify-baseline", action="store_true",
+                    help="recompute the registered baselines from the "
+                         "committed records and refuse on disagreement")
     a = ap.parse_args()
+    if a.verify_baseline:
+        return verify_baseline()
     return check() if a.check else (registration() or 0)
 
 
