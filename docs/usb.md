@@ -651,43 +651,52 @@ Always a whole multiple of 128. Tracked as `RESIDUAL` in
 `tests/test_integrity.py` **by outcome rather than by mark**, so a clean
 run passes and it turns green by itself.
 
-It was recorded at 1,218,750 sps and it is not that rate's alone. The
-re-validation above 200 ksps found the same shape at **1,392,857 sps**
-on the constant-512 feed - the one the project ships - in **2 of 16
-analysed runs**: 58,240 B and 57,856 B, 0.692% and 0.689%, 455 and 452
-whole chunks of 128, with no underrun, a drained pipeline and the
-write stream that cannot straddle a 1 KiB boundary.
+It is recorded at 1,218,750 sps and that is still the only rate it has
+been seen at. A shortfall at 1,392,857 sps looked like the same shape
+for a while - intermittent, whole chunks of 128, no underrun, a drained
+pipeline - and it is not: every instance of it drew the converter's slow
+mode, which makes it oversupply and puts it in the section above.
 
-**Whether oversupply explains it is open.** RC 44 and RC 39 shed
-because the converter runs slow and a host that buffers ahead loses the
-surplus, and the tempting argument here is that RC 28 delivers in full
-so there is no surplus to shed. It does not deliver in full: it draws a
-second mode 2/256 low on about a quarter of runs, which is the ladder's
-own measurement and is in `docs/awg.md`. A quarter of runs is close
-enough to the observed 2 in 16 that the two cannot be told apart by
-incidence.
+**It is oversupply, and the shipped feed is not at fault.** The mode is
+drawn per run and the device reports its own `consumed / run_us`, so a
+block at this rate that labels every run fast or slow before looking at
+its deficit separates the two explanations in one pass. Forty-seven
+labellable runs at 1,392,857 sps:
 
-They can be told apart by size, and the sizes do not match. 2/256 is
-0.781%, and a run writing 8.41 MB would shed about 65,700 B of surplus
-where the two events shed **58,240 B and 57,856 B** - 0.692% and 0.689%,
-about 89% of what the slow mode predicts, and agreeing with each other
-to three thousandths of a percent. So the deficits are not a whole
-surplus, and neither are they a clean multiple of one.
+| | runs | lost bytes |
+|---|---|---|
+| full rate | 38 | **0** |
+| 2/256 slow | 9 | **9** |
 
-**What would settle it is device-side.** The mode is drawn per run and
-the device reports its own `consumed / run_us`, so a block at this rate
-that records the device's rate alongside the host's deficit separates
-them in one pass: losses that land only on slow-mode runs are
-oversupply, and losses on runs the device clocked at full rate are not.
-The rows behind this section do not carry that field, which is the
-limitation rather than the answer.
+Every losing run drew the slow mode and no full-rate run lost anything.
+The nine deficits sit between 57,856 and 58,368 B - 0.687% to 0.693% -
+against device ratios of 0.99211 to 0.99220, which is one mechanism
+rather than a spread. So the host wrote for a converter that took less,
+and shed the surplus it should never have written; the constant feed did
+what it was asked.
 
-So the constant feed is lossless at 200,000, 397,959, 600,000 and
-696,428 sps and **intermittently short at 1,392,857**, in about an
-eighth of runs, by an amount that is neither zero nor the surplus the
-slow mode would leave. A figure taken at the top of the ladder needs its
-own repetitions; a single clean run there is not evidence of a clean
-path.
+That the shed amount is about 89% of the whole 2/256 surplus rather than
+all of it is a property of how much the stack had buffered when the run
+ended, not a second effect.
+
+**The counting is what makes this a measurement rather than a story.**
+A run disturbed by an underrun must be excluded from the labelling
+altogether, not labelled and then discussed: an underrun perturbs
+`consumed / run_us` directly and the run then carries a mode the rate
+does not have. One run here did, at nine underruns and 2,048 B lost, and
+it is reported rather than folded in either direction.
+
+And the block has a positive control, without which "every loss was
+slow-mode" would be unfalsifiable: the slow mode has to appear at all.
+It did, in 9 of 47 runs, which is the incidence the ladder reports for
+this rate.
+
+So the constant feed is lossless at every rate on the ladder where the
+converter takes what it is given, and the shortfalls at 886,363,
+1,000,000 and 1,392,857 sps are all the same thing seen three times:
+a host that buffers ahead loses a surplus a slow converter left behind.
+Alignment governs which writes are dropped, never whether there is
+anything to drop.
 
 ## Instrumentation rules earned here
 
