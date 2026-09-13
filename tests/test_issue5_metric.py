@@ -245,3 +245,42 @@ def test_every_issue5_tool_names_its_encoding():
         "open() without encoding= in the #5 tools, which breaks on a "
         f"cp936 default the moment the file holds a non-ASCII byte: "
         f"{offenders}")
+
+@pytest.mark.skipif(not CAMPAIGN, reason="no campaign records")
+def test_a_sign_flipping_site_is_not_cancelled():
+    """|median of deviations| cancels a site that changes sign; the
+    metric must use median of |deviations|.
+
+    `comb_from_profile` originally summed |median(signed)|, while
+    `site_dev` summed median(|signed|). One file, two conventions. They
+    agree on a unimodal arm and diverged by 7.95 on windows-desk - all of
+    it at phase 201 (1.63 against 8.07) and phase 75 (1.91 against 3.42),
+    because 201 CHANGES SIGN between that bench's two FWS 6 modes.
+
+    A statistic that reports a site as nearly absent because it flips is
+    measuring the sign, not the size, and it is the size this metric
+    exists to measure. This pins the correct convention on the one arm
+    where the two can be told apart.
+    """
+    name = "issue5-campaign-windows-desk.jsonl"
+    if name not in CAMPAIGN:
+        pytest.skip("the bimodal arm is not here")
+    v = rows_of(name)
+    assert all(r.get("profile") for r in v)
+
+    def abs_of_median(b):
+        return abs(statistics.median(
+            [r["profile"][b] - statistics.median(r["profile"]) for r in v]))
+
+    # Phase 201 is the discriminating case: large in every run, near zero
+    # under the wrong convention.
+    assert abs_of_median(201) < 3.0, "201 no longer straddles zero here"
+    assert m.site_dev(v, 201) > 6.0
+    # And the sum must use the convention that keeps it.
+    assert m.comb_from_profile(v, m.OCCUPIED) == pytest.approx(
+        sum(m.site_dev(v, b) for b in m.OCCUPIED), rel=1e-9), (
+        "comb_from_profile and site_dev disagree about abs-vs-median order")
+    # The wrong convention is measurably lower on this arm, so the
+    # assertion above cannot pass by accident.
+    wrong = sum(abs_of_median(b) for b in m.OCCUPIED)
+    assert m.comb_from_profile(v, m.OCCUPIED) - wrong > 5.0

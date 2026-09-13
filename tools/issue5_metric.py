@@ -146,11 +146,23 @@ def comb_from_profile(rows, lattice=LATTICE):
     comment. `tests/test_issue5_metric.py` holds the two routes equal so
     a third definition cannot quietly appear here.
     """
-    prof = []
-    for b in range(256):
-        prof.append(statistics.median(
-            [r["profile"][b] - statistics.median(r["profile"]) for r in rows]))
-    return sum(abs(prof[b]) for b in lattice)
+    # median of |deviation|, NOT |median of deviation|. This function
+    # used the second, and `site_dev` below uses the first, so one file
+    # held two conventions. They agree on a unimodal arm and diverge on
+    # a bimodal one: on `windows-desk` they read 210.03 and 217.98,
+    # 7.95 apart, all of it at two sites - phase 201 (1.63 against 8.07)
+    # and phase 75 (1.91 against 3.42).
+    #
+    # abs-of-median is simply wrong for "how big is the artifact":
+    # phase 201 CHANGES SIGN between that bench's two modes, so the
+    # median of the signed values sits near zero and the site reports as
+    # absent while being 8 codes in every run. A statistic that cancels
+    # a site for flipping is measuring the sign, not the size.
+    return sum(
+        statistics.median(
+            [abs(r["profile"][b] - statistics.median(r["profile"]))
+             for r in rows])
+        for b in lattice)
 
 
 def site_dev(rows, b):
