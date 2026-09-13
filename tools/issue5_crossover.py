@@ -243,38 +243,118 @@ def registration():
         print(f"    records/issue5-crossover-{b}.jsonl")
 
 
+def seven_sum(path, fws=6, drop=(1,)):
+    """Secondary (a): the seven stable lattice points, median-centred."""
+    rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
+    rows = [r for r in rows if r["run"] not in drop and r.get("fws") == fws]
+    if not rows or "profile" not in rows[0]:
+        return None, 0
+    vals = []
+    for r in rows:
+        m = statistics.median(r["profile"])
+        vals.append(sum(abs(r["profile"][b] - m) for b in SEVEN))
+    return statistics.median(vals), len(vals)
+
+
+def site_devs(path, fws=6, drop=(1,)):
+    """Secondary (b): median |deviation| at each exchange site."""
+    rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
+    rows = [r for r in rows if r["run"] not in drop and r.get("fws") == fws]
+    if not rows or "profile" not in rows[0]:
+        return None
+    return {b: statistics.median(abs(r["profile"][b]) for r in rows)
+            for b in EXCHANGE}
+
+
 def check():
-    got = {}
+    arms = {}
     for b in BASELINE:
         p = os.path.join(ROOT, "records", f"issue5-crossover-{b}.jsonl")
         if os.path.exists(p):
-            v, n = comb_sum(p)
-            got[b] = (v, n)
-    if not got:
+            arms[b] = p
+    if not arms:
         print("no crossover arms yet; registration stands")
         return 0
-    for b, (v, n) in sorted(got.items()):
-        print(f"  {b:14s} comb {v:7.2f}  (n={n}, baseline "
-              f"{BASELINE[b]['comb']:.2f})")
-    if "mac-bench" in got:
-        d = abs(got["mac-bench"][0] - BASELINE["mac-bench"]["comb"])
-        ok = d <= CONTROL_TOL
-        print(f"\n  CONTROL: mac-bench moved {d:.2f} against a tolerance of "
-              f"{CONTROL_TOL:.2f} -> {'ok' if ok else 'VOID'}")
-        if not ok:
-            print("  The untouched board moved. Nothing else here is "
-                  "readable; the session drifted.")
-            return 1
-    if "linux-x1" in got and "windows-desk" in got:
-        L1, W1 = got["linux-x1"][0], got["windows-desk"][0]
+
+    # --- the control gates everything, INCLUDING its own absence -------
+    #
+    # This printed a MATERIAL/DIE verdict when the control arm was merely
+    # missing, because the control was checked only `if "mac-bench" in
+    # got`. A verdict printed before its own precondition is the shape
+    # this project keeps paying for - windows-desk caught it quoting
+    # "-> DIE" off an unreadable run. Missing control is now VOID, which
+    # is the same answer as a failed one: not yet readable.
+    if "mac-bench" not in arms:
+        print("  CONTROL: mac-bench crossover arm ABSENT -> VOID")
+        print("  No verdict. The untouched board is what separates a "
+              "swap-sized change from a session-sized one, so nothing "
+              "here is readable without it.")
+        return 1
+    mac, n_mac = comb_sum(arms["mac-bench"])
+    drift = mac - BASELINE["mac-bench"]["comb"]
+    ok = abs(drift) <= CONTROL_TOL
+    print(f"  CONTROL: mac-bench {BASELINE['mac-bench']['comb']:.2f} -> "
+          f"{mac:.2f}, moved {drift:+.2f} against {CONTROL_TOL:.2f} "
+          f"(n={n_mac}) -> {'ok' if ok else 'VOID'}")
+    if not ok:
+        print("  The untouched board moved. Nothing else is readable.")
+        return 1
+
+    print(f"\n  PRIMARY, profile/12")
+    for b in sorted(arms):
+        v, n = comb_sum(arms[b])
+        print(f"    {b:14s} {BASELINE[b]['comb']:7.2f} -> {v:7.2f}  "
+              f"({v - BASELINE[b]['comb']:+.2f}, n={n})")
+    if "linux-x1" in arms and "windows-desk" in arms:
+        L1 = comb_sum(arms["linux-x1"])[0]
+        W1 = comb_sum(arms["windows-desk"])[0]
         D = (L0 - L1) + (W1 - W0)
-        print(f"\n  D = ({L0:.2f} - {L1:.2f}) + ({W1:.2f} - {W0:.2f}) "
+        print(f"    D = ({L0:.2f} - {L1:.2f}) + ({W1:.2f} - {W0:.2f}) "
               f"= {D:.2f}")
-        print(f"  material predicts {D_MATERIAL:.2f}, die predicts "
-              f"{D_DIE:.2f}, cut at {D_CUT:.2f}")
-        print(f"  -> {'MATERIAL' if D > D_CUT else 'DIE'}")
-    else:
-        print("\n  both swapped arms needed before D is defined")
+        print(f"    material {D_MATERIAL:+.2f}, die {D_DIE:+.2f}, "
+              f"cut {D_CUT:.2f}")
+        # A verdict is only meaningful between the two predictions. D
+        # far BELOW the die prediction is not evidence for the die - it
+        # is an arm moving in a direction neither hypothesis allows, and
+        # the registered binary did not anticipate it. Reported as its
+        # own outcome rather than collapsed into DIE.
+        if D > D_CUT:
+            print("    -> MATERIAL")
+        elif D < D_DIE - CONTROL_TOL:
+            print(f"    -> NEITHER. D is {D_DIE - D:.2f} below the die "
+                  f"prediction while the control moved {abs(drift):.2f}, "
+                  f"so this is not drift and not an exchange. The "
+                  f"registered rule would print DIE and that reading is "
+                  f"wrong; see the per-arm moves above for which board "
+                  f"carried it.")
+        else:
+            print("    -> DIE")
+
+    print(f"\n  SECONDARY (a), seven stable sites")
+    for b in sorted(arms):
+        v, n = seven_sum(arms[b])
+        print(f"    {b:14s} {SEVEN_BASE[b]:7.2f} -> {v:7.2f}  "
+              f"({v - SEVEN_BASE[b]:+.2f}, sd {SEVEN_SD[b]:.2f})")
+    if "linux-x1" in arms and "windows-desk" in arms:
+        l7 = seven_sum(arms["linux-x1"])[0]
+        w7 = seven_sum(arms["windows-desk"])[0]
+        D7 = (SEVEN_BASE["linux-x1"] - l7) + (w7 - SEVEN_BASE["windows-desk"])
+        print(f"    D_seven = {D7:+.2f}, material {2 * SEVEN_GAP:+.2f}, "
+              f"cut {SEVEN_CUT:.2f} -> "
+              f"{'MATERIAL' if D7 > SEVEN_CUT else 'no move'}")
+
+    print(f"\n  SECONDARY (b), per-site exchange")
+    print(f"    {'':14s} {'75':>8s} {'180':>8s} {'201':>8s}")
+    print(f"    {'copper row':14s} " +
+          " ".join(f"{EXCHANGE_COPPER[b]:8.2f}" for b in EXCHANGE))
+    print(f"    {'iron row':14s} " +
+          " ".join(f"{EXCHANGE_IRON[b]:8.2f}" for b in EXCHANGE))
+    for b in sorted(arms):
+        d = site_devs(arms[b])
+        want = "iron row" if b == "linux-x1" else (
+            "copper row" if b == "windows-desk" else "unchanged")
+        print(f"    {b:14s} " + " ".join(f"{d[x]:8.2f}" for x in EXCHANGE)
+              + f"   predicted: {want}")
     return 0
 
 
