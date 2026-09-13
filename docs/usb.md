@@ -611,12 +611,63 @@ it.
 
 This is macOS only. Windows loses 0 B on every policy at every rate.
 
-## An intermittent large loss at 1,218,750 sps
+### Re-read at the freeze, on one image, on three hosts
+
+The oldest half of the re-validation debt is that most figures above
+200 ksps predate the constant-size feed and had never been read back
+against byte conservation. Taken on all three benches on **one container
+image**, constant feed against the legacy due-sized one, first round
+dropped by index:
+
+| rate | constant feed | the legacy arm, as the control |
+|---|---|---|
+| 200,000 | 0 B on all three | 0 B everywhere - below the floor where loss appears |
+| 397,959 | 0 B on all three | **0.603-0.625%** on macOS, 0 B on the other two |
+| 600,000 | 0 B on all three | **0.699-0.724%** on macOS, 0 B on the other two |
+| 696,428 | 0 B on all three | **0.700-0.770%** on macOS, 0 B on the other two |
+| 886,363 | **1.409-1.415%** on macOS, 0 B on the other two | 1.527-2.277% on macOS |
+| 1,000,000 | **2.209-2.211%** on macOS, 0 B on the other two | 2.311-2.358% on macOS |
+| 1,392,857 | 0 B, then 0.689-0.692% in 2 of 16 | 0.662-0.883% on macOS, 0 B on the other two |
+
+**The two middle rates are not write-policy loss.** 886,363 and
+1,000,000 sps are the band where the converter runs below the rate it
+was given, so a host that buffers ahead sheds a surplus it should never
+have written - and the constant feed sheds it too, because alignment
+governs which writes are dropped and not whether there is anything to
+drop. Windows and Linux apply backpressure and simply feed less, which
+is why they read 0 B at the same two rates on the same image. Do not
+read those two cells as a feed defect.
+
+**And the control only fires on one bench.** The legacy arm is the
+positive control for the whole table, and it loses nothing on Linux or
+Windows at any rate - so their zeroes are nulls from an instrument that
+cannot fire, and only macOS supplies the denominator that makes the
+constant feed's zeroes mean something.
+
+## An intermittent large loss at the top of the ladder
 
 Exact on most runs, then 384 B, then 452,352 B, with no pattern found.
 Always a whole multiple of 128. Tracked as `RESIDUAL` in
 `tests/test_integrity.py` **by outcome rather than by mark**, so a clean
 run passes and it turns green by itself.
+
+It was recorded at 1,218,750 sps and it is not that rate's alone. The
+re-validation above 200 ksps found the same shape at **1,392,857 sps**
+on the constant-512 feed - the one the project ships - in **2 of 16
+analysed runs**: 58,240 B and 57,856 B, 0.692% and 0.689%, 455 and 452
+whole chunks of 128, with no underrun, a drained pipeline and the
+write stream that cannot straddle a 1 KiB boundary.
+
+**Oversupply does not explain it**, which is what makes this rate the
+interesting one. RC 44 and RC 39 shed because the converter runs slow
+and a host that buffers ahead loses the surplus; RC 28 is one of the two
+rates that deliver in full, so there is no surplus to shed. The other
+two hosts read 0 B there.
+
+So the constant feed is lossless at 200,000, 397,959, 600,000 and
+696,428 sps and **intermittently lossy at 1,392,857**, at about an
+eighth of runs. A figure taken at the top of the ladder needs its own
+repetitions; a single clean run there is not evidence of a clean path.
 
 ## Instrumentation rules earned here
 
