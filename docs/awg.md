@@ -291,16 +291,21 @@ board gives 4.
 **The window is a second axis and it is not yet a law.** Its *position*
 is a property of the image and the rate, not of the bench or the run:
 the fitted rotation is identical on `linux-x1` and `mac-bench` at every
-rate (439, 94, 446, 126, 0 at RC 195, 186, 196, 190, 192) and identical
-on every run of a block. Its *width* is set by the wait state - RC 190
-reads a clean gap-31 comb at FWS 5 and a doubled one at FWS 6 (each
-tooth split into a pair 4 apart, 4 + 27 = 31), because the wider window
-catches two phases per tooth.
+rate at FWS 6 (439, 94, 446, 126, 0 at RC 195, 186, 196, 190, 192),
+agrees again wherever FWS 5 or 4 carries a comb (51 at RC 186, 91 at
+RC 190), and is identical on every sharp run of a block. A dense run
+does not constrain it: that many sites fill the fit, which returns 0 or
+an arbitrary value, so it neither confirms nor contradicts the sharp
+runs' rotation. Its *width* is set by the wait state - RC 190 reads a
+clean gap-31 comb at FWS 5 on both benches, with the same sites, and a
+doubled one at FWS 6 (each tooth split into a pair 4 apart,
+4 + 27 = 31), because the wider window catches two phases per tooth.
 
 **What is drawn per capture is a mode, at fixed position.** RC 196 at
 FWS 6 is bimodal on both benches: a sharp 13-site comb of 17, or a dense
-66-72-site profile, same rotation either way - one run in six sharp on
-`linux-x1`, four in six on `mac-bench`. That is occupancy of two states,
+profile of 66-80 sites - one run in six sharp on `linux-x1`, four in
+six on `mac-bench`. RC 186 at FWS 5 has two levels of its dense profile
+on both benches, in the same proportion, two runs in six low. That is occupancy of two states,
 not a window that moved, and it is the shape of the two run-level
 severity modes the campaign found. What the dense state *is* has not
 been established; the `K` sweep at fixed rate, which moves the
