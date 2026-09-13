@@ -489,6 +489,26 @@ RETURN_MIN_COUNT = 3
 #: the position falls back to the pooled median, rather than silently
 #: returning a one-sample "median".
 MIN_STATE_SIDE = 4
+#: WHICH GATE ACTUALLY SCORED THE COMMITTED VERDICTS: this one.
+#:
+#: `score_return` takes its verdict from `state_split`, which applies
+#: MIN_STATE_SIDE and nothing else. `two_state_guarded` - the later,
+#: better gate that reuses `issue5_modes.classify` - feeds only the
+#: printed sensitivity row. So for every return verdict in the record,
+#: MIN_STATE_SIDE is the rule that applied and the classify guard is
+#: shown beside it.
+#:
+#: That is deliberate and is the right split: the registration predates
+#: the guard, and re-scoring already-read rows through a rule adopted
+#: afterwards is the move this file exists to refuse. The guard is the
+#: rule for the NEXT readout.
+#:
+#: Stated here because I told windows-desk the opposite - that
+#: MIN_STATE_SIDE was vestigial and the guard was the real gate - while
+#: they were writing the documentation. They read the code instead of
+#: taking my word and found it backwards. A file whose author describes
+#: it wrongly to the person documenting it is worth one comment at the
+#: constant.
 
 
 def state_split(paths, fws, pos):
