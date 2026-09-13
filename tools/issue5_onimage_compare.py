@@ -76,6 +76,32 @@ def load():
     return out
 
 
+#: Rounding slack in the censoring test below. Stored deviations carry
+#: two decimals and `site_abs` carries two, so a row with nothing hidden
+#: can still read a few hundredths.
+CENSOR_EPS = 0.1
+
+
+def censored(row):
+    """How much of this row's site budget was never written down.
+
+    `issue5_sites.py` stored `found[:6]` until 2026-09-13, and `found`
+    is ordered by descending |deviation| - so a row with more than six
+    sites kept the six strongest and dropped the rest silently. The
+    dropped total is recoverable without the profile, because
+    `site_abs` was always summed over **all** of `found`:
+
+        hidden = site_abs - sum(|v| over the sites that were stored)
+
+    Zero (within rounding) on a row that stored everything. Checked
+    against `measure.fold_sites` on synthetic profiles with 3, 6, 7, 9
+    and 12 planted spikes - exact in every case, and zero on the two
+    that cannot be censored.
+    """
+    kept = sum(abs(v) for _b, v, _z in row["sites"])
+    return max(0.0, row.get("site_abs", kept) - kept)
+
+
 def counts(rows):
     return collections.Counter(b for r in rows for b, _v, _z in r["sites"])
 
@@ -137,7 +163,7 @@ def main():
     for fws in sorted({r["fws"] for rows in benches.values() for r in rows
                        if r["fws"] is not None}):
         print(f"\n{'=' * 70}\nFWS {fws}")
-        sets, sev, blocks = {}, {}, {}
+        sets, sev, blocks, cut = {}, {}, {}, {}
         for b, rows in sorted(benches.items()):
             v = sorted([r for r in rows if r["fws"] == fws],
                        key=lambda r: r["run"])
@@ -151,11 +177,40 @@ def main():
             print(f"  {'':14s} median total|dev| "
                   f"{statistics.median(sev[b]):8.1f}     own ceiling: "
                   f"Jaccard {blocks[b][0]:.3f}, severity {blocks[b][1]:.3f}")
+            cut[b] = [censored(r) for r in v]
+            nc = sum(1 for h in cut[b] if h > CENSOR_EPS)
+            if nc:
+                kept = statistics.median(
+                    [sum(abs(x) for _p, x, _z in r["sites"]) for r in v])
+                print(f"  {'':14s} ** CENSORED: {nc} of {len(v)} runs have "
+                      f"sites that were never recorded, median "
+                      f"{statistics.median([h for h in cut[b] if h > CENSOR_EPS]):.1f} "
+                      f"codes of them. The set above is the strongest "
+                      f"{max(len(r['sites']) for r in v)}, holding "
+                      f"{kept / statistics.median(sev[b]):.0%} of total|dev|")
 
         for a, b in itertools.combinations(sorted(benches), 2):
             va = [r for r in benches[a] if r["fws"] == fws]
             vb = [r for r in benches[b] if r["fws"] == fws]
             print(f"\n  {a} vs {b}")
+            ca_cut = sum(1 for h in cut[a] if h > CENSOR_EPS)
+            cb_cut = sum(1 for h in cut[b] if h > CENSOR_EPS)
+            if ca_cut and cb_cut:
+                print("    ** both benches' sets are truncated at the same "
+                      "depth: read the site comparison as 'the strongest "
+                      "few agree', never as 'the site set is the same'")
+            elif ca_cut or cb_cut:
+                print("    ** REFUSING the site comparison: "
+                      f"{a if ca_cut else b}'s rows are truncated and "
+                      f"{b if ca_cut else a}'s are not. A short list "
+                      "against a full one manufactures a disagreement at "
+                      "every phase the short list could not reach. "
+                      "Severity below is unaffected - it is threshold-free.")
+                ma0, mb0 = statistics.median(sev[a]), statistics.median(sev[b])
+                print(f"    severity {ma0:.1f} vs {mb0:.1f}, ratio "
+                      f"{min(ma0, mb0) / max(ma0, mb0):.3f}, Mann-Whitney "
+                      f"p = {mannwhitney(sev[a], sev[b]):.2e}")
+                continue
             print("    cut-off sensitivity  " + "  ".join(
                 f">={int(f * 100)}%: {jaccard(members(va, f), members(vb, f)):.3f}"
                 for f in (0.25, CUT, 0.75)))

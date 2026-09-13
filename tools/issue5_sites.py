@@ -153,6 +153,23 @@ def main():
             prof = fold.get("profile") or []
             pmed = statistics.median(prof) if prof else 0.0
             total_abs = sum(abs(v - pmed) for v in prof)
+            # EVERY site, and the whole profile. This used to store
+            # `found[:6]`, and at FWS 6 that truncated every row of
+            # every bench's cross-bench arm: the six strongest sites
+            # hold 40-55% of `total_abs` there and the rest was
+            # unrecorded, so the campaign's headline "the same six
+            # phases on three benches" was a comparison of six slots
+            # over a set of at least ten. Phases 180 and 247 were never
+            # once recorded together in any of 120 FWS 6 runs, on any
+            # bench - they were competing for the sixth slot, which
+            # reads as an incidence and is a cap.
+            #
+            # `n_sites` says how many there were; `profile` is the fold
+            # itself, so the next question about these rows is answered
+            # by re-reading them rather than by re-running three
+            # benches. 256 numbers a row is about 2 KB, against a
+            # session that costs an hour of board time on each of three
+            # boards.
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                    "bench": args.bench, "regen": i in regen, **prov,
                    "amp": amp, "fws": fws, "preset": args.preset,
@@ -162,16 +179,19 @@ def main():
                    "argmax_peak": round(fold.get("peak", 0.0), 2),
                    "hold_ok": bool(fold.get("hold_ok")),
                    "mad": round(mad, 4),
+                   "n_sites": len(found),
+                   "profile": [round(v, 3) for v in prof],
                    "sites": [[b, round(v, 2), round(z, 1)]
-                             for b, v, z in found[:6]]}
+                             for b, v, z in found]}
             rows.append(row)
             print(f"run {i:2d}{'*' if i in regen else ' '}"
                   f"{('a%d' % amp) if amp is not None else '':>5}"
                   f"{('f%d' % fws) if fws is not None else '':>3}: "
                   f"argmax {row['argmax_phase']:3d} "
                   f"({row['argmax_peak']:+7.2f})  total|dev| "
-                  f"{row['total_abs']:7.1f}  sites "
-                  + ", ".join(f"{b}:{v:+.2f}" for b, v, _ in found[:5]),
+                  f"{row['total_abs']:7.1f}  {len(found):2d} sites "
+                  + ", ".join(f"{b}:{v:+.2f}" for b, v, _ in found[:5])
+                  + (f", +{len(found) - 5} more" if len(found) > 5 else ""),
                   flush=True)
             board.stop()
             board.drain_console(0.3)
