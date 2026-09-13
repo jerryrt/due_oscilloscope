@@ -127,11 +127,19 @@ def main():
                 a1 = ps.series.get(measure.CH_A1) or []
                 start = ps._index_at(measure.CH_A0, measure.SETTLE_US)
                 r0, s0, n0, p0, sc0 = tail(a0[start:], hold)
-                # DAC1 updates on the other trigger: its parity is A0's
-                # complement, never a guess on a flat square.
-                r1, s1, n1, p1, sc1 = tail(a1[start:], 2,
-                                      known_parity=(1 - p0) if (hold == 2 and p0 is not None) else None) \
-                    if a1 else ({t: 0.0 for t in THRESH}, 0.0, 0, None, None)
+                # A1's pairing comes from its own edges when it carries a
+                # square; only without one is A0's complement taken, and
+                # the complement is not a law - whether a channel's sample
+                # sees the update at its own trigger depends on where the
+                # update lands against that channel's sample instant,
+                # which differs between A1 (sampled first) and A0.
+                if a1:
+                    kp = edge_parity(a1[start:])
+                    if kp is None and hold == 2 and p0 is not None:
+                        kp = 1 - p0
+                    r1, s1, n1, p1, sc1 = tail(a1[start:], 2, known_parity=kp)
+                else:
+                    r1, s1, n1, p1, sc1 = ({t: 0.0 for t in THRESH}, 0.0, 0, None, None)
                 row = {"arm": name, "cmds": cmds, "run": run, "hold": hold,
                        "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                        "bench": args.bench, **prov,
