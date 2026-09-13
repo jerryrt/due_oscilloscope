@@ -1755,7 +1755,7 @@ def shots_solo(board, inst, args):
                   f"{'triggered' if ok else 'NOT TRIGGERED'}", flush=True)
     board.stop(); board.drain_console(0.3)
     import json
-    with open(os.path.join(out, "shots_solo.json"), "w") as f:
+    with open(os.path.join(out, "shots_solo.json"), "w", encoding="utf-8") as f:
         json.dump({"solo": True, "shots": shots}, f, indent=1)
     print(f"\n{len(shots)} solo shots in {out}")
 
@@ -1840,7 +1840,7 @@ def cmd_shots(board, inst, args):
                       flush=True)
             board.stop(); board.drain_console(0.2)
     import json
-    with open(os.path.join(out, "shots.json"), "w") as f:
+    with open(os.path.join(out, "shots.json"), "w", encoding="utf-8") as f:
         json.dump({"trigger_hz": args.trigger, "channel": args.channel,
                    "shots": shots}, f, indent=1)
     n_bad = sum(1 for x in shots if not x["triggered"])

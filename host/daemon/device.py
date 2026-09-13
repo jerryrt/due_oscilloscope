@@ -550,7 +550,7 @@ class FileDevice(Device):
         rather than be invented.
         """
         try:
-            with open(self.path + ".json") as f:
+            with open(self.path + ".json", encoding="utf-8") as f:
                 side = json.load(f)
         except FileNotFoundError:
             return None

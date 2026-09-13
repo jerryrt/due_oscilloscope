@@ -36,7 +36,7 @@ finally:
     finally:
         b.close()
 with open(os.path.join(ROOT, "records", "issue5-k-passes.jsonl"), "w",
-          newline="\n") as fh:
+          newline="\n", encoding="utf-8") as fh:
     for r in rows:
         fh.write(json.dumps(r, sort_keys=True) + "\n")
 print("\nwrote records/issue5-k-passes.jsonl", len(rows), "rows")

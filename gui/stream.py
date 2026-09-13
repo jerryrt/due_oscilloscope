@@ -927,7 +927,7 @@ def write_csv(path, sweep, *, source, rings, rate_hz):
     v1 = codes_to_volts(ys) if ys.size == sweep.samples.size else None
     dt = 1.0 / float(max(1, rate_hz))
 
-    with open(path, "w", newline="") as f:
+    with open(path, "w", newline="", encoding="utf-8") as f:
         # Provenance in the file, not in the filename. A column of volts
         # is meaningless without the reference it was scaled by, and
         # this project has an ADVREF that moved by 0.91% once already.

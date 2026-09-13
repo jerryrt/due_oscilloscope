@@ -161,7 +161,7 @@ def main():
                     help="directory to write the canary's one-entry database into")
     args = ap.parse_args()
 
-    with open(args.db) as fh:
+    with open(args.db, encoding="utf-8") as fh:
         db = json.load(fh)
 
     roots = [os.path.join(args.repo, u.rstrip("/")) + "/" for u in args.under]
@@ -190,7 +190,7 @@ def main():
         rewritten.append(rewrite(e, cache[key]))
 
     os.makedirs(args.out, exist_ok=True)
-    with open(os.path.join(args.out, "compile_commands.json"), "w") as fh:
+    with open(os.path.join(args.out, "compile_commands.json"), "w", encoding="utf-8") as fh:
         json.dump(rewritten, fh, indent=1)
 
     # The canary rides on a REAL entry from this pass rather than on a
@@ -206,7 +206,8 @@ def main():
                  "file": args.canary_src,
                  "output": "canary.obj"}
         os.makedirs(args.canary_out, exist_ok=True)
-        with open(os.path.join(args.canary_out, "compile_commands.json"), "w") as fh:
+        with open(os.path.join(args.canary_out, "compile_commands.json"), "w",
+                  encoding="utf-8") as fh:
             json.dump([entry], fh, indent=1)
 
     for e in rewritten:

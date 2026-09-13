@@ -116,7 +116,7 @@ def main():
     per, pooled, n = collections.Counter(), collections.Counter(), 0
     skipped = collections.Counter()
     for path in sorted(glob.glob(os.path.join(ROOT, args.glob))):
-        for line in open(path):
+        for line in open(path, encoding="utf-8"):
             try:
                 r = json.loads(line)
             except ValueError:

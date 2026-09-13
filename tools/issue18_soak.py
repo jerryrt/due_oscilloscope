@@ -168,7 +168,7 @@ def main():
             # Append as we go. A soak that only writes at the end loses
             # everything to any interruption, and this one runs for
             # hours.
-            with open(out, "a") as fh:
+            with open(out, "a", encoding="utf-8") as fh:
                 fh.write(json.dumps(row) + "\n")
             print(f"{row['t']}  code {t['code']:8.3f}  "
                   f"drift {t['code'] - first:+6.3f}  "

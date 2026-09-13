@@ -133,7 +133,7 @@ def _strip(text):
 
 
 def _read(relpath):
-    with open(os.path.join(REPO, relpath)) as f:
+    with open(os.path.join(REPO, relpath), encoding="utf-8") as f:
         return f.read()
 
 
@@ -327,7 +327,7 @@ def check(list_path=LIST_PATH):
     want = render().splitlines()
     want = [l for l in want if not l.startswith("#")]
     try:
-        with open(list_path) as f:
+        with open(list_path, encoding="utf-8") as f:
             have = [l.rstrip("\n") for l in f
                     if l.strip() and not l.startswith("#")]
     except OSError as e:
@@ -403,7 +403,7 @@ def main(argv=None):
             print(line)
         return 1 if drift else 0
     if args.write:
-        with open(LIST_PATH, "w") as f:
+        with open(LIST_PATH, "w", encoding="utf-8") as f:
             f.write(render())
         print(f"wrote {os.path.relpath(LIST_PATH, REPO)}")
         return 0

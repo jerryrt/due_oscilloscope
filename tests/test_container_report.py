@@ -30,7 +30,7 @@ def _run_dir(tmp_path, logs=None, build_env="container"):
     logdir = tmp_path / "ci"
     logdir.mkdir()
     for name, text in (logs or {}).items():
-        (logdir / f"{name}.log").write_text(text)
+        (logdir / f"{name}.log").write_text(text, encoding="utf-8")
     build = tmp_path / "build"
     build.mkdir()
     if build_env is not None:
@@ -39,7 +39,7 @@ def _run_dir(tmp_path, logs=None, build_env="container"):
             "build_image": "due-build:15.2.1-1.1",
             "build_image_content": "abc123",
             "artifacts": {"baremetal_bringup.bin": "deadbeef"},
-        }))
+        }), encoding="utf-8")
     return str(logdir), str(build)
 
 
@@ -250,7 +250,7 @@ def test_a_matching_image_records_that_it_was_checked(tmp_path, monkeypatch):
     rc = cr.main(["--exit", "0", "--logs", logdir, "--build", build,
                   "--append", str(out)])
     assert rc == 0
-    row = json.loads(out.read_text().strip())
+    row = json.loads(out.read_text(encoding="utf-8").strip())
     assert row["artifact_revision_checked"] is True
     assert row["bench"] == "test-bench"
 

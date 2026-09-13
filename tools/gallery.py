@@ -713,7 +713,7 @@ def build(args):
             pass
         srv.stop()
 
-    with open(os.path.join(args.out, "index.json"), "w") as fh:
+    with open(os.path.join(args.out, "index.json"), "w", encoding="utf-8") as fh:
         json.dump(index, fh, indent=2)
         fh.write("\n")
     print(f"\n{len(index)} images -> {args.out}")

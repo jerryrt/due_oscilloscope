@@ -32,7 +32,7 @@ n = 0
 # is a file that does not exist: `--calibrate` writing at session end
 # cost the other bench twelve minutes on issue #6, and the same shape
 # would cost a night here.
-fh = open(out, "w", buffering=1, newline="\n")
+fh = open(out, "w", buffering=1, newline="\n", encoding="utf-8")
 try:
     b.stop(); b.drain_console(0.5)
     link = b.ctl()

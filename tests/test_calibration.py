@@ -69,7 +69,7 @@ def test_a_measuring_tool_refuses_rather_than_guessing(tmp_path):
 def test_the_numbers_left_the_test_fixture_entirely():
     """One home. If these come back into baseline.json, something
     outside tests/ will read them from there again."""
-    with open(os.path.join(HERE, "baseline.json")) as f:
+    with open(os.path.join(HERE, "baseline.json"), encoding="utf-8") as f:
         base = json.load(f)
     assert "dac_mv" not in base
     assert "adc_transfer" not in base

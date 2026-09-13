@@ -283,7 +283,7 @@ def main():
                        "observed_step_s": res_t,
                        "free_running_vs_disciplined_ppm": qpc_ppm,
                        "free_running_vs_disciplined_ppm_floor": qpc_err}},
-                  open(a.out, "w"), indent=1)
+                  open(a.out, "w", encoding="utf-8"), indent=1)
         print(f"  wrote {a.out}")
     return 0
 

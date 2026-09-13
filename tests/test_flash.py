@@ -155,7 +155,7 @@ def test_an_image_older_than_its_sources_is_refused(tmp_path, monkeypatch):
     binary.write_bytes(b"\x00" * 16)
     src = tmp_path / "src" / "clock.c"
     src.parent.mkdir()
-    src.write_text("int x;\n")
+    src.write_text("int x;\n", encoding="utf-8")
     os.utime(binary, (1000, 1000))
     os.utime(src, (2000, 2000))
 
@@ -259,7 +259,7 @@ def test_the_log_says_which_dirty_not_merely_that_it_was(tmp_path,
     state["diff"] = "--- a/drivers/acq.c\n+++ b/drivers/acq.c\n+two\n"
     flash._log_flash(str(binary))
 
-    rows = [json.loads(x) for x in log.read_text().splitlines() if x.strip()]
+    rows = [json.loads(x) for x in log.read_text(encoding="utf-8").splitlines() if x.strip()]
     assert len(rows) == 2
     a, b = rows
 
@@ -298,7 +298,7 @@ def test_a_clean_tree_logs_no_dirty_sha(tmp_path, monkeypatch):
     monkeypatch.setattr(flash.subprocess, "run", fake_run)
     flash._log_flash(str(binary))
 
-    rec = json.loads(log.read_text().splitlines()[0])
+    rec = json.loads(log.read_text(encoding="utf-8").splitlines()[0])
     assert rec["dirty"] is False
     assert rec["dirty_sha"] is None
 
@@ -345,7 +345,7 @@ def test_bossac_is_bounded(monkeypatch):
     """
     assert flash.BOSSAC_TIMEOUT_S > 0
     src = open(os.path.join(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))), "tools", "flash.py")).read()
+        os.path.abspath(__file__))), "tools", "flash.py"), encoding="utf-8").read()
     assert "timeout=BOSSAC_TIMEOUT_S" in src, \
         "the bossac invocation lost its bound"
     assert "subprocess.TimeoutExpired" in src, \
@@ -363,7 +363,7 @@ def test_a_board_already_in_the_bootloader_is_not_diagnosed(monkeypatch):
     fallback on Linux, harmlessly and for the wrong reason.
     """
     src = open(os.path.join(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))), "tools", "flash.py")).read()
+        os.path.abspath(__file__))), "tools", "flash.py"), encoding="utf-8").read()
     assert "and not before and not args.close_at_1200" in src, (
         "the fallback no longer excludes a board that was already in "
         "the bootloader; it will report 'nothing on the bus moved' "
@@ -512,7 +512,7 @@ def _built(tmp_path, body=b"firmware", record=None, name=None):
         rec = dict(record)
         rec.setdefault("artifacts", {
             name or binary.name: hashlib.sha256(body).hexdigest()})
-        (tmp_path / flash.BUILD_ENV_FILE).write_text(json.dumps(rec))
+        (tmp_path / flash.BUILD_ENV_FILE).write_text(json.dumps(rec), encoding="utf-8")
     return str(binary)
 
 
@@ -610,12 +610,12 @@ def _repo_at(tmp_path, stamp, dirty):
                                     capture_output=True)
     run("init", "-q")
     run("config", "user.email", "t@t"); run("config", "user.name", "t")
-    (root / "seed.txt").write_text("seed\n")
+    (root / "seed.txt").write_text("seed\n", encoding="utf-8")
     run("add", "-A"); run("commit", "-qm", "seed")
     head = subprocess.run(("git", "rev-parse", "--short", "HEAD"), cwd=root,
                           capture_output=True, text=True).stdout.strip()
     if dirty:
-        (root / "untracked.txt").write_text("dirt\n")
+        (root / "untracked.txt").write_text("dirt\n", encoding="utf-8")
     img = root / "out" / "img.bin"
     img.write_bytes(b"\x00pad build=" + (stamp or head).encode() + b" pad\xff")
     return str(img), head

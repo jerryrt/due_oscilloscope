@@ -17,7 +17,7 @@ if len(sys.argv) != 4:
 
 PATH, OUT, STOP = sys.argv[1], sys.argv[2], sys.argv[3]
 
-log = open(OUT, "w", buffering=1)
+log = open(OUT, "w", buffering=1, encoding="utf-8")
 prev = None
 c = None
 while not os.path.exists(STOP):

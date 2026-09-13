@@ -172,7 +172,7 @@ def main():
               % (len(loud), min(loud), max(loud)))
 
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print("appended %d rows to %s" % (len(rows), args.json))

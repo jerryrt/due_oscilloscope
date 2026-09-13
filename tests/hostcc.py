@@ -157,7 +157,7 @@ def _builds_and_runs(flags):
     with tempfile.TemporaryDirectory() as d:
         src = os.path.join(d, "probe.c")
         exe = os.path.join(d, "probe" + (".exe" if os.name == "nt" else ""))
-        with open(src, "w") as fh:
+        with open(src, "w", encoding="utf-8") as fh:
             fh.write("int main(void) { return 0; }\n")
         try:
             build = subprocess.run([found, "-std=c11", *flags, "-o", exe, src],

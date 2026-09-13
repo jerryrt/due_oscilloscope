@@ -66,7 +66,7 @@ def main():
               f"range {min(t)}-{max(t)} | ns median {statistics.median(ns):.1f} "
               f"| acr seen {acrs}")
     io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         "acr_rise.json"), "w").write(json.dumps(rows, indent=1))
+                         "acr_rise.json"), "w", encoding="utf-8").write(json.dumps(rows, indent=1))
 
 
 main()

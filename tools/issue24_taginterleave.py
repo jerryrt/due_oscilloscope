@@ -123,7 +123,7 @@ def main():
     print("\n  tagged shows 10s/11s -> the interleave is not the difference")
     print("  tagged shows 21s     -> it is, and the paths are one thing")
     if args.out:
-        with open(args.out, "a") as fh:
+        with open(args.out, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"wrote {len(rows)} rows to {args.out}")

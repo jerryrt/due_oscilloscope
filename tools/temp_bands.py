@@ -78,7 +78,7 @@ def main():
     args = ap.parse_args()
 
     rows = []
-    with open(args.record) as fh:
+    with open(args.record, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if line:
@@ -139,7 +139,7 @@ def main():
         print("   not read a band pass here as the 8-hour result.")
 
     if args.json:
-        with open(args.json, "w") as fh:
+        with open(args.json, "w", encoding="utf-8") as fh:
             json.dump({"record": args.record, "span_s": span,
                        "rows": len(rows), "post_rows": len(post),
                        "warmup_s": args.warmup, "seam_rows": seams,

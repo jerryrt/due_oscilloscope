@@ -289,7 +289,7 @@ class _Recorder:
                      "dropped": self.dropped, "error": self.error,
                      "started_unix": self._t0, "stopped_unix": time.time(),
                      "path": os.path.basename(self.path)})
-        with open(self.path + ".json", "w") as f:
+        with open(self.path + ".json", "w", encoding="utf-8") as f:
             json.dump(side, f, indent=2, sort_keys=True)
         return side
 

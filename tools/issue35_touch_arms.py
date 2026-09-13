@@ -113,7 +113,7 @@ def reflash(tag):
     r = subprocess.run([sys.executable, os.path.join(ROOT, "tools",
                                                      "flash.py")],
                        capture_output=True, text=True)
-    with open(REFLASH_LOG, "a") as fh:
+    with open(REFLASH_LOG, "a", encoding="utf-8") as fh:
         fh.write(f"\n===== repair flash after {tag} : rc={r.returncode} "
                  f"=====\n")
         fh.write(r.stdout or "")
@@ -177,7 +177,7 @@ def main():
 
     out = args.out or os.path.join(
         ROOT, "records", f"issue35-touch-arms-{args.bench or 'unknown'}.jsonl")
-    with open(out, "w") as fh:
+    with open(out, "w", encoding="utf-8") as fh:
         for r in rows:
             fh.write(json.dumps(r) + "\n")
     print(f"\nwrote {len(rows)} rows to {out}")

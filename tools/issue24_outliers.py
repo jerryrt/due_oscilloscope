@@ -45,7 +45,7 @@ def main():
 
     hits, runs = [], []
     for path in sorted(glob.glob(os.path.join(ROOT, args.glob))):
-        for line in open(path):
+        for line in open(path, encoding="utf-8"):
             try:
                 r = json.loads(line)
             except ValueError:

@@ -154,20 +154,21 @@ def test_a_wrong_seam_list_fails_the_check(tmp_path):
     good = [l for l in ss.render().splitlines() if not l.startswith("#")]
 
     added = tmp_path / "added.list"
-    added.write_text("\n".join(good + ["b drivers/acq.h acq_nothing_calls_this"]) + "\n")
+    added.write_text("\n".join(good + ["b drivers/acq.h acq_nothing_calls_this"]) + "\n",
+                     encoding="utf-8")
     drift = ss.check(str(added))
     assert any("acq_nothing_calls_this" in d and "pinned but not extracted" in d
                for d in drift), drift
 
     removed = tmp_path / "removed.list"
     removed.write_text(
-        "\n".join(l for l in good if "usb_dma_out_status" not in l) + "\n")
+        "\n".join(l for l in good if "usb_dma_out_status" not in l) + "\n", encoding="utf-8")
     drift = ss.check(str(removed))
     assert any("usb_dma_out_status" in d and "extracted but not pinned" in d
                for d in drift), drift
 
     empty = tmp_path / "empty.list"
-    empty.write_text("# nothing\n")
+    empty.write_text("# nothing\n", encoding="utf-8")
     assert ss.check(str(empty)), "an empty pinned list passed the check"
 
     missing = tmp_path / "does-not-exist.list"
@@ -186,7 +187,7 @@ def test_a_wrong_stream_port_header_fails_the_check(tmp_path):
     # The real pair agrees.
     assert ss.core_check() == []
 
-    real = open(os.path.join(REPO, ss.PORT)).read()
+    real = open(os.path.join(REPO, ss.PORT), encoding="utf-8").read()
 
     # A declaration nothing uses must be flagged.
     padded = ss._strip(real + "\nvoid stream_port_never_called(void);\n")

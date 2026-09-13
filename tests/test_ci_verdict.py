@@ -128,7 +128,7 @@ def _bash():
         else:
             fd, probe = tempfile.mkstemp(suffix=".txt")
             try:
-                with os.fdopen(fd, "w") as fh:
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
                     fh.write("due-bash-probe\n")
                 try:
                     got = subprocess.run([exe, "-c", 'cat -- "$1"', "probe",
@@ -238,7 +238,7 @@ def test_an_unrecognised_exit_code_is_never_a_pass(tmp_path):
     frag = _classifier_fragment(text, funcs)
     states = _states(text)
     log = tmp_path / "empty.log"
-    log.write_text("")
+    log.write_text("", encoding="utf-8")
 
     names = sorted(n for n in funcs if n.startswith("class_"))
     assert len(names) >= 5, f"only {names} - the classifiers have moved"
@@ -272,9 +272,9 @@ def test_the_documented_exit_codes_answer_as_documented(tmp_path):
     s = _states(text)
 
     clean = tmp_path / "clean.log"
-    clean.write_text("total 7\n506 passed, 5 skipped, 141 deselected\n")
+    clean.write_text("total 7\n506 passed, 5 skipped, 141 deselected\n", encoding="utf-8")
     errored = tmp_path / "errored.log"
-    errored.write_text("8 error in 1.20s\n")
+    errored.write_text("8 error in 1.20s\n", encoding="utf-8")
 
     cases = [
         ("class_pytest", 0, clean, s["S_PASS"]),
@@ -489,7 +489,7 @@ def _tree_run(tmp_path, init, steps):
     # marker sits beside the scenario repository and nowhere else, so its
     # presence is the proof, and the exit code is distinct from the
     # scenario's own.
-    (tmp_path / ".due-tree-scenario").write_text("scenario\n")
+    (tmp_path / ".due-tree-scenario").write_text("scenario\n", encoding="utf-8")
     lines = consts + [funcs[n] for n in _TREE_NEEDS] + [
         "set -uo pipefail",
         "export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1",

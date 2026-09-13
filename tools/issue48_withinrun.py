@@ -48,7 +48,7 @@ from collections import Counter
 
 def load(path):
     rows = []
-    with open(path) as fh:
+    with open(path, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if line:

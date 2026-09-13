@@ -11,7 +11,7 @@ n is small so the z is quoted with that said rather than dressed up.
 """
 import json, math, sys, collections
 
-rows = [json.loads(l) for l in open(sys.argv[1]) if '"macos-seq"' in l]
+rows = [json.loads(l) for l in open(sys.argv[1], encoding="utf-8") if '"macos-seq"' in l]
 rows.sort(key=lambda r: r["run"])
 
 seq = []

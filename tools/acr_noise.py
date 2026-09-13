@@ -89,7 +89,7 @@ def main():
                   % (arm, statistics.mean(v), statistics.stdev(v), len(v)))
 
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for row in rows:
                 fh.write(json.dumps(row) + "\n")
 

@@ -402,7 +402,7 @@ def test_the_sidecar_says_what_the_frames_cannot(tmp_path, connect):
     c.call("record.start", path=path)
     time.sleep(0.2)
     c.call("record.stop")
-    side = json.load(open(path + ".json"))
+    side = json.load(open(path + ".json", encoding="utf-8"))
     assert side["rates"]["adc_hz"] == 200000
     assert side["mode"] == "capture"
     assert side["frame_bytes"] == devmod.FRAME_BYTES
@@ -813,7 +813,7 @@ def test_a_recording_with_another_frame_geometry_is_refused_by_name(
     part."""
     path, blob, side = recording(frames=4)
     side["frame_bytes"] = devmod.FRAME_BYTES // 2
-    with open(path + ".json", "w") as f:
+    with open(path + ".json", "w", encoding="utf-8") as f:
         json.dump(side, f)
     with pytest.raises(devmod.DeviceError) as e:
         devmod.FileDevice(path)

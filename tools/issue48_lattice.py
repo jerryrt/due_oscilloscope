@@ -98,7 +98,7 @@ def main():
 
     out = args.out or os.path.join(ROOT, "records",
                                    f"issue48-lattice-{args.bench}.jsonl")
-    with open(out, "w") as fh:
+    with open(out, "w", encoding="utf-8") as fh:
         for r in rows:
             fh.write(json.dumps(r) + "\n")
 

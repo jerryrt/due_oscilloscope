@@ -130,7 +130,7 @@ def main():
                 print(f"  cycle {r['cycle']}: frames {r['frames']} "
                       f"seq_gaps {r['seq_gaps']} crc_bad {r['crc_bad']}")
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"wrote {len(rows)} rows to {args.json}")

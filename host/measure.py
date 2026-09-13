@@ -1449,7 +1449,7 @@ def _wedge_note(text):
     line = f"[0c] {text}"
     print(line, file=sys.stderr, flush=True)
     try:
-        with open(WEDGE_LOG, "a") as fh:
+        with open(WEDGE_LOG, "a", encoding="utf-8") as fh:
             fh.write(f"{time.strftime('%F %T')} {line}\n")
     except OSError:
         pass

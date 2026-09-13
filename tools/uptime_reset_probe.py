@@ -141,7 +141,7 @@ def main():
               f"does NOT reset the board.")
 
     if args.out:
-        with open(args.out, "a") as fh:
+        with open(args.out, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"wrote {len(rows)} rows to {args.out}")

@@ -120,7 +120,7 @@ def main():
                      statistics.mean(x["z"] for x in v),
                      sum(1 for x in v if x["hold_ok"]), len(v), len(v)))
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for row in rows:
                 fh.write(json.dumps(row) + "\n")
 

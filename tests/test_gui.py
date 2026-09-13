@@ -1052,7 +1052,7 @@ def test_the_export_carries_the_reference_its_volts_are_in(win, daemon, tmp_path
     n = win._write_csv(str(out), win.scope.last_sweep)
     assert n > 0
 
-    text = out.read_text()
+    text = out.read_text(encoding="utf-8")
     head = [l for l in text.splitlines() if l.startswith("#")]
     assert any(f"advref_mv={stream.ADVREF_MV}" in l for l in head), head
     assert any(stream.ADVREF_SOURCE in l for l in head), head
@@ -1081,7 +1081,7 @@ def test_the_export_marks_discontinuities_as_a_column(win, tmp_path):
     out = tmp_path / "broken.csv"
     win._write_csv(str(out), sweep)
 
-    rows = [l for l in out.read_text().splitlines()
+    rows = [l for l in out.read_text(encoding="utf-8").splitlines()
             if l and not l.startswith("#")]
     header, body = rows[0], rows[1:]
     assert header.endswith("break")
@@ -1189,7 +1189,7 @@ def recording_path(tmp_path):
         for seq in range(6):
             f.write(make_frame(seq, {7: [2048] * 1016, 6: [2048] * 1016},
                                rate=100000))
-    with open(path + ".json", "w") as f:
+    with open(path + ".json", "w", encoding="utf-8") as f:
         json.dump({"device": {"track": "b", "kind": "board"},
                    "mode": "capture", "frame_bytes": devmod.FRAME_BYTES,
                    "rates": {"adc_hz": 100000, "channels": 2},
@@ -1853,7 +1853,7 @@ def test_write_csv_carries_the_reference_it_scaled_by(tmp_path):
                                rings={}, rate_hz=453488)
     assert written == n
 
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     head = [l for l in text.splitlines() if l.startswith("#")]
     assert any("advref_mv={}".format(stream.ADVREF_MV) in l for l in head), head
     assert any(stream.ADVREF_SOURCE in l for l in head), head
@@ -1880,7 +1880,7 @@ def test_write_csv_marks_a_discontinuity_as_a_column(tmp_path):
     stream.write_csv(str(path), sweep, source=stream.CH_A0,
                      rings={}, rate_hz=1000)
 
-    rows = [l for l in path.read_text().splitlines()
+    rows = [l for l in path.read_text(encoding="utf-8").splitlines()
             if l and not l.startswith("#")][1:]
     assert len(rows) == n
     assert [r.split(",")[-1] for r in rows] == ["0", "0", "1", "0"]

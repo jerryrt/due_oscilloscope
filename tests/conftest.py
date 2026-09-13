@@ -165,7 +165,7 @@ def track(request):
 
 @pytest.fixture(scope="session")
 def baseline():
-    with open(BASELINE_PATH) as f:
+    with open(BASELINE_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -182,7 +182,7 @@ def calibration(request):
     yield data
     if request.config.getoption("--calibrate") and data:
         out = os.path.join(HERE, "baseline.measured.json")
-        with open(out, "w") as f:
+        with open(out, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, sort_keys=True)
         print(f"\ncalibration written to {out}")
 

@@ -86,7 +86,7 @@ def main():
         print("  %.1f sigma" % (abs(m) / se if se else 0.0))
     s.close()
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for row in rows:
                 fh.write(json.dumps(row) + "\n")
 

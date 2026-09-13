@@ -112,7 +112,7 @@ def _require():
 
 @pytest.fixture(scope="module")
 def ctl_src():
-    with open(CTL_C) as fh:
+    with open(CTL_C, encoding="utf-8") as fh:
         return fh.read()
 
 
@@ -208,7 +208,7 @@ def test_the_harness_catches_a_parser_broken_on_purpose(tmp_path, ctl_src,
         f"was reworded, update MUTATIONS; if it was removed, that is the "
         f"regression this file exists to catch.")
     mutant = tmp_path / "ctl_mutant.c"
-    mutant.write_text(ctl_src.replace(m["find"], m["replace"], 1))
+    mutant.write_text(ctl_src.replace(m["find"], m["replace"], 1), encoding="utf-8")
 
     exe = _build(tmp_path, str(mutant), "fuzz_mutant", ctl_src)
     proc = _run(exe, ["--builtin"])

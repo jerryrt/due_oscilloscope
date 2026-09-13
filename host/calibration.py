@@ -58,7 +58,7 @@ def load(path=None):
     global _cache
     if path is None and _cache is not None:
         return _cache
-    with open(path or PATH) as f:
+    with open(path or PATH, encoding="utf-8") as f:
         data = json.load(f)
     if path is None:
         _cache = data

@@ -249,7 +249,7 @@ def _gen_dir(tmp_path):
         "#ifndef FW_GIT_REV_H\n"
         "#define FW_GIT_REV_H\n"
         '#define FW_GIT_REV "fuzz"\n'
-        "#endif\n")
+        "#endif\n", encoding="utf-8")
     return str(inc)
 
 
@@ -360,7 +360,7 @@ def test_the_harness_catches_a_console_broken_on_purpose(tmp_path, abi, name):
     m = MUTATIONS[name]
     _require_oracle(abi, m)
     original = os.path.join(SHARED, m["file"])
-    with open(original) as fh:
+    with open(original, encoding="utf-8") as fh:
         src = fh.read()
     assert src.count(m["find"]) == 1, (
         f"the {name} anchor is no longer in {m['file']} verbatim. If the "
@@ -374,7 +374,7 @@ def test_the_harness_catches_a_console_broken_on_purpose(tmp_path, abi, name):
         f"on this project - a flag mutated inside a comment, and the green "
         f"read as evidence.")
     mutant = tmp_path / ("mutant_" + m["file"])
-    mutant.write_text(src.replace(m["find"], m["replace"], 1))
+    mutant.write_text(src.replace(m["find"], m["replace"], 1), encoding="utf-8")
 
     exe = _build(tmp_path, "fuzz_mutant", abi, (m["file"], str(mutant)))
     proc = _run(exe, ["--builtin"], timeout=300)

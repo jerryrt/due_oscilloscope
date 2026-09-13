@@ -119,7 +119,7 @@ def bench():
     """
     path = os.path.join(REPO, BENCH_FILE)
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             got = json.load(f)
     except FileNotFoundError:
         return {}
@@ -230,7 +230,7 @@ def firmware(build_stamp=None, track=None):
     """
     path = os.path.join(REPO, FLASH_LOG)
     try:
-        lines = [json.loads(x) for x in open(path) if x.strip()]
+        lines = [json.loads(x) for x in open(path, encoding="utf-8") if x.strip()]
     except (OSError, ValueError):
         return {"fw_provenance": "unlogged"}
     if not lines:

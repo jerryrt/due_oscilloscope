@@ -82,7 +82,7 @@ def _build(tmp_path, core_c, name):
 
 @pytest.fixture(scope="module")
 def core_src():
-    with open(os.path.join(SHARED, "stream_core.c")) as fh:
+    with open(os.path.join(SHARED, "stream_core.c"), encoding="utf-8") as fh:
         return fh.read()
 
 
@@ -117,7 +117,7 @@ def test_the_harness_catches_the_bug_it_was_written_for(tmp_path, core_src):
         "If it was reworded, update GUARD; if it was removed, that is "
         "the regression this file exists to catch.")
     mutant = tmp_path / "stream_core_mutant.c"
-    mutant.write_text(core_src.replace(GUARD, "", 1))
+    mutant.write_text(core_src.replace(GUARD, "", 1), encoding="utf-8")
 
     exe = _build(tmp_path, str(mutant), "mutant")
     proc = subprocess.run([exe], capture_output=True, text=True,

@@ -246,7 +246,7 @@ def test_a_truncated_last_line_costs_only_that_run(tmp_path):
     p = tmp_path / "r.jsonl"
     rec = repeat.Recorder(str(p))
     rec.add(_rec(0, "in-place", {"a": 1.0}))
-    with open(p, "a") as f:
+    with open(p, "a", encoding="utf-8") as f:
         f.write('{"run": 1, "axis": "in-pl')
     assert repeat.series(repeat.load(str(p)), "a") == [1.0]
 
@@ -260,6 +260,6 @@ def test_the_record_is_json_a_report_generator_can_read(tmp_path):
     so a diff between two records is about the numbers."""
     p = tmp_path / "r.jsonl"
     repeat.Recorder(str(p)).add(_rec(0, "in-place", {"b": 1.0, "a": 2.0}))
-    line = p.read_text().strip()
+    line = p.read_text(encoding="utf-8").strip()
     assert json.loads(line)["values"] == {"a": 2.0, "b": 1.0}
     assert line.index('"axis"') < line.index('"values"')

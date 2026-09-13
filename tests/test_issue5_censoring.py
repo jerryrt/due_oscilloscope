@@ -141,7 +141,7 @@ def test_a_truncated_set_is_not_compared_against_a_full_one(tmp_path,
                        track="b")
             rows.append(row)
         (tmp_path / name).write_text(
-            "".join(json.dumps(r) + "\n" for r in rows))
+            "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
 
     monkeypatch.setattr(cmp, "RECORDS", str(tmp_path))
 

@@ -87,7 +87,7 @@ def identity_line(tmp_path_factory):
         "#ifndef FW_GIT_REV_H\n"
         "#define FW_GIT_REV_H\n"
         '#define FW_GIT_REV "%s"\n'
-        "#endif\n" % SENTINEL)
+        "#endif\n" % SENTINEL, encoding="utf-8")
 
     exe = str(tmp / "identity")
     proc = subprocess.run(

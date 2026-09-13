@@ -63,4 +63,4 @@ for gap in GAPS:
               f"span={span:6.2f}s  {err or 'survived'}", flush=True)
         time.sleep(2.0)
 
-json.dump(out, open(sys.argv[1], "w"), indent=1)
+json.dump(out, open(sys.argv[1], "w", encoding="utf-8"), indent=1)

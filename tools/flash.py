@@ -672,7 +672,7 @@ def _log_flash(binary) -> None:
             **_build_env(binary),
         }
         os.makedirs(os.path.dirname(FLASH_LOG), exist_ok=True)
-        with open(FLASH_LOG, "a") as f:
+        with open(FLASH_LOG, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec, sort_keys=True) + "\n")
             f.flush()
         dirt = (f" (dirty {rec['dirty_sha'][:8]})" if rec["dirty"]
@@ -770,7 +770,7 @@ def _build_env(binary) -> dict:
         import json
         path = os.path.join(os.path.dirname(os.path.abspath(binary)),
                             BUILD_ENV_FILE)
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             rec = json.load(f)
         want = rec.get("artifacts", {}).get(os.path.basename(binary))
         with open(binary, "rb") as f:

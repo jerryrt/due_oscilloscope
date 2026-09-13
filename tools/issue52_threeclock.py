@@ -84,7 +84,7 @@ payload = dict(rows=rows, mck_ppm=mck_ppm, sof_ppm=sof_ppm, ratio_ppm=ratio,
                closure_ppm=(mck_ppm - sof_ppm) - ratio[-1],
                span_s=xs[-1], max_round_trip_us=max(r['rt_us'] for r in rows))
 if out:
-    json.dump(payload, open(out, 'w'), indent=1)
+    json.dump(payload, open(out, 'w', encoding="utf-8"), indent=1)
     print(f"  wrote {out}")
 else:
     print("  (no output path given; pass one to keep the rows)")

@@ -189,7 +189,7 @@ def main():
               "means counted in DAC updates; a spacing that follows the "
               "ratio means a beat between the timers.")
     if args.out:
-        with open(args.out, "a") as fh:
+        with open(args.out, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"wrote {len(rows)} rows to {args.out}")

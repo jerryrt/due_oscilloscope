@@ -57,7 +57,7 @@ def table(path):
     if not path.exists():
         return None
     out = {}
-    for letter, handler in _ENTRY.findall(path.read_text(errors="replace")):
+    for letter, handler in _ENTRY.findall(path.read_text(errors="replace", encoding="utf-8")):
         out[letter] = handler
     return out
 
@@ -118,7 +118,7 @@ def init_sequence(path):
     """
     if not path.exists():
         return None
-    text = path.read_text(errors="replace")
+    text = path.read_text(errors="replace", encoding="utf-8")
     m = (re.search(r"^int\s+main\s*\(", text, re.M)
          or re.search(r"^void\s+setup\s*\(", text, re.M))
     if not m:
@@ -211,7 +211,7 @@ def needed(left="B", right="C"):
     use, where = collections.Counter(), collections.defaultdict(set)
     for d in ("tests", "host"):
         for path in sorted((ROOT / d).glob("*.py")):
-            text = path.read_text(errors="replace")
+            text = path.read_text(errors="replace", encoding="utf-8")
             for m in list(_USE.finditer(text)) + list(_USE_FMT.finditer(text)):
                 ch = m.group(1)
                 use[ch] += 1

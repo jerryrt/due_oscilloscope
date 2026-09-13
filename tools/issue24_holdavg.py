@@ -169,7 +169,7 @@ def main():
     print("\n  hold 2 showing 10s and 11s -> the comb counts ADC conversions")
     print("  hold 2 showing 21s          -> it counts DAC updates")
     if args.out:
-        with open(args.out, "a") as fh:
+        with open(args.out, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"wrote {len(rows)} rows to {args.out}")

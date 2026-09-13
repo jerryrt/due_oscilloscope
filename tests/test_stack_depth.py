@@ -46,7 +46,7 @@ def _ci(tmp_path, name, lines):
     d = tmp_path / "build"
     d.mkdir(exist_ok=True)
     (d / f"{name}.ci").write_text(
-        f'graph: {{ title: "{name}"\n' + "\n".join(lines) + "\n}\n")
+        f'graph: {{ title: "{name}"\n' + "\n".join(lines) + "\n}\n", encoding="utf-8")
     return str(d)
 
 
@@ -672,7 +672,7 @@ def test_declarations_are_read_per_track(tmp_path):
                  "c indirect timers.c none\n"
                  "\n"
                  "# a whole-line comment\n"
-                 "b leaf vendor_blob 16\n")
+                 "b leaf vendor_blob 16\n", encoding="utf-8")
     assert sd.read_declarations(str(f), "b") == [
         ("indirect", "console.c:260", "console_bindings"),
         ("leaf", "vendor_blob", "16")]
@@ -686,12 +686,12 @@ def test_a_malformed_declaration_stops_rather_than_being_skipped(tmp_path):
     needed - the site it was meant to cover silently goes back to being
     refused, or worse, another line's spec reaches it."""
     f = tmp_path / "d.list"
-    f.write_text("b indirect console.c:260\n")          # three fields, not four
+    f.write_text("b indirect console.c:260\n", encoding="utf-8")          # three fields, not four
     with pytest.raises(ValueError) as exc:
         sd.read_declarations(str(f), "b")
     assert "d.list:1" in str(exc.value), "name the line, not just the file"
 
-    f.write_text("b nonsense console.c:260 x\n")
+    f.write_text("b nonsense console.c:260 x\n", encoding="utf-8")
     with pytest.raises(ValueError):
         sd.read_declarations(str(f), "b")
 

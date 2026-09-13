@@ -366,7 +366,7 @@ def main():
     text = render(run)
     print(text)
     if args.out:
-        with open(args.out, "w") as f:
+        with open(args.out, "w", encoding="utf-8") as f:
             f.write(text + "\n")
         print(f"\nreport written to {args.out}", file=sys.stderr)
     path = args.json_out or os.path.join(RECORDS, "metrics.jsonl")
