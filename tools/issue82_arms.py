@@ -53,6 +53,8 @@ def parity(vals):
 
 def tail(vals, hold):
     """Rate/s of level errors beyond each threshold, at 200 ksps."""
+    if len(vals) < 8:
+        return ({t: 0.0 for t in THRESH}, 0.0, 0)
     if hold == 2:
         off, spread = parity(vals)
         lv = [(vals[i] + vals[i + 1]) / 2.0
