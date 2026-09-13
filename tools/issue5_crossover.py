@@ -565,14 +565,31 @@ def two_state_guarded(paths, fws, pos):
         rows = [r for r in rows if r["run"] not in (1,) and r.get("fws") == fws]
         per.append([abs(r["profile"][pos]) for r in rows])
     # THE TWO-STATE ANSWER MUST HOLD IN EVERY LEG, not in the pool.
-    # linux-x1's clause, tested against mac-bench's untouched board as
-    # a null before being accepted. Classifying the POOLED values lets
-    # a position count as two-state on the strength of one arm, and the
-    # single-arm verdict is itself unstable: between two readings of an
-    # UNTOUCHED board it flips in 15-16 of 768 position-by-wait-state
-    # cells. Requiring agreement across all legs removes the verdict's
-    # dependence on which arm you asked - which is the same defect as
-    # the cut's dependence on which arms you pooled, one level up.
+    # linux-x1's clause, tested against mac-bench's untouched board
+    # before being accepted.
+    #
+    # Classifying the POOLED values lets a position count as two-state
+    # on the strength of one arm, and a single arm's verdict is not
+    # stable enough to carry that: split ONE arm's own runs in half and
+    # the set of positions it calls two-state changes with nothing but
+    # the choice of split. Requiring agreement across all legs removes
+    # the verdict's dependence on which runs were drawn - the same
+    # defect as the cut's dependence on which arms were pooled, one
+    # level up.
+    #
+    # The justification here USED to be a flip count - "15-16 of 768
+    # cells between two readings of an untouched board" - and that was
+    # withdrawn at 5ce828a along with the column that reported it,
+    # because a split-half flip count on a single arm spans 11 to 73 on
+    # the split choice alone and so has no baseline. windows-desk found
+    # the stale number still propping up this comment while reading the
+    # file to document it.
+    #
+    # The clause survives its own evidence being withdrawn because it
+    # never needed a COUNT: it needs only that the verdict moves with
+    # the sample, which is the same measurement read as instability
+    # rather than as a quantity. A count would have required a floor.
+    # "This varies" does not.
     verdicts = [issue5_modes.classify(a).get("modes") == 2 for a in per]
     if all(verdicts):
         return True, None
