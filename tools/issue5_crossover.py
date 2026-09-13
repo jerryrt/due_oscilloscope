@@ -769,84 +769,44 @@ def check():
     # flips between modes reads as two states under one convention and
     # one state under the other - the same signed-versus-absolute split
     # that put two conventions in one file at 33813a0.
-    # WITHDRAWN: "the swap perturbs the two-state structure beyond the
-    # floor". 03a7ce4 read the swap legs flipping about twice as often
-    # as the same-wire legs and published that. linux-x1 then measured
-    # the floor the cheap way - split ONE arm's runs in half and compare
-    # the halves, no interval, no handling, no swap - and it is as large
-    # as any between-arm count. In this readout's own convention:
+    # THE FLIP COLUMN IS REMOVED, not merely qualified.
     #
-    #     within-arm floors   12 to 58 per 768, median about 26
-    #     between-arm         swap 35 and 17, return 29, same-wire 14
-    #                         and 8, mac-bench untouched 16
+    # 03a7ce4 published "the swap perturbs the two-state structure
+    # beyond the floor"; 9ebb5da withdrew that and kept the column with
+    # a within-arm floor printed beside it. Both were wrong, and the
+    # second more interestingly than the first: there is no floor to
+    # print, because the flip count is not a measurable quantity at
+    # these sample sizes.
     #
-    # Every between-arm count sits inside the single-arm range, and
-    # linux-x1's swap count of 35 sits between its own two arms' floors
-    # of 34 and 39. So the flip counts are classifier sampling noise and
-    # the claim is not established. It is not shown to be absent either:
-    # the halves classify at n=12 against n=24, and classify() is
-    # noisier at lower n, so this is an UPPER bound on the floor rather
-    # than the floor. Settling it needs 48-run arms.
+    # Splitting ONE arm's own runs in half - same board, same session,
+    # nothing done - and varying only HOW they are split:
     #
-    # This is precisely the error mac-bench's untouched control caught
-    # linux-x1 in earlier today - a change quoted without the drift that
-    # produces it - recurring one level up, in the statistic built to
-    # police that very thing, and published by the bench that had just
-    # made the point. A flip count without its own arm's floor is the
-    # same object as a per-position change without the control's drift.
+    #     arm            chrono  interleaved  random x3
+    #     mac base          20       17       23 23 27
+    #     mac ctl1          35       36       24 46 40
+    #     win copper        20       73       16 20 64
+    #     lin copper2       17       52       39 26 28
     #
-    # The column stays, with the floor printed beside it, because a
-    # number that cannot be read without its floor should not be
-    # printable without it.
-    print("\n  GUARD STABILITY, two-state verdict flips per 768 cells")
-    print("    read each between-arm count against THAT ARM's own "
-          "within-arm floor, never against another board's")
-    sys.path.insert(0, os.path.join(ROOT, "tools"))
-    import issue5_modes
-
-    def verdicts(path, fws):
-        rows = [json.loads(l) for l in open(path, encoding="utf-8")
-                if l.strip()]
-        rows = [r for r in rows if r["run"] not in (1,) and r.get("fws") == fws]
-        return {p for p in range(BINS)
-                if issue5_modes.classify(
-                    [abs(r["profile"][p]) for r in rows]).get("modes") == 2}
-
-    def flips(a, b):
-        return sum(len(verdicts(a, f) ^ verdicts(b, f)) for f in (4, 5, 6))
-
-    rec = os.path.join(ROOT, "records")
-    legs = {b: [os.path.join(rec, n.format(bench=b)) for n in
-                ("issue5-campaign-{bench}.jsonl",
-                 "issue5-crossover-{bench}.jsonl",
-                 "issue5-return-{bench}.jsonl")]
-            for b in BASELINE}
-    def within(path):
-        """linux-x1's floor: one arm's own halves against each other."""
-        t = 0
-        for f in (4, 5, 6):
-            rr = [json.loads(l) for l in open(path, encoding="utf-8")
-                  if l.strip()]
-            rr = [r for r in rr if r["run"] not in (1,) and r.get("fws") == f]
-            h = len(rr) // 2
-            def vs(sub):
-                return {p for p in range(BINS)
-                        if issue5_modes.classify(
-                            [abs(r["profile"][p]) for r in sub]
-                        ).get("modes") == 2}
-            t += len(vs(rr[:h]) ^ vs(rr[h:]))
-        return t
-
-    for b, ps in sorted(legs.items()):
-        if not all(os.path.exists(p) for p in ps):
-            continue
-        tag = "UNTOUCHED" if b == "mac-bench" else "swapped"
-        w = [within(p) for p in ps]
-        print(f"    {b:14s} between: {flips(ps[0], ps[1]):3d} "
-              f"{flips(ps[1], ps[2]):3d} {flips(ps[0], ps[2]):3d}   "
-              f"within-arm floor: {w[0]:3d} {w[1]:3d} {w[2]:3d}   {tag}")
-    print("    -> every between-arm count is inside its own arm's "
-          "within-arm range. Not established above noise.")
+    # One arm spans 16 to 73 on the choice of split alone. Every
+    # between-arm count anyone proposed to read - 9 to 35 across three
+    # boards - sits inside a single arm's range. So a flip count has no
+    # baseline measured at the same resolution by the same procedure,
+    # and printing one with a single split's floor beside it implies a
+    # precision that does not exist.
+    #
+    # linux-x1 measured it and retracted their own "upper bound on the
+    # floor" framing; windows-desk withdrew the clause that proposed the
+    # column. Scoped: n=12 per side, so this is a statement about these
+    # arms and not about the statistic in principle. 48-run arms could
+    # change it.
+    #
+    # WHAT SURVIVES IS THE GENERAL FORM, and it is the day's actual
+    # lesson: a difference is only readable against a baseline measured
+    # at the same resolution AND by the same procedure. Per-position
+    # change has one - the untouched board's drift at that position -
+    # and it worked, caught an FWS 4 error, and is why the eligibility
+    # rule is sound. Flip counts have none, so they are not evidence and
+    # are not reported.
     return 0
 
 
