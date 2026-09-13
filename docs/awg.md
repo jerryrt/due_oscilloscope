@@ -1488,8 +1488,26 @@ amplitude" coincided with the strong-site set changing - it does not.
 Together with the table rebuild and the NRSTB reset, three candidates
 are now excluded and none proposed.
 
-Still open: whether the doubling on the host-fed path is the same
-effect modulated or a larger sibling, and the mechanism for either.
+**Both paths are the refresh collision, and holding the refresh off
+removes both.** The same one-constant A/B/A that settled the wrap
+displacement, read on the host-fed ramp with `tools/issue24_fold.py`,
+16 counted runs an arm on one board in one session:
+
+| arm | host-fed ramp, \|spike\| | runs over 4 codes | runs with a 21-apart site pair | internal generator |
+|---|---|---|---|---|
+| `REFRESH(1)` during a stream | 2.1-49.3 codes, median 8.7 | 12 of 16 | 12 of 16 | 12.6-12.9 codes |
+| refresh held off | 0.3-1.4, median 0.8 | **0 of 16** | **0 of 16** | 0.17-0.29 |
+
+The ranges do not overlap, and no fix run carries a site at all.
+`records/issue24-fold-refresh-aba-mac-bench.jsonl`. That the host-fed
+site phase is drawn per run where the internal generator's is fixed per
+image does not make it a different defect: the internal generator starts
+its stream at a phase the image sets, while a host-fed stream starts
+whenever the feed arrives against a refresh counter that is already
+running. What the host-fed path adds - the storms, the larger
+magnitudes - went with the refresh, so no separate host-side cause is
+left to find. Only the default arm has been read on the fix image; the
+hold and ratio arms above were taken at `REFRESH(1)`.
 
 ## The gap
 
