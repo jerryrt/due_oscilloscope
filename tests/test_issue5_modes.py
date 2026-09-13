@@ -25,15 +25,22 @@ def _fires(draw, trials=TRIALS, seed=5):
     return sum(md.classify(draw(rng))["modes"] == 2 for _ in range(trials))
 
 
-@pytest.mark.parametrize("name,draw", [
-    ("normal", lambda r: [r.gauss(400, 3) for _ in range(24)]),
-    ("uniform", lambda r: [r.uniform(390, 410) for _ in range(24)]),
-    ("wide normal", lambda r: [r.gauss(400, 20) for _ in range(24)]),
-    ("skewed", lambda r: [380 * r.lognormvariate(0, 0.02) for _ in range(24)]),
-    ("one outlier", lambda r: [r.gauss(396, 2.5) for _ in range(23)] + [353.5]),
-])
-def test_unimodal_sessions_are_not_split(name, draw):
-    assert _fires(draw) == 0
+@pytest.mark.parametrize("name", sorted(md.NULLS))
+def test_unimodal_sessions_are_not_split(name):
+    assert _fires(md.NULLS[name]) == 0
+
+
+def test_null_mode_measures_what_the_nulls_assert():
+    assert set(md.null_rates(trials=200)) == set(md.NULLS)
+    assert all(rate == 0.0 for rate in md.null_rates(trials=200).values())
+
+
+def test_null_mode_reports_a_rule_that_splits_noise(monkeypatch):
+    """`--null` exists to put a number on a bad threshold, so it has to
+    produce one: with the MAD criterion off, a noisy null must fire."""
+    monkeypatch.setattr(md, "GAP_MAD", 0.0)
+    monkeypatch.setattr(md, "GAP_REL", 0.0)
+    assert max(md.null_rates(trials=200).values()) > 0.5
 
 
 @pytest.mark.parametrize("hi", [15, 5])

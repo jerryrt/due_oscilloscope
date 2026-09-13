@@ -144,10 +144,52 @@ def read(rows):
     return out
 
 
+#: Unimodal sessions the rule must not split, 24 runs each. One home for
+#: them: `--null` measures against these and the tests assert on them, so
+#: a null added here is both reported and guarded. `one outlier` is
+#: `linux-x1`'s FWS 6 shape - one tight mode and a run 40 below - the
+#: most likely wrong answer a real session offers.
+NULLS = {
+    "normal": lambda r: [r.gauss(400, 3) for _ in range(24)],
+    "uniform": lambda r: [r.uniform(390, 410) for _ in range(24)],
+    "wide normal": lambda r: [r.gauss(400, 20) for _ in range(24)],
+    "skewed": lambda r: [380 * r.lognormvariate(0, 0.02) for _ in range(24)],
+    "one outlier": lambda r: [r.gauss(396, 2.5) for _ in range(23)] + [353.5],
+}
+
+
+def null_rates(trials=2000, seed=5):
+    """The rule's false-positive rate on each null, measured, not asserted.
+
+    `mac-bench`'s first threshold for this question called two modes in
+    one population 17.4% of the time, and a rate is what showed it. A
+    test that asserts zero says whether the rule passed; this says by how
+    much, which is what a reader needs when a threshold is proposed.
+    """
+    import random
+    out = {}
+    for name, draw in NULLS.items():
+        rng = random.Random(seed)
+        fired = sum(classify(draw(rng))["modes"] == 2 for _ in range(trials))
+        out[name] = fired / trials
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("records", nargs="+")
+    ap.add_argument("records", nargs="*")
+    ap.add_argument("--null", action="store_true",
+                    help="measure the rule's false-positive rate on the "
+                         "synthetic unimodal sessions in NULLS, and print it")
+    ap.add_argument("--trials", type=int, default=2000)
     args = ap.parse_args()
+    if not args.records and not args.null:
+        ap.error("give records to read, or --null")
+    if args.null:
+        print(f"false-positive rate, {args.trials} sessions per null "
+              f"(MIN_SIDE {MIN_SIDE}, GAP_MAD {GAP_MAD}, GAP_REL {GAP_REL}):")
+        for name, rate in null_rates(args.trials).items():
+            print(f"  {name:12s} {rate:.4f}")
     for path in args.records:
         with open(path, encoding="utf-8") as fh:
             rows = [json.loads(line) for line in fh if line.strip()]
