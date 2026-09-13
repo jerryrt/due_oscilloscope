@@ -418,6 +418,108 @@ def site_devs_by_mode(path, fws=6, drop=(1,)):
     return out
 
 
+#: The return arms. Named here because linux-x1 committed one before a
+#: path was registered and windows-desk matched it by inference; a path
+#: two benches guessed consistently is still a path nobody registered.
+RETURN_PATH = "issue5-return-{bench}.jsonl"
+#: windows-desk's two definitions, adopted as they stated them:
+#: "returned" means the back-move exceeds tolerance AND the residual
+#: against the original is within it - a site that merely stops moving
+#: has not returned - and a count component needs at least this many
+#: runs of change, because a 1-run count move clears any size floor
+#: trivially and the count is noise anyway (measured: 8-16 of 24 on an
+#: untouched board).
+RETURN_MIN_COUNT = 3
+
+
+def state_split(paths, fws, pos):
+    """Per-arm (large count, size when large, size when small).
+
+    The cut is the largest gap in the position's values pooled over ALL
+    the arms being compared, so it is a property of the comparison and
+    is recomputed for each one rather than carried between them.
+    """
+    per = []
+    for p in paths:
+        rows = [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
+        rows = [r for r in rows if r["run"] not in (1,) and r.get("fws") == fws]
+        per.append([abs(r["profile"][pos]) for r in rows])
+    pool = sorted(v for arm in per for v in arm)
+    if len(pool) < 2:
+        return None
+    _, i = max((pool[k] - pool[k - 1], k) for k in range(1, len(pool)))
+    cut = (pool[i - 1] + pool[i]) / 2
+    out = []
+    for arm in per:
+        hi = [v for v in arm if v >= cut]
+        lo = [v for v in arm if v < cut]
+        out.append((len(hi), statistics.median(hi) if hi else None,
+                    statistics.median(lo) if lo else None, len(arm)))
+    return cut, out
+
+
+def control_tolerance(fws, pos):
+    """Size-when-large spread across mac-bench's three untouched arms.
+
+    The tolerance is MEASURED on the board nothing was done to, at the
+    same position and the same wait state, rather than assumed. Three
+    readings, so it is a spread and not a difference.
+    """
+    paths = [os.path.join(ROOT, "records", f)
+             for f in ("issue5-campaign-mac-bench.jsonl",
+                       "issue5-crossover-mac-bench.jsonl",
+                       "issue5-return-mac-bench.jsonl")]
+    if not all(os.path.exists(p) for p in paths):
+        return None
+    r = state_split(paths, fws, pos)
+    if r is None:
+        return None
+    sizes = [x[1] for x in r[1] if x[1] is not None]
+    if len(sizes) < 2:
+        return None
+    return max(max(sizes) - min(sizes), RETURN_DRIFT_FLOOR)
+
+
+def score_return(bench, positions):
+    """Did the crossover's change reverse when the original wire went back?
+
+    Registered in comments at 589329e/735c3b8/fafc999 and executed
+    nowhere, which windows-desk found by grepping for the constants.
+    That is the fifth registration in this file that existed only as
+    prose, after the secondaries, the control gate, the per-mode split
+    and this. The lesson is the one `--verify-baseline` already applied
+    to the estimator and that I kept not applying to anything else.
+    """
+    base = os.path.join(ROOT, "records", f"issue5-campaign-{bench}.jsonl")
+    cross = os.path.join(ROOT, "records", f"issue5-crossover-{bench}.jsonl")
+    ret = os.path.join(ROOT, "records", RETURN_PATH.format(bench=bench))
+    if not all(os.path.exists(p) for p in (base, cross, ret)):
+        return None
+    rows = []
+    for fws, pos in positions:
+        r = state_split([base, cross, ret], fws, pos)
+        tol = control_tolerance(fws, pos)
+        if r is None or tol is None:
+            continue
+        _, arms = r
+        sz = [a[1] for a in arms]
+        cnt = [a[0] for a in arms]
+        if any(v is None for v in sz):
+            verdict = "no large state in some arm"
+        else:
+            out, back, resid = sz[1] - sz[0], sz[2] - sz[1], sz[2] - sz[0]
+            if abs(out) <= tol:
+                verdict = f"never moved (out {out:+.2f} <= tol {tol:.2f})"
+            elif abs(back) > tol and abs(resid) <= tol:
+                verdict = "RETURNED"
+            elif abs(resid) > tol and abs(back) > tol:
+                verdict = "MOVED AGAIN"
+            else:
+                verdict = "stayed moved"
+        rows.append((fws, pos, cnt, sz, tol, verdict))
+    return rows
+
+
 def check():
     arms = {}
     for b in BASELINE:
@@ -521,6 +623,28 @@ def check():
                 print(f"      {name:12s} " +
                       " ".join(f"{dd[x]:8.2f}" for x in EXCHANGE) +
                       f"   (n={n})")
+
+    POSITIONS = [(4, 219), (4, 240), (5, 134), (6, 75), (6, 109),
+                 (6, 169), (6, 180), (6, 201), (6, 247)]
+    printed = False
+    for b in ("linux-x1", "windows-desk"):
+        r = score_return(b, POSITIONS)
+        if not r:
+            continue
+        if not printed:
+            print("\n  RETURN LEG, size-when-large, tolerance measured on "
+                  "the untouched board")
+            print(f"    {'':22s} {'base':>7s} {'cross':>7s} {'ret':>7s} "
+                  f"{'tol':>6s}  verdict")
+            printed = True
+        print(f"    {b}")
+        for fws, pos, cnt, sz, tol, verdict in r:
+            f = lambda v: f"{v:7.2f}" if v is not None else "      -"
+            print(f"      f{fws} pos {pos:3d}  {f(sz[0])} {f(sz[1])} "
+                  f"{f(sz[2])} {tol:6.2f}  {verdict}   count "
+                  f"{cnt[0]}/{cnt[1]}/{cnt[2]}")
+    if not printed:
+        print("\n  RETURN LEG: no return arms in records/ yet")
     return 0
 
 
