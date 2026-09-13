@@ -97,7 +97,7 @@ CONTROL_TOL = 3 * BASELINE["mac-bench"]["sd"]
 
 
 def comb_sum(path, fws=6, drop=(1,)):
-    rows = [json.loads(l) for l in open(path) if l.strip()]
+    rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
     rows = [r for r in rows if r["run"] not in drop and r.get("fws") == fws]
     if not rows or "profile" not in rows[0]:
         return None, 0
