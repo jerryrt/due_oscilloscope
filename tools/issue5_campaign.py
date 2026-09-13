@@ -176,6 +176,12 @@ def check_board(quiet=False):
         p = provenance.run_fields(board)
     finally:
         board.close()
+    # `run_fields` carries what a ROW needs and does not include
+    # `fw_provenance`; that comes from `provenance.firmware()` on the
+    # board's own `build=` stamp, which is #71's step 3b. Reading it off
+    # `run_fields` refused every board, which is the safe direction for a
+    # guard to be wrong in and was still wrong.
+    p.update(provenance.firmware(p.get("fw_build"), p.get("track")))
     if not quiet:
         print("  board: " + ", ".join(f"{k}={v}" for k, v in p.items()))
     bad = []
