@@ -129,6 +129,18 @@ ALLOWED = {
     "heap_4.c": "FreeRTOS kernel source, fetched at configure time",
     "port.c": "FreeRTOS kernel port, fetched at configure time",
 
+    # Where the container drops its artifacts. `.gitignore` carries
+    # `build*/` and this is the same class: a build output, so it is
+    # never tracked and cannot resolve. `docs/windows.md` names it to
+    # say which three files travel from a WSL container build to a
+    # Windows-native flash, which is a real instruction and not a
+    # reference to source.
+    "docker/out/": "written by the container build; ignored, never tracked",
+    "docker/out/build/":
+        "written by the container build; ignored, never tracked",
+    "docker/out/build-a/":
+        "written by the container build; ignored, never tracked",
+
     # Written per bench and gitignored, so each is absent from a fresh
     # checkout by design rather than by accident. `.gitignore` says why
     # for every one of them.
