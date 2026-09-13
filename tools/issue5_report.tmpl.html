@@ -1,0 +1,850 @@
+<title>The #5 Glitch by Wait State</title>
+<meta name="description" content="What issue #5's severity number is made of at flash wait states 4, 5 and 6, on three benches running one frozen image - and how much of it the records never wrote down.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+
+:root {
+  color-scheme: light;
+  --ground: #eef1f0;
+  --surface: #fcfcfb;
+  --ink: #15181b;
+  --ink-2: #51575c;
+  --muted: #868b8f;
+  --grid: #e0e3e0;
+  --axis: #c3c6c2;
+  --rule: rgba(21, 24, 27, 0.10);
+  --floor: rgba(81, 87, 92, 0.16);
+  --heat: 21, 24, 27;
+  --s-linux: #2a78d6;
+  --s-windows: #eb6834;
+  --s-mac: #1baf7a;
+  --focus: #1f5c8a;
+  --tip-bg: #15181b;
+  --tip-ink: #f4f5f3;
+  --font-display: "Archivo Narrow", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #101314;
+    --surface: #1a1a19;
+    --ink: #f2f3f1;
+    --ink-2: #c3c7c6;
+    --muted: #8b9094;
+    --grid: #2c2e2d;
+    --axis: #3b3e3c;
+    --rule: rgba(255, 255, 255, 0.10);
+    --floor: rgba(195, 199, 198, 0.18);
+    --heat: 242, 243, 241;
+    --s-linux: #3987e5;
+    --s-windows: #d95926;
+    --s-mac: #199e70;
+    --focus: #7fb3e6;
+    --tip-bg: #f2f3f1;
+    --tip-ink: #15181b;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #101314;
+  --surface: #1a1a19;
+  --ink: #f2f3f1;
+  --ink-2: #c3c7c6;
+  --muted: #8b9094;
+  --grid: #2c2e2d;
+  --axis: #3b3e3c;
+  --rule: rgba(255, 255, 255, 0.10);
+  --floor: rgba(195, 199, 198, 0.18);
+  --heat: 242, 243, 241;
+  --s-linux: #3987e5;
+  --s-windows: #d95926;
+  --s-mac: #199e70;
+  --focus: #7fb3e6;
+  --tip-bg: #f2f3f1;
+  --tip-ink: #15181b;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding-inline: 20px;
+  padding-block: 40px 72px;
+}
+.page { max-width: 940px; margin-inline: auto; display: grid; gap: 56px; }
+
+header { display: grid; gap: 14px; }
+.eyebrow {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-2); margin: 0;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: 0.005em; }
+h1 { font-size: clamp(34px, 5.2vw, 50px); line-height: 1.04; font-weight: 700; }
+h2 { font-size: 29px; line-height: 1.12; font-weight: 600; }
+h3 { font-size: 19px; line-height: 1.2; font-weight: 600; }
+p { margin: 0; max-width: 66ch; }
+.lede { font-size: 18px; color: var(--ink-2); max-width: 64ch; }
+code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+
+.spec {
+  display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 4px 0 0; padding: 0;
+  list-style: none; font-family: var(--font-mono); font-size: 13px; color: var(--ink-2);
+}
+.spec b { color: var(--ink); font-weight: 500; }
+
+section { display: grid; gap: 18px; }
+.claim { display: grid; gap: 8px; }
+
+figure {
+  margin: 0; background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 6px; padding: 18px 18px 14px; display: grid; gap: 12px;
+}
+figcaption { font-family: var(--font-mono); font-size: 12px; line-height: 1.55; color: var(--ink-2); max-width: none; }
+.chart { width: 100%; overflow-x: auto; }
+.chart svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.chart svg text { font-family: var(--font-mono); fill: var(--ink-2); }
+.chart svg .t-ink { fill: var(--ink); }
+.chart svg .t-muted { fill: var(--muted); }
+.chart svg .t-head { font-family: var(--font-display); font-size: 15px; font-weight: 600; fill: var(--ink); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legend small { color: var(--ink-2); font-family: var(--font-mono); font-size: 12px; }
+
+details { font-size: 14px; }
+summary {
+  cursor: pointer; font-family: var(--font-mono); font-size: 12px; color: var(--ink-2);
+  letter-spacing: 0.04em; text-transform: uppercase; width: max-content;
+}
+summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; font-family: var(--font-mono); font-size: 12.5px; min-width: 100%; }
+th, td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-2); font-weight: 500; }
+
+.notes { display: grid; gap: 10px; border-top: 1px solid var(--rule); padding-top: 22px; }
+.notes ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 70ch; font-size: 14.5px; color: var(--ink-2); }
+.notes li b { color: var(--ink); font-weight: 600; }
+
+.tip {
+  position: fixed; pointer-events: none; z-index: 10; background: var(--tip-bg); color: var(--tip-ink);
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.45; padding: 8px 10px; border-radius: 5px;
+  max-width: 260px; opacity: 0; transition: opacity 80ms linear;
+}
+.tip strong { font-size: 14px; font-weight: 500; display: block; }
+.hit { cursor: default; }
+.hit:focus { outline: none; }
+.hit:focus-visible > .mark-outline, .hit:hover > .mark-outline { stroke: var(--ink); stroke-width: 1.5; }
+@media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+@media (max-width: 520px) { body { padding-block: 28px 56px; } h2 { font-size: 25px; } figure { padding: 14px 12px 12px; } }
+</style>
+
+
+<main class="page">
+  <header>
+    <p class="eyebrow">Issue #5 · frozen image 1b2a2d1 · Track B</p>
+    <h1>The #5 glitch by wait state</h1>
+    <p class="lede">At flash wait state 6 the glitch knocks a handful of samples about 30 codes off their level, at the same six points in every cycle on all three benches. At 4 and 5 it is barely there. The severity number adds all of it up. This page shows what goes into that number — and, in the third section, how much of it the records never wrote down.</p>
+    <ul class="spec">
+      <li>ADC <b>12-bit</b>, codes 0–4095</li>
+      <li>DAC table <b>256 levels</b>, each held <b>2 samples</b></li>
+      <li>one cycle = <b>512 samples</b></li>
+      <li><b>24 runs</b> per wait state per bench</li>
+      <li>preset <b>=200000,200000M</b></li>
+    </ul>
+  </header>
+
+  <section aria-labelledby="h-how">
+    <div class="claim">
+      <h2 id="h-how">How a glitch becomes a number</h2>
+      <p>Each DAC level is sampled twice, so the two samples should agree. Subtracting them cancels the waveform and leaves noise, plus any sample the glitch pushed off its level. Averaging those differences over hundreds of cycles, position by position, gives a 256-point <em>profile</em>. Severity is the sum of every position's distance from the profile's median.</p>
+    </div>
+    <figure>
+      <div class="chart" id="c-mech" role="img" aria-label="Schematic: a held staircase with one displaced sample, the pair differences, and the folded average"></div>
+      <figcaption>Schematic, not measured data: 16 levels are drawn where the board uses 256. Code in <span class="mono">measure.pair_fold</span> → <span class="mono">fold_profile</span>, and <span class="mono">total_abs</span> in <span class="mono">tools/issue5_sites.py</span>.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-profile">
+    <div class="claim">
+      <h2 id="h-profile">The profile on windows-desk, at each wait state</h2>
+      <p>The same vertical scale on all three rows, in codes. At FWS 6 six positions stand about <span data-bind="w6site"></span> codes off the floor. At FWS 4 the sites are a few codes tall. The shaded floor is everything else, and at this scale it is thinner than a line.</p>
+    </div>
+    <figure>
+      <div class="chart" id="c-profile"></div>
+      <figcaption>Stems are the median value of each site across the runs where it cleared the site threshold (z ≥ 6); opacity follows how many of 24 runs drew it, and positions drawn in at least 12 runs are labelled. The floor band is ±(median of <span class="mono">total_abs − site_abs</span> over the non-site positions), derived per run, since the rows do not store full profiles. <b>At FWS 6 every stem you can see is roughly half the story:</b> rows stored only the six strongest sites, and the ones they dropped are the next section.</figcaption>
+      <details><summary>Table</summary><div class="table-wrap" id="t-profile"></div></details>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-cens">
+    <div class="claim">
+      <h2 id="h-cens">What the record could not say</h2>
+      <p><span class="mono">issue5_sites.py</span> stored each run's six strongest sites and nothing about the rest. At wait states 4 and 5 that was almost always the whole list. <b>At wait state 6 it never was</b> — every row of every bench, 120 runs, had more sites than it could write down. The dropped total is still recoverable, because the severity was summed over all of them before the list was cut.</p>
+    </div>
+    <figure>
+      <div class="legend" id="legend-cens"></div>
+      <div class="chart" id="c-cens"></div>
+      <figcaption>Each bar is one wait state's median severity, split three ways: the sites the row <b>stored</b>, the sites it <b>dropped</b> (<span class="mono">site_abs − Σ|stored|</span>), and the <b>floor</b> over every position that was not a site. The dropped block is what the profile and incidence charts above cannot draw.</figcaption>
+      <details><summary>Table</summary><div class="table-wrap" id="t-cens"></div></details>
+    </figure>
+    <div class="claim">
+      <h3>The sixth stem is a slot, not a position</h3>
+      <p id="p-slot">Two positions can look mutually exclusive when they are only competing for the last place in the list.</p>
+    </div>
+  </section>
+  <section aria-labelledby="h-share">
+    <div class="claim">
+      <h2 id="h-share">Where the severity lives</h2>
+      <p>The share of each run's severity that sits in the flagged sites, median over 24 runs. At FWS 6 it is most of the number on every bench. At FWS 4 it is a small part of a small number, and the rest is the noise floor.</p>
+    </div>
+    <figure>
+      <div class="legend" id="legend-share"></div>
+      <div class="chart" id="c-share"></div>
+      <figcaption>Bar = median of <span class="mono">site_abs / total_abs</span> per run. The label at the right is that wait state's median severity for the bench.</figcaption>
+      <details><summary>Table</summary><div class="table-wrap" id="t-share"></div></details>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-inc">
+    <div class="claim">
+      <h2 id="h-inc">Which positions, on which bench</h2>
+      <p>How many of 24 runs drew a site at each cycle position. At FWS 6 the same six positions come up on all three benches, most of them in every run. At FWS 5 positions 155 and 251 appear on all three and the rest differ. At FWS 4 the benches share little beyond 240.</p>
+    </div>
+    <figure>
+      <div class="chart" id="c-inc"></div>
+      <figcaption>Cell shade and number = runs out of 24 that drew a site at that position. Columns are positions drawn in at least 3 runs on any bench. <b>A count here is a count of runs that stored that position</b>, not of runs that had a site there — rows kept only their six strongest, so at FWS 6 every count is a lower bound and the sixth column is a slot two positions compete for.</figcaption>
+      <details><summary>Table</summary><div class="table-wrap" id="t-inc"></div></details>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-runs">
+    <div class="claim">
+      <h2 id="h-runs">Severity run by run</h2>
+      <p>Each dot is one run's severity; the tick is the median. Each wait state gets its own horizontal scale, because FWS 6 is ten times FWS 4. The windows-desk FWS 5 spread comes from one early block. Its repeat session is marked with a ring.</p>
+    </div>
+    <figure>
+      <div class="legend" id="legend-runs"></div>
+      <div class="chart" id="c-runs"></div>
+      <figcaption>Severity = <span class="mono">total_abs</span>, codes summed over 256 positions. The ring on the windows-desk FWS 5 row is the median of its separate FWS-5 repeat session (<span class="mono">records/issue5-fws5-repeat-windows-desk.jsonl</span>).</figcaption>
+      <details><summary>Table</summary><div class="table-wrap" id="t-runs"></div></details>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-freq">
+    <div class="claim">
+      <h2 id="h-freq">The sites are not scattered — they are a comb</h2>
+      <p>At wait state 6 the six positions every bench draws are 12, 33, 117, 138, 159 and 180, and each of those is <b>12 more than a multiple of 21</b>. Folded onto period 21 they land on a single phase: resultant <b>R = 1.000</b> on all three benches. Wait state 4 splits into two phases of the same period, and wait state 5 does not sit on it at all.</p>
+    </div>
+    <figure>
+      <div class="legend" id="legend-freq"></div>
+      <div class="chart" id="c-freq" role="img" aria-label="Site positions against a period-21 lattice, per bench and wait state"></div>
+      <figcaption>Positions drawn in at least half of 24 runs. The scan over candidate periods is charged to the null, so the quoted p is what a uniform set of the same size reaches <em>anywhere</em> in the scan — 0.006 at FWS 6. A period-21 comb is <b>also</b> a period-3 and a period-7 one, so the largest tying period is the one reported: it is the only one of the three that predicts where the rest of the comb is.</figcaption>
+      <details><summary>Table</summary><div class="table-wrap" id="t-freq"></div></details>
+    </figure>
+    <div class="claim">
+      <h3>What it predicts, and what would refute it</h3>
+      <p id="p-predict"></p>
+      <p>A disturbance periodic in <em>wall time</em> averages away under a fold over hundreds of cycles. One that survives is locked to the table index. And because 21 does not divide 256, a free-running period-21 disturbance would land four positions further on at each wrap and smear too — so surviving the fold also implies it is re-synchronised when the table wraps. No mechanism is named here; that is what the stored profiles are for.</p>
+    </div>
+  </section>
+  <section class="notes" aria-labelledby="h-notes">
+    <h3 id="h-notes">What this page cannot say</h3>
+    <ul>
+      <li><b>Full profiles are not stored, and until 2026-09-13 neither were full site lists.</b> Rows kept at most six sites plus two totals, so the non-site positions appear only as a derived floor and the dropped sites only as a total. <span class="mono">issue5_sites.py</span> now stores every site and the whole 256-point profile; rows taken before that cannot be recovered, only re-taken.</li>
+      <li><b>The comb is measured on the visible half.</b> At FWS 6 the six positions that make R = 1.000 are the six a row had room for. If the sites those rows dropped are off the lattice, the comb is weaker than it looks — which is exactly what the next arm settles.</li>
+      <li><b>Three benches are three boards.</b> A difference between benches is board, jumper material or the USB traffic on the device. windows-desk's jumpers are iron and the others' are copper. Nothing here separates those.</li>
+      <li><b>mac-bench is shown probe-free, session 2.</b> Its first arm had scope probes clipped to A0 and A1, which moved every severity figure and none of the FWS 6 sites.</li>
+      <li><b>The severity figures are unaffected by the truncation.</b> <span class="mono">total_abs</span> is threshold-free — it sums all 256 positions and never consults the site list. What the truncation costs is the site <em>set</em>, not the size.</li>
+      <li><b>Byte conservation is unrelated.</b> None of this touches the 0h or #80 results, which never read the analog path.</li>
+    </ul>
+    <p class="mono" style="font-size:12px;color:var(--muted)" id="prov"></p>
+  </section>
+</main>
+<div class="tip" id="tip" role="tooltip"></div>
+
+
+<script>
+const DATA = __ISSUE5_DATA__;
+
+const NS = "http://www.w3.org/2000/svg";
+const SERIES = { "linux-x1": "--s-linux", "windows-desk": "--s-windows", "mac-bench": "--s-mac" };
+const FWS = ["4", "5", "6"];
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function el(tag, attrs = {}, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function txt(parent, x, y, s, attrs = {}) {
+  const t = el("text", Object.assign({ x, y }, attrs), parent);
+  t.textContent = s;
+  return t;
+}
+function svg(host, w, h) {
+  const s = el("svg", { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "xMinYMin meet" });
+  host.replaceChildren(s);
+  return s;
+}
+const bench = (id) => DATA.benches.find((b) => b.id === id);
+const fmt = (v, d = 1) => Number(v).toFixed(d);
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById("tip");
+function hoverable(g, lines) {
+  g.setAttribute("tabindex", "0");
+  g.classList.add("hit");
+  const show = (e) => {
+    tip.replaceChildren();
+    const s = document.createElement("strong");
+    s.textContent = lines[0];
+    tip.appendChild(s);
+    for (const l of lines.slice(1)) { const d = document.createElement("div"); d.textContent = l; tip.appendChild(d); }
+    tip.style.opacity = "1";
+    let x, y;
+    if (e && e.clientX !== undefined) { x = e.clientX; y = e.clientY; }
+    else { const r = g.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top; }
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.min(window.innerWidth - tw - 8, Math.max(8, x + 12)) + "px";
+    tip.style.top = Math.max(8, y - th - 12) + "px";
+  };
+  const hide = () => { tip.style.opacity = "0"; };
+  g.addEventListener("pointermove", show);
+  g.addEventListener("pointerleave", hide);
+  g.addEventListener("focus", () => show(null));
+  g.addEventListener("blur", hide);
+}
+
+function table(hostId, head, rows) {
+  const t = document.createElement("table");
+  const tr = document.createElement("tr");
+  head.forEach((h) => { const th = document.createElement("th"); th.textContent = h; tr.appendChild(th); });
+  t.appendChild(tr);
+  rows.forEach((r) => {
+    const row = document.createElement("tr");
+    r.forEach((c) => { const td = document.createElement("td"); td.textContent = c; row.appendChild(td); });
+    t.appendChild(row);
+  });
+  document.getElementById(hostId).replaceChildren(t);
+}
+
+function legend(hostId) {
+  const host = document.getElementById(hostId);
+  host.replaceChildren();
+  DATA.benches.forEach((b) => {
+    const s = document.createElement("span");
+    const i = document.createElement("i");
+    i.style.background = `var(${SERIES[b.id]})`;
+    const l = document.createElement("span");
+    l.textContent = b.label;
+    const sm = document.createElement("small");
+    sm.textContent = b.note;
+    s.append(i, l, sm);
+    host.appendChild(s);
+  });
+}
+
+/* ---------- 1. mechanism schematic ---------- */
+function drawMech() {
+  const W = 900, H = 232, host = document.getElementById("c-mech");
+  const s = svg(host, W, H);
+  const levels = 16, glitch = 11, pad = 14, gap = 40, top = 34, ph = 150;
+  const pw = (W - 2 * pad - 2 * gap) / 3;
+  const heads = ["1 · held levels, one sample knocked off", "2 · difference within each pair", "3 · averaged over many cycles"];
+  const panelX = (i) => pad + i * (pw + gap);
+  heads.forEach((h, i) => txt(s, panelX(i), 18, h, { class: "t-head" }));
+  const ink = css("--ink"), orange = css("--s-windows"), grid = css("--grid"), axis = css("--axis");
+
+  // panel 1: staircase
+  let g = el("g", { transform: `translate(${panelX(0)},${top})` }, s);
+  el("rect", { x: 0, y: 0, width: pw, height: ph, fill: "none", stroke: grid }, g);
+  const lv = (k) => ph / 2 - Math.sin((k / levels) * 2 * Math.PI) * (ph * 0.36);
+  const sx = (i) => 10 + (i / (levels * 2 - 1)) * (pw - 20);
+  let d = "";
+  for (let k = 0; k < levels; k++) {
+    const y = lv(k), x0 = sx(2 * k) - 4, x1 = sx(2 * k + 1) + 4;
+    d += `${k ? "L" : "M"}${x0},${y}L${x1},${y}`;
+  }
+  el("path", { d, fill: "none", stroke: axis, "stroke-width": 2 }, g);
+  for (let k = 0; k < levels; k++) {
+    for (let j = 0; j < 2; j++) {
+      const hit = k === glitch && j === 1;
+      el("circle", { cx: sx(2 * k + j), cy: lv(k) + (hit ? -26 : 0), r: hit ? 5 : 3.5,
+        fill: hit ? orange : ink, stroke: css("--surface"), "stroke-width": 2 }, g);
+    }
+  }
+  txt(g, sx(2 * glitch + 1) + 9, lv(glitch) - 30, "displaced", { "font-size": 11, class: "t-ink" });
+
+  // panel 2: pair differences
+  g = el("g", { transform: `translate(${panelX(1)},${top})` }, s);
+  el("rect", { x: 0, y: 0, width: pw, height: ph, fill: "none", stroke: grid }, g);
+  el("line", { x1: 0, x2: pw, y1: ph / 2, y2: ph / 2, stroke: axis }, g);
+  const jitter = [0.6, -0.9, 0.3, -0.4, 1.1, 0, -0.7, 0.8, -0.2, 0.5, -1.0, 0.4, -0.3, 0.9, -0.6, 0.2];
+  for (let k = 0; k < levels; k++) {
+    const x = 12 + (k / (levels - 1)) * (pw - 24);
+    const v = k === glitch ? 26 : jitter[k] * 3;
+    el("line", { x1: x, x2: x, y1: ph / 2, y2: ph / 2 - v, stroke: k === glitch ? orange : ink, "stroke-width": 2, "stroke-linecap": "round" }, g);
+  }
+  txt(g, 8, ph - 8, "the waveform cancels; the glitch does not", { "font-size": 11, class: "t-muted" });
+
+  // panel 3: folded average
+  g = el("g", { transform: `translate(${panelX(2)},${top})` }, s);
+  el("rect", { x: 0, y: 0, width: pw, height: ph, fill: "none", stroke: grid }, g);
+  el("rect", { x: 0, y: ph / 2 - 3, width: pw, height: 6, fill: css("--floor") }, g);
+  el("line", { x1: 0, x2: pw, y1: ph / 2, y2: ph / 2, stroke: axis }, g);
+  for (let k = 0; k < levels; k++) {
+    const x = 12 + (k / (levels - 1)) * (pw - 24);
+    const v = k === glitch ? 26 : jitter[(k * 7) % levels] * 0.8;
+    el("line", { x1: x, x2: x, y1: ph / 2, y2: ph / 2 - v, stroke: k === glitch ? orange : ink, "stroke-width": 2, "stroke-linecap": "round" }, g);
+  }
+  txt(g, 8, ph - 8, "noise shrinks; the glitch stays", { "font-size": 11, class: "t-muted" });
+
+  txt(s, pad, H - 14, "severity = Σ over all positions of | profile − median(profile) |", { "font-size": 12.5, class: "t-ink" });
+}
+
+/* ---------- 2. windows-desk profile, FWS 4/5/6 ---------- */
+function drawProfile() {
+  const b = bench("windows-desk");
+  const W = 900, rowH = 150, left = 58, right = 18, top = 8, H = top + rowH * 3 + 34;
+  const s = svg(document.getElementById("c-profile"), W, H);
+  const maxAbs = Math.max(...FWS.flatMap((f) => b.fws[f].phases.map((p) => Math.abs(p.median))));
+  const yMax = Math.ceil(maxAbs / 10) * 10;
+  const x = (p) => left + (p / (DATA.bins - 1)) * (W - left - right);
+  const color = css("--s-windows"), grid = css("--grid"), axis = css("--axis");
+  const trows = [];
+
+  FWS.forEach((f, i) => {
+    const v = b.fws[f], y0 = top + i * rowH, mid = y0 + (rowH - 22) / 2, half = (rowH - 22) / 2 - 6;
+    const y = (c) => mid - (c / yMax) * half;
+    [yMax, yMax / 2, 0, -yMax / 2, -yMax].forEach((t) => {
+      el("line", { x1: left, x2: W - right, y1: y(t), y2: y(t), stroke: t === 0 ? axis : grid, "stroke-width": 1 }, s);
+      txt(s, left - 8, y(t) + 4, (t > 0 ? "+" : "") + t, { "text-anchor": "end", "font-size": 11, class: "t-muted" });
+    });
+    const fl = v.median_rest_per_position;
+    el("rect", { x: left, y: y(fl), width: W - left - right, height: Math.max(0.5, y(-fl) - y(fl)), fill: css("--floor") }, s);
+    txt(s, left + 4, y0 + 14, `FWS ${f}`, { class: "t-head" });
+    txt(s, W - right, y0 + 14, `median severity ${fmt(v.median_total)} · floor ±${fmt(fl, 2)} codes`, { "text-anchor": "end", "font-size": 11.5, class: "t-ink" });
+    v.phases.forEach((p) => {
+      const op = 0.25 + 0.75 * (p.count / v.n);
+      const g = el("g", {}, s);
+      el("rect", { x: x(p.phase) - 7, y: Math.min(y(p.median), mid) - 4, width: 14, height: Math.abs(y(p.median) - mid) + 8, fill: "transparent" }, g);
+      el("line", { x1: x(p.phase), x2: x(p.phase), y1: mid, y2: y(p.median), stroke: color, "stroke-width": 2, "stroke-linecap": "round", opacity: op }, g);
+      el("circle", { cx: x(p.phase), cy: y(p.median), r: 4, fill: color, stroke: css("--surface"), "stroke-width": 2, opacity: op, class: "mark-outline" }, g);
+      if (p.count >= v.n / 2) {
+        const up = p.median >= 0;
+        txt(s, x(p.phase), y(p.median) + (up ? -9 : 17), String(p.phase), { "text-anchor": "middle", "font-size": 11, class: "t-ink" });
+      }
+      hoverable(g, [`${p.median > 0 ? "+" : ""}${fmt(p.median, 2)} codes`, `FWS ${f} · position ${p.phase}`, `drawn in ${p.count} of ${v.n} runs`, `range ${fmt(p.min, 2)} … ${fmt(p.max, 2)}`]);
+      trows.push([`FWS ${f}`, p.phase, `${p.count}/${v.n}`, fmt(p.median, 2), `${fmt(p.min, 2)} … ${fmt(p.max, 2)}`]);
+    });
+  });
+  const yb = top + rowH * 3 + 6;
+  [0, 64, 128, 192, 255].forEach((t) => txt(s, x(t), yb + 10, String(t), { "text-anchor": "middle", "font-size": 11, class: "t-muted" }));
+  txt(s, W - right, yb + 26, "position in the 256-level cycle", { "text-anchor": "end", "font-size": 11, class: "t-muted" });
+  txt(s, 8, top + 3 * rowH / 2, "codes", { "font-size": 11, class: "t-muted", transform: `rotate(-90 12 ${top + 3 * rowH / 2})`, "text-anchor": "middle" });
+  table("t-profile", ["wait state", "position", "runs", "median codes", "range"], trows);
+}
+
+/* ---------- 3. share of severity in sites ---------- */
+function drawShare() {
+  legend("legend-share");
+  const W = 900, left = 120, right = 150, barH = 18, rowGap = 10, groupGap = 26, top = 6;
+  const perGroup = DATA.benches.length * (barH + rowGap);
+  const H = top + FWS.length * (perGroup + groupGap) + 22;
+  const s = svg(document.getElementById("c-share"), W, H);
+  const x = (pct) => left + (pct / 100) * (W - left - right);
+  const grid = css("--grid"), axis = css("--axis");
+  const trows = [];
+  [0, 25, 50, 75, 100].forEach((t) => {
+    el("line", { x1: x(t), x2: x(t), y1: top, y2: H - 22, stroke: t === 0 ? axis : grid }, s);
+    txt(s, x(t), H - 6, t + "%", { "text-anchor": "middle", "font-size": 11, class: "t-muted" });
+  });
+  FWS.forEach((f, gi) => {
+    const gy = top + gi * (perGroup + groupGap);
+    txt(s, 0, gy + perGroup / 2 + 2, `FWS ${f}`, { class: "t-head" });
+    DATA.benches.forEach((b, bi) => {
+      const v = b.fws[f];
+      const shares = v.runs.map((r) => (r.total > 0 ? (100 * r.sites) / r.total : 0)).sort((a, c) => a - c);
+      const m = shares.length % 2 ? shares[(shares.length - 1) / 2] : (shares[shares.length / 2 - 1] + shares[shares.length / 2]) / 2;
+      const y = gy + bi * (barH + rowGap);
+      const g = el("g", {}, s);
+      el("rect", { x: left, y: y - 3, width: W - left - right, height: barH + 6, fill: "transparent" }, g);
+      const wBar = Math.max(0, x(m) - left);
+      if (wBar > 0) el("path", { d: roundedRight(left, y, wBar, barH, 4), fill: `var(${SERIES[b.id]})` }, g);
+      el("rect", { x: left + wBar + (wBar > 0 ? 2 : 0), y, width: Math.max(0, W - right - left - wBar - (wBar > 0 ? 2 : 0)), height: barH, fill: css("--floor") }, g);
+      txt(s, left - 10, y + barH - 4, b.label, { "text-anchor": "end", "font-size": 12, class: "t-ink" });
+      const labX = x(m) + 6, inside = m > 18;
+      txt(s, inside ? x(m) - 6 : labX, y + barH - 4, fmt(m, 0) + "%", { "text-anchor": inside ? "end" : "start", "font-size": 11.5, fill: inside ? "#ffffff" : css("--ink") });
+      txt(s, W - right + 12, y + barH - 4, `severity ${fmt(v.median_total)}`, { "font-size": 11.5, class: "t-ink" });
+      hoverable(g, [`${fmt(m, 0)}% in the sites`, `${b.label} · FWS ${f}`, `median severity ${fmt(v.median_total)}`, `sites ${fmt(v.median_sites)} · floor ${fmt(v.median_rest)}`]);
+      trows.push([`FWS ${f}`, b.label, fmt(m, 1) + "%", fmt(v.median_total), fmt(v.median_sites), fmt(v.median_rest)]);
+    });
+  });
+  table("t-share", ["wait state", "bench", "median site share", "median severity", "median site sum", "median floor sum"], trows);
+}
+function roundedRight(x, y, w, h, r) {
+  r = Math.min(r, w, h / 2);
+  return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
+}
+
+/* ---------- 4. incidence heatmaps ---------- */
+function drawInc() {
+  const host = document.getElementById("c-inc");
+  host.replaceChildren();
+  const trows = [];
+  FWS.forEach((f) => {
+    const cols = new Set();
+    DATA.benches.forEach((b) => b.fws[f].phases.forEach((p) => { if (p.count >= 3) cols.add(p.phase); }));
+    const phases = [...cols].sort((a, c) => a - c);
+    const cw = 34, ch = 30, left = 116, top = 40;
+    const W = Math.max(560, left + phases.length * (cw + 2) + 10), H = top + DATA.benches.length * (ch + 2) + 8;
+    const wrap = document.createElement("div");
+    wrap.style.marginBottom = "10px";
+    host.appendChild(wrap);
+    const s = el("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMinYMin meet" });
+    s.style.maxWidth = W + "px";
+    wrap.appendChild(s);
+    txt(s, 0, 16, `FWS ${f}`, { class: "t-head" });
+    const heat = css("--heat");
+    phases.forEach((p, ci) => txt(s, left + ci * (cw + 2) + cw / 2, top - 8, String(p), { "text-anchor": "middle", "font-size": 11, class: "t-muted" }));
+    DATA.benches.forEach((b, ri) => {
+      const y = top + ri * (ch + 2);
+      el("rect", { x: 0, y: y + ch / 2 - 5, width: 10, height: 10, rx: 2, fill: `var(${SERIES[b.id]})` }, s);
+      txt(s, 16, y + ch / 2 + 4, b.label, { "font-size": 12, class: "t-ink" });
+      const v = b.fws[f], byPhase = Object.fromEntries(v.phases.map((q) => [q.phase, q]));
+      phases.forEach((p, ci) => {
+        const q = byPhase[p], n = q ? q.count : 0, frac = n / v.n;
+        const g = el("g", {}, s);
+        const cx = left + ci * (cw + 2);
+        el("rect", { x: cx, y, width: cw, height: ch, rx: 3, fill: `rgba(${heat},${(0.04 + 0.86 * frac).toFixed(3)})`, class: "mark-outline" }, g);
+        const lightText = frac > 0.5;
+        txt(g, cx + cw / 2, y + ch / 2 + 4, String(n), { "text-anchor": "middle", "font-size": 11.5,
+          fill: lightText ? css("--surface") : (n ? css("--ink") : css("--muted")) });
+        hoverable(g, [`${n} of ${v.n} runs`, `${b.label} · FWS ${f} · position ${p}`, q ? `median ${q.median > 0 ? "+" : ""}${fmt(q.median, 2)} codes` : "never drawn"]);
+        trows.push([`FWS ${f}`, b.label, p, `${n}/${v.n}`, q ? fmt(q.median, 2) : "—"]);
+      });
+    });
+  });
+  table("t-inc", ["wait state", "bench", "position", "runs", "median codes"], trows);
+}
+
+/* ---------- 5. severity per run ---------- */
+function drawRuns() {
+  legend("legend-runs");
+  const host = document.getElementById("c-runs");
+  host.replaceChildren();
+  const trows = [];
+  const repeat = DATA.extra["windows-desk FWS-5 repeat"];
+  FWS.forEach((f) => {
+    const W = 900, left = 120, right = 90, rowH = 30, top = 30;
+    const H = top + DATA.benches.length * rowH + 30;
+    const all = DATA.benches.flatMap((b) => b.fws[f].runs.map((r) => r.total));
+    if (f === "5" && repeat) all.push(repeat.fws["5"].median_total);
+    const xMax = niceMax(Math.max(...all));
+    const x = (v) => left + (v / xMax) * (W - left - right);
+    const wrap = document.createElement("div");
+    host.appendChild(wrap);
+    const s = el("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMinYMin meet" });
+    wrap.appendChild(s);
+    txt(s, 0, 16, `FWS ${f}`, { class: "t-head" });
+    const grid = css("--grid"), axis = css("--axis");
+    ticks(xMax).forEach((t) => {
+      el("line", { x1: x(t), x2: x(t), y1: top - 4, y2: H - 26, stroke: t === 0 ? axis : grid }, s);
+      txt(s, x(t), H - 10, String(t), { "text-anchor": "middle", "font-size": 11, class: "t-muted" });
+    });
+    DATA.benches.forEach((b, bi) => {
+      const v = b.fws[f], y = top + bi * rowH + rowH / 2;
+      txt(s, left - 10, y + 4, b.label, { "text-anchor": "end", "font-size": 12, class: "t-ink" });
+      v.runs.forEach((r) => {
+        const g = el("g", {}, s);
+        el("circle", { cx: x(r.total), cy: y, r: 12, fill: "transparent" }, g);
+        el("circle", { cx: x(r.total), cy: y, r: 4, fill: `var(${SERIES[b.id]})`, stroke: css("--surface"), "stroke-width": 2, "fill-opacity": 0.85, class: "mark-outline" }, g);
+        hoverable(g, [`severity ${fmt(r.total)}`, `${b.label} · FWS ${f} · run ${r.run}`, `sites ${fmt(r.sites)} · floor ${fmt(r.total - r.sites)}`]);
+        trows.push([`FWS ${f}`, b.label, r.run, fmt(r.total), fmt(r.sites)]);
+      });
+      el("line", { x1: x(v.median_total), x2: x(v.median_total), y1: y - 11, y2: y + 11, stroke: css("--ink"), "stroke-width": 2 }, s);
+      txt(s, W - right + 10, y + 4, fmt(v.median_total), { "font-size": 12, class: "t-ink" });
+      if (f === "5" && b.id === "windows-desk" && repeat) {
+        const rm = repeat.fws["5"].median_total;
+        el("circle", { cx: x(rm), cy: y, r: 8, fill: "none", stroke: css("--ink"), "stroke-width": 1.5 }, s);
+        txt(s, x(rm), y - 13, `repeat session ${fmt(rm)}`, { "text-anchor": "middle", "font-size": 10.5, class: "t-ink" });
+      }
+    });
+  });
+  table("t-runs", ["wait state", "bench", "run", "severity", "site sum"], trows);
+}
+function niceMax(v) { const m = Math.pow(10, Math.floor(Math.log10(v))); for (const k of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (k * m >= v) return k * m; return 10 * m; }
+function ticks(max) { const step = max / 5; return [0, 1, 2, 3, 4, 5].map((i) => Math.round(i * step)); }
+
+function bind() {
+  const w6 = bench("windows-desk").fws["6"];
+  const strong = w6.phases.filter((p) => p.count >= w6.n / 2).map((p) => Math.abs(p.median)).sort((a, b) => a - b);
+  const mid = strong.length ? strong[Math.floor(strong.length / 2)] : 0;
+  document.querySelectorAll('[data-bind="w6site"]').forEach((n) => { n.textContent = fmt(mid, 0); });
+  const p = DATA.benches.map((b) => `${b.label}: ${b.file} (fw ${b.provenance.fw_repo_rev.join(",")}, layout ${b.provenance.fw_layout.join(",")})`);
+  document.getElementById("prov").textContent = "Source rows — " + p.join(" · ");
+}
+
+
+/* ---------- 3b. what the record could not say ----------
+   A stacked bar per bench per wait state: stored sites, dropped sites,
+   floor. The dropped block is the point of the chart - it is the part
+   the profile and incidence charts above are structurally unable to
+   draw, and at FWS 6 it is comparable to the part they can. */
+function drawCens() {
+  const host = document.getElementById("c-cens");
+  const W = 900, rowH = 26, gap = 10, headH = 26, blockGap = 20, left = 132, right = 86;
+  const H = 30 + FWS.length * (headH + DATA.benches.length * (rowH + gap) + blockGap);
+  const s = svg(host, W, H);
+  const ink = css("--ink"), muted = css("--muted"), grid = css("--grid"), floorC = css("--floor");
+  const plotW = W - left - right;
+
+  // One scale across every wait state, so FWS 6's bar is visibly ten
+  // times FWS 4's rather than renormalised to the same width.
+  let max = 0;
+  for (const f of FWS) for (const b of DATA.benches) {
+    const e = b.fws[f]; if (e) max = Math.max(max, e.median_total);
+  }
+  max = niceMax(max);
+  const x = (v) => left + (v / max) * plotW;
+
+  let y = 22;
+  for (const f of FWS) {
+    txt(s, left, y, `flash wait states ${f}`, { class: "t-head" });
+    y += headH;
+    for (const b of DATA.benches) {
+      const e = b.fws[f];
+      if (!e) { y += rowH + gap; continue; }
+      const c = e.censoring;
+      const kept = c.median_kept || 0;
+      const hidden = Math.max(0, (e.median_sites || 0) - kept);
+      const floor = Math.max(0, (e.median_total || 0) - (e.median_sites || 0));
+      txt(s, left - 10, y + rowH * 0.68, b.label, { "text-anchor": "end", class: "t-ink", "font-size": 12 });
+
+      const segs = [
+        ["stored", kept, `var(${SERIES[b.id]})`, 1],
+        ["dropped", hidden, `var(${SERIES[b.id]})`, 0.34],
+        ["floor", floor, floorC, 1],
+      ];
+      let acc = 0;
+      for (const [name, v, fill, op] of segs) {
+        if (v <= 0) { continue; }
+        const g = el("g", {}, s);
+        el("rect", {
+          x: x(acc), y, width: Math.max(0.6, x(acc + v) - x(acc)), height: rowH,
+          fill, "fill-opacity": op, class: "mark-outline", stroke: "none",
+        }, g);
+        hoverable(g, [
+          `${b.label} · FWS ${f} · ${name}`,
+          `${fmt(v)} codes of ${fmt(e.median_total)}  (${fmt(100 * v / e.median_total, 0)}%)`,
+          name === "dropped"
+            ? `${c.rows} of ${c.of} runs stored only their strongest ${c.stored_depth}`
+            : name === "floor"
+              ? `${fmt(e.median_rest_per_position, 3)} codes per non-site position`
+              : `the sites the record actually names`,
+        ]);
+        acc += v;
+      }
+      // A tick where the stored sites end - the edge of what the charts
+      // above could draw.
+      if (hidden > 0) {
+        el("line", { x1: x(kept), x2: x(kept), y1: y - 3, y2: y + rowH + 3, stroke: ink, "stroke-width": 1.5 }, s);
+      }
+      txt(s, x(e.median_total) + 8, y + rowH * 0.68,
+        hidden > 0 ? `${fmt(100 * kept / e.median_total, 0)}% drawn` : "complete",
+        { "font-size": 11, class: hidden > 0 ? "t-ink" : "t-muted" });
+      y += rowH + gap;
+    }
+    y += blockGap;
+  }
+  // axis
+  el("line", { x1: left, x2: left, y1: 26, y2: H - 12, stroke: grid }, s);
+  for (const t of ticks(max)) {
+    el("line", { x1: x(t), x2: x(t), y1: H - 16, y2: H - 12, stroke: css("--axis") }, s);
+    txt(s, x(t), H - 2, fmt(t, 0), { "text-anchor": "middle", "font-size": 11, class: "t-muted" });
+  }
+  txt(s, left, H - 2, "codes", { "font-size": 11, class: "t-muted", "text-anchor": "end", dx: -8 });
+
+  // legend
+  const lh = document.getElementById("legend-cens");
+  lh.replaceChildren();
+  [["sites the record stores", "var(--s-linux)", 1],
+   ["sites it dropped", "var(--s-linux)", 0.34],
+   ["floor, all other positions", "var(--floor)", 1]].forEach(([label, bg, op]) => {
+    const sp = document.createElement("span");
+    const i = document.createElement("i");
+    i.style.background = bg; i.style.opacity = String(op);
+    const l = document.createElement("span"); l.textContent = label;
+    sp.append(i, l); lh.appendChild(sp);
+  });
+
+  table("t-cens",
+    ["bench", "FWS", "severity", "stored", "dropped", "floor", "runs truncated", "≥ dropped sites"],
+    DATA.benches.flatMap((b) => FWS.filter((f) => b.fws[f]).map((f) => {
+      const e = b.fws[f], c = e.censoring;
+      const kept = c.median_kept || 0;
+      return [b.label, f, fmt(e.median_total), fmt(kept),
+        fmt(Math.max(0, e.median_sites - kept)),
+        fmt(e.median_total - e.median_sites),
+        `${c.rows}/${c.of}`,
+        c.min_hidden_sites ? fmt(c.min_hidden_sites, 1) : "—"];
+    })));
+
+  // The slot-competition sentence, written from the data rather than
+  // asserted: pairs that are each drawn often and never drawn together.
+  const p = document.getElementById("p-slot");
+  const sc = (DATA.slot_competition || []).filter((q) => q.fws === 6);
+  if (sc.length) {
+    const names = [...new Set(sc.flatMap((q) => [q.a, q.b]))].sort((a, b) => a - b);
+    const where = [...new Set(sc.map((q) => q.bench))];
+    p.textContent =
+      `At FWS 6, positions ${names.join(" and ")} are each drawn in many runs and were never once recorded in the same run — on ${where.join(", ")}. `
+      + `Five other positions outrank both in every run, so the two are competing for the sixth and last slot: whichever is larger that run is the one written down, and the other vanishes. `
+      + `That reads as an either/or in the board and is an artifact of the slice.`;
+  } else {
+    p.textContent = "No pair of frequently-drawn positions is mutually exclusive at FWS 6 in this data.";
+  }
+}
+
+
+/* ---------- 5b. the comb ----------
+   One strip per bench per wait state, 256 positions wide. Faint ticks
+   are the period-21 lattice through FWS 6's sites; filled marks are the
+   positions actually drawn. The point of the chart is that at FWS 6
+   every mark lands on a tick on all three benches, and at the other two
+   wait states they do not. */
+function drawFreq() {
+  const host = document.getElementById("c-freq");
+  const P = DATA.comb_period;
+  const W = 900, rowH = 20, gap = 7, headH = 24, blockGap = 18;
+  const left = 118, right = 118;
+  const H = 34 + FWS.length * (headH + DATA.benches.length * (rowH + gap) + blockGap);
+  const s = svg(host, W, H);
+  const plotW = W - left - right;
+  const bins = DATA.bins;
+  const x = (b) => left + (b / (bins - 1)) * plotW;
+  const grid = css("--grid"), axis = css("--axis"), ink = css("--ink"), muted = css("--muted");
+
+  // The lattice, taken from the wait state where the comb is exact.
+  let lat = [];
+  for (const b of DATA.benches) {
+    const sp = DATA.spectrum[b.id];
+    const a = sp && sp.by_fws && sp.by_fws["6"];
+    if (a && a.comb && a.comb.R >= 0.9999 && a.lattice) { lat = a.lattice.points; break; }
+  }
+
+  let y = 26;
+  for (const f of FWS) {
+    txt(s, left, y, `flash wait states ${f}`, { class: "t-head" });
+    y += headH;
+    for (const b of DATA.benches) {
+      const sp = DATA.spectrum[b.id] || {};
+      const cross = sp.cross && sp.cross.by_fws && sp.cross.by_fws[f];
+      const a = sp.by_fws && sp.by_fws[f];
+      txt(s, left - 10, y + rowH * 0.72, b.label, { "text-anchor": "end", class: "t-ink", "font-size": 11.5 });
+      // the lattice
+      for (const q of lat) {
+        el("line", { x1: x(q), x2: x(q), y1: y + 1, y2: y + rowH - 1, stroke: grid, "stroke-width": 1 }, s);
+      }
+      el("line", { x1: left, x2: left + plotW, y1: y + rowH / 2, y2: y + rowH / 2, stroke: grid, "stroke-dasharray": "1 3" }, s);
+      const sites = (a && a.strong) || (cross && cross.sites) || [];
+      const onLat = new Set(lat);
+      for (const q of sites) {
+        const on = onLat.has(q);
+        const g = el("g", {}, s);
+        el("circle", {
+          cx: x(q), cy: y + rowH / 2, r: on ? 5 : 4,
+          fill: on ? `var(${SERIES[b.id]})` : "none",
+          stroke: on ? "none" : `var(${SERIES[b.id]})`,
+          "stroke-width": 1.8, class: "mark-outline",
+        }, g);
+        hoverable(g, [`${b.label} · FWS ${f} · position ${q}`,
+          on ? `on the period-${P} lattice` : `off the lattice (${q} mod ${P} = ${q % P})`,
+          cross ? `this wait state's phases mod ${P}: ${JSON.stringify(cross.histogram)}` : ""]);
+      }
+      if (cross) {
+        const tight = cross.R >= 0.9999;
+        txt(s, left + plotW + 10, y + rowH * 0.72,
+          `R = ${fmt(cross.R, 3)}${tight ? "  ✓ one comb" : ""}`,
+          { "font-size": 11, class: tight ? "t-ink" : "t-muted" });
+      }
+      y += rowH + gap;
+    }
+    y += blockGap;
+  }
+  // position axis
+  for (const b of [0, 64, 128, 192, 255]) {
+    txt(s, x(b), H - 4, String(b), { "text-anchor": "middle", "font-size": 11, class: "t-muted" });
+  }
+  txt(s, left - 10, H - 4, "cycle position", { "text-anchor": "end", "font-size": 11, class: "t-muted" });
+
+  const lh = document.getElementById("legend-freq");
+  lh.replaceChildren();
+  [["on the lattice", true], ["off it", false]].forEach(([label, on]) => {
+    const sp2 = document.createElement("span");
+    const i = document.createElement("i");
+    i.style.background = on ? "var(--s-linux)" : "transparent";
+    i.style.border = on ? "none" : "2px solid var(--s-linux)";
+    i.style.borderRadius = "50%";
+    const l = document.createElement("span"); l.textContent = label;
+    sp2.append(i, l); lh.appendChild(sp2);
+  });
+  {
+    const sp2 = document.createElement("span");
+    const i = document.createElement("i");
+    i.style.background = "var(--grid)"; i.style.width = "2px"; i.style.height = "14px"; i.style.borderRadius = "0";
+    const l = document.createElement("span");
+    l.textContent = `the period-${P} lattice`;
+    sp2.append(i, l); lh.appendChild(sp2);
+  }
+
+  table("t-freq",
+    ["bench", "FWS", "positions", `phases mod ${P}`, "R", "best-fit period", "R at fit", "p (scan-corrected)"],
+    DATA.benches.flatMap((b) => {
+      const sp = DATA.spectrum[b.id] || {};
+      return FWS.map((f) => {
+        const cross = sp.cross && sp.cross.by_fws && sp.cross.by_fws[f];
+        const a = sp.by_fws && sp.by_fws[f];
+        if (!cross && !a) return null;
+        const c = a && a.comb;
+        return [b.label, f,
+          JSON.stringify((a && a.strong) || (cross && cross.sites) || []),
+          cross ? JSON.stringify(cross.histogram) : "—",
+          cross ? fmt(cross.R, 3) : "—",
+          c ? String(c.period) : "—",
+          c ? fmt(c.R, 3) : "—",
+          c && c.p_value ? c.p_value.p.toExponential(1) : "—"];
+      }).filter(Boolean);
+    }));
+
+  // The prediction, written from the data.
+  const pm = DATA.predicted_missing;
+  const pnode = document.getElementById("p-predict");
+  if (pm && pm.length) {
+    pnode.textContent =
+      `The lattice through those six positions has ${lat.length} points and the sites occupy ${lat.length - pm.length} of them. `
+      + `If the comb is the structure, and the old rows were merely truncated, then the sites they dropped are at ${pm.join(", ")}. `
+      + `Any dropped site somewhere else refutes it. Nothing in the records can settle that — the rows kept no profile — so it is a prediction for the next arm, registered here before that arm exists.`;
+  }
+}
+
+function renderAll() { drawMech(); drawProfile(); drawCens(); drawShare(); drawInc(); drawRuns(); drawFreq(); }
+bind();
+renderAll();
+const mq = window.matchMedia("(prefers-color-scheme: dark)");
+mq.addEventListener && mq.addEventListener("change", renderAll);
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+</script>

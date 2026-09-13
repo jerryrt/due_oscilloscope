@@ -88,3 +88,11 @@ records/issue35-reflash-transcripts.log
 core
 core.*
 *.core
+
+# The issue #5 report page. Generated from records/ by
+# tools/issue5_report.py, for the same reason records/*.summary.json is
+# ignored: a derived file in the tree is a second home for a number that
+# already has one, and this one would go stale the moment a record lands.
+# The generator and its template are committed; the page is published as
+# an artifact.
+docs/issue5-report.html
