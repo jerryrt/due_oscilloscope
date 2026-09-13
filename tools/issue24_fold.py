@@ -48,6 +48,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure  # noqa: E402
+import provenance  # noqa: E402
 
 
 def _masked_resid(vals, period, mask_wrap=True):
@@ -255,6 +256,9 @@ def main():
     period = args.period or (4096 // args.step)          # captured samples per table wrap
     arms = [a.strip() for a in args.arms.split(",") if a.strip()]
     board = measure.Board(settle=3.0)
+    # Which image each row was taken on. Without it a control arm and
+    # a fix arm appended to one file cannot be told apart afterwards.
+    prov = provenance.run_fields(board)
     rows = []
     try:
         board.stop()
@@ -262,7 +266,7 @@ def main():
         for i in range(1, args.runs + 1):
             arm = arms[(i - 1) % len(arms)]
             if arm == "gen":
-                rows.append(gen_arm(board, i, args))
+                rows.append({**prov, **gen_arm(board, i, args)})
                 board.stop()
                 board.drain_console(0.3)
                 continue
@@ -280,7 +284,7 @@ def main():
             ctl = masked_spike(tail, period + 1)
             sites = masked_sites(tail, period)
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                   "arm": "host", "bench": args.bench,
+                   "arm": "host", "bench": args.bench, **prov,
                    "dac_sps": args.dac_sps,
                    "adc_hz": args.adc_hz,
                    "channels": args.channels,
