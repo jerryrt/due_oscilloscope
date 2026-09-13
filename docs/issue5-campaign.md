@@ -131,20 +131,49 @@ fifth.
 make R = 1.000 are the six a row had room for. If the sites those rows
 dropped are off the lattice, the comb is weaker than it looks.
 
-## The pre-registered prediction
+## The pre-registered prediction, and its refutation
 
-The period-21 lattice through those six positions has 13 points:
+The period-21 lattice through those six positions has twelve points
+inside one pass of the table:
 
-    8, 12, 33, 54, 75, 96, 117, 138, 159, 180, 201, 222, 243
+    12, 33, 54, 75, 96, 117, 138, 159, 180, 201, 222, 243
 
-The sites occupy six. If the comb is the structure and the old rows were
-merely truncated, **the sites they dropped are the other seven** — 8, 54,
-75, 96, 201, 222 and 243. A dropped site anywhere else refutes it.
+The sites occupy six. The prediction was that if the comb is the
+structure and the old rows were merely truncated, **the sites they
+dropped are the other six** — 54, 75, 96, 201, 222 and 243 — and that a
+dropped site anywhere else refutes it. Registered before the arm that
+tests it existed and asserted in `tests/test_issue5_spectrum.py`.
 
-Registered before the arm that tests it exists, and asserted in
-`tests/test_issue5_spectrum.py` so it cannot be quietly adjusted
-afterwards. Nothing in the current records can settle it: they kept no
-profile.
+It was registered with a thirteenth point, at 8, and that was a defect
+in `lattice()` rather than a claim: the generator ran one step past the
+end of the cycle and `% bins` wrapped it. Position 8 is at phase 8 of
+period 21, not the comb's 12, so a site found there would have scored
+**against** the comb the prediction was testing for. Three benches were
+asked to confirm a position the lattice never contained. Corrected
+rather than quietly dropped, and its absence from any arm confirms and
+refutes nothing.
+
+**The prediction is refuted on all three benches**, by the criterion as
+registered. The arms store whole profiles, so the dropped sites are now
+visible: most of them are off the lattice, and two of the six predicted
+points — 222 and 243 — carry no site at all on any bench.
+
+**What survives is sharper than what was predicted.** The artifact has
+two populations. Sites on the lattice are an order of magnitude larger
+than sites off it, and lattice occupancy falls monotonically down the
+strength ranking — every bench's strongest few sites are on the comb,
+and by the thirtieth site it is no better than chance. So **the comb is
+the large sites, not the site set**, which is a different statement
+from the one registered and is therefore exploratory until an arm
+designed to test it says so.
+
+Two consequences for anyone quoting the frequency-domain table above.
+The fixed-period test at 21 gives a very small p on the six strongest
+sites and nothing at all on the full strong-site set, so **naming the
+test without naming the set leaves the answer to be chosen afterwards**
+— a registration has to name both. And the "180 and 247 never co-occur"
+result was the six-site slice and nothing else: with whole profiles
+stored they co-occur in essentially every run.
 
 ## The arm
 
@@ -220,8 +249,81 @@ for exactly that reason.
 
 The severity spread across benches — 342.7 to 445.5 on the old rows —
 is one of those three and this campaign is not the experiment that says
-which. The design that would is a jumper-material A-B-A on one copper
-bench, and it needs jumpers fitted by hand.
+which.
+
+## The three boards share one desk
+
+They are not in three rooms, and nothing in this document said so until
+the crossover needed it. The three hosts are separate machines; the
+three Dues sit on one bench surface, reachable by one pair of hands.
+
+That is worth writing down for two reasons beyond the obvious. It means
+ambient temperature, mains and local EMI are **shared**, so the list
+above — board, jumper material, USB IN DMA timing — is complete rather
+than merely the part anyone thought of; an environment term would
+otherwise belong on it. And it makes an experiment available that the
+three-separate-benches reading hides: the wires can be **exchanged
+between two boards**, which is strictly stronger than removing and
+refitting them on one.
+
+## The crossover, and what it settled
+
+The design the paragraph above used to propose was an A-B-A on one
+copper bench. Co-location replaced it with a crossover: the `linux-x1`
+board's copper and the `windows-desk` board's iron were **exchanged**,
+the `mac-bench` board was left untouched as a control, and all three
+were re-read. Then the original wires went back on both and all three
+were read a third time. `tools/issue5_crossover.py` holds the
+registration, the statistics and the decision rules, all fixed before
+each arm was captured.
+
+**The material is not the cause.** Under the material hypothesis the
+two boards' values must exchange; they did not. The primary statistic
+landed outside both predictions, and the seven stable lattice sites did
+not move on any board. The large between-bench difference — one board
+reading about half the others at the strongest comb site — **stayed
+with the board** through both legs.
+
+**The control is what makes that readable.** The untouched board's comb
+sum held across all three readings to well inside its registered
+tolerance, which also produced a figure the project did not have:
+**between-session repeatability of the comb sum, about 0.2 codes on
+238.** No arm before this campaign stored a profile, so it could not be
+measured, and the tolerance had to be guessed from within-session
+spread. It was three times looser than the truth.
+
+**Something smaller is real, reversible, and not the metal.** Both
+swapped boards changed at specific positions and both came back when
+their own wires returned, recovering most of each excursion. Both
+owners confirmed by eye that the **same physical pair** went back. A
+re-seat is a fresh random contact and could reproduce one position by
+luck, not five; so the effect belongs to the individual pair of wires,
+including whatever of its geometry reproduces on re-insertion. One pair
+of each material cannot separate *this iron pair* from *iron*, and no
+further arm of this design can.
+
+So there are two findings and they must be kept apart. The bench
+difference is the board. The wire does something smaller, reversibly,
+that is not the bench difference and is not attributable to the metal.
+
+## What the crossover cost to read correctly
+
+Every analytical step was registered before its rows existed, and
+several were still wrong — in the statistic rather than the data.
+`tools/issue5_crossover.py` carries each correction at the rule it
+changed. The one that generalises furthest: **a difference is only readable against a
+baseline measured at the same resolution and by the same procedure.**
+Per-position change has one, the untouched board's drift at that
+position, and it caught a wait-state result that had already been
+published and withdrawn on a worse statistic. A verdict-flip count does
+not, and three benches each published something from one before all
+three retracted it.
+
+The other, which cost four separate disagreements in an afternoon:
+**name the convention at the call site.** "The per-run value at a
+position" has four readings — centred or raw, signed or magnitude —
+and two benches used three of them for one quantity. Each time both
+numbers were correct and the name was the defect.
 
 ## Reading the result
 
