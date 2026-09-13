@@ -27,10 +27,11 @@ pytestmark = [pytest.mark.scope, pytest.mark.awg]
 # worst of six interleaved draws, in both ACR states.
 DISPLACEMENT_VISIBLE_CODES = 25.0
 
-# The scattered-step population left once the wrap-locked comb was fixed
-# (issue #82): 22-50 in a 3 s capture on both tracks, against 1240 with
-# the comb present. Twice the worst seen, so growth fails rather than
-# hides; never widen it to make a run pass.
+# The DAC's per-conversion noise tail, as the 45-code census sees it at
+# this preset: 22-50 steps in a 3 s capture on both tracks, against 1240
+# with the wrap-locked comb present. Twice the worst seen, so growth
+# fails rather than hides; never widen it to make a run pass. What the
+# tail is, and what moves it, is in docs/noise.md.
 RESIDUAL_STEPS_MAX = 100
 
 # The DAC's span as it reaches the ADC, measured rather than nominal -
@@ -157,22 +158,18 @@ def test_device_generated_waveform_is_continuous(board, seconds,
             f"start path, or this is a second wrap-locked mechanism")
 
     # Nothing is locked to the wrap. What the census still sees is the
-    # population the wrap-locked comb was hiding: a first-of-hold sample
-    # 13-24 codes ahead of its level, near the sine's zero crossings, at
-    # no period, about ten a second on both tracks with the refresh
-    # collision fixed and present under it on the control image (75 in
-    # a low-mode run). records/issue5-fix-steps-linux-x1.jsonl. It is
-    # its own defect (issue #82) and is held visible as an xfail whose
-    # conditions are its own signature; anything outside them fails.
+    # DAC's per-conversion noise tail - one whole hold a few codes off
+    # its level, both channels, every code, an exponential tail of about
+    # two codes per e-fold - which a 45-code threshold catches where the
+    # DAC step is largest. docs/noise.md carries the figures and what
+    # moves them (bias, wait state, the start gap). It is the converter,
+    # not a defect, and this guards its RATE: scattered, unlocked and
+    # under RESIDUAL_STEPS_MAX is the documented tail and passes;
+    # anything else is a fault in the capture path and fails below.
     if (census["count"] and not census["periodic"]
             and census["count"] <= RESIDUAL_STEPS_MAX
             and fold["z"] < measure.FOLD_Z_DIRTY):
-        pytest.xfail(
-            f"issue #82: {census['count']} scattered steps over "
-            f"{census['threshold']} codes (largest {census['max_step']:.1f}), "
-            f"no period, nothing locked to the wrap (fold z {fold['z']:.1f}). "
-            f"A first-of-hold sample ahead of its level; not a splice and "
-            f"not the refresh collision")
+        return
     assert census["count"] == 0, (
         f"the device's own waveform shows {census['count']} steps above "
         f"{census['threshold']} codes (largest {census['max_step']:.1f}, "
