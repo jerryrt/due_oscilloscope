@@ -347,3 +347,86 @@ something:
   another, present on both and a member on one.
 - **Quote a repeatability with its sample size.** A Jaccard ceiling at
   n=12 is not comparable with one at n=24.
+
+### A difference needs a baseline taken the same way
+
+A change is readable only against a baseline measured at the same
+resolution, by the same procedure, on something nothing was done to.
+
+| difference | its baseline | readable |
+|---|---|---|
+| a position's size across a manipulation | the untouched board's size at that same position and wait state, across its own repeated arms (`control_tolerance` in `tools/issue5_crossover.py`) | **yes.** Drift is not uniform: between two untouched `mac-bench` arms the median position moved 0.03 codes and the worst 9.45, so a single tolerance for every position is wrong at nearly all of them |
+| how many positions' two-state verdict flips between two arms | one arm's own runs, split in half | **no.** On `windows-desk`'s copper arm the split-half count ran from 11 to 73 of 768 cells depending only on how the runs were divided, and every between-arm count on three benches fell inside that range. Not evidence at 12 runs a side |
+| how many runs a site spends in its large state | the untouched board's count at that position, which swings across roughly 8 to 16 of 24 runs on `mac-bench` with nothing done | **against that swing, and it is noise.** A count change is never the finding by itself, and `RETURN_MIN_COUNT` is its floor. Unlike the flip count this one has a baseline; the baseline says it carries nothing |
+
+`docs/noise.md` makes the neighbouring point for arm-level figures:
+pooling across a hidden variable manufactures modes.
+
+### Name the estimator
+
+"The value at a position" has four conventions:
+
+| convention | per-run value |
+|---|---|
+| centred magnitude | `abs(profile - median(profile))` |
+| centred signed | `profile - median(profile)` |
+| raw magnitude | `abs(profile)` |
+| raw signed | `profile` |
+
+Two correct numbers under one name disagree when they rest on different
+conventions or different site sets, and the defect is the name:
+
+| one name | two readings | where they part |
+|---|---|---|
+| a site's size across runs | median of the magnitudes 8.07, magnitude of the median 1.63 - `windows-desk`, FWS 6, position 201 | the site changes sign between that board's two modes, so signed values cancel before the magnitude is taken |
+| the comb sum | ten lattice sites put `windows-desk` 9.6% below the two copper benches; the seven that do not move with the mode put it 2.0% below | 75, 180 and 201 move with `windows-desk`'s FWS 6 mode and barely at all on the other two boards |
+
+A figure states its convention and its site set, and two figures for one
+quantity are checked for both before either is called wrong. The
+crossover tool names the convention at each call site: `comb_sum` and
+`state_split` take raw magnitude, `seven_sum` takes centred magnitude.
+On these rows centring moves the comb sum by 0.02 codes, and the
+registered constants keep the convention they were computed with.
+
+### Reading one position
+
+A position's values across runs answer two questions, and one number
+cannot hold both: how **often** the site sits in its large state, and
+how **large** it is when there.
+
+| component | what it is | what moves it |
+|---|---|---|
+| count | runs in the large state | occupancy, and sampling |
+| size when large | median over those runs | the site itself |
+| size when small | median over the rest | the floor under it |
+
+A pooled median follows the count, not the size, whenever the count
+crosses half the runs. Centred magnitude, `windows-desk` across its
+jumper swap:
+
+| position | pooled median | count of 24 | size when large |
+|---|---|---|---|
+| FWS 5, 134 | 0.17 -> 13.31 | 9 -> 14 | 10.15 -> 13.37 |
+| FWS 6, 247 | 15.15 -> 23.79 | 12 -> 13 | 23.59 -> 23.91, and 6.69 -> 6.68 when small |
+
+The first looks like a site appearing and is a site that grew by a
+third. The second looks like a site growing by half and did not move in
+either state.
+
+`state_split` and `score_return` in `tools/issue5_crossover.py` read a
+position this way.
+
+### When a position has two states
+
+| rule | why |
+|---|---|
+| Two states only if `issue5_modes.classify` calls the position's per-run values two modes | A largest-gap cut with no minimum per side makes one run a "state", whose median is the distribution's maximum. The cut also moves with which arms are pooled: `linux-x1`'s three legs at FWS 6 position 169 give counts 14/14/1 under a per-comparison cut and 23/24/24 under a three-arm cut, and a different verdict under each |
+| The two-state verdict must hold in every leg compared, or the position is read on the pooled median | A single arm's verdict depends on which runs were drawn |
+| A degenerate split is reported as one | A one-run "median" read as a size is an extreme value mistaken for a state |
+
+`two_state_guarded` in `tools/issue5_crossover.py` applies the first two
+rules, and it is the rule for any readout registered after it. The
+crossover's return verdicts were registered before it and are scored by
+`state_split`, whose `MIN_STATE_SIDE` only refuses a side with fewer than
+four runs; `--check` prints the guarded reading beside each of those
+verdicts so a reader can see which ones the guard would refuse.
