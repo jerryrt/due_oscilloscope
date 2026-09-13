@@ -383,6 +383,26 @@ Check here before reasoning from general Arduino knowledge.
   a square is not. **DSO tools measure CH1 = DAC0 only**; DAC1 is not on
   an analog channel any more, so the ADC (A1) is the instrument that can
   still see it.
+- **A bare ADC pin is not quiet, so "is it quiet?" cannot tell bare from
+  wired.** A2 is jumpered to nothing on all three benches and it follows
+  **A0's** waveform - sine or square - at about **56%** of A0's
+  amplitude, falling to 40-55 codes only when A0 itself holds DC. That
+  is the sample-and-hold keeping the charge of the conversion before it,
+  and it means a bare pin reading 1,550 codes looks exactly like a wired
+  one to any check built on amplitude alone. The discriminating test is
+  the opposite: **a bare pin never reaches full scale in an arm where
+  both DACs are at full scale**, because a wire from either would put it
+  there. Measured on three boards.
+
+  **And the obvious wiring check cannot fail.** Swapping `=0N`/`=1N` and
+  comparing peak-to-peak on A0 and A1 reports CONFIRMED on bands that
+  never moved, because `gen_sync` defaults to `GEN_SYNC_CYCLE` and preset
+  M therefore puts a full-scale **square** on whichever DAC is not
+  carrying the sine - so both pins swing full scale in both layouts.
+  `tools/wiring_probe.py` is the version with arms that can fail: sync
+  off, where the idle pin must read small and the sine must follow the
+  layout, plus a sync-on positive control proving the instrument sees a
+  driven pin at all.
 - **Two EXT-trigger traps on the DS1102E, and both are silent.** The
   level clamps at **±1.2 V** - it accepts `1.67` and holds `1.20`, with
   the readback agreeing - so a DC-coupled x1 sync never triggers at all.
