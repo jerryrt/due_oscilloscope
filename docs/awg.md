@@ -259,6 +259,53 @@ Everything below this heading was written before that was known and
 describes the artifact rather than its cause; it is kept because the
 measurements in it stand.
 
+### The comb period is an alias of the trigger against a 512-clock event
+
+The period-21 lattice is not a property of the defect; it is the alias of
+the DAC trigger against a disturbance of **512 DACC clocks** (MCK/2, so
+13.13 us). A DAC0 table entry is displaced when the trigger phase
+`(2 * RC * bin) mod 512` lands in a narrow window, and at the pinned
+preset RC is `39 MHz / 200000 = 195` exactly, where `390 * 21 = 8190 =
+16 * 512 - 2`: the trigger walks one step per 21 entries and the comb
+has period 21. 512 clocks is one refresh conversion through the shared
+DAC core at `DACC_MR_REFRESH(1)` - the register issue #48 lives behind.
+
+So the comb period follows the rate, and changing the preset changes it.
+Registered before the rows and confirmed on the frozen image across two
+benches, console commands only (`tools/issue5_alias_sweep.py`):
+
+| preset | RC | comb period |
+|---|---|---|
+| `=200000,200000M` | 195 | 21 |
+| `=209677,209677M` | 186 | 11 |
+| `=197970,197970M` | 196 | 17 |
+| `=205263,205263M` | 190 | 31 |
+| `=203125,203125M` | 192 | 4 |
+
+The sites lie on a 21-grid at **no rate but 195** (Jaccard to a 21-null
+0.04-0.11 elsewhere, against 0.55-0.92 to the alias sites). So "the
+lattice is a count of 21" is the alias read at one rate, and
+`round(4096/RC)` is refuted with it - it predicts 21 at RC 192, where the
+board gives 4.
+
+**The window is a second axis and it is not yet a law.** Its *width* is
+set by the wait state - RC 190 reads a clean gap-31 comb at FWS 5 and a
+doubled one at FWS 6 (each tooth split into a pair 4 apart, 4 + 27 = 31),
+because the wider window catches two phases per tooth. Its *position* is
+the DAC-start-to-ADC-start gap - `h_mimic` starts TC0, waits `K`, starts
+TC1, and that gap is instruction and scheduling timing - so a rate's
+narrow window lands on one bench and not another on one image: RC 196
+resolved its comb of 17 on `mac-bench` and stayed dense on `linux-x1`.
+That gap redrawn per capture is the two run-level severity modes. The
+width/position law in clocks, and RC 196's period on `linux-x1`, want a
+`K` sweep at fixed rate; no reflash needed. `records/issue5-alias-sweep-*`.
+
+The displaced sample reads about **-0.70 of the local DAC step** at every
+comb site (max residual 2.3 codes on +-35 across three boards), so it
+catches DAC0 partway through settling to its next level - which is why
+the folded profile has the shape of the waveform's slope, and why the
+wait state, below, turns the comb on and off.
+
 A phase here is a **gap** - the interval between arming the DAC timer and
 arming the ADC trigger - and how long the flash takes to answer sets how
 many cycles that path costs. Change the flash wait states and nothing
