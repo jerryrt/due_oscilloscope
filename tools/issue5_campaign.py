@@ -119,7 +119,9 @@ def check_instrument():
     check that passes because it cannot fail is worse than none.
     """
     import issue5_sites  # noqa: F401  (import path check)
-    src = open(os.path.join(ROOT, "tools", "issue5_sites.py")).read()
+    with open(os.path.join(ROOT, "tools", "issue5_sites.py"),
+              encoding="utf-8") as fh:
+        src = fh.read()
     i = src.find('row = {"run"')
     if i < 0:
         return "issue5_sites.py: cannot find the row it writes"
@@ -140,7 +142,7 @@ def check_bench():
     if not os.path.exists(path):
         return (f"no {path}. An undeclared bench records the RETIRED DSO "
                 f"wiring on every row it writes.")
-    with open(path) as fh:
+    with open(path, encoding="utf-8") as fh:
         b = json.load(fh)
     missing = [k for k in REQUIRED_BENCH_FIELDS if not b.get(k)]
     if missing:
@@ -239,7 +241,7 @@ def main():
         print("\npreflight only; nothing captured")
         return 0
 
-    with open(os.path.join(ROOT, "bench.json")) as fh:
+    with open(os.path.join(ROOT, "bench.json"), encoding="utf-8") as fh:
         bench = json.load(fh)["bench"]
     out = args.out or os.path.join(
         os.path.dirname(ROOT), f"issue5-campaign-{bench}.jsonl")

@@ -136,7 +136,7 @@ def main():
     print("\n  solo 21 vs cycle 42 -> the DAC1 write is the difference")
     print("  both the same       -> it is not; the paths differ elsewhere")
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"wrote {len(rows)} rows to {args.json}")

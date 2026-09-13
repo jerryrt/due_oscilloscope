@@ -88,7 +88,7 @@ def _onimage(fws):
     for name in sorted(os.listdir(RECORDS)):
         if not (name.startswith("issue5-onimage-") and name.endswith(".jsonl")):
             continue
-        with open(os.path.join(RECORDS, name)) as fh:
+        with open(os.path.join(RECORDS, name), encoding="utf-8") as fh:
             rows = [json.loads(l) for l in fh if l.strip()]
         out[name] = [r for r in rows if r.get("fws") == fws]
     return out

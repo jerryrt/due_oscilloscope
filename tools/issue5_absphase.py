@@ -299,7 +299,7 @@ def main():
             print(f"  {b:3d}         {len(vs):2d}/{len(good)}   "
                   f"{min(vs):+7.2f} .. {max(vs):+7.2f}   {b % 21:2d}")
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"\nwrote {len(rows)} rows to {args.json}")

@@ -42,7 +42,7 @@ CAMPAIGN = [f for f in os.listdir(os.path.join(REPO, "records"))
 
 
 def rows_of(name, fws=6):
-    with open(os.path.join(REPO, "records", name)) as fh:
+    with open(os.path.join(REPO, "records", name), encoding="utf-8") as fh:
         rows = [json.loads(l) for l in fh if l.strip()]
     return [r for r in rows if r["run"] != 1 and r["fws"] == fws]
 
@@ -123,7 +123,7 @@ def test_truncated_rows_are_refused(tmp_path, monkeypatch):
     src = os.path.join(REPO, "records", "issue5-onimage-linux-x1.jsonl")
     if not os.path.exists(src):
         pytest.skip("no onimage record")
-    with open(src) as fh:
+    with open(src, encoding="utf-8") as fh:
         rows = [json.loads(l) for l in fh if l.strip()]
     assert rows and "n_sites" not in rows[0], (
         "the onimage rows are supposed to be the truncated ones")
@@ -197,14 +197,51 @@ def test_a_bimodal_arm_is_not_pooled_in_the_site_table(capsys):
         "a bimodal arm was pooled in the exchange-site table")
 
 
-def test_records_are_read_as_utf8():
-    """`jumpers` and `probes` are free text a bench writes by hand. A
-    non-ASCII character in one would break the read under a cp936
-    default, which is windows-desk's. Reported from that bench."""
-    src = open(os.path.join(REPO, "tools", "issue5_metric.py"),
-               encoding="utf-8").read()
-    i = src.index("def arms(")
-    body = src[i:src.index("def main(", i)]
-    assert "open(" in body
-    assert 'encoding="utf-8"' in body, (
-        "arms() opens records without an explicit encoding")
+def test_every_issue5_tool_names_its_encoding():
+    """Not one function - the whole class, across every `issue5_*` file.
+
+    `tools/issue5_report.py` and its template carry 8 and 133 non-ASCII
+    bytes, and every `open()` in that path used the locale default. On
+    `windows-desk`, whose default is cp936, the report tests failed with
+    `UnicodeDecodeError: 'gbk' codec can't decode byte 0x94` - 1 failed
+    and 5 errors, on a bench where nothing had changed. They fixed those
+    five sites in `fe2bf3b`.
+
+    This test exists because the version it replaces checked ONE
+    function, `issue5_metric.arms()`, and passed while seventeen other
+    sites across ten files had the same defect - including three in
+    `issue5_campaign.py`, one of which reads a source file during the
+    preflight that gates a three-bench measurement.
+
+    The encoding is not a platform branch and so does not belong behind
+    `CLAUDE.md`'s `host/transport.py` seam: "read this file as UTF-8" is
+    one uniform policy, correct everywhere, and the seam is for code that
+    must *differ* by platform.
+
+    Binary modes are exempt - they have no encoding to name.
+    """
+    import re
+    files = ([os.path.join("tools", n) for n in sorted(os.listdir(
+                os.path.join(REPO, "tools")))
+              if n.startswith("issue5_") and n.endswith(".py")]
+             + [os.path.join("tests", n) for n in sorted(os.listdir(
+                 os.path.join(REPO, "tests")))
+                if n.startswith("test_issue5") and n.endswith(".py")])
+    assert len(files) >= 8, f"expected the issue5 family, found {files}"
+    offenders = []
+    for rel in files:
+        with open(os.path.join(REPO, rel), encoding="utf-8") as fh:
+            src = fh.read()
+        for mt in re.finditer(r"(?<![.\w])open\s*\(\s*[^)\n]", src):
+            j, depth = mt.end() - 1, 1
+            while j < len(src) and depth:
+                depth += (src[j] == "(") - (src[j] == ")")
+                j += 1
+            call = src[mt.start():j]
+            if "encoding" in call or re.search(r"[\"'](?:rb|wb|ab)[\"']", call):
+                continue
+            offenders.append(f"{rel}:{src[:mt.start()].count(chr(10)) + 1}")
+    assert not offenders, (
+        "open() without encoding= in the #5 tools, which breaks on a "
+        f"cp936 default the moment the file holds a non-ASCII byte: "
+        f"{offenders}")

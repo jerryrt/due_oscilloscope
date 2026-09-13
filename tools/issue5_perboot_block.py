@@ -57,7 +57,7 @@ finally:
     b.close()
 
 print(f"  {label}: {dict(collections.Counter(p for p, _ in got))}", flush=True)
-all_ = json.load(open(path)) if os.path.exists(path) else {}
+all_ = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
 # issue #53: ask the board, never write a track literal.
 all_[label] = {"captures": got, **provenance.run_fields(b)}
-json.dump(all_, open(path, "w"), indent=1)
+json.dump(all_, open(path, "w", encoding="utf-8"), indent=1)

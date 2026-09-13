@@ -62,7 +62,7 @@ def load():
         if not (name.startswith("issue5-onimage-")
                 and name.endswith(".jsonl")):
             continue
-        with open(os.path.join(RECORDS, name)) as fh:
+        with open(os.path.join(RECORDS, name), encoding="utf-8") as fh:
             rows = [json.loads(l) for l in fh if l.strip()]
         if not rows:
             continue

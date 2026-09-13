@@ -107,7 +107,7 @@ def arm(label, n, seconds, bench, out):
         finally:
             board.close()
     if out:
-        with open(out, "a") as fh:
+        with open(out, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
     return rows

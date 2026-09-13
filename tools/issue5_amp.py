@@ -124,7 +124,7 @@ def main():
               f"at {span / ref[1]:.2f}x the signal")
 
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"wrote {len(rows)} rows to {args.json}")

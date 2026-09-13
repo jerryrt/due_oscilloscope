@@ -293,7 +293,7 @@ def main():
         print("A0 never drew the comb, so this run says nothing about A1. "
               "Run again - p(on) is about 0.2 per stream.")
     if args.json:
-        with open(args.json, "a") as fh:
+        with open(args.json, "a", encoding="utf-8") as fh:
             for r in rows:
                 fh.write(json.dumps(r) + "\n")
         print(f"wrote {len(rows)} rows to {args.json}")

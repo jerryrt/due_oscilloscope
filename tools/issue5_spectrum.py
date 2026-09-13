@@ -397,7 +397,7 @@ def arms():
             "issue5-campaign-*.jsonl")
     for path in sorted(sum((glob.glob(os.path.join(RECORDS, q))
                             for q in pats), [])):
-        with open(path) as fh:
+        with open(path, encoding="utf-8") as fh:
             rows = [json.loads(l) for l in fh if l.strip()]
         if rows:
             out[os.path.basename(path)] = rows
@@ -460,7 +460,7 @@ def main():
             xf["file"] = name
             cross.append(xf)
     if args.json:
-        with open(args.json, "w") as fh:
+        with open(args.json, "w", encoding="utf-8") as fh:
             for r in rows_out:
                 fh.write(json.dumps(r) + "\n")
             for r in cross:

@@ -215,7 +215,7 @@ def main():
             # got - an hour of board time on each of three benches,
             # against one open() per capture on a 3 s cadence.
             if args.json:
-                with open(args.json, "a") as fh:
+                with open(args.json, "a", encoding="utf-8") as fh:
                     fh.write(json.dumps(row) + "\n")
             print(f"run {i:2d}{'*' if i in regen else ' '}"
                   f"{('a%d' % amp) if amp is not None else '':>5}"
