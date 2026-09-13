@@ -330,6 +330,43 @@ RETURN_COMPONENTS = ("large_count", "size_when_large", "size_when_small")
 #: comparison and must be recomputed per comparison, never carried.
 
 
+#: FOUR CONVENTIONS, AND THIS FILE USES TWO OF THEM.
+#:
+#: linux-x1 corrected a diagnosis of mine - I called the gap between
+#: two benches' flip counts "signed versus magnitude" and it is
+#: CENTRING. There are four ways to say "the per-run value at a
+#: position" and three were used by two benches for one quantity in an
+#: afternoon:
+#:
+#:     abs(profile - run median)   34 of 768   centred magnitude
+#:     signed(profile - run median) 44         centred signed
+#:     abs(profile)                 16         raw magnitude
+#:     signed profile               45         raw signed
+#:
+#: Audited here rather than left implied: `comb_sum` and `state_split`
+#: take raw magnitude, `seven_sum` takes centred magnitude. So this file
+#: holds two conventions, which is exactly the defect linux-x1 found in
+#: their own at 33813a0 and is the third time in a day that one
+#: distinction produced two benches' disagreeing numbers for one named
+#: quantity - after abs-of-median versus median-of-abs, and the seven-
+#: versus ten-site sum. In every case both numbers were correct and the
+#: NAME was the defect.
+#:
+#: MEASURED before deciding it mattered: the run median of the profile
+#: is about 0.02 codes, so on the twelve-site sum centring moves
+#: linux-x1 by +0.02, windows-desk by -0.02, mac-bench by 0.00, and the
+#: registered GAP from 17.29 to 17.33. Immaterial to every result here.
+#:
+#: NOT unified, deliberately. The baselines are registered constants
+#: computed by these exact functions, and rewriting the estimator after
+#: the rows are read is the move the registration exists to prevent -
+#: even when the change is 0.02. linux-x1 argues centring is the better
+#: convention because `total_abs` is defined on centred deviations, and
+#: they are right that a future readout should use it. Naming it at the
+#: call site is what stops the next instance; changing it now would
+#: only prove that a pinned constant can be moved by an argument.
+
+
 def comb_sum(path, fws=6, drop=(1,)):
     rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
     rows = [r for r in rows if r["run"] not in drop and r.get("fws") == fws]
