@@ -43,13 +43,36 @@ CUT = 0.5
 
 
 def load():
-    out = {}
+    """Every on-image record, keyed by the bench its rows name.
+
+    TWO FILES CLAIMING ONE BENCH IS REFUSED, not merged and not
+    last-one-wins. The glob is a prefix, so a second session's rows
+    filed as `issue5-onimage-<bench>-fws5.jsonl` would sort after the
+    arm's and silently replace it - and the replacement would be a
+    partial session, whose block-to-block ceiling means something else
+    entirely. A bench comparison that quietly swapped one bench's data
+    is the failure this whole tool exists to prevent one layer up.
+
+    File a second session under a name that does not start with
+    `issue5-onimage-`, as `records/issue5-fws5-repeat-windows-desk.jsonl`
+    does.
+    """
+    out, whose = {}, {}
     for name in sorted(os.listdir(RECORDS)):
-        if name.startswith("issue5-onimage-") and name.endswith(".jsonl"):
-            with open(os.path.join(RECORDS, name)) as fh:
-                rows = [json.loads(l) for l in fh if l.strip()]
-            if rows:
-                out[rows[0]["bench"]] = rows
+        if not (name.startswith("issue5-onimage-")
+                and name.endswith(".jsonl")):
+            continue
+        with open(os.path.join(RECORDS, name)) as fh:
+            rows = [json.loads(l) for l in fh if l.strip()]
+        if not rows:
+            continue
+        bench = rows[0]["bench"]
+        if bench in out:
+            sys.exit(f"REFUSING: {name} and {whose[bench]} both carry "
+                     f"bench {bench!r}. One of them would silently "
+                     f"replace the other. File a second session under a "
+                     f"name that does not start with 'issue5-onimage-'.")
+        out[bench], whose[bench] = rows, name
     return out
 
 
