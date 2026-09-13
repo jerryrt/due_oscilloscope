@@ -477,6 +477,49 @@ Two efficiency features worth using:
 - `DACC_MR.TAG` — bits [13:12] of each half-word select DAC0 or DAC1, so
   a **single** PDC stream drives both channels.
 
+### The two loopback jumpers do not couple into each other
+
+`DAC0->A0` and `DAC1->A1` run side by side on every bench, and the
+question of whether one bleeds into the other has an answer rather than
+an estimate. Driving one DAC hard and holding the other at DC, against a
+control where both hold DC — same capture, same channel, one variable —
+puts the coupled component at **0.5 to 2.3 mV RMS**:
+
+| DAC1 carries | its own sd | coupled into a quiet A0 |
+|---|---|---|
+| the `=<n>J` trigger square, one edge per trigger | 1377 codes | **0.58 codes = 0.47 mV** |
+| the generator's 256-point square | 1377 codes | 2.88 codes = 2.3 mV |
+| the generator's sine | 973 codes | 1.49 codes = 1.2 mV |
+
+Quadrature-subtracted against the DC control, first round dropped by
+index. The worst of them is **0.21% of the aggressor** and sits an order
+of magnitude under the **15-20 mV RMS that is on an undriven DAC0 pin
+anyway**, so it adds well under a percent to the noise already there in
+quadrature. The DC offset it induces is 0.16 mV. Nothing in this project
+measures at that level: the issue-#5 displacement at FWS 6 is about 30
+codes on a single sample, fifty times the coupled figure.
+
+**Edge rate does not predict it, which was the obvious guess and it is
+wrong.** The trigger square toggles roughly 128 times more often than
+the generator's square table and couples **five times less**. Both are
+negligible, so the ordering costs nothing here, but do not reason from
+"more edges, more coupling" to a bench with longer or differently
+dressed wires. No mechanism is offered; a mean shift would have
+supported a coherent-sampling explanation and there is none.
+
+**What does look like crosstalk on this board is the multiplexer, not
+the wiring.** A bare A2 follows A0's waveform at about 56% of its
+amplitude — the sample-and-hold keeping the charge of the previous
+conversion in the round robin. That is a far larger effect than anything
+between the jumpers, and it is the first suspect when one channel seems
+to show another's signal.
+
+Measured on `linux-x1`, Track B at `1b2a2d1`, the container image;
+`records/crosstalk-trigger-square-linux-x1.jsonl` and
+`records/crosstalk-dac1-into-a0-linux-x1.jsonl`. One bench, one cable
+dress, and the part cannot produce a faster edge than the 789-938 ns
+DAC step that was driven.
+
 ## Timer Counter
 
 Nine channels (3 blocks x 3). A TIOA output can trigger both the ADC and
