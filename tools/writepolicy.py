@@ -303,8 +303,42 @@ def one(board, rc, arm, seconds):
     deficit = res.host_deficit
     tx = res.host_tx_bytes
     hist = dict(_LAST[0]) if shape else {}
+    # The device's own delivered rate, beside the host's deficit, from
+    # the same run. `run_play` takes these counters at the end of the
+    # feed window and only `in` from after the drain, which is what
+    # makes a drained run the one place the two can be read together.
+    #
+    # It is here because a byte deficit has two candidate causes and
+    # they are not distinguishable without it. #48: several rates draw
+    # one of two modes per run and deliver 1/256 short in the slow one,
+    # so a host that buffers ahead sheds a surplus it should never have
+    # written - oversupply, not loss. RC 28 draws n = 2 on about a
+    # quarter of runs (21 of 80, `docs/awg.md`), so **incidence cannot
+    # separate the two** and neither can size: `mac-bench` measured
+    # 58,240 B against the ~65,700 a 2/256 surplus predicts. What does
+    # separate them is labelling each run by the mode it drew, which is
+    # this field.
+    dev_ratio = None
+    n256 = None
+    if res.play is not None and res.play.consumed and res.play.run_us:
+        delivered = (res.play.consumed * measure.PLAY_BUF_SAMPLES
+                     / (res.play.run_us / 1e6))
+        dev_ratio = delivered / hz
+        # **Uncorrected: no per-instrument zero is subtracted.** #48's
+        # offset is measured per bench and copying one moves every
+        # integer, so this reports what the device's own clock says and
+        # leaves the zero to the analysis. That is safe where the modes
+        # are 2/256 apart and the zero is ~0.03 of a unit, which is the
+        # case at RC 28; it is not safe at a rate whose modes are
+        # 1/256 apart, and there a zero taken from RC 56 on the same
+        # bench belongs in front of this number.
+        n256 = round((1.0 - dev_ratio) * 256.0)
     return {"rc": rc, "hz": hz, "arm": arm, "tx": tx,
             "in": res.play.bytes_in if res.play else None,
+            "consumed": res.play.consumed if res.play else None,
+            "runus": res.play.run_us if res.play else None,
+            "dev_ratio": round(dev_ratio, 6) if dev_ratio else None,
+            "n256_uncorrected": n256,
             "deficit": deficit,
             "pct": round(deficit / tx * 100, 4) if tx else None,
             "chunks": deficit // 128 if deficit % 128 == 0 else None,
@@ -368,11 +402,18 @@ def main():
                     row["round"] = r
                     row.update(bench=args.bench, **prov)
                     rows.append(row)
+                    # The mode goes on the line, not only in the row:
+                    # a deficit on a slow run and a deficit on a
+                    # full-rate run are two different findings and the
+                    # reader should not have to open the file to tell.
+                    dev = (f"  dev {row['dev_ratio']:.5f} "
+                           f"n{row['n256_uncorrected']}"
+                           if row["dev_ratio"] is not None else "")
                     print(f"r{r} RC {rc:3d} ({row['hz']:7d} sps) "
                           f"{arm:9s}: deficit {row['deficit']:8d} B "
                           f"({row['pct']:6.3f}%)  "
                           f"{'' if row['mod128'] == 0 else 'NOT A CHUNK  '}"
-                          f"under={row['under']}", flush=True)
+                          f"under={row['under']}{dev}", flush=True)
                     board.stop()
                     board.drain_console(0.3)
     finally:
