@@ -582,14 +582,14 @@ move A1.
 
 | board | image | channel | beyond 6 codes | beyond 10 | scale, codes per e-fold | record |
 |---|---|---|---|---|---|---|
-| `linux-x1` | `049c99f`, Debian GCC 14.2.1, copper jumpers | A0 | 5.9-6.5 | 1.2-1.4 | 2.1-2.3 | `records/issue82-arms-linux-x1.jsonl`, the rows carrying `a0_parity` |
-| `linux-x1` | same | A1 | 4.5-5.3 | 0.7-0.9 | 1.9-2.0 | same |
+| `linux-x1` | `049c99f`, Debian GCC 14.2.1, copper jumpers | A0 | 5.9-6.9 | 1.2-1.5 | 2.1-2.4 | `records/issue82-arms-linux-x1.jsonl`, the rows carrying `a0_parity` |
+| `linux-x1` | same | A1 | 4.5-5.7 | 0.7-1.0 | 1.9-2.1 | same |
 | `windows-desk` | `50ae7e6`, container xPack 15.2.1, iron jumpers | A0 | 0.63 | 0.030 | 1.3 | `records/issue82-ksweep-windows-desk-edges.jsonl` |
 | `windows-desk` | same | A1 | 0.24 | 0.004 | ~1.0 (30 events beyond 10) | same |
 
 **Compare boards by the scale, not by the count beyond a threshold.** On
 an exponential tail the count at a fixed threshold moves a long way for
-a modest change in scale. Here a count 9-10x apart on A0 and 19-22x
+a modest change in scale. Here a count 9-11x apart on A0 and 19-24x
 apart on A1 is a scale 1.6-1.8x apart on A0 and about 2x on A1. The two
 boards differ in image and in jumper material, and nothing measured
 separates those from the die.
