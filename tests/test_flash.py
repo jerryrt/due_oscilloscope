@@ -274,6 +274,48 @@ def test_the_log_says_which_dirty_not_merely_that_it_was(tmp_path,
         "built from, which is the whole of issue #35's open item")
 
 
+def test_an_image_on_another_drive_is_still_logged(tmp_path, monkeypatch):
+    """A binary with no path relative to REPO is logged by its absolute path.
+
+    On Windows `os.path.relpath` raises for a path on another drive or a
+    UNC share - a container build read from `\\\\wsl.localhost` is one -
+    and `_log_flash` swallows the exception by design. The board is then
+    flashed with no log row, so `provenance.firmware()` cannot attribute
+    it and every record taken afterwards carries a null compiler and
+    layout. Forced here on any host by making `relpath` raise.
+    """
+    import json
+
+    binary = tmp_path / "img.bin"
+    binary.write_bytes(b"\x00" * 32)
+    log = tmp_path / "flash-log.jsonl"
+    monkeypatch.setattr(flash, "FLASH_LOG", str(log))
+
+    def fake_run(cmd, **kw):
+        class R:
+            pass
+        r = R()
+        r.stdout = "abc1234\n" if "rev-parse" in cmd else ""
+        return r
+
+    def no_relative_path(path, start=None):
+        raise ValueError("path is on mount '\\\\\\\\wsl.localhost\\\\Ubuntu', "
+                         "start on mount 'C:'")
+
+    monkeypatch.setattr(flash.subprocess, "run", fake_run)
+    monkeypatch.setattr(flash.os.path, "relpath", no_relative_path)
+
+    flash._log_flash(str(binary))
+
+    rows = [json.loads(x) for x in log.read_text(encoding="utf-8").splitlines()
+            if x.strip()] if log.exists() else []
+    assert len(rows) == 1, (
+        "no log row for an image with no path relative to REPO; the flash "
+        "is unattributable and every later record loses its compiler")
+    assert rows[0]["binary"] == os.path.abspath(str(binary))
+    assert rows[0]["sha256"]
+
+
 def test_a_clean_tree_logs_no_dirty_sha(tmp_path, monkeypatch):
     """None rather than the hash of an empty diff.
 

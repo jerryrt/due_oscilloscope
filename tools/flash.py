@@ -593,6 +593,19 @@ def _flash_attempt(bossac, binary, args):
 FLASH_LOG = os.path.join(REPO, "records", "flash-log.jsonl")
 
 
+def _repo_relative(path):
+    """`path` relative to REPO, or absolute when no relative path exists.
+
+    On Windows a path on another drive or a UNC share, such as a
+    container build read from `\\\\wsl.localhost`, has no path relative
+    to `C:`, and `os.path.relpath` raises rather than answering.
+    """
+    try:
+        return os.path.relpath(path, REPO)
+    except ValueError:
+        return os.path.abspath(path)
+
+
 def _log_flash(binary) -> None:
     """Record what the image that was just flashed was built from.
 
@@ -658,11 +671,11 @@ def _log_flash(binary) -> None:
         delta = (git("diff", "HEAD") or "") + "\n" + (porcelain or "")
         rec = {
             "when": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-            "binary": os.path.relpath(binary, REPO),
+            "binary": _repo_relative(binary),
             "sha256": h,
             "repo_rev": git("rev-parse", "--short", "HEAD"),
             "work_tree_known": found is not UNKNOWN_WORK_TREE,
-            "source_root": (os.path.relpath(root, REPO)
+            "source_root": (_repo_relative(root)
                             if root and os.path.abspath(root)
                             != os.path.abspath(REPO) else None),
             "dirty": bool(porcelain),
@@ -1039,9 +1052,10 @@ def check_not_stale(binary, allow):
     newest, at = newest_source(binary)
     if newest is None or at <= built:
         return
-    rel = os.path.relpath(newest, REPO)
-    shown = binary if os.path.relpath(binary, REPO).startswith("..") \
-        else os.path.relpath(binary, REPO)
+    rel = _repo_relative(newest)
+    shown = _repo_relative(binary)
+    if os.path.isabs(shown) or shown.startswith(os.pardir):
+        shown = binary
     age = at - built
     msg = (f"the image is older than the firmware source it should "
            f"contain:\n"
