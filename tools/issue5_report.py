@@ -100,7 +100,7 @@ REPEAT_RING = {"bench": "windows-desk", "fws": 5,
 
 def load(path):
     full = os.path.join(ROOT, path)
-    with open(full) as fh:
+    with open(full, encoding="utf-8") as fh:
         return [json.loads(l) for l in fh if l.strip()]
 
 
@@ -311,13 +311,13 @@ def main():
         print(json.dumps(data, indent=1))
         return 0
 
-    with open(TEMPLATE) as fh:
+    with open(TEMPLATE, encoding="utf-8") as fh:
         page = fh.read()
     if "__ISSUE5_DATA__" not in page:
         sys.exit(f"{TEMPLATE}: no __ISSUE5_DATA__ placeholder")
     page = page.replace("__ISSUE5_DATA__", blob)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
-    with open(args.out, "w") as fh:
+    with open(args.out, "w", encoding="utf-8") as fh:
         fh.write(page)
     print(f"wrote {args.out}  ({len(page)} bytes, "
           f"{len(data['benches'])} benches, repo_rev "

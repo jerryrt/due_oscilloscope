@@ -38,7 +38,7 @@ TMPL = os.path.join(REPO, "tools", "issue5_report.tmpl.html")
 
 @pytest.fixture(scope="module")
 def template():
-    with open(TMPL) as fh:
+    with open(TMPL, encoding="utf-8") as fh:
         return fh.read()
 
 
@@ -86,7 +86,7 @@ def test_the_generator_produces_a_page_with_the_data_substituted(tmp_path,
     out = tmp_path / "p.html"
     subprocess.run([sys.executable, TOOL, "-o", str(out)], cwd=REPO,
                    capture_output=True, text=True, check=True)
-    page = out.read_text()
+    page = out.read_text(encoding="utf-8")
     assert "__ISSUE5_DATA__" not in page, "the placeholder survived"
     assert "<title>" in page[:8192]
     # The blob is really in there, and is really this data.
