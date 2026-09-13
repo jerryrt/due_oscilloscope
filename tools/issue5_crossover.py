@@ -155,6 +155,59 @@ H_TOL = 8.18   # 3 * sqrt(sd_L^2 + sd_W^2), per-run sds, deliberately
 CONTROL_TOL = 3 * BASELINE["mac-bench"]["sd"]
 
 
+#: SECONDARY STATISTICS, registered before any crossover row was read,
+#: on `windows-desk`'s analysis and verified here against the committed
+#: rows before being accepted.
+#:
+#: The primary statistic sums all twelve lattice points raw. Three of
+#: them - 75, 180 and 201 - move with `windows-desk`'s FWS 6 mode, and
+#: two - 222, 243 - are empty. So W0's sd of 2.67 is that bench's mode
+#: split rather than session noise, and under the primary statistic W1
+#: can move ~5.2 from occupancy alone with no wire effect. Not enough to
+#: cross a 17.30 cut by itself, but it is noise the alternatives do not
+#: carry. Verified: on their arm the primary reads 215.49 / 220.72 by
+#: mode against a pooled sd of 2.61, while the seven-site sum reads
+#: 189.74 / 189.65, sd 0.14.
+#:
+#: (a) SEVEN-SITE. The lattice minus the two empty points and the three
+#: that exchange, each position taken against that run's median profile:
+SEVEN = [12, 33, 54, 96, 117, 138, 159]
+SEVEN_BASE = {"linux-x1": 193.77, "windows-desk": 189.68,
+              "mac-bench": 193.43}
+SEVEN_SD = {"linux-x1": 0.432, "windows-desk": 0.139, "mac-bench": 0.373}
+#: gap 4.08, so material predicts D_seven = 8.16 with the cut at 4.08.
+#: A smaller effect than the primary's 17.30 and a much smaller noise:
+#: 4.08 against sd 0.14-0.43 is a better ratio than 17.30 against 2.67.
+SEVEN_GAP = SEVEN_BASE["linux-x1"] - SEVEN_BASE["windows-desk"]
+SEVEN_CUT = SEVEN_GAP
+
+#: (b) PER-SITE EXCHANGE, the sharpest readout this design has. The
+#: three sites that carry most of the primary's gap, median |deviation|
+#: off the profile:
+#:
+#:                  75      180      201
+#:     linux-x1    8.62    31.26     1.61     (copper)
+#:     mac-bench   8.66    33.73     2.21     (copper)
+#:     windows     3.41    16.76     8.04     (iron)
+#:
+#: If the WIRE carries the exchange, then after the swap the windows
+#: board on copper goes to about 8.6 / 31-34 / 2, and the linux board on
+#: iron goes to about 3.4 / 16.8 / 8. If the DIE carries it each board
+#: holds its own row. On the windows board these are reported PER MODE,
+#: because 75, 180 and 201 are exactly the sites its modes move.
+EXCHANGE = [75, 180, 201]
+EXCHANGE_COPPER = {75: 8.64, 180: 32.50, 201: 1.91}   # linux+mac mean
+EXCHANGE_IRON = {75: 3.41, 180: 16.76, 201: 8.04}
+
+#: THREE STATISTICS IS THREE CHANCES, and that is stated rather than
+#: hidden. The primary is the twelve-point D and it decides the headline;
+#: (a) and (b) are secondary, each with its cut fixed above. They are not
+#: interchangeable readings of one claim - a result where (b) exchanges
+#: and (a) does not says the wire moves the three exchange sites and not
+#: the stable seven, which is a sharper finding than either alone. What
+#: is not allowed is choosing among them afterwards.
+
+
 def comb_sum(path, fws=6, drop=(1,)):
     rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
     rows = [r for r in rows if r["run"] not in drop and r.get("fws") == fws]
