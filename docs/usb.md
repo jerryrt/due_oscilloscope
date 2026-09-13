@@ -658,16 +658,36 @@ analysed runs**: 58,240 B and 57,856 B, 0.692% and 0.689%, 455 and 452
 whole chunks of 128, with no underrun, a drained pipeline and the
 write stream that cannot straddle a 1 KiB boundary.
 
-**Oversupply does not explain it**, which is what makes this rate the
-interesting one. RC 44 and RC 39 shed because the converter runs slow
-and a host that buffers ahead loses the surplus; RC 28 is one of the two
-rates that deliver in full, so there is no surplus to shed. The other
-two hosts read 0 B there.
+**Whether oversupply explains it is open.** RC 44 and RC 39 shed
+because the converter runs slow and a host that buffers ahead loses the
+surplus, and the tempting argument here is that RC 28 delivers in full
+so there is no surplus to shed. It does not deliver in full: it draws a
+second mode 2/256 low on about a quarter of runs, which is the ladder's
+own measurement and is in `docs/awg.md`. A quarter of runs is close
+enough to the observed 2 in 16 that the two cannot be told apart by
+incidence.
+
+They can be told apart by size, and the sizes do not match. 2/256 is
+0.781%, and a run writing 8.41 MB would shed about 65,700 B of surplus
+where the two events shed **58,240 B and 57,856 B** - 0.692% and 0.689%,
+about 89% of what the slow mode predicts, and agreeing with each other
+to three thousandths of a percent. So the deficits are not a whole
+surplus, and neither are they a clean multiple of one.
+
+**What would settle it is device-side.** The mode is drawn per run and
+the device reports its own `consumed / run_us`, so a block at this rate
+that records the device's rate alongside the host's deficit separates
+them in one pass: losses that land only on slow-mode runs are
+oversupply, and losses on runs the device clocked at full rate are not.
+The rows behind this section do not carry that field, which is the
+limitation rather than the answer.
 
 So the constant feed is lossless at 200,000, 397,959, 600,000 and
-696,428 sps and **intermittently lossy at 1,392,857**, at about an
-eighth of runs. A figure taken at the top of the ladder needs its own
-repetitions; a single clean run there is not evidence of a clean path.
+696,428 sps and **intermittently short at 1,392,857**, in about an
+eighth of runs, by an amount that is neither zero nor the surplus the
+slow mode would leave. A figure taken at the top of the ladder needs its
+own repetitions; a single clean run there is not evidence of a clean
+path.
 
 ## Instrumentation rules earned here
 
