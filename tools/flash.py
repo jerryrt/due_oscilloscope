@@ -931,14 +931,17 @@ def check_stamp_agrees(binary):
                       board was unattributable while `v` and the sha
                       both looked right
       windows-desk    redirected build logs into the repository root and
-                      moved them afterwards, so the tree read CLEAN at
-                      flash time while the image was stamped
-                      `1b2a2d1+0f975906`, because the untracked files
-                      existed when fw_git_rev ran. Nothing in the tree
-                      could show it; only the binary could
+                      moved them afterwards, so the image was stamped
+                      `1b2a2d1+0f975906` while the tree read CLEAN
+                      **before the build and after it**. The dirt existed
+                      only while fw_git_rev was running
 
-    The second is the one no tree-state check can reach, and it is why
-    this reads the image.
+    The second is why this reads the image rather than the tree, and the
+    emphasis above is the whole argument: it is not that a tree check at
+    flash time is too late. There is **no moment at which a tree check
+    could have caught it** - the tree was clean at every instant anyone
+    could have looked. The only record that the dirt ever existed is the
+    stamp compiled into the binary.
 
     A DIFFERENT COMMIT IS NOT AN ERROR and is only reported. Flashing an
     image from another commit is what a bisect does all day, and
