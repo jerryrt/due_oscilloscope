@@ -81,10 +81,14 @@ the descriptors are read: the board carries an unrelated Arduino sketch.
 Reflash it before reading anything into its silence, and note that a
 board enumerating as a keyboard types into whatever window has focus.
 
-Whether opening a port resets the board is a per-host fact, and it is
-unmeasured here. `tools/uptime_reset_probe.py` settles it in one
-heartbeat either side of an open, and both readings have cost an
-experiment elsewhere.
+Whether opening a port resets the board is a per-host fact, and on this
+host **it does not**: `tools/uptime_reset_probe.py`, three repetitions
+at `1b2a2d1` on Track B, uptime climbing through every open of the
+control port - `records/issue48-control-open-no-reset-windows-desk.jsonl`.
+That is `linux-x1`'s behaviour and the opposite of `mac-bench`'s, so an
+experiment here whose arms are separate runs keeps whatever uptime the
+board had, and nothing that relies on an open for a fresh board gets
+one.
 
 
 ## The headline

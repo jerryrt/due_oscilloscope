@@ -851,6 +851,7 @@ with `dtr=False`, which is all `Board.__init__` does before it sleeps.
 |---|---|---|
 | `linux-x1` | **does not reset** | 16410.9 s -> 16415.9 s, the sleep and nothing else |
 | `mac-bench` | **resets, 3 of 3** | 65812 ms -> 2884 ms, with an idle control climbing 2035 ms over 2 s |
+| `windows-desk` | **does not reset, 0 of 3** | 280993 ms -> 284069 ms across the open, with an idle control climbing 2017 ms over 2 s |
 
 An explicit DTR toggle resets on Linux too - 16433.8 s to 5.7 s - so
 *there* the reset depends on how the port is opened. **On macOS it does
