@@ -234,7 +234,13 @@ def slot_competition(rows, fws, depth):
 #: default because the page is regenerated often and the figures it
 #: quotes are 1e-3 at coarsest; the tool is where a finer number is
 #: taken.
-PAGE_NDRAW = 5000
+#:
+#: `ISSUE5_REPORT_NDRAW` lowers it further for the page's own tests,
+#: which check structure - that every chart has a mount and every
+#: `DATA.<key>` is written - and never read a p-value. At 5000 those two
+#: tests cost 17 s of a suite whose Windows run has just exceeded #50's
+#: 300 s ceiling, for numbers they do not look at.
+PAGE_NDRAW = int(os.environ.get("ISSUE5_REPORT_NDRAW", "5000"))
 
 
 def build():

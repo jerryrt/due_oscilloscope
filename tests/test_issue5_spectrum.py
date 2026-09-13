@@ -61,14 +61,14 @@ def test_the_real_site_set_is_a_comb_and_significantly_so():
     assert (r, p) == (pytest.approx(1.0, abs=1e-9), 21)
     # Valid on the rows that found the period: one scalar statistic,
     # the scan charged to the null as well.
-    pv = sp.comb_pvalue(REAL_FWS6, ndraw=4000, seed=1)
+    pv = sp.comb_pvalue(REAL_FWS6, ndraw=1500, seed=1)
     assert pv["p"] < 0.05
     # And the pre-registered test for rows taken after the period was
     # named - exact, no scan, far better powered. Not valid on these
     # rows; asserted here only so the instrument is known to work
     # before the campaign data it will be applied to exists.
-    fp = sp.fixed_period_pvalue(REAL_FWS6, 21, ndraw=4000, seed=1)
-    assert fp["R"] == pytest.approx(1.0) and fp["p"] <= 2.0 / 4001
+    fp = sp.fixed_period_pvalue(REAL_FWS6, 21, ndraw=1500, seed=1)
+    assert fp["R"] == pytest.approx(1.0) and fp["p"] <= 2.0 / 1501
 
 
 def test_uniform_positions_are_not_a_comb():
@@ -78,19 +78,29 @@ def test_uniform_positions_are_not_a_comb():
     import random
     rng = random.Random(7)
     flagged = flagged_fixed = 0
-    N = 40
+    # 30 draws at ndraw=400. The null's own resolution only has to
+    # resolve the 0.05 threshold this test compares against, and 400
+    # gives 0.0025 - far finer than needed. The first version used 40 and
+    # 1200 and cost 13.8 s of a suite whose Windows run has just exceeded
+    # #50's 300 s ceiling.
+    #
+    # Cheapening a control is the wrong move if it stops firing, so it
+    # was checked against the defect it exists for: with `comb_pvalue`
+    # reverted to conjoining "and at a period at least this long" onto
+    # the null, this still flags well past the bound below.
+    N = 30
     for _ in range(N):
         pts = sorted(rng.sample(range(sp.BINS), 6))
-        if sp.comb_pvalue(pts, ndraw=1200, seed=3)["p"] < 0.05:
+        if sp.comb_pvalue(pts, ndraw=400, seed=3)["p"] < 0.05:
             flagged += 1
-        if sp.fixed_period_pvalue(pts, 21, ndraw=1200, seed=3)["p"] < 0.05:
+        if sp.fixed_period_pvalue(pts, 21, ndraw=400, seed=3)["p"] < 0.05:
             flagged_fixed += 1
     # A calibrated 5% threshold puts about 2 of 40 here. The first
     # version of `comb_pvalue` scored 6 of 25 - it conjoined a second
     # condition onto the null and stopped being a p-value; this
     # assertion is what caught it.
-    assert flagged <= 6, f"{flagged} of {N} uniform draws read as combs"
-    assert flagged_fixed <= 6, (
+    assert flagged <= 5, f"{flagged} of {N} uniform draws read as combs"
+    assert flagged_fixed <= 5, (
         f"{flagged_fixed} of {N} uniform draws read as period-21 combs")
 
 

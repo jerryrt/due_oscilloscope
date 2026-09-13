@@ -42,10 +42,17 @@ def template():
         return fh.read()
 
 
+#: The page's permutation nulls cost 17 s across the two tests that
+#: invoke the generator, and neither reads a p-value - they check that
+#: every chart has a mount and every `DATA.<key>` is written. Lowered
+#: here rather than in the tool, so the published page keeps its figures.
+FAST = dict(os.environ, ISSUE5_REPORT_NDRAW="50")
+
+
 @pytest.fixture(scope="module")
 def data():
     out = subprocess.run([sys.executable, TOOL, "--data-only"], cwd=REPO,
-                         capture_output=True, text=True, check=True)
+                         capture_output=True, text=True, check=True, env=FAST)
     return json.loads(out.stdout)
 
 
@@ -85,7 +92,7 @@ def test_the_generator_produces_a_page_with_the_data_substituted(tmp_path,
                                                                  data):
     out = tmp_path / "p.html"
     subprocess.run([sys.executable, TOOL, "-o", str(out)], cwd=REPO,
-                   capture_output=True, text=True, check=True)
+                   capture_output=True, text=True, check=True, env=FAST)
     page = out.read_text(encoding="utf-8")
     assert "__ISSUE5_DATA__" not in page, "the placeholder survived"
     assert "<title>" in page[:8192]
