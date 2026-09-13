@@ -305,9 +305,9 @@ doubled one at FWS 6 (each tooth split into a pair 4 apart,
 FWS 6 is bimodal on both benches: a sharp 13-site comb of 17, or a dense
 profile of 66-80 sites - one run in six sharp on `linux-x1`, four in
 six on `mac-bench`. RC 186 at FWS 5 has two levels of its dense profile
-on both benches, in the same proportion, two runs in six low. That is occupancy of two states,
-not a window that moved, and it is the shape of the two run-level
-severity modes the campaign found. What the dense state *is* has not
+on both benches, in the same proportion, two runs in six low. That is
+occupancy of two states, not a window that moved, and it is the shape
+of the two run-level severity modes the campaign found. What the dense state *is* has not
 been established; the `K` sweep at fixed rate, which moves the
 DAC-start-to-ADC-start gap in 39-clock steps and needs no reflash, is
 the arm that can say. `records/issue5-alias-sweep-*`.
