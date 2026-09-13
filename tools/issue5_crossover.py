@@ -527,9 +527,17 @@ def two_state_guarded(paths, fws, pos):
         rows = [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
         rows = [r for r in rows if r["run"] not in (1,) and r.get("fws") == fws]
         per.append([abs(r["profile"][pos]) for r in rows])
-    pool = [v for arm in per for v in arm]
-    c = issue5_modes.classify(pool)
-    if c.get("modes") == 2:
+    # THE TWO-STATE ANSWER MUST HOLD IN EVERY LEG, not in the pool.
+    # linux-x1's clause, tested against mac-bench's untouched board as
+    # a null before being accepted. Classifying the POOLED values lets
+    # a position count as two-state on the strength of one arm, and the
+    # single-arm verdict is itself unstable: between two readings of an
+    # UNTOUCHED board it flips in 15-16 of 768 position-by-wait-state
+    # cells. Requiring agreement across all legs removes the verdict's
+    # dependence on which arm you asked - which is the same defect as
+    # the cut's dependence on which arms you pooled, one level up.
+    verdicts = [issue5_modes.classify(a).get("modes") == 2 for a in per]
+    if all(verdicts):
         return True, None
     return False, [statistics.median(a) if a else None for a in per]
 
