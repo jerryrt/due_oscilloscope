@@ -96,3 +96,11 @@ core.*
 # The generator and its template are committed; the page is published as
 # an artifact.
 docs/issue5-report.html
+
+# The issue #5 analysis export. Derived from records/ by
+# tools/issue5_export.py, ignored for the same reason
+# records/*.summary.json and docs/issue5-report.html are: a derived file in
+# the tree is a second home for a number that already has one, and this one
+# goes stale the moment an arm lands. The generator and its README template
+# are committed; run the generator.
+analysis/
