@@ -410,13 +410,34 @@ Check here before reasoning from general Arduino knowledge.
   again, so nothing declares them - but two of them on A0 and A1 moved
   **every** issue #5 severity figure `mac-bench` produced, by +102 and
   +107 codes at FWS 4 and 5 against another bench, falling to +12 and
-  +27 once they were off. They also **masked** a difference at FWS 6,
-  where the same bench read 405 against 396 with them on and 343
-  without, so the sign is not predictable: an undeclared load flatters
-  an agreement as readily as it manufactures a disagreement. Every
-  wiring check passed throughout, correctly, because the jumpers never
-  changed. For scale, jumper-to-jumper coupling on this board is
-  0.5-2.3 mV RMS and 50x smaller than the effect above.
+  +27 once they were off. Every wiring check passed throughout,
+  correctly, because the jumpers never changed. For scale,
+  jumper-to-jumper coupling on this board is 0.5-2.3 mV RMS and 50x
+  smaller than the effect above.
+
+  **The wait states differ in how well that is measured, and the FWS 6
+  half of this bullet was withdrawn on 2026-09-13.** It used to add
+  that the probes *masked* a difference at FWS 6 - 405 with them on
+  against 343 without - and conclude that an undeclared load flatters an
+  agreement as readily as it manufactures one. A third probe-free
+  session, the pinned campaign arm, read **398.1** against the probed
+  405, so the 343 was one session and not the probe-free level.
+
+  The reason is that FWS 6 has **two run-level modes**, and both which
+  mode a session sits in and where the modes sit move between sessions
+  on one board with one image and one wiring: 341.7, 343.6 and 398.1
+  across three probe-free arms. So at FWS 6 the session-to-session
+  swing is an order larger than the probe effect and a two-session
+  comparison cannot see past it. At FWS 4 and 5 it can, and there the
+  effect is large and reproduces on all three probe-free arms - 144.7
+  probed against 46.6-65.7 - which is why those halves stand.
+
+  **What survives is the rule, not the symmetry.** Declare the probes:
+  the reason is that the perturbation is real and large, measured at
+  FWS 4 and 5. What does not survive is the claim to know its sign at
+  a wait state where an undeclared *session* moves the figure further
+  than the probes do. `docs/issue5-campaign.md`,
+  `records/issue5-campaign-mac-bench.jsonl`.
 - **Two EXT-trigger traps on the DS1102E, and both are silent.** The
   level clamps at **±1.2 V** - it accepts `1.67` and holds `1.20`, with
   the readback agreeing - so a DC-coupled x1 sync never triggers at all.
