@@ -78,6 +78,30 @@ def main():
                          "board booted with, which is not comparable "
                          "across benches")
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "macos"))
+    # The analog path, declared per run rather than as standing state.
+    # `bench.json` carries what is WIRED to the board; these are what is
+    # clipped onto it and what the loopback wire is made of, and both
+    # have moved a #5 figure. A standing `probes` field was considered
+    # and refused by the owner in `d88e70e`: a probe goes on for an
+    # investigation and comes off again, so the field would be empty
+    # almost always, maintained for a while, and then silently stale -
+    # the same failure mode as every other check whose failure is
+    # indistinguishable from success. An argument cannot go stale,
+    # survives a swap mid-session, and lands in the rows, which is where
+    # provenance belongs.
+    #
+    # Absent, they record as null: honest, and distinguishable from
+    # "declared none". `tools/issue5_campaign.py` requires both.
+    ap.add_argument("--probes", default=None,
+                    help="what is clipped onto the measured pins for "
+                         "THIS session, e.g. 'none' or 'x10 on A0, x10 "
+                         "on A1'. Two undeclared probes moved every "
+                         "severity figure on one bench and masked a "
+                         "difference as well as adding one")
+    ap.add_argument("--jumpers", default=None,
+                    help="the loopback wire for THIS session, e.g. "
+                         "'copper, ~10 cm, 24 AWG'. The one declared "
+                         "analog difference between the benches")
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
 
@@ -172,6 +196,7 @@ def main():
             # boards.
             row = {"run": i, "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                    "bench": args.bench, "regen": i in regen, **prov,
+                   "probes": args.probes, "jumpers": args.jumpers,
                    "amp": amp, "fws": fws, "preset": args.preset,
                    "total_abs": round(total_abs, 2),
                    "site_abs": round(sum(abs(v) for _b, v, _z in found), 2),

@@ -169,7 +169,7 @@ one experiment.
 | n analysed | 24 per wait state | every published ceiling was taken at 24, and a Jaccard's ceiling moves with n |
 | run 1 | **discarded by index** | first-run outliers on all three benches, and a filter on what run 1 does wrong has already missed one |
 | stored per run | the whole 256-point profile, and every site | the gap this arm exists to close |
-| the analog path | `bench.json` must declare `probes` and `jumpers` | see below |
+| the analog path | `--probes` and `--jumpers`, per session, no default | see below |
 
 The plan asks for 13 runs in the first block so that 24 survive the
 discard. The previous arm took 72, analysed 72, and carried its first
@@ -192,9 +192,20 @@ jumpers' metal: `windows-desk` iron, `linux-x1` and `mac-bench` copper,
 at roughly the same length. It reached the record only as prose on an
 issue.
 
-So `issue5_campaign.py` refuses without `probes` and `jumpers` in
-`bench.json`, before it opens the board. Declare them from the hardware
-in front of you.
+So `issue5_campaign.py` refuses without `--probes` and `--jumpers`, before
+it opens the board, and records both on every row.
+
+**They are arguments and not `bench.json` fields, and that is a ruling
+rather than a preference.** A standing `probes` field was considered and
+refused: a probe goes on for an investigation and comes off again, so the
+field would be empty almost always, maintained for a while, and then
+silently stale — the same failure this project collects everywhere else,
+where the failure is indistinguishable from success. An argument cannot
+go stale, survives a swap in the middle of a session, and lands in the
+rows, which is where provenance belongs.
+
+This tool's first version required them in `bench.json` and was wrong by
+an hour.
 
 ### What this arm does not separate
 

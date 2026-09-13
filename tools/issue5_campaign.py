@@ -88,14 +88,22 @@ PINNED_RUNS = 73
 PINNED_SECONDS = 3.0
 DISCARD_RUNS = (1,)
 
-#: Fields `bench.json` must carry before this arm may run. `probes` and
-#: `jumpers` are new: the first because undeclared scope probes moved
-#: every severity figure on mac-bench while `wiring_source` still read
-#: `declared`, the second because the one declared analog difference
-#: between the benches is the loopback wire's metal and it reached the
-#: record only as prose on an issue.
-REQUIRED_BENCH_FIELDS = ("bench", "wiring", "wiring_since", "probes",
-                         "jumpers")
+#: Fields `bench.json` must carry. Standing state only - what is WIRED
+#: to the board, which changes when someone re-cables and not otherwise.
+REQUIRED_BENCH_FIELDS = ("bench", "wiring", "wiring_since")
+
+#: The analog path is declared on the COMMAND LINE, not in `bench.json`,
+#: and that is the owner's ruling in `d88e70e` rather than a preference:
+#: a probe goes on for an investigation and comes off again, so a
+#: standing `probes` field would be empty almost always, maintained for a
+#: while, and then silently stale - the same failure this project
+#: collects everywhere else, where the failure is indistinguishable from
+#: success. An argument cannot go stale, survives a swap mid-session, and
+#: lands in every row.
+#:
+#: This file's first version required them in `bench.json`, which
+#: contradicted that ruling by an hour.
+REQUIRED_ANALOG = ("probes", "jumpers")
 
 
 def fail(msg):
@@ -136,12 +144,24 @@ def check_bench():
         b = json.load(fh)
     missing = [k for k in REQUIRED_BENCH_FIELDS if not b.get(k)]
     if missing:
-        return (f"bench.json is missing {', '.join(missing)}. "
-                f"`probes` is what mac-bench's arm lacked while reading "
-                f"`declared`; `jumpers` is the one analog difference "
-                f"between the benches that is known and was never in a "
-                f"record. Declare them from the hardware in front of you, "
-                f"not from this file.")
+        return (f"bench.json is missing {', '.join(missing)}. An "
+                f"undeclared bench records the RETIRED DSO wiring on "
+                f"every row it writes.")
+    return None
+
+
+def check_analog(args):
+    """The analog path, declared for this session by whoever is at it."""
+    missing = [k for k in REQUIRED_ANALOG if not getattr(args, k)]
+    if missing:
+        return (f"--{' and --'.join(missing)} not given. Declare the "
+                f"analog path for THIS session from the hardware in "
+                f"front of you: --probes 'none' or --probes 'x10 on A0', "
+                f"--jumpers 'copper, ~10 cm, 24 AWG'. Two undeclared "
+                f"probes moved every severity figure on one bench and "
+                f"masked a difference as well as adding one, while every "
+                f"check the project had still read `declared`. Not a "
+                f"bench.json field on purpose - see REQUIRED_ANALOG.")
     return None
 
 
@@ -181,6 +201,12 @@ def main():
     ap.add_argument("--no-board", action="store_true",
                     help="preflight the checks that need no board. Useful "
                          "on a bench with no hardware attached")
+    ap.add_argument("--probes", default=None,
+                    help="what is clipped onto the measured pins for this "
+                         "session, e.g. 'none'. Required, with no default")
+    ap.add_argument("--jumpers", default=None,
+                    help="the loopback wire for this session, e.g. "
+                         "'copper, ~10 cm, 24 AWG'. Required")
     ap.add_argument("--out", default=None,
                     help="where rows go. Defaults to a scratch path beside "
                          "the repo, NOT records/ - a new file in the tree "
@@ -190,7 +216,8 @@ def main():
 
     print("preflight")
     for name, err in (("instrument", check_instrument()),
-                      ("bench.json", check_bench())):
+                      ("bench.json", check_bench()),
+                      ("analog path", check_analog(args))):
         if err:
             return fail(err)
         print(f"  {name}: ok")
@@ -219,7 +246,8 @@ def main():
     cmd = [sys.executable, os.path.join(ROOT, "tools", "issue5_sites.py"),
            "-n", str(PINNED_RUNS), "-s", str(PINNED_SECONDS),
            "--preset", PINNED_PRESET, "--fws-plan", PINNED_PLAN,
-           "--bench", bench, "--json", out]
+           "--bench", bench, "--probes", args.probes,
+           "--jumpers", args.jumpers, "--json", out]
     print("\n" + " ".join(cmd) + "\n", flush=True)
     rc = subprocess.call(cmd)
     if rc:
