@@ -430,6 +430,28 @@ RETURN_PATH = "issue5-return-{bench}.jsonl"
 #: trivially and the count is noise anyway (measured: 8-16 of 24 on an
 #: untouched board).
 RETURN_MIN_COUNT = 3
+#: A STATE NEEDS MEMBERS TO HAVE A MEDIAN. linux-x1 found the
+#: degeneracy and flagged it rather than patching another bench's rule
+#: mid-scoring, which was the right call and is why it is fixed here.
+#:
+#: The largest-gap split has no minimum on either side, so on a
+#: position whose values do NOT form two clean states it happily puts
+#: ONE run on one side and calls it a state. The "median of the large
+#: state" is then a single sample - the maximum of the distribution,
+#: not a median of a population - and it moves like an extreme value.
+#: On their return leg at FWS 6 pos 169 the counts came out 14/14/1,
+#: and the size read as a half-return that was about to be published as
+#: MOVED AGAIN. It is neither; the size is simply not computable there.
+#:
+#: `issue5_modes.classify` has carried MIN_SIDE = 4 for exactly this
+#: reason since it was written. The per-position split had no
+#: equivalent, which is the same rule living in one place and not the
+#: other - the shape invariant 3 exists to prevent.
+#:
+#: Where a side is too small the size is reported as not computable and
+#: the position falls back to the pooled median, rather than silently
+#: returning a one-sample "median".
+MIN_STATE_SIDE = 4
 
 
 def state_split(paths, fws, pos):
@@ -453,8 +475,12 @@ def state_split(paths, fws, pos):
     for arm in per:
         hi = [v for v in arm if v >= cut]
         lo = [v for v in arm if v < cut]
-        out.append((len(hi), statistics.median(hi) if hi else None,
-                    statistics.median(lo) if lo else None, len(arm)))
+        # A side with fewer than MIN_STATE_SIDE members is not a state:
+        # its "median" is an extreme value of the other one.
+        out.append((len(hi),
+                    statistics.median(hi) if len(hi) >= MIN_STATE_SIDE else None,
+                    statistics.median(lo) if len(lo) >= MIN_STATE_SIDE else None,
+                    len(arm)))
     return cut, out
 
 
@@ -505,7 +531,26 @@ def score_return(bench, positions):
         sz = [a[1] for a in arms]
         cnt = [a[0] for a in arms]
         if any(v is None for v in sz):
-            verdict = "no large state in some arm"
+            # Fall back to the pooled median, which needs no state split
+            # and is the honest reading when the split is degenerate.
+            pooled = []
+            for pth in (base, cross, ret):
+                rr = [json.loads(l) for l in open(pth, encoding="utf-8")
+                      if l.strip()]
+                rr = [x for x in rr
+                      if x["run"] not in (1,) and x.get("fws") == fws]
+                pooled.append(statistics.median(abs(x["profile"][pos])
+                                                for x in rr))
+            sz = pooled
+            o2, b2, r2 = sz[1] - sz[0], sz[2] - sz[1], sz[2] - sz[0]
+            if abs(o2) <= tol:
+                verdict = "never moved (pooled; state split degenerate)"
+            elif abs(b2) > tol and abs(r2) <= tol:
+                verdict = "RETURNED (pooled; state split degenerate)"
+            elif abs(r2) > tol and abs(b2) > tol:
+                verdict = "MOVED AGAIN (pooled; state split degenerate)"
+            else:
+                verdict = "stayed moved (pooled; state split degenerate)"
         else:
             out, back, resid = sz[1] - sz[0], sz[2] - sz[1], sz[2] - sz[0]
             if abs(out) <= tol:
@@ -516,7 +561,17 @@ def score_return(bench, positions):
                 verdict = "MOVED AGAIN"
             else:
                 verdict = "stayed moved"
-        rows.append((fws, pos, cnt, sz, tol, verdict))
+        # Reported, not a decision rule: what FRACTION of the outbound
+        # excursion came back. The registered verdict is a binary and a
+        # binary hides magnitude - linux-x1's 169 swings +12.02 and
+        # lands 0.63 from its origin, which is 95% recovered and still
+        # fails a 0.30 tolerance. "MOVED AGAIN" and "returned 95% of the
+        # way" are both true and only one of them is informative.
+        try:
+            rec = 100.0 * (1.0 - abs(sz[2] - sz[0]) / abs(sz[1] - sz[0]))
+        except (ZeroDivisionError, TypeError):
+            rec = None
+        rows.append((fws, pos, cnt, sz, tol, verdict, rec))
     return rows
 
 
@@ -638,11 +693,11 @@ def check():
                   f"{'tol':>6s}  verdict")
             printed = True
         print(f"    {b}")
-        for fws, pos, cnt, sz, tol, verdict in r:
+        for fws, pos, cnt, sz, tol, verdict, rec in r:
             f = lambda v: f"{v:7.2f}" if v is not None else "      -"
+            rs = f"{rec:5.1f}%" if rec is not None else "    -"
             print(f"      f{fws} pos {pos:3d}  {f(sz[0])} {f(sz[1])} "
-                  f"{f(sz[2])} {tol:6.2f}  {verdict}   count "
-                  f"{cnt[0]}/{cnt[1]}/{cnt[2]}")
+                  f"{f(sz[2])} {tol:6.2f} {rs} recovered  {verdict}")
     if not printed:
         print("\n  RETURN LEG: no return arms in records/ yet")
     return 0
