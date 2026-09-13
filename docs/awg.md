@@ -310,7 +310,10 @@ occupancy of two states, not a window that moved, and it is the shape
 of the two run-level severity modes the campaign found. What the dense state *is* has not
 been established; the `K` sweep at fixed rate, which moves the
 DAC-start-to-ADC-start gap in 39-clock steps and needs no reflash, is
-the arm that can say. `records/issue5-alias-sweep-*`.
+the arm that can say. Each nonzero step lands up to about one more step
+late on any given run, because the wait polls `micros()` against a
+SysTick unrelated to the ADC timer, so a `K` value names a band of
+phases rather than one phase. `records/issue5-alias-sweep-*`.
 
 ### The fix: no refresh while a stream runs
 
