@@ -266,6 +266,36 @@ def site_devs(path, fws=6, drop=(1,)):
             for b in EXCHANGE}
 
 
+def site_devs_by_mode(path, fws=6, drop=(1,)):
+    """Per-site medians split by the run-level mode, where there is one.
+
+    A pooled median over a bimodal arm moves when OCCUPANCY moves, with
+    no per-mode change at all, and 75/180/201 are precisely the sites
+    windows-desk's modes move. Uses their classifier rather than a
+    second one - two homes for one rule is the failure this project
+    carves its shared-source invariant around, and a crossover scored
+    against a differently-drawn mode boundary would be unreadable.
+    """
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import issue5_modes
+    rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
+    rows = [r for r in rows if r["run"] not in drop and r.get("fws") == fws]
+    if not rows or "profile" not in rows[0]:
+        return None
+    tot = [r["total_abs"] for r in rows]
+    c = issue5_modes.classify(tot)
+    if c.get("modes") != 2:
+        return None
+    cut = c["cut"]
+    out = []
+    for name, grp in (("low", [r for r in rows if r["total_abs"] < cut]),
+                      ("high", [r for r in rows if r["total_abs"] >= cut])):
+        out.append((name,
+                    {b: statistics.median(abs(r["profile"][b]) for r in grp)
+                     for b in EXCHANGE}, len(grp)))
+    return out
+
+
 def check():
     arms = {}
     for b in BASELINE:
@@ -349,12 +379,26 @@ def check():
           " ".join(f"{EXCHANGE_COPPER[b]:8.2f}" for b in EXCHANGE))
     print(f"    {'iron row':14s} " +
           " ".join(f"{EXCHANGE_IRON[b]:8.2f}" for b in EXCHANGE))
+    # Registered: "on the windows board these are reported PER MODE,
+    # because 75, 180 and 201 are exactly the sites its modes move."
+    # That was a sentence in the registration and nothing executed it,
+    # so this printed a POOLED row whose change is mostly occupancy -
+    # windows-desk's 75 reads 3.41 -> 5.73 pooled and 5.28 -> 5.93 /
+    # 1.49 -> 1.64 per mode. Split wherever the classifier splits, not
+    # only on the bench the sentence named: mac-bench has two modes too,
+    # and linux-x1 acquired them in this arm.
     for b in sorted(arms):
         d = site_devs(arms[b])
         want = "iron row" if b == "linux-x1" else (
             "copper row" if b == "windows-desk" else "unchanged")
         print(f"    {b:14s} " + " ".join(f"{d[x]:8.2f}" for x in EXCHANGE)
               + f"   predicted: {want}")
+        m = site_devs_by_mode(arms[b])
+        if m:
+            for name, dd, n in m:
+                print(f"      {name:12s} " +
+                      " ".join(f"{dd[x]:8.2f}" for x in EXCHANGE) +
+                      f"   (n={n})")
     return 0
 
 
