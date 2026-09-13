@@ -222,6 +222,24 @@ def main():
         print(f"  worst within-bench range above is the noise floor an A-B-A "
               f"would be read against.")
 
+    # The three excluded sites, per bench, so "iron lowest on the
+    # artifact" cannot be read as one claim when it is two: 2.0% on the
+    # fixed comb, plus a large difference at three sites that move with
+    # the mode on iron and not on copper. windows-desk's suggestion, and
+    # only their bench separates the two.
+    print(f"\n  the excluded exchange sites, median |dev| per bench:")
+    print(f"{'':16s} " + "  ".join(f"{b:>8}" for b in EXCHANGE))
+    for bench, rows in sorted(data.items()):
+        v = [r for r in rows if r["fws"] == args.fws]
+        if not v:
+            continue
+        cells = []
+        for b in EXCHANGE:
+            vals = [abs(x) for r in v for bb, x, _z in r["sites"] if bb == b]
+            cells.append(f"{statistics.median(vals):8.2f}" if vals
+                         else f"{'-':>8}")
+        print(f"{bench:16s} " + "  ".join(cells))
+
     if args.per_run:
         print()
         for bench, rows in sorted(data.items()):
