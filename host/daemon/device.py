@@ -918,6 +918,10 @@ class BoardDevice(Device):
         self._ctl = None
         self._ctl_tried = False
         self._ctl_note = None
+        #: Did this device open `_ctl` itself? False when it is the
+        #: board's own link, which the board owns and this must never
+        #: close - see control().
+        self._ctl_owned = False
         self._ident = None
         self._ident_tried = False
         # One lock over the control channel. `Control` is one serial fd
@@ -967,7 +971,42 @@ class BoardDevice(Device):
         short line rather than the banner, and the answer is cached for
         the same reason `describe` caches the track: it cannot change
         without a reflash.
+
+        ONE LINK PER BOARD, AND THE BOARD OWNS IT. A `measure.Board`
+        opens a `Control` on this node for itself (`ctl()`) and keeps it,
+        so a second one opened here would be two owners of one port.
+        POSIX lets two handles hold a tty; Windows grants a COM port to one
+        handle, and whichever opens second gets `Access is denied` -
+        measured on windows-desk, #79. So this takes the board's link when
+        the board has one, on every platform, and opens its own only for a
+        board-like object that offers none. The heartbeat pump and every reader here
+        still serialise on `_ctl_lock`; a caller that reaches the board's
+        link from another thread while this device is pumping would race
+        the pump, which is why `close()` stops the pump before releasing.
+
+        A board link that will not open is not cached here. The board
+        caches its own answer and clears it on `ctl_invalidate()`, so
+        asking again costs nothing and picks up a recovery; a second cache
+        here would make one transient refusal last the device's lifetime.
+
+        A SHARED LINK CAN BE REPLACED UNDER US, so it is re-checked against
+        the board on every call. `Board.close_native()`'s wedge ladder
+        ends in a software detach and `ctl_invalidate()`, which closes the
+        link and re-opens a new one on the next `ctl()` - the node can move
+        with the re-enumeration. A device that kept returning its cached
+        object would hand the pump and every reader a closed link for ever:
+        the pump swallows the error and loops back here. `board.ctl()` is a
+        cached attribute read while the board holds a link, so the check
+        costs nothing on the ordinary path.
         """
+        if self._ctl is not None and not self._ctl_owned:
+            try:
+                current = self.board.ctl()
+            except Exception:                        # noqa: BLE001
+                current = None
+            if current is self._ctl:
+                return self._ctl
+            self._release_control()
         if self._ctl is not None or self._ctl_tried:
             return self._ctl
         self._ctl_tried = True
@@ -987,11 +1026,40 @@ class BoardDevice(Device):
                                  "ctlver=0: this firmware has no control "\
                                  "channel"
                 return None
-            self._ctl = control_mod.Control(node, timeout=2.0)
+            board_ctl = getattr(self.board, "ctl", None)
+            if board_ctl is not None:
+                link = board_ctl()
+                if link is None:
+                    why = getattr(self.board, "ctl_why", None)
+                    self._ctl_note = ("the board's command link did not open"
+                                      + (f": {why}" if why else ""))
+                    self._ctl_tried = False
+                    return None
+                self._ctl, self._ctl_owned = link, False
+                # A re-acquired link carries no hook. If beats are being
+                # taken, the hook moves with the link, or they would stop
+                # arriving silently after a replacement.
+                if self._hb_period_ms:
+                    link.on_unsolicited = self._hb_on_frame
+            else:
+                self._ctl = control_mod.Control(node, timeout=2.0)
+                self._ctl_owned = True
+            self._ctl_note = None
         except Exception as e:                       # noqa: BLE001
             self._ctl_note = f"command port unavailable: {e}"
             self._ctl = None
         return self._ctl
+
+    def _no_control(self, what):
+        """The refusal when there is no link, carrying why there is none.
+
+        "No channel" alone is false in the case that matters most - the
+        channel exists and the open was refused - and points away from the
+        cause, so the stored note travels with the refusal.
+        """
+        why = f" ({self._ctl_note})" if self._ctl_note else ""
+        return DeviceError(f"this device has no usable control channel{why}, "
+                           f"and {what}")
 
     def _identity(self):
         """The board's identity line, asked once and kept.
@@ -1016,16 +1084,43 @@ class BoardDevice(Device):
         A board reset re-enumerates the native port and the node can
         move, so a cached fd outlives its device. Reopening is cheap;
         reading a stale one is not.
+
+        Called on a transport failure, so the link is broken: a link this
+        device opened is closed, and the board's own is invalidated ON THE
+        BOARD, so the board's next `ctl()` re-opens it rather than handing
+        back the closed object it still has cached.
         """
-        c, self._ctl = self._ctl, None
-        self._ctl_tried = False
+        c, owned = self._release_control()
         self._ident = None
         self._ident_tried = False
-        if c is not None:
+        if c is not None and not owned:
             try:
-                c.close()
+                self.board.ctl_invalidate()
             except Exception:                        # noqa: BLE001
                 pass
+
+    def _release_control(self):
+        """Let go of the link without judging it. Returns (link, owned).
+
+        The heartbeat hook is cleared whatever happens: on the board's
+        link it would otherwise outlive this device and call into it from
+        whoever uses that link next. Only a link this device opened is
+        closed; the board's stays open for the board.
+        """
+        c, self._ctl = self._ctl, None
+        owned, self._ctl_owned = self._ctl_owned, False
+        self._ctl_tried = False
+        if c is not None:
+            try:
+                c.on_unsolicited = None
+            except Exception:                        # noqa: BLE001
+                pass
+            if owned:
+                try:
+                    c.close()
+                except Exception:                    # noqa: BLE001
+                    pass
+        return c, owned
 
     def describe(self, refresh=False):
         """Cached, and cached for a measured reason.
@@ -1206,10 +1301,9 @@ class BoardDevice(Device):
         """
         c = self.control()
         if c is None:
-            raise DeviceError(
-                "this device has no control channel, and counters are "
-                "not readable any other way without blocking the main "
-                "loop for 13 ms while the sample path runs")
+            raise self._no_control(
+                "counters are not readable any other way without blocking "
+                "the main loop for 13 ms while the sample path runs")
         try:
             # Under the lock: the heartbeat pump reads this same fd,
             # and two readers on one port steal each other's frames.
@@ -1243,10 +1337,9 @@ class BoardDevice(Device):
         """
         c = self.control()
         if c is None:
-            raise DeviceError(
-                "this device has no control channel, and load is not "
-                "readable any other way without blocking the main loop "
-                "it is trying to measure")
+            raise self._no_control(
+                "load is not readable any other way without blocking the "
+                "main loop it is trying to measure")
         try:
             with self._ctl_lock:                    # see counters()
                 out = dict(c.load())
@@ -1273,10 +1366,9 @@ class BoardDevice(Device):
         """
         c = self.control()
         if c is None:
-            raise DeviceError(
-                "this device has no control channel, and the occupancy "
-                "trace is not readable any other way without blocking "
-                "the main loop for 15 ms while the sample path runs")
+            raise self._no_control(
+                "the occupancy trace is not readable any other way without "
+                "blocking the main loop for 15 ms while the sample path runs")
         try:
             with self._ctl_lock:                    # see counters()
                 occ = c.occupancy()
@@ -1330,8 +1422,18 @@ class BoardDevice(Device):
             # close_native flushes first: the device stops draining bulk
             # OUT when the stream stops, and macOS close() waits for
             # in-flight write URBs that a NAKing pipe never completes.
+            #
+            # Under _ctl_lock, because close_native's wedge ladder can end
+            # in board.ctl_invalidate(), which CLOSES the command link -
+            # and that link is shared with the board (see control()). The
+            # heartbeat pump takes this lock for each recv(), so holding it
+            # here means the link is never closed under a read in progress,
+            # and the node is never re-opened while a reader still holds
+            # the old descriptor. Found by linux-x1 reading #79's change;
+            # not reachable on a bench without a 0c wedge.
             try:
-                self.board.close_native(self.fd)
+                with self._ctl_lock:
+                    self.board.close_native(self.fd)
             except Exception:                        # noqa: BLE001
                 pass
             self.fd = None
@@ -1446,6 +1548,11 @@ class BoardDevice(Device):
             t.join(timeout=1.0)
             self._hb_thread = None
         self.stop()
+        # After the pump has stopped, so nothing reads the link while it
+        # changes hands. An owned link left open here until garbage
+        # collection would, on Windows, lock the board out of its own
+        # command port.
+        self._release_control()
 
 
 class FrameSplitter:
