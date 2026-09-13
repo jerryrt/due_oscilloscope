@@ -597,3 +597,73 @@ def test_the_log_records_the_environment_that_built_the_image(tmp_path,
         rec = json.loads(fh.readline())
     for k, v in CONTAINER.items():
         assert rec[k] == v, f"{k} reached the log as {rec[k]!r}"
+
+
+# --- the image's own revision, against the tree's ---------------------------
+
+def _repo_at(tmp_path, stamp, dirty):
+    """A git work tree with an image in it stamped `stamp`."""
+    import subprocess
+    root = tmp_path / "repo"
+    (root / "out").mkdir(parents=True)
+    run = lambda *a: subprocess.run(("git",) + a, cwd=root, check=True,
+                                    capture_output=True)
+    run("init", "-q")
+    run("config", "user.email", "t@t"); run("config", "user.name", "t")
+    (root / "seed.txt").write_text("seed\n")
+    run("add", "-A"); run("commit", "-qm", "seed")
+    head = subprocess.run(("git", "rev-parse", "--short", "HEAD"), cwd=root,
+                          capture_output=True, text=True).stdout.strip()
+    if dirty:
+        (root / "untracked.txt").write_text("dirt\n")
+    img = root / "out" / "img.bin"
+    img.write_bytes(b"\x00pad build=" + (stamp or head).encode() + b" pad\xff")
+    return str(img), head
+
+
+def test_a_clean_image_flashed_from_a_dirty_tree_is_refused(tmp_path):
+    """linux-x1's failure, and the one that made a board unattributable.
+
+    The log records the tree, the image records itself, and when they
+    disagree about one commit `provenance.firmware()` answers `unlogged`
+    for a board whose `v` and sha both look correct.
+    """
+    img, _head = _repo_at(tmp_path, stamp=None, dirty=True)
+    with pytest.raises(SystemExit) as exc:
+        flash.check_stamp_agrees(img)
+    assert "disagree" in str(exc.value)
+
+
+def test_a_dirty_image_flashed_from_a_clean_tree_is_refused(tmp_path):
+    """windows-desk's failure, and the one no tree-state check can reach.
+
+    Build logs were redirected into the repository root and moved away
+    afterwards, so the tree read CLEAN at flash time while the image was
+    stamped dirty - the untracked files existed when fw_git_rev ran.
+    Only the binary carries that, which is why this reads the binary.
+    """
+    img, head = _repo_at(tmp_path, stamp=None, dirty=False)
+    open(img, "wb").write(b"pad build=" + head.encode() + b"+deadbeef pad")
+    with pytest.raises(SystemExit) as exc:
+        flash.check_stamp_agrees(img)
+    assert "disagree" in str(exc.value)
+
+
+def test_an_image_from_another_commit_is_reported_and_not_refused(
+        tmp_path, capsys):
+    """A bisect flashes another commit's image all day, and CLAUDE.md
+    records a ten-step bisect voided by reflashing. Refusing here would
+    break the one workflow that needs it most."""
+    img, _head = _repo_at(tmp_path, stamp="0000000", dirty=False)
+    flash.check_stamp_agrees(img)                     # must not raise
+    assert "NOTE" in capsys.readouterr().out
+
+
+def test_an_image_with_no_stamp_is_not_guessed_about(tmp_path, capsys):
+    """A pre-FW_GIT_REV image carries no commit at all. Saying so is the
+    answer; inventing one from the tree is what this whole check is
+    against."""
+    img, _head = _repo_at(tmp_path, stamp=None, dirty=False)
+    open(img, "wb").write(b"no stamp anywhere in here")
+    flash.check_stamp_agrees(img)                     # must not raise
+    assert "no build= stamp" in capsys.readouterr().out

@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import time
@@ -894,6 +895,109 @@ def newest_source(binary):
     return newest, newest_at
 
 
+#: `FW_GIT_REV` reaches the console identity line as `build=<stamp>`, and
+#: the stamp is the short revision plus `+` and eight characters of the
+#: working-tree delta hash when the tree was dirty.
+_STAMP = re.compile(rb"build=([0-9a-f]{6,12}(?:\+[0-9a-f]{8})?)")
+
+
+def baked_revision(binary):
+    """The revision compiled INTO the image, or None if it carries none.
+
+    Read out of the bytes rather than inferred from the tree, which is
+    the whole point: the two can disagree, and when they do the tree is
+    the one that lies.
+    """
+    try:
+        with open(binary, "rb") as fh:
+            hit = _STAMP.search(fh.read())
+    except OSError:
+        return None
+    return hit.group(1).decode() if hit else None
+
+
+def check_stamp_agrees(binary):
+    """Refuse an image whose baked revision and the tree disagree about
+    whether the tree was dirty.
+
+    THE TREE BEING CLEAN AT FLASH TIME IS NOT ENOUGH, which is what
+    `check_not_stale` above and `_log_flash` below both assume. Two
+    benches hit it the same day from opposite doors:
+
+      linux-x1        flashed a clean image from a tree dirty by one
+                      uncommitted doc edit. The log said `1b2a2d1`
+                      dirty, the board said a clean `1b2a2d1`, and
+                      `provenance.firmware()` returned `unlogged` - the
+                      board was unattributable while `v` and the sha
+                      both looked right
+      windows-desk    redirected build logs into the repository root and
+                      moved them afterwards, so the tree read CLEAN at
+                      flash time while the image was stamped
+                      `1b2a2d1+0f975906`, because the untracked files
+                      existed when fw_git_rev ran. Nothing in the tree
+                      could show it; only the binary could
+
+    The second is the one no tree-state check can reach, and it is why
+    this reads the image.
+
+    A DIFFERENT COMMIT IS NOT AN ERROR and is only reported. Flashing an
+    image from another commit is what a bisect does all day, and
+    `CLAUDE.md` records a ten-step bisect voided by reflashing - making
+    that refuse here would break the one workflow that needs it most.
+    What is refused is narrower and is always a defect: one commit, and
+    the image and the tree disagreeing about its dirtiness, which
+    guarantees the log cannot describe the binary.
+    """
+    import hashlib
+
+    baked = baked_revision(binary)
+    if baked is None:
+        print("==> image carries no build= stamp; nothing to check "
+              "(a pre-FW_GIT_REV image, or not one of ours)")
+        return
+    found = image_work_tree(binary)
+    if found is UNKNOWN_WORK_TREE or found is None:
+        return
+    root = found
+
+    def git(*a):
+        try:
+            return subprocess.run(("git",) + a, cwd=root, text=True,
+                                  capture_output=True,
+                                  timeout=5).stdout.strip() or None
+        except Exception:                                    # noqa: BLE001
+            return None
+
+    head = git("rev-parse", "--short", "HEAD")
+    if not head:
+        return
+    porcelain = git("status", "--porcelain")
+    delta = (git("diff", "HEAD") or "") + "\n" + (porcelain or "")
+    want = head + ("+" + hashlib.sha256(delta.encode()).hexdigest()[:8]
+                   if porcelain else "")
+
+    if baked == want:
+        return
+    if baked.split("+")[0] != head:
+        print(f"==> NOTE: the image is stamped {baked} and this tree is at "
+              f"{head}.\n    Flashing another commit's image is not an "
+              f"error - a bisect does it - but the\n    log will record "
+              f"this tree, so read fw_sha256 rather than fw_repo_rev.")
+        return
+
+    image_dirty = "+" in baked
+    sys.exit(
+        f"the image and the tree disagree about {head}.\n"
+        f"  image stamped : {baked}   ({'dirty' if image_dirty else 'clean'})\n"
+        f"  tree is       : {want}   "
+        f"({'dirty' if porcelain else 'clean'})\n"
+        f"A flash logged now could not describe this binary, and "
+        f"provenance.firmware()\nwould answer `unlogged` for a board that "
+        f"looks correct on `v`. Rebuild from the\ntree you mean to record - "
+        f"and note that an untracked file present when\nfw_git_rev ran "
+        f"stamps the image even if it is gone now.")
+
+
 def check_not_stale(binary, allow):
     """Refuse an image older than the source it is supposed to contain.
 
@@ -984,6 +1088,7 @@ def main() -> int:
     if not os.path.isfile(binary):
         sys.exit(f"no such binary: {binary}\nbuild it first: cmake --build build")
     check_not_stale(binary, args.stale_ok)
+    check_stamp_agrees(binary)
 
     bossac = args.bossac
     if not bossac:
