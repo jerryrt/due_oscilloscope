@@ -403,6 +403,20 @@ Check here before reasoning from general Arduino knowledge.
   off, where the idle pin must read small and the sine must follow the
   layout, plus a sync-on positive control proving the instrument sees a
   driven pin at all.
+
+  **And a probe on a measured pin is a large analog perturbation, which
+  is worth remembering when a bench disagrees with the others for no
+  reason in the code.** Probes go on for an investigation and come off
+  again, so nothing declares them - but two of them on A0 and A1 moved
+  **every** issue #5 severity figure `mac-bench` produced, by +102 and
+  +107 codes at FWS 4 and 5 against another bench, falling to +12 and
+  +27 once they were off. They also **masked** a difference at FWS 6,
+  where the same bench read 405 against 396 with them on and 343
+  without, so the sign is not predictable: an undeclared load flatters
+  an agreement as readily as it manufactures a disagreement. Every
+  wiring check passed throughout, correctly, because the jumpers never
+  changed. For scale, jumper-to-jumper coupling on this board is
+  0.5-2.3 mV RMS and 50x smaller than the effect above.
 - **Two EXT-trigger traps on the DS1102E, and both are silent.** The
   level clamps at **±1.2 V** - it accepts `1.67` and holds `1.20`, with
   the readback agreeing - so a DC-coupled x1 sync never triggers at all.
