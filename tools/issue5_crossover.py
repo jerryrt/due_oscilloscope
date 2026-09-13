@@ -256,6 +256,42 @@ EXCHANGE_IRON = {75: 3.41, 180: 16.76, 201: 8.04}
 RETURN_DRIFT_MULT = 3.0
 RETURN_DRIFT_FLOOR = 0.30
 
+#: AND THE READOUT IS COUNT-AND-SIZE, NOT THE POOLED MEDIAN.
+#: windows-desk's proposal, adopted after testing it against the control
+#: rather than on its face - and it changes the eligibility list above
+#: in both directions, which is why it earns its place.
+#:
+#: A pooled median at one position conflates two things: how OFTEN the
+#: site is large, and how large it is WHEN large. Reported separately,
+#: with mac-bench's untouched pair beside them:
+#:
+#:   FWS 4 pos 219   untouched  count 11->15   size  9.68 -> 9.69
+#:                   linux-x1   count  8->14   size  7.96 ->14.45
+#:   FWS 4 pos 240   untouched  count 24->24   size  4.51 -> 1.00
+#:                   linux-x1   count 23->24   size  6.90 -> 1.14
+#:   FWS 5 pos 134   untouched  count 11->17   size  1.23 -> 1.07
+#:                   linux-x1   count 24->24   size  2.24 -> 5.06
+#:   FWS 6 pos 169   untouched  count 24->24   size 20.32 ->21.84
+#:                   linux-x1   count 23->24   size 18.35 ->30.39
+#:
+#: Position 219 is REINSTATED and 240 stays disqualified, and the
+#: decomposition is what separates them. At 219 the untouched board
+#: moved the same way on COUNT (11->15 against 8->14) and held on SIZE
+#: (9.68->9.69 against 7.96->14.45), so the count is drift and the size
+#: is not. At 240 the untouched board's size fell 4.51->1.00 against
+#: linux-x1's 6.90->1.14 - same direction, same magnitude - so that
+#: position is drift in the component that matters.
+#:
+#: The previous registration disqualified 219 on the pooled median and
+#: would have thrown away a real signal. Recorded rather than quietly
+#: amended: a per-position control was the right idea and the wrong
+#: statistic, and it took another bench's decomposition to see it.
+#:
+#: So eligibility is judged on EACH COMPONENT against the untouched
+#: board's move in that same component at that same position. A
+#: position may be eligible on size and not on count.
+RETURN_COMPONENTS = ("count", "size")
+
 
 def comb_sum(path, fws=6, drop=(1,)):
     rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
