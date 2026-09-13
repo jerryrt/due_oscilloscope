@@ -41,6 +41,11 @@ It orders the benches differently from `total_abs`, which is the point:
     linux-x1       copper       193.75     235.30      395.0
     windows-desk   iron         189.75     210.03      398.7
 
+Those are the median-profile route (`comb_from_profile`). The table the
+tool prints leads with the site-list route, which differs by up to 3% -
+217.23 against 210.03 on the ten-site sum for `windows-desk` - and prints
+both, so a figure quoted from here must say which.
+
     windows / copper mean      0.980      0.887
     copper pair                0.999      1.012
     three-bench spread         1.021      1.134
@@ -83,8 +88,12 @@ import os
 import statistics
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RECORDS = os.path.join(ROOT, "records")
+
+import issue5_modes as modes  # noqa: E402
 
 #: The period-21 comb's occupied points at FWS 6. The full lattice is
 #: 12 + 21k for k = 0..11; 222 and 243 carry no site on any arm, so the
@@ -144,6 +153,25 @@ def comb_from_profile(rows, lattice=LATTICE):
     return sum(abs(prof[b]) for b in lattice)
 
 
+def site_dev(rows, b):
+    """Median |deviation| at one position over EVERY run.
+
+    Not `median(|x| for runs where b is a stored site)`. A site list is
+    thresholded at z >= 6, so taking a median over only the runs where a
+    position cleared it silently selects which runs contribute - and on
+    `windows-desk` that drops mostly high-mode runs, so position 75 read
+    5.22 (its low-mode value) where the all-runs figure is 3.42. The
+    published "180 is half on iron" comparison was 5.22 against 8.6 and
+    should have been 3.42 against 8.6.
+
+    That is the same defect as the six-site truncation this whole arm was
+    run to escape: a threshold deciding which data reaches a median.
+    Found by `windows-desk`.
+    """
+    return statistics.median(
+        [abs(r["profile"][b] - statistics.median(r["profile"])) for r in rows])
+
+
 def rng(xs):
     """Peak-to-peak as a fraction of the median - the stability figure."""
     m = statistics.median(xs)
@@ -154,7 +182,8 @@ def arms():
     out = {}
     for path in sorted(glob.glob(os.path.join(RECORDS,
                                               "issue5-campaign-*.jsonl"))):
-        rows = [json.loads(l) for l in open(path) if l.strip()]
+        with open(path, encoding="utf-8") as fh:
+            rows = [json.loads(l) for l in fh if l.strip()]
         # Run 1 by index, never by a filter on what it does wrong.
         rows = [r for r in rows if r["run"] != 1]
         if rows:
@@ -227,18 +256,26 @@ def main():
     # fixed comb, plus a large difference at three sites that move with
     # the mode on iron and not on copper. windows-desk's suggestion, and
     # only their bench separates the two.
-    print(f"\n  the excluded exchange sites, median |dev| per bench:")
-    print(f"{'':16s} " + "  ".join(f"{b:>8}" for b in EXCHANGE))
+    print(f"\n  the excluded exchange sites, median |dev| over ALL runs")
+    print(f"  (from the profile, not the site list - a threshold would "
+          f"select which runs contribute)")
+    print(f"{'':22s} " + "  ".join(f"{b:>8}" for b in EXCHANGE))
     for bench, rows in sorted(data.items()):
         v = [r for r in rows if r["fws"] == args.fws]
-        if not v:
+        if not v or not all(r.get("profile") for r in v):
             continue
-        cells = []
-        for b in EXCHANGE:
-            vals = [abs(x) for r in v for bb, x, _z in r["sites"] if bb == b]
-            cells.append(f"{statistics.median(vals):8.2f}" if vals
-                         else f"{'-':>8}")
-        print(f"{bench:16s} " + "  ".join(cells))
+        print(f"{bench:22s} " + "  ".join(f"{site_dev(v, b):8.2f}"
+                                          for b in EXCHANGE))
+        # A pooled cell hides the very thing this table exists to show.
+        # 180 is 13.72 in every windows-desk low-mode run and 19.70 in
+        # every high-mode one, and no run sits at the pooled 16.74.
+        c = modes.classify([r["total_abs"] for r in v])
+        if c.get("modes") == 2:
+            lo = [r for r in v if r["total_abs"] < c["cut"]]
+            hi = [r for r in v if r["total_abs"] >= c["cut"]]
+            for nm, g in ((f"  lo (n={len(lo)})", lo), (f"  hi (n={len(hi)})", hi)):
+                print(f"{nm:22s} " + "  ".join(f"{site_dev(g, b):8.2f}"
+                                               for b in EXCHANGE))
 
     if args.per_run:
         print()

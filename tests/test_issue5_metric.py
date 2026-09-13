@@ -146,3 +146,65 @@ def test_a_collapsed_comb_is_named_not_filtered(capsys):
     assert "COLLAPSED" in out and "[31]" in out
     # And the honest range is reported beside the inflated one.
     assert "without them" in out
+
+@pytest.mark.skipif(not CAMPAIGN, reason="no campaign records")
+def test_per_site_medians_come_from_the_profile_not_the_site_list():
+    """A site list is thresholded, so a median over "runs where this
+    position was a site" silently selects which runs contribute.
+
+    On windows-desk position 75 clears threshold in 19 of 24 runs and the
+    ones it misses are mostly high-mode, so the present-only median reads
+    5.22 - its LOW-mode value - against 3.42 over all runs. The published
+    "180 is half on iron" comparison was made with the biased figure.
+
+    This asserts the two disagree where thresholding bites, so the tool
+    cannot quietly go back to the site list, and agree where it does not.
+    """
+    name = "issue5-campaign-windows-desk.jsonl"
+    if name not in CAMPAIGN:
+        pytest.skip("windows-desk's arm is not here")
+    v = rows_of(name)
+    assert all(r.get("profile") for r in v)
+
+    def present_only(b):
+        vals = [abs(x) for r in v for bb, x, _z in r["sites"] if bb == b]
+        return statistics.median(vals) if vals else None
+
+    # 75 is the biased cell: present in fewer than every run.
+    n75 = sum(1 for r in v if any(bb == 75 for bb, _x, _z in r["sites"]))
+    assert n75 < len(v), "75 clears threshold everywhere; pick another cell"
+    assert m.site_dev(v, 75) < present_only(75) * 0.8, (
+        f"all-runs {m.site_dev(v, 75):.2f} against present-only "
+        f"{present_only(75):.2f} - the bias should be large here")
+
+    # 180 clears threshold in every run, so the two must agree there.
+    n180 = sum(1 for r in v if any(bb == 180 for bb, _x, _z in r["sites"]))
+    if n180 == len(v):
+        assert m.site_dev(v, 180) == pytest.approx(present_only(180), rel=0.02)
+
+
+@pytest.mark.skipif(not CAMPAIGN, reason="no campaign records")
+def test_a_bimodal_arm_is_not_pooled_in_the_site_table(capsys):
+    """180 is 13.72 in every windows-desk low-mode run and 19.70 in every
+    high-mode one. No run sits at the pooled 16.74, so a pooled cell hides
+    exactly what the table was added to show."""
+    if "issue5-campaign-windows-desk.jsonl" not in CAMPAIGN:
+        pytest.skip("windows-desk's arm is not here")
+    sys.argv = ["issue5_metric.py"]
+    m.main()
+    out = capsys.readouterr().out
+    assert "lo (n=" in out and "hi (n=" in out, (
+        "a bimodal arm was pooled in the exchange-site table")
+
+
+def test_records_are_read_as_utf8():
+    """`jumpers` and `probes` are free text a bench writes by hand. A
+    non-ASCII character in one would break the read under a cp936
+    default, which is windows-desk's. Reported from that bench."""
+    src = open(os.path.join(REPO, "tools", "issue5_metric.py"),
+               encoding="utf-8").read()
+    i = src.index("def arms(")
+    body = src[i:src.index("def main(", i)]
+    assert "open(" in body
+    assert 'encoding="utf-8"' in body, (
+        "arms() opens records without an explicit encoding")
