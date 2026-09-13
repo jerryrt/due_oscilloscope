@@ -310,10 +310,12 @@ Check here before reasoning from general Arduino knowledge.
   a 0.79% shoulder at RC 30/31 and 49, rising to a **2.35% peak at RC
   39**, with two rates - RC 32 and 48 - usually clean but intermittently
   dropping much further, to exactly 15/16 and to 31/32. Of the rates
-  tested only **RC 28 and RC 56 deliver in full**. Measured device-side
-  from `consumed / run_us` with no host clock in it, on **two tracks**
-  (Track A 2/24 against Track B 7/32, p = 0.16, so it is the silicon and
-  not one track's register programming) and **two hosts**.
+  tested only **RC 56 delivers in full on every run**: RC 28 reads clean
+  on about three runs in four and drops 2/256 on the rest, 21 of 80 on
+  `linux-x1` across two images. Measured device-side from
+  `consumed / run_us` with no host clock in it, on **two tracks** (Track
+  A 2/24 against Track B 7/32, p = 0.16, so it is the silicon and not
+  one track's register programming) and **three hosts**.
 
   **The data path is not involved.** The same deficit appears with the
   device's own table and no USB at all - preset M, DAC on TIOA1, read as
@@ -333,6 +335,15 @@ Check here before reasoning from general Arduino knowledge.
   in steps of 0.39%**, not a smooth band - and it is not monotone, since
   RC 40 (n=8) sits between RC 39 and RC 41 (both n=6). Do not fit a
   curve to it.
+
+  **Half the ladder offers a run two values of n, and the gap between
+  them is exactly `gcd(1024, RC) / 2`** - 13 of 13 rates, nothing
+  fitted. It also says which rates can be bimodal at all: an odd RC has
+  gcd 1 and a gap of half a lattice unit, which cannot land on a lattice
+  of 256ths, and all 14 odd rates offer exactly one n. **A rate does not
+  have a deficit, a run does** - read a mode set as "which n are
+  available", never as the rate's figure, and take a zero only from
+  RC 56, the one rate with no second mode in 80 runs. `docs/awg.md`.
 
   It is `DACC_MR_REFRESH`, and it is **three call sites, not one** -
   `drivers/play.c`, `drivers/gen.c` and `drivers/dac.c` each set it.

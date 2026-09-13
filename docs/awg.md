@@ -1730,7 +1730,10 @@ document with two tables in it earns.
 | 52 | 750,000 | 0.99991 | 0.01% | 1/8 |
 | 56 | 696,429 | 0.99992 | 0.01% | clean |
 
-**Only RC 28 and RC 56 deliver in full.** Everything from RC 30 to RC 52
+**Only RC 56 delivers in full on every run.** RC 28 does on most of
+them and drops by 2/256 on about a quarter - see the mode sets below -
+so one rate on the ladder never loses a conversion, not two.
+Everything from RC 30 to RC 52
 - roughly **750,000 to 1,300,000 sps** - is short by something, and the
 profile is graded rather than rectangular: a 0.79% shoulder at 30/31 and
 49, rising to a 2.35% peak at RC 39, with two rates (32 and 48) that are
@@ -1785,44 +1788,62 @@ Several rates offer two values and a run picks one:
 
 | rate | available n | | rate | available n |
 |---|---|---|---|---|
-| RC 30 | 1 or 2 | | RC 40 | 4 or 8 |
+| RC 28 | 0 or 2 | | RC 40 | 4 or 8 |
+| RC 30 | 1 or 2 | | RC 44 | 4 or 6 |
 | RC 32 | **0 or 16** | | RC 48 | **0 or 8** |
 | RC 34 | 3 or 4 | | RC 50 | 1 or 2 |
 | RC 36 | 4 or 6 | | RC 52 | 0 or 2 |
 | RC 38 | 5 or 6 | | | |
 
-and others offer only one: RC 31 always 2, RC 39 always 6, RC 44 always
-4, RC 28 and 56 always 0.
+and others offer only one: RC 31 always 2, RC 39 always 6, RC 54 and 56
+always 0.
 
-**Two regularities in those pairs, offered as constraints and not as a
-model.** The conversions per refresh is exactly `C = 1024 / RC`, whose
-denominator in lowest terms is `RC / gcd(1024, RC)`. Against that:
+**Every rate in that table is even, and every odd rate on the ladder
+offers exactly one n.** That is the whole division, and the next
+section says why.
 
-| RC | denominator of C | mode gap |
-|---|---|---|
-| 32 | 1 | **16** |
-| 48 | 3 | **8** |
-| 40 | 5 | **4** |
-| 36 | 9 | 2 |
-| 52 | 13 | 2 |
-| 30 | 15 | 1 |
-| 34 | 17 | 1 |
-| 38 | 19 | 1 |
-| 50 | 25 | 1 |
+**The gap between the two modes is exactly `gcd(1024, RC) / 2`.** Not
+approximately, and with nothing fitted:
 
-**Every gap is a power of two** - 9 of 9, and the five non-trivial ones
-(2, 2, 4, 8, 16) would arise by chance with p = 1.3e-3 if gaps were
-uniform over 2..16. **And the gap falls monotonically as the denominator
-rises** - a perfect ordering, which the observed multiset would produce
-by chance in 1 of 7560 arrangements, p = 1.3e-4.
+| RC | 32 | 48 | 40 | 28 | 36 | 44 | 52 | 30 | 34 | 38 | 42 | 46 | 50 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gcd(1024, RC)` | 32 | 16 | 8 | 4 | 4 | 4 | 4 | 2 | 2 | 2 | 2 | 2 | 2 |
+| **predicted gap** | 16 | 8 | 4 | 2 | 2 | 2 | 2 | 1 | 1 | 1 | 1 | 1 | 1 |
+| measured gap | 16 | 8 | 4 | 2 | 2 | 2 | 2 | 1 | 1 | 1 | 1 | 1 | 1 |
 
-Nine rates is a small sample and both figures assume a null nobody has
-justified, so treat them as "worth explaining" rather than as
-established law. What they say is that the two states a run can fall
-into are separated by a power of two, and that rates whose refresh and
-conversion clocks are in a *simpler* rational ratio have states further
-apart. That is the shape of a divider or a counter, and it is a
-narrower target than "something in the DACC".
+Thirteen of thirteen. The rule is a whole-number relation between the
+refresh divider and the trigger divider, so it has no tolerance to
+absorb a miss.
+
+**It also says which rates can be bimodal at all, and that half is
+confirmed fourteen times.** An odd RC has `gcd(1024, RC) = 1` and a
+predicted gap of **half** a lattice unit, which cannot appear on a
+lattice of 256ths - and every one of the fourteen odd rates from 29 to
+55 offers exactly one n.
+
+Written as a conversion count it is one sentence. With `C = p/q`
+conversions per refresh in lowest terms, `gap/256 = 2/p`: **the two
+states differ by exactly two conversions per refresh-phase repeat
+period**, that period being the `p` conversions after which refresh and
+trigger return to the same phase. That is a divider or a counter, and it
+is a much narrower target than "something in the DACC".
+
+**Read the numerator of `C`, not its denominator.** The denominator is
+`RC / gcd(1024, RC)` and therefore moves against the gcd by
+construction, which is why a table ordered by it looks perfectly
+monotone and why gaps ordered by it look like powers of two. Both are
+consequences. The two readings part company only where two rates share
+a denominator, and the ladder offers exactly one such pair: RC 28 is
+`256/7` and RC 56 is `128/7`, gcd 4 against gcd 8.
+
+**The rule bounds the gap; it does not predict which rates carry a
+second mode.** Three even rates - 54, 56 and 64 - carry none, and for
+two of them that is measured rather than unsampled: RC 56 is 0 of 80
+runs and RC 64 is 0 of 29, interleaved with a rate whose own second mode
+fired 23 times in 99 beside them, so the instrument is known to have
+been able to see one. So a second mode is present at every even RC
+from 28 to 52 and absent from 54 upward, with the edge between 750,000
+and 722,222 sps. Why the effect stops there is open.
 
 **So "RC 32 and 48 are the intermittent rates" was an artefact.** Half
 the ladder is bimodal; those two are simply the only ones with a mode at
@@ -1844,47 +1865,62 @@ residual under about 0.02 of a unit and deliberately not saying which n.
 All four landed: 5.002, 5.011, 7.993, 5.987.
 
 **The complete map, RC 28 to 56.** Every rate, 203 underrun-free runs,
-worst residual **0.030 of one unit**:
+worst residual **0.030 of one unit**. RC 28 and RC 44 carry a second
+mode found later on another bench and are marked `+`:
 
 | RC | n | | RC | n | | RC | n |
 |---|---|---|---|---|---|---|---|
-| 28 | 0 | | 38 | 5 or 6 | | 48 | 0 or 8 *(see below)* |
+| 28 | 0 or 2 `+` | | 38 | 5 or 6 | | 48 | 0 or 8 *(see below)* |
 | 29 | 1 | | 39 | 6 | | 49 | 2 |
 | 30 | 1 or 2 | | 40 | **4 or 8** | | 50 | 1 or 2 |
 | 31 | 2 | | 41 | 6 | | 51 | 1 |
 | 32 | **0 or 16** | | 42 | 5 or 6 | | 52 | **0 or 2** |
 | 33 | 3 | | 43 | 5 | | 53 | 0 |
-| 34 | 3 or 4 | | 44 | 4 | | 54 | 0 |
+| 34 | 3 or 4 | | 44 | 4 or 6 `+` | | 54 | 0 |
 | 35 | 4 | | 45 | 4 | | 55 | 0 |
 | 36 | **4 or 6** | | 46 | 3 or 4 | | 56 | 0 |
 | 37 | 5 | | 47 | 3 | | | |
 
-**Two populations.** At rates whose denominator is large (>13) the n
+**Two populations.** At rates whose `gcd(1024, RC)` is 1 or 2 the n
 values form a single smooth arc - 1,1,2,3,3,4,5,5,6,6,5,5,4,3,3,2,1,1,0
 - rising to **n = 6 around RC 39-42 (1,000,000 to 928,571 sps)** and
 falling symmetrically to zero at both ends. That is the whole effect for
 most of the ladder, and it is well behaved.
 
-The rates with a **small** denominator sit off that arc and are the ones
-with a second mode: RC 32 (denom 1) offers 0 or 16 where the arc would
-give ~2; RC 48 (denom 3) offers 0 or 8 where the arc gives ~3; RC 40
-(denom 5) offers 4 or 8 around an arc value of ~6. So the arc is the
-baseline behaviour and the simple clock ratios perturb it, in both
-directions and by a power of two.
+The rates with a **large** `gcd(1024, RC)` sit off that arc and are the
+ones whose second mode is far from it: RC 32 (gcd 32) offers 0 or 16
+where the arc would give ~2; RC 48 (gcd 16) offers 0 or 8 where the arc
+gives ~3; RC 40 (gcd 8) offers 4 or 8 around an arc value of ~6. So the
+arc is the baseline behaviour and the gcd perturbs it, in both
+directions and by the gap the rule above gives.
 
-**Confirmed on a second bench, and the mode sets are sampling-limited
-while the lattice is not.** windows-desk ran the lattice check on
-Windows 11 and their worst residual is **0.021 of one unit** across six
-rates - the quantisation reproduces on another host and another board.
+**Confirmed on two further benches, and the mode sets are
+sampling-limited while the lattice is not.** windows-desk ran the check
+on Windows 11 with a worst residual of **0.021 of one unit** across six
+rates, and linux-x1 ran it on the container image at the freeze - the
+first reading taken on a binary another bench also runs - with **0.035**
+over 273 runs. The quantisation reproduces on three hosts, three boards
+and two code generators.
 
-| RC | mac-bench | windows-desk |
-|---|---|---|
-| 30 | 1 or 2 | 1, 2 **or 3** |
-| 32 | 0 or 16 | 0 or 16 |
-| 34 | 3 or 4 | 3 or 4 |
-| 36 | 4 or 6 | 4 only (9 runs) |
-| 48 | 0 only | **0 or 8** (4 runs at 8) |
-| 52 | 0 or 2 | 0 or 2 |
+| RC | mac-bench | windows-desk | linux-x1 |
+|---|---|---|---|
+| 28 | 0 only | | **0 or 2**, 21 of 80 |
+| 30 | 1 or 2 | 1, 2 **or 3** | |
+| 32 | 0 or 16 | 0 or 16 | |
+| 34 | 3 or 4 | 3 or 4 | 3 or 4 |
+| 36 | 4 or 6 | 4 only (9 runs) | |
+| 40 | 4 or 8 | | 4 or 8 |
+| 44 | 4 only | | **4 or 6**, 5 of 16 |
+| 48 | 0 only | **0 or 8** (4 runs at 8) | |
+| 50 | 1 or 2 | | 1 or 2 |
+| 52 | 0 or 2 | 0 or 2 | 0 or 2, 11 of 51 |
+
+linux-x1's two additions are not one batch: each appears in that bench's
+August rows on a Debian host build as well as in the freeze rows on the
+container image, thirteen days and two code generators apart. Host
+starvation cannot produce either, because a run that never underruns can
+lose at most the ring's primed runway - 24 slots of 512 samples against
+3 s at 1,392,857 sps is 0.29%, where one lattice step there is 0.78%.
 
 The disagreements are all one bench not having sampled a mode the other
 did: RC 30's n=3 appeared once in their runs and never in mine, RC 36's
