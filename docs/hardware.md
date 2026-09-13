@@ -21,6 +21,58 @@ SAM3X8E datasheet before code depends on them.
 No data cache is a genuine simplification: DMA buffers need no cache
 maintenance, unlike Cortex-M7 parts such as the SAME70.
 
+### Code runs from flash, and what that costs is measured
+
+There is no copy-to-RAM step and there could not be one: 512 KB of flash
+against 96 KB of SRAM, of which the capture ring already takes a whole
+32 KB bank. Execute-in-place is the only option at this size, as it is
+on essentially every Cortex-M part.
+
+`SystemInit` sets **4 flash wait states** for MCK 78 MHz. Two mitigations
+are on and the register readback proves it rather than the datasheet:
+`fmr0=00000400` has **SCOD clear**, so the *sequential code
+optimization* is enabled, and **FAM clear**, so the controller is in
+**128-bit access mode**. Wait states are therefore paid per stalling
+flash access, not per instruction.
+
+`Q` prices this directly, in ns per call, counterbalanced 4,5,6,6,5,4 in
+one session with the first visit to each wait state dropped by index:
+
+| | FWS 4 | slope per wait state | in MCK cycles |
+|---|---|---|---|
+| empty loop | 38 ns | **0.0 ns** | **0** |
+| `millis()` | 333 | 51.5 | 4 |
+| `micros()` | 933 | 77.0 | 6 |
+| `stream_service()` | 1,436 | 147.5 | ~11.5 |
+| `ctl_service()` | 2,372 | 244.0 | 19 |
+
+**Every slope is a whole number of MCK cycles**, and the cost is linear
+in FWS to within 0.5 ns for 11 of the 13 rows - so a wait state buys
+exactly one cycle on each flash access that leaves the sequential path.
+A function's slope counts those accesses: 19 for `ctl_service()`, 4 for
+`millis()`.
+
+**The empty loop is the evidence that the optimization works.** It costs
+the same 38 ns at FWS 4, 5 and 6. If every fetch paid wait states, a
+tight loop would slow down with them; it does not notice them at all.
+
+**But the cost on real code is not small.** Extrapolating the measured
+slope to a hypothetical zero-wait-state fetch - which is outside the
+range the part permits, so it is an extrapolation and not a reading -
+wait states are **27% to 62%** of these functions' time at FWS 4.
+
+**None of it reaches the sample path**, which is what invariant 1 is
+for: the PDC writes the buffer and USB DMA reads it, the ADC handler
+sets a flag and returns, and the 0.95 us conversion cadence is about 74
+MCK cycles of headroom against a handler that does nothing. Flash speed
+sets the main loop's pass rate, not the throughput.
+
+What it does reach is issue #5 - `docs/awg.md` attributes the DAC
+displacement to instruction fetch timing, and the same 4-to-6 change
+that leaves the empty loop untouched moves that artifact by **10.9x**.
+
+`records/fws-cost-linux-x1.jsonl`, `linux-x1`, Track B at `1b2a2d1`.
+
 ## USB ports
 
 Both ports are exposed and serve different roles. Verified on this host:
