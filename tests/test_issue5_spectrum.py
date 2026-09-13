@@ -116,6 +116,33 @@ def test_lattice_names_the_unoccupied_points():
         assert q < sp.BINS
 
 
+def test_a_complete_comb_has_nothing_left_to_predict():
+    """The control the assertion above cannot be, because that one reads
+    the six sites the bug was found on.
+
+    Hand the tool a comb with every point present. There is by
+    construction nothing missing, so any name it returns is a phantom -
+    and before `3b9b765` it returned exactly one, at 8, on ground truth
+    with nothing to find. That is the shape `CLAUDE.md` asks a new check
+    to have: it fails on the defect while the defect is present and
+    passes only once it is gone.
+
+    It also pins the consequence, which is what made the phantom worth a
+    commit rather than a tidy-up: a site at 8 is one the comb statistic
+    scores AGAINST the comb. `phase_table` folds `b % period` linearly,
+    so 8 lands at phase 8 against the comb's 12 and R falls off 1.000.
+    The tool was predicting a site at the one position where finding one
+    would have weakened the structure the prediction was testing for.
+    """
+    truth = [12 + 21 * k for k in range(12)]
+    assert max(truth) == 243 and len(truth) == 12
+    L = sp.lattice(truth, 21)
+    assert L["on_lattice"] == 12
+    assert L["missing"] == [], f"a complete comb reported {L['missing']}"
+    assert sp.phase_table(truth, 21)["R"] == 1.0
+    assert sp.phase_table(sorted(truth + [8]), 21)["R"] < 0.96
+
+
 def test_a_dense_lattice_predicts_nothing():
     """Period 3 puts 85 points on the lattice against 6 sites, so its
     'missing' list is unfalsifiable and must not be offered."""
