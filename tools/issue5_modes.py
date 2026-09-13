@@ -43,8 +43,20 @@ What it can and cannot see, measured by `tests/test_issue5_modes.py`:
 `linux-x1`'s shape (23 runs near 396 and one at 353.5). Two modes 95
 apart fire every time, at 15:9 and at 19:5 occupancy. Two modes 30 apart
 at a within-mode sd of 2 fire 97% of the time, and **15 apart fire
-never**. That is the detection limit: a pair of modes closer than about
-20 units is read as one.
+never**.
+
+**The detection limit is not a distance, and this docstring said it
+was.** It read "a pair of modes closer than about 20 units is read as
+one", which holds only at the within-mode sd the controls were drawn
+at. The rule scales the gap by the within-side MAD, so a noisier side
+raises the bar: `linux-x1`'s FWS 4 campaign arm has nothing between
+42.0 and 59.0, 14 runs below and 10 above, modes 21 apart - and reads
+**one mode**, because its low side's MAD of 2.40 puts the gap at 7.07x.
+Its onimage arm, with a *smaller* gap of 15.7 and a MAD of 1.38, splits.
+So a one-mode verdict is not a null. Read it with the gap, the ratio and
+the sorted runs beside it; `main` prints all three. The threshold is
+left as registered, because retuning it after rows were read would undo
+the registration it belongs to.
 
 ## Registered predictions for the `windows-desk` campaign arm
 
@@ -141,6 +153,9 @@ def main():
             rows = [json.loads(line) for line in fh if line.strip()]
         print(path)
         for fws, c in read(rows).items():
+            ranked = sorted(r["total_abs"] for r in rows
+                            if r.get("fws") == fws and r["run"] != 1)
+            print(f"  FWS {fws} sorted: " + " ".join(f"{v:.1f}" for v in ranked))
             if c["modes"] == 1:
                 print(f"  FWS {fws}: one mode ({c.get('reason') or 'gap %.1f, %.1f x MAD' % (c['gap'], c['gap_over_mad'])})")
                 continue

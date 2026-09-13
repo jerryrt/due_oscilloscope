@@ -56,6 +56,21 @@ def _onimage(bench):
         return [json.loads(line) for line in fh if line.strip()]
 
 
+def test_a_one_mode_verdict_is_not_a_null():
+    """`linux-x1`'s FWS 4 campaign arm: 14 runs to 42.0, nothing, then 10
+    from 59.0 - and one mode, because the low side's MAD puts the gap at
+    7.07x. Its onimage arm splits on a SMALLER gap. Pinned so the
+    limitation is visible, and so a threshold change shows up here."""
+    path = os.path.join(REPO, "records", "issue5-campaign-linux-x1.jsonl")
+    with open(path, encoding="utf-8") as fh:
+        wide = md.read([json.loads(line) for line in fh if line.strip()])[4]
+    assert wide["modes"] == 1
+    assert wide["gap"] == pytest.approx(17.0, abs=0.1)
+    assert 7.0 < wide["gap_over_mad"] < 7.2
+    narrow = md.read(_onimage("linux-x1"))[4]
+    assert narrow["modes"] == 2 and narrow["gap"] < wide["gap"]
+
+
 def test_onimage_fws6_readings_the_registration_was_written_from():
     win = md.read(_onimage("windows-desk"))[6]
     assert win["modes"] == 2 and (win["n_lo"], win["n_hi"]) == (8, 16)
