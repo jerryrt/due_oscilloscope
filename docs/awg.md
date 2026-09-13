@@ -2236,9 +2236,32 @@ board, one tree, reads:
 counted run. `records/issue48-ladder-refresh-aba-mac-bench.jsonl`. RC
 32's 15/16 mode did not draw in the control's session, so this arm
 neither shows it nor rules it out, and `linux-x1` reads it absent on
-the fix image. **What is still open is `REFRESH(2)`**: it clears both
-this and the wrap displacement entirely, where a free-running refresh
-at twice the period predicts half the collisions.
+the fix image.
+
+**The refresh is not free-running at values above 1, and 1 is the odd
+one out.** Swept on one board in one session, each image differing
+only in `GEN_REFRESH_STREAM`, medians over the counted runs:
+
+| value | RC 195 total_abs | RC 192 total_abs | RC 39 / 44 slow | RC 1300 total_abs |
+|---|---|---|---|---|
+| 0 | 39 | 46 | 0/4, 0/4 | 24 |
+| 1 | 335-356, comb | 1407-1411, comb | 4/4, 4/4 | 86-115, comb of 64 |
+| 2 | 33 | 34 | 0/4, 0/4 | 85 |
+| 3 | 31 | 34 | 0/4, 0/4 | 76 |
+| 4 | 51 | 650, a small cluster | 0/4, 0/4 | 52 |
+
+`records/issue83-refresh-sweep-mac-bench.jsonl`,
+`records/issue83-refresh-ratio-mac-bench.jsonl`. A refresh cycling
+freely at `1024 x value` DACC clocks per channel would leave half and a
+third of the value-1 effect at 2 and 3; both sit at the value-0 floor at
+every stream rate. A refresh that fires only on a channel left unwritten
+for that period would put 3 and 4 back at the floor at RC 1300, where a
+channel is written every 2,600 clocks; they stay above it. What the table
+does show is value 1 colliding at every rate, and values 2-4 staying out
+of a frequently written channel while still acting on a slowly written
+one. Which threshold separates those, and why 1 ignores it, is not
+established. The stream runs at 0, which is at the floor everywhere
+here; the idle DAC still runs at 1.
 
 **One defect, two expressions - confirmed on two hosts.** `windows-desk`
 ran the RC 32 arm and found 3 of 12 runs at 0.93738-0.93751 with
