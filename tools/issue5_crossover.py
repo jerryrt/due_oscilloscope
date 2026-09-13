@@ -208,6 +208,55 @@ EXCHANGE_IRON = {75: 3.41, 180: 16.76, 201: 8.04}
 #: is not allowed is choosing among them afterwards.
 
 
+#: THE RETURN LEG'S READOUT, registered while linux-x1's return arm was
+#: capturing and before any of its rows were read.
+#:
+#: The question the return leg answers is whether the crossover's
+#: changes REVERSE when the original wire goes back. Reversible means
+#: the wire or its seating; not reversible means the board changed for
+#: a reason the wires neither caused nor undid, and the crossover
+#: cannot speak to the material from that leg at all.
+#:
+#: WHICH POSITIONS MAY CARRY THAT, and this is the part that needed
+#: measuring rather than choosing. Per-position drift is NOT uniform.
+#: Between mac-bench's two untouched arms the median position moves
+#: 0.03 - and the worst moves 9.45:
+#:
+#:     FWS 4   max 9.45   p99 1.90   p95 0.18   median 0.025
+#:     FWS 5   max 6.79   p99 0.17   p95 0.11   median 0.036
+#:     FWS 6   max 3.89   p99 3.50   p95 2.56   median 0.044
+#:
+#: So a position is eligible evidence only if it moved by more than
+#: 3x what the UNTOUCHED board drifted AT THAT SAME POSITION, floored
+#: at 0.30 so a position with near-zero drift cannot be made eligible
+#: by arithmetic.
+#:
+#: Applied to the crossover, this disqualifies two of the six positions
+#: linux-x1 proposed. FWS 4 pos 219 moved -14.24 on their board and
+#: -9.45 on mac-bench's untouched one, same sign; pos 240 moved -5.81
+#: against -3.51. Their whole FWS 4 result - the wait state they
+#: reported as moving MOST - has ZERO eligible positions. Pos 109 at
+#: FWS 6 is out too, drifting +2.51 untouched against their -3.17.
+#:
+#: What survives:
+#:     linux-x1      FWS 5: 134          FWS 6: 180, 75, 169, 201
+#:     windows-desk  FWS 5: 134, 50, 39, 251
+#:                   FWS 6: 247, 201, 180, 75
+#:
+#: Three of linux-x1's five survivors are lattice points, which is what
+#: the comb sum's 0.19 session repeatability already implied: the comb
+#: is the part that does not drift, and the floor is the part that does.
+#:
+#: AND WINDOWS-DESK'S BOARD DID MOVE. Both benches, this one included,
+#: wrote "only linux-x1's board moved" from the registered statistics -
+#: their exchange sites and seven-site sum barely shifted. Drift-
+#: corrected per position they have MORE eligible movers than linux-x1.
+#: It does not revive the material hypothesis, because none of the
+#: movement is toward the other wire's row, but the sentence was wrong.
+RETURN_DRIFT_MULT = 3.0
+RETURN_DRIFT_FLOOR = 0.30
+
+
 def comb_sum(path, fws=6, drop=(1,)):
     rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
     rows = [r for r in rows if r["run"] not in drop and r.get("fws") == fws]
