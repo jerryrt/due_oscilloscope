@@ -506,6 +506,34 @@ def control_tolerance(fws, pos):
     return max(max(sizes) - min(sizes), RETURN_DRIFT_FLOOR)
 
 
+def two_state_guarded(paths, fws, pos):
+    """Does this position have two states at all, by the SHARED rule?
+
+    windows-desk's proposal and a better guard than MIN_STATE_SIDE,
+    because it reuses `issue5_modes.classify` - MIN_SIDE 4, gap >= 10x
+    the within-side MAD, >= 5% of the median - instead of adding a
+    threshold of its own. "Is this two populations" then has ONE home,
+    the same rule the arm-level modes already use, which is the shape
+    invariant 3 asks for and which MIN_STATE_SIDE quietly duplicated.
+
+    Returns the pooled median per arm when the position does NOT have
+    two states, because a largest-gap cut on a single population is an
+    arbitrary line through the middle of it.
+    """
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import issue5_modes
+    per = []
+    for p in paths:
+        rows = [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
+        rows = [r for r in rows if r["run"] not in (1,) and r.get("fws") == fws]
+        per.append([abs(r["profile"][pos]) for r in rows])
+    pool = [v for arm in per for v in arm]
+    c = issue5_modes.classify(pool)
+    if c.get("modes") == 2:
+        return True, None
+    return False, [statistics.median(a) if a else None for a in per]
+
+
 def score_return(bench, positions):
     """Did the crossover's change reverse when the original wire went back?
 
@@ -571,7 +599,23 @@ def score_return(bench, positions):
             rec = 100.0 * (1.0 - abs(sz[2] - sz[0]) / abs(sz[1] - sz[0]))
         except (ZeroDivisionError, TypeError):
             rec = None
-        rows.append((fws, pos, cnt, sz, tol, verdict, rec))
+        # Sensitivity, NOT a retune: the registered verdict above stands
+        # as scored. This prints what the shared two-state rule would
+        # say beside it, so a reader can see which verdicts rest on a
+        # split that rule would refuse. Registering a guard after the
+        # rows are read and then applying it to them is the move the
+        # whole registration exists to prevent; showing its effect is
+        # not.
+        two, pooled = two_state_guarded([base, cross, ret], fws, pos)
+        if two:
+            sens = "two states (guard agrees)"
+        elif pooled and all(v is not None for v in pooled):
+            po, pb = pooled[1] - pooled[0], pooled[2] - pooled[0]
+            sens = (f"ONE state: pooled {pooled[0]:.2f}/{pooled[1]:.2f}/"
+                    f"{pooled[2]:.2f}, out {po:+.2f} resid {pb:+.2f}")
+        else:
+            sens = "ONE state, pooled unavailable"
+        rows.append((fws, pos, cnt, sz, tol, verdict, rec, sens))
     return rows
 
 
@@ -693,11 +737,13 @@ def check():
                   f"{'tol':>6s}  verdict")
             printed = True
         print(f"    {b}")
-        for fws, pos, cnt, sz, tol, verdict, rec in r:
+        for fws, pos, cnt, sz, tol, verdict, rec, sens in r:
             f = lambda v: f"{v:7.2f}" if v is not None else "      -"
             rs = f"{rec:5.1f}%" if rec is not None else "    -"
             print(f"      f{fws} pos {pos:3d}  {f(sz[0])} {f(sz[1])} "
                   f"{f(sz[2])} {tol:6.2f} {rs} recovered  {verdict}")
+            if not sens.startswith("two states"):
+                print(f"{'':20s}  sensitivity: {sens}")
     if not printed:
         print("\n  RETURN LEG: no return arms in records/ yet")
     return 0
