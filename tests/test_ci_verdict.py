@@ -31,6 +31,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 
 import pytest
 
@@ -98,13 +99,60 @@ def _states(text):
     return dict(re.findall(r"^(S_[A-Z]+)='([^']*)'$", text, re.M))
 
 
+#: One answer per session: which bash, or why none will do.
+_BASH = {}
+
+
 def _bash():
-    exe = shutil.which("bash")
-    if not exe:
-        pytest.skip("no bash on this bench, so run-ci.sh cannot be executed "
-                    "here at all - a static reading of it is in "
-                    "test_no_catch_all_arm_reports_a_pass")
-    return exe
+    """A bash that shares this interpreter's filesystem, or a skip.
+
+    Found on windows-desk: a suite launched from PowerShell resolves
+    `bash` to C:\\Windows\\System32\\bash.exe, the WSL launcher. The
+    fragments then ran in WSL's /bin/bash, which cannot see a Windows
+    path, and nine tests FAILED on printf and `[` errors that said
+    nothing about run-ci.sh - while the same tests passed from Git Bash.
+    Worse, a fragment that could not `cd` into its scenario repository
+    carried on in the working directory and committed there.
+
+    So the candidate is asked to read back a file written here, at the
+    path this interpreter would hand it. That is the property the
+    fragments need, tested directly, and it needs no knowledge of which
+    OS or which bash: a shell that cannot do it is skipped by name.
+    """
+    if "exe" not in _BASH:
+        exe, why = shutil.which("bash"), None
+        if not exe:
+            why = ("no bash on this bench, so run-ci.sh cannot be executed "
+                   "here at all - a static reading of it is in "
+                   "test_no_catch_all_arm_reports_a_pass")
+        else:
+            fd, probe = tempfile.mkstemp(suffix=".txt")
+            try:
+                with os.fdopen(fd, "w") as fh:
+                    fh.write("due-bash-probe\n")
+                try:
+                    got = subprocess.run([exe, "-c", 'cat -- "$1"', "probe",
+                                          probe], capture_output=True,
+                                         text=True, timeout=30)
+                    ok = (got.returncode == 0
+                          and "due-bash-probe" in got.stdout)
+                except (OSError, subprocess.SubprocessError):
+                    ok = False
+            finally:
+                try:
+                    os.unlink(probe)
+                except OSError:
+                    pass
+            if not ok:
+                why = (f"the bash on PATH ({exe}) cannot read a file this "
+                       f"interpreter wrote at {probe!r}, so it does not see "
+                       "this process's filesystem - on Windows, the WSL "
+                       "launcher in System32 shadowing Git Bash. Put Git "
+                       "Bash first on PATH to run these")
+        _BASH["exe"], _BASH["why"] = (None if why else exe), why
+    if _BASH["why"]:
+        pytest.skip(_BASH["why"])
+    return _BASH["exe"]
 
 
 def _run(fragment):
@@ -434,11 +482,20 @@ def _tree_run(tmp_path, init, steps):
     repo.mkdir()
     logs = tmp_path / "logs"             # outside the tree, as docker/out is
     logs.mkdir()
+    # NOTHING RUNS UNTIL THE FRAGMENT PROVES WHERE IT IS. A fragment whose
+    # `cd` failed used to carry on in the working directory - the real
+    # repository - and `git init`, `git add` and `git commit -m init`
+    # there: measured on windows-desk, a stray commit on local main. The
+    # marker sits beside the scenario repository and nowhere else, so its
+    # presence is the proof, and the exit code is distinct from the
+    # scenario's own.
+    (tmp_path / ".due-tree-scenario").write_text("scenario\n")
     lines = consts + [funcs[n] for n in _TREE_NEEDS] + [
         "set -uo pipefail",
         "export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1",
         f"export GIT_CEILING_DIRECTORIES='{tmp_path.as_posix()}'",
-        f"cd '{repo.as_posix()}'",
+        f"cd '{repo.as_posix()}' || exit 97",
+        "[ -f ../.due-tree-scenario ] || exit 97",
         f"logs='{logs.as_posix()}'",
         "records=()",
         init,
@@ -450,6 +507,9 @@ def _tree_run(tmp_path, init, steps):
               "echo @@RECORDS@@",
               'printf "%s\\n" "${records[@]}"']
     out = _run("\n".join(lines) + "\n")
+    assert out.returncode != 97, (
+        f"the fragment could not prove it was inside {repo} and refused to "
+        "run git anywhere else")
     assert out.returncode == 0, out.stderr
     recs = out.stdout.split("@@RECORDS@@\n", 1)[1].splitlines()
     name, state, _secs, detail = recs[-1].split("\t", 3)
