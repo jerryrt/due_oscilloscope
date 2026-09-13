@@ -62,8 +62,8 @@ the Windows-native steps.
 | A real Python, then `.venv` from `requirements-dev.txt` | Windows-native, because this is what opens a port. The board-free tier runs before any build tool exists, which separates a host fault from a toolchain one |
 | `.venv-gui` from `requirements-gui.txt`, on an interpreter below 3.14 | PySide6 pins itself there, which is why the front end has its own |
 | ARM GNU 14.3.rel1 mingw-w64, unpacked to the path `toolchains.json` already searches | Nothing local is then needed, and the version keeps this host's code generator alongside `linux-x1`'s rather than alongside `mac-bench`'s |
-| CMake, and a generator | `toolchains.json` finds CMake in its own install directory and finds Ninja only inside a Visual Studio tree. A standalone Ninja wants a pattern added rather than a local override |
-| Arduino IDE 2.x | The only source `toolchains.json` knows for `bossac`, and for the `arduino:sam` core sources Track A compiles. `arduino-cli` itself is invoked by nothing |
+| CMake, and a generator | `toolchains.json` finds CMake under `Program Files` and Ninja only inside a Visual Studio tree. This host has neither and no admin rights were used: CMake's and Ninja's release zips are unpacked under `AppData/Local/Programs` and found through a gitignored `toolchains.local.json`. Configure with `-G Ninja -DCMAKE_MAKE_PROGRAM=<ninja.exe>` |
+| `arduino:sam` 1.6.12 | Provides `bossac` and the core sources Track A compiles, in `AppData/Local/Arduino15`. The Arduino IDE is one way to install it; a standalone `arduino-cli core install arduino:sam@1.6.12` is another, and is what this host used. Its archive matches the Dockerfile's pinned sha256 |
 | MSYS2, for a host GCC | Optional, and it closes a gap the retired bench had: the framer seam test skipped there for want of a compiler that can run what it builds |
 | `build`, `build-a` and `build-c`, configured | `measure.flash()` raises and names the configure line rather than guessing, so a missing one fails late |
 
@@ -71,15 +71,48 @@ the Windows-native steps.
 it is calibrated against one board, and a timing failure there is a
 recalibration to measure and record.
 
-### The board attached here is not running this project
+### The board, as found and as it runs now
 
-The native port presents one CDC function and an HID composite carrying
-a keyboard and a mouse collection. Nothing in this tree presents HID,
-and the project's native port is two CDC functions. The programming
-port answers nothing at 115200, which needs no further explanation once
-the descriptors are read: the board carries an unrelated Arduino sketch.
-Reflash it before reading anything into its silence, and note that a
-board enumerating as a keyboard types into whatever window has focus.
+As found, the board carried an unrelated Arduino sketch: the native port
+presented one CDC function and an HID composite with a keyboard and a
+mouse collection, and the programming port answered nothing at 115200.
+Nothing in this tree presents HID. A board in that state types into
+whatever window has focus, so it was reflashed before anything was read
+into its silence.
+
+All three tracks now run this project, flashed from Windows-native
+Python and each matched to its flash-log row by commit. The native port
+presents its two CDC functions. **Its COM numbers move on every
+reflash** - enumerate with `host/ports.py` rather than reusing a number.
+
+**The wiring is verified electrically, not by eye**:
+`tools/wiring_probe.py`, `records/wiring-verify-windows-desk.jsonl`.
+DAC0 reaches A0 and DAC1 reaches A1, and A2 is bare. The probe's own
+docstring says why peak-to-peak alone cannot show this - the default
+sync square puts full scale on both DAC pins in both layouts - and what
+a bare A2 reads instead of nothing.
+
+### A container image onto a Windows-native flash
+
+The campaign flashes Tracks A and B from the pinned container, which
+runs in WSL2, and the board is flashed only from Windows. The route
+between them:
+
+1. Build in a WSL clone checked out at the commit being flashed, with
+   `docker/run.sh docker/build-firmware.sh`. `FW_GIT_REV` follows
+   `HEAD`, so a records commit on top moves every hash.
+2. Copy `docker/out/build/` and `docker/out/build-a/` - the `.bin`, the
+   `.elf` and `build-env.json` - into this checkout's `docker/out/`,
+   which is ignored. `tools/flash.py` reads the ELF beside the binary
+   for `cc` and `layout`, and `build-env.json` for `build_env`, so the
+   flash log records `container`.
+3. Check this checkout out at the same commit, with a clean tree, so the
+   flash-log row names the commit the board reports.
+4. `tools/flash.py --bin docker/out/build/baremetal_bringup.bin
+   --port <programming port>`, then `v` and `provenance.firmware()`.
+
+Plain copies give the files new mtimes, so the stale-image check has
+nothing to refuse.
 
 Whether opening a port resets the board is a per-host fact, and on this
 host **it does not**: `tools/uptime_reset_probe.py`, three repetitions
