@@ -264,7 +264,14 @@ def main():
     print(f"DISCARD run {DISCARD_RUNS[0]} BY INDEX before analysing - "
           f"every bench's first run has been an outlier, and a filter on "
           f"what it does wrong has already missed one.")
-    print(f"Then copy it into records/issue5-campaign-{bench}.jsonl and "
+    # Name the file the operator actually asked for. This used to print
+    # `records/issue5-campaign-<bench>.jsonl` unconditionally, so an arm
+    # run with --out - a crossover, a repeat, anything that is not the
+    # pinned campaign - was told to copy itself into the campaign file.
+    # That merges two sessions, and the block-to-block ceiling of a
+    # merged file means nothing, which is the collision
+    # issue5_onimage_compare.py already refuses at the other end.
+    print(f"Then copy it into records/{os.path.basename(out)} and "
           f"commit, so the analysis runs from a clean tree.")
     return 0
 
