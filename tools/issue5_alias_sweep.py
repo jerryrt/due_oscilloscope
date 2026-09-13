@@ -178,7 +178,7 @@ def main():
                                "fit_hits": hits, "fit_extras": extra,
                                "fit_phi": phi,
                                "profile": [round(v, 3) for v in prof]}
-                        with open(out, "a") as f:
+                        with open(out, "a", encoding="utf-8") as f:
                             f.write(json.dumps(row) + "\n")
                         if i > 1:
                             doms.append(dom)
