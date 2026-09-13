@@ -244,18 +244,36 @@ th { color: var(--ink-2); font-weight: 500; }
   <section aria-labelledby="h-freq">
     <div class="claim">
       <h2 id="h-freq">The sites are not scattered — they are a comb</h2>
-      <p>At wait state 6 the six positions every bench draws are 12, 33, 117, 138, 159 and 180, and each of those is <b>12 more than a multiple of 21</b>. Folded onto period 21 they land on a single phase: resultant <b>R = 1.000</b> on all three benches. Wait state 4 splits into two phases of the same period, and wait state 5 does not sit on it at all.</p>
+      <p>At wait state 6 the <b>large</b> sites — the ones about 30 codes tall, against a second population near 2 — lie on a lattice of period 21: 12, 33, 54, 96, 117, 138, 159, 180. Folded onto that period they land near one phase on all three boards.</p>
+      <p><b>Corrected once whole site lists existed.</b> This page first reported R = 1.000, and that figure came from the six sites a truncated row stored — which are by construction the six strongest and happened to all lie on the lattice. Measured on the true large population, 9 or 10 positions, <b>two of them are off it</b>: 169 (mod 21 = 1) and 247 (mod 21 = 16). So R is <b>0.75 to 0.94</b>, the comb is 8 of 10 rather than all of them, and its significance is decisive on one board (p = 6e-04) and marginal on the other two (p = 0.07). The <em>full</em> strong set is not a comb at all — 30 to 65 positions per arm, mostly the 2-code population, R below 0.4.</p>
     </div>
     <figure>
       <div class="legend" id="legend-freq"></div>
       <div class="chart" id="c-freq" role="img" aria-label="Site positions against a period-21 lattice, per bench and wait state"></div>
-      <figcaption>Positions drawn in at least half of 24 runs. The scan over candidate periods is charged to the null, so the quoted p is what a uniform set of the same size reaches <em>anywhere</em> in the scan — 0.006 at FWS 6. A period-21 comb is <b>also</b> a period-3 and a period-7 one, so the largest tying period is the one reported: it is the only one of the three that predicts where the rest of the comb is.</figcaption>
+      <figcaption>Positions drawn in at least half of 24 runs. The scan over candidate periods is charged to the null, so the quoted p is what a uniform set of the same size reaches <em>anywhere</em> in the scan. A period-21 comb is <b>also</b> a period-3 and a period-7 one, so the largest tying period is the one reported: it is the only one of the three that predicts where the rest of the comb is.</figcaption>
       <details><summary>Table</summary><div class="table-wrap" id="t-freq"></div></details>
     </figure>
     <div class="claim">
       <h3>What it predicts, and what would refute it</h3>
       <p id="p-predict"></p>
       <p>A disturbance periodic in <em>wall time</em> averages away under a fold over hundreds of cycles. One that survives is locked to the table index. And because 21 does not divide 256, a free-running period-21 disturbance would land four positions further on at each wrap and smear too — so surviving the fold also implies it is re-synchronised when the table wraps. No mechanism is named here; that is what the stored profiles are for.</p>
+    </div>
+  </section>
+  <section aria-labelledby="h-cross">
+    <div class="claim">
+      <h2 id="h-cross">The jumper crossover: does it follow the wire or the board?</h2>
+      <p>The three boards share one desk, so the loopback wires could be <em>exchanged</em> between two of them rather than refitted on one — and then put back. The third board was never touched and is the drift control. Under the material hypothesis the two swapped boards must trade values; a board-bound difference cannot imitate that.</p>
+    </div>
+    <figure>
+      <div class="legend" id="legend-cross"></div>
+      <div class="chart" id="c-cross" role="img" aria-label="Comb sums across three legs for three boards"></div>
+      <figcaption>Left panel: the seven comb sites that hold still. Right: all twelve lattice points, which include the three that move with a board's severity mode. Shaded band = the untouched control's own movement across the same three legs, which is the tolerance everything else is read against. <b>Per-position readings are deliberately not charted here</b> — at one position the control's drift is 3.75 read as a pooled median and 0.29 read as size-when-large, so an honest per-position chart needs the two-state guard, which lives in the other benches' tools. Those readings are on issue #5.</figcaption>
+      <details><summary>Table</summary><div class="table-wrap" id="t-cross"></div></details>
+    </figure>
+    <div class="claim">
+      <h3>What it says</h3>
+      <p id="p-cross"></p>
+      <p><b>Two results, and they must be reported apart.</b> The large between-board difference stayed with each board through both legs — the registered statistic came out <span class="mono">NEITHER</span>, so the 9.6% iron-versus-copper gap is <em>not</em> the jumper material. Separately, each board shows a small reversible response to its own specific pair of wires. Reversal excludes re-seating: a fresh contact cannot reproduce five positions to within 0.15 codes. But one pair of each material cannot separate <em>this pair</em> — its length, routing, crimps — from <em>the metal</em>, and no further arm of this design can. Blended, the two read as the material hypothesis again.</p>
     </div>
   </section>
   <section class="notes" aria-labelledby="h-notes">
@@ -265,6 +283,7 @@ th { color: var(--ink-2); font-weight: 500; }
       <li><b>The comb is measured on the visible half.</b> At FWS 6 the six positions that make R = 1.000 are the six a row had room for. If the sites those rows dropped are off the lattice, the comb is weaker than it looks — which is exactly what the next arm settles.</li>
       <li><b>Three benches are three boards.</b> A difference between benches is board, jumper material or the USB traffic on the device. windows-desk's jumpers are iron and the others' are copper. Nothing here separates those.</li>
       <li><b>mac-bench is shown probe-free, session 2.</b> Its first arm had scope probes clipped to A0 and A1, which moved every severity figure and none of the FWS 6 sites.</li>
+      <li><b>`total_abs` is not a usable statistic at wait state 6, and the control proves it.</b> The untouched board's severity median went 398.1 &rarr; 359.2 &rarr; 362.1 across the session &mdash; a 10% swing with nothing done to it &mdash; while its comb sums moved 0.43. Every cross-bench severity figure this campaign started from was reading that.</li>
       <li><b>The severity figures are unaffected by the truncation.</b> <span class="mono">total_abs</span> is threshold-free — it sums all 256 positions and never consults the site list. What the truncation costs is the site <em>set</em>, not the size.</li>
       <li><b>Byte conservation is unrelated.</b> None of this touches the 0h or #80 results, which never read the analog path.</li>
     </ul>
@@ -840,7 +859,120 @@ function drawFreq() {
   }
 }
 
-function renderAll() { drawMech(); drawProfile(); drawCens(); drawShare(); drawInc(); drawRuns(); drawFreq(); }
+
+/* ---------- 7. the jumper crossover ----------
+   Three boards, three legs each. Two slope panels: the seven fixed comb
+   sites, which hold still everywhere, and the twelve-point sum, which
+   moves on one board and comes back. The control board's own movement
+   across the same legs is drawn as a band - everything here is read
+   against it. */
+function drawCross() {
+  const C = DATA.crossover;
+  const host = document.getElementById("c-cross");
+  if (!C) { host.textContent = ""; return; }
+  const W = 900, H = 340, padT = 40, padB = 46, padL = 64, gap = 56;
+  const s = svg(host, W, H);
+  const pw = (W - padL - 14 - gap) / 2;
+  const grid = css("--grid"), axis = css("--axis"), muted = css("--muted");
+  const LEGS = ["baseline", "swapped", "returned"];
+
+  [["seven", "the seven fixed comb sites"],
+   ["twelve", "all twelve lattice points"]].forEach(([key, title], pi) => {
+    const x0 = padL + pi * (pw + gap);
+    const vals = C.boards.flatMap((b) => b.legs.map((l) => l[key]));
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const padv = Math.max(1.2, (hi - lo) * 0.18);
+    lo -= padv; hi += padv;
+    const X = (i) => x0 + 18 + (i / 2) * (pw - 46);
+    const Y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
+
+    txt(s, x0, 20, title, { class: "t-head" });
+    // frame + leg labels
+    el("line", { x1: x0, x2: x0, y1: padT, y2: H - padB, stroke: axis }, s);
+    LEGS.forEach((nm, i) => {
+      el("line", { x1: X(i), x2: X(i), y1: padT, y2: H - padB, stroke: grid,
+        "stroke-dasharray": "2 4" }, s);
+      txt(s, X(i), H - padB + 16, nm, { "text-anchor": "middle",
+        "font-size": 11, class: "t-muted" });
+    });
+    // y ticks
+    for (let k = 0; k <= 3; k++) {
+      const v = lo + (k / 3) * (hi - lo);
+      txt(s, x0 - 6, Y(v) + 4, fmt(v, 0), { "text-anchor": "end",
+        "font-size": 10.5, class: "t-muted" });
+    }
+    // the control's tolerance, as a band around its own baseline
+    const ctl = C.boards.find((b) => b.untouched);
+    if (ctl && C.tolerance) {
+      const t = C.tolerance[key], base = ctl.legs[0][key];
+      el("rect", { x: x0 + 1, y: Y(base + t), width: pw - 20,
+        height: Math.max(1.5, Y(base - t) - Y(base + t)),
+        fill: css("--floor"), "fill-opacity": 0.5 }, s);
+    }
+    C.boards.forEach((b) => {
+      const col = `var(${SERIES[b.id]})`;
+      let d = "";
+      b.legs.forEach((l, i) => { d += `${i ? "L" : "M"}${X(i)},${Y(l[key])}`; });
+      el("path", { d, fill: "none", stroke: col, "stroke-width": 2.2,
+        "stroke-dasharray": b.untouched ? "5 3" : "none" }, s);
+      b.legs.forEach((l, i) => {
+        const g = el("g", {}, s);
+        el("circle", { cx: X(i), cy: Y(l[key]), r: 4.5, fill: col,
+          stroke: css("--surface"), "stroke-width": 1.6,
+          class: "mark-outline" }, g);
+        hoverable(g, [`${b.label || b.id} · ${l.leg}`,
+          `${l.wire} jumpers, n = ${l.n}`,
+          `${title}: ${fmt(l[key], 2)}`,
+          `total_abs median ${fmt(l.total, 1)}`]);
+      });
+      // label at the right edge
+      const last = b.legs[b.legs.length - 1];
+      txt(s, X(2) + 9, Y(last[key]) + 4, b.id.replace("-desk", "").replace("-bench", ""),
+        { "font-size": 10.5, fill: col });
+    });
+  });
+
+  const lh = document.getElementById("legend-cross");
+  lh.replaceChildren();
+  [["linux-x1 — copper → iron → copper", "--s-linux"],
+   ["windows-desk — iron → copper → iron", "--s-windows"],
+   ["mac-bench — untouched throughout (control)", "--s-mac"]].forEach(([t, v]) => {
+    const sp = document.createElement("span");
+    const i = document.createElement("i");
+    i.style.background = `var(${v})`;
+    const l = document.createElement("span"); l.textContent = t;
+    sp.append(i, l); lh.appendChild(sp);
+  });
+  {
+    const sp = document.createElement("span");
+    const i = document.createElement("i");
+    i.style.background = "var(--floor)";
+    const l = document.createElement("span");
+    l.textContent = "the control's own movement — the tolerance";
+    sp.append(i, l); lh.appendChild(sp);
+  }
+
+  table("t-cross",
+    ["board", "leg", "jumpers", "seven fixed", "all twelve", "total_abs", "n"],
+    C.boards.flatMap((b) => b.legs.map((l) => [
+      b.id + (b.untouched ? " (control)" : ""), l.leg, l.wire,
+      fmt(l.seven, 2), fmt(l.twelve, 2), fmt(l.total, 1), String(l.n)])));
+
+  const p = document.getElementById("p-cross");
+  if (p && C.tolerance) {
+    const lx = C.boards.find((b) => b.id === "linux-x1");
+    if (lx) {
+      const out = lx.legs[1].twelve - lx.legs[0].twelve;
+      const back = lx.legs[2].twelve - lx.legs[1].twelve;
+      p.textContent =
+        `On the twelve-point sum linux-x1 moves ${fmt(out, 2)} when the wires are swapped and ${fmt(back, 2)} when they go back, `
+        + `against a control that moves ${fmt(C.tolerance.twelve, 2)} across the same legs — so the change is ${fmt(Math.abs(out) / C.tolerance.twelve, 0)}× the tolerance and it reverses. `
+        + `The seven fixed sites move by at most ${fmt(Math.max(...C.boards.map((b) => Math.max(...b.legs.map((l) => Math.abs(l.seven - b.legs[0].seven))))), 2)} on any board in any leg.`;
+    }
+  }
+}
+
+function renderAll() { drawMech(); drawProfile(); drawCens(); drawShare(); drawInc(); drawRuns(); drawFreq(); drawCross(); }
 bind();
 renderAll();
 const mq = window.matchMedia("(prefers-color-scheme: dark)");

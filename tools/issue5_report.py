@@ -69,26 +69,54 @@ OLD_SITE_CAP = 6
 #: which arm represents a bench: mac-bench is shown probe-free, because
 #: its first arm carried two undeclared scope probes that moved every
 #: severity figure on that bench.
+#: The pinned campaign arms, which store whole profiles. The earlier
+#: `issue5-onimage-*` arms stored six sites and are kept in `EXTRA` as
+#: history: every FWS 6 row of every one of them was truncated, which is
+#: why these exist. See the censoring section.
 BENCHES = [
     {"id": "linux-x1", "label": "linux-x1",
-     "file": "records/issue5-onimage-linux-x1.jsonl",
+     "file": "records/issue5-campaign-linux-x1.jsonl",
      "note": "Linux · copper jumpers"},
     {"id": "windows-desk", "label": "windows-desk",
-     "file": "records/issue5-onimage-windows-desk.jsonl",
+     "file": "records/issue5-campaign-windows-desk.jsonl",
      "note": "Windows · iron jumpers"},
     {"id": "mac-bench", "label": "mac-bench",
-     "file": "records/issue5-onimage-mac-bench-noprobes2.jsonl",
-     "note": "macOS · copper jumpers · probe-free session 2"},
+     "file": "records/issue5-campaign-mac-bench.jsonl",
+     "note": "macOS · copper jumpers"},
 ]
+
+#: The jumper crossover: each board's three legs. The wires were
+#: exchanged between the linux-x1 and windows-desk boards and then put
+#: back; mac-bench was untouched throughout and is the drift control.
+CROSSOVER = [
+    ("linux-x1", "copper", "iron", "copper",
+     ["records/issue5-campaign-linux-x1.jsonl",
+      "records/issue5-crossover-linux-x1.jsonl",
+      "records/issue5-return-linux-x1.jsonl"]),
+    ("windows-desk", "iron", "copper", "iron",
+     ["records/issue5-campaign-windows-desk.jsonl",
+      "records/issue5-crossover-windows-desk.jsonl",
+      "records/issue5-return-windows-desk.jsonl"]),
+    ("mac-bench", "copper", "copper", "copper",
+     ["records/issue5-campaign-mac-bench.jsonl",
+      "records/issue5-crossover-mac-bench.jsonl",
+      "records/issue5-return-mac-bench.jsonl"]),
+]
+
+#: The positions the crossover turned on, per wait state. Chosen because
+#: they are where any board moved by more than the untouched board's
+#: drift at that same position - not because they are the largest.
+WATCH = [(6, 180), (6, 169), (6, 109), (6, 201), (6, 75), (5, 134), (4, 240)]
 
 #: Arms that are not one of the three headline benches but belong in the
 #: provenance table, because a reader comparing figures elsewhere will
 #: meet them: the superseded probed arm, the first probe-free session,
 #: and windows-desk's separate FWS-5 repeat.
 EXTRA = [
-    ("mac-bench probed", "records/issue5-onimage-mac-bench.jsonl"),
-    ("mac-bench probe-free 1", "records/issue5-onimage-mac-bench-noprobes.jsonl"),
-    ("windows-desk FWS-5 repeat", "records/issue5-fws5-repeat-windows-desk.jsonl"),
+    ("linux-x1 truncated (superseded)", "records/issue5-onimage-linux-x1.jsonl"),
+    ("windows-desk truncated (superseded)", "records/issue5-onimage-windows-desk.jsonl"),
+    ("mac-bench truncated, probe-free", "records/issue5-onimage-mac-bench-noprobes2.jsonl"),
+    ("mac-bench truncated, probed", "records/issue5-onimage-mac-bench.jsonl"),
 ]
 
 #: Which arm's FWS-5 median the runs chart rings as the stable figure.
@@ -190,6 +218,27 @@ def per_fws(rows):
     return out
 
 
+def spec_lattice12():
+    return [12 + 21 * k for k in range(12)]
+
+
+def spec_lattice7():
+    """The seven comb points that hold still - the agreed metric."""
+    return [12, 33, 54, 96, 117, 138, 159]
+
+
+def comb_sum(rows, lattice):
+    """Median over runs of |deviation|, summed at the lattice points.
+
+    median-of-abs, not |median|: a position that changes sign between a
+    board's two severity modes cancels under the second and reports as
+    absent while being large in every run.
+    """
+    return sum(statistics.median(
+        [abs(r["profile"][b] - statistics.median(r["profile"])) for r in rows])
+        for b in lattice)
+
+
 def repo_rev():
     try:
         rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
@@ -246,7 +295,7 @@ PAGE_NDRAW = int(os.environ.get("ISSUE5_REPORT_NDRAW", "5000"))
 def build():
     data = {"bins": BINS, "generated_at_repo_rev": repo_rev(),
             "benches": [], "extra": {}, "slot_competition": [],
-            "spectrum": {}, "comb_period": None}
+            "spectrum": {}, "comb_period": None, "crossover": None}
     for meta in BENCHES:
         rows = load(meta["file"])
         entry = dict(meta)
@@ -273,7 +322,7 @@ def build():
     # cross-wait-state view on one period. Derived here so the page and
     # `tools/issue5_spectrum.py` cannot disagree: the page imports the
     # tool rather than re-implementing it.
-    period = None
+    period, best_r = None, None
     for meta in BENCHES:
         rows = load(meta["file"])
         per = {}
@@ -282,19 +331,86 @@ def build():
             if a is None:
                 continue
             a.pop("spectrum", None)          # 129 numbers a row, not drawn
+            # THE COMB IS THE LARGE POPULATION, NOT THE SITE SET. On the
+            # truncated rows this distinction was invisible: a row stored
+            # its six strongest sites and those six are the large ones, so
+            # "the site set is a comb" and "the large sites are a comb"
+            # were the same sentence. With whole site lists they are not -
+            # FWS 6 has 30+ strong positions and a scan over all of them
+            # returns period 3, because the ~2-code population is
+            # scattered. Sites are split at 10 codes: the two populations
+            # sit at about 29 and 2, so the cut has a five-fold margin
+            # either side and is not fitted.
+            v6 = [r for r in rows if r["fws"] == fws]
+            big = [b for b in a["strong"]
+                   if statistics.median(
+                       [abs(r["profile"][b] - statistics.median(r["profile"]))
+                        for r in v6]) >= 10.0]
+            a["large_sites"] = big
+            if len(big) >= 3:
+                r, p_ = spec.best_comb(big)
+                a["large_comb"] = {
+                    "period": p_, "R": round(r, 4), "n": len(big),
+                    "p_value": spec.comb_pvalue(big, ndraw=PAGE_NDRAW)}
+                # Pin the period by the best R across arms, not by
+                # demanding R = 1. The R = 1.000 that this campaign
+                # published came from the SIX sites a truncated row
+                # stored - which are by construction the six strongest
+                # and happen to lie on the lattice. On the true large
+                # population, 9 or 10 positions, two of them (169 and
+                # 247) are OFF it, so R is 0.75 to 0.94 and the comb is
+                # 8 of 10 rather than all of them.
+                if best_r is None or r > best_r:
+                    best_r, period = r, p_
             per[str(fws)] = a
-            if a.get("comb") and a["comb"]["R"] >= 0.9999 and (
-                    period is None or a["comb"]["period"] > period):
-                period = a["comb"]["period"]
         data["spectrum"][meta["id"]] = {
             "by_fws": per,
             "cross": spec.across_fws({f: spec.analyse(rows, f, ndraw=0)
                                       for f in (4, 5, 6)}),
         }
     data["comb_period"] = period
+    data["comb_best_R"] = round(best_r, 4) if best_r is not None else None
     data["predicted_missing"] = (
         spec.predict_missing([12, 33, 117, 138, 159, 180], period)
         if period else None)
+
+    # The crossover, charted on the two SUMS rather than per position.
+    #
+    # A per-position chart would have to implement the two-state guard to
+    # be honest: at FWS 4 position 240 the untouched board's drift is 3.75
+    # read as a pooled median and 0.29 read as size-when-large, because
+    # its run COUNT moved while its size held. Charting the pooled median
+    # there would show a tolerance thirteen times too wide and call a real
+    # change noise. The guard belongs to mac-bench's file and the
+    # decomposition to windows-desk's, so this page shows the two sums -
+    # which are agreed, well defined and have a measured tolerance - and
+    # leaves per-position readings to #5.
+    def combs(path, drop31=False):
+        rows = [r for r in load(path)
+                if r["fws"] == 6 and not (drop31 and r["run"] == 31)]
+        return {"seven": round(comb_sum(rows, spec_lattice7()), 2),
+                "twelve": round(comb_sum(rows, spec_lattice12()), 2),
+                "total": round(statistics.median(
+                    [r["total_abs"] for r in rows]), 1),
+                "n": len(rows)}
+
+    cross = {"boards": []}
+    for name, w0, w1, w2, files in CROSSOVER:
+        legs = []
+        for i, f in enumerate(files):
+            c = combs(f, drop31=(name == "linux-x1" and i == 0))
+            c["wire"] = (w0, w1, w2)[i]
+            c["leg"] = ("baseline", "swapped", "returned")[i]
+            legs.append(c)
+        cross["boards"].append({"id": name, "legs": legs,
+                                "untouched": name == "mac-bench"})
+    # The control's own movement across the same three legs is the
+    # tolerance every other number here is read against.
+    ctl = [b for b in cross["boards"] if b["untouched"]][0]["legs"]
+    cross["tolerance"] = {
+        k: round(max(abs(ctl[1][k] - ctl[0][k]), abs(ctl[2][k] - ctl[1][k])), 2)
+        for k in ("seven", "twelve")}
+    data["crossover"] = cross
 
     rep = load(REPEAT_RING["file"])
     ring = [r["total_abs"] for r in rep if r.get("fws") == REPEAT_RING["fws"]]
