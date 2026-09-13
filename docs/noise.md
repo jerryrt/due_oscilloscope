@@ -555,6 +555,70 @@ instrument. That is the thing to close before the mechanism.
 `tools/bleed_cadence.py` is the cadence sweep; `=<n>,<ms>x` and `=<n>C`
 are the two knobs. Both need no instrument and run on either track.
 
+## One DAC conversion in a few hundred to a few thousand lands off its level
+
+**Now and then a DAC conversion lands a few codes off its level for
+exactly one hold, and the next conversion is correct.** It happens on
+both DAC channels, at every code including a held DC level, with any
+waveform on either channel, and at any trigger rate. The error is
+sign-symmetric, exponential in size and Poisson in time, and on A0 it
+is uniform over the generator table. It is a property of the converter
+as this board drives it, not a firmware defect, and nothing locked to
+the table wrap remains once the refresh collision is fixed
+(`docs/issue5.md`).
+
+It is what the continuity census in `tests/test_integrity.py` still
+counts on preset M, because that test's step threshold sits within about
+12 codes of the largest legitimate step at that preset. The census holds
+the rate at `RESIDUAL_STEPS_MAX`, with no period and no lock to the wrap.
+
+### How large, per board
+
+A hold's error is the second difference of hold levels. The rate is per
+1000 holds, so it does not depend on the trigger rate. Preset
+`=200000,200000M`, FWS 4, bias `=2,1I`; `windows-desk`'s figures are
+pooled over start gaps `K` 0, 1, 5, 10 and 11, which the next table says
+move A1.
+
+| board | image | channel | beyond 6 codes | beyond 10 | scale, codes per e-fold | record |
+|---|---|---|---|---|---|---|
+| `linux-x1` | `049c99f`, Debian GCC 14.2.1, copper jumpers | A0 | 5.9-6.5 | 1.2-1.4 | 2.1-2.3 | `records/issue82-arms-linux-x1.jsonl`, the rows carrying `a0_parity` |
+| `linux-x1` | same | A1 | 4.5-5.3 | 0.7-0.9 | 1.9-2.0 | same |
+| `windows-desk` | `50ae7e6`, container xPack 15.2.1, iron jumpers | A0 | 0.63 | 0.030 | 1.3 | `records/issue82-ksweep-windows-desk-edges.jsonl` |
+| `windows-desk` | same | A1 | 0.24 | 0.004 | ~1.0 (30 events beyond 10) | same |
+
+**Compare boards by the scale, not by the count beyond a threshold.** On
+an exponential tail the count at a fixed threshold moves a long way for
+a modest change in scale. Here a count 9-10x apart on A0 and 19-22x
+apart on A1 is a scale 1.6-1.8x apart on A0 and about 2x on A1. The two
+boards differ in image and in jumper material, and nothing measured
+separates those from the die.
+`windows-desk`'s scale is from two thresholds, `(10 - 6) / ln(rate>6 /
+rate>10)`; `linux-x1`'s is the mean excess over 4 codes, in
+`tools/issue82_arms.py`.
+
+### What moves it
+
+| knob | effect | measured on |
+|---|---|---|
+| output bias, `=<a>,<b>I` | 2-3x; `2,1` lowest of `0,0`, `2,1` and `3,3` | `linux-x1` |
+| flash wait states, `=<n>q`, 4 to 6 | A1 up, A0 down: `linux-x1` 1.3x and 0.75x, `windows-desk` 2.6x and 0.64x | both |
+| ADC-to-DAC start gap, `=<us>K` | about 2.4x on A1, periodic in 10 us at 200 ksps, which is one hold | `windows-desk`, not registered before it was taken |
+| the waveform, a changing code against DC, the other channel, 100 against 200 ksps, `DACC_MR_MAXS`, a main-loop stall, phase against the ADC frame, SysTick and the USB frame | nothing resolved | `linux-x1` |
+
+The start gap and the wait state both move the DAC's conversion against
+the ADC's sampling instant, and the bias moves the output stage. That is
+consistent with the ADC catching a conversion's settling at a varying
+phase. It is not established.
+
+### Reading it without inventing structure
+
+| rule | why |
+|---|---|
+| **Take a channel's hold pairing from its own square edges or staircase, and never break a tie** | A moving waveform settles the pairing by the smaller median pair difference. A flat channel ties the two. A tie broken the wrong way pairs the last sample of one hold with the first of the next and halves every error, which read as a 20x start-gap effect, a channel "clean at DC" and "switched off at FWS 6", none of them real. `hold_parity()` in `tools/issue82_ksweep.py` refuses a tie and a capture whose edges disagree |
+| **Do not derive one channel's pairing from the other's** | A0's and A1's pairings move independently with the start gap and the wait state: both 1 at `K` 5 and 10, both 0 at FWS 6 |
+| **Count per hold, not per second** | A per-second rate at another trigger rate is off by the rate ratio |
+
 ## What this method cannot do
 
 Stated here rather than discovered later, because a plausible number is
