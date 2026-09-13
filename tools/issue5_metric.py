@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""The issue #5 comb metric: severity restricted to the lattice sites.
+
+    .venv/bin/python tools/issue5_metric.py
+    .venv/bin/python tools/issue5_metric.py --fws 5
+
+Needs no board. Reads `records/issue5-campaign-*.jsonl`.
+
+## Why `total_abs` is not the quantity
+
+`total_abs` sums every position of the fold, so it carries the artifact
+**and** the noise floor. At FWS 6 the floor is most of it, and the floor
+moves while the artifact does not. Across the three campaign arms:
+
+    arm                 on-lattice range   off-lattice range
+    linux-x1 (-run 31)        1.4%               66.2%
+    windows-desk              2.7%              110.3%
+    mac-bench                 0.5%               85.7%
+
+So a `total_abs` difference between two sessions, or two benches, is
+mostly a statement about the floor. `mac-bench` found this from the
+correlation with the broadband (+0.94 on their arm against +0.12 for the
+comb) and this bench found it from the stability; the two arguments are
+independent and the stability one is the safer of them, because a
+**correlation on a bimodal arm is not a dependence**: `windows-desk`'s
+comb correlates +0.973 with `total_abs` while its range is 2.7%, purely
+because two widely separated modes make any slightly-differing quantity
+track the hugely-differing one.
+
+## What this measures instead
+
+The sum of |deviation| over the sites on the period-21 lattice - the
+large population, median |dev| about 29 codes against 2 for everything
+else, replicated on two boards to 2%. `LATTICE` is the ten points that
+carry sites; 222 and 243 are on the comb and unoccupied on every arm.
+
+It orders the benches differently from `total_abs`, which is the point:
+
+    arm            jumpers   on-lattice   total_abs
+    mac-bench      copper       238.06      398.1
+    linux-x1       copper       234.00      395.0
+    windows-desk   iron         217.23      398.7
+
+Cross-bench spread 1.096x against `total_abs`'s 1.304x, and resolvable
+for the first time - 0.5-2.7% within a bench against 9.6% between them.
+
+**What that is not.** Three boards, one arm each, n = 1 per jumper
+material, board and material perfectly confounded, and the comparison
+was made after every arm had been read. It is not evidence about
+material. What it is: a readout whose noise floor is known in advance,
+so a jumper-material A-B-A on one board can be powered before it is run.
+
+## The one thing to check before trusting a figure from this
+
+A run whose comb has collapsed is not a low-severity run. `linux-x1`'s
+run 31 reads `total_abs` 353.5 against a peer median of 395.0 - 11% low -
+while its on-lattice sum is **66.12 against 234.00**, a collapse to 28%.
+On a metric that is mostly floor, an artifact that nearly vanished barely
+registered. `--per-run` prints both so that case is visible rather than
+averaged away.
+"""
+import argparse
+import glob
+import json
+import os
+import statistics
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RECORDS = os.path.join(ROOT, "records")
+
+#: The period-21 comb's occupied points at FWS 6. The full lattice is
+#: 12 + 21k for k = 0..11; 222 and 243 carry no site on any arm, so the
+#: metric is defined over the ten that do. Keeping the unoccupied two in
+#: would add nothing and hide nothing - they are listed here so that a
+#: reader can see the metric is a subset of a stated lattice rather than
+#: a set fitted to the data.
+LATTICE_FULL = [12 + 21 * k for k in range(12)]
+LATTICE = [12, 33, 54, 75, 96, 117, 138, 159, 180, 201]
+UNOCCUPIED = [b for b in LATTICE_FULL if b not in LATTICE]
+
+
+def split(row, lattice=LATTICE):
+    """(on-lattice sum, off-lattice sum) of |deviation| over the sites.
+
+    Site-list based, so it needs no profile and works on any row that
+    stores a complete site list. It is NOT valid on the truncated
+    `issue5-onimage-*` rows, where the list is the strongest six and
+    would therefore be almost entirely on-lattice by construction.
+    """
+    on = sum(abs(x) for b, x, _z in row["sites"] if b in lattice)
+    off = sum(abs(x) for b, x, _z in row["sites"] if b not in lattice)
+    return on, off
+
+
+def comb_from_profile(rows, lattice=LATTICE):
+    """The same quantity by a second route: |median profile| at the points.
+
+    `split()` sums per run over the site list and the caller takes a
+    median; this sums the median profile. They are different estimators
+    of one thing and they agree to 3% on all three campaign arms - 234.00
+    against 235.30, 217.23 against 210.03, 238.06 against 238.16.
+
+    It is here because **two benches computed "the comb sum" and got
+    238.1 and 193.2**, a 19% disagreement on the metric this file
+    proposes. Several different 7-of-10 subsets of the lattice reproduce
+    193 to within a code, so the definition cannot be recovered by
+    fitting it to the number - which is the reason a proposed metric
+    needs an implementation in the tree rather than a figure in a
+    comment. `tests/test_issue5_metric.py` holds the two routes equal so
+    a third definition cannot quietly appear here.
+    """
+    prof = []
+    for b in range(256):
+        prof.append(statistics.median(
+            [r["profile"][b] - statistics.median(r["profile"]) for r in rows]))
+    return sum(abs(prof[b]) for b in lattice)
+
+
+def rng(xs):
+    """Peak-to-peak as a fraction of the median - the stability figure."""
+    m = statistics.median(xs)
+    return (max(xs) - min(xs)) / m if m else float("nan")
+
+
+def arms():
+    out = {}
+    for path in sorted(glob.glob(os.path.join(RECORDS,
+                                              "issue5-campaign-*.jsonl"))):
+        rows = [json.loads(l) for l in open(path) if l.strip()]
+        # Run 1 by index, never by a filter on what it does wrong.
+        rows = [r for r in rows if r["run"] != 1]
+        if rows:
+            out[rows[0]["bench"]] = rows
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--fws", type=int, default=6)
+    ap.add_argument("--per-run", action="store_true",
+                    help="every run, so a collapsed comb is visible rather "
+                         "than averaged into a median")
+    args = ap.parse_args()
+
+    data = arms()
+    if not data:
+        print("no records/issue5-campaign-*.jsonl")
+        return 1
+    if any(not r.get("sites") or "n_sites" not in r
+           for rows in data.values() for r in rows):
+        print("REFUSING: some rows carry no `n_sites`, so their site list "
+              "may be the truncated six. This metric would then be almost "
+              "entirely on-lattice by construction.", file=sys.stderr)
+        return 2
+
+    print(f"FWS {args.fws}, run 1 dropped by index, lattice {LATTICE}")
+    print(f"  (unoccupied comb points, excluded: {UNOCCUPIED})\n")
+    print(f"{'bench':16s} {'n':>3} {'on-lattice':>11} {'range':>7} "
+          f"{'off-lattice':>12} {'range':>7} {'total_abs':>10} "
+          f"{'via profile':>10}")
+    meds = {}
+    for bench, rows in sorted(data.items()):
+        v = [r for r in rows if r["fws"] == args.fws]
+        if not v:
+            continue
+        on = [split(r)[0] for r in v]
+        off = [split(r)[1] for r in v]
+        tot = [r["total_abs"] for r in v]
+        meds[bench] = statistics.median(on)
+        alt = (comb_from_profile(v) if all(r.get("profile") for r in v)
+               else float("nan"))
+        print(f"{bench:16s} {len(v):3d} {statistics.median(on):11.2f} "
+              f"{100 * rng(on):6.1f}% {statistics.median(off):12.2f} "
+              f"{100 * rng(off):6.1f}% {statistics.median(tot):10.1f} "
+              f"{alt:10.2f}")
+        # A collapsed comb inflates the range figure and would be read as
+        # an unstable bench: linux-x1 reads 72.7% with run 31 in and 1.4%
+        # without it, against mac-bench's 0.5%. Naming the runs rather
+        # than dropping them - a run whose artifact vanished is the most
+        # interesting row in the arm, not a nuisance to filter.
+        med = statistics.median(on)
+        bad = [r["run"] for r, o in zip(v, on) if o < 0.5 * med]
+        if bad:
+            keep = [o for o in on if o >= 0.5 * med]
+            print(f"{'':16s}     ^ that range is run(s) {bad} with a "
+                  f"COLLAPSED comb; without them {100 * rng(keep):.1f}%")
+    if len(meds) > 1:
+        m = list(meds.values())
+        print(f"\n  cross-bench spread of the comb: {min(m):.1f} .. {max(m):.1f} "
+              f"= {max(m) / min(m):.3f}x")
+        print(f"  worst within-bench range above is the noise floor an A-B-A "
+              f"would be read against.")
+
+    if args.per_run:
+        print()
+        for bench, rows in sorted(data.items()):
+            v = sorted((r for r in rows if r["fws"] == args.fws),
+                       key=lambda r: r["run"])
+            if not v:
+                continue
+            med = statistics.median([split(r)[0] for r in v])
+            print(f"{bench}:")
+            for r in v:
+                on, off = split(r)
+                flag = "  <-- comb collapsed" if on < 0.5 * med else ""
+                print(f"   run {r['run']:3d}  on {on:8.2f} ({on / med:5.3f} of "
+                      f"median)  off {off:8.2f}  total_abs "
+                      f"{r['total_abs']:7.1f}{flag}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
