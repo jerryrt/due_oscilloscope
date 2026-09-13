@@ -49,12 +49,44 @@ def rows_of(name, fws=6):
 
 def test_the_lattice_is_the_stated_comb():
     """Every point congruent to 12 mod 21 and inside one cycle, and the
-    metric's set is a subset of it with the omissions named."""
+    metric's set is a subset of it with every omission named."""
     assert m.LATTICE_FULL == [12 + 21 * k for k in range(12)]
     for b in m.LATTICE_FULL:
         assert b % 21 == 12 and b < 256
-    assert set(m.LATTICE) <= set(m.LATTICE_FULL)
-    assert sorted(m.LATTICE + m.UNOCCUPIED) == m.LATTICE_FULL
+    assert set(m.OCCUPIED) <= set(m.LATTICE_FULL)
+    assert sorted(m.OCCUPIED + m.UNOCCUPIED) == m.LATTICE_FULL
+    # The metric is the occupied points minus the mode-dependent ones,
+    # and nothing is dropped without appearing in one of the two lists.
+    assert sorted(m.LATTICE + m.EXCHANGE) == m.OCCUPIED
+    assert len(m.LATTICE) == 7
+
+
+@pytest.mark.skipif(not CAMPAIGN, reason="no campaign records")
+def test_the_exchange_sites_are_why_they_are_excluded():
+    """They must actually be less stable across benches than the seven.
+
+    The reason for excluding them is that they move with the severity
+    mode, so a sum containing them is part mode occupancy - the defect
+    this metric was written to fix in `total_abs`. If the three were as
+    steady as the seven, the exclusion would be unjustified trimming.
+    """
+    if len(CAMPAIGN) < 3:
+        pytest.skip("needs all three arms")
+    def spread(pts):
+        v = []
+        for name in CAMPAIGN:
+            rows = rows_of(name)
+            rows = [r for r in rows
+                    if not (r["bench"] == "linux-x1" and r["run"] == 31)]
+            v.append(statistics.median(
+                [sum(abs(x) for b, x, _z in r["sites"] if b in pts)
+                 for r in rows]))
+        return max(v) / min(v)
+    assert spread(m.LATTICE) < spread(m.EXCHANGE), (
+        f"seven-site spread {spread(m.LATTICE):.3f} is not tighter than "
+        f"the exchange sites' {spread(m.EXCHANGE):.3f}")
+    # And tighter than the set that includes them, which is the claim.
+    assert spread(m.LATTICE) < spread(m.OCCUPIED)
 
 
 @pytest.mark.skipif(not CAMPAIGN, reason="no campaign records")

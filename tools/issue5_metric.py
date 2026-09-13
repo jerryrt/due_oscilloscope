@@ -36,19 +36,36 @@ carry sites; 222 and 243 are on the comb and unoccupied on every arm.
 
 It orders the benches differently from `total_abs`, which is the point:
 
-    arm            jumpers   on-lattice   total_abs
-    mac-bench      copper       238.06      398.1
-    linux-x1       copper       234.00      395.0
-    windows-desk   iron         217.23      398.7
+    arm            jumpers   seven-site   ten-site   total_abs
+    mac-bench      copper       193.52     238.16      398.1
+    linux-x1       copper       193.75     235.30      395.0
+    windows-desk   iron         189.75     210.03      398.7
 
-Cross-bench spread 1.096x against `total_abs`'s 1.304x, and resolvable
-for the first time - 0.5-2.7% within a bench against 9.6% between them.
+    windows / copper mean      0.980      0.887
+    copper pair                0.999      1.012
+    three-bench spread         1.021      1.134
+
+**The seven-site figure is the metric and the ten-site one is reported
+beside it as a warning.** This file first proposed the ten, and the 9.6%
+iron-below-copper gap that came with it is mostly `75` and `180` - two of
+the three sites that move with the mode. On the seven that hold still the
+gap is **2.0%**, the two copper benches agree to **0.1%**, and the
+within-bench range is 0.28-0.75%.
+
+So the first version of this metric was part artifact and part mode
+occupancy: the same defect it was written to fix in `total_abs`, one level
+down. `windows-desk` found it.
 
 **What that is not.** Three boards, one arm each, n = 1 per jumper
 material, board and material perfectly confounded, and the comparison
 was made after every arm had been read. It is not evidence about
 material. What it is: a readout whose noise floor is known in advance,
-so a jumper-material A-B-A on one board can be powered before it is run.
+so a jumper-material A-B-A on one board can be powered before it is run -
+**2.0% against 0.28-0.75%**, not the 9.6% the ten-site version promised.
+
+The exchange sites may be the better readout than any sum: they differ
+between benches by factors of 2-4 and move with the mode only on iron.
+`windows-desk`'s observation, and it is theirs to pursue.
 
 ## The one thing to check before trusting a figure from this
 
@@ -76,8 +93,18 @@ RECORDS = os.path.join(ROOT, "records")
 #: reader can see the metric is a subset of a stated lattice rather than
 #: a set fitted to the data.
 LATTICE_FULL = [12 + 21 * k for k in range(12)]
-LATTICE = [12, 33, 54, 75, 96, 117, 138, 159, 180, 201]
-UNOCCUPIED = [b for b in LATTICE_FULL if b not in LATTICE]
+OCCUPIED = [12, 33, 54, 75, 96, 117, 138, 159, 180, 201]
+UNOCCUPIED = [b for b in LATTICE_FULL if b not in OCCUPIED]
+
+#: Three occupied points move with the severity mode on `windows-desk`,
+#: by factors of 2-4, and barely at all on the two copper benches. A sum
+#: that includes them is therefore part artifact and part mode
+#: occupancy - which is the exact defect this file was written to fix in
+#: `total_abs`, reproduced one level down. Found by `windows-desk`.
+EXCHANGE = [75, 180, 201]
+
+#: The metric. The seven occupied points that hold still.
+LATTICE = [b for b in OCCUPIED if b not in EXCHANGE]
 
 
 def split(row, lattice=LATTICE):
@@ -154,11 +181,13 @@ def main():
               "entirely on-lattice by construction.", file=sys.stderr)
         return 2
 
-    print(f"FWS {args.fws}, run 1 dropped by index, lattice {LATTICE}")
-    print(f"  (unoccupied comb points, excluded: {UNOCCUPIED})\n")
+    print(f"FWS {args.fws}, run 1 dropped by index")
+    print(f"  metric  = the seven fixed comb sites {LATTICE}")
+    print(f"  excluded: {EXCHANGE} move with the severity mode on iron; "
+          f"{UNOCCUPIED} carry no site\n")
     print(f"{'bench':16s} {'n':>3} {'on-lattice':>11} {'range':>7} "
           f"{'off-lattice':>12} {'range':>7} {'total_abs':>10} "
-          f"{'via profile':>10}")
+          f"{'via profile':>10} {'ten-site':>9}")
     meds = {}
     for bench, rows in sorted(data.items()):
         v = [r for r in rows if r["fws"] == args.fws]
@@ -170,10 +199,11 @@ def main():
         meds[bench] = statistics.median(on)
         alt = (comb_from_profile(v) if all(r.get("profile") for r in v)
                else float("nan"))
+        ten = statistics.median([split(r, OCCUPIED)[0] for r in v])
         print(f"{bench:16s} {len(v):3d} {statistics.median(on):11.2f} "
               f"{100 * rng(on):6.1f}% {statistics.median(off):12.2f} "
               f"{100 * rng(off):6.1f}% {statistics.median(tot):10.1f} "
-              f"{alt:10.2f}")
+              f"{alt:10.2f} {ten:9.2f}")
         # A collapsed comb inflates the range figure and would be read as
         # an unstable bench: linux-x1 reads 72.7% with run 31 in and 1.4%
         # without it, against mac-bench's 0.5%. Naming the runs rather
