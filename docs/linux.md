@@ -366,8 +366,9 @@ existing bench re-running it:
 
 ## Setting up the next Linux box
 
-`toolchains.json` needs **no new entry** - all five tools resolve
-unmodified, with apt's cross compiler found at `/usr/bin`. What is not in
+`toolchains.json` needs **no new entry**: `bossac`, and apt's binutils
+at `/usr/bin` for reading an image into the flash log. Firmware is
+built in the container, on the native Docker daemon. What is not in
 the docs and was needed here:
 
 1. **`dialout` group.** `/dev/ttyACM*` is `root:dialout 0660`; without it

@@ -610,9 +610,9 @@ Check here before reasoning from general Arduino knowledge.
   the last endpoint and became a wedge the day EP4-EP6 appeared.
 - **Pin 13 is PB27** and carries no SPI conflict on the Due.
 - **MCK is 78 MHz here, not 84.** Chosen so the ADC clock is 19.5 MHz,
-  inside the 20 MHz datasheet limit. Costs 7.2% of sample rate. Track A
-  must be built with `--build-property build.f_cpu=78000000L` or
-  `micros()` is silently wrong.
+  inside the 20 MHz datasheet limit. Costs 7.2% of sample rate. Track A's
+  `build.f_cpu=78000000L` is a line in `cmake/track_a.cmake`, and without
+  it `micros()` is silently wrong.
 
   **And 78 MHz is *nominal* - register-derived, measured for the first
   time in issue #52 and a few ppm off.** -5.13 ppm on `windows-desk`,
@@ -1428,18 +1428,54 @@ One logical change per commit. Every commit should build.
 
 ## Build
 
-**GCC builds the images. clang is admitted as an optional firmware
-compiler, and MSVC never.** `arm-gcc` is the compiler this project
-installs on every platform, it is what every default build uses, and it
-is what produced every figure in the tree.
+**Every firmware image is built in the pinned container, and nowhere
+else.** A bench keeps only what needs hardware: flashing the images the
+container wrote, and running board tests. The owner ruled it on
+2026-09-14, after a fresh clone with nothing else mounted and
+`--network none` built Tracks A, B and C byte-identical to a working
+clone. Host builds were not self-contained: three GCC versions on three
+benches, Track A's SAM core trusted by folder name, and Track C fetching
+FreeRTOS at configure time.
 
-**clang is opt-in and additive**, on the same toolchain file:
+It is enforced, not remembered. `CMakeLists.txt` refuses a configure
+that `docker/run.sh` did not launch, ahead of `project()`. `tools/flash.py`
+refuses an image whose `build-env.json` does not hash-match it as a
+container build, with no override. `measure.flash()` and the board suite
+build nothing: they flash `docker/out/`, and `--require-tree` refuses an
+image that does not carry exactly the tree's commit, so a missing or
+stale image is an error naming the container command, never a skip and
+never a fallback. `tests/test_clean_build.py` and `tests/test_flash.py`
+hold all three.
 
 ```sh
-cmake -B build-clang \
+# Build: all three tracks, clean, into docker/out/build{,-a,-c}/
+docker/run.sh docker/build-firmware.sh
+
+# Flash, from the same tree at the same commit. Or let the suite do it:
+# --reflash puts the tree's image of --track on the board.
+python3 tools/flash.py --bin docker/out/build/baremetal_bringup.bin
+python3 tools/flash.py --bin docker/out/build-a/track_a_bringup.bin
+python3 tools/flash.py --bin docker/out/build-c/rtos_bringup.bin
+```
+
+Where the container runs in WSL rather than on the checkout, the image
+reaches the Windows checkout by copy, and `docs/windows.md` has the
+route.
+
+**GCC builds the images. clang is admitted as an optional firmware
+compiler, and MSVC never.** The image's xPack `arm-none-eabi-gcc`
+15.2.1 is what every default build uses. Figures taken before
+2026-09-14 also came from host builds, so a figure carries `fw_cc` and
+`fw_build_env` to say which.
+
+**clang is opt-in and additive**, on the same toolchain file, in the
+image:
+
+```sh
+docker/run.sh bash -c 'cmake -B build-clang \
       -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-      -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CLANG=ON
-cmake --build build-clang -j
+      -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CLANG=ON &&
+  cmake --build build-clang -j'
 ```
 
 It supplies a front end and a code generator and nothing else. The libc
@@ -1499,20 +1535,13 @@ and mutant, because its power is the point of it. A bench with no host
 GNU compiler skips that test; on 2026-08-30 that is `windows-desk`, and
 it is a known capability gap rather than an oversight.
 
-Both tracks work. **Ask `tools/toolchain.py` where the tools are; do
-not assume `PATH`.** `toolchains.json` resolves `arm-none-eabi-gcc`,
-`bossac`, `arduino-cli`, `cmake` and `ninja` by pattern, and on Windows
-none of them is on `PATH`: cmake and ninja come from the copies bundled
-with Visual Studio, `arduino-cli` from inside the Arduino IDE
-installation, and the ARM toolchain from wherever it was unpacked. On
-macOS `~/.local/bin` holds `arduino-cli` and `cmake`, which is what this
-line used to say without saying it was one platform's arrangement.
-
-That mattered on 2026-08-30: an agent on `windows-desk` checked `PATH`,
-guessed a couple of install directories, concluded `arduino-cli` was
-absent, and told another bench that this bench could not build Track A -
-which took it off a two-track firmware fix on a false premise. Both
-tracks build there and `docs/windows.md` already said so.
+**Ask `tools/toolchain.py` where a bench's tools are; do not assume
+`PATH`.** On a bench `toolchains.json` resolves `bossac`, the ARM
+binutils that read an image's compiler and layout into the flash log,
+and an optional host C compiler for the native test harnesses. None of
+them builds firmware, and on Windows none of them is on `PATH`. On
+2026-08-30 an agent on `windows-desk` checked `PATH`, concluded a tool
+was absent, and took that bench off a two-track fix on a false premise.
 
 **Every build is a full build, and it is enforced rather than
 remembered.** `CMakeLists.txt`'s `enforce_clean_build` target cleans
@@ -1527,33 +1556,20 @@ capability *report* did not, because that table sat in the file the
 cache reused. Nothing in the output said so; the only tell was 8 bytes
 of flash.
 
+What `docker/build-firmware.sh` runs, per track, inside the image:
+
+- **Track B**, bare metal: `cmake -B build`, then `cmake --build build`.
+- **Track A**, the reference oracle: `-DBUILD_TRACK_A=ON` in `build-a`,
+  target `firmware_track_a`. It compiles the Arduino core *sources* with
+  the image's xPack, and `arduino-cli` is not invoked. `build.f_cpu` and
+  `build.ldscript` are lines in `cmake/track_a.cmake`, so neither can be
+  forgotten: `micros()` divides by the first, and the second pins the
+  capture ring to SRAM bank 1.
+- **Track C**, FreeRTOS: `-DBUILD_TRACK_C=ON` in `build-c`, target
+  `firmware_rtos`. The image carries FreeRTOS at the pin, so it builds
+  with no network.
+
 ```sh
-# Track B: bare metal
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-      -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-tools/flash.sh build/baremetal_bringup.bin
-
-# Track A: reference oracle, built the same way Track B is (issue #55).
-# arduino-cli and its bundled GCC 4.8.3 are not invoked at all - only the
-# Arduino core *sources*, compiled by this project's own xPack. The two
-# build properties that used to be a wrapper's job are lines in
-# cmake/track_a.cmake, so neither can be silently forgotten: build.f_cpu
-# MUST match the runtime clock because micros() divides by it, and
-# build.ldscript pins the capture ring to SRAM bank 1.
-cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-      -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
-cmake --build build-a --target firmware_track_a
-tools/flash.sh build-a/track_a_bringup.bin
-
-# Track C: FreeRTOS. A bench fetches it at configure time, so it needs
-# the network once; the build image carries the pinned copy, so the
-# container builds and analyses Track C with no network.
-cmake -B build-c -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-      -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_C=ON
-cmake --build build-c --target firmware_rtos
-tools/flash.sh build-c/rtos_bringup.bin
-
 # Talk to any of them (discover the port first; the path moves with
 # cables). `h` lists what the board actually binds and no document's
 # copy of that list is authoritative; `v` is the cheap one, one line in
@@ -1625,17 +1641,12 @@ Both are installed and both import - verified, not inferred from
 metadata. Neither is committed; a venv holds absolute paths and
 platform-specific wheels and does not travel.
 
-**Use the xPack toolchain, not ARM's official macOS build.** ARM's links
-`cc1` against Homebrew's zstd at an absolute path and cannot run on this
-host; the driver still reports a version, so the failure only appears
-when something is actually compiled. See `docs/toolchain.md`.
-
-**Track A has one build path, as of 2026-08-31 (issue #55).**
-`measure.flash()` and the suite build `firmware_track_a` in `build-a`;
+**Track A has one build path (issue #55)**, and it is the image's:
+`firmware_track_a` in `build-a`, run by `docker/build-firmware.sh`.
 `tools/sketch.py` and its shim are deleted and `arduino-cli` is not
-invoked by anything. **A bench needs `build-a` configured**, exactly as
-it already needs `build-c` for Track C - `measure.flash()` raises a
-`BoardError` naming the configure line if it is not. **Do not add a
+invoked by anything. `measure.flash(track="a")` flashes the image
+under `docker/out/build-a/` and raises a `BoardError` naming the
+container command when it is not there. **Do not add a
 second.**
 
 What that costs, said plainly: **the project no longer has a second
@@ -1659,8 +1670,14 @@ the other, with the same commands and output format.
 
 ### A new bench, or a second board
 
+A bench installs no firmware toolchain. It needs a container runtime
+for `docker/run.sh` - a native daemon, colima, or Docker in WSL2 - and
+`docker/build-image.sh` once, plus the venv, `bossac`, and ARM binutils
+to read an image into the flash log. `docs/build-container.md` has the
+runtimes.
+
 Three things do not travel, and only one of them is a surprise. The
-venvs and the toolchain paths are the two settled above.
+venvs and the tool paths are the two settled above.
 
 The third is `tests/baseline.json`, which is calibrated against one
 specific board and says so in its own header. On a second Due, expect

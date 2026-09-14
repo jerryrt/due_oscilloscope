@@ -109,9 +109,10 @@ FreeRTOS what remains.
 ## Stage C1, built and measured (2026-08-30)
 
 Track C exists. `apps/rtos_bringup`, `cmake/freertos.cmake`, built by
-`cmake --build build-c --target firmware_rtos` after configuring with
-`-DBUILD_TRACK_C=ON`. FreeRTOS V11.1.0, pinned by 40-character commit
-rather than by tag, fetched at configure time (issue #45 decision 3).
+`firmware_rtos` in `build-c` under `-DBUILD_TRACK_C=ON`, inside the
+build image, which `docker/build-firmware.sh` runs. FreeRTOS V11.1.0,
+pinned by 40-character commit rather than by tag (issue #45 decision
+3); the image carries that commit, so the build needs no network.
 
     # id: track=C fw=0.2.0 ctlver=4 framever=3 mck=78000000 ...
 

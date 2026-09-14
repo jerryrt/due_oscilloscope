@@ -109,7 +109,7 @@ predicted:
 **So: the link map names what pulls the allocator, and the call sites
 only answer it by inference.**
 
-    grep -n -B1 -A1 malloc build/baremetal_bringup.map | head -40
+    grep -n -B1 -A1 malloc docker/out/build/baremetal_bringup.map | head -40
 
 The line **under** each archive member names the object that asked for
 it. Both of the unpredicted pulls were found that way in seconds, after

@@ -733,7 +733,12 @@ Schema `stack-depth/1`, written by `tools/stack_depth.py`, resolving its indirec
 
 One build per track, each with its own build directory, and one row
 appended per image. `--track` is what reads that track's declarations
-out of `tools/stack_depth.list`.
+out of `tools/stack_depth.list`. It runs in the build image, where
+firmware is built and nowhere else: open a shell there with
+`docker/run.sh bash`. The configure below rebuilds the flashable images
+in `docker/out/` with call graphs on and leaves their `build-env.json`
+describing the previous bytes, so `tools/flash.py` refuses them until
+`docker/build-firmware.sh` has run again.
 
 ```sh
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \

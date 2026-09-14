@@ -58,14 +58,13 @@ the Windows-native steps.
 
 | step | why this way |
 |---|---|
-| The build container, in WSL2: `docker/build-image.sh`, then `docker/run.sh docker/run-ci.sh` | Needs no host toolchain, no host Python and no board, and delivers all three firmware tracks and every board-free check. `docs/build-container.md` says what it will not do - flashing and the board tier are among it |
+| The build container, in WSL2: `docker/build-image.sh`, then `docker/run.sh docker/run-ci.sh` | Needs no host toolchain, no host Python and no board, and delivers all three firmware tracks and every board-free check. It is the only place firmware is built. `docs/build-container.md` says what it will not do - flashing and the board tier are among it |
 | A real Python, then `.venv` from `requirements-dev.txt` | Windows-native, because this is what opens a port. The board-free tier runs before any build tool exists, which separates a host fault from a toolchain one |
 | `.venv-gui` from `requirements-gui.txt`, on an interpreter below 3.14 | PySide6 pins itself there, which is why the front end has its own |
-| ARM GNU 14.3.rel1 mingw-w64, unpacked to the path `toolchains.json` already searches | Nothing local is then needed, and the version keeps this host's code generator alongside `linux-x1`'s rather than alongside `mac-bench`'s |
-| CMake, and a generator | `toolchains.json` finds CMake under `Program Files` and Ninja only inside a Visual Studio tree. This host has neither and no admin rights were used: CMake's and Ninja's release zips are unpacked under `AppData/Local/Programs` and found through a gitignored `toolchains.local.json`. Configure with `-G Ninja -DCMAKE_MAKE_PROGRAM=<ninja.exe>` |
-| `arduino:sam` 1.6.12 | Provides `bossac` and the core sources Track A compiles, in `AppData/Local/Arduino15`. The Arduino IDE is one way to install it; a standalone `arduino-cli core install arduino:sam@1.6.12` is another, and is what this host used. Its archive matches the Dockerfile's pinned sha256 |
+| ARM GNU 14.3.rel1 mingw-w64, unpacked to the path `toolchains.json` already searches | For its binutils: `tools/flash.py` reads each image's compiler and layout with `readelf` and `nm`. Nothing builds firmware on this host |
+| `arduino:sam` 1.6.12 | Provides `bossac`, in `AppData/Local/Arduino15`. The Arduino IDE is one way to install it; a standalone `arduino-cli core install arduino:sam@1.6.12` is another, and is what this host used |
 | MSYS2, for a host GCC | Optional, and it closes a gap the retired bench had: the framer seam test skipped there for want of a compiler that can run what it builds |
-| `build`, `build-a` and `build-c`, configured | `measure.flash()` raises and names the configure line rather than guessing, so a missing one fails late |
+| The three images, copied from the WSL container into `docker/out/` | `measure.flash()` raises and names the container command when one is missing, and refuses one that does not carry this tree's commit - see the route below |
 
 `CLAUDE.md` has what a new bench must expect of `tests/baseline.json`:
 it is calibrated against one board, and a timing failure there is a
@@ -94,22 +93,25 @@ a bare A2 reads instead of nothing.
 
 ### A container image onto a Windows-native flash
 
-The campaign flashes Tracks A and B from the pinned container, which
-runs in WSL2, and the board is flashed only from Windows. The route
-between them:
+Every image is built in the pinned container, which runs in WSL2, and
+the board is flashed only from Windows. The route between them:
 
-1. Build in a WSL clone checked out at the commit being flashed, with
-   `docker/run.sh docker/build-firmware.sh`. `FW_GIT_REV` follows
-   `HEAD`, so a records commit on top moves every hash.
-2. Copy `docker/out/build/` and `docker/out/build-a/` - the `.bin`, the
-   `.elf` and `build-env.json` - into this checkout's `docker/out/`,
-   which is ignored. `tools/flash.py` reads the ELF beside the binary
-   for `cc` and `layout`, and `build-env.json` for `build_env`, so the
-   flash log records `container`.
-3. Check this checkout out at the same commit, with a clean tree, so the
-   flash-log row names the commit the board reports.
-4. `tools/flash.py --bin docker/out/build/baremetal_bringup.bin
-   --port <programming port>`, then `v` and `provenance.firmware()`.
+1. In the WSL clone, whose `origin` is this checkout, fetch and check
+   out the commit being flashed, then run `docker/run.sh
+   docker/build-firmware.sh`. `FW_GIT_REV` follows `HEAD`, so a records
+   commit on top moves every hash.
+2. Copy `docker/out/build/`, `docker/out/build-a/` and
+   `docker/out/build-c/` - the `.bin`, the `.elf` and `build-env.json` -
+   into this checkout's `docker/out/`, which is ignored. `tools/flash.py`
+   refuses an image whose `build-env.json` does not hash-match it as a
+   container build, and reads the ELF for `cc` and `layout`.
+3. Check this checkout out at the same commit, with a clean tree.
+   `measure.flash()`, and so the board suite's reflash, passes
+   `--require-tree`, which refuses an image stamped with any other
+   commit or delta.
+4. `tools/flash.py --bin docker/out/build/baremetal_bringup.bin --port
+   <programming port>`, or let the suite reflash the track it wants;
+   then `v` and `provenance.firmware()`.
 
 Plain copies give the files new mtimes, so the stale-image check has
 nothing to refuse.

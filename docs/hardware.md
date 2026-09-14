@@ -277,12 +277,11 @@ is therefore correct without reference to MCK.
 
 `micros()` in the Arduino core divides by `F_CPU`, a compile-time
 constant, so a clock change that the build does not know about silently
-skews every timing measurement. Track A must be built with:
+skews every timing measurement. Track A is built in the build image,
+with every other track:
 
 ```sh
-cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-      -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
-cmake --build build-a --target firmware_track_a
+docker/run.sh docker/build-firmware.sh
 ```
 
 `build.f_cpu` and `build.ldscript` are lines in `cmake/track_a.cmake`,

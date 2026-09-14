@@ -1,7 +1,10 @@
 # Toolchain
 
-Three tracks, one compiler, one build system. `arm-none-eabi-gcc` and
-CMake build all of them, and `arduino-cli` is invoked by nothing.
+Three tracks, one compiler, one build system, one place. `arm-none-eabi-gcc`
+and CMake build all of them inside the pinned build container, and
+nowhere else: `CMakeLists.txt` refuses a configure `docker/run.sh` did
+not launch. `arduino-cli` is invoked by nothing. `docs/build-container.md`
+is how to run it; a bench flashes what it writes under `docker/out/`.
 
 | Track | Target | Purpose |
 |---|---|---|
@@ -47,8 +50,14 @@ travels between team members, the installed bytes do not.
 
 ```sh
 python3 tools/toolchain.py          # what resolved on this machine
-cmake --build build --target tools  # the same, through the build
 ```
+
+The registry describes two kinds of place. Inside the build image it
+resolves the SAM core, and `ARM_TOOLCHAIN_DIR` names the compiler ahead
+of any pattern. On a bench it resolves `bossac`, the ARM binutils that
+read an image's compiler and layout into the flash log, and an optional
+host C compiler for the native test harnesses. A bench resolves no
+build tool, because it runs no build.
 
 Resolution order for the ARM toolchain, first hit wins:
 
@@ -79,46 +88,32 @@ Two rules the registry enforces that are easy to lose:
 
 `cmake/hosttools.cmake` resolves the platform, the home directory and the
 executable suffix; the scripts receive absolute paths and never branch on
-the OS. `tools/flash.py` has no OS branch at all - pyserial performs the
-1200-baud touch identically everywhere - and CMake passes it the `bossac`
-it resolved.
+the OS. `tools/flash.py` resolves `bossac` from the same registry.
 
 ---
 
-## Installed on the macOS dev host *(verified)*
+## What a bench installs
 
-| Component | Version | Architecture | Runs on macOS 12.7.6 x86_64 |
-|---|---|---|---|
-| `arduino-cli` | 1.5.1 | Mach-O x86_64 | yes, at `~/.local/bin/arduino-cli` |
-| `arduino:sam` core | 1.6.12 | - | yes |
-| `arm-none-eabi-gcc` | 4.8.3-2014q1 | Mach-O x86_64 | yes |
-| `bossac` | 1.6.1-arduino | universal i386 + x86_64 | yes, x86_64 slice |
-| `arm-none-eabi-gcc` (xPack) | 15.2.1 | Mach-O x86_64 | yes, Track B compiler |
-| `cmake` | 4.4.2 | universal | yes, at `~/.local/bin/cmake` |
-| `arm-gnu-toolchain` (ARM official) | 14.2.rel1 | Mach-O x86_64 | **no** - `cc1` needs Homebrew zstd |
+| Component | For |
+|---|---|
+| A container runtime: a native Docker daemon, colima, or Docker in WSL2 | `docker/run.sh`, which builds every image. `docs/build-container.md` has the runtime each bench uses |
+| Python and `.venv` from `requirements-dev.txt` | the board suite, `tools/flash.py`, every measurement |
+| `bossac` 1.6.1-arduino | flashing. It comes with the `arduino:sam` core, from the Arduino IDE or `arduino-cli core install arduino:sam@1.6.12` |
+| ARM binutils: `readelf` and `nm` from any `arm-none-eabi` package | the compiler and layout in each flash-log row. On macOS take them from the xPack package, below |
+| A host GNU C compiler, optional | the native test harnesses; the tests that need one skip without it |
 
-The age of these binaries is the risk on this host, but inverted from the
-usual direction: macOS 12 removed 32-bit support entirely, so an i386-only
-tool would not launch. Both checked. `gcc` is x86_64-only and runs;
-`bossac` is a universal binary and macOS selects its x86_64 slice.
-
-`~/.local/bin` must be on `PATH`.
-
-End-to-end flash verified: `sketches/blink` compiles (10692 bytes) and
-uploads over the programming port. `bossac` reports Atmel SMART device
-`0x285e0a60`, writes 47 pages, sets the boot flash flag and resets.
+---
 
 ## arduino-cli — the core sources, not a build path
 
 **`arduino-cli` does not build Track A and is invoked by nothing in
-this repository.** What it is still installed for is what it *puts on
-disk*: the `arduino:sam` core sources that `cmake/track_a.cmake`
-compiles, and `bossac`. `toolchains.json` resolves both as
-`arduino_sam_core` and `bossac`.
+this repository.** On a bench it is one way to install `bossac`. The
+`arduino:sam` core sources that `cmake/track_a.cmake` compiles are in the
+build image, at the path `toolchains.json` names as `arduino_sam_core`.
 
 The `compile`/`upload` commands below remain useful for a bring-up
 sketch such as `sketches/blink`. They are not how Track A firmware is
-built — that is `firmware_track_a` in `build-a`, above.
+built — that is `firmware_track_a` in `build-a`, in the image.
 
 ### Install
 
@@ -183,16 +178,18 @@ coexisting is normal and intentional.
 
 ## Track B — arm-none-eabi-gcc + CMake
 
-### Install the ARM toolchain
+### Where it builds
 
-Use the **xPack** distribution, not ARM's own build. Unpack under
-`tools/`; it is gitignored.
+In the build image, which carries xPack `arm-none-eabi-gcc` 15.2.1-1.1
+and states it in `ARM_TOOLCHAIN_DIR`. A bench installs no compiler.
+
+What a bench does install is binutils to read images. On macOS use the
+**xPack** package for that, unpacked under `tools/`, which is gitignored:
 
 ```sh
 # xpack-arm-none-eabi-gcc-15.2.1-1.1-darwin-x64.tar.gz
 tar xzf xpack-arm-none-eabi-gcc-*-darwin-x64.tar.gz -C tools/
 xattr -cr tools/xpack-*/
-tools/xpack-*/bin/arm-none-eabi-gcc --version
 ```
 
 #### Why not ARM's official build *(found the hard way)*
@@ -214,22 +211,6 @@ actually compile something. CMake reports it as "compiler is broken".
 The xPack build bundles its dependencies through `@rpath`, including its
 own `libzstd.1.dylib`, and is genuinely self-contained. Verify with
 `otool -L` on `cc1` if in doubt.
-
-### Install CMake
-
-Not present on this host either. MacPorts is installed and could
-supply it, but the toolchain here is kept as self-contained binaries
-under `~/.local` so a port upgrade cannot move it. Use Kitware's
-universal binary:
-
-```sh
-tar xzf cmake-4.4.2-macos-universal.tar.gz
-cp -R cmake-*/CMake.app ~/.local/opt/
-ln -sf ~/.local/opt/CMake.app/Contents/bin/cmake ~/.local/bin/cmake
-```
-
-`make` is already available from the Command Line Tools at
-`/usr/bin/make`, so the default Unix Makefiles generator works.
 
 ### CMake toolchain file
 
@@ -266,9 +247,12 @@ large amount of code.
 ### Configure and build
 
 ```sh
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake
-cmake --build build -j
+docker/run.sh docker/build-firmware.sh
 ```
+
+It configures `build`, `build-a` and `build-c` inside the image and
+builds each through its clean-build wrapper. Those three directories are
+mounted from `docker/out/`, which is where the images land.
 
 ### What bare metal requires
 
@@ -303,8 +287,11 @@ than accepting a guess** - a stale hardcoded path once aimed the
 anything. Use it:
 
 ```sh
-tools/flash.sh build/baremetal_bringup.bin
+tools/flash.sh docker/out/build/baremetal_bringup.bin
 ```
+
+It refuses an image the container did not build: `build-env.json`
+beside the binary has to name the container and hash-match the bytes.
 
 Under the hood: 1200-baud touch to trigger erase + reset, then
 `bossac -U false -e -w -v -b <bin> -R`. `bossac` wants the port name
@@ -325,8 +312,8 @@ rather than an artefact of two different harnesses.
 | LED heartbeat | `PIO_SODR`/`PIO_CODR` | `bsp/led.c` |
 | HardFault report | `sketches/bringup/fault.cpp` | `bsp/fault.c` |
 | Commands | `h` `p` `g` `f` | `h` `p` `g` `f` |
-| Build | `cmake --build build-a --target firmware_track_a` | `cmake --build build` |
-| Flash | `python3 tools/flash.py --bin build-a/track_a_bringup.bin` | `cmake --build build --target flash` |
+| Build | `firmware_track_a`, in the image by `docker/build-firmware.sh` | `firmware`, by the same script |
+| Flash | `tools/flash.py`, with the image from `docker/out/build-a/` | `tools/flash.py`, with the image from `docker/out/build/` |
 | Underneath | `cmake/track_a.cmake` (no arduino-cli) | `tools/flash.sh` |
 | Link map | `linker/arduino_due_x_sram1.ld` | `linker/sam3x8e_flash.ld` |
 
@@ -386,46 +373,11 @@ If the vendor-class USB path is taken later, add `pyusb` (libusb).
 
 ---
 
-## Installed on the retired Windows host *(verified 2026-08-25)*
-
-Everything Track B needs was already present; nothing was downloaded.
-That machine is retired and the Windows bench is a different one, which
-carries none of this yet - `docs/windows.md` has its state and the order
-to restore it in. The table stays because it is the arrangement
-`toolchains.json` resolves with no local override, so it is what a
-Windows bench should install rather than merely what one had.
-
-| Component | Version | Location |
-|---|---|---|
-| `arm-none-eabi-gcc` | **14.3.Rel1** (ARM, mingw-w64) | `C:/arm-gnu-toolchain-14.3.rel1-mingw-w64-i686-arm-none-eabi/bin` |
-| `cmake` | 3.31.6 | bundled in Visual Studio 2022 Community |
-| `ninja` | bundled | same tree |
-| `bossac` | 1.6.1-arduino | `%LOCALAPPDATA%/Arduino15/...` |
-| `arduino-cli` | bundled in Arduino IDE 2.x | `%LOCALAPPDATA%/Programs/Arduino IDE/resources/...` |
-| `arduino:sam` core | 1.6.12 | `%LOCALAPPDATA%/Arduino15` |
-
-All five resolve from `toolchains.json` with no `toolchains.local.json`.
-
-Track B builds clean: GCC 14.3.1, 19/19 objects, no warnings under
-`-Wall -Wextra`, 27,868 B text / 116 B data / 73,020 B bss.
-
-**Note on ARM's own build.** The macOS objection to it is a macOS
-packaging defect - `cc1` linked against Homebrew's zstd at an absolute
-path - and does not apply here. ARM's mingw-w64 build is self-contained
-and is what this host uses. The xPack advice stands for macOS only.
-
-```sh
-cmake -S . -B build -G Ninja \
-      -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-      -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-cmake --build build --target tools     # what resolved
-cmake --build build --target flash     # Track B over the programming port
-```
-
----
-
 ## A second code generator on one bench
+
+Every image is built in the container now, with one generator, xPack
+15.2.1. What follows compared two generators on host builds; its figures
+are records of those images and stand as such.
 
 The project has three installs of `arm-none-eabi-gcc` and fewer than
 three independent draws from them. `linux-x1` is on Debian 14.2.1,

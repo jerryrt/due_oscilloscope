@@ -2,8 +2,11 @@
 
 A pinned image that builds the firmware and runs the board-free tests,
 so the build environment stops being an unrecorded variable and this
-repository can have a CI at all. **It does not touch the board tier.**
-Nothing here changes how a measurement is taken.
+repository can have a CI at all. **Every firmware image comes from here,
+and from nowhere else**: `CMakeLists.txt` refuses a configure that
+`docker/run.sh` did not launch, and `tools/flash.py` refuses an image the
+container did not build. **It does not touch the board tier**; a bench
+flashes these images and measures with them.
 
 Before any of it, the image has to be able to say what it is. That is
 phase 0, it is source-side and independent of every container question
@@ -30,13 +33,13 @@ docker/build-image.sh                    # once, and again when the Dockerfile c
 docker/run.sh docker/run-ci.sh           # every check there is
 docker/run.sh docker/run-ci.sh --fast    # without the three elastic steps
 docker/run.sh docker/build-firmware.sh   # all three tracks, clean, nothing else
-docker/run-ci.sh                         # on a bench, same shape, host tools
 ```
 
 `docker/run.sh` is the only file that knows about the container. Everything
 it runs - `build-firmware.sh`, `run-tests.sh`, `run-cppcheck.sh`,
 `run-clang-tidy.sh`, `run-fuzz.sh`, `run-ci.sh` - carries no container
-knowledge and runs on a bench unchanged.
+knowledge. The firmware steps run nowhere else all the same, because
+CMake refuses to configure outside the image.
 
 **Track C needs no network.** The image carries FreeRTOS at the hash
 `cmake/freertos.cmake` pins, in `DUE_FREERTOS_DIR`, and the configure
@@ -64,10 +67,14 @@ one to know is **DID NOT RUN**: an unanswered question is not a passing
 one, so it gates and the run reports `INCOMPLETE` rather than a verdict
 on the tree.
 
-**The build directories are not the bench's.** `docker/run.sh` mounts
-`docker/out/build` and `docker/out/build-a` over `/work/build` and
-`/work/build-a`, so a container run never touches a bench's own `build/`
-and the two toolchains' artifacts cannot be confused for each other.
+**The images land in `docker/out/`.** `docker/run.sh` mounts
+`docker/out/build/`, `docker/out/build-a/` and `docker/out/build-c/` over
+the container's `build`, `build-a` and `build-c`, beside the
+`build-env.json` each build writes. `provenance.CONTAINER_IMAGES` names
+the three images, and `measure.flash()`, the board suite and
+`tools/flash.py` read them from there. A flash from the suite also
+passes `--require-tree`, so the image has to carry exactly the flashing
+tree's commit.
 
 ### It runs on every bench, and not the same way on each
 
@@ -277,10 +284,15 @@ the other stores through it. **The analyser was more precise than the
 summary count made it look**, and trusting the class rather than the
 line would have broken the build in both places.
 
-## What a bench gives up by not using it
+## What a bench cannot do without it
 
-Measured on `linux-x1` - the bench that owns the image - by running the
-same script with the container out of the path:
+**Build firmware at all.** CMake refuses a host configure, and
+`tools/flash.py` refuses a host image, so every image a bench flashes
+came from here.
+
+The analysers are the rest of it. Measured on `linux-x1` - the bench that
+owns the image - by running the same script with the container out of
+the path, before the firmware step was confined to it:
 
 ```
 cppcheck           DID NOT RUN   cppcheck is not installed
@@ -305,10 +317,9 @@ container at all.
 | On `mac-bench`, the arm that proves the misaligned-load canary works: it fires under the image's GCC and not under Apple clang 14 | install another host compiler |
 | The 32-bit ABI arm, which has never executed on any bench natively - multilib absent on `linux-x1`, and a `qemu-i386` shadow-mapping hang on `mac-bench` | install the multilib runtimes |
 
-What is **not** given up is the project: all three tracks build on a
-host toolchain as well, every measurement is a host step, and every figure in this tree was taken on a host build. The
-container is where a third of the checks live, not where the work
-happens.
+Measurement stays on the bench: every measurement is a host step, run
+against an image built here. Most figures in this tree predate that and
+were taken on host builds; `fw_build_env` on a row says which.
 
 ## Build identity
 
@@ -394,10 +405,10 @@ The release is **xpack-arm-none-eabi-gcc-15.2.1-1.1**, which this project
 already uses: `docs/toolchain.md` records it as `mac-bench`'s Track B
 compiler and as `windows-desk`'s opt-in second arm. The container
 therefore introduces no fourth code generator - it standardises on one
-already characterised here. Its images carry that generator while both
-other benches' default builds carry ARM GNU 14.x, so a container image
-and a bench's own build are not expected to agree byte for byte, and
-`docs/toolchain.md` is where the two generators are told apart.
+already characterised here, and it is the generator every image is built
+with. Figures from the benches' earlier host builds carry ARM GNU 14.x
+or Debian 14.2.1, and `docs/toolchain.md` is where the generators are
+told apart.
 
 ## Constraints carried in
 
@@ -429,10 +440,14 @@ Phase 1's exit criterion is a byte comparison rather than a layout
 hash because phase 0 made one possible, which is why it came first.
 Phases 0-4 are the plan; 5 and 6 are what is worth doing after it.
 
-## What this plan does not answer
+## Images on a board
 
-Whether a containerised build should ever produce an image that goes on
-a board. It can - the artifact is a `.bin` and flashing is a host step -
-but every measurement then attributes to an image built somewhere no
-bench can reproduce by hand. That is a provenance question for #59, not
-a build question.
+Every image that goes on a board is built here. The provenance question
+that raises - an image built somewhere a bench cannot reproduce by hand -
+is answered by the record the build writes: `tools/flash.py` accepts an
+image only when `build-env.json` hash-matches it as a container build,
+and the flash log carries the image's tag, id and content hash beside
+the commit, compiler and layout. Where the container runs on the
+checkout it builds, the images are already where a flash reads them.
+Where it runs in WSL against a clone, `docs/windows.md` has the copy and
+the commit rule.
