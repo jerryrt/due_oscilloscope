@@ -2283,8 +2283,10 @@ rule:
 step once, and the step moves up with the value; 3's onset sits between
 them. A stream at RC 28-195 writes each channel every 56-390 clocks,
 below every threshold here, which is why 2-4 read clean at stream rates.
-Value 1 is lifted at 390, the shortest interval measured, so it shows no
-threshold in this range, and why is not established. The stream runs at
+Value 1 is lifted at 390, the shortest interval in this sweep, and the
+playback ladder above has it slowing RC 39 and 44, where each channel
+is written every 78-88 clocks - so it shows no threshold down to 78,
+and why is not established. The stream runs at
 0, at the floor everywhere; the idle DAC still runs at 1.
 
 **Two readings formed after the data, and neither is tested.** The three
