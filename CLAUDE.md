@@ -370,8 +370,11 @@ Check here before reasoning from general Arduino knowledge.
   what the converter delivers again, and `tests/test_integrity.py` holds
   RC 39 and 44 byte-exact rather than excusing them. A deficit in that
   band now is a regression, most likely the refresh running during a
-  stream. **Why `REFRESH(2)` removes it outright rather than halving it
-  is still not explained**, and the idle DAC still runs `REFRESH(1)`.
+  stream. `REFRESH(2)` removes it outright rather than halving it
+  because values 2-4 leave alone a channel written more often than a
+  threshold that rises with the value - 800-1,200 DACC clocks at 2 - and
+  a stream writes every 56-390. **Why value 1 has no such threshold is
+  still not explained**, and the idle DAC still runs `REFRESH(1)`.
   `docs/awg.md`.
 
 - **The generator's 113 kHz ceiling is the ADC's, not the DAC's.** Every

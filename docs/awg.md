@@ -2262,9 +2262,39 @@ for that period would put 3 and 4 back at the floor at RC 1300, where a
 channel is written every 2,600 clocks; they stay above it. What the table
 does show is value 1 colliding at every rate, and values 2-4 staying out
 of a frequently written channel while still acting on a slowly written
-one. Which threshold separates those, and why 1 ignores it, is not
-established. The stream runs at 0, which is at the floor everywhere
-here; the idle DAC still runs at 1.
+one.
+
+**Values 2-4 act only above a threshold on the write interval, and the
+threshold rises with the value.** Swept on a second board built by a
+second compiler, with the same instrument at FWS 6, over write intervals
+`2 x RC` from 390 to 5,200 DACC clocks. A rung counts as lifted when
+every counted run clears both value-0 blocks at that RC and the median
+is at least 1.5x theirs; `tools/issue83_threshold_score.py` applies the
+rule:
+
+| value | at the floor up to | lifted from |
+|---|---|---|
+| 1 | - | 390, and at every rung but 2,000 |
+| 2 | 800 clocks | 1,200 |
+| 3 | 1,200 | 1,600, but only marginal at 5,200 |
+| 4 | 1,600 | 2,600, with 2,000 marginal |
+
+`records/issue83-threshold-sweep-linux-x1.jsonl`. Values 2 and 4 each
+step once, and the step moves up with the value; 3's onset sits between
+them. A stream at RC 28-195 writes each channel every 56-390 clocks,
+below every threshold here, which is why 2-4 read clean at stream rates.
+Value 1 is lifted at 390, the shortest interval measured, so it shows no
+threshold in this range, and why is not established. The stream runs at
+0, at the floor everywhere; the idle DAC still runs at 1.
+
+**Two readings formed after the data, and neither is tested.** The three
+step brackets divided by the value share (400, 533] clocks, which
+contains 512, the interval between refresh conversions through the
+shared core with both channels enabled - so the threshold may be
+`512 x value`, which value 1 does not obey. And above the step the effect
+is not monotone in the interval: value 2 falls from 3.3-3.7x the floor
+at 1,600-2,600 clocks to 1.5x at 4,000, value 3 to 1.31x at 5,200, and
+value 1 to 1.36x at 2,000.
 
 **One defect, two expressions - confirmed on two hosts.** `windows-desk`
 ran the RC 32 arm and found 3 of 12 runs at 0.93738-0.93751 with
