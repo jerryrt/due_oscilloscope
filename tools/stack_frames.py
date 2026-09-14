@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """The largest per-function stack frames in a build.
 
+In the build image (`docker/run.sh bash`), from the repository root -
+firmware is built there and nowhere else:
+
     cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
           -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_STACK_USAGE=ON
     cmake --build build -j

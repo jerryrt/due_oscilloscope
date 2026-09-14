@@ -1,5 +1,24 @@
 # string(JSON) needs 3.19; the registry in toolchains.json is read with it.
 cmake_minimum_required(VERSION 3.19)
+
+# FIRMWARE IS BUILT IN THE PINNED CONTAINER AND NOWHERE ELSE. A host build
+# carries whichever compiler that bench installed, a SAM core found by
+# folder name and a FreeRTOS fetched at configure time; the image carries
+# one pinned copy of each, and one commit built there is the same bytes on
+# every bench. docker/run.sh is the one file that sets DUE_BUILD_IMAGE_ID,
+# so a configure without it is a host configure. The check comes before
+# project() so it fires before any toolchain is searched for, and a host
+# that has no compiler at all still gets this message rather than a
+# toolchain error. Flashing and the board tier stay on the host:
+# tools/flash.py flashes the images docker/out/ holds.
+if("$ENV{DUE_BUILD_IMAGE_ID}" STREQUAL "")
+    message(FATAL_ERROR
+        "Firmware is built in the container only. From the repository root:\n"
+        "  docker/run.sh docker/build-firmware.sh\n"
+        "writes all three tracks under docker/out/, where tools/flash.py and "
+        "the board suite read them. docs/build-container.md has the rest.")
+endif()
+
 project(due_oscilloscope C ASM)
 
 set(CMAKE_C_STANDARD 11)
@@ -403,32 +422,10 @@ endif()
 # ---------------------------------------------------------------------------
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/hosttools.cmake)
 
-# Prefer the project venv: tools/flash.py needs pyserial, which is declared
-# in requirements-dev.txt and installed there, not in the system interpreter.
-# Scripts/ on Windows, bin/ elsewhere - resolved here so no script has to ask.
-find_package(Python3 COMPONENTS Interpreter)
-set(PY "${Python3_EXECUTABLE}")
-foreach(_cand "${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe"
-              "${CMAKE_SOURCE_DIR}/.venv/bin/python")
-    if(EXISTS "${_cand}")
-        set(PY "${_cand}")
-        break()
-    endif()
-endforeach()
-message(STATUS "python:        ${PY}")
-
-hosttools_find(arduino_cli ARDUINO_CLI_DIR ARDUINO_CLI)
-hosttools_find(bossac      BOSSAC_DIR      BOSSAC)
-
-add_custom_target(tools
-    COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/toolchain.py"
-    COMMENT "Host tools resolved from toolchains.json"
-    USES_TERMINAL VERBATIM)
-
 # Track A -- the reference oracle. Built here the way Track B and Track C
 # are, by cmake/track_a.cmake, under -DBUILD_TRACK_A=ON. There is no
-# separate build or flash target for it: `firmware_track_a` builds it
-# with the clean-build wrapper, `tools/flash.py` flashes any .bin, and a
+# separate build target for it: `firmware_track_a` builds it with the
+# clean-build wrapper, `tools/flash.py` flashes the .bin on a host, and a
 # second target doing the same by another route is the "third path"
 # tests/test_clean_build.py forbids -- two ways to build Track A must not
 # both exist.
@@ -440,28 +437,11 @@ add_custom_target(tools
 # overruns per 4 s; here they are two lines in cmake/track_a.cmake,
 # under version control, where neither can be forgotten.
 #
-#   cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake #         -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
-#   cmake --build build-a --target firmware_track_a
+# In the build image, which is the only place any of it builds:
 #
-# arduino-cli is resolved above but never invoked: `arduino-cli core
-# install arduino:sam` is how the core sources Track A compiles get onto
-# a bench, and toolchains.json is the one registry for every host tool.
+#   docker/run.sh docker/build-firmware.sh
 
-# Track B -- this project. The 1200-baud touch and bossac call live in
-# tools/flash.py because pyserial does them identically everywhere; CMake
-# supplies the tool path it resolved.
-if(BOSSAC)
-    message(STATUS "bossac:        ${BOSSAC}")
-    add_custom_target(flash
-        COMMAND "${PY}" "${CMAKE_SOURCE_DIR}/tools/flash.py"
-                --bin  "$<TARGET_FILE_DIR:baremetal_bringup>/baremetal_bringup.bin"
-                --bossac "${BOSSAC}"
-        COMMENT "Flashing Track B over the programming port"
-        USES_TERMINAL VERBATIM)
-    # The driver, not the executable: depending on baremetal_bringup
-    # directly would build it incrementally and step straight past the
-    # clean, which is the hole this whole arrangement exists to close.
-    add_dependencies(flash firmware)
-else()
-    message(STATUS "bossac:        not found -- the flash target is unavailable")
-endif()
+# Flashing is not a CMake target. CMake runs only inside the build image,
+# which holds no bossac and reaches no board; tools/flash.py flashes the
+# artifacts from the host, and refuses an image the container did not
+# build.

@@ -203,7 +203,8 @@ def test_the_source_list_is_the_provenance_one(tmp_path):
 
     # A Track B binary is checked against Track B's sources, and the
     # track comes from the binary's own path.
-    b = os.path.join(flash.REPO, "build", "baremetal_bringup.bin")
+    b = os.path.join(flash.REPO,
+                     *provenance.CONTAINER_IMAGES["b"].split("/"))
     assert provenance.track_of_binary(b) == "B"
     newest, at = flash.newest_source(b)
     assert newest is not None and at > 0
@@ -709,3 +710,99 @@ def test_an_image_with_no_stamp_is_not_guessed_about(tmp_path, capsys):
     open(img, "wb").write(b"no stamp anywhere in here")
     flash.check_stamp_agrees(img)                     # must not raise
     assert "no build= stamp" in capsys.readouterr().out
+
+
+# --- only the container builds an image that gets flashed -------------------
+
+def test_a_container_built_image_is_accepted(tmp_path):
+    flash.check_container_built(_built(tmp_path, record=CONTAINER))
+
+
+def test_a_host_built_image_is_refused(tmp_path):
+    """A host build states `host` honestly, and is refused for being one.
+
+    Firmware is built in the pinned container and nowhere else, so the
+    refusal has to name the command that builds the image it wants.
+    """
+    with pytest.raises(SystemExit) as exc:
+        flash.check_container_built(
+            _built(tmp_path, record={"build_env": "host"}))
+    assert "not built in the container" in str(exc.value)
+    assert "docker/run.sh docker/build-firmware.sh" in str(exc.value)
+
+
+def test_an_image_with_no_record_is_refused(tmp_path):
+    """No record is not evidence of a container, whatever else it is."""
+    with pytest.raises(SystemExit):
+        flash.check_container_built(_built(tmp_path))
+
+
+def test_an_image_rebuilt_under_a_container_record_is_refused(tmp_path):
+    """A host rebuild into `docker/out/` leaves the container's record in
+    place and changes the bytes it describes, so the record stops
+    matching and the image is refused."""
+    binary = _built(tmp_path, record=CONTAINER)
+    with open(binary, "wb") as f:
+        f.write(b"rebuilt on a host")
+    with pytest.raises(SystemExit):
+        flash.check_container_built(binary)
+
+
+def test_a_host_image_is_refused_before_bossac_runs(tmp_path, monkeypatch):
+    """Through `main()`, because a check that runs after the write is no
+    check: the board would already carry the image."""
+    binary = _built(tmp_path, record={"build_env": "host"})
+    monkeypatch.setattr("sys.argv", ["flash.py", "--bin", binary])
+
+    def bossac_ran(*_a, **_k):
+        raise AssertionError("flash.py wrote a host-built image")
+
+    monkeypatch.setattr(flash, "_flash_attempt", bossac_ran)
+    with pytest.raises(SystemExit) as exc:
+        flash.main()
+    assert "not built in the container" in str(exc.value)
+
+
+def _stamped_with_tree(img):
+    """Rewrite `img` to carry exactly the stamp its tree would give it."""
+    root = os.path.dirname(os.path.dirname(img))
+    want = flash.tree_stamp(root)
+    with open(img, "wb") as f:
+        f.write(b"\x00pad build=" + want.encode() + b" pad\xff")
+    return want
+
+
+def test_require_tree_accepts_the_tree_s_own_image(tmp_path):
+    img, _head = _repo_at(tmp_path, stamp=None, dirty=False)
+    _stamped_with_tree(img)
+    flash.check_image_is_tree(img)
+
+
+def test_require_tree_refuses_an_image_from_another_commit(tmp_path):
+    """What `check_stamp_agrees` lets through for a bisect, the suite's
+    reflash refuses: its log row would name a commit the image is not."""
+    img, _head = _repo_at(tmp_path, stamp="0000000", dirty=False)
+    flash.check_stamp_agrees(img)
+    with pytest.raises(SystemExit) as exc:
+        flash.check_image_is_tree(img)
+    assert "0000000" in str(exc.value)
+    assert "docker/run.sh docker/build-firmware.sh" in str(exc.value)
+
+
+def test_require_tree_refuses_an_image_with_no_stamp(tmp_path):
+    img, _head = _repo_at(tmp_path, stamp=None, dirty=False)
+    with open(img, "wb") as f:
+        f.write(b"no stamp anywhere in here")
+    with pytest.raises(SystemExit):
+        flash.check_image_is_tree(img)
+
+
+def test_require_tree_refuses_the_same_commit_with_other_edits(tmp_path):
+    """One commit, two working-tree deltas, two images."""
+    img, _head = _repo_at(tmp_path, stamp=None, dirty=False)
+    want = _stamped_with_tree(img)
+    head = want.split("+")[0]
+    with open(img, "wb") as f:
+        f.write(b"pad build=" + head.encode() + b"+deadbeef pad")
+    with pytest.raises(SystemExit):
+        flash.check_image_is_tree(img)

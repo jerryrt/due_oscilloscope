@@ -380,6 +380,24 @@ def fw_source_paths(track):
     return FW_SOURCE_TRACKS.get(str(track).strip().upper(), FW_SOURCE)
 
 
+#: Where each track's flashable image is, relative to the repository.
+#:
+#: Firmware is built in the pinned container and nowhere else, and
+#: `docker/run.sh` mounts these directories over the container's build
+#: trees, so they are where the artifacts land on every bench. A host
+#: `build/`, `build-a/` or `build-c/` is not a source of images, and
+#: `tools/flash.py` refuses what one holds. Keys are the lower-case track
+#: letters `measure.flash()` takes.
+CONTAINER_IMAGES = {
+    "a": "docker/out/build-a/track_a_bringup.bin",
+    "b": "docker/out/build/baremetal_bringup.bin",
+    "c": "docker/out/build-c/rtos_bringup.bin",
+}
+
+#: The one command that produces every image above.
+CONTAINER_BUILD = "docker/run.sh docker/build-firmware.sh"
+
+
 def track_of_binary(path):
     """Which track a flash-log `binary` field names, or None.
 

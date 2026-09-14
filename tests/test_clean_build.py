@@ -115,26 +115,65 @@ def test_track_b_cmake_forces_a_full_build():
         "about to link. See issue #35")
 
 
-def test_flashing_track_b_also_gets_a_clean_build():
-    """The flash target must not route around the driver.
+def test_cmake_refuses_to_configure_outside_the_container():
+    """Firmware is built in the pinned container, and CMake says so first.
 
-    `flash` used to say `DEPENDS baremetal_bringup`, which now names a
-    target outside `all` and would build it incrementally - a clean
-    build for anyone typing `cmake --build build` and a stale one for
-    anyone typing `--target flash`, which is the more dangerous of the
-    two because its output goes on a board and into the flash log.
+    A host build carries whichever compiler that bench installed, a SAM
+    core found by folder name and a FreeRTOS fetched at configure time.
+    So `CMakeLists.txt` refuses any configure that `docker/run.sh` did not
+    launch, and it does that ahead of `project()`, where a host with no
+    compiler at all still gets the container line instead of a toolchain
+    search error. `docker/run.sh` is the one file that sets the variable
+    the guard reads.
+
+    Flashing is not a CMake target either: CMake runs only inside the
+    image, which holds no bossac and reaches no board.
     """
     cml = _read("CMakeLists.txt")
-    assert re.search(r"add_dependencies\(\s*flash\s+firmware\s*\)", cml), (
-        "the flash target does not depend on the `firmware` driver, so "
-        "`cmake --build build --target flash` can put an incrementally "
-        "built image on the board")
-    flash_block = cml[cml.index("add_custom_target(flash\n"):] \
-        if "add_custom_target(flash\n" in cml else cml[cml.index("add_custom_target(flash"):]
-    flash_block = flash_block[:flash_block.index("add_dependencies(flash")]
-    assert "DEPENDS baremetal_bringup" not in flash_block, (
-        "the flash target depends on baremetal_bringup directly again, "
-        "which bypasses the clean")
+    guard = re.search(r'if\("\$ENV\{DUE_BUILD_IMAGE_ID\}"\s+STREQUAL\s+""\)'
+                      r'\s*message\(FATAL_ERROR', cml)
+    assert guard, (
+        "CMakeLists.txt no longer refuses a configure outside the build "
+        "container, so a host can build an image again")
+    assert guard.start() < cml.index("\nproject("), (
+        "the container guard comes after project(), so a host configure "
+        "searches for a toolchain before it is refused")
+    assert re.search(r'--env\s+"DUE_BUILD_IMAGE_ID=\$image_id"',
+                     _read("docker", "run.sh")), (
+        "docker/run.sh no longer passes DUE_BUILD_IMAGE_ID, so the guard "
+        "refuses the container too")
+    assert "add_custom_target(flash" not in cml, (
+        "CMake has a flash target again. Flashing is a host step through "
+        "tools/flash.py, and CMake runs only where no board is reachable")
+
+
+def test_a_configure_outside_the_container_is_refused(tmp_path):
+    """The guard above, run rather than read.
+
+    The static test proves the lines are there; this proves CMake obeys
+    them. It configures the real tree into a scratch directory with
+    DUE_BUILD_IMAGE_ID removed from the environment, and the refusal has
+    to name the container command, so a configure that failed for any
+    other reason does not count as the guard firing. Inside the image the
+    variable is set, so this is the container's host tier deliberately
+    stepping outside it; a bench has no cmake and skips.
+    """
+    import shutil
+    import subprocess
+
+    cmake = shutil.which("cmake")
+    if not cmake:
+        pytest.skip("no cmake on PATH, which is what a bench is meant to "
+                    "look like; the container's host tier runs this")
+    env = {k: v for k, v in os.environ.items() if k != "DUE_BUILD_IMAGE_ID"}
+    proc = subprocess.run([cmake, "-S", REPO, "-B", str(tmp_path / "b")],
+                          env=env, capture_output=True, text=True,
+                          timeout=120)
+    out = proc.stdout + proc.stderr
+    assert proc.returncode != 0, (
+        "CMake configured the firmware with no build container around it")
+    assert "docker/run.sh docker/build-firmware.sh" in out, (
+        f"the configure failed, but not on the container guard:\n{out[-800:]}")
 
 
 def test_track_a_build_is_clean_by_construction():
@@ -166,44 +205,31 @@ def test_track_a_build_is_clean_by_construction():
         "firmware_track_a builds before it cleans")
 
 
-def test_track_a_flash_builds_before_it_flashes():
-    """`measure.flash(track='a')` compiles rather than reusing an artifact.
+def test_the_suite_reflash_flashes_the_tree_s_container_image():
+    """`measure.flash()` flashes the container's image and builds nothing.
 
-    Not hypothetical either. The Track A upload path this replaced
-    flashed whatever .bin was in the build directory, which is the image
-    for whatever tree last compiled and not the image for this one. It
-    put an experimental firmware -
-    with issue #33's guard deliberately removed - onto a bench whose
-    working tree was clean, and the only tell was that the recorded sha
-    did not change.
+    It is the reflash the board suite and every bench tool go through, so
+    it is where a host build would come back. That it spawns no builder is
+    held by the scan below, now that it is off the allowlist. This holds
+    the other half: it flashes the path `provenance.CONTAINER_IMAGES`
+    names, and it asks `flash.py` for `--require-tree`, which refuses an
+    image the container did not build or that carries another commit.
 
-    A flash is the single moment the tree and the board are supposed to
-    agree, so it is the last place to reuse an artifact. The CMake path
-    moved the risk rather than removing it: `build-a/` persists between
-    runs exactly as arduino-cli's cache did.
+    Matched on the call and the argv rather than on the names, because a
+    name also appears in the docstring above them.
     """
     mp = _read("host", "measure.py")
-
-    i = mp.index('elif track == "a":')
-    body = mp[i:i + 4000]
-
-    # Match the argv, not the word. The first version of this asserted
-    # `"firmware_track_a" in body`, and a mutation that pointed the build
-    # at the raw `track_a_bringup` target - bypassing the clean wrapper,
-    # exactly the defect - still passed, because the name also appears in
-    # the comment four lines above. A guard that cannot fail is the thing
-    # this file exists to prevent, so it is checked by mutation now.
-    built = re.search(r'"--build",\s*build_a,\s*"--target",\s*"([a-z_]+)"',
-                      body)
-    assert built, (
-        "measure.flash()'s Track A branch no longer runs a cmake --build "
-        "on build_a, so it can put an image on the board that does not "
-        "match the tree")
-    assert built.group(1) == "firmware_track_a", (
-        f"measure.flash() builds the {built.group(1)!r} target directly "
-        "instead of firmware_track_a, which bypasses the clean wrapper")
-    assert built.start() < body.index("flash.py"), (
-        "measure.flash() flashes Track A before building it")
+    i = mp.index("\ndef flash(")
+    end = mp.find("\ndef ", i + 1)
+    body = mp[i:end if end >= 0 else len(mp)]
+    assert re.search(r"provenance\.CONTAINER_IMAGES\.get\(track\)", body), (
+        "measure.flash() no longer takes its image from "
+        "provenance.CONTAINER_IMAGES")
+    assert re.search(r'"--bin",\s*binary,\s*"--require-tree"', body), (
+        "measure.flash() no longer passes --require-tree, so the suite can "
+        "flash an image that is not this tree's")
+    assert "host/measure.py" not in ALLOWED, (
+        "measure.py is allowed to spawn a build tool again")
 
 
 _TOOL = re.compile(r"arduino-cli|\bcmake\b")
@@ -421,16 +447,18 @@ def _project_py():
 #: `tools/reproducible.py` builds twice on purpose and compares the
 #: bytes, and it goes through the same enforced target every other
 #: caller does - its whole subject is that a build is what its source
-#: says it is, so a stale cache is the last thing it can tolerate.
+#: says it is, so a stale cache is the last thing it can tolerate. It
+#: runs in the build image, and CMake refuses it anywhere else.
 #:
 #: **Every entry spawns a build tool, and that is asserted rather than
 #: intended.** An exemption for a file that needs none costs nothing on
 #: the day it is written and everything on the day that file gains a
 #: build spawn: it is then permitted silently, by a line nobody re-read.
-#: Two entries here were in exactly that state - a tool that reports
-#: where the compiler resolved, and one that puts a .bin on a board -
-#: and dropping either from this set changed no result.
-ALLOWED = {"host/measure.py", "tools/reproducible.py"}
+#:
+#: `host/measure.py` is deliberately not here. It flashes the container's
+#: images and builds none, so a build spawn appearing in it is exactly
+#: what the scan exists to report.
+ALLOWED = {"tools/reproducible.py"}
 
 #: Programs that can produce an image. `cmake` covers the wrappers;
 #: `make` and `ninja` are the generators underneath them, and naming an
@@ -555,8 +583,9 @@ def test_nothing_else_builds_behind_the_enforcement():
 
     assert not offenders, (
         "these reach a build tool outside the enforced paths, so they "
-        "can produce an image from a stale cache. Call measure.flash() "
-        "rather than spawning a builder: "
+        "can produce an image from a stale cache. Firmware is built in "
+        "the container, docker/run.sh docker/build-firmware.sh, and "
+        "measure.flash() flashes what it wrote: "
         + ", ".join(sorted(set(offenders))))
 
 

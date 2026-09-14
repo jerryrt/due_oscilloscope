@@ -102,16 +102,13 @@ REGION_GAP = 12
 
 
 def cmake_exe() -> str:
-    """cmake's path, from the registry rather than from PATH.
+    """cmake's path. This runs in the build image, where cmake is on PATH.
 
-    On Windows none of the build tools is on PATH - cmake comes from the
-    copy bundled with Visual Studio - so a bare "cmake" is not portable
-    even where it happens to work. The registry marks cmake optional
-    because a host may have it on PATH already, which is why there is a
-    fallback rather than an error.
+    Firmware is built there and nowhere else - `CMakeLists.txt` refuses a
+    configure `docker/run.sh` did not launch - so a host cmake is not
+    something to look for.
     """
-    _directory, exe = toolchain.resolve("cmake")
-    return exe or shutil.which("cmake") or "cmake"
+    return shutil.which("cmake") or "cmake"
 
 
 def build(spec: dict, cmake: str) -> float:
@@ -252,8 +249,11 @@ def main() -> int:
         # Say what to run. A bench that has not configured this track
         # meets it once, and cmake's own "not a directory" three steps
         # away from here reads as something else entirely.
-        print("Track %s is not configured on this bench. Run:\n  %s"
-              % (args.track.upper(), spec["configure"]), file=sys.stderr)
+        print("Track %s is not configured here. This runs in the build "
+              "image, after docker/build-firmware.sh has configured it:\n"
+              "  docker/run.sh docker/build-firmware.sh\n"
+              "  docker/run.sh python3 tools/reproducible.py --track %s"
+              % (args.track.upper(), args.track), file=sys.stderr)
         return 2
 
     cmake = cmake_exe()

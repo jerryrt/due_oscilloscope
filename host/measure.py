@@ -3454,154 +3454,52 @@ def profile(board, *, timeout=30.0):
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _tool_env():
-    """PATH with the build tools on it, wherever this host keeps them.
+def flash(track, control=None, retries=2):
+    """Flash the container's image of a track, retrying with the port named.
 
-    ~/.local/bin with a ':' separator is where they live on macOS and it
-    is not portable in either half: Windows separates PATH with ';' and
-    keeps cmake inside the Visual Studio tree. toolchains.json already
-    knows both, so ask it rather than guessing, and keep the POSIX
-    default as one more entry rather than as the rule.
-    """
-    env = dict(os.environ)
-    extra = [os.path.expanduser("~/.local/bin")]
-    try:
-        sys.path.insert(0, os.path.join(REPO, "tools"))
-        import toolchain
-        reg = toolchain.load()
-        for tool in ("cmake", "ninja", "arm_toolchain", "bossac",
-                     "arduino_cli"):
-            d, _exe = toolchain.resolve(tool, reg)
-            if d:
-                extra.append(d.replace("/", os.sep))
-    except ImportError:
-        pass          # no resolver here is no information, not an error
-    except FileNotFoundError:
-        pass          # and neither is no registry - that is the shared
-                      # toolchains.json simply not being present
-    # A registry that exists and will not parse, or a resolver that
-    # raises, is NEITHER of those: it is a defect that would otherwise
-    # cost every tool on this bench its resolved paths, silently, on the
-    # two of three benches where the tools are not on PATH at all.
-    have = env.get("PATH", "").split(os.pathsep)
-    env["PATH"] = os.pathsep.join(
-        [d for d in extra if d and d not in have] + have)
-    return env
+    Nothing here builds. Every firmware image comes from the pinned
+    container, `docker/run.sh docker/build-firmware.sh`, which writes it
+    under `docker/out/`, and `provenance.CONTAINER_IMAGES` names the file
+    for each track. A missing image raises before any port is touched.
 
-
-def _exe(name, env):
-    """Absolute path to a build tool, or the bare name.
-
-    CreateProcess searches the *parent's* PATH on Windows, not the one
-    handed to the child, so putting a directory in env["PATH"] is not
-    enough to make the child findable. Every caller here passes env, so
-    every caller needs this too.
-    """
-    return shutil.which(name, path=env.get("PATH")) or name
-
-
-def flash(track, control=None, retries=2, build=False):
-    """Flash a track, retrying with the port named explicitly.
+    `--require-tree` makes `tools/flash.py` refuse an image the container
+    did not build, or one that does not carry exactly this tree's commit
+    and working-tree delta. So the image that goes on the board is the one
+    `provenance.firmware()` then matches to its flash-log row by commit,
+    and a stale image is an error that names the container command rather
+    than a board quietly running something older.
 
     An interrupted flash leaves SAM-BA enumerated and the banner silent;
     a plain retry recovers it. SAM-BA drops happened twice in one
     session, so the retry is not optional - without it the suite reports
     false failures for a cable-level event.
     """
+    import provenance
+
+    rel = provenance.CONTAINER_IMAGES.get(track)
+    if rel is None:
+        raise ValueError(f"unknown track {track!r}")
+    binary = os.path.join(REPO, *rel.split("/"))
+    if not os.path.isfile(binary):
+        raise BoardError(
+            f"no Track {track.upper()} image at {rel}. Firmware is built "
+            f"only in the container, from the tree that flashes it:\n"
+            f"  {provenance.CONTAINER_BUILD}\n"
+            f"docs/build-container.md has the rest. Where the container "
+            f"runs in WSL, docs/windows.md says how the image reaches this "
+            f"checkout.")
     if control is None:
         control, _ = find_ports()
+    # flash.py, not the .sh shim: a shell script is not executable on
+    # win32.
+    cmd = [sys.executable, os.path.join(REPO, "tools", "flash.py"),
+           "--bin", binary, "--require-tree"]
+    if control:
+        cmd += ["--port", control]
     last = None
     for attempt in range(retries + 1):
         try:
-            if track == "b":
-                env = _tool_env()
-                if build:
-                    # No --clean-first here: CMakeLists.txt's
-                    # enforce_clean_build target already makes every
-                    # build of baremetal_bringup a full one, so this
-                    # would clean twice. The enforcement lives in one
-                    # place per build system and tests/test_clean_build.py
-                    # fails if either is removed.
-                    subprocess.run([_exe("cmake", env), "--build", "build",
-                                    "-j"],
-                                   cwd=REPO, check=True, env=env,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-                # flash.py, not the .sh shim, for the reason the Track A
-                # branch below spells out: a shell script is not
-                # executable on win32, and this path only ever ran
-                # because the board already happened to be on this track.
-                cmd = [sys.executable, os.path.join(REPO, "tools", "flash.py"),
-                       "--bin",
-                       os.path.join(REPO, "build", "baremetal_bringup.bin")]
-                if control:
-                    cmd += ["--port", control]
-            elif track == "c":
-                # Track C is behind -DBUILD_TRACK_C, so its build tree is
-                # its own: a bench that never asked for Track C must not
-                # have FreeRTOS fetched into the tree it builds Track B
-                # in. `firmware_rtos` is the clean-build wrapper, the
-                # same shape `firmware` has for Track B.
-                env = _tool_env()
-                if build:
-                    subprocess.run([_exe("cmake", env), "--build", "build-c",
-                                    "--target", "firmware_rtos"],
-                                   cwd=REPO, check=True, env=env,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-                cmd = [sys.executable, os.path.join(REPO, "tools", "flash.py"),
-                       "--bin",
-                       os.path.join(REPO, "build-c", "rtos_bringup.bin")]
-                if control:
-                    cmd += ["--port", control]
-            elif track == "a":
-                # Track A builds the same way Track B and Track C do:
-                # CMake drives arm-gcc directly, with no arduino-cli
-                # step. The two build properties that micros() and the
-                # capture ring depend on - build.f_cpu, because
-                # micros() divides by it, and build.ldscript, which
-                # pins the capture ring to SRAM bank 1 - are lines in
-                # cmake/track_a.cmake, so neither can be silently
-                # forgotten and there is one place that knows them.
-                #
-                # Its own tree, for Track C's reason: a bench that never
-                # asked for Track A must not have the Arduino core
-                # compiled into the tree it builds Track B in.
-                # `firmware_track_a` is the clean-build wrapper, the
-                # same shape `firmware` and `firmware_rtos` have.
-                env = _tool_env()
-                build_a = os.path.join(REPO, "build-a")
-                if build:
-                    if not os.path.isdir(build_a):
-                        # Say what to run rather than letting cmake fail
-                        # with "not a directory". A bench that has not
-                        # configured Track A yet meets this once, and a
-                        # confusing subprocess error here reads as a
-                        # board fault three steps away.
-                        raise BoardError(
-                            "Track A is not configured on this bench. "
-                            "Run:\n"
-                            "  cmake -B build-a -DCMAKE_TOOLCHAIN_FILE="
-                            "cmake/arm-none-eabi-toolchain.cmake "
-                            "-DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON\n"
-                            "It needs the Arduino SAM core *sources* "
-                            "only - no arduino-cli, no bundled compiler. "
-                            "Pass -DARDUINO_SAM_CORE= if it is not where "
-                            "toolchains.json looks; python3 "
-                            "tools/toolchain.py shows what resolved.")
-                    subprocess.run([_exe("cmake", env), "--build", build_a,
-                                    "--target", "firmware_track_a"],
-                                   cwd=REPO, check=True, env=env,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-                cmd = [sys.executable, os.path.join(REPO, "tools", "flash.py"),
-                       "--bin",
-                       os.path.join(build_a, "track_a_bringup.bin")]
-                if control:
-                    cmd += ["--port", control]
-            else:
-                raise ValueError(f"unknown track {track!r}")
-            subprocess.run(cmd, cwd=REPO, check=True, env=_tool_env(),
+            subprocess.run(cmd, cwd=REPO, check=True,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                            timeout=300)
             time.sleep(2.0)
@@ -3613,8 +3511,9 @@ def flash(track, control=None, retries=2, build=False):
     # captured here so a flash does not spray into a test run, and
     # CalledProcessError does not put them in its str(), so "returned
     # non-zero exit status 1" was the whole diagnosis. flash.py refuses
-    # for reasons worth reading - a stale image, no bossac, a held port -
-    # and every one of them was arriving as that one sentence.
+    # for reasons worth reading - an image the container did not build,
+    # an image from another commit, no bossac, a held port - and every one
+    # of them would otherwise arrive as that one sentence.
     out = getattr(last, "output", None) or getattr(last, "stdout", None) or b""
     if isinstance(out, bytes):
         out = out.decode("utf-8", "replace")

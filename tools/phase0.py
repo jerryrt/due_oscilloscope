@@ -135,7 +135,7 @@ def run_once(board, inst, metric, args):
             pass
 
 
-def open_board(track, flash=False, build=False, tries=2):
+def open_board(track, flash=False, tries=2):
     """A board, optionally reflashed first.
 
     Flashing is the across-reflash axis and it is the expensive one:
@@ -156,7 +156,7 @@ def open_board(track, flash=False, build=False, tries=2):
     while True:
         attempts += 1
         if flash:
-            measure.flash(track, build=build)
+            measure.flash(track)
         b = measure.Board(settle=3.0)
         have, _ = measure.which_track(b)
         if have == track:
@@ -199,7 +199,7 @@ def take(args):
                         board = None
                     t0 = time.time()
                     board, attempts = open_board(
-                        args.track, flash=reflash, build=args.build)
+                        args.track, flash=reflash)
                     if reflash:
                         print(f"\n[{axis} {i+1}/{args.runs}] reflashed "
                               f"track {args.track} in {time.time()-t0:.0f} s"
@@ -324,8 +324,6 @@ def main():
     ap.add_argument("--axis", default="in-place",
                     choices=("in-place", "reflash", "both"))
     ap.add_argument("--track", default="b", choices=("a", "b"))
-    ap.add_argument("--build", action="store_true",
-                    help="rebuild before each reflash")
     ap.add_argument("--out", default=None,
                     help="record path (default records/phase0-<metric>.jsonl)")
     ap.add_argument("--report", action="store_true",

@@ -1,7 +1,9 @@
 {
   "version": 1,
   "$comment": [
-    "Where each host keeps its build tools.",
+    "Where each host keeps the tools this project runs on it.",
+    "",
+    "Firmware is built only in the pinned container (docs/build-container.md), so a bench needs bossac, binutils to read images, and optionally a host C compiler for the native test harnesses. The compiler and SAM core entries also describe the image.",
     "",
     "This file is COMMITTED and shared: adding a host means adding a search",
     "pattern here, not editing CMake or a script. It follows the same rule as",
@@ -24,7 +26,7 @@
   ],
   "tools": {
     "arm_toolchain": {
-      "what": "Track B cross compiler: the bin/ holding arm-none-eabi-gcc",
+      "what": "The bin/ holding arm-none-eabi-gcc. Inside the build image this is the compiler, and ARM_TOOLCHAIN_DIR names it ahead of any pattern. On a bench it is the binutils (readelf, nm) that read an image's compiler and layout into the flash log; no bench builds firmware with it",
       "requires": "arm-none-eabi-gcc",
       "reject": [
         "*/packages/arduino/tools/arm-none-eabi-gcc/*"
@@ -80,62 +82,6 @@
         ]
       }
     },
-    "arduino_cli": {
-      "what": "Track A build/upload. The Arduino IDE 2.x bundles one",
-      "requires": "arduino-cli",
-      "search": {
-        "Darwin": [
-          "{home}/.local/bin",
-          "/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources"
-        ],
-        "Windows": [
-          "{home}/AppData/Local/Programs/Arduino IDE/resources/app/lib/backend/resources",
-          "C:/Program Files/Arduino IDE/resources/app/lib/backend/resources"
-        ],
-        "Linux": [
-          "{home}/.local/bin",
-          "/opt/Arduino IDE/resources/app/lib/backend/resources"
-        ]
-      }
-    },
-    "cmake": {
-      "what": "Track B build driver. Only needed if cmake is not already on PATH",
-      "optional": true,
-      "requires": "cmake",
-      "search": {
-        "Darwin": [
-          "{home}/.local/bin",
-          "{home}/.local/opt/CMake.app/Contents/bin",
-          "/opt/local/bin"
-        ],
-        "Windows": [
-          "C:/Program Files/CMake/bin",
-          "C:/Program Files/Microsoft Visual Studio/*/*/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin"
-        ],
-        "Linux": [
-          "/usr/bin",
-          "/usr/local/bin"
-        ]
-      }
-    },
-    "ninja": {
-      "what": "Optional generator. Unix Makefiles is the default and needs no entry",
-      "optional": true,
-      "requires": "ninja",
-      "search": {
-        "Darwin": [
-          "{home}/.local/bin",
-          "/opt/local/bin"
-        ],
-        "Windows": [
-          "C:/Program Files/Microsoft Visual Studio/*/*/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja"
-        ],
-        "Linux": [
-          "/usr/bin",
-          "/usr/local/bin"
-        ]
-      }
-    },
     "arduino_sam_core": {
       "what": "Track A's vendored source: the installed arduino:sam hardware core. Only its SOURCES are used - no arduino-cli invocation and no bundled 2014 compiler (see cmake/track_a.cmake).",
       "requires": "cores/arduino/Arduino.h",
@@ -153,16 +99,15 @@
         ".json - which leaves a trace, where a glob would not."
       ],
       "search": {
-        "Darwin": [
-          "{home}/Library/Arduino15/packages/arduino/hardware/sam/1.6.12"
-        ],
-        "Windows": [
-          "{home}/AppData/Local/Arduino15/packages/arduino/hardware/sam/1.6.12"
-        ],
         "Linux": [
           "{home}/.arduino15/packages/arduino/hardware/sam/1.6.12"
         ]
-      }
+      },
+      "where_why": [
+        "Linux only, because the build image is the only place Track A is",
+        "compiled: its HOME holds the core at exactly this path. A bench flashes",
+        "the image and needs no core sources."
+      ]
     },
     "host_cc": {
       "what": "Host C compiler for the board-free framer seam test (tests/test_framer_close.py), which builds and RUNS its harness. GNU only - see CLAUDE.md, MSVC cannot build lib/due_shared. Only consulted when cc/gcc/clang are not already on PATH, which is the Windows case.",

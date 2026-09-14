@@ -145,11 +145,10 @@ def main() -> int:
     print(f"registry : {SHARED}")
     print(f"local    : {LOCAL if os.path.exists(LOCAL) else '(none)'}")
     print()
-    # Exit status reports only what the build actually needs. cmake and
-    # ninja are marked optional in the registry because a host may have
-    # them on PATH already, or use a different generator - counting them
-    # made this exit 1 on a fully working machine, and took
-    # `cmake --build build --target tools` down with it.
+    # Exit status reports only the tools not marked optional. What those
+    # are differs by where this runs: in the build image, the compiler
+    # and the SAM core; on a bench, bossac and the binutils that read an
+    # image. Neither place needs everything the registry lists.
     missing = 0
     for name, spec in reg["tools"].items():
         directory, _ = resolve_effective(name, reg)

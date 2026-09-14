@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Flash a bare-metal .bin to the Due, on any host.
 
-This is the single implementation; tools/flash.sh is a shim onto it and
-the CMake `flash` target invokes it. Where the tools live is CMake's
-business (cmake/hosttools.cmake, toolchains.json) - it passes --bossac.
-Run standalone and this resolves the same registry itself.
+This is the single implementation; tools/flash.sh is a shim onto it. It
+flashes images and builds none: every firmware image comes from the
+pinned container (`docs/build-container.md`), and an image the
+container did not build is refused. `bossac` resolves from
+toolchains.json.
 
 The Due enters SAM-BA when the programming port is opened at 1200 baud:
 the 16U2 sees the baud change followed by DTR dropping, and asserts ERASE
@@ -27,7 +28,8 @@ when the bus shows that the touch did nothing at all.
 
     python3 tools/flash.py                        # discover everything
     python3 tools/flash.py --port COM7
-    python3 tools/flash.py --bin build/x.bin --port /dev/cu.usbmodem14201
+    python3 tools/flash.py --bin docker/out/build-a/track_a_bringup.bin \
+        --port /dev/cu.usbmodem14201
 """
 from __future__ import annotations
 
@@ -964,8 +966,6 @@ def check_stamp_agrees(binary):
     the image and the tree disagreeing about its dirtiness, which
     guarantees the log cannot describe the binary.
     """
-    import hashlib
-
     baked = baked_revision(binary)
     if baked is None:
         print("==> image carries no build= stamp; nothing to check "
@@ -974,23 +974,11 @@ def check_stamp_agrees(binary):
     found = image_work_tree(binary)
     if found is UNKNOWN_WORK_TREE or found is None:
         return
-    root = found
-
-    def git(*a):
-        try:
-            return subprocess.run(("git",) + a, cwd=root, text=True,
-                                  capture_output=True,
-                                  timeout=5).stdout.strip() or None
-        except Exception:                                    # noqa: BLE001
-            return None
-
-    head = git("rev-parse", "--short", "HEAD")
-    if not head:
+    want = tree_stamp(found)
+    if want is None:
         return
-    porcelain = git("status", "--porcelain")
-    delta = (git("diff", "HEAD") or "") + "\n" + (porcelain or "")
-    want = head + ("+" + hashlib.sha256(delta.encode()).hexdigest()[:8]
-                   if porcelain else "")
+    head = want.split("+")[0]
+    porcelain = "+" in want
 
     if baked == want:
         return
@@ -1012,6 +1000,87 @@ def check_stamp_agrees(binary):
         f"looks correct on `v`. Rebuild from the\ntree you mean to record - "
         f"and note that an untracked file present when\nfw_git_rev ran "
         f"stamps the image even if it is gone now.")
+
+
+def tree_stamp(root):
+    """The `build=` stamp an image built from `root` now would carry.
+
+    The short revision, plus `+` and eight characters of the working-tree
+    delta hash when the tree is dirty - the definition
+    `cmake/fw_git_rev.cmake` stamps and `_log_flash` logs in full. None
+    when git does not answer.
+    """
+    import hashlib
+
+    def git(*a):
+        try:
+            return subprocess.run(("git",) + a, cwd=root, text=True,
+                                  capture_output=True,
+                                  timeout=5).stdout.strip() or None
+        except Exception:                                    # noqa: BLE001
+            return None
+
+    head = git("rev-parse", "--short", "HEAD")
+    if not head:
+        return None
+    porcelain = git("status", "--porcelain")
+    delta = (git("diff", "HEAD") or "") + "\n" + (porcelain or "")
+    return head + ("+" + hashlib.sha256(delta.encode()).hexdigest()[:8]
+                   if porcelain else "")
+
+
+def check_container_built(binary):
+    """Refuse an image the pinned container did not build.
+
+    Firmware is built in the container and nowhere else. A host build
+    carries whichever compiler that bench installed, a SAM core found by
+    folder name and a FreeRTOS fetched at configure time; the container
+    carries one pinned copy of each, and two benches building one commit
+    there get identical bytes.
+
+    The evidence is the record `docker/build-firmware.sh` writes beside
+    the artifacts, and `_build_env` accepts it only when it hashes to this
+    binary. So a host build, an image with no record, and an image rebuilt
+    under a record that no longer describes it are all refused. There is
+    no override, because an image worth flashing is one the container can
+    build.
+    """
+    env = _build_env(binary)["build_env"]
+    if env == "container":
+        return
+    sys.exit(
+        f"refusing to flash: {_repo_relative(binary)} was not built in the "
+        f"container (build_env: {env}).\n"
+        f"Firmware images come from the pinned container only:\n"
+        f"  {provenance.CONTAINER_BUILD}\n"
+        f"then flash the image it writes under docker/out/, with its .elf "
+        f"and build-env.json beside it.")
+
+
+def check_image_is_tree(binary):
+    """Refuse an image whose baked revision is not exactly this tree's.
+
+    `check_stamp_agrees` reports an image from another commit and lets it
+    through, because a bisect flashes other commits on purpose. A reflash
+    that stands for "this tree's firmware" is the opposite case: the flash
+    log records the tree, and `provenance.firmware()` matches the board to
+    that row by commit. An image from any other commit, or from this one
+    with a different working-tree delta, would be logged against a tree
+    that did not build it. `measure.flash()`, and through it the board
+    suite, asks for this with `--require-tree`.
+    """
+    baked = baked_revision(binary)
+    found = image_work_tree(binary)
+    root = REPO if found in (None, UNKNOWN_WORK_TREE) else found
+    want = tree_stamp(root)
+    if baked is not None and baked == want:
+        return
+    sys.exit(
+        f"refusing to flash: the image is stamped "
+        f"{baked or '(no build= stamp)'} and this tree is "
+        f"{want or '(git did not answer)'}.\n"
+        f"Rebuild in the container from this tree, then flash again:\n"
+        f"  {provenance.CONTAINER_BUILD}")
 
 
 def check_not_stale(binary, allow):
@@ -1073,11 +1142,14 @@ def check_not_stale(binary, allow):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bin", default=os.path.join(REPO, "build",
-                                                  "baremetal_bringup.bin"))
+    ap.add_argument("--bin",
+                    default=os.path.join(
+                        REPO, *provenance.CONTAINER_IMAGES["b"].split("/")),
+                    help="the image to flash; default the container's "
+                         "Track B image")
     ap.add_argument("--port", help="programming port; discovered if omitted")
     ap.add_argument("--bossac", help="bossac executable; from the registry "
-                                     "if omitted (CMake passes it)")
+                                     "if omitted")
     ap.add_argument("--samba", help="bootloader port to flash directly, for "
                                     "when more than one board is blank")
     ap.add_argument("--retries", type=int, default=3,
@@ -1099,13 +1171,21 @@ def main() -> int:
                          "is refused by default because the flash log "
                          "would otherwise record the current commit "
                          "against it (issue #35)")
+    ap.add_argument("--require-tree", action="store_true",
+                    help="refuse unless the image carries exactly this "
+                         "tree's commit and working-tree delta. "
+                         "measure.flash(), and so the board suite, passes it")
     args = ap.parse_args()
 
     binary = os.path.abspath(args.bin)
     if not os.path.isfile(binary):
-        sys.exit(f"no such binary: {binary}\nbuild it first: cmake --build build")
+        sys.exit(f"no such binary: {binary}\nFirmware is built in the "
+                 f"container only: {provenance.CONTAINER_BUILD}")
+    check_container_built(binary)
     check_not_stale(binary, args.stale_ok)
     check_stamp_agrees(binary)
+    if args.require_tree:
+        check_image_is_tree(binary)
 
     bossac = args.bossac
     if not bossac:

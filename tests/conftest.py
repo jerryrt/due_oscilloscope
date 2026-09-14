@@ -15,7 +15,11 @@ Two things shape the design:
 
   * Flashing is the slowest and least reliable step, so the suite asks
     the board which firmware it is running and flashes only when that
-    disagrees with --track. --reflash forces it.
+    disagrees with --track. --reflash forces it. A flash puts the
+    container's image of the track on the board, from `docker/out/`, and
+    builds nothing; a missing image, or one that does not carry this
+    tree's commit, is an error naming the container command, never a
+    skip.
 
 Run it from the project venv:
 
@@ -67,8 +71,6 @@ def pytest_addoption(parser):
                 help="flash even when the board already runs the right track")
     g.addoption("--no-flash", action="store_true",
                 help="never flash; fail if the wrong track is on the board")
-    g.addoption("--no-build", action="store_true",
-                help="flash the existing artefacts without rebuilding")
     g.addoption("--dso", action="store_true",
                 help="require the bench oscilloscope; without it, tests "
                      "that need one skip when it is absent")
@@ -277,7 +279,7 @@ def board(request, track):
             pytest.skip(f"board runs track {have}, wanted {want}, "
                         f"and --no-flash was given")
         b.close()
-        measure.flash(want, build=not request.config.getoption("--no-build"))
+        measure.flash(want)
         b = measure.Board(settle=3.0)
         have, banner = measure.which_track(b)
         if have != want:

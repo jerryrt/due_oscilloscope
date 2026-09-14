@@ -36,7 +36,7 @@ pytestmark = pytest.mark.smoke
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-ELF = os.path.join(REPO, "build", "baremetal_bringup.elf")
+ELF = os.path.join(REPO, "docker", "out", "build", "baremetal_bringup.elf")
 
 #: Symbols that mean a heap exists in the image.
 #:
@@ -47,8 +47,9 @@ HEAP_SYMBOLS = ("malloc", "_malloc_r", "free", "_free_r", "realloc",
                 "_realloc_r", "calloc", "_calloc_r", "_sbrk", "_sbrk_r",
                 "sbrk_aligned")
 
-_BUILD_HINT = ("build the firmware first: cmake --build build "
-               "(the guard reads the linked image, not the sources)")
+_BUILD_HINT = ("build the firmware in the container first: docker/run.sh "
+               "docker/build-firmware.sh (the guard reads the linked image, "
+               "not the sources)")
 
 
 def _nm():
@@ -125,7 +126,7 @@ def test_the_firmware_image_has_no_heap():
 
     So the useful lesson for whoever this fails on: **the link map
     names what pulls the allocator, and the call sites only imply it.**
-    `grep malloc build/baremetal_bringup.map` and read the line under
+    `grep malloc docker/out/build/baremetal_bringup.map` and read the line under
     each archive member - it says which object asked for it.
     """
     if not os.path.isfile(ELF):

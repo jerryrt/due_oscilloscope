@@ -44,11 +44,9 @@ def read_temp(samples):
 
 
 def arm(track, samples):
-    # measure.flash() is the one place that knows how each track is
-    # built; a per-track argv table here would be a second, and a
-    # hardcoded caller is how a build tool's deletion becomes a broken
-    # bench tool nobody finds until they next need it.
-    measure.flash(track=track, build=True)
+    # measure.flash() is the one place that knows where each track's
+    # image is; a per-track path table here would be a second.
+    measure.flash(track=track)
     return read_temp(samples)
 
 

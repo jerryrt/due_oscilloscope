@@ -17,12 +17,12 @@ N = int(sys.argv[1]) if len(sys.argv) > 1 else 12
 fails = 0
 
 for i in range(N):
-    # measure.flash() is the one place that knows how each track is
-    # built. windows-desk's tool and windows-desk's hardcoded COM7; a
-    # hardcoded build path here would be how a build tool's deletion
-    # becomes a broken bench tool nobody finds until they next need it.
+    # measure.flash() is the one place that knows where each track's
+    # image is. windows-desk's tool and windows-desk's hardcoded COM7; a
+    # hardcoded image path here would be how a moved artifact becomes a
+    # broken bench tool nobody finds until they next need it.
     try:
-        measure.flash(track="a", build=True, control="COM7")
+        measure.flash(track="a", control="COM7")
     except Exception as e:                               # noqa: BLE001
         print("%2d  FLASH FAILED: %s" % (i, e))
         continue

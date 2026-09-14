@@ -3,10 +3,11 @@
 #
 #     docker/run.sh docker/build-firmware.sh
 #
-# Written to run inside the image, from the repository root. It carries
-# no container knowledge at all - the commands are CLAUDE.md's, verbatim
-# - so a bench can run it directly and get its own compiler's answer to
-# compare against the container's.
+# Written to run inside the image, from the repository root, and only
+# there: firmware is built in the container and nowhere else, and
+# CMakeLists.txt refuses a configure that docker/run.sh did not launch.
+# The commands are CLAUDE.md's, verbatim. What it writes lands in
+# docker/out/, where tools/flash.py and the board suite read it.
 #
 # The configure step is idempotent and the build step is not incremental:
 # `firmware` and `firmware_track_a` are clean-build wrappers, and this

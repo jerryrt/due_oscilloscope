@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Worst-case stack depth along the deepest reachable call chain.
 
+In the build image (`docker/run.sh bash`), from the repository root -
+firmware is built there and nowhere else:
+
     cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
           -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CALLGRAPH=ON
     cmake --build build -j

@@ -4,7 +4,6 @@
 #     docker/run.sh docker/run-ci.sh              # everything
 #     docker/run.sh docker/run-ci.sh --fast       # without the elastic steps
 #     docker/run.sh docker/run-ci.sh --fuzz 900   # a real campaign
-#     docker/run-ci.sh                            # on a bench, same shape
 #
 # Written to run inside the image, from the repository root, and it
 # carries no container knowledge - the same shape as
@@ -465,8 +464,10 @@ started=$(now)
 build_blocked=
 if ! have_tool arm_toolchain; then
 	build_blocked="no arm toolchain; python3 tools/toolchain.py says where it looked"
-elif ! have_tool cmake; then
-	build_blocked="no cmake; python3 tools/toolchain.py says where it looked"
+elif ! command -v cmake >/dev/null 2>&1; then
+	build_blocked="no cmake on PATH, so this is not the build image; run it through docker/run.sh"
+elif [ -z "${DUE_BUILD_IMAGE_ID:-}" ]; then
+	build_blocked="not launched by docker/run.sh, and CMakeLists.txt refuses a configure outside the build image"
 elif ! python3 tools/toolchain.py --dir arduino_sam_core >/dev/null 2>&1; then
 	build_blocked="no Arduino SAM core, so Track A cannot build"
 elif [ -n "${DUE_BUILD_IMAGE_ID:-}" ] && [ ! -f "${DUE_FREERTOS_DIR:-/nonexistent}/include/FreeRTOS.h" ]; then
