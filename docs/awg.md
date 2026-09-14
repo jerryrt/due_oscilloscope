@@ -2289,14 +2289,30 @@ is written every 78-88 clocks - so it shows no threshold down to 78,
 and why is not established. The stream runs at
 0, at the floor everywhere; the idle DAC still runs at 1.
 
-**Two readings formed after the data, and neither is tested.** The three
-step brackets divided by the value share (400, 533] clocks, which
-contains 512, the interval between refresh conversions through the
-shared core with both channels enabled - so the threshold may be
-`512 x value`, which value 1 does not obey. And above the step the effect
-is not monotone in the interval: value 2 falls from 3.3-3.7x the floor
-at 1,600-2,600 clocks to 1.5x at 4,000, value 3 to 1.31x at 5,200, and
-value 1 to 1.36x at 2,000.
+**At values 2 and 4 the threshold is `512 x value` DACC clocks, to within
+the bracket that tested it.** 512 is the interval between refresh
+conversions through the shared core with both channels enabled. The
+rule was read off the ladder, whose three step brackets divided by the
+value share (400, 533] clocks, and then tested on the same board with
+the same scorer: one rung either side of `512 x value`, the lower
+required at the floor and the upper not.
+
+| value | predicted | at the floor at | lifted at |
+|---|---|---|---|
+| 2 | 1,024 clocks | 960 | 1,088, 1.67x the floor |
+| 4 | 2,048 | 1,920 | 2,176, 1.77-1.96x |
+
+`records/issue83-bracket-linux-x1.jsonl`, each value in two blocks that
+agree, with value 1 off the floor at every rung. Value 3 was not
+bracketed; its ladder onset, (1,200, 1,600] clocks, contains 1,536. The
+ladder read value 4 marginal at 2,000 clocks, 48 below 2,048, in another
+session, and a bracket of 128 either side cannot place the step closer
+than that. Value 1 does not obey the rule, and why is not established.
+
+**Above the step the effect is not monotone in the interval**, and this
+is a reading formed after the data, not tested: value 2 falls from
+3.3-3.7x the floor at 1,600-2,600 clocks to 1.5x at 4,000, value 3 to
+1.31x at 5,200, and value 1 to 1.36x at 2,000.
 
 **One defect, two expressions - confirmed on two hosts.** `windows-desk`
 ran the RC 32 arm and found 3 of 12 runs at 0.93738-0.93751 with

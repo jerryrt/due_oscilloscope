@@ -372,8 +372,8 @@ Check here before reasoning from general Arduino knowledge.
   band now is a regression, most likely the refresh running during a
   stream. `REFRESH(2)` removes it outright rather than halving it
   because values 2-4 leave alone a channel written more often than a
-  threshold that rises with the value - 800-1,200 DACC clocks at 2 - and
-  a stream writes every 56-390. **Why value 1 has no such threshold is
+  threshold that rises with the value - `512 x value` DACC clocks,
+  bracketed at 2 and 4 - and a stream writes every 56-390. **Why value 1 has no such threshold is
   still not explained**, and the idle DAC still runs `REFRESH(1)`.
   `docs/awg.md`.
 
