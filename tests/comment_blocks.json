@@ -6,7 +6,6 @@
     "in the same commit that adds the block, and say in the body why the",
     "block is load-bearing; lower it in the commit that removes one."
   ],
-  "apps/rtos_bringup/console_port_rtos.c": 1,
   "apps/rtos_bringup/main.c": 5,
   "apps/rtos_bringup/time_rtos.c": 1,
   "drivers/acq.h": 1,
