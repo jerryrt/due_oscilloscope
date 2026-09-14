@@ -775,13 +775,9 @@ know. One code for both would have made the container score "nothing to
 compare against" as a failure, and that is the DID NOT RUN state rather
 than an answer.
 
-**Re-taking the record is not in the container and will not be.** It
-needs `-DFIRMWARE_CALLGRAPH=ON` builds of all three tracks, and Track C
-cannot be built there at all: `apps/rtos_bringup` fetches FreeRTOS at
-configure time and `docker/run.sh` runs with `--network none`, which is
-the same reason neither analyser sees Track C. A re-take there would
-cover two tracks of three and then have to either refuse - a gate red on
-day one, which is a gate nobody reads - or skip the third and label a
-two-track record as a three-track one. What the container catches is a
+**Re-taking the record is not a container step.** A re-take builds all
+three tracks with `-DFIRMWARE_CALLGRAPH=ON` and writes the record the
+`stack report` step checks, and a gate that writes what it then compares
+passes on whatever it just wrote. What the container catches is a
 hand-edit to a generated table and a generator change nobody re-ran.
 Currency is on whoever runs `tools/stack_depth.py --record`.

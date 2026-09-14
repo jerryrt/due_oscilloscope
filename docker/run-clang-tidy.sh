@@ -21,7 +21,8 @@
 # through -isystem and are not reported: they are not ours to fix, which
 # is the same reason CMakeLists.txt marks those directories SYSTEM.
 # Everything under bsp/, drivers/, lib/due_shared/src/,
-# apps/baremetal_bringup/ and sketches/bringup/ is reported in full.
+# apps/baremetal_bringup/, apps/rtos_bringup/ and sketches/bringup/ is
+# reported in full.
 #
 # lib/due_shared/src is compiled by both tracks and is analysed once, in
 # the Track B pass, as cppcheck does it. That is a real gap and not a
@@ -29,9 +30,10 @@
 # -Dprintf=iprintf and the Arduino defines, and a finding that only
 # appears under that dialect is not looked for here.
 #
-# Track C (apps/rtos_bringup/) is NOT analysed: BUILD_TRACK_C fetches
-# FreeRTOS at configure time and docker/run.sh runs with --network none,
-# so it cannot be configured in the image at all.
+# Track C's application, apps/rtos_bringup/, is a third pass. Its drivers
+# and shared sources are Track B's and are analysed there, and FreeRTOS
+# reaches the compiler from outside the tree, where HeaderFilterRegex in
+# .clang-tidy keeps its headers out of the findings.
 #
 # THERE IS NO SUPPRESSION LIST AND NO BASELINE. A finding is answered or
 # explained, never filed. A baseline written before anyone has acted on
@@ -41,7 +43,7 @@
 #
 # EXIT CODES, and the distinction between them is the point.
 #
-#   0   clang-tidy ran over both passes and reported nothing
+#   0   clang-tidy ran over every pass and reported nothing
 #   1   clang-tidy did not analyse - the tool is absent, a build tree
 #       would not configure, a source is missing from the compile
 #       database, a translation unit did not parse, or the canary below
@@ -127,7 +129,10 @@ cmake -B "$scratch/cfg-a" -S "$repo" \
     || { sed -n '$p;/Error/p' "$scratch/cfg-a.log" >&2
          die "Track A would not configure - most likely no Arduino SAM core;
          python3 tools/toolchain.py says where it looked"; }
-echo "cfg-b, cfg-a"
+cmake -B "$scratch/cfg-c" -S "$repo"       -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake       -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_C=ON >"$scratch/cfg-c.log" 2>&1     || { sed -n '$p;/Error/p' "$scratch/cfg-c.log" >&2
+         die "Track C would not configure - the build image reads FreeRTOS
+         from DUE_FREERTOS_DIR, and a bench fetches it"; }
+echo "cfg-b, cfg-a, cfg-c"
 echo
 
 # The canary. One body, written twice so the C pass gets a .c and the
@@ -266,7 +271,11 @@ pass a "$scratch/cfg-a" CMakeFiles/track_a_bringup.dir/ \
      sketches/bringup/bringup.ino cpp sketches/bringup
 echo
 
-cat "$scratch/b.txt" "$scratch/a.txt" > "$scratch/all.txt"
+echo "== Track C: apps/rtos_bringup =="
+pass c "$scratch/cfg-c" CMakeFiles/rtos_bringup.dir/ apps/rtos_bringup/main.c c      apps/rtos_bringup
+echo
+
+cat "$scratch/b.txt" "$scratch/a.txt" "$scratch/c.txt" > "$scratch/all.txt"
 grep -E ': (warning|error): .*\]$' "$scratch/all.txt" > "$scratch/found.txt"
 
 echo "== findings =="

@@ -1546,9 +1546,9 @@ cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
 cmake --build build-a --target firmware_track_a
 tools/flash.sh build-a/track_a_bringup.bin
 
-# Track C: FreeRTOS. Fetches FreeRTOS at configure time, so it needs the
-# network once - which is why the container, running --network none,
-# does not analyse it.
+# Track C: FreeRTOS. A bench fetches it at configure time, so it needs
+# the network once; the build image carries the pinned copy, so the
+# container builds and analyses Track C with no network.
 cmake -B build-c -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
       -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_C=ON
 cmake --build build-c --target firmware_rtos
@@ -1562,7 +1562,7 @@ python3 tools/serial_probe.py /dev/cu.usbmodem14201 --send h --seconds 3
 ```
 
 **One command runs every check there is.** `docker/run.sh
-docker/run-ci.sh` builds both tracks, runs the board-free tier, runs
+docker/run-ci.sh` builds all three tracks, runs the board-free tier, runs
 that tier's positive control to prove the board absent, checks byte
 reproducibility with `tools/reproducible.py`, and runs cppcheck,
 clang-tidy and a fuzz pass - 217 s on `linux-x1`. It reports five

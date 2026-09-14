@@ -58,7 +58,7 @@ the Windows-native steps.
 
 | step | why this way |
 |---|---|
-| The build container, in WSL2: `docker/build-image.sh`, then `docker/run.sh docker/run-ci.sh` | Needs no host toolchain, no host Python and no board, and delivers both firmware tracks and every board-free check. `docs/build-container.md` says what it will not do - Track C, flashing, and the board tier are among it |
+| The build container, in WSL2: `docker/build-image.sh`, then `docker/run.sh docker/run-ci.sh` | Needs no host toolchain, no host Python and no board, and delivers all three firmware tracks and every board-free check. `docs/build-container.md` says what it will not do - flashing and the board tier are among it |
 | A real Python, then `.venv` from `requirements-dev.txt` | Windows-native, because this is what opens a port. The board-free tier runs before any build tool exists, which separates a host fault from a toolchain one |
 | `.venv-gui` from `requirements-gui.txt`, on an interpreter below 3.14 | PySide6 pins itself there, which is why the front end has its own |
 | ARM GNU 14.3.rel1 mingw-w64, unpacked to the path `toolchains.json` already searches | Nothing local is then needed, and the version keeps this host's code generator alongside `linux-x1`'s rather than alongside `mac-bench`'s |

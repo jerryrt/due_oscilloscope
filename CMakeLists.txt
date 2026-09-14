@@ -345,6 +345,10 @@ if(BUILD_TRACK_C)
     # hypothetical.
     target_compile_definitions(rtos_bringup PRIVATE FW_TRACK='C')
 
+    # The checkout's path and FreeRTOS's stay out of the image; see
+    # FREERTOS_PREFIX_MAP in cmake/freertos.cmake.
+    target_compile_options(rtos_bringup PRIVATE ${FREERTOS_PREFIX_MAP})
+
     target_include_directories(rtos_bringup PRIVATE
         ${TRACK_B_INCLUDES} ${FW_GIT_REV_DIR})
     target_include_directories(rtos_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})

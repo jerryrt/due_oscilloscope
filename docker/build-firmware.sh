@@ -1,5 +1,5 @@
 #!/bin/bash
-# Configure and build both firmware tracks, then say what built them.
+# Configure and build all three firmware tracks, then say what built them.
 #
 #     docker/run.sh docker/build-firmware.sh
 #
@@ -82,7 +82,11 @@ cmake -B build \
 cmake -B build-a \
       -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
       -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON >/dev/null
-echo "build, build-a"
+# Track C configures from the FreeRTOS copy the build image carries
+# (DUE_FREERTOS_DIR, read by cmake/freertos.cmake), and on a bench without
+# one it fetches FreeRTOS at the same pin.
+cmake -B build-c       -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake       -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_C=ON >/dev/null
+echo "build, build-a, build-c"
 echo
 
 echo "== Track B =="
@@ -95,6 +99,12 @@ cmake --build build-a --target firmware_track_a --parallel
 record_build_env build-a
 echo
 
+echo "== Track C =="
+cmake --build build-c --target firmware_rtos --parallel
+record_build_env build-c
+echo
+
 echo "== what built them =="
 python3 tools/image_fingerprint.py build/baremetal_bringup.elf
 python3 tools/image_fingerprint.py build-a/track_a_bringup.elf
+python3 tools/image_fingerprint.py build-c/rtos_bringup.elf

@@ -28,6 +28,14 @@
 # That is FetchContent's own override, not a mechanism of ours, and it
 # is what makes this work on a machine with no route to github.
 
+# THE BUILD IMAGE CARRIES A COPY. docker/Dockerfile fetches this same pin
+# when the image is built and names the directory in DUE_FREERTOS_DIR, so a
+# container build, which has no network, configures from it. An explicit
+# FETCHCONTENT_SOURCE_DIR_FREERTOS still wins.
+if(NOT FETCHCONTENT_SOURCE_DIR_FREERTOS AND DEFINED ENV{DUE_FREERTOS_DIR})
+    set(FETCHCONTENT_SOURCE_DIR_FREERTOS "$ENV{DUE_FREERTOS_DIR}")
+endif()
+
 include(FetchContent)
 
 # V11.1.0. Read the hash, not the tag.
@@ -55,6 +63,51 @@ FetchContent_MakeAvailable(freertos)
 
 message(STATUS "Track C: FreeRTOS ${FREERTOS_TAG} (${FREERTOS_COMMIT}) "
                "at ${freertos_SOURCE_DIR}")
+
+# A local copy is held to the same pin a fetch is. FREERTOS_COMMIT is an
+# annotated tag object, so both sides are peeled to the commit before they
+# are compared, and a copy with local edits is refused as well: an edited
+# kernel under the pinned hash is the mixed-revision image again.
+if(FETCHCONTENT_SOURCE_DIR_FREERTOS)
+    find_package(Git QUIET)
+    if(NOT GIT_EXECUTABLE)
+        message(FATAL_ERROR "Track C: FreeRTOS at ${freertos_SOURCE_DIR} "
+                "cannot be checked against ${FREERTOS_COMMIT} without git")
+    endif()
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} -C "${freertos_SOURCE_DIR}" rev-parse "HEAD^{commit}"
+        OUTPUT_VARIABLE _freertos_head OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _freertos_head_rc ERROR_QUIET)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} -C "${freertos_SOURCE_DIR}" rev-parse "${FREERTOS_COMMIT}^{commit}"
+        OUTPUT_VARIABLE _freertos_pin OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _freertos_pin_rc ERROR_QUIET)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} -C "${freertos_SOURCE_DIR}" diff --quiet HEAD
+        RESULT_VARIABLE _freertos_dirty_rc ERROR_QUIET)
+    if(NOT _freertos_head_rc EQUAL 0 OR NOT _freertos_pin_rc EQUAL 0
+            OR NOT _freertos_head STREQUAL _freertos_pin)
+        message(FATAL_ERROR "Track C: FreeRTOS at ${freertos_SOURCE_DIR} is not "
+                "the pinned ${FREERTOS_TAG} (${FREERTOS_COMMIT}): HEAD is "
+                "'${_freertos_head}', the pin names '${_freertos_pin}'")
+    endif()
+    if(NOT _freertos_dirty_rc EQUAL 0)
+        message(FATAL_ERROR "Track C: FreeRTOS at ${freertos_SOURCE_DIR} has "
+                "local changes on top of the pinned ${FREERTOS_TAG}")
+    endif()
+endif()
+
+# WHERE THE SOURCES SIT IS NOT PART OF THE IMAGE. FreeRTOSConfig.h's
+# configASSERT passes __FILE__, so without these a Track C image carries
+# the absolute path of the checkout and of FreeRTOS, and two builds of one
+# commit differ by where they were built: measured at 18,203 differing
+# bytes between one FreeRTOS copy in two directories. The FreeRTOS map is
+# last so it wins where FreeRTOS sits inside the tree, as it does under
+# build-c/_deps.
+set(FREERTOS_PREFIX_MAP
+    -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.
+    -ffile-prefix-map=${freertos_SOURCE_DIR}=freertos
+)
 
 # The kernel sources this project compiles. Named rather than globbed:
 # a glob would silently pick up whatever a version bump adds, and the

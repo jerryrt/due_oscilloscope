@@ -78,6 +78,15 @@ TRACKS = {
             "-DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake "
             "-DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON"),
     },
+    "c": {
+        "dir": "build-c",
+        "args": ["--target", "firmware_rtos"],
+        "artifacts": ("rtos_bringup.bin", "rtos_bringup.elf"),
+        "configure": (
+            "cmake -B build-c "
+            "-DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake "
+            "-DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_C=ON"),
+    },
 }
 
 #: Bytes of context either side of a differing byte. Wide enough to the

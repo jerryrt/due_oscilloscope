@@ -592,7 +592,7 @@ def test_the_reproducible_steps_refuse_a_tree_the_run_has_changed():
     recorded - which is how the `.bin` left on disk stopped being the one
     the run reported."""
     text = _source()
-    loop = text.index("for track in b a; do")
+    loop = text.index("for track in b a c; do")
     # Lookbehind for the reason test_the_firmware_step_is_preflighted
     # has one: `run_step "x"` is a substring of `norun_step "x"`.
     run = r'(?<![a-z_])run_step "{}'

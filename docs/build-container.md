@@ -18,9 +18,8 @@ records have been taken rather than proposed.
 | in | out |
 |---|---|
 | build identity - what an image says it is | anything that opens a serial port |
-| Track A and Track B firmware builds | the board tests |
+| Track A, Track B and Track C firmware builds | the board tests |
 | the board-free tier, `-m "not board"` | flashing - `bossac`, the 1200-baud touch, re-enumeration |
-| | **Track C's firmware.** `apps/rtos_bringup` fetches FreeRTOS at configure time and `docker/run.sh` runs `--network none`, so the RTOS track cannot be configured in the image at all. Neither analyser sees it either, and `docker/run-ci.sh` says so in its own summary rather than leaving the coverage implied |
 | static analysers over firmware and shared source | measurement of any kind |
 | build provenance: commit, compiler, the environment that ran the compiler, and the symbol map - `layout` hashes in a total order, so it compares across benches and across `nm` builds | |
 
@@ -30,7 +29,7 @@ records have been taken rather than proposed.
 docker/build-image.sh                    # once, and again when the Dockerfile changes
 docker/run.sh docker/run-ci.sh           # every check there is
 docker/run.sh docker/run-ci.sh --fast    # without the three elastic steps
-docker/run.sh docker/build-firmware.sh   # both tracks, clean, nothing else
+docker/run.sh docker/build-firmware.sh   # all three tracks, clean, nothing else
 docker/run-ci.sh                         # on a bench, same shape, host tools
 ```
 
@@ -39,14 +38,22 @@ it runs - `build-firmware.sh`, `run-tests.sh`, `run-cppcheck.sh`,
 `run-clang-tidy.sh`, `run-fuzz.sh`, `run-ci.sh` - carries no container
 knowledge and runs on a bench unchanged.
 
-Ten steps, in the order they run:
+**Track C needs no network.** The image carries FreeRTOS at the hash
+`cmake/freertos.cmake` pins, in `DUE_FREERTOS_DIR`, and the configure
+refuses a copy that is not that commit or has local changes. Track C
+compiles with the checkout's and FreeRTOS's paths mapped away
+(`FREERTOS_PREFIX_MAP`), so its image does not depend on where either
+sits: without the maps, one FreeRTOS copy moved between two directories
+changed 18,203 bytes.
+
+Eleven steps, in the order they run:
 
 | step | what it answers | gates |
 |---|---|---|
-| `firmware` | do Track B and Track A build, clean, from the pinned toolchain | yes |
+| `firmware` | do Tracks B, A and C build, clean, from the pinned toolchain | yes |
 | `host tier` | `-m "not board"`, the whole board-free suite | yes |
 | `board absent` | the board tests, under `--require-board`, must **error** for want of hardware | yes |
-| `reproducible-b`, `reproducible-a` | two builds a second apart, differing bytes counted | yes |
+| `reproducible-b`, `reproducible-a`, `reproducible-c` | two builds a second apart, differing bytes counted | yes |
 | `stack report` | does `docs/stack-depth.md` match the record it is generated from | yes |
 | `cppcheck`, `clang-tidy` | static analysis over firmware and shared source | findings are advisory; **analysing nothing** gates |
 | `fuzz` | a campaign over the shared control parser, with a positive control | a crash gates, and so does a fuzzer that could not be built |
@@ -140,7 +147,7 @@ expose, never its justification.
 
 | reason | the evidence, checked in this tree |
 |---|---|
-| **The checks run from one entry point.** `docker/run-ci.sh` builds both tracks, runs the board-free tier, proves the board absent, checks byte reproducibility, checks the stack-depth document against its record, and runs `cppcheck`, `clang-tidy` and a deterministic fuzz pass. Five states in one column - PASS, FINDINGS, FAIL, **DID NOT RUN**, NOT SELECTED - and an exit code a classifier does not recognise is DID NOT RUN, never PASS | a pinned image is what makes any of it runnable on every bench at once, and one entry point is what makes it get run |
+| **The checks run from one entry point.** `docker/run-ci.sh` builds all three tracks, runs the board-free tier, proves the board absent, checks byte reproducibility, checks the stack-depth document against its record, and runs `cppcheck`, `clang-tidy` and a deterministic fuzz pass. Five states in one column - PASS, FINDINGS, FAIL, **DID NOT RUN**, NOT SELECTED - and an exit code a classifier does not recognise is DID NOT RUN, never PASS | a pinned image is what makes any of it runnable on every bench at once, and one entry point is what makes it get run |
 | **Build provenance exists as fields and is empty as data.** #59: of 6,658 stored rows, 1 carries a layout and 8 carry a compiler; `fw_layout` is present on 64 rows and null on all 64 | a commit read off the board, plus the environment that built the artifact, makes the field mechanical instead of remembered |
 | **The board-free tier has never run without a board.** `docs/testing.md` says the `board` marker is verified two ways and both are static | a container is the dynamic check, and the marker is what the whole tier rests on |
 
@@ -299,8 +306,7 @@ container at all.
 | The 32-bit ABI arm, which has never executed on any bench natively - multilib absent on `linux-x1`, and a `qemu-i386` shadow-mapping hang on `mac-bench` | install the multilib runtimes |
 
 What is **not** given up is the project: all three tracks build on a
-host toolchain, Track C builds only there, every measurement is a host
-step, and every figure in this tree was taken on a host build. The
+host toolchain as well, every measurement is a host step, and every figure in this tree was taken on a host build. The
 container is where a third of the checks live, not where the work
 happens.
 

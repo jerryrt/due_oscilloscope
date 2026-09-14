@@ -457,8 +457,8 @@ echo "tree      : $tree_note"
 started=$(now)
 
 # --- firmware --------------------------------------------------------
-# One preflight, shared by the firmware step and the two reproducibility
-# steps, because all three spawn the same compiler. It is here rather
+# One preflight, shared by the firmware step and the three reproducibility
+# steps, because all four spawn the same compiler. It is here rather
 # than in a classifier for the reason class_build gives: an exit code
 # cannot tell a build that failed from a toolchain that was never there,
 # and those are the two states this script exists to keep apart.
@@ -469,6 +469,8 @@ elif ! have_tool cmake; then
 	build_blocked="no cmake; python3 tools/toolchain.py says where it looked"
 elif ! python3 tools/toolchain.py --dir arduino_sam_core >/dev/null 2>&1; then
 	build_blocked="no Arduino SAM core, so Track A cannot build"
+elif [ -n "${DUE_BUILD_IMAGE_ID:-}" ] && [ ! -f "${DUE_FREERTOS_DIR:-/nonexistent}/include/FreeRTOS.h" ]; then
+	build_blocked="this image carries no FreeRTOS, so Track C cannot configure with --network none; rebuild it with docker/build-image.sh"
 fi
 
 if [ -n "$build_blocked" ]; then
@@ -500,7 +502,7 @@ else
 fi
 
 # --- byte reproducibility --------------------------------------------
-for track in b a; do
+for track in b a c; do
 	if [ -n "$build_blocked" ]; then
 		norun_step "reproducible-$track" "$build_blocked"
 	elif [ "${#tree_changes[@]}" -gt 0 ]; then
@@ -520,16 +522,10 @@ done
 # generated from it agree perfectly and this step passes for ever.
 #
 # RE-TAKING THE RECORD IS A DIFFERENT STEP AND IS DELIBERATELY NOT HERE.
-# It needs -DFIRMWARE_CALLGRAPH=ON builds of all three tracks, and Track
-# C cannot be built in this container at all - apps/rtos_bringup fetches
-# FreeRTOS at configure time and docker/run.sh runs with --network none,
-# the same reason the analysers do not see it. So a re-take here would
-# cover two tracks of three and then have to decide what to do about the
-# third, and the honest options are to refuse (a gate red on day one) or
-# to skip it (a two-track record labelled as a three-track one). Folding
-# the two together would buy a gate that is green on a record nobody has
-# refreshed, which is the guard-that-cannot-fail this script exists to
-# avoid building.
+# A re-take builds all three tracks with -DFIRMWARE_CALLGRAPH=ON and
+# writes records/stack-depth.jsonl, and a gate that writes the record it
+# then compares against passes on whatever it just wrote. That is the
+# guard-that-cannot-fail this script exists to avoid building.
 #
 # What that leaves is real but narrow: this catches a hand-edit to the
 # generated tables, and a generator change that nobody re-ran. Currency
@@ -581,9 +577,6 @@ echo "                  every board test was deselected from the host"
 echo "                  tier above. A deselected test scores as a pass in"
 echo "                  any harness that greps for failures, so read the"
 echo "                  host tier's count as host code and nothing else."
-echo "Track C           NOT ANALYSED. apps/rtos_bringup fetches FreeRTOS"
-echo "                  at configure time and docker/run.sh runs with"
-echo "                  --network none, so neither analyser sees it."
 echo "the stack record  NOT RE-TAKEN. The stack report step checks that"
 echo "                  docs/stack-depth.md matches"
 echo "                  records/stack-depth.jsonl, and nothing here"

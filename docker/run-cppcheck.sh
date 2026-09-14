@@ -15,9 +15,10 @@
 # vendor/CMSIS and the Arduino SAM core are on the include path because
 # the code will not parse without them, and their own findings are
 # dropped: they are not ours to fix, which is the same reason
-# CMakeLists.txt marks those directories SYSTEM. Everything under bsp/,
-# drivers/, lib/due_shared/src/, apps/baremetal_bringup/ and
-# sketches/bringup/ is reported in full.
+# CMakeLists.txt marks those directories SYSTEM, and so are FreeRTOS's.
+# Everything under bsp/, drivers/, lib/due_shared/src/,
+# apps/baremetal_bringup/, apps/rtos_bringup/ and sketches/bringup/ is
+# reported in full.
 #
 # THERE IS NO SUPPRESSION LIST FOR OUR OWN CODE, AND --inline-suppr IS
 # NOT PASSED, so a finding cannot be silenced by a comment either. A
@@ -28,14 +29,14 @@
 # apps/baremetal_bringup/main.c is analysed although it is neither
 # drivers/ nor bsp/, because main() is the one file per track that is not
 # shared and is where four cross-track divergences were found in one
-# afternoon. Track C (apps/rtos_bringup/) is NOT analysed: BUILD_TRACK_C
-# fetches FreeRTOS at configure time and docker/run.sh runs with
-# --network none, so those headers are not present. That is a gap, not a
-# judgement about the code.
+# afternoon. Track C's application, apps/rtos_bringup/, is a third pass
+# against the FreeRTOS copy the build image carries (DUE_FREERTOS_DIR), or
+# a bench's fetched copy under build-c/_deps; its drivers and shared
+# sources are Track B's and are analysed there.
 #
 # EXIT CODES, and the distinction between them is the point.
 #
-#   0   cppcheck ran over both passes and reported nothing
+#   0   cppcheck ran over every pass and reported nothing
 #   1   cppcheck did not analyse - the tool is absent, an include did not
 #       resolve, a file did not parse, or the SAM core is not installed
 #   2   cppcheck ran and reported findings
@@ -66,6 +67,10 @@ core=$(python3 tools/toolchain.py --dir arduino_sam_core) \
 [ -f "$core/cores/arduino/Arduino.h" ] \
     || die "Arduino SAM core at '$core' has no cores/arduino/Arduino.h"
 
+freertos=${DUE_FREERTOS_DIR:-build-c/_deps/freertos-src}
+[ -f "$freertos/include/FreeRTOS.h" ] \
+    || die "no FreeRTOS at '$freertos'; the build image carries one, and a bench has one after configuring build-c with -DBUILD_TRACK_C=ON"
+
 # fw_git_rev.h is generated, and console.c and ctl_port.c include it. It
 # normally lands in a build tree; generating it into a scratch directory
 # keeps this script independent of whether anything has been built, and
@@ -86,6 +91,7 @@ common=(
     '--template={file}:{line}:{column}: {severity}: {message} [{id}]'
     '--suppress=*:vendor/*'
     "--suppress=*:$core/*"
+    "--suppress=*:$freertos/*"
     # <stdint.h> and the rest of libc are not on the path and are not
     # meant to be: cppcheck models them itself and says so in the note it
     # emits. missingIncludeSystem is that note. Its sibling
@@ -143,7 +149,23 @@ a_status=$?
 sort "$scratch/a.txt"
 echo
 
-cat "$scratch/b.txt" "$scratch/a.txt" > "$scratch/all.txt"
+# Track C's application, as C, against FreeRTOS. Its drivers and the
+# shared sources are Track B's and were analysed in that pass.
+echo "== Track C, apps/rtos_bringup (C11, FreeRTOS) =="
+cppcheck "${common[@]}" \
+    --std=c11 \
+    -I apps/rtos_bringup -I bsp -I drivers -I lib/due_shared/src \
+    -I "$freertos/include" -I "$freertos/portable/GCC/ARM_CM3" \
+    -I vendor/CMSIS/Include \
+    -I vendor/CMSIS/Device/ATMEL \
+    -I vendor/CMSIS/Device/ATMEL/sam3xa/include \
+    apps/rtos_bringup \
+    >"$scratch/c.txt" 2>&1
+c_status=$?
+sort "$scratch/c.txt"
+echo
+
+cat "$scratch/b.txt" "$scratch/a.txt" "$scratch/c.txt" > "$scratch/all.txt"
 
 # A file that did not parse produces no findings, and no findings is what
 # a clean run also produces. These ids mean the analysis did not happen,
@@ -167,8 +189,8 @@ fi
 # cppcheck exits 1 on a usage or configuration failure and 0 otherwise.
 # --error-exitcode is deliberately not used: it cannot tell a finding
 # from a parse failure, and this script has to.
-if [ "$b_status" -gt 1 ] || [ "$a_status" -gt 1 ]; then
-    die "cppcheck exited $b_status (C) / $a_status (C++)"
+if [ "$b_status" -gt 1 ] || [ "$a_status" -gt 1 ] || [ "$c_status" -gt 1 ]; then
+    die "cppcheck exited $b_status (Track B) / $a_status (Track A) / $c_status (Track C)"
 fi
 
 echo "== findings =="

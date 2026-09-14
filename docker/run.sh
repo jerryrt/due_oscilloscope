@@ -2,7 +2,7 @@
 # Run a command inside the pinned build image against this working tree.
 #
 #     docker/run.sh                            # an interactive shell
-#     docker/run.sh docker/build-firmware.sh   # both tracks, clean
+#     docker/run.sh docker/build-firmware.sh   # all three tracks, clean
 #     docker/run.sh docker/run-tests.sh        # the board-free tier
 #     docker/run.sh python3 tools/toolchain.py
 #
@@ -15,8 +15,8 @@
 # everything it writes is already the user's. The image sets HOME to a
 # container path, so a uid with no passwd entry still has one.
 #
-# THE BUILD DIRECTORIES ARE NOT THE BENCH'S. `build/` and `build-a/`
-# inside the container are bind mounts onto docker/out/, so a container
+# THE BUILD DIRECTORIES ARE NOT THE BENCH'S. `build/`, `build-a/` and
+# `build-c/` inside the container are bind mounts onto docker/out/, so a container
 # build cannot overwrite the images a bench has on its board - the
 # container's compiler is xPack and the bench's may be anything, and two
 # different images under one path is the mixed-revision hazard again.
@@ -87,7 +87,7 @@ print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())')
 # which is root, and `--user` does not reach it: the first run without
 # these left root-owned `build/` and `build-a/` in the host tree and
 # cmake then refused to configure there. Measured, not anticipated.
-mkdir -p "$here/out/build" "$here/out/build-a" "$repo/build" "$repo/build-a"
+mkdir -p "$here/out/build" "$here/out/build-a" "$here/out/build-c" \n         "$repo/build" "$repo/build-a" "$repo/build-c"
 
 flags=(
     --rm
@@ -96,6 +96,7 @@ flags=(
     --volume "$repo:/work"
     --volume "$here/out/build:/work/build"
     --volume "$here/out/build-a:/work/build-a"
+    --volume "$here/out/build-c:/work/build-c"
     --workdir /work
     --env "DUE_BUILD_IMAGE=$image"
     --env "DUE_BUILD_IMAGE_ID=$image_id"

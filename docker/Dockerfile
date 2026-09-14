@@ -253,6 +253,27 @@ RUN set -eux; \
     test -f "${HOME}/.arduino15/packages/arduino/hardware/sam/${SAM_CORE_VERSION}/cores/arduino/Arduino.h"; \
     chmod -R a+rX "${HOME}"
 
+# FreeRTOS for Track C, at the hash cmake/freertos.cmake pins. docker/run.sh
+# runs --network none and a Track C configure fetches otherwise, so the copy
+# is taken here and named in DUE_FREERTOS_DIR, which freertos.cmake reads.
+# FREERTOS_COMMIT is freertos.cmake's hash, an annotated tag object, and
+# FREERTOS_PEELED is the commit it names; both are checked, so a different
+# object stops the build. tests/test_clean_build.py holds the first equal to
+# freertos.cmake's. One commit and no history, about 19 MB.
+ARG FREERTOS_COMMIT=f388a5c8078e152913e4eb3c5d75bf89561392df
+ARG FREERTOS_PEELED=dbf70559b27d39c1fdb68dfb9a32140b6a6777a0
+ENV DUE_FREERTOS_DIR=/opt/freertos/FreeRTOS-Kernel
+RUN set -eux; \
+    git init -q "${DUE_FREERTOS_DIR}"; \
+    git -C "${DUE_FREERTOS_DIR}" fetch -q --depth 1 \
+        https://github.com/FreeRTOS/FreeRTOS-Kernel.git "${FREERTOS_COMMIT}"; \
+    test "$(git -C "${DUE_FREERTOS_DIR}" cat-file -t FETCH_HEAD)" = tag; \
+    git -C "${DUE_FREERTOS_DIR}" checkout -q "FETCH_HEAD^{commit}"; \
+    test "$(git -C "${DUE_FREERTOS_DIR}" rev-parse HEAD)" = "${FREERTOS_PEELED}"; \
+    test "$(git -C "${DUE_FREERTOS_DIR}" rev-parse "${FREERTOS_COMMIT}^{commit}")" = "${FREERTOS_PEELED}"; \
+    test -f "${DUE_FREERTOS_DIR}/include/FreeRTOS.h"; \
+    chmod -R a+rX /opt/freertos
+
 # The suite's venv, built at image time because docker/run.sh runs with
 # --network none and pip cannot reach an index from there. It lives
 # outside /work on purpose: /work is a bind mount of the bench's own

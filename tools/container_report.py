@@ -54,13 +54,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 SCHEMA = "container-universality/1"
 
-#: The ten steps `docker/run-ci.sh` runs, in its own order, and the log
+#: The eleven steps `docker/run-ci.sh` runs, in its own order, and the log
 #: each writes. A step absent from the log directory is reported absent
 #: rather than skipped over: a missing log and a step that passed are the
 #: same silence otherwise.
 STEPS = ("firmware", "host-tier", "board-absent", "reproducible-b",
-         "reproducible-a", "stack-report", "cppcheck", "clang-tidy", "fuzz",
-         "working-tree")
+         "reproducible-a", "reproducible-c", "stack-report", "cppcheck",
+         "clang-tidy", "fuzz", "working-tree")
 
 #: pytest's own tail. Matched on the summary line and not on the body,
 #: for the reason class_board_absent gives: a clean run's log contains

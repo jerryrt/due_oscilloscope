@@ -836,3 +836,56 @@ def test_track_c_freertos_is_pinned_to_a_commit_not_a_tag():
     assert m, (
         "FREERTOS_COMMIT is not a full 40-character SHA. A tag or a "
         "short hash is not a lock.")
+
+
+def test_the_build_image_carries_the_freertos_cmake_pins():
+    """The image's FreeRTOS copy is fetched at freertos.cmake's hash.
+
+    `docker/Dockerfile` cannot read `cmake/`: its build context is
+    `docker/`. So the pin is written twice, and a bump that reaches one
+    file and not the other leaves the image carrying a FreeRTOS the host
+    build does not use. freertos.cmake's own check then refuses it at
+    configure, inside the container, where the first sign is a red
+    firmware step rather than this line.
+    """
+    path = os.path.join(REPO, "cmake", "freertos.cmake")
+    if not os.path.isfile(path):
+        pytest.skip("Track C is not in this tree yet")
+    pin = re.search(r'set\(FREERTOS_COMMIT\s+"([0-9a-f]{40})"\)',
+                    _read("cmake", "freertos.cmake"))
+    arg = re.search(r"^ARG FREERTOS_COMMIT=([0-9a-f]{40})$",
+                    _read("docker", "Dockerfile"), re.M)
+    assert pin, "freertos.cmake no longer pins FREERTOS_COMMIT"
+    assert arg, ("docker/Dockerfile no longer fetches FreeRTOS at a pinned "
+                 "ARG FREERTOS_COMMIT, so a container build of Track C has "
+                 "no copy and no network")
+    assert arg.group(1) == pin.group(1), (
+        f"docker/Dockerfile fetches FreeRTOS {arg.group(1)} and "
+        f"cmake/freertos.cmake pins {pin.group(1)}")
+
+
+def test_track_c_keeps_the_build_path_out_of_its_image():
+    """Two builds of one commit must not differ by where they were built.
+
+    `configASSERT` in FreeRTOSConfig.h passes `__FILE__`, which puts the
+    absolute path of the checkout and of FreeRTOS into the image. Moving
+    one FreeRTOS copy between two directories changed 18,203 bytes of the
+    Track C image. The FreeRTOS map has to come after the checkout's,
+    because FreeRTOS sits inside the checkout under build-c/_deps and
+    GCC applies the last matching map.
+    """
+    path = os.path.join(REPO, "cmake", "freertos.cmake")
+    if not os.path.isfile(path):
+        pytest.skip("Track C is not in this tree yet")
+    maps = re.findall(r"-ffile-prefix-map=\$\{(\w+)\}=",
+                      _read("cmake", "freertos.cmake"))
+    assert "CMAKE_SOURCE_DIR" in maps and "freertos_SOURCE_DIR" in maps, (
+        f"freertos.cmake maps {maps}; both the checkout and FreeRTOS have "
+        "to be mapped or their paths reach the image")
+    assert maps.index("freertos_SOURCE_DIR") > maps.index("CMAKE_SOURCE_DIR"), (
+        "the FreeRTOS map comes before the checkout's, so a FreeRTOS copy "
+        "inside the tree is mapped as part of the checkout")
+    assert re.search(r"target_compile_options\(rtos_bringup\s+PRIVATE\s+"
+                     r"\$\{FREERTOS_PREFIX_MAP\}\)", _read("CMakeLists.txt")), (
+        "rtos_bringup does not compile with FREERTOS_PREFIX_MAP, so the "
+        "maps are defined and never reach the compiler")
