@@ -1,35 +1,39 @@
 #!/usr/bin/env python3
-"""Issue #83: score the refresh threshold sweep by the rule registered on the issue.
+"""Issue #83: score a refresh threshold arm by the rule registered on the issue.
 
-The sweep is `tools/issue5_alias_sweep.py --fws 6 -n 7` over ten presets,
-RC 195 to 2600, run as seven whole blocks on seven images of one tree that
-differ only in `GEN_REFRESH_STREAM`, in the registered order 2, 0, 4, 1, 3,
-2, 0. A block joins the record only once its 70 rows are complete, so a
-row's block is its position; the guards below refuse a record where that
-does not hold.
+An arm is `tools/issue5_alias_sweep.py --fws 6 -n 7` over a set of presets,
+run as whole blocks on images of one tree that differ only in
+`GEN_REFRESH_STREAM`, in a registered order. A block joins the record only
+once all its rows are complete, so a row's block is its position; the
+guards below refuse a record where that does not hold.
 
-The rule, as registered before any row existed:
+Classification, as registered before any row existed:
 
 - run 1 of every (block, RC) is dropped by index; `hold_ok` false is
   excluded and counted;
 - everything is compared within one RC, against the pooled counted runs of
-  both REFRESH 0 blocks at that RC;
+  every REFRESH 0 block at that RC;
 - FLOOR: the block's counted total_abs range overlaps that pool;
 - LIFTED: every counted run above the pool's maximum, and the block median
   at least 1.5x the pool's median;
-- MARGINAL: no overlap, under 1.5x;
-- a rung where the two blocks of one refresh value classify differently
-  is UNSTABLE and left out; a rung where REFRESH 1 is not lifted is
-  UNINFORMATIVE and left out;
-- T for a value is the lowest rung from which that rung and every longer
-  one are lifted, one marginal allowed immediately below it.
+- MARGINAL: no overlap, under 1.5x.
 
-Where T does not exist the tool says why, and reports the onset - the
-first lifted rung after the last floor - separately, labelled as outside
-the registered rule.
+Two verdicts, one per arm:
+
+- the ladder (default): a rung where the two blocks of one value classify
+  differently is UNSTABLE, a rung where REFRESH 1 is not lifted is
+  UNINFORMATIVE, both are left out, and T for a value is the lowest rung
+  from which that rung and every longer one are lifted;
+- the bracket (`--pairs 2:480,544;4:960,1088`): for each value, the lower
+  rung must be FLOOR and the upper NOT FLOOR (lifted or marginal). A rung
+  where that value's blocks disagree about floor is UNSTABLE, a rung where
+  REFRESH 1 is floor is UNINFORMATIVE; either leaves the value unscored.
 
     .venv/bin/python tools/issue83_threshold_score.py \
         records/issue83-threshold-sweep-linux-x1.jsonl
+    .venv/bin/python tools/issue83_threshold_score.py \
+        records/issue83-bracket-linux-x1.jsonl \
+        --order 2,0,4,1,4,0,2 --per-block 28 --pairs "2:480,544;4:960,1088"
 """
 import argparse
 import collections
@@ -39,29 +43,29 @@ import statistics
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORDER = [2, 0, 4, 1, 3, 2, 0]    # registered on #83
-PER_BLOCK = 70                   # 10 presets x 7 runs
+LADDER_ORDER = "2,0,4,1,3,2,0"    # registered on #83 for the ladder
+LADDER_PER_BLOCK = 70             # 10 presets x 7 runs
 
 
-def load(path):
+def load(path, order, per_block):
     with open(path, encoding="utf-8") as f:
         rows = [json.loads(line) for line in f if line.strip()]
-    if len(rows) % PER_BLOCK:
-        raise SystemExit(f"{len(rows)} rows is not whole blocks of {PER_BLOCK}")
-    if len(rows) // PER_BLOCK > len(ORDER):
-        raise SystemExit(f"{len(rows) // PER_BLOCK} blocks, registered order has {len(ORDER)}")
+    if len(rows) % per_block:
+        raise SystemExit(f"{len(rows)} rows is not whole blocks of {per_block}")
+    if len(rows) // per_block > len(order):
+        raise SystemExit(f"{len(rows) // per_block} blocks, registered order has {len(order)}")
     builds = collections.defaultdict(set)
     for i, r in enumerate(rows):
-        builds[i // PER_BLOCK + 1].add(r["fw_build"])
+        builds[i // per_block + 1].add(r["fw_build"])
     for blk, bs in builds.items():
         if len(bs) != 1:
             raise SystemExit(f"block {blk} spans images {sorted(bs)}")
-        v, b = ORDER[blk - 1], next(iter(bs))
+        v, b = order[blk - 1], next(iter(bs))
         if (v == 0) != ("+" not in b):
             raise SystemExit(f"block {blk} is REFRESH {v} on build {b}")
     for a in builds:
         for c in builds:
-            if (builds[a] == builds[c]) != (ORDER[a - 1] == ORDER[c - 1]):
+            if (builds[a] == builds[c]) != (order[a - 1] == order[c - 1]):
                 raise SystemExit(f"blocks {a} and {c}: image identity does "
                                  f"not match refresh value")
     return rows
@@ -73,18 +77,35 @@ def classify(ta, floor):
     return "lifted" if statistics.median(ta) >= 1.5 * statistics.median(floor) else "marginal"
 
 
+def parse_pairs(text):
+    pairs = {}
+    for part in text.split(";"):
+        v, rcs = part.split(":")
+        lo, hi = (int(x) for x in rcs.split(","))
+        if not lo < hi:
+            raise SystemExit(f"pair for REFRESH {v}: lower rung {lo} is not below {hi}")
+        pairs[int(v)] = (lo, hi)
+    return pairs
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("record", nargs="?", default=os.path.join(
         ROOT, "records", "issue83-threshold-sweep-linux-x1.jsonl"))
+    ap.add_argument("--order", default=LADDER_ORDER,
+                    help="registered refresh value per block, comma separated")
+    ap.add_argument("--per-block", type=int, default=LADDER_PER_BLOCK)
+    ap.add_argument("--pairs", default=None,
+                    help="bracket verdict, e.g. '2:480,544;4:960,1088'")
     args = ap.parse_args()
-    rows = load(args.record)
+    order = [int(x) for x in args.order.split(",")]
+    rows = load(args.record, order, args.per_block)
 
     data = collections.defaultdict(list)
     excluded = collections.Counter()
     for i, r in enumerate(rows):
-        blk = i // PER_BLOCK + 1
-        key = (blk, ORDER[blk - 1], r["rc"])
+        blk = i // args.per_block + 1
+        key = (blk, order[blk - 1], r["rc"])
         if r["run1"]:
             continue
         if not r["hold_ok"]:
@@ -124,12 +145,40 @@ def main():
                 state[(v, rc)] = cls
 
     print("\nREGISTERED VERDICTS")
-    if len(blocks_of[0]) == 2:
-        b1, b2 = blocks_of[0]
-        sep = [rc for rc in rcs
-               if classify([x for x, _ in data[(b1, 0, rc)]], [x for x, _ in data[(b2, 0, rc)]]) != "floor"
-               or classify([x for x, _ in data[(b2, 0, rc)]], [x for x, _ in data[(b1, 0, rc)]]) != "floor"]
-        print(f"  REFRESH 0 blocks separate at: {sep or 'no rung'}")
+    r0 = blocks_of[0]
+    sep = [rc for rc in rcs for a in r0 for c in r0 if a != c
+           and classify([x for x, _ in data[(a, 0, rc)]], [x for x, _ in data[(c, 0, rc)]]) != "floor"]
+    print(f"  REFRESH 0 blocks separate at: {sorted(set(sep)) or 'no rung'}")
+
+    if args.pairs:
+        return bracket(parse_pairs(args.pairs), rcs, state)
+    return ladder(rcs, state, blocks_of)
+
+
+def bracket(pairs, rcs, state):
+    for v, (lo, hi) in pairs.items():
+        for rc in (lo, hi):
+            if rc not in rcs or (v, rc) not in state or (1, rc) not in state:
+                raise SystemExit(f"REFRESH {v} or the REFRESH 1 control has no rows at RC {rc}")
+    uninformative = [rc for rc in sorted({x for p in pairs.values() for x in p})
+                     if any(c == "floor" for c in state[(1, rc)])]
+    print(f"  REFRESH 1 floor (uninformative rungs): {uninformative or 'none'}")
+    for v, (lo, hi) in sorted(pairs.items()):
+        lo_c, hi_c = state[(v, lo)], state[(v, hi)]
+        unstable = [rc for rc, cl in ((lo, lo_c), (hi, hi_c))
+                    if len({c == "floor" for c in cl}) > 1]
+        desc = (f"RC {lo} ({2 * lo} clocks) {'/'.join(lo_c)}, "
+                f"RC {hi} ({2 * hi} clocks) {'/'.join(hi_c)}")
+        if unstable or lo in uninformative or hi in uninformative:
+            print(f"  REFRESH {v}: UNSCORED - {desc}; unstable {unstable or 'none'}, "
+                  f"uninformative {[rc for rc in (lo, hi) if rc in uninformative] or 'none'}")
+            continue
+        ok = lo_c[0] == "floor" and hi_c[0] != "floor"
+        print(f"  REFRESH {v}: {'CONFIRMED' if ok else 'REFUTED'} - {desc}")
+    return 0
+
+
+def ladder(rcs, state, blocks_of):
     uninformative = [rc for rc in rcs if 1 in blocks_of and state[(1, rc)][0] != "lifted"]
     verdict = "OVERALL UNINFORMATIVE" if len(uninformative) > len(rcs) / 2 else "control holds"
     print(f"  REFRESH 1 not lifted (uninformative rungs): {uninformative or 'none'} - {verdict}")
