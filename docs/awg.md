@@ -2283,10 +2283,11 @@ rule:
 step once, and the step moves up with the value; 3's onset sits between
 them. A stream at RC 28-195 writes each channel every 56-390 clocks,
 below every threshold here, which is why 2-4 read clean at stream rates.
-Value 1 is lifted at 390, the shortest interval in this sweep, and the
-playback ladder above has it slowing RC 39 and 44, where each channel
-is written every 78-88 clocks - so it shows no threshold down to 78,
-and why is not established. The stream runs at
+Value 1 has no threshold at any interval a stream can reach. At RC 28,
+where each channel is written every 56 clocks - the DACC's fastest - it
+draws the 2/256 playback mode in 14 of 48 runs against 0 of 48 at value
+0, with RC 39 firing on every value-1 run as the control
+(`records/issue83-v1a-ratio-linux-x1.jsonl`). Why is not established. The stream runs at
 0, at the floor everywhere; the idle DAC still runs at 1.
 
 **At values 2 and 4 the threshold is `512 x value` DACC clocks, to within
@@ -2303,11 +2304,24 @@ required at the floor and the upper not.
 | 4 | 2,048 | 1,920 | 2,176, 1.77-1.96x |
 
 `records/issue83-bracket-linux-x1.jsonl`, each value in two blocks that
-agree, with value 1 off the floor at every rung. Value 3 was not
-bracketed; its ladder onset, (1,200, 1,600] clocks, contains 1,536. The
-ladder read value 4 marginal at 2,000 clocks, 48 below 2,048, in another
-session, and a bracket of 128 either side cannot place the step closer
-than that. Value 1 does not obey the rule, and why is not established.
+agree, with value 1 off the floor at every rung. Value 3's bracket did not confirm. At 1,472 clocks, 64 below `512 x 3`,
+both value-3 blocks read marginal - 1.22-1.26x the floor, every run
+above it - and both are lifted at 1,600
+(`records/issue83-v1c-bracket-linux-x1.jsonl`). With the ladder's value
+4 marginal at 2,000 clocks, 48 below 2,048, the step at 3 and 4 begins
+a little below `512 x value` or ramps in rather than switching; neither
+has been tested. The brackets at 2 and 4 stand as scored.
+
+**The skip follows the shared core, not each channel's own writes.**
+In SOLO (`=3J`) every table entry is tagged DAC0 and DAC1 is enabled
+but never written. A refresh keyed to each channel's staleness would
+then fire on DAC1 at value 2; it does not. At `=100000,200000M` in SOLO
+and `=200000,200000M` in cycle sync - DAC0 written every 390 clocks in
+both - value 2 sits at the value-0 floor in both modes while value 1
+lifts both (`records/issue83-v1b-solo-linux-x1.jsonl`). So the tables
+above state the threshold in the per-channel write interval of a
+stream that writes both channels, where the core itself converts every
+RC clocks, half that interval. Value 1 does not obey the rule, and why is not established.
 
 **Above the step the effect is not monotone in the interval**, and this
 is a reading formed after the data, not tested: value 2 falls from
