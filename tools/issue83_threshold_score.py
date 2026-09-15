@@ -18,7 +18,7 @@ Classification, as registered before any row existed:
   at least 1.5x the pool's median;
 - MARGINAL: no overlap, under 1.5x.
 
-Two verdicts, one per arm:
+Three verdicts, one per arm:
 
 - the ladder (default): a rung where the two blocks of one value classify
   differently is UNSTABLE, a rung where REFRESH 1 is not lifted is
@@ -27,7 +27,11 @@ Two verdicts, one per arm:
 - the bracket (`--pairs 2:480,544;4:960,1088`): for each value, the lower
   rung must be FLOOR and the upper NOT FLOOR (lifted or marginal). A rung
   where that value's blocks disagree about floor is UNSTABLE, a rung where
-  REFRESH 1 is floor is UNINFORMATIVE; either leaves the value unscored.
+  REFRESH 1 is floor is UNINFORMATIVE; either leaves the value unscored;
+- the step shape (`--steps 3:704,...,784;4:960,...,1040`, V1d): a value
+  whose blocks disagree about any of its rungs, or whose REFRESH 1 control
+  is floor at any of them, is UNINFORMATIVE. Otherwise its rungs, in
+  increasing interval, are read by step_reading() against 512 x value.
 
     .venv/bin/python tools/issue83_threshold_score.py \
         records/issue83-threshold-sweep-linux-x1.jsonl
@@ -45,6 +49,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LADDER_ORDER = "2,0,4,1,3,2,0"    # registered on #83 for the ladder
 LADDER_PER_BLOCK = 70             # 10 presets x 7 runs
+THRESHOLD_CLOCKS = 512            # per refresh value, the reading under test
+RANK = {"floor": 0, "marginal": 1, "lifted": 2}
 
 
 def load(path, order, per_block):
@@ -103,6 +109,55 @@ def parse_pairs(text):
     return pairs
 
 
+def parse_steps(text):
+    steps = {}
+    for part in text.split(";"):
+        v, rcs = part.split(":")
+        rungs = [int(x) for x in rcs.split(",")]
+        if rungs != sorted(set(rungs)) or len(rungs) < 3:
+            raise SystemExit(f"steps for REFRESH {v}: rungs must be three or more, "
+                             f"increasing: {rungs}")
+        steps[int(v)] = rungs
+    return steps
+
+
+def step_reading(seq, threshold):
+    """Read one value's rungs, registered on #83 for V1d before any row.
+
+    `seq` is [(interval, class, ratio)] in increasing interval, `ratio` the
+    value's pooled counted median over the REFRESH 0 median at that rung.
+    The shape must be monotone - floor rungs, then marginal, then lifted -
+    before any reading applies. The three readings are disjoint: STEP AT
+    needs every rung below the threshold floor, STEP BELOW a non-floor rung
+    below it, and RAMP two or more marginal rungs where both steps allow
+    one. Every other shape is named rather than scored.
+    """
+    cls = [c for _, c, _ in seq]
+    if any(RANK[b] < RANK[a] for a, b in zip(cls, cls[1:])):
+        return "NON-MONOTONE"
+    nf, nm, nl = cls.count("floor"), cls.count("marginal"), cls.count("lifted")
+    if nf == len(cls):
+        return "NO STEP IN WINDOW"
+    if nf == 0:
+        return "ONSET BELOW WINDOW"
+    if nl == 0:
+        return "NOT LIFTED BY THE TOP RUNG"
+    if (all(c == "floor" for iv, c, _ in seq if iv < threshold)
+            and all(c == "lifted" for iv, c, _ in seq if iv > threshold)):
+        return "STEP AT 512 x VALUE"
+    if nm <= 1:
+        if seq[nf][0] < threshold:
+            return "STEP BELOW 512 x VALUE"
+        return "STEP ABOVE 512 x VALUE"
+    ratios = [r for _, c, r in seq if c == "marginal"]
+    if all(b >= a for a, b in zip(ratios, ratios[1:])):
+        return "RAMP"
+    return "RAMP NOT RISING"
+
+
+REGISTERED_READINGS = ("STEP AT 512 x VALUE", "STEP BELOW 512 x VALUE", "RAMP")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("record", nargs="?", default=os.path.join(
@@ -112,7 +167,11 @@ def main():
     ap.add_argument("--per-block", type=int, default=LADDER_PER_BLOCK)
     ap.add_argument("--pairs", default=None,
                     help="bracket verdict, e.g. '2:480,544;4:960,1088'")
+    ap.add_argument("--steps", default=None,
+                    help="step-shape verdict, e.g. '3:704,720,736;4:960,976,992'")
     args = ap.parse_args()
+    if args.pairs and args.steps:
+        raise SystemExit("--pairs and --steps are two different arms")
     order = [int(x) for x in args.order.split(",")]
     rows = load(args.record, order, args.per_block)
 
@@ -142,6 +201,7 @@ def main():
 
     print("counted total_abs: median [min-max], median sites, class against the REFRESH 0 pool")
     state = {}
+    ratio = {}
     for rc in rcs:
         fl = floor_at(rc)
         print(f"RC {rc:4d}  interval {iv[rc]:4d} clocks  floor median "
@@ -159,6 +219,8 @@ def main():
                       f"{c}" + (f"  (hold_ok false: {ex})" if ex else ""))
             if v:
                 state[(v, rc)] = cls
+                pooled = [x for b in blocks_of[v] for x, _ in data[(b, v, rc)]]
+                ratio[(v, rc)] = statistics.median(pooled) / statistics.median(fl)
 
     print("\nREGISTERED VERDICTS")
     r0 = blocks_of[0]
@@ -168,6 +230,8 @@ def main():
 
     if args.pairs:
         return bracket(parse_pairs(args.pairs), rcs, state, iv)
+    if args.steps:
+        return steps(parse_steps(args.steps), rcs, state, ratio, iv)
     return ladder(rcs, state, blocks_of, iv)
 
 
@@ -191,6 +255,29 @@ def bracket(pairs, rcs, state, iv):
             continue
         ok = lo_c[0] == "floor" and hi_c[0] != "floor"
         print(f"  REFRESH {v}: {'CONFIRMED' if ok else 'REFUTED'} - {desc}")
+    return 0
+
+
+def steps(spec, rcs, state, ratio, iv):
+    for v, rungs in spec.items():
+        for rc in rungs:
+            if rc not in rcs or (v, rc) not in state or (1, rc) not in state:
+                raise SystemExit(f"REFRESH {v} or the REFRESH 1 control has no rows at RC {rc}")
+    for v, rungs in sorted(spec.items()):
+        threshold = THRESHOLD_CLOCKS * v
+        unstable = [rc for rc in rungs if len(set(state[(v, rc)])) > 1]
+        control_floor = [rc for rc in rungs if any(c == "floor" for c in state[(1, rc)])]
+        line = "  ".join(f"{iv[rc]}:{'/'.join(c[0].upper() for c in state[(v, rc)])}"
+                         f"({ratio[(v, rc)]:.2f}x)" for rc in rungs)
+        print(f"  REFRESH {v}, threshold {threshold} clocks: {line}")
+        if unstable or control_floor:
+            print(f"      UNINFORMATIVE - blocks disagree at RC {unstable or 'none'}, "
+                  f"REFRESH 1 floor at RC {control_floor or 'none'}")
+            continue
+        seq = [(iv[rc], state[(v, rc)][0], ratio[(v, rc)]) for rc in rungs]
+        reading = step_reading(seq, threshold)
+        tag = "" if reading in REGISTERED_READINGS else "  (matches no registered reading)"
+        print(f"      {reading}{tag}")
     return 0
 
 
