@@ -34,6 +34,25 @@ comb absent at all three, with RC 195 firing in the same session, is a
 null on the margin and not a refutation of the period; a 21-comb is.
 
     sg dialout -c '.venv/bin/python tools/issue5_alias_sweep.py --bench linux-x1'
+
+SOLO (`--sync solo`, issue #83 V1b). Every table entry is tagged DAC0, so
+DAC0 is written on every DAC trigger and DAC1 never. Two things the
+default layout gives for free have to be supplied:
+
+- **The hold.** pair_fold differences the two A0 samples of one DAC0
+  level. At equal rates SOLO gives one A0 sample per level and the
+  difference is a DAC step, which hold_ok refuses. So a SOLO preset must
+  run the ADC at exactly twice the DAC rate - `100000:200000`, which is
+  `=100000,200000M` - and anything else is refused before the board is
+  touched.
+- **The fold.** The table is GEN_TABLE_LEN DAC0 entries rather than half
+  that, so one wrap is 2 * GEN_TABLE_LEN A0 samples. Folding at
+  GEN_TABLE_LEN lays the two halves of the table over each other and
+  halves a one-entry site; `tests/test_issue5_alias_sweep.py` shows it.
+
+A DAC0 bin is RC DACC clocks under SOLO and 2 * RC otherwise, so
+`=100000,200000M` SOLO writes DAC0 every 390 clocks, as cycle sync does at
+`=200000,200000M`. Each row records `write_interval_clocks` for the scorer.
 """
 import argparse
 import collections
@@ -53,6 +72,7 @@ WINDOW = (-18, 2)        # the campaign's fitted width, registered
 SITE_CODES = 4.0         # |dev| threshold for a site, in codes
 PRESETS = [200000, 209677, 197970, 205263, 203125]
 DEFAULT_FWS = "6,5,4"
+SYNC_CYCLE = measure.GEN_SYNCS["cycle"]   # the firmware default, restored at exit
 
 
 def rc_of(hz):
@@ -63,23 +83,68 @@ def signed(p):
     return p - P if p > P // 2 else p
 
 
-def predict(RC, window=WINDOW):
+def parse_preset(spec):
+    """`<hz>` or `<dac_hz>:<adc_hz>` -> (console command, dac_hz, adc_hz)."""
+    dac, _, adc = str(spec).partition(":")
+    dac = int(dac)
+    adc = int(adc) if adc else dac
+    return f"={dac},{adc}M", dac, adc
+
+
+def sync_code(name):
+    """A sync name from measure.GEN_SYNCS, or its number; None leaves it."""
+    if name is None:
+        return None
+    return measure.GEN_SYNCS[name] if name in measure.GEN_SYNCS else int(name)
+
+
+def is_solo(code):
+    return code == measure.GEN_SYNCS["solo"]
+
+
+def fold_len(code):
+    """A0 samples per table wrap, at two A0 samples per DAC0 level."""
+    return 2 * measure.GEN_TABLE_LEN if is_solo(code) else measure.GEN_TABLE_LEN
+
+
+def bin_clocks(RC, code):
+    """DACC clocks between writes of DAC0 - one fold bin."""
+    return RC if is_solo(code) else 2 * RC
+
+
+def check_rates(dac_hz, adc_hz, code):
+    """Refuse a SOLO preset whose A0 samples cannot pair within a level."""
+    if is_solo(code) and rc_of(dac_hz) != 2 * rc_of(adc_hz):
+        raise SystemExit(f"SOLO needs the ADC at twice the DAC rate: "
+                         f"={dac_hz},{adc_hz}M is RC {rc_of(dac_hz)} against "
+                         f"{rc_of(adc_hz)}, so hold_ok cannot pair it")
+
+
+def sync_readback_ok(text, code):
+    """ctl_gen_describe() prints `sync <n> = <name>`."""
+    return f"sync {code} =" in text
+
+
+def predict(RC, window=WINDOW, step=None, nbins=256):
     """Predicted DAC0-bin sites (phi=0) and dominant gap, from RC alone."""
     lo, hi = window
-    sites = [b for b in range(256) if lo <= signed((2 * RC * b) % P) <= hi]
+    step = 2 * RC if step is None else step
+    sites = [b for b in range(nbins) if lo <= signed((step * b) % P) <= hi]
     if len(sites) < 3:
         return sites, None
     g = collections.Counter(y - x for x, y in zip(sites, sites[1:]))
     return sites, g.most_common(1)[0][0]
 
 
-def fit_rotation(obs, RC, window=WINDOW):
+def fit_rotation(obs, RC, window=WINDOW, step=None, nbins=256):
     """Fix the window, fit only its rotation; return (hits, extras, phi)."""
     lo, hi = window
+    step = 2 * RC if step is None else step
     obs = set(obs)
     best_sc, best = None, (0, 0, 0)
     for phi in range(P):
-        m = {b for b in range(256) if lo <= signed((2 * RC * b + phi) % P) <= hi}
+        m = {b for b in range(nbins)
+             if lo <= signed((step * b + phi) % P) <= hi}
         sc = len(m & obs) - len(m - obs)
         if best_sc is None or sc > best_sc:
             best_sc, best = sc, (len(m & obs), len(m - obs), phi)
@@ -98,7 +163,12 @@ def read_profile(prof):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "linux-x1"))
-    ap.add_argument("--presets", default=",".join(map(str, PRESETS)))
+    ap.add_argument("--presets", default=",".join(map(str, PRESETS)),
+                    help="comma separated <hz> or <dac_hz>:<adc_hz>")
+    ap.add_argument("--sync", default=None,
+                    help="=<n>J before the presets, by name "
+                         f"({', '.join(measure.GEN_SYNCS)}) or number; "
+                         "restored to cycle at exit. Omitted, it is not sent")
     ap.add_argument("--fws", default=DEFAULT_FWS)
     ap.add_argument("--k", default="0", help="M's start gap =<us>K, per block")
     ap.add_argument("-n", "--runs", type=int, default=7,
@@ -110,17 +180,21 @@ def main():
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    presets = [int(x) for x in args.presets.split(",")]
+    code = sync_code(args.sync)
+    presets = [parse_preset(x) for x in args.presets.split(",")]
+    for _, dac_hz, adc_hz in presets:
+        check_rates(dac_hz, adc_hz, code)
     fws_list = [int(x) for x in args.fws.split(",")]
     k_list = [int(x) for x in args.k.split(",")]
+    nbins = fold_len(code) // 2
     out = args.out or os.path.join(
         ROOT, "records", f"issue5-alias-sweep-{args.bench}.jsonl")
 
     print("REGISTERED PREDICTIONS (P=512, window %s):" % (WINDOW,))
-    for hz in presets:
-        RC = rc_of(hz)
-        sites, dom = predict(RC)
-        print(f"  ={hz},{hz}M  RC {RC:3d}  -> dominant gap {dom}  "
+    for preset, dac_hz, _ in presets:
+        RC = rc_of(dac_hz)
+        sites, dom = predict(RC, step=bin_clocks(RC, code), nbins=nbins)
+        print(f"  {preset}  RC {RC:3d}  -> dominant gap {dom}  "
               f"({len(sites)} sites/wrap at phi=0)")
 
     board = measure.Board(settle=3.0)
@@ -128,13 +202,19 @@ def main():
     try:
         board.stop()
         board.drain_console(0.5)
+        if code is not None:
+            board.cmd(f"={code}J")
+            txt = board.drain_console(0.5) or ""
+            if not sync_readback_ok(txt, code):
+                raise SystemExit(f"sync readback {txt.strip()[:80]!r}, "
+                                 f"asked for {code}")
         prov = provenance.run_fields(board)
         print("provenance: " + ", ".join(f"{k}={v}" for k, v in prov.items()),
               flush=True)
-        for hz in presets:
+        for preset, hz, adc_hz in presets:
             RC = rc_of(hz)
-            preset = f"={hz},{hz}M"
-            _, pred = predict(RC)
+            step = bin_clocks(RC, code)
+            _, pred = predict(RC, step=step, nbins=nbins)
             for fws in fws_list:
                 board.cmd(f"={fws}q")
                 txt = board.drain_console(0.5) or ""
@@ -157,18 +237,25 @@ def main():
                             print(f"  {preset} f{fws} k{k} run {i}: no samples")
                             continue
                         start = ps._index_at(measure.CH_A0, measure.SETTLE_US)
-                        fold = measure.pair_fold(list(vals[start:]))
+                        fold = measure.pair_fold(list(vals[start:]),
+                                                 period=fold_len(code))
                         prof = fold.get("profile") or []
                         if not prof:
                             continue
                         dev, sites, gaps, dom = read_profile(prof)
-                        hits, extra, phi = fit_rotation(sites, RC)
+                        hits, extra, phi = fit_rotation(sites, RC, step=step,
+                                                        nbins=nbins)
                         total_abs = round(sum(abs(d) for d in dev), 2)
                         row = {"run": i, "run1": i == 1,
                                "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
                                "bench": args.bench, **prov,
                                "probes": args.probes, "jumpers": args.jumpers,
                                "preset": preset, "hz": hz, "rc": RC,
+                               "adc_hz": adc_hz, "adc_rc": rc_of(adc_hz),
+                               "sync": (measure.GEN_SYNC_NAMES.get(code, code)
+                                        if code is not None else None),
+                               "write_interval_clocks": step,
+                               "fold_len": fold_len(code),
                                "fws": fws, "k_us": k,
                                "hold_ok": bool(fold.get("hold_ok")),
                                "total_abs": total_abs,
@@ -196,6 +283,8 @@ def main():
         try:
             board.cmd("=4q")
             board.cmd("=0K")
+            if code is not None:
+                board.cmd(f"={SYNC_CYCLE}J")
             board.stop()
         finally:
             board.close()

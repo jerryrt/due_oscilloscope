@@ -71,6 +71,21 @@ def load(path, order, per_block):
     return rows
 
 
+def intervals(rows):
+    """Write interval per RC: the row's own figure, 2 x RC for rows before it.
+
+    Under SOLO a DAC0 write is RC clocks, not 2 x RC, so the sweep records
+    it and this reads it back rather than re-deriving it.
+    """
+    iv = {}
+    for r in rows:
+        w = r.get("write_interval_clocks", 2 * r["rc"])
+        if iv.setdefault(r["rc"], w) != w:
+            raise SystemExit(f"RC {r['rc']} carries two write intervals, "
+                             f"{iv[r['rc']]} and {w}: score each sync mode apart")
+    return iv
+
+
 def classify(ta, floor):
     if min(ta) <= max(floor):
         return "floor"
@@ -114,6 +129,7 @@ def main():
         data[key].append((r["total_abs"], r["n_sites"]))
 
     rcs = sorted({r["rc"] for r in rows})
+    iv = intervals(rows)
     blocks_of = collections.defaultdict(list)
     for blk, v, _ in data:
         if blk not in blocks_of[v]:
@@ -128,7 +144,7 @@ def main():
     state = {}
     for rc in rcs:
         fl = floor_at(rc)
-        print(f"RC {rc:4d}  interval {2 * rc:4d} clocks  floor median "
+        print(f"RC {rc:4d}  interval {iv[rc]:4d} clocks  floor median "
               f"{statistics.median(fl):6.1f}  max {max(fl):6.1f}")
         for v in sorted(blocks_of):
             cls = []
@@ -151,11 +167,11 @@ def main():
     print(f"  REFRESH 0 blocks separate at: {sorted(set(sep)) or 'no rung'}")
 
     if args.pairs:
-        return bracket(parse_pairs(args.pairs), rcs, state)
-    return ladder(rcs, state, blocks_of)
+        return bracket(parse_pairs(args.pairs), rcs, state, iv)
+    return ladder(rcs, state, blocks_of, iv)
 
 
-def bracket(pairs, rcs, state):
+def bracket(pairs, rcs, state, iv):
     for v, (lo, hi) in pairs.items():
         for rc in (lo, hi):
             if rc not in rcs or (v, rc) not in state or (1, rc) not in state:
@@ -167,8 +183,8 @@ def bracket(pairs, rcs, state):
         lo_c, hi_c = state[(v, lo)], state[(v, hi)]
         unstable = [rc for rc, cl in ((lo, lo_c), (hi, hi_c))
                     if len({c == "floor" for c in cl}) > 1]
-        desc = (f"RC {lo} ({2 * lo} clocks) {'/'.join(lo_c)}, "
-                f"RC {hi} ({2 * hi} clocks) {'/'.join(hi_c)}")
+        desc = (f"RC {lo} ({iv[lo]} clocks) {'/'.join(lo_c)}, "
+                f"RC {hi} ({iv[hi]} clocks) {'/'.join(hi_c)}")
         if unstable or lo in uninformative or hi in uninformative:
             print(f"  REFRESH {v}: UNSCORED - {desc}; unstable {unstable or 'none'}, "
                   f"uninformative {[rc for rc in (lo, hi) if rc in uninformative] or 'none'}")
@@ -178,7 +194,7 @@ def bracket(pairs, rcs, state):
     return 0
 
 
-def ladder(rcs, state, blocks_of):
+def ladder(rcs, state, blocks_of, iv):
     uninformative = [rc for rc in rcs if 1 in blocks_of and state[(1, rc)][0] != "lifted"]
     verdict = "OVERALL UNINFORMATIVE" if len(uninformative) > len(rcs) / 2 else "control holds"
     print(f"  REFRESH 1 not lifted (uninformative rungs): {uninformative or 'none'} - {verdict}")
@@ -197,8 +213,8 @@ def ladder(rcs, state, blocks_of):
         if t is not None:
             below = [s for _, s in seq[:t]]
             broken = [s for s in below[:-1] if s != "floor"]
-            lo = 2 * seq[t - 1][0] if t else None
-            print(f"      T{v} = {2 * seq[t][0]} clocks, step bracket ({lo}, {2 * seq[t][0]}]"
+            lo = iv[seq[t - 1][0]] if t else None
+            print(f"      T{v} = {iv[seq[t][0]]} clocks, step bracket ({lo}, {iv[seq[t][0]]}]"
                   f"  {'MONOTONE' if not broken else 'NON-MONOTONE below T: ' + str(broken)}")
         else:
             not_lifted_top = [rc for rc, s in seq if s != "lifted"
@@ -209,8 +225,8 @@ def ladder(rcs, state, blocks_of):
                               and all(s2 == "floor" for _, s2 in seq[:i + 1])), default=None)
             if last_floor is not None and last_floor + 1 < len(seq):
                 print(f"      onset (outside the registered rule): first non-floor at "
-                      f"{2 * seq[last_floor + 1][0]} clocks, after floor through "
-                      f"{2 * seq[last_floor][0]}")
+                      f"{iv[seq[last_floor + 1][0]]} clocks, after floor through "
+                      f"{iv[seq[last_floor][0]]}")
     return 0
 
 
