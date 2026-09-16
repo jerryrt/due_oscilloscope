@@ -2308,9 +2308,27 @@ agree, with value 1 off the floor at every rung. Value 3's bracket did not confi
 both value-3 blocks read marginal - 1.22-1.26x the floor, every run
 above it - and both are lifted at 1,600
 (`records/issue83-v1c-bracket-linux-x1.jsonl`). With the ladder's value
-4 marginal at 2,000 clocks, 48 below 2,048, the step at 3 and 4 begins
-a little below `512 x value` or ramps in rather than switching; neither
-has been tested. The brackets at 2 and 4 stand as scored.
+4 marginal at 2,000 clocks, 48 below 2,048, the effect at 3 and 4 is
+already off the floor below `512 x value`. The brackets at 2 and 4
+stand as scored.
+
+**Whether the onset is a step or a ramp is unresolved, and the rung
+that would decide it is where this instrument is blind.** Rungs every
+32 clocks around `512 x value`, at values 3 and 4, read floor from 128
+clocks below, marginal 32-64 below, and lifted 32 above, on both
+values and in both blocks
+(`records/issue83-v1d-steps-linux-x1.jsonl`). The rung at `512 x
+value` itself says nothing: the write interval is then a multiple of
+512, so every DAC0 bin sits at one phase against the refresh and
+`issue5_alias_sweep.predict()` puts 256 sites a wrap there, against
+16-64 at each neighbouring rung. Value 3 reads floor at that rung
+between two marginal ones, and at value 4 the `REFRESH(1)` control
+reads floor there as well, so neither value scores. An arm that
+returns to this has to keep the write interval off multiples of 512.
+
+**Twice an active refresh has read below the value-0 floor** - value 2
+in both sync modes of the SOLO arm, and value 3 at a 1,536-clock
+interval. Described, not claimed, and nothing tests it.
 
 **The skip follows the shared core, not each channel's own writes.**
 In SOLO (`=3J`) every table entry is tagged DAC0 and DAC1 is enabled
