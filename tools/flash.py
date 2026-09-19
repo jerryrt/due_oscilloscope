@@ -49,6 +49,16 @@ REPO = toolchain.REPO
 VID, PID_CONSOLE = 0x2341, 0x003D          # programming port (the 16U2)
 SAMBA = (0x03EB, 0x6124)                   # SAM3X ROM bootloader
 
+#: What `main()` exits with when it refused before touching the board:
+#: the image is not the container's, is older than its own sources, is
+#: stamped for another tree, or is not there at all.
+#:
+#: A refusal is deterministic - the same image and the same tree refuse
+#: again - so a caller must not retry it. `measure.flash()` reads this
+#: code to tell a refusal from a flash that failed at the board, which
+#: a retry does recover.
+REFUSED = 3
+
 # How long to wait for the native bootloader node after the touch. It is
 # an optimisation - the programming port is tried regardless - so this is
 # patience, not a deadline anything depends on.
@@ -1178,14 +1188,26 @@ def main() -> int:
     args = ap.parse_args()
 
     binary = os.path.abspath(args.bin)
-    if not os.path.isfile(binary):
-        sys.exit(f"no such binary: {binary}\nFirmware is built in the "
-                 f"container only: {provenance.CONTAINER_BUILD}")
-    check_container_built(binary)
-    check_not_stale(binary, args.stale_ok)
-    check_stamp_agrees(binary)
-    if args.require_tree:
-        check_image_is_tree(binary)
+    # Every refusal below says why in its own words and exits REFUSED,
+    # so a caller can tell "this image may not go on the board" from
+    # "the flash failed" without reading the message. The checks keep
+    # raising SystemExit with their text - they are called directly by
+    # tests and by nothing else - and this is the one place that turns
+    # that into the code.
+    try:
+        if not os.path.isfile(binary):
+            sys.exit(f"no such binary: {binary}\nFirmware is built in the "
+                     f"container only: {provenance.CONTAINER_BUILD}")
+        check_container_built(binary)
+        check_not_stale(binary, args.stale_ok)
+        check_stamp_agrees(binary)
+        if args.require_tree:
+            check_image_is_tree(binary)
+    except SystemExit as e:
+        if not isinstance(e.code, str):
+            raise
+        print(e.code, file=sys.stderr)
+        raise SystemExit(REFUSED) from None
 
     bossac = args.bossac
     if not bossac:

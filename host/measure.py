@@ -3454,6 +3454,12 @@ def profile(board, *, timeout=30.0):
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+#: `tools/flash.py`'s REFUSED. Not imported: `measure` is the host's
+#: library and `tools/` is scripts, and one number is cheaper than that
+#: dependency. `tests/test_flash.py` fails if the two ever differ.
+FLASH_REFUSED = 3
+
+
 def flash(track, control=None, retries=2):
     """Flash the container's image of a track, retrying with the port named.
 
@@ -3506,6 +3512,14 @@ def flash(track, control=None, retries=2):
             return True
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             last = e
+            # A refusal is deterministic: flash.py looked at the image
+            # and the tree and will look at the same ones again. Only a
+            # flash that reached the board is worth retrying - an
+            # interrupted one leaves SAM-BA enumerated, which a plain
+            # retry recovers. FLASH_REFUSED is tools/flash.py's REFUSED,
+            # held equal by tests/test_flash.py.
+            if getattr(e, "returncode", None) == FLASH_REFUSED:
+                break
             time.sleep(2.0)
     # The child's output, not only its exit status. stdout and stderr are
     # captured here so a flash does not spray into a test run, and

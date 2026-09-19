@@ -748,9 +748,15 @@ def test_an_image_rebuilt_under_a_container_record_is_refused(tmp_path):
         flash.check_container_built(binary)
 
 
-def test_a_host_image_is_refused_before_bossac_runs(tmp_path, monkeypatch):
+def test_a_host_image_is_refused_before_bossac_runs(tmp_path, monkeypatch,
+                                                    capsys):
     """Through `main()`, because a check that runs after the write is no
-    check: the board would already carry the image."""
+    check: the board would already carry the image.
+
+    The reason goes to stderr and the exit carries `REFUSED`, so a
+    person reads why and `measure.flash()` reads that it is not worth
+    retrying.
+    """
     binary = _built(tmp_path, record={"build_env": "host"})
     monkeypatch.setattr("sys.argv", ["flash.py", "--bin", binary])
 
@@ -760,7 +766,8 @@ def test_a_host_image_is_refused_before_bossac_runs(tmp_path, monkeypatch):
     monkeypatch.setattr(flash, "_flash_attempt", bossac_ran)
     with pytest.raises(SystemExit) as exc:
         flash.main()
-    assert "not built in the container" in str(exc.value)
+    assert exc.value.code == flash.REFUSED
+    assert "not built in the container" in capsys.readouterr().err
 
 
 def _stamped_with_tree(img):
@@ -806,3 +813,75 @@ def test_require_tree_refuses_the_same_commit_with_other_edits(tmp_path):
         f.write(b"pad build=" + head.encode() + b"+deadbeef pad")
     with pytest.raises(SystemExit):
         flash.check_image_is_tree(img)
+
+
+
+# --- a refusal is not a flaky flash -----------------------------------------
+
+def test_a_refusal_exits_with_its_own_code(tmp_path, monkeypatch, capsys):
+    """`main()` refuses a host-built image with REFUSED, not 1.
+
+    The message still says why - that is what a person reads - and the
+    code is what `measure.flash()` reads to stop retrying something
+    deterministic.
+    """
+    binary = _built(tmp_path, record={"build_env": "host"})
+    monkeypatch.setattr("sys.argv", ["flash.py", "--bin", binary])
+
+    def bossac_ran(*_a, **_k):
+        raise AssertionError("flash.py reached the board")
+
+    monkeypatch.setattr(flash, "_flash_attempt", bossac_ran)
+    with pytest.raises(SystemExit) as exc:
+        flash.main()
+    assert exc.value.code == flash.REFUSED
+    assert "not built in the container" in capsys.readouterr().err
+
+
+def test_measure_reads_the_same_refusal_code():
+    """Two files, one number. `measure` does not import `tools/`."""
+    sys.path.insert(0, os.path.join(flash.REPO, "host"))
+    import measure
+
+    assert measure.FLASH_REFUSED == flash.REFUSED, (
+        f"measure.FLASH_REFUSED is {measure.FLASH_REFUSED} and "
+        f"flash.REFUSED is {flash.REFUSED}; a refusal would be retried")
+
+
+def _flash_with_exit_code(monkeypatch, code, calls):
+    """Run measure.flash() against a stub flasher that exits `code`."""
+    sys.path.insert(0, os.path.join(flash.REPO, "host"))
+    import measure
+    import provenance
+    import subprocess as sp
+
+    # A real file in the tree rather than a patched os.path.isfile,
+    # which would reach pytest's own use of it.
+    monkeypatch.setitem(provenance.CONTAINER_IMAGES, "b", "pytest.ini")
+    monkeypatch.setattr(measure, "find_ports", lambda: ("COM1", None))
+    monkeypatch.setattr(measure.time, "sleep", lambda _s: None)
+
+    def run(cmd, **_kw):
+        calls.append(cmd)
+        raise sp.CalledProcessError(code, cmd, output=b"refusing to flash: x")
+
+    monkeypatch.setattr(measure.subprocess, "run", run)
+    with pytest.raises(measure.BoardError):
+        measure.flash("b", retries=2)
+
+
+def test_a_refused_flash_is_not_retried(monkeypatch):
+    """The failure this exists for: three identical refusals, 4 s of
+    sleeps, and one report at the end reading as a flaky flash."""
+    calls = []
+    _flash_with_exit_code(monkeypatch, flash.REFUSED, calls)
+    assert len(calls) == 1, (
+        f"a deterministic refusal was attempted {len(calls)} times")
+
+
+def test_a_flash_that_failed_at_the_board_is_still_retried(monkeypatch):
+    """The control: SAM-BA drops are why the retry is there at all."""
+    calls = []
+    _flash_with_exit_code(monkeypatch, 1, calls)
+    assert len(calls) == 3, (
+        f"a board-level failure was attempted {len(calls)} times, not 3")
