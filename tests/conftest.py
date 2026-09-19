@@ -109,6 +109,9 @@ def pytest_configure(config):
         ("dso", "needs the bench oscilloscope attached"),
         ("track_a", "Track A only"),
         ("track_b", "Track B only"),
+        ("platform", "depends on this host's own OS branch - "
+                     "transport/rt/ports - which the container, always "
+                     "Linux, cannot cover. Run natively on every host"),
     ):
         config.addinivalue_line("markers", f"{m}: {desc}")
 

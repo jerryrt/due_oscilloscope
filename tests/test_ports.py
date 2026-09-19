@@ -15,7 +15,11 @@ import time
 import ports
 import pytest
 
-pytestmark = pytest.mark.smoke
+# The container is always Linux, so this module's answers are the
+# host's own. See docs/testing.md: the container gates the board-free
+# tier, and `-m platform` is what each host still runs natively.
+
+pytestmark = [pytest.mark.smoke, pytest.mark.platform]
 
 
 def test_native_order_prefers_the_lower_interface(monkeypatch):

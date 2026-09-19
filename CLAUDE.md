@@ -1610,9 +1610,19 @@ platform-specific wheels and does not travel.
 ```sh
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python -m pytest --track=b -q
-.venv/bin/python -m pytest --track=b -m "not board" -q   # no hardware
+.venv/bin/python -m pytest --track=b -q                   # board attached
+.venv/bin/python -m pytest --track=b -m "platform and not board" -q
 ```
+
+**The board-free tier's gate is the container**, not a native run:
+`docker/run.sh docker/run-ci.sh` runs it inside the pinned image on every
+bench, so the verdict is the image's and no host needs a compiler for the
+harnesses. What a host still runs natively is the **platform** tier -
+`-m "platform and not board"`, 11 tests and under a second, the Windows
+and macOS branches of `transport.py`, `rt.py` and `ports.py` that a
+Linux container can never reach - plus the board tier, where it owns a
+board. `docs/testing.md` has the reasoning and the guard that keeps the
+subset from going quietly empty.
 
 **Providing a usable, modern Python is the OS user's job**, not the
 project's. The repository declares what it needs and builds a venv from

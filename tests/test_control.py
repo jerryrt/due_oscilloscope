@@ -24,6 +24,12 @@ import control
 import measure
 import ports
 
+#: `ports` is imported for this module's BOARD tests. Its board-free
+#: tests are wire-format codec checks that touch no OS branch, so the
+#: `platform` marker would overstate what the native subset must run.
+#: tests/test_platform_marker.py requires this decision to be explicit.
+PLATFORM_SEAM_EXEMPT = "board tests only; the board-free ones are codec tests"
+
 pytestmark = pytest.mark.smoke
 
 

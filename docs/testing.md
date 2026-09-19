@@ -38,11 +38,36 @@ for another.
 | tier | select with | needs | answers |
 |---|---|---|---|
 | board-free | `-m "not board"` | nothing | did I break the host code |
+| platform | `-m "platform and not board"` | nothing | does this host's own OS branch still work |
 | smoke | `-m smoke` | the board | is the board still doing the basics |
 | full | *(no selection)* | the board | everything |
 
 `smoke` is **not** a subset of board-free - it holds board tests and
 needs hardware.
+
+**The container runs the board-free tier, and that run is the gate.**
+Every bench builds and runs the same pinned image, so the tier's verdict
+is the image's rather than a bench's, and a host needs no compiler of its
+own for it: the harnesses that want one are built and run inside. A
+bench that also runs the whole tier natively is repeating the gate on a
+slower machine and against a different set of installed tools.
+
+**What the container cannot answer is the platform tier.** The image is
+always Linux, so the Windows and macOS branches of `host/transport.py`,
+`host/rt.py` and `host/ports.py` execute on no bench unless that host
+runs them itself. `-m "platform and not board"` is that remainder: 11
+tests and under a second, against ~800 and minutes for the full tier. Run
+it natively on every host; run the board tier natively on the bench that
+owns the board, which exercises the same seam by construction.
+
+`tests/test_platform_marker.py` keeps the subset honest. A test module
+that imports the seam and collects board-free tests must carry the
+`platform` marker, or declare `PLATFORM_SEAM_EXEMPT` with a reason - and
+an empty reason does not count. The failure it exists for is the subset
+going quietly empty while every tier stays green.
+
+The GUI tests are the other host-only set, for a different reason: they
+need the PySide6 venv, which no container carries.
 
 **Board-free is the per-change loop.** It is about a minute and a half,
 needs no hardware, and it is the tier that catches the class of thing
