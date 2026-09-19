@@ -551,6 +551,12 @@ def r_provenance(recs):
             "bench": _cell(row.get("bench")),
             "repo_rev": _cell(row.get("repo_rev")),
             "cc": _cell(row.get("cc")),
+            # Rows written before 2026-09-19 carry no build environment
+            # and render as the empty cell `_cell` gives anything
+            # missing. That is the honest reading: they are host builds
+            # from when a bench could make one, and saying so for them
+            # would be inventing a field they never had.
+            "build_env": _cell(row.get("build_env")),
             "elf": _cell(row.get("elf")),
             "elf_sha256": _cell(row.get("elf_sha256")),
             "taken_at": _cell(row.get("taken_at")),

@@ -173,15 +173,15 @@ than represented by somebody else's figures.
 |---|---|---|---|---|---|---|---|
 | a | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | b3590f9 | 880 | upper bound | 1516 | upper bound |
 | a | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 880 | upper bound | 1516 | upper bound |
-| a | windows-desk | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | f5db1e8 | 880 | upper bound | 1516 | upper bound |
+| a | windows-desk | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 53e226e | 880 | upper bound | 1516 | upper bound |
 | b | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | b3590f9 | 916 | exact | 1452 | exact |
 | b | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 912 | exact | 1448 | exact |
-| b | windows-desk | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | f5db1e8 | 916 | exact | 1452 | exact |
+| b | windows-desk | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 53e226e | 912 | exact | 1448 | exact |
 | c | linux-x1 | GCC: (15:14.2.rel1-1) 14.2.1 20241119 | b3590f9 | 860 | exact | 1492 | exact |
 | c | mac-bench | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 221adb8 | 856 | exact | 1488 | exact |
-| c | windows-desk | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | f5db1e8 | 860 | exact | 1492 | exact |
+| c | windows-desk | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | 53e226e | 856 | exact | 1488 | exact |
 
-3 bench(es) and 9 track-rows. **The rows are at 3 different revisions** - `221adb8`, `b3590f9`, `f5db1e8` - so a difference between benches may be the firmware moving rather than the compiler. Re-take them at one commit before reading a delta as a code-generator effect.
+3 bench(es) and 9 track-rows. **The rows are at 3 different revisions** - `221adb8`, `53e226e`, `b3590f9` - so a difference between benches may be the firmware moving rather than the compiler. Re-take them at one commit before reading a delta as a code-generator effect.
 <!-- end generated -->
 
 ### What the three benches settled
@@ -272,63 +272,64 @@ only add candidates to a maximum and so cannot lower a bound.
 <!-- generated: bounds -->
 | track | root | bytes | state | blocked by | functions | indirect sites/targets |
 |---|---|---|---|---|---|---|
-| a | Reset_Handler | 880 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(int, int) | 224 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(long int, int) | 224 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(unsigned char, int) | 204 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(unsigned int, int) | 204 | upper bound | none | 452 | 21 / 61 |
-| a | void con_u32l(uint32_t, unsigned int) | 192 | upper bound | none | 452 | 21 / 61 |
-| a | void TC2_Handler() | 184 | upper bound | none | 452 | 21 / 61 |
-| a | UOTGHS_Handler | 160 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(double, int) | 152 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(char) | 144 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(const Printable&) | 144 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(const String&) | 144 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::println(const __FlashStringHelper*) | 144 | upper bound | none | 452 | 21 / 61 |
-| a | size_t Print::print(const __FlashStringHelper*) | 128 | upper bound | none | 452 | 21 / 61 |
-| a | bool CDC_Setup(USBSetup&) | 56 | upper bound | none | 452 | 21 / 61 |
-| a | int CDC_GetInterface(uint8_t*) | 48 | upper bound | none | 452 | 21 / 61 |
-| a | int CDC_GetOtherInterface(uint8_t*) | 48 | upper bound | none | 452 | 21 / 61 |
-| a | void HardFault_Handler() | 48 | upper bound | none | 452 | 21 / 61 |
-| a | USARTClass::USARTClass(Usart*, IRQn_Type, uint32_t, RingBuffer*, RingBuffer*) | 36 | upper bound | none | 452 | 21 / 61 |
-| a | CtlUSB::CtlUSB() | 24 | upper bound | none | 452 | 21 / 61 |
-| a | PIOA_Handler | 24 | upper bound | none | 452 | 21 / 61 |
-| a | PIOB_Handler | 24 | upper bound | none | 452 | 21 / 61 |
-| a | PIOC_Handler | 24 | upper bound | none | 452 | 21 / 61 |
-| a | PIOD_Handler | 24 | upper bound | none | 452 | 21 / 61 |
-| a | SysTick_Handler | 16 | upper bound | none | 452 | 21 / 61 |
-| a | USBDevice_::USBDevice_() | 16 | upper bound | none | 452 | 21 / 61 |
-| a | virtual void USARTClass::begin(uint32_t) | 16 | upper bound | none | 452 | 21 / 61 |
-| a | void UARTClass::begin(uint32_t, UARTModes) | 16 | upper bound | none | 452 | 21 / 61 |
-| a | void UART_Handler() | 16 | upper bound | none | 452 | 21 / 61 |
-| a | void USART0_Handler() | 16 | upper bound | none | 452 | 21 / 61 |
-| a | void USART1_Handler() | 16 | upper bound | none | 452 | 21 / 61 |
-| a | void USART3_Handler() | 16 | upper bound | none | 452 | 21 / 61 |
-| a | void USARTClass::begin(uint32_t, UARTClass::UARTModes) | 16 | upper bound | none | 452 | 21 / 61 |
-| a | void USARTClass::begin(uint32_t, USARTModes) | 16 | upper bound | none | 452 | 21 / 61 |
-| a | void DACC_Handler() | 12 | upper bound | none | 452 | 21 / 61 |
-| a | RingBuffer::RingBuffer() | 8 | upper bound | none | 452 | 21 / 61 |
-| a | virtual void Serial_::flush() | 8 | upper bound | none | 452 | 21 / 61 |
-| a | virtual void UARTClass::end() | 8 | upper bound | none | 452 | 21 / 61 |
-| a | void serialEventRun() | 8 | upper bound | none | 452 | 21 / 61 |
-| b | Reset_Handler | 916 | exact | none | 328 | 2 / 50 |
-| b | TC2_Handler | 236 | exact | none | 328 | 2 / 50 |
-| b | UOTGHS_Handler | 96 | exact | none | 328 | 2 / 50 |
-| b | HardFault_Handler | 56 | exact | none | 328 | 2 / 50 |
-| b | UART_Handler | 16 | exact | none | 328 | 2 / 50 |
-| b | DACC_Handler | 12 | exact | none | 328 | 2 / 50 |
-| c | service_task | 860 | exact | none | 379 | 5 / 50 |
-| c | console_task | 844 | exact | none | 379 | 5 / 50 |
-| c | Reset_Handler | 280 | exact | none | 379 | 5 / 50 |
-| c | TC2_Handler | 236 | exact | none | 379 | 5 / 50 |
-| c | prvTimerTask | 232 | exact | none | 379 | 5 / 50 |
-| c | SysTick_Handler | 112 | exact | none | 379 | 5 / 50 |
-| c | UOTGHS_Handler | 96 | exact | none | 379 | 5 / 50 |
-| c | HardFault_Handler | 56 | exact | none | 379 | 5 / 50 |
-| c | UART_Handler | 16 | exact | none | 379 | 5 / 50 |
-| c | DACC_Handler | 12 | exact | none | 379 | 5 / 50 |
+| a | Reset_Handler | 880 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(int, int) | 216 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(long int, int) | 216 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(unsigned char, int) | 192 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(unsigned int, int) | 192 | upper bound | none | 510 | 21 / 61 |
+| a | void con_u32l(uint32_t, unsigned int) | 192 | upper bound | none | 510 | 21 / 61 |
+| a | void TC2_Handler() | 184 | upper bound | none | 510 | 21 / 61 |
+| a | UOTGHS_Handler | 160 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(double, int) | 152 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(char) | 144 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(const Printable&) | 144 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(const String&) | 144 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::println(const __FlashStringHelper*) | 144 | upper bound | none | 510 | 21 / 61 |
+| a | size_t Print::print(const __FlashStringHelper*) | 128 | upper bound | none | 510 | 21 / 61 |
+| a | bool CDC_Setup(USBSetup&) | 56 | upper bound | none | 510 | 21 / 61 |
+| a | HardFault_Handler | 48 | upper bound | none | 510 | 21 / 61 |
+| a | int CDC_GetInterface(uint8_t*) | 48 | upper bound | none | 510 | 21 / 61 |
+| a | int CDC_GetOtherInterface(uint8_t*) | 48 | upper bound | none | 510 | 21 / 61 |
+| a | CtlUSB::CtlUSB() | 32 | upper bound | none | 510 | 21 / 61 |
+| a | USARTClass::USARTClass(Usart*, IRQn_Type, uint32_t, RingBuffer*, RingBuffer*) | 32 | upper bound | none | 510 | 21 / 61 |
+| a | PIOA_Handler | 24 | upper bound | none | 510 | 21 / 61 |
+| a | PIOB_Handler | 24 | upper bound | none | 510 | 21 / 61 |
+| a | PIOC_Handler | 24 | upper bound | none | 510 | 21 / 61 |
+| a | PIOD_Handler | 24 | upper bound | none | 510 | 21 / 61 |
+| a | SysTick_Handler | 16 | upper bound | none | 510 | 21 / 61 |
+| a | USBDevice_::USBDevice_() | 16 | upper bound | none | 510 | 21 / 61 |
+| a | virtual void USARTClass::begin(uint32_t) | 16 | upper bound | none | 510 | 21 / 61 |
+| a | void UARTClass::begin(uint32_t, UARTModes) | 16 | upper bound | none | 510 | 21 / 61 |
+| a | void UART_Handler() | 16 | upper bound | none | 510 | 21 / 61 |
+| a | void USART0_Handler() | 16 | upper bound | none | 510 | 21 / 61 |
+| a | void USART1_Handler() | 16 | upper bound | none | 510 | 21 / 61 |
+| a | void USART3_Handler() | 16 | upper bound | none | 510 | 21 / 61 |
+| a | void USARTClass::begin(uint32_t, UARTClass::UARTModes) | 16 | upper bound | none | 510 | 21 / 61 |
+| a | void USARTClass::begin(uint32_t, USARTModes) | 16 | upper bound | none | 510 | 21 / 61 |
+| a | void DACC_Handler() | 12 | upper bound | none | 510 | 21 / 61 |
+| a | RingBuffer::RingBuffer() | 8 | upper bound | none | 510 | 21 / 61 |
+| a | UARTClass::UARTClass(Uart*, IRQn_Type, uint32_t, RingBuffer*, RingBuffer*) | 8 | upper bound | none | 510 | 21 / 61 |
+| a | virtual void Serial_::flush() | 8 | upper bound | none | 510 | 21 / 61 |
+| a | virtual void UARTClass::end() | 8 | upper bound | none | 510 | 21 / 61 |
+| a | void serialEventRun() | 8 | upper bound | none | 510 | 21 / 61 |
+| b | Reset_Handler | 912 | exact | none | 377 | 2 / 50 |
+| b | TC2_Handler | 236 | exact | none | 377 | 2 / 50 |
+| b | UOTGHS_Handler | 96 | exact | none | 377 | 2 / 50 |
+| b | HardFault_Handler | 56 | exact | none | 377 | 2 / 50 |
+| b | UART_Handler | 16 | exact | none | 377 | 2 / 50 |
+| b | DACC_Handler | 12 | exact | none | 377 | 2 / 50 |
+| c | service_task | 856 | exact | none | 428 | 5 / 50 |
+| c | console_task | 840 | exact | none | 428 | 5 / 50 |
+| c | Reset_Handler | 280 | exact | none | 428 | 5 / 50 |
+| c | TC2_Handler | 236 | exact | none | 428 | 5 / 50 |
+| c | prvTimerTask | 232 | exact | none | 428 | 5 / 50 |
+| c | SysTick_Handler | 112 | exact | none | 428 | 5 / 50 |
+| c | UOTGHS_Handler | 96 | exact | none | 428 | 5 / 50 |
+| c | HardFault_Handler | 56 | exact | none | 428 | 5 / 50 |
+| c | UART_Handler | 16 | exact | none | 428 | 5 / 50 |
+| c | DACC_Handler | 12 | exact | none | 428 | 5 / 50 |
 
-Roots whose bound is 0 B are not listed: 18 on track a, 5 on track b, 7 on track c. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows and are counted for a track that reached no bound too.
+Roots whose bound is 0 B are not listed: 65 on track a, 53 on track b, 55 on track c. `functions` and `indirect sites/targets` describe the whole graph the walk ran over, so they repeat down a track's rows and are counted for a track that reached no bound too.
 <!-- end generated -->
 
 ## What the bounds table is not: a worst case
@@ -371,8 +372,8 @@ both times downward. An `edge` declaration adds the call; like
 | track | thread mode | levels | never enabled | worst case | state |
 |---|---|---|---|---|---|
 | a | 880 through `Reset_Handler` | 6 | 9 | **1516** | upper bound |
-| b | 916 through `Reset_Handler` | 6 | 1 | **1452** | exact |
-| c | 860 through `service_task` | 6 | 1 | **1492** | exact |
+| b | 912 through `Reset_Handler` | 6 | 1 | **1448** | exact |
+| c | 856 through `service_task` | 6 | 1 | **1488** | exact |
 
 | track | level | bytes | handlers |
 |---|---|---|---|
@@ -477,29 +478,29 @@ number to derive by hand here.
 | a | 8 | ctl_error | 488 | 536 |
 | a | 9 | ctl_respond | 24 | 48 |
 | a | 10 | size_t ctl_port_write(const uint8_t*, size_t) | 24 | 24 |
-| b | 0 | Reset_Handler | 8 | 916 |
-| b | 1 | main | 80 | 908 |
-| b | 2 | console_feed | 24 | 828 |
-| b | 3 | h_profile | 24 | 804 |
-| b | 4 | ctl_service | 40 | 780 |
-| b | 5 | ctl_frame_complete | 8 | 740 |
-| b | 6 | ctl_dispatch.constprop | 184 | 732 |
-| b | 7 | ctl_error | 488 | 548 |
-| b | 8 | ctl_respond | 24 | 60 |
-| b | 9 | ctl_port_write | 0 | 36 |
-| b | 10 | usb_ctl_write | 8 | 36 |
-| b | 11 | ep_fifo_write.constprop | 28 | 28 |
-| c | 0 | service_task | 80 | 860 |
-| c | 1 | ctl_service | 40 | 780 |
-| c | 2 | ctl_frame_complete | 8 | 740 |
-| c | 3 | ctl_dispatch.constprop | 184 | 732 |
-| c | 4 | ctl_error | 488 | 548 |
-| c | 5 | ctl_respond | 24 | 60 |
-| c | 6 | ctl_port_write | 0 | 36 |
-| c | 7 | usb_ctl_write | 8 | 36 |
-| c | 8 | ep_fifo_write.constprop | 28 | 28 |
+| b | 0 | Reset_Handler | 8 | 912 |
+| b | 1 | main | 80 | 904 |
+| b | 2 | console_feed | 24 | 824 |
+| b | 3 | h_profile | 24 | 800 |
+| b | 4 | ctl_service | 40 | 776 |
+| b | 5 | ctl_frame_complete | 8 | 736 |
+| b | 6 | ctl_dispatch.constprop | 184 | 728 |
+| b | 7 | ctl_error | 488 | 544 |
+| b | 8 | ctl_respond | 24 | 56 |
+| b | 9 | ctl_port_write | 0 | 32 |
+| b | 10 | usb_ctl_write | 8 | 32 |
+| b | 11 | ep_fifo_write.constprop | 24 | 24 |
+| c | 0 | service_task | 80 | 856 |
+| c | 1 | ctl_service | 40 | 776 |
+| c | 2 | ctl_frame_complete | 8 | 736 |
+| c | 3 | ctl_dispatch.constprop | 184 | 728 |
+| c | 4 | ctl_error | 488 | 544 |
+| c | 5 | ctl_respond | 24 | 56 |
+| c | 6 | ctl_port_write | 0 | 32 |
+| c | 7 | usb_ctl_write | 8 | 32 |
+| c | 8 | ep_fifo_write.constprop | 24 | 24 |
 
-track a: Reset_Handler, 880 B; track b: Reset_Handler, 916 B; track c: service_task, 860 B.
+track a: Reset_Handler, 880 B; track b: Reset_Handler, 912 B; track c: service_task, 856 B.
 <!-- end generated -->
 
 ## Reading the diagram
@@ -552,20 +553,20 @@ graph TD
     a8 ==> a9
     a9 ==> a10
   end
-  subgraph sg_b["track b - Reset_Handler - 916 B"]
+  subgraph sg_b["track b - Reset_Handler - 912 B"]
   direction TB
-    b0["Reset_Handler<br/>8 B · 916 total"]
-    b1["main<br/>80 B · 908 total"]
-    b2["console_feed<br/>24 B · 828 total"]
-    b3["h_profile<br/>24 B · 804 total"]
-    b4["ctl_service<br/>40 B · 780 total"]
-    b5["ctl_frame_complete<br/>8 B · 740 total"]
-    b6["ctl_dispatch.constprop<br/>184 B · 732 total"]
-    b7["ctl_error<br/>488 B · 548 total"]
-    b8["ctl_respond<br/>24 B · 60 total"]
-    b9["ctl_port_write<br/>0 B · 36 total"]
-    b10["usb_ctl_write<br/>8 B · 36 total"]
-    b11["ep_fifo_write.constprop<br/>28 B · 28 total"]
+    b0["Reset_Handler<br/>8 B · 912 total"]
+    b1["main<br/>80 B · 904 total"]
+    b2["console_feed<br/>24 B · 824 total"]
+    b3["h_profile<br/>24 B · 800 total"]
+    b4["ctl_service<br/>40 B · 776 total"]
+    b5["ctl_frame_complete<br/>8 B · 736 total"]
+    b6["ctl_dispatch.constprop<br/>184 B · 728 total"]
+    b7["ctl_error<br/>488 B · 544 total"]
+    b8["ctl_respond<br/>24 B · 56 total"]
+    b9["ctl_port_write<br/>0 B · 32 total"]
+    b10["usb_ctl_write<br/>8 B · 32 total"]
+    b11["ep_fifo_write.constprop<br/>24 B · 24 total"]
     b0 ==> b1
     b1 ==> b2
     b2 ==> b3
@@ -578,17 +579,17 @@ graph TD
     b9 ==> b10
     b10 ==> b11
   end
-  subgraph sg_c["track c - service_task - 860 B"]
+  subgraph sg_c["track c - service_task - 856 B"]
   direction TB
-    c0["service_task<br/>80 B · 860 total"]
-    c1["ctl_service<br/>40 B · 780 total"]
-    c2["ctl_frame_complete<br/>8 B · 740 total"]
-    c3["ctl_dispatch.constprop<br/>184 B · 732 total"]
-    c4["ctl_error<br/>488 B · 548 total"]
-    c5["ctl_respond<br/>24 B · 60 total"]
-    c6["ctl_port_write<br/>0 B · 36 total"]
-    c7["usb_ctl_write<br/>8 B · 36 total"]
-    c8["ep_fifo_write.constprop<br/>28 B · 28 total"]
+    c0["service_task<br/>80 B · 856 total"]
+    c1["ctl_service<br/>40 B · 776 total"]
+    c2["ctl_frame_complete<br/>8 B · 736 total"]
+    c3["ctl_dispatch.constprop<br/>184 B · 728 total"]
+    c4["ctl_error<br/>488 B · 544 total"]
+    c5["ctl_respond<br/>24 B · 56 total"]
+    c6["ctl_port_write<br/>0 B · 32 total"]
+    c7["usb_ctl_write<br/>8 B · 32 total"]
+    c8["ep_fifo_write.constprop<br/>24 B · 24 total"]
     c0 ==> c1
     c1 ==> c2
     c2 ==> c3
@@ -720,11 +721,11 @@ deepest-chain table structurally cannot reach.
 ## Provenance
 
 <!-- generated: provenance -->
-| track | bench | repo_rev | cc | elf | elf_sha256 | taken_at |
-|---|---|---|---|---|---|---|
-| a | windows-desk | f5db1e8 | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | track_a_bringup.elf | 0b4cd0714ae20aa7 | 2026-09-12T16:27:47-0300 |
-| b | windows-desk | f5db1e8 | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | baremetal_bringup.elf | 25315b1c1fdb1320 | 2026-09-12T16:27:44-0300 |
-| c | windows-desk | f5db1e8 | GCC: (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623 | rtos_bringup.elf | cfe417f885e6c706 | 2026-09-12T16:27:48-0300 |
+| track | bench | repo_rev | cc | build_env | elf | elf_sha256 | taken_at |
+|---|---|---|---|---|---|---|---|
+| a | windows-desk | 53e226e | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | container | track_a_bringup.elf | 0ad8a19e96347b2f | 2026-09-19T23:43:54+0000 |
+| b | windows-desk | 53e226e | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | container | baremetal_bringup.elf | 6e9702dc4c56a9ee | 2026-09-19T23:43:36+0000 |
+| c | windows-desk | 53e226e | GCC: (xPack GNU Arm Embedded GCC x86_64) 15.2.1 20251203 | container | rtos_bringup.elf | bbb74b0733f85419 | 2026-09-19T23:44:01+0000 |
 
 Schema `stack-depth/1`, written by `tools/stack_depth.py`, resolving its indirect call sites from `tools/stack_depth.list`.
 <!-- end generated -->

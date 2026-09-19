@@ -982,6 +982,30 @@ def emit_graph(g, frames, below, floor, edges, keep, critical, fmt, deepest_of):
     print("```")
 
 
+def _build_env_fields():
+    """Which environment ran the compiler, for the row to carry.
+
+    The same question `docker/build-firmware.sh` answers beside an
+    artifact and `tools/flash.py` copies into the flash log. A bound is
+    a property of an image and an image is a property of the
+    environment that built it, so a row without this says only which
+    compiler, not where it ran - and the rows this record carried until
+    2026-09-19 were host builds, taken while a bench could still make
+    one.
+
+    `DUE_BUILD_IMAGE_ID` is set by `docker/run.sh` and by nothing else,
+    so its absence is a host build rather than an unknown. Read here
+    rather than passed in: a process inside a container cannot ask
+    docker what it is running in, which is why that file puts the
+    answer in the environment.
+    """
+    image_id = os.environ.get("DUE_BUILD_IMAGE_ID")
+    return {
+        "build_env": "container" if image_id else "host",
+        "build_image": os.environ.get("DUE_BUILD_IMAGE") if image_id else None,
+    }
+
+
 def _record(args, g, frames, rows, state, sites, targets, files,
             indirect_by_src, title_of, blocked=(), nesting=None,
             refused=()):
@@ -1024,6 +1048,7 @@ def _record(args, g, frames, rows, state, sites, targets, files,
         "elf": os.path.basename(args.elf) if args.elf else None,
         "elf_sha256": sha,
         "cc": cc,
+        **_build_env_fields(),
         "ci_files": files,
         "functions": len(g.frame),
         "indirect_sites": len(sites),

@@ -857,3 +857,31 @@ def test_an_alias_does_not_shadow_a_cxx_handler_of_the_same_name(
     # And the handler is not ALSO counted as a thread root: its title is
     # a handler title whichever label the lookup arrived by.
     assert "184  thread mode" not in out, out
+
+
+def test_a_row_says_which_environment_built_the_image(monkeypatch):
+    """`cc` names the compiler and not where it ran.
+
+    A bound is a property of an image before it is a property of a
+    compiler, and every row this record carried until 2026-09-19 was a
+    host build - taken while a bench could still make one. The rule is
+    the one docker/build-firmware.sh and tools/flash.py already follow:
+    DUE_BUILD_IMAGE_ID is set by docker/run.sh and by nothing else, so
+    its absence is a host build rather than an unknown.
+    """
+    monkeypatch.delenv("DUE_BUILD_IMAGE_ID", raising=False)
+    monkeypatch.delenv("DUE_BUILD_IMAGE", raising=False)
+    assert sd._build_env_fields() == {"build_env": "host",
+                                      "build_image": None}
+
+    monkeypatch.setenv("DUE_BUILD_IMAGE_ID", "sha256:" + "a" * 64)
+    monkeypatch.setenv("DUE_BUILD_IMAGE", "due-build:15.2.1-1.1")
+    assert sd._build_env_fields() == {"build_env": "container",
+                                      "build_image": "due-build:15.2.1-1.1"}
+
+    # The tag alone is not evidence: a bench shell that exported it
+    # would otherwise label a host build as the image's.
+    monkeypatch.delenv("DUE_BUILD_IMAGE_ID")
+    assert sd._build_env_fields() == {"build_env": "host",
+                                      "build_image": None}
+
