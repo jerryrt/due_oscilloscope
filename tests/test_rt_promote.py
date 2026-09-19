@@ -17,6 +17,7 @@ Windows or macOS.
 """
 import ctypes
 import os
+import re
 import sys
 import threading
 
@@ -150,6 +151,28 @@ def _darwin_facts():
     return note, before, _darwin_band(lib), qos_alone, _darwin_qos_readback(lib)
 
 
+def _windows_timer_100ns():
+    """The timer resolution in force, in 100 ns units.
+
+    `timeBeginPeriod(1)` is the part of the Windows note that neither
+    `GetThreadPriority` nor `GetPriorityClass` can see, and `rt.py` calls
+    it the part that matters here: the default 15.6 ms tick is longer
+    than the playback ring holds at the higher rates.
+    `NtQueryTimerResolution` reports what the process is actually
+    running under.
+    """
+    ntdll = ctypes.WinDLL("ntdll")
+    minimum = ctypes.c_ulong()
+    maximum = ctypes.c_ulong()
+    current = ctypes.c_ulong()
+    status = ntdll.NtQueryTimerResolution(ctypes.byref(minimum),
+                                          ctypes.byref(maximum),
+                                          ctypes.byref(current))
+    assert status == 0, (
+        f"NtQueryTimerResolution failed, 0x{status & 0xffffffff:08x}")
+    return current.value
+
+
 def _windows_facts():
     note = rt.promote()
     from ctypes import wintypes
@@ -162,7 +185,8 @@ def _windows_facts():
     k32.GetPriorityClass.restype = wintypes.DWORD
     return (note,
             k32.GetThreadPriority(k32.GetCurrentThread()),
-            k32.GetPriorityClass(k32.GetCurrentProcess()))
+            k32.GetPriorityClass(k32.GetCurrentProcess()),
+            _windows_timer_100ns())
 
 
 def test_the_note_is_never_empty():
@@ -252,7 +276,23 @@ def test_on_macos_the_note_matches_the_band_the_kernel_applied():
 
 @pytest.mark.skipif(not WINDOWS, reason="priority classes are Windows'")
 def test_on_windows_the_note_matches_the_thread_and_process():
-    note, thread_prio, klass = _in_a_thread(_windows_facts)
+    """Every claim in the note, against what Windows applied.
+
+    The timer claim is the one the two priority calls cannot reach, and
+    it is checked for what it says rather than for what caused it:
+    `timeBeginPeriod` is process-wide and any program on the host can
+    raise the resolution, so this asserts the process runs at least as
+    fine as the note claims. On `windows-desk` the resolution reads
+    10,000 (1.0000 ms) both before and after `promote()`, so attributing
+    it to this call would be a claim the measurement does not support.
+
+    The note is also honest about a privilege it did not get:
+    `rt.py` asks for `REALTIME_PRIORITY_CLASS` (0x100) and reports
+    `class=0x80`, which is `HIGH_PRIORITY_CLASS` - Windows downgrades it
+    without `SeIncreaseBasePriorityPrivilege`, and the note carries what
+    `GetPriorityClass` returns rather than what was asked for.
+    """
+    note, thread_prio, klass, timer_100ns = _in_a_thread(_windows_facts)
     if "thread=time-critical" in note:
         assert thread_prio == rt.THREAD_PRIORITY_TIME_CRITICAL, (
             f"note claims time-critical and GetThreadPriority says "
@@ -261,6 +301,15 @@ def test_on_windows_the_note_matches_the_thread_and_process():
         claimed = int(note.split("class=0x")[1].split(",")[0].strip(), 16)
         assert klass == claimed, (
             f"note claims class 0x{claimed:x} and the process has 0x{klass:x}")
+    if "timer=" in note:
+        m = re.search(r"timer=([0-9]*\.?[0-9]+)ms", note)
+        assert m, (
+            f"the note claims a timer resolution it does not state: {note!r}")
+        claimed_ms = float(m.group(1))
+        assert timer_100ns <= claimed_ms * 10_000, (
+            f"note claims timer={claimed_ms}ms and the process is running "
+            f"at {timer_100ns / 10_000:.4f} ms "
+            f"(NtQueryTimerResolution: {timer_100ns})")
     if note.startswith("no promotion"):
         assert thread_prio != rt.THREAD_PRIORITY_TIME_CRITICAL, note
 
