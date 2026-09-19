@@ -33,6 +33,11 @@ sys.path.insert(0, os.path.join(REPO, "tools"))
 
 import host_conditions as hc  # noqa: E402
 
+# The container is always Linux, so this module's answers are the
+# host's own. See docs/testing.md: the container gates the board-free
+# tier, and `-m platform` is what each host still runs natively.
+pytestmark = pytest.mark.platform
+
 
 def test_it_collects_and_carries_the_fields_an_arm_needs():
     row = hc.collect()
@@ -79,9 +84,19 @@ def test_on_linux_a_real_tty_resolves_to_a_usb_path():
             if n.startswith("ttyACM")]
     if not ttys:
         pytest.skip("no ttyACM node on this host")
-    paths = [hc.usb_path(t) for t in ttys]
+    # A container shares the host's /sys and not its /dev, so on a bench
+    # with a board attached sysfs lists ttyACM* while the device node is
+    # absent. node_ctime() is then correctly None and this control has
+    # nothing to prove: it asserted the node's existence, which is not
+    # what it is a control for. The container's `board absent` step is
+    # what asserts the board is unreachable there.
+    present = [t for t in ttys if os.path.exists(t)]
+    if not present:
+        pytest.skip(f"sysfs lists {len(ttys)} ttyACM node(s) and none exists "
+                    f"under /dev: a container, or a node removed mid-run")
+    paths = [hc.usb_path(t) for t in present]
     assert any(p and p.startswith("usb") for p in paths), paths
-    assert any(hc.node_ctime(t) for t in ttys)
+    assert any(hc.node_ctime(t) for t in present)
 
 
 def test_the_cli_appends_a_row(tmp_path):
