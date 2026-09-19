@@ -432,29 +432,23 @@ disagree about shared source is a second code generator. For a while
 that rested on a single bench happening to be on xPack, which is a
 single point of failure nobody chose.
 
-**A bench can host both.** The second toolchain is installed
-**deliberately outside every `toolchains.json` search pattern** and
-selected per build:
+**The figures below were taken with a second toolchain installed on a
+bench**, outside every `toolchains.json` search pattern and selected per
+build with `-DARM_TOOLCHAIN_DIR`. That arrangement is not available now:
+firmware is built in the image, and CMake refuses a configure
+`docker/run.sh` did not launch. A second code generator therefore means
+a second pinned toolchain **in the image**, which is open work rather
+than a procedure to follow here.
 
-```sh
-# linux-x1: the default stays Debian 14.2.1 from /usr/bin
-cmake -B build-xpack \
-      -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DARM_TOOLCHAIN_DIR=$HOME/toolchains-optin/xpack-arm-none-eabi-gcc-15.2.1-1.1/bin
-```
-
-`windows-desk` uses the same arrangement at `C:/toolchains-optin/`.
-
-**Outside the globs is the whole design.** The Linux patterns include
-`{repo}/tools/xpack-arm-none-eabi-gcc-*/bin` and
-`/opt/xpack-arm-none-eabi-gcc-*/bin`, both searched ahead of
-`/usr/bin`. Unpacking xPack into either would silently make it the
-default and **replace** the bench's generator rather than add one — the
-opposite of what a second toolchain is for, and it would do it without
-a diagnostic. A `toolchains.local.json` entry has the same effect,
-since a local entry prepends. Opt-in per build is the only form that
-adds a draw without removing one.
+**Why it was kept outside the search patterns is worth carrying over.**
+The Linux patterns include `{repo}/tools/xpack-arm-none-eabi-gcc-*/bin`
+and `/opt/xpack-arm-none-eabi-gcc-*/bin`, both searched ahead of
+`/usr/bin`. Unpacking a toolchain into either makes it the default and
+**replaces** the generator rather than adding one — the opposite of what
+a second toolchain is for, and it does it without a diagnostic. A
+`toolchains.local.json` entry has the same effect, since a local entry
+prepends. Selecting one per build is the only form that adds a draw
+without removing one.
 
 ### What it buys, measured
 

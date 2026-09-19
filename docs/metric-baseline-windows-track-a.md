@@ -4,10 +4,8 @@
 invariant 3's "comparable in design, feature set and performance" has
 numbers on this bench rather than an assertion. Regenerate with
 
-    cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-          -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
-    cmake --build build-a --target firmware_track_a
-    python3 tools/flash.py --bin build-a/track_a_bringup.bin --port COM7
+    docker/run.sh docker/build-firmware.sh
+    python3 tools/flash.py --bin docker/out/build-a/track_a_bringup.bin --port <programming port>
     python3 tools/metrics.py --repeats 9 --seconds 3 \
         --out docs/metric-baseline-windows-track-a.md
 

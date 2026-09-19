@@ -3,10 +3,8 @@
 **Track A's tracked baseline for the `linux-x1` bench**, the counterpart
 to `docs/metric-baseline-linux.md`. Regenerate with
 
-    cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
-          -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON
-    cmake --build build-a --target firmware_track_a
-    python3 tools/flash.py --bin build-a/track_a_bringup.bin
+    docker/run.sh docker/build-firmware.sh
+    python3 tools/flash.py --bin docker/out/build-a/track_a_bringup.bin
     python3 tools/metrics.py --repeats 9 --seconds 3 \
         --out docs/metric-baseline-linux-track-a.md
 
