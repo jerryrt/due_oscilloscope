@@ -120,6 +120,27 @@ class _Session(threading.Thread):
             self._frames.append(frame)
             self._cv.notify()
 
+    def discard_frames(self):
+        """Throw away the frames queued for this client, and say how many.
+
+        A client that has asked to stop receiving frames does not want
+        the backlog. Without this, everything queued before the request
+        is still delivered after the reply granting it - up to
+        `client_queue_frames`, which is 256 KB at the 4 KB frame - and
+        on a loaded host it trickles out over seconds. Measured on
+        `windows-desk` with every core loaded: 61-63 frames arriving up
+        to 7 s after the reply, while the server reported the client
+        unsubscribed throughout.
+
+        Not counted into `dropped`. That counter means "this client fell
+        behind", `status` is read that way, and a discard the client
+        asked for is not that. The count goes back in the reply instead.
+        """
+        with self._cv:
+            n = len(self._frames)
+            self._frames.clear()
+        return n
+
     def put_message(self, blob):
         """Queue an already-encoded message. Never dropped."""
         with self._cv:
@@ -759,7 +780,14 @@ def _op_rate(srv, ses, msg):
 
 def _op_subscribe(srv, ses, msg):
     ses.subscribed = bool(msg.get("frames", True))
-    return {"event": "subscribed", "frames": ses.subscribed}
+    out = {"event": "subscribed", "frames": ses.subscribed}
+    if not ses.subscribed:
+        # What was already queued goes with the subscription. The
+        # sender thread may still be writing one frame it had taken off
+        # the queue, so a client can see one more after this reply and
+        # no more than one.
+        out["discarded"] = ses.discard_frames()
+    return out
 
 
 def _op_start(srv, ses, msg):

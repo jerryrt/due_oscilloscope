@@ -249,15 +249,67 @@ def test_a_client_gets_no_frames_until_it_subscribes(connect):
 
 
 def test_unsubscribing_stops_them(connect):
+    """Frames stop at the reply, not a settling window later.
+
+    This asserted that the count held still across a 100 ms settle and
+    a 300 ms watch, and it failed once on `windows-desk` under load
+    (`assert 15 == 9`). The daemon was not at fault: it clears the flag
+    before replying and queues nothing after. What arrived was the
+    backlog queued before the request, draining slowly because the
+    loaded client was reading it slowly - measured at 61-63 frames, the
+    queue's own depth, up to 7 s later.
+
+    So the settle was the assumption. The device keeps running here, so
+    this still fails if the flag stops being honoured, and the bound is
+    two rather than a tolerance: one frame the sender had already taken
+    off the queue, and one from a `targets` snapshot the reader took
+    before the flag cleared. Everything queued before the request is
+    discarded by `_op_subscribe`, and every later snapshot excludes this
+    session.
+    """
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
     c.wait_frames(2, timeout=10.0)
-    c.subscribe(frames=False)
-    time.sleep(0.1)
-    settled = c.frames_received
-    time.sleep(0.3)
-    assert c.frames_received == settled
+
+    reply = c.subscribe(frames=False)
+    assert reply["frames"] is False
+    at_reply = c.frames_received
+    time.sleep(0.5)
+    extra = c.frames_received - at_reply
+    assert extra <= 2, (
+        f"{extra} frames arrived in 500 ms after the unsubscribe reply. "
+        f"At most two can: one in the sender's hand and one from a "
+        f"snapshot taken before the flag cleared")
+
+
+def test_unsubscribing_discards_what_was_already_queued():
+    """The discard itself, with no timing in it at all.
+
+    A `_Session` that has not been started runs no sender thread, so a
+    queue built here cannot drain while the test looks at it. That is
+    what makes this deterministic where the socket test above can only
+    bound what it sees.
+    """
+    a, b = socket.socketpair()
+    srv = servermod.Server(devmod.FakeDevice(), host="127.0.0.1", port=0)
+    ses = servermod._Session(srv, a, ("test", 0))
+    try:
+        for _ in range(10):
+            ses.put_frame(b"x" * 4096)
+        assert len(ses._frames) == 10
+
+        reply = servermod._op_subscribe(srv, ses, {"frames": False})
+
+        assert reply == {"event": "subscribed", "frames": False,
+                         "discarded": 10}
+        assert len(ses._frames) == 0
+        assert ses.dropped == 0, (
+            "a discard the client asked for was counted as the client "
+            "falling behind; `status.dropped` means the second")
+    finally:
+        a.close()
+        b.close()
 
 
 def test_the_device_is_drained_even_with_nobody_listening(srv, connect):

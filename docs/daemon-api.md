@@ -78,7 +78,7 @@ limit rather than saying no.
 | `load` | no | The device's main-loop load. Control channel only - never the console |
 | `caps` | no | Rate limits, modes, device description |
 | `rate` | no | Snap `adc_hz`/`dac_sps` without touching the device |
-| `subscribe` | no | `{frames: bool}` - start or stop receiving `FRAME` |
+| `subscribe` | no | `{frames: bool}` - start or stop receiving `FRAME`. Stopping **discards what is already queued** for that client and reports how many as `discarded`; at most one further frame can arrive, the one the sender already holds |
 | `start` | yes | `{mode, adc_hz, dac_sps, channels, preset}` |
 | `stop` | yes | Stop the device |
 | `record.start` | yes | `{path}` - capture frames to disk |
