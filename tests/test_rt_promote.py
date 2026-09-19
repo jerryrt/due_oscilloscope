@@ -65,16 +65,15 @@ def _linux_facts():
     return note, policy, prio, nice
 
 
-def _darwin_qos():
-    note = rt.promote()
-    lib = ctypes.CDLL(None, use_errno=True)
+def _darwin_qos_readback(lib):
+    """The thread's QoS class, or `None` where libSystem exposes no getter."""
     try:
         fn = lib.pthread_get_qos_class_np
     except AttributeError:
         try:
             fn = lib.pthread_get_qos_class_self_np
         except AttributeError:
-            return note, None
+            return None
     cls = ctypes.c_uint()
     rel = ctypes.c_int()
     try:
@@ -90,8 +89,65 @@ def _darwin_qos():
             ok = fn(lib.pthread_self(), ctypes.byref(cls),
                     ctypes.byref(rel)) == 0
     except (AttributeError, OSError):
-        return note, None
-    return note, (cls.value if ok else None)
+        return None
+    return cls.value if ok else None
+
+
+def _darwin_band(lib):
+    """`thread_policy_get`'s view of this thread's time-constraint policy.
+
+    Returns `(kr, get_default, period_ms, computation_ms, constraint_ms)`,
+    the milliseconds converted out of `mach_absolute_time` units by the
+    host's own timebase. `get_default` is the field that says whether the
+    thread carries a policy of its own: 1 means the kernel handed back the
+    default because nothing was ever set on this thread.
+    """
+    count = ctypes.sizeof(rt._time_constraint) // 4
+    lib.pthread_self.restype = ctypes.c_void_p
+    lib.pthread_mach_thread_np.argtypes = [ctypes.c_void_p]
+    lib.pthread_mach_thread_np.restype = ctypes.c_uint32
+    lib.thread_policy_get.argtypes = [
+        ctypes.c_uint32, ctypes.c_uint32,
+        ctypes.POINTER(rt._time_constraint),
+        ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_int)]
+    lib.thread_policy_get.restype = ctypes.c_int
+    lib.mach_timebase_info.argtypes = [ctypes.POINTER(rt._timebase)]
+
+    tb = rt._timebase()
+    lib.mach_timebase_info(ctypes.byref(tb))
+    pol = rt._time_constraint()
+    cnt = ctypes.c_uint32(count)
+    default = ctypes.c_int(0)
+    kr = lib.thread_policy_get(
+        lib.pthread_mach_thread_np(lib.pthread_self()),
+        rt.THREAD_TIME_CONSTRAINT_POLICY,
+        ctypes.byref(pol), ctypes.byref(cnt), ctypes.byref(default))
+
+    def ms(units):
+        return units * tb.numer / tb.denom / 1e6
+
+    return (kr, default.value,
+            ms(pol.period), ms(pol.computation), ms(pol.constraint))
+
+
+def _darwin_facts():
+    """What the QoS call and the band each do, in the order `promote()` does.
+
+    `qos_alone` is read after setting the class and before the band, which
+    is the only point at which it can be observed at all - see the test.
+    """
+    lib = ctypes.CDLL(None, use_errno=True)
+    before = _darwin_band(lib)
+    try:
+        fn = lib.pthread_set_qos_class_self_np
+        fn.argtypes = [ctypes.c_uint, ctypes.c_int]
+        fn.restype = ctypes.c_int
+        qos_alone = (_darwin_qos_readback(lib)
+                     if fn(rt.QOS_CLASS_USER_INTERACTIVE, 0) == 0 else None)
+    except (AttributeError, OSError):
+        qos_alone = None
+    note = rt.promote()
+    return note, before, _darwin_band(lib), qos_alone, _darwin_qos_readback(lib)
 
 
 def _windows_facts():
@@ -136,15 +192,62 @@ def test_on_linux_the_note_matches_what_the_scheduler_applied():
             f"note claims nothing was applied and nice is {nice}")
 
 
-@pytest.mark.skipif(not DARWIN, reason="QoS classes are macOS's")
-def test_on_macos_a_claimed_qos_class_is_the_one_the_thread_has():
-    note, qos = _in_a_thread(_darwin_qos)
-    if "qos=user-interactive" not in note:
-        pytest.skip(f"no QoS claimed on this host: {note}")
-    if qos is None:
-        pytest.skip("this libSystem exposes no readable QoS getter")
-    assert qos == rt.QOS_CLASS_USER_INTERACTIVE, (
-        f"note claims user-interactive and the thread reads 0x{qos:x}")
+@pytest.mark.skipif(not DARWIN, reason="the Mach band is macOS's")
+def test_on_macos_the_note_matches_the_band_the_kernel_applied():
+    """The band is what `promote()` is for, and it is what is readable.
+
+    **A QoS class is true at the moment it is set and unobservable once
+    the band is applied**, so the note's two halves cannot both be read
+    back at the end. Measured on mac-bench: setting the class alone reads
+    0x21, and after `thread_policy_set` the same thread reads 0x0 - the
+    time-constraint policy replaces the classification rather than
+    failing. Asserting the QoS class after `promote()` therefore fails on
+    a host where the promotion worked perfectly, which is why this reads
+    the band instead. Do not "fix" it back.
+
+    `computation` is not held to the request: it is asked for as 0.5 ms
+    here and the kernel reports 1.25 ms. Recorded as measured and
+    unexplained; the assertion is only that the kernel did not give back
+    less than was asked for.
+    """
+    note, before, after, qos_alone, qos_after = _in_a_thread(_darwin_facts)
+
+    if qos_alone is not None:
+        assert qos_alone == rt.QOS_CLASS_USER_INTERACTIVE, (
+            f"pthread_set_qos_class_self_np returned 0 and the thread "
+            f"reads 0x{qos_alone:x} before any band is applied")
+
+    if "time-constraint" not in note:
+        assert note.startswith("no promotion") or "qos=" in note, note
+        assert after[1] == 1, (
+            f"note claims no band and thread_policy_get says the thread "
+            f"carries one: {after}")
+        return
+
+    claimed = [float(v) for v in
+               note.split("time-constraint ")[1].split(" ms")[0].split("/")]
+    kr, default, period, computation, constraint = after
+
+    assert before[1] == 1, (
+        f"this thread already carried a time-constraint policy before "
+        f"promote(), so the test cannot tell what promote() did: {before}")
+    assert kr == 0, f"thread_policy_get failed with {kr} after promote()"
+    assert default == 0, (
+        f"note claims {note!r} and thread_policy_get returns the default "
+        f"policy, so nothing was applied to this thread")
+    assert period == pytest.approx(claimed[0], rel=1e-3), (
+        f"note claims period {claimed[0]} ms and the kernel holds {period}")
+    assert constraint == pytest.approx(claimed[2], rel=1e-3), (
+        f"note claims constraint {claimed[2]} ms and the kernel holds "
+        f"{constraint}")
+    assert computation >= claimed[1] * (1 - 1e-3), (
+        f"note claims computation {claimed[1]} ms and the kernel holds "
+        f"{computation}, which is less than was asked for")
+    assert qos_after != rt.QOS_CLASS_USER_INTERACTIVE or qos_after is None, (
+        f"the band no longer clears the QoS class on this macOS: the "
+        f"thread still reads 0x{qos_after:x}. That is not a defect - it "
+        f"is the premise of this test changing, and the docstring and "
+        f"docs/testing.md have to change with it")
 
 
 @pytest.mark.skipif(not WINDOWS, reason="priority classes are Windows'")
