@@ -177,11 +177,11 @@ same fixed duration, 1.3% apart. So unlike the VM restart, these deltas
 are attributable to the change rather than to the machine.
 
 **The three build bind mounts are gone with it.** They existed only so
-`cmake -B build` landed in `docker/out`; `build-firmware.sh` names the
+`cmake -B build` landed in `docker/out/`; `build-firmware.sh` names the
 destination, which is the same directory whether it runs against the
-mounted tree or a copy that bridges `docker/out`. Repo-level `build/`,
+mounted tree or a copy that bridges `docker/out/`. Repo-level `build/`,
 `build-a/` and `build-c/` stop existing, and `image_fingerprint.py` and
-`stack_depth.py` default to `docker/out` rather than to directories
+`stack_depth.py` default to `docker/out/` rather than to directories
 that are no longer written.
 
 **It stops writing them; it does not remove what is already there.**
