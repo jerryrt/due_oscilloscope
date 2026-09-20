@@ -3,9 +3,6 @@
 # build142 matched neither, and a stray one was committed-adjacent long
 # enough to notice. Nothing tracked begins with `build`.
 build*/
-build/
-build-*/
-build-sketch/
 *.o
 *.a
 *.elf
@@ -22,7 +19,6 @@ cmake_install.cmake
 compile_commands.json
 
 # arduino-cli
-sketches/**/build/
 *.ino.bin
 *.ino.elf
 *.ino.map
@@ -66,7 +62,6 @@ bench.json
 
 # The flash log is one desk's history of what it put on its board.
 records/flash-log.jsonl
-build-c/
 records/issue35-reflash-transcripts.log
 
 # Agent worktrees: transient copies of the whole tree. Source-scanning

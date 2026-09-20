@@ -300,6 +300,24 @@ option(BUILD_TRACK_C "Fetch FreeRTOS and build the Track C image" OFF)
 #     cmake -B build -DCMAKE_TOOLCHAIN_FILE=... -DBUILD_TRACK_A=ON
 option(BUILD_TRACK_A "Build the Track A image from CMake, without arduino-cli" OFF)
 
+# THERE IS NO BUILD_TRACK_B, AND THERE SHOULD NOT BE. Track B is not a
+# third option alongside these two: it is what this file builds when
+# asked for nothing, because invariant 3 says Track A is a reference
+# oracle and Track B is the project. Adding the symmetric option would
+# make three peers out of one project and two variants, and would say
+# something about the tracks that is not true.
+#
+# The build directories follow the same rule and for the same reason:
+# `build` is the default because it is the default, and `build-a` and
+# `build-c` carry a suffix because they are opt-in. Renaming it
+# `build-b` costs 82 call sites to make a correct asymmetry look
+# symmetrical.
+#
+# What is NOT defensible, and is being fixed separately, is naming the
+# artifacts three different ways - after the track, after the
+# implementation style, and after the technology - when two tracks share
+# the style. That is a real inconsistency; this one is a statement.
+
 if(BUILD_TRACK_A)
     include(cmake/track_a.cmake)
 endif()
