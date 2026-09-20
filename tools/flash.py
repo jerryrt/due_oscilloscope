@@ -696,6 +696,14 @@ def _log_flash(binary) -> None:
             # is what the path already said. Old rows have no key at all;
             # track_of_binary stays for them and for every spelling the
             # images have carried.
+            # THE SHARED CONDITIONS FIRST, THIS TOOL'S OWN FIELDS OVER
+            # THEM. provenance.conditions() is the one home for what
+            # every row carries - bench, host, checkout and its
+            # filesystem, the tool - and the flash log is a record like
+            # any other. Its own repo_rev, dirty flag and image identity
+            # are computed here from the image and win where the names
+            # collide, because they are the fields the flash guards read.
+            **provenance.conditions(),
             "track": provenance.track_of_binary(binary),
             "sha256": h,
             "repo_rev": git("rev-parse", "--short", "HEAD"),

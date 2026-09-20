@@ -608,12 +608,129 @@ def repo_rev():
     return rev + ("-dirty" if dirty else "")
 
 
-def collect(board=None, inst=None, channels=(1, 2), extra=None):
-    """Everything that makes a run attributable. Never raises.
+#: Where the kernel lists what is mounted where. A module constant so a
+#: test can point it elsewhere; a file-exists test on it, never a
+#: platform test, is what decides whether `checkout_fs` can be read.
+MOUNTS = "/proc/mounts"
+
+
+def _fs_type(path, mounts=None):
+    """The filesystem type `path` sits on, from the mount table, or None.
+
+    Longest matching mount point wins, which is what makes a bind or a
+    nested mount answer for itself rather than for `/`. None where the
+    table cannot be read - a host with no /proc, or a mount point
+    spelled in a way this does not parse - and never a guess, because
+    the value's whole job is to tell a drvfs figure from an ext4 one.
+    """
+    table = MOUNTS if mounts is None else mounts
+    try:
+        with open(table, encoding="utf-8", errors="replace") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return None
+    want = os.path.realpath(path)
+    best = None
+    for line in lines:
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        # The kernel escapes a space in a mount point as \040.
+        point = parts[1].encode().decode("unicode_escape")
+        if want == point or want.startswith(point.rstrip("/") + "/"):
+            if best is None or len(point) > len(best[0]):
+                best = (point, parts[2])
+    return best[1] if best else None
+
+
+def _tool_identity():
+    """Which tool wrote the row, and the revision of the tree it ran from.
+
+    A row's `repo_rev` says what the instrument was; the tool's own name
+    beside it says which instrument. `rev` is the same reading as
+    `repo_rev` because every tool here lives in this tree - a tool that
+    moves out of it records its own.
+    """
+    return {"name": os.path.basename(sys.argv[0]) if sys.argv and sys.argv[0]
+            else None, "rev": repo_rev()}
+
+
+def conditions(board=None, inst=None, channels=(1, 2), extra=None,
+               ident=None, via=None, uptime_ms=None, tool=None):
+    """Every condition a row should carry, in one place. Never raises.
+
+    ONE HOME. Until 2026-09-20 there were three: `collect()`, the full
+    set; `run_fields()`, the seven per-row fields a record-writing tool
+    spreads into each row; and `via` on the measurement dataclasses.
+    Counted at the call sites, 32 tools called the second, 11 the first,
+    and two called both - two authors independently resolving "which
+    entry point" by taking both, which is how a convention that does
+    not say which to use stops being one. Both names remain as aliases
+    of this for one release and then go.
+
+    And two things no row said at all. `checkout` and `checkout_fs`:
+    windows-desk's drvfs-against-ext4 results - a 4x cppcheck
+    difference, a 3.5x fuzz-execution difference - were comparable only
+    because they were labelled by hand in issue comments, for a bench
+    that ran two checkouts for weeks. `suite_context` and `tool`: which
+    test, and which tool at which revision, wrote the row. `uptime_ms`
+    is present only when a caller read it over the command port, so it
+    can never be required.
 
     `board` and `inst` are optional so a board-free or scope-free run
-    still records what it can and `missing()` names the rest.
+    still records what it can and `missing()` names the rest; `ident`
+    is the control channel's IDENTITY for a tool that holds the command
+    port rather than a measure.Board.
     """
+    p = _collect(board=board, inst=inst, channels=channels)
+    if ident:
+        # The control channel's IDENTITY carries the same track and
+        # build string the console does, so it can fill every field
+        # here - not just the track. firmware() is what turns a build
+        # string into the commit tools/flash.py logged for that image.
+        if ident.get("track"):
+            p["track"] = ident["track"]
+        if ident.get("build"):
+            p["build"] = ident["build"]
+            p.update(firmware(ident.get("build"), ident.get("track")))
+    # The per-row names run_fields() has always spread into a record.
+    # `fw_build` is `build` under the name the rows carry; both stay.
+    p.update({
+        "fw_repo_rev": p.get("fw_repo_rev"),
+        "fw_build": p.get("build"),
+        # A commit is not an image - see fw_cc/fw_layout in firmware().
+        # Carried on every row a tool writes, so a figure that turns out
+        # to depend on code layout can be re-read for it rather than
+        # re-measured. Null on rows whose flash predates the field.
+        "fw_cc": p.get("fw_cc"),
+        "fw_layout": p.get("fw_layout"),
+        # A compiler is not an environment. `fw_build_env` says whether a
+        # container produced the image at all, and the content hash says
+        # which one; the tag and the object id stay in the flash log,
+        # where the row's commit reaches them.
+        "fw_build_env": p.get("fw_build_env"),
+        "fw_build_image_content": p.get("fw_build_image_content"),
+        "checkout": REPO,
+        "checkout_fs": _fs_type(REPO),
+        "suite_context": os.environ.get("PYTEST_CURRENT_TEST") or None,
+        "tool": tool if tool is not None else _tool_identity(),
+        "via": via,
+        "uptime_ms": uptime_ms,
+    })
+    if extra:
+        p.update(extra)
+    return p
+
+
+def collect(board=None, inst=None, channels=(1, 2), extra=None):
+    """The old name of `conditions()`; returns the same dict. Alias for
+    one release, then it goes."""
+    return conditions(board=board, inst=inst, channels=channels,
+                      extra=extra)
+
+
+def _collect(board=None, inst=None, channels=(1, 2)):
+    """The host, bench, board and instrument half of `conditions()`."""
     b = bench()
     wire, since, source = wiring()
     p = {
@@ -696,8 +813,6 @@ def collect(board=None, inst=None, channels=(1, 2), extra=None):
             p["trigger_coupling"] = inst.trigger_coupling()
         except Exception as e:                            # pragma: no cover
             p["instrument_error"] = f"{type(e).__name__}: {e}"
-    if extra:
-        p.update(extra)
     return p
 
 
@@ -728,7 +843,10 @@ def check_probe(p, ch, seen_vpp, expected_vpp, tolerance=0.15):
 
 
 def run_fields(board=None, ident=None):
-    """The per-row provenance a record-writing tool should carry.
+    """The old name of `conditions()`; returns the same dict, `track`
+    defaulted to "unknown". Alias for one release, then it goes.
+
+    What it was for, kept because the reasoning still holds:
 
     Reads the board rather than trusting a literal track label: a
     hardcoded `track="b"` silently mislabels every run made on the
@@ -751,32 +869,9 @@ def run_fields(board=None, ident=None):
     would perturb the very thing being measured. Without either,
     `track` is "unknown": honest, but still a row nobody can attribute.
     """
-    p = collect(board=board)
-    if ident:
-        # The control channel's IDENTITY carries the same track and
-        # build string the console does, so it can fill every field
-        # here - not just the track. firmware() is what turns a build
-        # string into the commit tools/flash.py logged for that image.
-        if ident.get("track"):
-            p["track"] = ident["track"]
-        if ident.get("build"):
-            p["build"] = ident["build"]
-            p.update(firmware(ident.get("build"), ident.get("track")))
-    return {
-        "track": p.get("track") or "unknown",
-        "fw_repo_rev": p.get("fw_repo_rev"),
-        "repo_rev": p.get("repo_rev"),
-        "fw_build": p.get("build"),
-        # A commit is not an image - see fw_cc/fw_layout in firmware().
-        # Carried on every row a tool writes, so a figure that turns out
-        # to depend on code layout can be re-read for it rather than
-        # re-measured. Null on rows whose flash predates the field.
-        "fw_cc": p.get("fw_cc"),
-        "fw_layout": p.get("fw_layout"),
-        # A compiler is not an environment. `fw_build_env` says whether a
-        # container produced the image at all, and the content hash says
-        # which one; the tag and the object id stay in the flash log,
-        # where the row's commit reaches them.
-        "fw_build_env": p.get("fw_build_env"),
-        "fw_build_image_content": p.get("fw_build_image_content"),
-    }
+    p = conditions(board=board, ident=ident)
+    # This name's one difference: a row with no board reads "unknown"
+    # rather than nothing, because every caller spreads it into a row
+    # and a missing key reads as a tool that never asked.
+    p["track"] = p.get("track") or "unknown"
+    return p

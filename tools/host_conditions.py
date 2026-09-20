@@ -60,6 +60,7 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "host"))
+import provenance                                       # noqa: E402
 
 NODES = ("control", "native", "command")
 
@@ -147,7 +148,12 @@ def main():
     ap.add_argument("--label", default=None,
                     help="what this reading is of, e.g. 'before-return-leg'")
     args = ap.parse_args()
-    row = collect()
+    # The shared conditions under this tool's own reading: a host
+    # conditions row is a record like any other, and the checkout and
+    # filesystem it names are exactly what a drvfs-against-ext4
+    # comparison needed and never had. This tool's own keys win where
+    # the names collide (python, repo_rev).
+    row = {**provenance.conditions(), **collect()}
     if args.label:
         row["label"] = args.label
     for k, v in row.items():

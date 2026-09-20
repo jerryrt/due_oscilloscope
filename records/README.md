@@ -72,6 +72,38 @@ a tool writes now, and `tools/container_report.py` and the flash log
 record their own. A file whose rows have none is from before its tool
 did.
 
+## One home for a row's conditions
+
+**`provenance.conditions()` is where every field a row carries comes
+from**, since 2026-09-20. Before that there were three homes -
+`collect()` for the full set, `run_fields()` for the seven per-row
+fields, and `via` on the measurement dataclasses - and at the call
+sites 32 tools used the second, 11 the first, and two used both: two
+authors independently resolved "which one" by taking both, and the
+row looked complete either way. A convention that does not say which
+entry point to use is not a convention. `collect()` and `run_fields()`
+remain as names for one release and return the same dict; then they go.
+
+What a row carries, beyond what the old names gave it:
+
+| field | what it answers |
+|---|---|
+| `checkout`, `checkout_fs` | which tree, on which filesystem. `windows-desk`'s drvfs-against-ext4 figures - a 4x `cppcheck` difference, a 3.5x fuzz-execution difference - were comparable only because they were labelled by hand in issue comments, for a bench that ran two checkouts for weeks. Read from the mount table where there is one; null where there is not, never a guess |
+| `suite_context` | the test that was running, when one was |
+| `tool` | which tool, at which revision, wrote the row |
+| `via` | which instrument took the counters, as before |
+| `uptime_ms` | present only when a caller read it over the command port, so it can never be required |
+
+**The guard is scoped to standing tools by a rule, not a list.** Every
+tool under `tools/` that writes rows under `records/` must reach
+`conditions()`, and the set is taken from the tree - except tools
+named for an issue, `issue<N>` anywhere in the name. Those are one-shot
+experiment scripts for closed investigations whose rows will not be
+written again, and holding them to a new call would mean editing
+frozen scripts to keep a guard green, which is how a guard becomes
+expensive and eventually acquires a `-k`. A one-shot that is re-run is
+re-run with what its tool recorded; a standing tool records everything.
+
 ## Rows whose `track` field is wrong, and how to read them
 
 **Nine record-writing tools carried `track="b"` as a literal until

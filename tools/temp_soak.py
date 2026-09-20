@@ -15,6 +15,7 @@ import json, os, sys, time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "host"))
 import measure
+import provenance                                       # noqa: E402
 
 MINUTES = float(sys.argv[1]) if len(sys.argv) > 1 else 30.0
 EVERY_S = 20.0
@@ -39,16 +40,23 @@ try:
     if link is None:
         raise SystemExit("no control channel")
     t0 = time.time()
+    # THE RUN'S CONDITIONS RIDE ON THE FIRST READING ONLY. A soak writes
+    # a row a second for hours, and the conditions are one fact about
+    # the run rather than about each reading; every reader of this
+    # record keys on t_s and code and ignores what it does not know.
+    cond = provenance.conditions(via="control")
     while time.time() - t0 < MINUTES * 60.0:
         t = time.time()
         r = link.temperature(samples=1024)
         if not r["tson"]:
             raise SystemExit("TSON clear - not the sensor")
-        fh.write(json.dumps({"t_s": round(t - t0, 1), "code": r["code"],
+        fh.write(json.dumps({**cond, "t_s": round(t - t0, 1),
+                             "code": r["code"],
                              "code_min": r["code_min"],
                              "code_max": r["code_max"],
                              "adc_mr": "%08x" % r["adc_mr"]},
                             sort_keys=True) + "\n")
+        cond = {}
         fh.flush()
         n += 1
         print("%7.1f s  %8.3f" % (t - t0, r["code"]), flush=True)
