@@ -108,9 +108,11 @@ Violating any of these is a design regression, not a style preference.
    wrong.
 2. **No on-target DSP.** The Cortex-M3 has no FPU. FFT and filtering
    belong on the host.
-3. **The two toolchains share no *hardware* source, and are peers in
-   everything else.** Track A (arduino-cli) is a reference oracle; Track
-   B (CMake + arm-gcc) is the project. Register programming stays
+3. **The tracks share no *hardware* source, and are peers in
+   everything else.** Track A is a reference oracle, Track B is the
+   project, and Track C is the FreeRTOS variant. All three are built by
+   CMake with the image's arm-gcc; `arduino-cli` is deleted and is
+   invoked by nothing. Register programming stays
    independent - `usbdma`/`usb_cdc`, `acq`/`adc`/`dac`/`gen`/`play`
    internals, clock, fault - because two independent programmings of the
    same silicon is what makes a behavioural divergence point at one of
@@ -743,7 +745,7 @@ Check here before reasoning from general Arduino knowledge.
 | Tier | Platform | Standard |
 |---|---|---|
 | **1** | **Windows** | Develop, test and deploy. 100% correctness; a failure here is a bug to fix, not a platform quirk to document |
-| **1** | native Linux | Bench `linux-x1`, board attached 2026-08-29. Track B suite 505 passed / 1 context-only failure; byte conservation 0 B in 40 runs at five rates; `rt.py` promotes natively **where the session has an `rtprio` limit** - it declines silently otherwise, and `ulimit -r` is the check. `docs/linux.md` |
+| **1** | native Linux | Bench `linux-x1`, board attached 2026-08-29. byte conservation 0 B in 40 runs at five rates; `rt.py` promotes natively **where the session has an `rtprio` limit** - it declines silently otherwise, and `ulimit -r` is the check. `docs/linux.md` |
 | **2** | macOS | Porting target. May compromise where the OS forces it, and does. **Also the provenance of every figure in `docs/status.md` until the 0-series is re-taken** |
 | **2** | WSL2 | Porting target for the *software* path only. Real Linux kernel, but no native USB - see below |
 
@@ -1231,11 +1233,15 @@ claiming either instrument.
 is the same argument that made `fw_repo_rev` necessary, run one step
 further. `fw_version` was not an answer because a version string is
 bumped by hand; `fw_repo_rev` is not a complete answer either, because
-the three benches build this repository with three different code
-generators. `mac-bench` is on xPack GCC 15.2.1, `linux-x1` on Debian's
-14.2.1, `windows-desk` on 14.3.1, and the legacy Track A path on
-arduino-cli's bundled 4.8.3. None of that was recorded anywhere before
-2026-08-31, and **nobody had noticed it was three rather than two.**
+a commit does not determine the code generator that compiled it.
+
+**Every image is now built by one pinned compiler in the container**, so
+the three benches no longer differ - which is what makes a codegen
+difference a finding rather than the expected case, and it is why the
+rule below is worth keeping rather than retiring. When this was first
+recorded the benches ran three different code generators and nobody had
+noticed it was three rather than two; the figures taken then carry
+`fw_cc` and say which.
 
 It was recorded here for what it does to issue #5, and **within the
 hour the measurement it motivated corrected this paragraph** - which is
@@ -1721,7 +1727,11 @@ because there is no debug probe.
 6. Host application — capture/loopback/bench tools, a daemon owning the
    ports (`host/daemon/`, `docs/daemon-api.md`), and a Qt front end
    (`gui/`) that draws from it. See `docs/frontend.md`
-7. FreeRTOS variant — not started
+7. FreeRTOS variant — **Track C builds and runs.** `apps/rtos_bringup/`,
+   `cmake/freertos.cmake`, `-DBUILD_TRACK_C=ON`, built by the container
+   alongside A and B and carried in the reproducibility and stack-depth
+   checks. What it does *not* have is a settled scope: the invariant 3
+   and invariant 4 questions are open on its own issue
 
 ## Debugging context
 
