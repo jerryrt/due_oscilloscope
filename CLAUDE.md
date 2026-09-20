@@ -1550,7 +1550,7 @@ was absent, and took that bench off a two-track fix on a false premise.
 **Every build is a full build, and it is enforced rather than
 remembered.** `CMakeLists.txt`'s `enforce_clean_build` target cleans
 before every build of the firmware, and every track goes through it -
-`firmware`, `firmware_track_a` and `firmware_rtos` are the same shape;
+`firmware`, `firmware_track_a` and `firmware_track_c` are the same shape;
 `tests/test_clean_build.py` fails if the clean step is removed or if a
 second build path appears. The cost is 0.6 s for Track B
 and 2.2 s for Track A against measurement runs of nine minutes to eight
@@ -1570,7 +1570,7 @@ What `docker/build-firmware.sh` runs, per track, inside the image:
   forgotten: `micros()` divides by the first, and the second pins the
   capture ring to SRAM bank 1.
 - **Track C**, FreeRTOS: `-DBUILD_TRACK_C=ON` in `build-c`, target
-  `firmware_rtos`. The image carries FreeRTOS at the pin, so it builds
+  `firmware_track_c`. The image carries FreeRTOS at the pin, so it builds
   with no network.
 
 ```sh

@@ -408,7 +408,7 @@ if(BUILD_TRACK_C)
     # skipped it would be exactly the silent drift
     # tests/test_clean_build.py exists to catch, so the shape is copied
     # deliberately rather than the target being left to `all`.
-    add_custom_target(firmware_rtos
+    add_custom_target(firmware_track_c
         COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
         COMMAND ${FW_GIT_REV_COMMAND}
         COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"

@@ -10,7 +10,7 @@ is how to run it; a bench flashes what it writes under `docker/out/`.
 |---|---|---|
 | A | `firmware_track_a` in `build-a` | Reference oracle. Known-good behaviour to compare against |
 | B | `firmware` in `build` | The actual project. Bare metal |
-| C | `firmware_rtos` in `build-c` | The RTOS variant |
+| C | `firmware_track_c` in `build-c` | The RTOS variant |
 
 Track A compiles the Arduino core *sources* with this project's own
 toolchain; the two build properties that used to be a wrapper's job —

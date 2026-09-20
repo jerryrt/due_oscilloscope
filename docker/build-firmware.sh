@@ -101,7 +101,7 @@ record_build_env build-a
 echo
 
 echo "== Track C =="
-cmake --build build-c --target firmware_rtos --parallel
+cmake --build build-c --target firmware_track_c --parallel
 record_build_env build-c
 echo
 

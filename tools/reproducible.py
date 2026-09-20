@@ -80,7 +80,7 @@ TRACKS = {
     },
     "c": {
         "dir": "build-c",
-        "args": ["--target", "firmware_rtos"],
+        "args": ["--target", "firmware_track_c"],
         "artifacts": ("rtos_bringup.bin", "rtos_bringup.elf"),
         "configure": (
             "cmake -B build-c "

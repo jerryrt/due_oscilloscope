@@ -11,7 +11,7 @@
 #
 # Fetching at configure time rather than at build time is what keeps
 # this compatible with the project's "every build is a full build"
-# discipline: `firmware_rtos` deletes every object before it compiles,
+# discipline: `firmware_track_c` deletes every object before it compiles,
 # and a fetch inside that loop would mean a network round trip per
 # build. FetchContent populates once into the build tree and a clean
 # does not touch it.

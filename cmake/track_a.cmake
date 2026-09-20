@@ -322,7 +322,7 @@ add_custom_command(TARGET track_a_bringup POST_BUILD
 
 # Every build of the firmware is a full build, and Track A is firmware.
 #
-# The same shape as `firmware` for Track B and `firmware_rtos` for Track
+# The same shape as `firmware` for Track B and `firmware_track_c` for Track
 # C, and for the same reason spelled out at length in CMakeLists.txt: the
 # clean and the build are two *child* invocations of CMake, sequenced by
 # the shell rather than by the generator, because Ninja plans the whole

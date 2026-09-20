@@ -177,7 +177,7 @@ def test_a_configure_outside_the_container_is_refused(tmp_path):
 
 
 def test_track_a_build_is_clean_by_construction():
-    """Track A's target cleans first, as `firmware` and `firmware_rtos` do.
+    """Track A's target cleans first, as `firmware` and `firmware_track_c` do.
 
     The reason is not hypothetical: under the arduino-cli build path
     Track A once had, the cache did not notice every change under
@@ -921,19 +921,19 @@ def test_track_c_cmake_forces_a_full_build_too():
     if "rtos_bringup" not in cml:
         pytest.skip("Track C is not in this tree yet")
 
-    assert "add_custom_target(firmware_rtos" in cml, (
+    assert "add_custom_target(firmware_track_c" in cml, (
         "Track C has a build target but no clean-build wrapper. Every "
         "image in this project is built from scratch; see the comment "
         "above `firmware`.")
 
-    body = cml[cml.index("add_custom_target(firmware_rtos"):]
+    body = cml[cml.index("add_custom_target(firmware_track_c"):]
     body = body[:body.index("VERBATIM")]
     clean_at = body.find("--target clean")
     build_at = body.find("--target rtos_bringup")
-    assert clean_at >= 0, "firmware_rtos does not clean"
-    assert build_at >= 0, "firmware_rtos does not build rtos_bringup"
+    assert clean_at >= 0, "firmware_track_c does not clean"
+    assert build_at >= 0, "firmware_track_c does not build rtos_bringup"
     assert clean_at < build_at, (
-        "firmware_rtos builds before it cleans, which cleans away the "
+        "firmware_track_c builds before it cleans, which cleans away the "
         "image it just produced")
 
     assert "add_dependencies(rtos_bringup" not in cml, (
