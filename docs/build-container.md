@@ -286,9 +286,12 @@ verdict they cannot. Whether the ceiling should be a property of the
 machine belongs to whoever owns the suite's time budget.
 
 **So: universal in what it builds, universal in what it analyses, and
-not universal in what it can execute.** The one gap is a host's
-virtualisation reaching through an identical image, which is worth
-knowing before a null from a QEMU-backed bench is read as a clean run.
+not universal in what it can execute.** The one gap reached through an
+identical image from a `binfmt_misc` entry in the VM under it, and the
+lesson outlives the gap: a bench can be executing a binary through an
+emulator it never asked for, and the skip that follows reads as a
+platform limit. Worth knowing before a null from such a bench is read
+as a clean run.
 
 ### The analyser floors, and why the two are different kinds of number
 
