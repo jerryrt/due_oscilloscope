@@ -196,7 +196,15 @@ a faster number taken in a different one.
 **The general instrument is worth more than the instance.** A step that
 consumes a fixed *duration* and reports *work done* measures the
 machine, not itself - so when a change appears to improve everything,
-that step says whether the machine moved underneath it. Isolating
+that step says whether the machine moved underneath it.
+
+**It was used twice in one morning, for opposite purposes.**
+`mac-bench` read it as a *confound* - executions doubling across a VM
+restart, which is why none of their 90 s was credited to the change
+they had just made. `windows-desk` read it as the *measurement*:
+333,433 executions from a tree on ext4 against 100,163 from the same
+tree on drvfs, which is the cleanest single number for how much a
+filesystem costs a whole gate. Isolating
 binfmt alone would need a second restart with it re-enabled, which is
 not worth a bench cycle for a number nothing depends on.
 
@@ -449,7 +457,7 @@ the scripts are configured rather than of how much work is left.
 
 | analyser | dispositions available | what the floor is | current |
 |---|---|---|---|
-| `clang-tidy` | fixed, or a per-site `NOLINT` carrying its reason | **zero, and holdable.** A finding is either gone or answered in place, and the count returns to 0 | **0** |
+| `clang-tidy` | fixed, or a per-site `NOLINT` carrying its reason | **zero, and holdable** — on a case-sensitive filesystem, see below | **0** |
 | `cppcheck` | fixed, or **standing**, with its reason in the source | **a list, not a zero.** There is no per-site suppression, so an answered finding still counts | **10** |
 
 `docker/run-cppcheck.sh` offers no suppression list for this project's
@@ -467,6 +475,29 @@ new.
 answered**, which is the state both are in. Before that, a standing
 count hides its own increments: the whole hazard is that fifty-three
 advisory findings conceal the fifty-fourth.
+
+#### The clang-tidy count is a property of the HOST FILESYSTEM as well as the source
+
+Measured on `windows-desk`, one commit, one image, two trees: **0
+findings from a tree on ext4 and 4 from the same tree on drvfs.** All
+four are `non-portable path to file "Stream.h"` in `sketches/bringup`.
+
+drvfs is **case-insensitive**, so the Arduino core's `#include
+"Stream.h"` matches this project's own lowercase `stream.h` — the
+hazard `CLAUDE.md` records for Track A and `include_directories()`,
+surfacing here through the analyser rather than the build.
+
+**The consequence was checked rather than assumed: all three images are
+byte-identical from either tree**, so the compiler resolved it
+correctly and what clang-tidy reports is its portability check on the
+*lookup*, not a defect in the source.
+
+**So a floor is a property of source, image and the filesystem the tree
+sits on.** A bench working from a case-insensitive mount acquires four
+permanent advisory findings that say nothing about its code, and
+because the analysers are advisory its gate stays green while its count
+disagrees with everyone else's. **Quote a clang-tidy count with the
+filesystem, the way a figure is quoted with its bench.**
 
 #### The ten that stand
 
