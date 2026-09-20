@@ -12,6 +12,7 @@ plugged in here. So the check runs in a subprocess and asserts the
 absence, the same shape as the GUI suite's "importing `gui.stream` must
 not pull in PySide6".
 """
+import json
 import os
 import re
 import subprocess
@@ -195,6 +196,93 @@ def test_a_flash_record_for_the_other_track_is_not_this_boards_image():
     assert prov.track_of_binary(r"build\track_a\bringup.ino.bin") == "A"
     assert prov.track_of_binary(None) is None
     assert prov.track_of_binary("build/something_else.bin") is None
+
+
+#: Every spelling this project has actually written into a flash log,
+#: read off a real one rather than invented. The paths have changed four
+#: times - the arduino-cli era, the CMake Track A target, Track C, and
+#: the move to container images under docker/out/ - and the function
+#: matches on SUBSTRINGS precisely so that old rows keep resolving.
+#:
+#: A rename adds a row here. It does not remove one: rows already written
+#: carry the old path for ever, and a log that stops resolving is a
+#: bench's history becoming unattributable.
+HISTORICAL_BINARIES = {
+    "build/baremetal_bringup.bin": "B",
+    "docker/out/build/baremetal_bringup.bin": "B",
+    "build-clang/baremetal_bringup.bin": "B",
+    "build/track_a/bringup.ino.bin": "A",
+    "build-a/track_a_bringup.bin": "A",
+    "docker/out/build-a/track_a_bringup.bin": "A",
+    "build-c/rtos_bringup.bin": "C",
+    "docker/out/build-c/rtos_bringup.bin": "C",
+    # An agent worktree, which is where two rows here were written from.
+    "../../../../tmp/x/scratchpad/wt5/build/baremetal_bringup.bin": "B",
+}
+
+
+def test_every_path_a_flash_log_has_ever_held_still_resolves():
+    """The synthetic cases above cover three spellings; a real log holds
+    more, and Track C is in none of them.
+
+    This is the safety net a rename needs. `track_of_binary` reads the
+    track out of a STORED path, so the day a filename changes, every row
+    written before it must still answer - and nothing else in the suite
+    would notice if one stopped.
+    """
+    sys.path.insert(0, os.path.join(REPO, "host"))
+    import provenance as prov
+
+    for path, want in HISTORICAL_BINARIES.items():
+        assert prov.track_of_binary(path) == want, path
+
+    # `bringup.ino` is a SECOND rule for Track A, and no path above
+    # exercises it: every arduino-cli row here sits under a `track_a`
+    # directory, which the first rule already matches. Removing the
+    # clause passes the whole table, so it is asserted directly rather
+    # than left looking covered. A bench whose log holds a bare
+    # `bringup.ino.bin` is what it is there for, and the per-bench arm
+    # below is what would find one.
+    assert prov.track_of_binary("build/bringup.ino.bin") == "A"
+
+
+def test_the_benchs_own_log_resolves_end_to_end():
+    """The arm that can find a spelling nobody wrote down.
+
+    `records/flash-log.jsonl` is gitignored and per-bench, so this is a
+    capability arm and says so rather than passing quietly: a bench with
+    no log has nothing to check, and a bench with one checks every row
+    it actually holds. The table above is what runs everywhere.
+    """
+    log = os.path.join(REPO, "records", "flash-log.jsonl")
+    if not os.path.exists(log):
+        pytest.skip("no flash log on this bench: nothing recorded to check")
+
+    sys.path.insert(0, os.path.join(REPO, "host"))
+    import provenance as prov
+
+    unresolved = []
+    rows = 0
+    with open(log, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                binary = json.loads(line).get("binary")
+            except ValueError:
+                continue
+            if binary is None:
+                continue
+            rows += 1
+            if prov.track_of_binary(binary) is None:
+                unresolved.append(binary)
+
+    assert rows, "the log exists and holds no binary field: nothing was checked"
+    assert not unresolved, (
+        f"{len(unresolved)} of {rows} rows name a binary no rule matches, so "
+        f"that part of this bench's history is unattributable: "
+        f"{sorted(set(unresolved))[:5]}")
 
 
 # ------------------------------------------ the build field of an identity
