@@ -109,14 +109,13 @@ Smoke after: Track A 91 passed, Track B 110 passed.
 `shared_probe.[ch]` was scaffolding and Phase 1 deleted it, as planned.
 
 **Phase 1 found one constraint worth writing down.** A shared header
-cannot include a per-track one: `arduino-cli` compiles a library with
-the library's own include path and not the sketch's, so
-`fw_version.h`'s `#include "track_id.h"` failed to resolve on Track A -
-measured, as `track_id.h: No such file or directory` from inside the
-shared file. The fix is also the better layering: the shared file is the
-wire contract and does not need to know which track built the image, so
-each track includes its own `track_id.h` alongside it. **Dependencies
-point from per-track code into shared code, never back.**
+cannot include a per-track one. It was discovered as an include path
+that did not resolve - `fw_version.h`'s `#include "track_id.h"` failing
+from inside the shared file - but the build that surfaced it is gone and
+the constraint is not: **the shared file is the wire contract and does
+not need to know which track built the image**, so each track includes
+its own `track_id.h` alongside it. **Dependencies point from per-track
+code into shared code, never back.**
 
 ## Phases
 

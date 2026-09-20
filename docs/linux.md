@@ -13,7 +13,7 @@ not because the platform is nominally tier 1.
 | Host | Ubuntu 26.04 LTS, kernel 7.0.0-30-generic, i5-8265U, 15 GiB |
 | Python | 3.14.4 (suite), 3.13.13 via brew (GUI) |
 | Toolchain | apt `arm-none-eabi-gcc` **14.2.1**, cmake 4.2.3, ninja 1.13.2 |
-| Track A | arduino-cli 1.5.1, `arduino:sam` 1.6.12 |
+| Track A | `arduino:sam` 1.6.12 - the core **sources**, compiled by the image's own arm-gcc. `arduino-cli` is not invoked |
 | Wiring | `DAC0->A0, DAC1->A1, A2 bare` - **measured with `s`**, below |
 | Board | Track B, `Due Scope B` / `B-01`, three nodes |
 

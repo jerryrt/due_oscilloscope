@@ -199,7 +199,6 @@ originates on the host, which is Phase 3.5's bar, not Phase 1's.
 - Matching commercial scope bandwidth; ~100–200 kHz single-shot is the
   realistic ceiling for this hardware
 - 5 V tolerance anywhere — the SAM3X8E has none
-- Sharing source between the arduino-cli and CMake tracks
 
 ## Open questions
 
