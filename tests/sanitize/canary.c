@@ -60,13 +60,22 @@ int main(void)
 	printf("overflowed to %d\n", v);
 #elif DEFECT == 4
 	/* UBSan: a misaligned load, which is what a wire buffer read
-	 * through a non-packed struct pointer would be. */
+	 * through a non-packed struct pointer would be.
+	 *
+	 * THE LOAD MUST NOT BE VOLATILE. clang does not instrument a
+	 * volatile access for alignment and GCC does, so a volatile load
+	 * here armed the oracle on one compiler and silently disarmed it
+	 * on the other: Apple clang 14 printed the value and exited 0,
+	 * which reads as "this compiler cannot trap a misaligned load"
+	 * and is not true - the same load without the qualifier traps at
+	 * -O0, -O1 and -O2. `buf` keeps it, so that the value still has
+	 * to be read from memory rather than folded. */
 	static volatile char buf[16];
-	volatile char *raw = buf + one;
+	char *raw = (char *)buf + one;
 	uint32_t v;
 
 	memcpy((void *)buf, "0123456789abcdef", 16);
-	v = *(volatile uint32_t *)(void *)raw;
+	v = *(uint32_t *)(void *)raw;
 	printf("loaded %u through a misaligned pointer\n", (unsigned)v);
 #else
 	printf("clean\n");

@@ -314,7 +314,7 @@ container at all.
 | `cppcheck`, `clang-tidy`, `fuzz` - three steps, and the run reports `INCOMPLETE` | install all three per bench. It works, and then they are three versions on three benches and the finding counts stop comparing - which is the variable this image removes |
 | The **board-absent positive control**, on any bench with a board attached. It is `NOT SELECTED` there by design: running it would open the port it exists to prove absent | none. A machine with no board, or the container |
 | **Cross-bench reproduction.** The claim is *same pinned inputs*, and a host toolchain is deliberately not a pinned input | none, and it is structural - but it is no longer outstanding: phase 1's second half is met on both pairs that share a commit, `windows-desk` against `linux-x1` at `6a7d122` and against `mac-bench` at `f5db1e8` |
-| On `mac-bench`, the arm that proves the misaligned-load canary works: it fires under the image's GCC and not under Apple clang 14 | install another host compiler |
+| Nothing. The misaligned-load canary fires under Apple clang as well as under the image's GCC: clang does not instrument a *volatile* access for alignment, and the canary's load carried that qualifier | - |
 | The 32-bit ABI arm, which has never executed on any bench natively - multilib absent on `linux-x1`, and a `qemu-i386` shadow-mapping hang on `mac-bench` | install the multilib runtimes |
 
 Measurement stays on the bench: every measurement is a host step, run
