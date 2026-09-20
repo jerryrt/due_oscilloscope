@@ -30,9 +30,20 @@
 # than left out. Add to BRIDGES rather than copying: these are read
 # rarely and some are large.
 #
-# .git IS A SYMLINK, NOT A COPY. cmake/fw_git_rev.cmake stamps the commit
-# from it, and a copy costs 5.4 s on sshfs and 30-52 s on drvfs for
-# something read a handful of times.
+# .git IS COPIED, ON EVERY BENCH, AND IT USED TO BE A KNOB. A bridge
+# pays the mount on every git operation and a copy pays it once, and
+# which is cheaper was measured to invert with the filesystem - so
+# DUE_COPY_GIT let each bench pick. Then the whole gate moved into the
+# copy and the git operations multiplied across eight steps, and all
+# three benches landed on the same side: sshfs 5.2 s once against ~420 ms
+# an operation, drvfs 30-52 s once against +42 s per host tier and +18 s
+# per firmware build through the bridge, and native ext4 0.30 s for
+# 5,366 files, 0.13% of a gate. A knob whose right value is a property of
+# the host is a seam leak; one that every host sets the same way is a
+# default in disguise. Uniform copy is the Feeder.WRITE_SIZE pattern -
+# a policy one platform needs, kept everywhere because it is measured
+# free where it is not needed - and it is also the stronger isolation:
+# nothing a step does in the copy can reach the source's index.
 #
 # NO BIND MOUNT MAY LAND INSIDE THE TARGET. The daemon creates a mount
 # point that does not exist, as root, before --user takes effect - so a
@@ -68,14 +79,8 @@ mkdir -p -- "$dst"
 for b in "${BRIDGES[@]}"; do
     [ -e "$src/$b" ] || continue
     mkdir -p -- "$dst/$(dirname -- "$b")"
-    if [ "$b" = ".git" ] && [ "${DUE_COPY_GIT:-link}" = "copy" ]; then
-        # WHICH IS CHEAPER IS A PROPERTY OF THE MOUNT, AND IT INVERTS.
-        # On sshfs a copy costs 5,151 ms once and then ~28 ms a git
-        # operation, against ~420 ms an operation through the bridge -
-        # 15x, breaking even at about 13 operations, and a gate makes far
-        # more than that. Over drvfs the copy is 30-52 s and the bridge
-        # wins instead. Same semantics either way; a bench picks the side
-        # its own filesystem is on and records which on its page.
+    if [ "$b" = ".git" ]; then
+        # Copied, never bridged: the header says why, and the numbers.
         cp -a -- "$src/$b" "$dst/$b"
     elif [ "$b" != ".git" ] && [ -d "$src/$b" ]; then
         # A DIRECTORY BRIDGE STAYS A DIRECTORY, and its entries are

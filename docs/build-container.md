@@ -141,12 +141,21 @@ buys is one procedure rather than three.
 **The same arm explains why that bench's figures were never points:**
 26% spread mounted against 2% copied. The variance is the mount.
 
-**`DUE_COPY_GIT` chooses how `.git` is reached, because the answer
-inverts with the filesystem.** On sshfs a copy costs 5,151 ms once and
-then ~28 ms an operation, against ~420 ms through a bridge - breaking
-even near 13 operations, and a gate makes far more. Over drvfs the copy
-is 30-52 s and the bridge wins. Same semantics either way; a bench picks
-its side and records it.
+**`.git` is copied into the copy on every bench, and for a day it was
+a knob.** A bridge pays the mount on every git operation and a copy
+pays it once, and the cheaper side was measured to invert with the
+filesystem, so `DUE_COPY_GIT` let each bench choose. Then the whole
+gate moved into the copy, the git operations multiplied across eight
+steps, and all three benches chose the same side: sshfs 5.2 s once
+against ~420 ms an operation; drvfs 30-52 s once against +42 s per host
+tier and +18 s per firmware build bridged; native ext4 **0.30 s** for
+5,366 files, 0.13% of a gate. A knob every host sets the same way is a
+default in disguise, and one whose right value is a property of the
+host is the seam leaking into the tooling - so it is gone, and uniform
+copy is `Feeder.WRITE_SIZE`'s pattern: a policy one platform needs,
+kept everywhere because it is measured free where it is not. It is
+also the stronger isolation, since nothing a step does in the copy can
+reach the source's index.
 
 #### The whole gate runs against the copy, and there are no build mounts
 

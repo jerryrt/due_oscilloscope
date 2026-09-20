@@ -100,16 +100,13 @@ flags=(
     --env "DUE_BUILD_IMAGE_ID=$image_id"
     --env "DUE_BUILD_IMAGE_CONTENT=$image_content"
     # A container inherits nothing from this shell, so a knob the bench
-    # sets has to be named here or it is not a knob at all. `.git` costs
-    # 28 ms an operation copied against 420 ms bridged on sshfs, and the
-    # opposite on drvfs, so that one is per-bench by measurement.
+    # sets has to be named here or it is not a knob at all.
     #
     # PASSED EMPTY WHEN UNSET, so the default lives in the script that
     # reads it and not in two places. `--env X=` leaves `${X:-default}`
     # downstream to supply it; naming the default here as well gives it
     # a second home, which is the shape that let FW_VERSION_STR and
     # FW_VERSION_MAJOR disagree.
-    --env "DUE_COPY_GIT=${DUE_COPY_GIT:-}"
     --env "DUE_COPY_DIR=${DUE_COPY_DIR:-}"
     --env "DUE_CI_LOGS=${DUE_CI_LOGS:-}"
     --env "DUE_FUZZ_CORPUS=${DUE_FUZZ_CORPUS:-}"
