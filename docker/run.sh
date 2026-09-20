@@ -92,6 +92,7 @@ mkdir -p "$here/out/build" "$here/out/build-a" "$here/out/build-c" \
 
 flags=(
     --rm
+    --init
     --user "$(id -u):$(id -g)"
     --network none
     --volume "$repo:/work"
@@ -110,8 +111,64 @@ case "$common" in
     *) flags+=(--volume "$common:$common") ;;
 esac
 
+# An interactive shell keeps the terminal and returns here unchanged:
+# the container ends when the user leaves it, and backgrounding the
+# client to wait on it would take the tty away from the shell being run.
 if [ -t 0 ] && [ -t 1 ]; then
     flags+=(--interactive --tty)
+    exec docker run "${flags[@]}" "$image" "$@"
 fi
 
-exec docker run "${flags[@]}" "$image" "$@"
+# THE CONTAINER OUTLIVES A KILLED CLIENT, AND NOTHING HERE NOTICED.
+#
+# `docker run` is a client: the daemon owns the container, so killing
+# the client leaves the work running with nothing attached to its
+# output. On mac-bench three runs were killed by the host for low memory
+# and all three left a container running; a fourth, a 32-bit ASan
+# reproducer from an earlier session, ran under `qemu-i386` for SEVEN
+# DAYS and had burned 7h02 of CPU inside a 4-vCPU VM before anyone
+# looked. Every timing taken on that bench in between was taken against
+# it.
+#
+# So the container is named and stopped on the way out, whatever the way
+# out is: a normal return, a failure under `set -e`, or a signal. The
+# cidfile is docker's own record of what started, which avoids guessing
+# from `docker ps`.
+#
+# WHAT THIS DOES NOT COVER, said plainly: SIGKILL. A killed shell runs
+# no trap, and the container then survives exactly as before. The fix
+# for that one is to notice - `docker ps` after an interrupted run -
+# because nothing a client can do protects against its own SIGKILL.
+#
+# `--init` is separate and smaller: PID 1 in the container is then tini
+# rather than the command, so a `docker stop` reaches the process tree
+# and a child that outlives its parent is reaped rather than left.
+# Not mktemp: docker refuses a cidfile that already exists, so the name
+# has to be one that does not, and BSD mktemp will not take a template
+# with anything after the Xs - it fails, and under `set -e` the script
+# then exits before it has run anything at all.
+cidfile="${TMPDIR:-/tmp}/due-run-$$-${RANDOM}.cid"
+flags+=(--cidfile "$cidfile")
+
+cleanup() {
+    if [ -f "$cidfile" ]; then
+        cid=$(cat "$cidfile" 2>/dev/null || true)
+        [ -n "$cid" ] && docker stop --timeout 5 "$cid" >/dev/null 2>&1 || true
+        rm -f "$cidfile"
+    fi
+}
+trap cleanup EXIT INT TERM HUP
+
+# WAITED ON, NOT RUN IN THE FOREGROUND, and that is the whole mechanism.
+# bash runs a trap between commands: with `docker run` in the foreground
+# a TERM arriving mid-run is held until it returns, which is precisely
+# the case this exists for and left the container running anyway when it
+# was written that way. `wait` is interruptible, so the trap fires while
+# the container is still up. Measured: a TERM mid-run leaves a container
+# 2 of 2 under the old script and 0 of 2 under this one. SIGINT was
+# never the failing case - the client proxies that to the container.
+docker run "${flags[@]}" "$image" "$@" &
+client=$!
+status=0
+wait "$client" || status=$?
+exit "$status"

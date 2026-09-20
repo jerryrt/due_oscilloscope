@@ -730,6 +730,36 @@ def _cmake_targets(argv):
     return out
 
 
+def test_the_runner_stops_its_container_when_it_is_killed():
+    """`docker run` is a client, and the daemon outlives it.
+
+    A killed client leaves the container running with nothing attached.
+    On mac-bench that happened three times in one session, and a
+    reproducer from an earlier session ran under `qemu-i386` for seven
+    days, burning 7h02 of CPU inside a 4-vCPU VM while every timing
+    taken there was taken against it.
+
+    Three parts, and none of them works alone: the cidfile says which
+    container to stop, the trap is what runs on the way out, and the
+    client must be waited on rather than run in the foreground - bash
+    holds a trap until the foreground command returns, so the version
+    written that way still leaked. Measured, 2 of 2 either way.
+
+    A static read, because the behavioural check needs a docker daemon
+    and this tier has none.
+    """
+    body = _read("docker", "run.sh")
+    for needed, why in (
+            ("--cidfile", "nothing records which container to stop"),
+            ("trap cleanup", "nothing runs on the way out"),
+            ("docker stop", "the trap no longer stops the container"),
+            ('wait "$client"', "the client is in the foreground again, so "
+                               "the trap cannot run until it returns")):
+        assert needed in body, (
+            f"docker/run.sh no longer carries {needed!r}: {why}, and a "
+            f"killed run leaves its container up")
+
+
 def test_no_container_script_carries_a_mangled_line_continuation():
     """`\\n` between two arguments is a literal `n`, not a newline.
 
