@@ -354,6 +354,27 @@ confirmed with `sched_getscheduler`. It had only ever run under WSL2
 before. Without an `rtprio` limit it declines cleanly with an accurate
 message rather than pretending.
 
+**And declining cleanly is what made it invisible here for weeks.**
+`promote()` reports and never raises, which is right - a measurement
+must run identically with and without it - so the only difference
+between a promoted run and an unpromoted one is a string nothing was
+reading. The `limits.d` grant below was in place, `ulimit -r` read 0,
+and every timing figure this bench produced was taken unpromoted while
+the tier table said it promotes natively.
+
+The cause is that PAM applies a limit **at login**, and a long-lived
+session keeps whatever it started with - so installing the file changes
+nothing until a new session exists. On an agent bench, where one session
+can outlive the change by weeks, that gap is the normal case rather than
+the corner.
+
+**So read the limit, do not assume the file.** `ulimit -r` must report
+the granted priority, not 0, and `promote()` in a worker thread must
+return `sched=fifo:N` - `tests/test_rt_promote.py` holds that note
+against `sched_getscheduler` and `sched_getparam`, so a claim the
+scheduler did not apply fails rather than passes. Both take seconds and
+neither can be answered by looking at `limits.d`.
+
 ## Two documented figures reproduce independently
 
 From `s` on a third board-and-host, which is worth more than either
@@ -378,7 +399,9 @@ the docs and was needed here:
    the board. Ignore ours by VID/PID with `ID_MM_DEVICE_IGNORE=1` on
    2341:003d, 2341:003e and 03eb:6124, rather than disabling the service.
 3. **`rtprio` is 0 by default**, so `rt.py` cannot promote. A
-   `limits.d` entry fixes it, at next login.
+   `limits.d` entry fixes it **at next login**, which is a new session
+   and not the running one - check `ulimit -r` rather than the file, for
+   the reason above.
 4. **The GUI needs a second interpreter.** PySide6 6.9.3 is
    `>=3.9,<3.14` and Ubuntu 26.04 ships only 3.14, which is not in the
    archive as a lower version; brew's `python@3.13` is what this bench

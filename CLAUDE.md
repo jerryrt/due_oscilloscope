@@ -743,7 +743,7 @@ Check here before reasoning from general Arduino knowledge.
 | Tier | Platform | Standard |
 |---|---|---|
 | **1** | **Windows** | Develop, test and deploy. 100% correctness; a failure here is a bug to fix, not a platform quirk to document |
-| **1** | native Linux | Bench `linux-x1`, board attached 2026-08-29. Track B suite 505 passed / 1 context-only failure; byte conservation 0 B in 40 runs at five rates; `rt.py` promotes natively. `docs/linux.md` |
+| **1** | native Linux | Bench `linux-x1`, board attached 2026-08-29. Track B suite 505 passed / 1 context-only failure; byte conservation 0 B in 40 runs at five rates; `rt.py` promotes natively **where the session has an `rtprio` limit** - it declines silently otherwise, and `ulimit -r` is the check. `docs/linux.md` |
 | **2** | macOS | Porting target. May compromise where the OS forces it, and does. **Also the provenance of every figure in `docs/status.md` until the 0-series is re-taken** |
 | **2** | WSL2 | Porting target for the *software* path only. Real Linux kernel, but no native USB - see below |
 

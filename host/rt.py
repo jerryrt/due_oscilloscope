@@ -48,13 +48,18 @@ def _promote_linux():
     negative nice value is still worth having - it will not meet a
     deadline but it does keep the thread off the back of the runqueue.
 
-    Exercised under WSL2 (kernel 5.15), both branches: unprivileged it
-    refuses and degrades, privileged it returns sched=fifo:10 with
-    sched_getscheduler reporting 1. **Never run on a native Linux host,
-    and never with a board attached** - WSL2 has no native USB, so
-    nothing here says what the promotion is worth in the only place it
-    matters, which is holding a feed schedule against a real device.
-    Native Linux is tier 1 deferred; treat its first run as bring-up.
+    Both branches run on a native Linux host: granted it returns
+    sched=fifo:10 with sched_getscheduler reporting 1, refused it
+    degrades to the nice fallback. `tests/test_rt_promote.py` holds the
+    returned note against sched_getscheduler and sched_getparam, so a
+    claim of fifo:N that the scheduler did not apply fails rather than
+    reads as a promotion.
+
+    **The refusal is silent by design and that has a cost worth
+    knowing**: an unprivileged caller gets a string, not an exception,
+    so a session running at rtprio 0 takes every figure unpromoted and
+    nothing downstream says so. The limit is granted at login, so a
+    long-lived session keeps whatever it started with. docs/linux.md.
     """
     try:
         param = os.sched_param(LINUX_FIFO_PRIORITY)
