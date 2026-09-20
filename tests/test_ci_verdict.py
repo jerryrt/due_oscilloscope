@@ -612,3 +612,37 @@ def test_the_reproducible_steps_refuse_a_tree_the_run_has_changed():
     assert last and fuzz and last.start() > fuzz.start(), (
         "the working-tree step no longer runs after every other step, so "
         "a change made by a later step goes unreported")
+
+
+def test_the_log_directory_is_cleared_before_the_first_step(tmp_path):
+    """A truncated run must not inherit a finished run's artifacts.
+
+    run-ci.sh writes each step's log and seconds into the log directory
+    and the wall clock last, and container_report.py refuses a run with
+    no wall.seconds as unfinished. That refusal is only worth something
+    if the previous run's wall.seconds is gone before this run starts:
+    windows-desk's WSL VM killed a gate under the docker client, which
+    exited 0, and the directory still held the last complete run's
+    figures. Behavioural on the clearing line, positional on where it
+    sits - both halves are needed, because a clear after the first
+    step would erase that step's own artifact.
+    """
+    text = _source()
+    clear = re.search(r'^rm -f -- "\$logs"/\*\.log "\$logs"/\*\.seconds$',
+                      text, re.M)
+    assert clear, "run-ci.sh no longer clears the log directory"
+    first_step = re.search(r'^\s*run_step ', text, re.M)
+    assert first_step and clear.start() < first_step.start(), (
+        "the clear must come before the first step runs")
+
+    logs = tmp_path / "ci"
+    logs.mkdir()
+    for stale in ("wall.seconds", "host-tier.log", "fuzz.seconds"):
+        (logs / stale).write_text("stale\n", encoding="utf-8")
+    (logs / "fuzz-corpus").mkdir()
+    r = _run(f'logs={str(logs)!r}\n{clear.group(0)}')
+    assert r.returncode == 0, r.stderr
+    left = sorted(p.name for p in logs.iterdir())
+    assert left == ["fuzz-corpus"], (
+        f"stale artifacts survived the clear: {left}")
+

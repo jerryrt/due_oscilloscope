@@ -25,14 +25,21 @@ if TOOLS not in sys.path:
 import container_report as cr                                 # noqa: E402
 
 
-def _run_dir(tmp_path, logs=None, build_env="container", seconds=None):
-    """A log directory and a build directory, as a real run leaves them."""
+def _run_dir(tmp_path, logs=None, build_env="container", seconds=None,
+             finished=False):
+    """A log directory and a build directory, as a real run leaves them.
+
+    `finished` adds the wall clock run-ci.sh writes last; main() refuses
+    a directory without it, so every fixture that reaches main() says so.
+    """
     logdir = tmp_path / "ci"
     logdir.mkdir()
     for name, text in (logs or {}).items():
         (logdir / f"{name}.log").write_text(text, encoding="utf-8")
     for name, text in (seconds or {}).items():
         (logdir / f"{name}.seconds").write_text(text, encoding="utf-8")
+    if finished and not (logdir / "wall.seconds").exists():
+        (logdir / "wall.seconds").write_text("232.6\n", encoding="utf-8")
     build = tmp_path / "build"
     build.mkdir()
     if build_env is not None:
@@ -84,7 +91,7 @@ def test_a_host_build_is_refused_rather_than_relabelled(tmp_path,
     it the test would pass on any machine with no bench.json - for the
     wrong reason, and that is most machines.
     """
-    logdir, build = _run_dir(tmp_path, build_env="host")
+    logdir, build = _run_dir(tmp_path, build_env="host", finished=True)
     real = cr.collect
     monkeypatch.setattr(cr, "runtime", lambda: {})
     # repo_rev is pinned CLEAN as well as the bench, because the dirty
@@ -104,7 +111,7 @@ def test_a_declared_bench_is_required_for_a_row(tmp_path, monkeypatch,
     """The rule every record in this tree follows. A figure without its
     bench is not comparable with anything, and three benches answering
     one question is the whole point of this row."""
-    logdir, build = _run_dir(tmp_path)
+    logdir, build = _run_dir(tmp_path, finished=True)
     real = cr.collect
     monkeypatch.setattr(cr, "runtime", lambda: {})
     monkeypatch.setattr(cr, "collect", lambda l, b, e: dict(
@@ -204,6 +211,7 @@ def test_differing_byte_counts_are_numbers_rather_than_a_verdict(
 def _with_image(tmp_path, baked, **kw):
     """A run directory whose Track B image carries `baked` as its
     compiled-in FW_GIT_REV."""
+    kw.setdefault("finished", True)
     logdir, build = _run_dir(tmp_path, **kw)
     with open(os.path.join(build, "track_b_bringup.bin"), "wb") as fh:
         fh.write(b"\x00\x01padding" + baked.encode() + b"morepadding\xff")
@@ -261,7 +269,7 @@ def test_no_artifact_is_reported_unchecked_rather_than_passed(tmp_path,
                                                               monkeypatch):
     """A build directory with no image cannot answer, and a row that
     omitted the field would read as a row that checked and agreed."""
-    logdir, build = _run_dir(tmp_path)           # no .bin written
+    logdir, build = _run_dir(tmp_path, finished=True)   # no .bin written
     assert _main_with_rev(monkeypatch, logdir, build, "0f40bb5") == 0
 
 
@@ -406,4 +414,35 @@ def test_no_skips_is_an_empty_list_and_a_non_pytest_step_has_no_key(
                      "cppcheck": "total 10\n"})
     assert row["steps"]["host-tier"]["skipped"] == []
     assert "skipped" not in row["steps"]["cppcheck"]
+
+
+# --- a run that never reached its summary is not a row -------------------
+
+def test_a_run_with_no_wall_clock_is_refused_as_unfinished(
+        tmp_path, monkeypatch, capsys):
+    """A gate can be killed under the docker client and still exit 0.
+
+    windows-desk's WSL VM restarted under a run: 27 lines of log, no
+    summary table, exit 0. Scored on the exit code that is a clean run,
+    and with the previous run's artifacts still in the directory it is
+    a clean run with every figure filled in. run-ci.sh writes
+    wall.seconds last and clears the directory first, so its absence is
+    the one reliable sign the run did not finish - and this is where a
+    row from such a run is refused.
+    """
+    logdir, build = _with_image(tmp_path, "f5db1e8",
+                                seconds={"host-tier": "137.0\n"})
+    os.remove(os.path.join(logdir, "wall.seconds"))
+    assert _main_with_rev(monkeypatch, logdir, build, "f5db1e8") == 2
+    assert "never reached its summary" in capsys.readouterr().err
+
+    with open(os.path.join(logdir, "wall.seconds"), "w",
+              encoding="utf-8") as fh:
+        fh.write("232.6\n")
+    # With the wall clock present the same directory passes this check
+    # and reaches the next ones - which is what makes the refusal above
+    # attributable to the missing file and nothing else.
+    rc = _main_with_rev(monkeypatch, logdir, build, "f5db1e8")
+    assert "never reached its summary" not in capsys.readouterr().err
+    assert rc in (0, 2)
 

@@ -438,6 +438,17 @@ labelled with a commit the binary was not built from voids the
 comparison it feeds. It refuses a dirty tree too, because the delta
 hash is a function of the dirt and no other bench can reproduce it.
 
+**A run that never reached its summary cannot be recorded, and the
+exit code cannot tell you it did not.** `windows-desk`'s WSL VM
+restarted under a gate: the docker client exited 0 with a 27-line log
+and no summary table, and the log directory still held the previous
+run's figures step for step. So `run-ci.sh` empties its log directory
+before the first step and writes `wall.seconds` after the summary,
+and `tools/container_report.py` refuses a directory without it.
+**Check for the `VERDICT` line before quoting any figure from a gate**
+- on a bench whose VM can restart under it, the exit code alone is a
+claim the run may never have made.
+
 **A row carries the skip set, not only the skip count.** Every
 pytest step records pytest's own `-ra` summary as `skipped`: one entry
 per site and reason, sorted, an empty list where nothing skipped and

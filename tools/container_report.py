@@ -284,6 +284,22 @@ def main(argv=None):
         return 2
 
     row = collect(args.logs, args.build, args.exit_code)
+    # --- a run that never reached its summary is not a run ---
+    #
+    # run-ci.sh writes wall.seconds last, after the summary, and clears
+    # the directory first. So its absence means the run died before it
+    # finished - and it can die with the docker client exiting 0:
+    # windows-desk's WSL VM restarted under a gate and left a 27-line
+    # log, no summary table, and exit 0. Anything scoring on the exit
+    # code alone records that as a clean run, which is the failure this
+    # whole tool exists to refuse.
+    if row.get("wall_seconds") is None:
+        print(f"no wall.seconds in {args.logs}: this run never reached "
+              f"its summary, so there is nothing here to record. A run "
+              f"can be killed underneath the docker client and still "
+              f"exit 0 - a VM restart does it - so check for the VERDICT "
+              f"line before quoting any figure from it.", file=sys.stderr)
+        return 2
     if not row.get("bench"):
         # The same rule every record in this tree follows: an undeclared
         # bench cannot record, because a figure without its bench is not

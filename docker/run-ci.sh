@@ -181,6 +181,16 @@ while [ "$#" -gt 0 ]; do
 done
 
 mkdir -p "$logs" || { echo "cannot write logs to $logs" >&2; exit 1; }
+# NOTHING FROM AN EARLIER RUN SURVIVES INTO THIS ONE. Every step writes
+# its log and its seconds here, and the wall clock is written last - so
+# a run that dies before its summary leaves no wall.seconds, and
+# tools/container_report.py refuses to record it. That only holds if
+# the previous run's artifacts are gone first: windows-desk's WSL VM
+# restarted under a gate, the docker client exited 0 with a 27-line log
+# and no summary table, and the directory still held the last complete
+# run's figures, step for step. A truncated run inheriting a finished
+# run's artifacts is a row nobody can tell from a real one.
+rm -f -- "$logs"/*.log "$logs"/*.seconds
 
 # One record per step, tab separated: name, state, seconds, detail.
 records=()
