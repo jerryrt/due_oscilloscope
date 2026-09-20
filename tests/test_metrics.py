@@ -287,13 +287,16 @@ def test_the_benchs_own_log_resolves_end_to_end():
     """
     log = os.path.join(REPO, "records", "flash-log.jsonl")
     if not os.path.exists(log):
-        # PERMANENTLY ABSENT ON SOME BENCHES, AND THAT IS DECLARED HERE
-        # RATHER THAN DISCOVERED. The log is written by flashing, and a
-        # bench that runs the container in one tree and flashes from
-        # another never writes one into the tree this runs in - so on
-        # windows-desk this arm does not run at all and the gate is
-        # green. Measured there: it skips with their WSL clone as it is
-        # and passes with their real 11-row log copied in.
+        # ABSENT ON A BENCH THAT HAS NEVER FLASHED FROM THIS TREE, AND
+        # THAT IS DECLARED HERE RATHER THAN DISCOVERED. The log is written
+        # by flashing, so a bench that runs the container in one tree and
+        # flashes from another never writes one into the tree this runs
+        # in. windows-desk was that bench until 2026-09-20: the arm
+        # skipped with their WSL clone as it was and passed with their
+        # real 11-row log copied in, and it runs there now that the gate
+        # and the flash share one checkout. The gap is per-bench and
+        # moves when a bench's arrangement does, which is why the skip
+        # says what it is checking rather than which bench it expects.
         #
         # That is tolerable, and the reason is narrow: the spellings it
         # guards live in track_of_binary and are GLOBAL, so one bench
