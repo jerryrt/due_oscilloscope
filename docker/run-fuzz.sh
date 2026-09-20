@@ -6,6 +6,24 @@
 #     DUE_FUZZ_CORPUS=/work/docker/out/fuzz \
 #         docker/run.sh docker/run-fuzz.sh 3600     # and keep the corpus
 #
+# THE WORKING CORPUS IS LOCAL, AND DUE_FUZZ_CORPUS IS WHERE IT IS KEPT.
+# libFuzzer writes every new interesting input into its corpus directory
+# the moment it finds it - hundreds of file creates inside a step that
+# runs for a fixed time. Under the gate that directory sat in docker/out,
+# which the container-local copy bridges back to the bench's checkout,
+# so this was the one step still doing hot per-file I/O across the host
+# mount. It showed where a fixed-duration step can only show: not in the
+# verdict, not in the seconds, but in the work. windows-desk measured
+# 91,053 executions from a drvfs checkout against 322,998 from ext4 in
+# the same 37.9 s, both PASS, and the ext4 tree had MORE corpus files.
+# So libFuzzer works in the scratch directory, and the kept directory is
+# imported from at the start and published to at the end - the shape
+# docker/build-firmware.sh has for objects. A crash reproducer still goes
+# straight to the kept crashes/, because one file written once is not the
+# cost and a reproducer must survive a run that is killed. On a native
+# mount the difference is nil, measured on linux-x1; the change is for
+# the benches where it is not, and tests/test_fuzz_corpus.py holds it.
+#
 # Written to run inside the image, from the repository root, and it
 # carries no container knowledge - the same shape as
 # docker/build-firmware.sh, docker/run-tests.sh and
@@ -61,8 +79,14 @@ command -v clang >/dev/null 2>&1 || die "clang is not installed"
 # untracked output nobody asked for.
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-corpus=${DUE_FUZZ_CORPUS:-$work/corpus}
-mkdir -p "$corpus" "$corpus/crashes" "$work/seeds"
+corpus=$work/corpus
+keep=${DUE_FUZZ_CORPUS:-}
+crashes=${keep:-$work}/crashes
+mkdir -p "$corpus" "$crashes" "$work/seeds"
+if [ -n "$keep" ]; then
+    # Import what an earlier campaign kept; the seeds below fill any gap.
+    find "$keep" -maxdepth 1 -type f -exec cp -n -t "$corpus" -- {} +
+fi
 
 # ctl.c's own idle threshold, so the harness returns the parser to idle
 # between inputs through the protocol's rule rather than a copied number.
@@ -138,13 +162,20 @@ echo "== campaign: ${seconds}s over lib/due_shared/src/ctl.c =="
 build_fuzzer "$work/fuzz_ctl" "$shared/ctl.c" \
     || die "the fuzz target did not build"
 "$work/fuzz_ctl" "$corpus" -max_total_time="$seconds" \
-    -print_final_stats=1 -artifact_prefix="$corpus/crashes/" "${@:2}"
+    -print_final_stats=1 -artifact_prefix="$crashes/" "${@:2}"
 found=$?
 echo
 
+# Published whether or not it found something: the corpus that reached a
+# crash is worth keeping beside the reproducer.
+if [ -n "$keep" ]; then
+    cp -f -- "$corpus"/* "$keep"/ 2>/dev/null || true
+    echo "published $(find "$keep" -maxdepth 1 -type f | wc -l) corpus files to $keep"
+fi
+
 if [ "$found" -ne 0 ]; then
     echo "== the campaign found something =="
-    ls -l "$corpus/crashes"
+    ls -l "$crashes"
     echo
     echo "replay it:  fuzz_ctl <file>   (the standalone build takes a path)"
     exit 2

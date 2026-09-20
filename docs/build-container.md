@@ -254,6 +254,49 @@ filesystem costs a whole gate. Isolating
 binfmt alone would need a second restart with it re-enabled, which is
 not worth a bench cycle for a number nothing depends on.
 
+#### The fuzz corpus was the last thing on the mount, and only the work column could see it
+
+With the whole gate in the copy, `windows-desk` ran it from their
+Windows checkout and every step reached parity with ext4 except one:
+fuzz did **91,053 executions against 322,998** in the same 37.9 s, PASS
+either way. Not corpus size - the ext4 tree held **more** corpus files,
+306 against 239, and still fuzzed 3.5x harder.
+
+The gate hands `docker/run-fuzz.sh` its corpus under its `--logs`
+directory in `docker/out/`, and `docker/out/` is a bridge: the copy links each entry back to the
+bench's checkout so the tier can read the images the firmware step
+published. libFuzzer writes every new interesting input into its corpus
+directory the moment it finds one, so the one step still doing hot
+per-file I/O across the host mount was this one - and a step that runs
+for a fixed time cannot show that in its verdict or its seconds. It
+showed in the executions, which is the column the section above says
+measures the machine rather than the step. Reading only the wall time,
+that bench would have called the copy design finished.
+
+`docker/run-fuzz.sh` now works in its scratch directory and treats
+`DUE_FUZZ_CORPUS` as the kept corpus: imported at the start, published
+at the end, with a crash reproducer written straight to the kept
+`crashes/` because one file once is not the cost and a reproducer must
+survive a run that is killed. The same shape `docker/build-firmware.sh`
+has for objects. `tests/test_fuzz_corpus.py` holds it by observation
+rather than by reading the script: it looks at the kept directory while
+libFuzzer's own `NEW` lines say units are being written, and again after
+exit; the working corpus on the kept path fails the first look and a
+dropped publish fails the second, and both were tried.
+
+On `linux-x1`, native ext4, the change is nil by design: 577,527 and 572,161 executions before against 574,479 and
+552,533 after, 30 s campaigns, inside the run-to-run spread. The
+benches it is for are the ones whose `docker/out/` is not local, and
+their figures are theirs to take.
+
+**What executions is, after this.** A within-bench control, never a
+cross-bench figure: it carries the machine, the mount the corpus sits
+on, and the binfmt state, and only the first of those was ever meant to
+be in it. The fixed-duration instrument keeps its job - it still says
+whether the ground moved between two runs on one bench - but a
+difference in executions *between* benches is a question about their
+filesystems before it is one about their processors.
+
 **The copy-out ends the firmware step, not the run.**
 `tests/test_no_heap.py` reads `docker/out/build/*.elf` during the host
 tier, which runs after, so an artifact appearing only at the end would

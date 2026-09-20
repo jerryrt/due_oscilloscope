@@ -580,7 +580,10 @@ analyser_step "clang-tidy" docker/run-clang-tidy.sh clang-tidy
 # A fresh corpus per run, so every run starts from the same seeds and two
 # runs are comparable; a crash reproducer then survives in the log
 # directory rather than in a temporary directory the child deletes on the
-# way out.
+# way out. The campaign works in its own scratch directory and publishes
+# here at the end - this path is under docker/out, which the copy bridges
+# to the bench's mount, and the one step still writing per file across
+# that mount did a third of the work on drvfs at an identical verdict.
 if [ "$fast" -eq 1 ]; then
 	skip_step "fuzz" "--fast"
 elif [ "$fuzz_seconds" -eq 0 ]; then
