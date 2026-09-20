@@ -7,7 +7,7 @@ firmware is built there and nowhere else:
     cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
           -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CALLGRAPH=ON
     cmake --build build -j
-    python3 tools/stack_depth.py build --elf build/baremetal_bringup.elf \
+    python3 tools/stack_depth.py build --elf build/track_b_bringup.elf \
             --indirect console.c:260=console_bindings \
             --indirect console_cmds.c:44=noreturn
 

@@ -14,7 +14,7 @@ reachable from clang-tidy's command line:
   2. drop what would abort the parse - -Werror, which promotes any
      clang-only warning into an error that ends the translation unit,
   3. SELECT. build-a's database holds 108 entries and only 80 of them
-     are Track A's; the other 28 are baremetal_bringup, and the shared
+     are Track A's; the other 28 are track_b_bringup, and the shared
      lib/due_shared/src sources appear in BOTH, compiled with different
      flags. clang-tidy takes the first entry whose file matches, so
      without a selection step "analyse Track A's copy" is a coin toss

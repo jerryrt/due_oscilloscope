@@ -49,8 +49,8 @@ echo
 # sources, so with no build it skips - and a tier scored on its failures
 # reads one pass short as a clean run. Say so rather than let the count
 # drift silently; docker/build-firmware.sh is what fills it in.
-if [ ! -f build/baremetal_bringup.elf ]; then
-    echo "NOTE: build/baremetal_bringup.elf is absent, so test_no_heap will"
+if [ ! -f build/track_b_bringup.elf ]; then
+    echo "NOTE: build/track_b_bringup.elf is absent, so test_no_heap will"
     echo "      SKIP and the tier will be one pass short. Run"
     echo "      docker/build-firmware.sh first for a comparable count."
     echo

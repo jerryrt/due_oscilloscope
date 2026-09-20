@@ -5,7 +5,7 @@
 # Read out of the two images at the time:
 #
 #     build/track_a/bringup.ino.elf   GCC: (GNU Tools for ARM ...) 4.8.3
-#     build/baremetal_bringup.elf     GCC: (xPack GNU Arm ...) 15.2.1
+#     build/track_b_bringup.elf     GCC: (xPack GNU Arm ...) 15.2.1
 #
 # Eleven years apart, on a track CLAUDE.md requires to be "comparable in
 # design, feature set and performance" and whose gaps are "debt with a

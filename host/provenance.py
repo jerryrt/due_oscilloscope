@@ -388,10 +388,14 @@ def fw_source_paths(track):
 #: `build/`, `build-a/` or `build-c/` is not a source of images, and
 #: `tools/flash.py` refuses what one holds. Keys are the lower-case track
 #: letters `measure.flash()` takes.
+#: Derived rather than tabulated: the directory carries a suffix only
+#: for the opt-in tracks, because Track B is what the build produces
+#: when asked for nothing, and every image is named after its track.
+#: A table here would be three conventions written out three times,
+#: which is what it was before the artifacts were renamed.
 CONTAINER_IMAGES = {
-    "a": "docker/out/build-a/track_a_bringup.bin",
-    "b": "docker/out/build/baremetal_bringup.bin",
-    "c": "docker/out/build-c/rtos_bringup.bin",
+    t: f"docker/out/build{'' if t == 'b' else '-' + t}/track_{t}_bringup.bin"
+    for t in ("a", "b", "c")
 }
 
 #: The one command that produces every image above.
@@ -409,13 +413,19 @@ def track_of_binary(path):
     p = str(path).replace("\\", "/")
     if "track_a" in p or "bringup.ino" in p:
         return "A"
-    # Before baremetal_bringup, because Track C's binary lives in
+    # THE OLD SPELLINGS STAY FOR EVER. A row carries the path that was
+    # written when it was flashed, so dropping a rule does not tidy the
+    # code - it makes that much of a bench's history unattributable.
+    # `baremetal_bringup` and `rtos_bringup` named the implementation
+    # style and the technology; they were renamed to name the track,
+    # and 153 rows here still hold them.
+    # Before track_b_bringup, because Track C's binary lives in
     # build-c/ and its name shares no substring with Track B's - but a
-    # future rename that made it "rtos_baremetal_bringup" would match
+    # future rename that made it "rtos_track_b_bringup" would match
     # both, and the order is the cheap guard against that.
-    if "rtos_bringup" in p:
+    if "track_c_bringup" in p or "rtos_bringup" in p:
         return "C"
-    if "baremetal_bringup" in p:
+    if "track_b_bringup" in p or "baremetal_bringup" in p:
         return "B"
     return None
 

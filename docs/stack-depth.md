@@ -745,7 +745,7 @@ describing the previous bytes, so `tools/flash.py` refuses them until
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
       -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CALLGRAPH=ON
 cmake --build build -j
-python3 tools/stack_depth.py build --elf build/baremetal_bringup.elf \
+python3 tools/stack_depth.py build --elf build/track_b_bringup.elf \
         --track b --record >> records/stack-depth.jsonl
 
 cmake -B build-a -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
@@ -757,7 +757,7 @@ python3 tools/stack_depth.py build-a --elf build-a/track_a_bringup.elf \
 cmake -B build-c -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
       -DCMAKE_BUILD_TYPE=Release -DFIRMWARE_CALLGRAPH=ON -DBUILD_TRACK_C=ON
 cmake --build build-c --target firmware_track_c
-python3 tools/stack_depth.py build-c --elf build-c/rtos_bringup.elf \
+python3 tools/stack_depth.py build-c --elf build-c/track_c_bringup.elf \
         --track c --record >> records/stack-depth.jsonl
 
 python3 tools/stack_report.py --write

@@ -138,7 +138,7 @@ def baked_revision(build):
     can only compare artifact hashes at one commit, and the way that
     silently stops being true is a tree that moved after the build.
     """
-    for name in ("baremetal_bringup.bin", "baremetal_bringup.elf"):
+    for name in ("track_b_bringup.bin", "track_b_bringup.elf"):
         path = os.path.join(build, name)
         try:
             with open(path, "rb") as fh:

@@ -109,7 +109,7 @@ the board is flashed only from Windows. The route between them:
    `measure.flash()`, and so the board suite's reflash, passes
    `--require-tree`, which refuses an image stamped with any other
    commit or delta.
-4. `tools/flash.py --bin docker/out/build/baremetal_bringup.bin --port
+4. `tools/flash.py --bin docker/out/build/track_b_bringup.bin --port
    <programming port>`, or let the suite reflash the track it wants;
    then `v` and `provenance.firmware()`.
 

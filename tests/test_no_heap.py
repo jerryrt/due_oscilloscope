@@ -36,7 +36,7 @@ pytestmark = pytest.mark.smoke
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-ELF = os.path.join(REPO, "docker", "out", "build", "baremetal_bringup.elf")
+ELF = os.path.join(REPO, "docker", "out", "build", "track_b_bringup.elf")
 
 #: Symbols that mean a heap exists in the image.
 #:
@@ -126,7 +126,7 @@ def test_the_firmware_image_has_no_heap():
 
     So the useful lesson for whoever this fails on: **the link map
     names what pulls the allocator, and the call sites only imply it.**
-    `grep malloc docker/out/build/baremetal_bringup.map` and read the line under
+    `grep malloc docker/out/build/track_b_bringup.map` and read the line under
     each archive member - it says which object asked for it.
     """
     if not os.path.isfile(ELF):

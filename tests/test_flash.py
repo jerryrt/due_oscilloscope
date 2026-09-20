@@ -151,7 +151,7 @@ def test_an_image_older_than_its_sources_is_refused(tmp_path, monkeypatch):
     `host/provenance.py` and every baseline are built on believing it.
     So the last thing that touches the image checks it.
     """
-    binary = tmp_path / "baremetal_bringup.bin"
+    binary = tmp_path / "track_b_bringup.bin"
     binary.write_bytes(b"\x00" * 16)
     src = tmp_path / "src" / "clock.c"
     src.parent.mkdir()
@@ -167,7 +167,7 @@ def test_an_image_older_than_its_sources_is_refused(tmp_path, monkeypatch):
 
 
 def test_a_current_image_is_not_refused(tmp_path, monkeypatch):
-    binary = tmp_path / "baremetal_bringup.bin"
+    binary = tmp_path / "track_b_bringup.bin"
     binary.write_bytes(b"\x00" * 16)
     os.utime(binary, (3000, 3000))
     monkeypatch.setattr(flash, "newest_source", lambda b: ("whatever", 2000.0))
@@ -181,7 +181,7 @@ def test_stale_ok_flashes_but_says_so(tmp_path, monkeypatch, capsys):
     never silently, because the log entry it produces is the thing at
     stake.
     """
-    binary = tmp_path / "baremetal_bringup.bin"
+    binary = tmp_path / "track_b_bringup.bin"
     binary.write_bytes(b"\x00" * 16)
     os.utime(binary, (1000, 1000))
     monkeypatch.setattr(flash, "newest_source", lambda b: ("src.c", 2000.0))
@@ -510,9 +510,9 @@ def test_the_flash_log_does_not_compute_a_layout_of_its_own(tmp_path,
     it; a copy there would drift from the one the fingerprint tool
     prints, and the two are compared across benches by hand.
     """
-    binary = tmp_path / "baremetal_bringup.bin"
+    binary = tmp_path / "track_b_bringup.bin"
     binary.write_bytes(b"\x00")
-    (tmp_path / "baremetal_bringup.elf").write_bytes(b"\x7fELF")
+    (tmp_path / "track_b_bringup.elf").write_bytes(b"\x7fELF")
 
     monkeypatch.setattr(image_fingerprint, "compiler",
                         lambda elf: "CC-SENTINEL")
@@ -549,7 +549,7 @@ CONTAINER = {
 
 def _built(tmp_path, body=b"firmware", record=None, name=None):
     """A binary, optionally beside the record a build would have left."""
-    binary = tmp_path / "baremetal_bringup.bin"
+    binary = tmp_path / "track_b_bringup.bin"
     binary.write_bytes(body)
     if record is not None:
         rec = dict(record)

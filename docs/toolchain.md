@@ -287,7 +287,7 @@ than accepting a guess** - a stale hardcoded path once aimed the
 anything. Use it:
 
 ```sh
-tools/flash.sh docker/out/build/baremetal_bringup.bin
+tools/flash.sh docker/out/build/track_b_bringup.bin
 ```
 
 It refuses an image the container did not build: `build-env.json`

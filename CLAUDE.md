@@ -1457,9 +1457,9 @@ docker/run.sh docker/build-firmware.sh
 
 # Flash, from the same tree at the same commit. Or let the suite do it:
 # --reflash puts the tree's image of --track on the board.
-python3 tools/flash.py --bin docker/out/build/baremetal_bringup.bin
+python3 tools/flash.py --bin docker/out/build/track_b_bringup.bin
 python3 tools/flash.py --bin docker/out/build-a/track_a_bringup.bin
-python3 tools/flash.py --bin docker/out/build-c/rtos_bringup.bin
+python3 tools/flash.py --bin docker/out/build-c/track_c_bringup.bin
 ```
 
 Where the container runs in WSL rather than on the checkout, the image

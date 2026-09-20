@@ -2,7 +2,7 @@
 
 **The tracked baseline for the Windows bench.** Regenerate with
 
-    python3 tools/flash.py --bin build/baremetal_bringup.bin
+    python3 tools/flash.py --bin build/track_b_bringup.bin
     python3 tools/metrics.py --repeats 9 --seconds 3 \
         --out docs/metric-baseline-windows.md
 

@@ -40,7 +40,7 @@ def _run_dir(tmp_path, logs=None, build_env="container", seconds=None):
             "build_env": build_env,
             "build_image": "due-build:15.2.1-1.1",
             "build_image_content": "abc123",
-            "artifacts": {"baremetal_bringup.bin": "deadbeef"},
+            "artifacts": {"track_b_bringup.bin": "deadbeef"},
         }), encoding="utf-8")
     return str(logdir), str(build)
 
@@ -194,8 +194,8 @@ def test_differing_byte_counts_are_numbers_rather_than_a_verdict(
     """`reproducible: every artifact is byte-identical` is a rendering of
     a count, and a bench whose bytes differ needs the count."""
     row = _row(tmp_path, monkeypatch, logs={"reproducible-b": (
-        "  baremetal_bringup.bin  39480 bytes   0 differing bytes\n"
-        "  baremetal_bringup.elf  77208 bytes   4 differing bytes\n")})
+        "  track_b_bringup.bin  39480 bytes   0 differing bytes\n"
+        "  track_b_bringup.elf  77208 bytes   4 differing bytes\n")})
     assert row["steps"]["reproducible-b"]["differing_bytes"] == [0, 4]
 
 
@@ -205,7 +205,7 @@ def _with_image(tmp_path, baked, **kw):
     """A run directory whose Track B image carries `baked` as its
     compiled-in FW_GIT_REV."""
     logdir, build = _run_dir(tmp_path, **kw)
-    with open(os.path.join(build, "baremetal_bringup.bin"), "wb") as fh:
+    with open(os.path.join(build, "track_b_bringup.bin"), "wb") as fh:
         fh.write(b"\x00\x01padding" + baked.encode() + b"morepadding\xff")
     return logdir, build
 

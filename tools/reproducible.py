@@ -63,7 +63,7 @@ TRACKS = {
     "b": {
         "dir": "build",
         "args": ["-j"],
-        "artifacts": ("baremetal_bringup.bin", "baremetal_bringup.elf"),
+        "artifacts": ("track_b_bringup.bin", "track_b_bringup.elf"),
         "configure": (
             "cmake -B build "
             "-DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake "
@@ -81,7 +81,7 @@ TRACKS = {
     "c": {
         "dir": "build-c",
         "args": ["--target", "firmware_track_c"],
-        "artifacts": ("rtos_bringup.bin", "rtos_bringup.elf"),
+        "artifacts": ("track_c_bringup.bin", "track_c_bringup.elf"),
         "configure": (
             "cmake -B build-c "
             "-DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake "

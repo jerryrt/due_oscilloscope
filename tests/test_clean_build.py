@@ -74,7 +74,7 @@ def test_track_b_cmake_forces_a_full_build():
 
     The shape matters as much as the presence, and that is what this
     file got wrong the first time. The original spelling was
-    `add_dependencies(baremetal_bringup enforce_clean_build)`, which
+    `add_dependencies(track_b_bringup enforce_clean_build)`, which
     asks the build system to run a clean inside the same graph it is
     about to link. Make re-evaluates between steps and honoured it - 25
     of 25 objects recompiled per invocation, measured - while Ninja
@@ -99,15 +99,15 @@ def test_track_b_cmake_forces_a_full_build():
         "the driver no longer invokes CMake's clean target; an rm -rf of "
         "the object directory is not equivalent, it removes build.make "
         "and the build fails outright")
-    assert re.search(r"--target\s+baremetal_bringup", cml), (
+    assert re.search(r"--target\s+track_b_bringup", cml), (
         "the driver cleans but never builds the firmware; `all` would "
         "now produce no image at all")
-    assert re.search(r"add_executable\(\s*baremetal_bringup\s+"
+    assert re.search(r"add_executable\(\s*track_b_bringup\s+"
                      r"EXCLUDE_FROM_ALL", cml), (
-        "baremetal_bringup is back in `all`, so `cmake --build build` "
+        "track_b_bringup is back in `all`, so `cmake --build build` "
         "builds it directly and incrementally, stepping past the clean")
 
-    assert not re.search(r"add_dependencies\(\s*baremetal_bringup\s+"
+    assert not re.search(r"add_dependencies\(\s*track_b_bringup\s+"
                          r"\w*clean\w*\s*\)", cml), (
         "the clean is a dependency of the executable again. That is the "
         "shape that broke under Ninja: the generator plans the whole "
@@ -918,7 +918,7 @@ def test_track_c_cmake_forces_a_full_build_too():
     has not opted in.
     """
     cml = _read("CMakeLists.txt")
-    if "rtos_bringup" not in cml:
+    if "track_c_bringup" not in cml:
         pytest.skip("Track C is not in this tree yet")
 
     assert "add_custom_target(firmware_track_c" in cml, (
@@ -929,14 +929,14 @@ def test_track_c_cmake_forces_a_full_build_too():
     body = cml[cml.index("add_custom_target(firmware_track_c"):]
     body = body[:body.index("VERBATIM")]
     clean_at = body.find("--target clean")
-    build_at = body.find("--target rtos_bringup")
+    build_at = body.find("--target track_c_bringup")
     assert clean_at >= 0, "firmware_track_c does not clean"
-    assert build_at >= 0, "firmware_track_c does not build rtos_bringup"
+    assert build_at >= 0, "firmware_track_c does not build track_c_bringup"
     assert clean_at < build_at, (
         "firmware_track_c builds before it cleans, which cleans away the "
         "image it just produced")
 
-    assert "add_dependencies(rtos_bringup" not in cml, (
+    assert "add_dependencies(track_c_bringup" not in cml, (
         "the clean is expressed as a dependency again. That is the shape "
         "that was Make-works / Ninja-broken for Track B - see the test "
         "above and issue #35.")
@@ -1011,7 +1011,7 @@ def test_track_c_keeps_the_build_path_out_of_its_image():
     assert maps.index("freertos_SOURCE_DIR") > maps.index("CMAKE_SOURCE_DIR"), (
         "the FreeRTOS map comes before the checkout's, so a FreeRTOS copy "
         "inside the tree is mapped as part of the checkout")
-    assert re.search(r"target_compile_options\(rtos_bringup\s+PRIVATE\s+"
+    assert re.search(r"target_compile_options\(track_c_bringup\s+PRIVATE\s+"
                      r"\$\{FREERTOS_PREFIX_MAP\}\)", _read("CMakeLists.txt")), (
-        "rtos_bringup does not compile with FREERTOS_PREFIX_MAP, so the "
+        "track_c_bringup does not compile with FREERTOS_PREFIX_MAP, so the "
         "maps are defined and never reach the compiler")

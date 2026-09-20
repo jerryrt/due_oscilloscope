@@ -262,7 +262,7 @@ pass() {  # pass <label> <cfg dir> <target prefix> <sentinel> <ext> <under>...
 }
 
 echo "== Track B: apps/baremetal_bringup, bsp, drivers, lib/due_shared/src =="
-pass b "$scratch/cfg-b" CMakeFiles/baremetal_bringup.dir/ drivers/play.c c \
+pass b "$scratch/cfg-b" CMakeFiles/track_b_bringup.dir/ drivers/play.c c \
      apps/baremetal_bringup bsp drivers lib/due_shared/src
 echo
 
@@ -272,7 +272,7 @@ pass a "$scratch/cfg-a" CMakeFiles/track_a_bringup.dir/ \
 echo
 
 echo "== Track C: apps/rtos_bringup =="
-pass c "$scratch/cfg-c" CMakeFiles/rtos_bringup.dir/ apps/rtos_bringup/main.c c      apps/rtos_bringup
+pass c "$scratch/cfg-c" CMakeFiles/track_c_bringup.dir/ apps/rtos_bringup/main.c c      apps/rtos_bringup
 echo
 
 cat "$scratch/b.txt" "$scratch/a.txt" "$scratch/c.txt" > "$scratch/all.txt"

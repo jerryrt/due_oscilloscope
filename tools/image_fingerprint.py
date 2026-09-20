@@ -30,7 +30,7 @@ defined-symbol address map says where things were put. Whether two
 images run the same *instructions* is a third question, and
 `tools/image_mnemonics.py` is what answers it.
 
-    python3 tools/image_fingerprint.py build/baremetal_bringup.elf
+    python3 tools/image_fingerprint.py build/track_b_bringup.elf
 
 Prints one JSON object. Every field in it is a property of the ELF and
 not of the tools that read it, so two benches compare them directly:
@@ -57,7 +57,7 @@ import toolchain  # noqa: E402
 
 #: Built by both tracks' documented build lines, tried in order.
 DEFAULT_ELVES = (
-    "build/baremetal_bringup.elf",
+    "build/track_b_bringup.elf",
     "build-a/track_a_bringup.elf",
 )
 

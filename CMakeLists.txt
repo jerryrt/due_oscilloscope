@@ -133,7 +133,7 @@ set(FW_GIT_REV_COMMAND
 
 # Once here as well, so the header exists for anything that reaches the
 # executable target without going through its wrapper - an IDE indexing
-# the tree, or a `--target baremetal_bringup` typed by hand.
+# the tree, or a `--target track_b_bringup` typed by hand.
 execute_process(COMMAND ${FW_GIT_REV_COMMAND} COMMAND_ERROR_IS_FATAL ANY)
 
 # lib/due_shared/src is the wire contract every track compiles; Track A
@@ -165,7 +165,7 @@ set(TRACK_B_SYSTEM_INCLUDES
 
 set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/linker/sam3x8e_flash.ld)
 
-add_executable(baremetal_bringup EXCLUDE_FROM_ALL
+add_executable(track_b_bringup EXCLUDE_FROM_ALL
     apps/baremetal_bringup/main.c
     bsp/startup_sam3x8e.c
     bsp/uart.c
@@ -197,19 +197,19 @@ add_executable(baremetal_bringup EXCLUDE_FROM_ALL
     ${DEVICE}/source/system_sam3xa.c
 )
 
-target_include_directories(baremetal_bringup PRIVATE
+target_include_directories(track_b_bringup PRIVATE
     ${TRACK_B_INCLUDES} ${FW_GIT_REV_DIR})
-target_include_directories(baremetal_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})
+target_include_directories(track_b_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})
 
-target_link_options(baremetal_bringup PRIVATE
+target_link_options(track_b_bringup PRIVATE
     -mcpu=cortex-m3 -mthumb
     -T${LINKER_SCRIPT}
     -Wl,--gc-sections
-    -Wl,-Map=${CMAKE_BINARY_DIR}/baremetal_bringup.map
+    -Wl,-Map=${CMAKE_BINARY_DIR}/track_b_bringup.map
     -specs=nano.specs
     -nostartfiles
 )
-set_target_properties(baremetal_bringup PROPERTIES
+set_target_properties(track_b_bringup PROPERTIES
     SUFFIX ".elf"
     LINK_DEPENDS ${LINKER_SCRIPT}
 )
@@ -237,14 +237,14 @@ set_target_properties(baremetal_bringup PROPERTIES
 # Every build of the firmware is a full build, and the ordering is
 # process sequencing rather than graph planning.
 #
-# This used to be `add_dependencies(baremetal_bringup
+# This used to be `add_dependencies(track_b_bringup
 # enforce_clean_build)`, which asks the build system to run a clean
 # inside the same graph that is about to link. Make re-evaluates between
 # steps and got away with it - measured on linux-x1, 25 of 25 objects
 # recompiled on every invocation - but Ninja plans the whole graph first
 # and then deletes the objects the same plan is about to link:
 #
-#     ld: cannot find CMakeFiles/baremetal_bringup.dir/drivers/stream.c.obj
+#     ld: cannot find CMakeFiles/track_b_bringup.dir/drivers/stream.c.obj
 #
 # Not a parallelism race; -j 1 fails identically (issue #35). It was my
 # mechanism relying on an ordering guarantee CMake does not offer, and it
@@ -252,7 +252,7 @@ set_target_properties(baremetal_bringup PROPERTIES
 #
 # So the clean and the build are two *child* invocations of CMake,
 # sequenced by the shell rather than by the generator. `firmware` is what
-# `all` builds; `baremetal_bringup` leaves `all` so the inner invocation
+# `all` builds; `track_b_bringup` leaves `all` so the inner invocation
 # cannot recurse into this target, and naming it explicitly is what makes
 # the second command build the firmware rather than the driver.
 #
@@ -263,14 +263,14 @@ add_custom_target(firmware ALL
     COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
     COMMAND ${FW_GIT_REV_COMMAND}
     COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"
-            --target baremetal_bringup --parallel
+            --target track_b_bringup --parallel
     COMMENT "Enforcing a clean build (see tests/test_clean_build.py)"
     USES_TERMINAL VERBATIM)
 
-add_custom_command(TARGET baremetal_bringup POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:baremetal_bringup>
-            $<TARGET_FILE_DIR:baremetal_bringup>/baremetal_bringup.bin
-    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:baremetal_bringup>
+add_custom_command(TARGET track_b_bringup POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:track_b_bringup>
+            $<TARGET_FILE_DIR:track_b_bringup>/track_b_bringup.bin
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:track_b_bringup>
     COMMENT "Generating .bin and reporting size"
 )
 
@@ -329,10 +329,10 @@ if(BUILD_TRACK_C)
     #
     # This is invariant 4's claim made literal - "bare-metal and FreeRTOS
     # builds link identical driver code and differ only in main()". The
-    # list below is baremetal_bringup's with exactly two substitutions:
+    # list below is track_b_bringup's with exactly two substitutions:
     # apps/rtos_bringup/main.c for apps/baremetal_bringup/main.c, and
     # apps/rtos_bringup/time_rtos.c for bsp/systick.c.
-    add_executable(rtos_bringup EXCLUDE_FROM_ALL
+    add_executable(track_c_bringup EXCLUDE_FROM_ALL
         apps/rtos_bringup/main.c
         apps/rtos_bringup/time_rtos.c
         bsp/startup_sam3x8e.c
@@ -371,7 +371,7 @@ if(BUILD_TRACK_C)
     # anything Track C links must not need them until the kernel offers
     # an equivalent - see FreeRTOSConfig.h.
 
-    target_include_directories(rtos_bringup PRIVATE
+    target_include_directories(track_c_bringup PRIVATE
         apps/rtos_bringup ${FREERTOS_INCLUDE})
 
     # State the track at the build rather than leaving it to whichever
@@ -380,25 +380,25 @@ if(BUILD_TRACK_C)
     # directory, so without this Track C's control channel answers
     # track=b while its console answers track=C - measured, not
     # hypothetical.
-    target_compile_definitions(rtos_bringup PRIVATE FW_TRACK='C')
+    target_compile_definitions(track_c_bringup PRIVATE FW_TRACK='C')
 
     # The checkout's path and FreeRTOS's stay out of the image; see
     # FREERTOS_PREFIX_MAP in cmake/freertos.cmake.
-    target_compile_options(rtos_bringup PRIVATE ${FREERTOS_PREFIX_MAP})
+    target_compile_options(track_c_bringup PRIVATE ${FREERTOS_PREFIX_MAP})
 
-    target_include_directories(rtos_bringup PRIVATE
+    target_include_directories(track_c_bringup PRIVATE
         ${TRACK_B_INCLUDES} ${FW_GIT_REV_DIR})
-    target_include_directories(rtos_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})
+    target_include_directories(track_c_bringup SYSTEM PRIVATE ${TRACK_B_SYSTEM_INCLUDES})
 
-    target_link_options(rtos_bringup PRIVATE
+    target_link_options(track_c_bringup PRIVATE
         -mcpu=cortex-m3 -mthumb
         -T${LINKER_SCRIPT}
         -Wl,--gc-sections
-        -Wl,-Map=${CMAKE_BINARY_DIR}/rtos_bringup.map
+        -Wl,-Map=${CMAKE_BINARY_DIR}/track_c_bringup.map
         -specs=nano.specs
         -nostartfiles
     )
-    set_target_properties(rtos_bringup PROPERTIES
+    set_target_properties(track_c_bringup PROPERTIES
         SUFFIX ".elf"
         LINK_DEPENDS ${LINKER_SCRIPT}
     )
@@ -412,14 +412,14 @@ if(BUILD_TRACK_C)
         COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target clean
         COMMAND ${FW_GIT_REV_COMMAND}
         COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}"
-                --target rtos_bringup --parallel
+                --target track_c_bringup --parallel
         COMMENT "Enforcing a clean build of Track C (tests/test_clean_build.py)"
         USES_TERMINAL VERBATIM)
 
-    add_custom_command(TARGET rtos_bringup POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:rtos_bringup>
-                $<TARGET_FILE_DIR:rtos_bringup>/rtos_bringup.bin
-        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:rtos_bringup>
+    add_custom_command(TARGET track_c_bringup POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:track_c_bringup>
+                $<TARGET_FILE_DIR:track_c_bringup>/track_c_bringup.bin
+        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:track_c_bringup>
         COMMENT "Generating Track C .bin and reporting size"
     )
 endif()

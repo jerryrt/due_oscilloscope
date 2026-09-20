@@ -106,7 +106,7 @@ def _cmake_source_dirs():
     """
     import re
     cmake = _repo_read("CMakeLists.txt")
-    block = cmake[cmake.index("add_executable(baremetal_bringup"):]
+    block = cmake[cmake.index("add_executable(track_b_bringup"):]
     block = block[:block.index(")")]
     dirs = set()
     for line in block.splitlines()[1:]:
@@ -192,6 +192,7 @@ def test_a_flash_record_for_the_other_track_is_not_this_boards_image():
     import provenance as prov
 
     assert prov.track_of_binary("build/track_a/bringup.ino.bin") == "A"
+    assert prov.track_of_binary("build/track_b_bringup.bin") == "B"
     assert prov.track_of_binary("build/baremetal_bringup.bin") == "B"
     assert prov.track_of_binary(r"build\track_a\bringup.ino.bin") == "A"
     assert prov.track_of_binary(None) is None
@@ -208,16 +209,21 @@ def test_a_flash_record_for_the_other_track_is_not_this_boards_image():
 #: carry the old path for ever, and a log that stops resolving is a
 #: bench's history becoming unattributable.
 HISTORICAL_BINARIES = {
+    # The names before the tracks were named after themselves. Every row
+    # written up to 2026-09-20 holds one of these and always will.
     "build/baremetal_bringup.bin": "B",
     "docker/out/build/baremetal_bringup.bin": "B",
     "build-clang/baremetal_bringup.bin": "B",
+    "build-c/rtos_bringup.bin": "C",
+    "docker/out/build-c/rtos_bringup.bin": "C",
     "build/track_a/bringup.ino.bin": "A",
     "build-a/track_a_bringup.bin": "A",
     "docker/out/build-a/track_a_bringup.bin": "A",
-    "build-c/rtos_bringup.bin": "C",
-    "docker/out/build-c/rtos_bringup.bin": "C",
     # An agent worktree, which is where two rows here were written from.
     "../../../../tmp/x/scratchpad/wt5/build/baremetal_bringup.bin": "B",
+    # And the names after it.
+    "docker/out/build/track_b_bringup.bin": "B",
+    "docker/out/build-c/track_c_bringup.bin": "C",
 }
 
 
@@ -293,7 +299,7 @@ def test_the_benchs_own_log_resolves_end_to_end():
 # records written against the wall-clock stamp that preceded it, so both
 # forms have to resolve and the tests below hold each one open.
 
-_B = "build/baremetal_bringup.bin"
+_B = "build/track_b_bringup.bin"
 
 
 def _rec(rev, when, dirty_sha=None, binary=_B):

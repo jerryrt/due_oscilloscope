@@ -40,7 +40,7 @@ unaffected.
 Two benches can compare without sharing an ELF: the hashes travel in a
 comment and the disassembly does not have to.
 
-    python3 tools/image_mnemonics.py build/baremetal_bringup.elf
+    python3 tools/image_mnemonics.py build/track_b_bringup.elf
     python3 tools/image_mnemonics.py a.elf --only DACC_Handler,acq_start
     python3 tools/image_mnemonics.py a.elf --compare b.elf
 """

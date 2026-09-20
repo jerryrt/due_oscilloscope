@@ -3,7 +3,7 @@
 **The tracked baseline for the `linux-x1` bench - the third host, and the
 first that is neither macOS nor Windows.** Regenerate with
 
-    python3 tools/flash.py --bin build/baremetal_bringup.bin
+    python3 tools/flash.py --bin build/track_b_bringup.bin
     python3 tools/metrics.py --repeats 9 --seconds 3 \
         --out docs/metric-baseline-linux.md
 

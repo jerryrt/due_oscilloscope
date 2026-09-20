@@ -37,6 +37,22 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 # the question open. It is written per track, immediately after that
 # track builds, so a bench that cannot build the other one still records
 # the one it did.
+# STALE IMAGES OUT BEFORE A BUILD, NOT AFTER.
+#
+# The output directories are bind mounts onto docker/out/ and survive
+# every build, while record_build_env below lists whatever the directory
+# HOLDS rather than what this build produced. Those two together mean a
+# leftover is recorded as an artifact of this build, hashes and all, and
+# tools/flash.py then accepts it as a current container image.
+#
+# Invisible until an artifact is renamed, because a leftover under the
+# same name is simply overwritten. It became visible the day the images
+# were renamed to carry their track, and both names sat in one manifest.
+clear_stale_images() {  # clear_stale_images <dir>
+    [ -d "$1" ] || return 0
+    rm -f -- "$1"/*.bin "$1"/*.elf "$1"/*.map
+}
+
 record_build_env() {
     python3 - "$1" <<'PY'
 import hashlib
@@ -91,21 +107,24 @@ echo "build, build-a, build-c"
 echo
 
 echo "== Track B =="
+clear_stale_images build
 cmake --build build -j
 record_build_env build
 echo
 
 echo "== Track A =="
+clear_stale_images build-a
 cmake --build build-a --target firmware_track_a --parallel
 record_build_env build-a
 echo
 
 echo "== Track C =="
+clear_stale_images build-c
 cmake --build build-c --target firmware_track_c --parallel
 record_build_env build-c
 echo
 
 echo "== what built them =="
-python3 tools/image_fingerprint.py build/baremetal_bringup.elf
+python3 tools/image_fingerprint.py build/track_b_bringup.elf
 python3 tools/image_fingerprint.py build-a/track_a_bringup.elf
-python3 tools/image_fingerprint.py build-c/rtos_bringup.elf
+python3 tools/image_fingerprint.py build-c/track_c_bringup.elf
