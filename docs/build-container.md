@@ -148,6 +148,49 @@ even near 13 operations, and a gate makes far more. Over drvfs the copy
 is 30-52 s and the bridge wins. Same semantics either way; a bench picks
 its side and records it.
 
+#### The whole gate runs against the copy, and there are no build mounts
+
+Moving the tier alone was not enough. **Eight steps read the tree** -
+the firmware build, both analysers, and three reproducibility builds
+that each build *twice*. `run-ci.sh` re-enters itself once in the copy
+and every step after that is local; `repo=$PWD` is what makes it work,
+because the copy's own `run-ci.sh` finds the copy.
+
+**`mac-bench`, post-restart against post-restart, the change alone:**
+
+| step | before | after |
+|---|---|---|
+| **cppcheck** | 25.1 s | **7.7 s** — 3.3×, the largest single gain |
+| clang-tidy | 48.6 s | 37.2 s |
+| firmware | 30.2 s | 19.4 s |
+| `reproducible-b` / `-c` | 12.5 / 14.3 s | 4.3 / 5.4 s |
+| host tier | 197.8 s | 186.8 s |
+| **wall** | **428.4 s** | **331.3 s** |
+
+**The analysers were the surprise** - `cppcheck` reads every source
+once and was paying the mount for all of it. Nobody predicted that; the
+firmware step was where everyone was looking.
+
+**And the ground did not move this time**, which is the point of having
+the instrument: fuzz did **228,786 executions against 231,716** at the
+same fixed duration, 1.3% apart. So unlike the VM restart, these deltas
+are attributable to the change rather than to the machine.
+
+**The three build bind mounts are gone with it.** They existed only so
+`cmake -B build` landed in `docker/out`; `build-firmware.sh` names the
+destination, which is the same directory whether it runs against the
+mounted tree or a copy that bridges `docker/out`. Repo-level `build/`,
+`build-a/` and `build-c/` stop existing, and `image_fingerprint.py` and
+`stack_depth.py` default to `docker/out` rather than to directories
+that are no longer written.
+
+**It stops writing them; it does not remove what is already there.**
+`mac-bench` found **162 MB** of stale CMake trees from before the
+change, `linux-x1` 1,600 files - including a Track B image under its
+pre-rename name, sitting exactly where a tool used to default. Delete
+them once: a missing directory is an error and a stale one is a wrong
+answer that looks right.
+
 #### The objects are written locally too, and the artifacts are copied out
 
 The same argument one layer down. `build/`, `build-a/` and `build-c/`
@@ -201,7 +244,10 @@ that step says whether the machine moved underneath it.
 **It was used twice in one morning, for opposite purposes.**
 `mac-bench` read it as a *confound* - executions doubling across a VM
 restart, which is why none of their 90 s was credited to the change
-they had just made. `windows-desk` read it as the *measurement*:
+they had just made. It was then used a third time as a **control**, by the bench that had
+been caught by it: executions steady to 1.3% across the whole-gate
+change, which is what licenses reading those deltas as the change
+rather than the machine. `windows-desk` read it as the *measurement*:
 333,433 executions from the ext4 checkout against 100,163 from the
 drvfs one, which is the cleanest single number for how much a
 filesystem costs a whole gate. Isolating
