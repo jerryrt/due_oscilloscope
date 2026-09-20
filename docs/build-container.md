@@ -341,8 +341,10 @@ thing.** `records/flash-log.jsonl` is written by flashing, so on a bench
 that runs the container in one tree and flashes from another it is
 absent from the tree the container sees - the bridge works and there is
 nothing to bridge. The arm that reads it then **does not run, and the
-gate is green**. Measured on `windows-desk`: it skips with their clone
-as it is and passes with their real log copied in.
+gate is green**. `windows-desk` was that bench until it moved to one
+checkout: the arm skipped with their clone as it was and passed with
+their real log copied in, and it runs there now that the tree the gate
+runs in is the tree that flashes.
 
 That is tolerable only because the spellings that arm guards are
 **global** - they live in `provenance.track_of_binary()`, not per bench
@@ -412,6 +414,15 @@ tree's own commit, because `FW_GIT_REV` is compiled in and a row
 labelled with a commit the binary was not built from voids the
 comparison it feeds. It refuses a dirty tree too, because the delta
 hash is a function of the dirt and no other bench can reproduce it.
+
+**A row carries the skip set, not only the skip count.** Every
+pytest step records pytest's own `-ra` summary as `skipped`: one entry
+per site and reason, sorted, an empty list where nothing skipped and
+no key where the step was not pytest. Three benches once decided that
+no bridge was missing by each reading a `5` in a summary line; the set
+behind the 5 is what says whether two benches' fives are the same five,
+and it is the record a cross-bench consistency check can diff without a
+person retyping it.
 
 ## What this is not
 

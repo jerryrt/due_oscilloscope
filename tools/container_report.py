@@ -70,6 +70,12 @@ _PYTEST = re.compile(r"^=*\s*(\d+ (?:passed|failed|error|skipped|deselected)"
                      r"[^=]*?)\s*(?:in [\d.]+s.*)?=*$", re.M)
 _TOTAL = re.compile(r"^total\s+(\d+)", re.M)
 _EXECS = re.compile(r"number_of_executed_units:\s*(\d+)")
+#: pytest's -ra short summary, one line per (site, reason): the skip SET,
+#: which a count cannot carry. Three benches compared a `5` by hand to
+#: decide no bridge was missing; the node ids behind the 5 are what
+#: would have said WHICH bridge, and whether two benches' fives are the
+#: same five.
+_SKIPPED = re.compile(r"^SKIPPED \[(\d+)\] (\S+?:\d+): (.*)$", re.M)
 _LAYOUT = re.compile(r'"layout":\s*"([0-9a-f]+)"')
 #: `tools/reproducible.py`'s per-artifact column. The COUNT rather than
 #: its own verdict line, because a count of 0 is the claim and the
@@ -203,6 +209,13 @@ def collect(logs, build, exit_code):
         tail = _pytest_tail(text)
         if tail:
             row["pytest"] = tail
+            # THE SKIP SET, NOT THE SKIP COUNT. Sorted, so two benches'
+            # rows diff; an empty list on a pytest step means no skips,
+            # where an absent key would mean the step was not pytest.
+            row["skipped"] = sorted(
+                [{"where": w, "count": int(n), "reason": r.strip()}
+                 for n, w, r in _SKIPPED.findall(text)],
+                key=lambda d: (d["where"], d["reason"]))
         total = _TOTAL.findall(text)
         if total:
             row["findings"] = int(total[-1])

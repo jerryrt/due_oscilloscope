@@ -368,3 +368,42 @@ def test_a_seconds_file_that_is_not_a_number_is_null_not_a_guess(
     row = _row(tmp_path, monkeypatch, logs={"host-tier": "= 1 passed ="},
                seconds={"host-tier": "137,0\n"})
     assert row["steps"]["host-tier"]["seconds"] is None
+
+
+# --- the skip SET travels with the row, not only the count ----------------
+
+def test_a_pytest_step_carries_which_tests_skipped(tmp_path, monkeypatch):
+    """A count of 5 cannot say whether two benches skipped the same five.
+
+    Three benches decided "no bridge is missing" by each reading a 5 in
+    a summary line. The one time a bridge WAS missing, `test_no_heap`
+    went passed -> skipped and the count moved to 6, which is the only
+    reason it was seen: a test that branches on an absent file and still
+    passes moves no count. The set behind the count is what diffs across
+    benches, so it is recorded from pytest's own -ra summary, sorted.
+    """
+    log = ("SKIPPED [1] tests/test_gui.py:35: needs the GUI venv\n"
+           "SKIPPED [4] tests/test_scope.py:235: no bench scope\n"
+           "= 814 passed, 5 skipped, 160 deselected in 138.71s =")
+    row = _row(tmp_path, monkeypatch, logs={"host-tier": log})
+    assert row["steps"]["host-tier"]["skipped"] == [
+        {"where": "tests/test_gui.py:35", "count": 1,
+         "reason": "needs the GUI venv"},
+        {"where": "tests/test_scope.py:235", "count": 4,
+         "reason": "no bench scope"},
+    ]
+
+
+def test_no_skips_is_an_empty_list_and_a_non_pytest_step_has_no_key(
+        tmp_path, monkeypatch):
+    """Empty means "ran pytest, skipped nothing"; absent means "not pytest".
+
+    Folding those two into one absent key would make a tier with zero
+    skips indistinguishable from a step this tool did not parse.
+    """
+    row = _row(tmp_path, monkeypatch,
+               logs={"host-tier": "= 814 passed in 138.71s =",
+                     "cppcheck": "total 10\n"})
+    assert row["steps"]["host-tier"]["skipped"] == []
+    assert "skipped" not in row["steps"]["cppcheck"]
+
