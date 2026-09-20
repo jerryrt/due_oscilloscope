@@ -397,6 +397,8 @@ both times downward. An `edge` declaration adds the call; like
 | c | 15 | 148 | `PendSV_Handler`, `SysTick_Handler`, `UART_Handler` |
 
 Every level's figure includes 36 B of hardware exception frame - eight words plus a word of STKALIGN padding - so a level costs that much even where its handler is a counter increment. Handlers at one level do not nest, so a level is charged one frame and its deepest member; an `undeclared` row is a handler with no declared level, assumed to nest on its own, which is the ceiling the state column reports against.
+
+rows: track a: windows-desk at 53e226e; track b: windows-desk at 53e226e; track c: windows-desk at 53e226e.
 <!-- end generated -->
 
 ### What the level table says about the firmware, not the stack
@@ -501,6 +503,8 @@ number to derive by hand here.
 | c | 8 | ep_fifo_write.constprop | 24 | 24 |
 
 track a: Reset_Handler, 880 B; track b: Reset_Handler, 912 B; track c: service_task, 856 B.
+
+rows: track a: windows-desk at 53e226e; track b: windows-desk at 53e226e; track c: windows-desk at 53e226e.
 <!-- end generated -->
 
 ## Reading the diagram
@@ -632,6 +636,8 @@ graph TD
   style c7 stroke-width:3px
   style c8 stroke-width:3px
 ```
+
+rows: track a: windows-desk at 53e226e; track b: windows-desk at 53e226e; track c: windows-desk at 53e226e.
 <!-- end generated -->
 
 ## What a virtual call costs, and why arity is the whole of it
@@ -769,11 +775,19 @@ being mistaken for a pass.
 
 `python3 tools/stack_report.py --check` proves that this document
 matches the record, and it runs in the container as the `stack report`
-step of `docker/run-ci.sh`. It cannot prove the record is current: the
-generator reads JSON and writes Markdown with no ELF, no build and no
-toolchain in its path, so a stale record and a document generated from
-it agree perfectly and the check passes for ever. A bound is only as
-fresh as the image the row names.
+step of `docker/run-ci.sh`. It also says how old the record is - the
+newest `repo_rev` per track against `HEAD`, with the commit count where
+git can take it and a plain statement where the rev is not in this
+repository's history. What it cannot do is prove the record is current:
+the generator reads JSON and writes Markdown with no ELF, no build and
+no toolchain in its path, so a stale record and a document generated
+from it agree perfectly and the check passes for ever. A bound is only
+as fresh as the image the row names, and the age is printed so that a
+green check is read beside it. Each single-row region - the chains, the
+diagram, the nesting - now ends with a caption naming the bench and the
+revision of the row it describes, because `load()` keeps the latest row
+per track and a second bench's rows once replaced the first's in those
+regions with nothing on the page saying so.
 
 It exits 1 when the document drifted and **2 when the record could not
 be read at all** - missing, empty, or a schema this generator does not

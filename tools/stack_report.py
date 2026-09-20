@@ -21,7 +21,9 @@ survives regeneration, so nothing hand-written may be put there.
     <!-- end generated -->
 
 WHAT `--check` PROVES, AND WHAT IT CANNOT. It proves the document
-matches the record. It CANNOT prove the record is current: the record is
+matches the record, and it says how old the record is - the newest
+repo_rev per track against HEAD, and how many commits behind, where
+git can count it. It CANNOT prove the record is current: the record is
 written by `tools/stack_depth.py --record` from a `-DFIRMWARE_CALLGRAPH=ON`
 build, and this reads JSON and writes Markdown with no ELF, no build and
 no toolchain in the path. A stale record and a document generated from
@@ -61,6 +63,7 @@ import io
 import json
 import os
 import re
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -324,6 +327,25 @@ def r_bounds(recs):
     return _table(rows) + tail
 
 
+def _rows_caption(recs):
+    """Which bench's row each track's figures came from, for a region that
+    renders one row per track.
+
+    `load()` keeps the latest row per track, so a region built on it
+    describes whichever bench recorded last - and when a second bench
+    appended, the chain table and the diagram switched benches with
+    nothing on the page saying so, while only the bounds table compared
+    across them. The figures stay single-row; the caption says whose.
+    """
+    parts = []
+    for track in sorted(recs):
+        row = recs[track]
+        parts.append("track %s: %s at %s"
+                     % (track, _cell(row.get("bench")),
+                        _cell(row.get("repo_rev"))))
+    return "rows: " + "; ".join(parts) + "."
+
+
 def r_chains(recs):
     """The deepest root's chain per track, frame by frame.
 
@@ -354,7 +376,8 @@ def r_chains(recs):
                 "frame B": _cell(step.get("frame")),
                 "total below B": _cell(step.get("below")),
             })
-    return _table(rows) + "\n\n" + "; ".join(heads) + "."
+    return (_table(rows) + "\n\n" + "; ".join(heads) + ".\n\n"
+            + _rows_caption(recs))
 
 
 def _ids(recs):
@@ -433,6 +456,8 @@ def r_diagram(recs):
                    "there is no worst case to draw. The box says which state "
                    "stopped it; the bounds table above carries the same "
                    "reason." % ", ".join(skipped))
+    out.append("")
+    out.append(_rows_caption(recs))
     return "\n".join(out)
 
 
@@ -485,7 +510,8 @@ def r_nesting(recs):
             "the ceiling the state column reports against."
             % ", ".join(str(f) for f in frames) if frames else
             "No record carries an interrupt accounting.")
-    return (_table(totals) + "\n\n" + _table(levels) + "\n\n" + note)
+    return (_table(totals) + "\n\n" + _table(levels) + "\n\n" + note
+            + "\n\n" + _rows_caption(recs))
 
 
 def r_benches(recs):
@@ -616,6 +642,59 @@ def drifted(text, recs):
     return out
 
 
+def _head_rev():
+    try:
+        return subprocess.check_output(
+            ["git", "-C", HERE, "rev-parse", "--short", "HEAD"],
+            text=True, stderr=subprocess.DEVNULL).strip() or None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def _commits_behind(rev):
+    """How many commits HEAD is past `rev`, or None where git cannot say -
+    a rev the repository does not hold, or no git at all."""
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", HERE, "rev-list", "--count", rev + "..HEAD"],
+            text=True, stderr=subprocess.DEVNULL).strip()
+        return int(out)
+    except (OSError, subprocess.CalledProcessError, ValueError):
+        return None
+
+
+def currency(recs, head=None):
+    """One line saying how old the record is: its newest repo_rev per
+    track against HEAD. Informational - `--check` proves the document
+    matches the record, and this is the part of "is the record current"
+    that can be read off git rather than remembered. A stale record is
+    a fact to report, not a failure.
+    """
+    head = head or _head_rev()
+    parts, worst, foreign = [], None, []
+    for track in sorted(recs):
+        rev = recs[track].get("repo_rev")
+        parts.append("%s %s" % (track, _cell(rev)))
+        if rev and head:
+            short = rev.split("+")[0].split("-")[0]
+            behind = _commits_behind(short)
+            if behind is not None:
+                worst = behind if worst is None else max(worst, behind)
+            elif short not in foreign:
+                # A rev git cannot count to is one this repository does
+                # not hold - a row taken in a clone at a commit that was
+                # rebased before it landed, for instance. Said, rather
+                # than left as a missing number.
+                foreign.append(short)
+    line = "record newest: %s; HEAD %s" % (", ".join(parts), head or "(unknown)")
+    if worst is not None:
+        line += "; %d commits behind at most" % worst
+    if foreign:
+        line += ("; %s not in this repository's history, so its age "
+                 "cannot be counted" % ", ".join(foreign))
+    return line
+
+
 def _shown(path):
     """The path as a reader can retype it: relative inside the tree, and
     left alone outside it, where a relative path is a row of `..`."""
@@ -632,8 +711,8 @@ def main(argv=None):
     ap.add_argument("--check", action="store_true",
                     help="exit 1 if the document is not what this would "
                          "generate, 2 if the record could not be read at "
-                         "all. Proves the document matches the record, NOT "
-                         "that the record is current")
+                         "all. Proves the document matches the record, and "
+                         "says how far behind HEAD the record is")
     ap.add_argument("--records", default=RECORDS)
     ap.add_argument("--doc", default=DOC)
     args = ap.parse_args(argv)
@@ -661,8 +740,10 @@ def main(argv=None):
             print("no region for: %s (nothing to check)" % ", ".join(missing),
                   file=sys.stderr)
             return 1
-        print("generated regions match %s; this says nothing about whether "
-              "that record is current" % _shown(args.records))
+        # ONE LINE, because run-ci.sh's detail column is the last line
+        # matching "generated regions match".
+        print("generated regions match %s; %s"
+              % (_shown(args.records), currency(recs)))
         return 0
 
     with io.open(args.doc, "w", encoding="utf-8", newline="\n") as fh:

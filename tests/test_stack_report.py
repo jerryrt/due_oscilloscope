@@ -348,3 +348,41 @@ def test_check_fails_when_a_blocked_row_reason_is_edited(tmp_path):
         "passed, so the refusal is the one thing in the document nobody "
         "is watching")
     assert "bounds" in bad.stderr, bad.stderr
+
+
+# --- a single-row region says whose row it is ----------------------------
+
+def test_every_single_row_region_names_the_bench_and_revision_it_describes():
+    """`load()` keeps the latest row per track, so a region built on it
+    describes whichever bench recorded last. When a second bench appended,
+    the chain table and the diagram switched benches with nothing on the
+    page saying so, while only the bounds table compared across them
+    (windows-desk, on the container-universality thread). The figures stay
+    single-row; each such region now ends by naming the row.
+    """
+    recs = sr.load()
+    for name in ("chains", "diagram", "nesting"):
+        text = sr.render(name, recs)
+        for track in sorted(recs):
+            row = recs[track]
+            want = "track %s: %s at %s" % (track, row.get("bench"),
+                                            row.get("repo_rev"))
+            assert want in text, (name, want)
+        assert text.rstrip().splitlines()[-1].startswith("rows: "), name
+
+
+def test_the_currency_line_reports_the_records_revision_not_heads():
+    """The `stack report` step used to end "this says nothing about
+    whether that record is current". It now says how old the record is,
+    and the one way that line can lie is by printing HEAD where the
+    record's own revision belongs - which reads as a record taken today.
+    """
+    recs = sr.Records({
+        "a": {"track": "a", "repo_rev": "d253078", "roots": []},
+        "b": {"track": "b", "repo_rev": "0123abc", "roots": []},
+    })
+    line = sr.currency(recs, head="deadbee")
+    assert "a d253078" in line and "b 0123abc" in line, line
+    assert "HEAD deadbee" in line, line
+    assert "a deadbee" not in line and "b deadbee" not in line, line
+
