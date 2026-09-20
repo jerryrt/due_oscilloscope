@@ -373,6 +373,64 @@ If the vendor-class USB path is taken later, add `pyusb` (libusb).
 
 ---
 
+## What the code generator decides, and what a hash can see
+
+A commit does not determine an image: the code generator that compiled
+it does, and two images of one commit from two generators differ in
+what they fetch, not merely where the linker put it. That is why every
+figure carries `fw_cc`, and why the container's single pinned compiler
+makes a cross-bench codegen difference a finding rather than the
+expected case. The evidence is the wrap displacement (`docs/issue5.md`),
+whose site set and severity were measured against three candidates in
+one afternoon: the bench, the layout and the generator.
+
+| candidate | arm | result |
+|---|---|---|
+| **not the bench** | `linux-x1` (GCC 14.2.1) and `windows-desk` (ARM GNU 14.3.1), one pinned commit | matched on **22 of 31 sites** with 0 of 31 of a translated prediction, p about 1e-32 |
+| **not the layout** | four builds of that commit, two of them one compiler version on two host OSes | four **different** address maps - the `newlib`/`libgcc` archives the packages bundle differ - so layout is not even a function of (source, compiler version), and "put two benches on one layout" may not be reachable by installing a matching toolchain |
+| **the generator** | one board, one session, one commit, two images differing only in which arm-gcc built them, A-B-A with 72 runs a block | Jaccard over the FWS 4/5/6 site sets: **0.885** for the same image against itself with the other arm between, **0.862** against the other bench's different compiler *and* different board, **0.154** for xPack 15.2.1 against ARM GNU 14.3.1 on the same board with nothing else changed. FWS 5 is the cleanest: 8 of 8 sites shared with the other bench, **0 of 7** with the other compiler |
+
+Repeatability and cross-bench agreement are the same number; the
+cross-compiler comparison is a sixth of it. So GCC 14.2 and 14.3 agree
+and 15.2 does not - it is what the core fetches, not where the linker
+put it - and severity is drawn the same way: on the same arm it
+reproduces at 0.90-1.01 of itself on one image and moves to 0.41-1.19
+across compilers, with the 48 same-image runs and the 24 other-compiler
+runs sharing no value at FWS 5 or FWS 6 (Mann-Whitney p = 6e-12).
+
+### Two tools, two questions
+
+`tools/image_fingerprint.py` answers "is this the same image" - `cc`
+out of `.comment`, the section sizes, the defined-symbol address map -
+and **cannot** answer the question above: a layout difference is the
+ordinary case across a point release and says nothing about codegen.
+`tools/image_mnemonics.py` hashes each function's **mnemonic
+sequence**, which is stable under relocation where the byte and operand
+columns are not, and is the only thing that says whether two images run
+the same instructions. Keep both; neither substitutes for the other.
+
+### Counting layouts is not counting generators
+
+Four builds of `3aadf90` produced four layouts and **two** code
+generators. The two xPack 15.2.1 builds - macOS `darwin-x64` and Windows
+`win32-x64`, different `layout` - are byte-identical in every function:
+319 functions and one mnemonic hash on both. The layout difference is
+the bundled `newlib`/`libgcc` archives, separate builds in the two
+packages; nothing of ours differs. So the project had two draws, ARM
+GNU 14.3.1 and xPack 15.2.1, the second wearing two hostnames - and
+reporting the four layouts as four generators is exactly the error the
+mnemonic tool exists to prevent.
+
+The figures for `3aadf90` are **319 functions, 10,343 instructions,
+`277017c287f1ee65`**, re-taken on `mac-bench`. An earlier reading of
+12,441 and `3be1163b2c06c650` came from `image_mnemonics.py` before it
+bounded each symbol by its declared size, so a symbol absorbed whatever
+followed it; the identity between the two hosts survives that, because
+the same trailing data was added to both sides and two sequences that
+hashed equal with it hash equal without it. `windows-desk` has not
+re-taken its half under the bounded tool, so quote `277017c287f1ee65`
+as macOS's until it has.
+
 ## A second code generator on one bench
 
 Every image is built in the container now, with one generator, xPack

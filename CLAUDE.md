@@ -1269,60 +1269,15 @@ a commit does not determine the code generator that compiled it.
 **Every image is now built by one pinned compiler in the container**, so
 the three benches no longer differ - which is what makes a codegen
 difference a finding rather than the expected case, and it is why the
-rule below is worth keeping rather than retiring. When this was first
-recorded the benches ran three different code generators and nobody had
-noticed it was three rather than two; the figures taken then carry
-`fw_cc` and say which.
+rule is worth keeping rather than retiring. Figures taken before the
+container carry `fw_cc` and say which of three host compilers built
+them. What the generator decides - the wrap displacement's site set
+and its severity both followed it, and neither followed the layout or
+the bench - is measured in `docs/toolchain.md`, with the one tool that
+can tell two generators apart where a layout hash cannot.
 
-It was recorded here for what it does to issue #5, and **within the
-hour the measurement it motivated corrected this paragraph** - which is
-worth keeping visible rather than tidying away. The reasoning was: #5
-draws from a lottery over code layout, the compiler deals the hand, so
-a pinned commit compared across two benches pins the *source* and
-leaves the *variable* free.
-
-**The site set follows the generated code. It does not follow the
-layout, and it does not follow the bench.** Three findings in one
-afternoon, each correcting the one before it, and the third is an
-A-B-A on a single board.
-
-*Not the bench.* `linux-x1` (GCC 14.2.1) and `windows-desk` (ARM GNU
-14.3.1) ran one pinned commit and matched on **22 of 31 sites with 0
-of 31 of a translated prediction**, p about 1e-32.
-
-*Not the layout.* Those two images have **different** address maps, and
-four builds of that one commit produced four - two of them the same
-compiler version on two host OSes, differing in the `newlib`/`libgcc`
-archives their packages bundle. Layout is not even a function of
-(source, compiler version), so "put two benches on one layout" may not
-be reachable by installing a matching toolchain.
-
-*The code generator.* One board, one session, one commit, two images
-differing only in which arm-gcc built them, A-B-A with 72 runs a
-block. Jaccard over the FWS 4/5/6 site sets: **0.885** for the same
-image against itself with the other arm in between, **0.862** against
-the other bench's different compiler and different board, and
-**0.154** for xPack 15.2.1 against ARM GNU 14.3.1 **on the same
-board with nothing else changed**. FWS 5 is the cleanest: 8 of 8
-shared with the other bench, **0 of 7** with the other compiler.
-Repeatability and cross-bench agreement are the same number; the
-cross-compiler comparison is a sixth of it.
-
-So GCC 14.2 and 14.3 agree and 15.2 does not - it is what the core
-fetches, not where the linker put it.
-
-**Two consequences.** `image_fingerprint.py` answers "is this the same
-image" and **cannot** answer this: a layout difference is the ordinary
-case across a point release and says nothing about codegen. What does
-answer it is `tools/image_mnemonics.py`, which hashes each function's
-**mnemonic sequence** - stable under relocation, where the byte and
-operand columns are not. Keep both; they answer different questions and
-neither substitutes for the other.
-
-And the old wording here - "#5's severity is a lottery over code layout"
-- was too loose in both halves. It is codegen rather than layout, and
-the site set and the severity had to be separated. **Both have now been
-measured, and they behave the same way.** On the same A-B-A arm:
+**Severity follows the generated code as the site set does.** On the
+same A-B-A arm as the site sets in `docs/toolchain.md`:
 severity reproduces at 0.90-1.01 of itself on one image and moves to
 0.41-1.19 across compilers, with the 48 same-image runs and the 24
 other-compiler runs sharing **no value at all** at FWS 5 and FWS 6
@@ -1358,26 +1313,6 @@ windows-desk's 0.885 same-image ceiling and is not measured against it:
 that arm ran n=24 per wait state and this one n=12, whose own ceiling
 is **0.450**. The conclusion survives at a 13x margin and was published
 as 27x. Two benches sharing an instrument do not share its precision.
-
-**Four builds of `3aadf90` produced four different layouts and only
-TWO different code generators.** The two xPack 15.2.1 builds - macOS
-`darwin-x64` and Windows `win32-x64`, different `layout` - are
-byte-identical in every function: 319 functions, and the same mnemonic
-hash on both. **The instruction count and the hash first published here
-were taken with a buggy `image_mnemonics.py`** - it let a symbol absorb
-whatever followed it - and are superseded: re-taken on `mac-bench` under
-the fixed tool, `3aadf90` is 319 functions and **10,343 instructions,
-`277017c287f1ee65`**, against the 12,441 and `3be1163b2c06c650` this
-line used to carry. The *identity* survives the correction, because the
-bug added the same trailing data to both sides and two sequences that
-hashed equal with it still hash equal without it; only the figures
-move. `windows-desk` has not re-taken its half, so quote
-`277017c287f1ee65` as macOS's until it has. The layout difference is the
-bundled `newlib`/`libgcc` archives, which are separate builds in the two
-packages; nothing of ours differs. So **counting layouts and reporting
-them as code generators is itself the error this section is about**, and
-it was made here. The project has two draws: ARM GNU 14.3.1 and xPack
-15.2.1, the second wearing two hostnames.
 
 Record the compiler because it is cheap and because a figure that *does*
 turn out to depend on layout can then be re-read rather than
@@ -1498,10 +1433,6 @@ python3 tools/flash.py --bin docker/out/build/track_b_bringup.bin
 python3 tools/flash.py --bin docker/out/build-a/track_a_bringup.bin
 python3 tools/flash.py --bin docker/out/build-c/track_c_bringup.bin
 ```
-
-Where the container runs in WSL rather than on the checkout, the image
-reaches the Windows checkout by copy, and `docs/windows.md` has the
-route.
 
 **GCC builds the images. clang is admitted as an optional firmware
 compiler, and MSVC never.** The image's xPack `arm-none-eabi-gcc`
