@@ -83,8 +83,27 @@ ABIS = tuple(ABI_FLAGS)
 #: cannot change it half way through.
 ABI_ENV = "DUE_HOSTCC_ABI"
 
-_sanitize_probe = {}
-_abi_probe = {}
+#: How long a probe's build and its run may take.
+#:
+#: THE RUN BUDGET IS SHORT ON PURPOSE. The probe program is `return 0`:
+#: it either finishes at once or it is never going to. A generous budget
+#: is not caution here, it is the whole cost of the answer - a 32-bit
+#: ASan binary HANGS on a host where the kernel hands i386 binaries to
+#: `qemu-i386`, and at 120 s that one arrangement cost mac-bench 240 s of
+#: every pytest session, 40% of its board-free tier. The build keeps a
+#: long budget because a cold compiler on a loaded bench is genuinely
+#: slow, and because a build that is going to fail fails by exiting.
+_BUILD_TIMEOUT_S = 120
+_RUN_TIMEOUT_S = 10
+
+#: One memo for every probe, keyed by the flags actually compiled.
+#:
+#: `abis()` and `sanitize_probe()` ask the same question of the same
+#: flags - "does `-m32` plus SANITIZE build and run here" - and they kept
+#: a dict each, so a host that answers slowly paid twice for one answer.
+#: Key on the flags rather than on the caller's name and the second ask
+#: is free whatever asks it.
+_probe = {}
 
 
 def cc():
@@ -150,7 +169,19 @@ def _builds_and_runs(flags):
     later still - the compiler front end takes it and the link then
     cannot find `Scrt1.o`, which is a linker path in the diagnostic
     rather than a package name.
+
+    Memoised on `flags`, because two callers ask this of one flag set -
+    see `_probe`. A hang costs `_RUN_TIMEOUT_S` once per session.
     """
+    key = tuple(flags)
+    if key in _probe:
+        return _probe[key]
+    _probe[key] = answer = _build_and_run(flags)
+    return answer
+
+
+def _build_and_run(flags):
+    """`_builds_and_runs` without the memo. Call that one."""
     found = cc()
     if not found:
         return False
@@ -162,11 +193,12 @@ def _builds_and_runs(flags):
         try:
             build = subprocess.run([found, "-std=c11", *flags, "-o", exe, src],
                                    capture_output=True, text=True,
-                                   env=cc_env(), timeout=120)
+                                   env=cc_env(),
+                                   timeout=_BUILD_TIMEOUT_S)
             if build.returncode != 0:
                 return False
             run = subprocess.run([exe], capture_output=True, text=True,
-                                 env=cc_env(), timeout=120)
+                                 env=cc_env(), timeout=_RUN_TIMEOUT_S)
             return run.returncode == 0
         except (OSError, subprocess.SubprocessError):
             return False
@@ -184,11 +216,9 @@ def abis():
     honest answer - it is not a pass, and a tier that reports it is
     saying that the width the target actually has went unexercised here.
     """
-    for name, flags in ABI_FLAGS.items():
-        if name not in _abi_probe:
-            _abi_probe[name] = _builds_and_runs(flags + SANITIZE) \
-                or _builds_and_runs(flags)
-    return tuple(n for n in ABIS if _abi_probe[n])
+    return tuple(n for n, flags in ABI_FLAGS.items()
+                 if _builds_and_runs(flags + SANITIZE)
+                 or _builds_and_runs(flags))
 
 
 def sanitize_probe(abi="native"):
@@ -205,11 +235,7 @@ def sanitize_probe(abi="native"):
     carry the ABI flag as well and are therefore non-empty for `-m32`
     whatever this returns.
     """
-    if abi not in _sanitize_probe:
-        _sanitize_probe[abi] = (SANITIZE
-                                if _builds_and_runs(ABI_FLAGS[abi] + SANITIZE)
-                                else ())
-    return _sanitize_probe[abi]
+    return (SANITIZE if _builds_and_runs(ABI_FLAGS[abi] + SANITIZE) else ())
 
 
 def build_flags(abi="native"):
