@@ -624,6 +624,29 @@ single, Poisson-spaced and off the frame boundaries). What grew it is
 open; the benches have been identically jumpered since 2026-09-12, so
 the jumper material in the table above is no longer a term.
 
+**Re-taken the same evening on all three boards at one artifact hash**
+(`d82d72c`, `track_b_bringup.bin 8aad4bcb…`, Track B, six runs each with
+the first dropped, board idle a minute first): `windows-desk` largest
+43.0-45.5 on a direct port, `mac-bench` 44.0-45.0 behind a hub - and
+twelve consecutive runs there at 43.0-45.0 - and `linux-x1` **53.0-56.0**
+behind a hub, all on mains. Three boards running a binary identical to
+the byte and differing by 8-12 codes on the largest step removes the
+firmware from the comparison outright, and the hub with it.
+
+**And the failing board's tail has a part that grows with use.** After
+twenty minutes idle it read 56.0 and 57.0 with 91 and 94 steps, passing,
+where the same board driven continuously all afternoon read 65.5-75.0
+with 376-474. So its tail is the intrinsic ~1.7x above plus an activity
+or thermal term of ten to twenty codes at the largest step, which is
+what took it from a pass on 2026-09-15 to eight fails in a row after a
+day of fuzzing, tiers and flashes, and what now leaves it passing nine
+to twenty-five steps under the allowance. A healthy board shows the
+same term at about three codes over ninety minutes. **A row from that
+bench carries how long the board had been driven, or it is not
+comparable**, and whether the term belongs to the board or to the
+bench needs a second Due on that bench, which nothing in software can
+substitute for.
+
 **What the 45-code threshold does, read off the healthy boards:** it
 sits at their largest step, not above it. `windows-desk` crosses it on
 0, 1 or 2 holds per run and once on 31; `mac-bench` on 5 to 22. So the
