@@ -116,6 +116,27 @@ set -uo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 repo=$PWD
 
+# THE WHOLE GATE RUNS AGAINST A COPY OF THE TREE, NOT THE MOUNT.
+#
+# Every step here reads the tree: the firmware build, the two analysers,
+# three reproducibility builds that each build twice, and the tier. On a
+# bench whose checkout is outside the container's VM that is a network
+# filesystem, and windows-desk measured the whole gate at 817 s from a
+# drvfs checkout against 479 s from one inside the VM - the fuzz step,
+# which runs a fixed time, managed 100,163 executions against 333,433.
+#
+# Moving the tier alone was not enough for exactly that reason. So the
+# script re-enters itself once, in the copy, and every step after it is
+# local. `repo=$PWD` above is what makes that work: the copy's own
+# run-ci.sh finds the copy.
+#
+# DUE_BUILD_LOCAL empty means build in place, and then there is no copy
+# to run in - the same escape hatch, one decision.
+if [ -z "${DUE_CI_IN_COPY:-}" ] && [ -n "${DUE_BUILD_LOCAL-}" ]; then
+	export DUE_CI_IN_COPY=1
+	exec docker/in-copy.sh docker/run-ci.sh "$@"
+fi
+
 # The five states, spelled once. A typo in one branch would otherwise
 # invent a sixth that the verdict below does not know how to weigh.
 S_PASS='PASS'
@@ -494,12 +515,9 @@ fi
 
 # --- the board-free tier ---------------------------------------------
 if have_pytest; then
-	# in-copy.sh: the tier reads the tree thousands of times and is the
-	# step a slow mount costs most - 315-399 s mounted against 214-219 s
-	# copied on mac-bench, where the mount is also that bench's
-	# run-to-run variance. docker/populate.sh carries the reasoning.
+	# No in-copy.sh here: the whole script already runs in the copy, and
+	# calling it again would populate a second time.
 	run_step "host tier" class_pytest \
-	         docker/in-copy.sh \
 	         python3 -m pytest --track=b -m "not board and not platform" -q
 else
 	norun_step "host tier" "no pytest in this interpreter"

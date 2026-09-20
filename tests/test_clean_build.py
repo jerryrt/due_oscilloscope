@@ -791,7 +791,13 @@ def test_every_populate_knob_survives_the_container_boundary():
     # Supplied by the image or computed by run.sh itself, so they are not
     # bench knobs and nothing is expected to forward them from a shell.
     knobs -= {"DUE_FREERTOS_DIR", "DUE_BUILD_IMAGE_ID",
-              "DUE_BUILD_IMAGE_CONTENT", "DUE_BUILD_IMAGE"}
+              "DUE_BUILD_IMAGE_CONTENT", "DUE_BUILD_IMAGE",
+              # Set by run-ci.sh on itself before it re-enters in the
+              # copy, and read only to stop it re-entering twice. A
+              # bench never sets it, so forwarding it would mean a
+              # bench COULD - and a gate told from outside that it is
+              # already in the copy would then skip the copy entirely.
+              "DUE_CI_IN_COPY"}
     assert knobs, (
         "no DUE_* knob found in docker/populate.sh, so this guard is "
         "reading nothing")

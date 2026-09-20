@@ -1103,7 +1103,7 @@ def main(argv=None):
         description="Worst-case stack depth from GCC .ci call graphs. "
                     "Refuses rather than guessing when an edge cannot be "
                     "followed.")
-    ap.add_argument("build", nargs="*", default=["build"],
+    ap.add_argument("build", nargs="*", default=["docker/out/build"],
                     help="build directories to scan (default: build)")
     ap.add_argument("--elf", help="the linked image, for dispatch tables and "
                                   "library leaf frames")

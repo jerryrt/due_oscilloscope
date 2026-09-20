@@ -97,7 +97,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Largest per-function stack frames from GCC .su files. "
                     "Per function, not a call-graph depth bound.")
-    ap.add_argument("build", nargs="*", default=["build"],
+    ap.add_argument("build", nargs="*", default=["docker/out/build"],
                     help="build directories to scan (default: build)")
     ap.add_argument("--top", type=int, default=20,
                     help="how many frames to list (default 20, 0 for all)")

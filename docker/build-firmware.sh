@@ -73,6 +73,12 @@ bdir() {  # bdir <name> - where this track's objects go
 
 publish() {  # publish <build dir> <output dir>
     [ "$1" = "$2" ] && return 0
+    # PUBLISHED STRAIGHT TO docker/out, NOT THROUGH A BIND MOUNT. The three
+    # mounts that used to put build/ on top of docker/out/build existed
+    # only so `cmake -B build` landed there; naming the destination
+    # removes them, and it is the same directory whether this runs
+    # against the mounted tree or against a copy that bridges docker/out.
+    #
     # THE OUTPUT DIRECTORY HOLDS ONLY WHAT THIS BUILD PRODUCED. Anything
     # else is from an era when the objects were written here, and a
     # CMakeCache.txt sitting beside the artifacts says the build happened
@@ -154,27 +160,27 @@ echo "build, build-a, build-c"
 echo
 
 echo "== Track B =="
-clear_stale_images build
+clear_stale_images docker/out/build
 cmake --build "$(bdir build)" -j
-publish "$(bdir build)" build
-record_build_env build
+publish "$(bdir build)" docker/out/build
+record_build_env docker/out/build
 echo
 
 echo "== Track A =="
-clear_stale_images build-a
+clear_stale_images docker/out/build-a
 cmake --build "$(bdir build-a)" --target firmware_track_a --parallel
-publish "$(bdir build-a)" build-a
-record_build_env build-a
+publish "$(bdir build-a)" docker/out/build-a
+record_build_env docker/out/build-a
 echo
 
 echo "== Track C =="
-clear_stale_images build-c
+clear_stale_images docker/out/build-c
 cmake --build "$(bdir build-c)" --target firmware_track_c --parallel
-publish "$(bdir build-c)" build-c
-record_build_env build-c
+publish "$(bdir build-c)" docker/out/build-c
+record_build_env docker/out/build-c
 echo
 
 echo "== what built them =="
-python3 tools/image_fingerprint.py build/track_b_bringup.elf
-python3 tools/image_fingerprint.py build-a/track_a_bringup.elf
-python3 tools/image_fingerprint.py build-c/track_c_bringup.elf
+python3 tools/image_fingerprint.py docker/out/build/track_b_bringup.elf
+python3 tools/image_fingerprint.py docker/out/build-a/track_a_bringup.elf
+python3 tools/image_fingerprint.py docker/out/build-c/track_c_bringup.elf

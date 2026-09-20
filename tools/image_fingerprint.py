@@ -58,7 +58,7 @@ import toolchain  # noqa: E402
 #: Built by both tracks' documented build lines, tried in order.
 DEFAULT_ELVES = (
     "build/track_b_bringup.elf",
-    "build-a/track_a_bringup.elf",
+    "docker/out/build-a/track_a_bringup.elf",
 )
 
 
