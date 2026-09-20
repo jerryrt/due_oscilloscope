@@ -885,3 +885,43 @@ def test_a_flash_that_failed_at_the_board_is_still_retried(monkeypatch):
     _flash_with_exit_code(monkeypatch, 1, calls)
     assert len(calls) == 3, (
         f"a board-level failure was attempted {len(calls)} times, not 3")
+
+
+def test_the_record_carries_the_track_rather_than_leaving_it_to_the_path(
+        tmp_path, monkeypatch):
+    """A row must say which track it was, not leave it to be re-derived.
+
+    Every consumer so far has read the track back out of `binary` with
+    `provenance.track_of_binary()`, which parses the path - and a path
+    carries the track only when this project's build chose the name. A
+    bench that flashes a hand-built control from a scratchpad gets a row
+    nothing can attribute, for ever, because there is nothing else in it
+    to read. `mac-bench` has two.
+
+    None where it genuinely cannot be told is the honest answer and is
+    what the path already said; the point is that the row now states it
+    once, at the moment the fact is known.
+    """
+    import json
+
+    log = tmp_path / "flash-log.jsonl"
+    monkeypatch.setattr(flash, "FLASH_LOG", str(log))
+
+    class R:
+        stdout = ""
+
+    monkeypatch.setattr(flash.subprocess, "run", lambda *a, **k: R())
+
+    for name, want in (("track_b_bringup.bin", "B"),
+                       ("track_c_bringup.bin", "C"),
+                       ("baremetal_bringup.bin", "B"),
+                       ("refresh1_ctl.bin", None)):
+        b = tmp_path / name
+        b.write_bytes(b"\x00" * 16)
+        flash._log_flash(str(b))
+
+    rows = [json.loads(x) for x in
+            log.read_text(encoding="utf-8").splitlines() if x.strip()]
+    assert len(rows) == 4
+    assert [r["track"] for r in rows] == ["B", "C", "B", None], \
+        [(r["binary"], r["track"]) for r in rows]

@@ -684,6 +684,19 @@ def _log_flash(binary) -> None:
         rec = {
             "when": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "binary": _repo_relative(binary),
+            # RECORDED, NOT RE-DERIVED LATER. Every consumer so far has
+            # read the track back out of `binary` with
+            # provenance.track_of_binary(), which parses the path - and a
+            # path carries the track only when this project's build chose
+            # the name. mac-bench flashed a hand-built control from a
+            # scratchpad twice, and those two rows are unattributable for
+            # ever because nothing else in them says which track it was.
+            #
+            # None where it genuinely cannot be told, which is honest and
+            # is what the path already said. Old rows have no key at all;
+            # track_of_binary stays for them and for every spelling the
+            # images have carried.
+            "track": provenance.track_of_binary(binary),
             "sha256": h,
             "repo_rev": git("rev-parse", "--short", "HEAD"),
             "work_tree_known": found is not UNKNOWN_WORK_TREE,
