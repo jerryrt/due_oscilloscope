@@ -161,7 +161,7 @@ directory and copies out the `.bin`, the `.elf`, the `.map` and
 |---|---|---|
 | `mac-bench` firmware | 56.7 s | **41.4 s** |
 | `mac-bench` `reproducible-a` | 44.8 s | **22.0 s** |
-| `mac-bench` gate wall | 574.1 s | **518.4 s** |
+| `mac-bench` gate wall *(both pre-restart, `binfmt: true`)* | 574.1 s | **518.4 s** |
 | `windows-desk` firmware, mount already local | 27.76 s | **29.43 s** |
 
 **The reproducible steps gain more than the firmware step** - 37 s
@@ -175,6 +175,30 @@ and the first discarded: the publish and the clear are free at
 step** - which is **+0.35% of a gate** that runs 467-479 s there. So it
 is *free at gate level and not free at the step*, and the distinction
 matters because the step is exactly where a slow mount's cost lives.
+
+#### A fixed-duration step is a confound detector, and it earned that here
+
+`mac-bench` set `binfmt: false` and restarted its VM, and the gate then
+ran **428.4 s against 518.4 s**. **None of that 90 s is attributable to
+the binfmt change**, and the step that says so is the fuzz campaign:
+it runs for a **fixed time** and reported **231,716 executions against
+115,864** - twice the work in the same 37 s.
+
+Removing a binfmt entry cannot double native fuzzing throughput. That
+VM had been up 12 days, so **the restart moved the machine as well as
+the handler** and the two are not separable from one run.
+
+**So a figure's label is its state, not its intent.** That bench's rows
+are `post-restart, binfmt: false`; the pre-restart figures above stay
+valid for the state they were taken in rather than being superseded by
+a faster number taken in a different one.
+
+**The general instrument is worth more than the instance.** A step that
+consumes a fixed *duration* and reports *work done* measures the
+machine, not itself - so when a change appears to improve everything,
+that step says whether the machine moved underneath it. Isolating
+binfmt alone would need a second restart with it re-enabled, which is
+not worth a bench cycle for a number nothing depends on.
 
 **The copy-out ends the firmware step, not the run.**
 `tests/test_no_heap.py` reads `docker/out/build/*.elf` during the host
