@@ -37,7 +37,8 @@ for another.
 
 | tier | select with | needs | answers |
 |---|---|---|---|
-| board-free | `-m "not board"` | nothing | did I break the host code |
+| gate (board-free, in the container) | `-m "not board and not platform"` | the image | did I break the host code |
+| board-free, everything | `-m "not board"` | nothing | the two above together, for a one-off local check |
 | platform | `-m "platform and not board"` | nothing | does this host's own OS branch still work |
 | smoke | `-m smoke` | the board | is the board still doing the basics |
 | full | *(no selection)* | the board | everything |
@@ -55,10 +56,17 @@ slower machine and against a different set of installed tools.
 **What the container cannot answer is the platform tier.** The image is
 always Linux, so the Windows and macOS branches of `host/transport.py`,
 `host/rt.py` and `host/ports.py` execute on no bench unless that host
-runs them itself. `-m "platform and not board"` is that remainder: 11
-tests and under a second, against ~800 and minutes for the full tier. Run
-it natively on every host; run the board tier natively on the bench that
+runs them itself. `-m "platform and not board"` is that remainder: **17
+tests and under a second**, against 809 and minutes for the gate. Run it
+natively on every host; run the board tier natively on the bench that
 owns the board, which exercises the same seam by construction.
+
+**The gate deselects them rather than running them as Linux.** The image
+is always Linux, so a platform-marked test inside it answers for Linux on
+every bench - which the Linux bench already answers natively - while a
+green gate would read as coverage of a branch the image cannot reach.
+Each branch is covered where it exists, and nowhere else claims to.
+`tests/test_platform_marker.py` holds the gate's own selection to that.
 
 `tests/test_platform_marker.py` keeps the subset honest. A test module
 that imports the seam and collects board-free tests must carry the

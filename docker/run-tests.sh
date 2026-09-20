@@ -61,7 +61,7 @@ python3 tools/toolchain.py || true
 echo
 
 if [ "$#" -eq 0 ]; then
-    set -- --track=b -m "not board" -q
+    set -- --track=b -m "not board and not platform" -q
 fi
 
 echo "== pytest $* =="

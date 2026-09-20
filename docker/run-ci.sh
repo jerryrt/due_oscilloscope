@@ -66,7 +66,10 @@
 #
 # THE BOARD IS NOT TOUCHED, AND THE SUMMARY SAYS SO IN THE SAME BREATH.
 # Nothing here opens a serial port. Every board test is deselected from
-# the host tier by -m "not board", and a deselected test scores as a pass
+# the host tier by -m "not board and not platform" - the image is
+# always Linux, so a platform-marked test run here answers for Linux
+# and not for the host, and a green gate must not read as coverage of
+# a branch it cannot reach - and a deselected test scores as a pass
 # in any harness that greps for failures - so this does not merely assert
 # that the board tier did not run. It runs the tier's own positive
 # control: the board tests under --require-board, which must ERROR for
@@ -483,7 +486,7 @@ fi
 # --- the board-free tier ---------------------------------------------
 if have_pytest; then
 	run_step "host tier" class_pytest \
-	         python3 -m pytest --track=b -m "not board" -q
+	         python3 -m pytest --track=b -m "not board and not platform" -q
 else
 	norun_step "host tier" "no pytest in this interpreter"
 fi

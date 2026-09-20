@@ -91,6 +91,28 @@ def test_the_seam_is_actually_reached_by_some_module():
     assert _modules_importing_the_seam(), SEAM
 
 
+def test_the_gate_does_not_claim_the_platform_tier():
+    """The container gate must deselect `platform`, not run it.
+
+    The image is always Linux. A platform-marked test run inside it
+    answers for Linux on every bench, so leaving it in the gate makes a
+    green gate look like coverage of a branch the image cannot reach -
+    a check that appears to protect what it cannot see. The Linux branch
+    is covered where every other branch is: on the host that has it.
+    """
+    for name in ("docker/run-ci.sh", "docker/run-tests.sh"):
+        src = open(os.path.join(REPO, name), encoding="utf-8").read()
+        # Only the board-free selections: the board-absent control runs
+        # `-m board --require-board` on purpose and is not the gate.
+        runs = [l for l in src.splitlines()
+                if '-m "not board' in l and not l.lstrip().startswith("#")]
+        assert runs, f"{name}: no board-free pytest selection found to check"
+        for line in runs:
+            assert "not platform" in line, (
+                f"{name} runs {line.strip()!r}: the gate would run the "
+                f"platform tier as Linux and report it as covered")
+
+
 def test_the_marker_selects_a_non_empty_board_free_subset():
     r = subprocess.run([sys.executable, "-m", "pytest", "--track=b", "-q",
                         "-p", "no:cacheprovider", "--collect-only",

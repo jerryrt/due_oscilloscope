@@ -1614,15 +1614,20 @@ python3 -m venv .venv
 .venv/bin/python -m pytest --track=b -m "platform and not board" -q
 ```
 
-**The board-free tier's gate is the container**, not a native run:
-`docker/run.sh docker/run-ci.sh` runs it inside the pinned image on every
-bench, so the verdict is the image's and no host needs a compiler for the
-harnesses. What a host still runs natively is the **platform** tier -
-`-m "platform and not board"`, 11 tests and under a second, the Windows
-and macOS branches of `transport.py`, `rt.py` and `ports.py` that a
-Linux container can never reach - plus the board tier, where it owns a
-board. `docs/testing.md` has the reasoning and the guard that keeps the
-subset from going quietly empty.
+**The board-free gate is the container**, not a native run:
+`docker/run.sh docker/run-ci.sh` runs `-m "not board and not platform"`
+inside the pinned image on every bench - 809 tests - so the verdict is
+the image's and no host needs a compiler for the harnesses. What a host
+runs natively is the **platform** tier - `-m "platform and not board"`,
+**17 tests and under a second**, the Windows and macOS branches of
+`transport.py`, `rt.py` and `ports.py` a Linux container can never reach
+- plus the board tier, where it owns a board.
+
+**The gate deselects the platform tier rather than running it as Linux**,
+because a green gate must not read as coverage of a branch the image
+cannot execute. `docs/testing.md` has the reasoning, and
+`tests/test_platform_marker.py` holds both the marker and the gate's own
+selection to it.
 
 **Providing a usable, modern Python is the OS user's job**, not the
 project's. The repository declares what it needs and builds a venv from
