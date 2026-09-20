@@ -245,45 +245,93 @@ not universal in what it can execute.** The one gap is a host's
 virtualisation reaching through an identical image, which is worth
 knowing before a null from a QEMU-backed bench is read as a clean run.
 
-### The analyser backlog, and what a standing count means
+### The analyser floors, and why the two are different kinds of number
 
-`cppcheck` reported **33** findings on every run from the day it was
-installed until 2026-09-12, and nobody had acted on one. That is not the
-same as a backlog of defects: the script offers no suppression list and
-does not pass `--inline-suppr`, deliberately, so a finding can only be
-**fixed or left standing**. Triaging them is the only thing that moves
-the number.
+Both analysers are advisory and neither gates. What each one's count
+*means* is not the same thing, and the difference is a property of how
+the scripts are configured rather than of how much work is left.
 
-**33 to 9.** Twenty-four were the analyser being right - pointers only
-read through, a parameter reference never modified, three `override`s
-the compiler now checks against the Arduino core's vtable, two
-scope reductions, seven C-style casts named for what each actually is.
+| analyser | dispositions available | what the floor is | current |
+|---|---|---|---|
+| `clang-tidy` | fixed, or a per-site `NOLINT` carrying its reason | **zero, and holdable.** A finding is either gone or answered in place, and the count returns to 0 | **0** |
+| `cppcheck` | fixed, or **standing**, with its reason in the source | **a list, not a zero.** There is no per-site suppression, so an answered finding still counts | **10** |
 
-**The nine that remain are decisions, and each says so where a reader
-meets it.** Three `comparePointers` on the linker-symbol bounds in the
-startup file and `_sbrk` - undefined by the letter of C and correct in a
-linked image, which is knowledge no translation unit has. Four
-`badBitmaskCheck` on the DACC channel tag, where `0u << 12` is written
-out so the DAC0 and DAC1 lines read as a pair. One `constParameterPointer`
-on `_write`, whose signature is newlib's. One `cstyleCast` in `load.h`,
-which Tracks B and C compile as C and Track A as C++, so
-`reinterpret_cast` would not build on two of the three.
+`docker/run-cppcheck.sh` offers no suppression list for this project's
+code and does not pass `--inline-suppr`. That is deliberate: a
+suppression written before anyone has decided what to do about a finding
+is the failure the script exists to prevent. The only `--suppress`
+entries are whole vendor trees and `missingIncludeSystem`.
 
-So the count is now a **statement rather than a queue**: nine findings,
-nine reasons, and the tenth would be new. That is what makes the number
-worth quoting on a status page, and it is the state in which gating on
-it becomes a decision somebody could take rather than an argument about
-a backlog.
+**So cppcheck staying at 10 is the tool working as configured.** Read as
+a backlog it invites the suppression list the script refuses to have.
+Read correctly it is ten findings, ten reasons, and an eleventh would be
+new.
 
-One habit came out of it and is worth more than the count. Two of the
-edits were refused by an exact-match replacement because the same line
-appeared twice in a file and cppcheck had flagged only one -
+**A count is worth quoting only once every finding under it has been
+answered**, which is the state both are in. Before that, a standing
+count hides its own increments: the whole hazard is that fifty-three
+advisory findings conceal the fifty-fourth.
+
+#### The ten that stand
+
+Each carries its reason where a reader meets it; the source is the
+record, not this table.
+
+| where | class | count |
+|---|---|---|
+| `bsp/startup_sam3x8e.c`, `bsp/syscalls.c` | `comparePointers` on linker-symbol bounds and `_sbrk` | 3 |
+| `bsp/syscalls.c`, `apps/rtos_bringup/main.c` | `constParameterPointer` on a newlib and a FreeRTOS signature | 2 |
+| `drivers/gen.c`, `sketches/bringup/gen.cpp` | `badBitmaskCheck` on the `0u << 12` channel tag | 4 |
+| `lib/due_shared/src/load.h` | `cstyleCast` on a memory-mapped register | 1 |
+
+Three shapes recur, and they are the reason this class of finding cannot
+be fixed rather than answered. **A linked image knows things no
+translation unit does** - the linker symbols bound real regions, and
+comparing them is undefined by the letter of C and correct here. **A
+signature that is not ours cannot be narrowed** - newlib and FreeRTOS
+declare the hook and will call through that type. **A shared source is
+compiled as two languages** - Tracks B and C compile `load.h` as C and
+Track A as C++, so `reinterpret_cast` would not build on two of the
+three.
+
+#### Two things that make a finding count move without any code changing
+
+**A `NOLINT` marker silences the next *line*.** Written as the first
+line of a block comment it silences the rest of the comment and nothing
+else, so the marker looks placed, the reason reads well, and the count
+does not move. It must be the last line before the code it answers.
+This is invisible to review - the file reads correctly either way - and
+only the analyser reports it.
+
+**The analyser is more precise than its summary count.** An exact-match
+edit driven by the class rather than the flagged line breaks where the
+same line appears twice in a file and only one instance is flagged:
 `stream_core.c`'s two `acq_frame_bytes()` sites, where the other
 `memcpy`s into the buffer, and `ctl_port.cpp`'s two FIFO pointers, where
-the other stores through it. **The analyser was more precise than the
-summary count made it look**, and trusting the class rather than the
-line would have broken the build in both places.
+the other stores through it. Trusting the class there would have broken
+the build in both places.
 
+#### Neither floor means anything without a canary
+
+A zero from a tool that analysed nothing is the same zero as a clean
+run, and both scripts separate the two - by different means and to
+different strengths.
+
+`run-clang-tidy.sh` carries a **canary**: a source with planted
+defects of the classes it is configured to catch, compiled on each
+pass, every diagnostic required to fire. It also asserts the target is
+ARM and the pointer is 32-bit, because a compile database that falls
+back to the host triple analyses something real and answers about the
+wrong machine. A missing diagnostic is `exit 1`, not a clean column.
+
+`run-cppcheck.sh` has the weaker half of the same idea: no planted
+defect, but a parse failure, an internal error or a missing include is
+an `exit 1` rather than a finding, and `--error-exitcode` is
+deliberately unused because it cannot tell a finding from a crash.
+
+So a clang-tidy zero is proven live and a cppcheck ten is proven to
+have parsed. **A run whose canary does not fire is not a pass**,
+whatever the findings column says.
 ## What a bench cannot do without it
 
 **Build firmware at all.** CMake refuses a host configure, and
