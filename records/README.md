@@ -89,6 +89,7 @@ What a row carries, beyond what the old names gave it:
 | field | what it answers |
 |---|---|
 | `checkout`, `checkout_fs` | which tree, on which filesystem. `windows-desk`'s drvfs-against-ext4 figures - a 4x `cppcheck` difference, a 3.5x fuzz-execution difference - were comparable only because they were labelled by hand in issue comments, for a bench that ran two checkouts for weeks. Read from the mount table where there is one; null where there is not, never a guess |
+| `board_serial` | which Due. The programming port's USB serial - the 16U2's per-unit string - read from the descriptor without opening a port. Not the native port's `B-01`, which the firmware reports identically on every board of a track and so names the track, not the board. Null with no programming port; a list when a bench has two boards attached |
 | `suite_context` | the test that was running, when one was |
 | `tool` | which tool, at which revision, wrote the row |
 | `via` | which instrument took the counters, as before |

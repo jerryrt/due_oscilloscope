@@ -119,7 +119,7 @@ _RUN_FIELDS_KEYS = {"track", "fw_repo_rev", "repo_rev", "fw_build",
                     "fw_cc", "fw_layout", "fw_build_env",
                     "fw_build_image_content"}
 _NEW_KEYS = {"checkout", "checkout_fs", "suite_context", "tool", "via",
-             "uptime_ms"}
+             "uptime_ms", "board_serial"}
 
 
 def test_conditions_carries_every_key_the_old_names_did_and_the_new_ones():
@@ -177,3 +177,67 @@ def test_uptime_and_via_are_null_unless_a_caller_read_them():
     assert c["uptime_ms"] is None and c["via"] is None
     d = provenance.conditions(via="control", uptime_ms=1234)
     assert d["via"] == "control" and d["uptime_ms"] == 1234
+
+
+# --- which Due wrote the row -----------------------------------------------
+#
+# The owner is rotating the three boards across the three benches, and
+# until this field no row said which board produced it: bench.json says
+# the wiring, the flash log the image. The identity is the programming
+# port's USB serial - the ATmega16U2's per-unit string. The native
+# port's serial is `B-01`, firmware-defined and the same on every board
+# of a track, so it would name the track and not the board.
+
+def _fake_nodes(monkeypatch, nodes):
+    import ports
+    monkeypatch.setattr(ports, "_pyserial_nodes", lambda: nodes)
+
+
+def test_board_serial_is_the_programming_ports_serial(monkeypatch):
+    _fake_nodes(monkeypatch, [
+        ("/dev/ttyACM1", 0x2341, 0x003E, 0, "B-01"),
+        ("/dev/ttyACM0", 0x2341, 0x003D, 0, "134484749393514068D5"),
+        ("/dev/ttyACM2", 0x2341, 0x003E, 2, "B-01"),
+    ])
+    assert provenance.conditions()["board_serial"] == "134484749393514068D5"
+
+
+def test_no_programming_port_is_null_not_a_guess(monkeypatch):
+    _fake_nodes(monkeypatch, [])
+    assert provenance.conditions()["board_serial"] is None
+
+
+def test_the_native_ports_serial_is_never_taken(monkeypatch):
+    """`B-01` is the track's name for itself, not the board's."""
+    _fake_nodes(monkeypatch, [
+        ("/dev/ttyACM1", 0x2341, 0x003E, 0, "B-01"),
+        ("/dev/ttyACM2", 0x2341, 0x003E, 2, "B-01"),
+    ])
+    got = provenance.conditions()["board_serial"]
+    assert got is None and got != "B-01"
+
+
+def test_two_boards_give_a_list_rather_than_one_of_them(monkeypatch):
+    _fake_nodes(monkeypatch, [
+        ("/dev/ttyACM0", 0x2341, 0x003D, 0, "AAAA"),
+        ("/dev/ttyACM3", 0x2341, 0x003D, 0, "BBBB"),
+    ])
+    assert provenance.conditions()["board_serial"] == ["AAAA", "BBBB"]
+
+
+def test_conditions_does_not_wait_for_a_board(monkeypatch):
+    """`ports.find_all_ports()` sleeps up to 8 s with nothing attached;
+    a row's conditions must not. Enumeration only, under a second."""
+    import time
+    _fake_nodes(monkeypatch, [])
+    t0 = time.monotonic()
+    provenance.conditions()
+    assert time.monotonic() - t0 < 1.0
+
+
+def test_this_benchs_board_reads_a_real_serial():
+    got = provenance.conditions()["board_serial"]
+    if got is None:
+        pytest.skip("no programming port attached, so no board to name")
+    assert isinstance(got, str) and re.fullmatch(r"[0-9A-F]{20}", got), got
+

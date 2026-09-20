@@ -655,6 +655,32 @@ def _tool_identity():
             else None, "rev": repo_rev()}
 
 
+def _board_serial():
+    """WHICH DUE. The programming port's USB serial, read from the
+    descriptor - the ATmega16U2's per-unit string, unique per board.
+
+    Not the native port's: its serial is `B-01`, a string the firmware
+    reports, identical on every board of a track, and a row carrying it
+    would say which track and not which board. Enumeration only - this
+    opens no port and waits for none: `ports.find_all_ports()` sleeps
+    up to 8 s when nothing is attached, and a row's conditions must not.
+
+    None with no programming port present; a list when more than one
+    2341:003D node is attached, because a bench with two boards has no
+    single answer and a guess would be a wrong row.
+    """
+    try:
+        import ports
+        nodes = ports._pyserial_nodes()
+    except Exception:                                        # noqa: BLE001
+        return None
+    found = sorted({str(serial) for _dev, vid, pid, _iface, serial in nodes
+                    if vid == 0x2341 and pid == 0x003D and serial})
+    if not found:
+        return None
+    return found[0] if len(found) == 1 else found
+
+
 def conditions(board=None, inst=None, channels=(1, 2), extra=None,
                ident=None, via=None, uptime_ms=None, tool=None):
     """Every condition a row should carry, in one place. Never raises.
@@ -675,7 +701,10 @@ def conditions(board=None, inst=None, channels=(1, 2), extra=None,
     that ran two checkouts for weeks. `suite_context` and `tool`: which
     test, and which tool at which revision, wrote the row. `uptime_ms`
     is present only when a caller read it over the command port, so it
-    can never be required.
+    can never be required. `board_serial`, the programming port's USB
+    serial, says which Due - a bench.json says the wiring and the flash
+    log the image, and a board carried to another bench was otherwise
+    indistinguishable in the record from the one it replaced.
 
     `board` and `inst` are optional so a board-free or scope-free run
     still records what it can and `missing()` names the rest; `ident`
@@ -712,6 +741,10 @@ def conditions(board=None, inst=None, channels=(1, 2), extra=None,
         "fw_build_image_content": p.get("fw_build_image_content"),
         "checkout": REPO,
         "checkout_fs": _fs_type(REPO),
+        # Which Due, so a board moved between benches stays one board in
+        # the record. The rotation of 2026-09-20 is why: three boards,
+        # three benches, and until this no row said which was which.
+        "board_serial": _board_serial(),
         "suite_context": os.environ.get("PYTEST_CURRENT_TEST") or None,
         "tool": tool if tool is not None else _tool_identity(),
         "via": via,
