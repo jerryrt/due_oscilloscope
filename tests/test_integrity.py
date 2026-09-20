@@ -157,6 +157,19 @@ def test_device_generated_waveform_is_continuous(board, seconds,
             f"docs/issue5.md - so either that policy has been undone in a "
             f"start path, or this is a second wrap-locked mechanism")
 
+    # SAID ON EVERY RUN, PASS OR FAIL. A pass used to print nothing, so
+    # no board had a recorded census the day one of them failed 5 of 5
+    # while two others passed, and the question "did this board's tail
+    # grow or was it always near the line" had no answer on any bench.
+    # The margin is the figure: how far the largest step sits under the
+    # threshold, and how many steps are over it against the allowance.
+    # Visible with -rA (or -s); the assertion below repeats it on a fail.
+    print(f"census: {census['count']} steps > {census['threshold']} codes "
+          f"(allowance {RESIDUAL_STEPS_MAX}), largest {census['max_step']:.1f}, "
+          f"gap {census['gap'][0]}..{census['gap'][1]}, "
+          f"fold z {fold['z']:.1f} control {fold['control_z']:.1f} "
+          f"peak {fold['peak']:.1f}")
+
     # Nothing is locked to the wrap. What the census still sees is the
     # DAC's per-conversion noise tail - one whole hold a few codes off
     # its level, both channels, every code, an exponential tail of about
