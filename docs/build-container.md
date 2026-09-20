@@ -158,7 +158,21 @@ without it took that guard from **passed to skipped** - silently, because
 a skip is not a failure.
 
 So `BRIDGES` names the ignored state the tier reads, and adding to it is
-how a new one is handled. Two of the four were found by reading the
+how a new one is handled.
+
+**A bridge can be empty rather than missing, and that is not the same
+thing.** `records/flash-log.jsonl` is written by flashing, so on a bench
+that runs the container in one tree and flashes from another it is
+absent from the tree the container sees - the bridge works and there is
+nothing to bridge. The arm that reads it then **does not run, and the
+gate is green**. Measured on `windows-desk`: it skips with their clone
+as it is and passes with their real log copied in.
+
+That is tolerable only because the spellings that arm guards are
+**global** - they live in `provenance.track_of_binary()`, not per bench
+- so one bench with a real log covers the hazard. **Which benches run
+it is a per-bench fact and belongs on their pages**, because a reader
+of a green gate cannot see it. Two of the four were found by reading the
 selector rather than by a failure, and they are the more dangerous
 shape: tests branch on `bench.json` **by name**, so a copy without it
 takes a different path *and still passes*, which no outcome comparison

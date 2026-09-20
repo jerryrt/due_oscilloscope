@@ -287,7 +287,25 @@ def test_the_benchs_own_log_resolves_end_to_end():
     """
     log = os.path.join(REPO, "records", "flash-log.jsonl")
     if not os.path.exists(log):
-        pytest.skip("no flash log on this bench: nothing recorded to check")
+        # PERMANENTLY ABSENT ON SOME BENCHES, AND THAT IS DECLARED HERE
+        # RATHER THAN DISCOVERED. The log is written by flashing, and a
+        # bench that runs the container in one tree and flashes from
+        # another never writes one into the tree this runs in - so on
+        # windows-desk this arm does not run at all and the gate is
+        # green. Measured there: it skips with their WSL clone as it is
+        # and passes with their real 11-row log copied in.
+        #
+        # That is tolerable, and the reason is narrow: the spellings it
+        # guards live in track_of_binary and are GLOBAL, so one bench
+        # with a real log is sufficient coverage for the rename hazard
+        # this arm exists to catch. What is not tolerable is nobody
+        # knowing which benches run it, which is why the skip says so.
+        pytest.skip(
+            "no flash log in this tree: nothing recorded to check. On a "
+            "bench that flashes from a different tree than the container "
+            "runs in, this arm never runs - the spellings it guards are "
+            "global, so one bench with a log covers the hazard, but the "
+            "gap is per-bench and belongs on that bench's page")
 
     sys.path.insert(0, os.path.join(REPO, "host"))
     import provenance as prov
