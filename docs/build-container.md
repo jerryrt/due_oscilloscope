@@ -89,8 +89,11 @@ test that failed; the text under it names what it was looking at.
 | bench | how | wall time |
 |---|---|---|
 | `linux-x1` | a native daemon | 194 s |
-| `mac-bench` | **colima plus QEMU, from MacPorts.** Docker Desktop needs macOS 13+ and this desk is 12.7.6 | 774 s |
+| `mac-bench` | **colima plus QEMU, from MacPorts.** Docker Desktop needs macOS 13+ and this desk is 12.7.6 | 390 s |
 | `windows-desk` | WSL2, which is a real Linux kernel and therefore the native case | 410 s |
+
+Each figure is that bench's own and they were not taken at one commit,
+so read the column as three benches rather than as a comparison.
 
 The spread is the runtime, not the work: the same steps, the same
 pinned tools, the same counts. What differs per bench is measured -
@@ -576,13 +579,20 @@ same pinned inputs is."* The byte-identical artifacts are then the
 behavioural evidence that the pin did its job, which is a better answer
 than a layer hash would have been even if one had matched.
 
-`mac-bench`'s **exit 2 is the wall clock and nothing else**. Zero tests
-fail; the board-free tier took 538 s against a 300 s ceiling and the step
-is red on elapsed time. A slow bench therefore reports a gating failure
-for the one quantity everybody agrees is not a finding - the ratio shows
-up twice, once as a number a reader correctly ignores and once as a
-verdict they cannot. Whether the ceiling should be a property of the
-machine belongs to whoever owns the suite's time budget.
+`mac-bench`'s **exit 2 was the wall clock and nothing else**. Zero tests
+failed; the board-free tier took 538 s against a 300 s ceiling and the
+step was red on elapsed time. A slow bench therefore reported a gating
+failure for the one quantity everybody agrees is not a finding - the
+ratio showed up twice, once as a number a reader correctly ignores and
+once as a verdict they cannot.
+
+**And "a slow bench" was the wrong description of it.** That bench's
+tier now runs in 228.6 s and its gate passes: the 538 s was the tier
+reading its own files across sshfs, which the copy removed. The
+machine was never the reason, which is worth knowing before a ceiling
+is treated as a statement about hardware. What survives is the design
+question - whether a wall-clock budget belongs inside a correctness
+verdict at all - and that is #86.
 
 **So: universal in what it builds, universal in what it analyses, and
 not universal in what it can execute.** The one gap reached through an
@@ -738,7 +748,7 @@ container at all.
 | The **board-absent positive control**, on any bench with a board attached. It is `NOT SELECTED` there by design: running it would open the port it exists to prove absent | none. A machine with no board, or the container |
 | **Cross-bench reproduction.** The claim is *same pinned inputs*, and a host toolchain is deliberately not a pinned input | none, and it is structural - but it is no longer outstanding: phase 1's second half is met on both pairs that share a commit, `windows-desk` against `linux-x1` at `6a7d122` and against `mac-bench` at `f5db1e8` |
 | Nothing. The misaligned-load canary fires under Apple clang as well as under the image's GCC: clang does not instrument a *volatile* access for alignment, and the canary's load carried that qualifier | - |
-| The 32-bit ABI arm, which has never executed on any bench natively - multilib absent on `linux-x1`, and a `qemu-i386` shadow-mapping hang on `mac-bench` | install the multilib runtimes |
+| The 32-bit ABI arm on `linux-x1`, where the multilib runtimes are absent. **It executes on `mac-bench`**, which is the half of this row that closed: the hang there was a `binfmt_misc` entry handing i386 binaries to `qemu-i386` on a kernel built to run them, and with `binfmt: false` the arm and all three sanitizer oracles run - 25 passed, 0 skipped | install the multilib runtimes |
 
 Measurement stays on the bench: every measurement is a host step, run
 against an image built here. Most figures in this tree predate that and
