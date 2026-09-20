@@ -115,7 +115,16 @@ static uint32_t mimic_start_delay_us;
  * the row format - is console.h's CONSOLE_PROFILE(). See there for why
  * a shared list would have to be the union of three loops and would
  * report zeros for the rows a track does not run.
+ *
+ * THE COMPLEXITY BELONGS TO THE MACRO, NOT TO THIS FUNCTION. It has no
+ * branch of its own: it is a flat list of CONSOLE_PROFILE() rows, and
+ * each expands to a timed `for`. clang-tidy therefore scores it by how
+ * many things this track profiles - add a row and the number rises,
+ * split the function in two and it falls with nothing else changing.
+ * Hiding that behind helpers would make the list harder to compare
+ * against the other tracks' lists, which is the whole point of it.
  */
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
 static void cmd_profile(void)
 {
 	console_profile_begin();
@@ -701,6 +710,22 @@ const console_binding_t console_bindings[] = {
 };
 
 
+/*
+ * Cognitive complexity 33 against a threshold of 25, and it stays.
+ *
+ * This is the bring-up sequence followed by the main loop, and
+ * invariant 7 is what shapes it: every pass has a bounded worst case
+ * and the loop drains bulk OUT whatever else is happening. The branches
+ * the metric counts are that drain, the heartbeat, the LED and the
+ * console feed, each of which has to be visible in one place for the
+ * pass to be reasoned about at all. Moving them into helpers would move
+ * the branches, not remove them, and would put the one loop this
+ * project's timing depends on behind three call sites.
+ *
+ * Recorded as debt rather than hidden: if this grows another
+ * responsibility, the answer is to take one out, not to raise a number.
+ */
+/* NOLINTNEXTLINE(readability-function-cognitive-complexity) */
 int main(void)
 {
 	uint32_t heartbeat_at;

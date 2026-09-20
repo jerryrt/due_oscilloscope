@@ -464,7 +464,12 @@ static void cmd_usb_dump(void)
  * The list is this track's; the harness is console.h's
  * CONSOLE_PROFILE(). What is profiled here is what THIS loop pays for,
  * which is mostly the Arduino core's per-pass questions.
+ *
+ * The complexity clang-tidy scores is the macro's: a flat list of rows,
+ * each expanding to a timed `for`, with no branch of this function's
+ * own. Same disposition as the other two tracks' profile commands.
  */
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
 static void cmd_profile(void)
 {
 	console_profile_begin();
@@ -614,6 +619,12 @@ static volatile uint32_t usbtrace_drop;   /* changes past the sixteenth */
 
 static inline void usbtrace_sample(uint32_t pass)
 {
+	/* The Arduino core's symbol, set by USBCore's SET_CONFIGURATION
+	 * handler. The name is reserved and is not this track's to choose.
+	 * The suppression is the line below this comment and not its first
+	 * line: NOLINTNEXTLINE silences the next LINE, so inside a block
+	 * comment it silences the rest of the comment and nothing else. */
+	/* NOLINTNEXTLINE(bugprone-reserved-identifier) */
 	extern volatile uint32_t _usbConfiguration;
 	static uint32_t last_ept = 0xffffffffu, last_ctrl, last_cfg;
 	uint32_t ept  = UOTGHS->UOTGHS_DEVEPT;
@@ -662,6 +673,12 @@ static volatile uint32_t devept_after[DEVEPT_RESTORE_MAX];
 
 static inline void devept_restore(void)
 {
+	/* The Arduino core's symbol, set by USBCore's SET_CONFIGURATION
+	 * handler. The name is reserved and is not this track's to choose.
+	 * The suppression is the line below this comment and not its first
+	 * line: NOLINTNEXTLINE silences the next LINE, so inside a block
+	 * comment it silences the rest of the comment and nothing else. */
+	/* NOLINTNEXTLINE(bugprone-reserved-identifier) */
 	extern volatile uint32_t _usbConfiguration;
 
 	if (devept_restores >= DEVEPT_RESTORE_MAX)
@@ -974,7 +991,13 @@ static void ha_epstate(const uint32_t *a)
 		 * distinguishes those.
 		 */
 		{
-			extern volatile uint32_t _usbConfiguration;
+			/* The Arduino core's symbol, set by USBCore's SET_CONFIGURATION
+	 * handler. The name is reserved and is not this track's to choose.
+	 * The suppression is the line below this comment and not its first
+	 * line: NOLINTNEXTLINE silences the next LINE, so inside a block
+	 * comment it silences the rest of the comment and nothing else. */
+	/* NOLINTNEXTLINE(bugprone-reserved-identifier) */
+	extern volatile uint32_t _usbConfiguration;
 			con_str("# usbcfg _usbConfiguration=");
 			con_u32(_usbConfiguration);
 			con_str(" deveptseen="); con_hex32(devept_seen, 8);

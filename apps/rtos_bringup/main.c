@@ -124,6 +124,19 @@ static StackType_t  timer_stack[configTIMER_TASK_STACK_DEPTH];
  * reason it is last in Track B's loop, and it is what lets this be
  * one task without starving the console.
  */
+/*
+ * Cognitive complexity 41 against a threshold of 25, and it stays for
+ * the reason the comment above gives: this is deliberately ONE
+ * free-running task rather than several, because the drain margin is
+ * the guarantee and a task that blocks on a tick cannot hold it.
+ * Splitting it to satisfy the metric would be the design change the
+ * comment argues against, made for the wrong reason - and a split is
+ * named there as a later experiment to run against this baseline, not
+ * as tidying.
+ *
+ * Recorded as debt. It is the largest function on this track.
+ */
+/* NOLINTNEXTLINE(readability-function-cognitive-complexity) */
 static void service_task(void *arg)
 {
 	uint32_t heartbeat_at = millis();
@@ -827,6 +840,14 @@ static void c_xtalk(const uint32_t *a) { console_cmd_crosstalk(a[0], a[1]); }
  */
 static void c_diag(const uint32_t *a) { (void)a; diag_start(); }
 
+/*
+ * Flat list, no branch of its own: the score is the number of
+ * CONSOLE_PROFILE() rows this track profiles, each of which expands to
+ * a timed `for`. Same disposition as the other two tracks' profile
+ * commands, and for the same reason - the lists are meant to be read
+ * against each other.
+ */
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
 static void c_profile(const uint32_t *a)
 {
 	(void)a;
@@ -915,6 +936,14 @@ void rtos_assert_failed(const char *file, int line)
 	led_blink_forever(3);
 }
 
+/*
+ * `name` is not const, and cannot be: FreeRTOS declares this hook as
+ * taking `char *` and calls it through that type. cppcheck's
+ * constParameterPointer is right about the body and wrong about the
+ * freedom - a const here is a signature this kernel will not call.
+ * It has no per-site suppression in this project, so the finding
+ * stands and this is its answer.
+ */
 void vApplicationStackOverflowHook(TaskHandle_t task, char *name)
 {
 	(void)task;
