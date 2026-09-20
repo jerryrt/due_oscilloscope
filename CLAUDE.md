@@ -195,6 +195,17 @@ Violating any of these is a design regression, not a style preference.
    brought level before front-end work continues.**
 4. **`drivers/` stays RTOS-agnostic.** Bare-metal and FreeRTOS builds
    link identical driver code and differ only in `main()`.
+
+   Track C is a **track** under invariant 3 - a peer with the same
+   feature set, not an application over Track B's programming - and
+   identical driver code is what this invariant requires of it, not
+   what exempts it from parity. Measured on a board on 2026-09-20: its
+   console surface is identical to Track B's, 50 keys each, nothing on
+   either side alone, and `h` reports "not implemented on this track:
+   none". Read that off the board, never off the source - a scan of
+   the table for bare letters said `d` was unbound and `S` was, and
+   both were wrong, because `S` is bound as `=<ms>S` and only the
+   board's own table shows a binding with its argument form.
 5. **Never present discontinuous data as continuous.** Overruns are
    counted and flagged in the frame header. A silent splice becomes
    corrupted data that gets mistaken for a real signal.
