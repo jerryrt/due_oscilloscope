@@ -109,7 +109,20 @@ def collect():
 
     try:
         import ports as ports_mod
-        found = ports_mod.native_order(ports_mod.find_all_ports())
+        # wait=0: this is a snapshot of what is attached now, taken
+        # immediately before and after an arm. The default 8 s waits for
+        # a board to finish enumerating, which is what a caller that
+        # just reset one wants and is exactly wrong here - a conditions
+        # reader that blocks for eight seconds is measuring a different
+        # moment than the one it was asked about, and in a container,
+        # where no board can ever appear, it is the whole cost.
+        #
+        # Positional, NOT native_order(): find_all_ports() already
+        # returns (programming, samples, commands) and NODES zips
+        # against those positions. native_order() sorts native nodes by
+        # (serial, interface) - it has no idea the programming port is
+        # in the list, and sorting it in by serial relabels all three.
+        found = ports_mod.find_all_ports(wait=0.0)
     except Exception as exc:                       # noqa: BLE001
         out["ports_error"] = f"{type(exc).__name__}: {exc}"
         found = None

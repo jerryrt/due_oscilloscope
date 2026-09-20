@@ -115,3 +115,57 @@ def test_the_cli_appends_a_row(tmp_path):
     rows = [json.loads(l) for l in out.read_text(encoding="utf-8").splitlines()
             if l.strip()]
     assert [r["label"] for r in rows] == ["unit-test", "second"]
+
+
+def test_it_asks_for_no_wait(monkeypatch):
+    """A snapshot must not block for a board that cannot arrive.
+
+    `find_all_ports()`' default waits 8 s for a board to finish
+    enumerating - right for a caller that just reset one, wrong for a
+    reader meant to run immediately before and after an arm, and in a
+    container, where no board can ever appear, it is the entire cost of
+    this module.
+
+    Asserted on the argument rather than on a clock: the property is
+    "it asks for no wait", and a timing bound would be the same test
+    with a flake in it and would pass on a bench that happens to have a
+    board attached.
+    """
+    import ports
+
+    seen = {}
+
+    def spy(wait=8.0):
+        seen["wait"] = wait
+        return (None, None, None)
+
+    monkeypatch.setattr(ports, "find_all_ports", spy)
+    hc.collect()
+    assert seen["wait"] == 0.0, f"collect() waited {seen['wait']} s"
+
+
+def test_the_three_nodes_are_labelled_by_position(monkeypatch):
+    """NODES zips against find_all_ports()' positions, so nothing may
+    reorder them on the way.
+
+    `native_order()` sorts *native* nodes by (serial, interface). It has
+    no idea the programming port is in the list, so sorting the whole
+    triple relabels all three whenever the programming port's serial
+    does not happen to sort first - which is luck, not a contract: this
+    board's is '1344...' and sorts before 'B-01' only because '1' < 'B'.
+    """
+    import ports
+
+    monkeypatch.setattr(ports, "find_all_ports",
+                        lambda wait=8.0: ("/dev/prog", "/dev/samples",
+                                          "/dev/commands"))
+    # A serial that sorts last, which is what the real one is one
+    # board away from being.
+    monkeypatch.setattr(ports, "usb_interfaces",
+                        lambda: {"/dev/prog": ("Z-PROG", 0),
+                                 "/dev/samples": ("B-01", 0),
+                                 "/dev/commands": ("B-01", 2)})
+    got = hc.collect()["ports"]
+    assert got == {"control": "/dev/prog",
+                   "native": "/dev/samples",
+                   "command": "/dev/commands"}, got
