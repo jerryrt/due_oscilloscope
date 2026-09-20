@@ -597,6 +597,43 @@ separates those from the die.
 rate>10)`; `linux-x1`'s is the mean excess over 4 codes, in
 `tools/issue82_arms.py`.
 
+### The census margin on three boards, and what the threshold does
+
+The continuity test prints its census on every run since `27d6a38`,
+pass or fail, because the day one board failed it 5 of 5 while two
+others passed on the same firmware, no bench had a figure from a
+passing run to compare against. Preset M at 200 ksps, 3 s, Track B,
+one afternoon, first run dropped where more than four were taken:
+
+| board | largest step, codes | steps over 45 (allowance 100) | n |
+|---|---|---|---|
+| `windows-desk` | 43.5-50.0, median 45.5 | 0-31, median 1 | 9 |
+| `mac-bench` | 46.5-48.0 | 5-22 | 4 |
+| `linux-x1` | 65.5-75.0 | 376-474 | 8 |
+
+The staircase's own largest step at this slope is about 38 codes, so
+the two passing boards read 38 plus 6-12 of tail and the failing one
+38 plus about 27. On the exponential tail above that is not the same
+distribution drawn twice: an excess of 27 at the scale this table
+recorded for `linux-x1`, 2.1-2.4 codes per e-fold, would be one hold
+in a few hundred thousand, and the capture shows one in fifteen
+hundred - a scale nearer 3.7. **The tail on that board has grown since
+`049c99f`**, on an image both other boards pass with, with the wiring
+confirmed electrically and no host or USB term in it (the steps are
+single, Poisson-spaced and off the frame boundaries). What grew it is
+open; the benches have been identically jumpered since 2026-09-12, so
+the jumper material in the table above is no longer a term.
+
+**What the 45-code threshold does, read off the healthy boards:** it
+sits at their largest step, not above it. `windows-desk` crosses it on
+0, 1 or 2 holds per run and once on 31; `mac-bench` on 5 to 22. So the
+code threshold does not separate a healthy board from the tail - the
+**allowance of 100 does**, and a count near it is not a healthy board
+having a bad day but a board whose tail has reached the line. Do not
+tighten 45, and do not read a count under 100 as clean without its
+largest step beside it; the scale is the comparable figure, as the
+table above already says of the tail itself.
+
 ### What moves it
 
 | knob | effect | measured on |
