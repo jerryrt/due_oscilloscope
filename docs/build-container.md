@@ -76,6 +76,14 @@ the three images, and `measure.flash()`, the board suite and
 passes `--require-tree`, so the image has to carry exactly the flashing
 tree's commit.
 
+**Take the failing test from the `FAILED` line and nothing else.**
+Some guards name other files in their assertion text -
+`tests/test_text_encoding.py` lists every `open()` it refused, by path
+- and a summary written from the assertion reads as a failure *in*
+those files. A delegated reader did exactly that on `mac-bench`, and
+reported a red in a test that had passed. The `FAILED` line names the
+test that failed; the text under it names what it was looking at.
+
 ### It runs on every bench, and not the same way on each
 
 | bench | how | wall time |
@@ -293,10 +301,24 @@ libFuzzer's own `NEW` lines say units are being written, and again after
 exit; the working corpus on the kept path fails the first look and a
 dropped publish fails the second, and both were tried.
 
-On `linux-x1`, native ext4, the change is nil by design: 577,527 and 572,161 executions before against 574,479 and
-552,533 after, 30 s campaigns, inside the run-to-run spread. The
-benches it is for are the ones whose `docker/out/` is not local, and
-their figures are theirs to take.
+Measured on all three, 30 s campaigns. `linux-x1`, native ext4:
+577,527 and 572,161 executions before against 574,479 and 552,533
+after - nil, by design. `mac-bench`, sshfs: 228,786 with the corpus
+bridged against 266,119 and 268,072 local, two runs 0.7% apart -
+**+17%**, real and kept for what it measures. `windows-desk`, drvfs:
+their row is theirs to take.
+
+**+17% refuted the prediction made for it, which was several-fold, and
+the error is worth more than the figure.** The several-fold came from
+`windows-desk`'s 3.5x on drvfs, where a file create costs tens of
+milliseconds; `mac-bench`'s sshfs costs about 0.9 ms an operation, a
+number already in the record, and a few hundred creates in thirty
+seconds is hundreds of milliseconds. **A ratio taken on one mount type
+is not a prediction for another** - the platform rule, applied to two
+filesystems that both sit under one word, "mounted". The several-fold
+rise in that bench's own table is the VM restart, 115,864 to 231,716
+with the corpus still bridged, which the same instrument had already
+attributed that morning.
 
 **What executions is, after this.** A within-bench control, never a
 cross-bench figure: it carries the machine, the mount the corpus sits
@@ -304,7 +326,8 @@ on, and the binfmt state, and only the first of those was ever meant to
 be in it. The fixed-duration instrument keeps its job - it still says
 whether the ground moved between two runs on one bench - but a
 difference in executions *between* benches is a question about their
-filesystems before it is one about their processors.
+filesystems before it is one about their processors, and a ratio
+between two mount types does not size a third.
 
 **The copy-out ends the firmware step, not the run.**
 `tests/test_no_heap.py` reads `docker/out/build/*.elf` during the host
