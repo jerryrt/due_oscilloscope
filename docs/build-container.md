@@ -198,14 +198,27 @@ that was supposed to certify sameness disagrees; the artifacts it stood
 proxy for agree exactly.
 
 **It is not the same check set, and the reason is below the image.**
-`mac-bench` skips three tests the other two run: the `needs_sanitizer`
+`mac-bench` skipped three tests the other two run: the `needs_sanitizer`
 fuzz mutations, whose oracle is a sanitizer rather than a return code.
-A 32-bit ASan binary hangs under `qemu-i386`, reproduced there on a
-five-line program that only returns 0. The same 662 tests are selected
-on every bench and three of them cannot execute on a QEMU-backed host -
-so **an identical image does not guarantee an identical check set**, and
-what varies is the host's virtualisation. `windows-desk` runs them, which
-is what a real kernel on metal predicts.
+A 32-bit ASan binary hung there, reproduced on a five-line program that
+only returns 0. The same tests are selected on every bench, so **an
+identical image does not guarantee an identical check set.**
+
+**What varies is one line of kernel configuration in the VM, not the
+host's virtualisation.** The VM that bench runs is `accel=hvf` on an
+x86-64 kernel built `CONFIG_IA32_EMULATION=y`, which executes 32-bit
+binaries itself. colima also registers a `binfmt_misc` handler for
+i386, and a `binfmt_misc` entry is consulted before the kernel's own
+ELF loader - so every `-m32` binary was handed to `/usr/bin/qemu-i386`
+and ASan's shadow mapping never completed under it. Measured with the
+handler disabled: the probe goes from a 120 s timeout to `True` in
+0.2 s, the three mutations run, and a 32-bit fuzz grind goes from
+31.7 s to 3.5 s, faster than the same grind at the native word size.
+
+So the emulation was elective. Read a missing check set as a question
+about what the kernel was asked to do with the binary, and reach for
+`/proc/sys/fs/binfmt_misc` before concluding that a platform cannot run
+something.
 
 **Two questions turned out to be badly formed, and both were caught by a
 bench rather than by the person who wrote them.**

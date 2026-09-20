@@ -214,14 +214,22 @@ def _require_oracle(abi, m):
     than of the code - a gating step red for ever on a machine where
     nothing is wrong with the tree.
 
-    Measured on mac-bench, where the two gates disagree in exactly that
-    gap. `abis()` returns `32` in the build container because a plain
-    `-m32` binary builds and runs; `sanitize_probe('32')` returns `()`
-    because a 32-bit ASan binary HANGS - the shadow mapping against
-    qemu-i386 user-mode emulation, the same hang issue #69 recorded on
-    the host, one layer down. So the three sanitizer oracles failed and
-    the three behavioural ones passed, which is the split that named the
-    cause.
+    Measured on mac-bench, where the two gates disagreed in exactly that
+    gap. `abis()` returned `32` in the build container because a plain
+    `-m32` binary builds and runs; `sanitize_probe('32')` returned `()`
+    because a 32-bit ASan binary HUNG. So the three sanitizer oracles
+    failed and the three behavioural ones passed, which is the split
+    that named the cause.
+
+    The cause was not the word size and not the hypervisor: that VM
+    registers a `binfmt_misc` handler for i386, which is consulted ahead
+    of the kernel's own ELF loader, so every `-m32` binary ran under
+    `qemu-i386` on a kernel built to execute them directly. ASan's
+    shadow mapping never completed under the emulator. With the handler
+    disabled the probe answers in 0.2 s and all six mutations run. The
+    gap this function exists for is real anyway - a bench can lack the
+    32-bit sanitizer runtimes outright - but do not read a skip here as
+    proof that a platform cannot carry the oracle.
 
     A skip, not a pass, and it says which of the two it could not get -
     the distinction `DUE_HOSTCC_ABI` draws for a named ABI is the one
