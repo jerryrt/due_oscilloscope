@@ -67,6 +67,14 @@ core=$(python3 tools/toolchain.py --dir arduino_sam_core) \
 [ -f "$core/cores/arduino/Arduino.h" ] \
     || die "Arduino SAM core at '$core' has no cores/arduino/Arduino.h"
 
+# WHAT MAKES THIS SAFE IS THE ENV VAR, NOT THE FALLBACK.
+# The image sets DUE_FREERTOS_DIR and that path exists, so
+# the fallback is never taken here. It would not work if it
+# were: docker/build-firmware.sh writes objects to a
+# container-local directory and copies only the artifacts
+# out, so the bind-mounted build-c holds no _deps subtree
+# and this would die rather than resolve. Moving or
+# unsetting the variable removes the thing protecting it.
 freertos=${DUE_FREERTOS_DIR:-build-c/_deps/freertos-src}
 [ -f "$freertos/include/FreeRTOS.h" ] \
     || die "no FreeRTOS at '$freertos'; the build image carries one, and a bench has one after configuring build-c with -DBUILD_TRACK_C=ON"

@@ -111,7 +111,7 @@ def cmake_exe() -> str:
     return shutil.which("cmake") or "cmake"
 
 
-def build(spec: dict, cmake: str) -> float:
+def build(spec: dict, cmake: str, build_dir: str) -> float:
     """Run one full build, returning the wall-clock seconds it took.
 
     The command is spelled inside the spawn rather than assembled into a
@@ -121,13 +121,13 @@ def build(spec: dict, cmake: str) -> float:
     does not govern, and this file belongs on that list.
     """
     start = time.monotonic()
-    done = subprocess.run([cmake, "--build", spec["dir"]] + spec["args"],
+    done = subprocess.run([cmake, "--build", build_dir] + spec["args"],
                           cwd=REPO, capture_output=True, text=True)
     took = time.monotonic() - start
     if done.returncode != 0:
         sys.stderr.write((done.stdout or "")[-4000:])
         sys.stderr.write((done.stderr or "")[-4000:])
-        raise SystemExit("cmake --build %s failed" % spec["dir"])
+        raise SystemExit("cmake --build %s failed" % build_dir)
     return took
 
 
@@ -244,23 +244,40 @@ def main() -> int:
         return 0 if differing == 0 else 1
 
     spec = TRACKS[args.track]
-    build_dir = os.path.join(REPO, spec["dir"])
+    # THE CONFIGURED TREE IS WHERE build-firmware.sh PUT IT, which is not
+    # the output directory any more. That script writes objects to a
+    # container-local directory - the bind-mounted build dirs may be a
+    # network filesystem, and writing objects across one costs mac-bench
+    # 25-31 s a firmware step - and copies only the artifacts out. So the
+    # output directory holds a .bin, a .elf, a .map and build-env.json,
+    # and no CMakeCache.txt at all.
+    #
+    # Read through the same variable rather than hard-coding the
+    # container path, so the two cannot disagree about where a build
+    # went: unset is the default directory, set-but-empty is in place.
+    objdir = os.environ.get("DUE_BUILD_LOCAL", "/tmp/due-build")
+    root = objdir or REPO
+    build_dir = os.path.join(root, spec["dir"])
     if not os.path.exists(os.path.join(build_dir, "CMakeCache.txt")):
         # Say what to run. A bench that has not configured this track
         # meets it once, and cmake's own "not a directory" three steps
         # away from here reads as something else entirely.
-        print("Track %s is not configured here. This runs in the build "
-              "image, after docker/build-firmware.sh has configured it:\n"
-              "  docker/run.sh docker/build-firmware.sh\n"
-              "  docker/run.sh python3 tools/reproducible.py --track %s"
-              % (args.track.upper(), args.track), file=sys.stderr)
+        print("Track %s is not configured at %s. This runs in the build "
+              "image, in the SAME container invocation as the build - the "
+              "configured tree is container-local and does not outlive "
+              "it:\n"
+              "  docker/run.sh bash -c 'docker/build-firmware.sh && "
+              "python3 tools/reproducible.py --track %s'\n"
+              "docker/run-ci.sh does exactly that. To use two invocations "
+              "instead, build in place with DUE_BUILD_LOCAL= set empty."
+              % (args.track.upper(), build_dir, args.track), file=sys.stderr)
         return 2
 
     cmake = cmake_exe()
-    print("track %s, %s, %s" % (args.track.upper(), spec["dir"], cmake))
+    print("track %s, %s, %s" % (args.track.upper(), build_dir, cmake))
 
     first_pass = {}
-    took = build(spec, cmake)
+    took = build(spec, cmake, build_dir)
     for name in spec["artifacts"]:
         path = os.path.join(build_dir, name)
         if not os.path.exists(path):
@@ -271,7 +288,7 @@ def main() -> int:
 
     if args.gap > 0:
         time.sleep(args.gap)
-    took = build(spec, cmake)
+    took = build(spec, cmake, build_dir)
     print("  build 2: %.2f s, %.1f s after the first" % (took, args.gap))
     print()
 

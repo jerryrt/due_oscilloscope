@@ -37,6 +37,51 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 # the question open. It is written per track, immediately after that
 # track builds, so a bench that cannot build the other one still records
 # the one it did.
+# WHERE THE OBJECTS ARE WRITTEN, AND WHY IT IS NOT THE OUTPUT DIRECTORY.
+#
+# `build/`, `build-a/` and `build-c/` are bind mounts onto docker/out/,
+# so on a bench whose checkout is outside the container's VM every object
+# file is written across a network filesystem. Measured on mac-bench,
+# interleaved AB with the first cycle dropped: 65.5 and 59.1 s writing
+# into the mount against 34.1 and 34.2 s written locally and copied out -
+# disjoint, and the local arm reproduces to 0.1% where the mounted one
+# spans 59-81 s. The copy-out costs 213 ms for nine files there, 2 ms on
+# a native daemon, and windows-desk measures the change at 0.1% on a
+# bench whose mount is already local - so it is free where it does not
+# help and large where it does.
+#
+# THE COPY-OUT ENDS THE FIRMWARE STEP, NOT THE RUN. tests/test_no_heap.py
+# reads docker/out/build/*.elf during the HOST TIER, which runs after
+# this script - so an artifact that appeared only at the end of the run
+# would not be there when the tier looks for it. That is the same guard
+# that went silently from passed to SKIPPED when the copy lacked
+# docker/out, and it is why each track publishes before the next begins.
+#
+# Analysis builds are unaffected and deliberately so: -fstack-usage and
+# -fcallgraph-info output is NOT among the artifacts copied, and
+# FIRMWARE_STACK_USAGE and FIRMWARE_CALLGRAPH are never passed here, so
+# a bench asking for either configures its own tree and keeps every
+# intermediate where it expects it.
+objdir=${DUE_BUILD_LOCAL-/tmp/due-build}
+
+bdir() {  # bdir <name> - where this track's objects go
+    if [ -n "$objdir" ]; then printf '%s/%s' "$objdir" "$1"
+    else printf '%s' "$1"; fi
+}
+
+publish() {  # publish <build dir> <output dir>
+    [ "$1" = "$2" ] && return 0
+    # THE OUTPUT DIRECTORY HOLDS ONLY WHAT THIS BUILD PRODUCED. Anything
+    # else is from an era when the objects were written here, and a
+    # CMakeCache.txt sitting beside the artifacts says the build happened
+    # in a directory it did not - the same misreading `clear_stale_images`
+    # exists to prevent, one level up from the images. The contents go,
+    # not the directory: it is a bind mount and cannot be removed.
+    mkdir -p -- "$2"
+    find "$2" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+    cp -f -- "$1"/*.bin "$1"/*.elf "$1"/*.map "$2"/ 2>/dev/null || true
+}
+
 # STALE IMAGES OUT BEFORE A BUILD, NOT AFTER.
 #
 # The output directories are bind mounts onto docker/out/ and survive
@@ -93,34 +138,37 @@ python3 tools/toolchain.py || true
 echo
 
 echo "== configure =="
-cmake -B build \
+cmake -B "$(bdir build)" \
       -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
       -DCMAKE_BUILD_TYPE=Release >/dev/null
-cmake -B build-a \
+cmake -B "$(bdir build-a)" \
       -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake \
       -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_A=ON >/dev/null
 # Track C configures from the FreeRTOS copy the build image carries
 # (DUE_FREERTOS_DIR, read by cmake/freertos.cmake), and on a bench without
 # one it fetches FreeRTOS at the same pin.
-cmake -B build-c       -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake       -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_C=ON >/dev/null
+cmake -B "$(bdir build-c)"       -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi-toolchain.cmake       -DCMAKE_BUILD_TYPE=Release -DBUILD_TRACK_C=ON >/dev/null
 echo "build, build-a, build-c"
 echo
 
 echo "== Track B =="
 clear_stale_images build
-cmake --build build -j
+cmake --build "$(bdir build)" -j
+publish "$(bdir build)" build
 record_build_env build
 echo
 
 echo "== Track A =="
 clear_stale_images build-a
-cmake --build build-a --target firmware_track_a --parallel
+cmake --build "$(bdir build-a)" --target firmware_track_a --parallel
+publish "$(bdir build-a)" build-a
 record_build_env build-a
 echo
 
 echo "== Track C =="
 clear_stale_images build-c
-cmake --build build-c --target firmware_track_c --parallel
+cmake --build "$(bdir build-c)" --target firmware_track_c --parallel
+publish "$(bdir build-c)" build-c
 record_build_env build-c
 echo
 

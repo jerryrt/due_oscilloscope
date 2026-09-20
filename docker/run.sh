@@ -119,6 +119,17 @@ flags=(
     --env "DUE_FUZZ_CORPUS=${DUE_FUZZ_CORPUS:-}"
 )
 
+# FORWARDED ONLY WHEN THE BENCH SET IT, unlike the knobs above, because
+# for this one an EMPTY value is meaningful. build-firmware.sh reads
+# ${DUE_BUILD_LOCAL-...} with a single dash: unset means use the default
+# object directory, set-but-empty means build in place. Passing
+# `DUE_BUILD_LOCAL=` unconditionally the way the others are passed would
+# read as set-but-empty and silently turn the redirect off on every
+# bench - a default changed by the act of forwarding it.
+if [ -n "${DUE_BUILD_LOCAL+set}" ]; then
+    flags+=(--env "DUE_BUILD_LOCAL=$DUE_BUILD_LOCAL")
+fi
+
 common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
 case "$common" in
     "" | "$repo"/*) ;;
