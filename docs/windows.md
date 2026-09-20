@@ -100,11 +100,14 @@ the board is flashed only from Windows. The route between them:
    out the commit being flashed, then run `docker/run.sh
    docker/build-firmware.sh`. `FW_GIT_REV` follows `HEAD`, so a records
    commit on top moves every hash.
-2. Copy `docker/out/build/`, `docker/out/build-a/` and
-   `docker/out/build-c/` - the `.bin`, the `.elf` and `build-env.json` -
-   into this checkout's `docker/out/`, which is ignored. `tools/flash.py`
-   refuses an image whose `build-env.json` does not hash-match it as a
-   container build, and reads the ELF for `cc` and `layout`.
+2. Empty this checkout's `docker/out/build/`, `docker/out/build-a/` and
+   `docker/out/build-c/`, then copy into them - the `.bin`, the `.elf`
+   and `build-env.json` per track. The destination is a copy target and
+   not a build directory, so nothing there empties it on its own: when
+   an artifact is renamed the old name stays, beside a manifest that no
+   longer lists it. `tools/flash.py` refuses an image whose
+   `build-env.json` does not hash-match it as a container build, and
+   reads the ELF for `cc` and `layout`.
 3. Check this checkout out at the same commit, with a clean tree.
    `measure.flash()`, and so the board suite's reflash, passes
    `--require-tree`, which refuses an image stamped with any other
@@ -115,6 +118,15 @@ the board is flashed only from Windows. The route between them:
 
 Plain copies give the files new mtimes, so the stale-image check has
 nothing to refuse.
+
+**Two pre-flight guards stand between a leftover and the board, and they
+do not cover the same ground.** `check_image_is_tree` compares the
+image's stamp against the tree's, so it sees only a leftover built from
+a different commit. `check_container_built` asks whether the manifest
+beside the image records that exact basename, so it sees one from any
+commit - including a copy of the tree's own image under a name the
+build no longer produces, which walks straight past the stamp. Emptying
+the destination is what stops a leftover being there to refuse at all.
 
 Whether opening a port resets the board is a per-host fact, and on this
 host **it does not**: `tools/uptime_reset_probe.py`, three repetitions
