@@ -65,7 +65,7 @@ def _libfuzzer_available():
         return False
     with tempfile.TemporaryDirectory() as d:
         src = os.path.join(d, "t.c")
-        with open(src, "w") as fh:
+        with open(src, "w", encoding="utf-8") as fh:
             fh.write("#include <stddef.h>\n#include <stdint.h>\n"
                      "int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)"
                      "{ (void)d; (void)n; return 0; }\n")
@@ -105,7 +105,7 @@ def test_the_campaign_writes_locally_and_publishes_at_the_end(tmp_path):
     keep = tmp_path / "keep"
     log = tmp_path / "fuzz.log"
     env = dict(os.environ, DUE_FUZZ_CORPUS=str(keep))
-    with open(log, "w") as out:
+    with open(log, "w", encoding="utf-8") as out:
         proc = subprocess.Popen(["bash", SCRIPT, str(CAMPAIGN_S)],
                                 cwd=REPO, env=env, stdout=out,
                                 stderr=subprocess.STDOUT)
