@@ -773,7 +773,25 @@ def test_every_populate_knob_survives_the_container_boundary():
     Written as "every knob `populate.sh` reads", not as a list, so the
     next one cannot be added on one side of the boundary only.
     """
-    knobs = set(re.findall(r'\$\{(DUE_[A-Z0-9_]+)', _read("docker", "populate.sh")))
+    # EVERY script that runs INSIDE the container, not just populate.sh.
+    # The first version of this guard scanned that one file, and the knob
+    # that was still broken - DUE_COPY_DIR, read by in-copy.sh - was in
+    # the file it did not scan. A guard general in its wording and narrow
+    # in its input set reports the property as protected while the defect
+    # sits one file away.
+    inside = ("populate.sh", "in-copy.sh", "run-ci.sh", "run-fuzz.sh",
+              "run-cppcheck.sh", "run-tests.sh", "build-firmware.sh")
+    knobs = set()
+    for name in inside:
+        try:
+            knobs |= set(re.findall(r'\$\{(DUE_[A-Z0-9_]+)',
+                                    _read("docker", name)))
+        except FileNotFoundError:
+            pass
+    # Supplied by the image or computed by run.sh itself, so they are not
+    # bench knobs and nothing is expected to forward them from a shell.
+    knobs -= {"DUE_FREERTOS_DIR", "DUE_BUILD_IMAGE_ID",
+              "DUE_BUILD_IMAGE_CONTENT", "DUE_BUILD_IMAGE"}
     assert knobs, (
         "no DUE_* knob found in docker/populate.sh, so this guard is "
         "reading nothing")
