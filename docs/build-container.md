@@ -85,7 +85,39 @@ tree's commit.
 | `windows-desk` | WSL2, which is a real Linux kernel and therefore the native case | 410 s |
 
 The spread is the runtime, not the work: the same steps, the same
-pinned tools, the same counts.
+pinned tools, the same counts. What differs per bench is measured -
+processor speed on `windows-desk`, and on `mac-bench` the filesystem the
+checkout arrives on.
+
+#### The macOS mount is sshfs, and that is not a tunable
+
+colima shares `$HOME` into its VM and `run.sh` bind-mounts the repo out
+of it, so `/work` is `fuse.sshfs`. The container's `/` is overlay on the
+VM's own disk, which is why anything written under `/tmp` is fast and
+everything read from `/work` is not: a full tree walk costs 23.7 s
+there against 0.024 s on a native daemon.
+
+**All three ways out are closed, and each is closed on its own.**
+
+| | |
+|---|---|
+| **virtiofs** | needs the `vz` VM type, which is macOS 13+. That desk is 12.7.6, which is also why it is on colima rather than Docker Desktop |
+| **9p** | the only alternative the QEMU VM type accepts, and colima's own configuration says `sshfs` is **faster** than `9p` - `9p` is the more *stable* choice under concurrent reads, not the quicker one. It predicts a regression |
+| **tuning sshfs** | the colima and Lima configuration expose `location` and `writable` and nothing else. No cache, `sftpDriver` or `msize` key exists to set without hand-editing Lima's own yaml |
+
+**And the mount type cannot be changed on a running VM at all.**
+colima's configuration says the value is fixed at creation, so changing
+it means deleting and recreating the VM - which discards the build image
+and makes every container figure that bench has taken a
+pre-recreate figure. That is a bench rebuild, not a flag.
+
+**So the mount is a constant on that bench**, and the way past it is to
+stop reading the tree across it rather than to make it faster. A clone
+made inside the container, on the VM's own overlay, runs the host tier
+in 235.4 s against 387.5 s mounted. What the tier pays is latency on the
+824 tracked files it opens - not file count, which is what a tree walk
+measures and what hiding the venvs behind a tmpfs would reduce to no
+effect.
 
 **One trap, paid for on `mac-bench`.** `toolchains.json` searches
 `{repo}/tools/xpack-*/bin` before `/opt`, and `run.sh` mounts the repo -
