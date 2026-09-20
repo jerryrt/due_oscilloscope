@@ -87,7 +87,8 @@ print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())')
 # which is root, and `--user` does not reach it: the first run without
 # these left root-owned `build/` and `build-a/` in the host tree and
 # cmake then refused to configure there. Measured, not anticipated.
-mkdir -p "$here/out/build" "$here/out/build-a" "$here/out/build-c" \n         "$repo/build" "$repo/build-a" "$repo/build-c"
+mkdir -p "$here/out/build" "$here/out/build-a" "$here/out/build-c" \
+         "$repo/build" "$repo/build-a" "$repo/build-c"
 
 flags=(
     --rm

@@ -730,6 +730,31 @@ def _cmake_targets(argv):
     return out
 
 
+def test_no_container_script_carries_a_mangled_line_continuation():
+    """`\\n` between two arguments is a literal `n`, not a newline.
+
+    Found in `docker/run.sh`'s `mkdir -p`, where a continuation had been
+    written as `\\n` and bash therefore passed `n` as a path: every run
+    of the container since created an empty directory called `n` in the
+    repository root. It survived unnoticed because git does not track an
+    empty directory, so no bench's `git status` ever mentioned it.
+
+    The shape is worth a guard rather than a fix alone: it is invisible
+    in a diff, it produces no error, and in a command that writes rather
+    than creates it would put a file somewhere nobody is looking.
+    """
+    offenders = []
+    for path in sorted(glob.glob(os.path.join(REPO, "docker", "*.sh"))):
+        rel = os.path.relpath(path, REPO).replace(os.sep, "/")
+        for n, line in enumerate(_read(rel).splitlines(), 1):
+            if re.search(r'(^|\s)\\n(\s|$)', line):
+                offenders.append(f"{rel}:{n}: {line.strip()}")
+    assert not offenders, (
+        "a backslash-n sits between arguments, which bash passes as the "
+        "literal argument 'n' rather than breaking the line:\n"
+        + "\n".join(offenders))
+
+
 def test_the_container_scripts_build_only_through_the_wrappers():
     """No shell script produces an image outside a clean-build wrapper.
 
