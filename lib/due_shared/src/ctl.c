@@ -130,6 +130,9 @@ static void ctl_error(uint16_t req_id, uint16_t opcode, uint16_t code,
 	 * on any field. A NUL appended to satisfy the check would be a
 	 * byte the peer does not expect and the length does not cover.
 	 */
+	/* The finding is correct about the call and wrong about this use of
+	 * it: the reason is the paragraph above. */
+	/* NOLINTNEXTLINE(bugprone-not-null-terminated-result) */
 	memcpy(body + 2, text, n);
 
 	ctl_rx_bad++;
@@ -209,6 +212,15 @@ static void ctl_fill_sof(ctl_heartbeat_t *hb)
 	}
 }
 
+/*
+ * One switch over the control protocol's opcode set, and the set is
+ * what makes it long: cognitive complexity 81 against a threshold of
+ * 25. Splitting it by opcode group would hide which opcodes exist,
+ * and this function is where a reader checks that. Debt with a
+ * trigger rather than a target: when a case needs state of its own,
+ * it becomes a dispatch table - not smaller cases.
+ */
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
 static void ctl_dispatch(const ctl_header_t *h, const uint8_t *payload,
                          uint16_t len)
 {

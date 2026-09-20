@@ -236,6 +236,13 @@ void play_stop(void)
  * transfer early at a short packet, so arbitrary host write chunking
  * costs a partial slot to resume, never a byte.
  */
+/*
+ * Cognitive complexity 26 against a threshold of 25, on the prime
+ * path the 0-series measures. A behaviour-preserving edit here lands
+ * in the frame of every playback figure taken after it, which is why
+ * the branch clone below is also left alone for now.
+ */
+/* NOLINTNEXTLINE(readability-function-cognitive-complexity) */
 void play_service(void)
 {
 	if (!active)
@@ -376,6 +383,8 @@ prime:
 	 * the frame of every playback figure taken after it. Merge it when
 	 * no campaign is reading this function.
 	 */
+	/* Deliberate; the reason is the paragraph above. */
+	/* NOLINTNEXTLINE(bugprone-branch-clone) */
 	if (!primed && play_produced >= PLAY_PRIME_BUFS) {
 		primed = true;
 	} else if (!primed && play_produced >= PLAY_PRIME_MIN

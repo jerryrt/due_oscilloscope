@@ -266,6 +266,9 @@ void console_feed(int c)
 	 * an else-if chain in wire-adjacent code that all three tracks
 	 * compile, which is a worse trade than the finding.
 	 */
+	/* Parenthesised and compared, which is the form the check steers
+	 * toward; the reason it stays is the paragraph above. */
+	/* NOLINTNEXTLINE(bugprone-assignment-in-if-condition) */
 	} else if ((e = entry_of((char)c)) != NULL) {
 		/*
 		 * The console's CTL_ERR_OPCODE: a command the track has not

@@ -759,6 +759,12 @@ void console_cmd_stream_uart(uint32_t trigger_hz)
  * differences them; sending deltas would throw away the only reading
  * that survives a disturbed sample.
  */
+/*
+ * A debug-only console command - invariant 7's carve-out, and
+ * unreachable on the deployed path. Worth simplifying one day; not
+ * worth an edit to code all three tracks compile.
+ */
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
 void console_cmd_occ_hist(void)
 {
 	uint8_t body[CTL_MAX_PAYLOAD];

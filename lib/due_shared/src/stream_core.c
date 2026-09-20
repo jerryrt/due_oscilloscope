@@ -162,6 +162,12 @@ void stream_core_get_stats(stream_core_stats_t *out)
  * Called from each track's stream_service. Sends at most a few frames
  * per call so the command interface stays responsive.
  */
+/*
+ * The framer's state machine, in shared source whose seam a test
+ * holds equal to extraction (issue #14). Splitting it moves the
+ * seam, which is the one thing this file may not do quietly.
+ */
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
 void stream_core_service(void)
 {
 	if (!active)

@@ -368,6 +368,11 @@ static void configure_data_endpoints(void)
 /* Setup handling                                                      */
 /* ------------------------------------------------------------------ */
 
+/*
+ * One branch per SETUP request the host may send. Scattering them
+ * hides the set, and the set is the contract.
+ */
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
 static void handle_setup(void)
 {
 	const volatile uint8_t *fifo = FIFO(EP_CTRL);
@@ -904,6 +909,13 @@ bool usb_cdc_configured(void)
  * so servicing them from the main loop costs nothing - only the bulk
  * path needs to be fast.
  */
+/*
+ * One branch per endpoint event, bounded, on the path invariant 7
+ * governs: the ISR notices and this acts. Restructuring the USB
+ * service path for a size metric is the trade this project refuses -
+ * the cost would land on every capture and every playback.
+ */
+/* NOLINTNEXTLINE(readability-function-size) */
 void usb_cdc_poll(void)
 {
 	uint32_t isr = UOTGHS->UOTGHS_DEVISR;
@@ -956,6 +968,11 @@ void usb_cdc_poll(void)
 	}
 }
 
+/*
+ * The interrupt handler itself. Same answer as usb_cdc_poll(), and
+ * more so: invariant 6 keeps this short of work, not short of lines.
+ */
+/* NOLINTNEXTLINE(readability-function-size) */
 void UOTGHS_Handler(void)
 {
 	uint32_t isr = UOTGHS->UOTGHS_DEVISR;

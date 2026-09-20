@@ -75,6 +75,13 @@ extern uint32_t load_prev_cycles;
  * than the finding it silences.
  */
 #define LOAD_DWT_CTRL   (*(volatile uint32_t *)0xE0001000u)
+/*
+ * cppcheck reports `cstyleCast` at the use site and it stands: a
+ * memory-mapped register in C is a cast through volatile, and there
+ * is no C++ cast to reach for. docker/run-cppcheck.sh carries no
+ * suppression list for this project's code on purpose, so a finding
+ * like this one is answered here rather than silenced there.
+ */
 #define LOAD_DWT_CYCCNT (*(volatile uint32_t *)0xE0001004u)
 #define LOAD_DWT_CYCCNTENA (1u << 0)
 #define LOAD_DEMCR      (*(volatile uint32_t *)0xE000EDFCu)
