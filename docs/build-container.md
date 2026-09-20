@@ -202,8 +202,8 @@ that step says whether the machine moved underneath it.
 `mac-bench` read it as a *confound* - executions doubling across a VM
 restart, which is why none of their 90 s was credited to the change
 they had just made. `windows-desk` read it as the *measurement*:
-333,433 executions from a tree on ext4 against 100,163 from the same
-tree on drvfs, which is the cleanest single number for how much a
+333,433 executions from the ext4 checkout against 100,163 from the
+drvfs one, which is the cleanest single number for how much a
 filesystem costs a whole gate. Isolating
 binfmt alone would need a second restart with it re-enabled, which is
 not worth a bench cycle for a number nothing depends on.
@@ -478,19 +478,24 @@ advisory findings conceal the fifty-fourth.
 
 #### The clang-tidy count is a property of the HOST FILESYSTEM as well as the source
 
-Measured on `windows-desk`, one commit, one image, two trees: **0
-findings from a tree on ext4 and 4 from the same tree on drvfs.** All
-four are `non-portable path to file "Stream.h"` in `sketches/bringup`.
+Measured on `windows-desk`, one image, **two checkouts of one commit -
+one on ext4 in the WSL VM, one on NTFS through drvfs**: **0 findings
+from the first and 4 from the second.** A directory sits on one
+filesystem, so the cleaner experiment of one tree seen through two
+mounts is not available; what licenses the comparison is that both
+checkouts are at one commit and **all three images built from them are
+byte-identical**, so the content is equivalent and the filesystem is
+the only thing varying. All four findings are `non-portable path to
+file "Stream.h"` in `sketches/bringup`.
 
 drvfs is **case-insensitive**, so the Arduino core's `#include
 "Stream.h"` matches this project's own lowercase `stream.h` — the
 hazard `CLAUDE.md` records for Track A and `include_directories()`,
 surfacing here through the analyser rather than the build.
 
-**The consequence was checked rather than assumed: all three images are
-byte-identical from either tree**, so the compiler resolved it
-correctly and what clang-tidy reports is its portability check on the
-*lookup*, not a defect in the source.
+That byte-identity is also what says the finding is not a defect: the
+compiler resolved the include correctly from both, and what clang-tidy
+reports is its portability check on the *lookup*.
 
 **So a floor is a property of source, image and the filesystem the tree
 sits on.** A bench working from a case-insensitive mount acquires four
