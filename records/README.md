@@ -41,6 +41,37 @@ opening the ports mid-capture does not fail loudly, it produces
 plausible-looking numbers. Do not run the suite against a board another
 tool is holding.
 
+## Rows that carry no provenance at all, and why none is being invented
+
+**6,374 rows across 216 files carry no revision — half of everything
+here — and 2,273 name no bench.** They are whole files rather than
+scattered rows: in every one of those 216, *no* row has a revision,
+because the tool that wrote them did not record one yet.
+
+| | rows | of 12,791 |
+|---|---|---|
+| no `repo_rev` or `fw_repo_rev` | **6,374** | 50% |
+| no `bench` | 2,273 | 18% |
+
+**Nothing is being back-filled, and that is a decision rather than an
+omission.** A revision could be guessed from a file's mtime or from the
+commit that added it, and a bench from the filename in many cases — but
+a guessed field reads exactly like a measured one, and this file exists
+because a *wrong* field is worse than a missing one. These are honest
+gaps.
+
+**What they cost is specific: those rows are attributable to a
+question, not to an image.** They can be read as "this is what was seen
+once", never as "this is what that build did" — so they cannot be
+compared against a figure taken at a known commit, and they cannot be
+re-entered. A figure that matters is re-taken rather than argued from.
+
+**The gap closes forwards.** `provenance.run_fields()` carries the
+revision, the track and the image's compiler and layout onto every row
+a tool writes now, and `tools/container_report.py` and the flash log
+record their own. A file whose rows have none is from before its tool
+did.
+
 ## Rows whose `track` field is wrong, and how to read them
 
 **Nine record-writing tools carried `track="b"` as a literal until
