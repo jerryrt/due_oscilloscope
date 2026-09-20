@@ -65,4 +65,6 @@ if [ "$#" -eq 0 ]; then
 fi
 
 echo "== pytest $* =="
-exec python3 -m pytest "$@"
+# Runs against a container-local copy, as run-ci.sh does, so a
+# standalone tier and the gate's tier are the same thing.
+exec docker/in-copy.sh python3 -m pytest "$@"

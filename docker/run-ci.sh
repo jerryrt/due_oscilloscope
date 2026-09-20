@@ -494,7 +494,12 @@ fi
 
 # --- the board-free tier ---------------------------------------------
 if have_pytest; then
+	# in-copy.sh: the tier reads the tree thousands of times and is the
+	# step a slow mount costs most - 315-399 s mounted against 214-219 s
+	# copied on mac-bench, where the mount is also that bench's
+	# run-to-run variance. docker/populate.sh carries the reasoning.
 	run_step "host tier" class_pytest \
+	         docker/in-copy.sh \
 	         python3 -m pytest --track=b -m "not board and not platform" -q
 else
 	norun_step "host tier" "no pytest in this interpreter"
