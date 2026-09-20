@@ -368,3 +368,26 @@ long before the window of interest opens. And a distribution cannot be
 read off one draw - one traced cycle put every loss after 2 seconds, and
 twenty-four more found onsets from 15 ms to 752 ms with the heavy cycles
 losing steadily throughout the run.
+
+### A high-water mark has no baseline unless you took it first
+
+`max_overrun`, the load monitor's `max_us`, `occ_min` - every worst-case
+field is a value the mechanism only ever pushes one way, and it keeps
+whatever the session has done to it so far. Read after the mechanism
+has been exercised, it is live, current, and means nothing about the
+thing you are about to do.
+
+The shape it takes: a bench sent four stall commands while testing
+console latency, then read the load monitor and called that the
+"before". Two of the four had already pinned `max_us` at the 2,000 ms
+clamp `console_cmd_stall()` applies, so the next stall could not move
+it, and "did not move" was read as "did nothing" - while the same
+command on another bench moved a fresh maximum to exactly the clamp.
+The data was right and both readings of it were available, and they
+could not be told apart because the before-state had been destroyed by
+the measurer's own hand and nobody had noticed.
+
+So: take the worst-case field **before** exercising the mechanism, or
+reset it, and say which in the row. A stale figure announces itself; a
+high-water mark taken late is quieter, because nothing about the number
+says it is not yours.
