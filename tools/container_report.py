@@ -148,6 +148,30 @@ def baked_revision(build):
     return None
 
 
+def _seconds(logs, name):
+    """The step's own elapsed seconds, as `run-ci.sh` wrote them.
+
+    An ARTIFACT, not the summary table: that table is prose and this
+    module does not parse it, for the reason the header gives. The
+    script writes one file per step holding the number alone, at the
+    moment it measures it.
+
+    None where the file is absent, which is every row recorded before
+    the script wrote one - honest, and not the same as zero. A step that
+    took no measurable time still writes 0.0.
+    """
+    raw = _read(os.path.join(logs, name + ".seconds"))
+    if raw is None:
+        return None
+    try:
+        return float(raw.strip())
+    except ValueError:
+        # A number this cannot parse is reported as absent rather than
+        # guessed. LC_NUMERIC has already put a decimal comma in this
+        # column once - see the LC_ALL=C note on `took` in run-ci.sh.
+        return None
+
+
 def collect(logs, build, exit_code):
     sys.path.insert(0, os.path.join(REPO, "host"))
     prov = {}
@@ -175,7 +199,7 @@ def collect(logs, build, exit_code):
             # nothing to report.
             steps[name] = None
             continue
-        row = {"log_bytes": len(text)}
+        row = {"log_bytes": len(text), "seconds": _seconds(logs, name)}
         tail = _pytest_tail(text)
         if tail:
             row["pytest"] = tail
@@ -210,6 +234,10 @@ def collect(logs, build, exit_code):
         # content hash is the one that is supposed to.
         "build_image_content": env.get("build_image_content"),
         "artifacts": env.get("artifacts"),
+        # The run's own wall clock, from the same artifact source as the
+        # per-step seconds. The figure every bench has been quoting by
+        # hand out of the printed line.
+        "wall_seconds": _seconds(logs, "wall"),
         "steps": steps,
     }
 

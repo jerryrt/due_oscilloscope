@@ -166,6 +166,15 @@ records=()
 
 record() {  # record <name> <state> <seconds> <detail>
 	records+=("$1"$'\t'"$2"$'\t'"$3"$'\t'"$4")
+	# ALSO AN ARTIFACT, because the summary table is prose and
+	# tools/container_report.py deliberately does not parse it. Without
+	# this the seconds exist only in this array and in a fixed-width
+	# column a human retypes, which is why every stored row on every
+	# bench carried `seconds: null` and no record could answer a
+	# performance question. One file per step, holding the number and
+	# nothing else, written at the moment it is measured. The name
+	# transform matches run_step's log name so the two line up.
+	printf '%s\n' "$3" > "$logs/${1// /-}.seconds" 2>/dev/null || true
 }
 
 now() { date +%s.%N; }
@@ -571,6 +580,10 @@ run_step "working tree" class_tree tree_verdict
 # reader is entitled to read on its own.
 # ---------------------------------------------------------------------
 elapsed=$(took "$started" "$(now)")
+# The wall time as an artifact too, for the same reason: it is the one
+# figure every bench has been quoting, and it has only ever existed in
+# the printed line.
+printf '%s\n' "$elapsed" > "$logs/wall.seconds" 2>/dev/null || true
 
 echo
 echo "=================================================================="

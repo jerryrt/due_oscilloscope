@@ -25,12 +25,14 @@ if TOOLS not in sys.path:
 import container_report as cr                                 # noqa: E402
 
 
-def _run_dir(tmp_path, logs=None, build_env="container"):
+def _run_dir(tmp_path, logs=None, build_env="container", seconds=None):
     """A log directory and a build directory, as a real run leaves them."""
     logdir = tmp_path / "ci"
     logdir.mkdir()
     for name, text in (logs or {}).items():
         (logdir / f"{name}.log").write_text(text, encoding="utf-8")
+    for name, text in (seconds or {}).items():
+        (logdir / f"{name}.seconds").write_text(text, encoding="utf-8")
     build = tmp_path / "build"
     build.mkdir()
     if build_env is not None:
@@ -298,3 +300,71 @@ def test_the_substring_check_alone_would_have_passed_a_dirty_image():
     assert short.encode() in stamped, (
         "if this ever stops being true the dirty guard is no longer "
         "load-bearing and this test should be deleted with it")
+
+
+# --- the seconds are an artifact, not the summary table -------------------
+
+def test_a_step_carries_the_seconds_run_ci_measured(tmp_path, monkeypatch):
+    """Without this every stored row said `seconds: null`.
+
+    Three benches spent a round answering "why is the container slow
+    here" from wall times retyped by hand out of a fixed-width column,
+    because the per-step figures existed only in that column.
+    `records/container-universality.jsonl` could not answer it for any
+    bench at any commit.
+    """
+    row = _row(tmp_path, monkeypatch,
+               logs={"host-tier": "= 805 passed, 5 skipped in 136.65s ="},
+               seconds={"host-tier": "137.0\n"})
+    assert row["steps"]["host-tier"]["seconds"] == 137.0
+
+
+def test_the_wall_time_is_carried_the_same_way(tmp_path, monkeypatch):
+    row = _row(tmp_path, monkeypatch, seconds={"wall": "232.6\n"})
+    assert row["wall_seconds"] == 232.6
+
+
+def test_an_unmeasured_step_is_null_rather_than_zero(tmp_path, monkeypatch):
+    """A row recorded before run-ci.sh wrote the artifact, and a step
+    that genuinely took no time, are different facts.
+
+    Zero is a measurement. Every row already in
+    records/container-universality.jsonl predates the artifact, and they
+    must stay readable as "not recorded" rather than becoming a claim
+    that every step was instantaneous.
+    """
+    row = _row(tmp_path, monkeypatch, logs={"host-tier": "= 1 passed ="})
+    assert row["steps"]["host-tier"]["seconds"] is None
+    assert row["wall_seconds"] is None
+
+
+def test_the_seconds_are_not_taken_from_the_printed_summary(tmp_path,
+                                                            monkeypatch):
+    """The doctrine guard, and the one worth having.
+
+    This module's header says it reads artefacts and not the summary
+    prose, because re-deriving run-ci.sh's classifiers here would be a
+    second implementation of them. The seconds are the newest column and
+    the easiest to take from that table by regex, so: a log containing a
+    complete, plausible summary table and NO artifact must report null.
+
+    If this ever fails, someone has parsed the table, and the next
+    format change to it silently rewrites stored figures.
+    """
+    table = ("step               state         seconds  detail\n"
+             "host tier          PASS            137.0  805 passed\n"
+             "cppcheck           FINDINGS          7.3  10 findings\n"
+             "wall time: 232.6 s\n")
+    row = _row(tmp_path, monkeypatch, logs={"host-tier": table})
+    assert row["steps"]["host-tier"]["seconds"] is None
+    assert row["wall_seconds"] is None
+
+
+def test_a_seconds_file_that_is_not_a_number_is_null_not_a_guess(
+        tmp_path, monkeypatch):
+    """LC_NUMERIC has already put a decimal comma in this column once -
+    run-ci.sh's `took` carries LC_ALL=C for that reason. If one ever
+    arrives here it is absent, not 137.0 and not 137."""
+    row = _row(tmp_path, monkeypatch, logs={"host-tier": "= 1 passed ="},
+               seconds={"host-tier": "137,0\n"})
+    assert row["steps"]["host-tier"]["seconds"] is None
