@@ -112,12 +112,76 @@ and makes every container figure that bench has taken a
 pre-recreate figure. That is a bench rebuild, not a flag.
 
 **So the mount is a constant on that bench**, and the way past it is to
-stop reading the tree across it rather than to make it faster. A clone
-made inside the container, on the VM's own overlay, runs the host tier
-in 235.4 s against 387.5 s mounted. What the tier pays is latency on the
-824 tracked files it opens - not file count, which is what a tree walk
-measures and what hiding the venvs behind a tmpfs would reduce to no
-effect.
+stop reading the tree across it rather than to make it faster. What the
+tier pays is latency on the 824 tracked files it opens - not file count,
+which is what a tree walk measures and what hiding the venvs behind a
+tmpfs would reduce to no effect.
+
+### So the board-free tier runs against a copy, on every bench
+
+`docker/populate.sh` copies git's own view of the tree into a
+container-local directory and `docker/in-copy.sh` runs a command there;
+`run-ci.sh` and `run-tests.sh` use it. The tree is read once,
+sequentially, and every later read is local.
+
+**`docker/run.sh` is deliberately not involved.** It is also how short
+commands run - an interactive shell, a one-off `find`, a toolchain query
+- and the populate costs 12.5-13.5 s on sshfs. A launcher that paid it
+would charge the commands that gain nothing.
+
+| | mounted | copied |
+|---|---|---|
+| `mac-bench` host tier | 315.9 / 396.0 / 398.7 s | **218.6 / 214.7 / 213.7 s** |
+| `linux-x1` host tier | 131.0 s | 132.1 s |
+
+ABAB at one commit with the first cycle dropped. **It is not faster
+everywhere and is not meant to be** - what a bench with a local mount
+buys is one procedure rather than three.
+
+**The same arm explains why that bench's figures were never points:**
+26% spread mounted against 2% copied. The variance is the mount.
+
+**`DUE_COPY_GIT` chooses how `.git` is reached, because the answer
+inverts with the filesystem.** On sshfs a copy costs 5,151 ms once and
+then ~28 ms an operation, against ~420 ms through a bridge - breaking
+even near 13 operations, and a gate makes far more. Over drvfs the copy
+is 30-52 s and the bridge wins. Same semantics either way; a bench picks
+its side and records it.
+
+#### What git ignores is exactly what the build produces
+
+That is the trap in selecting the copy with `git ls-files`. It is the
+right selector for source and the wrong one for state the tier reads but
+does not track: `tests/test_no_heap.py` reads the linked image to prove
+the firmware allocates nothing, `docker/out/` is ignored, and a copy
+without it took that guard from **passed to skipped** - silently, because
+a skip is not a failure.
+
+So `BRIDGES` names the ignored state the tier reads, and adding to it is
+how a new one is handled. Two of the four were found by reading the
+selector rather than by a failure, and they are the more dangerous
+shape: tests branch on `bench.json` **by name**, so a copy without it
+takes a different path *and still passes*, which no outcome comparison
+can see.
+
+#### Three guards, because each is blind to what the others catch
+
+| guard | fires on | blind to |
+|---|---|---|
+| the populate's `git status` comparison | a short or wrong copy of tracked content | a missing ignored bridge |
+| an outcome comparison, every node id, both sides | a missing bridge | faithful content |
+| `in-copy.sh`'s comparison after the run | a run that modifies tracked source | ignored output, which is expected |
+
+**A run may leave ignored output behind and may not modify tracked
+source.** The third guard exists because `run-ci.sh`'s `working tree`
+step watches the mount, and a step that runs in the copy can no longer
+reach it - so for that step the check would pass by construction.
+
+**And a knob that cannot cross the container boundary is not a knob.**
+A container inherits nothing from the invoking shell, so every `DUE_*`
+a bench is expected to set has to be named in `run.sh`. Each is
+forwarded empty when unset, so the default lives in the script that
+reads it rather than in two places.
 
 **One trap, paid for on `mac-bench`.** `toolchains.json` searches
 `{repo}/tools/xpack-*/bin` before `/opt`, and `run.sh` mounts the repo -
