@@ -162,11 +162,19 @@ directory and copies out the `.bin`, the `.elf`, the `.map` and
 | `mac-bench` firmware | 56.7 s | **41.4 s** |
 | `mac-bench` `reproducible-a` | 44.8 s | **22.0 s** |
 | `mac-bench` gate wall | 574.1 s | **518.4 s** |
-| `windows-desk`, mount already local | 26.63 s | 26.60 s |
+| `windows-desk` firmware, mount already local | 27.76 s | **29.43 s** |
 
 **The reproducible steps gain more than the firmware step** - 37 s
 against 15 s on that bench - because each builds twice, so the change
 pays there twice over.
+
+**And on a bench whose mount is already local the redirect COSTS a
+little.** `windows-desk` separated it with the knob, four runs an arm
+and the first discarded: the publish and the clear are free at
+**-0.28 s**, and the redirect itself is **+1.95 s, +7.1% of the firmware
+step** - which is **+0.35% of a gate** that runs 467-479 s there. So it
+is *free at gate level and not free at the step*, and the distinction
+matters because the step is exactly where a slow mount's cost lives.
 
 **The copy-out ends the firmware step, not the run.**
 `tests/test_no_heap.py` reads `docker/out/build/*.elf` during the host

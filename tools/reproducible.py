@@ -255,7 +255,11 @@ def main() -> int:
     # Read through the same variable rather than hard-coding the
     # container path, so the two cannot disagree about where a build
     # went: unset is the default directory, set-but-empty is in place.
-    objdir = os.environ.get("DUE_BUILD_LOCAL", "/tmp/due-build")
+    # No default here either: docker/run.sh resolves it once and both
+    # consumers read what it sets, so the default cannot acquire a second
+    # home and drift - which is the shape that let FW_VERSION_STR and
+    # FW_VERSION_MAJOR disagree about one release.
+    objdir = os.environ.get("DUE_BUILD_LOCAL", "")
     root = objdir or REPO
     build_dir = os.path.join(root, spec["dir"])
     if not os.path.exists(os.path.join(build_dir, "CMakeCache.txt")):

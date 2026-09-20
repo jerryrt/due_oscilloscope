@@ -62,7 +62,9 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 # FIRMWARE_STACK_USAGE and FIRMWARE_CALLGRAPH are never passed here, so
 # a bench asking for either configures its own tree and keeps every
 # intermediate where it expects it.
-objdir=${DUE_BUILD_LOCAL-/tmp/due-build}
+# No default here: docker/run.sh resolves it, so the default has one
+# home. Empty - including run without that launcher - builds in place.
+objdir=${DUE_BUILD_LOCAL-}
 
 bdir() {  # bdir <name> - where this track's objects go
     if [ -n "$objdir" ]; then printf '%s/%s' "$objdir" "$1"
