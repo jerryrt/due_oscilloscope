@@ -9,9 +9,24 @@
 
 #include "sam.h"
 
+/*
+ * THE NAMES BELOW ARE NOT THIS PROJECT'S TO CHOOSE, which is what the
+ * suppressions say. A leading underscore in the global namespace is
+ * reserved to the implementation, and clang-tidy is right that these
+ * are: `_sdata` and its neighbours are emitted by the linker script
+ * (linker/sam3x8e_flash.ld), and `__libc_init_array` is newlib's.
+ * Spelling any of them differently does not rename the symbol, it
+ * stops referring to it - the file would compile and the image would
+ * not start.
+ *
+ * Suppressed per site rather than by a threshold or a config, so a
+ * reserved name this project *did* invent still gets reported.
+ */
+/* NOLINTNEXTLINE(bugprone-reserved-identifier) - linker script's */
 extern uint32_t _sdata, _edata, _sbss, _ebss, _etext, _estack;
 
 extern int main(void);
+/* NOLINTNEXTLINE(bugprone-reserved-identifier) - newlib's */
 extern void __libc_init_array(void);
 
 void Reset_Handler(void);
@@ -119,8 +134,11 @@ static void Default_Handler(void)
  * project uses .init/.fini; C++ static constructors would arrive through
  * .init_array, which __libc_init_array walks separately.
  */
+/* NOLINTBEGIN(bugprone-reserved-identifier) - the crti.o contract's
+ * names: __libc_init_array calls _init by that name. See above. */
 void _init(void) { }
 void _fini(void) { }
+/* NOLINTEND(bugprone-reserved-identifier) */
 
 void Reset_Handler(void)
 {

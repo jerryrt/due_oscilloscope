@@ -14,7 +14,22 @@
 
 #include "bsp.h"
 
+/*
+ * NEWLIB'S NAMES AND THE LINKER SCRIPT'S, NOT OURS. clang-tidy reports
+ * every identifier below as reserved in the global namespace, and it is
+ * right about the rule: a leading underscore there belongs to the
+ * implementation. These are the implementation's own - `_heap_start`
+ * and `_heap_end` come from the linker script, and `_write`, `_read`,
+ * `_sbrk` and the stubs are the entry points newlib links against by
+ * name. Renaming one does not rename the symbol; it stops answering
+ * for it, and the link fails or, worse, silently takes a weak stub.
+ *
+ * Suppressed per site, never by threshold or config, so a reserved name
+ * this project invented would still be reported.
+ */
+/* NOLINTNEXTLINE(bugprone-reserved-identifier) - linker script's */
 extern char _heap_start;
+/* NOLINTNEXTLINE(bugprone-reserved-identifier) - linker script's */
 extern char _heap_end;
 
 #undef errno
@@ -26,6 +41,7 @@ extern int errno;
  * library declares it. Changing it here does not change the contract,
  * it breaks agreement with it. The finding stands.
  */
+/* NOLINTNEXTLINE(bugprone-reserved-identifier) - newlib's entry point */
 int _write(int file, char *ptr, int len)
 {
 	(void)file;
@@ -38,6 +54,7 @@ int _write(int file, char *ptr, int len)
 	return len;
 }
 
+/* NOLINTNEXTLINE(bugprone-reserved-identifier) - newlib's entry point */
 int _read(int file, char *ptr, int len)
 {
 	(void)file;
@@ -50,6 +67,7 @@ int _read(int file, char *ptr, int len)
 	return 1;
 }
 
+/* NOLINTNEXTLINE(bugprone-reserved-identifier) - newlib's entry point */
 caddr_t _sbrk(int incr)
 {
 	static char *heap = &_heap_start;
@@ -66,6 +84,7 @@ caddr_t _sbrk(int incr)
 	return (caddr_t)prev;
 }
 
+/* NOLINTBEGIN(bugprone-reserved-identifier) - newlib's entry points */
 int _close(int file)                    { (void)file; return -1; }
 int _isatty(int file)                   { (void)file; return 1; }
 int _lseek(int file, int p, int d)      { (void)file; (void)p; (void)d; return 0; }
@@ -79,3 +98,4 @@ int _fstat(int file, struct stat *st)
 	st->st_mode = S_IFCHR;
 	return 0;
 }
+/* NOLINTEND(bugprone-reserved-identifier) */
