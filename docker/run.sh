@@ -103,6 +103,11 @@ flags=(
     --env "DUE_BUILD_IMAGE=$image"
     --env "DUE_BUILD_IMAGE_ID=$image_id"
     --env "DUE_BUILD_IMAGE_CONTENT=$image_content"
+    # A container inherits nothing from this shell, so a knob the bench
+    # sets has to be named here or it is not a knob at all. `.git` costs
+    # 28 ms an operation copied against 420 ms bridged on sshfs, and the
+    # opposite on drvfs, so this one is per-bench by measurement.
+    --env "DUE_COPY_GIT=${DUE_COPY_GIT:-link}"
 )
 
 common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)

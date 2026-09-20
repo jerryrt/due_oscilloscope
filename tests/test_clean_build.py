@@ -760,6 +760,30 @@ def test_the_runner_stops_its_container_when_it_is_killed():
             f"killed run leaves its container up")
 
 
+def test_every_populate_knob_survives_the_container_boundary():
+    """A knob the bench sets must be named in `run.sh` or it is not one.
+
+    A container inherits nothing from the invoking shell. `populate.sh`
+    reads `DUE_COPY_GIT`, and setting it on the host did nothing at all
+    until `run.sh` passed it: measured as `UNSET` inside the container,
+    so every bench silently got the default and mac-bench could not
+    select the copy its own measurement calls for - 28 ms per git
+    operation copied against 420 ms bridged, on sshfs.
+
+    Written as "every knob `populate.sh` reads", not as a list, so the
+    next one cannot be added on one side of the boundary only.
+    """
+    knobs = set(re.findall(r'\$\{(DUE_[A-Z0-9_]+)', _read("docker", "populate.sh")))
+    assert knobs, (
+        "no DUE_* knob found in docker/populate.sh, so this guard is "
+        "reading nothing")
+    runner = _read("docker", "run.sh")
+    for knob in sorted(knobs):
+        assert f'--env "{knob}=' in runner, (
+            f"docker/populate.sh reads {knob} and docker/run.sh does not "
+            f"pass it, so setting it on the bench does nothing")
+
+
 def test_no_container_script_carries_a_mangled_line_continuation():
     """`\\n` between two arguments is a literal `n`, not a newline.
 
