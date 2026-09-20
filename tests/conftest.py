@@ -80,9 +80,10 @@ def pytest_addoption(parser):
     g.addoption("--seconds", action="store", type=float, default=None,
                 help="override the streaming window for every measurement")
     g.addoption("--no-ceiling", action="store_true",
-                help="do not fail the board-free tier for exceeding its "
-                     "five-minute ceiling (issue #50); for a bench slower "
-                     "than the one the constant was measured on")
+                help="do not fail the run for exceeding the time budget "
+                     "of the groups it selected (issue #86, BUDGET_S in "
+                     "conftest); for a bench that is being measured "
+                     "rather than gated")
     g.addoption("--require-board", action="store_true",
                 help="fail rather than skip when the board is absent or "
                      "on the wrong track (issue #58). For measurement "
@@ -336,10 +337,58 @@ def run_cache():
     return {}
 
 
-# The board-free tier's ceiling, in seconds. Measured at 94.56 s and
-# 95.49 s on mac-bench at b24ccdb for 441 tests, so this is 3x headroom
-# rather than a number the tier is already pressed against.
-BOARD_FREE_CEILING_S = 300.0
+# ONE TIME BUDGET PER MARKER GROUP, in seconds, and a run is judged
+# against the SUM of the budgets of the groups it selected.
+#
+# A budget protects the per-change loop; it is not a correctness verdict
+# and has never caught a code defect. What it has caught, twice, is a
+# bench that had stopped being the bench it was - a 240 s probe timeout
+# paid twice on mac-bench, and an sshfs mount that made that tier a
+# 306-376 s range at one commit. So each number is the SLOWEST bench's
+# reproducible figure with a margin: wide enough that hardware never
+# trips it, tight enough that a fixed wait of the size already met does,
+# on every bench. One number per group rather than one per bench,
+# because a red must mean the same thing everywhere.
+#
+#   gate      360  windows-desk 255-264 s, mac-bench 187-231, linux-x1
+#                  137-143 in the container. +36% over the slowest; a
+#                  240 s hang fires on all three (377/471/503), one
+#                  313 s thermal outlier does not.
+#   platform   30  4.3 / 2.3 / 0.5 s natively, nineteen sub-second tests;
+#                  only a stuck OS call - ctypes, Mach, SetThreadPriority
+#                  - can reach it, and that is timeout-scale.
+#   board    None  not re-timed since the container round; no budget
+#                  until a second run on the slowest bench exists. None
+#                  contributes nothing to a sum, so a board run is judged
+#                  on whatever else it selected.
+#
+# The single 300 s ceiling this replaces judged one number over a mixed
+# set and was red on two benches with zero failing tests, which is how
+# a budget becomes a number everyone reads past. Owner's ruling on the
+# three, 2026-09-20. Change a number deliberately: tests/test_budgets.py
+# pins them so a drift is an edit, not an accident.
+BUDGET_S = {"gate": 360.0, "platform": 30.0, "board": None}
+
+
+def group_of(item):
+    """Which budget group a collected item belongs to.
+
+    `board` wins over `platform` because a board test that also depends
+    on the host's OS branch is paced by the board; everything unmarked is
+    the gate, which is the selection docker/run-ci.sh runs.
+    """
+    if item.get_closest_marker("board"):
+        return "board"
+    if item.get_closest_marker("platform"):
+        return "platform"
+    return "gate"
+
+
+def budget_for(groups):
+    """The budget a run is judged against: the sum over the groups it
+    selected, or None when none of them carries one."""
+    known = [BUDGET_S[g] for g in groups if BUDGET_S.get(g) is not None]
+    return sum(known) if known else None
 
 
 def pytest_sessionstart(session):
@@ -347,7 +396,7 @@ def pytest_sessionstart(session):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Hold the board-free tier to five minutes, enforced not intended.
+    """Hold each tier to its budget, enforced not intended.
 
     Issue #50 exists because section 8 of docs/testing.md claimed a
     five-minute budget as an *intention* and it had drifted to fifteen
@@ -376,22 +425,23 @@ def pytest_sessionfinish(session, exitstatus):
     t0 = getattr(session, "_due_t0", None)
     if t0 is None or session.testscollected == 0:
         return
-    # Board tests set their own pace and are not what this bounds.
-    if any("board" in getattr(i, "fixturenames", ())
-           for i in getattr(session, "items", ())):
-        return
-    elapsed = time.time() - t0
-    if elapsed > BOARD_FREE_CEILING_S:
-        reporter = session.config.pluginmanager.get_plugin("terminalreporter")
-        if reporter is not None:
-            reporter.write_line(
-                f"board-free tier took {elapsed:.1f}s against a "
-                f"{BOARD_FREE_CEILING_S:.0f}s ceiling (issue #50). This is "
-                f"the per-change loop; if it is genuinely this slow now, "
-                f"move work out of it or raise the constant deliberately "
-                f"- do not let it drift the way section 8 of "
-                f"docs/testing.md did.", red=True)
-        session.exitstatus = 1
+    groups = sorted({group_of(i) for i in getattr(session, "items", ())})
+    budget = budget_for(groups)
+    if budget is not None:
+        elapsed = time.time() - t0
+        if elapsed > budget:
+            reporter = session.config.pluginmanager.get_plugin(
+                "terminalreporter")
+            if reporter is not None:
+                reporter.write_line(
+                    f"the run took {elapsed:.1f}s against a {budget:.0f}s "
+                    f"budget for {', '.join(groups)} (issue #86). This "
+                    f"protects the per-change loop: if the tier is "
+                    f"genuinely this slow now, move work out of it or "
+                    f"change the constant in tests/conftest.py "
+                    f"deliberately - do not let it drift the way section "
+                    f"8 of docs/testing.md once did.", red=True)
+            session.exitstatus = 1
     _check_one_instrument(session)
 
 
