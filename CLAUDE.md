@@ -1005,6 +1005,37 @@ costs about thirty seconds:
 > **Break the thing the check guards, and watch the check fail. Then put
 > it back.**
 
+**A guard is only as wide as what it looks at, and the two fail
+identically - green.** Four guards written on one evening were each
+correct in form and blind in scope, and none of the four could be told
+from a working one by reading it:
+
+- a comparison of test outcomes that passed `-v` and `-q` together, so
+  pytest printed no per-test lines, two empty files were diffed, and it
+  reported every test identical having compared nothing;
+- the fixed version, whose regex dropped 18 of 815 node ids because a
+  parametrised name contains a space;
+- a check that every `DUE_*` knob crosses the container boundary,
+  written as a property rather than a list, that read **one** script -
+  and the knob still broken was in the other;
+- an assertion that every row in a flash log resolves to a track, which
+  demanded more than path-parsing can deliver and turned one bench's
+  hand-built control image into a permanent red.
+
+**So ask what the check is looking at, not only what it asserts.** A
+floor helps - refuse to pass when fewer items were examined than the
+property needs - and so does taking the input set from the tree rather
+than writing it down.
+
+**And point the guard at the artifact, not at the change.** The
+flash-log arm was written to survive a rename, and it caught three
+things: a rename that outran the rule reading it, a `sed` that rewrote
+the historical table the test itself compared against, and its own
+over-promise. **Only the last was a defect in what it was aimed at; the
+other two were defects in the tools of the change.** A guard on the
+artifact catches the process, which is why it is worth having one even
+where the process looks mechanical.
+
 Remove the clean step and the clean-build test must fail. Halve the fed
 term and the feed guard must fail. Point the source glob elsewhere and
 the provenance test must fail. A new assertion is not trusted until it
