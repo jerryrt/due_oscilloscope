@@ -148,6 +148,44 @@ even near 13 operations, and a gate makes far more. Over drvfs the copy
 is 30-52 s and the bridge wins. Same semantics either way; a bench picks
 its side and records it.
 
+#### The objects are written locally too, and the artifacts are copied out
+
+The same argument one layer down. `build/`, `build-a/` and `build-c/`
+are bind mounts onto `docker/out/`, so on a bench whose checkout is
+outside the container's VM every object file is written across the
+mount. `docker/build-firmware.sh` writes them to a container-local
+directory and copies out the `.bin`, the `.elf`, the `.map` and
+`build-env.json`.
+
+| | into the mount | local + copy-out |
+|---|---|---|
+| `mac-bench` firmware | 56.7 s | **41.4 s** |
+| `mac-bench` `reproducible-a` | 44.8 s | **22.0 s** |
+| `mac-bench` gate wall | 574.1 s | **518.4 s** |
+| `windows-desk`, mount already local | 26.63 s | 26.60 s |
+
+**The reproducible steps gain more than the firmware step** - 37 s
+against 15 s on that bench - because each builds twice, so the change
+pays there twice over.
+
+**The copy-out ends the firmware step, not the run.**
+`tests/test_no_heap.py` reads `docker/out/build/*.elf` during the host
+tier, which runs after, so an artifact appearing only at the end would
+not be there when the tier looks for it. Each track publishes before
+the next begins.
+
+**Analysis builds are not redirected**, and that is the design rather
+than an exemption: `-fstack-usage` and `-fcallgraph-info` output is not
+among the copied artifacts, and neither option is ever passed by
+`build-firmware.sh`, so a bench asking for either configures its own
+tree and keeps every intermediate where `tools/stack_depth.py` and
+`tools/stack_frames.py` expect it.
+
+**`tools/reproducible.py` reuses the configured tree rather than
+building its own**, so it reads the same variable rather than a
+hard-coded path - the two cannot then disagree about where a build
+went. `DUE_BUILD_LOCAL` set empty builds in place.
+
 #### What git ignores is exactly what the build produces
 
 That is the trap in selecting the copy with `git ls-files`. It is the
