@@ -272,6 +272,25 @@ def _comparable(profile):
     return render(p)
 
 
+def _unchanged(path, profile):
+    """True when the file on disk already carries this profile.
+
+    A write leaves such a file alone, `generated` block included: that
+    block names the bench and revision that last changed the data, and
+    a bench that regenerates after adding its own row must not restamp
+    the two files it did not measure. Three benches each writing every
+    file would churn every profile on every row.
+    """
+    if not os.path.exists(path):
+        return False
+    with open(path, encoding="utf-8") as fh:
+        try:
+            on_disk = json.load(fh)
+        except ValueError:
+            return False
+    return _comparable(on_disk) == _comparable(profile)
+
+
 def check(profiles, boards_dir):
     """Files that differ from what the record regenerates, plus profiles
     on disk for no known uid. The `generated` block is not compared."""
@@ -343,12 +362,15 @@ def main(argv=None):
 
     os.makedirs(args.boards_dir, exist_ok=True)
     for uid, p in profiles.items():
-        with open(profile_path(args.boards_dir, uid), "w",
-                  encoding="utf-8") as fh:
-            fh.write(render(p))
+        path = profile_path(args.boards_dir, uid)
+        state = "unchanged" if _unchanged(path, p) else "written"
+        if state == "written":
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(render(p))
         per = ", ".join(f"{ph}: median {v['rested_largest_median']} n {v['n_rows']}"
                         for ph, v in p["converter_summary"].items())
-        print(f"{uid} serial {p['board_serial']} [{per}] flags {p['flags']}")
+        print(f"{uid} serial {p['board_serial']} [{per}] flags {p['flags']} "
+              f"({state})")
     return 0
 
 

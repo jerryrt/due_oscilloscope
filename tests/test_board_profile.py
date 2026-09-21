@@ -193,6 +193,34 @@ def test_every_uid_in_the_real_record_has_a_profile_on_disk():
     assert r.returncode == 0, r.stderr + r.stdout
 
 
+def test_a_write_leaves_an_unchanged_profile_alone(tmp_path):
+    """A bench regenerating after its own row must not restamp the
+    profiles it did not measure: with the data unchanged, the file on
+    disk - its generated block included - is not touched. A file whose
+    data the record has moved is rewritten."""
+    rot, cal, boards = _write_fixture(tmp_path)
+    args = ["--rotation", str(rot), "--calibration", str(cal),
+            "--boards-dir", str(boards)]
+    assert bp.main(["--write"] + args) == 0
+    path = boards / f"{UID_A}.json"
+    p = json.loads(path.read_text(encoding="utf-8"))
+    p["generated"] = {"tool": "tools/board_profile.py", "rev": "0000000",
+                      "bench": "elsewhere"}
+    path.write_text(bp.render(p), encoding="utf-8")
+    before = path.read_text(encoding="utf-8")
+    assert bp.main(["--write"] + args) == 0
+    assert path.read_text(encoding="utf-8") == before, (
+        "an unchanged profile was rewritten")
+    # move the data: the rested median is part of the profile
+    rows = [json.loads(l) for l in rot.read_text(encoding="utf-8").splitlines()]
+    rows[0]["census_summary"]["largest_median"] += 1.0
+    rot.write_text("\n".join(json.dumps(r) for r in rows) + "\n",
+                   encoding="utf-8")
+    assert bp.main(["--write"] + args) == 0
+    after = json.loads(path.read_text(encoding="utf-8"))
+    assert after["generated"]["bench"] != "elsewhere"
+
+
 def test_check_ignores_who_generated_the_file(tmp_path):
     """The generated block names the bench and revision that wrote the
     profile; both differ on the next commit and the next bench, and a
