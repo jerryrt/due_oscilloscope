@@ -321,3 +321,32 @@ def test_image_rev_pins_the_board_to_the_rotation_image_not_the_tree():
                        run_tail_scale=_scale)
     assert "flash this tree's image" in str(e.value)
 
+
+def test_the_phase_is_a_free_label_recorded_verbatim(tmp_path, monkeypatch):
+    """A row serves any change of arrangement, not only the rotation.
+
+    The rotation had two phases and the first version of the tool
+    accepted only those two words. Then a shield went onto every DUT
+    and a fourth board appeared, and a row for that arrangement needs a
+    label naming it. So any non-empty label is accepted and written as
+    given; what makes rows comparable is the image, the idle time and
+    the uid, not the phase's spelling.
+    """
+    out = tmp_path / "rotation.jsonl"
+    monkeypatch.setattr(rr, "_board_steps", _steps())
+    monkeypatch.setattr(rr, "_run_census",
+                        _census_texts([97, 75, 84, 79, 87, 91]))
+    monkeypatch.setattr(rr, "_run_tail_scale", _scale)
+    rc = rr.main(["--phase", "shield-v3", "--idle-seconds", "1200",
+                  "--out", str(out)])
+    assert rc == 0
+    row = json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+    assert row["phase"] == "shield-v3"
+
+
+def test_an_empty_phase_is_refused(tmp_path):
+    for bad in ("", "   "):
+        with pytest.raises(SystemExit):
+            rr.main(["--phase", bad, "--idle-seconds", "0",
+                     "--out", str(tmp_path / "r.jsonl")])
+

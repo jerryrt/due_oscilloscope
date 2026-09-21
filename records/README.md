@@ -114,8 +114,13 @@ identity line with the SAM3X's `uid` and the programming port's
 `board_serial`, three die-temperature reads, the six census runs of the
 #87 protocol with their raw lines, the n=5 summary that drops run 1 by
 index, the tail scale from `tools/issue82_arms.py`, the declared idle
-time, the phase (`before` the board moved or `after` it arrived), and
-every condition `provenance.conditions()` carries.
+time, the phase, and every condition `provenance.conditions()` carries.
+The phase is a free label naming the arrangement the row was taken in:
+`before` and `after` were the rotation's, and the same row serves any
+later change of setup - a shield stacked on the DUT, a new board on a
+bench - under whatever label names it. What keeps rows comparable is
+the pinned image, the declared idle time and the board's own uid, not
+the phase's spelling; only an empty label is refused.
 
 A row is refused rather than written when it could not be attributed:
 no programming port, a dirty tree, a board that is not Track B, an

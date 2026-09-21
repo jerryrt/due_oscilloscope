@@ -4,6 +4,16 @@
     .venv/bin/python tools/rotation_row.py --phase before --idle-seconds 1200
     .venv/bin/python tools/rotation_row.py --phase after  --idle-seconds 1200 \
         --note "board arrived from mac-bench"
+    .venv/bin/python tools/rotation_row.py --phase shield-v3 --idle-seconds 1200 \
+        --image-rev d25f9e3 --note "Mega shield v3 on the DUT, wires unchanged"
+
+THE PHASE IS A FREE LABEL naming the arrangement the row was taken in.
+`before` and `after` were the rotation's two; the same row serves any
+later change of setup - a shield stacked on the DUT, a new board on a
+bench - so the label is whatever names that arrangement, recorded
+verbatim, and only an empty one is refused. What makes rows comparable
+is the pinned image, the declared idle time and the board's own uid,
+not the spelling of the phase.
 
 Three boards rotate across three benches, and the question is whether a
 converter tail follows the board or stays with the bench. That is a
@@ -76,7 +86,18 @@ SCHEMA = "rotation/1"
 OUT = os.path.join(ROOT, "records", "rotation.jsonl")
 CENSUS_TEST = ("tests/test_integrity.py::"
                "test_device_generated_waveform_is_continuous")
+#: The rotation's two phases, kept as the documented examples. Any
+#: non-empty label is accepted: a row names its arrangement.
 PHASES = ("before", "after")
+
+
+def phase_label(value):
+    """argparse type: a non-empty, non-blank label, recorded verbatim."""
+    if not value or not value.strip():
+        raise argparse.ArgumentTypeError("--phase must name the arrangement "
+                                         "the row is taken in (e.g. before, "
+                                         "after, shield-v3)")
+    return value
 
 _CENSUS = re.compile(
     r"^census: (?P<count>\d+) steps > (?P<threshold>\d+) codes "
@@ -308,8 +329,10 @@ def collect_row(args, board_steps=None, run_census=None, run_tail_scale=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--phase", choices=PHASES, required=True,
-                    help="before the board moved, or after it arrived")
+    ap.add_argument("--phase", type=phase_label, required=True,
+                    help="a label for the arrangement this row is taken "
+                         "in: before / after for the rotation, or e.g. "
+                         "shield-v3; any non-empty text, recorded verbatim")
     ap.add_argument("--idle-seconds", type=int, required=True,
                     help="how long the board sat idle before this row; 0 "
                          "is allowed and is recorded as 0")
