@@ -436,42 +436,6 @@ def test_playstat_rate_declines_to_guess_from_too_little():
 # -- the closed loop, on hardware -------------------------------------
 
 @pytest.mark.parametrize("rc", [44, 39])
-def test_the_closed_loop_removes_most_of_the_oversupply(board, seconds,
-                                                        calibration, rc):
-    """Objective 0i's fix, measured against its own open-loop control.
-
-    Interleaved in one test rather than compared against a recorded
-    figure, because the converter picks its state per run: a closed-loop
-    run in the slow state against an open-loop number from the fast one
-    would flatter or damn the loop by up to 0.8 pp for nothing.
-
-    What is left after the loop is startup, not rate error - see
-    test_the_closed_loop_residual_is_a_startup_cost.
-    """
-    needs_a_buffering_host("the rate loop's whole subject")
-    hz = measure.hz_for(rc)
-    secs = window(seconds, 3.0)
-    op = measure.run_play(board, dac_sps=hz, seconds=secs, drain_s=1.5)
-    cl = measure.run_play(board, dac_sps=hz, seconds=secs, drain_s=1.5,
-                          closed_loop=True)
-    for r in (op, cl):
-        assert not r.refused, r.console
-        assert r.drained
-
-    o = op.host_deficit / op.host_tx_bytes * 100
-    c = cl.host_deficit / cl.host_tx_bytes * 100
-    record(calibration, f"closed_loop_rc{rc}", {
-        "hz": hz, "open_pct": round(o, 3), "closed_pct": round(c, 3),
-        "retunes": cl.retunes})
-
-    assert cl.retunes > 0, "the loop never retuned, so this proves nothing"
-    assert o > 1.0, f"RC {rc}: open loop lost only {o:.2f}%, expected >1%"
-    assert c < o / 2, (
-        f"RC {rc}: closed loop lost {c:.2f}% against {o:.2f}% open - the "
-        f"trim is not tracking the converter")
-
-
-@pytest.mark.parametrize("rc", [44, 39])
 def test_the_closed_loop_buys_nothing_with_underruns(board, seconds, rc):
     """The loop must not pay for accuracy in starvation.
 
@@ -491,21 +455,33 @@ def test_the_closed_loop_buys_nothing_with_underruns(board, seconds, rc):
         f"RC {rc}: the closed loop cost {res.play.underruns} underruns")
 
 
-def test_the_closed_loop_leaves_an_exact_rate_alone(board, seconds):
+@pytest.mark.parametrize("rc", [65, 44, 39])
+def test_the_closed_loop_leaves_an_exact_rate_alone(board, seconds, rc):
     """At a rate the converter holds exactly there is nothing to correct.
 
-    RC 65 measures byte-exact open loop, so the loop's job here is to do
-    no harm: it should still run, and still lose nothing.
+    Every rate on the ladder is such a rate now: the oversupply the loop
+    was built to trim was the converter running slow under REFRESH(1),
+    and with the refresh held off during a stream (docs/awg.md) RC 44
+    and RC 39 deliver in full like RC 65. The loop's job at all three
+    is to do no harm: it should still run, and still lose nothing.
+
+    RC 44 and 39 used to be the loop's positive case, measured against
+    an interleaved open-loop control that had to lose more than 1%. On
+    the fix image that control loses 0.00% and can never fire again, so
+    that test would have reported the fix as a failure of the loop for
+    as long as it stood. test_integrity holds those two rates byte-exact
+    open loop; this holds the loop harmless on them.
     """
     needs_a_buffering_host("the rate loop's no-op case")
-    res = measure.run_play(board, dac_sps=measure.hz_for(65),
+    res = measure.run_play(board, dac_sps=measure.hz_for(rc),
                            seconds=window(seconds, 3.0), drain_s=1.5,
                            closed_loop=True)
     assert not res.refused, res.console
     assert res.retunes > 0, "the loop did not run"
     assert res.play.underruns == 0
     pct = res.host_deficit / res.host_tx_bytes * 100
-    assert pct < 0.1, f"RC 65 closed loop lost {pct:.3f}%, open loop loses 0"
+    assert pct < 0.1, (
+        f"RC {rc} closed loop lost {pct:.3f}%, open loop loses 0")
 
 
 @pytest.mark.slow

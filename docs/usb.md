@@ -493,6 +493,14 @@ constant-size. Interleaved against its own open-loop control:
 | 886,363 (RC 44) | 1.344%, 1.352% | 0.434%, 0.213% |
 | 1,000,000 (RC 39) | 2.151%, 2.151% | 0.480%, 0.472% |
 
+The RC 44 and RC 39 rows are `REFRESH(1)` figures. With the refresh
+held off during a stream (`docs/awg.md`) the converter delivers those
+rates in full and the open loop loses 0.000% at every rate on the
+ladder, so the loop has nothing to trim anywhere; the suite holds it
+harmless at RC 65, 44 and 39 rather than measuring a gain that no
+longer exists. A loss above 1% open loop at 44 or 39 is a regression,
+most likely the refresh running during a stream.
+
 `under=0` in every closed-loop run, which matters: the loop trims *down*
 toward the converter, so the failure it could have bought is starvation
 — and the opposite trap, over-feeding until the counter reads zero while
