@@ -796,7 +796,22 @@ shield stacked on the headers. Not the DAC, not its settling, not the
 trigger phase: pickup into the ADC's input or reference path is the
 shape of it, and the coupling path itself - pin, `ADVREF`, analog
 supply, the USB return current - is not separated by these captures.
-One board so far.
+
+Read the same way on the other two benches under the same shield, the
+disturbance has the same character on every board and a different
+strength on each: the healthy board keeps 0.15-0.20 events per 1000
+holds with no excursion past 20 codes, and the fourth board keeps
+2.6-3.5 per 1000, bounded at about 20 codes, against the large-tail
+board's 0.005. The bad sample is either of the two on every board,
+and DC reads highest on every bench. The census figures follow from
+these: a raw step is the riser plus a within-hold glitch, and at 256
+points the riser reaches 34 codes, so the fourth board's frequent
+20-code events on 34-code risers are its 54-68 crossings and 51.5
+largest, and the shielded large-tail board's one event in 200,000
+holds is its zero. One mechanism, three strengths, and a shield that
+removes it on one board, reduces it on another and leaves a bounded
+residual on the third - the shape of pickup whose coupling varies
+with each board's own layout tolerances. `records/gen-sweep-<bench>.jsonl`.
 
 ## What this method cannot do
 
