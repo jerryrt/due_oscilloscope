@@ -12,7 +12,7 @@
     },
     {
       "first": "2026-09-20T23:57:01-0400",
-      "last": "2026-09-20T23:57:01-0400",
+      "last": "2026-09-21T01:27:20-0400",
       "phase": "shield-v3"
     }
   ],
@@ -113,6 +113,102 @@
       ],
       "tail_scale_status": "ok, parity forced 0 after a tie",
       "taken_at": "2026-09-20T23:57:01-0400"
+    },
+    {
+      "bench": "windows-desk",
+      "count_range": [
+        1,
+        3
+      ],
+      "die_code_mean": 1048.3542,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 47.0,
+      "largest_range": [
+        46.5,
+        49.5
+      ],
+      "phase": "shield-v3",
+      "row_taken_at": "2026-09-21T00:36:33-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.29,
+        1.34,
+        0.84,
+        0.84
+      ],
+      "tail_scale_a1": [
+        1.09,
+        1.07,
+        1.11,
+        1.17
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T00:36:33-0400"
+    },
+    {
+      "bench": "windows-desk",
+      "count_range": [
+        1,
+        3
+      ],
+      "die_code_mean": 1047.875,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 47.5,
+      "largest_range": [
+        46.5,
+        49.0
+      ],
+      "phase": "shield-v3",
+      "row_taken_at": "2026-09-21T01:01:56-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.4,
+        1.39,
+        0.92,
+        0.85
+      ],
+      "tail_scale_a1": [
+        1.08,
+        1.14,
+        1.15,
+        1.03
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T01:01:56-0400"
+    },
+    {
+      "bench": "windows-desk",
+      "count_range": [
+        0,
+        2
+      ],
+      "die_code_mean": 1045.3125,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 46.0,
+      "largest_range": [
+        45.0,
+        48.5
+      ],
+      "phase": "shield-v3",
+      "row_taken_at": "2026-09-21T01:27:20-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.34,
+        1.31,
+        0.84,
+        0.84
+      ],
+      "tail_scale_a1": [
+        1.07,
+        1.14,
+        1.15,
+        1.08
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T01:27:20-0400"
     }
   ],
   "converter_summary": {
@@ -145,12 +241,12 @@
         "windows-desk"
       ],
       "largest_range": [
-        47.0,
-        48.5
+        45.0,
+        49.5
       ],
-      "n_rested_rows": 1,
-      "n_rows": 1,
-      "rested_largest_median": 48.0
+      "n_rested_rows": 4,
+      "n_rows": 4,
+      "rested_largest_median": 47.25
     }
   },
   "first_seen": "2026-09-20T20:38:48-0400",
@@ -161,15 +257,15 @@
   },
   "generated": {
     "bench": "windows-desk",
-    "rev": "5a37dcf-dirty",
+    "rev": "8dbbe10-dirty",
     "tool": "tools/board_profile.py"
   },
   "history": [
     {
       "bench": "windows-desk",
       "first": "2026-09-20T20:38:48-0400",
-      "last": "2026-09-20T23:57:01-0400",
-      "rows": 2
+      "last": "2026-09-21T01:27:20-0400",
+      "rows": 5
     },
     {
       "bench": "linux-x1",
