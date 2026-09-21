@@ -1,99 +1,110 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" font-family="Helvetica, Arial, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 600" font-family="Helvetica, Arial, sans-serif" font-size="14">
   <title>Why a SAR ADC pin wants 68 ohms and 470 pF, and what the reference does</title>
   <style>
     .w{stroke:#1d2b28;stroke-width:1.8;fill:none}
     .r{stroke:#1d2b28;stroke-width:1.6;fill:#fff}
-    .t{fill:#1d2b28}
-    .h{fill:#1d2b28;font-weight:bold;font-size:14px}
-    .m{fill:#5d6b67;font-size:11.5px}
-    .acc{fill:#b8393b;font-weight:bold}
-    .k{fill:#1d7a8a}
+    .t{fill:#1d2b28;font-size:14px}
+    .h{fill:#1d2b28;font-weight:bold;font-size:17px}
+    .m{fill:#5d6b67;font-size:14px}
+    .acc{fill:#b8393b;font-weight:bold;font-size:14px}
+    .k{fill:#1d7a8a;font-size:14px;font-weight:bold}
     .dot{fill:#1d2b28}
-    .chip{fill:#f5dede;stroke:#b8393b;stroke-width:1.4;stroke-dasharray:4 3}
+    .chip{fill:#f5dede;stroke:#b8393b;stroke-width:1.4;stroke-dasharray:5 3}
   </style>
-  <rect width="960" height="380" fill="#f7f8f7"/>
+  <rect width="940" height="600" fill="#f7f8f7"/>
+  <line x1="470" y1="20" x2="470" y2="580" stroke="#d5dcd9"/>
 
   <!-- ===== left: SAR drive ===== -->
   <g transform="translate(20,30)">
     <text x="0" y="0" class="h">The sample-and-hold takes its charge in nanoseconds</text>
-    <!-- opamp -->
-    <path class="w" d="M20 70 L20 130 L80 100 Z"/>
-    <text x="4" y="104" class="m">op-amp</text>
-    <path class="w" d="M80 100 L120 100"/>
+    <!-- op-amp -->
+    <path class="w" d="M20 80 L20 140 L80 110 Z"/>
+    <text x="0" y="165" class="m">op-amp</text>
+    <path class="w" d="M80 110 L110 110"/>
     <!-- 68R -->
-    <rect x="120" y="93" width="44" height="14" class="r"/><text x="142" y="86" text-anchor="middle" class="m">68 Ω</text>
-    <path class="w" d="M164 100 L240 100"/>
-    <circle cx="200" cy="100" r="3" class="dot"/>
+    <rect x="110" y="103" width="50" height="14" class="r"/><text x="135" y="96" text-anchor="middle" class="m">68 Ω</text>
+    <path class="w" d="M160 110 L250 110"/>
+    <circle cx="200" cy="110" r="3.5" class="dot"/>
     <!-- 470p -->
-    <path class="w" d="M200 100 L200 130 M190 130 L210 130 M190 138 L210 138 M200 138 L200 160"/>
-    <path class="w" d="M190 160 L210 160 M194 165 L206 165 M198 170 L202 170"/>
-    <text x="215" y="140" class="m">470 pF</text>
-    <text x="215" y="154" class="acc">the reservoir</text>
+    <path class="w" d="M200 110 L200 150 M188 150 L212 150 M188 160 L212 160 M200 160 L200 190"/>
+    <path class="w" d="M188 190 L212 190 M192 196 L208 196 M196 202 L204 202"/>
+    <text x="150" y="240" class="m">470 pF</text>
+    <text x="130" y="258" class="acc">the reservoir</text>
     <!-- chip boundary -->
-    <rect x="240" y="40" width="200" height="150" rx="6" class="chip"/>
-    <text x="340" y="58" text-anchor="middle" class="m">inside the ADC</text>
+    <rect x="250" y="50" width="190" height="170" rx="6" class="chip"/>
+    <text x="345" y="70" text-anchor="middle" class="m">inside the ADC</text>
     <!-- switch -->
-    <path class="w" d="M240 100 L270 100"/>
-    <circle cx="270" cy="100" r="3" class="dot"/>
-    <path class="w" d="M270 100 L300 84"/>
-    <circle cx="306" cy="100" r="3" class="dot"/>
-    <path class="w" d="M306 100 L340 100"/>
-    <text x="268" y="122" class="m">sample switch</text>
+    <path class="w" d="M250 110 L280 110"/>
+    <circle cx="280" cy="110" r="3.5" class="dot"/>
+    <path class="w" d="M280 110 L312 92"/>
+    <circle cx="318" cy="110" r="3.5" class="dot"/>
+    <path class="w" d="M318 110 L360 110"/>
+    <text x="345" y="135" text-anchor="middle" class="m">sample switch</text>
     <!-- Cs -->
-    <path class="w" d="M340 100 L340 120 M330 120 L350 120 M330 128 L350 128 M340 128 L340 150"/>
-    <path class="w" d="M330 150 L350 150 M334 155 L346 155 M338 160 L342 160"/>
-    <text x="355" y="128" class="m">a few pF</text>
-    <text x="355" y="142" class="m">sampling cap</text>
+    <path class="w" d="M360 110 L360 150 M348 150 L372 150 M348 160 L372 160 M360 160 L360 190"/>
+    <path class="w" d="M348 190 L372 190 M352 196 L368 196 M356 202 L364 202"/>
+    <text x="378" y="158" class="m">a few pF</text>
+    <text x="378" y="176" class="m">sampling cap</text>
     <!-- explanation -->
-    <text x="0" y="215" class="m">When the switch closes, the sampling capacitor must charge to the input voltage before it opens again.</text>
-    <text x="0" y="231" class="m">An op-amp cannot respond that fast, so the 470 pF, hundreds of times larger, supplies the charge and barely</text>
-    <text x="0" y="247" class="m">moves; the 68 Ω keeps the op-amp stable into that capacitor and refills it between samples.</text>
-    <text x="0" y="271" class="acc">Without the reservoir the reading sags by the ratio of the two capacitors, and a wire is worse than an op-amp.</text>
-    <text x="0" y="295" class="m">Corner of 68 Ω × 470 pF ≈ 5 MHz: this is the charge path, not the anti-alias filter.</text>
+    <text x="0" y="300" class="m">When the switch closes, the sampling capacitor</text>
+    <text x="0" y="320" class="m">must charge to the input voltage before it opens.</text>
+    <text x="0" y="340" class="m">An op-amp cannot respond that fast. The 470 pF,</text>
+    <text x="0" y="360" class="m">hundreds of times larger, supplies the charge and</text>
+    <text x="0" y="380" class="m">barely moves; the 68 Ω keeps the op-amp stable</text>
+    <text x="0" y="400" class="m">into that capacitor and refills it between samples.</text>
+    <text x="0" y="432" class="acc">Without the reservoir the reading sags by the</text>
+    <text x="0" y="450" class="acc">ratio of the two capacitors. A bare wire is worse.</text>
+    <text x="0" y="482" class="m">68 Ω × 470 pF gives a corner near 5 MHz: this is</text>
+    <text x="0" y="502" class="m">the charge path, not the anti-alias filter.</text>
   </g>
 
   <!-- ===== right: reference ===== -->
-  <g transform="translate(520,30)">
+  <g transform="translate(500,30)">
     <text x="0" y="0" class="h">An ADC reads a ratio, so the reference is the scale</text>
     <!-- 3.3V rail -->
-    <text x="0" y="60" class="t">3.3 V</text>
-    <path class="w" d="M40 56 L70 56"/>
-    <rect x="70" y="49" width="44" height="14" class="r"/><text x="92" y="42" text-anchor="middle" class="m">56 Ω</text>
-    <path class="w" d="M114 56 L160 56"/>
-    <circle cx="160" cy="56" r="3" class="dot"/>
-    <!-- shunt ref as zener -->
-    <path class="w" d="M160 56 L160 80"/>
-    <path class="w" d="M150 80 L170 80 L160 100 Z M150 100 L170 100 M148 100 L150 96 M170 100 L172 104"/>
-    <path class="w" d="M160 100 L160 120 M150 120 L170 120 M154 125 L166 125 M158 130 L162 130"/>
-    <text x="178" y="92" class="m">LM4040-3.0</text>
-    <text x="178" y="106" class="m">holds 3.000 V, 0.1%</text>
+    <text x="0" y="74" class="t">3.3 V</text>
+    <path class="w" d="M42 70 L70 70"/>
+    <rect x="70" y="63" width="50" height="14" class="r"/><text x="95" y="56" text-anchor="middle" class="m">56 Ω</text>
+    <path class="w" d="M120 70 L170 70"/>
+    <circle cx="170" cy="70" r="3.5" class="dot"/>
+    <!-- shunt ref drawn as a zener -->
+    <path class="w" d="M170 70 L170 100"/>
+    <path class="w" d="M158 100 L182 100 L170 124 Z M158 124 L182 124 M154 124 L158 118 M182 124 L186 130"/>
+    <path class="w" d="M170 124 L170 150 M158 150 L182 150 M162 156 L178 156 M166 162 L174 162"/>
+    <text x="196" y="112" class="m">LM4040-3.0</text>
+    <text x="196" y="130" class="m">holds 3.000 V</text>
+    <text x="196" y="148" class="m">to 0.1%</text>
     <!-- cap -->
-    <path class="w" d="M160 56 L230 56 L230 76 M220 76 L240 76 M220 84 L240 84 M230 84 L230 120 M220 120 L240 120 M224 125 L236 125 M228 130 L232 130"/>
-    <text x="246" y="84" class="m">10 µF</text>
+    <path class="w" d="M170 70 L290 70 L290 96 M278 96 L302 96 M278 106 L302 106 M290 106 L290 150 M278 150 L302 150 M282 156 L298 156 M286 162 L294 162"/>
+    <text x="308" y="106" class="m">10 µF</text>
     <!-- buffer -->
-    <path class="w" d="M230 56 L290 56"/>
-    <path class="w" d="M290 36 L290 76 L330 56 Z"/>
-    <path class="w" d="M310 66 L310 90 L280 90 L280 70 L290 70" />
-    <path class="w" d="M330 56 L380 56"/>
-    <circle cx="380" cy="56" r="4" class="dot"/>
-    <text x="356" y="46" class="k">VREF 3.0 V</text>
-    <text x="388" y="60" class="m">→ AREF, and the level shift</text>
-    <!-- divider to 1.5 -->
-    <path class="w" d="M380 56 L380 120"/>
-    <rect x="373" y="120" width="14" height="40" class="r"/><text x="392" y="145" class="m">0.1%</text>
-    <path class="w" d="M380 160 L380 180"/>
-    <circle cx="380" cy="180" r="3" class="dot"/>
-    <rect x="373" y="180" width="14" height="40" class="r"/>
-    <path class="w" d="M380 220 L380 236 M370 236 L390 236 M374 241 L386 241 M378 246 L382 246"/>
-    <path class="w" d="M380 180 L410 180"/>
-    <text x="414" y="184" class="k">1.5 V, buffered → the mid-rail</text>
+    <path class="w" d="M290 70 L340 70"/>
+    <path class="w" d="M340 50 L340 90 L385 70 Z"/>
+    <path class="w" d="M362 80 L362 100 L330 100 L330 82 L340 82"/>
+    <path class="w" d="M385 70 L420 70"/>
+    <circle cx="420" cy="70" r="4" class="dot"/>
+    <text x="352" y="42" class="k">VREF 3.0 V</text>
+    <!-- divider down to 1.5 V -->
+    <path class="w" d="M420 70 L420 190"/>
+    <rect x="413" y="190" width="14" height="44" class="r"/>
+    <path class="w" d="M420 234 L420 256"/>
+    <circle cx="420" cy="256" r="3.5" class="dot"/>
+    <rect x="413" y="256" width="14" height="44" class="r"/>
+    <path class="w" d="M420 300 L420 318 M408 318 L432 318 M412 324 L428 324 M416 330 L424 330"/>
+    <text x="330" y="216" text-anchor="end" class="m">0.1% resistors</text>
+    <path class="w" d="M420 256 L400 256"/>
+    <text x="392" y="260" text-anchor="end" class="k">1.5 V, buffered</text>
+    <text x="392" y="278" text-anchor="end" class="m">the mid-rail</text>
+    <text x="400" y="180" text-anchor="end" class="m">to VREF+ (AREF on the Due)</text>
+    <text x="400" y="198" text-anchor="end" class="m">and the level-shift current</text>
     <!-- explanation -->
-    <text x="0" y="215" class="m">code = 4095 × Vin / Vref. A reference made from a</text>
-    <text x="0" y="231" class="m">resistor divider off the rail moves with the rail and</text>
-    <text x="0" y="247" class="m">the load, so every reading moves with it.</text>
-    <text x="0" y="271" class="acc">One part is the full scale, the level shift and</text>
-    <text x="0" y="287" class="acc">the mid-rail: a drift cancels in the ratio.</text>
-    <text x="0" y="311" class="m">The buffer exists because the shunt can only supply a</text>
-    <text x="0" y="327" class="m">little current; VREF+ and the network need more.</text>
+    <text x="0" y="372" class="m">code = 4095 × Vin / Vref. A mid-rail made from a</text>
+    <text x="0" y="392" class="m">divider off the 3.3 V rail moves with the rail and</text>
+    <text x="0" y="412" class="m">the load, so every reading moves with it.</text>
+    <text x="0" y="444" class="acc">One part is the full scale, the level shift and</text>
+    <text x="0" y="462" class="acc">the mid-rail: a drift cancels in the ratio.</text>
+    <text x="0" y="494" class="m">The buffer is there because the shunt can supply</text>
+    <text x="0" y="514" class="m">only a little current; VREF+ and the network</text>
+    <text x="0" y="534" class="m">need more than it should give.</text>
   </g>
 </svg>
