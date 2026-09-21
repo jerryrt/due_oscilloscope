@@ -174,6 +174,49 @@ The shape that fits this project is PSLab's level shift with
 OpenScope's filter in front of it and Labrador's output pins after it,
 on whichever rail Stage B settled.
 
+## Building it: from this note to a wired shield
+
+In the order the measurement asks for, each step with the thing that
+proves it.
+
+1. **Decide the rails and check the AREF link.** Single 3.3 V or
+   generated ± rails, once; every op-amp choice follows. Read the Due
+   schematic for how ADVREF reaches the AREF header pin and the 3.3 V
+   rail, and cut or lift whatever ties them before a 3.0 V reference
+   can hold the pin.
+2. **Write the requirements as numbers.** Reference voltage and
+   tolerance, pin drive values, buffer bandwidth against the
+   converter's Nyquist, DAC stage span and filter corner, input ranges
+   if Stage B is in scope. Each line becomes a meter reading or a
+   sweep figure later.
+3. **Draw the schematic in KiCad, one sheet per stage**, from the
+   Mega shield template so the header pins are right and the later PCB
+   is a drop-in: the reference sheet, the pin-driver sheet, the DAC
+   stage, and the ranges only if in scope. Footprints a hand build can
+   place; the BOM exported from the schematic.
+4. **Simulate the arithmetic** in KiCad's ngspice with the vendor
+   op-amp models: a DC sweep of the summer and the DAC stage across
+   the source's span for centring and endpoints, an AC sweep for the
+   filter corners. An afternoon that removes the class of error that
+   costs a second build.
+5. **Build Stage A on the proto shield and measure it**: AREF at
+   3.000 V and the 1.5 V pin at half of it with a meter, then
+   `tools/gen_sweep.py` on the board with the most residual, read
+   within holds against its existing rows. Short wires, decoupling at
+   every op-amp's pins, one ground point to the Due's analog ground.
+6. **Stage C, then Stage B**, each measured through the loopback the
+   same way before it is trusted. A ± rail generator, if chosen, goes
+   in before Stage B and gets its own sweep, since a converter beside
+   the ADC is a coupling path of its own.
+7. **The PCB**, from the same schematic on the Mega template: a plane
+   under the analog section, the pin-driver parts within a centimetre
+   of the header, the reference away from the USB side. The sweep
+   compares the two builds directly.
+
+The KiCad project, its simulations and the BOM belong under
+`hardware/afe-shield/`; a capture's note names the shield revision it
+was taken with.
+
 ## What the shield cannot fix
 
 The converter's supply pins are on the Due. If the sweep shows the
