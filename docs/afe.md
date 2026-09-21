@@ -132,6 +132,27 @@ Either way the switch selects a feedback resistor, each with its own
 capacitor so the bandwidth is set once, and the offset comes from a
 Due PWM pin through the same two-pole RC and a range-scaled resistor.
 
+**The chosen form: single rail, passive where possible.** No new
+rail; simplicity and robustness over range. Per channel:
+
+| capability | form | parts | why it is robust |
+|---|---|---|---|
+| protection | 1 MΩ in series, then a BAT54S from the node to 3.3 V and to ground | 1 R, 1 dual diode | ±20 V is ±20 µA; nothing active in the path |
+| attenuation and mid-rail | a divider: the 1 MΩ to a shunt resistor whose bottom end is the buffered 1.5 V node (Labrador's form) | 1 R | passive; the node cannot leave 0–3 V for any input inside ±20 V |
+| ranges, if wanted | a TS3A5017 switching the shunt resistor | 1 switch per two channels, 4 R | the switch never sees the input |
+| offset | the divider's bottom end driven by a Due PWM pin through two RC sections and a buffer; tie to 1.5 V if not wanted | 2 R, 2 C, 1 op-amp section, shared | moves the trace with no gain change |
+| buffer into the ADC | a rail-to-rail follower, then 68 Ω and 470 pF | 1 op-amp section, 1 R, 1 C | a 3.3 V op-amp cannot drive the pin outside its limits |
+| anti-alias | a capacitor across the shunt resistor | 1 C | passive, set once |
+| DAC output | a follower, or gain 1.5 about 1.65 V; two RC sections; 1 kΩ load, 56 Ω series | 1 op-amp section, 4 R, 2 C | the series R and the op-amp's limit are the protection |
+
+One quad rail-to-rail op-amp of the MCP6024 class, 10 MHz so the
+follower stays transparent to the converter's Nyquist, covers both
+channel buffers, the reference buffer and the offset buffer; a 1 MHz
+part is more forgiving and rolls off too early. Check the chosen
+part's input common-mode range covers the rails *(check)*. Given up
+against OpenScope's active form: exactly 1 MΩ of input impedance, and
+low-noise sensitive ranges, neither of which the loopback bench uses.
+
 ### Stage C: the DAC output stage
 
 OpenScope's output chain transfers whole, with the ladder replaced by
