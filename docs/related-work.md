@@ -120,6 +120,34 @@ on a 3.3 V single supply unless a rail is worth generating.
 | calibration in hardware | readback through a feedback network | none | none | none |
 | fitness for this shield | **high**: the reference and the pin driver are exactly the two stages the within-hold reading asked for, on 3.3 V, with parts in production | **medium**: the PGA block transfers as drawn; the rail generator is the model if ± rails are wanted; the input stage does not transfer | **low**: the divider form and the output-pin trick transfer; the amplifier, the reference and the differential ADC do not | **low**: the form factor and the limiter idea; an LM324 on 5 V has neither the swing nor the bandwidth |
 
+Why each verdict:
+
+- **OpenScope MZ, high.** Its reference and its pin driver are the two
+  stages the within-hold reading pointed at, both on 3.3 V, both from
+  parts in production, and the reference already derives the mid-rail
+  the calibration plan wants. Nothing else on its sheets is needed.
+- **PSLab, medium.** The MCP6S21 programmable-gain block on 3.3 V, with
+  a buffered mid-rail as its reference, transfers as drawn and is the
+  cleanest route to gain steps without an analog mux. Its boost,
+  inverter and zener-follower supply is the model if ± rails are ever
+  worth having. The input stage does not transfer: a TL082 on ±6 V
+  with its non-inverting input at true ground cannot exist on one
+  3.3 V rail. Nothing on the reference, nothing at the pin, no
+  protection beyond a series megohm.
+- **Labrador, low.** The nearest architecture on paper and the
+  thinnest analog side: an LM324 on a boosted rail as a bare follower
+  into the ADC, no reference part, no clamps, no filter, and a
+  differential ADC with the mid-rail on its negative pin, which the
+  Due does not have. What transfers is small and useful: the 1M/75k
+  divider with AC and DC pins, and the generator's output form, a 1k
+  load and 56 Ω series with an AC-coupled alternative pin.
+- **Scoppy AFE 3, low.** The right physical shape and nothing else. An
+  LM324 on 5 V has neither the swing nor the bandwidth, there is no
+  reference and no shunt capacitor at the pin, and the divider-plus-
+  gain arithmetic only works for small signals. Worth taking: the
+  input limiter, a Schottky clamp at the divided node and a second
+  op-amp section as a current sink behind 220 Ω.
+
 The synthesis the table points to: OpenScope's reference and pin driver,
 PSLab's PGA where variable gain is wanted, Labrador's output-pin form
 for the DAC stage behind a rail-to-rail op-amp, and Scoppy's limiter at
