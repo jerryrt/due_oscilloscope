@@ -1,83 +1,91 @@
 # The analog front end on the shield
 
-**Status: a design note, nothing built.** It reads the OpenScope MZ
-input stage and reference from their schematic sheets
-(`docs/datasheets/openscope-mz/`), says what each part is for, and
-says how each stage lands on a Mega shield over the Due. "Front end"
-elsewhere in this project means the Qt window (`docs/frontend.md`);
-this file is the analog one, so it is called the AFE.
+**Status: a build requirement, nothing built.** The requirement and
+the build come first; the reasoning that produced them is at the end.
+"Front end" elsewhere in this project means the Qt window
+(`docs/frontend.md`); this file is the analog one, so it is called the
+AFE. The Due and Mega Proto Shield Rev3 schematics it reads are under
+`docs/datasheets/arduino/`, the OpenScope MZ sheets under
+`docs/datasheets/openscope-mz/`.
 
-Read `docs/noise.md` ("Within holds") for the measurement this exists
-to satisfy, `docs/related-work.md` for the other designs compared, and
-`docs/scope.md` Phase 3 for the list this fills in.
+## The build requirement
 
-## The measurement first
+Every figure is a design estimate from the parts and the
+converter, *(check)* until the sweep and a meter replace it. It is
+written so each line becomes a measurement.
 
-The within-hold reading on three boards says the residual disturbance
-is on the reading side: a random, symmetric, single-sample kick of
-tens of codes, present with no signal, worse with USB traffic, removed
-on one board by a stacked shield that touches nothing but the headers.
-Two coupling paths are left open: the ADC pin and the wire feeding it,
-and the reference and analog supply. The AFE's first two stages are
-those two paths, and each is judged with `tools/gen_sweep.py` before
-and after, on the board with the most residual, by the within-hold
-rate and the largest excursion. That, not a bandwidth figure, is the
-acceptance test.
-
-## The OpenScope MZ input chain, part by part
-
-One channel, from the connector to the ADC pin. Values are as printed
-on the sheet.
-
-![The OpenScope MZ input chain as blocks](img/afe-openscope-chain.svg)
-
-| stage | parts | what it does |
+| quantity | estimate *(check)* | what sets it |
 |---|---|---|
-| input attenuator | R31 1 MΩ into the inverting input of IC5A (LMV116), R30 200 kΩ feedback with C27 0.3 pF, non-inverting input at ground | gain −0.2, input impedance 1 MΩ. The inverting input is a virtual ground, so the pin never sees the input voltage, and 1 MΩ limits a ±20 V input to ±20 µA into the op-amp's own input clamps. That is the whole protection. ±20 V in gives ∓4 V out, which needs rails wider than 3.3 V; the sheet does not show this op-amp's supply |
-| level shift into the summing node | R32 3.6 kΩ from IC5A's output, R33 1.2 kΩ + C29 1 µF + R34 2.21 kΩ from VREF3V0, C28 33 pF across R32 | the second stage is an inverting summer; the filtered 3.0 V reference through 3.41 kΩ is the current that centres the output when the input is zero, and C28 lets edges through the 3.6 kΩ faster than the node capacitance would |
-| gain select | IC4 TS3A5017, a dual 4:1 analog switch on 3.3 V; bank 2 selects the feedback resistor of IC6A: R21 1.33 kΩ with C21 91 pF, R27 2.26 kΩ with C22 51 pF, R28 4.53 kΩ with C25 22 pF, R29 18 kΩ | gain −Rf / 3.6 kΩ: 0.37, 0.63, 1.26, 5.0. With the first stage's 0.2 the net gains are 3/40, 1/8, 1/4 and 1, the sheet's four ranges: ±20, ±12, ±6 and ±1.5 V full scale. Each feedback capacitor gives the same corner, about 1.3–1.6 MHz, so the bandwidth is set once, in the feedback, and holds across ranges; the manual's 2 MHz at −3 dB is this |
-| second stage | IC6A LMV116, non-inverting input at VREF1V5 through R36 1 kΩ and C30 1 µF | the inverting summer whose output is the 0–3 V signal centred on 1.5 V |
-| offset | PWM from the microcontroller through R22 470 Ω, C23 4.7 µF, R23 511 Ω, C24 4.7 µF (two poles near 70 Hz) into IC3C (LMV324) as a buffer, then bank 1 of the same switch selects R17 10 kΩ, R20 2.4 kΩ, R24 1.37 kΩ or R26 1.02 kΩ into the summing node | the offset resistor changes with the range so that one PWM step moves the trace by the same fraction of the screen at every gain; the 10 mV PWM step the manual quotes is this path's resolution |
-| ADC pin driver | R35 68 Ω series, C31 470 pF to ground | the sample-and-hold's charge comes from the 470 pF, not from the op-amp through the switch, and the 68 Ω isolates the op-amp from the capacitor. The corner is about 5 MHz: this is not the anti-alias filter, the feedback capacitors are |
+| input range | ±20 V DC-coupled, both polarities with no negative rail; one fixed range, or ±20 / ±5 / ±1.5 V with a switched shunt | 1 MΩ into 75 kΩ to 1.5 V puts −20 V at 0.1 V, 0 V at 1.5 V, +20 V at 2.9 V on a 3.0 V scale; the mid-rail is subtracted in software |
+| input impedance | 1.07 MΩ, a few pF | the divider |
+| resolution at the pin | 12 bits over 3.0 V, 0.73 mV per code | the ADC and the reference |
+| resolution referred to input | 10 mV per code at ±20 V, 2.6 mV at ±5 V, 0.8 mV at ±1.5 V | the divider ratio |
+| noise referred to input | about 1 code rms on a healthy board: 10–20 mV rms at ±20 V, 1–2 mV at ±1.5 V | the converter; the divider's thermal noise is tens of µV |
+| effective bits | 10 to 11 | the SAM3X ADC; no front end raises it |
+| DC accuracy before calibration | gain within 0.3%, offset within a few codes | LM4040 at 0.1%, 0.1% divider, op-amp offset under a code |
+| DC accuracy after per-board calibration | 1 to 2 codes | the reference is the scale; the profile carries two points |
+| drift | about 0.3 mV over 30 °C at full scale | the reference grade bought |
+| analog bandwidth | 200–300 kHz flat, by choice; a 10 MHz buffer is transparent | the anti-alias capacitor across the shunt against the sample rate |
+| sample rate behind it | 886 ksps one channel, 453 ksps each on two | the converter, unchanged |
+| rise time | 1–2 µs | the anti-alias corner |
+| channel crosstalk | below a code | the buffered drive removes the sample-and-hold's charge memory |
+| offset | ±full screen at every range, 0.8 mV steps, settles in tens of ms | 12-bit PWM through two RC sections |
+| protection | ±20 V continuous with margin, brief transients to about ±100 V, ESD by the clamps | 1 MΩ series, BAT54S to the rails, the op-amp's diodes |
+| output range | 0.55–2.75 V as a follower (2.2 V peak to peak about 1.65 V), or 0.03–3.27 V at gain 1.5; unipolar, never below ground | the DAC's window and a rail-to-rail op-amp on 3.3 V, which loses about 30 mV at each rail |
+| output resolution | 12 bits: 0.54 mV per code as a follower, 0.8 mV at gain 1.5 | the DAC |
+| output offset | the output stage's own summing term from the same PWM: the waveform's centre moves anywhere the amplitude leaves room, amplitude plus offset within 0.03–3.27 V | the single rail bounds it; a smaller amplitude buys more offset travel |
+| output impedance and coupling | 56 Ω series, a DC pin and a 1 µF AC pin | Labrador's output form |
+| generator rate and frequency | 1.4 MS/s updates; sines clean to ~100–200 kHz, squares to a few hundred kHz | the DAC and the reconstruction corner; `docs/awg.md`'s ceilings still apply |
+| generator drive | 10–20 mA into 56 Ω series, short-circuit safe | the op-amp's current limit |
+| frequency accuracy | about 10 ppm | the master clock, measured |
+| cleanliness, the acceptance | within-hold events over 10 codes at or below 0.2 per 1000 holds on every board, largest excursion at or below 12 codes | the two healthy shielded boards set the floor; the fourth board is the test |
 
-## The OpenScope MZ output chain, part by part
+Not achieved by construction: bipolar generator output, inputs beyond
+±20 V, more than 12 bits, bandwidth beyond half the sample rate,
+differential inputs. Noise and effective bits are the converter's;
+the AFE's job is to stop making them worse, which the cleanliness
+line states as a number, and to turn codes into volts, which the
+reference line does.
 
-The generator's output stage is the input chain run backwards, and it
-is on the same sheet as the ladder (`awg-r2r-ladder.png`). The source
-is a 10-bit R-2R ladder on ten port pins, 0 to 3.3 V, a staircase at
-up to 10 MS/s; everything after it would serve a DAC just as well.
+## The two boards, as their schematics show them
 
-![The OpenScope MZ output chain as blocks](img/afe-output-chain.svg)
+**The Due's reference path** (`arduino-due-schematic.pdf`, top centre).
+The 3.3 V rail reaches the reference node through JR1, a mounted 0 Ω
+link; BR1 beside it is marked NM, not mounted. The AREF header pin
+joins the same node through a series resistor whose value is not
+printed on the sheet *(read it on the board with a meter)*. From the
+node, L3, a ferrite, feeds ADVREF, pin 75, with 100 nF to ground on
+each side (C34, C19). `docs/hardware.md` measured ADVREF at 3270 mV,
+which is the regulator's 3.3 V less the drop through that path. So:
+**to drive AREF from the shield, JR1 must be removed**, after which
+the external reference reaches ADVREF through the AREF resistor and
+the ferrite, already decoupled. Nothing else on the board ties the
+node to the rail.
 
-| stage | parts | what it does |
-|---|---|---|
-| reconstruction filter | R61 750 Ω with C55 36 pF, then R62 750 Ω with C56 43 pF to ground | two RC sections that round the ladder's steps into a waveform before anything amplifies them; corners near 3–5 MHz, sized for a 10 MS/s source |
-| signal into the summing node | R63 2.2 kΩ into the inverting input of IC10A | the filtered staircase becomes a current at the − pin |
-| reference term | VREF3V0 through R66 1.2 kΩ, C57 1 µF, R67 1.64 kΩ into the same node | a constant current that removes the ladder's DC: the ladder is unipolar, the output is bipolar, and this is the difference |
-| offset term | PWM pin RG0 through R58 499 Ω, C53 10 µF, R57 510 Ω, C52 2.2 µF, R59 2.43 kΩ into the same node | the user's offset, a two-pole-filtered PWM as on the input side, injected as a third current |
-| the summer | IC10A MCP6H91, non-inverting input at VREF1V5 through R69 1 kΩ with C58 1 µF, feedback R64 4.125 kΩ with C54 5.6 pF | inverting summer centred on 1.5 V: gain −4125/2200 ≈ −1.9 on the signal, corner near 7 MHz in the feedback. The MCP6H91 is a 16 V part because the output has to reach ±3 V, so this stage sits on the board's ± rails |
-| output | straight from the op-amp to the connector | 10 mA is the op-amp's own limit; no series resistor is drawn |
+**The Mega Proto Shield Rev3** (`arduino-mega-proto-Shield-reference-design.pdf`,
+EAGLE files beside it). Every header pin is passed straight through
+to a parallel row of pads: digital on J3/J4 and J1/J5, the analog
+pins on ADCL J6 and ADCH J2, the communication row on COMM J8, power
+on POWER J7, and the 22–53 double rows on JP3/JP7 and JP4/JP8. The
+shield's only wiring of its own brings **5 V and ground**, not
+3.3 V, to its two bus rows and to a 14-pin SOIC footprint at 50 mil
+pitch, plus a reset button and an ICSP header carrying 5 V, ground
+and reset. What that means for the AFE:
 
-The reference, the offset and the signal meet at one node under one
-feedback, exactly as on the input side. The two chains share the same
-two reference voltages, so the generator's zero and the scope's zero
-are the same volt.
+- 3.3 V is taken from the POWER row's 3.3 V pad and run as its own
+  bus; the shield's 5 V rows are not used by the analog section.
+- AREF and a ground pad sit next to each other on the COMM row, which
+  is where the reference lands.
+- The Due's DAC0 and DAC1 pins are on the pass-through rows like any
+  other pin, so the loopback and the output stage wire to their pads.
+- The SOIC-14 footprint takes a quad op-amp of the MCP6024 class
+  exactly: the two channel followers, the reference buffer and the
+  offset buffer in one package on the one footprint the shield offers.
+- The board has no ground plane and no separate analog ground pin on
+  the Due to reach for; one ground pad near the analog row is the
+  shield's star point.
 
-## The reference
-
-![The pin driver and the reference, drawn](img/afe-sar-drive.svg)
-
-| parts | what it does |
-|---|---|
-| D2 LM4040AIM3-3.0 shunt reference, R134 56 Ω from 3.3 V, C94 10 µF | a 3.000 V, 0.1% reference biased at about 5 mA, decoupled |
-| IC3A LMV324 unity buffer, R132 5.36 kΩ + R133 4.64 kΩ + C93 1 µF at its input | VREF3V0, driven onto the chip's VREF+ pin and into the level-shift path with a source that can supply current |
-| R135 5.36 kΩ, R136 4.64 kΩ, R137 10 kΩ, all 0.1%, C95 1 µF, IC3B LMV324 buffer | VREF1V5, exactly half the reference, the mid-scale the second stage centres on |
-
-The reference is the ADC's full scale, the level shift's current and
-the mid-rail, all from one part, so a drift moves everything together
-and cancels in the ratio. That is the property to keep.
-
-## Landing it on the shield
+## The build, stage by stage
 
 The Due's headers bring out every ADC pin, both DAC pins, 3.3 V, 5 V,
 ground and AREF, so the whole chain fits on a stacked board. The bench
@@ -88,15 +96,14 @@ them.
 
 ### Stage A: the reference onto AREF, and the pin driver
 
-- The LM4040-3.0 circuit as drawn, buffered, onto the Due's AREF pin.
-  **Check the Due's own schematic first**: how ADVREF is tied to the
-  3.3 V rail on the board decides whether a link must be cut before an
-  external 3.0 V can hold the pin, and `docs/hardware.md` records
-  ADVREF measured at 3270 mV, which says something already sits
-  between the rail and the pin. A 3.0 V full scale costs 9% of the
-  code range and buys a reference that is the scale itself, which is
-  what the calibration direction wants; the VREF1V5 buffer onto a
-  spare ADC pin is the second point the profile needs.
+- The LM4040-3.0 circuit as drawn, buffered, onto the Due's AREF pin,
+  **after JR1 is removed from the Due**: that 0 Ω link is what ties
+  the reference node to the 3.3 V rail, and with it gone the AREF pin
+  reaches ADVREF through the board's own series resistor, ferrite and
+  100 nF pair. A 3.0 V full scale costs 9% of the code range and buys
+  a reference that is the scale itself, which is what the calibration
+  direction wants; the VREF1V5 buffer onto a spare ADC pin is the
+  second point the profile needs.
 - A unity buffer from the DAC0 wire into A0 through 68 Ω and 470 pF,
   the same on A1. On a 3.3 V single rail the LMV116's output reaches
   the rails but its input does not, so a rail-to-rail-input part is
@@ -234,55 +241,16 @@ The shape that fits this project is PSLab's level shift with
 OpenScope's filter in front of it and Labrador's output pins after it,
 on whichever rail Stage B settled.
 
-## The requirement, as estimates
-
-Every figure here is a design estimate from the parts and the
-converter, *(check)* until the sweep and a meter replace it. It is
-written so each line becomes a measurement.
-
-| quantity | estimate *(check)* | what sets it |
-|---|---|---|
-| input range | ±20 V DC-coupled, both polarities with no negative rail; one fixed range, or ±20 / ±5 / ±1.5 V with a switched shunt | 1 MΩ into 75 kΩ to 1.5 V puts −20 V at 0.1 V, 0 V at 1.5 V, +20 V at 2.9 V on a 3.0 V scale; the mid-rail is subtracted in software |
-| input impedance | 1.07 MΩ, a few pF | the divider |
-| resolution at the pin | 12 bits over 3.0 V, 0.73 mV per code | the ADC and the reference |
-| resolution referred to input | 10 mV per code at ±20 V, 2.6 mV at ±5 V, 0.8 mV at ±1.5 V | the divider ratio |
-| noise referred to input | about 1 code rms on a healthy board: 10–20 mV rms at ±20 V, 1–2 mV at ±1.5 V | the converter; the divider's thermal noise is tens of µV |
-| effective bits | 10 to 11 | the SAM3X ADC; no front end raises it |
-| DC accuracy before calibration | gain within 0.3%, offset within a few codes | LM4040 at 0.1%, 0.1% divider, op-amp offset under a code |
-| DC accuracy after per-board calibration | 1 to 2 codes | the reference is the scale; the profile carries two points |
-| drift | about 0.3 mV over 30 °C at full scale | the reference grade bought |
-| analog bandwidth | 200–300 kHz flat, by choice; a 10 MHz buffer is transparent | the anti-alias capacitor across the shunt against the sample rate |
-| sample rate behind it | 886 ksps one channel, 453 ksps each on two | the converter, unchanged |
-| rise time | 1–2 µs | the anti-alias corner |
-| channel crosstalk | below a code | the buffered drive removes the sample-and-hold's charge memory |
-| offset | ±full screen at every range, 0.8 mV steps, settles in tens of ms | 12-bit PWM through two RC sections |
-| protection | ±20 V continuous with margin, brief transients to about ±100 V, ESD by the clamps | 1 MΩ series, BAT54S to the rails, the op-amp's diodes |
-| output range | 0.55–2.75 V as a follower (2.2 V peak to peak about 1.65 V), or 0.03–3.27 V at gain 1.5; unipolar, never below ground | the DAC's window and a rail-to-rail op-amp on 3.3 V, which loses about 30 mV at each rail |
-| output resolution | 12 bits: 0.54 mV per code as a follower, 0.8 mV at gain 1.5 | the DAC |
-| output offset | the output stage's own summing term from the same PWM: the waveform's centre moves anywhere the amplitude leaves room, amplitude plus offset within 0.03–3.27 V | the single rail bounds it; a smaller amplitude buys more offset travel |
-| output impedance and coupling | 56 Ω series, a DC pin and a 1 µF AC pin | Labrador's output form |
-| generator rate and frequency | 1.4 MS/s updates; sines clean to ~100–200 kHz, squares to a few hundred kHz | the DAC and the reconstruction corner; `docs/awg.md`'s ceilings still apply |
-| generator drive | 10–20 mA into 56 Ω series, short-circuit safe | the op-amp's current limit |
-| frequency accuracy | about 10 ppm | the master clock, measured |
-| cleanliness, the acceptance | within-hold events over 10 codes at or below 0.2 per 1000 holds on every board, largest excursion at or below 12 codes | the two healthy shielded boards set the floor; the fourth board is the test |
-
-Not achieved by construction: bipolar generator output, inputs beyond
-±20 V, more than 12 bits, bandwidth beyond half the sample rate,
-differential inputs. Noise and effective bits are the converter's;
-the AFE's job is to stop making them worse, which the cleanliness
-line states as a number, and to turn codes into volts, which the
-reference line does.
-
 ## Building it: from this note to a wired shield
 
 In the order the measurement asks for, each step with the thing that
 proves it.
 
-1. **Decide the rails and check the AREF link.** Single 3.3 V or
-   generated ± rails, once; every op-amp choice follows. Read the Due
-   schematic for how ADVREF reaches the AREF header pin and the 3.3 V
-   rail, and cut or lift whatever ties them before a 3.0 V reference
-   can hold the pin.
+1. **The rails are decided, single 3.3 V, and the AREF link is
+   known.** Remove JR1, the 0 Ω link that ties the Due's reference
+   node to the 3.3 V rail, before a 3.0 V reference can hold the pin;
+   read the AREF series resistor's value with a meter while the board
+   is out.
 2. **Write the requirements as numbers.** Reference voltage and
    tolerance, pin drive values, buffer bandwidth against the
    converter's Nyquist, DAC stage span and filter corner, input ranges
@@ -324,7 +292,80 @@ of it, the coupling is through the analog supply or the ground under
 the chip, and a proto shield has no plane to offer. That is the point
 at which the answer is a board, not a shield.
 
-## The parts, for a reader whose analog is twenty years old
+## Design reasoning
+
+Everything above was derived from what follows: the measurement
+that made a front end the next step, the OpenScope MZ chains read
+part by part, and the parts themselves for a reader returning to
+analog.
+
+### The measurement first
+
+The within-hold reading on three boards says the residual disturbance
+is on the reading side: a random, symmetric, single-sample kick of
+tens of codes, present with no signal, worse with USB traffic, removed
+on one board by a stacked shield that touches nothing but the headers.
+Two coupling paths are left open: the ADC pin and the wire feeding it,
+and the reference and analog supply. The AFE's first two stages are
+those two paths, and each is judged with `tools/gen_sweep.py` before
+and after, on the board with the most residual, by the within-hold
+rate and the largest excursion. That, not a bandwidth figure, is the
+acceptance test.
+
+### The OpenScope MZ input chain, part by part
+
+One channel, from the connector to the ADC pin. Values are as printed
+on the sheet.
+
+![The OpenScope MZ input chain as blocks](img/afe-openscope-chain.svg)
+
+| stage | parts | what it does |
+|---|---|---|
+| input attenuator | R31 1 MΩ into the inverting input of IC5A (LMV116), R30 200 kΩ feedback with C27 0.3 pF, non-inverting input at ground | gain −0.2, input impedance 1 MΩ. The inverting input is a virtual ground, so the pin never sees the input voltage, and 1 MΩ limits a ±20 V input to ±20 µA into the op-amp's own input clamps. That is the whole protection. ±20 V in gives ∓4 V out, which needs rails wider than 3.3 V; the sheet does not show this op-amp's supply |
+| level shift into the summing node | R32 3.6 kΩ from IC5A's output, R33 1.2 kΩ + C29 1 µF + R34 2.21 kΩ from VREF3V0, C28 33 pF across R32 | the second stage is an inverting summer; the filtered 3.0 V reference through 3.41 kΩ is the current that centres the output when the input is zero, and C28 lets edges through the 3.6 kΩ faster than the node capacitance would |
+| gain select | IC4 TS3A5017, a dual 4:1 analog switch on 3.3 V; bank 2 selects the feedback resistor of IC6A: R21 1.33 kΩ with C21 91 pF, R27 2.26 kΩ with C22 51 pF, R28 4.53 kΩ with C25 22 pF, R29 18 kΩ | gain −Rf / 3.6 kΩ: 0.37, 0.63, 1.26, 5.0. With the first stage's 0.2 the net gains are 3/40, 1/8, 1/4 and 1, the sheet's four ranges: ±20, ±12, ±6 and ±1.5 V full scale. Each feedback capacitor gives the same corner, about 1.3–1.6 MHz, so the bandwidth is set once, in the feedback, and holds across ranges; the manual's 2 MHz at −3 dB is this |
+| second stage | IC6A LMV116, non-inverting input at VREF1V5 through R36 1 kΩ and C30 1 µF | the inverting summer whose output is the 0–3 V signal centred on 1.5 V |
+| offset | PWM from the microcontroller through R22 470 Ω, C23 4.7 µF, R23 511 Ω, C24 4.7 µF (two poles near 70 Hz) into IC3C (LMV324) as a buffer, then bank 1 of the same switch selects R17 10 kΩ, R20 2.4 kΩ, R24 1.37 kΩ or R26 1.02 kΩ into the summing node | the offset resistor changes with the range so that one PWM step moves the trace by the same fraction of the screen at every gain; the 10 mV PWM step the manual quotes is this path's resolution |
+| ADC pin driver | R35 68 Ω series, C31 470 pF to ground | the sample-and-hold's charge comes from the 470 pF, not from the op-amp through the switch, and the 68 Ω isolates the op-amp from the capacitor. The corner is about 5 MHz: this is not the anti-alias filter, the feedback capacitors are |
+
+### The OpenScope MZ output chain, part by part
+
+The generator's output stage is the input chain run backwards, and it
+is on the same sheet as the ladder (`awg-r2r-ladder.png`). The source
+is a 10-bit R-2R ladder on ten port pins, 0 to 3.3 V, a staircase at
+up to 10 MS/s; everything after it would serve a DAC just as well.
+
+![The OpenScope MZ output chain as blocks](img/afe-output-chain.svg)
+
+| stage | parts | what it does |
+|---|---|---|
+| reconstruction filter | R61 750 Ω with C55 36 pF, then R62 750 Ω with C56 43 pF to ground | two RC sections that round the ladder's steps into a waveform before anything amplifies them; corners near 3–5 MHz, sized for a 10 MS/s source |
+| signal into the summing node | R63 2.2 kΩ into the inverting input of IC10A | the filtered staircase becomes a current at the − pin |
+| reference term | VREF3V0 through R66 1.2 kΩ, C57 1 µF, R67 1.64 kΩ into the same node | a constant current that removes the ladder's DC: the ladder is unipolar, the output is bipolar, and this is the difference |
+| offset term | PWM pin RG0 through R58 499 Ω, C53 10 µF, R57 510 Ω, C52 2.2 µF, R59 2.43 kΩ into the same node | the user's offset, a two-pole-filtered PWM as on the input side, injected as a third current |
+| the summer | IC10A MCP6H91, non-inverting input at VREF1V5 through R69 1 kΩ with C58 1 µF, feedback R64 4.125 kΩ with C54 5.6 pF | inverting summer centred on 1.5 V: gain −4125/2200 ≈ −1.9 on the signal, corner near 7 MHz in the feedback. The MCP6H91 is a 16 V part because the output has to reach ±3 V, so this stage sits on the board's ± rails |
+| output | straight from the op-amp to the connector | 10 mA is the op-amp's own limit; no series resistor is drawn |
+
+The reference, the offset and the signal meet at one node under one
+feedback, exactly as on the input side. The two chains share the same
+two reference voltages, so the generator's zero and the scope's zero
+are the same volt.
+
+### The reference
+
+![The pin driver and the reference, drawn](img/afe-sar-drive.svg)
+
+| parts | what it does |
+|---|---|
+| D2 LM4040AIM3-3.0 shunt reference, R134 56 Ω from 3.3 V, C94 10 µF | a 3.000 V, 0.1% reference biased at about 5 mA, decoupled |
+| IC3A LMV324 unity buffer, R132 5.36 kΩ + R133 4.64 kΩ + C93 1 µF at its input | VREF3V0, driven onto the chip's VREF+ pin and into the level-shift path with a source that can supply current |
+| R135 5.36 kΩ, R136 4.64 kΩ, R137 10 kΩ, all 0.1%, C95 1 µF, IC3B LMV324 buffer | VREF1V5, exactly half the reference, the mid-scale the second stage centres on |
+
+The reference is the ADC's full scale, the level shift's current and
+the mid-rail, all from one part, so a drift moves everything together
+and cancels in the ratio. That is the property to keep.
+
+### The parts, for a reader whose analog is twenty years old
 
 Each part, what it is, and why it sits where it does, in the order the
 signal meets them. The table after it is the same material as a
