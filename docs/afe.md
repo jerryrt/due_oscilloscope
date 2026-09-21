@@ -121,3 +121,24 @@ residual unchanged through stages A and B on the board with the most
 of it, the coupling is through the analog supply or the ground under
 the chip, and a proto shield has no plane to offer. That is the point
 at which the answer is a board, not a shield.
+
+## The parts, for a reader whose analog is twenty years old
+
+| part | what it is | why it is where it is |
+|---|---|---|
+| op-amp, any of them | a differential amplifier with enormous gain; with feedback from the output to the − input it drives the output to whatever makes the two inputs equal | that one rule reads every stage: a follower copies a voltage from a weak source to a strong one; an inverting stage holds the − input fixed (a virtual ground) and its gain is the ratio of two resistors; a summing stage adds currents at that fixed node |
+| LMV116 | a single op-amp, about 45 MHz gain-bandwidth, single supply, rail-to-rail output but not input | the two stages the signal passes through; its inputs sit at 1.5 V so the input range does not matter there, and it would matter for a follower tracking 0.55–2.75 V |
+| LMV324 | four slow op-amps in one package | the reference buffers and the offset buffer, where nothing fast happens |
+| MCP6H91, MCP6H82 | op-amps rated to 16 V | the generator and DC outputs that must swing ±3 V and ±5 V on the board's ± rails |
+| LM4040-3.0 | a shunt reference: a precise Zener that holds 3.000 V to 0.1% given a few milliamps through a resistor | an ADC reads input over reference; a divider mid-rail moves with the rail and the load, this does not. Buffered because it can supply little current itself |
+| TS3A5017 | a dual 4:1 analog switch: a relay with no moving parts, a few ohms when closed, set by two logic lines | in the feedback path it picks the range in software without touching the input; its on-resistance is the "−10" in the sheet's resistor formulas |
+| capacitor across a feedback resistor | passes high frequencies, so the feedback strengthens and the gain falls above 1/(2πRC) | every range's R×C is about 120 ns, so the bandwidth is set once at 1.3–1.6 MHz, and it is the anti-alias filter |
+| PWM through two RC sections | a square wave whose on-time is set in software, averaged into a DC level | a DAC made from one pin and four passives, for an offset that changes only when a knob turns |
+| 68 Ω series, 470 pF shunt | a charge reservoir hundreds of times the ADC's sampling capacitor, and a resistor that keeps the op-amp stable into it | a SAR ADC takes its sample charge in nanoseconds, faster than any op-amp responds; the standard idiom for driving one, and the stage the within-hold reading points at |
+| BAT46, 1N5817 (other sheets) | Schottky diodes, conducting at about 0.3 V | clamps that hold a node within a rail; OpenScope needs none because 1 MΩ into a virtual ground already limits the current |
+
+Reading a sheet: follow the signal left to right; at each op-amp ask
+what the feedback forces the − input to be, which resistor turns the
+input into a current and which turns it back into a voltage; at each
+capacitor ask whether it filters, decouples or sets a corner; at each
+three-terminal part ask whether it switches, references or amplifies.
