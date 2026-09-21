@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>The one op-amp rule, and the three stages it explains</title>
+  <style>
+    .w{stroke:#1d2b28;stroke-width:1.8;fill:none}
+    .r{stroke:#1d2b28;stroke-width:1.6;fill:#fff}
+    .t{fill:#1d2b28}
+    .m{fill:#5d6b67;font-size:12px}
+    .h{fill:#1d2b28;font-weight:bold;font-size:14px}
+    .acc{fill:#b8393b;font-weight:bold}
+    .dot{fill:#1d2b28}
+  </style>
+  <rect width="960" height="400" fill="#f7f8f7"/>
+  <text x="480" y="26" text-anchor="middle" class="h">With negative feedback, the op-amp drives its output until its two inputs are equal.</text>
+
+  <!-- ===== Follower ===== -->
+  <g transform="translate(30,60)">
+    <text x="130" y="0" text-anchor="middle" class="h">Follower (buffer)</text>
+    <!-- opamp -->
+    <path class="w" d="M90 60 L90 140 L170 100 Z"/>
+    <text x="100" y="82" class="t">+</text><text x="100" y="128" class="t">−</text>
+    <!-- input -->
+    <path class="w" d="M20 76 L90 76"/><circle cx="20" cy="76" r="3" class="dot"/>
+    <text x="14" y="66" class="t">Vin</text>
+    <!-- output -->
+    <path class="w" d="M170 100 L240 100"/><circle cx="240" cy="100" r="3" class="dot"/>
+    <text x="222" y="90" class="t">Vout</text>
+    <!-- feedback -->
+    <path class="w" d="M200 100 L200 160 L60 160 L60 124 L90 124"/>
+    <text x="0" y="205" class="m">Vout = Vin. Draws almost nothing from</text>
+    <text x="0" y="221" class="m">the source, can drive a load.</text>
+    <text x="0" y="245" class="acc">IC3A, IC3B; the DAC-to-A0 buffer</text>
+  </g>
+
+  <!-- ===== Inverting ===== -->
+  <g transform="translate(340,60)">
+    <text x="140" y="0" text-anchor="middle" class="h">Inverting amplifier</text>
+    <path class="w" d="M120 60 L120 140 L200 100 Z"/>
+    <text x="130" y="82" class="t">−</text><text x="130" y="128" class="t">+</text>
+    <!-- Rin -->
+    <path class="w" d="M0 76 L30 76"/><circle cx="0" cy="76" r="3" class="dot"/>
+    <text x="-4" y="66" class="t">Vin</text>
+    <rect x="30" y="69" width="44" height="14" class="r"/><text x="52" y="62" text-anchor="middle" class="m">Rin 1 MΩ</text>
+    <path class="w" d="M74 76 L120 76"/>
+    <circle cx="97" cy="76" r="3" class="dot"/>
+    <!-- Rf -->
+    <path class="w" d="M97 76 L97 30 L150 30"/>
+    <rect x="150" y="23" width="44" height="14" class="r"/><text x="172" y="16" text-anchor="middle" class="m">Rf 200 kΩ</text>
+    <path class="w" d="M194 30 L230 30 L230 100"/>
+    <!-- + to ground -->
+    <path class="w" d="M120 124 L100 124 L100 150"/>
+    <path class="w" d="M90 150 L110 150 M94 155 L106 155 M98 160 L102 160"/>
+    <!-- out -->
+    <path class="w" d="M200 100 L270 100"/><circle cx="270" cy="100" r="3" class="dot"/>
+    <text x="252" y="90" class="t">Vout</text>
+    <!-- virtual ground callout -->
+    <path class="w" d="M97 88 L97 108" stroke-dasharray="3 3"/>
+    <text x="60" y="122" class="acc">virtual ground: this node</text>
+    <text x="60" y="137" class="acc">stays at 0 V whatever Vin does</text>
+    <text x="0" y="205" class="m">Vout = −(Rf/Rin)·Vin = −0.2·Vin.</text>
+    <text x="0" y="221" class="m">Rin turns Vin into a current, Rf turns it back into a</text>
+    <text x="0" y="237" class="m">voltage. The pin never sees Vin: ±20 V is ±20 µA.</text>
+    <text x="0" y="261" class="acc">IC5A, the attenuator and the protection</text>
+  </g>
+
+  <!-- ===== Summing ===== -->
+  <g transform="translate(670,60)">
+    <text x="140" y="0" text-anchor="middle" class="h">Summing amplifier</text>
+    <path class="w" d="M120 60 L120 140 L200 100 Z"/>
+    <text x="130" y="82" class="t">−</text><text x="130" y="128" class="t">+</text>
+    <!-- three inputs -->
+    <g>
+      <path class="w" d="M0 50 L30 50"/><circle cx="0" cy="50" r="3" class="dot"/><text x="-2" y="42" class="m">signal</text>
+      <rect x="30" y="43" width="40" height="14" class="r"/><text x="50" y="38" text-anchor="middle" class="m">3.6k</text>
+      <path class="w" d="M70 50 L97 50 L97 76"/>
+    </g>
+    <g>
+      <path class="w" d="M0 76 L30 76"/><circle cx="0" cy="76" r="3" class="dot"/><text x="-2" y="70" class="m">3.0 V ref</text>
+      <rect x="30" y="69" width="40" height="14" class="r"/><text x="50" y="94" text-anchor="middle" class="m">3.41k</text>
+      <path class="w" d="M70 76 L120 76"/>
+    </g>
+    <g>
+      <path class="w" d="M0 104 L30 104"/><circle cx="0" cy="104" r="3" class="dot"/><text x="-2" y="118" class="m">offset</text>
+      <rect x="30" y="97" width="40" height="14" class="r"/><text x="50" y="126" text-anchor="middle" class="m">10k…1k</text>
+      <path class="w" d="M70 104 L97 104 L97 76"/>
+    </g>
+    <circle cx="97" cy="76" r="3" class="dot"/>
+    <!-- Rf via switch -->
+    <path class="w" d="M97 76 L97 24 L140 24"/>
+    <rect x="140" y="17" width="44" height="14" class="r"/><text x="162" y="12" text-anchor="middle" class="m">Rf (switched)</text>
+    <path class="w" d="M184 24 L230 24 L230 100"/>
+    <!-- + at 1.5 V -->
+    <path class="w" d="M120 124 L100 124"/><text x="60" y="128" class="m">1.5 V</text>
+    <!-- out -->
+    <path class="w" d="M200 100 L270 100"/><circle cx="270" cy="100" r="3" class="dot"/>
+    <text x="236" y="90" class="t">0–3 V</text>
+    <text x="0" y="205" class="m">Currents add at the − node. One stage does the</text>
+    <text x="0" y="221" class="m">level shift (ref), the gain (Rf/3.6k) and the offset.</text>
+    <text x="0" y="237" class="m">Output centred on the 1.5 V at the + input.</text>
+    <text x="0" y="261" class="acc">IC6A, with the TS3A5017 choosing Rf</text>
+  </g>
+</svg>

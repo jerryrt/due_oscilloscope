@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>The OpenScope MZ input chain, one channel, as blocks</title>
+  <style>
+    .box{fill:#fff;stroke:#1d2b28;stroke-width:1.6}
+    .ref{fill:#eef6f7;stroke:#1d7a8a;stroke-width:1.6}
+    .sw{fill:#fbf3e6;stroke:#c2781a;stroke-width:1.6}
+    .adc{fill:#f5dede;stroke:#b8393b;stroke-width:1.6}
+    .w{stroke:#1d2b28;stroke-width:2;fill:none}
+    .wr{stroke:#1d7a8a;stroke-width:1.6;fill:none;stroke-dasharray:5 4}
+    .ws{stroke:#c2781a;stroke-width:1.6;fill:none;stroke-dasharray:5 4}
+    .t{fill:#1d2b28}
+    .h{fill:#1d2b28;font-weight:bold;font-size:14px}
+    .m{fill:#5d6b67;font-size:11.5px}
+    .k{fill:#1d7a8a;font-size:11.5px}
+    .o{fill:#c2781a;font-size:11.5px}
+  </style>
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1d2b28"/></marker>
+    <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1d7a8a"/></marker>
+    <marker id="as" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#c2781a"/></marker>
+  </defs>
+  <rect width="1000" height="520" fill="#f7f8f7"/>
+  <text x="500" y="26" text-anchor="middle" class="h">OpenScope MZ, one scope channel: from the connector to the ADC pin</text>
+
+  <!-- signal path row y=150 -->
+  <!-- input -->
+  <circle cx="40" cy="150" r="4" fill="#1d2b28"/>
+  <text x="24" y="132" class="t">AIN</text><text x="14" y="176" class="m">±20 V, 1 MΩ</text>
+  <path class="w" d="M44 150 L100 150" marker-end="url(#a)"/>
+
+  <!-- attenuator -->
+  <rect x="100" y="110" width="150" height="80" rx="4" class="box"/>
+  <text x="175" y="132" text-anchor="middle" class="t">Attenuator</text>
+  <text x="175" y="150" text-anchor="middle" class="m">IC5A LMV116, inverting</text>
+  <text x="175" y="166" text-anchor="middle" class="m">1 MΩ in, 200 kΩ feedback</text>
+  <text x="175" y="182" text-anchor="middle" class="m">gain −0.2 · virtual ground</text>
+  <path class="w" d="M250 150 L310 150" marker-end="url(#a)"/>
+  <text x="280" y="140" text-anchor="middle" class="m">∓4 V</text>
+
+  <!-- summing node -->
+  <rect x="310" y="110" width="150" height="80" rx="4" class="box"/>
+  <text x="385" y="132" text-anchor="middle" class="t">Summing node</text>
+  <text x="385" y="150" text-anchor="middle" class="m">3.6 kΩ from the signal</text>
+  <text x="385" y="166" text-anchor="middle" class="m">3.41 kΩ from 3.0 V ref</text>
+  <text x="385" y="182" text-anchor="middle" class="m">1–10 kΩ from the offset</text>
+  <path class="w" d="M460 150 L520 150" marker-end="url(#a)"/>
+
+  <!-- gain stage -->
+  <rect x="520" y="110" width="170" height="80" rx="4" class="box"/>
+  <text x="605" y="132" text-anchor="middle" class="t">Gain and bandwidth</text>
+  <text x="605" y="150" text-anchor="middle" class="m">IC6A LMV116, inverting summer</text>
+  <text x="605" y="166" text-anchor="middle" class="m">+ input at 1.5 V</text>
+  <text x="605" y="182" text-anchor="middle" class="m">Rf ‖ C: corner ≈ 1.5 MHz</text>
+  <path class="w" d="M690 150 L750 150" marker-end="url(#a)"/>
+  <text x="720" y="140" text-anchor="middle" class="m">0–3 V</text>
+
+  <!-- pin driver -->
+  <rect x="750" y="110" width="120" height="80" rx="4" class="box"/>
+  <text x="810" y="132" text-anchor="middle" class="t">Pin driver</text>
+  <text x="810" y="150" text-anchor="middle" class="m">68 Ω series</text>
+  <text x="810" y="166" text-anchor="middle" class="m">470 pF to ground</text>
+  <text x="810" y="182" text-anchor="middle" class="m">charge reservoir</text>
+  <path class="w" d="M870 150 L920 150" marker-end="url(#a)"/>
+
+  <!-- ADC -->
+  <rect x="920" y="120" width="60" height="60" rx="4" class="adc"/>
+  <text x="950" y="145" text-anchor="middle" class="t">ADC</text>
+  <text x="950" y="163" text-anchor="middle" class="m">pin</text>
+
+  <!-- switch -->
+  <rect x="520" y="230" width="170" height="70" rx="4" class="sw"/>
+  <text x="605" y="252" text-anchor="middle" class="t">TS3A5017 analog switch</text>
+  <text x="605" y="270" text-anchor="middle" class="o">bank 2: picks Rf → 3/40, 1/8, 1/4, 1</text>
+  <text x="605" y="286" text-anchor="middle" class="o">bank 1: picks the offset resistor</text>
+  <path class="ws" d="M605 230 L605 190" marker-end="url(#as)"/>
+  <path class="ws" d="M520 265 L440 265 L440 190" marker-end="url(#as)"/>
+  <text x="470" y="258" class="o">range</text>
+
+  <!-- offset -->
+  <rect x="100" y="230" width="150" height="70" rx="4" class="box"/>
+  <text x="175" y="252" text-anchor="middle" class="t">Offset</text>
+  <text x="175" y="270" text-anchor="middle" class="m">PWM pin → 470 Ω/4.7 µF</text>
+  <text x="175" y="286" text-anchor="middle" class="m">→ 511 Ω/4.7 µF → IC3C buffer</text>
+  <path class="w" d="M250 265 L360 265 L360 190" marker-end="url(#a)"/>
+  <text x="290" y="258" class="m">10 mV steps</text>
+
+  <!-- reference -->
+  <rect x="100" y="340" width="360" height="70" rx="4" class="ref"/>
+  <text x="280" y="362" text-anchor="middle" class="t">Reference</text>
+  <text x="280" y="380" text-anchor="middle" class="k">LM4040-3.0 shunt, 56 Ω from 3.3 V, 10 µF → IC3A buffer = 3.000 V</text>
+  <text x="280" y="396" text-anchor="middle" class="k">0.1% divider → IC3B buffer = 1.500 V</text>
+  <path class="wr" d="M400 340 L400 190" marker-end="url(#ar)"/>
+  <text x="405" y="330" class="k">3.0 V into the node</text>
+  <path class="wr" d="M460 375 L640 375 L640 190" marker-end="url(#ar)"/>
+  <text x="645" y="330" class="k">1.5 V at the + input</text>
+  <path class="wr" d="M460 395 L950 395 L950 180" marker-end="url(#ar)"/>
+  <text x="700" y="388" class="k">3.0 V onto VREF+: the ADC's full scale</text>
+
+  <!-- footer -->
+  <text x="40" y="450" class="m">One reference is the full scale, the level shift and the mid-rail, so a drift moves all three together and cancels in the ratio.</text>
+  <text x="40" y="470" class="m">The bandwidth is set once, in the switched feedback, and holds on every range. The 470 pF, not the op-amp, supplies the sample charge.</text>
+  <text x="40" y="500" class="m">Ranges: net gain 3/40, 1/8, 1/4, 1 against a ±1.5 V swing about 1.5 V → ±20, ±12, ±6, ±1.5 V full scale.</text>
+</svg>

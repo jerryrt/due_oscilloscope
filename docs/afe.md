@@ -29,6 +29,8 @@ acceptance test.
 One channel, from the connector to the ADC pin. Values are as printed
 on the sheet.
 
+![The OpenScope MZ input chain as blocks](img/afe-openscope-chain.svg)
+
 | stage | parts | what it does |
 |---|---|---|
 | input attenuator | R31 1 MΩ into the inverting input of IC5A (LMV116), R30 200 kΩ feedback with C27 0.3 pF, non-inverting input at ground | gain −0.2, input impedance 1 MΩ. The inverting input is a virtual ground, so the pin never sees the input voltage, and 1 MΩ limits a ±20 V input to ±20 µA into the op-amp's own input clamps. That is the whole protection. ±20 V in gives ∓4 V out, which needs rails wider than 3.3 V; the sheet does not show this op-amp's supply |
@@ -39,6 +41,8 @@ on the sheet.
 | ADC pin driver | R35 68 Ω series, C31 470 pF to ground | the sample-and-hold's charge comes from the 470 pF, not from the op-amp through the switch, and the 68 Ω isolates the op-amp from the capacitor. The corner is about 5 MHz: this is not the anti-alias filter, the feedback capacitors are |
 
 ## The reference
+
+![The pin driver and the reference, drawn](img/afe-sar-drive.svg)
 
 | parts | what it does |
 |---|---|
@@ -127,6 +131,8 @@ at which the answer is a board, not a shield.
 Each part, what it is, and why it sits where it does, in the order the
 signal meets them. The table after it is the same material as a
 reference card.
+
+![The op-amp rule and the three stages built from it](img/afe-opamp-rules.svg)
 
 **The op-amp, and the one rule that explains everything it does.**
 LMV116, LMV324, MCP6H91 and LM324 are all operational amplifiers: a
