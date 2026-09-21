@@ -68,9 +68,9 @@ def _census_texts(counts):
 
 
 def _scale(_python, _bench):
-    return ("baseline        run 1: A0 tail/s 6.1 scale 2.27  A1 tail/s 4.9 "
+    return ("baseline        run 1: A0 tail/s {6: 704.6, 10: 152.0, 15: 37.1} scale 2.27  A1 tail/s {6: 648.7, 10: 131.2, 15: 24.8} "
             "scale 2.14  (parity 0/0, pair spread 1/1)\n"
-            "baseline        run 2: A0 tail/s 6.3 scale 2.34  A1 tail/s 5.0 "
+            "baseline        run 2: A0 tail/s {6: 687.8, 10: 150.0, 15: 44.9} scale 2.34  A1 tail/s {6: 641.7, 10: 138.4, 15: 22.8} "
             "scale 2.28  (parity 0/0, pair spread 1/1)\n"
             "rows -> records/issue82-arms-linux-x1.jsonl\n")
 
@@ -188,3 +188,24 @@ def test_a_missing_uid_is_recorded_as_null_not_dropped(tmp_path, monkeypatch):
     row = json.loads(out.read_text(encoding="utf-8"))
     assert "board_uid" in row and row["board_uid"] is None
     assert row["idle_before_s"] == 0
+
+
+def test_the_scale_parser_reads_the_tools_real_line():
+    """The tool prints the rates as a dict with spaces inside the braces.
+
+    A pattern written as \S+ for that dict matched nothing on a real
+    line, and the first rotation row went out with `tail_scale: []`
+    while its raw text carried four perfectly good lines. These are two
+    lines, verbatim from linux-x1's first rotation row.
+    """
+    text = ("baseline        run 1: A0 tail/s {6: 704.6, 10: 152.0, 15: 37.1} "
+            "scale 2.35  A1 tail/s {6: 648.7, 10: 131.2, 15: 24.8} scale 2.24  "
+            "(parity 1/0, pair spread 1/1.0)\n"
+            "sync-off        run 2: A0 tail/s {6: 681.1, 10: 146.4, 15: 45.6} "
+            "scale 2.33  A1 tail/s {6: 677.8, 10: 137.9, 15: 20.8} scale 2.16  "
+            "(parity 1/0, pair spread 1/1.0)\n")
+    got = rr.parse_scales(text)
+    assert [(g["arm"], g["run"], g["a0_scale_codes"], g["a1_scale_codes"])
+            for g in got] == [("baseline", 1, 2.35, 2.24),
+                              ("sync-off", 2, 2.33, 2.16)], got
+

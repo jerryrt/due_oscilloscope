@@ -63,8 +63,13 @@ _CENSUS = re.compile(
     re.M)
 _VERDICT = re.compile(r"^(?:=+ )?(\d+) (passed|failed)\b", re.M)
 _SCALE = re.compile(
-    r"^(?P<arm>\S+)\s+run (?P<run>\d+): A0 tail/s \S+ scale (?P<a0>[\d.]+)"
-    r"\s+A1 tail/s \S+ scale (?P<a1>[\d.]+)", re.M)
+    # The tool prints the per-threshold rates as a dict WITH SPACES -
+    # `A0 tail/s {6: 663.3, 10: 133.4, 15: 34.4} scale 2.27` - so the
+    # rates are matched as a brace group, not as a run of non-blanks;
+    # the first version of this pattern used \S+ and matched nothing on
+    # a real line, and the first rotation row went out with no scale.
+    r"^(?P<arm>\S+)\s+run (?P<run>\d+): A0 tail/s \{[^}]*\} scale (?P<a0>[\d.]+)"
+    r"\s+A1 tail/s \{[^}]*\} scale (?P<a1>[\d.]+)", re.M)
 
 
 def parse_census(text):
