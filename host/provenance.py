@@ -669,8 +669,11 @@ def _board_serial():
     2341:003D node is attached, because a bench with two boards has no
     single answer and a guess would be a wrong row.
     """
+    # The seam module, imported unguarded so an absent pyserial says so
+    # rather than reading as "no board"; only the enumeration itself may
+    # fail quietly, because a row's conditions never raise.
+    import ports
     try:
-        import ports
         nodes = ports._pyserial_nodes()
     except Exception:                                        # noqa: BLE001
         return None

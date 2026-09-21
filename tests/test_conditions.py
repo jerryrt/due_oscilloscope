@@ -34,6 +34,10 @@ import sys
 import pytest
 
 pytestmark = pytest.mark.smoke
+#: `provenance.conditions()` reaches the ports seam to read the board's
+#: USB serial. The tests here fake that enumeration; the one that reads
+#: this host's real ports is marked `platform` on its own, below.
+PLATFORM_SEAM_EXEMPT = "faked port enumeration; the one real-host read is marked platform itself"
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "host"))
@@ -235,6 +239,7 @@ def test_conditions_does_not_wait_for_a_board(monkeypatch):
     assert time.monotonic() - t0 < 1.0
 
 
+@pytest.mark.platform
 def test_this_benchs_board_reads_a_real_serial():
     got = provenance.conditions()["board_serial"]
     if got is None:
