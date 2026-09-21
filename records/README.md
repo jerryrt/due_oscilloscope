@@ -164,7 +164,10 @@ at a rested largest-step median of 50 or more, against the healthy
 band's 43-48. The flash log is bench-local and never folded into the
 committed files; `--flash-log PATH` reads it for a bench looking at
 its own history. `tests/test_board_profile.py` refuses a uid that
-appears in the rows with no profile on disk.
+appears in the rows with no profile on disk. `boards/_notes.json` is the one hand-kept input:
+{board_uid: [note, ...]}, merged into each profile's `notes` rather than
+overwritten, and a uid there that no row names is an error so a typo
+cannot silently drop a note.
 
 ## Rows whose `track` field is wrong, and how to read them
 

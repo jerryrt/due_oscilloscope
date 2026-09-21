@@ -167,7 +167,7 @@
   },
   "generated": {
     "bench": "linux-x1",
-    "rev": "eb00f1f-dirty",
+    "rev": "b3245f4-dirty",
     "tool": "tools/board_profile.py"
   },
   "history": [
@@ -184,6 +184,8 @@
       "rows": 1
     }
   ],
-  "notes": [],
+  "notes": [
+    "2026-09-20: not connected to any bench. Cannot take the Mega shield v3 - a mechanical misalignment makes stacking impossible - so its rows stay the no-shield rotation rows (before on mac-bench, after on windows-desk). Owner's statement."
+  ],
   "schema": "board-profile/1"
 }

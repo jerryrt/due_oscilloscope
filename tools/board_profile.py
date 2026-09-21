@@ -41,6 +41,13 @@ rested median of 50 or more in those phases carries the flag. It marks
 a board whose analog rows must be read with that in mind; nothing
 gates on it.
 
+NOTES ARE HAND-KEPT AND MERGED, NEVER OVERWRITTEN. What a generator
+cannot know - a board that is off every bench, one that cannot take a
+shield - is written by a person into records/boards/_notes.json as
+{board_uid: [note, ...]} and copied into each profile's `notes`. A uid
+in that file that no row names is an error, so a typo cannot silently
+drop a note.
+
 EXIT CODES
     0   written, or --check found no drift
     1   --check found drift; the files are listed
@@ -61,6 +68,7 @@ SCHEMA = "board-profile/1"
 ROTATION = os.path.join(ROOT, "records", "rotation.jsonl")
 CALIBRATION = os.path.join(ROOT, "calibration.json")
 BOARDS_DIR = os.path.join(ROOT, "records", "boards")
+NOTES_NAME = "_notes.json"
 
 #: Rested rows only: the rotation's declared rest. A warm board read as a
 #: different board is what the rotation existed to stop.
@@ -127,8 +135,19 @@ def history(events):
     return list(out.values())
 
 
-def build_profiles(rotation_rows, calibration, flash_rows=(), generated=None):
-    """{board_uid: profile} from the rows. Refuses one uid with two serials."""
+def _notes(boards_dir):
+    path = os.path.join(boards_dir, NOTES_NAME)
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def build_profiles(rotation_rows, calibration, flash_rows=(), generated=None,
+                   notes=None):
+    """{board_uid: profile} from the rows. Refuses one uid with two serials,
+    and a note for a uid no row names."""
+    notes = notes or {}
     by_uid = {}
     serials = {}
     for r in rotation_rows:
@@ -154,6 +173,11 @@ def build_profiles(rotation_rows, calibration, flash_rows=(), generated=None):
         raise ValueError("one uid, two serials - the record is inconsistent: "
                          + "; ".join(f"{uid}: {sorted(x for x in s if x)}"
                                      for uid, s in bad.items()))
+
+    unknown = sorted(set(notes) - set(by_uid))
+    if unknown:
+        raise ValueError("a note names a board no row names - a typo would "
+                         "silently drop it: " + ", ".join(unknown))
 
     profiles = {}
     for uid, rows in by_uid.items():
@@ -212,7 +236,7 @@ def build_profiles(rotation_rows, calibration, flash_rows=(), generated=None):
             "converter_summary": summary,
             "calibration": cal,
             "flags": flags,
-            "notes": [],
+            "notes": list(notes.get(uid, [])),
             "generated": generated or {},
         }
     return profiles
@@ -268,6 +292,8 @@ def check(profiles, boards_dir):
     known = set(profiles)
     for path in sorted(glob.glob(os.path.join(boards_dir, "*.json"))):
         uid = os.path.basename(path)[:-5]
+        if os.path.basename(path) == NOTES_NAME:
+            continue
         if uid not in known:
             drift.append(f"{path}: no row names this board")
     return drift
@@ -297,7 +323,8 @@ def main(argv=None):
         profiles = build_profiles(
             _rows(args.rotation), _calibration(args.calibration),
             _rows(args.flash_log) if args.flash_log else (),
-            generated=None if args.no_generated else generated_block())
+            generated=None if args.no_generated else generated_block(),
+            notes=_notes(args.boards_dir))
     except ValueError as exc:
         print(f"board_profile: {exc}", file=sys.stderr)
         return 2

@@ -210,3 +210,21 @@ def test_check_ignores_who_generated_the_file(tmp_path):
     path.write_text(bp.render(p), encoding="utf-8")
     assert bp.main(["--check"] + args) == 0
 
+
+def test_a_hand_kept_note_is_merged_and_an_unknown_uid_is_refused(tmp_path,
+                                                                  capsys):
+    rot, cal, boards = _write_fixture(tmp_path)
+    boards.mkdir()
+    (boards / bp.NOTES_NAME).write_text(json.dumps(
+        {UID_B: ["off every bench; cannot take the shield"]}), encoding="utf-8")
+    args = ["--rotation", str(rot), "--calibration", str(cal),
+            "--boards-dir", str(boards), "--no-generated"]
+    assert bp.main(["--write"] + args) == 0
+    p = json.loads((boards / f"{UID_B}.json").read_text(encoding="utf-8"))
+    assert p["notes"] == ["off every bench; cannot take the shield"]
+    assert bp.main(["--check"] + args) == 0
+    (boards / bp.NOTES_NAME).write_text(json.dumps(
+        {"ffffffffffffffffffffffffffffffff": ["typo"]}), encoding="utf-8")
+    assert bp.main(["--check"] + args) == 2
+    assert "no row names" in capsys.readouterr().err
+
