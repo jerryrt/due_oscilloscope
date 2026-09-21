@@ -40,6 +40,29 @@ on the sheet.
 | offset | PWM from the microcontroller through R22 470 Ω, C23 4.7 µF, R23 511 Ω, C24 4.7 µF (two poles near 70 Hz) into IC3C (LMV324) as a buffer, then bank 1 of the same switch selects R17 10 kΩ, R20 2.4 kΩ, R24 1.37 kΩ or R26 1.02 kΩ into the summing node | the offset resistor changes with the range so that one PWM step moves the trace by the same fraction of the screen at every gain; the 10 mV PWM step the manual quotes is this path's resolution |
 | ADC pin driver | R35 68 Ω series, C31 470 pF to ground | the sample-and-hold's charge comes from the 470 pF, not from the op-amp through the switch, and the 68 Ω isolates the op-amp from the capacitor. The corner is about 5 MHz: this is not the anti-alias filter, the feedback capacitors are |
 
+## The OpenScope MZ output chain, part by part
+
+The generator's output stage is the input chain run backwards, and it
+is on the same sheet as the ladder (`awg-r2r-ladder.png`). The source
+is a 10-bit R-2R ladder on ten port pins, 0 to 3.3 V, a staircase at
+up to 10 MS/s; everything after it would serve a DAC just as well.
+
+![The OpenScope MZ output chain as blocks](img/afe-output-chain.svg)
+
+| stage | parts | what it does |
+|---|---|---|
+| reconstruction filter | R61 750 Ω with C55 36 pF, then R62 750 Ω with C56 43 pF to ground | two RC sections that round the ladder's steps into a waveform before anything amplifies them; corners near 3–5 MHz, sized for a 10 MS/s source |
+| signal into the summing node | R63 2.2 kΩ into the inverting input of IC10A | the filtered staircase becomes a current at the − pin |
+| reference term | VREF3V0 through R66 1.2 kΩ, C57 1 µF, R67 1.64 kΩ into the same node | a constant current that removes the ladder's DC: the ladder is unipolar, the output is bipolar, and this is the difference |
+| offset term | PWM pin RG0 through R58 499 Ω, C53 10 µF, R57 510 Ω, C52 2.2 µF, R59 2.43 kΩ into the same node | the user's offset, a two-pole-filtered PWM as on the input side, injected as a third current |
+| the summer | IC10A MCP6H91, non-inverting input at VREF1V5 through R69 1 kΩ with C58 1 µF, feedback R64 4.125 kΩ with C54 5.6 pF | inverting summer centred on 1.5 V: gain −4125/2200 ≈ −1.9 on the signal, corner near 7 MHz in the feedback. The MCP6H91 is a 16 V part because the output has to reach ±3 V, so this stage sits on the board's ± rails |
+| output | straight from the op-amp to the connector | 10 mA is the op-amp's own limit; no series resistor is drawn |
+
+The reference, the offset and the signal meet at one node under one
+feedback, exactly as on the input side. The two chains share the same
+two reference voltages, so the generator's zero and the scope's zero
+are the same volt.
+
 ## The reference
 
 ![The pin driver and the reference, drawn](img/afe-sar-drive.svg)
@@ -111,12 +134,45 @@ Due PWM pin through the same two-pole RC and a range-scaled resistor.
 
 ### Stage C: the DAC output stage
 
-The Due's DAC swings 0.55–2.75 V, 2.2 V peak to peak about 1.65 V. A
-rail-to-rail op-amp at 3.3 V with a gain of 1.5 about 1.65 V puts that
-at 0–3.3 V; a reconstruction filter after it; then Labrador's output
-form, a 1 kΩ load, 56 Ω series to a DC pin and a 1 µF to an AC pin.
-Protection on an output is a series resistor and the op-amp's own
-current limit.
+OpenScope's output chain transfers whole, with the ladder replaced by
+DAC0. The Due's DAC swings 0.55–2.75 V, 2.2 V peak to peak about
+1.65 V, as a staircase at up to 1.4 MS/s.
+
+- **Reconstruction filter first**, two RC sections as drawn but
+  scaled to the slower source: a corner a few hundred kilohertz above
+  the highest generator frequency in use, not the 3–5 MHz that suits
+  10 MS/s. It is also where the DAC's own per-conversion behaviour
+  (`docs/awg.md`) gets smoothed rather than presented.
+- **Then the inverting summer.** Signal through Rin, a reference term
+  through its own resistor to cancel the DAC's 1.65 V centre, an
+  offset term from a Due PWM pin through the same two-pole RC, the +
+  input at the buffered 1.5 V, gain and bandwidth in the feedback.
+  On a single 3.3 V rail a gain of about −1.5 with a rail-to-rail
+  output op-amp turns 0.55–2.75 V into 0–3.3 V; with ± rails the same
+  stage gives any span the op-amp's supply allows, which is why
+  OpenScope reaches ±3 V. Choose the rail question once, in Stage B,
+  and this stage follows it.
+- **Then the output form.** Labrador's, since OpenScope draws none: a
+  1 kΩ load, 56 Ω in series to a DC pin, 1 µF to an AC pin. The series
+  resistor and the op-amp's current limit are the protection.
+
+Judged the same way as the input: `tools/gen_sweep.py` reads the DAC
+through the ADC, so the loopback through this stage and Stage A's
+buffer is measured within holds like everything else.
+
+**References for a real DAC as the source**, since OpenScope's is a
+ladder and the part before the filter differs:
+
+| reference | what it drives | the stage | read it for |
+|---|---|---|---|
+| PSLab V6 (`docs/related-work.md`) | an MCP4822 12-bit SPI DAC, 0–3.3 V | LM324 on ±6 V: out = 2·V − 3.3 gives ±3.3 V, a second stage ×1.51 gives ±5 V, a transistor stage gives a current source | the cleanest unipolar-to-bipolar level shift in the set, with the gain and the offset in one resistor pair; needs ± rails |
+| Labrador (`docs/related-work.md`) | the XMEGA's own 12-bit DAC, 0–3.3 V | LM324 follower or ×3 on a boosted single rail, 1 kΩ load, 56 Ω series, AC and DC pins | the single-supply form and the output pins; no filter, no reference term |
+| the SAM3X datasheet, DACC chapter | this DAC | its output range is 1/6 to 5/6 of the reference by design, and its drive is weak | why 0.55–2.75 V is not a fault and why a buffer is not optional; `docs/hardware.md` records the measured range |
+| TI, Analog Engineer's Circuit Cookbook, the DAC output circuits | any unipolar DAC | worked single-supply and unipolar-to-bipolar buffer designs with the resistor arithmetic and the error budget | the arithmetic for the reference term and the gain, done once by someone who publishes the derivation |
+
+The shape that fits this project is PSLab's level shift with
+OpenScope's filter in front of it and Labrador's output pins after it,
+on whichever rail Stage B settled.
 
 ## What the shield cannot fix
 

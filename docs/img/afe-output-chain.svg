@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" font-family="Helvetica, Arial, sans-serif" font-size="14">
+  <title>The OpenScope MZ output chain, as blocks, and the Due's beside it</title>
+  <style>
+    .box{fill:#fff;stroke:#1d2b28;stroke-width:1.6}
+    .ref{fill:#eef6f7;stroke:#1d7a8a;stroke-width:1.6}
+    .src{fill:#f5dede;stroke:#b8393b;stroke-width:1.6}
+    .due{fill:#eaf3ea;stroke:#3a7a3f;stroke-width:1.6}
+    .w{stroke:#1d2b28;stroke-width:2;fill:none}
+    .wr{stroke:#1d7a8a;stroke-width:1.8;fill:none;stroke-dasharray:6 4}
+    .t{fill:#1d2b28;font-size:15px;font-weight:bold}
+    .b{fill:#1d2b28;font-size:13px}
+    .h{fill:#1d2b28;font-weight:bold;font-size:18px}
+    .m{fill:#5d6b67;font-size:14px}
+    .k{fill:#1d7a8a;font-size:13px}
+    .g{fill:#2f6b34;font-size:13px}
+  </style>
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1d2b28"/></marker>
+    <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1d7a8a"/></marker>
+  </defs>
+  <rect width="960" height="520" fill="#f7f8f7"/>
+  <text x="480" y="34" text-anchor="middle" class="h">OpenScope MZ, the generator output: from the ladder to the connector</text>
+
+  <!-- row 1, y 80–170 -->
+  <rect x="20" y="80" width="150" height="90" rx="4" class="src"/>
+  <text x="95" y="102" text-anchor="middle" class="t">Source</text>
+  <text x="95" y="122" text-anchor="middle" class="b">R-2R ladder, 10 bits</text>
+  <text x="95" y="140" text-anchor="middle" class="b">0–3.3 V staircase</text>
+  <text x="95" y="158" text-anchor="middle" class="b">up to 10 MS/s</text>
+  <path class="w" d="M170 125 L220 125" marker-end="url(#a)"/>
+
+  <rect x="220" y="80" width="180" height="90" rx="4" class="box"/>
+  <text x="310" y="102" text-anchor="middle" class="t">Reconstruction filter</text>
+  <text x="310" y="122" text-anchor="middle" class="b">750 Ω / 36 pF, then</text>
+  <text x="310" y="140" text-anchor="middle" class="b">750 Ω / 43 pF to ground</text>
+  <text x="310" y="158" text-anchor="middle" class="b">corners near 3–5 MHz</text>
+  <path class="w" d="M400 125 L450 125" marker-end="url(#a)"/>
+  <text x="425" y="112" text-anchor="middle" class="m">2.2 kΩ</text>
+
+  <rect x="450" y="80" width="200" height="90" rx="4" class="box"/>
+  <text x="550" y="102" text-anchor="middle" class="t">Summer, IC10A MCP6H91</text>
+  <text x="550" y="122" text-anchor="middle" class="b">inverting, + input at 1.5 V</text>
+  <text x="550" y="140" text-anchor="middle" class="b">gain −4125/2200 ≈ −1.9</text>
+  <text x="550" y="158" text-anchor="middle" class="b">4.125 kΩ ‖ 5.6 pF feedback</text>
+  <path class="w" d="M650 125 L700 125" marker-end="url(#a)"/>
+
+  <rect x="700" y="95" width="120" height="60" rx="4" class="box"/>
+  <text x="760" y="121" text-anchor="middle" class="t">AWG out</text>
+  <text x="760" y="140" text-anchor="middle" class="b">−3 to +3 V, 10 mA</text>
+  <text x="840" y="112" class="m">on ± rails,</text>
+  <text x="840" y="130" class="m">no series R</text>
+
+  <!-- row 2: the two other currents into the summing node -->
+  <rect x="220" y="225" width="180" height="72" rx="4" class="box"/>
+  <text x="310" y="247" text-anchor="middle" class="t">Offset</text>
+  <text x="310" y="267" text-anchor="middle" class="b">PWM → 499 Ω/10 µF</text>
+  <text x="310" y="285" text-anchor="middle" class="b">→ 510 Ω/2.2 µF → 2.43 kΩ</text>
+  <path class="w" d="M400 261 L520 261 L520 170" marker-end="url(#a)"/>
+
+  <rect x="20" y="225" width="150" height="72" rx="4" class="ref"/>
+  <text x="95" y="247" text-anchor="middle" class="t">Reference term</text>
+  <text x="95" y="267" text-anchor="middle" class="k">3.0 V → 1.2 kΩ, 1 µF,</text>
+  <text x="95" y="285" text-anchor="middle" class="k">1.64 kΩ into the node</text>
+  <path class="wr" d="M170 261 L200 261 L200 200 L490 200 L490 170" marker-end="url(#ar)"/>
+  <text x="210" y="194" class="k">cancels the ladder's DC → bipolar output</text>
+  <path class="wr" d="M580 225 L580 170" marker-end="url(#ar)"/>
+  <text x="588" y="222" class="k">1.5 V at the + input</text>
+
+  <!-- the Due -->
+  <rect x="20" y="340" width="920" height="150" rx="4" class="due"/>
+  <text x="40" y="364" class="t">The same chain on the Due, with DAC0 as the source</text>
+  <text x="40" y="388" class="g">source: DAC0, 12 bits, 0.55–2.75 V about 1.65 V, up to 1.4 MS/s, high output impedance — the filter and summer are what it needs</text>
+  <text x="40" y="410" class="g">filter: two RC sections as drawn, corners a few hundred kHz above the highest generator frequency, not 3–5 MHz</text>
+  <text x="40" y="432" class="g">summer: signal, a reference term to cancel 1.65 V, a PWM offset; on 3.3 V a rail-to-rail part at gain −1.5 gives 0–3.3 V, on ± rails any span</text>
+  <text x="40" y="454" class="g">output: Labrador's form, 1 kΩ load, 56 Ω series to a DC pin, 1 µF to an AC pin — OpenScope draws none</text>
+  <text x="40" y="476" class="g">judged through the loopback with tools/gen_sweep.py, within holds, like every other stage</text>
+</svg>
