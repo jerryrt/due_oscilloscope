@@ -33,8 +33,9 @@ adjusted them, and figures nobody could trace to the run that produced
 them. So one command takes the cell and writes one row.
 
 WHAT A ROW REFUSES, because a rotation row nobody can attribute is worse
-than none: no programming port (no `board_serial`); a dirty tree (the
-image carries a delta hash no other bench can match); a board that is
+than none: no programming port (no `board_serial`); a tree dirty
+outside records/ (the image carries a delta hash no other bench can
+match, and the tool's own revision is unattributable); a board that is
 not Track B; an image whose `build` is not the tree's own commit; and a
 run whose idle time was not declared - `--idle-seconds` is required
 even when it is 0, because the whole afternoon that led here was a warm
