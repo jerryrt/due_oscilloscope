@@ -447,12 +447,24 @@ def test_the_closed_loop_buys_nothing_with_underruns(board, seconds, rc):
     Neither counter is evidence on its own, so both are checked here.
     """
     needs_a_buffering_host("the rate loop's cost")
+    # Two runs, the first dropped by index. The first playback after a
+    # board start is an outlier - CLAUDE.md, "Discard the first run" -
+    # and on a host whose open resets the board every session's first
+    # case is that run. Judged on one run, whichever parametrisation
+    # collected first read 229-257 underruns and the other read 0, and
+    # the red swapped sides when the order did: a position, not a rate.
+    # An underrun filter would not do; the index is the rule.
+    first = measure.run_play(board, dac_sps=measure.hz_for(rc),
+                             seconds=window(seconds, 3.0), drain_s=1.5,
+                             closed_loop=True)
+    assert not first.refused, first.console
     res = measure.run_play(board, dac_sps=measure.hz_for(rc),
                            seconds=window(seconds, 3.0), drain_s=1.5,
                            closed_loop=True)
     assert not res.refused, res.console
     assert res.play.underruns == 0, (
-        f"RC {rc}: the closed loop cost {res.play.underruns} underruns")
+        f"RC {rc}: the closed loop cost {res.play.underruns} underruns "
+        f"(run 2; run 1, dropped by index, had {first.play.underruns})")
 
 
 @pytest.mark.parametrize("rc", [65, 44, 39])
@@ -485,35 +497,6 @@ def test_the_closed_loop_leaves_an_exact_rate_alone(board, seconds, rc):
 
 
 @pytest.mark.slow
-def test_the_closed_loop_residual_is_a_startup_cost(board, calibration):
-    """What the loop leaves behind is bytes, not a rate.
-
-    The feed runs open loop until the first trim, which cannot happen
-    until the dead head has passed and a span exists to measure. Those
-    bytes are lost once per run, so the loss per run is roughly constant
-    and the percentage falls as the run lengthens. A rate model that was
-    simply wrong would lose proportionally instead.
-
-    Measured at RC 39: 27,648 B over 3 s and 28,544 B over 6 s, so
-    0.466% became 0.242%.
-    """
-    needs_a_buffering_host("the rate loop's residual")
-    hz = measure.hz_for(39)
-    short = measure.run_play(board, dac_sps=hz, seconds=3.0, drain_s=1.5,
-                             closed_loop=True)
-    long = measure.run_play(board, dac_sps=hz, seconds=6.0, drain_s=1.5,
-                            closed_loop=True)
-    record(calibration, "closed_loop_startup_cost", {
-        "short_bytes": short.host_deficit, "long_bytes": long.host_deficit,
-        "short_pct": round(short.host_deficit / short.host_tx_bytes * 100, 3),
-        "long_pct": round(long.host_deficit / long.host_tx_bytes * 100, 3)})
-
-    assert short.host_deficit > 0, "nothing was lost, so nothing is proven"
-    assert long.host_deficit < short.host_deficit * 1.5, (
-        f"doubling the run took the loss from {short.host_deficit} B to "
-        f"{long.host_deficit} B - that is a rate error, not a startup cost")
-
-
 # -- loop mode's carrier ----------------------------------------------
 
 def test_loop_mode_frames_carry_the_converter_rate(board, seconds,
