@@ -105,6 +105,24 @@ frozen scripts to keep a guard green, which is how a guard becomes
 expensive and eventually acquires a `-k`. A one-shot that is re-run is
 re-run with what its tool recorded; a standing tool records everything.
 
+## `rotation.jsonl`: one row per cell of the board rotation
+
+Three boards rotate across three benches to separate a converter tail
+that follows the board from one that stays with the bench. Each row is
+one cell, written by `tools/rotation_row.py` in one command: the
+identity line with the SAM3X's `uid` and the programming port's
+`board_serial`, three die-temperature reads, the six census runs of the
+#87 protocol with their raw lines, the n=5 summary that drops run 1 by
+index, the tail scale from `tools/issue82_arms.py`, the declared idle
+time, the phase (`before` the board moved or `after` it arrived), and
+every condition `provenance.conditions()` carries.
+
+A row is refused rather than written when it could not be attributed:
+no programming port, a dirty tree, a board that is not Track B, an
+image whose `build` is not the tree's commit, or an undeclared idle
+time - `--idle-seconds` is required even at 0, because a warm board
+read as a different board is what the rotation exists to stop.
+
 ## Rows whose `track` field is wrong, and how to read them
 
 **Nine record-writing tools carried `track="b"` as a literal until
