@@ -37,6 +37,7 @@
 
 #include "play_report.h"
 #include "console_out.h"          /* the shared debug emitters */
+#include "chipid.h"               /* the silicon's identity */
 #include "console_port.h"         /* console_write / console_flush */
 #include "clock.h"
 #include "bootlog.h"
@@ -555,6 +556,13 @@ void setup()
 	 * the histogram for the whole run.
 	 */
 	load_init();
+	{
+		/* The silicon's own identity, once, before anything streams:
+		 * the read runs from RAM with interrupts masked (chipid.h). */
+		uint32_t uid[4];
+		chipid_read(uid);
+		console_set_uid(uid);
+	}
 
 	/*
 	 * The converters, so this board holds its own configuration from

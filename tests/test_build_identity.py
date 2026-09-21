@@ -196,3 +196,43 @@ def test_no_firmware_source_stamps_a_wall_clock():
     assert not hits, (
         "a wall-clock stamp is compiled into firmware source: %s"
         % ", ".join(sorted(hits)))
+
+
+def test_the_identity_line_carries_the_uid_before_build(identity_line):
+    """`uid=` is the SAM3X's own identifier and it sits before `build=`.
+
+    build= is matched as opaque text to the end of the line, so a field
+    placed after it is swallowed into the build string and every
+    provenance check reads a commit that does not exist. A harness that
+    never read the silicon says `unknown`, which the parser reports as
+    None: a board is not "unknown", it is unread.
+    """
+    import measure
+
+    ident = measure.parse_identity(identity_line)
+    assert ident["uid"] is None
+    assert ident["build"] == SENTINEL, ident["build"]
+    line = next(l for l in identity_line.splitlines() if "# id:" in l)
+    assert 0 < line.find(" uid=") < line.find(" build="), line
+
+
+def test_a_read_uid_parses_and_an_older_line_has_none():
+    """Thirty-two lowercase hex characters, or None where the line
+    predates the field. Anything else is not a uid and must not parse
+    as one - the field would otherwise absorb whatever a future format
+    put there."""
+    import measure
+
+    head = ("# id: track=B fw=0.2.0 ctlver=4 framever=3 mck=78000000 "
+            "adcclk=19500000 framebytes=2048 framesamples=1016")
+    uid = "5f3c1a2b9e8d7c6b5a4f3e2d1c0b9a87"
+    with_uid = measure.parse_identity(f"{head} uid={uid} build=abc1234\n")
+    assert with_uid["uid"] == uid and with_uid["build"] == "abc1234"
+    without = measure.parse_identity(f"{head} build=abc1234\n")
+    assert without is not None and without["uid"] is None
+    assert without["build"] == "abc1234"
+    # A malformed uid does not parse as one, and does not break build=:
+    # the optional group declines and build= still ends the line.
+    odd = measure.parse_identity(f"{head} uid=ZZ build=abc1234\n")
+    assert odd is None or odd["uid"] is None
+

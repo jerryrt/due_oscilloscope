@@ -3226,6 +3226,11 @@ _ID_LINE = re.compile(
     r"\s+ctlver=(?P<ctlver>\d+)\s+framever=(?P<framever>\d+)"
     r"\s+mck=(?P<mck>\d+)\s+adcclk=(?P<adcclk>\d+)"
     r"\s+framebytes=(?P<framebytes>\d+)\s+framesamples=(?P<framesamples>\d+)"
+    # uid= is the SAM3X's 128-bit unique identifier, the board's own
+    # identity wherever it is plugged in; `unknown` from a harness that
+    # never read one, absent from an image older than the field. It
+    # sits BEFORE build= because build= is opaque to the end of line.
+    r"(?:\s+uid=(?P<uid>[0-9a-f]{32}|unknown))?"
     # `build` is the last field and is matched as opaque text to the end
     # of the line, on purpose: what a board puts there is the firmware's
     # business and provenance.build_commit() is the one place that
@@ -3271,6 +3276,9 @@ def parse_identity(text):
         "frame_bytes": int(g["framebytes"]),
         "frame_samples": int(g["framesamples"]),
         "build": g["build"].strip(),
+        # The silicon's identity, or None where the line carries none
+        # or says unknown - a board is not "unknown", it is unread.
+        "uid": g["uid"] if g["uid"] and g["uid"] != "unknown" else None,
     }
 
 

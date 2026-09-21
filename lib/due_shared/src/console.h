@@ -102,6 +102,14 @@ void console_missing(void);
 void console_identity(char track, unsigned long mck_hz);
 
 /*
+ * The silicon's unique identifier for the `uid=` field of the identity
+ * line, as chipid_read() returned it. Set once at init by each track's
+ * main(); until it is, the line says `uid=unknown`, which is what a
+ * host harness built from this file alone reports.
+ */
+void console_set_uid(const uint32_t uid[4]);
+
+/*
  * Handler bodies that are application logic, in console_cmds.c. They
  * live behind the same rule as everything else here: what they reach
  * outside themselves is named in a port header, and nothing they do

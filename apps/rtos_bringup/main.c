@@ -40,6 +40,7 @@
  * declarations Track B's main.c reaches for - invariant 4's "differ
  * only in main()" made literal. */
 #include "load.h"
+#include "chipid.h"
 #include "analog.h"
 #include "acq.h"
 #include "gen.h"
@@ -997,6 +998,13 @@ int main(void)
 	uart_init(115200);
 	systick_init();
 	load_init();
+	{
+		/* The silicon's own identity, once, before anything streams:
+		 * the read runs from RAM with interrupts masked (chipid.h). */
+		uint32_t uid[4];
+		chipid_read(uid);
+		console_set_uid(uid);
+	}
 	dac_init();
 	adc_init();
 	usb_cdc_init();

@@ -34,6 +34,7 @@
                             * generator through the same hook the control
                             * channel does, so the two cannot disagree */
 #include "load.h"
+#include "chipid.h"
 #include "diag.h"
 #include "usb_cdc.h"
 #include "track_id.h"
@@ -745,6 +746,13 @@ int main(void)
 	uart_init(115200);
 	systick_init();
 	load_init();
+	{
+		/* The silicon's own identity, once, before anything streams:
+		 * the read runs from RAM with interrupts masked (chipid.h). */
+		uint32_t uid[4];
+		chipid_read(uid);
+		console_set_uid(uid);
+	}
 	dac_init();
 	adc_init();
 	usb_cdc_init();

@@ -241,3 +241,19 @@ def test_this_benchs_board_reads_a_real_serial():
         pytest.skip("no programming port attached, so no board to name")
     assert isinstance(got, str) and re.fullmatch(r"[0-9A-F]{20}", got), got
 
+
+def test_the_silicon_uid_rides_beside_the_usb_serial(monkeypatch):
+    """`board_uid` is the SAM3X's identifier off the identity line;
+    `board_serial` is the 16U2's. Both, because a board moved between
+    benches keeps its silicon and a spare board keeps its bridge chip,
+    and only one of the two answers "which converter took this row".
+    None where the line predates the field, never a string that lies.
+    """
+    import provenance
+    head = {"track": "b", "build": "abc1234"}
+    with_uid = provenance.conditions(ident=dict(
+        head, uid="5f3c1a2b9e8d7c6b5a4f3e2d1c0b9a87"))
+    assert with_uid["board_uid"] == "5f3c1a2b9e8d7c6b5a4f3e2d1c0b9a87"
+    without = provenance.conditions(ident=dict(head))
+    assert "board_uid" in without and without["board_uid"] is None
+

@@ -18,6 +18,17 @@
 #include "fw_git_rev.h" /* FW_GIT_REV */
 #include "fw_version.h" /* FW_VERSION_STR */
 
+/* The SAM3X's unique identifier, or unknown until main() supplies it. */
+static uint32_t id_uid[4];
+static int id_uid_set;
+
+void console_set_uid(const uint32_t uid[4])
+{
+	for (unsigned i = 0; i < 4u; i++)
+		id_uid[i] = uid[i];
+	id_uid_set = 1;
+}
+
 /*
  * The command surface. One definition, both tracks. Order is the
  * help's order, so this list is also the document; group by what a
@@ -338,6 +349,19 @@ void console_identity(char track, unsigned long mck_hz)
 	con_str(" adcclk=");       con_u32(mck_hz / 4u);
 	con_str(" framebytes=");   con_u32(FRAME_BYTES);
 	con_str(" framesamples="); con_u32(FRAME_SAMPLES);
+	/*
+	 * BEFORE build=. The host matches build= as opaque text to the end
+	 * of the line, so a field placed after it would be swallowed into
+	 * the build string and every provenance check would read a commit
+	 * that does not exist. tests/test_build_identity.py holds the order.
+	 */
+	con_str(" uid=");
+	if (id_uid_set) {
+		for (unsigned i = 0; i < 4u; i++)
+			con_hex32(id_uid[i], 8);
+	} else {
+		con_str("unknown");
+	}
 	con_str(" build=" FW_GIT_REV);
 	con_nl();
 	console_flush();

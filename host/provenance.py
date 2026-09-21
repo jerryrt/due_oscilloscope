@@ -722,6 +722,14 @@ def conditions(board=None, inst=None, channels=(1, 2), extra=None,
         if ident.get("build"):
             p["build"] = ident["build"]
             p.update(firmware(ident.get("build"), ident.get("track")))
+        if ident.get("uid"):
+            p["board_uid"] = ident["uid"]
+    # THE SILICON'S IDENTITY, beside board_serial. board_serial names
+    # the 16U2 on the programming port; board_uid is the SAM3X's own
+    # 128-bit identifier, read off the identity line, and it is the one
+    # that stays with the converter whatever the board is plugged into.
+    # None on an image older than the field or when no board answered.
+    p.setdefault("board_uid", None)
     # The per-row names run_fields() has always spread into a record.
     # `fw_build` is `build` under the name the rows carry; both stay.
     p.update({
@@ -832,6 +840,7 @@ def _collect(board=None, inst=None, channels=(1, 2)):
                     "mck_hz": ident["mck_hz"],
                     "adc_clock_hz": ident["adc_clock_hz"],
                     "build": ident["build"],
+                    "board_uid": ident.get("uid"),
                 })
         except Exception as e:                            # pragma: no cover
             p["board_error"] = f"{type(e).__name__}: {e}"

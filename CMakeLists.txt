@@ -172,6 +172,7 @@ add_executable(track_b_bringup EXCLUDE_FROM_ALL
     bsp/led.c
     bsp/systick.c
     lib/due_shared/src/load.c
+    lib/due_shared/src/chipid.c
     bsp/clock.c
     bsp/fault.c
     bsp/syscalls.c
@@ -342,6 +343,7 @@ if(BUILD_TRACK_C)
         bsp/fault.c
         bsp/syscalls.c
         lib/due_shared/src/load.c
+    lib/due_shared/src/chipid.c
         drivers/dac.c
         drivers/adc.c
         drivers/acq.c
