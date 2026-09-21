@@ -711,6 +711,54 @@ phase. It is not established.
 | **Do not derive one channel's pairing from the other's** | A0's and A1's pairings move independently with the start gap and the wait state: both 1 at `K` 5 and 10, both 0 at FWS 6 |
 | **Count per hold, not per second** | A per-second rate at another trigger rate is off by the rate ratio |
 
+### Shielded: the excess left one board and did not come with the shield
+
+A Mega shield v3 was stacked on every DUT on 2026-09-20, wires
+unchanged, and every bench re-took the row under the pinned image:
+one row, then three more rounds, each a real 1200 s rest from the end
+of whatever last touched the board, no reflash, nothing else on the
+board between rounds. Twelve rows, three boards, three benches, one
+arrangement. `tools/rotation_stability.py` reads them.
+
+| board | bench | rested largest median, four rounds | count median | A0 tail scale | no-shield, rested |
+|---|---|---|---|---|---|
+| `…4d3230323239313032` | linux-x1 | 43.5 / 44.5 / 44.5 / 44.0 | 0 / 0 / 0 / 0 | 0.47–0.53 | 54.5 here, 53.0 on mac-bench |
+| `…4d3030363139303038` | windows-desk | 48.0 / 47.0 / 47.5 / 46.0 | 3 / 2 / 2 / 1 | 0.84–0.93 | 45.0, same bench |
+| `…5147354d3130323036303039` | mac-bench | 51.5 / 51.5 / 52.0 / 51.5 | 62 / 68 / 59 / 54 | 1.43–1.60 | none: first seen under the shield |
+
+Every set is stable by the rule the tool states - the rows' medians
+spread no wider than the widest range any one row saw across its own
+five census runs - on the level and on the count. What the stable
+numbers say:
+
+- **The board that carried the tail through the rotation reads in
+  the healthy band under the shield, and holds there.** Four rows
+  over 86 minutes at 43.5–44.5 with no crossings, A0 tail scale 0.5,
+  on the bench that read it at 53–55.5 with 84–113 crossings and a
+  tail scale of 2.4 with no shield. Why is not established: the
+  shield's headers re-seating the board's pins, added capacitance on
+  the DAC0/A0 path, and the board having moved benches at the same
+  time are not separated by these rows.
+- **The healthy board's rise under the shield was a transient.** Its
+  first row read a count of 3–4 against 0–1 unshielded; by the fourth
+  the count was not separable from its own unshielded distribution.
+  The first row of an arrangement is the first run of a repeated
+  measurement, and it was the extreme of the series.
+- **The fourth board carries the tail under the shield and holds
+  it**: 51.5 with 54–68 crossings over 80 minutes, tail scale 1.5. It
+  has no no-shield row and is from a second lot, so it says nothing
+  about the shield; it says the population under the shield is two
+  boards at 44–47 and one above 50, the shape it had before with a
+  different board in the upper slot.
+- **There is no shield term to quote.** Two known boards moved in
+  opposite directions, one of them transiently, so a figure taken
+  with the shield is compared only with figures taken with it, which
+  is what the phase label on every row is for.
+- **The die code did not ramp through any set.** A five-code rise
+  between rounds 1 and 2 on two boards, then flat to falling; the
+  one-row reading that the board was still warming did not survive
+  the set.
+
 ## What this method cannot do
 
 Stated here rather than discovered later, because a plausible number is
