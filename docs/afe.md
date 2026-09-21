@@ -194,6 +194,22 @@ Judged the same way as the input: `tools/gen_sweep.py` reads the DAC
 through the ADC, so the loopback through this stage and Stage A's
 buffer is measured within holds like everything else.
 
+**Option: a −3.3 V inverter for the output stage alone.** A
+charge-pump inverter, one chip and two capacitors plus an RC filter
+on its rail, gives the output op-amp ±3.3 V; the summer then subtracts
+the DAC's 1.65 V centre and the waveform sits about 0 V, roughly
+±2.8 V after the op-amp's headroom, with offset either side of
+ground. Choose a low output-resistance pump, LM2664 or TPS6040x
+class, since a pump is a resistor as much as a supply and the old
+7660 sags a volt at 20 mA; use an op-amp rated for 6.6 V total,
+MCP6H91 or TLV2372 class, not the 5.5 V rail-to-rail parts. The input
+side stays on 3.3 V, so no ADC pin can be driven negative, and the
+loopback still works because the input divider to 1.5 V takes ±3 V
+to 1.5 ± 0.2 V. It costs one more part that can fail, safely, and
+one extra sweep with the pump on against off. The AC-coupled output
+pin gives a 0 V-centred waveform with no rail at all, for signals
+with no DC content.
+
 **References for a real DAC as the source**, since OpenScope's is a
 ladder and the part before the filter differs:
 
