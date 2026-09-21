@@ -9,6 +9,11 @@
       "first": "2026-09-20T21:18:45-0400",
       "last": "2026-09-20T21:18:45-0400",
       "phase": "after"
+    },
+    {
+      "first": "2026-09-20T23:49:42-0400",
+      "last": "2026-09-20T23:49:42-0400",
+      "phase": "shield-v3"
     }
   ],
   "board_serial": "134484749393514068D5",
@@ -82,6 +87,38 @@
       ],
       "tail_scale_status": "ok, parity forced 0 after a tie",
       "taken_at": "2026-09-20T21:18:45-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        0,
+        0
+      ],
+      "die_code_mean": 1047.8333,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 43.5,
+      "largest_range": [
+        43.5,
+        44.5
+      ],
+      "phase": "shield-v3",
+      "row_taken_at": "2026-09-20T23:49:42-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.62,
+        1.67,
+        0.57,
+        0.48
+      ],
+      "tail_scale_a1": [
+        1.3,
+        1.53,
+        1.31,
+        1.33
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-20T23:49:42-0400"
     }
   ],
   "converter_summary": {
@@ -108,6 +145,18 @@
       "n_rested_rows": 1,
       "n_rows": 1,
       "rested_largest_median": 54.5
+    },
+    "shield-v3": {
+      "benches": [
+        "linux-x1"
+      ],
+      "largest_range": [
+        43.5,
+        44.5
+      ],
+      "n_rested_rows": 1,
+      "n_rows": 1,
+      "rested_largest_median": 43.5
     }
   },
   "first_seen": "2026-09-20T20:34:29-0400",
@@ -117,19 +166,20 @@
     ],
     "before": [
       "large-tail"
-    ]
+    ],
+    "shield-v3": []
   },
   "generated": {
     "bench": "linux-x1",
-    "rev": "b3245f4-dirty",
+    "rev": "3d442b7-dirty",
     "tool": "tools/board_profile.py"
   },
   "history": [
     {
       "bench": "linux-x1",
       "first": "2026-09-20T20:34:29-0400",
-      "last": "2026-09-20T20:34:29-0400",
-      "rows": 1
+      "last": "2026-09-20T23:49:42-0400",
+      "rows": 2
     },
     {
       "bench": "mac-bench",
