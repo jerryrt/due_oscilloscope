@@ -2,9 +2,8 @@
 
 **Status: a reading list with a purpose.** Each entry says what the
 project is, what to read in it, and which part of this project it
-informs. Figures quoted from memory of the published material are marked
-*(check)*; verify against the project's own documentation before sizing
-anything against them.
+informs. OpenScope MZ figures are from Digilent's reference manual; the other
+projects' figures are from memory and marked *(check)*.
 
 Read `docs/scope.md` for the phases these map onto, `docs/hardware-next.md`
 for the successor-chip question, and `docs/noise.md` ("Within holds") for
@@ -14,7 +13,7 @@ the measurement that makes the front end the next step.
 
 | project | converters | what it is | read it for |
 |---|---|---|---|
-| Digilent OpenScope MZ | the PIC32MZ's own ADC; generator DAC *(check)* | the closest published shape to this project's next phase, on a stronger chip | input stage topology, offset and attenuation, calibration procedure, the instrument protocol |
+| Digilent OpenScope MZ | the PIC32MZ's own ADC modules, interleaved; an R-2R ladder on ten GPIO pins for the generator | the closest published shape to this project's next phase, on a stronger chip | input stage topology, the 3 V reference with feedback, PWM offsets, the calibration procedure, the instrument protocol |
 | Digilent Analog Discovery | external ADC and DAC behind an FPGA | a commercial instrument with a published front-end block diagram | how a ±25 V input reaches a 3 V converter, the reasoning rather than the parts |
 | ScopeFun | external ADC and DAC behind an FPGA | an open-hardware oscilloscope with full sources | a complete converter-plus-front-end board, the reference and supply sections |
 | Girino | the ATmega's own 10-bit ADC | an Arduino oscilloscope on a proto shield | the minimum front end that is still one: offset, gain, a buffer |
@@ -38,13 +37,13 @@ instrument on a bigger chip, not more done with less.
 
 | area | OpenScope MZ | this project | the gap is |
 |---|---|---|---|
-| input range and protection | about ±20 V, attenuator, offset, buffer, clamps *(check)* | 0 to 3.3 V, nothing in front of the pin | Phase 3, not built |
-| sample rate | single-digit MS/s per channel *(check)* | about 900 ksps aggregate | silicon |
-| record length | buffered captures in RAM | gapless streaming to the host, no length limit | a different architecture, the stronger one for continuous capture |
+| input range and protection | ±20 V, 1 MΩ, attenuator, PWM-driven offset, buffer | 0 to 3.3 V, nothing in front of the pin | Phase 3, not built |
+| sample rate and bandwidth | 6.25 MS/s per channel, 12-bit; flat to 1 MHz, 2 MHz at −3 dB | about 900 ksps aggregate; no anti-alias filter yet | silicon, and Phase 3 |
+| record length and host link | 32,640 samples per channel, shipped over an FT232RQ serial bridge at 1.25 MBaud (139 kB/s); the chip's own Hi-Speed USB unused | gapless streaming over the chip's Hi-Speed USB by DMA, 1.8 MB/s today, tens of MB/s measured | a different architecture, the stronger one for continuous capture |
 | triggering | edge and level in firmware, a scope display | none in the front end | a missing feature |
-| generator | one channel, 10-bit, about 10 MS/s, about ±3 V *(check)* | 12-bit, up to 1.4 MS/s, 0.55 to 2.75 V, no output stage | resolution here, rate and range there; the output stage is Phase 3 |
+| generator | one channel, 10-bit R-2R ladder of 1% resistors at 10 MS/s, 3 V peak-to-peak with ±1.5 V offset, missing codes possible, calibrated by lookup table | 12-bit DAC, up to 1.4 MS/s, 0.55 to 2.75 V, no output stage | resolution and monotonicity here, rate and range there; the output stage is Phase 3 |
 | supplies, logic analyser, WiFi | present | out of scope | product features |
-| calibration | a defined per-unit procedure | a direction and a profile format | the reference part |
+| calibration | a 3 V external reference with feedback for the ADC, and a per-unit procedure that reads each output code back through a feedback network | a direction and a profile format | the reference part |
 | layout | an instrument PCB with planes and decoupling | a Due and jumper wires | the pickup `docs/noise.md` measures |
 | software | browser UI, documented JSON protocol, works out of the box | daemon with a documented API, an early Qt window | a product's front end against a bench tool's |
 
@@ -84,7 +83,9 @@ a bandwidth figure copied from a catalogue.
 ## Where to find them
 
 Digilent's reference site carries the OpenScope MZ and Analog Discovery
-reference manuals and the OpenScope firmware and hardware sources.
+reference manuals with the schematic images; the OpenScope MZ firmware
+is on GitHub under Digilent, and the board's PCB design files are not
+in that repository. The product is discontinued.
 ScopeFun publishes its hardware and firmware on GitHub under its own
 name. Girino is an Instructables project. Search by name; links here
 would rot.
