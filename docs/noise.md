@@ -759,6 +759,45 @@ numbers say:
   one-row reading that the board was still warming did not survive
   the set.
 
+### Within holds: the disturbance is on the ADC side, and the shield removes it
+
+The internal generator holds each DAC level for two ADC samples, so
+the two samples of one hold are one converter reading one voltage
+twice, 10 us apart, and their difference carries none of the waveform.
+A threshold on raw sample-to-sample steps cannot do that: at 200 ksps
+and 256 points a 34-code riser needs an 11-code glitch to cross 45
+where a peak needs 45, so the census sees the steep phase and the
+slope's direction whether or not the disturbance has either.
+`tools/gen_sweep.py` keeps raw captures across the generator's point
+ladder with their provenance, and `tools/gen_sweep_analyse.py` reads
+them within holds; `records/gen-sweep-<bench>.jsonl` names every
+capture.
+
+On the board that carried the tail through the rotation, on one
+bench, at one preset, the same read with and without the shield:
+
+| capture | shield | \|d\| p99 / p99.9 / max | \|d\| > 10 per 1000 holds |
+|---|---|---|---|
+| internal sine, 256 points | none | 8 / 20 / 31 | 6.3 |
+| host-fed DC, USB duplex running | none | 14 / 24 / 38 | 15.3 |
+| internal sine, 256 points, twice | v3 | 3 / 6-7 / 11-12 | 0.005-0.010 |
+| internal sine, 128 to 4 points | v3 | 3 / 6-7 / 10-12 | 0-0.005 |
+| internal DC | v3 | 4 / 8 / 13 | 0.11 |
+
+From the 1,256 unshielded events above 10 codes: the bad sample is the
+first of the hold as often as the second (640 to 616), its sign is
+unrelated to the DAC step into or out of the hold, its rate is flat
+across riser sizes from 0 to 64 codes and across the phase of the
+cycle, and it falls only mildly with level. It is a random,
+symmetric, single-sample kick of 10-30 codes on the reading, present
+with no signal at all, larger and more frequent with USB traffic in
+both directions, and absent - one event in 200,000 holds - with a
+shield stacked on the headers. Not the DAC, not its settling, not the
+trigger phase: pickup into the ADC's input or reference path is the
+shape of it, and the coupling path itself - pin, `ADVREF`, analog
+supply, the USB return current - is not separated by these captures.
+One board so far.
+
 ## What this method cannot do
 
 Stated here rather than discovered later, because a plausible number is
