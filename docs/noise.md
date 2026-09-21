@@ -647,6 +647,38 @@ comparable**, and whether the term belongs to the board or to the
 bench needs a second Due on that bench, which nothing in software can
 substitute for.
 
+### Rotated: the tail follows the board
+
+The three boards were then rotated across the three benches, every
+bench ending with a different board, and each bench took the same
+rested row on the same pinned image before and after
+(`tools/rotation_row.py`, `records/rotation.jsonl`, identity by the
+SAM3X's own unique identifier). Largest step, median of five with the
+first run dropped:
+
+| board | own bench | other bench | moved with the board |
+|---|---|---|---|
+| `…3230323239313032` | `linux-x1` **54.5**, scale 2.35-2.40 | `mac-bench` **53.0**, scale 1.75-1.80 | -1.5 codes |
+| `…3030363139303038` | `windows-desk` 45.0, scale 1.02-1.04 | `linux-x1` 45.5, scale 1.63-1.69 | +0.5 |
+| `…3030393039303034` | `mac-bench` 45.0, scale 0.76-0.83 | `windows-desk` 45.5 | +0.5 |
+
+Changing the bench moves a board by 0.5-1.5 codes; changing the board
+moves a bench by 8-9. **One board carries a converter tail about twice
+the other two's, and it is the board** - not the firmware, which was
+byte-identical everywhere; not the Linux bench, which read 45.5 with a
+healthy board in the same place; and not the test. The afternoon
+figures of 65-75 on that board, taken while the host ran gates and
+fuzz, remain unexplained by anything measured and were not chased.
+
+Three things the rotation showed that must not be read as settled:
+the die-temperature code compares a board only against itself (49
+codes between two boards on one bench is the sensor's per-part offset);
+the crossing *count* moves with the bench where the largest step does
+not - 91 against 44-67 for one board - because the threshold sits inside
+the distribution; and the tail *scale* carries a bench term of +35-60%
+that the census does not, small beside the 2x between boards and not
+explained.
+
 **What the 45-code threshold does, read off the healthy boards:** it
 sits at their largest step, not above it. `windows-desk` crosses it on
 0, 1 or 2 holds per run and once on 31; `mac-bench` on 5 to 22. So the

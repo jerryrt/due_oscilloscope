@@ -219,6 +219,29 @@ There is none in the tree today, which is the correct state: the last
 was Track A's capture resyncs, and it closed when Track A moved to
 endpoint DMA.
 
+### Attributing a per-board analog property
+
+A figure that differs between benches has two candidate owners, the
+board and the bench, and self-measurement cannot separate them: a Due
+measures its own converters against its own reference. Rotating the
+boards does, without a meter. Every row carries `board_uid` (the
+SAM3X's 128-bit identifier, read at init and printed on the `v` line)
+and `board_serial` (the 16U2's USB serial, readable with no firmware
+and no open port), so a row names its board from the board itself and
+the rotation order is free.
+
+The procedure that produced `records/rotation.jsonl`: one commit is
+pinned as the image and its artifact hashes registered; **the image is
+built with the tree checked out at that commit** - `FW_GIT_REV` is
+baked in, so a build at a later tip cannot match the hashes, and the
+hash check is what refuses it; every bench flashes it, rests the board
+twenty minutes, and runs `tools/rotation_row.py --phase before`; boards
+move; each bench flashes the same image onto whatever arrived, rests
+it, and runs `--phase after --image-rev <pin>` from any later tree.
+The programming port moves with the board, so discover it rather than
+naming it. Compare by the largest step and the tail scale; the count
+is a range. The result of the first rotation is in `docs/noise.md`.
+
 ## 6. Working on the suite
 
 | rule | what it cost to learn |
