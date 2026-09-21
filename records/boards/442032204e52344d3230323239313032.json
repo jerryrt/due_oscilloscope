@@ -12,7 +12,7 @@
     },
     {
       "first": "2026-09-20T23:49:42-0400",
-      "last": "2026-09-21T00:51:32-0400",
+      "last": "2026-09-21T01:15:47-0400",
       "phase": "shield-v3"
     }
   ],
@@ -183,6 +183,38 @@
       ],
       "tail_scale_status": "ok, parity forced 0 after a tie",
       "taken_at": "2026-09-21T00:51:32-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        0,
+        1
+      ],
+      "die_code_mean": 1050.5417,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 44.0,
+      "largest_range": [
+        43.0,
+        46.0
+      ],
+      "phase": "shield-v3",
+      "row_taken_at": "2026-09-21T01:15:47-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.61,
+        1.65,
+        0.54,
+        0.48
+      ],
+      "tail_scale_a1": [
+        1.38,
+        1.29,
+        1.44,
+        1.39
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T01:15:47-0400"
     }
   ],
   "converter_summary": {
@@ -215,12 +247,12 @@
         "linux-x1"
       ],
       "largest_range": [
-        43.5,
-        45.0
+        43.0,
+        46.0
       ],
-      "n_rested_rows": 3,
-      "n_rows": 3,
-      "rested_largest_median": 44.5
+      "n_rested_rows": 4,
+      "n_rows": 4,
+      "rested_largest_median": 44.25
     }
   },
   "first_seen": "2026-09-20T20:34:29-0400",
@@ -235,15 +267,15 @@
   },
   "generated": {
     "bench": "linux-x1",
-    "rev": "f51ea78-dirty",
+    "rev": "3aa87c1-dirty",
     "tool": "tools/board_profile.py"
   },
   "history": [
     {
       "bench": "linux-x1",
       "first": "2026-09-20T20:34:29-0400",
-      "last": "2026-09-21T00:51:32-0400",
-      "rows": 4
+      "last": "2026-09-21T01:15:47-0400",
+      "rows": 5
     },
     {
       "bench": "mac-bench",
