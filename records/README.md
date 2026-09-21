@@ -142,6 +142,30 @@ tool is re-run with `--parity 0`; `tool exit N: <last line>`; or
 **0** every measurement present, **2** refused and nothing written,
 **3** row written with the tail scale MISSING.
 
+## `boards/`: one profile per known board, generated
+
+`records/boards/<board_uid>.json` is one file per die, named by the
+SAM3X's unique identifier with the 16U2 serial as the cross-check, and
+it is where a calibration path finds a board's figures, the state each
+was taken in, and what has not been measured. The files are generated
+by `tools/board_profile.py --write` from `rotation.jsonl` and
+`calibration.json`, and `--check` fails if any of them differs from
+what those records regenerate - so nothing in a profile is typed, and
+a figure that cannot be traced to a row does not survive a check. The
+`generated` block names who wrote the file and is the one part the
+check ignores, because it changes with every commit and every bench.
+
+Figures are summarised per phase and never pooled across one: the
+rotation's `before` and `after` rows and any later arrangement (a
+shield on the DUT, a new board) are different arrangements of the same
+board, and the profile keeps each with when it was first and last
+taken. The `large-tail` flag is a label from the rotation phases only,
+at a rested largest-step median of 50 or more, against the healthy
+band's 43-48. The flash log is bench-local and never folded into the
+committed files; `--flash-log PATH` reads it for a bench looking at
+its own history. `tests/test_board_profile.py` refuses a uid that
+appears in the rows with no profile on disk.
+
 ## Rows whose `track` field is wrong, and how to read them
 
 **Nine record-writing tools carried `track="b"` as a literal until

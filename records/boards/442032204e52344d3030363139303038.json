@@ -1,0 +1,133 @@
+{
+  "arrangements": [
+    {
+      "first": "2026-09-20T20:38:48-0400",
+      "last": "2026-09-20T20:38:48-0400",
+      "phase": "before"
+    },
+    {
+      "first": "2026-09-20T21:15:05-0400",
+      "last": "2026-09-20T21:15:05-0400",
+      "phase": "after"
+    }
+  ],
+  "board_serial": "1344847493935140A666",
+  "board_uid": "442032204e52344d3030363139303038",
+  "calibration": {
+    "adc_gain": null,
+    "adc_offset": null,
+    "adc_transfer": null,
+    "dac_mv": null,
+    "note": "not measured; needs an external reference (docs/scope.md open question 5)",
+    "reference": null,
+    "temperature_slope": null
+  },
+  "converter": [
+    {
+      "bench": "windows-desk",
+      "count_range": [
+        0,
+        1
+      ],
+      "die_code_mean": 1037.2917,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 45.0,
+      "largest_range": [
+        43.0,
+        46.0
+      ],
+      "phase": "before",
+      "row_taken_at": "2026-09-20T20:38:48-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [],
+      "tail_scale_a1": [],
+      "tail_scale_status": null,
+      "taken_at": "2026-09-20T20:38:48-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        0,
+        2
+      ],
+      "die_code_mean": 1036.9167,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 45.5,
+      "largest_range": [
+        44.0,
+        48.0
+      ],
+      "phase": "after",
+      "row_taken_at": "2026-09-20T21:15:05-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.63,
+        1.69,
+        0.71,
+        0.67
+      ],
+      "tail_scale_a1": [
+        1.29,
+        1.23,
+        1.29,
+        1.31
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-20T21:15:05-0400"
+    }
+  ],
+  "converter_summary": {
+    "after": {
+      "benches": [
+        "linux-x1"
+      ],
+      "largest_range": [
+        44.0,
+        48.0
+      ],
+      "n_rested_rows": 1,
+      "n_rows": 1,
+      "rested_largest_median": 45.5
+    },
+    "before": {
+      "benches": [
+        "windows-desk"
+      ],
+      "largest_range": [
+        43.0,
+        46.0
+      ],
+      "n_rested_rows": 1,
+      "n_rows": 1,
+      "rested_largest_median": 45.0
+    }
+  },
+  "first_seen": "2026-09-20T20:38:48-0400",
+  "flags": {
+    "after": [],
+    "before": []
+  },
+  "generated": {
+    "bench": "linux-x1",
+    "rev": "eb00f1f-dirty",
+    "tool": "tools/board_profile.py"
+  },
+  "history": [
+    {
+      "bench": "windows-desk",
+      "first": "2026-09-20T20:38:48-0400",
+      "last": "2026-09-20T20:38:48-0400",
+      "rows": 1
+    },
+    {
+      "bench": "linux-x1",
+      "first": "2026-09-20T21:15:05-0400",
+      "last": "2026-09-20T21:15:05-0400",
+      "rows": 1
+    }
+  ],
+  "notes": [],
+  "schema": "board-profile/1"
+}

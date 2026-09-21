@@ -1,0 +1,189 @@
+{
+  "arrangements": [
+    {
+      "first": "2026-09-20T20:35:53-0400",
+      "last": "2026-09-20T20:35:53-0400",
+      "phase": "before"
+    },
+    {
+      "first": "2026-09-20T21:23:34-0400",
+      "last": "2026-09-20T21:23:34-0400",
+      "phase": "after"
+    }
+  ],
+  "board_serial": "1344A47403035101C8E8",
+  "board_uid": "442032204e52344d3030393039303034",
+  "calibration": {
+    "adc_transfer": {
+      "_comment": [
+        "The DAC->ADC loop is RATIOMETRIC: the DAC's reference is ADVREF,",
+        "the ADC's reference (datasheet Table 46-39's note, recorded in",
+        "docs/HANDOFF.md). One reference, so the loop's code-to-code ratio",
+        "is immune to what the 3.3 V rail actually is - and, by the same",
+        "token, blind to it. The board cannot measure its own reference.",
+        "",
+        "The scope supplies exactly that missing scale, and two",
+        "independent routes agree to 0.1 mV: the loop slope against the",
+        "scope's DAC span, and the ADC's codes-per-millivolt directly.",
+        "Both give ADVREF = 3270 mV, not the 3300 that host/ and tests/",
+        "have assumed.",
+        "",
+        "So the +0.91% first reported as an ADC gain error is very likely",
+        "not the ADC's at all - it is the assumed reference being high. A",
+        "ratiometric loop cannot separate those two; only an external",
+        "instrument can, which is the whole argument for having one.",
+        "",
+        "What is NOT claimed: absolute accuracy. This is ADVREF as a",
+        "DS1102E with an asserted probe ratio sees it. A 6.5-digit meter",
+        "would move it and would be believed over this."
+      ],
+      "_offset_note": [
+        "A separate offset term is deliberately NOT recorded. The DAC only",
+        "spans 578-2771 mV, so an offset at code 0 is extrapolated outside",
+        "the data and is strongly correlated with the slope: the -47 codes",
+        "the first fit reported is mostly a 0.9% slope error walked back",
+        "from mid-scale. Over the measured range a single scale factor",
+        "reconciles the two instruments to about 4 codes."
+      ],
+      "advref_mv": 3270,
+      "advref_mv_assumed_previously": 3300,
+      "advref_tolerance_mv": 40,
+      "loop_slope_adc_per_dac_code": 0.67053,
+      "worst_dev_codes_over_measured_range": 4.4
+    },
+    "dac_mv": {
+      "_comment": [
+        "The DAC's output span, measured with the SCOPE on the pin, not",
+        "through the ADC. span_lo/span_hi used to be ADC-derived - a mean",
+        "code times 3300/4095 - which folds the ADC's own offset into the",
+        "DAC's span and reads about 32 mV low at the bottom. The two agree",
+        "once that offset is accounted for, which is the check that",
+        "settled it; before the scope there was no third party to ask.",
+        "tools/dso_metrics.py transfer, 8 agreeing points of 10, repeats",
+        "spread 1.2-8.1 mV, worst deviation from the fit 4.4 codes."
+      ],
+      "adc_derived_span_hi": 2760,
+      "adc_derived_span_lo": 546,
+      "span_hi": 2771,
+      "span_lo": 578,
+      "span_tolerance_mv": 40,
+      "uv_per_code": 535.5
+    },
+    "measured_on_bench": "mac-bench, the DSO bench, before the 2026-09-20 rotation; that board is on windows-desk now",
+    "source": "calibration.json"
+  },
+  "converter": [
+    {
+      "bench": "mac-bench",
+      "count_range": [
+        0,
+        2
+      ],
+      "die_code_mean": 992.3958,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 45.0,
+      "largest_range": [
+        44.0,
+        45.5
+      ],
+      "phase": "before",
+      "row_taken_at": "2026-09-20T20:35:53-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        0.83,
+        0.76
+      ],
+      "tail_scale_a1": [
+        1.1,
+        1.12
+      ],
+      "tail_scale_status": null,
+      "taken_at": "2026-09-20T20:35:53-0400"
+    },
+    {
+      "bench": "windows-desk",
+      "count_range": [
+        0,
+        2
+      ],
+      "die_code_mean": 998.9375,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 45.5,
+      "largest_range": [
+        44.5,
+        47.5
+      ],
+      "phase": "after",
+      "row_taken_at": "2026-09-20T21:23:34-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.07,
+        1.07,
+        0.75,
+        0.76
+      ],
+      "tail_scale_a1": [
+        0.94,
+        0.95,
+        0.92,
+        0.88
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-20T21:23:34-0400"
+    }
+  ],
+  "converter_summary": {
+    "after": {
+      "benches": [
+        "windows-desk"
+      ],
+      "largest_range": [
+        44.5,
+        47.5
+      ],
+      "n_rested_rows": 1,
+      "n_rows": 1,
+      "rested_largest_median": 45.5
+    },
+    "before": {
+      "benches": [
+        "mac-bench"
+      ],
+      "largest_range": [
+        44.0,
+        45.5
+      ],
+      "n_rested_rows": 1,
+      "n_rows": 1,
+      "rested_largest_median": 45.0
+    }
+  },
+  "first_seen": "2026-09-20T20:35:53-0400",
+  "flags": {
+    "after": [],
+    "before": []
+  },
+  "generated": {
+    "bench": "linux-x1",
+    "rev": "eb00f1f-dirty",
+    "tool": "tools/board_profile.py"
+  },
+  "history": [
+    {
+      "bench": "mac-bench",
+      "first": "2026-09-20T20:35:53-0400",
+      "last": "2026-09-20T20:35:53-0400",
+      "rows": 1
+    },
+    {
+      "bench": "windows-desk",
+      "first": "2026-09-20T21:23:34-0400",
+      "last": "2026-09-20T21:23:34-0400",
+      "rows": 1
+    }
+  ],
+  "notes": [],
+  "schema": "board-profile/1"
+}
