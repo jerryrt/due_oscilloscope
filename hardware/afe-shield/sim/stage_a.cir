@@ -1,0 +1,55 @@
+* Stage A: the reference and the pin driver, simulated from the
+* schematic. sim/run.sh exports stage_a.net from afe-shield.kicad_sch
+* and runs this deck; nothing here is drawn twice. The checks are
+* docs/afe-plan.md phase A1, with the placeholder models in
+* models/afe-models.lib until the vendor models are in.
+.include stage_a.net
+
+* The Due: its 3.3 V rail, its DAC pins, its ADC reference input.
+V3V3 +3V3 0 DC 3.3
+* DAC0 steps across the whole window the DAC has at a 3.0 V reference;
+* DAC1 carries a full-window sine at the top of the generator's clean band.
+VDAC0 /A12 0 DC 1.5 AC 1 PULSE(0.5 2.5 1u 1n 1n 4u 8u)
+VDAC1 /A13 0 DC 1.5 SIN(1.5 1.0 200k)
+* ADVREF's input, 14 kohm at 250 uA, as if JP1 were closed.
+RADVREF /VREF3V0 0 14k
+
+* Plain names for the control script, which reads '/' as division.
+Va0 a0 /A0 DC 0
+Va1 a1 /A1 DC 0
+Va2 a2 /A2 DC 0
+Vr3 vref3v0 /VREF3V0 DC 0
+Vr1 vref1v5 /VREF1V5 DC 0
+Vd0 dac0 /A12 DC 0
+Vp3 p3v3 +3V3 DC 0
+
+.control
+set filetype=ascii
+op
+echo --- operating point
+print v(vref3v0) v(vref1v5) v(a2) v(a0) v(a1) i(V3V3)
+let i_advref_ua = v(vref3v0) / 14k * 1e6
+print i_advref_ua
+echo --- U1A output against its rail: headroom that must survive the vendor model
+let headroom = v(p3v3) - v(vref3v0)
+print headroom
+echo --- DC transfer of the DAC0 pin driver across the DAC window
+dc VDAC0 0.5 2.5 0.25
+print v(dac0) v(a0)
+let err = v(a0) - v(dac0)
+print err
+echo --- AC: the follower and pin driver seen from DAC0, -3 dB point
+ac dec 20 1k 100meg
+let mag = db(v(a0))
+meas ac f3db when mag = -3
+echo --- transient: a 2 V step settling at the pin, within 1 LSB (0.73 mV)
+tran 2n 10u
+meas tran t_step when v(dac0) = 1.5 rise=1
+meas tran t_settle when v(a0) = 2.49927 rise=1
+let settle_ns = (t_settle - t_step) * 1e9
+print settle_ns
+meas tran a1_max max v(a1) from=2u to=10u
+meas tran a1_min min v(a1) from=2u to=10u
+quit
+.endc
+.end

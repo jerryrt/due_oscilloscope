@@ -99,3 +99,11 @@ docs/issue5-report.html
 # goes stale the moment an arm lands. The generator and its README template
 # are committed; run the generator.
 analysis/
+
+# KiCad: per-user state, backups, derived files
+hardware/**/*-backups/
+hardware/**/*.kicad_prl
+hardware/**/fp-info-cache
+hardware/**/sim/*.net
+hardware/**/sim/*.raw
+hardware/**/sim/*.log
