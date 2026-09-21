@@ -242,6 +242,17 @@ The programming port moves with the board, so discover it rather than
 naming it. Compare by the largest step and the tail scale; the count
 is a range. The result of the first rotation is in `docs/noise.md`.
 
+A row is one arrangement of one board on one bench, and `--phase` is
+the arrangement's label, so a physical change - a shield stacked on
+the DUT, a wire moved - is a new label and never a row under the old
+one. Repeating rows under one label is how an arrangement is shown
+to be stable: `tools/rotation_stability.py` sets the spread of a
+board's rested medians in one phase against the widest range any
+single row saw within itself, and calls the phase stable only when
+the rows disagree by no more than one of them wandered. It never
+pools phases. `tools/board_profile.py` writes the same rows into one
+profile per board under `records/boards/`, summarised per phase.
+
 ## 6. Working on the suite
 
 | rule | what it cost to learn |
