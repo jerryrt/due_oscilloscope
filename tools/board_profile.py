@@ -34,12 +34,14 @@ distinct phases seen with when each was first and last taken, and
 `flags` is per phase too - a later arrangement gets its own entry
 rather than overwriting the rotation's.
 
-`large-tail` IS A LABEL, NOT A SPEC, and it is judged on the rotation
-phases only (`before`, `after`): the rotation read the healthy boards
+`large-tail` IS A LABEL, NOT A SPEC, and it is judged per phase, on
+that phase's rested median alone: the rotation read the healthy boards
 at a rested largest step of 43-48 codes and the outlier at 53-55, so a
-rested median of 50 or more in those phases carries the flag. It marks
-a board whose analog rows must be read with that in mind; nothing
-gates on it.
+rested median of 50 or more carries the flag on the phase that read
+it. A board that lost its tail under the shield keeps the flag on its
+rotation phases and none on the shield's; a board first seen under
+the shield with the tail carries it there and nowhere else. It marks
+rows that must be read with that in mind; nothing gates on it.
 
 NOTES ARE HAND-KEPT AND MERGED, NEVER OVERWRITTEN. What a generator
 cannot know - a board that is off every bench, one that cannot take a
@@ -211,9 +213,8 @@ def build_profiles(rotation_rows, calibration, flash_rows=(), generated=None,
             arrangements.append({"phase": phase,
                                  "first": min(r["taken_at"] for r in prs),
                                  "last": max(r["taken_at"] for r in prs)})
-            flags[phase] = (["large-tail"] if phase in ROTATION_PHASES
-                            and med is not None and med >= LARGE_TAIL_MEDIAN
-                            else [])
+            flags[phase] = (["large-tail"] if med is not None
+                            and med >= LARGE_TAIL_MEDIAN else [])
         arrangements.sort(key=lambda a: a["first"])
         serial = next((x for x in serials[uid] if x), None)
         if cal_uid == uid:

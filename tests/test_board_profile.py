@@ -103,17 +103,25 @@ def test_the_summary_is_per_phase_and_never_pooled():
     assert a["arrangements"][2]["first"] == rows[2]["taken_at"]
 
 
-def test_the_large_tail_flag_fires_at_53_not_45_and_only_on_rotation_phases():
+def test_the_large_tail_flag_fires_at_53_not_45_and_is_judged_per_phase():
     p = bp.build_profiles(ROWS, {})
     assert p[UID_A]["flags"] == {"before": ["large-tail"],
                                  "after": ["large-tail"]}
     assert p[UID_B]["flags"] == {"before": []}
     # A later arrangement gets its own entry and does not overwrite the
-    # rotation's; the label is judged on the rotation phases only.
+    # rotation's: the label is judged per phase, on that phase's rested
+    # median alone, so a board that lost its tail under a shield keeps
+    # the flag on its rotation phases and none on the shield's, and a
+    # board that carries the tail only under the shield is flagged
+    # there and nowhere else.
     rows = ROWS[:2] + [_row(UID_A, SER_A, "mac-bench", "shield-v3",
-                            "2026-09-21T00:10:00-0400", (52.0, 53.5, 55.0))]
-    f = bp.build_profiles(rows, {})[UID_A]["flags"]
-    assert f["before"] == ["large-tail"] and f["shield-v3"] == []
+                            "2026-09-21T00:10:00-0400", (43.5, 44.0, 44.5)),
+                       _row(UID_B, SER_B, "linux-x1", "shield-v3",
+                            "2026-09-21T00:11:00-0400", (51.0, 51.5, 52.0))]
+    f = bp.build_profiles(rows, {})
+    assert f[UID_A]["flags"] == {"before": ["large-tail"],
+                                 "after": ["large-tail"], "shield-v3": []}
+    assert f[UID_B]["flags"] == {"shield-v3": ["large-tail"]}
 
 
 def test_a_warm_row_does_not_enter_the_rested_median():

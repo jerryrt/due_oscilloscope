@@ -163,11 +163,13 @@
   },
   "first_seen": "2026-09-21T00:11:21-0400",
   "flags": {
-    "shield-v3": []
+    "shield-v3": [
+      "large-tail"
+    ]
   },
   "generated": {
-    "bench": "mac-bench",
-    "rev": "9c922d6",
+    "bench": "linux-x1",
+    "rev": "d2bd7e7-dirty",
     "tool": "tools/board_profile.py"
   },
   "history": [
