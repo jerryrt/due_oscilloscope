@@ -231,7 +231,10 @@ written so each line becomes a measurement.
 | channel crosstalk | below a code | the buffered drive removes the sample-and-hold's charge memory |
 | offset | ±full screen at every range, 0.8 mV steps, settles in tens of ms | 12-bit PWM through two RC sections |
 | protection | ±20 V continuous with margin, brief transients to about ±100 V, ESD by the clamps | 1 MΩ series, BAT54S to the rails, the op-amp's diodes |
-| generator output | 12 bits; 0.55–2.75 V as a follower or 0–3.3 V at gain 1.5 within ~30 mV of the rails; unipolar | the DAC's window and a rail-to-rail op-amp on 3.3 V |
+| output range | 0.55–2.75 V as a follower (2.2 V peak to peak about 1.65 V), or 0.03–3.27 V at gain 1.5; unipolar, never below ground | the DAC's window and a rail-to-rail op-amp on 3.3 V, which loses about 30 mV at each rail |
+| output resolution | 12 bits: 0.54 mV per code as a follower, 0.8 mV at gain 1.5 | the DAC |
+| output offset | the output stage's own summing term from the same PWM: the waveform's centre moves anywhere the amplitude leaves room, amplitude plus offset within 0.03–3.27 V | the single rail bounds it; a smaller amplitude buys more offset travel |
+| output impedance and coupling | 56 Ω series, a DC pin and a 1 µF AC pin | Labrador's output form |
 | generator rate and frequency | 1.4 MS/s updates; sines clean to ~100–200 kHz, squares to a few hundred kHz | the DAC and the reconstruction corner; `docs/awg.md`'s ceilings still apply |
 | generator drive | 10–20 mA into 56 Ω series, short-circuit safe | the op-amp's current limit |
 | frequency accuracy | about 10 ppm | the master clock, measured |
