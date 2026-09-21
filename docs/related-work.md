@@ -98,6 +98,34 @@ with what each contributes. Figures are from memory and marked
 | Digilent OpenScope MZ | the PIC32MZ's own ADC modules | schematic sheets in the reference manual, `docs/datasheets/openscope-mz/` | the input driver into the ADC pin (68 Ω series, 470 pF shunt), the 3 V shunt reference buffered onto the reference pin, PWM offset injection |
 | Girino | an ATmega's own 10-bit ADC | Instructables | the minimum: offset, gain, a buffer on a proto shield |
 
+### Read from the schematics: what each stage would give the shield
+
+Read from the design files themselves (Labrador `PCB/AltiumPCB/labrador.pdf`
+and its KiCad netlist; PSLab `docs/schematics/PSLab.pdf`, sheet V6.0-beta;
+Scoppy AFE 3 by MakerIoT2020, sheet 2022-10-28; OpenScope MZ sheets under
+`docs/datasheets/openscope-mz/`). Fitness is against this shield's own
+list - a reference on `AREF`, a buffered band-limited input into the ADC
+pin, protection, attenuation and offset, an output stage for the DAC -
+on a 3.3 V single supply unless a rail is worth generating.
+
+| stage | OpenScope MZ | PSLab V6 | Labrador | Scoppy AFE 3 |
+|---|---|---|---|---|
+| ADC reference | **LM4040-3.0 shunt from 3.3 V, buffered by LMV324 onto VREF+; 1.5 V mid-rail from it through 0.1% resistors** | AVDD, no part | AVCC/2 internal, 1k/1k divider unbuffered | 3.3 V through 22k/22k, one LM324 section as buffer |
+| ADC pin drive | **68 Ω series, 470 pF shunt, LMV116 driver** | PGA output straight to the pin | LM324 follower straight to the pin, 1k load | 220 Ω series, no shunt C |
+| input attenuation and gain | 1 MΩ into LMV116, TS3A5017 mux selecting 1, 1/4, 1/8, 3/40 | 1 M / 200k inverting TL082 (gain −0.2) on ±6 V, then **MCP6S21 SPI PGA on 3.3 V** with a 10k/10k halve-and-shift | 1 M / 75k divider about the mid-rail (1:14.3), XMEGA PGA 0.5–64x | 470k / 680k divider, LM324 non-inverting stage on 5 V |
+| offset and mid-rail | PWM through LM324, 10 mV steps | buffered 10k/10k mid-rail as the PGA's VREF | the divider's mid-rail on the ADC's negative input | 1.65 V from the divider |
+| protection | series R into the buffer | 1 M series into a JFET input only | none | **BAT46 clamp at the divided node; 220 Ω and a Schottky to a sink section** |
+| DAC output stage | MCP6H91 on ±rails, PWM offset (ladder source) | MCP4822 into LM324 "2·V − 3.3" stages on ±6 V, no series R | LM324 unity/×3 switched by a FET, **1k load and 56 Ω series, AC and DC pins** | none |
+| rails | 3.3 V plus ± for the output stage | +9 / −9 by AP3015A boost and MT1470 inverter, ±6 by zener followers | boost to a variable 4.5–12 V for the LM324 | 5 V and 3.3 V only |
+| calibration in hardware | readback through a feedback network | none | none | none |
+| fitness for this shield | **high**: the reference and the pin driver are exactly the two stages the within-hold reading asked for, on 3.3 V, with parts in production | **medium**: the PGA block transfers as drawn; the rail generator is the model if ± rails are wanted; the input stage does not transfer | **low**: the divider form and the output-pin trick transfer; the amplifier, the reference and the differential ADC do not | **low**: the form factor and the limiter idea; an LM324 on 5 V has neither the swing nor the bandwidth |
+
+The synthesis the table points to: OpenScope's reference and pin driver,
+PSLab's PGA where variable gain is wanted, Labrador's output-pin form
+for the DAC stage behind a rail-to-rail op-amp, and Scoppy's limiter at
+the input. None of the four measures its front end against the
+converter's own error; `tools/gen_sweep.py` is what this project adds.
+
 Two shield-form designs go the other way and are listed so they are
 not mistaken for this direction: the Digilent Analog Shield puts a
 16-bit external ADC and DAC on an Arduino shield, and every FPGA
