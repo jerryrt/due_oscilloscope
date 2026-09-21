@@ -80,12 +80,39 @@ board with the most residual, by the within-hold rate and the largest
 excursion. That is the instrument the front end is built to satisfy, not
 a bandwidth figure copied from a catalogue.
 
+## Shield-class front ends on a chip's own converters
+
+The direction the shield takes - a buffered, band-limited input, a
+precision reference on the reference pin, protection, attenuation and
+offset, an output stage for the DAC, all on a board stacked over a
+microcontroller that keeps using its internal converters - has been
+built several times. These are the ones whose design files are open,
+with what each contributes. Figures are from memory and marked
+*(check)* unless the file was read.
+
+| project | chip and converters | open files | what it contributes here |
+|---|---|---|---|
+| EspoTek Labrador | an XMEGA with its own 12-bit ADC and DAC, USB Full Speed *(check)* | KiCad schematics and PCB on GitHub, CC BY-NC-SA | the closest architectural twin: internal converters, a discrete front end, a streaming USB link. Read its input divider, offset and buffer, and its generator output stage |
+| PSLab, Pocket Science Lab | a PIC24 with its own 12-bit ADC, programmable-gain amplifiers in front *(check)* | KiCad hierarchical schematics on GitHub, Apache and GPL | a per-channel programmable gain stage and a reference, with KiCad simulation of the analog blocks recorded on its blog |
+| Scoppy front-end shield for RP2040 | the Pico's own 12-bit ADC, a front-end board stacked on it | design files shared on PCBWay and a build log | the same shape as this shield exactly: a stacked front end feeding a bare ADC pin, attenuator, offset, buffer |
+| Digilent OpenScope MZ | the PIC32MZ's own ADC modules | schematic sheets in the reference manual, `docs/datasheets/openscope-mz/` | the input driver into the ADC pin (68 Ω series, 470 pF shunt), the 3 V shunt reference buffered onto the reference pin, PWM offset injection |
+| Girino | an ATmega's own 10-bit ADC | Instructables | the minimum: offset, gain, a buffer on a proto shield |
+
+Two shield-form designs go the other way and are listed so they are
+not mistaken for this direction: the Digilent Analog Shield puts a
+16-bit external ADC and DAC on an Arduino shield, and every FPGA
+oscilloscope puts the converter on the board. Both replace the chip's
+converters, which `docs/architecture.md` rules out here.
+
 ## Where to find them
 
 Digilent's reference site carries the OpenScope MZ and Analog Discovery
-reference manuals with the schematic images; the OpenScope MZ firmware
-is on GitHub under Digilent, and the board's PCB design files are not
-in that repository. The product is discontinued.
+reference manuals with the schematic images, behind a browser check;
+the OpenScope MZ manual and its schematic sheets are kept under
+`docs/datasheets/openscope-mz/`. The OpenScope MZ firmware is on GitHub
+under Digilent, and the board's PCB design files are not in that
+repository. The product is discontinued. Labrador is on GitHub under
+espotek-org, PSLab under fossasia as pslab-hardware.
 ScopeFun publishes its hardware and firmware on GitHub under its own
 name. Girino is an Instructables project. Search by name; links here
 would rot.
