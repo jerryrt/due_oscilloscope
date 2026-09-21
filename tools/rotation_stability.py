@@ -13,8 +13,15 @@ those rows. A board whose rows disagree by more than any one of them
 wandered is not stable, whatever its level. Rows taken with less than
 the rested idle time are listed and excluded from the verdict.
 
-Also reported, without a verdict: the crossing count range, the
-baseline tail scale on A0 and A1, and the die code. The tail scale is
+The same rule is applied to the crossing count, on the rows' count
+medians against the widest within-row count range, as a second verdict:
+a level can hold while the count moves, and on one board it did. Both
+verdicts are about spread, not direction, so a first-to-last drift is
+printed for each figure with no verdict attached - a monotone change
+inside the within-row range is a thing to read, not a thing to pass.
+
+Also reported, without a verdict: the baseline tail scale on A0 and
+A1, and the die code. The tail scale is
 the **last** baseline pair in the row - a row whose parity was forced
 after a tie carries the aborted first attempt's pair as well, and the
 pair that completed is the one that counts.
@@ -73,33 +80,54 @@ def row_line(row):
         "largest_median": cs.get("largest_median"),
         "largest_range": [cs.get("largest_min"), cs.get("largest_max")],
         "count_range": [cs.get("count_min"), cs.get("count_max")],
+        "count_median": cs.get("count_median"),
         "a0": a0, "a1": a1,
         "die_code": die_code(row),
         "note": row.get("note"),
     }
 
 
+def spread_rule(medians, ranges):
+    """(verdict, across, within): stable when the medians spread no wider
+    than the widest range any one row saw within itself."""
+    across = round(max(medians) - min(medians), 2)
+    withins = [hi - lo for lo, hi in ranges if lo is not None and hi is not None]
+    if not withins:
+        return "no verdict", across, None
+    within = round(max(withins), 2)
+    return ("stable" if across <= within else "NOT stable"), across, within
+
+
 def judge(lines):
-    """The verdict for one (board, phase) from its row lines."""
+    """The verdicts for one (board, phase) from its row lines: the level
+    (largest step) and the crossing count, each by spread_rule, plus a
+    first-to-last drift per figure that carries no verdict."""
     rested = [l for l in lines if l["rested"] and l["largest_median"] is not None]
     if len(rested) < 2:
         return {"verdict": "no verdict", "reason": f"{len(rested)} rested row(s)",
                 "n_rested": len(rested), "across": None, "within": None}
     meds = [l["largest_median"] for l in rested]
-    across = round(max(meds) - min(meds), 2)
-    withins = [l["largest_range"][1] - l["largest_range"][0] for l in rested
-               if None not in l["largest_range"]]
-    within = round(max(withins), 2) if withins else None
+    verdict, across, within = spread_rule(meds, [l["largest_range"] for l in rested])
     if within is None:
         return {"verdict": "no verdict", "reason": "no within-row range",
                 "n_rested": len(rested), "across": across, "within": None}
-    stable = across <= within
-    return {"verdict": "stable" if stable else "NOT stable",
+    counts = [l["count_median"] for l in rested]
+    if all(c is not None for c in counts):
+        cverdict, cacross, cwithin = spread_rule(
+            counts, [l["count_range"] for l in rested])
+        count_drift = counts[-1] - counts[0]
+    else:
+        cverdict, cacross, cwithin, count_drift = "no verdict", None, None, None
+    return {"verdict": verdict,
             "reason": (f"medians spread {across} against a widest within-row "
                        f"range of {within}"),
             "n_rested": len(rested), "across": across, "within": within,
             "medians": meds,
             "median_of_medians": statistics.median(meds),
+            "count_verdict": cverdict, "count_across": cacross,
+            "count_within": cwithin, "count_medians": counts,
+            "drift": {"largest_median": round(meds[-1] - meds[0], 2),
+                      "count_median": count_drift},
             "count_range": [min(l["count_range"][0] for l in rested
                                 if l["count_range"][0] is not None),
                             max(l["count_range"][1] for l in rested
@@ -134,23 +162,30 @@ def assess(rows, phase=None):
 def render(assessments):
     out = []
     for a in assessments:
-        out.append(f"### `{a['board_uid']}` (`{a['board_serial']}`) — `{a['phase']}` "
-                   f"— **{a['verdict']}** ({a['reason']})")
+        head = (f"### `{a['board_uid']}` (`{a['board_serial']}`) — `{a['phase']}` "
+                f"— level **{a['verdict']}** ({a['reason']})")
+        if a.get("count_verdict") and a["count_verdict"] != "no verdict":
+            head += (f"; count **{a['count_verdict']}** (medians spread "
+                     f"{a['count_across']} against {a['count_within']})")
+        out.append(head)
         out.append("")
-        out.append("| # | bench | taken | idle s | largest median | within-row | count | A0 | A1 | die |")
-        out.append("|---|---|---|---|---|---|---|---|---|---|")
+        out.append("| # | bench | taken | idle s | largest median | within-row | count median | count | A0 | A1 | die |")
+        out.append("|---|---|---|---|---|---|---|---|---|---|---|")
         for i, l in enumerate(a["rows"], 1):
             lo, hi = l["largest_range"]
             c0, c1 = l["count_range"]
             flag = "" if l["rested"] else " (unrested, excluded)"
             out.append(f"| {i} | {l['bench']} | {l['taken_at']} | {l['idle_before_s']}{flag} "
-                       f"| {l['largest_median']} | {lo}–{hi} | {c0}–{c1} "
+                       f"| {l['largest_median']} | {lo}–{hi} | {l['count_median']} | {c0}–{c1} "
                        f"| {l['a0']} | {l['a1']} | {l['die_code']} |")
         if a.get("across") is not None and a.get("within") is not None:
+            d = a["drift"]
             out.append("")
             out.append(f"across-row spread **{a['across']}** vs widest within-row "
                        f"**{a['within']}**; count {a['count_range']}, "
-                       f"A0 {a['a0_range']}, A1 {a['a1_range']}, die {a['die_code_range']}")
+                       f"A0 {a['a0_range']}, A1 {a['a1_range']}, die {a['die_code_range']}; "
+                       f"first-to-last drift: largest {d['largest_median']:+}, "
+                       f"count median {d['count_median']:+} (no verdict)")
         out.append("")
     return "\n".join(out)
 

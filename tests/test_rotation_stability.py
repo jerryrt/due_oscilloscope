@@ -18,7 +18,7 @@ UID = "442032204e52344d3230323239313032"
 
 def _row(median, lo, hi, taken, idle=1200, bench="b1", phase="p",
          baseline=((0.5, 1.3), (0.6, 1.3)), aborted=None, counts=(0, 2),
-         die=(1040.0, 1041.0)):
+         die=(1040.0, 1041.0), count_median=None):
     tail = []
     if aborted:
         tail += [{"arm": "baseline", "run": i + 1, "a0_scale_codes": a,
@@ -31,7 +31,9 @@ def _row(median, lo, hi, taken, idle=1200, bench="b1", phase="p",
             "taken_at": taken, "idle_before_s": idle,
             "census_summary": {"largest_median": median, "largest_min": lo,
                                "largest_max": hi, "count_min": counts[0],
-                               "count_max": counts[1]},
+                               "count_max": counts[1],
+                               "count_median": (count_median if count_median
+                                                is not None else counts[0])},
             "tail_scale": tail,
             "temperatures": [{"code": c} for c in die]}
 
@@ -90,6 +92,31 @@ def test_the_tail_scale_is_the_pair_that_completed_not_the_aborted_one():
     plain = rs.row_line(_row(44.0, 43.5, 44.5, "t1"))
     assert plain["a0"] == 0.55
     assert rs.row_line({"tail_scale": []})["a0"] is None
+
+
+def test_the_count_gets_its_own_verdict_and_the_drift_is_printed():
+    """A level that holds while the count moves: windows-desk's four
+    shield rows read stable on the level and the count fell 3 -> 1.
+    The count rule is the same spread rule on the count medians, and
+    the drift is printed with no verdict so a monotone change inside
+    the within-row range is still in front of the reader."""
+    rows = [_row(48.0, 47.0, 48.5, "t1", counts=(3, 4), count_median=3),
+            _row(47.0, 46.5, 49.5, "t2", counts=(1, 3), count_median=2),
+            _row(47.5, 46.5, 49.0, "t3", counts=(1, 3), count_median=2),
+            _row(46.0, 45.0, 48.5, "t4", counts=(0, 2), count_median=1)]
+    a = rs.assess(rows)[0]
+    assert a["verdict"] == "stable"
+    assert a["count_verdict"] == "stable"           # spread 2 vs widest 2
+    assert a["count_across"] == 2 and a["count_within"] == 2
+    assert a["drift"] == {"largest_median": -2.0, "count_median": -2}
+    text = rs.render([a])
+    assert "count **stable**" in text and "count median -2" in text
+    rows[3]["census_summary"]["count_median"] = 0
+    rows[3]["census_summary"]["count_max"] = 0
+    b = rs.assess(rows)[0]
+    assert b["count_verdict"] == "NOT stable"       # spread 3 vs widest 2
+    assert b["verdict"] == "stable"
+    assert "count **NOT stable**" in rs.render([b])
 
 
 def test_break_the_rule_on_purpose():
