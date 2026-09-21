@@ -22,6 +22,7 @@ file is one row away.
 | The build container: how to run it, the checks it carries, what it will not do, and what a bench gives up without it | `docs/build-container.md` |
 | Per-host validation | `docs/windows.md`, `docs/linux.md` |
 | Board, clocks, converters | `docs/hardware.md` |
+| Comparable instruments, and the gap to the nearest one | `docs/related-work.md` - read before front-end hardware work |
 | How to write one of these | `docs/writing.md` |
 | **What is current, and what to pick up** | **standing issues, one per bench: #31 mac-bench, #32 linux-x1, #34 windows-desk, and #71 across all of them** |
 
