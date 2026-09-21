@@ -54,6 +54,7 @@ RISER_BINS = ((0, 4), (4, 8), (8, 16), (16, 32), (32, 64), (64, 128), (128, 512)
               (512, 4096))
 LEVEL_BINS = 8
 PHASE_BINS = 16
+MIN_BIN_HOLDS = 1000      # a rate from fewer holds than this is not printed
 
 
 def load_u16(path):
@@ -239,7 +240,12 @@ def render(results, sides):
         cells = []
         for k in keys:
             b = r["rate_by_riser"].get(k)
-            cells.append(f"{b['per_1000']} ({b['events']}/{b['holds']})" if b else "—")
+            if not b:
+                cells.append("—")
+            elif b["holds"] < MIN_BIN_HOLDS:
+                cells.append(f"({b['events']}/{b['holds']}, too few)")
+            else:
+                cells.append(f"{b['per_1000']} ({b['events']}/{b['holds']})")
         o.append(f"| {r['label']} | " + " | ".join(cells) + " |")
     o.append("")
     o.append("### Event rate by level (eighths of full scale), per 1000 holds")
@@ -248,7 +254,7 @@ def render(results, sides):
     o.append("|---|" + "---|" * LEVEL_BINS)
     for r in results:
         o.append(f"| {r['label']} | " + " | ".join(
-            (f"{b['per_1000']}" if b["holds"] else "—") for b in r["rate_by_level"]) + " |")
+            (f"{b['per_1000']}" if b["holds"] >= MIN_BIN_HOLDS else "—") for b in r["rate_by_level"]) + " |")
     o.append("")
     o.append("### Event rate by phase in the cycle (16 bins, 0 = peak level), per 1000 holds")
     o.append("")
@@ -258,7 +264,7 @@ def render(results, sides):
         if r["shape"] == "dc":
             continue
         o.append(f"| {r['label']} | " + " | ".join(
-            (f"{b['per_1000']}" if b["holds"] else "—") for b in r["rate_by_phase"]) + " |")
+            (f"{b['per_1000']}" if b["holds"] >= MIN_BIN_HOLDS else "—") for b in r["rate_by_phase"]) + " |")
     return "\n".join(o)
 
 
