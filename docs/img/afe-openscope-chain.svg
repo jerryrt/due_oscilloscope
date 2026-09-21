@@ -23,7 +23,7 @@
 
   <!-- ===== row 1: the signal path, y 80–170 ===== -->
   <circle cx="30" cy="125" r="4" fill="#1d2b28"/>
-  <text x="18" y="108" class="t">AIN</text><text x="4" y="150" class="m">±20 V, 1 MΩ</text>
+  <text x="18" y="108" class="t">AIN</text><text x="8" y="150" class="m">±20 V</text>
   <path class="w" d="M34 125 L65 125" marker-end="url(#a)"/>
 
   <rect x="65" y="80" width="160" height="90" rx="4" class="box"/>
@@ -43,7 +43,7 @@
 
   <rect x="460" y="80" width="180" height="90" rx="4" class="box"/>
   <text x="550" y="102" text-anchor="middle" class="t">Gain and bandwidth</text>
-  <text x="550" y="122" text-anchor="middle" class="b">IC6A LMV116, inverting summer</text>
+  <text x="550" y="122" text-anchor="middle" class="b">IC6A LMV116, summer</text>
   <text x="550" y="140" text-anchor="middle" class="b">+ input held at 1.5 V</text>
   <text x="550" y="158" text-anchor="middle" class="b">Rf ‖ C: corner ≈ 1.5 MHz</text>
   <path class="w" d="M640 125 L680 125" marker-end="url(#a)"/>

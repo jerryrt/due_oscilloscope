@@ -76,7 +76,7 @@
     <text x="196" y="148" class="m">to 0.1%</text>
     <!-- cap -->
     <path class="w" d="M170 70 L290 70 L290 96 M278 96 L302 96 M278 106 L302 106 M290 106 L290 150 M278 150 L302 150 M282 156 L298 156 M286 162 L294 162"/>
-    <text x="308" y="106" class="m">10 µF</text>
+    <text x="290" y="182" text-anchor="middle" class="m">10 µF</text>
     <!-- buffer -->
     <path class="w" d="M290 70 L340 70"/>
     <path class="w" d="M340 50 L340 90 L385 70 Z"/>

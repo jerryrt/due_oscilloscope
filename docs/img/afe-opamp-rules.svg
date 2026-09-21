@@ -63,28 +63,28 @@
 
   <!-- ===== Summing ===== -->
   <g transform="translate(660,80)">
-    <text x="150" y="0" text-anchor="middle" class="h">Summing amplifier</text>
-    <!-- inputs at y=40, 75, 110 -->
-    <circle cx="0" cy="40" r="3.5" class="dot"/><text x="0" y="30" class="m">signal</text>
-    <path class="w" d="M0 40 L30 40"/><rect x="30" y="33" width="44" height="14" class="r"/><text x="52" y="60" text-anchor="middle" class="m">3.6k</text>
-    <path class="w" d="M74 40 L115 40"/>
-    <circle cx="0" cy="75" r="3.5" class="dot"/><text x="0" y="65" class="m">3.0 V ref</text>
-    <path class="w" d="M0 75 L30 75"/><rect x="30" y="68" width="44" height="14" class="r"/><text x="52" y="95" text-anchor="middle" class="m">3.41k</text>
-    <path class="w" d="M74 75 L115 75"/>
-    <circle cx="0" cy="110" r="3.5" class="dot"/><text x="0" y="100" class="m">offset</text>
-    <path class="w" d="M0 110 L30 110"/><rect x="30" y="103" width="44" height="14" class="r"/><text x="52" y="130" text-anchor="middle" class="m">10k … 1k</text>
-    <path class="w" d="M74 110 L115 110"/>
+    <text x="150" y="-4" text-anchor="middle" class="h">Summing amplifier</text>
+    <!-- inputs at y=35, 80, 125 -->
+    <circle cx="0" cy="35" r="3.5" class="dot"/><text x="0" y="26" class="m">signal</text>
+    <path class="w" d="M0 35 L30 35"/><rect x="30" y="28" width="44" height="14" class="r"/><text x="52" y="56" text-anchor="middle" class="m">3.6k</text>
+    <path class="w" d="M74 35 L115 35"/>
+    <circle cx="0" cy="80" r="3.5" class="dot"/><text x="0" y="71" class="m">3.0 V ref</text>
+    <path class="w" d="M0 80 L30 80"/><rect x="30" y="73" width="44" height="14" class="r"/><text x="52" y="101" text-anchor="middle" class="m">3.41k</text>
+    <path class="w" d="M74 80 L115 80"/>
+    <circle cx="0" cy="125" r="3.5" class="dot"/><text x="0" y="116" class="m">offset</text>
+    <path class="w" d="M0 125 L30 125"/><rect x="30" y="118" width="44" height="14" class="r"/><text x="52" y="146" text-anchor="middle" class="m">10k … 1k</text>
+    <path class="w" d="M74 125 L115 125"/>
     <!-- node column and − pin -->
-    <path class="w" d="M115 40 L115 110"/><circle cx="115" cy="90" r="3.5" class="dot"/>
+    <path class="w" d="M115 35 L115 125"/><circle cx="115" cy="90" r="3.5" class="dot"/>
     <path class="w" d="M115 90 L140 90"/>
     <!-- Rf switched -->
-    <path class="w" d="M115 40 L115 18 L160 18"/>
-    <rect x="160" y="11" width="60" height="14" class="r"/><text x="190" y="40" text-anchor="middle" class="m">Rf, switched</text>
-    <path class="w" d="M220 18 L255 18 L255 110"/>
+    <path class="w" d="M115 35 L115 20 L160 20"/>
+    <rect x="160" y="13" width="60" height="14" class="r"/><text x="190" y="44" text-anchor="middle" class="m">Rf, switched</text>
+    <path class="w" d="M220 20 L255 20 L255 110"/>
     <!-- op-amp -->
     <path class="w" d="M140 70 L140 150 L230 110 Z"/>
     <text x="150" y="96" class="pin">−</text><text x="150" y="136" class="pin">+</text>
-    <path class="w" d="M140 130 L125 130 L125 150"/><text x="100" y="168" class="m">1.5 V</text>
+    <path class="w" d="M140 130 L125 130 L125 155"/><text x="108" y="172" class="m">1.5 V</text>
     <!-- output -->
     <path class="w" d="M230 110 L295 110"/><circle cx="295" cy="110" r="3.5" class="dot"/>
     <text x="262" y="98" class="t">0–3 V</text>
