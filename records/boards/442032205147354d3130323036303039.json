@@ -1,0 +1,87 @@
+{
+  "arrangements": [
+    {
+      "first": "2026-09-21T00:11:21-0400",
+      "last": "2026-09-21T00:11:21-0400",
+      "phase": "shield-v3"
+    }
+  ],
+  "board_serial": "1344A4740303512198D8",
+  "board_uid": "442032205147354d3130323036303039",
+  "calibration": {
+    "adc_gain": null,
+    "adc_offset": null,
+    "adc_transfer": null,
+    "dac_mv": null,
+    "note": "not measured; needs an external reference (docs/scope.md open question 5)",
+    "reference": null,
+    "temperature_slope": null
+  },
+  "converter": [
+    {
+      "bench": "mac-bench",
+      "count_range": [
+        57,
+        76
+      ],
+      "die_code_mean": 1085.1667,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 51.5,
+      "largest_range": [
+        51.0,
+        52.0
+      ],
+      "phase": "shield-v3",
+      "row_taken_at": "2026-09-21T00:11:21-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.97,
+        1.99,
+        1.54,
+        1.59
+      ],
+      "tail_scale_a1": [
+        1.74,
+        1.76,
+        1.74,
+        1.77
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T00:11:21-0400"
+    }
+  ],
+  "converter_summary": {
+    "shield-v3": {
+      "benches": [
+        "mac-bench"
+      ],
+      "largest_range": [
+        51.0,
+        52.0
+      ],
+      "n_rested_rows": 1,
+      "n_rows": 1,
+      "rested_largest_median": 51.5
+    }
+  },
+  "first_seen": "2026-09-21T00:11:21-0400",
+  "flags": {
+    "shield-v3": []
+  },
+  "generated": {
+    "bench": "mac-bench",
+    "rev": "205c387",
+    "tool": "tools/board_profile.py"
+  },
+  "history": [
+    {
+      "bench": "mac-bench",
+      "first": "2026-09-21T00:11:21-0400",
+      "last": "2026-09-21T00:11:21-0400",
+      "rows": 1
+    }
+  ],
+  "notes": [],
+  "schema": "board-profile/1"
+}
