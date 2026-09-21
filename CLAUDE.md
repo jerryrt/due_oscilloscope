@@ -24,6 +24,7 @@ file is one row away.
 | Board, clocks, converters | `docs/hardware.md` |
 | Comparable instruments, and the gap to the nearest one | `docs/related-work.md` - read before front-end hardware work |
 | The analog front end on the shield, stage by stage, and what judges each stage | `docs/afe.md` |
+| Building the AFE shield: phases, proofs, tools, open decisions | `docs/afe-plan.md` |
 | How to write one of these | `docs/writing.md` |
 | **What is current, and what to pick up** | **standing issues, one per bench: #31 mac-bench, #32 linux-x1, #34 windows-desk, and #71 across all of them** |
 
