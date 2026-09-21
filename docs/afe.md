@@ -31,18 +31,19 @@ written so each line becomes a measurement.
 | channel crosstalk | below a code | the buffered drive removes the sample-and-hold's charge memory |
 | offset | ±full screen at every range, 0.8 mV steps, settles in tens of ms | 12-bit PWM through two RC sections |
 | protection | ±20 V continuous with margin, brief transients to about ±100 V, ESD by the clamps | 1 MΩ series, BAT54S to the rails, the op-amp's diodes |
-| output range | 0.55–2.75 V as a follower (2.2 V peak to peak about 1.65 V), or 0.03–3.27 V at gain 1.5; unipolar, never below ground | the DAC's window and a rail-to-rail op-amp on 3.3 V, which loses about 30 mV at each rail |
+| output range | on the single rail: 0.55–2.75 V as a follower, or 0.03–3.27 V at gain 1.5, unipolar. With the output-stage inverter (Stage C option): about ±2.8 V centred on 0 V, bipolar | the DAC's window and the output op-amp's rails; a charge pump feeding that one op-amp is what buys the negative half |
 | output resolution | 12 bits: 0.54 mV per code as a follower, 0.8 mV at gain 1.5 | the DAC |
-| output offset | the output stage's own summing term from the same PWM: the waveform's centre moves anywhere the amplitude leaves room, amplitude plus offset within 0.03–3.27 V | the single rail bounds it; a smaller amplitude buys more offset travel |
+| output offset | the output stage's own summing term from the same PWM: the centre moves anywhere the amplitude leaves room, within 0.03–3.27 V on the single rail or within about ±2.8 V with the inverter | the output op-amp's rails bound it; a smaller amplitude buys more offset travel |
 | output impedance and coupling | 56 Ω series, a DC pin and a 1 µF AC pin | Labrador's output form |
 | generator rate and frequency | 1.4 MS/s updates; sines clean to ~100–200 kHz, squares to a few hundred kHz | the DAC and the reconstruction corner; `docs/awg.md`'s ceilings still apply |
 | generator drive | 10–20 mA into 56 Ω series, short-circuit safe | the op-amp's current limit |
 | frequency accuracy | about 10 ppm | the master clock, measured |
 | cleanliness, the acceptance | within-hold events over 10 codes at or below 0.2 per 1000 holds on every board, largest excursion at or below 12 codes | the two healthy shielded boards set the floor; the fourth board is the test |
 
-Not achieved by construction: bipolar generator output, inputs beyond
-±20 V, more than 12 bits, bandwidth beyond half the sample rate,
-differential inputs. Noise and effective bits are the converter's;
+Not achieved by construction: inputs beyond ±20 V, more than 12
+bits, bandwidth beyond half the sample rate, differential inputs.
+Bipolar generator output is achieved only with the Stage C inverter;
+without it the generator is unipolar. Noise and effective bits are the converter's;
 the AFE's job is to stop making them worse, which the cleanliness
 line states as a number, and to turn codes into volts, which the
 reference line does.
