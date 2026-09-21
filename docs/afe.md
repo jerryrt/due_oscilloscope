@@ -5,8 +5,10 @@ the build come first; the reasoning that produced them is at the end.
 "Front end" elsewhere in this project means the Qt window
 (`docs/frontend.md`); this file is the analog one, so it is called the
 AFE. The Due and Mega Proto Shield Rev3 schematics it reads are under
-`docs/datasheets/arduino/`, the OpenScope MZ sheets under
-`docs/datasheets/openscope-mz/`.
+`docs/datasheets/arduino/`, as PDFs and as the EAGLE files they were
+drawn in, the OpenScope MZ sheets under `docs/datasheets/openscope-mz/`.
+The order it is built in, the tools, and what proves each phase are
+`docs/afe-plan.md`.
 
 ## The build requirement
 
@@ -16,23 +18,23 @@ written so each line becomes a measurement.
 
 | quantity | estimate *(check)* | what sets it |
 |---|---|---|
-| input range | ±20 V DC-coupled, both polarities with no negative rail; one fixed range, or ±20 / ±5 / ±1.5 V with a switched shunt | 1 MΩ into 75 kΩ to 1.5 V puts −20 V at 0.1 V, 0 V at 1.5 V, +20 V at 2.9 V on a 3.0 V scale; the mid-rail is subtracted in software |
+| input range | ±20 V DC-coupled, both polarities with no negative rail; one fixed range, or ±20 / ±5 / ±3 V with a switched shunt and a bottom end that follows the range | the node sits at Vb·(1−k) + k·Vin, k the shunt's share of the divider and Vb its bottom end: 1 MΩ into 75 kΩ (k = 0.070) with the bottom end at 1.61 V puts −20 V at 0.1 V, 0 V at 1.5 V, +20 V at 2.9 V on a 3.0 V scale; ±5 V takes 430 kΩ and 2.14 V, ±3 V takes 1 MΩ and 3.0 V, and a finer range would need a bottom end above the rail. The mid-rail is subtracted in software |
 | input impedance | 1.07 MΩ, a few pF | the divider |
 | resolution at the pin | 12 bits over 3.0 V, 0.73 mV per code | the ADC and the reference |
-| resolution referred to input | 10 mV per code at ±20 V, 2.6 mV at ±5 V, 0.8 mV at ±1.5 V | the divider ratio |
-| noise referred to input | about 1 code rms on a healthy board: 10–20 mV rms at ±20 V, 1–2 mV at ±1.5 V | the converter; the divider's thermal noise is tens of µV |
+| resolution referred to input | 10.5 mV per code at ±20 V, 2.4 mV at ±5 V, 1.5 mV at ±3 V | the divider ratio |
+| noise referred to input | about 1 code rms on a healthy board: 10–20 mV rms at ±20 V, 1.5–3 mV at ±3 V | the converter; the divider's thermal noise is tens of µV |
 | effective bits | 10 to 11 | the SAM3X ADC; no front end raises it |
 | DC accuracy before calibration | gain within 0.3%, offset within a few codes | LM4040 at 0.1%, 0.1% divider, op-amp offset under a code |
 | DC accuracy after per-board calibration | 1 to 2 codes | the reference is the scale; the profile carries two points |
 | drift | about 0.3 mV over 30 °C at full scale | the reference grade bought |
-| analog bandwidth | 200–300 kHz flat, by choice; a 10 MHz buffer is transparent | the anti-alias capacitor across the shunt against the sample rate |
+| analog bandwidth | 200–300 kHz flat, by choice; a 10 MHz buffer is transparent | the divider compensated, a capacitor across the 1 MΩ with R1·C1 = Rs·Cs, so it is flat past the buffer; the corner is then the pin driver's series resistor against its 470 pF, one resistor value anywhere from 300 kHz to 5 MHz. Uncompensated, the 1 MΩ against the node's own picofarads is a corner in the tens of kilohertz |
 | sample rate behind it | 886 ksps one channel, 453 ksps each on two | the converter, unchanged |
 | rise time | 1–2 µs | the anti-alias corner |
 | channel crosstalk | below a code | the buffered drive removes the sample-and-hold's charge memory |
-| offset | ±full screen at every range, 0.8 mV steps, settles in tens of ms | 12-bit PWM through two RC sections |
-| protection | ±20 V continuous with margin, brief transients to about ±100 V, ESD by the clamps | 1 MΩ series, BAT54S to the rails, the op-amp's diodes |
-| output range | on the single rail: 0.55–2.75 V as a follower, or 0.03–3.27 V at gain 1.5, unipolar. With the output-stage inverter (Stage C option): about ±2.8 V centred on 0 V, bipolar | the DAC's window and the output op-amp's rails; a charge pump feeding that one op-amp is what buys the negative half |
-| output resolution | 12 bits: 0.54 mV per code as a follower, 0.8 mV at gain 1.5 | the DAC |
+| offset | a full screen either way at ±20 V, a screen down and half a screen up at ±5 V, down only at ±3 V; 0.8 mV steps at the bottom end, settling in tens of ms | 12-bit PWM through two RC sections drives the divider's bottom end, which moves the node by (1−k) of its own travel inside 0–3.2 V |
+| protection | ±20 V continuous with margin, brief transients to about ±100 V, ESD by the clamps | 1 MΩ series in a package rated for the transient *(check: an 0603 is commonly 75 V, a 1206 200 V)*, BAT54S to the rails, the op-amp's diodes |
+| output range | on the single rail, with the reference at 3.0 V: 0.50–2.50 V as a follower, or 0.1–3.2 V at gain 1.6, unipolar. With the output-stage inverter (Stage C option): about ±2.8 V centred on 0 V, bipolar | the DAC's window is 1/6 to 5/6 of ADVREF, so it moves with the reference Stage A sets; the output op-amp's rails; a charge pump feeding that one op-amp is what buys the negative half |
+| output resolution | 12 bits: 0.49 mV per code as a follower, 0.78 mV at gain 1.6 | the DAC at a 3.0 V reference |
 | output offset | the output stage's own summing term from the same PWM: the centre moves anywhere the amplitude leaves room, within 0.03–3.27 V on the single rail or within about ±2.8 V with the inverter | the output op-amp's rails bound it; a smaller amplitude buys more offset travel |
 | output impedance and coupling | 56 Ω series, a DC pin and a 1 µF AC pin | Labrador's output form |
 | generator rate and frequency | 1.4 MS/s updates; sines clean to ~100–200 kHz, squares to a few hundred kHz | the DAC and the reconstruction corner; `docs/awg.md`'s ceilings still apply |
@@ -41,7 +43,9 @@ written so each line becomes a measurement.
 | cleanliness, the acceptance | within-hold events over 10 codes at or below 0.2 per 1000 holds on every board, largest excursion at or below 12 codes | the two healthy shielded boards set the floor; the fourth board is the test |
 
 Not achieved by construction: inputs beyond ±20 V, more than 12
-bits, bandwidth beyond half the sample rate, differential inputs.
+bits, bandwidth beyond half the sample rate, differential inputs, and
+input ranges finer than about ±3 V, which a passive divider cannot
+centre inside the rail.
 Bipolar generator output is achieved only with the Stage C inverter;
 without it the generator is unipolar. Noise and effective bits are the converter's;
 the AFE's job is to stop making them worse, which the cleanliness
@@ -50,18 +54,26 @@ reference line does.
 
 ## The two boards, as their schematics show them
 
-**The Due's reference path** (`arduino-due-schematic.pdf`, top centre).
-The 3.3 V rail reaches the reference node through JR1, a mounted 0 Ω
-link; BR1 beside it is marked NM, not mounted. The AREF header pin
-joins the same node through a series resistor whose value is not
-printed on the sheet *(read it on the board with a meter)*. From the
-node, L3, a ferrite, feeds ADVREF, pin 75, with 100 nF to ground on
-each side (C34, C19). `docs/hardware.md` measured ADVREF at 3270 mV,
-which is the regulator's 3.3 V less the drop through that path. So:
-**to drive AREF from the shield, JR1 must be removed**, after which
-the external reference reaches ADVREF through the AREF resistor and
-the ferrite, already decoupled. Nothing else on the board ties the
-node to the rail.
+**The Due's reference path** (`Arduino-DUE-V03.sch` in the EAGLE
+archive; the PDF draws the same net, top centre). The 3.3 V rail
+reaches the reference node through JR1, a mounted 0 Ω 0402 link. The
+AREF header pin reaches that node only through BR1, a three-pad solder
+jumper that is not mounted: pad 1 is AREF, pad 2 is 3.3 V, and the
+centre pad C is the reference node. From the node, L3, a ferrite,
+feeds ADVREF, pin 75, with 100 nF to ground on each side (C34, C19).
+`docs/hardware.md` measured ADVREF at 3270 mV, which is the
+regulator's 3.3 V less the drop through that path. The DAC's reference
+is the same pin, so whatever sets ADVREF sets the DAC's window with
+it. So on a stock Due **the AREF pin is connected to nothing**, and a
+shield driving it is harmless and does nothing; **to drive ADVREF from
+the shield, JR1 is removed and BR1 is bridged from pad 1 to C**, after
+which the AREF pin reaches ADVREF through the ferrite, already
+decoupled. Nothing else on the board ties the node to the rail. The
+two steps go together: JR1 out with BR1 open leaves ADVREF floating,
+and BR1 bridged with JR1 in puts the shield's buffer against the rail
+through 0 Ω. *(check on the board with a meter before soldering: the
+net is read from the V03 files, and a board's revision is printed
+beside its USB connectors)*
 
 **The Mega Proto Shield Rev3** (`arduino-mega-proto-Shield-reference-design.pdf`,
 EAGLE files beside it). Every header pin is passed straight through
@@ -98,13 +110,19 @@ them.
 ### Stage A: the reference onto AREF, and the pin driver
 
 - The LM4040-3.0 circuit as drawn, buffered, onto the Due's AREF pin,
-  **after JR1 is removed from the Due**: that 0 Ω link is what ties
-  the reference node to the 3.3 V rail, and with it gone the AREF pin
-  reaches ADVREF through the board's own series resistor, ferrite and
-  100 nF pair. A 3.0 V full scale costs 9% of the code range and buys
-  a reference that is the scale itself, which is what the calibration
-  direction wants; the VREF1V5 buffer onto a spare ADC pin is the
-  second point the profile needs.
+  **after JR1 is removed and BR1 bridged on the Due**: with the link
+  gone and the bridge made, the AREF pin reaches ADVREF through the
+  board's own ferrite and 100 nF pair. A 3.0 V full scale costs 9% of
+  the code range and buys a reference that is the scale itself, which
+  is what the calibration direction wants; the VREF1V5 buffer onto a
+  spare ADC pin is the second point the profile needs. The shield
+  reaches AREF through a solder jumper of its own, open by default, so
+  the same shield sits on a stock Due, where the buffer goes only to
+  the spare pin and the scale is measured rather than set. Which of
+  the two a bench runs is a decision `docs/afe-plan.md` carries, and it
+  is one per board: a modified Due has no reference without a shield
+  on it, and its DAC window moves to 0.50–2.50 V, so every loopback
+  figure taken before the change is on the other scale.
 - A unity buffer from the DAC0 wire into A0 through 68 Ω and 470 pF,
   the same on A1. On a 3.3 V single rail the LMV116's output reaches
   the rails but its input does not, so a rail-to-rail-input part is
@@ -146,16 +164,27 @@ rail; simplicity and robustness over range. Per channel:
 | capability | form | parts | why it is robust |
 |---|---|---|---|
 | protection | 1 MΩ in series, then a BAT54S from the node to 3.3 V and to ground | 1 R, 1 dual diode | ±20 V is ±20 µA; nothing active in the path |
-| attenuation and mid-rail | a divider: the 1 MΩ to a shunt resistor whose bottom end is the buffered 1.5 V node (Labrador's form) | 1 R | passive; the node cannot leave 0–3 V for any input inside ±20 V |
-| ranges, if wanted | a TS3A5017 switching the shunt resistor | 1 switch per two channels, 4 R | the switch never sees the input |
-| offset | the divider's bottom end driven by a Due PWM pin through two RC sections and a buffer; tie to 1.5 V if not wanted | 2 R, 2 C, 1 op-amp section, shared | moves the trace with no gain change |
-| buffer into the ADC | a rail-to-rail follower, then 68 Ω and 470 pF | 1 op-amp section, 1 R, 1 C | a 3.3 V op-amp cannot drive the pin outside its limits |
-| anti-alias | a capacitor across the shunt resistor | 1 C | passive, set once |
+| attenuation and mid-rail | a divider: the 1 MΩ to a shunt resistor whose bottom end is a buffered node at 1.61 V, Labrador's form with the bottom end placed where 0 V in lands at mid-scale | 1 R | passive; the node cannot leave 0.1–2.9 V for any input inside ±20 V |
+| ranges, if wanted | a TS3A5017 switching the shunt resistor, and the bottom end set per range: 1.61 V for ±20, 2.14 V for ±5, 3.0 V for ±3 | 1 switch per two channels, 3 R | the switch never sees the input; the bottom end is the offset buffer's level, so ranges need the offset source |
+| offset | the divider's bottom end driven by a Due PWM pin through two RC sections and a buffer; a divider from the reference to 1.61 V if not wanted | 2 R, 2 C, 1 op-amp section, shared | moves the trace with no gain change |
+| buffer into the ADC | a rail-to-rail follower, then a series resistor and 470 pF | 1 op-amp section, 1 R, 1 C | a 3.3 V op-amp cannot drive the pin outside its limits |
+| anti-alias | a compensation capacitor across the 1 MΩ, R1·C1 = Rs·Cs, one per shunt value; the corner set by the pin driver's series resistor against its 470 pF | 1 C per range, and the pin driver's R | passive, set once; without the compensation the 1 MΩ and the node's picofarads roll off in the tens of kilohertz |
 | DAC output | a follower, or gain 1.5 about 1.65 V; two RC sections; 1 kΩ load, 56 Ω series | 1 op-amp section, 4 R, 2 C | the series R and the op-amp's limit are the protection |
 
+**The divider's transfer is what sets the ranges.** With the 1 MΩ
+on top, the shunt Rs below it and the bottom end at Vb, the node is
+Vb·(1−k) + k·Vin with k = Rs/(1 MΩ + Rs). A bottom end at 1.5 V
+does not put 0 V in at mid-scale: at k = 0.070 it lands 105 mV low,
+and −20 V lands on the ADC's zero. Centring wants Vb = 1.5/(1−k),
+which is 1.61 V for ±20 V, 2.14 V for ±5 V and 3.0 V for ±3 V, and
+the buffer's rail bounds Vb, which is why about ±3 V is the finest
+passive range. The offset moves the node by (1−k) of the bottom
+end's travel, so it reaches a full screen at ±20 V and less as the
+range narrows.
+
 **Negative inputs need no negative rail.** The divider is referenced
-to the 1.5 V mid-rail, not to ground, so polarity is which side of
-1.5 V the reading falls. A negative rail on the input side would buy
+to a node inside the rail, not to ground, so polarity is which side
+of mid-scale the reading falls. A negative rail on the input side would buy
 an active first stage - exact 1 MΩ, low-noise gain ranges - not
 range, and it would put a pump's ripple ahead of the converter rather
 than behind it; OpenScope's first stage also needs wider rails than
@@ -187,20 +216,24 @@ low-noise sensitive ranges, neither of which the loopback bench uses.
 ### Stage C: the DAC output stage
 
 OpenScope's output chain transfers whole, with the ladder replaced by
-DAC0. The Due's DAC swings 0.55–2.75 V, 2.2 V peak to peak about
-1.65 V, as a staircase at up to 1.4 MS/s.
+DAC0. The Due's DAC swings 1/6 to 5/6 of ADVREF, 0.50–2.50 V with the
+reference at 3.0 V, 2.0 V peak to peak about 1.5 V, as a staircase at
+up to 1.4 MS/s. That centre is VREF1V5 itself, which is what lets the
+single-rail stage below do without a reference term.
 
 - **Reconstruction filter first**, two RC sections as drawn but
   scaled to the slower source: a corner a few hundred kilohertz above
   the highest generator frequency in use, not the 3–5 MHz that suits
   10 MS/s. It is also where the DAC's own per-conversion behaviour
   (`docs/awg.md`) gets smoothed rather than presented.
-- **Then the inverting summer.** Signal through Rin, a reference term
-  through its own resistor to cancel the DAC's 1.65 V centre, an
-  offset term from a Due PWM pin through the same two-pole RC, the +
-  input at the buffered 1.5 V, gain and bandwidth in the feedback.
-  On a single 3.3 V rail a gain of about −1.5 with a rail-to-rail
-  output op-amp turns 0.55–2.75 V into 0–3.3 V; with ± rails the same
+- **Then the inverting summer.** Signal through Rin, an offset term
+  from a Due PWM pin through the same two-pole RC, the + input at the
+  buffered 1.5 V, gain and bandwidth in the feedback. The DAC is
+  centred on that same 1.5 V, so the reference term OpenScope needs
+  to cancel a ground-referenced ladder is not needed on the single
+  rail; it returns with the inverter, to move the centre to 0 V. On a
+  single 3.3 V rail a gain of about −1.6 with a rail-to-rail output
+  op-amp turns 0.50–2.50 V into 0.1–3.2 V; with ± rails the same
   stage gives any span the op-amp's supply allows, which is why
   OpenScope reaches ±3 V. Choose the rail question once, in Stage B,
   and this stage follows it.
@@ -215,7 +248,8 @@ buffer is measured within holds like everything else.
 **Option: a −3.3 V inverter for the output stage alone.** A
 charge-pump inverter, one chip and two capacitors plus an RC filter
 on its rail, gives the output op-amp ±3.3 V; the summer then subtracts
-the DAC's 1.65 V centre and the waveform sits about 0 V, roughly
+the DAC's 1.5 V centre through a reference term and the waveform sits
+about 0 V, roughly
 ±2.8 V after the op-amp's headroom, with offset either side of
 ground. Choose a low output-resistance pump, LM2664 or TPS6040x
 class, since a pump is a resistor as much as a supply and the old
@@ -235,7 +269,7 @@ ladder and the part before the filter differs:
 |---|---|---|---|
 | PSLab V6 (`docs/related-work.md`) | an MCP4822 12-bit SPI DAC, 0–3.3 V | LM324 on ±6 V: out = 2·V − 3.3 gives ±3.3 V, a second stage ×1.51 gives ±5 V, a transistor stage gives a current source | the cleanest unipolar-to-bipolar level shift in the set, with the gain and the offset in one resistor pair; needs ± rails |
 | Labrador (`docs/related-work.md`) | the XMEGA's own 12-bit DAC, 0–3.3 V | LM324 follower or ×3 on a boosted single rail, 1 kΩ load, 56 Ω series, AC and DC pins | the single-supply form and the output pins; no filter, no reference term |
-| the SAM3X datasheet, DACC chapter | this DAC | its output range is 1/6 to 5/6 of the reference by design, and its drive is weak | why 0.55–2.75 V is not a fault and why a buffer is not optional; `docs/hardware.md` records the measured range |
+| the SAM3X datasheet, DACC chapter | this DAC | its output range is 1/6 to 5/6 of the reference by design, and its drive is weak | why the window is 0.55–2.75 V at the stock 3.27 V and 0.50–2.50 V at 3.0 V, and why a buffer is not optional; `docs/hardware.md` records the measured range |
 | TI, Analog Engineer's Circuit Cookbook, the DAC output circuits | any unipolar DAC | worked single-supply and unipolar-to-bipolar buffer designs with the resistor arithmetic and the error budget | the arithmetic for the reference term and the gain, done once by someone who publishes the derivation |
 
 The shape that fits this project is PSLab's level shift with
@@ -247,20 +281,19 @@ on whichever rail Stage B settled.
 In the order the measurement asks for, each step with the thing that
 proves it.
 
-1. **The rails are decided, single 3.3 V, and the AREF link is
-   known.** Remove JR1, the 0 Ω link that ties the Due's reference
-   node to the 3.3 V rail, before a 3.0 V reference can hold the pin;
-   read the AREF series resistor's value with a meter while the board
-   is out.
+1. **The rails are decided, single 3.3 V, and the AREF path is
+   known.** JR1 and BR1 are what stand between the AREF pin and
+   ADVREF, read from the V03 files; confirm both on the board with a
+   meter, and modify a board only for the drive-AREF choice.
 2. **Write the requirements as numbers.** Reference voltage and
    tolerance, pin drive values, buffer bandwidth against the
    converter's Nyquist, DAC stage span and filter corner, input ranges
    if Stage B is in scope. Each line becomes a meter reading or a
    sweep figure later.
-3. **Draw the schematic in KiCad, one sheet per stage**, from the
-   Mega shield template so the header pins are right and the later PCB
-   is a drop-in: the reference sheet, the pin-driver sheet, the DAC
-   stage, and the ranges only if in scope. Footprints a hand build can
+3. **Draw the schematic in KiCad, one sheet per stage**, on KiCad's
+   own `Arduino_Mega` template so the header pins are right and the
+   later PCB is a drop-in: the reference sheet, the pin-driver sheet,
+   the DAC stage, and the ranges only if in scope. Footprints a hand build can
    place; the BOM exported from the schematic.
 4. **Simulate the arithmetic** in KiCad's ngspice with the vendor
    op-amp models: a DC sweep of the summer and the DAC stage across
@@ -282,8 +315,9 @@ proves it.
    compares the two builds directly.
 
 The KiCad project, its simulations and the BOM belong under
-`hardware/afe-shield/`; a capture's note names the shield revision it
-was taken with.
+`hardware/afe-shield/`, the phases and their proofs under
+`docs/afe-plan.md`; a capture's note names the shield revision it was
+taken with.
 
 ## What the shield cannot fix
 

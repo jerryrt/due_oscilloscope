@@ -101,6 +101,9 @@ ALLOWED = {
     # The Arduino core, which is fetched by the SAM package and lives
     # under ~/.arduino15. The documents name these to say what the core
     # does, or gets wrong, about the hardware.
+    # A path inside another project's repository, quoted as the place
+    # its schematic was read from.
+    "docs/schematics/PSLab.pdf": "the PSLab repository's own path, outside this repository",
     "boards.txt": "Arduino SAM package, outside this repository",
     "platform.txt": "Arduino SAM package, outside this repository",
     "flash.ld": "Arduino SAM core linker script, outside this repository",
