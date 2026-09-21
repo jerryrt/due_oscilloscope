@@ -15,6 +15,13 @@ verbatim, and only an empty one is refused. What makes rows comparable
 is the pinned image, the declared idle time and the board's own uid,
 not the spelling of the phase.
 
+REPEATED ROUNDS IN ONE SITTING WORK UNATTENDED: a row dirties the tree
+by writing records/, and a tree dirty only under records/ is not
+refused - nothing there is compiled, so the image an unpinned tree
+would build is the clean commit's, and that is what the board is held
+to. Source dirty anywhere else still refuses, because the tool's own
+revision would be unattributable.
+
 Three boards rotate across three benches, and the question is whether a
 converter tail follows the board or stays with the bench. That is a
 six-cell table, and each cell is six census runs, a tail scale, three
@@ -250,7 +257,33 @@ class Refused(Exception):
     pass
 
 
-def collect_row(args, board_steps=None, run_census=None, run_tail_scale=None):
+RECORD_DIRS = ("records/",)
+
+
+def _dirty_paths():
+    """Tracked paths the working tree has changed, as git names them."""
+    import subprocess
+    out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"],
+                         capture_output=True, text=True, check=False).stdout
+    paths = []
+    for line in out.splitlines():
+        if len(line) > 3:
+            paths.append(line[3:].split(" -> ")[-1].strip())
+    return paths
+
+
+def only_records_dirty(paths):
+    """A tree whose only changes are under records/ is dirty in a way
+    no measurement can see: the rows this tool writes land there, so a
+    second row after a first in one sitting would otherwise be refused
+    for the first's existence, 1200 s after the mistake was made. Source
+    that is dirty is still refused - the tool's own revision would be
+    unattributable."""
+    return bool(paths) and all(p.startswith(RECORD_DIRS) for p in paths)
+
+
+def collect_row(args, board_steps=None, run_census=None, run_tail_scale=None,
+                dirty_paths=None):
     """The whole cell, in protocol order; raises Refused with the reason.
 
     The three hardware steps resolve at call time so a test can replace
@@ -259,6 +292,7 @@ def collect_row(args, board_steps=None, run_census=None, run_tail_scale=None):
     board_steps = board_steps or _board_steps
     run_census = run_census or _run_census
     run_tail_scale = run_tail_scale or _run_tail_scale
+    dirty_paths = dirty_paths or _dirty_paths
     steps = board_steps()
     cond = steps["conditions"]
     ident = steps["ident"] or {}
@@ -268,14 +302,24 @@ def collect_row(args, board_steps=None, run_census=None, run_tail_scale=None):
                       "a rotation row that cannot say which Due wrote it is "
                       "worse than none")
     rev = cond.get("repo_rev") or ""
+    tree_rev = rev
     if not rev or "-dirty" in rev or "+" in rev:
-        raise Refused(f"repo_rev is {rev!r}: the tree is dirty, so the image "
-                      "carries a delta hash no other bench can match. Commit "
-                      "or stash, rebuild, reflash, then take the row")
+        paths = dirty_paths()
+        if only_records_dirty(paths):
+            # Nothing under records/ is compiled, so the image this tree
+            # would build is the clean commit's; hold the board to that.
+            tree_rev = rev.split("-dirty")[0].split("+")[0]
+        else:
+            raise Refused(f"repo_rev is {rev!r}: the tree is dirty outside "
+                          f"records/ ({', '.join(paths) or 'unknown paths'}), "
+                          "so the tool's own revision is unattributable and "
+                          "an image built here carries a delta hash no other "
+                          "bench can match. Commit or stash, rebuild, "
+                          "reflash, then take the row")
     if ident.get("track") != "b":
         raise Refused(f"the board answers track={ident.get('track')!r}; the "
                       "rotation is Track B on every bench")
-    want = args.image_rev or rev
+    want = args.image_rev or tree_rev
     if ident.get("build") != want:
         if args.image_rev:
             raise Refused(f"the image says build={ident.get('build')!r} and "

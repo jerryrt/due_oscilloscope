@@ -150,8 +150,34 @@ def test_an_unattributable_row_is_refused(cond_patch, ident_patch, needle):
     with pytest.raises(rr.Refused) as e:
         rr.collect_row(_args(), board_steps=_steps(cond, ident),
                        run_census=_census_texts([0] * 6),
-                       run_tail_scale=_scale)
+                       run_tail_scale=_scale,
+                       dirty_paths=lambda: ["tools/rotation_row.py"])
     assert needle in str(e.value)
+
+
+def test_a_tree_dirtied_only_by_earlier_rows_is_not_refused():
+    """The rows this tool writes dirty the tree; a second round in one
+    sitting was refused for the first's existence, 1200 s after the
+    rest began, on every bench. Only records/ dirt is exempt: a dirty
+    tool or source is still refused, and an empty path list on a dirty
+    rev is still refused, since it cannot say what is dirty."""
+    cond = dict(CONDITIONS, repo_rev="63080da-dirty")
+    row = rr.collect_row(_args(), board_steps=_steps(cond),
+                         run_census=_census_texts([0] * 6),
+                         run_tail_scale=_scale,
+                         dirty_paths=lambda: ["records/rotation.jsonl",
+                                              "records/issue82-arms-x.jsonl",
+                                              "records/boards/abc.json"])
+    assert row["conditions"]["repo_rev"] == "63080da-dirty"
+    for paths in (["records/rotation.jsonl", "docs/noise.md"], []):
+        with pytest.raises(rr.Refused) as e:
+            rr.collect_row(_args(), board_steps=_steps(cond),
+                           run_census=_census_texts([0] * 6),
+                           run_tail_scale=_scale, dirty_paths=lambda: paths)
+        assert "dirty outside records/" in str(e.value)
+    assert rr.only_records_dirty(["records/x"]) is True
+    assert rr.only_records_dirty(["record/x"]) is False
+    assert rr.only_records_dirty([]) is False
 
 
 # --- the row ------------------------------------------------------------------
