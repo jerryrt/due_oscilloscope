@@ -35,6 +35,29 @@ path it wrote is recorded.
 Every step's raw output stays in the row. The row is appended to
 records/rotation.jsonl and is the record; the printed line is a
 courtesy.
+
+THE IMAGE MAY BE PINNED. The rotation runs every board on ONE image,
+matched by artifact hash, while the tree keeps moving for tools and
+docs - so `--image-rev d25f9e3` says which commit the board must carry
+and the tree's own revision is then recorded beside it rather than
+demanded of the board. Without it the image must be the tree's, which
+is the right rule for a bench's own image.
+
+THE TAIL TOOL'S EXIT CODE IS NOT SWALLOWED. tools/issue82_arms.py
+raised before printing a line on mac-bench, and the first version of
+this tool returned its output regardless, so a crashed sub-tool became
+an empty measurement and the row exited 0 - a silent partial row. The
+row is still written, because the census is the registered comparison,
+but its `tail_scale_status` says what happened, the summary line says
+`scale MISSING`, and the exit code is 3. One recoverable case is
+retried: a "hold parity is a tie" on a quiet board, where the two
+parities fit equally because the holds barely move; the tool is run
+again with `--parity 0` and the row says so.
+
+EXIT CODES
+    0   row written, every measurement present
+    2   refused - nothing written; the reason is on stderr
+    3   row written, but the tail scale is MISSING; status in the row
 """
 
 import argparse
@@ -164,12 +187,42 @@ def _run_census(python):
     return r.stdout + r.stderr
 
 
-def _run_tail_scale(python, bench):
+def _run_tail_scale(python, bench, extra=()):
+    """(returncode, stdout+stderr) of the tail tool - the code travels
+    with the text, because a crash that prints nothing must not read as
+    a measurement that found nothing."""
     r = subprocess.run([python, os.path.join(ROOT, "tools", "issue82_arms.py"),
-                        "-n", "2", "--bench", bench],
+                        "-n", "2", "--bench", bench, *extra],
                        cwd=ROOT, capture_output=True, text=True,
                        encoding="utf-8", errors="replace")
-    return r.stdout + r.stderr
+    return r.returncode, r.stdout + r.stderr
+
+
+PARITY_TIE = "hold parity is a tie"
+
+
+def take_tail_scale(run_tail_scale, python, bench):
+    """The tail tool, once, plus one retry on the tie it cannot
+    otherwise get past; returns (scales, status, raw, parity_forced)."""
+    rc, text = run_tail_scale(python, bench)
+    forced = None
+    if rc != 0 and PARITY_TIE in text:
+        # A quiet board's holds barely move, so both parities fit the
+        # pair spread equally and the tie check cannot tell ambiguous
+        # from still. The tool now takes the parity from the command
+        # line; 0 is the answer that fits as well as 1 when it is a tie.
+        forced = 0
+        rc, text2 = run_tail_scale(python, bench, ("--parity", "0"))
+        text = text + "\n---- retry with --parity 0 ----\n" + text2
+    scales = parse_scales(text)
+    if rc != 0:
+        last = [l for l in text.strip().splitlines() if l.strip()]
+        status = f"tool exit {rc}: {last[-1].strip() if last else ''}"
+    elif not scales:
+        status = "exit 0 but no scale line parsed"
+    else:
+        status = "ok" if forced is None else "ok, parity forced 0 after a tie"
+    return scales, status, text, forced
 
 
 class Refused(Exception):
@@ -201,7 +254,12 @@ def collect_row(args, board_steps=None, run_census=None, run_tail_scale=None):
     if ident.get("track") != "b":
         raise Refused(f"the board answers track={ident.get('track')!r}; the "
                       "rotation is Track B on every bench")
-    if ident.get("build") != rev:
+    want = args.image_rev or rev
+    if ident.get("build") != want:
+        if args.image_rev:
+            raise Refused(f"the image says build={ident.get('build')!r} and "
+                          f"the rotation image is pinned at {want}: flash "
+                          "the pinned image, so the six cells are one image")
         raise Refused(f"the image says build={ident.get('build')!r} and the "
                       f"tree is {rev}: flash this tree's image first, so the "
                       "six cells are one image")
@@ -217,8 +275,8 @@ def collect_row(args, board_steps=None, run_census=None, run_tail_scale=None):
             c["run"] = i + 1
         census.append(c)
 
-    scale_text = run_tail_scale(args.python, bench)
-    scales = parse_scales(scale_text)
+    scales, scale_status, scale_text, forced = take_tail_scale(
+        run_tail_scale, args.python, bench)
 
     return {
         "schema": SCHEMA,
@@ -237,6 +295,9 @@ def collect_row(args, board_steps=None, run_census=None, run_tail_scale=None):
         "census_summary": summarise(census),
         "census_raw": census_text,
         "tail_scale": scales,
+        "tail_scale_status": scale_status,
+        "tail_scale_parity_forced": forced,
+        "image_rev_pinned": args.image_rev,
         "tail_scale_rows_went_to":
             f"records/issue82-arms-{bench}.jsonl (that tool's default)",
         "tail_scale_raw": scale_text,
@@ -259,6 +320,9 @@ def main(argv=None):
     ap.add_argument("--python", default=sys.executable,
                     help="interpreter for the census and tail-scale "
                          "subprocesses (default: this one)")
+    ap.add_argument("--image-rev", default=None, metavar="REV",
+                    help="the pinned rotation image's commit; the board "
+                         "must carry it, and the tree may be ahead of it")
     ap.add_argument("--out", default=OUT)
     args = ap.parse_args(argv)
     if args.idle_seconds < 0:
@@ -273,13 +337,19 @@ def main(argv=None):
     with open(args.out, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(row, sort_keys=True) + "\n")
     s = row["census_summary"]
+    missing = not row["tail_scale"]
+    scales = (f"scale MISSING ({row['tail_scale_status']})" if missing
+              else f"scales {[x['a0_scale_codes'] for x in row['tail_scale']]}")
     print(f"rotation {row['phase']} {row['bench']} serial {row['board_serial']} "
           f"uid {row['board_uid']} idle {row['idle_before_s']}s: largest "
           f"{s.get('largest_min')}-{s.get('largest_max')} (median "
           f"{s.get('largest_median')}), count {s.get('count_min')}-"
-          f"{s.get('count_max')}, n={s.get('n')}; scales "
-          f"{[x['a0_scale_codes'] for x in row['tail_scale']]}; die "
+          f"{s.get('count_max')}, n={s.get('n')}; {scales}; die "
           f"{[t['code'] for t in row['temperatures']]} -> {args.out}")
+    if missing:
+        print("rotation_row: the row is written but its tail scale is "
+              f"MISSING: {row['tail_scale_status']}", file=sys.stderr)
+        return 3
     return 0
 
 

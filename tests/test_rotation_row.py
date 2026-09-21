@@ -11,7 +11,12 @@ steps replaced, so it holds the tool's promises without a board:
 - a row is refused without a declared phase and idle time, without a
   programming port, on a dirty tree, on the wrong track, and on an
   image that is not the tree's own commit;
-- a row carries the board's two identities and every conditions() key.
+- a row carries the board's two identities and every conditions() key;
+- a tail tool that crashed is a MISSING scale with its status and exit 3,
+  never an empty measurement in a row that exited 0; a parity tie is
+  retried once with `--parity 0` and the row says so;
+- `--image-rev` pins the image the board must carry so the tree may
+  move ahead of it; without it the image must be the tree's.
 """
 
 import argparse
@@ -67,17 +72,20 @@ def _census_texts(counts):
     return lambda _python: next(it)
 
 
-def _scale(_python, _bench):
-    return ("baseline        run 1: A0 tail/s {6: 704.6, 10: 152.0, 15: 37.1} scale 2.27  A1 tail/s {6: 648.7, 10: 131.2, 15: 24.8} "
+SCALE_TEXT = ("baseline        run 1: A0 tail/s {6: 704.6, 10: 152.0, 15: 37.1} scale 2.27  A1 tail/s {6: 648.7, 10: 131.2, 15: 24.8} "
             "scale 2.14  (parity 0/0, pair spread 1/1)\n"
             "baseline        run 2: A0 tail/s {6: 687.8, 10: 150.0, 15: 44.9} scale 2.34  A1 tail/s {6: 641.7, 10: 138.4, 15: 22.8} "
             "scale 2.28  (parity 0/0, pair spread 1/1)\n"
             "rows -> records/issue82-arms-linux-x1.jsonl\n")
 
 
+def _scale(_python, _bench, extra=()):
+    return 0, SCALE_TEXT
+
+
 def _args(**kw):
     d = dict(phase="before", idle_seconds=1200, note="", bench=None,
-             python=sys.executable, out=None)
+             python=sys.executable, out=None, image_rev=None)
     d.update(kw)
     return argparse.Namespace(**d)
 
@@ -97,7 +105,7 @@ def test_the_census_line_parses_on_a_fail_and_on_a_pass():
 
 
 def test_the_tail_scales_parse_per_arm_and_run():
-    s = rr.parse_scales(_scale(None, None))
+    s = rr.parse_scales(SCALE_TEXT)
     assert [(x["arm"], x["run"], x["a0_scale_codes"], x["a1_scale_codes"])
             for x in s] == [("baseline", 1, 2.27, 2.14), ("baseline", 2, 2.34, 2.28)]
 
@@ -208,4 +216,108 @@ def test_the_scale_parser_reads_the_tools_real_line():
     assert [(g["arm"], g["run"], g["a0_scale_codes"], g["a1_scale_codes"])
             for g in got] == [("baseline", 1, 2.35, 2.24),
                               ("sync-off", 2, 2.33, 2.16)], got
+
+
+# --- the tail tool's exit code is not swallowed ------------------------------
+
+TIE_TEXT = ("provenance: bench=mac-bench\n"
+            "Traceback (most recent call last):\n"
+            "  File \"tools/issue82_arms.py\", line 71, in parity\n"
+            "ValueError: hold parity is a tie (1.0 vs 1); pass the parity "
+            "known from the other channel\n")
+
+
+def test_a_crashed_tail_tool_is_a_missing_scale_with_exit_3(tmp_path,
+                                                            monkeypatch,
+                                                            capsys):
+    """mac-bench's before-row: the tail tool raised before printing a
+    line, the first tool returned its output regardless, and the row
+    went out with an empty measurement and exit 0."""
+    out = tmp_path / "rotation.jsonl"
+    monkeypatch.setattr(rr, "_board_steps", _steps())
+    monkeypatch.setattr(rr, "_run_census", _census_texts([0] * 6))
+    crash = ("provenance: bench=x\nTraceback (most recent call last):\n"
+             "RuntimeError: the capture returned no A0 series\n")
+    monkeypatch.setattr(rr, "_run_tail_scale",
+                        lambda _p, _b, extra=(): (1, crash))
+    rc = rr.main(["--phase", "before", "--idle-seconds", "1200",
+                  "--out", str(out)])
+    assert rc == 3
+    row = json.loads(out.read_text(encoding="utf-8"))
+    assert row["tail_scale"] == []
+    assert row["tail_scale_status"].startswith("tool exit 1: RuntimeError")
+    assert row["tail_scale_parity_forced"] is None
+    cap = capsys.readouterr()
+    assert "scale MISSING (tool exit 1" in cap.out
+    assert "MISSING" in cap.err
+
+
+def test_a_parity_tie_is_retried_once_with_parity_0(tmp_path, monkeypatch):
+    """A quiet board's holds barely move, so both parities fit the pair
+    spread equally and the tool's tie check refuses; the advice in its
+    error was unreachable until the tool took --parity."""
+    out = tmp_path / "rotation.jsonl"
+    calls = []
+
+    def tool(_python, _bench, extra=()):
+        calls.append(tuple(extra))
+        if not extra:
+            return 1, TIE_TEXT
+        return 0, "parity forced: 0\n" + SCALE_TEXT
+
+    monkeypatch.setattr(rr, "_board_steps", _steps())
+    monkeypatch.setattr(rr, "_run_census", _census_texts([0] * 6))
+    monkeypatch.setattr(rr, "_run_tail_scale", tool)
+    rc = rr.main(["--phase", "before", "--idle-seconds", "1200",
+                  "--out", str(out)])
+    assert rc == 0
+    assert calls == [(), ("--parity", "0")], calls
+    row = json.loads(out.read_text(encoding="utf-8"))
+    assert row["tail_scale_status"] == "ok, parity forced 0 after a tie"
+    assert row["tail_scale_parity_forced"] == 0
+    assert [x["a0_scale_codes"] for x in row["tail_scale"]] == [2.27, 2.34]
+    assert "retry with --parity 0" in row["tail_scale_raw"]
+
+
+def test_a_clean_exit_with_no_scale_line_is_still_missing(tmp_path,
+                                                          monkeypatch):
+    out = tmp_path / "rotation.jsonl"
+    monkeypatch.setattr(rr, "_board_steps", _steps())
+    monkeypatch.setattr(rr, "_run_census", _census_texts([0] * 6))
+    monkeypatch.setattr(rr, "_run_tail_scale",
+                        lambda _p, _b, extra=(): (0, "rows -> x\n"))
+    assert rr.main(["--phase", "before", "--idle-seconds", "0",
+                    "--out", str(out)]) == 3
+    row = json.loads(out.read_text(encoding="utf-8"))
+    assert row["tail_scale_status"] == "exit 0 but no scale line parsed"
+
+
+# --- the image may be pinned ------------------------------------------------
+
+def test_image_rev_pins_the_board_to_the_rotation_image_not_the_tree():
+    """windows-desk: pulling the parser fix would have made the tool
+    refuse a rested board carrying the registered image, because the
+    tree and the image were one thing."""
+    pinned = "d25f9e3"
+    # tree ahead of the pinned image, board carries the pinned image
+    cond = dict(CONDITIONS, repo_rev="bf9f517")
+    row = rr.collect_row(_args(image_rev=pinned),
+                         board_steps=_steps(cond, _ident(build=pinned)),
+                         run_census=_census_texts([0] * 6),
+                         run_tail_scale=_scale)
+    assert row["image_rev_pinned"] == pinned
+    assert row["conditions"]["repo_rev"] == "bf9f517"
+    # board carries neither the pinned image nor the tree's
+    with pytest.raises(rr.Refused) as e:
+        rr.collect_row(_args(image_rev=pinned),
+                       board_steps=_steps(cond, _ident(build="2b20140")),
+                       run_census=_census_texts([0] * 6),
+                       run_tail_scale=_scale)
+    assert "pinned at d25f9e3" in str(e.value)
+    # without the pin the old rule stands: the image must be the tree's
+    with pytest.raises(rr.Refused) as e:
+        rr.collect_row(_args(), board_steps=_steps(cond, _ident(build=pinned)),
+                       run_census=_census_texts([0] * 6),
+                       run_tail_scale=_scale)
+    assert "flash this tree's image" in str(e.value)
 

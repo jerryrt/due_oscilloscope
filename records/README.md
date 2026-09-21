@@ -119,9 +119,23 @@ every condition `provenance.conditions()` carries.
 
 A row is refused rather than written when it could not be attributed:
 no programming port, a dirty tree, a board that is not Track B, an
-image whose `build` is not the tree's commit, or an undeclared idle
-time - `--idle-seconds` is required even at 0, because a warm board
-read as a different board is what the rotation exists to stop.
+image whose `build` is not the tree's commit - or, with `--image-rev`,
+not the pinned rotation image's commit, which lets the tree move for
+tools and docs while every board stays on one image matched by hash -
+or an undeclared idle time - `--idle-seconds` is required even at 0,
+because a warm board read as a different board is what the rotation
+exists to stop.
+
+The tail tool's exit code travels with its text. It raised before
+printing a line on one bench, and the first version of the row tool
+returned the output regardless, so a crashed sub-tool became an empty
+measurement in a row that exited 0. Now the row carries
+`tail_scale_status` (`ok`; `ok, parity forced 0 after a tie`, the one
+recoverable case - a quiet board's two parities fit equally and the
+tool is re-run with `--parity 0`; `tool exit N: <last line>`; or
+`exit 0 but no scale line parsed`), and the exit code says which:
+**0** every measurement present, **2** refused and nothing written,
+**3** row written with the tail scale MISSING.
 
 ## Rows whose `track` field is wrong, and how to read them
 

@@ -106,7 +106,13 @@ def main():
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH", "linux-x1"))
     ap.add_argument("-n", "--runs", type=int, default=2)
     ap.add_argument("-s", "--seconds", type=float, default=5.0)
+    ap.add_argument("--parity", type=int, choices=(0, 1), default=None,
+                    help="the hold parity to use on both channels; skips "
+                         "the tie check, which cannot tell an ambiguous "
+                         "pairing from a quiet board where both fit")
     args = ap.parse_args()
+    if args.parity is not None:
+        print(f"parity forced: {args.parity}")
     out = os.path.join(ROOT, "records", f"issue82-arms-{args.bench}.jsonl")
     board = measure.Board(settle=3.0)
     try:
@@ -126,7 +132,8 @@ def main():
                 a0 = ps.series.get(measure.CH_A0) or []
                 a1 = ps.series.get(measure.CH_A1) or []
                 start = ps._index_at(measure.CH_A0, measure.SETTLE_US)
-                r0, s0, n0, p0, sc0 = tail(a0[start:], hold)
+                r0, s0, n0, p0, sc0 = tail(a0[start:], hold,
+                                           known_parity=args.parity)
                 # A1's pairing comes from its own edges when it carries a
                 # square; only without one is A0's complement taken, and
                 # the complement is not a law - whether a channel's sample
@@ -134,7 +141,9 @@ def main():
                 # update lands against that channel's sample instant,
                 # which differs between A1 (sampled first) and A0.
                 if a1:
-                    kp = edge_parity(a1[start:])
+                    kp = args.parity
+                    if kp is None:
+                        kp = edge_parity(a1[start:])
                     if kp is None and hold == 2 and p0 is not None:
                         kp = 1 - p0
                     r1, s1, n1, p1, sc1 = tail(a1[start:], 2, known_parity=kp)
