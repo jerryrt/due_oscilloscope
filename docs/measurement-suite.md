@@ -392,7 +392,7 @@ first in this project that do not inherit the 0-series debt or the
 | frequency ceiling, solo | ~750 kHz toggling | measured, unrecorded |
 | full-amplitude ceiling | ~400-450 kHz | measured, unrecorded |
 | square-shaped ceiling | ~100-200 kHz | **judged by eye, not by a number** |
-| output span, absolute | disputed, see above | **unresolved** |
+| output span, absolute | 578-2771 mV by the scope, see above | **working figure**: resolved only by the external reference anchor below, once taken |
 | noise floor on a held code | 20.2 mV RMS, 15.1 mV with the DAC idle | measured, unrecorded |
 | linearity across the span | ~24 codes rms against an 11-code ruler | measured, quantiser-limited |
 | wrap fold | worst bin 9.5× median | **no control arm yet** |
@@ -405,6 +405,7 @@ The loop, and the ADC measured against something other than itself.
 |---|---|
 | DAC→scope→ADC three-way transfer | `dso_metrics transfer`: ten DC codes, repeated, fitted both ways. Good to about a code; it is what set `ADVREF` at 3270 mV |
 | ADC gain and offset against the scope | the same fit; `adc_transfer` in `calibration.json` and `docs/status.md` |
+| ADC offset and gain against a voltage reference | **not built - the absolute anchor.** One precision reference on a spare ADC pin, two points per board per channel; the DAC then inherits the volt through the loop. The scope's transfer is bounded by its 8 bits and an asserted probe ratio; the reference is bounded by its own stated accuracy. The calibration direction in `docs/scope.md` |
 | ADC INL against the scope | not built as a curve. `transfer`'s ten-point residuals bound it at ~±4 codes over the measured range, and `dso_metrics lin` is the DAC's straightness, quantiser-limited at ~11 codes |
 | channel skew A0/A1 | ~0.95 us, from the ADC's own timing |
 | issue #5 fold z | `pair_fold`, in `tests/test_integrity.py` |
@@ -441,6 +442,15 @@ the first ADC transfer function referenced to a non-ADC instrument,
 bounded by the scope's 8 bits and the averaging at about a code, which
 is an order finer than issue #5's 30-45 code signature. What remains
 of it is recording the run rather than quoting it - item 1.
+
+**4b. The absolute anchor.** A precision voltage reference on a spare
+ADC pin, read with ground as the second point, per board and per
+channel, written into that board's profile with the reference part,
+its stated accuracy, the date and the die code; the DAC's span then
+follows from the three-way rather than from the scope. This is what
+turns `calibration.json`'s scope-derived ADVREF into a figure another
+instrument would be believed over, and it is the first step of the
+calibration direction.
 
 **5. Turn the eye-judgements into numbers.** "Recognisable square" is
 currently a person looking at a screenshot. A flat-top fraction - the

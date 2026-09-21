@@ -751,7 +751,15 @@ a datasheet would suggest:
    which is the only route to a floor common to every arm - the part
    this method is blind to and cannot rule out.
 4. **An external reference**, which is what finally lets any of this be
-   stated in volts rather than in ratios of ADVREF to itself.
+   stated in volts rather than in ratios of ADVREF to itself - and is
+   the calibration direction the project now takes (`docs/scope.md`,
+   open questions): one precision voltage reference per bench on a
+   spare ADC pin, two ADC points per board for offset and gain, the DAC
+   inheriting through the loop, applied on the host and kept per board
+   under the die's own identifier. Averaging boards cannot stand in for
+   it: the loop is ratiometric, the part common to every board does not
+   average away, and the three boards here share one lot prefix in
+   their identifiers, so their mean is the lot's, not the part's.
 
 Each of those is judged the same way afterwards: re-run
 `tools/noisetool.py activity`, interleaved, and read the paired

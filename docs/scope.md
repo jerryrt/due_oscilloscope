@@ -251,3 +251,20 @@ guess.
    measurement.
 4. Exact ADC conversion cycle count under the chosen `TRACKTIM` and
    `SETTLING` values.
+5. **Absolute calibration against an external reference - the
+   calibration direction.** Every board measures its own converters
+   against its own reference, and the DAC->ADC loop is ratiometric, so
+   nothing measured so far is in volts (`docs/noise.md`, "ADVREF: the
+   loop cannot see it"). The minimum that changes that: one precision
+   voltage reference per bench on a spare ADC pin, two ADC points per
+   board - ground and the reference - for offset and gain per channel,
+   the DAC inheriting through the loopback, the correction applied on
+   the host, and the result recorded per board in a profile keyed by
+   the SAM3X unique identifier that every row now carries. Every board
+   needs its own two points: offset, gain and the regulator behind
+   ADVREF are per die. What it does not touch: the per-conversion tail
+   is dynamic and stays what it is on a trimmed board, and a
+   room-temperature calibration holds only within the ambient it was
+   taken at - conditioning it on temperature is the follow-on. More
+   boards do not substitute for the reference: their mean is the
+   population's transfer, never a volt.
