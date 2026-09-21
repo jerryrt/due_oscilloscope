@@ -208,6 +208,42 @@ The shape that fits this project is PSLab's level shift with
 OpenScope's filter in front of it and Labrador's output pins after it,
 on whichever rail Stage B settled.
 
+## The requirement, as estimates
+
+Every figure here is a design estimate from the parts and the
+converter, *(check)* until the sweep and a meter replace it. It is
+written so each line becomes a measurement.
+
+| quantity | estimate *(check)* | what sets it |
+|---|---|---|
+| input range | ±20 V DC-coupled, one fixed range; ±20 / ±5 / ±1.5 V with a switched shunt | 1 MΩ into 75 kΩ to 1.5 V puts ±20 V at 0.1–2.9 V on a 3.0 V scale |
+| input impedance | 1.07 MΩ, a few pF | the divider |
+| resolution at the pin | 12 bits over 3.0 V, 0.73 mV per code | the ADC and the reference |
+| resolution referred to input | 10 mV per code at ±20 V, 2.6 mV at ±5 V, 0.8 mV at ±1.5 V | the divider ratio |
+| noise referred to input | about 1 code rms on a healthy board: 10–20 mV rms at ±20 V, 1–2 mV at ±1.5 V | the converter; the divider's thermal noise is tens of µV |
+| effective bits | 10 to 11 | the SAM3X ADC; no front end raises it |
+| DC accuracy before calibration | gain within 0.3%, offset within a few codes | LM4040 at 0.1%, 0.1% divider, op-amp offset under a code |
+| DC accuracy after per-board calibration | 1 to 2 codes | the reference is the scale; the profile carries two points |
+| drift | about 0.3 mV over 30 °C at full scale | the reference grade bought |
+| analog bandwidth | 200–300 kHz flat, by choice; a 10 MHz buffer is transparent | the anti-alias capacitor across the shunt against the sample rate |
+| sample rate behind it | 886 ksps one channel, 453 ksps each on two | the converter, unchanged |
+| rise time | 1–2 µs | the anti-alias corner |
+| channel crosstalk | below a code | the buffered drive removes the sample-and-hold's charge memory |
+| offset | ±full screen at every range, 0.8 mV steps, settles in tens of ms | 12-bit PWM through two RC sections |
+| protection | ±20 V continuous with margin, brief transients to about ±100 V, ESD by the clamps | 1 MΩ series, BAT54S to the rails, the op-amp's diodes |
+| generator output | 12 bits; 0.55–2.75 V as a follower or 0–3.3 V at gain 1.5 within ~30 mV of the rails; unipolar | the DAC's window and a rail-to-rail op-amp on 3.3 V |
+| generator rate and frequency | 1.4 MS/s updates; sines clean to ~100–200 kHz, squares to a few hundred kHz | the DAC and the reconstruction corner; `docs/awg.md`'s ceilings still apply |
+| generator drive | 10–20 mA into 56 Ω series, short-circuit safe | the op-amp's current limit |
+| frequency accuracy | about 10 ppm | the master clock, measured |
+| cleanliness, the acceptance | within-hold events over 10 codes at or below 0.2 per 1000 holds on every board, largest excursion at or below 12 codes | the two healthy shielded boards set the floor; the fourth board is the test |
+
+Not achieved by construction: bipolar generator output, inputs beyond
+±20 V, more than 12 bits, bandwidth beyond half the sample rate,
+differential inputs. Noise and effective bits are the converter's;
+the AFE's job is to stop making them worse, which the cleanliness
+line states as a number, and to turn codes into volts, which the
+reference line does.
+
 ## Building it: from this note to a wired shield
 
 In the order the measurement asks for, each step with the thing that
