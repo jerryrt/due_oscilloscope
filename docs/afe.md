@@ -124,6 +124,114 @@ at which the answer is a board, not a shield.
 
 ## The parts, for a reader whose analog is twenty years old
 
+Each part, what it is, and why it sits where it does, in the order the
+signal meets them. The table after it is the same material as a
+reference card.
+
+**The op-amp, and the one rule that explains everything it does.**
+LMV116, LMV324, MCP6H91 and LM324 are all operational amplifiers: a
+differential amplifier with enormous gain, two inputs marked + and −,
+one output. With negative feedback, some path from the output back to
+the − input, the op-amp drives its output to whatever voltage makes
+the two inputs equal. That single rule reads every stage on the sheet.
+
+- *Follower, or buffer.* Output wired straight to the − input, signal
+  on +. The output copies the input voltage, but the input draws
+  almost no current and the output can supply plenty: an impedance
+  converter, a weak source in and a strong source out. IC3A and IC3B
+  in the reference are followers, and the buffer between the DAC wire
+  and A0 is one too.
+- *Inverting amplifier.* Signal through a resistor into the −, + held
+  at a fixed voltage, feedback resistor from output to −. Because the
+  op-amp keeps − equal to +, the − pin sits at that fixed voltage
+  whatever the input does: a virtual ground when + is at ground. The
+  input resistor turns the input voltage into a current, the feedback
+  resistor turns that current back into a voltage, so the gain is
+  minus the ratio of the two, 200 kΩ over 1 MΩ gives −0.2. This is
+  IC5A, and it doubles as protection because the input pin never sees
+  the input voltage, only the current the 1 MΩ lets through.
+- *Summing amplifier.* The same with several input resistors into the
+  − pin. Currents add at the node, so the output is a weighted sum of
+  the inputs. IC6A sums the attenuated signal, the reference and the
+  offset, each through its own resistor: level shift, gain and offset
+  in one stage.
+
+**Single supply and rail-to-rail.** University op-amps ran on ±15 V
+with the signal swinging around ground. These run between ground and
+3.3 V, so the signal swings around a made-up middle, 1.5 V here.
+Rail-to-rail *output* means the output reaches within a few tens of
+millivolts of ground and of 3.3 V; rail-to-rail *input* means the
+inputs can too. The LMV116 has the first property and not the second,
+which is fine for the inverting stages whose inputs sit at 1.5 V and
+not fine for a follower that must track 0.55–2.75 V.
+
+**Why LMV116 and LMV324 are different parts.** The LMV116 is fast,
+about 45 MHz of gain-bandwidth, and is used where the signal passes
+through. The LMV324 is four slow op-amps in one package, used where
+nothing fast happens: the reference buffers and the offset buffer.
+Speed costs money and current, so the sheet spends it only on the
+signal path.
+
+**MCP6H91 and MCP6H82.** Also op-amps, chosen because they run on
+wider supplies, up to 16 V. The generator output must swing ±3 V and
+the DC outputs ±5 V, which no 3.3 V part can do, so these sit on the
+board's ± rails.
+
+**LM4040, the shunt reference.** A very precise Zener diode. Fed a few
+milliamps through a resistor, 56 Ω from 3.3 V here, it holds exactly
+3.000 V across itself, to 0.1%, whatever the temperature or the rail
+does. The resistor-divider mid-rail that Labrador and Scoppy use is
+the opposite: it moves with the rail and with load. An ADC reads a
+ratio, input over reference, so a reference that moves turns every
+reading into a moving number. The buffer after it exists because the
+reference can supply only a little current, and VREF+ plus the
+level-shift network draw more than it should give.
+
+**TS3A5017, the analog switch.** A relay with no moving parts: two
+independent 4-way selectors, each connecting one of four pins to a
+common pin under two logic lines, with a few ohms of resistance when
+closed. It carries the signal current, which a logic gate cannot. In
+the feedback path of IC6A it picks which resistor closes the loop, so
+the range changes in software without a mechanical switch and without
+touching the input. Its on-resistance adds to the feedback resistor,
+which is the "−10" in the sheet's resistor formulas.
+
+**The capacitor across each feedback resistor.** A capacitor passes
+high frequencies more easily than low ones. In parallel with the
+feedback resistor, the feedback strengthens at high frequency and the
+gain falls, from the corner where the capacitor's impedance equals the
+resistor's, 1/(2πRC). Each of the four feedback resistors carries a
+capacitor sized so R × C is the same, about 120 ns, so every range
+rolls off at the same 1.3–1.6 MHz. This is where the instrument's
+bandwidth is decided, and it is also the anti-alias filter: anything
+above the corner is attenuated before the ADC can fold it into the
+band.
+
+**The PWM offset.** The microcontroller has no spare DAC for the
+offset, so it uses a PWM output, a square wave whose on-time fraction
+is set in software. Two RC low-pass sections, 470 Ω with 4.7 µF and
+511 Ω with 4.7 µF, average the square wave into a DC level
+proportional to the on-time: a DAC made from one pin and four passive
+parts, slow, with a little ripple, fine for an offset that changes
+only when a knob turns. The Due has PWM pins and would do the same.
+
+**The 68 Ω and 470 pF at the ADC pin.** A SAR ADC samples by briefly
+connecting a small internal capacitor to the pin and letting it charge
+to the input voltage, and that charge has to come from somewhere fast.
+Driven only by an op-amp through the switch, the pin cannot deliver it
+in the nanoseconds the sample takes and the reading sags. The 470 pF
+is a reservoir hundreds of times larger than the sampling capacitor,
+so it supplies the charge and barely moves; the 68 Ω keeps the op-amp
+stable driving that capacitor and refills it between samples. The
+standard idiom for driving any SAR converter, and the stage the
+within-hold reading points at most directly.
+
+**BAT46 and 1N5817, on the other sheets.** Schottky diodes, which
+conduct at about 0.3 V instead of the 0.7 V of an ordinary diode.
+Wired from a node to ground or to a rail, they clamp the node when it
+tries to go beyond the rail by more than that drop. OpenScope has none
+because the 1 MΩ into a virtual ground makes them unnecessary.
+
 | part | what it is | why it is where it is |
 |---|---|---|
 | op-amp, any of them | a differential amplifier with enormous gain; with feedback from the output to the − input it drives the output to whatever makes the two inputs equal | that one rule reads every stage: a follower copies a voltage from a weak source to a strong one; an inverting stage holds the − input fixed (a virtual ground) and its gain is the ratio of two resistors; a summing stage adds currents at that fixed node |
