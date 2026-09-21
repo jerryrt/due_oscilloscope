@@ -13,6 +13,19 @@
     "host/calibration.py, which is the only reader - one home for the",
     "number and one implementation of finding it."
   ],
+  "board": {
+    "_comment": [
+      "WHICH BOARD. This record was measured on one Due, and the boards",
+      "have since been rotated across the benches, so a record that only",
+      "said 'this board' stopped naming one. board_uid is the SAM3X's",
+      "unique identifier, printed on the identity line as uid=; the 16U2",
+      "serial is the cross-check. host/calibration.py refuses to apply",
+      "this record to a board whose identity is known and differs."
+    ],
+    "board_uid": "442032204e52344d3030393039303034",
+    "board_serial": "1344A47403035101C8E8",
+    "measured_on_bench": "mac-bench, the DSO bench, before the 2026-09-20 rotation; that board is on windows-desk now"
+  },
   "dac_mv": {
     "_comment": [
       "The DAC's output span, measured with the SCOPE on the pin, not",

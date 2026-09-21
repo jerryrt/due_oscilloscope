@@ -115,3 +115,51 @@ def test_nothing_outside_the_suite_opens_the_test_fixture():
         f"{offenders} build a path into the test fixture. Measured "
         f"constants live in calibration.json and are read through "
         f"host/calibration.py.")
+
+
+# --- the record names its board, and refuses another ----------------------
+
+def _record_for(tmp_path, uid):
+    rec = json.loads(json.dumps(cal.load()))
+    if uid is None:
+        rec.pop("board", None)
+    else:
+        rec["board"] = {"board_uid": uid, "board_serial": "SER",
+                        "measured_on_bench": "test"}
+    p = tmp_path / "calibration.json"
+    p.write_text(json.dumps(rec), encoding="utf-8")
+    return str(p)
+
+
+def test_the_committed_record_names_the_board_it_was_measured_on():
+    """After a rotation, "this board" names none; the uid does."""
+    uid, serial, note = cal.board()
+    assert uid == "442032204e52344d3030393039303034"
+    assert serial == "1344A47403035101C8E8"
+    assert cal.attribution() == "attributed"
+
+
+def test_a_record_for_a_different_board_is_refused_with_the_reason(tmp_path):
+    """Offset, gain and the regulator behind ADVREF are per die, so a
+    calibration applied to another board is a guess wearing a decimal
+    point. Refused, and the refusal names both boards."""
+    p = _record_for(tmp_path, "442032204e52344d3030393039303034")
+    with pytest.raises(SystemExit) as e:
+        cal.require(p, board_uid="442032204e52344d3230323239313032")
+    msg = str(e.value)
+    assert "442032204e52344d3030393039303034" in msg
+    assert "442032204e52344d3230323239313032" in msg
+    assert "per die" in msg
+    # The same board passes.
+    assert cal.require(p, board_uid="442032204e52344d3030393039303034")
+
+
+def test_a_record_without_a_board_is_unattributed_not_an_error(tmp_path):
+    """Old records predate board identity; they load, say so, and are
+    not refused for any board - there is nothing to compare."""
+    p = _record_for(tmp_path, None)
+    assert cal.board(p) == (None, None, None)
+    assert cal.attribution(p) == "unattributed"
+    assert cal.require(p, board_uid="442032204e52344d3230323239313032")
+    assert cal.require(p)
+

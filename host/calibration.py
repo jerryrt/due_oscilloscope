@@ -9,7 +9,9 @@ The split:
 
     calibration.json    what the hardware IS - measured against an
                         instrument that is not the ADC, changes when
-                        the board or the bench changes
+                        the board or the bench changes, and therefore
+                        names the board it describes (`board.board_uid`,
+                        the SAM3X's unique identifier)
     tests/baseline.json what this board's behaviour is EXPECTED to be -
                         rates, tolerances, spreads, floors
 
@@ -65,10 +67,55 @@ def load(path=None):
     return data
 
 
-def require(path=None):
-    """The record, with a message a measuring tool can act on."""
+def board(path=None):
+    """Which board the record describes: `(uid, serial, note)`.
+
+    Each is None when the record predates board identity - the record is
+    then *unattributed*, which is a fact about the record and not an
+    error. A calibration is per die - offset, gain and the regulator
+    behind ADVREF - so once the boards have been moved between benches
+    a record that only said "this board" names none.
+    """
     try:
-        return load(path)
+        b = load(path).get("board") or {}
+    except Exception:                                        # noqa: BLE001
+        return None, None, None
+    return b.get("board_uid"), b.get("board_serial"), b.get("measured_on_bench")
+
+
+def attribution(path=None):
+    """`"attributed"` when the record names its board, else `"unattributed"`."""
+    return "attributed" if board(path)[0] else "unattributed"
+
+
+def check_board(board_uid, path=None):
+    """The record, refused when it describes a different board.
+
+    Compared only when both identities are known: a record without a
+    `board` block, or a caller that has no board open, is not a
+    mismatch. `provenance.conditions()` carries `board_uid` whenever a
+    board is open, and the identity line prints it as `uid=`.
+    """
+    rec_uid, rec_serial, note = board(path)
+    if board_uid and rec_uid and board_uid != rec_uid:
+        raise ValueError(
+            f"calibration.json describes board {rec_uid} (serial "
+            f"{rec_serial}; {note}) and the board attached is {board_uid}. "
+            f"A calibration is per die - offset, gain and the regulator "
+            f"behind ADVREF - so this record must not be applied here: "
+            f"take this board's own points, or point at its own record.")
+    return load(path)
+
+
+def require(path=None, board_uid=None):
+    """The record, with a message a measuring tool can act on.
+
+    With `board_uid`, also refuses a record for a different board.
+    """
+    try:
+        return check_board(board_uid, path)
+    except ValueError as e:
+        raise SystemExit(str(e))
     except Exception as e:
         raise SystemExit(
             f"cannot read the calibration record at {path or PATH}: {e}. "
