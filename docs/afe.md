@@ -145,6 +145,19 @@ rail; simplicity and robustness over range. Per channel:
 | anti-alias | a capacitor across the shunt resistor | 1 C | passive, set once |
 | DAC output | a follower, or gain 1.5 about 1.65 V; two RC sections; 1 kΩ load, 56 Ω series | 1 op-amp section, 4 R, 2 C | the series R and the op-amp's limit are the protection |
 
+**The offset source is a Due PWM channel.** The SAM3X's PWM
+controller is unused by the firmware, whose timers are the
+converters' internal triggers, so a channel on pins 6–9 is free. At
+12-bit resolution from the 78 MHz master clock the carrier is about
+19 kHz and one step 0.8 mV; OpenScope's two RC sections near 70 Hz
+attenuate that carrier by roughly 70,000 times, leaving ripple below
+one code, with settling in tens of milliseconds. The filtered level,
+buffered, drives the divider's bottom end; the pin and the first RC
+stay on the digital side. Firmware: one PWM channel with its duty set
+from a console command and a control opcode, on all three tracks,
+nothing on the working path. It is not a trigger source and must not
+become one.
+
 One quad rail-to-rail op-amp of the MCP6024 class, 10 MHz so the
 follower stays transparent to the converter's Nyquist, covers both
 channel buffers, the reference buffer and the offset buffer; a 1 MHz
