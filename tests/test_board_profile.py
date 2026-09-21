@@ -212,7 +212,7 @@ def test_a_write_leaves_an_unchanged_profile_alone(tmp_path):
     assert bp.main(["--write"] + args) == 0
     path = boards / f"{UID_A}.json"
     p = json.loads(path.read_text(encoding="utf-8"))
-    p["generated"] = {"tool": "tools/board_profile.py", "rev": "0000000",
+    p["generated"] = {"tool": "tools/board_profile.py", "generated_on": "0000000",
                       "bench": "elsewhere"}
     path.write_text(bp.render(p), encoding="utf-8")
     before = path.read_text(encoding="utf-8")
@@ -241,8 +241,14 @@ def test_check_ignores_who_generated_the_file(tmp_path):
     path = boards / f"{UID_A}.json"
     p = json.loads(path.read_text(encoding="utf-8"))
     assert p["generated"]["tool"] == "tools/board_profile.py"
-    p["generated"] = {"tool": "tools/board_profile.py", "rev": "0000000",
-                      "bench": "elsewhere"}
+    # The stamp is the commit generated on top of, never the working
+    # tree's revision: this test runs in a tree that is usually dirty,
+    # and a `-dirty` here is the defect every committed profile had.
+    assert p["generated"]["generated_on"]
+    assert "dirty" not in p["generated"]["generated_on"]
+    assert "rev" not in p["generated"]
+    p["generated"] = {"tool": "tools/board_profile.py",
+                      "generated_on": "0000000", "bench": "elsewhere"}
     path.write_text(bp.render(p), encoding="utf-8")
     assert bp.main(["--check"] + args) == 0
 

@@ -252,19 +252,36 @@ def profile_path(boards_dir, uid):
 
 
 def generated_block():
-    """Who generated the files: the tool's own conditions, no board open.
+    """Who generated the files, and on top of which commit.
 
-    The block names the bench and the tree revision that wrote the file,
-    which change with every commit and every bench - so `check()` strips
-    it from both sides and compares the profile, not its author.
+    `rev` is HEAD, bare, never the working-tree revision: a profile is
+    generated after its rows are written and before the two are
+    committed together, so the tree is dirty at that moment by
+    construction, and a working-tree stamp read `-dirty` on every
+    profile the project had - a revision nobody could return to. HEAD
+    is the commit the profile was generated on top of, resolvable in
+    both orders of that workflow, and the profile's own identity is
+    its rows, which `check()` compares. The block changes with every
+    commit and every bench, so `check()` strips it from both sides.
     """
+    import subprocess
+    try:
+        head = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                              capture_output=True, text=True,
+                              check=True).stdout.strip()
+    except Exception as exc:                                 # noqa: BLE001
+        head = None
+        err = str(exc)
     try:
         import provenance
-        c = provenance.conditions()
-        return {"tool": "tools/board_profile.py", "rev": c.get("repo_rev"),
-                "bench": c.get("bench")}
-    except Exception as exc:                                 # noqa: BLE001
-        return {"tool": "tools/board_profile.py", "error": str(exc)}
+        bench = provenance.conditions().get("bench")
+    except Exception:                                        # noqa: BLE001
+        bench = None
+    block = {"tool": "tools/board_profile.py", "generated_on": head,
+             "bench": bench}
+    if head is None:
+        block["error"] = err
+    return block
 
 
 def _comparable(profile):

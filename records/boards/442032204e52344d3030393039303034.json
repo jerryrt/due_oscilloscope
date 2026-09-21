@@ -167,7 +167,7 @@
   },
   "generated": {
     "bench": "linux-x1",
-    "rev": "3d442b7-dirty",
+    "generated_on": "f54646d",
     "tool": "tools/board_profile.py"
   },
   "history": [

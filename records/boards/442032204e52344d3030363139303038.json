@@ -256,8 +256,8 @@
     "shield-v3": []
   },
   "generated": {
-    "bench": "windows-desk",
-    "rev": "8dbbe10-dirty",
+    "bench": "linux-x1",
+    "generated_on": "f54646d",
     "tool": "tools/board_profile.py"
   },
   "history": [
