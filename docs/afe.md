@@ -145,6 +145,16 @@ rail; simplicity and robustness over range. Per channel:
 | anti-alias | a capacitor across the shunt resistor | 1 C | passive, set once |
 | DAC output | a follower, or gain 1.5 about 1.65 V; two RC sections; 1 kΩ load, 56 Ω series | 1 op-amp section, 4 R, 2 C | the series R and the op-amp's limit are the protection |
 
+**Negative inputs need no negative rail.** The divider is referenced
+to the 1.5 V mid-rail, not to ground, so polarity is which side of
+1.5 V the reading falls. A negative rail on the input side would buy
+an active first stage - exact 1 MΩ, low-noise gain ranges - not
+range, and it would put a pump's ripple ahead of the converter rather
+than behind it; OpenScope's first stage also needs wider rails than
+±3.3 V for ±20 V. Whatever earlier stages do on whatever rails, the
+last stage before an ADC pin is a follower on the 3.3 V rail, so the
+pin cannot be driven outside 0–3.3 V.
+
 **The offset source is a Due PWM channel.** The SAM3X's PWM
 controller is unused by the firmware, whose timers are the
 converters' internal triggers, so a channel on pins 6–9 is free. At
@@ -232,7 +242,7 @@ written so each line becomes a measurement.
 
 | quantity | estimate *(check)* | what sets it |
 |---|---|---|
-| input range | ±20 V DC-coupled, one fixed range; ±20 / ±5 / ±1.5 V with a switched shunt | 1 MΩ into 75 kΩ to 1.5 V puts ±20 V at 0.1–2.9 V on a 3.0 V scale |
+| input range | ±20 V DC-coupled, both polarities with no negative rail; one fixed range, or ±20 / ±5 / ±1.5 V with a switched shunt | 1 MΩ into 75 kΩ to 1.5 V puts −20 V at 0.1 V, 0 V at 1.5 V, +20 V at 2.9 V on a 3.0 V scale; the mid-rail is subtracted in software |
 | input impedance | 1.07 MΩ, a few pF | the divider |
 | resolution at the pin | 12 bits over 3.0 V, 0.73 mV per code | the ADC and the reference |
 | resolution referred to input | 10 mV per code at ±20 V, 2.6 mV at ±5 V, 0.8 mV at ±1.5 V | the divider ratio |
