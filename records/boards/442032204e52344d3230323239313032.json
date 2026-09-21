@@ -12,7 +12,7 @@
     },
     {
       "first": "2026-09-20T23:49:42-0400",
-      "last": "2026-09-21T00:24:36-0400",
+      "last": "2026-09-21T00:51:32-0400",
       "phase": "shield-v3"
     }
   ],
@@ -151,6 +151,38 @@
       ],
       "tail_scale_status": "ok, parity forced 0 after a tie",
       "taken_at": "2026-09-21T00:24:36-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        0,
+        0
+      ],
+      "die_code_mean": 1051.4792,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 44.5,
+      "largest_range": [
+        44.0,
+        45.0
+      ],
+      "phase": "shield-v3",
+      "row_taken_at": "2026-09-21T00:51:32-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.57,
+        1.64,
+        0.55,
+        0.5
+      ],
+      "tail_scale_a1": [
+        1.28,
+        1.31,
+        1.24,
+        1.25
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T00:51:32-0400"
     }
   ],
   "converter_summary": {
@@ -186,9 +218,9 @@
         43.5,
         45.0
       ],
-      "n_rested_rows": 2,
-      "n_rows": 2,
-      "rested_largest_median": 44.0
+      "n_rested_rows": 3,
+      "n_rows": 3,
+      "rested_largest_median": 44.5
     }
   },
   "first_seen": "2026-09-20T20:34:29-0400",
@@ -203,15 +235,15 @@
   },
   "generated": {
     "bench": "linux-x1",
-    "rev": "35c5d50-dirty",
+    "rev": "f51ea78-dirty",
     "tool": "tools/board_profile.py"
   },
   "history": [
     {
       "bench": "linux-x1",
       "first": "2026-09-20T20:34:29-0400",
-      "last": "2026-09-21T00:24:36-0400",
-      "rows": 3
+      "last": "2026-09-21T00:51:32-0400",
+      "rows": 4
     },
     {
       "bench": "mac-bench",
