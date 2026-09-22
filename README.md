@@ -38,6 +38,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/afe.md](docs/afe.md) | The analog front end on the shield: the OpenScope MZ input chain read part by part, and how each stage lands on the Due |
 | [docs/afe-plan.md](docs/afe-plan.md) | Building the AFE shield: the phases, what proves each, the tools, and the decisions left open |
 | [docs/afe-workflow.md](docs/afe-workflow.md) | Learning guide: AFE design in KiCad 10, from requirements to measured hardware, with quality gates and review evidence |
+| [docs/afe-prototype.md](docs/afe-prototype.md) | Self-contained low-cost Stage A hand-build recipe: socketed IC, parts, wiring, multimeter checks and borrowed-scope validation; stock Due, no AREF modification |
 | [docs/stack-depth.md](docs/stack-depth.md) | Worst-case stack depth: the bounds, and what refuses to be guessed |
 | [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
 | [docs/windows.md](docs/windows.md) | Windows validation: 0c settled, byte loss is macOS's |

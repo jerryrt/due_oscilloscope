@@ -11,6 +11,10 @@ For the end-to-end process, read
 [AFE design with KiCad: workflow and quality gates](../../docs/afe-workflow.md).
 The [physical-build checklist](BUILD-VALIDATION.md) covers hand-wiring,
 two-layer layout, fit and the measurements that only assembly can establish.
+For the low-cost socketed experiment, use the self-contained
+[Stage A prototype recipe](../../docs/afe-prototype.md). It specifies a
+PDIP package for the hand build only, leaves this SOIC CAD design unchanged,
+and keeps JP1 open on an unmodified Due.
 
 | file | what |
 |---|---|

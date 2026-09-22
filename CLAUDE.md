@@ -1723,6 +1723,15 @@ See `docs/debugging.md`.
 
 ## Hardware safety
 
+**AFE budget: low-cost home DIY.** Prefer established, widely distributed
+commodity parts and reuse the existing Mega Proto Shield V3 and tools.
+Do not make premium sockets, evaluation boards or purchased lab instruments
+the default. Borrow equipment for checks the available tools cannot perform;
+cost does not waive a safety or measurement gate. Keep the hand-build guide
+`docs/afe-prototype.md` self-contained and revision-specific, rather than
+requiring the owner to chase changing status pages. Its socketed package
+choice is a prototype variation, not a silent replacement of the PCB BOM.
+
 Phase 1 loopback is safe by construction — the DAC cannot exceed ~2.75 V.
 
 Any suggestion to connect external signals requires the Phase 3 front end

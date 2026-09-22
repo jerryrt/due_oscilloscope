@@ -3,6 +3,69 @@
   "timezone": "America/Montreal",
   "files": [
     {
+      "path": "docs/datasheets/yageo/CC0805JRNPO9BN471.pdf",
+      "source_url": "https://www.yageogroup.com/download/specsheet/CC0805JRNPO9BN471",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "a438ca9839c94219f8666af5fc3ed8af519b332bb1434adb1dc7320d30b38f08",
+      "bytes": 253082
+    },
+    {
+      "path": "docs/datasheets/yageo/RC0805FR-0710KL.pdf",
+      "source_url": "https://www.yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "a8cffa5ee46895f935bf46f638519cdaa2074d75b8c9c61b7166ce705eb28d32",
+      "bytes": 56481
+    },
+    {
+      "path": "docs/datasheets/yageo/RC0805FR-0756RL.pdf",
+      "source_url": "https://www.yageogroup.com/component-documentation/download/specsheet/RC0805FR-0756RL",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "30c6f42c7fb58bfa9fe2117a67ced64261666d5eff7d3b2ff0bb61190aba7b77",
+      "bytes": 56444
+    },
+    {
+      "path": "docs/datasheets/yageo/RC0805FR-0768RL.pdf",
+      "source_url": "https://www.yageogroup.com/component-documentation/download/specsheet/RC0805FR-0768RL",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "4fea3dffdac01f10e1aba6bf41bb99082663d8f3a150cb7b7be28c1bd89a7a67",
+      "bytes": 56450
+    },
+    {
+      "path": "docs/datasheets/yageo/RT0805BRD0710KL.pdf",
+      "source_url": "https://www.yageogroup.com/component-documentation/download/specsheet/RT0805BRD0710KL",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "0457a1267fc949cf618086db3c1d22235b3e4ccf3e9095bb9a6706284f92055b",
+      "bytes": 55721
+    },
+    {
+      "path": "docs/datasheets/murata/GRM21BR71A106KE51.pdf",
+      "source_url": "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GRM21BR71A106KE51-01.pdf",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "e8432c7acfa982b24eb06dd145682f78051dc4649abbeb35bbca8646b1408e4f",
+      "bytes": 824601
+    },
+    {
+      "path": "docs/datasheets/murata/GRM21BR71H104KA01.pdf",
+      "source_url": "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GRM21BR71H104KA01-01.pdf",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "11fb7313a3a964a8d1bc350da14e0330c7de326aa5c7e2b5ec734fbecb7073cc",
+      "bytes": 842865
+    },
+    {
+      "path": "docs/datasheets/murata/GRM21BR71H105KA12.pdf",
+      "source_url": "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GRM21BR71H105KA12-01.pdf",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "9921ee74a9703bfed89f091cba34075e54707b2487c428a984253470da53c52e",
+      "bytes": 863920
+    },
+    {
+      "path": "docs/datasheets/assmann/Axx-LC-TT.pdf",
+      "source_url": "https://www.assmann-wsw.com/uploads/datasheets/ASS_0810_CO.pdf",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "b79c2d42d41a00c158f6b2157a6201a272f352b6d7e1e9f194a4ca213f8b2e7c",
+      "bytes": 315589
+    },
+    {
       "path": "docs/datasheets/microchip/SAM3X-SAM3A-11057C.pdf",
       "source_url": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-11057-32-bit-Cortex-M3-Microcontroller-SAM3X-SAM3A_Datasheet.pdf",
       "retrieved_date_local": "2026-09-22",

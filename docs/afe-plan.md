@@ -9,6 +9,10 @@ moves is corrected in `docs/afe.md`, not carried here.
 
 For an explanation of the engineering process behind these phases, see
 [AFE design with KiCad: workflow and quality gates](afe-workflow.md).
+The [self-contained prototype recipe](afe-prototype.md) defines the
+low-cost, socketed Stage A experiment on a stock Due: parts, connections,
+unpowered checks, staged bring-up and measurements. It does not authorize
+an AREF modification or custom PCB fabrication.
 
 ## The phases
 
