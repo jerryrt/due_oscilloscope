@@ -14,6 +14,11 @@
       "first": "2026-09-20T23:49:42-0400",
       "last": "2026-09-21T01:15:47-0400",
       "phase": "shield-v3"
+    },
+    {
+      "first": "2026-09-21T21:35:43-0400",
+      "last": "2026-09-21T21:51:57-0400",
+      "phase": "dac0-only"
     }
   ],
   "board_serial": "134484749393514068D5",
@@ -215,6 +220,166 @@
       ],
       "tail_scale_status": "ok, parity forced 0 after a tie",
       "taken_at": "2026-09-21T01:15:47-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        1,
+        5
+      ],
+      "die_code_mean": 1049.25,
+      "idle_before_s": 1118,
+      "image": "d25f9e3",
+      "largest_median": 46.5,
+      "largest_range": [
+        46.0,
+        47.0
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T21:35:43-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.67,
+        1.59,
+        0.7,
+        0.73
+      ],
+      "tail_scale_a1": [
+        2.84,
+        3.07,
+        2.85,
+        2.94
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T21:35:43-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        1,
+        5
+      ],
+      "die_code_mean": 1050.8542,
+      "idle_before_s": 1118,
+      "image": "d25f9e3",
+      "largest_median": 46.5,
+      "largest_range": [
+        46.0,
+        47.5
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T21:39:47-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.71,
+        1.67,
+        0.94,
+        1.2
+      ],
+      "tail_scale_a1": [
+        2.72,
+        2.84,
+        2.74,
+        2.81
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T21:39:47-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        0,
+        5
+      ],
+      "die_code_mean": 1050.4792,
+      "idle_before_s": 1118,
+      "image": "d25f9e3",
+      "largest_median": 46.0,
+      "largest_range": [
+        45.0,
+        47.5
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T21:43:50-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.64,
+        1.7,
+        0.69,
+        0.68
+      ],
+      "tail_scale_a1": [
+        2.75,
+        2.75,
+        2.79,
+        2.54
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T21:43:50-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        2,
+        6
+      ],
+      "die_code_mean": 1050.4167,
+      "idle_before_s": 1118,
+      "image": "d25f9e3",
+      "largest_median": 47.0,
+      "largest_range": [
+        46.0,
+        47.5
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T21:47:54-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.73,
+        1.67,
+        0.71,
+        0.69
+      ],
+      "tail_scale_a1": [
+        2.82,
+        2.72,
+        2.83,
+        2.77
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T21:47:54-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        1,
+        4
+      ],
+      "die_code_mean": 1051.1667,
+      "idle_before_s": 1118,
+      "image": "d25f9e3",
+      "largest_median": 46.0,
+      "largest_range": [
+        45.5,
+        47.5
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T21:51:57-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.65,
+        1.62,
+        0.77,
+        0.69
+      ],
+      "tail_scale_a1": [
+        2.81,
+        2.68,
+        2.87,
+        2.74
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T21:51:57-0400"
     }
   ],
   "converter_summary": {
@@ -242,6 +407,18 @@
       "n_rows": 1,
       "rested_largest_median": 54.5
     },
+    "dac0-only": {
+      "benches": [
+        "linux-x1"
+      ],
+      "largest_range": [
+        45.0,
+        47.5
+      ],
+      "n_rested_rows": 5,
+      "n_rows": 5,
+      "rested_largest_median": 46.5
+    },
     "shield-v3": {
       "benches": [
         "linux-x1"
@@ -263,19 +440,20 @@
     "before": [
       "large-tail"
     ],
+    "dac0-only": [],
     "shield-v3": []
   },
   "generated": {
     "bench": "linux-x1",
-    "generated_on": "f54646d",
+    "generated_on": "2ce4e73",
     "tool": "tools/board_profile.py"
   },
   "history": [
     {
       "bench": "linux-x1",
       "first": "2026-09-20T20:34:29-0400",
-      "last": "2026-09-21T01:15:47-0400",
-      "rows": 5
+      "last": "2026-09-21T21:51:57-0400",
+      "rows": 10
     },
     {
       "bench": "mac-bench",
