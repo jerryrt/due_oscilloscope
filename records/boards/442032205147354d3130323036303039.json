@@ -4,6 +4,11 @@
       "first": "2026-09-21T00:11:21-0400",
       "last": "2026-09-21T01:31:35-0400",
       "phase": "shield-v3"
+    },
+    {
+      "first": "2026-09-21T22:16:58-0400",
+      "last": "2026-09-21T23:06:27-0400",
+      "phase": "dac0-only"
     }
   ],
   "board_serial": "1344A4740303512198D8",
@@ -145,9 +150,117 @@
       ],
       "tail_scale_status": "ok, parity forced 0 after a tie",
       "taken_at": "2026-09-21T01:31:35-0400"
+    },
+    {
+      "bench": "mac-bench",
+      "count_range": [
+        28,
+        36
+      ],
+      "die_code_mean": 1082.5833,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 49.5,
+      "largest_range": [
+        49.0,
+        50.0
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T22:16:58-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.79,
+        4.49,
+        1.44,
+        1.34
+      ],
+      "tail_scale_a1": [
+        2.15,
+        1.98,
+        1.83,
+        2.09
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T22:16:58-0400"
+    },
+    {
+      "bench": "mac-bench",
+      "count_range": [
+        16,
+        40
+      ],
+      "die_code_mean": 1082.75,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 49.5,
+      "largest_range": [
+        49.0,
+        50.5
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T22:41:39-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.82,
+        1.82,
+        1.3,
+        1.16
+      ],
+      "tail_scale_a1": [
+        2.14,
+        2.13,
+        2.18,
+        2.11
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T22:41:39-0400"
+    },
+    {
+      "bench": "mac-bench",
+      "count_range": [
+        10,
+        45
+      ],
+      "die_code_mean": 1083.6458,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 51.0,
+      "largest_range": [
+        49.0,
+        56.5
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T23:06:27-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.88,
+        1.84,
+        1.26,
+        1.13
+      ],
+      "tail_scale_a1": [
+        2.19,
+        2.14,
+        2.11,
+        2.13
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T23:06:27-0400"
     }
   ],
   "converter_summary": {
+    "dac0-only": {
+      "benches": [
+        "mac-bench"
+      ],
+      "largest_range": [
+        49.0,
+        56.5
+      ],
+      "n_rested_rows": 3,
+      "n_rows": 3,
+      "rested_largest_median": 49.5
+    },
     "shield-v3": {
       "benches": [
         "mac-bench"
@@ -163,21 +276,22 @@
   },
   "first_seen": "2026-09-21T00:11:21-0400",
   "flags": {
+    "dac0-only": [],
     "shield-v3": [
       "large-tail"
     ]
   },
   "generated": {
-    "bench": "linux-x1",
-    "generated_on": "f54646d",
+    "bench": "mac-bench",
+    "generated_on": "8745af2",
     "tool": "tools/board_profile.py"
   },
   "history": [
     {
       "bench": "mac-bench",
       "first": "2026-09-21T00:11:21-0400",
-      "last": "2026-09-21T01:31:35-0400",
-      "rows": 4
+      "last": "2026-09-21T23:06:27-0400",
+      "rows": 7
     }
   ],
   "notes": [],
