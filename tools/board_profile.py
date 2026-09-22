@@ -148,6 +148,27 @@ def _notes(boards_dir):
         return json.load(fh)
 
 
+def _serial_candidates(value):
+    """One row's board_serial as the set of serials it is CONSISTENT
+    with, never the claim that it equals any one of them.
+
+    provenance._board_serial() returns a scalar when exactly one
+    programming port answered and a list when more than one did - a
+    bench with two boards attached has no single answer and correctly
+    refuses to guess (docs/build-container.md and this session's own
+    d151e69). A list is therefore several candidates, one of which is
+    the row's true board and the others noise from whatever else was
+    plugged in at the time; it is not two conflicting assertions the
+    way two different scalars from two different rows would be.
+    None/empty means the row said nothing and constrains nothing.
+    """
+    if not value:
+        return set()
+    if isinstance(value, (list, tuple, set)):
+        return {x for x in value if x}
+    return {value}
+
+
 def build_profiles(rotation_rows, calibration, flash_rows=(), generated=None,
                    notes=None):
     """{board_uid: profile} from the rows. Refuses one uid with two serials,
@@ -160,24 +181,42 @@ def build_profiles(rotation_rows, calibration, flash_rows=(), generated=None,
         if not uid:
             continue
         by_uid.setdefault(uid, []).append(r)
-        serials.setdefault(uid, set()).add(r.get("board_serial"))
+        cands = _serial_candidates(r.get("board_serial"))
+        if cands:
+            serials.setdefault(uid, []).append(cands)
     for r in flash_rows:
         uid = r.get("board_uid")
         if not uid:
             continue
         by_uid.setdefault(uid, [])
-        serials.setdefault(uid, set()).add(r.get("board_serial"))
+        cands = _serial_candidates(r.get("board_serial"))
+        if cands:
+            serials.setdefault(uid, []).append(cands)
     cal_board = (calibration.get("board") or {})
     cal_uid = cal_board.get("board_uid")
     if cal_uid:
         by_uid.setdefault(cal_uid, [])
-        serials.setdefault(cal_uid, set()).add(cal_board.get("board_serial"))
+        cands = _serial_candidates(cal_board.get("board_serial"))
+        if cands:
+            serials.setdefault(cal_uid, []).append(cands)
 
-    bad = {uid: s for uid, s in serials.items() if len({x for x in s if x}) > 1}
+    # A uid is inconsistent when no single serial is consistent with
+    # EVERY row that named one - the intersection of each row's
+    # candidate set is empty. One ambiguous row (several candidates)
+    # and one unambiguous row (one) agree exactly when the unambiguous
+    # one's serial is a member of the ambiguous one's candidates; two
+    # unambiguous rows agree exactly when they name the same serial -
+    # both are the len==1 case this reduces to when nothing was ever
+    # ambiguous, so a bench that never sees two boards sees no change.
+    bad = {uid: sets for uid, sets in serials.items()
+          if sets and not set.intersection(*sets)}
     if bad:
-        raise ValueError("one uid, two serials - the record is inconsistent: "
-                         + "; ".join(f"{uid}: {sorted(x for x in s if x)}"
-                                     for uid, s in bad.items()))
+        raise ValueError(
+            "one uid, two serials - the record is inconsistent: "
+            + "; ".join(
+                f"{uid}: " + " & ".join(
+                    "{" + ",".join(sorted(s)) + "}" for s in sets)
+                for uid, sets in bad.items()))
 
     unknown = sorted(set(notes) - set(by_uid))
     if unknown:
@@ -219,7 +258,13 @@ def build_profiles(rotation_rows, calibration, flash_rows=(), generated=None,
             flags[phase] = (["large-tail"] if med is not None
                             and med >= LARGE_TAIL_MEDIAN else [])
         arrangements.sort(key=lambda a: a["first"])
-        serial = next((x for x in serials[uid] if x), None)
+        # serials[uid] is now a list of per-row candidate sets, not a
+        # flat set of scalars - the bad-uid check above already
+        # refused an empty intersection, so what is left is safe to
+        # pick from; sorted() makes the pick deterministic rather than
+        # whatever order set.intersection() happens to iterate in.
+        uid_sets = serials.get(uid, [])
+        serial = sorted(set.intersection(*uid_sets))[0] if uid_sets else None
         if cal_uid == uid:
             cal = {k: v for k, v in calibration.items() if not k.startswith("_")
                    and k != "board"}

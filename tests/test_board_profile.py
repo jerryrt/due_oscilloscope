@@ -139,6 +139,42 @@ def test_one_uid_with_two_serials_is_refused():
         bp.build_profiles(rows, {})
 
 
+def test_a_two_board_bench_writes_board_serial_as_a_list_and_that_is_not_two_serials():
+    """provenance._board_serial() returns a list, not a scalar, when
+    more than one programming port is attached - a bench with two
+    boards has no single answer and correctly refuses to guess. Before
+    this test existed, build_profiles() crashed trying to put that
+    list into a set() (unhashable type), found taking a real row on a
+    two-board mac-bench on 2026-09-21. Every row here is ambiguous, all
+    of them naming this uid's true serial alongside noise from whatever
+    else was attached, which must resolve rather than raise."""
+    rows = [ROWS[0], dict(ROWS[1], board_serial=[SER_A, "1344OTHERBOARD"])]
+    profiles = bp.build_profiles(rows, {})
+    assert profiles[UID_A]["board_serial"] == SER_A
+
+
+def test_an_ambiguous_row_agreeing_with_an_unambiguous_one_is_not_refused():
+    """The general case the one above is a special case of: one row
+    names several candidates, another names exactly one, and the
+    unambiguous one is a member of the ambiguous one's set - consistent,
+    not a conflict, because the ambiguous row never claimed the OTHER
+    candidates were this board."""
+    rows = [ROWS[0], dict(ROWS[1], board_serial=["1344NOISE", SER_A])]
+    profiles = bp.build_profiles(rows, {})
+    assert profiles[UID_A]["board_serial"] == SER_A
+
+
+def test_two_ambiguous_rows_with_no_serial_in_common_are_still_refused():
+    """The safety property survives: ambiguity is not a blank cheque.
+    If no candidate is common to every row's set, something is
+    actually wrong with the record, exactly as two flatly different
+    scalars already were."""
+    rows = [dict(ROWS[0], board_serial=[SER_A, "1344X"]),
+           dict(ROWS[1], board_serial=["1344Y", "1344Z"])]
+    with pytest.raises(ValueError, match="one uid, two serials"):
+        bp.build_profiles(rows, {})
+
+
 def test_calibration_is_copied_for_its_board_and_null_for_the_others():
     cal = {"_comment": ["x"], "dac_mv": {"span_lo": 578, "span_hi": 2771},
            "adc_transfer": {"advref_mv": 3270},
