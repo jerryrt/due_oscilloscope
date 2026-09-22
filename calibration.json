@@ -24,7 +24,7 @@
     ],
     "board_uid": "442032204e52344d3030393039303034",
     "board_serial": "1344A47403035101C8E8",
-    "measured_on_bench": "mac-bench, the DSO bench, before the 2026-09-20 rotation; that board is on windows-desk now"
+    "measured_on_bench": "mac-bench, the DSO bench, before the 2026-09-20 rotation; then windows-desk. Back on mac-bench from 2026-09-21 (confirmed by uid over its own control port, not by descriptor or by assumption), alongside a second DUT for the first time - the previous claim that this board was off every bench (records/rotation.jsonl, #71/#88) was current when written and is not any more. It also carries a Mega shield v3 as of 2026-09-21, the mechanical misalignment that had kept it off the shield rotation resolved by the owner; not yet reflected in #71/#88."
   },
   "dac_mv": {
     "_comment": [
