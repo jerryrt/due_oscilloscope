@@ -35,6 +35,31 @@ pin. `tools/wiring_probe.py`'s own verdict reads NOT ANSWERED because
 it still checks the retired layout's positive control (A1 >= 2000);
 that is the old check meeting new wiring, not a defect in the data.
 
+**Why this is not just "A1 read small because DAC1 was quiet."** The
+three conditions behind the A1/A0 ratio vary DAC1's own commanded
+output completely - DC, then a full-scale square, then a full-scale
+sine - while A0's own state also changes between them. A pin still
+carrying even an attenuated live path to DAC1 should show DAC1's own
+waveform on top of whatever it picks up from A0; instead A1's
+peak-to-peak and edge fraction track **A0 alone** in all three,
+regardless of what DAC1 is doing. That is what separates "genuinely
+disconnected" from "a still-connected but poorly-coupled pin", which
+one arm cannot.
+
+**Cross-bench note, added after `mac-bench`'s review of this page.**
+Their own connectivity check (`d151e69`) ran the same layout/sync arms
+on two boards and reports A1/A0 in the same 0.29-0.30 band. They
+flagged, correctly, that a numeric match between "three conditions on
+one board" and "the same style of check on two other boards" is
+corroboration, not a second independent proof of disconnection - both
+a bare pin's residue and a hypothetical weak DAC1 leak are small next
+to A0's own swing, so the prior on the two landing in a similar range
+is looser than three boards agreeing usually implies. Read the
+cross-board match as support that the coupling ratio is a property of
+the board layout rather than a bench-specific fluke; the disconnection
+argument for *this* board rests on the three-condition invariance
+above, on its own.
+
 Declared in `bench.json`, which is gitignored per `host/provenance.py`.
 The prior layout was the same cabling as `macos` and `windows-desk` and
 not the DSO bench's; whether those benches adopt the new layout is
