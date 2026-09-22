@@ -14,12 +14,31 @@ not because the platform is nominally tier 1.
 | Python | 3.14.4 (suite), 3.13.13 via brew (GUI) |
 | Toolchain | apt `arm-none-eabi-gcc` **14.2.1**, cmake 4.2.3, ninja 1.13.2 |
 | Track A | `arduino:sam` 1.6.12 - the core **sources**, compiled by the image's own arm-gcc. `arduino-cli` is not invoked |
-| Wiring | `DAC0->A0, DAC1->A1, A2 bare` - **measured with `s`**, below |
+| Wiring | `DAC0->A0 only, DAC1 and A2 unconnected`, since 2026-09-21 |
 | Board | Track B, `Due Scope B` / `B-01`, three nodes |
 
-The wiring is the same cabling as `macos` and `windows-desk`, and is
-**not** the DSO bench's. Declared in `bench.json`, which is gitignored
-per `host/provenance.py`.
+**The three-pin layout (`DAC0->A0, DAC1->A1, A2 bare`) is retired on
+this bench as of 2026-09-21.** DAC1 no longer reaches any ADC pin.
+Confirmed electrically with `tools/wiring_probe.py`, 3 rounds, ~197k
+samples per capture, round 0 dropped by index: A0 tracks DAC0 in every
+arm (peak-to-peak ~2771-2783 driven, ~27 at DC). A1 and A2 never track
+DAC1 - in the discriminating arm (DAC0 held DC, DAC1 carrying the full
+sine, sync off) A1's peak-to-peak is 36.5, the same tiny magnitude as
+A2 (37.5) and A0 itself at DC (27.5), not the ~2700 a wired DAC1 would
+produce. Instead both float at a fixed fraction of **A0**, stable
+across three conditions where DAC1's own output changes completely:
+A1/A0 0.296-0.299, A2/A0 0.559-0.561, with A1's edge fraction tracking
+A0's shape rather than an independent source in every arm. That is the
+sample-and-hold coupling `CLAUDE.md` documents for a bare A2 at ~56% of
+A0, extended to A1 at its own ~30% - passive crosstalk, not a driven
+pin. `tools/wiring_probe.py`'s own verdict reads NOT ANSWERED because
+it still checks the retired layout's positive control (A1 >= 2000);
+that is the old check meeting new wiring, not a defect in the data.
+
+Declared in `bench.json`, which is gitignored per `host/provenance.py`.
+The prior layout was the same cabling as `macos` and `windows-desk` and
+not the DSO bench's; whether those benches adopt the new layout is
+tracked on issue #32.
 
 ## `flash.py` left every board erased here, and the cause is its own last line
 
