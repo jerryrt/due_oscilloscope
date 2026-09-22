@@ -17,7 +17,7 @@
     },
     {
       "first": "2026-09-21T21:39:14-0400",
-      "last": "2026-09-21T22:08:49-0400",
+      "last": "2026-09-21T23:23:18-0400",
       "phase": "dac0-only"
     }
   ],
@@ -374,6 +374,70 @@
       ],
       "tail_scale_status": "ok, parity forced 0 after a tie",
       "taken_at": "2026-09-21T22:08:49-0400"
+    },
+    {
+      "bench": "windows-desk",
+      "count_range": [
+        18,
+        32
+      ],
+      "die_code_mean": 1046.25,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 50.0,
+      "largest_range": [
+        49.5,
+        54.0
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T22:57:54-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.58,
+        1.57,
+        1.15,
+        1.18
+      ],
+      "tail_scale_a1": [
+        1.99,
+        1.97,
+        1.99,
+        1.98
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T22:57:54-0400"
+    },
+    {
+      "bench": "windows-desk",
+      "count_range": [
+        23,
+        38
+      ],
+      "die_code_mean": 1045.8333,
+      "idle_before_s": 1200,
+      "image": "d25f9e3",
+      "largest_median": 50.0,
+      "largest_range": [
+        50.0,
+        52.0
+      ],
+      "phase": "dac0-only",
+      "row_taken_at": "2026-09-21T23:23:18-0400",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        1.56,
+        1.59,
+        1.22,
+        1.19
+      ],
+      "tail_scale_a1": [
+        1.99,
+        1.98,
+        1.97,
+        1.97
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-09-21T23:23:18-0400"
     }
   ],
   "converter_summary": {
@@ -407,10 +471,10 @@
       ],
       "largest_range": [
         49.0,
-        53.5
+        54.0
       ],
-      "n_rested_rows": 5,
-      "n_rows": 5,
+      "n_rested_rows": 7,
+      "n_rows": 7,
       "rested_largest_median": 50.5
     },
     "shield-v3": {
@@ -437,15 +501,15 @@
   },
   "generated": {
     "bench": "windows-desk",
-    "generated_on": "7e42926",
+    "generated_on": "1e5ff44",
     "tool": "tools/board_profile.py"
   },
   "history": [
     {
       "bench": "windows-desk",
       "first": "2026-09-20T20:38:48-0400",
-      "last": "2026-09-21T22:08:49-0400",
-      "rows": 10
+      "last": "2026-09-21T23:23:18-0400",
+      "rows": 12
     },
     {
       "bench": "linux-x1",
