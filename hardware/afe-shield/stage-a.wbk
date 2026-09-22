@@ -1,0 +1,17 @@
+{
+  "custom_cursors": 2,
+  "last_sch_text_sim_command": "",
+  "tabs": [
+    {
+      "analysis": "OP",
+      "commands": [
+        ".op",
+        ".kicad adjustpaths",
+        ".save all",
+        ".probe alli"
+      ]
+    }
+  ],
+  "user_defined_signals": [],
+  "version": 7
+}

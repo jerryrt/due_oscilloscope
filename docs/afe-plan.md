@@ -27,6 +27,36 @@ points at, Stage C before Stage B because the loopback bench needs an
 output before it needs an attenuator, and the PCB last because the
 proto build is what the PCB is compared with.
 
+## Proposed Stage A PCB development pass
+
+**Scope proposed for approval: Stage A only, not fabrication release.**
+The development layout covers the reference, mid-rail, DAC-to-ADC drivers
+and Due headers. Stages B and C are outside this pass. Layout development
+can precede the prototype, but electrical validation, prototype measurements
+and a physical Due fit check remain release gates. The current findings
+and model limitations are in
+[`hardware/afe-shield/REVIEW.md`](../hardware/afe-shield/REVIEW.md).
+
+| step | work | acceptance gate |
+|---|---|---|
+| 1. Baseline | Preserve the existing design; rerun ERC, PCB DRC, net connectivity checks and manufacturer-model simulations | Reproducible reports distinguishing existing defects from regressions |
+| 2. Electrical validation | Audit model pin mapping and measurement methods; investigate driver settling and reference-buffer loading; check the ADC acquisition window, not just its conversion interval; evaluate component/network changes | Explicit performance targets and relevant supply, tolerance and temperature cases; no silently relaxed requirements; review any op-amp/package change before committing to placement |
+| 3. Mechanics and footprints | Compare header and mounting-hole geometry with the official Due design; check exact package pinouts, connector orientation, heights, clearances and library differences | Verified schematic-to-footprint mapping and dimensioned mechanical review; physical mating still required before release |
+| 4. Populate and place | Synchronize Stage A footprints, place decoupling and feedback networks, plan ADC drive paths, add useful test points and reference/jumper markings | Placement review before routing; D1 and each physical IC identifiable on the board |
+| 5. Route | Define manufacturing rules and stackup; route analog signals and supply returns; add ground copper and inspect coupling to digital headers; retain JP1 open by default | No unrouted required connections or unexplained ERC, DRC or schematic-parity errors; any intentional exceptions individually justified |
+| 6. Review package | Inspect copper, mask, silkscreen, drills and 3D assembly; prepare BOM, assembly views, bring-up procedures and reference provenance | Engineering-review outputs clearly separated from release files; remaining risks and required bench measurements listed |
+
+The manufacturer and stackup must be selected before fabrication rules are
+final. A clean DRC or successful simulation does not qualify noise, crosstalk,
+ADC acquisition accuracy, power sequencing or reference stability on hardware.
+The full AFE scope, target changes, board ordering and fabrication submission
+require separate owner decisions.
+
+Deliverables are the KiCad project, reproducible checks, review findings,
+assembly/BOM information and a bring-up checklist. Official specifications,
+manuals, application guides and vendor models stay version-managed with
+their source URLs, checksums and original license text.
+
 ## The review, done by the design
 
 The requirement's table is a list of estimates. The design replaces
@@ -50,10 +80,23 @@ the measured column when the last of those is in.
 
 ## Tooling
 
+**KiCad 10.x is the default and required CAD major version across all teams
+and benches**, with matching 10.x symbol and footprint libraries. Do not use
+KiCad 9 or older for active edits or validation. The AFE check scripts enforce
+this major version and print the exact CLI version used; set `KICAD_CLI` when
+an older installation is also on PATH.
+
+The checked macOS project uses KiCad 10.0.6 and ngspice 47. The
+manufacturer models and offline KiCad manuals are indexed in
+[`docs/reference`](reference/README.md); the reproducible design review
+is in [`hardware/afe-shield/REVIEW.md`](../hardware/afe-shield/REVIEW.md).
+The A1 performance checks remain open. KiCad 9.0.8/ngspice 45 identify the
+original Debian design provenance, not the active CAD baseline.
+
 | tool | version and source | used for |
 |---|---|---|
-| KiCad | 9.0.8, Debian package, with its symbol, footprint and template libraries | the schematic, the PCB, the BOM |
-| ngspice | 45, Debian package, run from KiCad's simulator | the checks in the phase table |
+| KiCad | 10.x required; validated with 10.0.6 and its matching libraries | the schematic, the PCB, the BOM |
+| ngspice | 47 validated for the batch runner; record the bundled engine version separately when using the GUI | the checks in the phase table |
 | the `Arduino_Mega` project template | ships with KiCad | the root sheet, board edge, headers and mounting holes of a Mega-format shield. On the Due the positions the template labels A12 to A15 carry DAC0, DAC1, CANRX0 and CANTX0, and the AREF pin is pin 8 of the PWM-high row |
 | the Due's V03 reference design | `docs/datasheets/arduino/arduino-Due-Reference-design.zip`, EAGLE 6.3, published by Arduino under CC BY-SA | what is between the AREF header pin and ADVREF: BR1 and JR1, read from the netlist rather than from a meter |
 | the Mega Proto Shield Rev3 reference design | `docs/datasheets/arduino/arduino-mega-proto-Shield-reference-design.zip`, EAGLE 6.4 | the proto build's pad rows and the SOIC-14 footprint; importable into KiCad if the proto layout is ever drawn |

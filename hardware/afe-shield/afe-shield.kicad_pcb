@@ -8,7 +8,9 @@
 	)
 	(paper "A4")
 	(title_block
-		(date "mar. 31 mars 2015")
+		(title "Due AFE shield - mechanical template only")
+		(rev "A-design")
+		(comment 1 "Stage A parts not placed or routed. NOT FOR FABRICATION.")
 	)
 	(layers
 		(0 "F.Cu" signal)
@@ -122,16 +124,16 @@
 	)
 	(net 0 "")
 	(net 1 "GND")
-	(net 2 "/*52")
+	(net 2 "/52")
 	(net 3 "/53")
 	(net 4 "/50")
 	(net 5 "/51")
 	(net 6 "/48")
 	(net 7 "/49")
-	(net 8 "/*46")
+	(net 8 "/46")
 	(net 9 "/47")
-	(net 10 "/*44")
-	(net 11 "/*45")
+	(net 10 "/44")
+	(net 11 "/45")
 	(net 12 "/42")
 	(net 13 "/43")
 	(net 14 "/40")
@@ -168,10 +170,10 @@
 	(net 45 "/A9")
 	(net 46 "/A10")
 	(net 47 "/A11")
-	(net 48 "/A12")
-	(net 49 "/A13")
-	(net 50 "/A14")
-	(net 51 "/A15")
+	(net 48 "/DAC0")
+	(net 49 "/DAC1")
+	(net 50 "/CANRX0")
+	(net 51 "/CANTX0")
 	(net 52 "/AREF")
 	(net 53 "/*13")
 	(net 54 "/*12")
@@ -196,7 +198,9 @@
 	(net 73 "/RX1{slash}19")
 	(net 74 "/SDA{slash}20")
 	(net 75 "/SCL{slash}21")
-	(net 76 "VCC")
+	(net 79 "/SDA1")
+	(net 80 "/SCL1")
+	(net 76 "/Vin")
 	(net 77 "/~{RESET}")
 	(net 78 "unconnected-(J1-Pin_1-Pad1)")
 	(footprint "Connector_PinSocket_2.54mm:PinSocket_2x18_P2.54mm_Vertical"
@@ -311,7 +315,7 @@
 			(uuid "d7f745f6-82fa-4aee-b53f-d33753e6e532")
 		)
 		(fp_line
-			(start -3.87 44.51)
+			(start -3.30 44.51)
 			(end 1.33 44.51)
 			(stroke
 				(width 0.12)
@@ -319,6 +323,13 @@
 			)
 			(layer "F.SilkS")
 			(uuid "e87f49d0-d70c-4c63-8795-c15d3bdfcbf6")
+		)
+		(fp_line
+			(start -3.87 44.0)
+			(end -3.30 44.51)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+			(uuid "ba095f64-b8c0-4d5a-a720-653e1650039d")
 		)
 		(fp_line
 			(start -3.87 -1.33)
@@ -332,7 +343,7 @@
 		)
 		(fp_line
 			(start -3.87 -1.33)
-			(end -3.87 44.51)
+			(end -3.87 44.0)
 			(stroke
 				(width 0.12)
 				(type solid)
@@ -484,7 +495,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 2 "/*52")
+			(net 2 "/52")
 			(pinfunction "Pin_3")
 			(pintype "passive")
 			(uuid "68f21420-d458-4e21-aedd-df4bef9c6b97")
@@ -580,7 +591,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 8 "/*46")
+			(net 8 "/46")
 			(pinfunction "Pin_9")
 			(pintype "passive")
 			(uuid "696c7603-3256-4878-9363-b14a6069b4d2")
@@ -612,7 +623,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 10 "/*44")
+			(net 10 "/44")
 			(pinfunction "Pin_11")
 			(pintype "passive")
 			(uuid "d2034469-ea1a-4aec-869c-4b7aa276fb75")
@@ -628,7 +639,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 11 "/*45")
+			(net 11 "/45")
 			(pinfunction "Pin_12")
 			(pintype "passive")
 			(uuid "60e88a0a-1c4a-4f18-9002-b2cdd10f3cae")
@@ -1375,7 +1386,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 76 "VCC")
+			(net 76 "/Vin")
 			(pinfunction "Pin_8")
 			(pintype "passive")
 			(uuid "672e7e8a-459d-40ad-a53a-ea4d7d4fa41a")
@@ -2053,7 +2064,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 48 "/A12")
+			(net 48 "/DAC0")
 			(pinfunction "Pin_5")
 			(pintype "passive")
 			(uuid "857e1608-447f-44a6-83a1-2cd2e8aca83a")
@@ -2069,7 +2080,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 49 "/A13")
+			(net 49 "/DAC1")
 			(pinfunction "Pin_6")
 			(pintype "passive")
 			(uuid "148327cb-4c41-42d8-b8b2-b74438f8ecfa")
@@ -2085,7 +2096,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 50 "/A14")
+			(net 50 "/CANRX0")
 			(pinfunction "Pin_7")
 			(pintype "passive")
 			(uuid "1ef6ac8b-6ab0-474b-bb7c-35f93fee5078")
@@ -2101,7 +2112,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 51 "/A15")
+			(net 51 "/CANTX0")
 			(pinfunction "Pin_8")
 			(pintype "passive")
 			(uuid "b10db2e9-eac4-46f5-a4fd-f2c9981e2669")
@@ -2352,7 +2363,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 75 "/SCL{slash}21")
+			(net 80 "/SCL1")
 			(pinfunction "Pin_1")
 			(pintype "passive")
 			(uuid "b0dc7dda-00e9-4e1a-adfc-3951cbc4c107")
@@ -2368,7 +2379,7 @@
 				"In29.Cu" "In30.Cu"
 			)
 			(remove_unused_layers no)
-			(net 74 "/SDA{slash}20")
+			(net 79 "/SDA1")
 			(pinfunction "Pin_2")
 			(pintype "passive")
 			(uuid "8ebd19d1-ad20-4c31-98d6-6a594fc18fcf")

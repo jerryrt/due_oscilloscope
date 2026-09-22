@@ -132,6 +132,17 @@ them.
 - Unused ADC pins tied to ground through a resistor; the bare-pin
   finding in `CLAUDE.md` is a pickup path too.
 
+The current MCP6024 implementation is not yet qualified for A1. With
+the nominal manufacturer model at 3.3 V and 27 C, the loaded follower
+is about -5.86 dB at 5 MHz before the series resistor, and A0 reaches
+its -3 dB corner near 3.39 MHz. A 2 V step takes about 1.218 us to
+settle to within one 3 V / 4096 code of its final plateau, longer than
+one conversion at 886 ksps. The 68 ohm / 470 pF network's nominal
+4.98 MHz passive corner must not be quoted as the complete buffer
+bandwidth. The reference-load stress test also needs follow-up before
+JP1 closes. Reproduce and read the limitations in
+[`hardware/afe-shield/REVIEW.md`](../hardware/afe-shield/REVIEW.md).
+
 Judged by the sweep on the fourth board: if the within-hold rate does
 not move, the coupling is not at the pin or the reference, and the
 next stage is the supply and the ground return, not the attenuator.

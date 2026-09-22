@@ -33,6 +33,11 @@ an agent needs.
 
 ## What this project is
 
+**AFE CAD standard: KiCad 10.x on every team and bench**, with matching
+symbol/footprint libraries. Do not edit or validate the active AFE design
+using KiCad 9 or older. `hardware/afe-shield/README.md` documents the tool
+selection and checks; `docs/afe-plan.md` carries the PCB development gates.
+
 A 12-bit oscilloscope and signal generator on the Arduino Due
 (SAM3X8E, Cortex-M3). The board acquires and generates; the host does
 all DSP and visualisation.

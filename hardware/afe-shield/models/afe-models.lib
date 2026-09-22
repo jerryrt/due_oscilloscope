@@ -1,32 +1,17 @@
-* Simulation models for the AFE shield. Placeholders, each marked as such,
-* until the vendor models are fetched (they sit behind a vendor login):
-* Microchip's MCP6021/2/3/4 macro model and TI's LM4040 model. A figure
-* taken with these is a check of the arithmetic, not of the part.
+* Pin-order adapters only; vendor files below are unmodified originals.
+* Use ngspice PSpice compatibility (ngbehavior=ps).
+.include "vendor/microchip/MCP6021.txt"
+.include "vendor/ti/LM4040_NA3P0_PSPICE_TRANS/LM4040_NA3P0_TRANS.lib"
 
-* MCP6024 quad, ideal: 1e5 DC gain with a single pole at 100 Hz (10 MHz
-* GBW, the datasheet's typical), output clamped 30 mV inside either rail,
-* 10 ohm output resistance, no input limits, no slew limit, no offset,
-* no noise. Port order is the SOIC-14 pin order, so KiCad's default pin
-* mapping applies.
-.subckt MCP6024_IDEAL OUT1 IN1- IN1+ VCC IN2+ IN2- OUT2 OUT3 IN3- IN3+ VEE IN4+ IN4- OUT4
-X1 IN1+ IN1- OUT1 VCC VEE OPA_IDEAL_1
-X2 IN2+ IN2- OUT2 VCC VEE OPA_IDEAL_1
-X3 IN3+ IN3- OUT3 VCC VEE OPA_IDEAL_1
-X4 IN4+ IN4- OUT4 VCC VEE OPA_IDEAL_1
-.ends MCP6024_IDEAL
+* MCP6024 SOIC-14: four instances of Microchip's family macro model.
+.subckt MCP6024_VENDOR OUT1 IN1- IN1+ VCC IN2+ IN2- OUT2 OUT3 IN3- IN3+ VEE IN4+ IN4- OUT4
+X1 IN1+ IN1- VCC VEE OUT1 MCP6021
+X2 IN2+ IN2- VCC VEE OUT2 MCP6021
+X3 IN3+ IN3- VCC VEE OUT3 MCP6021
+X4 IN4+ IN4- VCC VEE OUT4 MCP6021
+.ends MCP6024_VENDOR
 
-.subckt OPA_IDEAL_1 inp inn out vcc vee
-E1 e 0 inp inn 1e5
-R1 e p 1k
-C1 p 0 1.59u
-B1 o 0 V = max(min(V(p), V(vcc) - 0.03), V(vee) + 0.03)
-R2 o out 10
-.ends OPA_IDEAL_1
-
-* LM4040-3.0 shunt reference, ideal: 3.000 V behind 0.5 ohm of dynamic
-* impedance. Port order is the SOT-23 pin order of the KiCad symbol:
-* 1 K, 2 A, 3 NC.
+* TI LM4040-N A-grade 3.0 V, SOT-23 pins 1=K, 2=A, 3=NC.
 .subckt LM4040_3V0 K A NC
-V1 K a1 DC 3.0
-R1 a1 A 0.5
+XREF K A LM4040_NA3P0
 .ends LM4040_3V0

@@ -107,3 +107,6 @@ hardware/**/fp-info-cache
 hardware/**/sim/*.net
 hardware/**/sim/*.raw
 hardware/**/sim/*.log
+hardware/**/sim/*.dat
+hardware/**/.history/
+hardware/**/~*.lck

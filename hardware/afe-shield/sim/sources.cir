@@ -1,0 +1,20 @@
+* Simulation-only Due stimuli and loads; not hardware BOM parts.
+.param AREF_C=1f
+* ngspice maps the top-level GND net to node 0.
+V3V3 +3V3 0 DC 3.3
+VDAC0 /DAC0 0 DC 1.5 AC 1 PULSE(0.5 2.5 20u 1n 1n 10u 20u)
+VDAC1 /DAC1 0 DC 1.5 SIN(1.5 1.0 200k)
+* Closed-JP1 load approximation: nominal 14k input and optional 200nF.
+* AREF_C=1f isolates the static load case; 200n exercises a capacitive stress.
+* This does NOT model the ferrite impedance or the ADC sampling switches.
+RADVREF /reference/VREF3V0 0 14k
+CADVREF /reference/VREF3V0 0 {AREF_C}
+* An explicit 100 uA load perturbation excites the reference loop.
+IAREF /reference/VREF3V0 0 PULSE(0 100u 10u 1n 1n 5u 10u)
+Va0 a0 /A0 DC 0
+Vbuffer buffer Net-_U1C--_ DC 0
+Va1 a1 /A1 DC 0
+Va2 a2 /A2 DC 0
+Vr3 vref3v0 /reference/VREF3V0 DC 0
+Vr1 vref1v5 /VREF1V5 DC 0
+Vd0 dac0 /DAC0 DC 0
