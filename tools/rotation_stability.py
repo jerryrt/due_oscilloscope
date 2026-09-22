@@ -39,7 +39,12 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROTATION = os.path.join(HERE, "..", "records", "rotation.jsonl")
-RESTED_S = 1200
+#: Owner-directed cut, 2026-09-21: was 1200 (20 min), the rotation's
+#: original declared rest. Lowering it does not shorten any board's
+#: actual thermal or electrical settling time - it only changes which
+#: already-recorded rows this tool is willing to call "rested". A row
+#: taken at 120-1199 s idle now counts that previously did not.
+RESTED_S = 120
 
 
 def rows_from(path):

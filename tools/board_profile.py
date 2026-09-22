@@ -74,7 +74,10 @@ NOTES_NAME = "_notes.json"
 
 #: Rested rows only: the rotation's declared rest. A warm board read as a
 #: different board is what the rotation existed to stop.
-RESTED_S = 1200
+#: Owner-directed cut, 2026-09-21: was 1200 (20 min). Lowering it does
+#: not shorten any board's actual settling time - it only changes which
+#: already-recorded rows this tool is willing to call "rested".
+RESTED_S = 120
 #: The label's threshold, from the rotation: healthy 43-48, outlier 53-55.
 LARGE_TAIL_MEDIAN = 50.0
 #: The phases the flag is judged on: the rotation's, no shield on the DUT.
