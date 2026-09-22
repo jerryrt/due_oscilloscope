@@ -7,6 +7,9 @@ with KiCad 9 or older. **Design/prototype only: not ready for
 fabrication.** See [review findings](REVIEW.md), [requirements](../../docs/afe.md)
 and [official references](../../docs/reference/README.md).
 
+For the end-to-end process, read
+[AFE design with KiCad: workflow and quality gates](../../docs/afe-workflow.md).
+
 | file | what |
 |---|---|
 | `afe-shield.kicad_pro`, `afe-shield.kicad_sch` | project and root sheet: Mega-format mechanics with Due-specific net assignments |
