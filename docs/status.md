@@ -197,6 +197,9 @@ where a single IN reading looked quotable against a ~40% spread.
 | adc_transfer | advref_tolerance_mv | 40 |
 | adc_transfer | loop_slope_adc_per_dac_code | 0.67053 |
 | adc_transfer | worst_dev_codes_over_measured_range | 4.4 |
+| board | board_serial | 1344A47403035101C8E8 |
+| board | board_uid | 442032204e52344d3030393039303034 |
+| board | measured_on_bench | mac-bench, the DSO bench, before the 2026-09-20 rotation; then windows-desk. Back on mac-bench from 2026-09-21 (confirmed by uid over its own control port, not by descriptor or by assumption), alongside a second DUT for the first time - the previous claim that this board was off every bench (records/rotation.jsonl, #71/#88) was current when written and is not any more. It also carries a Mega shield v3 as of 2026-09-21, the mechanical misalignment that had kept it off the shield rotation resolved by the owner; not yet reflected in #71/#88. |
 | dac_mv | adc_derived_span_hi | 2760 |
 | dac_mv | adc_derived_span_lo | 546 |
 | dac_mv | span_hi | 2771 |
