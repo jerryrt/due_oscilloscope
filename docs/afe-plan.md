@@ -7,6 +7,9 @@ requirement: every estimate in its table is checked as the stage that
 sets it is drawn, and a line that the arithmetic or the simulation
 moves is corrected in `docs/afe.md`, not carried here.
 
+For an explanation of the engineering process behind these phases, see
+[AFE design with KiCad: workflow and quality gates](afe-workflow.md).
+
 ## The phases
 
 In the order the measurement asks for them, one per issue on the
