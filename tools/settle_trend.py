@@ -185,6 +185,39 @@ def one_capture(measure, board, seconds, bin_seconds, repeat_idx):
     return bins, whole
 
 
+def spread_line(all_whole):
+    """The repeat-to-repeat spread summary, or "" if there is not
+    enough to compare. A plain function so it is testable without a
+    board (tests/test_settle_trend.py) - it very nearly was not one,
+    which is how the bug below survived a real run before anyone
+    noticed it.
+
+    is not None, not a bare truthy check on count_per_1e6 - a
+    genuinely clean repeat (count=0, a real and common result on a
+    quiet board) has count_per_1e6 == 0.0, which is falsy. The first
+    version of this filtered on truthiness and silently dropped every
+    such repeat, undercounting "N repeats" in the printed line and
+    hiding exactly the quiet-board case it exists to report honestly.
+    Found running this for real on mac-bench's second (quiet) board:
+    5 of 10 repeats read exactly 0 events and vanished from the
+    summary with no indication anything had been dropped - the same
+    shape of mistake this project already paid for once tonight in
+    docs/noise.md's gen_sweep tables, a rate read with no denominator
+    next to it to say what had and had not been counted.
+    """
+    rates = [w["count_per_1e6"] for w in all_whole
+            if w["count_per_1e6"] is not None]
+    if len(rates) <= 1:
+        return ""
+    lo, hi = min(rates), max(rates)
+    return (f"{len(rates)} repeats: count_per_1e6 ranges {lo:.2f} to "
+           f"{hi:.2f} ({hi/lo if lo else float('inf'):.1f}x spread). "
+           "A repeat far outside the others is the outlier-capture "
+           "hazard this tool was built to catch, not evidence by "
+           "itself - read the per-repeat table above before trusting "
+           "a pooled figure.")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -268,15 +301,9 @@ def main(argv=None):
     finally:
         board.close()
 
-    rates = [w["count_per_1e6"] for w in all_whole if w["count_per_1e6"]]
-    if len(rates) > 1:
-        lo, hi = min(rates), max(rates)
-        print(f"\n{len(rates)} repeats: count_per_1e6 ranges {lo:.2f} to "
-             f"{hi:.2f} ({hi/lo if lo else float('inf'):.1f}x spread). "
-             "A repeat far outside the others is the outlier-capture "
-             "hazard this tool was built to catch, not evidence by "
-             "itself - read the per-repeat table above before trusting "
-             "a pooled figure.")
+    spread = spread_line(all_whole)
+    if spread:
+        print("\n" + spread)
 
     if args.out:
         with open(args.out, "a", encoding="utf-8", newline="\n") as fh:

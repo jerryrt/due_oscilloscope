@@ -105,3 +105,20 @@ def test_no_pin_arguments_at_all_parses_past_the_pin_check():
     # discovery/open - either way it must NOT be the pin-validation
     # error, which is the one thing this test is checking.
     assert "together or not at all" not in r.stderr
+
+
+def test_a_clean_zero_repeat_is_not_dropped_from_the_spread_line():
+    """A genuinely clean repeat (count=0, common on a quiet board) has
+    count_per_1e6 == 0.0. Found running this for real: the first
+    version filtered on truthiness rather than `is not None`, so a
+    board that was clean in 5 of 10 repeats reported "5 repeats" in
+    the spread line instead of 10 - the exact quiet-board case this
+    line exists to describe, vanishing from its own summary."""
+    whole = [{"count_per_1e6": 0.0}] * 5 + [{"count_per_1e6": 0.02}] * 5
+    line = st.spread_line(whole)
+    assert "10 repeats" in line
+
+
+def test_no_repeats_or_one_repeat_produces_no_spread_line():
+    assert st.spread_line([]) == ""
+    assert st.spread_line([{"count_per_1e6": 0.0}]) == ""
