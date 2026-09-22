@@ -813,6 +813,85 @@ removes it on one board, reduces it on another and leaves a bounded
 residual on the third - the shape of pickup whose coupling varies
 with each board's own layout tolerances. `records/gen-sweep-<bench>.jsonl`.
 
+### dac0-only: unwiring DAC1 and A2 moves each board a different way
+
+The three-pin layout above (`DAC0->A0, DAC1->A1, A2 bare`) is retired.
+As of 2026-09-21 the standing wiring is `DAC0->A0` alone, DAC1 and A2
+reaching no ADC pin. Confirmed electrically on three boards across two
+benches before anything was measured against it: A0 tracks DAC0 in
+every arm; A1 and A2 track only **A0**, at a fixed ~30% and ~56% of its
+own peak-to-peak, holding while DAC1's own commanded output is swept
+through DC, a full-scale square and a full-scale sine in turn - the
+sample-and-hold coupling this document already attributes to a bare
+A2, now shown for A1 too, on every board tested.
+
+`tools/rotation_row.py --phase dac0-only`, five rounds where taken,
+same protocol as the shield rows above:
+
+| board | bench | shield-v3 largest / count median | dac0-only largest / count median | direction | shield state | p (largest / count) |
+|---|---|---|---|---|---|---|
+| `…4d3230323239313032` | linux-x1 | 43.5-44.5 / 0 | 46.0-47.0 / 2-4 | worse, small | unconfirmed | 2.5e-8 / 1.3e-8 |
+| `…4d3030363139303038` | windows-desk | 45.0-48.5 / 1-3 | 49.5-52.5 / 24-32 | worse, large | unconfirmed | 1.9e-8 / 1.0e-8 |
+| `…5147354d3130323036303039` | mac-bench | 51.5-52.0 / 54-68 | 49.5-51.0 / 24-32 | **better** | confirmed on | 2.4e-4 / 6.2e-7 |
+
+p-values are Mann-Whitney over every kept census run per phase (run 1
+of each round's six dropped by index, the standing rule), pooling
+across rounds. Die temperature does not track any of the three moves -
+overlapping ranges in every case, ruling out a thermal confound.
+
+**Not a uniform effect, and the one board where the comparison is
+airtight says so plainly.** `…36303039` is the sole case with shield
+state confirmed unchanged across the wiring change - its `shield-v3`
+rows were already taken with the shield on before `dac0-only` existed
+- and it moved *toward* fewer errors, not more, ruling out "the
+disconnection is a universal noise source" as the whole story. The
+other two boards' regressions are real (windows-desk's confirmed
+below) but neither has a shield-off control, so a mechanical change
+riding along with the wiring change is not excluded for them.
+
+**The apparent mechanism on `linux-x1`'s board does not generalise.**
+There, A1's own tail scale roughly doubled (1.25-1.42 to 2.67-2.9)
+alongside a smaller rise in A0's (0.47-0.53 to 0.69-1.07), consistent
+with A1 moving from a defined connection to a floating, noisier one
+and leaking a little of that back onto the driven pin. If that were
+the whole mechanism it should act the same way everywhere; it does not
+- `…36303039` floats the same two pins and gets quieter, not noisier.
+
+**Ruled out: a shortened rest manufacturing the two "worse" readings.**
+`RESTED_S` (`tools/rotation_stability.py`, `tools/board_profile.py`)
+was cut from 1200 s to 120 s the same evening. windows-desk's first
+five `dac0-only` rows used the new 120 s floor; two more rounds at a
+genuine 1200 s rest, same board and image, read count median 25-28 -
+no drop from the 120 s set's 24-32. The regression is the board's, not
+the rest protocol's. (The cut itself does not shorten any board's
+actual settling time - it only changes which already-recorded rows
+these two tools call "rested", retroactively; flagged because
+windows-desk's own `shield-v3` set took roughly 90 minutes to settle,
+past even the old floor.)
+
+**A fast independent check, and a second effect underneath the first.**
+On `…36303039`, a single continuous 5-minute capture at 10 s idle
+(not a phase comparison, a cheap artifact check), binned into ten 30 s
+windows: count climbed roughly 18 to 33 across the capture, mean 25.5
+across bins - inside the 3-round set's 24-32 range, confirming the
+same population rather than a conflicting one. So this board's
+`dac0-only` state is quieter overall than `shield-v3` *and* drifts
+upward within a single run, a smaller effect the round medians average
+away and which the other boards have not yet been read for. ~5 minutes
+against ~25 minutes/round is a useful ratio for sanity-checking a
+round-based result without displacing the phase comparison itself,
+which still needs the wiring held constant across many samples for a
+clean p-value.
+
+**Left open: whether `linux-x1`'s and windows-desk's regressions are
+the wiring, a shield that came off with the DAC1/A2 jumpers, or both**
+- the electrical check for the new wiring cannot see the shield's own
+mechanical state, and neither board has a shield-confirmed-unchanged
+control the way `…36303039` does. What holds regardless: the direction
+a change moves this converter's tail is a property of the individual
+board, the same way its baseline noise already was.
+`records/rotation.jsonl`, phase `dac0-only`.
+
 ## What this method cannot do
 
 Stated here rather than discovered later, because a plausible number is
