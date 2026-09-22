@@ -3,6 +3,34 @@
   "timezone": "America/Montreal",
   "files": [
     {
+      "path": "docs/datasheets/microchip/SAM3X-SAM3A-11057C.pdf",
+      "source_url": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-11057-32-bit-Cortex-M3-Microcontroller-SAM3X-SAM3A_Datasheet.pdf",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "aafc34e215ce68afaf21d2c20ed5f886e4dc2ad9c4b776b233275c28546ff5a6",
+      "bytes": 6108708
+    },
+    {
+      "path": "docs/datasheets/ti/OPA4350.pdf",
+      "source_url": "https://www.ti.com/lit/gpn/OPA4350",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "185293ca6674dd181d9934b5806d5a36e99e03caa1fe140b0bf24cccdc07c24d",
+      "bytes": 1497775
+    },
+    {
+      "path": "hardware/afe-shield/models/vendor/ti/SBOM071.zip",
+      "source_url": "https://www.ti.com/lit/zip/SBOM071",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "4a7d9342611e78eb5c49221bdfe18000ad6293564fd24aad239e0c7c176142e0",
+      "bytes": 29900
+    },
+    {
+      "path": "hardware/afe-shield/models/vendor/ti/OPAx350/OPAx350.LIB",
+      "source_url": "https://www.ti.com/lit/zip/SBOM071",
+      "retrieved_date_local": "2026-09-22",
+      "sha256": "4fd8ddfc56c146339fde8c2874196765d92cbe755aa08347fd823d987c34180d",
+      "bytes": 17180
+    },
+    {
       "path": "docs/datasheets/microchip/MCP6021-DS20001685F.pdf",
       "source_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP6021-Data-Sheet-DS20001685.pdf",
       "sha256": "628caaef3fbc5d8a00edb0cccbd612ca2a24b15a27b2446b78fc7906cd061738",

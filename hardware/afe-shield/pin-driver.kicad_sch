@@ -1068,7 +1068,7 @@
 			)
 		)
 
-		(property "Dielectric" "C0G/NP0" (at 73.66 41.91 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Tolerance" "1%" (at 66.04 38.1 0) (effects (font (size 1.27 1.27)) (hide yes)))
 	)
 	(wire
 		(pts
@@ -1166,6 +1166,8 @@
 		(pin "2"
 			(uuid "a3e3485d-c2ef-462f-a80d-3d3e1323074b")
 		)
+		(property "Dielectric" "C0G/NP0" (at 73.66 41.91 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Tolerance" "5%" (at 73.66 41.91 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(instances
 			(project "afe-shield"
 				(path "/e63e39d7-6ac0-4ffd-8aa3-1841a4541b55/113376e8-983c-404f-b980-1f55f876dccf"
@@ -1557,7 +1559,7 @@
 			)
 		)
 
-		(property "Dielectric" "C0G/NP0" (at 73.66 62.23 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Tolerance" "1%" (at 66.04 58.42 0) (effects (font (size 1.27 1.27)) (hide yes)))
 	)
 	(wire
 		(pts
@@ -1664,7 +1666,8 @@
 			)
 		)
 
-		(property "Dielectric" "C0G/NP0" (at 73.66 82.55 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Dielectric" "C0G/NP0" (at 73.66 62.23 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Tolerance" "5%" (at 73.66 62.23 0) (effects (font (size 1.27 1.27)) (hide yes)))
 	)
 	(wire
 		(pts
@@ -1849,6 +1852,7 @@
 		(pin "2"
 			(uuid "11640768-fde2-4544-9488-0c4bf685a9d8")
 		)
+		(property "Tolerance" "1%" (at 66.04 78.74 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(instances
 			(project "afe-shield"
 				(path "/e63e39d7-6ac0-4ffd-8aa3-1841a4541b55/113376e8-983c-404f-b980-1f55f876dccf"
@@ -1943,6 +1947,8 @@
 		(pin "2"
 			(uuid "7d73ed76-91f5-4db9-8624-0dbc57cc193e")
 		)
+		(property "Dielectric" "C0G/NP0" (at 73.66 82.55 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Tolerance" "5%" (at 73.66 82.55 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(instances
 			(project "afe-shield"
 				(path "/e63e39d7-6ac0-4ffd-8aa3-1841a4541b55/113376e8-983c-404f-b980-1f55f876dccf"

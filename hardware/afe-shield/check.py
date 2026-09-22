@@ -27,6 +27,25 @@ with tempfile.TemporaryDirectory(prefix='afe-check-') as temp:
     subprocess.run([cli, 'sch', 'export', 'netlist', '--format', 'kicadxml',
                     '-o', str(temp/'net.xml'), str(root/'afe-shield.kicad_sch')], check=True)
     tree = ET.parse(temp/'net.xml')
+    components = {c.attrib['ref']: c for c in tree.findall('./components/comp')}
+    required_fields = {
+        'D1': {'MPN': 'LM4040AIM3-3.0/NOPB'},
+        'U1': {'MPN': 'MCP6024-E/SL'},
+        'R3': {'Tolerance': '0.1%'}, 'R4': {'Tolerance': '0.1%'},
+        **{ref: {'Tolerance': '1%'} for ref in ('R5', 'R6', 'R7')},
+        **{ref: {'Tolerance': '5%', 'Dielectric': 'C0G/NP0'}
+           for ref in ('C5', 'C6', 'C7')},
+    }
+    for ref, required in required_fields.items():
+        component = components.get(ref)
+        if component is None:
+            sys.exit(f'Missing BOM component: {ref}')
+        fields = {f.attrib['name']: f.text for f in component.findall('./fields/field')}
+        for name, value in required.items():
+            if fields.get(name) != value:
+                sys.exit(f'{ref} {name}: expected {value!r}, got {fields.get(name)!r}')
+        if ref.startswith('R') and 'Dielectric' in fields:
+            sys.exit(f'{ref}: capacitor dielectric field belongs on a capacitor')
     nets = {n.attrib['name']: {(p.attrib['ref'], p.attrib['pin']) for p in n.findall('node')}
             for n in tree.findall('./nets/net')}
     expected = {
@@ -48,4 +67,5 @@ with tempfile.TemporaryDirectory(prefix='afe-check-') as temp:
     for name, pins in [('GND',{('D1','2'),('U1','11')}),('+3V3',{('U1','4'),('R1','1')})]:
         if not pins <= nets[name]:
             sys.exit(f'Missing power connections on {name}')
-    print(f'PASS: no ERC errors; {len(issues)} isolated unused-header label warnings; critical nets match.')
+    print(f'PASS: no ERC errors; {len(issues)} isolated unused-header label warnings; '
+          'critical nets and BOM fields match.')

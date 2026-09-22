@@ -9,6 +9,8 @@ and [official references](../../docs/reference/README.md).
 
 For the end-to-end process, read
 [AFE design with KiCad: workflow and quality gates](../../docs/afe-workflow.md).
+The [physical-build checklist](BUILD-VALIDATION.md) covers hand-wiring,
+two-layer layout, fit and the measurements that only assembly can establish.
 
 | file | what |
 |---|---|
@@ -21,6 +23,7 @@ For the end-to-end process, read
 | `sim/stage_a.cir`, `sim/run.sh` | DC, AC, settling and reference-load checks using the exported schematic |
 | `stage-a.wbk` | KiCad operating-point analysis setup |
 | `check.py` | ERC and critical connector/analog-net regression checks |
+| `sim/screen.py`, `sim/README.md` | Acquisition-load and driver sensitivity screening, model assumptions and evaluation candidates |
 
 ## Finding D1 and the Phase A IC
 
@@ -50,6 +53,8 @@ From the repository root:
 ```sh
 python3 hardware/afe-shield/check.py
 hardware/afe-shield/sim/run.sh
+hardware/afe-shield/sim/run.sh --strict
+python3 hardware/afe-shield/sim/screen.py
 ```
 
 Requires Python 3, KiCad 10.x `kicad-cli` and `ngspice`. Both check scripts
@@ -64,6 +69,9 @@ their generator tags are provenance, not the supported toolchain version.
 Generated netlists, logs and numeric `.dat` traces stay in `sim/` and are
 ignored by Git. Exit zero means the analyses completed and basic reference
 sanity checks passed; **REVIEW messages are unresolved performance targets**.
+Use `--strict` to make those baseline REVIEW findings return exit 2.
+The separate screen records diagnostic outcomes without claiming a release
+gate; see [its method and limitations](sim/README.md).
 
 In KiCad, open **Inspect → Simulator → File → Open Workbook**, choose
 `stage-a.wbk`, and run the operating-point analysis. In **Simulation → Edit

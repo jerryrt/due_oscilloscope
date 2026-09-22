@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Export and exercise the actual schematic; no third-party Python packages."""
+import argparse
 import math
 import os
 from pathlib import Path
@@ -36,6 +37,12 @@ def rows(name):
     return result
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--strict', action='store_true',
+                        help='exit 2 when an existing performance review check fails; '
+                             'exit 0 still does not qualify hardware')
+    args = parser.parse_args()
+    findings = []
     cli = kicad_cli()
     spice = executable('ngspice')
     subprocess.run([cli, 'sch', 'export', 'netlist', '--format', 'spice',
@@ -75,19 +82,25 @@ def main():
         settling = (max(outside)-edge) if outside else 0
         print(f'DAC0 {label} settling to final plateau +/-1 LSB: {settling*1e9:.1f} ns')
         if settling > 1/886000:
-            print('REVIEW: settling exceeds one 886 ksps conversion interval')
+            findings.append(f'{label} settling exceeds one 886 ksps conversion interval')
     tail = [r[1] for r in load if r[0] > 30e-6]
     print(f'200 nF AREF + 100 uA load steps, final 10 us excursion: {(max(tail)-min(tail))*1e3:.3f} mV p-p')
     if not 2.97 < op[0][1] < 3.03 or not 1.47 < op[0][2] < 1.53:
         raise RuntimeError('Reference operating point outside broad sanity limits')
     if at5[2] < -1:
-        print('REVIEW: >1 dB loss at 5 MHz; Phase A1 flatness is not demonstrated')
+        findings.append('>1 dB loss at 5 MHz; Phase A1 flatness is not demonstrated')
     if max(tail)-min(tail) > 3.0/4096:
-        print('REVIEW: AREF transient exceeds 1 LSB; compensation/bench validation needed, keep JP1 open')
+        findings.append('AREF transient exceeds 1 LSB; compensation/bench validation needed, keep JP1 open')
+    for finding in findings:
+        print(f'REVIEW: {finding}')
     print('All five analyses completed. See sim/*.dat and stage_a.log.')
+    if args.strict and findings:
+        print(f'FAIL: {len(findings)} performance review checks remain open.')
+        return 2
+    return 0
 
 if __name__ == '__main__':
     try:
-        main()
+        sys.exit(main())
     except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
         sys.exit(str(exc))

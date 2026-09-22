@@ -1,0 +1,285 @@
+{
+  "purpose": "engineering screen; NOT a fabrication or hardware qualification",
+  "scope": "one-factor sensitivities, not combined worst-case corners; JP1 open",
+  "thresholds": "diagnostic allocations, not newly approved system specifications",
+  "source_sha256": {
+    "afe-shield.kicad_sch": "5d86a48ddedd314575a0662565ea4316c074f87797ac7c6945645d759507bc29",
+    "models/afe-models.lib": "b536c31a695fe7ee2eb254c8c42d6a9e927a8c19e23758d28bd32b1440d368ee",
+    "models/candidates.lib": "4c1ed7cb3c975407c1f5a54b8a5391b95a6e0999a31485742c34744d2facb538",
+    "models/vendor/microchip/MCP6021.txt": "363ec7efc5a3e6c640b2f9dfedc2de4c810b250a403fa3a4f3c0e7c872e4439e",
+    "models/vendor/ti/LM4040_NA3P0_PSPICE_TRANS/LM4040_NA3P0_TRANS.lib": "862481372af755b3a04b0aeb3d3c0878a133be60304f995492587b795fbd1206",
+    "models/vendor/ti/OPAx350/OPAx350.LIB": "4fd8ddfc56c146339fde8c2874196765d92cbe755aa08347fd823d987c34180d",
+    "pin-driver.kicad_sch": "7d6534d58e967dd2ce1b65a2118474af28758a269a720f5fbac4aa7925f6d0f2",
+    "reference.kicad_sch": "09eb3e01cee81441f314a6900a4575e89f496c9a450a2a0f0cf9174be52151d6",
+    "sim/run.py": "30b57960e1856802ffc03f56dcf4664f3183441451fbc80209ea24fdb034c028",
+    "sim/screen.py": "05a8857363847effdbb12400131487ced4dea5ed5bc64553f503efc0f355c2f6"
+  },
+  "netlist_sha256": "7b19dadb43ba661ef5ccefbce07360b26ea153821b31621e0d57b2dc5ff9222e",
+  "kicad": "10.0.6",
+  "ngspice": "******\n** ngspice-47 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2026, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n******",
+  "sampling_model": {
+    "CSAMPLE_F": 5.992733246769541e-12,
+    "RON_ohm": 3796.2962962962965,
+    "basis": "SAM3X 11057C section 45.7.2.1, first-order fit; not silicon values"
+  },
+  "results": [
+    {
+      "model": "mcp6024",
+      "case": "nominal",
+      "conditions": {},
+      "buffer_5MHz_db": -5.914948632069972,
+      "adc_5MHz_db": -9.017066091405727,
+      "supply_current_A": 0.009948976672553,
+      "rise_settle_s": 1.229417882381e-06,
+      "fall_settle_s": 1.2315508366810003e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "supply-low",
+      "conditions": {
+        "vdd": 3.135
+      },
+      "buffer_5MHz_db": -5.914948633061347,
+      "adc_5MHz_db": -9.017066092396103,
+      "supply_current_A": 0.006993351726228,
+      "rise_settle_s": 1.233540048003e-06,
+      "fall_settle_s": 1.2356014861189998e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "supply-high",
+      "conditions": {
+        "vdd": 3.465
+      },
+      "buffer_5MHz_db": -5.914948629117845,
+      "adc_5MHz_db": -9.017066088453497,
+      "supply_current_A": 0.01290587228943,
+      "rise_settle_s": 1.224620107019e-06,
+      "fall_settle_s": 1.2280183144029997e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "cold",
+      "conditions": {
+        "temp": -20
+      },
+      "buffer_5MHz_db": -5.048951065336677,
+      "adc_5MHz_db": -8.15106852467233,
+      "supply_current_A": 0.01001014124249,
+      "rise_settle_s": 1.240623372532e-06,
+      "fall_settle_s": 1.2484600137619998e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "hot",
+      "conditions": {
+        "temp": 70
+      },
+      "buffer_5MHz_db": -6.633526606153371,
+      "adc_5MHz_db": -9.735644065488128,
+      "supply_current_A": 0.009796451391787,
+      "rise_settle_s": 1.227930638831e-06,
+      "fall_settle_s": 1.226920524873e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "rc-low",
+      "conditions": {
+        "r_scale": 0.99,
+        "c_scale": 0.95
+      },
+      "buffer_5MHz_db": -5.6736476000693425,
+      "adc_5MHz_db": -8.515626801234486,
+      "supply_current_A": 0.009948976672553,
+      "rise_settle_s": 1.197657619999e-06,
+      "fall_settle_s": 1.199103460337e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "rc-high",
+      "conditions": {
+        "r_scale": 1.01,
+        "c_scale": 1.05
+      },
+      "buffer_5MHz_db": -6.131225014443141,
+      "adc_5MHz_db": -9.497521561153238,
+      "supply_current_A": 0.009948976672553,
+      "rise_settle_s": 1.2601666016490001e-06,
+      "fall_settle_s": 1.2635602614520003e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "wire-100nH",
+      "conditions": {
+        "wire_l": 1e-07
+      },
+      "buffer_5MHz_db": -5.915012340128317,
+      "adc_5MHz_db": -9.010327368044019,
+      "supply_current_A": 0.009948976672553,
+      "rise_settle_s": 1.2294642143539999e-06,
+      "fall_settle_s": 1.230650313667e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "wire-1uH",
+      "conditions": {
+        "wire_l": 1e-06
+      },
+      "buffer_5MHz_db": -5.915590215732264,
+      "adc_5MHz_db": -8.94944178742276,
+      "supply_current_A": 0.009948976672553,
+      "rise_settle_s": null,
+      "rise_finding": "Final plateau is not stable enough to measure settling",
+      "fall_settle_s": null,
+      "fall_finding": "Final plateau is not stable enough to measure settling",
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "wire-1uH-fine",
+      "conditions": {
+        "wire_l": 1e-06,
+        "timestep": 1e-09
+      },
+      "buffer_5MHz_db": -5.915590215732264,
+      "adc_5MHz_db": -8.94944178742276,
+      "supply_current_A": 0.009948976672553,
+      "rise_settle_s": null,
+      "rise_finding": "Final plateau is not stable enough to measure settling",
+      "fall_settle_s": null,
+      "fall_finding": "Final plateau is not stable enough to measure settling",
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "stock-dac",
+      "conditions": {
+        "low": 0.55,
+        "high": 2.75
+      },
+      "buffer_5MHz_db": -5.914948632069972,
+      "adc_5MHz_db": -9.017066091405727,
+      "supply_current_A": 0.009948976672553,
+      "rise_settle_s": 1.2703762550360003e-06,
+      "fall_settle_s": 1.2728887149109997e-06,
+      "screen_checks": {
+        "buffer_within_1dB_at_5MHz": false,
+        "step_within_886ksps_interval": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "sample-datasheet",
+      "acquisition_s": 7.692307692307693e-07,
+      "timestep_s": 2e-09,
+      "wire_H": 1e-12,
+      "dynamic_error_V": [
+        6.177072765911618e-05,
+        -6.175818848030978e-05
+      ],
+      "total_error_V": [
+        0.0004250668186589479,
+        0.000356053234219722
+      ],
+      "screen_checks": {
+        "dynamic_error_within_half_LSB": true,
+        "total_error_within_one_LSB": true
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "sample-short-210ns",
+      "acquisition_s": 2.1e-07,
+      "timestep_s": 2e-09,
+      "wire_H": 1e-12,
+      "dynamic_error_V": [
+        0.002719975954300402,
+        -0.002718924879523521
+      ],
+      "total_error_V": [
+        0.003083272045300234,
+        -0.0023011134568234892
+      ],
+      "screen_checks": {
+        "dynamic_error_within_half_LSB": false,
+        "total_error_within_one_LSB": false
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "sample-convergence",
+      "acquisition_s": 7.692307692307693e-07,
+      "timestep_s": 1e-09,
+      "wire_H": 1e-12,
+      "dynamic_error_V": [
+        6.17291998601388e-05,
+        -6.171667593357633e-05
+      ],
+      "total_error_V": [
+        0.00042502529085997054,
+        0.00035609474686637554
+      ],
+      "screen_checks": {
+        "dynamic_error_within_half_LSB": true,
+        "total_error_within_one_LSB": true
+      }
+    },
+    {
+      "model": "mcp6024",
+      "case": "sample-wire-1uH",
+      "acquisition_s": 7.692307692307693e-07,
+      "timestep_s": 2e-09,
+      "wire_H": 1e-06,
+      "dynamic_error_V": [
+        6.19858004569096e-05,
+        -6.197317749323528e-05
+      ],
+      "total_error_V": [
+        0.00042528189178447917,
+        0.0003558382460792098
+      ],
+      "screen_checks": {
+        "dynamic_error_within_half_LSB": true,
+        "total_error_within_one_LSB": true
+      }
+    }
+  ]
+}

@@ -27,3 +27,17 @@ four independent channels, without a package-level crosstalk model. Nominal
 models do not apply worst-case tolerance automatically. Microchip's included
 license limits model use to Microchip products; do not substitute another
 manufacturer's op-amp behind this model.
+
+## Evaluation candidate, not an approved substitution
+
+`candidates.lib` wraps TI's OPAx350 model 1.5 (2022-06-01) as a physical
+SOIC-14 OPA4350. `vendor/ti/SBOM071.zip` and the extracted library retain
+the original bytes and disclaimer. The SOIC-14 pin assignment agrees
+with U1's current mapping; the SSOP-16 version does not use that mapping.
+
+The integrated candidate screen has not established a valid operating
+point in ngspice 47. Do not infer candidate performance from aborted
+analyses or replace the active schematic model. The OPA4350 also requires
+a power-budget review: its datasheet specifies 5.2 mA typical quiescent
+current per amplifier, before output loading. The active BOM remains
+MCP6024-E/SL. See [screening method](../sim/README.md).
