@@ -108,5 +108,6 @@ hardware/**/sim/*.net
 hardware/**/sim/*.raw
 hardware/**/sim/*.log
 hardware/**/sim/*.dat
+hardware/**/sim/screen-output/
 hardware/**/.history/
 hardware/**/~*.lck

@@ -12,6 +12,8 @@ SHA-256 hashes. Publisher copyright and model license terms still apply.
 | [Microchip AN884](../datasheets/microchip/AN884-Capacitive-Loads.pdf) | Capacitive-load stability and isolation |
 | [TI LM4040-N datasheet](../datasheets/ti/LM4040-N.pdf) | Selected D1 MPN, grade, bias and pinout |
 | [TI LM4040 datasheet](../datasheets/ti/LM4040.pdf) | Related family comparison; not the selected -N model's specification |
+| [TI OPA4350 datasheet](../datasheets/ti/OPA4350.pdf) | Evaluation candidate only: SOIC-14 pinout, driver performance, power and layout requirements; not the active BOM |
+| [SAM3X/SAM3A 11057C datasheet](../datasheets/microchip/SAM3X-SAM3A-11057C.pdf) | Section 45.7.2.1 acquisition-time/source-impedance relation; retained separately from the older 11057B reference |
 | [Arduino Due full pinout](../datasheets/arduino/Arduino-Due-full-pinout.pdf) | Connector signals and alternate functions |
 | [Arduino Due schematic](../datasheets/arduino/arduino-due-schematic.pdf) | Board wiring, separate I2C buses, JR1/BR1 and AREF network |
 | [KiCad 10 schematic manual](kicad-10/eeschema.pdf) | Hierarchy, search, symbol fields, ERC and simulator |
