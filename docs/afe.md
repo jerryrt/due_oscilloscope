@@ -80,10 +80,11 @@ EAGLE files beside it). Every header pin is passed straight through
 to a parallel row of pads: digital on J3/J4 and J1/J5, the analog
 pins on ADCL J6 and ADCH J2, the communication row on COMM J8, power
 on POWER J7, and the 22–53 double rows on JP3/JP7 and JP4/JP8. The
-shield's only wiring of its own brings **5 V and ground**, not
-3.3 V, to its two bus rows and to a 14-pin SOIC footprint at 50 mil
-pitch, plus a reset button and an ICSP header carrying 5 V, ground
-and reset. What that means for the AFE:
+shield distributes **5 V and ground**, not a dedicated 3.3 V bus.
+Its 14-pin SOIC footprint at 50 mil pitch breaks out each pin separately;
+it is not prewired to the 5 V or ground nets. The original EAGLE board's
+IC2 contact references confirm this. It also has a reset button and an
+ICSP header carrying 5 V, ground and reset. What that means for the AFE:
 
 - 3.3 V is taken from the POWER row's 3.3 V pad and run as its own
   bus; the shield's 5 V rows are not used by the analog section.
