@@ -1,0 +1,78 @@
+{
+  "retrieved_date_local": "2026-09-21",
+  "timezone": "America/Montreal",
+  "files": [
+    {
+      "path": "docs/datasheets/microchip/MCP6021-DS20001685F.pdf",
+      "source_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP6021-Data-Sheet-DS20001685.pdf",
+      "sha256": "628caaef3fbc5d8a00edb0cccbd612ca2a24b15a27b2446b78fc7906cd061738",
+      "bytes": 1208612
+    },
+    {
+      "path": "docs/datasheets/microchip/AN1297-Op-Amp-SPICE-Models.pdf",
+      "source_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ApplicationNotes/ApplicationNotes/01297a.pdf",
+      "sha256": "8a8774c322d13f871b6e0128e851cb49ab9b78711ac4c02525c9645f078a45e6",
+      "bytes": 287677
+    },
+    {
+      "path": "docs/datasheets/microchip/AN884-Capacitive-Loads.pdf",
+      "source_url": "https://ww1.microchip.com/downloads/en/AppNotes/00884b.pdf",
+      "sha256": "66d0eaa228c0464ff241208f7a8b5b2e0ea4eb9139b6ed7ba7eaf275e92f5945",
+      "bytes": 505510
+    },
+    {
+      "path": "docs/datasheets/ti/LM4040.pdf",
+      "source_url": "https://www.ti.com/lit/ds/symlink/lm4040.pdf",
+      "sha256": "f43b6b6d3ecd51c8c90b70a7c4630c7e3140822b0073953ed2459df81b251c1c",
+      "bytes": 1882717
+    },
+    {
+      "path": "docs/datasheets/ti/LM4040-N.pdf",
+      "source_url": "https://www.ti.com/lit/ds/symlink/lm4040-n.pdf",
+      "sha256": "f3977fc3d89b4f25699e699ca2c89e0c00f45c84fc04e35692758b5390ac3880",
+      "bytes": 1980947
+    },
+    {
+      "path": "docs/reference/kicad-10/eeschema.pdf",
+      "source_url": "https://docs.kicad.org/10.0/en/eeschema/eeschema.pdf",
+      "sha256": "d00b361ef7c3f007132f056f0f76c2840e161af74a090f31564a2f23d515988d",
+      "bytes": 10407746
+    },
+    {
+      "path": "docs/reference/kicad-10/pcbnew.pdf",
+      "source_url": "https://docs.kicad.org/10.0/en/pcbnew/pcbnew.pdf",
+      "sha256": "1bcd63c7c2d03a2cb6ee97b5f480ab661b957c0532c5f372c991f8c1fa3f0ad1",
+      "bytes": 11352240
+    },
+    {
+      "path": "docs/datasheets/arduino/Arduino-Due-full-pinout.pdf",
+      "source_url": "https://docs.arduino.cc/resources/pinouts/A000056-full-pinout.pdf",
+      "sha256": "a9b33b9e069e82dcac6c6026422d22f399ec5e93e7a44082b783b3864018c9b4",
+      "bytes": 826087
+    },
+    {
+      "path": "hardware/afe-shield/models/vendor/microchip/MCP6021_MM_B.zip",
+      "source_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/BoardDesignFiles/MCP6021_MM_B.zip",
+      "sha256": "3b4ea5202ef12a5d546f99b8d79d05d32e9faac10bda24225b104f1b72928e44",
+      "bytes": 2758
+    },
+    {
+      "path": "hardware/afe-shield/models/vendor/microchip/MCP6021.txt",
+      "source_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/BoardDesignFiles/MCP6021_MM_B.zip",
+      "sha256": "363ec7efc5a3e6c640b2f9dfedc2de4c810b250a403fa3a4f3c0e7c872e4439e",
+      "bytes": 6017
+    },
+    {
+      "path": "hardware/afe-shield/models/vendor/ti/snom547.zip",
+      "source_url": "https://www.ti.com/lit/zip/snom547",
+      "sha256": "786b0c5b8e5803625b1312609f7d3342125ee01300460eda2845fc7adfee359c",
+      "bytes": 1804
+    },
+    {
+      "path": "hardware/afe-shield/models/vendor/ti/LM4040_NA3P0_PSPICE_TRANS/LM4040_NA3P0_TRANS.lib",
+      "source_url": "https://www.ti.com/lit/zip/snom547",
+      "sha256": "862481372af755b3a04b0aeb3d3c0878a133be60304f995492587b795fbd1206",
+      "bytes": 3916
+    }
+  ]
+}

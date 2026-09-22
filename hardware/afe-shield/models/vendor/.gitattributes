@@ -1,0 +1,2 @@
+# Preserve original vendor bytes, including CRLF, for provenance hashes.
+** -text
