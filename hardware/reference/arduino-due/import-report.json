@@ -1,0 +1,115 @@
+{
+  "errors": [],
+  "layer_mapping": {
+    "B.Adhesive": {
+      "kicad_layer": "B.Adhes",
+      "method": "auto"
+    },
+    "B.Courtyard": {
+      "kicad_layer": "B.CrtYd",
+      "method": "auto"
+    },
+    "B.Cu": {
+      "kicad_layer": "B.Cu",
+      "method": "auto"
+    },
+    "B.Fab": {
+      "kicad_layer": "B.Fab",
+      "method": "auto"
+    },
+    "B.Mask": {
+      "kicad_layer": "B.Mask",
+      "method": "auto"
+    },
+    "B.Paste": {
+      "kicad_layer": "B.Paste",
+      "method": "auto"
+    },
+    "B.Silkscreen": {
+      "kicad_layer": "B.SilkS",
+      "method": "auto"
+    },
+    "Edge.Cuts": {
+      "kicad_layer": "Edge.Cuts",
+      "method": "auto"
+    },
+    "F.Adhesive": {
+      "kicad_layer": "F.Adhes",
+      "method": "auto"
+    },
+    "F.Courtyard": {
+      "kicad_layer": "F.CrtYd",
+      "method": "auto"
+    },
+    "F.Cu": {
+      "kicad_layer": "F.Cu",
+      "method": "auto"
+    },
+    "F.Fab": {
+      "kicad_layer": "F.Fab",
+      "method": "auto"
+    },
+    "F.Mask": {
+      "kicad_layer": "F.Mask",
+      "method": "auto"
+    },
+    "F.Paste": {
+      "kicad_layer": "F.Paste",
+      "method": "auto"
+    },
+    "F.Silkscreen": {
+      "kicad_layer": "F.SilkS",
+      "method": "auto"
+    },
+    "Margin": {
+      "kicad_layer": "Margin",
+      "method": "auto"
+    },
+    "Rescue": {
+      "kicad_layer": "Rescue",
+      "method": "auto"
+    },
+    "User.1": {
+      "kicad_layer": "User.1",
+      "method": "auto"
+    },
+    "User.2": {
+      "kicad_layer": "User.2",
+      "method": "auto"
+    },
+    "User.3": {
+      "kicad_layer": "User.3",
+      "method": "auto"
+    },
+    "User.4": {
+      "kicad_layer": "User.4",
+      "method": "auto"
+    },
+    "User.Comments": {
+      "kicad_layer": "Cmts.User",
+      "method": "auto"
+    },
+    "User.Drawings": {
+      "kicad_layer": "Dwgs.User",
+      "method": "auto"
+    },
+    "User.Eco1": {
+      "kicad_layer": "Eco1.User",
+      "method": "auto"
+    },
+    "User.Eco2": {
+      "kicad_layer": "Eco2.User",
+      "method": "auto"
+    }
+  },
+  "output_file": "DUE_V02g.kicad_pcb",
+  "source_file": "DUE_V02g.brd",
+  "source_format": "Eagle",
+  "statistics": {
+    "footprints": 147,
+    "tracks": 3569,
+    "vias": 382,
+    "zones": 18
+  },
+  "warnings": []
+}

@@ -1,0 +1,38 @@
+{
+  "kicad_version": "10.0.6",
+  "source_components": 141,
+  "imported_footprints": 147,
+  "extra_footprints": [
+    "UNK_HOLE_0",
+    "UNK_HOLE_1",
+    "UNK_HOLE_2",
+    "UNK_HOLE_3",
+    "UNK_HOLE_4",
+    "UNK_HOLE_5"
+  ],
+  "reference_renames": {
+    "SPI": "SPI0",
+    "PWML": "PWML0",
+    "PWMH": "PWMH0",
+    "ON": "ON0",
+    "POWER": "POWER0",
+    "ADCL": "ADCL0",
+    "COMMUNICATION": "COMMUNICATION0",
+    "ADCH": "ADCH0",
+    "RX": "RX0",
+    "TX": "TX0",
+    "L": "L0",
+    "RESET": "RESET0",
+    "XIO": "XIO0",
+    "ERASE": "ERASE0",
+    "DEBUG": "DEBUG0"
+  },
+  "component_positions_match_source_within_mm": 2e-06,
+  "verified_pad_net_connections": 605,
+  "copper_layers": 2,
+  "test_probe_annotations_mapped_to_User.1": 139,
+  "bottom_restrict_line_preserved_as_User.2_drawing": 1,
+  "native_board_reload": "passed",
+  "top_svg_export": "passed",
+  "scope": "Source correspondence and reload checks only; not a fabrication qualification."
+}
