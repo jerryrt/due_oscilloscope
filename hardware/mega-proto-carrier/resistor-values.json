@@ -1,0 +1,32 @@
+{
+  "source_photo": "../afe-shield/IMG_2131.jpeg",
+  "source_sha256": "4cf2760ea2e4162614f2b523b70b12d2c95f0e53cc9a664ac8b813ce49fdaa1b",
+  "detail_crop": "evidence/resistor-markings-IMG_2131.jpg",
+  "orientation": "top view, corner J9 at upper left",
+  "resistors": [
+    {
+      "reference": "R1",
+      "position": "top",
+      "marking": "103",
+      "nominal_ohms": 10000,
+      "role": "RESET pull-up"
+    },
+    {
+      "reference": "R2",
+      "position": "middle",
+      "marking": "102",
+      "nominal_ohms": 1000,
+      "role": "PWR LED series resistor"
+    },
+    {
+      "reference": "R3",
+      "position": "bottom",
+      "marking": "102",
+      "nominal_ohms": 1000,
+      "role": "STAT LED series resistor"
+    }
+  ],
+  "interpretation": "Three-digit markings: first two digits multiplied by ten to the power of the third digit.",
+  "verification": "Nominal values read from markings; no meter measurements or tolerance/power-rating identification supplied.",
+  "kicad_status": "These nominal values were already recorded in PCB, schematic and build_model.py; no CAD change required."
+}

@@ -1,0 +1,9 @@
+(footprint "Hole_estimate_1.6mm" (version 20260206) (generator "pcbnew")
+      (layer "F.Cu")
+      (descr "Photo-derived carrier geometry; dimensions other than outline are provisional")
+      (attr through_hole)
+      (fp_text reference "REF**" (at 0 -2) (layer "F.Fab")
+        (effects (font (size 0.8 0.8) (thickness 0.12))))
+      (fp_text value "Hole_estimate_1.6mm" (at 0 2) (layer "F.Fab") hide
+        (effects (font (size 0.8 0.8) (thickness 0.12))))
+       (pad "" np_thru_hole circle (at 0 0) (size 1.6 1.6) (drill 1.6) (layers "*.Cu" "*.Mask")))

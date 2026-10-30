@@ -1,0 +1,3826 @@
+{
+  "revision": "P3.5",
+  "connections": [
+    {
+      "land": "T01",
+      "grid": "R05C01",
+      "row": 5,
+      "column": 1,
+      "net": "BREAKOUT_T01",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T02",
+      "grid": "R04C01",
+      "row": 4,
+      "column": 1,
+      "net": "BREAKOUT_T02",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T03",
+      "grid": "R05C02",
+      "row": 5,
+      "column": 2,
+      "net": "BREAKOUT_T03",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T04",
+      "grid": "R04C02",
+      "row": 4,
+      "column": 2,
+      "net": "BREAKOUT_T04",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T05",
+      "grid": "R05C03",
+      "row": 5,
+      "column": 3,
+      "net": "BREAKOUT_T05",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T06",
+      "grid": "R04C03",
+      "row": 4,
+      "column": 3,
+      "net": "BREAKOUT_T06",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T07",
+      "grid": "R05C04",
+      "row": 5,
+      "column": 4,
+      "net": "BREAKOUT_T07",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T08",
+      "grid": "R04C04",
+      "row": 4,
+      "column": 4,
+      "net": "BREAKOUT_T08",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T09",
+      "grid": "R05C05",
+      "row": 5,
+      "column": 5,
+      "net": "BREAKOUT_T09",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T10",
+      "grid": "R04C05",
+      "row": 4,
+      "column": 5,
+      "net": "BREAKOUT_T10",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T11",
+      "grid": "R05C06",
+      "row": 5,
+      "column": 6,
+      "net": "BREAKOUT_T11",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T12",
+      "grid": "R04C06",
+      "row": 4,
+      "column": 6,
+      "net": "BREAKOUT_T12",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T13",
+      "grid": "R05C07",
+      "row": 5,
+      "column": 7,
+      "net": "BREAKOUT_T13",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "T14",
+      "grid": "R04C07",
+      "row": 4,
+      "column": 7,
+      "net": "BREAKOUT_T14",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B01",
+      "grid": "R11C01",
+      "row": 11,
+      "column": 1,
+      "net": "BREAKOUT_B01",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B02",
+      "grid": "R12C01",
+      "row": 12,
+      "column": 1,
+      "net": "BREAKOUT_B02",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B03",
+      "grid": "R11C02",
+      "row": 11,
+      "column": 2,
+      "net": "BREAKOUT_B03",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B04",
+      "grid": "R12C02",
+      "row": 12,
+      "column": 2,
+      "net": "BREAKOUT_B04",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B05",
+      "grid": "R11C03",
+      "row": 11,
+      "column": 3,
+      "net": "BREAKOUT_B05",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B06",
+      "grid": "R12C03",
+      "row": 12,
+      "column": 3,
+      "net": "BREAKOUT_B06",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B07",
+      "grid": "R11C04",
+      "row": 11,
+      "column": 4,
+      "net": "BREAKOUT_B07",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B08",
+      "grid": "R12C04",
+      "row": 12,
+      "column": 4,
+      "net": "BREAKOUT_B08",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B09",
+      "grid": "R11C05",
+      "row": 11,
+      "column": 5,
+      "net": "BREAKOUT_B09",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B10",
+      "grid": "R12C05",
+      "row": 12,
+      "column": 5,
+      "net": "BREAKOUT_B10",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B11",
+      "grid": "R11C06",
+      "row": 11,
+      "column": 6,
+      "net": "BREAKOUT_B11",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B12",
+      "grid": "R12C06",
+      "row": 12,
+      "column": 6,
+      "net": "BREAKOUT_B12",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B13",
+      "grid": "R11C07",
+      "row": 11,
+      "column": 7,
+      "net": "BREAKOUT_B13",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    },
+    {
+      "land": "B14",
+      "grid": "R12C07",
+      "row": 12,
+      "column": 7,
+      "net": "BREAKOUT_B14",
+      "evidence": "IMG_2134.jpeg: visible SMD fanout",
+      "status": "visually_traced_not_meter_verified"
+    }
+  ],
+  "copper_routes": [
+    {
+      "id": "H1-01",
+      "a": "J1.1",
+      "b": "J10.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_AREF",
+      "model_polyline_mm": [
+        [
+          20.336,
+          5.524
+        ],
+        [
+          20.336,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H1-02",
+      "a": "J1.2",
+      "b": "J10.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          22.876,
+          5.524
+        ],
+        [
+          22.876,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H1-03",
+      "a": "J1.3",
+      "b": "J10.3",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D13",
+      "model_polyline_mm": [
+        [
+          25.416,
+          5.524
+        ],
+        [
+          25.416,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H1-04",
+      "a": "J1.4",
+      "b": "J10.4",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D12",
+      "model_polyline_mm": [
+        [
+          27.956,
+          5.524
+        ],
+        [
+          27.956,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H1-05",
+      "a": "J1.5",
+      "b": "J10.5",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D11",
+      "model_polyline_mm": [
+        [
+          30.496,
+          5.524
+        ],
+        [
+          30.496,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H1-06",
+      "a": "J1.6",
+      "b": "J10.6",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D10",
+      "model_polyline_mm": [
+        [
+          33.036,
+          5.524
+        ],
+        [
+          33.036,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H1-07",
+      "a": "J1.7",
+      "b": "J10.7",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D9",
+      "model_polyline_mm": [
+        [
+          35.576,
+          5.524
+        ],
+        [
+          35.576,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H1-08",
+      "a": "J1.8",
+      "b": "J10.8",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D8",
+      "model_polyline_mm": [
+        [
+          38.116,
+          5.524
+        ],
+        [
+          38.116,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H2-01",
+      "a": "J2.1",
+      "b": "J11.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D7",
+      "model_polyline_mm": [
+        [
+          42.18,
+          5.524
+        ],
+        [
+          42.18,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H2-02",
+      "a": "J2.2",
+      "b": "J11.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D6",
+      "model_polyline_mm": [
+        [
+          44.72,
+          5.524
+        ],
+        [
+          44.72,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H2-03",
+      "a": "J2.3",
+      "b": "J11.3",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D5",
+      "model_polyline_mm": [
+        [
+          47.26,
+          5.524
+        ],
+        [
+          47.26,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H2-04",
+      "a": "J2.4",
+      "b": "J11.4",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D4",
+      "model_polyline_mm": [
+        [
+          49.8,
+          5.524
+        ],
+        [
+          49.8,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H2-05",
+      "a": "J2.5",
+      "b": "J11.5",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D3",
+      "model_polyline_mm": [
+        [
+          52.34,
+          5.524
+        ],
+        [
+          52.34,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H2-06",
+      "a": "J2.6",
+      "b": "J11.6",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D2",
+      "model_polyline_mm": [
+        [
+          54.88,
+          5.524
+        ],
+        [
+          54.88,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H2-07",
+      "a": "J2.7",
+      "b": "J11.7",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D1_TX0",
+      "model_polyline_mm": [
+        [
+          57.42,
+          5.524
+        ],
+        [
+          57.42,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H2-08",
+      "a": "J2.8",
+      "b": "J11.8",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D0_RX0",
+      "model_polyline_mm": [
+        [
+          59.96,
+          5.524
+        ],
+        [
+          59.96,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H3-01",
+      "a": "J3.1",
+      "b": "J12.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D14_TX3",
+      "model_polyline_mm": [
+        [
+          65.04,
+          5.524
+        ],
+        [
+          65.04,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H3-02",
+      "a": "J3.2",
+      "b": "J12.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D15_RX3",
+      "model_polyline_mm": [
+        [
+          67.58,
+          5.524
+        ],
+        [
+          67.58,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H3-03",
+      "a": "J3.3",
+      "b": "J12.3",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D16_TX2",
+      "model_polyline_mm": [
+        [
+          70.12,
+          5.524
+        ],
+        [
+          70.12,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H3-04",
+      "a": "J3.4",
+      "b": "J12.4",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D17_RX2",
+      "model_polyline_mm": [
+        [
+          72.66,
+          5.524
+        ],
+        [
+          72.66,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H3-05",
+      "a": "J3.5",
+      "b": "J12.5",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D18_TX1",
+      "model_polyline_mm": [
+        [
+          75.2,
+          5.524
+        ],
+        [
+          75.2,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H3-06",
+      "a": "J3.6",
+      "b": "J12.6",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D19_RX1",
+      "model_polyline_mm": [
+        [
+          77.74,
+          5.524
+        ],
+        [
+          77.74,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H3-07",
+      "a": "J3.7",
+      "b": "J12.7",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D20_SDA",
+      "model_polyline_mm": [
+        [
+          80.28,
+          5.524
+        ],
+        [
+          80.28,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H3-08",
+      "a": "J3.8",
+      "b": "J12.8",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D21_SCL",
+      "model_polyline_mm": [
+        [
+          82.82,
+          5.524
+        ],
+        [
+          82.82,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "H4-01",
+      "a": "J4.1",
+      "b": "J13.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_RESET",
+      "model_polyline_mm": [
+        [
+          29.48,
+          53.5
+        ],
+        [
+          29.48,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H4-02",
+      "a": "J4.2",
+      "b": "J13.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+3V3",
+      "model_polyline_mm": [
+        [
+          32.02,
+          53.5
+        ],
+        [
+          32.02,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H4-03",
+      "a": "J4.3",
+      "b": "J13.3",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          34.56,
+          53.5
+        ],
+        [
+          34.56,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H4-04",
+      "a": "J4.4",
+      "b": "J13.4",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          37.1,
+          53.5
+        ],
+        [
+          37.1,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H4-05",
+      "a": "J4.5",
+      "b": "J13.5",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          39.64,
+          53.5
+        ],
+        [
+          39.64,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H4-06",
+      "a": "J4.6",
+      "b": "J13.6",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_VIN",
+      "model_polyline_mm": [
+        [
+          42.18,
+          53.5
+        ],
+        [
+          42.18,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H5-01",
+      "a": "J5.1",
+      "b": "J14.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A0",
+      "model_polyline_mm": [
+        [
+          47.259999,
+          53.5
+        ],
+        [
+          47.259999,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H5-02",
+      "a": "J5.2",
+      "b": "J14.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A1",
+      "model_polyline_mm": [
+        [
+          49.799999,
+          53.5
+        ],
+        [
+          49.799999,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H5-03",
+      "a": "J5.3",
+      "b": "J14.3",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A2",
+      "model_polyline_mm": [
+        [
+          52.339999,
+          53.5
+        ],
+        [
+          52.339999,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H5-04",
+      "a": "J5.4",
+      "b": "J14.4",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A3",
+      "model_polyline_mm": [
+        [
+          54.879999,
+          53.5
+        ],
+        [
+          54.879999,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H5-05",
+      "a": "J5.5",
+      "b": "J14.5",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A4",
+      "model_polyline_mm": [
+        [
+          57.419999,
+          53.5
+        ],
+        [
+          57.419999,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H5-06",
+      "a": "J5.6",
+      "b": "J14.6",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A5",
+      "model_polyline_mm": [
+        [
+          59.959999,
+          53.5
+        ],
+        [
+          59.959999,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H5-07",
+      "a": "J5.7",
+      "b": "J14.7",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A6",
+      "model_polyline_mm": [
+        [
+          62.499999,
+          53.5
+        ],
+        [
+          62.499999,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H5-08",
+      "a": "J5.8",
+      "b": "J14.8",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A7",
+      "model_polyline_mm": [
+        [
+          65.039999,
+          53.5
+        ],
+        [
+          65.039999,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H6-01",
+      "a": "J6.1",
+      "b": "J15.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A8",
+      "model_polyline_mm": [
+        [
+          70.12,
+          53.5
+        ],
+        [
+          70.12,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H6-02",
+      "a": "J6.2",
+      "b": "J15.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A9",
+      "model_polyline_mm": [
+        [
+          72.66,
+          53.5
+        ],
+        [
+          72.66,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H6-03",
+      "a": "J6.3",
+      "b": "J15.3",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A10",
+      "model_polyline_mm": [
+        [
+          75.2,
+          53.5
+        ],
+        [
+          75.2,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H6-04",
+      "a": "J6.4",
+      "b": "J15.4",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_A11",
+      "model_polyline_mm": [
+        [
+          77.74,
+          53.5
+        ],
+        [
+          77.74,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H6-05",
+      "a": "J6.5",
+      "b": "J15.5",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_DAC0",
+      "model_polyline_mm": [
+        [
+          80.28,
+          53.5
+        ],
+        [
+          80.28,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H6-06",
+      "a": "J6.6",
+      "b": "J15.6",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_DAC1",
+      "model_polyline_mm": [
+        [
+          82.82,
+          53.5
+        ],
+        [
+          82.82,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H6-07",
+      "a": "J6.7",
+      "b": "J15.7",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_CANRX0",
+      "model_polyline_mm": [
+        [
+          85.36,
+          53.5
+        ],
+        [
+          85.36,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "H6-08",
+      "a": "J6.8",
+      "b": "J15.8",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible short spoke between corresponding header/breakout contacts.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_CANTX0",
+      "model_polyline_mm": [
+        [
+          87.9,
+          53.5
+        ],
+        [
+          87.9,
+          49.436
+        ]
+      ]
+    },
+    {
+      "id": "D22",
+      "a": "J7.3",
+      "b": "J8.3",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          5.27
+        ],
+        [
+          94.65,
+          5.27
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D22",
+      "model_polyline_mm": [
+        [
+          90.44,
+          4.0
+        ],
+        [
+          91.709999,
+          5.27
+        ],
+        [
+          94.65,
+          5.27
+        ],
+        [
+          95.92,
+          4.0
+        ]
+      ]
+    },
+    {
+      "id": "D23",
+      "a": "J7.4",
+      "b": "J8.4",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          2.73
+        ],
+        [
+          97.19,
+          2.73
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D23",
+      "model_polyline_mm": [
+        [
+          92.98,
+          4.0
+        ],
+        [
+          94.25,
+          2.73
+        ],
+        [
+          97.19,
+          2.73
+        ],
+        [
+          98.46,
+          4.0
+        ]
+      ]
+    },
+    {
+      "id": "D24",
+      "a": "J7.5",
+      "b": "J8.5",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          7.8100000000000005
+        ],
+        [
+          94.65,
+          7.8100000000000005
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D24",
+      "model_polyline_mm": [
+        [
+          90.44,
+          6.54
+        ],
+        [
+          91.709999,
+          7.81
+        ],
+        [
+          94.65,
+          7.81
+        ],
+        [
+          95.92,
+          6.54
+        ]
+      ]
+    },
+    {
+      "id": "D25",
+      "a": "J7.6",
+      "b": "J8.6",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          5.27
+        ],
+        [
+          97.19,
+          5.27
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D25",
+      "model_polyline_mm": [
+        [
+          92.98,
+          6.54
+        ],
+        [
+          94.25,
+          5.27
+        ],
+        [
+          97.19,
+          5.27
+        ],
+        [
+          98.46,
+          6.54
+        ]
+      ]
+    },
+    {
+      "id": "D26",
+      "a": "J7.7",
+      "b": "J8.7",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          10.35
+        ],
+        [
+          94.65,
+          10.35
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D26",
+      "model_polyline_mm": [
+        [
+          90.44,
+          9.08
+        ],
+        [
+          91.709999,
+          10.35
+        ],
+        [
+          94.65,
+          10.35
+        ],
+        [
+          95.92,
+          9.08
+        ]
+      ]
+    },
+    {
+      "id": "D27",
+      "a": "J7.8",
+      "b": "J8.8",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          7.8100000000000005
+        ],
+        [
+          97.19,
+          7.8100000000000005
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D27",
+      "model_polyline_mm": [
+        [
+          92.98,
+          9.08
+        ],
+        [
+          94.25,
+          7.81
+        ],
+        [
+          97.19,
+          7.81
+        ],
+        [
+          98.46,
+          9.08
+        ]
+      ]
+    },
+    {
+      "id": "D28",
+      "a": "J7.9",
+      "b": "J8.9",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          12.89
+        ],
+        [
+          94.65,
+          12.89
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D28",
+      "model_polyline_mm": [
+        [
+          90.44,
+          11.62
+        ],
+        [
+          91.709999,
+          12.89
+        ],
+        [
+          94.65,
+          12.89
+        ],
+        [
+          95.92,
+          11.62
+        ]
+      ]
+    },
+    {
+      "id": "D29",
+      "a": "J7.10",
+      "b": "J8.10",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          10.350000000000001
+        ],
+        [
+          97.19,
+          10.350000000000001
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D29",
+      "model_polyline_mm": [
+        [
+          92.98,
+          11.62
+        ],
+        [
+          94.25,
+          10.35
+        ],
+        [
+          97.19,
+          10.35
+        ],
+        [
+          98.46,
+          11.62
+        ]
+      ]
+    },
+    {
+      "id": "D30",
+      "a": "J7.11",
+      "b": "J8.11",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          15.43
+        ],
+        [
+          94.65,
+          15.43
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D30",
+      "model_polyline_mm": [
+        [
+          90.44,
+          14.16
+        ],
+        [
+          91.709999,
+          15.43
+        ],
+        [
+          94.65,
+          15.43
+        ],
+        [
+          95.92,
+          14.16
+        ]
+      ]
+    },
+    {
+      "id": "D31",
+      "a": "J7.12",
+      "b": "J8.12",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          12.89
+        ],
+        [
+          97.19,
+          12.89
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D31",
+      "model_polyline_mm": [
+        [
+          92.98,
+          14.16
+        ],
+        [
+          94.25,
+          12.89
+        ],
+        [
+          97.19,
+          12.89
+        ],
+        [
+          98.46,
+          14.16
+        ]
+      ]
+    },
+    {
+      "id": "D32",
+      "a": "J7.13",
+      "b": "J8.13",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          17.97
+        ],
+        [
+          94.65,
+          17.97
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D32",
+      "model_polyline_mm": [
+        [
+          90.44,
+          16.7
+        ],
+        [
+          91.709999,
+          17.97
+        ],
+        [
+          94.65,
+          17.97
+        ],
+        [
+          95.92,
+          16.7
+        ]
+      ]
+    },
+    {
+      "id": "D33",
+      "a": "J7.14",
+      "b": "J8.14",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          15.43
+        ],
+        [
+          97.19,
+          15.43
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D33",
+      "model_polyline_mm": [
+        [
+          92.98,
+          16.7
+        ],
+        [
+          94.25,
+          15.43
+        ],
+        [
+          97.19,
+          15.43
+        ],
+        [
+          98.46,
+          16.7
+        ]
+      ]
+    },
+    {
+      "id": "D34",
+      "a": "J7.15",
+      "b": "J8.15",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          20.51
+        ],
+        [
+          94.65,
+          20.51
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D34",
+      "model_polyline_mm": [
+        [
+          90.44,
+          19.24
+        ],
+        [
+          91.709999,
+          20.51
+        ],
+        [
+          94.65,
+          20.51
+        ],
+        [
+          95.92,
+          19.24
+        ]
+      ]
+    },
+    {
+      "id": "D35",
+      "a": "J7.16",
+      "b": "J8.16",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          17.970000000000002
+        ],
+        [
+          97.19,
+          17.970000000000002
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D35",
+      "model_polyline_mm": [
+        [
+          92.98,
+          19.24
+        ],
+        [
+          94.25,
+          17.97
+        ],
+        [
+          97.19,
+          17.97
+        ],
+        [
+          98.46,
+          19.24
+        ]
+      ]
+    },
+    {
+      "id": "D36",
+      "a": "J7.17",
+      "b": "J8.17",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          23.05
+        ],
+        [
+          94.65,
+          23.05
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D36",
+      "model_polyline_mm": [
+        [
+          90.44,
+          21.78
+        ],
+        [
+          91.709999,
+          23.05
+        ],
+        [
+          94.65,
+          23.05
+        ],
+        [
+          95.92,
+          21.78
+        ]
+      ]
+    },
+    {
+      "id": "D37",
+      "a": "J7.18",
+      "b": "J8.18",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          20.51
+        ],
+        [
+          97.19,
+          20.51
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D37",
+      "model_polyline_mm": [
+        [
+          92.98,
+          21.78
+        ],
+        [
+          94.25,
+          20.51
+        ],
+        [
+          97.19,
+          20.51
+        ],
+        [
+          98.46,
+          21.78
+        ]
+      ]
+    },
+    {
+      "id": "D38",
+      "a": "J7.19",
+      "b": "J8.19",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          25.59
+        ],
+        [
+          94.65,
+          25.59
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D38",
+      "model_polyline_mm": [
+        [
+          90.44,
+          24.32
+        ],
+        [
+          91.709999,
+          25.59
+        ],
+        [
+          94.65,
+          25.59
+        ],
+        [
+          95.92,
+          24.32
+        ]
+      ]
+    },
+    {
+      "id": "D39",
+      "a": "J7.20",
+      "b": "J8.20",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          23.05
+        ],
+        [
+          97.19,
+          23.05
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D39",
+      "model_polyline_mm": [
+        [
+          92.98,
+          24.32
+        ],
+        [
+          94.25,
+          23.05
+        ],
+        [
+          97.19,
+          23.05
+        ],
+        [
+          98.46,
+          24.32
+        ]
+      ]
+    },
+    {
+      "id": "D40",
+      "a": "J7.21",
+      "b": "J8.21",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          28.13
+        ],
+        [
+          94.65,
+          28.13
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D40",
+      "model_polyline_mm": [
+        [
+          90.44,
+          26.86
+        ],
+        [
+          91.709999,
+          28.13
+        ],
+        [
+          94.65,
+          28.13
+        ],
+        [
+          95.92,
+          26.86
+        ]
+      ]
+    },
+    {
+      "id": "D41",
+      "a": "J7.22",
+      "b": "J8.22",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          25.59
+        ],
+        [
+          97.19,
+          25.59
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D41",
+      "model_polyline_mm": [
+        [
+          92.98,
+          26.86
+        ],
+        [
+          94.25,
+          25.59
+        ],
+        [
+          97.19,
+          25.59
+        ],
+        [
+          98.46,
+          26.86
+        ]
+      ]
+    },
+    {
+      "id": "D42",
+      "a": "J7.23",
+      "b": "J8.23",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          30.67
+        ],
+        [
+          94.65,
+          30.67
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D42",
+      "model_polyline_mm": [
+        [
+          90.44,
+          29.4
+        ],
+        [
+          91.709999,
+          30.67
+        ],
+        [
+          94.65,
+          30.67
+        ],
+        [
+          95.92,
+          29.4
+        ]
+      ]
+    },
+    {
+      "id": "D43",
+      "a": "J7.24",
+      "b": "J8.24",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          28.130000000000003
+        ],
+        [
+          97.19,
+          28.130000000000003
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D43",
+      "model_polyline_mm": [
+        [
+          92.98,
+          29.4
+        ],
+        [
+          94.25,
+          28.13
+        ],
+        [
+          97.19,
+          28.13
+        ],
+        [
+          98.46,
+          29.4
+        ]
+      ]
+    },
+    {
+      "id": "D44",
+      "a": "J7.25",
+      "b": "J8.25",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          33.21
+        ],
+        [
+          94.65,
+          33.21
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D44",
+      "model_polyline_mm": [
+        [
+          90.44,
+          31.94
+        ],
+        [
+          91.709999,
+          33.21
+        ],
+        [
+          94.65,
+          33.21
+        ],
+        [
+          95.92,
+          31.94
+        ]
+      ]
+    },
+    {
+      "id": "D45",
+      "a": "J7.26",
+      "b": "J8.26",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          30.67
+        ],
+        [
+          97.19,
+          30.67
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D45",
+      "model_polyline_mm": [
+        [
+          92.98,
+          31.94
+        ],
+        [
+          94.25,
+          30.67
+        ],
+        [
+          97.19,
+          30.67
+        ],
+        [
+          98.46,
+          31.94
+        ]
+      ]
+    },
+    {
+      "id": "D46",
+      "a": "J7.27",
+      "b": "J8.27",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          35.75000000000001
+        ],
+        [
+          94.65,
+          35.75000000000001
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D46",
+      "model_polyline_mm": [
+        [
+          90.44,
+          34.48
+        ],
+        [
+          91.709999,
+          35.75
+        ],
+        [
+          94.65,
+          35.75
+        ],
+        [
+          95.92,
+          34.48
+        ]
+      ]
+    },
+    {
+      "id": "D47",
+      "a": "J7.28",
+      "b": "J8.28",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          33.21
+        ],
+        [
+          97.19,
+          33.21
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D47",
+      "model_polyline_mm": [
+        [
+          92.98,
+          34.48
+        ],
+        [
+          94.25,
+          33.21
+        ],
+        [
+          97.19,
+          33.21
+        ],
+        [
+          98.46,
+          34.48
+        ]
+      ]
+    },
+    {
+      "id": "D48",
+      "a": "J7.29",
+      "b": "J8.29",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          38.290000000000006
+        ],
+        [
+          94.65,
+          38.290000000000006
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D48",
+      "model_polyline_mm": [
+        [
+          90.44,
+          37.02
+        ],
+        [
+          91.709999,
+          38.29
+        ],
+        [
+          94.65,
+          38.29
+        ],
+        [
+          95.92,
+          37.02
+        ]
+      ]
+    },
+    {
+      "id": "D49",
+      "a": "J7.30",
+      "b": "J8.30",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          35.75
+        ],
+        [
+          97.19,
+          35.75
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D49",
+      "model_polyline_mm": [
+        [
+          92.98,
+          37.02
+        ],
+        [
+          94.25,
+          35.75
+        ],
+        [
+          97.19,
+          35.75
+        ],
+        [
+          98.46,
+          37.02
+        ]
+      ]
+    },
+    {
+      "id": "D50",
+      "a": "J7.31",
+      "b": "J8.31",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          40.830000000000005
+        ],
+        [
+          94.65,
+          40.830000000000005
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D50",
+      "model_polyline_mm": [
+        [
+          90.44,
+          39.56
+        ],
+        [
+          91.709999,
+          40.83
+        ],
+        [
+          94.65,
+          40.83
+        ],
+        [
+          95.92,
+          39.56
+        ]
+      ]
+    },
+    {
+      "id": "D51",
+      "a": "J7.32",
+      "b": "J8.32",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          38.29
+        ],
+        [
+          97.19,
+          38.29
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D51",
+      "model_polyline_mm": [
+        [
+          92.98,
+          39.56
+        ],
+        [
+          94.25,
+          38.289999
+        ],
+        [
+          97.19,
+          38.289999
+        ],
+        [
+          98.46,
+          39.56
+        ]
+      ]
+    },
+    {
+      "id": "D52",
+      "a": "J7.33",
+      "b": "J8.33",
+      "layer": "F.Cu",
+      "points": [
+        [
+          91.71,
+          43.370000000000005
+        ],
+        [
+          94.65,
+          43.370000000000005
+        ]
+      ],
+      "note": "Front dogleg to corresponding inner-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D52",
+      "model_polyline_mm": [
+        [
+          90.44,
+          42.1
+        ],
+        [
+          91.709999,
+          43.37
+        ],
+        [
+          94.65,
+          43.37
+        ],
+        [
+          95.92,
+          42.1
+        ]
+      ]
+    },
+    {
+      "id": "D53",
+      "a": "J7.34",
+      "b": "J8.34",
+      "layer": "B.Cu",
+      "points": [
+        [
+          94.25,
+          40.83
+        ],
+        [
+          97.19,
+          40.83
+        ]
+      ],
+      "note": "Back dogleg to corresponding outer-column digital breakout.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D53",
+      "model_polyline_mm": [
+        [
+          92.98,
+          42.1
+        ],
+        [
+          94.25,
+          40.83
+        ],
+        [
+          97.19,
+          40.83
+        ],
+        [
+          98.46,
+          42.1
+        ]
+      ]
+    },
+    {
+      "id": "5V-TOP-1",
+      "a": "J7.1",
+      "b": "J7.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible power/ground crossbar at the ends of the digital field.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          90.44,
+          1.46
+        ],
+        [
+          92.98,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "5V-TOP-2",
+      "a": "J7.2",
+      "b": "J8.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible power/ground crossbar at the ends of the digital field.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          92.98,
+          1.46
+        ],
+        [
+          95.92,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "5V-TOP-3",
+      "a": "J8.1",
+      "b": "J8.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible power/ground crossbar at the ends of the digital field.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          95.92,
+          1.46
+        ],
+        [
+          98.46,
+          1.46
+        ]
+      ]
+    },
+    {
+      "id": "GND-DIG-1",
+      "a": "J7.35",
+      "b": "J7.36",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible power/ground crossbar at the ends of the digital field.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          90.44,
+          44.64
+        ],
+        [
+          92.98,
+          44.64
+        ]
+      ]
+    },
+    {
+      "id": "GND-DIG-2",
+      "a": "J7.36",
+      "b": "J8.35",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible power/ground crossbar at the ends of the digital field.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          92.98,
+          44.64
+        ],
+        [
+          95.92,
+          44.64
+        ]
+      ]
+    },
+    {
+      "id": "GND-DIG-3",
+      "a": "J8.35",
+      "b": "J8.36",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible power/ground crossbar at the ends of the digital field.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          95.92,
+          44.64
+        ],
+        [
+          98.46,
+          44.64
+        ]
+      ]
+    },
+    {
+      "id": "GND-DIG-4",
+      "a": "J8.36",
+      "b": "J8.38",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible power/ground crossbar at the ends of the digital field.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          98.46,
+          44.64
+        ],
+        [
+          98.46,
+          47.18
+        ]
+      ]
+    },
+    {
+      "id": "GND-DIG-5",
+      "a": "J8.38",
+      "b": "J8.37",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible power/ground crossbar at the ends of the digital field.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          98.46,
+          47.18
+        ],
+        [
+          95.92,
+          47.18
+        ]
+      ]
+    },
+    {
+      "id": "5V-BOTTOM",
+      "a": "J8.39",
+      "b": "J8.40",
+      "layer": "B.Cu",
+      "points": [],
+      "note": "Bottom 5V pair is joined on BACK copper only; remove the incorrect front bar.",
+      "evidence": "IMG_2138.jpeg: no front bar; IMG_2141.jpeg: visible back bar",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          95.92,
+          49.72
+        ],
+        [
+          98.46,
+          49.72
+        ]
+      ]
+    },
+    {
+      "id": "5V-PERIMETER",
+      "a": "J13.3",
+      "b": "J8.39",
+      "layer": "B.Cu",
+      "points": [
+        [
+          35.8,
+          48.2
+        ],
+        [
+          94.4,
+          48.2
+        ]
+      ],
+      "note": "Back lower-edge +5V feed from power-header breakout to the left contact of the bottom 5V pair.",
+      "evidence": "IMG_2140.jpeg: power-header +5V departure; IMG_2141.jpeg: back lower-edge arrival",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          34.56,
+          49.436
+        ],
+        [
+          35.8,
+          48.199999
+        ],
+        [
+          94.4,
+          48.199999
+        ],
+        [
+          95.92,
+          49.72
+        ]
+      ]
+    },
+    {
+      "id": "5V-EDGE",
+      "a": "J8.2",
+      "b": "J8.40",
+      "layer": "B.Cu",
+      "points": [
+        [
+          100.5,
+          3.26
+        ],
+        [
+          100.5,
+          47.68
+        ]
+      ],
+      "note": "Back-side outer-edge supply return, joining the top and bottom 5V pairs.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          98.46,
+          1.46
+        ],
+        [
+          100.5,
+          3.26
+        ],
+        [
+          100.5,
+          47.68
+        ],
+        [
+          98.46,
+          49.72
+        ]
+      ]
+    },
+    {
+      "id": "GND-PERIMETER",
+      "a": "J13.4",
+      "b": "J7.35",
+      "layer": "F.Cu",
+      "points": [
+        [
+          37.1,
+          47.7
+        ],
+        [
+          37.6,
+          47.2
+        ],
+        [
+          87.88,
+          47.2
+        ]
+      ],
+      "note": "Owner-corrected ground route: horizontal lane moved 1 mm away from socket row; vertical departure from J13.4 and 45-degree arrival at J7.35.",
+      "evidence": "Owner socket-clearance correction, 2026-10-30; IMG_2135/2138 placement reference",
+      "status": "owner_corrected_geometry_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          37.1,
+          49.436
+        ],
+        [
+          37.1,
+          47.7
+        ],
+        [
+          37.6,
+          47.2
+        ],
+        [
+          87.88,
+          47.2
+        ],
+        [
+          90.44,
+          44.64
+        ]
+      ]
+    },
+    {
+      "id": "SPI50-F",
+      "a": "J9.2",
+      "b": "V50",
+      "layer": "F.Cu",
+      "points": [
+        [
+          2.0,
+          11.5
+        ],
+        [
+          2.6,
+          12.1
+        ],
+        [
+          83.6,
+          12.1
+        ],
+        [
+          84.9,
+          13.4
+        ],
+        [
+          84.9,
+          42.0
+        ]
+      ],
+      "note": "Exposed bottom-left corner pad -> lower long path -> D50 transition.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D50",
+      "model_polyline_mm": [
+        [
+          2.0,
+          4.34
+        ],
+        [
+          2.0,
+          11.5
+        ],
+        [
+          2.6,
+          12.1
+        ],
+        [
+          83.6,
+          12.1
+        ],
+        [
+          84.9,
+          13.4
+        ],
+        [
+          84.9,
+          42.0
+        ],
+        [
+          85.9,
+          43.0
+        ]
+      ]
+    },
+    {
+      "id": "SPI50-B",
+      "a": "V50",
+      "b": "J7.31",
+      "layer": "B.Cu",
+      "points": [
+        [
+          89.34,
+          39.56
+        ]
+      ],
+      "note": "Owner-corrected D50 approach: horizontal into the middle-right of J7.31 in flipped B.Cu view (left in canonical top view).",
+      "evidence": "Owner geometry correction, 2026-10-30; IMG_2141.jpeg reverse-side route",
+      "status": "owner_corrected_geometry_not_meter_verified",
+      "net": "DUE_D50",
+      "model_polyline_mm": [
+        [
+          85.9,
+          43.0
+        ],
+        [
+          89.34,
+          39.56
+        ],
+        [
+          90.44,
+          39.56
+        ]
+      ]
+    },
+    {
+      "id": "SPI51-F",
+      "a": "J9.3",
+      "b": "V51",
+      "layer": "F.Cu",
+      "points": [
+        [
+          5.8,
+          3.1
+        ],
+        [
+          5.8,
+          5.3
+        ],
+        [
+          7.0,
+          6.5
+        ],
+        [
+          17.0,
+          6.5
+        ],
+        [
+          19.0,
+          8.5
+        ],
+        [
+          85.9,
+          8.5
+        ],
+        [
+          87.2,
+          9.8
+        ]
+      ],
+      "note": "Exposed top-middle corner pad -> upper long path -> D51 transition.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D51",
+      "model_polyline_mm": [
+        [
+          4.54,
+          1.8
+        ],
+        [
+          5.8,
+          3.1
+        ],
+        [
+          5.8,
+          5.3
+        ],
+        [
+          7.0,
+          6.5
+        ],
+        [
+          17.0,
+          6.5
+        ],
+        [
+          19.0,
+          8.5
+        ],
+        [
+          85.9,
+          8.5
+        ],
+        [
+          87.2,
+          9.8
+        ],
+        [
+          87.2,
+          36.75
+        ]
+      ]
+    },
+    {
+      "id": "SPI51-B",
+      "a": "V51",
+      "b": "J7.32",
+      "layer": "B.Cu",
+      "points": [
+        [
+          88.7,
+          38.29
+        ],
+        [
+          91.71,
+          38.29
+        ]
+      ],
+      "note": "Upper via-to-D51 continuation visible on the reverse photograph.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D51",
+      "model_polyline_mm": [
+        [
+          87.2,
+          36.75
+        ],
+        [
+          88.7,
+          38.289999
+        ],
+        [
+          91.709999,
+          38.289999
+        ],
+        [
+          92.98,
+          39.56
+        ]
+      ]
+    },
+    {
+      "id": "SPI52-F",
+      "a": "J9.4",
+      "b": "J7.33",
+      "layer": "F.Cu",
+      "points": [
+        [
+          4.54,
+          6.77
+        ],
+        [
+          5.07,
+          7.3
+        ],
+        [
+          5.07,
+          9.57
+        ],
+        [
+          84.8,
+          9.57
+        ],
+        [
+          86.1,
+          10.87
+        ],
+        [
+          86.1,
+          38.2
+        ]
+      ],
+      "note": "Exposed bottom-middle corner pad -> middle long path -> D52.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D52",
+      "model_polyline_mm": [
+        [
+          4.54,
+          4.34
+        ],
+        [
+          4.54,
+          6.77
+        ],
+        [
+          5.07,
+          7.3
+        ],
+        [
+          5.07,
+          9.57
+        ],
+        [
+          84.8,
+          9.57
+        ],
+        [
+          86.1,
+          10.87
+        ],
+        [
+          86.1,
+          38.2
+        ],
+        [
+          90.44,
+          42.1
+        ]
+      ]
+    },
+    {
+      "id": "STAT-B",
+      "a": "J1.3",
+      "b": "VSTAT",
+      "layer": "B.Cu",
+      "points": [
+        [
+          25.415999999999997,
+          42.8
+        ],
+        [
+          22.3,
+          45.89
+        ],
+        [
+          22.3,
+          49.8
+        ],
+        [
+          20.9,
+          51.2
+        ],
+        [
+          16.2,
+          51.2
+        ],
+        [
+          14.7,
+          52.7
+        ]
+      ],
+      "note": "D13 starts at the INNER bare contact J1.3, not outer J10.3. The J1/J10 link remains front copper only.",
+      "evidence": "IMG_2139.jpeg: trace departs inner bare D13 pad; IMG_2140.jpeg: control-area continuation",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D13",
+      "model_polyline_mm": [
+        [
+          25.416,
+          5.524
+        ],
+        [
+          25.416,
+          42.8
+        ],
+        [
+          22.3,
+          45.89
+        ],
+        [
+          22.3,
+          49.8
+        ],
+        [
+          20.9,
+          51.199999
+        ],
+        [
+          16.2,
+          51.199999
+        ],
+        [
+          14.7,
+          52.699999
+        ],
+        [
+          14.7,
+          53.82
+        ]
+      ]
+    },
+    {
+      "id": "STAT-F",
+      "a": "VSTAT",
+      "b": "R3.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Short front spur from the STAT transition to the 102-marked resistor.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_D13",
+      "model_polyline_mm": [
+        [
+          14.7,
+          53.82
+        ],
+        [
+          12.05,
+          53.8
+        ]
+      ]
+    },
+    {
+      "id": "RESET-F",
+      "a": "J13.1",
+      "b": "SW1.2",
+      "layer": "F.Cu",
+      "points": [
+        [
+          28.25,
+          48.5
+        ]
+      ],
+      "note": "Visible front reset-header route into the upper-right switch lead.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_RESET",
+      "model_polyline_mm": [
+        [
+          29.48,
+          49.436
+        ],
+        [
+          28.25,
+          48.5
+        ],
+        [
+          24.45,
+          48.5
+        ]
+      ]
+    },
+    {
+      "id": "RESET-TOP-BAR",
+      "a": "SW1.1",
+      "b": "SW1.2",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Bare pads reveal the upper pair is permanently joined by FRONT copper.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_RESET",
+      "model_polyline_mm": [
+        [
+          17.95,
+          48.5
+        ],
+        [
+          24.45,
+          48.5
+        ]
+      ]
+    },
+    {
+      "id": "GND-BOTTOM-BAR",
+      "a": "SW1.3",
+      "b": "SW1.4",
+      "layer": "B.Cu",
+      "points": [],
+      "note": "Bare pads reveal the lower pair is permanently joined by BACK copper.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          17.95,
+          53.0
+        ],
+        [
+          24.45,
+          53.0
+        ]
+      ]
+    },
+    {
+      "id": "SW-GND-B",
+      "a": "SW1.4",
+      "b": "J4.4",
+      "layer": "B.Cu",
+      "points": [
+        [
+          26.15,
+          54.7
+        ],
+        [
+          35.9,
+          54.7
+        ]
+      ],
+      "note": "Corrects P2.1 RESET-B: the lower-right switch pad reaches GND, NOT reset.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          24.45,
+          53.0
+        ],
+        [
+          26.15,
+          54.7
+        ],
+        [
+          35.9,
+          54.7
+        ],
+        [
+          37.1,
+          53.5
+        ]
+      ]
+    },
+    {
+      "id": "POWER-GND-BAR",
+      "a": "J4.4",
+      "b": "J4.5",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Exposed lower power row has a front copper bar between its two GND pads.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          37.1,
+          53.5
+        ],
+        [
+          39.64,
+          53.5
+        ]
+      ]
+    },
+    {
+      "id": "CORNER-SW-B",
+      "a": "J9.6",
+      "b": "SW1.1",
+      "layer": "B.Cu",
+      "points": [
+        [
+          8.32,
+          3.02
+        ],
+        [
+          10.92,
+          3.02
+        ],
+        [
+          12.69,
+          4.79
+        ],
+        [
+          12.69,
+          44.8
+        ],
+        [
+          16.39,
+          48.5
+        ]
+      ],
+      "note": "Exposed bottom-right corner pad reaches the upper-left RESET pad on the back.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_RESET",
+      "model_polyline_mm": [
+        [
+          7.08,
+          4.34
+        ],
+        [
+          8.32,
+          3.02
+        ],
+        [
+          10.92,
+          3.02
+        ],
+        [
+          12.69,
+          4.79
+        ],
+        [
+          12.69,
+          44.8
+        ],
+        [
+          16.39,
+          48.5
+        ],
+        [
+          17.95,
+          48.5
+        ]
+      ]
+    },
+    {
+      "id": "PWR-SERIES",
+      "a": "D1.2",
+      "b": "R2.1",
+      "layer": "F.Cu",
+      "points": [
+        [
+          7.2,
+          48.9
+        ],
+        [
+          8.8,
+          50.5
+        ]
+      ],
+      "note": "Visible PWR LED / 102 resistor series connection; LED polarity unassigned.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "D1_UNKNOWN_2",
+      "model_polyline_mm": [
+        [
+          5.825,
+          48.9
+        ],
+        [
+          7.2,
+          48.9
+        ],
+        [
+          8.8,
+          50.5
+        ],
+        [
+          9.9,
+          50.5
+        ]
+      ]
+    },
+    {
+      "id": "STAT-SERIES",
+      "a": "D2.2",
+      "b": "R3.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible STAT LED / 102 resistor series connection; LED polarity unassigned.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "D2_UNKNOWN_2",
+      "model_polyline_mm": [
+        [
+          5.825,
+          53.9
+        ],
+        [
+          10.05,
+          53.8
+        ]
+      ]
+    },
+    {
+      "id": "LED-COMMON",
+      "a": "D1.1",
+      "b": "D2.1",
+      "layer": "F.Cu",
+      "points": [],
+      "note": "Visible common left-hand LED rail, now traced to ground through the exposed lower switch pads.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          4.275,
+          48.9
+        ],
+        [
+          4.275,
+          53.9
+        ]
+      ]
+    },
+    {
+      "id": "LED-SPUR",
+      "a": "D1.1",
+      "b": "VLED",
+      "layer": "F.Cu",
+      "points": [
+        [
+          4.275,
+          51.14
+        ]
+      ],
+      "note": "Via/spur visible at the common LED rail.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          4.275,
+          48.9
+        ],
+        [
+          4.275,
+          51.139999
+        ],
+        [
+          2.5,
+          51.139999
+        ]
+      ]
+    },
+    {
+      "id": "PULLUP-LEFT",
+      "a": "R1.1",
+      "b": "J9.1",
+      "layer": "F.Cu",
+      "points": [
+        [
+          8.4,
+          45.9
+        ],
+        [
+          2.3,
+          45.9
+        ],
+        [
+          0.7,
+          44.3
+        ],
+        [
+          0.7,
+          3.1
+        ]
+      ],
+      "note": "103 resistor left land reaches corner pad 1; the newly traced R1/R2 link establishes +5V.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          9.9,
+          47.4
+        ],
+        [
+          8.4,
+          45.9
+        ],
+        [
+          2.3,
+          45.9
+        ],
+        [
+          0.7,
+          44.3
+        ],
+        [
+          0.7,
+          3.1
+        ],
+        [
+          2.0,
+          1.8
+        ]
+      ]
+    },
+    {
+      "id": "R1-R2-SUPPLY",
+      "a": "R1.1",
+      "b": "R2.2",
+      "layer": "F.Cu",
+      "points": [
+        [
+          9.9,
+          48.5
+        ]
+      ],
+      "note": "Front trace leaves the LEFT pad of R1 downward, then diagonally reaches the RIGHT pad of R2 / +5V.",
+      "evidence": "IMG_2136.jpeg: exposed R1-left to R2-right diagonal trace",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          9.9,
+          47.4
+        ],
+        [
+          9.9,
+          48.5
+        ],
+        [
+          11.9,
+          50.5
+        ]
+      ]
+    },
+    {
+      "id": "PULLUP-RIGHT",
+      "a": "R1.2",
+      "b": "SW1.1",
+      "layer": "F.Cu",
+      "points": [
+        [
+          16.85,
+          47.4
+        ]
+      ],
+      "note": "Exposed 103 resistor right land joins upper-left RESET pad.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_RESET",
+      "model_polyline_mm": [
+        [
+          11.9,
+          47.4
+        ],
+        [
+          16.85,
+          47.4
+        ],
+        [
+          17.95,
+          48.5
+        ]
+      ]
+    },
+    {
+      "id": "PWR-RES-RIGHT",
+      "a": "R2.2",
+      "b": "J4.3",
+      "layer": "F.Cu",
+      "points": [
+        [
+          25.4,
+          50.5
+        ],
+        [
+          27.5,
+          52.6
+        ],
+        [
+          27.5,
+          54.7
+        ],
+        [
+          33.36,
+          54.7
+        ]
+      ],
+      "note": "Exposed middle 102 resistor feed bypasses the switch and reaches +5V, power-header pin 3.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_+5V",
+      "model_polyline_mm": [
+        [
+          11.9,
+          50.5
+        ],
+        [
+          25.4,
+          50.5
+        ],
+        [
+          27.5,
+          52.6
+        ],
+        [
+          27.5,
+          54.7
+        ],
+        [
+          33.36,
+          54.7
+        ],
+        [
+          34.56,
+          53.5
+        ]
+      ]
+    },
+    {
+      "id": "LED-COMMON-RIGHT",
+      "a": "D1.1",
+      "b": "SW1.3",
+      "layer": "F.Cu",
+      "points": [
+        [
+          4.275,
+          52.1
+        ],
+        [
+          17.05,
+          52.1
+        ]
+      ],
+      "note": "Resolves UF-01: common LED rail reaches the exposed lower-left ground pad.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          4.275,
+          48.9
+        ],
+        [
+          4.275,
+          52.1
+        ],
+        [
+          17.05,
+          52.1
+        ],
+        [
+          17.95,
+          53.0
+        ]
+      ]
+    },
+    {
+      "id": "CORNER-GND-F",
+      "a": "J9.5",
+      "b": "VCORNER",
+      "layer": "F.Cu",
+      "points": [
+        [
+          8.0,
+          1.8
+        ],
+        [
+          9.3,
+          3.1
+        ]
+      ],
+      "note": "Exposed top-right corner pad joins the rounded front transition feature.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          7.08,
+          1.8
+        ],
+        [
+          8.0,
+          1.8
+        ],
+        [
+          9.3,
+          3.1
+        ],
+        [
+          9.3,
+          4.3
+        ]
+      ]
+    },
+    {
+      "id": "CORNER-GND-B",
+      "a": "VCORNER",
+      "b": "VLED",
+      "layer": "B.Cu",
+      "points": [
+        [
+          9.3,
+          5.5
+        ],
+        [
+          8.3,
+          6.5
+        ],
+        [
+          2.4,
+          6.5
+        ],
+        [
+          1.4,
+          7.5
+        ],
+        [
+          1.4,
+          50.04
+        ]
+      ],
+      "note": "Resolves UB-02: paired rounded features connect corner ground to LED ground along the back left edge.",
+      "evidence": "IMG_2135.jpeg - IMG_2141.jpeg; earlier IMG_2133/2134",
+      "status": "visually_traced_not_meter_verified",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          9.3,
+          4.3
+        ],
+        [
+          9.3,
+          5.5
+        ],
+        [
+          8.3,
+          6.5
+        ],
+        [
+          2.4,
+          6.5
+        ],
+        [
+          1.4,
+          7.5
+        ],
+        [
+          1.4,
+          50.039999
+        ],
+        [
+          2.5,
+          51.139999
+        ]
+      ]
+    },
+    {
+      "id": "CORNER-HEADER-B",
+      "a": "J9.5",
+      "b": "J10.2",
+      "layer": "B.Cu",
+      "points": [
+        [
+          17.8,
+          1.8
+        ],
+        [
+          19.3,
+          0.3
+        ],
+        [
+          21.716,
+          0.3
+        ]
+      ],
+      "note": "Owner confirmed J10.2 / GND as the endpoint. Final bends beneath plastic are estimated; route passes above AREF without joining it.",
+      "evidence": "IMG_2139.jpeg plus owner endpoint confirmation, 2026-10-30",
+      "status": "owner_confirmed_endpoint_geometry_estimated",
+      "measurement": "No resistance value supplied; endpoint confirmation is not a meter reading.",
+      "net": "DUE_GND",
+      "model_polyline_mm": [
+        [
+          7.08,
+          1.8
+        ],
+        [
+          17.8,
+          1.8
+        ],
+        [
+          19.3,
+          0.3
+        ],
+        [
+          21.716,
+          0.3
+        ],
+        [
+          22.876,
+          1.46
+        ]
+      ]
+    }
+  ],
+  "unclassified_fragments": [],
+  "observed_vias": [
+    {
+      "id": "V50",
+      "at": [
+        85.9,
+        43.0
+      ],
+      "net": "DUE_D50",
+      "source": "IMG_2138/2141: lower SPI transition"
+    },
+    {
+      "id": "V51",
+      "at": [
+        87.2,
+        36.75
+      ],
+      "net": "DUE_D51",
+      "source": "IMG_2138/2141: upper SPI transition"
+    },
+    {
+      "id": "VSTAT",
+      "at": [
+        14.7,
+        53.82
+      ],
+      "net": "DUE_D13",
+      "source": "IMG_2136/2140: STAT resistor return"
+    },
+    {
+      "id": "VLED",
+      "at": [
+        2.5,
+        51.14
+      ],
+      "net": "DUE_GND",
+      "source": "IMG_2136/2140: common LED rail spur"
+    },
+    {
+      "id": "VCORNER",
+      "at": [
+        9.3,
+        4.3
+      ],
+      "net": "DUE_GND",
+      "source": "IMG_2137/2139: corner ground transition"
+    }
+  ],
+  "verification": "Visual interpretation only. No physical continuity measurements supplied."
+}

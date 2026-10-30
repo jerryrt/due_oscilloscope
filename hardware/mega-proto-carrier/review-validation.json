@@ -1,0 +1,9 @@
+{
+  "revision": "R2 / P3.5",
+  "question_count": 12,
+  "target_count": 33,
+  "native_target_circles": "all present",
+  "native_group": "Carrier review questions R2",
+  "review_items_non_copper": true,
+  "scope": "P3 baseline changes copper intentionally; review drawings themselves occupy only User.5."
+}

@@ -22,6 +22,10 @@
 *.rar   binary
 *.zip   binary
 
+# Keep vendored, checksummed 3D CAD assets byte-for-byte, including the
+# upstream switch model's CRLF endings.
+hardware/mega-proto-carrier/models/kicad/*.step binary
+
 # Shell scripts and the linker scripts are read by tools that do not all
 # tolerate CR, and are named here so the rule survives someone relaxing
 # the line above.

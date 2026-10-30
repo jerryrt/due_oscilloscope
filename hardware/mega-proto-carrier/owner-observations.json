@@ -1,0 +1,65 @@
+{
+  "observations": [
+    {
+      "date": "2026-10-30",
+      "source": "owner confirmation in chat",
+      "statement": "yes, there is a crack in the corner near J9",
+      "physical_crack": "confirmed",
+      "copper_continuity_across_crack": "not measured",
+      "review_id": "Q09",
+      "marked_routes": [
+        "D51",
+        "D52",
+        "D50",
+        "RESET"
+      ],
+      "marker_geometry": "approximate photo-derived inspection locations; crack extent not measured",
+      "applies_to": "stripped photo specimen; not a claim about other boards"
+    },
+    {
+      "date": "2026-10-30",
+      "source": "owner clarification in chat",
+      "statement": "other PCBs still has the switch and header, this one is removed just for photo shoot with backlight to find out the routing.",
+      "model_assembly": "normal populated carrier; SW1 and J9 fitted",
+      "photo_specimen": "parts removed solely to reveal routing",
+      "other_boards_damage": "not assessed"
+    },
+    {
+      "date": "2026-10-30",
+      "source": "owner review and clarification in chat",
+      "statement": "F.Cu: check R1/R2 against IMG_2136 and bottom two pins against IMG_2138",
+      "header_reference_clarification": "Owner confirmed bottom 5V pair of outer digital field; model reference J8.39/J8.40, not corner J9."
+    },
+    {
+      "date": "2026-10-30",
+      "source": "owner reply to endpoint question",
+      "statement": "J10.2 \u2014 GND",
+      "route": "CORNER-HEADER-B",
+      "endpoints": [
+        "J9.5",
+        "J10.2"
+      ],
+      "net": "DUE_GND",
+      "confirmation": "Endpoint identified by owner; no meter reading supplied",
+      "geometry": "Final bends beneath reverse header plastic remain estimated"
+    },
+    {
+      "date": "2026-10-30",
+      "source": "owner layout review in chat",
+      "statement": "J7.31, the wire angle is not right, should enter in middle right.",
+      "route": "SPI50-B",
+      "view": "Flipped B.Cu, following the preceding back-side review",
+      "geometry": "Horizontal into pad mid-height from screen right; canonical top-view approach is from left",
+      "electrical_connection": "V50 -> J7.31 / D50 unchanged"
+    },
+    {
+      "date": "2026-10-30",
+      "source": "owner layout review in chat",
+      "statement": "J7.35 to J13.4, the wire is too close to other sockets.",
+      "route": "GND-PERIMETER",
+      "geometry": "Long lane moved from y=48.2 to y=47.2 mm; vertical departure from J13.4, 45-degree arrival at J7.35",
+      "electrical_connection": "J13.4 -> J7.35 / DUE_GND unchanged",
+      "qualification": "Correction to provisional model geometry; physical positions not measured"
+    }
+  ]
+}

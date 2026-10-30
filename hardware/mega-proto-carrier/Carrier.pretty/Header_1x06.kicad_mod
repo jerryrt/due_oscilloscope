@@ -1,0 +1,9 @@
+(footprint "Header_1x06" (version 20260206) (generator "pcbnew")
+      (layer "F.Cu")
+      (descr "Photo-derived carrier geometry; dimensions other than outline are provisional")
+      (attr through_hole)
+      (fp_text reference "REF**" (at 0 -2) (layer "F.Fab")
+        (effects (font (size 0.8 0.8) (thickness 0.12))))
+      (fp_text value "Header_1x06" (at 0 2) (layer "F.Fab") hide
+        (effects (font (size 0.8 0.8) (thickness 0.12))))
+       (pad "1" thru_hole rect (at 0.0 0) (size 1.7 1.7) (drill 1.0) (layers "*.Cu" "*.Mask")) (pad "2" thru_hole circle (at 2.54 0) (size 1.7 1.7) (drill 1.0) (layers "*.Cu" "*.Mask")) (pad "3" thru_hole circle (at 5.08 0) (size 1.7 1.7) (drill 1.0) (layers "*.Cu" "*.Mask")) (pad "4" thru_hole circle (at 7.62 0) (size 1.7 1.7) (drill 1.0) (layers "*.Cu" "*.Mask")) (pad "5" thru_hole circle (at 10.16 0) (size 1.7 1.7) (drill 1.0) (layers "*.Cu" "*.Mask")) (pad "6" thru_hole circle (at 12.7 0) (size 1.7 1.7) (drill 1.0) (layers "*.Cu" "*.Mask")))

@@ -1,0 +1,290 @@
+{
+  "$schema": "https://schemas.kicad.org/drc.v1.json",
+  "coordinate_units": "mm",
+  "date": "2026-10-30T17:05:34",
+  "ignored_checks": [
+    {
+      "description": "Footprint has no courtyard defined",
+      "key": "missing_courtyard"
+    },
+    {
+      "description": "Track endpoint not centered on via",
+      "key": "track_not_centered_on_via"
+    },
+    {
+      "description": "Tuning profile track geometries",
+      "key": "tuning_profile_track_geometries"
+    },
+    {
+      "description": "Footprint doesn't match symbol's footprint filters",
+      "key": "footprint_filters_mismatch"
+    },
+    {
+      "description": "Footprint component type doesn't match footprint pads",
+      "key": "footprint_type_mismatch"
+    }
+  ],
+  "included_severities": [
+    "error",
+    "warning"
+  ],
+  "kicad_version": "10.0.6",
+  "schematic_parity": [],
+  "source": "mega-proto-carrier.kicad_pcb",
+  "unconnected_items": [],
+  "violations": [
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 183.0,
+            "y": 135.0
+          },
+          "uuid": "881cb421-bd2d-46ce-a1d7-c15ca355dfb8"
+        },
+        {
+          "description": "Track [/DUE_GND] on B.Cu, length 1.6971 mm",
+          "pos": {
+            "x": 115.9,
+            "y": 134.7
+          },
+          "uuid": "4a660f8c-6bbc-46b1-bcff-5142642b9915"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 80.0,
+            "y": 80.0
+          },
+          "uuid": "9df79c78-551f-4b0a-8e3c-d80a5f82ff4f"
+        },
+        {
+          "description": "Track [/DUE_GND] on B.Cu, length 1.6405 mm",
+          "pos": {
+            "x": 101.716,
+            "y": 80.3
+          },
+          "uuid": "6669f2d6-8a84-4204-aef4-7d4fadf36094"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 183.0,
+            "y": 135.0
+          },
+          "uuid": "881cb421-bd2d-46ce-a1d7-c15ca355dfb8"
+        },
+        {
+          "description": "Track [/DUE_GND] on B.Cu, length 2.4042 mm",
+          "pos": {
+            "x": 104.45,
+            "y": 133.0
+          },
+          "uuid": "79a56220-71e6-469a-bb4b-6d31601846ee"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 80.0,
+            "y": 80.0
+          },
+          "uuid": "9df79c78-551f-4b0a-8e3c-d80a5f82ff4f"
+        },
+        {
+          "description": "Track [/DUE_GND] on B.Cu, length 2.4160 mm",
+          "pos": {
+            "x": 99.3,
+            "y": 80.3
+          },
+          "uuid": "8346a142-1ea2-42fd-8024-36a9a1e4c3ff"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 80.0,
+            "y": 80.0
+          },
+          "uuid": "9df79c78-551f-4b0a-8e3c-d80a5f82ff4f"
+        },
+        {
+          "description": "Track [/DUE_GND] on B.Cu, length 2.1213 mm",
+          "pos": {
+            "x": 97.8,
+            "y": 81.8
+          },
+          "uuid": "db9b00ea-1228-4ed7-8d12-f5e52e83e6dd"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 183.0,
+            "y": 135.0
+          },
+          "uuid": "881cb421-bd2d-46ce-a1d7-c15ca355dfb8"
+        },
+        {
+          "description": "Track [/DUE_GND] on B.Cu, length 9.7500 mm",
+          "pos": {
+            "x": 106.15,
+            "y": 134.7
+          },
+          "uuid": "dd6ef875-f208-489b-85ae-a792ed88e0f4"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 183.0,
+            "y": 135.0
+          },
+          "uuid": "881cb421-bd2d-46ce-a1d7-c15ca355dfb8"
+        },
+        {
+          "description": "Track [/DUE_+5V] on F.Cu, length 5.8600 mm",
+          "pos": {
+            "x": 107.5,
+            "y": 134.7
+          },
+          "uuid": "1fed7a0b-c350-4ffe-833e-ccb950fb0add"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 183.0,
+            "y": 135.0
+          },
+          "uuid": "881cb421-bd2d-46ce-a1d7-c15ca355dfb8"
+        },
+        {
+          "description": "Track [/DUE_+5V] on F.Cu, length 1.6971 mm",
+          "pos": {
+            "x": 113.36,
+            "y": 134.7
+          },
+          "uuid": "49a4a7cc-2217-41aa-9b9c-1475f3a1cb53"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.2000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 183.0,
+            "y": 135.0
+          },
+          "uuid": "881cb421-bd2d-46ce-a1d7-c15ca355dfb8"
+        },
+        {
+          "description": "Track [/DUE_+5V] on F.Cu, length 2.1000 mm",
+          "pos": {
+            "x": 107.5,
+            "y": 132.6
+          },
+          "uuid": "7a4d4e4b-6e32-415a-8c44-75b91a4e63a3"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.4000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 183.0,
+            "y": 135.0
+          },
+          "uuid": "881cb421-bd2d-46ce-a1d7-c15ca355dfb8"
+        },
+        {
+          "description": "Pad 1 [/DUE_GND] of D2 on F.Cu",
+          "pos": {
+            "x": 84.275,
+            "y": 133.9
+          },
+          "uuid": "cb84fec1-88ae-4d88-ba6a-74753505b9a5"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.4000 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 183.0,
+            "y": 135.0
+          },
+          "uuid": "881cb421-bd2d-46ce-a1d7-c15ca355dfb8"
+        },
+        {
+          "description": "Pad 2 [/D2_UNKNOWN_2] of D2 on F.Cu",
+          "pos": {
+            "x": 85.825,
+            "y": 133.9
+          },
+          "uuid": "eae851bd-cfa0-45de-8d65-6b65f1d5cd8e"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    }
+  ]
+}

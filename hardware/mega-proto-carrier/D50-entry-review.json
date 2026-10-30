@@ -1,0 +1,40 @@
+{
+  "revision": "P3.4",
+  "date": "2026-10-30",
+  "route": "SPI50-B",
+  "source": "owner layout correction",
+  "screen_view": "flipped B.Cu",
+  "requested_entry": "middle-right, horizontal",
+  "canonical_top_view": "from left at pad centre y",
+  "before_polyline": [
+    [
+      85.9,
+      43.0
+    ],
+    [
+      89.3,
+      39.16
+    ],
+    [
+      90.44,
+      39.56
+    ]
+  ],
+  "after_polyline": [
+    [
+      85.9,
+      43.0
+    ],
+    [
+      89.34,
+      39.56
+    ],
+    [
+      90.44,
+      39.56
+    ]
+  ],
+  "other_routes": "all endpoints, nets, layers and polylines unchanged",
+  "electrical_connection": "V50 -> J7.31 / DUE_D50 unchanged",
+  "checked_board_sha256": "cf3a254043a30a7a6f858c193f79b402ae8feb3bfb31896579271cec901ac8ab"
+}

@@ -1,0 +1,170 @@
+{
+  "revision": "P3.5",
+  "date": "2026-10-30",
+  "kicad_version": "10.0.6",
+  "outline_mm": {
+    "length": 103.0,
+    "width": 55.0,
+    "evidence": "owner measurement"
+  },
+  "photos": [
+    {
+      "path": "../afe-shield/IMG_2131.jpeg",
+      "sha256": "4cf2760ea2e4162614f2b523b70b12d2c95f0e53cc9a664ac8b813ce49fdaa1b"
+    },
+    {
+      "path": "../afe-shield/IMG_2132.jpeg",
+      "sha256": "c20af41f0f43b0107c12e1d9759a1ceaf6547262ab6fc84359750ef60b10dae9"
+    },
+    {
+      "path": "../afe-shield/IMG_2133.jpeg",
+      "sha256": "7378bc137d8c0215692f9282118d7f83b7b927ad8b68963314882348ad5ac7e3"
+    },
+    {
+      "path": "../afe-shield/IMG_2134.jpeg",
+      "sha256": "fac2db49efbda2dae8517339215fd6a6d8e842ec7a7e490b84844323e37c7edf"
+    },
+    {
+      "path": "photo/IMG_2135.jpeg",
+      "sha256": "485bfb22f3c8953a00130f46292fd1831d21c22d5d767a412c85f36dea58ecf5"
+    },
+    {
+      "path": "photo/IMG_2136.jpeg",
+      "sha256": "c4d39aeac5ad7c79c3bdace755ba8854abf47b6690c5a45299b4149e5fbb3ca1"
+    },
+    {
+      "path": "photo/IMG_2137.jpeg",
+      "sha256": "31ef57382c3e9c6e4dfd432976e4ac74378f10a8605cc258bd11746c92f85ee6"
+    },
+    {
+      "path": "photo/IMG_2138.jpeg",
+      "sha256": "0587eb3a492bfc60472f3acd9827a85ab3320375e22ce69d4d7faaa1b62eca69"
+    },
+    {
+      "path": "photo/IMG_2139.jpeg",
+      "sha256": "d11c004d4cd1a0d29343b69fea1b7605fd0948e3e7ab278aaac7e8966ceec1fa"
+    },
+    {
+      "path": "photo/IMG_2140.jpeg",
+      "sha256": "e8573eaaa25989a14646d67e1c501dee03a27ff025be4450f6c7b0dad3d61f83"
+    },
+    {
+      "path": "photo/IMG_2141.jpeg",
+      "sha256": "2b1c415d4633b34e460046929ec0c411daf98c1bc6df48e42c33a62285fab6b3"
+    }
+  ],
+  "grid_rows": 15,
+  "grid_columns_max": 32,
+  "grid_pads": 341,
+  "registration": "estimated from photos and nominal Due header positions; fit not verified",
+  "digital_header_alignment": {
+    "source": "IMG_2135.jpeg / IMG_2138.jpeg exposed upper-right pads; supersedes P2.1",
+    "J7_J8_first_row_y_mm": 1.46,
+    "J7_J8_second_row_y_mm": 4.0,
+    "first_row_aligned_to": "J12 breakout row",
+    "main_J3_y_mm": 5.524,
+    "parallel_header_row_gap_mm": 4.064,
+    "J3_relation": "between D22/D23 and D24/D25, not aligned with either"
+  },
+  "model_represents": "Normal populated carrier; stripped/cracked specimen is routing evidence only",
+  "assembly": {
+    "J1": "Fitted in normal populated boards",
+    "J2": "Fitted in normal populated boards",
+    "J3": "Fitted in normal populated boards",
+    "J4": "Fitted in normal populated boards",
+    "J5": "Fitted in normal populated boards",
+    "J6": "Fitted in normal populated boards",
+    "J7": "Fitted in normal populated boards",
+    "J9": "Fitted in normal populated boards",
+    "SW1": "Fitted in normal populated boards"
+  },
+  "photo_specimen": {
+    "purpose": "Parts removed solely to expose copper for backlit routing photographs",
+    "components": {
+      "J1": "Front female socket removed for routing photography; reverse male pins retained",
+      "J2": "Front female socket removed for routing photography; reverse male pins retained",
+      "J3": "Front female socket removed for routing photography; reverse male pins retained",
+      "J4": "Front female socket removed for routing photography; reverse male pins retained",
+      "J5": "Front female socket removed for routing photography; reverse male pins retained",
+      "J6": "Front female socket removed for routing photography; reverse male pins retained",
+      "J7": "Partly stripped for routing photography",
+      "J9": "Removed only for routing photography; bare pads exposed",
+      "SW1": "Removed only for routing photography; bare pads exposed"
+    },
+    "crack_near_J9": "Confirmed on the photo specimen; other boards not assessed for this damage"
+  },
+  "photo_registration": "photo-registration.json; manual projective landmarks, not measured fit",
+  "owner_observations": {
+    "observations": [
+      {
+        "date": "2026-10-30",
+        "source": "owner confirmation in chat",
+        "statement": "yes, there is a crack in the corner near J9",
+        "physical_crack": "confirmed",
+        "copper_continuity_across_crack": "not measured",
+        "review_id": "Q09",
+        "marked_routes": [
+          "D51",
+          "D52",
+          "D50",
+          "RESET"
+        ],
+        "marker_geometry": "approximate photo-derived inspection locations; crack extent not measured",
+        "applies_to": "stripped photo specimen; not a claim about other boards"
+      },
+      {
+        "date": "2026-10-30",
+        "source": "owner clarification in chat",
+        "statement": "other PCBs still has the switch and header, this one is removed just for photo shoot with backlight to find out the routing.",
+        "model_assembly": "normal populated carrier; SW1 and J9 fitted",
+        "photo_specimen": "parts removed solely to reveal routing",
+        "other_boards_damage": "not assessed"
+      },
+      {
+        "date": "2026-10-30",
+        "source": "owner review and clarification in chat",
+        "statement": "F.Cu: check R1/R2 against IMG_2136 and bottom two pins against IMG_2138",
+        "header_reference_clarification": "Owner confirmed bottom 5V pair of outer digital field; model reference J8.39/J8.40, not corner J9."
+      },
+      {
+        "date": "2026-10-30",
+        "source": "owner reply to endpoint question",
+        "statement": "J10.2 \u2014 GND",
+        "route": "CORNER-HEADER-B",
+        "endpoints": [
+          "J9.5",
+          "J10.2"
+        ],
+        "net": "DUE_GND",
+        "confirmation": "Endpoint identified by owner; no meter reading supplied",
+        "geometry": "Final bends beneath reverse header plastic remain estimated"
+      },
+      {
+        "date": "2026-10-30",
+        "source": "owner layout review in chat",
+        "statement": "J7.31, the wire angle is not right, should enter in middle right.",
+        "route": "SPI50-B",
+        "view": "Flipped B.Cu, following the preceding back-side review",
+        "geometry": "Horizontal into pad mid-height from screen right; canonical top-view approach is from left",
+        "electrical_connection": "V50 -> J7.31 / D50 unchanged"
+      },
+      {
+        "date": "2026-10-30",
+        "source": "owner layout review in chat",
+        "statement": "J7.35 to J13.4, the wire is too close to other sockets.",
+        "route": "GND-PERIMETER",
+        "geometry": "Long lane moved from y=48.2 to y=47.2 mm; vertical departure from J13.4, 45-degree arrival at J7.35",
+        "electrical_connection": "J13.4 -> J7.35 / DUE_GND unchanged",
+        "qualification": "Correction to provisional model geometry; physical positions not measured"
+      }
+    ]
+  },
+  "hole_and_pad_sizes": "estimates, not manufacturing dimensions",
+  "visually_traced_fanout_connections": 28,
+  "copper_track_segments": 344,
+  "supplemental_copper_routes": 115,
+  "unclassified_fragments": 0,
+  "observed_via_features": 5,
+  "trace_geometry": "Both backlit faces interpreted; widths, exact bends, via drill sizes and hidden contacts remain provisional",
+  "authoritative_for": "physical inventory and placement planning only"
+}

@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-30",
+  "model_represents": "normal populated carrier",
+  "SW1": "fitted; DNP false",
+  "J9": "fitted; DNP false",
+  "photo_specimen": "parts removed solely for routing photography",
+  "crack_scope": "photo specimen; other boards not assessed",
+  "geometry_comparison": "top-view SVG geometric elements identical to preceding model",
+  "schematic_pcb_parity": "244 contacts match",
+  "erc": "zero violations",
+  "checked_board_sha256": "cb3f11c02bf0cd1a621dd42b7204b5e211ff67ba19941b232a3b33a15cc96d92"
+}

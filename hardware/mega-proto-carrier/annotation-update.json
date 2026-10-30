@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-30",
+  "question": "Q09",
+  "before_sha256": "5a735fdfad63bc4c18775d2edb29c805b1ba77bfb444c894116a0ce9c808274f",
+  "after_sha256": "10ccea43bbfbe7c804575c036bebe0383d1553bc65af059ad53448865608db3f",
+  "only_changes": "three User.5 gr_text strings",
+  "all_other_board_bytes": "identical",
+  "physical_crack": "owner confirmed",
+  "copper_breaks": "unverified"
+}

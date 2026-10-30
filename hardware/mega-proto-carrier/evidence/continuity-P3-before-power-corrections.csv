@@ -1,0 +1,151 @@
+contact_a,contact_b_or_destination,question_to_resolve,measured_ohms_or_result,conditions_and_meter_polarity,status
+J1.1,J10.1,H1-01: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J1.2,J10.2,H1-02: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J1.3,J10.3,H1-03: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J1.4,J10.4,H1-04: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J1.5,J10.5,H1-05: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J1.6,J10.6,H1-06: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J1.7,J10.7,H1-07: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J1.8,J10.8,H1-08: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J2.1,J11.1,H2-01: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J2.2,J11.2,H2-02: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J2.3,J11.3,H2-03: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J2.4,J11.4,H2-04: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J2.5,J11.5,H2-05: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J2.6,J11.6,H2-06: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J2.7,J11.7,H2-07: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J2.8,J11.8,H2-08: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J3.1,J12.1,H3-01: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J3.2,J12.2,H3-02: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J3.3,J12.3,H3-03: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J3.4,J12.4,H3-04: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J3.5,J12.5,H3-05: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J3.6,J12.6,H3-06: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J3.7,J12.7,H3-07: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J3.8,J12.8,H3-08: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J4.1,J13.1,H4-01: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J4.2,J13.2,H4-02: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J4.3,J13.3,H4-03: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J4.4,J13.4,H4-04: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J4.5,J13.5,H4-05: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J4.6,J13.6,H4-06: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J5.1,J14.1,H5-01: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J5.2,J14.2,H5-02: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J5.3,J14.3,H5-03: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J5.4,J14.4,H5-04: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J5.5,J14.5,H5-05: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J5.6,J14.6,H5-06: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J5.7,J14.7,H5-07: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J5.8,J14.8,H5-08: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J6.1,J15.1,H6-01: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J6.2,J15.2,H6-02: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J6.3,J15.3,H6-03: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J6.4,J15.4,H6-04: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J6.5,J15.5,H6-05: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J6.6,J15.6,H6-06: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J6.7,J15.7,H6-07: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J6.8,J15.8,H6-08: Visible short spoke between corresponding header/breakout contacts.,,,visually_traced_meter_pending
+J7.3,J8.3,D22: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.4,J8.4,D23: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.5,J8.5,D24: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.6,J8.6,D25: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.7,J8.7,D26: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.8,J8.8,D27: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.9,J8.9,D28: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.10,J8.10,D29: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.11,J8.11,D30: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.12,J8.12,D31: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.13,J8.13,D32: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.14,J8.14,D33: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.15,J8.15,D34: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.16,J8.16,D35: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.17,J8.17,D36: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.18,J8.18,D37: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.19,J8.19,D38: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.20,J8.20,D39: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.21,J8.21,D40: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.22,J8.22,D41: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.23,J8.23,D42: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.24,J8.24,D43: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.25,J8.25,D44: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.26,J8.26,D45: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.27,J8.27,D46: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.28,J8.28,D47: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.29,J8.29,D48: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.30,J8.30,D49: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.31,J8.31,D50: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.32,J8.32,D51: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.33,J8.33,D52: Front dogleg to corresponding inner-column digital breakout.,,,visually_traced_meter_pending
+J7.34,J8.34,D53: Back dogleg to corresponding outer-column digital breakout.,,,visually_traced_meter_pending
+J7.1,J7.2,5V-TOP-1: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J7.2,J8.1,5V-TOP-2: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J8.1,J8.2,5V-TOP-3: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J7.35,J7.36,GND-DIG-1: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J7.36,J8.35,GND-DIG-2: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J8.35,J8.36,GND-DIG-3: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J8.36,J8.38,GND-DIG-4: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J8.38,J8.37,GND-DIG-5: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J8.39,J8.40,5V-BOTTOM: Visible power/ground crossbar at the ends of the digital field.,,,visually_traced_meter_pending
+J8.2,J8.40,"5V-EDGE: Back-side outer-edge supply return, joining the top and bottom 5V pairs.",,,visually_traced_meter_pending
+J13.4,J7.35,GND-PERIMETER: Front lower-edge ground route from power header to the digital ground bar.,,,visually_traced_meter_pending
+J9.2,V50,SPI50-F: Exposed bottom-left corner pad -> lower long path -> D50 transition.,,,visually_traced_meter_pending
+V50,J7.31,SPI50-B: Lower via-to-D50 continuation visible on the reverse photograph.,,,visually_traced_meter_pending
+J9.3,V51,SPI51-F: Exposed top-middle corner pad -> upper long path -> D51 transition.,,,visually_traced_meter_pending
+V51,J7.32,SPI51-B: Upper via-to-D51 continuation visible on the reverse photograph.,,,visually_traced_meter_pending
+J9.4,J7.33,SPI52-F: Exposed bottom-middle corner pad -> middle long path -> D52.,,,visually_traced_meter_pending
+J10.3,VSTAT,"STAT-B: Complete exposed D13-to-STAT route, including the formerly hidden switch-area dogleg.",,,visually_traced_meter_pending
+VSTAT,R3.2,STAT-F: Short front spur from the STAT transition to the 102-marked resistor.,,,visually_traced_meter_pending
+J13.1,SW1.2,RESET-F: Visible front reset-header route into the upper-right switch lead.,,,visually_traced_meter_pending
+SW1.1,SW1.2,RESET-TOP-BAR: Bare pads reveal the upper pair is permanently joined by FRONT copper.,,,visually_traced_meter_pending
+SW1.3,SW1.4,GND-BOTTOM-BAR: Bare pads reveal the lower pair is permanently joined by BACK copper.,,,visually_traced_meter_pending
+SW1.4,J4.4,"SW-GND-B: Corrects P2.1 RESET-B: the lower-right switch pad reaches GND, NOT reset.",,,visually_traced_meter_pending
+J4.4,J4.5,POWER-GND-BAR: Exposed lower power row has a front copper bar between its two GND pads.,,,visually_traced_meter_pending
+J9.6,SW1.1,CORNER-SW-B: Exposed bottom-right corner pad reaches the upper-left RESET pad on the back.,,,visually_traced_meter_pending
+D1.2,R2.1,PWR-SERIES: Visible PWR LED / 102 resistor series connection; LED polarity unassigned.,,,visually_traced_meter_pending
+D2.2,R3.1,STAT-SERIES: Visible STAT LED / 102 resistor series connection; LED polarity unassigned.,,,visually_traced_meter_pending
+D1.1,D2.1,"LED-COMMON: Visible common left-hand LED rail, now traced to ground through the exposed lower switch pads.",,,visually_traced_meter_pending
+D1.1,VLED,LED-SPUR: Via/spur visible at the common LED rail.,,,visually_traced_meter_pending
+R1.1,J9.1,PULLUP-LEFT: 103 resistor left land reaches exposed top-left corner pad. Supply identity STILL UNVERIFIED.,,,visually_traced_meter_pending
+R1.2,SW1.1,PULLUP-RIGHT: Exposed 103 resistor right land joins upper-left RESET pad.,,,visually_traced_meter_pending
+R2.2,J4.3,"PWR-RES-RIGHT: Exposed middle 102 resistor feed bypasses the switch and reaches +5V, power-header pin 3.",,,visually_traced_meter_pending
+D1.1,SW1.3,LED-COMMON-RIGHT: Resolves UF-01: common LED rail reaches the exposed lower-left ground pad.,,,visually_traced_meter_pending
+J9.5,VCORNER,CORNER-GND-F: Exposed top-right corner pad joins the rounded front transition feature.,,,visually_traced_meter_pending
+VCORNER,VLED,CORNER-GND-B: Resolves UB-02: paired rounded features connect corner ground to LED ground along the back left edge.,,,visually_traced_meter_pending
+J9.5,open:CORNER-HEADER-B,CORNER-HEADER-B: Resolves J9 end of UB-01 as GND; destination remains hidden beneath reverse J1/J10 plastic. Do not assign AREF.,,,occluded_contact_to_identify
+TP1.T01,PG1.R05C01,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T02,PG1.R04C01,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T03,PG1.R05C02,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T04,PG1.R04C02,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T05,PG1.R05C03,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T06,PG1.R04C03,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T07,PG1.R05C04,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T08,PG1.R04C04,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T09,PG1.R05C05,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T10,PG1.R04C05,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T11,PG1.R05C06,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T12,PG1.R04C06,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T13,PG1.R05C07,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.T14,PG1.R04C07,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B01,PG1.R11C01,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B02,PG1.R12C01,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B03,PG1.R11C02,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B04,PG1.R12C02,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B05,PG1.R11C03,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B06,PG1.R12C03,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B07,PG1.R11C04,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B08,PG1.R12C04,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B09,PG1.R11C05,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B10,PG1.R12C05,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B11,PG1.R11C06,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B12,PG1.R12C06,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B13,PG1.R11C07,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+TP1.B14,PG1.R12C07,Confirm photo-traced empty SMD breakout fanout.,,,visually_traced_meter_pending
+J9.1,J4.3,Q05: identify corner supply; do not assume +5V.,,,pending
+J9.5,J1.2,Q02: does the partially covered upper-header trace reach GND here?,,,pending
+J9.5,J1.1,Q02: check AREF isolation / hidden destination; photos do not establish this connection.,,,pending
+J4.2,J4.3,Supply isolation: record settled resistance and meter polarity.,,,pending
+J4.3,J4.4,Supply isolation: record settled resistance and meter polarity.,,,pending
+SW1.1,SW1.3,Switch removed: RESET vs GND pads should not be assumed shorted.,,,pending
+PG1.R11C10,PG1.R11C11,Check isolation around planned component placement.,,,pending
+D1.1,D1.2,Q10: identify LED polarity; record meter polarity.,,,pending
+D2.1,D2.2,Q10: identify LED polarity; record meter polarity.,,,pending
