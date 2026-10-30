@@ -1,0 +1,33 @@
+{
+  "kicad_version": "10.0.6",
+  "native_board_reload": "passed",
+  "outline_mm": [
+    103,
+    55
+  ],
+  "grid_pad_count": 341,
+  "schematic_contact_count": 244,
+  "schematic_pcb_pad_nets": "match",
+  "erc_errors": 0,
+  "erc_warnings": {},
+  "track_count": 344,
+  "via_count": 5,
+  "all_pad_centres_inside_outline": true,
+  "board_svg_export": "passed",
+  "visually_traced_connections": 28,
+  "fanout_chain_endpoints": "passed",
+  "supplemental_route_count": 115,
+  "unclassified_fragment_count": 0,
+  "recorded_routes_present_in_board": "passed",
+  "physical_fit": "not verified",
+  "hidden_copper": "not verified",
+  "digital_header_row_alignment": "5V row = J12; J3 lies between D22/D23 and D24/D25; bottom bare 5V row near J15 (0.284 mm)",
+  "parallel_header_row_gap_mm": 4.064,
+  "stripped_photo_net_regressions": "passed",
+  "power_routing_regressions": "R1-left/R2-right/J9.1 = +5V; J8 bottom crossbar only on B.Cu",
+  "owner_confirmed_ground_endpoint": "J9.5 -> J10.2 on B.Cu; final bends estimated",
+  "open_route_endpoints": 0,
+  "component_3d_body_count": 20,
+  "project_local_3d_models": "all paths resolve",
+  "scope": "Internal consistency of photo-derived model only; not fabrication approval."
+}

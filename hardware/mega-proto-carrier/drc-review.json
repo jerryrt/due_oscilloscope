@@ -1,0 +1,16 @@
+{
+  "revision": "P3.5",
+  "kicad_version": "10.0.6",
+  "checked_board_sha256": "ddde95db0b0e698239e40971518f4b9bb3f835577bf0d4035ada8083395f8010",
+  "shorting_items": 0,
+  "tracks_crossing": 0,
+  "remaining_violations": {
+    "copper_edge_clearance": 11
+  },
+  "unconnected_items": 0,
+  "native_report": "drc-native.json",
+  "qualification": "Ground perimeter moved away from socket pads: minimum modeled clearance 1.286 mm, previously 0.286 mm. Eleven existing copper-to-edge findings remain; physical continuity/dimensions unmeasured.",
+  "review_annotation_layer": "User.5 / R2",
+  "native_drc_board_sha256": "e27cbbaad78a400cc48b7a1acf2c117eb7754e115ef3254ffe97aa478131caae",
+  "models_only_update": "20 project-local 3D bodies attached; copper, pads, nets, outline and placement verified unchanged. Native DRC rerun on this exact board: same eleven edge findings and zero unconnected items."
+}

@@ -16,6 +16,12 @@ For the low-cost socketed experiment, use the self-contained
 PDIP package for the hand build only, leaves this SOIC CAD design unchanged,
 and keeps JP1 open on an unmodified Due.
 
+For the **physical proto shield in the supplied photographs**, open the separate
+[Mega PrototypeShield V3 carrier project](../mega-proto-carrier/README.md).
+It records the measured 103 x 55 mm carrier, its pad grid and contact
+inventory. Its photo-derived geometry and unverified hidden copper are
+distinct from the AFE circuit and custom-board template in this directory.
+
 | file | what |
 |---|---|
 | `afe-shield.kicad_pro`, `afe-shield.kicad_sch` | project and root sheet: Mega-format mechanics with Due-specific net assignments |

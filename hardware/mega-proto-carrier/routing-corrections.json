@@ -1,0 +1,50 @@
+{
+  "revision": "P3.1",
+  "date": "2026-10-30",
+  "checked_board_sha256": "ec2ad16cd62cee36d4ca3fa1bfb7668e014c9f6ddb5bbd9de19c439eae78f10b",
+  "changes": [
+    {
+      "id": "R1-R2-SUPPLY",
+      "layer": "F.Cu",
+      "endpoints": [
+        "R1.1",
+        "R2.2"
+      ],
+      "resulting_net": "DUE_+5V",
+      "also_resolves": "J9.1 and R1 left supply identity",
+      "photo": "IMG_2136.jpeg",
+      "crop": "evidence/R1-R2-IMG_2136.jpg"
+    },
+    {
+      "id": "5V-BOTTOM",
+      "endpoints": [
+        "J8.39",
+        "J8.40"
+      ],
+      "removed_layer": "F.Cu",
+      "correct_layer": "B.Cu",
+      "photos": [
+        "IMG_2138.jpeg",
+        "IMG_2141.jpeg"
+      ],
+      "crops": [
+        "evidence/J8-bottom-front-IMG_2138.jpg",
+        "evidence/J8-bottom-back-IMG_2141.jpg"
+      ]
+    },
+    {
+      "id": "5V-PERIMETER",
+      "layer": "B.Cu",
+      "endpoints": [
+        "J13.3",
+        "J8.39"
+      ],
+      "photos": [
+        "IMG_2140.jpeg",
+        "IMG_2141.jpeg"
+      ]
+    }
+  ],
+  "reference_clarification": "Owner confirmed the requested bottom two pins are on outer digital J8, not the six-pin corner J9.",
+  "verification": "Visual tracing and native consistency/DRC only; no meter readings supplied."
+}

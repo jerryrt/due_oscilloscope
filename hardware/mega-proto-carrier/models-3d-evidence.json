@@ -1,0 +1,373 @@
+{
+  "revision": "3D1",
+  "assembly": "normal populated carrier, not stripped photo specimen",
+  "board_thickness_mm": 1.6,
+  "assignments": [
+    {
+      "reference": "D1",
+      "file": "models/kicad/LED_0805_2012Metric.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "role": "front LED; polarity remains unverified"
+    },
+    {
+      "reference": "D2",
+      "file": "models/kicad/LED_0805_2012Metric.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "role": "front LED; polarity remains unverified"
+    },
+    {
+      "reference": "J1",
+      "file": "models/kicad/PinSocket_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        -90
+      ],
+      "role": "front female socket"
+    },
+    {
+      "reference": "J10",
+      "file": "models/kicad/PinHeader_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        -1.6
+      ],
+      "rotation_degrees": [
+        0,
+        180,
+        -90
+      ],
+      "role": "reverse male pins"
+    },
+    {
+      "reference": "J11",
+      "file": "models/kicad/PinHeader_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        -1.6
+      ],
+      "rotation_degrees": [
+        0,
+        180,
+        -90
+      ],
+      "role": "reverse male pins"
+    },
+    {
+      "reference": "J12",
+      "file": "models/kicad/PinHeader_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        -1.6
+      ],
+      "rotation_degrees": [
+        0,
+        180,
+        -90
+      ],
+      "role": "reverse male pins"
+    },
+    {
+      "reference": "J13",
+      "file": "models/kicad/PinHeader_1x06_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        -1.6
+      ],
+      "rotation_degrees": [
+        0,
+        180,
+        -90
+      ],
+      "role": "reverse male pins"
+    },
+    {
+      "reference": "J14",
+      "file": "models/kicad/PinHeader_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        -1.6
+      ],
+      "rotation_degrees": [
+        0,
+        180,
+        -90
+      ],
+      "role": "reverse male pins"
+    },
+    {
+      "reference": "J15",
+      "file": "models/kicad/PinHeader_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        -1.6
+      ],
+      "rotation_degrees": [
+        0,
+        180,
+        -90
+      ],
+      "role": "reverse male pins"
+    },
+    {
+      "reference": "J2",
+      "file": "models/kicad/PinSocket_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        -90
+      ],
+      "role": "front female socket"
+    },
+    {
+      "reference": "J3",
+      "file": "models/kicad/PinSocket_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        -90
+      ],
+      "role": "front female socket"
+    },
+    {
+      "reference": "J4",
+      "file": "models/kicad/PinSocket_1x06_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        -90
+      ],
+      "role": "front female socket"
+    },
+    {
+      "reference": "J5",
+      "file": "models/kicad/PinSocket_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        -90
+      ],
+      "role": "front female socket"
+    },
+    {
+      "reference": "J6",
+      "file": "models/kicad/PinSocket_1x08_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        -90
+      ],
+      "role": "front female socket"
+    },
+    {
+      "reference": "J7",
+      "file": "models/kicad/PinHeader_2x18_P2.54mm_Vertical.step",
+      "offset_mm": [
+        2.54,
+        0,
+        -1.6
+      ],
+      "rotation_degrees": [
+        0,
+        180,
+        0
+      ],
+      "role": "reverse 2x18 male header"
+    },
+    {
+      "reference": "J9",
+      "file": "models/kicad/PinHeader_2x03_P2.54mm_Vertical.step",
+      "offset_mm": [
+        0,
+        -2.54,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        -90
+      ],
+      "role": "front six-pin header; generic straight body"
+    },
+    {
+      "reference": "R1",
+      "file": "models/kicad/R_0805_2012Metric.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "role": "front chip resistor"
+    },
+    {
+      "reference": "R2",
+      "file": "models/kicad/R_0805_2012Metric.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "role": "front chip resistor"
+    },
+    {
+      "reference": "R3",
+      "file": "models/kicad/R_0805_2012Metric.step",
+      "offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "role": "front chip resistor"
+    },
+    {
+      "reference": "SW1",
+      "file": "models/kicad/SW_PUSH_6mm.step",
+      "offset_mm": [
+        -3.25,
+        2.25,
+        0
+      ],
+      "rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "role": "front 6 mm tactile switch"
+    }
+  ],
+  "assets": [
+    {
+      "file": "models/kicad/PinSocket_1x06_P2.54mm_Vertical.step",
+      "source_library": "Connector_PinSocket_2.54mm.3dshapes/PinSocket_1x06_P2.54mm_Vertical.step",
+      "sha256": "e2c12b7d840a927c9ecbbc30b30daffec4c4c3c2bb950dda98a971dc59fdc0f4"
+    },
+    {
+      "file": "models/kicad/PinSocket_1x08_P2.54mm_Vertical.step",
+      "source_library": "Connector_PinSocket_2.54mm.3dshapes/PinSocket_1x08_P2.54mm_Vertical.step",
+      "sha256": "ea08834e672b1f96115f4d51e8db44b9d653dd2798afb956a0277425663d5832"
+    },
+    {
+      "file": "models/kicad/PinHeader_1x06_P2.54mm_Vertical.step",
+      "source_library": "Connector_PinHeader_2.54mm.3dshapes/PinHeader_1x06_P2.54mm_Vertical.step",
+      "sha256": "d6113af109a14a67c50dcefd1cfc7b43b59b59afa85d808b2319e2452da91318"
+    },
+    {
+      "file": "models/kicad/PinHeader_1x08_P2.54mm_Vertical.step",
+      "source_library": "Connector_PinHeader_2.54mm.3dshapes/PinHeader_1x08_P2.54mm_Vertical.step",
+      "sha256": "081e2b47a2d73a4502efc64d77b9002c9a28047b5776a46043c3d9ca37bac9e1"
+    },
+    {
+      "file": "models/kicad/PinHeader_2x18_P2.54mm_Vertical.step",
+      "source_library": "Connector_PinHeader_2.54mm.3dshapes/PinHeader_2x18_P2.54mm_Vertical.step",
+      "sha256": "748079c65b63322d6d0dda66606aea053d94ad60fa60061f39e47675744f7658"
+    },
+    {
+      "file": "models/kicad/PinHeader_2x03_P2.54mm_Vertical.step",
+      "source_library": "Connector_PinHeader_2.54mm.3dshapes/PinHeader_2x03_P2.54mm_Vertical.step",
+      "sha256": "30c87dd7aa515b02055124826d8c4054084971d49d819c644cd6b21295ac52c8"
+    },
+    {
+      "file": "models/kicad/SW_PUSH_6mm.step",
+      "source_library": "Button_Switch_THT.3dshapes/SW_PUSH_6mm.step",
+      "sha256": "eb2ba2737299cc764145d8d10ea26d992f819ff5522fb3c0dfa2605b8221f9d6"
+    },
+    {
+      "file": "models/kicad/LED_0805_2012Metric.step",
+      "source_library": "LED_SMD.3dshapes/LED_0805_2012Metric.step",
+      "sha256": "0aa8b791804f5d72a2fc7d1bf231dd9959207d83df8ad801176fbc459f575b98"
+    },
+    {
+      "file": "models/kicad/R_0805_2012Metric.step",
+      "source_library": "Resistor_SMD.3dshapes/R_0805_2012Metric.step",
+      "sha256": "ded342cdb394fb45395227beaaa75cc390613cf2581b29cd6d22c12abd6103b2"
+    }
+  ],
+  "source": "Unmodified models from installed KiCad 10 libraries",
+  "qualification": "Generic visual body dimensions, heights and pin lengths are approximate. LED polarity and exact corner-header body style are not established by these models.",
+  "intentionally_empty": [
+    "J8 bare breakout field",
+    "PG1 prototyping holes",
+    "TP1 empty SMD lands",
+    "H1/H2 holes"
+  ],
+  "before_board_sha256": "d4d65f5df46e27ac1a82cb0ed7c6c2f9c06ff3e014ad388618fa2e0596dcc1bf",
+  "after_board_sha256": "ddde95db0b0e698239e40971518f4b9bb3f835577bf0d4035ada8083395f8010",
+  "copper_pads_nets_outline_and_placement": "unchanged",
+  "copper_equivalent_to_native_drc_board_sha256": "e27cbbaad78a400cc48b7a1acf2c117eb7754e115ef3254ffe97aa478131caae",
+  "render_validation": "Front and underside native renders inspected; straight bottom view checked for header-pad alignment.",
+  "step_export_validation": "Native STEP export contains all 20 assigned component references.",
+  "previews": [
+    "preview/3d-top.png",
+    "preview/3d-bottom.png"
+  ],
+  "final_native_drc": "same eleven copper-to-edge findings; zero shorts, ordinary clearance violations or unconnected items"
+}

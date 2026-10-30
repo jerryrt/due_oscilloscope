@@ -1,0 +1,13 @@
+{
+  "revision": "P3.3",
+  "date": "2026-10-30",
+  "source": "IMG_2139.jpeg",
+  "crops": [
+    "evidence/J1-J10-back-IMG_2139.jpg",
+    "evidence/J1-J10-front-IMG_2137.jpg"
+  ],
+  "correction": "STAT-B starts at J1.3; delete spurious back connection from J10.3",
+  "front_copper": "all endpoints, nets and polylines identical to P3.1",
+  "J9_to_J10": "J9.5 -> J10.2 / GND confirmed by owner on 2026-10-30; bends beneath plastic estimated; no resistance reading supplied",
+  "checked_board_sha256": "4dc94ea16f2aacdc84a87bb829e9d0c8a7e9066cd1276e84d66d0a24f76d8262"
+}

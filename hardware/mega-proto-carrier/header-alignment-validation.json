@@ -1,0 +1,15 @@
+{
+  "revision": "P3.5",
+  "supersedes": "P2.1 (archived in evidence/header-alignment-P2.1.json)",
+  "source": "IMG_2135/2138 exposed parallel header rows",
+  "upper_main_y_mm": 5.524,
+  "upper_breakout_y_mm": 1.46,
+  "lower_main_y_mm": 53.5,
+  "lower_breakout_y_mm": 49.436,
+  "digital_first_row_y_mm": 1.46,
+  "digital_D22_D23_y_mm": 4.0,
+  "digital_D24_D25_y_mm": 6.54,
+  "parallel_header_gap_mm": 4.064,
+  "correction": "J3 lies between D22/D23 and D24/D25, not aligned to D22/D23.",
+  "photo_fit": "approximate; native assertions passed; physical fit pending"
+}

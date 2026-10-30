@@ -160,11 +160,25 @@ Clones and existing hand wiring must be checked with continuity measurements.
 | Reference placement | D1/filter/divider away from clock and USB wiring; no long reference test leads left attached |
 | Underside | Trimmed joints/leads cannot touch Due components, USB shells or other copper; inspect when mated unpowered |
 
-There is deliberately no invented hole-coordinate drawing for a board we
-have not physically inspected. Annotate top and bottom photographs with
-the component references and connections below. Treat those photographs
-as the assembly drawing and retain them with the measurements. A layer
-of tape is not a substitute for adequate mechanical clearance.
+A [separate KiCad carrier model](../hardware/mega-proto-carrier/README.md)
+now records all eleven supplied photographs and the measured **103 x 55 mm**
+outline. It provides grid coordinates for planning this hand build;
+header/grid registration, pad sizes and hidden copper still need physical
+checks. It contains no installed Stage A circuitry. Confirm its pad map
+against the board. The backlit photos reveal **28 existing SMD-to-grid
+links**, recorded in the carrier model; those grid holes are not independent
+islands. Their visual mapping still needs continuity confirmation. Then
+use the [both-face trace audit](../hardware/mega-proto-carrier/TRACE-AUDIT.md)
+for the existing header links, perimeter routes and reset/LED-area copper.
+The outer bare digital field is **2x20**, including two ground rows. The
+stripped-board photos resolve the switch's upper RESET/lower GND pad pairs,
+the LED returns and corner SPI routes. Components were removed only from
+the specimen used for routing photographs; the default carrier model keeps
+the switch and headers fitted. Remaining unknowns are visible on **User.5**.
+Annotate the photographs with component references
+and connections below. Retain the photographs and continuity readings with
+the assembly drawing. A layer of tape is not a substitute for adequate
+mechanical clearance.
 
 ## Complete connection schedule
 

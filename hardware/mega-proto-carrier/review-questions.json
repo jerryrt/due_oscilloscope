@@ -1,0 +1,446 @@
+{
+  "revision": "R2",
+  "layer": "User.5",
+  "group": "Carrier review questions R2",
+  "orientation": "Top view; coordinates relative to upper-left board corner in mm.",
+  "questions": [
+    {
+      "id": "Q01",
+      "title": "Corner contacts now exposed",
+      "question": "PHOTO RESOLVED: J9 1=+5V, 2=D50, 3=D51, 4=D52, 5=GND, 6=RESET. Pad 1 reaches +5V through the R1-left / R2-right copper link. Confirm by meter.",
+      "sources": [
+        "J9.2 / SPI50-F",
+        "J9.3 / SPI51-F",
+        "J9.4 / SPI52-F",
+        "J9.6 / CORNER-SW-B",
+        "J9.1 / +5V via R1-R2-SUPPLY"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            2,
+            4.34
+          ],
+          "source": "J9.2 / SPI50-F",
+          "side": "front"
+        },
+        {
+          "id": "B",
+          "at": [
+            4.54,
+            1.8
+          ],
+          "source": "J9.3 / SPI51-F",
+          "side": "front"
+        },
+        {
+          "id": "C",
+          "at": [
+            4.54,
+            4.34
+          ],
+          "source": "J9.4 / SPI52-F",
+          "side": "front"
+        },
+        {
+          "id": "D",
+          "at": [
+            7.08,
+            4.34
+          ],
+          "source": "J9.6 / CORNER-SW-B",
+          "side": "back"
+        },
+        {
+          "id": "E",
+          "at": [
+            2,
+            1.8
+          ],
+          "source": "J9.1 / +5V via R1-R2-SUPPLY",
+          "side": "front"
+        }
+      ]
+    },
+    {
+      "id": "Q02",
+      "title": "Confirmed: J9 to J10 ground",
+      "question": "OWNER CONFIRMED: J9.5 reaches J10.2 / GND. The trace bypasses AREF. Bends under plastic are estimated; no resistance value was supplied.",
+      "sources": [
+        "J9.5 / CORNER-HEADER-B",
+        "J10.2 / GND (owner confirmed)"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            7.08,
+            1.8
+          ],
+          "source": "J9.5 / CORNER-HEADER-B",
+          "side": "back"
+        },
+        {
+          "id": "B",
+          "at": [
+            22.876,
+            1.46
+          ],
+          "source": "J10.2 / GND (owner confirmed)",
+          "side": "back"
+        }
+      ]
+    },
+    {
+      "id": "Q03",
+      "title": "Back: long left-edge ground",
+      "question": "PHOTO RESOLVED: A/B join corner GND to LED GND along the back edge. Confirm continuity and via details.",
+      "sources": [
+        "VCORNER / CORNER-GND-B",
+        "VLED / CORNER-GND-B"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            9.3,
+            4.3
+          ],
+          "source": "VCORNER / CORNER-GND-B",
+          "side": "back"
+        },
+        {
+          "id": "B",
+          "at": [
+            2.5,
+            51.14
+          ],
+          "source": "VLED / CORNER-GND-B",
+          "side": "back"
+        }
+      ]
+    },
+    {
+      "id": "Q04",
+      "title": "Complete D13 / STAT return",
+      "question": "PHOTO RESOLVED: back D13 trace starts at inner J1.3, not outer J10.3, then reaches R3 right. The J1/J10 pair is linked on the front. Confirm by meter.",
+      "sources": [
+        "STAT-B upper dogleg",
+        "STAT-B lower dogleg",
+        "VSTAT"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            22.3,
+            49.8
+          ],
+          "source": "STAT-B upper dogleg",
+          "side": "back"
+        },
+        {
+          "id": "B",
+          "at": [
+            20.9,
+            51.2
+          ],
+          "source": "STAT-B lower dogleg",
+          "side": "back"
+        },
+        {
+          "id": "C",
+          "at": [
+            14.7,
+            53.82
+          ],
+          "source": "VSTAT",
+          "side": "either"
+        }
+      ]
+    },
+    {
+      "id": "Q05",
+      "title": "R1/R2: front supply link",
+      "question": "PHOTO RESOLVED: R1 left joins R2 right by a front diagonal, establishing +5V at R1 left and J9.1. R1 right remains RESET. Confirm the copper link by meter.",
+      "sources": [
+        "R1.1 left land",
+        "R1.2 right land",
+        "SW1.1 / PULLUP-RIGHT"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            9.9,
+            47.4
+          ],
+          "source": "R1.1 left land",
+          "side": "front"
+        },
+        {
+          "id": "B",
+          "at": [
+            11.9,
+            47.4
+          ],
+          "source": "R1.2 right land",
+          "side": "front"
+        },
+        {
+          "id": "C",
+          "at": [
+            17.95,
+            48.5
+          ],
+          "source": "SW1.1 / PULLUP-RIGHT",
+          "side": "front"
+        }
+      ]
+    },
+    {
+      "id": "Q06",
+      "title": "R2: middle 102 resistor",
+      "question": "PHOTO RESOLVED: R2 right reaches power-header +5V via the exposed lower dogleg. Confirm R2.2 to J4.3.",
+      "sources": [
+        "R2.2 right land",
+        "PWR-RES-RIGHT dogleg"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            11.9,
+            50.5
+          ],
+          "source": "R2.2 right land",
+          "side": "front"
+        },
+        {
+          "id": "B",
+          "at": [
+            27.5,
+            52.6
+          ],
+          "source": "PWR-RES-RIGHT dogleg",
+          "side": "front"
+        }
+      ]
+    },
+    {
+      "id": "Q07",
+      "title": "LED common rail is ground",
+      "question": "PHOTO RESOLVED: left LED rail joins SW1.3/4 and power-header GND. Lower switch pads are NOT reset. Confirm by meter.",
+      "sources": [
+        "VLED / common-rail spur",
+        "LED-COMMON-RIGHT bend",
+        "SW1.3 / ground bar"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            2.5,
+            51.14
+          ],
+          "source": "VLED / common-rail spur",
+          "side": "front"
+        },
+        {
+          "id": "B",
+          "at": [
+            17.05,
+            52.1
+          ],
+          "source": "LED-COMMON-RIGHT bend",
+          "side": "front"
+        },
+        {
+          "id": "C",
+          "at": [
+            17.95,
+            53
+          ],
+          "source": "SW1.3 / ground bar",
+          "side": "front"
+        }
+      ]
+    },
+    {
+      "id": "Q08",
+      "title": "STAT rounded transition",
+      "question": "PHOTO RESOLVED: old UB-03 belongs to D13/STAT, now copper. Confirm the rounded VSTAT feature and its connection to R3.2.",
+      "sources": [
+        "VSTAT rounded feature",
+        "STAT-B former UB-03 segment"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            14.7,
+            53.82
+          ],
+          "source": "VSTAT rounded feature",
+          "side": "back"
+        },
+        {
+          "id": "B",
+          "at": [
+            16.2,
+            51.2
+          ],
+          "source": "STAT-B former UB-03 segment",
+          "side": "back"
+        }
+      ]
+    },
+    {
+      "id": "Q09",
+      "title": "Photo specimen: crack near J9",
+      "question": "Crack confirmed on the stripped photo specimen. Check its marked SPI/reset routes. Other boards are not assessed for this damage.",
+      "sources": [
+        "SPI51 surface-line crossing",
+        "SPI52 surface-line crossing",
+        "SPI50 surface-line crossing",
+        "RESET surface-line vicinity"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            12.6,
+            6.5
+          ],
+          "source": "SPI51 surface-line crossing",
+          "side": "front"
+        },
+        {
+          "id": "B",
+          "at": [
+            12.6,
+            9.57
+          ],
+          "source": "SPI52 surface-line crossing",
+          "side": "front"
+        },
+        {
+          "id": "C",
+          "at": [
+            12.6,
+            12.1
+          ],
+          "source": "SPI50 surface-line crossing",
+          "side": "front"
+        },
+        {
+          "id": "D",
+          "at": [
+            12.69,
+            5.8
+          ],
+          "source": "RESET surface-line vicinity",
+          "side": "back"
+        }
+      ]
+    },
+    {
+      "id": "Q10",
+      "title": "LED polarity",
+      "question": "For D1/PWR and D2/STAT identify anode and cathode. Left/right are physical coordinates, not measured polarity.",
+      "sources": [
+        "D1 PWR LED",
+        "D2 STAT LED"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            5.05,
+            48.9
+          ],
+          "source": "D1 PWR LED",
+          "side": "front"
+        },
+        {
+          "id": "B",
+          "at": [
+            5.05,
+            53.9
+          ],
+          "source": "D2 STAT LED",
+          "side": "front"
+        }
+      ]
+    },
+    {
+      "id": "Q11",
+      "title": "SPI transition vias",
+      "question": "Confirm A/V50 reaches D50 and B/V51 reaches D51. Confirm the middle long path reaches D52.",
+      "sources": [
+        "V50 / apparent D50 transition",
+        "V51 / apparent D51 transition"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            85.9,
+            43
+          ],
+          "source": "V50 / apparent D50 transition",
+          "side": "either"
+        },
+        {
+          "id": "B",
+          "at": [
+            87.2,
+            36.75
+          ],
+          "source": "V51 / apparent D51 transition",
+          "side": "either"
+        }
+      ]
+    },
+    {
+      "id": "Q12",
+      "title": "Mechanical estimates",
+      "question": "Check hole positions, grid/header registration, 4.064 mm paired-row gap, pad/drill sizes and board thickness. Fit is photo-derived.",
+      "sources": [
+        "H1 position / diameter",
+        "H2 position / diameter",
+        "PG1.R01C01 registration"
+      ],
+      "targets": [
+        {
+          "id": "A",
+          "at": [
+            15.4,
+            4
+          ],
+          "source": "H1 position / diameter",
+          "side": "either"
+        },
+        {
+          "id": "B",
+          "at": [
+            91.9,
+            50.5
+          ],
+          "source": "H2 position / diameter",
+          "side": "either"
+        },
+        {
+          "id": "C",
+          "at": [
+            3.8,
+            8.3
+          ],
+          "source": "PG1.R01C01 registration",
+          "side": "either"
+        }
+      ]
+    }
+  ]
+}

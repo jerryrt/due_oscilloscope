@@ -1,0 +1,58 @@
+{
+  "revision": "P3.5",
+  "route": "GND-PERIMETER",
+  "endpoints": [
+    "J13.4",
+    "J7.35"
+  ],
+  "net": "DUE_GND",
+  "layer": "F.Cu",
+  "horizontal_lane_shift_mm": -1.0,
+  "before_polyline_mm": [
+    [
+      37.1,
+      49.436
+    ],
+    [
+      38.6,
+      48.199999
+    ],
+    [
+      86.0,
+      48.199999
+    ],
+    [
+      90.44,
+      44.64
+    ]
+  ],
+  "after_polyline_mm": [
+    [
+      37.1,
+      49.436
+    ],
+    [
+      37.1,
+      47.7
+    ],
+    [
+      37.6,
+      47.2
+    ],
+    [
+      87.88,
+      47.2
+    ],
+    [
+      90.44,
+      44.64
+    ]
+  ],
+  "before_min_header_pad_clearance_mm": 0.286001,
+  "after_min_header_pad_clearance_mm": 1.286,
+  "nearest_pad_before": "J14.1",
+  "nearest_pad_after": "J14.1",
+  "verification": "Distance from native circular/rectangular header pad copper to route edge, excluding the two endpoints; track width 0.2 mm; provisional CAD dimensions, not a physical measurement.",
+  "other_routes": "All endpoints, nets, layers and polylines unchanged",
+  "checked_board_sha256": "e27cbbaad78a400cc48b7a1acf2c117eb7754e115ef3254ffe97aa478131caae"
+}
