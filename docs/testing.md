@@ -56,8 +56,9 @@ slower machine and against a different set of installed tools.
 **What the container cannot answer is the platform tier.** The image is
 always Linux, so the Windows and macOS branches of `host/transport.py`,
 `host/rt.py` and `host/ports.py` execute on no bench unless that host
-runs them itself. `-m "platform and not board"` is that remainder: **17
-tests and under a second**, against 809 and minutes for the gate. Run it
+runs them itself. `-m "platform and not board"` is that remainder: **a
+few tests and under a second**, against minutes for the gate (`pytest
+--collect-only -q` with each tier's `-m` gives the counts). Run it
 natively on every host; run the board tier natively on the bench that
 owns the board, which exercises the same seam by construction.
 

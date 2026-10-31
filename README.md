@@ -30,6 +30,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/shared-source.md](docs/shared-source.md) | What the tracks share, and why the wire contract is one of them |
 | [docs/issue5.md](docs/issue5.md) | The wrap displacement: the defect, its cause and the chain of evidence, and what the chase teaches |
 | [docs/issue5-impact.md](docs/issue5-impact.md) | What the displacement costs the instrument |
+| [docs/issue5-campaign.md](docs/issue5-campaign.md) | The three-bench protocol for measuring the displacement, and how to read it |
 | [docs/noise.md](docs/noise.md) | How much of the converter this board leaves you |
 | [docs/frontend.md](docs/frontend.md) | Front end architecture: daemon, GUI, recording |
 | [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
