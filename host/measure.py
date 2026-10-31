@@ -42,6 +42,7 @@ from ports import find_ports, native_order, open_raw  # noqa: F401
 import jitter
 import rt
 import transport
+import pacing
 
 # ---------------------------------------------------------------------
 # Wire format. Shared verbatim with lib/due_shared/src/frame.h.
@@ -1474,7 +1475,7 @@ class Board:
     per measurement.
     """
 
-    def __init__(self, control=None, native=None, settle=0.0, wait=8.0):
+    def __init__(self, control=None, native=None, settle=0.0, wait=pacing.NORMAL):
         if control is None:
             control, found_native = find_ports(wait=wait)
             if native is None:
@@ -1577,7 +1578,7 @@ class Board:
                         "native port shows %d node(s), need 2 "
                         "(samples on interface 0/1, commands on 2/3)"
                         % len(nodes))
-                link = _control.Control(nodes[-1], timeout=3.0)
+                link = _control.Control(nodes[-1], timeout=pacing.TAIL)
                 link.ping()
                 self._ctl = link
                 self._ctl_why = None
@@ -1599,7 +1600,7 @@ class Board:
                 if i == 0:
                     self._ctl_why_first = self._ctl_why
                 if i + 1 < attempts:
-                    time.sleep(0.5)
+                    pacing.pause(pacing.SETTLE)
         self.ctl_retries = attempts
         self._ctl = None
         return None
@@ -1631,7 +1632,7 @@ class Board:
         self._console += got
         return got
 
-    def drain_console(self, secs, quiet=None, cap=30.0, until=None):
+    def drain_console(self, secs, quiet=None, cap=pacing.NORMAL, until=None):
         """Read the console until it is done talking.
 
         Whichever of these is given decides when that is: a fixed
@@ -1650,7 +1651,7 @@ class Board:
         last = time.time()
         end = time.time() + (secs if quiet is None and not marks else cap)
         while time.time() < end:
-            r = transport.wait_any([self.cfd], 0.05)
+            r = transport.wait_any([self.cfd], pacing.POLL)
             if r:
                 try:
                     d = self.cfd.read(65536)
@@ -1667,19 +1668,19 @@ class Board:
         self._console += out
         return out.decode("utf-8", "replace")
 
-    def ask(self, text, secs=1.0, quiet=None):
+    def ask(self, text, secs=pacing.LISTEN, quiet=None):
         """Send a command and return what the console said back."""
         self.poll_console()
         self.cmd(text)
         return self.drain_console(secs, quiet=quiet)
 
     def banner(self):
-        return self.ask("h", secs=1.0)
+        return self.ask("h", secs=pacing.LISTEN)
 
     def stop(self):
         self.cmd("0")
 
-    def reset(self, wait=10.0):
+    def reset(self, wait=pacing.NORMAL):
         """Software reset over the console.
 
         Does not reopen the control port, so the held fd survives -
@@ -1689,10 +1690,10 @@ class Board:
         """
         self.poll_console()
         self.cmd("z")
-        return self.drain_console(0, quiet=1.0, cap=wait)
+        return self.drain_console(0, quiet=pacing.LISTEN, cap=wait)
 
     # -- native port -------------------------------------------------
-    def open_native(self, wait=45.0, dtr=True, blocking_writes=False,
+    def open_native(self, wait=pacing.SLOW, dtr=True, blocking_writes=False,
                     notify=None, attempt_timeout=6.0):
         """Re-glob and open the native node, and keep trying.
 
@@ -1762,7 +1763,7 @@ class Board:
                         "A listed node that will not open is the device "
                         "still coming back from a reset - see "
                         "Board.open_native().")
-                time.sleep(1.0)
+                pacing.pause(pacing.SETTLE)
         if blocking_writes:
             # Without this a full queue raises EAGAIN and a naive writer
             # dies silently. VMIN=0 keeps reads non-blocking, so this
@@ -1819,7 +1820,7 @@ class Board:
                 # playback, with nothing actually consuming, is the one
                 # state that produces a NAKing pipe with a healthy
                 # endpoint.
-                txt = self.ask("B", secs=0.8) + self.ask("u", secs=0.8)
+                txt = self.ask("B", secs=pacing.LISTEN) + self.ask("u", secs=pacing.LISTEN)
                 for line in txt.splitlines():
                     if ("ep2(OUT)" in line or "dma ch1(OUT)" in line
                             or "bench=" in line or "play:" in line):
@@ -1859,7 +1860,7 @@ class Board:
         # signature is not exiting.
         _wedge_note(f"close() has not returned in {CLOSE_WEDGE_S}s")
         try:
-            txt = self.ask("B", secs=0.8) + self.ask("u", secs=0.8)
+            txt = self.ask("B", secs=pacing.LISTEN) + self.ask("u", secs=pacing.LISTEN)
             for line in txt.splitlines():
                 if ("ep2(OUT)" in line or "dma ch1(OUT)" in line
                         or "bench=" in line or "play:" in line):
@@ -1899,7 +1900,7 @@ class Board:
                 # function - same cable, same detach - so the held link
                 # is stale from here on.
                 self.ctl_invalidate()
-                time.sleep(2.0)
+                pacing.pause(pacing.RESET)
                 return
 
         # The fd is leaked and a thread is stuck on it, so this process
@@ -1925,7 +1926,7 @@ class Board:
         self.close()
 
 
-def drain_until_quiet(fd, quiet=1.0, cap=10.0):
+def drain_until_quiet(fd, quiet=pacing.LISTEN, cap=pacing.NORMAL):
     """Discard everything the native port has to say until it has been
     silent for `quiet` seconds.
 
@@ -1939,7 +1940,7 @@ def drain_until_quiet(fd, quiet=1.0, cap=10.0):
     last = time.time()
     end = time.time() + cap
     while time.time() - last < quiet and time.time() < end:
-        r = transport.wait_any([fd], 0.1)
+        r = transport.wait_any([fd], pacing.POLL)
         if r:
             try:
                 n = len(fd.read(65536))
@@ -2270,7 +2271,7 @@ def set_sync(board, mode, amp=None):
     code = GEN_SYNCS[mode] if isinstance(mode, str) else int(mode)
     board.poll_console()
     board.cmd(f"={code},{int(amp)}J" if amp is not None else f"={code}J")
-    return board.drain_console(0.4)
+    return board.drain_console(pacing.GLANCE)
 
 
 GEN_AMP_FULL = 256
@@ -2294,7 +2295,7 @@ def set_gen(board, shape, points=None, amp=None):
         board.cmd(f"={code},{int(points)}W")
     else:
         board.cmd(f"={code}W")
-    return board.drain_console(0.4)
+    return board.drain_console(pacing.GLANCE)
 
 
 def build_selected(dac_sps, *, tone=1000.0, dc=None, ramp=None, square=None):
@@ -2464,7 +2465,7 @@ class Feeder:
             due = (int((now - anchor_t) * self.byte_rate)
                    + lead - (self.count - anchor_count))
             if due <= 0:
-                time.sleep(min(0.005, -due / self.byte_rate + 0.001))
+                time.sleep(min(pacing.FEED_PACE_CAP, -due / self.byte_rate + 0.001))
                 continue
             # Whole 512-byte packets only: a short packet fragments the
             # device's stream DMA span, and on older firmware ended it.
@@ -2475,14 +2476,14 @@ class Feeder:
                     # wakeups a second and 0.14 of a core at the
                     # full-rate pair, for nothing: the arrival time of
                     # the next write is known exactly from the rate.
-                    time.sleep(min(0.005,
+                    time.sleep(min(pacing.FEED_PACE_CAP,
                                    (self.write_size - due) / self.byte_rate))
                     continue
                 due = self.write_size
             else:
                 due = min(due, self.MAX_WRITE) & ~511
                 if due == 0:
-                    time.sleep(0.001)
+                    pacing.pause(pacing.SPIN)
                     continue
             block = wave[pos:pos + due]
             while len(block) < due:
@@ -2490,7 +2491,7 @@ class Feeder:
             try:
                 n = self.fd.write(block)
             except BlockingIOError:
-                time.sleep(0.001)
+                pacing.pause(pacing.SPIN)
                 continue
             except OSError:
                 return
@@ -2648,7 +2649,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     settle_bytes = 0
     _t = time.time()
     while time.time() - _t < 0.2:
-        if transport.wait_any([fd], 0.02):
+        if transport.wait_any([fd], pacing.POLL):
             settle_bytes += len(fd.read(262144))
     feeder = Feeder(fd, wave, dac_sps * 2, scale=scale,
                     write_size=write_size)
@@ -2671,7 +2672,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
         if diag and not diag_sent and time.time() - t0 > 1.5:
             board.cmd("D")
             diag_sent = True
-        r = transport.wait_any([fd, board.cfd], 0.05)
+        r = transport.wait_any([fd, board.cfd], pacing.POLL)
         if board.cfd in r:
             try:
                 console += board.cfd.read(65536)
@@ -2705,18 +2706,18 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     # starvation rather than the run, and reads downstream as a fault in
     # the feed.
     board.cmd("0")
-    time.sleep(0.2)
+    pacing.pause(pacing.TURN)
 
     # Over the control channel: 146 us, against 13.14 ms of blocked
     # main loop for `B` (invariant 8).
     play = play_counters(board)
 
     board.cmd("B")
-    time.sleep(0.5)
+    pacing.pause(pacing.SETTLE)
     report = b""
-    end = time.time() + 1.5
+    end = time.time() + pacing.REPORT
     while time.time() < end:
-        r = transport.wait_any([fd, board.cfd], 0.1)
+        r = transport.wait_any([fd, board.cfd], pacing.POLL)
         for f in r:
             try:
                 d = f.read(65536)
@@ -2743,7 +2744,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
 
 
 def probe_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
-               settle=0.6):
+               settle=pacing.SETTLE):
     """Ask the device to start a loop and read whether it agreed.
 
     Refusals matter as much as successes here. An over-fast trigger is
@@ -2755,9 +2756,9 @@ def probe_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     board.poll_console()
     board.cmd(f"={dac_sps},{adc_hz},{channels}L")
     time.sleep(settle)
-    text = board.drain_console(0.4)
+    text = board.drain_console(pacing.GLANCE)
     board.cmd("0")
-    time.sleep(0.2)
+    pacing.pause(pacing.TURN)
     board.poll_console()
     return ("refused" not in text), text
 
@@ -2832,11 +2833,11 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
                                    square=square)
 
     fd = board.open_native(blocking_writes=True)
-    drain_until_quiet(fd, quiet=0.3, cap=3.0)
+    drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.TAIL)
     board.poll_console()
     board.cmd(f"={dac_sps}P")
-    time.sleep(0.2)
-    console = board.drain_console(0.3)
+    pacing.pause(pacing.TURN)
+    console = board.drain_console(pacing.GLANCE)
 
     # In play-only the IN endpoint carries only playback status
     # records, so keeping everything it says costs ~1.4 kB/s and gives
@@ -2851,7 +2852,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     next_trim = t0 + TRIM_WARMUP_S
     end = t0 + seconds
     while time.time() < end:
-        r = transport.wait_any([fd, board.cfd], 0.05)
+        r = transport.wait_any([fd, board.cfd], pacing.POLL)
         if fd in r:
             try:
                 inbuf += fd.read(262144)
@@ -2901,7 +2902,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
         run_play_counters = play_counters(board)
         end = time.time() + drain_s
         while time.time() < end:
-            r = transport.wait_any([fd, board.cfd], 0.05)
+            r = transport.wait_any([fd, board.cfd], pacing.POLL)
             if fd in r:
                 try:
                     inbuf += fd.read(262144)
@@ -2914,12 +2915,12 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     # include the underruns of the shutdown rather than the run - which
     # is measuring the wrong thing and reads as a fault in the feed.
     board.cmd("0")
-    time.sleep(0.2)
+    pacing.pause(pacing.TURN)
     # The occupancy histogram is read after the stop, but it describes
     # the run: the device accumulated it at every ENDTX while playing.
     play = play_counters(board)
     occ = occupancy(board)
-    report = board.drain_console(0.3)
+    report = board.drain_console(pacing.GLANCE)
     board.close_native(fd)
     if drain_s > 0.0:
         # Bytes from the drained read, because only then has everything
@@ -2987,7 +2988,7 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
         # Track B does when streaming over the UART. The command and the
         # binary share the one port, so nothing may print to it.
         fd = board.cfd
-        time.sleep(0.2)
+        pacing.pause(pacing.TURN)
     else:
         board.poll_console()
         fd = board.open_native(notify=notify)
@@ -2995,7 +2996,7 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
             fd.flush_input()
         except OSError:
             pass
-        drain_until_quiet(fd, quiet=0.3, cap=5.0)
+        drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.QUICK)
 
     note = rt.promote(period_ms=5.0, computation_ms=0.5, constraint_ms=2.5)
     if notify:
@@ -3011,7 +3012,7 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
     watch = [fd] if uart else [fd, board.cfd]
     try:
         while time.time() < end:
-            r = transport.wait_any(watch, 0.2)
+            r = transport.wait_any(watch, pacing.POLL)
             if not uart and board.cfd in r:
                 try:
                     console += board.cfd.read(65536)
@@ -3021,7 +3022,7 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
                 try:
                     chunk = fd.read(262144)
                 except OSError:
-                    time.sleep(0.02)
+                    pacing.pause(pacing.POLL)
                     continue
                 if chunk:
                     chunks.append(chunk)
@@ -3029,7 +3030,7 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
         elapsed = time.time() - t0
         if stop:
             board.cmd(stop)
-            drain_until_quiet(fd, quiet=0.2, cap=1.0)
+            drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.LISTEN)
         if not uart:
             board.close_native(fd)
 
@@ -3086,9 +3087,9 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
     cmd = BENCH_CMD[mode]
     board.poll_console()
     board.cmd(cmd)
-    time.sleep(0.4)
+    pacing.pause(pacing.SETTLE)
 
-    fd = board.open_native(wait=10.0)
+    fd = board.open_native(wait=pacing.NORMAL)
     fd.flush_input()
 
     # One thread per direction, and blocking writes. An earlier loop
@@ -3112,7 +3113,7 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
         notes["reader"] = rt.promote(period_ms=5.0, computation_ms=0.5,
                                      constraint_ms=2.5)
         while not stop.is_set():
-            r = transport.wait_any([fd], 0.05)
+            r = transport.wait_any([fd], pacing.POLL)
             if r:
                 try:
                     rx_n[0] += len(fd.read(262144))
@@ -3131,7 +3132,7 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
             if tx_rate:
                 due = (time.monotonic() - t_start) * tx_rate - tx_n[0]
                 if due < len(payload):
-                    time.sleep(0.0005)
+                    pacing.pause(pacing.SPIN)
                     continue
             try:
                 tx_n[0] += fd.write(payload)
@@ -3166,19 +3167,19 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
     # direction. The device keeps sinking OUT until the mode is stopped.
     t_drain = time.time() + drain_s
     while time.time() < t_drain:
-        r = transport.wait_any([fd], 0.05)
+        r = transport.wait_any([fd], pacing.POLL)
         if r:
             try:
                 fd.read(262144)
             except OSError:
                 pass
     board.cmd("B")
-    time.sleep(0.6)
+    pacing.pause(pacing.SETTLE)
     report = b""
     t1 = time.time()
     while time.time() - t1 < 1.5:
         # Keep draining so a blocked device can still answer.
-        r = transport.wait_any([fd, board.cfd], 0.1)
+        r = transport.wait_any([fd, board.cfd], pacing.POLL)
         for f in r:
             try:
                 d = f.read(262144)
@@ -3199,7 +3200,7 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
 _HEX_KEYS = ("devisr", "ep0isr", "devimr")
 
 
-def stream_stats(board, *, secs=1.2):
+def stream_stats(board, *, secs=pacing.LISTEN):
     """The `?` report: frame, ring, resync and USB-level counters.
 
     resync and ringovf are the honest flags behind invariant 5 - a
@@ -3285,7 +3286,7 @@ def parse_identity(text):
     }
 
 
-def identity(board, *, secs=1.0):
+def identity(board, *, secs=pacing.LISTEN):
     """Ask the board what it is. One short line, not the banner.
 
     The banner costs 89 ms of blocked main loop (invariant 8) and says
@@ -3295,7 +3296,7 @@ def identity(board, *, secs=1.0):
     return parse_identity(board.ask("v", secs=secs))
 
 
-def which_track(board, *, secs=1.5):
+def which_track(board, *, secs=pacing.REPORT):
     """Which firmware is actually on the board, from its own report.
 
     Asked rather than assumed: flashing is the slowest thing the suite
@@ -3408,7 +3409,7 @@ def _sweep_rows(text, channels, dac=False):
     return rows, reported
 
 
-def sweep_rates(board, *, channels=2, timeout=40.0):
+def sweep_rates(board, *, channels=2, timeout=pacing.SLOW):
     """The TC -> ADC -> PDC trigger-rate sweep (`t`).
 
     Everything downstream is sized against this, and the failure mode is
@@ -3418,7 +3419,7 @@ def sweep_rates(board, *, channels=2, timeout=40.0):
     board.poll_console()
     board.cmd(f"=0,0,{channels}t" if channels != 2 else "t")
     # Both tracks print a closing line, and they print different ones.
-    text = board.drain_console(0, quiet=2.0, cap=timeout,
+    text = board.drain_console(0, quiet=pacing.WHOLE, cap=timeout,
                                until=("past the measured ceiling",
                                       "every trigger produced a conversion"))
     rows, reported = _sweep_rows(text, channels)
@@ -3428,11 +3429,11 @@ def sweep_rates(board, *, channels=2, timeout=40.0):
     return rows, text
 
 
-def sweep_dac(board, *, timeout=40.0):
+def sweep_dac(board, *, timeout=pacing.SLOW):
     """The DAC update-rate sweep (`d`). Track A only."""
     board.poll_console()
     board.cmd("d")
-    text = board.drain_console(0, quiet=2.0, cap=timeout,
+    text = board.drain_console(0, quiet=pacing.WHOLE, cap=timeout,
                                until="every trigger produced a DAC update")
     return _sweep_rows(text, 1, dac=True)[0], text
 
@@ -3440,7 +3441,7 @@ def sweep_dac(board, *, timeout=40.0):
 _PROF = re.compile(r"^#\s+(\S.*?)\s{2,}(\d+)\s+ns\s*$")
 
 
-def profile(board, *, timeout=30.0):
+def profile(board, *, timeout=pacing.NORMAL):
     """Where the main loop's time goes (`Q`), ns per call.
 
     The DMA benches re-arm at most one transfer per main-loop pass, so
@@ -3448,7 +3449,7 @@ def profile(board, *, timeout=30.0):
     """
     board.poll_console()
     board.cmd("Q")
-    text = board.drain_console(0, quiet=1.5, cap=timeout,
+    text = board.drain_console(0, quiet=pacing.REPORT, cap=timeout,
                                until="services early-return unless started")
     out = {}
     for line in text.splitlines():
@@ -3518,8 +3519,8 @@ def flash(track, control=None, retries=2):
         try:
             subprocess.run(cmd, cwd=REPO, check=True,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                           timeout=300)
-            time.sleep(2.0)
+                           timeout=pacing.BUILD)
+            pacing.pause(pacing.RESET)
             return True
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             last = e
@@ -3531,7 +3532,7 @@ def flash(track, control=None, retries=2):
             # held equal by tests/test_flash.py.
             if getattr(e, "returncode", None) == FLASH_REFUSED:
                 break
-            time.sleep(2.0)
+            pacing.pause(pacing.RESET)
     # The child's output, not only its exit status. stdout and stderr are
     # captured here so a flash does not spray into a test run, and
     # CalledProcessError does not put them in its str(), so "returned

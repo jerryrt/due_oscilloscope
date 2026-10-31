@@ -30,6 +30,7 @@ from __future__ import annotations
 import os
 import sys
 import time
+import pacing
 
 WINDOWS = sys.platform == "win32"
 
@@ -189,9 +190,9 @@ class _WindowsPort:
         if not self._buf and self._blocking:
             # Blocking mode is for the drain loops that want to sit until
             # data arrives; bounded, so a dead port cannot hang a run.
-            end = time.monotonic() + 0.5
+            end = time.monotonic() + pacing.GLANCE
             while not self._buf and time.monotonic() < end:
-                time.sleep(0.0005)
+                pacing.pause(pacing.SPIN)
                 self.pump()
         if not self._buf:
             return b""
@@ -268,7 +269,7 @@ def wait_any(ports, timeout):
         ready = [p for p in live if p.pump()]
         if ready or time.monotonic() >= end:
             return ready
-        time.sleep(0.0005)
+        pacing.pause(pacing.SPIN)
 
 
 def outq_bytes(port):

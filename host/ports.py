@@ -27,6 +27,7 @@ import time
 
 import transport
 from transport import WINDOWS, open_raw          # noqa: F401  (re-exported)
+import pacing
 
 # macOS is the only platform that needs ioreg, and the only one where
 # pyserial does not report a USB interface number. Tier 2: see CLAUDE.md.
@@ -71,7 +72,7 @@ def pyserial_missing():
     return _no_enumeration
 
 
-def answers_banner(dev, timeout=1.5):
+def answers_banner(dev, timeout=pacing.REPORT):
     """Does this node produce the firmware banner?
 
     Not used for discovery - that is VID/PID now, on every platform,
@@ -83,7 +84,7 @@ def answers_banner(dev, timeout=1.5):
     return _responds(dev, timeout)
 
 
-def _responds(dev, timeout=1.5):
+def _responds(dev, timeout=pacing.REPORT):
     try:
         port = open_raw(dev, 115200)
     except OSError:
@@ -93,7 +94,7 @@ def _responds(dev, timeout=1.5):
         end = time.time() + timeout
         buf = b""
         while time.time() < end:
-            if transport.wait_any([port], 0.1):
+            if transport.wait_any([port], pacing.POLL):
                 try:
                     buf += port.read(4096)
                 except OSError:
@@ -132,7 +133,7 @@ def usb_interfaces():
         out = subprocess.run(
             ["ioreg", "-c", "IOUSBHostInterface", "-r", "-l", "-w", "0",
              "-d", "4"],
-            capture_output=True, text=True, timeout=10).stdout
+            capture_output=True, text=True, timeout=pacing.NORMAL).stdout
     except (OSError, subprocess.SubprocessError):
         return {}
 
@@ -240,7 +241,7 @@ def native_nodes(exclude=None):
     return native_order(nodes)
 
 
-def find_ports(wait=8.0):
+def find_ports(wait=pacing.NORMAL):
     """Return (control_port, native_port).
 
     native_port is the *sample* node, which is what every existing
@@ -250,7 +251,7 @@ def find_ports(wait=8.0):
     return ctl, native
 
 
-def find_all_ports(wait=8.0):
+def find_all_ports(wait=pacing.NORMAL):
     """Return (programming_port, native_samples, native_commands).
 
     Any of the three may be None. The third is None against firmware
@@ -289,7 +290,7 @@ def find_all_ports(wait=8.0):
             return None, None, None
         if time.time() >= end:
             return None, None, None
-        time.sleep(0.5)
+        pacing.pause(pacing.SETTLE)
 
 
 if __name__ == "__main__":

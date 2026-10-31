@@ -13,6 +13,7 @@ import collections
 import socket
 import threading
 import time
+import pacing
 
 from . import protocol as proto
 
@@ -32,7 +33,7 @@ class Refused(ClientError):
 
 
 class Client:
-    def __init__(self, host="127.0.0.1", port=45454, *, timeout=5.0,
+    def __init__(self, host="127.0.0.1", port=45454, *, timeout=pacing.QUICK,
                  frame_capacity=4096):
         self.host = host
         self.port = port
@@ -152,7 +153,7 @@ class Client:
     def subscribe(self, frames=True):
         return self.call("subscribe", frames=frames)
 
-    def wait_frames(self, n, timeout=5.0):
+    def wait_frames(self, n, timeout=pacing.QUICK):
         """Block until `n` frames have arrived, and return them."""
         end = time.time() + timeout
         with self._cv:
@@ -164,7 +165,7 @@ class Client:
                 self._cv.wait(0.05)
         return list(self.frames)
 
-    def wait_event(self, name, timeout=5.0):
+    def wait_event(self, name, timeout=pacing.QUICK):
         end = time.time() + timeout
         with self._cv:
             while True:

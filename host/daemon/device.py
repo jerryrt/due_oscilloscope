@@ -26,6 +26,7 @@ import zlib
 
 import control as control_mod
 import transport
+import pacing
 
 # Frame layout, shared verbatim with lib/due_shared/src/frame.h and host/measure.py.
 HDR_FMT = "<4sBBHIIIIII"
@@ -57,7 +58,7 @@ class Device:
     def stop(self):
         raise NotImplementedError
 
-    def read(self, timeout=0.2):
+    def read(self, timeout=pacing.GLANCE):
         """Bytes from the sample stream, or b'' if none arrived."""
         raise NotImplementedError
 
@@ -227,7 +228,7 @@ class FakeDevice(Device):
         self.closed = True
 
     # -- stream ------------------------------------------------------
-    def read(self, timeout=0.2):
+    def read(self, timeout=pacing.GLANCE):
         """Nothing slow happens under the lock, and that is the point.
 
         `BoardDevice.read()` holds no lock at all - it sleeps on the
@@ -262,7 +263,7 @@ class FakeDevice(Device):
             # Play-only produces no capture stream, exactly as the
             # device does not.
             if timeout:
-                time.sleep(min(timeout, 0.01))
+                time.sleep(min(timeout, pacing.POLL))
             return b""
         if wait > 0:
             time.sleep(min(wait, timeout))
@@ -697,7 +698,7 @@ class FileDevice(Device):
             "waveform")
 
     # -- stream ------------------------------------------------------
-    def read(self, timeout=0.2):
+    def read(self, timeout=pacing.GLANCE):
         """Paced outside the lock, for `FakeDevice.read()`'s reasons.
 
         The file work stays under it - reading a chunk is bounded and
@@ -725,7 +726,7 @@ class FileDevice(Device):
                     wait = due - time.monotonic()
         if idle:
             if timeout:
-                time.sleep(min(timeout, 0.01))
+                time.sleep(min(timeout, pacing.POLL))
             return b""
         if wait > 0:
             time.sleep(min(wait, timeout))
@@ -1042,7 +1043,7 @@ class BoardDevice(Device):
                 if self._hb_period_ms:
                     link.on_unsolicited = self._hb_on_frame
             else:
-                self._ctl = control_mod.Control(node, timeout=2.0)
+                self._ctl = control_mod.Control(node, timeout=pacing.WHOLE)
                 self._ctl_owned = True
             self._ctl_note = None
         except Exception as e:                       # noqa: BLE001
@@ -1166,7 +1167,7 @@ class BoardDevice(Device):
 
         self.board.poll_console()
         self.fd = self.board.open_native(blocking_writes=(mode != "capture"))
-        self.m.drain_until_quiet(self.fd, quiet=0.3, cap=5.0)
+        self.m.drain_until_quiet(self.fd, quiet=pacing.GLANCE, cap=pacing.QUICK)
 
         # The reader thread takes the descriptor HERE, not at the end of
         # start(). Issues #44 and #57, which pull in opposite directions
@@ -1204,7 +1205,7 @@ class BoardDevice(Device):
             # was printing before now.
             self.board.cmd(f"={dac_sps},{adc_hz or dac_sps},{channels}"
                            f"{'P' if mode == 'play' else 'L'}")
-            time.sleep(0.2)
+            pacing.pause(pacing.TURN)
 
         # The feeder starts before the console is read, not after.
         # Reading first cost 0.6 s of a DAC already draining its ring at
@@ -1220,7 +1221,7 @@ class BoardDevice(Device):
             self.feeder = self.m.Feeder(self.fd, waveform, (dac_sps or 0) * 2)
             self.feeder.start()
 
-        text = self.board.drain_console(0.3)
+        text = self.board.drain_console(pacing.GLANCE)
         if "refused" in text:
             self._teardown()
             raise DeviceError(text.strip() or "the device refused the rate")
@@ -1231,7 +1232,7 @@ class BoardDevice(Device):
                       "channels": channels, "preset": preset}
         return text
 
-    def read(self, timeout=0.2):
+    def read(self, timeout=pacing.GLANCE):
         # Gated on `_readable`, not on `fd is None` or on `running`.
         #
         # `Server._read_loop` drains this device for the daemon's whole
@@ -1265,7 +1266,7 @@ class BoardDevice(Device):
         # Safe on the way out too: `_teardown()` shuts the gate before
         # it closes the fd.
         if self.fd is None or not self._readable:
-            time.sleep(min(timeout, 0.05))
+            time.sleep(min(timeout, pacing.POLL))
             return b""
         r = transport.wait_any([self.fd], timeout)
         if not r:
@@ -1492,7 +1493,7 @@ class BoardDevice(Device):
                 continue
             try:
                 with self._ctl_lock:
-                    frame = c.recv(timeout=0.05)
+                    frame = c.recv(timeout=pacing.POLL)
                 if frame is not None and frame.req_id == 0:
                     with self._ctl_lock:
                         self._hb_on_frame(frame)
@@ -1545,7 +1546,7 @@ class BoardDevice(Device):
         self._hb_stop.set()
         t = self._hb_thread
         if t is not None:
-            t.join(timeout=1.0)
+            t.join(timeout=pacing.LISTEN)
             self._hb_thread = None
         self.stop()
         # After the pump has stopped, so nothing reads the link while it

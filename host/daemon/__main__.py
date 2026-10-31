@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from daemon import device as devmod            # noqa: E402
 from daemon import server as srvmod            # noqa: E402
+import pacing
 
 
 def main(argv=None):
@@ -84,7 +85,7 @@ def main(argv=None):
     print(f"daemon on {srv.host}:{srv.port}  device={dev.describe()}")
     try:
         while True:
-            time.sleep(1.0)
+            pacing.pause(pacing.SETTLE)
     except KeyboardInterrupt:
         pass
     finally:

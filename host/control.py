@@ -20,6 +20,7 @@ import time
 import zlib
 
 import transport
+import pacing
 
 MAGIC = b"DUEC"
 # The device refuses a frame whose version is not its own
@@ -174,7 +175,7 @@ class Control:
     would be read as samples.
     """
 
-    def __init__(self, path, timeout=1.0, on_unsolicited=None):
+    def __init__(self, path, timeout=pacing.LISTEN, on_unsolicited=None):
         from ports import open_raw
 
         self.path = path
@@ -239,7 +240,7 @@ class Control:
     def __exit__(self, *exc):
         self.close()
 
-    def drain(self, secs=0.25):
+    def drain(self, secs=pacing.GLANCE):
         """Read and discard whatever is still coming.
 
         Called before closing so that a response the caller never asked
@@ -248,7 +249,7 @@ class Control:
         """
         end = time.time() + secs
         while time.time() < end:
-            r = transport.wait_any([self.fd], 0.05)
+            r = transport.wait_any([self.fd], pacing.POLL)
             if not r:
                 break
             try:

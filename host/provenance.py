@@ -48,6 +48,7 @@ import re
 import subprocess
 import sys
 import time
+import pacing
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -582,7 +583,7 @@ def _git_run(*args):
     """
     try:
         return subprocess.run(("git",) + args, cwd=REPO, capture_output=True,
-                              text=True, timeout=5)
+                              text=True, timeout=pacing.QUICK)
     except Exception:                                     # pragma: no cover
         return None
 

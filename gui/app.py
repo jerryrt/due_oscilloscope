@@ -21,6 +21,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "host"))
 
+import pacing                                  # noqa: E402
 from . import stream                        # noqa: E402
 from .session import DaemonSession          # noqa: E402
 from .health import HealthPanel             # noqa: E402
@@ -1025,7 +1026,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # whole frame - and it does all three *before* binding a
             # port, so a child that has exited is carrying the useful
             # message and "could not reach a daemon" would bury it.
-            deadline = time.monotonic() + 5.0
+            deadline = time.monotonic() + pacing.QUICK
             while time.monotonic() < deadline:
                 if child.poll() is not None:
                     err = (child.stderr.read() or "").strip()
@@ -1037,7 +1038,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     return
                 if self.session.open("control", quiet=True):
                     return
-                time.sleep(0.1)
+                pacing.pause(pacing.POLL)
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
         self._stop_replay_child()

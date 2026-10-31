@@ -21,12 +21,6 @@ to survive the front end. See `docs/frontend.md`.
 
 from __future__ import annotations
 
-# How often the accept loop wakes to check whether it has been stopped.
-# Short enough that teardown is not noticeable, long enough that an idle
-# daemon is not spinning: 5 wakeups a second against a loop that does
-# nothing else.
-ACCEPT_TIMEOUT_S = 0.2
-
 import collections
 import gc
 import json
@@ -36,10 +30,17 @@ import threading
 import time
 
 import jitter
+import pacing
 
 from . import device as devmod
 from . import protocol as proto
 from . import rates as ratemod
+
+# How often the accept loop wakes to check whether it has been stopped.
+# Short enough that teardown is not noticeable, long enough that an idle
+# daemon is not spinning: 5 wakeups a second against a loop that does
+# nothing else.
+ACCEPT_TIMEOUT_S = pacing.TURN
 
 DEFAULT_PORT = 45454
 
@@ -212,7 +213,7 @@ class _Session(threading.Thread):
                 except proto.ProtocolError as e:
                     # Framing is gone; there is nothing to recover to.
                     self.event("error", code="protocol", message=str(e))
-                    time.sleep(0.05)
+                    pacing.pause(pacing.POLL)
                     break
                 for mtype, body in msgs:
                     self.server.handle(self, mtype, body)
@@ -485,10 +486,10 @@ class Server:
         gen = self._run_gen
         while not self._stop.is_set():
             try:
-                data = self.device.read(timeout=0.2)
+                data = self.device.read(timeout=pacing.GLANCE)
             except Exception as e:                   # noqa: BLE001
                 self.broadcast_event("device_error", message=str(e))
-                time.sleep(0.2)
+                pacing.pause(pacing.TURN)
                 continue
             if not data:
                 continue

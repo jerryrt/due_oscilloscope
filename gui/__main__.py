@@ -26,6 +26,7 @@ import time
 from PySide6 import QtWidgets
 
 from .app import MainWindow
+import pacing                                  # noqa: E402
 
 
 def main(argv=None):
@@ -63,7 +64,7 @@ def main(argv=None):
             [sys.executable, "-m", "daemon"] + argv_daemon +
             ["--host", args.host, "--port", str(args.port)],
             cwd=os.path.join(root, "host"))
-        time.sleep(0.8)
+        pacing.pause(pacing.RESET)
         if child.poll() is not None:
             # The daemon refuses an unreadable recording before it binds
             # a port, and its message is the useful one. Saying "could
