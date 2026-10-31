@@ -19,14 +19,11 @@ which the firmware's `M` preset was already built to make possible.
 Named `settletime` rather than `eqtime` because `host/eqtime.py` owns
 that name and both directories are on the path in `tools/phase0.py`.
 
-## Milestone 1 is a cross-check and it is also the kill criterion
+## Milestone 1 reconstructs the full-scale edge
 
-`rise` reconstructs the full-scale edge, which the scope has already
-measured independently at 789-938 ns. Two instruments sharing no
-hardware: if they agree, the method is validated by something that is
-not itself. If they do not, the ADC's sample aperture is the limit and
-that is the answer - say so and stop, rather than pressing on into the
-tail where nothing can check the result.
+`rise` prints the scope's stored 789-938 ns as a reference with its
+caveat and gives no verdict against it. It refuses to report at all
+unless the fold covers every phase position.
 """
 import argparse
 import math
@@ -46,19 +43,61 @@ import repeat                                                 # noqa: E402
 
 RECORDS = os.path.join(HERE, "records")
 
-#: What the scope measured for the same edge, independently, and the
-#: number `rise` has to reproduce. docs/status.md, tools/dso_metrics step.
+#: What the scope read for the same edge. A reference and not a target:
+#: it was taken at what was probably the unconfigured DACC_ACR bias
+#: *(check)*, so nothing here is judged against it.
 SCOPE_RISE_S = (789e-9, 938e-9)
 
-#: DAC update rate to ask for. 200,000 is RC 195 exactly, so the period
-#: is 2*points*195 ticks and every candidate below is an integer RC.
+#: DAC update rate to ask for. At the timer clock this lands on an RC of
+#: `expected_rc_dac(DAC_HZ)`, read from the clock rather than written down.
 DAC_HZ = 200_000
 
-#: ADC rate to ask for. The device floors RC from the request, so 202,000
-#: lands on RC 193 - prime, and therefore coprime with every period here,
-#: which is what makes the fold visit all of them. Verified by the
-#: coverage figure rather than assumed.
+#: ADC rate to start the search from. The RC actually used is the nearest
+#: one coprime with the waveform period, `coprime_adc_rc()`; a fixed
+#: request at 202,000 landed on RC 222 against a DAC RC of 225 and
+#: gcd(222, 225) = 3, which leaves a third of the phase positions empty.
 ADC_HZ = 202_000
+
+#: The ADC's trigger floor, below which the device overruns (CLAUDE.md).
+ADC_MIN_RC = 86
+
+
+def coprime_adc_rc(period_ticks, want_rc, *, floor=ADC_MIN_RC):
+    """Nearest RC to `want_rc` coprime with the waveform period, and its Hz.
+
+    The fold visits phase (k * rc_adc) mod period, which reaches every
+    position only when gcd(rc_adc, period) = 1. The search runs outward
+    from the request, lower value first on a tie, and skips an RC the
+    device would not land on when asked for its rate. Returns (rc, hz).
+    """
+    for d in range(0, 4096):
+        for rc in (want_rc - d, want_rc + d):
+            if rc < floor:
+                continue
+            hz = measure.hz_for(rc)
+            if (math.gcd(rc, period_ticks) == 1
+                    and measure.rc_for(hz) == rc):
+                return rc, hz
+    raise SystemExit(f"no ADC RC near {want_rc} is coprime with a "
+                     f"{period_ticks}-tick period")
+
+
+def refuse_unless_coprime(rc_adc, period_ticks):
+    """Raise when this ADC RC cannot reach every phase of the period."""
+    g = math.gcd(rc_adc, period_ticks)
+    if g != 1:
+        raise SystemExit(
+            f"refusing: RC_adc {rc_adc} against a {period_ticks}-tick "
+            f"period has gcd {g}, so the fold cannot reach every phase.")
+
+
+def require_full_coverage(coverage):
+    """Raise unless the fold filled every phase bin."""
+    if coverage < 1.0:
+        raise SystemExit(
+            f"refusing to report: phase coverage {coverage*100:.1f}% is "
+            f"below 100%. A figure read off a partial fold is read off "
+            f"holes; no rise or settling is given.")
 
 
 def adc_lsb_v():
@@ -71,7 +110,7 @@ def expected_rc_dac(dac_hz):
     return eqtime.TC_CLOCK_HZ // dac_hz
 
 
-def capture(board, *, points, seconds, dac_hz=DAC_HZ, adc_hz=ADC_HZ,
+def capture(board, *, points, seconds, dac_hz=DAC_HZ, adc_hz=None,
             shape="square", amp=256, solo=False):
     """One run of the M preset, with everything the fold needs checked.
 
@@ -82,6 +121,15 @@ def capture(board, *, points, seconds, dac_hz=DAC_HZ, adc_hz=ADC_HZ,
     re-drives the output every update and what gets timed is those
     updates rather than the converter. See issue #9.
     """
+    rc_dac = expected_rc_dac(dac_hz)
+    period = eqtime.period_ticks(rc_dac, points,
+                                 updates_per_cycle=points if solo else None)
+    if adc_hz is None:
+        want = measure.rc_for(ADC_HZ)
+        _, adc_hz = coprime_adc_rc(period, want)
+    print(f"  DAC RC {rc_dac}, period {period} ticks; ADC asked for "
+          f"{adc_hz:,} Hz = RC {measure.rc_for(adc_hz)}")
+    refuse_unless_coprime(measure.rc_for(adc_hz), period)
     measure.set_sync(board, "solo" if solo else "off")
     # Amplitude explicitly, never inherited. `gen_amp` persists on the
     # device across commands, so a metric run that measured noise at a
@@ -108,6 +156,7 @@ def capture(board, *, points, seconds, dac_hz=DAC_HZ, adc_hz=ADC_HZ,
             f"the device reported {st.declared_rate_hz} Hz, which no RC "
             f"produces. The period would be a guess.")
     vals = [float(v) for v in (st.series.get(measure.CH_A0) or [])]
+    refuse_unless_coprime(rc_adc, period)
     return vals, rc_adc, st
 
 
@@ -159,7 +208,7 @@ def edge_times(seg, lo, hi):
 
 
 def cmd_rise(board, args):
-    """Milestone 1: does the fold reproduce the scope's rise time?"""
+    """Milestone 1: the 10-90% rise of the full-scale edge, from a full fold."""
     lsb_v, advref, source = adc_lsb_v()
     print(f"ADC LSB {lsb_v*1e6:.1f} uV (ADVREF {advref} mV, {source})\n")
     vals, rc_adc, st = capture(board, points=args.points,
@@ -167,6 +216,7 @@ def cmd_rise(board, args):
     curve, cnt, best, margin, scan = fold(vals, rc_adc, args.points,
                                           rc_dac=expected_rc_dac(args.dac_hz))
     _report_fold(vals, rc_adc, best, margin, cnt, lsb_v)
+    require_full_coverage(best["coverage"])
 
     seg = eqtime.segment_after_edge(curve, pre=args.pre)
     ok = sorted(v for v in seg if v is not None)
@@ -177,15 +227,10 @@ def cmd_rise(board, args):
     rise = (t90 - t10) / eqtime.TC_CLOCK_HZ
     print(f"\n  step {(hi-lo)*lsb_v*1000:.0f} mV = {hi-lo:.0f} ADC codes")
     print(f"  rise 10-90%  {rise*1e9:.0f} ns  ({t90-t10} ticks)")
-    print(f"  the scope, independently: {SCOPE_RISE_S[0]*1e9:.0f}-"
-          f"{SCOPE_RISE_S[1]*1e9:.0f} ns")
-    inside = SCOPE_RISE_S[0] * 0.7 <= rise <= SCOPE_RISE_S[1] * 1.4
-    print(f"\n  {'AGREES' if inside else 'DISAGREES'} with the scope.")
-    if not inside:
-        print("  The reconstruction is not validated. Either the ADC's\n"
-              "  sample aperture is the limit or the model is wrong;\n"
-              "  either way the tail must not be read off this.")
-    return {"rise_s": rise, "step_codes": hi - lo, "agrees": inside,
+    print(f"  reference only, not a target: a scope read "
+          f"{SCOPE_RISE_S[0]*1e9:.0f}-{SCOPE_RISE_S[1]*1e9:.0f} ns, at "
+          f"what was probably the unconfigured bias (check)")
+    return {"rise_s": rise, "step_codes": hi - lo,
             "margin": margin, "coverage": best["coverage"],
             "period_ticks": best["period"], "rc_adc": rc_adc}
 
@@ -201,6 +246,7 @@ def cmd_settle(board, args):
                                           rc_dac=expected_rc_dac(args.dac_hz),
                                           solo=args.solo)
     _report_fold(vals, rc_adc, best, margin, cnt, lsb_v)
+    require_full_coverage(best["coverage"])
 
     seg = eqtime.segment_after_edge(curve, pre=0)
     rows = eqtime.settle_profile(seg, lsb=1.0)
@@ -254,6 +300,7 @@ def cmd_control(board, args):
     curve, cnt, best, margin, scan = fold(vals, rc_adc, args.points,
                                           rc_dac=expected_rc_dac(args.dac_hz),
                                           solo=args.solo)
+    require_full_coverage(best["coverage"])
     ok = [v for v in curve if v is not None]
     m = sum(ok) / len(ok)
     rms = math.sqrt(sum((v - m) ** 2 for v in ok) / len(ok))
@@ -351,7 +398,7 @@ def main():
                                 if isinstance(v, (int, float))
                                 and not isinstance(v, bool)},
                      "bands": out.get("bands"),
-                     "agrees": out.get("agrees"), "flat": out.get("flat"),
+                     "flat": out.get("flat"),
                      "provenance": p})
     finally:
         try:

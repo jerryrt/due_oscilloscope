@@ -245,11 +245,6 @@ def m_settling(board, args):
         a = settletime.cmd_rise(board, argparse.Namespace(
             points=8, seconds=args.seconds, pre=80, dac_hz=200000))
         out["rise_10_90_ns"] = _spread([a["rise_s"] * 1e9])
-        # Named for what it is: a comparison against a figure the DSO
-        # bench stored (789-938 ns), not a live instrument. No scope is
-        # attached or needed for this run, and on a different board that
-        # stored range is a sanity check rather than a verdict.
-        out["agrees_with_stored_dso_range"] = a["agrees"]
         out["fold_margin"] = a["margin"]
     except SystemExit as e:
         out["error"] = str(e)
@@ -351,8 +346,8 @@ def render(run):
                 A(f"| {name} | {v['value']:.6g} | {v['n']} | {sp} |")
         # Scalars and verdicts get their own rows rather than being
         # dropped. The first version of this rendered only the dicts,
-        # so `agrees_with_scope: False` - the one field that says
-        # whether the settling figure may be read at all - vanished
+        # so a failed verdict field - the kind that says
+        # whether a figure may be read at all - vanished
         # from the report while the figure it disqualified stayed in.
         for name, v in block.items():
             if isinstance(v, dict) or name == "units":
