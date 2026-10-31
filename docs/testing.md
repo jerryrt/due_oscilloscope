@@ -267,6 +267,30 @@ profile per board under `records/boards/`, summarised per phase.
 | **`image_mnemonics.py` bounds each symbol by its declared size** | Without that bound a symbol absorbs whatever follows it: on the RTOS image `__libc_init_array` is 0x50 bytes of code and was credited with 5,156 bytes of trailing `.rodata`, four strings of which are absolute source paths. The reported instruction count then tracked the length of the build directory - **one per character, exactly** - so two checkouts of one commit disagreed, and a comment-only change read as edited code. Comments never moved it. All three tracks are reproducible across build directories now |
 | **A listed serial node is not an openable one** | `CreateFile` can accept the open and never return, so a generous deadline never gets tested. `Board.open_native()` abandons each attempt in a daemon thread |
 
+### Waits, run lengths, and what a test costs
+
+Every wait and run length in `host/`, `gui/` and `tests/` names a level
+from `host/pacing.py`, and `tests/test_pacing.py` fails on a bare number.
+Five levels in each of four ladders - delays, console reads, hang limits
+and run lengths - so a bench that needs one longer sets one value and
+nothing is found by grep.
+
+| ladder | what its levels are for | set a bench with |
+|---|---|---|
+| delays | what a sleep waits for: a busy loop, a poll, one command and its answer, a board state change, a re-enumeration | `DUE_DELAY_SCALE`, `DUE_DELAY_<LEVEL>` |
+| reads | how long a console read listens | `DUE_READ_SCALE`, `DUE_READ_<LEVEL>` |
+| limits | how long a wait may take before it is a hang; costs nothing on success | `DUE_LIMIT_SCALE`, `DUE_LIMIT_<LEVEL>` |
+| run lengths | how long a capture lasts | `DUE_RUN_SCALE`, `DUE_RUN_<LEVEL>`, `--seconds` |
+
+| rule | why |
+|---|---|
+| **A number that is an input to the code under test, or a quantity the test measures, is a named `*_S` constant with its reason, not a level** | A scale must not be able to change what a test asserts. The guard asks for the reason and fails when the constant is gone |
+| **A wait that asserts something does not happen is derived from the rate that would produce it** | A level can be scaled below the event's period, and the test then passes for lack of time to see one. `pause_at_least()` refuses |
+| **A wait is shortened only with a measurement behind it** | `DUE_PACING_VERIFY=1` keeps the old length and counts what the shorter wait would have cut off; it must be zero on every track before the change is kept |
+| **A change made for time does not change a check** | `tools/assertion_fingerprint.py --check` against the commit before it must show no changed test. It resolves levels and constants to their values, so converting a literal hashes the same |
+| **A conversion never makes a wait longer without saying why** | A first fit rounded to the nearest level and lengthened 83 of 260 waits, among them the hot report read, and nothing failed. Choose levels to move the fewest |
+| **Start from the cost, not from a guess** | `pytest --pacing-report --durations=0` lists every sleep by site and level, the stages of a run (`pacing.Marks`), and the measured gaps. Rank by time per run times runs, take the top, re-measure |
+
 **Heal the ports before believing a board fault.** The bench is a test
 rig, not a patient.
 
