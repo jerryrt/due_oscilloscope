@@ -20,7 +20,9 @@ the reading the alias check exists to prevent. The *count* and the power
 fraction are recorded, because those are comparable.
 """
 import argparse
+import math
 import os
+import random
 import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -90,3 +92,37 @@ def cmd_noise_host(board, inst, args):
     """The level fed from the host, so the OUT path is working too."""
     return _run(board, args.code, args.seconds, args.window,
                 host_rate=200000, rc=getattr(args, "rc", None))
+
+
+def add_known_noise(values, rms_lsb, seed=1):
+    """`values` plus independent gaussian noise of `rms_lsb` codes rms.
+
+    Takes the series *before* it is rounded to integer codes, because the
+    board's noise is added in the analog domain ahead of the converter's
+    rounding. Adding it to codes already rounded would leave a small
+    amount of noise unable to move most samples, and the figure would
+    miss the root-sum-square by the quantisation, not by the noise.
+    Stdlib `random`, as `noise.py`'s tests do; a fixed seed makes the
+    result repeatable.
+    """
+    rng = random.Random(seed)
+    return [v + rng.gauss(0.0, rms_lsb) for v in values]
+
+
+def rss_response(values, extra_rms_lsb, fs, *, seed=1, window=4096):
+    """What `noisetool.analyse` says before and after known noise is added.
+
+    `values` is the pre-rounding series; both arms are rounded to integer
+    codes here, as the converter does. Returns the two analyses and the
+    root-sum-square prediction for the noisy arm's `rms_lsb`:
+    sqrt(baseline^2 + extra^2). The prediction uses the baseline as
+    measured, so the sampling error of the baseline cancels out of it.
+    """
+    lsb_v = 1.0   # codes in, codes out: the volt scale is not under test
+    base = noisetool.analyse([round(v) for v in values], fs, lsb_v,
+                             window=window)
+    noisy = noisetool.analyse(
+        [round(v) for v in add_known_noise(values, extra_rms_lsb, seed)],
+        fs, lsb_v, window=window)
+    predicted = math.sqrt(base["rms_lsb"] ** 2 + extra_rms_lsb ** 2)
+    return base, noisy, predicted
