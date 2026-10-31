@@ -1971,7 +1971,8 @@ def read_report(fd, cfd, *, quiet=pacing.GLANCE, window=pacing.REPORT):
     return report
 
 
-def drain_until_quiet(fd, quiet=pacing.LISTEN, cap=pacing.NORMAL):
+def drain_until_quiet(fd, quiet=pacing.LISTEN, cap=pacing.NORMAL,
+                      confirm=pacing.LISTEN):
     """Discard everything the native port has to say until it has been
     silent for `quiet` seconds.
 
@@ -1980,20 +1981,42 @@ def drain_until_quiet(fd, quiet=pacing.LISTEN, cap=pacing.NORMAL):
     exactly how a working loop was once diagnosed as frozen at mid
     scale. One tcflush is not enough; the buffer refills as long as the
     device is still streaming.
+
+    With DUE_PACING_VERIFY=1 the drain keeps going until `confirm` seconds
+    of silence and returns everything it saw, counting the bytes that
+    arrived after `quiet` had passed: those are what a shorter quiet would
+    have left in the buffer, and they must stay zero.
     """
     stale = 0
+    late = 0
+    longest = 0.0
     last = time.time()
-    end = time.time() + cap
-    while time.time() - last < quiet and time.time() < end:
-        r = transport.wait_any([fd], pacing.POLL)
-        if r:
+    end = last + cap
+    cut = False
+    while time.time() < end:
+        quiet_for = time.time() - last
+        if not cut and quiet_for >= quiet:
+            cut = True
+            if not pacing.VERIFY:
+                break
+        if cut and quiet_for >= confirm:
+            break
+        if transport.wait_any([fd], pacing.POLL):
             try:
                 n = len(fd.read(65536))
             except OSError:
                 break
             if n:
+                longest = max(longest, time.time() - last)
+                if cut:
+                    late += n
                 stale += n
                 last = time.time()
+    if stale:
+        pacing.observe("stale.longest_gap_s", longest)
+    pacing.observe("stale.bytes", stale)
+    if pacing.VERIFY:
+        pacing.observe("stale.late_bytes", late)
     return stale
 
 
@@ -2666,7 +2689,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     m.mark("build_wave")
     fd = board.open_native(blocking_writes=True, notify=notify)
     m.mark("open_native")
-    stale = drain_until_quiet(fd) if drain else 0
+    stale = drain_until_quiet(fd, quiet=pacing.GLANCE) if drain else 0
     m.mark("drain_stale")
     if stale and notify:
         notify("stale", bytes=stale)
