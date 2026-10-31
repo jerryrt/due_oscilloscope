@@ -13,7 +13,7 @@
 #define MCK_MULA_84   13u
 #define MCK_MULA_90   14u
 /* The operating point. 90 MHz since the USB DMA burst limit removed the
- * loop-mode overruns; -DFIRMWARE_MCK_MHZ=78|90 (CMake) selects the other
+ * loop-mode overruns; -DFIRMWARE_MCK_HZ=78000000|90000000 (CMake) selects the other
  * one, which is the datasheet-conservative setting. */
 #ifndef MCK_MULA_DEFAULT
 #define MCK_MULA_DEFAULT MCK_MULA_90

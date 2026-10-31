@@ -47,10 +47,11 @@ A 12-bit oscilloscope and signal generator on the Arduino Due
 (SAM3X8E, Cortex-M3). The board acquires and generates; the host does
 all DSP and visualisation.
 
-**MCK is 78 MHz, not the Due's usual 84** - see "Facts that are easy to
-get wrong". Every RC in this project divides 39 MHz. The header used to
-say 84 and was quoted from here into two other documents, so correct
-this line rather than working around it.
+**MCK is 90 MHz by default, not the Due's usual 84** - out of
+specification, and see "Facts that are easy to get wrong". Every RC in
+this project divides 45 MHz (39 MHz on a 78 MHz image, selectable at
+build time). The header used to say 84 and was quoted from here into
+two other documents, so correct this line rather than working around it.
 
 Status: **full loop working, with a front end on it, and a
 re-validation debt.** Both tracks stream the ADC's complete in-spec
@@ -271,7 +272,7 @@ Check here before reasoning from general Arduino knowledge.
 
 - **One ADC, not twelve.** A single converter behind a 16:1 multiplexer.
   Channels sample round-robin, so channel count *divides* the aggregate:
-  ~907 ksps at MCK 78 (RC 86). Twelve channels means ~75 ksps each, not
+  ~907 ksps at MCK 78 (RC 86), 1,046,510 at the 90 MHz default (RC 86 too, because every ceiling is a count of clocks). Twelve channels means ~75 ksps each, not
   12 Msps. One channel alone reaches only 886,363 sps (RC 44), *less*
   than the two-channel aggregate - a multi-channel trigger converts back
   to back and amortises overhead a lone conversion pays in full. The
@@ -639,10 +640,18 @@ Check here before reasoning from general Arduino knowledge.
   re-allocate the ones above afterwards. This was inert while EP3 was
   the last endpoint and became a wedge the day EP4-EP6 appeared.
 - **Pin 13 is PB27** and carries no SPI conflict on the Due.
-- **MCK is 78 MHz here, not 84.** Chosen so the ADC clock is 19.5 MHz,
-  inside the 20 MHz datasheet limit. Costs 7.2% of sample rate. Track A's
-  `build.f_cpu=78000000L` is a line in `cmake/track_a.cmake`, and without
-  it `micros()` is silently wrong.
+- **MCK is 90 MHz by default, not 84, and that is out of
+  specification.** The ADC clock is 22.5 MHz against a 20 MHz datasheet
+  limit and the core runs above its 84 MHz rating; flash at 4 wait
+  states is rated for 90 MHz only at VDDCORE 1.8 V. It was 78 MHz (ADC
+  19.5 MHz, in spec) until the loop-mode overruns were traced to the USB
+  DMA burst length rather than the clock, and 90 MHz then ran clean:
+  1 Msps on one channel for 150 s with no gaps. Every RC divides MCK/2,
+  so the host reads `DUE_MCK_HZ` (default 90000000). A 78 MHz image is
+  `-DFIRMWARE_MCK_HZ=78000000` at configure time and needs
+  `DUE_MCK_HZ=78000000` on the host. Track A's
+  `build.f_cpu=90000000L` comes from that same option in
+  `cmake/track_a.cmake`, and without it `micros()` is silently wrong.
 
   **And 78 MHz is *nominal* - register-derived, measured for the first
   time in issue #52 and a few ppm off.** -5.13 ppm on `windows-desk`,
