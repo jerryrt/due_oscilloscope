@@ -26,6 +26,8 @@ SLEEP_ALLOWED = {
         "the timeout the caller asked for, slept when the port is closed",
     ("host/daemon/device.py", "min(wait, timeout)"):
         "bounded by what the caller said it would wait",
+    ("host/repeat.py", "WARMUP_S if seconds is None else seconds"):
+        "the warm-up the caller names, WARMUP_S by default; a measured boundary",
     ("host/measure.py", "settle"):
         "a parameter: Board's defaults to none, run_loop's to a level",
     ("host/measure.py", "seconds"):
@@ -382,6 +384,8 @@ def test_the_import_scan_sees_a_missing_import_even_beside_a_nested_one():
 
 #: (file, name) -> why a module-level number named *_S is not a level.
 TIMING_CONSTANTS = {
+    ("host/repeat.py", "WARMUP_S"):
+        "the post-flash warm-up of the reflash axis, about a minute (measurement-suite.md)",
     ("tests/test_control.py", "CTL_IDLE_S"):
         "lib/due_shared/src/ctl.c CTL_IDLE_US: the parser abandons a half frame after this",
     ("tests/test_control.py", "PING_GAP_S"):

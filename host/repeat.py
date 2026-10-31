@@ -47,6 +47,7 @@ import json
 import math
 import os
 import statistics
+import time
 
 #: Keys that name a row rather than measure it. A metric that returns a
 #: list of dicts - `settle`'s bands, `step`'s timebases - is flattened
@@ -224,7 +225,65 @@ def axes(records):
     return seen
 
 
-def summarise_all(records, floors=None):
+#: How long a board is powered before a figure is taken on the reflash axis.
+#: Every run there follows a flash, and the post-flash warm-up transient is
+#: about one code in the first minute (`docs/measurement-suite.md`), which
+#: dominates what ambient temperature does on that timescale. A measured
+#: boundary, so it is a constant with its reason and not a delay level.
+WARMUP_S = 60.0
+
+
+def warm_up(seconds=None, sleep=time.sleep):
+    """Let a freshly flashed board settle thermally before it is measured.
+
+    `sleep` is a parameter so a board-free test can count what was asked
+    for instead of waiting for it.
+    """
+    sleep(WARMUP_S if seconds is None else seconds)
+
+
+class MixedClocks(ValueError):
+    """A record holds rows taken at more than one master clock."""
+
+
+def clocks(records):
+    """{clock: rows} for the rows that recorded one. A row with none predates
+    the field and is not counted as a clock of its own."""
+    out = {}
+    for r in records:
+        c = (r.get("provenance") or {}).get("mck_hz")
+        if c is not None:
+            out[c] = out.get(c, 0) + 1
+    return out
+
+
+def refuse_mixed_clocks(records):
+    """Raise MixedClocks when one record holds rows from two clocks.
+
+    A spread over runs at 78 MHz and runs at 90 MHz is not a spread of one
+    thing, and the tolerance derived from it would claim a repeatability
+    nothing has. Different clocks go to different records.
+    """
+    seen = clocks(records)
+    if len(seen) > 1:
+        raise MixedClocks(
+            "this record holds rows at more than one master clock "
+            f"({', '.join(f'{c} Hz: {n} rows' for c, n in sorted(seen.items()))}); "
+            "a spread over them is not the spread of one thing. Take each "
+            "clock into its own --out.")
+
+
+def drop_first(records):
+    """Drop run 0 of each axis, by index.
+
+    The first run after a board or daemon start is an outlier, and it
+    passes any filter written to catch a disturbed first cycle, so it goes
+    by position and not by what it looks like (`CLAUDE.md`).
+    """
+    return [r for r in records if r.get("run") != 0]
+
+
+def summarise_all(records, floors=None, first=False):
     """Per axis, per key: the spread, and a tolerance that states its
     own derivation.
 
@@ -237,11 +296,13 @@ def summarise_all(records, floors=None):
     out = {}
     for ax in axes(records) or [None]:
         runs = [r for r in records if ax is None or r.get("axis") == ax]
-        ok = [r for r in runs if not r.get("error")]
+        kept = runs if first else drop_first(runs)
+        ok = [r for r in kept if not r.get("error")]
         block = {
             "runs": len(runs),
-            "failed": len(runs) - len(ok),
-            "errors": sorted({r["error"] for r in runs if r.get("error")}),
+            "dropped": len(runs) - len(kept),
+            "failed": len(kept) - len(ok),
+            "errors": sorted({r["error"] for r in kept if r.get("error")}),
             "keys": {},
         }
         for k in keys(ok):

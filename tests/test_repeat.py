@@ -182,7 +182,7 @@ def test_keys_are_a_union_so_a_key_seen_once_is_not_hidden():
 def test_summarise_all_separates_the_axes():
     recs = ([_rec(i, "in-place", {"a": 10.0}) for i in range(3)]
             + [_rec(i, "reflash", {"a": 10.0 + i}) for i in range(3)])
-    s = repeat.summarise_all(recs)
+    s = repeat.summarise_all(recs, first=True)
     assert s["in-place"]["keys"]["a"]["spread"] == 0.0
     assert s["reflash"]["keys"]["a"]["spread"] == pytest.approx(2.0)
 
@@ -190,7 +190,7 @@ def test_summarise_all_separates_the_axes():
 def test_summarise_all_reports_failures_per_axis():
     recs = [_rec(0, "in-place", {"a": 1.0}),
             _rec(1, "in-place", {}, error="only 3 samples on screen")]
-    s = repeat.summarise_all(recs)
+    s = repeat.summarise_all(recs, first=True)
     assert s["in-place"]["runs"] == 2 and s["in-place"]["failed"] == 1
     assert s["in-place"]["errors"] == ["only 3 samples on screen"]
 
@@ -263,3 +263,55 @@ def test_the_record_is_json_a_report_generator_can_read(tmp_path):
     line = p.read_text(encoding="utf-8").strip()
     assert json.loads(line)["values"] == {"a": 2.0, "b": 1.0}
     assert line.index('"axis"') < line.index('"values"')
+
+
+# ------------------------------------------------------------------
+# the first run of each axis goes by index, and a record has one clock
+# ------------------------------------------------------------------
+
+def test_run_zero_of_each_axis_is_dropped_by_index_not_by_how_it_looks():
+    """A planted first-run outlier loses, and so does a first run that looks fine.
+
+    The first run after a board start passed every filter written to catch
+    it, so the rule is position: `run == 0`, on each axis.
+    """
+    recs = ([_rec(0, "in-place", {"a": 90.0})]
+            + [_rec(i, "in-place", {"a": 2.0 + 0.01 * i}) for i in range(1, 6)]
+            + [_rec(0, "reflash", {"a": 2.0})]
+            + [_rec(i, "reflash", {"a": 2.5 + 0.01 * i}) for i in range(1, 6)])
+    s = repeat.summarise_all(recs)
+    assert s["in-place"]["keys"]["a"]["max"] < 3.0, "the planted outlier survived"
+    assert s["in-place"]["dropped"] == 1 and s["in-place"]["keys"]["a"]["n"] == 5
+    # a first reflash run that looks perfectly ordinary goes too
+    assert s["reflash"]["keys"]["a"]["min"] > 2.4, "run 0 was kept on the reflash axis"
+    assert s["reflash"]["dropped"] == 1
+    # and keeping it is an explicit choice, never the default
+    kept = repeat.summarise_all(recs, first=True)
+    assert kept["in-place"]["keys"]["a"]["max"] == 90.0
+
+
+def _clocked(i, mck):
+    r = _rec(i, "in-place", {"a": 1.0})
+    r["provenance"] = {"mck_hz": mck}
+    return r
+
+
+def test_a_record_with_rows_at_two_clocks_is_refused_with_the_counts():
+    recs = [_clocked(i, 78_000_000) for i in range(3)] + [_clocked(i, 90_000_000) for i in range(3, 5)]
+    with pytest.raises(repeat.MixedClocks) as e:
+        repeat.refuse_mixed_clocks(recs)
+    msg = str(e.value)
+    assert "78000000 Hz: 3 rows" in msg and "90000000 Hz: 2 rows" in msg and "--out" in msg
+
+
+def test_rows_at_one_clock_and_rows_with_none_recorded_are_not_mixed():
+    recs = [_clocked(i, 90_000_000) for i in range(3)] + [_rec(9, "in-place", {"a": 1.0})]
+    repeat.refuse_mixed_clocks(recs)
+    assert repeat.clocks(recs) == {90_000_000: 3}
+
+
+def test_the_warm_up_asks_for_a_minute_and_a_caller_can_ask_for_less():
+    asked = []
+    repeat.warm_up(sleep=asked.append)
+    repeat.warm_up(2.5, sleep=asked.append)
+    assert asked == [60.0, 2.5] and repeat.WARMUP_S == 60.0
