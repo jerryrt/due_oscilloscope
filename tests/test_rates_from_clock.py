@@ -27,6 +27,10 @@ MIN_RATE = 1000
 EXCLUDED = {
     ("tests/test_board_clock.py", 78_000_000):
         "the other clock a board can be on, the input to the refusal",
+    ("tools/issue5_metric.py", 78_000_000):
+        "the clock the comb lattice was measured at, which the metric refuses to leave",
+    ("tests/test_issue5_metric.py", 78_000_000):
+        "the clock recorded in a synthetic row, the input to the refusal",
     ("tests/test_dso_metrics.py", 11775):
         "a sample count of a synthetic record, not a rate",
     ("tests/test_dso_metrics.py", 65000):

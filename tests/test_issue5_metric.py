@@ -236,3 +236,11 @@ def test_a_sign_flipping_site_is_not_cancelled():
     # assertion above cannot pass by accident.
     wrong = sum(abs_of_median(b) for b in m.OCCUPIED)
     assert m.comb_from_profile(v, m.OCCUPIED) - wrong > 5.0
+
+
+def test_rows_taken_at_another_clock_are_refused_and_old_rows_are_not():
+    """The lattice is the RC 195 comb at MCK 78; at another clock it reads small."""
+    rows = {"bench": [{"run": 0}, {"run": 2, "mck_hz": 78_000_000}]}
+    assert m.unfit_clocks(rows) == []
+    rows["bench"].append({"run": 3, "mck_hz": 90_000_000})
+    assert m.unfit_clocks(rows) == [90_000_000]

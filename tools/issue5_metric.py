@@ -203,6 +203,22 @@ def arms():
     return out
 
 
+#: The comb sits at a period of 21 table entries, measured against the RC 195
+#: trigger, which is 200 kHz at MCK 78. At another clock the same 200 kHz is
+#: another RC, the comb period follows RC, and its sites fall off this lattice
+#: and read as small. The period for 90 MHz has not been derived.
+LATTICE_MCK_HZ = 78_000_000
+
+
+def unfit_clocks(data):
+    """The clocks in these rows that the lattice was not measured at.
+
+    A row with no recorded clock predates the field and is a 78 MHz row.
+    """
+    return sorted({r["mck_hz"] for rows in data.values() for r in rows
+                   if r.get("mck_hz") not in (None, LATTICE_MCK_HZ)})
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--fws", type=int, default=6)
@@ -221,6 +237,15 @@ def main():
               "may be the truncated six. This metric would then be almost "
               "entirely on-lattice by construction.", file=sys.stderr)
         return 2
+
+    bad = unfit_clocks(data)
+    if bad:
+        print(f"REFUSING: rows taken at MCK {bad}. The comb lattice is the "
+              f"RC 195 comb at MCK {LATTICE_MCK_HZ}; at another clock the "
+              "period follows RC and the sites fall off it, so the metric "
+              "would read a present displacement as small. Derive the period "
+              "first (docs/analog-validation-plan.md).", file=sys.stderr)
+        return 3
 
     print(f"FWS {args.fws}, run 1 dropped by index")
     print(f"  metric  = the seven fixed comb sites {LATTICE}")
