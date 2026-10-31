@@ -139,18 +139,18 @@ arduino-cli core install arduino:sam
 The `_dbg` variant targets the programming port, where the 1200-baud
 touch reset works. That is the one to use.
 
-### Build and flash
+### Compile a bring-up sketch
 
 ```sh
 arduino-cli compile --fqbn arduino:sam:arduino_due_x_dbg sketches/blink
-arduino-cli upload  --fqbn arduino:sam:arduino_due_x_dbg \
-                    -p "$(python3 host/ports.py | awk '/control/{print $3}')" \
-                    sketches/blink
 ```
 
-The port path is enumeration-dependent; discover it, never hardcode it.
-A stale hardcoded path once aimed the 1200-baud erase at the wrong port
-and wiped the flash without writing anything.
+Flash with `tools/flash.py`, not `arduino-cli upload`: the upload path
+cannot flash a Due on Windows (`docs/windows.md`), and `flash.py` is the
+one flasher that checks the image's provenance. The port path is
+enumeration-dependent; discover it with `host/ports.py`, never hardcode
+it. A stale hardcoded path once aimed the 1200-baud erase at the wrong
+port and wiped the flash without writing anything.
 
 ### What it installs that Track B reuses
 
@@ -165,14 +165,12 @@ Copy the CMSIS pack into `vendor/` and **pin it**. Do not reference it in
 place; a core update would silently change the register definitions the
 firmware is built against.
 
-### Compiler version caveat
+### Compiler version
 
-The `arduino:sam` core ships **`arm-none-eabi-gcc` 4.8.3**, a 2014-era
-release. It is fine for Track A and unsuitable for Track B: no modern
-C++, weak optimisation, dated diagnostics.
-
-Track B uses a separately installed modern toolchain. Two compilers
-coexisting is normal and intentional.
+The `arduino:sam` core ships `arm-none-eabi-gcc` 4.8.3, a 2014-era
+release. No firmware here is built with it: every track, A included, is
+built by the image's xPack 15.2.1, and the registry refuses the bundled
+one by pattern (above).
 
 ---
 
