@@ -1,8 +1,8 @@
 # Hardware Reference
 
 Target: **Arduino Due**, Atmel/Microchip **SAM3X8E**, ARM Cortex-M3
-rated 84 MHz — **run at MCK 78 MHz in this project** so the ADC clock
-stays inside its datasheet limit (see "Operating point" below).
+rated 84 MHz — **run at MCK 90 MHz in this project, out of specification**
+(MCK 78 MHz, in spec, is a build option; see "Operating point" below).
 
 Figures marked *(verified)* were read from this development host or are
 unambiguous. Figures marked *(check)* need confirmation against the
@@ -184,10 +184,29 @@ PDC buffers against a synchronised microsecond window:
 Settings used: `PRESCAL=1`, `TRACKTIM=0`, `SETTLING=0`, `TRANSFER=1`.
 Relaxing tracking to suppress crosstalk lowers this further.
 
-### Operating point: MCK 78 MHz, fully in spec
+### Operating point: MCK 90 MHz by default, 78 MHz in spec
 
-The project runs the master clock at **78 MHz**, not the Due's usual 84,
-so that the ADC clock lands inside its datasheet limit.
+The project runs the master clock at **90 MHz**, which is out of
+specification twice over: the ADC clock is 22.5 MHz against a 20 MHz
+datasheet limit, and the core is 7% over its 84 MHz rating (flash at 4
+wait states is rated for 90 MHz only at VDDCORE 1.8 V). It ran at 78 MHz,
+in spec, until the loop-mode overruns were traced to the USB DMA burst
+length and not to the clock (`docs/status.md`). Measured at 90 MHz:
+
+| Quantity | MCK 78 | **MCK 90** |
+|---|---|---|
+| One channel, floor | RC 44, 886,363 sps | RC 44, 1,022,727 sps (RC 43 refused) |
+| Two channels, floor | RC 86, 453,488 per channel | RC 86, 523,255 per channel (RC 85 refused) |
+| One channel, 1 Msps | - | RC 45, 150 s, 0 gaps, 0 CRC errors |
+| DC noise | 0.87 codes, 10.40 bits | 0.80 codes, 10.53 bits |
+
+The floors sit at the same RC because the TC and the ADC both scale
+with MCK. **Not yet measured at 90 MHz:** crosstalk and settling,
+the issue #5 displacement, and runs past 150 s *(check)*. Nothing here
+says the silicon holds the margin across temperature or supply; that is
+what out of specification means. `-DFIRMWARE_MCK_HZ=78000000` builds the
+in-spec image, and the host then needs `DUE_MCK_HZ=78000000`. The text
+below is the 78 MHz analysis and its figures stand for that image.
 
 **78 MHz is nominal, and it has now been measured.** Everything below
 this paragraph, every rate the board reports, and the `mck=78000000`

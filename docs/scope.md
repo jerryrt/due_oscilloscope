@@ -145,9 +145,10 @@ against the bare-metal build. See `docs/rtos.md`.
 ## Performance targets
 
 Derived in `docs/architecture.md`; summarised here. The project now
-runs MCK at 78 MHz so the ADC clock sits inside its datasheet limit
-(see `docs/hardware.md`, "Operating point"); the 84 MHz figures are
-kept for comparison.
+runs MCK at 90 MHz, out of specification (see `docs/hardware.md`,
+"Operating point"); the block below and the 84 MHz figures are the 78 MHz
+in-spec image, kept for comparison. At 90 MHz the same RC floors give
+1,046,510 aggregate and 1,022,727 one-channel.
 
 ```
 MCK                     78 MHz            (84 possible, ADC clock then 5% over spec)

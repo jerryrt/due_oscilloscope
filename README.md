@@ -2,9 +2,11 @@
 
 A 12-bit oscilloscope and signal generator built on the Arduino Due
 (Atmel SAM3X8E, Cortex-M3), streaming samples over USB to a host for
-FFT/DSP and visualisation. **MCK runs at 78 MHz, not the Due's usual
-84**, chosen so the ADC clock lands at 19.5 MHz inside its 20 MHz limit;
-every RC in this project divides 39 MHz because of it.
+FFT/DSP and visualisation. **MCK runs at 90 MHz, not the Due's usual
+84, which is out of specification** (ADC clock 22.5 MHz against a 20 MHz
+limit); every RC in this project divides 45 MHz because of it. A 78 MHz
+in-spec image is a build option, `-DFIRMWARE_MCK_HZ=78000000`, and the
+host then reads `DUE_MCK_HZ=78000000`.
 
 The board does acquisition and generation only. All signal processing and
 rendering happens on the host, where numpy/scipy are available and the
