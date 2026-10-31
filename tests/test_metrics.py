@@ -612,15 +612,15 @@ def test_parse_identity_carries_a_commit_build_field():
     import measure
     import provenance as prov
 
-    head = ("# id: track=B fw=0.2.0 ctlver=4 framever=3 mck=78000000 "
-            "adcclk=19500000 framebytes=1024 framesamples=496 build=")
+    head = ("# id: track=B fw=0.2.0 ctlver=4 framever=3 mck=84000000 "
+            "adcclk=21000000 framebytes=1024 framesamples=496 build=")
     for value in ("a905380", "a905380+1f2e3d4a", "unknown",
                   "Aug 27 2026 16:14:27"):
         ident = measure.parse_identity(head + value + "\n")
         assert ident is not None, f"identity unparsed with build={value}"
         assert ident["build"] == value
         assert ident["track"] == "b"
-        assert ident["mck_hz"] == 78000000
+        assert ident["mck_hz"] == 84000000
     assert prov.build_commit(
         measure.parse_identity(head + "a905380+1f2e3d4a\n")["build"]) == (
             "a905380", "1f2e3d4a")

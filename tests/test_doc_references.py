@@ -477,7 +477,7 @@ CONSTANTS = [
        r"(\d+)-byte\s+write"),
 
     # "Track A must be built with `--build-property
-    # build.f_cpu=78000000L` or `micros()` is silently wrong", and the
+    # build.f_cpu=90000000L` or `micros()` is silently wrong", and the
     # host divides by the same number to compute an RC.
     _c("F_CPU", "CMakeLists.txt",
        r"^set\(FIRMWARE_MCK_HZ\s+(\d+)\s+CACHE",

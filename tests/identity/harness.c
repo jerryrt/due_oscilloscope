@@ -32,11 +32,13 @@ const console_binding_t console_bindings[] = {
 int main(void)
 {
 	/*
-	 * 'B' and 78 MHz are what apps/baremetal_bringup/main.c passes.
-	 * Every other field is a compiled-in constant, which is the point:
-	 * the test reads them out of the source it just built rather than
-	 * repeating them.
+	 * 'B' is what apps/baremetal_bringup/main.c passes. The clock is
+	 * arbitrary here - a stock Due's 84 MHz, which is neither default - so
+	 * the line cannot pass by echoing a clock held somewhere else. Every
+	 * other field is a compiled-in constant, which is the point: the test
+	 * reads them out of the source it just built rather than repeating
+	 * them.
 	 */
-	console_identity('B', 78000000UL);
+	console_identity('B', 84000000UL);
 	return 0;
 }

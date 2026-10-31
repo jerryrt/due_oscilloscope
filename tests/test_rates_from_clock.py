@@ -25,10 +25,6 @@ MIN_RATE = 1000
 
 #: (file, value) -> why the number is not a stale rate.
 EXCLUDED = {
-    ("tests/test_build_identity.py", 78_000_000):
-        "a parser test: the identity line it parses is a 78 MHz image's",
-    ("tests/test_metrics.py", 78_000_000):
-        "a parser test: the identity line it parses is a 78 MHz image's",
     ("tests/test_board_clock.py", 78_000_000):
         "the other clock a board can be on, the input to the refusal",
     ("tests/test_dso_metrics.py", 11775):

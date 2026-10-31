@@ -42,12 +42,13 @@ def test_control_port_answers(board, track):
     assert ident["fw_version"], text
 
 
-def test_clock_is_mck_78(board, baseline):
-    """MCK 78, not 84.
+def test_the_board_reports_the_baseline_clock(board, baseline):
+    """The board runs the clock the baseline was taken at.
 
-    Chosen so the ADC clock is 19.5 MHz, inside the 20 MHz datasheet
-    limit. Every RC in this suite divides MCK/2, and
-    Track A built at the wrong f_cpu reports a silently wrong micros().
+    90 MHz by default, which is out of specification (ADC clock 22.5 MHz
+    against a 20 MHz limit); 78 MHz with -DFIRMWARE_MCK_HZ=78000000.
+    Every RC in this suite divides MCK/2, and Track A built at the wrong
+    f_cpu reports a silently wrong micros().
     """
     _, text = measure.which_track(board)
     ident = measure.parse_identity(text)
@@ -55,7 +56,7 @@ def test_clock_is_mck_78(board, baseline):
     mck = baseline["clock"]["mck_hz"]
     adc = baseline["clock"]["adc_clock_hz"]
     # Compared as numbers off the identity line, not as substrings of a
-    # paragraph: 78000000 appearing anywhere in the banner used to be
+    # paragraph: a clock number appearing anywhere in the banner used to be
     # enough to pass this.
     assert ident["mck_hz"] == mck, (
         f"board reports MCK {ident['mck_hz']}, expected {mck}; Track A "

@@ -122,7 +122,7 @@ def test_the_identity_line_carries_the_build_revision(identity_line):
         "build=%r on a line built with FW_GIT_REV=%r"
         % (ident["build"], SENTINEL))
     assert ident["track"] == "b"
-    assert ident["mck_hz"] == 78000000
+    assert ident["mck_hz"] == 84000000
 
 
 def test_the_identity_line_reports_the_shared_control_version(identity_line):
@@ -223,8 +223,8 @@ def test_a_read_uid_parses_and_an_older_line_has_none():
     put there."""
     import measure
 
-    head = ("# id: track=B fw=0.2.0 ctlver=4 framever=3 mck=78000000 "
-            "adcclk=19500000 framebytes=2048 framesamples=1016")
+    head = ("# id: track=B fw=0.2.0 ctlver=4 framever=3 mck=84000000 "
+            "adcclk=21000000 framebytes=2048 framesamples=1016")
     uid = "5f3c1a2b9e8d7c6b5a4f3e2d1c0b9a87"
     with_uid = measure.parse_identity(f"{head} uid={uid} build=abc1234\n")
     assert with_uid["uid"] == uid and with_uid["build"] == "abc1234"
