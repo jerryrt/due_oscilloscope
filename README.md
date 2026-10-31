@@ -38,6 +38,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
 | [docs/hardware-next.md](docs/hardware-next.md) | Options for a more powerful successor |
 | [docs/related-work.md](docs/related-work.md) | Comparable instruments, what to read in each, and the gap to the nearest one |
+| [docs/analog-validation-plan.md](docs/analog-validation-plan.md) | Re-evaluating the converters' analog performance at 90 MHz: what the loop can judge, and the phases |
 | [docs/afe.md](docs/afe.md) | The analog front end on the shield: the OpenScope MZ input chain read part by part, and how each stage lands on the Due |
 | [docs/afe-plan.md](docs/afe-plan.md) | Building the AFE shield: the phases, what proves each, the tools, and the decisions left open |
 | [docs/afe-workflow.md](docs/afe-workflow.md) | Learning guide: AFE design in KiCad 10, from requirements to measured hardware, with quality gates and review evidence |

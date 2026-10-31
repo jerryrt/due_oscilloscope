@@ -22,6 +22,7 @@ file is one row away.
 | The build container: how to run it, the checks it carries, what it will not do, and what a bench gives up without it | `docs/build-container.md` |
 | Per-host validation | `docs/windows.md`, `docs/linux.md` |
 | Board, clocks, converters | `docs/hardware.md` |
+| Re-measuring the converters' analog performance at 90 MHz | `docs/analog-validation-plan.md` |
 | Comparable instruments, and the gap to the nearest one | `docs/related-work.md` - read before front-end hardware work |
 | The analog front end on the shield, stage by stage, and what judges each stage | `docs/afe.md` |
 | Building the AFE shield: phases, proofs, tools, open decisions | `docs/afe-plan.md` |
