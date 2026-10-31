@@ -128,6 +128,15 @@ ALLOWED = {
     "tools/sketch.py":
         "deleted with the arduino-cli build path; CLAUDE.md records that",
 
+    # The AFE documents name the removed project to say it is gone, and a
+    # report directory their plan says will exist once the simulations run.
+    "hardware/afe-shield/":
+        "removed on purpose; the AFE documents record that",
+    "hardware/afe-shield/check.py":
+        "removed with hardware/afe-shield/; afe-prototype.md records that",
+    "hardware/afe-proto/reports/":
+        "planned output of the AFE simulations, not yet created",
+
     # The FreeRTOS kernel, fetched at configure time by Track C's build.
     "heap_4.c": "FreeRTOS kernel source, fetched at configure time",
     "port.c": "FreeRTOS kernel port, fetched at configure time",
