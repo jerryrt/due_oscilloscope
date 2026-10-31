@@ -35,8 +35,8 @@ handshake interfaces for SPI0, SPI1 and SSC (Table 24-2). The bus matrix
 lets both the DMAC and the USB high-speed DMA reach SRAM bank 1 (Tables
 7-1 to 7-3). So SPI or SSC into the DMAC, into SRAM, out through USB
 endpoint DMA keeps the invariant that the CPU never touches sample data.
-The bit-clock arithmetic is SPCK = MCK / SCBR, 26 MHz at SCBR = 3 and so
-1.6 Mword/s of 16 bits, with the datasheet's own electrical limit of
+The bit-clock arithmetic is SPCK = MCK / SCBR, 30 MHz at SCBR = 3 (26 MHz at MCK 78) and so
+1.9 Mword/s of 16 bits, with the datasheet's own electrical limit of
 38.5 MHz for a 12 ns slave; no sustained rate is stated for either
 peripheral. Nothing here has been built or measured on a board *(check)*.
 

@@ -39,7 +39,7 @@ written so each line becomes a measurement.
 | DC accuracy after per-board calibration | 1 to 2 codes | the reference is the scale; the profile carries two points |
 | drift | about 0.3 mV over 30 °C at full scale | the reference grade bought |
 | analog bandwidth | 200–300 kHz flat, by choice; a 10 MHz buffer is transparent | the divider compensated, a capacitor across the 1 MΩ with R1·C1 = Rs·Cs, so it is flat past the buffer; the corner is then the pin driver's series resistor against its 470 pF, one resistor value anywhere from 300 kHz to 5 MHz. Uncompensated, the 1 MΩ against the node's own picofarads is a corner in the tens of kilohertz |
-| sample rate behind it | 886 ksps one channel, 453 ksps each on two | the converter, unchanged |
+| sample rate behind it | 1,022,727 sps one channel, 523,255 sps each on two (886 and 453 ksps at MCK 78) | the converter, unchanged |
 | rise time | 1–2 µs | the anti-alias corner |
 | channel crosstalk | below a code | the buffered drive removes the sample-and-hold's charge memory |
 | offset | a full screen either way at ±20 V, a screen down and half a screen up at ±5 V, down only at ±3 V; 0.8 mV steps at the bottom end, settling in tens of ms | 12-bit PWM through two RC sections drives the divider's bottom end, which moves the node by (1−k) of its own travel inside 0–3.2 V |
@@ -54,11 +54,11 @@ written so each line becomes a measurement.
 | cleanliness, the acceptance | within-hold events over 10 codes at or below 0.2 per 1000 holds on every board, largest excursion at or below 12 codes | the two healthy shielded boards set the floor; the fourth board is the test |
 
 **The bandwidth row is the analog corner, and the sampling rate sets what
-it can serve.** One channel samples at 886 ksps, Nyquist 443 kHz; two
-channels at 453 ksps each, Nyquist 227 kHz; `docs/scope.md` puts the
-usable band at ~140 kHz and ~75 kHz. A 200-300 kHz corner suits one
-channel, and with two channels the content between 227 and 300 kHz folds
-back below Nyquist. Either the corner follows the mode, or the
+it can serve.** One channel samples at 1,022,727 sps, Nyquist 511 kHz; two
+channels at 523,255 sps each, Nyquist 261 kHz; `docs/scope.md` puts the
+usable band at ~140 kHz and ~75 kHz, figures set at MCK 78 *(check)*. A
+200-300 kHz corner suits one channel, and with two channels the content
+between 261 and 300 kHz folds back below Nyquist. Either the corner follows the mode, or the
 two-channel bandwidth is the alias-limited one. This is a design choice
 and it is not made here.
 
@@ -161,7 +161,8 @@ the former nominal manufacturer model at 3.3 V and 27 C, the loaded follower
 is about -5.86 dB at 5 MHz before the series resistor, and A0 reaches
 its -3 dB corner near 3.39 MHz. A 2 V step takes about 1.218 us to
 settle to within one 3 V / 4096 code of its final plateau, longer than
-the 1.129 us sample interval at 886 ksps; acquisition may be shorter. The 68 ohm / 470 pF network's nominal
+the 0.978 us sample interval at 1,022,727 sps (1.129 us at 886 ksps on a
+MCK 78 image); acquisition may be shorter. The 68 ohm / 470 pF network's nominal
 4.98 MHz passive corner must not be quoted as the complete buffer
 bandwidth. The reference-load stress test also needs follow-up before
 JP101 could close in any future alternate configuration. Reproduce and read the limitations in

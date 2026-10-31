@@ -161,18 +161,22 @@ The SAM3X8E has **one** ADC behind a 16:1 multiplexer, not twelve ADCs.
 Channels are sampled round-robin, so channel count divides the aggregate
 rate rather than multiplying throughput.
 
-| Channels | Per-channel | Nyquist | Realistic usable BW |
+| Channels | Per-channel at MCK 90 | Nyquist | Realistic usable BW (78 MHz figure) |
 |---|---|---|---|
-| 1 | 907 ksps | 453 kHz | ~140 kHz |
-| 2 | 453 ksps | 227 kHz | ~75 kHz |
-| 12 | 75.6 ksps | 37.8 kHz | ~20-30 kHz |
+| 1 | 1,022,727 sps | 511 kHz | ~140 kHz |
+| 2 | 523,255 sps | 261 kHz | ~75 kHz |
+| 12 | 87.2 ksps *(derived)* | 43.6 kHz | ~20-30 kHz |
 
-Per-channel figures are the ~907 ksps in-spec aggregate at MCK 78
-divided by channel count. The 2-channel row is confirmed on hardware:
-453,488 Hz per channel declared, 453,489 measured, ratio 1.000.
+The two-channel figure is the 1,046,510 sps aggregate at RC 86 divided
+by two, and the usable-bandwidth column was set at MCK 78 and has not
+been re-derived at 90 *(check)*. One channel is not the aggregate: a lone
+conversion pays its overhead in full, so its ceiling is its own, RC 44,
+below the two-channel aggregate. The two-channel row is held by the
+ladder in `tests/test_rates.py` at RC 86; at MCK 78 it read 453,488 Hz
+per channel declared and 453,489 measured, ratio 1.000.
 
-**Aggregate data rate is ~1.81 MB/s regardless of channel count**
-(907 ksps x 2 bytes). Twelve channels costs no extra USB bandwidth; it
+**Aggregate data rate is ~2.09 MB/s regardless of channel count**
+(1,046,510 sps x 2 bytes; 1.81 MB/s at MCK 78). Twelve channels costs no extra USB bandwidth; it
 costs per-channel sample rate. 12-bit packing would reduce this to
 1.36 MB/s at the cost of the channel tag.
 
