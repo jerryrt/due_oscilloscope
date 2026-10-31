@@ -1307,12 +1307,39 @@ runs (1252.2-1266.7 against 1207.5-1218.9). Against a theoretical
 maximum of 1370.5. The bank-0 arm reaches the same 1255.6, so it is the
 DMA path buying this and not the placement.
 
-**Loop-mode GOVRE does not separate the arms**, and six runs each is not
-enough to say it ever will: copy 1, 13, 67, 93, 480, 881; DMA in bank 1
-9, 12, 14, 24, 145, 473. Medians 80 against 19, distributions
-overlapping. Read the capture-only column for the placement question -
-that one is clean - and do not quote a loop-mode overrun figure from a
-single run in either direction.
+**Loop-mode GOVRE is a different mechanism from the placement one**, and
+it is cleared by one register. With host-fed playback running alongside
+capture, the converter overran in every run at any DAC rate, from a
+handful to thousands; capture alone and a device-side table at the same
+DAC rates had none. `MATRIX_MCFG[3].ULBT`, the USB DMA master's
+undefined-length burst type, defaults to infinite, so its bulk OUT bursts
+cannot be broken and the ADC's PDC read of `ADC_LCDR` lands after the
+next conversion has overwritten it. Any limited burst clears it
+(single, 4, 8 and 16 beat all gave zero); `clock_set_mck()` sets 16.
+
+Measured on `linux-x1`, Track B, two channels at 453,488 per channel,
+four runs per rate after a dropped first run, GOVRE per 6 s run:
+
+| DAC feed | before | after | same rate from a device-side table |
+|---|---|---|---|
+| 50 ksps | 7-13 | 0, 0, 0, 0 | 0 |
+| 100 ksps | 40-48 | 0, 0, 0, 0 | 0 |
+| 200 ksps | 143-171 | 0, 0, 0, 0 | 0 |
+| 453,488 (matched) | 1 to 1,803, bimodal | 0, 0, 0, 0 | 0 |
+
+The cause was narrowed by elimination, each arm changing one thing:
+
+| Arm | GOVRE |
+|---|---|
+| OUT writes of 0.4 and 0.9 MB/s, device drains and discards them | 0 |
+| OUT DMA capped to one 1 KB slot per transfer | unchanged |
+| DACC reading a buffer the OUT DMA never touches | unchanged |
+| USB DMA burst type limited | 0 |
+
+RXBUFF, ring overflow and resync stayed 0 throughout; every overrun was
+the converter's. USB throughput does not pay for it: IN DMA 27.4 to 32.3
+MB/s, OUT DMA 43.4 unchanged, duplex DMA 21.8 to 23.0 MB/s.
+`tests/test_loop_overruns.py` holds zero.
 
 ## Measured figures
 
@@ -1324,7 +1351,7 @@ single run in either direction.
 | USB, Arduino CDC | 0.8 MB/s gapless, ~0.95 MB/s ceiling |
 | USB, bare-metal CDC | **1.83 MB/s gapless at full in-spec ADC rate** |
 | Capture at max in-spec (MCK 78) | 453,488 Hz/ch declared, 453,489 measured, ratio 1.000 |
-| Full loop, duplex | 200 ksps DAC + 400 ksps ADC. Re-taken 08-27 on current firmware, 3 runs: tone median **1368.6-1372.2** codes, **99.3%** of windows at or above the 1340 floor, 10-12 flagged overrun frames per 3 s run, 0 sequence gaps. The "+/-2 in every window" this line used to claim does not hold - the low windows are the spliced ones, which invariant 5 flags rather than hides |
+| Full loop, duplex | 200 ksps DAC + 400 ksps ADC. Re-taken 08-27 on current firmware, 3 runs: tone median **1368.6-1372.2** codes, **99.3%** of windows at or above the 1340 floor, 10-12 flagged overrun frames per 3 s run, 0 sequence gaps. That overrun count was the USB DMA burst length, since cleared (above). The "+/-2 in every window" this line used to claim does not hold - the low windows are the spliced ones, which invariant 5 flags rather than hides |
 | USB IN only (RT threaded host) | 5.20 MB/s |
 | USB OUT only (RT threaded host) | 5.03 MB/s, matched the device counter - but read without draining the pipeline, so it could not have shown a shortfall; see docs/usb.md |
 | USB duplex (RT threaded host) | 2.77 in + 2.47 out = 5.25 MB/s combined |
