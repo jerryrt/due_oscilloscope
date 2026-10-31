@@ -291,6 +291,27 @@ nothing is found by grep.
 | **A conversion never makes a wait longer without saying why** | A first fit rounded to the nearest level and lengthened 83 of 260 waits, among them the hot report read, and nothing failed. Choose levels to move the fewest |
 | **Start from the cost, not from a guess** | `pytest --pacing-report --durations=0` lists every sleep by site and level, the stages of a run (`pacing.Marks`), and the measured gaps. Rank by time per run times runs, take the top, re-measure |
 
+#### Not done, and how to take this to another host
+
+Everything above was measured on one bench (`linux-x1`, a native Linux host).
+What it left open:
+
+| open | state |
+|---|---|
+| **The waits outside the scan** | `tools/` carries about a hundred bare sleeps and timeouts. The guard reads `host/`, `gui/` and `tests/`. `host/scope.py` is excluded on purpose: its settle values are the oscilloscope's command timing and the bench has no scope to measure them on |
+| **Other hosts** | The level values, the 0.1 s silence gap and every shortened wait were measured here. `mac-bench` and `windows-desk` have not run them. A slower host sets `DUE_DELAY_SCALE`, `DUE_READ_SCALE`, `DUE_LIMIT_SCALE` or `DUE_RUN_SCALE`, and checks a wait with `DUE_PACING_VERIFY=1` first |
+| **Per-host calibration** | `tools/timing_audit.py` exists and no `records/timing-*` row does. A bench needs about five full passes per track before an audit has a budget, and until then it says so |
+| **Load-bearing waits** | The 0.2 s settle in `run_loop`, and the settle and stop pauses in `run_play`, are documented in the code as required. About 22 s of a full pass is theirs; replacing one with a condition needs its own measurement on every track |
+| **Not profiled** | The daemon tests (about 70 s), the board-free tests that run inside a board pass (about 100 s) and `test_load`. The GUI edits were compile-checked only, because the GUI environment is not installed on this bench |
+| **Delay defaults** | Not shortened. One Track B pass at a quarter of the delay scale ran clean, which is one pass |
+
+| step on a new host | do |
+|---|---|
+| 1 | `pytest --track=b --pacing-report --durations=0 --junitxml=run.xml` and read where the waiting went |
+| 2 | Repeat one track with `DUE_PACING_VERIFY=1` and read every `observed ...late_bytes` line: each must be zero before a shortened wait is trusted there |
+| 3 | If a level is too short for the host, set its scale or the one level; the guard and the fingerprint do not care what the value is |
+| 4 | `python3 tools/timing_audit.py calibrate run.xml --bench <name> --track b` after each of about five passes, then `audit` |
+
 **Heal the ports before believing a board fault.** The bench is a test
 rig, not a patient.
 
