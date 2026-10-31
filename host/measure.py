@@ -2902,12 +2902,17 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc, ramp=ramp,
                                    square=square)
 
+    m = pacing.Marks("run_play")
     fd = board.open_native(blocking_writes=True)
+    m.mark("open_native")
     drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.TAIL)
+    m.mark("drain_stale")
     board.poll_console()
     board.cmd(f"={dac_sps}P")
     pacing.pause(pacing.TURN)
+    m.mark("start_cmd")
     console = board.drain_console(pacing.GLANCE)
+    m.mark("start_console")
 
     # In play-only the IN endpoint carries only playback status
     # records, so keeping everything it says costs ~1.4 kB/s and gives
@@ -2943,6 +2948,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
                 feeder.retune(measured)
             next_trim = now_s() + TRIM_PERIOD_S
     elapsed = time.time() - t0
+    m.mark("window")
     # Everything in the buffer now was emitted while the host was still
     # feeding. What arrives afterwards describes the shutdown: the ring
     # and then the CDC pipeline empty raggedly, so consumed keeps
@@ -2951,6 +2957,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     # 0.1-0.7 pp slower than the trace says, varying run to run.
     fed_len = len(inbuf)
     tx = feeder.stop()
+    m.mark("feeder_stop")
 
     # Optionally let everything the host wrote reach the device before
     # asking how much arrived. Without the wait the pipeline - measured
@@ -2984,14 +2991,19 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     # running after the feeder stops, so counters read afterwards
     # include the underruns of the shutdown rather than the run - which
     # is measuring the wrong thing and reads as a fault in the feed.
+    m.mark("drain")
     board.cmd("0")
     pacing.pause(pacing.TURN)
+    m.mark("stop_cmd")
     # The occupancy histogram is read after the stop, but it describes
     # the run: the device accumulated it at every ENDTX while playing.
     play = play_counters(board)
     occ = occupancy(board)
+    m.mark("counters")
     report = board.drain_console(pacing.GLANCE)
+    m.mark("report_console")
     board.close_native(fd)
+    m.mark("close_native")
     if drain_s > 0.0:
         # Bytes from the drained read, because only then has everything
         # the host wrote had time to arrive. Everything else from the
