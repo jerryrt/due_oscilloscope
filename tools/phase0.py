@@ -49,6 +49,7 @@ import repeat                                                 # noqa: E402
 import scope as dso                                           # noqa: E402
 import dso_metrics as dm                                      # noqa: E402
 import noise_metrics as nm                                    # noqa: E402
+import metrics as mt                                          # noqa: E402
 
 RECORDS = os.path.join(HERE, "records")
 
@@ -76,6 +77,14 @@ METRICS = {
     "noise-host": {"fn": nm.cmd_noise_host, "scope": False,
                    "args": nm.default_args},
 }
+
+
+def loop_default_args(what, **overrides):
+    """The Namespace a `loop` run reads: the rung and the run length."""
+    ns = argparse.Namespace(rc=mt.LOOP_RC, seconds=None, what=what)
+    for k, v in overrides.items():
+        setattr(ns, k, v)
+    return ns
 
 
 def needs_scope(metric):
@@ -181,6 +190,15 @@ def adapt(fn):
         return fn(board, args)
     metric.__name__ = getattr(fn, "__name__", "metric")
     return metric
+
+
+def _loop_metric(board, args):
+    return mt.loop_once(board, args.rc, args.seconds)
+
+
+#: The matched DAC->ADC loop, scope-free, at `--rc` (default RC 225).
+METRICS["loop"] = {"fn": adapt(_loop_metric), "scope": False,
+                   "args": loop_default_args}
 
 
 def warm_and_discard(board, inst, args, warm=None):

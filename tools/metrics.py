@@ -73,6 +73,7 @@ sys.path.insert(0, os.path.join(HERE, "tools"))
 import calibration                                            # noqa: E402
 import eqtime                                                 # noqa: E402
 import measure                                                # noqa: E402
+import pacing                                                 # noqa: E402
 import noise as noisemod                                      # noqa: E402
 import provenance as prov                                     # noqa: E402
 import repeat as repeatmod                                    # noqa: E402
@@ -122,28 +123,101 @@ def m_noise(board, args):
     }
 
 
+#: RC 225 is 200 kHz at the 90 MHz default; the matched loop is taken here
+#: unless a caller names another rung.
+LOOP_RC = 225
+
+#: Windows judged after the settle. The ladder's own count, so a loop
+#: figure and a ladder rung rest on the same amount of signal.
+LOOP_WINDOWS = 10
+
+LOOP_WINDOW = 8192
+
+
+def amplitude_limits():
+    """The tone floor, window fraction and crosstalk ceiling the test suite
+    judges against, read from `tests/baseline.json` so the report and the
+    suite cannot disagree about what a clean loop is."""
+    with open(os.path.join(HERE, "tests", "baseline.json"),
+              encoding="utf-8") as f:
+        return json.load(f)["amplitude"]
+
+
+def loop_seconds(rc, windows=LOOP_WINDOWS):
+    """A run long enough for `windows` full windows after the settle."""
+    hz = measure.hz_for(rc)
+    return max(pacing.SHORT,
+               measure.SETTLE_US / 1e6 + pacing.GLANCE
+               + windows * LOOP_WINDOW / hz)
+
+
+def loop_figures(res, floor, channels):
+    """The flat numbers of one matched-loop run, from a `run_loop` result
+    (anything with `.stream` and `.tone_hz`). `None` where a figure cannot
+    be formed: no full window, or no device timestamps."""
+    st = res.stream
+    a = [x for _, x in st.window_amplitudes(
+        measure.CH_A0, res.tone_hz, size=LOOP_WINDOW,
+        from_us=measure.SETTLE_US)]
+    out = {"tone_median_codes": statistics.median(a) if a else None,
+           "windows": len(a),
+           "windows_at_or_above_floor":
+               sum(1 for x in a if x >= floor) / len(a) if a else None,
+           "overrun_frames": st.overrun_frames,
+           "crosstalk_median_codes": None, "rate_ratio": None}
+    if channels == 2:
+        x = [v for _, v in st.window_amplitudes(
+            measure.CH_A1, res.tone_hz, size=LOOP_WINDOW,
+            from_us=measure.SETTLE_US)]
+        out["crosstalk_median_codes"] = statistics.median(x) if x else None
+    m = st.measured_rate_hz()
+    if m and st.declared_rate_hz:
+        out["rate_ratio"] = m / st.declared_rate_hz
+    return out
+
+
+def loop_once(board, rc=LOOP_RC, seconds=None, channels=2):
+    """One matched DAC->ADC loop at the rate of `rc`, as a flat dict.
+
+    DAC and ADC run at the same rate and the tone is `hz/256`, a whole
+    number of cycles in every window, as the ladder does it. Shared by
+    `m_loop`, which repeats it, and `tools/phase0.py`."""
+    hz = measure.hz_for(rc)
+    secs = max(seconds or 0.0, loop_seconds(rc))
+    res = measure.run_loop(board, dac_sps=hz, adc_hz=hz, channels=channels,
+                           tone=hz / 256.0, seconds=secs)
+    if res.refused:
+        raise SystemExit(f"RC {rc} ({hz} Hz, {channels} ch) was refused")
+    out = loop_figures(res, amplitude_limits()["window_floor_codes"],
+                       channels)
+    out["rc"] = rc
+    out["hz"] = hz
+    return out
+
+
 def m_loop(board, args):
-    """The DAC->ADC loop: tone amplitude, window purity, overruns."""
-    med, frac, over, ratio = [], [], [], []
+    """The DAC->ADC loop: tone amplitude, window purity, crosstalk, overruns."""
+    rc = getattr(args, "rc", None) or LOOP_RC
+    lim = amplitude_limits()
+    runs = []
     for _ in range(args.repeats):
-        r = measure.run_loop(board, dac_sps=200000, adc_hz=400000,
-                             channels=2, tone=1000.0, seconds=args.seconds)
-        st = r.stream
-        a = [x for _, x in st.window_amplitudes(measure.CH_A0, 1000.0)]
-        if not a:
-            continue
-        med.append(statistics.median(a))
-        frac.append(sum(1 for x in a if x >= 1340) / len(a))
-        over.append(st.overrun_frames)
-        m = st.measured_rate_hz()
-        if m and st.declared_rate_hz:
-            ratio.append(m / st.declared_rate_hz)
+        r = loop_once(board, rc, args.seconds)
+        if r["tone_median_codes"] is not None:
+            runs.append(r)
+
+    def col(k):
+        return _spread([r[k] for r in runs])
     return {
-        "tone_amplitude_codes": _spread(med),
-        "windows_at_or_above_1340": _spread(frac),
-        "overrun_frames_per_run": _spread(over),
-        "rate_measured_over_declared": _spread(ratio),
-        "units": "codes; fraction; frames; ratio",
+        "rc": rc, "rate_hz": measure.hz_for(rc),
+        "tone_amplitude_codes": col("tone_median_codes"),
+        "windows_at_or_above_floor": col("windows_at_or_above_floor"),
+        "crosstalk_codes": col("crosstalk_median_codes"),
+        "overrun_frames_per_run": col("overrun_frames"),
+        "rate_measured_over_declared": col("rate_ratio"),
+        "floor_codes": lim["window_floor_codes"],
+        "window_fraction_required": lim["window_fraction"],
+        "crosstalk_ceiling_codes": lim["crosstalk_ceiling_codes"],
+        "units": "codes; fraction; codes; frames; ratio",
     }
 
 
@@ -312,6 +386,9 @@ def main():
                                    + ",".join(METRICS))
     ap.add_argument("--repeats", type=int, default=3)
     ap.add_argument("--seconds", type=float, default=2.0)
+    ap.add_argument("--rc", type=int, default=None,
+                    help="loop: the rung to take it at (default RC "
+                         f"{LOOP_RC}, 200 kHz at the 90 MHz default)")
     ap.add_argument("--quick", action="store_true",
                     help="one repeat and a short ladder")
     args = ap.parse_args()

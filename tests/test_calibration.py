@@ -91,9 +91,16 @@ def test_nothing_outside_the_suite_opens_the_test_fixture():
     file that `9cc92d1` created to hold measured constants of one board,
     which is the distinction this test exists to protect.
 
+    `tools/metrics.py` is exempt for the same reason in smaller form: its
+    loop metric judges a run against the tone floor, window fraction and
+    crosstalk ceiling the suite's ladder judges against, so that the report
+    and the suite cannot disagree about what a clean loop is. It reads the
+    `amplitude` tolerances and nothing measured about the board.
+
     Anything else added here needs the same argument made out loud.
     """
-    allowed = {os.path.join("tools", "report.py")}
+    allowed = {os.path.join("tools", "report.py"),
+               os.path.join("tools", "metrics.py")}
     offenders = []
     for sub in ("host", "gui", "tools"):
         root = os.path.join(REPO, sub)
