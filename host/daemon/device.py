@@ -385,7 +385,7 @@ class FakeDevice(Device):
         # field is worse than no fake: this one had `mean_us`, which the
         # device does not return, and the first script written against
         # it failed on a board rather than in the suite.
-        mck = 78_000_000
+        mck = 90_000_000
         per_us = mck / 1e6
         hist = [0] * 16
         hist[9] = 140_000

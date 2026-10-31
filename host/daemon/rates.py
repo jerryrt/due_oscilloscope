@@ -22,7 +22,9 @@ caught early, and a refusal from the board is still forwarded verbatim.
 
 from __future__ import annotations
 
-TC_CLOCK_HZ = 39_000_000
+import os
+
+TC_CLOCK_HZ = int(os.environ.get("DUE_MCK_HZ", 90_000_000)) // 2
 
 # Trigger floors in RC, per channel count. Measured; see docs/status.md.
 ACQ_MIN_RC = {1: 44, 2: 86}

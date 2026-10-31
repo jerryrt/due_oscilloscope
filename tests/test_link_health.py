@@ -45,7 +45,7 @@ def test_clock_is_mck_78(board, baseline):
     """MCK 78, not 84.
 
     Chosen so the ADC clock is 19.5 MHz, inside the 20 MHz datasheet
-    limit. Every RC in this suite divides 39 MHz because of it, and
+    limit. Every RC in this suite divides MCK/2, and
     Track A built at the wrong f_cpu reports a silently wrong micros().
     """
     _, text = measure.which_track(board)
@@ -58,7 +58,7 @@ def test_clock_is_mck_78(board, baseline):
     # enough to pass this.
     assert ident["mck_hz"] == mck, (
         f"board reports MCK {ident['mck_hz']}, expected {mck}; Track A "
-        f"must be built with --build-property build.f_cpu=78000000L\n{text}")
+        f"must be built with --build-property build.f_cpu=<MCK Hz>L\n{text}")
     assert ident["adc_clock_hz"] == adc, (
         f"board reports ADC clock {ident['adc_clock_hz']}, expected {adc}")
 

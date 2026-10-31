@@ -29,7 +29,9 @@
 #define MCK_MULA_84   13u
 #define MCK_MULA_90   14u
 
-#define MCK_MULA_DEFAULT MCK_MULA_78
+#ifndef MCK_MULA_DEFAULT
+#define MCK_MULA_DEFAULT MCK_MULA_90
+#endif
 
 bool     clock_set_mck(uint32_t mula);
 uint32_t clock_plla_hz(uint32_t mula);
