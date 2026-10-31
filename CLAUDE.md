@@ -496,7 +496,7 @@ Check here before reasoning from general Arduino knowledge.
   record that is entirely rail while every command succeeds. It cost a
   118 µs "settling tail" that was reproducible to the sample across
   three runs, because a rail is reproducible and the trigger sits at a
-  fixed position in the record. `scope._apply()` returns what the
+  fixed position in the record. `scope.Oscilloscope._apply()` returns what the
   instrument actually holds - "quantised, or clamped" is in its own
   docstring - so **check the readback against the request**, and read
   min/max off a long record with suspicion: one stray sample above a
@@ -743,7 +743,7 @@ Check here before reasoning from general Arduino knowledge.
   control channel down with it. `z` is no substitute - that is
   `RSTC_CR_PROCRST`, a processor reset that leaves the USB pull-up
   attached and the host none the wiser, and twenty seconds of it changed
-  nothing. `measure.close_native` tries this automatically before giving
+  nothing. `measure.Board.close_native` tries this automatically before giving
   up, so a wedge costs a re-enumeration rather than the session.
 
   **`z` also *causes* a native-port wedge, and reflashing does not clear
@@ -1270,7 +1270,7 @@ figure said which instrument produced it.
 **There is no longer a second instrument to swap to, and that was the
 owner's ruling on #51 q3.** `play_counters()` and `occupancy()` read
 the control channel and **raise** where there is none, as
-`SerialDevice.load()` always has and as `counters()` and `trace()` now
+`Control.load()` always has and as `counters()` and `trace()` now
 do too. The justification for the fallback had expired: its docstring
 said it was "what Track A still has", and Track A has carried a control
 channel since 2026-08-27. All three tracks report `ctlver=4`, so a
@@ -1608,10 +1608,10 @@ python3 -m venv .venv
 
 **The board-free gate is the container**, not a native run:
 `docker/run.sh docker/run-ci.sh` runs `-m "not board and not platform"`
-inside the pinned image on every bench - 809 tests - so the verdict is
+inside the pinned image on every bench, so the verdict is
 the image's and no host needs a compiler for the harnesses. What a host
 runs natively is the **platform** tier - `-m "platform and not board"`,
-**17 tests and under a second**, the Windows and macOS branches of
+**a few tests and under a second**, the Windows and macOS branches of
 `transport.py`, `rt.py` and `ports.py` a Linux container can never reach
 - plus the board tier, where it owns a board.
 
@@ -1625,7 +1625,7 @@ selection to it.
 project's. The repository declares what it needs and builds a venv from
 it; it does not work around an old interpreter.
 
-On this machine that is already satisfied. **MacPorts is installed** at
+On `mac-bench` that is already satisfied. **MacPorts is installed** at
 `/opt/local` (`port` 2.12.5) with `python314` 3.14.6 active, and the
 venv is built on `/opt/local/bin/python3.14`. There is no *Homebrew* -
 which is all "no package manager" ever meant in this file, and it was
@@ -1640,7 +1640,8 @@ library, `zlib.crc32` rather than a checksum package. There is no
 reason to churn working code, and no rule against a dependency that
 earns its place: everything runs from the venv.
 
-**Two venvs, two interpreters, and both exist here.** PySide6 6.9.3 is
+**Two venvs, two interpreters** (versions below are `mac-bench`'s; each
+bench's standing page carries its own). PySide6 6.9.3 is
 `cp39-abi3` and declares `>=3.9,<3.14`, so it will not install on 3.14.
 
 | venv | Interpreter | Holds |
@@ -1648,7 +1649,7 @@ earns its place: everything runs from the venv.
 | `.venv` | 3.14.6 (`/opt/local/bin/python3.14`) | pytest |
 | `.venv-gui` | 3.13.14 (`/opt/local/bin/python3.13`) | PySide6 6.9.3, pyqtgraph 0.14.0, numpy 2.5.2, scipy 1.18.1 |
 
-Both are installed and both import - verified, not inferred from
+Both import on `mac-bench` - verified, not inferred from
 metadata. Neither is committed; a venv holds absolute paths and
 platform-specific wheels and does not travel.
 
