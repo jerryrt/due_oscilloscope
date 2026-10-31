@@ -15,8 +15,12 @@ board change.
 
 **The host survives almost entirely.** The wire format is already
 device-agnostic: magic, version, sequence, per-channel rate, channel
-mask, device timestamp and a header CRC, with `bits_per_sample` and
-`packing` fields that a 14- or 16-bit converter needs no change to use.
+mask, device timestamp and a header CRC. The payload is 16-bit
+half-words, which holds a 14- or 16-bit sample, but version 3 has no
+field declaring the sample width or packing, and the top four bits of a
+half-word carry the channel tag, which a full 16-bit sample would
+overwrite. A converter wider than 12 bits therefore needs a new frame
+version and a decoder change (`docs/protocol.md`).
 The daemon reaches hardware through one `Device` interface with two
 implementations today (`BoardDevice`, `FakeDevice`); a new instrument is
 a third. Everything above that seam - the socket protocol, ownership,

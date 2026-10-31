@@ -80,8 +80,8 @@ not by checksums.
 
 ### Payload
 
-With `packing = 0`, each sample is one 16-bit little-endian half-word
-straight out of `ADC_LCDR`:
+Each sample is one 16-bit little-endian half-word straight out of
+`ADC_LCDR`:
 
 ```
 bits 15..12   channel index   (present when ADC_EMR.TAG is enabled)
@@ -92,10 +92,10 @@ The channel tag makes the stream **self-describing**: the host demuxes on
 the tag rather than trusting position, and can resynchronise mid-stream
 after any glitch. This is free, since 16 bits move regardless.
 
-With `packing = 1`, two 12-bit samples occupy three bytes and the channel
-tag is unavailable. This saves 25% of bandwidth (2.1 MB/s to 1.58 MB/s)
-at the cost of the host having to trust the sequence order. Use only if
-throughput measurement demands it.
+Packing two 12-bit samples into three bytes would save 25% of bandwidth
+at the cost of the channel tag, with the host trusting the sequence
+order. Version 3 does not carry it: the header has no field to declare a
+sample width or a packing, so adding either is a new frame version.
 
 ### Host receive algorithm
 
