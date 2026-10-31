@@ -24,6 +24,7 @@ import pytest
 
 import control
 import ports
+import pacing
 
 pytestmark = pytest.mark.smoke
 
@@ -60,8 +61,8 @@ def link(board, track):
 def clear(board):
     """Reset the worst case. Cumulative counters can be differenced; a
     maximum cannot, so clearing has to be explicit."""
-    board.ask("=1l", secs=1.0)
-    time.sleep(0.2)
+    board.ask("=1l", secs=pacing.LISTEN)
+    pacing.pause(pacing.TURN)
 
 
 def window(link, secs):
@@ -109,8 +110,8 @@ def test_a_stall_the_host_chose_is_reported(link, board, baseline, want_ms):
 
     clear(board)
     board.cmd("=%dS" % want_ms)
-    time.sleep(want_ms / 1000.0 + 0.4)
-    board.drain_console(0.3)
+    pacing.pause(want_ms / 1000.0 + pacing.TURN)
+    board.drain_console(pacing.GLANCE)
 
     got_ms = link.load()["max_us"] / 1000.0
     assert abs(got_ms - want_ms) <= tol, (
@@ -129,8 +130,8 @@ def test_clearing_resets_the_worst_case(link, board):
     """
     clear(board)
     board.cmd("=200S")
-    time.sleep(0.7)
-    board.drain_console(0.3)
+    pacing.pause(pacing.SETTLE)
+    board.drain_console(pacing.GLANCE)
     assert link.load()["max_us"] > 150000, "the stall was not recorded"
 
     clear(board)
@@ -150,7 +151,7 @@ def test_the_idle_loop_is_fast_and_uniform(link, board, baseline):
     frac = baseline["load"]["main_bucket_fraction_floor"]
 
     clear(board)
-    dt, dp, delta, _worst = window(link, 2.0)
+    dt, dp, delta, _worst = window(link, pacing.SHORT)
     rate = dp / dt
     assert rate >= floor, (
         f"the idle main loop ran {rate/1000:.1f} k passes/s, below the "
@@ -173,15 +174,15 @@ def test_capture_does_not_block_the_main_loop(link, board, baseline):
     ceiling = baseline["load"]["steady_worst_pass_ceiling_us"]
 
     board.cmd("5")                       # max in-spec capture
-    time.sleep(0.8)
-    board.drain_console(0.5)
+    pacing.pause(pacing.SETTLE)
+    board.drain_console(pacing.GLANCE)
     try:
         clear(board)
-        dt, dp, _delta, worst = window(link, 2.0)
+        dt, dp, _delta, worst = window(link, pacing.SHORT)
     finally:
         board.stop()
-        time.sleep(0.3)
-        board.drain_console(0.5)
+        pacing.pause(pacing.TURN)
+        board.drain_console(pacing.GLANCE)
 
     rate = dp / dt
     assert rate >= floor, (
@@ -202,7 +203,7 @@ def test_the_console_and_the_control_channel_agree(link, board):
     its own private copy would fail that.
     """
     before = link.load()["passes"]
-    txt = board.ask("l", secs=2.0)
+    txt = board.ask("l", secs=pacing.WHOLE)
     after = link.load()["passes"]
 
     m = re.search(r"passes=(\d+)", txt)

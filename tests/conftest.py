@@ -37,6 +37,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "host"))
 import measure  # noqa: E402
+import pacing  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASELINE_PATH = os.path.join(HERE, "baseline.json")
@@ -79,6 +80,10 @@ def pytest_addoption(parser):
                      "of asserting against it")
     g.addoption("--seconds", action="store", type=float, default=None,
                 help="override the streaming window for every measurement")
+    g.addoption("--pacing-report", action="store_true",
+                help="record every time.sleep by call site and print where "
+                     "the run's waiting went, by pacing level (host/pacing.py)"
+                     ". The measurement the delay levels are set from")
     g.addoption("--no-ceiling", action="store_true",
                 help="do not fail the run for exceeding the time budget "
                      "of the groups it selected (issue #86, BUDGET_S in "
@@ -99,7 +104,45 @@ def pytest_addoption(parser):
                      "two populations of measurements and should say so")
 
 
+_SLEEP_SITES = {}
+
+
+def _trace_sleeps():
+    """Replace time.sleep with a recorder; --pacing-report only."""
+    import time as _time
+    real = _time.sleep
+
+    def traced(seconds):
+        f = sys._getframe(1)
+        while f.f_back is not None and f.f_code.co_filename.endswith("pacing.py"):
+            f = f.f_back            # attribute a level's sleep to its caller
+        site = "%s:%d" % (os.path.relpath(f.f_code.co_filename, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), f.f_lineno)
+        t0 = _time.perf_counter()
+        real(seconds)
+        rec = _SLEEP_SITES.setdefault(site, [0, 0.0])
+        rec[0] += 1
+        rec[1] += _time.perf_counter() - t0
+    _time.sleep = traced
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    if not config.getoption("--pacing-report"):
+        return
+    w = terminalreporter.write_line
+    w("")
+    w("pacing report: where the waiting went (host/pacing.py)")
+    total = sum(v[1] for v in _SLEEP_SITES.values())
+    w("  slept %.1f s over %d calls at %d sites"
+      % (total, sum(v[0] for v in _SLEEP_SITES.values()), len(_SLEEP_SITES)))
+    for name, (n, sec) in sorted(pacing.report().items(), key=lambda kv: -kv[1][1]):
+        w("  %-7s %7d calls %8.1f s requested" % (name, n, sec))
+    for site, (n, sec) in sorted(_SLEEP_SITES.items(), key=lambda kv: -kv[1][1])[:15]:
+        w("  %8.1f s %7d x %s" % (sec, n, site))
+
+
 def pytest_configure(config):
+    if config.getoption("--pacing-report"):
+        _trace_sleeps()
     for m, desc in (
         ("board", "needs the board attached; applied automatically to "
                   "any test that resolves the board fixture"),
@@ -291,7 +334,7 @@ def board(request, track):
             pytest.fail(f"flashed track {want} but the board reports {have!r}")
 
     b.stop()
-    b.drain_console(0.5)
+    b.drain_console(pacing.GLANCE)
     yield b
     try:
         b.stop()

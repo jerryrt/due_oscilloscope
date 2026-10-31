@@ -29,6 +29,7 @@ naming the issue, and anything past the envelope is a failure.
 import pytest
 
 import measure
+import pacing
 
 pytestmark = pytest.mark.scope
 
@@ -53,7 +54,7 @@ def test_capture_does_not_lose_frames_before_the_first_one(board, preset):
     equals max, and a loss that appears later is a different issue
     (#44) with a different mechanism.
     """
-    res = measure.run_capture(board, preset=preset, seconds=6.0)
+    res = measure.run_capture(board, preset=preset, seconds=pacing.LONG)
     ps = res.stream
     assert ps.frames > 100, f"preset {preset} produced only {ps.frames} frames"
 

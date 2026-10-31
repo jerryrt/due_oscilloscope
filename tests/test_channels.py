@@ -11,6 +11,7 @@ floors are measured values rather than scaled ones.
 import pytest
 
 import measure
+import pacing
 from helpers import (assert_fresh, assert_no_underruns, assert_stream_clean,
                      loop_cmd, window)
 
@@ -64,7 +65,7 @@ def test_aggregate_conversion_rate_at_the_floor(board, baseline, calibration,
     floor = baseline["rc"]["two_ch_floor" if channels == 2 else "one_ch_floor"]
     per_ch = measure.hz_for(floor)
     res = measure.run_capture(board, preset=loop_cmd(per_ch, channels),
-                              seconds=2.0)
+                              seconds=pacing.SHORT)
     assert_fresh(res, 2.0)
     assert_stream_clean(res)
 
@@ -93,7 +94,7 @@ def test_one_channel_aggregates_less_than_two(board, baseline, calibration):
                                else "two_ch_floor"]
         res = measure.run_capture(
             board, preset=loop_cmd(measure.hz_for(floor), channels),
-            seconds=2.0)
+            seconds=pacing.SHORT)
         assert_fresh(res, 2.0)
         got[channels] = res.stream.measured_rate_hz() * channels
 
@@ -110,7 +111,7 @@ def test_every_sample_tag_is_in_the_mask(board, channels):
     enable means the demultiplexing is wrong, and the whole capture is
     attributed to the wrong pins."""
     res = measure.run_capture(board, preset=loop_cmd(200000, channels),
-                              seconds=1.5)
+                              seconds=pacing.PROBE)
     assert_fresh(res, 1.5)
     mask = res.stream.channel_mask
     allowed = {i for i in range(16) if mask & (1 << i)}
@@ -133,7 +134,7 @@ def test_matched_full_rate_loop(board, seconds, calibration, channels,
     the counters have to be read together: under=0 says the DAC never
     repeated a buffer, and gaps=0 says nothing was spliced.
     """
-    secs = window(seconds, 3.0)
+    secs = window(seconds, pacing.STANDARD)
     res = measure.run_loop(board, dac_sps=dac, adc_hz=adc, channels=channels,
                            seconds=secs)
     assert not res.refused, f"the device refused the pair\n{res.console}"

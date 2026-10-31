@@ -22,6 +22,11 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "tools"))
 import flash  # noqa: E402
+import pacing
+
+# How long flash.wait_for_boot is watched when the answer is 'no boot'. The
+# value is what the tests assert against, so it is not a level.
+BOOT_QUIET_S = 1.5
 
 SAMBA_NODE = "/dev/cu.usbmodem141301"
 
@@ -45,12 +50,12 @@ def _nodes(seq):
 def test_a_bootloader_node_that_goes_away_is_a_boot(monkeypatch):
     monkeypatch.setattr(flash, "samba_nodes",
                         _nodes([[SAMBA_NODE], [SAMBA_NODE], []]))
-    assert flash.wait_for_boot({SAMBA_NODE}, timeout=5.0)
+    assert flash.wait_for_boot({SAMBA_NODE}, timeout=pacing.QUICK)
 
 
 def test_a_bootloader_node_that_stays_is_not_a_boot(monkeypatch):
     monkeypatch.setattr(flash, "samba_nodes", _nodes([[SAMBA_NODE]]))
-    assert not flash.wait_for_boot({SAMBA_NODE}, timeout=1.5)
+    assert not flash.wait_for_boot({SAMBA_NODE}, timeout=BOOT_QUIET_S)
 
 
 def test_the_board_coming_back_at_a_new_bootloader_path_is_not_a_boot(
@@ -60,7 +65,7 @@ def test_the_board_coming_back_at_a_new_bootloader_path_is_not_a_boot(
     Testing `& watched` alone would call this a boot."""
     monkeypatch.setattr(flash, "samba_nodes",
                         _nodes([[SAMBA_NODE], ["/dev/cu.usbmodem141401"]]))
-    assert not flash.wait_for_boot({SAMBA_NODE}, timeout=1.5)
+    assert not flash.wait_for_boot({SAMBA_NODE}, timeout=BOOT_QUIET_S)
 
 
 def test_nothing_to_watch_is_not_reported_as_a_failure(monkeypatch):
@@ -68,7 +73,7 @@ def test_nothing_to_watch_is_not_reported_as_a_failure(monkeypatch):
     attributed to this board, so there is no negative evidence to be had
     and the check must not invent a failure from its own blindness."""
     monkeypatch.setattr(flash, "samba_nodes", _nodes([[SAMBA_NODE]]))
-    assert flash.wait_for_boot(set(), timeout=1.5)
+    assert flash.wait_for_boot(set(), timeout=BOOT_QUIET_S)
 
 
 # ------------------------------------------------- a port someone else holds
@@ -364,20 +369,20 @@ def test_a_bootloader_node_seen_once_is_not_believed(monkeypatch):
     monkeypatch.setattr(flash, "samba_nodes",
                         _nodes([[], ["/dev/ttyACM1"], [], [],
                                 ["/dev/ttyACM2"], ["/dev/ttyACM2"]]))
-    assert flash._await_samba(set(), timeout=5.0) == "/dev/ttyACM2"
+    assert flash._await_samba(set(), timeout=pacing.QUICK) == "/dev/ttyACM2"
 
 
 def test_a_settled_bootloader_node_is_returned(monkeypatch):
     monkeypatch.setattr(flash, "samba_nodes",
                         _nodes([["/dev/ttyACM1"], ["/dev/ttyACM1"]]))
-    assert flash._await_samba(set(), timeout=5.0) == "/dev/ttyACM1"
+    assert flash._await_samba(set(), timeout=pacing.QUICK) == "/dev/ttyACM1"
 
 
 def test_no_bootloader_node_is_not_seen_rather_than_failed(monkeypatch):
     """None means "not seen". It never means "the touch failed" - only
     usb_nodes() separates those, and the caller does that itself."""
     monkeypatch.setattr(flash, "samba_nodes", _nodes([[]]))
-    assert flash._await_samba(set(), timeout=1.5) is None
+    assert flash._await_samba(set(), timeout=BOOT_QUIET_S) is None
 
 
 def test_bossac_is_bounded(monkeypatch):

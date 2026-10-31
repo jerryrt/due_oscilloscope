@@ -31,6 +31,7 @@ import sys
 import subprocess
 
 import pytest
+import pacing
 
 pytestmark = pytest.mark.smoke
 
@@ -99,7 +100,7 @@ def _defined_symbols(elf):
         pytest.skip("arm-none-eabi-nm not found on PATH or in "
                     "toolchains.json - the heap guard cannot run")
     out = subprocess.run([nm, "--defined-only", elf],
-                         capture_output=True, text=True, timeout=30)
+                         capture_output=True, text=True, timeout=pacing.NORMAL)
     assert out.returncode == 0, out.stderr[-500:]
     return {m.group(1)
             for m in re.finditer(r"^\S+\s+\S\s+(\S+)$", out.stdout, re.M)}

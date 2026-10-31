@@ -45,13 +45,14 @@ import tempfile
 import time
 
 import pytest
+import pacing
 
 pytestmark = pytest.mark.slow
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(REPO, "docker", "run-fuzz.sh")
 
-CAMPAIGN_S = 6
+CAMPAIGN_S = pacing.LONG
 #: New units libFuzzer must have reported inside the campaign before the
 #: published directory is inspected. Below this the mid-run look proves
 #: nothing - with no unit written locally, an empty published directory
@@ -113,13 +114,13 @@ def test_the_campaign_writes_locally_and_publishes_at_the_end(tmp_path):
             # Wait until libFuzzer has itself reported enough new units
             # inside the campaign that its working corpus certainly
             # holds files, then look at where those files are NOT.
-            deadline = time.monotonic() + 120
+            deadline = time.monotonic() + pacing.SLOW
             seen = -1
             while proc.poll() is None and time.monotonic() < deadline:
                 seen = _new_units_after_campaign(str(log))
                 if seen >= NEW_UNITS:
                     break
-                time.sleep(0.1)
+                pacing.pause(pacing.POLL)
             assert seen >= NEW_UNITS, (
                 f"libFuzzer reported {seen} new units inside a {CAMPAIGN_S} s "
                 f"campaign before it ended, below the {NEW_UNITS} this test "
@@ -135,7 +136,7 @@ def test_the_campaign_writes_locally_and_publishes_at_the_end(tmp_path):
                 "whose docker/out is a network mount is the hot I/O this "
                 "script exists to keep local")
         finally:
-            rc = proc.wait(timeout=180)
+            rc = proc.wait(timeout=pacing.BUILD)
 
     text = open(log, encoding="utf-8", errors="replace").read()
     assert rc == 0, f"run-fuzz.sh exited {rc}:\n{text[-3000:]}"

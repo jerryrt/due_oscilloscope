@@ -13,6 +13,7 @@ derived, not the other way round.
 import pytest
 
 import measure
+import pacing
 from helpers import (assert_fresh, assert_no_underruns, assert_stream_clean,
                      approx_rate, loop_cmd, record, window)
 
@@ -74,7 +75,7 @@ def _ladder_run(board, rc, channels, secs, calibration, tolerance=0):
 @pytest.mark.parametrize("rc", TWO_CH)
 def test_two_channel_ladder(board, seconds, calibration, baseline, rc):
     """Matched loop on both channels, 50 k to the 453,488/ch ceiling."""
-    _ladder_run(board, rc, 2, window(seconds, 2.0), calibration,
+    _ladder_run(board, rc, 2, window(seconds, pacing.SHORT), calibration,
                 tolerance=baseline["playback"]["ladder_underrun_tolerance"])
 
 
@@ -91,7 +92,7 @@ def test_one_channel_ladder(board, seconds, calibration, baseline, rc):
     the top of the two-channel one. A trigger that converts a pair back
     to back amortises overhead a lone conversion pays in full.
     """
-    _ladder_run(board, rc, 1, window(seconds, 2.0), calibration,
+    _ladder_run(board, rc, 1, window(seconds, pacing.SHORT), calibration,
                 tolerance=baseline["playback"]["ladder_underrun_tolerance"])
 
 
@@ -112,7 +113,7 @@ def test_awg_ladder_play_only(board, seconds, calibration, baseline, rc):
     the ADC.
     """
     hz = measure.hz_for(rc)
-    secs = window(seconds, 2.0)
+    secs = window(seconds, pacing.SHORT)
     res = measure.run_play(board, dac_sps=hz, seconds=secs)
     assert not res.refused, f"RC {rc} ({hz} sps) was refused\n{res.console}"
 

@@ -22,6 +22,7 @@ from daemon import client as clientmod
 from daemon import device as devmod
 from daemon import protocol as proto
 from daemon import server as servermod
+import pacing
 
 
 @pytest.mark.slow
@@ -29,14 +30,14 @@ from daemon import server as servermod
 def test_the_daemon_streams_real_frames_and_lets_go_of_the_port(board, track):
     dev = devmod.BoardDevice(board)
     srv = servermod.Server(dev, host="127.0.0.1", port=0).start()
-    c = clientmod.Client("127.0.0.1", srv.port, timeout=15.0)
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=pacing.NORMAL)
     try:
         c.connect()
         assert c.hello("control")["device"]["kind"] == "board"
         c.subscribe()
         c.call("start", mode="capture", preset="1")
 
-        frames = c.wait_frames(20, timeout=20.0)
+        frames = c.wait_frames(20, timeout=pacing.NORMAL)
         assert all(len(f) == devmod.FRAME_BYTES for f in frames)
 
         ps = measure._finish(measure.parse_frames(b"".join(frames)))
@@ -62,10 +63,10 @@ def test_the_daemon_streams_real_frames_and_lets_go_of_the_port(board, track):
     # The port must be usable immediately afterwards. A daemon that
     # leaves the device streaming, or the native node held, turns into
     # the next run's mystery.
-    time.sleep(0.5)
+    pacing.pause(pacing.SETTLE)
     fd = board.open_native()
     try:
-        measure.drain_until_quiet(fd, quiet=0.3, cap=3.0)
+        measure.drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.TAIL)
     finally:
         board.close_native(fd)
 
@@ -86,7 +87,7 @@ def test_the_daemon_delivers_the_full_rate_without_dropping(board, track,
     """
     dev = devmod.BoardDevice(board)
     srv = servermod.Server(dev, host="127.0.0.1", port=0).start()
-    c = clientmod.Client("127.0.0.1", srv.port, timeout=20.0,
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=pacing.NORMAL,
                          frame_capacity=20000)
     try:
         c.connect()
@@ -95,13 +96,13 @@ def test_the_daemon_delivers_the_full_rate_without_dropping(board, track,
         c.call("start", mode="capture", preset="5")
 
         t0 = time.time()
-        time.sleep(6.0)
+        time.sleep(pacing.LONG)
         elapsed = time.time() - t0
         c.call("stop")
         # Both counts are read after the stream is quiet. Sampling them
         # while it runs compares two different instants and reports a
         # frame in flight as a lost one.
-        time.sleep(0.5)
+        pacing.pause(pacing.SETTLE)
         read_at_stop = srv.frames_read
         got_at_stop = c.frames_received
         dropped = max((s.dropped for s in srv.sessions), default=0)
@@ -155,7 +156,7 @@ def test_a_waveform_uploaded_through_the_daemon_reaches_the_pin(board, track,
 
     dev = devmod.BoardDevice(board)
     srv = servermod.Server(dev, host="127.0.0.1", port=0).start()
-    c = clientmod.Client("127.0.0.1", srv.port, timeout=20.0,
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=pacing.NORMAL,
                          frame_capacity=20000)
     try:
         c.connect()
@@ -166,7 +167,7 @@ def test_a_waveform_uploaded_through_the_daemon_reaches_the_pin(board, track,
 
         c.call("start", mode="loop", dac_sps=dac_sps, adc_hz=dac_sps,
                channels=2)
-        c.wait_frames(600, timeout=20.0)
+        c.wait_frames(600, timeout=pacing.NORMAL)
         frames = list(c.frames)
         c.call("stop")
         # After the stop, deliberately. Asking the board anything
@@ -242,16 +243,16 @@ def test_a_recording_of_a_real_stream_is_byte_identical(board, track,
     path = str(tmp_path / f"real-{track}.due")
     dev = devmod.BoardDevice(board)
     srv = servermod.Server(dev, host="127.0.0.1", port=0).start()
-    c = clientmod.Client("127.0.0.1", srv.port, timeout=20.0,
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=pacing.NORMAL,
                          frame_capacity=20000)
     try:
         c.connect()
         c.hello("control")
         c.subscribe()
         c.call("start", mode="capture", preset="1")
-        c.wait_frames(20, timeout=20.0)
+        c.wait_frames(20, timeout=pacing.NORMAL)
         c.call("record.start", path=path)
-        c.wait_frames(c.frames_received + 60, timeout=20.0)
+        c.wait_frames(c.frames_received + 60, timeout=pacing.NORMAL)
         side = c.call("record.stop")["sidecar"]
         c.call("stop")
     finally:
@@ -295,7 +296,7 @@ def test_a_client_that_stops_reading_loses_frames_and_the_rest_do_not(
     srv = servermod.Server(dev, host="127.0.0.1", port=0,
                            client_queue_frames=8).start()
     silent = socket.create_connection(("127.0.0.1", srv.port))
-    good = clientmod.Client("127.0.0.1", srv.port, timeout=20.0,
+    good = clientmod.Client("127.0.0.1", srv.port, timeout=pacing.NORMAL,
                             frame_capacity=20000)
     try:
         silent.sendall(proto.encode_json(proto.T_CMD,
@@ -308,14 +309,14 @@ def test_a_client_that_stops_reading_loses_frames_and_the_rest_do_not(
         good.subscribe()
         good.call("start", mode="capture", preset="5")
 
-        end = time.time() + 25.0
+        end = time.time() + pacing.NORMAL
         while time.time() < end:
             if max((s.dropped for s in srv.sessions), default=0) > 0:
                 break
-            time.sleep(0.1)
+            pacing.pause(pacing.POLL)
         dropped = max((s.dropped for s in srv.sessions), default=0)
         before = good.frames_received
-        time.sleep(1.0)
+        time.sleep(pacing.PROBE)
         after = good.frames_received
         st = good.call("status")["status"]
         good.call("stop")
@@ -349,13 +350,13 @@ def test_stopping_the_daemon_mid_stream_leaves_the_port_usable(board, track):
     """
     dev = devmod.BoardDevice(board)
     srv = servermod.Server(dev, host="127.0.0.1", port=0).start()
-    c = clientmod.Client("127.0.0.1", srv.port, timeout=20.0)
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=pacing.NORMAL)
     try:
         c.connect()
         c.hello("control")
         c.subscribe()
         c.call("start", mode="capture", preset="5")
-        c.wait_frames(200, timeout=20.0)
+        c.wait_frames(200, timeout=pacing.NORMAL)
     finally:
         c.close()
         t0 = time.time()
@@ -366,12 +367,12 @@ def test_stopping_the_daemon_mid_stream_leaves_the_port_usable(board, track):
         f"the daemon took {teardown:.1f}s to stop: something waited on a "
         f"device that was still streaming")
 
-    banner = board.ask("h", secs=2.0)
+    banner = board.ask("h", secs=pacing.WHOLE)
     assert "due_oscilloscope" in banner, (
         "the board did not answer after the daemon was stopped mid-stream")
 
     fd = board.open_native()
     try:
-        measure.drain_until_quiet(fd, quiet=0.3, cap=5.0)
+        measure.drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.QUICK)
     finally:
         board.close_native(fd)

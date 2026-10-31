@@ -18,6 +18,7 @@ import pytest
 import measure
 import ports
 from helpers import assert_fresh, assert_stream_clean, window
+import pacing
 
 pytestmark = pytest.mark.smoke
 
@@ -71,7 +72,7 @@ def test_native_port_enumerates(board):
     SAM3X's own CDC never comes up.
     """
     try:
-        fd = board.open_native(wait=12.0)
+        fd = board.open_native(wait=pacing.NORMAL)
     except measure.BoardError as e:
         pytest.fail(
             f"native port did not enumerate: {e}. The control port answered, "
@@ -88,7 +89,7 @@ def test_native_port_enumerates(board):
     # which is what SET_LINE_CODING did before it accepted its data
     # stage. Cheap to check and it names the right suspect.
     t0 = time.time()
-    fd = board.open_native(wait=12.0)
+    fd = board.open_native(wait=pacing.NORMAL)
     cost = time.time() - t0
     board.close_native(fd)
     assert cost < 5.0, (
@@ -106,7 +107,7 @@ def test_native_port_offers_both_functions(board):
     really the one the numbering pins - interfaces 0 and 1 for samples,
     2 and 3 for commands - rather than two nodes that happen to appear.
     """
-    ctl, samples, commands = ports.find_all_ports(wait=12.0)
+    ctl, samples, commands = ports.find_all_ports(wait=pacing.NORMAL)
     assert ctl, "the control port stopped answering"
     assert samples, "no native sample node"
     assert commands, (
@@ -158,7 +159,7 @@ def test_command_port_opens_and_closes(board):
     endpoint would have turned a port that does nothing into a port that
     hangs the machine - so this asserts the close, not just the open.
     """
-    _ctl, _samples, commands = ports.find_all_ports(wait=12.0)
+    _ctl, _samples, commands = ports.find_all_ports(wait=pacing.NORMAL)
     if not commands:
         pytest.skip("no command node; covered by the test above")
 
@@ -224,8 +225,8 @@ def test_link_carries_a_clean_stream(board, seconds):
     near any ceiling, so anything wrong here is the link itself.
     """
     before, _ = measure.stream_stats(board)
-    res = measure.run_capture(board, preset="1", seconds=window(seconds, 2.0))
-    assert_fresh(res, window(seconds, 2.0))
+    res = measure.run_capture(board, preset="1", seconds=window(seconds, pacing.SHORT))
+    assert_fresh(res, window(seconds, pacing.SHORT))
     assert_stream_clean(res)
 
     # These counters are cumulative since boot, and one bus reset at
@@ -252,12 +253,12 @@ def test_core_did_not_rebuild_endpoints(board, track):
     if track != "a":
         pytest.skip("Track A only")
     # rebuilds is reported by `B`, the bench report, not by `?`.
-    before = measure.parse_bench(board.ask("B", secs=1.2))
+    before = measure.parse_bench(board.ask("B", secs=pacing.LISTEN))
     if before.rebuilds is None:
         pytest.skip("this build does not report rebuilds")
-    res = measure.run_capture(board, preset="1", seconds=2.0)
+    res = measure.run_capture(board, preset="1", seconds=pacing.SHORT)
     assert res.stream.frames > 0
-    after = measure.parse_bench(board.ask("B", secs=1.2))
+    after = measure.parse_bench(board.ask("B", secs=pacing.LISTEN))
     text = after.raw
     grew = after.rebuilds - before.rebuilds
     assert grew == 0, (

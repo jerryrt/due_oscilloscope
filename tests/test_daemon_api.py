@@ -27,16 +27,25 @@ from daemon import client as clientmod
 from daemon import device as devmod
 from daemon import protocol as proto
 from daemon import rates as ratemod
+
+# Waits that assert an event does NOT happen. Each is derived from the
+# rate of the thing that would produce it, so no pacing scale can make the
+# wait shorter than the event it is listening for.
+HEARTBEAT_PERIOD_S = 0.020      # the period_ms=20 these tests ask for
+NO_FRAME_WAIT_S = 0.2           # frames arrive every few ms at 200 ksps
+
+
 from daemon import server as servermod
+import pacing
 
 
-def wait_until(fn, timeout=5.0, what="condition"):
+def wait_until(fn, timeout=pacing.QUICK, what="condition"):
     end = time.time() + timeout
     while time.time() < end:
         got = fn()
         if got:
             return got
-        time.sleep(0.02)
+        pacing.pause(pacing.POLL)
     raise AssertionError(f"{what} did not happen within {timeout}s")
 
 
@@ -65,7 +74,7 @@ def srv(make_server):
 def connect(srv):
     made = []
 
-    def _connect(role=None, server=None, timeout=5.0):
+    def _connect(role=None, server=None, timeout=pacing.QUICK):
         target = server or srv
         c = clientmod.Client("127.0.0.1", target.port,
                              timeout=timeout).connect()
@@ -238,7 +247,7 @@ def test_frames_arrive_and_parse_as_the_device_wrote_them(connect):
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    frames = c.wait_frames(5, timeout=10.0)
+    frames = c.wait_frames(5, timeout=pacing.NORMAL)
     assert all(len(f) == devmod.FRAME_BYTES for f in frames)
     ps = measure._finish(measure.parse_frames(b"".join(frames)))
     assert ps.frames >= 5
@@ -249,10 +258,10 @@ def test_frames_arrive_and_parse_as_the_device_wrote_them(connect):
 def test_a_client_gets_no_frames_until_it_subscribes(connect):
     c = connect("control")
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    time.sleep(0.3)
+    time.sleep(NO_FRAME_WAIT_S)
     assert c.frames_received == 0
     c.subscribe()
-    c.wait_frames(2, timeout=10.0)
+    c.wait_frames(2, timeout=pacing.NORMAL)
 
 
 def test_unsubscribing_stops_them(connect):
@@ -277,12 +286,12 @@ def test_unsubscribing_stops_them(connect):
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(2, timeout=10.0)
+    c.wait_frames(2, timeout=pacing.NORMAL)
 
     reply = c.subscribe(frames=False)
     assert reply["frames"] is False
     at_reply = c.frames_received
-    time.sleep(0.5)
+    pacing.pause(pacing.SETTLE)
     extra = c.frames_received - at_reply
     assert extra <= 2, (
         f"{extra} frames arrived in 500 ms after the unsubscribe reply. "
@@ -335,8 +344,8 @@ def test_two_clients_see_the_same_frames(connect):
     a.subscribe()
     b.subscribe()
     a.call("start", mode="capture", adc_hz=200000, channels=2)
-    fa = a.wait_frames(4, timeout=10.0)
-    fb = b.wait_frames(4, timeout=10.0)
+    fa = a.wait_frames(4, timeout=pacing.NORMAL)
+    fb = b.wait_frames(4, timeout=pacing.NORMAL)
     assert fa[0][:32] == fb[0][:32]
 
 
@@ -353,7 +362,7 @@ def test_status_describes_what_is_going_on(srv, connect):
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(2, timeout=10.0)
+    c.wait_frames(2, timeout=pacing.NORMAL)
     st = c.call("status")["status"]
     assert st["running"] is True and st["mode"] == "capture"
     assert st["rates"]["adc_hz"] == 200000
@@ -386,10 +395,10 @@ def test_a_client_that_stops_reading_loses_frames_and_nothing_else_does(
 
         dropped = wait_until(
             lambda: max((s.dropped for s in srv.sessions), default=0) > 0,
-            timeout=20.0, what="the silent client to start losing frames")
+            timeout=pacing.NORMAL, what="the silent client to start losing frames")
         assert dropped > 0
         before = good.frames_received
-        wait_until(lambda: good.frames_received > before + 20, timeout=20.0,
+        wait_until(lambda: good.frames_received > before + 20, timeout=pacing.NORMAL,
                    what="the reading client to keep receiving")
         st = good.call("status")["status"]
         assert any(cl["dropped"] > 0 for cl in st["clients"])
@@ -436,9 +445,9 @@ def test_a_recording_is_the_frames_verbatim(tmp_path, connect):
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(2, timeout=10.0)
+    c.wait_frames(2, timeout=pacing.NORMAL)
     c.call("record.start", path=path)
-    c.wait_frames(c.frames_received + 6, timeout=10.0)
+    c.wait_frames(c.frames_received + 6, timeout=pacing.NORMAL)
     side = c.call("record.stop")["sidecar"]
     c.call("stop")
 
@@ -459,7 +468,7 @@ def test_the_sidecar_says_what_the_frames_cannot(tmp_path, connect):
     c = connect("control")
     c.call("start", mode="capture", adc_hz=200000, channels=2)
     c.call("record.start", path=path)
-    time.sleep(0.2)
+    pacing.pause(pacing.TURN)
     c.call("record.stop")
     side = json.load(open(path + ".json", encoding="utf-8"))
     assert side["rates"]["adc_hz"] == 200000
@@ -494,7 +503,7 @@ def test_a_recording_survives_the_client_that_asked_for_it(tmp_path,
     c.close()
     wait_until(lambda: srv.controller is None, what="control release")
     before = srv.recorder.frames
-    wait_until(lambda: srv.recorder.frames > before + 3, timeout=10.0,
+    wait_until(lambda: srv.recorder.frames > before + 3, timeout=pacing.NORMAL,
                what="the recording to continue")
     side = srv.recorder.stop()
     srv.recorder = None
@@ -591,11 +600,11 @@ def test_the_server_leaves_no_threads_behind(make_server):
     c.hello("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(2, timeout=10.0)
+    c.wait_frames(2, timeout=pacing.NORMAL)
     c.close()
     srv.stop()
     wait_until(lambda: not (set(threading.enumerate()) - before),
-               timeout=10.0, what="every daemon thread to exit")
+               timeout=pacing.NORMAL, what="every daemon thread to exit")
 
 
 def test_the_bind_address_is_a_setting(make_server):
@@ -611,18 +620,18 @@ def test_the_bind_address_is_a_setting(make_server):
 def _stream_and_count(make_server, n_frames):
     """Warm every code path, then measure what streaming actually costs."""
     srv = make_server(pace=False)
-    c = clientmod.Client("127.0.0.1", srv.port, timeout=30.0,
+    c = clientmod.Client("127.0.0.1", srv.port, timeout=pacing.NORMAL,
                          frame_capacity=16)
     c.connect()
     c.hello("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(200, timeout=30.0)
+    c.wait_frames(200, timeout=pacing.NORMAL)
     gc.collect()
     base_blocks = sys.getallocatedblocks()
     base_gen0 = gc.get_stats()[0]["collections"]
     start = c.frames_received
-    c.wait_frames(start + n_frames, timeout=60.0)
+    c.wait_frames(start + n_frames, timeout=pacing.SLOW)
     out = (sys.getallocatedblocks() - base_blocks,
            gc.get_stats()[0]["collections"] - base_gen0,
            c.frames_received - start)
@@ -684,7 +693,7 @@ def test_status_carries_where_the_latency_is(connect):
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(20, timeout=15.0)
+    c.wait_frames(20, timeout=pacing.NORMAL)
     j = c.call("status")["status"]["jitter"]
 
     assert set(j) >= {"read_gap", "fanout"}
@@ -702,7 +711,7 @@ def test_the_fanout_cost_is_recorded_per_frame(connect):
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(30, timeout=15.0)
+    c.wait_frames(30, timeout=pacing.NORMAL)
     st = c.call("status")["status"]
     # The status reply is a snapshot, not an atomic one: frames_read is
     # read before the histograms are, so a frame that arrives between
@@ -737,7 +746,7 @@ def recording(tmp_path, make_server):
         # every replay assertion below into a race with the drop
         # policy rather than a test of the replay.
         srv = make_server(pace=True)
-        c = clientmod.Client("127.0.0.1", srv.port, timeout=5.0,
+        c = clientmod.Client("127.0.0.1", srv.port, timeout=pacing.QUICK,
                              frame_capacity=1024).connect()
         try:
             c.hello("control")
@@ -745,7 +754,7 @@ def recording(tmp_path, make_server):
             c.call("start", mode="capture", adc_hz=adc_hz, channels=channels)
             c.call("record.start", path=path)
             wait_until(lambda: srv.recorder and srv.recorder.frames >= frames,
-                       timeout=15.0, what=f"{frames} frames recorded")
+                       timeout=pacing.NORMAL, what=f"{frames} frames recorded")
             side = c.call("record.stop")["sidecar"]
             c.call("stop")
         finally:
@@ -781,7 +790,7 @@ def test_a_replay_delivers_the_bytes_that_were_recorded(recording,
     c = connect("control", server=srv)
     c.subscribe()
     c.call("start", mode="capture")
-    c.wait_frames(side["frames"], timeout=15.0)
+    c.wait_frames(side["frames"], timeout=pacing.NORMAL)
     got = b"".join(bytes(f) for f in c.frames)
     assert got == blob
 
@@ -838,7 +847,7 @@ def test_a_replay_stops_at_the_end_of_the_recording(recording, make_server,
     c.subscribe()
     c.call("start", mode="capture")
     wait_until(lambda: not c.call("status")["status"]["running"],
-               timeout=15.0, what="the replay to reach the end")
+               timeout=pacing.NORMAL, what="the replay to reach the end")
     ct = c.call("counters")["counters"]
     assert ct["at_end"] is True
     assert ct["frames"] == side["frames"] == ct["frames_total"]
@@ -857,7 +866,7 @@ def test_a_looping_replay_starts_again_and_the_seam_is_a_gap(recording,
     c = connect("control", server=srv)
     c.subscribe()
     c.call("start", mode="capture")
-    c.wait_frames(side["frames"] + 3, timeout=15.0)
+    c.wait_frames(side["frames"] + 3, timeout=pacing.NORMAL)
     ct = c.call("counters")["counters"]
     assert ct["loops"] >= 1
     assert ct["seq_gaps"] >= 1
@@ -940,7 +949,7 @@ def test_a_paced_replay_follows_the_recorded_timestamps(recording,
     c.subscribe()
     t0 = time.monotonic()
     c.call("start", mode="capture")
-    c.wait_frames(8, timeout=15.0)
+    c.wait_frames(8, timeout=pacing.NORMAL)
     elapsed = time.monotonic() - t0
     # 2032 samples over two channels at 100 kHz is 10.16 ms a frame, so
     # seven intervals is about 71 ms. The bound is loose on the high
@@ -973,22 +982,22 @@ def worst_lock_wait(dev, attempts=20):
 
     def reader():
         while not stop.is_set():
-            dev.read(timeout=0.1)
+            dev.read(timeout=pacing.GLANCE)
 
     t = threading.Thread(target=reader, daemon=True)
     t.start()
     try:
-        time.sleep(0.05)                  # let it reach the pacing wait
+        pacing.pause(pacing.TURN)                  # let it reach the pacing wait
         worst = 0.0
         for _ in range(attempts):
             t0 = time.monotonic()
             dev.stats()
             worst = max(worst, time.monotonic() - t0)
-            time.sleep(0.005)
+            pacing.pause(pacing.POLL)
         return worst
     finally:
         stop.set()
-        t.join(timeout=2.0)
+        t.join(timeout=pacing.WHOLE)
 
 
 # Held well below the 0.1 s a reader spends in one wait, and well above
@@ -1046,7 +1055,7 @@ def test_the_heartbeat_is_off_until_a_client_asks(srv, connect):
     """
     c = connect("control")
     assert srv.status()["heartbeat"]["period_ms"] == 0
-    time.sleep(0.3)
+    time.sleep(10 * HEARTBEAT_PERIOD_S)
     assert not [e for e in list(c.events) if e.get("event") == "heartbeat"]
 
 
@@ -1057,7 +1066,7 @@ def test_beats_reach_every_client_not_only_subscribers(srv, connect):
     ctl = connect("control")
     obs = connect("observer")          # never subscribes
     ctl.call("heartbeat", period_ms=20)
-    time.sleep(0.4)
+    pacing.pause(pacing.TURN)
     for who, c in (("controller", ctl), ("observer", obs)):
         beats = [e for e in list(c.events) if e.get("event") == "heartbeat"]
         assert beats, f"{who} got no beats"
@@ -1074,10 +1083,10 @@ def test_a_frozen_loop_is_reported_while_beats_keep_arriving(srv, connect):
     """
     c = connect("control")
     c.call("heartbeat", period_ms=20)
-    time.sleep(0.2)
+    pacing.pause(pacing.TURN)
     assert srv.status()["heartbeat"]["stalled"] is False
     srv.device.stall_loop = True
-    time.sleep(0.4)
+    pacing.pause(pacing.SETTLE)
     assert srv.status()["heartbeat"]["stalled"] is True
     stalled = [e for e in list(c.events)
                if e.get("event") == "heartbeat" and e.get("stalled")]
@@ -1094,7 +1103,7 @@ def test_status_still_asks_the_device_nothing(srv, connect):
     newest one is reading a variable, not a round trip."""
     c = connect("control")
     c.call("heartbeat", period_ms=20)
-    time.sleep(0.2)
+    pacing.pause(pacing.TURN)
     before = srv.device.counters()["frames"]
     for _ in range(20):
         srv.status()
@@ -1181,13 +1190,13 @@ def test_read_gap_is_not_measured_across_a_deliberate_stop(srv, connect):
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(4, timeout=10.0)
+    c.wait_frames(4, timeout=pacing.NORMAL)
     c.call("stop")
 
-    time.sleep(0.6)
+    pacing.pause(pacing.SETTLE)
 
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(4, timeout=10.0)
+    c.wait_frames(4, timeout=pacing.NORMAL)
     gap = c.call("status")["status"]["jitter"]["read_gap"]
     c.call("stop")
 
@@ -1207,13 +1216,13 @@ def test_starting_a_run_resets_the_jitter_histograms(srv, connect):
     c = connect("control")
     c.subscribe()
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(8, timeout=10.0)
+    c.wait_frames(8, timeout=pacing.NORMAL)
     first = c.call("status")["status"]["jitter"]["read_gap"]["n"]
     c.call("stop")
     assert first > 0, "no read gaps recorded at all; the test proves nothing"
 
     c.call("start", mode="capture", adc_hz=200000, channels=2)
-    c.wait_frames(2, timeout=10.0)
+    c.wait_frames(2, timeout=pacing.NORMAL)
     second = c.call("status")["status"]["jitter"]["read_gap"]["n"]
     c.call("stop")
 

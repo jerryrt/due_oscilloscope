@@ -19,6 +19,7 @@ import time
 import pytest
 
 from daemon import device as devmod
+import pacing
 
 
 class Link:
@@ -39,7 +40,7 @@ class Link:
         return {"period_ms": period_ms or 0}
 
     def recv(self, timeout=None):
-        time.sleep(timeout or 0.05)
+        time.sleep(timeout or pacing.POLL)
         return None
 
     def close(self):

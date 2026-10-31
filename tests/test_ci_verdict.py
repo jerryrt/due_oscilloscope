@@ -34,6 +34,7 @@ import subprocess
 import tempfile
 
 import pytest
+import pacing
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(REPO, "docker", "run-ci.sh")
@@ -133,7 +134,7 @@ def _bash():
                 try:
                     got = subprocess.run([exe, "-c", 'cat -- "$1"', "probe",
                                           probe], capture_output=True,
-                                         text=True, timeout=30)
+                                         text=True, timeout=pacing.NORMAL)
                     ok = (got.returncode == 0
                           and "due-bash-probe" in got.stdout)
                 except (OSError, subprocess.SubprocessError):
@@ -157,7 +158,7 @@ def _bash():
 
 def _run(fragment):
     return subprocess.run([_bash(), "-c", fragment],
-                          capture_output=True, text=True, timeout=60)
+                          capture_output=True, text=True, timeout=pacing.SLOW)
 
 
 def _classifier_fragment(text, funcs):

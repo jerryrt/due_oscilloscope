@@ -20,6 +20,7 @@ import sys
 import time
 
 import pytest
+import pacing
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -35,7 +36,7 @@ def _in_subprocess(code, env=None):
     """
     e = dict(os.environ, **env) if env else None
     out = subprocess.run([sys.executable, "-c", code], cwd=REPO,
-                         capture_output=True, text=True, timeout=120, env=e)
+                         capture_output=True, text=True, timeout=pacing.SLOW, env=e)
     assert out.returncode == 0, out.stderr[-2000:]
     return out.stdout.strip()
 

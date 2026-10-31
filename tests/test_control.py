@@ -23,6 +23,14 @@ import pytest
 import control
 import measure
 import ports
+import pacing
+
+# lib/due_shared/src/ctl.c CTL_IDLE_US: the parser abandons a half frame after this.
+CTL_IDLE_S = 0.2
+
+# The interval test_ping_answers_and_counts measures on the device's own clock,
+# so it is a quantity under test and not a wait for something to settle.
+PING_GAP_S = 0.05
 
 #: `ports` is imported for this module's BOARD tests. Its board-free
 #: tests are wire-format codec checks that touch no OS branch, so the
@@ -168,7 +176,7 @@ def test_ping_answers_and_counts(link):
     distinguishable from a healthy quiet one.
     """
     us0, ms0, seq0 = link.ping()
-    time.sleep(0.05)
+    time.sleep(PING_GAP_S)
     us1, ms1, seq1 = link.ping()
     assert seq1 == seq0 + 1, "ping sequence did not advance"
     assert us1 > us0, "the device clock did not advance between pings"
@@ -218,7 +226,7 @@ def test_the_two_identity_channels_agree(link, board):
     was believed about the two copies too. Assert it.
     """
     from_ctl = link.identity()
-    from_console = measure.parse_identity(board.ask("v", secs=1.5))
+    from_console = measure.parse_identity(board.ask("v", secs=pacing.REPORT))
     assert from_console is not None, "no identity line on the console"
 
     for field in ("track", "fw_version", "ctl_version", "frame_version",
@@ -277,7 +285,7 @@ def test_the_parser_resynchronises_after_rubbish(link):
     # A header that stops half way is worse: without a way back the
     # parser reads the next frame as the tail of this one, for ever.
     link.send_raw(b"DUEC" + b"\x00" * 4)
-    time.sleep(0.35)                             # past the idle timeout
+    pacing.pause(CTL_IDLE_S + pacing.TURN)       # past the idle timeout
     assert link.ping()[2] >= 2, (
         "a truncated frame retired the channel; the parser's idle "
         "timeout is what is supposed to abandon it")
@@ -295,14 +303,14 @@ def test_a_long_payload_is_refused_and_skipped(link):
     # Claim far more payload than the device will buffer.
     wire = wire[:10] + struct.pack("<H", 4096) + wire[12:]
     link.send_raw(wire)
-    frame = link.recv(timeout=1.0)
+    frame = link.recv(timeout=pacing.LISTEN)
     assert frame is not None, "no refusal for an oversized frame"
     assert frame.is_error and frame.error[0] == control.ERR_LENGTH
     # And the channel still works, which means the body was stepped
     # over rather than parsed as frames. The device is still waiting
     # for the rest of a payload that will never come, so this also
     # rests on the idle timeout.
-    time.sleep(0.35)
+    pacing.pause(CTL_IDLE_S + pacing.TURN)
     assert link.ping()[2] >= 1
 
 
@@ -334,15 +342,15 @@ def test_stream_stats_says_what_the_console_says(link, board, track):
     """
     requires(link, control.OP_STREAM_STATS)
     board.stop()
-    board.drain_console(0.3)
+    board.drain_console(pacing.GLANCE)
     board.cmd("3")
-    time.sleep(1.5)
+    pacing.pause(pacing.SETTLE)
     try:
         board.cmd("?")
-        before = board.drain_console(0.8)
+        before = board.drain_console(pacing.LISTEN)
         st = link.stream_stats()
         board.cmd("?")
-        after = board.drain_console(0.8)
+        after = board.drain_console(pacing.LISTEN)
     finally:
         board.stop()
 
@@ -459,7 +467,7 @@ def test_temperature_leaves_the_capture_channels_alone(link, board, track):
     requires(link, control.OP_TEMP)
     link.temperature()
 
-    res = measure.run_capture(board, preset="3", seconds=1.0)
+    res = measure.run_capture(board, preset="3", seconds=pacing.PROBE)
     assert res.stream.frames, f"no frames after a temperature read: {res.console}"
 
     mask = res.stream.channel_mask

@@ -34,6 +34,7 @@ import os
 import sys
 
 import pytest
+import pacing
 
 pytestmark = pytest.mark.smoke
 
@@ -96,7 +97,7 @@ def _board_device_not_running():
 
 def test_board_device_reads_nothing_before_start_finishes():
     d = _board_device_not_running()
-    assert d.read(timeout=0.01) == b""
+    assert d.read(timeout=pacing.POLL) == b""
     assert not d.fd.used, (
         "BoardDevice.read() touched the descriptor while start() was "
         "still draining it - that is two threads on one stream, and the "
@@ -114,7 +115,7 @@ def test_the_gate_is_readable_and_not_only_the_descriptor():
     """
     d = _board_device_not_running()
     assert d.fd is not None
-    assert d.read(timeout=0.01) == b""
+    assert d.read(timeout=pacing.POLL) == b""
 
 
 def test_fake_device_still_refuses_before_it_runs():
@@ -129,7 +130,7 @@ def test_fake_device_still_refuses_before_it_runs():
 
     f = dev.FakeDevice()
     assert not f.running
-    assert f.read(timeout=0.01) == b""
+    assert f.read(timeout=pacing.POLL) == b""
 
 
 # --- the other half of the gate, which the cases above do not cover ----

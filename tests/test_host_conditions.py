@@ -32,6 +32,7 @@ TOOL = os.path.join(REPO, "tools", "host_conditions.py")
 sys.path.insert(0, os.path.join(REPO, "tools"))
 
 import host_conditions as hc  # noqa: E402
+import pacing
 
 # The container is always Linux, so this module's answers are the
 # host's own. See docs/testing.md: the container gates the board-free
@@ -135,7 +136,7 @@ def test_it_asks_for_no_wait(monkeypatch):
 
     seen = {}
 
-    def spy(wait=8.0):
+    def spy(wait=pacing.NORMAL):
         seen["wait"] = wait
         return (None, None, None)
 
@@ -157,7 +158,7 @@ def test_the_three_nodes_are_labelled_by_position(monkeypatch):
     import ports
 
     monkeypatch.setattr(ports, "find_all_ports",
-                        lambda wait=8.0: ("/dev/prog", "/dev/samples",
+                        lambda wait=pacing.NORMAL: ("/dev/prog", "/dev/samples",
                                           "/dev/commands"))
     # A serial that sorts last, which is what the real one is one
     # board away from being.

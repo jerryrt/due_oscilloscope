@@ -20,6 +20,7 @@ import pytest
 
 import measure
 from helpers import record, window
+import pacing
 
 pytestmark = pytest.mark.slow
 
@@ -33,7 +34,7 @@ def test_endpoint_dma_throughput(board, baseline, calibration, seconds, mode):
     measuring. It reports byte counts only, and the host keeps the
     clock.
     """
-    secs = window(seconds, 4.0)
+    secs = window(seconds, pacing.STANDARD)
     res = measure.run_bench(board, mode=mode, seconds=secs)
 
     floor = baseline["transport_min_mbs"][mode]
@@ -55,7 +56,7 @@ def test_device_agrees_with_the_host_on_the_byte_count(board, seconds, mode):
     than the host measured in its window; what is checked is the order
     of magnitude, not equality.
     """
-    secs = window(seconds, 4.0)
+    secs = window(seconds, pacing.STANDARD)
     res = measure.run_bench(board, mode=mode, seconds=secs)
 
     host = res.host_rx_bytes if res.want_rx else res.host_tx_bytes
@@ -75,7 +76,7 @@ def test_dma_channels_were_actually_used(board, seconds):
     the CPU never touches the sample stream would be broken with nothing
     to show for it.
     """
-    res = measure.run_bench(board, mode="in-dma", seconds=window(seconds, 3.0))
+    res = measure.run_bench(board, mode="in-dma", seconds=window(seconds, pacing.STANDARD))
     arms = res.device.arms_in
     assert arms, f"in-dma armed no IN DMA transfers\n{res.report}"
     assert res.device.mode == "flood-dma", (

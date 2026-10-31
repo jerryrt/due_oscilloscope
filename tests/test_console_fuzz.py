@@ -49,6 +49,7 @@ import subprocess
 import pytest
 
 import hostcc
+import pacing
 
 pytestmark = pytest.mark.smoke
 
@@ -271,7 +272,7 @@ def _build(tmp_path, name, abi, replaced=None):
          *hostcc.build_flags(abi),
          "-I", SHARED, "-I", _gen_dir(tmp_path), "-o", exe,
          TARGET, *sources],
-        capture_output=True, text=True, env=hostcc.cc_env(), timeout=600)
+        capture_output=True, text=True, env=hostcc.cc_env(), timeout=pacing.MAX)
     assert proc.returncode == 0, f"fuzz target build failed:\n{proc.stderr}"
     return exe
 
@@ -286,7 +287,7 @@ def targets(tmp_path_factory):
             for abi in hostcc.abis()}
 
 
-def _run(exe, args, timeout=600):
+def _run(exe, args, timeout=pacing.MAX):
     return subprocess.run([exe, *args], capture_output=True, text=True,
                           env=hostcc.cc_env(), timeout=timeout)
 
@@ -385,7 +386,7 @@ def test_the_harness_catches_a_console_broken_on_purpose(tmp_path, abi, name):
     mutant.write_text(src.replace(m["find"], m["replace"], 1), encoding="utf-8")
 
     exe = _build(tmp_path, "fuzz_mutant", abi, (m["file"], str(mutant)))
-    proc = _run(exe, ["--builtin"], timeout=300)
+    proc = _run(exe, ["--builtin"], timeout=pacing.BUILD)
     out = proc.stdout + proc.stderr
     assert proc.returncode != 0, (
         f"the {name} mutant passed the seed corpus, so {m['oracle']} has "

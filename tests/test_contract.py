@@ -12,6 +12,7 @@ import pytest
 
 import measure
 from helpers import assert_fresh, loop_cmd, window
+import pacing
 
 pytestmark = pytest.mark.smoke
 
@@ -19,8 +20,8 @@ pytestmark = pytest.mark.smoke
 def test_frame_header_is_self_consistent(board, baseline, seconds):
     """One shape for the whole run, and the shape the protocol says."""
     res = measure.run_capture(board, preset="3",
-                              seconds=window(seconds, 2.0))
-    assert_fresh(res, window(seconds, 2.0))
+                              seconds=window(seconds, pacing.SHORT))
+    assert_fresh(res, window(seconds, pacing.SHORT))
     ps = res.stream
 
     f = baseline["frame"]
@@ -54,7 +55,7 @@ def test_declared_rate_is_the_rate_the_hardware_makes(board, rc):
     nothing to show for it.
     """
     hz = measure.hz_for(rc)
-    res = measure.run_capture(board, preset=loop_cmd(hz), seconds=1.2)
+    res = measure.run_capture(board, preset=loop_cmd(hz), seconds=pacing.PROBE)
     assert res.stream.frames, f"no frames at RC {rc} ({hz} Hz): {res.console}"
     assert res.stream.declared_rate_hz == hz, (
         f"RC {rc} produces {hz} Hz, header declares "
@@ -115,7 +116,7 @@ def test_channel_mask_matches_what_was_asked_for(board):
     for channels, expect in ((2, {measure.CH_A0, measure.CH_A1}),
                              (1, {measure.CH_A0})):
         res = measure.run_capture(board, preset=loop_cmd(200000, channels),
-                                  seconds=1.2)
+                                  seconds=pacing.PROBE)
         assert res.stream.frames, (
             f"no frames on {channels} channel(s): {res.console}")
         mask = res.stream.channel_mask
@@ -143,9 +144,9 @@ def test_the_dac_ceiling_is_refused_not_attempted(board, rc, accepted):
     hz = measure.hz_for(rc)
     board.poll_console()
     board.cmd(f"={hz},200000,2P")
-    text = board.drain_console(1.2)
+    text = board.drain_console(pacing.LISTEN)
     board.cmd("0")
-    board.drain_console(0.4)
+    board.drain_console(pacing.GLANCE)
 
     refused = "refused" in text
     if accepted:

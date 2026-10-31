@@ -48,6 +48,7 @@ from daemon import device as devmod                     # noqa: E402
 from daemon import server as servermod                  # noqa: E402
 from gui import stream                                  # noqa: E402
 from gui.app import MainWindow                          # noqa: E402
+import pacing
 
 
 @pytest.fixture(scope="session")
@@ -1261,7 +1262,7 @@ def test_the_trace_follows_the_rate_in_the_recording(replay_win):
     replay_win.start_capture()
     deadline = time.time() + 10.0
     while replay_win.client.frames_received < 3 and time.time() < deadline:
-        time.sleep(0.02)
+        pacing.pause(pacing.POLL)
     replay_win.tick()
     assert replay_win.rate_hz == 100000
 
@@ -1339,7 +1340,7 @@ def pump(win, seconds=10.0, until=None):
         win.poll_status()
         if until is not None and until():
             return True
-        time.sleep(0.02)
+        pacing.pause(pacing.POLL)
     return until is None or until()
 
 
@@ -2001,7 +2002,7 @@ def test_a_pushed_device_error_reaches_the_notice_bar(win, daemon):
         win.poll_status()
         if win.notice.showing:
             break
-        time.sleep(0.02)
+        pacing.pause(pacing.POLL)
 
     assert win.notice.showing, (
         "a device_error the daemon pushed never reached the notice bar")
@@ -2026,7 +2027,7 @@ def test_a_waveform_refusal_surfaces_rather_than_expiring(win, daemon):
         win.poll_status()
         if win.notice.showing:
             break
-        time.sleep(0.02)
+        pacing.pause(pacing.POLL)
 
     assert "this build has no generator" in win.notice.text
 
@@ -2066,7 +2067,7 @@ def test_state_events_do_not_reach_the_notice_bar(win, daemon):
         daemon.broadcast_event(name)
     for _ in range(5):
         win.poll_status()
-        time.sleep(0.02)
+        pacing.pause(pacing.POLL)
     assert not win.notice.showing, (
         f"a state event was rendered as a notice: {win.notice.text!r}")
 

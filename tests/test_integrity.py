@@ -13,6 +13,7 @@ back is a fault in the path rather than an unknown property of a signal.
 import pytest
 
 import measure
+import pacing
 from helpers import (assert_fresh, assert_no_underruns, assert_slew,
                      assert_stream_clean, assert_tone, loop_cmd, record,
                      shared_run, window, window_purity)
@@ -55,7 +56,7 @@ def test_device_generated_waveform_is_continuous(board, seconds,
     nowhere else - which is how the lost-sample defect below was
     localised in one step.
     """
-    secs = window(seconds, 3.0)
+    secs = window(seconds, pacing.STANDARD)
     res = measure.run_capture(board, preset="M", seconds=secs)
     assert_fresh(res, secs)
     assert_stream_clean(res)
@@ -203,7 +204,7 @@ def test_no_sample_step_exceeds_the_waveform_slope(board, seconds, baseline,
     consecutive samples of one channel is 2*pi*f*A/fs, and a splice
     lands somewhere else on the waveform and jumps.
     """
-    secs = window(seconds, 3.0)
+    secs = window(seconds, pacing.STANDARD)
     res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
                      adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
@@ -263,7 +264,7 @@ def test_tone_amplitude_per_window(board, seconds, baseline, calibration,
     phase discontinuity cancels the average, so a per-run number reports
     a collapse that is not happening.
     """
-    secs = window(seconds, 3.0)
+    secs = window(seconds, pacing.STANDARD)
     res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
                      adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
@@ -296,7 +297,7 @@ def test_every_window_reaches_the_amplitude_floor(board, seconds, baseline,
     run corrupt up to 5 of about 53 windows, which lands within a
     percent of the 90% requirement either way.
     """
-    secs = window(seconds, 3.0)
+    secs = window(seconds, pacing.STANDARD)
     res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
                      adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
@@ -314,7 +315,7 @@ def test_the_other_channel_stays_flat(board, seconds, baseline, run_cache):
     sample-and-hold behind a 16:1 mux carries residual charge from the
     previously converted channel.
     """
-    secs = window(seconds, 3.0)
+    secs = window(seconds, pacing.STANDARD)
     res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
                      adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
@@ -335,7 +336,7 @@ def test_recovered_frequency_is_the_one_sent(board, seconds, run_cache):
     header lies about the rate the peak lands at the wrong frequency
     while the amplitude at that wrong frequency still looks perfect.
     """
-    secs = window(seconds, 3.0)
+    secs = window(seconds, pacing.STANDARD)
     res = shared_run(run_cache, measure.run_loop, board, dac_sps=200000,
                      adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
@@ -363,7 +364,7 @@ def test_no_tone_when_playback_is_stopped(board, seconds):
     out of the kernel buffer, and every number computed from it
     describes the past.
     """
-    secs = window(seconds, 2.0)
+    secs = window(seconds, pacing.SHORT)
     res = measure.run_capture(board, preset=loop_cmd(200000, 2), seconds=secs)
     assert_fresh(res, secs)
 
@@ -385,7 +386,7 @@ def test_dc_transfer_tracks_the_code(board, baseline, calibration, code):
     is not consuming host data at all.
     """
     res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
-                           dc=code, seconds=1.5)
+                           dc=code, seconds=pacing.PROBE)
     assert_fresh(res, 1.5)
     # Settled samples only: playback starts from a ring primed with
     # mid-scale silence, so the head of the run is that, not the code.
@@ -418,7 +419,7 @@ def test_dc_levels_are_monotonic(board, baseline, calibration):
     got = []
     for code in (512, 2048, 3583):
         res = measure.run_loop(board, dac_sps=200000, adc_hz=200000,
-                               channels=2, dc=code, seconds=1.2)
+                               channels=2, dc=code, seconds=pacing.PROBE)
         assert_fresh(res, 1.2)
         vals = res.stream.settled[measure.CH_A0]
         got.append((code, sum(vals) / len(vals)))
@@ -448,7 +449,7 @@ def test_host_fed_ramp_loses_no_samples(board, seconds, calibration):
     from the tty output queue, having counted them in write(). Roughly
     one 3 s run in eight under load, none at all on a quiet one.
     """
-    secs = window(seconds, 3.0)
+    secs = window(seconds, pacing.STANDARD)
     res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
                            ramp=measure.RAMP_STEP, seconds=secs)
     assert_fresh(res, secs)
@@ -604,8 +605,8 @@ def test_device_receives_every_byte_the_host_sent(board, seconds,
     emits a discontinuity with under=0 and every counter green.
     """
     hz = measure.hz_for(rc)
-    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0),
-                           drain_s=1.5)
+    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, pacing.STANDARD),
+                           drain_s=pacing.PROBE)
     assert not res.refused, f"RC {rc} ({hz} sps) was refused\n{res.console}"
     assert res.drained
 

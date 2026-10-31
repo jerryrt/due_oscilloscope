@@ -14,6 +14,11 @@ import time
 
 import ports
 import pytest
+import pacing
+
+# The wait find_all_ports is given when it must report nothing; the value is
+# the input under test, so it is not a level.
+FIND_PORTS_WAIT_S = 30.0
 
 # The container is always Linux, so this module's answers are the
 # host's own. See docs/testing.md: the container gates the board-free
@@ -109,7 +114,7 @@ def test_missing_pyserial_is_not_an_empty_bench(monkeypatch):
     # And it does not spend the wait, because no amount of waiting
     # gives this interpreter a pyserial.
     t0 = time.monotonic()
-    assert ports.find_all_ports(wait=30.0) == (None, None, None)
+    assert ports.find_all_ports(wait=FIND_PORTS_WAIT_S) == (None, None, None)
     assert time.monotonic() - t0 < 5.0
 
 

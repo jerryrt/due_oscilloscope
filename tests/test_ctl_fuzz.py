@@ -37,6 +37,7 @@ import subprocess
 import pytest
 
 import hostcc
+import pacing
 
 pytestmark = pytest.mark.smoke
 
@@ -143,7 +144,7 @@ def _build(tmp_path, ctl_c, name, src):
          TARGET, ctl_c,
          os.path.join(SHARED, "crc32.c"),
          os.path.join(SHARED, "console_out.c")],
-        capture_output=True, text=True, env=hostcc.cc_env(), timeout=600)
+        capture_output=True, text=True, env=hostcc.cc_env(), timeout=pacing.MAX)
     assert proc.returncode == 0, f"fuzz target build failed:\n{proc.stderr}"
     return exe
 
@@ -154,7 +155,7 @@ def target(tmp_path_factory, ctl_src):
     return _build(tmp_path_factory.mktemp("fuzz"), CTL_C, "fuzz_ctl", ctl_src)
 
 
-def _run(exe, args, timeout=600):
+def _run(exe, args, timeout=pacing.MAX):
     return subprocess.run([exe, *args], capture_output=True, text=True,
                           env=hostcc.cc_env(), timeout=timeout)
 

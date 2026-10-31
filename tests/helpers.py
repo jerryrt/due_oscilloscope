@@ -14,10 +14,11 @@ import sys
 import pytest
 
 import measure
+import pacing
 
 # Default streaming window. Long enough for the settled second that the
 # ring priming costs, plus something to judge.
-RUN_SECONDS = 3.0
+RUN_SECONDS = pacing.STANDARD
 
 
 def window(seconds_opt, default=RUN_SECONDS):

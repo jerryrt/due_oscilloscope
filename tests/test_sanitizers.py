@@ -40,6 +40,7 @@ import subprocess
 import pytest
 
 import hostcc
+import pacing
 
 pytestmark = pytest.mark.smoke
 
@@ -85,7 +86,7 @@ def _build(tmp_path, defect):
     proc = subprocess.run(
         [hostcc.cc(), "-std=c11", "-Wall", "-Wextra",
          *hostcc.sanitize_flags(), f"-DDEFECT={defect}", "-o", exe, CANARY],
-        capture_output=True, text=True, env=hostcc.cc_env(), timeout=300)
+        capture_output=True, text=True, env=hostcc.cc_env(), timeout=pacing.BUILD)
     assert proc.returncode == 0, f"canary build failed:\n{proc.stderr}"
     return exe
 
@@ -99,7 +100,7 @@ def test_the_canary_is_clean_when_nothing_is_wrong_with_it(tmp_path):
     """
     _require()
     proc = subprocess.run([_build(tmp_path, 0)], capture_output=True,
-                          text=True, env=hostcc.cc_env(), timeout=300)
+                          text=True, env=hostcc.cc_env(), timeout=pacing.BUILD)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "clean" in proc.stdout
 
@@ -115,7 +116,7 @@ def test_an_injected_defect_is_caught_and_fails_the_process(tmp_path, defect):
     """
     _require()
     proc = subprocess.run([_build(tmp_path, defect)], capture_output=True,
-                          text=True, env=hostcc.cc_env(), timeout=300)
+                          text=True, env=hostcc.cc_env(), timeout=pacing.BUILD)
     out = proc.stdout + proc.stderr
     assert proc.returncode != 0, (
         f"{WHAT[defect]} did not fail the process, so a finding in a "

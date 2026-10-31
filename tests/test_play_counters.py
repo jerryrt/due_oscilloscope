@@ -17,6 +17,7 @@ import pytest
 
 import measure
 from helpers import needs_a_buffering_host, record, shared_run, window
+import pacing
 
 
 @pytest.mark.smoke
@@ -39,7 +40,7 @@ def test_playback_counters_describe_one_run_not_several(board, seconds, track):
     # both bind `O`.
 
     hz = measure.hz_for(65)
-    secs = window(seconds, 2.0)
+    secs = window(seconds, pacing.SHORT)
 
     first = measure.run_play(board, dac_sps=hz, seconds=secs)
     assert not first.refused, first.console
@@ -83,7 +84,7 @@ def test_the_converter_holds_one_rate_for_a_whole_run(board, seconds,
     """
     hz = measure.hz_for(rc)
     res = shared_run(run_cache, measure.run_play, board, dac_sps=hz,
-                     seconds=window(seconds, 3.0))
+                     seconds=window(seconds, pacing.STANDARD))
     assert not res.refused, res.console
 
     if not res.occ.rate_us:
@@ -130,7 +131,7 @@ def test_the_two_rate_estimators_agree(board, seconds, run_cache, rc):
     """
     hz = measure.hz_for(rc)
     res = shared_run(run_cache, measure.run_play, board, dac_sps=hz,
-                     seconds=window(seconds, 3.0))
+                     seconds=window(seconds, pacing.STANDARD))
     assert not res.refused, res.console
 
     whole = res.occ.device_byte_rate()
@@ -159,8 +160,8 @@ def test_the_carrier_survives_a_drained_run(board, seconds):
     picks a state per run.
     """
     hz = measure.hz_for(44)
-    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0),
-                           drain_s=1.5)
+    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, pacing.STANDARD),
+                           drain_s=pacing.PROBE)
     assert not res.refused, res.console
     assert res.drained
     assert res.host_deficit is not None
@@ -200,8 +201,8 @@ def test_the_deficit_is_the_oversupply(board, seconds, calibration, rc):
     constant would turn a measurement into a requirement.
     """
     hz = measure.hz_for(rc)
-    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, 3.0),
-                           drain_s=1.5)
+    res = measure.run_play(board, dac_sps=hz, seconds=window(seconds, pacing.STANDARD),
+                           drain_s=pacing.PROBE)
     assert not res.refused, res.console
     assert res.drained
 
@@ -270,7 +271,7 @@ def test_the_carrier_reports_what_the_console_trace_reports(board, seconds,
     # it would describe the shutdown. The deficit is not wanted here.
     hz = measure.hz_for(rc)
     res = shared_run(run_cache, measure.run_play, board, dac_sps=hz,
-                     seconds=window(seconds, 3.0))
+                     seconds=window(seconds, pacing.STANDARD))
     assert not res.refused, res.console
 
     assert len(res.stats) > 20, (
@@ -312,7 +313,7 @@ def test_the_carrier_stays_silent_in_loop_mode(board, seconds):
     parser that swallowed them would be reading payload out of step.
     """
     res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
-                           seconds=window(seconds, 2.0))
+                           seconds=window(seconds, pacing.SHORT))
     assert not res.refused, res.console
     assert res.frames > 0, "no frames captured, so the gate proves nothing"
     assert res.crc_bad == 0, (
@@ -455,11 +456,11 @@ def test_the_closed_loop_buys_nothing_with_underruns(board, seconds, rc):
     # the red swapped sides when the order did: a position, not a rate.
     # An underrun filter would not do; the index is the rule.
     first = measure.run_play(board, dac_sps=measure.hz_for(rc),
-                             seconds=window(seconds, 3.0), drain_s=1.5,
+                             seconds=window(seconds, pacing.STANDARD), drain_s=pacing.PROBE,
                              closed_loop=True)
     assert not first.refused, first.console
     res = measure.run_play(board, dac_sps=measure.hz_for(rc),
-                           seconds=window(seconds, 3.0), drain_s=1.5,
+                           seconds=window(seconds, pacing.STANDARD), drain_s=pacing.PROBE,
                            closed_loop=True)
     assert not res.refused, res.console
     assert res.play.underruns == 0, (
@@ -486,7 +487,7 @@ def test_the_closed_loop_leaves_an_exact_rate_alone(board, seconds, rc):
     """
     needs_a_buffering_host("the rate loop's no-op case")
     res = measure.run_play(board, dac_sps=measure.hz_for(rc),
-                           seconds=window(seconds, 3.0), drain_s=1.5,
+                           seconds=window(seconds, pacing.STANDARD), drain_s=pacing.PROBE,
                            closed_loop=True)
     assert not res.refused, res.console
     assert res.retunes > 0, "the loop did not run"
@@ -521,7 +522,7 @@ def test_loop_mode_frames_carry_the_converter_rate(board, seconds,
     # converter is at nominal and the carrier must say so.
     dac = measure.hz_for(65)
     res = measure.run_loop(board, dac_sps=dac, adc_hz=measure.hz_for(130),
-                           channels=2, seconds=window(seconds, 3.0))
+                           channels=2, seconds=window(seconds, pacing.STANDARD))
     assert not res.refused, res.console
     assert res.frames > 100, f"only {res.frames} frames"
 
@@ -557,7 +558,7 @@ def test_the_closed_loop_runs_in_loop_mode_without_breaking_the_stream(
     needs_a_buffering_host("the rate loop in loop mode")
     res = measure.run_loop(board, dac_sps=measure.hz_for(44),
                            adc_hz=measure.hz_for(88), channels=2,
-                           seconds=window(seconds, 3.0), closed_loop=True)
+                           seconds=window(seconds, pacing.STANDARD), closed_loop=True)
     assert not res.refused, res.console
     assert res.retunes > 0, "the loop never retuned, so this proves nothing"
     assert res.frames > 100, f"only {res.frames} frames"

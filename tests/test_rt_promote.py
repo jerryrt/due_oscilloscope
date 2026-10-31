@@ -24,6 +24,7 @@ import threading
 import pytest
 
 import rt
+import pacing
 
 # The container is always Linux, so this module's answers are the host's
 # own. See docs/testing.md.
@@ -51,7 +52,7 @@ def _in_a_thread(fn):
 
     t = threading.Thread(target=run)
     t.start()
-    t.join(timeout=30)
+    t.join(timeout=pacing.NORMAL)
     assert not t.is_alive(), "promote() did not return within 30 s"
     if "error" in out:
         raise out["error"]

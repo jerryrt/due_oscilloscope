@@ -46,6 +46,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import pacing
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -93,8 +94,8 @@ ABI_ENV = "DUE_HOSTCC_ABI"
 #: every pytest session, 40% of its board-free tier. The build keeps a
 #: long budget because a cold compiler on a loaded bench is genuinely
 #: slow, and because a build that is going to fail fails by exiting.
-_BUILD_TIMEOUT_S = 120
-_RUN_TIMEOUT_S = 10
+_BUILD_TIMEOUT_S = pacing.SLOW
+_RUN_TIMEOUT_S = pacing.NORMAL
 
 #: One memo for every probe, keyed by the flags actually compiled.
 #:

@@ -26,6 +26,7 @@ import re
 import shlex
 
 import pytest
+import pacing
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -168,7 +169,7 @@ def test_a_configure_outside_the_container_is_refused(tmp_path):
     env = {k: v for k, v in os.environ.items() if k != "DUE_BUILD_IMAGE_ID"}
     proc = subprocess.run([cmake, "-S", REPO, "-B", str(tmp_path / "b")],
                           env=env, capture_output=True, text=True,
-                          timeout=120)
+                          timeout=pacing.SLOW)
     out = proc.stdout + proc.stderr
     assert proc.returncode != 0, (
         "CMake configured the firmware with no build container around it")

@@ -19,6 +19,7 @@ import pytest
 import control
 import measure
 from helpers import assert_no_underruns, assert_stream_clean, window
+import pacing
 
 ADC_HZ = 453488          # the two-channel ceiling at MCK 78
 
@@ -26,7 +27,7 @@ ADC_HZ = 453488          # the two-channel ceiling at MCK 78
 @pytest.mark.parametrize("dac_sps", [100000, 200000, ADC_HZ])
 def test_host_fed_playback_does_not_overrun_the_adc(board, seconds, dac_sps):
     res = measure.run_loop(board, dac_sps=dac_sps, adc_hz=ADC_HZ,
-                           channels=2, seconds=window(seconds, 6.0))
+                           channels=2, seconds=window(seconds, pacing.LONG))
     assert not res.refused, f"loop refused\n{res.console}"
     assert_stream_clean(res)
     assert_no_underruns(res)
