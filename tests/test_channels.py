@@ -122,8 +122,8 @@ def test_every_sample_tag_is_in_the_mask(board, channels):
 
 
 @pytest.mark.parametrize("channels,dac,adc", [
-    (2, 906976, 453488),     # 906,976 conversions/s, two channels round robin
-    (1, 886363, 886363),     # the single-channel ceiling, matched each way
+    (2, 1046510, 523255),    # 1,046,510 conversions/s, two channels round robin
+    (1, 1022727, 1022727),   # the single-channel ceiling, matched each way
 ])
 def test_matched_full_rate_loop(board, seconds, calibration, channels,
                                 dac, adc):

@@ -68,7 +68,7 @@ FRAME_BYTES = HDR_LEN + FRAME_SAMPLES * 2
 # TIMER_CLOCK1 is MCK/2. Both the TC and the ADC scale with MCK, which
 # is why the measured cliffs sit at a fixed RC whatever MCK is set to.
 # 90 MHz is the firmware default; DUE_MCK_HZ=78000000 matches an image
-# built with -DFIRMWARE_MCK_MHZ=78. The firmware divides this in integer
+# built with -DFIRMWARE_MCK_HZ=78000000. The firmware divides this in integer
 # arithmetic, so it must be the nominal and never the measured value.
 MCK_HZ = int(os.environ.get("DUE_MCK_HZ", 90_000_000))
 TC_CLOCK_HZ = MCK_HZ // 2          # 45 MHz

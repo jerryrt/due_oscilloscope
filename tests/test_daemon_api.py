@@ -182,10 +182,15 @@ def test_caps_carries_the_limits_a_client_would_otherwise_hardcode(connect):
 
 # -- rates ------------------------------------------------------------
 
+# 200001 Hz sits between two dividers; the hardware makes the slower one.
+_200001_ACTUAL = (ratemod.TC_CLOCK_HZ
+                  // (ratemod.TC_CLOCK_HZ // 200001))
+
 @pytest.mark.smoke
 def test_a_rate_that_divides_the_clock_comes_back_unchanged(connect):
     got = connect().call("rate", adc_hz=200000, channels=2)["adc"]
-    assert (got["rc"], got["actual_hz"]) == (195, 200000)
+    assert (got["rc"], got["actual_hz"]) == (
+        ratemod.TC_CLOCK_HZ // 200000, 200000)
 
 
 def test_a_rate_between_two_dividers_reports_the_one_it_will_get(connect):
@@ -193,7 +198,8 @@ def test_a_rate_between_two_dividers_reports_the_one_it_will_get(connect):
     rate rather than the one the hardware makes."""
     got = connect().call("rate", adc_hz=200001, channels=2)["adc"]
     assert got["requested"] == 200001
-    assert got["actual_hz"] == ratemod.hz_for(got["rc"]) == 201030
+    assert got["rc"] == ratemod.TC_CLOCK_HZ // 200001
+    assert got["actual_hz"] == ratemod.hz_for(got["rc"]) == _200001_ACTUAL
 
 
 def test_a_capture_rate_past_the_trigger_floor_is_refused_by_name(connect):
@@ -207,9 +213,10 @@ def test_one_channel_has_its_own_floor_and_it_is_not_half(connect):
     """RC 43 measures a clean ratio and is still wrong: the two-channel
     floor cannot be halved, which is why the table is measured."""
     c = connect()
-    assert c.call("rate", adc_hz=886363, channels=1)["adc"]["rc"] == 44
+    tc = ratemod.TC_CLOCK_HZ
+    assert c.call("rate", adc_hz=tc // 44, channels=1)["adc"]["rc"] == 44
     with pytest.raises(clientmod.Refused):
-        c.call("rate", adc_hz=906976, channels=1)
+        c.call("rate", adc_hz=tc // 43, channels=1)
 
 
 def test_a_dac_rate_past_the_dacc_ceiling_is_refused(connect):
@@ -221,7 +228,7 @@ def test_a_dac_rate_past_the_dacc_ceiling_is_refused(connect):
 def test_starting_reports_the_rate_the_hardware_will_produce(connect):
     reply = connect("control").call("start", mode="capture", adc_hz=200001,
                                     channels=2)
-    assert reply["rates"]["adc"]["actual_hz"] == 201030
+    assert reply["rates"]["adc"]["actual_hz"] == _200001_ACTUAL
 
 
 # -- streaming --------------------------------------------------------

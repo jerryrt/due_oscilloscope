@@ -73,16 +73,15 @@ option(FIRMWARE_CALLGRAPH   "Emit per-unit call graphs with frames (.ci)" OFF)
 # The master clock. 90 MHz is the default; 78 is the datasheet-conservative
 # setting the project ran at before the USB DMA burst limit. Every RC divides
 # MCK/2, so the host needs DUE_MCK_HZ=78000000 to match a 78 image.
-set(FIRMWARE_MCK_MHZ 90 CACHE STRING "Master clock in MHz: 78 or 90")
-set_property(CACHE FIRMWARE_MCK_MHZ PROPERTY STRINGS 78 90)
-if(FIRMWARE_MCK_MHZ EQUAL 78)
+set(FIRMWARE_MCK_HZ 90000000 CACHE STRING "Master clock in Hz: 78000000 or 90000000")
+set_property(CACHE FIRMWARE_MCK_HZ PROPERTY STRINGS 78000000 90000000)
+if(FIRMWARE_MCK_HZ EQUAL 78000000)
     set(FIRMWARE_MCK_MULA 12)
-elseif(FIRMWARE_MCK_MHZ EQUAL 90)
+elseif(FIRMWARE_MCK_HZ EQUAL 90000000)
     set(FIRMWARE_MCK_MULA 14)
 else()
-    message(FATAL_ERROR "FIRMWARE_MCK_MHZ must be 78 or 90, not ${FIRMWARE_MCK_MHZ}")
+    message(FATAL_ERROR "FIRMWARE_MCK_HZ must be 78000000 or 90000000, not ${FIRMWARE_MCK_HZ}")
 endif()
-math(EXPR FIRMWARE_MCK_HZ "${FIRMWARE_MCK_MHZ} * 1000000")
 add_compile_definitions(MCK_MULA_DEFAULT=${FIRMWARE_MCK_MULA}u)
 
 # The analyser is a pass somebody asks for, in a build directory of its

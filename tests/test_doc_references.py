@@ -470,11 +470,11 @@ CONSTANTS = [
     # "Track A must be built with `--build-property
     # build.f_cpu=78000000L` or `micros()` is silently wrong", and the
     # host divides by the same number to compute an RC.
-    _c("F_CPU", "cmake/track_a.cmake",
-       r"^\s*F_CPU=(\d+)L\s*$",
+    _c("F_CPU", "CMakeLists.txt",
+       r"^set\(FIRMWARE_MCK_HZ\s+(\d+)\s+CACHE",
        r"build\.f_cpu=(\d+)L"),
     _c("MCK_HZ", "host/measure.py",
-       r"^MCK_HZ\s*=\s*([0-9_]+)\s*$",
+       r"^MCK_HZ\s*=\s*int\(os\.environ\.get\(\"DUE_MCK_HZ\",\s*([0-9_]+)\)\)\s*$",
        r"build\.f_cpu=(\d+)L"),
 ]
 

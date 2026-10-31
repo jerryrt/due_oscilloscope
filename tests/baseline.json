@@ -39,10 +39,10 @@
     "adc_clocks_per_pair": 43
   },
   "rates_hz": {
-    "two_ch_per_channel": 453488,
-    "two_ch_aggregate": 906976,
-    "one_ch": 886363,
-    "dac_top": 1392857
+    "two_ch_per_channel": 523255,
+    "two_ch_aggregate": 1046510,
+    "one_ch": 1022727,
+    "dac_top": 1607142
   },
   "frame": {
     "header_bytes": 32,

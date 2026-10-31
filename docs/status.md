@@ -149,12 +149,12 @@ between the markers - regeneration discards it.
 <!-- generated: rates -->
 | what | RC | sps |
 |---|---|---|
-| two channels, per channel | 86 | 453,488 |
-| two channels, aggregate | 86 | 906,976 |
-| one channel | 44 | 886,363 |
-| DAC top | 28 | 1,392,857 |
+| two channels, per channel | 86 | 523,255 |
+| two channels, aggregate | 86 | 1,046,510 |
+| one channel | 44 | 1,022,727 |
+| DAC top | 28 | 1,607,142 |
 
-TC clock 39,000,000 Hz, MCK 78,000,000 Hz, ADC clock 19,500,000 Hz (nominal, register-derived).
+TC clock 45,000,000 Hz, MCK 90,000,000 Hz, ADC clock 22,500,000 Hz (nominal, register-derived).
 <!-- end generated -->
 
 ### Frame geometry and amplitude

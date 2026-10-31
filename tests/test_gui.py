@@ -1139,8 +1139,8 @@ def test_the_display_shows_the_rate_the_hardware_makes(win, daemon):
     win.client.wait_frames(5, timeout=15.0)
     win.tick()
     win.poll_status()
-    assert win.rate_hz == 201030
-    assert "201,030" in win.health.value("rate")
+    assert win.rate_hz == 200892
+    assert "200,892" in win.health.value("rate")
 
 
 def test_a_sequence_gap_is_counted_and_shown(win, daemon):

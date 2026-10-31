@@ -228,7 +228,7 @@ def test_the_device_s_own_refusal_reaches_the_client(board, track):
                   waveform=b"\x00\x00" * 512)
     msg = str(e.value)
     assert "refused" in msg, f"the device's refusal did not come back: {msg}"
-    assert "453488" in msg, (
+    assert str(measure.TC_CLOCK_HZ // 86) in msg, (
         f"the refusal reached the client without the limit it names: {msg}")
     assert not dev.running
 
