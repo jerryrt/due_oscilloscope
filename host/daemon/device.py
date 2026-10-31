@@ -26,6 +26,7 @@ import zlib
 
 import control as control_mod
 import transport
+import clock
 import pacing
 
 # Frame layout, shared verbatim with lib/due_shared/src/frame.h and host/measure.py.
@@ -386,7 +387,7 @@ class FakeDevice(Device):
         # field is worse than no fake: this one had `mean_us`, which the
         # device does not return, and the first script written against
         # it failed on a board rather than in the suite.
-        mck = 90_000_000
+        mck = clock.MCK_HZ
         per_us = mck / 1e6
         hist = [0] * 16
         hist[9] = 140_000

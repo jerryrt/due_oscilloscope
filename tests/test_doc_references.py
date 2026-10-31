@@ -482,7 +482,7 @@ CONSTANTS = [
     _c("F_CPU", "CMakeLists.txt",
        r"^set\(FIRMWARE_MCK_HZ\s+(\d+)\s+CACHE",
        r"build\.f_cpu=(\d+)L"),
-    _c("MCK_HZ", "host/measure.py",
+    _c("MCK_HZ", "host/clock.py",
        r"^MCK_HZ\s*=\s*int\(os\.environ\.get\(\"DUE_MCK_HZ\",\s*([0-9_]+)\)\)\s*$",
        r"build\.f_cpu=(\d+)L"),
 ]

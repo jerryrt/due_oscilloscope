@@ -62,7 +62,6 @@ that is worth knowing before reading a curve off it.
 from __future__ import annotations
 
 import math
-import os
 
 #: Fraction of the hold discarded before the next transition. A
 #: transition's onset is a couple of rise-widths before its steepest
@@ -73,7 +72,7 @@ GUARD_FRAC = 0.05
 
 #: TC clock: MCK/2. Every RC in this project divides 39 MHz - CLAUDE.md
 #: lists MCK = 78 and not 84 among the facts that are easy to get wrong.
-TC_CLOCK_HZ = int(os.environ.get("DUE_MCK_HZ", 90_000_000)) // 2
+from clock import TC_CLOCK_HZ  # noqa: E402
 
 
 def rc_from_hz(reported_hz, tc_clock=TC_CLOCK_HZ):
