@@ -54,8 +54,9 @@ PID_NATIVE = 0x003E           # native port, SAM3X's own USB
 
 # RC 65 and RC 130 against the 39 MHz timer clock. Written out rather
 # than computed so this file needs nothing from host/.
-DAC_HZ = 39_000_000 // 65     # 600000
-ADC_HZ = 39_000_000 // 130    # 300000
+_TC = int(os.environ.get("DUE_MCK_HZ", 90_000_000)) // 2     # as host/clock.py
+DAC_HZ = _TC // 65            # RC 65
+ADC_HZ = _TC // 130           # RC 130
 
 WEDGE_S = 3.0                 # a healthy close is milliseconds
 PAYLOAD = bytes(256 * 1024)   # inside the 55-450 KB a CDC driver buffers

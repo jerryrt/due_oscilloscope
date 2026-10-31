@@ -35,7 +35,7 @@ def one(board, arm, lsb_v, seconds):
     board.cmd("=%d,%dI" % (ch, core))
     board.drain_console(0.4)
     res = noisetool.hold_gen_dc(board, 2048, "5", seconds)
-    fs = res.stream.declared_rate_hz or 453488
+    fs = res.stream.declared_rate_hz or measure.hz_for(86)
     a = noisetool.analyse(noisetool._series(res, measure.CH_A0), fs,
                           lsb_v, window=4096)
     if "error" in a:

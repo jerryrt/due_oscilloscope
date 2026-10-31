@@ -76,7 +76,7 @@ SYNC_CYCLE = measure.GEN_SYNCS["cycle"]   # the firmware default, restored at ex
 
 
 def rc_of(hz):
-    return 39_000_000 // hz     # exactly what gen_prepare_tioa1 / acq_start do
+    return measure.TC_CLOCK_HZ // hz     # exactly what gen_prepare_tioa1 / acq_start do
 
 
 def signed(p):

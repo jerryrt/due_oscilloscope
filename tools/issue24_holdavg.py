@@ -112,8 +112,8 @@ def main():
         for i in range(1, args.runs + 1):
             for rc, hold in arms:
                 # RC scales exactly; Hz would not.
-                adc_hz = 39_000_000 // rc
-                dac = (39_000_000 // (rc * hold))
+                adc_hz = measure.TC_CLOCK_HZ // rc
+                dac = (measure.TC_CLOCK_HZ // (rc * hold))
                 res = measure.run_loop(board, dac_sps=dac,
                                        adc_hz=adc_hz, channels=2,
                                        ramp=args.step, seconds=args.seconds)

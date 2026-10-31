@@ -56,7 +56,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "host"))
 import measure
 import provenance
 
-MCK = 78e6
+MCK = float(measure.MCK_HZ)
 F_R1 = MCK / 1024.0
 F_R2 = MCK / 2048.0
 
@@ -92,10 +92,10 @@ def main():
     for i in range(1, a.reps + 1):
         # Park the DAC at a known code, then let playback go away so the
         # output is held rather than rewritten.
-        r = measure.run_loop(board, dac_sps=a.dac_sps, adc_hz=453488,
+        r = measure.run_loop(board, dac_sps=a.dac_sps, adc_hz=measure.hz_for(86),
                              dc=a.dc, seconds=a.seconds)
         st = r.stream
-        fs = st.declared_rate_hz or 453488
+        fs = st.declared_rate_hz or measure.hz_for(86)
         # ADC channel 7 is A0, which is the pin DAC0 drives. Channel 6
         # is A1, jumpered to DAC1, and on this bench DAC1 carries the
         # sync square - sd 555 codes against A0's 1.4. Taking "the first

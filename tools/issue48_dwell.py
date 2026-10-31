@@ -44,7 +44,7 @@ import measure  # noqa: E402
 import provenance  # noqa: E402
 
 PLAY_BUF_SAMPLES = 512
-TC_CLOCK_HZ = 39_000_000
+TC_CLOCK_HZ = measure.TC_CLOCK_HZ
 
 
 def one(board, rc, seconds):

@@ -12,8 +12,8 @@ pyserial, and it follows the two rules the project paid for:
     sits in the host's CDC driver when the writer stops. Stop, wait,
     poll until the device's counter stops moving, and only then compare.
 
-Rates are quoted as the device computes them: RC divides 39 MHz (MCK is
-78 MHz here so the ADC clock stays inside its 20 MHz limit).
+Rates are quoted as the device computes them: RC divides MCK/2, which
+is host/clock.py's (DUE_MCK_HZ, 90 MHz by default).
 
     python3 tools/bench.py                 # everything
     python3 tools/bench.py --only out-dma
@@ -22,6 +22,7 @@ Rates are quoted as the device computes them: RC divides 39 MHz (MCK is
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 import threading
@@ -34,7 +35,9 @@ except ImportError:
     sys.exit("needs pyserial:  pip install pyserial")
 
 VID, PID_CONSOLE, PID_NATIVE = 0x2341, 0x003D, 0x003E
-TIMER_HZ = 39_000_000
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "host"))
+from clock import TC_CLOCK_HZ as TIMER_HZ                    # noqa: E402
 DRAIN_POLLS, DRAIN_INTERVAL = 8, 1.0
 CHUNK = 256 * 1024
 

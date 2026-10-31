@@ -52,8 +52,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
 import measure                                             # noqa: E402
 import provenance                                          # noqa: E402
 
-TC_CLOCK_HZ = 39_000_000        # SystemCoreClock / 2 at MCK 78 MHz
-MCK_NOMINAL_HZ = 78_000_000
+TC_CLOCK_HZ = measure.TC_CLOCK_HZ        # SystemCoreClock / 2
+MCK_NOMINAL_HZ = measure.MCK_HZ
 #: A fit whose residual scatter is this large is not measuring a
 #: clock. mac-bench's good runs sit at 0.073-0.090 ms and this
 #: bench's at 0.7 ms, limited by time.time()'s ~1 ms step; the

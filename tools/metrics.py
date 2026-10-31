@@ -106,7 +106,7 @@ def m_noise(board, args):
     bits, rms, lines = [], [], []
     for _ in range(args.repeats):
         res = noisetool.hold_gen_dc(board, 2048, "5", args.seconds)
-        fs = res.stream.declared_rate_hz or 453488
+        fs = res.stream.declared_rate_hz or measure.hz_for(86)
         a = noisetool.analyse(noisetool._series(res, measure.CH_A0), fs,
                               lsb_v, window=4096)
         if "error" in a:
@@ -151,9 +151,9 @@ def m_playback(board, args):
     """The ladder: underruns and byte conservation per rate."""
     rows = []
     for rc in (LADDER_RC[:3] if args.quick else LADDER_RC):
-        r = measure.run_play(board, dac_sps=int(39_000_000 / rc),
+        r = measure.run_play(board, dac_sps=measure.hz_for(rc),
                              tone=1000.0, seconds=args.seconds)
-        rows.append({"rc": rc, "sps": int(39_000_000 / rc),
+        rows.append({"rc": rc, "sps": measure.hz_for(rc),
                      "underruns": r.play.underruns,
                      "host_tx_bytes": r.host_tx_bytes,
                      "device_bytes_in": r.play.bytes_in,

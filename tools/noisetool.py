@@ -92,8 +92,10 @@ ADC_FULL_SCALE = 4096
 
 #: Trigger presets, and the per-channel rate each yields with two
 #: channels converting. `5` is the ADC's in-spec floor, ACQ_MIN_RC = 86.
-PRESETS = {"1": 50_000, "2": 100_000, "3": 200_000, "4": 400_000,
-           "5": 453_488}
+# 1-4 are rates the firmware is asked for and rounds by RC; 5 is the floor.
+PRESETS = {n: measure.hz_for(measure.rc_for(hz)) for n, hz in
+           (("1", 50_000), ("2", 100_000), ("3", 200_000), ("4", 400_000))}
+PRESETS["5"] = measure.hz_for(86)
 
 
 def adc_lsb_v():
@@ -268,7 +270,7 @@ def cmd_activity(board, args):
         ("gen-dc 200k", lambda: hold_gen_dc(board, args.code, "3",
                                             args.seconds), 200000),
         ("gen-dc 453k", lambda: hold_gen_dc(board, args.code, "5",
-                                            args.seconds), 453488),
+                                            args.seconds), PRESETS["5"]),
         ("host-dc 200k", lambda: hold_host_dc(board, args.code, 200000,
                                               args.seconds), 200000),
     ]

@@ -36,7 +36,7 @@ import measure  # noqa: E402
 import provenance  # noqa: E402
 
 PLAY_BUF_SAMPLES = 512
-TC_CLOCK_HZ = 39_000_000          # SystemCoreClock / 2 at MCK 78 MHz
+TC_CLOCK_HZ = measure.TC_CLOCK_HZ
 
 #: mac-bench's map, for comparison only - never to seed a fit.
 THEIRS = {28: 0, 30: 2, 31: 2, 32: 0, 33: 3, 34: 4, 36: 4, 37: 5,

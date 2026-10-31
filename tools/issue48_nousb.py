@@ -65,10 +65,10 @@ def main():
     ap.add_argument("--points", type=int, default=256)
     ap.add_argument("--seconds", type=float, default=2.0)
     ap.add_argument("--band", type=int, nargs="+",
-                    default=[1000000, 886363],
+                    default=[measure.hz_for(rc) for rc in (39, 44)],
                     help="DAC update rates inside the affected band")
     ap.add_argument("--clean", type=int, nargs="+",
-                    default=[696428, 650000],
+                    default=[measure.hz_for(rc) for rc in (56, 60)],
                     help="DAC update rates outside it, as the reference")
     ap.add_argument("--bench", default=os.environ.get("DUE_BENCH"),
                     help="which bench this is; defaults to $DUE_BENCH")

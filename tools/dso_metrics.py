@@ -54,8 +54,9 @@ import scope as dso                                           # noqa: E402
 # off the same TIOA0, so it is also the fastest the generator goes on
 # this path. Worth having here because the square's ceiling is a
 # division of it.
-TRIGGER_PRESETS = {50_000: "1", 100_000: "2", 200_000: "3", 400_000: "4",
-                   453_488: "5"}
+TRIGGER_PRESETS = {measure.hz_for(measure.rc_for(hz)): p for hz, p in
+                   ((50_000, "1"), (100_000, "2"), (200_000, "3"), (400_000, "4"))}
+TRIGGER_PRESETS[measure.hz_for(86)] = "5"
 
 # At two points a cycle the table holds one sample per half cycle, so
 # the output toggles on every DAC0 update. Only the square means
@@ -1260,12 +1261,12 @@ def cmd_settle(board, inst, args):
 # 1,392,857 updates/s and the converter needs about 54.7 MCK cycles for
 # each, so faster is not a rate it can make - the trigger will run there
 # happily and the DAC simply will not keep up. See drivers/play.h.
-DACC_CEILING_HZ = 1_392_857
+DACC_CEILING_HZ = measure.hz_for(28)
 
 # What `clock` can reach, and why it is not the DAC's limit: the
 # internal generator runs off TIOA0, the ADC's trigger, so it inherits
 # the ADC's in-spec floor of ACQ_MIN_RC = 86 -> 453,488 Hz.
-GEN_TIOA0_MAX_HZ = 453_488
+GEN_TIOA0_MAX_HZ = measure.hz_for(86)
 
 
 def cmd_ceiling(board, inst, args):
@@ -1957,7 +1958,7 @@ def _apply_defaults(args):
         # Through the generator's TIOA0 cap, through the DACC's own
         # measured ceiling, and out the far side, so both failures are
         # in one table.
-        args.rates = [400_000, 800_000, 1_200_000, 1_392_857, 1_800_000,
+        args.rates = [400_000, 800_000, 1_200_000, DACC_CEILING_HZ, 1_800_000,
                       2_200_000, 2_800_000, 3_600_000]
 
     defaults = {"step": 4, "skew": 4, "lin": 256, "wrap": 32,

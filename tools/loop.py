@@ -329,7 +329,7 @@ def main():
     ap.add_argument("--native")
     ap.add_argument("--mode", choices=["capture", "loop", "both"],
                     default="both")
-    ap.add_argument("--sps", type=int, default=453488)
+    ap.add_argument("--sps", type=int, default=bench.TIMER_HZ // 86)
     ap.add_argument("--secs", type=float, default=5.0)
     ap.add_argument("--nch", type=int, default=1)
     ap.add_argument("--tone", type=float, default=1000.0)

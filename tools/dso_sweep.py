@@ -47,7 +47,7 @@ sys.path.insert(0, os.path.join(HERE, "host"))
 import measure                                                # noqa: E402
 import scope as dso                                           # noqa: E402
 
-TC_HZ = 39_000_000
+TC_HZ = measure.TC_CLOCK_HZ
 
 # The AWG ladder, as tests/test_rates.py pins it. RC is what the timer
 # actually holds, so these are the rates that exist rather than round
