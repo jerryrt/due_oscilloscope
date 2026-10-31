@@ -1,5 +1,6 @@
 """Phase 0: run one metric N times and record what it actually did.
 
+    python3 tools/phase0.py loop,dc-fit,rise --axis reflash --runs 3
     python3 tools/phase0.py settle --runs 7
     python3 tools/phase0.py settle --runs 7 --axis reflash
     python3 tools/phase0.py settle --runs 7 --axis both
@@ -50,6 +51,7 @@ import scope as dso                                           # noqa: E402
 import dso_metrics as dm                                      # noqa: E402
 import noise_metrics as nm                                    # noqa: E402
 import metrics as mt                                          # noqa: E402
+import settletime as st                                       # noqa: E402
 
 RECORDS = os.path.join(HERE, "records")
 
@@ -201,8 +203,65 @@ METRICS["loop"] = {"fn": adapt(_loop_metric), "scope": False,
                    "args": loop_default_args}
 
 
+def _dc_fit_metric(board, args):
+    return mt.dc_fit_once(board, args.rc, args.seconds)
+
+
+def _rise_metric(board, args):
+    return st.rise_once(board, args.points, args.seconds, args.dac_hz,
+                        args.pre)
+
+
+def dc_fit_default_args(what, **overrides):
+    """The Namespace a `dc-fit` run reads: the ADC rung and the run length."""
+    ns = argparse.Namespace(rc=None, seconds=None, what=what)
+    for k, v in overrides.items():
+        setattr(ns, k, v)
+    return ns
+
+
+def rise_default_args(what, **overrides):
+    """The Namespace a `rise` run reads, the defaults of `settletime.py rise`."""
+    ns = argparse.Namespace(points=8, seconds=4.0, dac_hz=st.DAC_HZ, pre=80,
+                            what=what)
+    for k, v in overrides.items():
+        setattr(ns, k, v)
+    return ns
+
+
+#: The five-code DC sweep and its line, scope-free. `--rc` sets the ADC rate.
+METRICS["dc-fit"] = {"fn": adapt(_dc_fit_metric), "scope": False,
+                     "args": dc_fit_default_args}
+#: The 10-90% rise, scope-free. A fold below full coverage is a refusal,
+#: which `run_once` records as an error row and never as a zero.
+METRICS["rise"] = {"fn": adapt(_rise_metric), "scope": False,
+                   "args": rise_default_args}
+
+
+def metrics_of(args):
+    """The metrics a run takes, in order: `args.metrics`, else `[args.metric]`."""
+    return list(getattr(args, "metrics", None) or [args.metric])
+
+
+def record_path(args, metric):
+    """Where `metric`'s rows go.
+
+    One metric: `--out` as given, else `records/phase0-<metric>.jsonl`.
+    Several: `--out` is a prefix and each metric writes
+    `<prefix>-<metric>.jsonl` (a trailing `.jsonl` on the prefix is
+    dropped), else the default path, so `--report` per metric reads each
+    record as if it had been taken alone."""
+    if not args.out:
+        return os.path.join(RECORDS, f"phase0-{metric}.jsonl")
+    if len(metrics_of(args)) == 1:
+        return args.out
+    base = args.out[:-6] if args.out.endswith(".jsonl") else args.out
+    return f"{base}-{metric}.jsonl"
+
+
 def warm_and_discard(board, inst, args, warm=None):
-    """After a flash: wait out the warm-up, then take one run and throw it away.
+    """After a flash: wait out the warm-up, then take one run of each metric
+    and throw them away. The wait is paid once however many metrics follow.
 
     On the reflash axis every run follows a flash, so every run is a first
     run inside the post-flash transient and "drop run 0" removes nothing
@@ -210,29 +269,40 @@ def warm_and_discard(board, inst, args, warm=None):
     reflash-axis row comparable to an in-place one.
     """
     (warm or repeat.warm_up)()
-    ns = METRICS[args.metric]["args"](args.metric, **args.overrides)
-    run_once(board, inst, args.metric, ns)
+    for m in metrics_of(args):
+        ns = METRICS[m]["args"](m, **args.overrides)
+        run_once(board, inst, m, ns)
 
 
 def take(args):
-    """N runs on one axis, each flushed before the next begins."""
-    path = args.out or os.path.join(RECORDS, f"phase0-{args.metric}.jsonl")
-    held = repeat.clocks(repeat.load(path))
-    if held and set(held) != {measure.MCK_HZ}:
-        raise SystemExit(
-            f"{path} already holds rows at {sorted(held)} Hz and this host is "
-            f"at {measure.MCK_HZ} Hz. A record has one clock: pass a fresh --out.")
-    rec = repeat.Recorder(path)
+    """N runs of each metric on one axis, each flushed before the next begins.
+
+    A reflash cycle (flash, warm-up, throwaway run) serves every metric:
+    it is paid once per run index and each metric records one row from the
+    board it leaves. In place, the metrics run back to back per run index.
+    Returns the record's path, or `{metric: path}` for several metrics.
+    """
+    ms = metrics_of(args)
+    paths = {m: record_path(args, m) for m in ms}
+    for m, path in paths.items():
+        held = repeat.clocks(repeat.load(path))
+        if held and set(held) != {measure.MCK_HZ}:
+            raise SystemExit(
+                f"{path} already holds rows at {sorted(held)} Hz and this "
+                f"host is at {measure.MCK_HZ} Hz. A record has one clock: "
+                f"pass a fresh --out.")
+    recs = {m: repeat.Recorder(path) for m, path in paths.items()}
     inst = None
-    if needs_scope(args.metric):
+    if any(needs_scope(m) for m in ms):
         inst = dso.open_scope()
         print(f"scope: {' '.join(inst.identify())}")
     else:
         # Said out loud, because "no instrument" is a property of the
         # metric worth knowing when a figure is quoted: it can be
         # re-taken on a bench that has no scope at all.
-        print(f"no instrument needed for {args.metric}")
-    print(f"record: {path}")
+        print(f"no instrument needed for {', '.join(ms)}")
+    for path in paths.values():
+        print(f"record: {path}")
     board = None
     try:
         for axis in args.axes:
@@ -258,37 +328,37 @@ def take(args):
                         dm.verify_probe(board, inst, args.channel,
                                         dm.TRIGGER_PRESETS[args.trigger])
 
-                p = prov.collect(board=board, inst=inst,
-                                 channels=(args.channel,),
-                                 extra={"metric": args.metric, "axis": axis,
-                                        "run": i})
-                gaps = prov.missing(p)
-                if gaps:
-                    raise SystemExit(
-                        f"refusing to record: provenance is missing {gaps}. "
-                        f"A measurement without its conditions is not a "
-                        f"baseline point.")
+                for metric in ms:
+                    p = prov.collect(board=board, inst=inst,
+                                     channels=(args.channel,),
+                                     extra={"metric": metric, "axis": axis,
+                                            "run": i})
+                    gaps = prov.missing(p)
+                    if gaps:
+                        raise SystemExit(
+                            f"refusing to record: provenance is missing "
+                            f"{gaps}. A measurement without its conditions "
+                            f"is not a baseline point.")
 
-                print(f"\n=== {args.metric} [{axis}] run {i+1}/{args.runs} "
-                      f"===")
-                ns = METRICS[args.metric]["args"](args.metric,
-                                                  **args.overrides)
-                t0 = time.time()
-                result, err = run_once(board, inst, args.metric, ns)
-                rec.add({
-                    "metric": args.metric,
-                    "axis": axis,
-                    "run": i,
-                    "seconds": round(time.time() - t0, 2),
-                    "flash_attempts": attempts if axis == "reflash" else 0,
-                    "values": repeat.flatten(result) if result else {},
-                    "error": err,
-                    "args": {k: v for k, v in vars(ns).items()
-                             if isinstance(v, (int, float, str, bool))},
-                    "provenance": p,
-                })
-                if err:
-                    print(f"  run failed: {err}")
+                    print(f"\n=== {metric} [{axis}] run {i+1}/{args.runs} "
+                          f"===")
+                    ns = METRICS[metric]["args"](metric, **args.overrides)
+                    t0 = time.time()
+                    result, err = run_once(board, inst, metric, ns)
+                    recs[metric].add({
+                        "metric": metric,
+                        "axis": axis,
+                        "run": i,
+                        "seconds": round(time.time() - t0, 2),
+                        "flash_attempts": attempts if reflash else 0,
+                        "values": repeat.flatten(result) if result else {},
+                        "error": err,
+                        "args": {k: v for k, v in vars(ns).items()
+                                 if isinstance(v, (int, float, str, bool))},
+                        "provenance": p,
+                    })
+                    if err:
+                        print(f"  run failed: {err}")
     finally:
         if board is not None:
             try:
@@ -299,7 +369,7 @@ def take(args):
         if inst is not None:
             inst.averaging(None)
             inst.close()
-    return path
+    return paths[ms[0]] if len(ms) == 1 else paths
 
 
 def report(path, metric, first=False, gates=None):
@@ -379,7 +449,12 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("metric", choices=sorted(METRICS))
+    ap.add_argument("metric", metavar="METRIC[,METRIC...]",
+                    help="one metric or a comma list, from: "
+                         + ", ".join(sorted(METRICS)) + ". With several, "
+                         "one reflash cycle (flash, warm-up, throwaway "
+                         "run of each) serves all of them and each writes "
+                         "its own record")
     ap.add_argument("--runs", type=int, default=8,
                     help="repetitions per axis (default 8, of which run 0 "
                          "is dropped, so a spread rests on seven). Four is "
@@ -398,7 +473,11 @@ def main():
                     choices=("in-place", "reflash", "both"))
     ap.add_argument("--track", default="b", choices=("a", "b", "c"))
     ap.add_argument("--out", default=None,
-                    help="record path (default records/phase0-<metric>.jsonl)")
+                    help="record path (default records/phase0-<metric>.jsonl). "
+                         "With several metrics it is a prefix, and each "
+                         "metric writes <prefix>-<metric>.jsonl; run the "
+                         "same command again to append, or --report with "
+                         "the same --out to summarise each")
     ap.add_argument("--report", action="store_true",
                     help="summarise an existing record; no bench needed")
     ap.add_argument("--gates", default=None, metavar="FILE.json",
@@ -418,22 +497,28 @@ def main():
                     help="noise metrics: DAC code to hold")
     args = ap.parse_args()
 
+    args.metrics = [m for m in args.metric.split(",") if m]
+    bad = [m for m in args.metrics if m not in METRICS]
+    if bad or not args.metrics or len(set(args.metrics)) != len(args.metrics):
+        ap.error(f"METRIC must be a list of distinct names from "
+                 f"{sorted(METRICS)}; got {args.metric!r}")
+    args.metric = args.metrics[0]
     args.axes = (["in-place", "reflash"] if args.axis == "both"
                  else [args.axis])
     args.overrides = ({"channel": args.channel, "trigger": args.trigger}
-                      if needs_scope(args.metric) else {})
+                      if any(needs_scope(m) for m in args.metrics) else {})
     for k in ("average", "vdiv", "window", "amp", "seconds", "code", "rc"):
         if getattr(args, k) is not None:
             args.overrides[k] = getattr(args, k)
 
-    path = args.out or os.path.join(RECORDS, f"phase0-{args.metric}.jsonl")
     if not args.report:
-        path = take(args)
+        take(args)
     gates = None
     if args.gates:
         with open(args.gates, encoding="utf-8") as f:
             gates = json.load(f)
-    report(path, args.metric, first=args.keep_first, gates=gates)
+    for m in args.metrics:
+        report(record_path(args, m), m, first=args.keep_first, gates=gates)
 
 
 if __name__ == "__main__":

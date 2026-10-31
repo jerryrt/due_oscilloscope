@@ -235,6 +235,22 @@ def cmd_rise(board, args):
             "period_ticks": best["period"], "rc_adc": rc_adc}
 
 
+def rise_once(board, points=8, seconds=4.0, dac_hz=None, pre=80):
+    """One rise measurement as flat numbers: rise_ticks, rise_s, coverage, rc.
+
+    `cmd_rise` refuses a fold below full coverage and this does not catch
+    it, so a refusal is a failed run for the caller to record and never
+    a zero. The coverage is checked here again so the refusal does not
+    depend on `cmd_rise` alone."""
+    ns = argparse.Namespace(points=points, seconds=seconds,
+                            dac_hz=dac_hz or DAC_HZ, pre=pre, solo=False)
+    out = cmd_rise(board, ns)
+    require_full_coverage(out["coverage"])
+    return {"rise_ticks": round(out["rise_s"] * eqtime.TC_CLOCK_HZ),
+            "rise_s": out["rise_s"], "coverage": out["coverage"],
+            "rc": out["rc_adc"]}
+
+
 def cmd_settle(board, args):
     """The tail, to one code."""
     lsb_v, advref, source = adc_lsb_v()

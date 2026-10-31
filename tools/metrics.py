@@ -195,6 +195,59 @@ def loop_once(board, rc=LOOP_RC, seconds=None, channels=2):
     return out
 
 
+#: The five levels of `tests/test_integrity.py::test_dc_transfer_is_one_line`.
+DC_CODES = (512, 1024, 2048, 3072, 3583)
+#: Its DAC rate. A DC level needs no matched rate, so the DAC stays here
+#: while the ADC rate varies.
+DC_DAC_SPS = 200000
+
+
+def dc_fit(points):
+    """Least-squares line through [(dac_code, mean_a0_code)].
+
+    The same fit as `dc_fit` in `tests/helpers.py` and returning the same
+    four numbers (A0 codes per DAC code, A0 codes at DAC code 0, RMS and
+    largest absolute residual); `tests/test_phase0.py` holds the two
+    equal. It is here because tools do not import from tests."""
+    assert len(points) >= 3, "a line needs at least three levels"
+    n = len(points)
+    mx = sum(x for x, _ in points) / n
+    my = sum(y for _, y in points) / n
+    sxx = sum((x - mx) ** 2 for x, _ in points)
+    slope = sum((x - mx) * (y - my) for x, y in points) / sxx
+    offset = my - slope * mx
+    res = [y - (offset + slope * x) for x, y in points]
+    rms = (sum(r * r for r in res) / n) ** 0.5
+    return slope, offset, rms, max(abs(r) for r in res)
+
+
+def dc_fit_once(board, rc=None, seconds=None):
+    """One five-code DC sweep and its fit, as a flat dict.
+
+    DAC at 200 ksps, two channels, the ADC at the rate of `rc` (RC 225,
+    200 kHz, by default), each level the mean of the settled A0 samples.
+    Keys: slope, offset, rms, worst and one `mean_c<code>` per level."""
+    rc = rc or measure.rc_for(DC_DAC_SPS)
+    hz = measure.hz_for(rc)
+    points = []
+    for code in DC_CODES:
+        res = measure.run_loop(board, dac_sps=DC_DAC_SPS, adc_hz=hz,
+                               channels=2, dc=code,
+                               seconds=seconds or pacing.PROBE)
+        if res.refused:
+            raise SystemExit(f"RC {rc} ({hz} Hz, 2 ch) was refused")
+        vals = res.stream.settled[measure.CH_A0]
+        if not vals:
+            raise SystemExit(f"no settled samples at DAC code {code}")
+        points.append((code, sum(vals) / len(vals)))
+    slope, offset, rms, worst = dc_fit(points)
+    out = {"slope": slope, "offset": offset, "rms": rms, "worst": worst,
+           "rc": rc, "hz": hz}
+    for code, mean in points:
+        out[f"mean_c{code}"] = mean
+    return out
+
+
 def m_loop(board, args):
     """The DAC->ADC loop: tone amplitude, window purity, crosstalk, overruns."""
     rc = getattr(args, "rc", None) or LOOP_RC

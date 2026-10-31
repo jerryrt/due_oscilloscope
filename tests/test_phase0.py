@@ -5,6 +5,7 @@ quietly: the reflash axis waits and discards before it records, a record
 never mixes two clocks, a ladder rate reaches the metric, and a scope-free
 metric of the shape `fn(board, args)` can be registered.
 """
+import argparse
 import json
 import os
 import sys
@@ -191,3 +192,150 @@ def test_a_ladder_rc_reaches_the_noise_metric_as_that_rates_trigger(monkeypatch)
     seen.clear()
     nm._run(None, 2048, 1.0, 4096, preset="5")
     assert seen["preset"] == "5", "no --rc must leave the preset alone"
+
+
+# --- several metrics from one reflash cycle -------------------------------
+
+_REAL_RUN_ONCE = phase0.run_once
+
+
+def _two(tmp_path, **kw):
+    return _args(tmp_path, metric="a", metrics=["a", "b"],
+                 out=str(tmp_path / "r"), **kw)
+
+
+@pytest.fixture
+def two_metrics(monkeypatch, fakes):
+    """Metrics `a` and `b`, each recording the calls it gets."""
+    seen = []
+
+    def make(name):
+        def fn(board, inst, args):
+            seen.append(name)
+            return {"x": 1.0}
+        return {"fn": fn, "scope": False, "args": lambda what, **o: argparse.Namespace()}
+    monkeypatch.setitem(phase0.METRICS, "a", make("a"))
+    monkeypatch.setitem(phase0.METRICS, "b", make("b"))
+    monkeypatch.setattr(phase0, "run_once", _REAL_RUN_ONCE)
+    fakes["seen"] = seen
+    return fakes
+
+
+def test_two_metrics_share_one_flash_and_one_warm_up_per_run_index(tmp_path, two_metrics):
+    f = two_metrics
+    paths = phase0.take(_two(tmp_path, axes=["reflash"], runs=3))
+    assert f["flash"] == 3 and f["warm"] == 3, "one cycle per run index, not per metric"
+    assert f["seen"].count("a") == 6 and f["seen"].count("b") == 6, \
+        "the throwaway cycle runs and discards one of each"
+    for m in "ab":
+        rows = repeat.load(paths[m])
+        assert [r["run"] for r in rows] == [0, 1, 2] and {r["metric"] for r in rows} == {m}
+
+
+def test_the_in_place_axis_runs_the_metrics_back_to_back_per_run_index(tmp_path, two_metrics):
+    f = two_metrics
+    phase0.take(_two(tmp_path, runs=2))
+    assert f["seen"] == ["a", "b", "a", "b"] and f["warm"] == 0
+
+
+def test_a_failing_metric_records_its_error_and_the_others_still_run(tmp_path, two_metrics):
+    def boom(board, inst, args):
+        raise SystemExit("refusing to report: phase coverage 90.0%")
+    phase0.METRICS["a"]["fn"] = boom
+    paths = phase0.take(_two(tmp_path, axes=["reflash"], runs=2))
+    a, b = repeat.load(paths["a"]), repeat.load(paths["b"])
+    assert len(a) == 2 and all("coverage" in r["error"] and r["values"] == {} for r in a)
+    assert len(b) == 2 and all(r["error"] is None and r["values"] == {"x": 1.0} for r in b)
+
+
+def test_each_metric_keeps_its_own_clock_refusal(tmp_path, two_metrics):
+    other = 78_000_000 if measure.MCK_HZ != 78_000_000 else 90_000_000
+    (tmp_path / "r-b.jsonl").write_text(json.dumps(
+        {"run": 1, "axis": "in-place", "values": {"x": 1.0},
+         "provenance": {"mck_hz": other}}) + "\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        phase0.take(_two(tmp_path))
+    assert "r-b.jsonl" in str(e.value) and not two_metrics["seen"]
+
+
+def test_one_name_still_writes_the_out_path_as_given(tmp_path, fakes):
+    path = phase0.take(_args(tmp_path, runs=2))
+    assert path == str(tmp_path / "r.jsonl") and len(repeat.load(path)) == 2
+
+
+def test_the_cli_takes_a_comma_list_and_refuses_an_unknown_name(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(phase0, "take", lambda a: seen.update(a=a))
+    monkeypatch.setattr(phase0, "report", lambda path, metric, first=False, gates=None:
+                        seen.setdefault("rep", []).append((path, metric)))
+    monkeypatch.setattr(sys, "argv", ["phase0", "loop,dc-fit,rise", "--out", "/x/p"])
+    phase0.main()
+    assert seen["a"].metrics == ["loop", "dc-fit", "rise"]
+    assert seen["rep"] == [("/x/p-loop.jsonl", "loop"), ("/x/p-dc-fit.jsonl", "dc-fit"),
+                           ("/x/p-rise.jsonl", "rise")]
+    monkeypatch.setattr(sys, "argv", ["phase0", "loop,nope"])
+    with pytest.raises(SystemExit):
+        phase0.main()
+
+
+# --- dc-fit and rise -----------------------------------------------------
+
+def test_the_tools_dc_fit_equals_the_test_helpers_fit():
+    import helpers
+    import metrics
+    pts = [(512, 1017.3), (1024, 1360.9), (2048, 2046.2), (3072, 2733.8), (3583, 3075.1)]
+    assert metrics.dc_fit(pts) == pytest.approx(helpers.dc_fit(pts), rel=1e-12, abs=1e-12)
+    assert metrics.dc_fit(pts)[0] == pytest.approx(0.67, abs=0.01)
+
+
+def test_dc_fit_runs_five_codes_and_returns_flat_numbers(monkeypatch):
+    import metrics
+    from types import SimpleNamespace
+    calls = []
+
+    def run_loop(board, **kw):
+        calls.append(kw)
+        v = [int(100 + 0.67 * kw["dc"])] * 8
+        return SimpleNamespace(refused=False, stream=SimpleNamespace(settled={measure.CH_A0: v}))
+    monkeypatch.setattr(measure, "run_loop", run_loop)
+    out = phase0.METRICS["dc-fit"]["fn"](
+        None, None, phase0.dc_fit_default_args("dc-fit", rc=86))
+    assert [c["dc"] for c in calls] == [512, 1024, 2048, 3072, 3583]
+    assert all(c["dac_sps"] == 200000 and c["channels"] == 2 and c["adc_hz"] == measure.hz_for(86)
+               for c in calls)
+    assert set(out) >= {"slope", "offset", "rms", "worst", "mean_c512", "mean_c3583"}
+    assert out["slope"] == pytest.approx(0.67, abs=0.001) and out["rc"] == 86
+    assert all(isinstance(v, (int, float)) for v in out.values())
+    calls.clear()
+    phase0.METRICS["dc-fit"]["fn"](None, None, phase0.dc_fit_default_args("dc-fit"))
+    assert calls[0]["adc_hz"] == measure.hz_for(measure.rc_for(200000))
+
+
+def _rise_capture(monkeypatch, rc_adc):
+    import eqtime
+    import settletime
+    import test_settletime_guard as g
+    vals = g._square(rc_adc, 30000, g._period())
+    monkeypatch.setattr(settletime, "capture", lambda board, **kw: (vals, rc_adc, None))
+    monkeypatch.setattr(settletime, "adc_lsb_v", lambda: (0.0008, 3300, "test"))
+    return settletime
+
+
+def test_rise_returns_flat_numbers_on_a_full_fold(monkeypatch):
+    st = _rise_capture(monkeypatch, 221)
+    out, err = _REAL_RUN_ONCE(_Board(), None, "rise", phase0.rise_default_args("rise"))
+    assert err is None and out["coverage"] == 1.0 and out["rc"] == 221
+    assert out["rise_ticks"] > 0 and out["rise_s"] == pytest.approx(out["rise_ticks"] / st.eqtime.TC_CLOCK_HZ, abs=1e-8)
+
+
+def test_rise_on_a_coverage_of_0_9_is_an_error_row_and_not_a_zero(monkeypatch, tmp_path):
+    _rise_capture(monkeypatch, 221)
+    import settletime
+    real_fold = settletime.fold
+
+    def fold(*a, **k):
+        curve, cnt, best, margin, scan = real_fold(*a, **k)
+        return curve, cnt, dict(best, coverage=0.9), margin, scan
+    monkeypatch.setattr(settletime, "fold", fold)
+    out, err = _REAL_RUN_ONCE(_Board(), None, "rise", phase0.rise_default_args("rise"))
+    assert out is None and "coverage" in err

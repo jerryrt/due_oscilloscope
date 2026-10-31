@@ -152,6 +152,14 @@ from those figures *(check)* until a phase is run and timed; the reflash axis ro
 The reflash axis dominates. A key shared by several metrics costs its runs
 once, because one run returns every key.
 
+Several metrics share one cycle: `phase0.py loop,dc-fit,rise,noise-fast
+--axis reflash` pays the flash, the warm-up and the throwaway run once per
+run index and every listed metric records one row from the board it leaves,
+so four metrics cost 83 s a run and not four times that. Each metric writes
+its own record, `records/phase0-<metric>.jsonl`, or `<--out>-<metric>.jsonl`
+when `--out` is given with several; a failing metric records its error row
+and the others still run.
+
 ## Open decisions
 
 | decision | default until answered |
