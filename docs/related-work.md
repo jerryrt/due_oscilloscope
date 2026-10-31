@@ -27,6 +27,19 @@ should not: the datapath is built around the SAM3X's PDC feeding the
 internal converters, and an external one over SPI replaces that path
 rather than extending it.
 
+The replacement does not have to put the CPU in the sample path. On the
+SAM3X8E, SPI and SSC have no PDC channel; the PDC list covers the ADC,
+DAC, PWM, TWI, USART and UART (datasheet 11057B, section 28, Table
+28-1). Their DMA route is the central DMAC, which has hardware
+handshake interfaces for SPI0, SPI1 and SSC (Table 24-2). The bus matrix
+lets both the DMAC and the USB high-speed DMA reach SRAM bank 1 (Tables
+7-1 to 7-3). So SPI or SSC into the DMAC, into SRAM, out through USB
+endpoint DMA keeps the invariant that the CPU never touches sample data.
+The bit-clock arithmetic is SPCK = MCK / SCBR, 26 MHz at SCBR = 3 and so
+1.6 Mword/s of 16 bits, with the datasheet's own electrical limit of
+38.5 MHz for a 12 ns slave; no sustained rate is stated for either
+peripheral. Nothing here has been built or measured on a board *(check)*.
+
 ## OpenScope MZ, and the gap to it
 
 The chip is stronger than the SAM3X8E on every axis that matters here:

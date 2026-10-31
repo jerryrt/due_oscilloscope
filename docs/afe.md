@@ -53,6 +53,15 @@ written so each line becomes a measurement.
 | frequency accuracy | about 10 ppm | the master clock, measured |
 | cleanliness, the acceptance | within-hold events over 10 codes at or below 0.2 per 1000 holds on every board, largest excursion at or below 12 codes | the two healthy shielded boards set the floor; the fourth board is the test |
 
+**The bandwidth row is the analog corner, and the sampling rate sets what
+it can serve.** One channel samples at 886 ksps, Nyquist 443 kHz; two
+channels at 453 ksps each, Nyquist 227 kHz; `docs/scope.md` puts the
+usable band at ~140 kHz and ~75 kHz. A 200-300 kHz corner suits one
+channel, and with two channels the content between 227 and 300 kHz folds
+back below Nyquist. Either the corner follows the mode, or the
+two-channel bandwidth is the alias-limited one. This is a design choice
+and it is not made here.
+
 Not achieved by construction: inputs beyond ±20 V, more than 12
 bits, bandwidth beyond half the sample rate, differential inputs, and
 input ranges finer than about ±3 V, which a passive divider cannot

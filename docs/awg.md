@@ -107,6 +107,18 @@ up to 113 kHz - where the half period is still 4.41 us against a
 is visibly trapezoidal, the slew taking about a fifth of each half
 period, with a glitch spike at each transition. `dso_metrics.py clock`.
 
+**Why the square gives out before the sine.** A flat-topped square needs
+a rise time well inside its half period. The measured rise is 789-938 ns,
+and the half period equals it near 550 kHz, so a trapezoid with no flat
+top at ~400 kHz is what that rise predicts; a sine carries no harmonics
+and survives much further. The datasheet states a DAC sampling rate of
+2 MHz at most and SNR 71 dB typical at 127 kHz (SAM3X datasheet
+11057B, Tables 46-39 to 46-41), but **no settling time, slew rate or
+output load limit**, so the 789-938 ns is a measurement of this DAC plus
+this bench's probe and wiring, and the two are not separated. A scope
+with a low-capacitance probe on the pin, once with the jumper and once
+without, separates them.
+
 ### 113 kHz is not the DAC's limit, and it is not close to it
 
 Every ordinary path leaves the DACC triggered from **TIOA0**, the ADC's
