@@ -3172,18 +3172,21 @@ class BenchResult:
 
 
 def run_bench(board, *, mode, seconds=5.0, block=16384,
-              drain_s=0.3, tx_rate=None):
+              drain_s=pacing.GLANCE, tx_rate=None):
     """Drive the device's flood / sink / duplex modes and measure each
     direction from the host side, so the host's own throughput is
     visible alongside what the device counted. A mismatch between the
     two is the signal that the host, not the transport, is the limit.
     """
     cmd = BENCH_CMD[mode]
+    m = pacing.Marks("run_bench")
     board.poll_console()
     board.cmd(cmd)
     pacing.pause(pacing.SETTLE)
+    m.mark("start_cmd")
 
     fd = board.open_native(wait=pacing.NORMAL)
+    m.mark("open_native")
     fd.flush_input()
 
     # One thread per direction, and blocking writes. An earlier loop
@@ -3267,22 +3270,15 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
                 fd.read(262144)
             except OSError:
                 pass
+    m.mark("drain")
     board.cmd("B")
-    pacing.pause(pacing.SETTLE)
-    report = b""
-    t1 = time.time()
-    while time.time() - t1 < 1.5:
-        # Keep draining so a blocked device can still answer.
-        r = transport.wait_any([fd, board.cfd], pacing.POLL)
-        for f in r:
-            try:
-                d = f.read(262144)
-                if f == board.cfd:
-                    report += d
-            except OSError:
-                pass
+    # read_report keeps draining the native port so a blocked device can
+    # still answer, and ends when the report does.
+    report = read_report(fd, board.cfd)
+    m.mark("report")
     board.cmd("0")
     board.close_native(fd)
+    m.mark("close_native")
 
     rep = report.decode("utf-8", "replace")
     return BenchResult(mode=mode, block=block, elapsed_s=elapsed,
