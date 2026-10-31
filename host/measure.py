@@ -1495,6 +1495,7 @@ class Board:
         self.ctl_retries = 0
         self.cfd = open_raw(control, 115200)
         self._console = b""
+        self._clock_ok = False
         if settle:
             time.sleep(settle)
 
@@ -1675,6 +1676,29 @@ class Board:
         out = read_report(None, self.cfd, window=window)
         self._console += out
         return out.decode("utf-8", "replace")
+
+    def require_clock(self):
+        """Refuse to run against a board whose clock is not the host's.
+
+        Every RC divides MCK/2, so a host that assumes a different clock
+        computes the wrong RC from every rate it names and the board
+        accepts it: the counters stay green and the data are at another
+        rate. The identity line carries the board's clock, so read it
+        once per board and compare. An image too old to print one is
+        let through, since there is nothing to compare.
+        """
+        if self._clock_ok:
+            return
+        self.poll_console()
+        self.cmd("v")
+        ident = parse_identity(self.read_console(pacing.LISTEN))
+        if ident is not None and ident["mck_hz"] != MCK_HZ:
+            raise BoardError(
+                f"the board reports MCK {ident['mck_hz']} Hz and this host "
+                f"assumes {MCK_HZ} Hz, so every RC it computes is wrong. Set "
+                f"DUE_MCK_HZ={ident['mck_hz']} for this host, or flash an "
+                f"image built with -DFIRMWARE_MCK_HZ={MCK_HZ}.")
+        self._clock_ok = True
 
     def ask(self, text, secs=pacing.LISTEN, quiet=None):
         """Send a command and return what the console said back."""
@@ -2688,6 +2712,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     back is a fault in the path rather than an unknown property of a
     signal.
     """
+    board.require_clock()
     m = pacing.Marks("run_loop")
     if wave is None:
         wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc,
@@ -2914,6 +2939,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc, ramp=ramp,
                                    square=square)
 
+    board.require_clock()
     m = pacing.Marks("run_play")
     fd = board.open_native(blocking_writes=True)
     m.mark("open_native")
@@ -3077,6 +3103,7 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
     drained, the kernel buffer overflowed and bytes were lost. The
     symptom looked exactly like a firmware framing bug.
     """
+    board.require_clock()
     m = pacing.Marks("run_capture")
     if uart:
         # Single-port mode: frames arrive on the control port itself, as
@@ -3190,6 +3217,7 @@ def run_bench(board, *, mode, seconds=5.0, block=16384,
     two is the signal that the host, not the transport, is the limit.
     """
     cmd = BENCH_CMD[mode]
+    board.require_clock()
     m = pacing.Marks("run_bench")
     board.poll_console()
     board.cmd(cmd)
