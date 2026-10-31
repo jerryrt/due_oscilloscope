@@ -198,7 +198,7 @@ def test_every_ladder_rate_is_a_real_divider_value():
             assert measure.TC_CLOCK_HZ // rc == hz
 
 
-def test_the_crosstalk_check_sees_a_real_coupling_path(board, seconds, baseline):
+def test_the_crosstalk_check_sees_a_real_coupling_path(board, seconds, baseline, calibration):
     """The instrument control: point the check at a pin that does couple.
 
     A check that passes on A1 has only shown that A1 is quiet. `=2C` pairs
@@ -221,6 +221,7 @@ def test_the_crosstalk_check_sees_a_real_coupling_path(board, seconds, baseline)
         median, amps = window_purity(res, measure.CH_A2)
         assert amps, "no windows on A2"
         record_value = round(median, 1)
+        record(calibration, f"control_a2_rc{rc}", {"median_codes": record_value})
         with pytest.raises(AssertionError):
             assert_crosstalk(res, measure.CH_A2, ceiling)
     finally:
