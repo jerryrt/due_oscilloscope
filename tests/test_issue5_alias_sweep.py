@@ -75,8 +75,9 @@ def test_the_default_layout_is_unchanged():
 
 
 def test_solo_at_half_the_rate_writes_dac0_as_cycle_sync_does():
+    # the same bin whichever way the DAC is clocked: twice the 200 kHz RC
     assert sw.bin_clocks(sw.rc_of(100000), SOLO) == \
-        sw.bin_clocks(sw.rc_of(200000), CYCLE) == 390
+        sw.bin_clocks(sw.rc_of(200000), CYCLE) == 2 * sw.rc_of(200000)
     cycle_sites, _ = sw.predict(195, step=sw.bin_clocks(195, CYCLE))
     solo_sites, _ = sw.predict(390, step=sw.bin_clocks(390, SOLO),
                                nbins=sw.fold_len(SOLO) // 2)

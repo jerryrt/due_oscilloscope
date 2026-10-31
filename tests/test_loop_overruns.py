@@ -21,7 +21,7 @@ import measure
 from helpers import assert_no_underruns, assert_stream_clean, window
 import pacing
 
-ADC_HZ = 453488          # the two-channel ceiling at MCK 78
+ADC_HZ = measure.hz_for(86)      # the two-channel ceiling, RC 86
 
 
 @pytest.mark.parametrize("dac_sps", [100000, 200000, ADC_HZ])

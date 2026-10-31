@@ -207,11 +207,12 @@ def test_the_clock_square_is_the_update_rate_over_two_in_solo():
     interleave, so the output toggles on every DACC update: the fastest
     thing this converter can be asked for."""
     solo = measure.GEN_SYNCS["solo"]
-    assert measure.gen_output_hz(1_392_857, 2, solo) == 1_392_857 / 2
+    top = measure.hz_for(28)
+    assert measure.gen_output_hz(top, 2, solo) == top / 2
     # and with the sync running it is half that again
-    assert measure.gen_output_hz(1_392_857, 2,
+    assert measure.gen_output_hz(top, 2,
                                  measure.GEN_SYNCS["cycle"]) \
-        == 1_392_857 / 4
+        == top / 4
 
 
 def test_dac1_is_not_a_measurement_channel():

@@ -225,7 +225,7 @@ def test_the_device_s_own_refusal_reaches_the_client(board, track):
     """
     dev = devmod.BoardDevice(board)
     with pytest.raises(devmod.DeviceError) as e:
-        dev.start("loop", dac_sps=200000, adc_hz=906976, channels=2,
+        dev.start("loop", dac_sps=200000, adc_hz=measure.hz_for(43), channels=2,
                   waveform=b"\x00\x00" * 512)
     msg = str(e.value)
     assert "refused" in msg, f"the device's refusal did not come back: {msg}"

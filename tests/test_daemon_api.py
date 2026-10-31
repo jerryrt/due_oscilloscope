@@ -213,7 +213,7 @@ def test_a_rate_between_two_dividers_reports_the_one_it_will_get(connect):
 
 def test_a_capture_rate_past_the_trigger_floor_is_refused_by_name(connect):
     with pytest.raises(clientmod.Refused) as e:
-        connect().call("rate", adc_hz=906976, channels=2)
+        connect().call("rate", adc_hz=ratemod.hz_for(43), channels=2)
     assert e.value.code == "refused"
     assert "RC 86" in e.value.message and "silently" in e.value.message
 
