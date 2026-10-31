@@ -524,7 +524,7 @@ def build():
         writer.writerows(sorted(records))
     evidence = []
     for name in [f'IMG_{i}.jpeg' for i in range(2131, 2142)]:
-        relative = '../afe-shield/' + name if int(name[4:8]) < 2135 else 'photo/' + name
+        relative = 'photos/' + name
         p = ROOT / relative
         evidence.append({'path': relative,
                          'sha256': hashlib.sha256(p.read_bytes()).hexdigest()})

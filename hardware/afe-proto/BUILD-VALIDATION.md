@@ -1,5 +1,11 @@
 # Shield construction and physical validation
 
+Use the corrected [carrier KiCad project](../mega-proto-carrier/README.md)
+as the substrate baseline and a separate working AFE assembly under this
+directory. **Complete the stage's [SPICE gate](sim/README.md) before
+assembling it.** This checklist is current; historical circuit results
+and retired simulation assets are described in [the review](REVIEW.md).
+
 **A correct circuit can fail because of its construction.** A hand-wired
 proto shield, a routed two-layer PCB and the bare Due are different
 electrical arrangements. Treat each as a distinct test condition. This
@@ -29,6 +35,21 @@ a routed two-layer signal/ground design. Its electrical topology depends
 on the soldered links and wires. Record a wiring diagram and photographs
 of both sides before treating its result as reproducible.
 
+## Handoff from simulation to the carrier layout
+
+| Item | Required record |
+|---|---|
+| Passed stage | Circuit/model revision, numerical acceptance table and all required SPICE cases passed; unsupported effects assigned bench tests |
+| Working KiCad assembly | Copied from the corrected carrier with geometry, pad IDs and existing tracks preserved; reviewed schematic/PCB updates |
+| Placement and connections | Unique AFE references; exact socket/footprint orientation; grid/header pad IDs for every added wire; SMD fanouts checked |
+| Added wiring | Existing copper distinguished from new insulated wires, jumpers and any intentional cuts; front/back assembly views and continuity list |
+| Critical load/geometry changes | Affected SPICE load/parasitic-sensitivity cases rerun after placement or wiring changes |
+
+Use the passed schematic as the connection authority and the carrier PCB
+as the physical substrate record. Insulated hand wires crossing in space
+must not be mistaken for new bare PCB copper on F.Cu/B.Cu. Review crossing,
+clearance and return paths manually and with continuity measurements.
+
 ## Pre-power gate
 
 | Check | Required outcome |
@@ -37,8 +58,8 @@ of both sides before treating its result as reproducible.
 | Underside and stack height | No lead, joint or wire contacts the Due, connector shells or other unintended copper |
 | Continuity | Critical nets match the schematic, including feedback, supply and reference paths |
 | Isolation | No unintended shorts between power, ground, reference or adjacent signal pins |
-| Passive selection | R5/R6/R7 are 1%; C5/C6/C7 are 5% C0G/NP0; component ratings are checked separately |
-| Configuration | JP1 open by default; Due reference configuration documented before any alternate connection |
+| Passive selection | Parts match the passed BOM; candidate R105/R106/R107 are 1%, C105/C106/C107 are 5% C0G/NP0; ratings checked separately |
+| Configuration | JP101 open by default; Due reference configuration documented before any alternate connection |
 | Test plan | Supply limit, safe stimulus range, test points and stop conditions specified before power |
 
 Do not connect unknown external signals directly to ADC pins. Stage A is
@@ -82,9 +103,10 @@ also needs diagnosis: wiring, fixture and circuit are separate suspects.
 
 ## What the automated screen can and cannot say
 
-`sim/screen.py` includes explicit assumed series-wire inductances. They
-are sensitivity experiments, not values extracted from this shield. They
-do not represent shared-ground impedance, mutual coupling, ferrite loss,
-all probe loading or the physical ADC switching sequence. A small change
-in this screen cannot clear the physical-build gate. Keep the actual
-measurement requirements above even when the screen passes.
+The planned SPICE tests include declared wire/socket/probe sensitivity
+cases. Their parameters are estimates, not extraction from the carrier
+KiCad PCB. The earlier screen's assumed series-wire inductances did not
+represent all shared-ground impedance, mutual coupling, ferrite loss or
+physical ADC switching. Passing a new screen cannot clear the physical
+checks above. Measure actual noise, settling, reference movement and
+channel interaction after controlled bring-up.

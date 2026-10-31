@@ -14,7 +14,7 @@ This is a learning guide using **KiCad 10.x**, the project's required
 CAD major version. It does not approve a circuit change, board order or
 fabrication release. [AFE requirements](afe.md) define the design;
 [the build plan](afe-plan.md) defines this project's sequence;
-[the design review](../hardware/afe-shield/REVIEW.md) owns the findings.
+[the design review](../hardware/afe-proto/REVIEW.md) owns the findings.
 
 ## The workflow at a glance
 
@@ -55,9 +55,13 @@ stateDiagram-v2
 
 This is not a rigid waterfall. Risky blocks may need an evaluation board
 or experimental PCB before G4 can close. Mark that build as an experiment
-with explicit questions and limits, not as a qualified product. In this
-project, prototype measurements and a physical Due fit check remain
-release gates even if development placement starts earlier.
+with explicit questions and limits, not as a qualified product.
+
+For the current Due AFE, the owner has chosen **SPICE completion before
+assembly of each stage**. Inspect the corrected carrier and plan locations
+in parallel, then hand off the passed circuit to the working assembly.
+Prototype measurements and a physical Due fit check follow; the
+[plan](afe-plan.md) applies this policy to A, C and B.
 
 ## What each gate requires
 
@@ -144,9 +148,10 @@ manually or through exported-netlist checks. Zero errors is useful, but
 an erroneous connection between compatible pin types can still pass.
 Do not globally suppress warnings to make a report look clean.
 
-For this project, [the AFE README](../hardware/afe-shield/README.md)
-explains how to locate D1 and U1 across the hierarchical sheets. U1's
-several drawn units are one physical quad amplifier, not several ICs.
+For this project, [the AFE README](../hardware/afe-proto/README.md)
+defines the planned assembly project and stage sheets. Carrier references
+stay intact; Stage A uses U101/D101 and 100-series passives. U101's several
+drawn units are one physical quad amplifier, not several ICs.
 The [KiCad 10 schematic manual](reference/kicad-10/eeschema.pdf) covers
 hierarchy, ERC and simulation.
 
@@ -208,7 +213,7 @@ At 886 ksps the sample interval is about 1.129 us. A model that takes
 1.218 us to settle within one 3 V / 4096 code has not demonstrated that
 timing target, let alone a shorter acquisition window. These are the
 nominal Stage A example results documented at revision `e10a207` in
-[the review](../hardware/afe-shield/REVIEW.md), not new measurements.
+[the review](../hardware/afe-proto/REVIEW.md), not new measurements.
 Settling to a final plateau and the plateau's DC accuracy are separate
 checks; measure both.
 
@@ -216,7 +221,11 @@ checks; measure both.
 
 In KiCad, use **Tools → Update PCB from Schematic** to transfer the
 design. Review proposed changes rather than accepting them blindly,
-especially when an existing shield template fixes connector geometry.
+especially in the working copy of the corrected carrier. Preserve its
+connector geometry, pad IDs and existing copper. Complete the stage's
+SPICE gate before assembly; record added hand wires separately from the
+physical carrier copper. The baseline generator overwrites CAD edits and
+must not regenerate the assembly.
 
 | Area | Review before routing |
 |---|---|
@@ -282,9 +291,9 @@ separate owner decision in this project.
 | 6 | Repeat relevant supply, temperature, channel, load and unit cases | Unexplained variation or inadequate margin |
 
 Do not connect unknown external signals directly to the Due's ADC pins.
-For Stage A, **keep JP1 open by default**; the AREF connection requires
+For Stage A, **keep JP101 open by default**; the AREF connection requires
 the documented Due configuration and reference-load validation in
-[the review](../hardware/afe-shield/REVIEW.md).
+[the review](../hardware/afe-proto/REVIEW.md).
 
 Record the instrument, probe loading, grounding, stimulus, sample timing,
 firmware image, board identity and ambient conditions. Probe capacitance
@@ -327,16 +336,16 @@ design and measured evidence.
 
 | Project phase | Circuit or deliverable | Workflow relationship |
 |---|---|---|
-| A1 | Reference, mid-rail and DAC-to-ADC pin drivers, drawn | Requirements through electrical validation, G1-G4 |
+| A1 | Reference, mid-rail and DAC-to-ADC pin drivers, drawn and simulated | Requirements through electrical validation, G1-G4 |
 | A2 | Stage A prototype, built and measured | Controlled bring-up and characterization, G8-G9, with prototype-specific build checks |
-| C1 / C2 | DAC output conditioning, drawn / built | Repeat design and measurement gates for the output path |
-| B1 / B2 | Input attenuation, protection, ranges and offset, drawn / built | Repeat design and measurement gates for the input path |
+| C1 / C2 | DAC output conditioning, simulated / then built | Repeat design and measurement gates for the output path |
+| B1 / B2 | Input attenuation, protection, ranges and offset, simulated / then built | Repeat design and measurement gates for the input path |
 | P | Integrated PCB | Mechanics through fabrication, G5-G7, then repeat G8-G9 on the PCB against the prototype |
 
 The order A, C, B, P and its rationale live in [the build plan](afe-plan.md).
 Gate numbers here are explanatory, not a replacement for that plan.
-The [AFE README](../hardware/afe-shield/README.md) gives reproducible
-checks and GUI instructions; [the review](../hardware/afe-shield/REVIEW.md)
+The [AFE README](../hardware/afe-proto/README.md) identifies the corrected
+carrier, the planned working assembly and simulation assets still to create; [the review](../hardware/afe-proto/REVIEW.md)
 records which electrical and physical questions remain open.
 
 The practical habit is to ask at every stage: **what claim am I making,

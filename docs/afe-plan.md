@@ -1,134 +1,127 @@
-# Building the AFE shield: the plan
+# Building the AFE on the corrected carrier
 
-**Status: Stage A in design; nothing built.** `docs/afe.md` is the
-requirement this plan builds; this file says in what order, with what
-tools, and what proves each step. The design is also the review of the
-requirement: every estimate in its table is checked as the stage that
-sets it is drawn, and a line that the arithmetic or the simulation
-moves is corrected in `docs/afe.md`, not carried here.
+**Status: carrier reconstruction available; AFE circuit and SPICE work next.**
+The old, inaccurate `hardware/afe-shield/` KiCad project has been removed.
+The physical baseline is now
+[`hardware/mega-proto-carrier/mega-proto-carrier.kicad_pro`](../hardware/mega-proto-carrier/mega-proto-carrier.kicad_pro),
+which records the photographed 103 × 55 mm board. It contains carrier
+contacts and existing copper, not the proposed analog front end.
 
-For an explanation of the engineering process behind these phases, see
-[AFE design with KiCad: workflow and quality gates](afe-workflow.md).
-The [self-contained prototype recipe](afe-prototype.md) defines the
-low-cost, socketed Stage A experiment on a stock Due: parts, connections,
-unpowered checks, staged bring-up and measurements. It does not authorize
-an AREF modification or custom PCB fabrication.
+Develop the AFE assembly under [hardware/afe-proto](../hardware/afe-proto/README.md)
+using a working copy of that baseline. **Complete each circuit stage in
+SPICE before assembling that stage.** The requirements remain in
+[afe.md](afe.md); failed simulations lead to circuit changes and reruns,
+not silently relaxed limits. Hardware measurements follow simulation and
+remain necessary for construction effects, noise and actual ADC behaviour.
 
-## The phases
+## Project setup before A1
 
-In the order the measurement asks for them, one per issue on the
-tracker, each closed by the check in its last column.
+| Step | Work | Completion evidence |
+|---|---|---|
+| Carrier baseline | Record carrier revision/commit; inspect pad map, traces, fanouts and `User.5` unknowns; compare relevant connections with the physical board | Baseline reports retained; unresolved continuity/geometry questions listed with their assembly impact |
+| Working assembly | Create `afe-proto.kicad_pro`, matching schematic and PCB under `hardware/afe-proto/`, copying required carrier libraries and assets | Native files reopen; carrier geometry, pad IDs, existing copper and schematic associations preserved; relative paths resolve |
+| AFE circuit sheets | Add Stage A sheets and explicit Due interface; use U101/D101/R101–R116/C101–C107/JP101 without renumbering carrier parts | ERC and critical-net review; exact parts, package/footprint and model pin mapping checked |
+| Simulation setup | Obtain and validate manufacturer models under `afe-proto/models/`; create stage test benches under `afe-proto/sim/` | Model provenance and hashes, simple model smoke tests, exported netlist and exact KiCad/ngspice versions recorded |
+| Acceptance table | Give each test an input, load, numerical limit, deadline and source requirement | Limits and unresolved requirements written before interpreting plots; default is stock Due, JP101 open |
 
-| phase | what is made | what proves it | lands in |
+These working CAD files and simulation assets are planned; currently only
+the documentation is present in `afe-proto/`. Do not restore the old shield
+geometry or start again from the generic Arduino Mega template. The
+[working-project instructions](../hardware/afe-proto/README.md) explain how
+to preserve the accurate carrier while adding the AFE.
+
+## Stage order and gates
+
+| Phase | Circuit / implementation | Required evidence before moving on | Evidence location |
 |---|---|---|---|
-| **A1** reference and pin driver, drawn | the reference sheet and the pin-driver sheet under `hardware/afe-shield/`, the AREF path on the Due settled, the BOM | ngspice: DC operating points of the reference and the mid-rail buffer; the follower's AC response flat past 5 MHz; the pin driver settling within one conversion at 886 ksps; the loopback DAC swing inside the follower's input range | `hardware/afe-shield/` |
-| **A2** reference and pin driver, built | Stage A on a Mega Proto Shield Rev3, wired from the sheets, on the board with the most residual | a meter: AREF at 3.000 V, VREF1V5 at half of it; `tools/gen_sweep.py` read within holds, against that board's shielded rows | `records/`, a capture note naming the shield revision |
-| **C1** DAC output stage, drawn | the output sheet: reconstruction filter, the summer, the output pins; the charge-pump inverter as an option on the same sheet | ngspice: a DC sweep across the DAC's span for centring and endpoints on each rail choice; an AC sweep for the filter corner | `hardware/afe-shield/` |
-| **C2** DAC output stage, built | Stage C on the proto shield, pump off then on | the sweep through the loopback, one arm per rail choice | `records/` |
-| **B1** attenuation, ranges, offset, drawn | the input sheet with the divider, its compensation, the clamps, the range switch and the offset filter; the PWM channel on all three tracks | ngspice: DC transfer per range against the requirement's rows; AC flatness with the compensation capacitor and with it removed; the PWM ripple after two RC sections | `hardware/afe-shield/`, the firmware for the PWM |
-| **B2** attenuation, built | Stage B on the proto shield | a meter across ±20 V on the DC rows; the sweep | `records/` |
-| **P** the PCB | the board from the same schematic on the Mega outline | the sweep on the PCB against the proto build, same board | `hardware/afe-shield/` |
+| **A1** | Reference, midpoint and DAC-to-ADC drivers in KiCad | Reference and midpoint DC/startup/load tests; driver DC/AC/step tests; explicit ADC acquisition load and timing; relevant supply, temperature, tolerance and wiring cases meet written limits | Planned `hardware/afe-proto/sim/` test benches and `reports/` accepted results; [review](../hardware/afe-proto/REVIEW.md) |
+| **A2** | Stage A assembled on the existing carrier from the reviewed working layout | A1 passed; placement/wiring and unpowered checks complete; current-limited bring-up, DC, dynamic and loopback measurements recorded | Working assembly revision, photographs, measurement notes and `records/` captures |
+| **C1** | DAC reconstruction filter, output summer, output load; optional inverter evaluated separately | DC span/centering/headroom per rail choice; AC response; transient/settling, startup, load and supply sensitivity; integrated rerun with Stage A | Stage C test benches and accepted reports |
+| **C2** | Simulated Stage C added to the carrier | C1 passed; repeat construction checks and compare loopback/output measurements; inverter off/on only for configurations already simulated | Assembly revision and `records/` |
+| **B1** | Attenuation, compensation, protection, ranges and PWM offset | DC transfer and headroom per range; AC compensation; offset range/ripple/settling; clamp currents and powered/unpowered fault cases; integrated A+C+B rerun | Stage B test benches and accepted reports; any required PWM firmware tracked separately |
+| **B2** | Simulated Stage B added to the carrier | B1 passed; inspect and bring up at controlled low voltage, then planned range/protection and loopback measurements | Assembly revision and `records/` |
+| **P**, later | Custom PCB derived from the validated circuit | Simulations rerun with declared PCB/load assumptions, measured prototype, Due fit, selected manufacturing rules, reviewed ERC/DRC and fabrication outputs; repeat bring-up and measurements | Separate future PCB project and release evidence |
 
-Stage A goes first because it is the stage the within-hold measurement
-points at, Stage C before Stage B because the loopback bench needs an
-output before it needs an attenuator, and the PCB last because the
-proto build is what the PCB is compared with.
+A goes first because the reference and ADC drive underpin the measurement.
+C precedes B because the loopback bench needs the output stage before an
+external-input attenuator. The current work uses the carrier KiCad PCB to
+plan assembly; it is not a request to fabricate another carrier.
 
-## Proposed Stage A PCB development pass
+## A1: complete these simulation steps first
 
-**Scope proposed for approval: Stage A only, not fabrication release.**
-The development layout covers the reference, mid-rail, DAC-to-ADC drivers
-and Due headers. Stages B and C are outside this pass. Layout development
-can precede the prototype, but electrical validation, prototype measurements
-and a physical Due fit check remain release gates. The current findings
-and model limitations are in
-[`hardware/afe-shield/REVIEW.md`](../hardware/afe-shield/REVIEW.md).
-
-| step | work | acceptance gate |
+| Step | Test | What must be resolved |
 |---|---|---|
-| 1. Baseline | Preserve the existing design; rerun ERC, PCB DRC, net connectivity checks and manufacturer-model simulations | Reproducible reports distinguishing existing defects from regressions |
-| 2. Electrical validation | Audit model pin mapping and measurement methods; investigate driver settling and reference-buffer loading; check the ADC acquisition window, not just its conversion interval; evaluate component/network changes | Explicit performance targets and relevant supply, tolerance and temperature cases; no silently relaxed requirements; review any op-amp/package change before committing to placement |
-| 3. Mechanics and footprints | Compare header and mounting-hole geometry with the official Due design; check exact package pinouts, connector orientation, heights, clearances and library differences | Verified schematic-to-footprint mapping and dimensioned mechanical review; physical mating still required before release |
-| 4. Populate and place | Synchronize Stage A footprints, place decoupling and feedback networks, plan ADC drive paths, add useful test points and reference/jumper markings | Placement review before routing; D1 and each physical IC identifiable on the board |
-| 5. Route | Define manufacturing rules and stackup; route analog signals and supply returns; add ground copper and inspect coupling to digital headers; retain JP1 open by default | No unrouted required connections or unexplained ERC, DRC or schematic-parity errors; any intentional exceptions individually justified |
-| 6. Review package | Inspect copper, mask, silkscreen, drills and 3D assembly; prepare BOM, assembly views, bring-up procedures and reference provenance | Engineering-review outputs clearly separated from release files; remaining risks and required bench measurements listed |
+| A1a reference | Shunt bias, filter, reference buffer: operating point, supply ramps, load steps and supply limits | Bias-current/headroom margins, startup and recovery, stable reference with its declared load |
+| A1b midpoint | Divider, buffer and A2 RC: DC error, startup, load and tolerance cases | Midpoint error allocation, loading and settling; no dependence on a floating unused amplifier |
+| A1c drivers | Both DAC-to-ADC paths: DC sweep, small-signal AC, rising/falling steps | Gain deviation/band, absolute DC error, settling band/deadline and input/output headroom at the stock-Due DAC window |
+| A1d integration | Whole quad, local supply/decoupling, switched ADC-load surrogate and channel histories; socket/wire/load sensitivity and time-step convergence | Actual acquisition window from ADC settings, combined loading and recovery; distinguish model coverage from later bench tests |
 
-The manufacturer and stackup must be selected before fabrication rules are
-final. A clean DRC or successful simulation does not qualify noise, crosstalk,
-ADC acquisition accuracy, power sequencing or reference stability on hardware.
-The full AFE scope, target changes, board ordering and fabrication submission
-require separate owner decisions.
+The former MCP6024/68 ohm/470 pF simulations had unresolved bandwidth and
+full-step settling findings. Recreate the candidate and reproduce or
+explain those findings before selecting the final driver/network. The
+[Stage A recipe](afe-prototype.md) is the candidate connection schedule,
+not permission to bypass the simulation gate. Component changes must be
+reflected in the circuit, BOM, models, layout and recipe together.
 
-Deliverables are the KiCad project, reproducible checks, review findings,
-assembly/BOM information and a bring-up checklist. Official specifications,
-manuals, application guides and vendor models stay version-managed with
-their source URLs, checksums and original license text.
+At 886 ksps, 1.129 us is a sample interval, **not automatically the ADC
+acquisition time**. Record ADC clock, channel sequence and tracking settings.
+The historic 3 V / 4096 diagnostic code is 0.732 mV; a stock Due uses its
+actual ADVREF instead. State the scale and error allocation in every report.
+The intended 200–300 kHz instrument passband and a driver-bandwidth test
+are different requirements. Define allowed gain deviation and the settling
+stimulus/deadline explicitly before calling A1 passed.
 
-## The review, done by the design
+## SPICE completion and assembly handoff
 
-The requirement's table is a list of estimates. The design replaces
-each with a derivation, a simulation or a reading, and the row moves to
-the measured column when the last of those is in.
+Follow the [simulation procedure](../hardware/afe-proto/sim/README.md).
+A completed stage has a reproducible source schematic, model hashes,
+exported test netlist, stimuli/loads, numerical measurements, limits and
+a case-by-case pass/fail table. Record unsupported effects as model gaps
+with bench tests; failed required cases keep the stage open. A converged
+operating point or an exit code of zero does not close the gate.
 
-| requirement row | what the design checks it with | phase |
-|---|---|---|
-| input range, resolution referred to input | the divider's transfer, `Vb·(1−k) + k·Vin`, evaluated per range in the schematic's notes and swept in ngspice | B1 |
-| input impedance | the divider, read off the sheet | B1 |
-| resolution at the pin, effective bits, noise | the converter's; the AFE is judged by the cleanliness row alone | A2 |
-| DC accuracy, drift | the reference's grade on the BOM, then a meter | A1, A2 |
-| analog bandwidth, rise time | the divider's compensation and the pin driver's corner in an AC sweep, then a sine sweep through the loopback | B1, B2 |
-| channel crosstalk | two channels driven in antiphase through the loopback | A2 |
-| offset | the offset buffer's reach per range on the sheet, the PWM ripple in simulation, a meter on the built stage | B1, B2 |
-| protection | the clamp current at ±20 V and at the transient rating in simulation; the series resistor's voltage rating on the BOM | B1 |
-| output range, resolution, offset | the DC sweep of the summer at the reference the design sets | C1 |
-| output impedance and coupling | read off the sheet | C1 |
-| generator rate, drive, frequency accuracy | `docs/awg.md`'s figures, unchanged by the shield | C2 |
-| cleanliness | the sweep, every built phase | A2, C2, B2 |
+Then place the passed circuit on the working carrier copy. Keep existing
+copper distinct from added wiring, use grid/header pad IDs, and check
+SMD fanouts before assigning holes. Maintain carrier locks and review
+schematic-to-PCB changes individually. Model estimated wiring parasitics
+as sensitivity cases, not as extraction from the PCB. Repeat affected
+simulations if placement changes a critical load or connection.
 
-## Tooling
+Use [construction validation](../hardware/afe-proto/BUILD-VALIDATION.md)
+and the recipe for later assembly and power-up. Record the exact assembly,
+Due identity/revision, firmware/timing, reference configuration, instruments
+and probes with measurements. Feed failures back into the same stage's
+schematic and simulation. SPICE cannot close the measured noise, crosstalk,
+physical-fit or actual sampling-accuracy gates.
 
-**KiCad 10.x is the default and required CAD major version across all teams
-and benches**, with matching 10.x symbol and footprint libraries. Do not use
-KiCad 9 or older for active edits or validation. The AFE check scripts enforce
-this major version and print the exact CLI version used; set `KICAD_CLI` when
-an older installation is also on PATH.
+## Tools and references
 
-The checked macOS project uses KiCad 10.0.6 and ngspice 47. The
-manufacturer models and offline KiCad manuals are indexed in
-[`docs/reference`](reference/README.md); the reproducible design review
-is in [`hardware/afe-shield/REVIEW.md`](../hardware/afe-shield/REVIEW.md).
-The A1 performance checks remain open. KiCad 9.0.8/ngspice 45 identify the
-original Debian design provenance, not the active CAD baseline.
+Use **KiCad 10.x** with matching symbol/footprint libraries and ngspice.
+Earlier results used KiCad 10.0.6 and ngspice 47; record the actual versions
+for new runs. The old AFE runner/check scripts and workbook are absent.
+Do not advertise them as current commands. The carrier's `check_model.py`
+validates its baseline, not the new analog circuit or its SPICE performance.
 
-| tool | version and source | used for |
-|---|---|---|
-| KiCad | 10.x required; validated with 10.0.6 and its matching libraries | the schematic, the PCB, the BOM |
-| ngspice | 47 validated for the batch runner; record the bundled engine version separately when using the GUI | the checks in the phase table |
-| the `Arduino_Mega` project template | ships with KiCad | the root sheet, board edge, headers and mounting holes of a Mega-format shield. On the Due the positions the template labels A12 to A15 carry DAC0, DAC1, CANRX0 and CANTX0, and the AREF pin is pin 8 of the PWM-high row |
-| the Due's V03 reference design | `docs/datasheets/arduino/arduino-Due-Reference-design.zip`, EAGLE 6.3, published by Arduino under CC BY-SA | what is between the AREF header pin and ADVREF: BR1 and JR1, read from the netlist rather than from a meter |
-| the Mega Proto Shield Rev3 reference design | `docs/datasheets/arduino/arduino-mega-proto-Shield-reference-design.zip`, EAGLE 6.4 | the proto build's pad rows and the SOIC-14 footprint; importable into KiCad if the proto layout is ever drawn |
-| vendor SPICE models | Microchip and Texas Instruments downloads, kept beside the sheets that use them with their licence text | the op-amps and the reference in simulation |
+| Reference | Purpose |
+|---|---|
+| [Corrected carrier](../hardware/mega-proto-carrier/README.md) | Existing geometry, copper, pad IDs, photographs and open physical checks |
+| [Due PCB conversion](../hardware/reference/arduino-due/README.md) | Mating/clearance review and board-net inspection; V02g conversion, not an assumed match to every Due revision |
+| [Reference index](reference/README.md) | Offline datasheets, KiCad manuals, official source URLs and provenance |
+| [Model plan](../hardware/afe-proto/models/README.md) | Vendor models, package mapping and smoke tests to establish before A1 |
+| [Workflow](afe-workflow.md) | General design, simulation and hardware quality gates |
 
-Symbols the library carries under the names the requirement uses:
-`LM4040DBZ-3`, `BAT54S`, `TS3A5017RSV`, `TLV2372`, `TPS6040x`. The
-MCP6024 has no symbol of its own and the MCP6004 is pin-identical in
-the same SOIC-14, so the sheet places that symbol with the MCP6024 as
-its value; the model is the MCP6024's.
+## Open decisions and records
 
-## Decisions the plan carries open
+| Item | Current rule / remaining work |
+|---|---|
+| AREF | Stock Due; JP101 open and JR1/BR1 untouched. Driving AREF is a separate future configuration requiring revision-specific checks and reference-load validation |
+| Stage A driver/network | MCP6024 is a candidate with historical shortfalls; resolve in A1, before assembly |
+| Stage B ranges | Select the ranges before B1 acceptance tests are finalized |
+| Stage C inverter | Simulate each rail configuration before choosing and building it |
+| Requirements | Numerical passband/error/settling allocations must be explicit; retain original targets and record any deliberate revision in `afe.md` |
 
-| decision | the options | who, and when |
-|---|---|---|
-| drive AREF, or measure the scale | drive it: JR1 removed and BR1 bridged 1 to C on the Due, the shield's 3.0 V buffer on AREF, the reference is the scale and the three benches' boards stop being identical. Measure it: the Due untouched, the same buffer on a spare ADC pin, the scale read as two points per board. The shield carries both: the AREF link is a solder jumper, open by default, so one shield serves a stock Due and a modified one | the owner, before A2 is wired |
-| ranges | one fixed ±20 V range, or ±20, ±5 and about ±3 V with the switched shunt and a bottom end that follows the range | the owner, before B1 |
-| the bipolar output | the single rail, unipolar, or the charge-pump inverter on the output stage alone | the owner, after C2's two arms |
-
-## Bookkeeping
-
-The tracker holds one issue per phase, each naming this plan and closed
-by its own proof column. A bench's standing page carries which phase it
-is on. A capture taken through the shield names the shield revision in
-its note, and a record row taken through it carries the phase, the way
-the shield-on rows already do. Findings go to `docs/afe.md`, the
-reasoning to the commit, and nothing to the issue that is not being
-argued.
+Keep one tracker item per phase if using the tracker. Keep accepted
+simulation reports under planned `hardware/afe-proto/reports/`; raw rerun
+outputs stay separate. Measurements belong in `records/` with their
+assembly revision. This document defines the work; it does not claim
+that a simulation, assembly or release gate has already passed.

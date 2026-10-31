@@ -2,7 +2,7 @@
 
 Open [mega-proto-carrier.kicad_pro](mega-proto-carrier.kicad_pro) in **KiCad 10.x**.
 Revision **P3.5** incorporates the seven stripped-board photographs
-[IMG_2135](photo/IMG_2135.jpeg) through [IMG_2141](photo/IMG_2141.jpeg).
+[IMG_2135](photos/IMG_2135.jpeg) through [IMG_2141](photos/IMG_2141.jpeg).
 The PCB records the carrier; the schematic records its contacts and photo-traced nets.
 The [P3.1 correction record](routing-corrections.json) links the reviewed R1/R2 and bottom digital-header routes to close-up photo crops.
 
@@ -101,7 +101,7 @@ Physical Mega labels A12-A15 are named DAC0/DAC1/CANRX0/CANTX0 for the Due. Shar
 
 ## Keep the carrier separate from the circuit
 
-This project models the board you own. [afe-shield](../afe-shield/README.md) remains the intended AFE design, and [reference/arduino-due](../reference/arduino-due/README.md) contains the Due reference files. These projects were not overwritten by this reconstruction.
+This project models the board you own. The [AFE prototype project plan](../afe-proto/README.md) uses this corrected carrier as the baseline for a separate working assembly; the old inaccurate `afe-shield` template was removed. Complete each AFE stage in SPICE before assembling it. [reference/arduino-due](../reference/arduino-due/README.md) contains the Due reference files.
 
 Use the [AFE build guide](../../docs/afe-prototype.md) as the circuit specification. Place planned components by grid addresses, verify existing substrate connections first, and keep planned assembly separate from the photographed carrier. Pad, drill, trace width and via dimensions are provisional; the model is not manufacturing data.
 
