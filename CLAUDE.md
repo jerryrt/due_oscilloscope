@@ -35,8 +35,13 @@ an agent needs.
 
 **AFE CAD standard: KiCad 10.x on every team and bench**, with matching
 symbol/footprint libraries. Do not edit or validate the active AFE design
-using KiCad 9 or older. `hardware/afe-shield/README.md` documents the tool
-selection and checks; `docs/afe-plan.md` carries the PCB development gates.
+using KiCad 9 or older. `hardware/afe-proto/README.md` documents the tool
+selection and project structure; `docs/afe-plan.md` carries the development
+gates. The inaccurate `hardware/afe-shield/` project was removed. Use the
+corrected `hardware/mega-proto-carrier/` as the physical baseline and develop
+the AFE assembly under `hardware/afe-proto/`. Finish each stage in SPICE
+before assembling it; the new assembly CAD and simulation assets are still
+to be created. Preserve the carrier baseline and its existing copper.
 
 A 12-bit oscilloscope and signal generator on the Arduino Due
 (SAM3X8E, Cortex-M3). The board acquires and generates; the host does

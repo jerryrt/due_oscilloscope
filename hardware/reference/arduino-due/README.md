@@ -57,5 +57,6 @@ Publisher copyright, trademark and license terms remain applicable.
 The older archive already at
 [`docs/datasheets/arduino/arduino-Due-Reference-design.zip`](../../../docs/datasheets/arduino/arduino-Due-Reference-design.zip)
 contains `Arduino-DUE-V03` and is retained separately. Do not assume the
-two revisions are interchangeable. The AFE shield project remains in
-[`hardware/afe-shield`](../../afe-shield/).
+two revisions are interchangeable. The AFE assembly plan is in
+[`hardware/afe-proto`](../../afe-proto/README.md), based on the corrected
+[Mega proto carrier](../../mega-proto-carrier/README.md).

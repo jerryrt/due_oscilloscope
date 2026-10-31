@@ -7,10 +7,21 @@ the build come first; the reasoning that produced them is at the end.
 AFE. The Due and Mega Proto Shield Rev3 schematics it reads are under
 `docs/datasheets/arduino/`, as PDFs and as the EAGLE files they were
 drawn in, the OpenScope MZ sheets under `docs/datasheets/openscope-mz/`.
-The order it is built in, the tools, and what proves each phase are
-`docs/afe-plan.md`.
+The current physical baseline is the corrected
+[Mega proto carrier KiCad project](../hardware/mega-proto-carrier/README.md).
+Develop the AFE working assembly under
+[hardware/afe-proto](../hardware/afe-proto/README.md); the old inaccurate
+`hardware/afe-shield/` template has been removed. Complete each stage in
+SPICE before assembling it, as defined in [the plan](afe-plan.md).
 
 ## The build requirement
+
+The 3.0 V reference-based figures below describe the intended reference-driven
+configuration. The current prototype remains a **stock Due with JP101 open**,
+so its ADC/DAC scale follows actual ADVREF and its DAC window is roughly
+0.55–2.75 V. Record that distinction in simulations and measurements; these
+estimates do not instruct a Due modification. Stage A must resolve its
+numerical error, bandwidth and timing limits before passing the SPICE gate.
 
 Every figure is a design estimate from the parts and the
 converter, *(check)* until the sweep and a meter replace it. It is
@@ -52,7 +63,7 @@ the AFE's job is to stop making them worse, which the cleanliness
 line states as a number, and to turn codes into volts, which the
 reference line does.
 
-## The two boards, as their schematics show them
+## Publisher board references and the actual carrier
 
 **The Due's reference path** (`Arduino-DUE-V03.sch` in the EAGLE
 archive; the PDF draws the same net, top centre). The 3.3 V rail
@@ -75,7 +86,7 @@ through 0 Ω. *(check on the board with a meter before soldering: the
 net is read from the V03 files, and a board's revision is printed
 beside its USB connectors)*
 
-**The Mega Proto Shield Rev3** (`arduino-mega-proto-Shield-reference-design.pdf`,
+**The official Mega Proto Shield Rev3 reference** (`arduino-mega-proto-Shield-reference-design.pdf`,
 EAGLE files beside it). Every header pin is passed straight through
 to a parallel row of pads: digital on J3/J4 and J1/J5, the analog
 pins on ADCL J6 and ADCH J2, the communication row on COMM J8, power
@@ -99,6 +110,13 @@ ICSP header carrying 5 V, ground and reset. What that means for the AFE:
   the Due to reach for; one ground pad near the analog row is the
   shield's star point.
 
+The official shield's connector names and SOIC geometry above are reference
+information. For the board being built, use the corrected carrier's
+[pad map and trace audit](../hardware/mega-proto-carrier/README.md), Due
+signal names and continuity checks. Its PG1 grid IDs and TP1 land IDs are
+not the official EAGLE references or IC pin numbers. The proposed socketed
+PDIP part belongs in verified free through-holes, not the SMD land pattern.
+
 ## The build, stage by stage
 
 The Due's headers bring out every ADC pin, both DAC pins, 3.3 V, 5 V,
@@ -108,22 +126,18 @@ external signal; the stages below are in the order the measurement
 asks for them, and the first two are the ones with evidence behind
 them.
 
-### Stage A: the reference onto AREF, and the pin driver
+### Stage A: reference, midpoint and pin drivers
 
-- The LM4040-3.0 circuit as drawn, buffered, onto the Due's AREF pin,
-  **after JR1 is removed and BR1 bridged on the Due**: with the link
-  gone and the bridge made, the AREF pin reaches ADVREF through the
-  board's own ferrite and 100 nF pair. A 3.0 V full scale costs 9% of
-  the code range and buys a reference that is the scale itself, which
-  is what the calibration direction wants; the VREF1V5 buffer onto a
-  spare ADC pin is the second point the profile needs. The shield
-  reaches AREF through a solder jumper of its own, open by default, so
-  the same shield sits on a stock Due, where the buffer goes only to
-  the spare pin and the scale is measured rather than set. Which of
-  the two a bench runs is a decision `docs/afe-plan.md` carries, and it
-  is one per board: a modified Due has no reference without a shield
-  on it, and its DAC window moves to 0.50–2.50 V, so every loopback
-  figure taken before the change is on the other scale.
+- Default: the LM4040-3.0 circuit, its buffer and a buffered midpoint
+  measured through A2. The stock Due stays unchanged and JP101 stays open;
+  the shield reference does not set ADC/DAC full scale. Simulate reference
+  bias, startup and loads before assembling this configuration.
+- Optional future configuration: use the buffered reference to drive AREF
+  only after revision-specific Due checks, separate SPICE reference-load
+  validation and the documented JR1/BR1 changes. The V03 archive describes
+  removal of JR1 and bridging BR1 from 1 to C; do not assume the converted
+  V02g board or every physical Due is identical. A modified board's reference
+  and DAC range differ, so earlier stock-Due measurements are on another scale.
 - A unity buffer from the DAC0 wire into A0 through 68 Ω and 470 pF,
   the same on A1. On a 3.3 V single rail the LMV116's output reaches
   the rails but its input does not, so a rail-to-rail-input part is
@@ -133,16 +147,16 @@ them.
 - Unused ADC pins tied to ground through a resistor; the bare-pin
   finding in `CLAUDE.md` is a pickup path too.
 
-The current MCP6024 implementation is not yet qualified for A1. With
-the nominal manufacturer model at 3.3 V and 27 C, the loaded follower
+The historical MCP6024 candidate is not qualified for the new A1 gate. With
+the former nominal manufacturer model at 3.3 V and 27 C, the loaded follower
 is about -5.86 dB at 5 MHz before the series resistor, and A0 reaches
 its -3 dB corner near 3.39 MHz. A 2 V step takes about 1.218 us to
 settle to within one 3 V / 4096 code of its final plateau, longer than
-one conversion at 886 ksps. The 68 ohm / 470 pF network's nominal
+the 1.129 us sample interval at 886 ksps; acquisition may be shorter. The 68 ohm / 470 pF network's nominal
 4.98 MHz passive corner must not be quoted as the complete buffer
 bandwidth. The reference-load stress test also needs follow-up before
-JP1 closes. Reproduce and read the limitations in
-[`hardware/afe-shield/REVIEW.md`](../hardware/afe-shield/REVIEW.md).
+JP101 could close in any future alternate configuration. Reproduce and read the limitations in
+[`hardware/afe-proto/REVIEW.md`](../hardware/afe-proto/REVIEW.md).
 
 Judged by the sweep on the fourth board: if the within-hold rate does
 not move, the coupling is not at the pin or the reference, and the
@@ -290,46 +304,36 @@ on whichever rail Stage B settled.
 
 ## Building it: from this note to a wired shield
 
-In the order the measurement asks for, each step with the thing that
-proves it.
+The detailed sequence and evidence are in [the plan](afe-plan.md).
 
-1. **The rails are decided, single 3.3 V, and the AREF path is
-   known.** JR1 and BR1 are what stand between the AREF pin and
-   ADVREF, read from the V03 files; confirm both on the board with a
-   meter, and modify a board only for the drive-AREF choice.
-2. **Write the requirements as numbers.** Reference voltage and
-   tolerance, pin drive values, buffer bandwidth against the
-   converter's Nyquist, DAC stage span and filter corner, input ranges
-   if Stage B is in scope. Each line becomes a meter reading or a
-   sweep figure later.
-3. **Draw the schematic in KiCad, one sheet per stage**, on KiCad's
-   own `Arduino_Mega` template so the header pins are right and the
-   later PCB is a drop-in: the reference sheet, the pin-driver sheet,
-   the DAC stage, and the ranges only if in scope. Footprints a hand build can
-   place; the BOM exported from the schematic.
-4. **Simulate the arithmetic** in KiCad's ngspice with the vendor
-   op-amp models: a DC sweep of the summer and the DAC stage across
-   the source's span for centring and endpoints, an AC sweep for the
-   filter corners. An afternoon that removes the class of error that
-   costs a second build.
-5. **Build Stage A on the proto shield and measure it**: AREF at
-   3.000 V and the 1.5 V pin at half of it with a meter, then
-   `tools/gen_sweep.py` on the board with the most residual, read
-   within holds against its existing rows. Short wires, decoupling at
-   every op-amp's pins, one ground point to the Due's analog ground.
-6. **Stage C, then Stage B**, each measured through the loopback the
-   same way before it is trusted. A ± rail generator, if chosen, goes
-   in before Stage B and gets its own sweep, since a converter beside
-   the ADC is a coupling path of its own.
-7. **The PCB**, from the same schematic on the Mega template: a plane
-   under the analog section, the pin-driver parts within a centimetre
-   of the header, the reference away from the USB side. The sweep
-   compares the two builds directly.
+1. **Use the corrected carrier.** Inspect the actual pad map and existing
+   copper; create the working assembly under `hardware/afe-proto/` from
+   that baseline. Keep its geometry and carrier references intact.
+2. **Set configuration and numerical limits.** Default to 3.3 V single
+   supply, stock Due and JP101 open. Define voltage/error, bandwidth,
+   settling, acquisition, load and corner conditions for each test.
+3. **Draw Stage A and establish its models.** Add reference, midpoint and
+   pin-driver sheets with unique 100-series references, exact parts and
+   checked symbol/footprint/model mappings. Build simulation-only test
+   benches from the same circuit sheets.
+4. **Finish A1 in SPICE.** Run operating point, DC, AC, transient, startup,
+   load/acquisition and corner cases. Resolve required failures and retain
+   numerical pass/fail results at the exact circuit/model revision.
+5. **Lay out, assemble and measure A2.** Place the passed circuit on the
+   working carrier copy; document added wires and pad IDs. Complete
+   unpowered checks and controlled bring-up. Measure reference/midpoint,
+   drivers and loopback with stock-Due scaling; AREF is not driven.
+6. **Repeat for Stage C, then Stage B.** Each stage is simulated to its
+   limits before it is assembled and measured. Simulate and test each
+   chosen rail option; rerun the integrated circuit as stages are added.
+7. **Consider a custom PCB later.** Derive it from the validated circuit
+   and verified Due interface, with a separate manufacturing/layout review,
+   rerun simulations and a measured comparison against the prototype.
 
-The KiCad project, its simulations and the BOM belong under
-`hardware/afe-shield/`, the phases and their proofs under
-`docs/afe-plan.md`; a capture's note names the shield revision it was
-taken with.
+Keep the schematic, assembly plan, BOM and accepted simulation reports
+under `hardware/afe-proto/`. Captures name the exact assembly revision,
+Due identity and configuration. The baseline carrier and official Due
+reference remain separate from the working AFE assembly.
 
 ## What the shield cannot fix
 

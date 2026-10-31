@@ -1,6 +1,6 @@
 # P3.5: stripped-board trace audit
 
-Sources: front [IMG_2135](photo/IMG_2135.jpeg), control [2136](photo/IMG_2136.jpeg), corner [2137](photo/IMG_2137.jpeg), digital [2138](photo/IMG_2138.jpeg); mirrored back corner [2139](photo/IMG_2139.jpeg), control [2140](photo/IMG_2140.jpeg), digital [2141](photo/IMG_2141.jpeg). The four earlier photos remain evidence. Originals are unchanged; hashes are recorded in `model-evidence.json`.
+Sources: front [IMG_2135](photos/IMG_2135.jpeg), control [2136](photos/IMG_2136.jpeg), corner [2137](photos/IMG_2137.jpeg), digital [2138](photos/IMG_2138.jpeg); mirrored back corner [2139](photos/IMG_2139.jpeg), control [2140](photos/IMG_2140.jpeg), digital [2141](photos/IMG_2141.jpeg). The four earlier photos remain evidence. Originals are unchanged; hashes are recorded in `model-evidence.json`.
 
 ## Wiring revisions
 
