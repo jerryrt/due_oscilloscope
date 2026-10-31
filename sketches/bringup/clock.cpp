@@ -3,6 +3,9 @@
 
 #define XTAL_HZ 12000000u
 
+/* Bus matrix master numbers, datasheet Table 7-1. */
+#define MATRIX_MASTER_USBDMA 3u
+
 uint32_t clock_plla_hz(uint32_t mula)
 {
 	return XTAL_HZ * (mula + 1u);
@@ -44,6 +47,18 @@ bool clock_set_mck(uint32_t mula)
 		{ }
 
 	SystemCoreClock = plla / 2u;
+
+	/*
+	 * The USB DMA's undefined-length bursts default to "infinite" and
+	 * cannot be broken, so a bulk OUT stream landing in SRAM holds the
+	 * matrix long enough that the ADC's PDC reads ADC_LCDR after the
+	 * next conversion has overwritten it. Measured as ADC general
+	 * overruns whenever playback and capture run together: ~130 in 6 s
+	 * at a 200 ksps feed, thousands at the matched rate, and none with
+	 * the same DAC rate played from a device-side table. Any limited
+	 * burst clears it; 16 beats is the least restrictive.
+	 */
+	MATRIX->MATRIX_MCFG[MATRIX_MASTER_USBDMA] = MATRIX_MCFG_ULBT(4);
 
 	/*
 	 * Anything already derived from the old frequency has to be redone.
