@@ -71,7 +71,7 @@ exit** stands alone, against an interim or synthetic threshold. The
 
 | phase | goal | work on existing code | code exit that can fail |
 |---|---|---|---|
-| **A. Rates from the clock** | No tool or test holds a rate that was exact only at 78 MHz. Owns rate constants and the single MCK home | The scan and the hand cases in the two tables below. MCK has one home, `measure.py`: `eqtime.py` and `daemon/rates.py` read their own copy of the variable today, and the daemon already imports `measure`. Tools take MCK from the identity line or refuse when it differs | A board-free test shows each tool's rate arithmetic equals `measure.hz_for(rc)` with `DUE_MCK_HZ` at both clocks; a literal planted in a tool, a test and a dictionary key each fail the scan; the scan's file count is asserted |
+| **A. Rates from the clock** | No tool or test holds a rate that was exact only at 78 MHz. Built | `host/clock.py` is the one home of the clock, standard library only because the fake daemon runs without pyserial, and `measure`, `eqtime` and the daemon's rates import it. `tests/test_rates_from_clock.py` is the scan. `Board.require_clock` refuses a board whose identity reports another clock, and `run_loop`, `run_play`, `run_capture` and `run_bench` call it | The scan fails on a stale rate planted in a tool, a test, a host file and a dictionary key, and on a clock constant; a test imports the converted tools at 78 and at 90 MHz and checks each follows the clock; a refusal test fails when the comparison is dropped or the answer is not cached |
 | **B. Repeat tooling** | The rules above exist in `tools/phase0.py` and `host/repeat.py`. Owns the mechanics; phases C, D and E each add their own `METRICS` entry | Drop `run == 0` of each axis; make `--report` refuse mixed clocks; make the reflash axis wait a minute, a named constant declared with its reason and not a delay level, and discard a throwaway run; add a `--rc` override passed to the scope-free metrics so one metric is repeated per ladder rate. `METRICS` holds only the scope metrics and the noise ones today, and a metric such as `m_loop(board, args)` needs an adapter to the `fn(board, inst, args)` shape. `--track` accepts `a` and `b`; adding `c` looks like a one-token edit *(check)* | Board-free: a synthetic series with a planted first-run outlier loses it; rows of two clocks are refused; the reflash path waits; the `--rc` override reaches the metric |
 | **C. The ladder gets tone and crosstalk** | The matched loop is judged on signal quality at every rate. Owns the checks in `m_loop` and `_ladder_run`, including `m_loop`'s 1340 | `tests/test_rates.py` runs the ladders `TWO_CH` and `ONE_CH` and asserts rate, gaps and underruns inside `_ladder_run`, which asserts before it returns. `assert_tone` and `window_purity` in `tests/helpers.py` already take a result, so call them from `_ladder_run` with `tone = hz_for(rc) / 256`, and move the crosstalk assertion, which is inline in `test_integrity.py`, into `helpers.py` beside them; the A1 check runs on `TWO_CH` only, since A1 is not captured on one channel. `m_loop` moves to the matched `hz_for(rc)` rates and the same tone; it asks for `dac_sps=200000, adc_hz=400000` today. At RC 780 a 2 s run leaves 7 windows after the 1 s settle, so one bad window fails a 0.9 fraction: lengthen the run until that is not the case | On a deep copy of the result, scale `series[CH_A0]` by 0.9 and the amplitude checks fail and nothing outside that family does; scale only a few windows and the fraction check fails; add to `CH_A1` a tone of three times the crosstalk ceiling and the crosstalk check fails at any phase. **Instrument control:** pair A0 with the bare A2 (`=2C`) and run the crosstalk check against `CH_A2`; it must fail, because a bare A2 followed A0 at about 56% in the three-channel generator arm at 78 MHz (`hardware.md`) and the loop pair is unmeasured *(check)*. Restore with `=1C` in a `finally`; the pairing persists until reset. The check is shown able to see a real coupling path |
 | **D. DC transfer** | Gain and offset of the loop in one fit | `test_dc_transfer_tracks_the_code` is one test per code, runs only at 200 kHz, and gates each against `calibration.json`'s span through `cal.dac_span_mv()`, which never checks the board. Replace the per-code millivolt band with one fit in codes, at the DAC's 200 kHz with the ADC at 200 kHz and again at RC 86 (a DC level needs no matched DAC rate, so the DAC stays at 200 kHz and the load is lighter than the `TWO_CH` RC 86 row the ladder already runs). Two checks: a regression gate on this board's own slope and offset, and a loose physics bound against the nominal 2/3 whose width is the datasheet's gain error *(check)*. The `calibration.json` slope, 0.67053, is a reference from another board. No DNL | A code set with one level shifted by a stated number of codes leaves a residual above the fit's own noise and fails |
@@ -84,24 +84,24 @@ exit** stands alone, against an interim or synthetic threshold. The
 
 | item | rule |
 |---|---|
-| Where | A board-free test modelled on `tests/test_pacing.py`: `ast` parsing, a `(file, text)` allowlist with a reason each, a floor of files examined, and a planted case of every kind that must be found. `tests/test_doc_references.py` has the normaliser. The timing scan reads `host/`, `gui/` and `tests/` only; this one also reads `tools/` |
+| Where | `tests/test_rates_from_clock.py`, modelled on `tests/test_pacing.py`: `ast` parsing, a `(file, value)` allowlist with a reason each, a floor of files examined, and a planted case of every kind that must be found. The timing scan reads `host/`, `gui/` and `tests/` only; this one also reads `tools/` |
 | What it parses | Integer constants in code, found by parsing, so prose, docstrings and comments are not scanned. Underscores and floats are normalised |
 | Rule one | An integer n is flagged when n = 39e6 // rc for some integer rc >= 1 and n != 45e6 // rc for every rc. 453488 flags and 200000 does not |
 | Rule two | The clock constants 39_000_000 and 78_000_000 flag. A dictionary literal any of whose keys rule one flags is reported whole, so its other keys are reviewed with it |
-| Exclusions | (file, value) pairs, each with a reason: values that are not rates (a seed default, fixture counts) and tests that assert a 78 MHz identity line parses. Tools that analyse 78 MHz records take MCK from the record's provenance or refuse a board whose identity differs, and are excluded by file with that reason. The scan refuses to pass below a floor of files examined |
+| Exclusions | `EXCLUDED` in the scan, each a file and a value with its reason: counts and seeds that are not rates, synthetic signals whose rate is arbitrary, and the clocks that analysis tools and parser tests name on purpose. The scan fails when an exclusion matches nothing and refuses to pass below a floor of files examined |
 | Cannot see | Rates that are no divisor at either clock, and period lattices; listed by hand below |
 
 ### Phase A: the hand cases
 
-| case | owner | defect |
-|---|---|---|
-| `tools/settletime.py` | phase E | 202,000 is no rate at either clock; the defect is coprimality of the fold; `rc_dac=195` |
-| `tools/metrics.py` | phase A for constants, C for checks | `LADDER_RC`, `m_playback`'s 39 MHz divisor, `m_noise`'s 453,488 fallback |
-| `tools/dso_metrics.py` | phase A | rate-keyed presets and a 78 MHz DAC ceiling |
-| `tools/noisetool.py` | phase A | the preset table |
-| `tools/clock_calib.py` | phase A | `MCK_NOMINAL_HZ` |
-| `tests/test_loop_overruns.py` | phase A | its ADC rate is no longer the ceiling; take ADC and DAC rates from `hz_for` |
-| `tools/issue5_metric.py` | phase A | its period-21 lattice is tied to the RC 195 trigger; it refuses any other trigger until the 90 MHz period is derived |
+Rates a literal scan cannot see, and what became of each.
+
+| case | state |
+|---|---|
+| `tools/settletime.py` | Open, phase E: 202,000 is no rate at either clock and the defect is the fold's coprimality; `rc_dac=195` |
+| `tools/metrics.py`, `tools/noisetool.py`, `tools/dso_metrics.py`, `tools/clock_calib.py` and the issue-48, issue-24 and soak tools | Derived from `hz_for` and the host's clock |
+| `tests/test_loop_overruns.py` and four more tests | Derived from `hz_for`; the overrun guard runs at the real RC 86 ceiling |
+| `tools/issue5_metric.py` | Refuses rows recorded at another clock (`unfit_clocks`); its period-21 lattice is the RC 195 comb at MCK 78 and the 90 MHz period has not been derived. Rows with no recorded clock predate the field and are 78 MHz |
+| `tools/issue5_alias_sweep.py` | Its registered trigger set is in Hz at MCK 78 and is an exclusion; redefining it is the 90 MHz campaign, not planned |
 
 ## Phase H: what does not exist
 
