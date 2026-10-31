@@ -65,3 +65,34 @@ def test_moved_slope_fails_the_regression_gate():
 def test_moved_offset_fails_the_regression_gate():
     with pytest.raises(AssertionError, match="regression"):
         assert_dc_fit(line(offset=OFFSET + 30), **REF)
+
+
+def _recorded():
+    import json
+    import os
+    with open(os.path.join(os.path.dirname(__file__), "baseline.json"),
+              encoding="utf-8") as f:
+        c = json.load(f)["dc_transfer"]
+    return dict(slope_ref=c["slope_ref"], offset_ref=c["offset_ref"],
+                slope_tol=c["slope_tol"], offset_tol=c["offset_tol"],
+                physics_tol=c["physics_tol"], resid_max=c["resid_max_codes"])
+
+
+@pytest.mark.parametrize("level", range(len(CODES)))
+@pytest.mark.parametrize("sign", (1, -1))
+def test_the_recorded_gate_passes_one_level_3_2_codes_off(level, sign):
+    """A whole run can sit 3.2 codes off at any one level (measured, 4 of 60
+    level readings, mechanism not established), so the recorded gate must pass
+    it at every level and in both directions."""
+    rec = _recorded()
+    pts = line(rec["slope_ref"], rec["offset_ref"], (level, sign * 3.2))
+    assert_dc_fit(pts, **rec)
+
+
+@pytest.mark.parametrize("level", range(len(CODES)))
+@pytest.mark.parametrize("sign", (1, -1))
+def test_the_recorded_gate_fails_one_level_8_codes_off(level, sign):
+    rec = _recorded()
+    pts = line(rec["slope_ref"], rec["offset_ref"], (level, sign * 8.0))
+    with pytest.raises(AssertionError, match="DC transfer"):
+        assert_dc_fit(pts, **rec)
