@@ -263,7 +263,7 @@ def test_the_scan_sees_a_planted_run_length():
 # -- reads, quiet gaps, caps, timeouts, poll slices, deadlines ---------------
 
 READ_CALLS = {"drain_console": 0, "wait_any": 1}
-TIMING_KEYWORDS = ("secs", "quiet", "cap", "timeout", "wait")
+TIMING_KEYWORDS = ("secs", "quiet", "cap", "timeout", "wait", "drain_s")
 #: (file, text) -> why a timing number stays a number.
 TIMING_ALLOWED = {}
 
@@ -283,7 +283,10 @@ def bare_timings(sources=None, allowed=None, excluded=None):
         if rel in excluded or rel in RUN_FILES_EXCLUDED and rel.endswith("test_gui.py"):
             continue
         text = path.read_text(encoding="utf-8") if hasattr(path, "read_text") else path
-        for n in ast.walk(ast.parse(text)):
+        tree = ast.parse(text)
+        in_assert = {id(x) for a in ast.walk(tree) if isinstance(a, ast.Assert)
+                     for x in ast.walk(a.test)}
+        for n in ast.walk(tree):
             hits = []
             if isinstance(n, ast.Call):
                 name = getattr(n.func, "attr", getattr(n.func, "id", None))
@@ -299,6 +302,14 @@ def bare_timings(sources=None, allowed=None, excluded=None):
                         (a, d) for a, d in zip(n.kwonlyargs, n.kw_defaults) if d is not None]:
                     if a.arg in TIMING_KEYWORDS and _number(d):
                         hits.append((d, f"def {a.arg}={d.value}"))
+            if (isinstance(n, ast.Compare) and len(n.ops) == 1
+                    and isinstance(n.ops[0], (ast.Lt, ast.LtE))
+                    and isinstance(n.left, ast.BinOp) and isinstance(n.left.op, ast.Sub)
+                    and (ast.get_source_segment(text, n.left.left) or "").replace(" ", "")
+                    in ("time.time()", "time.monotonic()")
+                    and _number(n.comparators[0]) and id(n) not in in_assert):
+                hits.append((n.comparators[0],
+                             f"elapsed < {n.comparators[0].value}"))
             if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add) \
                     and _number(n.right):
                 left = ast.get_source_segment(text, n.left) or ""
@@ -320,7 +331,8 @@ def test_no_read_timeout_or_deadline_in_the_tree_is_a_bare_number():
 
 
 def test_the_scan_sees_each_kind_of_timing_number():
-    src = ("def f(x, timeout=5):\n"
+    src = ("def f(x, timeout=5, drain_s=0.3):\n"
+           "    while time.time() - t1 < 1.5:\n        pass\n"
            "    board.drain_console(0.3)\n"
            "    transport.wait_any([a], 0.1)\n"
            "    b.ask('x', secs=1.0, quiet=0.3, cap=2.0)\n"
@@ -328,7 +340,7 @@ def test_the_scan_sees_each_kind_of_timing_number():
            "    end = time.time() + 1.5\n")
     found = bare_timings(sources=[("host/planted.py", src)], allowed={}, excluded={})
     assert {w for _f, _n, w in found} == {
-        "def timeout=5", "drain_console(0.3)", "wait_any(0.1)", "secs=1.0",
+        "def timeout=5", "def drain_s=0.3", "elapsed < 1.5", "drain_console(0.3)", "wait_any(0.1)", "secs=1.0",
         "quiet=0.3", "cap=2.0", "wait=12", "deadline now + 1.5"}
 
 

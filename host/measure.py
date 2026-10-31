@@ -2735,7 +2735,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     # and that check has to know the difference.
     settle_bytes = 0
     _t = time.time()
-    while time.time() - _t < 0.2:
+    while time.time() - _t < pacing.TURN:
         if transport.wait_any([fd], pacing.POLL):
             settle_bytes += len(fd.read(262144))
     m.mark("start_settle")
