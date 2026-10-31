@@ -167,12 +167,12 @@
     "stall_tolerance_ms": 2.0
   },
   "dc_transfer": {
-    "_comment": "DC transfer fit in A0 codes against DAC code. Null until a board measures it; the board test fails on a null.",
-    "slope_ref": null,
-    "offset_ref": null,
-    "slope_tol": null,
-    "offset_tol": null,
-    "physics_tol": null,
-    "resid_max_codes": null
+    "_comment": "DC transfer fit in A0 codes against DAC code, Track B, 90 MHz, 2026-10-31. Five kept repeats per ADC rate (rc_for(200000)=225 and RC 86), repeat 0 of each dropped by index. slope_ref and offset_ref: mean of all ten kept. slope_tol and offset_tol: 5x the larger per-rate standard deviation (2.4e-5 and 0.073), above the between-rate difference (6e-5 and 0.16), rounded up. resid_max_codes: floor of 3 over 2x the worst kept residual (0.45). physics_tol is a provisional bound (check) pending phase G and the datasheet. Provisional until phase G re-derives all of it from more sessions.",
+    "slope_ref": 0.6703,
+    "offset_ref": 674.4,
+    "slope_tol": 0.00015,
+    "offset_tol": 0.4,
+    "physics_tol": 0.05,
+    "resid_max_codes": 3
   }
 }
