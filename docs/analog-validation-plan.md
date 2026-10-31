@@ -7,52 +7,54 @@ word baseline. This document does not repeat it. It says what the move
 to a 90 MHz master clock changes, which rows of that catalogue are
 re-taken on this bench, and which small pieces do not exist yet.
 
-The only analog instrument on this bench is the DAC-to-ADC loop - DAC0
+The only analog instrument on this bench is the DAC-to-ADC loop: DAC0
 to A0, DAC1 to A1, A2 bare, a shield stacked on the board, no
-oscilloscope. Every figure from an image at 78 MHz is an old reference:
+oscilloscope. Every figure from an image at 78 MHz is an old reference -
 another bench, another board, mostly unrecorded. It is read with a grain
-of salt and **never as the arm a 90 MHz figure is compared against**. A
-90 MHz figure is judged by its own repeatability and by the physics.
+of salt, printed beside a 90 MHz figure, and **never used as the arm it
+is compared against or as the gate it must pass**. A 90 MHz figure is
+judged by its own repeatability and by the physics.
 
 ## What the loop can and cannot judge
 
 | fact | consequence |
 |---|---|
 | The DAC's reference is the ADC's, so the loop is ratiometric | Codes are the unit. Volts and absolute rate need something from outside; `host/calibration.py` carries the one record, for the board it names |
-| The DAC reaches about 676-3422 codes (`docs/noise.md`, measured levels; nominal 683-3413) | Gain and linearity are judged over that span only |
-| A0 and A1 are one converter behind a multiplexer | The ADC's INL is common to both channels, so comparing them cannot separate it; what it separates is DAC0 from DAC1 |
+| The DAC is nominally 1/6 to 5/6 of the reference, so about 683-3413 codes (`docs/noise.md`, "the reference divides out") | Gain and linearity are judged over that span only |
+| A0 and A1 are one converter behind a multiplexer | The ADC's INL is common to both channels; comparing them separates DAC0 from DAC1, not the ADC |
 | The loop cannot separate the DAC's noise from the ADC's | A noise figure is the loop's, and is named so |
 | Per-code DNL needs a meter | Not attempted; see "What this bench cannot measure" in `measurement-suite.md` |
 | Tone and sample rate are different things | A table of N points at `fs_dac` gives `f = fs_dac * c / N`. Keep the DAC rate an integer multiple of the ADC rate so the staircase's images fold onto the tone *(derived, confirm on the bench)* |
+| A fixed-length window leaks unless it holds whole tone cycles | Choose tone and rate so the 8192-sample window holds a whole number of cycles at every rate, or the analysis, not the converter, moves with rate |
 | The ADC clock is MCK/4 at every trigger rate | A rate ladder varies the sample rate, not the converter clock |
-| The 789-938 ns rise is a scope reading at 78 MHz, never recorded | A loop figure is recorded beside it and does not replace it |
 
 ## Rules for every phase
 
 | rule | source |
 |---|---|
-| Break each new or changed check on purpose and watch it fail | `CLAUDE.md` |
-| Drop the first run of a repeated measurement, by index | `CLAUDE.md` |
-| A threshold comes from a 90 MHz measurement and is never widened to pass | `tests/baseline.json` header |
+| No tolerance is written before its repeatability is measured: N = 7 runs of the metric on this board, run 1 dropped by index, the spread is the tolerance floor | `measurement-suite.md`, `CLAUDE.md` |
+| Measure after about one minute powered | `measurement-suite.md` |
+| A gate that already passes at 90 MHz stays a gate; a new or changed one takes its value from the 90 MHz spread. A 78 MHz number is a printed reference, never a gate | owner |
 | One threshold per property. A rate that misses it is the finding, not a reason for a per-rate threshold | here |
+| Break each new or changed check on purpose, **on the thing it guards**, and watch it fail. Mutate the captured stream, not the stimulus: a feed-rate change fails the underrun check first | `CLAUDE.md` |
 | An unmeasured figure is marked *(check)* | `CLAUDE.md` |
-| Promote a figure through `--calibrate` and `baseline.measured.json`, once | `measurement-suite.md` |
-| Declare the conditions: board serial, commit, shield, wiring | `host/provenance.py` |
+| Promote a figure once, through `--calibrate` and `baseline.measured.json` | `measurement-suite.md` |
+| Declare the conditions: board serial, commit, wiring, shield. `bench.json` says only `DAC0->A0, DAC1->A1` and `host/provenance.py` has no shield field, so the plan states both in the record's note | `host/provenance.py` |
 | A null result says what the instrument could have detected | `CLAUDE.md` |
 
 ## Phases
 
 | phase | goal | existing work to improve | exit evidence that can fail |
 |---|---|---|---|
-| **0. Rates computed from the clock** | No tool or test fixes a rate that was exact only at 78 MHz | A tree scan is the authority, modelled on the one in `tests/test_calibration.py`, with prose and synthetic signals excluded. Three are known to matter: `tests/test_loop_overruns.py` (its ceiling rate is now RC 99, not the ceiling), `tools/settletime.py` (its 202 kHz request lands on RC 222 and folds one sixth of the phases) and `tools/dso_metrics.py` (rate-keyed presets and a 78 MHz DAC ceiling). Tools that compute rates take MCK from the identity line or refuse when it differs from `measure.MCK_HZ` | A board-free test shows each tool's rate arithmetic equals `measure.hz_for(rc)` with `DUE_MCK_HZ` set to both clocks; a hard-coded rate planted in a tool fails the scan |
-| **1. The existing ladder gets tone and crosstalk** | The matched loop is judged on signal quality at every rate, not on stream health only | `tests/test_rates.py` runs the RC ladders (two channels RC 780-86, one channel RC 390-44) and asserts rate, gaps and underruns. Add the tone and window-purity checks from `test_integrity.py` to its `_ladder_run`, and the A1-carries-no-tone check on two-channel rows. Keep Hz derived from RC. Count windows per run at the slow end and lengthen it until the window fraction means something | `run_loop(scale=0.9)` makes the amplitude check fail; a tone planted on A1 makes the crosstalk check fail |
-| **2. DC transfer** | Gain and offset of the loop in one fit | `test_dc_transfer_tracks_the_code` is one test per code; `test_dc_levels_are_monotonic` holds the order. Fit across the codes in one test and compare the slope with `loop_slope_adc_per_dac_code` in `calibration.json`. Report in codes; convert to mV only with a calibration record for the board in hand. No DNL | A bent transfer (a code set with one level shifted) fails the fit |
-| **3. Noise** | The loop's noise on a held code, in codes and noise-free bits | `phase0.py noise-fast` is the protocol, because it alone has a record and a repeatability figure (Track A and B only). Hold the code at mid-scale. When rates are compared, decimate or filter to a shared band first, as `docs/noise.md` shows the raw rms compares bandwidths | A planted noise term of known size is recovered; a held-code run with the ADC input open reads differently |
-| **4. Rise and settling** | A scope-free rise and settling figure with full phase coverage | `tools/settletime.py`: choose the ADC request from the timer clock so its RC is prime, and refuse to report when fold coverage is below 1.0. Its agreement window against the stored scope range is wide enough to hide a coarse fold, so coverage is the check that matters | RC 222 is refused; the agreement test cannot pass a fold that covers one sixth |
-| **5. Not in the tree** | The pieces nothing covers | See below | Each has a mutation |
-| **6. Other 90 MHz checks the loop can run** | The two items `hardware.md` lists as unmeasured | The wrap displacement runs through `docs/issue5-campaign.md`; runs past 150 s through the existing soak tools | Per those documents |
+| **0. Rates from the clock** | No tool or test holds a rate that was exact only at 78 MHz | A tree scan is the authority. It reads `tests/`, `host/`, `tools/` and `gui/`, matches integer literals that are 78 MHz rates or the timer clock and rate-keyed dictionary keys, excludes prose and synthetic signals by a list with a reason per entry, and refuses to pass when it examined fewer files than a floor. MCK has one home, `measure.py`; `eqtime.py` and `daemon/rates.py` read their own copy of the environment variable today and take it from there. Tools that compute rates take MCK from the identity line or refuse when it differs. Known cases with consequences: `tests/test_loop_overruns.py` (ceiling rate is RC 99 now; take ADC and DAC rates from `hz_for`), `tools/settletime.py` (its 202 kHz request folds one sixth of the phases), `tools/dso_metrics.py` (rate-keyed presets, a 78 MHz DAC ceiling), `tools/metrics.py` (`m_loop` holds 1340 and a 400k/200k pair, `m_noise` a 453,488 fallback, `m_playback` a 39 MHz divisor), `tools/noisetool.py` (preset table) | A board-free test shows each tool's rate arithmetic equals `measure.hz_for(rc)` with `DUE_MCK_HZ` at both clocks; a literal planted in a tool, in a test and in a dictionary key each fail the scan; the scan's file count is asserted |
+| **1. Repeatability first** | A measured spread for every key a later phase will assert | `tools/phase0.py` over `host/repeat.py`, N = 7 per key on this board (Tracks A and B): tone amplitude per window, window fraction, A1 crosstalk, loop gain, noise rms, rise | A recorded spread per key; a key whose spread exceeds its proposed gate is reported, not gated |
+| **2. The ladder gets tone and crosstalk** | The matched loop is judged on signal quality at every rate | `tests/test_rates.py` runs the RC ladders (two channels RC 780-86, one channel RC 390-44) and asserts rate, gaps and underruns. Add the tone and window-purity checks from `test_integrity.py` to `_ladder_run`, with whole cycles per window, and the A1 check on two-channel rows. Keep Hz derived from RC; count windows per run at the slow end and lengthen it until the window fraction means something. `tools/metrics.py` `m_loop` is brought to the same rates | Scale `res.stream.series[CH_A0]` by 0.9 and the amplitude check fails; add a synthetic tone of the ceiling's size to `CH_A1` and the crosstalk check fails; each mutation fails on its own check and on no other |
+| **3. DC transfer** | Gain and offset of the loop in one fit | `test_dc_transfer_tracks_the_code` is one test per code and `test_dc_levels_are_monotonic` holds the order. Fit across the codes in one test. The slope is judged against the nominal 2/3 and against its own spread; the value in `calibration.json` is a reference from another board and bench. Report in codes. No DNL | A code set with one level shifted fails the fit; a slope outside the Phase 1 spread fails |
+| **4. Noise** | The loop's noise on a held code | `phase0.py noise-fast` is the protocol, since it alone has a record (Tracks A and B). Hold the code at mid-scale. Compare rates only after decimating to a shared band, because raw rms across rates compares bandwidths (`docs/noise.md`). The 0.80 codes in `hardware.md` has no record: reproduce it with N = 7 or mark it *(check)*. `m_noise` and `noisetool.py` get the same rates | The figure is no lower than the ideal quantisation floor (`docs/noise.md`); a figure below it is a fault in the measurement. Repeat spread recorded |
+| **5. Rise and settling** | A scope-free rise figure, or a bound | `tools/settletime.py`: take the ADC request from the timer clock so its RC is prime, and refuse to report when fold coverage is below 1.0. The gate is coverage 1.0, `settletime.py control` reading FLAT, the period-scan margin and the repeat spread. The stored 789-938 ns scope range is printed as a reference and no longer decides whether the figure is used; `m_settling` records the same fields. The bench cannot time a tail to one code, so a bound is an acceptable result | RC 222 is refused; a deliberately coarse fold is refused; the figure passes with the reference range hidden |
+| **6. Not in the tree** | The pieces nothing covers | See below | Each has a mutation on the captured stream |
 
-## Phase 5: what does not exist
+## Phase 6: what does not exist
 
 Searched in `tests/`, `tools/` and `host/` for SINAD, THD, SFDR, INL and
 ENOB: only the building blocks in `host/noise.py` exist.
@@ -60,18 +62,27 @@ ENOB: only the building blocks in `host/noise.py` exist.
 | missing | built from | note |
 |---|---|---|
 | Coherent-sine SINAD, THD and ENOB | `host/noise.py` spectrum, Welch and line-split | The loop's SINAD includes the DAC's staircase and noise; the figure says so |
-| A board test that gates the noise figure | `tools/noise_metrics.py` | No board noise test exists; `baseline.json` has no noise key |
-| Amplitude against tone | `tools/gen_sweep.py` and `gen_sweep_analyse.py`, which already walk the frequency ladder at a fixed rate | The DAC's sine falls off before the ADC's Nyquist at the top rates, so the top of the band needs an external source |
-| ADC channel skew, A0 against A1 | the internal generator, where DAC1 lags DAC0 by one trigger period by construction | Vary the rate to separate that lag from the conversion spacing, about 0.96 us at 90 MHz *(derived, check)*. `dso_metrics skew` measures DAC0 against its own DAC1 sync, not ADC skew, and is not the reference. `run_loop` cannot drive DAC1: the host builders tag every sample DAC0 |
-| Crosstalk against tone, and the bare A2 pin | `test_the_other_channel_stays_flat`, `tools/bleed_cadence.py`, `tools/wiring_probe.py` | A bare pin follows A0 at about 56% of its amplitude, so quiet does not mean unwired |
+| A board test that gates the noise figure | `tools/noise_metrics.py`, Phase 1's spread | No board noise test exists; `baseline.json` has no noise key |
+| Amplitude against tone | `run_loop(tone=...)` at varying `dac_sps`, `window_amplitudes`, whole cycles per window | The table's ideal fundamental and the hold are divided out. `tools/gen_sweep.py` runs one trigger rate and says only what changes inside a hold, so it is not the base. The DAC's own roll-off needs a DAC rate above the ADC's; its size is *(check)* and has no 90 MHz source |
+| ADC channel skew, A0 against A1 | the internal generator on Track B, run in both layouts (`=0N`, `=1N`) | DAC1 lags DAC0 by about one trigger period, and the scope read -0.967 of one, not -1.000, so a fixed DAC-side offset exists that the loop alone cannot tell from the conversion spacing. Reversing the layout reverses the sign of the DAC lag while the ADC order stays fixed, which separates the two *(check)*. A1 is AD6 and converts before A0, which is AD7. About 0.96 us at 90 MHz is derived, not measured. `dso_metrics skew` measures DAC0 against its own DAC1 sync and is not the reference |
+| Crosstalk against tone, and the bare A2 pin | `test_the_other_channel_stays_flat`, `tools/bleed_cadence.py`, `tools/wiring_probe.py` | A bare pin follows A0 at about 56% of its amplitude, so quiet does not mean unwired. `run_loop` can drive DAC1 through `build_ramp_tagged` |
 
-`tools/wiring_probe.py` and `tools/gen_sweep.py` run on Track B only, so
-the rows that rest on them are Track B rows and say so. The suite's
-default is Tracks A and B; Track C is run as an extra gate.
+`tools/wiring_probe.py`, `tools/gen_sweep.py` and the layout swap run on
+Track B only, so the rows that rest on them are Track B rows and say so.
+The suite's default is Tracks A and B; Track C is run as an extra gate.
+
+## Not planned here
+
+| item | why it is not a phase |
+|---|---|
+| The wrap displacement at 90 MHz | The campaign metric is pinned to a period-21 lattice measured against the RC 195 trigger. At RC 225 the comb period follows RC and would fall off the lattice and read small. The period has to be derived, and the metric shown to fire with the refresh bit restored, before any campaign runs *(check)* |
+| Runs past 150 s | The soak tools in `tools/` are close-wedge soaks, not long-capture integrity runs. The 150 s capture in `hardware.md` has no record behind it *(check)* |
+| Per-code DNL, absolute volts, the DAC's own INL | Need a meter or the bench scope; see `measurement-suite.md` |
+| Crosstalk and settling beyond Phases 2 and 5 | Listed as unmeasured in `hardware.md`; Phase 2 and Phase 5 are the part this bench can take |
 
 ## Open decisions
 
 | decision | default until answered |
 |---|---|
-| Are the Phase 5 tests suite tests or `tools/metrics.py` entries? | Suite tests, so a bench without a scope still runs them |
-| Which rates carry the Phase 1 tone checks? | The whole existing ladder, at one threshold |
+| Who gates and who reports? | Board tests gate; `tools/metrics.py` reports. Both run without a scope |
+| Which rates carry the Phase 2 tone checks? | The whole existing ladder, at one threshold |

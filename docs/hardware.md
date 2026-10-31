@@ -193,12 +193,12 @@ wait states is rated for 90 MHz only at VDDCORE 1.8 V). It ran at 78 MHz,
 in spec, until the loop-mode overruns were traced to the USB DMA burst
 length and not to the clock (`docs/status.md`). Measured at 90 MHz:
 
-| Quantity | MCK 78 | **MCK 90** |
+| Quantity | MCK 78 (old reference) | **MCK 90** |
 |---|---|---|
 | One channel, floor | RC 44, 886,363 sps | RC 44, 1,022,727 sps (RC 43 refused) |
 | Two channels, floor | RC 86, 453,488 per channel | RC 86, 523,255 per channel (RC 85 refused) |
-| One channel, 1 Msps | - | RC 45, 150 s, 0 gaps, 0 CRC errors |
-| DC noise | 0.87 codes, 10.40 bits | 0.80 codes, 10.53 bits |
+| One channel, 1 Msps | - | RC 45, 150 s, 0 gaps, 0 CRC errors *(session log only, no record; check)* |
+| DC noise | 0.87 codes, 10.40 bits | 0.80 codes, 10.53 bits *(one session, no record; check)* |
 
 The floors sit at the same RC because the TC and the ADC both scale
 with MCK. **Not yet measured at 90 MHz:** crosstalk and settling,
