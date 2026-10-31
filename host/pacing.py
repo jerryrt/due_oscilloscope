@@ -67,6 +67,14 @@ LIMITS = {"QUICK": 5.0, "NORMAL": 30.0, "SLOW": 120.0, "BUILD": 300.0,
 RUNS = {"PROBE": 1.5, "SHORT": 2.0, "STANDARD": 3.0, "LONG": 6.0,
         "SOAK": 30.0}
 
+#: How long the console has to be quiet, after it has said something, to
+#: have finished. It is outside the ladders because it is a measured gap and
+#: not a choice of how long to wait: the longest console reply seen ended
+#: 0.027 s after the board started it on every track (90 reports), and this
+#: is about four times that. `--pacing-report` and DUE_PACING_VERIFY=1 keep
+#: checking it by counting any byte that arrives after it.
+SILENCE = 0.1
+
 #: Upper bound on a sleep whose length is derived from a byte rate. It is
 #: a tuned value of the feeder, not a wait for anything, so no scale
 #: applies to it.

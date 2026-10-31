@@ -32,6 +32,7 @@ VALUES = {}
 for _table in (pacing.DELAYS, pacing.READS, pacing.LIMITS, pacing.RUNS):
     VALUES.update(_table)
 VALUES["FEED_PACE_CAP"] = pacing.FEED_PACE_CAP
+VALUES["SILENCE"] = pacing.SILENCE
 
 
 class _Resolve(ast.NodeTransformer):

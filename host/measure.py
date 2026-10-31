@@ -1668,6 +1668,17 @@ class Board:
         self._console += out
         return out.decode("utf-8", "replace")
 
+    def read_console(self, window):
+        """What the console says after a command, ending when it is done.
+
+        `drain_console(window)` always costs the whole window. This returns
+        once the console has spoken and then been quiet for pacing.SILENCE,
+        and costs the whole window only when the board says nothing.
+        """
+        out = read_report(None, self.cfd, window=window)
+        self._console += out
+        return out.decode("utf-8", "replace")
+
     def ask(self, text, secs=pacing.LISTEN, quiet=None):
         """Send a command and return what the console said back."""
         self.poll_console()
@@ -1926,13 +1937,13 @@ class Board:
         self.close()
 
 
-def read_report(fd, cfd, *, quiet=pacing.GLANCE, window=pacing.REPORT):
+def read_report(fd, cfd, *, quiet=pacing.SILENCE, window=pacing.REPORT):
     """Read the console report that follows a command, and stop when it ends.
 
-    The native port is read too, so a stream still draining cannot back up
-    into a close(). The report is over once the console has said something
-    and then been quiet for `quiet`; if it never says anything, the whole
-    `window` passes, as it always did.
+    The native port is read too when there is one, so a stream still
+    draining cannot back up into a close(). The report is over once the
+    console has said something and then been quiet for `quiet`; if it never
+    says anything, the whole `window` passes, as it always did.
 
     `B` prints one short line at 115200 baud, so it is complete a few tens
     of milliseconds after the board starts it. Waiting a fixed second and a
@@ -1947,7 +1958,8 @@ def read_report(fd, cfd, *, quiet=pacing.GLANCE, window=pacing.REPORT):
     first = last = None
     stopped = False
     while time.time() < end:
-        for f in transport.wait_any([fd, cfd], pacing.POLL):
+        for f in transport.wait_any([p for p in (fd, cfd) if p is not None],
+                                    pacing.POLL):
             try:
                 d = f.read(65536)
             except OSError:
@@ -2911,7 +2923,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     board.cmd(f"={dac_sps}P")
     pacing.pause(pacing.TURN)
     m.mark("start_cmd")
-    console = board.drain_console(pacing.GLANCE)
+    console = board.read_console(pacing.GLANCE)
     m.mark("start_console")
 
     # In play-only the IN endpoint carries only playback status
@@ -3000,7 +3012,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     play = play_counters(board)
     occ = occupancy(board)
     m.mark("counters")
-    report = board.drain_console(pacing.GLANCE)
+    report = board.read_console(pacing.GLANCE)
     m.mark("report_console")
     board.close_native(fd)
     m.mark("close_native")
