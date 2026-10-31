@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Measured on THIS board. The clock and rate figures are the 90 MHz default; the amplitude, crosstalk and silent-level values date from 2026-08-22, at 78 MHz, and are old references until they are re-derived. A record of one board, not a",
+    "Measured on THIS board. The clock and rate figures are the 90 MHz default; the amplitude, crosstalk and silent-level values date from 2026-08-22, at 78 MHz, on another board, and are old references until they are re-derived. A record of one board, not a",
     "datasheet: re-measure rather than re-derive if any of it is in doubt.",
     "Tolerances come from the observed run-to-run spread. A tolerance",
     "tighter than the spread is a flaky test; one much looser is not a test.",
