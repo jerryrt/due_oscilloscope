@@ -4,7 +4,7 @@
 the console when the control link was unavailable, and say so only in
 `.via`. The substitution is gone: they raise instead.
 
-The argument is the one `SerialDevice.load()` has always made one method
+The argument is the one `Control.load()` has always made one method
 over - a counter read that blocks the main loop for 13-20 ms while the
 sample path runs is measuring its own instrument as well as the device,
 so it is a different experiment rather than a slower one. Handing it

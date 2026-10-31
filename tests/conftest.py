@@ -62,11 +62,11 @@ def pytest_addoption(parser):
     g = parser.getgroup("due")
     g.addoption("--track", action="store", default="both",
                 choices=("a", "b", "c", "both"),
-                help="which firmware to test; default both. `c` is the "
-                     "FreeRTOS build (issue #45) and is NOT in `both`: "
-                     "it is opt-in until it passes, so a track still "
-                     "growing its command surface cannot turn every "
-                     "bench's suite red")
+                help="which firmware to test; default both (A and B). `c` "
+                     "is the FreeRTOS build and is not in `both`, only "
+                     "because a third flash and a third run cost more "
+                     "than they add: it links Track B's drivers, so its "
+                     "totals are not an oracle result")
     g.addoption("--reflash", action="store_true",
                 help="flash even when the board already runs the right track")
     g.addoption("--no-flash", action="store_true",
@@ -94,9 +94,9 @@ def pytest_addoption(parser):
     g.addoption("--mixed-instruments-ok", action="store_true",
                 help="do not fail a session that read counters over both "
                      "the control channel and the console (issue #51). "
-                     "For deliberately exercising the fallback; a session "
-                     "that hits it by accident holds two populations of "
-                     "measurements and should say so")
+                     "For deliberately exercising a reintroduced console "
+                     "fallback; a session that hits it by accident holds "
+                     "two populations of measurements and should say so")
 
 
 def pytest_configure(config):
