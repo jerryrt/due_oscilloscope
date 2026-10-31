@@ -67,6 +67,16 @@ LABEL_KEYS = ("codes", "code", "timebase_s", "rc", "rate_hz", "hz",
 TOLERANCE_FACTOR = 2.0
 
 
+#: Fewest kept runs a gate may be proposed from.
+#:
+#: Kept means after run 0 is dropped by index and failed runs are
+#: removed. Seven bound the observed spread and nothing about the tail,
+#: which is the reason `TOLERANCE_FACTOR` exists; fewer bound less
+#: still, and a tolerance printed from three points reads the same as
+#: one printed from thirty.
+MIN_KEPT = 7
+
+
 def _label(row):
     """The name of a row in a metric's result list, and the key it came
     from, or (None, None).
@@ -310,6 +320,27 @@ def summarise_all(records, floors=None, first=False):
             block["keys"][k] = {**st,
                                 **entry(st, ax, floors.get(k, 0.0))}
         out[ax or "unspecified"] = block
+    return out
+
+
+def thin_keys(summary):
+    """[(axis, key, n)] for every key with fewer than MIN_KEPT kept runs."""
+    return [(ax, k, s.get("n", 0))
+            for ax, block in summary.items()
+            for k, s in block["keys"].items()
+            if s.get("n", 0) < MIN_KEPT]
+
+
+def over_gate(summary, gates):
+    """[(axis, key, spread, gate)] for every key whose observed spread is
+    larger than the gate it is compared with. Reports, gates nothing."""
+    out = []
+    for ax, block in summary.items():
+        for k, s in block["keys"].items():
+            g = gates.get(k)
+            if g is not None and s.get("spread") is not None \
+                    and s["spread"] > g:
+                out.append((ax, k, s["spread"], g))
     return out
 
 

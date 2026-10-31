@@ -302,7 +302,7 @@ def take(args):
     return path
 
 
-def report(path, metric, first=False):
+def report(path, metric, first=False, gates=None):
     """What the runs say, and the question Phase 0 was built to answer.
 
     Printed and written beside the record. The comparison table is the
@@ -320,6 +320,13 @@ def report(path, metric, first=False):
         raise SystemExit(f"refusing to report {path}: {e}")
     summary = repeat.summarise_all(records, floors_for(metric, records),
                                    first=first)
+    thin = repeat.thin_keys(summary)
+    if thin:
+        ax, k, n = thin[0]
+        raise SystemExit(
+            f"refusing to report {path}: {k} [{ax}] has {n} kept runs, "
+            f"fewer than the {repeat.MIN_KEPT} a gate may be proposed "
+            f"from ({len(thin)} key(s) short). Take more runs.")
 
     for axis, block in summary.items():
         print(f"\n=== {metric} [{axis}] - {block['runs']} runs, "
@@ -328,15 +335,20 @@ def report(path, metric, first=False):
         for e in block["errors"]:
             print(f"  ! {e}")
         print(f"{'key':<34s} {'n':>2s} {'median':>12s} {'spread':>12s} "
-              f"{'rel':>8s} {'tolerance':>12s}")
-        print("-" * 84)
+              f"{'rel':>8s} {'proposed gate':>14s}")
+        print("-" * 86)
         for k, s in block["keys"].items():
             rel = "-" if s.get("spread_rel") is None \
                 else f"{s['spread_rel']*100:7.2f}%"
             tol = "-" if s.get("tolerance") is None \
-                else f"{s['tolerance']:12.6g}"
+                else f"{s['tolerance']:14.6g}"
             print(f"{k:<34s} {s['n']:2d} {s.get('median', 0):12.6g} "
-                  f"{s.get('spread', 0):12.6g} {rel:>8s} {tol:>12s}")
+                  f"{s.get('spread', 0):12.6g} {rel:>8s} {tol:>14s}")
+
+    if gates:
+        for ax, k, spread, g in repeat.over_gate(summary, gates):
+            print(f"!! spread exceeds gate: {k} [{ax}] observed spread "
+                  f"{spread:.6g} > gate {g:.6g}")
 
     rows = repeat.compare_axes(summary, "in-place", "reflash")
     if rows:
@@ -389,6 +401,10 @@ def main():
                     help="record path (default records/phase0-<metric>.jsonl)")
     ap.add_argument("--report", action="store_true",
                     help="summarise an existing record; no bench needed")
+    ap.add_argument("--gates", default=None, metavar="FILE.json",
+                    help="with --report: a flat {key: current_gate} map; "
+                         "a key whose observed spread exceeds its gate "
+                         "is reported, nothing is gated")
     ap.add_argument("--channel", type=int, default=1)
     ap.add_argument("--trigger", type=int, default=200_000,
                     choices=sorted(dm.TRIGGER_PRESETS))
@@ -413,7 +429,11 @@ def main():
     path = args.out or os.path.join(RECORDS, f"phase0-{args.metric}.jsonl")
     if not args.report:
         path = take(args)
-    report(path, args.metric, first=args.keep_first)
+    gates = None
+    if args.gates:
+        with open(args.gates, encoding="utf-8") as f:
+            gates = json.load(f)
+    report(path, args.metric, first=args.keep_first, gates=gates)
 
 
 if __name__ == "__main__":

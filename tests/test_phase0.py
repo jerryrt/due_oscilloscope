@@ -94,10 +94,66 @@ def test_a_report_on_a_mixed_record_is_refused(tmp_path):
     assert "refusing to report" in str(e.value)
 
 
+def _record(tmp_path, n_runs, clock=90_000_000, vals=None):
+    path = str(tmp_path / "g.jsonl")
+    rec = repeat.Recorder(path)
+    for i in range(n_runs):
+        v = 1.0 + 0.1 * (i % 3) if vals is None else vals[i]
+        rec.add({"run": i, "axis": "in-place", "metric": "noise-fast",
+                 "values": {"x": v}, "provenance": {"mck_hz": clock}})
+    return path
+
+
+def test_six_kept_runs_are_refused_and_print_no_tolerance(tmp_path, capsys):
+    path = _record(tmp_path, 7)  # run 0 dropped by index leaves six
+    with pytest.raises(SystemExit) as e:
+        phase0.report(path, "noise-fast")
+    msg = str(e.value)
+    assert "x" in msg and "6 kept" in msg and str(repeat.MIN_KEPT) in msg
+    assert "proposed gate" not in capsys.readouterr().out
+
+
+def test_seven_kept_runs_print_a_proposed_gate(tmp_path, capsys):
+    phase0.report(_record(tmp_path, 8), "noise-fast")
+    assert "proposed gate" in capsys.readouterr().out
+
+
+def test_a_mixed_clock_record_with_enough_runs_is_still_refused(tmp_path):
+    path = _record(tmp_path, 9)
+    repeat.Recorder(path).add({"run": 9, "axis": "in-place", "values": {"x": 1.0},
+                               "provenance": {"mck_hz": 78_000_000}})
+    with pytest.raises(SystemExit) as e:
+        phase0.report(path, "noise-fast")
+    assert "more than one master clock" in str(e.value)
+
+
+def test_a_spread_above_a_supplied_gate_is_reported_and_one_below_is_not(tmp_path, capsys):
+    path = _record(tmp_path, 8)  # kept spread is 0.2
+    assert phase0.report(path, "noise-fast", gates={"x": 0.1}) is None
+    out = capsys.readouterr().out
+    assert "!! spread exceeds gate" in out and "0.2" in out and "0.1" in out
+    phase0.report(path, "noise-fast", gates={"x": 0.5})
+    assert "!! spread exceeds gate" not in capsys.readouterr().out
+    phase0.report(path, "noise-fast")
+    assert "!! spread exceeds gate" not in capsys.readouterr().out
+
+
+def test_the_cli_reads_a_gates_file_and_hands_it_to_report(monkeypatch, tmp_path):
+    g = tmp_path / "g.json"
+    g.write_text('{"x": 0.1}', encoding="utf-8")
+    seen = {}
+    monkeypatch.setattr(phase0, "report",
+                        lambda path, metric, first=False, gates=None: seen.update(gates=gates))
+    monkeypatch.setattr(sys, "argv", ["phase0", "noise-fast", "--report",
+                                      "--gates", str(g)])
+    phase0.main()
+    assert seen["gates"] == {"x": 0.1}
+
+
 def test_the_cli_takes_track_c_a_ladder_rc_and_keeps_run_zero_only_when_asked(monkeypatch):
     seen = {}
     monkeypatch.setattr(phase0, "take", lambda a: seen.setdefault("args", a) and "/dev/null")
-    monkeypatch.setattr(phase0, "report", lambda path, metric, first=False: seen.update(first=first))
+    monkeypatch.setattr(phase0, "report", lambda path, metric, first=False, gates=None: seen.update(first=first))
     monkeypatch.setattr(sys, "argv", ["phase0", "noise-fast", "--track", "c", "--rc", "86"])
     phase0.main()
     a = seen["args"]
