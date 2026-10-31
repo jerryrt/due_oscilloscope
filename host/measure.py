@@ -1984,7 +1984,7 @@ def read_report(fd, cfd, *, quiet=pacing.SILENCE, window=pacing.REPORT):
 
 
 def drain_until_quiet(fd, quiet=pacing.LISTEN, cap=pacing.NORMAL,
-                      confirm=pacing.LISTEN):
+                      confirm=pacing.LISTEN, name="stale"):
     """Discard everything the native port has to say until it has been
     silent for `quiet` seconds.
 
@@ -2002,7 +2002,8 @@ def drain_until_quiet(fd, quiet=pacing.LISTEN, cap=pacing.NORMAL,
     stale = 0
     late = 0
     longest = 0.0
-    last = time.time()
+    last = t_start = time.time()
+    last_data = None
     end = last + cap
     cut = False
     while time.time() < end:
@@ -2023,12 +2024,13 @@ def drain_until_quiet(fd, quiet=pacing.LISTEN, cap=pacing.NORMAL,
                 if cut:
                     late += n
                 stale += n
-                last = time.time()
+                last = last_data = time.time()
     if stale:
-        pacing.observe("stale.longest_gap_s", longest)
-    pacing.observe("stale.bytes", stale)
+        pacing.observe(f"{name}.longest_gap_s", longest)
+        pacing.observe(f"{name}.last_data_s", last_data - t_start)
+    pacing.observe(f"{name}.bytes", stale)
     if pacing.VERIFY:
-        pacing.observe("stale.late_bytes", late)
+        pacing.observe(f"{name}.late_bytes", late)
     return stale
 
 
@@ -2701,7 +2703,8 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     m.mark("build_wave")
     fd = board.open_native(blocking_writes=True, notify=notify)
     m.mark("open_native")
-    stale = drain_until_quiet(fd, quiet=pacing.GLANCE) if drain else 0
+    stale = (drain_until_quiet(fd, quiet=pacing.SILENCE, name="loop_start")
+             if drain else 0)
     m.mark("drain_stale")
     if stale and notify:
         notify("stale", bytes=stale)
@@ -2917,7 +2920,7 @@ def run_play(board, *, dac_sps, tone=1000.0, seconds=3.0, dc=None,
     m = pacing.Marks("run_play")
     fd = board.open_native(blocking_writes=True)
     m.mark("open_native")
-    drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.TAIL)
+    drain_until_quiet(fd, quiet=pacing.SILENCE, cap=pacing.TAIL, name="play_start")
     m.mark("drain_stale")
     board.poll_console()
     board.cmd(f"={dac_sps}P")
@@ -3077,12 +3080,14 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
     drained, the kernel buffer overflowed and bytes were lost. The
     symptom looked exactly like a firmware framing bug.
     """
+    m = pacing.Marks("run_capture")
     if uart:
         # Single-port mode: frames arrive on the control port itself, as
         # Track B does when streaming over the UART. The command and the
         # binary share the one port, so nothing may print to it.
         fd = board.cfd
         pacing.pause(pacing.TURN)
+        m.mark("open_uart")
     else:
         board.poll_console()
         fd = board.open_native(notify=notify)
@@ -3090,7 +3095,10 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
             fd.flush_input()
         except OSError:
             pass
-        drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.QUICK)
+        m.mark("open_native")
+        drain_until_quiet(fd, quiet=pacing.SILENCE, cap=pacing.QUICK,
+                          name="capture_start")
+        m.mark("drain_stale")
 
     note = rt.promote(period_ms=5.0, computation_ms=0.5, constraint_ms=2.5)
     if notify:
@@ -3099,6 +3107,7 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
     if preset:
         board.cmd(preset)
 
+    m.mark("start")
     chunks = []
     console = b""
     t0 = time.time()
@@ -3122,14 +3131,19 @@ def run_capture(board, *, preset="5", seconds=5.0, expect_hz=None,
                     chunks.append(chunk)
     finally:
         elapsed = time.time() - t0
+        m.mark("window")
         if stop:
             board.cmd(stop)
-            drain_until_quiet(fd, quiet=pacing.GLANCE, cap=pacing.LISTEN)
+            drain_until_quiet(fd, quiet=pacing.SILENCE, cap=pacing.LISTEN,
+                              name="capture_stop")
+            m.mark("stop_drain")
         if not uart:
             board.close_native(fd)
+            m.mark("close_native")
 
     buf = b"".join(chunks)
     ps = _finish(parse_frames(buf, settle_cap=settle_cap))
+    m.mark("parse")
     return CaptureResult(stream=ps, elapsed_s=elapsed, host_rx_bytes=len(buf),
                          console=console.decode("utf-8", "replace"),
                          expect_hz=expect_hz, rt_note=note)
