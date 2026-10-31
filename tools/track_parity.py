@@ -222,6 +222,11 @@ def needed(left="B", right="C"):
 
 
 def main(argv):
+    if any(a in ("-h", "--help") for a in argv):
+        print("usage: track_parity.py [LEFT [RIGHT]]   (tracks A, B or C; "
+              "default B C)\n")
+        print(__doc__)
+        return 0
     left, right = (argv + ["B", "C"])[:2]
     print("console table and main() init: track %s against track %s\n"
           % (left, right))
