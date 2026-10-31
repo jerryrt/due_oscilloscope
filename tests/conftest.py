@@ -136,6 +136,13 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
       % (total, sum(v[0] for v in _SLEEP_SITES.values()), len(_SLEEP_SITES)))
     for name, (n, sec) in sorted(pacing.report().items(), key=lambda kv: -kv[1][1]):
         w("  %-7s %7d calls %8.1f s requested" % (name, n, sec))
+    for name, (n, mean, peak) in sorted(pacing.observations().items()):
+        w("  observed %-22s n=%d mean %.3f max %.3f" % (name, n, mean, peak))
+    stages = pacing.phases()
+    if stages:
+        w("  stages (pacing.Marks): runs, total s, s per run")
+        for name, (n, sec) in sorted(stages.items(), key=lambda kv: -kv[1][1]):
+            w("    %-26s %5d %8.1f %7.2f" % (name, n, sec, sec / n))
     for site, (n, sec) in sorted(_SLEEP_SITES.items(), key=lambda kv: -kv[1][1])[:15]:
         w("  %8.1f s %7d x %s" % (sec, n, site))
 

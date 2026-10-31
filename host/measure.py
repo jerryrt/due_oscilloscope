@@ -1926,6 +1926,51 @@ class Board:
         self.close()
 
 
+def read_report(fd, cfd, *, quiet=pacing.GLANCE, window=pacing.REPORT):
+    """Read the console report that follows a command, and stop when it ends.
+
+    The native port is read too, so a stream still draining cannot back up
+    into a close(). The report is over once the console has said something
+    and then been quiet for `quiet`; if it never says anything, the whole
+    `window` passes, as it always did.
+
+    `B` prints one short line at 115200 baud, so it is complete a few tens
+    of milliseconds after the board starts it. Waiting a fixed second and a
+    half was thirty times the data. With DUE_PACING_VERIFY=1 the read keeps
+    going to the old length and returns everything, counting the bytes an
+    early end would have cut off, which must stay zero.
+    """
+    report = b""
+    late = 0
+    t0 = time.time()
+    end = t0 + window
+    first = last = None
+    stopped = False
+    while time.time() < end:
+        for f in transport.wait_any([fd, cfd], pacing.POLL):
+            try:
+                d = f.read(65536)
+            except OSError:
+                continue
+            if f == cfd and d:
+                if stopped:
+                    late += len(d)
+                report += d
+                last = time.time()
+                if first is None:
+                    first = last
+        if not stopped and last is not None and time.time() - last >= quiet:
+            stopped = True
+            if not pacing.VERIFY:
+                break
+    if last is not None:
+        pacing.observe("report.first_byte_s", first - t0)
+        pacing.observe("report.last_byte_s", last - t0)
+    if pacing.VERIFY:
+        pacing.observe("report.late_bytes", late)
+    return report
+
+
 def drain_until_quiet(fd, quiet=pacing.LISTEN, cap=pacing.NORMAL):
     """Discard everything the native port has to say until it has been
     silent for `quiet` seconds.
@@ -2609,6 +2654,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     back is a fault in the path rather than an unknown property of a
     signal.
     """
+    m = pacing.Marks("run_loop")
     if wave is None:
         wave, tone_hz = build_selected(dac_sps, tone=tone, dc=dc,
                                        ramp=ramp, square=square)
@@ -2617,8 +2663,11 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
         # only user so far is the TAG-interleave arm, which has none.
         tone_hz = 0.0
 
+    m.mark("build_wave")
     fd = board.open_native(blocking_writes=True, notify=notify)
+    m.mark("open_native")
     stale = drain_until_quiet(fd) if drain else 0
+    m.mark("drain_stale")
     if stale and notify:
         notify("stale", bytes=stale)
 
@@ -2651,6 +2700,7 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     while time.time() - _t < 0.2:
         if transport.wait_any([fd], pacing.POLL):
             settle_bytes += len(fd.read(262144))
+    m.mark("start_settle")
     feeder = Feeder(fd, wave, dac_sps * 2, scale=scale,
                     write_size=write_size)
     feeder.start()
@@ -2697,8 +2747,10 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
             scanpos = 0
             next_trim = time.time() + TRIM_PERIOD_S
     elapsed = time.time() - t0
+    m.mark("window")
 
     tx = feeder.stop()
+    m.mark("feeder_stop")
 
     # Stop the device before reading its counters, for run_play()'s
     # reason: the loop keeps capturing and playing after the feeder
@@ -2707,30 +2759,25 @@ def run_loop(board, *, dac_sps=200000, adc_hz=200000, channels=2,
     # the feed.
     board.cmd("0")
     pacing.pause(pacing.TURN)
+    m.mark("stop_cmd")
 
     # Over the control channel: 146 us, against 13.14 ms of blocked
     # main loop for `B` (invariant 8).
     play = play_counters(board)
+    m.mark("play_counters")
 
     board.cmd("B")
-    pacing.pause(pacing.SETTLE)
-    report = b""
-    end = time.time() + pacing.REPORT
-    while time.time() < end:
-        r = transport.wait_any([fd, board.cfd], pacing.POLL)
-        for f in r:
-            try:
-                d = f.read(65536)
-                if f == board.cfd:
-                    report += d
-            except OSError:
-                pass
+    m.mark("report_cmd")
+    report = read_report(fd, board.cfd)
+    m.mark("report_read")
     board.close_native(fd)
+    m.mark("close_native")
 
     buf = b"".join(chunks)
     # Settled window starts one second into device time: the ring primes
     # and the DAC's first buffer plays before the tone is representative.
     ps = _finish(parse_frames(buf, settle_us=SETTLE_US, settle_cap=16384))
+    m.mark("parse")
 
     text = console.decode("utf-8", "replace")
     rep = report.decode("utf-8", "replace")

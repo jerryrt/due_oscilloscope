@@ -152,6 +152,56 @@ def pause_at_least(seconds, minimum, why):
     pause(seconds)
 
 
+class Marks:
+    """Name the stages of a run, so a report says where its time went.
+
+        m = pacing.Marks("run_loop")
+        ...open the port...
+        m.mark("open")           # the time since the last mark is "open"
+
+    The stages accumulate across every run in the process and are read
+    back with `phases()`; `--pacing-report` prints them. A mark costs a
+    clock read and a dictionary update, so it stays in the code.
+    """
+
+    def __init__(self, prefix):
+        self.prefix = prefix
+        self.t = time.perf_counter()
+
+    def mark(self, name):
+        now = time.perf_counter()
+        rec = _PHASE.setdefault(f"{self.prefix}.{name}", [0, 0.0])
+        rec[0] += 1
+        rec[1] += now - self.t
+        self.t = now
+
+
+_PHASE = {}
+_OBS = {}
+
+#: DUE_PACING_VERIFY=1 keeps the old, full-length behaviour of a read that
+#: now ends early and counts what an early end would have cut off, so a
+#: run can prove the shorter wait loses nothing before it is trusted.
+VERIFY = os.environ.get("DUE_PACING_VERIFY") == "1"
+
+
+def observe(name, value):
+    """Record one measurement; the report prints count, mean and max."""
+    rec = _OBS.setdefault(name, [0, 0.0, 0.0])
+    rec[0] += 1
+    rec[1] += value
+    rec[2] = max(rec[2], value)
+
+
+def observations():
+    return {k: (v[0], v[1] / v[0], v[2]) for k, v in _OBS.items()}
+
+
+def phases():
+    """{stage: (runs, seconds)} for every Marks stage since the process began."""
+    return {k: (v[0], v[1]) for k, v in _PHASE.items()}
+
+
 def report():
     """{level: (calls, requested seconds)} since the process began."""
     return dict(_SLEPT)
