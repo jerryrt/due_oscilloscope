@@ -3,7 +3,7 @@ Domain 1: sample rate, low to high.
 
 Every rate here is hz_for(RC) for an integer RC, never a round decimal
 number. The trigger is a TC compare against RC and the DAC update is
-the same timer on another channel, so 39 MHz / RC is the whole set of
+the same timer on another channel, so the timer clock / RC is the whole set of
 rates the hardware has. A request between two of them simply rounds
 down, which shifts every derived frequency by up to a percent while
 every counter stays green - so the ladders are RC and the Hz are
@@ -14,8 +14,10 @@ import pytest
 
 import measure
 import pacing
-from helpers import (assert_fresh, assert_no_underruns, assert_stream_clean,
-                     approx_rate, loop_cmd, record, window)
+from helpers import (assert_crosstalk, assert_fresh, assert_no_underruns,
+                     assert_stream_clean, assert_tone, approx_rate,
+                     ladder_seconds, ladder_tone, loop_cmd, record, window,
+                     window_purity)
 
 pytestmark = pytest.mark.scope
 
@@ -50,10 +52,10 @@ STARVES = set()
 AWG_STARVES = STARVES
 
 
-def _ladder_run(board, rc, channels, secs, calibration, tolerance=0):
+def _ladder_run(board, rc, channels, secs, calibration, amp, tolerance=0):
     hz = measure.hz_for(rc)
     res = measure.run_loop(board, dac_sps=hz, adc_hz=hz, channels=channels,
-                           seconds=secs)
+                           tone=ladder_tone(rc), seconds=secs)
     assert not res.refused, (
         f"RC {rc} ({hz} Hz, {channels} ch) was refused\n{res.console}")
     assert_fresh(res, secs)
@@ -69,13 +71,23 @@ def _ladder_run(board, rc, channels, secs, calibration, tolerance=0):
     ratio = approx_rate(measured, hz, tol=0.005)
     record(calibration, f"rate_{channels}ch_rc{rc}",
            {"hz": hz, "measured": round(measured), "ratio": round(ratio, 4)})
+
+    # The signal, not only the stream: the tone reaches A0 at its amplitude
+    # in every window, and with two channels A1 carries none of it.
+    median = assert_tone(res, measure.CH_A0, amp["window_floor_codes"],
+                         fraction=amp["window_fraction"])
+    record(calibration, f"tone_{channels}ch_rc{rc}",
+           {"tone_hz": round(res.tone_hz, 3), "median_codes": round(median, 1)})
+    if channels == 2:
+        assert_crosstalk(res, measure.CH_A1, amp["crosstalk_ceiling_codes"])
     return res
 
 
 @pytest.mark.parametrize("rc", TWO_CH)
 def test_two_channel_ladder(board, seconds, calibration, baseline, rc):
     """Matched loop on both channels, 50 k to the 453,488/ch ceiling."""
-    _ladder_run(board, rc, 2, window(seconds, pacing.SHORT), calibration,
+    _ladder_run(board, rc, 2, window(seconds, ladder_seconds(rc)), calibration,
+                baseline["amplitude"],
                 tolerance=baseline["playback"]["ladder_underrun_tolerance"])
 
 
@@ -92,7 +104,8 @@ def test_one_channel_ladder(board, seconds, calibration, baseline, rc):
     the top of the two-channel one. A trigger that converts a pair back
     to back amortises overhead a lone conversion pays in full.
     """
-    _ladder_run(board, rc, 1, window(seconds, pacing.SHORT), calibration,
+    _ladder_run(board, rc, 1, window(seconds, ladder_seconds(rc)), calibration,
+                baseline["amplitude"],
                 tolerance=baseline["playback"]["ladder_underrun_tolerance"])
 
 
@@ -183,3 +196,36 @@ def test_every_ladder_rate_is_a_real_divider_value():
                 f"{name} RC {rc} gives {hz} Hz, which rounds back to "
                 f"RC {measure.rc_for(hz)}")
             assert measure.TC_CLOCK_HZ // rc == hz
+
+
+def test_the_crosstalk_check_sees_a_real_coupling_path(board, seconds, baseline):
+    """The instrument control: point the check at a pin that does couple.
+
+    A check that passes on A1 has only shown that A1 is quiet. `=2C` pairs
+    A0 with the bare A2 for the next two-channel stream, and a bare pin
+    follows A0 through the sample-and-hold, so the same check against A2
+    must fail. If it does not, a pass on A1 says nothing about the check.
+    The pairing persists until reset, so it is put back in a `finally`.
+    """
+    rc = 200
+    hz = measure.hz_for(rc)
+    ceiling = baseline["amplitude"]["crosstalk_ceiling_codes"]
+    board.cmd("=2C")
+    try:
+        res = measure.run_loop(board, dac_sps=hz, adc_hz=hz, channels=2,
+                               tone=ladder_tone(rc),
+                               seconds=window(seconds, ladder_seconds(rc)))
+        assert measure.CH_A2 in res.stream.series, (
+            "the stream carries no A2 samples: `=2C` did not pair A0 with A2, "
+            "so this control has not run")
+        median, amps = window_purity(res, measure.CH_A2)
+        assert amps, "no windows on A2"
+        record_value = round(median, 1)
+        with pytest.raises(AssertionError):
+            assert_crosstalk(res, measure.CH_A2, ceiling)
+    finally:
+        board.cmd("=1C")
+    assert record_value > 10 * ceiling, (
+        f"A2 carries {record_value} codes at the tone against a {ceiling} "
+        f"ceiling; a bare pin is expected to follow A0 by far more than that")
+

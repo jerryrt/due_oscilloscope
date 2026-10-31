@@ -172,6 +172,46 @@ def assert_tone(res, tag, floor, fraction=0.90, size=8192):
     return median
 
 
+#: Windows a ladder run holds, so that one bad window is not the whole of a
+#: 0.9 fraction: at ten, one may fail and the check still means something.
+LADDER_WINDOWS = 10
+
+
+def ladder_tone(rc):
+    """A tone with a whole number of cycles in every 8192-sample window.
+
+    At the default 1 kHz no ladder rate divides evenly, so the Goertzel
+    leaks differently at every rate and a threshold would be judging the
+    analysis. A cycle of 256 samples puts 32 cycles in a window at any RC.
+    """
+    return measure.hz_for(rc) / 256.0
+
+
+def ladder_seconds(rc, windows=LADDER_WINDOWS, size=8192):
+    """A run long enough for `windows` full windows after the settle."""
+    hz = measure.hz_for(rc)
+    return max(pacing.SHORT,
+               measure.SETTLE_US / 1e6 + pacing.GLANCE + windows * size / hz)
+
+
+def assert_crosstalk(res, tag, ceiling):
+    """The other channel carries no tone: median window amplitude at the
+    tone frequency on `tag` is at or below `ceiling`.
+
+    DAC1 is never driven with the waveform, so a tone there means the
+    channel tags are read wrong and the capture is attributed to the wrong
+    pins. It also bounds multiplexer bleed: one sample-and-hold behind a
+    16:1 mux carries residual charge from the previously converted channel.
+    """
+    median, amps = window_purity(res, tag)
+    assert amps, f"no windows on tag {tag}"
+    assert median <= ceiling, (
+        f"tag {tag} carries {median:.1f} codes at the tone frequency against "
+        f"a {ceiling} code ceiling; either the tags are being demultiplexed "
+        f"wrongly or the multiplexer is bleeding")
+    return median
+
+
 def assert_slew(res, tag, tone_hz, amplitude, fs_hz, margin=3.0):
     """No step larger than a clean sine of this amplitude can take.
 

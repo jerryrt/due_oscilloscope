@@ -16,7 +16,7 @@ import measure
 import pacing
 from helpers import (assert_fresh, assert_no_underruns, assert_slew,
                      assert_stream_clean, assert_tone, loop_cmd, record,
-                     shared_run, window, window_purity)
+                     shared_run, window, window_purity, assert_crosstalk)
 
 pytestmark = [pytest.mark.scope, pytest.mark.awg]
 
@@ -320,13 +320,8 @@ def test_the_other_channel_stays_flat(board, seconds, baseline, run_cache):
                      adc_hz=200000, channels=2, tone=TONE, seconds=secs)
     assert_fresh(res, secs)
 
-    ceiling = baseline["amplitude"]["crosstalk_ceiling_codes"]
-    median, amps = window_purity(res, measure.CH_A1)
-    assert amps, "no windows on A1"
-    assert median <= ceiling, (
-        f"A1 carries {median:.1f} codes at the tone frequency against a "
-        f"{ceiling} code ceiling; either the tags are being demultiplexed "
-        f"wrongly or the multiplexer is bleeding")
+    assert_crosstalk(res, measure.CH_A1,
+                     baseline["amplitude"]["crosstalk_ceiling_codes"])
 
 
 def test_recovered_frequency_is_the_one_sent(board, seconds, run_cache):
