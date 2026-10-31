@@ -165,5 +165,14 @@
     "steady_worst_pass_ceiling_us": 2000,
     "main_bucket_fraction_floor": 0.99,
     "stall_tolerance_ms": 2.0
+  },
+  "dc_transfer": {
+    "_comment": "DC transfer fit in A0 codes against DAC code. Null until a board measures it; the board test fails on a null.",
+    "slope_ref": null,
+    "offset_ref": null,
+    "slope_tol": null,
+    "offset_tol": null,
+    "physics_tol": null,
+    "resid_max_codes": null
   }
 }

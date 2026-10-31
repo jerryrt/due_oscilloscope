@@ -14,7 +14,8 @@ import pytest
 
 import measure
 import pacing
-from helpers import (assert_fresh, assert_no_underruns, assert_slew,
+from helpers import (assert_dc_fit, assert_fresh, assert_no_underruns,
+                     assert_slew, dc_fit,
                      assert_stream_clean, assert_tone, loop_cmd, record,
                      shared_run, window, window_purity, assert_crosstalk)
 
@@ -372,41 +373,45 @@ def test_no_tone_when_playback_is_stopped(board, seconds):
         f"still emitting a waveform nobody sent it.")
 
 
-@pytest.mark.parametrize("code", [512, 1024, 2048, 3072, 3583])
-def test_dc_transfer_tracks_the_code(board, baseline, calibration, code):
-    """A constant on DAC0 must arrive at A0 as the matching level.
+@pytest.mark.parametrize("adc_rc", [measure.rc_for(200000), 86],
+                         ids=["adc200k", "rc86"])
+def test_dc_transfer_is_one_line(board, baseline, calibration, adc_rc):
+    """Five DC levels on DAC0 must fall on one line in A0 codes.
 
     Needs no tone and no spectral analysis, so it separates an analog
     fault from a timing one: if A0 does not move with the code, the DAC
-    is not consuming host data at all.
+    is not consuming host data at all. A DC level needs no matched DAC
+    rate, so the DAC stays at 200 ksps while the ADC runs at 200 kHz and
+    again at RC 86.
     """
-    res = measure.run_loop(board, dac_sps=200000, adc_hz=200000, channels=2,
-                           dc=code, seconds=pacing.PROBE)
-    assert_fresh(res, 1.5)
-    # Settled samples only: playback starts from a ring primed with
-    # mid-scale silence, so the head of the run is that, not the code.
-    vals = res.stream.settled[measure.CH_A0]
-    assert vals, "no settled samples"
-    mean = sum(vals) / len(vals)
-    spread = max(vals) - min(vals)
-
-    # ADVREF, not a nominal 3300. The loop is ratiometric - the DAC's
-    # reference IS the ADC's - so the board cannot measure its own
-    # reference and this constant was an assumption, not a measurement.
-    # The scope settled it at 3270 mV by two independent routes agreeing
-    # to 0.1 mV, so a nominal 3300 reads every millivolt here 0.91% high.
-    import calibration as cal
-    advref, _ = cal.advref_mv()
-    mv = mean * advref / 4095.0
-    lo, hi, _ = cal.dac_span_mv()
-    record(calibration, f"dc_{code}", {"mean_code": round(mean, 1),
-                                       "mv": round(mv, 1)})
-    assert lo - 60 <= mv <= hi + 60, (
-        f"DAC code {code} arrived at {mv:.0f} mV, outside the measured "
-        f"{lo}-{hi} mV span the DAC actually reaches")
-    assert spread < 200, (
-        f"a constant code produced a {spread} code spread on A0; that is "
-        f"not a DC level")
+    cfg = baseline["dc_transfer"]
+    for key in ("slope_ref", "offset_ref", "slope_tol", "offset_tol",
+                "physics_tol", "resid_max_codes"):
+        assert cfg.get(key) is not None, (
+            f"tests/baseline.json dc_transfer.{key} is null: this board's "
+            f"DC transfer has not been measured, and a null is not a pass")
+    points = []
+    for code in (512, 1024, 2048, 3072, 3583):
+        res = measure.run_loop(board, dac_sps=200000,
+                               adc_hz=measure.hz_for(adc_rc), channels=2,
+                               dc=code, seconds=pacing.PROBE)
+        assert_fresh(res, 1.5)
+        # Settled samples only: playback starts from a ring primed with
+        # mid-scale silence, so the head of the run is that, not the code.
+        vals = res.stream.settled[measure.CH_A0]
+        assert vals, "no settled samples"
+        assert max(vals) - min(vals) < 200, (
+            f"a constant code {code} produced a {max(vals) - min(vals)} "
+            f"code spread on A0; that is not a DC level")
+        points.append((code, sum(vals) / len(vals)))
+    slope, offset, rms, worst = dc_fit(points)
+    record(calibration, f"dc_fit_rc{adc_rc}", {
+        "slope": round(slope, 5), "offset_codes": round(offset, 1),
+        "rms_codes": round(rms, 2), "worst_codes": round(worst, 2),
+        "means": [[c, round(m, 1)] for c, m in points]})
+    assert_dc_fit(points, cfg["slope_ref"], cfg["offset_ref"],
+                  cfg["slope_tol"], cfg["offset_tol"], cfg["physics_tol"],
+                  cfg["resid_max_codes"])
 
 
 def test_dc_levels_are_monotonic(board, baseline, calibration):

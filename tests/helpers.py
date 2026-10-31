@@ -247,6 +247,52 @@ def only_tags(res, mask):
     return got
 
 
+def dc_fit(points):
+    """Least-squares line through [(dac_code, mean_a0_code)].
+
+    Returns (slope, offset, rms, worst): A0 codes per DAC code, A0 codes
+    at DAC code 0, and the RMS and largest absolute residual in A0 codes.
+    """
+    assert len(points) >= 3, "a line needs at least three levels"
+    n = len(points)
+    mx = sum(x for x, _ in points) / n
+    my = sum(y for _, y in points) / n
+    sxx = sum((x - mx) ** 2 for x, _ in points)
+    slope = sum((x - mx) * (y - my) for x, y in points) / sxx
+    offset = my - slope * mx
+    res = [y - (offset + slope * x) for x, y in points]
+    rms = (sum(r * r for r in res) / n) ** 0.5
+    return slope, offset, rms, max(abs(r) for r in res)
+
+
+def assert_dc_fit(points, slope_ref, offset_ref, slope_tol, offset_tol,
+                  physics_tol, resid_max, physics_slope=2 / 3):
+    """The DC transfer is one line, and it is the line this board had.
+
+    Three separate failures. The regression gate compares the slope and
+    offset with this board's own recorded ones. The physics bound is
+    loose and independent of any recording: the slope against the
+    nominal 2/3 of a 12-bit DAC span onto a 12-bit ADC, its width being
+    the DAC and ADC gain errors together *(check: the datasheet's
+    figures have not been looked up for this bound)*. The residual
+    catches one level that left the line while the fit absorbed it.
+    """
+    slope, offset, rms, worst = dc_fit(points)
+    assert abs(slope - slope_ref) <= slope_tol and \
+        abs(offset - offset_ref) <= offset_tol, (
+        f"DC transfer regression: slope {slope:.5f} offset {offset:.1f} "
+        f"codes, recorded {slope_ref:.5f} and {offset_ref:.1f} (tolerance "
+        f"{slope_tol} and {offset_tol} codes)")
+    assert abs(slope - physics_slope) <= physics_tol * physics_slope, (
+        f"DC transfer slope {slope:.5f} is more than {physics_tol:.0%} "
+        f"from the nominal {physics_slope:.5f}")
+    assert worst <= resid_max, (
+        f"DC transfer residual: worst level is {worst:.1f} codes off the "
+        f"fitted line (rms {rms:.1f}), limit {resid_max} codes; one level "
+        f"is not on the line")
+    return slope, offset, rms, worst
+
+
 def record(calibration, key, value):
     calibration[key] = value
     return value
