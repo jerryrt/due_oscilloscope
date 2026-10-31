@@ -140,7 +140,7 @@ echo
 echo "== Track A, sketches/bringup (C++11, Arduino core) =="
 cppcheck "${common[@]}" \
     --language=c++ --std=c++11 \
-    -DF_CPU=78000000L -DARDUINO=10819 -DARDUINO_SAM_DUE \
+    -DF_CPU=90000000L -DARDUINO=10819 -DARDUINO_SAM_DUE \
     -DARDUINO_ARCH_SAM -DUSBCON -DUSB_VID=0x2341 -DUSB_PID=0x003e \
     -I lib/due_shared/src -I sketches/bringup \
     -I "$core/system/libsam" \

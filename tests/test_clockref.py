@@ -122,9 +122,10 @@ def test_the_reported_mck_is_a_frequency_or_a_refusal(board):
             "no figure published yet - the device suppresses one below a "
             "minute of span, which is a refusal and not a failure")
 
-    ppm = (hz - 78_000_000) / 78.0
+    import measure
+    ppm = (hz - measure.MCK_HZ) / (measure.MCK_HZ / 1e6)
     assert abs(ppm) < 1000, (
-        f"mck_meas_hz = {hz} is {ppm:+.1f} ppm from the nominal 78 MHz.\n"
+        f"mck_meas_hz = {hz} is {ppm:+.1f} ppm from the nominal {measure.MCK_HZ / 1e6:.0f} MHz.\n"
         f"MCK is derived from the crystal by the PLL and does not move by "
         f"this much; a figure this far out is the span it was computed "
         f"from, not the clock. See issue #56, where a carried epoch read "

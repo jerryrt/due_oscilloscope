@@ -212,7 +212,7 @@ target_link_libraries(track_a_bringup PRIVATE track_a_core)
 # CLAUDE.md, "MCK is 78 MHz here, not 84".
 foreach(t track_a_core track_a_bringup)
 target_compile_definitions(${t} PRIVATE
-    F_CPU=78000000L
+    F_CPU=${FIRMWARE_MCK_HZ}L
     __SAM3X8E__
     ARDUINO=10819
     ARDUINO_SAM_DUE

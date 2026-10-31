@@ -12,7 +12,12 @@
 #define MCK_MULA_78   12u
 #define MCK_MULA_84   13u
 #define MCK_MULA_90   14u
-#define MCK_MULA_DEFAULT MCK_MULA_78
+/* The operating point. 90 MHz since the USB DMA burst limit removed the
+ * loop-mode overruns; -DFIRMWARE_MCK_MHZ=78|90 (CMake) selects the other
+ * one, which is the datasheet-conservative setting. */
+#ifndef MCK_MULA_DEFAULT
+#define MCK_MULA_DEFAULT MCK_MULA_90
+#endif
 
 bool clock_set_mck(uint32_t mula);
 #endif

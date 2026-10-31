@@ -68,8 +68,8 @@ def test_the_square_has_two_levels_and_they_are_the_rails():
 
 
 # The whole AWG ladder, so an odd samples-per-cycle cannot hide at one
-# rate. 39 MHz / RC, and the sweep's fixed 32 samples per cycle.
-LADDER = [(39_000_000 // rc, (39_000_000 // rc) / 32.0)
+# rate. TC clock / RC, and the sweep's fixed 32 samples per cycle.
+LADDER = [(measure.TC_CLOCK_HZ // rc, (measure.TC_CLOCK_HZ // rc) / 32.0)
           for rc in (195, 98, 65, 44, 39, 32, 28)]
 
 
