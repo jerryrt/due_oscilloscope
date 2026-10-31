@@ -52,14 +52,21 @@ def _flat(a):
     return out
 
 
-def _run(board, code, seconds, window, *, preset=None, host_rate=None):
+def _run(board, code, seconds, window, *, preset=None, host_rate=None, rc=None):
+    """One noise run. `rc` repeats the metric at one ladder rate: the trigger
+    is the RC's rate, whichever of the generator or the host holds the level."""
     lsb_v, _, _ = noisetool.adc_lsb_v()
+    if rc is not None:
+        host_rate = measure.hz_for(rc) if host_rate is not None else None
+        if host_rate is None:
+            preset = "=%d,%dM" % (measure.hz_for(rc), measure.hz_for(rc))
     if host_rate is not None:
         res = noisetool.hold_host_dc(board, code, host_rate, seconds)
         fs = res.stream.declared_rate_hz or host_rate
     else:
         res = noisetool.hold_gen_dc(board, code, preset, seconds)
-        fs = res.stream.declared_rate_hz or noisetool.PRESETS[preset]
+        fs = (res.stream.declared_rate_hz or noisetool.PRESETS.get(preset)
+              or measure.hz_for(rc or 86))
     a = noisetool.analyse(noisetool._series(res, measure.CH_A0), fs, lsb_v,
                           window=window)
     if "error" in a:
@@ -69,15 +76,17 @@ def _run(board, code, seconds, window, *, preset=None, host_rate=None):
 
 def cmd_noise_dc(board, inst, args):
     """The internal generator holds the level: no USB in the DAC path."""
-    return _run(board, args.code, args.seconds, args.window, preset="3")
+    return _run(board, args.code, args.seconds, args.window, preset="3",
+                rc=getattr(args, "rc", None))
 
 
 def cmd_noise_fast(board, inst, args):
     """The same, with the conversion cadence and bulk IN at maximum."""
-    return _run(board, args.code, args.seconds, args.window, preset="5")
+    return _run(board, args.code, args.seconds, args.window, preset="5",
+                rc=getattr(args, "rc", None))
 
 
 def cmd_noise_host(board, inst, args):
     """The level fed from the host, so the OUT path is working too."""
     return _run(board, args.code, args.seconds, args.window,
-                host_rate=200000)
+                host_rate=200000, rc=getattr(args, "rc", None))

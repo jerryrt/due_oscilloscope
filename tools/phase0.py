@@ -174,9 +174,36 @@ def open_board(track, flash=False, tries=2):
     return b, attempts
 
 
+def adapt(fn):
+    """A scope-free metric `fn(board, args)` in the shape METRICS calls,
+    `fn(board, inst, args)`. Phases C, D and E register theirs through it."""
+    def metric(board, inst, args):
+        return fn(board, args)
+    metric.__name__ = getattr(fn, "__name__", "metric")
+    return metric
+
+
+def warm_and_discard(board, inst, args, warm=None):
+    """After a flash: wait out the warm-up, then take one run and throw it away.
+
+    On the reflash axis every run follows a flash, so every run is a first
+    run inside the post-flash transient and "drop run 0" removes nothing
+    from the other seven. The wait and the throwaway run are what make a
+    reflash-axis row comparable to an in-place one.
+    """
+    (warm or repeat.warm_up)()
+    ns = METRICS[args.metric]["args"](args.metric, **args.overrides)
+    run_once(board, inst, args.metric, ns)
+
+
 def take(args):
     """N runs on one axis, each flushed before the next begins."""
     path = args.out or os.path.join(RECORDS, f"phase0-{args.metric}.jsonl")
+    held = repeat.clocks(repeat.load(path))
+    if held and set(held) != {measure.MCK_HZ}:
+        raise SystemExit(
+            f"{path} already holds rows at {sorted(held)} Hz and this host is "
+            f"at {measure.MCK_HZ} Hz. A record has one clock: pass a fresh --out.")
     rec = repeat.Recorder(path)
     inst = None
     if needs_scope(args.metric):
@@ -205,6 +232,7 @@ def take(args):
                               f"track {args.track} in {time.time()-t0:.0f} s"
                               + (f" ({attempts} attempts)"
                                  if attempts > 1 else ""))
+                        warm_and_discard(board, inst, args)
                     if inst is not None:
                         # Before any number is taken, not after: a probe
                         # ratio is asserted and a factor of ten is
@@ -256,7 +284,7 @@ def take(args):
     return path
 
 
-def report(path, metric):
+def report(path, metric, first=False):
     """What the runs say, and the question Phase 0 was built to answer.
 
     Printed and written beside the record. The comparison table is the
@@ -268,10 +296,16 @@ def report(path, metric):
     records = repeat.load(path)
     if not records:
         raise SystemExit(f"no runs in {path}")
-    summary = repeat.summarise_all(records, floors_for(metric, records))
+    try:
+        repeat.refuse_mixed_clocks(records)
+    except repeat.MixedClocks as e:
+        raise SystemExit(f"refusing to report {path}: {e}")
+    summary = repeat.summarise_all(records, floors_for(metric, records),
+                                   first=first)
 
     for axis, block in summary.items():
         print(f"\n=== {metric} [{axis}] - {block['runs']} runs, "
+              f"{block['dropped']} dropped by index, "
               f"{block['failed']} failed ===")
         for e in block["errors"]:
             print(f"  ! {e}")
@@ -316,14 +350,23 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("metric", choices=sorted(METRICS))
-    ap.add_argument("--runs", type=int, default=7,
-                    help="repetitions per axis (default 7). Four is not "
-                         "enough: two hypotheses on this project looked "
+    ap.add_argument("--runs", type=int, default=8,
+                    help="repetitions per axis (default 8, of which run 0 "
+                         "is dropped, so a spread rests on seven). Four is "
+                         "not enough: two hypotheses on this project looked "
                          "like clean signal at four points and died at "
                          "the fifth")
+    ap.add_argument("--keep-first", action="store_true",
+                    help="keep run 0 of each axis in the report. It is "
+                         "dropped by default: the first run after a board "
+                         "start is an outlier that passes every filter")
+    ap.add_argument("--rc", type=int, default=None,
+                    help="scope-free metrics: repeat at the rate of this RC "
+                         "(measure.hz_for), so one metric can be taken at "
+                         "each ladder rate")
     ap.add_argument("--axis", default="in-place",
                     choices=("in-place", "reflash", "both"))
-    ap.add_argument("--track", default="b", choices=("a", "b"))
+    ap.add_argument("--track", default="b", choices=("a", "b", "c"))
     ap.add_argument("--out", default=None,
                     help="record path (default records/phase0-<metric>.jsonl)")
     ap.add_argument("--report", action="store_true",
@@ -345,14 +388,14 @@ def main():
                  else [args.axis])
     args.overrides = ({"channel": args.channel, "trigger": args.trigger}
                       if needs_scope(args.metric) else {})
-    for k in ("average", "vdiv", "window", "amp", "seconds", "code"):
+    for k in ("average", "vdiv", "window", "amp", "seconds", "code", "rc"):
         if getattr(args, k) is not None:
             args.overrides[k] = getattr(args, k)
 
     path = args.out or os.path.join(RECORDS, f"phase0-{args.metric}.jsonl")
     if not args.report:
         path = take(args)
-    report(path, args.metric)
+    report(path, args.metric, first=args.keep_first)
 
 
 if __name__ == "__main__":

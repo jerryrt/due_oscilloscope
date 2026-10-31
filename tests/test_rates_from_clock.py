@@ -29,6 +29,10 @@ EXCLUDED = {
         "the other clock a board can be on, the input to the refusal",
     ("tools/issue5_metric.py", 78_000_000):
         "the clock the comb lattice was measured at, which the metric refuses to leave",
+    ("tests/test_phase0.py", 78_000_000):
+        "the other clock a record can be at, the input to the refusals",
+    ("tests/test_repeat.py", 78_000_000):
+        "a clock recorded in a synthetic row, the input to the mixed-clock refusal",
     ("tests/test_issue5_metric.py", 78_000_000):
         "the clock recorded in a synthetic row, the input to the refusal",
     ("tests/test_dso_metrics.py", 11775):
