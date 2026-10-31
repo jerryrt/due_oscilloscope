@@ -51,7 +51,7 @@ loop mode is to be traced; check)*.
 | Every 90 MHz repeat run writes to a fresh `--out`, and `--report` refuses rows whose `provenance.mck_hz` differs, so a 78 MHz row cannot enter a 90 MHz spread (`records/phase0-*.jsonl` hold 78 MHz rows) | owner |
 | Measure after about one minute powered | `measurement-suite.md` |
 | A tolerance comes from `repeat.suggest_tolerance`, not from the range of the runs: a new draw falls outside the range of n draws with probability 2/(n+1), which is a quarter for seven *(derived)*. A one-sided gate is written as median minus (or plus) that tolerance, and a quantised key passes `floor=` (one timer tick for a rise) | `host/repeat.py` |
-| The amplitude, crosstalk and silent-level values in `tests/baseline.json` date from 2026-08-22 at 78 MHz. Until phase 5 re-derives them they stay as tripwires only where they gate today, as an exception to the line below that the owner has to confirm; the file's header says which values are old. A 78 MHz value is otherwise never a gate | owner |
+| The amplitude, crosstalk and silent-level values in `tests/baseline.json` date from 2026-08-22 at 78 MHz. They are absolute bounds on gain and multiplexer bleed, not comparisons with a 78 MHz run, so they keep gating as guards against gross failure; a failure at 90 MHz is a finding and is never widened away. Their headroom is large (on Track B at 200 kHz: A0 window median 1371.8 against a floor of 1340, A1 0.13 codes against a ceiling of 12 *(one session, unrecorded; check)*), so they cannot show that 90 MHz moved the analog behaviour, and phase 5 re-derives each from its spread. A 78 MHz number is never a tolerance source or an arm to compare against | owner |
 | One threshold per property across the ladder. A rate that misses it is the finding, not a reason for a per-rate threshold | here |
 | Break each new or changed check on the thing it guards. Mutate a copy of the captured stream, never the stimulus: a feed-rate change trips the underrun check first. A mutation fails the checks of its own family and none outside it | `CLAUDE.md` |
 | An unmeasured figure is marked *(check)* | `CLAUDE.md` |
@@ -110,5 +110,4 @@ Tracks A and B; Track C is run as an extra gate.
 | decision | default until answered |
 |---|---|
 | Who gates and who reports? | Board tests gate; `tools/metrics.py` reports. Both run without a scope |
-| Do the 78 MHz amplitude tripwires keep gating until phase 5 re-derives them? | Yes, as a stated exception to the old-figures rule, because removing them leaves the loop unguarded for the whole plan |
 | Which rates carry the phase 1 tone checks? | The whole existing ladder, at one threshold from phase 5 |
