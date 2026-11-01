@@ -282,6 +282,16 @@ METRICS["square-shape"] = {"fn": adapt(_square_shape_metric), "scope": False,
                            "args": loop_default_args}
 
 
+def _square_gate_metric(board, args):
+    return sq.square_gate_once(board, args.seconds or 4.0)
+
+
+#: ~100 kHz and ~400 kHz full-amplitude squares, scope-free. Ignores
+#: `--rc`: the plan picks each DAC rate from the frequency.
+METRICS["square-gate"] = {"fn": adapt(_square_gate_metric), "scope": False,
+                          "args": loop_default_args}
+
+
 def metrics_of(args):
     """The metrics a run takes, in order: `args.metrics`, else `[args.metric]`."""
     return list(getattr(args, "metrics", None) or [args.metric])
@@ -512,7 +522,8 @@ def main():
     ap.add_argument("--rc", type=int, default=None,
                     help="scope-free metrics: repeat at the rate of this RC "
                          "(measure.hz_for), so one metric can be taken at "
-                         "each ladder rate")
+                         "each ladder rate. square-gate ignores it: it "
+                         "plans its own DAC rate for 100 and 400 kHz")
     ap.add_argument("--axis", default="in-place",
                     choices=("in-place", "reflash", "both"))
     ap.add_argument("--track", default="b", choices=("a", "b", "c"))

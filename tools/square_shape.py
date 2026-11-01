@@ -227,6 +227,84 @@ def square_shape_once(board, rc=225, seconds=4.0, points=8, amp=256):
         measure.set_gen(board, "square", points, amp=256)
     return {k: v for k, v in r.items() if isinstance(v, (int, float, str))}
 
+def _planned(freq_hz):
+    p = plan(freq_hz)
+    if p is None:
+        raise SystemExit(f"{freq_hz:,.0f} Hz is not reachable under the "
+                         f"DACC's {DACC_MAX_UPDATES_HZ:,} updates/s")
+    return p
+
+
+def _gate_pair(board, seconds):
+    """(100 kHz result, 400 kHz result), full amplitude, non-solo.
+
+    Amplitude 256 is written back in a `finally` whichever run raises.
+    """
+    p_lo, p_hi = _planned(100_000), _planned(400_000)
+    try:
+        lo = square_shape(board, points=p_lo[0], dac_hz=p_lo[1], amp=256,
+                          seconds=seconds)
+        hi = square_shape(board, points=p_hi[0], dac_hz=p_hi[1], amp=256,
+                          seconds=seconds)
+    finally:
+        measure.set_gen(board, "square", p_hi[0], amp=256)
+    return lo, hi
+
+
+def square_gate_once(board, seconds=4.0):
+    """Flat numbers at ~100 kHz and ~400 kHz, full amplitude (`square-gate`).
+
+    The 100 kHz run is the amplitude reference, so `vpp_frac_400k` is
+    the 400 kHz swing over the 100 kHz swing. `f_hz_*` is the frequency
+    the plan actually landed on (TC / period), never the one asked for.
+    """
+    lo, hi = _gate_pair(board, seconds)
+    out = {}
+    for suffix, r in (("100k", lo), ("400k", hi)):
+        out["f_hz_" + suffix] = r["f_hz"]
+        out["rise_ns_" + suffix] = r["rise_ns"]
+        out["fall_ns_" + suffix] = r["fall_ns"]
+        out["vpp_codes_" + suffix] = r["vpp_codes"]
+        out["flat_hi_" + suffix] = r["flat_frac_high"]
+        out["flat_lo_" + suffix] = r["flat_frac_low"]
+    out["vpp_frac_400k"] = hi["vpp_codes"] / lo["vpp_codes"]
+    out["edge_over_half_400k"] = hi["edge_over_half"]
+    return out
+
+
+def square_bias_control(board, ibctl=(0, 0), restore=(2, 1), seconds=4.0):
+    """The 400 kHz square at DAC bias `ibctl`, then the bias put back.
+
+    `=<ch>,<core>I` is applied at the next gen_init, so setting it
+    changes nothing until a run rewrites the generator, and so does
+    restoring it. The restore is therefore sent in a `finally` and
+    followed by one short square that makes the device write it. A
+    missing restore taints every later loop run on the board: it keeps
+    the unconfigured bias (rise 838 ns, a triangle at 400 kHz) until
+    something reinitialises the generator.
+    """
+    p_lo, p_hi = _planned(100_000), _planned(400_000)
+    try:
+        board.poll_console()
+        board.cmd("=%d,%dI" % tuple(ibctl))
+        board.drain_console(0.4)
+        lo = square_shape(board, points=p_lo[0], dac_hz=p_lo[1], amp=256,
+                          seconds=seconds)
+        hi = square_shape(board, points=p_hi[0], dac_hz=p_hi[1], amp=256,
+                          seconds=seconds)
+    finally:
+        board.poll_console()
+        board.cmd("=%d,%dI" % tuple(restore))
+        board.drain_console(0.4)
+        try:
+            square_shape(board, points=p_hi[0], dac_hz=p_hi[1], amp=256,
+                         seconds=1.0)
+        finally:
+            measure.set_gen(board, "square", p_hi[0], amp=256)
+    return {"rise_ns_biased": hi["rise_ns"],
+            "flat_hi_biased": hi["flat_frac_high"],
+            "vpp_frac_biased": hi["vpp_codes"] / lo["vpp_codes"]}
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
