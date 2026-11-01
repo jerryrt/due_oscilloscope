@@ -222,6 +222,16 @@ METRICS["sinad"] = {"fn": adapt(_sinad_metric), "scope": False,
                     "args": loop_default_args}
 
 
+def _tone_sweep_metric(board, args):
+    return mt.tone_sweep_once(board, args.rc, args.seconds)
+
+
+#: Amplitude on A0 and crosstalk on A1 against tone, one loop per tone,
+#: scope-free, at `--rc` (default RC 225).
+METRICS["tone-sweep"] = {"fn": adapt(_tone_sweep_metric), "scope": False,
+                         "args": loop_default_args}
+
+
 def dc_fit_default_args(what, **overrides):
     """The Namespace a `dc-fit` run reads: the ADC rung and the run length."""
     ns = argparse.Namespace(rc=None, seconds=None, what=what)

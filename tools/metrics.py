@@ -195,6 +195,55 @@ def loop_once(board, rc=LOOP_RC, seconds=None, channels=2):
     return out
 
 
+#: Samples per tone cycle for `tone_sweep_once`. Powers of two, so an
+#: 8192-sample window holds 32, 128, 512 and 1024 whole cycles.
+TONE_SWEEP_N = (256, 64, 16, 8)
+
+
+def tone_sweep_once(board, rc=None, seconds=None, ns=TONE_SWEEP_N):
+    """Amplitude on A0 and crosstalk on A1 against tone, as a flat dict.
+
+    One matched loop (2 channels, DAC and ADC both at the rate of `rc`,
+    RC 225 = 200 kHz by default) per tone `hz/N`, N samples per cycle.
+    Each tone must hold a whole number of cycles in an 8192-sample window
+    or its window figure leaks; one that does not is rejected before any
+    run. Keys: `rc`, `fs`, and per N `amp_n<N>` (median window amplitude
+    on A0, codes), `amp_n<N>_frac` (windows at or above the floor of
+    `tests/baseline.json`) and `xtalk_n<N>` (median window amplitude on A1
+    at the same tone, codes).
+
+    The DAC's hold is not divided out. At N=8 the zero-order hold's sinc
+    is in `amp_n8`, and the loop samples at a fixed phase inside each
+    hold, so the figure also depends on the phase between the two timers.
+    That phase is constant at matched rates and is a property of this
+    loop, not of the converter: record it, do not correct for it."""
+    rc = rc or LOOP_RC
+    hz = measure.hz_for(rc)
+    for n in ns:
+        if LOOP_WINDOW % n:
+            raise ValueError(f"N={n} does not divide the {LOOP_WINDOW}-sample"
+                             f" window: the tone is not whole cycles")
+    floor = amplitude_limits()["window_floor_codes"]
+    secs = max(seconds or 0.0, loop_seconds(rc))
+    out = {"rc": rc, "fs": hz}
+    for n in ns:
+        res = measure.run_loop(board, dac_sps=hz, adc_hz=hz, channels=2,
+                               tone=hz / float(n), seconds=secs)
+        if res.refused:
+            raise SystemExit(f"RC {rc} ({hz} Hz, 2 ch, N={n}) was refused")
+        a = [x for _, x in res.stream.window_amplitudes(
+            measure.CH_A0, res.tone_hz, size=LOOP_WINDOW,
+            from_us=measure.SETTLE_US)]
+        x = [v for _, v in res.stream.window_amplitudes(
+            measure.CH_A1, res.tone_hz, size=LOOP_WINDOW,
+            from_us=measure.SETTLE_US)]
+        out[f"amp_n{n}"] = statistics.median(a) if a else None
+        out[f"amp_n{n}_frac"] = (sum(1 for v in a if v >= floor) / len(a)
+                                 if a else None)
+        out[f"xtalk_n{n}"] = statistics.median(x) if x else None
+    return out
+
+
 #: The five levels of `tests/test_integrity.py::test_dc_transfer_is_one_line`.
 DC_CODES = (512, 1024, 2048, 3072, 3583)
 #: Its DAC rate. A DC level needs no matched rate, so the DAC stays here
