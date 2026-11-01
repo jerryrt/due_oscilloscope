@@ -174,5 +174,11 @@
     "offset_tol": 2.7,
     "physics_tol": 0.05,
     "resid_max_codes": 4
+  },
+  "noise": {
+    "_comment": "Held-code noise on A0, code 2048 on DAC0, noise-fast capture (tools/noise_metrics.py), linux-x1, 90 MHz, build d7ece10. Rule, mechanical: rms_ceiling_lsb is the largest rms_lsb over every kept row (run != 0, no error) of the ten records/g-*-noise-fast.jsonl sets (six in place, four reflash; Tracks A, B, C at RC 86 and 225), 0.8976, times 1.15, rounded up to 2 decimals. line_fraction_ceiling is the largest split.line_power_fraction over the same rows, 0.0410, times 1.15, rounded up to 2 decimals; n_lines is 0 in some rows and 1 in others, so the bound is on the line's power fraction, not on n_lines == 0. The floor check needs no number here: a reading below 0.9 of the row's own quantisation_floor_lsb (0.2887 codes) is a flat or stale capture. Provisional (check) until more sessions and benches; one bench so far, and a board with excess noise would be rejected only above this bound.",
+    "rms_ceiling_lsb": 1.04,
+    "line_fraction_ceiling": 0.05,
+    "floor_factor": 0.9
   }
 }
