@@ -563,3 +563,76 @@ def alias_check(lines_a, fs_a, lines_b, fs_b, *, tol_hz=None):
         })
     out.sort(key=lambda r: -r["amp_lsb"])
     return out
+
+
+def sinad(values, fs, tone_hz, *, window=8192, harmonics=9):
+    """SINAD, THD and ENOB of a sine that fits whole cycles in a window.
+
+    Coherent, and it refuses to be anything else: `tone_hz * window / fs`
+    must be an integer to 1e-6, else ValueError. Each window is then
+    analysed with a rectangular window, so the tone sits on bin
+    `cycles` exactly and nothing leaks. A non-coherent capture would
+    smear the tone into the floor and still print a plausible number.
+
+    Bins are direct DFT sums at `k * cycles`. Harmonics 2..`harmonics`+1
+    are folded into the first Nyquist zone (k mod window, reflected
+    about window/2). A harmonic that folds onto the fundamental or onto
+    DC is skipped, since it cannot be told from them; two harmonics
+    folding to one bin count once. A trailing partial window is
+    dropped and power is averaged over whole windows.
+
+    Returns signal_rms_lsb, sinad_db (signal over everything but DC and
+    the fundamental), thd_db (harmonic power over the fundamental),
+    noise_floor_rms_lsb (all but DC, fundamental and harmonics), enob =
+    (sinad_db - 1.76) / 6.02, n_windows and the harmonic bins used.
+
+    On the loop this includes the DAC's staircase and the converter's
+    noise, so it is a loop figure, not the ADC's alone.
+    """
+    cycles = tone_hz * window / fs
+    k0 = round(cycles)
+    if k0 < 1 or abs(cycles - k0) > 1e-6:
+        raise ValueError("not coherent: %r cycles per window of %d "
+                         "samples (tone %r Hz at %r sps)"
+                         % (cycles, window, tone_hz, fs))
+    bins = []
+    for h in range(2, harmonics + 2):
+        k = (h * k0) % window
+        if k > window // 2:
+            k = window - k
+        if k not in (0, k0) and k not in bins:
+            bins.append(k)
+    cos_t = {}
+    for k in [k0] + bins:
+        cos_t[k] = [(math.cos(2 * math.pi * k * i / window),
+                     math.sin(2 * math.pi * k * i / window))
+                    for i in range(window)]
+
+    def power(seg, k):
+        re = sum(x * c for x, (c, _) in zip(seg, cos_t[k]))
+        im = sum(x * s for x, (_, s) in zip(seg, cos_t[k]))
+        p = (re * re + im * im) / (window * window)
+        return p if 2 * k == window else 2.0 * p
+
+    n = len(values) // window
+    if n < 1:
+        raise ValueError("less than one window of %d samples" % window)
+    p_sig = p_har = p_ac = 0.0
+    for w in range(n):
+        seg = [float(v) for v in values[w * window:(w + 1) * window]]
+        mean = sum(seg) / window
+        p_ac += sum(x * x for x in seg) / window - mean * mean
+        p_sig += power(seg, k0)
+        p_har += sum(power(seg, k) for k in bins)
+    p_sig, p_har, p_ac = p_sig / n, p_har / n, p_ac / n
+    tiny = 1e-300
+    p_nd = max(p_ac - p_sig, tiny)
+    p_noise = max(p_ac - p_sig - p_har, 0.0)
+    sinad_db = 10 * math.log10(max(p_sig, tiny) / p_nd)
+    return {"signal_rms_lsb": math.sqrt(p_sig),
+            "sinad_db": sinad_db,
+            "thd_db": 10 * math.log10(max(p_har, tiny) / max(p_sig, tiny)),
+            "noise_floor_rms_lsb": math.sqrt(p_noise),
+            "enob": (sinad_db - 1.76) / 6.02,
+            "n_windows": n,
+            "harmonic_bins": bins}

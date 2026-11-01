@@ -203,6 +203,10 @@ METRICS["loop"] = {"fn": adapt(_loop_metric), "scope": False,
                    "args": loop_default_args}
 
 
+def _sinad_metric(board, args):
+    return nm.sinad_once(board, args.rc, args.seconds)
+
+
 def _dc_fit_metric(board, args):
     return mt.dc_fit_once(board, args.rc, args.seconds)
 
@@ -210,6 +214,12 @@ def _dc_fit_metric(board, args):
 def _rise_metric(board, args):
     return st.rise_once(board, args.points, args.seconds, args.dac_hz,
                         args.pre)
+
+
+#: Coherent-sine SINAD, THD and ENOB of the matched loop, scope-free, at
+#: `--rc` (default RC 225). A loop figure: the DAC's staircase is in it.
+METRICS["sinad"] = {"fn": adapt(_sinad_metric), "scope": False,
+                    "args": loop_default_args}
 
 
 def dc_fit_default_args(what, **overrides):

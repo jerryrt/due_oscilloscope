@@ -32,6 +32,7 @@ sys.path.insert(0, os.path.join(HERE, "tools"))
 import measure                                                # noqa: E402
 import noise as noise_mod                                     # noqa: E402
 import noisetool                                              # noqa: E402
+import metrics as mt                                          # noqa: E402
 
 
 def default_args(what, **overrides):
@@ -126,3 +127,34 @@ def rss_response(values, extra_rms_lsb, fs, *, seed=1, window=4096):
         fs, lsb_v, window=window)
     predicted = math.sqrt(base["rms_lsb"] ** 2 + extra_rms_lsb ** 2)
     return base, noisy, predicted
+
+
+#: The matched loop's tone is `hz / 256`, so a window of 8192 holds 32 cycles.
+SINAD_WINDOW = 8192
+
+
+def sinad_once(board, rc, seconds=None):
+    """SINAD, THD and ENOB of the matched DAC->ADC loop, as a flat dict.
+
+    The run is `tools/metrics.py` `loop_once`'s: DAC and ADC at the rate of
+    `rc`, tone `hz/256`, two channels, long enough for ten windows after the
+    settle. The series is A0 from the first sample at or after
+    `measure.SETTLE_US` (the `settled` list is capped at 16384 samples, too
+    short for ten windows). It is a loop figure: the DAC's staircase and the
+    converter's noise are both in it."""
+    rc = rc or mt.LOOP_RC
+    hz = measure.hz_for(rc)
+    secs = max(seconds or 0.0, mt.loop_seconds(rc))
+    res = measure.run_loop(board, dac_sps=hz, adc_hz=hz, channels=2,
+                           tone=hz / 256.0, seconds=secs)
+    if res.refused:
+        raise SystemExit(f"RC {rc} ({hz} Hz, 2 ch) was refused")
+    st = res.stream
+    vals = st.series.get(measure.CH_A0)
+    if not vals:
+        raise SystemExit("no A0 samples")
+    vals = list(vals)[st._index_at(measure.CH_A0, measure.SETTLE_US):]
+    r = noise_mod.sinad(vals, hz, res.tone_hz, window=SINAD_WINDOW)
+    out = {k: v for k, v in r.items() if k != "harmonic_bins"}
+    out.update(tone_hz=res.tone_hz, rc=rc, fs=hz)
+    return out
