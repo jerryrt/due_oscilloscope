@@ -60,9 +60,12 @@ repeat are run `--repeats` times and reported as median plus observed
 spread; metrics that do not repeat say so.
 """
 import argparse
+import cmath
 import json
+import math
 import os
 import statistics
+import struct
 import sys
 import time
 
@@ -242,6 +245,90 @@ def tone_sweep_once(board, rc=None, seconds=None, ns=TONE_SWEEP_N):
                                  if a else None)
         out[f"xtalk_n{n}"] = statistics.median(x) if x else None
     return out
+
+
+#: Table points per cycle on each DAC in `loop_skew_once`, and whole
+#: cycles in the table. Two entries per point (DAC0 then DAC1), so a
+#: cycle is 256 entries and, at the DAC rate `hz`, lasts 256/hz s: the
+#: tone is `hz/256`, 32 whole cycles in an 8192-sample window.
+SKEW_POINTS = 128
+SKEW_CYCLES = 16
+
+
+def build_sine_both(points=SKEW_POINTS, cycles=SKEW_CYCLES):
+    """One full-scale sine on both DACs, host-fed, tagged entry by entry.
+
+    Entry 2k is DAC0 and entry 2k+1 is DAC1, both carrying sample k, so
+    the DACC writes DAC1 one trigger after DAC0 by construction. That
+    lag is part of what `loop_skew_once` measures. Returns the bytes."""
+    out = bytearray()
+    for i in range(points * cycles):
+        code = int(round(2047.5 + 2047.0 * math.sin(
+            2.0 * math.pi * (i % points) / points)))
+        code = max(0, min(4095, code))
+        out += struct.pack("<H", (0 << 12) | code)
+        out += struct.pack("<H", (1 << 12) | code)
+    return bytes(out)
+
+
+def _wrap(x):
+    """`x` in radians folded into (-pi, pi]."""
+    return math.pi - (math.pi - x) % (2.0 * math.pi)
+
+
+def _phase(vals, fs, hz):
+    """Phase of the `hz` bin of `vals`, radians, by a plain DFT."""
+    w = 2.0 * math.pi * hz / fs
+    mean = sum(vals) / len(vals)
+    acc = sum((v - mean) * cmath.exp(-1j * w * n) for n, v in enumerate(vals))
+    return cmath.phase(acc)
+
+
+def loop_skew_once(board, rc=None, seconds=None):
+    """The A1-after-A0 lag of one sine driven on both DACs, as a flat dict.
+
+    A matched loop (2 channels, DAC and ADC at the rate of `rc`, RC 225
+    by default) with the same sine on DAC0 and DAC1 (`build_sine_both`),
+    tone `hz/256`. Per whole-cycle window the phase of the tone on A1
+    less that on A0 is folded to (-pi, pi]; the windows are then folded
+    about the first so a figure near +-pi cannot split in two, and the
+    median is the answer. Positive `skew_s` means A1 lags A0. The lag is
+    folded to half a tone period, so a lag of a whole period or more is
+    not seen.
+
+    It is ONE figure: DAC1's write after DAC0's plus the ADC's A1-before-A0
+    spacing. `=0N`/`=1N` does not separate them and nothing here does.
+    The ADC-only spacing is about 0.96 us *(derived, check)*, printed as
+    a reference by the CLI and never judged. Keys: `skew_s`, `skew_ns`,
+    `skew_frac_of_period` (of the sample period 1/fs), `phase_deg`,
+    `phase_sd_deg`, `n_windows`, `tone_hz`, `rc`, `fs`."""
+    rc = rc or LOOP_RC
+    hz = measure.hz_for(rc)
+    secs = max(seconds or 0.0, loop_seconds(rc))
+    res = measure.run_loop(board, dac_sps=hz, adc_hz=hz, channels=2,
+                           seconds=secs, wave=build_sine_both())
+    if res.refused:
+        raise SystemExit(f"RC {rc} ({hz} Hz, 2 ch) was refused")
+    tone = hz / 256.0
+    ps = res.stream
+    v0 = ps.series.get(measure.CH_A0) or []
+    v1 = ps.series.get(measure.CH_A1) or []
+    start = max(ps._index_at(measure.CH_A0, measure.SETTLE_US),
+                ps._index_at(measure.CH_A1, measure.SETTLE_US))
+    ds = []
+    for s in range(start, min(len(v0), len(v1)) - LOOP_WINDOW, LOOP_WINDOW):
+        ds.append(_wrap(_phase(v1[s:s + LOOP_WINDOW], hz, tone)
+                        - _phase(v0[s:s + LOOP_WINDOW], hz, tone)))
+    if not ds:
+        raise SystemExit("no full window after the settle")
+    ds = [ref + _wrap(d - ref) for ref in (ds[0],) for d in ds]
+    d = statistics.median(ds)
+    skew = -d / (2.0 * math.pi * tone)
+    return {"skew_s": skew, "skew_ns": skew * 1e9,
+            "skew_frac_of_period": skew * hz,
+            "phase_deg": math.degrees(d),
+            "phase_sd_deg": math.degrees(statistics.pstdev(ds)),
+            "n_windows": len(ds), "tone_hz": tone, "rc": rc, "fs": hz}
 
 
 #: The five levels of `tests/test_integrity.py::test_dc_transfer_is_one_line`.

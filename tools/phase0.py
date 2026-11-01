@@ -232,6 +232,18 @@ METRICS["tone-sweep"] = {"fn": adapt(_tone_sweep_metric), "scope": False,
                          "args": loop_default_args}
 
 
+def _loop_skew_metric(board, args):
+    return mt.loop_skew_once(board, args.rc, args.seconds)
+
+
+#: The A1-after-A0 lag of one sine on both DACs, scope-free, at `--rc`.
+#: Not `skew`, which is the scope metric. One figure: DAC1's write after
+#: DAC0's plus the ADC spacing; the latter alone is about 0.96 us
+#: *(derived, check)*, a reference and not a verdict.
+METRICS["loop-skew"] = {"fn": adapt(_loop_skew_metric), "scope": False,
+                        "args": loop_default_args}
+
+
 def dc_fit_default_args(what, **overrides):
     """The Namespace a `dc-fit` run reads: the ADC rung and the run length."""
     ns = argparse.Namespace(rc=None, seconds=None, what=what)
