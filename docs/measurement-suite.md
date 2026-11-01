@@ -391,7 +391,7 @@ first in this project that do not inherit the 0-series debt or the
 | frequency ceiling, sync on | ~357 kHz square | measured, unrecorded |
 | frequency ceiling, solo | ~750 kHz toggling | measured, unrecorded |
 | full-amplitude ceiling | ~400-450 kHz | measured, unrecorded |
-| square-shaped ceiling | ~100-200 kHz | **judged by eye, not by a number** |
+| square-shaped ceiling | flat top 0.71 of the half period at 402 kHz, 0.53 at 750 kHz, at the default bias; with the bias at 0 a 402 kHz square is a triangle | measured by `tools/square_shape.py`, one session, `docs/awg.md` |
 | output span, absolute | 578-2771 mV by the scope, see above | **working figure**: resolved only by the external reference anchor below, once taken |
 | noise floor on a held code | 20.2 mV RMS, 15.1 mV with the DAC idle | measured, unrecorded |
 | linearity across the span | ~24 codes rms against an 11-code ruler | measured, quantiser-limited |
@@ -452,11 +452,11 @@ turns `calibration.json`'s scope-derived ADVREF into a figure another
 instrument would be believed over, and it is the first step of the
 calibration direction.
 
-**5. Turn the eye-judgements into numbers.** "Recognisable square" is
-currently a person looking at a screenshot. A flat-top fraction - the
-proportion of a half period within 5% of the final level - makes the
-100-200 kHz claim a measurement. Same for the slew wall: sweep
-400-700 kHz in fine steps rather than extrapolating from the step
+**5. Turn the eye-judgements into numbers.** The flat-top fraction - the
+proportion of a half period within 2% of the step of its own level - is
+measured by `tools/square_shape.py` and gated by
+`tests/test_square_shape_board.py`. What remains is the slew wall above
+750 kHz: sweep it in fine steps rather than extrapolating from the step
 response.
 
 **6. Give the wrap fold a control arm.** Run the identical fold with
