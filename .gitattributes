@@ -25,6 +25,15 @@
 # Keep vendored, checksummed 3D CAD assets byte-for-byte, including the
 # upstream switch model's CRLF endings.
 hardware/mega-proto-carrier/models/kicad/*.step binary
+hardware/reference/arduino-due/models/**/*.step binary
+
+# Preserve the original model archive, which exceeds GitHub's normal
+# per-file limit. The usable extracted STEP models remain ordinary files.
+hardware/reference/arduino-due/models/source/arduino-due-1.snapshot.12.zip filter=lfs diff=lfs merge=lfs -text
+
+# Retain original vendor EAGLE text, including upstream whitespace.
+hardware/reference/arduino-due/*/source/*.sch -whitespace
+hardware/reference/arduino-due/*/source/*.brd -whitespace
 
 # Shell scripts and the linker scripts are read by tools that do not all
 # tolerate CR, and are named here so the rule survives someone relaxing

@@ -73,11 +73,13 @@ and instrument; and the generator has twelve bits.
 
 ## What to take from each into the shield
 
-- **Reference first.** The Due brings `AREF` to the header. A precision
-  reference with its own decoupling on the shield addresses one of the
-  two coupling paths `docs/noise.md` leaves open, and it is the part the
-  calibration direction needs. OpenScope's calibration procedure is the
-  model for how a unit measures itself against it.
+- **Reference first.** The [V03 Due reference](../hardware/reference/arduino-due/v03/README.md)
+  brings `AREF` to the header but leaves it isolated from ADVREF through
+  open BR1. The default shield reference is measured as an ADC input;
+  it does not set converter full scale. Driving ADVREF is a separate,
+  optional JR1/BR1 modification requiring the checks in `docs/afe.md`.
+  OpenScope's calibration procedure is the model for how a unit measures
+  itself against a precision reference.
 - **A buffered, band-limited input.** Every design above drives its
   converter from a low-impedance source through a filter. Here the pin
   sees a bare wire, which is the other coupling path. The buffer is also

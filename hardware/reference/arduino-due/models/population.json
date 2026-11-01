@@ -1,0 +1,2318 @@
+{
+  "kicad_library_source": "Installed KiCad 10.0.6 library; original model and footprint hashes retained",
+  "scope": "V03 visualization only. Generic packages and simplified special parts; original EAGLE electrical CAD preserved. No new owner inspection of this expanded population yet.",
+  "assets": {
+    "led:CHIP-LED0805": {
+      "file": "packages/led_CHIP-LED0805.step",
+      "sha256": "78013c568531fb0ba28a649f71e71be594351137ac73f681a350880050279890",
+      "kind": "kicad_library_package",
+      "library_footprint": "LED_SMD/LED_0805_2012Metric",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/LED_SMD.3dshapes/LED_0805_2012Metric.step",
+      "original_file": "library/LED_0805_2012Metric.step",
+      "original_sha256": "0aa8b791804f5d72a2fc7d1bf231dd9959207d83df8ad801176fbc459f575b98",
+      "footprint_file": "library/footprints/LED_0805_2012Metric.kicad_mod",
+      "footprint_sha256": "8806125556e590701b13b47a1725dff28fc47fca41a7905c7d78c8312d08cbbd",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 270,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.11250000000000004,
+        "standard_to_eagle_pad_names": {
+          "1": "C",
+          "2": "A"
+        },
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "rcl:L1812": {
+      "file": "generated/L1812.step",
+      "sha256": "3be47e478bdbf937186e60c4a1cf90d5ea306e8185039b17293fb97c097f913e",
+      "kind": "project_generated_simplified",
+      "dimensions_source": "https://www.bourns.com/data/global/pdfs/MF-MSMF.pdf",
+      "local_bounds_mm": [
+        -2.3,
+        -1.62,
+        0.0,
+        2.3,
+        1.62,
+        0.85
+      ],
+      "qualification": "MF-MSMF050 generic PPTC envelope 4.6 x 3.24 x 0.85 mm, within published limits; no printed marking."
+    },
+    "zetex:SOT-23": {
+      "file": "packages/zetex_SOT-23.step",
+      "sha256": "f2d4c509da75297de14ca40aec11e4ee44fdf46cba5fffe281540cd26c35f74f",
+      "kind": "kicad_library_package",
+      "library_footprint": "Package_TO_SOT_SMD/SOT-23",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+      "original_file": "library/SOT-23.step",
+      "original_sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0",
+      "footprint_file": "library/footprints/SOT-23.kicad_mod",
+      "footprint_sha256": "0d88c86c1b6d8c1aae4aa8c09386264c089d4451a128b6ccd63ed253f4300b15",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 270,
+        "translation_xy_mm": [
+          0.025399999999999933,
+          0.02616666666666667
+        ],
+        "maximum_land_center_difference_mm": 0.10466666666666669,
+        "standard_to_eagle_pad_names": {
+          "1": "3",
+          "2": "2",
+          "3": "1"
+        },
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "SmartPrj:C0402": {
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "kind": "kicad_library_package",
+      "library_footprint": "Capacitor_SMD/C_0402_1005Metric",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Capacitor_SMD.3dshapes/C_0402_1005Metric.step",
+      "original_file": "library/C_0402_1005Metric.step",
+      "original_sha256": "03e44c4b2b727b8d4b6b1fd598cbd12dd5e614f1dfeefa96a92a07e3a3b312a2",
+      "footprint_file": "library/footprints/C_0402_1005Metric.kicad_mod",
+      "footprint_sha256": "0403382fc4583ed510b461b1fa4a36dfaec6f4c0d9b1a67e6b0027837a54e1b5",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.035499999999999976,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "resistor-dil:CAT16": {
+      "file": "packages/resistor-dil_CAT16.step",
+      "sha256": "718e4c39bd14c58d2dd2a8431eaa5258c553496cb3aa94b3e8a71a4b01d7441c",
+      "kind": "kicad_library_package",
+      "library_footprint": "Resistor_SMD/R_Array_Concave_4x0603",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Resistor_SMD.3dshapes/R_Array_Concave_4x0603.step",
+      "original_file": "library/R_Array_Concave_4x0603.step",
+      "original_sha256": "0e1ec83904a4719529e3bd794d339c2594aacbee20c18fb941949e94d5d03e36",
+      "footprint_file": "library/footprints/R_Array_Concave_4x0603.kicad_mod",
+      "footprint_sha256": "bd5991fb39612d06b71292dedc0004a404cbf8c3744f22742d59e16cc02f1e7e",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 90,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.17500000000000004,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "resistor-dil:CAY16": {
+      "file": "packages/resistor-dil_CAY16.step",
+      "sha256": "7e7f8242b301578ec0b239902116f7de508c08583c5c3ddab7eeaef11e79aa75",
+      "kind": "kicad_library_package",
+      "library_footprint": "Resistor_SMD/R_Array_Convex_4x0603",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Resistor_SMD.3dshapes/R_Array_Convex_4x0603.step",
+      "original_file": "library/R_Array_Convex_4x0603.step",
+      "original_sha256": "bec072c4d44e4c5ff693e18ede4078c7e66e7a670d53b00a20edd2c0aecdf3c2",
+      "footprint_file": "library/footprints/R_Array_Convex_4x0603.kicad_mod",
+      "footprint_sha256": "1ca2b4baeb71ccf9590ee2d2586a2e9568af22500398042fcb00642c958f13b6",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 90,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.2250000000000001,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "linear:MSOP08": {
+      "file": "packages/linear_MSOP08.step",
+      "sha256": "985e45a752963b935056c07ea06504cded57ee94995d2c3cf147d4f3b4340458",
+      "kind": "kicad_library_package",
+      "library_footprint": "Package_SO/MSOP-8_3x3mm_P0.65mm",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Package_SO.3dshapes/MSOP-8_3x3mm_P0.65mm.step",
+      "original_file": "library/MSOP-8_3x3mm_P0.65mm.step",
+      "original_sha256": "847c4c5023fe1603fbd36900a5dcc4bd3901ba473f71d42c9a469f0236eaadf3",
+      "footprint_file": "library/footprints/MSOP-8_3x3mm_P0.65mm.kicad_mod",
+      "footprint_sha256": "c85207be7edf4b5e1a128249fb05f91b67d622f536fc832d7a9f2a7f1e9a1223",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 90,
+        "translation_xy_mm": [
+          -0.0010000000000000009,
+          -0.0004999999999999449
+        ],
+        "maximum_land_center_difference_mm": 4.577566798522237e-16,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "Arduino_Wifi_shield_v018_tG:RESONATOR_EPSON_FC_145": {
+      "file": "generated/RESONATOR_EPSON_FC_145.step",
+      "sha256": "a18beb9efa61cb2b896ecdd5b6179e6735dde0ee75c8d59c92f5f5c039ea233e",
+      "kind": "project_generated_simplified",
+      "dimensions_source": "https://www.epsondevice.com/crystal/en/support/product-no/pdf/pcs.pdf",
+      "local_bounds_mm": [
+        -2.05,
+        -0.75,
+        0.0,
+        2.05,
+        0.75,
+        0.9
+      ],
+      "qualification": "FC-145 4.1 x 1.5 x 0.9 mm package envelope from Epson configuration guide; simplified lid and terminals."
+    },
+    "linear:SOT223": {
+      "file": "packages/linear_SOT223.step",
+      "sha256": "9d0bb986f0f1204a4e40e8f11fbe61ad06ae05dca5b450a4bcafb9bbd5e7e03e",
+      "kind": "kicad_library_package",
+      "library_footprint": "Package_TO_SOT_SMD/SOT-223",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Package_TO_SOT_SMD.3dshapes/SOT-223.step",
+      "original_file": "library/SOT-223.step",
+      "original_sha256": "77ad6dbacc493cb619c728f26d2ddcf461eb0feb6b977b47d01d51e67016f654",
+      "footprint_file": "library/footprints/SOT-223.kicad_mod",
+      "footprint_sha256": "49f22605ecc1fc70661654e09eb86ebe3545a2a8a8c98dd6039bf2bc4b9f4839",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 90,
+        "translation_xy_mm": [
+          0.0,
+          0.02564999999999984
+        ],
+        "maximum_land_center_difference_mm": 0.07664999999999944,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "varistor:CT/CN0603": {
+      "file": "generated/CT_CN0603.step",
+      "sha256": "82d8e3c381362d4f3079b65d8bf308ad0cc898ab42c7461e6ba1453b4e33d6bf",
+      "kind": "project_generated_simplified",
+      "dimensions_source": "https://www.bourns.com/docs/Product-Datasheets/cg0603mlc-05e_cg0603mlc-12e.pdf",
+      "local_bounds_mm": [
+        -0.8,
+        -0.425,
+        0.0,
+        0.8,
+        0.425,
+        0.51
+      ],
+      "qualification": "CG0603MLC nominal 1.60 x 0.85 x 0.51 mm; simple body/terminals."
+    },
+    "SmartPrj:R0603-ROUND": {
+      "file": "packages/SmartPrj_R0603-ROUND.step",
+      "sha256": "b656230b4aad533123d8eeb92f68e946eddea50f9fbd8ebb28c276737a1adb4f",
+      "kind": "kicad_library_package",
+      "library_footprint": "Resistor_SMD/R_0603_1608Metric",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Resistor_SMD.3dshapes/R_0603_1608Metric.step",
+      "original_file": "library/R_0603_1608Metric.step",
+      "original_sha256": "1875571c326d0d9e96f36b4efeb8094068ef7619f0a449c781caf0b49c2e5861",
+      "footprint_file": "library/footprints/R_0603_1608Metric.kicad_mod",
+      "footprint_sha256": "7190ac4a00125b807e54129ef0d87d87f2a658eeb74d025a7028203419b09f23",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.06400000000000006,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "SmartPrj:CRYSTAL-3.2-2.5": {
+      "file": "packages/SmartPrj_CRYSTAL-3.2-2.5.step",
+      "sha256": "54ba78499c450c605c1621c97882f90b192ab4dcba1d40dffef1236f25eba188",
+      "kind": "kicad_library_package",
+      "library_footprint": "Crystal/Crystal_SMD_3225-4Pin_3.2x2.5mm",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Crystal.3dshapes/Crystal_SMD_3225-4Pin_3.2x2.5mm.step",
+      "original_file": "library/Crystal_SMD_3225-4Pin_3.2x2.5mm.step",
+      "original_sha256": "d2a89df82ee5f0f56ef23ee59c8161b8d4e92af2b21959d72778316dde3f9f22",
+      "footprint_file": "library/footprints/Crystal_SMD_3225-4Pin_3.2x2.5mm.kicad_mod",
+      "footprint_sha256": "7648bca15399a8bd7856b5da6a1d2bc3a87049dc63958f8e8a3ab7409941a8e4",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.09013878188659968,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "wuerth-elektronik:0805": {
+      "file": "packages/wuerth-elektronik_0805.step",
+      "sha256": "4942dbd41b9d9f0dbf33768f064a32757fa0ccaf57eeaf6b773c5863b07530c7",
+      "kind": "kicad_library_package",
+      "library_footprint": "Inductor_SMD/L_0805_2012Metric",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Inductor_SMD.3dshapes/L_0805_2012Metric.step",
+      "original_file": "library/L_0805_2012Metric.step",
+      "original_sha256": "751a8ae26d20698bfe8303aa2fc7ec986a8b9a7154699b94bf2a13d4ad401425",
+      "footprint_file": "library/footprints/L_0805_2012Metric.kicad_mod",
+      "footprint_sha256": "22f5100d304229ddc07ba8218e3b631d6db4f8fe0b5c310b078c7e41ad56517d",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.03750000000000009,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "SmartPrj:R0402": {
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "kind": "kicad_library_package",
+      "library_footprint": "Resistor_SMD/R_0402_1005Metric",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Resistor_SMD.3dshapes/R_0402_1005Metric.step",
+      "original_file": "library/R_0402_1005Metric.step",
+      "original_sha256": "91507e5af4251cb4ef38e04889c9b98da29904432bd83786bba13ae9b605eacb",
+      "footprint_file": "library/footprints/R_0402_1005Metric.kicad_mod",
+      "footprint_sha256": "e05c7605248c220836f642ed1f526133edf0374acdfd5bb2631e58b4e377acfb",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.0655,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "rcl:SMC_B": {
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "kind": "kicad_library_package",
+      "library_footprint": "Capacitor_Tantalum_SMD/CP_EIA-3528-21_Kemet-B",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Capacitor_Tantalum_SMD.3dshapes/CP_EIA-3528-21_Kemet-B.step",
+      "original_file": "library/CP_EIA-3528-21_Kemet-B.step",
+      "original_sha256": "dfe18bc321e2772dd597027a289d8e13b7b6f0320cfdd8f41c4492bdfe9f7f0c",
+      "footprint_file": "library/footprints/CP_EIA-3528-21_Kemet-B.kicad_mod",
+      "footprint_sha256": "d444beb20a63a356b0aea4afff006b6eb5783c48e78aabbf545f28aabd180532",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.040000000000000036,
+        "standard_to_eagle_pad_names": {
+          "1": "+",
+          "2": "-"
+        },
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Polar tantalum B-case approximation, 3.5 x 2.8 x 2.1 mm; EAGLE drawing 3.2 x 2.7 mm and land centers +/-1.5 mm. Actual installed height/type not identified. Positive end aligned to + pad."
+    },
+    "SmartPrj:SMD_157SW": {
+      "file": "generated/SMD_157SW.step",
+      "sha256": "6c736b9b87b859ff9da50732e82aa23de96ffa0b13e5807260ef237e62401df9",
+      "kind": "project_generated_simplified",
+      "dimensions_source": "../v03/source/Arduino-DUE-V03.brd: SMD_157SW outline and pads; height estimated",
+      "local_bounds_mm": [
+        -2.3,
+        -1.27,
+        0.0,
+        2.3,
+        1.27,
+        1.6
+      ],
+      "qualification": "ERASE switch approximate visualization from source 4.064 x 2.54 mm package outline and two contacts; 1.6 mm height estimated, exact switch part unknown."
+    },
+    "transistor-npn:SOT23": {
+      "file": "packages/transistor-npn_SOT23.step",
+      "sha256": "92d6c9ee20a3b9499c2ed60c1c3d0378f2b49423d30c6d828504f2a6db0fe15d",
+      "kind": "kicad_library_package",
+      "library_footprint": "Package_TO_SOT_SMD/SOT-23",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+      "original_file": "library/SOT-23.step",
+      "original_sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0",
+      "footprint_file": "library/footprints/SOT-23.kicad_mod",
+      "footprint_sha256": "0d88c86c1b6d8c1aae4aa8c09386264c089d4451a128b6ccd63ed253f4300b15",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 90,
+        "translation_xy_mm": [
+          5.487976207166637e-17,
+          -0.054166666666666696
+        ],
+        "maximum_land_center_difference_mm": 0.21666666666666679,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "SmartPrj:MLF32": {
+      "file": "packages/SmartPrj_MLF32.step",
+      "sha256": "8a2e69b802d5b85d35c8a0e57752ca075e04bc56ad2cef4e84c283ecc180306c",
+      "kind": "kicad_library_package",
+      "library_footprint": "Package_DFN_QFN/QFN-32-1EP_5x5mm_P0.5mm_EP3.3x3.3mm",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Package_DFN_QFN.3dshapes/QFN-32-1EP_5x5mm_P0.5mm_EP3.3x3.3mm.step",
+      "original_file": "library/QFN-32-1EP_5x5mm_P0.5mm_EP3.3x3.3mm.step",
+      "original_sha256": "5fa713ea46b36980895812ed853577889b7cb06d275041a39b99bc0be305dc79",
+      "footprint_file": "library/footprints/QFN-32-1EP_5x5mm_P0.5mm_EP3.3x3.3mm.kicad_mod",
+      "footprint_sha256": "68ac1ef874b938bac7aa1d5e039bc5b9ef445809c40dd75c6a3c06e86723d988",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.012500000000000178,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "diode:MINIMELF": {
+      "file": "packages/diode_MINIMELF.step",
+      "sha256": "1956841eb12e4f61c2f8f76b282e40c4b8ba59f83c1de81e99d83db6a095c128",
+      "kind": "kicad_library_package",
+      "library_footprint": "Diode_SMD/D_MiniMELF",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Diode_SMD.3dshapes/D_MiniMELF.step",
+      "original_file": "library/D_MiniMELF.step",
+      "original_sha256": "bab3a3356a14efb0438caca9adf53472dea34425715606e933f092f87f73f650",
+      "footprint_file": "library/footprints/D_MiniMELF.kicad_mod",
+      "footprint_sha256": "48a55f187546392ae453495fe8a5defa8f40fbd33c108b6a3c4afd6f25af417e",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.050000000000000044,
+        "standard_to_eagle_pad_names": {
+          "1": "C",
+          "2": "A"
+        },
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "SmartPrj:SOT23-6": {
+      "file": "packages/SmartPrj_SOT23-6.step",
+      "sha256": "cdcf64c7649e77b24113f6bc5d61f52d7055706f8f1f7d420dd2d1ec6cd82019",
+      "kind": "kicad_library_package",
+      "library_footprint": "Package_TO_SOT_SMD/SOT-23-6",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Package_TO_SOT_SMD.3dshapes/SOT-23-6.step",
+      "original_file": "library/SOT-23-6.step",
+      "original_sha256": "c9fe686b4d1b56927a41fa84a9bc1efb61d8a45a123a3db43bcaa05c2891d635",
+      "footprint_file": "library/footprints/SOT-23-6.kicad_mod",
+      "footprint_sha256": "f341c73aac9dcb553456f68bf3fee3d26eb14acf6d8a1cae82b50418fe1d71ca",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 90,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.012499999999999956,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "SmartPrj:C0603-ROUND": {
+      "file": "packages/SmartPrj_C0603-ROUND.step",
+      "sha256": "8594d591af67ad80d09c6fd8512666a8006e9003f1d6747be1c71e7c4f7ba7b9",
+      "kind": "kicad_library_package",
+      "library_footprint": "Capacitor_SMD/C_0603_1608Metric",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Capacitor_SMD.3dshapes/C_0603_1608Metric.step",
+      "original_file": "library/C_0603_1608Metric.step",
+      "original_sha256": "4857b3dc717675bf1fb22edda622ac3b3ae03cf44d81eefaf3fa3ba3a86d84c1",
+      "footprint_file": "library/footprints/C_0603_1608Metric.kicad_mod",
+      "footprint_sha256": "fe0dbfefbb181a0466f93a8de52d84ba7b00fcd9acdbb69575f4128a0af4e405",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.11399999999999999,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "SmartPrj:DO220AAL": {
+      "file": "packages/SmartPrj_DO220AAL.step",
+      "sha256": "25fdee40a0205e5b03d142af065f15baa5d3ee5448a5031bb136c537a3e8379b",
+      "kind": "kicad_library_package",
+      "library_footprint": "Diode_SMD/D_SMP_DO-220AA",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Diode_SMD.3dshapes/D_SMP_DO-220AA.step",
+      "original_file": "library/D_SMP_DO-220AA.step",
+      "original_sha256": "c77c5017ef42c26ae885e3c5c2694f00534855166d86b4f6e46f7bed64435ee8",
+      "footprint_file": "library/footprints/D_SMP_DO-220AA.kicad_mod",
+      "footprint_sha256": "82096cf9ec909fb2fad297909c82e654f8a163a0bf2b5bae7cda350f56820be6",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 0,
+        "translation_xy_mm": [
+          -0.0020000000000000573,
+          0.0
+        ],
+        "maximum_land_center_difference_mm": 0.000500000000000167,
+        "standard_to_eagle_pad_names": {
+          "1": "P$1",
+          "2": "P$2"
+        },
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    },
+    "SmartPrj:SRR0604": {
+      "file": "generated/SRR0604.step",
+      "sha256": "96637918fe4d0224737ba140db52f0b3cca31535055920833c132dfe7de87a35",
+      "kind": "project_generated_simplified",
+      "dimensions_source": "https://bourns.com/docs/product-datasheets/srr0604.pdf",
+      "local_bounds_mm": [
+        -3.25,
+        -3.25,
+        0.0,
+        3.25,
+        3.25,
+        4.8
+      ],
+      "qualification": "SRR0604 6.5 x 6.5 x 4.8 mm envelope; shield contours and internal winding omitted."
+    },
+    "74xx-little-us:SC70-5": {
+      "file": "packages/74xx-little-us_SC70-5.step",
+      "sha256": "72ec9d3bc0da43d3cdee5de443c151d11a0d5cec7d5c734e9bf6f9fc7c2de1a0",
+      "kind": "kicad_library_package",
+      "library_footprint": "Package_TO_SOT_SMD/SOT-353_SC-70-5",
+      "upstream_model": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Package_TO_SOT_SMD.3dshapes/SOT-353_SC-70-5.step",
+      "original_file": "library/SOT-353_SC-70-5.step",
+      "original_sha256": "2860de5b7b085919ff6e952148353f928798588d9f544dc69430545aff2ba908",
+      "footprint_file": "library/footprints/SOT-353_SC-70-5.kicad_mod",
+      "footprint_sha256": "869e17094994ff787b769a2d69512455a2f20950d59dd5c4103026ec413bb88e",
+      "license": "CC-BY-SA-4.0 with KiCad library exception; upstream header retained",
+      "alignment": {
+        "rotation_z_degrees": 90,
+        "translation_xy_mm": [
+          1.0256416942859084e-17,
+          -0.002499999999999991
+        ],
+        "maximum_land_center_difference_mm": 0.014999999999999902,
+        "standard_to_eagle_pad_names": {},
+        "note": "Land-center differences reflect solder-pad dimensions; bodies are not scaled."
+      },
+      "qualification": "Generic KiCad package body; actual manufacturer, height and markings not qualified."
+    }
+  },
+  "assignments": [
+    {
+      "reference": "ON0",
+      "package": "led:CHIP-LED0805",
+      "value": "GREEN",
+      "file": "packages/led_CHIP-LED0805.step",
+      "sha256": "78013c568531fb0ba28a649f71e71be594351137ac73f681a350880050279890",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "RX0",
+      "package": "led:CHIP-LED0805",
+      "value": "YELLOW",
+      "file": "packages/led_CHIP-LED0805.step",
+      "sha256": "78013c568531fb0ba28a649f71e71be594351137ac73f681a350880050279890",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "TX0",
+      "package": "led:CHIP-LED0805",
+      "value": "YELLOW",
+      "file": "packages/led_CHIP-LED0805.step",
+      "sha256": "78013c568531fb0ba28a649f71e71be594351137ac73f681a350880050279890",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "F1",
+      "package": "rcl:L1812",
+      "value": "MF-MSMF050-2 500mA",
+      "file": "generated/L1812.step",
+      "sha256": "3be47e478bdbf937186e60c4a1cf90d5ea306e8185039b17293fb97c097f913e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "L0",
+      "package": "led:CHIP-LED0805",
+      "value": "YELLOW",
+      "file": "packages/led_CHIP-LED0805.step",
+      "sha256": "78013c568531fb0ba28a649f71e71be594351137ac73f681a350880050279890",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "T1",
+      "package": "zetex:SOT-23",
+      "value": "FDN340P",
+      "file": "packages/zetex_SOT-23.step",
+      "sha256": "f2d4c509da75297de14ca40aec11e4ee44fdf46cba5fffe281540cd26c35f74f",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C31",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C30",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "RN4",
+      "package": "resistor-dil:CAT16",
+      "value": "100K",
+      "file": "packages/resistor-dil_CAT16.step",
+      "sha256": "718e4c39bd14c58d2dd2a8431eaa5258c553496cb3aa94b3e8a71a4b01d7441c",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "RN3",
+      "package": "resistor-dil:CAY16",
+      "value": "1k",
+      "file": "packages/resistor-dil_CAY16.step",
+      "sha256": "7e7f8242b301578ec0b239902116f7de508c08583c5c3ddab7eeaef11e79aa75",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "RN1",
+      "package": "resistor-dil:CAT16",
+      "value": "100K",
+      "file": "packages/resistor-dil_CAT16.step",
+      "sha256": "718e4c39bd14c58d2dd2a8431eaa5258c553496cb3aa94b3e8a71a4b01d7441c",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "IC1",
+      "package": "linear:MSOP08",
+      "value": "LMV358IDGKR",
+      "file": "packages/linear_MSOP08.step",
+      "sha256": "985e45a752963b935056c07ea06504cded57ee94995d2c3cf147d4f3b4340458",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Y2",
+      "package": "Arduino_Wifi_shield_v018_tG:RESONATOR_EPSON_FC_145",
+      "value": "32.768Khz",
+      "file": "generated/RESONATOR_EPSON_FC_145.step",
+      "sha256": "a18beb9efa61cb2b896ecdd5b6179e6735dde0ee75c8d59c92f5f5c039ea233e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "IC4",
+      "package": "linear:SOT223",
+      "value": "NCP1117ST33T3G -3V3",
+      "file": "packages/linear_SOT223.step",
+      "sha256": "9d0bb986f0f1204a4e40e8f11fbe61ad06ae05dca5b450a4bcafb9bbd5e7e03e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C22",
+      "package": "SmartPrj:C0402",
+      "value": "22p",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C21",
+      "package": "SmartPrj:C0402",
+      "value": "22p",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Z1",
+      "package": "varistor:CT/CN0603",
+      "value": "CG0603MLC-05E",
+      "file": "generated/CT_CN0603.step",
+      "sha256": "82d8e3c381362d4f3079b65d8bf308ad0cc898ab42c7461e6ba1453b4e33d6bf",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Z2",
+      "package": "varistor:CT/CN0603",
+      "value": "CG0603MLC-05E",
+      "file": "generated/CT_CN0603.step",
+      "sha256": "82d8e3c381362d4f3079b65d8bf308ad0cc898ab42c7461e6ba1453b4e33d6bf",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R7",
+      "package": "SmartPrj:R0603-ROUND",
+      "value": "6k8 1%",
+      "file": "packages/SmartPrj_R0603-ROUND.step",
+      "sha256": "b656230b4aad533123d8eeb92f68e946eddea50f9fbd8ebb28c276737a1adb4f",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C25",
+      "package": "SmartPrj:C0402",
+      "value": "22p",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Y1",
+      "package": "SmartPrj:CRYSTAL-3.2-2.5",
+      "value": "12MHz KX-7 20pF",
+      "file": "packages/SmartPrj_CRYSTAL-3.2-2.5.step",
+      "sha256": "54ba78499c450c605c1621c97882f90b192ab4dcba1d40dffef1236f25eba188",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "L3",
+      "package": "wuerth-elektronik:0805",
+      "value": "MH2029-300Y",
+      "file": "packages/wuerth-elektronik_0805.step",
+      "sha256": "4942dbd41b9d9f0dbf33768f064a32757fa0ccaf57eeaf6b773c5863b07530c7",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C19",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "JR1",
+      "package": "SmartPrj:R0402",
+      "value": "0R",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "RN2",
+      "package": "resistor-dil:CAT16",
+      "value": "100K",
+      "file": "packages/resistor-dil_CAT16.step",
+      "sha256": "718e4c39bd14c58d2dd2a8431eaa5258c553496cb3aa94b3e8a71a4b01d7441c",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C29",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R5",
+      "package": "SmartPrj:R0402",
+      "value": "39R 1%",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R6",
+      "package": "SmartPrj:R0402",
+      "value": "39R 1%",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C1",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C4",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C11",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C12",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C13",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C14",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C15",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C16",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C17",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C18",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C5",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C6",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C7",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C8",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C9",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C10",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "L1",
+      "package": "wuerth-elektronik:0805",
+      "value": "MH2029-300Y",
+      "file": "packages/wuerth-elektronik_0805.step",
+      "sha256": "4942dbd41b9d9f0dbf33768f064a32757fa0ccaf57eeaf6b773c5863b07530c7",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "L2",
+      "package": "wuerth-elektronik:0805",
+      "value": "MH2029-300Y",
+      "file": "packages/wuerth-elektronik_0805.step",
+      "sha256": "4942dbd41b9d9f0dbf33768f064a32757fa0ccaf57eeaf6b773c5863b07530c7",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C3",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C2",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "L5",
+      "package": "wuerth-elektronik:0805",
+      "value": "MH2029-300Y",
+      "file": "packages/wuerth-elektronik_0805.step",
+      "sha256": "4942dbd41b9d9f0dbf33768f064a32757fa0ccaf57eeaf6b773c5863b07530c7",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C32",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C33",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "ERASE0",
+      "package": "SmartPrj:SMD_157SW",
+      "value": "",
+      "file": "generated/SMD_157SW.step",
+      "sha256": "6c736b9b87b859ff9da50732e82aa23de96ffa0b13e5807260ef237e62401df9",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Q2",
+      "package": "transistor-npn:SOT23",
+      "value": "BC847BSMD",
+      "file": "packages/transistor-npn_SOT23.step",
+      "sha256": "92d6c9ee20a3b9499c2ed60c1c3d0378f2b49423d30c6d828504f2a6db0fe15d",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R3",
+      "package": "SmartPrj:R0402",
+      "value": "1K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "L6",
+      "package": "wuerth-elektronik:0805",
+      "value": "MH2029-300Y",
+      "file": "packages/wuerth-elektronik_0805.step",
+      "sha256": "4942dbd41b9d9f0dbf33768f064a32757fa0ccaf57eeaf6b773c5863b07530c7",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C34",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R1",
+      "package": "SmartPrj:R0402",
+      "value": "0R",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C20",
+      "package": "SmartPrj:C0402",
+      "value": "10n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R4",
+      "package": "SmartPrj:R0402",
+      "value": "100K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C27",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C35",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "RN5",
+      "package": "resistor-dil:CAT16",
+      "value": "1K5",
+      "file": "packages/resistor-dil_CAT16.step",
+      "sha256": "718e4c39bd14c58d2dd2a8431eaa5258c553496cb3aa94b3e8a71a4b01d7441c",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C28",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "RX1",
+      "package": "led:CHIP-LED0805",
+      "value": "YELLOW",
+      "file": "packages/led_CHIP-LED0805.step",
+      "sha256": "78013c568531fb0ba28a649f71e71be594351137ac73f681a350880050279890",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "TX1",
+      "package": "led:CHIP-LED0805",
+      "value": "YELLOW",
+      "file": "packages/led_CHIP-LED0805.step",
+      "sha256": "78013c568531fb0ba28a649f71e71be594351137ac73f681a350880050279890",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "F2",
+      "package": "rcl:L1812",
+      "value": "MF-MSMF050-2 500mA",
+      "file": "generated/L1812.step",
+      "sha256": "3be47e478bdbf937186e60c4a1cf90d5ea306e8185039b17293fb97c097f913e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C36",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C38",
+      "package": "SmartPrj:C0402",
+      "value": "1u",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "IC6",
+      "package": "SmartPrj:MLF32",
+      "value": "ATMEGA16U2-MU",
+      "file": "packages/SmartPrj_MLF32.step",
+      "sha256": "8a2e69b802d5b85d35c8a0e57752ca075e04bc56ad2cef4e84c283ecc180306c",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Z3",
+      "package": "varistor:CT/CN0603",
+      "value": "CG0603MLC-05E",
+      "file": "generated/CT_CN0603.step",
+      "sha256": "82d8e3c381362d4f3079b65d8bf308ad0cc898ab42c7461e6ba1453b4e33d6bf",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Z4",
+      "package": "varistor:CT/CN0603",
+      "value": "CG0603MLC-05E",
+      "file": "generated/CT_CN0603.step",
+      "sha256": "82d8e3c381362d4f3079b65d8bf308ad0cc898ab42c7461e6ba1453b4e33d6bf",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C39",
+      "package": "SmartPrj:C0402",
+      "value": "22p",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C40",
+      "package": "SmartPrj:C0402",
+      "value": "22p",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "D2",
+      "package": "diode:MINIMELF",
+      "value": "CD1206-S01575",
+      "file": "packages/diode_MINIMELF.step",
+      "sha256": "1956841eb12e4f61c2f8f76b282e40c4b8ba59f83c1de81e99d83db6a095c128",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "IC2",
+      "package": "SmartPrj:SOT23-6",
+      "value": "LM2734Y",
+      "file": "packages/SmartPrj_SOT23-6.step",
+      "sha256": "cdcf64c7649e77b24113f6bc5d61f52d7055706f8f1f7d420dd2d1ec6cd82019",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C41",
+      "package": "rcl:SMC_B",
+      "value": "10u",
+      "file": "packages/rcl_SMC_B.step",
+      "sha256": "8d59d0e024f708930bc067dcd7c3d33823b452de4daadcaf46d275d99ff05797",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R10",
+      "package": "SmartPrj:R0402",
+      "value": "10k",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C42",
+      "package": "SmartPrj:C0603-ROUND",
+      "value": "10n",
+      "file": "packages/SmartPrj_C0603-ROUND.step",
+      "sha256": "8594d591af67ad80d09c6fd8512666a8006e9003f1d6747be1c71e7c4f7ba7b9",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R11",
+      "package": "SmartPrj:R0603-ROUND",
+      "value": "10K",
+      "file": "packages/SmartPrj_R0603-ROUND.step",
+      "sha256": "b656230b4aad533123d8eeb92f68e946eddea50f9fbd8ebb28c276737a1adb4f",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R12",
+      "package": "SmartPrj:R0603-ROUND",
+      "value": "52K3",
+      "file": "packages/SmartPrj_R0603-ROUND.step",
+      "sha256": "b656230b4aad533123d8eeb92f68e946eddea50f9fbd8ebb28c276737a1adb4f",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "D3",
+      "package": "diode:MINIMELF",
+      "value": "CD1206-S01575",
+      "file": "packages/diode_MINIMELF.step",
+      "sha256": "1956841eb12e4f61c2f8f76b282e40c4b8ba59f83c1de81e99d83db6a095c128",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "D4",
+      "package": "SmartPrj:DO220AAL",
+      "value": "SS1P3L",
+      "file": "packages/SmartPrj_DO220AAL.step",
+      "sha256": "25fdee40a0205e5b03d142af065f15baa5d3ee5448a5031bb136c537a3e8379b",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "L4",
+      "package": "SmartPrj:SRR0604",
+      "value": "10u SRR0604-100ML",
+      "file": "generated/SRR0604.step",
+      "sha256": "96637918fe4d0224737ba140db52f0b3cca31535055920833c132dfe7de87a35",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R13",
+      "package": "SmartPrj:R0402",
+      "value": "10K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R14",
+      "package": "SmartPrj:R0402",
+      "value": "1K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R15",
+      "package": "SmartPrj:R0402",
+      "value": "1K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R18",
+      "package": "SmartPrj:R0402",
+      "value": "10K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R19",
+      "package": "SmartPrj:R0402",
+      "value": "22R",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R20",
+      "package": "SmartPrj:R0402",
+      "value": "22R",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R21",
+      "package": "SmartPrj:R0402",
+      "value": "1K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "IC10",
+      "package": "74xx-little-us:SC70-5",
+      "value": "74LVC1G125DCK",
+      "file": "packages/74xx-little-us_SC70-5.step",
+      "sha256": "72ec9d3bc0da43d3cdee5de443c151d11a0d5cec7d5c734e9bf6f9fc7c2de1a0",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R2",
+      "package": "SmartPrj:R0402",
+      "value": "10K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R23",
+      "package": "SmartPrj:R0402",
+      "value": "1K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Z5",
+      "package": "varistor:CT/CN0603",
+      "value": "CG0603MLC-05E",
+      "file": "generated/CT_CN0603.step",
+      "sha256": "82d8e3c381362d4f3079b65d8bf308ad0cc898ab42c7461e6ba1453b4e33d6bf",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "T2",
+      "package": "zetex:SOT-23",
+      "value": "FDN340P",
+      "file": "packages/zetex_SOT-23.step",
+      "sha256": "f2d4c509da75297de14ca40aec11e4ee44fdf46cba5fffe281540cd26c35f74f",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "Y4",
+      "package": "SmartPrj:CRYSTAL-3.2-2.5",
+      "value": "16MHz KX-7 20pF",
+      "file": "packages/SmartPrj_CRYSTAL-3.2-2.5.step",
+      "sha256": "54ba78499c450c605c1621c97882f90b192ab4dcba1d40dffef1236f25eba188",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C26",
+      "package": "SmartPrj:C0402",
+      "value": "10n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "C37",
+      "package": "SmartPrj:C0402",
+      "value": "100n",
+      "file": "packages/SmartPrj_C0402.step",
+      "sha256": "989211dd408671ab5ef3dd5b87b6acbe6e169cf204b3fe8ff3f587b7af70dd2e",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "T3",
+      "package": "zetex:SOT-23",
+      "value": "FDN340P",
+      "file": "packages/zetex_SOT-23.step",
+      "sha256": "f2d4c509da75297de14ca40aec11e4ee44fdf46cba5fffe281540cd26c35f74f",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "D5",
+      "package": "SmartPrj:DO220AAL",
+      "value": "SS1P3L",
+      "file": "packages/SmartPrj_DO220AAL.step",
+      "sha256": "25fdee40a0205e5b03d142af065f15baa5d3ee5448a5031bb136c537a3e8379b",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "R99",
+      "package": "SmartPrj:R0402",
+      "value": "10K",
+      "file": "packages/SmartPrj_R0402.step",
+      "sha256": "f31c47354b52b32ce4fa04c03f1de79905b3f568a1ef53c4d731a7b32b87ea08",
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "exclusions": [
+    {
+      "reference": "FID1",
+      "package": "FIDUCIA-MOUNT",
+      "value": "FIDUCIALMOUNT",
+      "reason": "Bare copper fiducial"
+    },
+    {
+      "reference": "FID4",
+      "package": "FIDUCIA-MOUNT",
+      "value": "FIDUCIALMOUNT",
+      "reason": "Bare copper fiducial"
+    },
+    {
+      "reference": "FID3",
+      "package": "FIDUCIA-MOUNT",
+      "value": "FIDUCIALMOUNT",
+      "reason": "Bare copper fiducial"
+    },
+    {
+      "reference": "FID2",
+      "package": "FIDUCIA-MOUNT",
+      "value": "FIDUCIALMOUNT",
+      "reason": "Bare copper fiducial"
+    },
+    {
+      "reference": "C23",
+      "package": "C0402",
+      "value": "22pF_NM",
+      "reason": "Source marks not mounted"
+    },
+    {
+      "reference": "C24",
+      "package": "C0402",
+      "value": "22pF_NM",
+      "reason": "Source marks not mounted"
+    },
+    {
+      "reference": "BR1",
+      "package": "J0402",
+      "value": "NM",
+      "reason": "Source marks not mounted"
+    },
+    {
+      "reference": "R8",
+      "package": "R0402",
+      "value": "0R_NM",
+      "reason": "Source marks not mounted"
+    },
+    {
+      "reference": "R9",
+      "package": "R0402",
+      "value": "1M_NM",
+      "reason": "Source marks not mounted"
+    },
+    {
+      "reference": "JP5",
+      "package": "2X02",
+      "value": "2x2M - NM",
+      "reason": "Source marks not mounted"
+    }
+  ],
+  "existing_assembly_models": 18,
+  "additional_models": 101,
+  "total_models": 119
+}

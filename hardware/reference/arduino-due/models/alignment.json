@@ -1,0 +1,1010 @@
+{
+  "tool": "cadquery-ocp-novtk",
+  "tool_version": "7.9.3.1.1",
+  "source_step": "assembly/Arduino-Due.step",
+  "source_step_sha256": "d1a7a7375fc1ce5ad7a538b7fcec21d07f3569cede452a7d707f8438d1e101b2",
+  "source_archive": "source/arduino-due-1.snapshot.12.zip",
+  "source_archive_sha256": "901a9fe66ec1068e0d2326068e120cc5f725025bde9b4b99a591b78b5bcea8bf",
+  "source_board_bounds_xyz_mm": [
+    -8.881784197001252e-16,
+    -0.8050000000000002,
+    -53.34000010053605,
+    101.60000000026803,
+    0.81,
+    1.0000001421085471e-07
+  ],
+  "mounting_hole_comparison": [
+    {
+      "eagle_xy_mm": [
+        96.52,
+        2.54
+      ],
+      "step_xy_mm": [
+        96.52000000000001,
+        2.5400057884675493
+      ],
+      "center_delta_mm": 5.788467549283638e-06,
+      "radius_mm": 1.5999999999999908
+    },
+    {
+      "eagle_xy_mm": [
+        15.24,
+        50.8
+      ],
+      "step_xy_mm": [
+        15.239999999999997,
+        50.800005788467544
+      ],
+      "center_delta_mm": 5.788467547063192e-06,
+      "radius_mm": 1.6000000000000112
+    },
+    {
+      "eagle_xy_mm": [
+        90.17,
+        50.8
+      ],
+      "step_xy_mm": [
+        90.17,
+        50.80000578846754
+      ],
+      "center_delta_mm": 5.7884675399577645e-06,
+      "radius_mm": 1.5999999999999903
+    },
+    {
+      "eagle_xy_mm": [
+        13.97,
+        2.54
+      ],
+      "step_xy_mm": [
+        13.97000000000001,
+        2.5400057884675493
+      ],
+      "center_delta_mm": 5.788467549283638e-06,
+      "radius_mm": 1.5999999999999976
+    },
+    {
+      "eagle_xy_mm": [
+        66.04,
+        35.56
+      ],
+      "step_xy_mm": [
+        66.03999999999999,
+        35.56000578846756
+      ],
+      "center_delta_mm": 5.788467561274047e-06,
+      "radius_mm": 1.600000000000018
+    },
+    {
+      "eagle_xy_mm": [
+        66.04,
+        7.62
+      ],
+      "step_xy_mm": [
+        66.03999999999999,
+        7.620005788467556
+      ],
+      "center_delta_mm": 5.788467555944976e-06,
+      "radius_mm": 1.6000000000000199
+    }
+  ],
+  "alignment": "(STEP X, -STEP Z, STEP Y - 0.8 mm), then inverse of each native footprint placement/rotation; unit scale.",
+  "display_materials": "Generic black plastic, silver metal and red switch cap assigned by face geometry. Supplied STEP contains only a uniform pale-blue material; colors are display approximations, not original vendor material or polarity evidence.",
+  "qualification": "Mechanical visualization only. Mounting holes and board size match V03; connector heights, pin details, IC pin-1 orientation and physical fit are not measured qualifications. Small original placement offsets are retained.",
+  "excluded_occurrences": {
+    "pcb": [
+      1
+    ],
+    "leds": [
+      5,
+      6,
+      7,
+      8
+    ],
+    "generic_capacitors": [
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ]
+  },
+  "exclusions": "No duplicate PCB slab. Source 3.2x1.6 mm LED bodies do not match the 0805 footprints; generic capacitor bodies do not establish the SMC_B polarized package. Other unmodeled source parts are left bare.",
+  "assignments": [
+    {
+      "reference": "J3",
+      "file": "components/J3.step",
+      "sha256": "9b4fcea703880f8064561a86cb96096a82f122ebf884e8502ff54e4e7a384a48",
+      "bytes": 3355927,
+      "footprint_xy_mm": [
+        1.397,
+        22.225
+      ],
+      "footprint_rotation_degrees": 270.0,
+      "colored_subshapes": 6,
+      "source_products": [
+        {
+          "occurrence": 2,
+          "product": "MicroUSB B - Hirose - ZX62D-B-5P8",
+          "assembly_bounds_mm": [
+            -1.1752478322383608,
+            0.049999899999998265,
+            -26.271569427325932,
+            4.625000246991838,
+            3.550000099999998,
+            -18.17843057267407
+          ],
+          "local_bounds_mm": [
+            -4.046569427325929,
+            -2.572247832238361,
+            -0.7500001000000017,
+            4.046569427325931,
+            3.2280002469918365,
+            2.750000099999998
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "USB1",
+      "file": "components/USB1.step",
+      "sha256": "2bded436354df6e6b62693b7707ba841045d46984f7fcb5877703f666ddb7389",
+      "bytes": 2989870,
+      "footprint_xy_mm": [
+        1.397,
+        38.1
+      ],
+      "footprint_rotation_degrees": 270.0,
+      "colored_subshapes": 6,
+      "source_products": [
+        {
+          "occurrence": 3,
+          "product": "MicroUSB AB - Hirose - ZX62D-AB-5P8",
+          "assembly_bounds_mm": [
+            -1.1753556183979021,
+            0.19999990000568024,
+            -42.425000100000204,
+            4.723579060311375,
+            3.590124093852027,
+            -33.774999900000196
+          ],
+          "local_bounds_mm": [
+            -4.325000100000199,
+            -2.5723556183979026,
+            -0.6000000999943198,
+            4.3250000999998015,
+            3.3265790603113747,
+            2.790124093852027
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "X2",
+      "file": "components/X2.step",
+      "sha256": "10fe6633c7c380e6c90b5d9f5bed6533004a72ef4a1e17b1d129da9af381b4c8",
+      "bytes": 254399,
+      "footprint_xy_mm": [
+        5.334,
+        8.382
+      ],
+      "footprint_rotation_degrees": 90.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 4,
+          "product": "Power Jack - Kycon - KLDHCX-0202-A",
+          "assembly_bounds_mm": [
+            -1.8800000000000012,
+            -2.799999999999999,
+            -12.802000000000003,
+            12.32,
+            11.800000000000002,
+            -3.2019999999999986
+          ],
+          "local_bounds_mm": [
+            -5.18,
+            -6.986000000000001,
+            -3.5999999999999988,
+            4.420000000000003,
+            7.214,
+            11.000000000000002
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "U1",
+      "file": "components/U1.step",
+      "sha256": "30e2e4df5e908288a57407177e307be7a7a5c8786aa7430a64c3de69ec8af34c",
+      "bytes": 11078479,
+      "footprint_xy_mm": [
+        48.895,
+        26.035
+      ],
+      "footprint_rotation_degrees": 180.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 9,
+          "product": "Microchip - Atmel - SAM3X8EAU",
+          "assembly_bounds_mm": [
+            37.895,
+            0.7000000000000001,
+            -37.015,
+            59.895,
+            2.2010001000000003,
+            -15.015000000000004
+          ],
+          "local_bounds_mm": [
+            -11.000000000000002,
+            -10.980000000000006,
+            -0.1,
+            11.000000000000004,
+            11.019999999999998,
+            1.4010001000000005
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "DEBUG0",
+      "file": "components/DEBUG0.step",
+      "sha256": "31065b9a6df1cbba134f95d2a79da5238930d5a2a2782dbcbf2cfc9c2446cd80",
+      "bytes": 556994,
+      "footprint_xy_mm": [
+        29.464,
+        43.4848
+      ],
+      "footprint_rotation_degrees": 180.0,
+      "colored_subshapes": 2,
+      "source_products": [
+        {
+          "occurrence": 10,
+          "product": "Berg Header - 2.54 x 2",
+          "assembly_bounds_mm": [
+            29.464000000000418,
+            -1.7000000000000004,
+            -44.754799999999776,
+            34.54400000000049,
+            8.35,
+            -42.21479999999985
+          ],
+          "local_bounds_mm": [
+            -5.080000000000485,
+            -1.269999999999773,
+            -2.5,
+            -4.176905708241162e-13,
+            1.2700000000001495,
+            7.550000000000001
+          ]
+        },
+        {
+          "occurrence": 11,
+          "product": "Berg Header - 2.54 x 2",
+          "assembly_bounds_mm": [
+            24.38400000000035,
+            -1.7000000000000004,
+            -44.754799999999776,
+            29.464000000000418,
+            8.35,
+            -42.21479999999985
+          ],
+          "local_bounds_mm": [
+            -4.186480088752796e-13,
+            -1.269999999999766,
+            -2.5,
+            5.079999999999648,
+            1.2700000000001566,
+            7.550000000000001
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "ICSP1",
+      "file": "components/ICSP1.step",
+      "sha256": "7dcd13d333e82c3911bb8a1ad4e98f068d5401c6390516008a8091423a6007d9",
+      "bytes": 846377,
+      "footprint_xy_mm": [
+        24.7888,
+        14.732
+      ],
+      "footprint_rotation_degrees": 90.0,
+      "colored_subshapes": 3,
+      "source_products": [
+        {
+          "occurrence": 12,
+          "product": "Berg Header - 2.54 x 2",
+          "assembly_bounds_mm": [
+            22.248800000000088,
+            -1.7000000000000004,
+            -18.541999999999923,
+            27.328800000000157,
+            8.35,
+            -16.002000000000002
+          ],
+          "local_bounds_mm": [
+            1.2700000000000007,
+            -2.5400000000001586,
+            -2.5,
+            3.8099999999999232,
+            2.539999999999908,
+            7.550000000000001
+          ]
+        },
+        {
+          "occurrence": 13,
+          "product": "Berg Header - 2.54 x 2",
+          "assembly_bounds_mm": [
+            22.248800000000088,
+            -1.7000000000000004,
+            -16.002000000000006,
+            27.328800000000154,
+            8.35,
+            -13.462000000000083
+          ],
+          "local_bounds_mm": [
+            -1.2699999999999168,
+            -2.540000000000155,
+            -2.5,
+            1.270000000000006,
+            2.5399999999999117,
+            7.550000000000001
+          ]
+        },
+        {
+          "occurrence": 14,
+          "product": "Berg Header - 2.54 x 2",
+          "assembly_bounds_mm": [
+            22.248800000000088,
+            -1.7000000000000004,
+            -13.462000000000085,
+            27.328800000000154,
+            8.35,
+            -10.922000000000164
+          ],
+          "local_bounds_mm": [
+            -3.809999999999836,
+            -2.540000000000155,
+            -2.5,
+            -1.2699999999999132,
+            2.5399999999999117,
+            7.550000000000001
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "SPI0",
+      "file": "components/SPI0.step",
+      "sha256": "81b003ec8aa7664d180158996f31013cbb2e94ea1d8f5b77e000e5aff8c4e9bf",
+      "bytes": 848934,
+      "footprint_xy_mm": [
+        64.897,
+        27.94
+      ],
+      "footprint_rotation_degrees": 270.0,
+      "colored_subshapes": 3,
+      "source_products": [
+        {
+          "occurrence": 15,
+          "product": "Berg Header - 2.54 x 2",
+          "assembly_bounds_mm": [
+            62.35700000000029,
+            -1.7000000000000004,
+            -31.749999999999478,
+            67.43700000000035,
+            8.35,
+            -29.209999999999557
+          ],
+          "local_bounds_mm": [
+            -3.809999999999478,
+            -2.5399999999997127,
+            -2.5,
+            -1.2699999999995546,
+            2.540000000000354,
+            7.550000000000001
+          ]
+        },
+        {
+          "occurrence": 16,
+          "product": "Berg Header - 2.54 x 2",
+          "assembly_bounds_mm": [
+            62.357000000000276,
+            -1.7000000000000004,
+            -29.209999999999557,
+            67.43700000000034,
+            8.35,
+            -26.669999999999636
+          ],
+          "local_bounds_mm": [
+            -1.2699999999995566,
+            -2.539999999999727,
+            -2.5,
+            1.2700000000003664,
+            2.5400000000003398,
+            7.550000000000001
+          ]
+        },
+        {
+          "occurrence": 17,
+          "product": "Berg Header - 2.54 x 2",
+          "assembly_bounds_mm": [
+            62.357000000000276,
+            -1.7000000000000004,
+            -26.669999999999632,
+            67.43700000000034,
+            8.35,
+            -24.12999999999971
+          ],
+          "local_bounds_mm": [
+            1.270000000000368,
+            -2.539999999999727,
+            -2.5,
+            3.810000000000291,
+            2.5400000000003398,
+            7.550000000000001
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "JTAG0",
+      "file": "components/JTAG0.step",
+      "sha256": "062a8ba64a98d934d135eaa15dbdf55ac81677b50897bf4431127691f9d11def",
+      "bytes": 1272837,
+      "footprint_xy_mm": [
+        23.1648,
+        38.5064
+      ],
+      "footprint_rotation_degrees": 180.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 18,
+          "product": "Berg Header - 1.27 x 10",
+          "assembly_bounds_mm": [
+            21.894800000000952,
+            -1.3000000000000003,
+            -41.6813999999995,
+            24.434800000001154,
+            5.575,
+            -35.33139999999951
+          ],
+          "local_bounds_mm": [
+            -1.2700000000011542,
+            -3.174999999999495,
+            -2.1000000000000005,
+            1.2699999999990461,
+            3.175000000000485,
+            4.775
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "PWML0",
+      "file": "components/PWML0.step",
+      "sha256": "71e01e2d1ef19ff17b923f20552d99c25e929478b07d1b98404fb4a505f87151",
+      "bytes": 905727,
+      "footprint_xy_mm": [
+        54.61,
+        50.8
+      ],
+      "footprint_rotation_degrees": 180.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 19,
+          "product": "Berg Header Receptacle 2.54 x 8 - FCI - 66951-008LF",
+          "assembly_bounds_mm": [
+            44.51349990000001,
+            -2.7560031390411033,
+            -53.187600100000125,
+            64.7065001,
+            9.131200100000099,
+            -48.412399900000125
+          ],
+          "local_bounds_mm": [
+            -10.096500100000009,
+            -2.387600100000129,
+            -3.556003139041103,
+            10.096500099999995,
+            2.387600099999873,
+            8.331200100000098
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "COMMUNICATION0",
+      "file": "components/COMMUNICATION0.step",
+      "sha256": "b606719fe583f30558c9428cd2bb1fcf3b95b0c6a15623910c45d1ad7b2593a1",
+      "bytes": 889113,
+      "footprint_xy_mm": [
+        77.47,
+        50.8
+      ],
+      "footprint_rotation_degrees": 0.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 20,
+          "product": "Berg Header Receptacle 2.54 x 8 - FCI - 66951-008LF",
+          "assembly_bounds_mm": [
+            67.37349990000003,
+            -2.7560031390411024,
+            -53.1876001,
+            87.56650010000003,
+            9.131200100000099,
+            -48.4123999
+          ],
+          "local_bounds_mm": [
+            -10.096500099999973,
+            -2.3876001,
+            -3.556003139041102,
+            10.09650010000003,
+            2.3876001,
+            8.331200100000098
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "POWER0",
+      "file": "components/POWER0.step",
+      "sha256": "c8f8547dac4986b5d0db4de866342690b85fd1ce747ac28a4462c917314160fa",
+      "bytes": 892295,
+      "footprint_xy_mm": [
+        36.83,
+        2.54
+      ],
+      "footprint_rotation_degrees": 0.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 21,
+          "product": "Berg Header Receptacle 2.54 x 8 - FCI - 66951-008LF",
+          "assembly_bounds_mm": [
+            26.733499899999988,
+            -2.7560031390411024,
+            -4.927600100000313,
+            46.92650009999999,
+            9.131200100000099,
+            -0.15239990000031228
+          ],
+          "local_bounds_mm": [
+            -10.096500100000009,
+            -2.3876000999996876,
+            -3.556003139041102,
+            10.096500099999995,
+            2.387600100000312,
+            8.331200100000098
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "ADCL0",
+      "file": "components/ADCL0.step",
+      "sha256": "28ec3ddaba38c66a0ad2911607f352328cda019d7b94fc6a7eaba674ad013a51",
+      "bytes": 892276,
+      "footprint_xy_mm": [
+        59.69,
+        2.54
+      ],
+      "footprint_rotation_degrees": 0.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 22,
+          "product": "Berg Header Receptacle 2.54 x 8 - FCI - 66951-008LF",
+          "assembly_bounds_mm": [
+            49.59349989999999,
+            -2.7560031390411024,
+            -4.927600100000473,
+            69.7865001,
+            9.131200100000099,
+            -0.15239990000047215
+          ],
+          "local_bounds_mm": [
+            -10.096500100000002,
+            -2.3876000999995277,
+            -3.556003139041102,
+            10.096500100000002,
+            2.387600100000472,
+            8.331200100000098
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "ADCH0",
+      "file": "components/ADCH0.step",
+      "sha256": "0abaa20c00375a2c59b12e35a99dd65145d2947631b4b243eb8878ec5a726633",
+      "bytes": 899957,
+      "footprint_xy_mm": [
+        82.55,
+        2.54
+      ],
+      "footprint_rotation_degrees": 0.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 23,
+          "product": "Berg Header Receptacle 2.54 x 8 - FCI - 66951-008LF",
+          "assembly_bounds_mm": [
+            72.45349990000001,
+            -2.7560031390411024,
+            -4.927600100000632,
+            92.64650010000001,
+            9.131200100000099,
+            -0.15239990000063158
+          ],
+          "local_bounds_mm": [
+            -10.096500099999988,
+            -2.3876000999993683,
+            -3.556003139041102,
+            10.096500100000016,
+            2.3876001000006313,
+            8.331200100000098
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "PWMH0",
+      "file": "components/PWMH0.step",
+      "sha256": "b5f78d431c20680aedda4c1d84247eb5cb665e26c35f7817c6f7369c63d5e7db",
+      "bytes": 1119154,
+      "footprint_xy_mm": [
+        30.226,
+        50.8
+      ],
+      "footprint_rotation_degrees": 180.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 24,
+          "product": "Berg Header Receptacle 2.54 x 10 - FCI - 66951-010LF",
+          "assembly_bounds_mm": [
+            17.58949989999997,
+            -2.7560031390411024,
+            -53.1876001,
+            42.862500099999984,
+            9.131200100000099,
+            -48.4123999
+          ],
+          "local_bounds_mm": [
+            -12.636500099999985,
+            -2.387600100000001,
+            -3.556003139041102,
+            12.636500100000024,
+            2.387600100000001,
+            8.331200100000098
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "XIO0",
+      "file": "components/XIO0.step",
+      "sha256": "3519c95ea1225ca9eb60ed40608961456f03bab62751df3bb33855f658ec3128",
+      "bytes": 3013124,
+      "footprint_xy_mm": [
+        95.25,
+        29.21
+      ],
+      "footprint_rotation_degrees": 270.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 25,
+          "product": "Berg Header Receptacle 2.54 x 36 - FCI - 66953-018LF",
+          "assembly_bounds_mm": [
+            92.20199999999963,
+            -2.756000000000658,
+            -52.00650000000006,
+            98.29799999999982,
+            9.055000000000005,
+            -6.41350000000002
+          ],
+          "local_bounds_mm": [
+            -22.796500000000062,
+            -3.0480000000003704,
+            -3.556000000000658,
+            22.796499999999984,
+            3.047999999999803,
+            8.255000000000006
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "PC1",
+      "file": "components/PC1.step",
+      "sha256": "909cebbe654737c56e14c6a9c66de6b19b9aa1458f220ac63477e579f59811db",
+      "bytes": 299174,
+      "footprint_xy_mm": [
+        22.8346,
+        5.9944
+      ],
+      "footprint_rotation_degrees": 270.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 35,
+          "product": "Capacitor - Nichicon - UUR1C101MCL1GS",
+          "assembly_bounds_mm": [
+            19.58,
+            0.799999999999999,
+            -9.45161764828082,
+            26.08,
+            7.225,
+            -2.6016176482808215
+          ],
+          "local_bounds_mm": [
+            -3.457217648280821,
+            -3.2546000000000004,
+            -1.1102230246251565e-15,
+            3.392782351719178,
+            3.2454000000000005,
+            6.425
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "PC2",
+      "file": "components/PC2.step",
+      "sha256": "9f3053a805132b86ede757d5864049cb3dc7e656464369ea45e270a8ef236f5f",
+      "bytes": 299066,
+      "footprint_xy_mm": [
+        74.5744,
+        17.78
+      ],
+      "footprint_rotation_degrees": 90.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 36,
+          "product": "Capacitor - Nichicon - UUR1C101MCL1GS",
+          "assembly_bounds_mm": [
+            71.35,
+            0.799999999999999,
+            -21.201617648280827,
+            77.85,
+            7.225,
+            -14.351617648280827
+          ],
+          "local_bounds_mm": [
+            -3.4283823517191734,
+            -3.2755999999999976,
+            -1.1102230246251565e-15,
+            3.421617648280826,
+            3.2244000000000033,
+            6.425
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "reference": "RESET0",
+      "file": "components/RESET0.step",
+      "sha256": "17c544218e8e9741b21c91dbe87f1f206cfb0859bf14450627eabf4d14a9bb0c",
+      "bytes": 715759,
+      "footprint_xy_mm": [
+        6.223,
+        48.768
+      ],
+      "footprint_rotation_degrees": 0.0,
+      "colored_subshapes": 1,
+      "source_products": [
+        {
+          "occurrence": 37,
+          "product": "Switch - ESwitch - TLE3303",
+          "assembly_bounds_mm": [
+            2.250000000000001,
+            0.8,
+            -52.097121643835784,
+            10.25,
+            3.9500000000000006,
+            -45.38287835723631
+          ],
+          "local_bounds_mm": [
+            -3.972999999999999,
+            -3.3851216427636905,
+            0.0,
+            4.027000000000001,
+            3.3291216438357885,
+            3.1500000000000004
+          ]
+        }
+      ],
+      "model_offset_mm": [
+        0,
+        0,
+        0
+      ],
+      "model_rotation_degrees": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "reported_date_local": "2026-11-01",
+  "timezone": "America/Toronto",
+  "source": "Owner observations in this project conversation; no new photograph or meter reading supplied.",
+  "board_identity": "Owner's Due discussed in this session; not assigned to a die UID or all project benches.",
+  "observations": {
+    "silkscreen": "DUE R3",
+    "linear_regulator_marking": "AMS1117",
+    "separate_inductor_present": true,
+    "IC2_present": true,
+    "IC2_pin_count": 6,
+    "IC5": "Not found by owner"
+  },
+  "selected_cad_reference": "v03/Arduino-DUE-V03.kicad_pcb",
+  "selection_basis": "V03 power topology: six-pin IC2 and separate L4; V02g uses an IC5 MPM3610 module.",
+  "known_difference": "V03 specifies IC4 NCP1117ST33T3G; owner reports AMS1117. IC2's exact part marking has not been reported.",
+  "visual_inspection": {
+    "reported_date_local": "2026-11-01",
+    "preview": "v03/preview/3d-top.png",
+    "result": "Passed the owner's first visual inspection; owner reports that the current 3D preview matches the physical board well.",
+    "scope": "Overall visual correspondence of the initial 18-model 3D representation; later added small-part models have not yet been inspected by the owner. No dimensional measurements or electrical checks reported.",
+    "model_count_at_inspection": 18,
+    "board_sha256_at_inspection": "04954a77407424eff54446491aa896778d2b4a241f0654368a29600b785bf219",
+    "preview_sha256_at_inspection": "de66d2006c9fbd1f00014a8d48aebe8e1ff8fd03c6595bca17f1fd9145427eb0"
+  },
+  "verification_limit": "Power-layout observations and the owner's first visual inspection support the V03 reference. Full-board equivalence, measured dimensions, actual JR1/BR1 assembly and physical continuity have not been established. R3 silkscreen alone does not prove the CAD revision."
+}

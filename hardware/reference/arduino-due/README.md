@@ -1,62 +1,41 @@
-# Arduino Due official-board reference
+# Arduino Due hardware references
 
-Open **[DUE_V02g.kicad_pcb](DUE_V02g.kicad_pcb)** directly in the
-KiCad 10 PCB Editor to inspect the complete Due board, its headers,
-components, copper and mounting holes.
+Use the **[V03 KiCad 10 project](v03/Arduino-DUE-V03.kicad_pro)** as the working
+Due PCB reference for the owner's board. [V03 notes and checks](v03/README.md)
+describe the conversion and its limits.
 
-Arduino's [Due documentation](https://docs.arduino.cc/hardware/due/) links
-to [this official CAD archive](https://docs.arduino.cc/static/f051671bbed80ddf7352991d62cb0d5c/A000056-cad-files.zip).
-Downloaded on 2026-10-30, it contains **DUE_V02g** in EAGLE format.
-The KiCad board here is a local conversion using KiCad **10.0.6**;
-it is not an Arduino-published native KiCad design.
+On 2026-11-01 the owner reported **DUE R3** silkscreen, an **AMS1117**
+regulator, a separate inductor and a **six-pin IC2**, with no IC5 found.
+That power-supply layout supports selecting V03: its source has a six-pin
+LM2734Y at IC2 and a separate 10 uH L4. V02g instead uses an MPM3610 at
+IC5. The V03 source specifies an NCP1117 at IC4; the reported AMS1117 is
+a component substitution. R3 lettering alone does not identify the CAD
+revision, and the observed supply layout does not verify every component
+or connection. [Owner observation record](hardware-observations.json).
 
-| File | Purpose |
+| Reference | Role |
 |---|---|
-| `DUE_V02g.kicad_pcb` | Converted full Due PCB, with embedded footprints |
-| `DUE_V02g.kicad_dru` | Importer-generated clearance rules; not a complete verified KiCad project setup |
-| `source/A000056-cad-files.zip` | Unmodified official download, including its license metadata |
-| `source/DUE_V02g.brd` | Original EAGLE PCB |
-| `source/DUE_V02g.sch` | Original EAGLE schematic; no native KiCad schematic conversion is included |
-| `source/License.textClipping` | Publisher's original license metadata |
-| `sources.json` | Source URL, date, sizes and SHA-256 hashes |
-| `import-board.py` | Reproduce the conversion with KiCad 10.x |
-| `import-report.json` | Original importer report, before the drawing-layer corrections below |
-| `validation.json` | Component-position, pad-net and reload verification results |
+| [v03/](v03/README.md) | Working reference for this board: KiCad project and PCB, original EAGLE sources, import script, checker and provenance |
+| [v02g/](v02g/README.md) | Alternate archived revision, organized in the same way; retain for comparison |
+| [models/](models/README.md) | 119 V03 model assignments: 18 assembly bodies, 91 standard package bodies and 10 simplified special parts; sources and exclusions recorded |
 
-Recreate the native board from the repository root:
+Both PCB conversions retain component values, embedded 2D footprints,
+placements and nets. V03 assigns 119 component bodies; V02g has no 3D
+assignments. Neither includes a converted native KiCad schematic; the original EAGLE schematics
+are retained under each revision's `source/` directory.
 
-```sh
-python3 hardware/reference/arduino-due/import-board.py
-```
+The two loose `brd)-54914` ZIPs were removed after verifying that they
+were identical to the retained
+[V03 source archive](../../../docs/datasheets/arduino/arduino-Due-Reference-design.zip).
+The unique mechanical-model archive is preserved under `models/source/`.
 
-Set `KICAD_CLI` if the required executable is not on PATH or at the default
-macOS application location. Reimporting overwrites the converted PCB.
+These are reference conversions, not fabrication-qualified projects.
+Use physical continuity checks before acting on the reference network.
+In particular, BR1 schematic pins **1 / C / 2** correspond to PCB pads
+**1 / 2 / 3**. The optional external-reference bridge is PCB **1-2** with
+JR1 removed; the current AFE plan keeps the Due stock and JP101 open.
 
-## Conversion checks and limitations
-
-All 141 source components are present at their original coordinates,
-within 0.000002 mm serialization tolerance. All 605 source pad-to-net
-assignments match. Six additional footprints represent the source's
-six standalone holes. KiCad appends `0` to 15 references without a
-numeric suffix, such as `POWER` becoming `POWER0`; the mapping is retained
-in `validation.json`. Native-board reload and top-layer SVG export passed.
-
-The importer reports no warnings or errors, but initially writes 140
-plain-board graphics onto an `UNDEFINED` layer. The reproduction script
-identifies their original layers by position and preserves them as:
-
-- `User.1`: 139 graphics from EAGLE layer 114, `test-probe`.
-- `User.2`: one line from EAGLE layer 42, `bRestrict`. This is a reference
-  drawing only; it does **not** enforce a copper keepout in KiCad.
-
-This is a reference conversion for inspecting the existing Due and
-comparing shield geometry. The checks do not qualify the conversion for
-fabrication or establish that a particular physical board revision matches.
-Publisher copyright, trademark and license terms remain applicable.
-
-The older archive already at
-[`docs/datasheets/arduino/arduino-Due-Reference-design.zip`](../../../docs/datasheets/arduino/arduino-Due-Reference-design.zip)
-contains `Arduino-DUE-V03` and is retained separately. Do not assume the
-two revisions are interchangeable. The AFE assembly plan is in
-[`hardware/afe-proto`](../../afe-proto/README.md), based on the corrected
-[Mega proto carrier](../../mega-proto-carrier/README.md).
+The [AFE plan](../../../docs/afe-plan.md) and
+[corrected Mega proto carrier](../../mega-proto-carrier/README.md) use V03
+for Due mating/reference inspection. The reconstructed carrier remains
+the physical baseline for the separate [AFE assembly](../../afe-proto/README.md).

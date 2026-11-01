@@ -17,7 +17,7 @@ under this directory are still to be created.
 | Working AFE CAD | Planned `afe-proto.kicad_pro/.kicad_sch/.kicad_pcb`, based on a carrier copy; no AFE circuit is installed in the baseline model |
 | Annotation | Carrier R1–R3 and D1/D2 remain; Stage A uses U101/D101/R101–R116/C101–C107/JP101 |
 | Models and runners | Absent; establish manufacturer libraries, adapters, test benches and reproducible measurements before A1 can close |
-| Configuration | Stock Due, JP101 open, JR1/BR1 untouched. Confirm the actual Due revision; the V02g PCB conversion and V03 schematic archive are distinct references |
+| Configuration | Stock Due, JP101 open, JR1/BR1 untouched. Use the [V03 KiCad reference](../reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb), selected from the owner's six-pin IC2/separate-inductor observations; reported AMS1117 differs from source IC4. Full physical continuity remains unverified |
 | Assembly | Gated by the new simulation results, reviewed wiring/placement and unpowered checks; no new stage is released by old results |
 
 ## Historical Stage A findings to reproduce or explain

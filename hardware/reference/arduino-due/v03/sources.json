@@ -1,0 +1,35 @@
+{
+  "board_revision": "Arduino-DUE-V03",
+  "source_archive": "docs/datasheets/arduino/arduino-Due-Reference-design.zip",
+  "source_archive_digest": {
+    "sha256": "b811f8d13275880115b54beff706418823ad625fa8b5b429b34e625c44c1b5f6",
+    "bytes": 190833
+  },
+  "source_note": "Canonical retained Arduino V03 reference-design archive; duplicate loose ZIP downloads were removed after hash verification.",
+  "kicad_version": "10.0.6",
+  "undefined_imported_lines_recovered": 7,
+  "restriction_reference_drawings": {
+    "User.1": 5,
+    "User.2": 5
+  },
+  "restriction_note": "User.1: front restriction lines; User.2: back restriction lines. Reference drawings only, not enforced copper keepouts. Imported circular rule areas are separate.",
+  "files": {
+    "source/Arduino-DUE-V03.brd": {
+      "sha256": "24475786b7b1f3340be3ecd1a9814469bd9669828ad2de6f5ab48f9acada67a1",
+      "bytes": 529713
+    },
+    "source/Arduino-DUE-V03.sch": {
+      "sha256": "df22301a826a394a7545aa3330305453b2d60f46a30f6838702a17a156ebd1f1",
+      "bytes": 1504407
+    },
+    "Arduino-DUE-V03.kicad_pcb": {
+      "sha256": "5dd4669e2d730aafeba1a4a06f3c66e628b58d2facf54b0f12cf47f41f88c017",
+      "bytes": 1435776
+    },
+    "Arduino-DUE-V03.kicad_dru": {
+      "sha256": "7e9856a22601d313183fd667b556b1e140aef5f409e2b740101e10f5ab5e79a4",
+      "bytes": 501
+    }
+  },
+  "component_models": "models-3d.json"
+}

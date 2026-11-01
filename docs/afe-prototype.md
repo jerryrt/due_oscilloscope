@@ -9,6 +9,14 @@ is the physical baseline; the old `hardware/afe-shield/` project was
 removed. Create the working assembly under
 [hardware/afe-proto](../hardware/afe-proto/README.md).
 
+Use the [Due V03 KiCad PCB](../hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb)
+for the Due interface. The owner's DUE R3 board has a reported six-pin
+IC2, separate inductor and AMS1117 regulator; the supply layout supports
+V03, with AMS1117 substituted for source IC4's NCP1117. The
+[observation record](../hardware/reference/arduino-due/hardware-observations.json)
+does not establish full-board continuity. V02g is an alternate archived
+reference, not the default for this assembly.
+
 The candidate circuit comes from historical commit
 `c78201b9bcafd529f013002c875e084f28dd1875`, with a socketed PDIP package.
 Its known bandwidth/settling findings remain unresolved. A1 may change

@@ -1,0 +1,115 @@
+{
+  "source": "Owner-supplied archive; original download URL, author and license not supplied.",
+  "received_date_local": "2026-11-01",
+  "timezone": "America/Toronto",
+  "archive": {
+    "path": "source/arduino-due-1.snapshot.12.zip",
+    "bytes": 133327396,
+    "sha256": "901a9fe66ec1068e0d2326068e120cc5f725025bde9b4b99a591b78b5bcea8bf"
+  },
+  "zip_integrity": "passed",
+  "revision_match_to_v03": "Assembly board size and six mounting holes match V03; 18 selected assembly bodies assigned. Detailed fit and complete assembly equivalence unqualified. See alignment.json.",
+  "kicad_model_assignments": "18 assembly bodies plus 101 additional package/simplified bodies; see alignment.json, population.json and ../v03/models-3d.json.",
+  "files": [
+    {
+      "path": "Arduino Due/Power Jack - Kycon - KLDHCX-0202-A.SLDPRT",
+      "bytes": 809472,
+      "sha256": "9e1554863ee95b2ab3e0a938e4cb8bc1d0ff3e7c8a5ba790ecd74e9abcb8bc05"
+    },
+    {
+      "path": "Arduino Due/Switch - ESwitch - TLE3303.SLDPRT",
+      "bytes": 700416,
+      "sha256": "d1935740e3bd8d279490048472d81b49cd5022baf5fb712825175158b09feb0e"
+    },
+    {
+      "path": "Arduino Due/Berg Header Receptacle 2.54 x 36 - FCI - 66953-018LF.SLDPRT",
+      "bytes": 1267200,
+      "sha256": "382a4cad71c92583aba567cc8124ff46671e3b0cf315b3649e3690fb656b8b0b"
+    },
+    {
+      "path": "Arduino Due/Capacitor.SLDPRT",
+      "bytes": 471552,
+      "sha256": "62d29d54576d7d385a4c6a5039e930503153018e52be797e3fb7c0c67f7ff882"
+    },
+    {
+      "path": "Arduino Due/Microchip - Atmel - SAM3X8EAU.SLDPRT",
+      "bytes": 6553600,
+      "sha256": "1e21343a130a07957a6b2210905cbfbc91d7bc31842be30c65f13094d6272c61"
+    },
+    {
+      "path": "Arduino Due/Berg Header - 1.27 x 10.SLDPRT",
+      "bytes": 828416,
+      "sha256": "5d0321fff975251432d29f038fd5af44bbfa0e86e4fb3b8e87580f01e32e086b"
+    },
+    {
+      "path": "Arduino Due/MicroUSB AB - Hirose - ZX62-AB-5PA.SLDPRT",
+      "bytes": 1283072,
+      "sha256": "a8c7deca0563a4e1c7b722376282f7b6255524f91311d475ce6e2887e61806ed"
+    },
+    {
+      "path": "Arduino Due/PCB - Arduino.SLDPRT",
+      "bytes": 5966336,
+      "sha256": "39cfa0fb0aa4e6b26c5da526238abcfbef3925abebacde05e484ce712cfc6d7a"
+    },
+    {
+      "path": "ARDUINO DUE.SLDASM",
+      "bytes": 2626048,
+      "sha256": "6ef264a8ebfce17fe0de53f5cf110346291f7ddfd6c634e01bdd5c618026227f"
+    },
+    {
+      "path": "Arduino Due/MicroUSB B - Hirose - ZX62D-B-5P8.SLDPRT",
+      "bytes": 1604608,
+      "sha256": "eebd02c023393158e22d25d15faa4a94803c2acccd756d88607a76f3e62941b4"
+    },
+    {
+      "path": "Arduino Due/MicroUSB AB - Hirose - ZX62D-AB-5P8.SLDPRT",
+      "bytes": 1584128,
+      "sha256": "34871b1420104d477e7e829de4ff01c2b63167d6941c73ab3dbbfbfa9d66aa39"
+    },
+    {
+      "path": "Arduino Due/LED - Kingbright - KPT-3216EC.SLDPRT",
+      "bytes": 206336,
+      "sha256": "e0b593aa465f7aa5eafd87a6a69a712240d0ea25a4bb83e07447089770643ed3"
+    },
+    {
+      "path": "Arduino Due/Berg Header Receptacle 2.54 x 10 - FCI - 66951-010LF.SLDPRT",
+      "bytes": 627200,
+      "sha256": "c13be6928d8406f0d7772e27b9b401653f6e4b90ab3cbe6e0266f7b9089ea707"
+    },
+    {
+      "path": "Arduino Due/Capacitor - Nichicon - UUR1C101MCL1GS.SLDPRT",
+      "bytes": 588288,
+      "sha256": "c18253df355ac8579f19444261a2f561aa43ef139c8463c72f4a6d3bb5a49594"
+    },
+    {
+      "path": "Arduino Due/Berg Header - 2.54 x 2.SLDPRT",
+      "bytes": 392704,
+      "sha256": "4a21925b1504760db7e522b41160e3a41516bef7eb1039c93cfed78608f39d4d"
+    },
+    {
+      "path": "ARDUINO DUE.zip",
+      "bytes": 6750559,
+      "sha256": "80cceb3369586c70deb0d587da23be762353cb73c0adca4583b96f2149f33807"
+    },
+    {
+      "path": "Arduino Due/Berg Header Receptacle 2.54 x 8 - FCI - 66951-008LF.SLDPRT",
+      "bytes": 534528,
+      "sha256": "58ee85f88e2577a28756a2323d1729d8482a3ad973dd8499afa600a9bd45b768"
+    },
+    {
+      "path": "Renderings/Arduino Duo.JPG",
+      "bytes": 347428,
+      "sha256": "4bf31cccae7b384688caf0573e917eeecf3b24c86973f181189fdc055a1edb2c"
+    },
+    {
+      "path": "STEP and IGES/ARDUINO DUE.STEP",
+      "bytes": 29852311,
+      "sha256": "d1a7a7375fc1ce5ad7a538b7fcec21d07f3569cede452a7d707f8438d1e101b2"
+    },
+    {
+      "path": "STEP and IGES/ARDUINO DUE.IGS",
+      "bytes": 70309588,
+      "sha256": "5025ae55eaeaaad3ec58834e9a1e5ff1e55eb304a2f1b016c2f9aaa3575e6f7c"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
   "kicad_version": "10.0.6",
   "source_components": 141,
   "imported_footprints": 147,
-  "extra_footprints": [
+  "extra_hole_footprints": [
     "UNK_HOLE_0",
     "UNK_HOLE_1",
     "UNK_HOLE_2",
@@ -27,12 +27,20 @@
     "ERASE": "ERASE0",
     "DEBUG": "DEBUG0"
   },
-  "component_positions_match_source_within_mm": 2e-06,
+  "maximum_component_position_delta_mm": 7.499999998827889e-07,
+  "component_position_tolerance_mm": 2e-06,
   "verified_pad_net_connections": 605,
   "copper_layers": 2,
-  "test_probe_annotations_mapped_to_User.1": 139,
-  "bottom_restrict_line_preserved_as_User.2_drawing": 1,
-  "native_board_reload": "passed",
+  "tracks_including_vias": 3951,
+  "vias": 382,
+  "zones_including_rule_areas": 18,
+  "restriction_reference_drawings": {
+    "User.1": 139,
+    "User.2": 1
+  },
+  "assigned_3d_models": 0,
+  "native_load_save_reload": "passed",
   "top_svg_export": "passed",
-  "scope": "Source correspondence and reload checks only; not a fabrication qualification."
+  "top_svg_bytes": 886814,
+  "scope": "Source correspondence and native read/export only; not a fabrication or physical-board qualification. No native KiCad schematic conversion."
 }

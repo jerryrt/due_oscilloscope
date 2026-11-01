@@ -17,7 +17,7 @@ not passes for the current carrier or a new assembly revision.
 |---|---|
 | [mega-proto-carrier](../mega-proto-carrier/README.md) | Corrected carrier PCB, contact schematic, local libraries, pad map, photographs and copper evidence; preserve as the substrate baseline |
 | [afe-proto](README.md) | AFE circuit/assembly plan and review; planned home of the working KiCad assembly and its SPICE checks |
-| [Arduino Due reference](../reference/arduino-due/README.md) | Complete converted Due PCB for mating, clearance and signal-reference checks; verify the physical Due revision |
+| [Arduino Due V03 PCB](../reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb) | Working Due reference for mating, clearance and signal nets; [owner observations](../reference/arduino-due/README.md) support the supply layout, with AMS1117 substituted and physical continuity still to check |
 | [AFE plan](../../docs/afe-plan.md) | Stage order, simulation gates and implementation sequence |
 | [Stage A recipe](../../docs/afe-prototype.md) | Candidate circuit, parts, connections and later bring-up procedure |
 | [Simulation plan](sim/README.md) / [model plan](models/README.md) | Test benches, evidence and manufacturer-model requirements |

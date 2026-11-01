@@ -1,0 +1,52 @@
+{
+  "kicad_version": "10.0.6",
+  "source_components": 129,
+  "imported_footprints": 135,
+  "extra_hole_footprints": [
+    "UNK_HOLE_0",
+    "UNK_HOLE_1",
+    "UNK_HOLE_2",
+    "UNK_HOLE_3",
+    "UNK_HOLE_4",
+    "UNK_HOLE_5"
+  ],
+  "reference_renames": {
+    "SPI": "SPI0",
+    "PWML": "PWML0",
+    "PWMH": "PWMH0",
+    "ON": "ON0",
+    "POWER": "POWER0",
+    "ADCL": "ADCL0",
+    "COMMUNICATION": "COMMUNICATION0",
+    "ADCH": "ADCH0",
+    "RX": "RX0",
+    "TX": "TX0",
+    "L": "L0",
+    "RESET": "RESET0",
+    "XIO": "XIO0",
+    "ERASE": "ERASE0",
+    "JTAG": "JTAG0",
+    "DEBUG": "DEBUG0"
+  },
+  "maximum_component_position_delta_mm": 0.0,
+  "component_position_tolerance_mm": 2e-06,
+  "verified_pad_net_connections": 591,
+  "copper_layers": 2,
+  "tracks_including_vias": 3957,
+  "vias": 387,
+  "zones_including_rule_areas": 21,
+  "restriction_reference_drawings": {
+    "User.1": 5,
+    "User.2": 5
+  },
+  "assigned_3d_models": 119,
+  "project_settings": {
+    "file": "Arduino-DUE-V03.kicad_pro",
+    "native_load": "passed",
+    "native_save_copy": "passed"
+  },
+  "native_load_save_reload": "passed",
+  "top_svg_export": "passed",
+  "top_svg_bytes": 872381,
+  "scope": "Source correspondence and native read/export only; not a fabrication or physical-board qualification. No native KiCad schematic conversion."
+}

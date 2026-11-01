@@ -74,26 +74,35 @@ reference line does.
 
 ## Publisher board references and the actual carrier
 
-**The Due's reference path** (`Arduino-DUE-V03.sch` in the EAGLE
-archive; the PDF draws the same net, top centre). The 3.3 V rail
+**The Due's reference path** is read from the retained V03 EAGLE
+schematic and checked in the **[V03 KiCad PCB](../hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb)**.
+Use V03 as the working reference for the owner's DUE R3 board: reported
+six-pin IC2 and separate-inductor topology support this selection, with
+AMS1117 substituted for the source's NCP1117 at IC4. The
+[reference index](../hardware/reference/arduino-due/README.md) records the
+limits of that physical identification. The PDF draws the reference
+net at top centre. The 3.3 V rail
 reaches the reference node through JR1, a mounted 0 Ω 0402 link. The
 AREF header pin reaches that node only through BR1, a three-pad solder
-jumper that is not mounted: pad 1 is AREF, pad 2 is 3.3 V, and the
-centre pad C is the reference node. From the node, L3, a ferrite,
+jumper that is not mounted. Its **schematic** pins are 1 = AREF,
+2 = 3.3 V, C = reference node. Its **PCB pads** are 1 = AREF,
+2 = reference node, 3 = 3.3 V; schematic pin C maps to PCB pad 2.
+From the node, L3, a ferrite,
 feeds ADVREF, pin 75, with 100 nF to ground on each side (C34, C19).
-`docs/hardware.md` measured ADVREF at 3270 mV, which is the
-regulator's 3.3 V less the drop through that path. The DAC's reference
+`calibration.json` records a scope-derived ADVREF estimate of 3270 mV
+for the board it names. That estimate does not establish a 30 mV drop
+across this path or the reference voltage of the owner's board. The DAC's reference
 is the same pin, so whatever sets ADVREF sets the DAC's window with
-it. So on a stock Due **the AREF pin is connected to nothing**, and a
-shield driving it is harmless and does nothing; **to drive ADVREF from
-the shield, JR1 is removed and BR1 is bridged from pad 1 to C**, after
+it. In the stock V03 design **AREF is isolated from ADVREF** by open BR1.
+**To drive ADVREF from the shield, JR1 is removed and BR1 is bridged
+from schematic pin 1 to C (PCB pads 1-2)**, after
 which the AREF pin reaches ADVREF through the ferrite, already
 decoupled. Nothing else on the board ties the node to the rail. The
 two steps go together: JR1 out with BR1 open leaves ADVREF floating,
 and BR1 bridged with JR1 in puts the shield's buffer against the rail
-through 0 Ω. *(check on the board with a meter before soldering: the
-net is read from the V03 files, and a board's revision is printed
-beside its USB connectors)*
+through 0 Ω. Confirm the actual board's connectivity with a meter before
+soldering; DUE R3 silkscreen and the matching supply layout do not prove
+the state of JR1/BR1. The current prototype leaves these parts untouched.
 
 **The official Mega Proto Shield Rev3 reference** (`arduino-mega-proto-Shield-reference-design.pdf`,
 EAGLE files beside it). Every header pin is passed straight through
@@ -143,9 +152,10 @@ them.
   bias, startup and loads before assembling this configuration.
 - Optional future configuration: use the buffered reference to drive AREF
   only after revision-specific Due checks, separate SPICE reference-load
-  validation and the documented JR1/BR1 changes. The V03 archive describes
-  removal of JR1 and bridging BR1 from 1 to C; do not assume the converted
-  V02g board or every physical Due is identical. A modified board's reference
+  validation and the documented JR1/BR1 changes. The V03 working reference
+  describes removal of JR1 and bridging BR1 from schematic 1 to C
+  (PCB pads 1-2). V02g remains an alternate archive; verify the actual
+  V03-style board's assembly and nets before changing them. A modified board's reference
   and DAC range differ, so earlier stock-Due measurements are on another scale.
 - A unity buffer from the DAC0 wire into A0 through 68 Ω and 470 pF,
   the same on A1. On a 3.3 V single rail the LMV116's output reaches

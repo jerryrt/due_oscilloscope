@@ -44,6 +44,15 @@ the AFE assembly under `hardware/afe-proto/`. Finish each stage in SPICE
 before assembling it; the new assembly CAD and simulation assets are still
 to be created. Preserve the carrier baseline and its existing copper.
 
+**Due CAD reference for the owner's DUE R3 board: V03**, under
+`hardware/reference/arduino-due/v03/`. The owner reported six-pin IC2,
+a separate inductor and AMS1117; the power layout supports V03, with a
+regulator substitution. The [reference index](hardware/reference/arduino-due/README.md)
+and [owner record](hardware/reference/arduino-due/hardware-observations.json)
+record the limits; full physical continuity is not established.
+V02g is archived separately under `hardware/reference/arduino-due/v02g/`.
+Do not apply this identification to every bench's Due or old measurements.
+
 A 12-bit oscilloscope and signal generator on the Arduino Due
 (SAM3X8E, Cortex-M3). The board acquires and generates; the host does
 all DSP and visualisation.

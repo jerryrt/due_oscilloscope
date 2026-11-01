@@ -8,6 +8,30 @@ Figures marked *(verified)* were read from this development host or are
 unambiguous. Figures marked *(check)* need confirmation against the
 SAM3X8E datasheet before code depends on them.
 
+## CAD reference for the owner's board
+
+Use the **[V03 KiCad PCB](../hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb)**
+for the Due discussed in this build. On 2026-11-01 the owner reported
+DUE R3 silkscreen, an AMS1117 regulator, a separate inductor and six-pin
+IC2, with no IC5 found. V03 has the corresponding six-pin LM2734Y IC2
+and separate L4; V02g uses an MPM3610 at IC5. V03 specifies NCP1117 at
+IC4, so AMS1117 is a reported substitution. The observations support the
+power-layout match, not full electrical or dimensional equivalence.
+
+The [reference index](../hardware/reference/arduino-due/README.md) records
+the observations and paths. V02g is retained under `v02g/` for comparison;
+these observations do not relabel the other benches' boards or historical
+measurements. Both native PCBs have embedded 2D footprints. V03 now has
+119 individually assigned component bodies: 18 from the supplied STEP
+assembly, 91 standard KiCad package bodies and 10 simplified special parts.
+The assembly board size and six mounting-hole centers match its source;
+the initial 18-model preview passed the owner's first visual inspection.
+The expanded population has not yet been inspected by the owner. This is
+a mechanical visualization, not physical fit qualification;
+the [model record](../hardware/reference/arduino-due/models/README.md) lists
+sources, approximations and the ten items left bare (fiducials and NM
+parts, including BR1). V02g has no 3D assignments.
+
 ## Core
 
 | Item | Value |

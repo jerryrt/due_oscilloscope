@@ -19,7 +19,9 @@ SHA-256 hashes. Publisher copyright and model license terms still apply.
 | [SAM3X/SAM3A 11057C datasheet](../datasheets/microchip/SAM3X-SAM3A-11057C.pdf) | Section 45.7.2.1 acquisition-time/source-impedance relation; retained separately from the older 11057B reference |
 | [Arduino Due full pinout](../datasheets/arduino/Arduino-Due-full-pinout.pdf) | Connector signals and alternate functions |
 | [Arduino Due schematic](../datasheets/arduino/arduino-due-schematic.pdf) | Board wiring, separate I2C buses, JR1/BR1 and AREF network |
-| [Arduino Due full PCB in KiCad](../../hardware/reference/arduino-due/README.md) | Official DUE_V02g EAGLE source and local KiCad 10 PCB conversion; source hashes and conversion limitations included |
+| [Arduino Due V03 PCB in KiCad](../../hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb) | Working reference for the owner's DUE R3 board, selected from its reported six-pin IC2 and separate-inductor layout; [evidence and limits](../../hardware/reference/arduino-due/README.md) |
+| [Arduino Due V02g archive](../../hardware/reference/arduino-due/v02g/README.md) | Alternate EAGLE/KiCad revision for comparison, with source hashes and checks |
+| [Due mechanical models](../../hardware/reference/arduino-due/models/README.md) | V03 has 119 model assignments from the supplied assembly, standard KiCad packages and simplified special parts; sources, approximations and bare NM/fiducial sites recorded |
 | [KiCad 10 schematic manual](kicad-10/eeschema.pdf) | Hierarchy, search, symbol fields, ERC and simulator |
 | [KiCad 10 PCB manual](kicad-10/pcbnew.pdf) | Footprint update, routing, DRC and fabrication outputs |
 

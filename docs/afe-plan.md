@@ -105,7 +105,7 @@ validates its baseline, not the new analog circuit or its SPICE performance.
 | Reference | Purpose |
 |---|---|
 | [Corrected carrier](../hardware/mega-proto-carrier/README.md) | Existing geometry, copper, pad IDs, photographs and open physical checks |
-| [Due PCB conversion](../hardware/reference/arduino-due/README.md) | Mating/clearance review and board-net inspection; V02g conversion, not an assumed match to every Due revision |
+| [Due V03 PCB](../hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb) | Working reference for mating/clearance and board nets; selected from the owner's reported power layout. [Reference index](../hardware/reference/arduino-due/README.md) records the AMS1117 substitution and remaining physical checks; V02g is archived separately |
 | [Reference index](reference/README.md) | Offline datasheets, KiCad manuals, official source URLs and provenance |
 | [Model plan](../hardware/afe-proto/models/README.md) | Vendor models, package mapping and smoke tests to establish before A1 |
 | [Workflow](afe-workflow.md) | General design, simulation and hardware quality gates |
