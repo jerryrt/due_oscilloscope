@@ -205,5 +205,11 @@
     "amp_max_n8": 1440.5,
     "xtalk_max_n8": 5.07,
     "frac_min": 0.85
+  },
+  "loop_skew": {
+    "_comment": "The A1-after-A0 lag of one sine in the matched loop (tools/metrics.py loop_skew_once), linux-x1, 90 MHz, build bf8af90. One figure: DAC1-after-DAC0 lag plus the A1-before-A0 spacing; they are not separable. Source: the nine records/h-<track>-<rc>-<ip|rf>-loop-skew.jsonl sets (Tracks A, B, C x in-place RC 225, in-place RC 86, reflash RC 225), 69 kept rows (run != 0, no error); derived by a scratchpad script, numbers re-taken from the records. The lag is an integer multiple k of the trigger period 1/fs: k = 1 in 52 rows, k = 2 in 17, on every track and at both rates. k varies between runs and across a reflash, cause not established, so k_allowed is [1, 2] and no gate may assume k = 1. deviation_ns_max 25 is the smallest round number above 17.99 ns, the largest deviation from k/fs among the 63 rows outside the six that exceed it (six of 69 rows exceed 25 ns, up to 666 ns, two of them half-way rows), which is why a failure is confirmed by one fresh measurement (helpers.confirm_measurement). phase_sd_deg_max is the maximum over all 69 rows (0.0021555) times 1.15, rounded up to 5 decimals. Provisional (check) until more sessions and benches.",
+    "k_allowed": [1, 2],
+    "deviation_ns_max": 25,
+    "phase_sd_deg_max": 0.00248
   }
 }
