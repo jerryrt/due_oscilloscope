@@ -102,22 +102,64 @@ Measured across every trigger the generator's TIOA0 will take:
 
 **The ceiling is the trigger, not the converter.** Frequency tracks
 trigger/4 exactly and amplitude never leaves 99.2-100% of maximum, right
-up to 113 kHz - where the half period is still 4.41 us against a
-789-938 ns rise. What does change is the *shape*: at 113 kHz the square
-is visibly trapezoidal, the slew taking about a fifth of each half
-period, with a glitch spike at each transition. `dso_metrics.py clock`.
+up to 113 kHz - where the half period is still 4.41 us. What
+changes with frequency is the *shape*, and it depends on the DAC bias:
+see "The square's edge at the default bias" below. At 78 MHz on a scope,
+probably at bias 0 *(check)*, 113 kHz was visibly trapezoidal, the slew
+taking about a fifth of each half period, with a glitch spike at each
+transition. `dso_metrics.py clock`.
 
 **Why the square gives out before the sine.** A flat-topped square needs
-a rise time well inside its half period. The measured rise is 789-938 ns,
-and the half period equals it near 550 kHz, so a trapezoid with no flat
-top at ~400 kHz is what that rise predicts; a sine carries no harmonics
-and survives much further. The datasheet states a DAC sampling rate of
-2 MHz at most and SNR 71 dB typical at 127 kHz (SAM3X datasheet
-11057B, Tables 46-39 to 46-41), but **no settling time, slew rate or
-output load limit**, so the 789-938 ns is a measurement of this DAC plus
-this bench's probe and wiring, and the two are not separated. A scope
-with a low-capacitance probe on the pin, once with the jumper and once
-without, separates them.
+a rise time well inside its half period, and a sine carries no harmonics
+and survives much further. The rise is set by the DAC bias and by the
+step height, and both are measured below. The datasheet states a DAC
+sampling rate of 2 MHz at most and SNR 71 dB typical at 127 kHz (SAM3X
+datasheet 11057B, Tables 46-39 to 46-41), but **no settling time, slew
+rate or output load limit**, so an edge time is a measurement of this DAC
+plus the bench's wiring, and the two are not separated.
+
+### The square's edge at the default bias
+
+The firmware writes `DACC_ACR` 0x10A (`=2,1I`) after every reset. Measured
+on `linux-x1`, Track B, MCK 90 MHz, with no scope: `tools/square_shape.py`
+folds the loop's capture to equivalent time (the phase E fold, 22.2 ns per
+position). Full-amplitude square, swing 2736-2745 ADC codes in every cell
+(99.7-100.3% of the low-frequency swing); rise 277-300 ns and fall
+279-303 ns at every frequency. One run per cell, one session, run 0 not
+dropped.
+
+| square | flat top, share of the half period | label |
+|---|---|---|
+| 50 kHz | 0.96 | square |
+| 100 kHz | 0.93 | square |
+| 201 kHz | 0.86 | square |
+| 402 kHz | 0.71 | square |
+| 592 kHz, solo | 0.58 | square |
+| 750 kHz, solo | 0.53 | trapezoid |
+
+So at the default bias a square keeps a flat top to the DACC's own
+ceiling. With the bias at the register's reset value, `settletime.py
+--ibctl 0,0`, the rise is 838 ns; a 201 kHz square has a flat share of
+0.61 and a 402 kHz square is a triangle (0.07, with a swing of 95.7% of
+the 100 kHz swing). The 789-938 ns rise and the "no flat top near
+400 kHz" that were read off a scope at 78 MHz are the bias-0 behaviour:
+838 ns lies inside that range, though no register readback was taken at
+the time *(check)*.
+
+**The edge is slew limited, so it scales with the step.** Rise 277 ns for
+a 2192 mV step, 166 ns for 1095 mV, 63-94 ns for 497 mV and 61 ns for
+248 mV, the last at the fold's floor of about 60 ns. For steps of 1 V and
+more that is about 6 V/us (0.8 x step / rise: 6.2 V/us at 2.19 V, 5.9 at
+1.1 V); below about 0.5 V the figure is the tool's floor and says nothing
+more. A smaller square therefore keeps its flat top to a higher
+frequency. The edge times are bimodal one timer tick apart (rise 277 or
+300 ns), and the mode moves on reflash; the cause is not established.
+
+Not established: shape above 750 kHz, where the DACC update rate below is
+a different ceiling, and the stability of the bounds across sessions and
+benches. The gate is `tests/test_square_shape_board.py` against the
+`square_shape` key of `tests/baseline.json`, provisional *(check)*; its
+bias-0 control requires the same check to fail on the bias-0 values.
 
 ### 113 kHz is not the DAC's limit, and it is not close to it
 
@@ -178,17 +220,19 @@ Square at two points, `dso_metrics.py ceiling --solo`:
   the DACC's conversion limit seen from the analog side.
 - **Full amplitude to ~400-450 kHz.** Vpp holds at 2.38-2.40 V through
   407 kHz and is down to 81.7% by 592 kHz.
-- **A recognisable square only to ~100-200 kHz.** This is the one the
-  numbers hide, and it is why the screenshots matter: at 407 kHz the
-  amplitude is still 100% and the waveform is already a trapezoid with
-  almost no flat top, because the 789-938 ns rise is most of a 1.25 us
-  half period. By 600 kHz it is a triangle. At the DACC ceiling it is a
-  triangle whose peak height varies cycle to cycle - the converter
-  failing to keep up irregularly rather than uniformly.
+- **A flat-topped square to the ceiling at the default bias.** Shape and
+  peak-to-peak are different findings, and the shape is the one a
+  scope screenshot shows. At the default bias the flat top is 0.71 of the
+  half period at 402 kHz and 0.53 at 750 kHz (table above). At bias 0,
+  and in the 78 MHz scope screenshots that were probably taken there
+  *(check)*, 407 kHz is already a trapezoid with almost no flat top and
+  600 kHz a triangle. At the DACC ceiling the peak height varies cycle to
+  cycle - the converter failing to keep up irregularly rather than
+  uniformly.
 
 "Amplitude fell to 68%" and "the square became a triangle" are the same
-number and different findings, which is the whole argument for capturing
-the screen and not only the measurements.
+number and different findings; capture the shape and not only the
+peak-to-peak.
 
 **Five different ceilings, and they are not the same number.** Naming
 them separately matters, because a design sized against the wrong one
@@ -199,11 +243,11 @@ fails in a way that looks analog:
 | internal generator on TIOA0 | **113 kHz** square | the ADC's `ACQ_MIN_RC`, then halved by TAG |
 | internal generator on TIOA1, sync on | **~357 kHz** square | DACC conversion, halved by TAG's other channel |
 | solo, no sync, TIOA1 | **~750 kHz** toggling | DACC conversion, not halved. The hardware's own ceiling |
-| solo, and still full amplitude | **~400-450 kHz** | 789-938 ns rise against the half period |
-| solo, and still shaped like a square | **~100-200 kHz** | the same rise, judged on shape instead of on peak-to-peak |
+| solo, and still full amplitude | **~400-450 kHz** | peak-to-peak at 78 MHz on a scope; at the default bias 90 MHz the swing is 99.7-100.3% to 402 kHz |
+| solo, and still shaped like a square | **flat top 0.71 at 402 kHz, 0.53 at 750 kHz** at the default bias; **~100-200 kHz** at bias 0 | the slew-limited edge (277-300 ns) against the half period, judged on shape |
 
 All five measured. The last three are the same converter described three
-ways, and which one to quote depends entirely on what the output is for:
+ways, and the last depends on the DAC bias, and which one to quote depends entirely on what the output is for:
 a clock only has to cross a threshold, a reference has to reach its
 rails, and a waveform has to keep its shape.
 

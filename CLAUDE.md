@@ -323,14 +323,17 @@ Check here before reasoning from general Arduino knowledge.
   with **no trigger at all**, so a trace holds still only when
   `rate/tone` divides the frame's samples-per-channel. That is a missing
   front-end feature, not a signal defect.
-- **The DAC tops out around 750 kHz of toggling, and stops being a
-  square long before that.** Measured with `=3J` (solo: every table
-  entry tagged DAC0, no sync, double rate) on TIOA1: ask for 1,000,000
-  Hz and 749,000 arrives; ask for 1,500,000 and 746,000 arrives. Full
-  amplitude survives only to **~400-450 kHz**, and a *recognisable
-  square* only to ~100-200 kHz - at 407 kHz Vpp is still 100% and the
-  waveform is already a trapezoid with no flat top. "Amplitude fell to
-  68%" and "the square became a triangle" are the same number and
+- **The DAC tops out around 750 kHz of toggling, and whether it is
+  still a square depends on the bias.** Measured with `=3J` (solo: every
+  table entry tagged DAC0, no sync, double rate) on TIOA1: ask for
+  1,000,000 Hz and 749,000 arrives; ask for 1,500,000 and 746,000
+  arrives. At the default `DACC_ACR` (0x10A) a full-amplitude square has
+  a 277-300 ns edge and keeps a flat top of 0.71 of the half period at
+  402 kHz and 0.53 at 750 kHz; with the bias at 0 the rise is 838 ns and
+  402 kHz is a triangle. The old "recognisable only to ~100-200 kHz" came
+  from a 78 MHz scope, probably at bias 0 *(check)*. The edge is slew
+  limited (about 6 V/us), so a smaller step keeps its flat top higher.
+  "Amplitude fell to 68%" and "the square became a triangle" are
   different findings; quote the one that matches what the output is
   for. `docs/awg.md`.
 - **Playback does not deliver every rate it accepts, and the affected

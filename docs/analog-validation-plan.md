@@ -132,13 +132,36 @@ gate is out of date under the tracks' parity rule; lifting it is a
 prerequisite for any row that rests on them. Track C runs through
 `phase0.py --track c` and the board tests run on Tracks A, B and C.
 
+### Phase H: the square's edge
+
+`tools/square_shape.py` measures the edge and the flat top of a square
+against frequency and amplitude with no scope, by the phase E fold
+(`phase0.py square-gate` is the metric, `square_shape.py grid` the
+grid, `square_bias_control` the bias-0 arm). The board gate is
+`tests/test_square_shape_board.py`, with board-free tests in
+`tests/test_square_shape_gate.py`, `tests/test_square_gate.py` and
+`tests/test_square_shape.py`. Measured on `linux-x1` at the default
+bias: rise and fall 277-300 ns, flat top 0.96 at 50 kHz to 0.53 at
+750 kHz, full swing at every frequency; with the bias at 0 the rise is
+838 ns and 402 kHz is a triangle. `docs/awg.md` carries the table.
+
+Bounds in the `square_shape` key of `tests/baseline.json` come from 48
+kept rows, `records/sq-<a|b|c>-<ip|rf>-square-gate.jsonl`: 3 in-place sets
+of 7 and 3 reflash sets of 9, run 0 of each chunk dropped by index, build
+0847604, clock 90,000,000. Rise and fall are bimodal one tick (22.2 ns)
+apart and the mode moves on reflash. Bounds are provisional *(check)*.
+The bias-0 control requires the same check to fail on the bias-0 values.
+It does not resolve edges below about 60 ns, does not reach above
+750 kHz, and the swing is not gated (the DC test owns gain). Tracks A, B
+and C and both axes were recorded.
+
 ## Not planned here
 
 | item | why it is not a phase |
 |---|---|
 | The wrap displacement at 90 MHz | The campaign metric is pinned to a period-21 lattice measured against the RC 195 trigger. At RC 225 the comb period follows RC and would fall off the lattice and read small. The period has to be derived, and the metric shown to fire with the refresh bit restored, before any campaign runs *(check)* |
 | Runs past 150 s | The soak tools in `tools/` are close-wedge soaks, not long-capture integrity runs. The 150 s capture in `hardware.md` has no record behind it *(check)* |
-| Per-code DNL, absolute volts, the DAC's own INL | Need a meter or the bench scope; see `measurement-suite.md` |
+| Per-code DNL, absolute volts, the DAC's own INL | Need a meter or the bench scope; see `measurement-suite.md`. The square's edge and flat top are measured here without one, down to about 60 ns |
 | Reversing the ADC's sequence order | A firmware change; it is what would separate ADC skew from the DAC lag |
 | Duplex at the top rate on Windows | The only duplex loss figure is a 78 MHz reading from another bench *(check)* |
 
@@ -156,6 +179,7 @@ from those figures *(check)* until a phase is run and timed; the reflash axis ro
 | B, G in place | `--runs 8` of a metric at each ladder end | about 3 s a run, under a minute per rate |
 | G across sessions | The reflash axis: a flash, the one-minute warm-up, a throwaway run and the recorded one, in chunks of four runs | 83 s a run measured for one metric; a 4-run chunk of four metrics took about 8 minutes, and a reflash set was 3 chunks |
 | H | 15 tasks: in place 8 runs, reflash 3 chunks of 4 | measured: about 7-8 minutes per 4-run reflash chunk of three metrics |
+| H, square gate | 3 in-place tasks of 8 runs and 9 reflash chunks of 4 runs | measured: about 12 s a run in place; about 6.5 minutes a reflash chunk |
 
 The reflash axis dominates. A key shared by several metrics costs its runs
 once, because one run returns every key.
