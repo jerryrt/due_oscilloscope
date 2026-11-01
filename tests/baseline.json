@@ -182,12 +182,12 @@
     "floor_factor": 0.9
   },
   "sinad": {
-    "_comment": "SINAD, THD and ENOB of a coherent sine in the DAC->ADC loop (tools/noise_metrics.py sinad_once), linux-x1, 90 MHz, build bf8af90. Source: the nine records/h-<track>-<rc>-<ip|rf>-sinad.jsonl sets (Tracks A, B, C x in-place RC 225, in-place RC 86, reflash RC 225), 69 kept rows (run != 0, no error). Rule, mechanical (derived by a script, not by eye): per key, drop rows more than 4 median absolute deviations from their own set's median (set-wise; no exclusion in a set whose MAD is 0), leaving the bulk; bound = bulk extreme extended outward by the bulk range (max - min over all bulk rows), floored or ceilinged at 2 decimals. Excluded per key: sinad_db 5, enob 5, thd_db 6, noise_floor_rms_lsb 5, signal_rms_lsb 10. The bulk drops one spike row (a-225-ip: floor 5.97 codes, SINAD 44.23) and a bound from the extreme including it would be useless, so the test confirms a failure with one fresh measurement instead (helpers.confirm_measurement). The signal band is narrow because the amplitude is set by the DAC and the host, not by noise. Provisional (check) until more sessions and benches.",
+    "_comment": "SINAD, THD and ENOB of a coherent sine in the DAC->ADC loop (tools/noise_metrics.py sinad_once), linux-x1, 90 MHz, build bf8af90. Source: the nine records/h-<track>-<rc>-<ip|rf>-sinad.jsonl sets (Tracks A, B, C x in-place RC 225, in-place RC 86, reflash RC 225), 69 kept rows (run != 0, no error). Rule, mechanical (derived by a script, not by eye): per key, drop rows more than 4 median absolute deviations from their own set's median (set-wise; no exclusion in a set whose MAD is 0), leaving the bulk; bound = bulk extreme extended outward by the bulk range (max - min over all bulk rows), floored or ceilinged at 2 decimals. Excluded per key: sinad_db 5, enob 5, thd_db 6, noise_floor_rms_lsb 5, signal_rms_lsb 10. The bulk drops one spike row (a-225-ip: floor 5.97 codes, SINAD 44.23) and a bound from the extreme including it would be useless, so the test confirms a failure with one fresh measurement instead (helpers.confirm_measurement). The signal band is narrow because the amplitude is set by the DAC and the host, not by noise. Provisional (check) until more sessions and benches. signal_rms_lsb is the exception to the exclusion: it has no spike population, only ordinary spread, so the MAD rule threw out 10 of 69 good rows and left a 1.06-code band that two kept rows (968.94 and 971.77) already fell outside; its band is the extreme over ALL 69 kept rows (968.94 to 971.77) extended by their range (2.83): 966.11 to 974.6.",
     "sinad_db_min": 59.85,
     "enob_min": 9.65,
     "thd_db_max": -75.55,
     "noise_floor_rms_lsb_max": 0.97,
-    "signal_rms_lsb_min": 969.67,
-    "signal_rms_lsb_max": 970.73
+    "signal_rms_lsb_min": 966.11,
+    "signal_rms_lsb_max": 974.6
   }
 }
