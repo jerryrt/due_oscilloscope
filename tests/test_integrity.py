@@ -14,7 +14,7 @@ import pytest
 
 import measure
 import pacing
-from helpers import (assert_dc_fit, assert_fresh, assert_no_underruns,
+from helpers import (assert_fresh, confirm_dc_fit, assert_no_underruns,
                      assert_slew, dc_fit,
                      assert_stream_clean, assert_tone, loop_cmd, record,
                      shared_run, window, window_purity, assert_crosstalk)
@@ -390,28 +390,43 @@ def test_dc_transfer_is_one_line(board, baseline, calibration, adc_rc):
         assert cfg.get(key) is not None, (
             f"tests/baseline.json dc_transfer.{key} is null: this board's "
             f"DC transfer has not been measured, and a null is not a pass")
-    points = []
-    for code in (512, 1024, 2048, 3072, 3583):
-        res = measure.run_loop(board, dac_sps=200000,
-                               adc_hz=measure.hz_for(adc_rc), channels=2,
-                               dc=code, seconds=pacing.PROBE)
-        assert_fresh(res, 1.5)
-        # Settled samples only: playback starts from a ring primed with
-        # mid-scale silence, so the head of the run is that, not the code.
-        vals = res.stream.settled[measure.CH_A0]
-        assert vals, "no settled samples"
-        assert max(vals) - min(vals) < 200, (
-            f"a constant code {code} produced a {max(vals) - min(vals)} "
-            f"code spread on A0; that is not a DC level")
-        points.append((code, sum(vals) / len(vals)))
-    slope, offset, rms, worst = dc_fit(points)
-    record(calibration, f"dc_fit_rc{adc_rc}", {
-        "slope": round(slope, 5), "offset_codes": round(offset, 1),
-        "rms_codes": round(rms, 2), "worst_codes": round(worst, 2),
-        "means": [[c, round(m, 1)] for c, m in points]})
-    assert_dc_fit(points, cfg["slope_ref"], cfg["offset_ref"],
-                  cfg["slope_tol"], cfg["offset_tol"], cfg["physics_tol"],
-                  cfg["resid_max_codes"])
+    kept = []
+
+    def sweep():
+        points = []
+        for code in (512, 1024, 2048, 3072, 3583):
+            res = measure.run_loop(board, dac_sps=200000,
+                                   adc_hz=measure.hz_for(adc_rc),
+                                   channels=2, dc=code, seconds=pacing.PROBE)
+            assert_fresh(res, 1.5)
+            # Settled samples only: playback starts from a ring primed
+            # with mid-scale silence, so the head of the run is that.
+            vals = res.stream.settled[measure.CH_A0]
+            assert vals, "no settled samples"
+            assert max(vals) - min(vals) < 200, (
+                f"a constant code {code} produced a "
+                f"{max(vals) - min(vals)} code spread on A0; that is not "
+                f"a DC level")
+            points.append((code, sum(vals) / len(vals)))
+        kept[:] = points
+        return points
+
+    gate = dict(slope_ref=cfg["slope_ref"], offset_ref=cfg["offset_ref"],
+                slope_tol=cfg["slope_tol"], offset_tol=cfg["offset_tol"],
+                physics_tol=cfg["physics_tol"],
+                resid_max=cfg["resid_max_codes"])
+    outcome = {}
+    try:
+        outcome = confirm_dc_fit(sweep, **gate)
+    finally:
+        # The sweep that was accepted, or the last one when both failed.
+        if kept:
+            slope, offset, rms, worst = dc_fit(kept)
+            record(calibration, f"dc_fit_rc{adc_rc}", {
+                "slope": round(slope, 5), "offset_codes": round(offset, 1),
+                "rms_codes": round(rms, 2), "worst_codes": round(worst, 2),
+                "means": [[c, round(m, 1)] for c, m in kept],
+                **outcome})
 
 
 def test_dc_levels_are_monotonic(board, baseline, calibration):

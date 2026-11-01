@@ -7,7 +7,7 @@ import random
 
 import pytest
 
-from helpers import assert_dc_fit, dc_fit
+from helpers import assert_dc_fit, confirm_dc_fit, dc_fit
 
 CODES = (512, 1024, 2048, 3072, 3583)
 SLOPE, OFFSET = 0.67, 120.0
@@ -96,3 +96,67 @@ def test_the_recorded_gate_fails_one_level_8_codes_off(level, sign):
     pts = line(rec["slope_ref"], rec["offset_ref"], (level, sign * 8.0))
     with pytest.raises(AssertionError, match="DC transfer"):
         assert_dc_fit(pts, **rec)
+
+
+def _sweeps(*seq):
+    """A fake sweep() that hands out the given point lists in order."""
+    calls = []
+
+    def sweep():
+        calls.append(1)
+        return seq[len(calls) - 1] if len(calls) <= len(seq) else seq[-1]
+    return sweep, calls
+
+
+def _gate_line(shift=None):
+    rec = _recorded()
+    return rec, line(rec["slope_ref"], rec["offset_ref"], shift)
+
+
+def test_confirm_passing_sweep_is_taken_once():
+    rec, good = _gate_line()
+    sweep, calls = _sweeps(good)
+    assert confirm_dc_fit(sweep, **rec) == {"retried": False}
+    assert len(calls) == 1
+
+
+def test_confirm_failing_then_passing_sweep_is_retried_once():
+    rec, good = _gate_line()
+    _, bad = _gate_line((0, 8.0))
+    sweep, calls = _sweeps(bad, good)
+    out = confirm_dc_fit(sweep, **rec)
+    assert out["retried"] is True and "DC transfer" in out["first"]
+    assert len(calls) == 2
+
+
+def test_confirm_two_failing_sweeps_raise_with_both_messages():
+    rec, _ = _gate_line()
+    _, bad1 = _gate_line((2, 8.0))
+    _, bad2 = _gate_line((0, 8.0))
+    sweep, calls = _sweeps(bad1, bad2, bad2)
+    with pytest.raises(AssertionError) as e:
+        confirm_dc_fit(sweep, **rec)
+    msg = str(e.value)
+    assert "both DC sweeps failed" in msg
+    assert "DC transfer residual" in msg and "DC transfer regression" in msg
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("level", range(len(CODES)))
+@pytest.mark.parametrize("sign", (1, -1))
+def test_confirm_persistent_8_code_shift_fails_both_sweeps(level, sign):
+    rec, bad = _gate_line((level, sign * 8.0))
+    sweep, calls = _sweeps(bad, bad)
+    with pytest.raises(AssertionError, match="both DC sweeps failed"):
+        confirm_dc_fit(sweep, **rec)
+    assert len(calls) == 2
+
+
+def test_confirm_one_sweep_6_code_shift_at_512_passes_on_retry():
+    rec, good = _gate_line()
+    _, bad = _gate_line((0, 6.0))
+    with pytest.raises(AssertionError):
+        assert_dc_fit(bad, **rec)
+    sweep, calls = _sweeps(bad, good)
+    out = confirm_dc_fit(sweep, **rec)
+    assert out["retried"] is True and len(calls) == 2

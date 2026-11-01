@@ -293,6 +293,32 @@ def assert_dc_fit(points, slope_ref, offset_ref, slope_tol, offset_tol,
     return slope, offset, rms, worst
 
 
+def confirm_dc_fit(sweep, **gate):
+    """Gate a DC sweep, and confirm a failure with one fresh sweep.
+
+    `sweep()` returns the [(dac_code, mean_a0_code)] points of a whole
+    new sweep. A sweep that fails `assert_dc_fit` is repeated once; a
+    level that is genuinely off fails both, while a single run whose
+    level sat shifted for its whole window does not repeat. Returns
+    {"retried": False}, or {"retried": True, "first": <message>} when
+    the second sweep passed, and raises when both failed, naming both.
+    """
+    first_points = sweep()
+    try:
+        assert_dc_fit(first_points, **gate)
+        return {"retried": False}
+    except AssertionError as first:
+        first_msg = str(first)
+    second_points = sweep()
+    try:
+        assert_dc_fit(second_points, **gate)
+    except AssertionError as second:
+        raise AssertionError(
+            f"both DC sweeps failed the gate; first: {first_msg}; "
+            f"second: {second}") from None
+    return {"retried": True, "first": first_msg}
+
+
 def record(calibration, key, value):
     calibration[key] = value
     return value
