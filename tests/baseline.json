@@ -189,5 +189,21 @@
     "noise_floor_rms_lsb_max": 0.97,
     "signal_rms_lsb_min": 966.11,
     "signal_rms_lsb_max": 974.6
+  },
+  "tone_sweep": {
+    "_comment": "Amplitude on A0 and crosstalk on A1 against tone (tools/metrics.py tone_sweep_once; N samples per cycle, N = 256, 64, 16, 8), linux-x1, 90 MHz, build bf8af90. Source: the nine records/h-<track>-<rc>-<ip|rf>-tone-sweep.jsonl sets (Tracks A, B, C x in-place RC 225, in-place RC 86, reflash RC 225), 69 kept rows (run != 0, no error). Rule, mechanical (script derive_tone.py, not by eye): per key, drop rows more than 4 median absolute deviations from their own set's median (set-wise; no exclusion in a set whose MAD is 0), leaving the bulk; bound = bulk extreme extended outward by the bulk range, floored (minimums) or ceilinged (maximums) at 2 decimals. If the exclusion would remove more than 15% of the 69 rows for a key, no row is excluded for that key and the bound comes from all 69. Rows the rule would drop / used: amp_n256 would drop 12, none excluded; amp_n64 would drop 12, none excluded; amp_n16 9 excluded; amp_n8 would drop 11, none excluded; xtalk_n256 7 excluded; xtalk_n64 10 excluded; xtalk_n16 would drop 12, none excluded. xtalk_max_n8 is the maximum over all 69 kept rows (4.40) times 1.15, ceilinged at 2 decimals: spikes of 2.5-4.4 occur on all three tracks (4 of 23 rows on Track A), too many to exclude, so it is a catastrophe detector only. amp_n8_frac dips to 0 in some rows and is not gated; frac_min applies to N = 256, 64, 16. The amp_n16 band is narrow because its 9 excluded rows hold all the spread; a failure is confirmed by one fresh measurement (helpers.confirm_measurement). Provisional (check) until more sessions and benches.",
+    "amp_min_n256": 1350.95,
+    "amp_max_n256": 1397.23,
+    "xtalk_max_n256": 0.25,
+    "amp_min_n64": 1356.84,
+    "amp_max_n64": 1394.29,
+    "xtalk_max_n64": 0.58,
+    "amp_min_n16": 1371.22,
+    "amp_max_n16": 1372.66,
+    "xtalk_max_n16": 4.76,
+    "amp_min_n8": 1239.77,
+    "amp_max_n8": 1440.5,
+    "xtalk_max_n8": 5.07,
+    "frac_min": 0.85
   }
 }
