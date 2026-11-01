@@ -1,13 +1,7 @@
 {
-  "source": "Owner-supplied archive; original download URL, author and license not supplied.",
+  "source": "Owner-supplied download; original URL, author and license not supplied. ZIP removed at owner request; extracted source STEP and supplied rendering retained.",
   "received_date_local": "2026-11-01",
   "timezone": "America/Toronto",
-  "archive": {
-    "path": "source/arduino-due-1.snapshot.12.zip",
-    "bytes": 133327396,
-    "sha256": "901a9fe66ec1068e0d2326068e120cc5f725025bde9b4b99a591b78b5bcea8bf"
-  },
-  "zip_integrity": "passed",
   "revision_match_to_v03": "Assembly board size and six mounting holes match V03; 18 selected assembly bodies assigned. Detailed fit and complete assembly equivalence unqualified. See alignment.json.",
   "kicad_model_assignments": "18 assembly bodies plus 101 additional package/simplified bodies; see alignment.json, population.json and ../v03/models-3d.json.",
   "files": [
@@ -111,5 +105,24 @@
       "bytes": 70309588,
       "sha256": "5025ae55eaeaaad3ec58834e9a1e5ff1e55eb304a2f1b016c2f9aaa3575e6f7c"
     }
-  ]
+  ],
+  "original_archive": {
+    "filename": "arduino-due-1.snapshot.12.zip",
+    "bytes": 133327396,
+    "sha256": "901a9fe66ec1068e0d2326068e120cc5f725025bde9b4b99a591b78b5bcea8bf",
+    "retained": false
+  },
+  "retained_files": [
+    {
+      "path": "assembly/Arduino-Due.step",
+      "sha256": "d1a7a7375fc1ce5ad7a538b7fcec21d07f3569cede452a7d707f8438d1e101b2",
+      "bytes": 29852311
+    },
+    {
+      "path": "assembly/supplied-rendering.jpg",
+      "sha256": "4bf31cccae7b384688caf0573e917eeecf3b24c86973f181189fdc055a1edb2c",
+      "bytes": 347428
+    }
+  ],
+  "original_archive_integrity_at_receipt": "passed"
 }

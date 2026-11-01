@@ -137,5 +137,6 @@
     "top": "preview/3d-top.png",
     "bottom": "preview/3d-bottom.png",
     "kicad_cli": "10.0.6; both renders generated and visually inspected"
-  }
+  },
+  "zip_free_regeneration": "passed in temporary mirror: retained EAGLE reimport, source STEP body regeneration, all 119 assignments, all 591 source pad/net checks and native save/reload; no ZIP files used"
 }

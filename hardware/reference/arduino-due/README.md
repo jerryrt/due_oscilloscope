@@ -24,10 +24,10 @@ placements and nets. V03 assigns 119 component bodies; V02g has no 3D
 assignments. Neither includes a converted native KiCad schematic; the original EAGLE schematics
 are retained under each revision's `source/` directory.
 
-The two loose `brd)-54914` ZIPs were removed after verifying that they
-were identical to the retained
-[V03 source archive](../../../docs/datasheets/arduino/arduino-Due-Reference-design.zip).
-The unique mechanical-model archive is preserved under `models/source/`.
+Download ZIPs are intentionally omitted. Original extracted EAGLE files
+remain under each revision's `source/`; source STEP geometry remains under
+`models/assembly/`. Provenance records retain the original download names
+and hashes. Neither opening the CAD nor regenerating it requires a ZIP or Git LFS.
 
 These are reference conversions, not fabrication-qualified projects.
 Use physical continuity checks before acting on the reference network.

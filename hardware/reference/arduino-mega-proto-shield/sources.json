@@ -1,0 +1,22 @@
+{
+  "publisher": "Arduino",
+  "source_note": "Original extracted Mega Proto Shield Rev3 EAGLE sources; download ZIP removed at owner request. Original publisher notices retained. This is separate from the photo-reconstructed owner carrier.",
+  "original_archive": {
+    "filename": "arduino-mega-proto-Shield-reference-design.zip",
+    "sha256": "a47dffe3d92f8882b1c02ab6a97eb5cea8981401a2c9381c3c03fea1a29e9276",
+    "bytes": 30727,
+    "retained": false
+  },
+  "files": [
+    {
+      "path": "source/proto_shield_MEGA-REV3.brd",
+      "sha256": "5a91cedebc0110e78b7a8724bd83ca8d1308c33dd89e86df1ee4f397c0f42323",
+      "bytes": 159658
+    },
+    {
+      "path": "source/proto_shield_MEGA-REV3.sch",
+      "sha256": "259ed125ac8b09af62e44a705d464a802e69be68a550b75646fa0d23a90fab99",
+      "bytes": 114828
+    }
+  ]
+}

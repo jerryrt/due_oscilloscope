@@ -14,10 +14,10 @@ topology rather than V02g's IC5 module. The source specifies NCP1117 at
 IC4; AMS1117 is a reported substitution, and IC2's exact marking is
 unreported. [Observation record](../hardware-observations.json).
 
-The source is `Arduino-DUE-V03` from the retained
-[Arduino reference-design archive](../../../../docs/datasheets/arduino/arduino-Due-Reference-design.zip).
-Duplicate loose ZIP downloads were removed after verifying they match
-this canonical archive. Original publisher notices remain in those
+The source is `Arduino-DUE-V03`, retained as the original extracted EAGLE
+[PCB](source/Arduino-DUE-V03.brd) and [schematic](source/Arduino-DUE-V03.sch).
+Download ZIPs are intentionally omitted; their original names and hashes
+remain in `sources.json`. Original publisher notices remain in these
 source files. This is a local conversion, not an Arduino-published native
 KiCad design.
 

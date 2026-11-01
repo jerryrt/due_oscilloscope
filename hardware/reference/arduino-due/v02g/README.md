@@ -14,7 +14,9 @@ this alternate V02g reference has no 3D model assignments.
 
 Arduino's [Due documentation](https://docs.arduino.cc/hardware/due/) links
 to [this official CAD archive](https://docs.arduino.cc/static/f051671bbed80ddf7352991d62cb0d5c/A000056-cad-files.zip).
-Downloaded on 2026-10-30, it contains **DUE_V02g** in EAGLE format.
+Downloaded on 2026-10-30, it contained **DUE_V02g** in EAGLE format.
+The original extracted EAGLE files and license metadata are retained;
+the ZIP itself was removed at the owner's request.
 The KiCad board here is a local conversion using KiCad **10.0.6**;
 it is not an Arduino-published native KiCad design.
 
@@ -22,7 +24,6 @@ it is not an Arduino-published native KiCad design.
 |---|---|
 | `DUE_V02g.kicad_pcb` | Converted full Due PCB, with embedded footprints |
 | `DUE_V02g.kicad_dru` | Importer-generated clearance rules; not a complete verified KiCad project setup |
-| `source/A000056-cad-files.zip` | Unmodified official download, including its license metadata |
 | `source/DUE_V02g.brd` | Original EAGLE PCB |
 | `source/DUE_V02g.sch` | Original EAGLE schematic; no native KiCad schematic conversion is included |
 | `source/License.textClipping` | Publisher's original license metadata |
@@ -69,9 +70,8 @@ comparing shield geometry. The checks do not qualify the conversion for
 fabrication or establish that a particular physical board revision matches.
 Publisher copyright, trademark and license terms remain applicable.
 
-The older archive already at
-[`docs/datasheets/arduino/arduino-Due-Reference-design.zip`](../../../../docs/datasheets/arduino/arduino-Due-Reference-design.zip)
-contains `Arduino-DUE-V03`, converted under [`v03/`](../v03/README.md).
+The separate `Arduino-DUE-V03` source is extracted under
+[`v03/source/`](../v03/source/), with its conversion under [`v03/`](../v03/README.md).
 The revisions have different power-supply layouts and are not interchangeable.
 The AFE assembly plan is in
 [`hardware/afe-proto`](../../../afe-proto/README.md), based on the corrected

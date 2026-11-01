@@ -22,10 +22,12 @@ SHA-256 hashes. Publisher copyright and model license terms still apply.
 | [Arduino Due V03 PCB in KiCad](../../hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb) | Working reference for the owner's DUE R3 board, selected from its reported six-pin IC2 and separate-inductor layout; [evidence and limits](../../hardware/reference/arduino-due/README.md) |
 | [Arduino Due V02g archive](../../hardware/reference/arduino-due/v02g/README.md) | Alternate EAGLE/KiCad revision for comparison, with source hashes and checks |
 | [Due mechanical models](../../hardware/reference/arduino-due/models/README.md) | V03 has 119 model assignments from the supplied assembly, standard KiCad packages and simplified special parts; sources, approximations and bare NM/fiducial sites recorded |
+| [Mega Proto Shield Rev3 EAGLE sources](../../hardware/reference/arduino-mega-proto-shield/README.md) | Original extracted publisher PCB and schematic; separate from the owner's reconstructed carrier |
 | [KiCad 10 schematic manual](kicad-10/eeschema.pdf) | Hierarchy, search, symbol fields, ERC and simulator |
 | [KiCad 10 PCB manual](kicad-10/pcbnew.pdf) | Footprint update, routing, DRC and fabrication outputs |
 
-The existing Arduino reference-design archives and SAM3X datasheet remain in
+Arduino download ZIPs are omitted; extracted EAGLE/STEP sources are under
+`hardware/reference/`. PDF references, including the SAM3X datasheet, remain in
 `docs/datasheets/`; the manifest identifies the newly downloaded references,
 not an assertion that every pre-existing reference has been re-downloaded.
 

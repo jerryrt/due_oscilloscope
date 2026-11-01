@@ -3,8 +3,6 @@
   "tool_version": "7.9.3.1.1",
   "source_step": "assembly/Arduino-Due.step",
   "source_step_sha256": "d1a7a7375fc1ce5ad7a538b7fcec21d07f3569cede452a7d707f8438d1e101b2",
-  "source_archive": "source/arduino-due-1.snapshot.12.zip",
-  "source_archive_sha256": "901a9fe66ec1068e0d2326068e120cc5f725025bde9b4b99a591b78b5bcea8bf",
   "source_board_bounds_xyz_mm": [
     -8.881784197001252e-16,
     -0.8050000000000002,
@@ -1006,5 +1004,10 @@
         0
       ]
     }
-  ]
+  ],
+  "original_archive": {
+    "filename": "arduino-due-1.snapshot.12.zip",
+    "sha256": "901a9fe66ec1068e0d2326068e120cc5f725025bde9b4b99a591b78b5bcea8bf",
+    "retained": false
+  }
 }

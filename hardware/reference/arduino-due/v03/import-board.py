@@ -10,10 +10,8 @@ import shutil
 import subprocess
 import uuid
 import xml.etree.ElementTree as ET
-import zipfile
 
 ROOT = Path(__file__).resolve().parent
-ARCHIVE = ROOT.parents[3] / 'docs/datasheets/arduino/arduino-Due-Reference-design.zip'
 CLI = (os.environ.get('KICAD_CLI') or shutil.which('kicad-cli')
        or '/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli')
 
@@ -29,10 +27,15 @@ def main():
         raise SystemExit('Use KiCad 10.x for this conversion.')
     source_dir = ROOT / 'source'
     source_dir.mkdir(exist_ok=True)
-    with zipfile.ZipFile(ARCHIVE) as archive:
-        for name in ('Arduino-DUE-V03.brd', 'Arduino-DUE-V03.sch'):
-            (source_dir / name).write_bytes(
-                archive.read('arduino-Due-Reference-design/' + name))
+    previous_path = ROOT / 'sources.json'
+    previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
+    for name in ('Arduino-DUE-V03.brd', 'Arduino-DUE-V03.sch'):
+        retained = source_dir / name
+        if not retained.is_file():
+            raise SystemExit(f'Missing retained EAGLE source: {retained}')
+        expected = previous.get('files', {}).get('source/' + name)
+        if expected and digest(retained) != expected:
+            raise SystemExit(f'Retained source differs from its provenance record: {retained}')
     source = source_dir / 'Arduino-DUE-V03.brd'
     board = ROOT / 'Arduino-DUE-V03.kicad_pcb'
     subprocess.run([
@@ -92,9 +95,7 @@ def main():
         runpy.run_path(str(ROOT / 'attach-models.py'))['attach_models']()
     provenance = {
         'board_revision': 'Arduino-DUE-V03',
-        'source_archive': str(ARCHIVE.relative_to(ROOT.parents[3])),
-        'source_archive_digest': digest(ARCHIVE),
-        'source_note': 'Canonical retained Arduino V03 reference-design archive; duplicate loose ZIP downloads were removed after hash verification.',
+        'source_note': 'Original extracted Arduino V03 EAGLE files retained; ZIP archives intentionally omitted.',
         'kicad_version': version,
         'undefined_imported_lines_recovered': unknown,
         'restriction_reference_drawings': counts,
@@ -103,6 +104,8 @@ def main():
             source, source_dir / 'Arduino-DUE-V03.sch', board,
             ROOT / 'Arduino-DUE-V03.kicad_dru')},
     }
+    if 'original_archive' in previous:
+        provenance['original_archive'] = previous['original_archive']
     if (ROOT / 'models-3d.json').exists():
         provenance['component_models'] = 'models-3d.json'
     (ROOT / 'sources.json').write_text(json.dumps(provenance, indent=2) + '\n')

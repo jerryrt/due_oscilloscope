@@ -8,11 +8,6 @@
   "source_format": "EAGLE",
   "files": [
     {
-      "path": "source/A000056-cad-files.zip",
-      "sha256": "6ec205e4ea1410109c1a960a56d18190b597bebaf3f4f62b3a6bfbed920838b9",
-      "bytes": 297561
-    },
-    {
       "path": "source/DUE_V02g.brd",
       "sha256": "fd7cc5f9a14623ff62a7555c826373fe8f842cca400f05ec4f7b4c5589e1780a",
       "bytes": 1152732
@@ -41,5 +36,11 @@
       "sha256": "68abe3bfaf08fbabb677bf0894bd911c34ba28ebe2d6c5413b826999c95cd59f",
       "bytes": 746
     }
+  },
+  "original_archive": {
+    "filename": "A000056-cad-files.zip",
+    "sha256": "6ec205e4ea1410109c1a960a56d18190b597bebaf3f4f62b3a6bfbed920838b9",
+    "bytes": 297561,
+    "retained": false
   }
 }

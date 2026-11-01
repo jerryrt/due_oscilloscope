@@ -101,6 +101,8 @@ docs/issue5-report.html
 analysis/
 
 # KiCad: per-user state, backups, derived files
+# Keep extracted CAD sources and models, not download archives.
+*.zip
 hardware/**/*-backups/
 hardware/**/*.kicad_prl
 hardware/**/fp-info-cache

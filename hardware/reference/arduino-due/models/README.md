@@ -1,12 +1,9 @@
 # Due mechanical models and V03 assignments
 
-The owner supplied `arduino-due-1.snapshot.12.zip` on 2026-11-01.
-It is preserved, unmodified, under `source/`. Unlike the two duplicate
-EAGLE downloads removed from the parent directory, this archive contains
-real 3D geometry: a complete STEP assembly, IGES, SolidWorks parts and an
-assembly, and a rendered picture. [Archive inventory and hashes](sources.json).
-
-The unmodified STEP and supplied picture are extracted under `assembly/`.
+The owner supplied a mechanical-model download on 2026-11-01. Its original
+STEP assembly and supplied picture are retained under `assembly/`.
+The ZIP itself is intentionally omitted, along with unused IGES and
+SolidWorks variants. [Original download inventory, hashes and retained files](sources.json).
 The [working V03 KiCad PCB](../v03/Arduino-DUE-V03.kicad_pcb) now has
 **119 individual model assignments**: 18 selected assembly bodies, 91
 standard KiCad package bodies and 10 simplified special-part bodies.
@@ -106,7 +103,7 @@ python hardware/reference/arduino-due/models/populate-models.py
 python3 hardware/reference/arduino-due/v03/attach-models.py
 ```
 
-`prepare-models.py` extracts from the retained archive, checks the source
+`prepare-models.py` reads the retained source STEP, verifies its hash, checks the source
 board dimensions and all six holes, transforms selected bodies, assigns
 display colors, and writes `components/*.step` and `alignment.json`.
 `populate-models.py` copies the standard library assets, aligns package
@@ -120,7 +117,7 @@ the V03 checker after preparing or attaching models.
 
 [Underside preview](../v03/preview/3d-bottom.png).
 
-The archive includes:
+The original download contained:
 
 - `STEP and IGES/ARDUINO DUE.STEP`: complete assembly, 29,852,311 bytes.
 - `STEP and IGES/ARDUINO DUE.IGS`: complete assembly in IGES format.
@@ -128,10 +125,8 @@ The archive includes:
 - `Renderings/Arduino Duo.JPG`: supplied rendering.
 
 The original download URL, author and redistribution license were not
-supplied. Keep the archive's metadata and original file headers when
+supplied. Keep the recorded provenance and original file headers when
 evaluating it; do not label it an official Arduino model or an exact
-V03 representation. The raw ZIP is 133,327,396 bytes and is retained as
-the source asset in Git LFS. After cloning, run `git lfs install` and
-`git lfs pull` to retrieve the original archive before regenerating the
-assembly bodies. The checked-in STEP files, PCB and previews are ordinary
-Git files and can be used without downloading the archive.
+V03 representation. All retained STEP files, PCB files and previews are
+ordinary Git files. Opening or regenerating the models requires no ZIP
+download or Git LFS.

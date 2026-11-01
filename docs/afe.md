@@ -105,7 +105,7 @@ soldering; DUE R3 silkscreen and the matching supply layout do not prove
 the state of JR1/BR1. The current prototype leaves these parts untouched.
 
 **The official Mega Proto Shield Rev3 reference** (`arduino-mega-proto-Shield-reference-design.pdf`,
-EAGLE files beside it). Every header pin is passed straight through
+[extracted EAGLE sources](../hardware/reference/arduino-mega-proto-shield/README.md)). Every header pin is passed straight through
 to a parallel row of pads: digital on J3/J4 and J1/J5, the analog
 pins on ADCL J6 and ADCH J2, the communication row on COMM J8, power
 on POWER J7, and the 22–53 double rows on JP3/JP7 and JP4/JP8. The

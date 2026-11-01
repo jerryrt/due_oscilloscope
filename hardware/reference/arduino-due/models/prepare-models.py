@@ -11,7 +11,6 @@ import json
 import math
 from pathlib import Path
 import xml.etree.ElementTree as ET
-import zipfile
 
 from OCP.Bnd import Bnd_Box
 from OCP.BRepAdaptor import BRepAdaptor_Surface
@@ -34,7 +33,6 @@ from OCP.gp import gp_Trsf
 
 ROOT = Path(__file__).resolve().parent
 V03 = ROOT.parent / 'v03'
-ARCHIVE = ROOT / 'source/arduino-due-1.snapshot.12.zip'
 ASSEMBLY = ROOT / 'assembly/Arduino-Due.step'
 # Occurrences in this particular STEP assembly, verified by product name and
 # assembly coordinates. Multiple two-pin strips form one native header.
@@ -102,12 +100,10 @@ def visual_color(ref, face):
 
 def main():
     ROOT.joinpath('assembly').mkdir(exist_ok=True)
-    with zipfile.ZipFile(ARCHIVE) as archive:
-        assert archive.testzip() is None
-        original = archive.read('STEP and IGES/ARDUINO DUE.STEP')
-        ASSEMBLY.write_bytes(original)
-        (ROOT / 'assembly/supplied-rendering.jpg').write_bytes(
-            archive.read('Renderings/Arduino Duo.JPG'))
+    sources = json.loads((ROOT / 'sources.json').read_text())
+    retained = {item['path']: item for item in sources['retained_files']}
+    assert ASSEMBLY.is_file(), 'The retained source STEP is required.'
+    assert digest(ASSEMBLY) == retained['assembly/Arduino-Due.step']['sha256']
     doc = document()
     reader = STEPCAFControl_Reader()
     reader.SetNameMode(True)
@@ -227,7 +223,7 @@ def main():
     evidence = dict(
         tool='cadquery-ocp-novtk', tool_version=importlib.metadata.version('cadquery-ocp-novtk'),
         source_step='assembly/Arduino-Due.step', source_step_sha256=digest(ASSEMBLY),
-        source_archive='source/'+ARCHIVE.name, source_archive_sha256=digest(ARCHIVE),
+        original_archive=sources['original_archive'],
         source_board_bounds_xyz_mm=pcb_bounds,
         mounting_hole_comparison=hole_matches,
         alignment='(STEP X, -STEP Z, STEP Y - 0.8 mm), then inverse of each native footprint placement/rotation; unit scale.',

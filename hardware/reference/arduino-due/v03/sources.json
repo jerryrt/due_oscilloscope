@@ -1,11 +1,6 @@
 {
   "board_revision": "Arduino-DUE-V03",
-  "source_archive": "docs/datasheets/arduino/arduino-Due-Reference-design.zip",
-  "source_archive_digest": {
-    "sha256": "b811f8d13275880115b54beff706418823ad625fa8b5b429b34e625c44c1b5f6",
-    "bytes": 190833
-  },
-  "source_note": "Canonical retained Arduino V03 reference-design archive; duplicate loose ZIP downloads were removed after hash verification.",
+  "source_note": "Original extracted Arduino V03 EAGLE files retained; ZIP archives intentionally omitted.",
   "kicad_version": "10.0.6",
   "undefined_imported_lines_recovered": 7,
   "restriction_reference_drawings": {
@@ -31,5 +26,11 @@
       "bytes": 501
     }
   },
-  "component_models": "models-3d.json"
+  "component_models": "models-3d.json",
+  "original_archive": {
+    "filename": "arduino-Due-Reference-design.zip",
+    "sha256": "b811f8d13275880115b54beff706418823ad625fa8b5b429b34e625c44c1b5f6",
+    "bytes": 190833,
+    "retained": false
+  }
 }
