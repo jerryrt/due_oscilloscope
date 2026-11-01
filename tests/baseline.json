@@ -211,5 +211,17 @@
     "k_allowed": [1, 2],
     "deviation_ns_max": 25,
     "phase_sd_deg_max": 0.00248
-  }
+  },
+ "square_shape": {
+  "_comment": "The 100 kHz and 400 kHz full-amplitude square in the DAC0->A0 loop (tools/square_shape.py square_gate_once), linux-x1, 90 MHz, build 0847604, default DAC bias (2,1). Source: the six records/sq-<track>-<ip|rf>-square-gate.jsonl sets (Tracks A, B, C x in-place, reflash); derived by a scratchpad script from the records: 48 rows with run != 0 and no error (the brief expected 60 and the bounds below agree with its figures, so the count is the only difference). Rise and fall are bimodal one 22.2 ns tick apart (277 or 300 ns rise) and the mode moves on reflash, so rise_ns_*_max and fall_ns_*_max are the bulk maximum (300.92, 300.64, 303.26, 302.96) plus the bulk range (23.94, 23.93, 23.65, 23.62), which tolerates both modes with one tick of headroom. vpp_frac_400k_min 0.99 is the 400 kHz swing over the 100 kHz swing: bulk 0.99722-0.99746, chosen 1% below because the range rule would sit only 3e-4 under the data; bias 0 reads 0.957. flat_*_min are 0.9 x the bulk minimum (0.71429 at 400 kHz; 0.92857 hi and 0.91964 lo at 100 kHz): the bulk range is 0 or 0.009, so the rule gives no margin and the 10% is a chosen margin, not a derived one. Bias 0 reads rise 838 ns and flat 0.07 at 400 kHz. No gate on vpp_codes_100k: gain is the DC test's job. Provisional (check) until more sessions, benches and builds.",
+  "rise_ns_100k_max": 324.86,
+  "rise_ns_400k_max": 324.56,
+  "fall_ns_100k_max": 326.91,
+  "fall_ns_400k_max": 326.58,
+  "vpp_frac_400k_min": 0.99,
+  "flat_hi_400k_min": 0.64286,
+  "flat_lo_400k_min": 0.64286,
+  "flat_hi_100k_min": 0.83571,
+  "flat_lo_100k_min": 0.82768
+ }
 }
