@@ -319,6 +319,32 @@ def confirm_dc_fit(sweep, **gate):
     return {"retried": True, "first": first_msg}
 
 
+def confirm_measurement(measure, check):
+    """Judge one measurement, and confirm a failure with one fresh one.
+
+    `measure()` returns a value; `check(value)` raises AssertionError
+    when it is out of bounds. A failure is measured once more, so a
+    single disturbed run does not fail the gate while a real defect,
+    which fails both, does. Never more than two calls. Returns
+    {"retried": bool, "first": <first failure message or None>,
+    "value": <the accepted value>}; raises naming both when both fail.
+    """
+    first_value = measure()
+    try:
+        check(first_value)
+        return {"retried": False, "first": None, "value": first_value}
+    except AssertionError as first:
+        first_msg = str(first)
+    second_value = measure()
+    try:
+        check(second_value)
+    except AssertionError as second:
+        raise AssertionError(
+            f"both measurements failed the gate; first: {first_msg}; "
+            f"second: {second}") from None
+    return {"retried": True, "first": first_msg, "value": second_value}
+
+
 def record(calibration, key, value):
     calibration[key] = value
     return value
