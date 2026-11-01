@@ -52,6 +52,7 @@ import dso_metrics as dm                                      # noqa: E402
 import noise_metrics as nm                                    # noqa: E402
 import metrics as mt                                          # noqa: E402
 import settletime as st                                       # noqa: E402
+import square_shape as sq                                     # noqa: E402
 
 RECORDS = os.path.join(HERE, "records")
 
@@ -268,6 +269,17 @@ METRICS["dc-fit"] = {"fn": adapt(_dc_fit_metric), "scope": False,
 #: which `run_once` records as an error row and never as a zero.
 METRICS["rise"] = {"fn": adapt(_rise_metric), "scope": False,
                    "args": rise_default_args}
+
+
+def _square_shape_metric(board, args):
+    return sq.square_shape_once(board, args.rc or 225, args.seconds or 4.0)
+
+
+#: The square's shape at DAC RC `--rc` (default 225), points 8, amp 256,
+#: scope-free. Minimal on purpose: the frequency/amplitude grid is
+#: `tools/square_shape.py grid`.
+METRICS["square-shape"] = {"fn": adapt(_square_shape_metric), "scope": False,
+                           "args": loop_default_args}
 
 
 def metrics_of(args):
