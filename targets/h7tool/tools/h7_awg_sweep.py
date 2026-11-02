@@ -199,6 +199,24 @@ def ets_bandwidth():
         print(f"{f/1e3:8.0f} | {ppc:9d} | {amp:.3f} | {20*np.log10(amp/ideal):+7.2f} | {100*thd:5.2f} | {ctr['underruns']:>4} | {counts.min()}", flush=True)
 
 
+def ets_rate():
+    """Is there an update-rate effect where it can show? A tone whose staircase the output stage has not already
+    removed: 100 and 200 kHz at several update rates, same amplitude, rebuilt by ETS. Reports the fundamental and the
+    harmonic content (2nd-5th) of the rebuilt cycle, and the repeat of the whole row for a noise estimate."""
+    warmup(); ideal = 100 * awg.MV_PER_CODE / 1000
+    print(f"100-code sine ({ideal:.3f} V ideal peak); ETS; each row twice to show the repeatability")
+    print("   f kHz | update MS/s | pts/cycle | amp V | dB vs ideal | H2..H5 sum % of fundamental | min samples/bin")
+    for f in (100_000, 200_000):
+        for fs in (1_000_000, 2_000_000, 5_000_000):
+            ppc = fs // f; p_d = 200_000_000 // fs; buf = awg.sine(fs, f, 100); pl = ets.plan(p_d, ppc)
+            for rep in (1, 2):
+                data, ctr, ratio = play(buf, fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
+                v = (ets.gapless_samples(data) - ZERO) / CPV
+                wave, counts = ets.reconstruct(v, pl["p_a"], pl["W"], pl["g"])
+                w = np.where(np.isnan(wave), np.nanmean(wave), wave); F = np.abs(np.fft.rfft(w)) * 2 / len(w)
+                print(f"{f/1e3:8.0f} | {fs/1e6:11.1f} | {ppc:9d} | {F[1]:.4f} | {20*np.log10(F[1]/ideal):+6.2f} | {100*np.sqrt(np.sum(F[2:6]**2))/F[1]:6.3f} | {counts.min()} (under {ctr['underruns']})", flush=True)
+
+
 def ets_cmd():
     warmup()
     for kind, p_a, g in (("square", None, None), ("square", 136, None), ("square", 105, 8), ("sine", None, None)):
@@ -259,4 +277,4 @@ def square():
 
 
 if __name__ == "__main__":
-    {"etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
+    {"etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()

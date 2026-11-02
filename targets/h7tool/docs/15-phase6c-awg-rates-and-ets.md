@@ -68,9 +68,29 @@ with about +-0.4 dB scatter. So the observer is within about 1 dB to 200 kHz and
 generator: **-3 dB near 85 kHz** *(derived from the two measurements, +-0.5 dB, CH1/CH2 assumed alike)*, roughly a
 single pole to 500 kHz. It is also why the 100 kHz square reached only 82 % of its swing.
 
+## Does the update rate matter? It does, where the stage has not filtered the staircase away
+The 10 kHz ladder above cannot answer this: at 10 kHz the stage and the observer's noise floor hide any
+difference, so its flat 0.14-0.15 % THD above 1 MS/s is a floor, not evidence of "no benefit". An earlier
+version of this document drew that conclusion; it was wrong. The test that can show an effect is a tone
+with few points per cycle, same amplitude (100 codes), several update rates, ETS, each row run twice:
+| f kHz | update MS/s | pts/cycle | amp V | dB vs ideal | H2-H5 % of fundamental (rep 1 / rep 2) |
+|---|---|---|---|---|---|
+| 100 | 1 | 10 | 0.3814 | -3.91 | 1.672 / 1.652 |
+| 100 | 2 | 20 | 0.3861 | -3.80 | 1.286 / 1.290 |
+| 100 | 5 | 50 | 0.3859 | -3.81 | 0.667 / 0.671 |
+| 200 | 1 | 5 | 0.2209 | -8.65 | 4.109 / 4.120 |
+| 200 | 2 | 10 | 0.2260 | -8.46 | 2.443 / 2.434 |
+| 200 | 5 | 25 | 0.2314 | -8.25 | 1.515 / 1.527 |
+Repeats agree to about 0.02 % of the fundamental, so the differences are real. Harmonic content halves
+from 1 to 5 MS/s at 100 kHz and falls by 2.7x at 200 kHz; amplitude gains 0.1-0.4 dB. The mechanism is not
+established: it may be the staircase images the stage only partly filters, or step-size-dependent stage
+distortion (the stage looked slew-limited on large steps). Only harmonics 2-5 of the rebuilt cycle are counted.
+
 ## What it means for the AWG, and what is open
-- Above about 1 MS/s the update rate no longer improves the output (THD flat at 0.14-0.15 %, bandwidth set by
-  the stage); 5 MS/s is delivered and correct as a feed, but buys nothing at the output.
+- The update rate matters for tones above about 50 kHz, where points per cycle fall below about 100; for low
+  frequencies (10 kHz) it makes no measurable difference through this observer. 5 MS/s is therefore worth using
+  at high frequency. Whether 5 MS/s is itself enough, or the DAC can go higher, is not measured (the floor
+  here is 40 ticks; no faster trigger was tried).
 - The stage, not the converter, sets maximum frequency: a sine is within 1.2 dB to 50 kHz and 3.8 dB at 100 kHz.
 - Open: absolute amplitude and level accuracy against a reference instrument (CH1/CH2 and the DAC volts
   are the H7 reading itself); whether the stage's roll-off is the op-amp or a filter fitted on this board (the
