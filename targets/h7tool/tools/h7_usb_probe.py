@@ -73,6 +73,15 @@ def main():
         print('GPIOG MODER %08X ODR %08X IDR %08X OSPEEDR %08X' % w[0:4])
         print('GPIOI MODER %08X ODR %08X IDR %08X OSPEEDR %08X' % w[4:8])
         print('RCC_AHB4ENR %08X' % w[8]); return
+    if len(sys.argv) > 1 and sys.argv[1] == 'play':
+        buf = ctypes.create_string_buffer(64)
+        fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x07, 0, 0, 40, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
+        n = 'wr_units consumed underruns guard_trips on timer min_occ resumes occupancy short'.split()
+        print(' '.join(f'{k}={v}' for k, v in zip(n, struct.unpack('<10I', buf.raw[:40])))); return
+    if len(sys.argv) > 2 and sys.argv[1] == 'pstart':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x23, int(sys.argv[2]), 0, 0, 3000, None))
+    if len(sys.argv) > 1 and sys.argv[1] == 'pstop':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x23, 0, 0, 0, 3000, None))
     if len(sys.argv) > 1 and sys.argv[1] == 'gen':
         buf = ctypes.create_string_buffer(64)
         fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x06, 0, 0, 40, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
