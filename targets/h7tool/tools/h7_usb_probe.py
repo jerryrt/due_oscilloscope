@@ -45,12 +45,12 @@ def clocks(fd):
               f'{cyc/400e6:.7f} {t5/200e6:.7f} {t2/1e6:.7f}')
 
 def acq(fd):
-    buf = ctypes.create_string_buffer(64)
-    c = Ctrl(0xC0, 0x04, 0, 0, 48, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
+    buf = ctypes.create_string_buffer(128)
+    c = Ctrl(0xC0, 0x04, 0, 0, 80, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
     fcntl.ioctl(fd, 0xC0185500, c)
-    names = "frames_done lost sent xfers tc_missed adc_ovr rev_id starts ct_bad period adc_clk_hz chmask".split()
-    print(" ".join(f"{k}={v:#x}" if k == "rev_id" else f"{k}={v}"
-                   for k, v in zip(names, struct.unpack('<12I', buf.raw[:48]))))
+    names = "frames_done lost sent xfers tc_missed adc_ovr rev_id starts ct_bad period adc_clk_hz chmask dma_err dma_err_frame stall stall_lisr stall_cr stall_ndtr stall_isr stall_adccr".split()
+    print(" ".join(f"{k}={v:#x}" if (k == "rev_id" or k.startswith("stall_") or k.startswith("dma_err")) else f"{k}={v}"
+                   for k, v in zip(names, struct.unpack('<20I', buf.raw[:80]))))
 
 def rate(fd, hz):
     period = round(200e6 / hz)
@@ -73,11 +73,22 @@ def main():
         print('GPIOG MODER %08X ODR %08X IDR %08X OSPEEDR %08X' % w[0:4])
         print('GPIOI MODER %08X ODR %08X IDR %08X OSPEEDR %08X' % w[4:8])
         print('RCC_AHB4ENR %08X' % w[8]); return
+    if len(sys.argv) > 2 and sys.argv[1] == 'pe3':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x30, int(sys.argv[2]), 0, 0, 1000, None))
+    if len(sys.argv) > 2 and sys.argv[1] == 'genpe3':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x33, int(sys.argv[2]), 0, 0, 1000, None))
+    if len(sys.argv) > 1 and sys.argv[1] == 'bootloader':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x7F, 0x5AA5, 0, 0, 3000, None))
+    if len(sys.argv) > 1 and sys.argv[1] == 'dbg':
+        buf = ctypes.create_string_buffer(128)
+        fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x08, 0, 0, 120, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
+        n = 'ep_busy done sent DIEPCTL2 DIEPTSIZ2 DIEPINT2 GINTSTS DOEPCTL2 DOEPINT2 GRXSTSR DAINT DMA2_LISR DMA2_S1CR DMA2_S1NDTR ADC3_ISR ADC3_CR fin alloc ms_now last_frame_ms running dtr SYST_CSR stall_seen DMA2_PAR DMA2_M0AR DMA2_M1AR buf_slot0 buf_slot1 build'.split()
+        print(' '.join(f'{k}={v:#x}' for k, v in zip(n, struct.unpack('<30I', buf.raw[:120])))); return
     if len(sys.argv) > 1 and sys.argv[1] == 'play':
         buf = ctypes.create_string_buffer(64)
-        fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x07, 0, 0, 40, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
-        n = 'wr_units consumed underruns guard_trips on timer min_occ resumes occupancy short'.split()
-        print(' '.join(f'{k}={v}' for k, v in zip(n, struct.unpack('<10I', buf.raw[:40])))); return
+        fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x07, 0, 0, 52, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
+        n = 'wr_units consumed underruns guard_trips on timer min_occ resumes occupancy short stalls stall_w0 stall_w1'.split()
+        print(' '.join(f'{k}={v:#x}' if k.startswith('stall_w') else f'{k}={v}' for k, v in zip(n, struct.unpack('<13I', buf.raw[:52])))); return
     if len(sys.argv) > 2 and sys.argv[1] == 'pstart':
         return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x23, int(sys.argv[2]), 0, 0, 3000, None))
     if len(sys.argv) > 1 and sys.argv[1] == 'pstop':
@@ -95,6 +106,8 @@ def main():
         return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x22, int(sys.argv[2]), 0, 0, 1000, None))
     if len(sys.argv) > 2 and sys.argv[1] == 'pc3':
         return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x14, int(sys.argv[2]), 0, 0, 1000, None))
+    if len(sys.argv) > 2 and sys.argv[1] == 'aperiod':
+        p = int(sys.argv[2]); return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x10, p & 0xFFFF, p >> 16, 0, 1000, None))
     if len(sys.argv) > 2 and sys.argv[1] == 'chan':
         return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x13, int(sys.argv[2]), 0, 0, 1000, None))
     if len(sys.argv) > 2 and sys.argv[1] == 'fe':
