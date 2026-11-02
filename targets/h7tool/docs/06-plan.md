@@ -41,7 +41,7 @@ host's board finder must key on this pair, not on Arduino's.
    PI9, PI4), ADC3 for CH2, calibration applied on the host. Gate:
    voltages across ranges against a reference (the Due only inside its
    0.55-2.75 V window).
-6. **Generator.** PE3 supply, then TIM6 + DMA1 Stream5 playing a host
+6. **Generator (done through host-fed playback, update-rate ladder and ETS: docs/13, 14, 15).** PE3 supply, then TIM6 + DMA1 Stream5 playing a host
    fed buffer; no load and a capped code first. Gate: output measured
    on the scope input.
 7. **Control channel and host.** Identity, status, counters; the

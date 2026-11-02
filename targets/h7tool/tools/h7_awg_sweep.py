@@ -13,6 +13,7 @@ import serial
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import h7_awg as awg
 import h7_stream_check as chk
+import h7_ets as ets
 
 PROBE = ["sudo", "-n", "python3", os.path.join(HERE, "h7_usb_probe.py")]
 ADC_FS = 2.0e6      # observer rate: 0.8 of the 2.5 Msps cliff, never at it (docs/10)
@@ -54,7 +55,7 @@ def codes_of(data):
     return np.frombuffer(out, dtype=np.uint16).astype(np.float64)
 
 
-def play(buf, fs, warm=1.5, seconds=2.0, aperiod=None):
+def play(buf, fs, warm=1.5, seconds=2.0, aperiod=None, raw=False):
     """Play `buf` repeatedly at update rate fs; return (captured CH2 volts, device counters, rate ratio).
 
     The acquisition stream starts the moment the port opens, so it is drained by a reader thread from
@@ -86,6 +87,8 @@ def play(buf, fs, warm=1.5, seconds=2.0, aperiod=None):
         print("pstop failed; device state:", ctr, flush=True); stop.set(); s.close(); raise
     stop.set(); rt.join(2); s.close()
     ratio = ((c2[0] - c1[0]) & 0xFFFFFFFF) / (c2[1] - c1[1]) / fs
+    if raw:
+        return bytes(data[start:]), ctr, ratio
     x = codes_of(bytes(data[start:]))
     ctr["capture_samples"] = len(x); ctr["expected_samples"] = int(ADC_FS * seconds)
     return (x - ZERO) / CPV, ctr, ratio
@@ -149,6 +152,66 @@ def settle(quiet=12.0, limit=120.0):
     raise RuntimeError("the unit never went quiet")
 
 
+def ets_run(kind, p_a=None, g=None, seconds=4.0):
+    """One ETS capture at 5 MS/s update. Returns (wave volts per bin, counts, plan, ctr, expected volts per bin)."""
+    fs, p_d = 5_000_000, 40
+    if kind == "square": ppc, buf, expect = 50, awg.square(fs, fs / 50, 150), None
+    else:                ppc, buf, expect = 500, awg.sine(fs, fs / 500, 300), None
+    pl = ets.plan(p_d, ppc, g=g)
+    if p_a: pl["p_a"] = p_a
+    data, ctr, ratio = play(buf, fs, warm=1.5, seconds=seconds, aperiod=pl["p_a"], raw=True)
+    v = (ets.gapless_samples(data) - ZERO) / CPV
+    wave, counts = ets.reconstruct(v, pl["p_a"], pl["W"], pl["g"])
+    codes = np.frombuffer(buf, dtype="<u2")[:ppc].astype(float)               # one cycle of DAC codes
+    idx = (np.arange(pl["bins"]) * pl["g"] // p_d) % ppc
+    expected = (codes[idx] - awg.ZERO_CODE) * awg.MV_PER_CODE / 1000
+    return wave, counts, pl, ctr, expected, len(v)
+
+
+def edge_metrics(wave, g):
+    lo, hi = np.nanpercentile(wave, 5), np.nanpercentile(wave, 95); span = hi - lo
+    t10, t90 = lo + 0.1 * span, lo + 0.9 * span
+    up = [i for i in range(1, len(wave)) if wave[i - 1] < t10 <= wave[i]]
+    out = {}
+    if up:
+        i = up[0]; j = i
+        while j < len(wave) - 1 and wave[j] < t90: j += 1
+        out["rise_ns"] = (j - i) * g * ets.TICK_NS
+    out["lo"] = lo; out["hi"] = hi; out["overshoot_pct"] = 100 * (np.nanmax(wave) - hi) / span
+    plate = wave[(wave > hi - 0.05 * span)]; out["hi_plateau_std_mv"] = 1000 * float(np.nanstd(plate))
+    return out
+
+
+def ets_bandwidth():
+    """Frequency response of DAC + output stage + CH2 input at 5 MS/s update, 100-code sine, by ETS."""
+    warmup(); fs, p_d = 5_000_000, 40; ideal = 100 * awg.MV_PER_CODE / 1000
+    print(f"5 MS/s update, 100-code sine ({ideal:.3f} V ideal peak); ETS, one cycle rebuilt per row")
+    print("   f kHz | pts/cycle | amp V | vs ideal dB | THD % | underruns | min samples/bin")
+    ref = None
+    for f in (10_000, 50_000, 100_000, 200_000, 250_000, 500_000, 1_000_000):
+        ppc = int(fs / f); buf = awg.sine(fs, f, 100); pl = ets.plan(p_d, ppc)
+        data, ctr, ratio = play(buf, fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
+        v = (ets.gapless_samples(data) - ZERO) / CPV
+        wave, counts = ets.reconstruct(v, pl["p_a"], pl["W"], pl["g"])
+        w = np.where(np.isnan(wave), np.nanmean(wave), wave); F = np.abs(np.fft.rfft(w)) * 2 / len(w)
+        amp = F[1]; thd = np.sqrt(np.sum(F[2:6] ** 2)) / amp
+        ref = ref or amp
+        print(f"{f/1e3:8.0f} | {ppc:9d} | {amp:.3f} | {20*np.log10(amp/ideal):+7.2f} | {100*thd:5.2f} | {ctr['underruns']:>4} | {counts.min()}", flush=True)
+
+
+def ets_cmd():
+    warmup()
+    for kind, p_a, g in (("square", None, None), ("square", 136, None), ("square", 105, 8), ("sine", None, None)):
+        wave, counts, pl, ctr, expected, n = ets_run(kind, p_a, g)
+        sh, aligned = ets.align(wave, expected)
+        m = edge_metrics(aligned, pl["g"]) if kind == "square" else {}
+        err = float(np.sqrt(np.nanmean((aligned - expected) ** 2))) * 1000
+        print(f"{kind}: P_a {pl['p_a']} ticks ({200/pl['p_a']:.3f} Msps), W {pl['W']} ticks, {pl['bins']} bins of {pl['g']*ets.TICK_NS:.0f} ns, "
+              f"samples {n}, min/mean per bin {counts.min()}/{counts.mean():.0f}, underruns {ctr['underruns']}, "
+              f"rms vs ideal staircase {err:.0f} mV; " + ", ".join(f"{k} {v:.3g}" for k, v in m.items()), flush=True)
+    return
+
+
 def warmup():
     """The first run after enumeration is an outlier in this project; throw one away by index."""
     settle()
@@ -196,4 +259,4 @@ def square():
 
 
 if __name__ == "__main__":
-    {"repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
+    {"etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
