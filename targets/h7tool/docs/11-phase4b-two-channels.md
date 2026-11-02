@@ -32,3 +32,8 @@ Simultaneity of the two channels: both are triggered by one TIM3 event, which
 makes it true by construction, but no edge test has measured the skew (needs a
 common step on both inputs). Gain and coupling control (docs/10, open). Any
 rate above 2.5 Msps for two channels (docs/10 explains why the guard is there).
+
+## Erratum (docs/18)
+The two channels were NOT guaranteed to pair sample for sample before build 13: the ADCs were started by two writes that could
+straddle a trigger, leaving CH2 one trigger behind CH1 in some runs. The DC checks here are unaffected. Fixed and measured in docs/18
+(skew within about 30 ns).

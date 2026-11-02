@@ -426,6 +426,10 @@ static void acq_start(void)
 		DMAR(c, 0x00) = (1u << 18) | (2u << 16) | (1u << 13) | (1u << 11) | (1u << 10) | (1u << 8);   /* DBM, PL high, 16-bit, MINC */
 		DMAR(c, 0x00) |= 1u;                              /* EN */
 	}
+	/* Start every ADC inside ONE trigger period: wait until TIM3 has just wrapped, then write the ADSTARTs back to back.
+	 * Two writes a microsecond apart can straddle a trigger and leave the planes one sample out of step (seen on the
+	 * bench as a skew of exactly one ADC period); there is then no fixed pairing of CH1's sample j with CH2's. */
+	if (nch > 1) { uint32_t quarter = period / 4u; while (TIM(TIM3B, 0x24) > quarter) { } }
 	for (unsigned k = 0; k < nch; k++) ADCR(chidx[k], 0x08) |= 1u << 2;   /* ADSTART: wait for TIM3 */
 	tim2_base = TIM(TIM2B, 0x24);
 	running = 1;

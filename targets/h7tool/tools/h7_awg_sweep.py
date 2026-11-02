@@ -58,7 +58,7 @@ def codes_of(data):
     return np.frombuffer(out, dtype=np.uint16).astype(np.float64)
 
 
-def play(buf, fs, warm=1.5, seconds=2.0, aperiod=None, raw=False):
+def play(buf, fs, warm=1.5, seconds=2.0, aperiod=None, raw=False, mask=None):
     """Play `buf` repeatedly at update rate fs; return (captured volts or raw bytes, device counters, rate ratio).
 
     The acquisition stream starts the moment the port opens, so it is drained by a reader thread from
@@ -68,7 +68,7 @@ def play(buf, fs, warm=1.5, seconds=2.0, aperiod=None, raw=False):
     """
     import select
     probe("wave 0 0"); probe("gcenter 2036"); probe(f"gperiod {awg.period_ticks(fs)}")
-    probe(f"chan {OBS}"); probe(f"aperiod {aperiod or int(round(200e6 / ADC_FS))}")
+    probe(f"chan {mask or OBS}"); probe(f"aperiod {aperiod or int(round(200e6 / ADC_FS))}")
     s = serial.Serial(chk.find_port(), 115200, timeout=0.2); os.set_blocking(s.fd, False)
     data = bytearray(); stop = threading.Event(); wp = None
     def reader():
@@ -402,6 +402,69 @@ def zero_noise(periods=(200, 100)):
     probe("fe 0x88")
 
 
+def ets_measure2(buf, fs, ppc, seconds=3.0, tries=3):
+    """ets_measure for BOTH channels at once (VOUT on CH1 and CH2): the same checks on each plane, same sample indices."""
+    pl = ets.plan(200_000_000 // fs, ppc); reasons = []
+    for t in range(1, tries + 1):
+        data, ctr, ratio = play(buf, fs, warm=1.5, seconds=seconds, aperiod=pl["p_a"], raw=True, mask=3)
+        planes = ets.gapless_planes(data, 2); bad = []
+        if int(ctr["underruns"]) or int(ctr["short"]): bad.append(f"playback underruns {ctr['underruns']} short {ctr['short']}")
+        n = min(len(planes[0]), len(planes[1]))
+        if n < 0.9 * ADC_FS * seconds * 100 / pl["p_a"]: bad.append(f"short or gappy capture: {n} gapless samples per channel")
+        if ctr["stall"]["dma_err"] != "0x0": bad.append(f"ADC DMA error {ctr['stall']['dma_err']}")
+        igs = []
+        if not bad:
+            for ch, x in enumerate(planes):
+                ig = ets.integrity(x[:n], pl["p_a"], pl["W"], pl["g"]); igs.append(ig)
+                if not ig["ok"]: bad.append(f"CH{ch+1}: " + ig["reason"])
+        if not bad:
+            waves = [ets.reconstruct(x[:n], pl["p_a"], pl["W"], pl["g"])[0] for x in planes]
+            return dict(valid=True, reasons=reasons, tries=t, raw=[x[:n] for x in planes], waves=waves, plan=pl, ctr=ctr, integrity=igs, samples=n)
+        reasons.append(f"try {t}: " + "; ".join(bad)); print("  rejected:", reasons[-1], flush=True)
+    return dict(valid=False, reasons=reasons, tries=tries, plan=pl, ctr=ctr)
+
+
+def step_b():
+    build0 = fw_build()
+    if build0 is None or build0 < 13: raise RuntimeError(f"unit reports build {build0}; the channel pairing fix needs build >= 13 (image11m)")
+    """VOUT on BOTH CH1 and CH2. DC levels against the stock VOUT calibration on both channels, then CH1-CH2 amplitude ratio
+    and phase (time skew) across frequency. Measured zeros and factory scale (h7_cal)."""
+    import h7_cal
+    build = ready(); fs = 5_000_000; cal = h7_cal.Calibration.load_measured(100)
+    obs = dict(channel="1+2", adc_period_ticks=100, gain_code=0, calibration="measured zero + factory scale")
+    print("== DC levels, both channels at once (2 Msps) ==")
+    print("  code | stock mV | CH1 mV (diff) | CH2 mV (diff) | CH2-CH1 mV")
+    for off in (0, 167, -167, 500, -500, 1000, -1000, 1500, -1500):
+        code = awg.ZERO_CODE + off; awg.set_swing_limit(max(abs(off), 1)); stock = awg.stock_mv(code)
+        for t in range(1, 4):                                                      # a capture that is short or has an empty plane is retried, never printed
+            data, ctr, _ = play(awg.dc(code), 1_000_000, warm=1.5, seconds=1.5, raw=True, mask=3, aperiod=100)
+            a, b = ets.gapless_planes(data, 2)
+            bad = [] if (len(a) > 0.9 * ADC_FS * 1.5 and len(b) == len(a) and not int(ctr["underruns"])) else [f"short or empty capture ({len(a)}, {len(b)}), underruns {ctr['underruns']}"]
+            if not bad: break
+            print("  rejected:", bad[0], flush=True)
+        if bad:
+            rec.record("dc2", dict(code=code), {}, False, bad, t, build, obs); print(f"  {code} | INVALID after {t} tries", flush=True); continue
+        v1, v2 = 1000 * cal.volts(1, 0, a.mean()), 1000 * cal.volts(2, 0, b.mean())
+        rec.record("dc2", dict(code=code), dict(ch1_mv=v1, ch2_mv=v2, stock_mv=stock, std_mv=[1000*a.std()/cal.codes_per_volt(1, 0), 1000*b.std()/cal.codes_per_volt(2, 0)]), True, [], t, build, obs)
+        print(f"  {code} | {stock:+8.0f} | {v1:+8.0f} ({v1-stock:+4.0f}) | {v2:+8.0f} ({v2-stock:+4.0f}) | {v2-v1:+5.0f}", flush=True)
+    awg.set_swing_limit(330)
+    print("== CH2 against CH1: amplitude ratio and phase, 200-code sine, 5 MS/s update (ETS) ==")
+    print("   f kHz | CH1 V | CH2 V | CH2/CH1 | phase CH2-CH1 deg | equals skew ns | tries")
+    out = []
+    for f in (10_000, 50_000, 100_000, 200_000, 250_000):
+        ppc = fs // f; r = ets_measure2(awg.sine(fs, f, 200), fs, ppc)
+        if not r["valid"]:
+            rec.record("skew", dict(f_hz=f), {}, False, r["reasons"], r["tries"], build, obs); print(f"{f/1e3:8.0f} | INVALID after {r['tries']} tries", flush=True); continue
+        w1, w2 = (met.fill_nan(w) for w in r["waves"])
+        F1, F2 = np.fft.rfft(w1)[1], np.fft.rfft(w2)[1]
+        a1, a2 = 2 * abs(F1) / len(w1) / cal.codes_per_volt(1, 0), 2 * abs(F2) / len(w2) / cal.codes_per_volt(2, 0); ph = np.degrees(np.angle(F2 / F1)); skew = ph / 360 / f * 1e9
+        out.append((f, ph)); rec.record("skew", dict(f_hz=f, amp_codes=200, update_hz=fs, p_a=r["plan"]["p_a"]), dict(ch1_v=a1, ch2_v=a2, ratio=a2 / a1, phase_deg=ph, skew_ns=skew), True, r["reasons"], r["tries"], build, obs)
+        print(f"{f/1e3:8.0f} | {a1:.4f} | {a2:.4f} | {a2/a1:.4f} | {ph:+8.3f} | {skew:+8.1f} | {r['tries']}", flush=True)
+    if len(out) >= 3:
+        fs_, ph_ = np.array([o[0] for o in out]), np.array([o[1] for o in out])
+        slope = float(np.sum(fs_ * ph_) / np.sum(fs_ ** 2)); print(f"  least-squares skew through the origin: {slope/360*1e9:+.1f} ns; residual rms {np.sqrt(np.mean((ph_ - slope*fs_)**2)):.3f} deg")
+
+
 def ets_cmd():
     warmup()
     for kind, p_a, g in (("square", None, None), ("square", 136, None), ("square", 105, 8), ("sine", None, None)):
@@ -462,4 +525,4 @@ def square():
 
 
 if __name__ == "__main__":
-    {"zeronoise": zero_noise, "ampfor": lambda: amp_for(int(float(sys.argv[2])), float(sys.argv[3])), "large": lambda: large(tuple(float(x) for x in sys.argv[2:]) or (4.0, 6.0, 8.0, 9.5)), "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
+    {"stepb": step_b, "zeronoise": zero_noise, "ampfor": lambda: amp_for(int(float(sys.argv[2])), float(sys.argv[3])), "large": lambda: large(tuple(float(x) for x in sys.argv[2:]) or (4.0, 6.0, 8.0, 9.5)), "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()

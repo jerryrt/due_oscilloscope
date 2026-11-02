@@ -37,7 +37,7 @@ host's board finder must key on this pair, not on Arduino's.
    DMA into D2 SRAM at 0x3002xxxx (MPU non-cacheable). Gate: a DC level
    from the Due's DAC reads right against the stock calibration; no
    sequence gaps at the highest rate USB sustains.
-5. **Front end, CH2, calibration.** Gain/coupling shift register (PG5,
+5. **Front end, CH2, calibration (zero, noise, skew and matching measured: docs/12, 17, 18; scale still +-1 % without a reference voltage).** Gain/coupling shift register (PG5,
    PI9, PI4), ADC3 for CH2, calibration applied on the host. Gate:
    voltages across ranges against a reference (the Due only inside its
    0.55-2.75 V window).
