@@ -51,9 +51,15 @@ def analyse(data, expect_version=4, pattern=True):
                 r["bad_payload"] += 1
         else:
             w = array.array("H"); w.frombytes(data[pos + HDR:pos + FRAME])
-            r["lo"] = min(r.get("lo", 65535), min(w)); r["hi"] = max(r.get("hi", 0), max(w))
-            r["sumsq"] = r.get("sumsq", 0) + sum(map(operator.mul, w, w))
-            r["sum"] = r.get("sum", 0) + sum(w); r["samples"] = r.get("samples", 0) + len(w)
+            k = bin(mask & 0xFF).count("1") or 1
+            n = len(w) // k                           # planar payload: one block per channel
+            chans = [i for i in range(8) if mask >> i & 1] or [0]
+            for j, ch in enumerate(chans):
+                seg = w[j * n:(j + 1) * n]
+                c = r.setdefault("ch", {}).setdefault(ch, dict(lo=65535, hi=0, sum=0, sumsq=0, n=0))
+                c["lo"] = min(c["lo"], min(seg)); c["hi"] = max(c["hi"], max(seg))
+                c["sum"] += sum(seg); c["sumsq"] += sum(map(operator.mul, seg, seg)); c["n"] += len(seg)
+            r["samples"] = r.get("samples", 0) + n    # per channel
             r["rate_hz"] = rate
             r["flag_overrun"] = r.get("flag_overrun", 0) + (flags & 1)
         r["frames"] += 1
@@ -100,9 +106,9 @@ def main():
     s.close()
     r = analyse(b"".join(chunks), pattern=not a.adc)
     if a.adc and r.get("samples"):
-        m = r.pop("sum") / r["samples"]
-        r["mean"] = round(m, 2)
-        r["std"] = round(math.sqrt(max(r.pop("sumsq") / r["samples"] - m * m, 0)), 2)
+        for ch, c in sorted(r.pop("ch").items()):
+            m = c["sum"] / c["n"]
+            r[f"ch{ch}"] = f"mean {m:.1f} std {math.sqrt(max(c['sumsq'] / c['n'] - m * m, 0)):.1f} lo {c['lo']} hi {c['hi']}"
         r["expected_samples"] = int(r["rate_hz"] * dt)
         r["rate_ok"] = rate_ok(r["samples"], r["rate_hz"], dt)
         r["clean"] = r["clean"] and r["rate_ok"]

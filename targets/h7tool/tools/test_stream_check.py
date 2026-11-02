@@ -53,10 +53,19 @@ def test_adc_mode_reports_the_codes_and_does_not_compare_a_pattern():
     s = b"".join(frame(i, p) for i in range(3))
     assert not c.analyse(s)["clean"]                 # pattern mode: payload differs
     r = c.analyse(s, pattern=False)
-    assert r["clean"] and r["lo"] == 100 and r["hi"] == 40000 and r["samples"] == 3 * c.SAMPLES
+    assert r["clean"] and r["ch"][0]["lo"] == 100 and r["ch"][0]["hi"] == 40000 and r["samples"] == 3 * c.SAMPLES
 
 
 def test_rate_check_catches_a_converter_that_skips_triggers():
     assert c.rate_ok(5_000_000, 1_000_000, 5.0)
     assert not c.rate_ok(2_500_000, 1_000_000, 5.0)      # half the triggers lost
     assert not c.rate_ok(5_200_000, 1_000_000, 5.0)
+
+
+def test_two_channel_frames_are_split_into_planes():
+    half = c.SAMPLES // 2
+    p = struct.pack("<%dH" % c.SAMPLES, *([1000] * half + [50000] * half))
+    h = struct.pack("<4sBBHIIIII", c.MAGIC, 4, 0, 3, 0, 1000000, 0, 0, 0)
+    f = h + struct.pack("<I", zlib.crc32(h) & 0xFFFFFFFF) + p
+    r = c.analyse(f, pattern=False)
+    assert r["ch"][0]["hi"] == 1000 and r["ch"][1]["lo"] == 50000 and r["samples"] == half

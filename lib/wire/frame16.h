@@ -16,10 +16,12 @@
  *   - version is 4;
  *   - each payload word is an unsigned 16-bit converter code, offset
  *     binary, with NO channel tag in it;
- *   - the channel of a word is its position: the words interleave the
- *     channels set in `channel_mask`, lowest index first, so a frame
- *     holds FRAME_SAMPLES / popcount(channel_mask) samples per channel
- *     (the host rejects a mask whose popcount does not divide it);
+ *   - the channel of a word is its position, and the payload is PLANAR:
+ *     with k channels set in `channel_mask`, each owns one contiguous
+ *     block of FRAME_SAMPLES / k samples, lowest channel index first
+ *     (two DMA streams cannot interleave halfwords, and the host
+ *     does the reshaping); `sample_rate_hz` is per channel, so a frame
+ *     spans FRAME_SAMPLES / k / sample_rate_hz seconds;
  *   - `channel_mask` indexes the target's own channels, not Arduino
  *     ADC channels: bit 0 = scope CH1, bit 1 = scope CH2 *(check)*;
  *   - `play_consumed` stays in place and is 0 until the generator

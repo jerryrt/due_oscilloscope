@@ -32,7 +32,8 @@ host's board finder must key on this pair, not on Arduino's.
    states first; a TIM3 update at a known rate. Gate: measured against
    the host's USB SOF (8 kHz) - no wiring, independent of the chip's own
    clock - not trusted from register arithmetic. Done: docs/09.
-4. **ADC -> DMA -> USB, CH1 (ADC1).** 16-bit, TIM3-triggered, circular
+4. **ADC -> DMA -> USB, CH1 (ADC1) then CH2 (ADC3); done in docs/10, 11, with the
+   accuracy question open.** 16-bit, TIM3-triggered, circular
    DMA into D2 SRAM at 0x3002xxxx (MPU non-cacheable). Gate: a DC level
    from the Due's DAC reads right against the stock calibration; no
    sequence gaps at the highest rate USB sustains.

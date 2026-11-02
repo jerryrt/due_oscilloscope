@@ -46,11 +46,11 @@ def clocks(fd):
 
 def acq(fd):
     buf = ctypes.create_string_buffer(64)
-    c = Ctrl(0xC0, 0x04, 0, 0, 44, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
+    c = Ctrl(0xC0, 0x04, 0, 0, 48, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
     fcntl.ioctl(fd, 0xC0185500, c)
-    names = "frames_done lost sent xfers tc_missed adc_ovr rev_id starts ct_bad period adc_clk_hz".split()
+    names = "frames_done lost sent xfers tc_missed adc_ovr rev_id starts ct_bad period adc_clk_hz chmask".split()
     print(" ".join(f"{k}={v:#x}" if k == "rev_id" else f"{k}={v}"
-                   for k, v in zip(names, struct.unpack('<11I', buf.raw[:44]))))
+                   for k, v in zip(names, struct.unpack('<12I', buf.raw[:48]))))
 
 def rate(fd, hz):
     period = round(200e6 / hz)
@@ -66,6 +66,10 @@ def main():
     fd = os.open(find(), os.O_RDWR)
     if len(sys.argv) > 1 and sys.argv[1] == 'stats':
         return stats(fd)
+    if len(sys.argv) > 2 and sys.argv[1] == 'pc3':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x14, int(sys.argv[2]), 0, 0, 1000, None))
+    if len(sys.argv) > 2 and sys.argv[1] == 'chan':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x13, int(sys.argv[2]), 0, 0, 1000, None))
     if len(sys.argv) > 2 and sys.argv[1] == 'fe':
         return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x12, int(sys.argv[2], 0), 0, 0, 1000, None))
     if len(sys.argv) > 5 and sys.argv[1] == 'adcx':
