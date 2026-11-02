@@ -1,2 +1,5 @@
 reference/
 build/
+__pycache__/
+*.elf
+*.map
