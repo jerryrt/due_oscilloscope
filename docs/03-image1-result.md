@@ -51,3 +51,13 @@ The boot loader came back with no key press, both with image2a (peripheral-free,
 ~1 s after the write but only starts the new app about 6-7 s later (the loader's own delay), so budget for it.
 `scripts/h7_cycle.sh <image.bin>` enters the boot loader from stock and flashes; stock is restored afterwards with
 h7_bl_flash.py and verified (identity, version, board, boot, 16 calibration blocks, TVCC 1400 mV: all identical).
+
+## Update: USB core and ULPI PHY bring-up from our own image (fw/image3, step 1)
+`image3a.bin` (1,048 bytes, polling, no interrupts, clocks left at reset HSI 64 MHz, no PLL, stock register sequence from
+docs/04) enables the 12 ULPI pins (AF10), the OTG_HS and ULPI clocks, resets the core, forces device mode, sets the FIFO layout,
+soft-connects, and handles only bus reset and enumeration-done. It answers no control transfers. Returns to the boot loader after 15 s.
+
+Host (dmesg, linux-x1): `new high-speed USB device number 123 using xhci_hcd`, then
+`device descriptor read/64, error -110` and `-71`, then the loader reappears. So the PHY, the ULPI wiring, the core and the
+high-speed chirp all work from our code with **no PLL**; only the control endpoint is unanswered, as intended.
+Stock is NOT on the unit at the moment of this note: restore it with h7_bl_flash.py.
