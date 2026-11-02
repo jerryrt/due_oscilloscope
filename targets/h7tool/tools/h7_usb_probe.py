@@ -73,6 +73,17 @@ def main():
         print('GPIOG MODER %08X ODR %08X IDR %08X OSPEEDR %08X' % w[0:4])
         print('GPIOI MODER %08X ODR %08X IDR %08X OSPEEDR %08X' % w[4:8])
         print('RCC_AHB4ENR %08X' % w[8]); return
+    if len(sys.argv) > 1 and sys.argv[1] == 'gen':
+        buf = ctypes.create_string_buffer(64)
+        fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x06, 0, 0, 40, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
+        n = 'on PE3 DAC_CR DOR1 NDTR TIM6CNT period center amp type'.split()
+        print(' '.join(f'{k}={v:#x}' if k == 'DAC_CR' else f'{k}={v}' for k, v in zip(n, struct.unpack('<10I', buf.raw[:40])))); return
+    if len(sys.argv) > 3 and sys.argv[1] == 'wave':      # wave <type> <amp codes>
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x20, int(sys.argv[2]), int(sys.argv[3]), 0, 3000, None))
+    if len(sys.argv) > 2 and sys.argv[1] == 'gperiod':
+        p = int(sys.argv[2]); return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x21, p & 0xFFFF, p >> 16, 0, 1000, None))
+    if len(sys.argv) > 2 and sys.argv[1] == 'gcenter':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x22, int(sys.argv[2]), 0, 0, 1000, None))
     if len(sys.argv) > 2 and sys.argv[1] == 'pc3':
         return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x14, int(sys.argv[2]), 0, 0, 1000, None))
     if len(sys.argv) > 2 and sys.argv[1] == 'chan':
