@@ -75,12 +75,12 @@ def rate_ok(samples, rate_hz, seconds, tol=0.01):
     return abs(samples / (rate_hz * seconds) - 1) <= tol
 
 
-def find_port():
+def find_port(iface=0):
     for d in glob.glob("/sys/bus/usb/devices/*"):
         try:
             if (open(d + "/idVendor").read().strip(), open(d + "/idProduct").read().strip()) == ("1209", "0001"):
-                t = glob.glob(os.path.basename(d) + ":1.0/tty/*", root_dir=d) or \
-                    glob.glob(d + "/" + os.path.basename(d) + ":1.0/tty/*")
+                t = glob.glob(os.path.basename(d) + f":1.{iface}/tty/*", root_dir=d) or \
+                    glob.glob(d + "/" + os.path.basename(d) + f":1.{iface}/tty/*")
                 if t:
                     return "/dev/" + os.path.basename(t[0])
         except OSError:

@@ -1,0 +1,35 @@
+# Phase 7a: the control function (image12a, build 14)
+
+The second CDC function now carries the project's control frames (`DUEC`, version 4, CRC; `lib/due_shared/src/ctl_wire.h`)
+on EP4 (bulk 512, DMA) with EP3 (interrupt) present and NAKing. The dispatcher is `fw/ctl_h7.c`: portable C with no registers, its
+hooks implemented in the image. It does not use the shared `ctl.c`, which hardcodes the Due's frame version into IDENTITY and
+whose tree is not edited for a second target; it reuses the shared header (layout, opcodes, error codes) and `crc32.c`, so there is
+one definition of the frame and `host/control.py` parses the replies unchanged.
+
+## Opcodes
+| opcode | meaning |
+|---|---|
+| 0x0001 PING | dev_us, dev_ms, seq (as on the Due) |
+| 0x0002 IDENTITY | track `H`, ctl version 4, **frame version 4**, firmware 0.1.0, frame 4096 bytes / 2032 samples, `mck_hz` = 200 MHz (the timer base every rate descends from, nominal), `adc_clock_hz` = 25 MHz (the ADC's effective clock as measured, docs/10; the register says 50), build `h7-build-N` |
+| 0x0003 CAPABILITY | the opcodes this build dispatches (the Due's list format) |
+| 0x0020 COUNTERS | the Due's 15-word record, filled as: dev_us; bytes_in = playback bytes consumed; produced = acquisition frames; consumed = frames sent; underruns = playback underruns; endtx = frames sent; partial = playback short packets; occ_min = playback minimum occupancy; run_us; the rest 0 (no ISR, spans or drain polls on this target) |
+| 0x0040 CONFIG | empty body reads; 16 bytes set: ADC period (>= 80 ticks), DAC period (>= 40), channel mask 1-3, gain code per channel (0-7), coupling bits, DAC zero code. Refused with `CTL_ERR_BUSY` while running, `CTL_ERR_LENGTH` out of range |
+| 0x0041 RUN | 1 start / 0 stop acquisition; acquisition runs while DTR is up OR a RUN is set |
+| 0x0042 PLAY | cmd 1 (with prime units 1-8) / 0 playback |
+| 0x0043 STATUS | 72 bytes: running, playing, timer, channels, both periods and every acquisition and playback counter |
+A Due answers `CTL_ERR_OPCODE` to the 0x40 range, which is what a host should see. Not implemented here (and so absent from the
+capability list): GEN, OCCUPANCY, RATE_TRACE, STREAM_STATS, LOAD, BENCH, TEMP and the heartbeat.
+
+## Tests
+- `tools/test_h7_ctl.py` compiles `ctl_h7.c` on the host with stub hooks and drives it with `host/control.py`'s own encoder and decoder:
+  identity, capability, counters, config round trip, range and busy, status size, and a bad CRC, version, length, opcode and non-frame
+  all refused and never acted on. Removing the CRC check fails one. Without a host C compiler these SKIP; a skip is not a pass.
+  It found a real bug on the way: the IDENTITY reply is 42 bytes and only 40 were cleared, so two bytes of stack leaked into the build string.
+- `tools/h7_ctl_check.py` on the unit, with the unchanged `Control`: identity, capabilities, counters, config set, refusals, then 2 s of
+  acquisition from a control RUN with the stream port's DTR **down** (3,998,976 samples per channel at 2 Msps), config refused while
+  running, RUN 0 stops it. All passed on build 14.
+
+## Not covered yet
+The host stack: the daemon still cannot start this unit (it needs a console and the Due's VID/PID and rate model), the GUI decodes a
+12-bit tag, and `measure.py`'s identity regex accepts only tracks A-C (docs/20, stage 7b). The control channel under load (a control
+request while playback and acquisition both run at full rate) is untested.
