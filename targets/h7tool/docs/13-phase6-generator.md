@@ -28,7 +28,29 @@ Measured on the unit, linux-x1, 2026-11-02, VOUT unconnected:
   memory of the HAL header, and it works *(it would not move otherwise)*.
 - Stop: PE3 reads 0 and DOR1 2036.
 
-## Component 2: the analog stage (needs the owner's wiring)
-Whether the supply comes up and the stage swings as the stock's pairs say is
-not yet measured: there is no on-board monitor of VOUT (the "load voltage" ADC
-channel is the target-load sense, not VOUT).
+## Component 2: the analog stage (measured with VOUT wired to CH2, owner's wiring)
+CH2 at gain 0, DC coupled, 2.5 Msps (zero code 32750 and 2301 codes/V from
+docs/12), Due DAC1 jumper removed, GND shared. Volts below are read by the H7's
+own CH2, so they include its input stage.
+- **Supply and DC:** with PE3 low and the generator idle, CH2 read 36809 (about
+  +1.76 V): VOUT floats with the stage unpowered, which says nothing about the
+  stage. With PE3 high, centre codes 1736, 1886, 2036, 2186, 2336 read 28733,
+  30788, 32854, 34917, 36983. That is 13.75 ADC codes per DAC code, i.e. 5.975
+  mV per code against the stock calibration's 5.98 (pairs 500:-9190 ... 3500:
+  +8755). Residual from the line: under 2 codes. Offset: VOUT reads about +50
+  mV at the stock's zero code (CH2's own offset is part of that; they cannot be
+  separated without a second instrument).
+- **Sine, amplitude 300 codes (1.795 V ideal), 977 Hz and 1953 Hz:** fundamental
+  1.800 V at both (0.3 % high), mean +0.057 V, same amplitude at both rates.
+  Peaks -1.89/+2.01 V include the noise (the capture's std is about 36 mV).
+- **Square, +-300 codes:** the 10-90 % edge takes 14 samples at 400 ns = 5.6 us
+  for a 3.1 V span, about 0.55 V/us. That is the stage *and* CH2's input stage
+  together; which one limits is not separated.
+- **Ramp** present and plausible (fundamental 1.149 V against 1.8 V peak).
+- Firmware guard held: with the centre left at 2336 a 300-code amplitude was
+  refused.
+
+## Not yet
+Host-fed playback (USB OUT by DMA into the DAC ring), update rates above 500
+kS/s, amplitudes above +-2 V, the 0-20 mA output, and any measurement with a
+reference instrument.
