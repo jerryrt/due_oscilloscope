@@ -86,8 +86,15 @@ from 1 to 5 MS/s at 100 kHz and falls by 2.7x at 200 kHz; amplitude gains 0.1-0.
 established: it may be the staircase images the stage only partly filters, or step-size-dependent stage
 distortion (the stage looked slew-limited on large steps). Only harmonics 2-5 of the rebuilt cycle are counted.
 
-## The output stage as drawn (D253-6 sheet 6) and what the measurements say about it
-Read from the drawing, not inferred: PA4 (DAC1_OUT1) goes through R28 2k into U2-D, a non-inverting stage of gain
+## The output stage as drawn on the OLD board (D253-6 sheet 6), and what the measurements say about it
+**This unit is board D428-9, a later revision than this drawing, and the vendor does not release its schematic
+(owner, 2026-11-02).** Everything in this section that comes from the drawing is a hint about a related older
+design, not a fact about this unit: the gains, the part names, the absence of a filter and the 1 kOhm DAC load
+may all differ here. What survives as evidence about the unit is only what was measured: 5.975 mV per code, zero
+code 2036 and the response curves, none of which depend on the drawing. That the drawing's gain arithmetic
+reproduces the measured volts per code (5.96 against 5.975) says its first-order gain structure is likely still
+right; it says nothing about bandwidth or parts.
+Read from the old drawing, not inferred, and not known to hold for this unit: PA4 (DAC1_OUT1) goes through R28 2k into U2-D, a non-inverting stage of gain
 1 + R113/R114 = 2; its output goes through R5 2k and the R130 9.76k divider into U2-C, a non-inverting stage with
 feedback R131 9.76k to a node tied to VREF_2.5V_DAC through R117 2k (gain 5.88), then R14 10 ohm to VOUT. So
 VOUT = 9.76 x V(PA4) - 12.2 V: with the 2.5 V / 4096 DAC that is 5.96 mV per code and 0 V at 1.25 V (code
@@ -108,7 +115,8 @@ slew needed at 200 kHz, 1.8 V peak, is about 0.85 V/us, below either part's rati
 steeper than one pole (corner about 115 kHz from the 50 kHz row, 96 from 100, 88 from 200).
 **So neither op-amp's bandwidth explains it**: the part should be roughly 5x to 12x faster than measured.
 Candidates, none tested: CH2's own input network differing from CH1's (the observer check was done on CH1 with the
-Due as source; CH2 was assumed alike), loading of the DAC pin, or something on this unit not on the drawing.
+Due as source; CH2 was assumed alike), loading of the DAC pin, or a different part, filter or compensation on this
+revision. With no schematic for it, measurement is the only way to tell the stage from CH2's input.
 The decisive test needs one wire moved: VOUT onto CH1 (whose response is measured flat to 200 kHz), with
 `H7_OBS=1`; if the roll-off stays, it is the stage; if it goes, it is CH2's input.
 (The harmonic percentages in the amplitude table rise at 20 codes because a 20-code swing is a handful of DAC
