@@ -1282,3 +1282,52 @@ def test_load_is_its_own_operation_and_never_rides_on_status(srv, connect):
     status = c.call("status")["status"]
     assert "load" not in status, (
         "status must stay answerable without asking the device anything")
+
+
+def test_a_partial_frame_does_not_leak_into_the_next_run(make_server):
+    """The tail of one stream must not be completed by the next.
+
+    The daemon's splitter outlives every run. A stream that ended 32
+    bytes short of a frame left that tail in it, and the next run's
+    first bytes finished it: one dirty frame carrying a complete stale
+    seq-0 header, and the new run's own seq-0 frame eaten and never
+    delivered (sequences ...304, 1, 2, 3).
+    """
+    import struct
+    fb = devmod.FRAME_BYTES
+
+    def frame(seq):
+        hdr = devmod.FRAME_MAGIC + bytes(4) + struct.pack("<I", seq)
+        return hdr + bytes(20) + bytes(fb - 32)
+
+    class Scripted(devmod.FakeDevice):
+        def __init__(self):
+            super().__init__(pace=False)
+            self.chunks = []
+
+        def read(self, timeout=pacing.GLANCE):
+            if self.chunks:
+                return self.chunks.pop(0)
+            pacing.pause(pacing.POLL)
+            return b""
+
+    dev = Scripted()
+    srv = make_server(device=dev)
+    got = []
+    feed = srv._splitter.feed
+
+    def spy(data):
+        out = feed(data)
+        got.extend(out)
+        return out
+
+    srv._splitter.feed = spy
+    dev.chunks.append(frame(303) + frame(304)[:-32])
+    wait_until(lambda: srv.frames_read == 1, what="the first run's frame")
+    srv.new_run()
+    dev.chunks.append(b"".join(frame(s) for s in range(4)))
+    wait_until(lambda: srv.frames_read == 5, what="all four frames of run 2")
+    assert srv.frames_read == 5
+    seqs = [struct.unpack_from("<I", f, 8)[0] for f in got]
+    assert seqs == [303, 0, 1, 2, 3]
+    assert all(f.count(devmod.FRAME_MAGIC) == 1 for f in got)

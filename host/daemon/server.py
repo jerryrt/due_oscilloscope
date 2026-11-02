@@ -499,6 +499,11 @@ class Server:
             if self._run_gen != gen:
                 gen = self._run_gen
                 last_read = None
+                # The reader owns the splitter, so it is cleared here
+                # and not from new_run(): a partial frame of the last
+                # run must not be completed by the first bytes of this
+                # one.
+                self._splitter.reset()
             now = time.monotonic()
             if last_read is not None:
                 self.read_gap.add(now - last_read)

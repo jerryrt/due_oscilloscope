@@ -1577,6 +1577,18 @@ class FrameSplitter:
         self._buf = bytearray()
         self.discarded = 0
 
+    def reset(self):
+        """Drop a partial frame left by a stream that has ended.
+
+        The tail of one run is not the head of the next. Left in place
+        it is completed by the first bytes of the new stream: the
+        frame it makes carries a stale header from the old one, and the
+        new stream's own first frame, seq 0, is eaten and never
+        delivered. The dropped bytes are counted as discarded.
+        """
+        self.discarded += len(self._buf)
+        self._buf.clear()
+
     def feed(self, data):
         self._buf += data
         out = []
