@@ -1,0 +1,70 @@
+# Phase 7b plan: the H7 behind the daemon and GUI (revised after the survey)
+
+## Principle
+**The device class hides every H7 detail; the daemon and the GUI see a device-neutral description and nothing else.** An
+`H7Device` (a new module, `host/daemon/h7device.py`) owns discovery, the two USB functions, start and stop, configuration,
+the swing cap, the feeding of playback samples and the counters. Where the daemon or GUI must change at all, the change is a
+*general* seam that the Due keeps using unchanged, never an `if h7` branch.
+
+## What the survey found (host/daemon, gui/, host/ports.py; checked against the files)
+- `server.py` applies the Due's rate model (`ratemod.check_capture(adc_hz, channels)`, `check_dac`, `describe`) in exactly three
+  places: `_op_rate`, `_op_start` and the `caps` reply. The model is a timer clock over an integer RC with Due floors and `channels` in {1, 2}.
+- The server forwards frames verbatim: it runs `FrameSplitter` (magic `DUE0`, 4096 bytes) over `device.read()`. Version-4 frames have the same
+  magic and size, so the splitter needs no change; only the final consumer, `gui/stream.py decode()`, takes the channel tag from bits 15-12
+  of every sample and the code from the low 12 bits, which corrupts 16-bit samples.
+- A device needs: `describe()`, `start(mode, *, dac_sps, adc_hz, channels, waveform, preset)`, `stop()`, `read(timeout)`, `stats()`, `counters()`,
+  `trace()`, `load()`, `heartbeat(...)`, `close()`, optional `write_awg()` and `feeder`; `BoardDevice` also drives a console (`v`, `=...P/L`)
+  that the H7 does not have.
+- Discovery is Arduino VID 0x2341 with PIDs 0x003D (console) and 0x003E (a native pair ordered by interface number).
+
+## The device-neutral contract (the only shared-code changes)
+1. **`describe()` carries the sample format and the channels**, so the GUI is generic. The Due's description is unchanged and a missing
+   `sample` key means "the Due default". The H7 adds `sample: {bits: 16, layout: "planar", full_scale_codes: 65535}`, `frame_version: 4`, and
+   `channels: [{id, label: "CH1", calibration: {zero_code, codes_per_volt, gain_code}}, ...]` (from `h7_cal`, measured zero, docs/17), plus the
+   gain and coupling choices it offers.
+2. **A rate policy is the device's.** `server.py` asks `getattr(device, "rate_policy", ratemod)`: the module `rates.py` already has the
+   needed interface, so the Due is untouched. `H7Device.rate_policy` snaps to integer periods of the 200 MHz base (ADC period >= 80
+   ticks, DAC period >= 40), answers `describe()` in its own terms, and refuses what the unit refuses.
+3. **Channel selection** keeps `channels` as a count (1 means CH1, 2 means both) and accepts an optional `channel_mask` from the client;
+   the Due ignores it. Gain and coupling travel as optional `options` passed only to a device that declares `accepts_options`.
+4. **Not-implemented stays not-implemented**: `trace()`, `load()` and `heartbeat()` on the H7 raise the daemon's device error; no zeros.
+
+## What `H7Device` does
+- **Open:** finds the unit by VID 0x1209 / PID 0x0001 (new `ports.find_h7()`, Due discovery untouched), the stream node on interface 0 and the
+  control node on interface 2; refuses a unit whose IDENTITY is not track `h`, control version 4, frame version 4.
+- **start:** `capture` = CONFIG then RUN; `play` = CONFIG then PLAY and the feeder; `loop` = both. Opens the stream port, never relies on DTR.
+- **Playback feed:** converts the daemon's uploaded waveform (12-bit tagged samples) to DAC codes, **enforces the swing cap**
+  (`h7_awg.check_codes`: refuse, never clamp), writes whole 2048-byte units from its own thread.
+- **read/stats/counters:** frames from the stream port; counters via the control COUNTERS record (docs/19).
+- **describe:** from IDENTITY and `h7_cal`, as above.
+
+## Order, with a gate at each step
+Each step that touches shared code first runs the whole board-free suite and compares with the baseline below.
+- **7b-0 Baseline (done).** 1227 passed, 16 skipped, 322 deselected (`.venv`, `-m "not board and not platform"`, 141 s) and 113 passed in
+  the GUI suite (`.venv-gui`). Nothing the H7 work touches may change these.
+- **7b-1 Seams.** The rate-policy hook, the `describe()` sample/channels keys, `channel_mask` and `options` pass-through in `server.py`;
+  `gui/stream.py` decodes by header version (3: unchanged tag-in-sample path; 4: planar 16-bit, channels from the mask) and takes volts from
+  the channel calibration when the description gives it. Gate: baseline numbers identical; new tests for each seam, mutation-checked.
+- **7b-2 `H7Device` against a simulated unit.** A simulated transport that runs the *compiled firmware dispatcher* (`ctl_h7.c`, the same code
+  as on the unit) behind the device class and emits synthetic version-4 frames, so daemon API tests, the start/stop/rate paths and the
+  swing-cap refusal run board-free through the real control code. Extends `FakeDevice`'s style; no `if h7` in the server.
+- **7b-3 GUI with the simulated unit.** `python -m gui` on the simulated H7 draws CH1 and CH2 with volts, labels and rates correct.
+- **7b-4 Discovery and the daemon entry.** `--device auto|due|h7` in `daemon/__main__.py`; `auto` tries the Due board then the H7.
+- **7b-5 Board gate (the Phase 7 gate).** `python -m daemon` on the real unit, an unmodified client and the GUI get a trace; a DC level
+  from VOUT reads right in volts (host plays the code, the daemon captures it on the other channel); stop/start and restart cycles clean;
+  the control channel polled while playback and capture run at full rate (never yet tested).
+
+## Riskiest assumptions, and how each is checked
+1. Hidden 12-bit assumptions elsewhere in `gui/` (awg 4095, trigger levels in codes): the grep list is part of 7b-1 and each hit gets a test.
+2. `host/provenance.py` and `measure.py` identity paths need a console; they stay unused by the H7 path. If a daemon feature calls them
+   (recording metadata is a candidate), the H7 description supplies the same fields instead of `v`.
+3. Recording (`record.start`) writes frames plus a sidecar with `frame_bytes`/geometry: v4 frames are 4096 bytes so replay's geometry check
+   passes, but replay would then be decoded by the GUI as v4, which must also work from a file.
+4. The daemon holds the Due's ports for `python -m daemon` today; it must not try to open them when `--device h7`.
+5. The firmware control function has only been exercised by one client at low rate: 7b-5 tests it under load before the phase is called done.
+6. The swing cap is host-enforced by design; the daemon path is a second writer of playback codes, so the cap check lives in `H7Device`,
+   not in a client.
+
+## Not in 7b
+GUI controls for gain, coupling and the swing cap (the daemon accepts them; a panel is later), the heartbeat and USB-SOF clock reference, the
+Due's `trace`/`load` equivalents, the 250M module, and any change to the Due firmware or its wire contract.

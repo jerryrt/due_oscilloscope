@@ -44,7 +44,7 @@ host's board finder must key on this pair, not on Arduino's.
 6. **Generator (done through host-fed playback, update-rate ladder and ETS: docs/13, 14, 15).** PE3 supply, then TIM6 + DMA1 Stream5 playing a host
    fed buffer; no load and a capped code first. Gate: output measured
    on the scope input.
-7. **Control channel and host.** Identity, status, counters; the
+7. **Control channel and host (7a done: docs/19; 7b planned: docs/20).** Identity, status, counters; the
    daemon and GUI take the v4 parser and a device table. Gate: a trace
    from the H7 with no special-casing.
 8. **Later.** 250M module, housekeeping channels.
