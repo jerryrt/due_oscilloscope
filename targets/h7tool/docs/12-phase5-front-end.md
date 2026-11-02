@@ -49,3 +49,6 @@ Calibration from the factory table applied on the host (the table is dumped in
 `h7tool_backup`, location in the stock's flash/RAM struct not found, docs/05);
 the offset of each gain code (the zero is near 32,800 but moves with gain);
 skew between channels.
+
+## Erratum (docs/17)
+The noise std column (codes) is the H7 scope's own, not the Due's DAC's; and the zero codes used (CH1 32843, CH2 32750) were fitted, not measured (measured 32875 and 32854, factory 32657 and 32723). The gain ratios stand.

@@ -25,6 +25,16 @@ class Calibration:
         with open(path) as f:
             return cls(json.load(f)["table"], zero_override)
 
+    @classmethod
+    def load_measured(cls, adc_period_ticks=200, path=None, factory=DEFAULT):
+        """Factory scale (codes per volt) with the zero MEASURED on this unit (inputs shorted, docs/17): the factory zero
+        is 100-220 codes off at the low gain codes. `adc_period_ticks`: 200 = 1 Msps, 100 = 2 Msps."""
+        path = path or os.path.join(HERE, "..", "data", "measured_zero_d428-9.json")
+        with open(path) as f:
+            z = json.load(f)["zero_code"][str(adc_period_ticks)]
+        override = {(int(ch[2:]), int(g)): code for ch, d in z.items() for g, code in d.items()}
+        return cls.load(factory, override)
+
     def _p(self, ch, gain):
         if not (ch in (1, 2) and 0 <= gain < GAINS):
             raise ValueError(f"channel {ch} gain {gain}")

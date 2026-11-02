@@ -69,3 +69,12 @@ def test_integrity_catches_a_drifting_amplitude():
     p = e.plan(40, 500); W, g, p_a = p["W"], p["g"], p["p_a"]; n = p["bins"] * 40; k = np.arange(n)
     drift = (1 + 0.05 * k / n) * np.sin(2 * np.pi * ((k * p_a) % W) / W)
     assert not e.integrity(drift + np.random.default_rng(4).normal(0, 0.01, n), p_a, W, g)["ok"]
+
+
+def test_planar_frames_are_split_per_channel_and_gaps_cut():
+    def pframe(seq, ch0, ch1):
+        return frame(seq, struct.pack("<1016H", *([ch0] * 1016)) + struct.pack("<1016H", *([ch1] * 1016)))
+    data = b"".join(pframe(s, 100 + s, 5000 + s) for s in (0, 1, 2, 4, 5, 6, 7))      # frame 3 missing: the later run of four wins
+    a, b = e.gapless_planes(data, 2)
+    assert len(a) == len(b) == 4 * 1016
+    assert a[0] == 104 and b[0] == 5004 and a[-1] == 107 and b[-1] == 5007

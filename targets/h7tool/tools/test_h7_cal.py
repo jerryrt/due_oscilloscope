@@ -39,3 +39,10 @@ def test_a_bad_channel_or_gain_is_refused():
         cal.volts(3, 0, 1000)
     with pytest.raises(ValueError):
         cal.volts(1, 8, 1000)
+
+
+def test_the_measured_zero_is_used_and_differs_from_the_factory_one():
+    m = c.Calibration.load_measured(200); f = c.Calibration.load()
+    assert abs(m.zero_code(1, 0) - 32875.0) < 1.0 and abs(f.zero_code(1, 0) - 32657.0) < 1.0
+    assert abs(m.volts(1, 0, m.zero_code(1, 0))) < 1e-9
+    assert m.codes_per_volt(1, 0) == f.codes_per_volt(1, 0)              # the scale is still the factory's

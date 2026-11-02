@@ -356,6 +356,52 @@ def amp_for(f_hz, vpp, fs=5_000_000, tol=0.01):
         awg.set_swing_limit(330)
 
 
+def acquire(seconds, mask, aperiod, settle_s=0.4):
+    """Acquire `seconds` of both/either channel with nothing playing; returns the per-channel sample arrays (raw codes)."""
+    import select
+    probe("wave 0 0"); probe(f"chan {mask}"); probe(f"aperiod {aperiod}")
+    s = serial.Serial(chk.find_port(), 115200, timeout=0.2); os.set_blocking(s.fd, False)
+    data = bytearray(); stop = threading.Event()
+    def reader():
+        while not stop.is_set():
+            if select.select([s.fd], [], [], 0.05)[0]:
+                try: data.extend(os.read(s.fd, 1 << 20))
+                except OSError: pass
+    rt = threading.Thread(target=reader, daemon=True); rt.start()
+    try:
+        time.sleep(settle_s); start = len(data); time.sleep(seconds); end = len(data)
+    finally:
+        stop.set(); rt.join(2); s.close()
+    nch = bin(mask).count("1")
+    return ets.gapless_planes(bytes(data[start:end]), nch)
+
+
+def zero_noise(periods=(200, 100)):
+    """Inputs shorted to ground (CH1 and CH2 each to their GND pin): zero code and noise of both channels at every gain
+    code, DC coupled. Needs nothing playing and nothing on the inputs. Recorded."""
+    build = fw_build()
+    if build is None or build < MIN_BUILD: raise RuntimeError(f"unit reports build {build}")
+    settle()
+    import h7_cal
+    cal = h7_cal.Calibration.load()
+    print("inputs shorted; per gain code, per ADC period: zero code (std, high-frequency std) | factory zero | difference in volts")
+    for per in periods:
+        print(f"-- ADC period {per} ticks ({200/per:.1f} Msps)")
+        for g in range(8):
+            probe(f"fe {hex(0x88 | g | (g << 4))}"); time.sleep(0.3)
+            planes = acquire(3.0, 3, per); row = []
+            for ch, x in enumerate(planes, start=1):
+                if len(x) < 0.8 * (200e6 / per) * 3.0:
+                    row.append(f"CH{ch}: short capture {len(x)}"); rec.record("zero_noise", dict(channel=ch, gain=g, adc_period=per), {}, False, ["short capture"], 1, build, None); continue
+                m, sd = float(x.mean()), float(x.std()); hf = float(np.std(np.diff(x)) / np.sqrt(2))
+                z = cal.zero_code(ch, g); cpv = cal.codes_per_volt(ch, g)
+                rec.record("zero_noise", dict(channel=ch, gain=g, adc_period=per, samples=len(x)),
+                           dict(mean_code=m, std_code=sd, hf_std_code=hf, factory_zero=z, codes_per_volt=cpv, zero_diff_v=(m - z) / cpv, noise_mv_rms=1000 * sd / cpv), True, [], 1, build, dict(channel=ch, gain_code=g, adc_period_ticks=per, inputs="shorted to GND"))
+                row.append(f"CH{ch}: {m:9.1f} ({sd:6.1f}, {hf:6.1f}) | {z:9.1f} | {1000*(m - z)/cpv:+8.2f} mV, noise {1000*sd/cpv:6.2f} mV")
+            print(f"  gain {g}: " + "   ".join(row), flush=True)
+    probe("fe 0x88")
+
+
 def ets_cmd():
     warmup()
     for kind, p_a, g in (("square", None, None), ("square", 136, None), ("square", 105, 8), ("sine", None, None)):
@@ -416,4 +462,4 @@ def square():
 
 
 if __name__ == "__main__":
-    {"ampfor": lambda: amp_for(int(float(sys.argv[2])), float(sys.argv[3])), "large": lambda: large(tuple(float(x) for x in sys.argv[2:]) or (4.0, 6.0, 8.0, 9.5)), "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
+    {"zeronoise": zero_noise, "ampfor": lambda: amp_for(int(float(sys.argv[2])), float(sys.argv[3])), "large": lambda: large(tuple(float(x) for x in sys.argv[2:]) or (4.0, 6.0, 8.0, 9.5)), "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()

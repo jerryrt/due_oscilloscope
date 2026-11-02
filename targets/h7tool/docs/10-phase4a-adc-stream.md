@@ -95,3 +95,6 @@ were identical for all 8 gain codes and for AC/DC bits, with the pins at low
 and then at the stock's high speed (image7d). The stock's board-type branch
 for this unit's ID is the one implemented. Cause unknown; it matters from
 phase 5 on (resolution at low gain: 3,800 of 65,535 codes at gain 0).
+
+## Erratum (docs/17)
+The DC-accuracy table's noise column and the remark that the Due's DAC noise is most of the 53-73 code scatter are wrong: with the input shorted the H7 scope itself shows 65-82 codes rms at every gain code. The zero codes fitted here (CH1 32843) were also fitted against the Due, not measured; the measured zero is 32875.

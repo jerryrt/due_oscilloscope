@@ -101,3 +101,25 @@ def integrity(v, p_a, W, g, rel_limit=0.002, sigma_factor=4.0):
     ok = rms <= limit
     return dict(ok=ok, reason="" if ok else f"halves differ by {rms*1000:.1f} mV rms, noise alone would give {expect*1000:.1f} mV",
                 half_rms=rms, expected=expect, sigma=sigma, min_count=int(counts.min()))
+
+
+def gapless_planes(data, nch):
+    """Like gapless_samples for a planar multi-channel capture: the longest run of consecutive frames, returned as a
+    list of nch arrays (the k-th array is channel k's samples, in time order)."""
+    runs, cur, last = [], [], None
+    pos = data.find(b"DUE0")
+    while pos >= 0 and pos + 4096 <= len(data):
+        h = data[pos:pos + 32]
+        if zlib.crc32(h[:28]) & 0xFFFFFFFF != struct.unpack("<I", h[28:])[0]:
+            pos = data.find(b"DUE0", pos + 1); continue
+        seq = struct.unpack("<I", h[8:12])[0]
+        if last is not None and seq != last + 1:
+            runs.append(cur); cur = []
+        cur.append(np.frombuffer(data[pos + 32:pos + 4096], dtype="<u2").reshape(nch, -1))
+        last = seq; pos += 4096
+    runs.append(cur)
+    best = max(runs, key=len)
+    if not best:
+        return [np.zeros(0) for _ in range(nch)]
+    a = np.concatenate(best, axis=1).astype(np.float64)
+    return [a[k] for k in range(nch)]
