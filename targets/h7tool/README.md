@@ -1,11 +1,14 @@
-# h7tool_baremetal - pilot: our own bare-metal firmware on the H7-TOOL
+# H7-TOOL target - our own bare-metal firmware on the H7-TOOL
 
-Pilot project, kept beside (not inside) `due_oscilloscope`. Goal: build, flash,
-identify and replace our own image on the H7-TOOL, with **no new features**.
+A hardware *target* of this repository, not a fourth Due track: different chip,
+board and wire format (frame version 4, `lib/wire/frame16.h`). It began as a
+pilot repo (`h7tool_baremetal`) whose history was joined here. The pilot goal
+(build, flash, identify and replace our own image) is done; the scope work
+follows the phases in `docs/06-plan.md`.
 The stock boot loader (v2.06, 0x08000000..0x0801FFFF) is never touched.
 
-Procedures, memory map and recovery: `../h7tool_usb_control/14-firmware-update-procedures.md`.
-Backups of stock firmware: `../h7tool_backup/`.
+Procedures, memory map and recovery: `../../../h7tool_usb_control/14-firmware-update-procedures.md`.
+Backups of stock firmware: `../../../h7tool_backup/`.
 
 ## Rules
 - Never write below 0x08020000. Image <= 1,310,720 bytes, linked at 0x08020000.
@@ -13,9 +16,9 @@ Backups of stock firmware: `../h7tool_backup/`.
 - Do not change option bytes / read-out protection. Do not touch eMMC, QSPI or the 250M module's RP2040.
 - Mark anything not read from a document or measured as *(check)*.
 - `reference/` is a local copy of the public armfly V1.49 source (MIT, 2021), not committed.
-- The H7 is the Due session's voltage reference. Tell that session before it is flashed and after stock is restored.
+- The sibling folders `h7tool_usb_control`, `h7tool_backup` and `h7tool_docs` live beside the repo, outside it.
 
 ## Layout
 - `docs/`      inventory and findings
-- `scripts/`   host-side tools (image checker, wrappers around ../h7tool_usb_control/scripts)
+- `tools/`   host-side tools (image checker, wrappers around ../../../h7tool_usb_control/scripts)
 - `reference/` public source copy (ignored)

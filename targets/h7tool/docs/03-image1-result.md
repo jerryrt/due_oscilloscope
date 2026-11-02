@@ -1,7 +1,7 @@
 # 03 - Image 1 result (2026-11-01, bench linux-x1)
 
 Images: `fw/image1/main.c`, two builds of it (arm-none-eabi-gcc 14.2.1 from the host, not a container).
-Both pass `scripts/check_image.py`; reset vector 0x0802001b, SP 0x20020000.
+Both pass `tools/check_image.py`; reset vector 0x0802001b, SP 0x20020000.
 
 | build | size | behaviour intended |
 |---|---|---|
@@ -49,7 +49,7 @@ TVCC off afterwards (A0 0.0). First confirmed hardware control from our own firm
 Self-timed return: after RUN_MS the image drives PC13 low, writes 0x5AA51234 to 0x20000000, DSB, SYSRESETREQ.
 The boot loader came back with no key press, both with image2a (peripheral-free, 8 s) and image2b. The unit leaves USB
 ~1 s after the write but only starts the new app about 6-7 s later (the loader's own delay), so budget for it.
-`scripts/h7_cycle.sh <image.bin>` enters the boot loader from stock and flashes; stock is restored afterwards with
+`tools/h7_cycle.sh <image.bin>` enters the boot loader from stock and flashes; stock is restored afterwards with
 h7_bl_flash.py and verified (identity, version, board, boot, 16 calibration blocks, TVCC 1400 mV: all identical).
 
 ## Update: USB core and ULPI PHY bring-up from our own image (fw/image3, step 1)
