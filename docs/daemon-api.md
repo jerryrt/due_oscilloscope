@@ -91,12 +91,13 @@ to `L` and `P` only; `play` and `loop` take the rates.
 
 ### Rates come back as the hardware makes them
 
-Every rate is `39 MHz / RC` for an integer RC, and `rate` returns the RC
+Every rate is the timer clock over an integer RC - 45 MHz at the default
+MCK of 90 MHz, which `caps` reports as `tc_clock_hz` - and `rate` returns the RC
 and the rate that RC produces:
 
 ```json
 {"op":"rate","adc_hz":200001,"channels":2}
-{"event":"rate","adc":{"requested":200001,"rc":194,"actual_hz":201030}}
+{"event":"rate","adc":{"requested":200001,"rc":224,"actual_hz":200892}}
 ```
 
 RC truncates, so the answer is the nearest rate **at or above** the
