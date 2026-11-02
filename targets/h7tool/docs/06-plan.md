@@ -29,8 +29,9 @@ host's board finder must key on this pair, not on Arduino's.
    checked, byte conservation; rate compared with the Due's measured
    figure, quoted only once measured.
 3. **Clock and timebase.** PLL1 400 MHz in the stock order, flash wait
-   states first; a TIM3 output at a known rate. Gate: measured against
-   the Due's timer, not trusted from register arithmetic.
+   states first; a TIM3 update at a known rate. Gate: measured against
+   the host's USB SOF (8 kHz) - no wiring, independent of the chip's own
+   clock - not trusted from register arithmetic. Done: docs/09.
 4. **ADC -> DMA -> USB, CH1 (ADC1).** 16-bit, TIM3-triggered, circular
    DMA into D2 SRAM at 0x3002xxxx (MPU non-cacheable). Gate: a DC level
    from the Due's DAC reads right against the stock calibration; no

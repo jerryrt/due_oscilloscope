@@ -33,10 +33,23 @@ def stats(fd):
     w = struct.unpack('<6I', buf.raw[:24])
     print('next_seq=%d xfers=%d running=%d ms=%d starts=%d DIEPINT2=0x%X' % w)
 
+def clocks(fd):
+    buf = ctypes.create_string_buffer(64)
+    c = Ctrl(0xC0, 0x03, 0, 0, 32, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
+    fcntl.ioctl(fd, 0xC0185500, c)
+    cyc, t5, t2, n, win, hz, sws, st = struct.unpack('<8I', buf.raw[:32])
+    print(f'windows={win} sofs/window={n} cpu_hz(set)={hz} SWS={sws} pll={st}')
+    if win:
+        print(f'  cycles/window {cyc}  TIM5 {t5}  TIM2(TIM3 update) {t2}')
+        print(f'  ratio to nominal (400e6, 200e6, 1e6 per 8000 SOFs): '
+              f'{cyc/400e6:.7f} {t5/200e6:.7f} {t2/1e6:.7f}')
+
 def main():
     fd = os.open(find(), os.O_RDWR)
     if len(sys.argv) > 1 and sys.argv[1] == 'stats':
         return stats(fd)
+    if len(sys.argv) > 1 and sys.argv[1] == 'clocks':
+        return clocks(fd)
     buf = ctypes.create_string_buffer(64)
     c = Ctrl(0xC0, 0x01, 0, 0, 36, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
     USBDEVFS_CONTROL = 0xC0185500
