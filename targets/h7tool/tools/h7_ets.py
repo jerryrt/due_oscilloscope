@@ -54,9 +54,10 @@ def gapless_samples(data):
     return np.concatenate(best).astype(np.float64) if best else np.zeros(0)
 
 
-def reconstruct(v, p_a, W, g):
-    """Bin the samples by phase. Returns (wave, counts): one value per g-tick bin, NaN where no sample fell."""
-    k = np.arange(len(v), dtype=np.int64)
+def reconstruct(v, p_a, W, g, k0=0):
+    """Bin the samples by phase. Returns (wave, counts): one value per g-tick bin, NaN where no sample fell.
+    k0 is the index of v[0] in the capture, so a part of a capture keeps the phase it had in the whole."""
+    k = np.arange(len(v), dtype=np.int64) + k0
     b = ((k * p_a) % W) // g
     n = W // g
     counts = np.bincount(b, minlength=n)
@@ -73,3 +74,30 @@ def align(wave, expected):
     xc = np.fft.irfft(np.fft.rfft(w) * np.conj(np.fft.rfft(e)), n=len(w))
     s = int(np.argmax(xc))
     return s, np.roll(wave, -s)
+
+
+def integrity(v, p_a, W, g, rel_limit=0.002, sigma_factor=4.0):
+    """Check that a capture is a repeatable waveform sampled at the phases we think, before any metric is read from it.
+
+    The capture is rebuilt twice, from its first and its second half (each keeping its true sample indices). For a
+    repeatable signal and the right phase mapping the two differ only by noise: rms(half1 - half2) is about
+    sigma * sqrt(2 / n) per bin, with sigma the per-sample scatter about the full rebuild. A phase discontinuity
+    (a lost trigger or frame that the sequence numbers did not show), drift, or a signal that is not repeatable makes
+    them differ by much more. Returns a dict; `ok` is False with `reason` when they do.
+    """
+    n = len(v); half = n // 2
+    full, counts = reconstruct(v, p_a, W, g)
+    b = (((np.arange(n, dtype=np.int64) * p_a) % W) // g)
+    resid = v - full[b]
+    sigma = float(np.std(np.diff(resid)) / math.sqrt(2.0))      # consecutive-sample scatter: slow drift cancels, noise does not
+    a1, c1 = reconstruct(v[:half], p_a, W, g, 0); a2, c2 = reconstruct(v[half:], p_a, W, g, half)
+    both = ~np.isnan(a1) & ~np.isnan(a2)
+    if both.sum() < 0.9 * len(full):
+        return dict(ok=False, reason="halves cover under 90 % of the bins", half_rms=float("nan"), sigma=sigma)
+    d = a1[both] - a2[both]; rms = float(np.sqrt(np.mean(d ** 2)))
+    n_bin = float(np.median(c1[both])); expect = sigma * math.sqrt(2.0 / max(n_bin, 1.0))
+    span = float(np.nanmax(full) - np.nanmin(full))
+    limit = max(sigma_factor * expect, rel_limit * span)
+    ok = rms <= limit
+    return dict(ok=ok, reason="" if ok else f"halves differ by {rms*1000:.1f} mV rms, noise alone would give {expect*1000:.1f} mV",
+                half_rms=rms, expected=expect, sigma=sigma, min_count=int(counts.min()))

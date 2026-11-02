@@ -14,6 +14,8 @@ HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import h7_awg as awg
 import h7_stream_check as chk
 import h7_ets as ets
+import h7_metrics as met
+import h7_records as rec
 
 PROBE = ["sudo", "-n", "python3", os.path.join(HERE, "h7_usb_probe.py")]
 ADC_FS = 2.0e6      # observer rate: 0.8 of the 2.5 Msps cliff, never at it (docs/10)
@@ -57,42 +59,88 @@ def codes_of(data):
 
 
 def play(buf, fs, warm=1.5, seconds=2.0, aperiod=None, raw=False):
-    """Play `buf` repeatedly at update rate fs; return (captured CH2 volts, device counters, rate ratio).
+    """Play `buf` repeatedly at update rate fs; return (captured volts or raw bytes, device counters, rate ratio).
 
     The acquisition stream starts the moment the port opens, so it is drained by a reader thread from
     then on: a host that does not read (while sudo probes run) lets the tty fill, the host stops polling
     the IN endpoint, and the device ring overflows - the intermittent bad rows this tool used to give.
+    Whatever happens, the writer is killed, playback stopped and the output switched off before returning.
     """
+    import select
     probe("wave 0 0"); probe("gcenter 2036"); probe(f"gperiod {awg.period_ticks(fs)}")
     probe(f"chan {OBS}"); probe(f"aperiod {aperiod or int(round(200e6 / ADC_FS))}")
     s = serial.Serial(chk.find_port(), 115200, timeout=0.2); os.set_blocking(s.fd, False)
-    data = bytearray(); stop = threading.Event()
-    import select
+    data = bytearray(); stop = threading.Event(); wp = None
     def reader():
         while not stop.is_set():
             if select.select([s.fd], [], [], 0.05)[0]:
                 try: data.extend(os.read(s.fd, 1 << 20))
                 except OSError: pass
     rt = threading.Thread(target=reader, daemon=True); rt.start()
-    time.sleep(0.3); probe("pstart 2")
-    wp, wname = start_writer(s.name, buf)
-    time.sleep(warm); start = len(data); c1 = (int(counters()["consumed"]), time.time())
-    time.sleep(seconds)
-    ctr = counters(); c2 = (int(ctr["consumed"]), time.time())     # before the writer stops: the drain is not an underrun
-    a = dict(kv.split("=") for kv in probe("acq").split())
-    ctr["acq_tc_missed"] = a["tc_missed"]; ctr["acq_lost"] = a["lost"]; ctr["acq_ovr"] = a["adc_ovr"]; ctr["acq_sent"] = a["sent"]; ctr["acq_frames"] = a["frames_done"]
-    ctr["stall"] = {k: a[k] for k in ("dma_err", "dma_err_frame", "stall", "stall_lisr", "stall_cr", "stall_ndtr", "stall_isr", "stall_adccr")}
-    stop_writer(wp, wname)
-    try: probe("pstop")
-    except subprocess.CalledProcessError:
-        print("pstop failed; device state:", ctr, flush=True); stop.set(); s.close(); raise
-    stop.set(); rt.join(2); s.close()
+    try:
+        time.sleep(0.3); probe("pstart 2")
+        wp, wname = start_writer(s.name, buf)
+        time.sleep(warm); start = len(data); c1 = (int(counters()["consumed"]), time.time())
+        time.sleep(seconds); end = len(data)          # the measurement window ends HERE: the cleanup below shuts the output down
+        ctr = counters(); c2 = (int(ctr["consumed"]), time.time())    # before the writer stops: the drain is not an underrun
+        a = dict(kv.split("=") for kv in probe("acq").split())
+        ctr["acq_tc_missed"] = a["tc_missed"]; ctr["acq_lost"] = a["lost"]; ctr["acq_ovr"] = a["adc_ovr"]; ctr["acq_sent"] = a["sent"]; ctr["acq_frames"] = a["frames_done"]
+        ctr["stall"] = {k: a[k] for k in ("dma_err", "dma_err_frame", "stall", "stall_lisr", "stall_cr", "stall_ndtr", "stall_isr", "stall_adccr")}
+    finally:
+        if wp is not None: stop_writer(wp, wname)
+        try: probe("pstop"); probe("wave 0 0")
+        except Exception as e: print("cleanup: could not stop playback:", e, flush=True)
+        stop.set(); rt.join(2); s.close()
     ratio = ((c2[0] - c1[0]) & 0xFFFFFFFF) / (c2[1] - c1[1]) / fs
     if raw:
-        return bytes(data[start:]), ctr, ratio
-    x = codes_of(bytes(data[start:]))
+        return bytes(data[start:end]), ctr, ratio
+    x = codes_of(bytes(data[start:end]))
     ctr["capture_samples"] = len(x); ctr["expected_samples"] = int(ADC_FS * seconds)
     return (x - ZERO) / CPV, ctr, ratio
+
+
+def fw_build():
+    """Build id of the image on the unit (vendor dbg request, image11j and later); None if it does not answer."""
+    try:
+        return int(dict(kv.split("=") for kv in probe("dbg").split())["build"], 16)
+    except Exception:
+        return None
+
+
+MIN_BUILD = 12                       # image11l: the generator-start stall fix
+
+
+def ready():
+    """Refuse to measure on an image older than the stall fix, then settle and discard the first run."""
+    b = fw_build()
+    if b is None or b < MIN_BUILD:
+        raise RuntimeError(f"unit reports build {b}; need >= {MIN_BUILD} (image11l or later)")
+    warmup()
+    return b
+
+
+def ets_measure(kind, buf, fs, ppc, seconds=3.0, tries=3, p_a=None, g=None):
+    """One ETS capture that is checked before it is believed: no underruns, a full-length gapless capture,
+    and split-half agreement (h7_ets.integrity). A failing capture is retried, up to `tries`; the reasons of
+    every failed try are kept. Returns a dict with `valid`, `reasons`, `tries`, the rebuilt wave and the plan."""
+    pl = ets.plan(200_000_000 // fs, ppc, g=g)
+    if p_a: pl["p_a"] = p_a
+    reasons = []
+    for t in range(1, tries + 1):
+        data, ctr, ratio = play(buf, fs, warm=1.5, seconds=seconds, aperiod=pl["p_a"], raw=True)
+        v = (ets.gapless_samples(data) - ZERO) / CPV
+        bad = []
+        if int(ctr["underruns"]) or int(ctr["short"]): bad.append(f"playback underruns {ctr['underruns']} short {ctr['short']}")
+        if len(v) < 0.9 * ADC_FS * seconds * 100 / pl["p_a"]: bad.append(f"short or gappy capture: {len(v)} gapless samples")
+        if ctr["stall"]["dma_err"] != "0x0": bad.append(f"ADC DMA error {ctr['stall']['dma_err']}")
+        if not bad:
+            ig = ets.integrity(v, pl["p_a"], pl["W"], pl["g"])
+            if not ig["ok"]: bad.append(ig["reason"])
+        if not bad:
+            wave, counts = ets.reconstruct(v, pl["p_a"], pl["W"], pl["g"])
+            return dict(valid=True, reasons=reasons, tries=t, wave=wave, counts=counts, plan=pl, ctr=ctr, integrity=ig, samples=len(v), ratio=ratio)
+        reasons.append(f"try {t}: " + "; ".join(bad)); print("  rejected:", reasons[-1], flush=True)
+    return dict(valid=False, reasons=reasons, tries=tries, wave=None, plan=pl, ctr=ctr, samples=len(v), ratio=ratio)
 
 
 def fit(v, f0, harmonics=5):
@@ -169,53 +217,43 @@ def ets_run(kind, p_a=None, g=None, seconds=4.0):
     return wave, counts, pl, ctr, expected, len(v)
 
 
-def edge_metrics(wave, g):
-    lo, hi = np.nanpercentile(wave, 5), np.nanpercentile(wave, 95); span = hi - lo
-    t10, t90 = lo + 0.1 * span, lo + 0.9 * span
-    up = [i for i in range(1, len(wave)) if wave[i - 1] < t10 <= wave[i]]
-    out = {}
-    if up:
-        i = up[0]; j = i
-        while j < len(wave) - 1 and wave[j] < t90: j += 1
-        out["rise_ns"] = (j - i) * g * ets.TICK_NS
-    out["lo"] = lo; out["hi"] = hi; out["overshoot_pct"] = 100 * (np.nanmax(wave) - hi) / span
-    plate = wave[(wave > hi - 0.05 * span)]; out["hi_plateau_std_mv"] = 1000 * float(np.nanstd(plate))
-    return out
+edge_metrics = met.edge_metrics
 
 
-def ets_bandwidth():
-    """Frequency response of DAC + output stage + CH2 input at 5 MS/s update, 100-code sine, by ETS."""
-    warmup(); fs, p_d = 5_000_000, 40; ideal = 100 * awg.MV_PER_CODE / 1000
-    print(f"5 MS/s update, 100-code sine ({ideal:.3f} V ideal peak); ETS, one cycle rebuilt per row")
-    print("   f kHz | pts/cycle | amp V | vs ideal dB | THD % | underruns | min samples/bin")
-    ref = None
+def ets_bandwidth(amp_codes=100):
+    """Frequency response of DAC + output stage + the observer at 5 MS/s update, by ETS; every row checked and recorded."""
+    build = ready(); fs = 5_000_000; ideal = amp_codes * awg.MV_PER_CODE / 1000
+    obs = dict(channel=OBS, adc_period_ticks=int(round(200e6 / ADC_FS)), gain_code=0, zero_code=ZERO, codes_per_volt=CPV)
+    print(f"5 MS/s update, {amp_codes}-code sine ({ideal:.3f} V ideal peak); ETS, one cycle rebuilt per row")
+    print("   f kHz | pts/cycle | amp V | vs ideal dB | THD % | tries | min samples/bin")
     for f in (10_000, 50_000, 100_000, 200_000, 250_000, 500_000, 1_000_000):
-        ppc = int(fs / f); buf = awg.sine(fs, f, 100); pl = ets.plan(p_d, ppc)
-        data, ctr, ratio = play(buf, fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
-        v = (ets.gapless_samples(data) - ZERO) / CPV
-        wave, counts = ets.reconstruct(v, pl["p_a"], pl["W"], pl["g"])
-        w = np.where(np.isnan(wave), np.nanmean(wave), wave); F = np.abs(np.fft.rfft(w)) * 2 / len(w)
-        amp = F[1]; thd = np.sqrt(np.sum(F[2:6] ** 2)) / amp
-        ref = ref or amp
-        print(f"{f/1e3:8.0f} | {ppc:9d} | {amp:.3f} | {20*np.log10(amp/ideal):+7.2f} | {100*thd:5.2f} | {ctr['underruns']:>4} | {counts.min()}", flush=True)
+        ppc = fs // f; r = ets_measure("sine", awg.sine(fs, f, amp_codes), fs, ppc)
+        if not r["valid"]:
+            rec.record("sine_bw", dict(f_hz=f, amp_codes=amp_codes, update_hz=fs), {}, False, r["reasons"], r["tries"], build, obs)
+            print(f"{f/1e3:8.0f} | {ppc:9d} | INVALID after {r['tries']} tries", flush=True); continue
+        sm = met.sine_metrics(r["wave"])
+        rec.record("sine_bw", dict(f_hz=f, amp_codes=amp_codes, update_hz=fs, p_a=r["plan"]["p_a"]), dict(sm, ideal=ideal, db=20*np.log10(sm["amp"]/ideal)), True, r["reasons"], r["tries"], build, obs)
+        print(f"{f/1e3:8.0f} | {ppc:9d} | {sm['amp']:.3f} | {20*np.log10(sm['amp']/ideal):+7.2f} | {100*sm['thd']:5.2f} | {r['tries']:>3} | {r['counts'].min()}", flush=True)
 
 
 def ets_rate():
     """Is there an update-rate effect where it can show? A tone whose staircase the output stage has not already
-    removed: 100 and 200 kHz at several update rates, same amplitude, rebuilt by ETS. Reports the fundamental and the
-    harmonic content (2nd-5th) of the rebuilt cycle, and the repeat of the whole row for a noise estimate."""
-    warmup(); ideal = 100 * awg.MV_PER_CODE / 1000
+    removed: 100 and 200 kHz at several update rates, same amplitude, ETS, each row twice (checked and recorded)."""
+    build = ready(); ideal = 100 * awg.MV_PER_CODE / 1000
+    obs = dict(channel=OBS, adc_period_ticks=int(round(200e6 / ADC_FS)), gain_code=0, zero_code=ZERO, codes_per_volt=CPV)
     print(f"100-code sine ({ideal:.3f} V ideal peak); ETS; each row twice to show the repeatability")
-    print("   f kHz | update MS/s | pts/cycle | amp V | dB vs ideal | H2..H5 sum % of fundamental | min samples/bin")
+    print("   f kHz | update MS/s | pts/cycle | amp V | dB vs ideal | H2..H5 % of fundamental | tries")
     for f in (100_000, 200_000):
         for fs in (1_000_000, 2_000_000, 5_000_000):
-            ppc = fs // f; p_d = 200_000_000 // fs; buf = awg.sine(fs, f, 100); pl = ets.plan(p_d, ppc)
+            ppc = fs // f
             for rep in (1, 2):
-                data, ctr, ratio = play(buf, fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
-                v = (ets.gapless_samples(data) - ZERO) / CPV
-                wave, counts = ets.reconstruct(v, pl["p_a"], pl["W"], pl["g"])
-                w = np.where(np.isnan(wave), np.nanmean(wave), wave); F = np.abs(np.fft.rfft(w)) * 2 / len(w)
-                print(f"{f/1e3:8.0f} | {fs/1e6:11.1f} | {ppc:9d} | {F[1]:.4f} | {20*np.log10(F[1]/ideal):+6.2f} | {100*np.sqrt(np.sum(F[2:6]**2))/F[1]:6.3f} | {counts.min()} (under {ctr['underruns']})", flush=True)
+                r = ets_measure("sine", awg.sine(fs, f, 100), fs, ppc)
+                if not r["valid"]:
+                    rec.record("sine_rate", dict(f_hz=f, amp_codes=100, update_hz=fs), {}, False, r["reasons"], r["tries"], build, obs)
+                    print(f"{f/1e3:8.0f} | {fs/1e6:11.1f} | {ppc:9d} | INVALID after {r['tries']} tries", flush=True); continue
+                sm = met.sine_metrics(r["wave"])
+                rec.record("sine_rate", dict(f_hz=f, amp_codes=100, update_hz=fs, p_a=r["plan"]["p_a"], rep=rep), dict(sm, ideal=ideal), True, r["reasons"], r["tries"], build, obs)
+                print(f"{f/1e3:8.0f} | {fs/1e6:11.1f} | {ppc:9d} | {sm['amp']:.4f} | {20*np.log10(sm['amp']/ideal):+6.2f} | {100*sm['thd']:6.3f} | {r['tries']}", flush=True)
 
 
 def ets_amp():
@@ -237,32 +275,54 @@ def ets_amp():
                 print(f"{f/1e3:8.0f} | {amp:9d} | {ideal:.3f} | {F[1]:.4f} | {20*np.log10(F[1]/ideal):+6.2f} | {100*np.sqrt(np.sum(F[2:6]**2))/F[1]:6.3f} | {slew:.2f}", flush=True)
 
 
-def large():
+def dc_measure(code, seconds=1.5):
+    """Mean level of a DC output, checked like the ETS captures (no underruns, a full-length gapless capture)."""
+    data, ctr, _ = play(awg.dc(code), 1_000_000, warm=1.5, seconds=seconds, raw=True)
+    x = ets.gapless_samples(data); bad = []
+    if int(ctr["underruns"]): bad.append(f"underruns {ctr['underruns']}")
+    if len(x) < 0.9 * ADC_FS * seconds: bad.append(f"short capture {len(x)}")
+    v = (x.mean() - ZERO) / CPV if len(x) else float("nan")
+    return dict(valid=not bad, reasons=bad, volts=float(v), std_mv=float(1000 * x.std() / CPV) if len(x) else float("nan"))
+
+
+def large(steps=(4.0, 6.0, 8.0, 9.5)):
     """Raise the host-enforced swing cap in steps and measure large-signal behaviour at each. VOUT must be on the
-    observer channel (H7_OBS). A step that fails its checks stops the run before the next, larger one."""
-    warmup(); fs, p_d = 5_000_000, 40
-    for vpk in (4.0, 6.0, 8.0, 9.5):
+    observer channel (H7_OBS). Every measurement is integrity-checked and recorded (h7_records); a step that fails
+    its checks, or has a measurement that stays invalid after retries, stops the run before the next, larger one."""
+    build = ready(); fs = 5_000_000
+    obs = dict(channel=OBS, adc_period_ticks=int(round(200e6 / ADC_FS)), gain_code=0, zero_code=ZERO, codes_per_volt=CPV)
+    for vpk in steps:
         A = int(vpk * 1000 / awg.MV_PER_CODE); awg.set_swing_limit(A)
         print(f"\n== cap +-{vpk} V = +-{A} codes ==", flush=True)
         ok = True
         for code in (awg.ZERO_CODE - A, awg.ZERO_CODE, awg.ZERO_CODE + A):          # DC against the stock calibration
-            data, ctr, _ = play(awg.dc(code), 1_000_000, warm=1.5, seconds=1.5, raw=True)
-            x = ets.gapless_samples(data); v = (x.mean() - ZERO) / CPV; want = awg.stock_mv(code) / 1000
-            print(f"  DC code {code}: reads {v:+.3f} V, stock calibration {want:+.3f} V, difference {1000*(v-want):+.0f} mV  (std {1000*x.std()/CPV:.0f} mV)", flush=True)
-            if abs(v - want) > 0.30: ok = False; print("  ** DC level more than 0.3 V from the stock calibration", flush=True)
+            r = dc_measure(code); want = awg.stock_mv(code) / 1000
+            rec.record("dc", dict(code=code, cap_codes=A), dict(volts=r["volts"], stock_volts=want, std_mv=r["std_mv"]), r["valid"], r["reasons"], 1, build, obs)
+            print(f"  DC code {code}: reads {r['volts']:+.3f} V, stock calibration {want:+.3f} V, difference {1000*(r['volts']-want):+.0f} mV  (std {r['std_mv']:.0f} mV)" + ("" if r["valid"] else f"  INVALID {r['reasons']}"), flush=True)
+            if not r["valid"] or abs(r["volts"] - want) > 0.30: ok = False; print("  ** DC invalid or more than 0.3 V from the stock calibration", flush=True)
         for f in (10_000, 50_000, 100_000):                                            # large sine
-            ppc = fs // f; pl = ets.plan(p_d, ppc); ideal = A * awg.MV_PER_CODE / 1000
-            data, ctr, _ = play(awg.sine(fs, f, A), fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
-            vv = (ets.gapless_samples(data) - ZERO) / CPV; wave, counts = ets.reconstruct(vv, pl["p_a"], pl["W"], pl["g"])
-            w = np.where(np.isnan(wave), np.nanmean(wave), wave); F = np.abs(np.fft.rfft(w)) * 2 / len(w); thd = np.sqrt(np.sum(F[2:6] ** 2)) / F[1]
-            print(f"  sine {f/1e3:5.0f} kHz: peak {F[1]:.3f} V (ideal {ideal:.3f}, {20*np.log10(F[1]/ideal):+.2f} dB), THD {100*thd:.2f} %, min/max of cycle {w.min():+.2f}/{w.max():+.2f} V, underruns {ctr['underruns']}", flush=True)
-            if f == 10_000 and not (0.95 < F[1] / ideal < 1.05 and thd < 0.03): ok = False; print("  ** 10 kHz amplitude or distortion outside 5 % / 3 %", flush=True)
-        pl = ets.plan(p_d, 500)                                                         # large square: edge speed
-        data, ctr, _ = play(awg.square(fs, 10_000, A), fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
-        vv = (ets.gapless_samples(data) - ZERO) / CPV; wave, counts = ets.reconstruct(vv, pl["p_a"], pl["W"], pl["g"])
-        m = edge_metrics(wave, pl["g"]); span = m["hi"] - m["lo"]
-        print(f"  square 10 kHz: low {m['lo']:+.2f} V high {m['hi']:+.2f} V (span {span:.2f}, ideal {2*A*awg.MV_PER_CODE/1000:.2f}), 10-90 % rise {m.get('rise_ns', float('nan')):.0f} ns "
-              f"=> {0.8*span/(m.get('rise_ns', 1)*1e-3):.2f} V/us, overshoot {m['overshoot_pct']:.1f} %", flush=True)
+            ppc = fs // f; ideal = A * awg.MV_PER_CODE / 1000
+            r = ets_measure("sine", awg.sine(fs, f, A), fs, ppc)
+            if r["valid"]:
+                sm = met.sine_metrics(r["wave"])
+                rec.record("sine", dict(f_hz=f, amp_codes=A, update_hz=fs, p_a=r["plan"]["p_a"]), dict(sm, ideal=ideal, db=20*np.log10(sm["amp"]/ideal), half_rms_mv=1000*r["integrity"]["half_rms"]), True, r["reasons"], r["tries"], build, obs)
+                print(f"  sine {f/1e3:5.0f} kHz: peak {sm['amp']:.3f} V (ideal {ideal:.3f}, {20*np.log10(sm['amp']/ideal):+.2f} dB), THD {100*sm['thd']:.2f} %, cycle {sm['lo']:+.2f}/{sm['hi']:+.2f} V, tries {r['tries']}", flush=True)
+                if f == 10_000 and not (0.95 < sm["amp"] / ideal < 1.05 and sm["thd"] < 0.03): ok = False; print("  ** 10 kHz amplitude or distortion outside 5 % / 3 %", flush=True)
+            else:
+                rec.record("sine", dict(f_hz=f, amp_codes=A, update_hz=fs), {}, False, r["reasons"], r["tries"], build, obs); ok = False
+                print(f"  sine {f/1e3:5.0f} kHz: INVALID after {r['tries']} tries", flush=True)
+        r = ets_measure("square", awg.square(fs, 10_000, A), fs, 500)                   # large square: edge speed
+        if r["valid"]:
+            e = met.edge_metrics(r["wave"], r["plan"]["g"])
+            rec.record("square", dict(f_hz=10_000, amp_codes=A, update_hz=fs, p_a=r["plan"]["p_a"]), e, e["valid"], ([e["reason"]] if e["reason"] else []) + r["reasons"], r["tries"], build, obs)
+            if e["valid"]:
+                print(f"  square 10 kHz: low {e['lo']:+.2f} V high {e['hi']:+.2f} V (span {e['span']:.2f}, ideal {2*A*awg.MV_PER_CODE/1000:.2f}), 10-90 % rise {e['rise_ns']:.0f} ns / fall {e['fall_ns']:.0f} ns "
+                      f"=> {0.8*e['span']/(e['rise_ns']*1e-3):.2f} / {0.8*e['span']/(e['fall_ns']*1e-3):.2f} V/us, overshoot {e['overshoot_pct']:.1f} %, tries {r['tries']}", flush=True)
+            else:
+                ok = False; print(f"  square 10 kHz: edge metric INVALID: {e['reason']}", flush=True)
+        else:
+            rec.record("square", dict(f_hz=10_000, amp_codes=A, update_hz=fs), {}, False, r["reasons"], r["tries"], build, obs); ok = False
+            print(f"  square 10 kHz: INVALID after {r['tries']} tries", flush=True)
         if not ok: print("  STOPPED: this step failed its checks; not going further.", flush=True); break
     awg.set_swing_limit(330)
 
@@ -327,4 +387,4 @@ def square():
 
 
 if __name__ == "__main__":
-    {"large": large, "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
+    {"large": lambda: large(tuple(float(x) for x in sys.argv[2:]) or (4.0, 6.0, 8.0, 9.5)), "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()

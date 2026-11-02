@@ -39,3 +39,8 @@ until the owner decides), long-duration byte conservation against a reference
 count, the DAC's own sample-rate and the stage's bandwidth limits, and
 simultaneous acquisition and playback beyond this test (it ran 2.5 Msps CH2
 acquisition alongside).
+
+## Erratum
+The 1.800 V against 1.795 V ideal figure above came from a capture window that included the shutdown tail
+(see docs/15, erratum); remeasured through the corrected pipeline a 10 kHz sine reads 0.4 % low (0.993-0.996 of ideal,
+docs/15), within the 0.2-0.3 % uncertainty of the volts reference.

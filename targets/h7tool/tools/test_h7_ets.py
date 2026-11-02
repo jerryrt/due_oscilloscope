@@ -52,3 +52,20 @@ def test_a_gap_in_the_capture_is_not_bridged():
 def test_plan_skips_a_period_that_shares_a_factor_with_the_cycle():
     p = e.plan(40, 500, p_a_min=96)          # 96/8 = 12 shares a factor 4 with 2500: it must not be chosen
     assert p["p_a"] != 96 and math.gcd(p["p_a"] // 8, p["bins"]) == 1
+
+
+def test_integrity_passes_a_clean_repeatable_capture_and_catches_a_phase_jump():
+    p = e.plan(40, 500); W, g, p_a = p["W"], p["g"], p["p_a"]
+    rng = np.random.default_rng(3); n = p["bins"] * 40
+    f = lambda t: np.where((t % W) < W // 2, 1.0, -1.0) + 0.2 * np.sin(2 * np.pi * (t % W) / W)
+    k = np.arange(n); good = f(k * p_a) + rng.normal(0, 0.02, n)
+    assert e.integrity(good, p_a, W, g)["ok"]
+    jumped = good.copy(); jumped[n // 2:] = f((k[n // 2:] + 37) * p_a) + rng.normal(0, 0.02, n - n // 2)   # a lost trigger: 37 samples missing
+    r = e.integrity(jumped, p_a, W, g)
+    assert not r["ok"] and "halves differ" in r["reason"]
+
+
+def test_integrity_catches_a_drifting_amplitude():
+    p = e.plan(40, 500); W, g, p_a = p["W"], p["g"], p["p_a"]; n = p["bins"] * 40; k = np.arange(n)
+    drift = (1 + 0.05 * k / n) * np.sin(2 * np.pi * ((k * p_a) % W) / W)
+    assert not e.integrity(drift + np.random.default_rng(4).normal(0, 0.01, n), p_a, W, g)["ok"]

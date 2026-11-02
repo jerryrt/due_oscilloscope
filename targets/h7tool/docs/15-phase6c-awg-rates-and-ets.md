@@ -3,6 +3,27 @@
 Firmware `fw/image11/main.c` (builds a-l; the last measured is l, BUILD_ID 12). Host: `tools/h7_awg.py`
 (waveforms + the swing cap), `tools/h7_awg_sweep.py` (ladder, feed, ets, etsbw), `tools/h7_ets.py`.
 
+## Erratum (read this first): the capture window of the first measurements
+Every capture in the first version of this document was sliced after the playback cleanup, so it included the output
+being shut down. Amplitudes were about 0.03-0.05 dB low and some distortion figures slightly high; one square-edge row
+read 40 ns. Found when the ETS integrity check (split-half agreement, added with this erratum) rejected every capture;
+the window is now cut at the end of the measurement. The frequency response, the update-rate test and the ladder
+below were REMEASURED through the checked pipeline (all valid first try, records in `../records/awg.jsonl`, observer
+CH1 with VOUT moved there); the tables in this erratum replace the earlier ones, whose figures differ by 0.1 dB or
+less in amplitude and up to about 0.4 percentage points in harmonic content. Conclusions are unchanged.
+
+Frequency response, 5 MS/s update, 100-code sine, ETS (dB vs ideal 0.598 V): 10 kHz +0.02, 50 kHz -1.13, 100 kHz -3.67,
+200 kHz -8.12, 250 kHz -10.12, 500 kHz -17.77 (THD 0.40, 0.26, 0.78, 1.78, 2.57, 2.36 %); -3 dB at about 90 kHz.
+
+Update-rate effect, two repeats each (amp V / dB / H2-H5 %):
+| f | 1 MS/s | 2 MS/s | 5 MS/s |
+|---|---|---|---|
+| 100 kHz | 0.3869 / -3.79 / 1.57, 1.57 | 0.3923 / -3.67 / 1.32, 1.22 | 0.3919 / -3.67 / 0.78, 0.78 |
+| 200 kHz | 0.2236 / -8.55 / 4.41, 4.41 | 0.2289 / -8.35 / 2.87, 2.88 | 0.2348 / -8.12 / 1.85, 1.78 |
+Harmonic content falls by about 2x from 1 to 5 MS/s at 100 kHz and 2.4x at 200 kHz; amplitude gains 0.1-0.4 dB.
+
+Ladder, 10 kHz 300-code sine, 0.25 to 5 MS/s: amplitude 0.993-0.996 of ideal, THD 0.15-0.22 %, zero underruns.
+
 ## Changes that matter
 - **The host enforces the swing cap.** The firmware no longer reads playback codes (invariant 1 restored).
   `h7_awg.check_codes` refuses, never clamps, anything outside 2036 +- 330 codes (about +-2 V) and any
