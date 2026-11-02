@@ -76,10 +76,10 @@ def answers_banner(dev, timeout=pacing.REPORT):
     """Does this node produce the firmware banner?
 
     Not used for discovery - that is VID/PID now, on every platform,
-    because probing opens the programming port and opening it resets
-    the board. Kept because "is there working firmware behind this
-    node" is a different and still useful question from "which node is
-    this".
+    because probing opens the programming port, and opening it resets
+    the board on macOS (not on Linux or Windows). Kept because "is there
+    working firmware behind this node" is a different and still useful
+    question from "which node is this".
     """
     return _responds(dev, timeout)
 
@@ -229,8 +229,8 @@ def native_nodes(exclude=None):
     device naming.
 
     Discovery here never opens a port. Opening the programming port
-    asserts NRSTB and resets the board, so a running daemon cannot
-    afford to probe.
+    resets the board on macOS (it asserts NRSTB; Linux and Windows
+    were measured not to), so a running daemon cannot afford to probe.
 
     Filtered by USB VID/PID on every platform, not by a path glob: a
     bare /dev/cu.usbmodem* glob also matches the programming port and a
@@ -266,8 +266,8 @@ def find_all_ports(wait=pacing.NORMAL):
         # and pyserial reports both correctly on macOS as well - measured
         # in review, not assumed. So the "port that answers h" probe is
         # gone: it opened the programming port to find out what it was,
-        # and opening it asserts NRSTB and resets the board. Discovery
-        # that costs a reset is not discovery a running daemon can do,
+        # and opening it asserts NRSTB and resets the board on macOS.
+        # Discovery that costs a reset is not discovery a running daemon can do,
         # and that was as true on macOS as anywhere.
         #
         # Ordering is the one thing that stays platform-specific, and it

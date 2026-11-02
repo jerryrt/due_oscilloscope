@@ -1,7 +1,8 @@
 """Rate policy: what the hardware can actually produce, and refusing
 what it cannot before the device has to.
 
-Every rate this instrument has is `39 MHz / RC` for an integer RC. A
+Every rate this instrument has is the timer clock over an integer RC
+(`clock.TC_CLOCK_HZ`, 45 MHz at the default MCK of 90 MHz). A
 request between two of them is not an error, but silently rounding it
 and then reporting the number that was asked for is: a frame header
 once declared the requested rate rather than the one the hardware
@@ -50,10 +51,10 @@ def hz_for(rc):
 def snap(hz):
     """(rc, actual_hz) for a requested rate.
 
-    RC is `39 MHz // hz`, the same truncation the firmware does, so the
+    RC is `TC_CLOCK_HZ // hz`, the same truncation the firmware does, so the
     rate that comes back is the nearest one **at or above** the request,
-    not the nearest one either side: 200,000 gives RC 195 and exactly
-    200,000, while 200,001 gives RC 194 and 201,030. Sixteen thousand
+    not the nearest one either side: 200,000 gives RC 225 and exactly
+    200,000, while 200,001 gives RC 224 and 200,892. Nine hundred
     hertz of difference from a request one hertz higher is not a
     rounding error to hide - it is why the caller must display what
     comes back rather than what it asked for.
