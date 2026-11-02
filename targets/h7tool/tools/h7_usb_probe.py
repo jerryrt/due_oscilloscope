@@ -66,6 +66,13 @@ def main():
     fd = os.open(find(), os.O_RDWR)
     if len(sys.argv) > 1 and sys.argv[1] == 'stats':
         return stats(fd)
+    if len(sys.argv) > 1 and sys.argv[1] == 'pins':
+        buf = ctypes.create_string_buffer(64)
+        fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x05, 0, 0, 36, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
+        w = struct.unpack('<9I', buf.raw[:36])
+        print('GPIOG MODER %08X ODR %08X IDR %08X OSPEEDR %08X' % w[0:4])
+        print('GPIOI MODER %08X ODR %08X IDR %08X OSPEEDR %08X' % w[4:8])
+        print('RCC_AHB4ENR %08X' % w[8]); return
     if len(sys.argv) > 2 and sys.argv[1] == 'pc3':
         return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x14, int(sys.argv[2]), 0, 0, 1000, None))
     if len(sys.argv) > 2 and sys.argv[1] == 'chan':

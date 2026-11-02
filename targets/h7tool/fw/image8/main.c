@@ -351,7 +351,7 @@ static void adc_power(unsigned c)
 
 static void adc_init(void)
 {
-	RCC_AHB4ENR |= (1u << 5) | (1u << 6) | (1u << 24);    /* GPIOF, GPIOG, ADC3 */
+	RCC_AHB4ENR |= (1u << 5) | (1u << 6) | (1u << 8) | (1u << 24);    /* GPIOF, GPIOG, GPIOI (the 595 clocks), ADC3 */
 	RCC_AHB1ENR |= RCC_AHB1ENR_ADC;
 	(void)RCC_AHB1ENR;
 	/* front end as stock starts: DC coupling, gain 0 on both channels */
@@ -587,6 +587,11 @@ static void handle_setup(const uint8_t *s)
 			for (; n < sizeof off / sizeof off[0]; n++) txbuf[n] = R32(USB + off[n]);
 		}
 		if (req == 0x03) { for (; n < 8; n++) txbuf[n] = m_res[n]; }
+		if (req == 0x05) {                               /* front-end pins: G and I MODER, ODR, IDR, OSPEEDR; RCC AHB4ENR */
+			txbuf[n++] = R32(GPIOG); txbuf[n++] = R32(GPIOG + 0x14); txbuf[n++] = R32(GPIOG + 0x10); txbuf[n++] = R32(GPIOG + 0x08);
+			txbuf[n++] = R32(GPIOI); txbuf[n++] = R32(GPIOI + 0x14); txbuf[n++] = R32(GPIOI + 0x10); txbuf[n++] = R32(GPIOI + 0x08);
+			txbuf[n++] = RCC_AHB4ENR;
+		}
 		if (req == 0x04) {                               /* acquisition counters */
 			txbuf[n++] = fin; txbuf[n++] = lost; txbuf[n++] = sent_idx; txbuf[n++] = xfers;
 			txbuf[n++] = tc_missed; txbuf[n++] = adc_ovr; txbuf[n++] = DBGMCU_IDC >> 16;
