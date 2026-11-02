@@ -110,7 +110,7 @@ GBW-limited -3 dB would be about GBW/6.2: about 480 kHz (OPA4171) or 1.1 MHz (TP
 | 50 | -0.75 / -1.22 / -1.26 / -1.28 |
 | 100 | -3.18 / -3.65 / -3.72 / -3.80 |
 | 200 | -7.92 / -8.16 / -8.47 / -8.51 |
-Gain varies by only 0.5 dB over a 15x amplitude range, so the roll-off is a linear one, not slew limiting (the
+Gain varies by only 0.5 dB over a 15x amplitude range, so the roll-off at these amplitudes is a linear one (docs/16 finds slew limiting above about +-2 V; here the
 slew needed at 200 kHz, 1.8 V peak, is about 0.85 V/us, below either part's rating). The small-signal slope is
 steeper than one pole (corner about 115 kHz from the 50 kHz row, 96 from 100, 88 from 200).
 **So neither op-amp's bandwidth explains it**: the part should be roughly 5x to 12x faster than measured.

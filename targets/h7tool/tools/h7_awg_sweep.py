@@ -237,6 +237,36 @@ def ets_amp():
                 print(f"{f/1e3:8.0f} | {amp:9d} | {ideal:.3f} | {F[1]:.4f} | {20*np.log10(F[1]/ideal):+6.2f} | {100*np.sqrt(np.sum(F[2:6]**2))/F[1]:6.3f} | {slew:.2f}", flush=True)
 
 
+def large():
+    """Raise the host-enforced swing cap in steps and measure large-signal behaviour at each. VOUT must be on the
+    observer channel (H7_OBS). A step that fails its checks stops the run before the next, larger one."""
+    warmup(); fs, p_d = 5_000_000, 40
+    for vpk in (4.0, 6.0, 8.0, 9.5):
+        A = int(vpk * 1000 / awg.MV_PER_CODE); awg.set_swing_limit(A)
+        print(f"\n== cap +-{vpk} V = +-{A} codes ==", flush=True)
+        ok = True
+        for code in (awg.ZERO_CODE - A, awg.ZERO_CODE, awg.ZERO_CODE + A):          # DC against the stock calibration
+            data, ctr, _ = play(awg.dc(code), 1_000_000, warm=1.5, seconds=1.5, raw=True)
+            x = ets.gapless_samples(data); v = (x.mean() - ZERO) / CPV; want = awg.stock_mv(code) / 1000
+            print(f"  DC code {code}: reads {v:+.3f} V, stock calibration {want:+.3f} V, difference {1000*(v-want):+.0f} mV  (std {1000*x.std()/CPV:.0f} mV)", flush=True)
+            if abs(v - want) > 0.30: ok = False; print("  ** DC level more than 0.3 V from the stock calibration", flush=True)
+        for f in (10_000, 50_000, 100_000):                                            # large sine
+            ppc = fs // f; pl = ets.plan(p_d, ppc); ideal = A * awg.MV_PER_CODE / 1000
+            data, ctr, _ = play(awg.sine(fs, f, A), fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
+            vv = (ets.gapless_samples(data) - ZERO) / CPV; wave, counts = ets.reconstruct(vv, pl["p_a"], pl["W"], pl["g"])
+            w = np.where(np.isnan(wave), np.nanmean(wave), wave); F = np.abs(np.fft.rfft(w)) * 2 / len(w); thd = np.sqrt(np.sum(F[2:6] ** 2)) / F[1]
+            print(f"  sine {f/1e3:5.0f} kHz: peak {F[1]:.3f} V (ideal {ideal:.3f}, {20*np.log10(F[1]/ideal):+.2f} dB), THD {100*thd:.2f} %, min/max of cycle {w.min():+.2f}/{w.max():+.2f} V, underruns {ctr['underruns']}", flush=True)
+            if f == 10_000 and not (0.95 < F[1] / ideal < 1.05 and thd < 0.03): ok = False; print("  ** 10 kHz amplitude or distortion outside 5 % / 3 %", flush=True)
+        pl = ets.plan(p_d, 500)                                                         # large square: edge speed
+        data, ctr, _ = play(awg.square(fs, 10_000, A), fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
+        vv = (ets.gapless_samples(data) - ZERO) / CPV; wave, counts = ets.reconstruct(vv, pl["p_a"], pl["W"], pl["g"])
+        m = edge_metrics(wave, pl["g"]); span = m["hi"] - m["lo"]
+        print(f"  square 10 kHz: low {m['lo']:+.2f} V high {m['hi']:+.2f} V (span {span:.2f}, ideal {2*A*awg.MV_PER_CODE/1000:.2f}), 10-90 % rise {m.get('rise_ns', float('nan')):.0f} ns "
+              f"=> {0.8*span/(m.get('rise_ns', 1)*1e-3):.2f} V/us, overshoot {m['overshoot_pct']:.1f} %", flush=True)
+        if not ok: print("  STOPPED: this step failed its checks; not going further.", flush=True); break
+    awg.set_swing_limit(330)
+
+
 def ets_cmd():
     warmup()
     for kind, p_a, g in (("square", None, None), ("square", 136, None), ("square", 105, 8), ("sine", None, None)):
@@ -297,4 +327,4 @@ def square():
 
 
 if __name__ == "__main__":
-    {"etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
+    {"large": large, "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()

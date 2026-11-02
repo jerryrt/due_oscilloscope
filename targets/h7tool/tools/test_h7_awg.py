@@ -45,3 +45,24 @@ def test_sine_has_whole_cycles():
     d = a.sine(2_500_000, 10_000, 100)
     codes = struct.unpack(f"<{len(d) // 2}H", d)
     assert codes[0] == codes[250] == a.ZERO_CODE
+
+
+def test_the_cap_can_be_raised_but_never_past_the_ceiling():
+    old = a.SWING_LIMIT_CODES
+    try:
+        a.set_swing_limit(700)
+        assert a.check_codes(unit(a.ZERO_CODE + 700))
+        with pytest.raises(a.SwingError):
+            a.check_codes(unit(a.ZERO_CODE + 701))
+        with pytest.raises(ValueError):
+            a.set_swing_limit(a.HARD_LIMIT_CODES + 1)
+        with pytest.raises(ValueError):
+            a.set_swing_limit(0)
+    finally:
+        a.set_swing_limit(old)
+
+
+def test_the_stock_calibration_is_reproduced_at_its_own_points():
+    for code, mv in a.STOCK_PAIRS:
+        assert abs(a.stock_mv(code) - mv) < 1e-9
+    assert abs(a.stock_mv(2036)) < 15            # about 0 V at the zero code

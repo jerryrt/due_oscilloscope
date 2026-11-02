@@ -16,6 +16,33 @@ MV_PER_CODE = 5.983       # stock calibration slope, mV per DAC code
 DAC_CLOCK_HZ = 200_000_000
 
 
+# The cap can be raised, in steps, by the owner's decision, but never past this ceiling: about +-9.6 V, under the
+# +-10 V the output stage is specified for and well inside the H7 scope input's +-13.8 V. Codes, not volts: the
+# volts-per-code figure is measured (docs/13).
+HARD_LIMIT_CODES = 1600
+STOCK_PAIRS = ((500, -9190.0), (1500, -3212.0), (2500, 2771.0), (3500, 8755.0))   # (code, mV), stock calibration
+
+
+def set_swing_limit(codes):
+    """Raise or lower the host-enforced cap. Refuses anything beyond HARD_LIMIT_CODES."""
+    global SWING_LIMIT_CODES
+    if not 0 < codes <= HARD_LIMIT_CODES:
+        raise ValueError(f"swing limit {codes} codes is outside 1..{HARD_LIMIT_CODES}")
+    SWING_LIMIT_CODES = int(codes)
+
+
+def stock_mv(code):
+    """The stock calibration's millivolts for a DAC code (piecewise linear, last segments extended)."""
+    pts = STOCK_PAIRS
+    i = 0 if code <= pts[1][0] else (1 if code <= pts[2][0] else 2)
+    (c0, v0), (c1, v1) = pts[i], pts[i + 1]
+    return v0 + (code - c0) * (v1 - v0) / (c1 - c0)
+
+
+def dc(code, n=4096):
+    return check_codes(struct.pack(f"<{n}H", *([code] * n)))
+
+
 class SwingError(ValueError):
     pass
 
