@@ -33,3 +33,21 @@ peripheral addresses with movw/movt pairs, so a search for 32-bit address words 
   FC6 0xFF7F=2 and the owner heard the beep. **First confirmed sign of our code running on this unit.**
 - Which of the three pins sounded was not separated (all three were driven together); the stock code points at PH9.
 - The LED on PI8 was not reported. Stock restored again and verified (identity, version, board, boot, 16 calibration blocks, TVCC 1400 mV).
+
+## Update: TVCC control and the self-timed return to the boot loader (fw/image2)
+Stock reading (V2.33 disassembly, board 0x4289 => hardware flag set):
+- set_tvcc_mv(mv) at 0x0809a0f0: mv==0 -> PC13 low (TVCC off). Otherwise code = calibration fit of the requested voltage
+  (function 0x0802d990 with this unit's 0xC0C0.. table), clamped to 127; code written to the pot (0x08058ac0), then PC13 high.
+- Pot write 0x08058ac0: I2C start, address byte 0x5E, ack, code byte, ack, stop. Soft I2C pins as in the public source:
+  SCL PI7 (BSRR set 0x80 / reset 0x800000 on GPIOI), SDA PF15 (0x8000 / 0x80000000 on GPIOF). So these pins hold on D428-9.
+- Linear fit on this unit: V = 1.1922 + 0.030731 * code (code 5 -> 1.3457 V, code 100 -> 4.2652 V).
+
+Result: fw/image2 (-DTEST_TVCC -DRUN_MS=20000) writes the pot with PC13 low, enables TVCC only after both bytes were ACKed,
+code 7 (clamped to 5..20). The Due's A0 read **1737.1 codes = 1.409 V** (sd 2.5) for the whole 20 s; the formula gives 1.407 V.
+TVCC off afterwards (A0 0.0). First confirmed hardware control from our own firmware.
+
+Self-timed return: after RUN_MS the image drives PC13 low, writes 0x5AA51234 to 0x20000000, DSB, SYSRESETREQ.
+The boot loader came back with no key press, both with image2a (peripheral-free, 8 s) and image2b. The unit leaves USB
+~1 s after the write but only starts the new app about 6-7 s later (the loader's own delay), so budget for it.
+`scripts/h7_cycle.sh <image.bin>` enters the boot loader from stock and flashes; stock is restored afterwards with
+h7_bl_flash.py and verified (identity, version, board, boot, 16 calibration blocks, TVCC 1400 mV: all identical).
