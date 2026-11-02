@@ -62,13 +62,36 @@ free-running at CKMODE 1 already shows a wider spread (32,985..36,197 against
 36,100..37,000) *(not yet interpreted)*. The firmware refuses periods below 80
 for now (`MIN_PERIOD`), a guard and not a spec.
 
-## Accuracy gate: NOT passed
-With DAC0 wired to CH1 (and a common ground, reported by the owner), CH1 did
-not respond at all: codes held 36,6xx (std 56-70) for Due DAC codes 512, 1536,
-2560, 3584 in every ADC configuration, for 74HCT595 coupling/gain bytes 0x88,
-0x00 and 0x08, and with a full-swing 1 kHz square on DAC0. The Due native port
-was bounced (`=200Z`) in case it was not playing, with the same result. So
-either CH1 is not receiving the signal (wiring, or the Due not driving it), or
-the front end needs something this image does not do. Open; the next step is a
-known level on CH1 that does not depend on the Due (for example the H7's own
-3.3 V pin on CH1).
+## DC accuracy against the Due's DAC0 (after the owner fixed a GND wire)
+Earlier runs with a missing GND saw no response at all; with the wiring
+fixed CH1 follows DAC0. Four DAC codes (512, 1536, 2560, 3584), 3 s each,
+volts from the H7 session's DAC0 fit (V = 0.53722 mV/code x code + 0.55675 V;
+not re-measured here), a straight line fitted to the mean ADC code. Gain 0.
+Factory calibration for gain 0 (docs/05 5.5): 2284.9 codes/V, zero at 32657.
+
+| configuration | effective ADC clock | codes/V | offset code | worst residual | noise (std) |
+|---|---|---|---|---|---|
+| TIM3-triggered 2 Msps, CKMODE 3 | 25 MHz | 2295.7 | 32858 | 10.9 codes | 72.7 |
+| free-running, CKMODE 3 | 25 MHz | 2303.9 | 32752 | 18.3 | 53.5 |
+| free-running, CKMODE 2 | 50 MHz | 2297.5 | 32712 | 14.6 | 56.1 |
+| free-running, CKMODE 1 | 100 MHz | 2247.6 | 32153 | 91.4 | 80.6 |
+
+Reading it, with its limits: slope agrees with the factory figure to 0.5-0.8 %
+for the first three; the 100 MHz row is off by 1.6 % with a residual six times
+larger and more spread, so it is degraded. The 25 and 50 MHz rows cannot be
+told apart *at this test's resolution*: the source is the limit (the Due's
+DAC0 carries about 20 mV rms of noise per CLAUDE.md, about 46 codes at this
+gain, which is most of the 53-73 code std), the volts come from a fit made on
+another bench, and the offset differs by ~100-200 codes between rows
+(0.05-0.09 V, unexplained). So: no degradation is visible at an effective 50
+MHz (5 Msps), clear degradation at 100 MHz. That is not a ceiling and not a
+passed accuracy gate; a quieter source and a reference voltmeter are needed
+to say more, and the ADC clock is out of the datasheet's range above ~36 MHz
+*(check)*.
+
+## Front end: open
+The 74HCT595 byte (coupling and gain) had no visible effect: slope and level
+were identical for all 8 gain codes and for AC/DC bits, with the pins at low
+and then at the stock's high speed (image7d). The stock's board-type branch
+for this unit's ID is the one implemented. Cause unknown; it matters from
+phase 5 on (resolution at low gain: 3,800 of 65,535 codes at gain 0).

@@ -332,6 +332,7 @@ static void fe_shift(uint8_t v)
 static void gpio_out(uint32_t port, unsigned pin)
 {
 	R32(port + 0x00) = (R32(port + 0x00) & ~(3u << (2 * pin))) | (1u << (2 * pin));
+	R32(port + 0x08) = (R32(port + 0x08) & ~(3u << (2 * pin))) | (2u << (2 * pin));   /* speed: high, as stock */
 }
 
 static void adc_init(void)
