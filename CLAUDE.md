@@ -22,6 +22,7 @@ file is one row away.
 | The build container: how to run it, the checks it carries, what it will not do, and what a bench gives up without it | `docs/build-container.md` |
 | Per-host validation | `docs/windows.md`, `docs/linux.md` |
 | Board, clocks, converters | `docs/hardware.md` |
+| The H7-TOOL target: rules, phases, recovery | `targets/h7tool/README.md`, `targets/h7tool/docs/06-plan.md` |
 | Re-measuring the converters' analog performance at 90 MHz | `docs/analog-validation-plan.md` |
 | Comparable instruments, and the gap to the nearest one | `docs/related-work.md` - read before front-end hardware work |
 | The analog front end on the shield, stage by stage, and what judges each stage | `docs/afe.md` |
@@ -121,6 +122,17 @@ suspect for this.
 
 The cheap question first: **is the count proportional to how long you
 ran?**
+
+## Targets are not tracks
+
+`targets/h7tool` is a different chip, board and wire format (frame
+version 4, `lib/wire/frame16.h`), so it is a **target**, not a fourth
+track under invariant 3. It follows invariants 1, 2, 5, 6, 7 and 8; the
+Due tracks keep `FRAME_VERSION` 3 and `lib/due_shared` untouched. The
+Due-specific facts in this file (12-bit samples, UOTGHS, `docs/hardware.md`)
+do not describe it. Its own flashing rules - nothing below 0x08020000,
+no option bytes, the boot loader never touched - are in its README and
+override convenience.
 
 ## Invariants
 
