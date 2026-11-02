@@ -26,8 +26,17 @@ def find():
             pass
     sys.exit("no 1209:0001 device")
 
+def stats(fd):
+    buf = ctypes.create_string_buffer(64)
+    c = Ctrl(0xC0, 0x02, 0, 0, 24, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
+    fcntl.ioctl(fd, 0xC0185500, c)
+    w = struct.unpack('<6I', buf.raw[:24])
+    print('next_seq=%d xfers=%d running=%d ms=%d starts=%d DIEPINT2=0x%X' % w)
+
 def main():
     fd = os.open(find(), os.O_RDWR)
+    if len(sys.argv) > 1 and sys.argv[1] == 'stats':
+        return stats(fd)
     buf = ctypes.create_string_buffer(64)
     c = Ctrl(0xC0, 0x01, 0, 0, 36, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
     USBDEVFS_CONTROL = 0xC0185500
