@@ -42,7 +42,7 @@ the swing cap, the feeding of playback samples and the counters. Where the daemo
 Each step that touches shared code first runs the whole board-free suite and compares with the baseline below.
 - **7b-0 Baseline (done).** 1227 passed, 16 skipped, 322 deselected (`.venv`, `-m "not board and not platform"`, 141 s) and 113 passed in
   the GUI suite (`.venv-gui`). Nothing the H7 work touches may change these.
-- **7b-1 Seams.** The rate-policy hook, the `describe()` sample/channels keys, `channel_mask` and `options` pass-through in `server.py`;
+- **7b-1 Seams (done: server hook and options in 6489e20, GUI data layer: format, decode by version, per-channel volts; widgets follow in 7b-3).** The rate-policy hook, the `describe()` sample/channels keys, `channel_mask` and `options` pass-through in `server.py`;
   `gui/stream.py` decodes by header version (3: unchanged tag-in-sample path; 4: planar 16-bit, channels from the mask) and takes volts from
   the channel calibration when the description gives it. Gate: baseline numbers identical; new tests for each seam, mutation-checked.
 - **7b-2 `H7Device` against a simulated unit.** A simulated transport that runs the *compiled firmware dispatcher* (`ctl_h7.c`, the same code
@@ -68,3 +68,11 @@ Each step that touches shared code first runs the whole board-free suite and com
 ## Not in 7b
 GUI controls for gain, coupling and the swing cap (the daemon accepts them; a panel is later), the heartbeat and USB-SOF clock reference, the
 Due's `trace`/`load` equivalents, the 250M module, and any change to the Due firmware or its wire contract.
+
+## Status log
+- 7b-0: baseline 1227 passed / 16 skipped / 322 deselected; GUI 113.
+- 7b-1a: after the server seams 1230 passed (the three new tests), skips and deselections unchanged. A repo guard (no bare-number timeouts in tests)
+  failed on my first test and was obeyed, not waived.
+- 7b-1b: after the GUI data layer GUI 118 (five new tests), board-free 1230 passed / 17 skipped (the new GUI test file skips in the numpy-less
+  venv; a skip is not a pass and the file runs in `.venv-gui`), 322 deselected. The real Due through the daemon and the changed `gui.stream.decode`
+  (`measure/due_daemon_smoke.py`, run with `.venv-gui`) passes before and after.

@@ -71,6 +71,56 @@ ADVREF_MV, ADVREF_SOURCE = _advref_mv()
 VREF_V = ADVREF_MV / 1000.0
 
 
+class Format:
+    """What the samples of the attached device mean: the labels of its channels, how a code becomes volts, and the span
+    a plot should show. The Due's is the default and reproduces the module constants above exactly; another device
+    describes its own in its description (docs/20), so nothing here is a branch on which device it is.
+
+    `cal` is None for the Due (one global scale, VREF_V over 4096 codes) and {channel_id: (zero_code, codes_per_volt)}
+    for a device with a per-channel calibration."""
+
+    __slots__ = ("name", "labels", "full_scale", "cal", "y_lo", "y_hi")
+
+    def __init__(self, name, labels, full_scale, cal=None, y_range=None):
+        self.name = name
+        self.labels = dict(labels)
+        self.full_scale = full_scale
+        self.cal = cal
+        self.y_lo, self.y_hi = y_range if y_range else (0.0, VREF_V)
+
+
+DUE_FORMAT = Format("due", LABELS, FULL_SCALE_CODES)
+_format = DUE_FORMAT
+
+
+def format_from_description(desc):
+    """The Format a daemon `hello` device description asks for. A description with no `sample` key is a Due."""
+    sample = (desc or {}).get("sample")
+    if not sample:
+        return DUE_FORMAT
+    chans = desc.get("channels") or []
+    labels = {int(c["id"]): c["label"] for c in chans}
+    cal = {int(c["id"]): (float(c["calibration"]["zero_code"]), float(c["calibration"]["codes_per_volt"])) for c in chans}
+    full = int(sample.get("full_scale_codes", 65535))
+    top = max((full - z) / cpv for z, cpv in cal.values()); bottom = max(z / cpv for z, cpv in cal.values())
+    return Format(desc.get("kind", "device"), labels, full, cal, (-bottom, top))
+
+
+def set_format(fmt):
+    """Make `fmt` current. The module-level names the rest of the GUI reads (LABELS, FULL_SCALE_CODES, CH_A0/CH_A1) are
+    updated in place, so code that reads them needs no change and a Due is restored exactly by set_format(DUE_FORMAT)."""
+    global _format, FULL_SCALE_CODES, CH_A0, CH_A1
+    _format = fmt
+    LABELS.clear(); LABELS.update(fmt.labels)
+    FULL_SCALE_CODES = fmt.full_scale
+    ids = sorted(fmt.labels, reverse=(fmt is DUE_FORMAT))
+    CH_A0, CH_A1 = (ids + [ids[-1]])[:2] if fmt is not DUE_FORMAT else (7, 6)
+
+
+def current_format():
+    return _format
+
+
 class Frame:
     """One decoded frame. Samples stay as codes; volts are a view."""
 
@@ -97,30 +147,44 @@ class Frame:
 def decode(buf):
     """Decode one frame. Returns None if it is not one.
 
-    The tag rides in bits 15..12 of every sample, which is what makes
-    demultiplexing a mask rather than an assumption about ordering.
+    Version 3 (the Due): the tag rides in bits 15..12 of every 12-bit sample, which is what makes demultiplexing a mask
+    rather than an assumption about ordering. Version 4 (docs/20): 16-bit codes, no tag, planar - one block per channel
+    set in the mask, lowest first - so the channel is the block's position and its id the bit's number plus one.
     """
     if len(buf) < HDR_LEN or not buf.startswith(MAGIC):
         return None
-    (_magic, _version, flags, mask, seq, rate, ts,
+    (_magic, version, flags, mask, seq, rate, ts,
      overrun, _consumed, _crc) = struct.unpack_from(HDR_FMT, buf, 0)
     n = (len(buf) - HDR_LEN) // 2
 
     raw = np.frombuffer(buf, dtype="<u2", offset=HDR_LEN)
+    channels = {}
+    if version == 4:
+        ids = [i + 1 for i in range(16) if mask >> i & 1]
+        if not ids or n % len(ids):
+            return None                    # a version-4 frame whose payload does not divide into its channels
+        per = n // len(ids)
+        for j, cid in enumerate(ids):
+            channels[cid] = raw[j * per:(j + 1) * per].astype(np.uint16)
+        return Frame(seq, rate, n, mask, ts, overrun, flags, channels)
     tags = (raw >> 12).astype(np.uint8)
     codes = (raw & 0x0FFF).astype(np.uint16)
-
-    channels = {}
     for tag in np.unique(tags):
         channels[int(tag)] = codes[tags == tag]
     return Frame(seq, rate, n, mask, ts, overrun, flags, channels)
 
 
-def codes_to_volts(codes):
-    return np.asarray(codes, dtype=np.float32) * (VREF_V / (FULL_SCALE_CODES + 1))
+def codes_to_volts(codes, tag=None):
+    """Volts for ADC codes. For the Due one global scale; for a device with a per-channel calibration the channel's own
+    (`tag` is its id; without it the lowest channel's is used, which is right for a plot that has one source)."""
+    cal = _format.cal
+    if cal is None:
+        return np.asarray(codes, dtype=np.float32) * (VREF_V / (FULL_SCALE_CODES + 1))
+    zero, cpv = cal[tag] if tag in cal else cal[min(cal)]
+    return ((np.asarray(codes, dtype=np.float64) - zero) / cpv).astype(np.float32)
 
 
-def volts_to_codes(volts):
+def volts_to_codes(volts, tag=None):
     """The inverse, for controls that are entered in volts.
 
     One conversion, both directions, in the place that already owns it.
@@ -128,7 +192,11 @@ def volts_to_codes(volts):
     would be a second scale factor, and this project has already paid
     twice for one number living in two places.
     """
-    return int(round(float(volts) / (VREF_V / (FULL_SCALE_CODES + 1))))
+    cal = _format.cal
+    if cal is None:
+        return int(round(float(volts) / (VREF_V / (FULL_SCALE_CODES + 1))))
+    zero, cpv = cal[tag] if tag in cal else cal[min(cal)]
+    return int(round(float(volts) * cpv + zero))
 
 
 class ChannelRing:

@@ -52,6 +52,15 @@ def main():
         check(bad == 0, "every frame is magic DUE0, version 3, 4096 bytes")
         check(tags <= {7, 6} and tags, f"sample tags are the Due's A0/A1 tags {sorted(tags)}")
         check(gaps == 0, "sequence numbers continuous")
+        try:                                                        # the GUI's own decode of the real frames (needs numpy: .venv-gui)
+            sys.path.insert(0, ROOT)
+            from gui import stream
+        except ImportError:
+            print("skip (not a pass): the GUI decode check needs numpy; run with .venv-gui")
+        else:
+            decoded = [stream.decode(f) for f in frames]
+            check(all(d is not None and sorted(d.channels) == [6, 7] for d in decoded), "gui.stream.decode: every real Due frame decodes to channels A0 (7) and A1 (6)")
+            check(all(len(d.channels[7]) + len(d.channels[6]) == 2032 and int(d.channels[7].max()) <= 4095 for d in decoded), "decoded samples: 2032 per frame, 12-bit codes")
         cl.call("stop")
         print("Due daemon smoke: all checks passed")
     finally:
