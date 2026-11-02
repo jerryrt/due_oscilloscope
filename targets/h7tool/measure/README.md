@@ -14,6 +14,7 @@ the wiring and image it needs. The shared, tested pieces live in `../tools/` (`h
 | `playback_controls.py` | docs/14 | VOUT -> CH2, image10a |
 | `observer_bandwidth_due.py` | docs/15 | Due DAC0 -> CH1 |
 | `stall_repro*.py` | docs/15 (the fixed stall) | VOUT -> CH2, image11h-k |
+| `due_daemon_smoke.py` | the guard for shared host changes (docs/20): the REAL Due through the daemon, v3 frames, A0/A1 tags | Due attached (programming port and native pair), no other process on its ports |
 | `../tools/h7_awg_sweep.py` (`ladder feed etsrate etsbw etsamp large`) | docs/14, 15, 16 | VOUT -> CH1 or CH2 (`H7_OBS`) |
 
 Wiring has changed during this work (Due and VOUT on CH1/CH2 at different times); the Due is now disconnected from

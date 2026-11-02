@@ -766,20 +766,27 @@ def _op_load(srv, ses, msg):
 
 
 def _op_caps(srv, ses, msg):
-    return {"event": "caps", "rates": ratemod.describe(),
+    return {"event": "caps", "rates": _rates(srv).describe(),
             "device": srv.description(),
             "modes": list(devmod.MODES)}
+
+
+def _rates(srv):
+    """The rate policy of whatever is attached. A device that has its own (an H7: a period of a 200 MHz base, not a Due
+    timer count) offers `rate_policy` with the interface of host/daemon/rates.py - check_capture, check_dac, describe, and
+    RateError for a refusal; every other device is the Due, and the module itself is that policy."""
+    return getattr(srv.device, "rate_policy", ratemod)
 
 
 def _op_rate(srv, ses, msg):
     """Snap without touching the device: what would this rate become?"""
     out = {"event": "rate"}
     if "adc_hz" in msg:
-        rc, hz = ratemod.check_capture(msg["adc_hz"],
-                                       int(msg.get("channels", 2)))
+        rc, hz = _rates(srv).check_capture(msg["adc_hz"],
+                                           int(msg.get("channels", 2)))
         out["adc"] = {"requested": msg["adc_hz"], "rc": rc, "actual_hz": hz}
     if "dac_sps" in msg:
-        rc, hz = ratemod.check_dac(msg["dac_sps"])
+        rc, hz = _rates(srv).check_dac(msg["dac_sps"])
         out["dac"] = {"requested": msg["dac_sps"], "rc": rc, "actual_hz": hz}
     return out
 
@@ -803,11 +810,11 @@ def _op_start(srv, ses, msg):
     dac_sps = msg.get("dac_sps")
     actual = {}
     if mode in ("capture", "loop") and adc_hz:
-        rc, hz = ratemod.check_capture(adc_hz, channels)
+        rc, hz = _rates(srv).check_capture(adc_hz, channels)
         actual["adc"] = {"rc": rc, "actual_hz": hz}
         adc_hz = hz
     if mode in ("play", "loop") and dac_sps:
-        rc, hz = ratemod.check_dac(dac_sps)
+        rc, hz = _rates(srv).check_dac(dac_sps)
         actual["dac"] = {"rc": rc, "actual_hz": hz}
         dac_sps = hz
     waveform = None
@@ -816,8 +823,12 @@ def _op_start(srv, ses, msg):
     # Before the device starts, so no frame of this run can be measured
     # against the previous one (issue #40).
     srv.new_run()
+    extra = {}
+    if getattr(srv.device, "accepts_options", False):
+        # Only a device that says so gets them: the Due's start() has a fixed signature and keeps it.
+        extra = {"channel_mask": msg.get("channel_mask"), "options": msg.get("options")}
     srv.device.start(mode, dac_sps=dac_sps, adc_hz=adc_hz, channels=channels,
-                     waveform=waveform, preset=msg.get("preset"))
+                     waveform=waveform, preset=msg.get("preset"), **extra)
     srv.broadcast_event("started", mode=mode, rates=actual)
     return {"event": "started", "mode": mode, "rates": actual}
 
