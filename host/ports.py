@@ -251,6 +251,27 @@ def find_ports(wait=pacing.NORMAL):
     return ctl, native
 
 
+H7_VID, H7_PID = 0x1209, 0x0001      # the H7 target's own identity (targets/h7tool, docs/06); not an allocation
+
+
+def find_h7():
+    """(stream_path, control_path) of an attached H7 target, or None.
+
+    One cable, two CDC functions told apart by USB interface number: 0 is the sample stream, 2 the control channel
+    (the same split as the Due's native pair, but the H7 has no programming port and no console). The interface number
+    comes from the location pyserial reports ("1-4:1.0"); the discovery is verified on Linux only.
+    """
+    from serial.tools import list_ports
+    nodes = {}
+    for p in list_ports.comports():
+        if (p.vid, p.pid) != (H7_VID, H7_PID):
+            continue
+        m = re.search(r":\d+\.(\d+)$", p.location or "")
+        if m:
+            nodes[int(m.group(1))] = p.device
+    return (nodes[0], nodes[2]) if 0 in nodes and 2 in nodes else None
+
+
 def find_all_ports(wait=pacing.NORMAL):
     """Return (programming_port, native_samples, native_commands).
 

@@ -45,7 +45,7 @@ Each step that touches shared code first runs the whole board-free suite and com
 - **7b-1 Seams (done: server hook and options in 6489e20, GUI data layer: format, decode by version, per-channel volts; widgets follow in 7b-3).** The rate-policy hook, the `describe()` sample/channels keys, `channel_mask` and `options` pass-through in `server.py`;
   `gui/stream.py` decodes by header version (3: unchanged tag-in-sample path; 4: planar 16-bit, channels from the mask) and takes volts from
   the channel calibration when the description gives it. Gate: baseline numbers identical; new tests for each seam, mutation-checked.
-- **7b-2 `H7Device` against a simulated unit.** A simulated transport that runs the *compiled firmware dispatcher* (`ctl_h7.c`, the same code
+- **7b-2 `H7Device` against a simulated unit (done: host/daemon/h7device.py, h7sim.py, tests/test_h7device.py).** A simulated transport that runs the *compiled firmware dispatcher* (`ctl_h7.c`, the same code
   as on the unit) behind the device class and emits synthetic version-4 frames, so daemon API tests, the start/stop/rate paths and the
   swing-cap refusal run board-free through the real control code. Extends `FakeDevice`'s style; no `if h7` in the server.
 - **7b-3 GUI with the simulated unit.** `python -m gui` on the simulated H7 draws CH1 and CH2 with volts, labels and rates correct.
@@ -76,3 +76,10 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
 - 7b-1b: after the GUI data layer GUI 118 (five new tests), board-free 1230 passed / 17 skipped (the new GUI test file skips in the numpy-less
   venv; a skip is not a pass and the file runs in `.venv-gui`), 322 deselected. The real Due through the daemon and the changed `gui.stream.decode`
   (`measure/due_daemon_smoke.py`, run with `.venv-gui`) passes before and after.
+- 7b-2: `H7Device`, its rate policy, `ports.find_h7()`, and a simulated unit (`h7sim.py`: the real firmware dispatcher compiled for the host,
+  driven through host/control.py's own codec, plus a synthetic version-4 frame source). Nine daemon-API tests; breaking the swing cap, the
+  channel mapping or the stop each fails tests. Board-free suite 1239 passed (1230 + 9) / 17 skipped / 322 deselected; the real Due smoke passes.
+  Three faults found on the way, all in the simulation or my tests, none in the device class: a sleep loop in my simulated stream that took
+  the control lock on every read and starved the start request (a real stream read never touches the control channel); an over-strict "no
+  frame after stop" assertion (frames already in flight legitimately arrive; the property is that the stream stops within a bound and stays
+  stopped); and bare-number sleeps that the repo's pacing guard rejected.
