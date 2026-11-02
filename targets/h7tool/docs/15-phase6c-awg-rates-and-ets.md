@@ -122,6 +122,24 @@ The decisive test needs one wire moved: VOUT onto CH1 (whose response is measure
 (The harmonic percentages in the amplitude table rise at 20 codes because a 20-code swing is a handful of DAC
 steps; that is quantisation, not distortion. The "peak slew" column of the run is bin noise and is not used.)
 
+## The roll-off is the generator, confirmed on both input channels
+With VOUT moved to CH1 (Due disconnected from the H7), the same 100-code, 5 MS/s ETS sweep through CH1, which
+the Due source showed flat to 200 kHz, against the CH2 result (dB vs ideal):
+| f kHz | via CH2 | via CH1 | difference |
+|---|---|---|---|
+| 10 | -0.04 | -0.01 | 0.03 |
+| 50 | -1.23 | -1.16 | 0.07 |
+| 100 | -3.81 | -3.70 | 0.11 |
+| 200 | -8.27 | -8.15 | 0.12 |
+| 250 | -10.25 | -10.15 | 0.10 |
+| 500 | -17.71 | -18.04 | -0.33 (amplitude 0.075 V, near the floor) |
+| 1000 | -27.80 | -27.77 | 0.03 |
+Two independent input channels with different front ends give the same curve to 0.1 dB, and one of them was
+shown flat on its own. So the assumption that CH2 matches CH1 no longer matters, and the roll-off, -3 dB near
+85 kHz, belongs to the generator (DAC, its load and the output stage, which cannot be separated from the outside).
+Why it is that low is still not explained: the older drawing's op-amps would be much faster (see above), and
+this revision's schematic is not available.
+
 ## What it means for the AWG, and what is open
 - The update rate matters for tones above about 50 kHz, where points per cycle fall below about 100; for low
   frequencies (10 kHz) it makes no measurable difference through this observer. 5 MS/s is therefore worth using
