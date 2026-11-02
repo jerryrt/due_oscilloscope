@@ -86,6 +86,34 @@ from 1 to 5 MS/s at 100 kHz and falls by 2.7x at 200 kHz; amplitude gains 0.1-0.
 established: it may be the staircase images the stage only partly filters, or step-size-dependent stage
 distortion (the stage looked slew-limited on large steps). Only harmonics 2-5 of the rebuilt cycle are counted.
 
+## The output stage as drawn (D253-6 sheet 6) and what the measurements say about it
+Read from the drawing, not inferred: PA4 (DAC1_OUT1) goes through R28 2k into U2-D, a non-inverting stage of gain
+1 + R113/R114 = 2; its output goes through R5 2k and the R130 9.76k divider into U2-C, a non-inverting stage with
+feedback R131 9.76k to a node tied to VREF_2.5V_DAC through R117 2k (gain 5.88), then R14 10 ohm to VOUT. So
+VOUT = 9.76 x V(PA4) - 12.2 V: with the 2.5 V / 4096 DAC that is 5.96 mV per code and 0 V at 1.25 V (code
+2036), matching the measured 5.975 mV/code and the stock's zero code. The same DAC pin also drives R147 2k into
+the 0-20 mA path (U2-A/Q6, U2-B/Q3), so it sees about 1 kOhm. No filter is fitted: C90 and C37 are marked "do not
+fit". U2 is a TP2274 or, on later production, an OPA4171 (a note on the drawing).
+Datasheet figures for those parts, from distributor listings and the family datasheet (not the PDFs): OPA4171
+3 MHz GBW, 1.5 V/us typical slew; TP2274 7 MHz GBW, 20 V/us. With the cascade's gains (2 and 5.88) a
+GBW-limited -3 dB would be about GBW/6.2: about 480 kHz (OPA4171) or 1.1 MHz (TP2274).
+**Measured: about 90-100 kHz, linear.** The same tone at 20, 60, 150 and 300 codes (0.12 to 1.8 V peak):
+| f kHz | gain at 20 / 60 / 150 / 300 codes (dB vs ideal) |
+|---|---|
+| 50 | -0.75 / -1.22 / -1.26 / -1.28 |
+| 100 | -3.18 / -3.65 / -3.72 / -3.80 |
+| 200 | -7.92 / -8.16 / -8.47 / -8.51 |
+Gain varies by only 0.5 dB over a 15x amplitude range, so the roll-off is a linear one, not slew limiting (the
+slew needed at 200 kHz, 1.8 V peak, is about 0.85 V/us, below either part's rating). The small-signal slope is
+steeper than one pole (corner about 115 kHz from the 50 kHz row, 96 from 100, 88 from 200).
+**So neither op-amp's bandwidth explains it**: the part should be roughly 5x to 12x faster than measured.
+Candidates, none tested: CH2's own input network differing from CH1's (the observer check was done on CH1 with the
+Due as source; CH2 was assumed alike), loading of the DAC pin, or something on this unit not on the drawing.
+The decisive test needs one wire moved: VOUT onto CH1 (whose response is measured flat to 200 kHz), with
+`H7_OBS=1`; if the roll-off stays, it is the stage; if it goes, it is CH2's input.
+(The harmonic percentages in the amplitude table rise at 20 codes because a 20-code swing is a handful of DAC
+steps; that is quantisation, not distortion. The "peak slew" column of the run is bin noise and is not used.)
+
 ## What it means for the AWG, and what is open
 - The update rate matters for tones above about 50 kHz, where points per cycle fall below about 100; for low
   frequencies (10 kHz) it makes no measurable difference through this observer. 5 MS/s is therefore worth using

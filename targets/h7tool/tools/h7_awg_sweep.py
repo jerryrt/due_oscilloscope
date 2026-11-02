@@ -17,7 +17,8 @@ import h7_ets as ets
 
 PROBE = ["sudo", "-n", "python3", os.path.join(HERE, "h7_usb_probe.py")]
 ADC_FS = 2.0e6      # observer rate: 0.8 of the 2.5 Msps cliff, never at it (docs/10)
-ZERO, CPV = 32750.0, 2301.0       # CH2 zero code and codes per volt at gain 0 (docs/12)
+OBS = int(os.environ.get("H7_OBS", "2"))        # observer channel: 2 (VOUT wired to CH2) or 1 (VOUT wired to CH1)
+ZERO, CPV = (32750.0, 2301.0) if OBS == 2 else (32843.0, 2310.0)   # zero code and codes per volt at gain 0 (docs/12)
 
 
 WRITER = ("import ctypes, os, sys\nctypes.CDLL(None).prctl(1, 9)   # PR_SET_PDEATHSIG = SIGKILL: never outlive the harness\nfd = os.open(sys.argv[1], os.O_WRONLY | os.O_NOCTTY)\n"
@@ -63,7 +64,7 @@ def play(buf, fs, warm=1.5, seconds=2.0, aperiod=None, raw=False):
     the IN endpoint, and the device ring overflows - the intermittent bad rows this tool used to give.
     """
     probe("wave 0 0"); probe("gcenter 2036"); probe(f"gperiod {awg.period_ticks(fs)}")
-    probe("chan 2"); probe(f"aperiod {aperiod or int(round(200e6 / ADC_FS))}")
+    probe(f"chan {OBS}"); probe(f"aperiod {aperiod or int(round(200e6 / ADC_FS))}")
     s = serial.Serial(chk.find_port(), 115200, timeout=0.2); os.set_blocking(s.fd, False)
     data = bytearray(); stop = threading.Event()
     import select
@@ -217,6 +218,25 @@ def ets_rate():
                 print(f"{f/1e3:8.0f} | {fs/1e6:11.1f} | {ppc:9d} | {F[1]:.4f} | {20*np.log10(F[1]/ideal):+6.2f} | {100*np.sqrt(np.sum(F[2:6]**2))/F[1]:6.3f} | {counts.min()} (under {ctr['underruns']})", flush=True)
 
 
+def ets_amp():
+    """Linear bandwidth or slew limit? The same tone at several amplitudes: a linear roll-off gives the same gain
+    at every amplitude, a slew limit loses gain (and adds harmonics) as the amplitude grows."""
+    warmup(); fs, p_d = 5_000_000, 40
+    print("5 MS/s update, ETS; gain = measured peak / ideal peak, per amplitude, twice each")
+    print("   f kHz | amp codes | ideal V | amp V | dB vs ideal | H2-H5 % | peak slew V/us")
+    for f in (50_000, 100_000, 200_000):
+        for amp in (20, 60, 150, 300):
+            ppc = int(fs / f); pl = ets.plan(p_d, ppc); ideal = amp * awg.MV_PER_CODE / 1000
+            buf = awg.sine(fs, f, amp)
+            for rep in (1, 2):
+                data, ctr, ratio = play(buf, fs, warm=1.5, seconds=3.0, aperiod=pl["p_a"], raw=True)
+                v = (ets.gapless_samples(data) - ZERO) / CPV
+                wave, counts = ets.reconstruct(v, pl["p_a"], pl["W"], pl["g"])
+                w = np.where(np.isnan(wave), np.nanmean(wave), wave); F = np.abs(np.fft.rfft(w)) * 2 / len(w)
+                slew = float(np.nanmax(np.abs(np.diff(w))) / (pl["g"] * ets.TICK_NS * 1e-3))
+                print(f"{f/1e3:8.0f} | {amp:9d} | {ideal:.3f} | {F[1]:.4f} | {20*np.log10(F[1]/ideal):+6.2f} | {100*np.sqrt(np.sum(F[2:6]**2))/F[1]:6.3f} | {slew:.2f}", flush=True)
+
+
 def ets_cmd():
     warmup()
     for kind, p_a, g in (("square", None, None), ("square", 136, None), ("square", 105, 8), ("sine", None, None)):
@@ -277,4 +297,4 @@ def square():
 
 
 if __name__ == "__main__":
-    {"etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
+    {"etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
