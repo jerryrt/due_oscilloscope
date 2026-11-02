@@ -327,6 +327,35 @@ def large(steps=(4.0, 6.0, 8.0, 9.5)):
     awg.set_swing_limit(330)
 
 
+def amp_for(f_hz, vpp, fs=5_000_000, tol=0.01):
+    """The drive (DAC codes, peak) that makes the OUTPUT a sine of `vpp` volts peak-to-peak at f_hz, found by measuring:
+    start from the small-signal gain at that frequency, then correct by the ratio of target to measured peak until
+    within `tol`. Every measurement is integrity-checked and recorded; the host swing cap is respected."""
+    build = ready(); ppc = fs // f_hz; target = vpp / 2
+    obs = dict(channel=OBS, adc_period_ticks=int(round(200e6 / ADC_FS)), gain_code=0, zero_code=ZERO, codes_per_volt=CPV)
+    if fs % f_hz: raise ValueError("f must divide the update rate")
+    def peak(amp):
+        awg.set_swing_limit(max(amp, 1))
+        r = ets_measure("sine", awg.sine(fs, f_hz, amp), fs, ppc)
+        if not r["valid"]: raise RuntimeError(f"measurement invalid at {amp} codes: {r['reasons']}")
+        sm = met.sine_metrics(r["wave"])
+        rec.record("amp_for", dict(f_hz=f_hz, amp_codes=amp, update_hz=fs, target_vpp=vpp), sm, True, r["reasons"], r["tries"], build, obs)
+        return sm
+    try:
+        a = 100; sm = peak(a); g = sm["amp"] / (a * awg.MV_PER_CODE / 1000)
+        print(f"small-signal gain at {f_hz/1e3:.0f} kHz: {g:.4f} ({20*np.log10(g):+.2f} dB)", flush=True)
+        a = int(round(target / (g * awg.MV_PER_CODE / 1000)))
+        for it in range(4):
+            if a > awg.HARD_LIMIT_CODES: raise RuntimeError(f"needs {a} codes, over the ceiling {awg.HARD_LIMIT_CODES}")
+            sm = peak(a); out = sm["amp"]
+            print(f"  drive {a} codes peak (DAC pin {a*2.5/4096:.3f} V peak *(assumes a 2.5 V reference)*): output {2*out:.4f} Vpp, THD {100*sm['thd']:.2f} %", flush=True)
+            if abs(out / target - 1) < tol: return a, sm
+            a = int(round(a * target / out))
+        return a, sm
+    finally:
+        awg.set_swing_limit(330)
+
+
 def ets_cmd():
     warmup()
     for kind, p_a, g in (("square", None, None), ("square", 136, None), ("square", 105, 8), ("sine", None, None)):
@@ -387,4 +416,4 @@ def square():
 
 
 if __name__ == "__main__":
-    {"large": lambda: large(tuple(float(x) for x in sys.argv[2:]) or (4.0, 6.0, 8.0, 9.5)), "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
+    {"ampfor": lambda: amp_for(int(float(sys.argv[2])), float(sys.argv[3])), "large": lambda: large(tuple(float(x) for x in sys.argv[2:]) or (4.0, 6.0, 8.0, 9.5)), "etsamp": ets_amp, "etsrate": ets_rate, "etsbw": ets_bandwidth, "ets": ets_cmd, "repeat": lambda: [one(float(sys.argv[2])) for _ in range(int(sys.argv[3]))], "one": lambda: one(float(sys.argv[2])), "feed": feed, "ladder": ladder, "bandwidth": bandwidth, "square": square}[sys.argv[1]]()
