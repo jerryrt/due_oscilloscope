@@ -1,7 +1,7 @@
 """Host-fed playback check for image10+: stream a 1 kHz sine to the H7 generator over the stream
 port while capturing VOUT on CH2 (VOUT wired to CH2, mask 2), and report the device counters.
-Run from anywhere; needs sudo -n for the vendor requests.  stops the writer
-between a and b seconds (an underrun control)."""
+Run from anywhere; needs sudo -n for the vendor requests.
+session(gap=(a, b)) stops the writer between a and b seconds (an underrun control)."""
 import os, sys, time, struct, math, array, serial, subprocess, threading, zlib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import h7_stream_check as c
