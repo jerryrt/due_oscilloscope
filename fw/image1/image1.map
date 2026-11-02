@@ -13,59 +13,59 @@ Linker script and memory map
 
 .isr_vector     0x08020000       0x18
  *(.isr_vector)
- .isr_vector    0x08020000       0x18 /tmp/ccyOWevs.o
+ .isr_vector    0x08020000       0x18 /tmp/ccli0ZzV.o
                 0x08020000                vectors
 
-.text           0x08020018       0xc8
+.text           0x08020018       0xe8
  *(.text*)
- .text          0x08020018       0xc8 /tmp/ccyOWevs.o
+ .text          0x08020018       0xe8 /tmp/ccli0ZzV.o
                 0x0802002c                Reset_Handler
  *(.rodata*)
 
-.glue_7         0x080200e0        0x0
- .glue_7        0x080200e0        0x0 linker stubs
+.glue_7         0x08020100        0x0
+ .glue_7        0x08020100        0x0 linker stubs
 
-.glue_7t        0x080200e0        0x0
- .glue_7t       0x080200e0        0x0 linker stubs
+.glue_7t        0x08020100        0x0
+ .glue_7t       0x08020100        0x0 linker stubs
 
-.vfp11_veneer   0x080200e0        0x0
- .vfp11_veneer  0x080200e0        0x0 linker stubs
+.vfp11_veneer   0x08020100        0x0
+ .vfp11_veneer  0x08020100        0x0 linker stubs
 
-.v4_bx          0x080200e0        0x0
- .v4_bx         0x080200e0        0x0 linker stubs
+.v4_bx          0x08020100        0x0
+ .v4_bx         0x08020100        0x0 linker stubs
 
-.iplt           0x080200e0        0x0
- .iplt          0x080200e0        0x0 /tmp/ccyOWevs.o
+.iplt           0x08020100        0x0
+ .iplt          0x08020100        0x0 /tmp/ccli0ZzV.o
 
-.rel.dyn        0x080200e0        0x0
- .rel.iplt      0x080200e0        0x0 /tmp/ccyOWevs.o
+.rel.dyn        0x08020100        0x0
+ .rel.iplt      0x08020100        0x0 /tmp/ccli0ZzV.o
 
-.data           0x20000004        0x0 load address 0x080200e0
+.data           0x20000004        0x0 load address 0x08020100
  *(.data*)
- .data          0x20000004        0x0 /tmp/ccyOWevs.o
+ .data          0x20000004        0x0 /tmp/ccli0ZzV.o
 
-.igot.plt       0x20000004        0x0 load address 0x080200e0
- .igot.plt      0x20000004        0x0 /tmp/ccyOWevs.o
+.igot.plt       0x20000004        0x0 load address 0x08020100
+ .igot.plt      0x20000004        0x0 /tmp/ccli0ZzV.o
 
-.bss            0x20000004        0x0 load address 0x080200e0
+.bss            0x20000004        0x0 load address 0x08020100
  *(.bss*)
- .bss           0x20000004        0x0 /tmp/ccyOWevs.o
+ .bss           0x20000004        0x0 /tmp/ccli0ZzV.o
  *(COMMON)
-                0x080200e0                        _sidata = LOADADDR (.data)
+                0x08020100                        _sidata = LOADADDR (.data)
                 0x20000004                        _sdata = ADDR (.data)
                 0x20000004                        _edata = (ADDR (.data) + SIZEOF (.data))
                 0x20000004                        _sbss = ADDR (.bss)
                 0x20000004                        _ebss = (ADDR (.bss) + SIZEOF (.bss))
                 0x20020000                        _estack = (ORIGIN (DTCM) + LENGTH (DTCM))
-LOAD /tmp/ccyOWevs.o
+LOAD /tmp/ccli0ZzV.o
 OUTPUT(image1.elf elf32-littlearm)
 LOAD linker stubs
 
 .comment        0x00000000       0x26
- .comment       0x00000000       0x26 /tmp/ccyOWevs.o
+ .comment       0x00000000       0x26 /tmp/ccli0ZzV.o
                                  0x27 (size before relaxing)
 
 .ARM.attributes
                 0x00000000       0x2e
  .ARM.attributes
-                0x00000000       0x2e /tmp/ccyOWevs.o
+                0x00000000       0x2e /tmp/ccli0ZzV.o

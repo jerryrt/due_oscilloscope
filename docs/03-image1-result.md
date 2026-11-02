@@ -19,3 +19,17 @@ Whether our code ran at all. Candidates, none tested: wrong pin or polarity on t
 
 ## Incident
 The first recovery attempt failed because the wrong key was pressed, not because of the image.
+
+## Update: the beep works (image1c.bin)
+The stock V2.33 firmware beeps once at boot, so its buzzer code was located in the disassembly
+(`arm-none-eabi-objdump -b binary -m arm -M force-thumb -D --adjust-vma=0x08020000`; the image builds
+peripheral addresses with movw/movt pairs, so a search for 32-bit address words finds nothing).
+
+- Beep start/stop at 0x0802b6e0..0x0802b8c4, state struct at 0x24020cd4 (g_tBeep).
+- Pin depends on a flag byte at 0x240279b8: flag set -> **PH9** (GPIOH BSRR 0x58021c18, bit 9 on), clear -> PG1 (GPIOG BSRR).
+- The flag is set by the function at 0x08096818: ID word masked with ~0xF equal to 0x4200, 0x4280 or 0x4460 sets it.
+  This unit's board register 0xFF60 reads 0x4289, which masks to 0x4280, so the flag is 1 and the buzzer is on PH9.
+- image1c.bin (pulses PH9, PG1 and PI8; GPIOG/H/I clocks enabled in RCC_AHB4ENR) was flashed from stock via
+  FC6 0xFF7F=2 and the owner heard the beep. **First confirmed sign of our code running on this unit.**
+- Which of the three pins sounded was not separated (all three were driven together); the stock code points at PH9.
+- The LED on PI8 was not reported. Stock restored again and verified (identity, version, board, boot, 16 calibration blocks, TVCC 1400 mV).
