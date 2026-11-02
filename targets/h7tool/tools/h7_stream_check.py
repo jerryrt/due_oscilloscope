@@ -9,7 +9,7 @@ it on purpose.
 
     h7_stream_check.py [--seconds 10] [--port /dev/ttyACM3]
 """
-import argparse, glob, os, struct, sys, time, zlib
+import argparse, array, operator, math, glob, os, struct, sys, time, zlib
 
 FRAME = 4096
 HDR = 32
@@ -18,7 +18,7 @@ MAGIC = b"DUE0"
 PAYLOAD = struct.pack("<%dH" % SAMPLES, *range(SAMPLES))
 
 
-def analyse(data, expect_version=4):
+def analyse(data, expect_version=4, pattern=True):
     """Return a dict of counts for a received byte string."""
     r = dict(bytes=len(data), frames=0, bad_crc=0, bad_version=0, gaps=0, lost=0,
              bad_payload=0, resyncs=0, run_starts=0, skipped=0)
@@ -46,13 +46,27 @@ def analyse(data, expect_version=4):
             elif seq != last + 1:
                 r["gaps"] += 1; r["lost"] += (seq - last - 1) & 0xFFFFFFFF
         last = seq
-        if data[pos + HDR:pos + FRAME] != PAYLOAD:
-            r["bad_payload"] += 1
+        if pattern:
+            if data[pos + HDR:pos + FRAME] != PAYLOAD:
+                r["bad_payload"] += 1
+        else:
+            w = array.array("H"); w.frombytes(data[pos + HDR:pos + FRAME])
+            r["lo"] = min(r.get("lo", 65535), min(w)); r["hi"] = max(r.get("hi", 0), max(w))
+            r["sumsq"] = r.get("sumsq", 0) + sum(map(operator.mul, w, w))
+            r["sum"] = r.get("sum", 0) + sum(w); r["samples"] = r.get("samples", 0) + len(w)
+            r["rate_hz"] = rate
+            r["flag_overrun"] = r.get("flag_overrun", 0) + (flags & 1)
         r["frames"] += 1
         pos += FRAME
     r["clean"] = (r["frames"] > 0 and not (r["bad_crc"] or r["bad_version"] or r["gaps"]
                   or r["bad_payload"] or r["resyncs"]))
     return r
+
+
+def rate_ok(samples, rate_hz, seconds, tol=0.01):
+    """The header's sample_rate_hz must be what arrived: samples / seconds within tol.
+    A converter that skips triggers delivers valid frames at the wrong rate."""
+    return abs(samples / (rate_hz * seconds) - 1) <= tol
 
 
 def find_port():
@@ -72,6 +86,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, default=10)
     ap.add_argument("--port")
+    ap.add_argument("--adc", action="store_true", help="payload is converter data, not the test pattern")
     a = ap.parse_args()
     import serial
     port = a.port or find_port()
@@ -83,7 +98,14 @@ def main():
             chunks.append(b); n += len(b)
     dt = time.monotonic() - t0
     s.close()
-    r = analyse(b"".join(chunks))
+    r = analyse(b"".join(chunks), pattern=not a.adc)
+    if a.adc and r.get("samples"):
+        m = r.pop("sum") / r["samples"]
+        r["mean"] = round(m, 2)
+        r["std"] = round(math.sqrt(max(r.pop("sumsq") / r["samples"] - m * m, 0)), 2)
+        r["expected_samples"] = int(r["rate_hz"] * dt)
+        r["rate_ok"] = rate_ok(r["samples"], r["rate_hz"], dt)
+        r["clean"] = r["clean"] and r["rate_ok"]
     print(f"{port}: {n} bytes in {dt:.2f} s = {n / dt / 1e6:.2f} MB/s")
     print(" ".join(f"{k}={v}" for k, v in r.items()))
     sys.exit(0 if r["clean"] else 1)

@@ -44,10 +44,36 @@ def clocks(fd):
         print(f'  ratio to nominal (400e6, 200e6, 1e6 per 8000 SOFs): '
               f'{cyc/400e6:.7f} {t5/200e6:.7f} {t2/1e6:.7f}')
 
+def acq(fd):
+    buf = ctypes.create_string_buffer(64)
+    c = Ctrl(0xC0, 0x04, 0, 0, 44, 1000, ctypes.cast(buf, ctypes.c_void_p).value)
+    fcntl.ioctl(fd, 0xC0185500, c)
+    names = "frames_done lost sent xfers tc_missed adc_ovr rev_id starts ct_bad period adc_clk_hz".split()
+    print(" ".join(f"{k}={v:#x}" if k == "rev_id" else f"{k}={v}"
+                   for k, v in zip(names, struct.unpack('<11I', buf.raw[:44]))))
+
+def rate(fd, hz):
+    period = round(200e6 / hz)
+    c = Ctrl(0x40, 0x10, period & 0xFFFF, period >> 16, 0, 1000, None)
+    fcntl.ioctl(fd, 0xC0185500, c)
+    print(f"period {period} ticks = {200e6 / period:.1f} sps")
+
+def adcx(fd, smpr, cont, ckmode, presc):
+    c = Ctrl(0x40, 0x11, smpr, cont | (ckmode << 1) | (presc << 3), 0, 1000, None)
+    fcntl.ioctl(fd, 0xC0185500, c)
+
 def main():
     fd = os.open(find(), os.O_RDWR)
     if len(sys.argv) > 1 and sys.argv[1] == 'stats':
         return stats(fd)
+    if len(sys.argv) > 2 and sys.argv[1] == 'fe':
+        return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x12, int(sys.argv[2], 0), 0, 0, 1000, None))
+    if len(sys.argv) > 5 and sys.argv[1] == 'adcx':
+        return adcx(fd, *map(int, sys.argv[2:6]))
+    if len(sys.argv) > 1 and sys.argv[1] == 'acq':
+        return acq(fd)
+    if len(sys.argv) > 2 and sys.argv[1] == 'rate':
+        return rate(fd, float(sys.argv[2]))
     if len(sys.argv) > 1 and sys.argv[1] == 'clocks':
         return clocks(fd)
     buf = ctypes.create_string_buffer(64)

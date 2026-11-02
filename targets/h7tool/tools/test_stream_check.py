@@ -46,3 +46,17 @@ def test_restart_is_a_run_start_not_a_gap():
 
 def test_empty_is_not_clean():
     assert not c.analyse(b"")["clean"]
+
+
+def test_adc_mode_reports_the_codes_and_does_not_compare_a_pattern():
+    p = struct.pack("<%dH" % c.SAMPLES, *([100] * (c.SAMPLES - 1) + [40000]))
+    s = b"".join(frame(i, p) for i in range(3))
+    assert not c.analyse(s)["clean"]                 # pattern mode: payload differs
+    r = c.analyse(s, pattern=False)
+    assert r["clean"] and r["lo"] == 100 and r["hi"] == 40000 and r["samples"] == 3 * c.SAMPLES
+
+
+def test_rate_check_catches_a_converter_that_skips_triggers():
+    assert c.rate_ok(5_000_000, 1_000_000, 5.0)
+    assert not c.rate_ok(2_500_000, 1_000_000, 5.0)      # half the triggers lost
+    assert not c.rate_ok(5_200_000, 1_000_000, 5.0)
