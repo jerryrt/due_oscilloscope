@@ -142,7 +142,7 @@ test tier reaches. Each item is a measured symptom, not a guess; the cause is na
 | G2 | the generator panel is "Generator (DAC0 -> A0)"; a 1 Vpp sine at offset 0 is refused by the swing cap ("108800 codes outside 1706..2366") | `gui/awg.py` maps the Due's 0.55-2.75 V window onto 12-bit codes (4095) | an H7 mapping from the description: zero code, 5.975 mV per code, the cap; volts about 0 V |
 | G3 | the generator cannot start while capture runs ("already running; stop first") | the H7 refuses a start while running; the Due's flow restarts | the GUI stops and restarts, or the daemon switches mode |
 | G4 | the XY view draws 4000 points for CH1 and none for CH2 | `scope._draw_xy` picks the other channel from the Due's tags 7 and 6 | choose the other channel from the format's ids |
-| G5 | the spectrum view draws one curve (CH1); CH2's is empty | not read yet *(check whether the Due draws both)* | decide, then fix or document |
+| G5 | the spectrum view draws one curve (CH1); CH2's is empty | the Due draws one too; the other curve kept a stale time trace (fixed) | decide, then fix or document |
 | G6 | the Measure panel says "ADVREF 3270 mV, measured", a Due fact | `app.py` footnote | take it from the description |
 | G7 | no gain or coupling control; volts are the gain-0 calibration only | the description hardwires `gain_code` 0; docs/12's gain table is not used by the host | per-gain calibration for codes 1-7 (needs a reference voltage; stated gate: +-1 %), the description follows the set gain, then a per-channel panel; Y and trigger ranges follow |
 | G8 | a recording of an H7 replays with the Due's format | `FileDevice.describe()` returns kind "file" and drops `sample`, `channels`, `defaults`, `options` from the sidecar (the recording itself works: 60 frames = 245,760 bytes, sidecar carries the H7 description) | pass the sidecar's description through |
@@ -207,6 +207,26 @@ Each has a test in `tests/test_gui_h7.py` or `tests/test_daemon_api.py` that fai
 - **The small-sine excess is input-side**: the same 40-code sine reads +10.2 / +4.4 / +3.0 / +2.3 / +1.6 % at gains 0-4. It falls with gain, as the unit's input
   noise referred to the input does (docs/17), though the size is more than the quadrature sum of the measured noise explains *(check)*. Not tuned for; the gate
   keeps gain 0 to the 3 Vpp check and uses gains 1-4 at 100 codes.
+
+
+### Step 5 done (2026-11-03): G5, G9 and the test gaps T4-T8 that had a finding
+
+- **G5**: the Due draws one spectrum too (of the selected channel), so that is the design. The defect was under it: the spectrum went onto whatever curve
+  `scope.curve` last pointed at, and the other channel's curve kept its time-domain trace on the frequency axis. It now draws on the source's own curve and
+  blanks the rest (a Due had the same fault with A1 selected).
+- **G9, T5**: the file dialogs are patched in `test_gui_h7.py`; record, CSV export and replay of the recorded version-4 frames run headless, and the replay brings
+  back the H7's channels and volts range (a replay's description says kind "file", so the test reads what the format carries, not its name).
+- **T4**: the trigger level was turned into codes with the lowest channel's calibration whatever the source. With CH1 at gain 2 and CH2 at gain 0 a 0.5 V trigger
+  on CH2 sat at 2.05 V. It now uses the source channel's own zero and scale.
+- **T7**: `find_h7` parsed only `:<n>.<n>` locations, so Windows ("1-5:x.0") never matched and an attached unit read as absent; on macOS the location ends in a hub
+  port, not an interface. It now uses `usb_interfaces()` like the Due's pair. The tests feed each host's format; they do not show that the fakes match a real
+  Windows or macOS host (the first two formats are read off pyserial's source, the third is the Due's existing ioreg path).
+- **T6**: the H7's identity path is the control channel's IDENTITY in the daemon description, not `parse_identity`. `provenance.firmware("h7-build-13")` answered
+  with the newest Due flash ("latest, unmatched build stamp"); it now says `unlogged`.
+- **T8**, the write fault: a failed write ended the feeder thread unseen and the device went on reporting `play`. The feeder now records the fault; the next
+  `read` stops the unit and raises it, so every client gets a `device_error`. **Still open in T8**: the boot-loader re-enumeration and a ring that underruns when
+  fed slowly are not simulated.
+- **Still open**: T4's cursors, and the Due smoke and the real-unit tier (`tests/test_h7_unit.py`) for this step's changes.
 
 ### Order and gates
 1. T1 and T2 first: they change what "green" means, so every later step is judged by them.
