@@ -112,7 +112,9 @@ def main():
             print(f"CH{tag}: sine 150 codes peak reads {amp:.4f} V (nominal {EXPECT_V:.4f})")
             check(abs(amp - EXPECT_V) < TOL * EXPECT_V, f"CH{tag}: the sine's amplitude is within {TOL:.0%} of nominal")
         cl.send_awg(dc_waveform(167)); cl.wait_event("awg_ok")
+        t_start = time.time()
         cl.call("start", mode="loop", adc_hz=1_000_000, dac_sps=1_000_000, channels=2)
+        check(time.time() - t_start < 3.0, f"a loop start straight after a loop run returned in {time.time() - t_start:.2f} s: the unit drains the bulk OUT the stopped playback left queued")
         tap.seen = cl.frames_received
         frames = tap.take(1000)
         cl.call("stop"); time.sleep(0.5)
@@ -122,13 +124,14 @@ def main():
             print(f"CH{tag}: DC +167 codes reads {first:+.3f} V at 0.1-0.2 s and {last:+.3f} V at the end (nominal {167 * 5.975e-3:+.3f})")
             check(abs(last - 167 * 5.975e-3) < TOL * 167 * 5.975e-3 and abs(first - last) < 0.03, f"CH{tag}: a DC level reads its nominal value and holds")
 
-        # 3. start/stop cycles. A run's own frames are seq 0, 1, 2 ... Known defect of the unit (builds 15 and 16 alike, about 1 start in 70, not
-        # removed by flushing the host's buffer or the TX FIFO): the FIRST frame of a run can be the previous run's last frame (seq 30 where
-        # seq 0 belongs), so the run reads [30, 1, 2 ...]. It is counted and printed here and the run is judged from its second frame on. A start
-        # that produces no frames at all fails (build 15: 15 in 400, build 16: 1 in 400).
-        bad_first = 0
+        # 3. start/stop cycles. Every run starts at seq 0 and is contiguous, and a start that produces no frames fails. Two faults used to make this flake
+        # (docs/19): a run boundary the host did not make (a half frame left in the read path was completed by the next run's first bytes, eating its seq 0)
+        # and an IN-endpoint disable that latched on an endpoint whose transfer had already finished (the unit then sent nothing). Both are fixed at the source,
+        # so nothing here tolerates either.
         for i in range(10):
+            t_start = time.time()
             cl.call("start", mode="capture", adc_hz=1_000_000, channels=2)
+            check(time.time() - t_start < 3.0, f"cycle {i + 1}: the start returned in {time.time() - t_start:.2f} s (a start that waits on a port close takes tens of seconds)")
             tap.seen = cl.frames_received
             cl.wait_frames(tap.seen + 32, timeout=20)
             cl.call("stop"); time.sleep(0.3)
@@ -136,14 +139,9 @@ def main():
             check(lost_from_queue == 0, f"cycle {i + 1}: the client's queue kept every frame ({lost_from_queue} fell off)")
             before = cl.frames_received; time.sleep(0.3)
             seqs = [HDR.unpack_from(f, 0)[4] for f in fr]
-            first_ok = seqs[0] == 0
-            bad_first += not first_ok
-            run = fr if first_ok else fr[1:]
-            ok = ((first_ok or (len(seqs) > 1 and seqs[1] == 1)) and len(run) >= 30
-                  and all(HDR.unpack_from(f, 0)[:2] == (b"DUE0", 4) for f in run) and seq_gaps(run) == 0 and cl.frames_received == before)
-            check(ok, f"cycle {i + 1}: {len(run)} version-4 frames with no gap, quiet after the stop"
-                      + ("" if first_ok else f" (its first frame was seq {seqs[0]}, not 0: the known defect)"))
-        print(f"(runs whose first frame was not seq 0: {bad_first} of 10)")
+            ok = (seqs[:1] == [0] and len(fr) >= 30 and all(HDR.unpack_from(f, 0)[:2] == (b"DUE0", 4) for f in fr)
+                  and seq_gaps(fr) == 0 and cl.frames_received == before)
+            check(ok, f"cycle {i + 1}: {len(fr)} version-4 frames from seq 0 with no gap, quiet after the stop" + ("" if ok else f" (first seqs {seqs[:4]})"))
 
         # 4. control polled under load
         cl.send_awg(sine_waveform(150)); cl.wait_event("awg_ok")

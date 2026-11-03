@@ -186,10 +186,12 @@ tests still catch a broken swing cap (5 failures). **Found by running the whole 
 `test_metrics.py::test_a_legacy_stamp_still_resolves_by_wall_clock` fails there ("latest, unmatched build stamp") and passes alone and in the plain
 venv; it fails the same way at `9dd0c5c`, before any of this work, so it is an order-dependent test that predates it *(cause not found)*.
 
-### Part 2, step 2 done: device detection, and what it found on the unit
-Detection and the counted skips are in (docs/testing.md). Running the real-unit test repeatedly exposed two faults of the unit that the single runs had
-hidden. (1) A start sometimes produced **no frames**: the unit acquired and sent nothing because a pending endpoint disable landed on the next run's first
-transfer. Fixed in image 14 (docs/19); 15 of 400 starts on image 13, 1 of 400 on image 14. (2) About 1 run in 70 begins with the previous run's last frame in
-place of its own seq 0. Not fixed; the gate counts it and judges the run from its second frame on, so it is visible and does not flake. Two mistakes of mine on
-the way, both in the harness: the newest-32-frames window could start after seq 0, and an unproven host flush was kept for an hour before the alternating
-comparison showed it did nothing (removed).
+### Part 2, step 2 done: device detection, and the two faults it found on the unit
+Detection and the counted skips are in (docs/testing.md). Running the real-unit test repeatedly exposed two faults that single runs hid, and fixing the first exposed a third; all three are traced to
+their causes and fixed at their source (docs/19, "Starting and stopping the stream"): the run boundary the host did not make (`H7Device` now reopens the stream
+port and drains it before each run, as the Due's device does), an IN-endpoint disable written to an idle endpoint (image 17), and bulk OUT not drained when no
+playback owns it (the Due's rule, image 17). Before: 4-7 of 400 stale first frames and 1-15 of 400
+starts with no frames per image. After: 0 stale first frames in 2,970 starts and 0 starts with no frames in 1,100 (image 17). The first attempt tolerated the symptoms (the gate judged a run from its second frame) and a firmware
+change that reduced one of them without a known cause; both were removed, the gate is strict again, and the images 14-16 that led there are not kept. The test
+suite now also guards image 17's procedure by source (step order, one EPDIS behind a second EPENA check, waits against the clock, expiries counted), with ten
+mutations.

@@ -44,12 +44,40 @@ falls back to the vendor request for older images. What no longer protects a ben
 is the stock boot-loader enable sequence at the unit. The timer's first visible effect was a unit that stopped answering 30 minutes after a
 flash and looked like a crash.
 
-## Image 14: the stream endpoint is stopped and re-armed reliably
+## Starting and stopping the stream: three faults, and where each belongs
 
-Image 13 ended a run by disabling the stream's IN endpoint with a wait that was an iteration count and gave up silently. When the host was not
-polling at that instant the disable stayed pending and landed on the next run's first transfer: `ep_busy` stayed set, the unit kept acquiring
-and sent nothing (`sent` 0, `lost` climbing), and a start produced no frames. Image 14 quiesces the endpoint against the clock at the end and the
-start of a run, flushes its FIFO, and sends a transfer again when it was disabled instead of completing. Measured by alternating the two images,
-200 start/stop cycles each, twice: **starts with no frames 15 of 400 on image 13, 1 of 400 on image 14** (Fisher exact p about 0.0002).
-Not fixed, and not changed by it: about 1 run in 70 (4 of 400 and 7 of 400, no difference) starts with the previous run's last frame where its
-own seq 0 belongs, so a run reads `[30, 1, 2, ...]`; a host flush and a TX FIFO flush did not remove it *(cause not found)*.
+A run that is started and stopped over the control channel, many times, showed two faults that single runs hid (about 1 start in 60 each), and fixing the first exposed a third. They were
+first worked around and then traced to their causes with the unit's own registers; neither workaround is in the code.
+
+**1. The run boundary is the host's, as it is for the Due.** The first frame of a run was sometimes a frame of the previous run (`[20, 1, 2, ...]`,
+seq 0 missing). The unit's own send log showed it sent seq 0 first; the framer log showed a complete frame with the old header and device
+timestamp, and the next run's magic `DUE0` inside it at offset 512. A unit may stop in the middle of a frame - the Due's stop aborts the frame in
+flight on purpose (`stream_core_stop`, a bounded abort rather than a wait on a peer, invariant 7) - and the packet that reached the host can wait in the
+kernel's read path until the next run's first bytes complete it. The Due's device never relies on a clean stop: `BoardDevice.start` opens the port afresh
+and `drain_until_quiet`s before it commands the stream, with the shared reader held off until that is done. `H7Device` kept its port open for the daemon's
+lifetime and drained nothing. It now does what the Due does: `SerialStream.reopen_and_drain` (a fresh port, then everything discarded until
+`pacing.SILENCE` of quiet), the reader gated while it runs. Daemon-free, with the pipe left undrained, 600 of 600 starts were clean, which put the fault in
+the host's run boundary. With the new boundary 0 stale first frames in 2,970 starts (image 14 and 17 together); before it, 4 of 400 on image 13 and 7 of 400 on image 14 in alternating runs.
+
+**2. An IN-endpoint disable must not be written to an idle endpoint (firmware).** A start sometimes produced no frames: the unit acquired
+(`frames` rising) and sent nothing (`sent` 0) with `DIEPCTL2` showing EPENA **and** EPDIS set, IN tokens arriving into an empty FIFO and a full transfer armed.
+The stop path checked EPENA once, waited, then wrote EPDIS. A transfer that completed on its own in between had already cleared EPENA, and EPDIS written to an
+idle endpoint is never cleared by the core, so the next transfer was armed with both set. Image 17 uses the core's procedure (Global IN NAK, wait for
+GINAKEFF, look at EPENA again - nothing can complete now - EPDIS only if still set, wait for EPDISD, release the NAK), every wait against the clock and every
+expiry counted. The race is visible in the counters: of the first 440 stops, 65 found a transfer in flight and 10 of those had finished by themselves before the disable
+(2.1 % over the final 1,100 stops: 256 had a transfer in flight, 23 of those finished first, the rate of the stuck starts); no wait expired and no transfer was aborted. Starts with no frames: **0 in 1,100 on image 17**, against 11 in 990 on image 14 with the same host boundary and 15 in 400 on image 13 with the old one.
+**3. Bulk OUT must be drained when no playback owns it (firmware).** The new run boundary closes the stream port at every start, and after a loop run the second
+start never returned: the daemon's thread sat in `close()`. The host's write queue still held playback bytes, `play_stop` had disabled the OUT endpoint and nothing
+re-armed it, so the unit took no OUT data and the close waited for a drain that could not come. This is the rule CLAUDE.md states for the Due - "a CDC device must
+keep draining bulk OUT even when nothing uses it" - which the H7 image did not follow. Image 17 re-arms EP2 OUT on the unused play ring whenever playback is not
+running and discards what arrives (one flag test per pass, no loop; `out_idle_units` counts it: 1,625 units over the eight real-unit runs that followed), and the OUT
+endpoint is disabled by the same procedure as the IN one, since it has the same latent flaw and the drain keeps a transfer armed. 240 alternating loop and
+capture starts: median latency 0.41 s, max 0.43 s, no failure; the gate asserts every start returns within 3 s.
+
+Image 14 (committed) was a step on the way - a quiesce that still wrote EPDIS unconditionally - and is superseded; images 15 (a trace image) and 16 (a wait for the
+frame in flight, which the Due deliberately does not do) were not kept. Image 17 is the one to flash.
+
+How it was found, because the order matters: a count of failures per image proved nothing (rates swung from 0 to 18 in 300 between runs of one image), a
+hypothesis that fitted (a frame aborted mid-transfer) was refuted by the trace (the stale starts followed stops with the endpoint idle - until the trace was
+re-aligned one run, which showed they did follow a partial transfer), and what finished it was the timestamps in the framer's log and the endpoint registers at the
+moment of the fault.
