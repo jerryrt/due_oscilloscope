@@ -108,14 +108,12 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   `SerialStream` used the port object as a file descriptor; a SIGTERMed daemon left the unit running; the feeder slept 10 ms on a refused
   write against an 8 ms ring and underran 965 times in 10 s at 2 MS/s (now 0; the old feeder fails the gate with 970).
   Retracted on the way: an early "0.8 V" reading and a "DC decays" finding came from reading frames of earlier runs (`Client.wait_frames`
-  counts since connect and returns the queue), and then from VOUT being wired to both inputs: with leads on both CH1 and CH2 the output read
-  17-28 % low and DC decayed to zero, on the pre-daemon tool as well; with either lead alone it is nominal. At 17:00 the double wiring read
-  nominal and nothing is known to have changed *(cause not found; check the two-lead junction)*. The 3 % excess of the old tool on CH1 over
-  its recorded 0.599 V is unexplained *(check)*.
+  counts since connect and returns the queue), and then from VOUT being wired to both inputs. That wiring is not a supported measurement (one source on one input; the owner ruled it out
+  on 2026-11-03, the board's internal design may not allow it), so the 17-28 % low reading with both leads is withdrawn, not chased. With one lead
+  the output is nominal on either input (CH1 sine +2.1 %, DC +0.8 %, 2026-11-03; CH2 +1.2 %, +0.9 %). The 3 % excess of the old tool on CH1 over
+  its recorded 0.599 V is unexplained *(check)*; CH1 reading 1-2 % high on the current tool is the same direction.
   A cycle of the ten failed once in one run (not reproduced in 40 more) and is unexplained *(check)*.
-- Bench wiring from 2026-11-02 evening: VOUT to CH2 only (the owner's choice, simpler and more stable); the gate defaults to it. The two-lead
-  loading above was not bisected: the last good two-lead data (17:00) is firmware build 13 (image11m) and every low reading is build 14
-  (image12a, committed 17:13), so if both leads are used again the first test is image11m against image12a on the same wiring *(check)*.
+- Bench wiring from 2026-11-02 evening: VOUT to CH2 only (the owner's choice, simpler and more stable); the gate defaults to it and also passes with `H7_GATE_VOUT=1`.
 - Image 13 (build 15): no self-timed return to the boot loader by default, and control opcode 0x0044 `BOOT` restarts into it (docs/19).
   The "crash" at 19:33 and the loss of the unit at about 20:35 were the 30-minute window of image12a ending, not faults. The gate names the
   boot-loader state instead of "the daemon did not come up". Proven on the unit: opcode armed and the unit enumerated as 0483:5720; the flash
@@ -129,8 +127,7 @@ dispatcher tests 6 passed; the real-Due smoke passes; the H7 gate passes on the 
 nominal, control replies 0.8 ms median under full load, 0 underruns, 0 gaps). The timer is decided by code review, not by a 30-minute wait: the
 default `RUN_MS` is 0, the run loop tests only `RUN_WINDOW_OPEN()` (constant 1 then), the old 1,800,000 ms constant is absent from the image,
 and `tests/test_h7_image13.py` fails when any of that changes (six mutations tried).
-Open, none blocking: the two-lead loading on VOUT (CH1 and CH2 together read 17-28 % low on build 14; not reproduced since, wiring is CH2
-only), the old tool's 3 % excess on CH1, one unexplained failed start/stop cycle, and the pre-existing flaky
+Open, none blocking: the old tool's 3 % excess on CH1, one unexplained failed start/stop cycle, and the pre-existing flaky
 `test_the_end_of_a_recording_says_so`. Not done, and now the plan of part 2 below: GUI controls for the H7's gain and coupling, the generator panel, XY, replay of H7 recordings, and the test suite's reach.
 
 ## Phase 7b, part 2: what the H7 still lacks (survey 2026-11-02)
