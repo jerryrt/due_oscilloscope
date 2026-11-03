@@ -259,17 +259,15 @@ def find_h7():
     """(stream_path, control_path) of an attached H7 target, or None.
 
     One cable, two CDC functions told apart by USB interface number: 0 is the sample stream, 2 the control channel
-    (the same split as the Due's native pair, but the H7 has no programming port and no console). The interface number
-    comes from the location pyserial reports ("1-4:1.0"); the discovery is verified on Linux only.
+    (the same split as the Due's native pair, but the H7 has no programming port and no console). The number comes from
+    `usb_interfaces()`, the one place that knows how each host reports it (pyserial's "1-4:1.0" on Linux, "1-5:x.0" on
+    Windows, ioreg on macOS, where pyserial's location ends in a hub port and not an interface).
     """
-    from serial.tools import list_ports
+    ifaces = usb_interfaces()
     nodes = {}
-    for p in list_ports.comports():
-        if (p.vid, p.pid) != (H7_VID, H7_PID):
-            continue
-        m = re.search(r":\d+\.(\d+)$", p.location or "")
-        if m:
-            nodes[int(m.group(1))] = p.device
+    for dev, vid, pid, _i, _s in _pyserial_nodes():
+        if (vid, pid) == (H7_VID, H7_PID) and dev in ifaces:
+            nodes[ifaces[dev][1]] = dev
     return (nodes[0], nodes[2]) if 0 in nodes and 2 in nodes else None
 
 
