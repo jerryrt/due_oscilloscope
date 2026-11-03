@@ -80,6 +80,7 @@ class SimControl:
 
 
 class SimStream:
+    events = None                 # a list the test shares with the control side, to check the order of a run boundary
     """A synthetic sample function. It asks the dispatcher whether the unit is running, so a stop or a refused start has its effect
     here exactly as on the unit. Frames are version 4, planar, 16-bit; CH1 a 1 kHz sine of 1 V and CH2 of 0.5 V, in each channel's
     own calibration so a host that applies the description's calibration recovers the volts."""
@@ -120,6 +121,12 @@ class SimStream:
         self._seq += 1
         pacing.pause(pacing.SPIN)                       # yield: a real endpoint delivers a frame per transfer, not per CPU cycle
         return hdr + bytes(payload)
+
+    def reopen_and_drain(self):
+        """Nothing is buffered in the simulation; the call is what a test observes."""
+        if self.events is not None:
+            self.events.append("reopen_and_drain")
+        return 0
 
     def write(self, data):
         """Accept one packet's worth per call and then pause: a real endpoint NAKs when its ring is full, so a writer cannot spin.

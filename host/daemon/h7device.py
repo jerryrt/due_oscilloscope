@@ -89,27 +89,58 @@ def waveform_to_dac_codes(waveform):
 
 
 class SerialStream:
-    """The real stream function. DTR is dropped at once: acquisition is started by the control RUN, not by a port being open."""
+    """The real stream function. DTR is dropped at once: acquisition is started by the control RUN, not by a port being open.
+
+    A run boundary belongs to the host, as it does for the Due (`BoardDevice.start`: a fresh `open_native` and `drain_until_quiet`): a unit may
+    stop in the middle of a frame - the Due's bounded stop aborts the frame in flight on purpose - and the part of it that reached the host
+    can sit in the kernel's read path until the next run's first bytes arrive and complete it. `reopen_and_drain` discards that."""
 
     def __init__(self, path):
         import transport
         self._t = transport
-        self.port = transport.open_raw(path, 115200, dtr=False)
+        self._path = path
+        self._lock = threading.Lock()          # a read in progress holds the old descriptor: reopen waits for it
+        self._open()
+
+    def _open(self):
+        self.port = self._t.open_raw(self._path, 115200, dtr=False)
         self.port.drop_dtr()          # opening raised it, and a stale line from an earlier open would start a run on its own
 
     def read(self, timeout=pacing.GLANCE):
-        if not self._t.wait_any([self.port], timeout):
-            return b""
-        try:
-            return self.port.read(1 << 20)
-        except (BlockingIOError, InterruptedError):
-            return b""
+        with self._lock:
+            if not self._t.wait_any([self.port], timeout):
+                return b""
+            try:
+                return self.port.read(1 << 20)
+            except (BlockingIOError, InterruptedError):
+                return b""
 
     def write(self, data):
         try:
             return self.port.write(data)
         except (BlockingIOError, InterruptedError):
             return 0
+
+    def reopen_and_drain(self):
+        """A fresh port, then everything it has to say discarded until it has been silent for pacing.SILENCE (capped). Returns the bytes thrown away."""
+        with self._lock:
+            try:
+                self.port.drop_dtr()
+                self.port.close()
+            except OSError:
+                pass
+            self._open()
+            stale, last, end = 0, time.time(), time.time() + pacing.QUICK
+            while time.time() < end:
+                if self._t.wait_any([self.port], pacing.POLL):
+                    try:
+                        stale += len(self.port.read(1 << 20))
+                    except (BlockingIOError, InterruptedError):
+                        pass
+                    last = time.time()
+                elif time.time() - last >= pacing.SILENCE:
+                    break
+            return stale
 
     def close(self):
         try:
@@ -128,6 +159,7 @@ class H7Device(Device):
         self._cal = calibration
         self._lock = threading.RLock()            # one control conversation at a time
         self._described = None
+        self._readable = True          # closed while a run boundary is being made: the reader must not take bytes the drain means to discard
         self._feeder = None
         self._feed_stop = threading.Event()
         self._rx = 0
@@ -220,6 +252,11 @@ class H7Device(Device):
             raise DeviceError("already running; stop first")
         pol = self.rate_policy
         self._quiesce()
+        self._readable = False
+        try:
+            self.stale_bytes = self._stream.reopen_and_drain()        # the previous run's tail, if any, is discarded here
+        finally:
+            self._readable = True
         cur = self._config()
         adc_p = pol.check_capture(adc_hz, channels)[0] if mode in ("capture", "loop") and adc_hz else cur[0]
         dac_p = pol.check_dac(dac_sps)[0] if mode in ("play", "loop") and dac_sps else cur[1]
@@ -285,6 +322,9 @@ class H7Device(Device):
 
     # -- stream -------------------------------------------------------------------
     def read(self, timeout=pacing.GLANCE):
+        if not self._readable:
+            pacing.pause(min(timeout, pacing.POLL))
+            return b""
         data = self._stream.read(timeout)
         self._rx += len(data)
         return data

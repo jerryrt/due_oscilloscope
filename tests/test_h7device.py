@@ -238,3 +238,59 @@ def test_a_terminated_daemon_closes_its_device_and_exits_cleanly():
     finally:
         if d.poll() is None:
             d.kill()
+
+
+# -- the run boundary: the host's, as the Due's is -------------------------------------------------
+
+def test_a_start_reopens_and_drains_the_stream_before_the_unit_is_told_to_run(h7):
+    """The previous run's last frame can be half sent (the unit's stop is a bounded abort, as the Due's is) and its first packet can wait in the
+    host's read path until the next run's bytes complete it, eating the new run's seq 0. The Due's device opens the port afresh and drains
+    until quiet before it commands the stream; so must this one."""
+    srv, c, dev, hello = h7
+    events = []
+    dev._stream.events = events
+    real = dev._ctl.call
+    dev._ctl.call = lambda op, payload=b"", **kw: (events.append(("ctl", op, bytes(payload))), real(op, payload, **kw))[1]
+    c.call("start", mode="capture", adc_hz=1_000_000, channels=2)
+    run = events.index(("ctl", 0x0041, b"\x01"))
+    assert events.count("reopen_and_drain") == 1 and events.index("reopen_and_drain") < run
+    c.call("stop")
+    c.call("start", mode="capture", adc_hz=1_000_000, channels=2)
+    assert events.count("reopen_and_drain") == 2                        # every run, not only the first
+
+
+def test_the_reader_is_held_off_while_the_boundary_is_made_and_released_after(h7):
+    srv, c, dev, hello = h7
+    seen = []
+    real = dev._stream.reopen_and_drain
+    dev._stream.reopen_and_drain = lambda: (seen.append(dev._readable), real())[1]
+    c.call("start", mode="capture", adc_hz=1_000_000, channels=2)
+    assert seen == [False] and dev._readable is True, "the reader must not take bytes the drain means to discard"
+
+
+def test_a_failed_drain_does_not_leave_the_reader_gated(h7):
+    srv, c, dev, hello = h7
+    def boom():
+        raise OSError("port vanished")
+    dev._stream.reopen_and_drain = boom
+    with pytest.raises(clientmod.Refused):
+        c.call("start", mode="capture", adc_hz=1_000_000, channels=2)
+    assert dev._readable is True
+
+
+def test_the_real_stream_discards_a_stale_tail_on_a_fresh_port_until_it_has_been_quiet(monkeypatch):
+    import daemon.h7device as hd
+    import transport
+    opened, closed, script = [], [], [b"x" * 512, b"y" * 1024]          # what the old run left in the read path, then silence
+
+    class FakePort:
+        def __init__(self): opened.append(self)
+        def read(self, n): return script.pop(0)
+        def drop_dtr(self): pass
+        def close(self): closed.append(self)
+    monkeypatch.setattr(transport, "open_raw", lambda path, baud, dtr=False: FakePort())
+    monkeypatch.setattr(transport, "wait_any", lambda ports, t: bool(script))
+    s = hd.SerialStream("/dev/null")
+    assert s.reopen_and_drain() == 512 + 1024                           # everything stale was thrown away
+    assert len(opened) == 2 and closed == [opened[0]], "the old port must be closed and a new one opened"
+    assert script == []
