@@ -111,7 +111,7 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   counts since connect and returns the queue), and then from VOUT being wired to both inputs. That wiring is not a supported measurement (one source on one input; the owner ruled it out
   on 2026-11-03, the board's internal design may not allow it), so the 17-28 % low reading with both leads is withdrawn, not chased. With one lead
   the output is nominal on either input (CH1 sine +2.1 %, DC +0.8 %, 2026-11-03; CH2 +1.2 %, +0.9 %). The 3 % excess of the old tool on CH1 over
-  its recorded 0.599 V is unexplained *(check)*; CH1 reading 1-2 % high on the current tool is the same direction.
+  its recorded 0.599 V is unexplained *(check)*; recorded only, deferred by the owner (2026-11-03): it needs a reference voltage and a hardware look, software alone will not settle it; CH1 reading 1-2 % high on the current tool is the same direction.
   A cycle of the ten failed once in one run (not reproduced in 40 more) and is unexplained *(check)*.
 - Bench wiring from 2026-11-02 evening: VOUT to CH2 only (the owner's choice, simpler and more stable); the gate defaults to it and also passes with `H7_GATE_VOUT=1`.
 - Image 13 (build 15): no self-timed return to the boot loader by default, and control opcode 0x0044 `BOOT` restarts into it (docs/19).
