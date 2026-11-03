@@ -158,6 +158,19 @@ landmine in the vendor core - belongs on `main` in `docs/`, where it
 survives the branch being thrown away.
 
 
+## Versions and releases
+
+**One project, one [semantic version](https://semver.org), typed once** in
+`lib/due_shared/src/fw_version.h`. A release is a tag `vX.Y.Z` on `main`
+whose number every component repeats (the Due firmware, the H7 firmware),
+and the GitHub release is titled with the tag alone - a sentence is cut
+off in the sidebar. The project stays `0.x` until the re-validation debt
+and the out-of-specification clock default are closed or named. Wire and
+protocol versions are compatibility numbers and are separate; a board's
+exact image is `build=`, never the version. `tools/release.py check`
+refuses a release whose parts disagree. `docs/versioning.md` has the
+rules and the procedure.
+
 ## Code conventions
 
 To be established with the first firmware commit. Provisionally:

@@ -112,6 +112,13 @@ def test_hello_reports_the_protocol_and_the_device(connect):
     assert reply["device"]["kind"] == "fake"
 
 
+def test_hello_reports_the_project_version_beside_the_protocol(connect):
+    """`protocol` is a compatibility number; `version` is the release (docs/versioning.md), read from the header and never typed here."""
+    import version
+    reply = connect().hello()
+    assert reply["version"] == version.project_version() and reply["version"] is not None
+
+
 @pytest.mark.smoke
 def test_the_first_client_to_ask_gets_control(connect):
     assert connect().hello("control")["role"] == "control"

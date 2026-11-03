@@ -28,6 +28,7 @@ file is one row away.
 | The analog front end on the shield, stage by stage, and what judges each stage | `docs/afe.md` |
 | Building the AFE shield: phases, proofs, tools, open decisions | `docs/afe-plan.md` |
 | How to write one of these | `docs/writing.md` |
+| Versions, tags and releases: the one project version, what it is not, and the release procedure | `CONTRIBUTING.md` (the rule), `docs/versioning.md` |
 | **What is current, and what to pick up** | **standing issues, one per bench: #31 mac-bench, #32 linux-x1, #34 windows-desk, and #71 across all of them** |
 
 `README.md` carries the full document list; this table is the routing

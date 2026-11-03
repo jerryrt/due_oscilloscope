@@ -50,7 +50,8 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/linux.md](docs/linux.md) | Native Linux bring-up on `linux-x1`, tier 1 |
 | [docs/writing.md](docs/writing.md) | How to write one of these |
 | `docs/metric-baseline-*.md` | Generated metric reports, one per host and track. Written by the tool, not by hand |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Commit conventions |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Commit, branch, version and release conventions |
+| [docs/versioning.md](docs/versioning.md) | The one project version and how a release is cut |
 | [CLAUDE.md](CLAUDE.md) | Agent working instructions |
 
 **Current state is not in the checkout.** What is current and what to

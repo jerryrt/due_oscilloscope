@@ -31,6 +31,7 @@ import time
 
 import jitter
 import pacing
+import version as versionmod
 
 from . import device as devmod
 from . import protocol as proto
@@ -690,6 +691,7 @@ def _op_hello(srv, ses, msg):
     ses.hello = True
     return {"event": "hello", "role": ses.role,
             "protocol": proto.PROTOCOL_VERSION,
+            "version": versionmod.project_version(),          # the release this tree is (docs/versioning.md); None outside a checkout
             "granted": ses.role == want,
             "device": srv.description()}
 

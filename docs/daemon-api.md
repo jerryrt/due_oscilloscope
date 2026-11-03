@@ -70,7 +70,7 @@ limit rather than saying no.
 
 | op | Needs control | Does |
 |---|---|---|
-| `hello` | no | `{role: "control"\|"observer"}`. Returns the role granted, `granted`, the protocol version and the device |
+| `hello` | no | `{role: "control"\|"observer"}`. Returns the role granted, `granted`, the protocol version, the project `version` (docs/versioning.md; null outside a checkout) and the device |
 | `ping` | no | `pong` |
 | `status` | no | Everything below under [Status](#status). Host-side only; safe to poll |
 | `counters` | no | The device's own counters. Control channel only - never the console |
@@ -406,7 +406,9 @@ and a reason not to read a healthy load as an all-clear.
 
 `protocol` is an integer, reported in `hello` and `status`, and declared
 in exactly one place (`daemon/protocol.py`). A client checks it and
-refuses what it does not understand rather than guessing.
+refuses what it does not understand rather than guessing. It is a
+compatibility number and is not the release version: `hello` carries that
+as `version`, and `docs/versioning.md` says how the two differ.
 
 ## What is deliberately absent
 
