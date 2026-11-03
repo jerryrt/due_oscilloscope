@@ -93,6 +93,36 @@ from outside the repository and skips, naming the file, where it is absent.
 A test for the H7 that lives anywhere else is not part of any tier, so
 put it in `tests/`.
 
+### Which devices a run can use
+
+The run asks the host what is attached **without opening a port or waiting**
+(`ports.census()`: the Due by USB id 2341:003D/003E, the H7 by 1209:0001 with
+interfaces 0 and 2, or in its stock boot loader as 0483:5720 from sysfs on
+Linux) and prints one line at the top of the output:
+
+    devices: Due attached (programming /dev/ttyACM0, native ...); H7 running an image (/dev/ttyACM3, /dev/ttyACM4)
+
+A test that needs hardware resolves a fixture, and that is what marks it:
+`board` (the Due) adds the `due` and `board` markers, `h7_unit` adds `h7`
+and `board`, so the container's `not board` gate never selects either. With
+the device missing the test **skips with a reason that names it** - for the
+H7 whether the unit is absent or in the boot loader, and what to do about
+it - and the end of the run counts those skips per device ("tests NOT run for
+want of a device (a skip is not a pass) - H7: 1"). `--require-board` and
+`--require-h7` turn the skip into a failure, for a harness that scores by
+the summary text. `-m h7`, `-m due` and `-m board` select by device.
+
+What needs wiring, and what does not:
+
+| tier | hardware | wiring |
+|---|---|---|
+| board-free, GUI, platform | none | none |
+| `tests/test_h7_unit.py` (`-m h7`) | the H7 running an image, on USB | **VOUT to CH2** (`H7_GATE_VOUT`, default 2; CH1 may be open). Only the sine and DC level checks use the lead; the other stages need the cable alone |
+| Due board tests (`-m due`) | a Due, native and programming ports | its loopback jumpers (each bench's page); the scope for `--dso` |
+
+`test_h7_unit.py` runs `targets/h7tool/measure/h7_daemon_gate.py`, the one
+definition of the real-unit checks. It needs the GUI venv.
+
 **Board-free is the per-change loop.** It is about a minute and a half,
 needs no hardware, and it is the tier that catches the class of thing
 that otherwise hides: two failures in `test_banner_order.py` cost 0.05 s

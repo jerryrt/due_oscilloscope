@@ -36,6 +36,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "host"))
+import ports
 import measure  # noqa: E402
 import pacing  # noqa: E402
 
@@ -96,6 +97,10 @@ def pytest_addoption(parser):
                      "summary: a skip matches no failure pattern, so it "
                      "scores as a pass and an arm that never executed "
                      "reads as green. Same shape as --dso for the scope")
+    g.addoption("--require-h7", action="store_true",
+                help="fail rather than skip when a test needs a running H7 and none is (absent, or in the "
+                     "boot loader). The H7's counterpart of --require-board, for the same reason: a skip scores as a pass "
+                     "in a harness that matches pytest's summary text")
     g.addoption("--mixed-instruments-ok", action="store_true",
                 help="do not fail a session that read counters over both "
                      "the control channel and the console (issue #51). "
@@ -125,7 +130,20 @@ def _trace_sleeps():
     _time.sleep = traced
 
 
+def pytest_report_header(config):
+    """What is attached, read without opening a port, so the first lines say which tiers can execute on this bench."""
+    import devices
+    try:
+        return devices.header_lines(ports.census())
+    except Exception as e:                      # noqa: BLE001 - a header must never stop a run
+        return [f"devices: could not be read ({type(e).__name__}: {e})"]
+
+
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    import devices
+    skipped = [getattr(r, "longrepr", ("", 0, ""))[2] for r in terminalreporter.stats.get("skipped", [])]
+    for line in devices.summary_lines(skipped):
+        terminalreporter.write_line(line)
     if not config.getoption("--pacing-report"):
         return
     w = terminalreporter.write_line
@@ -153,6 +171,9 @@ def pytest_configure(config):
     for m, desc in (
         ("board", "needs the board attached; applied automatically to "
                   "any test that resolves the board fixture"),
+        ("due", "needs a Due; applied automatically with `board` to any test that resolves the board fixture"),
+        ("h7", "needs a running H7 target; applied automatically (with `board`, so the container's gate never selects it) to "
+               "any test that resolves the h7_unit fixture"),
         ("smoke", "fast enough to run on every iteration"),
         ("slow", "tens of seconds; transport benchmarks"),
         ("awg", "drives the DAC"),
@@ -199,6 +220,10 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "board" in getattr(item, "fixturenames", ()):
             item.add_marker(pytest.mark.board)
+            item.add_marker(pytest.mark.due)
+        if "h7_unit" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.board)      # hardware: the board-free gate must never select it
+            item.add_marker(pytest.mark.h7)
 
     def key(item):
         mod = item.module.__name__.rsplit(".", 1)[-1]
@@ -560,3 +585,19 @@ def _check_one_instrument(session):
             f"quoting any number from it; --mixed-instruments-ok if the "
             f"fallback was the point.", red=True)
     session.exitstatus = 1
+
+
+@pytest.fixture(scope="session")
+def h7_unit(request):
+    """A running H7: its (stream, control) ports, or a skip that names why not (a failure under --require-h7).
+
+    Discovery opens nothing. A unit in the boot loader is a different reason from an absent one and the skip says which, because the remedy
+    differs (flash an image, or plug it in).
+    """
+    import devices
+    action, reason = devices.h7_decision(ports.h7_state(), request.config.getoption("--require-h7"))
+    if action == "fail":
+        pytest.fail(reason)
+    if action == "skip":
+        pytest.skip(reason)
+    return ports.find_h7()

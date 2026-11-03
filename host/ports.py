@@ -20,6 +20,7 @@ carry commands - and IOKit is asked for it rather than the node name
 being pattern-matched.
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -270,6 +271,48 @@ def find_h7():
         if m:
             nodes[int(m.group(1))] = p.device
     return (nodes[0], nodes[2]) if 0 in nodes and 2 in nodes else None
+
+
+H7_BL_VID, H7_BL_PID = 0x0483, 0x5720   # the stock boot loader's mass-storage identity, which an H7 image returns to
+
+
+def _usb_present(vid, pid):
+    """True or False when the host can list USB devices that are not serial ports, None when it cannot.
+
+    A boot-loader unit is mass storage and has no tty, so pyserial never lists it. Linux publishes every device under sysfs; the
+    other hosts have no equally cheap, dependency-free answer here and say so rather than guess.
+    """
+    root = "/sys/bus/usb/devices"
+    if not os.path.isdir(root):
+        return None
+    want = ("%04x" % vid, "%04x" % pid)
+    for d in os.listdir(root):
+        try:
+            with open(os.path.join(root, d, "idVendor"), encoding="ascii") as fv, \
+                 open(os.path.join(root, d, "idProduct"), encoding="ascii") as fp:
+                if (fv.read().strip(), fp.read().strip()) == want:
+                    return True
+        except OSError:
+            continue
+    return False
+
+
+def h7_state():
+    """'running' (an image is enumerated with both functions), 'boot_loader', or 'absent'. Opens nothing and does not wait.
+
+    'absent' means neither was seen; on a host that cannot list non-serial USB devices (not Linux) a unit in the boot loader reads as 'absent'.
+    """
+    if find_h7():
+        return "running"
+    return "boot_loader" if _usb_present(H7_BL_VID, H7_BL_PID) else "absent"
+
+
+def census():
+    """What is attached right now, without opening a port or waiting: {'due': {'programming': path|None, 'native': [paths]}, 'h7': state, 'h7_paths': tuple|None}."""
+    found = _pyserial_nodes()
+    return {"due": {"programming": next((d for d, v, p, _i, _s in found if (v, p) == (VID, PID_CONSOLE)), None),
+                    "native": native_order([d for d, v, p, _i, _s in found if (v, p) == (VID, PID_NATIVE)])},
+            "h7": h7_state(), "h7_paths": find_h7()}
 
 
 def find_all_ports(wait=pacing.NORMAL):

@@ -158,9 +158,9 @@ stop, record.
 ### Test suite: what no tier reaches
 | # | gap | work |
 |---|---|---|
-| T1 | no way to say "run what the attached hardware allows": the Due's tests skip as "no board" and the H7 has no pytest tests at all (its real-unit checks are `measure/h7_daemon_gate.py`) | detect devices without opening a port (Due 2341:003D/003E, H7 1209:0001 with interfaces 0 and 2, boot loader 0483:5720), print one summary line at the start ("Due: track B on ..., H7: absent, boot loader"), mark real-unit tests `due` and `h7`, skip each with a reason that names the missing device and counts them separately, and keep `--require-board` and a new `--require-h7` as failures, so a skip is never read as a pass |
+| T1 | **done:** `ports.census()`/`h7_state()`, the `due` and `h7` markers, the `h7_unit` fixture, `--require-h7`, a header line and a counted skip summary; `tests/test_devices.py` (11 tests, 5 mutations) and `tests/test_h7_unit.py` (T3, the gate as a test); docs/testing.md. Was: no way to say "run what the attached hardware allows": the Due's tests skip as "no board" and the H7 has no pytest tests at all (its real-unit checks are `measure/h7_daemon_gate.py`) | detect devices without opening a port (Due 2341:003D/003E, H7 1209:0001 with interfaces 0 and 2, boot loader 0483:5720), print one summary line at the start ("Due: track B on ..., H7: absent, boot loader"), mark real-unit tests `due` and `h7`, skip each with a reason that names the missing device and counts them separately, and keep `--require-board` and a new `--require-h7` as failures, so a skip is never read as a pass |
 | T2 | **done (first step of part 2):** the eight test files under `targets/h7tool/tools` (55 tests) were collected by no tier. They are `tests/test_h7_*.py` now and under the same guards (encoding, pacing, platform marker); two need numpy and skip in the plain venv like the GUI tests; the board-free tier went from 1249 to 1288 passed | done; docs/testing.md says where H7 tests live |
-| T3 | the gate's stages run only by hand | turn them into `h7`-marked tests that skip when the unit is absent or in the boot loader (with that state named) |
+| T3 | **done** (the gate runs as `test_h7_unit.py`, 8 of 8 passes on the unit). Was: the gate's stages run only by hand | turn them into `h7`-marked tests that skip when the unit is absent or in the boot loader (with that state named) |
 | T4 | GUI-on-H7 tests cover three things (format, defaults, restore) | add XY, spectrum, measure labels, generator mapping and refusal, preset, trigger on CH2, cursors, record and export with the dialog patched, replay |
 | T5 | record then replay of version-4 frames has no test | round trip through `FileDevice` and the window |
 | T6 | `measure.parse_identity` and provenance know tracks A-C only | decide the H7's identity path and test it |
@@ -185,3 +185,11 @@ guards. Board-free: 1289 passed / 20 skipped / 322 deselected in the plain venv 
 tests still catch a broken swing cap (5 failures). **Found by running the whole board-free tier in the GUI venv, which had not been done:**
 `test_metrics.py::test_a_legacy_stamp_still_resolves_by_wall_clock` fails there ("latest, unmatched build stamp") and passes alone and in the plain
 venv; it fails the same way at `9dd0c5c`, before any of this work, so it is an order-dependent test that predates it *(cause not found)*.
+
+### Part 2, step 2 done: device detection, and what it found on the unit
+Detection and the counted skips are in (docs/testing.md). Running the real-unit test repeatedly exposed two faults of the unit that the single runs had
+hidden. (1) A start sometimes produced **no frames**: the unit acquired and sent nothing because a pending endpoint disable landed on the next run's first
+transfer. Fixed in image 14 (docs/19); 15 of 400 starts on image 13, 1 of 400 on image 14. (2) About 1 run in 70 begins with the previous run's last frame in
+place of its own seq 0. Not fixed; the gate counts it and judges the run from its second frame on, so it is visible and does not flake. Two mistakes of mine on
+the way, both in the harness: the newest-32-frames window could start after seq 0, and an unproven host flush was kept for an hour before the alternating
+comparison showed it did nothing (removed).
