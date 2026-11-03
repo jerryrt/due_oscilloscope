@@ -43,3 +43,13 @@ Image 13 has no timer by default (`RUN_MS` = 0; `-DRUN_MS=n` restores it) and re
 falls back to the vendor request for older images. What no longer protects a bench: a hung image does not come back by itself, and recovering one
 is the stock boot-loader enable sequence at the unit. The timer's first visible effect was a unit that stopped answering 30 minutes after a
 flash and looked like a crash.
+
+## Image 14: the stream endpoint is stopped and re-armed reliably
+
+Image 13 ended a run by disabling the stream's IN endpoint with a wait that was an iteration count and gave up silently. When the host was not
+polling at that instant the disable stayed pending and landed on the next run's first transfer: `ep_busy` stayed set, the unit kept acquiring
+and sent nothing (`sent` 0, `lost` climbing), and a start produced no frames. Image 14 quiesces the endpoint against the clock at the end and the
+start of a run, flushes its FIFO, and sends a transfer again when it was disabled instead of completing. Measured by alternating the two images,
+200 start/stop cycles each, twice: **starts with no frames 15 of 400 on image 13, 1 of 400 on image 14** (Fisher exact p about 0.0002).
+Not fixed, and not changed by it: about 1 run in 70 (4 of 400 and 7 of 400, no difference) starts with the previous run's last frame where its
+own seq 0 belongs, so a run reads `[30, 1, 2, ...]`; a host flush and a TX FIFO flush did not remove it *(cause not found)*.
