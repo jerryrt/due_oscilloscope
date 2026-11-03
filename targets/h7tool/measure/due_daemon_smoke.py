@@ -21,7 +21,7 @@ def check(ok, msg):
 
 def main():
     env = dict(os.environ, PYTHONPATH=os.path.join(ROOT, "host"))
-    d = subprocess.Popen([sys.executable, "-m", "daemon", "--port", "45499"], cwd=os.path.join(ROOT, "host"), env=env,
+    d = subprocess.Popen([sys.executable, "-m", "daemon", "--device", "due", "--port", "45499"], cwd=os.path.join(ROOT, "host"), env=env,
                          stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     try:
         cl = None

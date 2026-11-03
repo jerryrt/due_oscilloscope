@@ -28,6 +28,30 @@ from daemon import server as srvmod            # noqa: E402
 import pacing
 
 
+def open_hardware(kind, *, h7_found=None, open_h7=None, open_due=None):
+    """The device for `--device`. h7 and due open exactly what they name; auto takes an attached H7 and otherwise the Due.
+
+    The H7 is looked for first and by USB id alone, which opens nothing, so choosing it never touches a Due's ports - the
+    daemon owns whichever port it opens and a second process cannot share one. The three callables are the seams a test breaks.
+    """
+    if h7_found is None:
+        import ports
+        h7_found = ports.find_h7
+    if open_h7 is None:
+        from daemon import h7device
+        open_h7 = h7device.H7Device.open
+    if open_due is None:
+        def open_due():
+            import measure
+            return devmod.BoardDevice(measure.Board(settle=3.0))
+    if kind == "due":
+        return open_due()
+    paths = h7_found()
+    if kind == "h7":
+        return open_h7(paths)                 # refuses with its own message when paths is None
+    return open_h7(paths) if paths else open_due()
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="due_oscilloscope daemon")
     ap.add_argument("--host", default="0.0.0.0",
@@ -39,6 +63,9 @@ def main(argv=None):
     ap.add_argument("--fake-h7", action="store_true",
                     help="serve a simulated H7 target (the real control dispatcher "
                          "compiled for the host; needs a host C compiler)")
+    ap.add_argument("--device", choices=("auto", "due", "h7"), default="auto",
+                    help="which hardware to open: an attached H7 target, a Due, or (auto) the H7 if one is attached "
+                         "and the Due otherwise")
     ap.add_argument("--pace", action="store_true",
                     help="with --fake, produce frames at the claimed rate")
     ap.add_argument("--file", metavar="PATH",
@@ -85,9 +112,11 @@ def main(argv=None):
             print(str(e), file=sys.stderr)
             return 2
     else:
-        import measure
-        board = measure.Board(settle=3.0)
-        dev = devmod.BoardDevice(board)
+        try:
+            dev = open_hardware(args.device)
+        except devmod.DeviceError as e:
+            print(str(e), file=sys.stderr)
+            return 2
 
     srv = srvmod.Server(dev, host=args.host, port=args.port,
                         tune_gc=not args.gc).start()

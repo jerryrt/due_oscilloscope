@@ -94,3 +94,7 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   at `6489e20`, and 0 in 30 on the current tree: roughly 5-15 % per run on every tree, so not caused by this work and not fixed by it
   (`device_running` is still true when it checks). Until it is understood, a lone failure of that test in a GUI-suite run is rerun, never
   counted as a regression or waved through.
+- 7b-4: `daemon --device auto|due|h7` (`open_hardware`). auto takes an attached H7 (found by USB id, which opens nothing) and otherwise the
+  Due; due and h7 open exactly what they name, and h7 with none attached is a refusal, never a fallback. Four tests; four mutations (auto never
+  picks the H7, no Due fallback, due ignored, h7 falls back) each fail one. Board-free 1243 passed. **Behaviour change to know about:** with an
+  H7 on the bench a bare `python -m daemon` now opens the H7, so the real-Due smoke names `--device due`.

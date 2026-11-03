@@ -160,3 +160,33 @@ def test_what_the_h7_does_not_have_is_an_error_never_a_body_of_zeroes(h7):
 def test_the_dues_own_fake_device_is_untouched_by_all_of_this():
     dev = devmod.FakeDevice(pace=False)
     assert not getattr(dev, "accepts_options", False) and not hasattr(dev, "rate_policy")
+
+
+# -- --device selection ---------------------------------------------------------------------------
+
+def _pick(kind, h7_paths):
+    import daemon.__main__ as dm
+    opened = []
+    got = dm.open_hardware(kind, h7_found=lambda: h7_paths,
+                           open_h7=lambda p: opened.append(("h7", p)) or "H7",
+                           open_due=lambda: opened.append(("due", None)) or "DUE")
+    return got, opened
+
+
+def test_device_auto_takes_an_attached_h7_and_never_opens_the_due():
+    assert _pick("auto", ("/dev/a", "/dev/b")) == ("H7", [("h7", ("/dev/a", "/dev/b"))])
+
+
+def test_device_auto_falls_back_to_the_due_when_no_h7_is_attached():
+    assert _pick("auto", None) == ("DUE", [("due", None)])
+
+
+def test_device_due_and_h7_open_exactly_what_they_name():
+    assert _pick("due", ("/dev/a", "/dev/b")) == ("DUE", [("due", None)])      # an attached H7 does not redirect an explicit Due
+    assert _pick("h7", None) == ("H7", [("h7", None)])                          # no unit: H7Device.open refuses with its own message
+
+
+def test_device_h7_with_nothing_attached_is_a_refusal_not_a_fallback():
+    import daemon.__main__ as dm
+    with pytest.raises(devmod.DeviceError):
+        dm.open_hardware("h7", h7_found=lambda: None, open_due=lambda: pytest.fail("fell back to the Due"))
