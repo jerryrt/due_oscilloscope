@@ -26,6 +26,8 @@ import h7_awg          # noqa: E402  the swing cap and the playback unit size li
 import h7_cal          # noqa: E402
 
 OP_CONFIG, OP_RUN, OP_PLAY, OP_STATUS = 0x0040, 0x0041, 0x0042, 0x0043
+#: Playback units written before the DAC timer starts. The unit accepts 1-8; fewer is less runway at the start of a run.
+PLAY_PRIME_UNITS = 8
 _CFG = struct.Struct("<IIBBBBHH")
 _STATUS = struct.Struct("<4B17I")
 _STATUS_NAMES = ("adc_period", "dac_period", "frames", "lost", "sent", "tc_missed", "ct_bad", "adc_ovr", "play_units", "play_consumed",
@@ -92,25 +94,27 @@ class SerialStream:
     def __init__(self, path):
         import transport
         self._t = transport
-        self.fd = transport.open_raw(path, 115200, dtr=False)
+        self.port = transport.open_raw(path, 115200, dtr=False)
+        self.port.drop_dtr()          # opening raised it, and a stale line from an earlier open would start a run on its own
 
     def read(self, timeout=pacing.GLANCE):
-        if not self._t.wait_any([self.fd], timeout):
+        if not self._t.wait_any([self.port], timeout):
             return b""
         try:
-            return os.read(self.fd, 1 << 20)
+            return self.port.read(1 << 20)
         except (BlockingIOError, InterruptedError):
             return b""
 
     def write(self, data):
         try:
-            return os.write(self.fd, data)
+            return self.port.write(data)
         except (BlockingIOError, InterruptedError):
             return 0
 
     def close(self):
         try:
-            os.close(self.fd)
+            self.port.drop_dtr()
+            self.port.close()
         except OSError:
             pass
 
@@ -154,6 +158,20 @@ class H7Device(Device):
                 raise DeviceError(f"{kind}{e}") from None
             except (ctl.ProtocolError, OSError) as e:
                 raise DeviceError(f"control channel: {e}") from None
+
+    def _quiesce(self):
+        """Stop whatever the unit is doing that this device did not start.
+
+        Opening a tty raises DTR on Linux for an instant, which the image reads as the legacy "start streaming" and which then
+        runs for the image's whole window; CONFIG is refused while anything runs. A start is the owner's decision, so a run it
+        did not ask for is stopped first (STATUS bytes 0 and 1: running, playing).
+        """
+        st = self._status()
+        if st[0] or st[1]:
+            self._halt_unit()
+
+    def _status(self):
+        return _STATUS.unpack(self._call(OP_STATUS).payload)
 
     def _config(self):
         return _CFG.unpack(self._call(OP_CONFIG).payload)
@@ -201,6 +219,7 @@ class H7Device(Device):
         if self.running:
             raise DeviceError("already running; stop first")
         pol = self.rate_policy
+        self._quiesce()
         cur = self._config()
         adc_p = pol.check_capture(adc_hz, channels)[0] if mode in ("capture", "loop") and adc_hz else cur[0]
         dac_p = pol.check_dac(dac_sps)[0] if mode in ("play", "loop") and dac_sps else cur[1]
@@ -212,7 +231,7 @@ class H7Device(Device):
         self._call(OP_CONFIG, _CFG.pack(adc_p, dac_p, mask, g1, g2, coupling, h7_awg.ZERO_CODE, 0))
         try:
             if buf is not None:
-                self._call(OP_PLAY, bytes([1, 2]))
+                self._call(OP_PLAY, bytes([1, PLAY_PRIME_UNITS]))
                 self._start_feeder(buf)
             if mode in ("capture", "loop"):
                 self._call(OP_RUN, b"\x01")
@@ -223,16 +242,19 @@ class H7Device(Device):
             self.rates = {"dac_sps": dac_sps, "adc_hz": adc_hz, "channels": channels, "preset": preset, "channel_mask": mask}
 
     def _start_feeder(self, buf):
+        """Write the buffer round and round. A chunk is whole copies of it (so the phase survives a short write) of about eight playback
+        units, and a refused write backs off for 1 ms, not 10: the unit's ring holds 16 units, which is 8 ms at 2 MS/s."""
+        chunk = buf * max(1, h7_awg.UNIT_BYTES * 8 // len(buf))
         self._feed_stop.clear()
         def feed():
             i = 0
             while not self._feed_stop.is_set():
-                chunk = buf[i:i + h7_awg.UNIT_BYTES * 8] or buf[:h7_awg.UNIT_BYTES * 8]
-                n = self._stream.write(chunk)
+                n = self._stream.write(chunk[i:])
                 self._awg_written += n
-                i = (i + n) % len(buf) if n else i
-                if not n:
-                    time.sleep(pacing.POLL)
+                if n:
+                    i = (i + n) % len(chunk)
+                else:
+                    pacing.pause(pacing.SPIN)
         self._feeder = threading.Thread(target=feed, name="h7-feeder", daemon=True)
         self._feeder.start()
 
@@ -240,6 +262,9 @@ class H7Device(Device):
         self._feed_stop.set()
         if self._feeder is not None:
             self._feeder.join(pacing.NORMAL); self._feeder = None
+        self._halt_unit()
+
+    def _halt_unit(self):
         for op, body in ((OP_PLAY, bytes([0, 0])), (OP_RUN, b"\x00")):
             try:
                 self._call(op, body)

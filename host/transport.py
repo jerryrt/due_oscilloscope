@@ -77,6 +77,14 @@ class _PosixPort:
     def fileno(self):
         return self.fd
 
+    def drop_dtr(self):
+        """Lower DTR and RTS. The tty layer raises them on open, and without HUPCL (not set above) it never lowers them on
+        close, so a line left up by an earlier open stays up for a device that reads DTR as "start"."""
+        try:
+            fcntl.ioctl(self.fd, termios.TIOCMBIC, struct.pack("I", termios.TIOCM_DTR | termios.TIOCM_RTS))
+        except OSError:
+            pass
+
     def read(self, n):
         try:
             return os.read(self.fd, n)
@@ -228,6 +236,10 @@ class _WindowsPort:
             return len(self._buf) + self._s.in_waiting
         except Exception:                                    # noqa: BLE001
             return len(self._buf)
+
+    def drop_dtr(self):
+        self._s.dtr = False
+        self._s.rts = False
 
     def close(self):
         self._s.close()

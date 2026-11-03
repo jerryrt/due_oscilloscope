@@ -1,5 +1,7 @@
 """H7Device behind the daemon (docs/20), against a simulated unit whose control side is the real firmware dispatcher (host/daemon/h7sim.py).
 Without a host C compiler the simulation cannot be built and every test here SKIPS - which is not a pass."""
+PLATFORM_SEAM_EXEMPT = "transport and ports are imported only to be monkeypatched (open_raw, wait_any, find_h7); no test here reaches an OS branch"
+
 import array
 import struct
 
@@ -186,7 +188,53 @@ def test_device_due_and_h7_open_exactly_what_they_name():
     assert _pick("h7", None) == ("H7", [("h7", None)])                          # no unit: H7Device.open refuses with its own message
 
 
-def test_device_h7_with_nothing_attached_is_a_refusal_not_a_fallback():
+def test_device_h7_with_nothing_attached_is_a_refusal_not_a_fallback(monkeypatch):
     import daemon.__main__ as dm
+    import ports
+    monkeypatch.setattr(ports, "find_h7", lambda: None)            # the real open() would otherwise find an H7 on the bench
     with pytest.raises(devmod.DeviceError):
         dm.open_hardware("h7", h7_found=lambda: None, open_due=lambda: pytest.fail("fell back to the Due"))
+
+
+# -- found running, and the real stream port -----------------------------------------------------
+
+def test_a_run_the_device_did_not_start_is_stopped_before_the_start_configures(h7):
+    srv, c, dev, hello = h7
+    dev._call(0x0041, b"\x01")                                       # what a DTR rise on open does to the real image
+    assert dev._status()[0] == 1
+    c.call("start", mode="capture", adc_hz=1_000_000, channels=2)   # would be refused as busy without the stop
+    assert dev._config()[2] == 3
+
+
+def test_serial_stream_uses_the_port_object_the_transport_returns(monkeypatch):
+    import daemon.h7device as hd
+    import transport
+    calls = []
+
+    class FakePort:
+        def read(self, n): calls.append(("read", n)); return b"abc"
+        def write(self, d): calls.append(("write", len(d))); return len(d)
+        def drop_dtr(self): calls.append(("drop_dtr",))
+        def close(self): calls.append(("close",))
+    monkeypatch.setattr(transport, "open_raw", lambda path, baud, dtr=False: FakePort())
+    monkeypatch.setattr(transport, "wait_any", lambda ports, t: ports)
+    s = hd.SerialStream("/dev/null")
+    assert s.read() == b"abc" and s.write(b"xy") == 2
+    s.close()
+    assert [c[0] for c in calls] == ["drop_dtr", "read", "write", "drop_dtr", "close"]      # DTR lowered on open and again before close
+
+
+def test_a_terminated_daemon_closes_its_device_and_exits_cleanly():
+    """SIGTERM must take the Ctrl-C path: the process exits 0 after closing the device, not -15 with it still open."""
+    import os, signal, socket, subprocess, sys
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    d = subprocess.Popen([sys.executable, "-u", "-m", "daemon", "--fake", "--host", "127.0.0.1", "--port", str(port)],
+                         cwd=os.path.join(root, "host"), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        assert d.stdout.readline().startswith("daemon on"), "the daemon never announced itself"
+        d.send_signal(signal.SIGTERM)
+        assert d.wait(pacing.NORMAL) == 0
+    finally:
+        if d.poll() is None:
+            d.kill()

@@ -50,7 +50,7 @@ Each step that touches shared code first runs the whole board-free suite and com
   swing-cap refusal run board-free through the real control code. Extends `FakeDevice`'s style; no `if h7` in the server.
 - **7b-3 GUI with the simulated unit (done: gui/app.py, scope.py, stream.py; daemon --fake-h7, gui --spawn-fake-h7; tests/test_gui_h7.py).** `python -m gui` on the simulated H7 draws CH1 and CH2 with volts, labels and rates correct.
 - **7b-4 Discovery and the daemon entry.** `--device auto|due|h7` in `daemon/__main__.py`; `auto` tries the Due board then the H7.
-- **7b-5 Board gate (the Phase 7 gate).** `python -m daemon` on the real unit, an unmodified client and the GUI get a trace; a DC level
+- **7b-5 (done: targets/h7tool/measure/h7_daemon_gate.py) Board gate (the Phase 7 gate).** `python -m daemon` on the real unit, an unmodified client and the GUI get a trace; a DC level
   from VOUT reads right in volts (host plays the code, the daemon captures it on the other channel); stop/start and restart cycles clean;
   the control channel polled while playback and capture run at full rate (never yet tested).
 
@@ -98,3 +98,18 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   Due; due and h7 open exactly what they name, and h7 with none attached is a refusal, never a fallback. Four tests; four mutations (auto never
   picks the H7, no Due fallback, due ignored, h7 falls back) each fail one. Board-free 1243 passed. **Behaviour change to know about:** with an
   H7 on the bench a bare `python -m daemon` now opens the H7, so the real-Due smoke names `--device due`.
+- 7b-5: the board gate, `measure/h7_daemon_gate.py`, runs the real daemon (`--device h7`) on the real unit with the unmodified client and
+  GUI: description and rates, a sine and a DC level in volts through each channel's calibration (VOUT's input declared with
+  `H7_GATE_VOUT`), ten start/stop cycles, the control channel polled every 20 ms under full playback and capture, the unit's own counters,
+  and the offscreen window. Passes on CH1-only and on CH2-only wiring (sine 0.915 / 0.907 V against 0.896 nominal, DC +1.005 / +1.007 V
+  held; control reply 0.8 ms median, 1.3 ms max under load; 9,800 frames, 0 gaps).
+  Found on the real unit, not in the simulation, and fixed: opening a tty raises DTR and the transport never lowers it (no HUPCL), so a
+  stale line ran the image on its own and CONFIG answered busy - `transport.drop_dtr()` and a stop of a run the device did not start;
+  `SerialStream` used the port object as a file descriptor; a SIGTERMed daemon left the unit running; the feeder slept 10 ms on a refused
+  write against an 8 ms ring and underran 965 times in 10 s at 2 MS/s (now 0; the old feeder fails the gate with 970).
+  Retracted on the way: an early "0.8 V" reading and a "DC decays" finding came from reading frames of earlier runs (`Client.wait_frames`
+  counts since connect and returns the queue), and then from VOUT being wired to both inputs: with leads on both CH1 and CH2 the output read
+  17-28 % low and DC decayed to zero, on the pre-daemon tool as well; with either lead alone it is nominal. At 17:00 the double wiring read
+  nominal and nothing is known to have changed *(cause not found; check the two-lead junction)*. The 3 % excess of the old tool on CH1 over
+  its recorded 0.599 V is unexplained *(check)*.
+  A cycle of the ten failed once in one run (not reproduced in 40 more) and is unexplained *(check)*.

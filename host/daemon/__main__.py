@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import signal
 import sys
 import time
 
@@ -121,6 +122,12 @@ def main(argv=None):
     srv = srvmod.Server(dev, host=args.host, port=args.port,
                         tune_gc=not args.gc).start()
     print(f"daemon on {srv.host}:{srv.port}  device={dev.describe()}")
+
+    def _terminate(signum, frame):
+        raise KeyboardInterrupt
+    # SIGTERM is how a launcher or a test harness stops a daemon, and by default it ends the process with the device still open:
+    # a unit that reads DTR as "start" (the H7) is then left running. Turn it into the Ctrl-C path so the device is closed.
+    signal.signal(signal.SIGTERM, _terminate)
     try:
         while True:
             pacing.pause(pacing.SETTLE)
@@ -128,6 +135,10 @@ def main(argv=None):
         pass
     finally:
         srv.stop()
+        try:
+            dev.close()
+        except Exception as e:                       # noqa: BLE001
+            print(f"closing the device: {e}", file=sys.stderr)
     return 0
 
 
