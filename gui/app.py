@@ -500,6 +500,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._defaults = dict(dev.get("defaults") or {})
         self._device_is_due = fmt is stream.DUE_FORMAT
         self._fill_presets()
+        self.awg.set_device(dev)
         if fmt is stream.current_format() and self.channel.count() == len(fmt.labels):
             return
         stream.set_format(fmt)
@@ -842,6 +843,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # panel itself refuses never reaches the device, so there is no
         # new run to make room for.
         self.acq.reset()
+        if not getattr(self, "_device_is_due", True):
+            # An H7 refuses a start while it runs, where the Due restarts: stop it first, whatever the last poll said (G3).
+            self.session.call("stop")
         if not self.session.send_awg(blob):
             self.awg.run_btn.setChecked(False)
             return

@@ -127,3 +127,39 @@ def test_the_measure_panel_names_the_h7s_calibration_not_the_dues_adc_reference(
     connect(qapp, w)
     text = w.measure.reference.text()
     assert "ADVREF" not in text and "factory scale" in text
+
+
+def test_the_generator_panel_works_in_volts_about_zero_inside_the_swing_cap_on_an_h7(qapp, h7win):
+    """G2: the panel mapped the Due's 0.55-2.75 V window onto 12-bit codes, so an H7 sine of 1 Vpp at 0 V was refused with "108800 codes
+    outside 1706..2366". On an H7 it plans in volts about 0 V against the cap in the description, still refuses (never clamps), and a Due
+    description gives the old panel back."""
+    from gui import awg
+    w, srv = h7win
+    assert "DAC0" in w.awg.title()
+    connect(qapp, w)
+    assert "VOUT" in w.awg.title() and w.awg.offset.value() == 0.0 and w.awg.offset.minimum() < 0
+    w.awg.vpp.setValue(1.0); w.awg.offset.setValue(0.0)
+    lo, hi, why = w.awg.code_range()
+    assert why is None and (lo, hi) == (2048 - 84, 2048 + 84), (lo, hi, why)           # 0.5 V / 5.983 mV per code, about 84 codes
+    assert w.awg.run_btn.isEnabled()
+    w.awg.vpp.setValue(3.9); w.awg.offset.setValue(0.2)                                  # +-1.95 V about 0.2 V: 2.15 V is past the cap
+    why = w.awg.code_range()[2]
+    assert why and "Offset" in why and not w.awg.run_btn.isEnabled() and "Offset" in w.awg.note.text()
+    assert "swing cap" in (awg.plan_h7(4.0, 0.0, 5.983, 330)[2] or "")                    # more than the cap at any offset
+    assert awg.plan_h7(1.0, 0.0, 5.983, 330)[:2] == (lo, hi)
+    w._apply_format({"kind": "board"})
+    assert "DAC0" in w.awg.title() and w.awg.offset.minimum() == 0.0
+
+
+def test_playing_the_generator_while_the_h7_captures_stops_and_restarts_it_in_loop_mode(qapp, h7win):
+    """G3: the H7 refuses a start while it runs ("already running; stop first"), where the Due restarts, so the generator button did
+    nothing during capture. The window stops first and the unit ends in loop mode (the played sine itself is read on the real unit)."""
+    w, srv = h7win
+    connect(qapp, w)
+    w.start_capture()
+    w.client.wait_frames(5, timeout=pacing.NORMAL)
+    assert pump(qapp, lambda: w.device_running)
+    w.awg.vpp.setValue(1.0); w.awg.offset.setValue(0.0); w.awg.hz.setValue(1000.0)
+    w.awg.run_btn.setChecked(True)                                                       # the user presses Play while capturing
+    assert w.awg.run_btn.isChecked(), "the generator was refused"
+    assert pump(qapp, lambda: srv.device.mode == "loop", timeout=pacing.NORMAL), "the unit never went to loop mode"

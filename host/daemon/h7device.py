@@ -228,7 +228,10 @@ class H7Device(Device):
                            "sample": {"bits": 16, "layout": "planar", "full_scale_codes": 65535},
                            "channels": chans,
                            "defaults": {"adc_hz": 1_000_000, "channels": 2},
-                           "options": {"gain": list(range(8)), "coupling": ["dc", "ac"], "swing_limit_codes": h7_awg.SWING_LIMIT_CODES}}
+                           "options": {"gain": list(range(8)), "coupling": ["dc", "ac"], "swing_limit_codes": h7_awg.SWING_LIMIT_CODES},
+                           # What a generator panel needs to turn volts about 0 V into the Due-style 12-bit samples `waveform_to_dac_codes` takes
+                           # (one sample code is one H7 DAC step) and to refuse, as the host does, what the swing cap would refuse.
+                           "generator": {"output": "VOUT", "mv_per_code": h7_awg.MV_PER_CODE, "swing_limit_codes": h7_awg.SWING_LIMIT_CODES}}
         return dict(self._described)
 
     # -- running ----------------------------------------------------------------

@@ -175,6 +175,21 @@ Each has a test in `tests/test_gui_h7.py` or `tests/test_daemon_api.py` that fai
 - **G6**: `Format.reference` carries the line from the description's calibration sources; the Due keeps its ADVREF line (`stream.reference_note`).
 - **G8**: `FileDevice.describe()` passes `sample`, `channels`, `defaults` and `options` from the sidecar's device block; a Due's block has none, so nothing changes for it.
 
+### Step 3 done (2026-11-03): G2, G3
+
+- **G2**: the daemon's H7 description carries `generator` (output name VOUT, mV per code, the swing cap). `AwgPanel.set_device` makes the panel plan in volts
+  about 0 V (`awg.plan_h7`), refusing and naming the offset that fits when the cap would be exceeded; a Due description restores the DAC0 panel. The waveform
+  is still the Due-style 12-bit blob around 2048 that `waveform_to_dac_codes` re-centres, so one builder serves both.
+- **G3**: the window stops an H7 before it plays (the H7 refuses a start while running, where the Due restarts).
+- Tests in `tests/test_gui_h7.py`, each failing with its change taken out. The real-unit gate has a new check: Play pressed in the window while capturing,
+  3 Vpp at 0 V (251 codes), read back through the window's rings on the wired channel: CH1 +2.2 % (1.5328 V against 1.4997), tolerance 4 %.
+- **Found on the unit, recorded and not tuned for**: small sines read high by a roughly constant 20-30 mV of amplitude, whatever the rate (1 MS/s and 200 kS/s
+  agree) or the path (window and direct client agree). CH1 at gain 0, VOUT on CH1: peak 10 / 20 / 40 / 84 / 150 / 250 codes read +64 / +33 / +10 / +4.4 / +2.1 /
+  +2.1 % against nominal; the slope between 84 and 250 codes is 5.95-6.1 mV per code (nominal 5.975), so it is an additive term and not a scale error. Zero
+  amplitude reads 0.052 V (`std x sqrt 2`, about 36 mV rms), and a fit at the sine's own frequency removes only part of the excess. Not explained; it is the
+  same channel and the same kind of question as the CH1 offset above, deferred as hardware-side. This is why the gate plays 3 Vpp: that is where the known
+  error is inside the tolerance, and the panel's mapping is exact (84 codes for 1 Vpp is checked in the unit test).
+
 ### Order and gates
 1. T1 and T2 first: they change what "green" means, so every later step is judged by them.
 2. G1, G4, G6, G8 (small, no new measurement), each with a test that fails when the fix is removed.

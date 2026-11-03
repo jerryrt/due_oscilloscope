@@ -192,6 +192,22 @@ def main():
             w.tick()
             check(w.frames_shown >= 30 and w.rings[1].filled > 0 and w.rings[2].filled > 0 and len(w.scope.trace()[0]) > 0,
                   f"the window drew both channels from the real unit ({w.frames_shown} frames shown)")
+            # Press Play while it is capturing (G2, G3): 3 Vpp at 0 V in volts (the top of the swing cap; a small sine reads high by a roughly constant 20-30 mV of amplitude on this bench, docs/20), the unit stopped and restarted in loop mode, and the sine read back
+            # on the wired channel through the window's own rings.
+            w.awg.vpp.setValue(3.0); w.awg.offset.setValue(0.0); w.awg.hz.setValue(1000.0)
+            lo, hi, _why = w.awg.code_range(); nominal = (hi - lo) / 2 * 5.975e-3
+            w.awg.run_btn.setChecked(True)
+            check(w.awg.run_btn.isChecked(), "the generator accepted 3 Vpp at 0 V on the H7 (volts about 0 V, inside the swing cap)")
+            time.sleep(1.0)
+            w.acq.reset(); w.rings.clear() if hasattr(w.rings, "clear") else None
+            end = time.time() + 10
+            while time.time() < end and not all(t in w.rings and w.rings[t].filled > 100_000 for t in WIRED):
+                app.processEvents(); time.sleep(0.01)
+            for tag in WIRED:
+                vs = stream.codes_to_volts(w.rings[tag].window(100_000)[0], tag=tag)
+                amp = float(vs.std() * 2 ** 0.5)
+                print(f"CH{tag}: the window's generator, 3 Vpp at 0 V, reads {amp:.4f} V peak (nominal {nominal:.4f})")
+                check(abs(amp - nominal) < TOL * nominal, f"CH{tag}: the sine played from the window reads its nominal amplitude")
             # stop through the window's own control, then confirm the unit is idle
             w.stop_capture() if hasattr(w, "stop_capture") else w.session.call("stop")
         finally:
