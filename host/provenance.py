@@ -529,6 +529,10 @@ def _holds_newest_source(rev, track=None):
     return None
 
 
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
 def _build_epoch(stamp):
     """`__DATE__ " " __TIME__` as an epoch, or None.
 
@@ -536,15 +540,26 @@ def _build_epoch(stamp):
     Only a difference against another reader-local value means anything;
     see `build_is_current()` for what happens when it is compared with a
     true epoch instead.
+
+    The month is read from a fixed English table and not with `%b`: the
+    compiler writes `__DATE__` in English whatever the reader's language
+    is, while `strptime` expects the process's `LC_TIME` names - and a
+    Qt application sets that from the environment, so the same stamp
+    stopped parsing the moment a window existed in a French session.
     """
     if not stamp:
         return None
-    for fmt in ("%b %d %Y %H:%M:%S", "%b  %d %Y %H:%M:%S"):
-        try:
-            return time.mktime(time.strptime(stamp, fmt))
-        except ValueError:
-            continue
-    return None
+    m = re.fullmatch(r"([A-Za-z]{3}) +(\d{1,2}) (\d{4}) (\d\d:\d\d:\d\d)",
+                     str(stamp).strip())
+    if not m or m.group(1).title() not in _MONTHS:
+        return None
+    month = _MONTHS.index(m.group(1).title()) + 1
+    try:
+        return time.mktime(time.strptime(
+            "%s %s %s %s" % (m.group(3), month, m.group(2), m.group(4)),
+            "%Y %m %d %H:%M:%S"))
+    except ValueError:
+        return None
 
 
 def _iso_epoch(s):

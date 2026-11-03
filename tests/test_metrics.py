@@ -506,6 +506,40 @@ def test_a_legacy_stamp_still_resolves_by_wall_clock(tmp_path, monkeypatch):
             == {"fw_provenance": "unlogged"})
 
 
+def test_a_build_stamp_is_english_whatever_the_process_locale(
+        tmp_path, monkeypatch):
+    """`__DATE__` is the compiler's English, not the reader's language.
+
+    A Qt application sets `LC_TIME` from the environment, and `%b` then
+    expects that language's month names: in a French session the stamp
+    stopped parsing the moment a window existed, so the same image was
+    "matched by build stamp" in one process and "latest, unmatched" in
+    the next. It surfaced as a test that failed only after the GUI
+    suite had run in the same process.
+    """
+    import locale
+    prov = _with_log(
+        tmp_path, monkeypatch,
+        _rec("beefbee", "2026-09-01T09:00:00-0400"),
+        _rec("cafecaf", "2026-09-01T10:00:00-0400"))
+    old = locale.setlocale(locale.LC_TIME)
+    for name in ("fr_FR.UTF-8", "fr_FR.utf8"):
+        try:
+            locale.setlocale(locale.LC_TIME, name)
+            break
+        except locale.Error:
+            continue
+    else:
+        # French spells September "sept.", which is what makes the old
+        # parse fail; a language that spells it "Sep" could not.
+        pytest.skip("fr_FR is not installed on this host")
+    try:
+        fw = prov.firmware("Sep 01 2026 09:30:00", "b")
+        assert fw["fw_provenance"] == "matched by build stamp"
+    finally:
+        locale.setlocale(locale.LC_TIME, old)
+
+
 def test_a_track_a_flash_is_not_a_track_b_commit(tmp_path, monkeypatch):
     """The track filter survives the move to equality.
 
