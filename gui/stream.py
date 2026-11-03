@@ -79,14 +79,16 @@ class Format:
     `cal` is None for the Due (one global scale, VREF_V over 4096 codes) and {channel_id: (zero_code, codes_per_volt)}
     for a device with a per-channel calibration."""
 
-    __slots__ = ("name", "labels", "full_scale", "cal", "y_lo", "y_hi")
+    __slots__ = ("name", "labels", "full_scale", "cal", "y_lo", "y_hi", "reference")
 
-    def __init__(self, name, labels, full_scale, cal=None, y_range=None):
+    def __init__(self, name, labels, full_scale, cal=None, y_range=None, reference=None):
         self.name = name
         self.labels = dict(labels)
         self.full_scale = full_scale
         self.cal = cal
         self.y_lo, self.y_hi = y_range if y_range else (0.0, VREF_V)
+        #: What the volts are scaled by, as one line for the Measure panel. None means the Due's ADVREF line.
+        self.reference = reference
 
 
 DUE_FORMAT = Format("due", LABELS, FULL_SCALE_CODES)
@@ -103,7 +105,8 @@ def format_from_description(desc):
     cal = {int(c["id"]): (float(c["calibration"]["zero_code"]), float(c["calibration"]["codes_per_volt"])) for c in chans}
     full = int(sample.get("full_scale_codes", 65535))
     top = max((full - z) / cpv for z, cpv in cal.values()); bottom = max(z / cpv for z, cpv in cal.values())
-    return Format(desc.get("kind", "device"), labels, full, cal, (-bottom, top))
+    sources = sorted({str(c["calibration"].get("source")) for c in chans if c["calibration"].get("source")})
+    return Format(desc.get("kind", "device"), labels, full, cal, (-bottom, top), "; ".join(sources) or "calibration not described")
 
 
 def set_format(fmt):
@@ -115,6 +118,11 @@ def set_format(fmt):
     FULL_SCALE_CODES = fmt.full_scale
     ids = sorted(fmt.labels, reverse=(fmt is DUE_FORMAT))
     CH_A0, CH_A1 = (ids + [ids[-1]])[:2] if fmt is not DUE_FORMAT else (7, 6)
+
+
+def reference_note():
+    """The line saying which reference the current device's volts are in: the Due's measured ADVREF, or what its description says."""
+    return _format.reference or f"ADVREF {ADVREF_MV} mV, {ADVREF_SOURCE}"
 
 
 def current_format():

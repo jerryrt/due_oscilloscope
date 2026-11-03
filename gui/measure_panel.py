@@ -66,8 +66,8 @@ class MeasurePanel(QtWidgets.QGroupBox):
         # own reference and every volt here is scaled by a number that
         # came from somewhere else. A reading that cannot be attributed
         # is not a measurement - see docs/measurement-suite.md.
-        self.reference = QtWidgets.QLabel(
-            f"ADVREF {stream.ADVREF_MV} mV, {stream.ADVREF_SOURCE}")
+        self.reference = QtWidgets.QLabel(stream.reference_note())
+        self.reference.setWordWrap(True)
         self.reference.setStyleSheet("color: #7f8c8d;")
         form.addRow("", self.reference)
 

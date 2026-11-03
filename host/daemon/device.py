@@ -619,7 +619,11 @@ class FileDevice(Device):
     # -- control -----------------------------------------------------
     def describe(self):
         rec = (self.sidecar or {}).get("device") or {}
-        return {"track": rec.get("track", "file"), "kind": "file",
+        # What the samples mean is the recorded device's to say: a client
+        # builds its scale and channels from these keys, and a Due's
+        # description has none, so a Due recording still gets the default.
+        fmt = {k: rec[k] for k in ("sample", "channels", "defaults", "options") if k in rec}
+        return {**fmt, "track": rec.get("track", "file"), "kind": "file",
                 "frame_bytes": FRAME_BYTES,
                 "samples_per_frame": FRAME_SAMPLES,
                 "path": os.path.basename(self.path),

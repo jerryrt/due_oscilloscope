@@ -164,6 +164,17 @@ stop, record.
 | T7 | `ports.find_h7` is verified on Linux only | tests over faked `list_ports` entries in the Windows and macOS location formats |
 | T8 | the simulation cannot show a fault the transport or the firmware causes (the DTR fault and the feeder underruns were found only on the unit) | the simulated stream can start "found running" (done) and refuse writes; add a boot-loader re-enumeration and a ring that underruns when fed slowly |
 
+### Step 2 done (2026-11-03): G1, G4, G6, G8
+
+Each has a test in `tests/test_gui_h7.py` or `tests/test_daemon_api.py` that fails with the source change taken out (checked by reverting `gui/` and `host/`).
+- **G1**: for a device whose description is not a Due's the rate box holds the one rate the description starts at ("1 MHz"), disabled; a Due description brings
+  the list back. `MainWindow._fill_presets`.
+- **G4**: the symptom was not reproduced (setting the format already remaps `CH_A0`/`CH_A1`, so the second channel was found). What the test did find, with CH2 as
+  the source, was a defect on every device: the XY axes were labelled only on entering the view, so switching the source channel left them naming the old pair.
+  `_draw_xy` relabels when the pair changes.
+- **G6**: `Format.reference` carries the line from the description's calibration sources; the Due keeps its ADVREF line (`stream.reference_note`).
+- **G8**: `FileDevice.describe()` passes `sample`, `channels`, `defaults` and `options` from the sidecar's device block; a Due's block has none, so nothing changes for it.
+
 ### Order and gates
 1. T1 and T2 first: they change what "green" means, so every later step is judged by them.
 2. G1, G4, G6, G8 (small, no new measurement), each with a test that fails when the fix is removed.

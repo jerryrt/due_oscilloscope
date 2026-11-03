@@ -228,8 +228,11 @@ class ScopeView(QtWidgets.QWidget):
         other_tag = (stream.CH_A1 if source == stream.CH_A0
                      else stream.CH_A0)
         other = rings.get(other_tag)
-        if self._view != "xy":
+        if self._view != "xy" or getattr(self, "_xy_axes", None) != (source, other_tag):
+            # Relabel when the source changes too, not only on entering XY: the axes name the channels, and a switch of
+            # source while in this view left them naming the old pair.
             self._view = "xy"
+            self._xy_axes = (source, other_tag)
             self.plot.setLabel("bottom",
                                f"{stream.LABELS.get(source, source)} (V)")
             self.plot.setLabel("left",

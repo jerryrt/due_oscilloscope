@@ -499,15 +499,35 @@ class MainWindow(QtWidgets.QMainWindow):
         fmt = stream.format_from_description(dev)
         self._defaults = dict(dev.get("defaults") or {})
         self._device_is_due = fmt is stream.DUE_FORMAT
+        self._fill_presets()
         if fmt is stream.current_format() and self.channel.count() == len(fmt.labels):
             return
         stream.set_format(fmt)
+        self.measure.reference.setText(stream.reference_note())
         self.channel.clear()
         for tag in stream.channel_order():
             self.channel.addItem(stream.LABELS[tag], tag)
         self.trig_level.setRange(*stream.y_range())
         self.trig_level.setValue(sum(stream.y_range()) / 2.0)
         self.scope.apply_format()
+
+    def _fill_presets(self):
+        """The Due's rate list for a Due; for another device the one rate its description says it starts at, and not a choice.
+        The Due's presets are firmware commands that device's start ignores, so offering them would be a control that cannot
+        take effect (docs/20, G1)."""
+        if self._device_is_due:
+            want = [(label, key) for label, key in PRESETS]
+        else:
+            hz = self._defaults.get("adc_hz")
+            want = [((f"{hz / 1e6:g} MHz" if hz >= 1e6 else f"{hz / 1e3:g} kHz") if hz else "device default", None)]
+        if [self.preset.itemText(i) for i in range(self.preset.count())] != [w[0] for w in want]:
+            self.preset.clear()
+            for label, key in want:
+                self.preset.addItem(label, key)
+        self.preset.setEnabled(self._preset_usable())
+
+    def _preset_usable(self):
+        return getattr(self, "_device_is_due", True) and not getattr(self, "replaying", False)
 
     def _on_connected(self, dev, role):
         self._apply_format(dev)
@@ -561,7 +581,7 @@ class MainWindow(QtWidgets.QMainWindow):
         replay = dev.get("kind") == "file"
         self.replaying = replay
         self.awg.setEnabled(not replay)
-        self.preset.setEnabled(not replay)
+        self.preset.setEnabled(not replay and getattr(self, "_device_is_due", True))
         self.replay_bar.setVisible(replay)
         self.replay_bar.reset()
         if not replay:
@@ -610,7 +630,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.health.set("source", "-")
         self.replaying = False
         self.awg.setEnabled(True)
-        self.preset.setEnabled(True)
+        self.preset.setEnabled(getattr(self, "_device_is_due", True))
         self.replay_bar.hide()
         self.replay_bar.reset()
         self.setWindowTitle("due_oscilloscope")
@@ -851,7 +871,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         if getattr(self, "replaying", False):
             return                      # a recording owns it already
-        self.preset.setEnabled(not generating)
+        self.preset.setEnabled(not generating and getattr(self, "_device_is_due", True))
         self.preset.setToolTip(
             "The generator sets the capture rate while it is running - "
             "see Health for the rate actually in force" if generating

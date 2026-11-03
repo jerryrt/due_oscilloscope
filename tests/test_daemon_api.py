@@ -824,6 +824,36 @@ def test_a_replay_carries_the_bench_the_samples_came_from(recording,
     assert dev["recorded_dropped"] == 0
 
 
+def test_a_replay_of_another_device_keeps_that_devices_format(tmp_path):
+    """The sidecar's description of the sample format reaches the client.
+
+    A recording of an H7 is 16-bit planar with two bipolar channels; a
+    client that is told only "a file" draws it with the Due's 12-bit
+    scale. The four keys the GUI builds its format from have to survive
+    the replay, and a Due's recording - which has none - must still
+    describe no format, so the client keeps its default for it.
+    """
+    h7 = {"kind": "h7", "track": "h",
+          "sample": {"bits": 16, "layout": "planar", "full_scale_codes": 65535},
+          "channels": [{"id": 1, "label": "CH1",
+                        "calibration": {"zero_code": 32768, "codes_per_volt": 167.4}}],
+          "defaults": {"adc_hz": 1000000, "channels": 2},
+          "options": {"gain": [0, 1], "coupling": ["dc", "ac"]}}
+    path = tmp_path / "h7.bin"
+    path.write_bytes(bytes(devmod.FRAME_BYTES * 2))
+    (tmp_path / "h7.bin.json").write_text(json.dumps({"device": h7}), encoding="utf-8")
+    dev = devmod.FileDevice(str(path), pace=False).describe()
+    assert dev["kind"] == "file"
+    for key in ("sample", "channels", "defaults", "options"):
+        assert dev[key] == h7[key], key
+
+    due = tmp_path / "due.bin"
+    due.write_bytes(bytes(devmod.FRAME_BYTES * 2))
+    (tmp_path / "due.bin.json").write_text(json.dumps({"device": {"track": "b"}}), encoding="utf-8")
+    d = devmod.FileDevice(str(due), pace=False).describe()
+    assert not any(k in d for k in ("sample", "channels", "defaults", "options"))
+
+
 def test_a_replay_reports_the_rate_it_was_recorded_at(recording, make_server,
                                                       connect):
     """A file cannot be asked to convert at another rate. Answering
