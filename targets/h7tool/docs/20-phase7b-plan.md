@@ -224,9 +224,16 @@ Each has a test in `tests/test_gui_h7.py` or `tests/test_daemon_api.py` that fai
 - **T6**: the H7's identity path is the control channel's IDENTITY in the daemon description, not `parse_identity`. `provenance.firmware("h7-build-13")` answered
   with the newest Due flash ("latest, unmatched build stamp"); it now says `unlogged`.
 - **T8**, the write fault: a failed write ended the feeder thread unseen and the device went on reporting `play`. The feeder now records the fault; the next
-  `read` stops the unit and raises it, so every client gets a `device_error`. **Still open in T8**: the boot-loader re-enumeration and a ring that underruns when
-  fed slowly are not simulated.
-- **Still open**: T4's cursors, and the Due smoke and the real-unit tier (`tests/test_h7_unit.py`) for this step's changes.
+  `read` stops the unit and raises it, so every client gets a `device_error`.
+- **T8, the simulated faults**: `SimStream(ring_units=N)` models the playback ring (refuses writes when full, drains at the DAC rate once primed, counts an
+  underrun each time it runs dry); `detach()`/`attach()` make a unit leave and rejoin the bus. Tests: the feeder keeps the ring fed at 2 MS/s and a slowed writer
+  underruns it (the positive control; the feeder's old 10 ms backoff fails the first half), and a unit leaving during capture is reported as a `device_error`
+  and frames resume on return. What the simulation cannot show is the boot loader's own enumeration on a real host.
+- **T4, cursors**: with CH2 selected the time view's cursors read CH1's curve (`scope.curve` was set only by XY and the spectrum); fixed.
+- **Real unit**: the daemon gate and `tests/test_h7_unit.py` pass with VOUT on CH1 (`H7_GATE_VOUT=1`; the tier's default assumes CH2).
+- **Due smoke** (Track B, image `2809031`, no Due firmware source changed since): 258 passed, 17 skipped, **1 failed**:
+  `test_integrity.py::test_device_generated_waveform_is_continuous[b]` reports a wrap-locked displacement of -26.5 codes (z 39.5 against a control of 3.5),
+  3 of 3 runs. This is the issue #5 family on the board's image; nothing in this phase touches it, and it is left as found.
 
 ### Order and gates
 1. T1 and T2 first: they change what "green" means, so every later step is judged by them.

@@ -91,13 +91,27 @@ class SimStream:
     here exactly as on the unit. Frames are version 4, planar, 16-bit; CH1 a 1 kHz sine of 1 V and CH2 of 0.5 V, in each channel's
     own calibration so a host that applies the description's calibration recovers the volts."""
 
-    def __init__(self, control, calibration, *, pace=False, tone_hz=1000.0):
+    def __init__(self, control, calibration, *, pace=False, tone_hz=1000.0, ring_units=None):
         self._ctl, self._cal, self.pace, self.tone_hz = control, calibration, pace, tone_hz
+        # A playback ring (T8): with `ring_units` set, writes are refused when it is full and it drains at the DAC rate while the unit plays,
+        # counting an underrun each time it runs dry. Off by default: the plain simulation accepts every write.
+        self.ring_units = ring_units
+        self._occ = 0; self._primed = False; self._ring_t = None
+        self.ring_underruns = 0; self._dry = False
         self.written = bytearray()
         self.write_calls = 0
         self._seq = 0; self._phase = 0.0; self._t = 0.0
         self._st, self._st_t = None, 0.0
         self.closed = False
+
+    detached = False
+
+    def detach(self):
+        """The unit left the bus (it re-enumerated as the boot loader, or the cable moved): reads and writes fail as a gone port's do."""
+        self.detached = True
+
+    def attach(self):
+        self.detached = False
 
     def _status(self):
         """The unit's state, asked of the dispatcher at most every 20 ms. A real stream read never touches the control channel; a
@@ -108,6 +122,8 @@ class SimStream:
         return self._st
 
     def read(self, timeout=pacing.GLANCE):
+        if self.detached:
+            raise OSError("device disconnected")
         st = self._status()
         if not st[0]:
             time.sleep(min(timeout, pacing.POLL)); return b""
@@ -135,14 +151,48 @@ class SimStream:
             self.events.append("reopen_and_drain")
         return 0
 
+    def _ring_advance(self):
+        """Drain the ring for the time since the last look. The unit starts the DAC once PLAY_PRIME_UNITS units are queued, and an
+        underrun is counted once per time it runs dry, not once per look while it stays empty."""
+        from .h7device import PLAY_PRIME_UNITS
+        import h7_awg
+        now = time.monotonic()
+        if not self._status()[1]:                                   # not playing: the ring is empty and unprimed
+            self._occ = 0; self._primed = False; self._dry = False; self._ring_t = now
+            return
+        if not self._primed:
+            if self._occ >= PLAY_PRIME_UNITS * h7_awg.UNIT_BYTES:
+                self._primed = True; self._ring_t = now
+            return
+        dac_p = struct.unpack("<IIBBBBHH", self._ctl.call(0x0040).payload)[1]
+        used = int((now - self._ring_t) * (BASE / dac_p) * 2)       # 16-bit samples
+        self._ring_t = now
+        if used >= self._occ:
+            self._occ = 0
+            if not self._dry:
+                self.ring_underruns += 1; self._dry = True
+        else:
+            self._occ -= used; self._dry = False
+
     def write(self, data):
         """Accept one packet's worth per call and then pause: a real endpoint NAKs when its ring is full, so a writer cannot spin.
         Only the first MiB is kept (tests look at what was sent, not at an unbounded log)."""
+        if self.detached:
+            raise OSError("device disconnected")
         self.write_calls += 1
         take = data[:2048]
+        if self.ring_units:
+            import h7_awg
+            self._ring_advance()
+            take = data[:max(0, self.ring_units * h7_awg.UNIT_BYTES - self._occ)]       # whatever fits, as an endpoint with room does
+            if take:
+                self._occ += len(take); self._dry = False
+            else:
+                pacing.pause(pacing.SPIN)                                             # refused: the ring is full
         if len(self.written) < (1 << 20):
             self.written += take
-        pacing.pause(pacing.SPIN)
+        if not self.ring_units:
+            pacing.pause(pacing.SPIN)
         return len(take)
 
     def close(self):
@@ -152,8 +202,8 @@ class SimStream:
 BASE = 200_000_000
 
 
-def make_sim_device(*, pace=False, calibration=None):
+def make_sim_device(*, pace=False, calibration=None, ring_units=None):
     from h7_cal import Calibration
     cal = calibration or Calibration.load_measured(100)
     c = SimControl()
-    return H7Device(SimStream(c, cal, pace=pace), c, calibration=cal)
+    return H7Device(SimStream(c, cal, pace=pace, ring_units=ring_units), c, calibration=cal)

@@ -350,3 +350,41 @@ def test_a_write_fault_while_playing_halts_the_unit_and_reaches_the_clients_as_a
     seen = c.wait_event("device_error")
     wait_until(lambda: not dev.running, what="the device to stop itself")
     assert dev.mode is None and "playback feed failed" in seen["message"]
+
+
+def _play_for(seconds, slow_write_s=0.0, dac_sps=2_000_000):
+    """Play a waveform into a simulated unit whose ring drains at the DAC rate, and return the ring's underruns."""
+    dev = h7sim.make_sim_device(ring_units=16)
+    if slow_write_s:
+        real = dev._stream.write
+        dev._stream.write = lambda d: (pacing.pause(slow_write_s), real(d))[1]
+    try:
+        dev.start("play", dac_sps=dac_sps, waveform=due_style_waveform(80))
+        pacing.pause(seconds)
+        dev._stream._ring_advance()
+        return dev._stream.ring_underruns
+    finally:
+        dev.close()
+
+
+def test_the_feeder_keeps_a_draining_ring_fed_and_a_slow_writer_underruns_it(h7):
+    """T8: the feeder underruns that were found only on the unit. The simulated ring refuses writes when full and drains at the DAC rate
+    (2 MS/s is 4 MB/s against a 32 KB ring, 8 ms of runway), so a feeder that backs off too long or writes too slowly counts underruns here
+    too. The slowed writer is the positive control: it shows the model can fire."""
+    assert _play_for(0.5) == 0, "the feeder let the ring run dry"
+    assert _play_for(0.5, slow_write_s=0.02) > 0, "the positive control did not underrun: the model cannot show a starved ring"
+
+
+def test_a_unit_that_leaves_the_bus_during_capture_is_reported_and_capture_resumes_when_it_returns(h7):
+    """T8: the boot-loader re-enumeration. Every read of a gone port fails; the daemon must say so to its clients (a device_error) and
+    survive, and frames must flow again when the unit is back, without a restart of the daemon."""
+    srv, c, dev, hello = h7
+    c.subscribe()
+    c.call("start", mode="capture", adc_hz=1_000_000, channels=2)
+    assert c.wait_frames(5, timeout=pacing.NORMAL)
+    dev._stream.detach()
+    err = c.wait_event("device_error")
+    assert "disconnected" in err["message"]
+    before = c.frames_received
+    dev._stream.attach()
+    assert c.wait_frames(before + 5, timeout=pacing.NORMAL), "no frames after the unit came back"
