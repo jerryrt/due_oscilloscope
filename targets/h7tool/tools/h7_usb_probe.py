@@ -80,10 +80,10 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == 'bootloader':
         return fcntl.ioctl(fd, 0xC0185500, Ctrl(0x40, 0x7F, 0x5AA5, 0, 0, 3000, None))
     if len(sys.argv) > 1 and sys.argv[1] == 'dbg':
-        buf = ctypes.create_string_buffer(128)
-        fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x08, 0, 0, 120, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
-        n = 'ep_busy done sent DIEPCTL2 DIEPTSIZ2 DIEPINT2 GINTSTS DOEPCTL2 DOEPINT2 GRXSTSR DAINT DMA2_LISR DMA2_S1CR DMA2_S1NDTR ADC3_ISR ADC3_CR fin alloc ms_now last_frame_ms running dtr SYST_CSR stall_seen DMA2_PAR DMA2_M0AR DMA2_M1AR buf_slot0 buf_slot1 build'.split()
-        print(' '.join(f'{k}={v:#x}' for k, v in zip(n, struct.unpack('<30I', buf.raw[:120])))); return
+        buf = ctypes.create_string_buffer(192)
+        fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x08, 0, 0, 168, 1000, ctypes.cast(buf, ctypes.c_void_p).value))
+        n = 'ep_busy done sent DIEPCTL2 DIEPTSIZ2 DIEPINT2 GINTSTS DOEPCTL2 DOEPINT2 GRXSTSR DAINT DMA2_LISR DMA2_S1CR DMA2_S1NDTR ADC3_ISR ADC3_CR fin alloc ms_now last_frame_ms running dtr SYST_CSR stall_seen DMA2_PAR DMA2_M0AR DMA2_M1AR buf_slot0 buf_slot1 build q_timeouts ep_aborts gin_stop gin_start dis_stop dis_start enA_stop enA_start done_stop done_start out_q_timeouts out_idle_units'.split()      # the fields after build exist from image 17; on an older image they read 0
+        print(' '.join(f'{k}={v:#x}' for k, v in zip(n, struct.unpack('<42I', buf.raw[:168])))); return
     if len(sys.argv) > 1 and sys.argv[1] == 'play':
         buf = ctypes.create_string_buffer(64)
         fcntl.ioctl(fd, 0xC0185500, Ctrl(0xC0, 0x07, 0, 0, 52, 1000, ctypes.cast(buf, ctypes.c_void_p).value))

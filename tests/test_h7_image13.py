@@ -59,16 +59,60 @@ def test_the_image_still_has_both_ways_back_to_the_boot_loader(image):
     assert re.search(r"req == 0x7F[^\n]*\n(?:[^\n]*\n){0,6}[^\n]*return_to_boot_loader\(\)", src), "the vendor request 0x7F must still restart"
 
 
-@pytest.mark.parametrize("image", [p for p in IMAGES if int(os.path.basename(os.path.dirname(p))[5:]) >= 14],
-                         ids=lambda p: os.path.basename(os.path.dirname(p)))
+def _since(n):
+    return [p for p in IMAGES if int(os.path.basename(os.path.dirname(p))[5:]) >= n]
+
+
+def _body(src, name):
+    return re.search(r"^static void %s\([^)]*\)\n\{\n(.*?)^\}" % name, src, re.M | re.S).group(1)
+
+
+@pytest.mark.parametrize("image", _since(14), ids=lambda p: os.path.basename(os.path.dirname(p)))
 def test_the_stream_endpoint_is_quiesced_at_both_ends_of_a_run_and_an_aborted_transfer_is_sent_again(image):
-    """Image 13 left a run's endpoint disable possibly pending; it then killed the next run's first transfer and the unit streamed nothing
-    (15 of 400 starts on the bench, against 1 of 400 with this). The source holds the three parts of the fix; the rate is only measurable on the unit."""
     src = _source(image)
-    body = lambda name: re.search(r"^static void %s\(void\)\n\{\n(.*?)^\}" % name, src, re.M | re.S).group(1)
-    assert "ep2_quiesce();" in body("acq_start") and "ep2_quiesce();" in body("acq_stop")
-    q = body("ep2_quiesce")
-    assert "(1u << 30)" in q, "the endpoint is disabled with EPDIS"
-    assert re.search(r"while \(\(DIEPCTL\(2\) & EPENA\) && ms_now - t < \d+u\) tick\(\);", q), \
-        "the wait for the disable to finish must be against the clock, not a loop count"
-    assert re.search(r"else if \(ep_busy && \(DIEPINT\(2\) & 2u\)\)", body("stream_poll")), "a disabled-not-completed transfer must be sent again"
+    assert re.search(r"ep2_quiesce\([01]?\);", _body(src, "acq_start")) and re.search(r"ep2_quiesce\([01]?\);", _body(src, "acq_stop"))
+    assert re.search(r"else if \(ep_busy && \(DIEPINT\(2\) & 2u\)\)", _body(src, "stream_poll")), "a disabled-not-completed transfer must be sent again"
+
+
+@pytest.mark.parametrize("image", _since(17), ids=lambda p: os.path.basename(os.path.dirname(p)))
+def test_the_in_endpoint_is_disabled_by_the_cores_procedure_and_epdis_is_never_written_to_an_idle_endpoint(image):
+    """Image 14 wrote EPDIS after checking EPENA once, earlier: a transfer that completed on its own in between left EPENA clear, EPDIS latched,
+    and the next transfer was armed with both set - the unit then streamed nothing (1 start in 50-100). The core's procedure is Global IN NAK,
+    wait for it to take effect, look at EPENA AGAIN (nothing can complete now), EPDIS only if it is still set, wait for EPDISD, release the NAK."""
+    q = _body(_source(image), "ep2_quiesce")
+    order = [q.find(x) for x in ("DCTL |= 1u << 7", "GINTSTS & (1u << 6)", "if (DIEPCTL(2) & EPENA) {\n\t\t\tDIEPCTL(2) |= (1u << 30)", "DIEPINT(2) & 2u", "DCTL |= 1u << 8")]
+    assert -1 not in order, f"a step of the procedure is missing: {order}"
+    assert order == sorted(order), "the steps are out of order: SGINAK, GINAKEFF, EPENA again then EPDIS, EPDISD, CGINAK"
+    assert len(re.findall(r"\(1u << 30\)", q)) == 1, "EPDIS must be written in exactly one place, behind the second EPENA check"
+    waits = re.findall(r"^\s*while \((.*)\) tick\(\);", q, re.M)
+    assert len(waits) == 2 and all(re.search(r"ms_now - t < \d+u", w) for w in waits), "both waits (GINAKEFF, EPDISD) must be against the clock"
+    assert "for (uint32_t n" not in q, "no iteration-count wait"
+    assert q.count("ep_q_timeouts++") == 2, "each of the two waits must count its own expiry: an expired wait is never silent"
+
+
+@pytest.mark.parametrize("image", _since(17), ids=lambda p: os.path.basename(os.path.dirname(p)))
+def test_bulk_out_is_drained_when_no_playback_owns_it(image):
+    """The Due's rule: a CDC device keeps draining bulk OUT when nothing uses it. Without it the bytes the host wrote for a stopped playback sit in its write
+    queue and closing the stream port waits for them for ever: a start that never returned, found when the host began closing the port at every run."""
+    src = _source(image)
+    idle = _body(src, "out_idle_poll")
+    assert re.search(r"if \(play_on \|\| config_value != 1\) return;", idle), "idle draining must yield to playback and wait for a configuration"
+    assert "DOEPDMA(2) = PLAY_RING;" in idle and "DOEPCTL(2) |= EPENA | CNAK;" in idle, "the endpoint is re-armed on the (unused) play ring"
+    assert not re.search(r"\bwhile\b|\bfor\b", idle), "constant work per pass (invariant 7): no loop in the drain"
+    loop = src[src.index("	while (RUN_WINDOW_OPEN()) {"):]
+    assert "out_idle_poll();" in loop, "the drain must run in the main loop, every pass"
+    assert "out_quiesce();" in _body(src, "play_start"), "playback must take the endpoint from the drain cleanly"
+    assert "out_quiesce();" in _body(src, "play_stop")
+
+
+@pytest.mark.parametrize("image", _since(17), ids=lambda p: os.path.basename(os.path.dirname(p)))
+def test_the_out_endpoint_is_disabled_by_the_cores_procedure_too(image):
+    """The same latent flaw as the IN side: EPDIS written after one early EPENA check latches on an endpoint whose transfer finished meanwhile. With the idle
+    drain keeping a transfer armed, it would be reached far more often."""
+    q = _body(_source(image), "out_quiesce")
+    order = [q.find(x) for x in ("DCTL |= 1u << 9", "GINTSTS & (1u << 7)", "if (DOEPCTL(2) & EPENA) {\n\t\t\tDOEPCTL(2) |= (1u << 30)", "DOEPINT(2) & 2u", "DCTL |= 1u << 10")]
+    assert -1 not in order and order == sorted(order), f"SGONAK, GONAKEFF, EPENA again then EPDIS, EPDISD, CGONAK, in that order: {order}"
+    assert len(re.findall(r"\(1u << 30\)", q)) == 1
+    waits = re.findall(r"^\s*while \((.*)\) tick\(\);", q, re.M)
+    assert len(waits) == 2 and all(re.search(r"ms_now - t < \d+u", w) for w in waits) and "for (uint32_t n" not in q
+    assert q.count("out_q_timeouts++") == 2, "each wait counts its own expiry"
