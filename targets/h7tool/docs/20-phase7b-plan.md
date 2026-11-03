@@ -120,3 +120,15 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   The "crash" at 19:33 and the loss of the unit at about 20:35 were the 30-minute window of image12a ending, not faults. The gate names the
   boot-loader state instead of "the daemon did not come up". Proven on the unit: opcode armed and the unit enumerated as 0483:5720; the flash
   wrapper's second flash from a running image13a used the opcode and no sudo; the gate passes on it.
+
+## Phase 7 closed (2026-11-02)
+
+7a (control function) and 7b (the H7 behind the daemon and the unchanged GUI) are done, and image 13 replaces the boot-loader timer with a host
+command. What was checked at the close: board-free suite 1249 passed / 18 skipped / 322 deselected; GUI suites 124 passed; the host-compiled
+dispatcher tests 6 passed; the real-Due smoke passes; the H7 gate passes on the real unit with VOUT on CH2 (sine +1.2 %, DC +0.9 % against
+nominal, control replies 0.8 ms median under full load, 0 underruns, 0 gaps). The timer is decided by code review, not by a 30-minute wait: the
+default `RUN_MS` is 0, the run loop tests only `RUN_WINDOW_OPEN()` (constant 1 then), the old 1,800,000 ms constant is absent from the image,
+and `tests/test_h7_image13.py` fails when any of that changes (six mutations tried).
+Open, none blocking: the two-lead loading on VOUT (CH1 and CH2 together read 17-28 % low on build 14; not reproduced since, wiring is CH2
+only), the old tool's 3 % excess on CH1, one unexplained failed start/stop cycle, and the pre-existing flaky
+`test_the_end_of_a_recording_says_so`. Not done: GUI controls for the H7's gain and coupling, and recording and replay of version-4 frames.
