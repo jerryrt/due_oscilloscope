@@ -291,8 +291,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # the measurements follow. That is what a scope's trigger-source
         # selector is, rather than a "which one do I look at" switch.
         self.channel = QtWidgets.QComboBox()
-        for tag, label in sorted(stream.LABELS.items(), reverse=True):
-            self.channel.addItem(label, tag)
+        for tag in stream.channel_order():
+            self.channel.addItem(stream.LABELS[tag], tag)
 
         # `timebase`, not `window`: this module already uses "window" for
         # the FFT window function, and one name for two things in the
@@ -323,11 +323,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # Volts, because that is what the trace is labelled in; the one
         # conversion lives in stream.volts_to_codes.
         self.trig_level = QtWidgets.QDoubleSpinBox()
-        self.trig_level.setRange(0.0, stream.VREF_V)
+        self.trig_level.setRange(*stream.y_range())
         self.trig_level.setDecimals(3)
         self.trig_level.setSingleStep(0.05)
         self.trig_level.setSuffix(" V")
-        self.trig_level.setValue(stream.VREF_V / 2.0)
+        self.trig_level.setValue(sum(stream.y_range()) / 2.0)
 
         # Whether it is actually triggering, which is not the same as
         # what the mode box says. Auto free-runs when it finds no edge,
@@ -493,7 +493,24 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         return self.session.client
 
+    def _apply_format(self, dev):
+        """Take the sample format, channels and defaults from the device's description (docs/20). A Due's description has none of
+        those keys and gets the Due's, so this changes nothing for it; any other device rebuilds the widgets that fixed a scale."""
+        fmt = stream.format_from_description(dev)
+        self._defaults = dict(dev.get("defaults") or {})
+        self._device_is_due = fmt is stream.DUE_FORMAT
+        if fmt is stream.current_format() and self.channel.count() == len(fmt.labels):
+            return
+        stream.set_format(fmt)
+        self.channel.clear()
+        for tag in stream.channel_order():
+            self.channel.addItem(stream.LABELS[tag], tag)
+        self.trig_level.setRange(*stream.y_range())
+        self.trig_level.setValue(sum(stream.y_range()) / 2.0)
+        self.scope.apply_format()
+
     def _on_connected(self, dev, role):
+        self._apply_format(dev)
         self._hb_seen = 0
         self.health.set("link", f"{self.host}:{self.port}")
         self.health.set("source", describe_source(dev))
@@ -616,9 +633,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # No preset and no rate when the source is a recording: it has
         # one rate, it is in the frames, and asking for another would be
         # asking the file to convert.
+        defaults = getattr(self, "_defaults", {})
         extra = ({} if self.replaying else
-                 {"preset": self.preset.currentData(),
-                  "adc_hz": 200000, "channels": 2})
+                 {"preset": self.preset.currentData() if getattr(self, "_device_is_due", True) else None,
+                  "adc_hz": defaults.get("adc_hz", 200000), "channels": defaults.get("channels", 2)})
         if self.session.call("start", mode="capture", **extra) is None:
             return
         # And say what is now running: the status bar is the other

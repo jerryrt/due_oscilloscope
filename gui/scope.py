@@ -23,6 +23,8 @@ from . import stream
 #: screenshot pasted into a message - which is what happens to every
 #: trace in this project's history.
 CHANNEL_COLOURS = {7: "#2e86de", 6: "#e67e22"}
+#: Colours for the channels of a device that is not a Due, by position: the first two match the Due's pair.
+PALETTE = ["#2e86de", "#e67e22", "#27ae60", "#8e44ad"]
 
 
 class ScopeView(QtWidgets.QWidget):
@@ -33,7 +35,7 @@ class ScopeView(QtWidgets.QWidget):
         self.plot.setLabel("left", "Volts")
         self.plot.setLabel("bottom", "Time", units="s")
         self.plot.showGrid(x=True, y=True, alpha=0.25)
-        self.plot.setYRange(0.0, stream.VREF_V)
+        self.plot.setYRange(*stream.y_range())
         # connect="finite" is what makes a NaN a break in the line
         # rather than a point at zero.
         #
@@ -45,12 +47,7 @@ class ScopeView(QtWidgets.QWidget):
         # console says "A1 must read flat, or demux is wrong" - neither
         # is checkable on a display that shows one channel at a time.
         self.curves = {}
-        for tag, colour in CHANNEL_COLOURS.items():
-            self.curves[tag] = self.plot.plot(
-                pen=pg.mkPen(colour, width=1), connect="finite",
-                name=stream.LABELS.get(tag, str(tag)))
-        # The source channel's curve, for callers that still want one.
-        self.curve = self.curves[stream.CH_A0]
+        self._build_curves()
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(self.plot)
@@ -84,8 +81,28 @@ class ScopeView(QtWidgets.QWidget):
             pen=pg.mkPen("#c0392b", width=1, style=QtCore.Qt.DashLine),
             hoverPen=pg.mkPen("#c0392b", width=2))
         self.trig_line.setZValue(11)
-        self.trig_line.setBounds([0.0, stream.VREF_V])
+        self.trig_line.setBounds(list(stream.y_range()))
         self.trig_line_on = False
+
+    def _build_curves(self):
+        """One curve per channel of the current format. For the Due that is A0 then A1 with their colours, as it always was."""
+        for i, tag in enumerate(stream.channel_order()):
+            colour = CHANNEL_COLOURS.get(tag) or PALETTE[i % len(PALETTE)]
+            self.curves[tag] = self.plot.plot(
+                pen=pg.mkPen(colour, width=1), connect="finite",
+                name=stream.LABELS.get(tag, str(tag)))
+        # The source channel's curve, for callers that still want one.
+        self.curve = self.curves[stream.CH_A0]
+
+    def apply_format(self):
+        """The attached device is not the one this view was built for: redraw its channels and its span."""
+        for curve in self.curves.values():
+            self.plot.removeItem(curve)
+        self.curves.clear()
+        self._build_curves()
+        self._view = None                      # force the axes to be set again on the next draw
+        self.plot.setYRange(*stream.y_range())
+        self.trig_line.setBounds(list(stream.y_range()))
 
     def set_cursors(self, on):
         """Show or hide the pair, placing them somewhere useful.
@@ -203,7 +220,7 @@ class ScopeView(QtWidgets.QWidget):
         self._view = "time"
         self.plot.setLabel("left", "Volts")
         self.plot.setLabel("bottom", "Time", units="s")
-        self.plot.setYRange(0.0, stream.VREF_V)
+        self.plot.setYRange(*stream.y_range())
         self.plot.setTitle(None)
 
     def _draw_xy(self, rings, source, ring, sweep):
@@ -217,8 +234,8 @@ class ScopeView(QtWidgets.QWidget):
                                f"{stream.LABELS.get(source, source)} (V)")
             self.plot.setLabel("left",
                                f"{stream.LABELS.get(other_tag, other_tag)} (V)")
-            self.plot.setXRange(0.0, stream.VREF_V, padding=0)
-            self.plot.setYRange(0.0, stream.VREF_V)
+            self.plot.setXRange(*stream.y_range(), padding=0)
+            self.plot.setYRange(*stream.y_range())
         for tag, curve in self.curves.items():
             if tag != source:
                 curve.setData([], [])

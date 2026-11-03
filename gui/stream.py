@@ -121,6 +121,16 @@ def current_format():
     return _format
 
 
+def y_range():
+    """The volts a plot of the current device's channels should span: the Due's 0 to VREF_V, or the H7's bipolar range."""
+    return (_format.y_lo, _format.y_hi)
+
+
+def channel_order():
+    """Channel ids in the order they are listed and drawn: the Due's descending (A0, A1), another device's ascending."""
+    return sorted(LABELS, reverse=(_format is DUE_FORMAT))
+
+
 class Frame:
     """One decoded frame. Samples stay as codes; volts are a view."""
 

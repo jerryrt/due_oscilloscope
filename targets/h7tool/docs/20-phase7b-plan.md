@@ -48,7 +48,7 @@ Each step that touches shared code first runs the whole board-free suite and com
 - **7b-2 `H7Device` against a simulated unit (done: host/daemon/h7device.py, h7sim.py, tests/test_h7device.py).** A simulated transport that runs the *compiled firmware dispatcher* (`ctl_h7.c`, the same code
   as on the unit) behind the device class and emits synthetic version-4 frames, so daemon API tests, the start/stop/rate paths and the
   swing-cap refusal run board-free through the real control code. Extends `FakeDevice`'s style; no `if h7` in the server.
-- **7b-3 GUI with the simulated unit.** `python -m gui` on the simulated H7 draws CH1 and CH2 with volts, labels and rates correct.
+- **7b-3 GUI with the simulated unit (done: gui/app.py, scope.py, stream.py; daemon --fake-h7, gui --spawn-fake-h7; tests/test_gui_h7.py).** `python -m gui` on the simulated H7 draws CH1 and CH2 with volts, labels and rates correct.
 - **7b-4 Discovery and the daemon entry.** `--device auto|due|h7` in `daemon/__main__.py`; `auto` tries the Due board then the H7.
 - **7b-5 Board gate (the Phase 7 gate).** `python -m daemon` on the real unit, an unmodified client and the GUI get a trace; a DC level
   from VOUT reads right in volts (host plays the code, the daemon captures it on the other channel); stop/start and restart cycles clean;
@@ -83,3 +83,14 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   the control lock on every read and starved the start request (a real stream read never touches the control channel); an over-strict "no
   frame after stop" assertion (frames already in flight legitimately arrive; the property is that the stream stops within a bound and stays
   stopped); and bare-number sleeps that the repo's pacing guard rejected.
+- 7b-3: the window takes the device's format, channels and defaults from its description on connect (`_apply_format`): channel selector,
+  trigger range, plot spans and curves are rebuilt from it, a Due's description (no `sample` key) leaves everything as it was, and the start
+  sends the device's own defaults and no Due preset. Three GUI tests on a simulated H7 (CH1 and CH2 drawn, volts recovered to 4 mV through
+  each channel's own calibration, the Due format restored); breaking the per-channel calibration or the format application fails them.
+  GUI suite 118 -> 121 passed; board-free 1239 passed / 18 skipped (the new GUI-H7 file needs numpy and skips in that venv) / 322 deselected;
+  the real Due smoke passes.
+  **A pre-existing flaky test**, found by the guard and measured rather than assumed: `tests/test_gui.py::test_the_end_of_a_recording_says_so`
+  failed once in a combined GUI run. Run alone it fails 6 times in 40 at `bd9c558`, a checkout with none of the H7 host or GUI changes, 2 in 30
+  at `6489e20`, and 0 in 30 on the current tree: roughly 5-15 % per run on every tree, so not caused by this work and not fixed by it
+  (`device_running` is still true when it checks). Until it is understood, a lone failure of that test in a GUI-suite run is rerun, never
+  counted as a regression or waved through.

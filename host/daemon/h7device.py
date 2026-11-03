@@ -177,6 +177,7 @@ class H7Device(Device):
                            "identity": {"fw": f"{ma}.{mi}.{pa}", "build": build.rstrip(b"\x00").decode("ascii", "replace"), "mck_hz": mck, "adc_clock_hz": adc},
                            "sample": {"bits": 16, "layout": "planar", "full_scale_codes": 65535},
                            "channels": chans,
+                           "defaults": {"adc_hz": 1_000_000, "channels": 2},
                            "options": {"gain": list(range(8)), "coupling": ["dc", "ac"], "swing_limit_codes": h7_awg.SWING_LIMIT_CODES}}
         return dict(self._described)
 

@@ -35,6 +35,8 @@ def main(argv=None):
     ap.add_argument("--port", type=int, default=45454)
     ap.add_argument("--spawn-fake", action="store_true",
                     help="start a synthetic daemon and connect to it")
+    ap.add_argument("--spawn-fake-h7", action="store_true",
+                    help="start a simulated H7 target (needs a host C compiler) and connect to it")
     ap.add_argument("--spawn-file", metavar="PATH",
                     help="start a daemon replaying this recording, and "
                          "connect to it")
@@ -43,14 +45,16 @@ def main(argv=None):
                          "at its end")
     args = ap.parse_args(argv)
 
-    if args.spawn_fake and args.spawn_file:
-        ap.error("--spawn-fake and --spawn-file are two different sources; "
-                 "pick one")
+    if sum(map(bool, (args.spawn_fake, args.spawn_file, args.spawn_fake_h7))) > 1:
+        ap.error("--spawn-fake, --spawn-fake-h7 and --spawn-file are different "
+                 "sources; pick one")
 
     child = None
     argv_daemon = None
     if args.spawn_fake:
         argv_daemon = ["--fake", "--pace"]
+    elif args.spawn_fake_h7:
+        argv_daemon = ["--fake-h7"]
     elif args.spawn_file:
         # An absolute path, because the daemon is started with its cwd
         # in host/ and a relative one would resolve somewhere the user

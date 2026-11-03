@@ -36,6 +36,9 @@ def main(argv=None):
     ap.add_argument("--port", type=int, default=srvmod.DEFAULT_PORT)
     ap.add_argument("--fake", action="store_true",
                     help="serve synthetic frames instead of a board")
+    ap.add_argument("--fake-h7", action="store_true",
+                    help="serve a simulated H7 target (the real control dispatcher "
+                         "compiled for the host; needs a host C compiler)")
     ap.add_argument("--pace", action="store_true",
                     help="with --fake, produce frames at the claimed rate")
     ap.add_argument("--file", metavar="PATH",
@@ -56,10 +59,16 @@ def main(argv=None):
                          "makes no cycles and refcounting frees promptly")
     args = ap.parse_args(argv)
 
-    if args.fake and args.file:
-        ap.error("--fake and --file are two different sources; pick one")
+    if sum(map(bool, (args.fake, args.file, args.fake_h7))) > 1:
+        ap.error("--fake, --fake-h7 and --file are different sources; pick one")
 
-    if args.fake:
+    if args.fake_h7:
+        from daemon import h7sim
+        if not h7sim.available():
+            print("--fake-h7 needs a host C compiler (gcc or cc) to build the simulated unit", file=sys.stderr)
+            return 2
+        dev = h7sim.make_sim_device(pace=True)
+    elif args.fake:
         dev = devmod.FakeDevice(pace=args.pace)
     elif args.file:
         # Constructed here rather than lazily, so a missing file, an
