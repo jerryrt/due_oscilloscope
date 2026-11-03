@@ -1,6 +1,8 @@
 import os, struct, sys
 import pytest
-sys.path.insert(0, os.path.dirname(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TOOLS = os.path.join(ROOT, "targets", "h7tool", "tools")      # the H7 target's tools; its tests live here with the Due's (docs/testing.md)
+sys.path.insert(0, TOOLS)
 import h7_awg as a
 
 

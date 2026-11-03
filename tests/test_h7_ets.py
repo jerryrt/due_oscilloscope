@@ -1,7 +1,10 @@
 import math, os, struct, sys, zlib
 import pytest
+
 np = pytest.importorskip('numpy', reason='needs the venv with numpy (.venv-gui); a skip here is NOT a pass')
-sys.path.insert(0, os.path.dirname(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TOOLS = os.path.join(ROOT, "targets", "h7tool", "tools")      # the H7 target's tools; its tests live here with the Due's (docs/testing.md)
+sys.path.insert(0, TOOLS)
 import h7_ets as e
 
 

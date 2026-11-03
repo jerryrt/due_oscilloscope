@@ -78,6 +78,21 @@ going quietly empty while every tier stays green.
 The GUI tests are the other host-only set, for a different reason: they
 need the PySide6 venv, which no container carries.
 
+**The H7 target's tests are managed the same way, in `tests/`.** They were
+once next to the tools in `targets/h7tool/tools/`, where no tier collected them
+(`testpaths` is `tests`, and the container selects from there), so 55 passing
+tests never gated anything. They are `tests/test_h7_*.py` now: the control
+dispatcher compiled for the host and parsed by `host/control.py`, the
+swing cap and waveforms, the calibration, the extended-time-sampling
+reconstruction, the metrics, the records, the stream checker and the image
+checker, plus the device class and GUI tests that run on a simulated unit.
+Two of them (`test_h7_ets.py`, `test_h7_metrics.py`) need numpy and skip in the
+plain venv with the same "wrong venv" reason as `test_gui.py`; that skip is
+not a pass. The image checker's positive control reads the vendor image
+from outside the repository and skips, naming the file, where it is absent.
+A test for the H7 that lives anywhere else is not part of any tier, so
+put it in `tests/`.
+
 **Board-free is the per-change loop.** It is about a minute and a half,
 needs no hardware, and it is the tier that catches the class of thing
 that otherwise hides: two failures in `test_banner_order.py` cost 0.05 s

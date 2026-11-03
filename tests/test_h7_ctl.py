@@ -4,7 +4,8 @@ without one every test here SKIPS, which is not a pass (docs/testing.md)."""
 import ctypes, os, shutil, struct, subprocess, sys, zlib
 import pytest
 
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.join(ROOT, "targets", "h7tool", "tools")      # h7_ctl_stub.c lives with the tools
 sys.path.insert(0, os.path.join(ROOT, "host"))
 import control as ctl
 

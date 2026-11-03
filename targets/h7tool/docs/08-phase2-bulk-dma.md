@@ -16,7 +16,7 @@ TX4 128.
 
 ## Host check
 `tools/h7_stream_check.py` reads the port and checks magic, version, header CRC,
-sequence continuity and the payload; `tools/test_stream_check.py` holds seven
+sequence continuity and the payload; `tests/test_h7_stream_check.py` holds seven
 tests that corrupt a byte of header or payload, drop a frame, mislabel the
 version, restart a run and feed nothing, each of which must be detected.
 `tools/h7_usb_probe.py stats` reads the device's own counters.

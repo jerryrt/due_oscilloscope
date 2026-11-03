@@ -159,7 +159,7 @@ stop, record.
 | # | gap | work |
 |---|---|---|
 | T1 | no way to say "run what the attached hardware allows": the Due's tests skip as "no board" and the H7 has no pytest tests at all (its real-unit checks are `measure/h7_daemon_gate.py`) | detect devices without opening a port (Due 2341:003D/003E, H7 1209:0001 with interfaces 0 and 2, boot loader 0483:5720), print one summary line at the start ("Due: track B on ..., H7: absent, boot loader"), mark real-unit tests `due` and `h7`, skip each with a reason that names the missing device and counts them separately, and keep `--require-board` and a new `--require-h7` as failures, so a skip is never read as a pass |
-| T2 | the eight test files under `targets/h7tool/tools` (55 tests, all pass) are collected by no tier: `testpaths` is `tests` and `docker/run-ci.sh` does not name them | collect them (the numpy ones in the GUI tier) and show the count in the CI report |
+| T2 | **done (first step of part 2):** the eight test files under `targets/h7tool/tools` (55 tests) were collected by no tier. They are `tests/test_h7_*.py` now and under the same guards (encoding, pacing, platform marker); two need numpy and skip in the plain venv like the GUI tests; the board-free tier went from 1249 to 1288 passed | done; docs/testing.md says where H7 tests live |
 | T3 | the gate's stages run only by hand | turn them into `h7`-marked tests that skip when the unit is absent or in the boot loader (with that state named) |
 | T4 | GUI-on-H7 tests cover three things (format, defaults, restore) | add XY, spectrum, measure labels, generator mapping and refusal, preset, trigger on CH2, cursors, record and export with the dialog patched, replay |
 | T5 | record then replay of version-4 frames has no test | round trip through `FileDevice` and the window |
@@ -178,3 +178,10 @@ stop, record.
 
 Needs the owner: a reference voltage for G7, and whether H7 and Due tests should ever run in one invocation when both are attached (T1 proposes yes, each
 only against its own device).
+
+### Part 2, step 1 done: the H7's tests are managed like the Due's
+`tests/test_h7_*.py` (eight files moved from `targets/h7tool/tools`) are collected by the board-free tier and the container's gate, under the same
+guards. Board-free: 1289 passed / 20 skipped / 322 deselected in the plain venv (was 1249), the platform tier 18 passed, the Due smoke passes; the moved
+tests still catch a broken swing cap (5 failures). **Found by running the whole board-free tier in the GUI venv, which had not been done:**
+`test_metrics.py::test_a_legacy_stamp_still_resolves_by_wall_clock` fails there ("latest, unmatched build stamp") and passes alone and in the plain
+venv; it fails the same way at `9dd0c5c`, before any of this work, so it is an order-dependent test that predates it *(cause not found)*.

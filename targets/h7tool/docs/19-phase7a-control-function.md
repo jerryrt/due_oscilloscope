@@ -22,7 +22,7 @@ A Due answers `CTL_ERR_OPCODE` to the 0x40 range, which is what a host should se
 capability list): GEN, OCCUPANCY, RATE_TRACE, STREAM_STATS, LOAD, BENCH, TEMP and the heartbeat.
 
 ## Tests
-- `tools/test_h7_ctl.py` compiles `ctl_h7.c` on the host with stub hooks and drives it with `host/control.py`'s own encoder and decoder:
+- `tests/test_h7_ctl.py` compiles `ctl_h7.c` on the host with stub hooks and drives it with `host/control.py`'s own encoder and decoder:
   identity, capability, counters, config round trip, range and busy, status size, and a bad CRC, version, length, opcode and non-frame
   all refused and never acted on. Removing the CRC check fails one. Without a host C compiler these SKIP; a skip is not a pass.
   It found a real bug on the way: the IDENTITY reply is 42 bytes and only 40 were cleared, so two bytes of stack leaked into the build string.
