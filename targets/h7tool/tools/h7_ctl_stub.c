@@ -26,3 +26,5 @@ void h7_get_status(h7_status_t *s)
 	s->running = (uint8_t)running; s->playing = (uint8_t)playing; s->chmask = cfg.chmask;
 	s->adc_period = cfg.adc_period; s->dac_period = cfg.dac_period; s->frames = 1000; s->sent = 998; s->lost = 2; s->build = 13;
 }
+int stub_boot_requests;
+int h7_request_bootloader(void) { stub_boot_requests++; return 1; }

@@ -10,7 +10,8 @@ from a source or measured.
 Invariants 1, 2, 5, 6, 7 and 8 of `CLAUDE.md` apply. Invariant 1 reads
 "the CPU never touches sample data, and the buffers are non-cacheable"
 (M7 data cache). Every image keeps the timer return to the boot loader
-until a USB command can do it. Safety rules for flashing: `README.md`.
+until a USB command can do it; from image 13 the command exists (control opcode 0x0044, docs/19) and the timer is off by default,
+by the owner's decision of 2026-11-02. Safety rules for flashing: `README.md`.
 
 ## Identity
 USB 2.0 high speed, one port, composite device with a sample-stream

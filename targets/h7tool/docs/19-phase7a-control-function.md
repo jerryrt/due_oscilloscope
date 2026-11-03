@@ -17,6 +17,7 @@ one definition of the frame and `host/control.py` parses the replies unchanged.
 | 0x0041 RUN | 1 start / 0 stop acquisition; acquisition runs while DTR is up OR a RUN is set |
 | 0x0042 PLAY | cmd 1 (with prime units 1-8) / 0 playback |
 | 0x0043 STATUS | 72 bytes: running, playing, timer, channels, both periods and every acquisition and playback counter |
+| 0x0044 BOOTLOADER | body: the four bytes `BOOT`. Stops everything, replies u8 1, and 20 ms later restarts into the stock boot loader (image 13 and later). Any other body is LENGTH and does nothing; an image without the path answers OPCODE (image 12) or BUSY (a weak default in the dispatcher) |
 A Due answers `CTL_ERR_OPCODE` to the 0x40 range, which is what a host should see. Not implemented here (and so absent from the
 capability list): GEN, OCCUPANCY, RATE_TRACE, STREAM_STATS, LOAD, BENCH, TEMP and the heartbeat.
 
@@ -33,3 +34,12 @@ capability list): GEN, OCCUPANCY, RATE_TRACE, STREAM_STATS, LOAD, BENCH, TEMP an
 The host stack: the daemon still cannot start this unit (it needs a console and the Due's VID/PID and rate model), the GUI decodes a
 12-bit tag, and `measure.py`'s identity regex accepts only tracks A-C (docs/20, stage 7b). The control channel under load (a control
 request while playback and acquisition both run at full rate) is untested.
+
+## Leaving the boot loader is a host command (image 13)
+
+Images up to 12 returned to the boot loader on a timer (`RUN_MS`, 30 minutes on the bench image) so that a fault could not strand the unit.
+Image 13 has no timer by default (`RUN_MS` = 0; `-DRUN_MS=n` restores it) and returns when asked: control opcode 0x0044 with the body `BOOT`
+(`tools/h7_to_bootloader.py`, no root), or the vendor request OUT 0x7F as before. `tools/h7_flash_wait.sh` tries the control opcode first and
+falls back to the vendor request for older images. What no longer protects a bench: a hung image does not come back by itself, and recovering one
+is the stock boot-loader enable sequence at the unit. The timer's first visible effect was a unit that stopped answering 30 minutes after a
+flash and looked like a crash.

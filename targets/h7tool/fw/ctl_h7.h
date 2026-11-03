@@ -18,6 +18,8 @@
 #define H7_OP_RUN     0x0041u   /* u8: 1 start acquisition, 0 stop; reply u8 running */
 #define H7_OP_PLAY    0x0042u   /* u8 cmd (1 start, 0 stop), u8 prime units; reply u8 playing */
 #define H7_OP_STATUS  0x0043u   /* what is running and every counter */
+#define H7_OP_BOOTLOADER 0x0044u  /* body: the 4 bytes "BOOT". Stops everything, replies u8 1, then restarts into the boot loader.
+                                   * An image that cannot answers CTL_ERR_BUSY; a wrong body is CTL_ERR_LENGTH and does nothing. */
 
 typedef struct __attribute__((packed)) {
 	uint32_t adc_period;    /* TIM3 ticks per sample at 200 MHz; >= 80 (2.5 Msps), the proven bound */
@@ -46,6 +48,9 @@ int      h7_set_config(const h7_config_t *c);   /* 0 ok, -1 not while running, -
 int      h7_run(int on);                        /* returns running */
 int      h7_play(int cmd, unsigned prime);      /* returns playing; -1 refused */
 void     h7_get_status(h7_status_t *s);
+/* Arm a restart into the boot loader a few milliseconds from now, after this reply has gone out. Returns 1 when armed, 0 when the
+ * image has no such path (the weak default in ctl_h7.c). */
+int      h7_request_bootloader(void);
 
 /*
  * Handle one received packet: `n` bytes at `rx`. Writes the reply into `tx` (at least CTL_HDR_BYTES + CTL_MAX_PAYLOAD

@@ -113,3 +113,10 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   nominal and nothing is known to have changed *(cause not found; check the two-lead junction)*. The 3 % excess of the old tool on CH1 over
   its recorded 0.599 V is unexplained *(check)*.
   A cycle of the ten failed once in one run (not reproduced in 40 more) and is unexplained *(check)*.
+- Bench wiring from 2026-11-02 evening: VOUT to CH2 only (the owner's choice, simpler and more stable); the gate defaults to it. The two-lead
+  loading above was not bisected: the last good two-lead data (17:00) is firmware build 13 (image11m) and every low reading is build 14
+  (image12a, committed 17:13), so if both leads are used again the first test is image11m against image12a on the same wiring *(check)*.
+- Image 13 (build 15): no self-timed return to the boot loader by default, and control opcode 0x0044 `BOOT` restarts into it (docs/19).
+  The "crash" at 19:33 and the loss of the unit at about 20:35 were the 30-minute window of image12a ending, not faults. The gate names the
+  boot-loader state instead of "the daemon did not come up". Proven on the unit: opcode armed and the unit enumerated as 0483:5720; the flash
+  wrapper's second flash from a running image13a used the opcode and no sudo; the gate passes on it.

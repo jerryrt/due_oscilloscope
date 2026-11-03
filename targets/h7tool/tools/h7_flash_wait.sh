@@ -6,7 +6,8 @@
 set -e
 D=$(dirname "$0"); U=$D/../../../../h7tool_usb_control/scripts
 if lsusb -d 1209:0001 >/dev/null 2>&1; then
-	sudo -n python3 "$D/h7_usb_probe.py" bootloader >/dev/null 2>&1 || true
+	# image 13 and later: ask over the control function (no root); earlier images, or a refusal, fall back to the vendor request
+	"$D/../../../.venv/bin/python" "$D/h7_to_bootloader.py" >/dev/null 2>&1 || sudo -n python3 "$D/h7_usb_probe.py" bootloader >/dev/null 2>&1 || true
 fi
 for i in $(seq 1 330); do lsusb -d 0483:5720 >/dev/null 2>&1 && break; sleep 1; done
 lsusb -d 0483:5720 >/dev/null 2>&1 || { echo "unit never reached the boot loader"; exit 1; }

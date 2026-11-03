@@ -42,7 +42,7 @@ def test_ping_identity_and_capability_parse_with_the_hosts_own_parser(lib):
     assert (ma, mi, pa) == (0, 1, 0) and mck == 200_000_000 and adc == 25_000_000 and build.rstrip(b"\0") == b"h7-build-13"
     f = call(lib, ctl.OP_CAPABILITY); n, = struct.unpack_from("<H", f.payload)
     ops = set(struct.unpack_from("<%dH" % n, f.payload, 2))
-    assert ops == {1, 2, 3, 0x20, 0x40, 0x41, 0x42, 0x43}
+    assert ops == {1, 2, 3, 0x20, 0x40, 0x41, 0x42, 0x43, 0x44}
 
 
 def test_counters_have_the_dues_fifteen_word_layout(lib):
@@ -85,3 +85,12 @@ def test_a_bad_crc_version_length_opcode_or_a_non_frame_is_refused_never_acted_o
     assert ask(lib, f[:10]) == b""                              # shorter than a header
     short = ctl.encode(0x40, 1, b"\0" * 16)[:-4]                # header says 16, only 12 bytes follow
     reply, _ = ctl.decode(ask(lib, short)); assert reply.is_error and reply.error[0] == 3
+
+
+def test_bootloader_request_needs_the_exact_word_and_is_otherwise_refused_without_acting(lib):
+    n0 = ctypes.c_int.in_dll(lib, "stub_boot_requests").value
+    for body in (b"", b"BOO", b"BOOTS", b"boot", b"BOOK"):
+        assert call_err(lib, 0x44, body) == 3                                  # CTL_ERR_LENGTH, and nothing armed
+    assert ctypes.c_int.in_dll(lib, "stub_boot_requests").value == n0
+    assert call(lib, 0x44, b"BOOT").payload == b"\x01"                        # armed, replied first
+    assert ctypes.c_int.in_dll(lib, "stub_boot_requests").value == n0 + 1

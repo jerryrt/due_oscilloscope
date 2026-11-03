@@ -41,6 +41,9 @@ static void put_config(uint8_t *b, const h7_config_t *c)
 	put16(b + 12, c->gen_center); put16(b + 14, c->reserved);
 }
 
+/* An image without a restart path (image 12 and earlier) still links: the opcode then answers BUSY instead of pretending. */
+__attribute__((weak)) int h7_request_bootloader(void) { return 0; }
+
 size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 {
 	if (n < CTL_HDR_BYTES || rx[0] != CTL_MAGIC0 || rx[1] != CTL_MAGIC1 || rx[2] != CTL_MAGIC2 || rx[3] != CTL_MAGIC3)
@@ -77,7 +80,7 @@ size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 	}
 	case CTL_OP_CAPABILITY: {
 		static const uint16_t ops[] = { CTL_OP_PING, CTL_OP_IDENTITY, CTL_OP_CAPABILITY, CTL_OP_COUNTERS,
-		                                H7_OP_CONFIG, H7_OP_RUN, H7_OP_PLAY, H7_OP_STATUS };
+		                                H7_OP_CONFIG, H7_OP_RUN, H7_OP_PLAY, H7_OP_STATUS, H7_OP_BOOTLOADER };
 		if (len) return error(tx, req_id, opcode, CTL_ERR_LENGTH, "capability takes no body");
 		put16(b, sizeof ops / sizeof ops[0]);
 		for (unsigned i = 0; i < sizeof ops / sizeof ops[0]; i++) put16(b + 2 + 2 * i, ops[i]);
@@ -122,6 +125,11 @@ size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 		memcpy(b + 4, (const uint8_t *)&s + 4, 68);          /* the 17 words after the four bytes, little endian as in memory */
 		return respond(tx, req_id, opcode, 0, b, 4 + 68);
 	}
+	case H7_OP_BOOTLOADER:
+		if (len != 4 || memcmp(p, "BOOT", 4) != 0) return error(tx, req_id, opcode, CTL_ERR_LENGTH, "bootloader takes the 4 bytes BOOT");
+		if (!h7_request_bootloader()) return error(tx, req_id, opcode, CTL_ERR_BUSY, "this image cannot restart into the boot loader");
+		b[0] = 1;
+		return respond(tx, req_id, opcode, 0, b, 1);
 	default:
 		return error(tx, req_id, opcode, CTL_ERR_OPCODE, "opcode");
 	}
