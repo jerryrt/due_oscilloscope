@@ -257,7 +257,7 @@ class ScopeView(QtWidgets.QWidget):
         self.curve = self.curves[source]
         return int(sweep.samples.size)
 
-    def _draw_spectrum(self, sweep, rate_hz, fft_window):
+    def _draw_spectrum(self, source, sweep, rate_hz, fft_window):
         """The spectrum, or the reason there is not one.
 
         A refusal blanks the curve and writes why across the plot. It
@@ -272,6 +272,12 @@ class ScopeView(QtWidgets.QWidget):
             self.plot.setLabel("bottom", "Frequency", units="Hz")
             self.plot.setYRange(-120.0, 0.0)
 
+        # One spectrum, of the source, on the source's own curve. The other channels' curves still hold their time-domain traces from
+        # the last time view and would be drawn on the frequency axis, so they are blanked.
+        for tag, other in self.curves.items():
+            if tag != source:
+                other.setData([], [])
+        self.curve = self.curves[source]
         freqs, db, note = stream.spectrum(sweep, rate_hz, fft_window)
         if freqs is None:
             self.curve.setData([], [])
@@ -306,7 +312,7 @@ class ScopeView(QtWidgets.QWidget):
         if not sweep.empty:
             self.last_sweep = sweep
         if view == "spectrum":
-            return self._draw_spectrum(sweep, rate_hz, fft_window)
+            return self._draw_spectrum(source, sweep, rate_hz, fft_window)
         if view == "xy":
             return self._draw_xy(rings, source, ring, sweep)
         self._axes_for_time()

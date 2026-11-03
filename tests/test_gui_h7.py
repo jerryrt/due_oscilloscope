@@ -191,3 +191,66 @@ def test_the_inputs_panel_sets_gain_and_coupling_and_the_volts_follow_the_gain_i
     assert pump(qapp, lambda: stream.y_range()[1] < 4.0), "the plot range did not shrink to the gains in force (2 and 4)"
     w._apply_format({"kind": "board"})
     assert not w.inputs.isVisibleTo(w) and w.inputs.options() == {}
+
+
+def test_the_spectrum_view_shows_the_selected_channel_only_and_nothing_stale_from_the_time_view(qapp, h7win):
+    """G5: the spectrum is of the selected channel on a Due too (one source, one curve). On an H7 the other channel's curve still held its
+    time-domain trace, drawn on the frequency axis, and `self.curve` stayed on whatever channel was last the source."""
+    w, srv = h7win
+    connect(qapp, w)
+    w.start_capture()
+    w.client.wait_frames(20, timeout=pacing.NORMAL)
+    w.tick()
+    assert len(w.scope.trace(1)[0]) > 0 and len(w.scope.trace(2)[0]) > 0          # the time view drew both
+    w.channel.setCurrentIndex(1)                                                  # CH2 is the source
+    w.view_box.setCurrentIndex(1)                                                 # Spectrum
+    w.tick()
+    f2, db2 = w.scope.trace(2)
+    assert f2 is not None and len(f2) > 0 and float(np.max(f2)) > 1000.0, "CH2's spectrum was not drawn on CH2's own curve"
+    f1 = w.scope.trace(1)[0]
+    assert f1 is None or len(f1) == 0, "CH1 still holds its time-domain trace on the frequency axis"
+
+
+def test_record_export_and_replay_of_an_h7_stream_keep_its_format_with_the_file_dialogs_patched(qapp, h7win, tmp_path, monkeypatch):
+    """G9, T5: record and CSV export open a native file dialog, which hangs a headless run; the dialogs are patched to return a path. The
+    recording of version-4 frames then replays through the daemon's FileDevice and the window comes up as an H7 again, volts and all."""
+    w, srv = h7win
+    rec, csv = str(tmp_path / "h7.due"), str(tmp_path / "sweep.csv")
+    dialogs = iter([(rec, ""), (csv, "")])
+    monkeypatch.setattr(QtWidgets.QFileDialog, "getSaveFileName", lambda *a, **k: next(dialogs))
+    connect(qapp, w)
+    w.start_capture()
+    assert pump(qapp, lambda: w.act_record.isEnabled())
+    w.act_record.setChecked(True)                                           # the action's toggled signal calls toggle_record
+    w.client.wait_frames(30, timeout=pacing.NORMAL)
+    w.act_record.setChecked(False)
+    assert os.path.getsize(rec) > 0, "the recording is empty"
+    w.tick(); w.export_csv()
+    lines = open(csv, encoding="utf-8").read().splitlines()
+    assert len(lines) > 10 and any("CH1" in l for l in lines[:12]), lines[:6]
+    stream.set_format(stream.DUE_FORMAT)                                    # a fresh window state: the replay must bring the H7 back itself
+    w._apply_format({"kind": "board"})
+    w.replay(rec)
+    # a replay's description says kind "file", so the format is recognised by what it carries: two labelled 16-bit channels in volts
+    assert pump(qapp, lambda: stream.LABELS == {1: "CH1", 2: "CH2"}, timeout=pacing.NORMAL), "the replay of an H7 recording did not bring back the H7's channels"
+    assert stream.FULL_SCALE_CODES == 65535 and stream.y_range()[1] > 14
+    w.start_capture()
+    assert w.client.wait_frames(5, timeout=pacing.NORMAL), "the replay served no frames"
+    w.tick()
+    assert set(w.scope.curves) == {1, 2} and w.rings[1].filled > 0
+    w._stop_replay_child()
+
+
+def test_the_trigger_level_is_converted_with_the_source_channels_own_calibration(qapp, h7win):
+    """T4: `trigger()` turned the level in volts into codes with the lowest channel's zero and scale, whatever the source. CH2's zero is 26
+    codes from CH1's, and at different gains the scales differ by the gain ratio, so a CH2 trigger at 0.5 V fired at another voltage."""
+    w, srv = h7win
+    connect(qapp, w)
+    w.inputs.gain[1].setCurrentIndex(w.inputs.gain[1].findData(2))                # CH1 gain 2, CH2 stays at gain 0
+    w.start_capture()
+    assert pump(qapp, lambda: srv.device.running and srv.device._config()[3] == 2)
+    w.trig_level.setValue(0.5)
+    for tag in (1, 2):
+        w.channel.setCurrentIndex(w.channel.findData(tag))
+        volts = float(stream.codes_to_volts([w.trigger().level], tag=tag)[0])
+        assert abs(volts - 0.5) < 0.001, f"CH{tag}: a 0.5 V trigger level sits at {volts:.4f} V in that channel's own calibration"

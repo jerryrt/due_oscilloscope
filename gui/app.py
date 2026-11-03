@@ -939,7 +939,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if mode == "off":
             return None
         return stream.Trigger(
-            level=stream.volts_to_codes(self.trig_level.value()),
+            level=stream.volts_to_codes(self.trig_level.value(),
+                                          tag=self.channel.currentData()),
             rising=bool(self.trig_slope.currentData()),
             mode=mode)
 
