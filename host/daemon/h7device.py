@@ -161,6 +161,7 @@ class H7Device(Device):
         self._described = None
         self._readable = True          # closed while a run boundary is being made: the reader must not take bytes the drain means to discard
         self._feeder = None
+        self._feed_fault = None                   # set by the feeder thread when a write fails; read() reports it once
         self._feed_stop = threading.Event()
         self._rx = 0
         self._awg_written = 0
@@ -296,7 +297,11 @@ class H7Device(Device):
         def feed():
             i = 0
             while not self._feed_stop.is_set():
-                n = self._stream.write(chunk[i:])
+                try:
+                    n = self._stream.write(chunk[i:])
+                except OSError as e:                  # the unit went away or the port failed: say so, do not die unseen
+                    self._feed_fault = f"playback feed failed: {e}"
+                    return
                 self._awg_written += n
                 if n:
                     i = (i + n) % len(chunk)
@@ -332,6 +337,10 @@ class H7Device(Device):
 
     # -- stream -------------------------------------------------------------------
     def read(self, timeout=pacing.GLANCE):
+        if self._feed_fault:
+            fault, self._feed_fault = self._feed_fault, None
+            self.stop()                               # a unit nobody feeds underruns for ever: halt it and say it stopped
+            raise DeviceError(fault)
         if not self._readable:
             pacing.pause(min(timeout, pacing.POLL))
             return b""

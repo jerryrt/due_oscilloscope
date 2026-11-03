@@ -332,3 +332,21 @@ def test_a_start_without_options_keeps_the_settings_the_description_reports(h7):
     r = c.call("start", mode="capture", adc_hz=1_000_000, channels=2, options={"gain": 1})            # coupling not named: kept
     assert [ch["calibration"]["gain_code"] for ch in r["device"]["channels"]] == [1, 1]
     assert [ch["coupling"] for ch in r["device"]["channels"]] == ["ac", "dc"]
+
+
+def test_a_write_fault_while_playing_halts_the_unit_and_reaches_the_clients_as_a_device_error(h7):
+    """T8: a feed that fails (the unit re-enumerated, the cable moved) killed the feeder thread with a traceback on stderr, and the device
+    went on reporting running/play for a unit nobody was feeding. It must stop the unit, say it stopped, and tell every client why."""
+    srv, c, dev, hello = h7
+    real, calls = dev._stream.write, [0]
+    def failing(data):
+        calls[0] += 1
+        if calls[0] > 3:
+            raise OSError("device disconnected")
+        return real(data)
+    dev._stream.write = failing
+    c.send_awg(due_style_waveform(100))
+    c.call("start", mode="play", dac_sps=1_000_000)
+    seen = c.wait_event("device_error")
+    wait_until(lambda: not dev.running, what="the device to stop itself")
+    assert dev.mode is None and "playback feed failed" in seen["message"]
