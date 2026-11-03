@@ -316,6 +316,7 @@ class ScopeView(QtWidgets.QWidget):
         if view == "xy":
             return self._draw_xy(rings, source, ring, sweep)
         self._axes_for_time()
+        self.curve = self.curves[source]               # the cursors read the drawn curve: it must be the source's
         if sweep.empty:
             # Normal mode with no edge: hold the previous trace rather
             # than blanking. A scope that clears its screen every time

@@ -254,3 +254,25 @@ def test_the_trigger_level_is_converted_with_the_source_channels_own_calibration
         w.channel.setCurrentIndex(w.channel.findData(tag))
         volts = float(stream.codes_to_volts([w.trigger().level], tag=tag)[0])
         assert abs(volts - 0.5) < 0.001, f"CH{tag}: a 0.5 V trigger level sits at {volts:.4f} V in that channel's own calibration"
+
+
+def test_the_cursors_read_the_selected_channel_in_every_view(qapp, h7win):
+    """T4: the cursor's y values come from `scope.curve`, which only XY and the spectrum set. In the time view with CH2 selected they read
+    whichever curve was last used (CH1, a 1 V sine, against CH2's 0.5 V)."""
+    w, srv = h7win
+    connect(qapp, w)
+    w.start_capture()
+    w.client.wait_frames(20, timeout=pacing.NORMAL)
+    w.view_box.setCurrentIndex(0)
+    w.trig_mode.setCurrentIndex(w.trig_mode.findData("off"))
+    w.timebase.setCurrentIndex(0)
+    for idx, amp in ((0, 1.0), (1, 0.5)):
+        w.channel.setCurrentIndex(idx)
+        w.tick()
+        w.scope.set_cursors(True)
+        xs, ys = w.scope.curves[idx + 1].getData()
+        peak = int(np.argmax(ys))
+        w.scope.set_cursor_positions(float(xs[peak]), float(xs[peak]) + 1e-4)
+        r = w.scope.cursor_reading()
+        assert r["y1"] is not None and abs(r["y1"] - amp) < 0.05 * amp + 0.02, f"CH{idx + 1}: the cursor read {r['y1']} V, the channel peaks at {amp} V"
+        w.scope.set_cursors(False)
