@@ -29,6 +29,7 @@ from .measure_panel import MeasurePanel     # noqa: E402
 from .notice import NoticeBar               # noqa: E402
 from .replay_bar import ReplayBar           # noqa: E402
 from .awg import AwgPanel                   # noqa: E402
+from .inputs_panel import InputsPanel       # noqa: E402
 from .scope import ScopeView                # noqa: E402
 
 # Spans offered in the timebase box, in seconds. Named for the control
@@ -149,6 +150,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.measure = MeasurePanel()
         self.awg = AwgPanel()
         self.awg.requested.connect(self.awg_requested)
+        self.inputs = InputsPanel()
+        self.inputs.changed.connect(self._inputs_changed)
 
         # Where a refusal goes, now that there is somewhere for it to
         # stay. See `gui/notice.py`.
@@ -405,6 +408,7 @@ class MainWindow(QtWidgets.QMainWindow):
         side = QtWidgets.QVBoxLayout()
         side.addWidget(self.health)
         side.addWidget(self.measure)
+        side.addWidget(self.inputs)
         side.addWidget(self.awg)
         side.addStretch(1)
 
@@ -501,16 +505,39 @@ class MainWindow(QtWidgets.QMainWindow):
         self._device_is_due = fmt is stream.DUE_FORMAT
         self._fill_presets()
         self.awg.set_device(dev)
+        self.inputs.set_device(dev)
         if fmt is stream.current_format() and self.channel.count() == len(fmt.labels):
             return
+        same_device = stream.current_format().name == fmt.name
+        picked, level = self.channel.currentData(), self.trig_level.value()
         stream.set_format(fmt)
         self.measure.reference.setText(stream.reference_note())
         self.channel.clear()
         for tag in stream.channel_order():
             self.channel.addItem(stream.LABELS[tag], tag)
+        if same_device and self.channel.findData(picked) >= 0:
+            self.channel.setCurrentIndex(self.channel.findData(picked))     # a gain change is not a new device: keep the channel
         self.trig_level.setRange(*stream.y_range())
-        self.trig_level.setValue(sum(stream.y_range()) / 2.0)
+        self.trig_level.setValue(min(max(level, stream.y_range()[0]), stream.y_range()[1]) if same_device
+                                 else sum(stream.y_range()) / 2.0)
         self.scope.apply_format()
+
+    def _take_started_description(self, reply):
+        """A device with settings says what its codes mean once it has started; take that, so the volts drawn follow the gain in force."""
+        dev = reply.get("device") if isinstance(reply, dict) else None
+        if dev:
+            self._apply_format(dev)
+
+    def _inputs_changed(self):
+        """A gain or coupling was changed. The device takes settings at a start, so a running capture is restarted with them (the
+        generator too, if it is the thing running); a stopped one picks them up at its next start."""
+        if not self.session.is_open or getattr(self, "replaying", False):
+            return
+        if self.awg.run_btn.isChecked():
+            self.awg._emit(True)                       # the generator's own path: stop first, then loop with the new settings
+        elif self.device_running:
+            self.session.call("stop")
+            self.start_capture()
 
     def _fill_presets(self):
         """The Due's rate list for a Due; for another device the one rate its description says it starts at, and not a choice.
@@ -658,8 +685,12 @@ class MainWindow(QtWidgets.QMainWindow):
         extra = ({} if self.replaying else
                  {"preset": self.preset.currentData() if getattr(self, "_device_is_due", True) else None,
                   "adc_hz": defaults.get("adc_hz", 200000), "channels": defaults.get("channels", 2)})
-        if self.session.call("start", mode="capture", **extra) is None:
+        if not self.replaying and self.inputs.options():
+            extra["options"] = self.inputs.options()
+        reply = self.session.call("start", mode="capture", **extra)
+        if reply is None:
             return
+        self._take_started_description(reply)
         # And say what is now running: the status bar is the other
         # thing on screen that can outlive its subject, the same way a
         # notice can, and it is the one a user reads for the summary.
@@ -849,10 +880,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.session.send_awg(blob):
             self.awg.run_btn.setChecked(False)
             return
-        if self.session.call("start", mode="loop", dac_sps=dac_sps,
-                             adc_hz=dac_sps, channels=2) is None:
+        reply = self.session.call("start", mode="loop", dac_sps=dac_sps, adc_hz=dac_sps, channels=2,
+                                  **({"options": self.inputs.options()} if self.inputs.options() else {}))
+        if reply is None:
             self.awg.run_btn.setChecked(False)
             return
+        self._take_started_description(reply)
         self._rate_control_follows_generator(True)
         self.statusBar().showMessage(
             f"{shape} {actual_hz:,.1f} Hz, {vpp:.3f} Vpp at {offset:.3f} V "

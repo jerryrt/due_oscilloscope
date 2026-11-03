@@ -93,6 +93,10 @@ def main():
         check(cl is not None, "the daemon came up on the real H7")
         dev = cl.hello("control").get("device", {})
         check(dev.get("kind") == "h7" and dev.get("track") == "h", f"description: kind {dev.get('kind')} track {dev.get('track')}")
+        # Settings stay with the unit (and an aborted run leaves its gain behind): state this gate's own, gain 0 and DC, before reading any volts.
+        cl.call("start", mode="capture", adc_hz=1_000_000, channels=2, options={"gain": 0, "coupling": "dc"}); cl.call("stop"); time.sleep(0.5)
+        dev = cl.hello("control").get("device", {})
+        check([c["calibration"]["gain_code"] for c in dev["channels"]] == [0, 0], "the unit is at gain 0 for this gate")
         stream.set_format(stream.format_from_description(dev))
         r = cl.call("rate", adc_hz=1_000_000, channels=2)
         check(abs(r["adc"]["actual_hz"] - 1_000_000) < 1, f"rate snap: {r['adc']}")
@@ -123,6 +127,27 @@ def main():
             first, last = float(vs[100_000:200_000].mean()), float(vs[-100_000:].mean())
             print(f"CH{tag}: DC +167 codes reads {first:+.3f} V at 0.1-0.2 s and {last:+.3f} V at the end (nominal {167 * 5.975e-3:+.3f})")
             check(abs(last - 167 * 5.975e-3) < TOL * 167 * 5.975e-3 and abs(first - last) < 0.03, f"CH{tag}: a DC level reads its nominal value and holds")
+
+        # 2b. The scale follows the gain (G7). No reference voltage is available, so VOUT's own nominal (5.975 mV per code, itself good to about
+        # 1 %, docs/17) is the reference and the claim is only that each gain's scale agrees with it to TOL: a scale that did not follow the gain
+        # would be out by the factor between gain codes. Gain 0 is left to the checks above: its input noise inflates a small sine (docs/20).
+        for g in (1, 2, 3, 4):
+            cl.send_awg(sine_waveform(100)); cl.wait_event("awg_ok")
+            r = cl.call("start", mode="loop", adc_hz=1_000_000, dac_sps=1_000_000, channels=2, options={"gain": [g, g]})
+            stream.set_format(stream.format_from_description(r["device"]))
+            got = {c["id"]: c["calibration"]["gain_code"] for c in r["device"]["channels"]}
+            check(got == {1: g, 2: g}, f"gain {g}: the start reply's description names the gain in force ({got})")
+            tap.seen = cl.frames_received
+            frames = tap.take(100)[20:]
+            cl.call("stop"); time.sleep(0.5)
+            for tag in WIRED:
+                vs = np.concatenate([stream.codes_to_volts(stream.decode(f).channels[tag], tag=tag) for f in frames])
+                amp = float(vs.std() * 2 ** 0.5); nominal = 100 * 5.975e-3
+                print(f"CH{tag}: gain {g}: 100-code sine reads {amp:.4f} V (nominal {nominal:.4f}, {amp / nominal - 1:+.1%})")
+                check(abs(amp - nominal) < TOL * nominal, f"CH{tag}: at gain {g} the sine reads its nominal amplitude within {TOL:.0%}")
+        # Settings stay with the unit, so leave it at gain 0, DC, and the format of the description it now gives.
+        cl.call("start", mode="capture", adc_hz=1_000_000, channels=2, options={"gain": 0, "coupling": "dc"}); cl.call("stop"); time.sleep(0.5)
+        stream.set_format(stream.format_from_description(cl.hello("control").get("device", {})))
 
         # 3. start/stop cycles. Every run starts at seq 0 and is contiguous, and a start that produces no frames fails. Two faults used to make this flake
         # (docs/19): a run boundary the host did not make (a half frame left in the read path was completed by the next run's first bytes, eating its seq 0)

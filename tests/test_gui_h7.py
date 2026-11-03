@@ -163,3 +163,31 @@ def test_playing_the_generator_while_the_h7_captures_stops_and_restarts_it_in_lo
     w.awg.run_btn.setChecked(True)                                                       # the user presses Play while capturing
     assert w.awg.run_btn.isChecked(), "the generator was refused"
     assert pump(qapp, lambda: srv.device.mode == "loop", timeout=pacing.NORMAL), "the unit never went to loop mode"
+
+
+def test_the_inputs_panel_sets_gain_and_coupling_and_the_volts_follow_the_gain_in_force(qapp, h7win):
+    """G7: no gain or coupling control, and volts were the gain-0 calibration only. The panel offers each channel's gain and coupling, a
+    start sends them, the start reply's description replaces the format, and the unit's 1 V sine still reads 1 V at another gain."""
+    w, srv = h7win
+    assert not w.inputs.isVisibleTo(w)                                   # a Due (the default) has none
+    connect(qapp, w)
+    assert w.inputs.isVisibleTo(w) and sorted(w.inputs.gain) == [1, 2]
+    lo0, hi0 = stream.y_range()
+    w.inputs.gain[1].setCurrentIndex(w.inputs.gain[1].findData(2)); w.inputs.coupling[2].setCurrentIndex(w.inputs.coupling[2].findData("ac"))
+    w.channel.setCurrentIndex(1)                                          # CH2 stays selected across the format change
+    w.start_capture()
+    assert pump(qapp, lambda: srv.device.running)
+    cfg = srv.device._config()
+    assert (cfg[3], cfg[4], cfg[5]) == (2, 0, 1), cfg                     # CH1 gain 2, CH2 gain 0, CH1 dc / CH2 ac
+    assert w.channel.currentData() == 2
+    frames = w.client.wait_frames(5, timeout=pacing.NORMAL)
+    f = stream.decode(frames[-1])
+    v1 = stream.codes_to_volts(f.channels[1], tag=1)
+    assert abs(float(np.max(np.abs(v1))) - 1.0) < 0.01, "CH1's 1 V sine does not read 1 V at gain 2: the scale did not follow the gain"
+    assert stream.y_range() == (lo0, hi0)                                 # CH2 is still at gain 0: the plot spans the largest range in force
+    assert pump(qapp, lambda: w.device_running)                           # the window knows it is running (its poll)
+    w.inputs.gain[2].setCurrentIndex(w.inputs.gain[2].findData(4))        # changing a gain while capturing restarts with it
+    assert pump(qapp, lambda: srv.device.running and srv.device._config()[4] == 4, timeout=pacing.NORMAL)
+    assert pump(qapp, lambda: stream.y_range()[1] < 4.0), "the plot range did not shrink to the gains in force (2 and 4)"
+    w._apply_format({"kind": "board"})
+    assert not w.inputs.isVisibleTo(w) and w.inputs.options() == {}

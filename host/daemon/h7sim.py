@@ -60,6 +60,12 @@ class SimControl:
         self._lib = build_dispatcher()
         self._id = 1
         self._lock = threading.Lock()
+        # One compiled library serves every simulated unit in the process, and it keeps its settings; a new unit powers up at gain 0 on both
+        # channels, DC, stopped.
+        for op, body in ((0x0042, bytes([0, 0])), (0x0041, b"\x00")):
+            self.call(op, body)
+        cfg = list(struct.unpack("<IIBBBBHH", self.call(0x0040).payload)); cfg[3] = cfg[4] = 0; cfg[5] = 3
+        self.call(0x0040, struct.pack("<IIBBBBHH", *cfg))
 
     def call(self, opcode, payload=b"", **kw):
         with self._lock:
@@ -106,14 +112,15 @@ class SimStream:
         if not st[0]:
             time.sleep(min(timeout, pacing.POLL)); return b""
         mask, period = st[3], st[4]
+        cfg = struct.unpack("<IIBBBBHH", self._ctl.call(0x0040).payload); gains = {1: cfg[3], 2: cfg[4]}       # the gain the host set
         rate = BASE / period; ids = [i + 1 for i in range(2) if mask >> i & 1]; per = 2032 // len(ids)
         if self.pace:
             pacing.pause(per / rate)
         payload = bytearray()
         for ch in ids:
             amp = 1.0 if ch == 1 else 0.5
-            z, cpv = self._cal.zero_code(ch, 0), self._cal.codes_per_volt(ch, 0)
-            codes = [int(round(z + cpv * amp * math.sin(2 * math.pi * self.tone_hz * (self._t + i / rate)))) for i in range(per)]
+            z, cpv = self._cal.zero_code(ch, gains[ch]), self._cal.codes_per_volt(ch, gains[ch])
+            codes = [min(65535, max(0, int(round(z + cpv * amp * math.sin(2 * math.pi * self.tone_hz * (self._t + i / rate)))))) for i in range(per)]
             payload += struct.pack(f"<{per}H", *codes)
         self._t += per / rate
         hdr = struct.pack("<4sBBHIIIII", b"DUE0", 4, 0, mask, self._seq, int(rate), int(self._t * 1e6) & 0xFFFFFFFF, 0, 0)

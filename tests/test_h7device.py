@@ -294,3 +294,41 @@ def test_the_real_stream_discards_a_stale_tail_on_a_fresh_port_until_it_has_been
     assert s.reopen_and_drain() == 512 + 1024                           # everything stale was thrown away
     assert len(opened) == 2 and closed == [opened[0]], "the old port must be closed and a new one opened"
     assert script == []
+
+
+def test_the_description_follows_the_gain_and_coupling_the_unit_was_started_with(h7):
+    """G7: the description hardwired gain 0, so a client that set a gain went on computing volts with gain 0's scale. The start reply
+    carries the description the unit has now, and a later `hello` agrees; the codes the simulated unit sends move with the gain."""
+    srv, c, dev, hello = h7
+    d0 = hello["device"]
+    assert [ch["calibration"]["gain_code"] for ch in d0["channels"]] == [0, 0]
+    assert [ch["coupling"] for ch in d0["channels"]] == ["dc", "dc"]
+    r = c.call("start", mode="capture", adc_hz=1_000_000, channels=2, options={"gain": [2, 4], "coupling": ["ac", "dc"]})
+    d = r["device"]
+    cal = {ch["id"]: ch for ch in d["channels"]}
+    assert [cal[i]["calibration"]["gain_code"] for i in (1, 2)] == [2, 4]
+    assert [cal[i]["coupling"] for i in (1, 2)] == ["ac", "dc"]
+    assert cal[1]["calibration"]["codes_per_volt"] > 3.9 * d0["channels"][0]["calibration"]["codes_per_volt"]         # gain 2 is 4x gain 0
+    assert cal[2]["range_v"] < cal[1]["range_v"] < d0["channels"][0]["range_v"]
+    assert c.call("hello", role="control")["device"]["channels"][0]["calibration"]["gain_code"] == 2
+    c.subscribe(True); c.wait_frames(3, timeout=pacing.NORMAL)
+    f = list(c.frames)[-1]
+    n = (len(f) - 32) // 4
+    ch1 = struct.unpack_from(f"<{n}H", bytes(f), 32)
+    z, cpv = cal[1]["calibration"]["zero_code"], cal[1]["calibration"]["codes_per_volt"]
+    assert abs(max(abs(c - z) for c in ch1) / cpv - 1.0) < 0.01, "the unit's CH1 sine was not 1 V in the new gain's own scale"
+
+
+def test_a_start_without_options_keeps_the_settings_the_description_reports(h7):
+    """A setting not named is not reset to gain 0: the description reports the unit's own gains, so a client that sends no options must run
+    on that scale (the real-unit gate caught a daemon that described gain 4 and then started at gain 0)."""
+    srv, c, dev, hello = h7
+    c.call("start", mode="capture", adc_hz=1_000_000, channels=2, options={"gain": [3, 5], "coupling": ["ac", "dc"]})
+    c.call("stop")
+    r = c.call("start", mode="capture", adc_hz=1_000_000, channels=2)
+    assert [ch["calibration"]["gain_code"] for ch in r["device"]["channels"]] == [3, 5]
+    cfg = dev._config(); assert (cfg[3], cfg[4], cfg[5]) == (3, 5, 2)
+    c.call("stop")
+    r = c.call("start", mode="capture", adc_hz=1_000_000, channels=2, options={"gain": 1})            # coupling not named: kept
+    assert [ch["calibration"]["gain_code"] for ch in r["device"]["channels"]] == [1, 1]
+    assert [ch["coupling"] for ch in r["device"]["channels"]] == ["ac", "dc"]

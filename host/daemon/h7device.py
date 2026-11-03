@@ -220,9 +220,12 @@ class H7Device(Device):
         (track, cv, fv, ma, mi, pa, fb, fs, mck, adc, build) = ctl._IDENTITY.unpack(self._call(ctl.OP_IDENTITY).payload)
         if chr(track) != "H" or fv != 4 or cv != ctl.VERSION:
             raise DeviceError(f"not an H7 target this host understands: track {chr(track)!r}, control {cv}, frame {fv}")
-        cal = self.calibration(); gain = self._config()[3]
-        chans = [{"id": ch, "label": f"CH{ch}", "calibration": {"zero_code": cal.zero_code(ch, 0), "codes_per_volt": cal.codes_per_volt(ch, 0),
-                                                                  "gain_code": 0, "source": "factory scale, zero measured on this unit"}} for ch in (1, 2)]
+        # The gains and couplings are the unit's own, read back, so the volts a client computes follow what is actually set (docs/20, G7).
+        cfg = self._config(); gains = {1: cfg[3], 2: cfg[4]}; dc = {1: bool(cfg[5] & 1), 2: bool(cfg[5] & 2)}
+        cal = self.calibration()
+        chans = [{"id": ch, "label": f"CH{ch}", "calibration": {"zero_code": cal.zero_code(ch, gains[ch]), "codes_per_volt": cal.codes_per_volt(ch, gains[ch]),
+                                                                  "gain_code": gains[ch], "source": "factory scale, zero measured on this unit"},
+                 "coupling": "dc" if dc[ch] else "ac", "range_v": h7_cal.FULL_SCALE_V[gains[ch]]} for ch in (1, 2)]
         self._described = {"kind": "h7", "track": "h", "frame_bytes": fb, "samples_per_frame": fs, "frame_version": fv,
                            "identity": {"fw": f"{ma}.{mi}.{pa}", "build": build.rstrip(b"\x00").decode("ascii", "replace"), "mck_hz": mck, "adc_clock_hz": adc},
                            "sample": {"bits": 16, "layout": "planar", "full_scale_codes": 65535},
@@ -235,9 +238,12 @@ class H7Device(Device):
         return dict(self._described)
 
     # -- running ----------------------------------------------------------------
-    def _parse_options(self, options):
+    def _parse_options(self, options, current):
+        """Gain and coupling for a start. A setting not named keeps what the unit has now (the description reports exactly that, so a client
+        that sends no options runs on the scale it was told); the unit powers up at gain 0, DC. `current` is the unit's CONFIG readback."""
         opts = dict(options or {})
-        gain = opts.pop("gain", 0); coupling = opts.pop("coupling", "dc")
+        gain = opts.pop("gain", [current[3], current[4]])
+        coupling = opts.pop("coupling", ["dc" if current[5] & 1 else "ac", "dc" if current[5] & 2 else "ac"])
         if opts:
             raise DeviceError(f"unknown options {sorted(opts)}")
         g = list(gain) if isinstance(gain, (list, tuple)) else [gain, gain]
@@ -266,7 +272,7 @@ class H7Device(Device):
         mask = channel_mask if channel_mask is not None else (1 if channels == 1 else 3)
         if mask not in (1, 2, 3):
             raise DeviceError(f"channel mask {mask}: 1 (CH1), 2 (CH2) or 3")
-        g1, g2, coupling = self._parse_options(options)
+        g1, g2, coupling = self._parse_options(options, cur)
         buf = waveform_to_dac_codes(waveform) if mode in ("play", "loop") else None      # refused before anything is configured
         self._call(OP_CONFIG, _CFG.pack(adc_p, dac_p, mask, g1, g2, coupling, h7_awg.ZERO_CODE, 0))
         try:
@@ -278,6 +284,7 @@ class H7Device(Device):
         except Exception:
             self._halt(); raise
         with self._lock:
+            self._described = None                # the gains just set change what a code means: describe() reads them back
             self.running = True; self.mode = mode
             self.rates = {"dac_sps": dac_sps, "adc_hz": adc_hz, "channels": channels, "preset": preset, "channel_mask": mask}
 

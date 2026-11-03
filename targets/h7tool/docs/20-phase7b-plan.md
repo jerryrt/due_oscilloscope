@@ -190,6 +190,24 @@ Each has a test in `tests/test_gui_h7.py` or `tests/test_daemon_api.py` that fai
   same channel and the same kind of question as the CH1 offset above, deferred as hardware-side. This is why the gate plays 3 Vpp: that is where the known
   error is inside the tolerance, and the panel's mapping is exact (84 codes for 1 Vpp is checked in the unit test).
 
+### Step 4 done (2026-11-03): G7, with the limit stated
+
+- **Daemon**: `H7Device.describe` reads the unit's gains and couplings back, so each channel's `calibration` (zero, codes per volt, `gain_code`) and `range_v`
+  are those in force. The `start` reply carries the description the unit now has. Settings are the unit's own and sticky: an option not named keeps what is in
+  force (the unit powers up at gain 0, DC); a daemon that described gain 4 and then started at gain 0 was caught by the real-unit gate and is guarded by
+  `test_a_start_without_options_keeps_the_settings_the_description_reports`.
+- **GUI**: `gui/inputs_panel.py` (per-channel gain and coupling, hidden for a Due) feeds the start's `options`; the start reply replaces the format, keeping the
+  selected channel and trigger level; a change while capturing restarts with it (generator included). The simulated unit now follows the gain it was given, and a
+  new simulated unit starts at power-up settings.
+- **Calibration**: the gain codes 1-7 already had factory scale and measured zeros for both channels (docs/17), and are used as they are. No reference voltage
+  was available, so nothing here is calibrated against one. **Stated limit**: every volts figure is good to about +-1 % (docs/17), and the gate's check for gains
+  1-4 is that a 100-code sine from VOUT, read through each gain's own scale, agrees with VOUT's nominal 5.975 mV per code to 4 %. CH1, VOUT on CH1: gain 1 +1.9 %,
+  2 +1.4 %, 3 +0.9 %, 4 +1.1 %. Gains 5-7 (ranges 0.44 V and below) are not exercised on the unit: a VOUT level that fits them is below the swing the DAC makes
+  cleanly.
+- **The small-sine excess is input-side**: the same 40-code sine reads +10.2 / +4.4 / +3.0 / +2.3 / +1.6 % at gains 0-4. It falls with gain, as the unit's input
+  noise referred to the input does (docs/17), though the size is more than the quadrature sum of the measured noise explains *(check)*. Not tuned for; the gate
+  keeps gain 0 to the 3 Vpp check and uses gains 1-4 at 100 codes.
+
 ### Order and gates
 1. T1 and T2 first: they change what "green" means, so every later step is judged by them.
 2. G1, G4, G6, G8 (small, no new measurement), each with a test that fails when the fix is removed.

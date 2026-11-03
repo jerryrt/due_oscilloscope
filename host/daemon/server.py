@@ -829,8 +829,14 @@ def _op_start(srv, ses, msg):
         extra = {"channel_mask": msg.get("channel_mask"), "options": msg.get("options")}
     srv.device.start(mode, dac_sps=dac_sps, adc_hz=adc_hz, channels=channels,
                      waveform=waveform, preset=msg.get("preset"), **extra)
+    reply = {"event": "started", "mode": mode, "rates": actual}
+    if extra:
+        # A device with settings (the H7's gain and coupling) changes what its codes mean when it starts: say so in the reply, with
+        # the description it now has, so a client does not keep computing volts from the one it had before.
+        srv._description = None
+        reply["device"] = srv.description()
     srv.broadcast_event("started", mode=mode, rates=actual)
-    return {"event": "started", "mode": mode, "rates": actual}
+    return reply
 
 
 def _op_stop(srv, ses, msg):
