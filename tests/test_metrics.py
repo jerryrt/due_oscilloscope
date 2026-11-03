@@ -704,3 +704,11 @@ def test_build_is_current_on_a_commit_consults_no_clock():
         f"a commit-bearing build read {ny[0]} in America/New_York and "
         f"{sh[0]} in Asia/Shanghai; HEAD holds the newest firmware "
         f"commit by construction and no zone may change that")
+
+
+def test_an_h7_build_is_not_attributed_to_a_due_flash():
+    """T6: the H7 reports "h7-build-N" over its own control channel (the daemon description's identity). The Due flash log knows nothing of
+    it, and `firmware()` used to answer with the newest Due flash as "latest, unmatched build stamp", naming a Due image as the unit's."""
+    import provenance as prov
+    assert prov.firmware("h7-build-13") == {"fw_provenance": "unlogged"}
+    assert prov.build_commit("h7-build-13") is None

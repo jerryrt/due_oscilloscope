@@ -148,6 +148,9 @@ _BUILD_COMMIT = re.compile(r"^([0-9a-f]{7,40})(?:\+([0-9a-f]{8}))?$")
 #: value, and it must not be resolved against the flash log.
 UNIDENTIFIED = "unknown"
 
+#: The H7 target's build identity (docs/20): a number, not a commit, and not a Due image.
+H7_BUILD = re.compile(r"^h7-build-\d+$")
+
 
 def build_commit(build):
     """`(rev, delta8)` when the identity states a commit, else None.
@@ -243,6 +246,10 @@ def firmware(build_stamp=None, track=None):
     # board may never have run - and a wrong field is trusted where a
     # missing one is questioned.
     if want is None and str(build_stamp).strip().lower() == UNIDENTIFIED:
+        return {"fw_provenance": "unlogged"}
+    # The H7 target numbers its images ("h7-build-13") and is not flashed through this log, which records Due images only. Falling
+    # through would attribute the unit to the newest Due flash with "latest, unmatched build stamp".
+    if want is None and H7_BUILD.match(str(build_stamp).strip().lower()):
         return {"fw_provenance": "unlogged"}
     stamp = None if want else _build_epoch(build_stamp)
     for rec in reversed(lines):
