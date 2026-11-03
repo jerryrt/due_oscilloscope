@@ -66,7 +66,7 @@ Each step that touches shared code first runs the whole board-free suite and com
    not in a client.
 
 ## Not in 7b
-GUI controls for gain, coupling and the swing cap (the daemon accepts them; a panel is later), the heartbeat and USB-SOF clock reference, the
+The heartbeat and USB-SOF clock reference, the
 Due's `trace`/`load` equivalents, the 250M module, and any change to the Due firmware or its wire contract.
 
 ## Status log
@@ -121,7 +121,7 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   boot-loader state instead of "the daemon did not come up". Proven on the unit: opcode armed and the unit enumerated as 0483:5720; the flash
   wrapper's second flash from a running image13a used the opcode and no sudo; the gate passes on it.
 
-## Phase 7 closed (2026-11-02)
+## Phase 7 first close (2026-11-02; reopened by part 2 below)
 
 7a (control function) and 7b (the H7 behind the daemon and the unchanged GUI) are done, and image 13 replaces the boot-loader timer with a host
 command. What was checked at the close: board-free suite 1249 passed / 18 skipped / 322 deselected; GUI suites 124 passed; the host-compiled
@@ -131,4 +131,50 @@ default `RUN_MS` is 0, the run loop tests only `RUN_WINDOW_OPEN()` (constant 1 t
 and `tests/test_h7_image13.py` fails when any of that changes (six mutations tried).
 Open, none blocking: the two-lead loading on VOUT (CH1 and CH2 together read 17-28 % low on build 14; not reproduced since, wiring is CH2
 only), the old tool's 3 % excess on CH1, one unexplained failed start/stop cycle, and the pre-existing flaky
-`test_the_end_of_a_recording_says_so`. Not done: GUI controls for the H7's gain and coupling, and recording and replay of version-4 frames.
+`test_the_end_of_a_recording_says_so`. Not done, and now the plan of part 2 below: GUI controls for the H7's gain and coupling, the generator panel, XY, replay of H7 recordings, and the test suite's reach.
+
+## Phase 7b, part 2: what the H7 still lacks (survey 2026-11-02)
+
+Found by driving every GUI feature against the simulated H7 (`MainWindow` offscreen, the real daemon, the real dispatcher) and by listing what no
+test tier reaches. Each item is a measured symptom, not a guess; the cause is named where it was read from the code.
+
+### GUI: what does not work for an H7 yet
+| # | symptom on the simulated H7 | cause | work |
+|---|---|---|---|
+| G1 | the preset box offers the Due's rate list (50 kHz ... "max in-spec"), which the H7 start ignores | `PRESETS` in `gui/app.py` | list the device's own rates from its description, or hide the box |
+| G2 | the generator panel is "Generator (DAC0 -> A0)"; a 1 Vpp sine at offset 0 is refused by the swing cap ("108800 codes outside 1706..2366") | `gui/awg.py` maps the Due's 0.55-2.75 V window onto 12-bit codes (4095) | an H7 mapping from the description: zero code, 5.975 mV per code, the cap; volts about 0 V |
+| G3 | the generator cannot start while capture runs ("already running; stop first") | the H7 refuses a start while running; the Due's flow restarts | the GUI stops and restarts, or the daemon switches mode |
+| G4 | the XY view draws 4000 points for CH1 and none for CH2 | `scope._draw_xy` picks the other channel from the Due's tags 7 and 6 | choose the other channel from the format's ids |
+| G5 | the spectrum view draws one curve (CH1); CH2's is empty | not read yet *(check whether the Due draws both)* | decide, then fix or document |
+| G6 | the Measure panel says "ADVREF 3270 mV, measured", a Due fact | `app.py` footnote | take it from the description |
+| G7 | no gain or coupling control; volts are the gain-0 calibration only | the description hardwires `gain_code` 0; docs/12's gain table is not used by the host | per-gain calibration for codes 1-7 (needs a reference voltage; stated gate: +-1 %), the description follows the set gain, then a per-channel panel; Y and trigger ranges follow |
+| G8 | a recording of an H7 replays with the Due's format | `FileDevice.describe()` returns kind "file" and drops `sample`, `channels`, `defaults`, `options` from the sidecar (the recording itself works: 60 frames = 245,760 bytes, sidecar carries the H7 description) | pass the sidecar's description through |
+| G9 | record and CSV export hang a headless run | both open a file dialog | patch the dialog in tests; no product change |
+
+What works, so it is not re-done: connect and format switch, both channels drawn in volts, time and spectrum views, trigger on either channel with a
+level in volts (range follows the device), cursors, the Measure values (Vpp 2.0001 V, 1,000.0 Hz on the 1 V simulated sine), the Health panel,
+stop, record.
+
+### Test suite: what no tier reaches
+| # | gap | work |
+|---|---|---|
+| T1 | no way to say "run what the attached hardware allows": the Due's tests skip as "no board" and the H7 has no pytest tests at all (its real-unit checks are `measure/h7_daemon_gate.py`) | detect devices without opening a port (Due 2341:003D/003E, H7 1209:0001 with interfaces 0 and 2, boot loader 0483:5720), print one summary line at the start ("Due: track B on ..., H7: absent, boot loader"), mark real-unit tests `due` and `h7`, skip each with a reason that names the missing device and counts them separately, and keep `--require-board` and a new `--require-h7` as failures, so a skip is never read as a pass |
+| T2 | the eight test files under `targets/h7tool/tools` (55 tests, all pass) are collected by no tier: `testpaths` is `tests` and `docker/run-ci.sh` does not name them | collect them (the numpy ones in the GUI tier) and show the count in the CI report |
+| T3 | the gate's stages run only by hand | turn them into `h7`-marked tests that skip when the unit is absent or in the boot loader (with that state named) |
+| T4 | GUI-on-H7 tests cover three things (format, defaults, restore) | add XY, spectrum, measure labels, generator mapping and refusal, preset, trigger on CH2, cursors, record and export with the dialog patched, replay |
+| T5 | record then replay of version-4 frames has no test | round trip through `FileDevice` and the window |
+| T6 | `measure.parse_identity` and provenance know tracks A-C only | decide the H7's identity path and test it |
+| T7 | `ports.find_h7` is verified on Linux only | tests over faked `list_ports` entries in the Windows and macOS location formats |
+| T8 | the simulation cannot show a fault the transport or the firmware causes (the DTR fault and the feeder underruns were found only on the unit) | the simulated stream can start "found running" (done) and refuse writes; add a boot-loader re-enumeration and a ring that underruns when fed slowly |
+
+### Order and gates
+1. T1 and T2 first: they change what "green" means, so every later step is judged by them.
+2. G1, G4, G6, G8 (small, no new measurement), each with a test that fails when the fix is removed.
+3. G2 and G3 (the generator on the H7), then the gate on the real unit with a played sine read back through the window.
+4. G7 (calibration for gain codes 1-7, then the panel). Gate: a known level read at several gain codes on the real unit, with the reference
+   voltage this still needs; without one the gate states the +-1 % limit instead of passing.
+5. T4-T8 alongside each step. The phase closes when the board-free suite, the GUI suites, the H7 tier on the real unit and the Due smoke are green
+   together, and the plan's open items are either closed or named.
+
+Needs the owner: a reference voltage for G7, and whether H7 and Due tests should ever run in one invocation when both are attached (T1 proposes yes, each
+only against its own device).
