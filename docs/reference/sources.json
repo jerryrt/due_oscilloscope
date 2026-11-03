@@ -80,20 +80,6 @@
       "bytes": 1497775
     },
     {
-      "path": "hardware/afe-shield/models/vendor/ti/SBOM071.zip",
-      "source_url": "https://www.ti.com/lit/zip/SBOM071",
-      "retrieved_date_local": "2026-09-22",
-      "sha256": "4a7d9342611e78eb5c49221bdfe18000ad6293564fd24aad239e0c7c176142e0",
-      "bytes": 29900
-    },
-    {
-      "path": "hardware/afe-shield/models/vendor/ti/OPAx350/OPAx350.LIB",
-      "source_url": "https://www.ti.com/lit/zip/SBOM071",
-      "retrieved_date_local": "2026-09-22",
-      "sha256": "4fd8ddfc56c146339fde8c2874196765d92cbe755aa08347fd823d987c34180d",
-      "bytes": 17180
-    },
-    {
       "path": "docs/datasheets/microchip/MCP6021-DS20001685F.pdf",
       "source_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP6021-Data-Sheet-DS20001685.pdf",
       "sha256": "628caaef3fbc5d8a00edb0cccbd612ca2a24b15a27b2446b78fc7906cd061738",
@@ -140,30 +126,6 @@
       "source_url": "https://docs.arduino.cc/resources/pinouts/A000056-full-pinout.pdf",
       "sha256": "a9b33b9e069e82dcac6c6026422d22f399ec5e93e7a44082b783b3864018c9b4",
       "bytes": 826087
-    },
-    {
-      "path": "hardware/afe-shield/models/vendor/microchip/MCP6021_MM_B.zip",
-      "source_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/BoardDesignFiles/MCP6021_MM_B.zip",
-      "sha256": "3b4ea5202ef12a5d546f99b8d79d05d32e9faac10bda24225b104f1b72928e44",
-      "bytes": 2758
-    },
-    {
-      "path": "hardware/afe-shield/models/vendor/microchip/MCP6021.txt",
-      "source_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/BoardDesignFiles/MCP6021_MM_B.zip",
-      "sha256": "363ec7efc5a3e6c640b2f9dfedc2de4c810b250a403fa3a4f3c0e7c872e4439e",
-      "bytes": 6017
-    },
-    {
-      "path": "hardware/afe-shield/models/vendor/ti/snom547.zip",
-      "source_url": "https://www.ti.com/lit/zip/snom547",
-      "sha256": "786b0c5b8e5803625b1312609f7d3342125ee01300460eda2845fc7adfee359c",
-      "bytes": 1804
-    },
-    {
-      "path": "hardware/afe-shield/models/vendor/ti/LM4040_NA3P0_PSPICE_TRANS/LM4040_NA3P0_TRANS.lib",
-      "source_url": "https://www.ti.com/lit/zip/snom547",
-      "sha256": "862481372af755b3a04b0aeb3d3c0878a133be60304f995492587b795fbd1206",
-      "bytes": 3916
     }
   ]
 }

@@ -7,7 +7,7 @@ SHA-256 hashes. Publisher copyright and model license terms still apply.
 
 | local reference | use |
 |---|---|
-| [MCP6021/2/3/4 datasheet](../datasheets/microchip/MCP6021-DS20001685F.pdf) | Stage A candidate limits, PDIP/SOIC pinouts, output drive and decoupling |
+| [MCP6021/2/3/4 datasheet](../datasheets/microchip/MCP6021-DS20001685F.pdf) | Quad op-amp limits, PDIP/SOIC pinouts, output drive and decoupling |
 | [Microchip AN1297](../datasheets/microchip/AN1297-Op-Amp-SPICE-Models.pdf) | Model capabilities and limitations |
 | [Microchip AN884](../datasheets/microchip/AN884-Capacitive-Loads.pdf) | Capacitive-load stability and isolation |
 | [TI LM4040-N datasheet](../datasheets/ti/LM4040-N.pdf) | Candidate D101 MPN, grade, bias and pinout |
@@ -30,8 +30,3 @@ Arduino download ZIPs are omitted; extracted EAGLE/STEP sources are under
 `hardware/reference/`. PDF references, including the SAM3X datasheet, remain in
 `docs/datasheets/`; the manifest identifies the newly downloaded references,
 not an assertion that every pre-existing reference has been re-downloaded.
-
-The old `hardware/afe-shield/models/` files are currently absent. Their
-manifest entries retain historical source URLs/hashes, not proof of current
-local availability. Follow the [AFE model plan](../../hardware/afe-proto/models/README.md)
-to establish libraries under the new project before simulation.

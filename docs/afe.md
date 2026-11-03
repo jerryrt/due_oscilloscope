@@ -1,568 +1,189 @@
-# The analog front end on the shield
+# AFE requirements
 
-**Status: a build requirement, nothing built.** The requirement and
-the build come first; the reasoning that produced them is at the end.
-"Front end" elsewhere in this project means the Qt window
-(`docs/frontend.md`); this file is the analog one, so it is called the
-AFE. The Due and Mega Proto Shield Rev3 schematics it reads are under
-`docs/datasheets/arduino/`, as PDFs and as the EAGLE files they were
-drawn in, the OpenScope MZ sheets under `docs/datasheets/openscope-mz/`.
-The current physical baseline is the corrected
-[Mega proto carrier KiCad project](../hardware/mega-proto-carrier/README.md).
-Develop the AFE working assembly under
-[hardware/afe-proto](../hardware/afe-proto/README.md); the old inaccurate
-`hardware/afe-shield/` template has been removed. Complete each stage in
-SPICE before assembling it, as defined in [the plan](afe-plan.md).
+A minimal analog front end (AFE) for the Due scope and AWG: protection,
+level scaling and a bipolar generator output in front of the Due's native
+12-bit ADC and DAC. Two scope channels, one AWG output, and a
+jumper-selected differential mode (Phase 1), with an optional
+fully-differential amplifier assembly (Phase 2). The plan that builds it is
+[afe-plan.md](afe-plan.md).
 
-## The build requirement
+The AFE is designed, simulated, built and verified against the numbers
+below. Values marked **TBC** are proposals the client must confirm.
+Values marked *(check)* are quoted from the datasheet or project records
+and are not yet re-verified for this design.
 
-The 3.0 V reference-based figures below describe the intended reference-driven
-configuration. The current prototype remains a **stock Due with JP101 open**,
-so its ADC/DAC scale follows actual ADVREF and its DAC window is roughly
-0.55–2.75 V. Record that distinction in simulations and measurements; these
-estimates do not instruct a Due modification. Stage A must resolve its
-numerical error, bandwidth and timing limits before passing the SPICE gate.
+## Requirement IDs
 
-Every figure is a design estimate from the parts and the
-converter, *(check)* until the sweep and a meter replace it. It is
-written so each line becomes a measurement.
-
-| quantity | estimate *(check)* | what sets it |
+| Prefix | Meaning | Section |
 |---|---|---|
-| input range | ±20 V DC-coupled, both polarities with no negative rail; one fixed range, or ±20 / ±5 / ±3 V with a switched shunt and a bottom end that follows the range | the node sits at Vb·(1−k) + k·Vin, k the shunt's share of the divider and Vb its bottom end: 1 MΩ into 75 kΩ (k = 0.070) with the bottom end at 1.61 V puts −20 V at 0.1 V, 0 V at 1.5 V, +20 V at 2.9 V on a 3.0 V scale; ±5 V takes 430 kΩ and 2.14 V, ±3 V takes 1 MΩ and 3.0 V, and a finer range would need a bottom end above the rail. The mid-rail is subtracted in software |
-| input impedance | 1.07 MΩ, a few pF | the divider |
-| resolution at the pin | 12 bits over 3.0 V, 0.73 mV per code | the ADC and the reference |
-| resolution referred to input | 10.5 mV per code at ±20 V, 2.4 mV at ±5 V, 1.5 mV at ±3 V | the divider ratio |
-| noise referred to input | about 1 code rms on a healthy board: 10–20 mV rms at ±20 V, 1.5–3 mV at ±3 V | the converter; the divider's thermal noise is tens of µV |
-| effective bits | 10 to 11 | the SAM3X ADC; no front end raises it |
-| DC accuracy before calibration | gain within 0.3%, offset within a few codes | LM4040 at 0.1%, 0.1% divider, op-amp offset under a code |
-| DC accuracy after per-board calibration | 1 to 2 codes | the reference is the scale; the profile carries two points |
-| drift | about 0.3 mV over 30 °C at full scale | the reference grade bought |
-| analog bandwidth | 200–300 kHz flat, by choice; a 10 MHz buffer is transparent | the divider compensated, a capacitor across the 1 MΩ with R1·C1 = Rs·Cs, so it is flat past the buffer; the corner is then the pin driver's series resistor against its 470 pF, one resistor value anywhere from 300 kHz to 5 MHz. Uncompensated, the 1 MΩ against the node's own picofarads is a corner in the tens of kilohertz |
-| sample rate behind it | 1,022,727 sps one channel, 523,255 sps each on two (886 and 453 ksps at MCK 78) | the converter, unchanged |
-| rise time | 1–2 µs | the anti-alias corner |
-| channel crosstalk | below a code | the buffered drive removes the sample-and-hold's charge memory |
-| offset | a full screen either way at ±20 V, a screen down and half a screen up at ±5 V, down only at ±3 V; 0.8 mV steps at the bottom end, settling in tens of ms | 12-bit PWM through two RC sections drives the divider's bottom end, which moves the node by (1−k) of its own travel inside 0–3.2 V |
-| protection | ±20 V continuous with margin, brief transients to about ±100 V, ESD by the clamps | 1 MΩ series in a package rated for the transient *(check: an 0603 is commonly 75 V, a 1206 200 V)*, BAT54S to the rails, the op-amp's diodes |
-| output range | on the single rail, with the reference at 3.0 V: 0.50–2.50 V as a follower, or 0.1–3.2 V at gain 1.6, unipolar. With the output-stage inverter (Stage C option): about ±2.8 V centred on 0 V, bipolar | the DAC's window is 1/6 to 5/6 of ADVREF, so it moves with the reference Stage A sets; the output op-amp's rails; a charge pump feeding that one op-amp is what buys the negative half |
-| output resolution | 12 bits: 0.49 mV per code as a follower, 0.78 mV at gain 1.6 | the DAC at a 3.0 V reference |
-| output offset | the output stage's own summing term from the same PWM: the centre moves anywhere the amplitude leaves room, within 0.03–3.27 V on the single rail or within about ±2.8 V with the inverter | the output op-amp's rails bound it; a smaller amplitude buys more offset travel |
-| output impedance and coupling | 56 Ω series, a DC pin and a 1 µF AC pin | Labrador's output form |
-| generator rate and frequency | 1.4 MS/s updates; sines clean to ~100–200 kHz, squares to a few hundred kHz | the DAC and the reconstruction corner; `docs/awg.md`'s ceilings still apply |
-| generator drive | 10–20 mA into 56 Ω series, short-circuit safe | the op-amp's current limit |
-| frequency accuracy | about 10 ppm | the master clock, measured |
-| cleanliness, the acceptance | within-hold events over 10 codes at or below 0.2 per 1000 holds on every board, largest excursion at or below 12 codes | the two healthy shielded boards set the floor; the fourth board is the test |
+| SC | Scope input | 4 |
+| DF | Differential mode | 5 |
+| AW | AWG output | 6 |
+| P2 | Phase 2 amplifier assembly | 7 |
+| PR | Protection | 8 |
+| PW | Power | 8 |
+| CA | Calibration | 8 |
+| EN | Environment | 8 |
+| MC | Construction | 9 |
+| VT | Verification test | 10 |
+| AN | Analysis | 11 |
 
-**The bandwidth row is the analog corner, and the sampling rate sets what
-it can serve.** One channel samples at 1,022,727 sps, Nyquist 511 kHz; two
-channels at 523,255 sps each, Nyquist 261 kHz; `docs/scope.md` puts the
-usable band at ~140 kHz and ~75 kHz, figures set at MCK 78 *(check)*. A
-200-300 kHz corner suits one channel, and with two channels the content
-between 261 and 300 kHz folds back below Nyquist. Either the corner follows the mode, or the
-two-channel bandwidth is the alias-limited one. This is a design choice
-and it is not made here.
+## 1. Scope
 
-Not achieved by construction: inputs beyond ±20 V, more than 12
-bits, bandwidth beyond half the sample rate, differential inputs, and
-input ranges finer than about ±3 V, which a passive divider cannot
-centre inside the rail.
-Bipolar generator output is achieved only with the Stage C inverter;
-without it the generator is unipolar. Noise and effective bits are the converter's;
-the AFE's job is to stop making them worse, which the cleanliness
-line states as a number, and to turn codes into volts, which the
-reference line does.
+The AFE adds protection, level scaling and a bipolar generator output to
+the Due's native converters. The design topology, part values and part
+choices are the contractor's. Everything here is a requirement, a
+constraint, a deliverable or an acceptance test.
 
-## Publisher board references and the actual carrier
+## 2. Host system (client-supplied information)
 
-**The Due's reference path** is read from the retained V03 EAGLE
-schematic and checked in the **[V03 KiCad PCB](../hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb)**.
-Use V03 as the working reference for the owner's DUE R3 board: reported
-six-pin IC2 and separate-inductor topology support this selection, with
-AMS1117 substituted for the source's NCP1117 at IC4. The
-[reference index](../hardware/reference/arduino-due/README.md) records the
-limits of that physical identification. The PDF draws the reference
-net at top centre. The 3.3 V rail
-reaches the reference node through JR1, a mounted 0 Ω 0402 link. The
-AREF header pin reaches that node only through BR1, a three-pad solder
-jumper that is not mounted. Its **schematic** pins are 1 = AREF,
-2 = 3.3 V, C = reference node. Its **PCB pads** are 1 = AREF,
-2 = reference node, 3 = 3.3 V; schematic pin C maps to PCB pad 2.
-From the node, L3, a ferrite,
-feeds ADVREF, pin 75, with 100 nF to ground on each side (C34, C19).
-`calibration.json` records a scope-derived ADVREF estimate of 3270 mV
-for the board it names. That estimate does not establish a 30 mV drop
-across this path or the reference voltage of the owner's board. The DAC's reference
-is the same pin, so whatever sets ADVREF sets the DAC's window with
-it. In the stock V03 design **AREF is isolated from ADVREF** by open BR1.
-**To drive ADVREF from the shield, JR1 is removed and BR1 is bridged
-from schematic pin 1 to C (PCB pads 1-2)**, after
-which the AREF pin reaches ADVREF through the ferrite, already
-decoupled. Nothing else on the board ties the node to the rail. The
-two steps go together: JR1 out with BR1 open leaves ADVREF floating,
-and BR1 bridged with JR1 in puts the shield's buffer against the rail
-through 0 Ω. Confirm the actual board's connectivity with a meter before
-soldering; DUE R3 silkscreen and the matching supply layout do not prove
-the state of JR1/BR1. The current prototype leaves these parts untouched.
-
-**The official Mega Proto Shield Rev3 reference** (`arduino-mega-proto-Shield-reference-design.pdf`,
-[extracted EAGLE sources](../hardware/reference/arduino-mega-proto-shield/README.md)). Every header pin is passed straight through
-to a parallel row of pads: digital on J3/J4 and J1/J5, the analog
-pins on ADCL J6 and ADCH J2, the communication row on COMM J8, power
-on POWER J7, and the 22–53 double rows on JP3/JP7 and JP4/JP8. The
-shield distributes **5 V and ground**, not a dedicated 3.3 V bus.
-Its 14-pin SOIC footprint at 50 mil pitch breaks out each pin separately;
-it is not prewired to the 5 V or ground nets. The original EAGLE board's
-IC2 contact references confirm this. It also has a reset button and an
-ICSP header carrying 5 V, ground and reset. What that means for the AFE:
-
-- 3.3 V is taken from the POWER row's 3.3 V pad and run as its own
-  bus; the shield's 5 V rows are not used by the analog section.
-- AREF and a ground pad sit next to each other on the COMM row, which
-  is where the reference lands.
-- The Due's DAC0 and DAC1 pins are on the pass-through rows like any
-  other pin, so the loopback and the output stage wire to their pads.
-- The SOIC-14 footprint takes a quad op-amp of the MCP6024 class
-  exactly: the two channel followers, the reference buffer and the
-  offset buffer in one package on the one footprint the shield offers.
-- The board has no ground plane and no separate analog ground pin on
-  the Due to reach for; one ground pad near the analog row is the
-  shield's star point.
-
-The official shield's connector names and SOIC geometry above are reference
-information. For the board being built, use the corrected carrier's
-[pad map and trace audit](../hardware/mega-proto-carrier/README.md), Due
-signal names and continuity checks. Its PG1 grid IDs and TP1 land IDs are
-not the official EAGLE references or IC pin numbers. The proposed socketed
-PDIP part belongs in verified free through-holes, not the SMD land pattern.
-
-## The build, stage by stage
-
-The Due's headers bring out every ADC pin, both DAC pins, 3.3 V, 5 V,
-ground and AREF, so the whole chain fits on a stacked board. The bench
-today is a loopback, DAC0 to A0 and DAC1 to A1 at 0.55–2.75 V, with no
-external signal; the stages below are in the order the measurement
-asks for them, and the first two are the ones with evidence behind
-them.
-
-### Stage A: reference, midpoint and pin drivers
-
-- Default: the LM4040-3.0 circuit, its buffer and a buffered midpoint
-  measured through A2. The stock Due stays unchanged and JP101 stays open;
-  the shield reference does not set ADC/DAC full scale. Simulate reference
-  bias, startup and loads before assembling this configuration.
-- Optional future configuration: use the buffered reference to drive AREF
-  only after revision-specific Due checks, separate SPICE reference-load
-  validation and the documented JR1/BR1 changes. The V03 working reference
-  describes removal of JR1 and bridging BR1 from schematic 1 to C
-  (PCB pads 1-2). V02g remains an alternate archive; verify the actual
-  V03-style board's assembly and nets before changing them. A modified board's reference
-  and DAC range differ, so earlier stock-Due measurements are on another scale.
-- A unity buffer from the DAC0 wire into A0 through 68 Ω and 470 pF,
-  the same on A1. On a 3.3 V single rail the LMV116's output reaches
-  the rails but its input does not, so a rail-to-rail-input part is
-  needed for a follower: OPA2350 or OPA2354 class, or AD8656 for lower
-  noise, all single-supply at 3.3 V *(check the input common-mode
-  range of whichever is chosen against 0.55–2.75 V)*.
-- Unused ADC pins tied to ground through a resistor; the bare-pin
-  finding in `CLAUDE.md` is a pickup path too.
-
-The historical MCP6024 candidate is not qualified for the new A1 gate. With
-the former nominal manufacturer model at 3.3 V and 27 C, the loaded follower
-is about -5.86 dB at 5 MHz before the series resistor, and A0 reaches
-its -3 dB corner near 3.39 MHz. A 2 V step takes about 1.218 us to
-settle to within one 3 V / 4096 code of its final plateau, longer than
-the 0.978 us sample interval at 1,022,727 sps (1.129 us at 886 ksps on a
-MCK 78 image); acquisition may be shorter. The 68 ohm / 470 pF network's nominal
-4.98 MHz passive corner must not be quoted as the complete buffer
-bandwidth. The reference-load stress test also needs follow-up before
-JP101 could close in any future alternate configuration. Reproduce and read the limitations in
-[`hardware/afe-proto/REVIEW.md`](../hardware/afe-proto/REVIEW.md).
-
-Judged by the sweep on the fourth board: if the within-hold rate does
-not move, the coupling is not at the pin or the reference, and the
-next stage is the supply and the ground return, not the attenuator.
-
-### Stage B: attenuation, ranges, offset
-
-OpenScope's first stage cannot run on 3.3 V: ±20 V in gives ∓4 V out.
-Two honest ways to land it:
-
-- **Keep the topology, add the rails.** A small boost and inverter as
-  PSLab does gives ±5 V or ±6 V; the LMV116 is then replaced by a part
-  rated for the wider supply, and everything on the sheet transfers
-  as drawn, including the switch in the feedback path and the
-  range-scaled offset.
-- **Stay on 3.3 V, move the attenuation forward.** Reference the first
-  stage's non-inverting input to VREF1V5 and give it the full 3/40 at
-  once, 1 MΩ into 75 kΩ; the second stage then gains 1, 3.3, 6.7 and
-  13.3 to reach the four ranges. It works, it costs noise in the
-  sensitive ranges because the second stage amplifies the first
-  stage's, and it keeps one supply. For a bench whose signals are the
-  Due's own DAC, this is enough.
-
-Either way the switch selects a feedback resistor, each with its own
-capacitor so the bandwidth is set once, and the offset comes from a
-Due PWM pin through the same two-pole RC and a range-scaled resistor.
-
-**The chosen form: single rail, passive where possible.** No new
-rail; simplicity and robustness over range. Per channel:
-
-| capability | form | parts | why it is robust |
-|---|---|---|---|
-| protection | 1 MΩ in series, then a BAT54S from the node to 3.3 V and to ground | 1 R, 1 dual diode | ±20 V is ±20 µA; nothing active in the path |
-| attenuation and mid-rail | a divider: the 1 MΩ to a shunt resistor whose bottom end is a buffered node at 1.61 V, Labrador's form with the bottom end placed where 0 V in lands at mid-scale | 1 R | passive; the node cannot leave 0.1–2.9 V for any input inside ±20 V |
-| ranges, if wanted | a TS3A5017 switching the shunt resistor, and the bottom end set per range: 1.61 V for ±20, 2.14 V for ±5, 3.0 V for ±3 | 1 switch per two channels, 3 R | the switch never sees the input; the bottom end is the offset buffer's level, so ranges need the offset source |
-| offset | the divider's bottom end driven by a Due PWM pin through two RC sections and a buffer; a divider from the reference to 1.61 V if not wanted | 2 R, 2 C, 1 op-amp section, shared | moves the trace with no gain change |
-| buffer into the ADC | a rail-to-rail follower, then a series resistor and 470 pF | 1 op-amp section, 1 R, 1 C | a 3.3 V op-amp cannot drive the pin outside its limits |
-| anti-alias | a compensation capacitor across the 1 MΩ, R1·C1 = Rs·Cs, one per shunt value; the corner set by the pin driver's series resistor against its 470 pF | 1 C per range, and the pin driver's R | passive, set once; without the compensation the 1 MΩ and the node's picofarads roll off in the tens of kilohertz |
-| DAC output | a follower, or gain 1.5 about 1.65 V; two RC sections; 1 kΩ load, 56 Ω series | 1 op-amp section, 4 R, 2 C | the series R and the op-amp's limit are the protection |
-
-**The divider's transfer is what sets the ranges.** With the 1 MΩ
-on top, the shunt Rs below it and the bottom end at Vb, the node is
-Vb·(1−k) + k·Vin with k = Rs/(1 MΩ + Rs). A bottom end at 1.5 V
-does not put 0 V in at mid-scale: at k = 0.070 it lands 105 mV low,
-and −20 V lands on the ADC's zero. Centring wants Vb = 1.5/(1−k),
-which is 1.61 V for ±20 V, 2.14 V for ±5 V and 3.0 V for ±3 V, and
-the buffer's rail bounds Vb, which is why about ±3 V is the finest
-passive range. The offset moves the node by (1−k) of the bottom
-end's travel, so it reaches a full screen at ±20 V and less as the
-range narrows.
-
-**Negative inputs need no negative rail.** The divider is referenced
-to a node inside the rail, not to ground, so polarity is which side
-of mid-scale the reading falls. A negative rail on the input side would buy
-an active first stage - exact 1 MΩ, low-noise gain ranges - not
-range, and it would put a pump's ripple ahead of the converter rather
-than behind it; OpenScope's first stage also needs wider rails than
-±3.3 V for ±20 V. Whatever earlier stages do on whatever rails, the
-last stage before an ADC pin is a follower on the 3.3 V rail, so the
-pin cannot be driven outside 0–3.3 V.
-
-**The offset source is a Due PWM channel.** The SAM3X's PWM
-controller is unused by the firmware, whose timers are the
-converters' internal triggers, so a channel on pins 6–9 is free. At
-12-bit resolution from the 78 MHz master clock the carrier is about
-19 kHz and one step 0.8 mV; OpenScope's two RC sections near 70 Hz
-attenuate that carrier by roughly 70,000 times, leaving ripple below
-one code, with settling in tens of milliseconds. The filtered level,
-buffered, drives the divider's bottom end; the pin and the first RC
-stay on the digital side. Firmware: one PWM channel with its duty set
-from a console command and a control opcode, on all three tracks,
-nothing on the working path. It is not a trigger source and must not
-become one.
-
-One quad rail-to-rail op-amp of the MCP6024 class, 10 MHz so the
-follower stays transparent to the converter's Nyquist, covers both
-channel buffers, the reference buffer and the offset buffer; a 1 MHz
-part is more forgiving and rolls off too early. Check the chosen
-part's input common-mode range covers the rails *(check)*. Given up
-against OpenScope's active form: exactly 1 MΩ of input impedance, and
-low-noise sensitive ranges, neither of which the loopback bench uses.
-
-### Stage C: the DAC output stage
-
-OpenScope's output chain transfers whole, with the ladder replaced by
-DAC0. The Due's DAC swings 1/6 to 5/6 of ADVREF, 0.50–2.50 V with the
-reference at 3.0 V, 2.0 V peak to peak about 1.5 V, as a staircase at
-up to 1.4 MS/s. That centre is VREF1V5 itself, which is what lets the
-single-rail stage below do without a reference term.
-
-- **Reconstruction filter first**, two RC sections as drawn but
-  scaled to the slower source: a corner a few hundred kilohertz above
-  the highest generator frequency in use, not the 3–5 MHz that suits
-  10 MS/s. It is also where the DAC's own per-conversion behaviour
-  (`docs/awg.md`) gets smoothed rather than presented.
-- **Then the inverting summer.** Signal through Rin, an offset term
-  from a Due PWM pin through the same two-pole RC, the + input at the
-  buffered 1.5 V, gain and bandwidth in the feedback. The DAC is
-  centred on that same 1.5 V, so the reference term OpenScope needs
-  to cancel a ground-referenced ladder is not needed on the single
-  rail; it returns with the inverter, to move the centre to 0 V. On a
-  single 3.3 V rail a gain of about −1.6 with a rail-to-rail output
-  op-amp turns 0.50–2.50 V into 0.1–3.2 V; with ± rails the same
-  stage gives any span the op-amp's supply allows, which is why
-  OpenScope reaches ±3 V. Choose the rail question once, in Stage B,
-  and this stage follows it.
-- **Then the output form.** Labrador's, since OpenScope draws none: a
-  1 kΩ load, 56 Ω in series to a DC pin, 1 µF to an AC pin. The series
-  resistor and the op-amp's current limit are the protection.
-
-Judged the same way as the input: `tools/gen_sweep.py` reads the DAC
-through the ADC, so the loopback through this stage and Stage A's
-buffer is measured within holds like everything else.
-
-**Option: a −3.3 V inverter for the output stage alone.** A
-charge-pump inverter, one chip and two capacitors plus an RC filter
-on its rail, gives the output op-amp ±3.3 V; the summer then subtracts
-the DAC's 1.5 V centre through a reference term and the waveform sits
-about 0 V, roughly
-±2.8 V after the op-amp's headroom, with offset either side of
-ground. Choose a low output-resistance pump, LM2664 or TPS6040x
-class, since a pump is a resistor as much as a supply and the old
-7660 sags a volt at 20 mA; use an op-amp rated for 6.6 V total,
-MCP6H91 or TLV2372 class, not the 5.5 V rail-to-rail parts. The input
-side stays on 3.3 V, so no ADC pin can be driven negative, and the
-loopback still works because the input divider to 1.5 V takes ±3 V
-to 1.5 ± 0.2 V. It costs one more part that can fail, safely, and
-one extra sweep with the pump on against off. The AC-coupled output
-pin gives a 0 V-centred waveform with no rail at all, for signals
-with no DC content.
-
-**References for a real DAC as the source**, since OpenScope's is a
-ladder and the part before the filter differs:
-
-| reference | what it drives | the stage | read it for |
-|---|---|---|---|
-| PSLab V6 (`docs/related-work.md`) | an MCP4822 12-bit SPI DAC, 0–3.3 V | LM324 on ±6 V: out = 2·V − 3.3 gives ±3.3 V, a second stage ×1.51 gives ±5 V, a transistor stage gives a current source | the cleanest unipolar-to-bipolar level shift in the set, with the gain and the offset in one resistor pair; needs ± rails |
-| Labrador (`docs/related-work.md`) | the XMEGA's own 12-bit DAC, 0–3.3 V | LM324 follower or ×3 on a boosted single rail, 1 kΩ load, 56 Ω series, AC and DC pins | the single-supply form and the output pins; no filter, no reference term |
-| the SAM3X datasheet, DACC chapter | this DAC | its output range is 1/6 to 5/6 of the reference by design, and its drive is weak | why the window is 0.55–2.75 V at the stock 3.27 V and 0.50–2.50 V at 3.0 V, and why a buffer is not optional; `docs/hardware.md` records the measured range |
-| TI, Analog Engineer's Circuit Cookbook, the DAC output circuits | any unipolar DAC | worked single-supply and unipolar-to-bipolar buffer designs with the resistor arithmetic and the error budget | the arithmetic for the reference term and the gain, done once by someone who publishes the derivation |
-
-The shape that fits this project is PSLab's level shift with
-OpenScope's filter in front of it and Labrador's output pins after it,
-on whichever rail Stage B settled.
-
-## Building it: from this note to a wired shield
-
-The detailed sequence and evidence are in [the plan](afe-plan.md).
-
-1. **Use the corrected carrier.** Inspect the actual pad map and existing
-   copper; create the working assembly under `hardware/afe-proto/` from
-   that baseline. Keep its geometry and carrier references intact.
-2. **Set configuration and numerical limits.** Default to 3.3 V single
-   supply, stock Due and JP101 open. Define voltage/error, bandwidth,
-   settling, acquisition, load and corner conditions for each test.
-3. **Draw Stage A and establish its models.** Add reference, midpoint and
-   pin-driver sheets with unique 100-series references, exact parts and
-   checked symbol/footprint/model mappings. Build simulation-only test
-   benches from the same circuit sheets.
-4. **Finish A1 in SPICE.** Run operating point, DC, AC, transient, startup,
-   load/acquisition and corner cases. Resolve required failures and retain
-   numerical pass/fail results at the exact circuit/model revision.
-5. **Lay out, assemble and measure A2.** Place the passed circuit on the
-   working carrier copy; document added wires and pad IDs. Complete
-   unpowered checks and controlled bring-up. Measure reference/midpoint,
-   drivers and loopback with stock-Due scaling; AREF is not driven.
-6. **Repeat for Stage C, then Stage B.** Each stage is simulated to its
-   limits before it is assembled and measured. Simulate and test each
-   chosen rail option; rerun the integrated circuit as stages are added.
-7. **Consider a custom PCB later.** Derive it from the validated circuit
-   and verified Due interface, with a separate manufacturing/layout review,
-   rerun simulations and a measured comparison against the prototype.
-
-Keep the schematic, assembly plan, BOM and accepted simulation reports
-under `hardware/afe-proto/`. Captures name the exact assembly revision,
-Due identity and configuration. The baseline carrier and official Due
-reference remain separate from the working AFE assembly.
-
-## What the shield cannot fix
-
-The converter's supply pins are on the Due. If the sweep shows the
-residual unchanged through stages A and B on the board with the most
-of it, the coupling is through the analog supply or the ground under
-the chip, and a proto shield has no plane to offer. That is the point
-at which the answer is a board, not a shield.
-
-## Design reasoning
-
-Everything above was derived from what follows: the measurement
-that made a front end the next step, the OpenScope MZ chains read
-part by part, and the parts themselves for a reader returning to
-analog.
-
-### The measurement first
-
-The within-hold reading on three boards says the residual disturbance
-is on the reading side: a random, symmetric, single-sample kick of
-tens of codes, present with no signal, worse with USB traffic, removed
-on one board by a stacked shield that touches nothing but the headers.
-Two coupling paths are left open: the ADC pin and the wire feeding it,
-and the reference and analog supply. The AFE's first two stages are
-those two paths, and each is judged with `tools/gen_sweep.py` before
-and after, on the board with the most residual, by the within-hold
-rate and the largest excursion. That, not a bandwidth figure, is the
-acceptance test.
-
-### The OpenScope MZ input chain, part by part
-
-One channel, from the connector to the ADC pin. Values are as printed
-on the sheet.
-
-![The OpenScope MZ input chain as blocks](img/afe-openscope-chain.svg)
-
-| stage | parts | what it does |
-|---|---|---|
-| input attenuator | R31 1 MΩ into the inverting input of IC5A (LMV116), R30 200 kΩ feedback with C27 0.3 pF, non-inverting input at ground | gain −0.2, input impedance 1 MΩ. The inverting input is a virtual ground, so the pin never sees the input voltage, and 1 MΩ limits a ±20 V input to ±20 µA into the op-amp's own input clamps. That is the whole protection. ±20 V in gives ∓4 V out, which needs rails wider than 3.3 V; the sheet does not show this op-amp's supply |
-| level shift into the summing node | R32 3.6 kΩ from IC5A's output, R33 1.2 kΩ + C29 1 µF + R34 2.21 kΩ from VREF3V0, C28 33 pF across R32 | the second stage is an inverting summer; the filtered 3.0 V reference through 3.41 kΩ is the current that centres the output when the input is zero, and C28 lets edges through the 3.6 kΩ faster than the node capacitance would |
-| gain select | IC4 TS3A5017, a dual 4:1 analog switch on 3.3 V; bank 2 selects the feedback resistor of IC6A: R21 1.33 kΩ with C21 91 pF, R27 2.26 kΩ with C22 51 pF, R28 4.53 kΩ with C25 22 pF, R29 18 kΩ | gain −Rf / 3.6 kΩ: 0.37, 0.63, 1.26, 5.0. With the first stage's 0.2 the net gains are 3/40, 1/8, 1/4 and 1, the sheet's four ranges: ±20, ±12, ±6 and ±1.5 V full scale. Each feedback capacitor gives the same corner, about 1.3–1.6 MHz, so the bandwidth is set once, in the feedback, and holds across ranges; the manual's 2 MHz at −3 dB is this |
-| second stage | IC6A LMV116, non-inverting input at VREF1V5 through R36 1 kΩ and C30 1 µF | the inverting summer whose output is the 0–3 V signal centred on 1.5 V |
-| offset | PWM from the microcontroller through R22 470 Ω, C23 4.7 µF, R23 511 Ω, C24 4.7 µF (two poles near 70 Hz) into IC3C (LMV324) as a buffer, then bank 1 of the same switch selects R17 10 kΩ, R20 2.4 kΩ, R24 1.37 kΩ or R26 1.02 kΩ into the summing node | the offset resistor changes with the range so that one PWM step moves the trace by the same fraction of the screen at every gain; the 10 mV PWM step the manual quotes is this path's resolution |
-| ADC pin driver | R35 68 Ω series, C31 470 pF to ground | the sample-and-hold's charge comes from the 470 pF, not from the op-amp through the switch, and the 68 Ω isolates the op-amp from the capacitor. The corner is about 5 MHz: this is not the anti-alias filter, the feedback capacitors are |
-
-### The OpenScope MZ output chain, part by part
-
-The generator's output stage is the input chain run backwards, and it
-is on the same sheet as the ladder (`awg-r2r-ladder.png`). The source
-is a 10-bit R-2R ladder on ten port pins, 0 to 3.3 V, a staircase at
-up to 10 MS/s; everything after it would serve a DAC just as well.
-
-![The OpenScope MZ output chain as blocks](img/afe-output-chain.svg)
-
-| stage | parts | what it does |
-|---|---|---|
-| reconstruction filter | R61 750 Ω with C55 36 pF, then R62 750 Ω with C56 43 pF to ground | two RC sections that round the ladder's steps into a waveform before anything amplifies them; corners near 3–5 MHz, sized for a 10 MS/s source |
-| signal into the summing node | R63 2.2 kΩ into the inverting input of IC10A | the filtered staircase becomes a current at the − pin |
-| reference term | VREF3V0 through R66 1.2 kΩ, C57 1 µF, R67 1.64 kΩ into the same node | a constant current that removes the ladder's DC: the ladder is unipolar, the output is bipolar, and this is the difference |
-| offset term | PWM pin RG0 through R58 499 Ω, C53 10 µF, R57 510 Ω, C52 2.2 µF, R59 2.43 kΩ into the same node | the user's offset, a two-pole-filtered PWM as on the input side, injected as a third current |
-| the summer | IC10A MCP6H91, non-inverting input at VREF1V5 through R69 1 kΩ with C58 1 µF, feedback R64 4.125 kΩ with C54 5.6 pF | inverting summer centred on 1.5 V: gain −4125/2200 ≈ −1.9 on the signal, corner near 7 MHz in the feedback. The MCP6H91 is a 16 V part because the output has to reach ±3 V, so this stage sits on the board's ± rails |
-| output | straight from the op-amp to the connector | 10 mA is the op-amp's own limit; no series resistor is drawn |
-
-The reference, the offset and the signal meet at one node under one
-feedback, exactly as on the input side. The two chains share the same
-two reference voltages, so the generator's zero and the scope's zero
-are the same volt.
-
-### The reference
-
-![The pin driver and the reference, drawn](img/afe-sar-drive.svg)
-
-| parts | what it does |
+| Item | Value |
 |---|---|
-| D2 LM4040AIM3-3.0 shunt reference, R134 56 Ω from 3.3 V, C94 10 µF | a 3.000 V, 0.1% reference biased at about 5 mA, decoupled |
-| IC3A LMV324 unity buffer, R132 5.36 kΩ + R133 4.64 kΩ + C93 1 µF at its input | VREF3V0, driven onto the chip's VREF+ pin and into the level-shift path with a source that can supply current |
-| R135 5.36 kΩ, R136 4.64 kΩ, R137 10 kΩ, all 0.1%, C95 1 µF, IC3B LMV324 buffer | VREF1V5, exactly half the reference, the mid-scale the second stage centres on |
+| Board | Arduino Due (V03 reference), unmodified. JP101 open, JR1/BR1 untouched |
+| AREF | The board's 3.3 V rail, about 3.27 V on the measured board. The client supplies per-board AREF and DAC-window values for its three Dues |
+| ADC | 12-bit. 22.5 MHz clock on the 90 MHz build, 19.5 MHz on the in-spec 78 MHz build |
+| ADC noise | 0.80 LSB rms on a held code at the 90 MHz default; 1.65 LSB rms (about 9.5 effective bits) with DAC0 driving the pin. `docs/noise.md`, `docs/hardware.md` |
+| One channel | 1,022,727 sps (90 MHz build), 886,363 sps (78 MHz build) |
+| Two channels | 1,046,510 sps in total, 523,255 per channel (90 MHz build); 453,488 per channel (78 MHz build) |
+| DAC | 12-bit, weak drive. Output 0.578 to 2.771 V with a scope on the pin (`docs/hardware.md`); theory is 1/6 to 5/6 of AREF, a span of 2.13 V at AREF 3.20 V. Window centre about 1.67 V against a mid-AREF of 1.635 V |
+| DAC noise | Earlier records say about 20 mV rms (15 mV idle) with the measurement bandwidth unrecorded; the ADC loopback reads about 1.3 mV. Treat the DAC's own noise as unknown until re-measured over DC to 1 MHz (VT-3) |
+| ADC pins | Always A1 (CH1) and A0 (CH2), and no others. The AFE uses no other ADC channel, and the pins do not change between modes or phases |
+| Differential ADC mode | A1 and A0 form one pair (AD6/AD7). Each pin stays between 0 V and AREF. PGA gain 1 gives full scale ±AREF/2, gain 0.5 gives ±AREF. The client confirms from the datasheet which pin is VIN+; this specification assumes CH1 on A1 is IN+ *(check)* |
+| Power available | Due 5V and 3.3 V pins only. A0, A1 and the DAC pins are 3.3 V pins |
+| Client supplies | Firmware, host software, the JP-DIFF input pin, and the ADC acquisition settings |
 
-The reference is the ADC's full scale, the level shift's current and
-the mid-rail, all from one part, so a drift moves everything together
-and cancels in the ratio. That is the property to keep.
+## 3. Phasing
 
-### The parts, for a reader whose analog is twenty years old
+| Phase | Content |
+|---|---|
+| 1 | Two single-ended scope channels, one AWG output, jumper-selected differential mode |
+| 2 | An optional fully-differential amplifier assembly that reuses the Phase 1 design (section 7) |
 
-Each part, what it is, and why it sits where it does, in the order the
-signal meets them. The table after it is the same material as a
-reference card.
+## 4. Scope input (CH1 to A1, CH2 to A0)
 
-![The op-amp rule and the three stages built from it](img/afe-opamp-rules.svg)
+| ID | Requirement |
+|---|---|
+| SC-1 | Default: two independent single-ended DC-coupled channels |
+| SC-2 | Each input ±5 V, usable to ±6 V with the ADC pin inside 0 to AREF, with at least 80 mV of margin per side at AREF 3.20 V. This holds over AREF 3.20 to 3.30 V, component tolerance and a midpoint centring error of ±30 mV. The AREF spread is shown by analysis (VT-13) and by measuring each board as found, not by changing AREF |
+| SC-3 | Input resistance 1 megohm per input. Input capacitance at most 30 pF including wiring (TBC) |
+| SC-4 | At most 4 mV per ADC code at the input. ±5 V occupies 70 to 75% of ADC full scale at nominal AREF. At 70% the step is 3.5 mV, and the 75% end leaves about 10% of full scale at ±6 V |
+| SC-5 | Low-pass with one dominant pole, −3 dB corner 270 kHz ±25%, no peaking above 0.5 dB, and no step in the response larger than 2% from divider compensation. Usable band DC to 200 kHz at 1 Msps on one channel, DC to 100 kHz at about 523 ksps per channel on two (90 kHz at 453 ksps on the 78 MHz build). Gain error across the band is corrected by host calibration. The AFE is not an anti-alias filter, and its documentation must say so |
+| SC-6 | AFE noise referred to the ADC pin at most 0.5 mV rms over DC to 1 MHz. The Due's ADC cannot verify this (VT-3) |
+| SC-7 | DC accuracy after host calibration: ±0.5% of reading ±5 mV, for the mean of at least 1024 samples |
+| SC-8 | Channel matching, before host calibration: gain within 0.3%, offset within 5 mV, corner within 10% |
+| SC-9 | Crosstalk: a full-scale input on one channel with the other input shorted changes the other channel's reading by at most 2 LSB at 1,022,727 sps (one channel) and 523,255 sps per channel (two channels), at the client's configured acquisition settings (TBC). The project records a 56% sample-and-hold memory on an undriven pin, so a low-impedance drive is expected |
+| SC-10 | Source impedance at the ADC pin at most 5 kΩ (TBC), so the ADC settles to within 0.5 LSB inside its configured acquisition window and not the sample interval. The basis is the datasheet's 12-bit track time of 0.054 ns per ohm plus 205 ns *(check)* and 15 ADC clocks at 22.5 MHz (667 ns), which gives about 8.6 kΩ before margin |
 
-**The op-amp, and the one rule that explains everything it does.**
-LMV116, LMV324, MCP6H91 and LM324 are all operational amplifiers: a
-differential amplifier with enormous gain, two inputs marked + and −,
-one output. With negative feedback, some path from the output back to
-the − input, the op-amp drives its output to whatever voltage makes
-the two inputs equal. That single rule reads every stage on the sheet.
+## 5. Differential mode
 
-- *Follower, or buffer.* Output wired straight to the − input, signal
-  on +. The output copies the input voltage, but the input draws
-  almost no current and the output can supply plenty: an impedance
-  converter, a weak source in and a strong source out. IC3A and IC3B
-  in the reference are followers, and the buffer between the DAC wire
-  and A0 is one too.
-- *Inverting amplifier.* Signal through a resistor into the −, + held
-  at a fixed voltage, feedback resistor from output to −. Because the
-  op-amp keeps − equal to +, the − pin sits at that fixed voltage
-  whatever the input does: a virtual ground when + is at ground. The
-  input resistor turns the input voltage into a current, the feedback
-  resistor turns that current back into a voltage, so the gain is
-  minus the ratio of the two, 200 kΩ over 1 MΩ gives −0.2. This is
-  IC5A, and it doubles as protection because the input pin never sees
-  the input voltage, only the current the 1 MΩ lets through.
-- *Summing amplifier.* The same with several input resistors into the
-  − pin. Currents add at the node, so the output is a weighted sum of
-  the inputs. IC6A sums the attenuated signal, the reference and the
-  offset, each through its own resistor: level shift, gain and offset
-  in one stage.
+| ID | Requirement |
+|---|---|
+| DF-1 | A jumper (JP-DIFF) selects differential mode, with CH1 = IN+ and CH2 = IN−. It only signals the mode to the firmware through a spare Due digital input pin (chosen by the client) and must not change the analog signal path |
+| DF-2 | Two differential ranges, chosen by the firmware's PGA gain: ±5 V difference at most 4 mV per code, and ±10 V difference at most 7.5 mV per code. Each input stays within ±6 V. The contractor shows that every ADC pin stays inside the converter's differential-mode common-mode window *(check)* for the stated combinations and states any limit on input common mode |
+| DF-3 | CMRR before host calibration, with each input driven from at most 100 ohms: at least 46 dB at DC on every unit and 40 dB at 10 kHz (typical 50 dB at DC, TBC). The input network uses parts of 0.1% tolerance or better |
+| DF-4 | Accuracy after host calibration: ±0.5% of reading ±1 code, for the mean of at least 1024 samples. Bandwidth and noise per SC-5 and SC-6 |
 
-**Single supply and rail-to-rail.** University op-amps ran on ±15 V
-with the signal swinging around ground. These run between ground and
-3.3 V, so the signal swings around a made-up middle, 1.5 V here.
-Rail-to-rail *output* means the output reaches within a few tens of
-millivolts of ground and of 3.3 V; rail-to-rail *input* means the
-inputs can too. The LMV116 has the first property and not the second,
-which is fine for the inverting stages whose inputs sit at 1.5 V and
-not fine for a follower that must track 0.55–2.75 V.
+## 6. AWG output (one channel, single-ended, from DAC0)
 
-**Why LMV116 and LMV324 are different parts.** The LMV116 is fast,
-about 45 MHz of gain-bandwidth, and is used where the signal passes
-through. The LMV324 is four slow op-amps in one package, used where
-nothing fast happens: the reference buffers and the offset buffer.
-Speed costs money and current, so the sheet spends it only on the
-signal path.
+| ID | Requirement |
+|---|---|
+| AW-1 | Output ±1.0 V DC-coupled. As built, including the AW-7 tolerances and AREF 3.20 to 3.30 V, reaching ±1.0 V uses at most 92% of the board's DAC window |
+| AW-2 | Step at most 1 mV |
+| AW-3 | −3 dB corner 360 kHz ±25%, acting as the reconstruction filter. Usable band DC to 100 kHz, gain error corrected by host calibration |
+| AW-4 | Load at least 10 kilohms, output impedance at most 50 ohms. A short to ground is safe indefinitely |
+| AW-5 | Draws at most 0.1 mA from the DAC pin |
+| AW-6 | AFE-added noise at most 1.0 mV rms over DC to 1 MHz, measured at the AWG output with DAC0 replaced by a quiet DC source at the same level. Total output noise with DAC0 driving is measured and reported, not guaranteed. The DAC's own noise is re-measured over DC to 1 MHz and reported before this figure is accepted |
+| AW-7 | Accuracy: after calibration ±0.5% ±5 mV. As built, gain from the DAC pin to the output between 1.10 and 1.20 V/V and offset within ±60 mV including the DAC window's centre error (TBC). The offset reference is derived from AREF, not from 5 V |
+| AW-8 | During Due reset or boot, with DAC0 undriven, the output stays within ±1.5 V and returns to the commanded value without exceeding ±1.5 V (TBC) |
 
-**MCP6H91 and MCP6H82.** Also op-amps, chosen because they run on
-wider supplies, up to 16 V. The generator output must swing ±3 V and
-the DC outputs ±5 V, which no 3.3 V part can do, so these sit on the
-board's ± rails.
+## 7. Phase 2: fully-differential amplifier assembly
 
-**LM4040, the shunt reference.** A very precise Zener diode. Fed a few
-milliamps through a resistor, 56 Ω from 3.3 V here, it holds exactly
-3.000 V across itself, to 0.1%, whatever the temperature or the rail
-does. The resistor-divider mid-rail that Labrador and Scoppy use is
-the opposite: it moves with the rail and with load. An ADC reads a
-ratio, input over reference, so a reference that moves turns every
-reading into a moving number. The buffer after it exists because the
-reference can supply only a little current, and VREF+ plus the
-level-shift network draw more than it should give.
+| ID | Requirement |
+|---|---|
+| P2-1 | Installs by replacing one removable amplifier assembly, with no cuts, rework or board changes |
+| P2-2 | Reuses the Phase 1 input network, protection, output network, connectors, supply and JP-DIFF |
+| P2-3 | Meets DF-2 to DF-4 and drives the A1/A0 pair with balanced signals. Its CMRR and noise are no worse than Phase 1's |
+| P2-4 | Single-ended mode need not work while it is installed |
+| P2-5 | The contractor states its input common-mode range |
+| P2-6 | The Phase 1 design package defines the assembly's interface (pinout, voltages, loads) so Phase 2 needs no Phase 1 change |
 
-**TS3A5017, the analog switch.** A relay with no moving parts: two
-independent 4-way selectors, each connecting one of four pins to a
-common pin under two logic lines, with a few ohms of resistance when
-closed. It carries the signal current, which a logic gate cannot. In
-the feedback path of IC6A it picks which resistor closes the loop, so
-the range changes in software without a mechanical switch and without
-touching the input. Its on-resistance adds to the feedback resistor,
-which is the "−10" in the sheet's resistor formulas.
+## 8. Protection, power and environment
 
-**The capacitor across each feedback resistor.** A capacitor passes
-high frequencies more easily than low ones. In parallel with the
-feedback resistor, the feedback strengthens at high frequency and the
-gain falls, from the corner where the capacitor's impedance equals the
-resistor's, 1/(2πRC). Each of the four feedback resistors carries a
-capacitor sized so R × C is the same, about 120 ns, so every range
-rolls off at the same 1.3–1.6 MHz. This is where the instrument's
-bandwidth is decided, and it is also the anti-alias filter: anything
-above the corner is attenuated before the ADC can fold it into the
-band.
+| ID | Requirement |
+|---|---|
+| PR-1 | Each scope input survives ±30 V continuous, powered or unpowered, and a signal applied with the Due unpowered or unconfigured. Above ±30 V the AFE may be damaged, but only in parts the owner can replace on the carrier, and the Due is not damaged |
+| PR-2 | A0, A1 and the DAC pin stay between −0.2 V and 3.45 V in every supply and power-off state. This is a conservative limit against the pin's datasheet absolute maximum of −0.3 to +4.0 V *(check)*. Any driver of these pins is supplied at no more than 3.45 V |
+| PR-3 | With the Due unpowered and ±30 V on a scope input, the current into the Due supply pins is at most 100 µA and the rails stay below 0.5 V (TBC) |
+| PR-4 | The AWG output survives an external ±5 V for at least 10 s, powered or unpowered, and recovers without damage. Unpowered, the back-feed into the Due supply pins meets PR-3's limits. These excursions are exempt from PW-3 |
+| PW-1 | Power only from the Due 5V and 3.3 V pins. At most 30 mA in normal operation with loads of at least 10 kilohms |
+| PW-2 | Any negative or extra rail is made on the AFE, with ripple at the amplifier supply pins of at most 20 mV |
+| PW-3 | With the AWG output shorted to ground indefinitely, total current is at most 60 mA with no damage (TBC against the Due's limits) |
+| PW-4 | The rms noise on the Due 3.3 V pin and AREF rises by at most 0.5 mV over DC to 1 MHz when the AFE is connected, calculated as sqrt(on² − off²) |
+| PW-5 | No Due modification |
+| CA-1 | Calibration of gain, offset, frequency response and common-mode error is done in host software. The AFE has no trim elements, and its performance does not depend on any particular calibration instrument |
+| EN-1 | 15 to 35 °C. Gain drift at most 0.2% and offset drift at most 3 mV over that range, excluding the Due's own drift (TBC) |
 
-**The PWM offset.** The microcontroller has no spare DAC for the
-offset, so it uses a PWM output, a square wave whose on-time fraction
-is set in software. Two RC low-pass sections, 470 Ω with 4.7 µF and
-511 Ω with 4.7 µF, average the square wave into a DC level
-proportional to the on-time: a DAC made from one pin and four passive
-parts, slow, with a little ripple, fine for an offset that changes
-only when a knob turns. The Due has PWM pins and would do the same.
+## 9. Construction
 
-**The 68 Ω and 470 pF at the ADC pin.** A SAR ADC samples by briefly
-connecting a small internal capacitor to the pin and letting it charge
-to the input voltage, and that charge has to come from somewhere fast.
-Driven only by an op-amp through the switch, the pin cannot deliver it
-in the nanoseconds the sample takes and the reading sags. The 470 pF
-is a reservoir hundreds of times larger than the sampling capacitor,
-so it supplies the charge and barely moves; the 68 Ω keeps the op-amp
-stable driving that capacitor and refills it between samples. The
-standard idiom for driving any SAR converter, and the stage the
-within-hold reading points at most directly.
+| ID | Constraint |
+|---|---|
+| MC-1 | Built on the client's Mega ProtoShield V3 carrier (103 x 55 mm), which stacks on the Due and exports every Due pin through sockets on its top side. The client supplies the KiCad project: [mega-proto-carrier](../hardware/mega-proto-carrier/README.md) |
+| MC-2 | The carrier's 2.54 mm grid holes are isolated pads. The 28 holes tied to SMD lands (rows R04, R05, R11 and R12, columns C01 to C07) must not be used |
+| MC-3 | All parts are through-hole, or surface-mount on adapters. No custom PCB in this scope |
+| MC-4 | Signal pins (photo estimates): power at x=32 to 42 mm, A0 and A1 at x=47 and 50, DAC0 at x=80, along the carrier's bottom edge. The contractor confirms against the client's model |
+| MC-5 | The design and assembly drawing map every pin to a grid hole, and record added wires and crossings |
+| MC-6 | Design files use KiCad 10.x. Simulation models carry provenance and hashes |
+| MC-7 | Fit and the AREF-spread conditions are demonstrated on the client's three Dues: fit by inspection, electrical performance by VT-1 and VT-6 repeated on each board as found |
+| MC-8 | Connector type and the probe arrangement (×1 or ×10) are supplied by the client (TBC) |
+| MC-9 | Every Due pin the AFE does not use passes through the board unchanged. No AFE net connects to an unused pin (checked by continuity), no part or wire covers a header socket, and every exported pin stays reachable from the top of the stack |
+| MC-10 | All external connections are made on the AFE board. Nothing is wired to the Due's own headers while it is installed, and no loopback jumper (such as DAC0 to A0) is wired while the AFE circuit is fitted. Loopback is by an external cable between the AWG connector and a scope input connector |
 
-**BAT46 and 1N5817, on the other sheets.** Schottky diodes, which
-conduct at about 0.3 V instead of the 0.7 V of an ordinary diode.
-Wired from a node to ground or to a rail, they clamp the node when it
-tries to go beyond the rail by more than that drop. OpenScope has none
-because the 1 MΩ into a virtual ground makes them unnecessary.
+## 10. Verification
 
-| part | what it is | why it is where it is |
+All tests use calibrated sources and instruments whose uncertainty is at
+most one third of the tolerance tested. For DC tests that is about ±0.17%
+±1.7 mV (5½-digit meter class), and DF-4 needs ±1.1 mV. The noise tests
+(VT-3, VT-8) need an instrument with a noise floor of at most 0.15 mV rms
+over DC to 1 MHz, which the Due's ADC cannot provide. The client lends
+bench instruments, and the test procedure lists them.
+
+| ID | Test | Covers |
 |---|---|---|
-| op-amp, any of them | a differential amplifier with enormous gain; with feedback from the output to the − input it drives the output to whatever makes the two inputs equal | that one rule reads every stage: a follower copies a voltage from a weak source to a strong one; an inverting stage holds the − input fixed (a virtual ground) and its gain is the ratio of two resistors; a summing stage adds currents at that fixed node |
-| LMV116 | a single op-amp, about 45 MHz gain-bandwidth, single supply, rail-to-rail output but not input | the two stages the signal passes through; its inputs sit at 1.5 V so the input range does not matter there, and it would matter for a follower tracking 0.55–2.75 V |
-| LMV324 | four slow op-amps in one package | the reference buffers and the offset buffer, where nothing fast happens |
-| MCP6H91, MCP6H82 | op-amps rated to 16 V | the generator and DC outputs that must swing ±3 V and ±5 V on the board's ± rails |
-| LM4040-3.0 | a shunt reference: a precise Zener that holds 3.000 V to 0.1% given a few milliamps through a resistor | an ADC reads input over reference; a divider mid-rail moves with the rail and the load, this does not. Buffered because it can supply little current itself |
-| TS3A5017 | a dual 4:1 analog switch: a relay with no moving parts, a few ohms when closed, set by two logic lines | in the feedback path it picks the range in software without touching the input; its on-resistance is the "−10" in the sheet's resistor formulas |
-| capacitor across a feedback resistor | passes high frequencies, so the feedback strengthens and the gain falls above 1/(2πRC) | every range's R×C is about 120 ns, so the bandwidth is set once at 1.3–1.6 MHz, and it is the anti-alias filter |
-| PWM through two RC sections | a square wave whose on-time is set in software, averaged into a DC level | a DAC made from one pin and four passives, for an offset that changes only when a knob turns |
-| 68 Ω series, 470 pF shunt | a charge reservoir hundreds of times the ADC's sampling capacitor, and a resistor that keeps the op-amp stable into it | a SAR ADC takes its sample charge in nanoseconds, faster than any op-amp responds; the standard idiom for driving one, and the stage the within-hold reading points at |
-| BAT46, 1N5817 (other sheets) | Schottky diodes, conducting at about 0.3 V | clamps that hold a node within a rail; OpenScope needs none because 1 MΩ into a virtual ground already limits the current |
+| VT-1 | Scope DC accuracy per channel | SC-2, SC-4, SC-7 |
+| VT-2 | Differential accuracy, sign, ranges and CMRR | DF-2 to DF-4 |
+| VT-3 | AFE noise at the ADC pin and at the AWG output, each with an external instrument; also re-measure the DAC's own noise over DC to 1 MHz | SC-6, AW-6 |
+| VT-4 | Frequency response of scope and AWG | SC-5, AW-3 |
+| VT-5 | Overload, fault and unpowered tests | PR-1 to PR-4, AW-8 |
+| VT-6 | AWG range, step, load, short circuit, DAC current and accuracy | AW-1 to AW-7, PW-3 |
+| VT-7 | Loopback by external cable from the AWG output to a scope input, DC and sine; reported for information with no pass/fail limit | none |
+| VT-8 | Supply current, ripple, and noise fed back to 3.3 V and AREF | PW-1, PW-2, PW-4 |
+| VT-9 | Phase 2: repeat VT-2 and VT-3 with the assembly installed, and show installation needs no board change | P2-1, P2-3 |
+| VT-10 | Input resistance, capacitance, channel matching, crosstalk and ADC-pin source impedance | SC-3, SC-8, SC-9, SC-10 |
+| VT-11 | JP-DIFF function, and that the analog path is unchanged | DF-1 |
+| VT-12 | Temperature drift | EN-1 |
+| VT-13 | Analysis (section 11), by simulation and then measurement | AN-1 to AN-4 |
+| VT-14 | Inspection and continuity check | P2-1, P2-2, P2-5, P2-6, PW-5, CA-1, MC-1 to MC-10 |
 
-Reading a sheet: follow the signal left to right; at each op-amp ask
-what the feedback forces the − input to be, which resistor turns the
-input into a current and which turns it back into a voltage; at each
-capacitor ask whether it filters, decouples or sets a corner; at each
-three-terminal part ask whether it switches, references or amplifies.
+## 11. Analysis the contractor must demonstrate
+
+| ID | Analysis |
+|---|---|
+| AN-1 | Stability with real parasitics: phase margin at least 45 degrees |
+| AN-2 | The ADC input settles to within 0.5 LSB inside the configured acquisition window (SC-10) |
+| AN-3 | The DAC load is within the DAC's drive limits (AW-5) |
+| AN-4 | Offset and gain drift of references derived from 3.3 V against AREF, over AREF 3.20 to 3.30 V (SC-2) |
+
+## 12. Deliverables and process
+
+Schematic and simulation files, with simulation reports before any
+assembly; a bill of materials with alternates; an assembly drawing; the
+test procedure and results report; a written calibration note for the
+client's host software; and, for Phase 2, the assembly design and its test
+report. Each stage passes simulation review before assembly, and a design
+review follows each phase's test report.
+
+## 13. Out of scope
+
+Range switching, AC coupling, a precision voltage reference, a
+differential AWG, a 50 ohm terminated output, anti-alias filtering beyond
+SC-5, firmware and host software.

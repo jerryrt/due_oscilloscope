@@ -77,15 +77,15 @@ and instrument; and the generator has twelve bits.
   brings `AREF` to the header but leaves it isolated from ADVREF through
   open BR1. The default shield reference is measured as an ADC input;
   it does not set converter full scale. Driving ADVREF is a separate,
-  optional JR1/BR1 modification requiring the checks in `docs/afe.md`.
+  optional JR1/BR1 modification that `docs/afe.md` rules out (JR1/BR1 stay untouched).
   OpenScope's calibration procedure is the model for how a unit measures
   itself against a precision reference.
 - **A buffered, band-limited input.** Every design above drives its
   converter from a low-impedance source through a filter. Here the pin
-  sees a bare wire, which is the other coupling path. The buffer is also
-  the anti-alias filter Phase 3 lists, and it needs bandwidth at 3.3 V
-  single supply that keeps the analog path from becoming the ceiling
-  below the converter's 900 ksps.
+  sees a bare wire, which is the other coupling path. The buffer sets the
+  input's fixed low-pass (not an anti-alias filter, `docs/afe.md` SC-5),
+  and it needs bandwidth at 3.3 V single supply that keeps the analog
+  path from becoming the ceiling below the converter's 1.02 Msps.
 - **Protection, attenuation and bias** as in `docs/scope.md`, Phase 3.
 - **An output stage** for the DAC's 0.55 to 2.75 V window, with a
   reconstruction filter.

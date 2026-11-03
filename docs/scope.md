@@ -77,11 +77,12 @@ which option applies.
 
 Only after the digital path is proven:
 
-- Input: protection clamps, switchable attenuator, mid-rail bias for
+- Input: protection clamps, a fixed-range attenuator, mid-rail bias for
   bipolar signals, buffer op-amp per channel
 - Output: op-amp stage to rescale the awkward 0.55–2.75 V DAC window,
   plus a reconstruction filter
-- Anti-aliasing filters — one per active channel
+- A fixed low-pass per input channel, which is not an anti-alias filter
+  (`docs/afe.md`, SC-5)
 
 ### Phase 3.5 — Arbitrary waveform generator (working at 200 ksps)
 

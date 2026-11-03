@@ -101,9 +101,9 @@ Physical Mega labels A12-A15 are named DAC0/DAC1/CANRX0/CANTX0 for the Due. Shar
 
 ## Keep the carrier separate from the circuit
 
-This project models the board you own. The [AFE prototype project plan](../afe-proto/README.md) uses this corrected carrier as the baseline for a separate working assembly; the old inaccurate `afe-shield` template was removed. Complete each AFE stage in SPICE before assembling it. Use the [Due V03 PCB](../reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb) for the owner's Due interface; the [reference index](../reference/arduino-due/README.md) records the power-layout observations and retains V02g separately.
+This project models the board you own. The [AFE prototype project plan](../afe-proto/README.md) uses this corrected carrier as the baseline for a separate working assembly. Complete the AFE simulation before assembling it. Use the [Due V03 PCB](../reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb) for the owner's Due interface; the [reference index](../reference/arduino-due/README.md) records the power-layout observations and retains V02g separately.
 
-Use the [AFE build guide](../../docs/afe-prototype.md) as the circuit specification. Place planned components by grid addresses, verify existing substrate connections first, and keep planned assembly separate from the photographed carrier. Pad, drill, trace width and via dimensions are provisional; the model is not manufacturing data.
+Use the [AFE requirements](../../docs/afe.md) and [plan](../../docs/afe-plan.md) for the circuit. Place planned components by grid addresses, verify existing substrate connections first, and keep planned assembly separate from the photographed carrier. Pad, drill, trace width and via dimensions are provisional; the model is not manufacturing data.
 
 ## Files and checks
 

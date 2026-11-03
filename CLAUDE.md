@@ -25,8 +25,8 @@ file is one row away.
 | The H7-TOOL target: rules, phases, recovery | `targets/h7tool/README.md`, `targets/h7tool/docs/06-plan.md` |
 | Re-measuring the converters' analog performance at 90 MHz | `docs/analog-validation-plan.md` |
 | Comparable instruments, and the gap to the nearest one | `docs/related-work.md` - read before front-end hardware work |
-| The analog front end on the shield, stage by stage, and what judges each stage | `docs/afe.md` |
-| Building the AFE shield: phases, proofs, tools, open decisions | `docs/afe-plan.md` |
+| The analog front end's requirements, and the tests that accept them | `docs/afe.md` |
+| Building the AFE: steps, simulation gates, bench tests, values left to confirm | `docs/afe-plan.md` |
 | How to write one of these | `docs/writing.md` |
 | Versions, tags and releases: the one project version, what it is not, and the release procedure | `CONTRIBUTING.md` (the rule), `docs/versioning.md` |
 | **What is current, and what to pick up** | **standing issues, one per bench: #31 mac-bench, #32 linux-x1, #34 windows-desk, and #71 across all of them** |
@@ -40,7 +40,7 @@ an agent needs.
 symbol/footprint libraries. Do not edit or validate the active AFE design
 using KiCad 9 or older. `hardware/afe-proto/README.md` documents the tool
 selection and project structure; `docs/afe-plan.md` carries the development
-gates. The inaccurate `hardware/afe-shield/` project was removed. Use the
+gates. Use the
 corrected `hardware/mega-proto-carrier/` as the physical baseline and develop
 the AFE assembly under `hardware/afe-proto/`. Finish each stage in SPICE
 before assembling it; the new assembly CAD and simulation assets are still
@@ -1768,10 +1768,7 @@ See `docs/debugging.md`.
 commodity parts and reuse the existing Mega Proto Shield V3 and tools.
 Do not make premium sockets, evaluation boards or purchased lab instruments
 the default. Borrow equipment for checks the available tools cannot perform;
-cost does not waive a safety or measurement gate. Keep the hand-build guide
-`docs/afe-prototype.md` self-contained and revision-specific, rather than
-requiring the owner to chase changing status pages. Its socketed package
-choice is a prototype variation, not a silent replacement of the PCB BOM.
+cost does not waive a safety or measurement gate.
 
 Phase 1 loopback is safe by construction — the DAC cannot exceed ~2.75 V.
 
