@@ -30,9 +30,8 @@ and the call-site counts were run on the two images.
 
 PB6 is the LCD reset in docs/01, but the boot loader also toggles it as
 the clock of a two-wire serial exchange with PG0, and PG0 is the second
-key in docs/01. Until the owner's board is checked, neither pin is
-trusted as LCD reset or as a key; the LCD test must find out which
-works.
+key in docs/01. The boot loader's panel reset sequence uses PB6, so PB6 is the reset;
+the serial routine is a separate use of the pin and is not an LCD one.
 
 PH9 is the backlight in the boot loader and the buzzer in the app on this
 unit's board code. Either the app drives the buzzer from the same pin as
@@ -40,16 +39,65 @@ the boot loader's backlight, or the app's flag path differs from what was
 read. This is the first thing to settle: no test image drives PH9 until
 it is.
 
+## LCD, from the boot loader (8.3)
+
+Primitives, all in `H7-BOOT.bin` and all *code*:
+
+| Primitive | Address | Does |
+|---|---|---|
+| write data byte | 0x08009a50 | PG15 high (BSRR 0x8000), PE1 low (CS), one SPI5 byte through 0x0800c568, PE1 high |
+| write data halfword | 0x08009a78 | as above, high byte then low byte |
+| write command | 0x08009aa8 | PG15 low (BSRR 0x80000000), PE1 low, one SPI5 byte, PE1 high |
+| delay | 0x0801102c | SysTick based; the unit is probably microseconds *(check)* |
+
+So CS is PE1 (active low) and D/C is PG15 (low = command). The pin
+setup (8.3 above) and these writes agree.
+
+Panel bring-up at 0x0800c850:
+
+1. Panel power enable: GPIOH BSRR 0x8000, so **PH15 high** (docs/01 agrees).
+2. A panel-model byte at RAM 0x24000022 (0 or 1 for the first
+   sequence, 2 for the second) selects the sequence below.
+3. Delay 50000, PB6 low, delay 200, PB6 high, delay 10000, then the
+   commands. So **PB6 is the panel reset, low-active**.
+
+Commands for model 0 or 1 (0x0800c88e..0x0800c9f4), command then data:
+
+| Command | Data |
+|---|---|
+| 0x36 | 0x00 |
+| 0x3a | 0x05 |
+| 0xb2 | 0x0c 0x0c 0x00 0x33 0x33 |
+| 0xb7 | 0x35 |
+| 0xbb | 0x19 |
+| 0xc0 | 0x2c |
+| 0xc2 | 0x01 |
+| 0xc3 | 0x12 |
+| 0xc4 | 0x20 |
+| 0xc6 | 0x0f |
+| 0xd0 | 0xa4 0xa1 |
+| 0xe0 | 0xd0 0x04 0x0d 0x11 0x13 0x2b 0x3f 0x54 0x4c 0x18 0x0d 0x0b 0x1f 0x23 |
+| 0xe1 | 0xd0 0x04 0x0c 0x11 0x13 0x2c 0x3f 0x44 0x51 0x2f 0x1f 0x1f 0x20 0x23 |
+| 0x21, 0x11, 0x29 | none (inversion on, sleep out, display on) |
+
+Model 2 (0x0800ca28..0x0800cb8a) differs in 0x36 = 0x60, 0xbb = 0x1c,
+0xc3 = 0x0b and its two gamma tables, and ends with the same three
+commands. Window commands 0x2a, 0x2b and 0x2c are used with 16-bit
+operands for drawing (0x0800c6e8). The boot loader sends 0x11 and 0x29
+with no delay between them; a test image should wait after sleep out
+all the same.
+
+Which model byte this unit's boot loader holds, and whether the app uses
+the same table, are not yet read.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
   literal in the app; search for the SPI5 register offsets and the
   display init sequence by its command bytes).
-- Find the LCD command table: no standard ST7789 byte sequence is in
-  either image, so follow the callers of the SPI5 handle at 0x080119fc
-  and the app's `ST7789 / %dx%d` string at 0x0812c716. Also find the
-  panel power enable (PH15 in docs/01) and the CS and D/C writers
-  (no GPIOE BSRR literal exists in the boot loader). A pin-decoding
+- Read what sets the model byte at 0x24000022, and which model this
+  unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).
+- Compare with the app's table, starting from the string at 0x0812c716. A pin-decoding
   script over the HAL calls proved unreliable on this code; read the
   call sites by hand.
 - Find the key reads (GPIO IDR users) and the RUN and CHG writers.
