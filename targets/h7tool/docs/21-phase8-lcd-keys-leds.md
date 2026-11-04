@@ -47,8 +47,9 @@ Observed on the unit (docs/22): the LCD (power, chip select, D/C, SPI
 by hand, the boot loader's init table, MADCTL 0xC0 portrait 240x320),
 the expander on PB6 and PG0 with the backlight on P0_0, CHG on P1_0 and
 P1_1 and RUN on P1_2. Still open: the keys (set aside by the owner), the
-backlight and LED behaviour with no boot loader state behind it, the
-hardware SPI5 path, and CHG's two colours.
+backlight and LED behaviour with no boot loader state behind it, DMA for
+the SPI5 path (its CPU-fed form works and is faster than the pins), and
+CHG's two colours.
 
 The driver for the display, the backlight and the LEDs is
 `fw/ui/h7_ui.c`. `tests/test_h7_ui.py` builds it for the host against a

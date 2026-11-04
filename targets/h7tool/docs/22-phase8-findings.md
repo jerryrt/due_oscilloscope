@@ -204,6 +204,30 @@ order, by the owner's reports; the reverse run did not name CHG's colours):
 No green RUN LED lit at any step. Both runs agree on the output for each
 LED; the CHG colours rest on one report each.
 
+## The SPI5 path (images 24 to 26, bench linux-x1, 2026-11-04)
+
+The driver (`fw/ui/h7_ui.c`) can write the panel through SPI5 instead
+of clocking PH6 and PH7 by hand: master, mode 3, 8-bit frames, software
+slave select, simplex transmit, data on the pad the peripheral calls
+MISO (IOSWP), kernel clock / 4.
+
+| Item | Result |
+|---|---|
+| First run | never got a free FIFO slot: SR read 0x202 and CR1 0x1000 |
+| Cause | a mode fault: with software slave select on and SSI still low, a master reads slave select as asserted, switches itself off and refuses to start. SSI must be written before the configuration that turns software select on |
+| After the fix | SR and CR1 at the end read 0, nothing timed out, and the picture and the digits drawn through SPI5 were correct |
+| Registers read back | CFG1 0x10000007, CFG2 0x87428000, SPI45 clock select 0 (the APB2 clock), APB2ENR 0x00100000 (SPI5 only), AHB4ENR 0xD2 (GPIOB, E, G, H) |
+| Full-screen fill (153,600 bytes), instruction cache off | about 247 ms (timer calibrated by a 100 ms SysTick delay) |
+| Same, instruction cache on | about 123 ms |
+| Hand-clocked pins, for scale | about 3 s |
+
+The wire at a quarter clock needs about 77 ms for the fill, so both
+SPI5 figures are limited by the CPU feeding the FIFO one byte at a time
+and not by the clock. Only DMA (the stock firmware uses DMA2 Stream3)
+removes that. The driver also keeps a fallback: the first SPI5 wait that
+gives up hands the panel to the hand-clocked pins, resends the byte
+that failed and keeps the status it saw.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
@@ -212,9 +236,9 @@ LED; the CHG colours rest on one report each.
 - Read the boot loader's board-flag test (RAM 0x24000270 + 12) and the
   app's channel writes to assign RUN and CHG among P1_0..3 and P1_5..6.
 - Get the AW9523B datasheet and confirm the register meanings.
-- A test image that drives the chip over PB6 and PG0 and dims the
-  backlight (P0_0) and the two LEDs, with a build that does not run the
-  chip init so the boot loader's leftover state is separated from ours.
+- The SPI5 clock at kernel/2 as the stock firmware sets it (MBR 0), and
+  DMA2 Stream3 feeding the FIFO from a buffer in non-cacheable memory.
+- A run with no boot loader state behind it, if one can be reached.
 - Read what sets the model byte at 0x24000022, and which model this
   unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).
 - Compare with the app's table, starting from the string at 0x0812c716. A pin-decoding
