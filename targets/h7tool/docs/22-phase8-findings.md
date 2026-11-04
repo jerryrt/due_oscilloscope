@@ -250,6 +250,48 @@ owner, so the driver now uses MBR 0, the stock rate. Observed on one
 unit with one pattern. The earlier 247 ms and 123 ms figures were taken
 at the 64 MHz reset clock.
 
+## DMA and an 80 MHz clock (image 27, bench linux-x1, 2026-11-04)
+
+`h7lcd_fill_dma` and `h7lcd_blit` feed the SPI5 FIFO from DMA2 stream 3
+(DMAMUX1 channel 11, request 86 for SPI5 TX, the transfer completing is
+the proof of the number). A solid fill repeats a two-byte pixel in
+circular mode, so it needs two bytes of memory and no frame buffer.
+
+| SPI5 kernel clock | divisor | bit clock | full-screen fill | fps |
+|---|---|---|---|---|
+| APB2, 100 MHz | 2 | 50 MHz | 24.7 ms by DMA (25.3 ms by CPU) | 40 |
+| PLL2_Q, 160 MHz | 2 | 80 MHz | 15.35 ms by DMA | 65 |
+
+The 80 MHz case is not in the driver: the images start only PLL1, so
+PLL2 is started by hand (HSE 25 MHz / 5, x128, Q /4; PLL2 divider
+register 0x58024438, PLLCFGR bits 7:6 = 2 and bit 20, CR bit 26) and
+D2CCIP1R SPI45SEL set to 1. The owner reported the band-and-grid
+pattern clean at 50 MHz by CPU and at 80 MHz by DMA (one unit). The
+panel's datasheet limit was not checked *(check)*.
+
+What the scope and the generator use: ADC1 DMA1 stream 1 (DMAMUX1
+channel 1), ADC3 DMA2 stream 1 (channel 9), the DAC DMA1 stream 5, USB
+its own internal DMA. DMA2 stream 3 is free, and the buffers live in
+AXI SRAM or SRAM3, which the images do not use (SRAM1 and SRAM2 hold
+the capture ring). The functions block until the data is out (about 15
+to 25 ms per full screen), so before the display shares a main loop
+with acquisition they must become start and poll calls that cost a
+bounded slice per pass (CLAUDE.md invariant 7). The host model does not
+cover the DMA path: it is verified on the unit only.
+
+A stuck SPI5 on the unit. After the PLL2 experiments, SPI5 stopped
+shifting: a byte in the FIFO and CSTART set, SR 0x10012 (TXP, TXTF, one
+frame left), nothing on the wire, from a clean software reset and with
+no driver involved (written by hand over POKE). Not the kernel clock
+(HSI made no difference) and not the APB2 divider. Software resets did
+not clear it and neither did earlier images; entering the boot loader
+with the OK key held at plug-in did, and the same image then worked.
+Cause unknown *(check)*. The first PLL2 attempt also wrote the PLL2
+divider to 0x434 (PLL1's fractional register, with its enable bit
+clear) and started PLL2 at its reset divider (about 322 MHz), which may
+be what wedged it. If it comes back, the key-entered boot loader is the
+recovery.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
@@ -258,8 +300,8 @@ at the 64 MHz reset clock.
 - Read the boot loader's board-flag test (RAM 0x24000270 + 12) and the
   app's channel writes to assign RUN and CHG among P1_0..3 and P1_5..6.
 - Get the AW9523B datasheet and confirm the register meanings.
-- DMA2 Stream3 feeding the FIFO from a buffer in non-cacheable memory:
-  only worth it to free the CPU, since the fill is at wire speed.
+- Make the DMA path a start and poll pair, start PLL2 in the image's
+  clock setup, then run the display beside acquisition and the generator.
 - A run with no boot loader state behind it, if one can be reached.
 - Read what sets the model byte at 0x24000022, and which model this
   unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).

@@ -1301,13 +1301,15 @@ int h7_poke(uint32_t a, uint32_t v, unsigned w)
  *  3  level                   : h7ui_backlight
  *  4  led(0 CHG green, 1 CHG red, 2 RUN) level : h7ui_led
  *  5  on                      : instruction cache off (0) or on (1)   [SCB CCR]
+ *  6  x y w h rgb565          : h7lcd_fill_dma   [cycles taken, result (1 sent, 0 refused), DMA errors so far]
+ *  7  n                       : h7lcd_blit of n bytes from the buffer at 0x30040000, after a window over the whole screen   [cycles, result]
  */
 int h7_explore(unsigned id, const uint32_t *a, unsigned na, uint32_t *r, unsigned *nr)
 {
 	uint32_t t;
 	switch (id) {
 	case 0:
-		r[0] = cpu_hz; r[1] = cpu_hz / 1000000u; r[2] = h7ui_spi_errors(); *nr = 3; return 0;
+		r[0] = cpu_hz; r[1] = cpu_hz / 1000000u; r[2] = h7ui_spi_errors(); r[3] = h7ui_spi_status_at_error(); r[4] = h7ui_spi_control_at_error(); *nr = 5; return 0;
 	case 1:
 		t = DWT_CYCCNT; h7ui_set_delay(ui_delay_us);
 		r[0] = (uint32_t)h7ui_expander_init(); h7lcd_init();
@@ -1328,6 +1330,18 @@ int h7_explore(unsigned id, const uint32_t *a, unsigned na, uint32_t *r, unsigne
 		else R32(0xE000ED14u) &= ~(1u << 17);
 		__asm volatile ("dsb sy\n isb sy" ::: "memory");
 		r[0] = R32(0xE000ED14u); *nr = 1; return 0;
+	case 6:
+		if (na != 5) return -1;
+		R32(0x580244DCu) |= 1u << 31; (void)R32(0x580244DCu);                    /* AHB2ENR: SRAM3, where the DMA buffer is */
+		h7ui_set_dma_scratch((uint8_t *)0x30040000u);
+		t = DWT_CYCCNT; r[1] = (uint32_t)h7lcd_fill_dma(a[0], a[1], a[2], a[3], (uint16_t)a[4]);
+		r[0] = DWT_CYCCNT - t; r[2] = h7ui_dma_errors(); *nr = 3; return 0;
+	case 7:
+		if (na != 1 || a[0] > 65534u * 2u) return -1;
+		R32(0x580244DCu) |= 1u << 31; (void)R32(0x580244DCu);
+		h7lcd_begin(0, 0, 240, 320);
+		t = DWT_CYCCNT; r[1] = (uint32_t)h7lcd_blit((const uint8_t *)0x30040000u, a[0]);
+		r[0] = DWT_CYCCNT - t; h7lcd_end(); *nr = 2; return 0;
 	default:
 		return -2;
 	}

@@ -71,4 +71,15 @@ void h7lcd_end(void);
 /* Fills the part of the rectangle that lies on the glass. */
 void h7lcd_fill_rect(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t rgb565);
 
+/* DMA2 stream 3 into the SPI5 FIFO (docs/22). The CPU feed tops out near 25 ms for a full screen whatever the clock; DMA
+ * runs at the wire. Both need SPI5 active (not the pins fallback) and return 0 when they cannot send, having sent nothing
+ * or an incomplete picture, so the caller can redraw with the pixel calls. They block until the data is out.
+ * h7lcd_blit sends `bytes` (even; big-endian RGB565) from src to the window opened by h7lcd_begin; src must be memory DMA2
+ * can read with no data cache in front of it. h7lcd_fill_dma opens the window itself and repeats one pixel, kept in the
+ * two bytes given to h7ui_set_dma_scratch (same kind of memory). h7ui_dma_errors counts transfers that gave up. */
+int h7lcd_blit(const uint8_t *src, uint32_t bytes);
+int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t rgb565);
+void h7ui_set_dma_scratch(uint8_t *two_bytes);
+unsigned h7ui_dma_errors(void);
+
 #endif

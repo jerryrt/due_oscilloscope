@@ -19,6 +19,11 @@ void     h7ui_host_wr8(uint32_t addr, uint8_t val);
 #endif
 
 #define RCC_AHB4ENR 0x58024540u
+#define RCC_AHB1ENR 0x58024538u
+#define DMA2_LIFCR  0x40020408u
+#define DMA2_S3     0x40020458u      /* stream 3: CR +0, NDTR +4, PAR +8, M0AR +0xC, FCR +0x14 */
+#define DMAMUX1_C11 0x4002082Cu      /* DMA2 stream 3 is request line 11 of DMAMUX1 */
+#define DMAREQ_SPI5_TX 86u           /* RM0433 DMAMUX1 request list *(check against the unit: the transfer completing is the proof)* */
 #define RCC_APB2ENR 0x580244F0u
 #define GPIOB 0x58020400u
 #define GPIOE 0x58021000u
@@ -277,6 +282,85 @@ static int spi_close(void)                                       /* 1 if the tra
 	return 1;
 }
 
+static uint32_t pix_left;              /* pixels still owed to the open window (see h7lcd_begin) */
+#if H7UI_HW_SPI
+/* ---- DMA2 stream 3 feeding the SPI5 FIFO. One chunk is one SPI transaction of at most SPI_CHUNK_MAX bytes. ---- */
+static uint8_t *dma_scratch;           /* where a fill's one pixel is kept: memory DMA2 can read, and no cache between */
+static unsigned dma_err;
+
+static int dma_wait(uint32_t addr, uint32_t mask, uint32_t want, uint32_t spins)
+{
+	while (spins--) if ((REG_RD(addr) & mask) == want) return 1;
+	return 0;
+}
+
+/* Send `bytes` (even, 1..SPI_CHUNK_MAX) from src; circular makes the stream repeat the first `circ` bytes (circ >= 2). */
+static int dma_chunk(const uint8_t *src, uint32_t bytes, uint32_t circ)
+{
+	REG_WR(RCC_AHB1ENR, REG_RD(RCC_AHB1ENR) | (1u << 1));                      /* DMA2 (and its DMAMUX) */
+	(void)REG_RD(RCC_AHB1ENR);
+	REG_WR(DMA2_S3, 0);                                                         /* stream off */
+	if (!dma_wait(DMA2_S3, 1u, 0, 1000u)) return 0;
+	REG_WR(DMA2_LIFCR, 0x3Du << 22);                                            /* every stream 3 flag */
+	REG_WR(DMAMUX1_C11, DMAREQ_SPI5_TX);
+	REG_WR(DMA2_S3 + 0x08u, SPI_TXDR);
+	REG_WR(DMA2_S3 + 0x0Cu, (uint32_t)(uintptr_t)src);
+	REG_WR(DMA2_S3 + 0x04u, circ ? circ : bytes);
+	REG_WR(DMA2_S3 + 0x14u, 0);                                                 /* direct mode */
+	REG_WR(DMA2_S3, (3u << 16) | (1u << 10) | (1u << 6) | (circ ? (1u << 8) : 0u));   /* high priority, memory increment, memory to peripheral */
+	REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) | (1u << 15));                            /* TXDMAEN */
+	REG_WR(SPI_CR2, bytes);
+	REG_WR(DMA2_S3, REG_RD(DMA2_S3) | 1u);                                      /* stream on: it waits for the SPI's request */
+	REG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE);
+	REG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE | SPI_CR1_CSTART);
+	int ok = dma_wait(SPI_SR, SPI_SR_EOT, SPI_SR_EOT, 40u * bytes + 100000u);   /* well over the wire time at the slowest clock */
+	REG_WR(DMA2_S3, 0);
+	dma_wait(DMA2_S3, 1u, 0, 1000u);
+	REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) & ~(1u << 15));
+	REG_WR(SPI_IFCR, SPI_IFCR_ALL);
+	REG_WR(SPI_CR1, SPI_CR1_SSI);
+	return ok;
+}
+
+void h7ui_set_dma_scratch(uint8_t *two_bytes) { dma_scratch = two_bytes; }
+unsigned h7ui_dma_errors(void) { return dma_err; }
+
+int h7lcd_blit(const uint8_t *src, uint32_t bytes)
+{
+	if (!hw_active || !spi_ready || pix_left == 0 || (bytes & 1u) || bytes == 0 || bytes / 2u > pix_left) return 0;
+	for (uint32_t done = 0; done < bytes; ) {
+		uint32_t n = bytes - done; if (n > SPI_CHUNK_MAX) n = SPI_CHUNK_MAX;
+		if (!dma_chunk(src + done, n, 0)) { dma_err++; pix_left = 0; return 0; }
+		done += n; pix_left -= n / 2u;
+	}
+	return 1;
+}
+
+int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c)
+{
+	if (!dma_scratch || !hw_active || !spi_ready) return 0;
+	if (x >= H7LCD_W || y >= H7LCD_H || w == 0 || h == 0) return 0;
+	if (w > H7LCD_W - x) w = H7LCD_W - x;
+	if (h > H7LCD_H - y) h = H7LCD_H - y;
+	if (!h7lcd_begin(x, y, w, h)) return 0;
+	dma_scratch[0] = (uint8_t)(c >> 8); dma_scratch[1] = (uint8_t)c;
+	for (uint32_t left = w * h * 2u; left; ) {
+		uint32_t n = left > SPI_CHUNK_MAX ? SPI_CHUNK_MAX : left;
+		if (!dma_chunk(dma_scratch, n, 2u)) { dma_err++; h7lcd_end(); return 0; }
+		left -= n;
+	}
+	pix_left = 0;
+	h7lcd_end();
+	return 1;
+}
+
+#else
+int h7lcd_blit(const uint8_t *src, uint32_t bytes) { (void)src; (void)bytes; return 0; }
+int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c) { (void)x; (void)y; (void)w; (void)h; (void)c; return 0; }
+void h7ui_set_dma_scratch(uint8_t *two_bytes) { (void)two_bytes; }
+unsigned h7ui_dma_errors(void) { return 0; }
+#endif
+
 static void spi_byte(uint8_t b)
 {
 	if (hw_active) {
@@ -337,7 +421,7 @@ void h7lcd_init(void)
 /* The pixel stream is one or more peripheral transactions, each closed and reopened by the pixel that needs it, with
  * chip select held low across them (on the hand-clocked path there is nothing to open). pix_left counts the pixels
  * still owed to the window, frames_left the frames the open transaction can still take. */
-static uint32_t pix_left, frames_left;
+static uint32_t frames_left;
 
 int h7lcd_begin(unsigned x, unsigned y, unsigned w, unsigned h)
 {
