@@ -78,6 +78,20 @@ void h7lcd_fill_rect(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t rg
  * can read with no data cache in front of it. h7lcd_fill_dma opens the window itself and repeats one pixel, kept in the
  * two bytes given to h7ui_set_dma_scratch (same kind of memory). h7ui_dma_errors counts transfers that gave up. */
 int h7lcd_blit(const uint8_t *src, uint32_t bytes);
+
+/* Screen capture. The panel cannot be read back (its data pad is the write line), so the driver can keep a shadow copy of
+ * everything sent: give it H7LCD_W * H7LCD_H * 2 bytes with h7ui_set_shadow(); every pixel that goes out afterwards is also
+ * stored there, big-endian RGB565, row after row. The shadow starts as whatever the memory held and the panel's memory after
+ * a reset is not defined, so draw the whole screen once before trusting a capture. A DMA call that gave up leaves the
+ * shadow untouched though the panel may hold part of it. h7ui_draw_count() counts closed windows (h7lcd_end and the DMA
+ * calls): a capture that sees it change while reading has torn. */
+void h7ui_set_shadow(uint8_t *fb);
+const uint8_t *h7ui_shadow(void);
+uint32_t h7ui_draw_count(void);
+
+/* 1 when SPI5 was clocked from PLL2 (160 MHz, 80 MHz bit clock) at its set-up, 0 when it runs from the 100 MHz APB2 clock
+ * (PLL2 busy, not the state the images leave, or no lock, or the hand-clocked build). */
+int h7ui_spi_fast(void);
 int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t rgb565);
 void h7ui_set_dma_scratch(uint8_t *two_bytes);
 unsigned h7ui_dma_errors(void);

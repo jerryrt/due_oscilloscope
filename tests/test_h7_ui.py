@@ -184,3 +184,93 @@ def test_a_stuck_spi5_costs_one_short_wait_and_the_picture_still_arrives(tmp_pat
     assert commands(spi(out)) == [
         (0x2A, [0x00, 0x00, 0x00, 0xEF]), (0x2B, [0x00, 0x00, 0x01, 0x3F]), (0x2C, [0xFF] * (240 * 320 * 2)),
     ]
+
+
+def kv(out):
+    return {l.split()[0]: l.split()[1] for l in out if len(l.split()) == 2 and not l.startswith(("S ", "I ", "R "))}
+
+
+def test_pll2_is_started_for_spi5_and_nothing_else_is_touched(tmp_path):
+    """From the state the images leave RCC in, PLL2 comes up at 160 MHz (M 5, N 128, Q 4), SPI4/5 is moved onto it only after
+    it is ready, PLL1's registers are untouched, and the only CR change is PLL2ON."""
+    v = kv(run(build(str(tmp_path), hw=1), "pll2"))
+    assert v["fast"] == "1"
+    assert v["pll2divr"] == "0103027f" and v["pllcksel"] == "00005052" and v["pllcfgr"] == "00170088"
+    assert int(v["cr"], 16) & 0x0F03FFFF == 0x0F03C025 and v["d2ccip1r"] == "00010000"      # PLL2ON and PLL2RDY added, the rest as it was
+    assert v["pll1divr"] == "0103029f" and v["pll1fracr"] == "00000000"
+
+
+def test_the_hand_clocked_build_leaves_rcc_alone(tmp_path):
+    v = kv(run(build(str(tmp_path), hw=0), "pll2"))
+    assert v["fast"] == "0" and v["cr"] == "0303c025" and v["d2ccip1r"] == "00000000" and v["pll2divr"] == "00000000"
+
+
+@pytest.mark.parametrize("scenario, check", [
+    ("pll2_busy",  lambda v: v["pll2divr"] == "11111111" and v["d2ccip1r"] == "00000000" and int(v["cr"], 16) & (1 << 26)),    # in use by someone else
+    ("pll2_dead",  lambda v: v["cr"] == "0303c025" and v["d2ccip1r"] == "00000000"),                                    # never locks: switched off again
+    ("pll2_other", lambda v: v["pllcksel"] == "00000040" and v["pll2divr"] == "00000000" and v["cr"] == "0303c025"),    # not the clock tree it knows
+])
+def test_pll2_is_not_taken_when_it_is_busy_dead_or_unexpected(tmp_path, scenario, check):
+    out = run(build(str(tmp_path), hw=1), scenario)
+    v = kv(out)
+    assert v["fast"] == "0" and check(v), v
+
+
+@pytest.mark.parametrize("old, new, what", [
+    ("(127u) | (1u << 9)", "(126u) | (1u << 9)", "PLL2 multiplier"),
+    ("(3u << 16) | (1u << 24)", "(2u << 16) | (1u << 24)", "PLL2 Q divider"),
+    ("(5u << 12)", "(4u << 12)", "PLL2 input divider"),
+    ("(REG_RD(RCC_CR) & (1u << 26)) ||", "0 ||", "PLL2 already on"),
+    ("REG_WR(RCC_CR, REG_RD(RCC_CR) & ~(1u << 26));                                         /* never locked", "(void)0;                                         /* never locked", "switch off after no lock"),
+])
+def test_a_fault_in_the_pll2_start_is_caught(tmp_path, old, new, what):
+    src = open(os.path.join(FW, "h7_ui.c"), encoding="utf-8").read()
+    assert src.count(old) == 1, what
+    bad = tmp_path / "h7_ui_mut.c"
+    bad.write_text(src.replace(old, new), encoding="utf-8")
+    mut = build(str(tmp_path), str(bad), hw=1)
+    good = {"pll2": lambda v: v["pll2divr"] == "0103027f" and v["pllcksel"] == "00005052" and v["fast"] == "1",
+            "pll2_busy": lambda v: v["fast"] == "0" and v["pll2divr"] == "11111111",
+            "pll2_dead": lambda v: v["fast"] == "0" and v["cr"] == "0303c025"}
+    results = []
+    for sc, ok in good.items():
+        out = subprocess.run([mut, sc], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+        results.append(not any(l.startswith("BAD") for l in out) and ok(kv(out)))
+    assert not all(results), what
+
+
+EXPECT_SHADOW = {}
+for _y in (3, 4):
+    for _x in range(2, 6): EXPECT_SHADOW[(_x, _y)] = "f81f"
+for _y in range(310, 320):
+    for _x in range(230, 240): EXPECT_SHADOW[(_x, _y)] = "1234"            # the clipped part of the 20 x 20 fill
+for _i in range(6): EXPECT_SHADOW[(10 + _i % 3, 20 + _i // 3)] = "%02x%02x" % (_i + 1, _i + 1)
+EXPECT_SHADOW.update({(5, 5): "1111"})   # the second pixel of a one-pixel window is dropped
+
+
+def test_the_shadow_copy_holds_exactly_what_was_drawn(exe):
+    """Every pixel sent is also in the shadow, in its place, nothing outside the window or the glass is written, and the
+    guard bytes either side of the buffer survive."""
+    out = run(exe, "shadow")
+    v = kv(out)
+    got = {(int(l.split()[1]), int(l.split()[2])): l.split()[3] for l in out if l.startswith("px ")}
+    assert got == EXPECT_SHADOW
+    assert v["guard"] == "0" and v["draws"] == "4"
+
+
+@pytest.mark.parametrize("old, new, what", [
+    ("d[0] = hi; d[1] = lo;", "d[0] = lo; d[1] = hi;", "byte order"),
+    ("(((win_y + sh_cy) * H7LCD_W) + win_x + sh_cx) * 2u", "(((win_y + sh_cy) * H7LCD_W) + win_x) * 2u", "column advance"),
+    ("if (++sh_cx == win_w) { sh_cx = 0; sh_cy++; }", "if (++sh_cx == win_w + 1) { sh_cx = 0; sh_cy++; }", "row wrap"),
+    ("\tshadow_put(hi, lo);\n", "", "pixels not mirrored"),
+    ("\tCS_H();\n\tdraw_count++;", "\tCS_H();", "draw counter"),
+])
+def test_a_fault_in_the_shadow_copy_is_caught(tmp_path, old, new, what):
+    src = open(os.path.join(FW, "h7_ui.c"), encoding="utf-8").read()
+    assert src.count(old) == 1, what
+    bad = tmp_path / "h7_ui_mut.c"
+    bad.write_text(src.replace(old, new), encoding="utf-8")
+    mut = build(str(tmp_path), str(bad), hw=1)
+    out = subprocess.run([mut, "shadow"], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+    got = {(int(l.split()[1]), int(l.split()[2])): l.split()[3] for l in out if l.startswith("px ")}
+    assert got != EXPECT_SHADOW or "draws 4" not in out or "guard 0" not in out, what

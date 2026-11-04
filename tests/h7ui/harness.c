@@ -16,6 +16,13 @@
 #define RCC_AHB4ENR 0x58024540u
 #define RCC_APB2ENR 0x580244F0u
 #define SPI5 0x40015000u
+#define RCC_CR        0x58024400u
+#define RCC_PLLCKSELR 0x58024428u
+#define RCC_PLLCFGR   0x5802442Cu
+#define RCC_PLL1DIVR  0x58024430u
+#define RCC_PLL1FRACR 0x58024434u
+#define RCC_PLL2DIVR  0x58024438u
+#define RCC_D2CCIP1R  0x58024450u
 
 static struct { uint32_t a, v; } regs[256];
 static int nregs;
@@ -119,6 +126,7 @@ static void i2c_update(int old_scl, int old_sda)
 /* ---- SPI5 model: checks the configuration the peripheral needs and the order the driver uses it in ---- */
 static uint32_t sp_cr1, sp_cr2, sp_cfg1, sp_cfg2;
 static int sp_active; static uint32_t sp_done; static int sp_dc, sp_cs_low, sp_eot_cleared, sp_eot_polls, sp_eot_seen;
+static int pll_dead, pll_reads_left, pll_cr_writes;
 static int sp_bad, sp_stuck, sp_modf; static unsigned long sp_sr_reads;
 #define SPI_BAD(...) do { printf("BAD "); printf(__VA_ARGS__); printf("\n"); sp_bad++; } while (0)
 
@@ -189,6 +197,12 @@ uint32_t h7ui_host_rd(uint32_t a)
 		if (sp_active && sp_done == sp_cr2 && ++sp_eot_polls >= 3) { sr |= 1u << 3; sp_eot_seen = 1; }   /* EOT */
 		return sr;
 	}
+	if (a == RCC_CR) {                                                   /* PLL2RDY follows PLL2ON after a few reads, unless the part is dead */
+		uint32_t v = *slot(a);
+		if ((v & (1u << 26)) && !pll_dead && pll_reads_left-- <= 0) v |= 1u << 27; else v &= ~(1u << 27);
+		*slot(a) = v;
+		return v;
+	}
 	return *slot(a);
 }
 
@@ -203,6 +217,20 @@ void h7ui_host_wr(uint32_t a, uint32_t v)
 		else if (off == 0x18) { if (v & (1u << 3)) sp_eot_cleared = 1; if (v & (1u << 9)) sp_modf = 0; }
 		else if (off == 0x20) SPI_BAD("TXDR written as a word");
 		return;
+	}
+	if (a == RCC_CR || a == RCC_PLLCKSELR || a == RCC_PLLCFGR || a == RCC_PLL2DIVR || a == RCC_D2CCIP1R) {
+		uint32_t old = *slot(a);
+		if (a == RCC_CR) {
+			pll_cr_writes++;
+			if ((v ^ old) & ~((1u << 26) | (1u << 27))) printf("BAD RCC_CR bits other than PLL2ON changed %08x -> %08x\n", old, v), forbidden++;
+			if ((v & (1u << 26)) && !(old & (1u << 26))) pll_reads_left = 3;
+		}
+		if (a == RCC_PLLCKSELR && ((v ^ old) & ~(0x3Fu << 12))) printf("BAD PLLCKSELR outside DIVM2 changed\n"), forbidden++;
+		if ((a == RCC_PLLCKSELR || a == RCC_PLLCFGR || a == RCC_PLL2DIVR) && (*slot(RCC_CR) & (1u << 26))) printf("BAD PLL2 setting written while PLL2 is on\n"), forbidden++;
+		if (a == RCC_PLLCFGR && ((v ^ old) & ~((1u << 4) | (1u << 5) | (3u << 6) | (1u << 20)))) printf("BAD PLLCFGR bits of another PLL changed\n"), forbidden++;
+		if (a == RCC_D2CCIP1R && (((v >> 16) & 7u) == 1u) && !(*slot(RCC_CR) & (1u << 27))) printf("BAD SPI45SEL moved to PLL2 before it was ready\n"), forbidden++;
+		if (a == RCC_D2CCIP1R && ((v ^ old) & ~(7u << 16))) printf("BAD D2CCIP1R bits other than SPI45SEL changed\n"), forbidden++;
+		*slot(a) = v; return;
 	}
 	if (a != RCC_AHB4ENR && a != RCC_APB2ENR && pi < 0) { printf("BAD address %08x\n", a); forbidden++; return; }
 	if (pi == 3 && off == 0x18 && (v & ((1u << 9) | (1u << 25)))) { printf("BAD PH9 written\n"); forbidden++; }
@@ -235,6 +263,7 @@ int main(int argc, char **argv)
 {
 	const char *sc = argc > 1 ? argv[1] : "";
 	exp_regs[0x10] = 0x23;
+	*slot(RCC_CR) = 0x0303c025u; *slot(RCC_PLLCKSELR) = 0x52u; *slot(RCC_PLLCFGR) = 0x70008u; *slot(RCC_PLL1DIVR) = 0x0103029fu;
 	h7ui_set_delay(delay);
 	odr[0] = odr[2] = ~0u;                       /* lines idle high until the driver says otherwise */
 	if (!strcmp(sc, "lcd_init")) { h7lcd_init(); }
@@ -260,6 +289,37 @@ int main(int argc, char **argv)
 	else if (!strcmp(sc, "spi_stuck")) {
 		quiet = 1; h7lcd_init(); quiet = 0; sp_stuck = 1; sp_sr_reads = 0; h7lcd_fill_rect(0, 0, 240, 320, 0xFFFF);
 		printf("sr_reads %lu\n", sp_sr_reads);
+	}
+	else if (!strcmp(sc, "pll2") || !strcmp(sc, "pll2_busy") || !strcmp(sc, "pll2_dead") || !strcmp(sc, "pll2_other")) {
+		if (!strcmp(sc, "pll2_busy")) { *slot(RCC_CR) |= 1u << 26; *slot(RCC_PLL2DIVR) = 0x11111111u; }
+		if (!strcmp(sc, "pll2_dead")) pll_dead = 1;
+		if (!strcmp(sc, "pll2_other")) *slot(RCC_PLLCKSELR) = 0x1052u | (1u << 4) * 0;     /* DIVM1 5 but HSI: not the image's clock tree */
+		if (!strcmp(sc, "pll2_other")) *slot(RCC_PLLCKSELR) = 0x40u;                       /* HSI, M = 4 */
+		quiet = 1; h7lcd_init(); quiet = 0;
+		printf("fast %d\n", h7ui_spi_fast());
+		printf("cr %08x\npllcksel %08x\npllcfgr %08x\npll2divr %08x\nd2ccip1r %08x\npll1divr %08x\npll1fracr %08x\n", *slot(RCC_CR), *slot(RCC_PLLCKSELR),
+		       *slot(RCC_PLLCFGR), *slot(RCC_PLL2DIVR), *slot(RCC_D2CCIP1R), *slot(RCC_PLL1DIVR), *slot(RCC_PLL1FRACR));
+	}
+	else if (!strcmp(sc, "shadow")) {
+		static uint8_t buf[16 + 240 * 320 * 2 + 16];                                      /* guard bytes either side */
+		memset(buf, 0xA5, sizeof buf);
+		h7ui_set_shadow(buf + 16);
+		quiet = 1; h7lcd_init();
+		memset(buf + 16, 0, 240 * 320 * 2);
+		h7lcd_fill_rect(2, 3, 4, 2, 0xF81F);
+		h7lcd_fill_rect(230, 310, 20, 20, 0x1234);                                      /* clipped to the glass */
+		h7lcd_begin(10, 20, 3, 2);                                                       /* a window filled with distinct pixels */
+		for (unsigned i = 0; i < 6; i++) h7lcd_pixel((uint16_t)(0x0100u * (i + 1) + i + 1));
+		h7lcd_end();
+		h7lcd_begin(5, 5, 1, 1); h7lcd_pixel(0x1111); h7lcd_pixel(0x2222); h7lcd_end();    /* more pixels than the window */
+		quiet = 0;
+		unsigned guard_bad = 0;
+		for (int i = 0; i < 16; i++) { if (buf[i] != 0xA5) guard_bad++; if (buf[16 + 240 * 320 * 2 + i] != 0xA5) guard_bad++; }
+		printf("guard %u\ndraws %u\n", guard_bad, (unsigned)h7ui_draw_count());
+		for (unsigned y = 0; y < 320; y++) for (unsigned x = 0; x < 240; x++) {
+			const uint8_t *p = buf + 16 + (y * 240 + x) * 2;
+			if (p[0] || p[1]) printf("px %u %u %02x%02x\n", x, y, p[0], p[1]);
+		}
 	}
 	else if (!strcmp(sc, "nochip")) { chip_present = 0; printf("R %d\n", h7ui_expander_init()); }
 	else { printf("unknown scenario\n"); return 2; }

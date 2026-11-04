@@ -19,6 +19,11 @@ void     h7ui_host_wr8(uint32_t addr, uint8_t val);
 #endif
 
 #define RCC_AHB4ENR 0x58024540u
+#define RCC_CR        0x58024400u
+#define RCC_PLLCKSELR 0x58024428u
+#define RCC_PLLCFGR   0x5802442Cu
+#define RCC_PLL2DIVR  0x58024438u
+#define RCC_D2CCIP1R  0x58024450u
 #define RCC_AHB1ENR 0x58024538u
 #define DMA2_LIFCR  0x40020408u
 #define DMA2_S3     0x40020458u      /* stream 3: CR +0, NDTR +4, PAR +8, M0AR +0xC, FCR +0x14 */
@@ -60,6 +65,10 @@ void     h7ui_host_wr8(uint32_t addr, uint8_t val);
 #define SPI_SR_EOT     (1u << 3)
 #define SPI_IFCR_CLEAR ((1u << 3) | (1u << 4) | (1u << 11))   /* EOTC, TXTFC, SUSPC */
 #define SPI_IFCR_ALL   0xFF8u                                  /* every flag clear bit, MODFC (9) among them */
+#ifndef H7UI_FAST
+#define H7UI_FAST 1                  /* 1 = feed SPI5 from PLL2 at 160 MHz (80 MHz bit clock) when PLL2 is free; 0 = stay on the 100 MHz APB2 clock */
+#endif
+#define PLL_SPINS 20000u             /* PLL2 locks in tens of microseconds; this is far more */
 #ifndef SPI_MBR
 #define SPI_MBR        0u            /* kernel clock / 2 = 50 MHz at the 100 MHz kernel clock; the stock rate, measured clean (docs/22) */
 #endif
@@ -237,10 +246,35 @@ static int spi_wait(uint32_t mask)
 }
 
 #if H7UI_HW_SPI
+static int pll2_active;
+
+/* Start PLL2 at 160 MHz (HSE 25 MHz / 5 x 128 / 4) and select it for SPI4/5. Only from the state the images leave RCC in:
+ * PLL1 running from the HSE with M = 5, PLL2 off and unused. Anything else, or a PLL that does not lock, leaves the
+ * 100 MHz APB2 clock in place (SPI5 still works, at 50 MHz). Returns 1 when SPI5 will run from PLL2. */
+static int pll2_start(void)
+{
+	uint32_t cksel = REG_RD(RCC_PLLCKSELR);
+	if ((REG_RD(RCC_CR) & (1u << 26)) || (cksel & 3u) != 2u || ((cksel >> 4) & 0x3Fu) != 5u || ((cksel >> 12) & 0x3Fu) != 0u) return 0;
+	REG_WR(RCC_PLLCKSELR, cksel | (5u << 12));                                            /* DIVM2 = 5: 5 MHz reference */
+	REG_WR(RCC_PLLCFGR, (REG_RD(RCC_PLLCFGR) & ~((1u << 4) | (1u << 5) | (3u << 6))) | (2u << 6) | (1u << 20));   /* no fraction, wide VCO, 4-8 MHz input, Q output on */
+	REG_WR(RCC_PLL2DIVR, (127u) | (1u << 9) | (3u << 16) | (1u << 24));                   /* N 128 (640 MHz VCO), P 2, Q 4 (160 MHz), R 2 */
+	REG_WR(RCC_CR, REG_RD(RCC_CR) | (1u << 26));
+	for (uint32_t n = PLL_SPINS; n; n--)
+		if (REG_RD(RCC_CR) & (1u << 27)) {
+			REG_WR(RCC_D2CCIP1R, (REG_RD(RCC_D2CCIP1R) & ~(7u << 16)) | (1u << 16));      /* SPI45SEL = PLL2_Q */
+			return 1;
+		}
+	REG_WR(RCC_CR, REG_RD(RCC_CR) & ~(1u << 26));                                         /* never locked: back off */
+	return 0;
+}
+
 static int spi_ready;
 static void spi_hw_init(void)
 {
 	if (spi_ready) return;
+#if H7UI_FAST
+	pll2_active = pll2_start();
+#endif
 	REG_WR(RCC_APB2ENR, REG_RD(RCC_APB2ENR) | (1u << 20));        /* SPI5 clock */
 	(void)REG_RD(RCC_APB2ENR);
 	REG_WR(GPIOH + MODER, (REG_RD(GPIOH + MODER) & ~((3u << 12) | (3u << 14))) | (2u << 12) | (2u << 14));   /* PH6, PH7 alternate */
@@ -283,7 +317,36 @@ static int spi_close(void)                                       /* 1 if the tra
 }
 
 static uint32_t pix_left;              /* pixels still owed to the open window (see h7lcd_begin) */
+
+/* The shadow copy of the picture (screen capture): the panel cannot be read back on this board, so every pixel sent is also
+ * stored here, big-endian RGB565 as it went out. win_* is the open window and sh_cx/sh_cy the next pixel in it. */
+static uint8_t *shadow;
+static unsigned win_x, win_y, win_w, sh_cx, sh_cy;
+static uint32_t draw_count;
+void h7ui_set_shadow(uint8_t *fb) { shadow = fb; }
+const uint8_t *h7ui_shadow(void) { return shadow; }
+uint32_t h7ui_draw_count(void) { return draw_count; }
+static void shadow_put(uint8_t hi, uint8_t lo)
+{
+	if (!shadow) return;
+	uint8_t *d = shadow + (((win_y + sh_cy) * H7LCD_W) + win_x + sh_cx) * 2u;
+	d[0] = hi; d[1] = lo;
+	if (++sh_cx == win_w) { sh_cx = 0; sh_cy++; }
+}
 #if H7UI_HW_SPI
+/* A whole solid window into the shadow, the one open now: a 16-bit store per pixel (the base is even, so every pixel is), not
+ * the call and the cursor arithmetic of shadow_put. */
+static void shadow_rect(unsigned w, unsigned h, uint8_t hi, uint8_t lo)
+{
+	if (!shadow) return;
+	uint16_t v = (uint16_t)(hi | (lo << 8));                    /* little-endian store puts hi first in memory */
+	for (unsigned y = 0; y < h; y++) {
+		volatile uint16_t *d = (volatile uint16_t *)(void *)(shadow + (((win_y + y) * H7LCD_W) + win_x) * 2u);
+		for (unsigned x = 0; x < w; x++) d[x] = v;
+	}
+	sh_cx = 0; sh_cy = h;
+}
+
 /* ---- DMA2 stream 3 feeding the SPI5 FIFO. One chunk is one SPI transaction of at most SPI_CHUNK_MAX bytes. ---- */
 static uint8_t *dma_scratch;           /* where a fill's one pixel is kept: memory DMA2 can read, and no cache between */
 static unsigned dma_err;
@@ -324,6 +387,7 @@ static int dma_chunk(const uint8_t *src, uint32_t bytes, uint32_t circ)
 
 void h7ui_set_dma_scratch(uint8_t *two_bytes) { dma_scratch = two_bytes; }
 unsigned h7ui_dma_errors(void) { return dma_err; }
+int h7ui_spi_fast(void) { return pll2_active; }
 
 int h7lcd_blit(const uint8_t *src, uint32_t bytes)
 {
@@ -333,6 +397,7 @@ int h7lcd_blit(const uint8_t *src, uint32_t bytes)
 		if (!dma_chunk(src + done, n, 0)) { dma_err++; pix_left = 0; return 0; }
 		done += n; pix_left -= n / 2u;
 	}
+	for (uint32_t i = 0; i < bytes; i += 2) shadow_put(src[i], src[i + 1]);
 	return 1;
 }
 
@@ -350,6 +415,7 @@ int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c)
 		left -= n;
 	}
 	pix_left = 0;
+	shadow_rect(w, h, dma_scratch[0], dma_scratch[1]);
 	h7lcd_end();
 	return 1;
 }
@@ -359,6 +425,7 @@ int h7lcd_blit(const uint8_t *src, uint32_t bytes) { (void)src; (void)bytes; ret
 int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c) { (void)x; (void)y; (void)w; (void)h; (void)c; return 0; }
 void h7ui_set_dma_scratch(uint8_t *two_bytes) { (void)two_bytes; }
 unsigned h7ui_dma_errors(void) { return 0; }
+int h7ui_spi_fast(void) { return 0; }
 #endif
 
 static void spi_byte(uint8_t b)
@@ -434,6 +501,7 @@ int h7lcd_begin(unsigned x, unsigned y, unsigned w, unsigned h)
 	DC_H(); CS_L();
 	pix_left = w * h;
 	frames_left = 0;
+	win_x = x; win_y = y; win_w = w; sh_cx = sh_cy = 0;
 	return 1;
 }
 
@@ -442,6 +510,7 @@ void h7lcd_pixel(uint16_t c)
 	if (pix_left == 0) return;                          /* more pixels than the window holds are dropped */
 	pix_left--;
 	uint8_t hi = (uint8_t)(c >> 8), lo = (uint8_t)c;
+	shadow_put(hi, lo);
 	if (!hw_active) { frames_left = 0; bitbang_byte(hi); bitbang_byte(lo); return; }
 	if (frames_left == 0) {
 		uint32_t f = (pix_left + 1u) * 2u;
@@ -461,6 +530,7 @@ void h7lcd_end(void)
 	frames_left = 0;
 	pix_left = 0;
 	CS_H();
+	draw_count++;
 }
 
 void h7lcd_fill_rect(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c)
