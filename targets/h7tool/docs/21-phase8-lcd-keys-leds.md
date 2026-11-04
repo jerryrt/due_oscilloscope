@@ -43,10 +43,12 @@ has a written pin and polarity with its evidence.
 
 ## Status
 
-The LCD is driven from our own image (8.7, in part): power, reset, chip
-select, D/C, hand-clocked SPI, the boot loader's init table and a test
-pattern, all observed (docs/22). Backlight brightness, the RUN and CHG
-LEDs and the app's own table are still open.
+Observed on the unit (docs/22): the LCD (power, chip select, D/C, SPI
+by hand, the boot loader's init table, MADCTL 0xC0 portrait 240x320),
+the expander on PB6 and PG0 with the backlight on P0_0, CHG on P1_0 and
+P1_1 and RUN on P1_2. Still open: the keys (set aside by the owner), the
+backlight and LED behaviour with no boot loader state behind it, the
+hardware SPI5 path, and CHG's two colours.
 
 ## Risks
 

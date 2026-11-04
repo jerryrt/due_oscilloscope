@@ -89,8 +89,9 @@ operands for drawing (0x0800c6e8). The boot loader sends 0x11 and 0x29
 with no delay between them; a test image should wait after sleep out
 all the same.
 
-Which model byte this unit's boot loader holds, and whether the app uses
-the same table, are not yet read.
+The table for model 0 and 1 gave correct colours on this unit. Which
+model byte this unit's boot loader holds, and whether the app uses the
+same table, are not read.
 
 ## First LCD run (image 18a, bench linux-x1, 2026-11-03)
 
@@ -183,7 +184,12 @@ right. That is the picture turned 90 degrees counter-clockwise, and both
 corners that share the picture's left edge landing on one screen edge
 fits a portrait glass of 240 columns by 320 rows. So the upright setting
 is probably MADCTL 0xC0 (the boot loader's direction 1) in portrait,
-which is to be tested. The F itself was not looked at.
+which image 22a confirmed: at MADCTL 0xC0 with the window set to
+columns 0..239 and rows 0..319 the F was upright and readable, red was
+at the top left and green at the top right, and the white border showed
+on all four sides (the owner did not name the bottom corners). So the
+glass is portrait, 240 columns by 320 rows, and all 320 rows are shown;
+the boot loader's 80-row offsets belong to its 240x240 sub-window.
 
 The LED walk lit (forward run, then the same four steps in reverse
 order, by the owner's reports; the reverse run did not name CHG's colours):
