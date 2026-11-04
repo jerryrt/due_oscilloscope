@@ -63,6 +63,28 @@ In the 10-word block at address 1, register 0x0100, word 1 = 2 gave a square at 
 frequency, and 4 and 5 triangle-like waves at about two and three times the frequency (not explained). Word 1 = 0 switches the output off, and
 every test ended with that.
 
+## The module's USB socket and the backup of its firmware (observed, 2026-11-04)
+
+The module has a USB socket on its RP2040. In normal operation it is silent on USB (the 49 KB image never touches the RP2040's USB
+controller); with BOOT held while it is connected it enumerates as `2e8a:0003` "RP2 Boot", serial E0C9125B0D9B, with a drive RPI-RP2 whose
+`INFO_UF2.TXT` says "UF2 Bootloader v3.0, Model: Raspberry Pi RP2, Board-ID: RPI-RP2": the ordinary RP2040 boot ROM, no custom board id.
+
+Before anything could be written, the whole flash was read through the boot ROM's PICOBOOT interface with `tools/rp2040_picoboot.py`
+(`tests/test_rp2040_picoboot.py`: it can send only READ and the two commands that set up reading, and the test fails with that guard removed).
+Saved in `~/MCU.Projects/h7tool_backup/rp2040_module/` (outside the repo, with a README and SHA256SUMS):
+
+- `module_flash_2048KB.bin`: the full 2 MB flash, read twice in one session and once more in another, all identical, sha256
+  `ef6881c9120bf9d12584cb859797743b38ad680850b78ca46eefa59f6bb87d7f`. The window repeats at 2 MB, so the flash is 2 MB.
+- The firmware occupies the first 49,152 bytes (0xC000); everything after is 0xFF. There is no calibration region elsewhere in the flash, so
+  the fixed status values (114.9, 212.7, 1.699 ...) are in the firmware or computed.
+- **It is not the vendor's `DSO_250M(V1.04).bin`.** The first 256 bytes (the boot stage) match, but 39,619 of the vendor file's 49,028 bytes
+  differ, the module image is 124 bytes longer, and the reset vector is `0x10008271` against `0x10008269`. The module runs a different build; which
+  one is unknown. The module's own flash is therefore the only copy of what it runs.
+
+Flash reads need the boot ROM told how to read: right after connecting, the flash window returns the cache's contents (the first bytes of
+"flash" and of SRAM were identical); after EXIT_XIP and ENTER_CMD_XIP the first 256 bytes equal the vendor boot stage. A 16 KB read stalls the
+interface; 4 KB reads work. The boot ROM itself reads normally.
+
 ## Programming the module from the H7-TOOL
 
 The H7-TOOL is a CMSIS-DAP probe (a WinUSB interface and an HID one are up while the stock app runs, no mode switch needed) and its device
@@ -73,8 +95,8 @@ the D0 to D9 header that the module uses for its serial and SPI link.
 `tools/h7_swd_probe.py` asks the probe to connect, reset the SWD line, select the RP2040's core 0 and read the debug-port ID, with no memory or
 flash access. With the module plugged in as it is, it answers ACK 7 (no target). That says nothing is connected to the SWD port, not that the
 module cannot be programmed: nothing in the vendor files says whether the module exposes SWCLK and SWDIO, and no schematic of the module
-exists. Two things are needed before anything is written: the module's SWD pads (or its USB boot mode, the vendor ships a UF2) found on the board,
-and a read-back of the whole flash first, because the stock firmware may keep calibration there.
+exists. Two things were needed before anything is written: the module's SWD pads or its USB boot mode (found: the USB socket, above),
+and a read-back of the whole flash first (done, above: the stock firmware keeps no calibration outside its image).
 
 ## Writing our own firmware for it
 
