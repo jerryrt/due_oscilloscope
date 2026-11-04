@@ -165,6 +165,34 @@ power-on, so the reset pulse in image 18 was not what made it work.
 The assignment of RUN and CHG to P1_0..P1_3 is still to be read off a
 run that names each step.
 
+## Panel geometry and the LED outputs (images 20a and 21a, bench linux-x1, 2026-11-03)
+
+Image 20a filled all 320 rows of the controller's 240-wide memory with
+eight numbered bands, with MADCTL 0x00.
+
+| Item | Result |
+|---|---|
+| Rows shown | all eight bands, so the glass shows all 320 rows: it is a 240x320-memory panel, not 240x240 (docs/02 lists 2.0 inch 320x240 screens) |
+| Memory against glass | the grey band (last rows) was at the top and the black squares (column 0 side) at the right: at MADCTL 0x00 the memory is turned 180 degrees |
+| 240-row picture of images 18 and 19 | drew only the 240 rows at the bottom of the glass, leaving the top 80 rows to the boot loader's content |
+
+Image 21a, MADCTL 0x60 (landscape), filled the screen as 320 wide by
+240 tall, and the fill was seen to start at the left and run right. The
+orientation picture (an F and four coloured corners) was not looked at,
+so the upright setting is not found yet.
+
+The LED walk lit, in order of the four outputs, by the owner's report:
+
+| Step (output, register) | Screen colour | Seen *(tentative)* |
+|---|---|---|
+| 1 P1_0, 0x20 | red | CHG LED, green |
+| 2 P1_1, 0x21 | green | CHG LED, red |
+| 3 P1_2, 0x22 | blue | RUN LED, red |
+| 4 P1_3, 0x23 | white | off, perhaps; no green RUN LED lit at any step |
+
+The reading is from memory and one run, and is to be rechecked with the
+steps in reverse order.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a

@@ -41,6 +41,9 @@
 #define BL_PERCENT   0u                      /* backlight duty, 0 = leave PH9 alone; keep low, see the header */
 #endif
 
+#ifndef ORIENT_MS
+#define ORIENT_MS 10000u
+#endif
 #ifndef MADCTL
 #define MADCTL 0x60                            /* landscape 320x240; boot loader direction values 0x00 0xc0 0xa0 0x60 */
 #endif
@@ -251,7 +254,7 @@ void Reset_Handler(void)
 	lcd_init();
 	orientation_picture();
 	i2c_pins();
-	delay_ms(10000);                                /* look at the orientation picture */
+	delay_ms(ORIENT_MS);                            /* look at the orientation picture */
 
 #if CHIP_INIT
 	chip_write(0x04, 0xFE);                         /* boot loader values, docs/22 */
@@ -260,10 +263,17 @@ void Reset_Handler(void)
 	chip_write(0x12, 0xFE);
 	chip_write(0x13, 0xF0);
 #endif
+#ifdef REVERSE
+	led_step(0xFFFF, 0x23);                         /* white : P1_3 */
+	led_step(0x001F, 0x22);                         /* blue  : P1_2 */
+	led_step(0x07E0, 0x21);                         /* green : P1_1 */
+	led_step(0xF800, 0x20);                         /* red   : P1_0 */
+#else
 	led_step(0xF800, 0x20);                         /* red   : P1_0 */
 	led_step(0x07E0, 0x21);                         /* green : P1_1 */
 	led_step(0x001F, 0x22);                         /* blue  : P1_2 */
 	led_step(0xFFFF, 0x23);                         /* white : P1_3 */
+#endif
 
 	return_to_boot_loader();
 }
