@@ -31,21 +31,28 @@ INIT = [
 ]
 
 
-def build(tmp, src=None):
+def build(tmp, src=None, hw=1):
     src = src or os.path.join(FW, "h7_ui.c")
-    exe = os.path.join(tmp, "h7ui_harness")
-    subprocess.run([CC, "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-DH7UI_HOST", "-I" + FW, "-o", exe, HARNESS, src],
-                   check=True)
+    exe = os.path.join(tmp, "h7ui_harness_%d" % hw)
+    subprocess.run([CC, "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-DH7UI_HOST", "-DH7UI_HW_SPI=%d" % hw, "-I" + FW,
+                    "-o", exe, HARNESS, src], check=True)
     return exe
 
 
-@pytest.fixture(scope="module")
-def exe(tmp_path_factory):
-    return build(str(tmp_path_factory.mktemp("h7ui")))
+# Both ways of reaching the panel (the SPI5 peripheral and the hand-clocked pins) must send the same bytes, so every
+# test below runs against each.
+@pytest.fixture(scope="module", params=[1, 0], ids=["spi5", "bitbang"])
+def exe(request, tmp_path_factory):
+    return build(str(tmp_path_factory.mktemp("h7ui")), hw=request.param)
 
 
 def run(exe, scenario):
     out = subprocess.run([exe, scenario], check=True, capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+    bad = [l for l in out if l.startswith("BAD")]
+    assert not bad, bad                            # the fake peripheral objects to a misuse in words
+    assert "forbidden 0" in out
+    if scenario != "spi_stuck":
+        assert "spi_errors 0" in out
     return out
 
 
@@ -142,3 +149,33 @@ def test_a_wrong_byte_in_the_table_is_caught(tmp_path):
     bad.write_text(src.replace(needle, "0x0d, 0x11, 0x13, 0x2b, 0x3f, 0x55"), encoding="utf-8")
     mut = build(str(tmp_path), str(bad))
     assert commands(spi(run(mut, "lcd_init"))) != INIT
+
+
+@pytest.mark.parametrize("old, new, what", [
+    ("(1u << 15));\n\tREG_WR(SPI_CR1, SPI_CR1_SSI);", "0);\n\tREG_WR(SPI_CR1, SPI_CR1_SSI);", "IOSWP"),
+    ("(SPI_MBR << 28) | 7u", "(SPI_MBR << 28) | 15u", "frame size"),
+    ("#define SPI_MBR        1u", "#define SPI_MBR        0u", "clock rate"),
+    ("(5u << 24) | (5u << 28)", "(2u << 24) | (5u << 28)", "alternate function"),
+    ("\tspi_wait(SPI_SR_EOT);\n\tREG_WR(SPI_IFCR", "\tREG_WR(SPI_IFCR", "end-of-transfer wait"),
+    ("\tREG_WR(SPI_CR1, SPI_CR1_SSI);\n}\n\nstatic void spi_byte", "\tREG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE);\n}\n\nstatic void spi_byte", "SPE left on"),
+])
+def test_a_fault_in_the_spi5_setup_is_caught(tmp_path, old, new, what):
+    """Break each guarded part of the peripheral set-up on purpose; the fake peripheral or the byte comparison must object."""
+    src = open(os.path.join(FW, "h7_ui.c"), encoding="utf-8").read()
+    assert src.count(old) == 1, what
+    bad = tmp_path / "h7_ui_mut.c"
+    bad.write_text(src.replace(old, new), encoding="utf-8")
+    mut = build(str(tmp_path), str(bad), hw=1)
+    out = subprocess.run([mut, "fill"], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+    clean = (not any(l.startswith("BAD") for l in out) and "forbidden 0" in out and "spi_errors 0" in out
+             and commands(spi(out)) == [(0x2A, [0, 2, 0, 5]), (0x2B, [0, 3, 0, 4]), (0x2C, [0xF8, 0x1F] * 8)])
+    assert not clean, what
+
+
+def test_a_stuck_spi5_costs_one_short_wait_not_one_per_pixel(tmp_path):
+    """A peripheral that never reports a free FIFO slot: the first wait gives up, the error is counted once and the
+    rest of a full-screen fill touches SPI5 no more. Without the latch a fill would wait out 153,600 times."""
+    out = run(build(str(tmp_path), hw=1), "spi_stuck")
+    reads = int([l for l in out if l.startswith("sr_reads")][0].split()[1])
+    assert "spi_errors 1" in out
+    assert reads <= 2 * 4000 + 16, reads                  # one wait, plus the status snapshot

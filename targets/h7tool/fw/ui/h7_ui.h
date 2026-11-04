@@ -3,8 +3,8 @@
  * value here was read from the stock boot loader and then observed on the unit; docs/22 holds the evidence and says
  * what is still open. Nothing here touches PH9 (the buzzer on this unit), PG1, PC13 (TVCC) or the keys.
  *
- *   panel      ST7789, portrait 240 columns by 320 rows, MADCTL 0xC0, RGB565, SPI clocked by hand on PH6 (SCK) and PH7
- *              (data, mode 3), chip select PE1 (low), D/C PG15 (low = command), power enable PH15. The panel resets
+ *   panel      ST7789, portrait 240 columns by 320 rows, MADCTL 0xC0, RGB565, on SPI5 (PH6 SCK, PH7 data, mode 3, 8-bit
+ *              frames; -DH7UI_HW_SPI=0 clocks the pins by hand instead), chip select PE1 (low), D/C PG15 (low = command), power enable PH15. The panel resets
  *              itself at power-on, so there is no reset pin.
  *   expander   AW9523B at 8-bit address 0xB6 on a soft I2C, SCL PB6 and SDA PG0. Backlight is output P0_0, the LEDs
  *              are P1_0..P1_2.
@@ -47,6 +47,13 @@ void h7ui_led(enum h7ui_led led, uint8_t level);  /* 0 off */
 int  h7ui_expander_write(uint8_t reg, uint8_t val);
 
 /* ---- panel ---- */
+
+/* SPI5 waits that gave up; 0 means every transfer completed. Always 0 on the hand-clocked build. */
+unsigned h7ui_spi_errors(void);
+/* The first timeout stops all further SPI5 use (so a stuck peripheral costs microseconds, not minutes) and keeps the
+ * SR and CR1 it saw, for diagnosis. */
+uint32_t h7ui_spi_status_at_error(void);
+uint32_t h7ui_spi_control_at_error(void);
 
 /* Power the panel, send the boot loader's model 0/1 initialisation, and turn the display on. The picture memory
  * is undefined afterwards; fill it before the backlight is turned up. About 0.35 s. */
