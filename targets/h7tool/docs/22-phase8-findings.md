@@ -95,7 +95,7 @@ same table, are not read.
 
 ## First LCD run (image 18a, bench linux-x1, 2026-11-03)
 
-`fw/image18` drives the pins above with a hand-clocked SPI, the boot
+`fw/ui-tests/image18` drives the pins above with a hand-clocked SPI, the boot
 loader's model 0/1 table, a four-band test pattern and a 10% PWM on PH9,
 for 20 s, then returns to the boot loader. Observed by the owner:
 
@@ -146,7 +146,7 @@ LED of image 1 showed nothing, if the LEDs are on the chip.
 
 ## Image 19a: the expander, observed (bench linux-x1, 2026-11-03)
 
-`fw/image19` reads the expander's ID register over a hand-clocked I2C
+`fw/ui-tests/image19` reads the expander's ID register over a hand-clocked I2C
 on PB6 (SCL) and PG0 (SDA), sets the boot loader's mode registers with
 the LED current at a quarter of the range, drives P1_0..P1_3 one at a
 time (register 0x20 + n, 3 s each), then steps the backlight output

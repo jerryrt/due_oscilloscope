@@ -64,3 +64,8 @@ hardware SPI5 path, and CHG's two colours.
 
 The 250M module, the eMMC, and any user interface logic above the three
 drivers. Those wait for 8.8.
+
+The throwaway test images of this phase are in `fw/ui-tests/`, outside
+the `fw/imageNN` names the USB-image guards (`tests/test_h7_image13.py`)
+read: they are USB-less, run for a fixed time and return to the boot
+loader by themselves, which those guards forbid for the real images.
