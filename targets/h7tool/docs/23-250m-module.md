@@ -127,6 +127,32 @@ shows (**from the code**; the readings of what a pin is *for* are marked *inferr
 Not yet seen: the range, coupling and trigger code, which only runs when the H7 sends a command. The next step is to feed the emulator the same
 SPI words the H7 sends (a settings block write with a different range each time) and read the pin and PIO changes it causes.
 
+## Streaming mode with the module: what the links allow (a design, not built; the figures are arithmetic from measured or traced values)
+
+The converter's raw rate is 250 MS/s on one channel or 125 MS/s on each of two, 8 bits: **250 MB/s**, either way. No link in this system carries that:
+the H7's USB bulk stream measured 40 MB/s (docs/08), the module's own USB is full speed (about 1 MB/s), and the module-to-H7 link is the SPI above.
+So the module can stream continuously only at a reduced rate, and the full rate only in bursts.
+
+- **Link ceiling.** The stock image's slave transmit loop spends about 5 PIO instructions per bit at 250 MHz, 20 ns, so its SCK cannot exceed about 50 MHz
+  (6 MB/s); a purpose-written PIO program might reach 62 MHz. The H7's SPI4 can clock faster than that. Whether the header wiring is clean at 30 to 50 MHz
+  has not been tried *(check)*. Taking 3 to 6 MB/s: **3 to 6 MS/s on one channel, or 1.5 to 3 MS/s each on two**, the same class as the H7's own two-channel 2.5 Msps
+  scope (docs/11). That is a streaming mode, and it is a low-rate one: at 5 MS/s the front end's 30 to 50 MHz bandwidth aliases anything above 2.5 MHz.
+- **Full rate is a burst mode.** The module already captures 224 KB at 250 MS/s (0.9 ms, gapless inside the burst), and reading it out at 6 MB/s takes about
+  37 ms, so about 25 triggered bursts a second with blind time between them. That is the stock behaviour; a burst must be flagged as a burst (CLAUDE.md invariant 5),
+  never presented as a continuous record.
+- **The DMA-only strategy carries over to both ends.** On the module: PIO0 capture to DMA to the RAM ring (this exists), then a second DMA chain from the ring into
+  PIO1's transmit FIFO (the SPI slave's MISO) paced by its DREQ, so the RP2040's CPU never touches a sample. On the H7: SPI4 as master with receive DMA
+  into a D2 SRAM ring, and from there the existing frame and USB IN DMA path (image 17), with the CPU writing only headers. Flow control needs the H7 to know a
+  frame is ready: a "ready" line from the module (a free header pin, if any is wired to an RP2040 pin: unknown) or a short status transaction between frames; the
+  data path stays CPU-free either way. A frame with no data behind it goes out flagged, as filler, never as fresh samples.
+- **It needs our own module firmware**, because the stock image only does capture-then-read. The programming path exists (BOOTSEL and the backup above, so the stock image
+  can always be restored). What the firmware cannot yet do is set the front end: the range, coupling and offset pins and the ADC clock setting are in the command paths
+  of the stock image, not in its start-up (above), which is the next trace to take. Until then a streaming firmware could only run the front end as it is left at
+  start-up.
+- **Order of work.** (1) trace the stock command paths for the front end and the sample clock; (2) a minimal module image that streams a fixed rate over SPI by DMA, with the
+  stock front-end settings; (3) the H7 side: SPI4 receive DMA into a ring, frames out through the existing USB path, and the rate and range from the control function;
+  (4) a proper single-edge trigger in the module's PIO (the stock one fires on either edge) for the burst mode. Each step is testable on the bench with VOUT on CH1 as here.
+
 ## Writing our own firmware for it
 
 Possible in principle (the RP2040 is a generic part and the stock image is 49 KB), and it would let the trigger be done properly. Not started.
