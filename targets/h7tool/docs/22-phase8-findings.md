@@ -228,6 +228,28 @@ removes that. The driver also keeps a fallback: the first SPI5 wait that
 gives up hands the panel to the hand-clocked pins, resends the byte
 that failed and keeps the status it saw.
 
+## SPI5 at the PLL clock, read over USB (image 27, bench linux-x1, 2026-11-04)
+
+Image 27 is image 17 (core at 400 MHz) with the driver and three
+exploring opcodes of the control function (PEEK 0x45, POKE 0x46,
+EXPLORE 0x47; `tools/h7_explore.py`), so the numbers come back over USB
+and need no reading from the screen. Cycle counts are DWT CYCCNT.
+
+| SPI5 CFG1 MBR | divisor | full-screen fill | wire time at 100 MHz kernel |
+|---|---|---|---|
+| 0 | kernel/2 | 25.3 ms | 24.6 ms |
+| 1 | kernel/4 | 56.1 ms cache off, 49.2 ms cache on | 49.2 ms |
+| 3 | kernel/16 | 197 ms | 196.6 ms |
+
+The kernel clock is therefore 100 MHz *(inferred from the three rows
+agreeing with the wire time)*. At this core clock the CPU keeps up with
+the FIFO, so the fill runs at wire speed and DMA would free the CPU
+without making the fill shorter. A pattern of eight colour bands and a
+one-pixel grid, drawn at kernel/2 (50 MHz), was reported clean by the
+owner, so the driver now uses MBR 0, the stock rate. Observed on one
+unit with one pattern. The earlier 247 ms and 123 ms figures were taken
+at the 64 MHz reset clock.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
@@ -236,8 +258,8 @@ that failed and keeps the status it saw.
 - Read the boot loader's board-flag test (RAM 0x24000270 + 12) and the
   app's channel writes to assign RUN and CHG among P1_0..3 and P1_5..6.
 - Get the AW9523B datasheet and confirm the register meanings.
-- The SPI5 clock at kernel/2 as the stock firmware sets it (MBR 0), and
-  DMA2 Stream3 feeding the FIFO from a buffer in non-cacheable memory.
+- DMA2 Stream3 feeding the FIFO from a buffer in non-cacheable memory:
+  only worth it to free the CPU, since the fill is at wire speed.
 - A run with no boot loader state behind it, if one can be reached.
 - Read what sets the model byte at 0x24000022, and which model this
   unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).

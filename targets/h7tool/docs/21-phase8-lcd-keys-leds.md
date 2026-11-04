@@ -75,3 +75,12 @@ The throwaway test images of this phase are in `fw/ui-tests/`, outside
 the `fw/imageNN` names the USB-image guards (`tests/test_h7_image13.py`)
 read: they are USB-less, run for a fixed time and return to the boot
 loader by themselves, which those guards forbid for the real images.
+
+Image 27 in `fw/ui-tests/` is the exception: it is image 17 with the driver
+and the exploring opcodes of the control function (PEEK 0x45, POKE 0x46,
+EXPLORE 0x47 in `fw/ctl_h7.h`), so a test is driven and its numbers are read
+over USB with `tools/h7_explore.py`. An image lists those opcodes in its
+capability reply only when it provides them; any other image answers
+CTL_ERR_OPCODE. The ids of EXPLORE are in the comment above `h7_explore` in
+its `main.c`. POKE can write any peripheral register except the flash
+controller, so the caller is responsible for pins such as the buzzer's.

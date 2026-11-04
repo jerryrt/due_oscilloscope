@@ -155,7 +155,7 @@ def test_a_wrong_byte_in_the_table_is_caught(tmp_path):
     ("(1u << 15));\n\tREG_WR(SPI_CR1, SPI_CR1_SSI);", "0);\n\tREG_WR(SPI_CR1, SPI_CR1_SSI);", "IOSWP"),
     ("(SPI_MBR << 28) | 7u", "(SPI_MBR << 28) | 15u", "frame size"),
     ("\tREG_WR(SPI_CR1, SPI_CR1_SSI);\n\tREG_WR(SPI_IFCR, SPI_IFCR_ALL);", "\tREG_WR(SPI_CR1, 0);\n\tREG_WR(SPI_IFCR, SPI_IFCR_ALL);", "SSI before the configuration"),
-    ("#define SPI_MBR        1u", "#define SPI_MBR        0u", "clock rate"),
+    ("#define SPI_MBR        0u", "#define SPI_MBR        1u", "clock rate"),
     ("(5u << 24) | (5u << 28)", "(2u << 24) | (5u << 28)", "alternate function"),
     ("\tif (!spi_wait(SPI_SR_EOT)) return 0;\n\tREG_WR(SPI_IFCR", "\tREG_WR(SPI_IFCR", "end-of-transfer wait"),
     ("\tREG_WR(SPI_CR1, SPI_CR1_SSI);\n\treturn 1;\n}", "\tREG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE);\n\treturn 1;\n}", "SPE left on"),

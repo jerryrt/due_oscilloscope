@@ -132,7 +132,7 @@ static void sp_check_config(void)
 	if ((c2 & (1u << 15)) == 0) SPI_BAD("IOSWP not set: data would leave on the wrong pad");
 	if ((c2 & (1u << 31)) == 0) SPI_BAD("AFCNTR not set: the clock would float while disabled");
 	if ((sp_cfg1 & 31u) != 7u) SPI_BAD("not 8-bit frames");
-	if (((sp_cfg1 >> 28) & 7u) < 1u) SPI_BAD("clock faster than kernel/4");
+	if (((sp_cfg1 >> 28) & 7u) != 0u) SPI_BAD("clock is not kernel/2, the rate measured clean on the unit");
 	uint32_t m = *slot(GPIOH + 0x00u), af = *slot(GPIOH + 0x20u);
 	if (((m >> 12) & 3u) != 2u || ((m >> 14) & 3u) != 2u) SPI_BAD("PH6/PH7 not alternate function");
 	if (((af >> 24) & 0xFu) != 5u || ((af >> 28) & 0xFu) != 5u) SPI_BAD("PH6/PH7 not AF5");

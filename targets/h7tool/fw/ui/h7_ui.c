@@ -55,7 +55,9 @@ void     h7ui_host_wr8(uint32_t addr, uint8_t val);
 #define SPI_SR_EOT     (1u << 3)
 #define SPI_IFCR_CLEAR ((1u << 3) | (1u << 4) | (1u << 11))   /* EOTC, TXTFC, SUSPC */
 #define SPI_IFCR_ALL   0xFF8u                                  /* every flag clear bit, MODFC (9) among them */
-#define SPI_MBR        1u            /* kernel clock / 4; 0 would be / 2 as the stock firmware uses *(check)* */
+#ifndef SPI_MBR
+#define SPI_MBR        0u            /* kernel clock / 2 = 50 MHz at the 100 MHz kernel clock; the stock rate, measured clean (docs/22) */
+#endif
 #define SPI_SPIN_MAX   4000u         /* one wait is a frame or a few at most (well under a millisecond); more means stuck */
 #define SPI_CHUNK_MAX  65534u        /* TSIZE is 16 bits; an even count keeps whole pixels in a chunk */
 

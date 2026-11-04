@@ -9,9 +9,9 @@
  *   expander   AW9523B at 8-bit address 0xB6 on a soft I2C, SCL PB6 and SDA PG0. Backlight is output P0_0, the LEDs
  *              are P1_0..P1_2.
  *
- * Speed, measured on the unit (docs/22): a full-screen fill takes about 250 ms on SPI5 with the CPU feeding the FIFO
- * (about 120 ms with the instruction cache on) and about 3 s on the hand-clocked pins; the wire at kernel/4 would need
- * about 80 ms, so the rest is the CPU.
+ * Speed, measured on the unit (docs/22): a full-screen fill takes 25 ms on SPI5 at kernel/2 with the core at 400 MHz,
+ * which is the wire time; at the 64 MHz reset clock the CPU feeding the FIFO limits it to about 250 ms (about 120 ms with
+ * the instruction cache on). The hand-clocked pins take about 3 s.
  *
  * Constant time and memory: no allocation, every loop is bounded. A call is slow, though: the panel is written a bit
  * at a time and an expander write is about 1.5 ms at the default bus speed, so none of this belongs in an ISR or in
