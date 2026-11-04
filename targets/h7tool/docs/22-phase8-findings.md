@@ -354,8 +354,8 @@ state, `fw/ui/h7_ui.c` carries it, the RUN LED follows running or playing, and `
 scope (run state, channels, sample rate, gains and coupling, frames, sent, lost, missed/bad/overrun) and the generator (play state,
 update rate, units queued and consumed, underruns, minimum occupancy and resumes, short), with the up-time and build. Rows turn red or
 yellow on loss and underruns. It reads counters and configuration through `h7_get_status` and `h7_get_config` and never the sample
-stream, so CLAUDE.md invariant 1 holds for this target. A waveform trace would have to read samples; it is not built, and would be a
-debug-only build if it were.
+stream, so CLAUDE.md invariant 1 holds for this target. A waveform trace would have to read samples; it is not built. The owner's
+decision is that in stream mode the host draws the traces and the state monitor is the device's display.
 
 What it cost to share the loop with acquisition, measured by DWT cycle counts on the unit and by the device's own loss counters
 (`STATUS`, 10 s at each rate, the same run on image 17 as control):
@@ -381,17 +381,12 @@ line buffer and the pixel scratch are in SRAM3, the capture shadow (150 KB) in A
 
 ## Next
 
-- Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
-  literal in the app; search for the SPI5 register offsets and the
-  display init sequence by its command bytes).
-- Read the boot loader's board-flag test (RAM 0x24000270 + 12) and the
-  app's channel writes to assign RUN and CHG among P1_0..3 and P1_5..6.
-- Get the AW9523B datasheet and confirm the register meanings.
-- Make the DMA path a start and poll pair, then run the display beside
-  acquisition and the generator (the driver stops here for now).
-- Read what sets the model byte at 0x24000022, and which model this
-  unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).
-- Compare with the app's table, starting from the string at 0x0812c716. A pin-decoding
-  script over the HAL calls proved unreliable on this code; read the
+On hold (docs/21). What would be next, were it resumed:
+
+- The cause of the stuck SPI5 (after the PLL2 divider was written to PLL1's fractional register and PLL2 started at about 322 MHz) and of
+  the one control-function hang. Both were cleared by entering the boot loader with the OK key held at plug-in.
+- Locate the app's key reads (GPIO IDR users) and its RUN and CHG writers, to settle CHG's two colours and find the keys.
+- Read the boot loader's board-flag test (RAM 0x24000270 + 12) and what sets the model byte at 0x24000022; compare the app's display
+  table, starting from the string at 0x0812c716. A pin-decoding script over the HAL calls proved unreliable on this code; read the
   call sites by hand.
-- Find the key reads (GPIO IDR users) and the RUN and CHG writers.
+- A first power-on with nothing from the boot loader behind it.

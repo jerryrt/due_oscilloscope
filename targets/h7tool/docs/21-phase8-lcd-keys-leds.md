@@ -43,18 +43,28 @@ has a written pin and polarity with its evidence.
 
 ## Status
 
-Observed on the unit (docs/22): the LCD (power, chip select, D/C, SPI
-by hand, the boot loader's init table, MADCTL 0xC0 portrait 240x320),
-the expander on PB6 and PG0 with the backlight on P0_0, CHG on P1_0 and
-P1_1 and RUN on P1_2. Still open: the keys (set aside by the owner), the
-backlight and LED behaviour with no boot loader state behind it, DMA for
-the SPI5 path (its CPU-fed form works and is faster than the pins), and
-CHG's two colours.
+**On hold, 2026-11-04, after the display work.** What is done, all observed on the unit (docs/22):
 
-The driver for the display, the backlight and the LEDs is
-`fw/ui/h7_ui.c`. `tests/test_h7_ui.py` builds it for the host against a
-fake register file and checks the bytes and pins against docs/22;
-`fw/ui-tests/image23` runs it on the unit.
+- The LCD, its backlight and the RUN and CHG LEDs from our own images: pins, polarity and sequence from the boot loader and checked
+  by the owner's eyes; the expander on PB6 and PG0 (backlight P0_0, CHG P1_0 and P1_1, RUN P1_2); the ST7789 in portrait 240x320.
+- The driver `fw/ui/h7_ui.c`: SPI5 at 80 MHz from PLL2 (started by the driver when it is free), DMA2 stream 3 for fills and blits,
+  a full-screen fill in 15.6 ms (64 frames per second), a non-blocking blit and LED write for a shared main loop, and a shadow copy of
+  everything drawn, because the panel cannot be read back. Works from a plain reset with no boot-loader screen behind it.
+- Screen capture over the control function (`SCREEN 0x48`, `tools/h7_screen.py`) and exploring commands for test images
+  (`PEEK`, `POKE`, `EXPLORE`, image 27, `tools/h7_explore.py`).
+- The scope and generator monitor (`fw/ui/h7_mon.c`, image 28): the unit's state and counters, drawn in slices of a few tens of
+  microseconds, with no frame lost at 1, 2 or 2.5 MS/s.
+- `tests/test_h7_ui.py` (102 tests) builds the driver and the monitor for the host against a model of the registers, the SPI5 and
+  DMA peripherals, the expander and the panel's memory, and breaks each guarded part on purpose.
+
+**Decisions.** The display shows state, not waveforms: in stream mode the host draws the traces, and an on-device trace would have the
+CPU read the sample stream (CLAUDE.md invariant 1). The state monitor is the device's display. The display driver stops at 60 frames
+per second; no faster path is wanted.
+
+**Still open.** The keys (set aside by the owner; PG0 is the expander's data line on this unit, so the old key pin table is unreliable).
+CHG's two colours, one report each. The cause of a stuck SPI5 seen once after PLL2 experiments, and of a control-function hang seen
+once; neither has recurred. The model byte at 0x24000022 and the app's own display table were not compared. The behaviour at the very
+first power-on with no boot loader at all was not reached (every start so far went through it).
 
 ## Risks
 
