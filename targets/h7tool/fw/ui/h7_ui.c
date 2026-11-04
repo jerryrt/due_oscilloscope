@@ -194,6 +194,50 @@ int h7ui_expander_init(void)
 	return 1;
 }
 
+/* ---- the LED write without blocking: the same bus waveform as i2c_start / i2c_put / i2c_stop, as a list of line levels that h7ui_i2c_poll
+ * applies one at a time, each at least I2C_HALF_US after the one before. A write is 87 of them (about 1.8 ms on the wire), spread over the
+ * caller's main-loop passes instead of holding one. Bit 0 of a step is SCL, bit 1 SDA, bit 2 says the acknowledge is read before the next step. */
+#define AW_STEPS 96u
+static uint8_t aw_step[AW_STEPS];
+static unsigned aw_n, aw_i, aw_nak;
+static uint32_t aw_last;
+static uint32_t (*now_us_fn)(void);
+void h7ui_set_clock(uint32_t (*now_us)(void)) { now_us_fn = now_us; }
+unsigned h7ui_i2c_naks(void) { return aw_nak; }
+
+static void aw_push(unsigned scl, unsigned sda, unsigned sample) { if (aw_n < AW_STEPS) aw_step[aw_n++] = (uint8_t)(scl | sda << 1 | sample << 2); }
+static void aw_byte(uint8_t b)
+{
+	for (int i = 7; i >= 0; i--) { unsigned d = (b >> i) & 1u; aw_push(0, d, 0); aw_push(1, d, 0); aw_push(0, d, 0); }
+	aw_push(0, 1, 0); aw_push(1, 1, 1); aw_push(0, 1, 0);                    /* release SDA, clock the acknowledge, read it before the next step */
+}
+
+int h7ui_led_async(enum h7ui_led led, uint8_t level)
+{
+	if ((unsigned)led >= H7UI_LED_COUNT) return 1;                           /* nothing to write, as h7ui_led */
+	if (!now_us_fn) { h7ui_led(led, level); return 1; }                      /* no clock: the blocking write */
+	if (aw_i < aw_n) return 0;                                               /* the last one is still going out */
+	i2c_pins();
+	aw_n = aw_i = 0;
+	aw_push(1, 1, 0); aw_push(1, 0, 0); aw_push(0, 0, 0);                    /* start */
+	aw_byte(EXPANDER_ADDR); aw_byte((uint8_t)(EXP_REG_DIM_LED0 + (unsigned)led)); aw_byte(level);
+	aw_push(0, 0, 0); aw_push(1, 0, 0); aw_push(1, 1, 0);                    /* stop */
+	return 1;
+}
+
+int h7ui_i2c_poll(void)                                                      /* 1 while a write is going out */
+{
+	if (aw_i >= aw_n) return 0;
+	uint32_t now = now_us_fn();
+	if (aw_i > 0 && (uint32_t)(now - aw_last) < I2C_HALF_US) return 1;
+	if (aw_i > 0 && (aw_step[aw_i - 1] & 4u) && SDA_RD()) aw_nak++;         /* the acknowledge is SDA low while SCL was high */
+	uint8_t st = aw_step[aw_i++];
+	if (st & 1u) SCL_H(); else SCL_L();
+	if (st & 2u) SDA_H(); else SDA_L();
+	aw_last = now;
+	return aw_i < aw_n;
+}
+
 void h7ui_backlight(uint8_t level) { h7ui_expander_write(EXP_REG_DIM_BACKLIGHT, level); }
 
 void h7ui_led(enum h7ui_led led, uint8_t level)
@@ -340,6 +384,24 @@ static void shadow_put(uint8_t hi, uint8_t lo)
 	if (++sh_cx == win_w) { sh_cx = 0; sh_cy++; }
 }
 #if H7UI_HW_SPI
+/* The next `bytes` of pixels (big-endian RGB565, row after row of the window) into the shadow, a run of one window row at a time and by
+ * words where both ends allow it. The source should be fast memory: the CPU reading a DMA buffer in SRAM3 costs about 60 cycles a byte. */
+static void shadow_put_block(const uint8_t *p, uint32_t bytes)
+{
+	while (shadow && bytes) {
+		uint32_t run = (win_w - sh_cx) * 2u;
+		if (run > bytes) run = bytes;
+		uint8_t *d = shadow + (((win_y + sh_cy) * H7LCD_W) + win_x + sh_cx) * 2u;
+		if (!(((uintptr_t)d | (uintptr_t)p | run) & 3u)) {
+			volatile uint32_t *dw = (volatile uint32_t *)(void *)d; const uint32_t *sw = (const uint32_t *)(const void *)p;
+			for (uint32_t i = 0; i < run / 4u; i++) dw[i] = sw[i];
+		} else for (uint32_t i = 0; i < run; i++) d[i] = p[i];
+		p += run; bytes -= run;
+		sh_cx += run / 2u;
+		if (sh_cx >= win_w) { sh_cx = 0; sh_cy++; }
+	}
+}
+
 /* A whole solid window into the shadow, the one open now: a 16-bit store per pixel (the base is even, so every pixel is), not
  * the call and the cursor arithmetic of shadow_put. */
 static void shadow_rect(unsigned w, unsigned h, uint8_t hi, uint8_t lo)
@@ -363,8 +425,11 @@ static int dma_wait(uint32_t addr, uint32_t mask, uint32_t want, uint32_t spins)
 	return 0;
 }
 
-/* Send `bytes` (even, 1..SPI_CHUNK_MAX) from src; circular makes the stream repeat the first `circ` bytes (circ >= 2). */
-static int dma_chunk(const uint8_t *src, uint32_t bytes, uint32_t circ)
+static int dma_busy;                   /* a started transfer has not been finished yet */
+
+/* Start one chunk: `bytes` (even, 1..SPI_CHUNK_MAX) from src; circular makes the stream repeat the first `circ` bytes (circ >= 2).
+ * Returns 1 when it is running, 0 when the stream would not stop first. */
+static int dma_chunk_start(const uint8_t *src, uint32_t bytes, uint32_t circ)
 {
 	REG_WR(RCC_AHB1ENR, REG_RD(RCC_AHB1ENR) | (1u << 1));                      /* DMA2 (and its DMAMUX) */
 	(void)REG_RD(RCC_AHB1ENR);
@@ -382,12 +447,26 @@ static int dma_chunk(const uint8_t *src, uint32_t bytes, uint32_t circ)
 	REG_WR(DMA2_S3, REG_RD(DMA2_S3) | 1u);                                      /* stream on: it waits for the SPI's request */
 	REG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE);
 	REG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE | SPI_CR1_CSTART);
-	int ok = dma_wait(SPI_SR, SPI_SR_EOT, SPI_SR_EOT, 40u * bytes + 100000u);   /* well over the wire time at the slowest clock */
+	dma_busy = 1;
+	return 1;
+}
+
+/* Put everything back, whether the transfer ended or is being given up. */
+static void dma_chunk_finish(void)
+{
 	REG_WR(DMA2_S3, 0);
 	dma_wait(DMA2_S3, 1u, 0, 1000u);
 	REG_WR(SPI_IFCR, SPI_IFCR_ALL);
 	REG_WR(SPI_CR1, SPI_CR1_SSI);                                              /* SPE off first: CFG1 is only writable then */
 	REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) & ~(1u << 15));
+	dma_busy = 0;
+}
+
+static int dma_chunk(const uint8_t *src, uint32_t bytes, uint32_t circ)
+{
+	if (!dma_chunk_start(src, bytes, circ)) return 0;
+	int ok = dma_wait(SPI_SR, SPI_SR_EOT, SPI_SR_EOT, 40u * bytes + 100000u);   /* well over the wire time at the slowest clock */
+	dma_chunk_finish();
 	return ok;
 }
 
@@ -403,8 +482,33 @@ int h7lcd_blit(const uint8_t *src, uint32_t bytes)
 		if (!dma_chunk(src + done, n, 0)) { dma_err++; pix_left = 0; return 0; }
 		done += n; pix_left -= n / 2u;
 	}
-	for (uint32_t i = 0; i < bytes; i += 2) shadow_put(src[i], src[i + 1]);
+	shadow_put_block(src, bytes);
 	return 1;
+}
+
+/* The same blit without waiting: h7lcd_blit_start opens nothing itself (the window is the caller's, from h7lcd_begin) and returns
+ * at once; h7lcd_blit_poll reads the end-of-transfer flag once. Whoever polls owns the time limit and calls h7lcd_blit_abort. */
+int h7lcd_blit_start(const uint8_t *src, uint32_t bytes)
+{
+	if (dma_busy || !hw_active || !spi_ready || pix_left == 0 || (bytes & 1u) || bytes == 0 || bytes > SPI_CHUNK_MAX || bytes / 2u > pix_left) return 0;
+	if (!dma_chunk_start(src, bytes, 0)) { dma_err++; return 0; }
+	pix_left -= bytes / 2u;                                  /* the shadow is the caller's to fill, in slices: h7lcd_shadow_copy */
+	return 1;
+}
+
+void h7lcd_shadow_copy(const uint8_t *from, uint32_t bytes) { shadow_put_block(from, bytes); }
+
+int h7lcd_blit_poll(void)
+{
+	if (!dma_busy) return 1;
+	if (!(REG_RD(SPI_SR) & SPI_SR_EOT)) return 0;
+	dma_chunk_finish();
+	return 1;
+}
+
+void h7lcd_blit_abort(void)
+{
+	if (dma_busy) { dma_chunk_finish(); dma_err++; }
 }
 
 int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c)
@@ -429,6 +533,10 @@ int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c)
 
 #else
 int h7lcd_blit(const uint8_t *src, uint32_t bytes) { (void)src; (void)bytes; return 0; }
+int h7lcd_blit_start(const uint8_t *src, uint32_t bytes) { (void)src; (void)bytes; return 0; }
+void h7lcd_shadow_copy(const uint8_t *from, uint32_t bytes) { (void)from; (void)bytes; }
+int h7lcd_blit_poll(void) { return 1; }
+void h7lcd_blit_abort(void) { }
 int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c) { (void)x; (void)y; (void)w; (void)h; (void)c; return 0; }
 void h7ui_set_dma_scratch(uint8_t *two_bytes) { (void)two_bytes; }
 unsigned h7ui_dma_errors(void) { return 0; }
@@ -499,6 +607,9 @@ static uint32_t frames_left;
 
 int h7lcd_begin(unsigned x, unsigned y, unsigned w, unsigned h)
 {
+#if H7UI_HW_SPI
+	if (dma_busy) return 0;                                  /* the bus belongs to a running DMA transfer */
+#endif
 	if (w == 0 || h == 0 || x >= H7LCD_W || y >= H7LCD_H || w > H7LCD_W - x || h > H7LCD_H - y) return 0;
 	uint8_t xa[] = { (uint8_t)(x >> 8), (uint8_t)x, (uint8_t)((x + w - 1) >> 8), (uint8_t)(x + w - 1) };
 	uint8_t ya[] = { (uint8_t)(y >> 8), (uint8_t)y, (uint8_t)((y + h - 1) >> 8), (uint8_t)(y + h - 1) };

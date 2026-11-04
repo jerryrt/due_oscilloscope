@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "h7_ui.h"
+#include "h7_mon.h"
 #ifndef H7UI_HW_SPI
 #define H7UI_HW_SPI 1
 #endif
@@ -157,7 +158,7 @@ static void i2c_update(int old_scl, int old_sda)
 static uint32_t sp_cr1, sp_cr2, sp_cfg1, sp_cfg2;
 static int sp_active; static uint32_t sp_done; static int sp_dc, sp_cs_low, sp_eot_cleared, sp_eot_polls, sp_eot_seen;
 static int pll_dead, pll_reads_left, pll_cr_writes;
-static const uint8_t *dma_ptr; static int dma_chunks[8], dma_nchunks, dma_hang;
+static const uint8_t *dma_ptr; static int dma_chunks[8], dma_nchunks, dma_hang, abort_expected, hang_active;
 static void dma_emulate(void);
 uint32_t h7ui_host_ptr(const void *p) { dma_ptr = (const uint8_t *)p; return 0x30040000u; }
 static int sp_bad, sp_stuck, sp_modf; static unsigned long sp_sr_reads;
@@ -195,13 +196,13 @@ static void sp_write_cr1(uint32_t v)
 	if (spe && start && !sp_active) {
 		if (!sp_cs_low) SPI_BAD("transfer started with chip select high");
 		sp_active = 1; sp_done = 0; sp_dc = (int)((odr[2] >> 15) & 1); sp_eot_cleared = 0; sp_eot_polls = 0; sp_eot_seen = 0;
-		if ((sp_cfg1 >> 15) & 1u) { if (dma_hang) { sp_done = 0; sp_stuck = 1; } else dma_emulate(); }
+		if ((sp_cfg1 >> 15) & 1u) { if (dma_hang) { sp_done = 0; sp_stuck = 1; dma_hang = 0; hang_active = 1; } else dma_emulate(); }
 	}
-	if (!spe && spe_old && sp_stuck) { sp_active = 0; }
+	if (!spe && spe_old && sp_stuck) { sp_active = 0; if (hang_active) { sp_stuck = 0; hang_active = 0; } }
 	else if (!spe && spe_old) {
-		if (sp_active && sp_done != sp_cr2) SPI_BAD("SPE cleared after %u of %u frames", sp_done, sp_cr2);
-		if (sp_active && !sp_eot_seen) SPI_BAD("SPE cleared before the transfer finished shifting out");
-		if (sp_active && !sp_eot_cleared) SPI_BAD("EOT not cleared before SPE off");
+		if (sp_active && !abort_expected && sp_done != sp_cr2) SPI_BAD("SPE cleared after %u of %u frames", sp_done, sp_cr2);
+		if (sp_active && !abort_expected && !sp_eot_seen) SPI_BAD("SPE cleared before the transfer finished shifting out");
+		if (sp_active && !abort_expected && !sp_eot_cleared) SPI_BAD("EOT not cleared before SPE off");
 		sp_active = 0;
 	}
 	sp_cr1 = v;
@@ -235,8 +236,10 @@ static void sp_txdr8(uint8_t b)
 
 /* ---- the register seam h7_ui.c is built against ---- */
 static int forbidden;
+static unsigned long reg_ops;
 uint32_t h7ui_host_rd(uint32_t a)
 {
+	reg_ops++;
 	if ((a & ~0x3FFu) == GPIOG && (a & 0x3FFu) == 0x10) return (uint32_t)sda_line();
 	if (a == SPI5 + 0x00u) return sp_cr1;
 	if (a == SPI5 + 0x04u) return sp_cr2;
@@ -263,6 +266,7 @@ uint32_t h7ui_host_rd(uint32_t a)
 
 void h7ui_host_wr(uint32_t a, uint32_t v)
 {
+	reg_ops++;
 	uint32_t base = a & ~0x3FFu, off = a & 0x3FFu;
 	int pi = port_index(base);
 	if (base == (SPI5 & ~0x3FFu)) {
@@ -314,6 +318,50 @@ void h7ui_host_wr8(uint32_t a, uint8_t v)
 }
 
 static void delay(uint32_t us) { delay_total_us += us; }
+
+/* ---- the monitor: read the panel's memory back as text, with the font table as the reference ---- */
+static int cell_char(unsigned col, unsigned row, uint16_t bg_be)
+{
+	uint8_t m[16];
+	for (unsigned y = 0; y < 16; y++) {
+		m[y] = 0;
+		for (unsigned x = 0; x < 8; x++) {
+			const uint8_t *p = panel + (((row * 16 + y) * 240) + col * 8 + x) * 2;
+			if ((uint16_t)(p[0] << 8 | p[1]) != bg_be) m[y] |= (uint8_t)(0x80u >> x);
+		}
+	}
+	for (int c = 0; c < 95; c++) if (!memcmp(m, h7_font8x16[c], 16)) return 32 + c;
+	return '?';
+}
+static void dump_text(void)
+{
+	for (unsigned r = 0; r < 20; r++) {
+		char t[31]; uint16_t bg = (uint16_t)(panel[((r * 16 + 15) * 240 + 239) * 2] << 8 | panel[((r * 16 + 15) * 240 + 239) * 2 + 1]), fg = bg;
+		for (unsigned c = 0; c < 30; c++) t[c] = (char)cell_char(c, r, bg);
+		t[30] = 0;
+		for (unsigned i = 0; i < 240 * 16 && fg == bg; i++) { const uint8_t *p = panel + ((r * 16 * 240) + i) * 2; fg = (uint16_t)(p[0] << 8 | p[1]); }
+		printf("T %02u %04x %04x |%s|\n", r, fg == bg ? 0u : fg, bg, t);
+	}
+}
+static uint32_t fake_us;
+static uint32_t fake_clock(void) { return fake_us; }
+static h7mon_info_t mon_info(void)
+{
+	h7mon_info_t i = { 1, 1, 3, 0, 3, 1, 80, 800, 123456, 0, 123456, 0, 0, 0, 1298, 1314402, 0, 0, 4059, 1, 754321, 17 };
+	return i;
+}
+/* polls the monitor once a millisecond for `ms`, returns the largest number of register accesses in one poll */
+static unsigned long mon_run(h7mon_info_t *info, unsigned ms)
+{
+	unsigned long worst = 0;
+	for (unsigned t = 0; t < ms; t++) {
+		unsigned long before = reg_ops;
+		info->uptime_ms++;
+		h7mon_poll(info);
+		if (reg_ops - before > worst) worst = reg_ops - before;
+	}
+	return worst;
+}
 
 int main(int argc, char **argv)
 {
@@ -410,6 +458,52 @@ int main(int argc, char **argv)
 		} else if (!strcmp(sc, "dma_after_fallback")) {
 			sp_stuck = 1; h7lcd_fill_rect(0, 0, 2, 2, 0x1234); sp_stuck = 0;       /* SPI5 gives up, the pins take over */
 			printf("ret %d\n", h7lcd_fill_dma(0, 0, 4, 2, 0xFFFF));                   /* DMA is not attempted */
+		} else if (!strcmp(sc, "dma_async")) {
+			int polls = 0;
+			h7lcd_begin(10, 20, 3, 2);                                               /* 6 pixels, sent as 4 bytes and then 8 */
+			printf("ret %d\n", h7lcd_blit_start(src, 4));
+			h7lcd_shadow_copy(src, 4);
+			printf("ret %d\n", h7lcd_blit_start(src + 4, 2));                        /* one is running; pixels are still owed, so only that refuses */
+			printf("ret %d\n", h7lcd_begin(0, 0, 4, 4));                             /* the bus is the transfer's */
+			while (!h7lcd_blit_poll() && polls < 50) polls++;
+			printf("polls %d\n", polls);
+			printf("ret %d\n", h7lcd_blit_start(src + 4, 8));                        /* the rest of the window */
+			h7lcd_shadow_copy(src + 4, 8);
+			for (int k = 0; !h7lcd_blit_poll(); ) if (++k > 1000) { printf("poll never finished\n"); break; }
+			h7lcd_end();
+			h7lcd_begin(0, 0, 240, 320);
+			printf("ret %d\n", h7lcd_blit_start(src, 65536));                        /* more than one chunk */
+			for (unsigned off = 0, n; off < 240 * 320 * 2; off += n) {
+				n = 240 * 320 * 2 - off; if (n > 65534) n = 65534;
+				if (!h7lcd_blit_start(src + off, n)) printf("start failed at %u\n", off);
+				h7lcd_shadow_copy(src + off, n);
+				for (int k = 0; !h7lcd_blit_poll(); ) if (++k > 1000) { printf("poll never finished\n"); break; }
+			}
+			h7lcd_end();
+			h7lcd_begin(0, 0, 4, 4);                                                 /* 16 pixels = 32 bytes */
+			printf("ret %d\n", h7lcd_blit_start(src, 34));                           /* more pixels than the window, within one chunk */
+			printf("ret %d\n", h7lcd_blit_start(src, 32));
+			h7lcd_shadow_copy(src, 32);
+			abort_expected = 1; h7lcd_blit_abort(); abort_expected = 0;              /* given up before it ended: the one place SPE may drop early */
+			printf("ret %d\n", h7lcd_begin(0, 0, 4, 4));                             /* the bus is free again */
+			printf("ret %d\n", h7lcd_blit_poll());                                   /* nothing running reads as finished */
+			h7lcd_end();
+			printf("chunks %d %d %d n %d\n", dma_chunks[0], dma_chunks[1], dma_chunks[2], dma_nchunks);
+		} else if (!strcmp(sc, "dma_mirror")) {
+			static uint8_t mirror[12];
+			for (int i = 0; i < 12; i++) mirror[i] = (uint8_t)~src[i];
+			h7lcd_begin(10, 20, 3, 2);
+			printf("ret %d\n", h7lcd_blit_start(src, 12));
+			h7lcd_shadow_copy(mirror, 2); h7lcd_shadow_copy(mirror + 2, 6); h7lcd_shadow_copy(mirror + 8, 4);   /* in slices, across a window row */
+			for (int k = 0; !h7lcd_blit_poll(); ) if (++k > 1000) break;
+			h7lcd_end();
+			unsigned used = 1, onpanel = 1;                                          /* the shadow holds the copy it was given, the panel got the DMA source */
+			for (unsigned i = 0; i < 12; i++) {
+				unsigned x = 10 + (i / 2) % 3, y = 20 + (i / 2) / 3, o = (y * 240 + x) * 2 + (i & 1);
+				if (buf[16 + o] != mirror[i]) used = 0;
+				if (panel[o] != src[i]) onpanel = 0;
+			}
+			printf("mirror_used %u\nsrc_on_panel %u\n", used, onpanel);
 		} else if (!strcmp(sc, "dma_begin_stuck")) {
 			sp_stuck = 1;                                                              /* SPI5 dead already while the window is being opened */
 			printf("ret %d\n", h7lcd_fill_dma(0, 0, 4, 2, 0xFFFF));
@@ -424,6 +518,59 @@ int main(int argc, char **argv)
 		for (int i = 0; i < 16; i++) { if (buf[i] != 0xA5) guard++; if (buf[16 + 240 * 320 * 2 + i] != 0xA5) guard++; }
 		printf("panel_diff %u\nguard %u\ndma_errors %u\ndma_bytes %lu\ndma_left %d\n", diff, guard, h7ui_dma_errors(), pn_bytes,
 		       (int)((*slot(DMA2_S3) & 1u) || (sp_cfg1 & (1u << 15))));
+	}
+	else if (!strncmp(sc, "mon", 3)) {
+		static uint8_t buf[16 + 240 * 320 * 2 + 16]; static uint16_t line[240 * 16];
+		memset(buf, 0xA5, sizeof buf); memset(buf + 16, 0, 240 * 320 * 2);
+		h7ui_set_shadow(buf + 16);
+		quiet = 1; h7lcd_init(); memset(panel, 0, sizeof panel);
+		h7mon_init((uint8_t *)line);
+		h7mon_info_t info = mon_info();
+		unsigned long worst = mon_run(&info, 2500);                                   /* the first screen */
+		printf("rows_sent %u\n", h7mon_rows_sent());
+		if (!strcmp(sc, "mon_idle")) {
+			unsigned before = h7mon_rows_sent();
+			worst = mon_run(&info, 1000);                                           /* nothing changed: nothing is sent... except the up-time */
+			printf("idle_rows %u\n", h7mon_rows_sent() - before);
+		}
+		if (!strcmp(sc, "mon_change")) {
+			unsigned before = h7mon_rows_sent();
+			info.running = 0; info.lost = 5; info.frames = 123999;                  /* three rows, besides the clock */
+			worst = mon_run(&info, 1500);
+			printf("changed_rows %u\n", h7mon_rows_sent() - before);
+		}
+		if (!strcmp(sc, "mon_hang")) {
+			unsigned before = h7mon_rows_sent();
+			info.play_underruns = 7;
+			dma_hang = 1; abort_expected = 1;                                       /* the next row's transfer starts and never ends, once */
+			worst = mon_run(&info, 1500);
+			abort_expected = 0;
+			printf("rows_after %u\n", h7mon_rows_sent() - before);
+		}
+		printf("maxops %lu\nerrors %u\n", worst, h7mon_errors());
+		quiet = 0;
+		dump_text();
+		unsigned diff = 0, guard = 0;
+		for (unsigned i = 0; i < 240 * 320 * 2; i++) if (buf[16 + i] != panel[i]) diff++;
+		for (int i = 0; i < 16; i++) { if (buf[i] != 0xA5) guard++; if (buf[16 + 240 * 320 * 2 + i] != 0xA5) guard++; }
+		printf("panel_diff %u\nguard %u\ndma_left %d\n", diff, guard, (int)((*slot(DMA2_S3) & 1u) || (sp_cfg1 & (1u << 15))));
+	}
+	else if (!strcmp(sc, "led_async") || !strcmp(sc, "led_async_nochip") || !strcmp(sc, "led_async_noclock")) {
+		unsigned long worst = 0; unsigned polls = 0, writes = 0;
+		if (!strcmp(sc, "led_async_nochip")) chip_present = 0;
+		if (strcmp(sc, "led_async_noclock")) h7ui_set_clock(fake_clock);
+		printf("R %d\n", h7ui_led_async(H7UI_LED_RUN, 0x20));
+		printf("R %d\n", h7ui_led_async(H7UI_LED_CHG_RED, 0x10));                  /* the first is still going out: refused (accepted at once without a clock) */
+		for (int pass = 0; pass < 3; pass++) {
+			while (h7ui_i2c_poll()) { unsigned long b = reg_ops; (void)b; fake_us += 7; polls++; }
+			writes++;
+			if (pass == 0) printf("R %d\n", h7ui_led_async(H7UI_LED_CHG_RED, 0x10));    /* free again */
+			if (pass == 1) printf("R %d\n", h7ui_led_async((enum h7ui_led)3, 0x55));    /* out of range: ignored */
+		}
+		/* the same again, counting the register accesses of single polls */
+		h7ui_led_async(H7UI_LED_CHG_GREEN, 0x08);
+		for (;;) { unsigned long b = reg_ops; int more = h7ui_i2c_poll(); if (reg_ops - b > worst) worst = reg_ops - b; fake_us += 7; if (!more) break; }
+		printf("polls %u\nmaxops %lu\nregs %02x %02x %02x %02x\nnaks %u\n", polls, worst, exp_regs[0x23], exp_regs[0x22], exp_regs[0x21], exp_regs[0x20], h7ui_i2c_naks());
 	}
 	else if (!strcmp(sc, "nochip")) { chip_present = 0; printf("R %d\n", h7ui_expander_init()); }
 	else { printf("unknown scenario\n"); return 2; }

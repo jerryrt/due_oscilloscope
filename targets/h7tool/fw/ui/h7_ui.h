@@ -46,7 +46,17 @@ enum h7ui_led {
  * Returns 1 if the chip answered with its ID (0x23), 0 if not; on 0 nothing else was written. */
 int  h7ui_expander_init(void);
 void h7ui_backlight(uint8_t level);               /* 0 off .. 255 full */
-void h7ui_led(enum h7ui_led led, uint8_t level);  /* 0 off */
+void h7ui_led(enum h7ui_led led, uint8_t level);
+
+/* The same LED write without blocking, for a main loop that must not stall (the blocking one holds it for about 1.8 ms, which costs frames at
+ * the top sample rate). h7ui_set_clock gives the driver a microsecond counter (wrap is harmless); h7ui_led_async queues one write and returns
+ * 1, or 0 when the previous one is still going out (try again next pass; an out-of-range LED is ignored and returns 1); h7ui_i2c_poll() puts
+ * at most one bus edge out per call, each at least 20 us after the last, and returns 1 while a write is in progress. Without a clock the write
+ * is the blocking one. h7ui_i2c_naks() counts acknowledges that did not come. Do not mix with the blocking calls while one is in progress. */
+void h7ui_set_clock(uint32_t (*now_us)(void));
+int h7ui_led_async(enum h7ui_led led, uint8_t level);
+int h7ui_i2c_poll(void);
+unsigned h7ui_i2c_naks(void);  /* 0 off */
 /* Returns 1 if the write was acknowledged. */
 int  h7ui_expander_write(uint8_t reg, uint8_t val);
 
@@ -78,6 +88,18 @@ void h7lcd_fill_rect(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t rg
  * can read with no data cache in front of it. h7lcd_fill_dma opens the window itself and repeats one pixel, kept in the
  * two bytes given to h7ui_set_dma_scratch (same kind of memory). h7ui_dma_errors counts transfers that gave up. */
 int h7lcd_blit(const uint8_t *src, uint32_t bytes);
+
+/* The same blit without waiting, for a main loop that must not stall: after h7lcd_begin, h7lcd_blit_start(src, bytes) (even, at most
+ * 65534, within the window) starts the transfer and returns 1 at once; h7lcd_blit_poll() returns 0 while it runs and 1 when it is
+ * finished (the DMA stream and the SPI put back, ready for h7lcd_end). While one runs h7lcd_begin refuses. The caller owns the time
+ * limit: past it, h7lcd_blit_abort() stops the transfer and counts it in h7ui_dma_errors().
+ * This start does not touch the shadow copy. The caller records what it sent with h7lcd_shadow_copy(from, bytes), as often and in
+ * as small pieces as it likes, pixels in the order of the window; `from` should be fast memory (core-coupled RAM), because the CPU
+ * reading the DMA buffer in SRAM3 costs about 60 cycles a byte. */
+int h7lcd_blit_start(const uint8_t *src, uint32_t bytes);
+void h7lcd_shadow_copy(const uint8_t *from, uint32_t bytes);
+int h7lcd_blit_poll(void);
+void h7lcd_blit_abort(void);
 
 /* Screen capture. The panel cannot be read back (its data pad is the write line), so the driver can keep a shadow copy of
  * everything sent: give it H7LCD_W * H7LCD_H * 2 bytes with h7ui_set_shadow(); every pixel that goes out afterwards is also

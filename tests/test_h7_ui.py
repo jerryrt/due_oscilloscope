@@ -31,11 +31,11 @@ INIT = [
 ]
 
 
-def build(tmp, src=None, hw=1):
+def build(tmp, src=None, hw=1, mon=None):
     src = src or os.path.join(FW, "h7_ui.c")
     exe = os.path.join(tmp, "h7ui_harness_%d" % hw)
     subprocess.run([CC, "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-DH7UI_HOST", "-DH7UI_HW_SPI=%d" % hw, "-I" + FW,
-                    "-o", exe, HARNESS, src], check=True)
+                    "-o", exe, HARNESS, src, mon or os.path.join(FW, "h7_mon.c"), os.path.join(FW, "h7_font.c")], check=True)
     return exe
 
 
@@ -260,9 +260,9 @@ def test_the_shadow_copy_holds_exactly_what_was_drawn(exe):
 
 @pytest.mark.parametrize("old, new, what", [
     ("d[0] = hi; d[1] = lo;", "d[0] = lo; d[1] = hi;", "byte order"),
-    ("(((win_y + sh_cy) * H7LCD_W) + win_x + sh_cx) * 2u", "(((win_y + sh_cy) * H7LCD_W) + win_x) * 2u", "column advance"),
+    ("uint8_t *d = shadow + (((win_y + sh_cy) * H7LCD_W) + win_x + sh_cx) * 2u;\n\td[0] = hi;", "uint8_t *d = shadow + (((win_y + sh_cy) * H7LCD_W) + win_x) * 2u;\n\td[0] = hi;", "column advance"),
     ("if (++sh_cx == win_w) { sh_cx = 0; sh_cy++; }", "if (++sh_cx == win_w + 1) { sh_cx = 0; sh_cy++; }", "row wrap"),
-    ("\tshadow_put(hi, lo);\n", "", "pixels not mirrored"),
+    ("\tshadow_put(hi, lo);\n", "\tif (0) shadow_put(hi, lo);\n", "pixels not mirrored"),
     ("\tCS_H();\n\tdraw_count++;", "\tCS_H();", "draw counter"),
 ])
 def test_a_fault_in_the_shadow_copy_is_caught(tmp_path, old, new, what):
@@ -276,7 +276,10 @@ def test_a_fault_in_the_shadow_copy_is_caught(tmp_path, old, new, what):
     assert got != EXPECT_SHADOW or "draws 4" not in out or "guard 0" not in out, what
 
 
-def rets(out): return [l for l in out if l.startswith(("ret ", "chunks "))]
+def rets(out): return [l for l in out if l.startswith(("ret ", "chunks ", "polls "))]
+
+
+ASYNC_RETS = ["ret 1", "ret 0", "ret 0", "polls 2", "ret 1", "ret 0", "ret 0", "ret 1", "ret 1", "ret 1", "chunks 4 8 65534 n 6"]
 
 
 def test_the_panel_model_and_the_shadow_agree_after_cpu_drawing(exe):
@@ -325,14 +328,23 @@ def test_the_hand_clocked_build_refuses_dma_and_still_matches(tmp_path):
 
 @pytest.mark.parametrize("old, new, what", [
     ("\tshadow_rect(w, h, dma_scratch[0], dma_scratch[1]);", "\tshadow_rect(w, h, 0, 0);", "DMA fill not mirrored"),
-    ("\tfor (uint32_t i = 0; i < bytes; i += 2) shadow_put(src[i], src[i + 1]);", "", "blit not mirrored"),
+    ("\t}\n\tshadow_put_block(src, bytes);", "\t}\n", "blit not mirrored"),
+    ("void h7lcd_shadow_copy(const uint8_t *from, uint32_t bytes) { shadow_put_block(from, bytes); }", "void h7lcd_shadow_copy(const uint8_t *from, uint32_t bytes) { shadow_put_block(from, bytes / 2u); }", "shadow copy short"),
+    ("uint8_t *d = shadow + (((win_y + sh_cy) * H7LCD_W) + win_x + sh_cx) * 2u;\n\t\tif (!(", "uint8_t *d = shadow + (((win_y + sh_cy) * H7LCD_W) + win_x) * 2u;\n\t\tif (!(", "block column advance"),
+    ("uint32_t run = (win_w - sh_cx) * 2u;", "uint32_t run = (win_w - sh_cx) * 2u + 2u;", "shadow run longer than a row"),
+    ("if (sh_cx >= win_w) { sh_cx = 0; sh_cy++; }", "if (sh_cx >= win_w) { sh_cx = 0; }", "shadow row not advanced"),
+    ("if (dma_busy) return 0;                                  /* the bus belongs", "if (0) return 0;                                  /* the bus belongs", "begin while busy"),
+    ("if (dma_busy || !hw_active", "if (!hw_active", "second start while busy"),
+    ("if (!(REG_RD(SPI_SR) & SPI_SR_EOT)) return 0;", "", "poll ignores the end flag"),
+    ("if (dma_busy) { dma_chunk_finish(); dma_err++; }", "if (dma_busy) { dma_err++; }", "abort leaves the stream on"),
     ("(1u << 10) | (1u << 6)", "(1u << 10)", "DMA direction"),
     ("REG_WR(DMAMUX1_C11, DMAREQ_SPI5_TX);", "REG_WR(DMAMUX1_C11, DMAREQ_SPI5_TX + 1u);", "DMAMUX request"),
     ("circ ? circ : bytes", "bytes", "circular count"),
     ("REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) | (1u << 15));", "", "TXDMAEN"),
     ("REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) & ~(1u << 15));", "", "TXDMAEN left on"),
     ("#define SPI_CHUNK_MAX  65534u", "#define SPI_CHUNK_MAX  65535u", "odd chunk size"),
-    ("|| bytes / 2u > pix_left", "", "blit bound"),
+    ("bytes == 0 || bytes / 2u > pix_left", "bytes == 0", "blit bound"),
+    ("bytes > SPI_CHUNK_MAX || bytes / 2u > pix_left", "bytes > SPI_CHUNK_MAX", "async blit bound"),
     ("REG_WR(DMA2_S3, 0);\n\tdma_wait(DMA2_S3, 1u, 0, 1000u);", "dma_wait(DMA2_S3, 1u, 0, 1000u);", "stream left on"),
 ])
 def test_a_fault_in_the_dma_path_is_caught(tmp_path, old, new, what):
@@ -344,8 +356,209 @@ def test_a_fault_in_the_dma_path_is_caught(tmp_path, old, new, what):
     fine = True
     for sc, want in (("dma_fill", ["ret 1", "chunks 65534 65534 22532 n 3", "ret 1", "ret 1", "ret 0", "ret 0"]),
                      ("dma_blit", ["ret 1", "ret 0", "ret 0", "ret 0", "ret 0", "ret 1", "chunks 12 65534 65534 n 4"]),
-                     ("dma_stuck", ["ret 0"]), ("dma_begin_stuck", ["ret 0"])):
-        out = subprocess.run([mut, sc], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+                     ("dma_stuck", ["ret 0"]), ("dma_begin_stuck", ["ret 0"]),
+                     ("dma_async", ASYNC_RETS), ("dma_mirror", ["ret 1"])):
+        try:
+            out = subprocess.run([mut, sc], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+        except subprocess.TimeoutExpired:                                              # a mutant that hangs the driver is caught too
+            fine = False
+            continue
+        if sc == "dma_mirror":                                                         # here the shadow is meant to differ from the panel
+            fine &= (not any(l.startswith("BAD") for l in out) and rets(out) == want and "mirror_used 1" in out and "src_on_panel 1" in out)
+            continue
         fine &= (not any(l.startswith("BAD") for l in out) and "forbidden 0" in out and rets(out) == want
                  and "panel_diff 0" in out and "guard 0" in out and "dma_left 0" in out)
     assert not fine, what
+
+
+def test_a_blit_can_be_started_and_polled_without_waiting(tmp_path):
+    """Start returns at once, a second start and a new window are refused while one runs, the poll reports the end after the
+    flag rises, a full screen goes through in three started chunks, and an aborted transfer is counted and frees the bus."""
+    out = run(build(str(tmp_path), hw=1), "dma_async")
+    assert rets(out) == ASYNC_RETS
+    assert "panel_diff 0" in out and "guard 0" in out and "dma_left 0" in out and "dma_errors 1" in out
+
+
+# ---- the scope and generator monitor (fw/ui/h7_mon.c) ----
+def L(left, right=""):
+    return left + " " * (30 - len(left) - len(right)) + right
+
+
+def monitor_rows(run=True, lost=0, frames=123456, under=0, up="00:12:36"):
+    return [
+        "   H7-TOOL  SCOPE / AWG", "", L("SCOPE", "RUN" if run else "STOP"), L("channels", "CH1+CH2"), L("sample rate", "2.500 MS/s"),
+        L("CH1", "g0 DC"), L("CH2", "g3 AC"), L("frames", str(frames)), L("sent", "123456"), L("lost", str(lost)), L("missed/bad/ovr", "0/0/0"), "",
+        L("AWG", "PLAY"), L("update rate", "250 kS/s"), L("units queued", "1298"), L("consumed", "1314402"), L("underruns", str(under)),
+        L("min occ/resumes", "4059/1"), L("short", "0"), L("up " + up, "build 17"),
+    ]
+
+
+def screen(out):
+    """{row: (fg, bg, text)} from the 'T nn fg bg |text|' lines, which the harness reads back out of the panel's memory."""
+    rows = {}
+    for l in out:
+        if l.startswith("T "):
+            _, n, fg, bg, rest = l.split(" ", 4)
+            rows[int(n)] = (fg, bg, rest[1:-1])
+    return rows
+
+
+COLOURS = {"head": ("ffff", "0014"), "text": ("ffff", "0000"), "good": ("07e0", "0000"), "bad": ("f800", "0000"), "dim": ("8410", "0000"), "blank": ("0000", "0000")}
+
+
+def expect_screen(out, rows, kinds):
+    got = screen(out)
+    assert len(got) == 20
+    for r in range(20):
+        fg, bg, text = got[r]
+        assert text == rows[r].ljust(30), (r, text, rows[r])
+        want_fg, want_bg = COLOURS["blank" if not rows[r].strip() else kinds.get(r, "text")]
+        assert (fg, bg) == (want_fg, want_bg), (r, fg, bg)
+
+
+def mon_ok(out):
+    assert "panel_diff 0" in out and "guard 0" in out and "dma_left 0" in out
+    assert int([l for l in out if l.startswith("maxops")][0].split()[1]) <= 200          # no poll does more than a short burst of register work
+
+
+def test_the_monitor_draws_the_scope_and_awg_screen(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "mon")
+    expect_screen(out, monitor_rows(), {0: "head", 2: "good", 12: "good", 19: "dim"})
+    mon_ok(out)
+    assert "rows_sent 22" in out and "errors 0" in out                       # twenty rows, then the clock twice in 2.5 s
+
+
+def test_an_unchanged_monitor_sends_only_the_clock(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "mon_idle")
+    assert "idle_rows 1" in out                                                # one second boundary in a second: one row
+    mon_ok(out)
+
+
+def test_a_changed_counter_redraws_that_row_and_its_colour(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "mon_change")
+    expect_screen(out, monitor_rows(run=False, lost=5, frames=123999, up="00:12:38"),
+                  {0: "head", 2: "dim", 9: "bad", 12: "good", 19: "dim"})
+    assert "changed_rows 5" in out                                             # run state, frames, lost, and the clock twice
+    mon_ok(out)
+
+
+def test_a_row_whose_transfer_hangs_is_abandoned_and_drawn_again(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "mon_hang")
+    expect_screen(out, monitor_rows(under=7, up="00:12:38"), {0: "head", 2: "good", 12: "good", 16: "bad", 19: "dim"})
+    assert "errors 1" in out and "rows_after 3" in out
+    mon_ok(out)
+
+
+def test_without_the_spi5_blit_the_monitor_stops_instead_of_stalling_the_loop(tmp_path):
+    out = run(build(str(tmp_path), hw=0), "mon")
+    assert "rows_sent 0" in out and "errors 1" in out and "panel_diff 0" in out
+
+
+@pytest.mark.parametrize("old, new, what", [
+    ("fgs = (uint16_t)((fg >> 8) | (fg << 8))", "fgs = fg", "byte order of the colour"),
+    ("h7_font8x16[ch - 32u][y]", "h7_font8x16[ch - 32u][15u - y]", "glyph rows upside down"),
+    ("*d++ = pair[(g >> 6) & 3u]; *d++ = pair[(g >> 4) & 3u];", "*d++ = pair[(g >> 4) & 3u]; *d++ = pair[(g >> 6) & 3u];", "glyph columns swapped"),
+    ("pair[4] = { bgs | bgs << 16, bgs | fgs << 16, fgs | bgs << 16, fgs | fgs << 16 }", "pair[4] = { bgs | bgs << 16, fgs | bgs << 16, bgs | fgs << 16, fgs | fgs << 16 }", "pixel pair order"),
+    ("case H7MON_GOOD: return 0x07E0;", "case H7MON_GOOD: return 0x001F;", "colour of a running state"),
+    ("200000000u / period / 1000u", "200000000u / period / 100u", "rate arithmetic"),
+    ("for (i = 0; i < n; i++) d[i] = t[n - 1 - i];", "for (i = 0; i < n; i++) d[i] = t[i];", "digit order"),
+    ("H7MON_BLIT_LIMIT_MS 50u", "H7MON_BLIT_LIMIT_MS 5000000u", "time limit on a row"),
+    ("dirty &= ~(1u << row); busy_row", "busy_row", "row not marked drawn"),
+    ("if (!h7lcd_begin(0, row * H7_FONT_H, H7LCD_W, H7_FONT_H))", "if (!h7lcd_begin(0, row * H7_FONT_H + 1, H7LCD_W, H7_FONT_H))", "row position"),
+    ("uint32_t *d = (uint32_t *)(void *)rowbuf + y0 * H7MON_COLS * 4u;", "uint32_t *d = (uint32_t *)(void *)rowbuf;", "render slice offset"),
+    ("(const uint32_t *)(const void *)rowbuf + slice * WORDS;", "(const uint32_t *)(const void *)rowbuf;", "copy slice offset"),
+    ("h7lcd_shadow_copy(rowbuf + slice * BYTES, BYTES);", "h7lcd_shadow_copy(rowbuf, BYTES);", "shadow slice offset"),
+    ("unsigned n = H7MON_ROWS / FORMAT_SLICES;", "unsigned n = H7MON_ROWS / FORMAT_SLICES - 1u;", "format slice size"),
+    ("last_snap = info->uptime_ms;", "last_snap = 0;", "refresh period"),
+])
+def test_a_fault_in_the_monitor_is_caught(tmp_path, old, new, what):
+    mon_src = open(os.path.join(FW, "h7_mon.c"), encoding="utf-8").read()
+    h = open(os.path.join(FW, "h7_mon.h"), encoding="utf-8").read()
+    if old.startswith("H7MON_BLIT_LIMIT_MS"):
+        assert h.count(old) == 1, what
+        hdr = tmp_path / "h7_mon.h"
+        hdr.write_text(h.replace(old, new), encoding="utf-8")
+        for f in ("h7_ui.h", "h7_font.h"): shutil.copy(os.path.join(FW, f), tmp_path / f)
+        shutil.copy(os.path.join(FW, "h7_ui.c"), tmp_path / "h7_ui.c")
+        shutil.copy(os.path.join(FW, "h7_font.c"), tmp_path / "h7_font.c")
+        (tmp_path / "h7_mon.c").write_text(mon_src, encoding="utf-8")
+        exe_ = os.path.join(str(tmp_path), "mut")
+        subprocess.run([CC, "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-DH7UI_HOST", "-DH7UI_HW_SPI=1", "-I" + str(tmp_path), "-o", exe_,
+                        HARNESS, str(tmp_path / "h7_ui.c"), str(tmp_path / "h7_mon.c"), str(tmp_path / "h7_font.c")], check=True)
+    else:
+        assert mon_src.count(old) == 1, what
+        bad = tmp_path / "h7_mon_mut.c"
+        bad.write_text(mon_src.replace(old, new), encoding="utf-8")
+        exe_ = build(str(tmp_path), mon=str(bad), hw=1)
+    expect = {"mon": (monitor_rows(), {0: "head", 2: "good", 12: "good", 19: "dim"}),
+              "mon_hang": (monitor_rows(under=7, up="00:12:38"), {0: "head", 2: "good", 12: "good", 16: "bad", 19: "dim"})}
+    caught = False
+    for sc in ("mon", "mon_idle", "mon_change", "mon_hang"):
+        try:
+            out = subprocess.run([exe_, sc], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+        except subprocess.TimeoutExpired:
+            caught = True
+            continue
+        try:
+            if sc in expect: expect_screen(out, *expect[sc])
+            if sc == "mon_idle": assert "idle_rows 1" in out
+            if sc == "mon_change": assert "changed_rows 5" in out
+            if sc == "mon_hang": assert "errors 1" in out and "rows_after 3" in out
+            assert not any(l.startswith("BAD") for l in out)
+            mon_ok(out)
+        except AssertionError:
+            caught = True
+    assert caught, what
+
+
+def test_the_shadow_is_copied_from_the_mirror_while_the_panel_gets_the_dma_source(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "dma_mirror")
+    assert rets(out) == ["ret 1"] and "mirror_used 1" in out and "src_on_panel 1" in out
+
+
+def led_async_expect(out, naks=0):
+    assert [l for l in out if l.startswith("R ")] == ["R 1", "R 0", "R 1", "R 1"]       # accepted, refused while going out, free again, out of range ignored
+    assert [l for l in out if l.startswith("I ")] == ["I b6 22 20", "I b6 21 10", "I b6 20 08"]
+    assert "regs 00 20 10 08" in out                                                     # P1_3 (reg 0x23) untouched by the out-of-range request
+    assert "maxops 3" in out and "polls 516" in out and "naks %d" % naks in out         # one bus edge per poll, at least 20 us apart (7 us per call: three calls each)
+
+
+def test_the_led_write_goes_out_one_bus_edge_per_poll(tmp_path):
+    led_async_expect(run(build(str(tmp_path), hw=1), "led_async"))
+
+
+def test_an_absent_expander_is_counted_by_the_async_write(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "led_async_nochip")
+    assert "naks 9" in out and "maxops 3" in out                                         # three writes of three unacknowledged bytes
+
+
+def test_without_a_clock_the_async_write_is_the_blocking_one(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "led_async_noclock")
+    assert [l for l in out if l.startswith("I ")] == ["I b6 22 20", "I b6 21 10", "I b6 21 10", "I b6 20 08"] and "polls 0" in out and "regs 00 20 10 08" in out
+
+
+@pytest.mark.parametrize("old, new, what", [
+    ("(uint32_t)(now - aw_last) < I2C_HALF_US", "(uint32_t)(now - aw_last) < 1u", "edge spacing"),
+    ("(aw_step[aw_i - 1] & 4u) && SDA_RD()", "0 && SDA_RD()", "acknowledge never read"),
+    ("aw_byte(EXPANDER_ADDR);", "aw_byte(EXPANDER_ADDR + 2u);", "address"),
+    ("aw_byte((uint8_t)(EXP_REG_DIM_LED0 + (unsigned)led));", "aw_byte((uint8_t)(EXP_REG_DIM_LED0 + 1u + (unsigned)led));", "register"),
+    ("if (aw_i < aw_n) return 0;", "", "second write while one goes out"),
+    ("if ((unsigned)led >= H7UI_LED_COUNT) return 1;                           /* nothing to write, as h7ui_led */", "", "out-of-range LED"),
+    ("for (int i = 7; i >= 0; i--) { unsigned d = (b >> i) & 1u; aw_push(0, d, 0);", "for (int i = 0; i < 8; i++) { unsigned d = (b >> i) & 1u; aw_push(0, d, 0);", "bit order"),
+    ("aw_push(0, 0, 0); aw_push(1, 0, 0); aw_push(1, 1, 0);                    /* stop */", "aw_push(0, 0, 0); aw_push(1, 0, 0);                    /* stop */", "stop condition"),
+])
+def test_a_fault_in_the_async_led_write_is_caught(tmp_path, old, new, what):
+    src = open(os.path.join(FW, "h7_ui.c"), encoding="utf-8").read()
+    assert src.count(old) == 1, what
+    bad = tmp_path / "h7_ui_mut.c"
+    bad.write_text(src.replace(old, new), encoding="utf-8")
+    mut = build(str(tmp_path), str(bad), hw=1)
+    caught = False
+    for sc, nak in (("led_async", 0), ("led_async_nochip", 9)):
+        try:
+            out = subprocess.run([mut, sc], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+            led_async_expect(out, naks=nak) if sc == "led_async" else None
+            if sc == "led_async_nochip": assert "naks 9" in out
+        except (AssertionError, subprocess.TimeoutExpired):
+            caught = True
+    assert caught, what
