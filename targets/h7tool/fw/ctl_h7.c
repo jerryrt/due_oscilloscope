@@ -44,6 +44,12 @@ static void put_config(uint8_t *b, const h7_config_t *c)
 /* An image without a restart path (image 12 and earlier) still links: the opcode then answers BUSY instead of pretending. */
 __attribute__((weak)) int h7_request_bootloader(void) { return 0; }
 
+__attribute__((weak)) int h7_explore_supported(void) { return 0; }
+__attribute__((weak)) int h7_peek(uint32_t a, uint32_t *o, unsigned n) { (void)a; (void)o; (void)n; return -1; }
+__attribute__((weak)) int h7_poke(uint32_t a, uint32_t v, unsigned w) { (void)a; (void)v; (void)w; return -1; }
+__attribute__((weak)) int h7_explore(unsigned id, const uint32_t *a, unsigned na, uint32_t *r, unsigned *nr)
+{ (void)id; (void)a; (void)na; (void)r; *nr = 0; return -2; }
+
 size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 {
 	if (n < CTL_HDR_BYTES || rx[0] != CTL_MAGIC0 || rx[1] != CTL_MAGIC1 || rx[2] != CTL_MAGIC2 || rx[3] != CTL_MAGIC3)
@@ -57,6 +63,8 @@ size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 	if (~c != get32(rx + 12)) return error(tx, req_id, opcode, CTL_ERR_CRC, "crc");
 	const uint8_t *p = rx + CTL_HDR_BYTES;
 	uint8_t b[96];
+	if ((opcode == H7_OP_PEEK || opcode == H7_OP_POKE || opcode == H7_OP_EXPLORE) && !h7_explore_supported())
+		return error(tx, req_id, opcode, CTL_ERR_OPCODE, "opcode");
 
 	switch (opcode) {
 	case CTL_OP_PING:
@@ -81,10 +89,14 @@ size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 	case CTL_OP_CAPABILITY: {
 		static const uint16_t ops[] = { CTL_OP_PING, CTL_OP_IDENTITY, CTL_OP_CAPABILITY, CTL_OP_COUNTERS,
 		                                H7_OP_CONFIG, H7_OP_RUN, H7_OP_PLAY, H7_OP_STATUS, H7_OP_BOOTLOADER };
+		static const uint16_t more[] = { H7_OP_PEEK, H7_OP_POKE, H7_OP_EXPLORE };
+		unsigned cnt = sizeof ops / sizeof ops[0];
 		if (len) return error(tx, req_id, opcode, CTL_ERR_LENGTH, "capability takes no body");
-		put16(b, sizeof ops / sizeof ops[0]);
-		for (unsigned i = 0; i < sizeof ops / sizeof ops[0]; i++) put16(b + 2 + 2 * i, ops[i]);
-		return respond(tx, req_id, opcode, 0, b, (uint16_t)(2 + 2 * (sizeof ops / sizeof ops[0])));
+		for (unsigned i = 0; i < cnt; i++) put16(b + 2 + 2 * i, ops[i]);
+		if (h7_explore_supported())
+			for (unsigned i = 0; i < sizeof more / sizeof more[0]; i++) put16(b + 2 + 2 * cnt++, more[i]);
+		put16(b, (uint16_t)cnt);
+		return respond(tx, req_id, opcode, 0, b, (uint16_t)(2 + 2 * cnt));
 	}
 	case CTL_OP_COUNTERS: {          /* the Due's 15-word record; what each word means on this target is in docs/19 */
 		h7_status_t s; h7_get_status(&s);
@@ -130,6 +142,33 @@ size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 		if (!h7_request_bootloader()) return error(tx, req_id, opcode, CTL_ERR_BUSY, "this image cannot restart into the boot loader");
 		b[0] = 1;
 		return respond(tx, req_id, opcode, 0, b, 1);
+	case H7_OP_PEEK: {
+		uint32_t w[16];
+		if (len != 5 || p[4] < 1 || p[4] > 16 || (get32(p) & 3u)) return error(tx, req_id, opcode, CTL_ERR_LENGTH, "peek takes an aligned address and a count 1..16");
+		if (h7_peek(get32(p), w, p[4])) return error(tx, req_id, opcode, H7_ERR_REFUSED, "address refused");
+		for (unsigned i = 0; i < p[4]; i++) put32(b + 4 * i, w[i]);
+		return respond(tx, req_id, opcode, 0, b, (uint16_t)(4u * p[4]));
+	}
+	case H7_OP_POKE: {
+		uint32_t back;
+		if (len != 9 || (p[8] != 1 && p[8] != 2 && p[8] != 4) || (get32(p) & (p[8] - 1u)))
+			return error(tx, req_id, opcode, CTL_ERR_LENGTH, "poke takes an aligned address, a value and a width 1, 2 or 4");
+		if (h7_poke(get32(p), get32(p + 4), p[8])) return error(tx, req_id, opcode, H7_ERR_REFUSED, "address refused");
+		if (h7_peek(get32(p) & ~3u, &back, 1)) back = 0;
+		put32(b, back);
+		return respond(tx, req_id, opcode, 0, b, 4);
+	}
+	case H7_OP_EXPLORE: {
+		uint32_t a[H7_EXPLORE_ARGS], r[H7_EXPLORE_RES]; unsigned na, nr = 0;
+		if (len < 1 || ((len - 1u) & 3u) || (len - 1u) / 4u > H7_EXPLORE_ARGS) return error(tx, req_id, opcode, CTL_ERR_LENGTH, "explore takes an id and up to 6 words");
+		na = (len - 1u) / 4u;
+		for (unsigned i = 0; i < na; i++) a[i] = get32(p + 1 + 4 * i);
+		if (h7_explore(p[0], a, na, r, &nr)) return error(tx, req_id, opcode, H7_ERR_REFUSED, "test or argument refused");
+		if (nr > H7_EXPLORE_RES) nr = H7_EXPLORE_RES;
+		uint8_t out[1 + 4 * H7_EXPLORE_RES]; out[0] = p[0];
+		for (unsigned i = 0; i < nr; i++) put32(out + 1 + 4 * i, r[i]);
+		return respond(tx, req_id, opcode, 0, out, (uint16_t)(1 + 4 * nr));
+	}
 	default:
 		return error(tx, req_id, opcode, CTL_ERR_OPCODE, "opcode");
 	}

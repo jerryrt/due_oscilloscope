@@ -23,6 +23,18 @@ def lib(tmp_path_factory):
     return L
 
 
+@pytest.fixture(scope="module")
+def xlib(tmp_path_factory):
+    """The same dispatcher linked with the stub that switches the exploring opcodes on."""
+    out = tmp_path_factory.mktemp("h7ctlx") / "ctl_h7x.so"
+    src = [os.path.join(ROOT, "targets/h7tool/fw/ctl_h7.c"), os.path.join(HERE, "h7_ctl_stub.c"), os.path.join(HERE, "h7_ctl_explore_stub.c"),
+           os.path.join(ROOT, "lib/due_shared/src/crc32.c")]
+    inc = ["-I" + os.path.join(ROOT, p) for p in ("lib/due_shared/src", "lib/wire", "targets/h7tool/fw")]
+    subprocess.run([CC, "-std=gnu11", "-shared", "-fPIC", "-O1", "-Wall", "-Werror=implicit"] + inc + ["-o", str(out)] + src, check=True)
+    L = ctypes.CDLL(str(out)); L.ctl_h7_handle.restype = ctypes.c_size_t
+    return L
+
+
 def ask(lib, frame):
     tx = ctypes.create_string_buffer(512)
     n = lib.ctl_h7_handle(ctypes.c_char_p(frame), ctypes.c_size_t(len(frame)), tx)
@@ -95,3 +107,30 @@ def test_bootloader_request_needs_the_exact_word_and_is_otherwise_refused_withou
     assert ctypes.c_int.in_dll(lib, "stub_boot_requests").value == n0
     assert call(lib, 0x44, b"BOOT").payload == b"\x01"                        # armed, replied first
     assert ctypes.c_int.in_dll(lib, "stub_boot_requests").value == n0 + 1
+
+
+def test_exploring_opcodes_are_absent_unless_the_image_provides_them(lib):
+    for op in (0x45, 0x46, 0x47):
+        assert call_err(lib, op, b"\0" * 5) == 2             # CTL_ERR_OPCODE, not a body of zeroes
+
+
+def test_exploring_opcodes_peek_poke_and_explore(xlib):
+    f = call(xlib, ctl.OP_CAPABILITY); n, = struct.unpack_from("<H", f.payload)
+    assert {0x45, 0x46, 0x47} <= set(struct.unpack_from("<%dH" % n, f.payload, 2))
+    assert call(xlib, 0x46, struct.pack("<IIB", 0x1004, 0xA1B2C3D4, 4)).payload == struct.pack("<I", 0xA1B2C3D4)
+    assert call(xlib, 0x46, struct.pack("<IIB", 0x1006, 0x55, 1)).payload == struct.pack("<I", 0xA155C3D4)   # one byte, read back whole
+    assert call(xlib, 0x45, struct.pack("<IB", 0x1000, 3)).payload == struct.pack("<III", 0, 0xA155C3D4, 0)
+    r = call(xlib, 0x47, bytes([1]) + struct.pack("<II", 5, 0x80000000)).payload
+    assert r == bytes([1]) + struct.pack("<II", 10, 0)
+    assert call(xlib, 0x47, bytes([1])).payload == bytes([1])
+
+
+def test_exploring_opcodes_refuse_what_the_image_refuses_and_malformed_bodies(xlib):
+    assert call_err(xlib, 0x45, struct.pack("<IB", 0x0, 1)) == 0x40            # address outside the stub's memory
+    assert call_err(xlib, 0x47, bytes([2])) == 0x40                            # unknown test id
+    assert call_err(xlib, 0x45, struct.pack("<IB", 0x1002, 1)) == 3            # unaligned
+    assert call_err(xlib, 0x45, struct.pack("<IB", 0x1000, 17)) == 3           # more than 16 words
+    assert call_err(xlib, 0x46, struct.pack("<IIB", 0x1001, 0, 2)) == 3        # half word on an odd address
+    assert call_err(xlib, 0x46, struct.pack("<IIB", 0x1000, 0, 3)) == 3        # width 3
+    assert call_err(xlib, 0x47, bytes([1]) + b"\0" * 5) == 3                   # arguments not whole words
+    assert call_err(xlib, 0x47, bytes([1]) + b"\0" * 28) == 3                  # seven arguments

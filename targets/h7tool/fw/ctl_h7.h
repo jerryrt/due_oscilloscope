@@ -20,6 +20,13 @@
 #define H7_OP_STATUS  0x0043u   /* what is running and every counter */
 #define H7_OP_BOOTLOADER 0x0044u  /* body: the 4 bytes "BOOT". Stops everything, replies u8 1, then restarts into the boot loader.
                                    * An image that cannot answers CTL_ERR_BUSY; a wrong body is CTL_ERR_LENGTH and does nothing. */
+#define H7_OP_PEEK    0x0045u   /* hardware exploring, only in images that provide h7_explore_supported(): u32 address (4-aligned), u8 count 1..16;
+                                   * reply count u32 words read in order */
+#define H7_OP_POKE    0x0046u   /* u32 address, u32 value, u8 width (1, 2 or 4); reply the u32 read back from the address afterwards */
+#define H7_OP_EXPLORE 0x0047u   /* u8 test id, then 0..6 u32 arguments; reply u8 id, then 0..16 u32 results. What each id does is the image's own (docs/21) */
+#define H7_ERR_REFUSED 0x40u    /* error code of the three: the hook refused the address, value, test id or argument (an H7 code; the Due list ends at 5) */
+#define H7_EXPLORE_ARGS 6u
+#define H7_EXPLORE_RES  16u
 
 typedef struct __attribute__((packed)) {
 	uint32_t adc_period;    /* TIM3 ticks per sample at 200 MHz; >= 80 (2.5 Msps), the proven bound */
@@ -51,6 +58,14 @@ void     h7_get_status(h7_status_t *s);
 /* Arm a restart into the boot loader a few milliseconds from now, after this reply has gone out. Returns 1 when armed, 0 when the
  * image has no such path (the weak default in ctl_h7.c). */
 int      h7_request_bootloader(void);
+
+/* Exploring hooks. An image that wants the three opcodes above returns 1 from h7_explore_supported() and defines the others;
+ * every other image links the weak defaults, the opcodes stay out of its capability list and answer CTL_ERR_OPCODE. The hooks
+ * return 0 on success, negative to refuse (-1 address or value not allowed, -2 unknown test id). */
+int      h7_explore_supported(void);
+int      h7_peek(uint32_t addr, uint32_t *out, unsigned count);
+int      h7_poke(uint32_t addr, uint32_t value, unsigned width);
+int      h7_explore(unsigned id, const uint32_t *arg, unsigned nargs, uint32_t *res, unsigned *nres);
 
 /*
  * Handle one received packet: `n` bytes at `rx`. Writes the reply into `tx` (at least CTL_HDR_BYTES + CTL_MAX_PAYLOAD
