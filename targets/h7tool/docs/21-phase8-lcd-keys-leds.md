@@ -17,6 +17,13 @@ docs/01 as the backlight. A run LED on PI8 produced no light in image 1
 The one method that has produced a confirmed pin is reading the stock
 firmware's own code (docs/03: buzzer, TVCC pot).
 
+## Constraints on checking
+
+The owner checks the LCD and the LEDs by eye. The buzzer is not checked
+by ear, so no test image pulses a buzzer pin on purpose, and a pin that
+is a candidate for both buzzer and backlight (PH9) is tested through the
+backlight.
+
 ## Phases
 
 Each phase ends in a gate. Nothing is flashed until the phase before it
