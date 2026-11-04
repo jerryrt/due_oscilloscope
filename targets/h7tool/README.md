@@ -13,7 +13,7 @@ Backups of stock firmware: `../../../h7tool_backup/`.
 ## Rules
 - Never write below 0x08020000. Image <= 1,310,720 bytes, linked at 0x08020000.
 - Reserve DTCM word 0x20000000 (boot request). No SWD probe: recovery is S/OK held at plug-in.
-- Do not change option bytes / read-out protection. Do not touch eMMC, QSPI or the 250M module's RP2040.
+- Do not change option bytes / read-out protection. Do not touch eMMC or QSPI. The 250M module's RP2040 is read-only to us (its flash is backed up and a restore file exists, `docs/24`); writing it needs the owner's decision.
 - Mark anything not read from a document or measured as *(check)*.
 - `reference/` is a local copy of the public armfly V1.49 source (MIT, 2021), not committed.
 - The sibling folders `h7tool_usb_control`, `h7tool_backup` and `h7tool_docs` live beside the repo, outside it.
