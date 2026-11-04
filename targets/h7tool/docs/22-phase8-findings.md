@@ -21,6 +21,7 @@ and the call-site counts were run on the two images.
 | Backlight, app | Not located yet; the app has no TIM12 literal | `h7_tool_app(V2.33).bin` | open |
 | Buzzer, app | Pin chosen by a flag from the board register: PH9 on this unit (docs/03) | app 0x0802b6e0 | code; the beep was heard |
 | Soft I2C (TVCC pot) | SCL PI7, SDA PF15 | `H7-BOOT.bin` 0x080127b0..0x08012964 | code; matches docs/03 |
+| SPI5 pins, boot loader | GPIOH clock on, SPI5 clock on (APB2ENR bit 20), **PH6 and PH7 as alternate function 5**, so SCK PH6 and data PH7 as in docs/01 | `H7-BOOT.bin` 0x08011b54..0x08011bd8 | code |
 | ULPI pins | AF10 on the ports listed in the boot loader's GPIO init at 0x08004fb0 | `H7-BOOT.bin` | code |
 
 PH9 is the backlight in the boot loader and the buzzer in the app on this
@@ -34,6 +35,8 @@ it is.
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
   literal in the app; search for the SPI5 register offsets and the
   display init sequence by its command bytes).
-- Locate the boot loader's SPI5 init at 0x08011b54 and the LCD init
-  functions that call it.
+- Find the boot loader's LCD functions that use SPI5 (chip select,
+  D/C, reset, power enable, the init command table). A pin-decoding
+  script over the HAL calls proved unreliable on this code; read the
+  call sites by hand.
 - Find the key reads (GPIO IDR users) and the RUN and CHG writers.
