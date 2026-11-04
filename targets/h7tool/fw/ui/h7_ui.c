@@ -54,6 +54,7 @@ void     h7ui_host_wr8(uint32_t addr, uint8_t val);
 #define SPI_SR_TXP     (1u << 1)
 #define SPI_SR_EOT     (1u << 3)
 #define SPI_IFCR_CLEAR ((1u << 3) | (1u << 4) | (1u << 11))   /* EOTC, TXTFC, SUSPC */
+#define SPI_IFCR_ALL   0xFF8u                                  /* every flag clear bit, MODFC (9) among them */
 #define SPI_MBR        1u            /* kernel clock / 4; 0 would be / 2 as the stock firmware uses *(check)* */
 #define SPI_SPIN_MAX   4000u         /* one wait is a frame or a few at most (well under a millisecond); more means stuck */
 #define SPI_CHUNK_MAX  65534u        /* TSIZE is 16 bits; an even count keeps whole pixels in a chunk */
@@ -186,28 +187,49 @@ void h7ui_led(enum h7ui_led led, uint8_t level)
 #define DC_L() REG_WR(GPIOG + BSRR, 1u << (15 + 16))
 #define DC_H() REG_WR(GPIOG + BSRR, 1u << 15)
 
-#if H7UI_HW_SPI
+/* Mode 3 by hand: the clock idles high, data changes while it is low, the panel samples the rising edge. This is the
+ * whole path when H7UI_HW_SPI is 0, and the fallback when an SPI5 wait gives up. */
+static void bitbang_byte(uint8_t b)
+{
+	for (int i = 7; i >= 0; i--) {
+		REG_WR(GPIOH + BSRR, (1u << (6 + 16)) | (((b >> i) & 1u) ? (1u << 7) : (1u << (7 + 16))));
+		REG_WR(GPIOH + BSRR, 1u << 6);
+	}
+}
+
 static unsigned spi_errors;
 static uint32_t spi_sr_at_error, spi_cr1_at_error;
-static int spi_dead;                                     /* latched by the first timeout: every later call is a no-op */
+static int hw_active = H7UI_HW_SPI;                      /* 1 while SPI5 carries the bytes */
 unsigned h7ui_spi_errors(void) { return spi_errors; }
 uint32_t h7ui_spi_status_at_error(void) { return spi_sr_at_error; }
 uint32_t h7ui_spi_control_at_error(void) { return spi_cr1_at_error; }
 
-/* A wait that gives up costs SPI_SPIN_MAX reads once; after that the driver stops touching SPI5, so a stuck
- * peripheral turns a whole screen into a few hundred microseconds of waiting and not an hour of it. */
+/* PH6 and PH7 back to plain outputs, the clock high. */
+static void pins_to_gpio(void)
+{
+	REG_WR(GPIOH + BSRR, (1u << 6) | (1u << 7));
+	REG_WR(GPIOH + MODER, (REG_RD(GPIOH + MODER) & ~((3u << 12) | (3u << 14))) | (1u << 12) | (1u << 14));
+	REG_WR(GPIOH + OSPEEDR, REG_RD(GPIOH + OSPEEDR) | (3u << 12) | (3u << 14));
+}
+
+#define SPI_SPIN_STUCK 0u
+/* A wait that gives up costs SPI_SPIN_MAX reads once. The first timeout hands the panel to the hand-clocked pins for
+ * good and keeps the status it saw, so a stuck peripheral costs a fraction of a millisecond and the picture still
+ * arrives, slowly, with the error to read afterwards. */
 static int spi_wait(uint32_t mask)
 {
-	if (spi_dead) return 0;
 	for (uint32_t n = SPI_SPIN_MAX; n; n--)
 		if (REG_RD(SPI_SR) & mask) return 1;
 	spi_errors++;
-	spi_dead = 1;
 	spi_sr_at_error = REG_RD(SPI_SR);
 	spi_cr1_at_error = REG_RD(SPI_CR1);
-	return 0;
+	hw_active = 0;
+	REG_WR(SPI_CR1, 0);
+	pins_to_gpio();
+	return SPI_SPIN_STUCK;
 }
 
+#if H7UI_HW_SPI
 static int spi_ready;
 static void spi_hw_init(void)
 {
@@ -217,7 +239,11 @@ static void spi_hw_init(void)
 	REG_WR(GPIOH + MODER, (REG_RD(GPIOH + MODER) & ~((3u << 12) | (3u << 14))) | (2u << 12) | (2u << 14));   /* PH6, PH7 alternate */
 	REG_WR(GPIOH + OSPEEDR, REG_RD(GPIOH + OSPEEDR) | (3u << 12) | (3u << 14));
 	REG_WR(GPIOH + AFRL, (REG_RD(GPIOH + AFRL) & ~((0xFu << 24) | (0xFu << 28))) | (5u << 24) | (5u << 28));   /* AF5 */
-	REG_WR(SPI_CR1, 0);
+	/* SSI first: with software slave select the peripheral reads SSI low as "slave select asserted", and a master that
+	 * sees that takes a mode fault, switches itself off and refuses to start (SR bit 9). So SSI is high before the
+	 * configuration that turns software select on is written, and any stale fault is cleared. */
+	REG_WR(SPI_CR1, SPI_CR1_SSI);
+	REG_WR(SPI_IFCR, SPI_IFCR_ALL);
 	REG_WR(SPI_CFG1, (SPI_MBR << 28) | 7u);                         /* 8-bit frames, one-frame FIFO threshold */
 	/* AFCNTR keeps the pins driven while the peripheral is off, so the clock idles high. Master, mode 3, software
 	 * slave select (chip select is PE1), simplex transmitter, data on the pad the peripheral calls MISO (IOSWP). */
@@ -225,43 +251,40 @@ static void spi_hw_init(void)
 	REG_WR(SPI_CR1, SPI_CR1_SSI);
 	spi_ready = 1;
 }
+#endif
 
 static void spi_open(uint32_t frames)                            /* frames: 1..65535 */
 {
-	if (spi_dead) return;
 	REG_WR(SPI_CR2, frames);
 	REG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE);
 	REG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE | SPI_CR1_CSTART);
 }
 
-static void spi_put(uint8_t b)
+static int spi_put(uint8_t b)                                    /* 1 if the byte went into the FIFO */
 {
-	if (spi_wait(SPI_SR_TXP)) REG_WR8(SPI_TXDR, b);
+	if (!spi_wait(SPI_SR_TXP)) return 0;
+	REG_WR8(SPI_TXDR, b);
+	return 1;
 }
 
-static void spi_close(void)
+static int spi_close(void)                                       /* 1 if the transfer finished shifting out */
 {
-	if (spi_dead) return;
-	spi_wait(SPI_SR_EOT);
+	if (!spi_wait(SPI_SR_EOT)) return 0;
 	REG_WR(SPI_IFCR, SPI_IFCR_CLEAR);
 	REG_WR(SPI_CR1, SPI_CR1_SSI);
+	return 1;
 }
 
-static void spi_byte(uint8_t b) { spi_open(1); spi_put(b); spi_close(); }
-#else
-unsigned h7ui_spi_errors(void) { return 0; }
-uint32_t h7ui_spi_status_at_error(void) { return 0; }
-uint32_t h7ui_spi_control_at_error(void) { return 0; }
-
-/* Mode 3: the clock idles high, data changes while it is low, the panel samples the rising edge. */
 static void spi_byte(uint8_t b)
 {
-	for (int i = 7; i >= 0; i--) {
-		REG_WR(GPIOH + BSRR, (1u << (6 + 16)) | (((b >> i) & 1u) ? (1u << 7) : (1u << (7 + 16))));
-		REG_WR(GPIOH + BSRR, 1u << 6);
+	if (hw_active) {
+		spi_open(1);
+		if (!spi_put(b)) { bitbang_byte(b); return; }            /* nothing went out: send it by hand */
+		spi_close();                                            /* if this fails the byte is out already */
+		return;
 	}
+	bitbang_byte(b);
 }
-#endif
 
 static void cmd(uint8_t c)  { DC_L(); CS_L(); spi_byte(c); CS_H(); }
 static void dat(uint8_t d)  { DC_H(); CS_L(); spi_byte(d); CS_H(); }
@@ -309,12 +332,10 @@ void h7lcd_init(void)
 	dly_ms(20);
 }
 
-#if H7UI_HW_SPI
 /* The pixel stream is one or more peripheral transactions, each closed and reopened by the pixel that needs it, with
- * chip select held low across them. pix_left counts the pixels still owed to the window, frames_left the frames the
- * open transaction can still take. */
+ * chip select held low across them (on the hand-clocked path there is nothing to open). pix_left counts the pixels
+ * still owed to the window, frames_left the frames the open transaction can still take. */
 static uint32_t pix_left, frames_left;
-#endif
 
 int h7lcd_begin(unsigned x, unsigned y, unsigned w, unsigned h)
 {
@@ -325,39 +346,34 @@ int h7lcd_begin(unsigned x, unsigned y, unsigned w, unsigned h)
 	cmd_n(0x2b, ya, 4);
 	cmd(0x2c);
 	DC_H(); CS_L();
-#if H7UI_HW_SPI
 	pix_left = w * h;
 	frames_left = 0;
-#endif
 	return 1;
 }
 
 void h7lcd_pixel(uint16_t c)
 {
-#if H7UI_HW_SPI
 	if (pix_left == 0) return;                          /* more pixels than the window holds are dropped */
+	pix_left--;
+	uint8_t hi = (uint8_t)(c >> 8), lo = (uint8_t)c;
+	if (!hw_active) { frames_left = 0; bitbang_byte(hi); bitbang_byte(lo); return; }
 	if (frames_left == 0) {
-		uint32_t f = pix_left * 2u;
+		uint32_t f = (pix_left + 1u) * 2u;
 		if (f > SPI_CHUNK_MAX) f = SPI_CHUNK_MAX;
 		spi_open(f);
 		frames_left = f;
 	}
-	spi_put((uint8_t)(c >> 8));
-	spi_put((uint8_t)c);
-	pix_left--;
+	if (!spi_put(hi)) { frames_left = 0; bitbang_byte(hi); bitbang_byte(lo); return; }   /* fell back: send it by hand */
+	if (!spi_put(lo)) { frames_left = 0; bitbang_byte(lo); return; }
 	frames_left -= 2;
 	if (frames_left == 0) spi_close();
-#else
-	spi_byte((uint8_t)(c >> 8)); spi_byte((uint8_t)c);
-#endif
 }
 
 void h7lcd_end(void)
 {
-#if H7UI_HW_SPI
-	if (frames_left) { spi_close(); frames_left = 0; }   /* fewer pixels than the window: end the transaction */
+	if (frames_left && hw_active) spi_close();           /* fewer pixels than the window: end the transaction */
+	frames_left = 0;
 	pix_left = 0;
-#endif
 	CS_H();
 }
 

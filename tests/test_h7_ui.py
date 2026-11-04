@@ -154,10 +154,11 @@ def test_a_wrong_byte_in_the_table_is_caught(tmp_path):
 @pytest.mark.parametrize("old, new, what", [
     ("(1u << 15));\n\tREG_WR(SPI_CR1, SPI_CR1_SSI);", "0);\n\tREG_WR(SPI_CR1, SPI_CR1_SSI);", "IOSWP"),
     ("(SPI_MBR << 28) | 7u", "(SPI_MBR << 28) | 15u", "frame size"),
+    ("\tREG_WR(SPI_CR1, SPI_CR1_SSI);\n\tREG_WR(SPI_IFCR, SPI_IFCR_ALL);", "\tREG_WR(SPI_CR1, 0);\n\tREG_WR(SPI_IFCR, SPI_IFCR_ALL);", "SSI before the configuration"),
     ("#define SPI_MBR        1u", "#define SPI_MBR        0u", "clock rate"),
     ("(5u << 24) | (5u << 28)", "(2u << 24) | (5u << 28)", "alternate function"),
-    ("\tspi_wait(SPI_SR_EOT);\n\tREG_WR(SPI_IFCR", "\tREG_WR(SPI_IFCR", "end-of-transfer wait"),
-    ("\tREG_WR(SPI_CR1, SPI_CR1_SSI);\n}\n\nstatic void spi_byte", "\tREG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE);\n}\n\nstatic void spi_byte", "SPE left on"),
+    ("\tif (!spi_wait(SPI_SR_EOT)) return 0;\n\tREG_WR(SPI_IFCR", "\tREG_WR(SPI_IFCR", "end-of-transfer wait"),
+    ("\tREG_WR(SPI_CR1, SPI_CR1_SSI);\n\treturn 1;\n}", "\tREG_WR(SPI_CR1, SPI_CR1_SSI | SPI_CR1_SPE);\n\treturn 1;\n}", "SPE left on"),
 ])
 def test_a_fault_in_the_spi5_setup_is_caught(tmp_path, old, new, what):
     """Break each guarded part of the peripheral set-up on purpose; the fake peripheral or the byte comparison must object."""
@@ -172,10 +173,14 @@ def test_a_fault_in_the_spi5_setup_is_caught(tmp_path, old, new, what):
     assert not clean, what
 
 
-def test_a_stuck_spi5_costs_one_short_wait_not_one_per_pixel(tmp_path):
-    """A peripheral that never reports a free FIFO slot: the first wait gives up, the error is counted once and the
-    rest of a full-screen fill touches SPI5 no more. Without the latch a fill would wait out 153,600 times."""
+def test_a_stuck_spi5_costs_one_short_wait_and_the_picture_still_arrives(tmp_path):
+    """A peripheral that never reports a free FIFO slot: the first wait gives up, the error is counted once, the pins
+    take over, and the whole full-screen fill still reaches the panel byte for byte. Without the hand-over a fill
+    would wait out 153,600 times and, with a dead path, draw nothing."""
     out = run(build(str(tmp_path), hw=1), "spi_stuck")
     reads = int([l for l in out if l.startswith("sr_reads")][0].split()[1])
     assert "spi_errors 1" in out
-    assert reads <= 2 * 4000 + 16, reads                  # one wait, plus the status snapshot
+    assert reads <= 4000 + 8, reads                       # one wait, plus the status snapshot
+    assert commands(spi(out)) == [
+        (0x2A, [0x00, 0x00, 0x00, 0xEF]), (0x2B, [0x00, 0x00, 0x01, 0x3F]), (0x2C, [0xFF] * (240 * 320 * 2)),
+    ]

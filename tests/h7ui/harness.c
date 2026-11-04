@@ -119,7 +119,7 @@ static void i2c_update(int old_scl, int old_sda)
 /* ---- SPI5 model: checks the configuration the peripheral needs and the order the driver uses it in ---- */
 static uint32_t sp_cr1, sp_cr2, sp_cfg1, sp_cfg2;
 static int sp_active; static uint32_t sp_done; static int sp_dc, sp_cs_low, sp_eot_cleared, sp_eot_polls, sp_eot_seen;
-static int sp_bad, sp_stuck; static unsigned long sp_sr_reads;
+static int sp_bad, sp_stuck, sp_modf; static unsigned long sp_sr_reads;
 #define SPI_BAD(...) do { printf("BAD "); printf(__VA_ARGS__); printf("\n"); sp_bad++; } while (0)
 
 static void sp_check_config(void)
@@ -139,21 +139,31 @@ static void sp_check_config(void)
 	if (!(*slot(RCC_APB2ENR) & (1u << 20))) SPI_BAD("SPI5 clock not enabled");
 }
 
+static void sp_modf_check(void)
+{
+	/* master with software slave select and SSI low reads as "slave select asserted": a mode fault, which
+	 * clears SPE and keeps the peripheral from starting until the flag is cleared (SR bit 9, IFCR bit 9) */
+	if ((sp_cfg2 & (1u << 22)) && (sp_cfg2 & (1u << 26)) && !(sp_cr1 & (1u << 12))) { sp_modf = 1; sp_cr1 &= ~1u; sp_active = 0; }
+}
+
 static void sp_write_cr1(uint32_t v)
 {
 	int spe_old = sp_cr1 & 1u, spe = v & 1u, start = (v >> 9) & 1u;
+	if (sp_modf && spe) v &= ~1u, spe = 0, start = 0;           /* refused while the fault is pending */
 	if (spe && !spe_old) { if (sp_cr2 == 0 || sp_cr2 > 65535u) SPI_BAD("TSIZE %u", sp_cr2); sp_check_config(); }
 	if (spe && start && !sp_active) {
 		if (!sp_cs_low) SPI_BAD("transfer started with chip select high");
 		sp_active = 1; sp_done = 0; sp_dc = (int)((odr[2] >> 15) & 1); sp_eot_cleared = 0; sp_eot_polls = 0; sp_eot_seen = 0;
 	}
-	if (!spe && spe_old) {
+	if (!spe && spe_old && sp_stuck) { sp_active = 0; }
+	else if (!spe && spe_old) {
 		if (sp_active && sp_done != sp_cr2) SPI_BAD("SPE cleared after %u of %u frames", sp_done, sp_cr2);
 		if (sp_active && !sp_eot_seen) SPI_BAD("SPE cleared before the transfer finished shifting out");
 		if (sp_active && !sp_eot_cleared) SPI_BAD("EOT not cleared before SPE off");
 		sp_active = 0;
 	}
 	sp_cr1 = v;
+	sp_modf_check();
 }
 
 static void sp_txdr8(uint8_t b)
@@ -173,6 +183,7 @@ uint32_t h7ui_host_rd(uint32_t a)
 		uint32_t sr = 0;
 		sp_sr_reads++;
 		if (sp_stuck) return 0;                                     /* a peripheral that never reports anything */
+		if (sp_modf) return (1u << 9) | (1u << 1);                  /* MODF, and TXP as the real part showed */
 		if (sp_active && sp_done < sp_cr2) sr |= 1u << 1;          /* TXP */
 		/* the last frame takes a few polls to leave the shift register */
 		if (sp_active && sp_done == sp_cr2 && ++sp_eot_polls >= 3) { sr |= 1u << 3; sp_eot_seen = 1; }   /* EOT */
@@ -188,8 +199,8 @@ void h7ui_host_wr(uint32_t a, uint32_t v)
 	if (base == (SPI5 & ~0x3FFu)) {
 		if (off == 0x00) { sp_write_cr1(v); return; }
 		if ((sp_cr1 & 1u) && (off == 0x04 || off == 0x08 || off == 0x0C)) SPI_BAD("config %02x written with SPE set", off);
-		if (off == 0x04) sp_cr2 = v & 0xFFFFu; else if (off == 0x08) sp_cfg1 = v; else if (off == 0x0C) sp_cfg2 = v;
-		else if (off == 0x18) { if (v & (1u << 3)) sp_eot_cleared = 1; }
+		if (off == 0x04) sp_cr2 = v & 0xFFFFu; else if (off == 0x08) sp_cfg1 = v; else if (off == 0x0C) { sp_cfg2 = v; sp_modf_check(); }
+		else if (off == 0x18) { if (v & (1u << 3)) sp_eot_cleared = 1; if (v & (1u << 9)) sp_modf = 0; }
 		else if (off == 0x20) SPI_BAD("TXDR written as a word");
 		return;
 	}
@@ -247,7 +258,7 @@ int main(int argc, char **argv)
 		h7ui_led((enum h7ui_led)3, 0xFF);        /* out of range: must write nothing */
 	}
 	else if (!strcmp(sc, "spi_stuck")) {
-		quiet = 1; h7lcd_init(); sp_stuck = 1; sp_sr_reads = 0; h7lcd_fill_rect(0, 0, 240, 320, 0xFFFF);
+		quiet = 1; h7lcd_init(); quiet = 0; sp_stuck = 1; sp_sr_reads = 0; h7lcd_fill_rect(0, 0, 240, 320, 0xFFFF);
 		printf("sr_reads %lu\n", sp_sr_reads);
 	}
 	else if (!strcmp(sc, "nochip")) { chip_present = 0; printf("R %d\n", h7ui_expander_init()); }
