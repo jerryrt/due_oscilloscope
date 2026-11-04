@@ -176,22 +176,27 @@ eight numbered bands, with MADCTL 0x00.
 | Memory against glass | the grey band (last rows) was at the top and the black squares (column 0 side) at the right: at MADCTL 0x00 the memory is turned 180 degrees |
 | 240-row picture of images 18 and 19 | drew only the 240 rows at the bottom of the glass, leaving the top 80 rows to the boot loader's content |
 
-Image 21a, MADCTL 0x60 (landscape), filled the screen as 320 wide by
-240 tall, and the fill was seen to start at the left and run right. The
-orientation picture (an F and four coloured corners) was not looked at,
-so the upright setting is not found yet.
+Image 21a/21b, MADCTL 0x60 (landscape, a 320x240 picture), reported
+corners: the picture's top-left corner (red) appeared at the screen's
+bottom left, and its bottom-left corner (blue) at the screen's bottom
+right. That is the picture turned 90 degrees counter-clockwise, and both
+corners that share the picture's left edge landing on one screen edge
+fits a portrait glass of 240 columns by 320 rows. So the upright setting
+is probably MADCTL 0xC0 (the boot loader's direction 1) in portrait,
+which is to be tested. The F itself was not looked at.
 
-The LED walk lit, in order of the four outputs, by the owner's report:
+The LED walk lit (forward run, then the same four steps in reverse
+order, by the owner's reports; the reverse run did not name CHG's colours):
 
-| Step (output, register) | Screen colour | Seen *(tentative)* |
+| Output, register | RUN or CHG | Colour |
 |---|---|---|
-| 1 P1_0, 0x20 | red | CHG LED, green |
-| 2 P1_1, 0x21 | green | CHG LED, red |
-| 3 P1_2, 0x22 | blue | RUN LED, red |
-| 4 P1_3, 0x23 | white | off, perhaps; no green RUN LED lit at any step |
+| P1_0, 0x20 | CHG | green *(one report)* |
+| P1_1, 0x21 | CHG | red *(one report)* |
+| P1_2, 0x22 | RUN | red |
+| P1_3, 0x23 | none seen | - |
 
-The reading is from memory and one run, and is to be rechecked with the
-steps in reverse order.
+No green RUN LED lit at any step. Both runs agree on the output for each
+LED; the CHG colours rest on one report each.
 
 ## Next
 
