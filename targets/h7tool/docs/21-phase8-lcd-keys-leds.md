@@ -41,6 +41,13 @@ has a written pin and polarity with its evidence.
 | **8.7** LCD test image | Power enable, then backlight, then the init sequence, then a solid fill, then a test pattern with a frame buffer in SRAM1 and DMA2 Stream3 as in stock. Backlight on its own first, since it shows the supply works before SPI | The owner sees the correct colours and orientation; no tearing from the DMA; the frame buffer not in a cacheable region (invariant 1) |
 | **8.8** Combine and record | Short image with screen text, key reads and both LEDs; update docs/01 sections 5 and 6 with the verified pins and the evidence; add a control opcode only if the host needs to drive them | Docs and the image agree; the new image returns to the boot loader without a key press |
 
+## Status
+
+The LCD is driven from our own image (8.7, in part): power, reset, chip
+select, D/C, hand-clocked SPI, the boot loader's init table and a test
+pattern, all observed (docs/22). Backlight brightness, the RUN and CHG
+LEDs and the app's own table are still open.
+
 ## Risks
 
 | Risk | Handling |

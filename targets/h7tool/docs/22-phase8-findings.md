@@ -103,17 +103,22 @@ for 20 s, then returns to the boot loader. Observed by the owner:
 | PH9 at 10% duty, 20 kHz | **The buzzer sounded for the whole run** |
 
 So on this unit PH9 reaches the buzzer, as the stock app's buzzer code
-says (docs/03), and a 10% PWM is enough to sound it. Whether PH9 also
-lights the backlight is not settled by this run: the owner saw the image
-with PH9 driven, which does not separate "PH9 is the backlight" from
-"the backlight is lit some other way". Image 18b leaves PH9 alone to
-separate them.
+says (docs/03), and a 10% PWM is enough to sound it. Image 18b, the same
+picture with PH9 never touched, showed the pattern and the buzzer stayed
+silent. So **the backlight is lit without PH9**: it comes on with the
+panel power on PH15, or from a pin not yet found, and PH9 is the buzzer
+on this unit. The boot loader's PH9 PWM, which docs/01 calls the
+backlight, belongs to another board code. Backlight brightness control
+on this unit is not known; the stock app's board-code flag (docs/03)
+selects the pin set and its other branch is unread.
 
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
   literal in the app; search for the SPI5 register offsets and the
   display init sequence by its command bytes).
+- Find what sets the backlight on this unit and whether it can be dimmed
+  (the app's branch for board code 0x4280).
 - Read what sets the model byte at 0x24000022, and which model this
   unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).
 - Compare with the app's table, starting from the string at 0x0812c716. A pin-decoding
