@@ -25,8 +25,8 @@ CONTROL_S = float(sys.argv[1]) if len(sys.argv) > 1 else 10.0
 # The sine below is 150 codes at 5.975 mV per code, so 0.896 V peak, and the DC level is 167 codes (0.998 V). Both read their nominal
 # value to within a few percent with VOUT on one input (2026-11-02: CH1 0.915 V and +1.005 V; CH2 +1.2 % and +0.9 %). One source on one input is
 # the supported wiring: VOUT on both inputs at once is not a measurement this instrument is meant to make. Which input carries VOUT is declared,
-# not assumed: H7_GATE_VOUT="2" (default, the bench wiring from 2026-11-02 evening) or "1".
-WIRED = [int(x) for x in os.environ.get("H7_GATE_VOUT", "2").split(",")]
+# not assumed: H7_GATE_VOUT="1" (default, the bench wiring since 2026-11-04) or "2" (the wiring of 2026-11-02 evening).
+WIRED = [int(x) for x in os.environ.get("H7_GATE_VOUT", "1").split(",")]
 TOL = 0.04                                     # fraction of nominal: factory scale vs stock calibration, and the known 1-3 % offsets
 EXPECT_V = 150 * 5.975e-3
 

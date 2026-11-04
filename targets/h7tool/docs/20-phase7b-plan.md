@@ -113,7 +113,7 @@ Due's `trace`/`load` equivalents, the 250M module, and any change to the Due fir
   the output is nominal on either input (CH1 sine +2.1 %, DC +0.8 %, 2026-11-03; CH2 +1.2 %, +0.9 %). The 3 % excess of the old tool on CH1 over
   its recorded 0.599 V is unexplained *(check)*; recorded only, deferred by the owner (2026-11-03): it needs a reference voltage and a hardware look, software alone will not settle it; CH1 reading 1-2 % high on the current tool is the same direction.
   A cycle of the ten failed once in one run (not reproduced in 40 more) and is unexplained *(check)*.
-- Bench wiring from 2026-11-02 evening: VOUT to CH2 only (the owner's choice, simpler and more stable); the gate defaults to it and also passes with `H7_GATE_VOUT=1`.
+- Bench wiring from 2026-11-02 evening: VOUT to CH2 only (the owner's choice, simpler and more stable); the gate then defaulted to it. Since 2026-11-04 the lead is on CH1 and the gate defaults to that (`H7_GATE_VOUT=2` for the earlier wiring); both pass.
 - Image 13 (build 15): no self-timed return to the boot loader by default, and control opcode 0x0044 `BOOT` restarts into it (docs/19).
   The "crash" at 19:33 and the loss of the unit at about 20:35 were the 30-minute window of image12a ending, not faults. The gate names the
   boot-loader state instead of "the daemon did not come up". Proven on the unit: opcode armed and the unit enumerated as 0483:5720; the flash
@@ -230,7 +230,7 @@ Each has a test in `tests/test_gui_h7.py` or `tests/test_daemon_api.py` that fai
   underruns it (the positive control; the feeder's old 10 ms backoff fails the first half), and a unit leaving during capture is reported as a `device_error`
   and frames resume on return. What the simulation cannot show is the boot loader's own enumeration on a real host.
 - **T4, cursors**: with CH2 selected the time view's cursors read CH1's curve (`scope.curve` was set only by XY and the spectrum); fixed.
-- **Real unit**: the daemon gate and `tests/test_h7_unit.py` pass with VOUT on CH1 (`H7_GATE_VOUT=1`; the tier's default assumes CH2).
+- **Real unit**: the daemon gate and `tests/test_h7_unit.py` pass with VOUT on CH1 (`H7_GATE_VOUT=1`, now the default).
 - **Due smoke** (Track B, image `2809031`, no Due firmware source changed since): 258 passed, 17 skipped, **1 failed**:
   `test_integrity.py::test_device_generated_waveform_is_continuous[b]` reports a wrap-locked displacement of -26.5 codes (z 39.5 against a control of 3.5),
   3 of 3 runs. This is the issue #5 family on the board's image; nothing in this phase touches it, and it is left as found.

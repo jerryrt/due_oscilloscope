@@ -117,7 +117,7 @@ What needs wiring, and what does not:
 | tier | hardware | wiring |
 |---|---|---|
 | board-free, GUI, platform | none | none |
-| `tests/test_h7_unit.py` (`-m h7`) | the H7 running an image, on USB | **VOUT to CH2** (`H7_GATE_VOUT`, default 2; CH1 may be open). Only the sine and DC level checks use the lead; the other stages need the cable alone |
+| `tests/test_h7_unit.py` (`-m h7`) | the H7 running an image, on USB | **VOUT to CH1** (`H7_GATE_VOUT`, default 1; CH2 may be open). Only the sine and DC level checks use the lead; the other stages need the cable alone |
 | Due board tests (`-m due`) | a Due, native and programming ports | its loopback jumpers (each bench's page); the scope for `--dso` |
 
 `test_h7_unit.py` runs `targets/h7tool/measure/h7_daemon_gate.py`, the one

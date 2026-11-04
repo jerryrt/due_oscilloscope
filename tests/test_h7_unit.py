@@ -2,7 +2,7 @@
 
 It resolves `h7_unit`, so it carries the `h7` and `board` markers and the board-free gate never selects it; with no unit running an image it SKIPS
 naming why (boot loader, or absent) and --require-h7 turns that into a failure. The checks live in the gate script and nowhere else, so there is
-one definition of what "the H7 works" means. It needs the GUI venv (numpy, PySide6) and VOUT wired as the gate declares (H7_GATE_VOUT, default CH2)."""
+one definition of what "the H7 works" means. It needs the GUI venv (numpy, PySide6) and VOUT wired as the gate declares (H7_GATE_VOUT, default CH1)."""
 import os
 import subprocess
 import sys
