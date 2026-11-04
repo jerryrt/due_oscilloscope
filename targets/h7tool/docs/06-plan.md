@@ -48,7 +48,7 @@ host's board finder must key on this pair, not on Arduino's.
 7. **Control channel and host (7a done: docs/19; 7b first part done, part 2 planned: docs/20).** Identity, status, counters; the
    daemon and GUI take the v4 parser and a device table. Gate: a trace
    from the H7 with no special-casing.
-8. **Later.** 250M module, housekeeping channels.
+8. **LCD, keys and LEDs** (planned: docs/21), then the 250M module and housekeeping channels.
 
 ## Open
 Code-to-volts mapping and any oversampling shift (host side, from the
