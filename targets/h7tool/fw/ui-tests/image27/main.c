@@ -1260,6 +1260,14 @@ void (*const vectors[])(void) = {
 };
 
 
+#define SHADOW_BASE 0x24010000u                      /* AXI SRAM: 150 KB for the screen capture, unused by the rest of the image */
+const uint8_t *h7_screen(uint16_t *w, uint16_t *h, uint32_t *d)
+{
+	if (!h7ui_shadow()) return 0;
+	*w = H7LCD_W; *h = H7LCD_H; *d = h7ui_draw_count();
+	return h7ui_shadow();
+}
+
 /* ---- exploring hooks (image 27) ------------------------------------------------------------------------------ */
 static void ui_delay_us(uint32_t us)
 {
@@ -1296,7 +1304,8 @@ int h7_poke(uint32_t a, uint32_t v, unsigned w)
 
 /* ids and arguments (results in brackets):
  *  0                          : the clocks      [cpu_hz, DWT cycles per microsecond, SPI errors so far]
- *  1                          : delay + h7ui_expander_init() + h7lcd_init()   [expander found (1/0), cycles taken]
+ *  1                          : delay + h7ui_expander_init() + h7lcd_init(), the shadow copy for screen capture (H7_OP_SCREEN) on, the screen cleared to black
+ *                               [expander found (1/0), cycles taken]
  *  2  x y w h rgb565          : h7lcd_fill_rect   [cycles taken, SPI errors so far]
  *  3  level                   : h7ui_backlight
  *  4  led(0 CHG green, 1 CHG red, 2 RUN) level : h7ui_led
@@ -1312,7 +1321,11 @@ int h7_explore(unsigned id, const uint32_t *a, unsigned na, uint32_t *r, unsigne
 		r[0] = cpu_hz; r[1] = cpu_hz / 1000000u; r[2] = h7ui_spi_errors(); r[3] = h7ui_spi_status_at_error(); r[4] = h7ui_spi_control_at_error(); *nr = 5; return 0;
 	case 1:
 		t = DWT_CYCCNT; h7ui_set_delay(ui_delay_us);
+		R32(0x580244DCu) |= 1u << 31; (void)R32(0x580244DCu);                    /* AHB2ENR: SRAM3, where the DMA pixel is */
+		h7ui_set_dma_scratch((uint8_t *)0x30040000u);
+		h7ui_set_shadow((uint8_t *)SHADOW_BASE);
 		r[0] = (uint32_t)h7ui_expander_init(); h7lcd_init();
+		h7lcd_fill_dma(0, 0, 240, 320, 0);                                       /* the shadow now matches the glass: all black */
 		r[1] = DWT_CYCCNT - t; *nr = 2; return 0;
 	case 2:
 		if (na != 5) return -1;

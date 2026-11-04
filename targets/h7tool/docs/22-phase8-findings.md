@@ -305,6 +305,38 @@ and the data port still enumerated; it was recovered with the OK key
 at plug-in and has not recurred in about 25 minutes of resets, flashes
 and idling *(not explained)*.
 
+## PLL2 in the driver and screen capture (image 27, bench linux-x1, 2026-11-04)
+
+The driver starts PLL2 itself when it sets up SPI5 (`pll2_start`): only
+from the state the images leave RCC in (PLL1 from the HSE with M 5,
+PLL2 off with no input divider), HSE 25 MHz / 5 x 128 / 4 = 160 MHz,
+SPI45SEL moved onto it once PLL2 reports ready. A PLL that is already
+on, a different clock tree or no lock leaves SPI5 on the 100 MHz APB2
+clock and the PLL off again. The host model checks every register it
+writes (PLL1 untouched, the only CR bit changed is PLL2ON, SPI45SEL
+only after ready) and breaks each guard on purpose. On the unit the
+full-screen DMA fill takes 15.6 ms with it, shadow copy included.
+
+The panel cannot be read back (its data pad is the write line), so
+capture works from a shadow copy: `h7ui_set_shadow` gives the driver
+150 KB (image 27 uses AXI SRAM at 0x24010000) and every pixel sent is
+also stored there, big-endian RGB565. The shadow is the driver's record,
+not a reading of the glass: draw the whole screen once after switching
+it on (image 27 clears to black in its init). A solid DMA fill writes
+its shadow with 16-bit stores, because per-pixel stores cost 11 ms a
+frame. The DMA calls are not
+covered by the host model: they were checked on the unit, by comparing a
+capture of a band-and-grid pattern drawn with them against the pattern
+computed on the host, 0 of 230,400 bytes different.
+
+The protocol gained `SCREEN 0x48` (`fw/ctl_h7.h`): an empty body gives
+the size, format and a draw count; offset and count return up to 440
+bytes with the draw count, so a host can tell that the picture changed
+while it read. `tools/h7_screen.py` reads the whole picture (0.13 s on
+the unit), retries a torn read and writes a PNG. An image that keeps no
+shadow leaves it out of its capability list and answers
+CTL_ERR_OPCODE.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
@@ -313,8 +345,8 @@ and idling *(not explained)*.
 - Read the boot loader's board-flag test (RAM 0x24000270 + 12) and the
   app's channel writes to assign RUN and CHG among P1_0..3 and P1_5..6.
 - Get the AW9523B datasheet and confirm the register meanings.
-- Make the DMA path a start and poll pair, start PLL2 in the image's
-  clock setup, then run the display beside acquisition and the generator.
+- Make the DMA path a start and poll pair, then run the display beside
+  acquisition and the generator (the driver stops here for now).
 - Read what sets the model byte at 0x24000022, and which model this
   unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).
 - Compare with the app's table, starting from the string at 0x0812c716. A pin-decoding
