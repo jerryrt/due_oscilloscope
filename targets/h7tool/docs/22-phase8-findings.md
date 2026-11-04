@@ -292,6 +292,19 @@ clear) and started PLL2 at its reset divider (about 322 MHz), which may
 be what wedged it. If it comes back, the key-entered boot loader is the
 recovery.
 
+Without the boot loader screen first (same day). A plain software
+reset starts the app directly, with no boot-loader display state behind
+it: three of three resets gave a working SPI5, zero errors and the
+full-screen fills above, and then nine more resets and three flashes
+over USB with no key press did too. The screen was black after a reset
+only until the driver ran, as the init needs. So the display driver
+does not depend on the boot loader having set the panel up. Once,
+after the third of the first three resets, the control function
+stopped answering about two minutes later while the display stayed up
+and the data port still enumerated; it was recovered with the OK key
+at plug-in and has not recurred in about 25 minutes of resets, flashes
+and idling *(not explained)*.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
@@ -302,7 +315,6 @@ recovery.
 - Get the AW9523B datasheet and confirm the register meanings.
 - Make the DMA path a start and poll pair, start PLL2 in the image's
   clock setup, then run the display beside acquisition and the generator.
-- A run with no boot loader state behind it, if one can be reached.
 - Read what sets the model byte at 0x24000022, and which model this
   unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).
 - Compare with the app's table, starting from the string at 0x0812c716. A pin-decoding
