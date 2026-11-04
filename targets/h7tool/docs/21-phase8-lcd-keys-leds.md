@@ -50,6 +50,11 @@ P1_1 and RUN on P1_2. Still open: the keys (set aside by the owner), the
 backlight and LED behaviour with no boot loader state behind it, the
 hardware SPI5 path, and CHG's two colours.
 
+The driver for the display, the backlight and the LEDs is
+`fw/ui/h7_ui.c`. `tests/test_h7_ui.py` builds it for the host against a
+fake register file and checks the bytes and pins against docs/22;
+`fw/ui-tests/image23` runs it on the unit.
+
 ## Risks
 
 | Risk | Handling |
