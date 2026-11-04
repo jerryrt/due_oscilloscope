@@ -84,3 +84,7 @@ capability reply only when it provides them; any other image answers
 CTL_ERR_OPCODE. The ids of EXPLORE are in the comment above `h7_explore` in
 its `main.c`. POKE can write any peripheral register except the flash
 controller, so the caller is responsible for pins such as the buzzer's.
+
+Image 28 in `fw/image28/` is the first image with the display in it: image 17 plus the scope and generator monitor, the RUN LED and the
+screen capture opcode (docs/22). It is a real image under the `fw/imageNN` guards: it returns to the boot loader by control opcode
+only and has no timer.

@@ -347,6 +347,38 @@ the unit), retries a torn read and writes a PNG. An image that keeps no
 shadow leaves it out of its capability list and answers
 CTL_ERR_OPCODE.
 
+## The scope and generator monitor (image 28, bench linux-x1, 2026-11-04)
+
+Image 28 is image 17 with the display: `fw/ui/h7_mon.c` draws a 30 x 20 text screen (8 x 16 font from `tools/gen_font.py`) of the unit's
+state, `fw/ui/h7_ui.c` carries it, the RUN LED follows running or playing, and `tools/h7_screen.py` captures it over USB. It shows the
+scope (run state, channels, sample rate, gains and coupling, frames, sent, lost, missed/bad/overrun) and the generator (play state,
+update rate, units queued and consumed, underruns, minimum occupancy and resumes, short), with the up-time and build. Rows turn red or
+yellow on loss and underruns. It reads counters and configuration through `h7_get_status` and `h7_get_config` and never the sample
+stream, so CLAUDE.md invariant 1 holds for this target. A waveform trace would have to read samples; it is not built, and would be a
+debug-only build if it were.
+
+What it cost to share the loop with acquisition, measured by DWT cycle counts on the unit and by the device's own loss counters
+(`STATUS`, 10 s at each rate, the same run on image 17 as control):
+
+| version | worst main-loop step | lost at 2.0 and 2.5 MS/s in 10 s |
+|---|---|---|
+| a row drawn in one step, shadow copied from the DMA buffer | 1670 us (render 430, shadow 1230) | gate fails at 1 MS/s |
+| row copied from fast RAM, one step per row | 334 us | 2 and 3 frames |
+| row in slices, blocking LED write | 92 us | 2 and 3 frames |
+| row in slices, LED written one bus edge per pass | about 45 us | **0 and 0**, as image 17 |
+
+Three things were learned, each by profiling and none by guessing. The CPU reading a buffer in SRAM3 costs about 60 cycles a byte, so
+the shadow is copied from a core-coupled RAM copy and nothing is read back from the DMA buffer. A row done in one step is too long for
+the top rate, where a frame arrives every 0.4 ms: it is done in slices of a few tens of microseconds. The blocking I2C write of the LED
+(87 bus phases of 20 us, 1.8 ms) costs 2 or 3 frames each time the scope starts, and only the top rates show it; the daemon gate at 1 MS/s
+did not. The display DMA's priority made no difference, and rendering alone did not either. With the unit running image 28 the gate passes
+three times in a row and the loss test shows nothing lost at 1, 2 and 2.5 MS/s. A session that plays and captures with the slow Python reader
+(`h7_play_check.py`) loses frames on image 17 as well, 996 against 642 shown on the screen at that moment, so the red `lost` there is the
+host's.
+
+DMA2 stream 3 and DMAMUX1 channel 11 belong to the display; the ADCs use DMA1 stream 1 and DMA2 stream 1, the generator DMA1 stream 5. The
+line buffer and the pixel scratch are in SRAM3, the capture shadow (150 KB) in AXI SRAM, the row being drawn in core-coupled RAM.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
