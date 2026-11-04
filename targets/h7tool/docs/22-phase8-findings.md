@@ -90,6 +90,25 @@ all the same.
 Which model byte this unit's boot loader holds, and whether the app uses
 the same table, are not yet read.
 
+## First LCD run (image 18a, bench linux-x1, 2026-11-03)
+
+`fw/image18` drives the pins above with a hand-clocked SPI, the boot
+loader's model 0/1 table, a four-band test pattern and a 10% PWM on PH9,
+for 20 s, then returns to the boot loader. Observed by the owner:
+
+| Item | Result |
+|---|---|
+| Panel power PH15, reset PB6, CS PE1, D/C PG15, SCK PH6, data PH7 | Correct: the pattern is right |
+| Init table, model 0/1 | Correct: the image is right |
+| PH9 at 10% duty, 20 kHz | **The buzzer sounded for the whole run** |
+
+So on this unit PH9 reaches the buzzer, as the stock app's buzzer code
+says (docs/03), and a 10% PWM is enough to sound it. Whether PH9 also
+lights the backlight is not settled by this run: the owner saw the image
+with PH9 driven, which does not separate "PH9 is the backlight" from
+"the backlight is lit some other way". Image 18b leaves PH9 alone to
+separate them.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
