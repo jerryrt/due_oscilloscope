@@ -23,6 +23,9 @@
 #define RCC_PLL1FRACR 0x58024434u
 #define RCC_PLL2DIVR  0x58024438u
 #define RCC_D2CCIP1R  0x58024450u
+#define RCC_AHB1ENR   0x58024538u
+#define DMA2_S3       0x40020458u
+#define DMAMUX1_C11   0x4002082Cu
 
 static struct { uint32_t a, v; } regs[256];
 static int nregs;
@@ -38,6 +41,32 @@ static uint32_t *slot(uint32_t a)
 	regs[nregs].a = a; regs[nregs].v = 0; return &regs[nregs++].v;
 }
 
+/* ---- the panel's memory: fed by every byte sent, whichever way it travelled, as the oracle for the shadow copy ---- */
+static uint8_t panel[240 * 320 * 2];
+static unsigned pn_win[4], pn_cx, pn_cy;                  /* x0 x1 y0 y1, then the write cursor */
+static int pn_cmd = -1, pn_nd, pn_have_hi; static uint8_t pn_hi;
+static unsigned long pn_bytes, pn_sum;
+static void panel_byte(int data, uint8_t b)
+{
+	if (!data) {
+		pn_cmd = b; pn_nd = 0; pn_have_hi = 0;
+		if (b == 0x2C) { pn_cx = pn_win[0]; pn_cy = pn_win[2]; }
+		return;
+	}
+	if (pn_cmd == 0x2A || pn_cmd == 0x2B) {
+		static uint8_t a[4];
+		a[pn_nd & 3] = b;
+		if (++pn_nd == 4) { unsigned lo = (unsigned)(a[0] << 8 | a[1]), hi = (unsigned)(a[2] << 8 | a[3]);
+			if (pn_cmd == 0x2A) { pn_win[0] = lo; pn_win[1] = hi; } else { pn_win[2] = lo; pn_win[3] = hi; } }
+	} else if (pn_cmd == 0x2C) {
+		pn_bytes++; pn_sum += b;
+		if (!pn_have_hi) { pn_hi = b; pn_have_hi = 1; return; }
+		pn_have_hi = 0;
+		if (pn_cx < 240 && pn_cy < 320) { panel[(pn_cy * 240 + pn_cx) * 2] = pn_hi; panel[(pn_cy * 240 + pn_cx) * 2 + 1] = b; }
+		if (++pn_cx > pn_win[1]) { pn_cx = pn_win[0]; if (++pn_cy > pn_win[3]) pn_cy = pn_win[2]; }
+	}
+}
+
 /* ---- SPI sniffer ---- */
 static int spi_bits; static uint8_t spi_shift;
 static void spi_on_write(void)
@@ -50,6 +79,7 @@ static void spi_on_write(void)
 		spi_shift = (uint8_t)((spi_shift << 1) | ((odr[3] >> 7) & 1));
 		if (++spi_bits == 8) {
 			if (!quiet) printf("S %c %02x\n", ((odr[2] >> 15) & 1) ? 'D' : 'C', spi_shift);
+			panel_byte((odr[2] >> 15) & 1, spi_shift);
 			spi_bits = 0;
 		}
 	}
@@ -127,6 +157,9 @@ static void i2c_update(int old_scl, int old_sda)
 static uint32_t sp_cr1, sp_cr2, sp_cfg1, sp_cfg2;
 static int sp_active; static uint32_t sp_done; static int sp_dc, sp_cs_low, sp_eot_cleared, sp_eot_polls, sp_eot_seen;
 static int pll_dead, pll_reads_left, pll_cr_writes;
+static const uint8_t *dma_ptr; static int dma_chunks[8], dma_nchunks, dma_hang;
+static void dma_emulate(void);
+uint32_t h7ui_host_ptr(const void *p) { dma_ptr = (const uint8_t *)p; return 0x30040000u; }
 static int sp_bad, sp_stuck, sp_modf; static unsigned long sp_sr_reads;
 #define SPI_BAD(...) do { printf("BAD "); printf(__VA_ARGS__); printf("\n"); sp_bad++; } while (0)
 
@@ -162,6 +195,7 @@ static void sp_write_cr1(uint32_t v)
 	if (spe && start && !sp_active) {
 		if (!sp_cs_low) SPI_BAD("transfer started with chip select high");
 		sp_active = 1; sp_done = 0; sp_dc = (int)((odr[2] >> 15) & 1); sp_eot_cleared = 0; sp_eot_polls = 0; sp_eot_seen = 0;
+		if ((sp_cfg1 >> 15) & 1u) { if (dma_hang) { sp_done = 0; sp_stuck = 1; } else dma_emulate(); }
 	}
 	if (!spe && spe_old && sp_stuck) { sp_active = 0; }
 	else if (!spe && spe_old) {
@@ -174,11 +208,28 @@ static void sp_write_cr1(uint32_t v)
 	sp_modf_check();
 }
 
+static void dma_emulate(void)
+{
+	uint32_t cr = *slot(DMA2_S3), ndtr = *slot(DMA2_S3 + 4), par = *slot(DMA2_S3 + 8), m0 = *slot(DMA2_S3 + 0xC), fcr = *slot(DMA2_S3 + 0x14);
+	int circ = (cr >> 8) & 1;
+	if (!(cr & 1u)) { printf("BAD TXDMAEN set but the stream is off\n"); sp_bad++; }
+	if (par != SPI5 + 0x20u) { printf("BAD DMA peripheral address %08x\n", par); sp_bad++; }
+	if (((cr >> 6) & 3u) != 1u) { printf("BAD DMA direction not memory to peripheral\n"); sp_bad++; }
+	if (!((cr >> 10) & 1u) || ((cr >> 11) & 3u) || ((cr >> 13) & 3u)) { printf("BAD DMA memory increment or data sizes\n"); sp_bad++; }
+	if (fcr & 0x87u) { printf("BAD DMA FIFO mode\n"); sp_bad++; }
+	if (*slot(DMAMUX1_C11) != 86u) { printf("BAD DMAMUX request %u\n", *slot(DMAMUX1_C11)); sp_bad++; }
+	if (circ ? ndtr != 2u : ndtr != sp_cr2) { printf("BAD DMA count %u for %u frames, circular %d\n", ndtr, sp_cr2, circ); sp_bad++; }
+	if (dma_nchunks < 8) dma_chunks[dma_nchunks++] = (int)sp_cr2;
+	for (uint32_t i = 0; i < sp_cr2; i++) panel_byte(sp_dc, dma_ptr[(m0 - 0x30040000u) + (circ ? i % ndtr : i)]);
+	sp_done = sp_cr2;
+}
+
 static void sp_txdr8(uint8_t b)
 {
 	if (!sp_active) { SPI_BAD("TXDR written with no transfer running"); return; }
 	if (sp_done >= sp_cr2) { SPI_BAD("TXDR written past TSIZE"); return; }
 	sp_done++;
+	panel_byte(sp_dc, b);
 	if (!quiet) printf("S %c %02x\n", sp_dc ? 'D' : 'C', b);
 }
 
@@ -187,6 +238,10 @@ static int forbidden;
 uint32_t h7ui_host_rd(uint32_t a)
 {
 	if ((a & ~0x3FFu) == GPIOG && (a & 0x3FFu) == 0x10) return (uint32_t)sda_line();
+	if (a == SPI5 + 0x00u) return sp_cr1;
+	if (a == SPI5 + 0x04u) return sp_cr2;
+	if (a == SPI5 + 0x08u) return sp_cfg1;
+	if (a == SPI5 + 0x0Cu) return sp_cfg2;
 	if (a == SPI5 + 0x14u) {
 		uint32_t sr = 0;
 		sp_sr_reads++;
@@ -232,6 +287,7 @@ void h7ui_host_wr(uint32_t a, uint32_t v)
 		if (a == RCC_D2CCIP1R && ((v ^ old) & ~(7u << 16))) printf("BAD D2CCIP1R bits other than SPI45SEL changed\n"), forbidden++;
 		*slot(a) = v; return;
 	}
+	if (a == RCC_AHB1ENR || (a >= 0x40020400u && a < 0x40020500u) || (a >= 0x40020800u && a < 0x40020880u)) { *slot(a) = v; return; }
 	if (a != RCC_AHB4ENR && a != RCC_APB2ENR && pi < 0) { printf("BAD address %08x\n", a); forbidden++; return; }
 	if (pi == 3 && off == 0x18 && (v & ((1u << 9) | (1u << 25)))) { printf("BAD PH9 written\n"); forbidden++; }
 	if (pi == 2 && off == 0x18 && (v & ((1u << 1) | (1u << 17)))) { printf("BAD PG1 written\n"); forbidden++; }
@@ -316,10 +372,58 @@ int main(int argc, char **argv)
 		unsigned guard_bad = 0;
 		for (int i = 0; i < 16; i++) { if (buf[i] != 0xA5) guard_bad++; if (buf[16 + 240 * 320 * 2 + i] != 0xA5) guard_bad++; }
 		printf("guard %u\ndraws %u\n", guard_bad, (unsigned)h7ui_draw_count());
+		{ unsigned d = 0; for (unsigned i = 0; i < 240 * 320 * 2; i++) if (buf[16 + i] != panel[i]) d++; printf("panel_diff %u\n", d); }
 		for (unsigned y = 0; y < 320; y++) for (unsigned x = 0; x < 240; x++) {
 			const uint8_t *p = buf + 16 + (y * 240 + x) * 2;
 			if (p[0] || p[1]) printf("px %u %u %02x%02x\n", x, y, p[0], p[1]);
 		}
+	}
+	else if (!strncmp(sc, "dma_", 4)) {
+		static uint8_t buf[16 + 240 * 320 * 2 + 16], scratch[4], src[240 * 320 * 2];
+		memset(buf, 0xA5, sizeof buf); memset(buf + 16, 0, 240 * 320 * 2);
+		for (unsigned i = 0; i < sizeof src; i++) src[i] = (uint8_t)(i * 7u + 3u);
+		h7ui_set_shadow(buf + 16);
+		if (strcmp(sc, "dma_noscratch")) h7ui_set_dma_scratch(scratch);
+		quiet = 1; h7lcd_init(); memset(panel, 0, sizeof panel);
+		if (!strcmp(sc, "dma_fill")) {
+			printf("ret %d\n", h7lcd_fill_dma(0, 0, 240, 320, 0x0F0F));              /* the whole screen: three chunks */
+			printf("chunks %d %d %d n %d\n", dma_chunks[0], dma_chunks[1], dma_chunks[2], dma_nchunks);
+			printf("ret %d\n", h7lcd_fill_dma(2, 3, 4, 2, 0xF81F));
+			printf("ret %d\n", h7lcd_fill_dma(230, 310, 20, 20, 0x1234));            /* clipped */
+			printf("ret %d\n", h7lcd_fill_dma(240, 0, 4, 4, 0x1111));                /* outside: refused */
+			printf("ret %d\n", h7lcd_fill_dma(0, 0, 0, 4, 0x1111));
+		} else if (!strcmp(sc, "dma_blit")) {
+			h7lcd_begin(10, 20, 3, 2); printf("ret %d\n", h7lcd_blit(src, 12)); h7lcd_end();
+			h7lcd_begin(0, 0, 2, 2);
+			printf("ret %d\n", h7lcd_blit(src, 3));                                  /* odd: refused */
+			printf("ret %d\n", h7lcd_blit(src, 10));                                 /* more than the window */
+			printf("ret %d\n", h7lcd_blit(src, 0));
+			h7lcd_end();
+			printf("ret %d\n", h7lcd_blit(src, 2));                                  /* no window open */
+			h7lcd_begin(0, 0, 240, 320); printf("ret %d\n", h7lcd_blit(src, 240 * 320 * 2)); h7lcd_end();
+			printf("chunks %d %d %d n %d\n", dma_chunks[0], dma_chunks[1], dma_chunks[2], dma_nchunks);
+		} else if (!strcmp(sc, "dma_stuck")) {
+			dma_hang = 1;                                                              /* the transfer starts and never reports its end */
+			printf("ret %d\n", h7lcd_fill_dma(0, 0, 4, 2, 0xFFFF));
+			sp_stuck = 0; dma_hang = 0;
+			printf("dma_stream_left %u\n", *slot(DMA2_S3) & 1u);
+		} else if (!strcmp(sc, "dma_after_fallback")) {
+			sp_stuck = 1; h7lcd_fill_rect(0, 0, 2, 2, 0x1234); sp_stuck = 0;       /* SPI5 gives up, the pins take over */
+			printf("ret %d\n", h7lcd_fill_dma(0, 0, 4, 2, 0xFFFF));                   /* DMA is not attempted */
+		} else if (!strcmp(sc, "dma_begin_stuck")) {
+			sp_stuck = 1;                                                              /* SPI5 dead already while the window is being opened */
+			printf("ret %d\n", h7lcd_fill_dma(0, 0, 4, 2, 0xFFFF));
+			sp_stuck = 0;
+			printf("chunks_n %d\n", dma_nchunks);
+		} else if (!strcmp(sc, "dma_noscratch")) {
+			printf("ret %d\n", h7lcd_fill_dma(0, 0, 4, 2, 0xFFFF));
+		}
+		quiet = 0;
+		unsigned diff = 0, guard = 0;
+		for (unsigned i = 0; i < 240 * 320 * 2; i++) if (buf[16 + i] != panel[i]) diff++;
+		for (int i = 0; i < 16; i++) { if (buf[i] != 0xA5) guard++; if (buf[16 + 240 * 320 * 2 + i] != 0xA5) guard++; }
+		printf("panel_diff %u\nguard %u\ndma_errors %u\ndma_bytes %lu\ndma_left %d\n", diff, guard, h7ui_dma_errors(), pn_bytes,
+		       (int)((*slot(DMA2_S3) & 1u) || (sp_cfg1 & (1u << 15))));
 	}
 	else if (!strcmp(sc, "nochip")) { chip_present = 0; printf("R %d\n", h7ui_expander_init()); }
 	else { printf("unknown scenario\n"); return 2; }

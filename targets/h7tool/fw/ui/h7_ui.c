@@ -9,6 +9,7 @@
 uint32_t h7ui_host_rd(uint32_t addr);
 void     h7ui_host_wr(uint32_t addr, uint32_t val);
 void     h7ui_host_wr8(uint32_t addr, uint8_t val);
+uint32_t h7ui_host_ptr(const void *p);                  /* a 32-bit token for a host pointer, which the model maps back */
 #define REG_RD(a)     h7ui_host_rd(a)
 #define REG_WR(a, v)  h7ui_host_wr((a), (v))
 #define REG_WR8(a, v) h7ui_host_wr8((a), (v))
@@ -16,6 +17,11 @@ void     h7ui_host_wr8(uint32_t addr, uint8_t val);
 #define REG_RD(a)     (*(volatile uint32_t *)(a))
 #define REG_WR(a, v)  (*(volatile uint32_t *)(a) = (v))
 #define REG_WR8(a, v) (*(volatile uint8_t *)(a) = (uint8_t)(v))
+#endif
+#ifdef H7UI_HOST
+#define DMA_ADDR(p) h7ui_host_ptr(p)
+#else
+#define DMA_ADDR(p) ((uint32_t)(uintptr_t)(p))
 #endif
 
 #define RCC_AHB4ENR 0x58024540u
@@ -367,7 +373,7 @@ static int dma_chunk(const uint8_t *src, uint32_t bytes, uint32_t circ)
 	REG_WR(DMA2_LIFCR, 0x3Du << 22);                                            /* every stream 3 flag */
 	REG_WR(DMAMUX1_C11, DMAREQ_SPI5_TX);
 	REG_WR(DMA2_S3 + 0x08u, SPI_TXDR);
-	REG_WR(DMA2_S3 + 0x0Cu, (uint32_t)(uintptr_t)src);
+	REG_WR(DMA2_S3 + 0x0Cu, DMA_ADDR(src));
 	REG_WR(DMA2_S3 + 0x04u, circ ? circ : bytes);
 	REG_WR(DMA2_S3 + 0x14u, 0);                                                 /* direct mode */
 	REG_WR(DMA2_S3, (3u << 16) | (1u << 10) | (1u << 6) | (circ ? (1u << 8) : 0u));   /* high priority, memory increment, memory to peripheral */
@@ -379,9 +385,9 @@ static int dma_chunk(const uint8_t *src, uint32_t bytes, uint32_t circ)
 	int ok = dma_wait(SPI_SR, SPI_SR_EOT, SPI_SR_EOT, 40u * bytes + 100000u);   /* well over the wire time at the slowest clock */
 	REG_WR(DMA2_S3, 0);
 	dma_wait(DMA2_S3, 1u, 0, 1000u);
-	REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) & ~(1u << 15));
 	REG_WR(SPI_IFCR, SPI_IFCR_ALL);
-	REG_WR(SPI_CR1, SPI_CR1_SSI);
+	REG_WR(SPI_CR1, SPI_CR1_SSI);                                              /* SPE off first: CFG1 is only writable then */
+	REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) & ~(1u << 15));
 	return ok;
 }
 
@@ -408,6 +414,7 @@ int h7lcd_fill_dma(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t c)
 	if (w > H7LCD_W - x) w = H7LCD_W - x;
 	if (h > H7LCD_H - y) h = H7LCD_H - y;
 	if (!h7lcd_begin(x, y, w, h)) return 0;
+	if (!hw_active) { h7lcd_end(); return 0; }                              /* the window set-up itself fell back to the pins */
 	dma_scratch[0] = (uint8_t)(c >> 8); dma_scratch[1] = (uint8_t)c;
 	for (uint32_t left = w * h * 2u; left; ) {
 		uint32_t n = left > SPI_CHUNK_MAX ? SPI_CHUNK_MAX : left;

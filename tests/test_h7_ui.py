@@ -51,7 +51,7 @@ def run(exe, scenario):
     bad = [l for l in out if l.startswith("BAD")]
     assert not bad, bad                            # the fake peripheral objects to a misuse in words
     assert "forbidden 0" in out
-    if scenario != "spi_stuck":
+    if scenario not in ("spi_stuck", "dma_after_fallback", "dma_begin_stuck"):
         assert "spi_errors 0" in out
     return out
 
@@ -274,3 +274,78 @@ def test_a_fault_in_the_shadow_copy_is_caught(tmp_path, old, new, what):
     out = subprocess.run([mut, "shadow"], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
     got = {(int(l.split()[1]), int(l.split()[2])): l.split()[3] for l in out if l.startswith("px ")}
     assert got != EXPECT_SHADOW or "draws 4" not in out or "guard 0" not in out, what
+
+
+def rets(out): return [l for l in out if l.startswith(("ret ", "chunks "))]
+
+
+def test_the_panel_model_and_the_shadow_agree_after_cpu_drawing(exe):
+    """The harness builds the panel's memory from the bytes that were actually sent, by whichever route; the shadow must equal it."""
+    assert "panel_diff 0" in run(exe, "shadow")
+
+
+def test_dma_fills_reach_the_panel_and_the_shadow_in_three_chunks(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "dma_fill")
+    assert rets(out) == ["ret 1", "chunks 65534 65534 22532 n 3", "ret 1", "ret 1", "ret 0", "ret 0"]
+    assert "panel_diff 0" in out and "guard 0" in out and "dma_errors 0" in out and "dma_left 0" in out
+    assert "dma_bytes %d" % (153600 + 16 + 200) in out                                # the clipped 10 x 10 corner is 200 bytes
+
+
+def test_dma_blits_chunk_the_buffer_and_refuse_what_does_not_fit(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "dma_blit")
+    assert rets(out) == ["ret 1", "ret 0", "ret 0", "ret 0", "ret 0", "ret 1", "chunks 12 65534 65534 n 4"]
+    assert "panel_diff 0" in out and "guard 0" in out and "dma_left 0" in out and "dma_bytes %d" % (12 + 153600) in out
+
+
+def test_a_dma_transfer_that_never_ends_is_given_up_cleanly(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "dma_stuck")
+    assert rets(out) == ["ret 0"] and "dma_errors 1" in out and "dma_stream_left 0" in out and "dma_left 0" in out
+    assert "panel_diff 0" in out                                                      # nothing half-recorded in the shadow
+
+
+def test_dma_is_not_attempted_without_a_scratch_pixel_or_after_the_pins_took_over(tmp_path):
+    exe_ = build(str(tmp_path), hw=1)
+    out = run(exe_, "dma_noscratch")
+    assert rets(out) == ["ret 0"] and "dma_bytes 0" in out and "panel_diff 0" in out and "dma_errors 0" in out
+    out = run(exe_, "dma_after_fallback")
+    assert rets(out) == ["ret 0"] and "spi_errors 1" in out and "dma_errors 0" in out and "panel_diff 0" in out
+    assert "dma_bytes 8" in out                                                       # only the 2 x 2 fill the pins drew
+
+
+def test_a_window_that_falls_back_to_the_pins_does_not_start_dma(tmp_path):
+    out = run(build(str(tmp_path), hw=1), "dma_begin_stuck")
+    assert rets(out) == ["ret 0"] and "chunks_n 0" in out and "spi_errors 1" in out and "dma_errors 0" in out
+    assert "panel_diff 0" in out and "dma_left 0" in out
+
+
+def test_the_hand_clocked_build_refuses_dma_and_still_matches(tmp_path):
+    out = run(build(str(tmp_path), hw=0), "dma_fill")
+    assert rets(out)[0] == "ret 0" and "panel_diff 0" in out
+
+
+@pytest.mark.parametrize("old, new, what", [
+    ("\tshadow_rect(w, h, dma_scratch[0], dma_scratch[1]);", "\tshadow_rect(w, h, 0, 0);", "DMA fill not mirrored"),
+    ("\tfor (uint32_t i = 0; i < bytes; i += 2) shadow_put(src[i], src[i + 1]);", "", "blit not mirrored"),
+    ("(1u << 10) | (1u << 6)", "(1u << 10)", "DMA direction"),
+    ("REG_WR(DMAMUX1_C11, DMAREQ_SPI5_TX);", "REG_WR(DMAMUX1_C11, DMAREQ_SPI5_TX + 1u);", "DMAMUX request"),
+    ("circ ? circ : bytes", "bytes", "circular count"),
+    ("REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) | (1u << 15));", "", "TXDMAEN"),
+    ("REG_WR(SPI_CFG1, REG_RD(SPI_CFG1) & ~(1u << 15));", "", "TXDMAEN left on"),
+    ("#define SPI_CHUNK_MAX  65534u", "#define SPI_CHUNK_MAX  65535u", "odd chunk size"),
+    ("|| bytes / 2u > pix_left", "", "blit bound"),
+    ("REG_WR(DMA2_S3, 0);\n\tdma_wait(DMA2_S3, 1u, 0, 1000u);", "dma_wait(DMA2_S3, 1u, 0, 1000u);", "stream left on"),
+])
+def test_a_fault_in_the_dma_path_is_caught(tmp_path, old, new, what):
+    src = open(os.path.join(FW, "h7_ui.c"), encoding="utf-8").read()
+    assert src.count(old) == 1, what
+    bad = tmp_path / "h7_ui_mut.c"
+    bad.write_text(src.replace(old, new), encoding="utf-8")
+    mut = build(str(tmp_path), str(bad), hw=1)
+    fine = True
+    for sc, want in (("dma_fill", ["ret 1", "chunks 65534 65534 22532 n 3", "ret 1", "ret 1", "ret 0", "ret 0"]),
+                     ("dma_blit", ["ret 1", "ret 0", "ret 0", "ret 0", "ret 0", "ret 1", "chunks 12 65534 65534 n 4"]),
+                     ("dma_stuck", ["ret 0"]), ("dma_begin_stuck", ["ret 0"])):
+        out = subprocess.run([mut, sc], capture_output=True, text=True, timeout=pacing.NORMAL).stdout.splitlines()
+        fine &= (not any(l.startswith("BAD") for l in out) and "forbidden 0" in out and rets(out) == want
+                 and "panel_diff 0" in out and "guard 0" in out and "dma_left 0" in out)
+    assert not fine, what

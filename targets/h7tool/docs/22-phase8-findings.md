@@ -324,10 +324,20 @@ also stored there, big-endian RGB565. The shadow is the driver's record,
 not a reading of the glass: draw the whole screen once after switching
 it on (image 27 clears to black in its init). A solid DMA fill writes
 its shadow with 16-bit stores, because per-pixel stores cost 11 ms a
-frame. The DMA calls are not
-covered by the host model: they were checked on the unit, by comparing a
-capture of a band-and-grid pattern drawn with them against the pattern
-computed on the host, 0 of 230,400 bytes different.
+frame.
+
+The host model now covers all of it. It builds the panel's memory from
+the bytes that were actually sent, by the pins, by SPI5 or by DMA, and
+the tests require the shadow to equal it; it models DMA2 stream 3 and the
+DMAMUX request (direction, sizes, circular count, TXDMAEN, stream left
+off) and the cases that must not start DMA: no scratch pixel, SPI5
+already fallen back, the window set-up falling back, a transfer that
+never ends. Each guard is broken on purpose in the tests. On the unit
+the same check is a capture of a band-and-grid pattern drawn by DMA
+against the pattern computed on the host: 0 of 230,400 bytes different.
+Two driver faults came out of writing it: `h7lcd_fill_dma` did not
+re-check SPI5 after opening its window, and TXDMAEN was cleared while
+SPE was still on.
 
 The protocol gained `SCREEN 0x48` (`fw/ctl_h7.h`): an empty body gives
 the size, format and a draw count; offset and count return up to 440
