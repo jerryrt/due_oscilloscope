@@ -184,10 +184,10 @@ The Modbus register map (e.g. 0xFF07 app version, 0xFF00-0xFF05 UID, 0xFF7F boot
 
 | item | value | source | tag |
 |---|---|---|---|
-| Panel | 1.3 inch, **240x240 colour**, controller **ST7789**, SPI, on the display board D254 (rev 3.0, 2019-10-19) through a 12-pin FPC (CN1/CN3) | D254; `bsp/bsp_tft_st7789.c` header | VERIFIED-IN-SCHEMATIC (board), FROM-PUBLIC-SOURCE (controller part) |
-| SPI | **SPI5** master, SCK **PH6** (AF5), data **PH7** (AF5, the pad named SPI5_MISO; stock uses `IOSwap = ENABLE` so the shifted data appears on it), CS **PE1** (software GPIO), D/C (called LCD_RS) **PG15**, reset **PB6** | SCH-3; `bsp_tft_st7789.c` lines 70-105, 155-175 | VERIFIED-IN-SCHEMATIC for the net names, FROM-PUBLIC-SOURCE for the IOSWAP trick |
-| Backlight | **PH9**, TIM12_CH2 PWM (stock 20 kHz) -> transistor Q1 on the display board; LED supply +5V | SCH-3, D254; `bsp_tft_lcd.c:196` | VERIFIED-IN-SCHEMATIC |
-| Panel power enable | **PH15** (LCD_PWR_EN) -> LDO GM6155 EN on D254, 3.3 V TFT supply | D254; source | VERIFIED-IN-SCHEMATIC |
+| Panel | **ST7789**, SPI. On the D428-9 unit the glass shows all of the controller's 240x320 memory in portrait: with MADCTL 0xC0 and a window of columns 0..239 and rows 0..319 the picture is upright (docs/22, OBSERVED); a 240-row picture leaves 80 rows unwritten. The schematic and source say 1.3 inch, **240x240 colour**, SPI, on the display board D254 (rev 3.0, 2019-10-19) through a 12-pin FPC (CN1/CN3) | D254; `bsp/bsp_tft_st7789.c` header | VERIFIED-IN-SCHEMATIC (board), FROM-PUBLIC-SOURCE (controller part) |
+| SPI | **SPI5** master, SCK **PH6** (AF5), data **PH7** (AF5, the pad named SPI5_MISO; stock uses `IOSwap = ENABLE` so the shifted data appears on it), CS **PE1** (software GPIO), D/C (called LCD_RS) **PG15**; the schematic and source give reset **PB6**, but on the D428-9 unit PB6 is the I2C clock to the LED/key expander (docs/22) and the panel resets itself at power-on | SCH-3; `bsp_tft_st7789.c` lines 70-105, 155-175 | VERIFIED-IN-SCHEMATIC for the net names, FROM-PUBLIC-SOURCE for the IOSWAP trick |
+| Backlight | On the D428-9 unit with board register 0x4289 the backlight is **not on PH9**: it is dimmed by output P0_0 (register 0x24) of the I2C expander at 0xB6 on PB6 (SCL) and PG0 (SDA) (docs/22, OBSERVED: the brightness followed the register). The schematic and the public source give PH9, TIM12_CH2 PWM (20 kHz) -> transistor Q1, LED supply +5V, and the boot loader (v2.06) drives PH9 that way, but on this unit PH9 is the buzzer (section 6) | image 18b (docs/22); SCH-3, D254; `bsp_tft_lcd.c:196` | OBSERVED |
+| Panel power enable | **PH15** (LCD_PWR_EN) -> LDO GM6155 EN on D254, 3.3 V TFT supply | D254; source; image 18 (docs/22) | VERIFIED-IN-SCHEMATIC, OBSERVED |
 | Stock transfer | SPI5 16-bit frames, DMA2 Stream3, request `DMA_REQUEST_SPI5_TX`, prescaler 2, CPOL=1 CPHA=1edge, framebuffer in SRAM1 at 0x30000000 | `bsp_tft_st7789.c` | FROM-PUBLIC-SOURCE |
 
 Older hardware revisions in the source comment ("第4、5版", "旧版") used other pins (PG10, PF3, PG2, PC10, PC12 ...). The schematic and the "第6版" block agree with the table above, but V2.33 hardware could be a later revision: UNKNOWN. Pin numbers on the FPC itself were not decoded; the net names are what the table relies on.
@@ -196,10 +196,10 @@ Older hardware revisions in the source comment ("第4、5版", "旧版") used ot
 
 | item | pin | polarity | source | tag |
 |---|---|---|---|---|
-| Key S (KEY1) | **PF2** | active low (10K pull-up on D254) | SCH-2/3, D254; `bsp/bsp_key.c` `{GPIOF, GPIO_PIN_2, 0}` | VERIFIED-IN-SCHEMATIC |
+| Key S (KEY1) | **PF2** (PG0 for KEY2 below is the expander's SDA on the D428-9 unit, so the key pins on this unit are UNKNOWN) | active low (10K pull-up on D254) | SCH-2/3, D254; `bsp/bsp_key.c` `{GPIOF, GPIO_PIN_2, 0}` | VERIFIED-IN-SCHEMATIC |
 | Key C/OK (KEY2) | **PG0** | active low | same, `{GPIOG, GPIO_PIN_0, 0}` | VERIFIED-IN-SCHEMATIC |
-| LED | **PI8** (net LED_RED, goes to the display board as RUN_LED with a 2K resistor) | on = 0 (`LED1_ON()` = `BSP_SET_GPIO_0`) | `bsp/bsp_led.c`; D254 | FROM-PUBLIC-SOURCE (polarity) |
-| Buzzer | **PG1**, active buzzer through S8050 (Q8), 1k base | high = sounding | SCH-3; `bsp_beep.c` | VERIFIED-IN-SCHEMATIC |
+| LEDs | On the D428-9 unit they are outputs of the I2C expander at 0xB6, not PI8: **CHG** is P1_0 and P1_1 (a two-colour LED, green and red by one report each) and **RUN** is P1_2 (red); P1_3 lit nothing seen. Register 0x20 + n for output P1_n, 0x80 gives a visible brightness at a quarter of the current range (docs/22, OBSERVED). The schematic and source give RUN on PI8 (low = on) | docs/22; `bsp/bsp_led.c`; D254 | OBSERVED |
+| Buzzer | **PH9** on this unit (board register 0xFF60 = 0x4289): a 10 % PWM on it sounded the buzzer for a whole run and leaving it alone was silent. Boards with other board codes use **PG1** (active buzzer through S8050 (Q8), 1k base, high = sounding) | high = sounding; image 18a/18b (docs/22); stock app 0x0802b6e0 (docs/03); SCH-3, `bsp_beep.c` | OBSERVED (PH9), VERIFIED-IN-SCHEMATIC (PG1) |
 
 The boot loader's "hold S (old) / OK (new) at power-up" entry (DOC13/DOC14) means the stock boot reads one of these two keys. Which of PF2 / PG0 it reads, and whether V2.33 hardware is the "old" or "new" mapping, is UNKNOWN.
 An app does not need them to boot; they are only the recovery entry.
@@ -368,7 +368,7 @@ LAN8720A RMII (SCH-5): REF_CLK **PA1**, MDIO **PA2**, MDC **PC1**, CRS_DV **PA7*
 - **PF6** ESP32 EN: leave as input; the ESP32 pulls itself up.
 - **PG3** target-reset driver (Q11) and **PE4/PD3/PD4** target SWD lines: leave as inputs so the target is not reset.
 - **PE3** enables the +-12 V DAC supply: leave low until the DAC is wanted.
-- **PH15** LCD power, **PH9** backlight: only needed if the display is used.
+- **PH15** LCD power: only needed if the display is used. PH9 is the buzzer on this unit, so leave it alone.
 - **PI4, PI9, PG5**: 595 lines; leaving them as inputs lets the scope-module relays stay in their last state, so drive them to a known value if the module is plugged in.
 
 ## 16. What the boot loader and stock app depend on
@@ -406,7 +406,7 @@ SWD target interface: bidirectional through the same level shifters (section 12)
 2. Reset handler: set VTOR = 0x08020000; set up the stack; (optionally) clocks.
 3. Clock: the quickest safe state is HSI 64 MHz out of reset. The USB path then still works because the ULPI clock comes from the PHY. If the PLL is brought up, use the stock one: HSE 25 MHz, PLL1 M5 N160 P2 Q4 R2 VOS1, flash latency 4, HPRE /2, all APB /2.
    Power: leave `PWR->CR3` as stock (SCUEN cleared, LDO). **Do not touch option bytes.**
-4. One visible output: LED **PI8** (low = on, 8 mA class pin) and/or buzzer **PG1** (high = on); alternatively the backlight **PH9** + power **PH15** + LCD init if a screen is wanted.
+4. One visible output: LED **PI8** (low = on, 8 mA class pin) and/or buzzer **PG1** (high = on); alternatively power **PH15** + LCD init if a screen is wanted (the backlight needs no pin on this unit; keep PH9 untouched, it is the buzzer).
 5. Do not drive: PC13, PE3, PG3, PG4, PF6, the 595 lines; no flash/eMMC/EEPROM/QSPI write.
 
 ### (b) ULPI USB HS with 1024-byte HID Modbus-RTU framing
