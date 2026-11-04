@@ -112,13 +112,46 @@ backlight, belongs to another board code. Backlight brightness control
 on this unit is not known; the stock app's board-code flag (docs/03)
 selects the pin set and its other branch is unread.
 
+## The I2C LED and key chip (boot loader, code)
+
+The two-wire exchange on PB6 and PG0 is a soft **I2C bus, PB6 = SCL and
+PG0 = SDA**, and the device on it at 8-bit address **0xB6** (7-bit 0x5B)
+is a 16-bit I/O expander with LED dimming, **AW9523B** by its register
+map *(check against its datasheet, which is not in the repository)*.
+
+| Item | Finding | Where |
+|---|---|---|
+| Write primitive | start, address, register, value, each with an acknowledge, stop | `H7-BOOT.bin` 0x080009c8, bit routines 0x08010d28..0x08010e88 |
+| Init | register 0x04 = 0xFE, 0x05 = 0x90, 0x06 = 0xE1, 0x07 = 0xFF, 0x11 = 0x10, 0x12 = 0xFE, 0x13 = 0xF0 | 0x08011510 |
+| Mode bits | 0x12 = 0xFE puts P0_0 in LED mode and P0_1..7 in GPIO mode; 0x13 = 0xF0 puts P1_0..3 in LED mode and P1_4..7 in GPIO mode | same |
+| Dim channel to register | channels 0..7 use 0x24 + n, 8..11 use 0x20 + (n - 8), 12..15 use 0x2c + (n - 12) | 0x08000964 |
+| Backlight | `set_backlight(level)` at 0x080099a0 uses channel 0 (**P0_0**, register 0x24) when a board flag (RAM 0x24000270 + 12) is 1, and the PH9 PWM otherwise | 0x080099a0 |
+| Keys | the key function tests bits of a state byte (RAM + 14) | 0x080009f8 |
+
+So on a board with the chip the **backlight is chip output P0_0, not
+PH9**, and the chip's other LED-mode outputs, P1_0..3, are the candidates
+for the RUN and CHG LEDs. The schematics (D253-6, D254-6) are older than
+this unit and are not evidence here: they show no I2C chip and a PH9
+backlight, which the code and the runs contradict. What the evidence
+supports is that the boot loader drives the backlight through the chip
+before the app starts, and that the 18b image kept it lit without ever
+touching it, so the backlight is on only because something set it. That
+the display board needs a driven level, rather than staying on by
+itself, is read from the old D254 sheet (a 10 K pull-down on the
+transistor base) *(check)*. The same fact would explain why the PI8 run
+LED of image 1 showed nothing, if the LEDs are on the chip.
+
 ## Next
 
 - Locate the app's LCD, backlight, key and LED code (SPI5 base is not a
   literal in the app; search for the SPI5 register offsets and the
   display init sequence by its command bytes).
-- Find what sets the backlight on this unit and whether it can be dimmed
-  (the app's branch for board code 0x4280).
+- Read the boot loader's board-flag test (RAM 0x24000270 + 12) and the
+  app's channel writes to assign RUN and CHG among P1_0..3 and P1_5..6.
+- Get the AW9523B datasheet and confirm the register meanings.
+- A test image that drives the chip over PB6 and PG0 and dims the
+  backlight (P0_0) and the two LEDs, with a build that does not run the
+  chip init so the boot loader's leftover state is separated from ours.
 - Read what sets the model byte at 0x24000022, and which model this
   unit's panel is (1.3 inch 240x240 in docs/01 suggests model 0 or 1).
 - Compare with the app's table, starting from the string at 0x0812c716. A pin-decoding
