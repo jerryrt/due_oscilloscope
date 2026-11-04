@@ -98,9 +98,38 @@ module cannot be programmed: nothing in the vendor files says whether the module
 exists. Two things were needed before anything is written: the module's SWD pads or its USB boot mode (found: the USB socket, above),
 and a read-back of the whole flash first (done, above: the stock firmware keeps no calibration outside its image).
 
+## What the module's own firmware sets up (emulated start-up, not measured on hardware)
+
+`tools/rp2040_trace.py` runs the backed-up image from its reset vector in an emulator (`unicorn`, in a scratch venv; the boot ROM's first 8 KB are
+read from the module, the rest of the ROM cannot be read over PICOBOOT) and reports the registers it writes. The trace reaches the firmware's main
+loop, 40,407 register writes in, where it waits for something from outside (PIO FIFO and GPIO input reads), and is the same on every run. What it
+shows (**from the code**; the readings of what a pin is *for* are marked *inferred*):
+
+- **Clock.** 12 MHz crystal, PLL at 12 x 125 / (3 x 2) = **250 MHz** for the system clock (the RP2040 is overclocked from its 133 MHz), a second PLL at 48 MHz.
+- **Sample capture.** PIO0 state machine 0 runs `in pins, 16` from **GPIO0 to GPIO15**, autopush at 16 bits; seven DMA channels drain its FIFO into
+  seven 32 KB buffers at 0x20000000 (about 224 KB, which fits "200K depth"). Sixteen pins sampled together suggests two 8-bit channels, GPIO0 to 7
+  and GPIO8 to 15 *(inferred)*; the same sampler at 250 MHz is 250 Msps. The state machines are set to 125 for the divider at the end of start-up, so
+  the real rate is set when a capture is configured.
+- **Pacing.** State machine 1 of PIO0 is a counter (`pull`, `out y`, `jmp x--` loops, then `irq wait`) that sets GPIO25; state machine 0 waits on
+  GPIO25 and drives GPIO23 and GPIO24 with side-set. Both PIO0 interrupt lines are armed (IRQ0 for state-machine IRQ 0, IRQ1 for 1), but only
+  PIO0_IRQ_1 is enabled in the NVIC at the end of start-up. This is the pre-trigger and post-trigger machinery, so it is where the module's trigger lives.
+- **ADC clock.** GPIO22 is switched to PWM (slice 3, channel A); the PWM itself is not configured during start-up. It is probably the converter's sample
+  clock, set per rate *(inferred)*.
+- **Link to the H7: an SPI slave in PIO1, not a UART.** State machine 0 waits for GPIO29 low (chip select), then for GPIO18 rising, and samples
+  GPIO16 (`in pins, 1`, in_base 16); state machine 1 shifts out on GPIO19. So MOSI is GPIO16, SCK is GPIO18, MISO is GPIO19, CS is GPIO29, both at
+  a divider of 1 (250 MHz oversampling). That fits the H7's SPI4 (SDO D2, SDI D3, SCK D5) with D4 the chip select; the manual's UART pins (D0, D1)
+  are not used by this image at start-up.
+- **Other pins.** GPIO20 and GPIO21 are outputs (SIO) driven low with pull-ups; GPIO26 and GPIO27 are outputs (their ADC function unused). What they
+  switch is not shown by start-up code; the front end's range and coupling controls are the likely users *(inferred)*.
+- **Interrupt handlers present:** SysTick, PIO0 IRQ 0 and 1, GPIO bank 0 (a pin-change handler). None for USB, SPI, UART, DMA or ADC: the application
+  has no USB (as seen), and no hardware serial port.
+
+Not yet seen: the range, coupling and trigger code, which only runs when the H7 sends a command. The next step is to feed the emulator the same
+SPI words the H7 sends (a settings block write with a different range each time) and read the pin and PIO changes it causes.
+
 ## Writing our own firmware for it
 
 Possible in principle (the RP2040 is a generic part and the stock image is 49 KB), and it would let the trigger be done properly. Not started.
-What it needs that is not known: which RP2040 pins are the ADC data bus, the ADC clock, the front-end switches and offsets, and the link to
-the H7 (the stock image can be read for the pins its code configures, as the LCD was); and what the ADC and the front end are. The stock image
+What it still needs: the front-end controls (which pins set the range, coupling and offset, and with what words) and the ADC clock, from the command
+paths of the module's image (above: the capture bus, the SPI link and the clock are now known), and what the ADC and the front end are. The image
 names no parts. Measured so far: an 8-bit converter, the sample rate verified at 1 MS/s, the input range and gain table above.
