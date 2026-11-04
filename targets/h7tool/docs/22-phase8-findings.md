@@ -22,16 +22,18 @@ and the call-site counts were run on the two images.
 | Buzzer, app | Pin chosen by a flag from the board register: PH9 on this unit (docs/03) | app 0x0802b6e0 | code; the beep was heard |
 | Soft I2C (TVCC pot) | SCL PI7, SDA PF15 | `H7-BOOT.bin` 0x080127b0..0x08012964 | code; matches docs/03 |
 | SPI5 pins, boot loader | GPIOH clock on, SPI5 clock on (APB2ENR bit 20), **PH6 and PH7 as alternate function 5**, so SCK PH6 and data PH7 as in docs/01 | `H7-BOOT.bin` 0x08011b54..0x08011bd8 | code |
-| LCD control pins, boot loader | GPIOE, GPIOG, GPIOB and GPIOH clocks on; **PE1, PG15 and PB6 set as push-pull outputs** (CS, D/C and reset as in docs/01); PE1 driven high and PH6 high at start | `H7-BOOT.bin` 0x0800c114..0x0800c1ce | code |
+| LCD control pins, boot loader | GPIOE, GPIOG, GPIOB and GPIOH clocks on; **PE1, PG15 and PB6 set as push-pull outputs** (chip select and D/C as in docs/01; PB6 is the I2C clock, see below); PE1 driven high and PH6 high at start | `H7-BOOT.bin` 0x0800c114..0x0800c1ce | code |
 | SPI5 handle | 8-bit or 16-bit data size chosen by the caller (8 at 0x0800c56e), with an optional DMA setup | `H7-BOOT.bin` 0x080119fc | code |
 | PB6 and PG0 as a serial pair | A routine clocks 8 bits with PB6 toggled as a clock and PG0 as data in and out (BSRR on GPIOB and GPIOG, IDR on GPIOG bit 0) | `H7-BOOT.bin` 0x08010d28..0x08010e88 | code |
 | Panel identity | The app carries the text "ST7789 / %dx%d" and `lcd_*` drawing function names | app 0x0812c716, 0x080bf300 | code |
 | ULPI pins | AF10 on the ports listed in the boot loader's GPIO init at 0x08004fb0 | `H7-BOOT.bin` | code |
 
-PB6 is the LCD reset in docs/01, but the boot loader also toggles it as
-the clock of a two-wire serial exchange with PG0, and PG0 is the second
-key in docs/01. The boot loader's panel reset sequence uses PB6, so PB6 is the reset;
-the serial routine is a separate use of the pin and is not an LCD one.
+docs/01 gives PB6 as the LCD reset and PG0 as the second key. The boot
+loader pulses PB6 before the display commands, but PB6 is also the clock
+of the I2C bus to the expander (below) and PG0 its data line, and image
+19a showed the display undisturbed while PB6 toggled. So PB6 is the I2C
+clock, the panel resets itself at power-on, and the pulse is no proof of
+a reset line.
 
 PH9 is the backlight in the boot loader and the buzzer in the app on this
 unit's board code. Either the app drives the buzzer from the same pin as
@@ -59,7 +61,7 @@ Panel bring-up at 0x0800c850:
 2. A panel-model byte at RAM 0x24000022 (0 or 1 for the first
    sequence, 2 for the second) selects the sequence below.
 3. Delay 50000, PB6 low, delay 200, PB6 high, delay 10000, then the
-   commands. So **PB6 is the panel reset, low-active**.
+   commands. The pulse is on PB6, which is the I2C clock; see below.
 
 Commands for model 0 or 1 (0x0800c88e..0x0800c9f4), command then data:
 
@@ -98,7 +100,7 @@ for 20 s, then returns to the boot loader. Observed by the owner:
 
 | Item | Result |
 |---|---|
-| Panel power PH15, reset PB6, CS PE1, D/C PG15, SCK PH6, data PH7 | Correct: the pattern is right |
+| Panel power PH15, CS PE1, D/C PG15, SCK PH6, data PH7 | Correct: the pattern is right (PB6 was pulsed as well; it is not shown to be a panel reset) |
 | Init table, model 0/1 | Correct: the image is right |
 | PH9 at 10% duty, 20 kHz | **The buzzer sounded for the whole run** |
 
@@ -140,6 +142,28 @@ the display board needs a driven level, rather than staying on by
 itself, is read from the old D254 sheet (a 10 K pull-down on the
 transistor base) *(check)*. The same fact would explain why the PI8 run
 LED of image 1 showed nothing, if the LEDs are on the chip.
+
+## Image 19a: the expander, observed (bench linux-x1, 2026-11-03)
+
+`fw/image19` reads the expander's ID register over a hand-clocked I2C
+on PB6 (SCL) and PG0 (SDA), sets the boot loader's mode registers with
+the LED current at a quarter of the range, drives P1_0..P1_3 one at a
+time (register 0x20 + n, 3 s each), then steps the backlight output
+P0_0 (register 0x24) through off, 0x10, 0x80 and 0xFF.
+
+| Item | Result |
+|---|---|
+| ID register 0x10 read at 0xB6 | acknowledged and 0x23: the chip and the bus are as read from the boot loader |
+| P1_0..P1_3 stepped in turn | the RUN and the CHG LED both lit and went off; which output is which was not noted |
+| P0_0 dimming | the backlight brightness changed with the register |
+| Display during the I2C traffic | stayed correct |
+
+So PB6 and PG0 as I2C and the chip at 0xB6 are observed, and the
+backlight is dimmed by P0_0. The display staying correct while PB6
+toggled shows PB6 is not the panel reset; the panel resets itself at
+power-on, so the reset pulse in image 18 was not what made it work.
+The assignment of RUN and CHG to P1_0..P1_3 is still to be read off a
+run that names each step.
 
 ## Next
 
