@@ -134,3 +134,65 @@ def test_exploring_opcodes_refuse_what_the_image_refuses_and_malformed_bodies(xl
     assert call_err(xlib, 0x46, struct.pack("<IIB", 0x1000, 0, 3)) == 3        # width 3
     assert call_err(xlib, 0x47, bytes([1]) + b"\0" * 5) == 3                   # arguments not whole words
     assert call_err(xlib, 0x47, bytes([1]) + b"\0" * 28) == 3                  # seven arguments
+
+
+def test_screen_capture_is_absent_unless_the_image_keeps_a_shadow(lib):
+    assert call_err(lib, 0x48) == 2                                              # CTL_ERR_OPCODE, not zeroes
+    f = call(lib, ctl.OP_CAPABILITY); n, = struct.unpack_from("<H", f.payload)
+    assert 0x48 not in set(struct.unpack_from("<%dH" % n, f.payload, 2))
+
+
+def test_screen_capture_info_and_chunks_reassemble_the_picture(xlib):
+    f = call(xlib, ctl.OP_CAPABILITY); n, = struct.unpack_from("<H", f.payload)
+    assert 0x48 in set(struct.unpack_from("<%dH" % n, f.payload, 2))
+    w, h, fmt, _, total, draws = struct.unpack("<HHBBII", call(xlib, 0x48).payload)
+    assert (w, h, fmt, total, draws) == (240, 320, 1, 153600, 41)
+    got = bytearray()
+    while len(got) < total:
+        want = min(440, total - len(got))
+        p = call(xlib, 0x48, struct.pack("<IH", len(got), want)).payload
+        d, off = struct.unpack_from("<II", p)
+        assert (d, off, len(p) - 8) == (41, len(got), want)
+        got += p[8:]
+    assert bytes(got) == bytes((i * 7 + 3) & 255 for i in range(total))
+
+
+def test_screen_capture_refuses_what_is_outside_the_picture_or_malformed(xlib):
+    assert call_err(xlib, 0x48, struct.pack("<IH", 153600, 2)) == 0x40            # offset at the end
+    assert call_err(xlib, 0x48, struct.pack("<IH", 153598, 4)) == 0x40            # runs off the end
+    assert call_err(xlib, 0x48, struct.pack("<IH", 0, 441)) == 0x40               # more than a chunk
+    assert call_err(xlib, 0x48, struct.pack("<IH", 0, 0)) == 0x40
+    assert call_err(xlib, 0x48, b"\0" * 5) == 3                                    # wrong length
+    last = call(xlib, 0x48, struct.pack("<IH", 153598, 2)).payload                  # the last two bytes are fine
+    assert len(last) == 10
+
+
+def test_the_screen_tool_turns_the_chunks_into_a_picture(xlib):
+    """tools/h7_screen.fetch against the dispatcher: RGB565 big-endian to RGB888, the PNG decodes to the same pixels, and a
+    picture that changed while it was read is retried and then refused."""
+    sys.path.insert(0, HERE)
+    import h7_screen
+    import zlib as z
+
+    def via(lib_):
+        return lambda op, body: call(lib_, op, body).payload
+    w, h, rgb = h7_screen.fetch(via(xlib))
+    raw = bytes((i * 7 + 3) & 255 for i in range(240 * 320 * 2))
+    v = (raw[0] << 8) | raw[1]
+    assert (w, h, len(rgb)) == (240, 320, 240 * 320 * 3)
+    assert rgb[0] == ((v >> 11) & 31) << 3 | ((v >> 11) & 31) >> 2 and rgb[2] == (v & 31) << 3 | (v & 31) >> 2
+    data = h7_screen.png(w, h, rgb)
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    idat = data[data.index(b"IDAT") + 4:data.index(b"IEND") - 8]
+    flat = z.decompress(idat)
+    assert len(flat) == h * (1 + w * 3) and flat[1:1 + w * 3] == rgb[:w * 3]
+    n = [0]
+
+    def moving(op, body):
+        if body and n[0] % 5 == 1: xlib.stub_set_draws(100 + n[0])
+        n[0] += 1
+        return call(xlib, op, body).payload
+    xlib.stub_set_draws(41)
+    with pytest.raises(RuntimeError):
+        h7_screen.fetch(lambda op, body: (xlib.stub_set_draws(1000 + n[0]) or moving(op, body)) if body else moving(op, body))
+    xlib.stub_set_draws(41)

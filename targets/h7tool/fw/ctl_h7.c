@@ -50,6 +50,8 @@ __attribute__((weak)) int h7_poke(uint32_t a, uint32_t v, unsigned w) { (void)a;
 __attribute__((weak)) int h7_explore(unsigned id, const uint32_t *a, unsigned na, uint32_t *r, unsigned *nr)
 { (void)id; (void)a; (void)na; (void)r; *nr = 0; return -2; }
 
+__attribute__((weak)) const uint8_t *h7_screen(uint16_t *w, uint16_t *h, uint32_t *d) { (void)w; (void)h; (void)d; return 0; }
+
 size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 {
 	if (n < CTL_HDR_BYTES || rx[0] != CTL_MAGIC0 || rx[1] != CTL_MAGIC1 || rx[2] != CTL_MAGIC2 || rx[3] != CTL_MAGIC3)
@@ -63,6 +65,9 @@ size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 	if (~c != get32(rx + 12)) return error(tx, req_id, opcode, CTL_ERR_CRC, "crc");
 	const uint8_t *p = rx + CTL_HDR_BYTES;
 	uint8_t b[96];
+	uint16_t scr_w = 0, scr_h = 0; uint32_t scr_draws = 0;
+	const uint8_t *scr = opcode == H7_OP_SCREEN || opcode == CTL_OP_CAPABILITY ? h7_screen(&scr_w, &scr_h, &scr_draws) : 0;
+	if (opcode == H7_OP_SCREEN && !scr) return error(tx, req_id, opcode, CTL_ERR_OPCODE, "opcode");
 	if ((opcode == H7_OP_PEEK || opcode == H7_OP_POKE || opcode == H7_OP_EXPLORE) && !h7_explore_supported())
 		return error(tx, req_id, opcode, CTL_ERR_OPCODE, "opcode");
 
@@ -95,6 +100,7 @@ size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 		for (unsigned i = 0; i < cnt; i++) put16(b + 2 + 2 * i, ops[i]);
 		if (h7_explore_supported())
 			for (unsigned i = 0; i < sizeof more / sizeof more[0]; i++) put16(b + 2 + 2 * cnt++, more[i]);
+		if (scr) put16(b + 2 + 2 * cnt++, H7_OP_SCREEN);
 		put16(b, (uint16_t)cnt);
 		return respond(tx, req_id, opcode, 0, b, (uint16_t)(2 + 2 * cnt));
 	}
@@ -168,6 +174,19 @@ size_t ctl_h7_handle(const uint8_t *rx, size_t n, uint8_t *tx)
 		uint8_t out[1 + 4 * H7_EXPLORE_RES]; out[0] = p[0];
 		for (unsigned i = 0; i < nr; i++) put32(out + 1 + 4 * i, r[i]);
 		return respond(tx, req_id, opcode, 0, out, (uint16_t)(1 + 4 * nr));
+	}
+	case H7_OP_SCREEN: {
+		uint32_t total = (uint32_t)scr_w * scr_h * 2u;
+		if (len == 0) {
+			put16(b, scr_w); put16(b + 2, scr_h); b[4] = 1; b[5] = 0; put32(b + 6, total); put32(b + 10, scr_draws);
+			return respond(tx, req_id, opcode, 0, b, 14);
+		}
+		if (len != 6) return error(tx, req_id, opcode, CTL_ERR_LENGTH, "screen takes nothing or an offset and a count");
+		uint32_t off = get32(p); unsigned count = get16(p + 4);
+		if (count < 1 || count > H7_SCREEN_CHUNK || off >= total || count > total - off) return error(tx, req_id, opcode, H7_ERR_REFUSED, "outside the picture");
+		uint8_t out[8 + H7_SCREEN_CHUNK];
+		put32(out, scr_draws); put32(out + 4, off); memcpy(out + 8, scr + off, count);
+		return respond(tx, req_id, opcode, 0, out, (uint16_t)(8 + count));
 	}
 	default:
 		return error(tx, req_id, opcode, CTL_ERR_OPCODE, "opcode");

@@ -24,3 +24,14 @@ int h7_explore(unsigned id, const uint32_t *a, unsigned na, uint32_t *r, unsigne
 	for (unsigned i = 0; i < na; i++) r[i] = a[i] * 2u;
 	*nr = na; return 0;
 }
+
+/* a 240 x 320 "screen" whose byte at offset n is n * 7 + 3, and a draw count that moves on every read of the info */
+static uint8_t screen[240 * 320 * 2];
+static uint32_t screen_draws = 41;
+const uint8_t *h7_screen(uint16_t *w, uint16_t *h, uint32_t *d)
+{
+	if (!screen[1]) for (unsigned i = 0; i < sizeof screen; i++) screen[i] = (uint8_t)(i * 7u + 3u);
+	*w = 240; *h = 320; *d = screen_draws;
+	return screen;
+}
+void stub_set_draws(uint32_t d) { screen_draws = d; }
