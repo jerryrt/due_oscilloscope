@@ -461,6 +461,42 @@ behind the 5 is what says whether two benches' fives are the same five,
 and it is the record a cross-bench consistency check can diff without a
 person retyping it.
 
+## The image's revision, and keeping it buildable
+
+The tag is `due-build:<xpack>-r<N>`: the compiler release, then the
+revision of the recipe around it. `docker/image-revisions.json` names the
+current revision and the compiler; the one image that predates the scheme
+is accepted by name.
+
+| what | where |
+|---|---|
+| Which image `run.sh` uses | the manifest's `xpack` and `current`; `DUE_BUILD_IMAGE` overrides the tag, not the check |
+| What an image was built from | the labels `due.image.rev` and `due.image.recipe`, set by `build-image.sh` |
+| What the tree wants | `docker/image-id.sh recipe`: the Dockerfile without comments or blank lines |
+| The refusal | `run.sh` exits 2 when the label differs from the tree's recipe, naming both |
+| Whether it still builds | `docker/verify-image.sh`: a from-scratch build, then all three tracks with it and with the reference, compared byte for byte |
+
+The recipe hash is the identity two benches can compare; the content hash
+of the layers is provenance for one bench. Two builds of one recipe are
+not promised the same layer hash, which is why the byte comparison of
+the firmware decides.
+
+**Upgrading, once a year.** Bump the snapshot date, the package pins and
+`CA_CERTIFICATES_VERSION` together, raise `current` in the manifest by
+one, build with `docker/build-image.sh`, then run `docker/verify-image.sh`
+against the old revision. Firmware bytes must match; if they do not, the
+difference is a finding about the compiler or its libraries, not a pin
+to wave through. Record the row in the manifest and say in the commit
+which figures the new revision carries.
+
+**Checking, monthly.** `docker/verify-image.sh` is the check, because the
+inputs that expire do so at the fetch: the live archive the trust roots
+come from, the snapshot, the compiler's release URL. A certificate error
+there means the pinned bundle has outlived the roots it carries. The
+bootstrap installs a current bundle unpinned and replaces it with the
+pinned one from the snapshot, so the archive dropping an old version does
+not break the build; the pin only needs raising with the snapshot.
+
 ## What this is not
 
 **Not a test environment.** The board tier stays on metal. Three
