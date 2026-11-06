@@ -49,9 +49,11 @@ lacks.
 | 5 | Tests with mutants, docs, the upgrade procedure | each new guard fails when broken on purpose |
 | 6 | Tell the other bench | after 1 to 5 are pushed to `main` |
 
-## Open until measured
+## Measured
 
-Whether a from-scratch build reproduces the old content hash
-(`667e5767…`) is not known. If it does, the old revision keeps its name;
-if not, the rebuilt image is revision 2 and figures taken after it name
-it.
+| question | answer |
+|---|---|
+| Does a from-scratch build reproduce the old content hash (`667e5767…`)? | No. Three builds of one recipe gave three layer hashes |
+| Does it change the firmware? | No. The old image and two from-scratch builds give byte-identical firmware on all three tracks from one tree |
+| What identifies an image across benches? | The recipe hash, not the layer hash |
+| Does the old image still run? | Yes, accepted by name; the first image of the scheme is revision 1 |
