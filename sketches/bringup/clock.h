@@ -8,16 +8,15 @@
  *
  *   MULA  PLLA     MCK    ADC clk (PRESCAL=1, /4)
  *   ----  -------  -----  -----------------------
- *     12  156 MHz  78     19.5 MHz   in spec
+ *     12  156 MHz  78     19.5 MHz   in spec, not used
  *     13  168 MHz  84     21.0 MHz   5% over the 20 MHz maximum
  *     14  180 MHz  90     22.5 MHz   12.5% over, and MCK over the
- *                                    core's rated 84 MHz
+ *                                    core's rated 84 MHz; the operating point
  *
  * 80 MHz, which would give exactly 20.0 MHz, is unreachable: it needs
  * DIVA=3 and an FIN of 4 MHz, below the 8 MHz minimum.
  *
- * This project runs at MULA=12 so the ADC clock stays inside spec. See
- * docs/hardware.md.
+ * This project runs at MULA=14, out of specification. See docs/hardware.md.
  */
 
 #ifndef CLOCK_H
@@ -25,8 +24,6 @@
 
 #include <stdint.h>
 
-#define MCK_MULA_78   12u
-#define MCK_MULA_84   13u
 #define MCK_MULA_90   14u
 
 #ifndef MCK_MULA_DEFAULT

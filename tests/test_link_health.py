@@ -46,7 +46,7 @@ def test_the_board_reports_the_baseline_clock(board, baseline):
     """The board runs the clock the baseline was taken at.
 
     90 MHz by default, which is out of specification (ADC clock 22.5 MHz
-    against a 20 MHz limit); 78 MHz with -DFIRMWARE_MCK_HZ=78000000.
+    against a 20 MHz limit); the only clock this project builds.
     Every RC in this suite divides MCK/2, and Track A built at the wrong
     f_cpu reports a silently wrong micros().
     """

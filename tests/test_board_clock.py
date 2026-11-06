@@ -43,7 +43,7 @@ def test_a_board_on_another_clock_is_refused_with_what_to_set():
     with pytest.raises(measure.BoardError) as e:
         _Stub(_identity(other)).require_clock()
     msg = str(e.value)
-    assert "DUE_MCK_HZ" in msg and "FIRMWARE_MCK_HZ" in msg
+    assert "reflash" in msg and "90 MHz" in msg
 
 
 def test_a_board_on_the_hosts_clock_passes_and_is_asked_once():

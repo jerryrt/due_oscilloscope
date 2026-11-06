@@ -1,20 +1,15 @@
 /*
- * Master clock selection. See sketches/bringup/clock.h and
- * docs/hardware.md for why MULA=12 (78 MHz) is the operating point:
- * it is the only reachable setting that keeps the ADC clock inside its
- * 20 MHz datasheet limit.
+ * Master clock selection. The project runs MULA=14 (MCK 90 MHz), which
+ * is out of specification; see sketches/bringup/clock.h and
+ * docs/hardware.md.
  */
 #ifndef CLOCK_H
 #define CLOCK_H
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MCK_MULA_78   12u
-#define MCK_MULA_84   13u
 #define MCK_MULA_90   14u
-/* The operating point. 90 MHz since the USB DMA burst limit removed the
- * loop-mode overruns; -DFIRMWARE_MCK_HZ=78000000|90000000 (CMake) selects the other
- * one, which is the datasheet-conservative setting. */
+/* The operating point, set by CMake from FIRMWARE_MCK_HZ. */
 #ifndef MCK_MULA_DEFAULT
 #define MCK_MULA_DEFAULT MCK_MULA_90
 #endif

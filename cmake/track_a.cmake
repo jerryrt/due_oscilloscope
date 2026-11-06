@@ -13,7 +13,7 @@
 #
 # It also removes a class of silent error the invariant already warns
 # about. Under arduino-cli, Track A must be given
-# `--build-property build.f_cpu=78000000L` or `micros()` is silently
+# `--build-property build.f_cpu=90000000L` or `micros()` is silently
 # wrong, and `--build-property build.ldscript=...` computed against the
 # *installed variant directory* or the capture ring is not in SRAM bank
 # 1. Both are silent when missing. Here they are two lines in a file
@@ -206,10 +206,10 @@ target_link_libraries(track_a_bringup PRIVATE track_a_core)
 
 # Exactly what boards.txt and platform.txt hand the compiler for
 # `arduino:sam:arduino_due_x_dbg`, with one deliberate substitution:
-# **F_CPU is 78000000L, not the stock 84000000L.** That substitution was
+# **F_CPU is 90000000L, not the stock 84000000L.** That substitution was
 # a `--build-property` that had to be remembered on every invocation and
 # is silently wrong when forgotten - `micros()` divides by it. See
-# CLAUDE.md, "MCK is 78 MHz here, not 84".
+# CLAUDE.md, "MCK is 90 MHz by default, not 84".
 foreach(t track_a_core track_a_bringup)
 target_compile_definitions(${t} PRIVATE
     F_CPU=${FIRMWARE_MCK_HZ}L

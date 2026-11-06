@@ -70,18 +70,14 @@ option(FIRMWARE_ANALYZER    "Run GCC's -fanalyzer over the C sources"    OFF)
 option(FIRMWARE_STACK_USAGE "Emit per-function stack frame sizes (.su)"  OFF)
 option(FIRMWARE_CALLGRAPH   "Emit per-unit call graphs with frames (.ci)" OFF)
 
-# The master clock. 90 MHz is the default; 78 is the datasheet-conservative
-# setting the project ran at before the USB DMA burst limit. Every RC divides
-# MCK/2, so the host needs DUE_MCK_HZ=78000000 to match a 78 image.
-set(FIRMWARE_MCK_HZ 90000000 CACHE STRING "Master clock in Hz: 78000000 or 90000000")
-set_property(CACHE FIRMWARE_MCK_HZ PROPERTY STRINGS 78000000 90000000)
-if(FIRMWARE_MCK_HZ EQUAL 78000000)
-    set(FIRMWARE_MCK_MULA 12)
-elseif(FIRMWARE_MCK_HZ EQUAL 90000000)
-    set(FIRMWARE_MCK_MULA 14)
-else()
-    message(FATAL_ERROR "FIRMWARE_MCK_HZ must be 78000000 or 90000000, not ${FIRMWARE_MCK_HZ}")
+# The master clock: 90 MHz, the only one this project builds. Every RC
+# divides MCK/2 = 45 MHz. The variable stays because Track A's F_CPU
+# comes from it, and anything else is refused rather than built.
+set(FIRMWARE_MCK_HZ 90000000 CACHE STRING "Master clock in Hz; only 90000000")
+if(NOT FIRMWARE_MCK_HZ EQUAL 90000000)
+    message(FATAL_ERROR "FIRMWARE_MCK_HZ must be 90000000, not ${FIRMWARE_MCK_HZ}: the 78 MHz build is retired")
 endif()
+set(FIRMWARE_MCK_MULA 14)
 add_compile_definitions(MCK_MULA_DEFAULT=${FIRMWARE_MCK_MULA}u)
 
 # The analyser is a pass somebody asks for, in a build directory of its
@@ -465,7 +461,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/hosttools.cmake)
 # both exist.
 #
 # What a Track A build must not lose: build.f_cpu MUST match the
-# runtime clock, because micros() divides by it and MCK is 78 MHz here;
+# runtime clock, because micros() divides by it and MCK is 90 MHz here;
 # and build.ldscript pins the capture ring to SRAM bank 1. As arduino-cli
 # build properties both were silent when missing and cost 35-44 ADC
 # overruns per 4 s; here they are two lines in cmake/track_a.cmake,

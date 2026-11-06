@@ -1695,9 +1695,10 @@ class Board:
         if ident is not None and ident["mck_hz"] != MCK_HZ:
             raise BoardError(
                 f"the board reports MCK {ident['mck_hz']} Hz and this host "
-                f"assumes {MCK_HZ} Hz, so every RC it computes is wrong. Set "
-                f"DUE_MCK_HZ={ident['mck_hz']} for this host, or flash an "
-                f"image built with -DFIRMWARE_MCK_HZ={MCK_HZ}.")
+                f"assumes {MCK_HZ} Hz, so every RC it computes is wrong. This "
+                f"project builds 90 MHz only: reflash a current image "
+                f"(DUE_MCK_HZ overrides the host's value for analysing "
+                f"old records, not for a live board).")
         self._clock_ok = True
 
     def ask(self, text, secs=pacing.LISTEN, quiet=None):
