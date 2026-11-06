@@ -1,0 +1,15 @@
+{
+  "xpack": "15.2.1-1.1",
+  "current": 1,
+  "legacy": "due-build:15.2.1-1.1",
+  "revisions": {
+    "1": {
+      "date": "2026-11-06",
+      "base": "ubuntu@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517",
+      "snapshot": "20260901T000000Z",
+      "recipe": "d8b0b07b060d52dba69b3e06b327b848f13d27c752f958c50c139290f1780577",
+      "content": "0ad6eb29e08da3d96a7788a9770622facacb448375748755d2801f5f77293573",
+      "note": "first image of the scheme; built from the same tree, the legacy image and two from-scratch builds give byte-identical firmware, while their layer hashes differ"
+    }
+  }
+}

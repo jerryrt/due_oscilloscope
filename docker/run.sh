@@ -47,12 +47,30 @@ set -euo pipefail
 
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo=$(dirname -- "$here")
-image=${DUE_BUILD_IMAGE:-due-build:15.2.1-1.1}
+manifest() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$here/image-revisions.json" "$1"; }
+image=${DUE_BUILD_IMAGE:-due-build:$(manifest xpack)-r$(manifest current)}
 
 if ! docker image inspect "$image" >/dev/null 2>&1; then
     echo "no such image: $image" >&2
     echo "build it:  docker/build-image.sh" >&2
     exit 2
+fi
+
+# THE IMAGE MUST BE THE ONE THIS TREE'S DOCKERFILE DESCRIBES. It carries
+# the hash of the recipe it was built from; a different hash means the
+# Dockerfile has changed since, and the image would certify inputs the
+# commit no longer states. The one grandfathered image predates the
+# label and is accepted by name.
+if [ "$image" != "$(manifest legacy)" ]; then
+    have=$(docker image inspect "$image" --format '{{index .Config.Labels "due.image.recipe"}}')
+    want=$("$here/image-id.sh" recipe)
+    if [ "$have" != "$want" ]; then
+        echo "image $image was built from a different Dockerfile" >&2
+        echo "  image recipe: ${have:-none}" >&2
+        echo "  tree recipe:  $want" >&2
+        echo "rebuild:  docker/build-image.sh" >&2
+        exit 2
+    fi
 fi
 
 # TWO IDENTITIES, BECAUSE NEITHER ANSWERS THE OTHER'S QUESTION.
@@ -77,10 +95,7 @@ fi
 # `layout` carries about `nm` - and it compares within a bench with
 # certainty and across benches only as far as their docker agrees.
 image_id=$(docker image inspect "$image" --format '{{.Id}}')
-image_content=$(docker image inspect "$image" \
-    --format '{{range .RootFS.Layers}}{{println .}}{{end}}{{json .Config}}' |
-    python3 -c 'import hashlib,sys
-print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())')
+image_content=$("$here/image-id.sh" content "$image")
 
 # Both ends of every bind mount, created as this user before docker sees
 # them. A mount point the daemon has to create is created by the daemon,
