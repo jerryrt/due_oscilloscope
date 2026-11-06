@@ -43,7 +43,7 @@ lacks.
 | step | change | gate |
 |---|---|---|
 | 1 | Dockerfile: bootstrap then snapshot pin | a `--no-cache` build completes and `dpkg` reports the pinned version |
-| 2 | Revision tag, labels, manifest, `run.sh` check; a shared `docker/image-content.sh` | `run.sh` accepts the matching image and refuses a mutated Dockerfile hash, a missing row and a foreign tag |
+| 2 | Revision tag, labels, manifest, `run.sh` check; a shared `docker/image-id.sh` | `run.sh` accepts the matching image and refuses a mutated Dockerfile hash, a missing row and a foreign tag |
 | 3 | Measure whether two from-scratch builds agree | content hash of both reported; if they differ the check stays on the labels and the content hash is provenance only |
 | 4 | Firmware from the new image against the old one | `track_b_bringup.bin` and the other tracks byte-identical; any difference is reported and blocks the other bench |
 | 5 | Tests with mutants, docs, the upgrade procedure | each new guard fails when broken on purpose |

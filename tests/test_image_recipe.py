@@ -92,14 +92,14 @@ def _recipe(d):
 def test_recipe_ignores_comments_and_blank_lines(dockerdir):
     before = _recipe(dockerdir)
     p = dockerdir / "Dockerfile"
-    p.write_text("# a new comment\n\n" + p.read_text() + "\n\n# trailing\n")
+    p.write_text("# a new comment\n\n" + p.read_text(encoding="utf-8") + "\n\n# trailing\n", encoding="utf-8")
     assert _recipe(dockerdir) == before
 
 
 def test_recipe_moves_with_any_instruction(dockerdir):
     before = _recipe(dockerdir)
     p = dockerdir / "Dockerfile"
-    p.write_text(p.read_text().replace("--allow-downgrades", "--allow-downgrade"))
+    p.write_text(p.read_text(encoding="utf-8").replace("--allow-downgrades", "--allow-downgrade"), encoding="utf-8")
     assert _recipe(dockerdir) != before
 
 
@@ -121,13 +121,13 @@ def _launch(dockerdir, tmp_path, image, label=None, present=True):
     stub = tmp_path / "bin"
     stub.mkdir(exist_ok=True)
     s = stub / "docker"
-    s.write_text(STUB)
+    s.write_text(STUB, encoding="utf-8")
     s.chmod(s.stat().st_mode | stat.S_IEXEC)
     state = tmp_path / "state"
     state.mkdir(exist_ok=True)
-    (state / "label").write_text(label or "")
+    (state / "label").write_text(label or "", encoding="utf-8")
     if present:
-        (state / "present").write_text("")
+        (state / "present").write_text("", encoding="utf-8")
     env = dict(os.environ, PATH=f"{stub}:{os.environ['PATH']}",
                STUB_DIR=str(state), DUE_BUILD_IMAGE=image)
     return subprocess.run(["bash", str(dockerdir / "run.sh"), "true"],
