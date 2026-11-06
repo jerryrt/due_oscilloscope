@@ -1,0 +1,23 @@
+# Files sent to the AFE contractor. One path per line, relative to the
+# repository root. A directory sends every file in it. Blank lines and
+# lines starting with # are ignored. Used by tools/afe_export_contractor.sh,
+# which keeps this folder layout so KiCad's ${KIPRJMOD} paths resolve.
+
+# What the contractor reads
+docs/afe/contractor/requirements.md
+docs/afe/contractor/brief.md
+
+# Proto board (carrier): project, libraries, pad IDs, 3D models
+hardware/mega-proto-carrier/mega-proto-carrier.kicad_pro
+hardware/mega-proto-carrier/mega-proto-carrier.kicad_sch
+hardware/mega-proto-carrier/mega-proto-carrier.kicad_pcb
+hardware/mega-proto-carrier/Carrier.kicad_sym
+hardware/mega-proto-carrier/sym-lib-table
+hardware/mega-proto-carrier/fp-lib-table
+hardware/mega-proto-carrier/pad-map.csv
+hardware/mega-proto-carrier/Carrier.pretty
+hardware/mega-proto-carrier/models/kicad
+
+# Arduino Due reference (open hardware). Its 3D models are not sent.
+hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pro
+hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb
