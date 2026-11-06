@@ -65,9 +65,13 @@ ARG SAM_CORE_SHA256=1d56d0ceea12a920c4a5c12fff793499354ffba7e93d330786bd2d6f3a19
 # `=version` on the command line does not reach.
 ARG UBUNTU_SNAPSHOT=20260901T000000Z
 
-# Installed from the live archive because the snapshot cannot be reached
-# without it - apt has no trust roots in the bare base image. It is
-# still pinned to a version, so it is a stated input like the rest.
+# The snapshot cannot be reached without trust roots, and the bare base
+# image has none. So a current ca-certificates is installed from the live
+# archive first, UNPINNED - the live archive drops superseded versions,
+# and a pin there stops resolving - and is then replaced by this version
+# from the snapshot, which does not. Only the snapshot's copy is in the
+# image. A certificate error at fetch time means this pin has outlived
+# the roots it carries: bump it with the snapshot.
 ARG CA_CERTIFICATES_VERSION=20260601~24.04.1
 
 ARG CMAKE_VERSION=3.28.3-1build7
@@ -166,8 +170,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN set -eux; \
     apt-get update -qq; \
-    apt-get install -y --no-install-recommends \
-        "ca-certificates=${CA_CERTIFICATES_VERSION}"; \
+    apt-get install -y --no-install-recommends ca-certificates; \
     printf '%s\n' \
         'Types: deb' \
         "URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}" \
@@ -176,7 +179,9 @@ RUN set -eux; \
         'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
         > /etc/apt/sources.list.d/ubuntu.sources; \
     apt-get -o Acquire::Check-Valid-Until=false update -qq; \
-    apt-get install -y --no-install-recommends \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
+        --allow-downgrades \
+        "ca-certificates=${CA_CERTIFICATES_VERSION}" \
         "cmake=${CMAKE_VERSION}" \
         "ninja-build=${NINJA_VERSION}" \
         "make=${MAKE_VERSION}" \
