@@ -1493,7 +1493,7 @@ class Board:
         self._ctl_why = None
         self._ctl_why_first = None
         self.ctl_retries = 0
-        self.cfd = open_raw(control, 115200)
+        self.cfd = open_raw(control, 115200, console=True)
         self._console = b""
         self._clock_ok = False
         if settle:

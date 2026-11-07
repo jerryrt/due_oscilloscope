@@ -248,9 +248,116 @@ class _WindowsPort:
 Port = _WindowsPort if WINDOWS else _PosixPort
 
 
-def open_raw(dev, baud=None, dtr=False):
-    """Open a port raw: no line discipline, no echo, no translation."""
-    return Port(dev, baud, dtr)
+CONSOLE_LOG_ENV = "DUE_CONSOLE_LOG"
+CONSOLE_LOG_MAX = 4 * 1024 * 1024
+
+
+class RotatingLog:
+    """Size-bounded, timestamped, line-per-chunk record of console bytes.
+
+    Disk use is bounded at about twice `max_bytes` (the file and one
+    previous `<path>.1`); memory use is one line. Any OSError disables
+    the log for good and says so once on stderr - a logger must never
+    raise into the reader it is watching.
+    """
+
+    def __init__(self, path, max_bytes=CONSOLE_LOG_MAX):
+        self.path = path
+        self.max_bytes = max_bytes
+        self.dead = False
+        self._fh = None
+        self._size = 0
+        self._open()
+
+    def _fail(self, why):
+        if not self.dead:
+            self.dead = True
+            try:
+                sys.stderr.write(f"# console log {self.path!r} disabled: {why}\n")
+            except Exception:                                # noqa: BLE001
+                pass
+        self._close()
+
+    def _open(self):
+        try:
+            self._fh = open(self.path, "ab")
+            self._size = self._fh.tell()
+        except (OSError, ValueError) as e:
+            self._fail(e)
+
+    def _close(self):
+        fh, self._fh = self._fh, None
+        if fh is not None:
+            try:
+                fh.close()
+            except Exception:                                # noqa: BLE001
+                pass
+
+    def write(self, data, now=None):
+        """Append one chunk as `<unix seconds> <escaped text>` + newline."""
+        if self.dead or not data:
+            return
+        try:
+            if now is None:
+                now = time.time()
+            text = data.decode("utf-8", "replace").encode("unicode_escape")
+            line = b"%.3f " % now + text + b"\n"
+            if self._size and self._size + len(line) > self.max_bytes:
+                self._close()
+                os.replace(self.path, self.path + ".1")
+                self._open()
+                if self.dead:
+                    return
+            self._fh.write(line)
+            self._fh.flush()
+            self._size += len(line)
+        except Exception as e:                               # noqa: BLE001
+            self._fail(e)
+
+    def close(self):
+        self._close()
+
+
+class TeePort:
+    """Wrap a port; read() returns exactly what the port returned and
+    records it. Everything else is delegated untouched, so the wrapper
+    can stand wherever the port did (wait_any, fileno, pump, flush_*)."""
+
+    def __init__(self, port, log):
+        self._port = port
+        self._log = log
+
+    def read(self, n):
+        data = self._port.read(n)
+        if data:
+            self._log.write(data)
+        return data
+
+    def close(self):
+        try:
+            self._port.close()
+        finally:
+            self._log.close()
+
+    def __getattr__(self, name):
+        return getattr(self._port, name)
+
+
+def open_raw(dev, baud=None, dtr=False, console=False):
+    """Open a port raw: no line discipline, no echo, no translation.
+
+    `console=True` marks the programming-port console; with
+    DUE_CONSOLE_LOG set it is wrapped in a passive TeePort. Unset or
+    empty returns the plain port, exactly as before.
+    """
+    port = Port(dev, baud, dtr)
+    if console:
+        path = os.environ.get(CONSOLE_LOG_ENV, "")
+        if path:
+            log = RotatingLog(path)
+            if not log.dead:
+                return TeePort(port, log)
+    return port
 
 
 def wait_any(ports, timeout):
