@@ -71,6 +71,9 @@ def test_the_square_edge_and_shape_stay_inside_the_recorded_bands(
     try:
         outcome = confirm_measurement(once, lambda v: check_square(v, cfg))
     finally:
+        # The measurement leaves a square in the generator's table, and
+        # a later test that plays the device's own table inherits it.
+        board.ask("=0,256,256W", secs=pacing.LISTEN)
         if last:
             v = last[0]
             record(calibration, "square_shape", {
@@ -101,6 +104,7 @@ def test_the_bias_zero_control_fails_the_square_check(
                 f"bias 0 read {ctl} {c[ctl]} and {key} still passed: "
                 f"the check cannot see the output stage it guards")
     finally:
+        board.ask("=0,256,256W", secs=pacing.LISTEN)
         acr = read_acr(board)
     assert acr is not None and acr.lower().lstrip("0") == \
         RESTORED_ACR.lstrip("0"), (

@@ -58,6 +58,12 @@ def test_device_generated_waveform_is_continuous(board, seconds,
     localised in one step.
     """
     secs = window(seconds, pacing.STANDARD)
+    # `M` plays whatever table the generator holds, and a table survives
+    # from one test to the next: a square left by an earlier test made
+    # this fail 6 of 6 on a board that had not been reflashed, with every
+    # step above 45 codes. Set the power-on state rather than inherit it.
+    for cmd in ("=0N", "=1J", "=0,256,256W"):
+        board.ask(cmd, secs=pacing.LISTEN)
     res = measure.run_capture(board, preset="M", seconds=secs)
     assert_fresh(res, secs)
     assert_stream_clean(res)
