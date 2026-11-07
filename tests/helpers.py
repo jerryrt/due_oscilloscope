@@ -397,3 +397,34 @@ def shared_run(cache, fn, board, **kw):
     if key not in cache:
         cache[key] = fn(board, **kw)
     return cache[key]
+
+
+PROBES_EXTRA = "_probes_extra"
+
+
+def apply_probe_state(base, declared):
+    """`base` with each `<key>_probes_extra` applied to `<key>` when the
+    bench declares `"probes": "on"` in bench.json, and the bounds as
+    recorded otherwise.
+
+    The probes-off bounds are the decision; the extras are only the room
+    the probes need on top, so a bench that does not declare probes, or
+    declares them off, is judged by the unchanged bound. A `_min` bound
+    loses its extra and every other (a ceiling) gains it. The extra keys
+    are removed from the result either way, so nothing downstream sees
+    them.
+    """
+    import copy
+    out = copy.deepcopy(base)
+    on = str((declared or {}).get("probes", "")).lower() == "on"
+    for sec in out.values():
+        if not isinstance(sec, dict):
+            continue
+        for key in [k for k in sec if k.endswith(PROBES_EXTRA)]:
+            extra = sec.pop(key)
+            if on:
+                bound = key[:-len(PROBES_EXTRA)]
+                sec[bound] = round(sec[bound] - extra if bound.endswith("_min")
+                                   else sec[bound] + extra, 6)
+        sec.pop("_probes_extra_comment", None)
+    return out

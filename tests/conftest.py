@@ -246,8 +246,10 @@ def track(request):
 
 @pytest.fixture(scope="session")
 def baseline():
+    import provenance
+    from helpers import apply_probe_state
     with open(BASELINE_PATH, encoding="utf-8") as f:
-        return json.load(f)
+        return apply_probe_state(json.load(f), provenance.bench())
 
 
 @pytest.fixture(scope="session")
