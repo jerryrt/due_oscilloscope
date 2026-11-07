@@ -52,6 +52,7 @@
 #include "ctl.h"
 #include "diag.h"
 #include "frame.h"
+#include "crashrec.h"
 
 /*
  * Static allocation everywhere. Every task's stack and control block
@@ -166,6 +167,7 @@ static void service_task(void *arg)
 				;
 		}
 		now = millis();
+		crashrec_healthy(now);
 		stream_loop_passes++;
 
 		if (now - heartbeat_at >= (led_state ? 100u : 900u)) {
@@ -598,6 +600,7 @@ static void c_bench(const uint32_t *a)
 
 /* `f`, `t`: already shared. Binding is the whole of the work. */
 static void c_fault(const uint32_t *a) { (void)a; console_trigger_fault(); }
+static void c_crash(const uint32_t *a) { (void)a; console_crash_report(); }
 static void c_ratesweep(const uint32_t *a) { console_cmd_rate_sweep(a[2]); }
 
 /*
@@ -909,6 +912,7 @@ const console_binding_t console_bindings[] = {
 	{ 'q', c_fws   },
 
 	{ '5', c_smax  },       { 't', c_ratesweep },   { 'f', c_fault },
+	{ 'c', c_crash },
 	{ 'F', c_flood },       { 'R', c_sink },        { 'X', c_duplex },
 	{ 'G', c_flood_dma },   { 'Y', c_duplex_dma },
 	{ 'V', c_ring  },       { 'l', c_load },
@@ -981,6 +985,10 @@ int main(void)
 	 * it either. Disabled here, in the same place Track B does. */
 	WDT->WDT_MR = WDT_MR_WDDIS;
 
+	/* Read the fault record and the reset cause before anything can
+	 * fault again; see lib/due_shared/src/crashrec.h. */
+	crashrec_boot(RSTC->RSTC_SR);
+
 	clock_set_mck(MCK_MULA_DEFAULT);
 
 	/*
@@ -1017,6 +1025,8 @@ int main(void)
 	 * scheduled.
 	 */
 	console_identity(FW_TRACK, (unsigned long)SystemCoreClock);
+	console_flush();
+	console_crash_report();
 	console_flush();
 
 	/*
