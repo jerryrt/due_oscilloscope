@@ -117,6 +117,8 @@ void console_set_uid(const uint32_t uid[4]);
  * own source - see the note at the top of console_cmds.c for which.
  */
 void console_trigger_fault(void);
+/* `c`: the reset cause, and the fault record this boot found. */
+void console_crash_report(void);
 void console_gen_report(void);
 
 /*

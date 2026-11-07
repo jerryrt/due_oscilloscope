@@ -19,6 +19,7 @@
 #include "console.h"
 #include "console_port.h"
 #include "console_out.h"
+#include "crashrec.h"
 #include "ctl_port.h"
 #include "ctl_wire.h"
 #include "frame.h"    /* FRAME_CH_A0..A2, the channel tags the wire uses */
@@ -45,6 +46,38 @@ void console_trigger_fault(void)
 
 	console_write("# unreachable\n");
 	console_flush();
+}
+
+/*
+ * `c`: why the board last restarted, and the fault record if there was
+ * one. Reads what crashrec_boot() kept at start-up and touches nothing,
+ * so it costs one short line of UART and is safe to ask at any time.
+ * One `key=value` line so the host parses it without a table:
+ *
+ *   # crash: reset=software fault=1 count=1 streak=1 pc=0x... lr=0x...
+ *
+ * `fault=0` means no fault record was pending at this boot; count and
+ * streak are then what the block still holds (0/0 after a power cycle).
+ */
+void console_crash_report(void)
+{
+	const struct crashrec_boot_info *i = crashrec_info();
+
+	con_str("# crash: reset="); con_str(crashrec_reset_name(i->rstc_sr));
+	con_str(" fault="); con_u32((uint32_t)i->had_fault);
+	con_str(" count="); con_u32(i->rec.count);
+	con_str(" streak="); con_u32(i->rec.streak);
+	if (i->had_fault) {
+		con_str(" pc=0x");    con_hex32(i->rec.frame[6], 8);
+		con_str(" lr=0x");    con_hex32(i->rec.frame[5], 8);
+		con_str(" xpsr=0x");  con_hex32(i->rec.frame[7], 8);
+		con_str(" cfsr=0x");  con_hex32(i->rec.cfsr, 8);
+		con_str(" hfsr=0x");  con_hex32(i->rec.hfsr, 8);
+		con_str(" mmfar=0x"); con_hex32(i->rec.mmfar, 8);
+		con_str(" bfar=0x");  con_hex32(i->rec.bfar, 8);
+		con_str(" sp=0x");    con_hex32(i->rec.sp, 8);
+	}
+	con_nl();
 }
 
 /*

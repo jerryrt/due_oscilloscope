@@ -13,6 +13,7 @@
 
 #include "sam.h"
 #include "bsp.h"
+#include "crashrec.h"
 
 static void put_hex(uint32_t v)
 {
@@ -32,9 +33,31 @@ static void put_kv(const char *k, uint32_t v)
 	uart_puts_polled("\r\n");
 }
 
+/*
+ * After the dump: leave the part in a state the host can use again.
+ * The pull-up comes off first so the host sees the device go, then a
+ * processor and peripheral reset; a processor reset alone leaves the
+ * USB controller attached and the host talking to nothing (the `z`
+ * wedge in CLAUDE.md). The delay is a busy loop for the same reason
+ * the blink is one: nothing about the tick or the interrupts can be
+ * assumed once a fault has occurred.
+ */
+static void fault_reset(void)
+{
+	UOTGHS->UOTGHS_DEVCTRL |= UOTGHS_DEVCTRL_DETACH;
+	for (volatile uint32_t d = 0; d < 2000000u; d++) { }
+	RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST | RSTC_CR_PERRST;
+	for (;;) { }
+}
+
 void hard_fault_report(const uint32_t *sp)
 {
 	uint32_t cfsr = SCB->CFSR;
+
+	/* First, while it is still cheap and nothing else can go wrong:
+	 * the record outlives the dump below if the UART is the thing
+	 * that is broken. */
+	crashrec_store(sp, cfsr, SCB->HFSR, SCB->MMFAR, SCB->BFAR);
 
 	uart_puts_polled("\r\n#\r\n# *** HARD FAULT ***\r\n");
 
@@ -68,7 +91,13 @@ void hard_fault_report(const uint32_t *sp)
 
 	uart_puts_polled("# PC identifies the faulting instruction.\r\n");
 	uart_puts_polled("# Cross-reference against the .map file.\r\n");
-	uart_puts_polled("# halting, blinking 3\r\n#\r\n");
+	if (crashrec_should_reset()) {
+		uart_puts_polled("# record kept; resetting\r\n#\r\n");
+		uart_flush();
+		fault_reset();
+	}
+	uart_puts_polled("# faulted again before a healthy period; "
+			 "halting, blinking 3\r\n#\r\n");
 	uart_flush();
 
 	led_blink_forever(3);

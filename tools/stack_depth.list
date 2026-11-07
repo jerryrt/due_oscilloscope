@@ -83,10 +83,10 @@
 # The console's 50-letter dispatch. `console_bindings` is `const`, so the
 # table is in .rodata and resolves exactly: 50 entries, 50 targets, 0
 # unknown.
-b  indirect  console.c:260        console_bindings
+b  indirect  console.c:261        console_bindings
 # `f` proves the fault handler by branching to an address that is not
 # code. It faults rather than returning, so there is no chain past it.
-b  indirect  console_cmds.c:44    noreturn
+b  indirect  console_cmds.c:45    noreturn
 
 # The fault path, which the call graph cannot see at all.
 # HardFault_Handler is `naked` and ends in `b hard_fault_report`
@@ -123,8 +123,8 @@ b  isr  UOTGHS_Handler     off
 
 # --- Track C -----------------------------------------------------------
 # Same two, from the same shared source.
-c  indirect  console.c:260        console_bindings
-c  indirect  console_cmds.c:44    noreturn
+c  indirect  console.c:261        console_bindings
+c  indirect  console_cmds.c:45    noreturn
 # FreeRTOS's software-timer dispatch, three sites in timers.c. This build
 # sets configUSE_TIMERS 1 - so the timer task exists and the callback
 # call sites are compiled - but nothing anywhere calls xTimerCreate, so
@@ -162,8 +162,8 @@ c  isr  UOTGHS_Handler     off
 
 # --- Track A -----------------------------------------------------------
 # The console, same shared source and same two sites as B and C.
-a  indirect  console.c:260        console_bindings
-a  indirect  console_cmds.c:44    noreturn
+a  indirect  console.c:261        console_bindings
+a  indirect  console_cmds.c:45    noreturn
 
 # The core's Print/Stream hierarchy, ONE LINE PER CALL SITE, and the
 # method each one names is the whole reason these are not four lines.
