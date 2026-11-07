@@ -410,6 +410,8 @@ TIMING_CONSTANTS = {
         "the bound the lock-wait test asserts against",
     ("tests/test_trace.py", "RISE_S"):
         "a physical rise time of a synthetic signal, not a wait",
+    ("tests/test_crash_record_board.py", "HEALTHY_S"):
+        "lib/due_shared/src/crashrec.h CRASHREC_HEALTHY_MS: the board's healthy period, mirrored",
 }
 
 

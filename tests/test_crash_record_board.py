@@ -20,6 +20,8 @@ Opening the programming port with a library that toggles DTR resets the
 board through the 16U2 and wipes the record; `measure.Board` opens it
 without. A probe of your own must do the same.
 """
+import time
+
 import pytest
 
 import measure
@@ -38,14 +40,54 @@ def _crash(board):
     return rec
 
 
+# The handler resets for a fault only while fewer than three came in a
+# row without 5 s of healthy running between them (CRASHREC_HEALTHY_MS);
+# the third halts and blinks, by design, and a halted board answers
+# nothing. `c` cannot show the streak clearing - it prints what the boot
+# found, not the live record - so the test keeps its own clock: when the
+# board last restarted, by a fault or by `z`. Uptime restarts at either.
+HEALTHY_S = 5.0
+_last_restart = None
+
+
+def _restarted():
+    global _last_restart
+    _last_restart = time.monotonic()
+
+
+def _let_the_board_be_healthy():
+    """Wait out whatever is left of the healthy period, and no more.
+
+    The host sees the banner after the board has started it, so the time
+    measured here is never longer than the board's uptime: the wait can
+    be a little long and cannot be short. Three tests faulting in a row
+    gave the board seconds between faults, and the third one tripped the
+    guard - the guard working, reported as a failure of the test.
+    """
+    if _last_restart is None:
+        return
+    left = HEALTHY_S + 0.5 - (time.monotonic() - _last_restart)
+    if left > 0:
+        pacing.pause(left)
+
+
+def _restart(board):
+    """`z`, with the restart noted."""
+    said = board.reset()
+    _restarted()
+    return said
+
+
 def _fault(board):
     """Send `f`; return what the console said until the banner came back."""
+    _let_the_board_be_healthy()
     board.poll_console()
     board.cmd("f")
     said = board.drain_console(0, quiet=pacing.LISTEN, cap=pacing.SLOW)
     # A fault detaches USB and re-enumerates it, which a plain `z` does
     # not, so the cached command link now points at a node that is gone.
     board.ctl_invalidate()
+    _restarted()
     return said
 
 
@@ -78,7 +120,7 @@ def test_a_deliberate_fault_is_recorded_and_the_board_comes_back(board):
 
 def test_an_ordinary_restart_is_not_a_fault(board):
     _fault(board)                       # make sure a record has existed
-    board.reset()
+    _restart(board)
     rec = _crash(board)
     assert rec["fault"] == 0, (
         f"a plain restart was reported as a fault: {rec}")
