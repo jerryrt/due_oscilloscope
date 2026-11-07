@@ -100,6 +100,17 @@ SECTIONS
 		_ebss = .;
 	} > ram0
 
+	/* Bank 1: nothing lands here unless explicitly placed. Reserved for
+	 * DMA buffers that must not contend with bank 0 traffic. */
+	.sram1 (NOLOAD) :
+	{
+		. = ALIGN(4);
+		_ssram1 = .;
+		*(.sram1 .sram1.*)
+		. = ALIGN(4);
+		_esram1 = .;
+	} > ram1
+
 	/* Survives a reset: not zeroed by Reset_Handler, which clears only
 	 * _sbss.._ebss. lib/due_shared/src/crashrec.c keeps its block here.
 	 * Contents are undefined after a power cycle, which is why the
@@ -112,17 +123,6 @@ SECTIONS
 		. = ALIGN(4);
 		*(.noinit .noinit.*)
 		. = ALIGN(4);
-	} > ram0
-
-	/* Bank 1: nothing lands here unless explicitly placed. Reserved for
-	 * DMA buffers that must not contend with bank 0 traffic. */
-	.sram1 (NOLOAD) :
-	{
-		. = ALIGN(4);
-		_ssram1 = .;
-		*(.sram1 .sram1.*)
-		. = ALIGN(4);
-		_esram1 = .;
 	} > ram1
 
 	. = ALIGN(4);
