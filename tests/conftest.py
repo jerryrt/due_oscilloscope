@@ -184,6 +184,9 @@ def pytest_configure(config):
         ("dso", "needs the bench oscilloscope attached"),
         ("track_a", "Track A only"),
         ("track_b", "Track B only"),
+        ("disruptive", "restarts or faults the board on purpose. Sorted LAST "
+                       "within its track by pytest_collection_modifyitems, so "
+                       "no other test runs on a board it has just restarted"),
         ("platform", "depends on this host's own OS branch - "
                      "transport/rt/ports - which the container, always "
                      "Linux, cannot cover. Run natively on every host"),
@@ -237,7 +240,11 @@ def pytest_collection_modifyitems(config, items):
         trk = ""
         if hasattr(item, "callspec"):
             trk = str(item.callspec.params.get("track", ""))
-        return (trk, fileno)
+        # A test that restarts the board on purpose goes after every
+        # other test of its track: the session shares one board, and a
+        # fault re-enumerates USB under whatever runs next.
+        disruptive = 1 if item.get_closest_marker("disruptive") else 0
+        return (trk, disruptive, fileno)
 
     items.sort(key=key)
 
