@@ -446,7 +446,14 @@ the docs and was needed here:
    `limits.d` entry fixes it **at next login**, which is a new session
    and not the running one - check `ulimit -r` rather than the file, for
    the reason above.
-4. **The GUI needs a second interpreter.** PySide6 6.9.3 is
+4. **The bench scope needs a udev rule too.** The Rigol DS1000 series
+   (1ab1:0588) is `root:root` on the libusb node and `/dev/usbtmc0`, and
+   `scope.py` opens it through libusb, so every open is `Access denied`.
+   `SUBSYSTEM=="usb", ATTR{idVendor}=="1ab1", ATTR{idProduct}=="0588",
+   MODE="0660", GROUP="plugdev"` fixes the access (reload and trigger
+   udev, or replug). The kernel's own `usbtmc` driver then holds the
+   interface and the claim fails as `Resource busy`; `UsbTmc` detaches it.
+5. **The GUI needs a second interpreter.** PySide6 6.9.3 is
    `>=3.9,<3.14` and Ubuntu 26.04 ships only 3.14, which is not in the
    archive as a lower version; brew's `python@3.13` is what this bench
    uses. `requirements-gui.txt` then installs **unchanged** - the pins

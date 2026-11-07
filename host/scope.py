@@ -164,8 +164,18 @@ class UsbTmc:
     """USBTMC over the first bulk endpoint pair. Not thread-safe."""
 
     def __init__(self, dev):
+        import usb.core
         import usb.util
         self.dev = dev
+        # Linux binds its own usbtmc driver to this interface, and libusb
+        # then fails the claim with "Resource busy". The other platforms
+        # have no such driver, so the call is a no-op or unimplemented
+        # there. The detach lasts until the instrument is replugged.
+        try:
+            if self.dev.is_kernel_driver_active(0):
+                self.dev.detach_kernel_driver(0)
+        except (NotImplementedError, usb.core.USBError):
+            pass
         try:
             self.dev.set_configuration()
         except Exception:
