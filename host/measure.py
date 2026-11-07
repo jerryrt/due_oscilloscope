@@ -3375,6 +3375,39 @@ _ID_LINE = re.compile(
     r"\s+build=(?P<build>.+?)\s*$", re.M)
 
 
+_CRASH_LINE = re.compile(r"^# crash: (?P<kv>.+?)\s*$", re.M)
+
+
+def parse_crash(text):
+    """The `c` command's line, or None. The LAST one in `text`.
+
+    `# crash: reset=software fault=1 count=1 streak=1 pc=0x... ...` is
+    one `key=value` line (lib/due_shared/src/console_cmds.c). Integers
+    come back as ints, `0x...` as ints too, `reset` as its word. The
+    last line wins because a capture that spans a restart holds the old
+    boot's line before the new one. A line with a field this does not
+    understand is returned with that field as the raw string rather
+    than dropped: a fault record that goes missing in the parser is
+    exactly the failure this exists to make visible.
+    """
+    hits = _CRASH_LINE.findall(text)
+    if not hits:
+        return None
+    out = {}
+    for tok in hits[-1].split():
+        if "=" not in tok:
+            continue
+        k, v = tok.split("=", 1)
+        if k == "reset":
+            out[k] = v
+            continue
+        try:
+            out[k] = int(v, 16) if v.lower().startswith("0x") else int(v)
+        except ValueError:
+            out[k] = v
+    return out
+
+
 def parse_identity(text):
     """The identity line, or None. Same shape as the control channel's
     IDENTITY record, so a caller can use either interchangeably.
