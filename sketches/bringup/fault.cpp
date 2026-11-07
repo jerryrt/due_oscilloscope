@@ -15,6 +15,7 @@
  */
 
 #include <Arduino.h>
+#include "crashrec.h"
 
 #define LED_MASK (1u << 27)   /* pin 13 = PB27 */
 
@@ -66,9 +67,27 @@ static void blink_forever(int count)
 	}
 }
 
+/*
+ * After the dump: detach the native port so the host sees the device go,
+ * then a processor and peripheral reset (a processor reset alone leaves
+ * the USB controller attached; see the `z` wedge in CLAUDE.md). Busy
+ * loop for the delay, as in blink_forever(). Same as bsp/fault.c.
+ */
+static void fault_reset(void)
+{
+	UOTGHS->UOTGHS_DEVCTRL |= UOTGHS_DEVCTRL_DETACH;
+	for (volatile uint32_t d = 0; d < 2000000u; d++) { }
+	RSTC->RSTC_CR = RSTC_CR_KEY(0xA5u) | RSTC_CR_PROCRST | RSTC_CR_PERRST;
+	for (;;) { }
+}
+
 extern "C" void hard_fault_report(const uint32_t *sp)
 {
 	uint32_t cfsr = SCB->CFSR;
+
+	/* First, so the record outlives the dump if the UART is what is
+	 * broken. */
+	crashrec_store(sp, cfsr, SCB->HFSR, SCB->MMFAR, SCB->BFAR);
 
 	fputs_polled("\r\n#\r\n# *** HARD FAULT ***\r\n");
 
@@ -104,7 +123,12 @@ extern "C" void hard_fault_report(const uint32_t *sp)
 
 	fputs_polled("# PC identifies the faulting instruction.\r\n");
 	fputs_polled("# Cross-reference against the .map file.\r\n");
-	fputs_polled("# halting, blinking 3\r\n#\r\n");
+	if (crashrec_should_reset()) {
+		fputs_polled("# record kept; resetting\r\n#\r\n");
+		fault_reset();
+	}
+	fputs_polled("# faulted again before a healthy period; "
+		     "halting, blinking 3\r\n#\r\n");
 
 	blink_forever(3);
 }

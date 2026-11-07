@@ -49,6 +49,7 @@
 #include "ctlusb.h"
 #include "ctl.h"                    /* the shared parser */
 #include "console.h"                /* the shared command surface */
+#include "crashrec.h"
 #include "load.h"                   /* the shared main-loop monitor */
 #include "ctl_port.h"               /* ctl_port_gen_get: the console reads
                                      * the generator through the same hook
@@ -538,6 +539,10 @@ void serialEventRun(void)
 
 void setup()
 {
+	/* RSTC_SR's cause survives the core's init(); read it before
+	 * anything here can fault. */
+	crashrec_boot(RSTC->RSTC_SR);
+
 	/* Before anything derives a rate from it. */
 	clock_set_mck(MCK_MULA_DEFAULT);
 
@@ -580,6 +585,7 @@ void setup()
 	gen_init();
 
 	banner();
+	console_crash_report();
 	heartbeat_at = millis();
 }
 
@@ -750,6 +756,12 @@ static void ha_fault(const uint32_t *a)
 {
 	(void)a;
 	console_trigger_fault();
+}
+
+static void ha_crash(const uint32_t *a)
+{
+	(void)a;
+	console_crash_report();
 }
 
 static void ha_read(const uint32_t *a)
@@ -1458,7 +1470,7 @@ static void ha_bench(const uint32_t *a)
  */
 const console_binding_t console_bindings[] = {
 	{ 'h', ha_help },       { 'v', ha_ident },      { 'p', ha_printf },
-	{ 'g', ha_gpio },       { 'f', ha_fault },
+	{ 'g', ha_gpio },       { 'f', ha_fault },        { 'c', ha_crash },
 
 	{ 'r', ha_read },       { 's', ha_sweep },      { 'x', ha_xtalk },
 	{ 't', ha_ratesweep },  { 'd', ha_dac_sweep },  { 'j', ha_dac_15m },
@@ -1509,6 +1521,7 @@ void loop()
 	static uint32_t diag_ms, ctl_ms;
 	uint32_t now = millis();
 
+	crashrec_healthy(now);
 	stream_loop_passes++;
 
 	/*
