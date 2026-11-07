@@ -452,6 +452,30 @@ the docs and was needed here:
    uses. `requirements-gui.txt` then installs **unchanged** - the pins
    resolve on Linux/3.13 as they do on macOS/3.13 and Windows/3.12.
 
+### Which bossac, and the sequences that boot
+
+Two builds are in use and they are not argument-compatible. Both flash
+through the **programming port** (`2341:003d`, the 16U2); `tools/flash.py`
+is written for the Arduino 1.6.1 argument style and does not run against
+1.9.1.
+
+| bossac | sequence | notes |
+|---|---|---|
+| **Arduino 1.6.1-arduino** (Arduino's package index lists its URL and SHA-256) | the 1200-baud touch, then `bossac --port=ttyACM0 -U false -e -w -v -b IMG -R` | writes the boot bit and resets in one call. An image under about 8 KB crashes it (SIGFPE); real images are 40 KB or more |
+| **apt `bossa-cli` 1.9.1** | `--arduino-erase -e -w -v IMG`, then `--boot=1`, then `-R`: **three calls** | `--arduino-erase` is its own touch. The boot bit and the reset stay in separate calls, because 1.9.1 sets the bit when it finishes the call and a reset inside that call can land first |
+
+The reset goes over the programming port in both. Check the result the
+same way each time: `v` answers on the console, and `2341:003e` is on
+the bus. `bossac -i` prints `Boot Flash:` for the first of three GPNVM
+bits and says nothing of the other two, so it cannot stand in for that
+check.
+
+Measured on `montreal5` (Ubuntu 26.04, apt 1.9.1-3ubuntu6, and
+1.6.1-arduino) with the pinned `7ccc732` Track B image and the three
+tracks at `f707d23`: each sequence above booted every time it was run.
+`dmesg` shows whether a touch fired - `03eb:6124` appears on the native
+port - which the touch's own return value does not.
+
 ### flash.py's boot-bit failures are explained
 
 All three `Boot Flash: false` boards here came through `tools/flash.py`
