@@ -24,6 +24,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/awg.md](docs/awg.md) | Both generators, shapes, resolution, and why a trace shakes |
 | [docs/measurement-suite.md](docs/measurement-suite.md) | How a figure earns the word baseline, and what is still missing |
 | [docs/debugging.md](docs/debugging.md) | Probeless bring-up strategy |
+| [docs/dac-open-ended-montreal5.md](docs/dac-open-ended-montreal5.md) | The DAC and the noise/SINAD loop with a Rigol scope on the pins, and how much of the noise the probes add |
 | [docs/rtos.md](docs/rtos.md) | Bare-metal and FreeRTOS integration |
 | [docs/usb.md](docs/usb.md) | Measured transport ceilings and host I/O policy |
 | [docs/testing.md](docs/testing.md) | On-hardware pytest suite: design, and what it found |
