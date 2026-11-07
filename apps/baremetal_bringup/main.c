@@ -35,6 +35,7 @@
                             * channel does, so the two cannot disagree */
 #include "load.h"
 #include "chipid.h"
+#include "crashrec.h"
 #include "diag.h"
 #include "usb_cdc.h"
 #include "track_id.h"
@@ -207,6 +208,7 @@ static void h_ident(const uint32_t *a) { (void)a; identity_line(); }
 static void h_printf(const uint32_t *a){ (void)a; console_cmd_printf_cost(); }
 static void h_gpio(const uint32_t *a)  { (void)a; console_cmd_gpio_cost(); }
 static void h_fault(const uint32_t *a) { (void)a; console_trigger_fault(); }
+static void h_crash(const uint32_t *a) { (void)a; console_crash_report(); }
 static void h_read(const uint32_t *a)  { (void)a; console_cmd_read(); }
 static void h_sweep(const uint32_t *a) { (void)a; console_cmd_dac_sweep_dc(); }
 static void h_xtalk(const uint32_t *a)
@@ -680,7 +682,7 @@ static void h_occ(const uint32_t *a) { (void)a; console_cmd_occ_hist(); }
  */
 const console_binding_t console_bindings[] = {
 	{ 'h', h_help },        { 'v', h_ident },       { 'p', h_printf },
-	{ 'g', h_gpio },        { 'f', h_fault },
+	{ 'g', h_gpio },        { 'f', h_fault },        { 'c', h_crash },
 
 	{ 'r', h_read },        { 's', h_sweep },       { 'x', h_xtalk },
 	{ 't', h_ratesweep },   { 'd', h_dac_sweep },   { 'j', h_dac_15m },
@@ -738,6 +740,10 @@ int main(void)
 	 * roughly every 15 s if not serviced. Nothing here services it. */
 	WDT->WDT_MR = WDT_MR_WDDIS;
 
+	/* Read the fault record and the reset cause before anything can
+	 * fault again; see lib/due_shared/src/crashrec.h. */
+	crashrec_boot(RSTC->RSTC_SR);
+
 	/* Before anything derives a rate from it. */
 	clock_set_mck(MCK_MULA_DEFAULT);
 
@@ -759,6 +765,7 @@ int main(void)
 	clockref_init();
 
 	banner();
+	console_crash_report();
 	heartbeat_at = millis();
 
 	uint32_t ctl_ms = 0;
@@ -774,6 +781,7 @@ int main(void)
 		load_tick();
 
 		now = millis();
+		crashrec_healthy(now);
 		stream_loop_passes++;
 
 		if (now - heartbeat_at >= (led_state ? 100u : 900u)) {
