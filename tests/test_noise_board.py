@@ -14,6 +14,7 @@ import sys
 import pytest
 
 import measure
+from helpers import gate_note
 import pacing
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -36,7 +37,8 @@ def check_noise(flat, cfg):
     frac = flat.get("split.line_power_fraction") or 0.0
     assert rms <= cfg["rms_ceiling_lsb"], (
         f"{rms:.3f} codes rms on a held code is above the recorded "
-        f"ceiling {cfg['rms_ceiling_lsb']} (floor part {floor_rms})")
+        f"ceiling {cfg['rms_ceiling_lsb']} (floor part {floor_rms})"
+        f"{gate_note(cfg)}")
     assert frac <= cfg["line_fraction_ceiling"], (
         f"spectral lines carry {frac:.3f} of the power, above "
         f"{cfg['line_fraction_ceiling']} ({flat.get('n_lines')} lines)")

@@ -813,6 +813,10 @@ def _collect(board=None, inst=None, channels=(1, 2)):
         # comparing benches has to be able to see that.
         "wiring_source": source,
         "bench": b.get("bench"),
+        # Whether the Rigol tips are on A0/A1, as the bench declared it
+        # ("on" / "off"), or None when it did not. A large analog load,
+        # so a record that omits it cannot be compared across benches.
+        "probes": b.get("probes"),
     }
     if b.get("bench_error"):
         p["bench_error"] = b["bench_error"]

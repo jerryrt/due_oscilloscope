@@ -118,7 +118,7 @@ def test_every_standing_record_writer_reaches_conditions():
 #: than being snapshotted back from the function under test.
 _COLLECT_KEYS = {"taken_at", "host_os", "host_machine", "python",
                  "repo_rev", "wiring", "wiring_since", "wiring_source",
-                 "bench", "instrument"}
+                 "bench", "instrument", "probes"}
 _RUN_FIELDS_KEYS = {"track", "fw_repo_rev", "repo_rev", "fw_build",
                     "fw_cc", "fw_layout", "fw_build_env",
                     "fw_build_image_content"}

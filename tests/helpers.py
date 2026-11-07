@@ -400,6 +400,20 @@ def shared_run(cache, fn, board, **kw):
 
 
 PROBES_EXTRA = "_probes_extra"
+GATE_ON = "probes-on (extras applied)"
+GATE_STRICT = "probes-off (strict)"
+
+
+def gate_label(declared):
+    """Which gate `apply_probe_state` applies for this declaration."""
+    on = str((declared or {}).get("probes", "")).lower() == "on"
+    return GATE_ON if on else GATE_STRICT
+
+
+def gate_note(cfg):
+    """A suffix for a failure message saying which gate it compared against."""
+    g = cfg.get("gate")
+    return f" [{g} gate]" if g else ""
 
 
 def apply_probe_state(base, declared):
@@ -416,11 +430,14 @@ def apply_probe_state(base, declared):
     """
     import copy
     out = copy.deepcopy(base)
-    on = str((declared or {}).get("probes", "")).lower() == "on"
+    on = gate_label(declared) == GATE_ON
     for sec in out.values():
         if not isinstance(sec, dict):
             continue
-        for key in [k for k in sec if k.endswith(PROBES_EXTRA)]:
+        extras = [k for k in sec if k.endswith(PROBES_EXTRA)]
+        if extras:
+            sec["gate"] = GATE_ON if on else GATE_STRICT
+        for key in extras:
             extra = sec.pop(key)
             if on:
                 bound = key[:-len(PROBES_EXTRA)]

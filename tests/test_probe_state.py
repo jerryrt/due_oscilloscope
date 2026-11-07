@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from helpers import apply_probe_state
+from helpers import GATE_ON, GATE_STRICT, apply_probe_state, gate_label, gate_note
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -52,3 +52,28 @@ def test_the_input_is_not_modified(raw):
     before = json.dumps(raw, sort_keys=True)
     apply_probe_state(raw, {"probes": "on"})
     assert json.dumps(raw, sort_keys=True) == before
+
+
+def test_each_section_says_which_gate_it_carries(raw):
+    assert apply_probe_state(raw, {"probes": "on"})["noise"]["gate"] == GATE_ON
+    assert apply_probe_state(raw, {})["noise"]["gate"] == GATE_STRICT
+    assert apply_probe_state(raw, {"probes": "off"})["sinad"]["gate"] == GATE_STRICT
+    assert "gate" not in apply_probe_state(raw, {})["dc_transfer"]
+
+
+def test_the_header_label_agrees_with_what_is_applied(raw):
+    for declared in ({}, {"probes": "off"}, {"probes": "on"}):
+        assert (gate_label(declared)
+                == apply_probe_state(raw, declared)["noise"]["gate"])
+
+
+def test_a_failure_message_names_the_gate():
+    assert "probes-off (strict) gate" in gate_note({"gate": GATE_STRICT})
+    assert gate_note({}) == ""
+
+
+def test_the_declaration_reaches_the_records(monkeypatch):
+    import provenance
+    for declared, want in (({"probes": "on"}, "on"), ({}, None)):
+        monkeypatch.setattr(provenance, "bench", lambda d=declared: d)
+        assert provenance._collect()["probes"] == want

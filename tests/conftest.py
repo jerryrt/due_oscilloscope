@@ -133,10 +133,13 @@ def _trace_sleeps():
 def pytest_report_header(config):
     """What is attached, read without opening a port, so the first lines say which tiers can execute on this bench."""
     import devices
+    import provenance
+    from helpers import gate_label
+    gate = f"gates: {gate_label(provenance.bench())} (bench.json \"probes\")"
     try:
-        return devices.header_lines(ports.census())
+        return devices.header_lines(ports.census()) + [gate]
     except Exception as e:                      # noqa: BLE001 - a header must never stop a run
-        return [f"devices: could not be read ({type(e).__name__}: {e})"]
+        return [f"devices: could not be read ({type(e).__name__}: {e})", gate]
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):

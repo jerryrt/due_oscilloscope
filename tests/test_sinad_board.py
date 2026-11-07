@@ -15,7 +15,7 @@ import pytest
 
 import measure
 import pacing
-from helpers import confirm_measurement, record
+from helpers import confirm_measurement, gate_note, record
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -37,11 +37,11 @@ def check_sinad(values, cfg):
     for key, bound in LOWER:
         assert values[key] >= cfg[bound], (
             f"{key} {values[key]:.3f} is below the recorded bound "
-            f"{bound} {cfg[bound]}")
+            f"{bound} {cfg[bound]}{gate_note(cfg)}")
     for key, bound in UPPER:
         assert values[key] <= cfg[bound], (
             f"{key} {values[key]:.3f} is above the recorded bound "
-            f"{bound} {cfg[bound]}")
+            f"{bound} {cfg[bound]}{gate_note(cfg)}")
 
 
 @pytest.mark.parametrize("adc_rc", [measure.rc_for(200000), 86],
