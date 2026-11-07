@@ -161,6 +161,18 @@ SECTIONS
         _ezero = .;
     } > ram
 
+    /* Survives a reset: the core's startup code clears only
+     * _szero.._ezero (= .bss), and this sits after _ezero and before
+     * _end, so the heap starts beyond it. lib/due_shared/src/crashrec.c
+     * keeps its fault record here. Contents are undefined after a power
+     * cycle, which is why the block carries a magic and a CRC. */
+    .noinit (NOLOAD) :
+    {
+        . = ALIGN(4);
+        *(.noinit .noinit.*)
+        . = ALIGN(4);
+    } > ram
+
     . = ALIGN(4);
     _end = . ;
 

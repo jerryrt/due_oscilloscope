@@ -111,6 +111,7 @@ static const struct cmd_entry table[] = {
 	{ 'A', "=<tt>,<st>", "ADC track/settling time, at the next stream" },
 
 	/* Instrumentation and recovery. */
+	{ 'c', NULL,        "last fault and reset cause, kept across a fault reset" },
 	{ 'Q', NULL,        "main-loop profile" },
 	{ 'l', "=1",        "main-loop load; =1 reports then clears" },
 	{ 'S', "=<ms>",     "stall the loop, to validate l" },

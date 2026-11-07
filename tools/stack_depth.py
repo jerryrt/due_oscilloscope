@@ -9,7 +9,7 @@ firmware is built there and nowhere else:
     cmake --build build -j
     python3 tools/stack_depth.py build --elf build/track_b_bringup.elf \
             --indirect console.c:260=console_bindings \
-            --indirect console_cmds.c:44=noreturn
+            --indirect console_cmds.c:45=noreturn
 
 and, for the same graph as a picture rather than a bound,
 

@@ -711,9 +711,9 @@ def test_the_committed_declarations_parse(tmp_path):
         # EXACTLY - by reading the table out of the image, never by
         # asserting something about it.
         by_key = dict((k, v) for _kind, k, v in got)
-        assert by_key.get("console.c:260") == "console_bindings", (
+        assert by_key.get("console.c:261") == "console_bindings", (
             f"track {track}: the console dispatch must resolve exactly")
-        assert by_key.get("console_cmds.c:44") == "noreturn"
+        assert by_key.get("console_cmds.c:45") == "noreturn"
 
         # bsp/fault.c is shared, so every track needs the naked branch
         # declared or its fault path is a spurious root with the whole

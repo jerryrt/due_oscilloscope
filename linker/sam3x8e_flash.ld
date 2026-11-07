@@ -100,6 +100,20 @@ SECTIONS
 		_ebss = .;
 	} > ram0
 
+	/* Survives a reset: not zeroed by Reset_Handler, which clears only
+	 * _sbss.._ebss. lib/due_shared/src/crashrec.c keeps its block here.
+	 * Contents are undefined after a power cycle, which is why the
+	 * block carries a magic and a CRC. It lives in bank 1 because Track
+	 * C's .bss runs to within 240 bytes of the top of bank 0, and a
+	 * 76-byte block there left the main stack, which every interrupt
+	 * runs on, 164 bytes. */
+	.noinit (NOLOAD) :
+	{
+		. = ALIGN(4);
+		*(.noinit .noinit.*)
+		. = ALIGN(4);
+	} > ram0
+
 	/* Bank 1: nothing lands here unless explicitly placed. Reserved for
 	 * DMA buffers that must not contend with bank 0 traffic. */
 	.sram1 (NOLOAD) :

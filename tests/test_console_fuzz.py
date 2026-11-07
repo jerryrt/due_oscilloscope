@@ -63,7 +63,7 @@ TARGET = os.path.join(HERE, "console", "fuzz_console.c")
 #: `console_cmds.c` calls them; its own parser is fuzzed by
 #: `test_ctl_fuzz.py`.
 SOURCES = ("console.c", "console_cmds.c", "console_out.c", "ctl.c",
-           "crc32.c")
+           "crc32.c", "crashrec.c")
 
 #: How many inputs the grind takes, and from which seeds. Fixed values,
 #: because a run whose input set moves cannot be compared with the run
