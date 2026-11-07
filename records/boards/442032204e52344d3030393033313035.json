@@ -1,0 +1,83 @@
+{
+  "arrangements": [
+    {
+      "first": "2026-11-07T09:00:24-0500",
+      "last": "2026-11-07T09:00:24-0500",
+      "phase": "first-seen-90mhz"
+    }
+  ],
+  "board_serial": "1344A47403035121C738",
+  "board_uid": "442032204e52344d3030393033313035",
+  "calibration": {
+    "adc_gain": null,
+    "adc_offset": null,
+    "adc_transfer": null,
+    "dac_mv": null,
+    "note": "not measured; needs an external reference (docs/scope.md open question 5)",
+    "reference": null,
+    "temperature_slope": null
+  },
+  "converter": [
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        0,
+        0
+      ],
+      "die_code_mean": 978.9167,
+      "idle_before_s": 125,
+      "image": "7ccc732",
+      "largest_median": 38.5,
+      "largest_range": [
+        38.5,
+        39.5
+      ],
+      "phase": "first-seen-90mhz",
+      "row_taken_at": "2026-11-07T09:00:24-0500",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        0.58,
+        0.4
+      ],
+      "tail_scale_a1": [
+        0.48,
+        0.52
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-11-07T09:00:24-0500"
+    }
+  ],
+  "converter_summary": {
+    "first-seen-90mhz": {
+      "benches": [
+        "linux-x1"
+      ],
+      "largest_range": [
+        38.5,
+        39.5
+      ],
+      "n_rested_rows": 1,
+      "n_rows": 1,
+      "rested_largest_median": 38.5
+    }
+  },
+  "first_seen": "2026-11-07T09:00:24-0500",
+  "flags": {
+    "first-seen-90mhz": []
+  },
+  "generated": {
+    "bench": "linux-x1",
+    "generated_on": "7ccc732",
+    "tool": "tools/board_profile.py"
+  },
+  "history": [
+    {
+      "bench": "linux-x1",
+      "first": "2026-11-07T09:00:24-0500",
+      "last": "2026-11-07T09:00:24-0500",
+      "rows": 1
+    }
+  ],
+  "notes": [],
+  "schema": "board-profile/1"
+}
