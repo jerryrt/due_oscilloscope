@@ -122,6 +122,7 @@ that bench to generalise, not a defect this pass corrects.
 | `soak0c_portable.py` | Objective 0c, reproduced without any POSIX-only code. | live - docs/windows.md |
 | `soak_close_stream.py` | Close the native port mid-capture, without stopping the stream. | live - tests/test_framer_close.py |
 | `splices.py` | Count the splices in a device-generated capture, run after run. | live - docs/awg.md |
+| `station_repeat.py` | How much of a held-code noise or SINAD figure is the station, not the board: the board tier's two measurements under named conditions. | live - docs/dac-open-ended-montreal5.md |
 | `stream_seam.py` | The seam list for issue #14, extracted rather than curated. | live - docs/shared-source.md |
 | `temp_bands.py` | Judge a temperature soak against issue #18's adopted bands. | live - issue #18 open |
 | `temp_soak.py` | Is there a room-temperature signal left once build and activity are fixed? | live - issue #18 open |
@@ -129,6 +130,7 @@ that bench to generalise, not a defect this pass corrects.
 | `temp_workload.py` | Does the die sensor read the workload rather than the room? | archived - issue #15 closed; docs/measurement-suite.md |
 | `toolchain.py` | Resolve build tools from toolchains.json. | live - docs/toolchain.md |
 | `track_parity.py` | Compare the tracks' console tables and main() init, as lists. | live - tests/test_track_parity.py |
+| `uart_log.py` | Passively log the programming-port console, so a fault dump is not lost for want of a reader. | live - docs/debugging.md |
 | `uptime_reset_probe.py` | Does opening the control port reset the board? Ask the board. | live - docs/usb.md, docs/measurement-suite.md |
 | `verify_track_parity_history.py` | Would track_parity.py have caught the five main() divergences? | unknown - no issue, doc or test reference found |
 | `wikigen.py` | Build the wiki's gallery pages from the capture's own index. | live - consumes tools/gallery.py's index.json (live) |

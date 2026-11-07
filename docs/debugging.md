@@ -211,6 +211,50 @@ emit.
 The handler must also **blink a fault code**, so it still reports when
 the UART is unavailable.
 
+### The fault record
+
+The dump goes out once, on a UART nobody may be reading. So the handler
+also keeps the frame in a RAM block that start-up does not clear
+(`lib/due_shared/src/crashrec.c`, a `.noinit` section in the linker
+scripts), detaches USB and resets the part. The board comes back by
+itself, the host sees the same re-enumeration as a `Z`, and the next boot
+reports what happened.
+
+`c` prints one line:
+
+```
+# crash: reset=software fault=1 count=2 streak=1 pc=0x20000000 lr=... cfsr=... hfsr=... mmfar=... bfar=... sp=...
+```
+
+`reset` is the reset cause word (`power-on`, `backup`, `watchdog`,
+`software`, `user-pin`) and `fault=1` means a record was pending at this
+boot. A fault reset reads `software`, so `fault` is what tells it from
+`z`. `count` is faults since the block was last initialised and `streak`
+is faults in a row with no healthy period (5 s of uptime) between.
+`measure.parse_crash` reads the line.
+
+- **Loop guard.** A third fault in a row stops resetting and blinks
+  instead, so a fault in early boot cannot hide behind a board that keeps
+  restarting.
+- **What survives:** a processor and peripheral reset, which is what the
+  fault path ends in. **What does not:** a power cycle, when SRAM is
+  undefined. A block that fails its magic or CRC reads as empty, never as
+  a fault.
+- **Opening the programming port with a library that toggles DTR resets
+  the board through the 16U2 and wipes the record**; `measure.Board` and
+  `transport.open_raw(..., dtr=False)` do not.
+- Tracks B and C share `bsp/fault.c`; Track A has its own handler in
+  `sketches/bringup/fault.cpp`. `tests/test_crash_record_board.py` holds
+  the behaviour on a board (a deliberate fault with `f`, an ordinary
+  restart as the control, a fault during a stream) and
+  `tests/test_crashrec.py` holds the module on the host with mutants.
+- **Where it has run.** On a board, Track B only, with the record in
+  bank 0 (bench `montreal5`, the three board tests above). Tracks A and
+  C are built in the container and have not been seen to boot with it;
+  Track C's record is in bank 1 because its `.bss` leaves the main stack
+  240 bytes at the top of bank 0, and Track B's moved with it, which has
+  also not been seen to boot.
+
 Under FreeRTOS, add `configCHECK_FOR_STACK_OVERFLOW = 2` and a hook that
 prints the offending task name. Stack overflow is the most common RTOS
 failure and is otherwise invisible.
