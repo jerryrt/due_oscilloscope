@@ -140,7 +140,14 @@ pytest --track=b --durations=25
 
 `--track=a|b|c|both`, defaulting to `both`. Track is a session fixture
 that flashes once and yields a `Board`. Markers: `smoke`, `slow`,
-`awg`, `scope`, `track_a`, `track_b`.
+`awg`, `scope`, `track_a`, `track_b`, `disruptive`.
+
+**`disruptive` marks a test that restarts or faults the board on
+purpose, and `conftest.py` sorts it last within its track.** A fault
+detaches USB and re-enumerates it, so any test that ran after one on the
+shared session board would be aimed at a node that is gone and fail for
+that reason. `tests/test_disruptive_last.py` collects the suite and holds
+the ordering.
 
 **`both` means A and B, deliberately - Track C is opt-in.** The
 original reason was that a track still growing its command surface
