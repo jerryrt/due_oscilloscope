@@ -1,4 +1,5 @@
-"""UsbTmc detaches Linux's usbtmc driver before it claims the interface.
+"""UsbTmc detaches Linux's usbtmc driver before it claims the interface,
+and clears a halt the previous session left on either bulk endpoint.
 
 Without that libusb fails the claim with "Resource busy" on a Linux host,
 where the kernel binds its own usbtmc driver to the instrument. Board-free:
@@ -20,6 +21,12 @@ class _Ep:
 class _Dev:
     def __init__(self, bound, raises=None):
         self.bound, self.raises, self.detached = bound, raises, False
+        self.cleared, self.clear_raises = [], None
+
+    def clear_halt(self, ep):
+        if self.clear_raises:
+            raise self.clear_raises
+        self.cleared.append(ep.bEndpointAddress)
 
     def is_kernel_driver_active(self, itf):
         if self.raises:
@@ -58,4 +65,19 @@ def test_an_unbound_interface_is_left_alone(monkeypatch):
 
 def test_a_platform_without_the_call_still_opens(monkeypatch):
     dev = _Dev(bound=False, raises=NotImplementedError())
+    _open(dev, monkeypatch)
+
+
+def test_both_bulk_endpoints_are_cleared_of_a_halt(monkeypatch):
+    """A halt left by the last session fails the next one's first request
+    (Pipe error, short read or timeout): every second session, measured."""
+    dev = _Dev(bound=False)
+    _open(dev, monkeypatch)
+    assert sorted(dev.cleared) == [0x01, 0x81], dev.cleared
+
+
+def test_a_clear_that_the_device_refuses_does_not_stop_the_open(monkeypatch):
+    import usb.core
+    dev = _Dev(bound=False)
+    dev.clear_raises = usb.core.USBError("no such pipe")
     _open(dev, monkeypatch)

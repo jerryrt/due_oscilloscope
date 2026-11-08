@@ -194,6 +194,19 @@ class UsbTmc:
             == usb.util.ENDPOINT_IN)
         if self._out is None or self._in is None:
             raise ScopeUnavailable("no bulk endpoint pair on interface 0")
+        # The instrument can leave a bulk endpoint halted when a session
+        # ends, and the next session's first request then fails: a Pipe
+        # error, a zero-length read, or the 5 s timeout, depending on
+        # which end stalled. Every second pytest session on montreal5
+        # lost the scope to it. Clearing a halt that is not there is
+        # harmless and is what a host does after claiming an interface;
+        # the USBTMC class-level INITIATE_CLEAR is not a substitute, it
+        # leaves the bulk-out halted itself.
+        for ep in (self._out, self._in):
+            try:
+                self.dev.clear_halt(ep)
+            except usb.core.USBError:
+                pass
         self._tag = 0
 
     def _tag_next(self):
