@@ -930,3 +930,83 @@ def test_the_record_carries_the_track_rather_than_leaving_it_to_the_path(
     assert len(rows) == 4
     assert [r["track"] for r in rows] == ["B", "C", "B", None], \
         [(r["binary"], r["track"]) for r in rows]
+
+
+# -- which bossac, and the calls it needs ------------------------------------
+
+class _Help:
+    def __init__(self, text):
+        self.stdout, self.stderr = text, ""
+
+
+def _help_says(version):
+    return lambda *_a, **_k: _Help(
+        "Usage: bossac [OPTION...] [FILE]\n"
+        f"Basic Open Source SAM-BA Application (BOSSA) Version {version}\n")
+
+
+@pytest.mark.parametrize("version, style", [
+    ("1.6.1-arduino", flash.LEGACY),
+    ("1.9.1", flash.MODERN),
+    ("1.7.0", None),        # neither measured, so neither guessed at
+    ("2.0.0", None),
+])
+def test_the_bossac_style_is_read_from_its_own_help(version, style):
+    assert flash.bossac_style("bossac", run=_help_says(version)) == style
+
+
+def test_a_bossac_that_says_no_version_has_no_style():
+    run = lambda *_a, **_k: _Help("usage: something else\n")
+    assert flash.bossac_style("bossac", run=run) is None
+
+
+def test_a_bossac_that_cannot_run_has_no_style():
+    def run(*_a, **_k):
+        raise FileNotFoundError("bossac")
+    assert flash.bossac_style("bossac", run=run) is None
+
+
+def test_the_legacy_call_is_the_one_line_it_always_was():
+    assert flash.bossac_calls(flash.LEGACY, "B", "/dev/ttyACM1", "true", "I") == [
+        ["B", "-i", "-d", "--port=ttyACM1", "-U", "true", "-e", "-w", "-v",
+         "-b", "I", "-R"]]
+
+
+def test_the_modern_calls_keep_the_boot_bit_and_the_reset_apart():
+    calls = flash.bossac_calls(flash.MODERN, "B", "/dev/ttyACM1", "true", "I")
+    assert len(calls) == 3, calls
+    write, boot, reset = calls
+    assert "-w" in write and "I" in write and "-R" not in write
+    assert "--boot=1" in boot and "-R" not in boot and "-w" not in boot
+    assert reset[-1] == "-R" and "--boot=1" not in reset
+    # 1.9.1 reads `-U` and `-b` as other options: the 1.6.1 line is a
+    # usage error there.
+    for call in calls:
+        assert "-U" not in call and "-b" not in call, call
+
+
+def test_the_usb_flag_follows_the_route_in_the_modern_calls():
+    on_native = flash.bossac_calls(flash.MODERN, "B", "/dev/ttyACM1", "true", "I")
+    on_uart = flash.bossac_calls(flash.MODERN, "B", "/dev/ttyACM0", "false", "I")
+    assert all("--usb-port=true" in c for c in on_native)
+    assert all("--usb-port=false" in c for c in on_uart)
+
+
+def test_a_bossac_it_cannot_drive_is_refused_before_the_touch(
+        tmp_path, monkeypatch):
+    """The touch erases the board, so the check has to come first."""
+    binary = _built(tmp_path, record=CONTAINER)
+    fake = tmp_path / "bossac"
+    fake.write_text("#!/bin/sh\necho 'Version 9.9.9'\n")
+    fake.chmod(0o755)
+    monkeypatch.setattr("sys.argv", ["flash.py", "--bin", binary,
+                                     "--bossac", str(fake)])
+
+    def touched(*_a, **_k):
+        raise AssertionError("the board was touched for a bossac it "
+                             "cannot drive")
+
+    monkeypatch.setattr(flash, "_flash_attempt", touched)
+    with pytest.raises(SystemExit) as exc:
+        flash.main()
+    assert "not a bossac this tool can drive" in str(exc.value.code)

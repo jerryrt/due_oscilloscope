@@ -70,6 +70,52 @@ SAMBA_WAIT_S = 15.0
 # CPU with no output, and unbounded means the flash never returns.
 BOSSAC_TIMEOUT_S = 120.0
 
+# The two bossac builds in use take different arguments (docs/linux.md,
+# "Which bossac, and the sequences that boot"). Arduino's 1.6.1 writes
+# the boot bit and resets inside one call. The apt 1.9.1 sets the bit
+# when it finishes the call, so a reset inside the same call can land
+# first and leave the board in SAM-BA: the boot bit and the reset are
+# separate calls there. Its `-U` and `-b` also mean other things, so the
+# 1.6.1 line is a usage error on it. Any other version is not guessed at.
+LEGACY, MODERN = "legacy", "modern"
+
+
+def bossac_style(bossac, run=subprocess.run):
+    """LEGACY for 1.6.x, MODERN for 1.9.x, None for anything else.
+
+    Read from the binary's own `--help` ("... Version 1.9.1"), because
+    the registry names a directory and the version is not in the path.
+    Asked before the 1200-baud touch: that erases the board, so a
+    bossac that cannot be driven has to be found out beforehand.
+    """
+    try:
+        got = run([bossac, "--help"], capture_output=True, text=True,
+                  timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    m = re.search(r"Version (\d+)\.(\d+)",
+                  (got.stdout or "") + (got.stderr or ""))
+    if not m:
+        return None
+    return {(1, 6): LEGACY, (1, 9): MODERN}.get((int(m[1]), int(m[2])))
+
+
+def bossac_calls(style, bossac, node, usb, binary):
+    """The bossac command lines that write `binary` and boot it, in order.
+
+    `usb` is "true" for the native SAM-BA node and "false" for the
+    programming port. The board is already in SAM-BA when these run: the
+    touch is flash.py's own, so 1.9.1's `--arduino-erase` is not used.
+    """
+    port = f"--port={os.path.basename(node)}"
+    if style == MODERN:
+        return [[bossac, "-i", "-d", port, f"--usb-port={usb}",
+                 "-e", "-w", "-v", binary],
+                [bossac, port, f"--usb-port={usb}", "--boot=1"],
+                [bossac, port, f"--usb-port={usb}", "-R"]]
+    return [[bossac, "-i", "-d", port, "-U", usb, "-e", "-w", "-v",
+             "-b", binary, "-R"]]
+
 # How long to wait, after bossac has reset the board, for the ROM
 # bootloader node to go away - which is the only evidence available here
 # that the program actually took over.
@@ -535,10 +581,19 @@ def _flash_attempt(bossac, binary, args):
     # path is what made this fail one run in three on macOS and leave the
     # board unbootable.
     routes = []
-    if native_usb == "true":
+    modern = getattr(args, "bossac_style", LEGACY) == MODERN
+    if native_usb == "true" and not (modern and console):
         routes.append((target, "true", "native SAM-BA"))
         if console:
             routes.append((console, "false", "programming port"))
+    elif native_usb == "true":
+        # 1.9.1 does not write over the native node: its applet write
+        # fails every time (montreal5, 3 of 3) and the programming port
+        # that follows is what flashes. Going straight there skips a
+        # failed attempt on a board the touch has already erased. With
+        # no programming port to go to (a board already in SAM-BA and
+        # named with --samba), the native node is all there is.
+        routes.append((console, "false", "programming port"))
     else:
         routes.append((target, "false", "programming port"))
 
@@ -553,10 +608,12 @@ def _flash_attempt(bossac, binary, args):
         print(f"==> bossac: writing {os.path.basename(binary)} via {node} "
               f"({label})")
         try:
-            rc = subprocess.call(
-                [bossac, "-i", "-d", f"--port={os.path.basename(node)}",
-                 "-U", usb, "-e", "-w", "-v", "-b", binary, "-R"],
-                timeout=BOSSAC_TIMEOUT_S)
+            rc = 0
+            for call in bossac_calls(getattr(args, "bossac_style", LEGACY),
+                                     bossac, node, usb, binary):
+                rc = subprocess.call(call, timeout=BOSSAC_TIMEOUT_S)
+                if rc != 0:
+                    break
         except subprocess.TimeoutExpired:
             # Measured on linux-x1: given --port=ttyACM1 for a node that
             # had gone away, bossac burned 100% of a core for four
@@ -1237,7 +1294,14 @@ def main() -> int:
         sys.exit("bossac not found. Add a pattern to toolchains.json, or "
                  "pass --bossac. Run: python3 tools/toolchain.py")
 
-    print(f"==> bossac : {bossac}")
+    args.bossac_style = bossac_style(bossac)
+    if args.bossac_style is None:
+        sys.exit(f"{bossac}: not a bossac this tool can drive (it takes "
+                 f"Arduino's 1.6.x or the apt 1.9.x). Refusing before the "
+                 f"touch, which erases the board. See docs/linux.md, "
+                 f"'Which bossac, and the sequences that boot'.")
+
+    print(f"==> bossac : {bossac} ({args.bossac_style} arguments)")
     print(f"==> binary : {binary}")
 
     for attempt in range(1, max(0, args.retries) + 2):

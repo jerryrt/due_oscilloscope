@@ -462,9 +462,12 @@ the docs and was needed here:
 ### Which bossac, and the sequences that boot
 
 Two builds are in use and they are not argument-compatible. Both flash
-through the **programming port** (`2341:003d`, the 16U2); `tools/flash.py`
-is written for the Arduino 1.6.1 argument style and does not run against
-1.9.1.
+through the **programming port** (`2341:003d`, the 16U2). `tools/flash.py`
+reads the version from the binary's own `--help` and issues the matching
+calls: the one-line 1.6.1 form, or for 1.9.x the three calls below
+(its own touch stands in for `--arduino-erase`), and it goes straight to
+the programming port there. Any other version is refused before the
+touch, which erases the board.
 
 | bossac | sequence | notes |
 |---|---|---|
