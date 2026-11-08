@@ -107,8 +107,11 @@ def test_a_deliberate_fault_is_recorded_and_the_board_comes_back(board):
     assert "resetting" in said, (
         "the handler did not reset, so the host would be left with a dead "
         f"board: {said!r}")
-    assert "due_oscilloscope" in said, (
-        f"no banner after the fault: the board did not restart: {said!r}")
+    # The identity line is the restart marker both tracks print; the
+    # banner is Track B's alone (Track C says who it is before the
+    # scheduler starts and prints no banner at boot).
+    assert "# id: track=" in said, (
+        f"no identity line after the fault: the board did not restart: {said!r}")
     after = _crash(board)
     assert after["fault"] == 1, after
     assert after["reset"] == "software", after
