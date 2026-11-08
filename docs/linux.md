@@ -463,11 +463,11 @@ the docs and was needed here:
 
 Two builds are in use and they are not argument-compatible. Both flash
 through the **programming port** (`2341:003d`, the 16U2). `tools/flash.py`
-reads the version from the binary's own `--help` and issues the matching
-calls: the one-line 1.6.1 form, or for 1.9.x the three calls below
-(its own touch stands in for `--arduino-erase`), and it goes straight to
-the programming port there. Any other version is refused before the
-touch, which erases the board.
+drives both with one chain: the write, then `--boot=1`, then `-R`, three
+calls, with `-U` given its value attached (`-Ufalse`), the one spelling
+both read. It tries the native SAM-BA node first and the programming port
+after it. 1.6.1 takes the native node and 1.9.1 does not, so 1.9.1 fails
+that first attempt and succeeds on the second.
 
 | bossac | sequence | notes |
 |---|---|---|
