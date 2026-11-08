@@ -131,6 +131,9 @@ echo
 echo "== positive control: a parser with no payload-length check =="
 python3 - "$shared/ctl.c" "$work/ctl_mutant.c" <<'PY' || die "could not build the mutant"
 import sys
+# tests/hostcc.py imports pacing, which is in host/; pytest's conftest puts
+# host/ on the path for it and this standalone script has no conftest.
+sys.path.insert(0, "host")
 sys.path.insert(0, "tests")
 from test_ctl_fuzz import MUTATIONS
 
