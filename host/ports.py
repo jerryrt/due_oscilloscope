@@ -320,6 +320,15 @@ def find_all_ports(wait=pacing.NORMAL):
     built before the control channel existed, which is a board with one
     native node rather than an error.
     """
+    # With two boards on one host discovery cannot say which node pair
+    # belongs to which board - the programming port and the native pair
+    # are separate USB devices - so a bench that holds two names the
+    # three nodes itself. Unset, nothing changes.
+    pinned = (os.environ.get("DUE_CONTROL_PORT"),
+              os.environ.get("DUE_NATIVE_PORT"),
+              os.environ.get("DUE_COMMAND_PORT"))
+    if any(pinned):
+        return pinned
     end = time.time() + wait
     while True:
         # Identify by USB VID/PID on every platform, not by probing.

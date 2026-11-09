@@ -132,3 +132,20 @@ def test_an_empty_bench_stays_quiet(monkeypatch, capsys):
     assert ports.find_all_ports(wait=0.0) == (None, None, None)
     assert ports.pyserial_missing() is None
     assert capsys.readouterr().err == ""
+
+
+def test_pinned_ports_override_discovery(monkeypatch):
+    """Two boards on one host: the bench names the three nodes itself."""
+    monkeypatch.setenv("DUE_CONTROL_PORT", "/dev/ttyACM5")
+    monkeypatch.setenv("DUE_NATIVE_PORT", "/dev/ttyACM3")
+    monkeypatch.setenv("DUE_COMMAND_PORT", "/dev/ttyACM4")
+    monkeypatch.setattr(ports, "_pyserial_nodes", lambda: pytest.fail("discovery ran"))
+    assert ports.find_all_ports(wait=0) == (
+        "/dev/ttyACM5", "/dev/ttyACM3", "/dev/ttyACM4")
+
+
+def test_unpinned_ports_still_discover(monkeypatch):
+    for k in ("DUE_CONTROL_PORT", "DUE_NATIVE_PORT", "DUE_COMMAND_PORT"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(ports, "_pyserial_nodes", lambda: [])
+    assert ports.find_all_ports(wait=0) == (None, None, None)
