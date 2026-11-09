@@ -314,6 +314,11 @@ static void h_loop(const uint32_t *a)
 	                 a[2] ? a[2] : 2u);
 }
 
+static void h_capture(const uint32_t *a)
+{
+	console_cmd_capture(a[0] ? a[0] : 200000u, a[1] ? a[1] : 2u);
+}
+
 /* Playback with NO capture stream, to separate a fault in the DAC path
  * from an interaction between the two service loops. */
 static void h_play(const uint32_t *a)
@@ -697,7 +702,7 @@ const console_binding_t console_bindings[] = {
 	{ 'G', h_flood_dma },   { 'T', h_sink_dma },    { 'Y', h_duplex_dma },
 	{ 'B', h_bench },
 
-	{ 'L', h_loop },        { 'P', h_play },        { 'M', h_mimic },
+	{ 'L', h_loop },        { 'a', h_capture },        { 'P', h_play },        { 'M', h_mimic },
 	{ 'V', h_ring },        { 'D', h_diag },        { 'O', h_occ },
 
 	{ 'W', h_wave },        { 'J', h_sync },        { 'N', h_layout },

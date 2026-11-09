@@ -629,6 +629,12 @@ static void h_loop(const uint32_t *a)
 	                 a[2] ? a[2] : 2u);
 }
 
+static void h_capture(const uint32_t *a)
+{
+	note_dispatch(a);
+	console_cmd_capture(a[0] ? a[0] : 200000u, a[1] ? a[1] : 2u);
+}
+
 static void h_ratesweep(const uint32_t *a)
 {
 	note_dispatch(a);
@@ -656,7 +662,7 @@ const console_binding_t console_bindings[] = {
 	{ 'h', h_help },      { 'v', h_ident },     { 'w', h_gen },
 	{ '1', h_s50 },       { '2', h_s100 },      { '3', h_s200 },
 	{ '4', h_s400 },      { '5', h_smax },      { '0', h_stop },
-	{ 'P', h_play },      { 'L', h_loop },      { 't', h_ratesweep },
+	{ 'P', h_play },      { 'L', h_loop },      { 'a', h_capture },      { 't', h_ratesweep },
 	{ 'x', h_xtalk },     { 'D', h_missing },
 
 	/* Present, unbound: bound() returns NULL and the refusal follows. */

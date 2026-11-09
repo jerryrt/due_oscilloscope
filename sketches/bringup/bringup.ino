@@ -933,6 +933,11 @@ static void ha_loop(const uint32_t *a)
 	                 a[2] ? a[2] : 2u);
 }
 
+static void ha_capture(const uint32_t *a)
+{
+	console_cmd_capture(a[0] ? a[0] : 200000u, a[1] ? a[1] : 2u);
+}
+
 /* Playback with NO capture stream, to separate a fault in the DAC
  * path from an interaction between the two service loops. */
 static void ha_play(const uint32_t *a)
@@ -1485,7 +1490,7 @@ const console_binding_t console_bindings[] = {
 	{ 'G', ha_flood_dma },  { 'T', ha_sink_dma },   { 'Y', ha_duplex_dma },
 	{ 'B', ha_bench },
 
-	{ 'L', ha_loop },       { 'P', ha_play },       { 'M', ha_mimic },
+	{ 'L', ha_loop },       { 'a', ha_capture },       { 'P', ha_play },       { 'M', ha_mimic },
 	{ 'V', ha_ring },       { 'D', ha_diag },       { 'O', ha_occ },
 
 	{ 'W', ha_wave },       { 'J', ha_sync },       { 'N', ha_layout },

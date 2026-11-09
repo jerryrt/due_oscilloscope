@@ -511,6 +511,11 @@ static void c_play(const uint32_t *a)
 	console_cmd_play(a[0] ? a[0] : 200000u);
 }
 
+static void c_capture(const uint32_t *a)
+{
+	console_cmd_capture(a[0] ? a[0] : 200000u, a[1] ? a[1] : 2u);
+}
+
 static void c_loop(const uint32_t *a)
 {
 	console_cmd_loop(a[0] ? a[0] : 200000u,
@@ -895,6 +900,7 @@ const console_binding_t console_bindings[] = {
 	{ 'T', c_sink_dma },
 	{ 'P', c_play },
 	{ 'L', c_loop },
+	{ 'a', c_capture },
 	{ 'z', c_reset },
 	{ 'Z', c_detach },
 	{ 'y', c_time  },

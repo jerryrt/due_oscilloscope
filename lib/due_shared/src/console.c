@@ -90,6 +90,7 @@ static const struct cmd_entry table[] = {
 
 	/* The loop, and the playback ring. */
 	{ 'L', "=<dac>,<adc>,<nch>", "full loop HOST->DAC->ADC->HOST" },
+	{ 'a', "=<adc>,<nch>", "capture only: ADC streams, DAC not triggered" },
 	{ 'P', "=<dac>,<adc>,<nch>", "play only" },
 	{ 'M', "=<dac>,<adc>",       "mimic loop, no USB in the path" },
 	{ 'V', NULL,        "playback ring dump" },

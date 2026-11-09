@@ -233,6 +233,31 @@ void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch)
 }
 
 /*
+ * Capture only: the ADC streams over USB and nothing triggers the DAC.
+ * Every other capture command starts the generator or playback beside
+ * it, which is a converter switching in step with each sample; this one
+ * is the arm that says whether a spectral line is the ADC's own.
+ * Banner first, for the same reason as the loop's.
+ */
+void console_cmd_capture(uint32_t adc_hz, unsigned nch)
+{
+	con_str("# capture: ADC "); con_u32(adc_hz);
+	con_str(" Hz/ch x"); con_u32(nch); con_str(" ch, DAC not triggered");
+	con_nl();
+	console_flush();
+
+	if (!console_port_capture_only_start(adc_hz, nch)) {
+		con_str("# capture: ADC "); con_u32(adc_hz);
+		con_str(" Hz x"); con_u32(nch);
+		con_str(" ch refused (max ");
+		con_u32((console_port_mck_hz() / 2u)
+		        / console_port_acq_min_rc(nch));
+		con_ch(')'); con_nl();
+		console_flush();
+	}
+}
+
+/*
  * `=,,<nch>t`: the TC -> ADC -> PDC rate sweep, in one place.
  *
  * One implementation, merged from what each track's separate version

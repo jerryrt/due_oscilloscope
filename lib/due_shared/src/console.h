@@ -134,6 +134,10 @@ void console_cmd_stream(uint32_t trigger_hz);
 void console_cmd_play(uint32_t dac_hz);
 void console_cmd_loop(uint32_t dac_hz, uint32_t adc_hz, unsigned nch);
 
+/* `=<adc>[,<nch>]a`: the ADC streams and nothing triggers the DAC, so a
+ * capture can be taken with no converter activity beside it. Stop with `0`. */
+void console_cmd_capture(uint32_t adc_hz, unsigned nch);
+
 /* The TC -> ADC -> PDC rate sweep, one implementation for both tracks;
  * see console_cmds.c for the design choices behind it. Bind it raw:
  * a zero (or omitted) channel count defaults inside, so no track's
