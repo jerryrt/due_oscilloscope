@@ -36,7 +36,7 @@ volatile uint32_t play_rate_traced;
 static uint32_t   run_t0_us;
 
 static uint32_t fill_off;            /* byte offset into the filling buffer */
-static bool     active;
+static volatile bool active;   /* written by whichever task runs a command */
 static bool     primed;
 static bool     dma_inflight;        /* an OUT-endpoint DMA is running */
 static uint32_t dma_asked;           /* bytes requested of that transfer */
@@ -209,16 +209,31 @@ bool play_start(uint32_t dac_hz)
 	 * repeat emits stale audio. play_service starts the clock once
 	 * enough buffers are queued to ride out host jitter.
 	 */
-	active = true;
 	primed = false;
+	__DMB();
+	active = true;      /* last: it is what lets play_service in */
 	return true;
 }
 
 void play_stop(void)
 {
-	if (active)
-		usb_dma_mode_out(false);
+	/*
+	 * `active` goes false BEFORE the OUT DMA is stopped, not after.
+	 * play_service() reads the DMA's own status and takes a channel
+	 * that is off with bytes still to come for a span that ended off
+	 * a slot edge (play_partial). On Track C the console runs in a
+	 * task of its own, so the service task can run between these two
+	 * statements; with the order reversed it did, found the channel
+	 * stopped under it while active still read true, and counted a
+	 * partial span that never was. Track A and B run the console in
+	 * the loop itself, which is why neither can see this.
+	 */
+	bool was_active = active;
+
 	active = false;
+	__DMB();
+	if (was_active)
+		usb_dma_mode_out(false);
 	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;
 	DACC->DACC_MR = (DACC->DACC_MR & ~(DACC_MR_TRGEN | DACC_MR_TRGSEL_Msk
 	                                   | DACC_MR_REFRESH_Msk))
