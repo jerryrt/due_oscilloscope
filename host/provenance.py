@@ -588,6 +588,12 @@ def _iso_epoch(s):
 def wiring():
     """(text, since, source). `source` is "declared" or "default"."""
     b = bench()
+    # A named DUT carries its own wiring: two boards on one bench are not
+    # promised to be jumpered alike, and a row recorded under the bench's
+    # shared text would hide that.
+    dut = (b.get("duts") or {}).get(os.environ.get("DUE_DUT") or "") or {}
+    if dut.get("wiring"):
+        return dut["wiring"], dut.get("wiring_since") or b.get("wiring_since"), "declared"
     text = b.get("wiring")
     if text:
         return text, b.get("wiring_since"), "declared"
@@ -704,6 +710,11 @@ def _board_serial():
                     if vid == 0x2341 and pid == 0x003D and serial})
     if not found:
         return None
+    # A bench that names its board (DUE_DUT) has a single answer even
+    # with two attached.
+    named = (ports.dut_registry().get(os.environ.get("DUE_DUT") or "") or {}).get("control_serial")
+    if named in found:
+        return named
     return found[0] if len(found) == 1 else found
 
 
@@ -817,6 +828,10 @@ def _collect(board=None, inst=None, channels=(1, 2)):
         # ("on" / "off"), or None when it did not. A large analog load,
         # so a record that omits it cannot be compared across benches.
         "probes": b.get("probes"),
+        # Which declared Due this ran on when a bench holds more than
+        # one (DUE_DUT); None on a one-board bench. The board's own uid
+        # is `board_uid`, and this is the bench's name for it.
+        "dut": os.environ.get("DUE_DUT"),
     }
     if b.get("bench_error"):
         p["bench_error"] = b["bench_error"]

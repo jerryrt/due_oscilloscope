@@ -237,6 +237,9 @@ def native_nodes(exclude=None):
     bare /dev/cu.usbmodem* glob also matches the programming port and a
     second board's ROM SAM-BA node (03eb:6124 is a cu.usbmodem* too).
     """
+    pinned = _pinned()
+    if pinned:
+        return [n for n in pinned[1:] if n and n != exclude]
     nodes = [d for d, v, p, _i, _s in _pyserial_nodes()
              if (v, p) == (VID, PID_NATIVE) and d != exclude]
     return native_order(nodes)
@@ -313,6 +316,95 @@ def census():
             "h7": h7_state(), "h7_paths": find_h7()}
 
 
+class AmbiguousBoards(Exception):
+    """More than one Due is attached and nothing says which one to use.
+
+    A mixed answer - one board's programming port with the other's
+    native pair - is worse than none: every measurement would run on
+    two boards at once and be recorded as one. Name the board with
+    DUE_DUT (a name in bench.json's "duts") or pin the three nodes.
+    """
+
+
+def dut_registry():
+    """bench.json's "duts": {name: {control_serial, native_location, board_uid, ...}}."""
+    import json
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "bench.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            got = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    duts = got.get("duts") if isinstance(got, dict) else None
+    return duts if isinstance(duts, dict) else {}
+
+
+def _locations():
+    """{node: USB location, e.g. '1-3.3:1.2'} for every serial device."""
+    try:
+        from serial.tools import list_ports
+        return {p.device: (p.location or "") for p in list_ports.comports()}
+    except Exception:                                        # noqa: BLE001
+        return {}
+
+
+def _refuse_if_ambiguous(found):
+    ctls = [d for d, v, p, _i, _s in found if (v, p) == (VID, PID_CONSOLE)]
+    nats = [d for d, v, p, _i, _s in found if (v, p) == (VID, PID_NATIVE)]
+    if len(ctls) > 1 or len(nats) > 2:
+        names = ", ".join(sorted(dut_registry())) or "none declared in bench.json"
+        raise AmbiguousBoards(
+            f"{len(ctls)} programming ports and {len(nats)} native nodes are "
+            f"attached and nothing says which board to use. Set DUE_DUT to "
+            f"one of: {names} (or pin DUE_CONTROL_PORT, DUE_NATIVE_PORT, "
+            f"DUE_COMMAND_PORT).")
+
+
+def resolve_dut(name):
+    """(control, native_samples, native_commands) for a declared DUT.
+
+    The programming port is found by the 16U2's own serial, which is
+    unique per board and survives re-enumeration, and the native pair by
+    its USB location (the hub path before the ':'), because both pairs
+    report the same serial. Node names such as ttyACM3 move with every
+    re-enumeration and are never stored. A node the registry names but
+    the host cannot see is None, as in discovery.
+    """
+    reg = dut_registry()
+    if name not in reg:
+        raise AmbiguousBoards(f"no DUT named {name!r} in bench.json's \"duts\" "
+                              f"(declared: {', '.join(sorted(reg)) or 'none'})")
+    d = reg[name]
+    found = _pyserial_nodes()
+    loc = _locations()
+    ctl = next((n for n, v, p, _i, s in found
+                if (v, p) == (VID, PID_CONSOLE) and s == d.get("control_serial")), None)
+    base = d.get("native_location")
+    nat = [n for n, v, p, _i, _s in found
+           if (v, p) == (VID, PID_NATIVE) and base
+           and loc.get(n, "").split(":")[0] == base]
+    nat = sorted(nat, key=lambda n: loc.get(n, ""))
+    return (ctl, nat[0] if nat else None, nat[1] if len(nat) > 1 else None)
+
+
+def _pinned():
+    """The three nodes the bench has named for this process, or None.
+
+    Every discovery path has to ask, not only find_all_ports(): the
+    reconnect and bounce paths in measure.py re-list the native nodes
+    themselves, and one that fell back to the global list would pick up
+    the other board's cable the moment this board's own detached.
+    """
+    pinned = (os.environ.get("DUE_CONTROL_PORT"),
+              os.environ.get("DUE_NATIVE_PORT"),
+              os.environ.get("DUE_COMMAND_PORT"))
+    if any(pinned):
+        return pinned
+    name = os.environ.get("DUE_DUT")
+    return resolve_dut(name) if name else None
+
+
 def find_all_ports(wait=pacing.NORMAL):
     """Return (programming_port, native_samples, native_commands).
 
@@ -322,12 +414,10 @@ def find_all_ports(wait=pacing.NORMAL):
     """
     # With two boards on one host discovery cannot say which node pair
     # belongs to which board - the programming port and the native pair
-    # are separate USB devices - so a bench that holds two names the
-    # three nodes itself. Unset, nothing changes.
-    pinned = (os.environ.get("DUE_CONTROL_PORT"),
-              os.environ.get("DUE_NATIVE_PORT"),
-              os.environ.get("DUE_COMMAND_PORT"))
-    if any(pinned):
+    # are separate USB devices - so a bench that holds two names them.
+    # Three ways, strongest first; unset, discovery is unchanged.
+    pinned = _pinned()
+    if pinned:
         return pinned
     end = time.time() + wait
     while True:
@@ -350,6 +440,7 @@ def find_all_ports(wait=pacing.NORMAL):
                     if (v, p) == (VID, PID_CONSOLE)), None)
         rest = native_order([d for d, v, p, _i, _s in found
                              if (v, p) == (VID, PID_NATIVE)])
+        _refuse_if_ambiguous(found)
         if ctl or rest:
             return (ctl,
                     rest[0] if rest else None,

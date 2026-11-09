@@ -69,6 +69,10 @@ def pytest_addoption(parser):
                      "because a third flash and a third run cost more "
                      "than they add: it links Track B's drivers, so its "
                      "totals are not an oracle result")
+    g.addoption("--dut", action="store", default=None, metavar="NAME",
+                help="which declared Due to run on, a name in bench.json's "
+                     "\"duts\" (sets DUE_DUT). Required when more than one "
+                     "board is attached: discovery refuses to guess")
     g.addoption("--reflash", action="store_true",
                 help="flash even when the board already runs the right track")
     g.addoption("--no-flash", action="store_true",
@@ -169,6 +173,8 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 
 
 def pytest_configure(config):
+    if config.getoption("--dut"):
+        os.environ["DUE_DUT"] = config.getoption("--dut")
     if config.getoption("--pacing-report"):
         _trace_sleeps()
     for m, desc in (
@@ -257,9 +263,12 @@ def track(request):
 @pytest.fixture(scope="session")
 def baseline():
     import provenance
-    from helpers import apply_probe_state
+    from helpers import apply_probe_state, overlay_board
     with open(BASELINE_PATH, encoding="utf-8") as f:
-        return apply_probe_state(json.load(f), provenance.bench())
+        base = json.load(f)
+    reg = ports.dut_registry()
+    uid = (reg.get(os.environ.get("DUE_DUT") or "") or {}).get("board_uid")
+    return apply_probe_state(overlay_board(base, uid), provenance.bench())
 
 
 @pytest.fixture(scope="session")
@@ -377,6 +386,7 @@ def board(request, track):
             b.close()
             pytest.fail(f"flashed track {want} but the board reports {have!r}")
 
+    _check_dut(b, require)
     b.stop()
     b.drain_console(pacing.GLANCE)
     yield b
@@ -384,6 +394,26 @@ def board(request, track):
         b.stop()
     finally:
         b.close()
+
+
+def _check_dut(b, require):
+    """With DUE_DUT set, the board answering must be the board the bench
+    declared under that name. A cable moved to another hub port, or a
+    registry typed wrong, would otherwise run the suite on the other
+    Due and record it under this name."""
+    name = os.environ.get("DUE_DUT")
+    if not name:
+        return
+    want = (ports.dut_registry().get(name) or {}).get("board_uid")
+    if not want:
+        return
+    got = (measure.identity(b) or {}).get("uid")
+    if got != want:
+        b.close()
+        pytest.fail(f"DUE_DUT={name} declares board {want} but the board on "
+                    f"those ports reports {got}. Fix bench.json's duts entry "
+                    f"(control_serial, native_location) - a mapping that points "
+                    f"at the wrong board would record this run under the wrong name.")
 
 
 @pytest.fixture(autouse=True)

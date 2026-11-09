@@ -101,6 +101,15 @@ def find_console(explicit=None):
     """The programming port, by USB VID/PID - identical on every OS."""
     if explicit:
         return explicit
+    if os.environ.get("DUE_CONTROL_PORT"):
+        return os.environ["DUE_CONTROL_PORT"]
+    if os.environ.get("DUE_DUT"):
+        import ports
+        ctl = ports.resolve_dut(os.environ["DUE_DUT"])[0]
+        if not ctl:
+            sys.exit(f"DUE_DUT={os.environ['DUE_DUT']}: its programming port is "
+                     f"not attached; pass --port or check bench.json")
+        return ctl
     try:
         from serial.tools import list_ports
     except ImportError:

@@ -416,6 +416,29 @@ def gate_note(cfg):
     return f" [{g} gate]" if g else ""
 
 
+def overlay_board(base, uid):
+    """`base` with the per-board figures for `uid` laid over it.
+
+    baseline.json is calibrated against one Due, and a second one does
+    not read the same: that is a recalibration for the board, not a
+    regression and not a reason to widen the shared bound. A board's own
+    bounds live under "boards": {uid: {section: {key: value}}} and
+    replace the shared value key by key. A board with no entry, or no
+    uid, is judged by the shared bounds, and the "boards" key is gone
+    from the result either way so nothing downstream sees another
+    board's figures.
+    """
+    import copy
+    out = copy.deepcopy(base)
+    boards = out.pop("boards", None) or {}
+    mine = boards.get(uid) if uid else None
+    for sec, keys in (mine or {}).items():
+        if not isinstance(out.get(sec), dict):
+            raise KeyError(f"boards[{uid}] overrides {sec!r}, which baseline.json has no section for")
+        out[sec].update(keys)
+    return out
+
+
 def apply_probe_state(base, declared):
     """`base` with each `<key>_probes_extra` applied to `<key>` when the
     bench declares `"probes": "on"` in bench.json, and the bounds as
