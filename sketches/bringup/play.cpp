@@ -215,6 +215,49 @@ void play_stop(void)
 }
 
 /*
+ * Start the DAC timer at a fixed phase of the ADC timer.
+ *
+ * In loop mode the ADC timer (TC0 ch0) is already running when the
+ * ring primes, and the DAC timer (ch1) used to start whenever the
+ * service loop got here. Their relative phase was therefore whatever
+ * the software timing happened to be, and in about a fifth of runs the
+ * ADC sampled at the DAC's update edge: half the tone amplitude, a
+ * jumped A1 crosstalk, loop-skew k of 1 or 2. Constant within a run,
+ * different between runs. Starting ch1 when ch0's counter crosses
+ * half its period puts every DAC update half an ADC period from every
+ * sample, a fixed and settled phase.
+ *
+ * Bounded (invariant 7): at most two ADC periods of polling, then it
+ * starts anyway. With no ADC timer running (playback alone) it starts
+ * at once, as before.
+ */
+static void dac_timer_start_locked(void)
+{
+	volatile TcChannel *adc = &TC0->TC_CHANNEL[0];
+	uint32_t rc = adc->TC_RC;
+	uint32_t half = rc / 2u;
+	uint32_t cap = 4u * rc + 64u;
+
+	if (!(adc->TC_SR & TC_SR_CLKSTA) || rc < 8u) {
+		TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+		return;
+	}
+	for (uint32_t n = 0; n < cap; n++) {
+		uint32_t cv;
+
+		__disable_irq();
+		cv = adc->TC_CV;
+		if (cv >= half && cv < half + 16u) {
+			TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+			__enable_irq();
+			return;
+		}
+		__enable_irq();
+	}
+	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+}
+
+/*
  * Fill the ring by endpoint DMA: bulk OUT data moves from the FIFO into
  * the playback buffers with no CPU copy at all. Invariant 1, which this
  * path is the most tempting place in the firmware to break.
@@ -228,6 +271,7 @@ void play_stop(void)
  * The reservation stays two slots short of the reader because the PDC
  * owns both the buffer it is emitting and the one latched in TNPR.
  */
+
 void play_service(void)
 {
 	if (!active)
@@ -351,7 +395,7 @@ prime:
 	if (!primed && play_produced >= PLAY_PRIME_BUFS) {
 		primed = true;
 		run_t0_us = micros();
-		TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
+		dac_timer_start_locked();
 	}
 	if (primed)
 		play_run_us = micros() - run_t0_us;
