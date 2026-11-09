@@ -9,6 +9,11 @@
       "first": "2026-09-21T22:16:58-0400",
       "last": "2026-09-21T23:06:27-0400",
       "phase": "dac0-only"
+    },
+    {
+      "first": "2026-11-09T13:22:46-0500",
+      "last": "2026-11-09T13:22:46-0500",
+      "phase": "linux-x1-bare"
     }
   ],
   "board_serial": "1344A4740303512198D8",
@@ -246,6 +251,34 @@
       ],
       "tail_scale_status": "ok, parity forced 0 after a tie",
       "taken_at": "2026-09-21T23:06:27-0400"
+    },
+    {
+      "bench": "linux-x1",
+      "count_range": [
+        0,
+        0
+      ],
+      "die_code_mean": 1094.625,
+      "idle_before_s": 120,
+      "image": "2c3f22c",
+      "largest_median": 40.0,
+      "largest_range": [
+        40.0,
+        41.0
+      ],
+      "phase": "linux-x1-bare",
+      "row_taken_at": "2026-11-09T13:22:46-0500",
+      "source": "records/rotation.jsonl",
+      "tail_scale_a0": [
+        0.74,
+        0.66
+      ],
+      "tail_scale_a1": [
+        0.66,
+        0.6
+      ],
+      "tail_scale_status": "ok, parity forced 0 after a tie",
+      "taken_at": "2026-11-09T13:22:46-0500"
     }
   ],
   "converter_summary": {
@@ -260,6 +293,18 @@
       "n_rested_rows": 3,
       "n_rows": 3,
       "rested_largest_median": 49.5
+    },
+    "linux-x1-bare": {
+      "benches": [
+        "linux-x1"
+      ],
+      "largest_range": [
+        40.0,
+        41.0
+      ],
+      "n_rested_rows": 1,
+      "n_rows": 1,
+      "rested_largest_median": 40.0
     },
     "shield-v3": {
       "benches": [
@@ -277,13 +322,14 @@
   "first_seen": "2026-09-21T00:11:21-0400",
   "flags": {
     "dac0-only": [],
+    "linux-x1-bare": [],
     "shield-v3": [
       "large-tail"
     ]
   },
   "generated": {
-    "bench": "mac-bench",
-    "generated_on": "8745af2",
+    "bench": "linux-x1",
+    "generated_on": "2c3f22c",
     "tool": "tools/board_profile.py"
   },
   "history": [
@@ -292,6 +338,12 @@
       "first": "2026-09-21T00:11:21-0400",
       "last": "2026-09-21T23:06:27-0400",
       "rows": 7
+    },
+    {
+      "bench": "linux-x1",
+      "first": "2026-11-09T13:22:46-0500",
+      "last": "2026-11-09T13:22:46-0500",
+      "rows": 1
     }
   ],
   "notes": [],
