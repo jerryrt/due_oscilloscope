@@ -17,7 +17,7 @@ RAW = re.compile(r"TC0->TC_CHANNEL\[1\]\.TC_CCR\s*=\s*TC_CCR_CLKEN\s*\|\s*TC_CCR
 
 
 def _src(rel):
-    with open(os.path.join(ROOT, rel)) as f:
+    with open(os.path.join(ROOT, rel), encoding="utf-8") as f:
         return f.read()
 
 
