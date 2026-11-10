@@ -8,7 +8,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-np = pytest.importorskip("numpy", reason="needs the GUI venv: this skip is NOT a pass")
+import numpy as np
 QtWidgets = pytest.importorskip("PySide6.QtWidgets", reason="needs PySide6: this skip is NOT a pass")
 
 import pacing                                            # noqa: E402

@@ -1,7 +1,7 @@
 import os, sys
 import pytest
 
-np = pytest.importorskip("numpy", reason="needs numpy (.venv-gui); a skip here is NOT a pass")
+import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOLS = os.path.join(ROOT, "targets", "h7tool", "tools")      # the H7 target's tools; its tests live here with the Due's (docs/testing.md)
 sys.path.insert(0, TOOLS)

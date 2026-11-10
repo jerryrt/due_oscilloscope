@@ -13,11 +13,10 @@ import pacing
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GATE = os.path.join(ROOT, "targets", "h7tool", "measure", "h7_daemon_gate.py")
-WRONG_VENV = "you are in the wrong venv: the gate needs numpy and PySide6 (.venv-gui); this skip is NOT a pass"
+WRONG_VENV = "you are in the wrong venv: the gate needs PySide6 (.venv-gui); this skip is NOT a pass"
 
 
 def test_the_gate_passes_on_the_real_unit(h7_unit):
-    pytest.importorskip("numpy", reason=WRONG_VENV)
     pytest.importorskip("PySide6", reason=WRONG_VENV)
     r = subprocess.run([sys.executable, "-I", GATE, "5"], capture_output=True, text=True, encoding="utf-8", timeout=pacing.SLOW,
                        env=dict(os.environ, QT_QPA_PLATFORM="offscreen"))
