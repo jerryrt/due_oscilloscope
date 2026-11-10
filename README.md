@@ -34,6 +34,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/issue5-impact.md](docs/issue5-impact.md) | What the displacement costs the instrument |
 | [docs/issue5-campaign.md](docs/issue5-campaign.md) | The three-bench protocol for measuring the displacement, and how to read it |
 | [docs/ets.md](docs/ets.md) | Equivalent-time sampling: the math, and the edge resolution this hardware can give |
+| [docs/ets-mode.md](docs/ets-mode.md) | ETS as a capture mode: the PRBS-at-top-rate claim checked against the evidence, and the phased plan |
 | [docs/noise.md](docs/noise.md) | How much of the converter this board leaves you |
 | [docs/frontend.md](docs/frontend.md) | Front end architecture: daemon, GUI, recording |
 | [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
