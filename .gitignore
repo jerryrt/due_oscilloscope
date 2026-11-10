@@ -43,6 +43,7 @@ captures/
 .DS_Store
 .venv-gui/
 .venv-dsp/
+.venv-cuda/
 .venv-ft/
 
 # Per-machine tool locations (the shared registry is toolchains.json)
