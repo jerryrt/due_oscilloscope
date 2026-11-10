@@ -46,7 +46,7 @@ def _steady_curve(bits):
     return out
 
 
-def _samples(delta, n=N, sigma=0.002, seed=5, offset=311.7):
+def _samples(delta, n=N, sigma=0.002, seed=5, offset=311.7, odd_ticks=0.0):
     """`n` samples at ADC ticks `k * RC_ADC` of a source `delta` slow."""
     bits = ets_phase0.prbs7()
     curve = _steady_curve(bits)
@@ -54,7 +54,8 @@ def _samples(delta, n=N, sigma=0.002, seed=5, offset=311.7):
     rnd = random.Random(seed)
     vals = []
     for k in range(n):
-        u = (k * RC_ADC / (1.0 + delta) + offset) % period
+        u = ((k * RC_ADC + (odd_ticks if k & 1 else 0.0)) / (1.0 + delta)
+             + offset) % period
         i = int(u)
         f = u - i
         v = curve[i] * (1 - f) + curve[(i + 1) % period] * f
@@ -106,10 +107,10 @@ def test_a_start_up_stretch_of_idle_level_is_skipped_and_the_ratio_still_found()
     assert got["skipped"] >= 1, got
 
 
-def _resolution(delta, tmp_path):
+def _resolution(delta, tmp_path, odd_ticks=0.0):
     import array
     import ets_cross
-    bits, vals = _samples(delta, n=1_200_000)
+    bits, vals = _samples(delta, n=1_200_000, odd_ticks=odd_ticks)
     path = tmp_path / "raw.bin"
     path.write_bytes(array.array("H", [int(round(v)) for v in vals]).tobytes())
     return ets_cross.resolution(str(path), RC_DAC, RC_ADC, 10, 2)
@@ -122,3 +123,15 @@ def test_samples_of_an_independent_clock_fill_the_fine_bins_and_a_shared_one_doe
     assert locked["fine_filled_share"] < 0.15, (
         "samples on a shared clock reached the fine bins between ticks: the "
         "measure cannot tell a lattice from a continuous position", locked)
+
+
+def test_a_one_tick_offset_of_the_odd_samples_is_found_with_its_sign_and_removed(tmp_path):
+    tick_ns = ets_phase0.TICK_NS
+    row = _resolution(60e-6, tmp_path, odd_ticks=-1.0)
+    for edge in ("rise", "fall"):
+        got = row["edge50_%s_odd_minus_even_ns" % edge]
+        assert abs(got - tick_ns) < 0.1 * tick_ns, (edge, got, row)
+    assert row["corr_rise_ns"] < row["rise_ns_fine"], (
+        "moving the odd samples back did not sharpen the edge", row)
+    clean = _resolution(60e-6, tmp_path, odd_ticks=0.0)
+    assert abs(clean["edge50_rise_odd_minus_even_ns"]) < 0.1 * tick_ns, clean

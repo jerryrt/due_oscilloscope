@@ -61,9 +61,10 @@ def play(rc_dac, seconds, vpp_mv):
     return row
 
 
-def capture(seconds, out):
+def capture(seconds, out, rc_adc=ADC_RC):
     board = measure.Board()
-    hz = measure.hz_for(ADC_RC)
+    hz = measure.hz_for(rc_adc)
+    assert measure.rc_for(hz) == rc_adc, (rc_adc, hz)
     res = measure.run_capture(board, preset="=%d,1a" % hz, seconds=seconds)
     ps = res.stream
     vals = array.array("H", [int(v) for v in (ps.series.get(measure.CH_A0) or [])])
@@ -223,9 +224,54 @@ def resolution(path, rc_dac, rc_adc, k, kp):
             row["edge50_%s_even_ns" % name], row["edge50_%s_odd_ns" % name] = m
             if None not in m:
                 row["edge50_%s_odd_minus_even_ns" % name] = m[1] - m[0]
+        diffs = [row.get("edge50_%s_odd_minus_even_ns" % n) for n in ("rise", "fall")]
+        diffs = [d for d in diffs if d is not None]
+        if diffs:
+            shift_ns = sum(diffs) / len(diffs)
+            row["odd_shift_ns"] = shift_ns
+            row.update(_corrected(vals, rc_adc, period, rc_dac, bits, k,
+                                  shift_ns / tick_ns * k, shift, b0))
     else:
         row["parity_note"] = "a parity fold has holes at %d bins per tick" % kp
     return row
+
+
+def _corrected(vals, rc_adc, period, rc_dac, bits, k, shift_bins, shift, b0):
+    """The fine fold again with the odd samples moved back by their offset.
+
+    The odd samples' edge sits `shift_bins` fine bins later than the even
+    samples', so subtracting that from their phase puts both on one edge.
+    """
+    L = len(bits)
+    nb = L * rc_dac * k
+    acc = [0.0] * nb
+    cnt = [0] * nb
+    sk = nb / period
+    step = rc_adc % period
+    ph = 0.0
+    for n, v in enumerate(vals):
+        x = ph * sk - (shift_bins if n & 1 else 0.0)
+        i = int(x) % nb
+        acc[i] += v
+        cnt[i] += 1
+        ph += step
+        if ph >= period:
+            ph -= period
+    if min(cnt) < 20:
+        return {"corrected_note": "corrected fold has holes"}
+    curve = [a / c for a, c in zip(acc, cnt)]
+    fig, b0c = e.analyze(curve, rc_dac * k, bits)
+    out = {"corr_pattern_ok": fig["pattern_ok"], "corr_eye_frac": fig.get("eye_frac"),
+           "corr_rise_ns": fig["rise_ns"] / k if fig["rise_ns"] else None,
+           "corr_fall_ns": fig["fall_ns"] / k if fig["fall_ns"] else None}
+    if fig["pattern_ok"]:
+        for name, rising in (("rise", True), ("fall", False)):
+            offs = _edge_offsets(curve, rc_dac * k, bits, fig["shift"], b0c, rising)
+            if offs:
+                mean = sum(offs) / len(offs)
+                out["corr_edge50_%s_sd_ns" % name] = math.sqrt(
+                    sum((x - mean) ** 2 for x in offs) / len(offs)) * e.TICK_NS / k
+    return out
 
 
 def both(a):
@@ -240,7 +286,8 @@ def both(a):
                            env=env_p, stdout=subprocess.PIPE, text=True)
     time.sleep(LEAD_S)
     cap = subprocess.run([sys.executable, me, "capture", "--seconds",
-                          str(a.seconds), "--raw", raw], env=env_c,
+                          str(a.seconds), "--raw", raw, "--rc-adc",
+                          str(a.rc_adc)], env=env_c,
                          stdout=subprocess.PIPE, text=True, timeout=a.seconds + 120)
     play_out, _ = src.communicate(timeout=play_s + 120)
 
@@ -249,7 +296,7 @@ def both(a):
         return rows[-1] if rows else {"error": "no row printed"}
     prow, crow = last(play_out), last(cap.stdout)
     row = {"play": prow, "capture": crow}
-    if crow.get("bad") or not crow.get("samples") or crow.get("rc_adc") != ADC_RC:
+    if crow.get("bad") or not crow.get("samples") or crow.get("rc_adc") != a.rc_adc:
         row["error"] = "capture not analysable: %s" % (
             crow.get("bad") or crow.get("error") or "rate mismatch")
         return row
@@ -278,7 +325,7 @@ def main():
         print(json.dumps(play(a.rc, a.seconds, a.vpp_mv)))
         return
     if a.what == "capture":
-        print(json.dumps(capture(a.seconds, a.raw)))
+        print(json.dumps(capture(a.seconds, a.raw, a.rc_adc)))
         return
     if a.what == "resolution":
         row = resolution(a.raw_in, a.rc_dac or a.rc, a.rc_adc, a.k, a.kp)

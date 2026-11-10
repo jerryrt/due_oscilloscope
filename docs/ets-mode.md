@@ -138,13 +138,37 @@ for a known pattern: a fold on bins as wide as a symbol cannot tell a period
 that is 8 ticks out by the end of its window from the right one, so each
 stage's pick is noise.
 
-With separate clocks the relative phase between the source's edges and the
-ADC's sample instants is no longer a whole number of timer ticks, which is
-what quantises the same-board fold to 22.2 ns (44.4 ns with the ADC's start
-snapping to its own clock, `docs/ets.md`). Whether the time axis can then be
-resolved more finely is the question for the two-board run; it is bounded by
-the track-and-hold's rise, the source's edge jitter and how well the ratio
-holds over the capture, none of which is measured yet.
+Measured on `linux-x1`, Track B on both Dues (image `8ffc8ed`), DUT1 DAC0
+into DUT2 A0, RC 28 and RC 56, 8 M samples each
+(`records/ets-cross-linux-x1.jsonl`):
+
+| | same board (`montreal5`) | two boards (`linux-x1`) |
+|---|---|---|
+| Clock ratio | exactly 1 | -2.52 and -2.49 ppm |
+| Where samples land in a tick | all on whole ticks | flat, min over max 0.999 |
+| 2.2 ns bins filled | 10% | 100%, at least 111 samples each |
+| Edge 50% crossing scatter, fold repeatability | n/a | 0.05-0.11 ns |
+| Odd minus even samples, edge position | n/a | +22.20 to +22.24 ns, rising and falling |
+
+The first four rows say what an independent clock buys: the fold's time axis
+is no longer a lattice of ticks, and an edge can be placed to about a tenth
+of a nanosecond in repeatability. That is the fold's scatter and not an
+accuracy: it does not contain the last row.
+
+The last row is the ADC start snapping to the ADC's own clock. The odd and
+even samples of a run differ by exactly one 45 MHz tick on every edge of both
+kinds, so it is a pure time shift and not an amplitude or bandwidth effect,
+and the odd samples are taken one tick earlier. Pooling them blurs every edge
+by that tick, and `ets_cross.py resolution` moves the odd samples back by the
+offset it measures and folds again. An even ADC RC puts every trigger at the
+same phase of the ADC clock, which should leave nothing to correct; that is a
+control still to be run (`ets_cross.py both --rc-adc 46`, where the odd-minus-even
+figure must read zero).
+
+The resolution is still bounded by the track-and-hold's rise, which is
+estimated and not measured *(check)*, by the source's edge jitter, and by how
+well the ratio holds over a capture. The block-phase scatter is 0.6 to 0.7
+ticks against 0.22 on one board, and its cause is open.
 
 ## Conditions on the signal
 
