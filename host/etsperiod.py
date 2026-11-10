@@ -26,9 +26,12 @@ tell a period that is 8 ticks out by the end of its window from the right
 one, because a flat top hides the error, so each stage's pick is noise and
 the next stage starts from the wrong place.
 
-Pure Python on purpose: the venv carries no numpy.
+Pure Python is the reference; `dsp` carries the same loops vectorised, and
+the equivalence tests hold it to what is written here.
 """
 import math
+
+import dsp
 
 #: Largest common factor of the ADC RC and the pattern period that block
 #: matching tolerates. The samples then land only on every `gcd`-th source
@@ -79,7 +82,11 @@ def _best_phase(win, xs, tmpl, period, lo, hi, step=1.0):
     """
     lo, hi = float(math.floor(lo + 0.5)), float(math.floor(hi + 0.5))
     n = int(round((hi - lo) / step))
-    cs = [_corr(win, xs, tmpl, period, lo + i * step) for i in range(n)]
+    phis = [lo + i * step for i in range(n)]
+    if dsp.name() == "numpy":
+        cs = dsp.corr_many(win, xs, tmpl, period, phis)
+    else:
+        cs = [_corr(win, xs, tmpl, period, p) for p in phis]
     i = max(range(n), key=cs.__getitem__)
     on_edge = i < 2 or i >= n - 2
     frac = 0.0
@@ -228,6 +235,10 @@ def phase_indices(n, rc_adc, model, period, k=1, start=0):
 def fold_warped(vals, rc_adc, model, period, k=1, start=0):
     """Mean per bin on the fitted phase curve: `(curve, counts)`."""
     nb = period * k
+    if dsp.name() == "numpy":
+        idx = dsp.phase_indices(len(vals), rc_adc, lambda x: phase_at(model, x),
+                                period, k, start, SEGMENT)
+        return dsp.fold_warped(vals, idx, nb)
     acc = [0.0] * nb
     cnt = [0] * nb
     for v, i in zip(vals, phase_indices(len(vals), rc_adc, model, period, k, start)):
@@ -261,9 +272,12 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     period = len(bits) * rc_dac
     lattice = math.gcd(int(round(rc_adc)), period)
     tmpl = template(bits, rc_dac, levels)
-    mean = sum(vals) / len(vals)
-    amp = (max(vals) - min(vals)) / 2.0 or 1.0
-    cen = [(v - mean) / amp for v in vals]
+    if dsp.name() == "numpy":
+        cen, mean, amp = dsp.center(vals)
+    else:
+        mean = sum(vals) / len(vals)
+        amp = (max(vals) - min(vals)) / 2.0 or 1.0
+        cen = [(v - mean) / amp for v in vals]
     pts = []                                   # (x of block centre, unwrapped phase)
     edge = skipped = 0
     j = 0
@@ -273,7 +287,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
         win = cen[i0:i0 + block]
         xs = [(start + i0 + i) * rc_adc for i in range(block)]
         xm = (start + i0 + block // 2) * rc_adc
-        den = sum(abs(v) for v in win) or 1.0
+        den = float(sum(abs(v) for v in win)) or 1.0
         if not pts:
             if den < IDLE_SHARE * block:
                 skipped += 1
@@ -345,6 +359,8 @@ def fold_scaled(vals, rc_adc, period, bins, start=0):
     *source's* clock, which is the axis `ets_phase0.analyze` reads.
     Returns `(curve, counts)`; a bin nothing landed in is None.
     """
+    if dsp.name() == "numpy":
+        return dsp.fold_scaled(vals, rc_adc, period, bins, start)
     acc = [0.0] * bins
     cnt = [0] * bins
     scale = bins / period
