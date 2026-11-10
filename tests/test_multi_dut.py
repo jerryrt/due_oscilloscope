@@ -9,6 +9,8 @@ own baseline figures overlay the shared ones without leaking.
 
 import pytest
 
+PLATFORM_SEAM_EXEMPT = "ports discovery is monkeypatched with fake nodes; no test here reaches an OS branch"
+
 import helpers
 import ports
 

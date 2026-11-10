@@ -344,9 +344,9 @@ def _locations():
     """{node: USB location, e.g. '1-3.3:1.2'} for every serial device."""
     try:
         from serial.tools import list_ports
-        return {p.device: (p.location or "") for p in list_ports.comports()}
-    except Exception:                                        # noqa: BLE001
+    except ImportError:
         return {}
+    return {p.device: (p.location or "") for p in list_ports.comports()}
 
 
 def _refuse_if_ambiguous(found):

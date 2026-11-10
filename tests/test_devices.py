@@ -55,7 +55,7 @@ def test_h7_state_tells_running_from_boot_loader_from_absent(tmp_path, monkeypat
     monkeypatch.setattr(ports, "find_h7", lambda: None)
     real_isdir, real_listdir, real_open = os.path.isdir, os.listdir, open
     root = _fake_usb(tmp_path, [("0483", "5720"), ("046d", "c52b")])
-    redirect = lambda path: path.replace("/sys/bus/usb/devices", root)
+    redirect = lambda path: str(path).replace("/sys/bus/usb/devices", root)
     monkeypatch.setattr(os.path, "isdir", lambda p: real_isdir(redirect(p)))
     monkeypatch.setattr(os, "listdir", lambda p: real_listdir(redirect(p)))
     monkeypatch.setattr("builtins.open", lambda p, *a, **k: real_open(redirect(str(p)), *a, **k))
