@@ -1,0 +1,217 @@
+<title>PAM Eye</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: a bench log, as the PRBS eye page. The eye on the left with the
+   level histogram on its own vertical axis beside it, a zoom on the middle
+   eye, then what the gates say. Built by tools/ets_pam_page.py from the eye
+   document that host/etspam.py writes; nothing here is specific to a bench. */
+:root {
+  --bg: #f3f4f1; --panel: #fbfbf9; --fg: #1d2326; --muted: #5d6a70; --rule: #d4d8d5; --grid: #e2e5e2;
+  --c0: #0b6e8a; --c1: #b4690e; --ok: #2f7a4b; --bad: #b3261e; --line: #1d2326;
+  --font-head: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101518; --panel: #161d21; --fg: #e3e8ea; --muted: #93a2a8; --rule: #2b373d; --grid: #222d32;
+    --c0: #5cc6e3; --c1: #f0a94a; --ok: #6cc58b; --bad: #f2877d; --line: #e3e8ea; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101518; --panel: #161d21; --fg: #e3e8ea; --muted: #93a2a8; --rule: #2b373d; --grid: #222d32;
+  --c0: #5cc6e3; --c1: #f0a94a; --ok: #6cc58b; --bad: #f2877d; --line: #e3e8ea; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); line-height: 1.5;
+  padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.9rem; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-head); font-weight: 600; font-size: 1.15rem; margin: 0 0 4px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 72ch; margin: 6px 0 0; }
+.conds { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--font-data); font-size: .78rem; color: var(--muted); margin-top: 12px; }
+.conds b { color: var(--fg); font-weight: 500; }
+.panel { background: var(--panel); border: 1px solid var(--rule); padding: 14px 14px 12px; min-width: 0; }
+.panel p.cap { margin: 0 0 8px; color: var(--muted); font-size: .85rem; max-width: 76ch; }
+.row { display: flex; gap: 8px; align-items: stretch; }
+.row .main { flex: 1 1 auto; min-width: 0; } .row .side { flex: 0 0 22%; min-width: 120px; }
+canvas { display: block; width: 100%; height: auto; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .86rem; }
+th, td { padding: 7px 12px; text-align: right; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-family: var(--font-head); font-weight: 600; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+td { font-family: var(--font-data); } td:first-child { font-family: var(--font-body); }
+td.why { font-family: var(--font-body); text-align: left; color: var(--muted); }
+tbody tr:last-child td { border-bottom: 0; }
+.pass { color: var(--ok); font-weight: 600; } .fail { color: var(--bad); font-weight: 600; }
+ul.notes { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: .88rem; max-width: 80ch; display: flex; flex-direction: column; gap: 6px; }
+ul.notes b { color: var(--fg); font-weight: 500; }
+.prov { font-family: var(--font-data); font-size: .74rem; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 id="title">PAM Eye</h1>
+    <p class="lede" id="lede"></p>
+    <div class="conds" id="conds"></div>
+  </header>
+  <section class="panel"><h2>Eye diagram, two symbols wide</h2>
+    <p class="cap" id="capEye"></p>
+    <div class="row"><div class="main"><canvas id="eye" width="760" height="520" role="img" aria-label="PAM eye diagram"></canvas></div>
+      <div class="side"><canvas id="hist" width="200" height="520" role="img" aria-label="Level histogram"></canvas></div></div>
+  </section>
+  <section class="panel"><h2>Zoom on the middle eye</h2>
+    <p class="cap">The cells are samples; the eye's edges at the symbol centre are the 0.1% and 99.9% points of the levels either side.</p>
+    <canvas id="zoom" width="900" height="360" role="img" aria-label="Zoom on the middle eye"></canvas>
+  </section>
+  <section><h2>The gates</h2><div class="tablewrap"><table id="gates"></table></div></section>
+  <section class="pair">
+    <div><h2>Levels</h2><div class="tablewrap"><table id="levels"></table></div></div>
+    <div><h2>Eyes</h2><div class="tablewrap"><table id="eyes"></table></div></div>
+  </section>
+  <section><h2>Read with these in mind</h2><ul class="notes" id="notes"></ul></section>
+  <section><h2>Where the data came from</h2><div class="prov" id="prov"></div></section>
+</div>
+
+<script>
+const D = /*DATA*/null;
+const E = D.eye;
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (x, d = 1) => (x == null || isNaN(x)) ? "n/a" : Number(x).toFixed(d);
+const rgbOf = (c) => c.startsWith("#") ? [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)) : c.match(/\d+/g).map(Number);
+const MV = E.adc_mv_per_code;
+const uiNs = E.ui_ticks * E.tick_ns;
+const COLS = new Set(E.cells.map(c => c[0])).size;
+const PITCH = Math.max(1, Math.round(E.nx / COLS));
+
+function build() {
+  document.getElementById("title").textContent = D.title || ("PAM" + E.pam + " Eye");
+  document.getElementById("lede").textContent = D.lede || "";
+  const p = E.pattern, g = E.gates, passed = Object.values(g).every(x => x.passed);
+  document.getElementById("conds").innerHTML =
+    `<span>pattern <b>PRBS${p.n}, ${p.length} symbols</b></span><span>levels <b>${p.pam}</b></span>` +
+    `<span>swing <b>${fmt(p.swing_mv / 1000, 1)} V</b></span><span>symbol <b>${fmt(uiNs, 0)} ns</b></span>` +
+    `<span>DAC / ADC RC <b>${E.rc_dac} / ${E.rc_adc}</b></span><span>samples <b>${(E.samples / 1e6).toFixed(1)} M</b></span>` +
+    `<span>gates <b class="${passed ? "pass" : "fail"}">${passed ? "all pass" : "NOT all pass"}</b></span>`;
+  document.getElementById("capEye").textContent =
+    `${E.pam - 1} eyes between ${E.pam} levels. Every sample is placed by the fitted clock, on a ${fmt(E.tick_ns / E.k, 1)} ns by one ADC code (${fmt(MV, 2)} mV) grid. ` +
+    (PITCH > 1 ? `Only ${COLS} of ${E.nx} columns hold samples: on one clock they sit on whole ${fmt(E.tick_ns, 1)} ns ticks, so each is drawn ${PITCH} columns wide.` : `Every column holds samples.`) +
+    ` Green bars: each eye's height at the symbol centre.`;
+  const row = (cells) => `<tr>${cells.map((c, i) => `<td${c.cls ? ` class="${c.cls}"` : ""}>${c.v}</td>`).join("")}</tr>`;
+  document.getElementById("gates").innerHTML = `<thead><tr><th>Gate</th><th>Result</th><th class="why">What was read</th></tr></thead><tbody>` +
+    Object.entries(g).map(([k, v]) => `<tr><td>${k}</td><td class="${v.passed ? "pass" : "fail"}">${v.passed ? "pass" : "FAIL"}</td><td class="why">${v.why}</td></tr>`).join("") + `</tbody>`;
+  document.getElementById("levels").innerHTML = `<thead><tr><th>Level</th><th>DAC code</th><th>Mean, mV</th><th>Std, codes</th><th>Residual, codes</th></tr></thead><tbody>` +
+    E.levels.map((l, i) => `<tr><td>${l.level}</td><td>${l.code}</td><td>${fmt(l.mean * MV, 1)}</td><td>${fmt(l.std, 2)}</td><td>${fmt(E.residual_codes[i], 2)}</td></tr>`).join("") + `</tbody>`;
+  document.getElementById("eyes").innerHTML = `<thead><tr><th>Eye</th><th>Height, codes</th><th>Height, mV</th><th>Width, symbols</th></tr></thead><tbody>` +
+    E.eyes.map(e => `<tr><td>${e.eye}-${e.eye + 1}</td><td class="${e.height_codes > 0 ? "" : "fail"}">${fmt(e.height_codes, 1)}</td><td>${fmt(e.height_codes * MV, 1)}</td><td>${fmt(e.width_symbols, 2)}</td></tr>`).join("") + `</tbody>`;
+  document.getElementById("notes").innerHTML = [
+    `<b>The ladder is the DAC's and the ADC's together.</b> The residuals are the nonlinearity of the pair; nothing here separates one from the other.`,
+    `<b>An eye is open when the lower level's top and the upper level's bottom do not touch.</b> They are the 0.1% and 99.9% points of the samples at the symbol centre, about 3 sigma either side.`,
+    `<b>The pattern repeats exactly.</b> The picture is edge shape and level noise; random jitter that varies from cycle to cycle is not in it.`,
+    `<b>The level spread includes the previous symbol's edge,</b> which has not finished settling at the edge of the centre window.`
+  ].map(t => `<li>${t}</li>`).join("");
+  const pr = D.provenance || {};
+  document.getElementById("prov").innerHTML = `<span>${pr.analysis || "analysis not recorded"}; raw ${pr.raw || "not recorded"}; ${pr.taken_at || ""}; ${pr.bench || ""}</span>`;
+}
+
+function ctx(id) {
+  const c = document.getElementById(id), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (!c._w) { c._w = c.width; c._h = c.height; }
+  c.width = c._w * dpr; c.height = c._h * dpr;
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.font = `11px ${css("--font-data")}`;
+  return { g, W: c._w, H: c._h };
+}
+
+function niceStep(span, target) {
+  const raw = span / target, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const m = raw / mag; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * mag;
+}
+
+function frame(g, W, H, m, xr, yr, withX) {
+  g.fillStyle = css("--panel"); g.fillRect(0, 0, W, H);
+  g.strokeStyle = css("--grid"); g.lineWidth = 1; g.fillStyle = css("--muted");
+  const X = (v) => m.l + (v - xr[0]) / (xr[1] - xr[0]) * (W - m.l - m.r);
+  const Y = (v) => H - m.b - (v - yr[0]) / (yr[1] - yr[0]) * (H - m.t - m.b);
+  const ys = niceStep(yr[1] - yr[0], 6);
+  g.textAlign = "right"; g.textBaseline = "middle";
+  for (let v = Math.ceil(yr[0] / ys) * ys; v <= yr[1]; v += ys) { g.beginPath(); g.moveTo(m.l, Y(v) + .5); g.lineTo(W - m.r, Y(v) + .5); g.stroke(); if (m.l > 20) g.fillText(Math.round(v), m.l - 6, Y(v)); }
+  if (withX) {
+    g.textAlign = "center"; g.textBaseline = "top";
+    for (const v of [0, 0.5, 1, 1.5, 2]) { const t = v * uiNs; g.beginPath(); g.moveTo(X(t) + .5, m.t); g.lineTo(X(t) + .5, H - m.b); g.stroke(); g.fillText(Math.round(t), X(t), H - m.b + 5); }
+    g.textAlign = "left"; g.textBaseline = "bottom"; g.fillText("time, ns", m.l, H - 3);
+  }
+  return { X, Y };
+}
+
+function cells(g, s, m, W, H, xr, yr, color) {
+  const binNs = E.tick_ns / E.k;
+  let cmax = 1; E.cells.forEach(d => { if (d[2] > cmax) cmax = d[2]; });
+  const lc = Math.log(1 + cmax), rgb = rgbOf(color);
+  const cw = Math.max(1.1, PITCH * (W - m.l - m.r) / ((xr[1] - xr[0]) / binNs));
+  const ch = Math.max(1.1, (H - m.t - m.b) / (yr[1] - yr[0]));
+  for (const [xi, yc, c] of E.cells) {
+    const x = xi * binNs, y = yc * MV;
+    if (x < xr[0] - binNs || x > xr[1] || y < yr[0] || y > yr[1]) continue;
+    const t = Math.pow(Math.log(1 + c) / lc, 0.75);
+    g.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.16 + 0.84 * t})`;
+    g.fillRect(s.X(x) - (PITCH > 1 ? cw / 2 : 0), s.Y(y) - ch / 2, cw + 0.3, ch + 0.3);
+  }
+}
+
+function markers(g, s, xc, small) {
+  // The level means as faint lines, and each eye's height at the symbol centre.
+  g.save(); g.setLineDash([2, 4]); g.strokeStyle = css("--muted"); g.lineWidth = 1;
+  g.font = `10px ${css("--font-data")}`; g.fillStyle = css("--muted");
+  E.levels.forEach((l, i) => { const y = s.Y(l.mean * MV); g.beginPath(); g.moveTo(s.X(0), y); g.lineTo(s.X(2 * uiNs), y); g.stroke(); if (E.pam <= 16 || i % 8 === 0) { g.textAlign = "left"; g.textBaseline = "bottom"; g.fillText("L" + i, s.X(0) + 3, y - 1); } });
+  g.restore();
+  g.font = `11px ${css("--font-data")}`;
+  E.eyes.forEach((e, i) => {
+    const lo = E.levels[i].hi * MV, hi = E.levels[i + 1].lo * MV, ok = hi > lo;
+    const col = ok ? css("--ok") : css("--bad");
+    for (const cx of [0.5, 1.5]) {
+      const x = s.X(cx * uiNs), y0 = s.Y(lo), y1 = s.Y(hi);
+      g.globalAlpha = 0.22; g.fillStyle = col; g.fillRect(x - 4, Math.min(y0, y1), 8, Math.abs(y0 - y1)); g.globalAlpha = 1;
+      g.strokeStyle = col; g.lineWidth = 1.5; g.strokeRect(x - 4, Math.min(y0, y1), 8, Math.abs(y0 - y1));
+      if (cx < 1 && (E.pam <= 16 || i % 8 === 0)) { g.fillStyle = col; g.textAlign = "left"; g.textBaseline = "middle"; g.fillText(Math.round(e.height_codes), x + 8, (y0 + y1) / 2); }
+    }
+  });
+}
+
+function drawEye() {
+  const m = { l: 52, r: 30, t: 14, b: 40 };
+  const { g, W, H } = ctx("eye");
+  const yr = [E.ymin_code * MV, E.ymax_code * MV], xr = [0, 2 * uiNs];
+  const s = frame(g, W, H, m, xr, yr, true);
+  cells(g, s, m, W, H, xr, yr, css("--c0"));
+  markers(g, s, 0, false);
+  g.fillStyle = css("--muted"); g.textAlign = "left"; g.textBaseline = "top"; g.fillText("mV", 4, 2);
+  // Level histogram on the same vertical axis.
+  const h = ctx("hist"), hm = { l: 6, r: 8, t: 14, b: 40 };
+  const hs = frame(h.g, h.W, h.H, hm, [0, 1], yr, false);
+  const hist = E.centre_hist, hmax = Math.max(...hist, 1);
+  h.g.fillStyle = css("--c1");
+  for (let i = 0; i < hist.length; i++) { if (!hist[i]) continue; const y = hs.Y((E.ymin_code + i) * MV), w = (h.W - hm.l - hm.r) * Math.pow(hist[i] / hmax, 0.5); h.g.fillRect(hm.l, y - 0.5, w, 1.2); }
+  h.g.fillStyle = css("--muted"); h.g.textAlign = "left"; h.g.textBaseline = "top"; h.g.fillText("levels at the symbol centre", hm.l, 2);
+}
+
+function drawZoom() {
+  const mid = Math.floor((E.pam - 1) / 2), lo = E.levels[mid].mean * MV, hi = E.levels[mid + 1].mean * MV;
+  const pad = (hi - lo) * 0.7, yr = [lo - pad, hi + pad], xr = [0, 2 * uiNs];
+  const m = { l: 52, r: 30, t: 14, b: 40 };
+  const { g, W, H } = ctx("zoom");
+  const s = frame(g, W, H, m, xr, yr, true);
+  cells(g, s, m, W, H, xr, yr, css("--c0"));
+  g.save(); g.beginPath(); g.rect(m.l, m.t, W - m.l - m.r, H - m.t - m.b); g.clip();
+  markers(g, s, 0, true); g.restore();
+  g.fillStyle = css("--muted"); g.textAlign = "left"; g.textBaseline = "top"; g.fillText("mV", 4, 2);
+}
+
+function draw() { drawEye(); drawZoom(); }
+build(); draw();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>

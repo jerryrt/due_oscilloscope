@@ -138,3 +138,26 @@ def test_the_boundary_of_a_folded_staircase_is_where_it_moves():
         curve += [100.0 + 300.0 * sym] * rc
     got = etspam.boundary_offset(curve[7:] + curve[:7], rc)
     assert abs((got - 22.0 + rc / 2) % rc - rc / 2) < 0.5, got
+
+
+def test_the_eye_document_carries_every_sample_once_and_the_levels_it_was_given(pam4):
+    pat, vals, _ = pam4
+    res = etspam.analyze(vals, 46, pat, 29, want_eye=True)
+    eye = res["eye"]
+    assert sum(c for _, _, c in eye["cells"]) == len(vals)
+    assert eye["nx"] == 2 * 29 * etspam.LABEL_K and len(eye["levels"]) == 4
+    assert all(0 <= x < eye["nx"] for x, _, _ in eye["cells"])
+    assert sum(eye["centre_hist"]) == sum(lv["n"] for lv in eye["levels"])
+    lo, hi = eye["ymin_code"], eye["ymax_code"]
+    assert lo <= eye["levels"][0]["mean"] and eye["levels"][-1]["mean"] <= hi
+
+
+def test_a_capture_that_starts_part_way_through_a_run_is_labelled_from_its_own_start(pam4):
+    """The tracker, the fold and the labels all count samples from the run's
+    start; trimming the first samples off must move all three together, or
+    every label is out by the drift of the samples that were dropped."""
+    pat, vals, _ = pam4
+    cut = 80_000
+    res = etspam.analyze(vals[cut:], 46, pat, 29, start=cut)
+    assert _passed(res) == {"A3": True, "A4": True, "A5": True, "A6": True}, res["gates"]
+    assert res["eye_height_min"] > 380, res["eyes"]

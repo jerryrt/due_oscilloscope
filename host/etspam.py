@@ -96,13 +96,19 @@ def _stats(hist):
             "lo": _quantile(hist, TAIL), "hi": _quantile(hist, TAIL, from_top=True)}
 
 
-def label_samples(vals, rc_adc, model, pat, rc_dac, b0):
+def label_samples(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):
     """Per-level histograms at the symbol centre and per position in the symbol.
 
     Returns `(centre, by_t)`: `centre[level]` is a histogram over ADC codes of
     the samples in the middle fifth of symbols at that level, and
     `by_t[t_bin][level]` the same for each of `TBINS` positions across the
     symbol, over the symbols' own level (the one being held at that moment).
+
+    When `cells` is a dict it is filled with the eye: the count of samples at
+    each `(x, code)`, `x` the position in a window two symbols wide in
+    `1 / LABEL_K` tick, symbol boundaries at 0, the middle and the end. Only the
+    symbol phase matters to it, not which symbol. `vals[0]` is sample number
+    `start` of the run, as for the tracker and the fold.
     """
     n_sym = pat.length
     unit = n_sym * rc_dac
@@ -115,8 +121,12 @@ def label_samples(vals, rc_adc, model, pat, rc_dac, b0):
     span = rc_dac * k
     per_unit = unit * k
     lo_t, hi_t = (0.5 - CENTRE_HALF), (0.5 + CENTRE_HALF)
-    for v, idx in zip(vals, etsperiod.phase_indices(len(vals), rc_adc, model, unit, k)):
+    two = 2 * span
+    for v, idx in zip(vals, etsperiod.phase_indices(len(vals), rc_adc, model, unit, k, start)):
         rel = (idx - shift) % per_unit
+        if cells is not None:
+            key = int(rel % two) * ADC_CODES + int(v)
+            cells[key] = cells.get(key, 0) + 1
         j = int(rel // span)
         t = (rel - j * span) / span
         lvl = syms[j]
@@ -235,10 +245,11 @@ def gates(result, trk):
     return g
 
 
-def analyze(vals, rc_adc, pat, rc_dac, start=0):
+def analyze(vals, rc_adc, pat, rc_dac, start=0, want_eye=False):
     """Track the clock, label every sample, and return the figures and gates.
 
     `vals` are ADC codes of one channel; `pat` is an `etspattern.Pattern`.
+    With `want_eye` the result carries an `"eye"` document for the page script.
     """
     trk = etsperiod.track_clock_ratio(vals, rc_adc, pat.symbols, rc_dac,
                                       start=start, levels=pat.pam)
@@ -247,7 +258,8 @@ def analyze(vals, rc_adc, pat, rc_dac, start=0):
     if min(cnt) == 0:
         curve = _fill_holes(curve)
     b0 = boundary_offset(curve, rc_dac)
-    centre, by_t = label_samples(vals, rc_adc, trk["model"], pat, rc_dac, b0)
+    cells = {} if want_eye else None
+    centre, by_t = label_samples(vals, rc_adc, trk["model"], pat, rc_dac, b0, cells, start)
     res = analyze_levels(centre, by_t, pat)
     res.update({"samples": len(vals), "rc_dac": rc_dac, "rc_adc": rc_adc,
                 "delta_ppm": trk["delta"] * 1e6, "b0_ticks": b0,
@@ -256,7 +268,40 @@ def analyze(vals, rc_adc, pat, rc_dac, start=0):
                 "time_axis_sigma_ns": trk["model"]["sigma_model"] * 1e9 / 45e6,
                 "fold_holes": sum(1 for c in cnt if c == 0)})
     res["gates"] = {k: {"passed": ok, "why": why} for k, (ok, why) in gates(res, trk).items()}
+    if want_eye:
+        res["eye"] = eye_document(res, cells, centre, curve, pat, rc_dac, b0)
     return res
+
+
+def eye_document(res, cells, centre, curve, pat, rc_dac, b0):
+    """What `tools/ets_pam_page.py` draws: density, levels, eyes, gates.
+
+    Millivolts at the ADC pin are `code * 3300 / 4095`; the page does that.
+    """
+    ys = [key % ADC_CODES for key in cells]
+    lo = max(0, min(ys) - 4)
+    hi = min(ADC_CODES - 1, max(ys) + 4)
+    merged = [0] * (hi - lo + 1)
+    for h in centre:
+        for c in range(lo, hi + 1):
+            merged[c - lo] += h[c]
+    keep = ("pam", "levels", "slope_adc_per_dac", "intercept_adc", "spacing_codes",
+            "residual_codes", "residual_max_codes", "monotone", "min_separation_sigma",
+            "eyes", "eye_height_min", "eye_width_min", "samples", "rc_dac", "rc_adc",
+            "delta_ppm", "model_adequate", "lattice_gcd", "time_axis_sigma_ns", "gates")
+    doc = {k: res[k] for k in keep if k in res}
+    levels = []
+    for lv in doc.get("levels", []):
+        levels.append({k: lv[k] for k in ("level", "code", "n", "mean", "std", "lo", "hi")})
+    doc["levels"] = levels
+    doc.update({
+        "k": LABEL_K, "tick_ns": 1e9 / 45e6, "ui_ticks": rc_dac,
+        "nx": 2 * rc_dac * LABEL_K, "ymin_code": lo, "ymax_code": hi,
+        "adc_mv_per_code": 3300.0 / 4095,
+        "cells": [[key // ADC_CODES, key % ADC_CODES, c] for key, c in cells.items()],
+        "centre_hist": merged, "pattern": {"pam": pat.pam, "n": pat.n, "length": pat.length,
+                                             "swing_mv": pat.swing_mv, "codes": pat.codes}})
+    return doc
 
 
 def _fill_holes(curve):
