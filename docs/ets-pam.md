@@ -168,7 +168,6 @@ the eye has been shown to the owner; the figures are in the records named.
 | 64 | `linux-x1`, two boards | pass | pass | pass | **FAIL** (2 V) | 64 levels, 2 V swing | 39.3 codes | 6 of 63 closed (-29 worst, top) | `ets-pam-linux-x1.jsonl` (diagnostic), `ets-pam64-eye-linux-x1.json`, `ets-pam64-steps-2v-linux-x1.txt` |
 | 64, 1.5 V | `linux-x1`, two boards | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes | all 63 open, 11-13, 0.55 wide | `ets-pam-linux-x1.jsonl`, `ets-pam64-1v5-eye-linux-x1.json`, `ets-pam64-steps-1v5-linux-x1.txt` |
 | 128, 1.5 V | `montreal5`, one board, 14 s | pass | pass | pass | **FAIL** | 128 levels, 1.5 V swing | 14.6 codes (11.8 mV) | all 127 closed, -7 codes | `ets-pam-montreal5.jsonl` (diagnostic row) |
-| 128, 1.5 V | `montreal5`, one board, 45 s | not analysable | | | | | | | `ets-pam-montreal5.jsonl` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
@@ -237,12 +236,15 @@ symbols share the factors 3 and 5 with RC 45):
   That is the arithmetic of the gate and not of the sample count, and more samples
   only widen the tails, so a longer capture would not open them. The swing that
   keeps PAM64's end steps short leaves PAM128 no margin.
-- The 45 s capture that would give 20 samples per tick has 1,951 sequence gaps and
-  8,393 dropped frames, with 0 underruns, and `ets_pam.py` refuses to analyse it.
-  The 14 s runs of PAM4 to PAM128 had none. Whether the gaps are the host, the
-  device or the 33 MB playback wave has not been tried: a 28 s run was not
-  finished. This does not change the PAM128 result and it stands in front of
-  PAM256, which needs 77 s.
+- The first 45 s capture was not analysable (1,951 sequence gaps, 8,393 dropped
+  frames, 96.4 MB sent against 86.3 MB received) and the cause was two runs on
+  the board at once: an earlier attempt, started as a background job that was
+  believed killed, ran to its end while the next run was capturing, so the raw
+  files of the two start 15 s apart. Run alone, a 45 s PAM128 capture has no
+  gaps, no dropped frames and every playback byte conserved (144,666,112 sent and
+  received), so capture length is not a limit and PAM256's 77 s is not ruled out
+  by it. The check before a run is that no other `ets_pam.py` or `ets_cross.py`
+  process is alive.
 
 ## Defaults taken, to be confirmed
 
