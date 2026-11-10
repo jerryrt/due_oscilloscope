@@ -70,3 +70,21 @@ def test_a_wanted_rate_picks_the_nearest_odd_dac_rc_on_two_boards():
     got = etsplan.plan(symbol_rate_hz=1_000_000)       # RC 45, already odd
     assert got["rc_dac"] == 45 and not got["problems"], got
     assert etsplan.plan(symbol_rate_hz=1_125_000)["rc_dac"] == 41    # RC 40 -> 41
+
+
+def test_the_capture_script_plans_the_pair_for_the_pattern_it_was_asked_for():
+    """PRBS11 is 2,047 = 23 * 89 symbols, so the default ADC RC 46 shares a
+    factor of 23 with PAM32's period; the script must not take it."""
+    import argparse
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import ets_cross
+    four = argparse.Namespace(pam=4, rc=None, rc_adc=None)
+    ets_cross.resolve_pair(four)
+    assert (four.rc, four.rc_adc) == (29, 46)
+    thirty_two = argparse.Namespace(pam=32, rc=None, rc_adc=None)
+    ets_cross.resolve_pair(thirty_two)
+    assert thirty_two.rc_adc != 46 and thirty_two.rc_adc % 2 == 0, thirty_two
+    assert not etsplan.check_pair(thirty_two.rc, thirty_two.rc_adc, False, length=2047)["problems"]
+    chosen = argparse.Namespace(pam=4, rc=None, rc_adc=44)
+    ets_cross.resolve_pair(chosen)
+    assert chosen.rc_adc == 44, "an ADC RC the user gave was replaced"

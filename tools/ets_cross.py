@@ -40,6 +40,7 @@ for sub in ("host", "tools", "tests"):
 import eqtime  # noqa: E402
 import ets_phase0 as e  # noqa: E402
 import etsperiod  # noqa: E402
+import etspattern  # noqa: E402
 import etsplan  # noqa: E402
 import measure  # noqa: E402
 import provenance  # noqa: E402
@@ -53,16 +54,23 @@ MAX_SAMPLES = 8_000_000
 LEAD_S = 6.0
 
 
-def play(rc_dac, seconds, vpp_mv):
+def play(rc_dac, seconds, vpp_mv, pam=None):
+    """Play the NRZ PRBS7, or the PAM-N pattern of docs/ets-pam.md with `pam`."""
     board = measure.Board()
-    bits = e.prbs7()
-    lo, hi = e.levels(vpp_mv)
+    if pam:
+        import ets_pam                  # imports this module, so not at the top
+        pat = etspattern.pattern(pam, swing_mv=vpp_mv)
+        wave = ets_pam.wave_bytes(pat)
+        shape = {"pam": pam, "swing_mv": pat.swing_mv, "level_codes": pat.codes}
+    else:
+        vpp_mv = 1000.0 if vpp_mv is None else vpp_mv
+        lo, hi = e.levels(vpp_mv)
+        wave = e.wave_bytes(e.prbs7(), lo, hi)
+        shape = {"lo_code": lo, "hi_code": hi, "vpp_mv": vpp_mv}
     hz = measure.hz_for(rc_dac)
     res = measure.run_loop(board, dac_sps=hz, adc_hz=measure.hz_for(ADC_RC),
-                           channels=1, seconds=seconds,
-                           wave=e.wave_bytes(bits, lo, hi))
-    row = {"role": "play", "rc_dac": rc_dac, "dac_hz": hz,
-           "lo_code": lo, "hi_code": hi, "vpp_mv": vpp_mv,
+                           channels=1, seconds=seconds, wave=wave)
+    row = {"role": "play", "rc_dac": rc_dac, "dac_hz": hz, **shape,
            "underruns": res.play.underruns, "via": res.play.via,
            "host_tx_bytes": res.host_tx_bytes,
            "play_bytes_in": res.play.bytes_in,
@@ -372,8 +380,12 @@ def both(a):
     env_p = dict(os.environ, DUE_DUT=a.play_dut)
     env_c = dict(os.environ, DUE_DUT=a.cap_dut)
     play_s = a.seconds + LEAD_S + 14.0
-    src = subprocess.Popen([sys.executable, me, "play", "--rc", str(a.rc),
-                            "--seconds", str(play_s), "--vpp-mv", str(a.vpp_mv)],
+    play_cmd = [sys.executable, me, "play", "--rc", str(a.rc), "--seconds", str(play_s)]
+    if a.vpp_mv is not None:
+        play_cmd += ["--vpp-mv", str(a.vpp_mv)]
+    if a.pam:
+        play_cmd += ["--pam", str(a.pam)]
+    src = subprocess.Popen(play_cmd,
                            env=env_p, stdout=subprocess.PIPE, text=True)
     time.sleep(LEAD_S)
     cap = subprocess.run([sys.executable, me, "capture", "--seconds",
@@ -391,15 +403,40 @@ def both(a):
         row["error"] = "capture not analysable: %s" % (
             crow.get("bad") or crow.get("error") or "rate mismatch")
         return row
+    if a.pam:
+        import ets_pam
+        pat = etspattern.pattern(a.pam, swing_mv=a.vpp_mv)
+        data = array.array("H")
+        with open(raw, "rb") as f:
+            data.frombytes(f.read())
+        res = ets_pam.analyse(data, pat, a.rc, crow["rc_adc"], bool(a.eye_out))
+        ets_pam.write_eye(a, res, raw)
+        row.update(ets_pam.summary(res))
+        return row
     row.update(analyze(raw, a.rc, crow["rc_adc"]))
     if getattr(a, "eye_out", None):
         row["eye"] = eye(raw, a.rc, crow["rc_adc"], a.k, a.eye_out, label=a.label)
     return row
 
 
+def resolve_pair(a):
+    """Fill in the DAC and ADC RC the user left out, from the planner.
+
+    The planner sees the pattern's length: PRBS11 is 2,047 = 23 * 89 symbols, so
+    the default ADC RC 46 would share a factor of 23 with its period.
+    """
+    length = etspattern.pattern(a.pam).length if a.pam else etsplan.PRBS7_LENGTH
+    planned = etsplan.plan(rc_dac=a.rc, rc_adc=a.rc_adc, length=length)
+    if a.rc is None:
+        a.rc = planned["rc_dac"]
+    if a.rc_adc is None:
+        a.rc_adc = planned["rc_adc"]
+
+
 def require_pair(a):
     """Print what the planner says about the pair; refuse it unless forced."""
-    verdict = etsplan.check_pair(a.rc, a.rc_adc, same_board=False)
+    length = etspattern.pattern(a.pam).length if a.pam else etsplan.PRBS7_LENGTH
+    verdict = etsplan.check_pair(a.rc, a.rc_adc, same_board=False, length=length)
     for note in verdict["notes"]:
         print("note:", note, file=sys.stderr)
     if verdict["problems"] and not a.force:
@@ -463,13 +500,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("what", choices=("plan", "both", "play", "capture", "analyze", "resolution", "sweep", "eye"))
     ap.add_argument("raw_in", nargs="?")
-    ap.add_argument("--rc", type=int, default=DAC_RC,
+    ap.add_argument("--rc", type=int, default=None,
                     help="DAC RC; 28 is the playback floor, an odd RC is the default pairing")
     ap.add_argument("--rc-dac", type=int, dest="rc_dac")
-    ap.add_argument("--rc-adc", type=int, dest="rc_adc", default=ADC_RC,
+    ap.add_argument("--rc-adc", type=int, dest="rc_adc", default=None,
                     help="ADC RC; an even RC avoids the odd/even sample offset")
     ap.add_argument("--seconds", type=float, default=16.0)
-    ap.add_argument("--vpp-mv", type=float, default=1000.0, dest="vpp_mv")
+    ap.add_argument("--vpp-mv", type=float, default=None, dest="vpp_mv",
+                    help="swing in mV; 1000 for NRZ, the pattern's own default for --pam")
+    ap.add_argument("--pam", type=int, help="play and read a PAM-N pattern (docs/ets-pam.md) instead of NRZ")
+    ap.add_argument("--bench", default="", help="a name for the eye file's provenance")
     ap.add_argument("--play-dut", default="dut1", dest="play_dut")
     ap.add_argument("--cap-dut", default="dut2", dest="cap_dut")
     ap.add_argument("--raw", help="where `capture` writes its samples")
@@ -486,13 +526,16 @@ def main():
                     help="`plan`: the source and the ADC share one board and one clock")
     ap.add_argument("--out")
     a = ap.parse_args()
+    resolve_pair(a)
     if a.what == "plan":
-        print(json.dumps(etsplan.plan(symbol_rate_hz=a.symbol_hz, same_board=a.same_board)))
+        length = etspattern.pattern(a.pam).length if a.pam else etsplan.PRBS7_LENGTH
+        print(json.dumps(etsplan.plan(rc_dac=a.rc, rc_adc=a.rc_adc, symbol_rate_hz=a.symbol_hz,
+                                      same_board=a.same_board, length=length)))
         return
     if a.what == "capture":
         require_pair(a)
     if a.what == "play":
-        print(json.dumps(play(a.rc, a.seconds, a.vpp_mv)))
+        print(json.dumps(play(a.rc, a.seconds, a.vpp_mv, a.pam)))
         return
     if a.what == "capture":
         print(json.dumps(capture(a.seconds, a.raw, a.rc_adc)))
