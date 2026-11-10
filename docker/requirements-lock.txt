@@ -12,6 +12,11 @@
 # and the resolution is the thing that is pinned. requirements-dev.txt
 # keeps its meaning for benches unchanged.
 #
+# requirements-dsp.txt is resolved with it: numpy is one wheel for CPython
+# 3.12 on linux-x86_64, and the equivalence tests of the ETS analysis
+# (tests/test_dsp_equivalence.py, tests/test_label_equivalence.py) run in the
+# gate once it is here.
+#
 # Transitive dependencies are listed too, because --require-hashes
 # refuses a requirement it cannot name. So this is the whole closure,
 # not just the four direct lines.
@@ -32,6 +37,8 @@
 # chosen for its own interpreter and platform, and this image is
 # CPython 3.12 on linux-x86_64.
 
+numpy==2.3.5 \
+    --hash=sha256:0d8163f43acde9a73c2a33605353a4f1bc4798745a8b1d73183b28e5b435ae28
 importlib_resources==7.1.0 \
     --hash=sha256:1bd7b48b4088eddb2cd16382150bb515af0bd2c70128194392725f82ad2c96a1
 iniconfig==2.3.0 \

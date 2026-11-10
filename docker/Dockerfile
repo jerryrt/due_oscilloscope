@@ -299,7 +299,8 @@ RUN set -eux; \
         -r /tmp/requirements-lock.txt; \
     rm /tmp/requirements-lock.txt; \
     chmod -R a+rX "$VIRTUAL_ENV"; \
-    "$VIRTUAL_ENV/bin/python" -m pytest --version
+    "$VIRTUAL_ENV/bin/python" -m pytest --version; \
+    "$VIRTUAL_ENV/bin/python" -c "import numpy"
 
 # The container runs as the invoking user - docker/run.sh passes --user -
 # so anything it writes into the mounted tree stays that user's. git then
