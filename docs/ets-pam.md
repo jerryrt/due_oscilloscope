@@ -165,6 +165,8 @@ the eye has been shown to the owner; the figures are in the records named.
 | 32 | `linux-x1`, two boards | pass | pass | pass | pass | 32 levels | 40.0 codes | 22, 0.65 | `ets-pam-linux-x1.jsonl`, `ets-pam32-eye-linux-x1.json` |
 | 64 | `montreal5`, one board | pass | pass | pass | **FAIL** | 64 levels, 2 V swing | 39.3 codes (31.7 mV) | 3 of 63 eyes closed (-16, -4, -2); the other 60 are 8-22 | `ets-pam-montreal5.jsonl`, `ets-pam64-eye-montreal5.json` |
 | 64, 1.5 V | `montreal5`, one board | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes (23.8 mV) | all 63 open, 8-13 | `ets-pam-montreal5.jsonl`, `ets-pam64-1v5-eye-montreal5.json` |
+| 64 | `linux-x1`, two boards | pass | pass | pass | **FAIL** (2 V) | 64 levels, 2 V swing | 39.3 codes | 6 of 63 closed (-29 worst, top) | `ets-pam-linux-x1.jsonl` (diagnostic), `ets-pam64-eye-linux-x1.json`, `ets-pam64-steps-2v-linux-x1.txt` |
+| 64, 1.5 V | `linux-x1`, two boards | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes | all 63 open, 11-13, 0.55 wide | `ets-pam-linux-x1.jsonl`, `ets-pam64-1v5-eye-linux-x1.json`, `ets-pam64-steps-1v5-linux-x1.txt` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
@@ -211,6 +213,10 @@ What the data show, and what they do not:
 - Reducing the swing to 1.5 V works as expected. The same outermost steps fall to
   3.0 and 2.9 codes, every eye is open (8 to 13 codes against a spacing of 29.5)
   and A6 passes on both runs, with the Rigol window widened to 0.5 V/div.
+- The two-board pair shows the same, larger: at 2 V the bottom level's spread is
+  2.4 to 2.5 codes after steps up to 50 levels and 6.9 after 51 to 63, the top
+  10.2; capping the step at 47 levels opens both end eyes (-8.7 and -29.0 become
+  +22.0), and at 1.5 V all 63 eyes are open at 11 to 13 codes.
 - Not established: whether it is the step in volts or the position on the DAC's
   range. At 2 V, steps of 39 to 50 levels (1.2 to 1.6 V) give 3.0 codes, the same
   as the 1.5 V swing's full-scale steps, which says the step in volts; but a
