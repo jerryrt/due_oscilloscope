@@ -877,9 +877,17 @@ policy motivated by one platform's defect may live above the seam -
 uniform because it is measured free on the platforms that do not need
 it and one feed policy keeps a feed bug reproducible on both. The
 moment such a policy wants a `sys.platform` test, it moves down.
-`host/` is no longer stdlib-only: it takes pyserial, which is declared
-in `requirements-dev.txt`. The old rule was always "a fact about the
-code, not a rule new code inherits".
+`host/` is no longer stdlib-only: it takes pyserial and **numpy**, which
+are declared in `requirements-dev.txt` (numpy through
+`requirements-dsp.txt`). **numpy is required, not optional** (owner's
+ruling, 2026-11-10): heavy computation on the host, anything that loops
+over samples or bins, is written as numpy array operations, and when
+such a version reproduces the loop it replaces, the loop is deleted
+rather than kept as a fallback. A test that cannot import numpy fails;
+it does not skip. What replaces the loop as the oracle is ground truth
+the test builds - known edge positions, known levels, the codes put into
+a stream. The old rule was always "a fact about the code, not a rule new
+code inherits".
 
 ### WSL2 is tier 2, and only for the software path
 

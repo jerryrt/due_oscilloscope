@@ -78,10 +78,7 @@ def capture(board, pat, pl, seconds):
 
 def analyse(vals, pat, rc_dac, rc_adc, want_eye):
     lo, hi = HEAD_TRIM, len(vals) - TAIL_TRIM
-    if dsp.np is not None and isinstance(vals, array.array):
-        seg = dsp.np.frombuffer(vals, dtype=dsp.np.uint16)[lo:hi]     # a view: no copy
-    else:
-        seg = [float(v) for v in vals[lo:hi]]
+    seg = dsp.np.frombuffer(vals, dtype=dsp.np.uint16)[lo:hi]         # a view: no copy
     return etspam.analyze(seg, rc_adc, pat, rc_dac, start=lo, want_eye=want_eye)
 
 
@@ -98,6 +95,27 @@ def summary(res):
                  for e in res.get("eyes", [])]}
 
 
+def _cluster(v, pam):
+    """The flat samples and their `pam` Lloyd centroids. The centroids stay in order,
+    so each sample's nearest one is a search over the midpoints between them."""
+    np = dsp.np
+    mv = np.asarray(v, dtype=np.float64) * 1000.0
+    flat = mv[2:-2][np.abs(mv[4:] - mv[:-4]) < 18.0]
+    srt = np.sort(flat)
+    lo, hi = srt[int(0.002 * len(srt))], srt[int(0.998 * len(srt)) - 1]
+    cent = lo + (hi - lo) * np.arange(pam) / (pam - 1)
+    for _ in range(40):
+        near = np.searchsorted((cent[:-1] + cent[1:]) / 2.0, flat, side="left")
+        cnt = np.bincount(near, minlength=pam)
+        tot = np.bincount(near, weights=flat, minlength=pam)
+        new = np.where(cnt > 0, tot / np.maximum(cnt, 1), cent)
+        done = np.abs(new - cent).max() < 0.01
+        cent = new
+        if done:
+            break
+    return flat, cent.tolist()
+
+
 def rigol_levels(v, pam):
     """The level voltages the scope sees, from its flat stretches.
 
@@ -105,20 +123,7 @@ def rigol_levels(v, pam):
     steps; the flat samples are then clustered into `pam` groups by Lloyd's
     iteration from evenly spaced starts. Returns means in mV, spacing, counts.
     """
-    mv = [x * 1000.0 for x in v]
-    flat = [mv[i] for i in range(2, len(mv) - 2) if abs(mv[i + 2] - mv[i - 2]) < 18.0]
-    srt = sorted(flat)
-    lo, hi = srt[int(0.002 * len(srt))], srt[int(0.998 * len(srt)) - 1]
-    cent = [lo + (hi - lo) * i / (pam - 1) for i in range(pam)]
-    for _ in range(40):
-        groups = [[] for _ in range(pam)]
-        for x in flat:
-            groups[min(range(pam), key=lambda j: abs(cent[j] - x))].append(x)
-        new = [sum(g) / len(g) if g else cent[j] for j, g in enumerate(groups)]
-        if max(abs(a - b) for a, b in zip(new, cent)) < 0.01:
-            cent = new
-            break
-        cent = new
+    flat, cent = _cluster(v, pam)
     spacing = (cent[-1] - cent[0]) / (pam - 1)
     n = len(cent)
     mx, my = (n - 1) / 2.0, sum(cent) / n

@@ -32,10 +32,7 @@ import sys
 import threading
 import warnings
 
-try:
-    import numpy as _np
-except ImportError:                      # the stdlib reference below stays the fallback
-    _np = None
+import numpy as _np
 import time
 import zlib
 from array import array
@@ -947,19 +944,10 @@ def _accumulate(ps, body, ts, settled, settle_cap, keep_series):
         _merge(ps, tag, sl, ts, settled, settle_cap, keep_series)
 
 
-#: Per-frame channel statistics through numpy where it imports; a test turns it off
-#: to hold the two to one answer.
-_STATS_NUMPY = True
-
-
 def _merge(ps, tag, sl, ts, settled, settle_cap, keep_series):
     st = ps.per_channel.get(tag)
-    if _STATS_NUMPY and _np is not None and len(sl):
-        # min, max and sum of every sample were 90% of parse_frames in Python builtins
-        arr = _np.frombuffer(sl, dtype=_np.uint16)
-        lo, hi_, tot, cnt = int(arr.min()), int(arr.max()), int(arr.sum(dtype=_np.uint64)), len(sl)
-    else:
-        lo, hi_, tot, cnt = min(sl), max(sl), sum(sl), len(sl)
+    arr = _np.frombuffer(sl, dtype=_np.uint16)
+    lo, hi_, tot, cnt = int(arr.min()), int(arr.max()), int(arr.sum(dtype=_np.uint64)), len(sl)
     if st is None:
         ps.per_channel[tag] = ChannelStats(tag, cnt, lo, hi_, float(tot))
     else:

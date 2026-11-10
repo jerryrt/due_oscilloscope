@@ -161,3 +161,29 @@ def test_a_capture_that_starts_part_way_through_a_run_is_labelled_from_its_own_s
     res = etspam.analyze(vals[cut:], 46, pat, 29, start=cut)
     assert _passed(res) == {"A3": True, "A4": True, "A5": True, "A6": True}, res["gates"]
     assert res["eye_height_min"] > 380, res["eyes"]
+
+
+def _staircase(rc=29, symbols=127, seed=3):
+    """A folded curve of `symbols` levels held `rc` ticks, with an edge that is a few ticks wide."""
+    import random
+    rng = random.Random(seed)
+    levels = [rng.randrange(0, 4000) for _ in range(symbols)]
+    curve = []
+    for j, lvl in enumerate(levels):
+        prev = levels[j - 1]
+        for t in range(rc):
+            frac = min(1.0, max(0.0, (t - 6) / 3.0))
+            curve.append(prev + (lvl - prev) * frac + rng.gauss(0, 0.4))
+    return curve
+
+
+def test_boundary_offset_finds_the_edge_where_the_staircase_moves():
+    """`_staircase` ramps between levels over ticks 6 to 9 of every symbol, so the movement is
+    at ticks 6, 7 and 8 and the edge's centre is tick 8 once the 1 of `curve[k + 1] - curve[k]`
+    is counted."""
+    for rc, symbols in ((29, 127), (28, 255), (29, 1000)):
+        got = etspam.boundary_offset(_staircase(rc, symbols), rc)
+        assert abs(got - 8.0) < 0.2, (rc, symbols, got)
+    shifted = _staircase(29, 127)
+    shifted = shifted[5:] + shifted[:5]                  # every edge five ticks earlier
+    assert abs(etspam.boundary_offset(shifted, 29) - 3.0) < 0.2

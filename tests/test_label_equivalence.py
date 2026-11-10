@@ -4,7 +4,7 @@ Skipped where numpy is absent.
 """
 import pytest
 
-np = pytest.importorskip("numpy")
+import numpy as np
 
 import dsp  # noqa: E402
 import etspam  # noqa: E402

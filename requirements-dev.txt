@@ -1,5 +1,5 @@
 # Dependencies for the host tools and the test suite. host/ is not
-# stdlib-only - it takes pyserial (below) and, in host/scope.py, pyusb
+# stdlib-only - it takes numpy (requirements-dsp.txt), pyserial (below) and, in host/scope.py, pyusb
 # and libusb-package - but none of it is on the system interpreter, so
 # everything runs from a venv:
 #
@@ -7,6 +7,7 @@
 #   .venv/bin/pip install -r requirements-dev.txt
 #   .venv/bin/python -m pytest tests -v
 pytest>=7.0
+-r requirements-dsp.txt   # numpy: required by the host analysis and the frame parser
 pyserial==3.5   # host/ports.py discovery everywhere; host/transport.py's backend on Windows; tools/flash.py
 
 # The bench oscilloscope, for the measurements the ADC under

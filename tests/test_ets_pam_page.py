@@ -75,3 +75,38 @@ def test_the_page_script_parses(tmp_path):
 def test_the_browser_tab_names_the_level_count():
     assert "<title>PAM16 Eye</title>" in ets_pam_page.build(_doc(16))
     assert "<title>PAM Eye</title>" not in ets_pam_page.build(_doc(4))
+
+
+def _scope_trace(pam, seed=11, per_level=900):
+    """A scope record of an 8-bit instrument: random levels held flat, with a ramp between."""
+    import random
+    rng = random.Random(seed)
+    lo, step = 0.75, 1.5 / (pam - 1)
+    v = []
+    prev = lo
+    for _ in range(per_level):
+        target = lo + rng.randrange(pam) * step
+        for t in range(6):
+            v.append(prev + (target - prev) * (t + 1) / 6.0)
+        v += [target] * rng.randrange(6, 14)
+        prev = target
+    quant = 0.008
+    return [round((x + rng.gauss(0, 0.002)) / quant) * quant for x in v]
+
+
+def test_the_rigol_clustering_recovers_the_levels_of_the_trace():
+    import os
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+    import ets_pam
+    for pam in (4, 16, 64):
+        v = _scope_trace(pam)
+        flat, cent = ets_pam._cluster(v, pam)
+        truth = [(0.75 + i * 1.5 / (pam - 1)) * 1000.0 for i in range(pam)]
+        assert len(flat) > 1000 and len(cent) == pam, pam
+        assert max(abs(c - t) for c, t in zip(cent, truth)) < 6.0, pam    # within one 8 mV scope step
+    # the control: asked for the wrong level count the centroids cannot match the truth
+    wrong = ets_pam._cluster(_scope_trace(16), 8)[1]
+    truth16 = [(0.75 + i * 1.5 / 15) * 1000.0 for i in range(16)]
+    assert min(abs(c - t) for c in wrong for t in truth16) < 40.0
+    assert max(abs(c - t) for c, t in zip(wrong, truth16[:8])) > 100.0

@@ -61,10 +61,17 @@ def boundary_offset(curve, rc):
     not the start of the next symbol: read the other way every label is one
     symbol off.
     """
-    n = len(curve)
-    energy = [0.0] * rc
-    for k in range(n):
-        energy[k % rc] += abs(curve[(k + 1) % n] - curve[k])
+    np = dsp.np
+    c = np.asarray(curve, dtype=np.float64)
+    d = np.abs(np.roll(c, -1) - c)
+    if len(d) % rc == 0:
+        energy = d.reshape(-1, rc).sum(axis=0).tolist()
+    else:
+        energy = np.bincount(np.arange(len(d)) % rc, weights=d, minlength=rc).tolist()
+    return _boundary_from_energy(energy, rc)
+
+
+def _boundary_from_energy(energy, rc):
     w = max(3, rc // 3)
     phi = max(range(rc), key=lambda p: sum(energy[(p + i) % rc] for i in range(w)))
     weights = [energy[(phi + i) % rc] for i in range(w)]
