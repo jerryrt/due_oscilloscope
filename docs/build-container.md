@@ -507,6 +507,11 @@ commit before the change, whose recipe the old image matches:
    finding.
 4. `git worktree remove <dir>`.
 
+`docker/compare-revisions.sh OLD_COMMIT OLD_IMAGE` does all four steps and reports
+PASS (sizes equal and every differing byte inside a build-identity string), FAIL,
+or DID NOT RUN (an image absent, a dirty tree, a failed build). Revision 2 passes
+it on both benches (`docker/compare-revisions.sh 9e2f20a due-build:15.2.1-1.1-r1`).
+
 Revision 2 was compared this way on two benches: sizes equal (41,208, 59,400 and
 46,284 bytes) and 14 differing bytes per track. A change that touches the
 compiler's layers needs this comparison before it is accepted.
