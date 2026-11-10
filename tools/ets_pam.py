@@ -70,7 +70,7 @@ def capture(board, pat, pl, seconds):
     res = measure.run_loop(board, dac_sps=hz, adc_hz=measure.hz_for(pl["rc_adc"]),
                            channels=1, seconds=seconds, wave=wave_bytes(pat))
     ps = res.stream
-    vals = array.array("H", [int(v) for v in (ps.series.get(measure.CH_A0) or [])])
+    vals = ps.series.get(measure.CH_A0) or array.array("H")      # already array('H'): no copy
     declared = eqtime.rc_from_hz(ps.declared_rate_hz)
     meta = {"underruns": res.play.underruns, "via": res.play.via,
             "host_tx_bytes": res.host_tx_bytes, "play_bytes_in": res.play.bytes_in,
