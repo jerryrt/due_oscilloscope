@@ -8,6 +8,76 @@ before any capture, so a result cannot move them.
 
 Figures marked *(check)* are unmeasured: derived, or taken from another document.
 
+## What was found
+
+Where the sequence stopped, and why. The tables under Results have every figure.
+
+- **PAM4, PAM8, PAM16 and PAM32 pass every gate on both benches** at a 1 V
+  swing, from one board and from two Dues with independent crystals. The two
+  benches agree on level spacing to 0.2%.
+- **PAM64 passes at a 1.5 V swing and fails at 2 V**, on both benches. At 2 V
+  the three bottom and top eyes close (six on the two-board pair). The cause is
+  the step into the outermost levels: the end levels' spread at the symbol
+  centre is 1.3 to 3 codes after steps up to 50 levels and 7 to 10 after steps
+  of 51 to 63 levels, about 1.6 to 2 V. Capping the step at 47 levels opens
+  both end eyes, and the smaller swing removes the large steps. Whether it is
+  the step in volts or the position on the DAC's range cannot be separated by
+  these captures, and the mechanism (slewing or settling in the DAC's output
+  stage) is not known.
+- **PAM128 fails at 1.5 V on both benches**, with every one of the 127 eyes
+  closed at the symbol centre: the spacing is 14.6 codes and the 0.1% and 99.9%
+  points of a level, whose spread is 1.5 codes, take about 10 of them. A larger
+  swing widens the spacing and brings the end steps back.
+- **PAM256 was not run.** At 1.5 V its spacing would be about 7.4 codes against
+  the same level spread, which is smaller than the arithmetic that closes
+  PAM128, and the 2 V swing that widens it fails on the end steps. *(check, not
+  measured)*
+- **The limit is the instrument's level noise against the DAC's usable swing,
+  not the ETS method.** The tracker locks, the ladder stays straight (largest
+  residual 0.5 codes at PAM128) and the capture is gapless at 43 M samples; what
+  runs out is the ADC's resolution of one level step. A quieter reading, from
+  averaging or a better ADC front end, moves the limit and this method needs
+  no change for it.
+
+Things learned that change how the next capture is run:
+
+- A rate-dependent failure localised to the ends of the ladder is a step-size
+  question, and `tools/ets_pam_steps.py` answers it from the raw capture.
+- The Rigol window must cover the swing: at 200 mV/div it cut the ends off a 2 V
+  signal and its spacing was off by 11%. `ets_pam.py` now sets the window from
+  the swing.
+- Check that no other `ets_pam.py` or `ets_cross.py` is alive before a run: two
+  on one board cost a 45 s capture its integrity, and it read as a transport
+  fault.
+- The analysis of a 44 M-sample capture was the limit before the capture was:
+  9.3 GB and never finished, now about 10 s and 1 GB (the merged CPU pipeline). Its
+  remaining single-core stretch is the tracker (3.5 s) and the level statistics
+  (1.9 s), pure Python and numpy loops that are not matrix products. BLAS does
+  not accelerate them as written; see the measurements in the next section.
+
+Not done: PAM128 at 2 V; PAM256; the capture as a host library function with a
+daemon and GUI front end; the GPU path beyond `phase_indices`, `fold_warped` and
+`corr_many` (branch `ets-pam-gpu`, not merged).
+
+### What threads and BLAS do for this analysis
+
+Measured on montreal5 (8 cores, scipy-openblas 0.3.30, threads on by default),
+eight 6 M-element jobs run one after another against on eight threads:
+
+| operation | threads | note |
+|---|---|---|
+| `np.bincount`, the histogram | 1.0x | holds the GIL, so threads do not help |
+| `np.fmod` and a cast, the phase index | 2.9x | releases the GIL |
+| fancy-index gather, `template[idx]` | 1.6x | memory-bound |
+| 2000 x 2000 matrix product, BLAS | 2.1x (0.33 s on one thread, 0.16 s on all) | the one operation BLAS is for |
+
+BLAS accelerates matrix products and dot products. The analysis's hot loops are
+a gather, a fmod, a histogram and a running line fit, none of which BLAS reaches,
+and the histogram does not scale with threads either: it needs processes or a
+device (the GPU kernel's atomics). The single-core stretches left in the analysis
+are the tracker and the level statistics, which are removed by restructuring them
+as batched array operations, not by a faster linear algebra library.
+
 ## The order of work
 
 PAM4, then PAM8, and so on, one level count at a time. A step is done when every
@@ -168,6 +238,7 @@ the eye has been shown to the owner; the figures are in the records named.
 | 64 | `linux-x1`, two boards | pass | pass | pass | **FAIL** (2 V) | 64 levels, 2 V swing | 39.3 codes | 6 of 63 closed (-29 worst, top) | `ets-pam-linux-x1.jsonl` (diagnostic), `ets-pam64-eye-linux-x1.json`, `ets-pam64-steps-2v-linux-x1.txt` |
 | 64, 1.5 V | `linux-x1`, two boards | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes | all 63 open, 11-13, 0.55 wide | `ets-pam-linux-x1.jsonl`, `ets-pam64-1v5-eye-linux-x1.json`, `ets-pam64-steps-1v5-linux-x1.txt` |
 | 128, 1.5 V | `montreal5`, one board, 14 s | pass | pass | pass | **FAIL** | 128 levels, 1.5 V swing | 14.6 codes (11.8 mV) | all 127 closed, -7 codes | `ets-pam-montreal5.jsonl` (diagnostic row) |
+| 128, 1.5 V | `montreal5`, one board, 45 s, 43 M samples | pass | pass | pass | **FAIL** | 128 levels, 1.5 V swing | 14.6 codes | all 127 closed, -7 codes, 0.35-0.5 wide | `ets-pam-montreal5.jsonl`, `ets-pam128-eye-montreal5.json` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
@@ -228,6 +299,11 @@ What the data show, and what they do not:
 PAM128 at 1.5 V on `montreal5`, DAC RC 28 and ADC RC 47 (the pattern's 65,535
 symbols share the factors 3 and 5 with RC 45):
 
+- The full-length capture, 45 s (43.0 M samples, 23 per tick, 0 underruns, 144,666,624
+  bytes sent and received), gives the same on both runs: A3 to A5 pass, spacing
+  14.63 codes, smallest level separation 6.8 and 7.6 sigma, level spread 1.5
+  (2.1 at most), and A6 fails with all 127 eyes closed at -7 codes. The 14 s
+  capture below reads the same.
 - A 14 s capture (about 7 samples per tick, against the 20 planned) is clean
   and passes A3 to A5, with the ladder straight (largest residual 0.47 codes) and
   a spacing of 14.6 codes, and fails A6: all 127 eyes are closed, the smallest at

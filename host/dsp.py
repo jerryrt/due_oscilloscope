@@ -13,6 +13,7 @@ answers, and no CUDA kernel exists yet: asking for it raises, rather than
 quietly running something else.
 """
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     import numpy as np
@@ -80,21 +81,24 @@ def fold_scaled(vals, rc_adc, period, bins, start=0):
 
 
 def phase_indices(n, rc_adc, phase_at, period, k=1, start=0, segment=2048):
-    """The fold bin of each of `n` samples on a fitted phase curve."""
+    """The fold bin of each of `n` samples on a fitted phase curve.
+
+    The curve is evaluated at the ends of segments of `segment` samples and
+    followed linearly between them. `phase_at` must accept an array, which a
+    polynomial in Horner form does; every step below is an array operation
+    that releases the GIL, so threads run it side by side.
+    """
     nb = period * k
-    out = np.empty(n, dtype=np.int64)
-    i = 0
-    while i < n:
-        m = min(segment, n - i)
-        x0 = (start + i) * rc_adc
-        x1 = (start + i + m) * rc_adc
-        p0 = x0 + phase_at(x0)
-        dp = (x1 + phase_at(x1) - p0) / m
-        u = np.fmod(p0 + dp * np.arange(m, dtype=np.float64), period)
-        u = np.where(u < 0, u + period, u)
-        out[i:i + m] = (u * k).astype(np.int64) % nb
-        i += m
-    return out
+    starts = np.arange(0, n, segment, dtype=np.int64)
+    m = np.minimum(segment, n - starts)
+    x0 = (start + starts) * rc_adc
+    x1 = (start + starts + m) * rc_adc
+    p0 = x0 + phase_at(x0)
+    dp = (x1 + phase_at(x1) - p0) / m
+    seg = np.arange(n, dtype=np.int64) // segment
+    u = np.fmod(p0[seg] + dp[seg] * (np.arange(n, dtype=np.float64) - starts[seg]), period)
+    u = np.where(u < 0, u + period, u)
+    return (u * k).astype(np.int64) % nb
 
 
 def fold_warped(vals, idx, nb):
@@ -113,3 +117,58 @@ def center(vals):
     mean = float(v.mean(dtype=np.float64))
     amp = (hi - lo) / 2.0 or 1.0
     return (v.astype(np.float64) - mean) / amp, mean, amp
+
+
+#: Phases at or above which a search takes `corr_scan` rather than `corr_many`.
+SCAN_MIN = 2048
+
+
+def corr_scan(win, xs, tmpl, period, lo, n):
+    """`corr_many` over the whole-tick phases `lo .. lo + n - 1`, without the
+    `n x len(win)` index matrix.
+
+    The first, global search of the tracker tries every phase of the pattern:
+    1.9 M of them at PAM128, against a 150-sample block, which `corr_many`
+    would build as 285 M indices (2.3 GB, and a run that never finished). Each
+    sample instead adds its weight times a slice of the doubled template, so
+    the memory is the template and the work is `len(win)` passes over it.
+    `xs` and `lo` must be whole ticks and `n` at most `period`.
+    """
+    t = np.asarray(tmpl, dtype=np.float64)
+    t2 = np.concatenate([t, t])
+    acc = np.zeros(n, dtype=np.float64)
+    for w, x in zip(np.asarray(win, dtype=np.float64).tolist(), xs):
+        s = (int(x) + int(lo)) % period
+        acc += w * t2[s:s + n]
+    return acc
+
+
+#: Samples a stage takes at a time: a multiple of the curve's segment, and small
+#: enough that its arrays stay in cache instead of paging in 100 MB at a time.
+CHUNK = 2048 * 512
+
+
+def workers():
+    """Threads for the chunked stages: `DUE_DSP_WORKERS`, else every core."""
+    want = os.environ.get("DUE_DSP_WORKERS")
+    return max(1, int(want) if want else (os.cpu_count() or 1))
+
+
+def map_ranges(fn, n, align, *extra):
+    """`fn(a, b, *extra)` over `n` split into one range per worker, in threads.
+
+    Each range but the last is a multiple of `align`, so a stage that follows
+    a curve in `align`-sized segments sees the same segments as one serial
+    pass. Returns the results in order. A thread pool shares the samples with
+    no copy and no pickling, and numpy releases the GIL in the array
+    operations the stages are made of; `np.bincount` is the exception, and it
+    keeps its share of a stage serial.
+    """
+    w = min(workers(), max(1, n // (4 * align)))
+    step = -(-n // w)
+    step = -(-step // align) * align
+    parts = [(a, min(a + step, n)) + extra for a in range(0, n, step)]
+    if len(parts) == 1:
+        return [fn(*parts[0])]
+    with ThreadPoolExecutor(max_workers=len(parts)) as pool:
+        return list(pool.map(lambda part: fn(*part), parts))

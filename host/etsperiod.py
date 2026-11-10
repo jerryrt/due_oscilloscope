@@ -82,12 +82,16 @@ def _best_phase(win, xs, tmpl, period, lo, hi, step=1.0):
     """
     lo, hi = float(math.floor(lo + 0.5)), float(math.floor(hi + 0.5))
     n = int(round((hi - lo) / step))
-    phis = [lo + i * step for i in range(n)]
-    if dsp.name() == "numpy":
-        cs = dsp.corr_many(win, xs, tmpl, period, phis)
+    if dsp.name() == "numpy" and n >= dsp.SCAN_MIN and step == 1.0 and n <= period:
+        cs = dsp.corr_scan(win, xs, tmpl, period, lo, n)     # whole-tick phases
+    elif dsp.name() == "numpy":
+        cs = dsp.corr_many(win, xs, tmpl, period, [lo + i * step for i in range(n)])
     else:
-        cs = [_corr(win, xs, tmpl, period, p) for p in phis]
-    i = max(range(n), key=cs.__getitem__)
+        cs = [_corr(win, xs, tmpl, period, lo + i * step) for i in range(n)]
+    if hasattr(cs, "argmax"):
+        i = int(cs.argmax())
+    else:
+        i = max(range(n), key=cs.__getitem__)
     on_edge = i < 2 or i >= n - 2
     frac = 0.0
     if not on_edge:
@@ -96,7 +100,7 @@ def _best_phase(win, xs, tmpl, period, lo, hi, step=1.0):
         a2 = ((4 * y[0] + y[1] + y[3] + 4 * y[4]) - 2 * sum(y)) / 14.0
         if a2 < 0:
             frac = max(-1.0, min(1.0, -b1 / (2 * a2)))
-    return lo + (i + frac) * step, cs[i], on_edge
+    return lo + (i + frac) * step, float(cs[i]), on_edge
 
 
 MAX_DEGREE = 6
@@ -236,9 +240,26 @@ def fold_warped(vals, rc_adc, model, period, k=1, start=0):
     """Mean per bin on the fitted phase curve: `(curve, counts)`."""
     nb = period * k
     if dsp.name() == "numpy":
-        idx = dsp.phase_indices(len(vals), rc_adc, lambda x: phase_at(model, x),
-                                period, k, start, SEGMENT)
-        return dsp.fold_warped(vals, idx, nb)
+        v = dsp.np.asarray(vals)
+
+        def part(a, b):
+            acc = dsp.np.zeros(nb)
+            cnt = dsp.np.zeros(nb, dtype=dsp.np.int64)
+            for i in range(a, b, dsp.CHUNK):                 # small chunks stay in cache
+                m = min(dsp.CHUNK, b - i)
+                idx = dsp.phase_indices(m, rc_adc, lambda x: phase_at(model, x),
+                                        period, k, start + i, SEGMENT)
+                acc += dsp.np.bincount(idx, weights=v[i:i + m].astype(dsp.np.float64),
+                                       minlength=nb)
+                cnt += dsp.np.bincount(idx, minlength=nb)
+            return acc, cnt
+        parts = dsp.map_ranges(part, len(v), SEGMENT)
+        acc = sum(p[0] for p in parts)
+        cnt = sum(p[1] for p in parts)
+        with dsp.np.errstate(invalid="ignore", divide="ignore"):
+            mean = acc / cnt
+        return ([None if c == 0 else m for m, c in zip(mean.tolist(), cnt.tolist())],
+                cnt.tolist())
     acc = [0.0] * nb
     cnt = [0] * nb
     for v, i in zip(vals, phase_indices(len(vals), rc_adc, model, period, k, start)):
@@ -249,9 +270,9 @@ def fold_warped(vals, rc_adc, model, period, k=1, start=0):
 
 def is_adequate(model, nblocks, lattice):
     """Whether a fitted phase curve can be trusted for a fold."""
-    return (abs(model["rho1"]) <= RHO_MAX
-            and model["outliers"] <= MAX_OUTLIER_SHARE * nblocks
-            and lattice <= MAX_LATTICE_GCD)
+    return bool(abs(model["rho1"]) <= RHO_MAX
+                and model["outliers"] <= MAX_OUTLIER_SHARE * nblocks
+                and lattice <= MAX_LATTICE_GCD)
 
 
 def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
@@ -273,21 +294,31 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     lattice = math.gcd(int(round(rc_adc)), period)
     tmpl = template(bits, rc_dac, levels)
     if dsp.name() == "numpy":
+        tmpl = dsp.np.asarray(tmpl, dtype=dsp.np.float64)   # once, not per block
         cen, mean, amp = dsp.center(vals)
     else:
         mean = sum(vals) / len(vals)
         amp = (max(vals) - min(vals)) / 2.0 or 1.0
         cen = [(v - mean) / amp for v in vals]
+    absum = xs_off = None
+    if dsp.name() == "numpy":
+        absum = dsp.np.concatenate([[0.0], dsp.np.cumsum(dsp.np.abs(cen))])
+        xs_off = dsp.np.arange(block) * rc_adc
     pts = []                                   # (x of block centre, unwrapped phase)
+    line = _RunningLine()                      # the same line, kept as blocks arrive
     edge = skipped = 0
     j = 0
     nblk = len(vals) // block
     while j < nblk:
         i0 = j * block
         win = cen[i0:i0 + block]
-        xs = [(start + i0 + i) * rc_adc for i in range(block)]
         xm = (start + i0 + block // 2) * rc_adc
-        den = float(sum(abs(v) for v in win)) or 1.0
+        if absum is not None:               # block sums from one running total
+            xs = xs_off + (start + i0) * rc_adc
+            den = float(absum[i0 + block] - absum[i0]) or 1.0
+        else:
+            xs = [(start + i0 + i) * rc_adc for i in range(block)]
+            den = float(sum(abs(v) for v in win)) or 1.0
         if not pts:
             if den < IDLE_SHARE * block:
                 skipped += 1
@@ -304,7 +335,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
                 continue
         else:
             if len(pts) >= 3:
-                sl = _slope(pts)
+                sl = line.slope()
                 pred = pts[-1][1] + sl * (xm - pts[-1][0])
             else:
                 pred = pts[-1][1]
@@ -316,6 +347,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
                 continue
             edge += hit
         pts.append((xm, phi))
+        line.add(xm, phi)
         j += 1 if len(pts) < first_blocks else stride
     if len(pts) < 8:
         raise ValueError("fewer than 8 blocks looked like the pattern: "
@@ -334,6 +366,27 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
             "skipped": skipped, "model": model, "points": pts, "block_noise": noise,
             "lattice_gcd": lattice,
             "adequate": adequate}
+
+
+class _RunningLine:
+    """Least-squares slope of the points added so far, in constant time per
+    point. Refitting every block from the list made the tracker quadratic:
+    most of 55 s on 44 M samples."""
+
+    def __init__(self):
+        self.n = 0
+        self.mx = self.my = self.sxx = self.sxy = 0.0
+
+    def add(self, x, y):
+        self.n += 1
+        dx = x - self.mx
+        self.mx += dx / self.n
+        self.my += (y - self.my) / self.n
+        self.sxx += dx * (x - self.mx)
+        self.sxy += dx * (y - self.my)
+
+    def slope(self):
+        return self.sxy / self.sxx if self.sxx else 0.0
 
 
 def _fit(pts):

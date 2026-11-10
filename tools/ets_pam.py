@@ -26,6 +26,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for sub in ("host", "tools", "tests"):
     sys.path.insert(0, os.path.join(ROOT, sub))
+import dsp  # noqa: E402
 import eqtime  # noqa: E402
 import ets_cross  # noqa: E402
 import ets_phase0  # noqa: E402
@@ -69,7 +70,7 @@ def capture(board, pat, pl, seconds):
     res = measure.run_loop(board, dac_sps=hz, adc_hz=measure.hz_for(pl["rc_adc"]),
                            channels=1, seconds=seconds, wave=wave_bytes(pat))
     ps = res.stream
-    vals = array.array("H", [int(v) for v in (ps.series.get(measure.CH_A0) or [])])
+    vals = ps.series.get(measure.CH_A0) or array.array("H")      # already array('H'): no copy
     declared = eqtime.rc_from_hz(ps.declared_rate_hz)
     meta = {"underruns": res.play.underruns, "via": res.play.via,
             "host_tx_bytes": res.host_tx_bytes, "play_bytes_in": res.play.bytes_in,
@@ -79,7 +80,10 @@ def capture(board, pat, pl, seconds):
 
 def analyse(vals, pat, rc_dac, rc_adc, want_eye):
     lo, hi = HEAD_TRIM, len(vals) - TAIL_TRIM
-    seg = [float(v) for v in vals[lo:hi]]
+    if dsp.np is not None and isinstance(vals, array.array):
+        seg = dsp.np.frombuffer(vals, dtype=dsp.np.uint16)[lo:hi]     # a view: no copy
+    else:
+        seg = [float(v) for v in vals[lo:hi]]
     return etspam.analyze(seg, rc_adc, pat, rc_dac, start=lo, want_eye=want_eye)
 
 
