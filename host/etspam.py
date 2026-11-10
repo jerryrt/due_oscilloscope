@@ -15,12 +15,14 @@ Samples are placed on a grid of `1 / LABEL_K` tick, and everything is held as
 integer histograms over the ADC's 4096 codes, so the memory is `N` histograms
 per position, not the samples.
 
-Pure Python and stdlib only; the numpy backend is a separate module and this
-one is its reference.
+Pure Python is the reference (`label_samples_ref`); with numpy present
+`label_samples` runs the same labelling vectorised and in chunks, and
+`tests/test_etspam.py` holds the two equal.
 """
 import math
 from array import array
 
+import dsp
 import etspattern
 import etsperiod
 
@@ -97,6 +99,63 @@ def _stats(hist):
 
 
 def label_samples(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):
+    """`label_samples_ref`, or the same vectorised when numpy is the backend."""
+    if dsp.name() == "numpy":
+        return _label_samples_numpy(vals, rc_adc, model, pat, rc_dac, b0, cells, start)
+    return label_samples_ref(vals, rc_adc, model, pat, rc_dac, b0, cells, start)
+
+
+#: Samples labelled per pass; a multiple of `etsperiod.SEGMENT`, so the phase
+#: curve is followed in the same segments as the reference follows it.
+CHUNK = 2048 * 1024
+
+
+def _label_samples_numpy(vals, rc_adc, model, pat, rc_dac, b0, cells, start):
+    np = dsp.np
+    unit = pat.length * rc_dac
+    k = LABEL_K
+    nlev = pat.pam
+    shift = b0 * k
+    span = rc_dac * k
+    per_unit = unit * k
+    two = 2 * span
+    lo_t, hi_t = (0.5 - CENTRE_HALF), (0.5 + CENTRE_HALF)
+    syms = np.asarray(pat.symbols, dtype=np.int64)
+    centre_n = np.zeros(nlev * ADC_CODES, dtype=np.int64)
+    by_t_n = np.zeros(TBINS * nlev * ADC_CODES, dtype=np.int64)
+    cells_n = np.zeros(two * ADC_CODES, dtype=np.int64) if cells is not None else None
+    v_all = np.asarray(vals)
+    n = len(v_all)
+    for i in range(0, n, CHUNK):
+        m = min(CHUNK, n - i)
+        v = v_all[i:i + m].astype(np.int64)
+        idx = dsp.phase_indices(m, rc_adc, lambda x: etsperiod.phase_at(model, x),
+                                unit, k, start + i, etsperiod.SEGMENT)
+        rel = (idx - shift) % per_unit                     # float when b0 is
+        if cells_n is not None:
+            cells_n += np.bincount((rel % two).astype(np.int64) * ADC_CODES + v,
+                                   minlength=cells_n.size)
+        j = (rel // span).astype(np.int64)
+        t = (rel - j * span) / span
+        lvl = syms[j]
+        inside = (t >= lo_t) & (t < hi_t)
+        centre_n += np.bincount(lvl[inside] * ADC_CODES + v[inside], minlength=centre_n.size)
+        tb = (t * TBINS).astype(np.int64)
+        by_t_n += np.bincount((tb * nlev + lvl) * ADC_CODES + v, minlength=by_t_n.size)
+    if cells is not None:
+        for key in np.nonzero(cells_n)[0].tolist():
+            cells[key] = int(cells_n[key])
+    centre = [array("I", centre_n[l * ADC_CODES:(l + 1) * ADC_CODES].tolist()) for l in range(nlev)]
+    by_t = [[None] * nlev for _ in range(TBINS)]
+    for tbi in range(TBINS):
+        for l in range(nlev):
+            h = by_t_n[(tbi * nlev + l) * ADC_CODES:(tbi * nlev + l + 1) * ADC_CODES]
+            if h.any():
+                by_t[tbi][l] = array("I", h.tolist())
+    return centre, by_t
+
+
+def label_samples_ref(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):
     """Per-level histograms at the symbol centre and per position in the symbol.
 
     Returns `(centre, by_t)`: `centre[level]` is a histogram over ADC codes of
