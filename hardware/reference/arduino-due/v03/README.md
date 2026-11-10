@@ -60,6 +60,54 @@ reference and inspection; it has not been qualified for fabrication.
 The owner's power-layout observations support using it as the reference;
 full-board geometry and electrical continuity remain to be checked physically.
 
+## The analog reference network (AREF, ADVREF)
+
+Read from `Arduino-DUE-V03.kicad_pcb` (the same nets are in the EAGLE schematic).
+`tests/test_due_reference_network.py` holds this table to the PCB. It is the
+converted board file, not the owner's physical board: check continuity before
+reworking anything.
+
+| Net | Pads on it |
+|---|---|
+| `AREF` | BR1 pad 1, and the AREF header pin (header `PWMH0` pad 8). Nothing else |
+| `AVREFL` | BR1 pad 2, JR1 pad 2, C34 (100 nF to ground), L3 pad 1 |
+| `AVREF` | L3 pad 2, C19 (100 nF to ground), the SAM3X's ADVREF pin (U1 pad 75) |
+| `+3V3` | BR1 pad 3, JR1 pad 1, and the rest of the 3.3 V rail |
+
+L3 is the ferrite bead `MH2029-300Y` in an 0805, which by its part number is 30
+ohms at 100 MHz *(check)*. BR1 is the 0402 three-pad jumper `J0402`, not mounted,
+on the top copper layer, with 1.3 mm between pad centres. JR1 is a 0 ohm 0402 on
+the top layer.
+
+**As shipped,** JR1 joins 3.3 V to `AVREFL`, and the converters' reference is
+3.3 V through L3 and C19. The AREF header pin goes nowhere.
+
+**To drive ADVREF from outside,** which the AFE requirement calls D6, in this order:
+
+1. Remove JR1.
+2. Bridge BR1 pads 1 and 2: a 0402 0 ohm part fits the footprint, and a solder
+   bridge across the gap of about 0.4 mm also reaches. The AREF header pin is then
+   `AVREFL`, and ADVREF follows it through L3.
+3. Check continuity before power: AREF to ADVREF closed, 3.3 V to AREF open.
+
+**The order matters.** With BR1 pads 1 and 2 bridged and JR1 still fitted, the
+AREF pin is tied to the 3.3 V rail through 0 ohms, and whatever drives AREF is
+shorted to it.
+
+Both parts are on the top layer under where a shield sits, so the rework is done
+before stacking. A shield reaches AREF through the stacking header, with no jumper
+wire; the carrier exports it as `DUE_AREF` at J1 pin 1 and J10 pin 1
+([pad map](../../mega-proto-carrier/pad-map.csv), photo-traced, not yet verified
+with a meter).
+
+**The load an external reference sees:** C34, then the bead, then C19, about 200 nF,
+before any trace and header contact on the shield. It has to be stable with that
+and with the converters' switching load, a datasheet check. A Due reworked this way
+and run without a reference connected has a floating ADVREF.
+
+Not established by the board file: the highest ADVREF the SAM3X accepts against its
+analog supply `VDDANA` (3.3 V through a second bead, L1), a datasheet check.
+
 ## 3D view
 
 **119 component models are assigned.** The owner-supplied STEP assembly provides 18:

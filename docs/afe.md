@@ -341,7 +341,7 @@ and what it affects. None is adopted until the owner says so.
 | D3 | Equivalent-time bandwidth target | At least 8 MHz, set by the G1 budget; confirm the divider can meet it at SC-10's source impedance | SM-3, SC-6, VT-16 |
 | D4 | An unfiltered DAC0 test path | Yes, a jumper or test point | AW-9, VT-17, SM-8 |
 | D5 | Phase 3's precision channel and its custom PCB | Defer. Its INL case does not hold; keep it for absolute accuracy and noise separation | section 10, MC-3 |
-| D6 | Drive AREF from the board's reference, a one-time change to BR1 on each Due, or only measure it | Measure only in Phase 1, since PW-5 forbids a Due modification. Revisit with Phase 3 | PA-7, PW-5 |
+| D6 | Drive AREF from the board's reference, a one-time change to BR1 on each Due, or only measure it | Measure only in Phase 1, since PW-5 forbids a Due modification. Revisit with Phase 3. The rework (JR1 off, BR1 pads 1 and 2 bridged, the reference on the shield reaching the Due through the AREF header pin) is in [the Due reference network](../hardware/reference/arduino-due/v03/README.md) | PA-7, PW-5 |
 | D7 | PW-1's current budget: 30 mA, or 100 mA until the Due's draw is read | Measure the Due first with an inline USB meter in idle, capture, loop and playback, then freeze. The draft's estimate of 110 to 175 mA for the Due has no measurement behind it | PW-1, section 4.3 |
 | D8 | Connector and probe arrangement (MC-8) | BNC, taking ×1 and ×10 scope probes | MC-8 |
 | D9 | Real-time target symbol rates | From D2's corner: about 105 and 205 kbaud with an eye, 267 and 533 kbaud edges only. The equivalent-time rate is not an AFE limit: 1.6 Msym/s is demonstrated | SM-2 |
