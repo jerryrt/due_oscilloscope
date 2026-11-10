@@ -30,6 +30,60 @@ __device__ void add_double(double *address, double value) {
     } while (assumed != old);
 }
 
+/* numpy's float remainder and floor division (npy_divmod), so a sample lands in the
+   bin numpy puts it in and not one over when a quotient sits next to an integer. */
+__device__ double np_divmod(double a, double b, double *floordiv) {
+    double mod = fmod(a, b);
+    double div = (a - mod) / b;
+    if (mod != 0.0) {
+        if ((b < 0) != (mod < 0)) { mod += b; div -= 1.0; }
+    } else {
+        mod = copysign(0.0, b);
+    }
+    double fl;
+    if (div != 0.0) {
+        fl = floor(div);
+        if (div - fl > 0.5) fl += 1.0;
+    } else {
+        fl = copysign(0.0, a / b);
+    }
+    *floordiv = fl;
+    return mod;
+}
+
+/* etspam.label_range over one chunk: every sample's symbol, level and position in the
+   symbol, into the centre, per-position and eye histograms. */
+__global__ void label(const unsigned short *v, const double *p0, const double *dp, long long n,
+                      int segment, double period, double k, long long nb, double shift,
+                      double per_unit, double span, double two, double lo_t, double hi_t,
+                      int tbins, int nlev, int nsym, const int *syms, int want_cells,
+                      unsigned int *centre, unsigned int *by_t, unsigned int *cells) {
+    long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+    long long stride = (long long)gridDim.x * blockDim.x;
+    for (; i < n; i += stride) {
+        long long seg = i / segment;
+        double u = fmod(p0[seg] + dp[seg] * (double)(i - seg * segment), period);
+        if (u < 0) u += period;
+        long long idx = ((long long)(u * k)) % nb;
+        double dummy;
+        double rel = np_divmod((double)idx - shift, per_unit, &dummy);
+        int code = v[i];
+        if (want_cells) {
+            double r2 = np_divmod(rel, two, &dummy);
+            atomicAdd(&cells[(long long)r2 * 4096 + code], 1u);
+        }
+        double fl;
+        np_divmod(rel, span, &fl);
+        long long j = (long long)fl;
+        if (j < 0 || j >= nsym) continue;
+        double t = (rel - (double)((long long)j * (long long)span)) / span;
+        int lvl = syms[j];
+        if (t >= lo_t && t < hi_t) atomicAdd(&centre[(long long)lvl * 4096 + code], 1u);
+        long long tb = (long long)(t * tbins);
+        atomicAdd(&by_t[((long long)tb * nlev + lvl) * 4096 + code], 1u);
+    }
+}
+
 /* The fold bin of each sample from its segment's start phase and slope. */
 __global__ void phase_idx(const double *p0, const double *dp, long long n, int segment,
                           double period, double k, long long nb, long long *out) {
@@ -181,4 +235,59 @@ def corr_many(win, xs, tmpl, period, phis):
     return out.tolist()
 
 
-EXPORTS = ("phase_indices", "fold_warped", "corr_many")
+#: Samples labelled per launch: a multiple of `etsperiod.SEGMENT`, so the segments the
+#: phase curve is followed in are the reference's.
+CHUNK = 2048 * 4096
+
+
+def label_range(v_all, lo, hi, rc_adc, model, pat, rc_dac, b0, want_cells, start):
+    """`etspam.label_range` on the device: `(centre, by_t, cells)` as flat histograms."""
+    import etsperiod
+    import etspam
+    s = _init()
+    drv = s["drv"]
+    unit = pat.length * rc_dac
+    k = etspam.LABEL_K
+    nlev = pat.pam
+    span = rc_dac * k
+    two = 2 * span
+    per_unit = unit * k
+    seg = etsperiod.SEGMENT
+    assert CHUNK % seg == 0
+    syms = np.ascontiguousarray(pat.symbols, dtype=np.int32)
+    sizes = (nlev * etspam.ADC_CODES, etspam.TBINS * nlev * etspam.ADC_CODES,
+             two * etspam.ADC_CODES if want_cells else 1)
+    d_hist = [drv.mem_alloc(4 * z) for z in sizes]
+    for d, z in zip(d_hist, sizes):
+        drv.memset_d32(d, 0, z)
+    d_syms = drv.to_device(syms)
+    fn = s["mod"].get_function("label")
+    v_all = np.asarray(v_all)
+    for i in range(lo, hi, CHUNK):
+        m = min(CHUNK, hi - i)
+        starts = np.arange(0, m, seg, dtype=np.int64)
+        mm = np.minimum(seg, m - starts)
+        x0 = (start + i + starts) * rc_adc
+        x1 = (start + i + starts + mm) * rc_adc
+        p0 = x0 + etsperiod.phase_at(model, x0)
+        dp = (x1 + etsperiod.phase_at(model, x1) - p0) / mm
+        v = np.ascontiguousarray(v_all[i:i + m], dtype=np.uint16)
+        fn(drv.In(v), drv.In(np.ascontiguousarray(p0)), drv.In(np.ascontiguousarray(dp)),
+           np.int64(m), np.int32(seg), np.float64(unit), np.float64(k), np.int64(unit * k),
+           np.float64(b0 * k), np.float64(per_unit), np.float64(span), np.float64(two),
+           np.float64(0.5 - etspam.CENTRE_HALF), np.float64(0.5 + etspam.CENTRE_HALF),
+           np.int32(etspam.TBINS), np.int32(nlev), np.int32(pat.length), d_syms,
+           np.int32(1 if want_cells else 0), d_hist[0], d_hist[1], d_hist[2],
+           block=(256, 1, 1), grid=_grid(m))
+    out = []
+    for d, z in zip(d_hist, sizes):
+        h = np.empty(z, dtype=np.uint32)
+        drv.memcpy_dtoh(h, d)
+        d.free()
+        out.append(h)
+    d_syms.free()
+    cells = out[2].astype(np.int64) if want_cells else None
+    return out[0].astype(np.int32), out[1].astype(np.int32), cells
+
+
+EXPORTS = ("phase_indices", "fold_warped", "corr_many", "label_range")

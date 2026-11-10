@@ -69,3 +69,41 @@ def test_corr_many_matches_numpy_and_reuses_the_template():
     assert len(dsp_cuda._state["tmpl"]) == 1, "one template, copied once"
     other = dsp_cuda.corr_many([w * 1.01 for w in win], xs, tmpl, period, phis)
     assert not np.allclose(other, want, rtol=1e-6)
+
+
+def _label_case(pam, n=300_000):
+    import etspam
+    import etsperiod
+    from test_etspam import _synth
+    pat, vals = _synth(pam, n=n, sigma=1.3)
+    trk = etsperiod.track_clock_ratio(vals, 46, pat.symbols, 29, levels=pat.pam)
+    return etspam, pat, trk["model"], np.asarray(vals, dtype=np.uint16)
+
+
+@pytest.mark.parametrize("pam", [4, 16])
+def test_label_range_equals_the_numpy_histograms_exactly(pam, monkeypatch):
+    etspam, pat, model, v = _label_case(pam)
+    monkeypatch.setenv("DUE_DSP", "numpy")
+    for want_cells in (True, False):
+        c0, t0, x0 = etspam.label_range(v, 0, len(v), 46, model, pat, 29, 3.0, want_cells, 0)
+        c1, t1, x1 = dsp_cuda.label_range(v, 0, len(v), 46, model, pat, 29, 3.0, want_cells, 0)
+        assert (c0 == c1).all() and (t0 == t1).all()
+        assert (x0 is None and x1 is None) or (x0 == x1).all()
+        assert c1.sum() > 0 and t1.sum() == len(v)
+
+
+def test_label_range_does_not_depend_on_the_chunk_or_the_range(monkeypatch):
+    etspam, pat, model, v = _label_case(4)
+    monkeypatch.setenv("DUE_DSP", "numpy")
+    monkeypatch.setattr(dsp_cuda, "CHUNK", 2048 * 3)
+    want = etspam.label_range(v, 2048, 200_000, 46, model, pat, 29, 3.0, True, 5)
+    got = dsp_cuda.label_range(v, 2048, 200_000, 46, model, pat, 29, 3.0, True, 5)
+    assert all((a == b).all() for a, b in zip(want, got))
+
+
+def test_label_range_can_fail(monkeypatch):
+    etspam, pat, model, v = _label_case(4)
+    monkeypatch.setenv("DUE_DSP", "numpy")
+    want = etspam.label_range(v, 0, len(v), 46, model, pat, 29, 3.0, False, 0)
+    moved = dsp_cuda.label_range(v, 0, len(v), 46, model, pat, 29, 3.0 + 29, False, 0)
+    assert not (want[0] == moved[0]).all(), "a boundary shifted by a symbol must change the centre histogram"
