@@ -167,6 +167,8 @@ the eye has been shown to the owner; the figures are in the records named.
 | 64, 1.5 V | `montreal5`, one board | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes (23.8 mV) | all 63 open, 8-13 | `ets-pam-montreal5.jsonl`, `ets-pam64-1v5-eye-montreal5.json` |
 | 64 | `linux-x1`, two boards | pass | pass | pass | **FAIL** (2 V) | 64 levels, 2 V swing | 39.3 codes | 6 of 63 closed (-29 worst, top) | `ets-pam-linux-x1.jsonl` (diagnostic), `ets-pam64-eye-linux-x1.json`, `ets-pam64-steps-2v-linux-x1.txt` |
 | 64, 1.5 V | `linux-x1`, two boards | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes | all 63 open, 11-13, 0.55 wide | `ets-pam-linux-x1.jsonl`, `ets-pam64-1v5-eye-linux-x1.json`, `ets-pam64-steps-1v5-linux-x1.txt` |
+| 128, 1.5 V | `montreal5`, one board, 14 s | pass | pass | pass | **FAIL** | 128 levels, 1.5 V swing | 14.6 codes (11.8 mV) | all 127 closed, -7 codes | `ets-pam-montreal5.jsonl` (diagnostic row) |
+| 128, 1.5 V | `montreal5`, one board, 45 s | not analysable | | | | | | | `ets-pam-montreal5.jsonl` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
@@ -223,6 +225,24 @@ What the data show, and what they do not:
   smaller swing also moves the end levels away from the DAC's limits, and the two
   captures cannot separate them. Nor is the mechanism (slewing, or settling in
   the DAC output stage) known.
+
+PAM128 at 1.5 V on `montreal5`, DAC RC 28 and ADC RC 47 (the pattern's 65,535
+symbols share the factors 3 and 5 with RC 45):
+
+- A 14 s capture (about 7 samples per tick, against the 20 planned) is clean
+  and passes A3 to A5, with the ladder straight (largest residual 0.47 codes) and
+  a spacing of 14.6 codes, and fails A6: all 127 eyes are closed, the smallest at
+  -7 codes. The level spread is 1.5 to 1.9 codes, so the 0.1% and 99.9% points
+  sit about 5 to 6 codes either side of each level, against a spacing of 14.6.
+  That is the arithmetic of the gate and not of the sample count, and more samples
+  only widen the tails, so a longer capture would not open them. The swing that
+  keeps PAM64's end steps short leaves PAM128 no margin.
+- The 45 s capture that would give 20 samples per tick has 1,951 sequence gaps and
+  8,393 dropped frames, with 0 underruns, and `ets_pam.py` refuses to analyse it.
+  The 14 s runs of PAM4 to PAM128 had none. Whether the gaps are the host, the
+  device or the 33 MB playback wave has not been tried: a 28 s run was not
+  finished. This does not change the PAM128 result and it stands in front of
+  PAM256, which needs 77 s.
 
 ## Defaults taken, to be confirmed
 
