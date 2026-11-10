@@ -176,6 +176,9 @@ known, because the DAC's fastest edge is about 49 ns.
 | `tools/ets_phase0.py` | same board: a PRBS7 through the loop, folded, optionally against the Rigol (`loop`, `both`, `selftest`) |
 | `tools/ets_cross.py` | two boards: `plan`, `both`, `play`, `capture`, `analyze`, `resolution`, `sweep`, `eye` |
 | `tools/ets_eye_page.py` | one or two eye files to a standalone page, with provenance |
+| `host/etspattern.py`, `host/etspam.py` | PAM-N patterns and levels, and the levels, eyes and gates of a PAM capture (`docs/ets-pam.md`) |
+| `host/dsp.py` | the numpy fast path of the tracker and folds, with the pure-Python code as the reference (`requirements-dsp.txt`) |
+| `tools/ets_pam.py`, `tools/ets_pam_page.py` | a PAM-N pattern through one board's loop and the Rigol, and the PAM eye page |
 | `tests/test_etsplan.py`, `tests/test_etsperiod.py`, `tests/test_ets_eye_page.py` | board-free; each rule fails a test when broken |
 
 ## Phases

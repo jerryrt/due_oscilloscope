@@ -148,6 +148,25 @@ short-lived branch and sends the other a message when something is ready; nothin
 is merged to `main` without the owner's go-ahead. A lost frame is accounted for by
 sequence number only once gap handling exists, and until then it fails A2.
 
+## Results
+
+One row per level count and bench. A step is finished when both benches pass and
+the eye has been shown to the owner; the figures are in the records named.
+
+| PAM | bench | A3 | A4 | A5 | A6 | levels, ADC codes | spacing | eyes, codes high, symbols wide | records |
+|---|---|---|---|---|---|---|---|---|---|
+| 4 | `montreal5`, one board | pass | pass | pass | pass | 1428.5, 1841.1, 2253.4, 2666.0 | 412.5 codes, 332 mV | 393-394, 0.90 | `ets-pam-montreal5.jsonl`, `ets-pam4-eye-montreal5.json` |
+| 4 | `linux-x1`, two boards | pending | | | | | | | |
+
+PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
+2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
+residual from a line under one of its 8 mV steps. A2: 0 underruns and 45 MB played,
+no gaps, with a capture of 13.9 M samples. One clock, so the samples sit on 56 of
+560 columns and each transition crosses a few of them; the two-board eye fills
+them all. The first run of this analysis failed A4 to A6, from a defect in the
+analysis and not in the signal: the capture's trimmed start was not passed to
+the labelling pass.
+
 ## Defaults taken, to be confirmed
 
 * the pattern is the full-transition one in the table, not a shorter eye-only one;

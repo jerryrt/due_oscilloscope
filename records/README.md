@@ -41,6 +41,13 @@ the bench that took it.
 | `ets-eye-linux-x1.json`, `ets-eye-linux-x1-rc45.json` | `ets_cross.py eye` on the DAC RC 29 / ADC RC 46 capture and the DAC RC 28 / ADC RC 45 capture | the two-board eye, drawn by `tools/ets_eye_page.py` | same; raws stamped `114844` and `105829`; no provenance block, which `eye` now writes | `eye` at `024ac5a` |
 | `ets-eye-montreal5.json` | `ets_cross.py eye` on the `montreal5` capture, DAC RC 28 / ADC RC 45 | the same-board eye: 56 of 560 columns hold samples | `montreal5`, as above | its own `provenance` block |
 
+PAM records (`docs/ets-pam.md`):
+
+| file | method | evidence for | bench, board, image | code that read it |
+|---|---|---|---|---|
+| `ets-pam-montreal5.jsonl` | `ets_pam.py loop --rigol`, PAM4 through one board's loop with the Rigol on DAC0 | gates A3-A6 for PAM4 on one clock; the Rigol's level spacing against the ADC's | `montreal5`, probes fitted, Track B `8d3f2b2-dirty`; the row carries no `bench` field | `repo_rev` in the row (`6d2be72-dirty`) |
+| `ets-pam4-eye-montreal5.json` | `ets_pam.py analyze` of the same capture, with the eye | the PAM4 eye, drawn by `tools/ets_pam_page.py` | the same capture (raw `ets-pam4-20261110-133600.bin`, not kept) | its own `provenance` block (`@5f687bc`) |
+
 Which figures to read from which rows: edges (rise, fall), the eye opening and the
 clock ratio do not depend on the block matcher. The block scatter
 (`phase_rms_ticks`, `track_rms_ticks`) does: rows read before `c9302d5` carry a
