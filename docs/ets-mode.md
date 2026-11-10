@@ -2,71 +2,90 @@
 
 `docs/ets.md` holds the sampling model and its limits, and `host/eqtime.py`
 the reconstruction. This document is the plan for turning them into a
-capture mode, starting on Track B, and the claim the plan has to prove first.
+capture mode, starting on Track B, and what the first measurements say about
+the claim the plan rests on.
 
 Figures marked *(check)* are unmeasured: derived, or read from another
-document. Nothing here has been run on a board yet.
+document.
 
-## The claim
+## The claim, and where it stands
 
 > ETS can capture the DAC at its maximum rate, with a 1 V peak-to-peak NRZ
 > PRBS, in high resolution.
 
-Read as three separate claims, each of which can fail on its own:
+Phase 0 measured it on one bench: `montreal5`, Track B (image `8d3f2b2`
+plus a tree delta), probes fitted, DAC0 wired to A0, a Rigol DS1102E on
+DAC0. `tools/ets_phase0.py` is the instrument; `records/ets-phase0-montreal5-b.jsonl`
+holds the seven-rate sweep and `records/ets-phase0-montreal5-b-scope.jsonl` the
+three runs with the Rigol. **Supported on this bench, at one run per rate.**
 
-| part | what has to be true | evidence today | status |
-|---|---|---|---|
-| **A. The DAC can emit it** | a 1 V NRZ PRBS at the DAC's top rate comes out repeatable, level by level | The conversion ceiling is `PLAY_MIN_RC` = 28 timer ticks: 1,607,143 updates/s at 90 MHz by arithmetic *(check; `docs/awg.md`'s 1,392,857 is the 39 MHz figure)*. Toggling pins near 750 kHz. At the ceiling a full-swing square reaches 64-68% of its amplitude and the peak height varies cycle to cycle. A 1.1 V step rises in 166 ns, slew-limited, against a symbol of about 622 ns | **Plausible, unproven.** Nothing is measured for a 1 V swing or a PRBS at the ceiling, and cycle-to-cycle variation breaks the repetition ETS needs |
-| **B. A PRBS can be played** | the device or the host supplies the pattern with no gaps | The device generator holds fixed shapes (sine, square, ramp, triangle, DC) in a power-of-two table; it has no PRBS. Host-fed playback carries any data, runs on TIOA1 independent of the ADC's TIOA0, and is byte-exact up to the same ceiling. At the ceiling it needs about 3.2 MB/s of USB OUT with 16-bit samples, while an ETS capture on one channel brings about 2 MB/s in | **Open.** A duplex load of about 5 MB/s is above the 1.71 MB/s where loss started in the one measured duplex arm (`CLAUDE.md`, Windows). Linux at this load is unmeasured |
-| **C. ETS resolves it** | the fold shows the edges and levels at a resolution finer than the edge | Folds sample every 44.4 ns (22.2 ns with interleave), the track-and-hold is estimated at 50-54 ns, and a fold has already resolved a 277-300 ns full-step edge and a 166 ns edge for a 1.1 V step. The fold floor measured was about 60 ns | **Supported** for a square at 750 kHz and below. For a PRBS at the ceiling, unmeasured. The 50-54 ns track-and-hold figure is an interpretation of a datasheet formula, not a measurement *(check)* |
+| part | what had to be true | measured |
+|---|---|---|
+| **A. The DAC emits it** | a 1 V PRBS7 at the top playback rate repeats identically | Every rate from 200 kHz to RC 28 (1,607,142 symbols per second, the playback floor `PLAY_MIN_RC`) folds to a PRBS7 with the eye 99.8-99.9% open. The residual against the fold is 1.27-1.31 codes rms, the same as a held level read the same way, so the output is periodic to the noise floor. The swing is 1,238 codes, 998 mV |
+| **B. It can be fed** | host-fed playback and a one-channel capture run together without loss | 0 underruns and every byte played at every rate, at the top rate with 3.2 MB/s out and 2 MB/s in, with no frame gaps. A device-held pattern is not needed on this host. Windows is not measured, and it is where a duplex loss was seen at 1.7 MB/s combined |
+| **C. ETS resolves it** | the fold shows the edges, and agrees with an independent instrument | Isolated transitions read 137-139 ns rise and 139-140 ns fall through the fold, and 134-135 ns rise and 138-141 ns fall on the Rigol (10 ns per point), a gap of 2-3%. The Rigol's isolated-transition counts are small (2 to 17 per record), and its swing reads 984-991 mV against the fold's 998 mV |
 
-So the claim is **plausible and partly supported, and two parts decide it**:
-whether the DAC's output repeats identically at its top rate (A), and
-whether the USB can feed that rate while capturing (B). Phase 0 measures
-both before anything is built.
+Two things the claim does not get from this. A 138 ns edge is 2.5 times the
+track-and-hold's estimated 50-54 ns, so the fold cannot say how much the ADC
+adds: the answer would sit inside a 3 ns difference and the Rigol's counting
+error. And "maximum rate" is the firmware's playback floor, which is where the
+measurement stopped, not a rate at which the output failed.
 
-"Maximum rate" has to be defined by measurement. The candidates are the
-conversion ceiling (1.6 M symbols per second, arithmetic) and the highest
-rate at which the folded PRBS stays periodic; phase 0 reports the second.
+The `docs/awg.md` ceiling of about 1.5 M updates per second, and the 64-68%
+amplitude it records for a full-swing square at 700 kHz, were not seen: a 1 V
+step needs about 140 ns to cross and fits inside a 622 ns symbol, where the
+2.2 V step of that table did not.
 
 ## Why PRBS
 
-A PRBS repeats with a known period, so the fold needs no clock recovery
-and no trigger: both timers divide MCK, and `eqtime.period_ticks` gives the
+A PRBS repeats with a known period, so the fold needs no clock recovery and
+no trigger: both timers divide MCK, and `eqtime.period_ticks` gives the
 period exactly. It exercises every transition and run length, which an
 alternating square does not, and an eye diagram folds out of the same data.
 PRBS7 (127 symbols) is the first pattern: the shortest period gives the most
-repeats and the quickest fold. Longer patterns are a later step.
+repeats and the quickest fold.
 
-The pattern length `L` and the samples per symbol `S` set the fold period
-`P = L * S * RC_dac` ticks. The ADC trigger period `R` must be coprime with
-`P` for the fold to reach every tick position (`docs/ets.md`). For example
-`L` = 127, `S` = 1, RC 28 gives `P` = 3,556 ticks, and `R` = 45 is coprime
-with it.
+With `L` symbols, `S` samples per symbol and the DAC's `RC_dac`, the fold
+period is `P = L * S * RC_dac` ticks. The ADC trigger period `R` must be
+coprime with `P` for the fold to reach every tick position (`docs/ets.md`).
+At RC 28, `P` is 3,556 ticks and `R` = 45 is coprime with it.
+
+## How the tool reads a capture
+
+Four points that decide whether the numbers mean anything:
+
+* **The capture starts before the feed.** The DAC sits at its idle level for
+  2 to 12 ms first. Left in, those samples read as 600 codes of noise against
+  the fold. `steady_range` keeps the longest run of 1,024-sample blocks whose
+  residual is within 3 times the median, and the row records what it dropped.
+* **Run 0 is thrown away.** The first run after a board or daemon start is an
+  outlier.
+* **Each check was broken on purpose first.** A fold on the wrong clock
+  relation must collapse the eye (it reads 1.4% open), a start-up transient
+  must be trimmed, and a slower edge must read slower on both the fold and
+  the scope reader (`selftest`).
+* **Rise and fall are read on isolated transitions only**, where both
+  neighbouring symbols have settled, and averaged. A single-pole edge of a
+  known rise reads 5% low through the fold on synthetic data.
 
 ## Phases
 
-Each phase ends at a gate. A phase starts only after the gate before it
-passes. Gate values marked TBC are fixed after phase 0 measures a reference.
+Each phase ends at a gate and starts after the one before it passes.
 
 | phase | what | board | firmware change | gate |
 |---|---|---|---|---|
-| **0. Validate** | On Track B, with the Rigol as the reference: (a) 1 V PRBS7 on DAC0 at rates up to the ceiling, read the repeatability of each level and edge cycle to cycle; (b) the same pattern folded through the loop, compared with the Rigol's trace; (c) the highest rate at which the fold stays periodic; (d) a duplex run of host-fed playback at that rate with a one-channel capture, byte conservation and underruns | yes | none | A table of rate against periodicity, rise time against the Rigol's, and duplex loss. **Passes** when the fold matches the Rigol edge within TBC at a stated rate, and the duplex run loses nothing |
-| **1. Host library** | A PRBS generator, a planner that picks `R` and refuses non-coprime pairs, a fold on `eqtime`, and an eye builder. Board-free tests, each broken on purpose before trusted: a wrong period must smear the eye, and a non-coprime `R` must refuse | no | none | Tests pass in the container, and each new check fails when the thing it guards is broken |
-| **2. Track B mode** | The daemon exposes an ETS capture on one channel, running until stopped, with a progressive fold. The front end shows the folded waveform and the eye | yes | only if phase 0(d) fails | Matches phase 0's fold on the same wiring, with no lost frames |
-| **3. Device PRBS** | Only if the duplex run in phase 0(d) fails: a PRBS shape in the generator table, on all three tracks with the same console surface (`CLAUDE.md`, invariant 3) | yes | yes, all three tracks | Host and device PRBS give the same fold |
-| **4. Tracks A and C** | The same fold on Tracks A and C, which should need no host change | yes | none | Same fold, same periodicity |
-| **5. AFE wide path** | The wide path of `docs/afe_requirement_*.md` section 3, measured against the same signals | yes | none | Set when the AFE exists |
-
-Phase 3 is the one design decision: the host feeds the pattern (no firmware
-change, USB-bound) or the device holds it (a firmware change on three tracks,
-no USB load). Phase 0(d) decides it. The tracks are peers, so the change
-would have to land on all three.
+| **0. Validate** | Done on `montreal5` as above | yes | none | The numbers above. Proposed pass: fold and Rigol rise within 5%, duplex loses nothing. These thresholds were chosen after the data was seen |
+| **1. Host library** | A PRBS generator, a planner that picks `R` and refuses non-coprime pairs, a fold on `eqtime`, an eye builder. Board-free tests, each broken on purpose before trusted | no | none | Tests pass in the container, and each new check fails when what it guards is broken |
+| **2. Track B mode** | The daemon exposes an ETS capture on one channel, running until stopped, with a progressive fold. The front end shows the folded waveform and the eye | yes | none | Matches phase 0's fold on the same wiring, with no lost frames |
+| **3. Other hosts** | `tools/ets_phase0.py loop` on the Windows and macOS benches, for the duplex load | yes | none | No underruns and no byte loss, or a device-held pattern (below) |
+| **4. Device PRBS** | Only if phase 3 fails | yes | all three tracks | Host and device PRBS give the same fold |
+| **5. Tracks A and C** | The same fold on Tracks A and C, which should need no host change | yes | none | Same fold, same periodicity |
+| **6. AFE wide path** | The wide path of the AFE requirement draft, measured against the same signals | yes | none | Set when the AFE exists |
 
 ## A device-held pattern: the RAM
 
-The pattern can live on the device and play from RAM with no USB in the
-path, as the generator's table does. That removes part B's USB load.
+If a host cannot feed the pattern, it can live on the device and play from RAM
+with no USB in the path, as the generator's table does.
 
 | item | figure |
 |---|---|
@@ -88,22 +107,22 @@ same console surface on all three tracks.
 
 ## Conditions on the signal
 
-ETS works only for a signal that repeats exactly and whose period is known
-or can be found. Here the DAC and the ADC share MCK, so the period is exact.
+ETS works only for a signal that repeats exactly and whose period is known or
+can be found. Here the DAC and the ADC share MCK, so the period is exact.
 Random data, single events and a source with its own drifting clock are
-outside this document (`docs/afe_requirement_*.md` covers a host-side period
-search for an external source).
+outside this document.
 
-The loop is DAC0 to A0. With probes fitted the line at a quarter of the
-sample rate appears on Track C and is absent on Tracks A and B, so Track B
-is the clean start. The DAC's window is about 0.55 to 2.75 V, which holds a
-1 V swing, and the ADC range is 0 to 3.3 V.
+With probes fitted the line at a quarter of the sample rate appears on
+Track C and is absent on Tracks A and B, so Track B is the clean start. The
+DAC's window is about 0.55 to 2.75 V, which holds a 1 V swing, and the ADC
+range is 0 to 3.3 V.
 
 ## Not established
 
-- The ADC's input bandwidth beyond the datasheet-derived estimate, and
-  whether the start delay is deterministic (`docs/ets.md`).
-- Whether a 1 V PRBS survives the DAC's conversion ceiling with a repeating
-  output, and what the highest rate that does is.
-- Duplex USB loss at 5 MB/s on Linux.
-- The DAC's behaviour above 1.6 M updates/s, which is outside the plan.
+* The ADC's input bandwidth, beyond the datasheet-derived estimate, and
+  whether the start delay is deterministic (`docs/ets.md`). Both need an edge
+  faster than 138 ns; the DAC's smallest steps reach about 60 ns.
+* The Rigol's probe: its software ratio reads x1 and the physical switch is
+  unknown, which bounds its own rise time near 58 ns if it is x1.
+* Duplex USB loss on Windows and macOS, and more than one run per rate.
+* The DAC's behaviour above the playback floor, which is outside the plan.
