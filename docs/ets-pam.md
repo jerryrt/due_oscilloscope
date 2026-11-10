@@ -32,12 +32,34 @@ Where the sequence stopped, and why. The tables under Results have every figure.
   the same level spread, which is smaller than the arithmetic that closes
   PAM128, and the 2 V swing that widens it fails on the end steps. *(check, not
   measured)*
-- **The limit is the instrument's level noise against the DAC's usable swing,
-  not the ETS method.** The tracker locks, the ladder stays straight (largest
-  residual 0.5 codes at PAM128) and the capture is gapless at 43 M samples; what
-  runs out is the ADC's resolution of one level step. A quieter reading, from
-  averaging or a better ADC front end, moves the limit and this method needs
-  no change for it.
+- **The limit is a fixed band of about 20 codes around every level, against the
+  DAC's usable swing; it is not the ETS method and it is not inter-symbol
+  interference.** The tracker locks, the ladder stays straight (largest residual
+  0.5 codes at PAM128) and the capture is gapless at 43 M samples. What closes
+  the eyes is the 0.1% to 99.9% width of each level at the symbol centre, and
+  the loss between the level spacing and the eye height is the same at every
+  level count and at both swings:
+
+  | loss, codes | PAM4 | PAM8 | PAM16 | PAM32 | PAM64 (1.5 V) | PAM128 (1.5 V) |
+  |---|---|---|---|---|---|---|
+  | `montreal5`, one board, probes on | 19.5 | 18.8 | 19.5 | 18.9 | 19.5 | 19.6 |
+  | `linux-x1`, two boards | 17.3 | 17.1 | 17.7 | 17.0 | 17.5 | 17.6 |
+
+  Interference between symbols would grow with the step, and the swing changed by
+  half between PAM32 and PAM64, so a constant is a fixed noise floor of the path
+  from the DAC code to the ADC code. A level count fits only while the spacing,
+  swing divided by N-1, exceeds that band: at 1.5 V (1,861 codes) that is N up to
+  about 90. The core of the level's spread is 1.4 codes on `montreal5` and 2.4 on
+  `linux-x1` (a Gaussian's 0.1% to 99.9% width is 6.2 sigma, 9 and 15 codes), so
+  `linux-x1`'s band is about what its noise gives and `montreal5`'s is about twice
+  it: a tail, which the probes being on may add.
+- **Which converter holds that floor is not established.** The recorded figures are
+  1.65 codes rms on A0 with DAC0 holding a code (`docs/noise.md`) and 0.80 for the
+  ADC on a held code, which `docs/hardware.md` marks as one session without a
+  record. The PAM data cannot split the two: both are in the path. The
+  separation needs a source that is not the DAC (a divider or a battery at an ADC
+  pin, the AFE plan's VT-3), or a software route through the ADC's internal
+  temperature-sensor channel, which needs a firmware change on all three tracks.
 
 Things learned that change how the next capture is run:
 
