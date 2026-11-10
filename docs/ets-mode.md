@@ -222,8 +222,21 @@ perfect data, which is exactly what `linux-x1`'s RC 44 control showed (1.157 and
 (factor 1) and RC 46, 50 (factor 2) are fine, and `etsperiod.MAX_LATTICE_GCD`
 holds the limit. **For a source with its own clock, pair an odd DAC RC with an
 even ADC RC**: RC 29 gives an odd period of 3,683, coprime with every even ADC
-RC, which on synthetic data gives 0.19 to 0.23 ticks at RC 44 to 50, and the
-even RC leaves nothing for the ADC start snap to correct. The method uses only
+RC, and the even RC leaves nothing for the ADC start snap to correct.
+Measured on `linux-x1` (`records/ets-odd-linux-x1.jsonl`, DAC RC 29, 16 s, first
+run of each pair dropped):
+
+| ADC RC | common factor | block scatter | adequately modelled | odd minus even | rise | fall | time axis, 1 sigma |
+|---|---|---|---|---|---|---|---|
+| 44 | 1 | 0.238 ticks | yes | +0.034 ns | 136.5 ns | 127.7 ns | 0.18 ns |
+| 46 | 1 | 0.200 ticks | yes | -0.007 ns | 136.3 ns | 127.5 ns | 0.12 ns |
+| 48 | 1 | 0.232 ticks | yes | -0.002 ns | 136.5 ns | 127.6 ns | 0.14 ns |
+
+The same raw captures re-read with the current code agree with the explanation:
+the old DAC RC 28, ADC RC 44 capture gives 1.148 ticks, a common factor of 4,
+and is flagged; the 250 mV capture at ADC RC 46 (factor 2) gives 0.252 ticks,
+is adequate, and its edges (54.42, 55.50 ns) are unchanged. The edges at DAC
+RC 29 match those at RC 28 to within 1 ns, with the symbol 3% longer. The method uses only
 the sample stream and the timer constants (tick rate, ADC clock ratio, ADC RC),
 so a different MCU or front end changes those constants and nothing else.
 
