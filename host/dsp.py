@@ -131,16 +131,28 @@ def corr_scan(win, xs, tmpl, period, lo, n):
     1.9 M of them at PAM128, against a 150-sample block, which `corr_many`
     would build as 285 M indices (2.3 GB, and a run that never finished). Each
     sample instead adds its weight times a slice of the doubled template, so
-    the memory is the template and the work is `len(win)` passes over it.
+    the memory is the template and the work is `len(win)` passes over it. The
+    phases are independent, so a large search is split across threads: the
+    slice-adds release the GIL.
     `xs` and `lo` must be whole ticks and `n` at most `period`.
     """
     t = np.asarray(tmpl, dtype=np.float64)
     t2 = np.concatenate([t, t])
-    acc = np.zeros(n, dtype=np.float64)
-    for w, x in zip(np.asarray(win, dtype=np.float64).tolist(), xs):
-        s = (int(x) + int(lo)) % period
-        acc += w * t2[s:s + n]
-    return acc
+    w = np.asarray(win, dtype=np.float64).tolist()
+    off = [(int(x) + int(lo)) % period for x in xs]
+
+    def part(a, b):
+        acc = np.zeros(b - a, dtype=np.float64)
+        for wi, s in zip(w, off):
+            acc += wi * t2[s + a:s + b]
+        return acc
+    if n < SCAN_THREADS_MIN:
+        return part(0, n)
+    return np.concatenate(map_ranges(part, n, 1))
+
+
+#: Phases from which `corr_scan` splits across threads.
+SCAN_THREADS_MIN = 200_000
 
 
 #: Samples a stage takes at a time: a multiple of the curve's segment, and small

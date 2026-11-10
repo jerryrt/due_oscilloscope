@@ -204,3 +204,10 @@ def test_the_batched_level_analysis_matches_the_loops(monkeypatch):
             monkeypatch.setenv("DUE_DSP", which)
             got[which] = etspam.analyze_levels(centre, by_t, pat)
         assert _close(got["python"], got["numpy"])
+
+
+def test_the_array_template_is_the_list_template():
+    syms = pam_oracle.symbols(16)
+    ref = etsperiod.template(syms, RC_DAC, 16)
+    got = (2.0 * np.asarray(syms, dtype=np.float64) / 15.0 - 1.0).repeat(RC_DAC)
+    assert got.tolist() == ref

@@ -292,9 +292,13 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     """
     period = len(bits) * rc_dac
     lattice = math.gcd(int(round(rc_adc)), period)
-    tmpl = template(bits, rc_dac, levels)
     if dsp.name() == "numpy":
-        tmpl = dsp.np.asarray(tmpl, dtype=dsp.np.float64)   # once, not per block
+        # built as an array, once, not as a list converted for every block
+        tmpl = (2.0 * dsp.np.asarray(bits, dtype=dsp.np.float64) / float(levels - 1) - 1.0
+                ).repeat(rc_dac)
+    else:
+        tmpl = template(bits, rc_dac, levels)
+    if dsp.name() == "numpy":
         cen, mean, amp = dsp.center(vals)
     else:
         mean = sum(vals) / len(vals)
@@ -302,7 +306,11 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
         cen = [(v - mean) / amp for v in vals]
     absum = xs_off = None
     if dsp.name() == "numpy":
-        absum = dsp.np.concatenate([[0.0], dsp.np.cumsum(dsp.np.abs(cen))])
+        nb_all = len(vals) // block
+        absum = dsp.np.empty(nb_all)        # per-block sums of |cen|, a slab at a time
+        for a in range(0, nb_all, 4096):
+            z = min(a + 4096, nb_all)
+            absum[a:z] = dsp.np.abs(cen[a * block:z * block]).reshape(z - a, block).sum(axis=1)
         xs_off = dsp.np.arange(block) * rc_adc
     pts = []                                   # (x of block centre, unwrapped phase)
     line = _RunningLine()                      # the same line, kept as blocks arrive
@@ -315,7 +323,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
         xm = (start + i0 + block // 2) * rc_adc
         if absum is not None:               # block sums from one running total
             xs = xs_off + (start + i0) * rc_adc
-            den = float(absum[i0 + block] - absum[i0]) or 1.0
+            den = float(absum[j]) or 1.0
         else:
             xs = [(start + i0 + i) * rc_adc for i in range(block)]
             den = float(sum(abs(v) for v in win)) or 1.0

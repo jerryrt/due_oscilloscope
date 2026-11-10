@@ -20,6 +20,7 @@ Pure Python is the reference (`label_samples_ref`); with numpy present
 `tests/test_etspam.py` holds the two equal.
 """
 import math
+import threading
 from array import array
 
 import dsp
@@ -39,6 +40,9 @@ MIN_SEPARATION_SIGMA = 3.0
 MAX_LINEARITY_SPACING = 0.25
 MIN_EYE_WIDTH = 0.2
 ADC_CODES = 4096
+#: `np.bincount` holds the GIL, so serialising its large int64 result costs no
+#: time and keeps one such result alive instead of one per thread.
+_BINCOUNT = threading.Lock()
 
 
 def boundary_offset(curve, rc):
@@ -156,9 +160,10 @@ def label_range(v_all, lo, hi, rc_adc, model, pat, rc_dac, b0, want_cells, start
     two = 2 * span
     lo_t, hi_t = (0.5 - CENTRE_HALF), (0.5 + CENTRE_HALF)
     syms = np.asarray(pat.symbols, dtype=np.int64)
-    centre_n = np.zeros(nlev * ADC_CODES, dtype=np.int64)
-    by_t_n = np.zeros(TBINS * nlev * ADC_CODES, dtype=np.int64)
-    cells_n = np.zeros(two * ADC_CODES, dtype=np.int64) if want_cells else None
+    # int32 is enough for a worker's share and halves what each thread holds
+    centre_n = np.zeros(nlev * ADC_CODES, dtype=np.int32)
+    by_t_n = np.zeros(TBINS * nlev * ADC_CODES, dtype=np.int32)
+    cells_n = np.zeros(two * ADC_CODES, dtype=np.int32) if want_cells else None
     for i in range(lo, hi, CHUNK):
         m = min(CHUNK, hi - i)
         v = v_all[i:i + m].astype(np.int64)
@@ -166,16 +171,24 @@ def label_range(v_all, lo, hi, rc_adc, model, pat, rc_dac, b0, want_cells, start
                                 unit, k, start + i, etsperiod.SEGMENT)
         rel = (idx - shift) % per_unit                     # float when b0 is
         if cells_n is not None:
-            cells_n += np.bincount((rel % two).astype(np.int64) * ADC_CODES + v,
-                                   minlength=cells_n.size)
+            key = (rel % two).astype(np.int64) * ADC_CODES + v
+            with _BINCOUNT:
+                np.add(cells_n, np.bincount(key, minlength=cells_n.size), out=cells_n,
+                       casting="unsafe")
         j = (rel // span).astype(np.int64)
         t = (rel - j * span) / span
         lvl = syms[j]
         inside = (t >= lo_t) & (t < hi_t)
-        centre_n += np.bincount(lvl[inside] * ADC_CODES + v[inside], minlength=centre_n.size)
+        key = lvl[inside] * ADC_CODES + v[inside]
+        with _BINCOUNT:
+            np.add(centre_n, np.bincount(key, minlength=centre_n.size), out=centre_n,
+                   casting="unsafe")
         tb = (t * TBINS).astype(np.int64)
-        by_t_n += np.bincount((tb * nlev + lvl) * ADC_CODES + v, minlength=by_t_n.size)
-    return centre_n.astype(np.int32), by_t_n.astype(np.int32), cells_n
+        key = (tb * nlev + lvl) * ADC_CODES + v
+        with _BINCOUNT:
+            np.add(by_t_n, np.bincount(key, minlength=by_t_n.size), out=by_t_n,
+                   casting="unsafe")
+    return centre_n, by_t_n, cells_n
 
 
 def label_samples_ref(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):
