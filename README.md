@@ -44,6 +44,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/analog-validation-plan.md](docs/analog-validation-plan.md) | Re-evaluating the converters' analog performance at 90 MHz: what the loop can judge, and the phases |
 | [docs/afe.md](docs/afe.md) | The analog front end's requirements: scope inputs, differential mode, AWG output, protection, power, construction and the tests that accept them |
 | [docs/afe-plan.md](docs/afe-plan.md) | Building the AFE: the steps, the simulation gate before any build, the bench tests, and the values left to confirm |
+| [docs/afe-review-ets.md](docs/afe-review-ets.md) | The AFE requirement reviewed against the equivalent-time and PAM measurements: the fixed range against PAM level counts, the noise bandwidth, the AWG filter, the calibration channel, and what is not established |
 | [docs/stack-depth.md](docs/stack-depth.md) | Worst-case stack depth: the bounds, and what refuses to be guessed |
 | [docs/status.md](docs/status.md) | What works, measured figures, recorded mistakes |
 | [docs/windows.md](docs/windows.md) | Windows validation: 0c settled, byte loss is macOS's |
