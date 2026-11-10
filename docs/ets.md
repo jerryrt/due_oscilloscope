@@ -10,6 +10,11 @@ puts them in order. `host/eqtime.py` is the reconstruction;
 firmware knows about ETS: the `=<dac>,<adc>,<n>M` preset supplies the two
 independent timers, and the host does the rest.
 
+A source on a second board, with its own crystal, is a different case: the
+relative phase is no longer a whole number of ticks and the time axis stops being
+a lattice. How to run it, the rule for choosing the DAC and ADC RC, the tools and
+what has been measured are in `docs/ets-mode.md`.
+
 Figures marked *(check)* are unverified: read from the SAM3X datasheet
 (`docs/datasheets/`) or derived from it, and not confirmed on a board.
 Section numbers are the datasheet's. The ADC clock here is 22.5 MHz
@@ -24,14 +29,14 @@ after all of them.
 | layer | what sets it | value at MCK 90 MHz |
 |---|---|---|
 | Trigger placement | TC clock `TIMER_CLOCK1` = MCK/2 (Timer Counter, clock selection) | 22.2 ns |
-| ADC start, relative to its trigger | delay of "2 MCK clock periods to 1 ADC clock period" (44.6.5) | 22.2 to 44.4 ns. If the start snaps to an ADC clock edge, the sample instants lie on a **44.4 ns lattice** *(check)* |
-| Sample formed by the track-and-hold | single pole read from `tTRACK` = 0.054 x Zsource + 205 ns (46.7) | rise of 50 to 54 ns, under two settling criteria *(check)* |
+| ADC start, relative to its trigger | delay of "2 MCK clock periods to 1 ADC clock period" (44.6.5) | 22.2 to 44.4 ns. Measured: the start snaps to the ADC's own clock edge, so at an odd ADC RC odd and even triggers differ by one tick, and the sample instants lie on a **44.4 ns lattice**; an even ADC RC puts every trigger at one phase (`docs/ets-mode.md`) |
+| Sample formed by the track-and-hold | single pole read from `tTRACK` = 0.054 x Zsource + 205 ns (46.7) | rise of 50 to 54 ns, under two settling criteria. The measured edge floor, which also holds the DAC's own response, is 42 to 48 ns (`docs/ets-mode.md`), so this reading is pessimistic *(check the formula's assumptions)* |
 | The waveform's own edge | the DAC's slew and bias | 277 to 300 ns at full step, default bias; small-step value unknown (`docs/awg.md`) |
 | DAC trigger to output | 25 DACC clock periods (45.6.1) | 555.6 ns, a constant offset only if the DAC start delay is constant and no refresh conversion intervenes *(check)* |
 | Vertical noise at one position | converter and DAC noise over the samples that land there | falls as 1/sqrt(samples) if white |
 
-So **one fold samples the edge every 44.4 ns, and the track-and-hold's
-estimated 50 to 54 ns rise limits what passes through it.** Two folds with
+So **one fold samples the edge every 44.4 ns, and the track-and-hold limits
+what passes through it to at most 42 to 48 ns of rise, measured.** Two folds with
 the waveform shifted one tick interleave to 22.2 ns under the conditions
 below. That finer grid describes the edge's shape up to the
 track-and-hold limit and no further.
@@ -84,10 +89,10 @@ Two trigger edges one tick apart need not give two sample instants.
   boot, value unknown), and the snap is the whole of the delay.
 * The consequence for the fold: `P` is even, so a fold reaches `P / 2`
   distinct sample instants, each carried by two adjacent tick positions
-  with equal values. Folded edges on `linux-x1` show this pairing
-  *(check: seen in folds at one amplitude, not in a record)*, and it is the
-  only evidence for the snap. A run with `gcd(R, P) = 2` reaches the same
-  instants with no pairing, which tests it *(check)*. `tools/square_shape.py`
+  with equal values. Measured on `linux-x1`'s two boards: at an odd ADC RC
+  the odd and even samples place an edge exactly one tick (22.2 ns) apart, on
+  rising and falling edges alike, and at an even ADC RC they agree to 0.02 ns
+  (`records/ets-cross-linux-x1.jsonl`), so the snap is real. `tools/square_shape.py`
   places each sample at its own tick, so its tick-resolution rise times
   are quantised at 44.4 ns.
 
@@ -132,7 +137,8 @@ default is `TRACKTIM` 0 and `TRANSFER` 1 (`drivers/acq.c`). The register
 reads as `(TRACKTIM + 1)` = 1 ADC clock of programmed tracking and
 `(TRANSFER x 2 + 3)` = 5 clocks of transfer; the datasheet's case 1 for
 this setting takes `tTRACK` as 15 ADC clocks (667 ns), the overlap with
-the previous conversion *(check)*.
+the previous conversion *(check)*. The measured edge floor, 42 to 48 ns,
+sits below both readings.
 
 Consequences:
 
@@ -188,7 +194,7 @@ lattice step, not of `sigma_t`.
 | question | answer from the model |
 |---|---|
 | Can the ADC sample a 750 kHz square directly? | No. An edge needs sample spacing well below its rise time and one channel converts every 0.98 us at best (RC 44, 1,022,727 Hz at 90 MHz). ETS needs only that the waveform repeats and the clocks are locked |
-| What is the finest edge time it can state? | About 50 to 54 ns, set by the track-and-hold, whatever the fold grid *(check)* |
+| What is the finest edge time it can state? | At most 42 to 48 ns of rise, measured: an upper bound that holds the DAC's own response too, below the 50 to 54 ns the datasheet formula reads, whatever the fold grid |
 | What does a finer grid buy? | A cleaner edge shape up to that limit, and no more |
 | What does an edge faster than the limit look like? | A rise that stops shrinking as the step shrinks, near `2.2 tau` |
 

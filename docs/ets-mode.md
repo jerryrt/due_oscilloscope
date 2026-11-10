@@ -1,87 +1,195 @@
-# ETS mode: capturing a repeating PRBS at the DAC's top rate
+# ETS mode: capturing a repeating PRBS and drawing its eye
 
-`docs/ets.md` holds the sampling model and its limits, and `host/eqtime.py`
-the reconstruction. This document is the plan for turning them into a
-capture mode, starting on Track B, and what the first measurements say about
-the claim the plan rests on.
+A repeating pattern, sampled once per microsecond, is folded onto its own
+period so that the samples of many repeats fill in one detailed picture.
+`docs/ets.md` holds the sampling model and its limits; this document is how to
+run it, what it has been shown to do, and what it cannot do. The code is
+`host/etsplan.py`, `host/etsperiod.py` and `host/eqtime.py` with the tools in
+the table below, and the measurements are indexed in `records/README.md`.
 
 Figures marked *(check)* are unmeasured: derived, or read from another
 document.
 
-## The claim, and where it stands
+## How to run it
 
-> ETS can capture the DAC at its maximum rate, with a 1 V peak-to-peak NRZ
-> PRBS, in high resolution.
+| | DAC RC | ADC RC | why |
+|---|---|---|---|
+| **Two boards**, each with its own crystal | odd, **29** (1.55 Msym/s) | even, **46** (44, 48 and 50 also work at DAC RC 29) | an even ADC RC leaves nothing for the ADC start snap to correct; an odd DAC RC keeps the pattern period coprime with every even ADC RC |
+| **One board**, one clock | **28** (the playback floor, 1.607 Msym/s) | odd and coprime with the period, **45** | the fold has to reach every tick; the odd-sample offset is corrected on the host |
 
-Phase 0 measured it on one bench: `montreal5`, Track B (image `8d3f2b2`
-plus a tree delta), probes fitted, DAC0 wired to A0, a Rigol DS1102E on
-DAC0. `tools/ets_phase0.py` is the instrument; `records/ets-phase0-montreal5-b.jsonl`
-holds the seven-rate sweep and `records/ets-phase0-montreal5-b-scope.jsonl` the
-three runs with the Rigol. **Supported on this bench, at one run per rate.**
+`ets_cross.py plan` prints the pair and says why; `both`, `sweep` and `capture`
+refuse a pair the planner rejects unless `--force` is given.
 
-| part | what had to be true | measured |
+```sh
+tools/ets_cross.py plan                      # the pair, and what it costs
+tools/ets_cross.py both --seconds 16 --eye-out eye.json --label "DUT2 1.55M"
+tools/ets_eye_page.py eye.json --out eye.html   # one or two eyes, one page
+```
+
+`both` plays a 1 V PRBS7 from the host on one board (`--play-dut`), captures A0
+on the other (`--cap-dut`), finds the clock ratio from the samples, folds, and
+writes the eye. Both boards are pinned with `DUE_DUT`. Run it twice and drop the
+first run. A capture counts only if `model_adequate` is true and
+`lattice_gcd` is at most 2; the row says so.
+
+## What it has been shown to do
+
+| claim | result | record |
 |---|---|---|
-| **A. The DAC emits it** | a 1 V PRBS7 at the top playback rate repeats identically | Every rate from 200 kHz to RC 28 (1,607,142 symbols per second, the playback floor `PLAY_MIN_RC`) folds to a PRBS7 with the eye 99.8-99.9% open. The residual against the fold is 1.27-1.31 codes rms, the same as a held level read the same way, so the output is periodic to the noise floor. The swing is 1,238 codes, 998 mV |
-| **B. It can be fed** | host-fed playback and a one-channel capture run together without loss | 0 underruns and every byte played at every rate, at the top rate with 3.2 MB/s out and 2 MB/s in, with no frame gaps. A device-held pattern is not needed on this host. Windows is not measured, and it is where a duplex loss was seen at 1.7 MB/s combined |
-| **C. ETS resolves it** | the fold shows the edges, and agrees with an independent instrument | Isolated transitions read 137-139 ns rise and 139-140 ns fall through the fold, and 134-135 ns rise and 138-141 ns fall on the Rigol (10 ns per point), a gap of 2-3%. The Rigol's isolated-transition counts are small (2 to 17 per record), and its swing reads 984-991 mV against the fold's 998 mV |
+| The DAC emits a 1 V PRBS7 at its top rate and it repeats | every rate from 200 kHz to RC 28 (1,607,142 symbols/s) folds to the pattern, eye 99.8-99.9% open, residual 1.3 codes, the converter's noise | `ets-phase0-montreal5-b.jsonl` |
+| The host can feed it while capturing | 0 underruns, every byte played, 3.2 MB/s out and 2 MB/s in, on Linux | same |
+| The fold agrees with a scope | rise 137-139 ns against 134-135 ns on the Rigol, swing 998 against 984-991 mV | `ets-phase0-montreal5-b-scope.jsonl` |
+| The clock ratio of a second board is found from the samples | -2.52 to -2.33 ppm on `linux-x1`'s pair; on `montreal5`'s capture with an offset emulated, +-40 to 250 ppm comes back to 0.0001 ppm | `ets-cross-linux-x1.jsonl`; `tests/test_etsperiod.py` |
+| An independent clock removes the tick grid | 100% of the 2.2 ns bins hold samples against 10% on one clock | `ets-cross-linux-x1.jsonl`, `ets-eye-linux-x1.json` |
+| The ADC start snaps to its own clock | odd and even samples put an edge exactly 22.2 ns (one tick) apart, rising and falling; an even ADC RC shows 0.0 ns | `ets-cross-linux-x1.jsonl` |
+| An odd DAC RC with an even ADC RC is well conditioned | block scatter 0.20-0.24 ticks at ADC RC 44, 46 and 48, adequately modelled, time axis known to 0.12-0.18 ns, rise 136.3-136.5 ns, fall 127.5-127.7 ns | `ets-odd-linux-x1.jsonl` |
+| What the ADC adds to an edge | a floor of 42.4 ns on rise and 45.4 ns on fall, an upper bound that includes the DAC's own response | `ets-floor-linux-x1.jsonl` |
 
-Two things the claim does not get from this. A 138 ns edge is 2.5 times the
-track-and-hold's estimated 50-54 ns, so the fold cannot say how much the ADC
-adds: the answer would sit inside a 3 ns difference and the Rigol's counting
-error. And "maximum rate" is the firmware's playback floor, which is where the
-measurement stopped, not a rate at which the output failed.
+## Why the pairing rule
 
-The `docs/awg.md` ceiling of about 1.5 M updates per second, and the 64-68%
-amplitude it records for a full-swing square at 700 kHz, were not seen: a 1 V
-step needs about 140 ns to cross and fits inside a 622 ns symbol, where the
-2.2 V step of that table did not.
+The pattern repeats every `P = 127 * rc_dac` ticks, and the ADC samples at ticks
+`k * rc_adc`.
 
-## Why PRBS
+**Even ADC RC.** The ADC clock is 22.5 MHz and the timers run at 45 MHz, so an
+ADC clock edge comes every 2 ticks and the start snaps to the next one. With an
+odd RC the triggers alternate between the two phases, and the odd samples are
+taken one tick (22.2 ns) earlier than the even ones; pooled, they blur every edge
+by that tick. With an even RC every trigger lands at the same phase.
 
-A PRBS repeats with a known period, so the fold needs no clock recovery and
-no trigger: both timers divide MCK, and `eqtime.period_ticks` gives the
-period exactly. It exercises every transition and run length, which an
-alternating square does not, and an eye diagram folds out of the same data.
-PRBS7 (127 symbols) is the first pattern: the shortest period gives the most
-repeats and the quickest fold.
+**Coprime with the period.** A sample at tick `k * rc_adc` falls at position
+`(k * rc_adc) mod P`, so with `g = gcd(rc_adc, P)` the whole-tick positions
+reached are only multiples of `g`. An edge is about 6 ticks wide, so at `g = 4` a
+short block sees one or two points across it and its position is poorly known.
+On perfect synthetic data the block scatter is 0.19-0.26 ticks at `g` of 1 and 2
+and 1.1 at 4, with neighbouring residuals correlated at 0.55.
+`etsperiod.MAX_LATTICE_GCD` holds the limit at 2.
 
-With `L` symbols, `S` samples per symbol and the DAC's `RC_dac`, the fold
-period is `P = L * S * RC_dac` ticks. The ADC trigger period `R` must be
-coprime with `P` for the fold to reach every tick position (`docs/ets.md`).
-At RC 28, `P` is 3,556 ticks and `R` = 45 is coprime with it.
+**Odd DAC RC.** 127 is odd, so `P` has the parity of `rc_dac`. At RC 28, `P` is
+3,556 = 4 * 889: every even ADC RC shares at least a factor of 2 with it, and RC
+44 and 48 share 4. At RC 29, `P` is 3,683 = 29 * 127: every even ADC RC from 44 to
+50 is coprime with it. The cost is a symbol rate of 1.55 Msym/s instead of
+1.607.
 
-## How the tool reads a capture
+**On one clock** coprimality is a hard requirement, because the fold would
+otherwise miss ticks, and with an even period it forces an odd ADC RC. On two
+boards it only conditions the block tracker; the clock drift fills the positions
+over a long capture anyway.
 
-Four points that decide whether the numbers mean anything:
+## How a capture is read
 
-* **The capture starts before the feed.** The DAC sits at its idle level for
-  2 to 12 ms first. Left in, those samples read as 600 codes of noise against
-  the fold. `steady_range` keeps the longest run of 1,024-sample blocks whose
-  residual is within 3 times the median, and the row records what it dropped.
-* **Run 0 is thrown away.** The first run after a board or daemon start is an
-  outlier.
-* **Each check was broken on purpose first.** A fold on the wrong clock
-  relation must collapse the eye (it reads 1.4% open), a start-up transient
-  must be trimmed, and a slower edge must read slower on both the fold and
-  the scope reader (`selftest`).
-* **Rise and fall are read on isolated transitions only**, where both
-  neighbouring symbols have settled, and averaged. A single-pole edge of a
-  known rise reads 5% low through the fold on synthetic data.
+* **The pattern is known, so the unknown is the clock ratio.** Short blocks of
+  samples are matched against the pattern's ideal waveform to find where in the
+  pattern each sits, and that phase is tracked over the capture
+  (`etsperiod.track_clock_ratio`). A search that scores whole-capture folds on
+  candidate periods does not work for a known pattern: bins as wide as a symbol
+  cannot tell a period 8 ticks out by the end of the window from the right one.
+* **The phase is fitted as a smooth curve, not a line.** Two crystals do not hold
+  a ratio: it moved 0.12 ppm over four of `linux-x1`'s runs, half a tick of phase
+  curvature over 16 s, which a line leaves as blur on every edge. The degree
+  (1 to 6) is chosen by BIC and isolated bad blocks are dropped and counted. On
+  `linux-x1`'s captures the fitted wander is 0 to 0.21 ticks, so a line sufficed
+  there; the model is the safeguard for a pair that wanders more.
+* **The fit is judged by the structure of its residuals,** not their size: a
+  smooth curve through a phase jump leaves a run of one sign. A capture with
+  neighbouring residuals correlated above 0.35, more than 5% outliers, or a
+  common factor above 2 is `model_adequate: false` and no fold on it should be
+  trusted.
+* **The block estimator reads the correlation peak from a parabola.** Samples
+  sit on whole ticks, so the correlation between whole-tick shifts is piecewise
+  linear, and a triangle formula on its peak leaves a sawtooth of about 0.4
+  ticks. A parabola through the top five points gives 0.19-0.31 ticks on perfect
+  data against 0.56-0.64. The fold was never affected: a sawtooth averages out of
+  a fitted line.
+* **`time_axis_sigma_ns`** is the fitted curve's own standard error: how well
+  the time axis of the fold is known, whatever the bin width (0.12-0.18 ns on
+  `linux-x1`'s pair). It is a statistical figure and excludes anything the model
+  cannot see.
+* **The capture starts before the feed.** The DAC sits at its idle level for 2 to
+  12 ms first; those blocks are skipped (`MIN_SCORE`) or trimmed (`steady_range`)
+  and the row records it.
+* **Rise and fall are read on isolated transitions,** where both neighbours have
+  settled. The fold reads a synthetic single-pole edge about 5% low.
+* **Each check was broken on purpose before it was trusted:** a fold on the wrong
+  clock relation must collapse the eye (1.4% open), a 20 ppm period error must
+  too, a sign flip, a missing wander term and a missing adequacy rule must each
+  fail a test, and a shared clock must leave the fine bins empty.
+
+## The ADC's share of an edge
+
+A DAC edge is slew limited and shrinks with the step; what the ADC's
+track-and-hold and the DAC's small-signal response add does not. Rise squared
+against step squared is a line whose intercept is that floor
+(`ets_cross.py sweep`, `fit_floor`). On `linux-x1` (DAC RC 28 into ADC RC 46):
+
+| swing | rise, 10-90% | fall, 10-90% |
+|---|---|---|
+| 999 mV | 136.75 ns | 127.61 ns |
+| 699 mV | 98.89 ns | 91.59 ns |
+| 499 mV | 76.59 ns | 73.24 ns |
+| 350 mV | 62.65 ns | 61.89 ns |
+| 250 mV | 54.42 ns | 55.52 ns |
+| 175 mV | 48.60 ns | 52.02 ns |
+| **floor** | **42.4 ns** (rms 0.8 ns) | **45.4 ns** (rms 1.7 ns) |
+
+The floor is an upper bound on what the ADC adds, since it holds the DAC's own
+response too, and with the fold's 5% low reading it is 42 to 48 ns. It sits below
+the 50-54 ns `docs/ets.md` reads off the datasheet's tracking-time formula. So
+the ADC input passes at least about 8 MHz (0.35 / 45 ns); how much more is not
+known, because the DAC's fastest edge is about 49 ns.
+
+## What it cannot do
+
+* **Time placement is not bandwidth.** A time axis known to 0.12 ns tells where
+  each sample belongs; it does not let a signal through. The edge in the eye is
+  the one the DAC and ADC produce, about 137 ns at 1 V and 49 ns at 175 mV, and
+  finer bins draw it more cleanly without adding detail. Nothing above roughly
+  8 MHz has been verified, and a 10 GHz waveform (100 ps) is beyond both the
+  front end and the 0.12 ns placement.
+* **Only a signal that repeats exactly, with a known pattern.** Random data and
+  single events are not covered, and a repeating signal of unknown pattern needs a
+  way to learn its template, which does not exist here.
+* **Only edge shape and level noise.** The fold assumes exact repetition, so it
+  cannot show random jitter that varies cycle to cycle.
+* **Range and speed.** The ADC range is 0 to 3.3 V, so anything else needs the
+  analog front end. A picture takes 16 s of capture and about a minute of host
+  computing.
+* **Vertical thickness** is the converter's noise, about 1.3 codes.
+
+## Not established
+
+* Tracks A and C, and hosts other than Linux. Duplex USB loss was seen on Windows
+  at 1.7 MB/s combined before the playback fixes.
+* More than one pair of boards, and wander over minutes or with temperature.
+* How the 42 ns floor splits between the DAC and the ADC. The `linux-x1` bench has
+  no scope, and the Rigol's probe on `montreal5` reads x1 in software with the
+  physical switch unknown, which would bound its own rise near 58 ns.
+* A signal from an outside device: every capture so far is a Due's own DAC.
+* The ADC's aperture jitter, and its input bandwidth above the floor.
+
+## Tools
+
+| tool | what it does |
+|---|---|
+| `host/etsplan.py` | the pairing rule: `plan` picks the pair, `check_pair` says what is wrong with one |
+| `host/etsperiod.py` | the block tracker, the phase model and its adequacy rule, the folds |
+| `host/eqtime.py` | the integer-tick fold and its helpers, for the same-board path |
+| `tools/ets_phase0.py` | same board: a PRBS7 through the loop, folded, optionally against the Rigol (`loop`, `both`, `selftest`) |
+| `tools/ets_cross.py` | two boards: `plan`, `both`, `play`, `capture`, `analyze`, `resolution`, `sweep`, `eye` |
+| `tools/ets_eye_page.py` | one or two eye files to a standalone page, with provenance |
+| `tests/test_etsplan.py`, `tests/test_etsperiod.py`, `tests/test_ets_eye_page.py` | board-free; each rule fails a test when broken |
 
 ## Phases
 
-Each phase ends at a gate and starts after the one before it passes.
-
-| phase | what | board | firmware change | gate |
-|---|---|---|---|---|
-| **0. Validate** | Done on `montreal5` as above | yes | none | The numbers above. Proposed pass: fold and Rigol rise within 5%, duplex loses nothing. These thresholds were chosen after the data was seen |
-| **1. Host library** | A PRBS generator, a planner that picks `R` and refuses non-coprime pairs, a fold on `eqtime`, an eye builder. Board-free tests, each broken on purpose before trusted | no | none | Tests pass in the container, and each new check fails when what it guards is broken |
-| **2. External source** | A second Due's DAC0 into the capturing Due's A0, so the source has a clock of its own. `host/etsperiod.py` finds the clock ratio from the samples and the fold runs on it. Needs `linux-x1`'s two Dues, cross-wired | yes, two boards | none | The recovered ratio folds to the eye phase 0 shows, and a period 20 ppm off does not. Edge rise within 5% of phase 0's and the Rigol's |
-| **3. Track B mode** | The daemon exposes an ETS capture on one channel, running until stopped, with a progressive fold. The front end shows the folded waveform and the eye | yes | none | Matches phase 0's fold on the same wiring, with no lost frames |
-| **4. Other hosts** | `tools/ets_phase0.py loop` on the Windows and macOS benches, for the duplex load | yes | none | No underruns and no byte loss, or a device-held pattern (below) |
-| **5. Device PRBS** | Only if phase 3 fails | yes | all three tracks | Host and device PRBS give the same fold |
-| **6. Tracks A and C** | The same fold on Tracks A and C, which should need no host change | yes | none | Same fold, same periodicity |
-| **7. AFE wide path** | The wide path of the AFE requirement draft, measured against the same signals | yes | none | Set when the AFE exists |
+| phase | what | status |
+|---|---|---|
+| **0. Validate** on one board | `ets_phase0.py` against the Rigol | done, see above. The pass thresholds (fold and scope within 5%, duplex loses nothing) were chosen after the data was seen |
+| **1. Host library** | planner, tracker, folds, eye builder, tests | done |
+| **2. External clock** | second board's DAC into the capturing board's A0 | done on `linux-x1` |
+| **3. Track B mode** | the daemon runs an ETS capture on one channel until stopped, with a progressive fold; the front end shows the folded waveform and the eye. The planner and its checks belong here | next |
+| **4. Other hosts** | `ets_phase0.py loop` on Windows and macOS, for the duplex load | not started |
+| **5. Device PRBS** | only if phase 4 shows loss | not started |
+| **6. Tracks A and C** | the same fold; should need no host change | not started |
+| **7. AFE wide path** | the wide path of the AFE requirement draft, against the same signals | when the AFE exists |
 
 ## A device-held pattern: the RAM
 
@@ -95,195 +203,21 @@ with no USB in the path, as the generator's table does.
 | Today's generator table | 512 entries, 1,024 B |
 | A pattern at 1 sample per symbol, 2 B each | PRBS7 254 B, PRBS9 1,022 B, PRBS10 2,046 B, PRBS11 4,094 B, PRBS13 16,382 B |
 
-PRBS7 to PRBS10 fit in bank 0 with room to spare. PRBS11 leaves about 4.6 KB
-for stack and heap, so it belongs in bank 1, whose use by the DMA masters is
+PRBS7 to PRBS10 fit in bank 0 with room to spare. PRBS11 leaves about 4.6 KB for
+stack and heap, so it belongs in bank 1, whose use by the DMA masters is
 unchecked.
 
-What it needs from the firmware: a table whose length is the pattern's
-period (today the wrap is fixed at the table length and points must divide
-256, so a 127-symbol period does not fit), and a PRBS shape built from an
-LFSR when the generator is configured, which is setup work and not on the
-sample path. That is a new shape value in the shared wire contract and the
-same console surface on all three tracks.
-
-## A source with a clock of its own
-
-A second board's DAC has its own crystal, so the pattern's period in the
-capturing board's ticks is not an integer and is off the nominal one by tens
-of ppm. The pattern is known, so the one unknown is that ratio. `host/etsperiod.py`
-matches short blocks of samples against the pattern's ideal waveform and
-fits a line through the block phases over the whole capture: the phase moves
-at a rate equal to the ratio's error. `tools/ets_cross.py` runs the source in
-one process and the capture in another, each pinned to a board by `DUE_DUT`,
-and analyses the raw capture.
-
-What has been measured, on the `montreal5` capture of 3 M samples, whose true
-ratio is 0, with an offset emulated by assuming a wrong ADC period:
-
-| emulated offset | recovered | error |
-|---|---|---|
-| +150 ppm | +150.0000 ppm | 0.0000 ppm |
-| -150 ppm | -149.9999 ppm | 0.0001 ppm |
-| +40 ppm | +39.9999 ppm | -0.0001 ppm |
-| -250 ppm | -250.0000 ppm | 0.0000 ppm |
-
-A fold on the recovered period reproduces phase 0's eye (99.8% open, rise
-138.5 ns, fall 139.5 ns). A fold on a period 20 ppm out reads 1.5% open, and
-on the nominal period 0.2%. The unmodified capture returns a ratio of
--1.3e-11. Emulation shows the algorithm and not a real crystal: wander,
-temperature drift and the source's own jitter are not in it.
-
-A search that scores whole-capture folds on candidate periods does not work
-for a known pattern: a fold on bins as wide as a symbol cannot tell a period
-that is 8 ticks out by the end of its window from the right one, so each
-stage's pick is noise.
-
-Measured on `linux-x1`, Track B on both Dues (image `8ffc8ed`), DUT1 DAC0
-into DUT2 A0, RC 28 and RC 56, 8 M samples each
-(`records/ets-cross-linux-x1.jsonl`):
-
-| | same board (`montreal5`) | two boards (`linux-x1`) |
-|---|---|---|
-| Clock ratio | exactly 1 | -2.52 and -2.49 ppm |
-| Where samples land in a tick | all on whole ticks | flat, min over max 0.999 |
-| 2.2 ns bins filled | 10% | 100%, at least 111 samples each |
-| Edge 50% crossing scatter, fold repeatability | n/a | 0.05-0.11 ns |
-| Odd minus even samples, edge position | n/a | +22.20 to +22.24 ns, rising and falling |
-
-The first four rows say what an independent clock buys: the fold's time axis
-is no longer a lattice of ticks, and an edge can be placed to about a tenth
-of a nanosecond in repeatability. That is the fold's scatter and not an
-accuracy: it does not contain the last row.
-
-The last row is the ADC start snapping to the ADC's own clock. The odd and
-even samples of a run differ by exactly one 45 MHz tick on every edge of both
-kinds, so it is a pure time shift and not an amplitude or bandwidth effect,
-and the odd samples are taken one tick earlier. Pooling them blurs every edge
-by that tick. Two ways to deal with it, both measured on the same two Dues
-(DUT1 DAC0 into DUT2 A0, RC 28, 8 M samples each):
-
-| ADC RC | odd minus even | rise, 10-90% | fall, 10-90% |
-|---|---|---|---|
-| 45, pooled | +22.20 ns | 139.4 ns | 131.3 ns |
-| 45, odd samples moved back | n/a | 137.3 ns | 128.3 ns |
-| 46 | -0.016 ns | 137.0 ns | 127.9 ns |
-| 44 | -0.011 ns | 137.6 ns | 127.9 ns |
-
-An even ADC RC puts every trigger at the same phase of the ADC clock, so
-there is nothing to correct, and its uncorrected edges match the corrected
-odd-RC ones to 0.3 ns. **For a source with its own clock, capture at an even
-RC.** The same-board path cannot: the pattern period `127 * rc_dac` is even,
-and the fold needs an ADC RC coprime with it, so it is forced onto an odd one.
-
-The clock ratio is not a constant. It moved from -2.52 to -2.40 ppm over the
-four runs, which is ordinary for two crystals within their specification, and
-it is a precondition here and not a fault. A drift of that size is half a tick
-of phase curvature over a 16 s capture, which a straight-line fit would leave
-as blur on every edge. So the phase is fitted as a smooth curve, not a line,
-and the fit is judged:
-
-* the degree (1 to 6) is chosen by BIC, and blocks that match badly are
-  dropped as outliers and reported;
-* the capture is called adequately modelled only when the residuals look like
-  noise, neighbours uncorrelated (|rho1| at most 0.35), because a smooth curve
-  through a phase jump leaves a run of one sign, and the scatter alone does not
-  show it;
-* the curve's own standard error, `time_axis_sigma_ns`, is reported: how well
-  the time axis of the fold is known, whatever the bin width.
-
-On synthetic captures a parabola of 24 ticks (6 ticks peak to peak once a line
-is removed) is followed, the straight-line fold reads the edge more than 15%
-slow and the fitted one is within 3% of a capture with no wander, and a
-4-tick jump is reported as not modelled. On `linux-x1`'s captures the fitted
-wander is 0 to 0.21 ticks peak to peak, so over 16 s a line was enough there;
-the model is the safeguard for a pair that wanders more. One capture (the RC 44
-control) is flagged not adequately modelled, with a phase scatter of 1.16
-ticks against 0.6 for the rest.
-
-The block-to-block scatter of the phase is 0.6 ticks on two boards at every
-swing from 175 to 699 mV, against 0.22 on one board. It is the block matcher
-and not timing jitter: a synthetic capture with perfect timing at RC 46, with
-`linux-x1`'s edge shapes and noise, gives 0.56, 0.64 and 0.62 ticks at 1000, 350
-and 175 mV. The cause is the samples sitting on whole ticks. The correlation
-between whole-tick shifts is then piecewise linear and peaks at one of them, and
-a triangle formula on that peak leaves a bias that depends on where the true
-phase sits within the tick, a sawtooth of about 0.4 ticks. The matcher now reads
-the peak from a least-squares parabola through its top five points, which gives
-0.19 to 0.31 ticks on the same perfect data. The fold itself was never
-affected: a sawtooth averages out of a fitted line, which is why the edges did
-not move.
-
-The ADC RC also has to be well conditioned against the pattern. The period is
-`127 * rc_dac`, so at RC 28 it is 3,556 = 4 * 889. An ADC RC that shares a factor
-of 4 with it (44, 48) lands only on every fourth source tick, and short blocks
-then match badly: 1.1 ticks of scatter and neighbour correlation of 0.55 on
-perfect data, which is exactly what `linux-x1`'s RC 44 control showed (1.157 and
-0.557) and is why it was flagged. It was not a disturbance in that run. RC 45
-(factor 1) and RC 46, 50 (factor 2) are fine, and `etsperiod.MAX_LATTICE_GCD`
-holds the limit. **For a source with its own clock, pair an odd DAC RC with an
-even ADC RC**: RC 29 gives an odd period of 3,683, coprime with every even ADC
-RC, and the even RC leaves nothing for the ADC start snap to correct.
-Measured on `linux-x1` (`records/ets-odd-linux-x1.jsonl`, DAC RC 29, 16 s, first
-run of each pair dropped):
-
-| ADC RC | common factor | block scatter | adequately modelled | odd minus even | rise | fall | time axis, 1 sigma |
-|---|---|---|---|---|---|---|---|
-| 44 | 1 | 0.238 ticks | yes | +0.034 ns | 136.5 ns | 127.7 ns | 0.18 ns |
-| 46 | 1 | 0.200 ticks | yes | -0.007 ns | 136.3 ns | 127.5 ns | 0.12 ns |
-| 48 | 1 | 0.232 ticks | yes | -0.002 ns | 136.5 ns | 127.6 ns | 0.14 ns |
-
-The same raw captures re-read with the current code agree with the explanation:
-the old DAC RC 28, ADC RC 44 capture gives 1.148 ticks, a common factor of 4,
-and is flagged; the 250 mV capture at ADC RC 46 (factor 2) gives 0.252 ticks,
-is adequate, and its edges (54.42, 55.50 ns) are unchanged. The edges at DAC
-RC 29 match those at RC 28 to within 1 ns, with the symbol 3% longer. The method uses only
-the sample stream and the timer constants (tick rate, ADC clock ratio, ADC RC),
-so a different MCU or front end changes those constants and nothing else.
-
-## The ADC's share of an edge
-
-A DAC edge is slew limited and shrinks with the step; what the ADC's
-track-and-hold and the DAC's small-signal response add does not. Rise squared
-against step squared is a line whose intercept is that floor. Measured on
-`linux-x1` (rc 28 into ADC RC 46, a source with its own clock, one run per swing
-after a dropped first, eye 99.8-99.9% at every swing, `records/ets-floor-linux-x1.jsonl`):
-
-| swing | rise, 10-90% | fall, 10-90% |
-|---|---|---|
-| 999 mV | 136.75 ns | 127.61 ns |
-| 699 mV | 98.89 ns | 91.59 ns |
-| 499 mV | 76.59 ns | 73.24 ns |
-| 350 mV | 62.65 ns | 61.89 ns |
-| 250 mV | 54.42 ns | 55.52 ns |
-| 175 mV | 48.60 ns | 52.02 ns |
-| **floor** | **42.4 ns** (rms 0.8 ns) | **45.4 ns** (rms 1.7 ns) |
-
-The floor is an upper bound on what the ADC adds, since it holds the DAC's own
-response too. It sits below the 50-54 ns that `docs/ets.md` reads off the
-datasheet's tracking-time formula, so that figure is pessimistic for this
-board. The fold reads a synthetic single-pole edge about 5% low, so the
-floor is 42 to 48 ns with that allowance. Rise and fall cross near 250 mV.
-No scope is attached to this bench, so the DAC's own rise at a small step is
-not separated out.
+What it needs from the firmware: a table whose length is the pattern's period
+(today the wrap is fixed at the table length and points must divide 256, so a
+127-symbol period does not fit), and a PRBS shape built from an LFSR when the
+generator is configured, which is setup work and not on the sample path. That is
+a new shape value in the shared wire contract and the same console surface on all
+three tracks.
 
 ## Conditions on the signal
 
-ETS works only for a signal that repeats exactly and whose period is known or
-can be found. Here the DAC and the ADC share MCK, so the period is exact.
-Random data, single events and a source with its own drifting clock are
-outside this document.
-
-With probes fitted the line at a quarter of the sample rate appears on
-Track C and is absent on Tracks A and B, so Track B is the clean start. The
-DAC's window is about 0.55 to 2.75 V, which holds a 1 V swing, and the ADC
-range is 0 to 3.3 V.
-
-## Not established
-
-* The ADC's input bandwidth, beyond the datasheet-derived estimate, and
-  whether the start delay is deterministic (`docs/ets.md`). Both need an edge
-  faster than 138 ns; the DAC's smallest steps reach about 60 ns.
-* The Rigol's probe: its software ratio reads x1 and the physical switch is
-  unknown, which bounds its own rise time near 58 ns if it is x1.
-* Duplex USB loss on Windows and macOS, and more than one run per rate.
-* The DAC's behaviour above the playback floor, which is outside the plan.
+The DAC's window is about 0.55 to 2.75 V, which holds a 1 V swing. With probes
+fitted the line at a quarter of the sample rate appears on Track C and is absent
+on Tracks A and B, so Track B is the clean start. A playback ring that is
+under-run, or a capture that drops a frame, shifts every later sample's phase;
+`eqtime.check_contiguous` refuses such a run.
