@@ -31,8 +31,9 @@ left:
 The sequence has `L = 2^n - 1` bits and returns to the all-ones register after
 exactly `L` steps. Symbols read `m` consecutive bits, **first bit most
 significant**, in non-overlapping groups that wrap around the sequence. A group
-`g` is a Gray code, and the level index is its decoded value (for `m = 2`:
-00, 01, 11, 10 are levels 0, 1, 2, 3). Symbol `j` is group `j`, and the pattern
+`g` is a Gray code, and the level index is its decoded value
+`g XOR (g >> 1) XOR (g >> 2) XOR ...` (for `m = 2`: 00, 01, 11, 10 are levels
+0, 1, 2, 3). Symbol `j` is group `j`, and the pattern
 repeats when the groups do.
 
 This is this project's pattern, not an IEEE one: the polynomials and the all-ones
@@ -69,9 +70,13 @@ so RC 46 is refused for PAM32 and the planner picks another even RC.
 
 ## The levels
 
-Level `i` of `N` sits at `(i - (N - 1) / 2) * swing / (N - 1)` around mid-scale, as
-DAC code 2048 plus that many codes at 0.5407 mV per code, rounded to a whole code.
-Comparisons are against these rounded codes, not an ideal ladder.
+Level `i` of `N` is the DAC code
+
+    floor(2048 + (i - (N - 1) / 2) * swing / ((N - 1) * lsb) + 0.5)
+
+with `lsb` = 2214 / 4095 mV (the DAC's span of about 546 to 2760 mV over 4095
+codes, `docs/hardware.md`), rounded half up. Comparisons are against these whole
+codes, not an ideal ladder.
 
 The swing is 1 V up to PAM32 and 2 V from PAM64, inside the DAC's window of about
 0.55 to 2.75 V, so the highest orders are not buried in noise. At the converters'
