@@ -86,7 +86,7 @@ the top layer.
 
 1. Remove JR1.
 2. Bridge BR1 pads 1 and 2: a 0402 0 ohm part fits the footprint, and a solder
-   bridge across the gap of about 0.4 mm also reaches. The AREF header pin is then
+   bridge across the gap of 0.6 mm (pads 0.7 mm long on a 1.3 mm pitch) also reaches, with less margin. The AREF header pin is then
    `AVREFL`, and ADVREF follows it through L3.
 3. Check continuity before power: AREF to ADVREF closed, 3.3 V to AREF open.
 
@@ -104,6 +104,22 @@ with a meter).
 before any trace and header contact on the shield. It has to be stable with that
 and with the converters' switching load, a datasheet check. A Due reworked this way
 and run without a reference connected has a floating ADVREF.
+
+**Without touching JR1,** or with a way back:
+
+- **Do not drive ADVREF.** Leave the Due stock and let the ADC read the shield's
+  reference as an input. That gives each board's absolute gain and its drift to the
+  host, and needs no rework; it does not quieten ADVREF.
+- **Use BR1 as the selector it was drawn as.** Remove JR1 once, then bridge BR1 pads
+  2 and 3 for the stock behaviour (3.3 V to AVREFL, the same connection JR1 made) or
+  pads 1 and 2 for an external reference. With 2 and 3 bridged the Due works alone
+  and a shield driving AREF cannot hurt it. With 1 and 2 bridged and no reference
+  connected, ADVREF has no source, and the converters do not work.
+- **Rework one Due only,** and keep it with the shield. The others stay stock, which
+  also gives a control.
+
+Removing JR1 and leaving BR1 open does leave ADVREF with no source: the only paths
+into `AVREFL` and `AVREF` are JR1 and BR1.
 
 Not established by the board file: the highest ADVREF the SAM3X accepts against its
 analog supply `VDDANA` (3.3 V through a second bead, L1), a datasheet check.
