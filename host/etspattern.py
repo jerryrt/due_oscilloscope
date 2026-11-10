@@ -93,7 +93,7 @@ class Pattern:
         """Symbols in one period."""
         return len(self.symbols)
 
-    def dac_codes(self):
+    def symbol_codes(self):
         """The DAC code of every symbol of one period."""
         return [self.codes[s] for s in self.symbols]
 
@@ -141,9 +141,9 @@ def symbols(pam, n=None):
     return pattern(pam, n=n).symbols
 
 
-def dac_codes(pam, swing_mv=None, n=None):
-    """The DAC code of every symbol of one period."""
-    return pattern(pam, swing_mv, n).dac_codes()
+def dac_codes(pam, swing_mv=None):
+    """The ladder: the DAC code of each of `pam` levels, lowest first."""
+    return level_codes(pam, swing_mv)
 
 
 def period_ticks(p, rc_dac):
