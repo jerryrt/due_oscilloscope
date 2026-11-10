@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """A PRBS7 from one Due, captured by another, folded with its own clock.
 
-    ets_cross.py both --rc 28 --seconds 16 [--play-dut dut1 --cap-dut dut2]
-    ets_cross.py analyze RAW.bin --rc-dac 28 --rc-adc 45
-    ets_cross.py resolution RAW.bin --rc-dac 28 --rc-adc 45 [--k 10 --kp 2]
-    ets_cross.py eye RAW.bin --rc-dac 29 --rc-adc 46 --eye-out eye.json
-    ets_cross.py sweep --rc-adc 46 --vpps 1000,700,500,350,250,175
+    ets_cross.py plan [--symbol-hz 1.5e6] [--same-board]
+    ets_cross.py both --seconds 16 [--eye-out eye.json] [--play-dut dut1 --cap-dut dut2]
+    ets_cross.py analyze RAW.bin --rc-dac 29 --rc-adc 46
+    ets_cross.py resolution RAW.bin --rc-dac 29 --rc-adc 46 [--k 10 --kp 2]
+    ets_cross.py eye RAW.bin --rc-dac 29 --rc-adc 46 --eye-out eye.json [--label NAME]
+    ets_cross.py sweep --vpps 1000,700,500,350,250,175
+
+The default pair is DAC RC 29 and ADC RC 46: an odd DAC RC and an even ADC RC,
+which `host/etsplan.py` explains and enforces. `both`, `sweep` and `capture`
+refuse a pair it rejects unless `--force` is given. `eye.json` goes to
+`tools/ets_eye_page.py` to be drawn.
 
 The source board's DAC0 is wired to the capturing board's A0, so the two
 timers have separate crystals: the pattern's period in the capturing
@@ -34,11 +40,13 @@ for sub in ("host", "tools", "tests"):
 import eqtime  # noqa: E402
 import ets_phase0 as e  # noqa: E402
 import etsperiod  # noqa: E402
+import etsplan  # noqa: E402
 import measure  # noqa: E402
 import provenance  # noqa: E402
 
 #: One channel's trigger floor and the capture rate the analysis assumes.
-ADC_RC = 45
+ADC_RC = etsplan.INDEPENDENT_DEFAULT[1]
+DAC_RC = etsplan.INDEPENDENT_DEFAULT[0]
 #: The most samples analysed; the tracker's precision grows with the span.
 MAX_SAMPLES = 8_000_000
 #: Seconds the source runs before the capture starts.
@@ -283,7 +291,15 @@ def _fill_holes(curve):
     return out
 
 
-def eye(path, rc_dac, rc_adc, k, out, ylo=1000.0, yhi=2400.0, yb=4.0):
+def _analysis_provenance(raw_path, label):
+    """Only what is true of the analysis: no board is held, so no wiring."""
+    prov = provenance.run_fields(board=None)
+    return {"analysis": "ets_cross.py eye @%s" % prov["repo_rev"],
+            "taken_at": prov["taken_at"], "host_os": prov["host_os"],
+            "raw": os.path.basename(raw_path), "label": label}
+
+
+def eye(path, rc_dac, rc_adc, k, out, ylo=1000.0, yhi=2400.0, yb=4.0, label=None):
     """Write a two-symbol eye at `k` bins per tick, every sample placed by the
     fitted phase curve, with the folded waveform beside it, as JSON.
 
@@ -327,7 +343,8 @@ def eye(path, rc_dac, rc_adc, k, out, ylo=1000.0, yhi=2400.0, yb=4.0):
         if 0 <= yi < ny:
             key = x * ny + yi
             dens[key] = dens.get(key, 0) + 1
-    doc = {"rc_dac": rc_dac, "rc_adc": rc_adc, "k": k, "tick_ns": e.TICK_NS,
+    doc = {"provenance": _analysis_provenance(path, label),
+           "rc_dac": rc_dac, "rc_adc": rc_adc, "k": k, "tick_ns": e.TICK_NS,
            "ui_ticks": rc_dac, "nx": nx, "ny": ny, "ylo": ylo, "yb": yb,
            "samples": len(vals), "delta_ppm": trk["delta"] * 1e6,
            "model_adequate": trk["adequate"], "lattice_gcd": trk["lattice_gcd"],
@@ -348,6 +365,7 @@ def eye(path, rc_dac, rc_adc, k, out, ylo=1000.0, yhi=2400.0, yb=4.0):
 
 
 def both(a):
+    require_pair(a)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     raw = os.path.join(a.rawdir, "ets-cross-%s.bin" % stamp)
     me = os.path.abspath(__file__)
@@ -374,7 +392,20 @@ def both(a):
             crow.get("bad") or crow.get("error") or "rate mismatch")
         return row
     row.update(analyze(raw, a.rc, crow["rc_adc"]))
+    if getattr(a, "eye_out", None):
+        row["eye"] = eye(raw, a.rc, crow["rc_adc"], a.k, a.eye_out, label=a.label)
     return row
+
+
+def require_pair(a):
+    """Print what the planner says about the pair; refuse it unless forced."""
+    verdict = etsplan.check_pair(a.rc, a.rc_adc, same_board=False)
+    for note in verdict["notes"]:
+        print("note:", note, file=sys.stderr)
+    if verdict["problems"] and not a.force:
+        raise SystemExit("refusing DAC RC %d with ADC RC %d: %s. `plan` picks a pair; "
+                         "--force runs this one anyway."
+                         % (a.rc, a.rc_adc, "; ".join(verdict["problems"])))
 
 
 def fit_floor(points):
@@ -402,6 +433,7 @@ def fit_floor(points):
 
 def sweep(a):
     """`both` and `resolution` at each swing, then the floor fit."""
+    require_pair(a)
     rows, pts = [], []
     vpps = [float(x) for x in a.vpps.split(",")]
     for i, vpp in enumerate([vpps[0]] + vpps):          # the first run is dropped
@@ -429,11 +461,13 @@ def sweep(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=("both", "play", "capture", "analyze", "resolution", "sweep", "eye"))
+    ap.add_argument("what", choices=("plan", "both", "play", "capture", "analyze", "resolution", "sweep", "eye"))
     ap.add_argument("raw_in", nargs="?")
-    ap.add_argument("--rc", type=int, default=28, help="DAC RC; 28 is the playback floor")
+    ap.add_argument("--rc", type=int, default=DAC_RC,
+                    help="DAC RC; 28 is the playback floor, an odd RC is the default pairing")
     ap.add_argument("--rc-dac", type=int, dest="rc_dac")
-    ap.add_argument("--rc-adc", type=int, dest="rc_adc", default=ADC_RC)
+    ap.add_argument("--rc-adc", type=int, dest="rc_adc", default=ADC_RC,
+                    help="ADC RC; an even RC avoids the odd/even sample offset")
     ap.add_argument("--seconds", type=float, default=16.0)
     ap.add_argument("--vpp-mv", type=float, default=1000.0, dest="vpp_mv")
     ap.add_argument("--play-dut", default="dut1", dest="play_dut")
@@ -444,9 +478,19 @@ def main():
     ap.add_argument("--kp", type=int, default=2, help="`resolution`: bins per tick of the odd/even folds")
     ap.add_argument("--vpps", default="1000,700,500,350,250,175",
                     help="`sweep`: peak-to-peak swings in mV")
-    ap.add_argument("--eye-out", dest="eye_out", help="`eye`: where to write the JSON")
+    ap.add_argument("--eye-out", dest="eye_out", help="`eye`, `both`: where to write the eye JSON")
+    ap.add_argument("--label", help="`eye`, `both`: a name for the eye JSON's provenance")
+    ap.add_argument("--force", action="store_true", help="run a pair the planner refuses")
+    ap.add_argument("--symbol-hz", type=float, dest="symbol_hz", help="`plan`: the symbol rate wanted")
+    ap.add_argument("--same-board", action="store_true", dest="same_board",
+                    help="`plan`: the source and the ADC share one board and one clock")
     ap.add_argument("--out")
     a = ap.parse_args()
+    if a.what == "plan":
+        print(json.dumps(etsplan.plan(symbol_rate_hz=a.symbol_hz, same_board=a.same_board)))
+        return
+    if a.what == "capture":
+        require_pair(a)
     if a.what == "play":
         print(json.dumps(play(a.rc, a.seconds, a.vpp_mv)))
         return
@@ -461,7 +505,8 @@ def main():
                     f.write(json.dumps(r) + "\n")
         return
     if a.what == "eye":
-        print(json.dumps(eye(a.raw_in, a.rc_dac or a.rc, a.rc_adc, a.k, a.eye_out)))
+        print(json.dumps(eye(a.raw_in, a.rc_dac or a.rc, a.rc_adc, a.k, a.eye_out,
+                             label=a.label)))
         return
     if a.what == "resolution":
         row = resolution(a.raw_in, a.rc_dac or a.rc, a.rc_adc, a.k, a.kp)

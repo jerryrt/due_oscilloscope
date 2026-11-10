@@ -30,7 +30,7 @@ for sub in ("host", "tools", "tests"):
 import eqtime  # noqa: E402
 import measure  # noqa: E402
 import provenance  # noqa: E402
-import settletime as st  # noqa: E402
+import etsplan  # noqa: E402
 
 TC = eqtime.TC_CLOCK_HZ
 TICK_NS = 1e9 / TC
@@ -40,8 +40,6 @@ ADC_LSB_MV = 3300.0 / 4095
 #: DAC mV per code, from docs/hardware.md: code 0 about 546 mV and code
 #: 4095 about 2760 mV at the loop.
 DAC_LSB_MV = (2760.0 - 546.0) / 4095
-#: One channel's trigger floor (CLAUDE.md: RC 44, 1,022,727 Hz).
-ADC_ONE_CH_MIN_RC = 44
 
 PRBS7_LEN = 127
 #: Whole PRBS7 periods per host buffer, so the buffer is a multiple of
@@ -280,7 +278,7 @@ def selftest():
     bits = prbs7()
     rc_dac, tau = 28, 4.0
     P = len(bits) * rc_dac
-    rc_adc, _ = st.coprime_adc_rc(P, 45, floor=ADC_ONE_CH_MIN_RC)
+    rc_adc = etsplan.plan(rc_dac=rc_dac, same_board=True)["rc_adc"]
     vals = synth(bits, rc_dac, tau, rc_adc, 600000, 0.8, lag=37)
     got = run_stats(vals, rc_adc, rc_dac, bits)
     want = 2.197 * tau * TICK_NS
@@ -334,8 +332,9 @@ def one(board, rc_dac, seconds, vpp_mv):
     hz = measure.hz_for(rc_dac)
     assert measure.rc_for(hz) == rc_dac, (rc_dac, hz)
     P = len(bits) * rc_dac
-    rc_adc, adc_hz = st.coprime_adc_rc(P, ADC_ONE_CH_MIN_RC + 1,
-                                       floor=ADC_ONE_CH_MIN_RC)
+    pl = etsplan.plan(rc_dac=rc_dac, same_board=True)
+    assert pl["rc_dac"] == rc_dac and not pl["problems"], pl
+    rc_adc, adc_hz = pl["rc_adc"], measure.hz_for(pl["rc_adc"])
     res = measure.run_loop(board, dac_sps=hz, adc_hz=adc_hz, channels=1,
                            seconds=seconds, wave=wave_bytes(bits, lo, hi))
     ps = res.stream
