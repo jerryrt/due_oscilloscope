@@ -194,6 +194,12 @@ What the data show, and what they do not:
 - The ladder is straight (largest residual 0.72 codes), so the ends are not
   compressed. The Rigol's 8-bit steps are 4 codes of the PAM64 spacing, so its
   spacing figure (ratio 1.11) is not a check at this level count.
+- `montreal5` runs with probes on, which adds noise to the link. The failure is
+  recorded against that setup; the two-board pair on `linux-x1` decides whether
+  it is the setup or the signal.
+- The Rigol window was 0.85 V to 2.45 V (200 mV/div, offset -1.648 V) against a
+  signal of 0.65 V to 2.65 V, so its end levels were off screen and its spacing
+  (1.11 against 1.01 at PAM4 to PAM32) is not a measurement here.
 - Not established: why the ends settle slowly. A larger average step is too small
   an effect to explain it by itself; the DAC output stage near the ends of a 2 V
   swing (about 0.65 V and 2.65 V) is a hypothesis, untested.
