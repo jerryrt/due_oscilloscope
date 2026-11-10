@@ -168,6 +168,7 @@ the eye has been shown to the owner; the figures are in the records named.
 | 64 | `linux-x1`, two boards | pass | pass | pass | **FAIL** (2 V) | 64 levels, 2 V swing | 39.3 codes | 6 of 63 closed (-29 worst, top) | `ets-pam-linux-x1.jsonl` (diagnostic), `ets-pam64-eye-linux-x1.json`, `ets-pam64-steps-2v-linux-x1.txt` |
 | 64, 1.5 V | `linux-x1`, two boards | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes | all 63 open, 11-13, 0.55 wide | `ets-pam-linux-x1.jsonl`, `ets-pam64-1v5-eye-linux-x1.json`, `ets-pam64-steps-1v5-linux-x1.txt` |
 | 128, 1.5 V | `montreal5`, one board, 14 s | pass | pass | pass | **FAIL** | 128 levels, 1.5 V swing | 14.6 codes (11.8 mV) | all 127 closed, -7 codes | `ets-pam-montreal5.jsonl` (diagnostic row) |
+| 128, 1.5 V | `montreal5`, one board, 45 s, 43 M samples | pass | pass | pass | **FAIL** | 128 levels, 1.5 V swing | 14.6 codes | all 127 closed, -7 codes, 0.35-0.5 wide | `ets-pam-montreal5.jsonl`, `ets-pam128-eye-montreal5.json` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
@@ -228,6 +229,11 @@ What the data show, and what they do not:
 PAM128 at 1.5 V on `montreal5`, DAC RC 28 and ADC RC 47 (the pattern's 65,535
 symbols share the factors 3 and 5 with RC 45):
 
+- The full-length capture, 45 s (43.0 M samples, 23 per tick, 0 underruns, 144,666,624
+  bytes sent and received), gives the same on both runs: A3 to A5 pass, spacing
+  14.63 codes, smallest level separation 6.8 and 7.6 sigma, level spread 1.5
+  (2.1 at most), and A6 fails with all 127 eyes closed at -7 codes. The 14 s
+  capture below reads the same.
 - A 14 s capture (about 7 samples per tick, against the 20 planned) is clean
   and passes A3 to A5, with the ladder straight (largest residual 0.47 codes) and
   a spacing of 14.6 codes, and fails A6: all 127 eyes are closed, the smallest at
