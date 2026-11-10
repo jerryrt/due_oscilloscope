@@ -30,6 +30,12 @@ Pure Python on purpose: the venv carries no numpy.
 """
 import math
 
+#: Largest common factor of the ADC RC and the pattern period that block
+#: matching tolerates. The samples then land only on every `gcd`-th source
+#: tick, and at 4 the matches of a short block degrade from about 0.2 ticks
+#: of scatter to 1.1, with correlated residuals that read as a bad model.
+MAX_LATTICE_GCD = 2
+
 #: A block is taken as the pattern when its best correlation, as a share of
 #: the most a perfect match could give, is at least this. A block of idle
 #: level or of a different signal scores near 0; a matched one near 1.
@@ -47,40 +53,37 @@ def template(bits, rc_dac):
 
 
 def _corr(win, xs, tmpl, period, phi):
-    """Sum of sample * template at the phase `phi`, samples at ticks `xs`.
-
-    The template is read between its ticks by linear interpolation. The
-    samples sit on whole ticks, so a template read only at whole ticks would
-    not move until `phi` crossed one, and every match would be quantised to a
-    tick: 0.29 ticks of scatter in a block's phase on data with perfect timing.
-    """
+    """Sum of sample * template at the whole-tick phase `phi`."""
     acc = 0.0
-    p = int(period)
     for v, x in zip(win, xs):
-        u = (x + phi) % period
-        i = int(u)
-        f = u - i
-        acc += v * (tmpl[i] * (1.0 - f) + tmpl[(i + 1) % p] * f)
+        acc += v * tmpl[int((x + phi) % period)]
     return acc
 
 
-def _best_phase(win, xs, tmpl, period, lo, hi, step):
-    """The phase in [lo, hi) with the highest correlation, to a sub-step.
+def _best_phase(win, xs, tmpl, period, lo, hi, step=1.0):
+    """The phase in [lo, hi) with the highest correlation, to a sub-tick.
 
-    The correlation of an ideal NRZ pattern with itself falls linearly
-    either side of its peak, so the two flanks are extended to where they
-    meet.
+    The correlation is taken at whole-tick shifts, one tick apart, and the
+    peak read from a least squares parabola through its top five points.
+    Samples sit on whole ticks, so the correlation between whole-tick shifts
+    is piecewise linear and its maximum is always at one of them; reading a
+    fraction off the two neighbours with a triangle formula leaves a bias that
+    depends on where the true phase sits within the tick, a sawtooth of about
+    0.4 ticks that a smooth fit through the points removes (0.57 ticks of
+    block scatter on data with perfect timing against 0.2).
     """
+    lo, hi = float(math.floor(lo + 0.5)), float(math.floor(hi + 0.5))
     n = int(round((hi - lo) / step))
     cs = [_corr(win, xs, tmpl, period, lo + i * step) for i in range(n)]
     i = max(range(n), key=cs.__getitem__)
-    on_edge = i in (0, n - 1)
+    on_edge = i < 2 or i >= n - 2
     frac = 0.0
     if not on_edge:
-        left, mid, right = cs[i - 1], cs[i], cs[i + 1]
-        rise = mid - min(left, right)
-        if rise > 0:
-            frac = 0.5 * (right - left) / rise
+        y = cs[i - 2:i + 3]
+        b1 = (-2 * y[0] - y[1] + y[3] + 2 * y[4]) / 10.0
+        a2 = ((4 * y[0] + y[1] + y[3] + 4 * y[4]) - 2 * sum(y)) / 14.0
+        if a2 < 0:
+            frac = max(-1.0, min(1.0, -b1 / (2 * a2)))
     return lo + (i + frac) * step, cs[i], on_edge
 
 
@@ -228,6 +231,13 @@ def fold_warped(vals, rc_adc, model, period, k=1, start=0):
     return [a / c if c else None for a, c in zip(acc, cnt)], cnt
 
 
+def is_adequate(model, nblocks, lattice):
+    """Whether a fitted phase curve can be trusted for a fold."""
+    return (abs(model["rho1"]) <= RHO_MAX
+            and model["outliers"] <= MAX_OUTLIER_SHARE * nblocks
+            and lattice <= MAX_LATTICE_GCD)
+
+
 def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
                       first_blocks=40, stride=20, window=8.0):
     """Clock-ratio error of the source, from `vals`.
@@ -239,9 +249,12 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     phases about the fitted line in ticks, and `edge_hits` how many block
     matches landed on the edge of their search window (a sign the window
     was too narrow, and the fit should not be trusted). `skipped` counts
-    the blocks that did not look like the pattern and were left out.
+    the blocks that did not look like the pattern and were left out, and
+    `lattice_gcd` is the common factor of the ADC RC and the period, which
+    must not exceed `MAX_LATTICE_GCD` for the capture to count as modelled.
     """
     period = len(bits) * rc_dac
+    lattice = math.gcd(int(round(rc_adc)), period)
     tmpl = template(bits, rc_dac)
     mean = sum(vals) / len(vals)
     amp = (max(vals) - min(vals)) / 2.0 or 1.0
@@ -277,7 +290,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
             else:
                 pred = pts[-1][1]
             phi, c, hit = _best_phase(win, xs, tmpl, period, pred - window,
-                                      pred + window, 0.5)
+                                      pred + window, 1.0)
             if c / den < MIN_SCORE:
                 skipped += 1
                 j += stride
@@ -293,14 +306,14 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     rms = math.sqrt(sum((y - (fit[0] + fit[1] * x)) ** 2 for x, y in pts) / len(pts))
     model = fit_phase(pts)
     noise = block_noise(pts, first_blocks)
-    adequate = (abs(model["rho1"]) <= RHO_MAX
-                and model["outliers"] <= MAX_OUTLIER_SHARE * len(pts))
+    adequate = is_adequate(model, len(pts), lattice)
     # The source's phase in ticks is x / (1 + delta), so against the ADC's
     # ticks it falls at -delta / (1 + delta) per tick.
     delta = -sl / (1.0 + sl)
     return {"delta": delta, "period": period * (1.0 + delta), "blocks": len(pts),
             "rms": rms, "edge_hits": edge,
-            "skipped": skipped, "model": model, "block_noise": noise,
+            "skipped": skipped, "model": model, "points": pts, "block_noise": noise,
+            "lattice_gcd": lattice,
             "adequate": adequate}
 
 

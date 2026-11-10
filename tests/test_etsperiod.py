@@ -47,7 +47,7 @@ def _steady_curve(bits):
 
 
 def _samples(delta, n=N, sigma=0.002, seed=5, offset=311.7, odd_ticks=0.0,
-             wander=None):
+             wander=None, rc=RC_ADC):
     """`n` samples at ADC ticks `k * RC_ADC` of a source `delta` slow."""
     bits = ets_phase0.prbs7()
     curve = _steady_curve(bits)
@@ -55,7 +55,7 @@ def _samples(delta, n=N, sigma=0.002, seed=5, offset=311.7, odd_ticks=0.0,
     rnd = random.Random(seed)
     vals = []
     for k in range(n):
-        x = k * RC_ADC + (odd_ticks if k & 1 else 0.0)
+        x = k * rc + (odd_ticks if k & 1 else 0.0)
         u = (x / (1.0 + delta) + offset
              + (wander(k / n) if wander else 0.0)) % period
         i = int(u)
@@ -193,11 +193,33 @@ def test_an_abrupt_phase_jump_is_reported_as_not_modelled():
         trk["block_noise"])
 
 
-def test_a_block_match_is_not_quantised_to_a_tick():
-    """Samples sit on whole ticks, so a template read only at whole ticks
-    would not move until a phase crossed one: every match quantised, 0.29
-    ticks of scatter on data with perfect timing. Interpolating the template
-    halves it."""
-    bits, vals = _samples(60e-6)
-    got = etsperiod.track_clock_ratio(vals, RC_ADC, bits, RC_DAC)
-    assert got["model"]["rms"] < 0.22, got["model"]["rms"]
+def test_an_even_rc_capture_is_not_read_with_a_tick_dependent_bias():
+    """Samples on whole ticks make the correlation between whole-tick shifts
+    piecewise linear, and a triangle formula on its peak leaves a sawtooth
+    bias in the block phases: 0.57 ticks of scatter at RC 46 on data with
+    perfect timing. A parabola through the top points gives about 0.2."""
+    bits, vals = _samples(40e-6, n=900_000, rc=46)
+    got = etsperiod.track_clock_ratio(vals, 46, bits, RC_DAC)
+    assert got["model"]["rms"] < 0.35, got["model"]["rms"]
+    assert abs(got["delta"] - 40e-6) < 0.5 / (900_000 * 46), got["delta"]
+
+
+def test_an_adc_rc_sharing_a_factor_of_four_with_the_period_is_not_called_modelled():
+    """3,556 = 4 * 889, so RC 44 lands only on every fourth source tick and
+    the block matches degrade on perfect data; the capture must not read as
+    modelled, and RC 46 (common factor 2) must."""
+    bits, bad = _samples(-2.4e-6, n=900_000, rc=44)
+    got = etsperiod.track_clock_ratio(bad, 44, bits, RC_DAC)
+    assert got["lattice_gcd"] == 4 and got["adequate"] is False, got["lattice_gcd"]
+    bits, good = _samples(-2.4e-6, n=900_000, rc=46)
+    ok = etsperiod.track_clock_ratio(good, 46, bits, RC_DAC)
+    assert ok["lattice_gcd"] == 2 and ok["adequate"] is True, ok["model"]
+
+
+def test_each_part_of_the_adequacy_rule_can_fail_on_its_own():
+    fine = {"rho1": 0.0, "outliers": 0}
+    assert etsperiod.is_adequate(fine, 100, 2) is True
+    assert etsperiod.is_adequate(dict(fine, rho1=0.6), 100, 2) is False
+    assert etsperiod.is_adequate(dict(fine, outliers=20), 100, 2) is False
+    assert etsperiod.is_adequate(fine, 100, 4) is False, (
+        "a shared factor of 4 between the ADC RC and the period passed")

@@ -200,14 +200,31 @@ the model is the safeguard for a pair that wanders more. One capture (the RC 44
 control) is flagged not adequately modelled, with a phase scatter of 1.16
 ticks against 0.6 for the rest.
 
-The block-to-block scatter of the phase is 0.6 ticks on two boards and 0.22 on
-one, at every swing from 175 to 699 mV. It is not timing jitter. A synthetic
-capture with perfect timing at an even RC 46, with `linux-x1`'s edge shapes
-and noise, gives 0.56, 0.64 and 0.62 ticks at 1000, 350 and 175 mV, so it is
-what the block matcher returns on a clean signal. The matcher once read its
-template at whole ticks only, which quantised every match to a tick; it now
-interpolates between ticks, and a test holds that. The method uses only the
-sample stream and the timer constants (tick rate, ADC clock ratio, ADC RC),
+The block-to-block scatter of the phase is 0.6 ticks on two boards at every
+swing from 175 to 699 mV, against 0.22 on one board. It is the block matcher
+and not timing jitter: a synthetic capture with perfect timing at RC 46, with
+`linux-x1`'s edge shapes and noise, gives 0.56, 0.64 and 0.62 ticks at 1000, 350
+and 175 mV. The cause is the samples sitting on whole ticks. The correlation
+between whole-tick shifts is then piecewise linear and peaks at one of them, and
+a triangle formula on that peak leaves a bias that depends on where the true
+phase sits within the tick, a sawtooth of about 0.4 ticks. The matcher now reads
+the peak from a least-squares parabola through its top five points, which gives
+0.19 to 0.31 ticks on the same perfect data. The fold itself was never
+affected: a sawtooth averages out of a fitted line, which is why the edges did
+not move.
+
+The ADC RC also has to be well conditioned against the pattern. The period is
+`127 * rc_dac`, so at RC 28 it is 3,556 = 4 * 889. An ADC RC that shares a factor
+of 4 with it (44, 48) lands only on every fourth source tick, and short blocks
+then match badly: 1.1 ticks of scatter and neighbour correlation of 0.55 on
+perfect data, which is exactly what `linux-x1`'s RC 44 control showed (1.157 and
+0.557) and is why it was flagged. It was not a disturbance in that run. RC 45
+(factor 1) and RC 46, 50 (factor 2) are fine, and `etsperiod.MAX_LATTICE_GCD`
+holds the limit. **For a source with its own clock, pair an odd DAC RC with an
+even ADC RC**: RC 29 gives an odd period of 3,683, coprime with every even ADC
+RC, which on synthetic data gives 0.19 to 0.23 ticks at RC 44 to 50, and the
+even RC leaves nothing for the ADC start snap to correct. The method uses only
+the sample stream and the timer constants (tick rate, ADC clock ratio, ADC RC),
 so a different MCU or front end changes those constants and nothing else.
 
 ## The ADC's share of an edge
