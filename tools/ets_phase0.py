@@ -127,6 +127,7 @@ def analyze(curve, rc_dac, bits):
     ones = [x for x, c in zip(v, cls) if c]
     zeros = [x for x, c in zip(v, cls) if not c]
     out = {"b0_tick": round(b0, 2), "pattern_ok": shift is not None,
+           "shift": shift,
            "swing_codes": (sum(ones) / len(ones) - sum(zeros) / len(zeros)
                            if ones and zeros else 0.0)}
     if ones and zeros:

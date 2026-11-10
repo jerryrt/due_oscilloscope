@@ -104,3 +104,21 @@ def test_a_start_up_stretch_of_idle_level_is_skipped_and_the_ratio_still_found()
     got = etsperiod.track_clock_ratio(head + vals, RC_ADC, bits, RC_DAC)
     assert abs(got["delta"] + 80e-6) < 0.5 / (N * RC_ADC), got
     assert got["skipped"] >= 1, got
+
+
+def _resolution(delta, tmp_path):
+    import array
+    import ets_cross
+    bits, vals = _samples(delta, n=1_200_000)
+    path = tmp_path / "raw.bin"
+    path.write_bytes(array.array("H", [int(round(v)) for v in vals]).tobytes())
+    return ets_cross.resolution(str(path), RC_DAC, RC_ADC, 10, 2)
+
+
+def test_samples_of_an_independent_clock_fill_the_fine_bins_and_a_shared_one_does_not(tmp_path):
+    free = _resolution(60e-6, tmp_path)
+    locked = _resolution(0.0, tmp_path)
+    assert free["fine_filled_share"] > 0.9 and free["frac_min_over_max"] > 0.5, free
+    assert locked["fine_filled_share"] < 0.15, (
+        "samples on a shared clock reached the fine bins between ticks: the "
+        "measure cannot tell a lattice from a continuous position", locked)

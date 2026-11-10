@@ -3,6 +3,7 @@
 
     ets_cross.py both --rc 28 --seconds 16 [--play-dut dut1 --cap-dut dut2]
     ets_cross.py analyze RAW.bin --rc-dac 28 --rc-adc 45
+    ets_cross.py resolution RAW.bin --rc-dac 28 --rc-adc 45 [--k 10 --kp 2]
 
 The source board's DAC0 is wired to the capturing board's A0, so the two
 timers have separate crystals: the pattern's period in the capturing
@@ -133,6 +134,100 @@ def analyze(path, rc_dac, rc_adc):
     return row
 
 
+def _edge_offsets(curve, rc, bits, shift, b0, rising):
+    """50% crossing of isolated edges, in bins from the nominal boundary."""
+    L, P = len(bits), len(curve)
+    offs = []
+    for j in range(2, L - 1):
+        m = (j + shift) % L
+        pre, post = (0, 1) if rising else (1, 0)
+        if not (bits[(m - 2) % L] == bits[(m - 1) % L] == pre
+                and bits[m] == bits[(m + 1) % L] == post):
+            continue
+        c = b0 + j * rc
+
+        def level(centre):
+            d = max(1, rc // 8)
+            ctr = int(round(centre))
+            return sum(curve[(ctr + x) % P] for x in range(-d, d + 1)) / (2 * d + 1)
+        a_, b_ = level(c - rc / 2.0), level(c + rc / 2.0)
+        t = e._cross(curve, int(c - rc / 2), int(c + rc / 2), (a_ + b_) / 2, rising)
+        if t is not None:
+            offs.append(t - c)
+    return offs
+
+
+def resolution(path, rc_dac, rc_adc, k, kp):
+    """Where the samples land between ticks, and what that does to an edge."""
+    raw = array.array("H")
+    with open(path, "rb") as f:
+        raw.frombytes(f.read())
+    vals = [float(v) for v in raw[:MAX_SAMPLES]]
+    bits = e.prbs7()
+    L = len(bits)
+    trk = etsperiod.track_clock_ratio(vals, rc_adc, bits, rc_dac)
+    period = trk["period"]
+    unit = L * rc_dac
+    nb, nbp = unit * k, unit * kp
+    hist = [0] * 10
+    acc = [0.0] * nb
+    cnt = [0] * nb
+    pacc = [[0.0] * nbp, [0.0] * nbp]
+    pcnt = [[0] * nbp, [0] * nbp]
+    sc, sk, sp = unit / period, nb / period, nbp / period
+    step = rc_adc % period
+    ph = 0.0
+    for n, v in enumerate(vals):
+        u = ph * sc
+        hist[min(9, int((u - int(u)) * 10))] += 1
+        i = min(int(ph * sk), nb - 1)
+        acc[i] += v
+        cnt[i] += 1
+        i = min(int(ph * sp), nbp - 1)
+        pacc[n & 1][i] += v
+        pcnt[n & 1][i] += 1
+        ph += step
+        if ph >= period:
+            ph -= period
+    row = {"samples": len(vals), "delta_ppm": trk["delta"] * 1e6,
+           "frac_hist_10": hist, "frac_min_over_max": min(hist) / max(hist),
+           "bins_per_tick": k, "fine_filled_share": sum(1 for c in cnt if c >= 20) / nb,
+           "fine_min_per_bin": min(cnt), "track_rms_ticks": trk["rms"]}
+    tick_ns = e.TICK_NS
+    if min(cnt) < 20:
+        row["note"] = "fine fold has holes: the samples sit on a lattice, no edge reading"
+        return row
+    curve = [a / c for a, c in zip(acc, cnt)]
+    fig, b0 = e.analyze(curve, rc_dac * k, bits)
+    row.update({"pattern_ok": fig["pattern_ok"], "eye_frac": fig.get("eye_frac"),
+                "rise_ns_fine": fig["rise_ns"] / k if fig["rise_ns"] else None,
+                "fall_ns_fine": fig["fall_ns"] / k if fig["fall_ns"] else None})
+    if not fig["pattern_ok"]:
+        return row
+    shift = fig["shift"]
+    for name, rising in (("rise", True), ("fall", False)):
+        offs = _edge_offsets(curve, rc_dac * k, bits, shift, b0, rising)
+        if offs:
+            mean = sum(offs) / len(offs)
+            row["edge50_%s_n" % name] = len(offs)
+            row["edge50_%s_sd_ns" % name] = math.sqrt(
+                sum((x - mean) ** 2 for x in offs) / len(offs)) * tick_ns / k
+    if min(min(pcnt[0]), min(pcnt[1])) >= 20:
+        pc = [[a / c for a, c in zip(pacc[i], pcnt[i])] for i in (0, 1)]
+        for name, rising in (("rise", True), ("fall", False)):
+            m = []
+            for i in (0, 1):
+                o = _edge_offsets(pc[i], rc_dac * kp, bits, shift,
+                                  b0 * kp / k, rising)
+                m.append(sum(o) / len(o) * tick_ns / kp if o else None)
+            row["edge50_%s_even_ns" % name], row["edge50_%s_odd_ns" % name] = m
+            if None not in m:
+                row["edge50_%s_odd_minus_even_ns" % name] = m[1] - m[0]
+    else:
+        row["parity_note"] = "a parity fold has holes at %d bins per tick" % kp
+    return row
+
+
 def both(a):
     stamp = time.strftime("%Y%m%d-%H%M%S")
     raw = os.path.join(a.rawdir, "ets-cross-%s.bin" % stamp)
@@ -164,7 +259,7 @@ def both(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=("both", "play", "capture", "analyze"))
+    ap.add_argument("what", choices=("both", "play", "capture", "analyze", "resolution"))
     ap.add_argument("raw_in", nargs="?")
     ap.add_argument("--rc", type=int, default=28, help="DAC RC; 28 is the playback floor")
     ap.add_argument("--rc-dac", type=int, dest="rc_dac")
@@ -175,6 +270,8 @@ def main():
     ap.add_argument("--cap-dut", default="dut2", dest="cap_dut")
     ap.add_argument("--raw", help="where `capture` writes its samples")
     ap.add_argument("--rawdir", default="/tmp", help="where `both` keeps the raw capture")
+    ap.add_argument("--k", type=int, default=10, help="`resolution`: fine bins per tick")
+    ap.add_argument("--kp", type=int, default=2, help="`resolution`: bins per tick of the odd/even folds")
     ap.add_argument("--out")
     a = ap.parse_args()
     if a.what == "play":
@@ -183,8 +280,11 @@ def main():
     if a.what == "capture":
         print(json.dumps(capture(a.seconds, a.raw)))
         return
-    row = (analyze(a.raw_in, a.rc_dac or a.rc, a.rc_adc) if a.what == "analyze"
-           else both(a))
+    if a.what == "resolution":
+        row = resolution(a.raw_in, a.rc_dac or a.rc, a.rc_adc, a.k, a.kp)
+    else:
+        row = (analyze(a.raw_in, a.rc_dac or a.rc, a.rc_adc) if a.what == "analyze"
+               else both(a))
     print(json.dumps(row))
     if a.out:
         with open(a.out, "a", encoding="utf-8") as f:
