@@ -35,6 +35,10 @@ EXCLUDED = {
         "a clock recorded in a synthetic row, the input to the mixed-clock refusal",
     ("tests/test_issue5_metric.py", 78_000_000):
         "the clock recorded in a synthetic row, the input to the refusal",
+    ("tests/test_pam_oracle.py", 8191):
+        "PAM64's symbols per period, 2^13 - 1, not a rate",
+    ("tests/test_etspattern.py", 8191):
+        "PAM64's symbols per period, 2^13 - 1, not a rate",
     ("tests/test_dso_metrics.py", 11775):
         "a sample count of a synthetic record, not a rate",
     ("tests/test_dso_metrics.py", 65000):

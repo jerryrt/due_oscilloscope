@@ -1,0 +1,12 @@
+# The fast path of the ETS analysis (host/dsp.py). Optional: without it the
+# pure-Python reference in host/etsperiod.py runs, which is the oracle the
+# equivalence tests (tests/test_dsp_equivalence.py) hold numpy to, and is
+# fast enough for PAM4 to PAM32. PAM64 and up need this.
+#
+#   .venv/bin/pip install -r requirements-dsp.txt
+#
+# One pin serves both interpreters in use: 2.3.x has wheels for Python 3.11
+# to 3.14, so the container's 3.12 and a bench's newer venv install the same
+# version. CUDA is not listed: host/dsp.py uses it only where pycuda imports
+# and a device answers, and nothing here installs that.
+numpy==2.3.5
