@@ -159,11 +159,24 @@ The last row is the ADC start snapping to the ADC's own clock. The odd and
 even samples of a run differ by exactly one 45 MHz tick on every edge of both
 kinds, so it is a pure time shift and not an amplitude or bandwidth effect,
 and the odd samples are taken one tick earlier. Pooling them blurs every edge
-by that tick, and `ets_cross.py resolution` moves the odd samples back by the
-offset it measures and folds again. An even ADC RC puts every trigger at the
-same phase of the ADC clock, which should leave nothing to correct; that is a
-control still to be run (`ets_cross.py both --rc-adc 46`, where the odd-minus-even
-figure must read zero).
+by that tick. Two ways to deal with it, both measured on the same two Dues
+(DUT1 DAC0 into DUT2 A0, RC 28, 8 M samples each):
+
+| ADC RC | odd minus even | rise, 10-90% | fall, 10-90% |
+|---|---|---|---|
+| 45, pooled | +22.20 ns | 139.4 ns | 131.3 ns |
+| 45, odd samples moved back | n/a | 137.3 ns | 128.3 ns |
+| 46 | -0.016 ns | 137.0 ns | 127.9 ns |
+| 44 | -0.011 ns | 137.6 ns | 127.9 ns |
+
+An even ADC RC puts every trigger at the same phase of the ADC clock, so
+there is nothing to correct, and its uncorrected edges match the corrected
+odd-RC ones to 0.3 ns. **For a source with its own clock, capture at an even
+RC.** The same-board path cannot: the pattern period `127 * rc_dac` is even,
+and the fold needs an ADC RC coprime with it, so it is forced onto an odd one.
+
+The clock ratio itself moved from -2.52 to -2.40 ppm over the four runs, so
+the boards' relative clock wanders at the tenth-of-a-ppm level over minutes.
 
 The resolution is still bounded by the track-and-hold's rise, which is
 estimated and not measured *(check)*, by the source's edge jitter, and by how
