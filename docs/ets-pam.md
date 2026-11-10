@@ -156,7 +156,7 @@ the eye has been shown to the owner; the figures are in the records named.
 | PAM | bench | A3 | A4 | A5 | A6 | levels, ADC codes | spacing | eyes, codes high, symbols wide | records |
 |---|---|---|---|---|---|---|---|---|---|
 | 4 | `montreal5`, one board | pass | pass | pass | pass | 1428.5, 1841.1, 2253.4, 2666.0 | 412.5 codes, 332 mV | 393-394, 0.90 | `ets-pam-montreal5.jsonl`, `ets-pam4-eye-montreal5.json` |
-| 4 | `linux-x1`, two boards | pending | | | | | | | |
+| 4 | `linux-x1`, two boards | pass | pass | pass | pass | 1425.5, 1838.9, 2252.0, 2665.4 | 413.3 codes | 396-397, 0.85-0.90 | `ets-pam-linux-x1.jsonl`, `ets-pam4-eye-linux-x1.json` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
@@ -166,6 +166,13 @@ no gaps, with a capture of 13.9 M samples. One clock, so the samples sit on 56 o
 them all. The first run of this analysis failed A4 to A6, from a defect in the
 analysis and not in the signal: the capture's trimmed start was not passed to
 the labelling pass.
+
+The two benches' PAM4 agree: level spacing within 0.2% (412.5 against 413.3
+codes), eye heights 393-394 against 396-397 codes. The two-board level spread is
+2.4 codes against 1.5 on one board; it has not been explained, and the figures
+cannot say whether it is the second ADC, the ADC RC (46 against 45) or the
+cross-wiring. A2 on `linux-x1`: 0 underruns, no gaps, 15.6 M samples, two runs
+identical to three digits.
 
 ## Defaults taken, to be confirmed
 
