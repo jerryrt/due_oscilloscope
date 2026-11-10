@@ -113,3 +113,27 @@ def center(vals):
     mean = float(v.mean(dtype=np.float64))
     amp = (hi - lo) / 2.0 or 1.0
     return (v.astype(np.float64) - mean) / amp, mean, amp
+
+
+#: Phases at or above which a search takes `corr_scan` rather than `corr_many`.
+SCAN_MIN = 2048
+
+
+def corr_scan(win, xs, tmpl, period, lo, n):
+    """`corr_many` over the whole-tick phases `lo .. lo + n - 1`, without the
+    `n x len(win)` index matrix.
+
+    The first, global search of the tracker tries every phase of the pattern:
+    1.9 M of them at PAM128, against a 150-sample block, which `corr_many`
+    would build as 285 M indices (2.3 GB, and a run that never finished). Each
+    sample instead adds its weight times a slice of the doubled template, so
+    the memory is the template and the work is `len(win)` passes over it.
+    `xs` and `lo` must be whole ticks and `n` at most `period`.
+    """
+    t = np.asarray(tmpl, dtype=np.float64)
+    t2 = np.concatenate([t, t])
+    acc = np.zeros(n, dtype=np.float64)
+    for w, x in zip(np.asarray(win, dtype=np.float64).tolist(), xs):
+        s = (int(x) + int(lo)) % period
+        acc += w * t2[s:s + n]
+    return acc

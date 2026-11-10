@@ -82,12 +82,16 @@ def _best_phase(win, xs, tmpl, period, lo, hi, step=1.0):
     """
     lo, hi = float(math.floor(lo + 0.5)), float(math.floor(hi + 0.5))
     n = int(round((hi - lo) / step))
-    phis = [lo + i * step for i in range(n)]
-    if dsp.name() == "numpy":
-        cs = dsp.corr_many(win, xs, tmpl, period, phis)
+    if dsp.name() == "numpy" and n >= dsp.SCAN_MIN and step == 1.0 and n <= period:
+        cs = dsp.corr_scan(win, xs, tmpl, period, lo, n)     # whole-tick phases
+    elif dsp.name() == "numpy":
+        cs = dsp.corr_many(win, xs, tmpl, period, [lo + i * step for i in range(n)])
     else:
-        cs = [_corr(win, xs, tmpl, period, p) for p in phis]
-    i = max(range(n), key=cs.__getitem__)
+        cs = [_corr(win, xs, tmpl, period, lo + i * step) for i in range(n)]
+    if hasattr(cs, "argmax"):
+        i = int(cs.argmax())
+    else:
+        i = max(range(n), key=cs.__getitem__)
     on_edge = i < 2 or i >= n - 2
     frac = 0.0
     if not on_edge:
@@ -96,7 +100,7 @@ def _best_phase(win, xs, tmpl, period, lo, hi, step=1.0):
         a2 = ((4 * y[0] + y[1] + y[3] + 4 * y[4]) - 2 * sum(y)) / 14.0
         if a2 < 0:
             frac = max(-1.0, min(1.0, -b1 / (2 * a2)))
-    return lo + (i + frac) * step, cs[i], on_edge
+    return lo + (i + frac) * step, float(cs[i]), on_edge
 
 
 MAX_DEGREE = 6
@@ -273,12 +277,14 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     lattice = math.gcd(int(round(rc_adc)), period)
     tmpl = template(bits, rc_dac, levels)
     if dsp.name() == "numpy":
+        tmpl = dsp.np.asarray(tmpl, dtype=dsp.np.float64)   # once, not per block
         cen, mean, amp = dsp.center(vals)
     else:
         mean = sum(vals) / len(vals)
         amp = (max(vals) - min(vals)) / 2.0 or 1.0
         cen = [(v - mean) / amp for v in vals]
     pts = []                                   # (x of block centre, unwrapped phase)
+    line = _RunningLine()                      # the same line, kept as blocks arrive
     edge = skipped = 0
     j = 0
     nblk = len(vals) // block
@@ -304,7 +310,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
                 continue
         else:
             if len(pts) >= 3:
-                sl = _slope(pts)
+                sl = line.slope()
                 pred = pts[-1][1] + sl * (xm - pts[-1][0])
             else:
                 pred = pts[-1][1]
@@ -316,6 +322,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
                 continue
             edge += hit
         pts.append((xm, phi))
+        line.add(xm, phi)
         j += 1 if len(pts) < first_blocks else stride
     if len(pts) < 8:
         raise ValueError("fewer than 8 blocks looked like the pattern: "
@@ -334,6 +341,27 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
             "skipped": skipped, "model": model, "points": pts, "block_noise": noise,
             "lattice_gcd": lattice,
             "adequate": adequate}
+
+
+class _RunningLine:
+    """Least-squares slope of the points added so far, in constant time per
+    point. Refitting every block from the list made the tracker quadratic:
+    most of 55 s on 44 M samples."""
+
+    def __init__(self):
+        self.n = 0
+        self.mx = self.my = self.sxx = self.sxy = 0.0
+
+    def add(self, x, y):
+        self.n += 1
+        dx = x - self.mx
+        self.mx += dx / self.n
+        self.my += (y - self.my) / self.n
+        self.sxx += dx * (x - self.mx)
+        self.sxy += dx * (y - self.my)
+
+    def slope(self):
+        return self.sxy / self.sxx if self.sxx else 0.0
 
 
 def _fit(pts):
