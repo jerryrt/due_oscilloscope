@@ -19,7 +19,7 @@ def _stream(frames, seed=7, tags=(0, 1)):
     out = []
     sent = {t: [] for t in tags}
     for seq in range(1, frames + 1):
-        hdr = struct.pack(measure.HDR_FMT, measure.MAGIC, 3, 0, 0x03, seq, 402061, 1000 + seq * 5000, 0, 0, 0)
+        hdr = struct.pack(measure.HDR_FMT, measure.MAGIC, 3, 0, 0x03, seq, measure.hz_for(112), 1000 + seq * 5000, 0, 0, 0)
         hdr = hdr[:measure.HDR_LEN - 4]
         body = bytearray()
         for i in range(measure.FRAME_SAMPLES):
