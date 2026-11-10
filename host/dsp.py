@@ -1,24 +1,20 @@
-"""The ETS analysis's inner loops, with the backend chosen at run time.
+"""The ETS analysis's inner loops, as numpy array operations.
 
-`etsperiod` keeps its pure-Python code as the reference. This module holds
-the same three computations vectorised: the correlation of a block against
-the pattern at many phases, the fold on a non-integer period, and the fold
-on a fitted phase curve. `tests/test_dsp_equivalence.py` holds each one to
-the reference.
+numpy is required: the host's heavy computation is array operations, and
+there is no pure-Python path behind them. This module holds the correlation
+of a block against the pattern at many phases, the fold on a non-integer
+period, the fold on a fitted phase curve and the thread pool the chunked
+stages run on. The tests hold each one to a known answer.
 
-Backends, by `DUE_DSP`: `python` runs the reference, `numpy` the vectorised
-code, and unset or `auto` takes numpy when it imports and the reference
-otherwise. `cuda` is accepted only where pycuda imports and a device
-answers, and no CUDA kernel exists yet: asking for it raises, rather than
-quietly running something else.
+`DUE_DSP` names the backend: unset, `auto` or `numpy` is numpy. `python`
+is refused, since nothing implements it, and `cuda` only where pycuda
+imports and a device answers (no CUDA kernel is wired in here yet): asking
+for either raises, rather than quietly running something else.
 """
 import os
 from concurrent.futures import ThreadPoolExecutor
 
-try:
-    import numpy as np
-except ImportError:
-    np = None
+import numpy as np
 
 
 class BackendUnavailable(RuntimeError):
@@ -35,21 +31,16 @@ def _cuda_present():
 
 
 def name():
-    """The backend in force: 'python' or 'numpy'."""
+    """The backend in force: 'numpy'."""
     want = (os.environ.get("DUE_DSP") or "auto").lower()
-    if want == "python":
-        return "python"
-    if want == "numpy":
-        if np is None:
-            raise BackendUnavailable("DUE_DSP=numpy but numpy does not import")
+    if want in ("auto", "numpy"):
         return "numpy"
     if want == "cuda":
         if not _cuda_present():
             raise BackendUnavailable("DUE_DSP=cuda but no pycuda device answers")
         raise BackendUnavailable("DUE_DSP=cuda: no CUDA kernel is written yet")
-    if want != "auto":
-        raise BackendUnavailable("DUE_DSP=%r is not python, numpy, cuda or auto" % want)
-    return "numpy" if np is not None else "python"
+    raise BackendUnavailable("DUE_DSP=%r is not numpy, cuda or auto; there is no pure-Python "
+                             "backend" % want)
 
 
 def corr_many(win, xs, tmpl, period, phis):

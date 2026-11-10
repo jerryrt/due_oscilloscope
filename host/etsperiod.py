@@ -26,10 +26,12 @@ tell a period that is 8 ticks out by the end of its window from the right
 one, because a flat top hides the error, so each stage's pick is noise and
 the next stage starts from the wrong place.
 
-Pure Python is the reference; `dsp` carries the same loops vectorised, and
-the equivalence tests hold it to what is written here.
+The work is numpy array operations (`dsp`); there is no pure-Python path
+behind it, and `tests/test_etsperiod.py` holds it to clocks known by construction.
 """
 import math
+
+import numpy as np
 
 import dsp
 
@@ -57,15 +59,7 @@ def template(bits, rc_dac, levels=2):
     template runs from -1 for level 0 to +1 for the top level.
     """
     top = float(levels - 1)
-    return [2.0 * b / top - 1.0 for b in bits for _ in range(rc_dac)]
-
-
-def _corr(win, xs, tmpl, period, phi):
-    """Sum of sample * template at the whole-tick phase `phi`."""
-    acc = 0.0
-    for v, x in zip(win, xs):
-        acc += v * tmpl[int((x + phi) % period)]
-    return acc
+    return (2.0 * np.asarray(bits, dtype=np.float64) / top - 1.0).repeat(rc_dac)
 
 
 def _best_phase(win, xs, tmpl, period, lo, hi, step=1.0):
@@ -82,22 +76,18 @@ def _best_phase(win, xs, tmpl, period, lo, hi, step=1.0):
     """
     lo, hi = float(math.floor(lo + 0.5)), float(math.floor(hi + 0.5))
     n = int(round((hi - lo) / step))
-    if dsp.name() == "numpy" and n >= dsp.SCAN_MIN and step == 1.0 and n <= period:
+    if n >= dsp.SCAN_MIN and step == 1.0 and n <= period:
         cs = dsp.corr_scan(win, xs, tmpl, period, lo, n)     # whole-tick phases
-    elif dsp.name() == "numpy":
-        cs = dsp.corr_many(win, xs, tmpl, period, [lo + i * step for i in range(n)])
     else:
-        cs = [_corr(win, xs, tmpl, period, lo + i * step) for i in range(n)]
-    if hasattr(cs, "argmax"):
-        i = int(cs.argmax())
-    else:
-        i = max(range(n), key=cs.__getitem__)
+        cs = np.asarray(dsp.corr_many(win, xs, tmpl, period,
+                                      [lo + i * step for i in range(n)]))
+    i = int(cs.argmax())
     on_edge = i < 2 or i >= n - 2
     frac = 0.0
     if not on_edge:
         y = cs[i - 2:i + 3]
         b1 = (-2 * y[0] - y[1] + y[3] + 2 * y[4]) / 10.0
-        a2 = ((4 * y[0] + y[1] + y[3] + 4 * y[4]) - 2 * sum(y)) / 14.0
+        a2 = ((4 * y[0] + y[1] + y[3] + 4 * y[4]) - 2 * y.sum()) / 14.0
         if a2 < 0:
             frac = max(-1.0, min(1.0, -b1 / (2 * a2)))
     return lo + (i + frac) * step, float(cs[i]), on_edge
@@ -115,34 +105,16 @@ MAX_OUTLIER_SHARE = 0.05
 SEGMENT = 2048
 
 
-def _solve(a, b):
-    n = len(b)
-    m = [row[:] + [b[i]] for i, row in enumerate(a)]
-    for c in range(n):
-        piv = max(range(c, n), key=lambda r: abs(m[r][c]))
-        m[c], m[piv] = m[piv], m[c]
-        for r in range(c + 1, n):
-            f = m[r][c] / m[c][c]
-            for k in range(c, n + 1):
-                m[r][k] -= f * m[c][k]
-    x = [0.0] * n
-    for r in range(n - 1, -1, -1):
-        x[r] = (m[r][n] - sum(m[r][k] * x[k] for k in range(r + 1, n))) / m[r][r]
-    return x
-
-
-def _polyfit(ts, ys, deg):
-    pw = [sum(t ** k for t in ts) for k in range(2 * deg + 1)]
-    a = [[pw[i + j] for j in range(deg + 1)] for i in range(deg + 1)]
-    b = [sum(y * t ** i for t, y in zip(ts, ys)) for i in range(deg + 1)]
-    return _solve(a, b)
-
-
 def _horner(coef, t):
     v = 0.0
     for c in reversed(coef):
         v = v * t + c
     return v
+
+
+def _polyfit(ts, ys, deg):
+    """Least-squares polynomial of degree `deg`, lowest coefficient first."""
+    return np.polyfit(ts, ys, deg)[::-1].tolist()
 
 
 def fit_phase(pts):
@@ -156,16 +128,16 @@ def fit_phase(pts):
     `sigma_model` the curve's own standard error in ticks: how well the
     time axis of a fold on it is known, whatever the bin width.
     """
-    xs = [p[0] for p in pts]
+    p = np.asarray(pts, dtype=np.float64)
+    xs, ys = p[:, 0], p[:, 1]
     xmid, xhalf = (xs[0] + xs[-1]) / 2.0, (xs[-1] - xs[0]) / 2.0 or 1.0
-    ts = [(x - xmid) / xhalf for x in xs]
-    ys = [p[1] for p in pts]
-    n = len(pts)
+    ts = (xs - xmid) / xhalf
+    n = len(ys)
     best = None
     rss_by = {}
     for deg in range(1, MAX_DEGREE + 1):
         coef = _polyfit(ts, ys, deg)
-        rss = sum((y - _horner(coef, t)) ** 2 for t, y in zip(ts, ys))
+        rss = float(((ys - _horner(coef, ts)) ** 2).sum())
         rss_by[deg] = rss
         bic = n * math.log(rss / n + 1e-12) + (deg + 1) * math.log(n)
         if best is None or bic < best[0]:
@@ -173,99 +145,66 @@ def fit_phase(pts):
     _, deg, coef = best
     # A block that matches badly is an outlier to drop, not a feature of the
     # clock: refit without the ones far outside the rest, a few passes at most.
-    keep = list(range(n))
+    keep = np.arange(n)
     for _ in range(3):
-        res = [ys[i] - _horner(coef, ts[i]) for i in keep]
-        sig = 1.4826 * sorted(abs(r) for r in res)[len(res) // 2] or 1e-12
-        kept = [i for i, r in zip(keep, res) if abs(r) <= OUTLIER_SIGMA * sig]
+        res = ys[keep] - _horner(coef, ts[keep])
+        sig = 1.4826 * np.sort(np.abs(res))[len(res) // 2] or 1e-12
+        kept = keep[np.abs(res) <= OUTLIER_SIGMA * sig]
         if len(kept) == len(keep) or len(kept) < 8:
             break
         keep = kept
-        coef = _polyfit([ts[i] for i in keep], [ys[i] for i in keep], deg)
-    res = [ys[i] - _horner(coef, ts[i]) for i in keep]
+        coef = _polyfit(ts[keep], ys[keep], deg)
+    res = ys[keep] - _horner(coef, ts[keep])
     nk = len(keep)
-    ss = sum(r * r for r in res) or 1e-12
-    rho1 = sum(a * b for a, b in zip(res, res[1:])) / ss
+    ss = float((res * res).sum()) or 1e-12
+    rho1 = float((res[:-1] * res[1:]).sum()) / ss
     rms_k = math.sqrt(ss / nk)
     lin = _polyfit(ts, ys, 1)
-    grid = [i / 100.0 * 2 - 1 for i in range(101)]
-    resid = [_horner(coef, t) - _horner(lin, t) for t in grid]
-    return {"coef": coef, "xmid": xmid, "xhalf": xhalf, "degree": deg,
+    grid = np.arange(101) / 100.0 * 2 - 1
+    resid = _horner(coef, grid) - _horner(lin, grid)
+    return {"coef": coef, "xmid": float(xmid), "xhalf": float(xhalf), "degree": deg,
             "rms": rms_k, "rms_linear": math.sqrt(rss_by[1] / n),
-            "wander_ptp": max(resid) - min(resid), "rho1": rho1,
+            "wander_ptp": float(resid.max() - resid.min()), "rho1": rho1,
             "sigma_model": rms_k * math.sqrt((deg + 1) / nk),
-            "outliers": n - nk}
+            "outliers": int(n - nk)}
 
 
 def phase_at(model, x):
+    """The fitted phase at `x`, a number or an array."""
     return _horner(model["coef"], (x - model["xmid"]) / model["xhalf"])
 
 
 def block_noise(pts, consecutive):
     """Scatter of a block match, from second differences of neighbours."""
-    ph = [p[1] for p in pts[:consecutive]]
+    ph = np.asarray([p[1] for p in pts[:consecutive]], dtype=np.float64)
     if len(ph) < 6:
         return None
-    d2 = [ph[i + 1] - 2 * ph[i] + ph[i - 1] for i in range(1, len(ph) - 1)]
-    return math.sqrt(sum(d * d for d in d2) / len(d2) / 6.0)
-
-
-def phase_indices(n, rc_adc, model, period, k=1, start=0):
-    """Fold bin of each of `n` samples on the fitted phase curve.
-
-    The bin is `k` per source tick over a pattern of `period` ticks, so the
-    result runs 0 to `period * k - 1`. The curve is evaluated at the ends of
-    segments of `SEGMENT` samples and followed linearly between them.
-    """
-    nb = period * k
-    i = 0
-    while i < n:
-        m = min(SEGMENT, n - i)
-        x0 = (start + i) * rc_adc
-        x1 = (start + i + m) * rc_adc
-        p0 = x0 + phase_at(model, x0)
-        dp = (x1 + phase_at(model, x1) - p0) / m
-        u = p0 % period
-        for _ in range(m):
-            yield int(u * k) % nb
-            u += dp
-            if u >= period:
-                u -= period
-            elif u < 0:
-                u += period
-        i += m
+    d2 = ph[2:] - 2 * ph[1:-1] + ph[:-2]
+    return math.sqrt(float((d2 * d2).mean()) / 6.0)
 
 
 def fold_warped(vals, rc_adc, model, period, k=1, start=0):
     """Mean per bin on the fitted phase curve: `(curve, counts)`."""
     nb = period * k
-    if dsp.name() == "numpy":
-        v = dsp.np.asarray(vals)
+    v = np.asarray(vals)
 
-        def part(a, b):
-            acc = dsp.np.zeros(nb)
-            cnt = dsp.np.zeros(nb, dtype=dsp.np.int64)
-            for i in range(a, b, dsp.CHUNK):                 # small chunks stay in cache
-                m = min(dsp.CHUNK, b - i)
-                idx = dsp.phase_indices(m, rc_adc, lambda x: phase_at(model, x),
-                                        period, k, start + i, SEGMENT)
-                acc += dsp.np.bincount(idx, weights=v[i:i + m].astype(dsp.np.float64),
-                                       minlength=nb)
-                cnt += dsp.np.bincount(idx, minlength=nb)
-            return acc, cnt
-        parts = dsp.map_ranges(part, len(v), SEGMENT)
-        acc = sum(p[0] for p in parts)
-        cnt = sum(p[1] for p in parts)
-        with dsp.np.errstate(invalid="ignore", divide="ignore"):
-            mean = acc / cnt
-        return ([None if c == 0 else m for m, c in zip(mean.tolist(), cnt.tolist())],
-                cnt.tolist())
-    acc = [0.0] * nb
-    cnt = [0] * nb
-    for v, i in zip(vals, phase_indices(len(vals), rc_adc, model, period, k, start)):
-        acc[i] += v
-        cnt[i] += 1
-    return [a / c if c else None for a, c in zip(acc, cnt)], cnt
+    def part(a, b):
+        acc = np.zeros(nb)
+        cnt = np.zeros(nb, dtype=np.int64)
+        for i in range(a, b, dsp.CHUNK):                     # small chunks stay in cache
+            m = min(dsp.CHUNK, b - i)
+            idx = dsp.phase_indices(m, rc_adc, lambda x: phase_at(model, x),
+                                    period, k, start + i, SEGMENT)
+            acc += np.bincount(idx, weights=v[i:i + m].astype(np.float64), minlength=nb)
+            cnt += np.bincount(idx, minlength=nb)
+        return acc, cnt
+    parts = dsp.map_ranges(part, len(v), SEGMENT)
+    acc = sum(p[0] for p in parts)
+    cnt = sum(p[1] for p in parts)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mean = acc / cnt
+    return ([None if c == 0 else m for m, c in zip(mean.tolist(), cnt.tolist())],
+            cnt.tolist())
 
 
 def is_adequate(model, nblocks, lattice):
@@ -294,7 +233,6 @@ def _blocks_batched(cen, absum, tmpl, period, coarse, start, block, rc_adc,
     `first_blocks` in a row, then every `stride`-th), the same whole-tick
     correlation and the same parabola on its top five points.
     """
-    np = dsp.np
     nblk = len(absum)
     xm0 = coarse["points"][0][0]
     j0 = int((xm0 / rc_adc - start - block // 2) // block)
@@ -343,8 +281,29 @@ def _blocks_batched(cen, absum, tmpl, period, coarse, start, block, rc_adc,
     return pts, int(edge[keep].sum()), int((~keep).sum())
 
 
+def _finish(pts, edge, skipped, period, lattice, first_blocks, nblk):
+    if len(pts) < 8:
+        raise ValueError("fewer than 8 blocks looked like the pattern: "
+                         "%d of %d" % (len(pts), nblk))
+    p = np.asarray(pts, dtype=np.float64)
+    b, a = np.polyfit(p[:, 0], p[:, 1], 1)
+    sl = float(b)
+    rms = math.sqrt(float(((p[:, 1] - (a + b * p[:, 0])) ** 2).mean()))
+    model = fit_phase(pts)
+    noise = block_noise(pts, first_blocks)
+    adequate = is_adequate(model, len(pts), lattice)
+    # The source's phase in ticks is x / (1 + delta), so against the ADC's
+    # ticks it falls at -delta / (1 + delta) per tick.
+    delta = -sl / (1.0 + sl)
+    return {"delta": delta, "period": period * (1.0 + delta), "blocks": len(pts),
+            "rms": rms, "edge_hits": edge,
+            "skipped": skipped, "model": model, "points": pts, "block_noise": noise,
+            "lattice_gcd": lattice,
+            "adequate": adequate}
+
+
 def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
-                      first_blocks=40, stride=20, window=8.0, levels=2, batched=None):
+                      first_blocks=40, stride=20, window=8.0, levels=2, batched=True):
     """Clock-ratio error of the source, from `vals`.
 
     `vals[0]` is sample number `start` of the run, so sample `k` is at tick
@@ -357,40 +316,28 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     the blocks that did not look like the pattern and were left out, and
     `lattice_gcd` is the common factor of the ADC RC and the period, which
     must not exceed `MAX_LATTICE_GCD` for the capture to count as modelled.
+    `batched` matches every block at once around a coarse curve, and falls back
+    to the block-by-block search when a match lands on its window's edge.
     """
     period = len(bits) * rc_dac
     lattice = math.gcd(int(round(rc_adc)), period)
-    if dsp.name() == "numpy":
-        # built as an array, once, not as a list converted for every block
-        tmpl = (2.0 * dsp.np.asarray(bits, dtype=dsp.np.float64) / float(levels - 1) - 1.0
-                ).repeat(rc_dac)
-    else:
-        tmpl = template(bits, rc_dac, levels)
-    if dsp.name() == "numpy":
-        cen, mean, amp = dsp.center(vals)
-    else:
-        mean = sum(vals) / len(vals)
-        amp = (max(vals) - min(vals)) / 2.0 or 1.0
-        cen = [(v - mean) / amp for v in vals]
-    absum = xs_off = None
-    if dsp.name() == "numpy":
-        nb_all = len(vals) // block
-        absum = dsp.np.empty(nb_all)        # per-block sums of |cen|, a slab at a time
-        for a in range(0, nb_all, 4096):
-            z = min(a + 4096, nb_all)
-            absum[a:z] = dsp.np.abs(cen[a * block:z * block]).reshape(z - a, block).sum(axis=1)
-        xs_off = dsp.np.arange(block) * rc_adc
-    if batched is None:
-        batched = absum is not None                      # the numpy backend's default
-    if batched and absum is not None:
+    tmpl = template(bits, rc_dac, levels)
+    cen, mean, amp = dsp.center(vals)
+    nb_all = len(vals) // block
+    absum = np.empty(nb_all)                # per-block sums of |cen|, a slab at a time
+    for a in range(0, nb_all, 4096):
+        z = min(a + 4096, nb_all)
+        absum[a:z] = np.abs(cen[a * block:z * block]).reshape(z - a, block).sum(axis=1)
+    xs_off = np.arange(block) * rc_adc
+    if batched:
         coarse = track_clock_ratio(vals, rc_adc, bits, rc_dac, start, block,
                                    first_blocks, COARSE_STRIDE, window, levels,
                                    batched=False)
         pts, edge, skipped = _blocks_batched(cen, absum, tmpl, period, coarse, start, block,
                                              rc_adc, first_blocks, stride, window)
         if edge == 0 and skipped == 0 and len(pts) >= 8:
-            return _finish(pts, edge, skipped + coarse["skipped"], period, lattice, first_blocks,
-                           len(vals) // block)
+            return _finish(pts, edge, skipped + coarse["skipped"], period, lattice,
+                           first_blocks, len(vals) // block)
         # A match on the edge of its window, or a block that did not match,
         # means the coarse curve predicted badly: the sequential search follows
         # the phase block by block and decides what happens next.
@@ -403,12 +350,8 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
         i0 = j * block
         win = cen[i0:i0 + block]
         xm = (start + i0 + block // 2) * rc_adc
-        if absum is not None:               # block sums from one running total
-            xs = xs_off + (start + i0) * rc_adc
-            den = float(absum[j]) or 1.0
-        else:
-            xs = [(start + i0 + i) * rc_adc for i in range(block)]
-            den = float(sum(abs(v) for v in win)) or 1.0
+        xs = xs_off + (start + i0) * rc_adc
+        den = float(absum[j]) or 1.0
         if not pts:
             if den < IDLE_SHARE * block:
                 skipped += 1
@@ -442,30 +385,9 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     return _finish(pts, edge, skipped, period, lattice, first_blocks, nblk)
 
 
-def _finish(pts, edge, skipped, period, lattice, first_blocks, nblk):
-    if len(pts) < 8:
-        raise ValueError("fewer than 8 blocks looked like the pattern: "
-                         "%d of %d" % (len(pts), nblk))
-    sl = _slope(pts)
-    fit = _fit(pts)
-    rms = math.sqrt(sum((y - (fit[0] + fit[1] * x)) ** 2 for x, y in pts) / len(pts))
-    model = fit_phase(pts)
-    noise = block_noise(pts, first_blocks)
-    adequate = is_adequate(model, len(pts), lattice)
-    # The source's phase in ticks is x / (1 + delta), so against the ADC's
-    # ticks it falls at -delta / (1 + delta) per tick.
-    delta = -sl / (1.0 + sl)
-    return {"delta": delta, "period": period * (1.0 + delta), "blocks": len(pts),
-            "rms": rms, "edge_hits": edge,
-            "skipped": skipped, "model": model, "points": pts, "block_noise": noise,
-            "lattice_gcd": lattice,
-            "adequate": adequate}
-
-
 class _RunningLine:
     """Least-squares slope of the points added so far, in constant time per
-    point. Refitting every block from the list made the tracker quadratic:
-    most of 55 s on 44 M samples."""
+    point: refitting every block from the list was quadratic."""
 
     def __init__(self):
         self.n = 0
@@ -483,21 +405,6 @@ class _RunningLine:
         return self.sxy / self.sxx if self.sxx else 0.0
 
 
-def _fit(pts):
-    n = len(pts)
-    mx = sum(p[0] for p in pts) / n
-    my = sum(p[1] for p in pts) / n
-    sxx = sum((p[0] - mx) ** 2 for p in pts)
-    b = sum((p[0] - mx) * (p[1] - my) for p in pts) / sxx if sxx else 0.0
-    return my - b * mx, b
-
-
-def _slope(pts):
-    if len(pts) < 2 or pts[-1][0] == pts[0][0]:
-        return 0.0
-    return _fit(pts)[1]
-
-
 def fold_scaled(vals, rc_adc, period, bins, start=0):
     """Mean per bin of a fold on a non-integer `period`.
 
@@ -506,20 +413,4 @@ def fold_scaled(vals, rc_adc, period, bins, start=0):
     *source's* clock, which is the axis `ets_phase0.analyze` reads.
     Returns `(curve, counts)`; a bin nothing landed in is None.
     """
-    if dsp.name() == "numpy":
-        return dsp.fold_scaled(vals, rc_adc, period, bins, start)
-    acc = [0.0] * bins
-    cnt = [0] * bins
-    scale = bins / period
-    step = rc_adc % period
-    ph = (start * rc_adc) % period
-    for v in vals:
-        i = int(ph * scale)
-        if i >= bins:
-            i = bins - 1
-        acc[i] += v
-        cnt[i] += 1
-        ph += step
-        if ph >= period:
-            ph -= period
-    return [a / c if c else None for a, c in zip(acc, cnt)], cnt
+    return dsp.fold_scaled(vals, rc_adc, period, bins, start)

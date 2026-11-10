@@ -5,11 +5,13 @@ from the source's, with noise: the answer is known, so the ladder, the eyes
 and the gates can be checked against it, and each gate has a control that
 must make it fail. The gates are those of docs/ets-pam.md.
 """
+import array
 import math
 import os
 import random
 import sys
 
+import numpy as np
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -116,13 +118,84 @@ def test_an_adc_rc_sharing_a_factor_with_the_period_fails_the_clock_gate():
     assert res["lattice_gcd"] == 23 and res["gates"]["A3"]["passed"] is False, res["gates"]["A3"]
 
 
+def _hist(**counts):
+    h = array.array("I", bytes(4 * etspam.ADC_CODES))
+    for code, n in counts.items():
+        h[int(code[1:])] = n
+    return h
+
+
 def test_a_quantile_reads_the_tail_of_a_histogram():
-    h = [0] * etspam.ADC_CODES
-    for code in range(1000, 1200):
-        h[code] = 10
-    assert etspam._quantile(h, 0.001) == 1000.0
-    assert etspam._quantile(h, 0.001, from_top=True) == 1199.0
-    assert etspam._quantile([0] * etspam.ADC_CODES, 0.5) is None
+    h = np.zeros((2, etspam.ADC_CODES), dtype=np.int64)
+    h[0, 1000:1200] = 10                      # 200 codes of ten samples each
+    got_lo = etspam._quantile_rows(h, 0.001)
+    got_hi = etspam._quantile_rows(h, 0.001, from_top=True)
+    assert got_lo[0] == 1000.0 and got_hi[0] == 1199.0
+    assert np.isnan(got_lo[1]) and np.isnan(got_hi[1])        # an empty row has no quantile
+    # a tail that needs a share of the samples: 50% of 200 x 10 is reached at code 1099
+    assert etspam._quantile_rows(h, 0.5)[0] == 1099.0
+
+
+def test_the_level_figures_are_the_moments_of_the_histograms_by_hand():
+    # level 0: 50 samples at code 100 and 50 at 102: mean 101, std 1.
+    # level 1: 100 samples at code 400: mean 400, std 0.
+    centre = [_hist(c100=50, c102=50), _hist(c400=100)]
+    got = etspam._stats(centre)
+    assert got[0] == {"n": 100, "mean": 101.0, "std": 1.0, "lo": 100.0, "hi": 102.0}
+    assert got[1] == {"n": 100, "mean": 400.0, "std": 0.0, "lo": 400.0, "hi": 400.0}
+
+
+def test_an_eye_height_is_the_gap_between_the_populations_it_separates():
+    nlev = 3
+    by_t = [[_hist(c100=1000), _hist(c300=1000), _hist(c500=1000)] for _ in range(etspam.TBINS)]
+    h = etspam._eye_heights(by_t, nlev)
+    assert all(v == 200.0 for row in h for v in row) and len(h) == 2
+    # a position where the middle level has not settled (its samples spread over
+    # 50..550) closes both eyes there: the populations overlap
+    smear = array.array("I", bytes(4 * etspam.ADC_CODES))
+    for c in range(50, 551):
+        smear[c] = 10
+    by_t[7][1] = smear
+    h = etspam._eye_heights(by_t, nlev)
+    assert h[0][7] < 0 and h[1][7] < 0 and h[0][6] == 200.0
+
+
+def test_every_sample_is_labelled_once_and_each_level_sits_on_its_own_code():
+    pat, vals = _synth(4, n=300_000, sigma=0.0)
+    vals = np.asarray(vals)
+    trk = etsperiod.track_clock_ratio(vals, 46, pat.symbols, 29, levels=4)
+    res = etspam.analyze(vals, 46, pat, 29, want_eye=True)
+    cells = {}
+    centre, by_t = etspam.label_samples(vals, 46, trk["model"], pat, 29, res["b0_ticks"], cells, 0)
+    assert sum(cells.values()) == len(vals)
+    assert sum(int(np.frombuffer(h, dtype=np.uint32).sum())
+               for row in by_t for h in row if h is not None) == len(vals)
+    # the middle fifth of each symbol is a fifth of the samples, and noise-free it sits
+    # near its level's code; a 2.8-tick pole has not quite settled after the largest
+    # steps, which is the spread of up to ten codes below
+    n_centre = sum(int(np.frombuffer(h, dtype=np.uint32).sum()) for h in centre)
+    assert n_centre == pytest.approx(0.2 * len(vals), rel=0.05)
+    for lvl, h in enumerate(centre):
+        codes = np.nonzero(np.frombuffer(h, dtype=np.uint32))[0]
+        want = _adc_of(pat.codes[lvl], 0.0)
+        weights = np.frombuffer(h, dtype=np.uint32)[codes]
+        assert abs(float((codes * weights).sum() / weights.sum()) - want) < 5.0
+        assert codes.min() >= want - 12 and codes.max() <= want + 12
+
+
+def test_the_labelling_does_not_depend_on_chunk_or_thread_count(monkeypatch):
+    pat, vals = _synth(4, n=300_000)
+    vals = np.asarray(vals)
+    trk = etsperiod.track_clock_ratio(vals, 46, pat.symbols, 29, levels=4)
+    monkeypatch.setattr(etspam, "CHUNK", 2048 * 3)
+    out = {}
+    for w in ("1", "4"):
+        monkeypatch.setenv("DUE_DSP_WORKERS", w)
+        cells = {}
+        centre, by_t = etspam.label_samples(vals, 46, trk["model"], pat, 29, 3.0, cells, 0)
+        out[w] = ([bytes(h) for h in centre],
+                  [[None if h is None else bytes(h) for h in row] for row in by_t], cells)
+    assert out["1"] == out["4"]
 
 
 def test_the_widest_open_stretch_of_an_eye_is_the_longest_run_not_the_total():

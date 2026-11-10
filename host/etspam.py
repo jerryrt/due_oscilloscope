@@ -15,9 +15,8 @@ Samples are placed on a grid of `1 / LABEL_K` tick, and everything is held as
 integer histograms over the ADC's 4096 codes, so the memory is `N` histograms
 per position, not the samples.
 
-Pure Python is the reference (`label_samples_ref`); with numpy present
-`label_samples` runs the same labelling vectorised and in chunks, and
-`tests/test_etspam.py` holds the two equal.
+The labelling is numpy array operations in chunks on threads;
+`tests/test_etspam.py` holds it to histograms known by hand.
 """
 import math
 import threading
@@ -82,46 +81,12 @@ def _boundary_from_energy(energy, rc):
     return (phi + centre + 1.0 + rc / 2.0) % rc - rc / 2.0
 
 
-def _quantile(hist, q, from_top=False):
-    """The ADC code below which a share `q` of `hist` lies (or above, from the top)."""
-    total = sum(hist)
-    if total == 0:
-        return None
-    goal = q * total
-    run = 0
-    rng = range(ADC_CODES - 1, -1, -1) if from_top else range(ADC_CODES)
-    for code in rng:
-        run += hist[code]
-        if run >= goal:
-            return float(code)
-    return float(rng[-1])
-
-
-def _stats(hist):
-    n = sum(hist)
-    if n == 0:
-        return {"n": 0, "mean": None, "std": None, "lo": None, "hi": None}
-    s = sum(c * v for c, v in enumerate(hist))
-    ss = sum(c * c * v for c, v in enumerate(hist))
-    mean = s / n
-    return {"n": n, "mean": mean,
-            "std": math.sqrt(max(0.0, ss / n - mean * mean)),
-            "lo": _quantile(hist, TAIL), "hi": _quantile(hist, TAIL, from_top=True)}
-
-
-def label_samples(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):
-    """`label_samples_ref`, or the same vectorised when numpy is the backend."""
-    if dsp.name() == "numpy":
-        return _label_samples_numpy(vals, rc_adc, model, pat, rc_dac, b0, cells, start)
-    return label_samples_ref(vals, rc_adc, model, pat, rc_dac, b0, cells, start)
-
-
 #: Samples labelled per pass; a multiple of `etsperiod.SEGMENT`, so the phase
 #: curve is followed in the same segments as the reference follows it.
 CHUNK = 2048 * 512
 
 
-def _label_samples_numpy(vals, rc_adc, model, pat, rc_dac, b0, cells, start):
+def label_samples(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):
     np = dsp.np
     nlev = pat.pam
     v_all = np.asarray(vals)
@@ -198,83 +163,6 @@ def label_range(v_all, lo, hi, rc_adc, model, pat, rc_dac, b0, want_cells, start
     return centre_n, by_t_n, cells_n
 
 
-def label_samples_ref(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):
-    """Per-level histograms at the symbol centre and per position in the symbol.
-
-    Returns `(centre, by_t)`: `centre[level]` is a histogram over ADC codes of
-    the samples in the middle fifth of symbols at that level, and
-    `by_t[t_bin][level]` the same for each of `TBINS` positions across the
-    symbol, over the symbols' own level (the one being held at that moment).
-
-    When `cells` is a dict it is filled with the eye: the count of samples at
-    each `(x, code)`, `x` the position in a window two symbols wide in
-    `1 / LABEL_K` tick, symbol boundaries at 0, the middle and the end. Only the
-    symbol phase matters to it, not which symbol. `vals[0]` is sample number
-    `start` of the run, as for the tracker and the fold.
-    """
-    n_sym = pat.length
-    unit = n_sym * rc_dac
-    k = LABEL_K
-    nlev = pat.pam
-    centre = [array("I", bytes(4 * ADC_CODES)) for _ in range(nlev)]
-    by_t = [[None] * nlev for _ in range(TBINS)]
-    syms = pat.symbols
-    shift = b0 * k
-    span = rc_dac * k
-    per_unit = unit * k
-    lo_t, hi_t = (0.5 - CENTRE_HALF), (0.5 + CENTRE_HALF)
-    two = 2 * span
-    for v, idx in zip(vals, etsperiod.phase_indices(len(vals), rc_adc, model, unit, k, start)):
-        rel = (idx - shift) % per_unit
-        if cells is not None:
-            key = int(rel % two) * ADC_CODES + int(v)
-            cells[key] = cells.get(key, 0) + 1
-        j = int(rel // span)
-        t = (rel - j * span) / span
-        lvl = syms[j]
-        code = int(v)
-        if lo_t <= t < hi_t:
-            centre[lvl][code] += 1
-        tb = int(t * TBINS)
-        h = by_t[tb][lvl]
-        if h is None:
-            h = by_t[tb][lvl] = array("I", bytes(4 * ADC_CODES))
-        h[code] += 1
-    return centre, by_t
-
-
-def _eye_heights(by_t, nlev):
-    """`heights[eye][t_bin]`: the gap between the levels above and below an eye.
-
-    At each position across the symbol, the lower population is every sample
-    whose symbol is at a level up to the eye, the upper population every one
-    above it. Near a symbol boundary the samples are mid-transition, so the
-    populations overlap and the eye closes there, as it should.
-    """
-    zero = array("I", bytes(4 * ADC_CODES))
-    heights = [[None] * TBINS for _ in range(nlev - 1)]
-    for tb in range(TBINS):
-        row = by_t[tb]
-        lower = array("I", zero)
-        lower_hi = [None] * (nlev - 1)
-        for i in range(nlev - 1):
-            if row[i] is not None:
-                for c, v in enumerate(row[i]):
-                    if v:
-                        lower[c] += v
-            lower_hi[i] = _quantile(lower, TAIL, from_top=True)
-        upper = array("I", zero)
-        for i in range(nlev - 1, 0, -1):
-            if row[i] is not None:
-                for c, v in enumerate(row[i]):
-                    if v:
-                        upper[c] += v
-            up_lo = _quantile(upper, TAIL)
-            if up_lo is not None and lower_hi[i - 1] is not None:
-                heights[i - 1][tb] = up_lo - lower_hi[i - 1]
-    return heights
-
-
 def _quantile_rows(h, q, from_top=False):
     """`_quantile` of every row of a 2-D histogram at once: floats, NaN for an empty row."""
     np = dsp.np
@@ -287,7 +175,7 @@ def _quantile_rows(h, q, from_top=False):
     return np.where(total == 0, np.nan, code.astype(np.float64))
 
 
-def _stats_np(centre):
+def _stats(centre):
     """`_stats` of every level, from one matrix: the moments are products with
     the code vector, which is where BLAS takes them."""
     np = dsp.np
@@ -310,7 +198,7 @@ def _stats_np(centre):
     return out
 
 
-def _eye_heights_np(by_t, nlev):
+def _eye_heights(by_t, nlev):
     """`_eye_heights` with the running sums over levels as cumulative sums."""
     np = dsp.np
     h = np.zeros((TBINS, nlev, ADC_CODES), dtype=np.int64)
@@ -351,9 +239,7 @@ def _ladder_fit(codes, means):
 def analyze_levels(centre, by_t, pat):
     """The figures the gates read, from the labelled histograms."""
     nlev = pat.pam
-    np_path = dsp.name() == "numpy"
-    stats = _stats_np(centre) if np_path else [_stats(h) for h in centre]
-    levels = [dict(st, level=i, code=pat.codes[i]) for i, st in enumerate(stats)]
+    levels = [dict(st, level=i, code=pat.codes[i]) for i, st in enumerate(_stats(centre))]
     out = {"pam": nlev, "levels": levels}
     if any(lv["n"] == 0 for lv in levels):
         out["error"] = "a level has no samples at its symbol centre"
@@ -364,7 +250,7 @@ def analyze_levels(centre, by_t, pat):
     gaps = [y - x for x, y in zip(means, means[1:])]
     sep = min(g / max(levels[i]["std"], levels[i + 1]["std"], 1e-9)
               for i, g in enumerate(gaps))
-    heights = _eye_heights_np(by_t, nlev) if np_path else _eye_heights(by_t, nlev)
+    heights = _eye_heights(by_t, nlev)
     centre_tb = int(0.5 * TBINS)
     eyes = []
     for i in range(nlev - 1):

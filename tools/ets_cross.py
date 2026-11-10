@@ -34,9 +34,12 @@ import subprocess
 import sys
 import time
 
+import numpy as np
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for sub in ("host", "tools", "tests"):
     sys.path.insert(0, os.path.join(ROOT, sub))
+import dsp  # noqa: E402
 import eqtime  # noqa: E402
 import ets_phase0 as e  # noqa: E402
 import etsperiod  # noqa: E402
@@ -96,6 +99,24 @@ def capture(seconds, out, rc_adc=ADC_RC):
     return meta
 
 
+def _load(path):
+    """The capture as a uint16 array, at most `MAX_SAMPLES` of it, copied from nothing."""
+    with open(path, "rb") as f:
+        return np.frombuffer(f.read(), dtype=np.uint16)[:MAX_SAMPLES]
+
+
+def _placed(vals, rc_adc, model, unit, k):
+    """`(offset, samples, bins)` for each chunk of the capture: every sample's
+    fold bin on the fitted curve, `k` to the tick. Chunks are a multiple of the
+    curve's segment and of 1,024, so a chunk's parity and blocks are the whole
+    capture's."""
+    for a in range(0, len(vals), dsp.CHUNK):
+        m = min(dsp.CHUNK, len(vals) - a)
+        idx = dsp.phase_indices(m, rc_adc, lambda x: etsperiod.phase_at(model, x),
+                                unit, k, a, etsperiod.SEGMENT)
+        yield a, vals[a:a + m].astype(np.float64), idx
+
+
 def _model_fields(trk):
     """What a reader needs to decide whether the phase model can be trusted."""
     m = trk["model"]
@@ -107,10 +128,7 @@ def _model_fields(trk):
 
 
 def analyze(path, rc_dac, rc_adc):
-    raw = array.array("H")
-    with open(path, "rb") as f:
-        raw.frombytes(f.read())
-    vals = [float(v) for v in raw[:MAX_SAMPLES]]
+    vals = _load(path)
     bits = e.prbs7()
     bins = len(bits) * rc_dac
     trk = etsperiod.track_clock_ratio(vals, rc_adc, bits, rc_dac)
@@ -127,35 +145,29 @@ def analyze(path, rc_dac, rc_adc):
     fig, b0 = e.analyze(curve, rc_dac, bits)
     row.update(fig)
     row["trusted"] = bool(trk["adequate"] and fig["pattern_ok"])
-    edge = [False] * bins
+    edge = np.zeros(bins, dtype=bool)
     for j in range(len(bits)):
         c = int(round(b0 + j * rc_dac))
         for x in range(-(rc_dac // 4), rc_dac // 4 + 1):
             edge[(c + x) % bins] = True
-    blocks = []                      # (flat sum, flat n, edge sum, edge n) per 1,024
-    sf = se = 0.0
-    nf = ne = 0
-    idx = etsperiod.phase_indices(len(vals), rc_adc, trk["model"], bins)
-    for n, (v, i) in enumerate(zip(vals, idx), 1):
-        r = v - curve[i]
-        if edge[i]:
-            se += r * r
-            ne += 1
-        else:
-            sf += r * r
-            nf += 1
-        if n % 1024 == 0:
-            blocks.append((sf, nf, se, ne))
-            sf = se = 0.0
-            nf = ne = 0
-    rms = [math.sqrt((b[0] + b[2]) / (b[1] + b[3])) for b in blocks]
-    med = sorted(rms)[len(rms) // 2]
-    keep = [b for b, x in zip(blocks, rms) if x <= 3.0 * med]
-    fs, fn = sum(b[0] for b in keep), sum(b[1] for b in keep)
-    es, en = sum(b[2] for b in keep), sum(b[3] for b in keep)
+    curve_a = np.asarray(curve, dtype=np.float64)
+    parts = []                       # (flat sum, flat n, edge sum, edge n) per 1,024
+    for _, v, i in _placed(vals, rc_adc, trk["model"], bins, 1):
+        r2 = (v - curve_a[i]) ** 2
+        e_ = edge[i]
+        full = len(v) // 1024 * 1024
+        blk = lambda x: x[:full].reshape(-1, 1024).sum(axis=1)
+        parts.append(np.stack([blk(r2 * ~e_), blk(~e_), blk(r2 * e_), blk(e_)], axis=1))
+    blocks = np.concatenate(parts)
+    rms = np.sqrt((blocks[:, 0] + blocks[:, 2]) / (blocks[:, 1] + blocks[:, 3]))
+    med = np.sort(rms)[len(rms) // 2]
+    ok = rms <= 3.0 * med
+    fs, fn = blocks[ok, 0].sum(), blocks[ok, 1].sum()
+    es, en = blocks[ok, 2].sum(), blocks[ok, 3].sum()
+    keep_n = int(ok.sum())
     row["res_flat"] = math.sqrt(fs / fn) if fn else None
     row["res_edge"] = math.sqrt(es / en) if en else None
-    row["blocks_dropped"] = len(blocks) - len(keep)
+    row["blocks_dropped"] = len(blocks) - keep_n
     return row
 
 
@@ -184,38 +196,36 @@ def _edge_offsets(curve, rc, bits, shift, b0, rising):
 
 def resolution(path, rc_dac, rc_adc, k, kp):
     """Where the samples land between ticks, and what that does to an edge."""
-    raw = array.array("H")
-    with open(path, "rb") as f:
-        raw.frombytes(f.read())
-    vals = [float(v) for v in raw[:MAX_SAMPLES]]
+    vals = _load(path)
     bits = e.prbs7()
     L = len(bits)
     trk = etsperiod.track_clock_ratio(vals, rc_adc, bits, rc_dac)
     unit = L * rc_dac
     nb, nbp = unit * k, unit * kp
-    hist = [0] * 10
-    acc = [0.0] * nb
-    cnt = [0] * nb
-    pacc = [[0.0] * nbp, [0.0] * nbp]
-    pcnt = [[0] * nbp, [0] * nbp]
-    for n, (v, i) in enumerate(zip(vals, etsperiod.phase_indices(
-            len(vals), rc_adc, trk["model"], unit, k))):
-        hist[(i % k) * 10 // k] += 1
-        acc[i] += v
-        cnt[i] += 1
+    hist = np.zeros(10, dtype=np.int64)
+    acc = np.zeros(nb)
+    cnt = np.zeros(nb, dtype=np.int64)
+    pacc = np.zeros((2, nbp))
+    pcnt = np.zeros((2, nbp), dtype=np.int64)
+    for a, v, i in _placed(vals, rc_adc, trk["model"], unit, k):
+        hist += np.bincount((i % k) * 10 // k, minlength=10)
+        acc += np.bincount(i, weights=v, minlength=nb)
+        cnt += np.bincount(i, minlength=nb)
         ip = i * kp // k
-        pacc[n & 1][ip] += v
-        pcnt[n & 1][ip] += 1
+        odd = (np.arange(len(v)) & 1).astype(bool)             # a is even: local = global
+        for par, sel in ((0, ~odd), (1, odd)):
+            pacc[par] += np.bincount(ip[sel], weights=v[sel], minlength=nbp)
+            pcnt[par] += np.bincount(ip[sel], minlength=nbp)
     row = {"samples": len(vals), "delta_ppm": trk["delta"] * 1e6,
-           "frac_hist_10": hist, "frac_min_over_max": min(hist) / max(hist),
-           "bins_per_tick": k, "fine_filled_share": sum(1 for c in cnt if c >= 20) / nb,
-           "fine_min_per_bin": min(cnt), "track_rms_ticks": trk["rms"]}
+           "frac_hist_10": hist.tolist(), "frac_min_over_max": int(hist.min()) / int(hist.max()),
+           "bins_per_tick": k, "fine_filled_share": float((cnt >= 20).sum()) / nb,
+           "fine_min_per_bin": int(cnt.min()), "track_rms_ticks": trk["rms"]}
     row.update(_model_fields(trk))
     tick_ns = e.TICK_NS
-    if min(cnt) < 20:
+    if cnt.min() < 20:
         row["note"] = "fine fold has holes: the samples sit on a lattice, no edge reading"
         return row
-    curve = [a / c for a, c in zip(acc, cnt)]
+    curve = (acc / cnt).tolist()
     fig, b0 = e.analyze(curve, rc_dac * k, bits)
     row.update({"pattern_ok": fig["pattern_ok"], "eye_frac": fig.get("eye_frac"),
                 "rise_ns_fine": fig["rise_ns"] / k if fig["rise_ns"] else None,
@@ -230,8 +240,8 @@ def resolution(path, rc_dac, rc_adc, k, kp):
             row["edge50_%s_n" % name] = len(offs)
             row["edge50_%s_sd_ns" % name] = math.sqrt(
                 sum((x - mean) ** 2 for x in offs) / len(offs)) * tick_ns / k
-    if min(min(pcnt[0]), min(pcnt[1])) >= 20:
-        pc = [[a / c for a, c in zip(pacc[i], pcnt[i])] for i in (0, 1)]
+    if pcnt.min() >= 20:
+        pc = (pacc / pcnt).tolist()
         for name, rising in (("rise", True), ("fall", False)):
             m = []
             for i in (0, 1):
@@ -261,17 +271,17 @@ def _corrected(vals, rc_adc, model, rc_dac, bits, k, shift_bins):
     """
     L = len(bits)
     nb = L * rc_dac * k
-    acc = [0.0] * nb
-    cnt = [0] * nb
+    acc = np.zeros(nb)
+    cnt = np.zeros(nb, dtype=np.int64)
     back = int(round(shift_bins))
-    for n, (v, i) in enumerate(zip(vals, etsperiod.phase_indices(
-            len(vals), rc_adc, model, L * rc_dac, k))):
-        i = (i - (back if n & 1 else 0)) % nb
-        acc[i] += v
-        cnt[i] += 1
-    if min(cnt) < 20:
+    for _, v, i in _placed(vals, rc_adc, model, L * rc_dac, k):
+        if back:
+            i = np.where(np.arange(len(v)) & 1, (i - back) % nb, i)
+        acc += np.bincount(i, weights=v, minlength=nb)
+        cnt += np.bincount(i, minlength=nb)
+    if cnt.min() < 20:
         return {"corrected_note": "corrected fold has holes"}
-    curve = [a / c for a, c in zip(acc, cnt)]
+    curve = (acc / cnt).tolist()
     fig, b0c = e.analyze(curve, rc_dac * k, bits)
     out = {"corr_pattern_ok": fig["pattern_ok"], "corr_eye_frac": fig.get("eye_frac"),
            "corr_rise_ns": fig["rise_ns"] / k if fig["rise_ns"] else None,
@@ -316,10 +326,7 @@ def eye(path, rc_dac, rc_adc, k, out, ylo=1000.0, yhi=2400.0, yb=4.0, label=None
     ADC pin. For an odd ADC RC the odd samples are moved back by the offset
     `resolution` measures, as in the corrected fold.
     """
-    raw = array.array("H")
-    with open(path, "rb") as f:
-        raw.frombytes(f.read())
-    vals = [float(v) for v in raw[:MAX_SAMPLES]]
+    vals = _load(path)
     bits = e.prbs7()
     L = len(bits)
     unit = L * rc_dac
@@ -341,16 +348,15 @@ def eye(path, rc_dac, rc_adc, k, out, ylo=1000.0, yhi=2400.0, yb=4.0, label=None
         back = int(round(res.get("odd_shift_ns", 0.0) / e.TICK_NS * k))
     nb, nx = unit * k, 2 * rc_dac * k
     ny = int((yhi - ylo) / yb)
-    dens = {}
-    for n, (v, i) in enumerate(zip(vals, etsperiod.phase_indices(
-            len(vals), rc_adc, trk["model"], unit, k))):
-        if back and n & 1:
-            i = (i - back) % nb
-        x = int((i - b0_ticks * k + rc_dac * k) % nx)
-        yi = int((v * mv - ylo) / yb)
-        if 0 <= yi < ny:
-            key = x * ny + yi
-            dens[key] = dens.get(key, 0) + 1
+    dens_n = np.zeros(nx * ny, dtype=np.int64)
+    for _, v, i in _placed(vals, rc_adc, trk["model"], unit, k):
+        if back:
+            i = np.where(np.arange(len(v)) & 1, (i - back) % nb, i)
+        x = np.floor((i - b0_ticks * k + rc_dac * k) % nx).astype(np.int64)
+        yi = np.trunc((v * mv - ylo) / yb).astype(np.int64)
+        ok = (yi >= 0) & (yi < ny)
+        dens_n += np.bincount(x[ok] * ny + yi[ok], minlength=nx * ny)
+    dens = {int(key): int(dens_n[key]) for key in np.nonzero(dens_n)[0]}
     doc = {"provenance": _analysis_provenance(path, label),
            "rc_dac": rc_dac, "rc_adc": rc_adc, "k": k, "tick_ns": e.TICK_NS,
            "ui_ticks": rc_dac, "nx": nx, "ny": ny, "ylo": ylo, "yb": yb,
