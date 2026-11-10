@@ -489,20 +489,27 @@ difference is a finding about the compiler or its libraries, not a pin
 to wave through. Record the row in the manifest and say in the commit
 which figures the new revision carries.
 
-**The comparison against the old revision cannot be run as written when the
-recipe changed.** `run.sh` refuses an image whose recipe label differs from the
-tree's, so the old revision cannot build the tree that carries the new recipe,
-and the firmware embeds the build identity, so a tree with the old recipe does
-not give identical bytes either. `verify-image.sh <old revision>` therefore ends
-DID NOT RUN. It works for the monthly check, where the reference and the
-candidate share a recipe. When a recipe change touches only what the compiler
-never reads (revision 2 added a Python package to the suite's venv), the
-evidence to accept it is the recipe hash matching across benches, the monthly
-check of the new revision passing, a green `docker/run-ci.sh`, and the
-Dockerfile diff showing the compiler layers untouched; the manifest row says
-the comparison could not run. A change that touches the compiler's layers
-needs the comparison, and so a way to run the old image against the same
-tree, which does not exist yet.
+**`verify-image.sh <old revision>` cannot be the comparison when the recipe
+changed.** `run.sh` refuses an image whose recipe label differs from the tree's,
+so the old revision cannot build the tree that carries the new recipe, and the
+script ends DID NOT RUN. It works for the monthly check, where the reference and
+the candidate share a recipe. The comparison is made with a worktree at the
+commit before the change, whose recipe the old image matches:
+
+1. `git worktree add --detach <dir> <the commit before the recipe change>`.
+2. In `<dir>` and in the new tree, run `docker/run.sh docker/build-firmware.sh`
+   (the old tree picks the old image from its own manifest).
+3. For each of the three images compare the sizes and `cmp -l old new | wc -l`.
+   They pass when the sizes are equal and the only bytes that differ are the
+   build identity: the two 7-character commit hashes (`build=<rev>` and
+   `DUEC<rev>`), 14 bytes, with both trees clean. A dirty tree adds a delta hash
+   and more bytes; read `strings` on both before calling any other difference a
+   finding.
+4. `git worktree remove <dir>`.
+
+Revision 2 was compared this way on two benches: sizes equal (41,208, 59,400 and
+46,284 bytes) and 14 differing bytes per track. A change that touches the
+compiler's layers needs this comparison before it is accepted.
 
 **Checking, monthly.** `docker/verify-image.sh` is the check, because the
 inputs that expire do so at the fetch: the live archive the trust roots
