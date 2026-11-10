@@ -83,7 +83,7 @@ def test_the_tracker_reads_the_same_clock(monkeypatch):
     a, b = got["python"], got["numpy"]
     assert a["blocks"] == b["blocks"]
     assert a["delta"] == pytest.approx(b["delta"], abs=2e-9)
-    assert a["rms"] == pytest.approx(b["rms"], abs=1e-6)
+    assert a["rms"] == pytest.approx(b["rms"], rel=1e-2)   # batched matches tie differently on flat tops
     assert a["adequate"] == b["adequate"]
     assert a["lattice_gcd"] == b["lattice_gcd"]
     assert a["delta"] == pytest.approx(-2.5e-6, abs=5e-8)       # and it is the truth
@@ -211,3 +211,37 @@ def test_the_array_template_is_the_list_template():
     ref = etsperiod.template(syms, RC_DAC, 16)
     got = (2.0 * np.asarray(syms, dtype=np.float64) / 15.0 - 1.0).repeat(RC_DAC)
     assert got.tolist() == ref
+
+
+def _seq_and_batched(vals, syms, levels):
+    out = {}
+    for b in (False, True):
+        out[b] = etsperiod.track_clock_ratio(vals, RC_ADC, syms, RC_DAC, levels=levels, batched=b)
+    return out[False], out[True]
+
+
+@pytest.mark.parametrize("pam", [4, 16])
+def test_the_batched_tracker_reads_what_the_sequential_one_reads(pam, monkeypatch):
+    monkeypatch.setenv("DUE_DSP", "numpy")
+    vals, syms, period = _capture(400_000 if pam == 4 else 1_500_000, pam=pam)
+    a, b = _seq_and_batched(vals, syms, pam)
+    assert a["blocks"] == b["blocks"] and a["edge_hits"] == b["edge_hits"] == 0
+    assert b["delta"] == pytest.approx(a["delta"], abs=1e-9)
+    assert b["rms"] == pytest.approx(a["rms"], rel=1e-2)    # flat-topped synthetic ties
+    assert a["adequate"] == b["adequate"] and a["lattice_gcd"] == b["lattice_gcd"]
+
+
+def test_the_batched_tracker_can_be_wrong_and_the_comparison_sees_it(monkeypatch):
+    """Mispredict every block by 3 ticks: the match moves, so the figures must differ."""
+    monkeypatch.setenv("DUE_DSP", "numpy")
+    vals, syms, period = _capture(400_000)
+    real = etsperiod.phase_at
+    a = etsperiod.track_clock_ratio(vals, RC_ADC, syms, RC_DAC, levels=4, batched=False)
+    calls = {"n": 0}
+
+    def skewed(model, x):
+        calls["n"] += 1
+        return real(model, x) + (3.0 if calls["n"] == 1 else 0.0)   # the batched pass's prediction
+    monkeypatch.setattr(etsperiod, "phase_at", skewed)
+    b = etsperiod.track_clock_ratio(vals, RC_ADC, syms, RC_DAC, levels=4, batched=True)
+    assert (b["delta"], b["rms"]) != (a["delta"], a["rms"]) or b["blocks"] != a["blocks"]

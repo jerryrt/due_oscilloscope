@@ -275,8 +275,76 @@ def is_adequate(model, nblocks, lattice):
                 and lattice <= MAX_LATTICE_GCD)
 
 
+#: Blocks between the coarse pass's matches, which predict the batched pass.
+COARSE_STRIDE = 400
+#: Blocks refined per numpy call; the index tensor is `chunk x 2 * window x block`.
+BATCH_CHUNK = 256
+
+
+def _blocks_batched(cen, absum, tmpl, period, coarse, start, block, rc_adc,
+                    first_blocks, stride, window):
+    """The sequential tracker's block matches, all at once around a prediction.
+
+    The sequential tracker is sequential only because each block is searched
+    around the last block's phase. A coarse pass on every `COARSE_STRIDE`-th
+    block gives a smooth curve that predicts every block's phase well inside
+    the search window, so every block can be matched independently, in
+    batches of array operations on threads. The blocks and the match are the
+    sequential ones: the same schedule (the coarse pass's first block, then
+    `first_blocks` in a row, then every `stride`-th), the same whole-tick
+    correlation and the same parabola on its top five points.
+    """
+    np = dsp.np
+    nblk = len(absum)
+    xm0 = coarse["points"][0][0]
+    j0 = int((xm0 / rc_adc - start - block // 2) // block)
+    js = np.concatenate([np.arange(j0, j0 + first_blocks),
+                         np.arange(j0 + first_blocks - 1 + stride, nblk, stride)])
+    js = js[js < nblk]
+    xms = (start + js * block + block // 2) * rc_adc
+    mdl = coarse["model"]
+    pred = np.asarray(phase_at(mdl, xms.astype(np.float64)), dtype=np.float64)
+    lo = np.floor(pred - window + 0.5).astype(np.int64)
+    n = int(round(2 * window))
+    off = np.arange(block, dtype=np.int64)
+    ph = np.arange(n, dtype=np.int64)
+    tm = np.asarray(tmpl, dtype=np.float64)
+    cen_a = np.asarray(cen)
+
+    def part(a, b):
+        out_phi, out_c, out_edge = [], [], []
+        for c0 in range(a, b, BATCH_CHUNK):
+            c1 = min(c0 + BATCH_CHUNK, b)
+            i0 = js[c0:c1] * block
+            win = cen_a[i0[:, None] + off]                          # (b, block)
+            xs = (start + i0)[:, None] * rc_adc + off * rc_adc      # whole ticks
+            idx = (xs[:, None, :] + (lo[c0:c1, None] + ph)[:, :, None]) % period
+            cs = np.einsum("bpk,bk->bp", tm[idx], win)
+            i = cs.argmax(axis=1)
+            edge = (i < 2) | (i >= n - 2)
+            ic = np.clip(i, 2, n - 3)
+            y = np.take_along_axis(cs, ic[:, None] + np.arange(-2, 3), axis=1)
+            b1 = (-2 * y[:, 0] - y[:, 1] + y[:, 3] + 2 * y[:, 4]) / 10.0
+            a2 = ((4 * y[:, 0] + y[:, 1] + y[:, 3] + 4 * y[:, 4]) - 2 * y.sum(axis=1)) / 14.0
+            with np.errstate(divide="ignore", invalid="ignore"):
+                frac = np.where((a2 < 0) & ~edge, np.clip(-b1 / (2 * a2), -1.0, 1.0), 0.0)
+            out_phi.append(lo[c0:c1] + i + frac)
+            out_c.append(cs[np.arange(c1 - c0), i])
+            out_edge.append(edge)
+        return np.concatenate(out_phi), np.concatenate(out_c), np.concatenate(out_edge)
+
+    parts = dsp.map_ranges(part, len(js), BATCH_CHUNK)
+    phi = np.concatenate([p[0] for p in parts])
+    c = np.concatenate([p[1] for p in parts])
+    edge = np.concatenate([p[2] for p in parts])
+    den = np.where(absum[js] == 0, 1.0, absum[js])
+    keep = c / den >= MIN_SCORE
+    pts = list(zip(xms[keep].astype(float).tolist(), phi[keep].tolist()))
+    return pts, int(edge[keep].sum()), int((~keep).sum())
+
+
 def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
-                      first_blocks=40, stride=20, window=8.0, levels=2):
+                      first_blocks=40, stride=20, window=8.0, levels=2, batched=None):
     """Clock-ratio error of the source, from `vals`.
 
     `vals[0]` is sample number `start` of the run, so sample `k` is at tick
@@ -312,6 +380,20 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
             z = min(a + 4096, nb_all)
             absum[a:z] = dsp.np.abs(cen[a * block:z * block]).reshape(z - a, block).sum(axis=1)
         xs_off = dsp.np.arange(block) * rc_adc
+    if batched is None:
+        batched = absum is not None                      # the numpy backend's default
+    if batched and absum is not None:
+        coarse = track_clock_ratio(vals, rc_adc, bits, rc_dac, start, block,
+                                   first_blocks, COARSE_STRIDE, window, levels,
+                                   batched=False)
+        pts, edge, skipped = _blocks_batched(cen, absum, tmpl, period, coarse, start, block,
+                                             rc_adc, first_blocks, stride, window)
+        if edge == 0 and skipped == 0 and len(pts) >= 8:
+            return _finish(pts, edge, skipped + coarse["skipped"], period, lattice, first_blocks,
+                           len(vals) // block)
+        # A match on the edge of its window, or a block that did not match,
+        # means the coarse curve predicted badly: the sequential search follows
+        # the phase block by block and decides what happens next.
     pts = []                                   # (x of block centre, unwrapped phase)
     line = _RunningLine()                      # the same line, kept as blocks arrive
     edge = skipped = 0
@@ -357,6 +439,10 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
         pts.append((xm, phi))
         line.add(xm, phi)
         j += 1 if len(pts) < first_blocks else stride
+    return _finish(pts, edge, skipped, period, lattice, first_blocks, nblk)
+
+
+def _finish(pts, edge, skipped, period, lattice, first_blocks, nblk):
     if len(pts) < 8:
         raise ValueError("fewer than 8 blocks looked like the pattern: "
                          "%d of %d" % (len(pts), nblk))
