@@ -1,10 +1,11 @@
 # Building the AFE
 
-The plan that meets [the AFE requirements](afe.md). **Every circuit is
-simulated and passes review before anything is placed, ordered or
-soldered.** A failed simulation changes the circuit and is rerun; it never
-relaxes a limit. Requirement IDs (SC-, DF-, AW-, PR-, PW-, VT-) are those of
-`afe.md`, whose "Requirement IDs" table gives each prefix's meaning.
+The plan that meets [the AFE requirements](afe.md): the build, step by step,
+and the owner's side of it. **Every circuit is simulated and passes review
+before anything is placed, ordered or soldered.** A failed simulation changes the
+circuit and is rerun; it never relaxes a limit. Requirement IDs (SC-, SM-, DF-,
+AW-, PA-, PR-, PW-, VT-) are those of `afe.md`, whose "Requirement IDs" table gives
+each prefix's meaning.
 
 ## The sequence
 
@@ -38,12 +39,11 @@ Due identity, firmware `build=` and instrument.
 | DAC output while the Due resets and boots | AW-8 | Scope on DAC0 through a reset and a flash |
 | ADC acquisition settings the firmware will use | SC-9, SC-10, AN-2 | Client decision |
 
-| TBC value | Needed by |
-|---|---|
-| SC-3 input capacitance, SC-9 crosstalk limit, SC-10 source impedance | Step 1 |
-| DF-3 typical CMRR, AW-7 gain and offset, AW-8 reset state | Step 1 |
-| PR-3 back-feed, PW-3 short-circuit current | Step 1 |
-| EN-1 drift, MC-8 connector and probe arrangement | Step 1 |
+The TBC values of the requirement are frozen ([afe.md](afe.md), section 19); what
+is left to decide is its section 17, decisions D1 to D9, and **D1 to D4 and D8
+are needed before step 1**, because they change the topology (ranges, the
+equivalent-time path, the AWG's test path, the connector). D7 needs one
+measurement, the Due's own supply current, before step 1 closes PW-1.
 
 Tooling: KiCad 10.x with matching symbol and footprint libraries, and
 ngspice, with the exact versions recorded in every report. Models live in
@@ -111,19 +111,16 @@ differential. Record the assembly revision, the Due identity, the
 firmware, the instruments and every probe with each measurement; a probe
 on a measured pin perturbs it, so declare it.
 
-Bench tests are VT-1 to VT-14 in `afe.md`. Run every repeated measurement
+Bench tests are VT-1 to VT-17 in `afe.md`. Run every repeated measurement
 one time more than needed and discard the first by index, and break each
 new check on purpose to see it fail before trusting it. A test that was
 skipped has not passed.
 
-| Client-supplied dependency | Needed for |
-|---|---|
-| Firmware reads JP-DIFF on a spare pin and selects the differential ADC mode and PGA gain | VT-2, VT-11 |
-| Firmware limits the DAC to the per-board range | VT-6 |
-| Host calibration of gain, offset, response and common mode | VT-1, VT-2, VT-4, VT-6 |
+The firmware and host work the tests depend on is the owner's, in the table under "The owner's side" below.
 
-A firmware change for these lands on all three tracks and keeps the
-project's invariants (nothing in the sample path, no printf in ISRs).
+The tests that need only a bench (VT-3, VT-4, VT-5, VT-8, VT-12, much of VT-10,
+and VT-16) can start before the firmware work. The tests that use the Due's ADC
+(VT-1, VT-2, VT-6, VT-7, VT-11, VT-15, VT-17) cannot.
 
 ## Step 5 and step 6
 
@@ -133,6 +130,89 @@ and how), the test report and the design review. Step 6 follows steps 1 to
 protection, output network, connectors, supply and JP-DIFF; its CMRR and
 noise are no worse than Phase 1's (P2-3), and VT-9 shows it installs
 without changing the board.
+
+## The owner's side
+
+The plan above is the build. This is what the owner does around it, as a loop
+with the contractor.
+
+    send Rev A inputs -> contractor designs, simulates, lays out
+         -> owner reviews and re-simulates -> numbered comments -> Rev B ...
+         -> design accepted -> owner builds block by block -> measures VT-1..17
+         -> measurement data -> next design round (if anything fails)
+
+### Before the first send
+
+| To do | Why |
+|---|---|
+| Write the **client data sheet**: ADC input model (sample-and-hold capacitance, series resistance), DAC output impedance, noise and window per board, AREF and 3.3 V values and noise, ADC acquisition settings. Give each value its source | The contractor cannot simulate the ADC driver or the AWG output without it |
+| Take the measurements the data sheet needs (DAC noise DC to 1 MHz, per-board AREF and DAC window for all three Dues, ADC noise at 90 MHz, channel memory and crosstalk, DAC output during reset and boot) | They need a Due. Only you can |
+| Close or freeze every TBC in `afe.md` at the stated value | The contractor treats TBC as binding. `MC-8` (connector, ×1 or ×10 probe) has no default, so choose |
+| Verify the `(check)` items: which pin is IN+, the 0.054 ns per ohm plus 205 ns track time, the differential-mode common-mode window, the pin absolute maximum | The design is based on them |
+| Measure the real pin positions and hole grid with calipers. Send a dimensioned drawing, or a physical carrier | `MC-4` is a photo estimate |
+| Add a BOM cost target and an availability rule | The contractor does not know the budget |
+| Remove or inline references to files you are not sending (`docs/noise.md`, `docs/hardware.md`, `docs/datasheets/`, `records/`, `tools/phase0.py`, `calibration.json`) and explain the 22.5 MHz out-of-spec ADC clock | The documents cite them |
+| Decide the review turnaround you promise | The loop runs at your speed |
+
+Known thin margins to tell them about: `AW-2` (0.86 to 0.97 mV per step
+against 1 mV) and `DF-3` (46 dB from 0.1% parts gives about 48 dB worst
+case). `SC-9` and `SC-10` interact (5 kohm may allow more than 2 LSB of
+crosstalk), so ask them for the ADC-model simulation.
+
+Done since this was written: every TBC but MC-8 is frozen at its stated value
+and the decisions are one list ([afe.md](afe.md), section 17). What the owner
+sends is the contractor package ([afe/contractor-inventory.txt](afe/contractor-inventory.txt)),
+which is the rounded wording **as sent** until D1 to D5 are decided and the
+package is brought up to date.
+
+### Reviewing each revision
+
+1. Rerun their command. Do the numbers match the report?
+2. Run your own checks in ngspice: the headline cases, at the worst
+   corners, and at least one case they did not choose.
+3. Check the pass/fail table: every ID present, margin shown, worst case
+   not nominal. Hard ones (noise, crosstalk, CMRR, parasitics) should have
+   headroom, because the board will be worse than the simulation. Pick your
+   margin policy and tell them.
+4. Check the protection cases yourself: ±30 V on an input, powered and
+   unpowered, and the AWG output with an external ±5 V.
+5. Check the BOM: part numbers exist, stock and price are current, no
+   single-source or obsolete parts, within cost target.
+6. Check the pin-to-hole map against the carrier: MC-2 holes unused, unused
+   Due pins untouched, nothing covering a header socket.
+7. Read the model-gap list. Each item should name a test in their
+   validation plan.
+8. Send numbered comments. For each: requirement ID, what is wrong or
+   missing, what evidence would fix it. Do not tell them to relax a limit.
+
+Accept a design only when every row passes, and the validation plan can be
+run by you. Record the revision letter you accepted.
+
+### Firmware and host work the owner owes
+
+| Item | Needed for |
+|---|---|
+| Firmware reads JP-DIFF on a spare pin and selects differential mode and PGA gain | VT-2, VT-11 |
+| Firmware limits the DAC to the per-board range | VT-6 |
+| Host calibration of gain, offset, response and common mode | VT-1, VT-2, VT-4, VT-6 |
+
+These dependencies are the owner's, and not the contractor's. Land firmware changes on all three tracks and keep the invariants (nothing
+in the sample path, no printf in an ISR).
+
+### Sending results back
+
+For anything that fails or surprises, send: the requirement ID, the
+measured value, the setup, the Due and firmware, and the model gap it
+relates to. The contractor then reruns the affected simulations with the
+measured value. Same revision protocol as O1. When all VT pass, write the
+calibration note for the host software and the design review.
+
+### Phase 2 and Phase 3
+
+The optional differential amplifier assembly is a separate order, after the
+Phase 1 design is accepted and measured; Phase 1 only has to define the
+interface (P2-6). Phase 3, the precision calibration channel, is a separate
+decision (D5) and is not planned here until it is taken.
 
 ## Traceability
 
@@ -145,3 +225,5 @@ without changing the board.
 | PW-1 to PW-4 | 2a | VT-8, VT-6 |
 | AN-1 to AN-4, EN-1 | 2e | VT-12, VT-13 |
 | P2-1 to P2-6, PW-5, CA-1, MC-1 to MC-10 | step 6 and review | VT-9, VT-14 |
+| SM-1 to SM-8, SC-11, AW-9 (all proposed, D1 to D4) | 2b, 2c, 2e | VT-4, VT-15, VT-16, VT-17 |
+| PA-1 to PA-7 (Phase 3, D5) | not planned | PA-6's meter and reference check |

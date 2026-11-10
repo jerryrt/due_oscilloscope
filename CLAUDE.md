@@ -26,8 +26,8 @@ file is one row away.
 | Re-measuring the converters' analog performance at 90 MHz | `docs/analog-validation-plan.md` |
 | Comparable instruments, and the gap to the nearest one | `docs/related-work.md` - read before front-end hardware work |
 | Equivalent-time sampling and PRBS eye captures: the model, how to run it, the DAC/ADC RC pairing rule, the measurements | `docs/ets.md`, `docs/ets-mode.md` |
-| The analog front end's requirements, and the tests that accept them | `docs/afe.md` |
-| Building the AFE: steps, simulation gates, bench tests, values left to confirm | `docs/afe-plan.md` |
+| The analog front end, one document: requirements, the Due baseline, capture modes, tests, owner decisions | `docs/afe.md` |
+| Building the AFE: steps, simulation gates, bench tests, the owner's side of the loop | `docs/afe-plan.md` |
 | How to write one of these | `docs/writing.md` |
 | Versions, tags and releases: the one project version, what it is not, and the release procedure | `CONTRIBUTING.md` (the rule), `docs/versioning.md` |
 | **What is current, and what to pick up** | **standing issues, one per bench: #31 mac-bench, #32 linux-x1, #34 windows-desk, and #71 across all of them** |
