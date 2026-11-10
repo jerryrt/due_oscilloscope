@@ -84,7 +84,7 @@ def _model_fields(trk):
     m = trk["model"]
     return {"wander_ptp_ticks": m["wander_ptp"], "phase_rms_ticks": m["rms"],
             "phase_rms_linear_ticks": m["rms_linear"], "model_degree": m["degree"],
-            "model_rho1": m["rho1"], "model_max_sigma": m["max_sigma"],
+            "model_rho1": m["rho1"], "model_outliers": m["outliers"],
             "model_adequate": trk["adequate"],
             "time_axis_sigma_ns": m["sigma_model"] * e.TICK_NS}
 

@@ -191,3 +191,13 @@ def test_an_abrupt_phase_jump_is_reported_as_not_modelled():
     assert trk["adequate"] is False, (
         "a 4-tick phase step was accepted by a smooth model", trk["model"]["rms"],
         trk["block_noise"])
+
+
+def test_a_block_match_is_not_quantised_to_a_tick():
+    """Samples sit on whole ticks, so a template read only at whole ticks
+    would not move until a phase crossed one: every match quantised, 0.29
+    ticks of scatter on data with perfect timing. Interpolating the template
+    halves it."""
+    bits, vals = _samples(60e-6)
+    got = etsperiod.track_clock_ratio(vals, RC_ADC, bits, RC_DAC)
+    assert got["model"]["rms"] < 0.22, got["model"]["rms"]

@@ -177,31 +177,64 @@ and the fold needs an ADC RC coprime with it, so it is forced onto an odd one.
 
 The clock ratio is not a constant. It moved from -2.52 to -2.40 ppm over the
 four runs, which is ordinary for two crystals within their specification, and
-it is a precondition here and not a fault. Over a 16 s capture a drift of
-that size is half a tick of phase curvature, which a straight-line fit
-leaves as blur on every edge, far above the fold's repeatability. So the
-phase is fitted as a smooth curve, not a line, and the fit is judged:
+it is a precondition here and not a fault. A drift of that size is half a tick
+of phase curvature over a 16 s capture, which a straight-line fit would leave
+as blur on every edge. So the phase is fitted as a smooth curve, not a line,
+and the fit is judged:
 
-* the degree (1 to 6) is chosen by BIC;
+* the degree (1 to 6) is chosen by BIC, and blocks that match badly are
+  dropped as outliers and reported;
 * the capture is called adequately modelled only when the residuals look like
-  noise, neighbours uncorrelated (|rho1| at most 0.35) and none beyond 5 robust
-  sigmas, because a smooth curve through a phase jump leaves a run of one
-  sign, and the scatter alone does not show it;
+  noise, neighbours uncorrelated (|rho1| at most 0.35), because a smooth curve
+  through a phase jump leaves a run of one sign, and the scatter alone does not
+  show it;
 * the curve's own standard error, `time_axis_sigma_ns`, is reported: how well
   the time axis of the fold is known, whatever the bin width.
 
 On synthetic captures a parabola of 24 ticks (6 ticks peak to peak once a line
 is removed) is followed, the straight-line fold reads the edge more than 15%
 slow and the fitted one is within 3% of a capture with no wander, and a
-4-tick jump is reported as not modelled. The `montreal5` capture, with a
-shared clock, fits a degree-1 curve with no wander. The method uses only the
+4-tick jump is reported as not modelled. On `linux-x1`'s captures the fitted
+wander is 0 to 0.21 ticks peak to peak, so over 16 s a line was enough there;
+the model is the safeguard for a pair that wanders more. One capture (the RC 44
+control) is flagged not adequately modelled, with a phase scatter of 1.16
+ticks against 0.6 for the rest.
+
+The block-to-block scatter of the phase is 0.6 ticks on two boards and 0.22 on
+one, at every swing from 175 to 699 mV. It is not timing jitter. A synthetic
+capture with perfect timing at an even RC 46, with `linux-x1`'s edge shapes
+and noise, gives 0.56, 0.64 and 0.62 ticks at 1000, 350 and 175 mV, so it is
+what the block matcher returns on a clean signal. The matcher once read its
+template at whole ticks only, which quantised every match to a tick; it now
+interpolates between ticks, and a test holds that. The method uses only the
 sample stream and the timer constants (tick rate, ADC clock ratio, ADC RC),
 so a different MCU or front end changes those constants and nothing else.
 
-The resolution is still bounded by the track-and-hold's rise, which is
-estimated and not measured *(check)*, by the source's edge jitter, and by how
-well the ratio holds over a capture. The block-phase scatter is 0.6 to 0.7
-ticks against 0.22 on one board, and its cause is open.
+## The ADC's share of an edge
+
+A DAC edge is slew limited and shrinks with the step; what the ADC's
+track-and-hold and the DAC's small-signal response add does not. Rise squared
+against step squared is a line whose intercept is that floor. Measured on
+`linux-x1` (rc 28 into ADC RC 46, a source with its own clock, one run per swing
+after a dropped first, eye 99.8-99.9% at every swing, `records/ets-floor-linux-x1.jsonl`):
+
+| swing | rise, 10-90% | fall, 10-90% |
+|---|---|---|
+| 999 mV | 136.75 ns | 127.61 ns |
+| 699 mV | 98.89 ns | 91.59 ns |
+| 499 mV | 76.59 ns | 73.24 ns |
+| 350 mV | 62.65 ns | 61.89 ns |
+| 250 mV | 54.42 ns | 55.52 ns |
+| 175 mV | 48.60 ns | 52.02 ns |
+| **floor** | **42.4 ns** (rms 0.8 ns) | **45.4 ns** (rms 1.7 ns) |
+
+The floor is an upper bound on what the ADC adds, since it holds the DAC's own
+response too. It sits below the 50-54 ns that `docs/ets.md` reads off the
+datasheet's tracking-time formula, so that figure is pessimistic for this
+board. The fold reads a synthetic single-pole edge about 5% low, so the
+floor is 42 to 48 ns with that allowance. Rise and fall cross near 250 mV.
+No scope is attached to this bench, so the DAC's own rise at a small step is
+not separated out.
 
 ## Conditions on the signal
 

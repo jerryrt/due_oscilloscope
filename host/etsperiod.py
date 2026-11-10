@@ -47,18 +47,29 @@ def template(bits, rc_dac):
 
 
 def _corr(win, xs, tmpl, period, phi):
-    """Sum of sample * template at the phase `phi`, samples at ticks `xs`."""
+    """Sum of sample * template at the phase `phi`, samples at ticks `xs`.
+
+    The template is read between its ticks by linear interpolation. The
+    samples sit on whole ticks, so a template read only at whole ticks would
+    not move until `phi` crossed one, and every match would be quantised to a
+    tick: 0.29 ticks of scatter in a block's phase on data with perfect timing.
+    """
     acc = 0.0
+    p = int(period)
     for v, x in zip(win, xs):
-        acc += v * tmpl[int((x + phi) % period)]
+        u = (x + phi) % period
+        i = int(u)
+        f = u - i
+        acc += v * (tmpl[i] * (1.0 - f) + tmpl[(i + 1) % p] * f)
     return acc
 
 
 def _best_phase(win, xs, tmpl, period, lo, hi, step):
     """The phase in [lo, hi) with the highest correlation, to a sub-step.
 
-    The correlation of an NRZ pattern with itself falls linearly either
-    side of its peak, so the two flanks are extended to where they meet.
+    The correlation of an ideal NRZ pattern with itself falls linearly
+    either side of its peak, so the two flanks are extended to where they
+    meet.
     """
     n = int(round((hi - lo) / step))
     cs = [_corr(win, xs, tmpl, period, lo + i * step) for i in range(n)]
@@ -78,7 +89,9 @@ MAX_DEGREE = 6
 #: are not correlated, and none is far outside the rest. A smooth curve
 #: through a jump leaves a run of one sign and a few large ones.
 RHO_MAX = 0.35
-OUTLIER_SIGMA = 5.0
+OUTLIER_SIGMA = 6.0
+#: More dropped blocks than this share of them is not a few bad matches.
+MAX_OUTLIER_SHARE = 0.05
 #: Samples per linear segment when a model is evaluated along a capture.
 SEGMENT = 2048
 
@@ -120,7 +133,7 @@ def fit_phase(pts):
     `rms` is the scatter about the chosen curve, `rms_linear` about a line,
     `wander_ptp` the peak-to-peak of the chosen curve above its own
     straight-line part in ticks, `rho1` the correlation of neighbouring
-    residuals, `max_sigma` the largest residual in robust sigmas, and
+    residuals, `outliers` the blocks dropped as bad matches, and
     `sigma_model` the curve's own standard error in ticks: how well the
     time axis of a fold on it is known, whatever the bin width.
     """
@@ -139,19 +152,30 @@ def fit_phase(pts):
         if best is None or bic < best[0]:
             best = (bic, deg, coef)
     _, deg, coef = best
-    res = [y - _horner(coef, t) for t, y in zip(ts, ys)]
+    # A block that matches badly is an outlier to drop, not a feature of the
+    # clock: refit without the ones far outside the rest, a few passes at most.
+    keep = list(range(n))
+    for _ in range(3):
+        res = [ys[i] - _horner(coef, ts[i]) for i in keep]
+        sig = 1.4826 * sorted(abs(r) for r in res)[len(res) // 2] or 1e-12
+        kept = [i for i, r in zip(keep, res) if abs(r) <= OUTLIER_SIGMA * sig]
+        if len(kept) == len(keep) or len(kept) < 8:
+            break
+        keep = kept
+        coef = _polyfit([ts[i] for i in keep], [ys[i] for i in keep], deg)
+    res = [ys[i] - _horner(coef, ts[i]) for i in keep]
+    nk = len(keep)
     ss = sum(r * r for r in res) or 1e-12
     rho1 = sum(a * b for a, b in zip(res, res[1:])) / ss
-    med = sorted(abs(r) for r in res)[len(res) // 2]
-    sigma = 1.4826 * med or 1e-12
+    rms_k = math.sqrt(ss / nk)
     lin = _polyfit(ts, ys, 1)
     grid = [i / 100.0 * 2 - 1 for i in range(101)]
     resid = [_horner(coef, t) - _horner(lin, t) for t in grid]
     return {"coef": coef, "xmid": xmid, "xhalf": xhalf, "degree": deg,
-            "rms": math.sqrt(rss_by[deg] / n), "rms_linear": math.sqrt(rss_by[1] / n),
+            "rms": rms_k, "rms_linear": math.sqrt(rss_by[1] / n),
             "wander_ptp": max(resid) - min(resid), "rho1": rho1,
-            "sigma_model": math.sqrt(rss_by[deg] / n) * math.sqrt((deg + 1) / n),
-            "max_sigma": max(abs(r) for r in res) / sigma}
+            "sigma_model": rms_k * math.sqrt((deg + 1) / nk),
+            "outliers": n - nk}
 
 
 def phase_at(model, x):
@@ -270,7 +294,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     model = fit_phase(pts)
     noise = block_noise(pts, first_blocks)
     adequate = (abs(model["rho1"]) <= RHO_MAX
-                and model["max_sigma"] <= OUTLIER_SIGMA)
+                and model["outliers"] <= MAX_OUTLIER_SHARE * len(pts))
     # The source's phase in ticks is x / (1 + delta), so against the ADC's
     # ticks it falls at -delta / (1 + delta) per tick.
     delta = -sl / (1.0 + sl)
