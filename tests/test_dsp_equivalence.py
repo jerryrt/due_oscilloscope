@@ -135,8 +135,8 @@ def test_the_running_line_matches_the_refit():
             assert line.slope() == pytest.approx(etsperiod._slope(pts[:n]), rel=1e-9)
 
 
-def test_the_process_pool_changes_nothing(monkeypatch):
-    """One worker and many give the same fold and the same labels."""
+def test_the_thread_pool_changes_nothing(monkeypatch):
+    """One thread and many give the same fold and the same labels."""
     import etspam
     import etspattern
     vals, syms, period = _capture(300_000)
@@ -166,3 +166,41 @@ def test_a_broken_pool_split_is_caught(monkeypatch):
     monkeypatch.setattr(dsp, "map_ranges", lambda *a, **k: real(*a, **k)[:-1])
     c, n = etsperiod.fold_warped(vals, RC_ADC, trk["model"], period, 1)
     assert sum(n) < len(vals)
+
+
+def test_the_vectorised_phase_index_matches_the_segment_loop():
+    vals, syms, period = _capture(50_000)
+    model = {"coef": [0.0, 0.3, 0.1], "xmid": 1.0e6, "xhalf": 1.0e6}
+    for k in (1, 10):
+        ref = list(etsperiod.phase_indices(len(vals), RC_ADC, model, period, k, 77))
+        got = dsp.phase_indices(len(vals), RC_ADC, lambda x: etsperiod.phase_at(model, x),
+                                period, k, 77, etsperiod.SEGMENT)
+        assert got.tolist() == ref
+
+
+def _close(a, b):
+    """Equal in structure and in every number to 1e-9; the moments are matrix products."""
+    if isinstance(a, dict):
+        return a.keys() == b.keys() and all(_close(a[k], b[k]) for k in a)
+    if isinstance(a, (list, tuple)):
+        return len(a) == len(b) and all(_close(x, y) for x, y in zip(a, b))
+    if isinstance(a, float):
+        return a == pytest.approx(b, rel=1e-9, abs=1e-9)
+    return a == b
+
+
+def test_the_batched_level_analysis_matches_the_loops(monkeypatch):
+    """analyze_levels on matrices against the per-histogram loops, every field."""
+    import etspam
+    import etspattern
+    for pam in (4, 16):
+        pat = etspattern.pattern(pam)
+        vals, syms, period = _capture(400_000, pam=pam)
+        trk = etsperiod.track_clock_ratio(vals, RC_ADC, syms, RC_DAC, levels=pam)
+        monkeypatch.setenv("DUE_DSP", "numpy")
+        centre, by_t = etspam.label_samples(vals, RC_ADC, trk["model"], pat, RC_DAC, 3.0, None, 0)
+        got = {}
+        for which in ("python", "numpy"):
+            monkeypatch.setenv("DUE_DSP", which)
+            got[which] = etspam.analyze_levels(centre, by_t, pat)
+        assert _close(got["python"], got["numpy"])

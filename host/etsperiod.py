@@ -243,11 +243,16 @@ def fold_warped(vals, rc_adc, model, period, k=1, start=0):
         v = dsp.np.asarray(vals)
 
         def part(a, b):
-            idx = dsp.phase_indices(b - a, rc_adc, lambda x: phase_at(model, x),
-                                    period, k, start + a, SEGMENT)
-            return (dsp.np.bincount(idx, weights=v[a:b].astype(dsp.np.float64),
-                                    minlength=nb),
-                    dsp.np.bincount(idx, minlength=nb))
+            acc = dsp.np.zeros(nb)
+            cnt = dsp.np.zeros(nb, dtype=dsp.np.int64)
+            for i in range(a, b, dsp.CHUNK):                 # small chunks stay in cache
+                m = min(dsp.CHUNK, b - i)
+                idx = dsp.phase_indices(m, rc_adc, lambda x: phase_at(model, x),
+                                        period, k, start + i, SEGMENT)
+                acc += dsp.np.bincount(idx, weights=v[i:i + m].astype(dsp.np.float64),
+                                       minlength=nb)
+                cnt += dsp.np.bincount(idx, minlength=nb)
+            return acc, cnt
         parts = dsp.map_ranges(part, len(v), SEGMENT)
         acc = sum(p[0] for p in parts)
         cnt = sum(p[1] for p in parts)
@@ -295,6 +300,10 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
         mean = sum(vals) / len(vals)
         amp = (max(vals) - min(vals)) / 2.0 or 1.0
         cen = [(v - mean) / amp for v in vals]
+    absum = xs_off = None
+    if dsp.name() == "numpy":
+        absum = dsp.np.concatenate([[0.0], dsp.np.cumsum(dsp.np.abs(cen))])
+        xs_off = dsp.np.arange(block) * rc_adc
     pts = []                                   # (x of block centre, unwrapped phase)
     line = _RunningLine()                      # the same line, kept as blocks arrive
     edge = skipped = 0
@@ -303,9 +312,13 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     while j < nblk:
         i0 = j * block
         win = cen[i0:i0 + block]
-        xs = [(start + i0 + i) * rc_adc for i in range(block)]
         xm = (start + i0 + block // 2) * rc_adc
-        den = float(sum(abs(v) for v in win)) or 1.0
+        if absum is not None:               # block sums from one running total
+            xs = xs_off + (start + i0) * rc_adc
+            den = float(absum[i0 + block] - absum[i0]) or 1.0
+        else:
+            xs = [(start + i0 + i) * rc_adc for i in range(block)]
+            den = float(sum(abs(v) for v in win)) or 1.0
         if not pts:
             if den < IDLE_SHARE * block:
                 skipped += 1

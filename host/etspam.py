@@ -107,7 +107,7 @@ def label_samples(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):
 
 #: Samples labelled per pass; a multiple of `etsperiod.SEGMENT`, so the phase
 #: curve is followed in the same segments as the reference follows it.
-CHUNK = 2048 * 1024
+CHUNK = 2048 * 512
 
 
 def _label_samples_numpy(vals, rc_adc, model, pat, rc_dac, b0, cells, start):
@@ -255,6 +255,62 @@ def _eye_heights(by_t, nlev):
     return heights
 
 
+def _quantile_rows(h, q, from_top=False):
+    """`_quantile` of every row of a 2-D histogram at once: floats, NaN for an empty row."""
+    np = dsp.np
+    if from_top:
+        h = h[..., ::-1]
+    cum = np.cumsum(h, axis=-1)
+    total = cum[..., -1]
+    first = (cum >= (q * total)[..., None]).argmax(axis=-1)
+    code = (ADC_CODES - 1 - first) if from_top else first
+    return np.where(total == 0, np.nan, code.astype(np.float64))
+
+
+def _stats_np(centre):
+    """`_stats` of every level, from one matrix: the moments are products with
+    the code vector, which is where BLAS takes them."""
+    np = dsp.np
+    h = np.stack([np.frombuffer(c, dtype=np.uint32) for c in centre]).astype(np.float64)
+    codes = np.arange(ADC_CODES, dtype=np.float64)
+    n = h.sum(axis=1).tolist()
+    s = (h @ codes).tolist()
+    ss = (h @ (codes * codes)).tolist()
+    lo = _quantile_rows(h.astype(np.int64), TAIL).tolist()
+    hi = _quantile_rows(h.astype(np.int64), TAIL, from_top=True).tolist()
+    out = []
+    for i in range(len(centre)):
+        if n[i] == 0:
+            out.append({"n": 0, "mean": None, "std": None, "lo": None, "hi": None})
+            continue
+        mean = s[i] / n[i]
+        out.append({"n": int(n[i]), "mean": mean,
+                    "std": math.sqrt(max(0.0, ss[i] / n[i] - mean * mean)),
+                    "lo": lo[i], "hi": hi[i]})
+    return out
+
+
+def _eye_heights_np(by_t, nlev):
+    """`_eye_heights` with the running sums over levels as cumulative sums."""
+    np = dsp.np
+    h = np.zeros((TBINS, nlev, ADC_CODES), dtype=np.int64)
+    for tb in range(TBINS):
+        for i in range(nlev):
+            if by_t[tb][i] is not None:
+                h[tb, i] = np.frombuffer(by_t[tb][i], dtype=np.uint32)
+    lower = np.cumsum(h, axis=1)                         # levels 0..i
+    upper = np.cumsum(h[:, ::-1], axis=1)[:, ::-1]       # levels i..top
+    lower_hi = _quantile_rows(lower, TAIL, from_top=True)     # (TBINS, nlev)
+    up_lo = _quantile_rows(upper, TAIL)
+    heights = [[None] * TBINS for _ in range(nlev - 1)]
+    for tb in range(TBINS):
+        for i in range(1, nlev):
+            a, b = up_lo[tb, i], lower_hi[tb, i - 1]
+            if not (np.isnan(a) or np.isnan(b)):
+                heights[i - 1][tb] = float(a - b)
+    return heights
+
+
 def _longest_open_run(heights):
     best = run = 0
     for h in heights:
@@ -275,7 +331,9 @@ def _ladder_fit(codes, means):
 def analyze_levels(centre, by_t, pat):
     """The figures the gates read, from the labelled histograms."""
     nlev = pat.pam
-    levels = [dict(_stats(h), level=i, code=pat.codes[i]) for i, h in enumerate(centre)]
+    np_path = dsp.name() == "numpy"
+    stats = _stats_np(centre) if np_path else [_stats(h) for h in centre]
+    levels = [dict(st, level=i, code=pat.codes[i]) for i, st in enumerate(stats)]
     out = {"pam": nlev, "levels": levels}
     if any(lv["n"] == 0 for lv in levels):
         out["error"] = "a level has no samples at its symbol centre"
@@ -286,7 +344,7 @@ def analyze_levels(centre, by_t, pat):
     gaps = [y - x for x, y in zip(means, means[1:])]
     sep = min(g / max(levels[i]["std"], levels[i + 1]["std"], 1e-9)
               for i, g in enumerate(gaps))
-    heights = _eye_heights(by_t, nlev)
+    heights = _eye_heights_np(by_t, nlev) if np_path else _eye_heights(by_t, nlev)
     centre_tb = int(0.5 * TBINS)
     eyes = []
     for i in range(nlev - 1):
