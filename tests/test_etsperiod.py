@@ -46,7 +46,8 @@ def _steady_curve(bits):
     return out
 
 
-def _samples(delta, n=N, sigma=0.002, seed=5, offset=311.7, odd_ticks=0.0):
+def _samples(delta, n=N, sigma=0.002, seed=5, offset=311.7, odd_ticks=0.0,
+             wander=None):
     """`n` samples at ADC ticks `k * RC_ADC` of a source `delta` slow."""
     bits = ets_phase0.prbs7()
     curve = _steady_curve(bits)
@@ -54,8 +55,9 @@ def _samples(delta, n=N, sigma=0.002, seed=5, offset=311.7, odd_ticks=0.0):
     rnd = random.Random(seed)
     vals = []
     for k in range(n):
-        u = ((k * RC_ADC + (odd_ticks if k & 1 else 0.0)) / (1.0 + delta)
-             + offset) % period
+        x = k * RC_ADC + (odd_ticks if k & 1 else 0.0)
+        u = (x / (1.0 + delta) + offset
+             + (wander(k / n) if wander else 0.0)) % period
         i = int(u)
         f = u - i
         v = curve[i] * (1 - f) + curve[(i + 1) % period] * f
@@ -120,9 +122,13 @@ def test_samples_of_an_independent_clock_fill_the_fine_bins_and_a_shared_one_doe
     free = _resolution(60e-6, tmp_path)
     locked = _resolution(0.0, tmp_path)
     assert free["fine_filled_share"] > 0.9 and free["frac_min_over_max"] > 0.5, free
-    assert locked["fine_filled_share"] < 0.15, (
-        "samples on a shared clock reached the fine bins between ticks: the "
-        "measure cannot tell a lattice from a continuous position", locked)
+    # A shared clock puts every sample on one fractional position. The fitted
+    # phase curve is not perfectly flat, so that position is smeared by the
+    # curve's own uncertainty and a few fine bins fill, never most of them.
+    assert locked["fine_filled_share"] < 0.5 and locked["frac_min_over_max"] == 0.0, (
+        "samples on a shared clock reached most of the fine bins between ticks: "
+        "the measure cannot tell a lattice from a continuous position", locked)
+    assert free["time_axis_sigma_ns"] < 3.0, free
 
 
 def test_a_one_tick_offset_of_the_odd_samples_is_found_with_its_sign_and_removed(tmp_path):
@@ -147,3 +153,41 @@ def test_the_floor_fit_recovers_a_known_floor_and_reports_none_when_there_is_non
     pure = ets_cross.fit_floor([(s, 0.02 * s) for s in steps])
     assert pure["floor_ns"] is None or pure["floor_ns"] < 1.0, (
         "a purely slew-limited edge was given a floor", pure)
+
+
+def _rise(curve, bits):
+    if any(c is None for c in curve):
+        return None
+    fig, _ = ets_phase0.analyze(curve, RC_DAC, bits)
+    return fig["rise_ns"] if fig["pattern_ok"] else None
+
+
+def test_a_wandering_ratio_is_followed_and_a_straight_line_is_not_enough():
+    """A parabola of 24 ticks over the capture, 6 ticks peak to peak once a
+    straight line is removed: a fold on a constant ratio blurs the edge, and
+    the fitted curve does not."""
+    # The reference is the same pipeline on a capture with no wander: the
+    # fold reads a synthetic single-pole edge about 5% low by itself.
+    bits, calm = _samples(60e-6)
+    ref_trk = etsperiod.track_clock_ratio(calm, RC_ADC, bits, RC_DAC)
+    ref, _ = etsperiod.fold_warped(calm, RC_ADC, ref_trk["model"], 3556)
+    base = _rise(ref, bits)
+    bits, vals = _samples(60e-6, wander=lambda t: 24.0 * t * t)
+    trk = etsperiod.track_clock_ratio(vals, RC_ADC, bits, RC_DAC)
+    warped, _ = etsperiod.fold_warped(vals, RC_ADC, trk["model"], 3556)
+    straight, _ = etsperiod.fold_scaled(vals, RC_ADC, trk["period"], 3556)
+    rw, rs = _rise(warped, bits), _rise(straight, bits)
+    assert rw is not None and abs(rw - base) < 0.03 * base, (rw, base)
+    assert rs is None or rs > 1.15 * base, (
+        "a straight-line fold is as sharp as the warped one: the wander is "
+        "not hurting it, so this test cannot show the model helps", rs, base)
+    assert trk["model"]["rms_linear"] > 3 * trk["model"]["rms"], trk["model"]
+    assert trk["adequate"] is True, trk["block_noise"]
+
+
+def test_an_abrupt_phase_jump_is_reported_as_not_modelled():
+    bits, vals = _samples(60e-6, wander=lambda t: 4.0 if t > 0.5 else 0.0)
+    trk = etsperiod.track_clock_ratio(vals, RC_ADC, bits, RC_DAC)
+    assert trk["adequate"] is False, (
+        "a 4-tick phase step was accepted by a smooth model", trk["model"]["rms"],
+        trk["block_noise"])

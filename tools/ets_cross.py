@@ -79,6 +79,16 @@ def capture(seconds, out, rc_adc=ADC_RC):
     return meta
 
 
+def _model_fields(trk):
+    """What a reader needs to decide whether the phase model can be trusted."""
+    m = trk["model"]
+    return {"wander_ptp_ticks": m["wander_ptp"], "phase_rms_ticks": m["rms"],
+            "phase_rms_linear_ticks": m["rms_linear"], "model_degree": m["degree"],
+            "model_rho1": m["rho1"], "model_max_sigma": m["max_sigma"],
+            "model_adequate": trk["adequate"],
+            "time_axis_sigma_ns": m["sigma_model"] * e.TICK_NS}
+
+
 def analyze(path, rc_dac, rc_adc):
     raw = array.array("H")
     with open(path, "rb") as f:
@@ -87,20 +97,19 @@ def analyze(path, rc_dac, rc_adc):
     bits = e.prbs7()
     bins = len(bits) * rc_dac
     trk = etsperiod.track_clock_ratio(vals, rc_adc, bits, rc_dac)
-    curve, cnt = etsperiod.fold_scaled(vals, rc_adc, trk["period"], bins)
+    curve, cnt = etsperiod.fold_warped(vals, rc_adc, trk["model"], bins)
     row = {"samples": len(vals), "rc_dac": rc_dac, "rc_adc": rc_adc,
            "delta_ppm": trk["delta"] * 1e6, "period_ticks": trk["period"],
            "track_blocks": trk["blocks"], "track_rms_ticks": trk["rms"],
            "track_edge_hits": trk["edge_hits"],
            "coverage": eqtime.coverage(cnt), "min_per_bin": min(cnt)}
+    row.update(_model_fields(trk))
     if row["coverage"] < 1.0:
         row["error"] = "fold has holes"
         return row
     fig, b0 = e.analyze(curve, rc_dac, bits)
     row.update(fig)
-    scale = bins / trk["period"]
-    step = rc_adc % trk["period"]
-    ph = 0.0
+    row["trusted"] = bool(trk["adequate"] and fig["pattern_ok"])
     edge = [False] * bins
     for j in range(len(bits)):
         c = int(round(b0 + j * rc_dac))
@@ -109,8 +118,8 @@ def analyze(path, rc_dac, rc_adc):
     blocks = []                      # (flat sum, flat n, edge sum, edge n) per 1,024
     sf = se = 0.0
     nf = ne = 0
-    for n, v in enumerate(vals, 1):
-        i = min(int(ph * scale), bins - 1)
+    idx = etsperiod.phase_indices(len(vals), rc_adc, trk["model"], bins)
+    for n, (v, i) in enumerate(zip(vals, idx), 1):
         r = v - curve[i]
         if edge[i]:
             se += r * r
@@ -118,9 +127,6 @@ def analyze(path, rc_dac, rc_adc):
         else:
             sf += r * r
             nf += 1
-        ph += step
-        if ph >= trk["period"]:
-            ph -= trk["period"]
         if n % 1024 == 0:
             blocks.append((sf, nf, se, ne))
             sf = se = 0.0
@@ -168,7 +174,6 @@ def resolution(path, rc_dac, rc_adc, k, kp):
     bits = e.prbs7()
     L = len(bits)
     trk = etsperiod.track_clock_ratio(vals, rc_adc, bits, rc_dac)
-    period = trk["period"]
     unit = L * rc_dac
     nb, nbp = unit * k, unit * kp
     hist = [0] * 10
@@ -176,25 +181,19 @@ def resolution(path, rc_dac, rc_adc, k, kp):
     cnt = [0] * nb
     pacc = [[0.0] * nbp, [0.0] * nbp]
     pcnt = [[0] * nbp, [0] * nbp]
-    sc, sk, sp = unit / period, nb / period, nbp / period
-    step = rc_adc % period
-    ph = 0.0
-    for n, v in enumerate(vals):
-        u = ph * sc
-        hist[min(9, int((u - int(u)) * 10))] += 1
-        i = min(int(ph * sk), nb - 1)
+    for n, (v, i) in enumerate(zip(vals, etsperiod.phase_indices(
+            len(vals), rc_adc, trk["model"], unit, k))):
+        hist[(i % k) * 10 // k] += 1
         acc[i] += v
         cnt[i] += 1
-        i = min(int(ph * sp), nbp - 1)
-        pacc[n & 1][i] += v
-        pcnt[n & 1][i] += 1
-        ph += step
-        if ph >= period:
-            ph -= period
+        ip = i * kp // k
+        pacc[n & 1][ip] += v
+        pcnt[n & 1][ip] += 1
     row = {"samples": len(vals), "delta_ppm": trk["delta"] * 1e6,
            "frac_hist_10": hist, "frac_min_over_max": min(hist) / max(hist),
            "bins_per_tick": k, "fine_filled_share": sum(1 for c in cnt if c >= 20) / nb,
            "fine_min_per_bin": min(cnt), "track_rms_ticks": trk["rms"]}
+    row.update(_model_fields(trk))
     tick_ns = e.TICK_NS
     if min(cnt) < 20:
         row["note"] = "fine fold has holes: the samples sit on a lattice, no edge reading"
@@ -230,14 +229,14 @@ def resolution(path, rc_dac, rc_adc, k, kp):
         if diffs:
             shift_ns = sum(diffs) / len(diffs)
             row["odd_shift_ns"] = shift_ns
-            row.update(_corrected(vals, rc_adc, period, rc_dac, bits, k,
-                                  shift_ns / tick_ns * k, shift, b0))
+            row.update(_corrected(vals, rc_adc, trk["model"], rc_dac, bits, k,
+                                  shift_ns / tick_ns * k))
     else:
         row["parity_note"] = "a parity fold has holes at %d bins per tick" % kp
     return row
 
 
-def _corrected(vals, rc_adc, period, rc_dac, bits, k, shift_bins, shift, b0):
+def _corrected(vals, rc_adc, model, rc_dac, bits, k, shift_bins):
     """The fine fold again with the odd samples moved back by their offset.
 
     The odd samples' edge sits `shift_bins` fine bins later than the even
@@ -247,17 +246,12 @@ def _corrected(vals, rc_adc, period, rc_dac, bits, k, shift_bins, shift, b0):
     nb = L * rc_dac * k
     acc = [0.0] * nb
     cnt = [0] * nb
-    sk = nb / period
-    step = rc_adc % period
-    ph = 0.0
-    for n, v in enumerate(vals):
-        x = ph * sk - (shift_bins if n & 1 else 0.0)
-        i = int(x) % nb
+    back = int(round(shift_bins))
+    for n, (v, i) in enumerate(zip(vals, etsperiod.phase_indices(
+            len(vals), rc_adc, model, L * rc_dac, k))):
+        i = (i - (back if n & 1 else 0)) % nb
         acc[i] += v
         cnt[i] += 1
-        ph += step
-        if ph >= period:
-            ph -= period
     if min(cnt) < 20:
         return {"corrected_note": "corrected fold has holes"}
     curve = [a / c for a, c in zip(acc, cnt)]

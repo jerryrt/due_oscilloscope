@@ -12,6 +12,14 @@ find where in the pattern it falls; that phase moves linearly with time at
 a rate equal to the ratio's error, and a line fitted through the phases of
 blocks spread over the whole capture reads it to about a part per billion.
 
+Two crystals do not hold a ratio: it moves by a fraction of a ppm over
+minutes, and over a 16 s capture that is half a tick or more of phase
+curvature, far more than the fold's own repeatability. The phase is
+therefore fitted as a smooth curve, not a line, with the degree chosen by
+BIC, and the fit is judged: the scatter about it must match the noise of the
+block matches themselves, or the capture is reported as not adequately
+modelled and nothing downstream should trust a fold on it.
+
 A search that scores whole-capture folds on candidate periods was tried
 first and does not work here: a fold on bins as wide as a symbol cannot
 tell a period that is 8 ticks out by the end of its window from the right
@@ -63,6 +71,137 @@ def _best_phase(win, xs, tmpl, period, lo, hi, step):
         if rise > 0:
             frac = 0.5 * (right - left) / rise
     return lo + (i + frac) * step, cs[i], on_edge
+
+
+MAX_DEGREE = 6
+#: The residuals of an adequate model look like noise: neighbouring ones
+#: are not correlated, and none is far outside the rest. A smooth curve
+#: through a jump leaves a run of one sign and a few large ones.
+RHO_MAX = 0.35
+OUTLIER_SIGMA = 5.0
+#: Samples per linear segment when a model is evaluated along a capture.
+SEGMENT = 2048
+
+
+def _solve(a, b):
+    n = len(b)
+    m = [row[:] + [b[i]] for i, row in enumerate(a)]
+    for c in range(n):
+        piv = max(range(c, n), key=lambda r: abs(m[r][c]))
+        m[c], m[piv] = m[piv], m[c]
+        for r in range(c + 1, n):
+            f = m[r][c] / m[c][c]
+            for k in range(c, n + 1):
+                m[r][k] -= f * m[c][k]
+    x = [0.0] * n
+    for r in range(n - 1, -1, -1):
+        x[r] = (m[r][n] - sum(m[r][k] * x[k] for k in range(r + 1, n))) / m[r][r]
+    return x
+
+
+def _polyfit(ts, ys, deg):
+    pw = [sum(t ** k for t in ts) for k in range(2 * deg + 1)]
+    a = [[pw[i + j] for j in range(deg + 1)] for i in range(deg + 1)]
+    b = [sum(y * t ** i for t, y in zip(ts, ys)) for i in range(deg + 1)]
+    return _solve(a, b)
+
+
+def _horner(coef, t):
+    v = 0.0
+    for c in reversed(coef):
+        v = v * t + c
+    return v
+
+
+def fit_phase(pts):
+    """A smooth phase curve through `(x, phase)` block matches.
+
+    Returns `{coef, xmid, xhalf, degree, rms, rms_linear, wander_ptp}`:
+    `rms` is the scatter about the chosen curve, `rms_linear` about a line,
+    `wander_ptp` the peak-to-peak of the chosen curve above its own
+    straight-line part in ticks, `rho1` the correlation of neighbouring
+    residuals, `max_sigma` the largest residual in robust sigmas, and
+    `sigma_model` the curve's own standard error in ticks: how well the
+    time axis of a fold on it is known, whatever the bin width.
+    """
+    xs = [p[0] for p in pts]
+    xmid, xhalf = (xs[0] + xs[-1]) / 2.0, (xs[-1] - xs[0]) / 2.0 or 1.0
+    ts = [(x - xmid) / xhalf for x in xs]
+    ys = [p[1] for p in pts]
+    n = len(pts)
+    best = None
+    rss_by = {}
+    for deg in range(1, MAX_DEGREE + 1):
+        coef = _polyfit(ts, ys, deg)
+        rss = sum((y - _horner(coef, t)) ** 2 for t, y in zip(ts, ys))
+        rss_by[deg] = rss
+        bic = n * math.log(rss / n + 1e-12) + (deg + 1) * math.log(n)
+        if best is None or bic < best[0]:
+            best = (bic, deg, coef)
+    _, deg, coef = best
+    res = [y - _horner(coef, t) for t, y in zip(ts, ys)]
+    ss = sum(r * r for r in res) or 1e-12
+    rho1 = sum(a * b for a, b in zip(res, res[1:])) / ss
+    med = sorted(abs(r) for r in res)[len(res) // 2]
+    sigma = 1.4826 * med or 1e-12
+    lin = _polyfit(ts, ys, 1)
+    grid = [i / 100.0 * 2 - 1 for i in range(101)]
+    resid = [_horner(coef, t) - _horner(lin, t) for t in grid]
+    return {"coef": coef, "xmid": xmid, "xhalf": xhalf, "degree": deg,
+            "rms": math.sqrt(rss_by[deg] / n), "rms_linear": math.sqrt(rss_by[1] / n),
+            "wander_ptp": max(resid) - min(resid), "rho1": rho1,
+            "sigma_model": math.sqrt(rss_by[deg] / n) * math.sqrt((deg + 1) / n),
+            "max_sigma": max(abs(r) for r in res) / sigma}
+
+
+def phase_at(model, x):
+    return _horner(model["coef"], (x - model["xmid"]) / model["xhalf"])
+
+
+def block_noise(pts, consecutive):
+    """Scatter of a block match, from second differences of neighbours."""
+    ph = [p[1] for p in pts[:consecutive]]
+    if len(ph) < 6:
+        return None
+    d2 = [ph[i + 1] - 2 * ph[i] + ph[i - 1] for i in range(1, len(ph) - 1)]
+    return math.sqrt(sum(d * d for d in d2) / len(d2) / 6.0)
+
+
+def phase_indices(n, rc_adc, model, period, k=1, start=0):
+    """Fold bin of each of `n` samples on the fitted phase curve.
+
+    The bin is `k` per source tick over a pattern of `period` ticks, so the
+    result runs 0 to `period * k - 1`. The curve is evaluated at the ends of
+    segments of `SEGMENT` samples and followed linearly between them.
+    """
+    nb = period * k
+    i = 0
+    while i < n:
+        m = min(SEGMENT, n - i)
+        x0 = (start + i) * rc_adc
+        x1 = (start + i + m) * rc_adc
+        p0 = x0 + phase_at(model, x0)
+        dp = (x1 + phase_at(model, x1) - p0) / m
+        u = p0 % period
+        for _ in range(m):
+            yield int(u * k) % nb
+            u += dp
+            if u >= period:
+                u -= period
+            elif u < 0:
+                u += period
+        i += m
+
+
+def fold_warped(vals, rc_adc, model, period, k=1, start=0):
+    """Mean per bin on the fitted phase curve: `(curve, counts)`."""
+    nb = period * k
+    acc = [0.0] * nb
+    cnt = [0] * nb
+    for v, i in zip(vals, phase_indices(len(vals), rc_adc, model, period, k, start)):
+        acc[i] += v
+        cnt[i] += 1
+    return [a / c if c else None for a, c in zip(acc, cnt)], cnt
 
 
 def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
@@ -128,12 +267,17 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     sl = _slope(pts)
     fit = _fit(pts)
     rms = math.sqrt(sum((y - (fit[0] + fit[1] * x)) ** 2 for x, y in pts) / len(pts))
+    model = fit_phase(pts)
+    noise = block_noise(pts, first_blocks)
+    adequate = (abs(model["rho1"]) <= RHO_MAX
+                and model["max_sigma"] <= OUTLIER_SIGMA)
     # The source's phase in ticks is x / (1 + delta), so against the ADC's
     # ticks it falls at -delta / (1 + delta) per tick.
     delta = -sl / (1.0 + sl)
     return {"delta": delta, "period": period * (1.0 + delta), "blocks": len(pts),
             "rms": rms, "edge_hits": edge,
-            "skipped": skipped}
+            "skipped": skipped, "model": model, "block_noise": noise,
+            "adequate": adequate}
 
 
 def _fit(pts):

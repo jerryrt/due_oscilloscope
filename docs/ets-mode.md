@@ -175,8 +175,28 @@ odd-RC ones to 0.3 ns. **For a source with its own clock, capture at an even
 RC.** The same-board path cannot: the pattern period `127 * rc_dac` is even,
 and the fold needs an ADC RC coprime with it, so it is forced onto an odd one.
 
-The clock ratio itself moved from -2.52 to -2.40 ppm over the four runs, so
-the boards' relative clock wanders at the tenth-of-a-ppm level over minutes.
+The clock ratio is not a constant. It moved from -2.52 to -2.40 ppm over the
+four runs, which is ordinary for two crystals within their specification, and
+it is a precondition here and not a fault. Over a 16 s capture a drift of
+that size is half a tick of phase curvature, which a straight-line fit
+leaves as blur on every edge, far above the fold's repeatability. So the
+phase is fitted as a smooth curve, not a line, and the fit is judged:
+
+* the degree (1 to 6) is chosen by BIC;
+* the capture is called adequately modelled only when the residuals look like
+  noise, neighbours uncorrelated (|rho1| at most 0.35) and none beyond 5 robust
+  sigmas, because a smooth curve through a phase jump leaves a run of one
+  sign, and the scatter alone does not show it;
+* the curve's own standard error, `time_axis_sigma_ns`, is reported: how well
+  the time axis of the fold is known, whatever the bin width.
+
+On synthetic captures a parabola of 24 ticks (6 ticks peak to peak once a line
+is removed) is followed, the straight-line fold reads the edge more than 15%
+slow and the fitted one is within 3% of a capture with no wander, and a
+4-tick jump is reported as not modelled. The `montreal5` capture, with a
+shared clock, fits a degree-1 curve with no wander. The method uses only the
+sample stream and the timer constants (tick rate, ADC clock ratio, ADC RC),
+so a different MCU or front end changes those constants and nothing else.
 
 The resolution is still bounded by the track-and-hold's rise, which is
 estimated and not measured *(check)*, by the source's edge jitter, and by how
