@@ -22,6 +22,32 @@ The names carry the method because the method changed between them, and
 a spread taken across two methods is not a spread.
 `docs/measurement-suite.md` has the argument and the verdict.
 
+## ETS records
+
+Equivalent-time captures of a PRBS7 from a Due's DAC (`docs/ets-mode.md`). Every
+row is one run or one re-reading of a raw capture; raw captures (8-16 M samples)
+are not kept, so a re-reading is reproducible only while its raw file exists on
+the bench that took it.
+
+| file | method | evidence for | bench, board, image | code that read it |
+|---|---|---|---|---|
+| `ets-phase0-montreal5-b.jsonl` | `ets_phase0.py loop`, one board, host-fed PRBS7 | seven DAC rates 200 kHz to 1.607 MHz: eye, edges, repetition, duplex loss | `montreal5`, probes fitted, Track B `8d3f2b2-dirty`; the rows carry the board's `uid` in `ident` and no `bench` field, because the station declares only its probes | `ac2325d-dirty` |
+| `ets-phase0-montreal5-b-scope.jsonl` | `ets_phase0.py both`, the same with a Rigol DS1102E on DAC0 (probe ratio x1 in software, switch unknown) | the fold and an independent instrument agree on the edge | same | same |
+| `ets-cross-linux-x1.jsonl` | `ets_cross.py both`, `resolution`: DUT1 DAC0 into DUT2 A0, two crystals | the clock ratio (-2.5 ppm), 100% of the fine bins filled, the 22.2 ns odd/even offset at ADC RC 45 and none at 44 and 46 | `linux-x1`, Track B `8ffc8ed` | each row's `analysis` (`@ebf2d9f`, `@8df43cb`) |
+| `ets-reanalysis-linux-x1.jsonl` | the same raw captures re-read with the wander model | fitted wander 0-0.21 ticks; one capture flagged | same | `@70efea2` |
+| `ets-floor-linux-x1.jsonl` | `ets_cross.py sweep`, six swings 175-999 mV at DAC RC 28 into ADC RC 46 | the edge floor, 42.4 ns rise and 45.4 ns fall | same | the sweep ran at `537a27a`, with a straight-line fold; re-read at `70efea2` the edges did not move |
+| `ets-fix-linux-x1.jsonl` | two raws re-read with a template interpolation | that interpolation did not reduce the block scatter on real data. The matcher it belonged to has been replaced, so keep these as a negative result | same | `@93e2d05` (superseded) |
+| `ets-odd-linux-x1.jsonl` | `ets_cross.py both` and `resolution` at DAC RC 29 against ADC RC 44, 46, 48, and old raws re-read | the pairing rule: scatter 0.20-0.24 ticks, adequate, no odd/even offset; the old RC 44 capture at DAC RC 28 flagged at a common factor of 4 | same | `@7e6a60b` |
+| `ets-eye-linux-x1.json`, `ets-eye-linux-x1-rc45.json` | `ets_cross.py eye` on the DAC RC 29 / ADC RC 46 capture and the DAC RC 28 / ADC RC 45 capture | the two-board eye, drawn by `tools/ets_eye_page.py` | same; raws stamped `114844` and `105829`; no provenance block, which `eye` now writes | `eye` at `024ac5a` |
+| `ets-eye-montreal5.json` | `ets_cross.py eye` on the `montreal5` capture, DAC RC 28 / ADC RC 45 | the same-board eye: 56 of 560 columns hold samples | `montreal5`, as above | its own `provenance` block |
+
+Which figures to read from which rows: edges (rise, fall), the eye opening and the
+clock ratio do not depend on the block matcher. The block scatter
+(`phase_rms_ticks`, `track_rms_ticks`) does: rows read before `c9302d5` carry a
+0.4-tick sawtooth from the old peak estimator, and the figure to compare with is
+the one in `ets-odd-linux-x1.jsonl`. The wander and adequacy fields exist only in
+rows read at `70efea2` or later.
+
 ## Rows that are known bad, and why they are still here
 
 A record is append-only. A row that turned out to be corrupt is

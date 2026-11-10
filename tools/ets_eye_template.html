@@ -1,0 +1,178 @@
+<title>PRBS Eye</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: a bench log. One eye per panel, the same axes, a zoom on the crossing
+   below, then a table of what each capture can claim. The page is built by
+   tools/ets_eye_page.py from one or two eye files; nothing here is specific
+   to a bench. */
+:root {
+  --bg: #f3f4f1; --panel: #fbfbf9; --fg: #1d2326; --muted: #5d6a70; --rule: #d4d8d5; --grid: #e2e5e2;
+  --c0: #b4690e; --c1: #0b6e8a; --line: #1d2326;
+  --font-head: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101518; --panel: #161d21; --fg: #e3e8ea; --muted: #93a2a8; --rule: #2b373d; --grid: #222d32;
+    --c0: #f0a94a; --c1: #5cc6e3; --line: #e3e8ea; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101518; --panel: #161d21; --fg: #e3e8ea; --muted: #93a2a8; --rule: #2b373d; --grid: #222d32;
+  --c0: #f0a94a; --c1: #5cc6e3; --line: #e3e8ea; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); line-height: 1.5;
+  padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.9rem; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-head); font-weight: 600; font-size: 1.15rem; margin: 0 0 4px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 70ch; margin: 6px 0 0; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--rule); padding: 14px 14px 12px; min-width: 0; }
+.panel p.cap { margin: 0 0 8px; color: var(--muted); font-size: .85rem; max-width: 72ch; }
+canvas { display: block; width: 100%; height: auto; }
+.tag { display: inline-block; font-family: var(--font-data); font-size: .72rem; padding: 1px 7px; border: 1px solid currentColor; margin-right: 8px; vertical-align: 1px; }
+.tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .88rem; }
+th, td { padding: 9px 14px; text-align: right; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-family: var(--font-head); font-weight: 600; font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+td { font-family: var(--font-data); } td:first-child { font-family: var(--font-body); }
+tbody tr:last-child td { border-bottom: 0; }
+td small { color: var(--muted); font-family: var(--font-body); }
+ul.notes { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: .88rem; max-width: 80ch; display: flex; flex-direction: column; gap: 6px; }
+ul.notes b { color: var(--fg); font-weight: 500; }
+.prov { font-family: var(--font-data); font-size: .74rem; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 id="title">PRBS Eye</h1>
+    <p class="lede" id="lede"></p>
+  </header>
+  <section><h2>Eye diagram, two symbols wide</h2><div class="pair" id="eyes"></div></section>
+  <section><h2>Zoom on the crossing</h2><div class="pair" id="zooms"></div></section>
+  <section><h2>What each can claim</h2><div class="tablewrap"><table id="tbl"></table></div></section>
+  <section><h2>Read with these in mind</h2><ul class="notes" id="notes"></ul></section>
+  <section><h2>Where the data came from</h2><div class="prov" id="prov"></div></section>
+</div>
+
+<script>
+const D = /*DATA*/null;
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (x, d = 1) => (x == null || isNaN(x)) ? "n/a" : Number(x).toFixed(d);
+const rgbOf = (c) => c.startsWith("#") ? [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)) : c.match(/\d+/g).map(Number);
+const uiNs = (e) => e.ui_ticks * e.tick_ns;
+const cols = (e) => new Set(e.dens.map(d => d[0])).size;
+const name = (e, i) => (e.label || (e.provenance && e.provenance.label) || ("Eye " + (i + 1)));
+const colour = (i) => css("--c" + (i % 2));
+
+function build() {
+  document.getElementById("title").textContent = D.title || "PRBS Eye";
+  document.getElementById("lede").textContent = D.lede || "";
+  const E = D.eyes;
+  document.getElementById("eyes").innerHTML = E.map((e, i) =>
+    `<div class="panel"><p class="cap"><span class="tag" style="color:var(--c${i % 2})">${name(e, i)}</span>${(e.samples / 1e6).toFixed(1)} M samples, ${fmt(e.tick_ns / e.k, 1)} ns bins.</p>` +
+    `<canvas id="eye${i}" width="520" height="420" role="img" aria-label="Eye diagram ${name(e, i)}"></canvas></div>`).join("");
+  document.getElementById("zooms").innerHTML = E.map((e, i) =>
+    `<div class="panel"><p class="cap"><span class="tag" style="color:var(--c${i % 2})">${name(e, i)}</span>the cells are samples, the line is the folded waveform through them.</p>` +
+    `<canvas id="zoom${i}" width="520" height="380" role="img" aria-label="Zoom ${name(e, i)}"></canvas></div>`).join("");
+  const head = E.map((e, i) => `<th style="color:var(--c${i % 2})">${name(e, i)}</th>`).join("");
+  const row = (k, f, note) => `<tr><td>${k}${note ? ` <small>${note}</small>` : ""}</td>${E.map((e, i) => `<td>${f(e, i)}</td>`).join("")}</tr>`;
+  document.getElementById("tbl").innerHTML = `<thead><tr><th></th>${head}</tr></thead><tbody>` +
+    row("Eye columns holding samples", (e) => `${cols(e)} of ${e.nx}`, "one per bin") +
+    row("Symbol", (e) => `${fmt(uiNs(e), 0)} ns`) +
+    row("Rise, 10 to 90%", (e) => `${fmt(e.rise_ns, 1)} ns`) +
+    row("Fall, 10 to 90%", (e) => `${fmt(e.fall_ns, 1)} ns`) +
+    row("DAC and ADC RC", (e) => `${e.rc_dac} / ${e.rc_adc} <small>common factor ${e.lattice_gcd}</small>`) +
+    row("Clock offset", (e) => `${fmt(e.delta_ppm, 2)} ppm`) +
+    row("Time axis known to", (e) => e.time_axis_sigma_ns != null && cols(e) > 0.9 * e.nx ? `${fmt(e.time_axis_sigma_ns, 2)} ns` : "set by the tick grid", "1 sigma") +
+    row("Phase model adequate", (e) => e.model_adequate ? "yes" : "no") +
+    `</tbody>`;
+  document.getElementById("notes").innerHTML = [
+    `<b>Finer time bins do not sharpen the edge.</b> The ADC input and the DAC leave a floor of about 42 to 48 ns of rise (docs/ets-mode.md); more points draw the same smooth edge more cleanly.`,
+    `<b>The pattern repeats exactly, so this shows edge shape and level noise.</b> It cannot show random jitter that changes from cycle to cycle: the fold assumes exact repetition.`,
+    `<b>A shared clock fills about a tenth of the columns.</b> The samples then sit on whole timer ticks. Two clocks that differ by a few ppm fill every column.`,
+    `<b>The line is the folded mean;</b> the cells are individual samples, so their vertical thickness is the converter's noise.`
+  ].map(t => `<li>${t}</li>`).join("");
+  document.getElementById("prov").innerHTML = E.map((e, i) => {
+    const p = e.provenance || {};
+    return `<span><b style="color:var(--c${i % 2})">${name(e, i)}</b>: ${p.analysis || "analysis not recorded"}; raw ${p.raw || "not recorded"}; ${p.taken_at || ""}</span>`;
+  }).join("");
+}
+
+function ctx(id) {
+  const c = document.getElementById(id), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (!c._w) { c._w = c.width; c._h = c.height; }
+  c.width = c._w * dpr; c.height = c._h * dpr;
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.font = `11px ${css("--font-data")}`;
+  return { g, W: c._w, H: c._h };
+}
+
+function frame(g, W, H, m, xr, yr, xt, yt) {
+  g.fillStyle = css("--panel"); g.fillRect(0, 0, W, H);
+  g.strokeStyle = css("--grid"); g.lineWidth = 1; g.fillStyle = css("--muted");
+  const X = (v) => m.l + (v - xr[0]) / (xr[1] - xr[0]) * (W - m.l - m.r);
+  const Y = (v) => H - m.b - (v - yr[0]) / (yr[1] - yr[0]) * (H - m.t - m.b);
+  g.textAlign = "right"; g.textBaseline = "middle";
+  for (const v of yt) { g.beginPath(); g.moveTo(m.l, Y(v) + .5); g.lineTo(W - m.r, Y(v) + .5); g.stroke(); g.fillText(v, m.l - 6, Y(v)); }
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (const v of xt) { g.beginPath(); g.moveTo(X(v) + .5, m.t); g.lineTo(X(v) + .5, H - m.b); g.stroke(); g.fillText(v, X(v), H - m.b + 5); }
+  g.textAlign = "right"; g.textBaseline = "bottom"; g.fillText("time, ns", W - m.r, H - 2);
+  g.textAlign = "left"; g.textBaseline = "top"; g.fillText("mV", 4, 2);
+  return { X, Y };
+}
+
+function drawEye(id, e, color, xr, yr, xt, yt, withLine) {
+  const m = { l: 46, r: 12, t: 16, b: 26 };
+  const { g, W, H } = ctx(id);
+  const s = frame(g, W, H, m, xr, yr, xt, yt);
+  const binNs = e.tick_ns / e.k;
+  let cmax = 1; e.dens.forEach(d => { if (d[2] > cmax) cmax = d[2]; });
+  const lc = Math.log(1 + cmax), rgb = rgbOf(color);
+  const cw = Math.max(1.2, (W - m.l - m.r) / ((xr[1] - xr[0]) / binNs));
+  const ch = Math.max(1.2, (H - m.t - m.b) / ((yr[1] - yr[0]) / e.yb));
+  for (const [xi, yi, c] of e.dens) {
+    const x = xi * binNs, y = e.ylo + (yi + 0.5) * e.yb;
+    if (x < xr[0] - binNs || x > xr[1] || y < yr[0] || y > yr[1]) continue;
+    const t = Math.pow(Math.log(1 + c) / lc, 0.8);
+    g.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.14 + 0.86 * t})`;
+    g.fillRect(s.X(x), s.Y(y) - ch / 2, cw + 0.4, ch + 0.4);
+  }
+  if (withLine) {
+    // One two-symbol window of the folded waveform per symbol, crossing in the middle.
+    const kk = e.curve_k, ui = e.ui_ticks * kk, n = e.curve_mv.length, b0 = e.b0_ticks * kk;
+    g.strokeStyle = css("--line"); g.globalAlpha = 0.18; g.lineWidth = 1;
+    const binK = e.tick_ns / kk;
+    for (let j = 0; j < e.bits.length; j++) {
+      g.beginPath();
+      for (let i = 0; i <= 2 * ui; i++) {
+        const idx = ((Math.round(b0 + j * ui - ui + i)) % n + n) % n;
+        const x = s.X(i * binK), y = s.Y(e.curve_mv[idx]);
+        i ? g.lineTo(x, y) : g.moveTo(x, y);
+      }
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+}
+
+function draw() {
+  const yr = [1050, 2300], yt = [1200, 1500, 1800, 2100];
+  D.eyes.forEach((e, i) => {
+    const ui = uiNs(e);
+    const xt = [0, Math.round(ui / 2), Math.round(ui), Math.round(1.5 * ui), Math.round(2 * ui)];
+    drawEye("eye" + i, e, colour(i), [0, 2 * ui], yr, xt, yt, false);
+    const zt = [ui - 200, ui - 100, ui, ui + 100, ui + 200].map(Math.round);
+    drawEye("zoom" + i, e, colour(i), [ui - 230, ui + 230], yr, zt, yt, true);
+  });
+}
+
+build(); draw();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>

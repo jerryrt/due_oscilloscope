@@ -25,6 +25,7 @@ file is one row away.
 | The H7-TOOL target: rules, phases, recovery | `targets/h7tool/README.md`, `targets/h7tool/docs/06-plan.md` |
 | Re-measuring the converters' analog performance at 90 MHz | `docs/analog-validation-plan.md` |
 | Comparable instruments, and the gap to the nearest one | `docs/related-work.md` - read before front-end hardware work |
+| Equivalent-time sampling and PRBS eye captures: the model, how to run it, the DAC/ADC RC pairing rule, the measurements | `docs/ets.md`, `docs/ets-mode.md` |
 | The analog front end's requirements, and the tests that accept them | `docs/afe.md` |
 | Building the AFE: steps, simulation gates, bench tests, values left to confirm | `docs/afe-plan.md` |
 | How to write one of these | `docs/writing.md` |
@@ -611,6 +612,16 @@ Check here before reasoning from general Arduino knowledge.
 - **The native port already runs at High Speed.** Verified: `Device
   Speed` = 2, `bcdUSB` = 0x0200. There is nothing to enable. Throughput
   limits live in the CDC-ACM stack, not the PHY.
+- **For an equivalent-time PRBS capture the RC pair is a rule, not a
+  preference.** From a source with its own clock (a second Due), use an **odd DAC
+  RC with an even ADC RC**: an even ADC RC leaves nothing for the ADC start
+  snap to correct (odd and even samples differ by one 22.2 ns tick otherwise),
+  and an odd DAC RC makes the 127-symbol period odd, so every even ADC RC is
+  coprime with it. An ADC RC sharing a factor of 4 with the period (RC 44 and 48
+  at DAC RC 28) lands on every fourth source tick and the block tracker
+  degrades. On one clock the ADC RC must be coprime with the period instead.
+  `host/etsplan.py` enforces it and `tools/ets_cross.py plan` prints the pair;
+  `docs/ets-mode.md` has the reasons and the evidence.
 - **Nothing is 5 V tolerant.** No clamps, no series resistors, no
   protection of any kind.
 - **Three version numbers and a build identity, and none substitutes
