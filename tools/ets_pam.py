@@ -58,8 +58,8 @@ def wave_bytes(pat):
     return bytes(out)
 
 
-def pair(pam, rc_dac=None):
-    pat = etspattern.pattern(pam)
+def pair(pam, rc_dac=None, swing_mv=None):
+    pat = etspattern.pattern(pam, swing_mv=swing_mv)
     pl = etsplan.plan(rc_dac=rc_dac, same_board=True, length=pat.length)
     return pat, pl
 
@@ -127,14 +127,23 @@ def rigol_levels(v, pam):
             "scope_flat_samples": len(flat)}
 
 
-def rigol(pam):
+def scope_scale(swing_mv):
+    """Volts per division whose 8 divisions cover the swing with 0.3 V to spare."""
+    swing_v = (swing_mv or 1000.0) / 1000.0
+    for scale in (0.2, 0.5, 1.0):
+        if 8 * scale >= swing_v + 0.3:
+            return scale
+    return 2.0
+
+
+def rigol(pam, swing_mv=None):
     import scope as scopemod
     inst = scopemod.open_scope()
     try:
         info = {"scope_model": inst.identify(), "scope_probe": inst.probe(1)}
         inst.channel_enable(1, True)
         inst.coupling(1, "DC")
-        info["scope_scale_v"] = inst.channel_scale(1, 0.2)
+        info["scope_scale_v"] = inst.channel_scale(1, scope_scale(swing_mv))
         info["scope_offset_v"] = inst.channel_offset(1, -1.65)
         inst.timebase(5e-6)
         inst.trigger_edge(source="CHAN1", level=1.65, slope="POS", sweep="AUTO")
@@ -160,14 +169,14 @@ def row_for(res, meta, pat, pl, label, extra=None):
 
 
 def cmd_plan(a):
-    pat, pl = pair(a.pam, a.rc)
+    pat, pl = pair(a.pam, a.rc, a.swing_mv)
     pl["pattern_symbols"] = pat.length
     pl["capture_seconds_20_per_tick"] = etspattern.capture_seconds(pat, pl["rc_dac"], pl["rc_adc"])
     print(json.dumps(pl))
 
 
 def cmd_analyze(a):
-    pat, pl = pair(a.pam, a.rc_dac)
+    pat, pl = pair(a.pam, a.rc_dac, a.swing_mv)
     raw = array.array("H")
     with open(a.raw_in, "rb") as f:
         raw.frombytes(f.read())
@@ -188,7 +197,7 @@ def write_eye(a, res, raw_path):
 
 
 def cmd_loop(a):
-    pat, pl = pair(a.pam, a.rc)
+    pat, pl = pair(a.pam, a.rc, a.swing_mv)
     for note in pl["notes"]:
         print("note:", note, file=sys.stderr)
     if pl["problems"]:
@@ -221,9 +230,11 @@ def cmd_loop_with_rigol(a):
         [sys.executable, os.path.abspath(__file__), "loop", "--pam", str(a.pam),
          "--seconds", str(max(a.seconds, HOLD_S)), "--rawdir", a.rawdir, "--bench", a.bench,
          "--label", a.label or "", "--eye-out", a.eye_out or ""]
-        + (["--rc", str(a.rc)] if a.rc else []), stdout=subprocess.PIPE, text=True)
+        + (["--rc", str(a.rc)] if a.rc else [])
+        + (["--swing-mv", str(a.swing_mv)] if a.swing_mv else []),
+        stdout=subprocess.PIPE, text=True)
     time.sleep(SCOPE_AT_S)             # run 0 is over and the measured run is steady
-    info = rigol(a.pam)
+    info = rigol(a.pam, a.swing_mv or etspattern.DEFAULT_SWING_MV[a.pam])
     text, _ = child.communicate(timeout=a.seconds + 240)
     rows = [json.loads(x) for x in text.splitlines() if x.startswith("{")]
     row = rows[-1] if rows else {"error": "the loop child printed no row"}
@@ -243,6 +254,8 @@ def main():
     ap.add_argument("what", choices=("plan", "loop", "analyze"))
     ap.add_argument("raw_in", nargs="?")
     ap.add_argument("--pam", type=int, required=True)
+    ap.add_argument("--swing-mv", type=float, default=None, dest="swing_mv",
+                    help="peak to peak swing in mV; the level count's default when left out")
     ap.add_argument("--rc", type=int, help="DAC RC; the playback floor, 28, by default")
     ap.add_argument("--rc-dac", type=int, dest="rc_dac")
     ap.add_argument("--rc-adc", type=int, dest="rc_adc")

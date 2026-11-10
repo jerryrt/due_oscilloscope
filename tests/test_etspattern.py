@@ -107,3 +107,18 @@ def test_the_first_symbols_are_the_ones_derived_by_hand_from_the_register():
     assert etspattern.prbs_bits(7)[:15] == [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1]
     assert etspattern.symbols(4)[:7] == [3, 0, 0, 1, 0, 0, 1]
     assert etspattern.symbols(8)[:5] == [7, 0, 3, 0, 2]
+
+
+def test_the_scope_window_follows_the_swing():
+    """The 2 V PAM64 swing ran off a 1.6 V window and the scope's ladder with it."""
+    import os
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+    import ets_pam
+    assert ets_pam.scope_scale(1000.0) == 0.2
+    assert ets_pam.scope_scale(1500.0) == 0.5
+    assert ets_pam.scope_scale(2000.0) == 0.5
+    for swing in (1000.0, 1500.0, 2000.0, 2400.0):
+        assert 8 * ets_pam.scope_scale(swing) >= swing / 1000.0 + 0.3, swing
+    codes = etspattern.pattern(64, swing_mv=1500.0).codes
+    assert abs((codes[-1] - codes[0]) * 2214 / 4095 - 1500.0) < 1.0, (codes[0], codes[-1])

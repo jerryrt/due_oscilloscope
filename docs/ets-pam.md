@@ -164,6 +164,7 @@ the eye has been shown to the owner; the figures are in the records named.
 | 32 | `montreal5`, one board | pass | pass | pass | pass | 32 levels | 39.9 codes (32.2 mV) | 19-21, 0.70 | `ets-pam-montreal5.jsonl`, `ets-pam32-eye-montreal5.json` |
 | 32 | `linux-x1`, two boards | pass | pass | pass | pass | 32 levels | 40.0 codes | 22, 0.65 | `ets-pam-linux-x1.jsonl`, `ets-pam32-eye-linux-x1.json` |
 | 64 | `montreal5`, one board | pass | pass | pass | **FAIL** | 64 levels, 2 V swing | 39.3 codes (31.7 mV) | 3 of 63 eyes closed (-16, -4, -2); the other 60 are 8-22 | `ets-pam-montreal5.jsonl`, `ets-pam64-eye-montreal5.json` |
+| 64, 1.5 V | `montreal5`, one board | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes (23.8 mV) | all 63 open, 8-13 | `ets-pam-montreal5.jsonl`, `ets-pam64-1v5-eye-montreal5.json` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
@@ -200,9 +201,22 @@ What the data show, and what they do not:
 - The Rigol window was 0.85 V to 2.45 V (200 mV/div, offset -1.648 V) against a
   signal of 0.65 V to 2.65 V, so its end levels were off screen and its spacing
   (1.11 against 1.01 at PAM4 to PAM32) is not a measurement here.
-- Not established: why the ends settle slowly. A larger average step is too small
-  an effect to explain it by itself; the DAC output stage near the ends of a 2 V
-  swing (about 0.65 V and 2.65 V) is a hypothesis, untested.
+- It comes from the steps between the outermost levels. `tools/ets_pam_steps.py`
+  splits each end level's centre samples by the previous symbol. At 2 V the bottom
+  level's spread is 1.3 to 1.4 codes after steps of up to 25 levels, 3.0 after
+  steps of 39 to 50 and 8.3 after steps of 51 to 63 (the top level, 6.5 from the
+  far end). With the step into the level capped at 47 of 63 levels the bottom eye
+  reads +18 codes and the top +19, where every step gave -16 and -2; the middle
+  eye, whose largest step is 32 levels, reads 19 either way.
+- Reducing the swing to 1.5 V works as expected. The same outermost steps fall to
+  3.0 and 2.9 codes, every eye is open (8 to 13 codes against a spacing of 29.5)
+  and A6 passes on both runs, with the Rigol window widened to 0.5 V/div.
+- Not established: whether it is the step in volts or the position on the DAC's
+  range. At 2 V, steps of 39 to 50 levels (1.2 to 1.6 V) give 3.0 codes, the same
+  as the 1.5 V swing's full-scale steps, which says the step in volts; but a
+  smaller swing also moves the end levels away from the DAC's limits, and the two
+  captures cannot separate them. Nor is the mechanism (slewing, or settling in
+  the DAC output stage) known.
 
 ## Defaults taken, to be confirmed
 
