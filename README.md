@@ -35,6 +35,7 @@ missing FPU on the Cortex-M3 stops mattering.
 | [docs/issue5-campaign.md](docs/issue5-campaign.md) | The three-bench protocol for measuring the displacement, and how to read it |
 | [docs/ets.md](docs/ets.md) | Equivalent-time sampling: the math, and the edge resolution this hardware can give |
 | [docs/ets-mode.md](docs/ets-mode.md) | ETS PRBS capture and eye: how to run it, the DAC/ADC RC pairing rule, what has been measured, the tools, the limits and the plan |
+| [docs/ets-pam.md](docs/ets-pam.md) | ETS PAM4 to PAM256: the pattern for each level count, the levels, the pass and fail gates fixed in advance, and how the two benches split and check each other |
 | [docs/noise.md](docs/noise.md) | How much of the converter this board leaves you |
 | [docs/frontend.md](docs/frontend.md) | Front end architecture: daemon, GUI, recording |
 | [docs/daemon-api.md](docs/daemon-api.md) | The daemon's socket API |
