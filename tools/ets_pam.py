@@ -18,7 +18,6 @@ import array
 import json
 import math
 import os
-import struct
 import subprocess
 import sys
 import time
@@ -50,13 +49,12 @@ ADC_MV_PER_CODE = 3300.0 / 4095
 
 def wave_bytes(pat):
     """The host buffer: whole periods, a multiple of 512 bytes (512 * length)."""
-    out = bytearray()
-    codes = pat.symbol_codes()
-    for _ in range(ets_phase0.WAVE_PERIODS):
-        for c in codes:
-            out += struct.pack("<H", c & 0xFFF)
+    period = array.array("H", [c & 0xFFF for c in pat.symbol_codes()])
+    if sys.byteorder == "big":
+        period.byteswap()                      # the wire is little-endian
+    out = period.tobytes() * ets_phase0.WAVE_PERIODS
     assert len(out) % 512 == 0
-    return bytes(out)
+    return out
 
 
 def pair(pam, rc_dac=None, swing_mv=None):

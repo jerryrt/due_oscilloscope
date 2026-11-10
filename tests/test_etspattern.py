@@ -122,3 +122,29 @@ def test_the_scope_window_follows_the_swing():
         assert 8 * ets_pam.scope_scale(swing) >= swing / 1000.0 + 0.3, swing
     codes = etspattern.pattern(64, swing_mv=1500.0).codes
     assert abs((codes[-1] - codes[0]) * 2214 / 4095 - 1500.0) < 1.0, (codes[0], codes[-1])
+
+
+def _wave_bytes_one_pack_at_a_time(pat, periods):
+    """The first implementation of tools/ets_pam.wave_bytes, kept as its reference."""
+    import struct
+    out = bytearray()
+    codes = pat.symbol_codes()
+    for _ in range(periods):
+        for c in codes:
+            out += struct.pack("<H", c & 0xFFF)
+    return bytes(out)
+
+
+def test_the_wave_is_the_bytes_the_per_symbol_packing_gave():
+    import os
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+    import ets_pam
+    import ets_phase0
+    for pam in (4, 16, 64):
+        pat = etspattern.pattern(pam)
+        got = ets_pam.wave_bytes(pat)
+        assert got == _wave_bytes_one_pack_at_a_time(pat, ets_phase0.WAVE_PERIODS), pam
+        assert len(got) % 512 == 0 and len(got) == 2 * pat.length * ets_phase0.WAVE_PERIODS
+    other = etspattern.pattern(16, swing_mv=900.0)
+    assert ets_pam.wave_bytes(other) != _wave_bytes_one_pack_at_a_time(etspattern.pattern(16), ets_phase0.WAVE_PERIODS)
