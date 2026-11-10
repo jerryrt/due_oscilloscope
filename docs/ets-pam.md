@@ -160,9 +160,10 @@ the eye has been shown to the owner; the figures are in the records named.
 | 8 | `montreal5`, one board | pass | pass | pass | pass | 8 levels, spacing 176.8 codes (142 mV) | 176.8 codes | 157-159, 0.75 | `ets-pam-montreal5.jsonl`, `ets-pam8-eye-montreal5.json` |
 | 8 | `linux-x1`, two boards | pass | pass | pass | pass | 8 levels | 177.1 codes | 159-161, 0.75 | `ets-pam-linux-x1.jsonl`, `ets-pam8-eye-linux-x1.json` |
 | 16 | `montreal5`, one board | pass | pass | pass | pass | 16 levels | 82.5 codes (66.5 mV) | 62-65, 0.70 | `ets-pam-montreal5.jsonl`, `ets-pam16-eye-montreal5.json` |
-| 16 | `linux-x1`, two boards | pending | | | | | | | |
+| 16 | `linux-x1`, two boards | pass | pass | pass | pass | 16 levels | 82.65 codes | 65, 0.70 | `ets-pam-linux-x1.jsonl`, `ets-pam16-eye-linux-x1.json` |
 | 32 | `montreal5`, one board | pass | pass | pass | pass | 32 levels | 39.9 codes (32.2 mV) | 19-21, 0.70 | `ets-pam-montreal5.jsonl`, `ets-pam32-eye-montreal5.json` |
-| 32 | `linux-x1`, two boards | pending | | | | | | | |
+| 32 | `linux-x1`, two boards | pass | pass | pass | pass | 32 levels | 40.0 codes | 22, 0.65 | `ets-pam-linux-x1.jsonl`, `ets-pam32-eye-linux-x1.json` |
+| 64 | `montreal5`, one board | pass | pass | pass | **FAIL** | 64 levels, 2 V swing | 39.3 codes (31.7 mV) | 3 of 63 eyes closed (-16, -4, -2); the other 60 are 8-22 | `ets-pam-montreal5.jsonl`, `ets-pam64-eye-montreal5.json` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
@@ -179,6 +180,23 @@ codes), eye heights 393-394 against 396-397 codes. The two-board level spread is
 cannot say whether it is the second ADC, the ADC RC (46 against 45) or the
 cross-wiring. A2 on `linux-x1`: 0 underruns, no gaps, 15.6 M samples, two runs
 identical to three digits.
+
+PAM64 on `montreal5` fails A6 on both runs, identically: the bottom eye, the one
+above it and the top eye are closed at the symbol centre, 60 of 63 are open.
+What the data show, and what they do not:
+
+- The level spread is flat at 1.7 codes over the middle 30 levels and rises
+  smoothly toward both ends, to 4.2 at the bottom and 3.6 at the top.
+- It is a settling tail, not level noise. Within one symbol the end levels'
+  spread falls from 5.5 at the start to 3.0 at the centre and 1.65 at 0.6-0.8 of
+  the symbol, where a middle level reads 1.6 too. The A6 height is taken at the
+  centre, where the ends have not settled and the middle levels have.
+- The ladder is straight (largest residual 0.72 codes), so the ends are not
+  compressed. The Rigol's 8-bit steps are 4 codes of the PAM64 spacing, so its
+  spacing figure (ratio 1.11) is not a check at this level count.
+- Not established: why the ends settle slowly. A larger average step is too small
+  an effect to explain it by itself; the DAC output stage near the ends of a 2 V
+  swing (about 0.65 V and 2.65 V) is a hypothesis, untested.
 
 ## Defaults taken, to be confirmed
 
