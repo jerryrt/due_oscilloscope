@@ -11,7 +11,8 @@ Figures marked *(check)* are unmeasured: derived, or taken from another document
 ## The order of work
 
 PAM4, then PAM8, and so on, one level count at a time. A step is done when every
-gate below passes on **both** benches. The first gate that fails on either bench
+gate below passes on **both** benches and its eye diagram has been published and
+shown to the owner; the next level count starts after that. The first gate that fails on either bench
 stops the sequence: the cause is found first, the two benches compare what they
 saw, and the owner decides how to go on. Nothing is retried or loosened to get
 past it.
@@ -116,6 +117,8 @@ Per PAM, per bench. Every number is chosen here and is not changed after a run.
 | **A4 levels** | `N` distinct levels at the symbol centres, in order, each adjacent pair at least 3 sigma apart |
 | **A5 linearity** | every level mean within a quarter of a level spacing of the least-squares line through the DAC codes; the residuals are reported in codes. They are the nonlinearity of the DAC and the ADC together: with no separate measurement of either, nothing here attributes one to the other |
 | **A6 eyes** | **every** one of the `N - 1` eyes has a positive height, and a width, the stretch of the symbol where its height stays positive, of at least 0.2 of a symbol; the figures reported are the smallest height and the smallest width over the eyes, and all of them are listed |
+
+| **A9 eye shown** | the step's eye diagram is drawn from its captures, published, and shown to the owner before the next level count starts. It is made by the same page script as the earlier eyes (`tools/ets_eye_page.py`), extended for several eyes: the density of every sample, the `N - 1` eyes marked, a histogram of the levels at the symbol centre, and the figures of A4 to A6 beside it |
 
 Reported, not gated: **A7** the rise of the adjacent-level step against
 `sqrt(a * step^2 + floor^2)` with that bench's own fit of the edge floor
