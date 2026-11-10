@@ -33,12 +33,12 @@ def _amp(x, k):
     return 2 * math.sqrt(s1 * s1 + s2 * s2 - c * s1 * s2) / len(x)
 
 
-def one(board, arm, rc, seconds):
+def one(board, arm, rc, seconds, nch=2):
     hz = measure.hz_for(rc)
     if arm == "gen":
         res = noisetool.hold_gen_dc(board, 2048, "=%d,%dM" % (hz, hz), seconds)
     else:
-        res = measure.run_capture(board, preset="=%d,2a" % hz, seconds=seconds)
+        res = measure.run_capture(board, preset="=%d,%da" % (hz, nch), seconds=seconds)
     fs = res.stream.declared_rate_hz or hz
     x = list(noisetool._series(res, measure.CH_A0))[:N]
     m = sum(x) / len(x)
@@ -46,7 +46,7 @@ def one(board, arm, rc, seconds):
     k0 = len(x) // 4
     floor = sorted(_amp(x, k0 + d) for d in (-300, -200, -120, -80, 80, 120, 200, 300))
     return {"arm": arm, "rc": rc, "fs": fs, "n": len(x),
-            "peak": _amp(x, k0), "floor": floor[len(floor) // 2]}
+            "nch": nch, "peak": _amp(x, k0), "floor": floor[len(floor) // 2]}
 
 
 def main():
@@ -54,13 +54,14 @@ def main():
     ap.add_argument("--arm", choices=("gen", "off"), required=True)
     ap.add_argument("--rc", type=int, default=86)
     ap.add_argument("--runs", type=int, default=10)
+    ap.add_argument("--nch", type=int, default=2, choices=(1, 2))
     ap.add_argument("--seconds", type=float, default=6.0)
     ap.add_argument("--out")
     a = ap.parse_args()
     board = measure.Board()
     out = open(a.out, "a") if a.out else None
     for i in range(a.runs):
-        r = one(board, a.arm, a.rc, a.seconds)
+        r = one(board, a.arm, a.rc, a.seconds, a.nch)
         r["run"] = i
         print(json.dumps(r))
         if out:
