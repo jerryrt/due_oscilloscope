@@ -12,8 +12,8 @@ otherwise. `cuda` is accepted only where pycuda imports and a device
 answers, and no CUDA kernel exists yet: asking for it raises, rather than
 quietly running something else.
 """
-import multiprocessing
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     import numpy as np
@@ -81,21 +81,24 @@ def fold_scaled(vals, rc_adc, period, bins, start=0):
 
 
 def phase_indices(n, rc_adc, phase_at, period, k=1, start=0, segment=2048):
-    """The fold bin of each of `n` samples on a fitted phase curve."""
+    """The fold bin of each of `n` samples on a fitted phase curve.
+
+    The curve is evaluated at the ends of segments of `segment` samples and
+    followed linearly between them. `phase_at` must accept an array, which a
+    polynomial in Horner form does; every step below is an array operation
+    that releases the GIL, so threads run it side by side.
+    """
     nb = period * k
-    out = np.empty(n, dtype=np.int64)
-    i = 0
-    while i < n:
-        m = min(segment, n - i)
-        x0 = (start + i) * rc_adc
-        x1 = (start + i + m) * rc_adc
-        p0 = x0 + phase_at(x0)
-        dp = (x1 + phase_at(x1) - p0) / m
-        u = np.fmod(p0 + dp * np.arange(m, dtype=np.float64), period)
-        u = np.where(u < 0, u + period, u)
-        out[i:i + m] = (u * k).astype(np.int64) % nb
-        i += m
-    return out
+    starts = np.arange(0, n, segment, dtype=np.int64)
+    m = np.minimum(segment, n - starts)
+    x0 = (start + starts) * rc_adc
+    x1 = (start + starts + m) * rc_adc
+    p0 = x0 + phase_at(x0)
+    dp = (x1 + phase_at(x1) - p0) / m
+    seg = np.arange(n, dtype=np.int64) // segment
+    u = np.fmod(p0[seg] + dp[seg] * (np.arange(n, dtype=np.float64) - starts[seg]), period)
+    u = np.where(u < 0, u + period, u)
+    return (u * k).astype(np.int64) % nb
 
 
 def fold_warped(vals, idx, nb):
@@ -140,40 +143,32 @@ def corr_scan(win, xs, tmpl, period, lo, n):
     return acc
 
 
+#: Samples a stage takes at a time: a multiple of the curve's segment, and small
+#: enough that its arrays stay in cache instead of paging in 100 MB at a time.
+CHUNK = 2048 * 512
+
+
 def workers():
-    """Processes for the chunked stages: `DUE_DSP_WORKERS`, else every core."""
+    """Threads for the chunked stages: `DUE_DSP_WORKERS`, else every core."""
     want = os.environ.get("DUE_DSP_WORKERS")
-    n = int(want) if want else (os.cpu_count() or 1)
-    if "fork" not in multiprocessing.get_all_start_methods():
-        return 1                    # the job is handed down by fork, not pickled
-    return max(1, n)
-
-
-_JOB = None
-
-
-def _run_part(part):
-    return _JOB(*part)
+    return max(1, int(want) if want else (os.cpu_count() or 1))
 
 
 def map_ranges(fn, n, align, *extra):
-    """`fn(a, b, *extra)` over `n` split into one range per worker.
+    """`fn(a, b, *extra)` over `n` split into one range per worker, in threads.
 
     Each range but the last is a multiple of `align`, so a stage that follows
     a curve in `align`-sized segments sees the same segments as one serial
-    pass. Returns the results in order. The samples are not copied to the
-    workers: they are forked with the job and shared copy-on-write.
+    pass. Returns the results in order. A thread pool shares the samples with
+    no copy and no pickling, and numpy releases the GIL in the array
+    operations the stages are made of; `np.bincount` is the exception, and it
+    keeps its share of a stage serial.
     """
-    global _JOB
     w = min(workers(), max(1, n // (4 * align)))
     step = -(-n // w)
     step = -(-step // align) * align
     parts = [(a, min(a + step, n)) + extra for a in range(0, n, step)]
     if len(parts) == 1:
         return [fn(*parts[0])]
-    _JOB = fn
-    try:
-        with multiprocessing.get_context("fork").Pool(len(parts)) as pool:
-            return pool.map(_run_part, parts)
-    finally:
-        _JOB = None
+    with ThreadPoolExecutor(max_workers=len(parts)) as pool:
+        return list(pool.map(lambda part: fn(*part), parts))
