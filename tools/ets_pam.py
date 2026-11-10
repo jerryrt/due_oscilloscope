@@ -26,6 +26,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for sub in ("host", "tools", "tests"):
     sys.path.insert(0, os.path.join(ROOT, sub))
+import dsp  # noqa: E402
 import eqtime  # noqa: E402
 import ets_cross  # noqa: E402
 import ets_phase0  # noqa: E402
@@ -79,7 +80,10 @@ def capture(board, pat, pl, seconds):
 
 def analyse(vals, pat, rc_dac, rc_adc, want_eye):
     lo, hi = HEAD_TRIM, len(vals) - TAIL_TRIM
-    seg = [float(v) for v in vals[lo:hi]]
+    if dsp.np is not None and isinstance(vals, array.array):
+        seg = dsp.np.frombuffer(vals, dtype=dsp.np.uint16)[lo:hi]     # a view: no copy
+    else:
+        seg = [float(v) for v in vals[lo:hi]]
     return etspam.analyze(seg, rc_adc, pat, rc_dac, start=lo, want_eye=want_eye)
 
 
