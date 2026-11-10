@@ -159,6 +159,7 @@ the eye has been shown to the owner; the figures are in the records named.
 | 4 | `linux-x1`, two boards | pass | pass | pass | pass | 1425.5, 1838.9, 2252.0, 2665.4 | 413.3 codes | 396-397, 0.85-0.90 | `ets-pam-linux-x1.jsonl`, `ets-pam4-eye-linux-x1.json` |
 | 8 | `montreal5`, one board | pass | pass | pass | pass | 8 levels, spacing 176.8 codes (142 mV) | 176.8 codes | 157-159, 0.75 | `ets-pam-montreal5.jsonl`, `ets-pam8-eye-montreal5.json` |
 | 8 | `linux-x1`, two boards | pending | | | | | | | |
+| 16 | `montreal5`, one board | pass | pass | pass | pass | 16 levels | 82.5 codes (66.5 mV) | 62-65, 0.70 | `ets-pam-montreal5.jsonl`, `ets-pam16-eye-montreal5.json` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
