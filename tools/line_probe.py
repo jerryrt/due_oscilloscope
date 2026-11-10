@@ -59,7 +59,7 @@ def main():
     ap.add_argument("--out")
     a = ap.parse_args()
     board = measure.Board()
-    out = open(a.out, "a") if a.out else None
+    out = open(a.out, "a", encoding="utf-8") if a.out else None
     for i in range(a.runs):
         r = one(board, a.arm, a.rc, a.seconds, a.nch)
         r["run"] = i
