@@ -489,6 +489,21 @@ difference is a finding about the compiler or its libraries, not a pin
 to wave through. Record the row in the manifest and say in the commit
 which figures the new revision carries.
 
+**The comparison against the old revision cannot be run as written when the
+recipe changed.** `run.sh` refuses an image whose recipe label differs from the
+tree's, so the old revision cannot build the tree that carries the new recipe,
+and the firmware embeds the build identity, so a tree with the old recipe does
+not give identical bytes either. `verify-image.sh <old revision>` therefore ends
+DID NOT RUN. It works for the monthly check, where the reference and the
+candidate share a recipe. When a recipe change touches only what the compiler
+never reads (revision 2 added a Python package to the suite's venv), the
+evidence to accept it is the recipe hash matching across benches, the monthly
+check of the new revision passing, a green `docker/run-ci.sh`, and the
+Dockerfile diff showing the compiler layers untouched; the manifest row says
+the comparison could not run. A change that touches the compiler's layers
+needs the comparison, and so a way to run the old image against the same
+tree, which does not exist yet.
+
 **Checking, monthly.** `docker/verify-image.sh` is the check, because the
 inputs that expire do so at the fetch: the live archive the trust roots
 come from, the snapshot, the compiler's release URL. A certificate error

@@ -17,7 +17,7 @@
       "snapshot": "20260901T000000Z",
       "recipe": "c38e3f8a31d9c44fcd5e8758bc434b0655700860bafc297009013258bc34cd8b",
       "content": "ba4f277ee716545a7cdd5f665d0d5d9bab60a6e4fecfef41d41712dccdfc97ac",
-      "note": "adds numpy 2.3.5 to the suite's venv for the ETS equivalence tests; nothing else changes; built on linux-x1, firmware bytes against r1 and verify-image.sh not yet run"
+      "note": "adds numpy 2.3.5 to the suite's venv, which the host code now requires; nothing else changes. Built on linux-x1 and on montreal5 with the same recipe hash. The firmware-byte comparison against r1 COULD NOT RUN: docker/run.sh refuses an image whose recipe label differs from the tree's, so r1 cannot build the current tree, and the firmware embeds the build identity, so no other tree gives identical bytes. Accepted by the owner on 2026-11-10 on the recipe hash matching across benches, verify-image.sh of r2 against a from-scratch rebuild (3 firmware images byte-identical), run-ci.sh, and a Dockerfile change that touches only the Python venv, after the compiler layers"
     }
   }
 }
