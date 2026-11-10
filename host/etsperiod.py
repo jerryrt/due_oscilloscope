@@ -240,9 +240,21 @@ def fold_warped(vals, rc_adc, model, period, k=1, start=0):
     """Mean per bin on the fitted phase curve: `(curve, counts)`."""
     nb = period * k
     if dsp.name() == "numpy":
-        idx = dsp.phase_indices(len(vals), rc_adc, lambda x: phase_at(model, x),
-                                period, k, start, SEGMENT)
-        return dsp.fold_warped(vals, idx, nb)
+        v = dsp.np.asarray(vals)
+
+        def part(a, b):
+            idx = dsp.phase_indices(b - a, rc_adc, lambda x: phase_at(model, x),
+                                    period, k, start + a, SEGMENT)
+            return (dsp.np.bincount(idx, weights=v[a:b].astype(dsp.np.float64),
+                                    minlength=nb),
+                    dsp.np.bincount(idx, minlength=nb))
+        parts = dsp.map_ranges(part, len(v), SEGMENT)
+        acc = sum(p[0] for p in parts)
+        cnt = sum(p[1] for p in parts)
+        with dsp.np.errstate(invalid="ignore", divide="ignore"):
+            mean = acc / cnt
+        return ([None if c == 0 else m for m, c in zip(mean.tolist(), cnt.tolist())],
+                cnt.tolist())
     acc = [0.0] * nb
     cnt = [0] * nb
     for v, i in zip(vals, phase_indices(len(vals), rc_adc, model, period, k, start)):
@@ -253,9 +265,9 @@ def fold_warped(vals, rc_adc, model, period, k=1, start=0):
 
 def is_adequate(model, nblocks, lattice):
     """Whether a fitted phase curve can be trusted for a fold."""
-    return (abs(model["rho1"]) <= RHO_MAX
-            and model["outliers"] <= MAX_OUTLIER_SHARE * nblocks
-            and lattice <= MAX_LATTICE_GCD)
+    return bool(abs(model["rho1"]) <= RHO_MAX
+                and model["outliers"] <= MAX_OUTLIER_SHARE * nblocks
+                and lattice <= MAX_LATTICE_GCD)
 
 
 def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,

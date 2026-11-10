@@ -112,6 +112,41 @@ CHUNK = 2048 * 1024
 
 def _label_samples_numpy(vals, rc_adc, model, pat, rc_dac, b0, cells, start):
     np = dsp.np
+    nlev = pat.pam
+    v_all = np.asarray(vals)
+
+    def part(a, b):
+        return label_range(v_all, a, b, rc_adc, model, pat, rc_dac, b0,
+                           cells is not None, start)
+    parts = dsp.map_ranges(part, len(v_all), etsperiod.SEGMENT)
+    centre_n = sum(p[0] for p in parts)
+    by_t_n = sum(p[1] for p in parts)
+    if cells is not None:
+        cells_n = sum(p[2] for p in parts)
+        for key in np.nonzero(cells_n)[0].tolist():
+            cells[key] = int(cells_n[key])
+    centre = [_hist(centre_n[l * ADC_CODES:(l + 1) * ADC_CODES]) for l in range(nlev)]
+    by_t = [[None] * nlev for _ in range(TBINS)]
+    busy = by_t_n.reshape(TBINS * nlev, ADC_CODES).any(axis=1)
+    for tbi in range(TBINS):
+        for l in range(nlev):
+            if busy[tbi * nlev + l]:
+                by_t[tbi][l] = _hist(by_t_n[(tbi * nlev + l) * ADC_CODES:
+                                            (tbi * nlev + l + 1) * ADC_CODES])
+    return centre, by_t
+
+
+def _hist(h):
+    """A numpy histogram as the reference's `array("I")`, without a Python int per code."""
+    out = array("I")
+    out.frombytes(h.astype(dsp.np.uint32).tobytes())
+    return out
+
+
+def label_range(v_all, lo, hi, rc_adc, model, pat, rc_dac, b0, want_cells, start):
+    """The labelling kernel over samples `lo .. hi`: `(centre, by_t, cells)` as
+    flat integer histograms. The GPU backend replaces this function."""
+    np = dsp.np
     unit = pat.length * rc_dac
     k = LABEL_K
     nlev = pat.pam
@@ -123,11 +158,9 @@ def _label_samples_numpy(vals, rc_adc, model, pat, rc_dac, b0, cells, start):
     syms = np.asarray(pat.symbols, dtype=np.int64)
     centre_n = np.zeros(nlev * ADC_CODES, dtype=np.int64)
     by_t_n = np.zeros(TBINS * nlev * ADC_CODES, dtype=np.int64)
-    cells_n = np.zeros(two * ADC_CODES, dtype=np.int64) if cells is not None else None
-    v_all = np.asarray(vals)
-    n = len(v_all)
-    for i in range(0, n, CHUNK):
-        m = min(CHUNK, n - i)
+    cells_n = np.zeros(two * ADC_CODES, dtype=np.int64) if want_cells else None
+    for i in range(lo, hi, CHUNK):
+        m = min(CHUNK, hi - i)
         v = v_all[i:i + m].astype(np.int64)
         idx = dsp.phase_indices(m, rc_adc, lambda x: etsperiod.phase_at(model, x),
                                 unit, k, start + i, etsperiod.SEGMENT)
@@ -142,17 +175,7 @@ def _label_samples_numpy(vals, rc_adc, model, pat, rc_dac, b0, cells, start):
         centre_n += np.bincount(lvl[inside] * ADC_CODES + v[inside], minlength=centre_n.size)
         tb = (t * TBINS).astype(np.int64)
         by_t_n += np.bincount((tb * nlev + lvl) * ADC_CODES + v, minlength=by_t_n.size)
-    if cells is not None:
-        for key in np.nonzero(cells_n)[0].tolist():
-            cells[key] = int(cells_n[key])
-    centre = [array("I", centre_n[l * ADC_CODES:(l + 1) * ADC_CODES].tolist()) for l in range(nlev)]
-    by_t = [[None] * nlev for _ in range(TBINS)]
-    for tbi in range(TBINS):
-        for l in range(nlev):
-            h = by_t_n[(tbi * nlev + l) * ADC_CODES:(tbi * nlev + l + 1) * ADC_CODES]
-            if h.any():
-                by_t[tbi][l] = array("I", h.tolist())
-    return centre, by_t
+    return centre_n.astype(np.int32), by_t_n.astype(np.int32), cells_n
 
 
 def label_samples_ref(vals, rc_adc, model, pat, rc_dac, b0, cells=None, start=0):

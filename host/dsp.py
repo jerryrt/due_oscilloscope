@@ -12,6 +12,7 @@ otherwise. `cuda` is accepted only where pycuda imports and a device
 answers, and no CUDA kernel exists yet: asking for it raises, rather than
 quietly running something else.
 """
+import multiprocessing
 import os
 
 try:
@@ -137,3 +138,42 @@ def corr_scan(win, xs, tmpl, period, lo, n):
         s = (int(x) + int(lo)) % period
         acc += w * t2[s:s + n]
     return acc
+
+
+def workers():
+    """Processes for the chunked stages: `DUE_DSP_WORKERS`, else every core."""
+    want = os.environ.get("DUE_DSP_WORKERS")
+    n = int(want) if want else (os.cpu_count() or 1)
+    if "fork" not in multiprocessing.get_all_start_methods():
+        return 1                    # the job is handed down by fork, not pickled
+    return max(1, n)
+
+
+_JOB = None
+
+
+def _run_part(part):
+    return _JOB(*part)
+
+
+def map_ranges(fn, n, align, *extra):
+    """`fn(a, b, *extra)` over `n` split into one range per worker.
+
+    Each range but the last is a multiple of `align`, so a stage that follows
+    a curve in `align`-sized segments sees the same segments as one serial
+    pass. Returns the results in order. The samples are not copied to the
+    workers: they are forked with the job and shared copy-on-write.
+    """
+    global _JOB
+    w = min(workers(), max(1, n // (4 * align)))
+    step = -(-n // w)
+    step = -(-step // align) * align
+    parts = [(a, min(a + step, n)) + extra for a in range(0, n, step)]
+    if len(parts) == 1:
+        return [fn(*parts[0])]
+    _JOB = fn
+    try:
+        with multiprocessing.get_context("fork").Pool(len(parts)) as pool:
+            return pool.map(_run_part, parts)
+    finally:
+        _JOB = None
