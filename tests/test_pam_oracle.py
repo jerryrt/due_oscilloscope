@@ -13,7 +13,7 @@ import pam_oracle as o
 pytestmark = pytest.mark.smoke
 
 #: The library's module and its names, filled in when it lands.
-PATTERN_MODULE = None
+PATTERN_MODULE = "etspattern"
 
 #: The table in docs/ets-pam.md: PAM -> (symbols per period, pairs).
 TABLE = {4: (127, 16), 8: (127, 64), 16: (511, 256), 32: (2047, 1024),
