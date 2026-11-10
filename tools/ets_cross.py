@@ -4,6 +4,7 @@
     ets_cross.py both --rc 28 --seconds 16 [--play-dut dut1 --cap-dut dut2]
     ets_cross.py analyze RAW.bin --rc-dac 28 --rc-adc 45
     ets_cross.py resolution RAW.bin --rc-dac 28 --rc-adc 45 [--k 10 --kp 2]
+    ets_cross.py eye RAW.bin --rc-dac 29 --rc-adc 46 --eye-out eye.json
     ets_cross.py sweep --rc-adc 46 --vpps 1000,700,500,350,250,175
 
 The source board's DAC0 is wired to the capturing board's A0, so the two
@@ -269,6 +270,83 @@ def _corrected(vals, rc_adc, model, rc_dac, bits, k, shift_bins):
     return out
 
 
+def _fill_holes(curve):
+    """Bins nothing landed in, filled from their nearest neighbours."""
+    n = len(curve)
+    out = list(curve)
+    for i, c in enumerate(curve):
+        if c is not None:
+            continue
+        lo = next((curve[(i - d) % n], d) for d in range(1, n) if curve[(i - d) % n] is not None)
+        hi = next((curve[(i + d) % n], d) for d in range(1, n) if curve[(i + d) % n] is not None)
+        out[i] = (lo[0] * hi[1] + hi[0] * lo[1]) / (lo[1] + hi[1])
+    return out
+
+
+def eye(path, rc_dac, rc_adc, k, out, ylo=1000.0, yhi=2400.0, yb=4.0):
+    """Write a two-symbol eye at `k` bins per tick, every sample placed by the
+    fitted phase curve, with the folded waveform beside it, as JSON.
+
+    The horizontal axis is the source's own ticks, so a bin is `1 / k` tick of
+    22.2 ns. The crossing sits in the middle. Samples are in millivolts at the
+    ADC pin. For an odd ADC RC the odd samples are moved back by the offset
+    `resolution` measures, as in the corrected fold.
+    """
+    raw = array.array("H")
+    with open(path, "rb") as f:
+        raw.frombytes(f.read())
+    vals = [float(v) for v in raw[:MAX_SAMPLES]]
+    bits = e.prbs7()
+    L = len(bits)
+    unit = L * rc_dac
+    trk = etsperiod.track_clock_ratio(vals, rc_adc, bits, rc_dac)
+    mv = 3300.0 / 4095
+    kk = k
+    curve, cnt = etsperiod.fold_warped(vals, rc_adc, trk["model"], unit, kk)
+    filled = False
+    if min(cnt) == 0:
+        kk = 1
+        curve, cnt = etsperiod.fold_warped(vals, rc_adc, trk["model"], unit, 1)
+        if min(cnt) == 0:
+            curve, filled = _fill_holes(curve), True
+    fig, b0 = e.analyze(curve, rc_dac * kk, bits)
+    b0_ticks = b0 / kk
+    back = 0
+    if rc_adc % 2:
+        res = resolution(path, rc_dac, rc_adc, k, 2)
+        back = int(round(res.get("odd_shift_ns", 0.0) / e.TICK_NS * k))
+    nb, nx = unit * k, 2 * rc_dac * k
+    ny = int((yhi - ylo) / yb)
+    dens = {}
+    for n, (v, i) in enumerate(zip(vals, etsperiod.phase_indices(
+            len(vals), rc_adc, trk["model"], unit, k))):
+        if back and n & 1:
+            i = (i - back) % nb
+        x = int((i - b0_ticks * k + rc_dac * k) % nx)
+        yi = int((v * mv - ylo) / yb)
+        if 0 <= yi < ny:
+            key = x * ny + yi
+            dens[key] = dens.get(key, 0) + 1
+    doc = {"rc_dac": rc_dac, "rc_adc": rc_adc, "k": k, "tick_ns": e.TICK_NS,
+           "ui_ticks": rc_dac, "nx": nx, "ny": ny, "ylo": ylo, "yb": yb,
+           "samples": len(vals), "delta_ppm": trk["delta"] * 1e6,
+           "model_adequate": trk["adequate"], "lattice_gcd": trk["lattice_gcd"],
+           "time_axis_sigma_ns": trk["model"]["sigma_model"] * e.TICK_NS,
+           "wander_ptp_ticks": trk["model"]["wander_ptp"],
+           "phase_rms_ticks": trk["model"]["rms"], "curve_k": kk,
+           "curve_filled": filled,
+           "b0_ticks": b0_ticks, "bits": bits, "shift": fig.get("shift"),
+           "curve_mv": [round(c * mv, 1) for c in curve],
+           "rise_ns": fig["rise_ns"] / kk if fig.get("rise_ns") else None,
+           "fall_ns": fig["fall_ns"] / kk if fig.get("fall_ns") else None,
+           "dens": [[key // ny, key % ny, c] for key, c in dens.items()]}
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(doc, f, separators=(",", ":"))
+    return {"out": out, "cells": len(dens), "columns": len({d[0] for d in doc["dens"]}),
+            "of_columns": nx, "curve_k": kk, "bytes": os.path.getsize(out),
+            "model_adequate": trk["adequate"], "rise_ns": doc["rise_ns"]}
+
+
 def both(a):
     stamp = time.strftime("%Y%m%d-%H%M%S")
     raw = os.path.join(a.rawdir, "ets-cross-%s.bin" % stamp)
@@ -351,7 +429,7 @@ def sweep(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=("both", "play", "capture", "analyze", "resolution", "sweep"))
+    ap.add_argument("what", choices=("both", "play", "capture", "analyze", "resolution", "sweep", "eye"))
     ap.add_argument("raw_in", nargs="?")
     ap.add_argument("--rc", type=int, default=28, help="DAC RC; 28 is the playback floor")
     ap.add_argument("--rc-dac", type=int, dest="rc_dac")
@@ -366,6 +444,7 @@ def main():
     ap.add_argument("--kp", type=int, default=2, help="`resolution`: bins per tick of the odd/even folds")
     ap.add_argument("--vpps", default="1000,700,500,350,250,175",
                     help="`sweep`: peak-to-peak swings in mV")
+    ap.add_argument("--eye-out", dest="eye_out", help="`eye`: where to write the JSON")
     ap.add_argument("--out")
     a = ap.parse_args()
     if a.what == "play":
@@ -380,6 +459,9 @@ def main():
             if a.out:
                 with open(a.out, "a", encoding="utf-8") as f:
                     f.write(json.dumps(r) + "\n")
+        return
+    if a.what == "eye":
+        print(json.dumps(eye(a.raw_in, a.rc_dac or a.rc, a.rc_adc, a.k, a.eye_out)))
         return
     if a.what == "resolution":
         row = resolution(a.raw_in, a.rc_dac or a.rc, a.rc_adc, a.k, a.kp)

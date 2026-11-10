@@ -223,3 +223,25 @@ def test_each_part_of_the_adequacy_rule_can_fail_on_its_own():
     assert etsperiod.is_adequate(dict(fine, outliers=20), 100, 2) is False
     assert etsperiod.is_adequate(fine, 100, 4) is False, (
         "a shared factor of 4 between the ADC RC and the period passed")
+
+
+def _eye_export(delta, tmp_path):
+    import array
+    import json
+    import ets_cross
+    bits, vals = _samples(delta, n=1_200_000, rc=46)
+    raw = tmp_path / "raw.bin"
+    raw.write_bytes(array.array("H", [int(round(v)) for v in vals]).tobytes())
+    out = tmp_path / "eye.json"
+    summary = ets_cross.eye(str(raw), RC_DAC, 46, 10, str(out))
+    return summary, json.loads(out.read_text(encoding="utf-8"))
+
+
+def test_the_eye_of_an_independent_clock_fills_its_columns_and_a_shared_one_leaves_gaps(tmp_path):
+    free, doc = _eye_export(60e-6, tmp_path)
+    locked, _ = _eye_export(0.0, tmp_path)
+    assert free["columns"] > 0.95 * free["of_columns"], free
+    assert locked["columns"] < 0.5 * locked["of_columns"], (
+        "samples on a shared clock filled most eye columns: the export cannot "
+        "tell a lattice from a continuous position", locked)
+    assert doc["curve_k"] == 10 and len(doc["curve_mv"]) == 127 * RC_DAC * 10
