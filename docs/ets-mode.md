@@ -76,11 +76,12 @@ Each phase ends at a gate and starts after the one before it passes.
 |---|---|---|---|---|
 | **0. Validate** | Done on `montreal5` as above | yes | none | The numbers above. Proposed pass: fold and Rigol rise within 5%, duplex loses nothing. These thresholds were chosen after the data was seen |
 | **1. Host library** | A PRBS generator, a planner that picks `R` and refuses non-coprime pairs, a fold on `eqtime`, an eye builder. Board-free tests, each broken on purpose before trusted | no | none | Tests pass in the container, and each new check fails when what it guards is broken |
-| **2. Track B mode** | The daemon exposes an ETS capture on one channel, running until stopped, with a progressive fold. The front end shows the folded waveform and the eye | yes | none | Matches phase 0's fold on the same wiring, with no lost frames |
-| **3. Other hosts** | `tools/ets_phase0.py loop` on the Windows and macOS benches, for the duplex load | yes | none | No underruns and no byte loss, or a device-held pattern (below) |
-| **4. Device PRBS** | Only if phase 3 fails | yes | all three tracks | Host and device PRBS give the same fold |
-| **5. Tracks A and C** | The same fold on Tracks A and C, which should need no host change | yes | none | Same fold, same periodicity |
-| **6. AFE wide path** | The wide path of the AFE requirement draft, measured against the same signals | yes | none | Set when the AFE exists |
+| **2. External source** | A second Due's DAC0 into the capturing Due's A0, so the source has a clock of its own. `host/etsperiod.py` finds the clock ratio from the samples and the fold runs on it. Needs `linux-x1`'s two Dues, cross-wired | yes, two boards | none | The recovered ratio folds to the eye phase 0 shows, and a period 20 ppm off does not. Edge rise within 5% of phase 0's and the Rigol's |
+| **3. Track B mode** | The daemon exposes an ETS capture on one channel, running until stopped, with a progressive fold. The front end shows the folded waveform and the eye | yes | none | Matches phase 0's fold on the same wiring, with no lost frames |
+| **4. Other hosts** | `tools/ets_phase0.py loop` on the Windows and macOS benches, for the duplex load | yes | none | No underruns and no byte loss, or a device-held pattern (below) |
+| **5. Device PRBS** | Only if phase 3 fails | yes | all three tracks | Host and device PRBS give the same fold |
+| **6. Tracks A and C** | The same fold on Tracks A and C, which should need no host change | yes | none | Same fold, same periodicity |
+| **7. AFE wide path** | The wide path of the AFE requirement draft, measured against the same signals | yes | none | Set when the AFE exists |
 
 ## A device-held pattern: the RAM
 
@@ -104,6 +105,46 @@ period (today the wrap is fixed at the table length and points must divide
 LFSR when the generator is configured, which is setup work and not on the
 sample path. That is a new shape value in the shared wire contract and the
 same console surface on all three tracks.
+
+## A source with a clock of its own
+
+A second board's DAC has its own crystal, so the pattern's period in the
+capturing board's ticks is not an integer and is off the nominal one by tens
+of ppm. The pattern is known, so the one unknown is that ratio. `host/etsperiod.py`
+matches short blocks of samples against the pattern's ideal waveform and
+fits a line through the block phases over the whole capture: the phase moves
+at a rate equal to the ratio's error. `tools/ets_cross.py` runs the source in
+one process and the capture in another, each pinned to a board by `DUE_DUT`,
+and analyses the raw capture.
+
+What has been measured, on the `montreal5` capture of 3 M samples, whose true
+ratio is 0, with an offset emulated by assuming a wrong ADC period:
+
+| emulated offset | recovered | error |
+|---|---|---|
+| +150 ppm | +150.0000 ppm | 0.0000 ppm |
+| -150 ppm | -149.9999 ppm | 0.0001 ppm |
+| +40 ppm | +39.9999 ppm | -0.0001 ppm |
+| -250 ppm | -250.0000 ppm | 0.0000 ppm |
+
+A fold on the recovered period reproduces phase 0's eye (99.8% open, rise
+138.5 ns, fall 139.5 ns). A fold on a period 20 ppm out reads 1.5% open, and
+on the nominal period 0.2%. The unmodified capture returns a ratio of
+-1.3e-11. Emulation shows the algorithm and not a real crystal: wander,
+temperature drift and the source's own jitter are not in it.
+
+A search that scores whole-capture folds on candidate periods does not work
+for a known pattern: a fold on bins as wide as a symbol cannot tell a period
+that is 8 ticks out by the end of its window from the right one, so each
+stage's pick is noise.
+
+With separate clocks the relative phase between the source's edges and the
+ADC's sample instants is no longer a whole number of timer ticks, which is
+what quantises the same-board fold to 22.2 ns (44.4 ns with the ADC's start
+snapping to its own clock, `docs/ets.md`). Whether the time axis can then be
+resolved more finely is the question for the two-board run; it is bounded by
+the track-and-hold's rise, the source's edge jitter and how well the ratio
+holds over the capture, none of which is measured yet.
 
 ## Conditions on the signal
 
