@@ -22,7 +22,9 @@ past it.
 PRBS of order `n`, a Fibonacci shift register that starts all ones and shifts
 left:
 
-* output bit = the register's lowest bit;
+* the register is `n` bits wide and starts at `2^n - 1`; each step first takes
+  the **output bit, the register's lowest bit, before the shift** (so the first
+  bit is 1), then shifts left and masks to `n` bits;
 * feedback = the XOR of the register bits at positions `t - 1` for each tap `t`
   (bit 0 is the lowest), inserted at the bottom as the register shifts left;
 * taps, by order: 7 (7, 6), 9 (9, 5), 11 (11, 9), 13 (13, 12, 2, 1),
@@ -30,7 +32,8 @@ left:
 
 The sequence has `L = 2^n - 1` bits and returns to the all-ones register after
 exactly `L` steps. Symbols read `m` consecutive bits, **first bit most
-significant**, in non-overlapping groups that wrap around the sequence. A group
+significant**, in non-overlapping groups that wrap around the sequence: symbol
+`j` starts at bit `j * m` (modulo `L`) of the binary sequence. A group
 `g` is a Gray code, and the level index is its decoded value
 `g XOR (g >> 1) XOR (g >> 2) XOR ...` (for `m = 2`: 00, 01, 11, 10 are levels
 0, 1, 2, 3). Symbol `j` is group `j`, and the pattern
@@ -75,7 +78,10 @@ Level `i` of `N` is the DAC code
     floor(2048 + (i - (N - 1) / 2) * swing / ((N - 1) * lsb) + 0.5)
 
 with `lsb` = 2214 / 4095 mV (the DAC's span of about 546 to 2760 mV over 4095
-codes, `docs/hardware.md`), rounded half up. Comparisons are against these whole
+codes, `docs/hardware.md`), exactly, and the swing exactly 1000 or 2000 mV,
+rounded half up (`Fraction`, not `float`, and not Python's `round`, which rounds
+half to even). The "DAC codes per level" column below is the mean spacing; the
+smallest neighbour step is a code or two less. Comparisons are against these whole
 codes, not an ideal ladder.
 
 The swing is 1 V up to PAM32 and 2 V from PAM64, inside the DAC's window of about
@@ -105,11 +111,11 @@ Per PAM, per bench. Every number is chosen here and is not changed after a run.
 | gate | what has to be true |
 |---|---|
 | **A1 pattern** | the library's symbols equal the independent oracle's over the whole period; all `N` levels and all `N^2` pairs occur; the DAC codes rise strictly with at least 2 codes between neighbours |
-| **A2 transport** | 0 underruns, every byte played, no frame gaps |
+| **A2 transport** | 0 underruns, every byte played, no frame gaps, in a run of up to 120 s (about 117 M samples, 235 MB raw), the longest accepted until gaps are accounted for |
 | **A3 clock** | `model_adequate` true and `lattice_gcd` at most 2 on two boards, ADC RC coprime on one; at least 20 samples per tick position of the fold, or the eye-only reading is labelled so |
 | **A4 levels** | `N` distinct levels at the symbol centres, in order, each adjacent pair at least 3 sigma apart |
-| **A5 linearity** | every level mean within a quarter of a level spacing of the least-squares line through the DAC codes; the residuals are reported in codes |
-| **A6 eyes** | all `N - 1` eyes have a positive height, and the eye width, the stretch of the symbol where the height stays positive, is at least 0.2 of a symbol |
+| **A5 linearity** | every level mean within a quarter of a level spacing of the least-squares line through the DAC codes; the residuals are reported in codes. They are the nonlinearity of the DAC and the ADC together: with no separate measurement of either, nothing here attributes one to the other |
+| **A6 eyes** | **every** one of the `N - 1` eyes has a positive height, and a width, the stretch of the symbol where its height stays positive, of at least 0.2 of a symbol; the figures reported are the smallest height and the smallest width over the eyes, and all of them are listed |
 
 Reported, not gated: **A7** the rise of the adjacent-level step against
 `sqrt(a * step^2 + floor^2)` with that bench's own fit of the edge floor
