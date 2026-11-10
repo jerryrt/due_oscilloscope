@@ -135,3 +135,15 @@ def test_a_one_tick_offset_of_the_odd_samples_is_found_with_its_sign_and_removed
         "moving the odd samples back did not sharpen the edge", row)
     clean = _resolution(60e-6, tmp_path, odd_ticks=0.0)
     assert abs(clean["edge50_rise_odd_minus_even_ns"]) < 0.1 * tick_ns, clean
+
+
+def test_the_floor_fit_recovers_a_known_floor_and_reports_none_when_there_is_none():
+    import ets_cross
+    a, b = 0.0004, 40.0 ** 2          # slew term and a 40 ns floor
+    steps = [1000.0, 700.0, 500.0, 350.0, 250.0, 175.0]
+    pts = [(s, math.sqrt(a * s * s + b)) for s in steps]
+    got = ets_cross.fit_floor(pts)
+    assert abs(got["floor_ns"] - 40.0) < 0.5, got
+    pure = ets_cross.fit_floor([(s, 0.02 * s) for s in steps])
+    assert pure["floor_ns"] is None or pure["floor_ns"] < 1.0, (
+        "a purely slew-limited edge was given a floor", pure)

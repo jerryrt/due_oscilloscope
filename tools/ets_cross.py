@@ -4,6 +4,7 @@
     ets_cross.py both --rc 28 --seconds 16 [--play-dut dut1 --cap-dut dut2]
     ets_cross.py analyze RAW.bin --rc-dac 28 --rc-adc 45
     ets_cross.py resolution RAW.bin --rc-dac 28 --rc-adc 45 [--k 10 --kp 2]
+    ets_cross.py sweep --rc-adc 46 --vpps 1000,700,500,350,250,175
 
 The source board's DAC0 is wired to the capturing board's A0, so the two
 timers have separate crystals: the pattern's period in the capturing
@@ -295,7 +296,7 @@ def both(a):
         rows = [json.loads(x) for x in text.splitlines() if x.startswith("{")]
         return rows[-1] if rows else {"error": "no row printed"}
     prow, crow = last(play_out), last(cap.stdout)
-    row = {"play": prow, "capture": crow}
+    row = {"play": prow, "capture": crow, "raw": raw}
     if crow.get("bad") or not crow.get("samples") or crow.get("rc_adc") != a.rc_adc:
         row["error"] = "capture not analysable: %s" % (
             crow.get("bad") or crow.get("error") or "rate mismatch")
@@ -304,9 +305,59 @@ def both(a):
     return row
 
 
+def fit_floor(points):
+    """Fit rise**2 = a * step**2 + b to `(step_mv, rise_ns)` pairs.
+
+    A slew-limited edge shrinks in proportion to the step, and whatever the
+    path adds - the ADC's track-and-hold and the DAC's own small-signal
+    response - does not, so `sqrt(b)` is the floor those two leave together.
+    It bounds the ADC's share from above and says nothing finer.
+    Returns `{a, floor_ns, rms_ns, n}`; `floor_ns` is None when the fit
+    puts `b` below zero, i.e. the floor is not resolved.
+    """
+    xs = [s * s for s, _ in points]
+    ys = [r * r for _, r in points]
+    n = len(points)
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
+    a = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
+    b = my - a * mx
+    pred = [math.sqrt(max(0.0, a * x + b)) for x in xs]
+    rms = math.sqrt(sum((p - r) ** 2 for p, (_, r) in zip(pred, points)) / n)
+    return {"a_ns2_per_mv2": a, "floor_ns": math.sqrt(b) if b > 0 else None,
+            "b_ns2": b, "rms_ns": rms, "n": n}
+
+
+def sweep(a):
+    """`both` and `resolution` at each swing, then the floor fit."""
+    rows, pts = [], []
+    vpps = [float(x) for x in a.vpps.split(",")]
+    for i, vpp in enumerate([vpps[0]] + vpps):          # the first run is dropped
+        a.vpp_mv = vpp
+        got = both(a)
+        if got.get("error") or "raw" not in got:
+            rows.append({"vpp_mv": vpp, "error": got.get("error", "no raw")})
+            continue
+        res = resolution(got["raw"], a.rc, a.rc_adc, a.k, a.kp)
+        row = {"vpp_mv": vpp, "run": i, "swing_mv": got.get("swing_codes", 0) * 3300.0 / 4095,
+               "delta_ppm": res.get("delta_ppm"), "rise_ns_fine": res.get("rise_ns_fine"),
+               "fall_ns_fine": res.get("fall_ns_fine"), "eye_frac": res.get("eye_frac"),
+               "corr_rise_ns": res.get("corr_rise_ns"), "odd_shift_ns": res.get("odd_shift_ns"),
+               "fine_filled_share": res.get("fine_filled_share"),
+               "underruns": got["play"].get("underruns"), "rc_adc": a.rc_adc,
+               "ident_play": got["play"].get("ident"), "ident_cap": got["capture"].get("ident")}
+        row.update({k: got["capture"].get(k) for k in ("fw_repo_rev", "track", "dut")})
+        rows.append(row)
+        if i > 0 and row["rise_ns_fine"]:
+            pts.append((row["swing_mv"], row["rise_ns_fine"]))
+    if len(pts) >= 3:
+        rows.append({"fit": fit_floor(pts), "points": pts, "rc_dac": a.rc})
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=("both", "play", "capture", "analyze", "resolution"))
+    ap.add_argument("what", choices=("both", "play", "capture", "analyze", "resolution", "sweep"))
     ap.add_argument("raw_in", nargs="?")
     ap.add_argument("--rc", type=int, default=28, help="DAC RC; 28 is the playback floor")
     ap.add_argument("--rc-dac", type=int, dest="rc_dac")
@@ -319,6 +370,8 @@ def main():
     ap.add_argument("--rawdir", default="/tmp", help="where `both` keeps the raw capture")
     ap.add_argument("--k", type=int, default=10, help="`resolution`: fine bins per tick")
     ap.add_argument("--kp", type=int, default=2, help="`resolution`: bins per tick of the odd/even folds")
+    ap.add_argument("--vpps", default="1000,700,500,350,250,175",
+                    help="`sweep`: peak-to-peak swings in mV")
     ap.add_argument("--out")
     a = ap.parse_args()
     if a.what == "play":
@@ -326,6 +379,13 @@ def main():
         return
     if a.what == "capture":
         print(json.dumps(capture(a.seconds, a.raw, a.rc_adc)))
+        return
+    if a.what == "sweep":
+        for r in sweep(a):
+            print(json.dumps(r))
+            if a.out:
+                with open(a.out, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(r) + "\n")
         return
     if a.what == "resolution":
         row = resolution(a.raw_in, a.rc_dac or a.rc, a.rc_adc, a.k, a.kp)
