@@ -4,7 +4,8 @@ Written from that section alone. It shares no code with the library that
 will carry the same pattern, so the two agree only where the document is
 unambiguous. Where the text left a choice, the choice made is named here.
 """
-from math import gcd
+from fractions import Fraction
+from math import floor, gcd
 
 #: Taps by order, as the document lists them: bit positions are `t - 1`.
 TAPS = {7: (7, 6), 9: (9, 5), 11: (11, 9), 13: (13, 12, 2, 1),
@@ -13,9 +14,8 @@ TAPS = {7: (7, 6), 9: (9, 5), 11: (11, 9), 13: (13, 12, 2, 1),
 PAM_ORDER = {4: (2, 7), 8: (3, 7), 16: (4, 9), 32: (5, 11),
              64: (6, 13), 128: (7, 16), 256: (8, 17)}
 DAC_MID = 2048
-#: The document's figure; the DAC's own span would give 0.5372, so this is
-#: taken as written.
-MV_PER_DAC_CODE = 0.5407
+#: Pinned in the document: the DAC's 546-2760 mV span over 4095 codes, exactly.
+MV_PER_DAC_CODE = Fraction(2214, 4095)
 #: 1 V up to PAM32, 2 V from PAM64.
 SWING_MV = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 2000, 128: 2000, 256: 2000}
 
@@ -64,7 +64,8 @@ def symbols(pam):
 def dac_codes(pam):
     """DAC code of each level index, level 0 lowest."""
     swing = SWING_MV[pam]
-    return [DAC_MID + round((i - (pam - 1) / 2) * swing / (pam - 1) / MV_PER_DAC_CODE)
+    return [floor(DAC_MID + (i - Fraction(pam - 1, 2)) * swing
+                  / ((pam - 1) * MV_PER_DAC_CODE) + Fraction(1, 2))
             for i in range(pam)]
 
 
