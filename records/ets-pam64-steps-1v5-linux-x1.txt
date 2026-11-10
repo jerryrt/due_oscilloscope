@@ -1,0 +1,16 @@
+swing 1500 mV, 15562368 samples, 3112457 at the symbol centre
+bottom eye height (codes): every step: 12.0; steps up to 47: 12.0; steps up to 31: 13.0; steps up to 15: 12.9; steps up to 7: 13.0
+middle eye height (codes): every step: 13.0; steps up to 47: 13.0; steps up to 31: 13.0; steps up to 15: 12.5; steps up to 7: 13.0
+top eye    height (codes): every step: 12.0; steps up to 47: 13.0; steps up to 31: 14.0; steps up to 15: 13.9; steps up to 7: 14.8
+bottom level: centre offset and std by the previous level
+   previous  1-13  n=  9896  offset -1.23  std 2.38
+   previous 14-25  n=  9117  offset -0.60  std 2.39
+   previous 26-38  n=  9888  offset -0.07  std 2.42
+   previous 39-50  n=  9122  offset +0.52  std 2.41
+   previous 51-63  n=  9867  offset +1.44  std 2.52
+top level: centre offset and std by the previous level
+   previous 50-62  n=  9884  offset +1.08  std 2.34
+   previous 38-49  n=  9125  offset +0.60  std 2.37
+   previous 25-37  n=  9878  offset +0.13  std 2.38
+   previous 13-24  n=  9134  offset -0.42  std 2.35
+   previous  0-12  n=  9884  offset -1.47  std 2.42
