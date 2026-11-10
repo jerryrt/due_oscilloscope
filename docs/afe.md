@@ -22,7 +22,7 @@ the tests point at its identifier and do not restate it.
 | [afe/contractor/brief.md](afe/contractor/brief.md), [afe/contractor/requirements.md](afe/contractor/requirements.md) | The rounded wording sent to the contractor, checked against this file. **As sent**, and out of date on construction (it says hand-soldered, through-hole, on the proto board; MC-1 to MC-5 no longer say that): revise it before it is used again. Section 18 maps it to the identifiers here |
 | [afe/contractor-inventory.txt](afe/contractor-inventory.txt), `tools/afe_export_contractor.sh` | Which files go to the contractor, and the export |
 | [afe/input-divider.html](afe/input-divider.html) | The input divider design aid |
-| [hardware/afe-proto](../hardware/afe-proto/README.md), [hardware/reference/arduino-due](../hardware/reference/arduino-due/README.md) | The AFE shield PCB project, and the Due V03 reference it mates with. [hardware/mega-proto-carrier](../hardware/mega-proto-carrier/README.md) is the earlier proto-board baseline, kept and not edited |
+| [hardware/afe-proto](../hardware/afe-proto/README.md), [hardware/reference/arduino-due](../hardware/reference/arduino-due/README.md) | The AFE shield PCB project, and the Due V03 reference it mates with |
 | [related-work.md](related-work.md) | Comparable instruments and front ends. Read before front-end hardware work |
 | [noise.md](noise.md), [ets-mode.md](ets-mode.md), [ets-pam.md](ets-pam.md) | The measurements this file cites |
 
@@ -268,7 +268,7 @@ heat).
 | ID | Constraint |
 |---|---|
 | MC-1 | A custom shield PCB in the Arduino Mega/Due form factor, stacked on the Due through stacking headers that carry every Due pin through. The Due's outline and pin positions are those of the V03 reference ([Due V03 in KiCad](../hardware/reference/arduino-due/v03/README.md)). It is a new KiCad project under `hardware/afe-proto` |
-| MC-2 | Retired with the proto carrier: it barred the carrier's 28 grid holes tied to SMD lands, and the carrier is no longer the board |
+| MC-2 | Retired: it applied to a proto board, which the AFE no longer uses |
 | MC-3 | A custom 2-layer PCB with a ground plane, surface-mount parts wherever possible. The equivalent-time path (SM-3, about 8 MHz) needs a controlled layout and does not work on a proto board. Whether it is assembled by hand or by a board house is D10 |
 | MC-4 | Header pin positions come from the Due V03 KiCad reference, and are checked by continuity on the owner's boards before the first round is ordered |
 | MC-5 | The design records which header pin every net uses, in a table, and passes KiCad 10.x's electrical and design rule checks |

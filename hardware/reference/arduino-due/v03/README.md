@@ -96,9 +96,8 @@ shorted to it.
 
 Both parts are on the top layer under where a shield sits, so the rework is done
 before stacking. A shield reaches AREF through the stacking header, with no jumper
-wire; the carrier exports it as `DUE_AREF` at J1 pin 1 and J10 pin 1
-([pad map](../../mega-proto-carrier/pad-map.csv), photo-traced, not yet verified
-with a meter).
+wire. On the Due it is header `PWMH0` pad 8 in this board file, the AREF pin of
+the header.
 
 **The load an external reference sees:** C34, then the bead, then C19, about 200 nF,
 before any trace and header contact on the shield. It has to be stable with that

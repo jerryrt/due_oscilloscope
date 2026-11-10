@@ -35,7 +35,5 @@ In particular, BR1 schematic pins **1 / C / 2** correspond to PCB pads
 **1 / 2 / 3**. The optional external-reference bridge is PCB **1-2** with
 JR1 removed; the current AFE plan keeps the Due stock and JP101 open.
 
-The [AFE plan](../../../docs/afe-plan.md) and
-[corrected Mega proto carrier](../../mega-proto-carrier/README.md) use V03
-for Due mating/reference inspection. The reconstructed carrier remains
-the physical baseline for the separate [AFE assembly](../../afe-proto/README.md).
+The [AFE plan](../../../docs/afe-plan.md) and the [AFE shield PCB](../../afe-proto/README.md) use V03
+for Due mating and reference inspection.

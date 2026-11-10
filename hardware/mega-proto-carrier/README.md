@@ -1,5 +1,8 @@
 # Your Mega PrototypeShield V3 carrier
 
+> **Superseded.** The AFE is now a custom shield PCB ([docs/afe.md](../../docs/afe.md), [hardware/afe-proto](../afe-proto/README.md)). This folder is kept as history and is not used by it.
+
+
 Open [mega-proto-carrier.kicad_pro](mega-proto-carrier.kicad_pro) in **KiCad 10.x**.
 Revision **P3.5** incorporates the seven stripped-board photographs
 [IMG_2135](photos/IMG_2135.jpeg) through [IMG_2141](photos/IMG_2141.jpeg).

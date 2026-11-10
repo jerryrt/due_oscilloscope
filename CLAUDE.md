@@ -44,9 +44,8 @@ selection and project structure; `docs/afe-plan.md` carries the development
 gates. The AFE is a custom surface-mount shield PCB for the Due, all phases
 in one design built over several rounds, as a new KiCad project under
 `hardware/afe-proto/` (the owner's decision: equivalent-time capture does not
-work on a proto board). The Due V03 reference supplies its mating geometry;
-`hardware/mega-proto-carrier/` is the earlier proto baseline, kept and not
-edited. Finish each stage in SPICE before it is laid out; the PCB and
+work on a proto board). The Due V03 reference supplies its mating geometry.
+Finish each stage in SPICE before it is laid out; the PCB and
 simulation assets are still to be created.
 
 **Due CAD reference for the owner's DUE R3 board: V03**, under

@@ -25,7 +25,7 @@ Phase 2. Step 6 starts only after G5.
 ## Step 0: inputs and tooling
 
 Measurements that decide whether a requirement can be met, taken before
-the circuit exists, on the prototype board with no AFE circuit fitted
+the circuit exists, on the Due alone with no AFE circuit fitted
 (loopback jumpers allowed). Each result is recorded in `records/` with the bench,
 Due identity, firmware `build=` and instrument.
 
@@ -35,7 +35,7 @@ Due identity, firmware `build=` and instrument.
 | Per-board AREF and DAC window for all three Dues | SC-2, AW-1 and AW-7 margins | `calibration.json` and a scope on the pin; AREF at the 3.3 V pin and ADC |
 | ADC noise baseline at 90 MHz | SC-6 and SC-10 are judged against it | `tools/phase0.py noise-fast` |
 | Channel memory and crosstalk at 90 MHz, with a low-impedance source | SC-9, SC-10 | `docs/noise.md` method; `docs/hardware.md` lists this as unmeasured at 90 MHz |
-| The ADC's own noise floor, with a quiet DC source: one alkaline AA cell (1.5 V) through a series resistor into one ADC pin | Decides whether the DAC or the ADC holds the level band, and the AFE noise targets that follow. No rework. Not a Li-ion cell, which reaches 4.2 V | One cell and one resistor on the prototype board; `tools/phase0.py noise-fast` |
+| The ADC's own noise floor, with a quiet DC source: one alkaline AA cell (1.5 V) through a series resistor into one ADC pin | Decides whether the DAC or the ADC holds the level band, and the AFE noise targets that follow. No rework. Not a Li-ion cell, which reaches 4.2 V | One cell and one resistor on the Due; `tools/phase0.py noise-fast` |
 | Differential mode: VIN+ pin, common-mode window, PGA gain codes | DF-1, DF-2 | SAM3X datasheet in `docs/datasheets/` |
 | DAC output while the Due resets and boots | AW-8 | Scope on DAC0 through a reset and a flash |
 | ADC acquisition settings the firmware will use | SC-9, SC-10, AN-2 | Client decision |

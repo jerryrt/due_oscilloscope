@@ -10,7 +10,6 @@ one design built over several rounds. The requirements are in
 |---|---|
 | This directory | The shield PCB project, its models, simulation benches and reports, created as the plan's steps need them |
 | [Due V03 reference](../reference/arduino-due/README.md) | The Due: mating geometry, header pins and the AREF, ADVREF network the shield's reference reaches. Not edited |
-| [mega-proto-carrier](../mega-proto-carrier/README.md) | The earlier proto-board baseline, kept for reference and not edited. The AFE is no longer built on it |
 
 Rules:
 
