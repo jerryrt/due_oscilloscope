@@ -63,6 +63,29 @@ change, USB-bound) or the device holds it (a firmware change on three tracks,
 no USB load). Phase 0(d) decides it. The tracks are peers, so the change
 would have to land on all three.
 
+## A device-held pattern: the RAM
+
+The pattern can live on the device and play from RAM with no USB in the
+path, as the generator's table does. That removes part B's USB load.
+
+| item | figure |
+|---|---|
+| Bank 0 (64 KiB) after `.data` and `.bss` | 8,712 B free, stack and heap included *(Track B map; where the stack sits is unchecked)* |
+| Bank 1 (32 KiB) | 16,384 B free; the capture ring takes the other 16,384 B *(check that nothing else is placed there)* |
+| Today's generator table | 512 entries, 1,024 B |
+| A pattern at 1 sample per symbol, 2 B each | PRBS7 254 B, PRBS9 1,022 B, PRBS10 2,046 B, PRBS11 4,094 B, PRBS13 16,382 B |
+
+PRBS7 to PRBS10 fit in bank 0 with room to spare. PRBS11 leaves about 4.6 KB
+for stack and heap, so it belongs in bank 1, whose use by the DMA masters is
+unchecked.
+
+What it needs from the firmware: a table whose length is the pattern's
+period (today the wrap is fixed at the table length and points must divide
+256, so a 127-symbol period does not fit), and a PRBS shape built from an
+LFSR when the generator is configured, which is setup work and not on the
+sample path. That is a new shape value in the shared wire contract and the
+same console surface on all three tracks.
+
 ## Conditions on the signal
 
 ETS works only for a signal that repeats exactly and whose period is known
