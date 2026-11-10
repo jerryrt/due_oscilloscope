@@ -14,7 +14,7 @@ each prefix's meaning.
 | **0** Inputs and tooling | Take the measurements the requirements lean on, close the TBC values, set up KiCad 10.x, ngspice and validated models | **G0**: every input in the table below has a value and a source; every TBC is closed or frozen with an owner; models are validated and hashed |
 | **1** Architecture and budgets | Choose the topology and parts on paper; allocate gain, error, noise, current and impedance | **G1**: every requirement has a block and a numeric allocation, and no budget is negative at worst case |
 | **2** Simulation | Simulate each block, then the whole, against the requirement numbers: 2a power, 2b scope channel, 2c AWG output, 2d differential mode, 2e integration | **G2**: an accepted report per block, and an integrated report that passes every case at the stated corners. **Nothing is built before G2** |
-| **3** Layout on the carrier | Place the passed circuit on a working copy of the carrier and map every pin to a grid hole | **G3**: pin-to-hole map reviewed, MC-2 holes untouched, wiring parasitics added as sensitivity cases and the affected simulations rerun and passing |
+| **3** Layout of the shield PCB | Lay out the passed circuit as a custom shield PCB for all phases in one design, with optional parts as unfitted footprints (MC-11); run KiCad 10.x's electrical and design rule checks | **G3**: header-pin table reviewed against the Due V03 reference, rule checks clean, parasitics from the real layout added as sensitivity cases and the affected simulations rerun |
 | **4** Build and bench | Assemble and bring up block by block; run VT-1 to VT-14 | **G4**: every test passes on the board, with its record |
 | **5** Calibration and review | Write the calibration note for the host software, the test report and the Phase 1 design review; freeze the Phase 2 interface | **G5**: review accepted, interface defined (P2-6) |
 | **6** Phase 2 assembly | Repeat steps 1 to 4 for the fully-differential assembly | **G6**: VT-9 passes with the assembly installed and no board change |
@@ -35,6 +35,7 @@ Due identity, firmware `build=` and instrument.
 | Per-board AREF and DAC window for all three Dues | SC-2, AW-1 and AW-7 margins | `calibration.json` and a scope on the pin; AREF at the 3.3 V pin and ADC |
 | ADC noise baseline at 90 MHz | SC-6 and SC-10 are judged against it | `tools/phase0.py noise-fast` |
 | Channel memory and crosstalk at 90 MHz, with a low-impedance source | SC-9, SC-10 | `docs/noise.md` method; `docs/hardware.md` lists this as unmeasured at 90 MHz |
+| The ADC's own noise floor, with a quiet DC source: one alkaline AA cell (1.5 V) through a series resistor into one ADC pin | Decides whether the DAC or the ADC holds the level band, and the AFE noise targets that follow. No rework. Not a Li-ion cell, which reaches 4.2 V | One cell and one resistor on the prototype board; `tools/phase0.py noise-fast` |
 | Differential mode: VIN+ pin, common-mode window, PGA gain codes | DF-1, DF-2 | SAM3X datasheet in `docs/datasheets/` |
 | DAC output while the Due resets and boots | AW-8 | Scope on DAC0 through a reset and a flash |
 | ADC acquisition settings the firmware will use | SC-9, SC-10, AN-2 | Client decision |
@@ -48,10 +49,7 @@ measurement, the Due's own supply current, before step 1 closes PW-1.
 Tooling: KiCad 10.x with matching symbol and footprint libraries, and
 ngspice, with the exact versions recorded in every report. Models live in
 the models subfolder with their source and hash (MC-6); each gets a
-smoke test before it is trusted. The working KiCad project is created under
-`hardware/afe-proto/` from the corrected
-[carrier](../hardware/mega-proto-carrier/README.md) with its copper and
-pad IDs preserved. Models, simulation benches and accepted reports each get
+smoke test before it is trusted. The working KiCad project is a new one under `hardware/afe-proto/`, a shield PCB mated to the [Due V03 reference](../hardware/reference/arduino-due/README.md). Models, simulation benches and accepted reports each get
 a subfolder of `hardware/afe-proto/`, created in this step.
 
 ## Step 1: architecture and budgets
@@ -91,19 +89,20 @@ every case. Effects the models cannot show (measured noise, crosstalk,
 physical fit) are listed as model gaps with the bench test that closes
 them.
 
-## Step 3: layout on the carrier
+## Step 3: layout of the shield PCB
 
 | Work | Evidence |
 |---|---|
-| Working copy of the carrier; only the 28 SMD-tied holes are barred (MC-2) | Pin-to-hole map; added wires and crossings recorded (MC-5) |
-| Signal pin positions confirmed against the carrier model (MC-4) | Written confirmation |
-| Estimated wiring parasitics added as sensitivity cases, not extracted from the PCB | The affected step 2 blocks rerun and passing |
-| Unused Due pins: no AFE net connects to them and every header socket stays clear (MC-9) | Pin list showing the pins the AFE uses and nothing else |
+| A new KiCad 10.x project under `hardware/afe-proto`, a shield in the Mega/Due form factor stacked on the Due through stacking headers | The project, with the Due V03 reference as its mating model |
+| Header pin positions taken from the Due V03 reference and checked by continuity on the owner's boards (MC-4) | Written confirmation, before a round is ordered |
+| Every net's header pin in a table, and the unused Due pins left through unchanged (MC-5, MC-9); AREF listed as used (PA-7) | The table, and KiCad's electrical and design rule checks clean |
+| Optional parts and undecided choices as unfitted footprints and jumpers (MC-11) | The BOM marks each as fitted or unfitted for the round |
+| Parasitics extracted from the layout, not estimated, added as sensitivity cases | The affected step 2 blocks rerun and passing |
 | Unpowered continuity and insulation checks defined | Checklist the build step runs |
 
 ## Step 4: build and bench
 
-Assemble one block at a time on the same prototype board, with the loopback
+Assemble one block at a time on the round's board, with the loopback
 jumpers removed (MC-10), and power it from a current-limited supply first.
 Tests that used those jumpers use an external cable between the AWG
 connector and a scope input, and the wiring is declared as AFE fitted. Order: power, AWG output, scope channel one, scope channel two,
@@ -131,6 +130,32 @@ protection, output network, connectors, supply and JP-DIFF; its CMRR and
 noise are no worse than Phase 1's (P2-3), and VT-9 shows it installs
 without changing the board.
 
+## Rounds
+
+All phases are one PCB design, built over several rounds. A round is: simulate what
+changed, lay it out, order it, bring it up, measure it. Every gate of this plan
+applies to each round, and a failed round changes the circuit and is rerun. It
+never relaxes a limit.
+
+**Round 1 is for learning what the document cannot decide.** It carries the whole
+design, with every open choice as a jumper, a solder jumper or an unfitted
+footprint (MC-11):
+
+| Open choice | How round 1 carries it |
+|---|---|
+| Input ranges (D1) | a jumper-selected gain, with the ±5 V range always present |
+| Real-time or wide path (SM-4, D2, D3) | a mode jumper |
+| The unfiltered DAC0 path (D4, AW-9) | a jumper and a test point |
+| The reference at an ADC input, and at AREF (PA-7, PA-8) | a header, and an unfitted series element |
+| The AFE's own supply current (D7) | a jumper in the supply feed, so a meter can sit in it |
+| 3b, the slow ADC and DAC | footprints, unfitted, until 3a has shown what it needs to |
+| Test points | on every rail, the reference, and each stage's output |
+
+Round 1 is considered done when it has answered: which converter holds the level
+band (VT-3), how wide the equivalent-time path is and how noisy (VT-16), and
+whether a narrow range fills the ADC without losing the noise margin (VT-15).
+Later rounds fix what those answers and the layout show.
+
 ## The owner's side
 
 The plan above is the build. This is what the owner does around it, as a loop
@@ -149,7 +174,7 @@ with the contractor.
 | Take the measurements the data sheet needs (DAC noise DC to 1 MHz, per-board AREF and DAC window for all three Dues, ADC noise at 90 MHz, channel memory and crosstalk, DAC output during reset and boot) | They need a Due. Only you can |
 | Close or freeze every TBC in `afe.md` at the stated value | The contractor treats TBC as binding. `MC-8` (connector, ×1 or ×10 probe) has no default, so choose |
 | Verify the `(check)` items: which pin is IN+, the 0.054 ns per ohm plus 205 ns track time, the differential-mode common-mode window, the pin absolute maximum | The design is based on them |
-| Measure the real pin positions and hole grid with calipers. Send a dimensioned drawing, or a physical carrier | `MC-4` is a photo estimate |
+| Check the Due's header pin positions by continuity on each of the owner's boards | `MC-4` takes them from the Due V03 reference, a converted board file |
 | Add a BOM cost target and an availability rule | The contractor does not know the budget |
 | Remove or inline references to files you are not sending (`docs/noise.md`, `docs/hardware.md`, `docs/datasheets/`, `records/`, `tools/phase0.py`, `calibration.json`) and explain the 22.5 MHz out-of-spec ADC clock | The documents cite them |
 | Decide the review turnaround you promise | The loop runs at your speed |
@@ -162,8 +187,7 @@ crosstalk), so ask them for the ADC-model simulation.
 Done since this was written: every TBC but MC-8 is frozen at its stated value
 and the decisions are one list ([afe.md](afe.md), section 17). What the owner
 sends is the contractor package ([afe/contractor-inventory.txt](afe/contractor-inventory.txt)),
-which is the rounded wording **as sent** until D1 to D5 are decided and the
-package is brought up to date.
+which is the rounded wording **as sent**, already out of date on construction, until D1 to D4 and D10 are decided and the package is revised.
 
 ### Reviewing each revision
 
@@ -178,7 +202,7 @@ package is brought up to date.
    unpowered, and the AWG output with an external ±5 V.
 5. Check the BOM: part numbers exist, stock and price are current, no
    single-source or obsolete parts, within cost target.
-6. Check the pin-to-hole map against the carrier: MC-2 holes unused, unused
+6. Check the header-pin table against the Due V03 reference: AREF listed as used, unused
    Due pins untouched, nothing covering a header socket.
 7. Read the model-gap list. Each item should name a test in their
    validation plan.

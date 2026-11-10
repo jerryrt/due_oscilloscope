@@ -19,10 +19,10 @@ the tests point at its identifier and do not restate it.
 |---|---|
 | This file | The requirements, the Due baseline they rest on, the tests that accept them, and the decisions the owner owes |
 | [afe-plan.md](afe-plan.md) | How the AFE is built: the steps and gates, the owner's side of each step, and the traceability |
-| [afe/contractor/brief.md](afe/contractor/brief.md), [afe/contractor/requirements.md](afe/contractor/requirements.md) | The rounded wording sent to the contractor, checked against this file. **As sent** until the decisions of section 17 are made; section 18 maps it to the identifiers here |
+| [afe/contractor/brief.md](afe/contractor/brief.md), [afe/contractor/requirements.md](afe/contractor/requirements.md) | The rounded wording sent to the contractor, checked against this file. **As sent**, and out of date on construction (it says hand-soldered, through-hole, on the proto board; MC-1 to MC-5 no longer say that): revise it before it is used again. Section 18 maps it to the identifiers here |
 | [afe/contractor-inventory.txt](afe/contractor-inventory.txt), `tools/afe_export_contractor.sh` | Which files go to the contractor, and the export |
 | [afe/input-divider.html](afe/input-divider.html) | The input divider design aid |
-| [hardware/afe-proto](../hardware/afe-proto/README.md), [hardware/mega-proto-carrier](../hardware/mega-proto-carrier/README.md) | The working CAD and its photographed baseline |
+| [hardware/afe-proto](../hardware/afe-proto/README.md), [hardware/reference/arduino-due](../hardware/reference/arduino-due/README.md) | The AFE shield PCB project, and the Due V03 reference it mates with. [hardware/mega-proto-carrier](../hardware/mega-proto-carrier/README.md) is the earlier proto-board baseline, kept and not edited |
 | [related-work.md](related-work.md) | Comparable instruments and front ends. Read before front-end hardware work |
 | [noise.md](noise.md), [ets-mode.md](ets-mode.md), [ets-pam.md](ets-pam.md) | The measurements this file cites |
 
@@ -62,7 +62,9 @@ or an acceptance test.
 |---|---|
 | 1 | Two single-ended scope channels, one AWG output, jumper-selected differential mode |
 | 2 | An optional fully-differential amplifier assembly that reuses the Phase 1 design (section 9) |
-| 3 | Optional: a precision calibration channel (section 10, D5) |
+| 3 | A precision reference and a slow precise converter pair (section 10, D5 adopted) |
+
+All three phases are **one PCB design**, built over several rounds. What a round does not populate is an unfitted footprint (MC-11), so a later phase is not a new board.
 ## 4. The Due as measured
 
 The Due is the fixed part of this design, and it has been characterised to its
@@ -207,26 +209,30 @@ usually pointed at. SC-11 is what changes that.
 | P2-5 | The contractor states its input common-mode range |
 | P2-6 | The Phase 1 design package defines the assembly's interface (pinout, voltages, loads) so Phase 2 needs no Phase 1 change |
 
-## 10. Phase 3 (optional): a precision calibration channel
+## 10. Phase 3: a precision reference and a slow converter pair
 
-**Proposed, D5. Not part of Phase 1 or Phase 2.** A slow, precise ADC, DAC and
-voltage reference on the stacked board, to calibrate the Due's own converters.
-The reasons for it are absolute accuracy (gain, offset, AREF) and, if its
-bandwidth covers DC to 1 MHz, separating the DAC's noise from the ADC's. It is
-not justified by INL: the DAC and ADC lie on a line to 0.3 to 0.5 codes over a
-1.5 V window against a level band of 17 to 20 codes (section 4.2). It needs a
-custom PCB, which MC-3 excludes, and a switch whose leakage and capacitance sit
-on the path SM-3 wants wide.
+**Adopted (D5), on the same PCB as Phases 1 and 2.** Two parts. **3a** is a precision
+voltage reference with a buffer, a test point, and a routed connection to the
+Due's AREF header pin. **3b** is a slow, precise ADC and DAC on that reference, to
+calibrate the Due's own converters. They give absolute accuracy (gain, offset, and
+the AREF value as the Due's ADC reads it) and, because the reference is a quiet DC
+source, the ADC's own noise floor; with 3b's bandwidth at DC to 1 MHz, also the
+DAC's noise. They are not justified by INL (integral non-linearity: how far a
+converter's code against voltage curve strays from a straight line): the DAC and
+ADC together lie on a line to 0.3 to 0.5 codes over a 1.5 V window against a level
+band of 17 to 20 codes (section 4.2). 3a has no switch on the signal path. 3b's
+switch (PA-3, PA-4) is the only Phase 3 part on it.
 
 | ID | Requirement |
 |---|---|
-| PA-1 | Effective resolution at least 16 bits, noise-free, at a slow rate. State the measurement bandwidth with the figure. For the noise separation, a bandwidth of DC to 1 MHz |
-| PA-2 | A precision DAC and a precision ADC, both at least 16-bit, on a common low-drift voltage reference (value and drift in ppm per degree set if D5 is adopted) |
-| PA-3 | The ADC can read the Due's DAC0 and the AWG output. The DAC can drive a known voltage onto A0 and A1 through a switch, so the host can fit gain and offset of each Due channel |
-| PA-4 | The switch's leakage, capacitance and charge injection stay inside SC-9 and SC-10, so the fast path is not degraded when the calibration path is off |
+| PA-1 | (3b) Effective resolution at least 16 bits, noise-free, at a slow rate. State the measurement bandwidth with the figure. For the noise separation, a bandwidth of DC to 1 MHz |
+| PA-2 | (3a, 3b) A precision DAC and a precision ADC, both at least 16-bit, on a common low-drift voltage reference (value and drift in ppm per degree set in round 1) |
+| PA-3 | (3b) The ADC can read the Due's DAC0 and the AWG output. The DAC can drive a known voltage onto A0 and A1 through a switch, so the host can fit gain and offset of each Due channel |
+| PA-4 | (3b) The switch's leakage, capacitance and charge injection stay inside SC-9 and SC-10, so the fast path is not degraded when the calibration path is off |
 | PA-5 | Calibration stays in host software (CA-1). Optionally the board holds its reference's measured value |
 | PA-6 | Absolute accuracy is claimed only as far as it can be verified against a better standard. Linearity and noise are verified with a borrowed 6.5-digit meter and a stable reference |
-| PA-7 | Optional: supply the Due's AREF from the board's reference (D6) |
+| PA-7 | **(3a) The reference is routed to the shield's AREF header pin, and is not used by the Due.** The routing has a series element, a solder jumper or a resistor, unfitted by default. The Due's JR1 and BR1 stay untouched (D6, closed), so on a stock Due the pin goes nowhere and the shield is harmless on it. Using the reference as ADVREF is a later decision of the owner and a rework of the Due ([the Due reference network](../hardware/reference/arduino-due/v03/README.md)): with JR1 fitted and BR1 bridged the reference would be shorted to 3.3 V, so the series element is fitted only after that rework has been checked by continuity |
+| PA-8 | **(3a)** A test point and a header put the reference at a scope input by jumper or cable, with no switch in the signal path, so the Due's ADC can read it: its own noise floor and each board's gain |
 
 DC calibration cannot reach frequency response. Scope flatness needs the AWG into
 the scope (AW-9) with the precision ADC as judge, within its bandwidth.
@@ -244,7 +250,7 @@ heat).
 
 | ID | Requirement |
 |---|---|
-| PR-1 | Each scope input survives ±30 V continuous, powered or unpowered, and a signal applied with the Due unpowered or unconfigured. Above ±30 V the AFE may be damaged, but only in parts the owner can replace on the carrier, and the Due is not damaged |
+| PR-1 | Each scope input survives ±30 V continuous, powered or unpowered, and a signal applied with the Due unpowered or unconfigured. Above ±30 V the AFE may be damaged, but only in parts the owner can replace on the shield, and the Due is not damaged |
 | PR-2 | A0, A1 and the DAC pin stay between −0.2 V and 3.45 V in every supply and power-off state. This is a conservative limit against the pin's datasheet absolute maximum of −0.3 to +4.0 V *(check)*. Any driver of these pins is supplied at no more than 3.45 V |
 | PR-3 | With the Due unpowered and ±30 V on a scope input, the current into the Due supply pins is at most 100 µA and the rails stay below 0.5 V |
 | PR-4 | The AWG output survives an external ±5 V for at least 10 s, powered or unpowered, and recovers without damage. Unpowered, the back-feed into the Due supply pins meets PR-3's limits. These excursions are exempt from PW-3 |
@@ -261,16 +267,17 @@ heat).
 
 | ID | Constraint |
 |---|---|
-| MC-1 | Built on the client's Mega ProtoShield V3 carrier (103 x 55 mm), which stacks on the Due and exports every Due pin through sockets on its top side. The client supplies the KiCad project: [mega-proto-carrier](../hardware/mega-proto-carrier/README.md) |
-| MC-2 | The carrier's 2.54 mm grid holes are isolated pads. The 28 holes tied to SMD lands (rows R04, R05, R11 and R12, columns C01 to C07) must not be used |
-| MC-3 | All parts are through-hole, or surface-mount on adapters. No custom PCB in this scope. Phase 3's precision part is the one exception under discussion (D5) |
-| MC-4 | Signal pins (photo estimates): power at x=32 to 42 mm, A0 and A1 at x=47 and 50, DAC0 at x=80, along the carrier's bottom edge. The contractor confirms against the client's model |
-| MC-5 | The design and assembly drawing map every pin to a grid hole, and record added wires and crossings |
+| MC-1 | A custom shield PCB in the Arduino Mega/Due form factor, stacked on the Due through stacking headers that carry every Due pin through. The Due's outline and pin positions are those of the V03 reference ([Due V03 in KiCad](../hardware/reference/arduino-due/v03/README.md)). It is a new KiCad project under `hardware/afe-proto` |
+| MC-2 | Retired with the proto carrier: it barred the carrier's 28 grid holes tied to SMD lands, and the carrier is no longer the board |
+| MC-3 | A custom 2-layer PCB with a ground plane, surface-mount parts wherever possible. The equivalent-time path (SM-3, about 8 MHz) needs a controlled layout and does not work on a proto board. Whether it is assembled by hand or by a board house is D10 |
+| MC-4 | Header pin positions come from the Due V03 KiCad reference, and are checked by continuity on the owner's boards before the first round is ordered |
+| MC-5 | The design records which header pin every net uses, in a table, and passes KiCad 10.x's electrical and design rule checks |
 | MC-6 | Design files use KiCad 10.x. Simulation models carry provenance and hashes |
 | MC-7 | Fit and the AREF-spread conditions are demonstrated on the client's three Dues: fit by inspection, electrical performance by VT-1 and VT-6 repeated on each board as found |
 | MC-8 | Connector type and the probe arrangement (×1 or ×10) are supplied by the client (D8) |
-| MC-9 | Every Due pin the AFE does not use passes through the board unchanged. No AFE net connects to an unused pin (checked by continuity), no part or wire covers a header socket, and every exported pin stays reachable from the top of the stack |
+| MC-9 | Every Due pin the AFE does not use passes through the board unchanged. No AFE net connects to an unused pin (checked by continuity), no part or wire covers a header socket, and every exported pin stays reachable from the top of the stack. AREF is a used pin (PA-7) |
 | MC-10 | All external connections are made on the AFE board. Nothing is wired to the Due's own headers while it is installed, and no loopback jumper (such as DAC0 to A0) is wired while the AFE circuit is fitted. Loopback is by an external cable between the AWG connector and a scope input connector |
+| MC-11 | Every optional part of Phases 2 and 3 is a footprint that can be left unfitted, and every undecided choice (D1 to D4, D7) is a jumper, a solder jumper or an unfitted footprint, so one PCB design serves every round (plan, "Rounds") |
 
 ## 13. Verification
 
@@ -340,11 +347,12 @@ and what it affects. None is adopted until the owner says so.
 | D2 | Real-time corner and shape: 200 or 270 kHz, one fixed or one per channel count; a single pole or Bessel | Keep SC-5's single pole for Phase 1: it is the simplest and cheapest. Bessel and per-count corners as a later option | SC-5, SM-1, SM-2 |
 | D3 | Equivalent-time bandwidth target | At least 8 MHz, set by the G1 budget; confirm the divider can meet it at SC-10's source impedance | SM-3, SC-6, VT-16 |
 | D4 | An unfiltered DAC0 test path | Yes, a jumper or test point | AW-9, VT-17, SM-8 |
-| D5 | Phase 3's precision channel and its custom PCB | Defer. Its INL case does not hold; keep it for absolute accuracy and noise separation | section 10, MC-3 |
-| D6 | Drive AREF from the board's reference, a one-time change to BR1 on each Due, or only measure it | Measure only in Phase 1, since PW-5 forbids a Due modification. Revisit with Phase 3. The rework (JR1 off, BR1 pads 1 and 2 bridged, the reference on the shield reaching the Due through the AREF header pin) is in [the Due reference network](../hardware/reference/arduino-due/v03/README.md) | PA-7, PW-5 |
+| D5 | Phase 3's precision channel and its custom PCB | **Decided 2026-11-10: adopted**, on the same PCB as the other phases: 3a (reference, buffer, test point, AREF routing) and 3b (slow precision ADC and DAC) | section 10, MC-3, PA-1 to PA-8 |
+| D6 | Drive AREF from the board's reference | **Decided 2026-11-10: measure only.** JR1 and BR1 stay untouched. The reference is routed to the AREF pin and unused by default (PA-7). Using it as ADVREF later is the owner's call, a rework of the Due described in [the Due reference network](../hardware/reference/arduino-due/v03/README.md); the owner judged soldering JR1 and BR1 too risky for now | PA-7, PW-5 |
 | D7 | PW-1's current budget: 30 mA, or 100 mA until the Due's draw is read | Measure the Due first with an inline USB meter in idle, capture, loop and playback, then freeze. The draft's estimate of 110 to 175 mA for the Due has no measurement behind it | PW-1, section 4.3 |
 | D8 | Connector and probe arrangement (MC-8) | BNC, taking ×1 and ×10 scope probes | MC-8 |
 | D9 | Real-time target symbol rates | From D2's corner: about 105 and 205 kbaud with an eye, 267 and 533 kbaud edges only. The equivalent-time rate is not an AFE limit: 1.6 Msym/s is demonstrated | SM-2 |
+| D10 | Who assembles the shield: the owner by hand, or a board house | Open. A board house for the surface-mount parts, since fine soldering is a risk the owner has declined (JR1 and BR1); hand-soldering for headers and connectors only. This sets the smallest part size and package in MC-3 | MC-3 |
 
 ## 18. Contractor wording to requirement identifiers
 
@@ -381,8 +389,7 @@ wording is rounded and is not a tolerance.
 
 Left out of the contractor wording on purpose: exact tolerances and test methods
 (VT-1 to VT-17), and Phase 2 as a separate scope. The contractor wording has no
-counterpart yet for SC-11, SM-1 to SM-8, AW-9 or Phase 3; they are added when D1
-to D5 are decided, and until then the package is exactly what was sent.
+counterpart yet for SC-11, SM-1 to SM-8, AW-9 or Phase 3; they are added when the package is revised after D1 to D4 and D10 are decided, and until then the package is exactly what was sent.
 
 ## 19. What changed from the 2026-11-06 requirement
 
@@ -397,3 +404,7 @@ to D5 are decided, and until then the package is exactly what was sent.
 | PW-1 keeps 30 mA until the Due's draw is measured | PW-1, D7 | the draft's 100 mA had no measurement |
 | Phase 3 (precision channel) is optional and separate | section 10 | its INL case does not hold; it conflicts with MC-3 |
 | VT-15 to VT-17 | section 13 | cover SM-3, SM-5, SC-6, AW-9 |
+| A custom surface-mount shield PCB, all phases in one design built over several rounds. MC-1 to MC-5 rewritten, MC-2 retired, MC-11 added | section 12 | equivalent-time capture does not work on a proto board; the owner's decision |
+| D5 adopted: Phase 3 is 3a (reference, test point, AREF routing) and 3b (slow ADC and DAC). PA-7 rewritten, PA-8 added | section 10 | the owner's decision |
+| D6 closed: measure only, JR1 and BR1 untouched, the reference routed to AREF but unused by default | PA-7 | the owner judged the rework too risky for now |
+| D10: who assembles the shield | section 17 | open |

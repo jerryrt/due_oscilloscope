@@ -41,11 +41,13 @@ an agent needs.
 symbol/footprint libraries. Do not edit or validate the active AFE design
 using KiCad 9 or older. `hardware/afe-proto/README.md` documents the tool
 selection and project structure; `docs/afe-plan.md` carries the development
-gates. Use the
-corrected `hardware/mega-proto-carrier/` as the physical baseline and develop
-the AFE assembly under `hardware/afe-proto/`. Finish each stage in SPICE
-before assembling it; the new assembly CAD and simulation assets are still
-to be created. Preserve the carrier baseline and its existing copper.
+gates. The AFE is a custom surface-mount shield PCB for the Due, all phases
+in one design built over several rounds, as a new KiCad project under
+`hardware/afe-proto/` (the owner's decision: equivalent-time capture does not
+work on a proto board). The Due V03 reference supplies its mating geometry;
+`hardware/mega-proto-carrier/` is the earlier proto baseline, kept and not
+edited. Finish each stage in SPICE before it is laid out; the PCB and
+simulation assets are still to be created.
 
 **Due CAD reference for the owner's DUE R3 board: V03**, under
 `hardware/reference/arduino-due/v03/`. The owner reported six-pin IC2,
@@ -1784,7 +1786,7 @@ See `docs/debugging.md`.
 ## Hardware safety
 
 **AFE budget: low-cost home DIY.** Prefer established, widely distributed
-commodity parts and reuse the existing Mega Proto Shield V3 and tools.
+commodity parts, surface-mount where possible on the custom shield.
 Do not make premium sockets, evaluation boards or purchased lab instruments
 the default. Borrow equipment for checks the available tools cannot perform;
 cost does not waive a safety or measurement gate.
