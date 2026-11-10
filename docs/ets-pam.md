@@ -28,10 +28,14 @@ Where the sequence stopped, and why. The tables under Results have every figure.
   closed at the symbol centre: the spacing is 14.6 codes and the 0.1% and 99.9%
   points of a level, whose spread is 1.5 codes, take about 10 of them. A larger
   swing widens the spacing and brings the end steps back.
-- **PAM256 was not run.** At 1.5 V its spacing would be about 7.4 codes against
-  the same level spread, which is smaller than the arithmetic that closes
-  PAM128, and the 2 V swing that widens it fails on the end steps. *(check, not
-  measured)*
+- **PAM256 at 1.5 V, one board: the levels resolve and the raw eye does not.**
+  80 s, 79.9 M samples, 0 underruns, every playback byte conserved (257,167,872).
+  A3 to A5 pass, A6 fails. All 256 level means are found in order: spacing 7.29
+  codes, largest residual from a line 0.51 codes against a limit of 1.82, and
+  the smallest separation between neighbouring levels 3.28 sigma against the
+  gate's 3, so A4 passes by a thin margin. The level spread is 1.4 to 2.1 codes
+  (1.5 at mid-ladder), so the raw eyes close: all 255 are shut, the median at
+  -12 codes. The prediction made before the run held on both counts.
 - **The limit is a fixed band of about 20 codes around every level, against the
   DAC's usable swing; it is not the ETS method and it is not inter-symbol
   interference.** The tracker locks, the ladder stays straight (largest residual
@@ -77,7 +81,7 @@ Things learned that change how the next capture is run:
   (1.9 s), pure Python and numpy loops that are not matrix products. BLAS does
   not accelerate them as written; see the measurements in the next section.
 
-Not done: PAM128 at 2 V; PAM256; the capture as a host library function with a
+Not done: PAM128 at 2 V; PAM256 on the two-board pair; the capture as a host library function with a
 daemon and GUI front end; the GPU path beyond `phase_indices`, `fold_warped` and
 `corr_many` (branch `ets-pam-gpu`, not merged).
 
@@ -261,6 +265,7 @@ the eye has been shown to the owner; the figures are in the records named.
 | 64, 1.5 V | `linux-x1`, two boards | pass | pass | pass | pass | 64 levels, 1.5 V swing | 29.5 codes | all 63 open, 11-13, 0.55 wide | `ets-pam-linux-x1.jsonl`, `ets-pam64-1v5-eye-linux-x1.json`, `ets-pam64-steps-1v5-linux-x1.txt` |
 | 128, 1.5 V | `montreal5`, one board, 14 s | pass | pass | pass | **FAIL** | 128 levels, 1.5 V swing | 14.6 codes (11.8 mV) | all 127 closed, -7 codes | `ets-pam-montreal5.jsonl` (diagnostic row) |
 | 128, 1.5 V | `montreal5`, one board, 45 s, 43 M samples | pass | pass | pass | **FAIL** | 128 levels, 1.5 V swing | 14.6 codes | all 127 closed, -7 codes, 0.35-0.5 wide | `ets-pam-montreal5.jsonl`, `ets-pam128-eye-montreal5.json` |
+| 256, 1.5 V | `montreal5`, one board, 80 s, 79.9 M samples | pass | pass (3.3 sigma, thin) | pass | **FAIL** | 256 levels, 1.5 V swing | 7.3 codes | all 255 closed, median -12 | `ets-pam-montreal5.jsonl`, `ets-pam256-eye-montreal5.json` |
 
 PAM4 on `montreal5`: the Rigol reads the same four levels at 1166, 1495, 1831 and
 2154 mV, a spacing of 329.1 mV against the ADC's 332.4 mV (ratio 1.010), with a
