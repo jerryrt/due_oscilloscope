@@ -47,9 +47,14 @@ MAX_FIRST_TRIES = 12
 IDLE_SHARE = 0.3
 
 
-def template(bits, rc_dac):
-    """The ideal NRZ waveform over one pattern, one entry per source tick."""
-    return [1.0 if b else -1.0 for b in bits for _ in range(rc_dac)]
+def template(bits, rc_dac, levels=2):
+    """The ideal staircase over one pattern, one entry per source tick.
+
+    `bits` holds the level index of each symbol, 0 to `levels - 1`, and the
+    template runs from -1 for level 0 to +1 for the top level.
+    """
+    top = float(levels - 1)
+    return [2.0 * b / top - 1.0 for b in bits for _ in range(rc_dac)]
 
 
 def _corr(win, xs, tmpl, period, phi):
@@ -239,7 +244,7 @@ def is_adequate(model, nblocks, lattice):
 
 
 def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
-                      first_blocks=40, stride=20, window=8.0):
+                      first_blocks=40, stride=20, window=8.0, levels=2):
     """Clock-ratio error of the source, from `vals`.
 
     `vals[0]` is sample number `start` of the run, so sample `k` is at tick
@@ -255,7 +260,7 @@ def track_clock_ratio(vals, rc_adc, bits, rc_dac, start=0, block=150,
     """
     period = len(bits) * rc_dac
     lattice = math.gcd(int(round(rc_adc)), period)
-    tmpl = template(bits, rc_dac)
+    tmpl = template(bits, rc_dac, levels)
     mean = sum(vals) / len(vals)
     amp = (max(vals) - min(vals)) / 2.0 or 1.0
     cen = [(v - mean) / amp for v in vals]
