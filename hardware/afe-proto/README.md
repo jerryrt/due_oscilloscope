@@ -1,8 +1,8 @@
 # AFE shield PCB
 
 The working KiCad 10.x project for the AFE: a custom shield in the Arduino Mega/Due
-form factor, stacked on the Due through stacking headers, with all three phases in
-one design built over several rounds. The requirements are in
+form factor, stacked on the Due through stacking headers, with Phase 1 and Phase 3
+in one design built over several rounds. The requirements are in
 [docs/afe.md](../../docs/afe.md) and the plan that builds them is
 [docs/afe-plan.md](../../docs/afe-plan.md), including its "Rounds" section.
 
@@ -14,8 +14,8 @@ one design built over several rounds. The requirements are in
 Rules:
 
 - Use KiCad 10.x only.
-- Every optional part, and every undecided choice, is an unfitted footprint or a jumper
-  (MC-11); the BOM says which are fitted in the round.
+- No jumpers or solder jumpers. Every optional part is an unfitted footprint and
+  every choice a Due-pin switch (MC-11); the BOM says which are fitted in the round.
 - Header pin positions come from the Due V03 reference and are checked by
   continuity on the owner's boards before a round is ordered (MC-4).
 - The shield does not modify the Due: the reference reaches the Due's AREF pin

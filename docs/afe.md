@@ -11,25 +11,21 @@ The AFE is designed, simulated, built and verified against the numbers below.
 
 ## 1. How this document set is organised
 
-A requirement is stated once, in this file. The plan, the contractor wording and
-the tests point at its identifier and do not restate it.
+A requirement is stated once, in this file. The plan and the tests point at its
+identifier and do not restate it. What is sent to a contractor is drawn from this
+file at the time it is sent.
 
 | File | What lives there |
 |---|---|
 | This file | The requirements, the Due baseline they rest on, the tests that accept them, and the decisions the owner owes |
 | [afe-plan.md](afe-plan.md) | How the AFE is built: the steps and gates, the owner's side of each step, and the traceability |
-| [afe/contractor/brief.md](afe/contractor/brief.md), [afe/contractor/requirements.md](afe/contractor/requirements.md) | The rounded wording sent to the contractor, checked against this file. **As sent**, and out of date on construction (it says hand-soldered, through-hole, on the proto board; MC-1 to MC-5 no longer say that): revise it before it is used again. Section 18 maps it to the identifiers here |
-| [afe/contractor-inventory.txt](afe/contractor-inventory.txt), `tools/afe_export_contractor.sh` | Which files go to the contractor, and the export |
-| [afe/input-divider.html](afe/input-divider.html) | The input divider design aid |
 | [hardware/afe-proto](../hardware/afe-proto/README.md), [hardware/reference/arduino-due](../hardware/reference/arduino-due/README.md) | The AFE shield PCB project, and the Due V03 reference it mates with |
 | [related-work.md](related-work.md) | Comparable instruments and front ends. Read before front-end hardware work |
 | [noise.md](noise.md), [ets-mode.md](ets-mode.md), [ets-pam.md](ets-pam.md) | The measurements this file cites |
 
-Conventions. **TBC** marks a value the client must confirm; none is left: MC-8 was decided (D8) and every other one was frozen at its stated value, as the owner's
-plan required (section 18 lists them). ***(check)*** marks a figure quoted from a
-datasheet or a project record that this design has not re-verified. **Proposed**
-marks a requirement the owner has not yet adopted, each tied to a decision in
-section 16; a proposed requirement is not binding on the contractor.
+Conventions. ***(check)*** marks a figure quoted from a datasheet or a project
+record that this design has not re-verified. Every value is stated, and every
+decision is recorded in section 16.
 
 ## 2. Requirement IDs
 
@@ -112,7 +108,7 @@ by deciding. Each says how it is closed.
 | How much of the level band is left once the probes and the board-to-board wire are removed. The held-code floor is 0.8 to 0.85 codes and the DAC adds at most about 0.5 of it | The AFE's own measurement (VT-15). The same-board, probes-free band is measured (section 4.2); why a board-to-board wire adds noise (the wire, the ground, or the other board's DAC) is not |
 | The ADC's own input bandwidth | The 8 MHz above is a bound that includes the DAC; the AFE's wide path (VT-16) is the first instrument that can separate them |
 | Noise on the Due's own 3.3 V, AREF and 5 V rails. **No measurement of it exists**; PW-2 and PW-4 are limits derived through PSRR, not set against a measured rail | VT-8 with the AFE disconnected first, then connected |
-| ADC input capacitance and resistance, DAC output impedance, noise on AREF | The SAM3X datasheet, as the contractor's brief says |
+| ADC input capacitance and resistance, DAC output impedance, noise on AREF | The SAM3X datasheet |
 | The Due's own supply current in idle, capture, loop and playback | Budgeted from the datasheet with headroom (D7, 300 mA); not measured. An inline USB meter reading would replace it |
 | Channel memory and crosstalk at 90 MHz | SC-9's test (VT-10); `docs/hardware.md` lists it as unmeasured |
 
@@ -339,66 +335,3 @@ decision and what it affects.
 | D9 | Real-time target symbol rates | **Closed with D2:** there is no real-time corner to set them. The equivalent-time rate is not an AFE limit: 1.6 Msym/s is demonstrated | SM-3 |
 | D10 | Who assembles the shield: the owner by hand, or a board house | **Decided 2026-11-10: the board house's assembly service, ordered once the PCB is out.** The owner hand-solders only the BNC connectors and headers. Fine soldering is a risk the owner has declined (JR1 and BR1). This sets the smallest part size and package in MC-3, to what the chosen service can place | MC-3 |
 | D11 | The calibration ladder's tap count and part (PA-9) | **Decided 2026-11-10: 8 taps on A2 to A9, discrete 0.1% 0603 resistors**; A10 and A11 stay free. The taps cost sample rate when read together, since one ADC serves every channel (section 4.1), so the ladder is read during calibration and not while capturing | PA-9 |
-
-## 17. Contractor wording to requirement identifiers
-
-For checking the contractor's results against the exact limits. The contractor's
-wording is rounded and is not a tolerance.
-
-| Contractor topic | Requirement IDs |
-|---|---|
-| Scope inputs: ±5 V, readable to ±6 V, margin inside 0 to reference | SC-2 |
-| Step size, range use | SC-4 |
-| Input resistance and capacitance | SC-3 |
-| Low-pass pole about 270 kHz, no peaking | SC-5 |
-| Noise at the converter pin | SC-6 |
-| Channel match | SC-8 |
-| Shared sample-and-hold, low-impedance driver | SC-9, SC-10, AN-2 |
-| Accuracy after software correction (not stated to the contractor) | SC-7, DF-4, AW-7 |
-| Differential mode | DF-1 |
-| Two differential ranges | DF-2 |
-| CMRR | DF-3 |
-| Generator ±1 V, step, window use | AW-1, AW-2 |
-| Generator low-pass | AW-3 |
-| Generator load, output impedance, short | AW-4 |
-| DAC draw | AW-5, AN-3 |
-| Generator noise | AW-6 |
-| Generator accuracy as built, offset from the reference rail | AW-7, AN-4 |
-| Reset and boot state | AW-8 |
-| ±30 V survival, pin limits, unpowered back-feed | PR-1, PR-2, PR-3 |
-| Generator survives external ±5 V | PR-4 |
-| Power draw, negative rail ripple, noise on 3.3 V | PW-1, PW-2, PW-3, PW-4 |
-| Temperature | EN-1 |
-| Construction | MC-1 to MC-10, PW-5 |
-| Calibration (host software) | CA-1 |
-
-Left out of the contractor wording on purpose: exact tolerances and test methods
-(VT-1 to VT-17). The contractor wording has no
-counterpart yet for SC-11, SM-3 to SM-8 or Phase 3, and its SC-5 and AW-3 wording (a low-pass) no longer holds; the package is revised before it is used again, and until then the package is exactly what was sent.
-
-## 18. What changed from the 2026-11-06 requirement
-
-| Change | Where | Why |
-|---|---|---|
-| The review, the draft of capture modes and calibration, the contractor-wording map and the owner's plan are folded in; they are no longer separate files | whole file, [afe-plan.md](afe-plan.md) | one place per fact |
-| TBC frozen at the stated value: SC-3, SC-9, SC-10, DF-3, AW-7, AW-8, PR-3, PW-3, EN-1. MC-8 remains, as D8 | those rows | the owner's plan required it; the owner can veto any |
-| "Host system" is now "The Due as measured", with the equivalent-time measurements and one list of what is not known | section 4 | the Due has been characterised to its limits; the gaps that remain are closed only by measuring |
-| SC-6 states a density and a bandwidth | SC-6 | a 1 MHz figure does not bound a wide sampled path |
-| SC-11 input ranges, AW-9 unfiltered test path, SM-1 to SM-8 capture modes | sections 5, 6, 8 | the PAM measurements and the draft; all proposed |
-| Range switching leaves "Out of scope" if D1 is adopted | section 15 | it contradicted SC-11 |
-| PW-1 keeps 30 mA until the Due's draw is measured | PW-1, D7 | the draft's 100 mA had no measurement |
-| Phase 3 (precision channel) is optional and separate | section 9 | its INL case does not hold; it conflicts with MC-3 |
-| VT-15 to VT-17 | section 12 | cover SM-3, SM-5, SC-6, AW-9 |
-| A custom surface-mount shield PCB, all phases in one design built over several rounds. MC-1 to MC-5 rewritten, MC-2 retired, MC-11 added | section 11 | equivalent-time capture does not work on a proto board; the owner's decision |
-| D5 adopted: Phase 3 is 3a (reference, test point, AREF routing) and 3b (slow ADC and DAC). PA-7 rewritten, PA-8 added | section 9 | the owner's decision |
-| D6 closed: measure only, JR1 and BR1 untouched, the reference routed to AREF but unused by default | PA-7 | the owner judged the rework too risky for now |
-| No jumpers anywhere (DF-1, SM-4, AW-9, PA-7, PA-8, MC-11 reworded); MC-12 cheap assembly; PA-9 and D11: the ladder's taps go to the unused ADC pins A2 to A11 | those rows | the owner's decisions |
-| Phase 2, the fully-differential amplifier assembly, dropped: the Due's differential mode converts A1 and A0 as one pair, so the two scope channels already serve it. The former section 9, P2-1 to P2-6 and VT-9 removed, later sections renumbered; Phase 3 keeps its name so 3a and 3b keep theirs | sections 3, 11, 12 | the owner's decision |
-| Stale lines brought up to date: ADC pins (the ladder), MC-9, the PAM table of section 5 (same-board band), PAM128's result, MC-3, MC-8, the DAC's drive | those rows | today's decisions and measurements |
-| No filters (SC-5, AW-3, SM-3): one wide path for both modes, SM-1, SM-2, SM-4 and AW-9 removed. D1 ±1.25 V, D2 to D4, D9 and D11 decided; AW-6 at 0.2 mV; PW-1 from the 5 V pin only, 100 mA; PA-8 is the ladder's top tap | sections 5, 6, 8, 9, 10, 16 | the owner's decisions |
-| D7 decided from the SAM3X datasheet with headroom: the Due at 300 mA, the AFE at 100 mA, 400 mA in total | D7, PW-1, section 4.3 | the owner: an estimate is enough at this stage |
-| Consistency pass: SC-11's gain 1.10 to 1.16 (at 1.3, ±1.25 V overran the ADC), AW-6 at 0.1 mV so a loopback stays inside SM-5, PW-3 within PW-1, PW-4 at 0.3 mV, PW-2's ripple counted against the noise limits, SC-6 over the one path, SC-8's bandwidth matching, PA-1 without a 1 MHz claim a slow ADC cannot meet, PA-2's 3.0 V, PA-3 ahead of the range network, AN-5 added, the noise-instrument floors restated | those rows | consistency and headroom |
-| AW-4: a 50 Ω back-terminated output driving 50 Ω and up, replacing a 10 kΩ minimum load that existed only to fit the old 30 mA budget; AW-1, PW-1 and PW-3 follow, and a 50 Ω output leaves the out-of-scope list | AW-1, AW-4, PW-1, PW-3, section 15 | the owner's decision |
-| PW-6 input voltage range added; PW-2 asks the converter's switching frequency to be chosen against the wide path | PW-2, PW-6, VT-8 | the owner's decision |
-| MC-12: batches of at most 20 first and 100 later; part reuse, the service's basic library, and per-board cost quoted at both quantities with and without Phase 3 on every board | MC-12 | the owner's decision |
-| SC-6 fixed at 0.2 mV rms; D8 BNC (the owner solders); D10 board-house assembly; precision DAC in version 1; PA-9 and D11 (the ladder); D1 and D4 by Due pin, not jumper. Level band and spread replaced by the same-board, probes-free measurement | SC-6, D5, D8, D10, D11, PA-9, section 4.2 | the owner's decisions and `records/diag-samebd-pam-linux-x1.jsonl` |

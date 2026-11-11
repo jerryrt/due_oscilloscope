@@ -73,6 +73,6 @@ Publisher copyright, trademark and license terms remain applicable.
 The separate `Arduino-DUE-V03` source is extracted under
 [`v03/source/`](../v03/source/), with its conversion under [`v03/`](../v03/README.md).
 The revisions have different power-supply layouts and are not interchangeable.
-The AFE assembly plan is in
-[`hardware/afe-proto`](../../../afe-proto/README.md), based on the corrected
-[Mega proto carrier](../../../mega-proto-carrier/README.md).
+The AFE shield PCB is in [`hardware/afe-proto`](../../../afe-proto/README.md). The
+earlier [Mega proto carrier](../../../mega-proto-carrier/README.md) is kept for
+reference only; the AFE no longer uses a proto board.
