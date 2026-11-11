@@ -183,10 +183,10 @@ usually pointed at. SC-11 is what changes that.
 
 | ID | Requirement |
 |---|---|
-| AW-1 | Output ±1.0 V DC-coupled. As built, including the AW-7 tolerances and AREF 3.20 to 3.30 V, reaching ±1.0 V uses at most 92% of the board's DAC window |
+| AW-1 | Output ±1.0 V DC-coupled into a high-impedance load (±0.5 V into 50 Ω, AW-4). As built, including the AW-7 tolerances and AREF 3.20 to 3.30 V, reaching ±1.0 V uses at most 92% of the board's DAC window |
 | AW-2 | Step at most 1 mV |
 | AW-3 | **No reconstruction filter (decided 2026-11-10).** The DAC's output reaches the AWG output unfiltered, through a stage whose bandwidth is at least the scope path's (SM-3), so the 1.6 Msym/s test patterns are not shaped. Images of the sample rate are not attenuated: a 100 kHz sine at 1 Msps has its first image about 19 dB down (derived, zero-order hold), and the host reduces them by oversampling, up to the DAC's 1.39 M updates/s. Gain error across the band is corrected by host calibration |
-| AW-4 | Load at least 10 kilohms, output impedance at most 50 ohms. A short to ground is safe indefinitely |
+| AW-4 | **50 Ω back-terminated source (2026-11-10).** A 50 Ω ±1% series resistor at the output, after the output stage, drives any load from 50 Ω up: ±1 V into a high-impedance load such as a scope input, ±0.5 V into 50 Ω. The termination absorbs the reflection from an unterminated cable end, which matters on the wide path: a 1 m cable is about 5 ns against a 42 ns edge (section 4.2). A short to ground is safe indefinitely, and the resistor limits it to about ±20 mA. Accuracy (AW-7) is stated into a high-impedance load; into 50 Ω the resistor's tolerance adds up to about 0.5% of amplitude, which host calibration may correct |
 | AW-5 | Draws at most 0.1 mA from the DAC pin |
 | AW-6 | AFE-added noise at most **0.1 mV rms (2026-11-10)**, stated as a density over the output stage's whole bandwidth as SC-6 is. It is half of SC-6 because a loopback through the ±1.25 V range adds both: the scope's 0.2 mV and the AWG's 0.1 mV amplified by about 1.15 widen the Due's 0.64 mV floor by about 6%, inside SM-5's 10%, where 0.2 mV would take it to about 11%. Measured at the AWG output with DAC0 replaced by a quiet DC source at the same level. Total output noise with DAC0 driving is measured and reported, not guaranteed. The DAC's own noise is measured and reported before this figure is accepted. Verified as SC-6 is (AN-5, VT-3) |
 | AW-7 | Accuracy: after calibration ±0.5% ±5 mV. As built, gain from the DAC pin to the output between 1.10 and 1.20 V/V and offset within ±60 mV including the DAC window's centre error. The offset reference is derived from AREF, not from 5 V |
@@ -236,9 +236,9 @@ heat).
 | PR-2 | A0, A1 and the DAC pin stay between −0.2 V and 3.45 V in every supply and power-off state. This is a conservative limit against the pin's datasheet absolute maximum of −0.3 to +4.0 V *(check)*. Any driver of these pins is supplied at no more than 3.45 V |
 | PR-3 | With the Due unpowered and ±30 V on a scope input, the current into the Due supply pins is at most 100 µA and the rails stay below 0.5 V |
 | PR-4 | The AWG output survives an external ±5 V for at least 10 s, powered or unpowered, and recovers without damage. Unpowered, the back-feed into the Due supply pins meets PR-3's limits. These excursions are exempt from PW-3 |
-| PW-1 | **(decided 2026-11-10)** Power only from the Due's 5V pin. The AFE makes its own 3.3 V and negative rails, and never loads the Due's 3.3 V pin, which is also the Due's AREF: current drawn from it would modulate the ADC's reference (PW-4). AREF may be used as a sense input for centring (SC-2, AW-7) at microamps. The AFE draws at most 100 mA in normal operation with loads of at least 10 kilohms, and the Due and the AFE together at most 450 mA, a margin under USB 2.0's 500 mA per port. The Due is budgeted at 300 mA (D7), so the total budget is 400 mA |
+| PW-1 | **(decided 2026-11-10)** Power only from the Due's 5V pin. The AFE makes its own 3.3 V and negative rails, and never loads the Due's 3.3 V pin, which is also the Due's AREF: current drawn from it would modulate the ADC's reference (PW-4). AREF may be used as a sense input for centring (SC-2, AW-7) at microamps. The AFE draws at most 100 mA in normal operation with any AWG load AW-4 allows, and the Due and the AFE together at most 450 mA, a margin under USB 2.0's 500 mA per port. The Due is budgeted at 300 mA (D7), so the total budget is 400 mA |
 | PW-2 | Any negative or extra rail is made on the AFE, with ripple at the amplifier supply pins of at most 20 mV. Ripple and its harmonics that reach the ADC pin or the AWG output, through each stage's supply rejection at that frequency, count against SC-6 and AW-6: a switching rail inside the 8 MHz path is rejected far less than at low frequency |
-| PW-3 | With the AWG output shorted to ground indefinitely, the AFE's total current stays within PW-1's 100 mA, with no damage |
+| PW-3 | With the AWG output shorted to ground indefinitely, the output current is limited to about ±20 mA by AW-4's 50 Ω, the AFE's total current stays within PW-1's 100 mA, and nothing is damaged |
 | PW-4 | The rms noise on the Due 3.3 V pin and AREF rises by at most 0.3 mV over DC to 1 MHz when the AFE is connected. AREF noise enters every reading in proportion to the code, so 0.3 mV is at most 0.15 mV at mid-scale, below SC-6. The rise is calculated as sqrt(on² − off²) |
 | PW-5 | No Due modification |
 | CA-1 | Calibration of gain, offset, frequency response and common-mode error is done in host software. The AFE has no trim elements, and its performance does not depend on any particular calibration instrument |
@@ -318,7 +318,7 @@ review follows each phase's test report.
 ## 15. Out of scope
 
 Range switching beyond SC-11's two ranges, AC
-coupling, a differential AWG, a 50 ohm terminated output, anti-alias and reconstruction filtering (SC-5, AW-3), firmware and host software. A precision voltage reference is Phase 3's (section 9).
+coupling, a differential AWG, anti-alias and reconstruction filtering (SC-5, AW-3), firmware and host software. A precision voltage reference is Phase 3's (section 9).
 
 ## 16. Decisions for the owner
 
@@ -397,4 +397,5 @@ counterpart yet for SC-11, SM-3 to SM-8 or Phase 3, and its SC-5 and AW-3 wordin
 | No filters (SC-5, AW-3, SM-3): one wide path for both modes, SM-1, SM-2, SM-4 and AW-9 removed. D1 ±1.25 V, D2 to D4, D9 and D11 decided; AW-6 at 0.2 mV; PW-1 from the 5 V pin only, 100 mA; PA-8 is the ladder's top tap | sections 5, 6, 8, 9, 10, 16 | the owner's decisions |
 | D7 decided from the SAM3X datasheet with headroom: the Due at 300 mA, the AFE at 100 mA, 400 mA in total | D7, PW-1, section 4.3 | the owner: an estimate is enough at this stage |
 | Consistency pass: SC-11's gain 1.10 to 1.16 (at 1.3, ±1.25 V overran the ADC), AW-6 at 0.1 mV so a loopback stays inside SM-5, PW-3 within PW-1, PW-4 at 0.3 mV, PW-2's ripple counted against the noise limits, SC-6 over the one path, SC-8's bandwidth matching, PA-1 without a 1 MHz claim a slow ADC cannot meet, PA-2's 3.0 V, PA-3 ahead of the range network, AN-5 added, the noise-instrument floors restated | those rows | consistency and headroom |
+| AW-4: a 50 Ω back-terminated output driving 50 Ω and up, replacing a 10 kΩ minimum load that existed only to fit the old 30 mA budget; AW-1, PW-1 and PW-3 follow, and a 50 Ω output leaves the out-of-scope list | AW-1, AW-4, PW-1, PW-3, section 15 | the owner's decision |
 | SC-6 fixed at 0.2 mV rms; D8 BNC (the owner solders); D10 board-house assembly; precision DAC in version 1; PA-9 and D11 (the ladder); D1 and D4 by Due pin, not jumper. Level band and spread replaced by the same-board, probes-free measurement | SC-6, D5, D8, D10, D11, PA-9, section 4.2 | the owner's decisions and `records/diag-samebd-pam-linux-x1.jsonl` |
