@@ -1,0 +1,12 @@
+{
+  "diagnostic": true, "bench": "linux-x1",
+  "written": "2026-11-10, before the full-rate spectra were computed",
+  "source_of_raw": "the second of two sessions already taken on 2026-11-10 (14 s, same worker, RC 86 2 ch and RC 46 1 ch, held all-DC), raw kept in scratch; the first of the two is a repeat check",
+  "my_expectation": {
+    "gap_shape": "broadband: the A0-minus-A1 gap is a similar power per Hz at all frequencies above ~500 Hz, perhaps with a mild rise; not rising steeply with frequency",
+    "usb_multiples": "1 kHz and 8 kHz multiples do NOT stand out (agree with montreal5, docs/noise.md)",
+    "known_lines": "the 53.2 Hz family from the low-band spectrum stays small against the broadband total",
+    "shape_verdict": "closer to white/thermal-like with a coloured excess on A0 than to capacitively coupled digital noise; low confidence"
+  },
+  "limits_declared_before": "per-channel Nyquist is 261.6 kHz at RC 86 two channels and 488.9 kHz at RC 46 one channel, so the 100-500 kHz band is cut at Nyquist and S1/S2 exist only in the 2-channel arm"
+}

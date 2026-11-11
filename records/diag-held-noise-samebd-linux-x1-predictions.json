@@ -1,0 +1,11 @@
+{
+ "diagnostic": true,
+ "bench": "linux-x1",
+ "written": "2026-11-10, before the same-board reruns",
+ "arms": "X: 2 ch RC 86 preset M all-DC; P: 1 ch RC 46; 14 s; 6 rounds interleaved, round 0 dropped by index; raw kept in scratch",
+ "predictions": {
+  "A0 near 1 (like A1)": "the cross-board path was the cause",
+  "A0 still near 2.4": "the A0 channel or DAC0 on these boards"
+ },
+ "my_expectation": "no strong prior; the A0 ADC channel and the DAC0 output are both candidates"
+}

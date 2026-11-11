@@ -1,0 +1,24 @@
+{
+ "diagnostic": true,
+ "bench": "linux-x1",
+ "firmware_build": "8ffc8ed (both boards)",
+ "when": "2026-11-10, after the owner's wiring change",
+ "method": "phase 1: host-fed level on DAC0 (measure.run_loop dc=code, 2 ch, RC 86, 4 s), different level on each Due at once, then swapped. phase 2: generator sine on DAC0 and, on ONE Due at a time, the sync square on DAC1 (=1J) with the other Due's sync off (=0J), then swapped. means/p2p over the last 80% of the capture",
+ "evidence_lines": [
+  "{\"dut\": \"dut1\", \"mode\": \"gen\", \"arg\": \"off\", \"A0\": {\"mean\": 2053.0, \"p2p\": 2137, \"std\": 752.7}, \"A1\": {\"mean\": 2058.0, \"p2p\": 9, \"std\": 0.9}}",
+  "{\"dut\": \"dut2\", \"mode\": \"gen\", \"arg\": \"cycle\", \"A0\": {\"mean\": 2040.0, \"p2p\": 540, \"std\": 188.7}, \"A1\": {\"mean\": 2040.0, \"p2p\": 2748, \"std\": 1369.4}}"
+ ],
+ "reading": {
+  "DAC0 -> A0": "each Due's A0 follows its OWN DAC0 level (codes asked 800 -> A0 reads 1218 on DUT1 and 1205 on DUT2; 3200 -> 2811 on DUT2 and 2825 on DUT1); the other Due's level is absent from every A0",
+  "DAC1 -> A1": "the full-scale sync square appears on the A1 of the Due that has sync on (p2p 2748-2751) and not on the other Due's A1 (p2p 9), in both assignments",
+  "floating pins": "none seen: every A0 and A1 carried a signal that followed one of the two boards' own DACs",
+  "cross-board paths": "none seen"
+ },
+ "declared_wiring": {
+  "DUT1": "DAC0->A0, DAC1->A1 (own board)",
+  "DUT2": "DAC0->A0, DAC1->A1 (own board)",
+  "between_the_Dues": "ground jumper only"
+ },
+ "also_seen": "DUT1 A1 reads 2088-2100 with p2p 38-51 while DUT1 DAC0 is host-fed (DUT2 A1 does not): small coupling DAC0->A1 or the loop-mode DAC1 state; not investigated",
+ "own_mistake": "a first attempt with the generator's dc shape and amp showed no level change on any pin (the dc shape does not move with amp), and left both boards with gen amp 50/199; restored to 256/256 and verified before any rerun"
+}
