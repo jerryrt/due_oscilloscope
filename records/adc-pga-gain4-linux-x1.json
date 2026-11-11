@@ -1,0 +1,685 @@
+{
+ "what": "adc_pga_gain4_verification",
+ "bench": "linux-x1",
+ "date": "2026-11-11",
+ "source": "records/adc-pga-gain4-montreal5.json at 24ab85e; its firmware_patch applied unmodified on a local, unpushed branch",
+ "predictions": "records/adc-pga-gain4-linux-x1-predictions.json (written before the first run)",
+ "firmware": {
+  "image": "build 24ab85e+64007afe (main 24ab85e plus the patch), container due-build:15.2.1-1.1-r2, flashed to DUT1 only; DUT2 stayed on 8ffc8ed and played the source in the ETS arm. DUT1 was restored to main's image afterwards."
+ },
+ "wiring": "as found, no change: cross-board A0 (DUT2 DAC0 -> DUT1 A0) and same-board DAC1 -> A1; ground tied; no probes (owner-stated); wire lengths, bench and room temperature (+-1 C) owner-stated, not measured",
+ "deviation": "Held code could not be single-channel A1 at RC 46: the board always samples A0 and A1 alone cannot be enabled. A1 was read as the second channel of a 2-channel capture at RC 86 (523,255 Hz per channel), 2 s, preset M, sync off, all-DC layout, DUT2 idle. Round 0 of 6 dropped by index. Order per round g1a, g4, g2, g1b, so gain 1 is visited twice.",
+ "held_code_A1": {
+  "rounds_used": "1-5",
+  "gain1_visit_a": {
+   "sd": 1.0669,
+   "sd_of_sd": 0.0041,
+   "mean": 2058.99
+  },
+  "gain1_visit_b": {
+   "sd": 1.0702,
+   "sd_of_sd": 0.0006,
+   "mean": 2059.0
+  },
+  "gain2_offset": {
+   "sd": 2.0361,
+   "sd_of_sd": 0.0054,
+   "mean": 2059.59
+  },
+  "gain4_offset": {
+   "sd": 3.4234,
+   "sd_of_sd": 0.019,
+   "mean": 2059.07
+  },
+  "gain4_no_offset": {
+   "mean": 4095.0,
+   "sd": 0.0,
+   "note": "=3,0U, once: clipped, so the gain is applied"
+  },
+  "ratio_g2_over_g1": 1.906,
+  "ratio_g4_over_g1": 3.204
+ },
+ "held_code_A0_cross_board": {
+  "gain1_sd": 2.289,
+  "gain2_sd": 4.515,
+  "gain4_sd": 7.852,
+  "ratio_g4": 3.43,
+  "note": "A0 sees the other board's DAC0; its mean moves with gain+offset (2042, 2026, 1994), as offset subtracts mid-scale before the gain"
+ },
+ "held_code_all_runs": [
+  {
+   "round": 0,
+   "set": "g1a",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2042.4891782620223,
+    "sd": 2.287050930526862
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.124696396959,
+    "sd": 1.0736602408093612
+   }
+  },
+  {
+   "round": 0,
+   "set": "g4",
+   "cmd": "=3,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 1993.9644827202833,
+    "sd": 7.88001066263998
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.3750534512396,
+    "sd": 3.4288678991023502
+   }
+  },
+  {
+   "round": 0,
+   "set": "g2",
+   "cmd": "=2,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2026.2536560647914,
+    "sd": 4.521652082067873
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.551522718915,
+    "sd": 2.042461725934027
+   }
+  },
+  {
+   "round": 0,
+   "set": "g1b",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2042.3104918369268,
+    "sd": 2.2858940081406263
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2058.711135603657,
+    "sd": 1.0665205055873308
+   }
+  },
+  {
+   "round": 1,
+   "set": "g1a",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2042.3782530424446,
+    "sd": 2.2845376717706913
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.078792472355,
+    "sd": 1.070796728310211
+   }
+  },
+  {
+   "round": 1,
+   "set": "g4",
+   "cmd": "=3,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 1993.964850464812,
+    "sd": 7.866815647975172
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.413880431715,
+    "sd": 3.425789939871847
+   }
+  },
+  {
+   "round": 1,
+   "set": "g2",
+   "cmd": "=2,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 2026.1220395134599,
+    "sd": 4.50929958333033
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2059.61234306064,
+    "sd": 2.036401280160061
+   }
+  },
+  {
+   "round": 1,
+   "set": "g1b",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2042.2110661170454,
+    "sd": 2.2898857601301037
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2058.9741402902614,
+    "sd": 1.0701969805691502
+   }
+  },
+  {
+   "round": 2,
+   "set": "g1a",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 2042.2672075521366,
+    "sd": 2.2952296692663605
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2058.6966347321663,
+    "sd": 1.0699997166156248
+   }
+  },
+  {
+   "round": 2,
+   "set": "g4",
+   "cmd": "=3,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 1993.8926485303048,
+    "sd": 7.89351719903145
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.3609733256935,
+    "sd": 3.4388834750282222
+   }
+  },
+  {
+   "round": 2,
+   "set": "g2",
+   "cmd": "=2,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2026.0182995664036,
+    "sd": 4.533788641825856
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.568024185617,
+    "sd": 2.0450537054330313
+   }
+  },
+  {
+   "round": 2,
+   "set": "g1b",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 2042.2219435280472,
+    "sd": 2.2896682288394654
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2059.0163346413174,
+    "sd": 1.070131569901787
+   }
+  },
+  {
+   "round": 3,
+   "set": "g1a",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2042.266466188884,
+    "sd": 2.2897620059300374
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.0528718282035,
+    "sd": 1.0668837850017048
+   }
+  },
+  {
+   "round": 3,
+   "set": "g4",
+   "cmd": "=3,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 1993.782220120126,
+    "sd": 7.851498149614599
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2057.9673885012257,
+    "sd": 3.43684958597016
+   }
+  },
+  {
+   "round": 3,
+   "set": "g2",
+   "cmd": "=2,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2026.1389315311,
+    "sd": 4.5002681175995285
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.5405759050363,
+    "sd": 2.034841220443805
+   }
+  },
+  {
+   "round": 3,
+   "set": "g1b",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2042.2151615510268,
+    "sd": 2.293552265460913
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.0005911707103,
+    "sd": 1.0691697231285182
+   }
+  },
+  {
+   "round": 4,
+   "set": "g1a",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 2042.3393688932358,
+    "sd": 2.2813196874096224
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2059.088111826751,
+    "sd": 1.0665693628378883
+   }
+  },
+  {
+   "round": 4,
+   "set": "g4",
+   "cmd": "=3,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 1993.6490251113678,
+    "sd": 7.806159448792
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2059.2100432629904,
+    "sd": 3.3915348424874234
+   }
+  },
+  {
+   "round": 4,
+   "set": "g2",
+   "cmd": "=2,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 2026.2350305023879,
+    "sd": 4.505993242567501
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2059.6631703864136,
+    "sd": 2.0304941301720008
+   }
+  },
+  {
+   "round": 4,
+   "set": "g1b",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2042.2540109810227,
+    "sd": 2.2959171566936294
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.0283879533736,
+    "sd": 1.0703861085983457
+   }
+  },
+  {
+   "round": 5,
+   "set": "g1a",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 2042.2707912215615,
+    "sd": 2.2725159124092333
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2059.0582579022102,
+    "sd": 1.0604137965523075
+   }
+  },
+  {
+   "round": 5,
+   "set": "g4",
+   "cmd": "=3,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 1993.8631367861688,
+    "sd": 7.8402594568481225
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2059.373556607317,
+    "sd": 3.4241187996225544
+   }
+  },
+  {
+   "round": 5,
+   "set": "g2",
+   "cmd": "=2,1U",
+   "fs": 523255,
+   "a0": {
+    "n": 935432,
+    "mean": 2026.22995471611,
+    "sd": 4.523060135300143
+   },
+   "a1": {
+    "n": 935432,
+    "mean": 2059.5514778198735,
+    "sd": 2.033870447747053
+   }
+  },
+  {
+   "round": 5,
+   "set": "g1b",
+   "cmd": "=0,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 2042.2623323064213,
+    "sd": 2.2962170372174024
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 2058.9630686226146,
+    "sd": 1.0709016174322374
+   }
+  },
+  {
+   "round": 99,
+   "set": "g4_nooffset",
+   "cmd": "=3,0U",
+   "fs": 523255,
+   "a0": {
+    "n": 934517,
+    "mean": 4095.0,
+    "sd": 0.0
+   },
+   "a1": {
+    "n": 934517,
+    "mean": 4095.0,
+    "sd": 0.0
+   }
+  }
+ ],
+ "n4_estimate": {
+  "assumption": "gain-1 ADC noise floor n1 = 0.70 codes (docs/awg.md 0.68-0.75), the rest of the gain-1 noise e being outside the ADC and scaled by the gain.",
+  "n4_codes": {
+   "n1=0.68": 0.92,
+   "n1=0.70": 1.14,
+   "n1=0.75": 1.57
+  },
+  "n2_codes_same_assumption": {
+   "n1=0.70": 1.24
+  },
+  "consistency": "The model does not close. Gain 2 and gain 4 imply different e: g1->g2 gives e^2=1.00, g1->g4 gives e^2=0.705 (and a gain-independent floor of 0.14 and 0.44 codes^2). A 3-point fit of s^2 against g^2 has slope 0.684, intercept 0.881, but the g2 point sits 1.0 code^2 above it. So the noise is not a fixed floor plus a term in g^2, and n4 is bounded by roughly 0.9-1.6 codes, not located. The PGA's noise at gain 2 is about as large as at gain 4 in output codes.",
+  "reading": "s4/s1 = 3.20 against a gain of 4: with all noise outside the ADC the ratio would be 4.0, with all of it in the ADC after the gain it would be 1.0. Referred to the input, gain 4 gives 3.42/4 = 0.86 codes against 1.07 at gain 1."
+ },
+ "ets": {
+  "path": "DUT2 DAC0 -> DUT1 A0 (cross), ets_cross.py both, RC 29 DAC / RC 46 ADC, PRBS7, 250 mV, 16 s, 8 M samples analysed, interleaved gain 1 / gain 4, 6 rounds, round 0 dropped",
+  "summary_rounds_1_5": {
+   "gain1": {
+    "swing_codes": 307.95,
+    "eye_frac": 0.9981,
+    "rise_ns": 57.28,
+    "fall_ns": 58.42,
+    "res_flat": 2.173,
+    "res_edge": 9.854
+   },
+   "gain4": {
+    "swing_codes": 1208.91,
+    "eye_frac": 0.9982,
+    "rise_ns": 66.3,
+    "fall_ns": 68.8,
+    "res_flat": 7.248,
+    "res_edge": 36.075
+   },
+   "swing_ratio": 3.926,
+   "res_flat_ratio": 3.34,
+   "res_edge_ratio": 3.66
+  },
+  "note": "res_flat and res_edge are this tool's residuals, not ets_phase0's res_rms; the two are not the same quantity.",
+  "rows": [
+   {
+    "round": 0,
+    "gain": "0,0",
+    "swing_codes": 307.9387823088348,
+    "eye_codes": 307.35071432117206,
+    "eye_frac": 0.9980903087839292,
+    "rise_ns": 57.3,
+    "fall_ns": 58.5,
+    "res_flat": 2.162962292088124,
+    "res_edge": 9.849854261499761,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3558769745412342,
+    "underruns": 0,
+    "dropped": true
+   },
+   {
+    "round": 0,
+    "gain": "3,1",
+    "swing_codes": 1208.8977732359288,
+    "eye_codes": 1206.74311889674,
+    "eye_frac": 0.9982176703548545,
+    "rise_ns": 66.3,
+    "fall_ns": 68.8,
+    "res_flat": 7.327092929441183,
+    "res_edge": 36.08342578298792,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3622071605506783,
+    "underruns": 0,
+    "dropped": true
+   },
+   {
+    "round": 1,
+    "gain": "0,0",
+    "swing_codes": 307.95280851221037,
+    "eye_codes": 307.3569138822354,
+    "eye_frac": 0.998064980693458,
+    "rise_ns": 57.3,
+    "fall_ns": 58.4,
+    "res_flat": 2.1703273032415713,
+    "res_edge": 9.856130854724961,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3686841008046886,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 1,
+    "gain": "3,1",
+    "swing_codes": 1208.8998930530893,
+    "eye_codes": 1206.7563239757287,
+    "eye_frac": 0.9982268431905086,
+    "rise_ns": 66.3,
+    "fall_ns": 68.8,
+    "res_flat": 7.256679050645513,
+    "res_edge": 36.07578457697616,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.371813866474526,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 2,
+    "gain": "0,0",
+    "swing_codes": 307.94963837142745,
+    "eye_codes": 307.3564659496765,
+    "eye_frac": 0.998073800557494,
+    "rise_ns": 57.3,
+    "fall_ns": 58.4,
+    "res_flat": 2.1766157611207606,
+    "res_edge": 9.857484988664712,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.375735500498976,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 2,
+    "gain": "3,1",
+    "swing_codes": 1208.9302570462319,
+    "eye_codes": 1206.7321669209089,
+    "eye_frac": 0.9981817891375359,
+    "rise_ns": 66.3,
+    "fall_ns": 68.8,
+    "res_flat": 7.280191116045727,
+    "res_edge": 36.074082213012176,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3765982220891786,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 3,
+    "gain": "0,0",
+    "swing_codes": 307.94738493478076,
+    "eye_codes": 307.3507545965167,
+    "eye_frac": 0.9980625575424503,
+    "rise_ns": 57.3,
+    "fall_ns": 58.4,
+    "res_flat": 2.172246394718487,
+    "res_edge": 9.854291178112332,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3780993776833665,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 3,
+    "gain": "3,1",
+    "swing_codes": 1208.9058625036855,
+    "eye_codes": 1206.6470735530158,
+    "eye_frac": 0.9981315427274117,
+    "rise_ns": 66.3,
+    "fall_ns": 68.8,
+    "res_flat": 7.2700176262111205,
+    "res_edge": 36.10220770650136,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.38134605312446,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 4,
+    "gain": "0,0",
+    "swing_codes": 307.94972465411274,
+    "eye_codes": 307.3612710542079,
+    "eye_frac": 0.9980891244485905,
+    "rise_ns": 57.2,
+    "fall_ns": 58.5,
+    "res_flat": 2.1860579509246483,
+    "res_edge": 9.854724460316302,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3800008664883046,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 4,
+    "gain": "3,1",
+    "swing_codes": 1208.9160211840513,
+    "eye_codes": 1206.6946311364927,
+    "eye_frac": 0.9981624943266258,
+    "rise_ns": 66.3,
+    "fall_ns": 68.8,
+    "res_flat": 7.272371653675658,
+    "res_edge": 36.06848463785141,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3791539052911856,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 5,
+    "gain": "0,0",
+    "swing_codes": 307.94868744133964,
+    "eye_codes": 307.38822269832826,
+    "eye_frac": 0.9981800060663738,
+    "rise_ns": 57.3,
+    "fall_ns": 58.4,
+    "res_flat": 2.1600237841148746,
+    "res_edge": 9.849116162668928,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3791415476022832,
+    "underruns": 0,
+    "dropped": false
+   },
+   {
+    "round": 5,
+    "gain": "3,1",
+    "swing_codes": 1208.8894781939819,
+    "eye_codes": 1206.719745526925,
+    "eye_frac": 0.9982051852496074,
+    "rise_ns": 66.3,
+    "fall_ns": 68.8,
+    "res_flat": 7.159359739490896,
+    "res_edge": 36.05620583503693,
+    "pattern_ok": true,
+    "trusted": true,
+    "delta_ppm": 2.3814442011354484,
+    "underruns": 0,
+    "dropped": false
+   }
+  ]
+ },
+ "reading": "Gain 4 applies (swing x3.926, clipped at =3,0U). The eye is as open as at gain 1 (0.998 both). Noise on A1 rises x3.20 against the x3.93 swing. Here the rise and fall times did NOT take run-level values: gain 1 held 57.3/58.4 ns and gain 4 held 66.3/68.8 ns over five rounds each (sd 0.05 and 0.0), so gain 4 is 9.0 and 10.4 ns slower. In quadrature that is a 33 and 35 ns extra time constant, an ADC-and-PGA bandwidth of the order of 10 MHz (rise ~ 0.35/BW), but the gain-1 figure is the 57 ns montreal5 also saw and run-level modes were seen there (88 ns), so this is one sample of the mode set, not a bandwidth measurement. n4 is about 1.1 codes at n1 = 0.70 and the model that gives it is inconsistent between gain 2 and gain 4.",
+ "not_done": "No arm with probes, and no single-channel A1 (the board cannot); the same-board DAC0->A0 ETS path was not available on this wiring."
+}

@@ -1,0 +1,20 @@
+{
+ "what": "adc_pga_gain4 predictions, written before any run",
+ "bench": "linux-x1",
+ "date": "2026-11-11",
+ "deviation_from_request": "held code cannot be single-channel A1: this board always samples A0, and A1 alone cannot be enabled. A1 is read as the second channel of a 2-channel capture at RC 86 (523,255 Hz per channel, 1 s), preset M with sync off and all-DC layout (=0J, =3N, dc shape), the same arm X as records/diag-held-noise-cross-linux-x1.json. A0 is recorded too (it carries the OTHER Due's DAC0, cross wiring, rms about 2.4 at gain 1).",
+ "assumptions": {
+  "gain_1_floor_n1_codes": "0.70 (docs/awg.md gives 0.68-0.75 for the ADC's own noise at gain 1; midpoint). Assumed, not measured.",
+  "model": "s_g^2 = (g*e)^2 + n_g^2, e = input-referred noise outside the ADC (DAC1 and wire), n_g = ADC noise in output codes at gain g. e from gain 1: e^2 = s1^2 - n1^2. n4 = sqrt(s4^2 - (4e)^2), which is undefined when s4 < 4e, i.e. the estimate then only bounds n4 above."
+ },
+ "predictions": {
+  "A1_gain1_sd": "0.85-1.15 codes (last cross-wiring session 1.11/1.13)",
+  "A1_gain2_offset_sd": "1.6-2.4 codes, ratio to gain 1 of 1.8-2.2",
+  "A1_gain4_offset_sd": "3.2-4.8 codes, ratio 3.2-4.2 (montreal5 read x3.3)",
+  "A1_gain4_no_offset": "mean >= 4090 (clips), sd < 1",
+  "A1_gain1_vs_gain1_again": "same within 0.1 codes (control, the first round is dropped)",
+  "n4_estimate": "0.6-1.6 codes, resting on n1 = 0.70. If s4/s1 reaches 4.0 or more, n4 is unresolved: the PGA adds no noise this measurement can see.",
+  "ets": "swing x3.9 at gain 4 against gain 1, eye_frac >= 0.99 at both, res_rms x3 to x4, rise/fall between run-level values at both gains (montreal5 saw 57/60/88 ns); no bandwidth claim is expected to be separable from the run-level scatter"
+ },
+ "falsifiers": "gain 4 swing outside x3.7-x4.1; =3,0U not clipping (the gain would not be applied); gain-1 control moving by more than 0.15 codes between its two visits."
+}
