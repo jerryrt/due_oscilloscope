@@ -66,8 +66,20 @@ Where the sequence stopped, and why. The tables under Results have every figure.
   every band: `records/diag-held-noise-cross-linux-x1.jsonl`,
   `records/diag-held-noise-samebd-linux-x1.json`). So the constant band of 17 to 20
   codes, and the reading that PAM128 closes at it, describe those two setups and not
-  the converters. Same-board, probes-free PAM64 and PAM128 on `linux-x1` are in
-  progress, and the band is to be remeasured.
+  the converters. Same-board, probes-free PAM on one `linux-x1` Due (1.5 V swing, run 2 of
+  two, `records/diag-samebd-pam-linux-x1.jsonl`) read:
+
+  | level count | gates A3-A6 | eye, codes | spacing, codes | loss, codes | level spread, codes |
+  |---|---|---|---|---|---|
+  | PAM64 | all pass | 18 | 29.4 | 11.4 | 1.15-1.18 |
+  | PAM128 | all pass | 6 | 14.6 | 8.6 | 1.15-1.18 |
+  | PAM256 | A6 fails | -4 | 7.27 | 11.3 | 1.15-1.18 |
+
+  So PAM128 opens on one board without the board-to-board wire or probes, and
+  PAM256 still closes. The cross-board PAM128 read a level spread of 2.4 to 2.5
+  codes and failed A6; why the cross-board path is noisier (the wire, the ground,
+  or the other board's DAC) is not settled, and two-board PAM128 on the restored
+  wiring was not rerun.
 - **The held-code floor is the ADC's.** The ADC alone reads 0.68 to 0.77 codes (a
   divider on the 3.3 V rail, `docs/awg.md`) and the DAC-driven same-board loop 0.8
   to 0.85, so the DAC adds at most about 0.5 codes in quadrature at a held code.

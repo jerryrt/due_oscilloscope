@@ -179,8 +179,9 @@ with the contractor.
 | Remove or inline references to files you are not sending (`docs/noise.md`, `docs/hardware.md`, `docs/datasheets/`, `records/`, `tools/phase0.py`, `calibration.json`) and explain the 22.5 MHz out-of-spec ADC clock | The documents cite them |
 | Decide the review turnaround you promise | The loop runs at your speed |
 
-Known thin margins to tell them about: `AW-2` (0.86 to 0.97 mV per step
-against 1 mV) and `DF-3` (46 dB from 0.1% parts gives about 48 dB worst
+Known thin margins to tell them about: `AW-2` (about 0.59 to 0.65 mV per step
+against 1 mV at ±1 V: the DAC's step is 0.54 mV, so the margin is 35 to 40%, and it was
+written as 0.86 to 0.97 by dividing by AREF where the DAC's span is two thirds of it) and `DF-3` (46 dB from 0.1% parts gives about 48 dB worst
 case). `SC-9` and `SC-10` interact (5 kohm may allow more than 2 LSB of
 crosstalk), so ask them for the ADC-model simulation.
 
