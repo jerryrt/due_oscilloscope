@@ -1,0 +1,172 @@
+{
+ "what": "adc_pga_gain4",
+ "bench": "montreal5",
+ "date": "2026-11-11",
+ "purpose": "AFE R1: can the SAM3X ADC's own PGA at gain 4 replace the AFE's +-1.25 V analog stage",
+ "firmware": "Track B with a debug-only console command =<gain>,<offset>U setting ADC_CGR and ADC_COR on every channel, re-applied by acq_init() after its ADC software reset (which otherwise clears them to gain 1). Not merged; the patch is in 'firmware_patch'.",
+ "board_ident": "# id: track=B fw=0.2.0 ctlver=4 framever=3 mck=90000000 adcclk=22500000 framebytes=4096 framesamples=2032 uid=442032204e52344d3030363139303038 build=e1ae987+feaf06aa",
+ "fw_build": "e1ae987+feaf06aa",
+ "fw_sha256": "ea4be0349f86f661dba38cd11cf484298649cff074018cbb81776efaf958e8ca",
+ "instrument": "the board's own ADC (ets_phase0.py loop, PRBS7, RC 28 DAC / RC 45 ADC, 8 s per run); held-code reads by measure.run_capture at RC 46, 2 s",
+ "wiring": "DAC0->A0 jumper, scope probe on DAC0 (probes on)",
+ "held_code": [
+  {
+   "setting": "gain 1",
+   "mean": 2047.52,
+   "sd": 1.37
+  },
+  {
+   "setting": "gain 4 offset",
+   "mean": 2058.13,
+   "sd": 4.478
+  },
+  {
+   "setting": "gain 2 offset",
+   "mean": 2051.56,
+   "sd": 2.658
+  },
+  {
+   "setting": "gain 4 no offset",
+   "mean": 4095.0,
+   "sd": 0.0,
+   "note": "clipped, which shows the gain is applied"
+  },
+  {
+   "setting": "gain 1 again",
+   "mean": 2047.34,
+   "sd": 1.354
+  }
+ ],
+ "ets_runs": [
+  {
+   "round": 0,
+   "gain": 4,
+   "dropped": true,
+   "swing_codes": 1211.8236794513912,
+   "eye_codes": 1209.5011751254522,
+   "eye_frac": 0.9980834634895149,
+   "rise_ns": 59.6,
+   "fall_ns": 59.5,
+   "res_rms": 4.147,
+   "pattern_ok": true,
+   "underruns": 0,
+   "rc_dac": 28,
+   "rc_adc": 45,
+   "vpp_mv": 250.0
+  },
+  {
+   "round": 0,
+   "gain": 1,
+   "dropped": true,
+   "swing_codes": 309.47062883100807,
+   "eye_codes": 308.88452010417336,
+   "eye_frac": 0.9981060925586099,
+   "rise_ns": 57.2,
+   "fall_ns": 57.2,
+   "res_rms": 1.254,
+   "pattern_ok": true,
+   "underruns": 0,
+   "rc_dac": 28,
+   "rc_adc": 45,
+   "vpp_mv": 250.0
+  },
+  {
+   "round": 1,
+   "gain": 4,
+   "dropped": false,
+   "swing_codes": 1211.8024143086984,
+   "eye_codes": 1209.5232166677256,
+   "eye_frac": 0.9981191672717759,
+   "rise_ns": 59.6,
+   "fall_ns": 59.5,
+   "res_rms": 4.153,
+   "pattern_ok": true,
+   "underruns": 0,
+   "rc_dac": 28,
+   "rc_adc": 45,
+   "vpp_mv": 250.0
+  },
+  {
+   "round": 1,
+   "gain": 1,
+   "dropped": false,
+   "swing_codes": 309.46546603404454,
+   "eye_codes": 308.88055892999296,
+   "eye_frac": 0.9981099438604654,
+   "rise_ns": 57.2,
+   "fall_ns": 57.2,
+   "res_rms": 1.254,
+   "pattern_ok": true,
+   "underruns": 0,
+   "rc_dac": 28,
+   "rc_adc": 45,
+   "vpp_mv": 250.0
+  },
+  {
+   "round": 2,
+   "gain": 4,
+   "dropped": false,
+   "swing_codes": 1211.8736206112776,
+   "eye_codes": 1209.6841770945816,
+   "eye_frac": 0.9981933400649553,
+   "rise_ns": 87.6,
+   "fall_ns": 87.5,
+   "res_rms": 4.143,
+   "pattern_ok": true,
+   "underruns": 0,
+   "rc_dac": 28,
+   "rc_adc": 45,
+   "vpp_mv": 250.0
+  },
+  {
+   "round": 2,
+   "gain": 1,
+   "dropped": false,
+   "swing_codes": 309.4603072635914,
+   "eye_codes": 308.88216985326835,
+   "eye_frac": 0.998131788159085,
+   "rise_ns": 57.2,
+   "fall_ns": 57.2,
+   "res_rms": 1.251,
+   "pattern_ok": true,
+   "underruns": 0,
+   "rc_dac": 28,
+   "rc_adc": 45,
+   "vpp_mv": 250.0
+  },
+  {
+   "round": 3,
+   "gain": 4,
+   "dropped": false,
+   "swing_codes": 1211.8269654443898,
+   "eye_codes": 1209.5674903131553,
+   "eye_frac": 0.9981354803980568,
+   "rise_ns": 87.6,
+   "fall_ns": 87.5,
+   "res_rms": 4.16,
+   "pattern_ok": true,
+   "underruns": 0,
+   "rc_dac": 28,
+   "rc_adc": 45,
+   "vpp_mv": 250.0
+  },
+  {
+   "round": 3,
+   "gain": 1,
+   "dropped": false,
+   "swing_codes": 309.46940245844416,
+   "eye_codes": 308.8786127167632,
+   "eye_frac": 0.9980909591158683,
+   "rise_ns": 59.7,
+   "fall_ns": 59.8,
+   "res_rms": 1.253,
+   "pattern_ok": true,
+   "underruns": 0,
+   "rc_dac": 28,
+   "rc_adc": 45,
+   "vpp_mv": 250.0
+  }
+ ],
+ "reading": "Gain 4 applies (swing x3.92) and leaves the eye at the symbol centre fully open at 1.6 Msym/s (0.998, as gain 1). Noise rises x3.3 against a swing x3.9, so relative to the signal it is 15% lower at gain 4. The rise-time figure takes run-level values (57, 60 and 88 ns) at both gains, so it does not separate the PGA's bandwidth from gain 1 and no bandwidth claim is made. The ADC's own noise at gain 4, from the gain-1 and gain-4 readings with the gain-1 floor taken as 0.68 to 0.75 codes (docs/awg.md), is about 0.6 to 1.4 codes: an estimate resting on that assumed floor, not a measurement. A quiet DC source on a spare pin would measure it directly.",
+ "firmware_patch": "diff --git a/apps/baremetal_bringup/main.c b/apps/baremetal_bringup/main.c\nindex 0def99a..ca14c48 100644\n--- a/apps/baremetal_bringup/main.c\n+++ b/apps/baremetal_bringup/main.c\n@@ -594,6 +594,30 @@ static void h_sync(const uint32_t *a)\n  * datasheet's characterisation condition; 0,0 is reset, which is what\n  * this project has always run. See gen.c.\n  */\n+/*\n+ * \"=<gain>,<offset>U\". Debug only, for the AFE's R1 question: sets the\n+ * ADC's programmable gain (ADC_CGR, code 0..3 = gain 1,1,2,4 single\n+ * ended) and offset (ADC_COR OFF bits) on every channel. With ANACH\n+ * clear the converter applies channel 0's setting to all of them.\n+ * acq_init() resets the ADC, so it re-applies these after the reset; they\n+ * hold across captures until changed or a board reset. Not on the\n+ * deployed path.\n+ */\n+static void h_pga(const uint32_t *a)\n+{\n+\tuint32_t g = a[0] & 3u;\n+\tuint32_t off = a[1] ? 1u : 0u;\n+\n+\tacq_cgr = g * 0x55555555u;\n+\tacq_cor = off ? 0xFFFFu : 0u;\n+\tADC->ADC_CGR = acq_cgr;\n+\tADC->ADC_COR = acq_cor;\n+\tcon_str(\"# adc pga: \");\n+\tcon_kv_u32(\"cgr\", ADC->ADC_CGR); con_ch(' ');\n+\tcon_kv_u32(\"cor\", ADC->ADC_COR); con_nl();\n+\tuart_flush();\n+}\n+\n static void h_ibctl(const uint32_t *a)\n {\n \tgen_set_ibctl(a[0], a[1]);\n@@ -712,7 +736,7 @@ const console_binding_t console_bindings[] = {\n \n \t{ 'Q', h_profile },     { 'l', h_load },        { 'S', h_stall },\n \t{ 'K', h_mimic_gap },   { 'Z', h_detach },      { 'z', h_reset },\n-\t{ 'q', h_fws },         { 'y', h_time },\n+\t{ 'q', h_fws },         { 'y', h_time },        { 'U', h_pga },\n \n \t{ 0, 0 },\n };\ndiff --git a/drivers/acq.c b/drivers/acq.c\nindex 03e28b4..c0a55d3 100644\n--- a/drivers/acq.c\n+++ b/drivers/acq.c\n@@ -123,6 +123,9 @@ uint32_t acq_mr(void)\n \treturn ADC->ADC_MR;\n }\n \n+uint32_t acq_cgr;\n+uint32_t acq_cor;\n+\n void acq_init(void)\n {\n \tPMC->PMC_PCER1 = (1u << (ID_ADC - 32));\n@@ -141,6 +144,11 @@ void acq_init(void)\n \tADC->ADC_EMR = ADC_EMR_TAG;\n \tADC->ADC_CHDR = 0xffffu;\n \tADC->ADC_CHER = (1u << ADC_CH_A0) | (1u << ADC_CH_A1);\n+\t/* Debug only (the U command): the SWRST above clears gain and offset,\n+\t * so the requested values are applied after it. Zero is the reset\n+\t * default, gain 1 with no offset. */\n+\tADC->ADC_CGR = acq_cgr;\n+\tADC->ADC_COR = acq_cor;\n }\n \n bool acq_start(uint32_t trigger_hz, unsigned n_channels)\ndiff --git a/drivers/acq.h b/drivers/acq.h\nindex 4629fce..613faf4 100644\n--- a/drivers/acq.h\n+++ b/drivers/acq.h\n@@ -114,6 +114,9 @@ extern acq_slot_t acq_slot[ACQ_NBUF];\n extern uint8_t acq_tracktim;\n extern uint8_t acq_settling;\n void acq_set_timing(uint32_t tracktim, uint32_t settling);\n+/* Debug only: ADC_CGR / ADC_COR applied by acq_init() after its reset. */\n+extern uint32_t acq_cgr;\n+extern uint32_t acq_cor;\n \n /* Which channel joins A0 in a two-channel capture. See acq.c. */\n extern uint8_t acq_pair_second;\n"
+}
