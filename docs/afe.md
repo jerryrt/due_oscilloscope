@@ -76,6 +76,7 @@ differ, and every per-board value is the client's to supply.
 | Two channels | 1,046,510 sps in total, 523,255 per channel (90 MHz build); 453,488 per channel (78 MHz build) |
 | DAC | 12-bit. Drive strength not specified: the datasheet gives no output impedance. Output 0.578 to 2.771 V with a scope on the pin (`docs/hardware.md`); theory is 1/6 to 5/6 of AREF, a span of 2.13 V at AREF 3.20 V. Window centre about 1.67 V against a mid-AREF of 1.635 V |
 | DAC noise | Held-code noise through the DAC (0.8 to 0.85 codes, row above) is close to the ADC alone (0.68 to 0.77), so the DAC adds at most about 0.5 codes in quadrature at a held code. That comparison is between sessions and is not a controlled A/B. The DAC's own noise over DC to 1 MHz is still measured with an external instrument (VT-3) |
+| DAC0 through a reset | Measured on `montreal5` (`records/dac0-reset-montreal5.json`, three runs, the first dropped): from a held 1.67 V, DAC0 jumps to about 3.3 V at a full internal reset, falls roughly linearly to about 0 V over about 1.4 s, and then sits at −0.1 to 0.2 V for at least 3.5 s after the firmware has booted, below the DAC's 0.578 V window. So the pin reaches both rails during reset and boot. Its drive strength in each state is not measured, and a reflash has not been measured |
 | ADC pins | A1 (CH1) and A0 (CH2) for the scope channels, the same in every mode. The calibration ladder's taps use A2 to A9 (PA-9) and are read only during calibration. No other ADC channel is used |
 | Differential ADC mode | A1 and A0 form one pair (AD6/AD7). Each pin stays between 0 V and AREF. PGA gain 1 gives full scale ±AREF/2, gain 0.5 gives ±AREF. The client confirms from the datasheet which pin is VIN+; this specification assumes CH1 on A1 is IN+ *(check)* |
 | Power available | Due 5V and 3.3 V pins only. A0, A1 and the DAC pins are 3.3 V pins |
@@ -283,7 +284,7 @@ bench instruments, and the test procedure lists them.
 | VT-5 | Overload, fault and unpowered tests | PR-1 to PR-4, AW-8 |
 | VT-6 | AWG range, step, load, short circuit, DAC current and accuracy | AW-1 to AW-7, PW-3 |
 | VT-7 | Loopback by external cable from the AWG output to a scope input, DC and sine; reported for information with no pass/fail limit | none |
-| VT-8 | Supply current, ripple, and noise fed back to 3.3 V and AREF, at PW-6's minimum and at 5.25 V on the 5V pin | PW-1, PW-2, PW-4, PW-6 |
+| VT-8 | Supply current, ripple, and noise fed back to 3.3 V and AREF, at PW-6's minimum and at 5.25 V on the 5V pin, each with the AFE idle and with it driving (the AWG at full scale into its load): a charge pump that pulse-skips at light load puts its ripple in band, which the regulators' datasheets do not bound | PW-1, PW-2, PW-4, PW-6 |
 | VT-10 | Input resistance, capacitance, channel matching, crosstalk and ADC-pin source impedance | SC-3, SC-8, SC-9, SC-10 |
 | VT-11 | Differential-mode setting (DF-1), and that the analog path is unchanged | DF-1 |
 | VT-12 | Temperature drift | EN-1 |
