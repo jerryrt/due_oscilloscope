@@ -57,13 +57,22 @@ Where the sequence stopped, and why. The tables under Results have every figure.
   `linux-x1` (a Gaussian's 0.1% to 99.9% width is 6.2 sigma, 9 and 15 codes), so
   `linux-x1`'s band is about what its noise gives and `montreal5`'s is about twice
   it: a tail, which the probes being on may add.
-- **Which converter holds that floor is not established.** The recorded figures are
-  1.65 codes rms on A0 with DAC0 holding a code (`docs/noise.md`) and 0.80 for the
-  ADC on a held code, which `docs/hardware.md` marks as one session without a
-  record. The PAM data cannot split the two: both are in the path. The
-  separation needs a source that is not the DAC (a divider or a battery at an ADC
-  pin, the AFE plan's VT-3), or a software route through the ADC's internal
-  temperature-sensor channel, which needs a firmware change on all three tracks.
+- **Superseded in part, later the same day.** Held-code noise without probes on a
+  same-board wire is 0.8 to 0.85 codes on both benches (`montreal5` 0.79 to 0.81,
+  `linux-x1` 0.81 to 0.85), not the 1.4 and 2.4 above. Those spreads included the
+  scope probes (`montreal5`: 1.2 to 1.4 with them) and the board-to-board wire
+  (`linux-x1`: 2.3 to 2.5 while A0 was fed from the other Due's DAC0, 0.81 to 0.85
+  once the same A0 was fed from its own Due's DAC0, the extra spread broadband in
+  every band: `records/diag-held-noise-cross-linux-x1.jsonl`,
+  `records/diag-held-noise-samebd-linux-x1.json`). So the constant band of 17 to 20
+  codes, and the reading that PAM128 closes at it, describe those two setups and not
+  the converters. Same-board, probes-free PAM64 and PAM128 on `linux-x1` are in
+  progress, and the band is to be remeasured.
+- **The held-code floor is the ADC's.** The ADC alone reads 0.68 to 0.77 codes (a
+  divider on the 3.3 V rail, `docs/awg.md`) and the DAC-driven same-board loop 0.8
+  to 0.85, so the DAC adds at most about 0.5 codes in quadrature at a held code.
+  These come from different sessions and are not a controlled A/B. The DAC's own
+  noise over DC to 1 MHz still needs an external instrument.
 
 Things learned that change how the next capture is run:
 
