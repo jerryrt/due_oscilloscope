@@ -185,7 +185,7 @@ references above removed or inlined.
    not nominal. Hard ones (noise, crosstalk, CMRR, parasitics) should have
    headroom, because the board will be worse than the simulation. Pick your
    margin policy and tell them.
-4. Check the protection cases yourself: ±30 V on an input, powered and
+4. Check the protection cases yourself: ±12 V on both inputs at once, powered and
    unpowered, and the AWG output with an external ±5 V.
 5. Check the BOM: part numbers exist, stock and price are current, no
    single-source or obsolete parts, within cost target.
