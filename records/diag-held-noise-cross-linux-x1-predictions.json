@@ -1,0 +1,17 @@
+{
+  "diagnostic": true,
+  "bench": "linux-x1",
+  "written": "2026-11-10, before any run of this diagnostic",
+  "question": "montreal5: is the extra held-code noise (PAM128 level spread 2.4-2.5 codes vs 0.8 on montreal5's closed loop) the cross-board path, or boards/host/USB power?",
+  "predictions": {
+    "S1 and S2 near 0.8, C near 2.4": "the cross-board wiring/ground adds it",
+    "S1, S2 and C all near 2.4": "the boards or the host environment, not the wiring",
+    "all near 0.8": "the 2.4 PAM spread was not held-code noise (settling / steps)"
+  },
+  "my_own_expectation": "none held strongly; no arm is favoured before the runs",
+  "deviation_from_the_request_and_why": "the board's ADC channel set is A0 (1 channel) or A0+A1 (2 channels); A1 alone cannot be enabled, and 2 channels need RC>=86 (RC 46 is the 1-channel floor region). So the S arms need 2 channels at RC 86. Arm shape: arm X = 2 channels RC 86 on both boards at once (C = DUT2 A0, S2 = DUT2 A1, S1 = DUT1 A1, and DUT1 A0 as a fourth reading); arm P = 1 channel RC 46 on both boards (C only, the PAM rate) so C can be compared across the two rates on one path.",
+  "hold": "tools/noise_cross_probe.py: =0J (sync off), =3N (layout all-DC: both DACs at DC_CODE, no scaling), generator dc shape; DAC fed from the device table, no USB in the DAC path",
+  "confounds": "channel (A0/A1), DAC (DAC0/DAC1) and board crossing move together; rate and channel count differ between X and P",
+  "first_round": "dropped by index",
+  "amended_before_the_real_runs": "2026-11-10: a 4 s smoke test showed a-capture alone does not run the generator, so arm X uses preset M (as noise-fast does) and arm P writes the level with a 1 s preset M run first. Smoke figures are not data. The predictions above were not changed."
+}
