@@ -55,7 +55,7 @@ for each of these:
 | Budget | Requirements it must close |
 |---|---|
 | Scope gain window: attenuation 0.2290 to 0.2453 on ±5 V and gain 1.10 to 1.16 on ±1.25 V, tolerances, centring | SC-2, SC-4, SC-8, SC-11 |
-| Matching: parts of 0.1% for the CMRR chain; mismatch against 46 dB | DF-3 |
+| Matching: parts of 0.1% for the CMRR chain; mismatch against 30 dB before and 44 dB after calibration | DF-3 |
 | ADC pin: source impedance, settling, channel memory | SC-9, SC-10 |
 | Noise at the ADC pin and at the AWG output | SC-6, AW-6 |
 | AWG: gain 1.10 to 1.20, window use at most 92%, step | AW-1, AW-2, AW-7 |
@@ -168,8 +168,8 @@ with the contractor.
 | Remove or inline references to files you are not sending (`docs/noise.md`, `docs/hardware.md`, `docs/datasheets/`, `records/`, `tools/phase0.py`, `calibration.json`) and explain the 22.5 MHz out-of-spec ADC clock | The documents cite them |
 | Decide the review turnaround you promise | The loop runs at your speed |
 
-Known thin margins to tell them about: `DF-3` (46 dB from 0.1% parts gives
-about 48 dB worst case) and `SM-5` against SC-6 and AW-6 together (a loopback
+Known thin margins to tell them about: `DF-3` (44 dB after calibration against a 45.1 dB worst
+corner, with no trimmer) and `SM-5` against SC-6 and AW-6 together (a loopback
 through the ±1.25 V range adds about 6% against a 10% limit). `SC-9` and `SC-10` interact (5 kohm may allow more than 2 LSB of
 crosstalk), so ask them for the ADC-model simulation.
 
