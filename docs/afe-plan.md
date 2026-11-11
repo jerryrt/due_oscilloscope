@@ -15,12 +15,10 @@ each prefix's meaning.
 | **1** Architecture and budgets | Choose the topology and parts on paper; allocate gain, error, noise, current and impedance | **G1**: every requirement has a block and a numeric allocation, and no budget is negative at worst case |
 | **2** Simulation | Simulate each block, then the whole, against the requirement numbers: 2a power, 2b scope channel, 2c AWG output, 2d differential mode, 2e integration | **G2**: an accepted report per block, and an integrated report that passes every case at the stated corners. **Nothing is built before G2** |
 | **3** Layout of the shield PCB | Lay out the passed circuit as a custom shield PCB for all phases in one design, with optional parts as unfitted footprints (MC-11); run KiCad 10.x's electrical and design rule checks | **G3**: header-pin table reviewed against the Due V03 reference, rule checks clean, parasitics from the real layout added as sensitivity cases and the affected simulations rerun |
-| **4** Build and bench | Assemble and bring up block by block; run VT-1 to VT-14 | **G4**: every test passes on the board, with its record |
-| **5** Calibration and review | Write the calibration note for the host software, the test report and the Phase 1 design review; freeze the Phase 2 interface | **G5**: review accepted, interface defined (P2-6) |
-| **6** Phase 2 assembly | Repeat steps 1 to 4 for the fully-differential assembly | **G6**: VT-9 passes with the assembly installed and no board change |
+| **4** Build and bench | Assemble and bring up block by block; run VT-1 to VT-17 | **G4**: every test passes on the board, with its record |
+| **5** Calibration and review | Write the calibration note for the host software, the test report and the version 1 design review | **G5**: review accepted |
 
-Steps 0 to 5 deliver Phase 1 of the requirements, and step 6 delivers
-Phase 2. Step 6 starts only after G5.
+Steps 0 to 5 deliver version 1: Phase 1 and Phase 3 (3a and 3b).
 
 ## Step 0: inputs and tooling
 
@@ -40,8 +38,8 @@ Due identity, firmware `build=` and instrument.
 | DAC output while the Due resets and boots | AW-8 | Scope on DAC0 through a reset and a flash |
 | ADC acquisition settings the firmware will use | SC-9, SC-10, AN-2 | Client decision |
 
-The TBC values of the requirement are frozen ([afe.md](afe.md), section 19); what
-is left to decide is its section 17, decisions D1 to D9, and **D1 to D4 and D8
+The TBC values of the requirement are frozen ([afe.md](afe.md), section 18); what
+is left to decide is its section 16, decisions D1 to D9, and **D1 to D4 and D8
 are needed before step 1**, because they change the topology (ranges, the
 equivalent-time path, the AWG's test path, the connector). D7 needs one
 measurement, the Due's own supply current, before step 1 closes PW-1.
@@ -67,8 +65,7 @@ for each of these:
 | Current: normal, AWG short, external ±5 V | PW-1, PW-3, PR-4 |
 | Rails: derived rails, ripple, and noise fed back to 3.3 V and AREF | PW-2, PW-4, PR-2 |
 
-The step ends with the topology, the part list with alternates, and the
-interface for the Phase 2 assembly (P2-6) already defined.
+The step ends with the topology and the part list with alternates.
 
 ## Step 2: simulation
 
@@ -121,14 +118,10 @@ The tests that need only a bench (VT-3, VT-4, VT-5, VT-8, VT-12, much of VT-10,
 and VT-16) can start before the firmware work. The tests that use the Due's ADC
 (VT-1, VT-2, VT-6, VT-7, VT-11, VT-15, VT-17) cannot.
 
-## Step 5 and step 6
+## Step 5
 
 Step 5 produces the written calibration note (what the host must correct,
-and how), the test report and the design review. Step 6 follows steps 1 to
-4 for the amplifier assembly, reusing the Phase 1 input network,
-protection, output network, connectors, supply and JP-DIFF; its CMRR and
-noise are no worse than Phase 1's (P2-3), and VT-9 shows it installs
-without changing the board.
+and how), the test report and the design review.
 
 ## Rounds
 
@@ -186,7 +179,7 @@ case). `SC-9` and `SC-10` interact (5 kohm may allow more than 2 LSB of
 crosstalk), so ask them for the ADC-model simulation.
 
 Done since this was written: every TBC but MC-8 is frozen at its stated value
-and the decisions are one list ([afe.md](afe.md), section 17). What the owner
+and the decisions are one list ([afe.md](afe.md), section 16). What the owner
 sends is the contractor package ([afe/contractor-inventory.txt](afe/contractor-inventory.txt)),
 which is the rounded wording **as sent**, already out of date on construction, until D1 to D4 and D10 are decided and the package is revised.
 
@@ -232,12 +225,10 @@ relates to. The contractor then reruns the affected simulations with the
 measured value. Same revision protocol as O1. When all VT pass, write the
 calibration note for the host software and the design review.
 
-### Phase 2 and Phase 3
+### Phase 3
 
-The optional differential amplifier assembly is a separate order, after the
-Phase 1 design is accepted and measured; Phase 1 only has to define the
-interface (P2-6). Phase 3, the precision calibration channel, is a separate
-decision (D5) and is not planned here until it is taken.
+Phase 3, the precision reference and converter pair (3a and 3b), is in version
+1 (D5) and goes through steps 1 to 4 with Phase 1.
 
 ## Traceability
 
@@ -249,6 +240,6 @@ decision (D5) and is not planned here until it is taken.
 | PR-1 to PR-4 | 2b, 2c, 2e | VT-5 |
 | PW-1 to PW-4 | 2a | VT-8, VT-6 |
 | AN-1 to AN-4, EN-1 | 2e | VT-12, VT-13 |
-| P2-1 to P2-6, PW-5, CA-1, MC-1 to MC-10 | step 6 and review | VT-9, VT-14 |
+| PW-5, CA-1, MC-1 to MC-12 | review | VT-14 |
 | SM-1 to SM-8, SC-11, AW-9 (all proposed, D1 to D4) | 2b, 2c, 2e | VT-4, VT-15, VT-16, VT-17 |
-| PA-1 to PA-7 (Phase 3, D5) | not planned | PA-6's meter and reference check |
+| PA-1 to PA-9 (Phase 3, D5) | 2a, 2e | PA-6's meter and reference check |
