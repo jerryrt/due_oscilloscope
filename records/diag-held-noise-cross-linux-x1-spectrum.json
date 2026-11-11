@@ -1,0 +1,16 @@
+{
+  "diagnostic": true, "bench": "linux-x1", "firmware_build": "8ffc8ed (both boards)",
+  "source": "two NEW sessions run 2026-11-10 after the main record (its raw series were not kept); the second one analysed, same worker, 14 s, 10% head dropped, no probes",
+  "method": "block-mean to ~1 kHz (so only < 490 Hz is seen), Welch 2048-point Hann, 0.49 Hz bins, ~6 averages; band rms in codes",
+  "bands_hz": [[0.5,2],[2,5],[5,10],[10,20],[20,40],[40,70],[70,100],[100,200],[200,490]],
+  "band_rms_codes": {
+    "C_X_dut2_a0": [0.059,0.116,0.101,0.150,0.213,0.448,0.353,0.351,0.276],
+    "U_X_dut1_a0": [0.061,0.109,0.091,0.133,0.182,0.315,0.430,0.345,0.252],
+    "S1_X_dut1_a1": [0.018,0.013,0.015,0.021,0.044,0.110,0.092,0.078,0.101],
+    "S2_X_dut2_a1": [0.021,0.021,0.017,0.022,0.052,0.126,0.120,0.087,0.143],
+    "C_P_dut2_a0": [0.058,0.119,0.085,0.047,0.064,0.089,0.050,0.069,0.109],
+    "U_P_dut1_a0": [0.064,0.118,0.082,0.049,0.064,0.100,0.058,0.081,0.103]
+  },
+  "lines": "P arm (RC 46) cross-board paths: 53.2 Hz (ratio to local median 56 and 87) and 106.4 Hz (16 and 58); 53.2 Hz is not 50 or 60. X arm: 106.4 Hz on S1 (16) and U (6.4), 212.8 Hz on U (7.4); no line at 50, 60 or 120 Hz stands out. A 485 Hz peak on C and U X is at the edge of the 1 kHz decimation.",
+  "note": "total rms of the same arms is 2.3-2.5 codes on A0 and 1.1 on A1; below 490 Hz the A0 paths hold about 0.8 codes rms, so most of the A0 excess is above 490 Hz and not seen here"
+}
