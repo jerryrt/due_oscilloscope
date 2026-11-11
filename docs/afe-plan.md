@@ -169,8 +169,7 @@ with the contractor.
 | Decide the review turnaround you promise | The loop runs at your speed |
 
 Known thin margins to tell them about: `DF-3` (44 dB after calibration against a 45.1 dB worst
-corner, with no trimmer) and `SM-5` against SC-6 and AW-6 together (a loopback
-through the ±1.25 V range adds about 6% against a 10% limit). `SC-9` and `SC-10` interact (5 kohm may allow more than 2 LSB of
+corner, with no trimmer, being re-derived for the 1 MΩ divider). `SC-9` and `SC-10` interact (5 kohm may allow more than 2 LSB of
 crosstalk), so ask them for the ADC-model simulation.
 
 What the owner sends is drawn from `afe.md` at the time of sending, with the
@@ -236,5 +235,5 @@ Phase 3, the precision reference and converter pair (3a and 3b), is in version
 | PW-1 to PW-4, PW-6 | 2a | VT-8, VT-6 |
 | AN-1 to AN-5, EN-1 | 2f | VT-12, VT-13 |
 | PW-5, CA-1, MC-1 to MC-12 | review | VT-14 |
-| SM-3 to SM-8 | 2b, 2c, 2f | VT-4, VT-15, VT-16, VT-17 |
+| SM-3, SM-6 to SM-8 | 2b, 2c, 2f | VT-4, VT-15, VT-16, VT-17 |
 | PA-1 to PA-9 (Phase 3, D5) | 2e | PA-6's meter and reference check |
