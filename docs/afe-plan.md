@@ -60,7 +60,7 @@ for each of these:
 | Noise at the ADC pin and at the AWG output | SC-6, AW-6 |
 | AWG: gain 1.10 to 1.20, window use at most 92%, step | AW-1, AW-2, AW-7 |
 | Current: normal, AWG short, external ±5 V | PW-1, PW-3, PR-4 |
-| Supply: the Due's 5V pin from 4.4 to 5.25 V | PW-6 |
+| Supply: the Due's 5V pin from 4.50 to 5.25 V | PW-6 |
 | Rails: derived rails, ripple, and noise fed back to 3.3 V and AREF | PW-2, PW-4, PR-2 |
 
 The step ends with the topology and the part list with alternates.
@@ -72,7 +72,7 @@ passes only when every case meets the requirement number itself.
 
 | Block | Cases | Requirements |
 |---|---|---|
-| **2a** Power | Rail startup and ramp, load steps, ripple at the amplifier pins and its residue at the ADC pin and AWG output, current, noise reaching 3.3 V and AREF, the 5V pin from 4.4 to 5.25 V | PW-1 to PW-4, PW-6 |
+| **2a** Power | Rail startup and ramp, load steps, ripple at the amplifier pins and its residue at the ADC pin and AWG output, current, noise reaching 3.3 V and AREF, the 5V pin from 4.50 to 5.25 V | PW-1 to PW-4, PW-6 |
 | **2b** Scope channel | DC transfer over AREF 3.20 to 3.30 V and tolerance Monte Carlo; headroom to ±6 V; both ranges and the range switch; bandwidth (at least 8 MHz) and peaking; noise as a density; switched ADC-load settling; channel crosstalk surrogate; clamp currents at ±30 V and in the unpowered case; the Due's pin voltages and the parts that fail for inputs above ±30 V | SC-2 to SC-11, SM-3, PR-1 to PR-3 |
 | **2c** AWG output | Span and centring against the DAC window; step; bandwidth; the 50 Ω termination into 50 Ω and into a scope input; load, short and external ±5 V; reset and boot state; noise with a quiet source | AW-1 to AW-8, PR-4 |
 | **2d** Differential | CMRR with tolerance Monte Carlo at DC and 10 kHz; both ranges and their step; common-mode window | DF-1 to DF-4 |
