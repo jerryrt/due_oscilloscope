@@ -371,7 +371,7 @@ linearity looks clean, but it is outside the documented configuration.
 |---|---|
 | Feature summary | "One 2-channel 12-bit **1MSPS** DAC" |
 | §45.2 DACC Embedded Characteristics | resolution, channels, triggers, PDC, FIFO - **no conversion rate** |
-| §46.9 12-bit DAC Characteristics | startup time, output impedance 30 ohm, current - **no maximum sampling rate** |
+| §46.9 12-bit DAC Characteristics | startup time and current, **no output impedance** and **no maximum sampling rate**. The 30 ohm output impedance nearby is the temperature sensor's (Table 46-37) |
 
 So the only rate figure for the DAC anywhere is the headline 1 MSPS, and
 it is not qualified as per-channel or aggregate, nor backed by an entry
@@ -498,7 +498,7 @@ configuration will behave.
 | Resolution | 12-bit |
 | Channels | 2 (DAC0, DAC1) |
 | Output range | **578 mV to 2771 mV** *(scope on the pin; `calibration.json`)* |
-| Drive | High output impedance; needs a buffer op-amp for any real load |
+| Drive | Output impedance not specified by the datasheet; the AFE loads the pin with at most 0.1 mA (AFE requirement AW-5) |
 
 **Issue #5 lives on this pin.** Once per DAC table wrap one sample read
 from a DAC output is displaced by up to ~80 codes, which is -49 dB
