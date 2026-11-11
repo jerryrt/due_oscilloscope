@@ -114,10 +114,14 @@ by deciding. Each says how it is closed.
 
 ## 5. Capture modes
 
-The scope is for NRZ and PAM signals, judged by eye diagrams, and one wide,
-unfiltered path serves both capture modes. Equivalent-time capture is measured on
-this hardware (section 4.2): the host half works, and what remains is an AFE that
-lets it see a signal other than the DAC's.
+The scope is a general-purpose instrument with two capture modes on one wide,
+unfiltered path. Real-time capture takes any signal at the Due's sample rate.
+Equivalent-time capture folds a repeating signal of known content to a much finer
+time axis, which is what channel estimation and signal-integrity checks need:
+eye diagrams, edges and level separation of NRZ and PAM test patterns, among
+other repeating signals (SM-7 says which have a host path today). Equivalent-time
+capture is measured on this hardware (section 4.2): the host half works, and what
+remains is an AFE that lets it see a signal other than the DAC's.
 
 | ID | Requirement |
 |---|---|
