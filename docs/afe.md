@@ -71,11 +71,11 @@ differ, and every per-board value is the client's to supply.
 | Board | Arduino Due (V03 reference), unmodified. JP101 open, JR1/BR1 untouched |
 | AREF | The board's 3.3 V rail, about 3.27 V on the measured board. The client supplies per-board AREF and DAC-window values for its three Dues |
 | ADC | 12-bit. 22.5 MHz clock on the 90 MHz build, 19.5 MHz on the in-spec 78 MHz build |
-| ADC noise | **0.8 codes rms on a held code, DAC0 to A0 on the same board, no scope probes** (about 0.64 mV, 10.5 effective bits): `montreal5` 0.79 to 0.81 (`docs/dac-open-ended-montreal5.md`) and `linux-x1` 0.81 to 0.85 on A0 and 0.87 to 0.88 on A1 (`records/diag-held-noise-samebd-linux-x1.json`, 2026-11-10); a rail-tied divider into A2 read 0.68 to 0.77 (`docs/awg.md`). The spectrum is thermal and white-like, with no 1 kHz or 8 kHz comb; the only lines are fractions of the ADC clock (fs/3, fs/4, fs/6). The same channel read 1.2 to 1.4 with scope probes attached (`montreal5`), and **2.3 to 2.5 when the signal crossed a wire between two Dues** joined by a short ground jumper (`linux-x1`, before the owner moved the wiring), the extra spread in every frequency band. The older 1.65 (`docs/noise.md`) was another condition and is superseded |
+| ADC noise | **0.8 codes rms on a held code, DAC0 to A0 on the same board, no scope probes** (about 0.64 mV, 10.5 effective bits): `montreal5` 0.79 to 0.81 (`docs/dac-open-ended-montreal5.md`) and `linux-x1` 0.81 to 0.85 on A0 and 0.87 to 0.88 on A1 (`records/diag-held-noise-samebd-linux-x1.json`, 2026-11-10); a rail-tied divider into A2 read 0.68 to 0.77 (`docs/awg.md`). The spectrum is thermal and white-like, with no 1 kHz or 8 kHz comb; the only lines are fractions of the ADC clock (fs/3, fs/4, fs/6). The same channel read 1.2 to 1.4 with scope probes attached (`montreal5`), and **2.3 to 2.5 when the signal crossed a wire between two Dues** joined by a short ground jumper (`linux-x1`), the extra spread in every frequency band. |
 | One channel | 1,022,727 sps (90 MHz build), 886,363 sps (78 MHz build) |
 | Two channels | 1,046,510 sps in total, 523,255 per channel (90 MHz build); 453,488 per channel (78 MHz build) |
 | DAC | 12-bit. Drive strength not specified: the datasheet gives no output impedance. Output 0.578 to 2.771 V with a scope on the pin (`docs/hardware.md`); theory is 1/6 to 5/6 of AREF, a span of 2.13 V at AREF 3.20 V. Window centre about 1.67 V against a mid-AREF of 1.635 V |
-| DAC noise | Earlier records say about 20 mV rms (15 mV idle) with the measurement bandwidth unrecorded; that is not a reliable figure. Held-code noise through the DAC (0.8 to 0.85 codes, row above) is close to the ADC alone (0.68 to 0.77), so the DAC adds at most about 0.5 codes in quadrature at a held code. That comparison is between sessions and is not a controlled A/B. The DAC's own noise over DC to 1 MHz is still measured with an external instrument (VT-3) |
+| DAC noise | Held-code noise through the DAC (0.8 to 0.85 codes, row above) is close to the ADC alone (0.68 to 0.77), so the DAC adds at most about 0.5 codes in quadrature at a held code. That comparison is between sessions and is not a controlled A/B. The DAC's own noise over DC to 1 MHz is still measured with an external instrument (VT-3) |
 | ADC pins | A1 (CH1) and A0 (CH2) for the scope channels, the same in every mode. The calibration ladder's taps use A2 to A9 (PA-9) and are read only during calibration. No other ADC channel is used |
 | Differential ADC mode | A1 and A0 form one pair (AD6/AD7). Each pin stays between 0 V and AREF. PGA gain 1 gives full scale ±AREF/2, gain 0.5 gives ±AREF. The client confirms from the datasheet which pin is VIN+; this specification assumes CH1 on A1 is IN+ *(check)* |
 | Power available | Due 5V and 3.3 V pins only. A0, A1 and the DAC pins are 3.3 V pins |
@@ -92,7 +92,7 @@ figure's record are in [ets-pam.md](ets-pam.md) and [ets-mode.md](ets-mode.md).
 | Edge floor of the DAC-to-ADC path | 42.4 ns rise, 45.4 ns fall. An upper bound that includes the DAC's own response. About 8 MHz as a single pole (0.35 over 42.4 ns, derived) |
 | Time axis of the fold | 0.24 ns standard error of the fitted clock on two independent crystals |
 | Levels that pass every gate | PAM4 to PAM32 at 1.0 V and PAM64 at 1.5 V, on both benches. PAM128 at 1.5 V fails with probes on (`montreal5`) and across a board-to-board wire (`linux-x1`), and passes on one board without either. PAM256 at 1.5 V fails |
-| Level band | The 0.1% to 99.9% width of each level at the symbol centre was 17.4 codes (`linux-x1`) to 19.5 codes (`montreal5`), the same at every level count and at both swings. **Both were taken with something extra on the signal: scope probes (`montreal5`) and a board-to-board wire (`linux-x1`), which add about 1.0 and 2.4 codes in quadrature to a floor of 0.8 (row "ADC noise").** **Measured without them** (one `linux-x1` Due, same-board, no probes, 1.5 V swing, 2026-11-10, `records/diag-samebd-pam-linux-x1.jsonl`): the loss between level spacing and eye height is 11.4 codes at PAM64, 8.6 at PAM128 and 11.3 at PAM256, and the level spread is 1.15 to 1.18 codes against 2.4 to 2.5 across the board-to-board wire. PAM64 and PAM128 pass all of A3 to A6; PAM256 fails A6 (eye -4 codes, spacing 7.3). It is not inter-symbol interference, which would scale with the step |
+| Level band | The 0.1% to 99.9% width of each level at the symbol centre, measured as the loss between level spacing and eye height on one `linux-x1` Due, same-board, no probes, 1.5 V swing (`records/diag-samebd-pam-linux-x1.jsonl`): 11.4 codes at PAM64, 8.6 at PAM128 and 11.3 at PAM256, with a level spread of 1.15 to 1.18 codes. PAM64 and PAM128 pass all of A3 to A6; PAM256 fails A6 (eye −4 codes, spacing 7.3). With scope probes on the pins (`montreal5`) the band is 19.5 codes, and across a board-to-board wire (`linux-x1`) 17.4, the same at every level count and both swings. It is not inter-symbol interference, which would scale with the step |
 | Level spread (one standard deviation) | 1.4 codes (`montreal5`, probes on) and 2.4 codes (`linux-x1`, across a board-to-board wire), 1.1 to 2.0 mV, against a held-code floor of 0.8 to 0.85 codes without them |
 | Ladder straightness | Largest residual from a line 0.3 to 0.5 codes at 64 and 128 levels over a 1.5 V window (0.65 to 2.65 V). Not tested over the ADC's full range |
 | Large steps | Steps above about 1.5 V at the DAC pin leave a tail of 7 to 10 codes at the next symbol centre; at 1.5 V it is 3 |
@@ -105,7 +105,7 @@ by deciding. Each says how it is closed.
 
 | Gap | Closed by |
 |---|---|
-| How much of the level band is left once the probes and the board-to-board wire are removed. The held-code floor is 0.8 to 0.85 codes and the DAC adds at most about 0.5 of it | The AFE's own measurement (VT-15). The same-board, probes-free band is measured (section 4.2); why a board-to-board wire adds noise (the wire, the ground, or the other board's DAC) is not |
+| Why a board-to-board wire adds noise: the wire, the ground, or the other board's DAC | Not needed by the AFE, whose inputs are its own connectors (MC-10); the band through the AFE is VT-15 |
 | The ADC's own input bandwidth | The 8 MHz above is a bound that includes the DAC; the AFE's wide path (VT-16) is the first instrument that can separate them |
 | Noise on the Due's own 3.3 V, AREF and 5 V rails. **No measurement of it exists**; PW-2 and PW-4 are limits derived through PSRR, not set against a measured rail | VT-8 with the AFE disconnected first, then connected |
 | ADC input capacitance and resistance, DAC output impedance, noise on AREF | The SAM3X datasheet |
@@ -115,16 +115,14 @@ by deciding. Each says how it is closed.
 ## 5. Capture modes
 
 The scope is for NRZ and PAM signals, judged by eye diagrams, and one wide,
-unfiltered path serves both capture modes (decided 2026-11-10): a single-pole
-filter attenuated only about 6.6 dB at the one-channel Nyquist frequency, so it
-was never an anti-alias filter, and dropping it removes the mode switch. Equivalent-time capture is no longer untested
-on this hardware (section 4.2): the host half works, and what remains is an AFE
-that lets it see a signal other than the DAC's.
+unfiltered path serves both capture modes. Equivalent-time capture is measured on
+this hardware (section 4.2): the host half works, and what remains is an AFE that
+lets it see a signal other than the DAC's.
 
 | ID | Requirement |
 |---|---|
 | SM-3 | **One wide path for both modes.** Equivalent-time (a repeating signal of known content): the host folds the samples by symbol phase. Real-time: single shot, any signal, at the Due's sample rate. The AFE has no anti-alias filter, and the bandwidth is at least 8 MHz (D3, decided 2026-11-10), confirmed by simulation at G1. Real-time capture aliases anything above the Nyquist frequency, which the host cannot detect or remove, and the documentation and the host's display say so. The AFE's noise over this band is bounded by SC-6 |
-| SM-5 | **Level separation.** The AFE adds at most 10% to the Due's level band (section 4.2: the same-board, probes-free band is 8.6 to 11.4 codes, so 10% is about one code), measured on PAM16 with `tools/ets_pam.py` (VT-15), per board. Inter-symbol interference between levels is not what limits a PAM eye on the Due, so this replaces the draft's INL and DNL wording |
+| SM-5 | **Level separation.** The AFE adds at most 10% to the Due's level band (section 4.2: the same-board, probes-free band is 8.6 to 11.4 codes, so 10% is about one code), measured on PAM16 with `tools/ets_pam.py` (VT-15), per board. Inter-symbol interference between levels is not what limits a PAM eye on the Due, so the requirement is a level band and not INL or DNL |
 | SM-6 | Differential input (DF-2) for differential links, not two channels subtracted: the 0.95 µs channel skew is about 26% of a symbol at 267 kbaud |
 | SM-7 | **Host, client-supplied and measured:** the fold's time axis is 0.24 ns. The tracker locks with a template of a known repeating pattern, so a repeating signal of unknown content has no demonstrated host path, and single-shot events are out of reach by construction. The ADC and DAC rate pair follows the rule of [ets-mode.md](ets-mode.md) (an odd DAC rate constant with an even ADC one on two boards, coprime on one) or the lock degrades |
 | SM-8 | The wide path can be exercised by the Due's own DAC through the unfiltered AWG output and an external cable (AW-3, MC-10), so it is verifiable without an external source |
@@ -247,7 +245,6 @@ heat).
 | ID | Constraint |
 |---|---|
 | MC-1 | A custom shield PCB in the Arduino Mega/Due form factor, stacked on the Due through stacking headers that carry every Due pin through. The Due's outline and pin positions are those of the V03 reference ([Due V03 in KiCad](../hardware/reference/arduino-due/v03/README.md)). It is a new KiCad project under `hardware/afe-proto` |
-| MC-2 | Retired: it applied to a proto board, which the AFE no longer uses |
 | MC-3 | A custom 2-layer PCB with a ground plane, surface-mount parts wherever possible. The equivalent-time path (SM-3, about 8 MHz) needs a controlled layout and does not work on a proto board. It is assembled by the board house's service (D10, MC-12) |
 | MC-4 | Header pin positions come from the Due V03 KiCad reference, and are checked by continuity on the owner's boards before the first round is ordered |
 | MC-5 | The design records which header pin every net uses, in a table, and passes KiCad 10.x's electrical and design rule checks |
@@ -319,19 +316,18 @@ coupling, a differential AWG, anti-alias and reconstruction filtering (SC-5, AW-
 
 ## 16. Decisions for the owner
 
-One list, replacing those in the draft and the review. Each records the owner's
-decision and what it affects.
+Each records the owner's decision and what it affects.
 
 | ID | Decision | Recommendation | Affects |
 |---|---|---|---|
 | D1 | Narrower input ranges beside ±5 V | **Decided 2026-11-10:** one, ±1.25 V, a level-shifting op-amp stage of as-built gain 1.10 to 1.16, selected by a Due pin through a solid-state switch, ±5 V at reset | SC-11, SC-4, the table in section 5 |
-| D2 | Real-time corner and shape | **Decided 2026-11-10: no filter.** A single pole gave about 6.6 dB at the Nyquist frequency, and a proper filter is a later round's | SC-5, SM-3 |
+| D2 | Real-time corner and shape | **Decided 2026-11-10: no filter** (SC-5, SM-3). A single pole attenuates only about 6.6 dB at the one-channel Nyquist frequency, so it does not protect against aliasing; a proper filter would be a higher-order one in a later round | SC-5, SM-3 |
 | D3 | Wide-path bandwidth target | **Decided 2026-11-10: at least 8 MHz**, confirmed by simulation at G1, including that the divider meets it at SC-10's source impedance | SM-3, SC-6, VT-16 |
 | D4 | An unfiltered DAC0 test path | **Decided 2026-11-10: not needed**, since the AWG output has no filter (AW-3) | AW-3, VT-17, SM-8 |
 | D5 | Phase 3's precision channel and its custom PCB | **Decided 2026-11-10: adopted**, on the same PCB as the other phases: 3a (reference, buffer, test point, AREF routing) and 3b (slow precision ADC and DAC). **Version 1 carries 3a and 3b, the precision DAC included** (owner, 2026-11-10) | section 9, MC-3, PA-1 to PA-9 |
 | D6 | Drive AREF from the board's reference | **Decided 2026-11-10: measure only.** JR1 and BR1 stay untouched. The reference is routed to the AREF pin and unused by default (PA-7). Using it as ADVREF later is the owner's call, a rework of the Due described in [the Due reference network](../hardware/reference/arduino-due/v03/README.md); the owner judged soldering JR1 and BR1 too risky for now | PA-7, PW-5 |
 | D7 | PW-1's current budget | **Decided 2026-11-10: a datasheet budget with headroom, not a measurement.** The Due is budgeted at 300 mA from 5 V: the SAM3X at 84 MHz draws 76.5 mA typical in active mode with peripheral clocks off (datasheet table 46-11, about 79 mA extrapolated to 90 MHz), the peripherals this project clocks add about 17 mA at 90 MHz (table 46-13: USB, ADC, DAC, TC0 to TC2, PIOA to PIOD, UART), the high-speed USB transceiver up to 60 mA while transmitting, and the rest of the board (the 16U2, LEDs, regulators) an allowance of 50 mA that no datasheet here gives: about 206 mA, with roughly 1.5x headroom. The Due's 3.3 V regulator is linear, so its 5 V current equals its 3.3 V current. The ADC's and DAC's analog currents were not found and sit inside the headroom. With the AFE's 100 mA the total is 400 mA, under PW-1's 450 mA. A meter reading may replace the estimate later | PW-1, section 4.3 |
 | D8 | Connector and probe arrangement (MC-8) | **Decided 2026-11-10: BNC**, taking ×1 and ×10 scope probes. The owner solders the connectors | MC-8 |
-| D9 | Real-time target symbol rates | **Closed with D2:** there is no real-time corner to set them. The equivalent-time rate is not an AFE limit: 1.6 Msym/s is demonstrated | SM-3 |
+| D9 | Real-time target symbol rates | **Decided 2026-11-10: none set.** With no real-time filter there is no corner to set them from. The equivalent-time rate is not an AFE limit: 1.6 Msym/s is demonstrated | SM-3 |
 | D10 | Who assembles the shield: the owner by hand, or a board house | **Decided 2026-11-10: the board house's assembly service, ordered once the PCB is out.** The owner hand-solders only the BNC connectors and headers. Fine soldering is a risk the owner has declined (JR1 and BR1). This sets the smallest part size and package in MC-3, to what the chosen service can place | MC-3 |
 | D11 | The calibration ladder's tap count and part (PA-9) | **Decided 2026-11-10: 8 taps on A2 to A9, discrete 0.1% 0603 resistors**; A10 and A11 stay free. The taps cost sample rate when read together, since one ADC serves every channel (section 4.1), so the ladder is read during calibration and not while capturing | PA-9 |
