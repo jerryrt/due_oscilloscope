@@ -82,7 +82,8 @@ the top layer.
 **As shipped,** JR1 joins 3.3 V to `AVREFL`, and the converters' reference is
 3.3 V through L3 and C19. The AREF header pin goes nowhere.
 
-**To drive ADVREF from outside,** which the AFE requirement calls D6, in this order:
+**To drive ADVREF from outside,** in this order. The AFE requirement decided D6 as
+measure only, so this is a later option, not part of the AFE's version 1:
 
 1. Remove JR1.
 2. Bridge BR1 pads 1 and 2: a 0402 0 ohm part fits the footprint, and a solder
