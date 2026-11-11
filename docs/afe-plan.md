@@ -39,8 +39,8 @@ Due identity, firmware `build=` and instrument.
 | ADC acquisition settings the firmware will use | SC-9, SC-10, AN-2 | Client decision |
 
 The TBC values of the requirement are frozen ([afe.md](afe.md), section 18); what
-is left to decide is its section 16, decisions D1 to D11. All are decided except D7, which needs one
-measurement, the Due's own supply current, before step 1 closes PW-1.
+is left to decide is its section 16, decisions D1 to D11. All are decided. D7 is a datasheet budget with headroom, which a meter reading of
+the Due may replace later.
 
 Tooling: KiCad 10.x with matching symbol and footprint libraries, and
 ngspice, with the exact versions recorded in every report. Models live in
