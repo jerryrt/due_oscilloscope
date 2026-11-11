@@ -152,8 +152,8 @@ def device_name():
     return _init()["name"]
 
 
-def _grid(n, block=256, cap=4096):
-    return (min(cap, max(1, (n + block - 1) // block)), 1)
+def _grid(n, block=256, max_blocks=4096):
+    return (min(max_blocks, max(1, (n + block - 1) // block)), 1)
 
 
 def phase_indices(n, rc_adc, phase_at, period, k=1, start=0, segment=2048):
