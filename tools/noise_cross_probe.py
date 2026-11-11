@@ -63,7 +63,7 @@ def worker(rc, channels, seconds, out):
             open(out + "." + name, "wb"))
         meta["n_" + name] = len(v)
     b.ask("=0N", secs=0.5)
-    with open(out + ".json", "w") as f:
+    with open(out + ".json", "w", encoding="utf-8") as f:
         json.dump(meta, f)
 
 
@@ -96,7 +96,7 @@ def run_arm(rc, channels, seconds, tmp, tag):
     for dut, (out, p) in procs.items():
         if p.wait() != 0:
             raise SystemExit(f"{dut} worker failed in {tag}")
-        meta = json.load(open(out + ".json"))
+        meta = json.load(open(out + ".json", encoding="utf-8"))
         fs = meta["declared_hz"]
         res[dut] = {"meta": meta}
         for ch in ("a0", "a1")[:channels]:
@@ -127,7 +127,7 @@ def main():
                                       for c in ("a0", "a1")[:ch]}
                                   for d in r}, flush=True)
     if a.out:
-        with open(a.out, "w") as f:
+        with open(a.out, "w", encoding="utf-8") as f:
             for r in rows:
                 f.write(json.dumps(r) + "\n")
 
