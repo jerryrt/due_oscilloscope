@@ -1,0 +1,12 @@
+{
+ "diagnostic": true,
+ "bench": "linux-x1",
+ "written": "2026-11-10 ~20:06, before the runs",
+ "arms": "X (2 ch RC 86, preset M all-DC) and P (1 ch RC 46) with the cross wiring as fingerprinted; 6 rounds interleaved, round 0 dropped by index, n=5; raw kept",
+ "arm_b_not_possible": "A1 alone cannot be enabled on the board (the channel set is A0, or A0+A1): the board's own limit, so arm (b) is not run and (c) is on hold as asked",
+ "predictions": {
+  "A1 near 1.1 again (1.10-1.14)": "the A1 excess of the first session came back with the cross wire, i.e. leakage from the noisy A0 or the cross wiring state, not time or reflash",
+  "A1 stays near 0.88": "the A1 drop was something else than the A0 wire (time of day, a state of the boards)",
+  "A0 near 2.3-2.5": "the earlier cross-board A0 reproduces"
+ }
+}
