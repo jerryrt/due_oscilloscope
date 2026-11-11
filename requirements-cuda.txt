@@ -1,0 +1,14 @@
+# The CUDA path of the ETS analysis (host/dsp_cuda.py), on top of requirements-dsp.txt.
+#
+# Needs an NVIDIA driver and the system CUDA toolkit for `nvcc` (Ubuntu:
+# `sudo apt install nvidia-cuda-toolkit`, CUDA 12.4, which still builds for
+# compute capability 5.0; CUDA 13 does not). pycuda compiles against it:
+#
+#   python3 -m venv .venv-cuda
+#   .venv-cuda/bin/pip install -r requirements-dsp.txt -r requirements-cuda.txt
+#
+# If the interpreter was built with a compiler the machine lacks, name one:
+#   CC=gcc CXX=g++ LDSHARED="g++ -shared" CUDA_ROOT=/usr CUDA_HOME=/usr pip install ...
+#
+# Without it `DUE_DSP=cuda` raises (it never falls back quietly).
+pycuda==2026.1
