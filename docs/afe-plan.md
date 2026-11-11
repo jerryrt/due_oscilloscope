@@ -39,9 +39,7 @@ Due identity, firmware `build=` and instrument.
 | ADC acquisition settings the firmware will use | SC-9, SC-10, AN-2 | Client decision |
 
 The TBC values of the requirement are frozen ([afe.md](afe.md), section 18); what
-is left to decide is its section 16, decisions D1 to D9, and **D1 to D4 and D8
-are needed before step 1**, because they change the topology (ranges, the
-equivalent-time path, the AWG's test path, the connector). D7 needs one
+is left to decide is its section 16, decisions D1 to D11. All are decided except D7, which needs one
 measurement, the Due's own supply current, before step 1 closes PW-1.
 
 Tooling: KiCad 10.x with matching symbol and footprint libraries, and
@@ -93,7 +91,7 @@ them.
 | A new KiCad 10.x project under `hardware/afe-proto`, a shield in the Mega/Due form factor stacked on the Due through stacking headers | The project, with the Due V03 reference as its mating model |
 | Header pin positions taken from the Due V03 reference and checked by continuity on the owner's boards (MC-4) | Written confirmation, before a round is ordered |
 | Every net's header pin in a table, and the unused Due pins left through unchanged (MC-5, MC-9); AREF listed as used (PA-7) | The table, and KiCad's electrical and design rule checks clean |
-| Optional parts and undecided choices as unfitted footprints and jumpers (MC-11) | The BOM marks each as fitted or unfitted for the round |
+| Optional parts as unfitted footprints, and choices as Due-pin switches (MC-11) | The BOM marks each as fitted or unfitted for the round |
 | Parasitics extracted from the layout, not estimated, added as sensitivity cases | The affected step 2 blocks rerun and passing |
 | Unpowered continuity and insulation checks defined | Checklist the build step runs |
 
@@ -131,17 +129,15 @@ applies to each round, and a failed round changes the circuit and is rerun. It
 never relaxes a limit.
 
 **Round 1 is for learning what the document cannot decide.** It carries the whole
-design, with every open choice as a jumper, a solder jumper or an unfitted
-footprint (MC-11):
+design, with every open choice as a Due-pin switch or an unfitted
+footprint, never a jumper (MC-11):
 
 | Open choice | How round 1 carries it |
 |---|---|
-| Input ranges (D1) | a jumper-selected gain, with the ±5 V range always present |
-| Real-time or wide path (SM-4, D2, D3) | a mode jumper |
-| The unfiltered DAC0 path (D4, AW-9) | a jumper and a test point |
-| The reference at an ADC input, and at AREF (PA-7, PA-8) | a header, and an unfitted series element |
-| The AFE's own supply current (D7) | a jumper in the supply feed, so a meter can sit in it |
-| 3b, the slow ADC and DAC | footprints, unfitted, until 3a has shown what it needs to |
+| Input ranges (D1) | the ±1.25 V stage and its Due-pin switch, fitted; ±5 V selected at reset |
+| The reference at an ADC input, and at AREF (PA-7, PA-8) | the ladder's top tap on a spare ADC pin, and an unfitted series 0 ohm resistor to AREF |
+| The AFE's own supply current (D7) | a sense resistor in the 5 V feed with a test point either side, so a meter reads it with no jumper |
+| 3b, the slow ADC and DAC | fitted in version 1 (D5) |
 | Test points | on every rail, the reference, and each stage's output |
 
 Round 1 is considered done when it has answered: which converter holds the level
@@ -181,7 +177,7 @@ crosstalk), so ask them for the ADC-model simulation.
 Done since this was written: every TBC but MC-8 is frozen at its stated value
 and the decisions are one list ([afe.md](afe.md), section 16). What the owner
 sends is the contractor package ([afe/contractor-inventory.txt](afe/contractor-inventory.txt)),
-which is the rounded wording **as sent**, already out of date on construction, until D1 to D4 and D10 are decided and the package is revised.
+which is the rounded wording **as sent**, already out of date on construction, until the package is revised to the decisions of section 16.
 
 ### Reviewing each revision
 
@@ -241,5 +237,5 @@ Phase 3, the precision reference and converter pair (3a and 3b), is in version
 | PW-1 to PW-4 | 2a | VT-8, VT-6 |
 | AN-1 to AN-4, EN-1 | 2e | VT-12, VT-13 |
 | PW-5, CA-1, MC-1 to MC-12 | review | VT-14 |
-| SM-1 to SM-8, SC-11, AW-9 (all proposed, D1 to D4) | 2b, 2c, 2e | VT-4, VT-15, VT-16, VT-17 |
+| SM-3 to SM-8, SC-11 | 2b, 2c, 2e | VT-4, VT-15, VT-16, VT-17 |
 | PA-1 to PA-9 (Phase 3, D5) | 2a, 2e | PA-6's meter and reference check |
