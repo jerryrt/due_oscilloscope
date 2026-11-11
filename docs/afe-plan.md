@@ -76,7 +76,7 @@ passes only when every case meets the requirement number itself.
 | **2b** Scope channel | DC transfer over AREF 3.20 to 3.30 V and tolerance Monte Carlo; headroom to ±6 V; both ranges and the range switch; bandwidth (at least 8 MHz) and peaking; noise as a density; switched ADC-load settling; channel crosstalk surrogate; clamp currents at ±30 V and in the unpowered case; the Due's pin voltages and the parts that fail for inputs above ±30 V | SC-2 to SC-11, SM-3, PR-1 to PR-3 |
 | **2c** AWG output | Span and centring against the DAC window; step; bandwidth; the 50 Ω termination into 50 Ω and into a scope input; load, short and external ±5 V; reset and boot state; noise with a quiet source | AW-1 to AW-8, PR-4 |
 | **2d** Differential | CMRR with tolerance Monte Carlo at DC and 10 kHz; both ranges and their step; common-mode window | DF-1 to DF-4 |
-| **2e** Calibration (Phase 3) | Reference and its buffer; ladder tap impedance and settling into the ADC pins; the precision DAC's injection ahead of each range network and its switch's leakage and charge injection | PA-1 to PA-9 |
+| **2e** Calibration (Phase 3) | Reference and its buffer; ladder tap impedance and settling into the ADC pins; the BNC-tee calibration's fit on both ranges, the AWG-sense divider and its ratio switch, and the reference's output network | PA-1 to PA-9 |
 | **2f** Integration | Everything together with the multi-device packages, local decoupling and the ADC-load surrogate; wiring parasitics as sensitivity cases; phase margin; reference drift; temperature corners; every unpowered case; the whole-board noise analysis | AN-1 to AN-5, EN-1, PR-2 |
 
 A report states the KiCad and ngspice versions, model hashes, exported
@@ -203,7 +203,7 @@ run by you. Record the revision letter you accepted.
 | Item | Needed for |
 |---|---|
 | Host selects differential mode and the PGA gain (DF-1) | VT-2, VT-11 |
-| Firmware drives the range-select and calibration-switch pins, ±5 V and calibration off at reset (SC-11, PA-3) | VT-1, VT-15 |
+| Firmware drives the range-select and ratio-switch pins, ±5 V and the ratio switch off at reset, and reads the precision ADC over a software bus (SC-11, PA-3, PA-4) | VT-1, VT-15 |
 | Firmware reads the ladder taps A2 to A9 during calibration, not while capturing (PA-9) | PA-6's checks |
 | Firmware limits the DAC to the per-board range | VT-6 |
 | Host calibration of gain, offset, response and common mode | VT-1, VT-2, VT-4, VT-6 |
