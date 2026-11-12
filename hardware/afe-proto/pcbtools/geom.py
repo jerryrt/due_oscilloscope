@@ -217,10 +217,13 @@ def seg_in_box(S, box, pad=0.0):
 
 
 # ------------------------------------------------------------------------------------------------ polygons
-def points_in_polys(P, polys, off=None):
-    """(len(P), npoly) bool: point inside polygon (even-odd rule; a point exactly on an edge may go either way).
+def points_in_polys(P, polys, off=None, hole=None):
+    """(len(P), npolygon) bool: point inside polygon (even-odd rule per ring; a point exactly on an edge may go either way).
     `polys` is a list of (V, 2) vertex arrays, or, with `off`, one flat (V, 2) array plus int offsets as in
-    BoardArrays (polygon j owns polys[off[j]:off[j+1]]). Rings are closed implicitly."""
+    BoardArrays (ring j owns polys[off[j]:off[j+1]]). Rings are closed implicitly.
+    `hole` (one 0/1 flag per ring; 1 = hole) makes rings with flag 1 cut-outs of the nearest outline ring before them:
+    there is one output column per OUTLINE ring, True where the point is inside the outline and in none of its holes.
+    A leading hole with no outline before it is refused."""
     P = _pts(P)
     if off is not None:
         xy = np.asarray(polys, np.float64)
@@ -239,7 +242,18 @@ def points_in_polys(P, polys, off=None):
             with np.errstate(divide='ignore', invalid='ignore'):
                 xi = x0[None, :] + (py - y0[None, :]) * (x1 - x0)[None, :] / (y1 - y0)[None, :]
             out[a:a + step, j] = ((straddle & (px < xi)).sum(axis=1) % 2) == 1
-    return out
+    if hole is None:
+        return out
+    hole = np.asarray(hole).reshape(-1)
+    if len(hole) != len(polys):
+        raise ValueError('hole needs one flag per ring')
+    if len(hole) and hole[0]:
+        raise ValueError('a hole ring comes before any outline ring')
+    owner = np.cumsum(hole == 0) - 1                       # outline column each ring belongs to
+    res = out[:, hole == 0].copy()
+    for j in np.flatnonzero(hole == 1):
+        res[:, owner[j]] &= ~out[:, j]
+    return res
 
 
 # ------------------------------------------------------------------------------------------------ connectivity

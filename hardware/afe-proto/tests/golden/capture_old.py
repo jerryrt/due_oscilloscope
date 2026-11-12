@@ -37,13 +37,20 @@ def run(cmd, mem='3G', tmo=300):
     return p.returncode, p.stdout, None, None, 3
 
 
-NUM = re.compile(r'(?:(?P<label>[A-Za-z_][\w.>+/-]*)\s+)?(?P<v>-?\d+(?:\.\d+)?)\s*(?P<u>mm|pF|fF|um)\b')
+# One number or a slash group sharing one unit ('(46/58 mm)' -> 46 and 58), optionally preceded by a label word; plus the
+# unitless 'cap>ic.pin value' pairs LR-12 prints. Used only to read the OLD tools' text: the new Result.figures holds floats.
+_N = r'-?\d+(?:\.\d+)?'
+NUM = re.compile(r'(?:(?P<label>[A-Za-z_][\w.>+/-]*)\s+)?(?P<v>' + _N + r'(?:/' + _N + r')*)\s*(?P<u>mm|pF|fF|um)\b')
+PAIR = re.compile(r'(?P<label>[A-Za-z_]\w*>[\w.]+)\s+(?P<v>' + _N + r')(?![\d./]|\s*(?:mm|pF|fF|um)\b)')
 
 
 def figures(detail):
     out = []
     for m in NUM.finditer(detail):
-        out.append(dict(label=m.group('label'), value=float(m.group('v')), unit=m.group('u')))
+        for k, v in enumerate(m.group('v').split('/')):
+            out.append(dict(label=m.group('label') if k == 0 else None, value=float(v), unit=m.group('u')))
+    for m in PAIR.finditer(detail):
+        out.append(dict(label=m.group('label'), value=float(m.group('v')), unit=None))
     return out
 
 
@@ -103,4 +110,5 @@ def main():
         json.dump(dict(env=env(), rows=bench), f, indent=1)
 
 
-main()
+if __name__ == '__main__':
+    main()

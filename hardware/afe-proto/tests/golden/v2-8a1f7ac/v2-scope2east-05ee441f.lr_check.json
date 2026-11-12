@@ -10,6 +10,7 @@
   "python": "3.14.4"
  },
  "exit_code": 1,
+ "figures_reparsed": true,
  "fixture": "v2-scope2east-05ee441f",
  "peak_rss_kb": 1623432,
  "raw": "[PASS] LR-1: 2 layers, one bottom plane, 0 bottom runs, 37 GND pads each with its own via\n[PASS] LR-2: flow, generator, quiet zone and channel separation hold (closest divider pads 5.1 mm)\n[PASS] LR-3: 10 divider nets: no via, short, no track beside\n[PASS] LR-4: A0/A1 top only, no via (51/61 mm); FB node 8.6 mm of track; decoupling near; no pour within 0.5 mm of it\n[FAIL] LR-4 INV_MAX: AWG_FB 8.6 mm of track exceeds INV_MAX 5.0 mm [AWG_FB 8.6 mm, CH1_OUT 2.7 mm, CH2_OUT 2.5 mm]\n[FAIL] LR-12 DECOUP_MAX: C306 is 3.2 mm from U301 pin 4 (limit 3.0); C503 is 5.2 mm from U502 pin 8 (limit 3.0)\n[PASS] LR-5: sensitive copper >= 10.0 mm from U401/C409\n[PASS] LR-6: +3V3A and VNEG: one piece per consumer group after cutting the star pads\n[PASS] LR-7: DAC0 1.6 mm; back-termination at the BNC; shell pads on ground\n[FAIL] LR-8: VREF: branches [0, 1, 5] share copper (['BR503', 'J602', 'R106', 'R506', 'R509', 'U502'])\n[PASS] LR-9: SDA / SCL outside every analog courtyard but their own parts\n[FAIL] LR-10: DRC {'solder_mask_bridge': 46, 'copper_edge_clearance': 6, 'courtyards_overlap': 2, 'clearance': 107, 'silk_overlap': 19, 'silk_over_copper': 13, 'lib_footprint_mismatch': 91, 'silk_edge_clearance': 3, 'track_dangling': 1}; unconnected 1\n[FAIL] LR-11: REFCAL: outline holds [] extra, lacks ['BR508', 'BR509', 'BR510', 'BR511']; CH1: outline holds ['D201'] extra, lacks ['TP101', 'U101']; CH2: outline holds [] extra, lacks ['D201']\nFAIL: LR-4 INV_MAX, LR-12 DECOUP_MAX, LR-8, LR-10, LR-11\n",
@@ -45,6 +46,11 @@
    "clean_board": null,
    "detail": "A0/A1 top only, no via (51/61 mm); FB node 8.6 mm of track; decoupling near; no pour within 0.5 mm of it",
    "figures": [
+    {
+     "label": null,
+     "unit": "mm",
+     "value": 51.0
+    },
     {
      "label": null,
      "unit": "mm",

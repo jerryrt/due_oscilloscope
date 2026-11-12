@@ -42,5 +42,71 @@ The pcbnew group skips with an explicit reason when pcbnew is missing, **fails**
 * `s_idx`/`a_idx`/`v_idx` index the whole `board.GetTracks()` enumeration (segments, arcs and vias together).
 * `p_pin` can repeat within a footprint (shield or thermal pads): `pad_index` returns the first, `pad_indices` all.
   The old loader keyed pads by (ref, pin), last wins; the equivalence tests reproduce that.
-* Zones export filled outer rings only (no holes); layer codes 0 F.Cu, 1 B.Cu, 2 inner.
+* Zones export filled outlines and their holes as rings (`z_ring_off`, `z_vert_off`, `z_ring_hole`); a pour as KiCad 10 returns it on these boards is already fractured (HoleCount 0 on every fixture zone: a cut-out is a slit in the outline), so even-odd on the outline ring is complete; real hole rings are exported when KiCad returns them; layer codes 0 F.Cu, 1 B.Cu, 2 inner.
 * `seg_seg_dist` refuses a matrix over 256 MB; use `within` / `min_dist` for large inputs.
+
+# Stage 2: the rules, the fence rule, the command line
+
+    pcbtools/boards/v2.py        BoardConfig of the v2 board (module-level names); the ONE loader `_load_sources()` imports design.py,
+                                 floorplan.py, layout.py from tests/fixtures/v2-8a1f7ac/ by path relative to the package
+    pcbtools/boards/v2_arms.py   ARMS = [(name, rule, arm(b, cfg) -> BoardArrays)]: 28 numpy mutation arms
+    pcbtools/rules.py            lr1 lr2 lr3 lr4 lr4_inv lr12 lr5 lr6 lr7 lr8 lr9 lr11, `ROWS` in the old print order
+    pcbtools/drc.py              LR-10: kicad-cli DRC wrapper (the only KiCad-dependent rule), and its arm
+    pcbtools/fence.py            owner_of, inside_masks, violations, check_fence (the old fence_check on arrays)
+    pcbtools/mutate.py           the numpy edits the arms are written in (add_segment, add_via, move_footprint, ...)
+    pcbtools/check.py            python -m pcbtools.check BOARD.kicad_pcb|CACHE.npz --config v2 [--mutate] [--rows LR-1 ...] [--drc]
+
+## Rules
+
+`rule(b: BoardArrays, cfg) -> Result(ok, detail, figures)`. `cfg` is a config module (`pcbtools.boards.v2`) or any object with
+the same upper-case names, so a test builds a config from plain values (`tests/pcbtools/synth.py: cfg(**overrides)`).
+`detail` reproduces the old tool's printed line; `figures` holds floats (lengths, distances, counts) under stable keys.
+No rule loops over segments: segment tests are `geom` kernels, connectivity is `geom.connected_components`.
+
+What the old tool treated as "touching", kept exactly (`rules.pieces`, used by LR-6 and LR-8): two top tracks touch when an end
+of one is within 0.05 mm of the other's centre line; a track and a via when the via centre is within 0.05 mm of the centre
+line; a track and a pad when the centre line enters the pad's box grown by 0.02 mm; two vias within 0.05 mm; a via and a pad
+when the via centre is in the pad's box grown by 0.02 mm; two pads never, except the `BRIDGE_PADS` pairs; widths are not used;
+the star pads (LR-6) and source pads (LR-8) are removed before connecting. A pad is identified by (ref, pin) and the last pad of
+a repeated pin wins, as in the old loader. The top pour test of LR-4 is a point-in-ring test of the zone arrays, hole-aware
+(`geom.points_in_polys(..., hole=z_ring_hole)`); the old HitTestFilledArea's 0.02 mm accuracy is not reproduced and no verdict
+depends on it. KiCad returns these pours already fractured (a cut-out is a slit in the outline, `HoleCount` 0 on every fixture
+zone), so even-odd on the outline ring is complete; real hole rings are exported and honoured when KiCad returns them.
+
+LR-8 needs `route.KELVIN['VREF']`, which lives in a module that imports pcbnew; its two lists are in `boards/v2.py`
+(`VREF_SOURCE`, `VREF_BRANCHES`, from commit 8a1f7ac) and are the one copy of that data outside route.py.
+
+## Differences from the old tool (each tested in tests/pcbtools/test_rules_equivalence.py)
+
+| where | old | new | effect |
+|---|---|---|---|
+| segment-in-box, segment-near-segment (LR-1, 3, 9, pieces) | any sample point every 0.05-0.5 mm | exact test | none on the 7 fixtures |
+| LR-5 distance figure | nearest sample point (0.5 mm step) | exact distance to the box | figure can only be smaller; verdicts equal |
+| printed 0.1 mm figures sitting on x.x5 | float sum of nm integers | float sum of 1e-6 rounded coordinates | 5 rows print 1.4 for 1.5 or 1.8 for 1.9 (CH2_OUT 1.45 on four boards, DAC0 1.85 on awg): the value is the same, the rounding of an exact half differs |
+| LR-4 pour-near-FB arm | a point list `extra_top_gnd` | a top GND track (and an added zone arm for the pour test) | arm detail says `GND track`, not `added ground copper` |
+| LR-4 pour test | HitTestFilledArea(accuracy 0.02) | even-odd, hole-aware, no accuracy | none |
+| LR-6 missing star pads message | set iteration order | config list order | order only (never printed on a passing board) |
+| arcs | read as chords | not on any fixture; `a_*` arrays are ignored by the rules (fence compares arc ends) | none |
+
+## Fence rule (pcbtools/fence.py)
+
+    owner_of(ref, cfg) -> str | None
+    inside_masks(b, block, cfg) -> (seg_mask, arc_mask, via_mask)        wholly inside ONE fence of the block (closed, 1e-6 mm)
+    violations(base, blk, block, cfg) -> list[str]                       the old tool's lines
+    check_fence(base, blk, block, cfg) -> FenceResult(violations, foreign_moved, outside_changed_idx, ok)
+
+`outside_changed_idx` is `{'base': {'s_idx','a_idx','v_idx'}, 'blk': {...}}`: the KiCad track enumeration indices of the items
+outside the block's fences that exist in one board and not in the other (what an editor removes or restores). `cfg` names:
+`FENCES`, `HUNDREDS`, `OWNER_OVERRIDE`, `TOL_MM`. Item keys print as the old tool printed them (F.Cu 0, B.Cu 2; part sides 0 / 31).
+
+## Tests
+
+    python -m pytest -c tests/pytest.ini -m "not pcbnew and not ngspice" tests     # numpy tier
+    PCB_PYTHON=python tests/run_pcbnew_tests.sh                                     # pcbnew tier, prints 'attempt N of 3'
+    python tests/pcbtools/mutate_rules.py                                           # mutation proof of the rules and fence
+
+`test_rules_synthetic.py` (hand-built boards, exact figures, both sides of every limit), `test_fence.py`, `test_rules_equivalence.py`
+(every rule x every board against the old tool's golden; arms against the old `--mutate` output; fence against fence_check),
+`test_rules_live.py` (pcbnew: the live read gives the same rows; LR-10 through kicad-cli against the old DRC rows).
+The pcbnew tier prints every start-up retry; a retry is a finding, not a cost.
+Under a memory cap: `capped.sh -m 3G -t 300 <command>`; never more than two heavy jobs at once.

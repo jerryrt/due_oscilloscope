@@ -139,7 +139,7 @@ def test_seg_seg_chunking_is_exact(monkeypatch):
 
 
 def test_matrix_guard():
-    with pytest.raises(MemoryError):
+    with pytest.raises(MemoryError, match='use within'):         # the guard's own message, not numpy's allocation failure
         geom.seg_seg_dist(np.zeros((20000, 4)), np.zeros((20000, 4)))
 
 
@@ -257,6 +257,32 @@ def test_points_in_polys():
     assert (geom.points_in_polys(P, flat, off) == got[:, :2]).all()
     assert geom.points_in_polys(P, []).shape == (400, 0)
     assert not geom.points_in_polys(P, [np.array([[0, 0], [1, 1]], float)]).any()          # degenerate polygon
+
+
+def test_points_in_polys_holes():
+    """ring-with-a-hole fixture: outline 0..10 square, hole 4..6 square, then a second outline 20..24 with no hole"""
+    outer = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], float)
+    hole = np.array([[4, 4], [6, 4], [6, 6], [4, 6]], float)
+    other = np.array([[20, 0], [24, 0], [24, 4], [20, 4]], float)
+    P = np.array([[1., 1.], [5., 5.], [12., 5.], [22., 2.], [5., 3.9], [3.9, 5.]])
+    got = geom.points_in_polys(P, [outer, hole, other], hole=[0, 1, 0])
+    assert got.shape == (6, 2)
+    # in the ring, in the hole, outside, in the second outline, just outside the hole (in the ring) twice
+    assert got[:, 0].tolist() == [True, False, False, False, True, True]
+    assert got[:, 1].tolist() == [False, False, False, True, False, False]
+    # the flat BoardArrays layout gives the same
+    flat = np.vstack([outer, hole, other]); off = np.array([0, 4, 8, 12])
+    assert (geom.points_in_polys(P, flat, off, hole=[0, 1, 0]) == got).all()
+    # a hole belongs to the nearest outline BEFORE it, not to the first one: other, outer, hole
+    g2 = geom.points_in_polys(P, [other, outer, hole], hole=[0, 0, 1])
+    assert g2[:, 0].tolist() == [False, False, False, True, False, False]
+    assert g2[:, 1].tolist() == [True, False, False, False, True, True]
+    # without the flags a hole is its own polygon: the point in the hole is inside two rings
+    assert geom.points_in_polys(P, [outer, hole, other])[1].tolist() == [True, True, False]
+    with pytest.raises(ValueError):
+        geom.points_in_polys(P, [hole, outer], hole=[1, 0])
+    with pytest.raises(ValueError):
+        geom.points_in_polys(P, [outer, hole], hole=[0])
 
 
 # ----------------------------------------------------------------------------- connectivity

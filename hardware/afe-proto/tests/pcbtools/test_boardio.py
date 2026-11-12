@@ -39,7 +39,7 @@ def synthetic():
 def test_default_constructor_has_empty_groups():
     b = B.BoardArrays()
     assert len(b.s_idx) == len(b.v_idx) == len(b.fp_idx) == len(b.p_fp) == len(b.z_layer) == 0
-    assert b.nets == ('',) and b.fp_ref == () and b.outline.shape == (0, 2) and b.z_poly_off.tolist() == [0]
+    assert b.nets == ('',) and b.fp_ref == () and b.outline.shape == (0, 2) and b.z_ring_off.tolist() == [0]
     with pytest.raises(Exception):
         b.copper_layers = 4            # frozen
 
@@ -48,7 +48,7 @@ def test_group_length_mismatch_is_refused():
     with pytest.raises(ValueError):
         B.BoardArrays(s_idx=[0, 1], s_x0=[0.0])
     with pytest.raises(ValueError):
-        B.BoardArrays(z_layer=[0], z_net=[1], z_filled=[True], z_poly_off=[0, 1], z_vert_off=[0, 3], z_xy=np.zeros((2, 2)))
+        B.BoardArrays(z_layer=[0], z_net=[1], z_filled=[True], z_ring_off=[0, 1], z_vert_off=[0, 3], z_ring_hole=[0], z_xy=np.zeros((2, 2)))
 
 
 def test_helpers():
@@ -154,7 +154,9 @@ def test_cached_arrays_are_sane():
     allidx = np.sort(np.concatenate([b.s_idx, b.a_idx, b.v_idx]))
     assert np.array_equal(allidx, np.arange(len(allidx)))                                  # tracks partition GetTracks()
     assert np.array_equal(np.round(b.s_x0, 6), b.s_x0)                                      # 1e-6 rounding
-    assert b.z_poly_off[-1] == len(b.z_vert_off) - 1 and b.z_vert_off[-1] == len(b.z_xy)
+    assert b.z_ring_off[-1] == len(b.z_vert_off) - 1 == len(b.z_ring_hole) and b.z_vert_off[-1] == len(b.z_xy)
+    # KiCad hands these pours back fractured (a cut-out is a slit in the outline, HoleCount 0), so the hole flags are all 0 here
+    assert set(b.z_ring_hole.tolist()) == {0}
     has = ~np.isnan(b.fp_cx0)
     assert has.sum() > 50 and (b.fp_cx1[has] > b.fp_cx0[has]).all() and (b.fp_cy1[has] > b.fp_cy0[has]).all()
     inside = (b.fp_x >= b.outline[:, 0].min() - 1) & (b.fp_x <= b.outline[:, 0].max() + 1)

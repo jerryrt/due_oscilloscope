@@ -10,6 +10,7 @@
   "python": "3.14.4"
  },
  "exit_code": 0,
+ "figures_reparsed": true,
  "fixture": "v2-integrated-990d4b03",
  "peak_rss_kb": 323452,
  "raw": "N-N                  pour=False window 8x30 mm  C = 0.00 fF (reverse 0.00 fF)\nN-N                  pour=True  window 8x30 mm  C = 0.00 fF (reverse 0.00 fF)\nNP-NP (+IN pads)     pour=False window 7x24 mm  C = 0.15 fF (reverse 0.15 fF)\nNP-NP (+IN pads)     pour=True  window 7x24 mm  C = 0.04 fF (reverse 0.04 fF)\n/AWG_FB self capacitance to everything else (tracks and pads, no package): no pour 0.730 pF, with the top pour (kept 0.3 mm off) 0.856 pF\n",

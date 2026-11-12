@@ -39,8 +39,9 @@ SPEC = {
     'silk': [('t_text', 'S')] + [(n, _F) for n in ('t_x', 't_y', 't_h')],
     'zones': [('z_layer', 'i1'), ('z_net', 'i4'), ('z_filled', '?')],
 }
-# zone geometry: z_xy (V,2), z_poly_off (nz+1) int64, z_vert_off (npoly+1) int64
-_ZGEO = [('z_xy', 'xy'), ('z_poly_off', 'off'), ('z_vert_off', 'off')]
+# zone geometry: z_xy (V,2), z_ring_off (nz+1) int64 zone -> ring, z_vert_off (nring+1) int64 ring -> vertex,
+# z_ring_hole (nring) int8: 0 = outline ring, 1 = hole ring (a hole belongs to the nearest outline before it)
+_ZGEO = [('z_xy', 'xy'), ('z_ring_off', 'off'), ('z_vert_off', 'off'), ('z_ring_hole', 'i1')]
 PAD_SHAPES = {'circle': 0, 'rect': 1, 'oval': 2, 'roundrect': 3, 'other': 4}
 R_LAYERS = {'F.SilkS': 0, 'B.SilkS': 1, 'F.Fab': 2, 'other': 3}
 
@@ -81,11 +82,15 @@ def _post_init(self):
         if len(ns) != 1:
             raise ValueError(f'BoardArrays group {g}: fields differ in length: '
                              f'{ {n: len(getattr(self, n)) for n, _ in fields} }')
-    nz, npoly = len(self.z_layer), len(self.z_vert_off) - 1
-    if len(self.z_poly_off) != nz + 1 and not (nz == 0 and len(self.z_poly_off) == 1):
-        raise ValueError('z_poly_off must have one entry more than there are zones')
-    if self.z_poly_off[-1] != npoly or self.z_vert_off[-1] != len(self.z_xy):
-        raise ValueError('zone offsets do not close over the polygon / vertex arrays')
+    nz, nring = len(self.z_layer), len(self.z_vert_off) - 1
+    if len(self.z_ring_off) != nz + 1 and not (nz == 0 and len(self.z_ring_off) == 1):
+        raise ValueError('z_ring_off must have one entry more than there are zones')
+    if self.z_ring_off[-1] != nring or self.z_vert_off[-1] != len(self.z_xy):
+        raise ValueError('zone offsets do not close over the ring / vertex arrays')
+    if len(self.z_ring_hole) != nring:
+        raise ValueError('z_ring_hole must have one flag per ring')
+    if nring and self.z_ring_hole.min() < 0 or nring and self.z_ring_hole.max() > 1:
+        raise ValueError('z_ring_hole flags are 0 (outline) or 1 (hole)')
 
 
 def _make():
@@ -314,23 +319,25 @@ def _extract(pcb, b, path):
         x, y = to_due(np.array([t[1] for t in T]) * U, np.array([t[2] for t in T]) * U)
         kw.update(t_text=[t[0] for t in T], t_x=_r(x), t_y=_r(y), t_h=_r(np.array([t[3] for t in T]) * U))
 
-    # zones: filled outlines only (holes are not exported)
-    zl, zn, zf, xy, poff, voff = [], [], [], [], [0], [0]
+    # zones: filled outlines and their holes, as rings
+    zl, zn, zf, xy, roff, voff, rhole = [], [], [], [], [0], [0], []
     for z in b.Zones():
         lay = z.GetLayer()
         zl.append(_layer(pcb, lay)); zn.append(z.GetNetCode()); zf.append(bool(z.IsFilled()))
         if z.IsFilled():
             ps = z.GetFilledPolysList(lay)
             for k in range(ps.OutlineCount()):
-                ch = ps.Outline(k)
-                pts = [(ch.CPoint(j).x, ch.CPoint(j).y) for j in range(ch.PointCount())]
-                xy.extend(pts)
-                voff.append(voff[-1] + len(pts))
-        poff.append(len(voff) - 1)
+                rings = [(0, ps.Outline(k))] + [(1, ps.Hole(k, h)) for h in range(ps.HoleCount(k))]
+                for hole, ch in rings:
+                    pts = [(ch.CPoint(j).x, ch.CPoint(j).y) for j in range(ch.PointCount())]
+                    xy.extend(pts)
+                    voff.append(voff[-1] + len(pts))
+                    rhole.append(hole)
+        roff.append(len(voff) - 1)
     if zl:
         a = np.array(xy, np.float64).reshape(-1, 2) * U
         x, y = to_due(a[:, 0], a[:, 1])
-        kw.update(z_layer=zl, z_net=zn, z_filled=zf, z_xy=np.column_stack([_r(x), _r(y)]), z_poly_off=poff, z_vert_off=voff)
+        kw.update(z_layer=zl, z_net=zn, z_filled=zf, z_xy=np.column_stack([_r(x), _r(y)]), z_ring_off=roff, z_vert_off=voff, z_ring_hole=rhole)
 
     # outline: the Edge.Cuts polygon(s), concatenated outer rings (a single ring on these boards)
     ps = pcb.SHAPE_POLY_SET()
@@ -343,6 +350,9 @@ def _extract(pcb, b, path):
         x, y = to_due(a[:, 0], a[:, 1])
         kw['outline'] = np.column_stack([_r(x), _r(y)])
     return BoardArrays(path=path, copper_layers=b.GetCopperLayerCount(), nets=nets, **kw)
+
+
+LAST_ATTEMPTS = {'n': 0}        # attempts the last read_board_retry used (1 = first try); anything above 1 is a finding to report
 
 
 def read_board_retry(path, tries=3, timeout=120):
@@ -358,6 +368,10 @@ def read_board_retry(path, tries=3, timeout=120):
             p = subprocess.run([sys.executable, '-m', 'pcbtools.boardio', str(path), out], cwd=here, capture_output=True,
                                text=True, timeout=timeout)
             if p.returncode == 0:
+                LAST_ATTEMPTS['n'] = attempt + 1
+                if attempt:
+                    print(f'read_board_retry: attempt {attempt + 1} of {tries} succeeded after {attempt} signal death(s) '
+                          '(pcbnew start-up segfault): a finding, not a cost', file=sys.stderr)
                 return load_npz(out)
             last = f'rc={p.returncode}\n{p.stderr[-2000:]}'
             if p.returncode >= 0:      # a real error, not a signal death: do not retry

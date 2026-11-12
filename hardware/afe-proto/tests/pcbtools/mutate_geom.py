@@ -34,10 +34,18 @@ MUTANTS = [
     ('seg_in_box: pad ignored on the high side', "box[None, :, 2] + pad)", "box[None, :, 2])"),
     ('seg_in_box: parallel case not range-checked', "ok &= ~par | ((o >= lo) & (o <= hi))", "ok &= True"),
     ('points_in_polys: parity test off', "% 2) == 1", "% 2) >= 1 if False else (np.abs(straddle & (px < xi)).sum(axis=1) > 0)"),
+    ('points_in_polys: holes ignored', "res[:, owner[j]] &= ~out[:, j]", "res[:, owner[j]] &= True"),
+    ('points_in_polys: hole cuts the wrong outline', "owner = np.cumsum(hole == 0) - 1", "owner = np.cumsum(hole == 0) * 0"),
     ('connected_components: directed strong', "_cc(g, directed=False)", "_cc(g, directed=True, connection='strong')"),
     ('seg_len: manhattan', "return np.hypot(S[:, 2] - S[:, 0], S[:, 3] - S[:, 1])", "return np.abs(S[:, 2] - S[:, 0]) + np.abs(S[:, 3] - S[:, 1])"),
     ('matrix guard removed', "if n * m * 8 > MAX_MATRIX_BYTES:", "if False:"),
 ]
+
+
+def _limit():
+    """a mutant that removes a guard must fail, not eat the machine: the child gets a 2 GB address-space limit"""
+    import resource
+    resource.setrlimit(resource.RLIMIT_AS, (2 << 30, 2 << 30))
 
 
 def run(tag, edit):
@@ -54,7 +62,7 @@ def run(tag, edit):
         open(g, 'w').write(s.replace(old, new))
     p = subprocess.run([sys.executable, '-m', 'pytest', '-q', '-x', '-p', 'no:cacheprovider', '-o', 'pythonpath=' + d,
                         os.path.join(HERE, 'test_geom.py')], capture_output=True, text=True, cwd=ROOT, timeout=300,
-                       env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
+                       preexec_fn=_limit, env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PCBTOOLS_ROOT=d))
     tail = p.stdout.strip().splitlines()[-1] if p.stdout.strip() else p.stderr[-200:]
     return ('PASSED' if p.returncode == 0 else 'FAILED') + ' | ' + tail
 
