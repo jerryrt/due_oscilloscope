@@ -3,8 +3,11 @@
     /usr/bin/python3.14 -I lr_check.py [board.kicad_pcb]        exit 0 only if every rule passes
 
 What each check reads, so a pass is not mistaken for more than it is:
-  LR-1  every bottom-layer track that is not GND: none may touch an analog part's courtyard (blocks ch1, ch2, vmid,
-        awg, cal, inflated by ZONE_PAD), and each connected bottom run must be a short hop (<= HOP_MAX).
+  LR-1  every bottom-layer track that is not GND: none may touch a no-bottom zone (layout.NOBOTTOM, Due-coordinate
+        rectangles, when layout.py defines it; else the courtyards of blocks ch1, ch2, vmid, awg, cal inflated by
+        ZONE_PAD), and each connected bottom run must be a short hop (<= HOP_MAX).
+  LR-1  plane integrity: vias per 10 x 10 mm cell are reported, and a line of more than PLANE_VIAS vias inside a
+        PLANE_WIN mm window (a perforated plane) fails; fewer are reported only.
   LR-4  A0 and A1: no via and no bottom-layer copper; their lengths are printed for the capacitance budget.
   LR-5  no copper of a sensitive net (ADC lines, reference, ladder taps, sense and the channels' high-impedance
         side) within KEEPOUT of the rail generator's or its flying capacitor's courtyard.
@@ -27,6 +30,8 @@ import design  # noqa: E402
 BOARD = os.path.join(HERE, 'afe-proto.kicad_pcb')
 ANALOG = ('ch1', 'ch2', 'vmid', 'awg', 'cal')
 ZONE_PAD = 0.3          # mm added round each analog courtyard (design value)
+PLANE_WIN = 3.0         # mm window for the perforated-plane check
+PLANE_VIAS = 6          # more vias than this in a line within PLANE_WIN fails
 HOP_MAX = 5.0           # mm: the longest bottom-layer hop LR-1 calls "short" (design value)
 KEEPOUT = 10.0          # mm, LR-5
 GENERATOR = ('U7', 'C31')                       # LM27762 and its flying capacitor
@@ -164,12 +169,22 @@ def copper_pieces(net, segs, vias, pads, cut=()):
 def main(path):
     b, fps, block, boxes, segs, vias, pads = load(path)
     analog = {r: bx for r, bx in boxes.items() if block.get(r) in ANALOG}
+    zones = {}          # LR-1's zones: layout.NOBOTTOM when present (Due x, Yup -> KiCad x = 50 + x, y = 150 - Yup)
+    nb = getattr(__import__('layout'), 'NOBOTTOM', None)
+    if nb is not None:
+        for k, r in enumerate(nb):
+            bx = Box(f'zone{k}', pcb.BOX2I(pcb.VECTOR2I(0, 0), pcb.VECTOR2I(0, 0)))
+            bx.x0, bx.x1 = 50.0 + min(r[0], r[2]), 50.0 + max(r[0], r[2])
+            bx.y0, bx.y1 = 150.0 - max(r[1], r[3]), 150.0 - min(r[1], r[3])
+            zones[bx.ref] = bx
+    else:
+        zones = analog
     netrefs = defaultdict(set)
     for r, n, nn, p in pads:
         netrefs[nn].add(r)
     fails = []
 
-    def check(name, bad, ok_detail, limit=8):
+    def check(name, bad, ok_detail, limit=int(os.environ.get("LR_LIMIT", "8"))):
         print(f'[{"PASS" if not bad else "FAIL"}] {name}: ' + (ok_detail if not bad else f'{len(bad)} found'))
         for x in bad[:limit]:
             print('      ', x)
@@ -180,11 +195,31 @@ def main(path):
     bsegs = [s for s in segs if s[1] == pcb.B_Cu and s[0] != '/GND']
     under = []
     for s in bsegs:
-        for r, bx in analog.items():
+        for r, bx in zones.items():
             if bx.hits_seg(s[2], s[3], s[4]):
-                under.append(f'{s[0]} bottom track at {tuple(round(v, 2) for v in due(pcb.VECTOR2I(pcb.FromMM(s[2][0]), pcb.FromMM(s[2][1]))))} under {r} ({block[r]})')
+                under.append(f'{s[0]} bottom track at {tuple(round(v, 2) for v in due(pcb.VECTOR2I(pcb.FromMM(s[2][0]), pcb.FromMM(s[2][1]))))} in zone {r} ({block.get(r, "NOBOTTOM")})')
                 break
-    check('LR-1 no bottom track under an analog part', under, f'{len(bsegs)} bottom tracks, none under one')
+    check(f'LR-1 no bottom track in a no-bottom zone ({len(zones)} zones, {"layout.NOBOTTOM" if nb is not None else "courtyards"})',
+          under, f'{len(bsegs)} bottom tracks, none in one')
+
+    # plane integrity: vias per 10 mm cell, and the densest line of vias in a PLANE_WIN window
+    cells = defaultdict(int)
+    for v in vias:
+        cells[(int(v[1][0] // 10), int(v[1][1] // 10))] += 1
+    print('      vias per 10 mm cell (Due x, Yup of the cell corner): ' + ', '.join(
+        f'({10 * cx - 50},{150 - 10 * cy - 10}):{n}' for (cx, cy), n in sorted(cells.items(), key=lambda kv: -kv[1])[:6]))
+    perf = []
+    for horiz in (True, False):
+        for v in vias:
+            u0 = v[1][0] if horiz else v[1][1]          # window start along the line
+            w0 = v[1][1] if horiz else v[1][0]          # the line's perpendicular position (within 0.3 mm)
+            n = sum(1 for q in vias if abs((q[1][1] if horiz else q[1][0]) - w0) <= 0.3
+                    and 0 <= (q[1][0] if horiz else q[1][1]) - u0 <= PLANE_WIN)
+            if n > PLANE_VIAS:
+                perf.append((n, f'{n} vias in a {PLANE_WIN:.0f} mm {"horizontal" if horiz else "vertical"} line at '
+                                f'Due {tuple(round(t, 1) for t in due(pcb.VECTOR2I(pcb.FromMM(v[1][0]), pcb.FromMM(v[1][1]))))}'))
+    perf = [p for _, p in sorted(set(perf), reverse=True)]
+    check(f'LR-1 plane not perforated (<= {PLANE_VIAS} vias in a line within {PLANE_WIN:.0f} mm)', perf, f'{len(vias)} vias, none in a dense line')
     # bottom runs: chain the bottom segments of a net by shared end points
     runs = []
     bynet = defaultdict(list)

@@ -22,7 +22,7 @@ import numpy as np    # noqa: E402
 import pcbnew as pcb  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BOARD = os.path.join(HERE, 'afe-proto.kicad_pcb')
+BOARD = os.environ.get('AFE_BOARD') or os.path.join(HERE, 'afe-proto.kicad_pcb')
 
 RES = 0.05                     # mm per cell
 CLR = 0.20                     # copper clearance
@@ -33,13 +33,41 @@ VIA_HOLE_PITCH = 0.60           # via centres at least this far apart (hole to h
 EDGE_CLR = 0.30
 POWER = {'+3V3A', 'VNEG', '+5V_DUE', '+5V_F', 'LM_CP', 'LM_C1P', 'LM_C1N', 'AWG_VCC', 'AWG_VEE', 'AWG_VPX',
          'AWG_VNX', 'AWG_BV', 'AWG_MV', 'CH1_VCC', 'CH2_VCC', '+3V3_DUE'}
-B_COST = 2.0
+B_COST = 2.0                   # B.Cu cost factor with the no-bottom zones off (and the historical value)
+B_COST_ZONED = 3.0             # with zones on: a bottom run outside them should be a short hop, so F.Cu is preferred
+ZONE_BLOCKS = ('ch1', 'ch2', 'vmid', 'awg', 'cal')   # layout rule LR-1: no signal trace on B.Cu under these
+ZONE_PAD = 0.3
+USE_ZONES = os.environ.get('AFE_NOZONES') != '1'     # AFE_NOZONES=1 disables the mechanism (to test lr_check.py)
 ESCAPE = 0.8                   # mm of channel reserved straight out from each signal pad, before anything routes
 VIA_COST = 30.0                # in cells (1.5 mm of track)
 TURN_COST = 2.0
 WINDOW = 8.0                   # mm around a connection's endpoints; widened on failure
 LAYERS = (pcb.F_Cu, pcb.B_Cu)
 DIRS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+
+
+def nobottom_rects(board):
+    """The no-bottom-track zones as KiCad-mm rectangles (x0, y0, x1, y1): layout.NOBOTTOM (Due coordinates, x right,
+    Yup up: KiCad (x, y) = (50 + x, 150 - Yup)) when present, else the courtyards of the parts of ZONE_BLOCKS
+    inflated by ZONE_PAD."""
+    if not USE_ZONES:
+        return []
+    import layout
+    nb = getattr(layout, 'NOBOTTOM', None)
+    if nb is not None:
+        return [(50.0 + min(r[0], r[2]), 150.0 - max(r[1], r[3]), 50.0 + max(r[0], r[2]), 150.0 - min(r[1], r[3]))
+                for r in nb]
+    import design
+    blk = {p['ref']: p['block'] for p in design.PARTS}
+    out = []
+    for f in board.GetFootprints():
+        if blk.get(f.GetReference()) in ZONE_BLOCKS:
+            f.BuildCourtyardCaches()
+            c = f.GetCourtyard(pcb.F_CrtYd).BBox()
+            if c.GetWidth():
+                out.append((mm(c.GetLeft()) - ZONE_PAD, mm(c.GetTop()) - ZONE_PAD,
+                            mm(c.GetRight()) + ZONE_PAD, mm(c.GetBottom()) + ZONE_PAD))
+    return out
 
 
 def mm(v):
@@ -168,6 +196,12 @@ class Router:
         self.b, self.g, self.netid = board, g, netid
         self.names = {v: k for k, v in netid.items()}
         self.via_cache = {}
+        self.zone = np.zeros((g.ny, g.nx), np.bool_)       # B.Cu cells where a signal track may not go (LR-1)
+        for (x0, y0, x1, y1) in nobottom_rects(board):      # grown by half the widest track: its edge counts too
+            x0 -= W_PWR / 2; y0 -= W_PWR / 2; x1 += W_PWR / 2; y1 += W_PWR / 2
+            ix0 = max(int(math.floor((x0 - g.x0) / RES)), 0); ix1 = min(int(math.ceil((x1 - g.x0) / RES)), g.nx - 1)
+            iy0 = max(int(math.floor((y0 - g.y0) / RES)), 0); iy1 = min(int(math.ceil((y1 - g.y0) / RES)), g.ny - 1)
+            self.zone[iy0:iy1 + 1, ix0:ix1 + 1] = True
         self.track_n = 0; self.via_n = 0
         self.netinfo = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()} \
             if hasattr(board.GetNetInfo(), 'NetsByName') else None
@@ -216,10 +250,15 @@ class Router:
         kv = int(math.ceil((VIA_D / 2 + CLR + TOL - W_SIG / 2) / RES))
         kp = int(math.ceil((VIA_D / 2 + 0.05) / RES))
         leg, via = [], None
+        gndnet = self.names[net] == '/GND'
+        bcost = B_COST_ZONED if self.zone.any() else B_COST
         for L in (0, 1):
             h = g.halo[L].reshape(g.ny, nx)[iy1:iy2 + 1, ix1:ix2 + 1]
             ok = (h == 0) | (h == net)
             lg = box_all(ok, kw) if kw else ok
+            if L == 1 and not gndnet:
+                # LR-1: no signal track on B.Cu inside a zone; the via mask below uses the unrestricted `ok`
+                lg = lg & ~self.zone[iy1:iy2 + 1, ix1:ix2 + 1]
             leg.append(bytes(lg.ravel().astype(np.uint8)))
             pc = g.padcu[L].reshape(g.ny, nx)[iy1:iy2 + 1, ix1:ix2 + 1]
             v = box_all(ok, kv) & ~box_any(pc, kp)
@@ -280,7 +319,7 @@ class Router:
                 return out[::-1]
             x = li % W
             lb = leg[L]
-            mult = B_COST if L else 1.0
+            mult = bcost if L else 1.0
             d0 = dirn[key]
             for k, (off, c, dk) in enumerate(nb):
                 xx = x + dxs[k]
@@ -422,7 +461,25 @@ class Job:
             ax, ay, bx, by = ia % g.nx, ia // g.nx, ib % g.nx, ib // g.nx
             n = max(abs(bx - ax), abs(by - ay), 1)
             return [int(round(ay + (by - ay) * k / n)) * g.nx + int(round(ax + (bx - ax) * k / n)) for k in range(n + 1)]
+        zr = nobottom_rects(self.board)
+
+        def resolve(p):
+            """a waypoint is (x, Yup) or ('pad', ref, number[, dx, dy]): the centre of that pad (plus an offset)"""
+            if isinstance(p[0], str):
+                f = self.board.FindFootprintByReference(p[1])
+                pd = f.FindPadByNumber(str(p[2]))
+                q = pd.GetPosition()
+                return (mm(q.x) - 50.0 + (p[3] if len(p) > 3 else 0.0), 150.0 - mm(q.y) + (p[4] if len(p) > 4 else 0.0))
+            return p
         for net, lay, pts, w in getattr(layout, 'PREROUTE', []):
+            pts = [resolve(p) for p in pts]
+            if lay != 'F' and net != 'GND':
+                for a, b in zip(pts, pts[1:]):
+                    if any(z[0] <= 50.0 + a[0] + (b[0] - a[0]) * t / 40 <= z[2] and
+                           z[1] <= 150.0 - (a[1] + (b[1] - a[1]) * t / 40) <= z[3] for z in zr for t in range(41)):
+                        print(f'WARNING: B-layer pre-route of {net} enters a no-bottom zone at Due {a}-{b} '
+                              f'(kept as drawn)', flush=True)
+                        break
             L = 0 if lay == 'F' else 1
             cells = []
             for a, b in zip(pts, pts[1:]):
@@ -543,13 +600,16 @@ class Job:
         return still
 
 
+EARLY = ('VREF', '+3V3A', 'VNEG', 'AWG_BNC')      # board-crossing nets: routed first, while the lanes are free
+
+
 def route(board):
     """GND vias, then supplies, then signals (shortest first); then rip-up and reroute of whatever failed."""
     import time
     t0 = time.time()
     job = Job(board)
     nets = [job.gnd] + sorted((n for n in job.bynet if n != job.gnd and len(job.bynet[n]) > 1),
-                              key=lambda n: (job.names[n].lstrip('/') not in POWER, job.span(n), job.names[n]))
+                              key=lambda n: (job.names[n].lstrip('/') not in EARLY, job.names[n].lstrip('/') not in POWER, job.span(n), job.names[n]))
     fails = {}
     for k, n in enumerate(nets):
         tn = time.time()

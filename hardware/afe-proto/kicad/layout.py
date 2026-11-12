@@ -31,76 +31,65 @@ def put(ref, x, y, rot=0):
 
 
 # --------------------------------------------------------------------------------------------- scope channels
-CH = {  # ref names per channel, same order as design.SC
-    'CH1': dict(y0=41.91, r1=('R10', 'R11', 'R1'), c1='C1', rnp='R52', u='U1', rf='R30', sw='U10', rg='R36',
-                csw='C28', rpd='R66', cpin='C13', c10='C44', rsup='R71', riso='R55', dk='D5',
-                nside=('R14', 'R18', 'C9', 'C3', 'C4'), c2t='C10', r3=('R15', 'R3')),
-    'CH2': dict(y0=24.13, r1=('R12', 'R13', 'R2'), c1='C2', rnp='R53', u='U2', rf='R31', sw='U11', rg='R37',
-                csw='C29', rpd='R67', cpin='C14', c10='C45', rsup='R72', riso='R56', dk='D6',
-                nside=('R16', 'R19', 'C11', 'C5', 'C6'), c2t='C12', r3=('R17', 'R4')),
-}
-for ch, c in CH.items():
-    y = c['y0']
-    # input row, right to left: R1 = 330k, 330k, 100k (pin 1 toward the BNC: rotation 180), then Rnp
-    for ref, x in zip(c['r1'], (90.3, 86.9, 83.5)):
-        put(ref, x, y, 180)
-    put(c['rnp'], 80.1, y, 180)                 # N on its right, NP on its left
-    put(c['c1'], 86.9, y + 2.0, 180)            # IN (right) over the chain to N (left)
-    # op-amp at 90: +IN (right end of the bottom edge) on the row, 1.7 left of Rnp's NP pad
-    put(c['u'], 76.6, y + 1.137, 90)
-    put(c['rf'], 76.6, y + 4.1, 0)              # OUT (left pad) and -IN (right pad) just over the op-amp
-    put(c['rg'], 79.6, y + 3.4, 270)            # RG beside -IN: -IN on top, the channel's Vmid below
-    put(c['sw'], 72.6, y + 4.9, 0)              # range switch left of RF: S1 (bottom-right) next to RF's OUT pad
-    put(c['csw'], 69.8, y + 4.9, 90)            # its VDD decoupling on the VDD pin (left-middle)
-    put(c['rpd'], 67.9, y + 4.9, 270)           # SEL's pull-down, its D16 / D39 pad (pin 1) on top
-    # supply branch toward V+ (op-amp top-left): 1R from +3.3 V_A, 10 uF, then 100 nF at the pin
-    put(c['cpin'], 73.1, y + 2.274, 180)
-    put(c['c10'], 69.5, y + 2.274, 0)
-    put(c['rsup'], 65.9, y + 2.274, 0)
-    # output: Riso from OUT (op-amp bottom-left) to the left, the clamp's ADC pin (pin 3) facing it
-    put(c['riso'], 72.4, y, 180)
-    put(c['dk'], 67.9, y - 1.2, 0)
-    # under N: R3's first part, R2 and the C2 parts, N on top (rotation 270: pin 1 up); C2's series pair side by side
-    for ref, x in zip(c['nside'] + (c['c2t'],), (79.2, 81.0, 82.8, 84.6, 86.4, 88.2)):
-        put(ref, x, y - 2.4, 270)
-    put(c['r3'][0], 76.4, y - 3.225, 180)       # R3 chain on to the left, toward the 3.3 V sense node
-    put(c['r3'][1], 72.8, y - 3.225, 180)
+# D18: each channel is a unity follower.  The two share one TPH2502 (U1, SOIC-8) at 90 degrees in the strip between
+# their input rows: its south pads 1 OUT / 2 -IN / 3 +IN / 4 GND are CH2's, its north pads 8 V+ / 7 OUT / 6 -IN / 5 +IN
+# CH1's, OUT at the west end and +IN at the east end of each (-IN and OUT are neighbours, so the follower's link is one
+# short trace).  Pads (Due coordinates): south row y 30.545, north row y 35.495, x 74.095 / 75.365 / 76.635 / 77.905.
+# Each channel is one line from its BNC west along its row (R1's three parts, N, Rnp), then up (CH2) or down (CH1) to +IN;
+# the N-side parts (R2, C2 to the channel's Vmid, and R3's chain to the 3.3 V sense node) hang on the strip side of the
+# row, and OUT leaves west through Riso and the pin clamp toward A0 / A1.
+Y1, Y2 = 44.45, 24.13                           # the two input rows (J1, J2), both centres of a gap between XIO pin rows
+DUAL = (76.0, (Y1 + Y2) / 2)
+put('U1', DUAL[0], DUAL[1], 90)
+CHP = dict(CH1=dict(r1=('R10', 'R11'), c1='C1', rnp='R52', r2a='R18', r2b='R1', r3='R14', c2='C9'),
+           CH2=dict(r1=('R12', 'R13'), c1='C2', rnp='R53', r2a='R19', r2b='R2', r3='R16', c2='C11'))
+# The N-side parts (R2 = two resistors to GND, R3 to VREF, C2 to GND) stand on the FAR side of the row from the dual, so
+# that VREF reaches R3 from outside the strip (CH1: along the top of the board above J8's pin pads; CH2: from the south);
+# C1 and Cnp are on the dual's side.
+for ch, y0, f in (('CH1', Y1, +1), ('CH2', Y2, -1)):
+    c = CHP[ch]
+    put(c['r1'][0], 90.3, y0, 180)              # R1 = 470k, 300k: pin 1 toward the BNC
+    put(c['r1'][1], 86.9, y0, 180)
+    put(c['rnp'], 80.1, y0, 180)                # N on its right, NP on its left
+    put(c['c1'], 88.8, y0 - 1.9 * f, 0)         # C1: IN (right) .. N, on the dual's side
+    rn = 90 if f > 0 else 270                   # pin 1 (N, or R2A) toward the row
+    ro = 270 if f > 0 else 90                   # R2b: pin 1 (R2A) at the far end
+    put(c['r2a'], 80.8, y0 + 2.0 * f, rn)
+    put(c['r2b'], 82.4, y0 + 2.0 * f, ro)
+    put(c['r3'], 84.0, y0 + 2.0 * f, rn)
+    put(c['c2'], 85.6, y0 + 2.0 * f, rn)
+dy = DUAL[1]
+# CH2 (south): +IN is pin 3, OUT pin 1; CH1 (north): +IN is pin 5, OUT pin 7
+put('C61', 78.0, dy - 8.0, 270)                 # Cnp: NP to GND, beside the +IN trace
+put('C60', 78.0, dy + 8.0, 90)
+put('R56', 71.2, dy - 3.0, 180)                 # Riso, OUT toward A0
+put('D6', 66.8, dy - 4.0, 0)                    # the ADC-pin clamp
+put('R55', 71.2, dy + 3.0, 180)                 # CH1 Riso, OUT toward A1
+put('D5', 66.8, dy + 4.0, 0)
+# the dual's supply: V+ (pin 8, north-west) 100 nF, 10 uF, 1R in a row to the west; GND is pin 4 (south-east)
+put('C13', 72.3, dy, 90)
+put('C44', 69.3, dy, 90)
+put('R71', 66.5, dy, 90)
 
 # --------------------------------------------------------------------------------------------- AWG
-# x 64.4..92 under CH2.  Both scope outputs run down the strip x 62.95..64.4 and step right to A1 / A0 just
-# above the header (A1 at Yup ~4.9, A0 at ~5.6), so nothing of the AWG sits below Yup 6.4 left of x 69.6.  DAC0 (x 83.8) runs left along the
-# bottom into the buffer (follower at 270: +IN top-left, OUT top-right, -IN bottom-left); Ra goes right over to the
-# gain stage's +IN (also at 270); its OUT (top-right) goes straight right to the 49.9 ohm and down to J3 (Yup 6.35).
-put('R54', 80.0, 5.6, 180)                      # DAC0 (right) .. BIN (left)
-put('R22', 72.2, 5.6, 180)                      # BIN to GND
-put('U4', 75.0, 8.6, 270)                       # DAC0 buffer
-put('D3', 78.75, 8.4, 180)                      # its supply die: BV (pin 3, left) toward V+ (bottom-right)
-put('C19', 78.7, 11.6, 0)
-put('R32', 77.9, 13.8, 0)                       # Ra: BO (left) .. VP (right)
-put('U3', 84.6, 12.4, 270)                      # gain stage: +IN top-left on the VP line, OUT top-right
-put('R51', 90.9, 11.6, 270)                     # 49.9 ohm 1206: OUT (top) .. BNC node (bottom)
-put('R34', 79.8, 16.0, 0)                       # Rb: VP .. RB1, then 249 || 249 standing, then 22 to GND
-put('R39', 82.2, 16.8, 270)
-put('R40', 84.0, 16.8, 270)
-put('R57', 85.7, 16.8, 90)
-put('R35', 88.85, 9.2, 270)                      # Rf: from OUT down the right side, 249 || 249, 22 back up to -IN
-put('R41', 86.5, 7.05, 180)
-put('R42', 86.5, 5.15, 180)
-put('R58', 84.2, 7.8, 90)
-put('C7', 81.6, 8.8, 90)                        # Cf
-put('R33', 79.8, 19.0, 180)                       # Rg: -IN .. the AWG Vmid (to the cal area, upper left)
-put('C21', 71.0, 18.6, 90)                       # gain stage V+: 22 || 22, 100 nF, Schottky die, left column
-put('D1', 72.2, 15.3, 0)
-put('R59', 65.2, 8.0, 90)
-put('R60', 65.2, 11.6, 90)
-put('C22', 91.35, 17.4, 90)                      # V-: 22 || 22 from the negative rail, 100 nF, Schottky die, right
-put('D2', 88.6, 16.6, 180)
-put('R61', 65.2, 15.2, 90)
-put('R62', 65.2, 18.8, 90)
-put('D9', 68.4, 8.6, 90)                        # unfitted output clamps (footprints only)
-put('D10', 68.4, 12.8, 90)
-put('D11', 68.4, 17.0, 90)
-# the AWG's own Vmid cluster sits in the calibration area (see there), with R9, its other user
+# x 66..92, y 3.8..20.3.  One TPH2502 (U3) at 270 degrees: its south row 5 +IN / 6 -IN / 7 OUT / 8 V+ (x 78.1 .. 81.9, y 8.5)
+# is the gain stage, facing the DAC0 pin (83.8, 2.54) and with OUT at the east end toward J3; V- (pin 4) is the north row's
+# west end, and the spare half (pins 1-3, the north row) is tied off with short stubs.
+put('U3', 80.0, 12.0, 270)
+put('R54', 83.2, 6.0, 90)                       # Rbin: DAC0 (bottom) .. BIN (top)
+put('C63', 85.0, 6.0, 90)                       # Cbin across it
+put('R94', 75.6, 6.8, 180)                        # Rbpl, part 1 (BIN .. BPL)
+put('R22', 72.8, 6.8, 180)                        # Rbpl, part 2 (BPL .. GND)
+put('R35', 80.0, 6.9, 180)                        # Rf (OUT .. INV)
+put('C7', 80.0, 5.1, 180)                         # Cf across Rf
+put('R33', 76.0, 9.0, 270)                      # Rg2: INV .. X
+put('R93', 73.4, 9.6, 270)                       # offset filter: 100 ohm VREF .. X
+put('C64', 71.4, 9.6, 90)
+put('C65', 69.6, 9.6, 90)
+put('C21', 84.0, 10.4, 90)                      # V+ pin
+put('C22', 76.2, 14.6, 270)                      # V- pin
+put('R51', 88.2, 9.6, 90)                       # 2 x 100 ohm 1206 in parallel to J3
+put('R88', 90.6, 9.6, 90)
 
 # --------------------------------------------------------------------------------------------- power
 # LM27762 (rotation 0): left FB+ 2, VIN 3, GND 4, CP 5, OUT- 6 (top to bottom); right FB- 7, EN- 8, C1- 9, C1+ 10,
@@ -117,10 +106,10 @@ put('C36', 27.8, 11.2, 90)                      # 5 V bulk
 put('C37', 25.4, 11.2, 90)
 put('C40', 39.6, 12.6, 90)                      # OUT+ (+3.3 V_A) pair beyond the flying capacitor
 put('C41', 41.8, 12.6, 90)
-put('R29', 33.4, 13.8, 180)                     # FB+ divider over FB+ (pin 2): 174k from OUT+, 100k to GND
+put('R83', 33.4, 13.8, 180)                     # FB+ divider over FB+ (pin 2): 75k + 100k from OUT+ (R29, R83), 100k to GND (R5)
+put('R29', 36.0, 13.8, 180)
 put('R5', 30.2, 14.2, 90)
-put('R6', 33.6, 7.0, 0)                         # FB- divider under the chip: R3 = 330k || 100k from OUT- (left)
-put('R25', 33.6, 5.2, 0)                        # to FB- (right), then R4 = 3 x 330k to GND
+put('R6', 33.6, 7.0, 0)                         # FB- divider under the chip: R3 = 75k from OUT- (left)
 put('R26', 36.8, 6.6, 90)
 put('R27', 38.6, 6.6, 90)
 put('R28', 42.4, 7.0, 90)
@@ -152,103 +141,149 @@ PREROUTE = [
 PREVIA = [('+5V_F', 34.55, 11.95), ('+5V_F', 35.7, 7.6), ('+5V_F', 29.6, 10.15)]
 # 5 V from the POWER0 5V pin (x 38.1) along under the socket (Yup 4.0) to the 1 ohm sense resistor
 PREROUTE += [('+5V_DUE', 'F', [(38.1, 3.2), (38.1, 4.0), (22.2, 4.0), (21.6, 4.6), (21.6, 6.4)], 0.4)]
-# AREF (PA-7): the unfitted 0R next to the reference, then the long way round to PWMH0.8 (x 23.876, Yup 50.8) on the
-# AREF side only: down beside the REF3030, out between POWER0 and ADCL0, along the bottom edge (Yup 1.0, under the
-# header pins), up the left edge (x 17.6) and along the top edge (Yup 52.6) to the pin
-PREROUTE += [('AREF', 'F', [(48.425, 10.6), (49.6, 9.6), (49.6, 5.0), (48.3, 3.7), (48.3, 1.0), (17.6, 1.0),
-                            (17.6, 52.6), (23.876, 52.6), (23.876, 51.7)], 0.2)]
-# VREF to the ratio switch's S2 (walled in by the sense divider): a stub and a via, B.Cu round the west end of the
-# AWG Vmid's B.Cu line (below) to the REFP0 capacitor
-PREROUTE += [('VREF', 'F', [(57.46, 24.75), (57.3, 24.3), (57.3, 23.9)], 0.2),
-             ('VREF', 'B', [(57.3, 23.9), (46.6, 23.9), (46.6, 13.3), (50.2, 12.9), (50.6, 12.9)], 0.2),
-             ('VREF', 'F', [(50.6, 12.9), (50.6, 13.4)], 0.2)]
-PREVIA += [('VREF', 57.3, 23.9), ('VREF', 50.6, 12.9)]
-# AWG Vmid from R9 (cal area) to Rg (R33, AWG): no F.Cu lane exists between the AWG's top and CH2's bottom, so B.Cu
-# along that boundary between two vias
-PREROUTE += [('AWG_VMID', 'F', [(78.975, 19.0), (78.98, 20.0)], 0.2),
-             ('AWG_VMID', 'B', [(78.98, 20.0), (47.8, 20.0)], 0.2),
-             ('AWG_VMID', 'F', [(47.8, 20.0), (47.775, 20.6)], 0.2)]
-PREVIA += [('AWG_VMID', 78.98, 20.0), ('AWG_VMID', 47.8, 20.0)]
-# A1 / A0: the two ADC lines, no vias.  Each leaves its clamp's ADC pin under the clamp's body (between pins 1 and 2),
-# runs down the corridor (A1 x 63.85, A0 x 64.3: between the ladder's last resistor and the AWG filter column) and
-# steps right just above ADCL0, A1 at Yup 4.9 and A0 at 5.6, so they never cross
-PREROUTE += [('A1', 'F', [(71.575, 41.91), (70.4, 40.71), (68.838, 40.71), (64.5, 40.71), (63.85, 40.06),
-                          (63.85, 5.35), (64.3, 4.9), (65.6, 4.9), (66.04, 4.46), (66.04, 3.3)], 0.2),
-             ('A0', 'F', [(71.575, 24.13), (70.4, 22.93), (68.838, 22.93), (64.95, 22.93), (64.3, 22.28),
-                          (64.3, 6.25), (64.95, 5.6), (68.0, 5.6), (68.58, 5.02), (68.58, 3.3)], 0.2)]
+# A1 and A0: the two walls, drawn by hand on F.Cu from the Due header pins straight up to their clamps; the 0 ohm bridges R95 / R96
+# carry +3V3A over them (their pads straddle x 63.85 and x 65.6)
+PREROUTE += [
+    ('A1', 'F', [(66.04, 2.54), (66.04, 4.0), (63.85, 6.2), (63.85, 38.29), ('pad', 'D5', 3)], 0.25),
+    ('A0', 'F', [(68.58, 2.54), (68.58, 6.8), (64.8, 10.6), (64.8, 30.29), ('pad', 'D6', 3)], 0.25),
+]
+# the AWG's gain stage by hand (the pins read 5 BIN / 6 INV / 7 OUT / 8 V+ from the west): BIN down the west side of the stage to the
+# input divider and east below it to Rbin; INV down to Rf/Cf, with its one bottom hop under the BIN stub to Rg2; OUT down to Rf/Cf
+PREROUTE += [
+    ('AWG_BIN', 'F', [(78.09, 9.53), (78.09, 6.8), ('pad', 'R94', 1)], 0.25),
+    ('AWG_BIN', 'F', [(78.09, 6.8), (78.09, 4.0), (82.3, 4.0), (82.3, 6.82), ('pad', 'R54', 2)], 0.25),
+    ('AWG_INV', 'F', [(79.37, 9.53), (79.37, 8.0), (78.9, 8.0)], 0.25),
+    ('AWG_INV', 'F', [(79.37, 8.0), (79.18, 7.4), ('pad', 'R35', 2)], 0.25),
+    ('AWG_INV', 'B', [(78.9, 8.0), (77.3, 8.0)], 0.25),
+    ('AWG_INV', 'F', [(77.3, 8.0), (77.3, 9.82), ('pad', 'R33', 1)], 0.25),
+    ('AWG_OUT', 'F', [(80.65, 9.53), (80.65, 8.1), (80.82, 7.4), ('pad', 'R35', 1)], 0.25),
+]
+PREROUTE += [
+    ('DAC0', 'F', [('pad', 'J6', 5), (83.82, 3.8), (83.2, 4.4), ('pad', 'R54', 1)], 0.25),
+    ('AWG_OUT', 'F', [(80.65, 8.1), (81.4, 7.8), (86.8, 7.8), ('pad', 'R51', 1)], 0.25),
+    ('AWG_OUT', 'F', [('pad', 'R51', 1), ('pad', 'R88', 1)], 0.25),
+    ('AWG_BNC', 'F', [('pad', 'R51', 2), (88.2, 18.1), (85.6, 18.1)], 0.25),
+    ('AWG_BNC', 'B', [(85.6, 18.1), (83.6, 18.1)], 0.25),
+    ('AWG_BNC', 'F', [(83.6, 18.1), (67.0, 18.1), ('pad', 'R97', 2)], 0.25),
+    ('CH1_OUT', 'F', [('pad', 'R55', 1), (72.03, 38.4), (75.36, 38.4), ('pad', 'U1', 7)], 0.25),
+    ('CH1_OUT', 'F', [('pad', 'U1', 6), ('pad', 'U1', 7)], 0.25),
+    ('VNEG_E', 'F', [('pad', 'R99', 2), (66.9, 11.4), (66.9, 13.3)], 0.25),
+    ('VNEG_E', 'B', [(66.9, 13.3), (66.9, 15.3)], 0.25),
+    ('VNEG_E', 'F', [(66.9, 15.3), (66.9, 15.4), (75.4, 15.4), ('pad', 'C22', 1)], 0.25),
+    ('VNEG_E', 'F', [('pad', 'C22', 1), (77.2, 15.38), (77.2, 14.47), ('pad', 'U3', 4)], 0.25),
+    ('VNEG', 'F', [(32.775, 5.6), (33.4, 4.6), (43.5, 4.6), (43.5, 10.2), (44.0, 10.2), (52.6, 10.2)], 0.25),
+    ('VNEG', 'B', [(52.6, 10.2), (55.0, 10.2)], 0.25),
+    ('VNEG', 'F', [(55.0, 10.2), (59.4, 10.2)], 0.25),
+    ('VNEG', 'B', [(59.4, 10.2), (61.4, 10.2)], 0.25),
+    ('VNEG', 'F', [(61.4, 10.2), (61.9, 11.4), ('pad', 'R99', 1)], 0.25),
+    ('AWG_BNC', 'F', [('pad', 'R51', 2), ('pad', 'R88', 2)], 0.25),
+    ('VREF_X', 'F', [('pad', 'R98', 2), (67.8, 14.3), (67.8, 12.5), (73.4, 12.5), ('pad', 'R93', 1)], 0.25),
+    ('VREF_X', 'F', [(73.4, 12.5), (82.2, 12.5)], 0.25),
+    ('VREF_X', 'B', [(82.2, 12.5), (83.8, 12.5)], 0.25),
+    ('VREF_X', 'F', [(83.8, 12.5), (84.6, 12.5), (84.6, 20.4), (84.0, 20.4), ('pad', 'R16', 2)], 0.25),
+    ('+3V3A_E', 'F', [('pad', 'R95', 2), (66.9, 17.1), (83.0, 17.1), (83.0, 9.55), ('pad', 'U3', 8)], 0.25),
+    ('+3V3A_E', 'F', [(83.0, 9.55), ('pad', 'C21', 1)], 0.25),
+    ('AWG_X', 'F', [('pad', 'R33', 2), (74.6, 8.32), (74.6, 8.78), ('pad', 'R93', 2)], 0.25),
+]
+PREROUTE += [
+    ('A1', 'F', [('pad', 'D5', 3), (69.2, 38.29), (69.2, 37.29), ('pad', 'R55', 2)], 0.25),
+    ('A0', 'F', [('pad', 'D6', 3), (69.2, 30.29), (69.2, 31.29), ('pad', 'R56', 2)], 0.25),
+    ('SC_VCC', 'F', [('pad', 'R71', 2), (67.9, 35.11), (67.9, 33.34), ('pad', 'C44', 1)], 0.25),
+    ('CH2_N', 'F', [('pad', 'R19', 1), ('pad', 'R53', 1)], 0.25),
+    ('CH2_N', 'F', [('pad', 'R16', 1), (84.0, 24.4), (81.5, 24.4), ('pad', 'R53', 1)], 0.25),
+    ('TAP4', 'F', [('pad', 'R49', 1), (53.78, 10.0), (53.78, 26.5), (46.0, 26.5), ('pad', 'J11', 1)], 0.25),
+    ('TAP3', 'F', [('pad', 'R47', 2), (60.52, 10.0), (60.52, 27.5), (51.08, 27.5), ('pad', 'J11', 3)], 0.25),
+    ('TAP3', 'F', [('pad', 'J11', 3), (51.08, 32.6), (47.85, 32.6), (47.85, 38.4), ('pad', 'U9', 5)], 0.25),
+]
+PREROUTE += [
+    ('+3V3A', 'F', [(39.6, 12.0), (40.7, 12.0), (40.7, 19.0), (52.6, 19.0)], 0.3),
+    ('+3V3A', 'B', [(52.6, 19.0), (55.0, 19.0)], 0.3),
+    ('+3V3A', 'F', [(55.0, 19.0), (59.4, 19.0)], 0.3),
+    ('+3V3A', 'B', [(59.4, 19.0), (61.4, 19.0)], 0.3),
+    ('+3V3A', 'F', [(61.4, 19.0), (61.4, 16.7), ('pad', 'R95', 1)], 0.3),
+    ('VREF', 'F', [('pad', 'TP6', 1), (51.8, 17.0), (51.8, 14.6), (52.6, 14.6)], 0.25),
+    ('VREF', 'B', [(52.6, 14.6), (55.0, 14.6)], 0.25),
+    ('VREF', 'F', [(55.0, 14.6), (59.4, 14.6)], 0.25),
+    ('VREF', 'B', [(59.4, 14.6), (61.4, 14.6)], 0.25),
+    ('VREF', 'F', [(61.4, 14.6), (61.4, 14.3), ('pad', 'R98', 1)], 0.25),
+]
+PREROUTE += [
+    ('SC_VCC', 'F', [('pad', 'C44', 1), (70.8, 33.3), ('pad', 'C13', 1)], 0.25),
+    ('SC_VCC', 'F', [('pad', 'C13', 1), (73.2, 33.52), (73.2, 36.77), ('pad', 'U1', 8)], 0.25),
+    ('AWG_S', 'F', [('pad', 'R97', 1), (62.84, 20.4), (62.2, 20.4), (62.2, 29.5), (54.78, 29.5), ('pad', 'R7', 1)], 0.25),
+]
+PREROUTE += [
+    ('CH1_NP', 'F', [('pad', 'C60', 1), (77.95, 38.0), ('pad', 'U1', 5)], 0.25),
+    ('CH2_NP', 'F', [('pad', 'C61', 1), (79.28, 27.28), (79.28, 24.7), ('pad', 'R53', 2)], 0.25),
+    ('CH2_NP', 'F', [('pad', 'C61', 1), (78.0, 28.6), (76.64, 29.6), (76.64, 31.3), ('pad', 'U1', 3)], 0.25),
+]
+PREVIA += [('+3V3A', 52.6, 19.0), ('+3V3A', 55.0, 19.0), ('+3V3A', 59.4, 19.0), ('+3V3A', 61.4, 19.0),
+           ('VREF', 52.6, 14.6), ('VREF', 55.0, 14.6), ('VREF', 59.4, 14.6), ('VREF', 61.4, 14.6)]
+PREVIA += [('VREF_X', 82.2, 12.5), ('VREF_X', 83.8, 12.5), ('AWG_BNC', 85.6, 18.1), ('AWG_BNC', 83.6, 18.1),
+           ('VNEG_E', 66.9, 13.3), ('VNEG_E', 66.9, 15.3), ('VNEG', 52.6, 10.2), ('VNEG', 55.0, 10.2), ('VNEG', 59.4, 10.2), ('VNEG', 61.4, 10.2)]
+PREVIA += [('AWG_INV', 78.9, 8.0), ('AWG_INV', 77.3, 8.0)]
+# (A1 / A0, the VREF branch to the ratio switch and AWG Vmid are routed by route.py; hand routes are added here as needed)
 
 # --------------------------------------------------------------------------------------------- calibration
-# ladder right above A7 .. A2 (x 50.80 .. 63.50): one series resistor per header pitch, centred between the two
-# pins it joins, in two staggered rows (A at Yup 6.0, B at 8.2), so every tap drops straight onto its pin:
-# R50 VREF..TAP5 (A7/A6), R49 TAP5..TAP4, R48 TAP4..TAP3, R47 TAP3..TAP2, R46 TAP2..TAP1 (A3/A2); the three
-# parallel 249s from TAP1 to GND standing beside the ADC's tap pins (x 59..62), clear of the tap fan-in
-put('R50', 52.07, 6.0, 0)
-put('R49', 54.61, 8.2, 0)
-put('R48', 57.15, 6.0, 0)
-put('R47', 59.69, 8.2, 0)
-put('R46', 62.23, 6.0, 0)
-put('R45', 62.15, 10.6, 90)
-put('R44', 60.6, 10.6, 90)
-put('R43', 59.05, 10.6, 90)
-put('U8', 47.6, 7.4, 0)                         # REF3030: IN, OUT (left), GND (right)
-put('C24', 44.4, 8.2, 90)
-put('C32', 44.4, 11.6, 90)
-put('R81', 47.6, 10.6, 0)                        # unfitted 0R to AREF
-put('TP6', 50.2, 10.8)
-# ADS124S08 at 90: AIN0..5 (pins 7..2) along its bottom edge, right to left in the ladder's own order, above the
-# taps; the SPI pins (9..12) on its right edge toward XIO0; AIN8 / AIN9 (pins 22 / 21) on its top edge under the sense
-# divider; AVDD and REFP0 on its left edge with their capacitors
-put('U9', 56.0, 17.0, 90)
-put('C33', 50.6, 18.4, 90)                      # AVDD (pin 26)
-put('C26', 50.6, 14.6, 90)                      # REFP0 (pin 30) 2 x 100 nF
-put('C27', 48.8, 14.6, 90)
-put('C25', 61.4, 18.6, 90)                      # DVDD / IOVDD (pins 16 / 15)
-put('R69', 61.4, 14.6, 90)                      # CS (pin 9) pull-up
-# sense divider over AIN8 / AIN9: R8 from SNS_TAP (left, over pin 22) to SNS_D (right, over pin 21), R7 down into
-# SNS_TAP from the BNC node; the ratio switch at 180 with D facing R8, SEL / VDD on its right
-put('R8', 55.8, 22.6, 0)
-put('R7', 55.0, 24.9, 270)
-put('U12', 58.6, 25.4, 180)
-put('C30', 61.6, 25.6, 90)
-put('R68', 61.0, 22.6, 0)
-put('D7', 51.8, 24.6, 90)                       # SNS_D clamp
-put('D8', 48.0, 24.6, 90)                       # SNS_S1 clamp
-put('R9', 48.6, 21.0, 0)                        # AWG Vmid to S1
-# the AWG's own Vmid: divider, 12 pF on the tap, follower, its Schottky and 100 nF
-put('U5', 39.0, 21.0, 90)
-put('R23', 41.6, 23.0, 90)
-put('R24', 41.6, 19.4, 90)
-put('C8', 39.0, 17.3, 0)
-put('D4', 35.0, 22.4, 0)
-put('C20', 35.4, 18.8, 90)
+# ladder right above A7 .. A2 (x 50.80 .. 63.50): one series resistor per header pitch, centred between the two pins it joins,
+# in two staggered rows (A at Yup 6.0, B at 8.2), so every tap drops straight onto its pin; the three parallel 270 ohm from TAP1
+# to GND standing beside the A2 / A3 taps (x 59..62)
+put('R50', 52.07, 6.0, 180)                     # every rung at 180: its higher tap (pin 2) on the west pad, over that tap's header pin
+put('R49', 54.61, 8.2, 180)
+put('R48', 57.15, 6.0, 180)
+put('R47', 59.69, 8.2, 180)
+put('R46', 62.23, 6.0, 180)
+put('R43', 63.05, 8.8, 90)                      # the bottom 100 ohm, TAP1 (pin 1) down on the A2 side, GND up
+put('U8', 48.0, 15.0, 0)                        # REF3030: pins 1 VIN, 2 OUT (left), 3 GND (right)
+put('C24', 45.6, 15.6, 90)
+put('C32', 45.6, 12.6, 90)
+put('C26', 50.4, 12.6, 90)
+put('C27', 52.0, 12.6, 90)
+put('R81', 44.0, 36.0, 0)                       # unfitted 0R to AREF
+put('TP6', 50.4, 17.0)
+# the ratio jumper (a 1 x 3 header, shunt across pins 2-3): TAP4 | B | TAP3 above the ladder
+put('J11', 46.0, 31.0, 90)
+# ADS1115 (TSSOP-10, rot 0) above it: west column 1 ADDR / 2 RDY / 3 GND / 4 AIN0 / 5 AIN1 (top to bottom), east column
+# 6 AIN2 / 7 AIN3 / 8 VDD / 9 SDA / 10 SCL (bottom to top)
+put('U9', 50.0, 40.0, 0)
+put('C25', 54.4, 42.6, 90)                      # VDD
+put('R69', 53.6, 45.6, 0)                      # SDA pull-up
+put('R82', 56.0, 45.6, 0)                      # SCL pull-up
+# the sense divider: AWG_BNC .. R7 .. T0 .. R8 .. B, Rd from B to VREF, Rs from T0 to AIN2, Rm from B to AIN3, BAV99 clamps
+put('R7', 55.6, 33.6, 0)
+put('R8', 52.0, 34.0, 0)
+put('R90', 44.6, 42.4, 0)
+put('R91', 57.0, 37.8, 0)
+put('R92', 57.0, 41.6, 0)
+put('D8', 58.8, 35.6, 0)
+put('D7', 58.8, 44.0, 0)
+# the +3.3 V_A bridges over the A1 (x 63.85) and A0 (x 65.6) lines
+put('R97', 64.3, 19.0, 0)                        # BR3: 1206, pads straddling both A lines
+put('R95', 64.3, 16.7, 0)
+put('R98', 64.3, 14.3, 0)
+put('R99', 64.3, 11.4, 0)
 
-# --------------------------------------------------------------------------------------------- scope Vmid
-# between the channels' rows (Yup 27..48) and left of them (x 32..63, keeping x 62.95..64.4 free for CH1's line to A1)
-put('R38', 35.6, 27.6, 90)                      # from the Due 3.3 V pin (POWER0.4, x 35.56), up the left side
-put('C46', 37.6, 27.6, 90)
-put('C15', 39.4, 27.6, 90)
-put('R20', 42.6, 30.4, 0)
-put('R21', 42.6, 28.4, 0)
-put('C47', 46.6, 29.0, 90)
-put('U6', 56.0, 36.4, 0)                        # TLV9062 between the two banks: A (left pins) CH1, B (right pins) CH2
-put('C18', 56.0, 40.4, 0)
-put('C16', 50.8, 44.0, 90)                      # CH1 loop above it: 100 nF, 1 uF, 4 x 1R, 4.7k (toward the CH1 bank)
-put('C34', 52.8, 44.0, 90)
-put('R73', 54.6, 44.0, 90)
-put('R74', 56.4, 44.0, 90)
-put('R75', 58.2, 44.0, 90)
-put('R76', 60.0, 44.0, 90)
-put('R63', 62.0, 44.0, 90)
-# CH1's 6 x 10 uF in a row just under CH1 (x 66..90, Yup 36.3), next to R2 / C2 / RG, which draw from the node
-for k in range(6):
-    put(f'C{48 + k}', 68.0 + 4.0 * k, 36.3, 0)
-put('C17', 50.8, 29.0, 90)                      # CH2 loop below it, the same parts
-put('C35', 52.8, 29.0, 90)
-put('R77', 54.6, 29.0, 90)
-put('R78', 56.4, 29.0, 90)
-put('R79', 58.2, 29.0, 90)
-put('R80', 60.0, 29.0, 90)
-put('R64', 62.0, 29.0, 90)
-# CH2's 6 x 10 uF in a row just over CH2 (Yup 32.2); the strip between the two rows carries the SPI lines across
-for k in range(6):
-    put(f'C{54 + k}', 68.0 + 4.0 * k, 32.2, 0)
+# LR-1: no signal track on B.Cu under the analog blocks (route.py and lr_check.py read this): the calibration block and
+# ladder west of the A0 / A1 corridor, the corridor itself above y 27, and the channels, strip and AWG east of it
+_NB = [(41.0, 3.8, 64.6, 27.0), (63.0, 27.0, 64.6, 49.5), (64.6, 3.8, 92.6, 49.5)]
+# the bottom hops, each <= 3 mm and listed in the hop table: INV under the BIN stub in the AWG, and +3V3A / VREF under the two TAP
+# lines (x 53.8 and x 60.5) on their way to the bridges.  (x0, y0, x1, y1), carved out of the no-bottom zone
+HOPS = [(52.4, 9.8, 55.2, 10.6), (59.2, 9.8, 61.8, 10.6), (66.5, 12.9, 67.3, 15.7), (82.0, 12.1, 84.0, 12.9), (83.4, 17.7, 86.0, 18.5), (76.5, 7.0, 79.5, 8.6), (52.4, 18.6, 55.2, 19.4), (59.2, 18.6, 62.0, 19.4), (52.4, 14.2, 55.2, 15.0), (59.2, 14.2, 61.6, 15.0)]
+
+
+def _carve(rects, h):
+    out = []
+    for (a, b, c, d) in rects:
+        if h[0] >= c or h[2] <= a or h[1] >= d or h[3] <= b:
+            out.append((a, b, c, d)); continue
+        if b < h[1]: out.append((a, b, c, h[1]))
+        if d > h[3]: out.append((a, h[3], c, d))
+        lo, hi = max(a, h[0]), min(c, h[2]); y0, y1 = max(b, h[1]), min(d, h[3])
+        if a < lo: out.append((a, y0, lo, y1))
+        if c > hi: out.append((hi, y0, c, y1))
+    return out
+
+
+NOBOTTOM = _NB
+for _h in HOPS:
+    NOBOTTOM = _carve(NOBOTTOM, _h)

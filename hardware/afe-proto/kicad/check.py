@@ -179,13 +179,13 @@ def schematic_checks(sch=SCH, parts=None, tag=''):
         for pin, net in p['pins'].items():
             want.setdefault(net, []).append((p['ref'], pin))
     d = compare_nets(want, strip_flags(nets))
-    ok &= row('S2' + tag, not d and len(want) >= 70,
+    ok &= row('S2' + tag, not d and len(want) >= 40,
               f'{len(want)} design nets, {len(strip_flags(nets))} KiCad nets' + (': ' + ' | '.join(d[:4]) if d else ''))
     d = compare_parts(parts, comps)
-    ok &= row('S3' + tag, not d and len(comps) >= 150, f'{len(comps)} symbols' + (': ' + ' | '.join(d[:4]) if d else ''))
+    ok &= row('S3' + tag, not d and len(comps) >= 90, f'{len(comps)} symbols' + (': ' + ' | '.join(d[:4]) if d else ''))
     bom = bom_txt()
     d = compare_bom(parts, bom, BOM_DELTAS)
-    ok &= row('S4' + tag, not d and len(bom) >= 150,
+    ok &= row('S4' + tag, not d and len(bom) >= 90,
               f'{len(bom)} bom.txt designators, deltas {sorted(BOM_DELTAS)}' + (': ' + ' | '.join(d[:4]) if d else ''))
     return ok, nets
 
@@ -196,17 +196,17 @@ def mutation_arms(nets):
     bad = 0
     # M1: a design that swaps one pin's net must not match KiCad's netlist (S2's comparator can see one pin)
     parts = copy.deepcopy(design.PARTS)
-    pr = next(p for p in parts if p['ref'] == 'R30'); pr['pins']['1'], pr['pins']['2'] = pr['pins']['2'], pr['pins']['1']
+    pr = next(p for p in parts if p['ref'] == 'R14'); pr['pins']['1'], pr['pins']['2'] = pr['pins']['2'], pr['pins']['1']
     want = {}
     for p in parts:
         for pin, net in p['pins'].items():
             want.setdefault(net, []).append((p['ref'], pin))
-    bad += row('M1', bool(compare_nets(want, strip_flags(nets))), 'S2 sees RF (R30) reversed')
+    bad += row('M1', bool(compare_nets(want, strip_flags(nets))), 'S2 sees R3 (R14, N to VREF) reversed')
     # M2: an LCSC code changed must fail S4; a bom.txt designator dropped must fail S4
     parts = copy.deepcopy(design.PARTS)
     next(p for p in parts if p['ref'] == 'R43')['lcsc'] = 'C2984375'
     bom = bom_txt()
-    bad += row('M2', bool(compare_bom(parts, bom, BOM_DELTAS)), 'S4 sees R43 with the 953 ohm code')
+    bad += row('M2', bool(compare_bom(parts, bom, BOM_DELTAS)), 'S4 sees R43 with another resistor code')
     bom2 = dict(bom); bom2.pop('C26')
     bad += row('M2b', bool(compare_bom(design.PARTS, bom2, BOM_DELTAS)), 'S4 sees C26 fitted but missing from bom.txt')
     # M3: geometry: a schematic generated with the passives' rotation wrong must not reproduce the design's nets in
@@ -257,7 +257,7 @@ def pcb_checks(nets, PCB=PCB, tag=''):
     for k in want:
         if k not in seen:
             diff.append(f'{k[0]}.{k[1]} has no pad')
-    ok &= row('P1' + tag, not diff and len(dump['pads']) > 400, f"{len(dump['pads'])} pads" + (': ' + ' | '.join(diff[:4]) if diff else ''))
+    ok &= row('P1' + tag, not diff and len(dump['pads']) > 250, f"{len(dump['pads'])} pads" + (': ' + ' | '.join(diff[:4]) if diff else ''))
     out = os.path.join(tempfile.mkdtemp(prefix='afe-drc-'), 'drc.json')
     cli('pcb', 'drc', '--format', 'json', '--severity-all', '--schematic-parity', '-o', out, PCB)
     d = json.load(open(out))
@@ -267,7 +267,13 @@ def pcb_checks(nets, PCB=PCB, tag=''):
         kinds[v['type']] = kinds.get(v['type'], 0) + 1
     # silk_edge_clearance is allowed on the three BNCs only: they overhang the right edge by design (bom.txt
     # BOARD OUTLINE; the KH-BNC50-3511 drawing is unread, so the stand-in footprint's depth is *(check)*)
+    # courtyards_overlap is allowed for MH2 against the Due's own sockets J8 / J10 and nothing else: the M2.5 screw head over
+    # the socket housing (afe.md, the spec lead; same treatment as v2's MH602), the screw optional until the owner calipers
+    # the housing *(check)*
     def allowed(v):
+        if v['type'] == 'courtyards_overlap':
+            ds = [i['description'] for i in v['items']]
+            return any('MH2' in x for x in ds) and all(re.search(r'Footprint (MH2|J8|J10)\b', x) for x in ds)
         return v['type'] == 'silk_edge_clearance' and any(re.search(r'of J[123] on', i['description']) for i in v['items'])
     hard = {}
     for v in vio:

@@ -50,9 +50,10 @@ XIO = (93.98, 50.80)        # pin 1; odd pins at x 93.98, even at 96.52, rows st
 ROT = {'+x': 90.0, '-x': -90.0}
 # Yup of each BNC centre pin, CH1, CH2, AWG: midway between two XIO0 rows of unused pins (AWG: under the last row),
 # so each input enters straight through the header; 17.78 mm apart, clear of each other's courtyards
-BNCS = {'J1': 41.91, 'J2': 24.13, 'J3': 7.4}    # J3: its legs (5.05 below, 2.6 mm pads) and body clear the bottom edge
+BNCS = {'J1': 44.45, 'J2': 24.13, 'J3': 7.4}    # J3: its legs (5.05 below, 2.6 mm pads) and body clear the bottom edge
 BNC_X = 102.0               # centre pin x: the rear courtyard (2.25 mm back) clears XIO0 (x 98.3) and MH1 (x 99.6)
 MH = (96.52, 2.54)
+MH2 = (90.17, 50.8)
 
 # zones per block (x0, x1, yup0, yup1), inside the headers' bodies; the SMT field is x 18..92, Yup 4.6..48.4
 # Placement by signal flow (FR-02).  Each group fills its box in rows, in the order given (the signal's order), starting
@@ -209,7 +210,7 @@ def legalise(fps, fixed, order, clear=0.0, rounds=200):
             if A[0] < B[2] and B[0] < A[2] and A[1] < B[3] and B[1] < A[3] and not (a in anchors and c in anchors):
                 left.append((a, c))
     if left:
-        raise SystemExit(f'placement does not settle: {left[:10]}')
+        print(f'WARNING: {len(left)} courtyard overlaps left (the DRC and check.py P2 fail until they are gone): {left}')
 
 
 def build():
@@ -290,13 +291,14 @@ def build():
         fps[p['ref']] = f
 
     # fixed parts
-    fixed = set(HEADERS) | set(BNCS) | {'J10', 'MH1'}
+    fixed = set(HEADERS) | set(BNCS) | {'J10', 'MH1', 'MH2'}
     for ref, (x, y, d) in HEADERS.items():
         f = fps[ref]; f.SetOrientationDegrees(ROT[d]); f.SetPosition(at(x, y)); f.SetLocked(True)
     f = fps['J10']; f.SetOrientationDegrees(0); f.SetPosition(at(XIO[0] + 2.54, XIO[1])); f.SetLocked(True)
     for ref, y in BNCS.items():
         f = fps[ref]; f.SetOrientationDegrees(-90); f.SetPosition(at(BNC_X, y))
     f = fps['MH1']; f.SetPosition(at(*MH)); f.SetLocked(True)
+    f = fps['MH2']; f.SetPosition(at(*MH2)); f.SetLocked(True)
 
     # placement by PLAN: each part, in order, takes the first free spot scanning rows from the named corner (0.2 mm
     # steps), its courtyard GAP clear of every courtyard already in the box
@@ -307,7 +309,7 @@ def build():
         f.SetOrientationDegrees(rot); f.SetPosition(at(x, y))
         placed.append(ref)
     for name, (x0, x1, y0, y1), corner, refs in PLAN:
-        refs = [r for r in refs if r not in layout.PLACE]
+        refs = [r for r in refs if r not in layout.PLACE and r in fps]
         vert, horiz = corner[0], corner[1]
         gap = GROUP_GAP.get(name, GAP)
         rects = []
