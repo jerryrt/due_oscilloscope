@@ -24,7 +24,8 @@ FX = 6.6912                      # CNY per USD, Bank of China spot selling rate 
 D_RATIO = 6.118                  # domestic CNY = international USD x 6.118 on 22 of 23 types (whatif/bom.md)
 SETUP, LOAD, LOAD_CAP, JOINT = 50.0, 20.0, 800.0, 0.01
 XRAY = [(10, 10.0), (50, 5.0), (200, 3.0), (500, 2.0), (1000, 1.5), (3000, 1.0), (10 ** 9, 0.5)]   # up to n pieces: CNY each
-PCB_ENG, PCB_RATE = 20.0, 370.0  # CNY per order, CNY per m2: 2-layer, 1.6 mm, price cut of 2026-09-14 (whatif/bom.md)
+PCB_ENG, PCB_RATE = 20.0, 410.0  # CNY per order, CNY per m2: 2-layer 1.6 mm. 410 = jlc.com news notice of 2026-09-21 (read 2026-11-12 15:56 UTC)
+PCB_RATE_V1 = 370.0              # version 1 (whatif/bom.md) used the price after the 2026-09-14 cut; the 2026-09-21 notice raised it by 40
 BOARD_MM = (100.0, 53.34)        # MC-1 outline
 PER_ORDER_MAX = 50               # Economic PCBA takes 2-50 boards per order
 BLOCKS = [("opamps", "Op-amps (ICs)"), ("precres", "Precision resistors"), ("switches", "Switches"),
@@ -110,7 +111,7 @@ def lines(data, flags):
     for r in data.extra:
         ph = r["placeholder_for"]
         if ph and data.streams.get(ph) is not None:
-            flags.append("extra.csv row %s skipped: %s/parts.csv now exists and lists its own parts" % (r["ref"], ph))
+            flags.append("note: extra.csv row %s (%s x%s) dropped: %s/parts.csv exists and lists its own parts" % (r["ref"], r["value"], r["qty"], ph))
             continue
         q = r["qty"]
         out.append(dict(stream="extra" + ("(" + ph + " placeholder)" if ph else ""), ref=r["ref"], value=r["value"], lcsc=r["lcsc"].strip(),
@@ -156,7 +157,7 @@ class Part:
             flags.append("%s: not in catalog.csv (package and joints unknown)" % c)
 
 
-def cost(data, L, boards, flags=None, graduated=False):
+def cost(data, L, boards, flags=None, graduated=False, pcb_rate=None):
     """Per-board cost in CNY, by block, for `boards` boards (one order up to 50, else orders of 50)."""
     flags = [] if flags is None else flags
     per = min(boards, PER_ORDER_MAX)
@@ -191,7 +192,7 @@ def cost(data, L, boards, flags=None, graduated=False):
     if LOAD * len(ext) > LOAD_CAP:
         for b in blk: blk[b]["load"] *= LOAD_CAP / (LOAD * len(ext))
     blk["setup"]["fixed"] = SETUP / per
-    blk["pcb"]["fixed"] = (PCB_ENG + PCB_RATE * per * BOARD_MM[0] * BOARD_MM[1] / 1e6) / per
+    blk["pcb"]["fixed"] = (PCB_ENG + (PCB_RATE if pcb_rate is None else pcb_rate) * per * BOARD_MM[0] * BOARD_MM[1] / 1e6) / per
     pl = sum(x["qty"] * (parts[x["lcsc"]].joints or 0) for x in L if x["include"] and x["lcsc"] and x["block"] != "owner")
     pcs = sum(x["qty"] for x in L if x["include"] and x["lcsc"] and x["block"] != "owner")
     xr = sum(per * x["qty"] for x in L if x["include"] and x["lcsc"] and x["block"] != "owner" and parts[x["lcsc"]].leadless)
@@ -244,7 +245,7 @@ def run(data):
 
 def v1_run(data):
     L = v1_lines(data)
-    return L, {B: dict(lo=cost(data, L, B, [], False), hi=cost(data, L, B, None, True)) for B in (20, 100)}
+    return L, {B: dict(lo=cost(data, L, B, [], False, pcb_rate=PCB_RATE_V1), hi=cost(data, L, B, None, True, pcb_rate=PCB_RATE_V1)) for B in (20, 100)}
 
 
 # ------------------------------------------------------------------------------------------------ report
@@ -286,11 +287,10 @@ def report(data, L, res, deltas, flags, v1L, v1res, args):
       "(JLC China Economic SMT, PCB included, owner-fitted parts separate), and the section \"Version 1 through the same engine\" "
       "shows the script reproduces version 1's published totals.\n")
     w("**Streams read this run:** " + ", ".join("%s %s" % (n, "present" if data.streams[n] is not None else "ABSENT") for n, _ in STREAMS) + ".\n")
-    w("**Rows that depend on a `parts.csv` still being rewritten:** every row whose block is `precres`, `ladder`, `rails`, `adc_ref`, `other` "
-      "and the AWG or power/calibration entries in them. `sim/awg/parts.csv` is being rewritten by another agent; "
-      "`sim/powercal/parts.csv` does not exist yet, so its whole share comes from `extra.csv` rows marked `placeholder_for=powercal` "
-      "(rails, reference, ADS1115, ladder, sense network), which are dropped by the script when that file appears. Only the scope "
-      "stream's list and the op-amp part are not in flux.\n")
+    nd = [f for f in flags if f.startswith("note:")]
+    w("**Placeholder rows dropped because their stream now lists its own parts (%d):** %s\n" % (len(nd), "; ".join(f[6:].split(" dropped")[0].replace("extra.csv row ", "") for f in nd) or "none"))
+    w("What is still a placeholder: the owner-fitted header set ($2.50 *(check)*, version 1's figure), the calibration jumper pins (unpriced), "
+      "every price marked D, the PCB (published rule, no quote), and the `include = no` rows in \"Not included\".\n")
     w("## Cost summary\n")
     w("Exchange rate **%.4f CNY per USD** (Bank of China spot selling rate, 2026-11-12 05:30 Beijing, the rate `whatif/bom.md` used; "
       "it moves daily *(check)*). Fees per order: setup %g CNY, %g CNY per distinct Extended type (cap %g), %g CNY per SMT joint, "
@@ -315,13 +315,74 @@ def report(data, L, res, deltas, flags, v1L, v1res, args):
     unp = lo20["unpriced"]
     w("\nUnpriced lines are NOT in these totals: %s.\n" % ("; ".join("%s %s (%s)" % (x["ref"], x["value"], x["role"][:50]) for x in unp) or "none"))
     dep = derived_used(lo20, L)
-    w("Prices marked **D** below have no domestic ladder read (the domestic part page now answers with a bot challenge, section "
-      "\"What could not be read\"), so they are the international USD ladder times %.3f. That ratio held on 22 of 23 types of version 1 "
-      "(`whatif/bom.md`); here it is unchecked for the %d parts marked D. Totals using only read domestic ladders: see the bound below.\n" % (D_RATIO, len(dep)))
+    w("Prices marked **D** have no domestic ladder read, so they are the international USD ladder times %.3f (%d part(s) this run). All other JLC-assembled parts use a "
+      "domestic ladder read from `jlc-smt.com` (`read_dom.py`; dates in the sources table).\n" % (D_RATIO, len(dep)))
     # bound: price D parts at +-1 % ? simply report the share of parts cost that is D
     dshare = sum(x["qty"] * tier(lo20["parts"][x["lcsc"]].lad, 20 * lo20["n"][x["lcsc"]]) for x in L if x["include"] and x["lcsc"] and x["block"] != "owner" and x["lcsc"] in dep)
     w("Parts cost per board at 20 boards resting on D prices: %.2f CNY of %.2f CNY (%.0f %%).\n" % (dshare, pb(lo20, "parts"), 100 * dshare / pb(lo20, "parts")))
 
+    agg = consolidated(L, lo20)
+    # ---- sections the BOM gate asks for
+    def split(c, B):
+        per, rd_, dv, intl = c["per"], 0.0, 0.0, 0.0
+        for x in L:
+            if not x["include"] or not x["lcsc"] or x["block"] == "owner" or c["parts"][x["lcsc"]].lad is None: continue
+            p = c["parts"][x["lcsc"]]; u = tier(p.lad, per * c["n"][x["lcsc"]])
+            if p.derived: dv += x["qty"] * u
+            else: rd_ += x["qty"] * u
+            il = data.intl.get(x["lcsc"], {}).get("ladder_usd")
+            if il: intl += x["qty"] * tier(ladder(il), per * c["n"][x["lcsc"]])
+        return rd_, dv, intl
+    w("## Price basis: domestic-read against international-based (parts bought by JLC, per board)\n")
+    w("*Domestic-read* parts have a CNY ladder read from the domestic part page (`whatif/bom.md`, 2026-11-11). *Derived* parts have only the international USD ladder "
+      "(read from jlcpcb.com on 2026-11-12, 14:54-15:55 UTC) times %.3f. *International price* is the same parts at the international USD tiers with no conversion, for comparison.\n" % D_RATIO)
+    w("| per board | 20 boards | 100 boards |\n|---|---|---|")
+    s20, s100 = split(lo20, 20), split(lo100, 100)
+    w("| parts, domestic ladder read | %.2f CNY = $%.2f | %.2f CNY = $%.2f |" % (s20[0], usd(s20[0]), s100[0], usd(s100[0])))
+    w("| parts, derived (international x %.3f) | %.2f CNY = $%.2f | %.2f CNY = $%.2f |" % (D_RATIO, s20[1], usd(s20[1]), s100[1], usd(s100[1])))
+    w("| **parts, total (what the totals use)** | **%.2f CNY = $%.2f** | **%.2f CNY = $%.2f** |" % (s20[0] + s20[1], usd(s20[0] + s20[1]), s100[0] + s100[1], usd(s100[0] + s100[1])))
+    w("| the same parts at international USD prices | $%.2f | $%.2f |" % (s20[2], s100[2]))
+    dread = sorted(k for k in agg if not lo20["parts"][k].derived and any(x["lcsc"] == k and x["block"] != "owner" for x in L if x["include"]))
+    ddev = sorted(k for k in agg if lo20["parts"][k].derived and any(x["lcsc"] == k and x["block"] != "owner" for x in L if x["include"]))
+    w("\nDomestic-read parts: %s.\n\nDerived (D) parts: %s.\n" % (", ".join(dread), ", ".join(ddev)))
+    w("## PCB, as its own line\n")
+    ar = BOARD_MM[0] * BOARD_MM[1] / 1e6
+    w("| | 20 boards | 100 boards (2 x 50) |\n|---|---|---|")
+    w("| per order | %.2f CNY = $%.2f | %.2f CNY = $%.2f each |" % (PCB_ENG + PCB_RATE * 20 * ar, usd(PCB_ENG + PCB_RATE * 20 * ar), PCB_ENG + PCB_RATE * 50 * ar, usd(PCB_ENG + PCB_RATE * 50 * ar)))
+    w("| per board | $%.2f | $%.2f |" % (usd(block_total(lo20, "pcb")), usd(block_total(lo100, "pcb"))))
+    w("\n**A published rule, not a quote.** Engineering fee %g CNY + %g CNY/m2 over %g x %g mm (%.2f cm2 a board), 2-layer, 1.6 mm. The %g CNY/m2 is the jlc.com news notice "
+      "of 2026-09-21 (<https://www.jlc.com/portal/q33i63612.html>, its \"latest news\" column: single and double-sided boards raised 40 CNY/m2 to 410 CNY/m2, A1 board, 1.6 mm, "
+      "\"final price per the system's live quote\"), read 2026-11-12 15:56 UTC; the page loaded normally, no bot challenge. The 20 CNY engineering fee is `whatif/bom.md`'s "
+      "reading of `server_guide_4114` (2026-11-11) and was not re-read. The live quote page computes in the browser and was not read. Version 1's reconciliation above uses "
+      "its own %g CNY/m2 (the 2026-09-14 price), so the PCB row in the block table moves by the 40 CNY/m2 rise.\n" % (PCB_ENG, PCB_RATE, BOARD_MM[0], BOARD_MM[1], ar * 1e4, PCB_RATE, PCB_RATE_V1))
+    w("## Hand-soldered parts, as their own line\n")
+    w("Not assembled by JLC: no loading fee, no joint fee. Bought as loose parts; tier for (boards x quantity) pieces.\n")
+    w("| ref | part | LCSC | qty | $ per board @20 | $ per board @100 | price basis |\n|---|---|---|---|---|---|---|")
+    to20 = to100 = 0.0
+    for x in L:
+        if x["block"] != "owner" or not x["include"]: continue
+        if x["lcsc"]:
+            p = lo20["parts"][x["lcsc"]]
+            n_ = lo20["n"][x["lcsc"]]
+            u20, u100 = tier(p.lad, 20 * n_), tier(p.lad, 100 * n_)
+            b20, b100 = usd(x["qty"] * u20), usd(x["qty"] * u100)
+            basis = "domestic ladder read 2026-11-11 (whatif/bom.md)" if not p.derived else "D"
+        elif x["fixed_usd"] is not None:
+            b20 = b100 = x["fixed_usd"] * x["qty"]; basis = [r["note"] for r in data.extra if r["ref"] == x["ref"]][0] or "fixed price"
+        else:
+            b20 = b100 = 0.0; basis = "UNPRICED"
+        to20 += b20; to100 += b100
+        w("| %s | %s | %s | %d | %.4f | %.4f | %s |" % (x["ref"], x["value"], x["lcsc"] or "-", x["qty"], b20, b100, basis))
+    w("| **total** | | | | **%.2f** | **%.2f** | |\n" % (to20, to100))
+    w("## Part-type count and loading fees\n")
+    nb = len([k for k in lo20["n"] if lo20["parts"][k].cls == "base" and any(x["lcsc"] == k and x["block"] != "owner" for x in L if x["include"])])
+    w("JLC-assembled part types: **%d** (%d Extended, %d Basic). Hand-fitted types: %d. Each Extended type costs %g CNY per order (cap %g):\n" % (
+        len(lo20["ext"]) + nb, len(lo20["ext"]), nb, len([k for k in lo20["n"] if any(x["lcsc"] == k and x["block"] == "owner" for x in L if x["include"])]), LOAD, LOAD_CAP))
+    w("| LCSC | part | package | n | fee per order | per board @20 | per board @100 |\n|---|---|---|---|---|---|---|")
+    for k in lo20["ext"]:
+        p = lo20["parts"][k]
+        w("| %s | %s | %s | %d | %g CNY | $%.3f | $%.3f |" % (k, p.mfr, p.pkg, lo20["n"][k], LOAD, usd(LOAD / 20), usd(LOAD / 50)))
+    w("| **total** | | | | **%g CNY** | **$%.2f** | **$%.2f** |\n" % (LOAD * len(lo20["ext"]), usd(LOAD * len(lo20["ext"]) / 20), usd(LOAD * len(lo20["ext"]) / 50)))
     w("## Change against version 1, per block (domestic, per board, same method both sides)\n")
     w("A block's cost is its parts at their order tier, its share of the loading fees, and its SMT joints; the per-order setup fee, "
       "the PCB and the owner-fitted parts are their own rows, and the X-ray fee is in the Rails row (the LM27762 is the one leadless part). "
@@ -340,8 +401,7 @@ def report(data, L, res, deltas, flags, v1L, v1res, args):
             if abs(a) + abs(c) == 0: continue
             w("| %s | %.2f | %.2f | %+.2f |" % (name, a, c, d)); t1 += a; t2 += c
         w("| **total** | **%.2f** | **%.2f** | **%+.2f** |\n" % (t1, t2, t2 - t1))
-    w("Rows that rest on a parts list still being rewritten: Precision resistors, Calibration ladder, Rails, ADC and reference, and "
-      "Everything else (AWG and power/calibration shares). Op-amps and the scope's share of the others rest on `sim/scope/parts.csv`.\n")
+    w("All three streams' `parts.csv` are the final committed lists when this file is generated (see \"Streams read\"); the rows that still rest on a placeholder are those listed at the top.\n")
 
     w("## Cost target (D-V2-1)\n")
     w("The target is the owner's and is left blank here. For reference: version 1 was **$%.2f / $%.2f at 20 boards and $%.2f / $%.2f at 100** "
@@ -406,30 +466,25 @@ def report(data, L, res, deltas, flags, v1L, v1res, args):
         w("| %s | %s | %s | %s | %s %s |" % (k, p.mfr, "read" if cat.get("ladder_cny") and not p.derived else "derived", src, il.get("read_utc", ""), il.get("url", "")))
     w("")
     w("## What could not be read\n")
-    w("- **Domestic JLC part pages** (`https://www.jlc-smt.com/lcsc/detail/<C>.html`, the source `whatif/bom.md` and `v2/parts.md` used for CNY ladders) "
-      "answered with an anti-bot page (an Aliyun captcha script, no `priceList`) to four plain requests at 2026-11-12 14:50 UTC (C118223, C14663, C23228, C37593). "
-      "It was not worked around. So **no new domestic ladder was read today**: every part marked D is the international ladder (read the same afternoon from "
-      "`jlcpcb.com`'s public part-search API, one request per part) times %.3f, and every other price is a ladder read on 2026-11-11 or 2026-11-12 13:30 UTC by "
-      "those earlier sessions and quoted from their files. Re-read the D parts on the domestic page before ordering.\n" % D_RATIO)
-    w("- **ADS1115 (C37593) domestic class**: the domestic page was not read; it is Extended on the international page and is taken as Extended here. "
-      "If it were domestically Basic the total would fall by 20 CNY per order.\n")
-    w("- **TPH2502 (C118223)**: domestic ladder read only at its 20- and 100-piece tiers (2.69 and 1.91 CNY, `v2/parts.md` section 0.2, 2026-11-12 13:30 UTC); "
-      "these agree with the international ladder x %.3f at those tiers (0.44 x 6.118 = 2.69, 0.3125 x 6.118 = 1.91), which is the only check of the ratio on a new part. "
-      "The 40- and 100-piece tiers this BOM buys (2 per board at 20 and at 50 boards) are D.\n" % D_RATIO)
+    w("- **Domestic JLC part pages** (`https://www.jlc-smt.com/lcsc/detail/<C>.html`) answered with an anti-bot page to four plain requests at 2026-11-12 14:50 UTC "
+      "(not worked around). At about 16:04 UTC the same plain request returned the record, and `read_dom.py` then read the ladder and library class of every "
+      "catalog part that had no domestic ladder, 3 s apart, stopping at the first challenge. Parts whose ladder was read on 2026-11-11 (version 1's list) keep those "
+      "ladders so version 1's reconciliation stays exact.\n")
+    w("- **TPH2502 (C118223)** and **ADS1115 (C37593)** are now domestic-read: both Extended on `jlc-smt.com`.\n")
     w("- **Stock** is the international API's `stockCount` at 2026-11-12 14:55 UTC; the domestic record carries none: ADS1115 16,705, TPH2502 3,263, "
       "REF3030E 975, LM27762 40,693 against 100 of each needed for 100 boards *(check before ordering)*.\n")
-    w("- **PCB**: no quote was read; the price is the published rule of `whatif/bom.md` (engineering 20 CNY + 370 CNY/m2) *(check in the live quote)*. "
+    w("- **PCB**: no quote was read; see the PCB section (published rule, 410 CNY/m2 + 20 CNY) *(check in the live quote)*. "
       "Shipping and any coupon are excluded, as in version 1. Attrition by JLC China's rule (`jlc-smt.com` help 42767) for the Extended parts of 8 pins or fewer: "
       "%.2f CNY per order at 20 boards and %.2f at 50, not in the totals *(check the rule)*.\n" % (attrition(lo20, 20), attrition(lo100, 50)))
     w("- **Headers**: the $2.50 placeholder of version 1; no domestic or quantity price was read. **Calibration jumper header pins (V2-5)**: count and part "
       "are the design's; not priced (line `J-cal`).\n")
     w("## Assumptions (all in `extra.csv`, each changeable there)\n")
     for r in data.extra:
+        if r["placeholder_for"] and data.streams.get(r["placeholder_for"]) is not None: continue
         if r["note"] and ("assumed" in r["note"] or "value" in r["note"] or "design's" in r["note"]):
             w("- `%s` %s x%s: %s" % (r["ref"], r["value"], r["qty"], r["note"]))
-    w("- The ladder is eight 270 ohm parts (jlc-basic.md: 220 or 270 ohm avoid combinations), 3 in parallel and 5 in series as version 1; its tap voltages and current are the design's to check.")
-    w("- The +3.3 V_A and negative feedback networks are version 1's topology with Basic parts (174k = 150k + 24k; 100k and 330k are Basic); the negative rail's value for version 2 is the design's.")
-    w("- Version 1's scope op-amp supply branches (1R, 10 uF, 100 nF per channel), 3.3 V sense filter and the AWG's Vmid buffer network are not carried: the scope and AWG lists do not list them.")
+    w("- Values of the ladder, feedback, sense divider and bleed are `sim/powercal/parts.csv`'s own; `blocks.csv` assigns by LCSC number, so the 10k C25804 (sense bottom, sense series and the bleed) stays in Everything else.")
+    w("- Version 1's scope op-amp supply branches (1R, 10 uF, 100 nF per channel), the 3.3 V sense filter and the AWG's Vmid buffer network are not carried: the stream lists do not list them. The sense-input clamp and the I2C pull-ups are not in powercal/parts.csv either; they are in the not-included table with their cost.")
     w("- Blocks follow `blocks.csv`; a part not listed there is in Everything else.")
     w("- Totals are per board in USD at %.4f CNY/USD; the per-order fees are divided over the boards of the order (20, or 50 for each of two orders at 100)." % FX)
     return "\n".join(o) + "\n"

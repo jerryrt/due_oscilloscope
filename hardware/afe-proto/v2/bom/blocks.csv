@@ -12,3 +12,12 @@ awg,C17901,precres,AW-4 50 ohm back-termination
 awg,C23204,precres,AWG Rf
 awg,C21190,precres,AWG Rg1
 awg,C23193,precres,AWG Rg2
+powercal,C23138,ladder,calibration ladder rungs
+powercal,C25808,precres,LM27762 OUT+ feedback
+powercal,C23231,precres,LM27762 OUT+ feedback
+powercal,C23206,precres,LM27762 OUT- feedback
+powercal,C25981,precres,LM27762 OUT- feedback
+powercal,C25803,precres,LM27762 OUT- feedback bottom
+powercal,C22809,precres,sense divider top
+powercal,C21190,precres,sense divider default tie
+powercal,C23018,precres,sense series resistor

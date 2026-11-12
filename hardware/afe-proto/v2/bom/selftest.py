@@ -19,6 +19,18 @@ def totals(paths=None):
     return res[20]["lo"]["total"], res[100]["lo"]["total"], flags, res
 
 
+def price(c, pieces, catalog=None, intl=None):
+    """Unit price in CNY at `pieces`, written here from the two ladder files (domestic ladder if read, else international x 6.118)."""
+    cat = {r["lcsc"]: r for r in csv.DictReader(open(catalog or os.path.join(HERE, "catalog.csv")))}[c]
+    if cat["ladder_cny"]: lad, k = cat["ladder_cny"], 1.0
+    else: lad, k = {r["lcsc"]: r for r in csv.DictReader(open(intl or os.path.join(HERE, "intl.csv")))}[c]["ladder_usd"], RATIO
+    p = None
+    for t in lad.split(";"):
+        a, b = t.split(":")
+        if int(a) <= pieces or p is None: p = float(b) * k
+    return p
+
+
 def copy(src, name):
     d = os.path.join(work, name); shutil.copy(src, d); return d
 
@@ -41,9 +53,13 @@ import io, contextlib
 def quiet(*a, **k):
     with contextlib.redirect_stdout(io.StringIO()): return totals(*a, **k)
 
-t20, t100, f0, _ = quiet()
+t20, t100, f0, _r = quiet()
+base_place = _r[20]["lo"]["placements"]
 print("baseline: $%.4f at 20, $%.4f at 100, flags %d" % (t20 / FX, t100 / FX, len(f0)))
-assert not f0, f0
+assert not [x for x in f0 if not x.startswith("note:")], f0
+n0 = len([x for x in f0 if x.startswith("note:")])
+print("baseline notes (placeholder rows dropped because powercal/parts.csv exists):", n0)
+assert n0 >= 20
 
 SC = os.path.join(HERE, "../sim/scope/parts.csv"); AW = os.path.join(HERE, "../sim/awg/parts.csv")
 CAT = os.path.join(HERE, "catalog.csv")
@@ -52,21 +68,24 @@ CAT = os.path.join(HERE, "catalog.csv")
 p = copy(SC, "scope_dup.csv")
 edit_csv(p, lambda rows: rows + [dict(next(r for r in rows if r["refdes_per_channel"] == "R1a"))])
 a, b, f, _ = quiet({"scope": p})
-want20 = 2 * 0.002 * RATIO + 2 * 2 * 0.01
+n0 = sum(int(r["qty_per_board"]) for r in csv.DictReader(open(SC)) if r["lcsc"] == "C23192")
+want20 = (n0 + 2) * price("C23192", 20 * (n0 + 2)) - n0 * price("C23192", 20 * n0) + 2 * 2 * 0.01
 check("duplicated scope line R1a (+2 x 510k)", a - t20, want20, True, "DUPLICATE LINE", f)
-check("  ... at 100 boards", b - t100, want20, True, "DUPLICATE LINE", f)
+want100 = (n0 + 2) * price("C23192", 50 * (n0 + 2)) - n0 * price("C23192", 50 * n0) + 2 * 2 * 0.01
+check("  ... at 100 boards", b - t100, want100, True, "DUPLICATE LINE", f)
 
-# 2. a wrong quantity: AWG R4 (1k, C21190) 1 -> 10; 0.0017 USD x 6.118, tier 1 at 200 pieces
+# 2. a wrong quantity: AWG R4 (510 ohm, C23193) 1 -> 10; 0.0015 USD x 6.118, tier 1 at 200 pieces
 p = copy(AW, "awg_qty.csv")
-edit_csv(p, lambda rows: [dict(r, qty="10") if r["refs"] == "R4" else r for r in rows])
+edit_csv(p, lambda rows: [dict(r, qty="10") if r["refs"] == "R4" else r for r in rows])  # R4 is Rg2, C4211 (shared with R3)
+nR = sum(int(r["qty"]) for r in csv.DictReader(open(AW)) if r["lcsc"] == "C4211")
 a, b, f, _ = quiet({"awg": p})
-want = 9 * 0.0017 * RATIO + 9 * 2 * 0.01
+want = (nR + 9) * price("C4211", 20 * (nR + 9)) - nR * price("C4211", 20 * nR) + 9 * 2 * 0.01
 check("wrong quantity AWG R4 1 -> 10", a - t20, want, False, "DUPLICATE", f)
-# the same break at an order tier edge: 1 -> 1000 changes the unit price tier (1000 x 20 = 20000 pieces, tier 10000: 0.001 USD)
+# the same break at an order tier edge: 1 -> 1000 changes the unit price tier (about 20000 pieces, a higher tier)
 p2 = copy(AW, "awg_qty2.csv")
 edit_csv(p2, lambda rows: [dict(r, qty="1000") if r["refs"] == "R4" else r for r in rows])
 a, b, f, _ = quiet({"awg": p2})
-want = 1000 * 0.001 * RATIO + 1000 * 2 * 0.01 - (0.0017 * RATIO + 2 * 0.01)
+want = (nR + 999) * price("C4211", 20 * (nR + 999)) - nR * price("C4211", 20 * nR) + 999 * 2 * 0.01
 check("wrong quantity AWG R4 1 -> 1000 (tier moves)", a - t20, want, False, "DUPLICATE", f)
 
 # 3. an Extended part counted as Basic: ADS1115 marked Basic in the catalog; one loading fee (20 CNY / 20 boards) goes
@@ -84,23 +103,21 @@ check("Extended TPH2502 marked Basic", a - t20, -20.0 / 20, True, "is marked Bas
 # 4. a price missing: the ADS1115's international and domestic ladder removed -> no total for it, and a flag
 p = copy(os.path.join(HERE, "intl.csv"), "intl_gone.csv")
 edit_csv(p, lambda rows: [dict(r, ladder_usd="") if r["lcsc"] == "C37593" else r for r in rows])
-a, b, f, res = quiet({"intl": p})
+pc = copy(CAT, "catalog_noladder.csv")
+edit_csv(pc, lambda rows: [dict(r, ladder_cny="") if r["lcsc"] == "C37593" else r for r in rows])
+a, b, f, res = quiet({"intl": p, "catalog": pc})
 d = a - t20
-want = -(6.915 * 1) - 0.01 * 10 - 20.0 / 20          # price, its joints and its loading fee all vanish from the total
-ok &= (len(res[20]["lo"]["unpriced"]) == 2 and any("NO PRICE" in x for x in f))
+want = -price("C37593", 20) - 0.01 * 10 - 20.0 / 20          # price, its joints and its loading fee all vanish from the total
+ok &= (len(res[20]["lo"]["unpriced"]) == 2 and any("NO PRICE" in x for x in f) and abs(d - want) < 1e-6)
 print("%-46s unpriced lines %d, flag NO PRICE present %s (total falls %.3f CNY: price, joints and loading fee of the part) %s" % (
-    "ADS1115 price removed", len(res[20]["lo"]["unpriced"]), any("NO PRICE" in x for x in f), -d, "PASS" if len(res[20]["lo"]["unpriced"]) == 2 and any("NO PRICE" in x for x in f) else "FAIL"))
+    "ADS1115 price removed", len(res[20]["lo"]["unpriced"]), any("NO PRICE" in x for x in f), -d, "PASS" if len(res[20]["lo"]["unpriced"]) == 2 and any("NO PRICE" in x for x in f) and abs(d - want) < 1e-6 else "FAIL"))
 
-# 5. the power/calibration stream appears: its placeholder rows go, and the tool says so
-pc = os.path.join(work, "powercal.csv")
-with open(pc, "w") as f_:
-    f_.write("refs,value,lcsc,role,qty\nU1,LM27762,C473398,rails,1\n")
-a, b, f, res = quiet({"powercal": pc})
-dropped = [x for x in f if "skipped" in x]
-expect = sum(int(r["qty_per_board"]) for r in csv.DictReader(open(SC))) + sum(int(r["qty"]) for r in csv.DictReader(open(AW))) + 1
-good = len(dropped) >= 20 and res[20]["lo"]["placements"] == expect
+# 5. the power/calibration stream is absent again: its placeholder rows come back and no row is reported dropped
+a, b, f, res = quiet({"powercal": os.path.join(work, "no_such_powercal.csv")})
+back = res[20]["lo"]["placements"]
+good = not [x for x in f if x.startswith("note:")] and back > base_place
 ok &= good
-print("%-46s %d placeholder rows skipped, placements %d (expected %d: scope + awg + the one powercal row)  %s" % ("powercal/parts.csv appears", len(dropped), res[20]["lo"]["placements"], expect, "PASS" if good else "FAIL"))
+print("%-46s placements %d (baseline %d), dropped notes %d  %s" % ("powercal/parts.csv absent", back, base_place, len([x for x in f if x.startswith("note:")]), "PASS" if good else "FAIL"))
 
 # 6. version 1 reconciliation breaks when version 1's list is wrong: one 249R removed from the ladder
 p = copy(os.path.join(HERE, "v1.csv"), "v1_bad.csv")
