@@ -1,0 +1,502 @@
+##### variant hz
+* g
+.include ../../../models/opa354/OPA354_PSPICE.lib
+.include ../models/rangesw.lib
+.options abstol=1e-13 itl1=4000 itl4=500 reltol=1e-4 method=gear
+.include ../../../models-open/bat54s-c7420333/bat54s_c7420333.lib
+
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH
+Vcc vcc0 0 dc 3.3
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 10n
+* 100 nF + 1 uF decoupling (ESR 20 mohm) at the op-amp supply pin
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* Vmid: ideal source 1.65 V, output impedance 0.05 ohm, decoupled 10 uF + 100 nF (ESR 20 mohm)
+Vm vm0 0 dc 1.65 
+Rvo vm0 vm 0.05
+Cvm1 vm cv1 1e-05
+Rcv1 cv1 0 0.02
+Cvm2 vm cv2 1e-07
+Rcv2 cv2 0 0.02
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; one shared 249.0 ohm + 10 uF sense filter for both channels
+V3s v30 0 dc 3.3 
+Rv3 v30 v3p 0.1
+Rs3sh v3p v3 249.0
+Cs3sh v3 0 1e-05
+
+* channel A: op-amp OPA354, range 5
+R1 in n 760000
+C1 in n 1.2e-11
+R2 n vmc 330000
+R3 n v3 760000
+C2 n vmc 3.95e-11
+Cw in 0 4e-12
+Vos n nv dc 0
+Rnp nv np 680
+XU np fb vccl 0 out OPA354
+RF out fb 953
+RG fb vmc 249
+Cpar fb 0 3e-12
+XSW out fb RSW_CLOSED ron=3.7 con=2e-11
+Riso out pin 22
+Cp pin 0 2e-12
+Dk1 0 pin DBAT54S_MAX
+Dk2 pin vccl DBAT54S_MAX
+* per-channel Vmid buffer A (TLV9062 half, P8-k stand-in)
+Exa vxa 0 vm vfb 1e+06
+Rpa vxa vxb 1k
+Cpa vxb 0 1.06103e-05
+Eob vxc 0 vxb 0 1
+Rpb vxc vxd 1k
+Cpb vxd 0 3.97887e-12
+Eoc vxe 0 vxd 0 1
+Rpc vxe vxf 1k
+Cpc vxf 0 3.97887e-12
+Eod vxo 0 vxf 0 1
+Rvox vxo vbo 150
+Rvmi vbo vmc 0.25
+Rvfb vmc vfb 4.7k
+Cvfb vbo vfb 1u
+Cvd1 vmc vc1 60u
+Rve1 vc1 0 0.000833333
+Cvd2 vmc vc2 100n
+Rve2 vc2 0 30m
+* channel b: op-amp OPA354, range 5
+R1b bin bn 760000
+C1b bin bn 1.2e-11
+R2b bn bvmc 330000
+R3b bn v3 760000
+C2b bn bvmc 3.95e-11
+Cwb bin 0 4e-12
+Vosb bn bnv dc 0
+Rnpb bnv bnp 680
+XUb bnp bfb vccl 0 bouta OPA354
+Vlbb bout bouta dc 0 ac 1
+RFb bout bfb 953
+RGb bfb bvmc 249
+Cparb bfb 0 3e-12
+XSWb bout bfb RSW_CLOSED ron=3.7 con=2e-11
+Risob bout bpin 22
+Cpb bpin 0 2e-12
+Dk1b 0 bpin DBAT54S_MAX
+Dk2b bpin vccl DBAT54S_MAX
+* per-channel Vmid buffer b (TLV9062 half, P8-k stand-in)
+Exab bvxa 0 vm bvfb 1e+06
+Rpab bvxa bvxb 1k
+Cpab bvxb 0 1.06103e-05
+Eobb bvxc 0 bvxb 0 1
+Rpbb bvxc bvxd 1k
+Cpbb bvxd 0 3.97887e-12
+Eocb bvxe 0 bvxd 0 1
+Rpcb bvxe bvxf 1k
+Cpcb bvxf 0 3.97887e-12
+Eodb bvxo 0 bvxf 0 1
+Rvobx bvxo bvbo 150
+Rvmib bvbo bvmc 0.25
+Rvfbb bvmc bvfb 4.7k
+Cvfbb bvbo bvfb 1u
+Cvd1b bvmc bvc1 60u
+Rve1b bvc1 0 0.000833333
+Cvd2b bvmc bvc2 100n
+Rve2b bvc2 0 30m
+##### rails extras hz
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH
+Vcc vcc0 0 dc 3.3
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 10n
+* 100 nF + 1 uF decoupling (ESR 20 mohm) at the op-amp supply pin
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* Vmid: ideal source 1.65 V, output impedance 0.05 ohm, decoupled 10 uF + 100 nF (ESR 20 mohm)
+Vm vm0 0 dc 1.65 ac 1
+Rvo vm0 vm 0.05
+Cvm1 vm cv1 1e-05
+Rcv1 cv1 0 0.02
+Cvm2 vm cv2 1e-07
+Rcv2 cv2 0 0.02
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; one shared 249.0 ohm + 10 uF sense filter for both channels
+V3s v30 0 dc 3.3 ac 1
+Rv3 v30 v3p 0.1
+Rs3sh v3p v3 249.0
+Cs3sh v3 0 1e-05
+
+##### sense hz
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; one shared 249.0 ohm + 10 uF sense filter for both channels
+V3s v30 0 dc 3.3 
+Rv3 v30 v3p 0.1
+Rs3sh v3p v3 249.0
+Cs3sh v3 0 1e-05
+
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; one shared 249.0 ohm + 10 uF sense filter for both channels
+V3s v30 0 dc 3.3 ac 1
+Rv3 v30 v3p 0.1
+Rs3sh v3p v3 249.0
+Cs3sh v3 0 1e-05
+
+##### c1 hz
+1.2e-11
+##### variant legacy
+* g
+.include ../../../models/opa354/OPA354_PSPICE.lib
+.include ../models/rangesw.lib
+.options abstol=1e-13 itl1=4000 itl4=500 reltol=1e-4 method=gear
+
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH
+Vcc vcc0 0 dc 3.3
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 10n
+* 100 nF + 1 uF decoupling (ESR 20 mohm) at the op-amp supply pin
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* Vmid: ideal source 1.65 V, output impedance 0.05 ohm, decoupled 10 uF + 100 nF (ESR 20 mohm)
+Vm vm0 0 dc 1.65 
+Rvo vm0 vm 0.05
+Cvm1 vm cv1 1e-05
+Rcv1 cv1 0 0.02
+Cvm2 vm cv2 1e-07
+Rcv2 cv2 0 0.02
+* V3: the Due's 3.3 V pin (= AREF) sensed for centring, through 100 ohm + 10 uF (+100 nF) so its noise does not reach N
+V3s v30 0 dc 3.3 
+Rv3 v30 v3 100
+Cv3a v3 0 10u
+Cv3b v3 0 100n
+
+* channel A: op-amp OPA354, range 5
+R1 in n 768000
+C1 in n 1.21487e-11
+R2 n vm 335000
+R3 n v3 768000
+C2 n vm 3.8e-11
+Cw in 0 4e-12
+Vos n nv dc 0
+Rnp nv np 680
+XU np fb vccl 0 out OPA354
+RF out fb 953
+RG fb vm 249
+Cpar fb 0 3e-12
+XSW out fb RSW_CLOSED ron=3.7 con=2e-11
+Riso out pin 22
+Cp pin 0 2e-12
+* channel b: op-amp OPA354, range 5
+R1b bin bn 768000
+C1b bin bn 1.21487e-11
+R2b bn vm 335000
+R3b bn v3 768000
+C2b bn vm 3.8e-11
+Cwb bin 0 4e-12
+Vosb bn bnv dc 0
+Rnpb bnv bnp 680
+XUb bnp bfb vccl 0 bouta OPA354
+Vlbb bout bouta dc 0 ac 1
+RFb bout bfb 953
+RGb bfb vm 249
+Cparb bfb 0 3e-12
+XSWb bout bfb RSW_CLOSED ron=3.7 con=2e-11
+Risob bout bpin 22
+Cpb bpin 0 2e-12
+##### rails extras legacy
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH
+Vcc vcc0 0 dc 3.3
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 10n
+* 100 nF + 1 uF decoupling (ESR 20 mohm) at the op-amp supply pin
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* Vmid: ideal source 1.65 V, output impedance 0.05 ohm, decoupled 10 uF + 100 nF (ESR 20 mohm)
+Vm vm0 0 dc 1.65 ac 1
+Rvo vm0 vm 0.05
+Cvm1 vm cv1 1e-05
+Rcv1 cv1 0 0.02
+Cvm2 vm cv2 1e-07
+Rcv2 cv2 0 0.02
+* V3: the Due's 3.3 V pin (= AREF) sensed for centring, through 100 ohm + 10 uF (+100 nF) so its noise does not reach N
+V3s v30 0 dc 3.3 ac 1
+Rv3 v30 v3 100
+Cv3a v3 0 10u
+Cv3b v3 0 100n
+
+##### sense legacy
+* V3: the Due's 3.3 V pin (= AREF) sensed for centring, through 100 ohm + 10 uF (+100 nF) so its noise does not reach N
+V3s v30 0 dc 3.3 
+Rv3 v30 v3 100
+Cv3a v3 0 10u
+Cv3b v3 0 100n
+
+* V3: the Due's 3.3 V pin (= AREF) sensed for centring, through 100 ohm + 10 uF (+100 nF) so its noise does not reach N
+V3s v30 0 dc 3.3 ac 1
+Rv3 v30 v3 100
+Cv3a v3 0 10u
+Cv3b v3 0 100n
+
+##### c1 legacy
+1.2148685403445148e-11
+##### variant lowz
+* g
+.include ../../../models/opa354/OPA354_PSPICE.lib
+.include ../models/rangesw.lib
+.options abstol=1e-13 itl1=4000 itl4=500 reltol=1e-4 method=gear
+.model DESD D(IS=1e-15 N=1 RS=5)
+
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH
+Vcc vcc0 0 dc 3.3
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 10n
+* 100 nF + 1 uF decoupling (ESR 20 mohm) at the op-amp supply pin
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* Vmid: ideal source 1.65 V, output impedance 0.05 ohm, decoupled 10 uF + 100 nF (ESR 20 mohm)
+Vm vm0 0 dc 1.65 
+Rvo vm0 vm 0.05
+Cvm1 vm cv1 1e-05
+Rcv1 cv1 0 0.02
+Cvm2 vm cv2 1e-07
+Rcv2 cv2 0 0.02
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; each channel has its own 249R + 10 uF sense filter (in core)
+V3s v30 0 dc 3.3 
+Rv3 v30 v3 0.1
+* DAC0 source for the injection switch: the AWG's DAC0 buffer (OPA365, ideal here) + 0.0 ohm
+Vdac dac0 0 dc 1.65 
+Rdac dac0 dac 0.001
+
+* channel A: op-amp OPA354, range 5
+R1 in n 16915.7
+Cr1 in n 3e-13
+R2 n vm 7451.84
+R3 n v3s 16666.7
+Cn n 0 2e-12
+Rs3 v3 v3s 249
+Cs3 v3s 0 1e-05
+Csw n 0 6e-12
+Cft n dac 1.8e-12
+Cw in 0 4e-12
+Vos n np dc 0
+XU np fb vccl 0 out OPA354
+RF out fb 953
+RG fb vm 249
+Cpar fb 0 3e-12
+XSW out fb RSW_CLOSED ron=3.7 con=2e-11
+Riso out pin 22
+Cp pin 0 2e-12
+* channel b: op-amp OPA354, range 5
+R1b bin bn 16915.7
+Cr1b bin bn 3e-13
+R2b bn vm 7451.84
+R3b bn bv3s 16666.7
+Cnb bn 0 2e-12
+Rs3b v3 bv3s 249
+Cs3b bv3s 0 1e-05
+Cswb bn 0 6e-12
+Cftb bn dac 1.8e-12
+Cwb bin 0 4e-12
+Vosb bn bnp dc 0
+XUb bnp bfb vccl 0 bouta OPA354
+Vlbb bout bouta dc 0 ac 1
+RFb bout bfb 953
+RGb bfb vm 249
+Cparb bfb 0 3e-12
+XSWb bout bfb RSW_CLOSED ron=3.7 con=2e-11
+Risob bout bpin 22
+Cpb bpin 0 2e-12
+##### rails extras lowz
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH
+Vcc vcc0 0 dc 3.3
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 10n
+* 100 nF + 1 uF decoupling (ESR 20 mohm) at the op-amp supply pin
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* Vmid: ideal source 1.65 V, output impedance 0.05 ohm, decoupled 10 uF + 100 nF (ESR 20 mohm)
+Vm vm0 0 dc 1.65 ac 1
+Rvo vm0 vm 0.05
+Cvm1 vm cv1 1e-05
+Rcv1 cv1 0 0.02
+Cvm2 vm cv2 1e-07
+Rcv2 cv2 0 0.02
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; each channel has its own 249R + 10 uF sense filter (in core)
+V3s v30 0 dc 3.3 ac 1
+Rv3 v30 v3 0.1
+* DAC0 source for the injection switch: the AWG's DAC0 buffer (OPA365, ideal here) + 0.0 ohm
+Vdac dac0 0 dc 1.65 ac 1
+Rdac dac0 dac 0.001
+
+##### sense lowz
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; each channel has its own 249R + 10 uF sense filter (in core)
+V3s v30 0 dc 3.3 
+Rv3 v30 v3 0.1
+* DAC0 source for the injection switch: the AWG's DAC0 buffer (OPA365, ideal here) + 0.0 ohm
+Vdac dac0 0 dc 1.65 
+Rdac dac0 dac 0.001
+
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; each channel has its own 249R + 10 uF sense filter (in core)
+V3s v30 0 dc 3.3 ac 1
+Rv3 v30 v3 0.1
+* DAC0 source for the injection switch: the AWG's DAC0 buffer (OPA365, ideal here) + 0.0 ohm
+Vdac dac0 0 dc 1.65 ac 1
+Rdac dac0 dac 0.001
+
+##### c1 lowz
+0.0
+##### variant lowz2
+* g
+.include ../../../models/opa354/OPA354_PSPICE.lib
+.include ../models/rangesw.lib
+.options abstol=1e-13 itl1=4000 itl4=500 reltol=1e-4 method=gear
+.include ../../../models/opa365/OPA365_PSPICE.lib
+.model DESD D(IS=1e-15 N=1 RS=5)
+
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH
+Vcc vcc0 0 dc 3.3
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 10n
+* 100 nF + 1 uF decoupling (ESR 20 mohm) at the op-amp supply pin
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* Vmid: ideal source 1.65 V, output impedance 0.05 ohm, decoupled 10 uF + 100 nF (ESR 20 mohm)
+Vm vm0 0 dc 1.65 
+Rvo vm0 vm 0.05
+Cvm1 vm cv1 1e-05
+Rcv1 cv1 0 0.02
+Cvm2 vm cv2 1e-07
+Rcv2 cv2 0 0.02
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; one shared 249.0 ohm + 10 uF sense filter for both channels
+V3s v30 0 dc 3.3 
+Rv3 v30 v3p 0.1
+Rs3sh v3p v3 249.0
+Cs3sh v3 0 1e-05
+Rva v3 tap 330k
+Rvb tap 0 330k
+Ctap tap 0 10u
+* sense buffer (shared): OPA365, gain 1 + 1202/1451
+VSBUFOS tap sbtap dc 0
+XSBUF sbtap sbfb vccl 0 v3b OPA365
+RSBUFF v3b sbfb 1202
+RSBUFG sbfb 0 1451
+* DAC0 source for the injection switch: the AWG's DAC0 buffer (OPA365, ideal here) + 249.0 ohm
+Vdac dac0 0 dc 1.65 
+Rdac dac0 dac 249
+
+* channel A: op-amp OPA354, range 5
+R1 in n 16179.2
+Cr1 in n 3e-13
+R2 n vm 7873
+R3 n r3e 13147.4
+Cn n 0 2e-12
+Rs3 v3b v3s 249
+Cs3 v3s 0 1e-05
+XSWI r3e v3s RSW_CLOSED ron=6.25 con=2e-11
+Cft r3e dac 1.8e-12
+Cw in 0 4e-12
+Vos n np dc 0
+XU np fb vccl 0 out OPA354
+RF out fb 953
+RG fb vm 249
+Cpar fb 0 3e-12
+XSW out fb RSW_CLOSED ron=3.7 con=2e-11
+Riso out pin 22
+Cp pin 0 2e-12
+* channel b: op-amp OPA354, range 5
+R1b bin bn 16179.2
+Cr1b bin bn 3e-13
+R2b bn vm 7873
+R3b bn br3e 13147.4
+Cnb bn 0 2e-12
+Rs3b v3b bv3s 249
+Cs3b bv3s 0 1e-05
+XSWIb br3e bv3s RSW_CLOSED ron=6.25 con=2e-11
+Cftb br3e dac 1.8e-12
+Cwb bin 0 4e-12
+Vosb bn bnp dc 0
+XUb bnp bfb vccl 0 bouta OPA354
+Vlbb bout bouta dc 0 ac 1
+RFb bout bfb 953
+RGb bfb vm 249
+Cparb bfb 0 3e-12
+XSWb bout bfb RSW_CLOSED ron=3.7 con=2e-11
+Risob bout bpin 22
+Cpb bpin 0 2e-12
+##### rails extras lowz2
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH
+Vcc vcc0 0 dc 3.3
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 10n
+* 100 nF + 1 uF decoupling (ESR 20 mohm) at the op-amp supply pin
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* Vmid: ideal source 1.65 V, output impedance 0.05 ohm, decoupled 10 uF + 100 nF (ESR 20 mohm)
+Vm vm0 0 dc 1.65 ac 1
+Rvo vm0 vm 0.05
+Cvm1 vm cv1 1e-05
+Rcv1 cv1 0 0.02
+Cvm2 vm cv2 1e-07
+Rcv2 cv2 0 0.02
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; one shared 249.0 ohm + 10 uF sense filter for both channels
+V3s v30 0 dc 3.3 ac 1
+Rv3 v30 v3p 0.1
+Rs3sh v3p v3 249.0
+Cs3sh v3 0 1e-05
+Rva v3 tap 330k
+Rvb tap 0 330k
+Ctap tap 0 10u
+* sense buffer (shared): OPA365, gain 1 + 1202/1451
+VSBUFOS tap sbtap dc 0
+XSBUF sbtap sbfb vccl 0 v3b OPA365
+RSBUFF v3b sbfb 1202
+RSBUFG sbfb 0 1451
+* DAC0 source for the injection switch: the AWG's DAC0 buffer (OPA365, ideal here) + 249.0 ohm
+Vdac dac0 0 dc 1.65 ac 1
+Rdac dac0 dac 249
+
+##### sense lowz2
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; one shared 249.0 ohm + 10 uF sense filter for both channels
+V3s v30 0 dc 3.3 
+Rv3 v30 v3p 0.1
+Rs3sh v3p v3 249.0
+Cs3sh v3 0 1e-05
+Rva v3 tap 330k
+Rvb tap 0 330k
+Ctap tap 0 10u
+* sense buffer (shared): OPA365, gain 1 + 1202/1451
+VSBUFOS tap sbtap dc 0
+XSBUF sbtap sbfb vccl 0 v3b OPA365
+RSBUFF v3b sbfb 1202
+RSBUFG sbfb 0 1451
+* DAC0 source for the injection switch: the AWG's DAC0 buffer (OPA365, ideal here) + 249.0 ohm
+Vdac dac0 0 dc 1.65 
+Rdac dac0 dac 249
+
+* V3: the Due's 3.3 V pin (= AREF) as a source behind 0.1 ohm; one shared 249.0 ohm + 10 uF sense filter for both channels
+V3s v30 0 dc 3.3 ac 1
+Rv3 v30 v3p 0.1
+Rs3sh v3p v3 249.0
+Cs3sh v3 0 1e-05
+Rva v3 tap 330k
+Rvb tap 0 330k
+Ctap tap 0 10u
+* sense buffer (shared): OPA365, gain 1 + 1202/1451
+VSBUFOS tap sbtap dc 0
+XSBUF sbtap sbfb vccl 0 v3b OPA365
+RSBUFF v3b sbfb 1202
+RSBUFG sbfb 0 1451
+* DAC0 source for the injection switch: the AWG's DAC0 buffer (OPA365, ideal here) + 249.0 ohm
+Vdac dac0 0 dc 1.65 ac 1
+Rdac dac0 dac 249
+
+##### c1 lowz2
+0.0

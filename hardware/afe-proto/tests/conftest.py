@@ -19,7 +19,8 @@ from functools import lru_cache
 
 import pytest
 
-sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 
 
 def pytest_addoption(parser):

@@ -1,0 +1,232 @@
+##### header
+* t
+.include ../../../../whatif/tph2502/models/TPH2501_ngspice.mdl
+.model DESD D(IS=1e-15 N=1 RS=5)
+.model DBAV99 D(IS=7.8e-9 N=2.35 RS=1.5 CJO=1.5p M=0.4 VJ=0.7 BV=70 IBV=2.5u)
+.options abstol=1e-13 itl1=4000 itl4=500 reltol=1e-4 method=gear
+
+* t
+.include ../../../../whatif/tph2502/models/TPH2501_ngspice.mdl
+.model DESD D(IS=1e-15 N=1 RS=5)
+.model DBAV99 D(IS=7.8e-9 N=2.35 RS=1.5 CJO=1.5p M=0.4 VJ=0.7 BV=70 IBV=2.5u)
+.options abstol=1e-13 itl1=4000 itl4=500 reltol=1e-4 method=gear
+x
+##### rails
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH, 100 nF + 1 uF at the amplifier
+Vcc vcc0 0 dc 3.3 
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 1e-08
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* REF3030E: 3.0 V behind 0.05 ohm, 1 uF + 100 nF at its output (the ladder's top tap also loads it)
+Vr vr0 0 dc 3.0
+Rvr vr0 ref 0.05
+Cr1u ref cr1 1u
+Rcr1 cr1 0 0.02
+Cr100 ref cr2 100n
+Rcr2 cr2 0 0.02
+
+* supply: ideal 3.3 V behind 0.1 ohm + 10 nH, 100 nF + 1 uF at the amplifier
+Vcc vcc0 0 dc 3.3 ac 1
+Rvc vcc0 vcx 0.1
+Lvc vcx vccl 1e-08
+Cdc1 vccl cd1 100n
+Rdc1 cd1 0 0.02
+Cdc2 vccl cd2 1u
+Rdc2 cd2 0 0.02
+* REF3030E: 3.0 V behind 0.05 ohm, 1 uF + 100 nF at its output (the ladder's top tap also loads it)
+Vr vr0 0 dc 3.0
+Rvr vr0 ref 0.05
+Cr1u ref cr1 1u
+Rcr1 cr1 0 0.02
+Cr100 ref cr2 100n
+Rcr2 cr2 0 0.02
+
+##### rp
+249585.6366211339 540000.0
+##### chan a {}
+* channel a
+Rsa asrc ain 50
+Cwa ain 0 4e-12
+R1aa ain am1 510000
+R1ba am1 an 30000
+C1a ain an 2.2e-11
+Cr1a ain an 1e-13
+R2aa an am2 1e+06
+R2ba am2 0 510000
+R3aa an am3 470000
+R3ba am3 ref 200000
+Cna an 0 1.2e-11
+Cnpa an 0 3.5e-12
+Rnpa an anp 470
+Cpxa anp 0 1e-11
+XUa anp afb vccl 0 aout TPH2501_simplify
+Vfba aout afb dc 0
+Cfba afb 0 1e-12
+Risoa aout apin 22
+Cpina apin 0 2e-12
+Dpaa 0 apin DBAV99
+Dpba apin vccl DBAV99
+
+##### chan b {'loopbreak': True}
+* channel b
+Rsb bsrc bin 50
+Cwb bin 0 4e-12
+R1ab bin bm1 510000
+R1bb bm1 bn 30000
+C1b bin bn 2.2e-11
+Cr1b bin bn 1e-13
+R2ab bn bm2 1e+06
+R2bb bm2 0 510000
+R3ab bn bm3 470000
+R3bb bm3 ref 200000
+Cnb bn 0 1.2e-11
+Cnpb bn 0 3.5e-12
+Rnpb bn bnp 470
+Cpxb bnp 0 1e-11
+XUb bnp bfb vccl 0 bouta TPH2501_simplify
+Vlbb bout bouta dc 0 ac 1
+Vfbb bout bfb dc 0
+Cfbb bfb 0 1e-12
+Risob bout bpin 22
+Cpinb bpin 0 2e-12
+Dpab 0 bpin DBAV99
+Dpbb bpin vccl DBAV99
+
+##### chan a {'esd': True}
+* channel a
+Rsa asrc ain 50
+Cwa ain 0 4e-12
+R1aa ain am1 510000
+R1ba am1 an 30000
+C1a ain an 2.2e-11
+Cr1a ain an 1e-13
+R2aa an am2 1e+06
+R2ba am2 0 510000
+R3aa an am3 470000
+R3ba am3 ref 200000
+Cna an 0 1.2e-11
+Cnpa an 0 3.5e-12
+Rnpa an anp 470
+Cpxa anp 0 1e-11
+Desua anp aesu DESD
+Vesua aesu vccl dc 0
+Desda aesd anp DESD
+Vesda 0 aesd dc 0
+XUa anp afb vccl 0 aout TPH2501_simplify
+Vfba aout afb dc 0
+Cfba afb 0 1e-12
+Risoa aout apin 22
+Cpina apin 0 2e-12
+Dpaa 0 apin DBAV99
+Dpba apin vccl DBAV99
+
+##### chan b {'inj': True}
+* channel b
+Rsb bsrc bin 50
+Cwb bin 0 4e-12
+R1ab bin bm1 510000
+R1bb bm1 bn 30000
+C1b bin bn 2.2e-11
+Cr1b bin bn 1e-13
+R2ab bn bm2 1e+06
+R2bb bm2 0 510000
+R3ab bn bm3 470000
+R3bb bm3 ref 200000
+Cnb bn 0 1.2e-11
+Cnpb bn 0 3.5e-12
+Rnpb bn bnp 470
+Cpxb bnp 0 1e-11
+Venb bnp bnpi dc 0 ac 1
+XUb bnpi bfb vccl 0 bout TPH2501_simplify
+Vfbb bout bfb dc 0
+Cfbb bfb 0 1e-12
+Risob bout bpin 22
+Cpinb bpin 0 2e-12
+Dpab 0 bpin DBAV99
+Dpbb bpin vccl DBAV99
+
+##### chan a {'loopbreak': True, 'esd': True, 'inj': True}
+* channel a
+Rsa asrc ain 50
+Cwa ain 0 4e-12
+R1aa ain am1 510000
+R1ba am1 an 30000
+C1a ain an 2.2e-11
+Cr1a ain an 1e-13
+R2aa an am2 1e+06
+R2ba am2 0 510000
+R3aa an am3 470000
+R3ba am3 ref 200000
+Cna an 0 1.2e-11
+Cnpa an 0 3.5e-12
+Rnpa an anp 470
+Cpxa anp 0 1e-11
+Vena anp anpi dc 0 ac 1
+Desua anp aesu DESD
+Vesua aesu vccl dc 0
+Desda aesd anp DESD
+Vesda 0 aesd dc 0
+XUa anpi afb vccl 0 aouta TPH2501_simplify
+Vlba aout aouta dc 0 ac 1
+Vfba aout afb dc 0
+Cfba afb 0 1e-12
+Risoa aout apin 22
+Cpina apin 0 2e-12
+Dpaa 0 apin DBAV99
+Dpba apin vccl DBAV99
+
+##### coupling
+Cxn an bn 1e-12
+Cxi ain bin 2e-12
+Cxp anp bnp 3e-12
+
+* channel a
+Rsa asrc ain 50
+Cwa ain 0 4e-12
+R1aa ain am1 510000
+R1ba am1 an 30000
+C1a ain an 2.2e-11
+Cr1a ain an 1e-13
+R2aa an am2 1e+06
+R2ba am2 0 510000
+R3aa an am3 470000
+R3ba am3 ref 200000
+Cna an 0 1.2e-11
+Cnpa an 0 3.5e-12
+Rnpa an anp 470
+Cpxa anp 0 1e-11
+XUa anp afb vccl 0 aout TPH2501_simplify
+Vfba aout afb dc 0
+Cfba afb 0 1e-12
+Risoa aout apin 22
+Cpina apin 0 2e-12
+Dpaa 0 apin DBAV99
+Dpba apin vccl DBAV99
+
+* channel b
+Rsb bsrc bin 50
+Cwb bin 0 4e-12
+R1ab bin bm1 510000
+R1bb bm1 bn 30000
+C1b bin bn 2.2e-11
+Cr1b bin bn 1e-13
+R2ab bn bm2 1e+06
+R2bb bm2 0 510000
+R3ab bn bm3 470000
+R3bb bm3 ref 200000
+Cnb bn 0 1.2e-11
+Cnpb bn 0 3.5e-12
+Exb bnx bn aout 0 0.01
+Rnpb bnx bnp 470
+Cpxb bnp 0 1e-11
+XUb bnp bfb vccl 0 bout TPH2501_simplify
+Vfbb bout bfb dc 0
+Cfbb bfb 0 1e-12
+Risob bout bpin 22
+Cpinb bpin 0 2e-12
+Dpab 0 bpin DBAV99
+Dpbb bpin vccl DBAV99
+
