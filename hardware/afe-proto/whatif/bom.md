@@ -105,7 +105,7 @@ much between readings *(check before ordering)*. Bold flags: (a), (b), (c) are t
 | 49.9R | 49.9R 0.1 % 10 ppm/K 250 mW | 1206 | C869759 | Extended | 1 | AWG output series Rs 1 | 2 | 0.1238 | 0.1079 | 0.1238 | 0.1079 |
 | 680R | 680R 1 % | 0603 | C23228 | Basic | 3 | scope Rnp (1/ch) 2; AWG DAC0 buffer Rbin 1 | 6 | 0.0021 | 0.0021 | 0.0063 | 0.0063 |
 | 22R | 22R 1 % (page; code J = 5 %) | 0603 | C23345 | Basic | 8 | scope Riso (1/ch) 2; AWG Rb, 22 part 1; AWG Rf, 22 part 1; AWG supply filter 22 || 22 per pin 4 | 16 | 0.0017 | 0.0017 | 0.0136 | 0.0136 |
-| 4.7k | 4.7k 1 % | 0603 | C23162 | Basic | 7 | scope Vmid DC feedback (1/ch) 2; +3.3 V_A bleed 1; D38-D39 range pull-downs 2; ratio-switch control pull-down 1; ADS124S08 CS (D36) pull-up 1 (all three computed under "Control-pin pull resistors") | 14 | 0.0028 | 0.0028 | 0.0196 | 0.0196 |
+| 4.7k | 4.7k 1 % | 0603 | C23162 | Basic | 7 | scope Vmid DC feedback (1/ch) 2; +3.3 V_A bleed 1; D16/D39 range pull-downs 2; ratio-switch control pull-down (D9) 1; ADS124S08 CS (D5) pull-up 1 (all three computed under "Control-pin pull resistors") | 14 | 0.0028 | 0.0028 | 0.0196 | 0.0196 |
 | 1R | 1R 1 % 400 ppm/K | 0603 | C22936 | Basic | 11 | 5 V feed sense 1; scope op-amp supply branch (1/ch) 2; scope Vmid isolation 4 x 1R || (4/ch) 8 | 22 | 0.0031 | 0.0031 | 0.0341 | 0.0341 |
 | 12 pF | 12 pF C0G 5 % 50 V | 0603 | C38523 | Basic | 8 | scope C1 across R1 (1/ch) 2 (**(c)**); scope C2 = 20 \|\| 12 \|\| (12 s 20), 12 pF parts (2/ch) 4 (**(c)**); AWG Cf 1; AWG Vmid tap 1 | 16 | 0.0068 | 0.0068 | 0.0544 | 0.0544 |
 | 20 pF | 20 pF C0G 5 % 50 V | 0603 | C1648 | Basic | 4 | scope C2 = 20 \|\| 12 \|\| (12 s 20), 20 pF parts (2/ch) 4 (**(c)**) | 8 | 0.0088 | 0.0088 | 0.0352 | 0.0352 |
@@ -248,7 +248,7 @@ ADS124S08 SBAS660C 7.5.
   pull-up on (31.5.1, `PIO_PUSR` resets to 0). RPULLUP is 50 / 100 / 150
   kohm min / typ / max; VDDIO 3.0-3.6 V. PC1-PC9 are group 1: IOH 15 mA
   at VOH = VDDIO - 0.4 V, IOL 9 mA at VOL = 0.4 V (Table 45-2, note 2).
-- **R66-R68, the range and ratio-switch pull-downs (D38-D40).** Worst low
+- **R66-R68, the range and ratio-switch pull-downs (D16, D39, D9).** Worst low
   level with the internal pull-up on: 3.6 V x 4.747k / (50k + 4.747k) =
   0.312 V, plus the TMUX1119's 0.05 uA SEL leakage x 4.747k = 0.2 mV, so
   **0.31 V against SEL's VIL of 0.8 V**: 0.49 V of margin, and SEL reads
@@ -259,7 +259,7 @@ ADS124S08 SBAS660C 7.5.
   3.6 V and -1 %) per line, against 15 mA; VOH >= 2.6 V against SEL's VIH
   of 1.35 V. 4.7k stands: the margin is in the low state, which is the
   safe one.
-- **R69, the ADS124S08 CS pull-up (D36), to +3.3 V_A.** CS input current
+- **R69, the ADS124S08 CS pull-up (D5), to +3.3 V_A.** CS input current
   is +/-1 uA, so the pull-up holds CS within 4.7 mV of IOVDD against VIH =
   0.7 IOVDD whatever the Due's pull-up is doing (the internal one alone
   could drop 0.15 V, and firmware may disable it). Selecting costs the Due
@@ -272,7 +272,7 @@ ADS124S08 SBAS660C 7.5.
 
 - ADS124S08 control pins need no parts (SBAS660 10.1.5): CLK to DGND
   (internal oscillator), START/SYNC to DGND (conversions by command), RESET
-  to IOVDD (or a Due pin), DRDY unconnected (or D37), REFN0 to AVSS, REFOUT
+  to IOVDD (or a Due pin), DRDY unconnected (or a free top-edge pin), REFN0 to AVSS, REFOUT
   open with the internal reference off, REFCOM to AVSS.
 - IC decoupling: one 100 nF per IC supply pin; 5 are assumed (LM27762 VIN,
   three TMUX1119, the TLV9062). The REF3030 and ADS124S08 capacitors
@@ -312,7 +312,7 @@ straight part is listed as the alternative. Owner to confirm.
 1x8 (POWER0, ADCL0, ADCH0, PWML0, COMMUNICATION0), one 1x10 (PWMH0) and one
 2x18 (XIO0), 86 pins, every one passed through (MC-9). The 6-pin `SPI0`
 header is needed only if the precision ADC uses hardware SPI (MC-1); this
-design bit-bangs SPI on D33-D36 (ADS124S08 CS on D36), so it is not counted.
+design bit-bangs SPI on D5-D8 (ADS124S08 CS on D5), so it is not counted.
 The Due carries female sockets, so the shield needs long-tail
 (stacking) female headers.
 
@@ -422,33 +422,37 @@ the schematic (the net's U1 pin name), not from the Arduino variant table.
 
 | Due pin | port | header.pin (x, Y) | AFE use | other connections on V03 | firmware use | alternate functions (CMSIS header) |
 |---|---|---|---|---|---|---|
-| D33 | PC1 | XIO0.14 (96.52, 35.56) | ADS124S08 SCLK, bit-banged | none: U1 and XIO only | none | none listed |
-| D34 | PC2 | XIO0.15 (93.98, 33.02) | ADS124S08 DIN (MOSI) | none | none | A: EBI D0, B: PWML0 |
-| D35 | PC3 | XIO0.16 (96.52, 33.02) | ADS124S08 DOUT/DRDY (MISO), input to the Due | none | none | A: D1, B: PWMH0 |
-| D36 | PC4 | XIO0.17 (93.98, 30.48) | ADS124S08 CS, 4.7k pull-up | none | none | A: D2, B: PWML1 |
-| D37 | PC5 | XIO0.18 (96.52, 30.48) | **unassigned** (was the precision DAC's CS; the DAC is gone, D5). Free for the ADS124S08 DRDY if wanted | none | none | A: D3, B: PWMH1 |
-| D38 | PC6 | XIO0.19 (93.98, 27.94) | range select CH1, 4.7k pull-down | none | none | A: D4, B: PWML2 |
-| D39 | PC7 | XIO0.20 (96.52, 27.94) | range select CH2, 4.7k pull-down | none | none | A: D5, B: PWMH2 |
-| D40 | PC8 | XIO0.21 (93.98, 25.40) | tee ratio switch, 4.7k pull-down (pin provisional: the design statement names none) | none | none | A: D6, B: PWML3 |
-| D41 | PC9 | XIO0.22 (96.52, 25.40) | **free** (the second injection switch is gone with the tee) | none | none | A: D7, B: PWMH3 |
+| D5 | PC25 | PWML0.6 (50.80, 50.80) | ADS124S08 CS, 4.7k pull-up | none: U1.136 and PWML0 only | none | A: EBI A4, B: TIOA6 |
+| D6 | PC24 | PWML0.7 (48.26, 50.80) | ADS124S08 DIN (MOSI) | none (U1.135) | none | A: EBI A3, B: PWML7 |
+| D7 | PC23 | PWML0.8 (45.72, 50.80) | ADS124S08 SCLK, bit-banged | none (U1.134) | none | A: EBI A2, B: PWML6 |
+| D8 | PC22 | PWMH0.1 (41.656, 50.80) | ADS124S08 DOUT/DRDY (MISO), input to the Due | none (U1.133) | none | A: EBI A1, B: PWML5 |
+| D9 | PC21 | PWMH0.2 (39.116, 50.80) | tee ratio switch, 4.7k pull-down | none (U1.132) | none | A: EBI A0/NBS0, B: PWML4 |
+| D16 | PA13 | COMMUNICATION0.3 (73.66, 50.80) | range select CH1, 4.7k pull-down | none (U1.6) | none | A: USART1 TXD1, B: PWMH2 |
+| D39 | PC7 | XIO0.20 (96.52, 27.94) | range select CH2, 4.7k pull-down | none: U1 and XIO only | none | A: EBI D5, B: PWMH2 |
 
-**No clash.** Each net PIN33..PIN41 has exactly two pins in the schematic,
-U1's PCn and the XIO header, so the Due has no load, pull-up, LED or other
-function on any of them. The firmware never touches port C: the grep finds
-no `PIOC`, no `PIO_PC*` and no `PWM->`. Its only PIO accesses are PIOA
-and PIOB: `drivers/adc.c` disables the pull-ups on PA2/3/4/6 and PB15-18
-(the analog inputs), the LED is PB27 (D13), and `console_port` reads PIOA
-status registers. The EBI and PWM functions on PC2-PC9 are not enabled
-anywhere. One SODR/CODR write on PIOC can set SCK/MOSI/CS and the three
-control lines together, and none of the other AFE pins (A0-A9, DAC0, AREF,
-5 V, GND, 3.3 V sense) is on port C.
+The bus and CH1's range select sit on the top edge so that no digital line crosses an
+analog zone (`docs/afe.md` LR-9 and D14): the ADS124S08 stays by the ladder and its bus
+runs along the west and top board edges. D33-D38, D40 and D41 (XIO0) are free.
+
+**No clash.** On the V03 board each of these nets reaches exactly two pads, U1's and
+the header's (read from the KiCad import, `hardware/reference/arduino-due/v03`), so
+the Due has no load, pull-up, LED or other function on any of them. The port map is
+the SAM3X datasheet's LQFP-144 pinout (11057C: pin 132 PC21 to 136 PC25, pin 6 PA13).
+The firmware drives PIOC for one bit only, the RX LED on PC30 (`bsp/led.c`), through
+SODR/CODR, which change only the bits written, so a bus write on PC22-PC25 and the LED
+cannot disturb each other. Nothing enables USART1 (PA13's TXD1), the EBI or PWM on
+these pins (grep of `drivers/`, `lib/`, `sketches/`, `apps/`, `bsp/`). One SODR/CODR
+write on PIOC sets SCK, MOSI and CS together. Of the five bus pins only PC25 (CS) has a
+Schmitt-trigger input (11057C, PIO note 4); the input, DOUT on PC22, does not, as D35
+(PC3) did not before.
 
 Not established: Track A's Arduino core `init()` / `variant.cpp` is not in
-the repository and was not read, so whether it drives PC1-PC9 at start-up is
-*(check)*. After reset the PIO lines are inputs with the internal pull-up on
-(SAM3X 11057C 31.5.1). The 4.7k pull-downs hold D38-D40 at 0.31 V or less
+the repository and was not read, so whether it drives these pins at start-up is
+*(check)*; the Arduino core does bring up Serial1..3, so its `init()` is the place to
+look for PA13. After reset the PIO lines are inputs with the internal pull-up on
+(SAM3X 11057C 31.5.1). The 4.7k pull-downs hold D16, D39 and D9 at 0.31 V or less
 against its 50 kohm minimum ("Control-pin pull resistors"). MISO
-(D35) floats onto the pull-up while CS is high, which is harmless.
+(D8) floats onto the pull-up while CS is high, which is harmless.
 
 ## Mechanical check: BNCs on the left edge (x = 17)
 

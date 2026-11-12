@@ -55,9 +55,9 @@ unfitted by default, no part, no fee. ADC-pin BAT54S clamps fitted (1/ch); ratio
  9  UNI-ROYAL 0603WAF4701T5E   C23162    Basic     4.7k 1 %, 0603                           7   0.0028  0.0028 
       R63-R64    x2   scope Vmid loop 4.7k (1/ch)
       R65        x1   +3.3 V_A bleed
-      R66-R67    x2   D38-D39 range pull-downs: SEL <= 0.31 V against the Due's 50k pull-up, VIL 0.8 V
-      R68        x1   ratio-switch control pull-down (D40): same as R66-R67
-      R69        x1   ADS124S08 CS (D36) pull-up: CS >= IOVDD - 5 mV at 1 uA; 0.77 mA max to pull low
+      R66-R67    x2   D16/D39 range pull-downs: SEL <= 0.31 V against the Due's 50k pull-up, VIL 0.8 V
+      R68        x1   ratio-switch control pull-down (D9): same as R66-R67
+      R69        x1   ADS124S08 CS (D5) pull-up: CS >= IOVDD - 5 mV at 1 uA; 0.77 mA max to pull low
 10  UNI-ROYAL 0603WAF100KT5E   C22936    Basic     1R 1 % 400 ppm/K, 0603                  11   0.0031  0.0031 
       R70        x1   5 V feed sense
       R71-R72    x2   scope op-amp supply branch (1/ch)
@@ -164,7 +164,7 @@ PROVISIONAL ITEMS AND THEIR DELTAS ($/board at 20 / at 100 boards; fees per Econ
 PULL RESISTORS (4.7k stands, computed in bom.md "Control-pin pull resistors"): SAM3X pull-up 50-150k (11057C
 Table 45-2), on after reset (31.5.1); TMUX1119 SEL VIL 0.8 V, VIH 1.35 V, 0.05 uA (SCDS401C 5.6); ADS124S08 VIL/VIH
 0.3/0.7 IOVDD, 1 uA (SBAS660C 7.5). Due pin drive 0.70-0.77 mA per line against 15 mA source / 9 mA sink (group 1).
-PENDING: ratio-switch Due pin (D40 provisional); IC decoupling one 100 nF per supply pin (5 assumed: LM27762 VIN,
+PENDING: IC decoupling one 100 nF per supply pin (5 assumed: LM27762 VIN,
 3 x TMUX1119, TLV9062). ADS124S08 ties, no parts: CLK and
 START/SYNC to DGND, RESET to IOVDD, REFN0 and REFCOM to AVSS, REFOUT open (internal reference off).
 STOCK: ADS124S08IPBSR 1,257 at JLC (2026-11-11): covers 20 and 100 boards.
@@ -197,15 +197,15 @@ read 2026-11-11, single unit (sources and alternatives in bom.md). 'unit@20' = t
   owner-fitted $/board       20 boards: 4.48 (check)     100 boards: 4.22 (check)
   GRAND TOTAL, international, PCB excluded: 20 boards 39.66 / 40.07; 100 boards 34.38 / 34.55 per board.
   GRAND TOTAL, domestic (the order), PCB included: 20 boards 37.11 / 37.49; 100 boards 31.64 / 31.79 per board.
-  SPI0 (2x3) not fitted: the ADS124S08 is on bit-banged SPI (D33-D36), so MC-1's SPI0 connection is not needed.
+  SPI0 (2x3) not fitted: the ADS124S08 is on bit-banged SPI (D5-D8), so MC-1's SPI0 connection is not needed.
   BNC straight or right-angle is not stated in docs/afe.md; MC-8's "one board edge" implies right-angle (owner to confirm).
   JLC/LCSC catalogue headers (Samtec SSQ + cut PC104) not used: too little stock, mixed 10 / 12.2 mm tails, 9.72 / 8.56.
 
 PIN CHECK (V03 schematic nets; firmware grep of drivers/ lib/ sketches/ apps/)
-  D33 PC1 XIO0.14  ADS124S08 SCLK     D34 PC2 XIO0.15  ADS124S08 DIN   D35 PC3 XIO0.16  ADS124S08 DOUT/DRDY
-  D36 PC4 XIO0.17  ADS124S08 CS (pull-up)              D37 PC5 XIO0.18  unassigned (former DAC CS; DRDY if wanted)
-  D38 PC6 XIO0.19  range CH1 (pull-down)               D39 PC7 XIO0.20  range CH2 (pull-down)
-  D40 PC8 XIO0.21  tee ratio switch (pull-down; pin provisional)   D41 PC9 XIO0.22  free (injection switch gone)
+  D5 PC25 PWML0.6  ADS124S08 CS (pull-up)   D6 PC24 PWML0.7  ADS124S08 DIN   D7 PC23 PWML0.8  ADS124S08 SCLK
+  D8 PC22 PWMH0.1  ADS124S08 DOUT/DRDY      D9 PC21 PWMH0.2  tee ratio switch (pull-down)
+  D16 PA13 COMMUNICATION0.3  range CH1 (pull-down)    D39 PC7 XIO0.20  range CH2 (pull-down)
+  (afe.md D14: the bus and CH1's range on the top edge for LR-9; D33-D38, D40, D41 free)
   No clash: each net PIN33-PIN41 connects only U1's PCn and the XIO header. The firmware never touches port C
   (no PIOC, PIO_PC*, PWM->). Track A's Arduino core init() is not in the repo *(check)*.
 

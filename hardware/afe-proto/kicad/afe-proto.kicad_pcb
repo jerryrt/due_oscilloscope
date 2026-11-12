@@ -1388,7 +1388,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "unconnected-(J7-Pin_6-Pad6)")
+			(net "/D5_CS")
 			(uuid "555204c2-4466-5b5f-9b09-6d0684c94b99")
 		)
 		(pad "7" thru_hole circle
@@ -1397,7 +1397,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "unconnected-(J7-Pin_7-Pad7)")
+			(net "/D6_DIN")
 			(uuid "6b911ed9-ca3a-56b6-82d7-5275b956c5b6")
 		)
 		(pad "8" thru_hole circle
@@ -1406,7 +1406,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "unconnected-(J7-Pin_8-Pad8)")
+			(net "/D7_SCLK")
 			(uuid "05baf10f-7477-5e0e-a901-0751bcce41ee")
 		)
 		(embedded_fonts no)
@@ -5113,7 +5113,7 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D40")
+			(net "/D9_SEL")
 			(uuid "e62e730c-fade-5acc-b3b7-eb0b010fa60e")
 		)
 		(pad "2" smd roundrect
@@ -5805,7 +5805,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "unconnected-(J9-Pin_1-Pad1)")
+			(net "/D8_DOUT")
 			(uuid "27c97bff-ca1e-515e-a4c2-5fed215262fe")
 		)
 		(pad "2" thru_hole circle
@@ -5814,7 +5814,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "unconnected-(J9-Pin_2-Pad2)")
+			(net "/D9_SEL")
 			(uuid "1d261241-3d18-5f0f-af2a-46040f992487")
 		)
 		(pad "3" thru_hole circle
@@ -6654,7 +6654,7 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D36")
+			(net "/D5_CS")
 			(uuid "a0bfdf8a-0ea9-5c5d-a3ba-f95e42c5ec53")
 		)
 		(pad "2" smd roundrect
@@ -8936,7 +8936,7 @@
 			(size 0.3 1.475)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D36")
+			(net "/D5_CS")
 			(uuid "07f28070-7020-5fd4-a430-e440a1cafd81")
 		)
 		(pad "10" smd roundrect
@@ -8944,7 +8944,7 @@
 			(size 0.3 1.475)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D34")
+			(net "/D6_DIN")
 			(uuid "2e28d697-bd5d-56f2-ac58-ff5cdad6946e")
 		)
 		(pad "11" smd roundrect
@@ -8952,7 +8952,7 @@
 			(size 0.3 1.475)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D33")
+			(net "/D7_SCLK")
 			(uuid "01125a58-7dea-5742-bafe-b57ff707c7a3")
 		)
 		(pad "12" smd roundrect
@@ -8960,7 +8960,7 @@
 			(size 0.3 1.475)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D35")
+			(net "/D8_DOUT")
 			(uuid "1d8330b2-6596-5d93-b090-82857572636a")
 		)
 		(pad "13" smd roundrect
@@ -11451,7 +11451,7 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D38")
+			(net "/D16")
 			(uuid "395f19ca-c728-59cb-b474-5669e1b02781")
 		)
 		(pad "2" smd roundrect
@@ -15523,7 +15523,7 @@
 			(size 1.025 0.35)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D38")
+			(net "/D16")
 			(uuid "f7aafb38-534a-591e-960a-c141ee901ba9")
 		)
 		(pad "2" smd roundrect
@@ -24957,7 +24957,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "/D33")
+			(net "unconnected-(J10-Pin_14-Pad14)")
 			(uuid "a2bfd1f4-6db0-5e57-b4ce-f45cc0beec13")
 		)
 		(pad "15" thru_hole circle
@@ -24966,7 +24966,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "/D34")
+			(net "unconnected-(J10-Pin_15-Pad15)")
 			(uuid "86deba76-1815-596c-890b-e952dba95179")
 		)
 		(pad "16" thru_hole circle
@@ -24975,7 +24975,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "/D35")
+			(net "unconnected-(J10-Pin_16-Pad16)")
 			(uuid "da8da662-9bae-53a9-a117-1df780e3dfbc")
 		)
 		(pad "17" thru_hole circle
@@ -24984,7 +24984,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "/D36")
+			(net "unconnected-(J10-Pin_17-Pad17)")
 			(uuid "f174b41c-5902-59a9-afab-1bce5e700f7e")
 		)
 		(pad "18" thru_hole circle
@@ -25002,7 +25002,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "/D38")
+			(net "unconnected-(J10-Pin_19-Pad19)")
 			(uuid "603334d1-afae-514f-b781-71218fc1e0ca")
 		)
 		(pad "20" thru_hole circle
@@ -25020,7 +25020,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "/D40")
+			(net "unconnected-(J10-Pin_21-Pad21)")
 			(uuid "9899df57-ea73-5a4e-a085-b6a47587a443")
 		)
 		(pad "22" thru_hole circle
@@ -27619,7 +27619,7 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net "unconnected-(J8-Pin_3-Pad3)")
+			(net "/D16")
 			(uuid "504ddba0-f6aa-5d7d-9fc4-370c23d4ff40")
 		)
 		(pad "4" thru_hole circle
@@ -32401,7 +32401,7 @@
 			(size 1.025 0.35)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/D40")
+			(net "/D9_SEL")
 			(uuid "266cefe2-1852-5bc9-a44d-7359b4a2333d")
 		)
 		(pad "2" smd roundrect

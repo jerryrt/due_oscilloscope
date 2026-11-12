@@ -131,7 +131,7 @@ SC = {  # ch: R1 100k, R1 330k x2, R3 100k, R3 330k x2, R2, C1, C2 12p (||), C2 
             'R53', 'U2', 'R31', 'R37', 'U11', 'R56', 'D6', 'R72', 'C45', 'C14', 'C29', 'R67', 'J2'),
 }
 ADC = {'CH1': 'A1', 'CH2': 'A0'}            # afe.md: CH1 on A1, CH2 on A0
-RANGE = {'CH1': 'D38', 'CH2': 'D39'}
+RANGE = {'CH1': 'D16', 'CH2': 'D39'}   # D16 (PA13, COMMUNICATION0.3) over CH1's switch; D39 on XIO0 (afe.md D14)
 for ch, (r1a, (r1b, r1c), r3a, (r3b, r3c), r2, c1, c2p, c2s, c2q, c2t, rnp, u, rf, rg, sw, riso, dk, rsup, c10, cpin,
          csw, rpd, j) in SC.items():
     B = ch.lower()
@@ -214,10 +214,10 @@ two('R81', '0R', VREF, 'AREF', B, 'PA-7: reference to the Due AREF pin, unfitted
 # AWG-sense divider k = 1/2 at the BNC (after the 49.9 ohm); the ratio switch moves its far end
 two('R7', '100k', 'AWG_BNC', 'SNS_TAP', B, 'sense divider, BNC node to tap')
 two('R8', '100k', 'SNS_TAP', 'SNS_D', B, 'sense divider, tap to far end (switch D, read by the ADC)')
-part('U12', 'TMUX1119', {'1': 'D40', '2': P33A, '3': G, '4': 'SNS_S1', '5': 'SNS_D', '6': VREF}, B,
+part('U12', 'TMUX1119', {'1': 'D9_SEL', '2': P33A, '3': G, '4': 'SNS_S1', '5': 'SNS_D', '6': VREF}, B,
      'ratio switch: SEL low = S1 (AWG Vmid via 100k), high = S2 (3.0 V)')
 two('C30', '100n', P33A, G, B, 'TMUX1119 supply')
-two('R68', '4.7k', 'D40', G, B, 'ratio-switch pull-down (bom.txt PULL RESISTORS)')
+two('R68', '4.7k', 'D9_SEL', G, B, 'ratio-switch pull-down (bom.txt PULL RESISTORS)')
 two('R9', '100k', 'AWG_VMID', 'SNS_S1', B, 'AWG Vmid to S1')
 # switch-pin clamps on D and S1 (architecture.md C1-q / C1-r)
 part('D7', 'BAT54S', {'1': G, '3': 'SNS_D', '2': P33A}, B, 'clamp on the ratio switch D')
@@ -227,13 +227,14 @@ part('U9', 'ADS124S08', {
     '7': 'TAP1', '6': 'TAP2', '5': 'TAP3', '4': 'TAP4', '3': 'TAP5', '2': VREF,   # AIN0..AIN5: the six taps
     '22': 'SNS_TAP', '21': 'SNS_D',                                               # AIN8, AIN9
     '8': G,             # START/SYNC to DGND
-    '9': 'D36', '10': 'D34', '11': 'D33', '12': 'D35',   # CS, DIN, SCLK, DOUT/DRDY: bit-banged SPI
+    '9': 'D5_CS', '10': 'D6_DIN', '11': 'D7_SCLK', '12': 'D8_DOUT',   # bit-banged SPI on PC25..PC22 (D5..D8, one port),
+    # on the top edge, its bus along the west and top board edges (afe.md D14, LR-9)
     '14': G, '15': P33A, '16': P33A, '17': G, '18': P33A,    # DGND, IOVDD, DVDD, CLK to DGND (internal osc), RESET high
     '24': G, '26': P33A, '27': G, '28': G, '29': G, '30': VREF,   # REFCOM, AVDD, AVSS, AVSS-SW, REFN0, REFP0
 }, B, 'precision ADC; DRDY, REFOUT, NC and AIN6/7/10/11 open (SBAS660C 10.1.5)')
 two('C25', '100n', P33A, G, B, 'ADS124S08 DVDD + IOVDD (tied)')
 two('C33', '1u', P33A, G, B, 'ADS124S08 AVDD, >= 330 nF')
-two('R69', '4.7k', 'D36', P33A, B, 'CS pull-up (bom.txt PULL RESISTORS)')
+two('R69', '4.7k', 'D5_CS', P33A, B, 'CS pull-up (bom.txt PULL RESISTORS)')
 
 # ------------------------------------------------------------------ Due headers (docs/due-header-table.md, V03)
 B = 'due'
@@ -244,17 +245,17 @@ HDR = {  # ref: (symbol, value, footprint, {pin: net})
            {'1': VREF, '2': 'TAP5', '3': 'TAP4', '4': 'TAP3', '5': 'TAP2', '6': 'TAP1', '7': 'A1', '8': 'A0'}),
     'J6': ('Connector_Generic:Conn_01x08', 'ADCH0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
            {'5': 'DAC0'}),
-    'J7': ('Connector_Generic:Conn_01x08', 'PWML0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical', {}),
+    'J7': ('Connector_Generic:Conn_01x08', 'PWML0', 'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical',
+           {'6': 'D5_CS', '7': 'D6_DIN', '8': 'D7_SCLK'}),
     'J8': ('Connector_Generic:Conn_01x08', 'COMMUNICATION0',
-           'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical', {}),
+           'Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical', {'3': 'D16'}),
     'J9': ('Connector_Generic:Conn_01x10', 'PWMH0', 'Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical',
-           {'7': G, '8': 'AREF'}),
+           {'1': 'D8_DOUT', '2': 'D9_SEL', '7': G, '8': 'AREF'}),
     'J10': ('Connector_Generic:Conn_02x18_Odd_Even', 'XIO0',
             'afe:PinSocket_2x18_P2.54mm_Vertical_DueXIO',     # stock socket, odd / even exchanged (build_pcb.py);
             # its 5V pins 1/2 are left open: the Due joins them to POWER0.5 on its own board, and the shield takes
             # 5 V at POWER0.5 alone (a second shield-side 5 V path would only add a trace across the board)
-            {'14': 'D33', '15': 'D34', '16': 'D35', '17': 'D36',
-             '19': 'D38', '20': 'D39', '21': 'D40', '35': G, '36': G}),
+            {'20': 'D39', '35': G, '36': G}),
 }
 for ref, (sym, val, fp, pins) in HDR.items():
     other(ref, sym, val, fp, pins, B, 'generic Mega stacking header, owner-fitted')

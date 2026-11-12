@@ -18,10 +18,12 @@ The circuit as built is the KiCad project in `../kicad/` (design FR-01,
   to the AREF pin through the unfitted 0 ohm (PA-7). `afe.md` section 4.1
   and PW-1 say AREF is the sense point; that text needs correcting.
 - Hardware SPI is **not** on any edge header; the precision ADC uses a
-  bit-banged bus on D33-D36 (`docs/due-header-table.md`).
-- The range-select pins D38-D39 and the ratio-switch pin D40 get external
+  bit-banged bus on D5-D8, the top edge, its traces along the west and top
+  board edges so no digital line crosses an analog zone (`docs/afe.md` LR-9,
+  D14; `docs/due-header-table.md`).
+- The range-select pins D16 (CH1) and D39 (CH2) and the ratio-switch pin D9 get external
   4.7k pull-downs, so low is the safe state (+/-5 V, ratio switch on the
-  AWG's Vmid); the ADC's chip select D36 is pulled up (`whatif/bom.md`,
+  AWG's Vmid); the ADC's chip select D5 is pulled up (`whatif/bom.md`,
   "Control-pin pull resistors").
 - Precision resistors are 0.1 % at 25 ppm/K, the grade actually stocked
   (`docs/jlcpcb-parts.md`): SC-8 is 1 % (2026-11-11) and passes with it, and
@@ -338,7 +340,7 @@ Nothing is drawn from the Due's 3.3 V pin except the microamp Vmid sense
   AWG drives both scope inputs through a tee; the ADS124S08 reads the AWG
   on the BNC side through a 0.1 % 10 ppm/K divider, **100k to the tap and
   100k to a far end (k = 1/2, 2026-11-11)** that one TMUX1119 (U12, PA-4's
-  ratio switch, SEL on D40 pulled down: S1 the AWG's Vmid by default, S2
+  ratio switch, SEL on D9 pulled down: S1 the AWG's Vmid by default, S2
   the REF3030E output, VREF, which is also the unbuffered ladder's top tap)
   moves, so the ratio is measured at every calibration. The ADC reads
   the bottom node itself, so the switch's Ron and leakage are outside the
@@ -347,8 +349,7 @@ Nothing is drawn from the Due's 3.3 V pin except the microamp Vmid sense
   +3.3 V_A) on the bottom node D (D7) and one on S1 (D8), with **100k**
   (C394537) from the AWG's Vmid node to S1; S2 (the ladder top) needs
   none. The T-switches, the 249 ohm injection branch, their
-  decouplers and the injection switches' D40/D41 pull-downs are gone (D40
-  now drives the ratio switch); the injection rows
+  decouplers and the injection switches' pull-downs are gone; the injection rows
   (C3-a..f and the SC-9 injection rows) are retired.
 - **The tee's fit share is 0.1 % on both ranges (owner, 2026-11-11).**
   With the ADC's INL referred to the AWG (whatif/tee's re-run), k = 1/3
