@@ -1,0 +1,28 @@
+* RANGESW: open behavioural model of the range switch (TMUX1119-like SPST function), 2b scope channel.
+* Written for this project; not derived from, and contains none of, TI's encrypted/PSpice model
+* (which does not parse in ngspice 47, models/SOURCES.md).
+* Licence: CC-BY-SA 4.0 (full text in LICENSE in this folder).
+*
+* Each parameter, its value and where it comes from (TMUX1119 datasheet SCDS401C, models/tmux1119/tmux1119.pdf,
+* electrical tables at VDD = 3.3 V, 25 C; numbers re-read from the extracted text 2026-11-11):
+*   ron   = 3.7 ohm typ, 8.8 ohm max          RON  (models/datasheet-facts.md, Sec 5.5/5.6)
+*   coff  = 6 pF                              CSOFF, source off capacitance, f = 1 MHz
+*   con   = 20 pF                             CS(ON)/CD(ON), on capacitance, f = 1 MHz
+*   qinj  = -6 pC (RS = 0, CL = 1 nF)          QC, charge injection; NOT modelled here: see the
+*                                             charge-injection case in run.py, which injects it as a current pulse
+*   roff  = 1e12 ohm placeholder (leakage is 3 pA typ in the datasheet; a 3 pA leak into 1 kohm-range nodes is
+*           3 nV, so it is not worth a model element)
+* NOT modelled (model gap, closed by VT-4/VT-10 on the board): the dependence of ron on signal level and
+* temperature, the on-capacitance split between the two pins, bulk/ESD diodes, break-before-make timing.
+*
+* closed: a - ron - b, with con/2 from each end to node 0 (the on capacitance split in two)
+.subckt RSW_CLOSED a b params: ron=3.7 con=20p
+Ron a b {ron}
+Con1 a 0 {con/2}
+Con2 b 0 {con/2}
+.ends
+* open: roff across, coff across the open channel
+.subckt RSW_OPEN a b params: coff=6p roff=1e12
+Roff a b {roff}
+Coff a b {coff}
+.ends

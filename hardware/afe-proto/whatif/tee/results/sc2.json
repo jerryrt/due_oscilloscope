@@ -1,0 +1,70 @@
+{
+ "0.1 %, 25 ppm/K (design)|5": {
+  "margin_mV": 113.98682000000005,
+  "at": {
+   "R1": -1,
+   "R2": 1,
+   "R3": -1,
+   "cent": 1,
+   "vos": -1,
+   "Ron": 8.8
+  },
+  "df3_corner_signs_only_mV": 114.12734999999996,
+  "pass_": true
+ },
+ "0.1 %, 25 ppm/K (design)|1.25": {
+  "margin_mV": 117.79960000000011,
+  "at": {
+   "R1": 1,
+   "R2": 1,
+   "R3": -1,
+   "cent": 1,
+   "vos": -1,
+   "Ron": 3.7
+  },
+  "df3_corner_signs_only_mV": 119.63807,
+  "pass_": true
+ },
+ "1 %, 100 ppm/K (Basic, datasheet)|5": {
+  "margin_mV": 98.90966000000034,
+  "at": {
+   "R1": -1,
+   "R2": 1,
+   "R3": -1,
+   "cent": 1,
+   "vos": -1,
+   "Ron": 8.8
+  },
+  "df3_corner_signs_only_mV": 100.07533000000012,
+  "pass_": true
+ },
+ "1 %, 100 ppm/K (Basic, datasheet)|1.25": {
+  "margin_mV": 63.8526574,
+  "at": {
+   "R1": -1,
+   "R2": 1,
+   "R3": 1,
+   "cent": -1,
+   "vos": 1,
+   "Ron": 3.7
+  },
+  "df3_corner_signs_only_mV": 63.8526574,
+  "pass_": false
+ },
+ "guards": [
+  {
+   "check": "search finds the SC-11 margin corner",
+   "mutation": "restrict to the DF-3 corner set (Vos and centring signs tied)",
+   "good": 63.8526574,
+   "broken": 111.50120000000018,
+   "fired": true
+  },
+  {
+   "check": "SC-11 margin >= 80 mV",
+   "mutation": "divider 0.1 % -> 1 %",
+   "good": 117.79960000000011,
+   "broken": 63.8526574,
+   "fired": true
+  }
+ ]
+}

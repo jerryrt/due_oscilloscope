@@ -1,0 +1,90 @@
+{
+ "ngspice": "** ngspice-47 : Circuit level simulation program",
+ "nmc": 200,
+ "seed": 20261111,
+ "nom": {
+  "R1": 760000.0,
+  "R2": 330000.0,
+  "R3": 760000.0,
+  "RF": 953.0,
+  "RG": 249.0,
+  "Rt": 0.0
+ },
+ "C2": 3.72e-11,
+ "vts": [
+  1.0,
+  1.15
+ ],
+ "rcab": [
+  0.1,
+  0.12
+ ],
+ "opa354_sha": "48aeb72c445e6387b1a68110ad508658bc263882f394c78753d56201351ccd07",
+ "rangesw_sha": "cb4fa94899cc39014c87d4b2ba83f22ba7970c206d10fb0e090855bac2e85505",
+ "netlib_src_sha": "b89019d4becc1de256aefe72fc00d80c2bd7efd08b31176485bfa6de3ecc329a",
+ "scen": {
+  "design": {
+   "name": "design",
+   "tolR": 0.001,
+   "tolC": 0.05,
+   "stray": 5e-13,
+   "ron_lo": 3.7,
+   "ron_hi": 8.8,
+   "dron": null,
+   "tcr": 25.0,
+   "trim": null
+  },
+  "1pct_tau25": {
+   "name": "1pct_tau25",
+   "tolR": 0.001,
+   "tolC": 0.05,
+   "stray": 5e-13,
+   "ron_lo": 3.7,
+   "ron_hi": 8.8,
+   "dron": null,
+   "tcr": 25.0,
+   "trim": null,
+   "tolR_div": 0.01,
+   "tcr_div": 12.5
+  },
+  "1pct_tau50": {
+   "name": "1pct_tau50",
+   "tolR": 0.001,
+   "tolC": 0.05,
+   "stray": 5e-13,
+   "ron_lo": 3.7,
+   "ron_hi": 8.8,
+   "dron": null,
+   "tcr": 25.0,
+   "trim": null,
+   "tolR_div": 0.01,
+   "tcr_div": 25.0
+  },
+  "1pct_tau100": {
+   "name": "1pct_tau100",
+   "tolR": 0.001,
+   "tolC": 0.05,
+   "stray": 5e-13,
+   "ron_lo": 3.7,
+   "ron_hi": 8.8,
+   "dron": null,
+   "tcr": 25.0,
+   "trim": null,
+   "tolR_div": 0.01,
+   "tcr_div": 50.0
+  },
+  "1pct_tau200": {
+   "name": "1pct_tau200",
+   "tolR": 0.001,
+   "tolC": 0.05,
+   "stray": 5e-13,
+   "ron_lo": 3.7,
+   "ron_hi": 8.8,
+   "dron": null,
+   "tcr": 25.0,
+   "trim": null,
+   "tolR_div": 0.01,
+   "tcr_div": 100.0
+  }
+ }
+}

@@ -1,0 +1,93 @@
+* Open behavioural models for the AWG output simulation (step 2c).
+* Written for this project, no vendor model inside.  Licensed CC BY-SA 4.0 (models/LICENSE),
+* (c) the project authors; free to commit and redistribute.  Every parameter below says where its default comes from.
+* Ports are node names; AC magnitudes are parameters so one subckt serves every analysis.
+
+* ---- DAC0 of the Due, as seen from the pin ------------------------------------
+* v     : DC level of the pin (the DAC window is 0.578-2.771 V measured, docs/hardware.md
+*         and docs/afe.md 4.1; the window centre is about 1.67 V)
+* rout  : output impedance.  The SAM3X datasheet gives NONE for the DAC: the "Output
+*         Impedance 30 ohm" row printed at the top of p.1421 of the SAM3X/A datasheet
+*         (11057B, 28-May-12) belongs to the temperature sensor, Table 46-37.  The
+*         default is 0 and cases sweep 0..3k (check; closed by VT-6).
+* acmag : AC stimulus
+.subckt DAC0_SRC out gnd params: v=1.65 rout=0 acmag=0
+Vs a gnd DC {v} AC {acmag}
+Ro a out r={max(rout,1m)}
+.ends DAC0_SRC
+
+* ---- Vmid: (Due 3.3 V pin)/2, buffered ---------------------------------------
+* v     : AREF/2 = 1.60-1.65 V (AREF 3.20-3.30 V is the requirement; 1.55 V = AREF 3.10 V is margin
+*         evidence only).  Source: docs/afe.md SC-2, PW-6, hardware/afe-proto/docs/architecture.md
+* rout  : closed-loop output resistance of a buffer, 1 ohm assumed (check; the buffer
+*         is not chosen yet, VT-8/VT-3 close it)
+.subckt VMID_BUF out gnd params: v=1.65 rout=1 acmag=0
+Vs a gnd DC {v} AC {acmag}
+Ro a out r={rout}
+.ends VMID_BUF
+
+* ---- LM27762, behavioural (TI's PSpice model does not parse in ngspice 47) ----
+* vp, vn   : +3.3 V (3.23-3.37 V) and -1.8 V (nominal; -1.5..-5 V adjust range), afe.md
+* rp, rn   : output resistance; 0.2 ohm assumed (check; the datasheet's 2.5 ohm at 100 mA is
+*            the charge pump, the LDOs sit behind it - lm27762.pdf Sec 5.5)
+* rsink    : resistance of the path that lets the rail be pulled the wrong way.  1e9 = a
+*            linear regulator that cannot sink (check, datasheet silent); set to rp for a
+*            rail that can sink current
+* rbl      : feedback-divider/bleed load on each rail, 100 k assumed (check)
+* acp/acn  : AC stimulus injected in series with each rail (PSRR/ripple transfer)
+* ripple   : 2 MHz switching ripple, peak volts (datasheet Fig 5-1, about 1-5 mV, graph *(check)*)
+.subckt LM27762_BEH pos neg gnd params: vp=3.3 vn=-1.8 rp=0.2 rn=0.2 rsink=1e9 rbl=100k acp=0 acn=0 ripple=0 fsw=2Meg
+Vsp ap gnd DC {vp} AC {acp} SIN({vp} {ripple} {fsw})
+Vsn an gnd DC {vn} AC {acn} SIN({vn} {ripple} {fsw})
+Rpo ap bp {rp}
+Rno an bn {rn}
+Dp bp pos DSNK
+Rsp bp pos {rsink}
+Dn neg bn DSNK
+Rsn neg bn {rsink}
+Rbp pos gnd {rbl}
+Rbn neg gnd {rbl}
+.model DSNK D(IS=1e-14 N=0.02 RS=0.05)
+.ends LM27762_BEH
+
+* ---- the same supply with a start-up ramp (AW-8, abs-max ordering test) -------
+* tdp/tdn: start of each rail's ramp, tr: ramp time.  A real LM27762's start-up
+* sequence and overshoot are NOT modelled (model gap; VT-5/VT-8).
+.subckt LM27762_RAMP pos neg gnd params: vp=3.3 vn=-1.8 rp=0.2 rn=0.2 rsink=1e9 rbl=100k tdp=0 tdn=0 tr=1m ripple=0 fsw=2Meg
+Bsp ap gnd V={vp}*min(max((time-tdp)/tr,0),1)+{ripple}*sin(6.2831853*fsw*time)
+Bsn an gnd V={vn}*min(max((time-tdn)/tr,0),1)+{ripple}*sin(6.2831853*fsw*time)
+Rpo ap bp {rp}
+Rno an bn {rn}
+Dp bp pos DSNK
+Rsp bp pos {rsink}
+Dn neg bn DSNK
+Rsn neg bn {rsink}
+Rbp pos gnd {rbl}
+Rbn neg gnd {rbl}
+.model DSNK D(IS=1e-14 N=0.02 RS=0.05)
+.ends LM27762_RAMP
+
+* ---- protection diodes (step 2c follow-up) -------------------------------------
+* NONE of these figures was read from a datasheet in this repository: Nexperia and Diodes
+* Inc. downloads were blocked (models/SOURCES.md "Not obtained").  They are typical values
+* recalled for the named part families and every one is *(check)*; the protection verdict is
+* therefore a design-point result, to be closed by reading the datasheets and by VT-5.
+*
+* SCHOTTKY_BAT54 (BAT54S/BAT54 class, LCSC BAT54S C2688221 / C171786 per docs/jlcpcb.md):
+*   Vf about 0.32 V at 1 mA and 0.40 V at 10 mA (-> N=1.34, IS=1e-7), RS 2.5 ohm, CJ 10 pF *(check)*
+.model DBAT54 D(IS=1e-7 N=1.34 RS=2.5 CJO=10p M=0.4 VJ=0.4 BV=30 IBV=1u)
+* SIDIODE (BAV99 class, LCSC BAV99 C408392 / C916421 / C68983 per docs/jlcpcb.md):
+*   Vf 0.715 V at 1 mA, 0.855 V at 10 mA, 1.0 V at 50 mA, 1.25 V at 150 mA (-> IS=7.8e-9, N=2.35, RS=1.5),
+*   CJ 1.5 pF, IF continuous 215 mA per diode, 250 mW package *(check all)*
+.model DBAV99 D(IS=7.8e-9 N=2.35 RS=1.5 CJO=1.5p M=0.4 VJ=0.7 BV=70 IBV=2.5u)
+* TVS, bidirectional (SMF3.3CA class: VRWM 3.3 V, VBR 3.67-4.06 V, VC 7 V at 20 A *(check)*):
+*   two avalanche diodes in anti-series, BV from the stated VBR, RS from the clamping slope
+.model DTVS33 D(IS=1e-12 N=1 RS=0.3 BV=3.9 IBV=1m CJO=60p)
+.model DTVS50 D(IS=1e-12 N=1 RS=0.3 BV=6.7 IBV=1m CJO=40p)
+
+* ---- reset-safe gate between DAC0 and the attenuator (AW-8) ---------------------
+* SPST analog switch, TMUX1119 class (datasheet-facts.md, SCDS401C Sec 5.5/5.6): RON 3.7 ohm typ, 8.8 ohm max at
+* VDD 3.3 V (25 C); leakage 3 pA; the control is high = closed.  The TI model does not parse in ngspice 47
+* (models/SOURCES.md), so this is ours.  On/off capacitance: the datasheet figure was not read, 10 pF per side is an
+* ASSUMPTION *(check)*; turn-on time not modelled *(check)*.  Control threshold 1.65 V assumed (1.8 V logic compatible).
+.model SWM SW(RON=3.7 ROFF=1e11 VT=1.0 VH=0.1)

@@ -1,0 +1,240 @@
+[
+ {
+  "guard": "SM-3 1.25 OPA354 swap (control)",
+  "mutation": "OPA365 -> OPA354",
+  "good": {
+   "ok": false,
+   "detail": "worst-corner BW 6.86 MHz (>=7)"
+  },
+  "broken": {
+   "ok": true,
+   "detail": "worst-corner BW 14.69 MHz (>=7)"
+  },
+  "restored": {
+   "ok": false,
+   "detail": "worst-corner BW 6.86 MHz (>=7)"
+  },
+  "effective": false
+ },
+ {
+  "guard": "SM-3 1.25 C1 -10 %",
+  "mutation": "C1 12 -> 10.8 pF",
+  "good": {
+   "ok": false,
+   "detail": "worst-corner BW 6.86 MHz (>=7)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst-corner BW 5.66 MHz (>=7)"
+  },
+  "restored": {
+   "ok": false,
+   "detail": "worst-corner BW 6.86 MHz (>=7)"
+  },
+  "effective": false
+ },
+ {
+  "guard": "SM-3 1.25 C1 -20 %",
+  "mutation": "C1 12 -> 9.6 pF",
+  "good": {
+   "ok": false,
+   "detail": "worst-corner BW 6.86 MHz (>=7)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst-corner BW 4.02 MHz (>=7)"
+  },
+  "restored": {
+   "ok": false,
+   "detail": "worst-corner BW 6.86 MHz (>=7)"
+  },
+  "effective": false
+ },
+ {
+  "guard": "SM-3 1.25 Cpar +10 pF",
+  "mutation": "inverting-node C 3 -> 13 pF",
+  "good": {
+   "ok": false,
+   "detail": "worst-corner BW 6.86 MHz (>=7)"
+  },
+  "broken": {
+   "ok": true,
+   "detail": "worst-corner BW 7.78 MHz (>=7)"
+  },
+  "restored": {
+   "ok": false,
+   "detail": "worst-corner BW 6.86 MHz (>=7)"
+  },
+  "effective": false
+ },
+ {
+  "guard": "SM-3 5 OPA354 swap (control)",
+  "mutation": "OPA365 -> OPA354",
+  "good": {
+   "ok": true,
+   "detail": "worst-corner BW 33.78 MHz (>=8)"
+  },
+  "broken": {
+   "ok": true,
+   "detail": "worst-corner BW 123.01 MHz (>=8)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst-corner BW 33.78 MHz (>=8)"
+  },
+  "effective": false
+ },
+ {
+  "guard": "SM-3 5 C1 -10 %",
+  "mutation": "C1 12 -> 10.8 pF",
+  "good": {
+   "ok": true,
+   "detail": "worst-corner BW 33.78 MHz (>=8)"
+  },
+  "broken": {
+   "ok": true,
+   "detail": "worst-corner BW 28.97 MHz (>=8)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst-corner BW 33.78 MHz (>=8)"
+  },
+  "effective": false
+ },
+ {
+  "guard": "SM-3 5 C1 -20 %",
+  "mutation": "C1 12 -> 9.6 pF",
+  "good": {
+   "ok": true,
+   "detail": "worst-corner BW 33.78 MHz (>=8)"
+  },
+  "broken": {
+   "ok": true,
+   "detail": "worst-corner BW 21.55 MHz (>=8)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst-corner BW 33.78 MHz (>=8)"
+  },
+  "effective": false
+ },
+ {
+  "guard": "SM-3 5 Cpar +10 pF",
+  "mutation": "inverting-node C 3 -> 13 pF",
+  "good": {
+   "ok": true,
+   "detail": "worst-corner BW 33.78 MHz (>=8)"
+  },
+  "broken": {
+   "ok": true,
+   "detail": "worst-corner BW 37.81 MHz (>=8)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst-corner BW 33.78 MHz (>=8)"
+  },
+  "effective": false
+ },
+ {
+  "guard": "DC transfer",
+  "mutation": "R2 330k -> 450k",
+  "good": {
+   "ok": true,
+   "detail": "mid 1.5999 V (centre 1.6000), gain 0.2345 (window 0.229-0.2453), margin 193 mV (>=80)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "mid 1.5999 V (centre 1.6000), gain 0.2537 (window 0.229-0.2453), margin 32 mV (>=80)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "mid 1.5999 V (centre 1.6000), gain 0.2345 (window 0.229-0.2453), margin 193 mV (>=80)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Flatness",
+  "mutation": "C1 removed",
+  "good": {
+   "ok": true,
+   "detail": "gain flatness 1-8 MHz 0.116 dB (<=0.3), BW 36.5 MHz"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "gain flatness 1-8 MHz 37.966 dB (<=0.3), BW 0.0 MHz"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "gain flatness 1-8 MHz 0.116 dB (<=0.3), BW 36.5 MHz"
+  },
+  "effective": true
+ },
+ {
+  "guard": "PM",
+  "mutation": "as first specified",
+  "good": {
+   "ok": true,
+   "detail": "worst PM 87.7 deg (>=45), peaking 0.0 dB (reported, no limit)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "worst PM 15.6 deg (>=45), peaking 24.1 dB (reported, no limit)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "worst PM 87.7 deg (>=45), peaking 0.0 dB (reported, no limit)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Edge current",
+  "mutation": "Rnp removed",
+  "good": {
+   "ok": true,
+   "detail": "peak op-amp input clamp current 5.7 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "peak op-amp input clamp current 71.2 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "peak op-amp input clamp current 5.7 mA on a 5 ns, 30 V edge (<=10 mA abs max)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Noise",
+  "mutation": "RG 249 -> 60.4",
+  "good": {
+   "ok": true,
+   "detail": "noise to 1.5 x BW (11 MHz) 88 uV (<=200, op-amp+resistors only)"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "noise to 1.5 x BW (4 MHz) 200 uV (<=200, op-amp+resistors only)"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "noise to 1.5 x BW (11 MHz) 88 uV (<=200, op-amp+resistors only)"
+  },
+  "effective": true
+ },
+ {
+  "guard": "Settling",
+  "mutation": "Riso 22 -> 20k",
+  "good": {
+   "ok": true,
+   "detail": "S/H error at end of 15-clock track 0.000 LSB (<=0.5), settles in 203 ns"
+  },
+  "broken": {
+   "ok": false,
+   "detail": "S/H error at end of 15-clock track 67.149 LSB (<=0.5), settles in 667 ns"
+  },
+  "restored": {
+   "ok": true,
+   "detail": "S/H error at end of 15-clock track 0.000 LSB (<=0.5), settles in 203 ns"
+  },
+  "effective": true
+ }
+]

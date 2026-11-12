@@ -1,0 +1,80 @@
+== Q1 gain-4 window (Figure 44-6: 3/8..5/8 AREF at OFF=1), pin-referred, one-at-a-time worst case (sim) ==
+AREF 3.20: sim worst hi 78.8 lo 78.0 mV; + ADC Ge +0.29 %, Oe +56/-30 LSB: hi 67.0 lo 71.3 mV; in gain-4 codes (sim worst) 400; usable input with 0 margin +/-1.590 V; +/-5 V (+/-6 V) worst 172.4 mV
+AREF 3.25: sim worst hi 85.0 lo 84.3 mV; + ADC Ge +0.29 %, Oe +56/-30 LSB: hi 73.1 lo 77.5 mV; in gain-4 codes (sim worst) 425; usable input with 0 margin +/-1.616 V; +/-5 V (+/-6 V) worst 197.4 mV
+AREF 3.30: sim worst hi 91.2 lo 90.5 mV; + ADC Ge +0.29 %, Oe +56/-30 LSB: hi 79.1 lo 83.6 mV; in gain-4 codes (sim worst) 449; usable input with 0 margin +/-1.643 V; +/-5 V (+/-6 V) worst 222.4 mV
+guard R2 340k @3.20: window worst 73.4 mV
+guard R2 360k @3.20: window worst 64.4 mV
+AREF 3.2: +/-1.25 V fills 72.6 % FS, +/-1 V 58.1 %, step 0.840 mV/code at the input; +/-5 V range: 72.6 % FS, 3.36 mV/code
+AREF 3.27: +/-1.25 V fills 71.1 % FS, +/-1 V 56.9 %, step 0.859 mV/code at the input; +/-5 V range: 71.1 % FS, 3.44 mV/code
+AREF 3.3: +/-1.25 V fills 70.4 % FS, +/-1 V 56.3 %, step 0.867 mV/code at the input; +/-5 V range: 70.4 % FS, 3.47 mV/code
+SC-4 occupancy at 3.30, gain window 0.23204-0.23276: 70.32-70.53 %
+
+== Q2 noise at the pin and in gain-4 codes (AREF 3.20) ==
+bw: to 37.1 MHz total 37.6 uV (res 22.5, amp 27.6, Vmid 17.1 assumed 20 nV), through ADC pole 26.2 uV = 0.192 / 0.134 gain-4 codes; density {'1e+03': 55.3063144, '1e+05': 10.7792626, '1e+06': 5.43131752, '1e+07': 5.36092444}
+1p5bw: to 55.7 MHz total 43.8 uV (res 26.0, amp 34.1, Vmid 18.4 assumed 20 nV), through ADC pole 27.1 uV = 0.224 / 0.139 gain-4 codes; density {'1e+03': 55.3063144, '1e+05': 10.7792626, '1e+06': 5.43131752, '1e+07': 5.36092444}
+10M: to 10.0 MHz total 22.2 uV (res 14.4, amp 13.9, Vmid 11.3 assumed 20 nV), through ADC pole 22.8 uV = 0.114 / 0.117 gain-4 codes; density {'1e+03': 55.3063144, '1e+05': 10.7792626, '1e+06': 5.43131752, '1e+07': 5.36092444}
+x10_1p5bw: to 55.7 MHz total 241.5 uV (res 319.6, amp 264.8, Vmid 18.4 assumed 20 nV), through ADC pole 124.7 uV = 1.237 / 0.639 gain-4 codes; density {'1e+03': 71.2905145, '1e+05': 41.362500700000005, '1e+06': 40.138974399999995, '1e+07': 39.1543346}
+ADC own noise from SNR (Table 46-33, full-scale sine): gain2 typ 71 dB -> 0.41 codes, gain2 min 66 dB -> 0.73 codes, other max 68 dB -> 0.58 codes, other typ 62 dB -> 1.15 codes, other min 57 dB -> 2.05 codes
+SC-6-style growth sqrt(F^2+n^2)/F-1, n = buffer at 1.5 BW, F = the ADC's own gain-4 floor (codes):
+  F 0.41 (gain-2 SNR typ): buffer +14.0 %   10x buffer +217.8 %
+  F 0.58 (other max): buffer +7.2 %   10x buffer +135.5 %
+  F 0.72 (gain-1 measured A2, if unchanged): buffer +4.7 %   10x buffer +98.7 %
+  F 0.80 (afe 4.1 held code): buffer +3.9 %   10x buffer +84.1 %
+  F 1.15 (other typ): buffer +1.9 %   10x buffer +46.8 %
+  F 2.04 (other min): buffer +0.6 %   10x buffer +16.9 %
+  F 2.88 (0.72 x 4: pre-PGA noise): buffer +0.3 %   10x buffer +8.8 %
+pin-noise limit equivalent to SC-6's 0.2 mV at gain 1 (same codes): 50 uV; buffer 43.8 uV
+
+== Q2 SM-5 normalised (loop gain DAC->pin G; levels and DAC floor scale with G, the ADC's own post-PGA noise does not) ==
+loop gain DAC->pin 0.2680, in gain-4 codes 1.0721
+owner convention: 0.8 codes all DAC0
+  n4 0.00: growth +4.3 %   (10x buffer +76.0 %)
+  n4 0.41: growth +14.7 %   (10x buffer +82.4 %)
+  n4 0.58: growth +24.3 %   (10x buffer +88.6 %)
+  n4 0.72: growth +33.9 %   (10x buffer +95.0 %)
+  n4 1.15: growth +69.9 %   (10x buffer +121.3 %)
+  n4 2.04: growth +159.7 %   (10x buffer +195.9 %)
+  n4 2.88: growth +251.6 %   (10x buffer +279.1 %)
+  largest ADC gain-4 floor inside 10 % with no ISI: 0.30 gain-4 codes
+split: ADC alone 0.72 (A2), DAC0 the rest
+  n4 0.00: growth -47.3 %   (10x buffer +51.3 %)
+  n4 0.41: growth -28.9 %   (10x buffer +58.6 %)
+  n4 0.58: growth -14.3 %   (10x buffer +65.7 %)
+  n4 0.72: growth -0.9 %   (10x buffer +73.0 %)
+  n4 1.15: growth +44.1 %   (10x buffer +102.1 %)
+  n4 2.04: growth +143.6 %   (10x buffer +181.9 %)
+  n4 2.88: growth +239.9 %   (10x buffer +268.3 %)
+  largest ADC gain-4 floor inside 10 % with no ISI: 0.83 gain-4 codes
+
+== Q5 shelf (sim/loop harness, ideal AWG, R1 buffer, PA-3 switch 6 pF at N) ==
+buf_C2_25.63: G 0.2786  ISI pin(gain-1 codes) +4.64  gain-4 codes +18.54  normalised +16.64
+buf_C2_26.13: G 0.2759  ISI pin(gain-1 codes) +3.40  gain-4 codes +13.61  normalised +12.33
+buf_C2_26.63: G 0.2732  ISI pin(gain-1 codes) +2.21  gain-4 codes +8.84  normalised +8.09
+buf_C2_27.13: G 0.2706  ISI pin(gain-1 codes) +1.06  gain-4 codes +4.25  normalised +3.93
+buf_C2_27.63: G 0.2680  ISI pin(gain-1 codes) -0.02  gain-4 codes -0.07  normalised -0.06
+buf_C2_28.13: G 0.2655  ISI pin(gain-1 codes) +1.05  gain-4 codes +4.20  normalised +3.96
+buf_C2_28.63: G 0.2630  ISI pin(gain-1 codes) +2.10  gain-4 codes +8.39  normalised +7.97
+buf_C2_29.13: G 0.2606  ISI pin(gain-1 codes) +3.11  gain-4 codes +12.43  normalised +11.93
+buf_C2_29.63: G 0.2582  ISI pin(gain-1 codes) +4.09  gain-4 codes +16.35  normalised +15.83
+buf_C1x1.05_C2x0.95: G 0.2854  ISI pin(gain-1 codes) +7.51  gain-4 codes +30.04  normalised +26.31
+buf_C1x0.95_C2x1.05: G 0.2511  ISI pin(gain-1 codes) +7.18  gain-4 codes +28.73  normalised +28.60
+buf_C1x1.01_C2x0.99: G 0.2715  ISI pin(gain-1 codes) +1.42  gain-4 codes +5.70  normalised +5.25
+buf_C1x0.99_C2x1.01: G 0.2646  ISI pin(gain-1 codes) +1.44  gain-4 codes +5.78  normalised +5.46
+buf_C1x1.02_C2x0.98: G 0.2749  ISI pin(gain-1 codes) +2.92  gain-4 codes +11.67  normalised +10.62
+buf_C1x0.98_C2x1.02: G 0.2612  ISI pin(gain-1 codes) +2.90  gain-4 codes +11.61  normalised +11.11
+ctl_g483_C2_33: G 1.3097  ISI pin(gain-1 codes) +2.16  gain-4 codes +8.64  normalised +1.65
+ctl_g483_C2_34: G 1.2850  ISI pin(gain-1 codes) +8.20  gain-4 codes +32.79  normalised +6.38
+normalised slope -8.36 / +7.95 codes per pF; x G4 = gain-4 codes per pF -8.96 / +8.52
+owner convention, n4 = 0: noise factor 1.0429, ISI allowance 0.49 normalised codes at band 8.6 -> C2 accuracy +/-59 fF
+
+== Q4 differential ranges on the +/-5 V divider (Table 44-6: DIFF=1 GAIN 00/01/10/11 = 0.5/1/2/2; OFFSET 0 in DIFF, Table 44-7) ==
+AREF 3.2 PGA 0.5: +/-13.77 V difference, 6.72 mV per code
+AREF 3.2 PGA 1: +/-6.89 V difference, 3.36 mV per code
+AREF 3.2 PGA 2: +/-3.44 V difference, 1.68 mV per code
+AREF 3.3 PGA 0.5: +/-14.20 V difference, 6.93 mV per code
+AREF 3.3 PGA 1: +/-7.10 V difference, 3.47 mV per code
+AREF 3.3 PGA 2: +/-3.55 V difference, 1.73 mV per code
+single-ended input limit per pin +/-6 V (SC-2), so PGA 0.5 is usable to +/-12 V of difference
+
+ANACH settling: AST3 133 ns, AST5 222 ns, AST9 400 ns, AST17 756 ns against tSETTLE >= 200 ns (Table 46-28); 21.5 + 5 clocks per conversion -> 849057 sps aggregate if added to every conversion *(check)*
+tracking: Z 25 ohm -> tTRACK 206 ns (12-bit formula); for 0.5 gain-4 LSB, 2 bits finer: x ln(2^15)/ln(2^13) = 238 ns against 667 ns *(derived, check)*

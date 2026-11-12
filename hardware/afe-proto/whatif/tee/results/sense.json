@@ -1,0 +1,144 @@
+{
+ "range": {
+  "AWG +-1.15 V (tee, normal)": {
+   "vmin": 0.23668750000000005,
+   "vmax": 1.4133375,
+   "in_abs": true,
+   "in_oper": true,
+   "i_clamp_lo_uA": 0.0,
+   "i_clamp_hi_uA": 0.0,
+   "i_ok": true
+  },
+  "AWG +-2.1 V (AW-8 reset/boot bound)": {
+   "vmin": -0.23831250000000004,
+   "vmax": 1.8883375,
+   "in_abs": true,
+   "in_oper": false,
+   "i_clamp_lo_uA": -1.008630231225105e-05,
+   "i_clamp_hi_uA": 0.0,
+   "i_ok": true
+  },
+  "PR-4 +-1.8 V forced, powered": {
+   "vmin": -0.08831250000000002,
+   "vmax": 1.7383375,
+   "in_abs": true,
+   "in_oper": true,
+   "i_clamp_lo_uA": -2.9457864758608565e-08,
+   "i_clamp_hi_uA": 0.0,
+   "i_ok": true
+  },
+  "PR-4 +-5 V forced (shield damage allowed)": {
+   "vmin": -1.6883124999999999,
+   "vmax": 3.3383374999999997,
+   "in_abs": false,
+   "in_oper": false,
+   "i_clamp_lo_uA": -21.46693393049585,
+   "i_clamp_hi_uA": 2.948733535124148e-08,
+   "i_ok": true
+  },
+  "PR-4 +5 V forced, unpowered (AVDD 0, Vmid 0)": {
+   "vmin": null,
+   "vmax": 2.5,
+   "in_abs": false,
+   "in_oper": false,
+   "i_clamp_hi_uA": 37.41348148004416,
+   "i_ok": true
+  }
+ },
+ "ratio": {
+  "worst_pct": 0.1,
+  "p999_pct": 0.09670005834908629,
+  "drift_worst_pct": 0.01,
+  "drift_p999_pct": 0.009711572593772535,
+  "offset_worst_mV": 1.676675,
+  "offset_p999_mV": 1.6213457033245424
+ },
+ "mcp_load": {
+  "prescaler 8 (2.08 Mohm, powercal C2)": {
+   "err_pct": 2.3474178403755865,
+   "unc30_pct": 0.9726352804743467
+  },
+  "prescaler 1 (260 kohm, powercal C4-c's AMCLK 4.9152 MHz)": {
+   "err_pct": 16.129032258064516,
+   "unc30_pct": 5.422691879866518
+  },
+  "OPA365 follower on the tap": {
+   "err_pct": 0.002,
+   "unc30_pct": 0.0,
+   "note": "AOL >= 100 dB and CMRR >= 100 dB (datasheet-facts.md p6) -> <= 2e-5; offset 200 uV max -> 0.4 mV at the AWG node, an uncalibrated offset"
+  }
+ },
+ "tee_load": {
+  "z_kohm": 142.45018344004026,
+  "droop_pct": 0.035017523355343444,
+  "vmid_inject_mV": 0.4183304124999999,
+  "note": "all inside the node the MCP reads (the AWG BNC), so calibrated; the scope inputs see the same node at DC"
+ },
+ "c3f_single": {
+  "rows": {
+   "TMUX1119, 3.58 pF (powercal)": {
+    "v125_mV": 342.71346708473925,
+    "v125_lsb": 425.38010944820974,
+    "v5_mV": 70.99471988693851,
+    "v5_lsb": 88.11950686572732,
+    "pass_125": false,
+    "pass_5": false
+   },
+   "3157-class, 1 pF *(check: no datasheet read)*": {
+    "v125_mV": 100.42289214655297,
+    "v125_lsb": 124.64611097947908,
+    "v5_mV": 20.8030783232044,
+    "v5_lsb": 25.82103297328643,
+    "pass_125": false,
+    "pass_5": false
+   },
+   "0.1 pF": {
+    "v125_mV": 10.21698323011803,
+    "v125_lsb": 12.681443427443472,
+    "v5_mV": 2.116496526039426,
+    "v5_lsb": 2.6270211426234815,
+    "pass_125": false,
+    "pass_5": false
+   },
+   "0.01 pF": {
+    "v125_mV": 1.0234787498010736,
+    "v125_lsb": 1.2703542300561206,
+    "v5_mV": 0.21201847645629562,
+    "v5_lsb": 0.2631599028984809,
+    "pass_125": true,
+    "pass_5": true
+   }
+  },
+  "cft_max_pF": 0.015745391652860898
+ },
+ "guards": [
+  {
+   "check": "CH1 inside -0.3 V..AVDD+0.3 V at the AW-8 bound",
+   "mutation": "sense divider removed (k = 1)",
+   "good": true,
+   "broken": false,
+   "fired": true
+  },
+  {
+   "check": "clamp current < 5 mA at -5 V forced",
+   "mutation": "divider Thevenin 50 kohm -> 10 ohm",
+   "good": 2.1466933930495847e-05,
+   "broken": 0.085893767771462,
+   "fired": true
+  },
+  {
+   "check": "MCP loading residual <= 0.05 %",
+   "mutation": "follower removed (MCP CH1 straight on the 50 kohm tap)",
+   "good": 0.002,
+   "broken": 0.9726352804743467,
+   "fired": true
+  },
+  {
+   "check": "C3-f one off switch <= 2 LSB",
+   "mutation": "feed-through 0.01 pF -> 3.58 pF",
+   "good": 1.2703542300561206,
+   "broken": 425.38010944820974,
+   "fired": true
+  }
+ ]
+}

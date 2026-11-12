@@ -1,0 +1,70 @@
+[
+ {
+  "guard": "SC-9 picks up the dual's internal term",
+  "mutation": "crosstalk envelope x 1e4",
+  "good": {
+   "ok": true,
+   "d": "0.712 LSB"
+  },
+  "broken": {
+   "ok": false,
+   "d": "730.943 LSB"
+  },
+  "restored": {
+   "ok": true,
+   "d": "0.712 LSB"
+  },
+  "effective": true
+ },
+ {
+  "guard": "SC-9 sees the shared supply pin",
+  "mutation": "shared supply branch 1R -> 10 ohm, its 10 uF and the pin's 100 nF removed",
+  "good": {
+   "ok": true,
+   "d": "0.137 LSB"
+  },
+  "broken": {
+   "ok": false,
+   "d": "19.420 LSB"
+  },
+  "restored": {
+   "ok": true,
+   "d": "0.137 LSB"
+  },
+  "effective": true
+ },
+ {
+  "guard": "SC-9 sees a shared Vmid node",
+  "mutation": "the two Vmid nodes joined (one buffer)",
+  "good": {
+   "ok": true,
+   "d": "0.138 LSB"
+  },
+  "broken": {
+   "ok": false,
+   "d": "5.895 LSB"
+  },
+  "restored": {
+   "ok": true,
+   "d": "0.138 LSB"
+  },
+  "effective": true
+ },
+ {
+  "guard": "own-channel flatness <= 1 % sees the Vmid loop",
+  "mutation": "the OPA365 loop (0.2R, 3 nF, 2 x 10 uF) on the MCP6002",
+  "good": {
+   "ok": true,
+   "d": "0.65 %"
+  },
+  "broken": {
+   "ok": false,
+   "d": "11.78 %"
+  },
+  "restored": {
+   "ok": true,
+   "d": "0.65 %"
+  },
+  "effective": true
+ }
+]

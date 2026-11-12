@@ -1,0 +1,125 @@
+{
+ "rows": [
+  {
+   "name": "G1 C1 +10 % on channel A",
+   "what": "CMRR >= 40 dB at 10 kHz",
+   "good": "matched pair 287.5 dB (DC 227.4)",
+   "bad": "broken 28.4 dB (DC 227.4)",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G2 R2 <-> R3 swapped on channel A",
+   "what": "DC CMRR >= 46 dB",
+   "good": "matched pair 227.4 dB",
+   "bad": "broken 16.7 dB",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G2b R1 <-> R3 swapped on channel A",
+   "what": "DC CMRR >= 46 dB",
+   "good": "matched pair 227.4 dB",
+   "bad": "swapped 227.4 dB: identical, because R1 = R3 = 768k by design; a mis-assembly of this kind is invisible to any electrical test and is caught only by the bill of materials / the pick-and-place check",
+   "good_pass": true,
+   "bad_fails": false,
+   "note": "null by construction, reported, not counted as a working guard"
+  },
+  {
+   "name": "G3 Ron 3.7 vs 8.8 ohm between the channels (+/-5 V range)",
+   "what": "DC CMRR >= 46 dB",
+   "good": "matched Ron 227.4 dB",
+   "bad": "broken 34.1 dB",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G4 ADC pair polarity (VIN+ = A0 instead of A1)",
+   "what": "reading has the sign of CH1 - CH2 (> 0 for +3 V / -3 V)",
+   "good": "VIN+ = A1: +1749 codes",
+   "bad": "VIN+ = A0: -1749 codes",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G5 Vmid centring +450 mV, margin AND linearity",
+   "what": "pin margin >= 80 mV and linear to 20 mV at +6 V",
+   "good": "centred: margin 240 mV, deviation 0.7 mV",
+   "bad": "broken: margin 85 mV, deviation 297 mV",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G5b the same break seen by the margin check alone",
+   "what": "pin margin >= 80 mV at +/-6 V (as DF-2's SC-2 criterion reads)",
+   "good": "centred 240 mV",
+   "bad": "broken 85 mV: still above 80 mV, the op-amp clip keeps the pin inside the rail",
+   "good_pass": true,
+   "bad_fails": false,
+   "note": "margin-only check is blind to a clipped channel; G5 adds the linearity test"
+  },
+  {
+   "name": "G6 corner weakened to 1/4 of the tolerances",
+   "what": "no Monte Carlo draw (200) below the signed worst corner (+/-5 V, DC CMRR)",
+   "good": "true corner 32.0 dB: 0 draws below",
+   "bad": "weakened corner 42.9 dB: 92 draws below",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G7 R1 +1 % on channel A (a divider fault)",
+   "what": "calibrated DC CMRR >= 46 dB (+-1.25 V)",
+   "good": "matched pair 227.3 dB",
+   "bad": "broken 42.3 dB (raw 42.3): the calibration cannot see the divider",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G7b RF +1 % on channel A (a stage fault) - control",
+   "what": "calibrated DC CMRR >= 46 dB (+-1.25 V)",
+   "good": "matched pair 227.3 dB",
+   "bad": "stage fault 129.7 dB calibrated, 42.1 dB raw: the calibration removes it, so the metric is not just the raw one",
+   "good_pass": true,
+   "bad_fails": false,
+   "note": "control: this break must NOT fail the calibrated check; reported, not counted as a working guard"
+  },
+  {
+   "name": "G8a trimmers left at mid-setting (no trim performed)",
+   "what": "post-calibration DC CMRR >= 46 dB at the signed worst corner, +-1.25 V",
+   "good": "solved trim 53.8 dB",
+   "bad": "untrimmed 45.2 dB",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G8b trim set with A and B interchanged",
+   "what": "post-calibration DC CMRR >= 46 dB at the signed worst corner, +-1.25 V",
+   "good": "solved trim 53.8 dB",
+   "bad": "interchanged 40.9 dB",
+   "good_pass": true,
+   "bad_fails": true
+  },
+  {
+   "name": "G9 trim range check: R1 +1.5 % vs +3 % on channel A",
+   "what": "trim reports 'in range' (both trimmers inside 0-10 kohm)",
+   "good": "+1.5 %: A 9772, B 5000 ohm",
+   "bad": "+3 %: A 10000, B 0 ohm, saturated",
+   "good_pass": true,
+   "bad_fails": true
+  }
+ ],
+ "nominal": {
+  "nominal_dc": 227.40991998111753,
+  "nominal_10k": 287.45914570051195
+ },
+ "harness": {
+  "5": {
+   "mc_below_corner_dc": 0,
+   "mc_below_corner_10k": 0
+  },
+  "1.25": {
+   "mc_below_corner_dc": 0,
+   "mc_below_corner_10k": 0
+  }
+ }
+}
