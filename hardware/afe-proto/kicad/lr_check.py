@@ -61,8 +61,8 @@ BOARD = os.path.join(HERE, 'afe-proto.kicad_pcb')
 ZONE_PAD = 0.3            # mm round each analog courtyard
 HOP_MAX = 3.0             # LR-1 (spec lead's ruling): a bottom run is at most this long and 2 vias
 KEEPOUT = 10.0            # LR-5
-INV_MAX = 14.0            # LR-4: "short" for an inverting node, mm of track *(check)* - the old FB_MAX; undecided for CH*_N
-DECOUP_MAX = 5.0          # LR-4: 100 nF to its supply pin, mm *(check)* - spec says "a few millimetres"
+INV_MAX = 5.0             # LR-4 (spec lead): the inverting node is the shortest trace of its stage, mm of track, AWG_INV, CH1_N and CH2_N
+DECOUP_MAX = 3.0          # LR-4 (spec lead): each decoupling cap's supply pad to the IC supply pin, mm
 POUR_CLR = 0.5            # LR-4: top ground copper kept back from an inverting node
 GEN = ('U401', 'C402')    # LM27762 and its flying capacitor
 BLOCK_NAME = {'power': 'POWER', 'ch1': 'CH1', 'ch2': 'CH2', 'awg': 'AWG', 'cal': 'REFCAL', 'due': 'EDGE'}
@@ -95,7 +95,8 @@ OUTPUT_RISO = (('R107', 'U101', '/CH1_OUT'), ('R207', 'U101', '/CH2_OUT'))
 CHANNELS = ((1, 'J101', 'R102', 'R106', 'R107', '7'), (2, 'J201', 'R202', 'R206', 'R207', '8'))   # n, BNC, R1, Rnp, Riso, J602 pad
 WANT_TP = [('/A1', 'CH1'), ('/A0', 'CH2'), ('/AWG_OUT', 'AWG'), ('/+5V_DUE', 'POWER'), ('/+5V_F', 'POWER'),
            ('/+3V3A', 'POWER'), ('/VNEG', 'POWER'), ('/VREF', 'REFCAL'), ('/GND', 'POWER')]
-SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF / CAL')           # block names on silk *(check: not decided)*
+SILK_MIN = 1.0                                                    # mm: the board house minimum text height (docs/jlcpcb.md)
+SILK_WORDS = ('CH1', 'CH2', 'AWG', 'POWER', 'REF/CAL', 'ON')       # block names, the BNC labels (CH1, CH2, AWG) and the CAL header's ON position
 
 
 def mm(v):
@@ -515,8 +516,8 @@ def lr6(m):
     bad = []
     groups = rail_groups(m)
     for net in RAILS:
-        cut = {k for k, v in m.pads.items() if v['net'] == net and m.block.get(k[0]) == 'POWER'}
-        missing = [f'{k[0]}.{k[1]}' for k in STAR_REQUIRED[net] if k not in cut]
+        cut = set(STAR_REQUIRED[net])           # the named star: the generator's OUT pin and its output caps (spec lead)
+        missing = [f'{k[0]}.{k[1]}' for k in STAR_REQUIRED[net] if k not in m.pads or m.pads[k]['net'] != net]
         if missing:
             bad.append(f'{net}: star pads {missing} are not on the net')
         have = {g for g, rs in groups.items() if any(v['net'] == net and k[0] in rs for k, v in m.pads.items())}
@@ -617,8 +618,8 @@ def lr11(m):
         if not any(k[0].startswith('TP') and m.block.get(k[0]) == b for k in m.pads):
             bad.append(f'block {b} has no test point')
     for r, (pos, h, vis) in sorted(m.refs.items()):
-        if not vis or h < 0.79:
-            bad.append(f'{r}: designator not on silk at 0.8 mm or more')
+        if not vis or h < SILK_MIN - 0.01:
+            bad.append(f'{r}: designator not on silk at 1.0 mm or more')
     names = {t for t, _, _ in m.silk}
     for w in SILK_WORDS:
         if w not in names:
@@ -652,7 +653,7 @@ def clone_part(m, new, like, block, pos=None):
 
 def prep_silk(m):
     for r in m.refs:
-        m.refs[r] = (m.refs[r][0], 0.8, True)
+        m.refs[r] = (m.refs[r][0], SILK_MIN, True)
     m.silk = [(w, (0, 0), 1.0) for w in SILK_WORDS]
 
 
@@ -955,7 +956,6 @@ REPAIRS = [
     ('LR-6 each consumer connected on its rail', lr6, prep_connected_rails, 'is not one piece'),
     ('LR-8 each branch connected', lr8, prep_connected_vref, 'is not one piece'),
     ('LR-11 silk and the three test points added', lr11, prep_silk_tps, 'designator not on silk'),
-    ('LR-11 the three test points added', lr11, prep_tps, 'no test point'),
 ]
 
 
