@@ -82,19 +82,20 @@ _PROBES = {"pcbnew": (pcbnew_version, lambda v: v is not None and int(v.split(".
 # pcbtools additions: run the guard test after every other test, count pcbnew-marked passes for it, and a fixture that fails
 # (never skips) when the environment claims pcbnew (PCBTOOLS_EXPECT_PCBNEW=1, set by tests/run_pcbnew_tests.sh) and it is missing.
 EXPECT = os.environ.get("PCBTOOLS_EXPECT_PCBNEW") == "1"
-RAN = {"pcbnew_passed": 0, "pcbnew_selected": 0}
+# the counters live on the session's own config object (made fresh in pytest_configure), never at module level: a second
+# pytest session in the same process (pytest.main twice, pytester) re-uses the imported conftest and must start from zero.
 
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "guard_last: run after every other test")
-    config._pcbtools_ran = RAN          # read by tests/pcbtools/test_guard.py (an `import conftest` can pick up another suite's conftest)
+    config._pcbtools_ran = {"pcbnew_passed": 0, "pcbnew_selected": 0}   # read by tests/pcbtools/test_guard.py
 
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     rep = (yield).get_result()
     if rep.when == "call" and rep.passed and item.get_closest_marker("pcbnew") and not item.get_closest_marker("guard_last"):
-        RAN["pcbnew_passed"] += 1
+        item.config._pcbtools_ran["pcbnew_passed"] += 1
 
 
 @pytest.fixture(scope="session")
@@ -104,11 +105,18 @@ def pcbnew_required():
         pytest.fail("PCBTOOLS_EXPECT_PCBNEW=1 but pcbnew cannot be imported")
 
 
+def pytest_collection_finish(session):
+    """count the pcbnew-marked tests that are really going to run: AFTER every modifyitems hook and after -m / -k deselection
+    (counting in modifyitems also counted the items the marker expression later deselected, so the guard failed under
+    -m "not slow")"""
+    session.config._pcbtools_ran["pcbnew_selected"] = sum(
+        1 for i in session.items if i.get_closest_marker("pcbnew") and not i.get_closest_marker("guard_last"))
+
+
 def pytest_collection_modifyitems(config, items):
     last = [i for i in items if i.get_closest_marker("guard_last")]
     rest = [i for i in items if not i.get_closest_marker("guard_last")]
     items[:] = rest + last
-    RAN["pcbnew_selected"] = sum(1 for i in items if i.get_closest_marker("pcbnew") and not i.get_closest_marker("guard_last"))
     if os.environ.get("DUE_PCB_IMAGE_CONTENT"):           # inside docker/pcb: the cap is the container's
         for item in items:
             if "docker" in item.keywords:
