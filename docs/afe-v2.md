@@ -107,14 +107,18 @@ the AWG's span close to the scope's.
 
 ### 3.4 The precision ADC's four inputs (V2-8)
 
-| Input | Node | Use |
+| Pin | Node | Use |
 |---|---|---|
-| 1 | REF3030E output, the ladder's top tap | The accuracy anchor: every other reading is a ratio to it |
-| 2 | The AWG-sense divider's tap | The AWG at the BNC during the tee calibration (PA-3) |
-| 3 | The sense divider's bottom node, read as a differential pair with input 2 and through a resistor matching input 2's source impedance | The divider ratio (PA-4, D-V2-14): the reference's scale is rebuilt on this input with the wire off, so the ratio rests on one pair rather than on two inputs' gains |
-| 4 | A ladder tap near two thirds of full scale | The Due ADC's second measured point, a check (PA-9, D-V2-13) |
+| AIN0 | REF3030E output, the ladder's top tap | The accuracy anchor: every other reading is a ratio to it |
+| AIN1 | A ladder tap near two thirds of full scale | The Due ADC's second measured point, a check (PA-9, D-V2-13) |
+| AIN2 | The AWG-sense divider's tap | The AWG at the BNC during the tee calibration (PA-3) |
+| AIN3 | The sense divider's bottom node, through a resistor matching AIN2's source impedance | The divider ratio (PA-4, D-V2-14), read as the differential pair AIN2−AIN3; the reference's scale is rebuilt on this input with the wire off, so the ratio rests on one pair rather than on two inputs' gains |
 
-There is no spare input.
+The tap and the bottom node sit on AIN2 and AIN3 because that is the only
+pair of the four the ADS1115's multiplexer reads differentially apart from
+pairs with AIN0 or AIN1 against AIN3 (SBAS444E, the MUX field: AIN0−AIN1,
+AIN0−AIN3, AIN1−AIN3, AIN2−AIN3), and the reference and the check tap are
+read single-ended. There is no spare input.
 
 ## 4. Requirements the 1% passives move (V2-3)
 
