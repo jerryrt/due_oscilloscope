@@ -209,46 +209,49 @@ in firmware); the LED is PB27 = D13; the console is on UART0 (D0/D1, programming
 port); USB uses dedicated pins and DACC uses DAC0/DAC1. The Arduino core's own
 `init()`/`variant.cpp` for Track A is not in the repo and was not read *(check)*.
 
-Updated to the pins the round-1 design uses (`../kicad/design.py`, FR-01).
+Updated to the pins the round-1 design uses (`../kicad/design.py`; `docs/afe.md` D13-D19). **The
+only Due pins the shield uses besides the analog pins are SDA1 and SCL1 (the ADS1115's I2C), and no
+Due control pin is driven.** The ADS1115 is on the SAM3X's TWI0 pins; the scope channels are centred from
+the REF3030E and the ratio is measured by a hand-fitted jumper (D25), so the range switches, the ratio
+switch, the SPI bus and the 3.3 V sense are gone.
 
 | function | pin | header.pin, absolute (x, y) | reason |
 |---|---|---|---|
 | CH1 | A1 (AD6) | ADCL0.7 (66.04, -2.54) | PA24; PGA pair partner of A0 (`docs/afe.md`) |
 | CH2 | A0 (AD7) | ADCL0.8 (68.58, -2.54) | PA16 |
 | AWG | DAC0 | ADCH0.5 (83.82, -2.54) | PB15; DAC1 stays the bench trigger (CLAUDE.md) |
-| ladder taps | A2..A7, six taps, A2 lowest (0.188 V) to A7 the 3.0 V top (the REF3030E output itself) | ADCL0.6..1 x 63.5..50.8 | `docs/afe.md` PA-9; A8..A11 stay free |
+| ladder taps | A2..A7, six taps, A2 lowest (0.188 V) to A7 the 3.0 V top (the REF3030E output itself) | ADCL0.6..1 x 63.5..50.8 | `docs/afe.md` PA-9; A8..A11 stay free. The ADS1115 reads one of them: TAP3 (A5, 1.3125 V, AIN1) |
 | reference to AREF | AREF | PWMH0.8 (23.876, -50.8) | through an unfitted 0R (PA-7); floats on a stock Due, section 4 |
-| 3.3 V sense | 3.3V | POWER0.4 (35.56, -2.54) | the scope Vmid sense, microamps (PW-1) |
 | 5 V in | 5V | POWER0.5 (38.10, -2.54); XIO0.1/.2 | PW-1 |
 | ground | GND | POWER0.6/.7 (40.64/43.18, -2.54); PWMH0.7; XIO0.35/.36 | star to the shield's plane |
-| range CH1 | D16 (PA13, TX2) | COMMUNICATION0.3 (73.66, -50.8) | over CH1's range switch (LR-9, `docs/afe.md` D14); single-net (V03: U1.6 and the header only); 4.7k pull-down |
-| range CH2 | D39 (PC7) | XIO0.20 (96.52, -27.94) | single-net GPIO, no on-board load; 4.7k pull-down; enters CH2's zone by the shortest path (LR-9's static-control exception) |
-| tee ratio switch | D9 (PC21) | PWMH0.2 (39.116, -50.8) | beside the ADC bus; single-net (U1.132); 4.7k pull-down |
-| CS ADC | D5 (PC25) | PWML0.6 (50.80, -50.8) | bit-banged SPI on one port (PIOC bits 22..25); 4.7k pull-up to +3.3 V_A; single-net (U1.136) |
-| MOSI (ADS124S08 DIN) | D6 (PC24) | PWML0.7 (48.26, -50.8) | idem (U1.135) |
-| SCK | D7 (PC23) | PWML0.8 (45.72, -50.8) | idem (U1.134) |
-| MISO (ADS124S08 DOUT/DRDY) | D8 (PC22) | PWMH0.1 (41.656, -50.8) | idem (U1.133); the one Due input of the bus |
-| unassigned | D33..D38, D40, D41 (PC1..PC6, PC8, PC9) | XIO0.14..19, .21, .22 | free since the bus and CH1's range moved to the top edge |
-| alt. bus | SDA1/SCL1 (D70/D71) | PWMH0.9/.10 (21.336 / 18.796, -50.8) | hardware TWI, no on-board pull-ups; not used |
+| free (was the ratio switch SEL) | D9 (PC21) | PWMH0.2 (39.116, -50.8) | single-net (V03: U1.132 and the header only); unused since the TMUX1119 ratio switch and its pull-down are gone (D25) |
+| ADS1115 SDA | SDA1 (D70) *(check)* | PWMH0.9 (21.336, -50.8) | hardware TWI0 (V03: U1 pad 9 and the header only, no on-board pull-up); R69 4.7k to +3.3 V_A on the shield |
+| ADS1115 SCL | SCL1 (D71) *(check)* | PWMH0.10 (18.796, -50.8) | V03: U1 pad 70 and the header only, no pull-up; R82 4.7k to +3.3 V_A on the shield |
+| free (were CS, MOSI, SCK, MISO of the ADS124S08) | D5 (PC25), D6 (PC24), D7 (PC23), D8 (PC22) | PWML0.6, .7, .8 (50.80, 48.26, 45.72, -50.8); PWMH0.1 (41.656, -50.8) | single-net GPIO (V03: U1.136, .135, .134, .133 and the header); unused since the ADS1115 is I2C (D15) |
+| free (were the range selects) | D16 (PA13, TX2); D39 (PC7) | COMMUNICATION0.3 (73.66, -50.8); XIO0.20 (96.52, -27.94) | single-net (V03: U1.6 and the header only; D39 no on-board load); unused since the range switches are gone (D18) |
+| free (was the 3.3 V sense) | 3.3V | POWER0.4 (35.56, -2.54) | the scope Vmid it sensed is gone (the REF3030E centres the channels); POWER0.4 is not connected on the shield |
+| unassigned | D33..D38, D40, D41 (PC1..PC6, PC8, PC9) and every other XIO0 pin | XIO0.14..19, .21, .22 | free; none is used by the shield |
 
 Why: every pin used is single-net GPIO (V03: one U1 pad and its header pin only), clear of
 D0/D1 (console, 16U2), D13 (LED, IC1.3), D4 and D10 (each net ties **two** U1 pads:
 112+137 and 102+111), D20/D21 (pull-ups), D2 (PB25, the TIOA0 pin, in case the trigger is
-brought out *(check)*) and the analog and DAC pins. The bus pins D5..D8 are PC25..PC22, one
-port, so one `SODR`/`CODR` write sets a pattern (SAM3X 11057C, LQFP-144 pins 133..136).
-They sit on the top edge because LR-9 keeps the bus off the analog zones: the ADC stays
-by the ladder and its bus runs along the west and top board edges (`docs/afe.md` D14). The D-to-PIO mapping is read from the V03 schematic's nets (`whatif/bom.md`,
-pin check). The firmware drives none of them today. Hardware SPI (PA25/26/27) is not on
-the edge, hence the bit-banged bus, used during calibration only, not while capturing.
+brought out *(check)*) and the analog and DAC pins. SDA1/SCL1 sit on PWMH0, the top
+edge, which LR-9 keeps clear of the analog zones. The D-to-PIO mapping is read from the V03
+schematic's nets (`whatif/bom.md`, pin check). The firmware drives none of them today and
+does not reference a TWI *(check: Track A's core init() was not read)*. The ADS1115 is
+read during calibration only, not while capturing; hardware SPI (PA25/26/27) is not on the edge
+and is not used.
 
-**Reset and undriven state (requirement: +/-5 V, ratio switch on the AWG's Vmid).**
-After reset the PIO lines are inputs with the SAM3X pull-up enabled (datasheet 11057C
-31.5.1, 50..150 kohm, Table 45-2); with the Due off they sit near 0 V. **Low** is the
-safe state: high selects +/-1.25 V or the ratio switch's 3.0 V throw, and D16, D39 and D9 get
-a 4.7k pull-down, which holds them at 0.31 V or less against the TMUX1119's 0.8 V VIL
-(`whatif/bom.md`, "Control-pin pull resistors"). The chip select idles high, pulled to
-the AFE's 3.3 V rail (itself off when the Due is off). The nets in the file carry no
-other Due load on D5..D9, D16 or D39 *(check boot-time behaviour)*.
+**ADS1115 inputs:** AIN0 VREF (a check), AIN1 TAP3 (A5), AIN2 the sense tap T0 (R91 3.9k, BAV99 D8),
+AIN3 the bottom end B (R92 13k, BAV99 D7), read as the pair AIN2-AIN3; the address pin to GND (0x48).
+**J11, a hand-fitted 1x3 header `TAP4 | B | TAP3` on the shield (no Due pin), takes a shunt across pins 2-3
+for the ratio measurement** (`whatif/v1-jumper/design.md`).
+
+**Reset and undriven state.** No Due control pin is driven, so there is no reset-state
+requirement on a pin (the ratio switch that needed D9 low is gone). SDA1 and SCL1 are
+pulled up by R69 and R82 to the AFE's +3.3 V_A rail (itself off when the Due is off),
+because the Due has none on those nets. The nets in the file carry no other Due load on
+SDA1 or SCL1 *(check boot-time behaviour)*.
 
 Not established: shield pin length and underside clearance, the heights' z datum, the
 real BR1 state, T1/T2 orientation, Track A core reset-time pin setup.

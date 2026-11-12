@@ -1,132 +1,142 @@
-# AFE shield BOM and cost, per board and per order (2026-11-11, owner's cost cuts, domestic order)
+# AFE shield BOM and cost, version 1 as designed in kicad/design.py (2026-11-12, domestic order)
 
-**Approved design, reconciled against `docs/afe.md` at e510edd** (read, not
-taken from a summary; mismatches are listed under "Reconciliation with
-afe.md" at the end). The ADS124S08IPBSR replaces the MCP3564, calibration
-is by BNC tee with the sense at the AWG's BNC (PA-3) and a ratio switch on
-the sense divider (PA-4), the reference is the REF3030 **E grade** (PA-2),
-and C2 stays provisional, built from Basic 12 / 20 pF only.
+**This file follows `hardware/afe-proto/kicad/design.py`, the source of
+truth, and `whatif/bom.txt` is generated from the same list (`kicad/check.py`
+S4 holds the two equal, designator by designator).** It replaces two earlier
+passes of this file the same day (the REF3030E-centred scope pass: 106
+placements, 261 joints, $13.35 / $13.72 per board at 20; before it 143
+placements, $13.91 / $14.29) and, before them, the 2026-11-11 BOM (ADS124S08,
+OPA354 / OPA365, 0.1 % precision resistors, 23 types of which 14 Extended, 157
+placements, $37.08 / $37.45 per board at 20, git `b3a3bf3`), which "Cost by
+block" keeps as the version 1 baseline.
 
-**Owner decisions, 2026-11-11 (evening; `docs/afe.md` 24b642b "trim the AFE
-towards a $35 board"), all in the tables below:**
-- **B:** the OPA365 reference buffer and its 100 nF are removed. The ladder
-  stays eight 249R 0.1 % with six taps and runs directly off the REF3030E
-  (PA-8). That is 2.26 mA, inside the REF30E's 10 mA source rating (load
-  regulation, SBVS032K 6.5).
-- **C:** both scope Vmid buffers become one TLV9062IDR (C398355, Extended,
-  SOIC-8). Per channel the loop is 4 x 1R in parallel, 4.7k, 1 uF C15849, and
-  6 x 10 uF C15850 + 100 nF. It replaces 5 x 1R, 4.7k, 2 x 1.5 nF, 2 x 10 uF,
-  100 nF and an OPA365 per channel. **The 1.5 nF C1595 leaves the BOM** (its
-  only placements were the four HF-feedback parts).
-- **k = 1/2 sense divider:** 2 x 100k (one fewer).
-- **100k C394537 from the AWG's Vmid node to S1** (the ratio switch's
-  Vmid-side throw), in place of a 4.7k. This BOM never carried a 4.7k there,
-  so the 100k is added and the ratio switch's 4.7k control pull-down stays.
-  If the 4.7k meant was that pull-down, the 4.7k count is one less (-$0.003
-  per board) *(check)*.
-- **REFP0 = 2 x 100 nF**: the 10 uF and its 1R || 1R || 1R are removed.
-- **ADC-pin clamps:** one BAT54S C7420333 per scope ADC pin, after Riso:
-  pin 1 to GND, pin 3 to the ADC pin, pin 2 to +3.3 V_A. Two placements, no
-  new type.
-- **Ratio-switch clamps (D7, D8):** one BAT54S C7420333 on each of the
-  TMUX1119 ratio switch's (U12) D and S1 pins, wired the same way: pin 1 to
-  GND, pin 3 to the node, pin 2 to +3.3 V_A (`kicad/design.py`;
-  `sim/powercal` C1-q). Two placements, six joints, no new type.
-- **C2 = 20 || 12 || (12 s 20) pF per channel**, from `sim/scope/netlib.py`
-  `P_HZ` (39.5 pF, Basic types only): 2 x 12 pF and 2 x 20 pF per channel.
-  No 39 pF part is in the BOM, nor is any other type C2 needs.
-- **Ordering is domestic** (JLC China), with the fee rules and prices of the
-  domestic section, at 6.6912 CNY per USD *(check)*, PCB included. The
-  international figures stay alongside for reference.
+**Now: 33 types (4 Extended, 29 Basic), 87 JLC placements, 210 SMT joints,
+$10.65 / $11.03 per board at 20 boards and
+$9.28 / $9.43 at 100** (domestic, PCB and
+owner-fitted parts included).
 
-Before that: the design
-after SM-5 was dropped. Earlier the same day: the early
-BOM (`bom-2026-11-11-early.md`); the low-impedance (route (c)) BOM this
-replaces is not kept. The plain-text list with provisional reference
-designators is `bom.txt`, generated from the same counts. Read-only pass:
-no simulation was run for this file.
+**What changed since the REF3030E-centred pass (`docs/afe.md` D24-D27;
+`whatif/v1-awg-ref/design.md`, `whatif/v1-jumper/design.md`):**
+- **The AWG is redone the version 2 way.** No DAC0 buffer, no Vmid follower U5
+  (the TLV9062 type is gone), no series Schottkys D1 / D2 / D4, no unfitted
+  BAV99 footprints D9-D11. **One TPH2502 half (U3) is the gain stage, the
+  spare half tied off locally:** DAC0 - R54 51k - divider R94 51k + R22 75k to
+  GND, Cbin C63 10 pF across R54, Rf R35 3.3k with Cf C7 10 pF, Rg2 R33 4.99k to
+  the node AWG_X, the offset filter R93 100R + C64 + C65 (2 x 10 uF) from VREF,
+  100 nF at each supply pin (C21, C22), R51 / R88 the 100R 1206 back-termination
+  and the BNC J3: 15 placements, plus the two 0R bridges R95 / R96 that carry its +3.3 V
+  branch over the A1 / A0 lines (D24). New Basic types 3.3k C22978, 4.99k C23046, 51k
+  C23196 and 100R 0603 C22775 (read on the domestic page 2026-11-12).
+- **The TMUX1119 ratio switch is gone (D25).** The sense circuit is kvm_02's
+  structure S3 (`whatif/v1-jumper/`): BNC node - R7 22k (C31850) - tap T0 - R8
+  15k (C22809) - bottom end B - Rd R90 1k - VREF; Rs R91 3.9k (C23018) from T0 and
+  Rm R92 13k (C22797) from B into the ADS1115; BAV99 clamps D7 / D8 on the two
+  inputs. **ADS1115 inputs: AIN0 VREF, AIN1 TAP3, AIN2 the tap T0, AIN3 the bottom
+  end B** (the pair AIN2-AIN3 is read differentially). **J11, a hand-fitted 1x3
+  header `TAP4 | B | TAP3` (owner-fitted, no LCSC) carries the ratio wire, a shunt
+  across pins 2-3**, fitted together with the BNC tee. D9, the TMUX1119 and its
+  pull-down R68 are gone: **no Due control pin is used any more.**
+- **Every clamp is a BAV99 (C2500, Basic):** the scope ADC-pin clamps D5 / D6 and
+  the two sense clamps D7 / D8. The BAT54S is gone from the design, so **the
+  Extended list is TPH2502, LM27762, REF3030E and ADS1115 (4 types)**; the
+  TLV9062, TMUX1119 and BAT54S types are removed.
+- **The rail bleed R65 is 2.2k (C4190, Basic)**, for PR-3 (`whatif/v1-jumper/
+  design.md` section 8).
+- **TWI label:** SDA1 / SCL1 on PWMH0.9 / .10 are the SAM3X's TWI0 (note on
+  the project issue), not TWI1; the net names are the V03 board's.
+- Designators gone against the REF3030E-centred pass (28): C8, C20, C30, C62,
+  D1-D2, D4, R23-R24, R32, R34, R39-R42, R57-R62, R68, R84-R87, U5, U12. Added
+  (9): C64-C65, R90-R96 (R95 / R96: the two 0R bridges, C21189, that carry the AWG's
+  +3.3 V branch over the A1 / A0 lines, D24; the TPH2502 U3 is placed with half B
+  as the gain stage and half A the spare).
 
-**Sources.** Coordinator's design statement of 2026-11-11 (afternoon);
-`sim/scope/netlib.py` `P_HZ` (1 Mohm: R1 = R3 = 330k + 330k + 100k, R2 330k,
-C1 12 pF, Rnp 680, shared 249R + 10 uF sense filter; its T-switch injection
-is replaced by the tee);
-`sim/awg/run.py` (buffered DAC0, the AWG's own Vmid, 249R injection
-isolation); `sim/powercal` (stiffened per-channel Vmid, ladder 8 x 249R
-with 6 taps, two 10 uF per LM27762 output, 5 V bulk, 1R branches, no
-ferrite, negative divider 330k || 100k over 3 x 330k, bleed 4.7k);
-`docs/jlcpcb-parts.md` for class, stock and the one-day price reading
-(USD *(check)*); LM27762 capacitors from SNVSAF7C 7.2.2.4.
+**Carried from the earlier passes (D13, D15, D18, D19):**
+- **The scope channels are centred from the REF3030E** (`budget/v1_scope_ref.py`):
+  per channel IN - R1 (470k + 300k) - N, N - R2 (470k + 330k) - GND, N - R3
+  (330k) - VREF, C1 12 pF across R1, C2 30 pF from N to GND, Rnp 680 / Cnp 10 pF,
+  then the TPH2502 follower U1, Riso 22. The scope Vmid buffers, their loops and
+  banks and the 3.3 V sense are removed.
+- **Every resistor and capacitor is a JLC Basic part** (D15, V2-3;
+  `v2/jlc-basic.csv`, `whatif/v1-basic/values.md`). Feedback dividers:
+  +3.3 V_A is 75k + 100k over 100k (3.300 V nominal), the negative rail is 75k
+  over 3 x 330k (-2.052 V). 100R 1206 C17901 x 2 form the 50 ohm
+  back-termination. **The ADS1115 (C37593, VSSOP-10)** replaces the ADS124S08, on
+  I2C (R69, R82, 4.7k to +3.3 V_A).
+- **The +/-1.25 V range is removed (D18):** no range switches, RF, RG, D16, D39.
 
-**Precision ADC: ADS124S08IPBSR** (C2870171, TQFP-32, 12 analog inputs;
-AIN6/AIN7 are shared with REFP1/REFN1 and AIN8-AIN11 with GPIO0-3), on
-external reference REFP0/REFN0 from the REF3030E. Per PA-3 it reads the
-AWG output through the sense divider, that divider's ratio (PA-4) and every
-ladder tap (PA-9); it no longer reads the DAC0 buffer. The channel
-assignment is the design's, not this file's. The ladder is three 249R in parallel plus
-five in series (6 taps), unchanged in parts.
+**Prices.** Domestic (JLC China, 嘉立创 SMT) CNY ladders were read from each part's
+`jlc-smt.com/lcsc/detail/<C>.html` page on 2026-11-12 for the types new to
+version 1 over the day (100k, 330k, 470k, 300k, 75k, 1k, 270R, 100R 1206, 10 pF,
+30 pF, ADS1115, TPH2502) and, for this pass, for 3.3k, 4.99k, 51k, 100R 0603,
+2.2k, 22k, 15k, 3.9k, 13k and the BAV99 C2500 (all `base`, ladders in "Domestic
+part prices"). **The 0R 0603 C21189 (the two bridges R95 / R96) answered with an
+anti-bot challenge and was not read**; it is priced at the 1R's ladder as a placeholder
+*(check: not read; two placements, 0.04 CNY per board at the placeholder)*. The remaining types (4.7k, 1R, 22R, 680R, 12 pF, 100 nF, 1 uF,
+10 uF, LM27762, REF3030E) keep the 2026-11-11 domestic ladders *(check: not
+re-read)*. **International totals are not recomputed**: no international ladder
+was read for the new Basic values, and the order is domestic. Stock was not read
+(the domestic record shows 0 for every part) *(check before ordering, ADS1115 and
+TPH2502 first)*.
 
-**Tee calibration:** the four injection TMUX1119, the 249R injection
-isolation resistor, their four decouplers and the D40/D41 pull-downs are
-removed. Added: one TMUX1119 ratio switch with a 4.7k pull-down, a 100 nF
-decoupler and a BAT54S clamp on each of its D and S1 pins. The AWG-sense divider is **two 100k 0.1 % (k = 1/2)**: 100k from
-the AWG's BNC node, after the 49.9 ohm back-termination, to the tap, and
-100k from the tap to the far end. The ratio switch (S1) moves the far end
-between the AWG's mid-rail reference, through a 100k, and the reference top
-tap (PA-4).
-
-**Excluded:** BNCs and headers (owner hand-solders them; priced separately
-under "Owner-soldered parts" below), test points, shipping, PCB fabrication (*(check)*, below). BAV99 x 3: unfitted
-footprints, no part, no fee. AREF series 0 ohm (PA-7): one 0603 footprint,
-unfitted by default (MC-11), no part, no fee. Test point (D5's 3a): not
-listed. The ADC-pin BAT54S clamps are carried again (owner, 2026-11-11), one
-per scope ADC pin.
+**Excluded:** BNCs, headers and the CAL header J11 (owner hand-solders them;
+priced under "Owner-soldered parts"), test points, shipping, PCB fabrication
+(*(check)*), attrition. AREF series 0 ohm (PA-7, R81): one 0603 footprint,
+unfitted, no part, no fee.
 
 ## Part types
 
-`n` = placements per board. "@20" = JLC tier for 20 x n pieces; "@100" =
+`n` = placements per board. "@20" = domestic tier for 20 x n pieces; "@100" =
 tier for 50 x n pieces, because **100 boards are two Economic orders of 50**
-(Economic PCBA takes 2-50 boards per order, JLC capabilities page, read
-2026-11-11). **Every tier is now read** (JLC parts search, 2026-11-11,
-cross-checked on the raw part page for C14663), and each unit price is the
-tier that actually holds 20 x n or 50 x n pieces. The earlier rule, which
-used only the qty-20 and qty-100 tiers as an upper bound, is retired. The
-100 nF C14663 re-reads at 0.0164 (1-499) and 0.0130 (500-1499), against the
-0.0062 recorded earlier in `jlcpcb-parts.md`, so a price can move by that
-much between readings *(check before ordering)*. Bold flags: (a), (b), (c) are the provisional items below;
-"placeholder" and "assumed" are pending.
+(Economic PCBA takes 2-50 boards per order, read 2026-11-11). Prices are
+**domestic CNY** per piece; the last two columns are CNY per board. Class is
+the **domestic** library class: Basic for every resistor, capacitor and the BAV99
+(`v2/jlc-basic.csv`: both pages `base`), Extended for the TPH2502 and ADS1115 (read
+`expand` 2026-11-12), the LM27762 and the REF3030E.
 
-| type | value | pkg | LCSC | class | n | function: placements | joints | unit @20 | unit @100 | $/board @20 | $/board @100 |
+| type | value | pkg | LCSC | class | n | function: placements | joints | CNY @20 | CNY @100 | CNY/board @20 | CNY/board @100 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 100k | 100k 0.1 % 10 ppm/K | 0603 | C394537 | Extended | 9 | scope R1 = 330k+330k+100k, 100k part (1/ch) 2; scope R3 = 330k+330k+100k, 100k part (1/ch) 2; +3.3 V_A FB bottom (LM27762 R2) 1; OUT- FB R3 = 330k || 100k, 100k part 1; AWG-sense divider, k = 1/2: BNC node to tap 1, tap to S1 common 1; AWG Vmid node to S1 1 | 18 | 0.1223 | 0.1223 | 1.1007 | 1.1007 |
-| 330k | 330k 0.1 % 25 ppm/K | 0603 | C351655 | Extended | 19 | scope R1, 330k parts (2/ch) 4; scope R3, 330k parts (2/ch) 4; scope R2 (1/ch) 2; scope Vmid divider 2; AWG Rbpl (DAC0 buffer input to GND) 1; AWG Vmid divider 2; OUT- FB R3 = 330k || 100k, 330k part 1; OUT- FB R4 = 3 x 330k || 3 | 38 | 0.0805 | 0.0716 | 1.5295 | 1.3604 |
-| 174k | 174k 0.1 % 25 ppm/K | 0603 | C861163 | Extended | 1 | +3.3 V_A FB top (LM27762 R1) 1 | 2 | 0.0421 | 0.0421 | 0.0421 | 0.0421 |
-| 953R | 953R 0.1 % 25 ppm/K | 0603 | C2984375 | Extended | 6 | scope RF (1/ch) 2; AWG Ra 1; AWG Rg 1; AWG Rb, 953 part 1; AWG Rf, 953 part 1 | 12 | 0.0290 | 0.0226 | 0.1740 | 0.1356 |
-| 249R | 249R 0.1 % 10 ppm/K | 0603 | C2692731 | Extended | 15 | scope RG (1/ch) 2; 3.3 V sense filter (shared) 1; AWG Rb, 249 || 249 2; AWG Rf, 249 || 249 2; calibration ladder, 6 taps 8 | 30 | 0.1217 | 0.1025 | 1.8255 | 1.5375 |
-| 49.9R | 49.9R 0.1 % 10 ppm/K 250 mW | 1206 | C869759 | Extended | 1 | AWG output series Rs 1 | 2 | 0.1238 | 0.1079 | 0.1238 | 0.1079 |
-| 680R | 680R 1 % | 0603 | C23228 | Basic | 3 | scope Rnp (1/ch) 2; AWG DAC0 buffer Rbin 1 | 6 | 0.0021 | 0.0021 | 0.0063 | 0.0063 |
-| 22R | 22R 1 % (page; code J = 5 %) | 0603 | C23345 | Basic | 8 | scope Riso (1/ch) 2; AWG Rb, 22 part 1; AWG Rf, 22 part 1; AWG supply filter 22 || 22 per pin 4 | 16 | 0.0017 | 0.0017 | 0.0136 | 0.0136 |
-| 4.7k | 4.7k 1 % | 0603 | C23162 | Basic | 7 | scope Vmid DC feedback (1/ch) 2; +3.3 V_A bleed 1; D16/D39 range pull-downs 2; ratio-switch control pull-down (D9) 1; ADS124S08 CS (D5) pull-up 1 (all three computed under "Control-pin pull resistors") | 14 | 0.0028 | 0.0028 | 0.0196 | 0.0196 |
-| 1R | 1R 1 % 400 ppm/K | 0603 | C22936 | Basic | 11 | 5 V feed sense 1; scope op-amp supply branch (1/ch) 2; scope Vmid isolation 4 x 1R || (4/ch) 8 | 22 | 0.0031 | 0.0031 | 0.0341 | 0.0341 |
-| 12 pF | 12 pF C0G 5 % 50 V | 0603 | C38523 | Basic | 8 | scope C1 across R1 (1/ch) 2 (**(c)**); scope C2 = 20 \|\| 12 \|\| (12 s 20), 12 pF parts (2/ch) 4 (**(c)**); AWG Cf 1; AWG Vmid tap 1 | 16 | 0.0068 | 0.0068 | 0.0544 | 0.0544 |
-| 20 pF | 20 pF C0G 5 % 50 V | 0603 | C1648 | Basic | 4 | scope C2 = 20 \|\| 12 \|\| (12 s 20), 20 pF parts (2/ch) 4 (**(c)**) | 8 | 0.0088 | 0.0088 | 0.0352 | 0.0352 |
-| 100 nF | 100 nF X7R 10 % 50 V | 0603 | C14663 | Basic | 18 | OPA354 supply pin, scope branch (1/ch) 2; 3.3 V sense node 1; scope Vmid node (1/ch) 2; TLV9062 supply 1 (**assumed**); AWG DAC0 buffer supply 1; AWG Vmid buffer supply 1; AWG op-amp V+ and V- pins 2; LM27762 VIN 1 (**assumed**); REF3030 VIN 1 (SBVS032K); ADS124S08 DVDD, IOVDD tied 1 (SBAS660); ADS124S08 REFP0 to REFN0, 2 x 100 nF 2; TMUX1119 range (1/ch) 2 (**assumed**); TMUX1119 ratio switch 1 (**assumed**) | 36 | 0.0164 | 0.0130 | 0.2952 | 0.2340 |
-| 1 uF | 1 uF X5R 10 % 50 V | 0603 | C15849 | Basic | 5 | LM27762 flying capacitor C1 1; REF3030 VIN bulk 1 (SBVS032K); ADS124S08 AVDD, at least 330 nF 1 (SBAS660); scope Vmid loop (1/ch) 2 | 10 | 0.0112 | 0.0112 | 0.0560 | 0.0560 |
-| 10 uF | 10 uF X5R 10 % 25 V | 0805 | C15850 | Basic | 24 | 5 V bulk = LM27762 CIN 2; LM27762 CPOUT 2; LM27762 OUT+ 2; LM27762 OUT- 2; scope op-amp supply branch (1/ch) 2; 3.3 V sense filter (shared) 1; scope Vmid tap 1; scope Vmid node (6/ch) 12 | 48 | 0.0236 | 0.0202 | 0.5664 | 0.4848 |
-| OPA354 | 250 MHz RRIO op-amp | SOT-23-5 | C36384 | Extended | 2 | scope op-amp (1/ch) 2 | 10 | 1.6919 | 1.3519 | 3.3838 | 2.7038 |
-| OPA365 | 50 MHz RRIO op-amp | SOT-23-5 | C96626 | Extended | 3 | AWG op-amp 1; AWG DAC0 buffer 1; AWG Vmid buffer 1 | 15 | 2.3375 | 2.1528 | 7.0125 | 6.4584 |
-| TLV9062 | dual 10 MHz RRIO op-amp, TLV9062IDR | SOIC-8 | C398355 | Extended | 1 | both scope Vmid buffers (one amplifier per channel) 1 | 8 | 0.1187 | 0.0942 | 0.1187 | 0.0942 |
-| LM27762 | +3.3 V_A / -2.07 V | WSON-12+EP | C473398 | Extended | 1 | AFE rails (leadless: X-ray) 1 | 13 | 0.7912 | 0.6833 | 0.7912 | 0.6833 |
-| REF3030E | 3.0 V ref, **E grade** REF3030EAIDBZR, 0.1 %, 15 ppm/K max (0-70 C and -40-125 C), 20 (-40-85 C) (PA-2) | SOT-23 | C54120492 | Extended | 1 | calibration reference 1 | 3 | 0.8075 | 0.7078 | 0.8075 | 0.7078 |
-| ADS124S08 | 24-bit ADC, 12 inputs, ADS124S08IPBSR | TQFP-32 | C2870171 | Extended | 1 | precision ADC 1 | 32 | 7.4489 | 6.7150 | 7.4489 | 6.7150 |
-| TMUX1119 | SPDT switch | SC-70-6 | C2673327 | Extended | 3 | scope range switch (1/ch) 2 (**(b)**); tee ratio switch 1 | 18 | 1.8995 | 1.6739 | 5.6985 | 5.0217 |
-| BAT54S | series Schottky pair 30 V | SOT-23 | C7420333 | Preferred | 8 | AWG op-amp V+ and V- (one die each) 2; AWG DAC0 buffer supply 1; AWG Vmid buffer supply 1; scope ADC-pin clamp after Riso, pin 1 GND / 3 ADC pin / 2 +3.3 V_A (1/ch) 2; ratio-switch clamp on D and S1 (D7, D8), same pins 2 | 24 | 0.0129 | 0.0129 | 0.1032 | 0.1032 |
+| 100k | 100k 1 % | 0603 | C25803 | Basic | 2 | +3.3 V_A FB bottom (LM27762 R2) 1; +3.3 V_A FB top, part 2 (75k + 100k = 175k) 1 | 4 | 0.0176 | 0.0176 | 0.035 | 0.035 |
+| 330k | 330k 1 % | 0603 | C23137 | Basic | 7 | scope R2 = 470k + 330k, 330k part (1/ch) 2; scope R3 to VREF, CH1: the centre (330k) 1; scope R3 to VREF, CH2: the centre (330k) 1; OUT- FB R4 = 3 x 330k || 3 | 14 | 0.0093 | 0.0093 | 0.065 | 0.065 |
+| 470k | 470k 1 % | 0603 | C23178 | Basic | 4 | scope R1 = 470k + 300k, 470k part, CH1 1; scope R1 = 470k + 300k, 470k part, CH2 1; scope R2 = 470k + 330k, 470k part (1/ch) 2 | 8 | 0.0181 | 0.0181 | 0.072 | 0.072 |
+| 300k | 300k 1 % | 0603 | C23024 | Basic | 2 | scope R1, 300k part, CH1 1; scope R1, 300k part, CH2 1 | 4 | 0.0229 | 0.0229 | 0.046 | 0.046 |
+| 3.3k | 3.3k 1 % | 0603 | C22978 | Basic | 1 | AWG Rf 1 | 2 | 0.0130 | 0.0130 | 0.013 | 0.013 |
+| 4.99k | 4.99k 1 % | 0603 | C23046 | Basic | 1 | AWG Rg2, to the filtered REF3030E output 1 | 2 | 0.0125 | 0.0125 | 0.013 | 0.013 |
+| 51k | 51k 1 % | 0603 | C23196 | Basic | 2 | AWG Rbin: DAC0 series resistor, divider upper arm 1; AWG Rbpl part 1 (51k + 75k to GND) 1 | 4 | 0.0101 | 0.0101 | 0.020 | 0.020 |
+| 100R | 100R 1 % | 0603 | C22775 | Basic | 1 | AWG offset filter, series 100R from VREF 1 | 2 | 0.0122 | 0.0122 | 0.012 | 0.012 |
+| 2.2k | 2.2k 1 % | 0603 | C4190 | Basic | 1 | +3.3 V_A bleed (PR-3) 1 | 2 | 0.0109 | 0.0109 | 0.011 | 0.011 |
+| 22k | 22k 1 % | 0603 | C31850 | Basic | 1 | sense divider R7, BNC node to tap T0 1 | 2 | 0.0251 | 0.0251 | 0.025 | 0.025 |
+| 15k | 15k 1 % | 0603 | C22809 | Basic | 1 | sense divider R8, tap T0 to bottom end B 1 | 2 | 0.0174 | 0.0174 | 0.017 | 0.017 |
+| 3.9k | 3.9k 1 % | 0603 | C23018 | Basic | 1 | sense Rs, T0 to ADS1115 AIN2 1 | 2 | 0.0099 | 0.0099 | 0.010 | 0.010 |
+| 13k | 13k 1 % | 0603 | C22797 | Basic | 1 | sense Rm, B to ADS1115 AIN3 1 | 2 | 0.0113 | 0.0113 | 0.011 | 0.011 |
+| 75k | 75k 1 % | 0603 | C23242 | Basic | 3 | OUT- FB R3 = 75k (-2.052 V nominal) 1; AWG Rbpl part 2 (75k to GND) 1; +3.3 V_A FB top (LM27762 R1), part 1 (75k + 100k = 175k) 1 | 6 | 0.0127 | 0.0127 | 0.038 | 0.038 |
+| 1k | 1k 1 % | 0603 | C21190 | Basic | 1 | sense Rd: the default tie of B to VREF (wire off) 1 | 2 | 0.0100 | 0.0100 | 0.010 | 0.010 |
+| 270R | 270R 1 % | 0603 | C22966 | Basic | 8 | calibration ladder, bottom 3 x 270 || 3; calibration ladder, 5 in series (6 taps, the top is the REF3030E) 5 | 16 | 0.0102 | 0.0102 | 0.082 | 0.082 |
+| 100R 1206 | 100R 1 % 250 mW | 1206 | C17901 | Basic | 2 | AWG output series Rs, 2 x 100R in parallel = 50 ohm 1; AWG output series Rs, part 2 1 | 4 | 0.0359 | 0.0359 | 0.072 | 0.072 |
+| 680R | 680R 1 % | 0603 | C23228 | Basic | 2 | scope Rnp (1/ch) 2 | 4 | 0.0126 | 0.0126 | 0.025 | 0.025 |
+| 22R | 22R 1 % (page; code J = 5 %) | 0603 | C23345 | Basic | 2 | scope Riso (1/ch) 2 | 4 | 0.0101 | 0.0101 | 0.020 | 0.020 |
+| 4.7k | 4.7k 1 % | 0603 | C23162 | Basic | 2 | I2C pull-up, SDA1 (the Due has none): 4.7k to +3.3 V_A 1; I2C pull-up, SCL1: 4.7k to +3.3 V_A 1 | 4 | 0.0169 | 0.0169 | 0.034 | 0.034 |
+| 1R | 1R 1 % 400 ppm/K | 0603 | C22936 | Basic | 2 | 5 V feed sense 1; scope dual supply branch 1 | 4 | 0.0186 | 0.0186 | 0.037 | 0.037 |
+| 0R | 0R 1 % | 0603 | C21189 | Basic | 2 | BR1 / BR2: 0R bridges carrying the AWG +3.3 V branch over the A1 / A0 lines (D24) 2 | 4 | 0.0186 | 0.0186 | 0.037 | 0.037 |
+| 10 pF | 10 pF C0G 5 % 50 V | 0603 | C1634 | Basic | 4 | AWG Cf across Rf 1; scope Cnp, (+) node to GND (1/ch) 2; AWG Cbin across Rbin 1 | 8 | 0.0600 | 0.0600 | 0.240 | 0.240 |
+| 12 pF | 12 pF C0G 5 % 50 V | 0603 | C38523 | Basic | 2 | scope C1 across R1 (1/ch) 2 | 4 | 0.0416 | 0.0416 | 0.083 | 0.083 |
+| 30 pF | 30 pF C0G 5 % 50 V | 0603 | C1658 | Basic | 2 | scope C2, N to GND, CH1 1; scope C2, N to GND, CH2 1 | 4 | 0.0306 | 0.0306 | 0.061 | 0.061 |
+| 100 nF | 100 nF X7R 10 % 50 V | 0603 | C14663 | Basic | 7 | TPH2502 U1 supply pin, scope branch 1; AWG TPH2502 V+ and V- pins 2; LM27762 VIN 1; REF3030 VIN 1; ADS1115 VDD 1; REF3030 output, 100 nF 1 | 14 | 0.1000 | 0.1000 | 0.700 | 0.700 |
+| 1 uF | 1 uF X5R 10 % 50 V | 0603 | C15849 | Basic | 3 | REF3030 output, 1 uF (the datasheet's 0.1-22 uF) 1; LM27762 flying capacitor C1 1; REF3030 VIN bulk, > 0.47 uF 1 | 6 | 0.0685 | 0.0685 | 0.206 | 0.206 |
+| 10 uF | 10 uF X5R 10 % 25 V | 0805 | C15850 | Basic | 11 | 5 V bulk = LM27762 CIN 2; LM27762 CPOUT 2; LM27762 OUT+ 2; LM27762 OUT- 2; scope dual supply branch 1; AWG offset filter 2 x 10 uF at AWG_X 2 | 22 | 0.1440 | 0.1440 | 1.584 | 1.584 |
+| BAV99 | BAV99 series pair 70 V | SOT-23 | C2500 | Basic | 4 | scope ADC-pin clamp after Riso (1/ch) 2; sense clamp on ADS1115 AIN3 (B) 1; sense clamp on ADS1115 AIN2 (T0) 1 | 12 | 0.0673 | 0.0673 | 0.269 | 0.269 |
+| TPH2502 | 120 MHz RRIO dual op-amp, TPH2502-SR | SOIC-8 | C118223 | Extended | 2 | scope dual, both channels (unity followers) 1; AWG dual: half A the gain stage, half B spare (tied off) 1 | 16 | 2.3400 | 1.9100 | 4.680 | 3.820 |
+| LM27762 | +3.3 V_A / -2.05 V | WSON-12+EP | C473398 | Extended | 1 | AFE rails (leadless: X-ray) 1 | 13 | 4.8400 | 4.1800 | 4.840 | 4.180 |
+| REF3030E | 3.0 V ref **E grade** REF3030EAIDBZR, 0.1 %, 15 ppm/K max (PA-2) | SOT-23 | C54120492 | Extended | 1 | reference: ladder, scope centre (R3), AWG offset, ADS1115 AIN0, AREF footprint 1 | 3 | 4.9400 | 4.3300 | 4.940 | 4.330 |
+| ADS1115 | 16-bit I2C ADC, 4 inputs, ADS1115IDGSR | VSSOP-10 | C37593 | Extended | 1 | precision ADC, I2C 0x48 on SDA1/SCL1 1 | 10 | 7.5600 | 6.6000 | 7.560 | 6.600 |
 
 The 22R's page says 1 %, its code reads 5 % *(check)*. LM27762 joints count
-the exposed pad *(check)*. Tiers re-read 2026-11-11 for the changed rows:
-ADS124S08IPBSR C2870171 is Extended with 1,257 in stock, at 8.652 (1-9),
-7.4489 (10-29), 6.715 (30-99) and 6.1004 (100+). TMUX1119DCKR is at 2.4683
-(1-9), 2.1185 (10-29), 1.8995 (30-99) and 1.6739 (100-499), with 7,216 in
-stock. The full tier tables used are in the batch-cost section below.
+the exposed pad *(check)*. The ADS1115 reads 8.57 (1-9), 7.56 (10-29), 6.6
+(30-99), 5.89 (100-499) CNY; the TPH2502 3.5, 2.69, 2.34, 1.91, 1.72; the
+470k C23178 0.0181
+(1-999), 0.014 (1000-4999), 0.0118 (5000-9999), 0.00911; the 300k C23024 0.0229,
+0.0177, 0.0149, 0.0118 (same breaks), both `base` on the domestic page, read
+2026-11-12. The 1 uF type gains C27, the REF3030E output capacitor (3 placements
+now).
 
 **REF3030 grade: E, per PA-2 and SC-7.** Read 2026-11-11 (raw part pages and
 the JLC parts search). Drift figures are from SBVS032K 6.5 and 6.6.
@@ -154,140 +164,271 @@ parts.
 
 ## Counts
 
-| | |
-|---|---|
-| part types fitted | **23**: 13 Extended, 1 Preferred, 9 Basic (international); 14 Extended, 9 Basic (domestic: the BAT54S is Extended there) |
-| Extended ($3.07 international, 20 CNY domestic, per order each) | 100k, 330k, 174k, 953R, 249R, 49.9R, OPA354, OPA365, TLV9062, LM27762, REF3030E, ADS124S08, TMUX1119DCKR |
-| Preferred (no fee, international only) | BAT54S C7420333 |
-| Basic | 680R, 22R, 4.7k, 1R, 12 pF, 20 pF, 100 nF, 1 uF, 10 uF |
-| placements / SMT joints per board | **159 / 401** (157 / 395 before D7 and D8; 154 / 390 before the owner's cuts; 151 / 381 before the clamps and C2) |
-| leadless pieces (X-ray) | 1 per board (LM27762) |
+| | now | baseline (`b3a3bf3`) |
+|---|---|---|
+| part types fitted | **33**: 4 Extended, 29 Basic (domestic) | 23: 14 Extended, 9 Basic |
+| Extended (20 CNY per type per order, domestic) | TPH2502, LM27762, REF3030E, ADS1115 | 100k, 330k, 174k, 953R, 249R, 49.9R, OPA354, OPA365, TLV9062, LM27762, REF3030E, ADS124S08, TMUX1119DCKR, BAT54S |
+| Basic | 0R 0603, 100k, 330k, 470k, 300k, 3.3k, 4.99k, 51k, 100R 0603, 2.2k, 22k, 15k, 3.9k, 13k, 75k, 1k, 270R, 100R 1206, 680R, 22R, 4.7k, 1R, 10 pF, 12 pF, 30 pF, 100 nF, 1 uF, 10 uF, BAV99 | 680R, 22R, 4.7k, 1R, 12 pF, 20 pF, 100 nF, 1 uF, 10 uF |
+| placements / SMT joints per board | **87 / 210** (78 two-terminal passives, 4 BAV99, 5 ICs) | 157 / 395 |
+| leadless pieces (X-ray) | 1 per board (LM27762) | 1 |
+| owner-fitted placements | 3 BNCs, 7 headers (86 pins), the CAL header J11 (1x3), 1 standoff, 2 screws | 3 BNCs, 7 headers, standoff, screws |
 
-Against the previous pass: OPA365 6 -> 3, TLV9062 new (one type in, the 1.5
-nF out), 1R 16 -> 11, 1.5 nF 4 -> 0, 10 uF 17 -> 24, 1 uF 3 -> 5, 100 nF
-19 -> 18, 100k unchanged at 9 (one out of the divider, one in to S1).
+Against the REF3030E-centred pass (106 placements, 261 joints, 25 types of which
+7 Extended): 28 designators out (the AWG buffer, Vmid follower and supply filters,
+the TMUX1119 and its pull-down and decoupler, the AWG's BAT54S) and 9 in (the
+offset filter C64-C65, R93; R94; the sense network R90-R92; the two 0R bridges R95-R96), so 87 placements. The
+TLV9062, TMUX1119 and BAT54S types leave (Extended 7 -> 4, loading 140 -> 80 CNY
+per order); 10 uF 9 -> 11, 100 nF 7 (was 9), 330k 10 -> 7, 75k 2 -> 3, 4.7k 6 -> 2,
+270R 12 -> 8, 22R 10 -> 2, 1k 4 -> 1, 12 pF 4 -> 2, 10 pF 4 -> 4, 680R 3 -> 2, 100R
+1206 2 (unchanged); 1R 2; the BAV99 C2500 is a new Basic type at 4; 3.3k, 4.99k, 51k
+(x2), 100R 0603, 2.2k, 22k, 15k, 3.9k and 13k are new at one each.
 
 ## Cost summary
 
-Economic PCBA (price page, "Last updated on Oct 22, 2026", read
-2026-11-11): setup $8.18, stencil $1.53, $3.07 per Extended type, $0.0016
-per joint, packing free, X-ray per leadless piece (1-10 $1.64, 11-50 $0.82,
-51-200 $0.49). Whether an X-ray quantity is priced wholly at its tier or
-tier by tier is not stated; both are given as "whole / graduated"
-*(check)*.
+Domestic Economic SMT (嘉立创 SMT; fee rules and sources under "JLC China
+(domestic)" below): setup 50 CNY, stencil free, **20 CNY per Extended type (4 =
+80 CNY)**, 0.01 CNY per joint, X-ray on the LM27762 at 10 CNY a piece for 1-10
+and 5 CNY for 11-50, priced wholly at its tier / tier by tier (neither is
+stated *(check)*). CNY at 6.6912 per USD *(check)*. PCB (2-layer, 100.0 x
+53.34 mm) at the unchanged published rule: 20 CNY at 5 and 10 boards, 59.47 CNY
+for 20, 118.68 CNY per order of 50 *(check against the live quote)*.
 
-| per order, international (reference) | 20 boards (1 order) | 100 boards: each of 2 orders of 50 |
+| per order | 20 boards (1 order) | 100 boards: each of 2 orders of 50 |
 |---|---|---|
-| parts | $624.81 | $1,385.48 |
-| setup + stencil | $9.71 | $9.71 |
-| loading, 13 Extended | $39.91 | $39.91 |
-| SMT, 401 joints | $12.83 | $32.08 |
-| X-ray, whole / graduated | $16.40 / $24.60 | $41.00 / $49.20 |
-| **fees** | **$78.85 / $87.05** | **$122.70 / $130.90** |
-| **order total** (PCB excluded) | **$703.67 / $711.87** | **$1,508.18 / $1,516.38** (both: $3,016.36 / $3,032.76) |
+| parts | 517.38 CNY | 1,138.96 CNY |
+| setup | 50 CNY | 50 CNY |
+| loading, 4 Extended | 80 CNY | 80 CNY |
+| SMT, 210 joints | 42.00 CNY | 105.00 CNY |
+| X-ray, whole / graduated | 100 / 150 CNY | 250 / 300 CNY |
+| **fees** | **272.00 / 322.00 CNY** | **485.00 / 535.00 CNY** |
 
-| per board, international, PCB excluded | 20 boards | 100 boards (2 x 50) |
+| per board, domestic | 20 boards | 100 boards (2 x 50) |
 |---|---|---|
-| parts | $31.24 | $27.71 |
-| fees | $3.94 / $4.35 | $2.45 / $2.62 |
-| **total** | **$35.18 / $35.59** | **$30.16 / $30.33** |
+| parts | 25.87 CNY = $3.87 | 22.78 CNY = $3.40 |
+| fees | 13.60 / 16.10 CNY | 9.70 / 10.70 CNY |
+| JLC per board | 39.47 / 41.97 CNY = $5.90 / $6.27 | 32.48 / 33.48 CNY = $4.85 / $5.00 |
+| PCB | 2.97 CNY | 2.37 CNY |
+| **JLC + PCB per board** | **$6.34 / $6.72** | **$5.21 / $5.36** |
+| owner-fitted (domestic BNC, standoff, screws, $2.50 headers *(check)*) | $4.31 | $4.07 |
+| **total per board** | **$10.65 / $11.03** | **$9.28 / $9.43** |
+| **total per batch** | 1,425.6 / 1,475.6 CNY = **$213.06 / $220.53** | 6,208.6 / 6,308.6 CNY = **$927.88 / $942.82** |
 
-**The order is domestic; its totals are in "JLC China (domestic)" at the
-end**: $32.80 / $33.18 per board at 20 boards and $27.57 / $27.72 at 100,
-JLC with PCB; $37.11 / $37.49 and $31.64 / $31.79 with the owner-fitted
-parts.
+**Against the version 1 baseline** (`b3a3bf3`, ADS124S08 / OPA design, $37.08 /
+$37.45 at 20 boards, $31.61 / $31.76 at 100; this file
+reproduces those figures from its parts list to the cent): **-$26.43 per
+board at 20 boards (-$26.43 on the graduated X-ray) and -$22.33 at 100.**
+Against the REF3030E-centred pass of this file ($13.35 / $13.72 and $11.42 / $11.56): -$2.69 / -$2.69 at 20 and
+-$2.14 / -$2.14 at 100: the loading fee of three Extended types gone (60 CNY per order), the
+AWG buffer, Vmid follower, Schottkys and supply filters, the TMUX1119 and the bleed and
+sense parts that replace it, less the new 10 uF filter capacitors. "Cost by block" splits
+the difference against the baseline.
 
-For reference: one order of 100 at Economic rates (not offered) would be
-$41.19 / $41.44 per board; one Standard PCBA order of 100 (setup $25.56,
-stencil $8.21, $1.53 per type x 23, fixture 5 x $8.21 *(check that it
-applies)*, fiducials and rails required) $41.83 / $42.07. Both reference
-figures are from the MCP3564 / T-switch design and were not recomputed.
+Against the owner's target of about $35 per board for the first batch the
+20-board total is $10.65 / $11.03, domestic with the PCB and the owner-fitted
+parts. Domestic shipping outside Guangdong, attrition (not recomputed for this
+list *(check)*) and the 8 cm tape rule are still excluded. The international
+figures of the earlier BOM, and its Standard-PCBA reference, are not recomputed.
 
+**Not in the totals:** shipping, hand-soldering labour, "confirm parts placement".
 
-**Not in the totals:** PCB fabrication, 2-layer 100.0 x 53.34 mm (outline below) at qty 20
-and 100, **not read** *(check)*: JLC's quote is computed in the browser and
-the pages fetched carry no price. Hand-soldering labour $3.58 per order
-(owner solders). "Confirm parts placement" $0.45 (optional), the
-Economic/Standard handling fee, shipping.
+## Cost by block
 
-## Top 10 cost lines, per board
+Requested by the spec lead. **Domestic order, USD per board, CNY at 6.6912
+*(check)*, PCB included, the 20-board column one order of 20 and the 100-board
+column two orders of 50.** "Now" is the design in `kicad/design.py`; "baseline" is
+the version 1 BOM of git `b3a3bf3` (23 types, 14 Extended, 157 placements),
+rebuilt from its own `whatif/bom.txt` and its domestic ladders: it reproduces
+that file's $37.08 / $37.45 and $31.61 / $31.76 per board to the cent.
 
-| rank | line | @20 | @100 (2 x 50) | share @20 |
+**How the blocks are cut.** Each JLC part is assigned by designator to the
+block it serves, and its price is the tier the whole type reaches (a 10 uF
+at 20 boards is priced for all its placements together, so a block's share
+moves when another block's count of the same type changes). The baseline's
+placements were assigned the same way from its notes. The scope channels block
+includes the baseline's scope Vmid network, range switches and 3.3 V sense
+filter; the power block is the LM27762, its capacitors and dividers and the 5 V
+feed sense; the calibration / ADC block carries the sense divider and its jumper
+network. The owner-fitted line is one block, as asked (BNCs J1-J3, headers J4-J10,
+the CAL header J11, standoff MH1 and its screws). Assembly and fees are one block per order,
+divided by the boards in the order (not split by block). Cells are rounded
+separately, so a column can differ from its sum by $0.01.
+
+| block, $ per board | now @20 | baseline @20 | delta @20 | now @100 | baseline @100 | delta @100 |
+|---|---|---|---|---|---|---|
+| power (LM27762 and its capacitors, the two feedback dividers, the 5 V feed sense, the bleed) | 0.94 | 1.48 | -0.54 | 0.84 | 1.30 | -0.46 |
+| scope channels (TPH2502 U1, both input networks, clamps, supply branch) | 0.48 | 9.01 | -8.53 | 0.41 | 7.47 | -7.05 |
+| AWG (TPH2502 U3 gain stage, input divider, offset filter, 100 nF supply caps, 50 ohm termination) | 0.47 | 7.42 | -6.95 | 0.40 | 6.73 | -6.33 |
+| calibration / ADC (REF3030E, ladder, ADS1115, sense divider and its BAV99 clamps, I2C pull-ups) | 1.98 | 10.61 | -8.63 | 1.75 | 9.36 | -7.61 |
+| **JLC parts, subtotal** | **3.87** | 28.52 | -24.66 | **3.40** | 24.86 | -21.45 |
+| Due headers and BNCs (owner-fitted: 3 BNCs, 7 headers, standoff, 2 screws) | 4.31 | 4.31 | +0.00 | 4.07 | 4.07 | +0.00 |
+| PCB (100 x 53.34 mm, 2-layer, published rule *(check)*) | 0.44 | 0.44 | +0.00 | 0.35 | 0.35 | +0.00 |
+| &nbsp;&nbsp;assembly: setup (50 CNY per order) | 0.37 | 0.37 | +0.00 | 0.15 | 0.15 | +0.00 |
+| &nbsp;&nbsp;assembly: loading (20 CNY per Extended type per order) | 0.60 | 2.09 | -1.49 | 0.24 | 0.84 | -0.60 |
+| &nbsp;&nbsp;assembly: SMT joints (0.01 CNY each) | 0.31 | 0.59 | -0.28 | 0.31 | 0.59 | -0.28 |
+| &nbsp;&nbsp;assembly: X-ray on the LM27762 (whole tier; graduated is +$0.37 at 20, +$0.15 at 100) | 0.75 | 0.75 | +0.00 | 0.75 | 0.75 | +0.00 |
+| **assembly and fees, subtotal (whole-tier X-ray)** | **2.03** | 3.80 | -1.77 | **1.45** | 2.32 | -0.87 |
+| **total per board (whole-tier X-ray)** | **10.65** | 37.08 | -26.43 | **9.28** | 31.61 | -22.33 |
+| total per board, graduated X-ray | 11.03 | 37.45 | -26.43 | 9.43 | 31.76 | -22.33 |
+
+**Reading it.** Of the 26.43 dollars per board saved at 20
+boards (whole-tier X-ray), 24.66 are JLC parts and 1.77 are
+fees (the loading fee for 4 Extended types instead of 14, and 189 fewer joints);
+the owner-fitted and PCB lines do not move (the CAL header J11 is a few cents
+of pin header inside the $2.50 header placeholder *(check)*). Per block
+the movement at 20 boards is: power -0.54, scope channels -8.53
+(two OPA354, the TLV9062 Vmid buffer and its banks, the range switches and the
+0.1 % divider resistors gone; one shared TPH2502 dual and Basic resistors replace them),
+AWG -6.95 (the buffer, Vmid follower, Schottkys and filters
+gone, one TPH2502 half and a handful of Basic parts left), calibration / ADC
+-8.63 (no TMUX1119 or ADS124S08; the ADS1115 and REF3030E stay as the
+two Extended parts of the block). Tier effects move a block's share when another block
+adds a placement of the same type (the 10 uF, the 100 nF and the 1R types).
+
+**Extended types, loading fee per order** (domestic Economic, 20 CNY per
+type per order, so 80 CNY = $11.96 per order, the same for the order of 20 and for each
+of the two orders of 50; per board: 4.00 CNY = $0.60 at 20, 1.60 CNY = $0.24 at 100;
+the baseline's 14 types were 280 CNY, 14.00 and 5.60 CNY per board; the earlier
+pass's 7 types were 140 CNY):
+
+| type | LCSC | placements | joints | loading fee per order |
 |---|---|---|---|---|
-| 1 | ADS124S08 x 1 | 7.45 | 6.72 | 21 % |
-| 2 | OPA365 x 3 | 7.01 | 6.46 | 20 % |
-| 3 | TMUX1119DCKR x 3 | 5.70 | 5.02 | 16 % |
-| 4 | OPA354 x 2 | 3.38 | 2.70 | 10 % |
-| 5 | Extended loading fee | 2.00 | 0.80 | 6 % |
-| 6 | 249R 0.1 % x 15 | 1.83 | 1.54 | 5 % |
-| 7 | 330k 0.1 % x 19 | 1.53 | 1.36 | 4 % |
-| 8 | 100k 0.1 % x 9 | 1.10 | 1.10 | 3 % |
-| 9 | X-ray, LM27762 (whole tier) | 0.82 | 0.82 | 2 % |
-| 10 | REF3030E x 1 | 0.81 | 0.71 | 2 % |
+| TPH2502-SR | C118223 | 2 | 16 | 20 CNY = $2.99 |
+| LM27762DSSR | C473398 | 1 | 13 | 20 CNY = $2.99 |
+| REF3030EAIDBZR | C54120492 | 1 | 3 | 20 CNY = $2.99 |
+| ADS1115IDGSR | C37593 | 1 | 10 | 20 CNY = $2.99 |
+| **4 Extended types** | | **5** | **42** | **80 CNY = $11.96** |
 
-International prices; share of the $35.18 total. The ADS124S08, LM27762 and REF3030E are one
-placement each, so an order of 50 takes their 30-99 tier.
+**Type, placement and joint counts.** 33 types fitted: **4 Extended, 29 Basic**
+(the BAV99 C2500 is Basic on both the international and the domestic pages,
+`v2/jlc-basic.csv`; the BAT54S, an Extended type domestically, is gone).
+**87 JLC placements: 5 on Extended types (TPH2502 x 2, LM27762, REF3030E,
+ADS1115) and 82 on Basic types. 210 SMT joints**: 16 on the TPH2502, 13 on the
+LM27762 (exposed pad counted *(check)*), 3 on the REF3030E, 10 on the ADS1115, 12 on the 4 BAV99
+and 156 on the 78 two-terminal passives. Baseline: 157 placements, 395 joints, 23
+types (14 Extended).
+
+## Who solders what, and the one-side rule
+
+**Placed by JLC (87 placements, 33 types):** U1, U3 (TPH2502), U7 (LM27762), U8
+(REF3030E), U9 (ADS1115); D5-D8 (BAV99); every resistor and capacitor in
+`whatif/bom.txt` (78 Basic passives, the 0R bridges R95 / R96 included).
+
+**Hand-soldered by the owner (not in the JLC CPL, not in the JLC totals):**
+the three BNCs **J1, J2, J3** (Kinghelm KH-BNC50-3511, through-hole), the seven
+stacking headers **J4-J10** (five 1x8, one 1x10, one 2x18), **the CAL header J11**
+(1x3 pin header `TAP4 | B | TAP3`, no LCSC code, fitted by the owner; the
+ratio-measurement shunt across pins 2-3 is the user's, fitted with the BNC tee)
+and the standoff **MH1** with its two M3 x 5 screws and the optional shim washer.
+
+**Footprints on the board and not fitted** (no part, no fee): the 0R R81 (AREF
+series); test points TP1-TP6 are pads. (The three unfitted BAV99 clamp footprints
+D9-D11 are gone with the AWG output clamp.)
+
+**All JLC-placed parts are on one side.** `design.py` carries no side field for
+a part, and the board file `kicad/afe-proto.kicad_pcb` (read for the earlier pass of this
+file: all 127 footprints on F.Cu; the board was regenerated since and *(check: re-read)*)
+has none on B.Cu. B.Cu carries copper only (LR-1 in `kicad/layout.py` keeps signal
+tracks off it under the analog blocks). So the board meets the Economic rule:
+`docs/jlcpcb.md` section 2 lists "Sides assembled: one" for Economic (two for
+Standard) and constraint 1 there ("Choose Economic if one-sided placement holds")
+is satisfied; the domestic fee table in "Domestic SMT fees" below says the same
+("Economic, one side"). No fiducials or edge rails are needed under Economic, and no
+other limit on one-side assembly was found in `docs/jlcpcb.md`,
+`docs/jlcpcb-parts.md` or this file *(check against the live quote tool)*. What would
+break it: any SMT part placed on the back (it would move the order to Standard: setup
+150 CNY per side, stencil 50 CNY per side, loading 8 CNY per type Basic or Extended,
+rails and fiducials, all from the fee table below). The one other Economic limit that
+matters here is the 50-board order size, which is why 100 boards are two orders.
+
+## Top 10 cost lines, per board (domestic CNY)
+
+| rank | line | @20 | @100 (2 x 50) |
+|---|---|---|---|
+| 1 | ADS1115IDGSR x 1 | 7.56 | 6.60 |
+| 2 | X-ray, LM27762 (whole tier) | 5.00 | 5.00 |
+| 3 | REF3030EAIDBZR x 1 | 4.94 | 4.33 |
+| 4 | LM27762DSSR x 1 | 4.84 | 4.18 |
+| 5 | TPH2502-SR x 2 | 4.68 | 3.82 |
+| 6 | Extended loading fee (4 types, 80 CNY per order) | 4.00 | 1.60 |
+| 7 | PCB | 2.97 | 2.37 |
+| 8 | setup (50 CNY per order) | 2.50 | 1.00 |
+| 9 | SMT joints (210) | 2.10 | 2.10 |
+| 10 | 10 uF x 11 | 1.58 | 1.58 |
+
+The ADS1115, LM27762 and REF3030E are one placement each, so an order of 50 takes their 30-99 tier (at 20 boards they sit in 10-29). The fee lines are per board: the order's fee divided by its boards.
 
 ## Provisional items and their deltas
 
-The tee ((a) in the earlier pass) is adopted and is in the tables.
+| item | in the tables | delta |
+|---|---|---|
+| **(b) cut 4**: 3157-class parts replace the range TMUX1119 | **moot**: the range switches and the TMUX1119 ratio switch are gone (D18, D25) | none |
+| **(c) scope compensation** | C1 12 pF across R1 (C1, C2), C2 30 pF from N to GND (C9, C11), Cnp 10 pF (C60, C61); the divider compensation is to be re-trimmed *(superseded: see whatif/v1-basic/values.md, whatif/tph2502/, budget/v1_scope_ref.py)* | none |
+| **REF3030E output capacitor** | C26 100 nF and C27 1 uF at VREF (the REF30E asks 0.1-22 uF stable, SBVS032); the reference also sources the scope centre (R14 / R16), the AWG offset filter (R93 into 2 x 10 uF) and Rd (R90) with the ladder *(check: the load is not simulated against the E grade's drive)* | none |
+| **AWG outputs of the v2 design** | 3 failing rows of `whatif/v1-awg-ref/` (its "Open decisions") are open *(check)* | none in the parts list |
+| **Sense circuit (S3)** | the ratio at 0.088 % / 0.307 % (tracking / independent) fails the 0.05 % allotment's gain term on its own, SC-7 whole-stack passes on tracking *(superseded figures: `whatif/v1-jumper/design.md` sections 0, 4; check)* | none |
+| **BAV99 for the -0.3 V row** | the silicon BAV99 holds the ADS1115 tap pin 0.13 to 0.28 V past GND - 0.3 V at 9-117 uA, inside the 10 mA row; SBAS444E 7.3.1 prefers Schottky *(check, VT-22; `whatif/v1-jumper/design.md` section 1)* | none (BAV99 is Basic) |
+| **ADS1115 stock and ladder** | domestic ladder read, stock not *(check)* | none |
 
-| item | in the tables | delta, $/board @20 / @100 | fees |
-|---|---|---|---|
-| **(b) cut 4**: 3157-class parts replace the 2 range TMUX1119 (evaluation pending; placeholder $0.10-0.30 each *(check)*) | 2 x TMUX1119 | parts **-3.38..-2.98 / -2.92..-2.52**. The ratio switch's one TMUX1119 then falls to the 10-29 / 30-99 tiers. -12 joints plus the 3157's | +1 Extended type, +$3.07 per order: the TMUX1119 stays for the ratio switch, and every 3157-class part searched is Extended (`jlcpcb-parts.md`) |
-| **(c) C2** | C1 12 pF; C2 = 20 \|\| 12 \|\| (12 s 20) = 39.5 pF per channel (`P_HZ`; the 100 kHz-step null is 38.96 pF) | in the tables: 2 x 12 pF + 2 x 20 pF per channel, Basic only; no 39 pF | none |
+## Control-pin pull resistors, the rail bleed and the I2C pull-ups
 
-## Control-pin pull resistors
+Sources: SAM3X datasheet 11057C (`docs/datasheets/microchip/`) 31.5.1 and
+Table 45-2; `whatif/v1-jumper/design.md` section 8 for the bleed; the I2C
+figures below are derived, not read from the ADS1115 datasheet (SBAS444E)
+*(check)*.
 
-All four stay **4.7k 1 % C23162**, now on computed figures rather than
-assumed ones. Sources: SAM3X datasheet 11057C (`docs/datasheets/microchip/`)
-31.5.1 and Table 45-2; TMUX1119 SCDS401C 5.6 (VDD = 3.3 V +/-10 %);
-ADS124S08 SBAS660C 7.5.
-
-- **The Due's side.** After reset every PIO line is an input with its
-  pull-up on (31.5.1, `PIO_PUSR` resets to 0). RPULLUP is 50 / 100 / 150
-  kohm min / typ / max; VDDIO 3.0-3.6 V. PC1-PC9 are group 1: IOH 15 mA
-  at VOH = VDDIO - 0.4 V, IOL 9 mA at VOL = 0.4 V (Table 45-2, note 2).
-- **R66-R68, the range and ratio-switch pull-downs (D16, D39, D9).** Worst low
-  level with the internal pull-up on: 3.6 V x 4.747k / (50k + 4.747k) =
-  0.312 V, plus the TMUX1119's 0.05 uA SEL leakage x 4.747k = 0.2 mV, so
-  **0.31 V against SEL's VIL of 0.8 V**: 0.49 V of margin, and SEL reads
-  low (S1: +/-5 V, and the AWG's Vmid on the ratio switch) at reset and
-  with the pin unconfigured. The largest pull-down that still holds 0.8 V
-  is 14.3k; the "about 10k" once proposed would leave 0.2 V of margin.
-  Driving the line high costs the Due 3.3 V / 4.7k = 0.70 mA (0.77 mA at
-  3.6 V and -1 %) per line, against 15 mA; VOH >= 2.6 V against SEL's VIH
-  of 1.35 V. 4.7k stands: the margin is in the low state, which is the
-  safe one.
-- **R69, the ADS124S08 CS pull-up (D5), to +3.3 V_A.** CS input current
-  is +/-1 uA, so the pull-up holds CS within 4.7 mV of IOVDD against VIH =
-  0.7 IOVDD whatever the Due's pull-up is doing (the internal one alone
-  could drop 0.15 V, and firmware may disable it). Selecting costs the Due
-  IOVDD / 4.653k = 0.71 mA at 3.3 V, 0.77 mA at 3.6 V, against IOL 9 mA at
-  VOL 0.4 V; VIL is 0.3 IOVDD, 0.97 V at +3.3 V_A's 3.235 V low end
-  (`docs/architecture.md`, Power). 4.7k stands: it keeps the ADC deselected through reset
-  and costs current only while CS is low.
+- **No Due control pin is driven any more.** The TMUX1119 ratio switch, its SEL
+  line D9 and the 4.7k pull-down R68 are gone (D25), as are the range pull-downs
+  (D18) and the ADC chip-select pull-up (D15). Nothing on the shield reads a
+  Due pin level at reset.
+- **R65, the +3.3 V_A bleed, is 2.2k 1 % (C4190, Basic), was 4.7k.** It is the
+  only thing that holds the unpowered rail down in PR-3 (+5 V forced on the AWG
+  BNC through the sense divider's two BAV99 clamps). `whatif/v1-jumper/design.md`
+  section 8, on kvm_02's worst case (the reference at 0 V, open or clamping, both
+  clamp onsets at 0.3 V, +-1 % parts, wire off and on): **4.7k reads 0.746 V and
+  fails the 0.5 V limit (0.496 V with the ladder in place, 4 mV of margin);
+  2.2k reads 0.382 V (118 mV of margin) in that worst case and 0.269 V with the
+  ladder in place**; 2.7k leaves 40 mV and 1.8k 183 mV. About 122 to 173 uA flows
+  into the rail whatever the bleed (the strict 100 uA-into-the-rail reading is
+  met by no value; the note recommends the rail-voltage reading, as kvm_02 does)
+  *(check: simulated, not measured)*. The other PR-3 case, both scope inputs at
+  +12 V, puts 27 uA into the rail and the rail at 0.060 V with 2.2k, so it does
+  not bind.
+- **PW-1 cost: 3.4177 V / (2.2k x 0.99) = 1.57 mA permanent at the rail
+  maximum, 1.6 % of the 100 mA budget at the 5 V pin, +0.84 mA over the old
+  4.7k** (derived in the note; the rest of the +3.3 V_A load is unchanged
+  *(check against the PW-1 table)*).
+- **R69 (SDA1) and R82 (SCL1), the I2C pull-ups, 4.7k to +3.3 V_A.** SDA1 and
+  SCL1 on PWMH0.9 / .10 are the SAM3X's TWI0 pins. The Due has none on those
+  nets (V03: each reaches only the SAM3X pad and the PWMH0 header pad, section
+  "Pin check"), so the shield supplies both. A line held low sinks 3.3 V / 4.7k
+  = 0.70 mA (derived), against the 3 mA an I2C pin is normally asked for and the
+  Due's 9 mA at VOL 0.4 V *(check against the ADS1115's VOL)*. The rise time to
+  70 % is 0.8473 x 4.7k x C; with an assumed 50 pF of bus it is 0.20 us, inside
+  the 0.3 us of Fast-mode I2C, and the 400 kHz bound is C < 75 pF (derived)
+  *(check: the board's real capacitance is not known until layout)*. The pull-up
+  rail is +3.3 V_A, the ADS1115's VDD, not the Due's 3.3 V pin, so an unpowered
+  AFE does not hold the Due's lines up.
 
 ## Pending, with placeholders
 
-- ADS124S08 control pins need no parts (SBAS660 10.1.5): CLK to DGND
-  (internal oscillator), START/SYNC to DGND (conversions by command), RESET
-  to IOVDD (or a Due pin), DRDY unconnected (or a free top-edge pin), REFN0 to AVSS, REFOUT
-  open with the internal reference off, REFCOM to AVSS.
-- IC decoupling: one 100 nF per IC supply pin; 5 are assumed (LM27762 VIN,
-  three TMUX1119, the TLV9062). The REF3030 and ADS124S08 capacitors
-  are from their datasheets ("Reference and converter capacitors" below).
+- ADS1115 ties need no parts: ADDR to GND (address 0x48), ALERT/RDY left open.
+- IC decoupling: one 100 nF per IC supply pin (C13 TPH2502 U1, C21 / C22 the AWG
+  TPH2502, C23 LM27762 VIN, C24 REF3030E VIN, C25 ADS1115); the REF3030 and
+  ADS1115 capacitors are from their datasheets ("Reference and converter
+  capacitors" below).
 
 ## Flags
 
-- **ADS124S08IPBSR: 1,257 in stock** (C2870171): covers 20 and 100 boards.
-  The MCP3564-E/ST's stock problem (42) is gone with it.
-- Stock at 100 boards: 249R 1,500 of 3,875; OPA354 200 of 1,927; REF3030E
-  100 of 996; others well covered. One day's reading *(check)*.
-- Every tier was read once, on 2026-11-11; the 100 nF moved from 0.0062 to 0.0164 between two readings *(check before ordering)*.
-- `sim/awg/run.py` still computes the negative rail from (330k + 330k +
-  100k) \|\| 330k / 330k; this BOM carries powercal's approved 330k \|\| 100k
-  over 3 x 330k (same types, same five placements).
+- **ADS1115IDGSR, TPH2502-SR stock:** not read (domestic record shows 0);
+  `v2/parts.md` read 17,442 and 3,263 on the international API on 2026-11-12,
+  and 100 boards need 100 and 200 pieces. Check at ordering.
+- **REF3030E:** stock 996 internationally on 2026-11-11, 100 boards need 100.
+- Every domestic ladder noted "kept" in the part table was read once on
+  2026-11-11 *(check before ordering)*.
+- **The REF3030E output network** (provisional items above: C26 100 nF + C27 1 uF,
+  and the new load of the scope centre) is the open design flag in this list.
+- `sim/awg/run.py` and the powercal rails: see `whatif/v1-basic/values.md`
+  for the 75k / 330k feedback pair; the earlier flag on 330k || 100k is retired.
 - The X-ray line disappears with the leaded LM27762 replacements in
   `jlcpcb-parts.md` ("X-ray and leaded negative-rail options").
 
@@ -311,8 +452,8 @@ straight part is listed as the alternative. Owner to confirm.
 **Headers: from the V03 board file** (`docs/due-header-table.md`): five
 1x8 (POWER0, ADCL0, ADCH0, PWML0, COMMUNICATION0), one 1x10 (PWMH0) and one
 2x18 (XIO0), 86 pins, every one passed through (MC-9). The 6-pin `SPI0`
-header is needed only if the precision ADC uses hardware SPI (MC-1); this
-design bit-bangs SPI on D5-D8 (ADS124S08 CS on D5), so it is not counted.
+header is needed only if the precision ADC uses hardware SPI (MC-1); the ADC is
+now the I2C ADS1115 on SDA1/SCL1 (PWMH0.9/.10), so it is not counted.
 The Due carries female sockets, so the shield needs long-tail
 (stacking) female headers.
 
@@ -349,6 +490,7 @@ of stock.
 |---|---|---|---|---|---|---|---|
 | BNC 50 ohm, right-angle THT ("Board Side Elbow", 3 GHz) | Kinghelm KH-BNC50-3511 | C2837587 (JLC stock 12,646) | 3 | 0.6506 (50-99) | 0.5640 (100-499) | 1.9518 | 1.6920 |
 | Mega stacking-header set: 5 x 1x8, 1 x 1x10, 1 x 2x18, about 10.5 mm tails *(check)* | generic | none | 1 set | 2.50 *(check)* | 2.50 *(check)* | 2.50 | 2.50 |
+| CAL ratio header J11, 1x3 pin header 2.54 mm (`TAP4 \| B \| TAP3`), plus a shunt | generic | none | 1 + 1 shunt | *(check: not priced)* | *(check)* | not in the subtotal *(check)* | not in the subtotal *(check)* |
 | Standoff, M3 x 8 mm hex, female-female (material not on the page *(check)*), XHHD | M3*8MM | C66568 (JLC stock 1,211) | 1 | 0.0236 (1-99) | 0.0218 (100-1999) | 0.0236 | 0.0218 |
 | Screw, M3 x 5 mm pan head, cross slot (Shuntian PM3X5) | PM3X5 | C357542 (JLC stock 10,763) | 2 | 0.0024 (1-999) | 0.0024 | 0.0048 | 0.0048 |
 | Shim washer, M3 flat, 0.5 mm, only if the measured gap needs it | generic | none found at JLC | 0-1 | *(check)* | *(check)* | 0 | 0 |
@@ -372,6 +514,8 @@ tails. Optional `SPI0` pass-through, if hardware SPI is ever used: Samtec
 SSQ-103-03-T-D C3323194 (2x3), 78 in stock, 0.9890 / 0.9563; the generic Mega
 sets often include a 2x3. Whether a socket fits over the Due's 7.55 mm
 `SPI0` pins under the shield is *(check)*.
+
+**CAL header J11 (D25).** The ratio measurement uses a 1x3 hand-fitted pin header, `TAP4 | B | TAP3`, with a shunt across pins 2-3 that the user fits together with the BNC tee (`whatif/v1-jumper/design.md` section 1, `whatif/calibration-steps.md`). It has no LCSC code, is not in the JLC CPL and its price is not read (a pin or two of a generic strip, well inside the $2.50 header placeholder *(check)*). The header's pins carry only AFE signals inside 0..AREF.
 
 **Standoff (MC-1, MC-12).** It goes on the Due mounting hole nearest the
 overhang, (96.52, 2.54), which is 5.08 mm inboard of the Due's x = 101.6
@@ -405,54 +549,42 @@ shipping excluded; X-ray whole tier / graduated):
 
 | | 20 boards | 100 boards (2 x 50 JLC orders) |
 |---|---|---|
-| JLC assembly, international, PCB excluded | $35.18 / $35.59 | $30.16 / $30.33 |
 | owner-fitted (BNCs, headers, standoff), international prices | $4.48 *(check)* | $4.22 *(check)* |
-| grand total, international, PCB excluded | $39.66 / $40.07 | $34.38 / $34.55 |
-| **grand total, domestic, PCB included (the order)** | **$37.11 / $37.49** | **$31.64 / $31.79** |
+| grand total, international, PCB excluded | not recomputed | not recomputed |
+| **grand total, domestic, PCB included (the order)** | **$10.65 / $11.03** | **$9.28 / $9.43** |
 
 The 5- and 10-board batches are in "Batch cost at 5, 10, 20 and 100 boards"
 at the end.
 
 ## Pin check: the AFE's control pins on the Due
 
-Sources: the V03 EAGLE schematic (`source/Arduino-DUE-V03.sch`, every
-`<pinref>` on each net), `docs/due-header-table.md`, and a grep of
-`drivers/`, `lib/`, `sketches/` and `apps/`. The D-to-port map is read from
-the schematic (the net's U1 pin name), not from the Arduino variant table.
+Sources: the V03 board file (`hardware/reference/arduino-due/v03/Arduino-DUE-V03.kicad_pcb`,
+every pad on each net), `docs/due-header-table.md`, and a grep of `drivers/`,
+`lib/`, `sketches/`, `apps/` and `bsp/`.
 
-| Due pin | port | header.pin (x, Y) | AFE use | other connections on V03 | firmware use | alternate functions (CMSIS header) |
-|---|---|---|---|---|---|---|
-| D5 | PC25 | PWML0.6 (50.80, 50.80) | ADS124S08 CS, 4.7k pull-up | none: U1.136 and PWML0 only | none | A: EBI A4, B: TIOA6 |
-| D6 | PC24 | PWML0.7 (48.26, 50.80) | ADS124S08 DIN (MOSI) | none (U1.135) | none | A: EBI A3, B: PWML7 |
-| D7 | PC23 | PWML0.8 (45.72, 50.80) | ADS124S08 SCLK, bit-banged | none (U1.134) | none | A: EBI A2, B: PWML6 |
-| D8 | PC22 | PWMH0.1 (41.656, 50.80) | ADS124S08 DOUT/DRDY (MISO), input to the Due | none (U1.133) | none | A: EBI A1, B: PWML5 |
-| D9 | PC21 | PWMH0.2 (39.116, 50.80) | tee ratio switch, 4.7k pull-down | none (U1.132) | none | A: EBI A0/NBS0, B: PWML4 |
-| D16 | PA13 | COMMUNICATION0.3 (73.66, 50.80) | range select CH1, 4.7k pull-down | none (U1.6) | none | A: USART1 TXD1, B: PWMH2 |
-| D39 | PC7 | XIO0.20 (96.52, 27.94) | range select CH2, 4.7k pull-down | none: U1 and XIO only | none | A: EBI D5, B: PWMH2 |
+| Due pin | port | header.pin (x, Y) | AFE use | other connections on V03 | firmware use |
+|---|---|---|---|---|---|
+| SDA1 (D70) | *(check)* | PWMH0.9 (21.336, 50.80) | ADS1115 SDA, R69 4.7k pull-up to +3.3 V_A | none: U1 pad 9 and PWMH0 pad 9 only | none (no TWI, PA17 or PA18 reference) |
+| SCL1 (D71) | *(check)* | PWMH0.10 (18.796, 50.80) | ADS1115 SCL, R82 4.7k pull-up to +3.3 V_A | none: U1 pad 70 and PWMH0 pad 10 only | none |
 
-The bus and CH1's range select sit on the top edge so that no digital line crosses an
-analog zone (`docs/afe.md` LR-9 and D14): the ADS124S08 stays by the ladder and its bus
-runs along the west and top board edges. D33-D38, D40 and D41 (XIO0) are free.
-
-**No clash.** On the V03 board each of these nets reaches exactly two pads, U1's and
-the header's (read from the KiCad import, `hardware/reference/arduino-due/v03`), so
-the Due has no load, pull-up, LED or other function on any of them. The port map is
-the SAM3X datasheet's LQFP-144 pinout (11057C: pin 132 PC21 to 136 PC25, pin 6 PA13).
-The firmware drives PIOC for one bit only, the RX LED on PC30 (`bsp/led.c`), through
-SODR/CODR, which change only the bits written, so a bus write on PC22-PC25 and the LED
-cannot disturb each other. Nothing enables USART1 (PA13's TXD1), the EBI or PWM on
-these pins (grep of `drivers/`, `lib/`, `sketches/`, `apps/`, `bsp/`). One SODR/CODR
-write on PIOC sets SCK, MOSI and CS together. Of the five bus pins only PC25 (CS) has a
-Schmitt-trigger input (11057C, PIO note 4); the input, DOUT on PC22, does not, as D35
-(PC3) did not before.
+**SDA1 and SCL1 are the only Due pins the shield uses** (besides the analog
+pins A0, A1, A2-A7, DAC0 and AREF). Both are the SAM3X's TWI0 pins
+(PA17 / PA18) *(check: the pad-to-port mapping was not looked up for this file)*,
+not TWI1. D9 (the ratio switch's SEL), D5-D8 (the ADS124S08 SPI) and D16 and
+D39 (the range selects) are no longer used (D15, D18, D25), and the Due's 3.3 V
+pin (POWER0.4) went with the scope Vmid (the REF3030E centres the channels):
+**D5-D9, D16, D33-D41 and every XIO0 pin are free.** **SDA1/SCL1 are single-net on
+the V03 board**: reading every pad of those nets in the board file gives the
+SAM3X pad and the header pad and nothing else, so the Due has **no pull-up, LED
+or other load** on either, which is why the shield carries R69 and R82. The
+port names behind pads 9 and 70 are not read here: `docs/due-header-table.md`
+calls them D70 / D71 *(check)*. The firmware never touches port C except the RX
+LED on PC30 (`bsp/led.c`) and never references a TWI.
 
 Not established: Track A's Arduino core `init()` / `variant.cpp` is not in
-the repository and was not read, so whether it drives these pins at start-up is
-*(check)*; the Arduino core does bring up Serial1..3, so its `init()` is the place to
-look for PA13. After reset the PIO lines are inputs with the internal pull-up on
-(SAM3X 11057C 31.5.1). The 4.7k pull-downs hold D16, D39 and D9 at 0.31 V or less
-against its 50 kohm minimum ("Control-pin pull resistors"). MISO
-(D8) floats onto the pull-up while CS is high, which is harmless.
+the repository and was not read, so whether it drives or reserves these pins at
+start-up is *(check)*. 
+`docs/due-header-table.md` section 5 carries this pin map.
 
 ## Mechanical check: BNCs on the left edge (x = 17)
 
@@ -580,8 +712,9 @@ nor the 82.06 x 53.34 price was read; both outlines are inside 100 x 100.
 
 ## Reference and converter capacitors (datasheets read 2026-11-11)
 
-Sources: `models/ref3030/ref30.pdf` (SBVS032K, REF30 and REF30E) and
-`models/ads124s08/ads124s08.pdf` (SBAS660C). Only existing types are used.
+Sources: `models/ref3030/ref30.pdf` (SBVS032K, REF30 and REF30E) and, for the
+ADS1115, `v2/parts.md` section 2 (SBAS444E; the datasheet itself was not
+re-read for this file). Only existing types are used.
 
 **What the datasheets ask:**
 - **REF30E** (6.5): stable input capacitor at least 0.1 uF, stable output
@@ -591,144 +724,65 @@ Sources: `models/ref3030/ref30.pdf` (SBVS032K, REF30 and REF30E) and
   no output capacitor is required; with one, "take special care" with low-ESR
   and high capacitance; a 0.1 uF supply bypass is always recommended. 8.3: a
   supply bypass "greater than 0.47 uF". 8.4: low-ESR 0.1 uF ceramic at VIN.
-- **ADS124S08** (pin table, 9.3.3.2, 11.4): AVDD at least 330 nF to AVSS;
-  DVDD at least 100 nF to DGND, and IOVDD 100 nF only if not tied to DVDD
-  (Figure 118 ties them at 3.3 V with one 0.1 uF); "connect a 100-nF bypass
-  capacitor across the external reference input pins"; REFOUT needs 1-47 uF
-  to REFCOM only if the internal reference is enabled (it is not here).
-  Unused or command-driven pins per 10.1.5 (see Pending). AVDD 2.7-5.25 V,
-  so the +3.3 V_A rail serves.
+- **ADS1115**: VDD 2-5.5 V (the +3.3 V_A rail serves), one 100 nF at VDD
+  (C25); the reference is internal, so there is no REFP/REFN pair and no
+  reference capacitor. AVDD / DVDD split and the REFOUT capacitor of the
+  ADS124S08 are gone.
 
 **Chosen:**
 
 | node | parts | types | why |
 |---|---|---|---|
 | REF3030 VIN | 100 nF + 1 uF | C14663 + C15849 | 0.1 uF low-ESR at the pin (8.1, 8.4) and more than 0.47 uF (8.3) |
-| REF3030 output = REFP0, which also feeds the ladder directly (B) | 2 x 100 nF from REFP0 to REFN0 | 2 x C14663 | SBAS660C 9.3.3.2 asks for 100 nF; the owner's network is two (decision of 2026-11-11). The 10 uF and its 1R \|\| 1R \|\| 1R are gone |
-| REFN0 | tied to AVSS, no part | | SBAS660C 10.1.5 |
-| ADS124S08 AVDD | 1 uF | C15849 | at least 330 nF (11.4); 100 nF is not enough and 1 uF is the smallest existing type above it |
-| ADS124S08 DVDD + IOVDD (tied) | 100 nF | C14663 | 11.4, Figure 118 |
+| REF3030 output = VREF (ladder top, scope R3 pair R14 / R16, AWG offset filter R93, sense Rd R90, ADS1115 AIN0, A7) | **100 nF (C26) + 1 uF (C27)** | C14663 + C15849 | the datasheet's 0.1-22 uF window (SBVS032K 6.5) is met by the pair (1.1 uF nominal, 0.99 uF at -10 %) *(check: X5R DC-bias loss at 3 V)*; the ADS124S08's REFP0 pair is gone |
+| ADS1115 VDD | 100 nF | C14663 | C25 |
 
-The tables above include this.
+**Flag, resolved in the parts list and open in the simulation.** The REF30E asks for
+0.1-22 uF on its output and one 100 nF is 0.09 uF at its -10 % tolerance; the design
+fits C26 100 nF and **C27 1 uF** (a type already in the list) at VREF, which gives
+1.1 uF nominal and takes the turn-on settling figure (given with CL = 1 uF) as the
+design point. The ESR window (10-500 mohm) against a ceramic's ESR is *(check)*, and
+ringing is not simulated (encrypted model) *(check, VT)*. The reference's load is no
+longer just the 1.44 k ladder: each scope channel's R3 (330k) hangs on VREF, the AWG
+offset takes its current through R93 100R into 2 x 10 uF (a node that charges to the
+reference through 100 ohm at start-up, so the REF3030E sees an RC step: not simulated
+*(check)*), and Rd (R90, 1k) ties the sense circuit's bottom end B to VREF with the wire
+off (`whatif/v1-awg-ref/design.md`, `whatif/v1-jumper/design.md`; the
+sense network's effect on VREF is in the SC-9 / PR-3 rows of those notes).
 
-**Range checks.**
-- REFP0 load: 2 x 100 nF = 0.2 uF, inside the REF30E's 0.1-22 uF, but the
-  -10 % tolerance and DC bias leave little above the 0.1 uF floor, and two
-  ceramics' ESR is likely below the 10 mohm floor of the REF30E's ESR
-  window. Neither was read *(check: the reference's stability is the owner's
-  simulated cut; the datasheet window is not obviously met)*. The ladder,
-  1328 ohm, sits on the same node, and it damps as a resistive load does not
-  count in the datasheet's capacitor window.
-- DC-bias loss of the 10 uF X5R at 3 V was not read *(check)*; it only
-  matters against the 0.1 uF floor, which it clears by far.
+## Reconciliation with afe.md
 
-## Reconciliation with afe.md (e510edd)
-
-Read against `docs/afe.md`: PA-1 to PA-9, SC-2, SC-3, SC-7 to SC-11,
-AW-1 to AW-8, PW-1 to PW-7, CA-1, MC-1, MC-8, MC-9, MC-11, MC-12, D5, D8,
-D11.
-
-**Fixed in this BOM:**
-1. **PA-2 / SC-7: the reference is the E grade.** The A grade was in the
-   totals; it is now REF3030EAIDBZR C54120492, +$0.4266 per board, which
-   matches PA-2's "+$0.43".
-2. **PA-3: the precision ADC no longer reads the DAC0 buffer.** It reads the
-   AWG sense, the divider's ratio and the ladder taps. The ADC description
-   said "the DAC0 buffer"; corrected. The AWG's DAC0-buffer op-amp stays, as
-   part of the AWG.
-3. **PA-3 / PA-4: the sense divider and the ratio switch.** The designator
-   notes now read 100k + 100k from the BNC node (after AW-4's
-   back-termination) to the tap, and 100k from the tap to the far end, which
-   the one TMUX1119 moves between the mid-rail reference and the reference
-   top tap. Still 3 x 100k.
-4. **PA-7: the AREF series 0 ohm** was missing; it is now listed as an
-   unfitted 0603 footprint (MC-11), at no cost.
-
-**Agree (no change):**
-- **SC-3:** the 1 Mohm compensated input (R1 = R3 = 330k + 330k + 100k, R2
-  330k, C1, C2).
-- **MC-1:** edge headers only, no SPI0. The outline covers every header but
-  not the USB / jack end, and overhangs the other end by about 15 mm; the
-  BOM's x 17.0-117.0 overhangs by 15.4.
-- **MC-8:** three right-angle 50 ohm BNCs, one part number, on the
-  overhanging edge, owner-soldered.
-- **MC-12:** a generic Mega stacking set, owner-bought.
-- **PA-8:** the top tap is the reference itself, with the ladder straight off
-  the REF3030E and no buffer (afe.md 24b642b; owner decision B).
-- **PA-9 / D11:** eight 249R, 3 in parallel + 5 in series, six taps. More
-  than six taps would need a different arrangement, not more ADC inputs,
-  since the ADS124S08 has 12.
-- **AW-4:** 50 ohm +/-1 %; the BOM's 49.9 ohm 0.1 % is the value PR-4 names.
-- **AW-7:** the AWG's own offset reference, from +3.3 V_A.
-- **PW-1:** power from 5 V only, with no load on the Due's 3.3 V pin beyond
-  the sense.
-
-**Flagged: the text looks wrong, or the BOM cannot comply:**
-- **MC-1's outline, "at most 100 x 53.3 mm".** The Due is 53.34 mm in Y,
-  so 53.3 is presumably 53.34 rounded. The BOM keeps 100.0 x 53.34 mm. If
-  53.3 is a hard limit, the outline must shrink by 0.04 mm; the header
-  bodies (Y 1.27 to 52.07) still fit.
-- **MC-1's standoff "on a Due mounting hole under the overhang".** No Due
-  mounting hole lies under the overhang: the Due ends at x 101.6, and its
-  nearest hole, (96.52, 2.54), is 5.08 mm inboard, under the shield. The
-  standoff is now an owner-fitted line on that hole (M3 x 8 F-F C66568 + 2 x
-  M3 x 5 C357542). MC-12 names only BNCs and headers as hand-fitted, so the
-  text should add the standoff.
-- **D5 is stale.** It says "DAC0 measured by the precision ADC does its job
-  (PA-3)", but PA-3 now calibrates by BNC tee, with the precision ADC
-  sensing at the AWG's BNC. D5 also lists a test point in 3a, which no BOM
-  line carries (test points are excluded).
-- **AW-4 against PW-3.** AW-4 says the series resistor limits a short to
-  "about +/-20 mA"; PW-3 says at most 30 mA (relaxed 2026-11-11). A text
-  inconsistency; no part changes.
-- **MC-12's design review also asks for the cost with Phase 3 fitted on only
-  some boards (MC-11).** The owner keeps both channels and the differential
-  mode on every board, so no variant is needed; MC-12's partial-fit cost
-  sentence is then moot and could be removed.
-- PA-3's warm-up uses "the precision ADC's own temperature sensor". The
-  ADS124S08 has one (SBAS660C, features), so no part is needed.
+The reconciliation of 2026-11-11 (against `docs/afe.md` e510edd: PA-2 E-grade
+reference, PA-3 / PA-4 sense divider and ratio switch, PA-7 AREF 0R footprint, the
+MC-1 / MC-8 / MC-12 outline, BNC and header items) is kept in the git history of
+this file; its findings on the outline, the standoff, the BNCs and the headers
+are unchanged and are in the sections above and below. What changed since is
+D13, D15, D18 and D19 and the REF3030E-centred scope input, listed at the top; **`docs/afe.md` text that still names the
+ADS124S08, the OPA354 / OPA365, 0.1 % parts, D5-D8, D16, D39 or the +/-1.25 V
+range is stale on those points** *(check against the current afe.md)*.
 
 ## Batch cost at 5, 10, 20 and 100 boards
 
-The owner asked for 5 and 10 as well as 20 and 100. Parts are priced at the
-tier holding B x n pieces for each type, read in full 2026-11-11 from the
-JLC parts search (the same record the raw part page carries). No tier was
-estimated. 100 boards are two Economic orders of 50, so their tier is the
-one for 50 x n.
+Domestic, as the order is placed; parts at the tier holding B x n pieces for
+each type (50 x n per order at 100 boards, two orders of 50); X-ray on the
+LM27762 at 10 CNY a piece for 1-10 and 5 CNY for 11-50, whole tier / tier by
+tier; no coupon; PCB 20 / 20 / 59.47 / 118.68 CNY per order *(check)*; CNY at
+6.6912. International totals are not recomputed.
 
-International, for reference (the order is domestic, below). **Fees per
-order:** setup $8.18, stencil $1.53, 13 Extended x $3.07 = $39.91, 401
-joints x $0.0016 per board, and X-ray on the LM27762: 1-10
-pieces at $1.64 (5 boards $8.20, 10 boards $16.40); 20 and 50 as before,
-priced wholly at the tier / tier by tier.
-
-**Owner-fitted per board, bought once per batch:** 3 BNC C2837587 (15 or 30
-pieces: 0.7879; 60: 0.6506; 300: 0.564), the generic header set at $2.50
-*(check)*, standoff C66568 (0.0236 below 100 pieces, 0.0218 at 100+), and
-2 x M3 x 5 screws C357542 (0.0024).
-
-| per board, international | 5 boards | 10 boards | 20 boards | 100 boards (2 x 50) |
+| per board | 5 boards | 10 boards | 20 boards | 100 boards (2 x 50) |
 |---|---|---|---|---|
-| JLC parts | $35.51 | $31.81 | $31.24 | $27.71 |
-| JLC fees (per order) | $61.03 | $72.44 | $78.85 / $87.05 | $122.70 / $130.90 |
-| **JLC per board** | **$47.71** | **$39.05** | **$35.18 / $35.59** | **$30.16 / $30.33** |
-| owner-fitted per board | $4.89 *(check)* | $4.89 *(check)* | $4.48 *(check)* | $4.22 *(check)* |
-| **total per board, PCB excluded** | **$52.60** | **$43.94** | **$39.66 / $40.07** | **$34.38 / $34.55** |
-| **batch total, PCB excluded** | **$262.99** | **$439.44** | **$793.27 / $801.47** | **$3,438.36 / $3,454.76** |
+| domestic parts | 29.69 CNY = $4.44 | 27.10 CNY = $4.05 | 25.87 CNY = $3.87 | 22.78 CNY = $3.40 |
+| domestic fees per order | 190.50 CNY = $28.47 | 251.00 CNY = $37.51 | 272.00 / 322.00 CNY = $40.65 / $48.12 | 485.00 / 535.00 CNY = $72.48 / $79.96 |
+| domestic JLC per board | 67.79 CNY = $10.13 | 52.20 CNY = $7.80 | 39.47 / 41.97 CNY = $5.90 / $6.27 | 32.48 / 33.48 CNY = $4.85 / $5.00 |
+| domestic PCB per order *(check)* | 20 CNY = $2.99 | 20 CNY = $2.99 | 59.47 CNY = $8.89 | 118.68 CNY = $17.74 |
+| **JLC + PCB per board** | **$10.73** | **$8.10** | **$6.34 / $6.72** | **$5.21 / $5.36** |
+| owner-fitted per board | $4.69 | $4.69 | $4.31 | $4.07 |
+| **total per board** | **$15.42** | **$12.79** | **$10.65 / $11.03** | **$9.28 / $9.43** |
+| **total per batch** | **$77.09** | **$127.90** | **$213.06 / $220.53** | **$927.88 / $942.82** |
+| version 1 baseline (`b3a3bf3`), total per board | $49.66 | $41.05 | $37.08 / $37.45 | $31.61 / $31.76 |
 
-Where two figures are given, the X-ray is priced wholly at its tier / tier
-by tier; at 5 and 10 boards both readings give the same figure.
-
-**Excluded, and why:** PCB fabrication (2-layer, 100 x 53.34 mm) and
-shipping. They were tried again 2026-11-11 and are still not read
-*(check)*. The quote page's scripts call
-`/shoppingCart/calculationGoodsCostsNew` and
-`/shoppingCart/calculateGoodsFreight`, but under the
-`/api/overseas-pcb-order/v1` prefix that serves the parts search, both
-return 404 on jlcpcb.com and cart.jlcpcb.com. The real prefix, and any
-login they need, were not found. The home page says only "$2 for 5 PCBs"
-with no size or quantity terms. So the 5- and 10-board totals above lack
-the PCB and the freight, which are a larger share of a small batch.
+At 5 and 10 boards the X-ray reads the same whole or graduated. Excluded as
+before: shipping outside Guangdong, attrition, the 8 cm tape rule.
 
 ## JLC China (domestic) comparison
 
@@ -742,13 +796,11 @@ a Chinese address and paying in CNY saves money.
 05:30 Beijing time, <https://www.boc.cn/sourcedb/whpj/>. It moves daily
 *(check)*.
 
-**Short answer: about 8 % cheaper per board, and all of it is the
-exchange rate.** Every domestic part price read is the international
-USD price times 6.118, line for line (ratio 0.91 on 22 of 23 types at
-6.6912), so the parts saving disappears if the yuan weakens to about
-6.12 per USD. The assembly fees come out nearly level: a lower setup fee
-and a free stencil, against more Extended types (14, not 12) at a
-slightly higher loading fee.
+**Short answer (2026-11-11, on the previous parts list): about 8 % cheaper
+per board, and all of it the exchange rate** (domestic part prices were the
+international USD price times 6.118, line for line). That comparison is not
+repeated for the Basic-only list, whose international ladders were not read;
+the order is domestic and only domestic figures are given here.
 
 ### Domestic SMT (嘉立创 SMT) fees
 
@@ -789,24 +841,21 @@ not carry.** <https://www.jlc-smt.com/help_document/id/42767.html>
 parts are bought with extra pieces by CNY unit price: 1-2 pins 10 / 8 /
 4 / 2 / 0 extra below 0.1 / 0.2 / 0.5 / 1.0 / from 1.0 CNY; 3-8 pins 5 /
 4 / 2 / 0 below 0.2 / 0.5 / 1.0 / from 1.0; more than 8 pins none; plus
-0.2 % (0.4 % below 1 CNY) above one reel or 1,000 pieces. For this BOM
-that was **7.34, 9.68, 9.49 and 8.34 CNY per order** at 5, 10, 20 and 50
-boards before the owner's cuts (mostly the cheap resistors and the 1.5 nF);
-the cuts remove the 1.5 nF's share and add about 1.5 CNY for the TLV9062
-(two extra pieces), not recomputed exactly, under $0.30 per board
-at 5 and less above. The same page requires every tape to be at least
-8 cm long to load a feeder; at 5 boards that can force a few extra
-pieces of the one-per-board ICs, but the tape pitches were not read and
-it is not priced *(check)*. Whether the international service charges
+0.2 % (0.4 % below 1 CNY) above one reel or 1,000 pieces. Attrition and the tape rule were
+priced for the previous parts list (7.34, 9.68, 9.49 and 8.34 CNY per order at
+5, 10, 20 and 50 boards) and are **not recomputed for this one** *(check)*; the
+resistors and capacitors are Basic and carry no attrition, so only the 4
+Extended types can, and all four have more than 8 pins or cost over 1 CNY
+(the TPH2502, LM27762, REF3030E 3 pins at 4.3 CNY and above, ADS1115), so none is in the
+small-pin rule *(check)*. Whether the international service charges
 attrition was not checked here; the international totals above do not
 include it.
 
 **The domestic library differs from the international one for this
-BOM:** the two parts JLCPCB marks Preferred (1.5 nF C1595, BAT54S
-C7420333) are plain Extended (`orderLibraryType` `expand`) on the
-domestic pages, and no Preferred tier appears there, so the domestic
-order has **14 Extended types** (after the owner's cuts: the 1.5 nF gone,
-the TLV9062 in), 280 CNY of loading. The nine Basic
+BOM:** the BAT54S that JLCPCB marks Preferred internationally is plain Extended
+(`orderLibraryType` `expand`) on the domestic pages, but it is no longer in the
+design: every clamp is the Basic BAV99 C2500. The domestic order has **4 Extended
+types** (TPH2502, LM27762, REF3030E, ADS1115), 80 CNY of loading. The 29 Basic
 types are Basic on both. The domestic Basic library's size was not read;
 an older jlc.com page (`/portal/newV2/smt.jsp`) says 689 Basic and more
 than 6,000 Extended types, which is stale.
@@ -882,58 +931,55 @@ totals.
 ### Domestic part prices
 
 Read from each part's domestic SMT page,
-`https://www.jlc-smt.com/lcsc/detail/<C-number>.html`, whose embedded
-record carries the library type and the CNY ladder (`priceList`); the
-domestic help page above says its rules use 立创商城 (szlcsc) prices.
-**szlcsc itself was not read:** `so.szlcsc.com` search and
-`item.szlcsc.com` product pages answer curl with a JavaScript anti-bot
-challenge, which was not worked around, so whether szlcsc's own ladder
-equals the SMT library's is *(check)*. One unanswered user question on
-jlc.com (2021, `q6i27817`) claims a 3x gap for a different part; it is
-old and was not tested.
+`https://www.jlc-smt.com/lcsc/detail/<C-number>.html`, whose embedded record
+carries the library type and the CNY ladder (`priceList`). Rows marked read
+2026-11-12 were fetched that day (the page throttles: one fetch a minute got
+through, a faster loop was answered with a JavaScript challenge); the others keep
+the 2026-11-11 ladder of the earlier BOM *(check)*. **szlcsc itself was not
+read**, so whether its own ladder equals the SMT library's is *(check)*.
+**Stock: not read** (`stockNum` 0 on every page).
 
-**Stock: not read.** The server-rendered record shows `stockNum` 0 for
-every part, Basic ones included (100 nF C14663 among them), so the field
-is not populated in the page and says nothing *(check stock in the BOM
-matcher, ADS124S08 first)*. Every C-number resolved to the same
-manufacturer part as the international BOM; **no part is missing**.
+"@20" is the tier for 20 x n pieces, "@100" for 50 x n (two orders of 50); USD at
+6.6912.
 
-"@20" is the tier for 20 x n pieces, "@100" for 50 x n (two orders of 50),
-as in the international table; USD at 6.6912.
-
-| type | LCSC | n | domestic class | CNY ladder (from qty: price) | CNY @20 | CNY @100 | USD @20 / @100 | intl USD @20 / @100 | dom./intl @20 |
-|---|---|---|---|---|---|---|---|---|---|
-| 100k | C394537 | 9 | Extended | 1: 1.0605; 50: 0.842; 150: 0.748; 500: 0.587; 2500: 0.521; 5000: 0.492 | 0.748 | 0.748 | 0.1118 / 0.1118 | 0.1223 / 0.1223 | 0.91 |
-| 330k | C351655 | 19 | Extended | 1: 0.712; 50: 0.565; 150: 0.492; 500: 0.407; 2500: 0.366; 5000: 0.346 | 0.492 | 0.407 | 0.0735 / 0.0608 | 0.0805 / 0.0716 | 0.91 |
-| 174k | C861163 | 1 | Extended | 1: 0.257; 200: 0.219; 600: 0.198; 5000: 0.185 | 0.257 | 0.257 | 0.0384 / 0.0384 | 0.0421 / 0.0421 | 0.91 |
-| 953R | C2984375 | 6 | Extended | 1: 0.166; 200: 0.13; 600: 0.109; 5000: 0.0969 | 0.166 | 0.13 | 0.0248 / 0.0194 | 0.0290 / 0.0226 | 0.86 |
-| 249R | C2692731 | 15 | Extended | 1: 1.0564; 50: 0.838; 150: 0.744; 500: 0.583; 2500: 0.525; 5000: 0.496 | 0.744 | 0.583 | 0.1112 / 0.0871 | 0.1217 / 0.1025 | 0.91 |
-| 49.9R | C869759 | 1 | Extended | 1: 0.757; 50: 0.66; 150: 0.612; 500: 0.575 | 0.757 | 0.66 | 0.1131 / 0.0986 | 0.1238 / 0.1079 | 0.91 |
-| 680R | C23228 | 3 | Basic | 1: 0.0126; 1000: 0.0098; 5000: 0.0083 | 0.0126 | 0.0126 | 0.0019 / 0.0019 | 0.0021 / 0.0021 | 0.90 |
-| 22R | C23345 | 8 | Basic | 1: 0.0101; 1000: 0.0079; 5000: 0.0068 | 0.0101 | 0.0101 | 0.0015 / 0.0015 | 0.0017 / 0.0017 | 0.89 |
-| 4.7k | C23162 | 7 | Basic | 1: 0.0169; 1000: 0.0134; 5000: 0.0116 | 0.0169 | 0.0169 | 0.0025 / 0.0025 | 0.0028 / 0.0028 | 0.90 |
-| 1R | C22936 | 11 | Basic | 1: 0.0186; 1000: 0.0144; 5000: 0.0122 | 0.0186 | 0.0186 | 0.0028 / 0.0028 | 0.0031 / 0.0031 | 0.90 |
-| 12 pF | C38523 | 8 | Basic | 1: 0.0416; 1000: 0.0327; 4000: 0.0266 | 0.0416 | 0.0416 | 0.0062 / 0.0062 | 0.0068 / 0.0068 | 0.91 |
-| 20 pF | C1648 | 4 | Basic | 1: 0.0538; 500: 0.041; 1500: 0.0353 | 0.0538 | 0.0538 | 0.0080 / 0.0080 | 0.0088 / 0.0088 | 0.91 |
-| 1.5 nF | C1595 | 0 (removed, C) | Extended (intl Preferred) | 1: 0.0274; 1000: 0.0209; 4000: 0.0174 | | | | | 0.91 |
-| 100 nF | C14663 | 18 | Basic | 1: 0.1; 500: 0.0793; 1500: 0.0676; 4000: 0.0605 | 0.1 | 0.0793 | 0.0149 / 0.0119 | 0.0164 / 0.0130 | 0.91 |
-| 1 uF | C15849 | 5 | Basic | 1: 0.0685; 500: 0.0532; 1500: 0.0464 | 0.0685 | 0.0685 | 0.0102 / 0.0102 | 0.0112 / 0.0112 | 0.91 |
-| 10 uF | C15850 | 24 | Basic | 1: 0.192; 200: 0.144; 600: 0.123; 2000: 0.107 | 0.144 | 0.123 | 0.0215 / 0.0184 | 0.0236 / 0.0202 | 0.91 |
-| OPA354 | C36384 | 2 | Extended | 1: 14.08; 10: 11.67; 30: 10.35; 100: 8.187; 500: 7.534 | 10.35 | 8.187 | 1.5468 / 1.2235 | 1.6919 / 1.3519 | 0.91 |
-| OPA365 | C96626 | 3 | Extended | 1: 17.29; 10: 15.54; 30: 14.3; 100: 13.17; 500: 12.65 | 14.3 | 13.17 | 2.1371 / 1.9683 | 2.3375 / 2.1528 | 0.91 |
-| TLV9062 | C398355 | 1 | Extended *(check)* | **not read** (the domestic page now answers curl with an anti-bot challenge); derived as the international ladder x 6.118: 1: 0.726; 50: 0.576; 150: 0.499; 500: 0.436 | 0.726 | 0.576 | 0.1085 / 0.0861 | 0.1187 / 0.0942 | 0.91 (assumed) |
-| LM27762 | C473398 | 1 | Extended | 1: 5.78; 10: 4.84; 30: 4.18; 100: 3.63 | 4.84 | 4.18 | 0.7233 / 0.6247 | 0.7912 / 0.6833 | 0.91 |
-| REF3030E | C54120492 | 1 | Extended | 1: 5.58; 10: 4.94; 30: 4.33; 100: 3.831 | 4.94 | 4.33 | 0.7383 / 0.6471 | 0.8075 / 0.7078 | 0.91 |
-| ADS124S08 | C2870171 | 1 | Extended | 1: 52.93; 10: 45.57; 30: 41.08; 100: 36.2 | 45.57 | 41.08 | 6.8104 / 6.1394 | 7.4489 / 6.7150 | 0.91 |
-| TMUX1119 | C2673327 | 3 | Extended | 1: 15.1; 10: 12.96; 30: 11.62; 100: 9.728; 500: 9.139 | 11.62 | 9.728 | 1.7366 / 1.4538 | 1.8995 / 1.6739 | 0.91 |
-| BAT54S | C7420333 | 8 | **Extended** (intl Preferred) | 1: 0.0786; 500: 0.0628; 3000: 0.0558 | 0.0786 | 0.0786 | 0.0117 / 0.0117 | 0.0129 / 0.0129 | 0.91 |
-
-No part is dearer in USD at today's rate; the 953R is cheaper still
-because the domestic ladder's first break is at 200 rather than the
-international one's. Ladders are truncated above the quantities this
-BOM reaches. The REF3030 A grade (C38423, not used) reads 1: 3.07; 10:
-2.33; 30: 1.97; 100: 1.65 CNY, so the E grade's premium is 2.61 CNY
-($0.39) per board at 10-29.
+| type | LCSC | n | domestic class | CNY ladder (from qty: price) | CNY @20 | CNY @100 | USD @20 / @100 | source |
+|---|---|---|---|---|---|---|---|---|
+| 100k | C25803 | 2 | Basic | 1: 0.0176; 1000: 0.0136; 5000: 0.0117; 10000: 0.00893; 50000: 0.00818; 50200: 0.00818 | 0.0176 | 0.0176 | 0.0026 / 0.0026 | read 2026-11-12 |
+| 330k | C23137 | 7 | Basic | 1: 0.0093; 1000: 0.0072; 5000: 0.0061; 10000: 0.00545; 50000: 0.00475; 50200: 0.00475 | 0.0093 | 0.0093 | 0.0014 / 0.0014 | read 2026-11-12 |
+| 470k | C23178 | 4 | Basic | 1: 0.0181; 1000: 0.014; 5000: 0.0118; 10000: 0.00911; 50000: 0.00791; 50200: 0.00791 | 0.0181 | 0.0181 | 0.0027 / 0.0027 | read 2026-11-12 |
+| 300k | C23024 | 2 | Basic | 1: 0.0229; 1000: 0.0177; 5000: 0.0149; 10000: 0.0118; 50000: 0.0101; 50200: 0.0101 | 0.0229 | 0.0229 | 0.0034 / 0.0034 | read 2026-11-12 |
+| 3.3k | C22978 | 1 | Basic | 1: 0.013; 1000: 0.0099; 5000: 0.0084; 10000: 0.00708; 50000: 0.0064; 50200: 0.0064 | 0.013 | 0.013 | 0.0019 / 0.0019 | read 2026-11-12 |
+| 4.99k | C23046 | 1 | Basic | 1: 0.0125; 1000: 0.0095; 5000: 0.0079; 10000: 0.00662; 50000: 0.00576; 50200: 0.00576 | 0.0125 | 0.0125 | 0.0019 / 0.0019 | read 2026-11-12 |
+| 51k | C23196 | 2 | Basic | 1: 0.0101; 1000: 0.0076; 5000: 0.0063; 10000: 0.00538; 50000: 0.00461; 50200: 0.00461 | 0.0101 | 0.0101 | 0.0015 / 0.0015 | read 2026-11-12 |
+| 100R | C22775 | 1 | Basic | 1: 0.0122; 1000: 0.0096; 5000: 0.0084; 10000: 0.00616; 50000: 0.0057; 50200: 0.0057 | 0.0122 | 0.0122 | 0.0018 / 0.0018 | read 2026-11-12 |
+| 2.2k | C4190 | 1 | Basic | 1: 0.0109; 1000: 0.0083; 5000: 0.0068; 10000: 0.00601; 50000: 0.00514; 50200: 0.00514 | 0.0109 | 0.0109 | 0.0016 / 0.0016 | read 2026-11-12 |
+| 22k | C31850 | 1 | Basic | 1: 0.0251; 1000: 0.019; 5000: 0.0158; 10000: 0.0129; 50000: 0.0112; 50200: 0.0112 | 0.0251 | 0.0251 | 0.0038 / 0.0038 | read 2026-11-12 |
+| 15k | C22809 | 1 | Basic | 1: 0.0174; 1000: 0.0131; 5000: 0.0109; 10000: 0.00951; 50000: 0.00825; 50200: 0.00825 | 0.0174 | 0.0174 | 0.0026 / 0.0026 | read 2026-11-12 |
+| 3.9k | C23018 | 1 | Basic | 1: 0.0099; 1000: 0.0075; 5000: 0.0062; 10000: 0.0055; 50000: 0.0047; 50200: 0.0047 | 0.0099 | 0.0099 | 0.0015 / 0.0015 | read 2026-11-12 |
+| 13k | C22797 | 1 | Basic | 1: 0.0113; 1000: 0.0087; 5000: 0.0073; 10000: 0.0066; 50000: 0.0058; 50200: 0.0058 | 0.0113 | 0.0113 | 0.0017 / 0.0017 | read 2026-11-12 |
+| 75k | C23242 | 3 | Basic | 1: 0.0127; 1000: 0.0096; 5000: 0.0079; 10000: 0.00698; 50000: 0.00601; 50200: 0.00601 | 0.0127 | 0.0127 | 0.0019 / 0.0019 | read 2026-11-12 |
+| 1k | C21190 | 1 | Basic | 1: 0.01; 1000: 0.0079; 5000: 0.0069; 10000: 0.00512; 50000: 0.00474; 50200: 0.00474 | 0.01 | 0.01 | 0.0015 / 0.0015 | read 2026-11-12 |
+| 270R | C22966 | 8 | Basic | 1: 0.0102; 1000: 0.0079; 5000: 0.0067; 10000: 0.00566; 50000: 0.0049; 50200: 0.0049 | 0.0102 | 0.0102 | 0.0015 / 0.0015 | read 2026-11-12 |
+| 100R 1206 | C17901 | 2 | Basic | 1: 0.0359; 1000: 0.0278; 5000: 0.0236; 10000: 0.0196; 50000: 0.0186; 100000: 0.018 | 0.0359 | 0.0359 | 0.0054 / 0.0054 | read 2026-11-12 |
+| 680R | C23228 | 2 | Basic | 1: 0.0126; 1000: 0.0098; 5000: 0.0083 | 0.0126 | 0.0126 | 0.0019 / 0.0019 | kept from 2026-11-11 *(check: not re-read)* |
+| 22R | C23345 | 2 | Basic | 1: 0.0101; 1000: 0.0079; 5000: 0.0068 | 0.0101 | 0.0101 | 0.0015 / 0.0015 | kept from 2026-11-11 *(check: not re-read)* |
+| 4.7k | C23162 | 2 | Basic | 1: 0.0169; 1000: 0.0134; 5000: 0.0116 | 0.0169 | 0.0169 | 0.0025 / 0.0025 | kept from 2026-11-11 *(check: not re-read)* |
+| 1R | C22936 | 2 | Basic | 1: 0.0186; 1000: 0.0144; 5000: 0.0122 | 0.0186 | 0.0186 | 0.0028 / 0.0028 | kept from 2026-11-11 *(check: not re-read)* |
+| 0R | C21189 | 2 | Basic | *not read: the page answered with an anti-bot challenge; the 1R ladder is used as a placeholder* 1: 0.0186; 1000: 0.0144; 5000: 0.0122 | 0.0186 | 0.0186 | 0.0028 / 0.0028 | *(check: not read)* |
+| 10 pF | C1634 | 4 | Basic | 1: 0.06; 500: 0.0467; 1500: 0.0409; 4000: 0.0365; 24000: 0.0347; 48000: 0.0335 | 0.06 | 0.06 | 0.0090 / 0.0090 | read 2026-11-12 |
+| 12 pF | C38523 | 2 | Basic | 1: 0.0416; 1000: 0.0327; 4000: 0.0266 | 0.0416 | 0.0416 | 0.0062 / 0.0062 | kept from 2026-11-11 *(check: not re-read)* |
+| 30 pF | C1658 | 2 | Basic | 1: 0.0306; 1000: 0.0249; 4000: 0.0199; 8000: 0.018; 48000: 0.0164; 100000: 0.0155 | 0.0306 | 0.0306 | 0.0046 / 0.0046 | read 2026-11-12 |
+| 100 nF | C14663 | 7 | Basic | 1: 0.1; 500: 0.0793; 1500: 0.0676; 4000: 0.0605 | 0.1 | 0.1 | 0.0149 / 0.0149 | kept from 2026-11-11 *(check: not re-read)* |
+| 1 uF | C15849 | 3 | Basic | 1: 0.0685; 500: 0.0532; 1500: 0.0464 | 0.0685 | 0.0685 | 0.0102 / 0.0102 | kept from 2026-11-11 *(check: not re-read)* |
+| 10 uF | C15850 | 11 | Basic | 1: 0.192; 200: 0.144; 600: 0.123; 2000: 0.107 | 0.144 | 0.144 | 0.0215 / 0.0215 | kept from 2026-11-11 *(check: not re-read)* |
+| BAV99 | C2500 | 4 | Basic | 1: 0.0673; 500: 0.0506; 3000: 0.0432; 6000: 0.0376; 24000: 0.0354; 51000: 0.0339 | 0.0673 | 0.0673 | 0.0101 / 0.0101 | read 2026-11-12 |
+| TPH2502 | C118223 | 2 | Extended | 1: 3.5; 10: 2.69; 30: 2.34; 100: 1.91; 500: 1.72; 1000: 1.6 | 2.34 | 1.91 | 0.3497 / 0.2854 | read 2026-11-12 |
+| LM27762 | C473398 | 1 | Extended | 1: 5.78; 10: 4.84; 30: 4.18; 100: 3.63 | 4.84 | 4.18 | 0.7233 / 0.6247 | kept from 2026-11-11 *(check: not re-read)* |
+| REF3030E | C54120492 | 1 | Extended | 1: 5.58; 10: 4.94; 30: 4.33; 100: 3.831 | 4.94 | 4.33 | 0.7383 / 0.6471 | kept from 2026-11-11 *(check: not re-read)* |
+| ADS1115 | C37593 | 1 | Extended | 1: 8.57; 10: 7.56; 30: 6.6; 100: 5.89; 500: 5.6; 1000: 5.46 | 7.56 | 6.6 | 1.1298 / 0.9864 | read 2026-11-12 |
+The ladders are truncated above the quantities this BOM reaches (the 330k's
+100 boards are 900 pieces per order, under its 1000 break). The REF3030
+A grade (C38423, not used) reads 1: 3.07; 10: 2.33; 30: 1.97; 100: 1.65 CNY.
 
 **Owner-fitted parts from the domestic pages** (same source; the header
 set has no C-number and stays at the $2.50 placeholder *(check)*: a
@@ -952,82 +998,3 @@ cheaper from 20 boards up. Owner-fitted with the $2.50 header set:
 **$4.69 / $4.69 / $4.31 / $4.07** per board at 5 / 10 / 20 / 100 boards,
 against $4.89 / $4.89 / $4.48 / $4.22.
 
-### Batch cost, domestic against international
-
-Domestic Economic SMT with the fees above; parts at the tier for B x n
-(50 x n per order at 100 boards, two orders of 50 as before); X-ray on
-the LM27762 at 10 CNY a piece for 1-10 and 5 for 11-50, priced wholly at
-the tier / tier by tier; no coupon; attrition and shipping excluded
-(attrition is given below the table). International figures are this
-file's batch-cost section, which excludes PCB and shipping.
-
-**After the owner's cuts (2026-11-11 evening), with the ADC-pin clamps, the ratio-switch clamps (D7, D8) and the C2 network, the order:**
-
-| per board | 5 boards | 10 boards | 20 boards | 100 boards (2 x 50) |
-|---|---|---|---|---|
-| domestic parts | 217.08 CNY = $32.44 | 194.49 CNY = $29.07 | 191.00 CNY = $28.55 | 166.48 CNY = $24.88 |
-| domestic fees per order | 400.05 CNY = $59.79 | 470.10 CNY = $70.26 | 510.20 / 560.20 CNY = $76.25 / $83.72 | 780.50 / 830.50 CNY = $116.65 / $124.12 |
-| domestic JLC per board | 297.09 CNY = $44.40 | 241.50 CNY = $36.09 | 216.51 / 219.01 CNY = $32.36 / $32.73 | 182.09 / 183.09 CNY = $27.21 / $27.36 |
-| domestic PCB per order *(check)* | 20 CNY = $2.99 | 20 CNY = $2.99 | 59.47 CNY = $8.89 | 118.68 CNY = $17.74 |
-| **domestic JLC + PCB per board** | **$45.00** | **$36.39** | **$32.80 / $33.18** | **$27.57 / $27.72** |
-| owner-fitted per board (domestic BNC, standoff, screws; $2.50 headers *(check)*) | $4.69 | $4.69 | $4.31 | $4.07 |
-| **total per board, PCB and owner-fitted included** | **$49.69** | **$41.08** | **$37.11 / $37.49** | **$31.64 / $31.79** |
-| **total per batch** | 1,662.4 CNY = **$248.44** | 2,748.8 CNY = **$410.81** | 4,966.5 / 5,016.5 CNY = **$742.24 / $749.72** | 21,169.8 / 21,269.8 CNY = **$3,163.83 / $3,178.77** |
-| international for reference: total per board, PCB excluded | $52.60 | $43.94 | $39.66 / $40.07 | $34.38 / $34.55 |
-| international batch, PCB excluded | $262.99 | $439.44 | $793.27 / $801.47 | $3,438.36 / $3,454.76 |
-| saving per board, both PCB excluded | $3.51 (6.7 %) | $3.16 (7.2 %) | $3.00 / $3.03 (7.6 %) | $3.10 / $3.11 (9.0 %) |
-
-Against the owner's target of about $35 per board for the first batch,
-domestic with the PCB: the 20-board batch is $37.11 / $37.49 per board,
-$2.1-2.5 over. Of that, $4.31 is the owner-fitted parts, including the
-$2.50 header placeholder *(check)*. The JLC order plus PCB alone is
-$32.80 / $33.18. Domestic shipping outside Guangdong and attrition (about
-1-2 CNY per board at 20) are still excluded.
-
-The rows below are the comparison before the owner's cuts, kept for the
-record:
-
-| per board, before the cuts | 5 boards | 10 boards | 20 boards | 100 boards (2 x 50) |
-|---|---|---|---|---|
-| domestic parts | 253.85 CNY = **$37.94** | 236.13 CNY = **$35.29** | 225.05 CNY = **$33.63** | 204.19 CNY = **$30.52** |
-| international parts | $41.51 | $38.62 | $36.81 | $33.87 |
-| domestic fees per order | 399.50 CNY = $59.71 | 469.00 CNY = $70.09 | 508.00 / 558.00 CNY = $75.92 / $83.39 | 775.00 / 825.00 CNY = $115.82 / $123.30 |
-| international fees per order | $57.87 | $69.19 | $75.43 / $83.63 | $118.75 / $126.95 |
-| **domestic JLC per board** | 333.75 CNY = **$49.88** | 283.03 CNY = **$42.30** | 250.45 / 252.95 CNY = **$37.43 / $37.80** | 219.69 / 220.69 CNY = **$32.83 / $32.98** |
-| international JLC per board | $53.09 | $45.54 | $40.58 / $40.99 | $36.25 / $36.41 |
-| owner-fitted per board, domestic / intl | $4.69 / $4.89 | $4.69 / $4.89 | $4.31 / $4.48 | $4.07 / $4.22 |
-| **total per board, PCB excluded: domestic** | **$54.57** | **$46.99** | **$41.74 / $42.11** | **$36.90 / $37.05** |
-| total per board, PCB excluded: international | $57.98 | $50.43 | $45.06 / $45.47 | $40.47 / $40.63 |
-| saving per board | $3.41 (5.9 %) | $3.44 (6.8 %) | $3.32 / $3.36 (7.4 %) | $3.57 / $3.58 (8.8 %) |
-| domestic PCB per order *(check)* | 20 CNY = $2.99 | 20 CNY = $2.99 | 59.47 CNY = $8.89 | 118.68 CNY = $17.74 |
-| **domestic total per board, PCB included** | **$55.16** | **$47.28** | **$42.18 / $42.56** | **$37.26 / $37.41** |
-| **domestic total per batch, PCB included** | 1,845.6 CNY = **$275.82** | 3,163.9 CNY = **$472.84** | 5,645.2 / 5,695.2 CNY = **$843.67 / $851.14** | 24,930 / 25,030 CNY = **$3,725.82 / $3,740.77** |
-| international total per batch, PCB excluded | $289.89 | $504.28 | $901.15 / $909.35 | $4,046.73 / $4,063.13 |
-
-Before the cuts, CNY batch totals include the header set converted at 6.6912 (16.73 CNY a
-set). Domestic attrition adds 7.34 / 9.68 / 9.49 / 16.69 CNY per batch
-($1.10 / $1.45 / $1.42 / $2.49). Where two figures are given, the X-ray is
-priced wholly at its tier / tier by tier.
-
-**What differs, line by line:**
-- **Parts: lower by the exchange rate only.** The domestic CNY ladder is
-  the international USD ladder times 6.118 on every type; at 6.6912 that
-  is 8.6 % off. Break-even is about 6.12 CNY per USD.
-- **Setup lower** (50 CNY = $7.47 against $8.18 + $1.53 stencil):
-  -$2.24 per order.
-- **Loading higher**: 14 Extended types x 20 CNY = 280 CNY = $41.85
-  against 13 x $3.07 = $39.91, because the BAT54S loses its Preferred
-  status (the 1.5 nF, the other one, has left the BOM). A domestic Basic
-  BAT54S would save 20 CNY ($2.99) per order *(not searched)*.
-- **Joints** 0.01 CNY = $0.0015 against $0.0016; **X-ray** 10 / 5 CNY =
-  $1.49 / $0.75 against $1.64 / $0.82: both slightly lower.
-- **Attrition**: a published domestic rule, about 7-10 CNY per order for
-  this BOM; not in the international figures.
-- **PCB**: domestically about 20-119 CNY per order on published rules;
-  the international PCB price was never read, so no comparison.
-- **Shipping**: free inside Guangdong; elsewhere in China not published
-  *(check)*. International freight was never read either.
-- **Not compared**: import duty, VAT and customs clearance on an
-  international shipment to a Chinese address, and whether domestic prices
-  include VAT (an unanswered jlc.com question, `q6i24839`, asks why a tax
-  line appeared) *(check)*.
