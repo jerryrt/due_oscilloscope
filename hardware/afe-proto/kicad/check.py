@@ -38,10 +38,8 @@ BOM = os.path.join(HERE, '..', 'whatif', 'bom.txt')
 RESULTS = []
 
 # parts on the board that whatif/bom.txt does not list, each with its reason; anything else missing or extra fails S4
-BOM_DELTAS = {
-    'D7': 'ratio-switch clamp on D (architecture.md C1-q/C1-r); bom.txt counts no BAT54S there',
-    'D8': 'ratio-switch clamp on S1 (architecture.md C1-q/C1-r); bom.txt counts no BAT54S there',
-}
+# (D7 / D8 were here until bom.txt carried them)
+BOM_DELTAS = {}
 
 
 def row(cid, ok, detail):
@@ -314,6 +312,7 @@ def regenerate(mutate=None):
     for f in ('sexpr.py', 'design.py', 'build_sch.py', 'build_pcb.py'):
         shutil.copy(os.path.join(HERE, f), tmp)
     shutil.copytree(os.path.join(HERE, '3d'), os.path.join(tmp, '3d'))
+    shutil.copytree(os.path.join(HERE, 'lib'), os.path.join(tmp, 'lib'))
     if mutate:
         p = os.path.join(tmp, 'design.py'); s = open(p).read(); s2 = s.replace(*mutate); assert s2 != s
         open(p, 'w').write(s2)

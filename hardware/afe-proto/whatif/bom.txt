@@ -6,7 +6,8 @@ Prices: international JLC tiers, all read 2026-11-11 (JLC parts search), USD *(c
 Designators are provisional and renumbered. Flags: (b) (c) = provisional cuts/values, see bom.md; 'placeholder' and
 'assumed' = pending items. BNCs, headers, standoff: owner-fitted, listed separately at the end. Test points: not listed.
 BAV99 x3 (AWG output clamp): footprints only, unfitted, no part, no fee. AREF series 0R (PA-7): one 0603 footprint,
-unfitted by default, no part, no fee. ADC-pin BAT54S clamps fitted (1/ch). Reconciled against docs/afe.md at e510edd and 24b642b.
+unfitted by default, no part, no fee. ADC-pin BAT54S clamps fitted (1/ch); ratio-switch clamps D7-D8 fitted
+(kicad/design.py, sim/powercal C1-q). Reconciled against docs/afe.md at e510edd and 24b642b.
 
  #  part number                LCSC      class     value / package                        qty  unit@20 unit@100
 ---------------------------------------------------------------------------------------------------------------
@@ -54,9 +55,9 @@ unfitted by default, no part, no fee. ADC-pin BAT54S clamps fitted (1/ch). Recon
  9  UNI-ROYAL 0603WAF4701T5E   C23162    Basic     4.7k 1 %, 0603                           7   0.0028  0.0028 
       R63-R64    x2   scope Vmid loop 4.7k (1/ch)
       R65        x1   +3.3 V_A bleed
-      R66-R67    x2   D38-D39 range pull-downs  [value assumed]
-      R68        x1   ratio-switch control pull-down (D40, provisional)  [value assumed; see bom.md on the S1 100k]
-      R69        x1   ADS124S08 CS (D36) pull-up  [placeholder]
+      R66-R67    x2   D38-D39 range pull-downs: SEL <= 0.31 V against the Due's 50k pull-up, VIL 0.8 V
+      R68        x1   ratio-switch control pull-down (D40): same as R66-R67
+      R69        x1   ADS124S08 CS (D36) pull-up: CS >= IOVDD - 5 mV at 1 uA; 0.77 mA max to pull low
 10  UNI-ROYAL 0603WAF100KT5E   C22936    Basic     1R 1 % 400 ppm/K, 0603                  11   0.0031  0.0031 
       R70        x1   5 V feed sense
       R71-R72    x2   scope op-amp supply branch (1/ch)
@@ -113,37 +114,38 @@ unfitted by default, no part, no fee. ADC-pin BAT54S clamps fitted (1/ch). Recon
 22  TI TMUX1119DCKR            C2673327  Extended  SPDT switch, SC-70-6                     3   1.8995  1.6739 
       U10-U11    x2   scope range switch (1/ch)  [(b)]
       U12        x1   tee ratio switch S1
-23  hongjiacheng BAT54S        C7420333  Preferred series Schottky pair 30 V, SOT-23        6   0.0129  0.0129 
+23  hongjiacheng BAT54S        C7420333  Preferred series Schottky pair 30 V, SOT-23        8   0.0129  0.0129 
       D1-D2      x2   AWG op-amp V+ and V- (one die each)
       D3         x1   AWG DAC0 buffer supply
       D4         x1   AWG Vmid buffer supply
       D5-D6      x2   scope ADC-pin clamp after Riso (1/ch): pin 1 GND, pin 3 ADC pin, pin 2 +3.3 V_A
+      D7-D8      x2   ratio-switch (U12) clamps on D and S1: pin 1 GND, pin 3 the node, pin 2 +3.3 V_A
 ---------------------------------------------------------------------------------------------------------------
 
 TOTALS, DOMESTIC ORDER (JLC China Economic SMT, PCB included; CNY at 6.6912 per USD *(check)*; no coupon)
   part types fitted          23  (domestic: Extended 14, Basic 9; the BAT54S is Extended there)
-  placements                 157
-  SMT joints                 395
+  placements                 159
+  SMT joints                 401
                              20 boards                    100 boards (2 x 50)
-  parts per board            190.85 CNY = $28.52          166.32 CNY = $24.86
-  fees per order             509.00 / 559.00 CNY          777.50 / 827.50 CNY
+  parts per board            191.00 CNY = $28.55          166.48 CNY = $24.88
+  fees per order             510.20 / 560.20 CNY          780.50 / 830.50 CNY
   PCB per order (check)      59.47 CNY                    118.68 CNY
-  JLC + PCB per board        $32.77 / $33.14              $27.54 / $27.69
+  JLC + PCB per board        $32.80 / $33.18              $27.57 / $27.72
   owner-fitted per board     $4.31 (check: headers)       $4.07
-  TOTAL per board            $37.08 / $37.45              $31.61 / $31.76
-  TOTAL per batch            4,962.2 / 5,012.2 CNY        21,148.1 / 21,248.1 CNY
-                             = $741.60 / $749.07          = $3,160.59 / $3,175.53
+  TOTAL per board            $37.11 / $37.49              $31.64 / $31.79
+  TOTAL per batch            4,966.5 / 5,016.5 CNY        21,169.8 / 21,269.8 CNY
+                             = $742.24 / $749.72          = $3,163.83 / $3,178.77
   Domestic fees: setup 50 CNY, stencil free, 20 CNY per Extended type, 0.01 CNY per joint, X-ray 10 CNY (1-10)
   and 5 CNY (11-50) per piece. Excluded: domestic shipping outside Guangdong, attrition (~1-2 CNY/board).
-  5 / 10 boards (domestic, all in): $49.66 / $41.05 per board, $248.28 / $410.48 per batch.
+  5 / 10 boards (domestic, all in): $49.69 / $41.08 per board, $248.44 / $410.81 per batch.
 
 TOTALS, INTERNATIONAL (reference; PCB and shipping excluded)
   part types fitted          23  (Extended 13, Preferred 1, Basic 9); loading $3.07 x 13 = $39.91 per order
-  parts $/board              20 boards: 31.21     100 boards (2 x 50): 27.68
-  fees $/order               20 boards: 78.66 / 86.86     100 boards: 122.22 / 130.42 per order of 50
-  TOTAL $/board (JLC)        20 boards: 35.15 / 35.56     100 boards (2 x 50): 30.13 / 30.29
-  with owner-fitted          20 boards: 39.63 / 40.04     100 boards: 34.35 / 34.51
-  batch                      20 boards: 792.56 / 800.76   100 boards: 3,434.82 / 3,451.22
+  parts $/board              20 boards: 31.24     100 boards (2 x 50): 27.71
+  fees $/order               20 boards: 78.85 / 87.05     100 boards: 122.70 / 130.90 per order of 50
+  TOTAL $/board (JLC)        20 boards: 35.18 / 35.59     100 boards (2 x 50): 30.16 / 30.33
+  with owner-fitted          20 boards: 39.66 / 40.07     100 boards: 34.38 / 34.55
+  batch                      20 boards: 793.27 / 801.47   100 boards: 3,438.36 / 3,454.76
   (X-ray priced wholly at its tier / tier by tier; neither price page says which *(check)*)
 
 REF3030 GRADE (read 2026-11-11)
@@ -153,14 +155,17 @@ REF3030 GRADE (read 2026-11-11)
 
 PROVISIONAL ITEMS AND THEIR DELTAS ($/board at 20 / at 100 boards; fees per Economic order)
   Tee calibration ((a) earlier) is adopted and in the list above.
-  (b) cut 4, 3157-class switches replace U12-U13 (evaluation pending; placeholder $0.10-0.30 each *(check)*):
+  (b) cut 4, 3157-class switches replace U10-U11 (evaluation pending; placeholder $0.10-0.30 each *(check)*):
       parts -3.38..-2.98 / -2.92..-2.52 (the remaining ratio-switch TMUX1119 moves to a dearer tier);
       +1 Extended type (+3.07 per order): TMUX1119 stays for the ratio switch.
   (c) scope C2 = 20 || 12 || (12 s 20) = 39.5 pF per channel (sim/scope/netlib.py P_HZ): 2 x 12 pF + 2 x 20 pF
       per channel, Basic only, in the list above. No 39 pF.
 
-PENDING (placeholders above): ADS124S08 CS pull-up; D38-D39 and ratio-switch pull-down values; ratio-switch Due
-pin (D40 provisional); IC decoupling one 100 nF per supply pin (5 assumed: LM27762 VIN, 3 x TMUX1119, TLV9062). ADS124S08 ties, no parts: CLK and
+PULL RESISTORS (4.7k stands, computed in bom.md "Control-pin pull resistors"): SAM3X pull-up 50-150k (11057C
+Table 45-2), on after reset (31.5.1); TMUX1119 SEL VIL 0.8 V, VIH 1.35 V, 0.05 uA (SCDS401C 5.6); ADS124S08 VIL/VIH
+0.3/0.7 IOVDD, 1 uA (SBAS660C 7.5). Due pin drive 0.70-0.77 mA per line against 15 mA source / 9 mA sink (group 1).
+PENDING: ratio-switch Due pin (D40 provisional); IC decoupling one 100 nF per supply pin (5 assumed: LM27762 VIN,
+3 x TMUX1119, TLV9062). ADS124S08 ties, no parts: CLK and
 START/SYNC to DGND, RESET to IOVDD, REFN0 and REFCOM to AVSS, REFOUT open (internal reference off).
 STOCK: ADS124S08IPBSR 1,257 at JLC (2026-11-11): covers 20 and 100 boards.
 
@@ -190,8 +195,8 @@ read 2026-11-11, single unit (sources and alternatives in bom.md). 'unit@20' = t
   Standoff length: shield underside ~8.47 mm above the Due (socket height, STEP model); 10.5 mm tails may sit it
   slightly higher *(check the mated gap)*. Nearest standard: 8 mm, shimmed; 10 mm would lift the shield off its sockets.
   owner-fitted $/board       20 boards: 4.48 (check)     100 boards: 4.22 (check)
-  GRAND TOTAL, international, PCB excluded: 20 boards 39.63 / 40.04; 100 boards 34.35 / 34.51 per board.
-  GRAND TOTAL, domestic (the order), PCB included: 20 boards 37.08 / 37.45; 100 boards 31.61 / 31.76 per board.
+  GRAND TOTAL, international, PCB excluded: 20 boards 39.66 / 40.07; 100 boards 34.38 / 34.55 per board.
+  GRAND TOTAL, domestic (the order), PCB included: 20 boards 37.11 / 37.49; 100 boards 31.64 / 31.79 per board.
   SPI0 (2x3) not fitted: the ADS124S08 is on bit-banged SPI (D33-D36), so MC-1's SPI0 connection is not needed.
   BNC straight or right-angle is not stated in docs/afe.md; MC-8's "one board edge" implies right-angle (owner to confirm).
   JLC/LCSC catalogue headers (Samtec SSQ + cut PC104) not used: too little stock, mixed 10 / 12.2 mm tails, 9.72 / 8.56.
@@ -222,12 +227,12 @@ BOARD OUTLINE (V03 board file; origin lower-left, Y up, mm)
 
 BATCH COST, INTERNATIONAL (reference; USD; exact tier for B x qty; X-ray 1-10 at 1.64; PCB and shipping excluded)
                          5 boards     10 boards    20 boards          100 boards (2 x 50)
-  JLC parts / board         35.48        31.78        31.21              27.68
-  JLC fees / order          60.98        72.34        78.66 / 86.86     122.22 / 130.42
-  JLC / board               47.67        39.02        35.15 / 35.56      30.13 / 30.29
+  JLC parts / board         35.51        31.81        31.24              27.71
+  JLC fees / order          61.03        72.44        78.85 / 87.05     122.70 / 130.90
+  JLC / board               47.71        39.05        35.18 / 35.59      30.16 / 30.33
   owner-fitted / board       4.89         4.89         4.48               4.22     (check: header set)
-  TOTAL / board             52.56        43.91        39.63 / 40.04      34.35 / 34.51
-  TOTAL / batch            262.81       439.09       792.56 / 800.76   3434.82 / 3451.22
+  TOTAL / board             52.60        43.94        39.66 / 40.07      34.38 / 34.55
+  TOTAL / batch            262.99       439.44       793.27 / 801.47   3438.36 / 3454.76
 
 RECONCILIATION WITH afe.md (e510edd): see bom.md. Fixed: E-grade reference (PA-2); the precision ADC no longer reads
 the DAC0 buffer (PA-3); sense divider 200k + 100k notes (PA-3/PA-4); AREF 0R footprint added (PA-7). Flagged: MC-1

@@ -209,41 +209,45 @@ in firmware); the LED is PB27 = D13; the console is on UART0 (D0/D1, programming
 port); USB uses dedicated pins and DACC uses DAC0/DAC1. The Arduino core's own
 `init()`/`variant.cpp` for Track A is not in the repo and was not read *(check)*.
 
-| function | proposed pin | header.pin, absolute (x, y) | reason |
+Updated to the pins the round-1 design uses (`../kicad/design.py`, FR-01).
+
+| function | pin | header.pin, absolute (x, y) | reason |
 |---|---|---|---|
 | CH1 | A1 (AD6) | ADCL0.7 (66.04, -2.54) | PA24; PGA pair partner of A0 (`docs/afe.md`) |
 | CH2 | A0 (AD7) | ADCL0.8 (68.58, -2.54) | PA16 |
 | AWG | DAC0 | ADCH0.5 (83.82, -2.54) | PB15; DAC1 stays the bench trigger (CLAUDE.md) |
-| ladder taps | A2..A9 | ADCL0.6..1 x 63.5..50.8; ADCH0.1,.2 x 73.66, 76.2 | `docs/afe.md` PA-9; A10/A11 stay free |
-| AREF sense | AREF | PWMH0.8 (23.876, -50.8) | read-only, see section 4: floats on stock Due |
-| 5 V in | 5V | POWER0.5 (38.10, -2.54) | PW-1 |
-| ground | GND | POWER0.6/.7 (40.64/43.18, -2.54); XIO0.35/.36 | star to the shield's plane |
-| range CH1 | D38 (PC6 *(check)*) | XIO0.19 (93.98, -27.94) | single-net GPIO, no on-board load |
+| ladder taps | A2..A7, six taps, A2 lowest (0.188 V) to A7 the 3.0 V top (the REF3030E output itself) | ADCL0.6..1 x 63.5..50.8 | `docs/afe.md` PA-9; A8..A11 stay free |
+| reference to AREF | AREF | PWMH0.8 (23.876, -50.8) | through an unfitted 0R (PA-7); floats on a stock Due, section 4 |
+| 3.3 V sense | 3.3V | POWER0.4 (35.56, -2.54) | the scope Vmid sense, microamps (PW-1) |
+| 5 V in | 5V | POWER0.5 (38.10, -2.54); XIO0.1/.2 | PW-1 |
+| ground | GND | POWER0.6/.7 (40.64/43.18, -2.54); PWMH0.7; XIO0.35/.36 | star to the shield's plane |
+| range CH1 | D38 (PC6) | XIO0.19 (93.98, -27.94) | single-net GPIO, no on-board load; 4.7k pull-down |
 | range CH2 | D39 (PC7) | XIO0.20 (96.52, -27.94) | same |
-| cal switch 1 | D40 (PC8) | XIO0.21 (93.98, -25.4) | same |
-| cal switch 2 | D41 (PC9) | XIO0.22 (96.52, -25.4) | same |
-| SCK | D33 (PC1) | XIO0.14 (96.52, -35.56) | bit-banged SPI on one port (PIOC bits 1..5) |
-| MOSI | D34 (PC2) | XIO0.15 (93.98, -33.02) | idem |
-| MISO | D35 (PC3) | XIO0.16 (96.52, -33.02) | idem |
-| CS ADC | D36 (PC4) | XIO0.17 (93.98, -30.48) | idem |
-| CS DAC | D37 (PC5) | XIO0.18 (96.52, -30.48) | idem |
-| alt. bus | SDA1/SCL1 (D70/D71) | PWMH0.9/.10 (21.336 / 18.796, -50.8) | hardware TWI, no on-board pull-ups |
+| tee ratio switch | D40 (PC8) | XIO0.21 (93.98, -25.4) | same |
+| unassigned | D41 (PC9) | XIO0.22 (96.52, -25.4) | free: the second calibration switch is gone with the tee |
+| SCK | D33 (PC1) | XIO0.14 (96.52, -35.56) | bit-banged SPI on one port (PIOC bits 1..4) |
+| MOSI (ADS124S08 DIN) | D34 (PC2) | XIO0.15 (93.98, -33.02) | idem |
+| MISO (ADS124S08 DOUT/DRDY) | D35 (PC3) | XIO0.16 (96.52, -33.02) | idem |
+| CS ADC | D36 (PC4) | XIO0.17 (93.98, -30.48) | idem; 4.7k pull-up to +3.3 V_A |
+| unassigned | D37 (PC5) | XIO0.18 (96.52, -30.48) | free: no precision DAC, so no DAC chip select |
+| alt. bus | SDA1/SCL1 (D70/D71) | PWMH0.9/.10 (21.336 / 18.796, -50.8) | hardware TWI, no on-board pull-ups; not used |
 
 Why: D33..D41 are single-net GPIO (table 2.3), clear of D0/D1 (console, 16U2), D13 (LED,
 IC1.3), D4 and D10 (each net ties **two** U1 pads: 112+137 and 102+111), D20/D21 (pull-ups),
 D2 (PB25, the TIOA0 pin, in case the trigger is brought out *(check)*) and the analog
 and DAC pins. PC1..PC8 are contiguous in one port, so one `SODR`/`CODR` write sets a
-pattern. The D-to-PIO mapping is the Arduino Due variant table, recalled *(check)*. The
-firmware drives none of them today. Hardware SPI (PA25/26/27) is not on the edge, hence
-the bit-banged bus, used during calibration only, not while capturing.
+pattern. The D-to-PIO mapping is read from the V03 schematic's nets (`whatif/bom.md`,
+pin check). The firmware drives none of them today. Hardware SPI (PA25/26/27) is not on
+the edge, hence the bit-banged bus, used during calibration only, not while capturing.
 
-**Reset and undriven state (requirement: +/-5 V and calibration off).** After reset
-the PIO lines are inputs with the SAM3X pull-up enabled *(check: PIO_PUSR reset)*; with
-the Due off they sit near 0 V. Make **low** the safe state: high selects +/-1.25 V or
-calibration, and D38..D41 get an external pull-down far below the internal pull-up
-(about 10 k against 50..150 k, under 0.3 V *(check)*). Chip selects idle high, pulled to
+**Reset and undriven state (requirement: +/-5 V, ratio switch on the AWG's Vmid).**
+After reset the PIO lines are inputs with the SAM3X pull-up enabled (datasheet 11057C
+31.5.1, 50..150 kohm, Table 45-2); with the Due off they sit near 0 V. **Low** is the
+safe state: high selects +/-1.25 V or the ratio switch's 3.0 V throw, and D38..D40 get
+a 4.7k pull-down, which holds them at 0.31 V or less against the TMUX1119's 0.8 V VIL
+(`whatif/bom.md`, "Control-pin pull resistors"). The chip select idles high, pulled to
 the AFE's 3.3 V rail (itself off when the Due is off). The nets in the file carry no
 other Due load on D33..D41 *(check boot-time behaviour)*.
 
 Not established: shield pin length and underside clearance, the heights' z datum, the
-real BR1 state, T1/T2 orientation, Track A core reset-time pin setup, the D-to-PIO map.
+real BR1 state, T1/T2 orientation, Track A core reset-time pin setup.

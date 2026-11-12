@@ -20,8 +20,8 @@ SC706 = 'Package_TO_SOT_SMD:SOT-363_SC-70-6'
 SOIC8 = 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm'
 WSON12 = 'Package_SON:WSON-12-1EP_3x2mm_P0.5mm_EP1x2.65_ThermalVias'
 TQFP32 = 'Package_QFP:TQFP-32_5x5mm_P0.5mm'
-# KH-BNC50-3511's drawing was not readable (bom.txt): a stand-in right-angle footprint *(check before ordering)*
-BNC = 'Connector_Coaxial:BNC_Amphenol_B6252HB-NPP3G-50_Horizontal'   # the one KiCad BNC with a 3D model
+# Kinghelm drawing KH-801-0038 rev B, pads cross-checked with the EasyEDA footprint (lib/afe.pretty descr)
+BNC = 'afe:BNC_Kinghelm_KH-BNC50-3511_Horizontal'
 TP = 'TestPoint:TestPoint_Pad_D1.0mm'
 
 # value, LCSC, MPN, footprint, symbol per BOM line (bom.txt numbering)
@@ -156,7 +156,7 @@ for ch, (r1a, (r1b, r1c), r3a, (r3b, r3c), r2, c1, c2p, c2s, c2q, c2t, rnp, u, r
     # range switch across RF: SEL low (pulled down) = S1-D closed = +/-5 V (G ~ 1); high = open = +/-1.25 V
     part(sw, 'TMUX1119', {'1': RANGE[ch], '2': P33A, '3': G, '4': n('OUT'), '5': n('FB')}, B, 'range switch, S2 unused')
     two(csw, '100n', P33A, G, B, 'TMUX1119 supply')
-    two(rpd, '4.7k', RANGE[ch], G, B, 'range pull-down: low = +/-5 V (value assumed)')
+    two(rpd, '4.7k', RANGE[ch], G, B, 'range pull-down: low = +/-5 V (bom.txt PULL RESISTORS: 0.31 V worst low)')
     two(riso, '22', n('OUT'), ADC[ch], B, 'Riso')
     part(dk, 'BAT54S', {'1': G, '3': ADC[ch], '2': P33A}, B, 'ADC-pin clamp after Riso')
 
@@ -217,9 +217,9 @@ two('R8', '100k', 'SNS_TAP', 'SNS_D', B, 'sense divider, tap to far end (switch 
 part('U12', 'TMUX1119', {'1': 'D40', '2': P33A, '3': G, '4': 'SNS_S1', '5': 'SNS_D', '6': VREF}, B,
      'ratio switch: SEL low = S1 (AWG Vmid via 100k), high = S2 (3.0 V)')
 two('C30', '100n', P33A, G, B, 'TMUX1119 supply')
-two('R68', '4.7k', 'D40', G, B, 'ratio-switch pull-down (value assumed)')
+two('R68', '4.7k', 'D40', G, B, 'ratio-switch pull-down (bom.txt PULL RESISTORS)')
 two('R9', '100k', 'AWG_VMID', 'SNS_S1', B, 'AWG Vmid to S1')
-# switch-pin clamps on D and S1 (architecture.md C1-q / C1-r); not in bom.txt's BAT54S count *(BOM gap)*
+# switch-pin clamps on D and S1 (architecture.md C1-q / C1-r)
 part('D7', 'BAT54S', {'1': G, '3': 'SNS_D', '2': P33A}, B, 'clamp on the ratio switch D')
 part('D8', 'BAT54S', {'1': G, '3': 'SNS_S1', '2': P33A}, B, 'clamp on the ratio switch S1')
 part('U9', 'ADS124S08', {
@@ -233,7 +233,7 @@ part('U9', 'ADS124S08', {
 }, B, 'precision ADC; DRDY, REFOUT, NC and AIN6/7/10/11 open (SBAS660C 10.1.5)')
 two('C25', '100n', P33A, G, B, 'ADS124S08 DVDD + IOVDD (tied)')
 two('C33', '1u', P33A, G, B, 'ADS124S08 AVDD, >= 330 nF')
-two('R69', '4.7k', 'D36', P33A, B, 'CS pull-up (placeholder value)')
+two('R69', '4.7k', 'D36', P33A, B, 'CS pull-up (bom.txt PULL RESISTORS)')
 
 # ------------------------------------------------------------------ Due headers (docs/due-header-table.md, V03)
 B = 'due'
@@ -250,8 +250,10 @@ HDR = {  # ref: (symbol, value, footprint, {pin: net})
     'J9': ('Connector_Generic:Conn_01x10', 'PWMH0', 'Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical',
            {'7': G, '8': 'AREF'}),
     'J10': ('Connector_Generic:Conn_02x18_Odd_Even', 'XIO0',
-            'afe:PinSocket_2x18_P2.54mm_Vertical_DueXIO',     # stock socket, odd / even exchanged (build_pcb.py)
-            {'1': P5, '2': P5, '14': 'D33', '15': 'D34', '16': 'D35', '17': 'D36',
+            'afe:PinSocket_2x18_P2.54mm_Vertical_DueXIO',     # stock socket, odd / even exchanged (build_pcb.py);
+            # its 5V pins 1/2 are left open: the Due joins them to POWER0.5 on its own board, and the shield takes
+            # 5 V at POWER0.5 alone (a second shield-side 5 V path would only add a trace across the board)
+            {'14': 'D33', '15': 'D34', '16': 'D35', '17': 'D36',
              '19': 'D38', '20': 'D39', '21': 'D40', '35': G, '36': G}),
 }
 for ref, (sym, val, fp, pins) in HDR.items():

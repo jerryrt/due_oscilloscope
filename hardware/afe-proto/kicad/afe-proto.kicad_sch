@@ -5148,7 +5148,7 @@
 		(uuid "e6531e7c-699b-5d2d-9262-d85babf7b795")
 	)
 	(no_connect
-		(at 586.74 457.2)
+		(at 581.66 457.2)
 		(uuid "043e3805-1c90-5d6d-8f5c-74675d7892e3")
 	)
 	(no_connect
@@ -5172,7 +5172,7 @@
 		(uuid "1e2d5364-3a68-585d-8bdb-b91f530ee791")
 	)
 	(no_connect
-		(at 586.74 482.6)
+		(at 581.66 482.6)
 		(uuid "1fc5f2c4-8237-5cc3-ac47-bf05336ca613")
 	)
 	(no_connect
@@ -5188,7 +5188,7 @@
 		(uuid "297311ed-f326-5768-8ccf-13133b3e202e")
 	)
 	(no_connect
-		(at 586.74 454.66)
+		(at 581.66 454.66)
 		(uuid "2c0be956-e6e6-51ee-90a2-f2605d13746b")
 	)
 	(no_connect
@@ -5196,11 +5196,15 @@
 		(uuid "2e353842-6be6-5d5f-966d-d6fe6fccf99c")
 	)
 	(no_connect
+		(at 594.36 449.58)
+		(uuid "2e4c17bf-0c19-5f18-bc9f-19915a4d0618")
+	)
+	(no_connect
 		(at 558.8 462.28)
 		(uuid "3355a3c2-0475-528b-8241-027aecab92dd")
 	)
 	(no_connect
-		(at 586.74 459.74)
+		(at 581.66 459.74)
 		(uuid "35cd91c2-d718-5f25-9b79-f1d9a16f4408")
 	)
 	(no_connect
@@ -5208,7 +5212,7 @@
 		(uuid "35f6a8b5-9aa2-5e71-bbf4-4bd43b0d30c9")
 	)
 	(no_connect
-		(at 586.74 464.82)
+		(at 581.66 464.82)
 		(uuid "36e3c68e-3bae-5a2c-b908-e34328263e65")
 	)
 	(no_connect
@@ -5220,7 +5224,7 @@
 		(uuid "3af42137-f140-58c4-8100-4c691593f6ba")
 	)
 	(no_connect
-		(at 586.74 485.14)
+		(at 581.66 485.14)
 		(uuid "3da4025e-4dd8-5235-83f3-3a3d105adf52")
 	)
 	(no_connect
@@ -5228,7 +5232,7 @@
 		(uuid "3e2bc6b0-a3c3-5382-95df-5fc4bf574500")
 	)
 	(no_connect
-		(at 599.44 454.66)
+		(at 594.36 454.66)
 		(uuid "3e9857d1-02b2-57a1-b22d-2b7871e52e13")
 	)
 	(no_connect
@@ -5236,7 +5240,7 @@
 		(uuid "43ca1d7a-711a-51c5-8f5e-ee320685bd72")
 	)
 	(no_connect
-		(at 586.74 490.22)
+		(at 581.66 490.22)
 		(uuid "44754110-6c9d-5a3d-88d1-20c3a0928b24")
 	)
 	(no_connect
@@ -5248,7 +5252,7 @@
 		(uuid "499fdb3a-9ba1-5cbf-bdce-61318fcce2c0")
 	)
 	(no_connect
-		(at 599.44 480.06)
+		(at 594.36 480.06)
 		(uuid "4a230c7b-7f9a-5cc7-b9a1-4907fb77b589")
 	)
 	(no_connect
@@ -5256,7 +5260,7 @@
 		(uuid "4b3fe050-c9f2-56a1-a9a7-a4b787ab65b4")
 	)
 	(no_connect
-		(at 586.74 477.52)
+		(at 581.66 477.52)
 		(uuid "4bb5e639-8fbb-5baa-a5e1-c0c6fae6534f")
 	)
 	(no_connect
@@ -5272,7 +5276,7 @@
 		(uuid "51a3ca2f-7baa-5bd9-b945-dc14d24f1b74")
 	)
 	(no_connect
-		(at 599.44 469.9)
+		(at 594.36 469.9)
 		(uuid "53937ee3-8b1b-5d6c-be48-5f1e1e93726f")
 	)
 	(no_connect
@@ -5288,7 +5292,7 @@
 		(uuid "651df6a9-a2ca-57cf-8f44-73a8e1ea099b")
 	)
 	(no_connect
-		(at 599.44 459.74)
+		(at 594.36 459.74)
 		(uuid "6826b2c2-69bd-5f6e-a2a1-389c7f481c94")
 	)
 	(no_connect
@@ -5308,15 +5312,19 @@
 		(uuid "6e98a72d-6fb6-5e62-82d2-411294ad27eb")
 	)
 	(no_connect
+		(at 581.66 449.58)
+		(uuid "6eae6f9c-9214-5397-b3a5-5a3dcb8d8ee4")
+	)
+	(no_connect
 		(at 518.16 459.74)
 		(uuid "6ed67ce9-a021-50d8-a5ce-58f5fb13659a")
 	)
 	(no_connect
-		(at 586.74 462.28)
+		(at 581.66 462.28)
 		(uuid "73ced2ff-f9df-58a3-8bd7-e468ca9100af")
 	)
 	(no_connect
-		(at 586.74 487.68)
+		(at 581.66 487.68)
 		(uuid "765ca424-5811-5d90-b135-3abc64cb652c")
 	)
 	(no_connect
@@ -5324,7 +5332,7 @@
 		(uuid "7f602a20-10c1-5946-98ad-4bf4bf3add36")
 	)
 	(no_connect
-		(at 599.44 490.22)
+		(at 594.36 490.22)
 		(uuid "8595c01a-4272-5aea-a97b-2e29e3206a54")
 	)
 	(no_connect
@@ -5332,11 +5340,11 @@
 		(uuid "86147e2b-8bdf-5513-b597-466c058adce3")
 	)
 	(no_connect
-		(at 586.74 480.06)
+		(at 581.66 480.06)
 		(uuid "8d9b28c2-ba97-5b1a-81b6-11d5d891cbe6")
 	)
 	(no_connect
-		(at 599.44 474.98)
+		(at 594.36 474.98)
 		(uuid "911bf139-7ef4-5ab2-a706-202c405eece4")
 	)
 	(no_connect
@@ -5352,7 +5360,7 @@
 		(uuid "9dbe4fbc-7ddb-5f2d-a734-4ee7555b652b")
 	)
 	(no_connect
-		(at 599.44 485.14)
+		(at 594.36 485.14)
 		(uuid "9eccb850-030e-5a9b-93d8-6fe32da42556")
 	)
 	(no_connect
@@ -5360,15 +5368,15 @@
 		(uuid "9fbc186d-b512-5f93-bddd-298d7b780e87")
 	)
 	(no_connect
-		(at 599.44 452.12)
+		(at 594.36 452.12)
 		(uuid "a4bd3b7e-f065-51ff-9d12-e8f357c5fd38")
 	)
 	(no_connect
-		(at 586.74 452.12)
+		(at 581.66 452.12)
 		(uuid "a7f13f7f-5489-51d6-b4c2-60149dc5495a")
 	)
 	(no_connect
-		(at 599.44 482.6)
+		(at 594.36 482.6)
 		(uuid "a9261f9c-d0ad-5c76-8712-915082b39030")
 	)
 	(no_connect
@@ -5388,7 +5396,7 @@
 		(uuid "b39511c8-94b5-560a-93c7-9f1c8df5df52")
 	)
 	(no_connect
-		(at 599.44 477.52)
+		(at 594.36 477.52)
 		(uuid "b74506b4-7ae1-5147-b320-6ec3490172f1")
 	)
 	(no_connect
@@ -5396,7 +5404,7 @@
 		(uuid "b845a8dc-4580-5e8a-834a-7b06b0954f6d")
 	)
 	(no_connect
-		(at 599.44 457.2)
+		(at 594.36 457.2)
 		(uuid "bcc495cd-5371-5550-b3c9-510a07d7b26d")
 	)
 	(no_connect
@@ -5424,7 +5432,7 @@
 		(uuid "e01d3334-330a-5a1b-9ccb-6190c4014ffd")
 	)
 	(no_connect
-		(at 599.44 487.68)
+		(at 594.36 487.68)
 		(uuid "e61d0c39-27c8-5653-8127-137c415d56af")
 	)
 	(no_connect
@@ -5432,7 +5440,7 @@
 		(uuid "f646201e-5f3c-55de-955b-d023149246cb")
 	)
 	(no_connect
-		(at 599.44 462.28)
+		(at 594.36 462.28)
 		(uuid "f7ff9417-30b3-52c5-a8c2-83852edc964f")
 	)
 	(no_connect
@@ -5645,7 +5653,7 @@
 	)
 	(wire
 		(pts
-			(xy 599.44 472.44) (xy 601.98 472.44)
+			(xy 594.36 472.44) (xy 596.9 472.44)
 		)
 		(stroke
 			(width 0)
@@ -5695,7 +5703,7 @@
 	)
 	(wire
 		(pts
-			(xy 586.74 472.44) (xy 584.2 472.44)
+			(xy 581.66 472.44) (xy 579.12 472.44)
 		)
 		(stroke
 			(width 0)
@@ -5825,7 +5833,7 @@
 	)
 	(wire
 		(pts
-			(xy 586.74 469.9) (xy 584.2 469.9)
+			(xy 581.66 469.9) (xy 579.12 469.9)
 		)
 		(stroke
 			(width 0)
@@ -6265,7 +6273,7 @@
 	)
 	(wire
 		(pts
-			(xy 586.74 467.36) (xy 584.2 467.36)
+			(xy 581.66 467.36) (xy 579.12 467.36)
 		)
 		(stroke
 			(width 0)
@@ -6342,16 +6350,6 @@
 			(type default)
 		)
 		(uuid "34fc45b9-38d3-5508-bca4-7613b43f601e")
-	)
-	(wire
-		(pts
-			(xy 586.74 449.58) (xy 584.2 449.58)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "3518cd86-d2fa-56ac-b979-270cb955e9be")
 	)
 	(wire
 		(pts
@@ -6665,7 +6663,7 @@
 	)
 	(wire
 		(pts
-			(xy 599.44 492.76) (xy 601.98 492.76)
+			(xy 594.36 492.76) (xy 596.9 492.76)
 		)
 		(stroke
 			(width 0)
@@ -6825,7 +6823,7 @@
 	)
 	(wire
 		(pts
-			(xy 586.74 492.76) (xy 584.2 492.76)
+			(xy 581.66 492.76) (xy 579.12 492.76)
 		)
 		(stroke
 			(width 0)
@@ -7225,7 +7223,7 @@
 	)
 	(wire
 		(pts
-			(xy 599.44 467.36) (xy 601.98 467.36)
+			(xy 594.36 467.36) (xy 596.9 467.36)
 		)
 		(stroke
 			(width 0)
@@ -7422,16 +7420,6 @@
 			(type default)
 		)
 		(uuid "70a7e0d5-7a13-5993-acd8-7ea963178668")
-	)
-	(wire
-		(pts
-			(xy 599.44 449.58) (xy 601.98 449.58)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "70b3ddca-5d23-5e0e-8e0c-98ba27b157ae")
 	)
 	(wire
 		(pts
@@ -7875,7 +7863,7 @@
 	)
 	(wire
 		(pts
-			(xy 599.44 464.82) (xy 601.98 464.82)
+			(xy 594.36 464.82) (xy 596.9 464.82)
 		)
 		(stroke
 			(width 0)
@@ -8855,7 +8843,7 @@
 	)
 	(wire
 		(pts
-			(xy 586.74 474.98) (xy 584.2 474.98)
+			(xy 581.66 474.98) (xy 579.12 474.98)
 		)
 		(stroke
 			(width 0)
@@ -10014,7 +10002,7 @@
 		(uuid "08852c9d-69e0-5c1c-9256-de9888dcd71c")
 	)
 	(label "D34"
-		(at 584.2 467.36 180)
+		(at 579.12 467.36 180)
 		(effects
 			(font
 				(size 1 1)
@@ -10734,7 +10722,7 @@
 		(uuid "2cfed9ed-dd07-5d26-80f5-e80659f7a5a3")
 	)
 	(label "D38"
-		(at 584.2 472.44 180)
+		(at 579.12 472.44 180)
 		(effects
 			(font
 				(size 1 1)
@@ -11444,7 +11432,7 @@
 		(uuid "5922e953-a57d-51e4-897c-6112c9d8fe25")
 	)
 	(label "GND"
-		(at 584.2 492.76 180)
+		(at 579.12 492.76 180)
 		(effects
 			(font
 				(size 1 1)
@@ -11824,7 +11812,7 @@
 		(uuid "6d3522c7-a35f-5243-a5c6-94e001ddf527")
 	)
 	(label "D35"
-		(at 601.98 467.36 0)
+		(at 596.9 467.36 0)
 		(effects
 			(font
 				(size 1 1)
@@ -12004,7 +11992,7 @@
 		(uuid "76da68c8-51f9-5531-ac11-5bfbbe3680ca")
 	)
 	(label "GND"
-		(at 601.98 492.76 0)
+		(at 596.9 492.76 0)
 		(effects
 			(font
 				(size 1 1)
@@ -12074,7 +12062,7 @@
 		(uuid "79158205-83d5-57b1-bfa5-b62470990ce8")
 	)
 	(label "D39"
-		(at 601.98 472.44 0)
+		(at 596.9 472.44 0)
 		(effects
 			(font
 				(size 1 1)
@@ -12863,16 +12851,6 @@
 		)
 		(uuid "9b2e4a56-de73-52b2-b6d7-dd085255320a")
 	)
-	(label "+5V_DUE"
-		(at 601.98 449.58 0)
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify left bottom)
-		)
-		(uuid "9d509642-1ec0-5e7c-a473-13a83e912f5c")
-	)
 	(label "TAP1"
 		(at 474.98 462.28 180)
 		(effects
@@ -12914,7 +12892,7 @@
 		(uuid "9f1cf73e-74e0-5aad-abe0-a56710aac5e9")
 	)
 	(label "D33"
-		(at 601.98 464.82 0)
+		(at 596.9 464.82 0)
 		(effects
 			(font
 				(size 1 1)
@@ -13334,7 +13312,7 @@
 		(uuid "bfde0d33-ee8e-5a78-af4a-122721d49e7d")
 	)
 	(label "D40"
-		(at 584.2 474.98 180)
+		(at 579.12 474.98 180)
 		(effects
 			(font
 				(size 1 1)
@@ -13704,7 +13682,7 @@
 		(uuid "d85bc31b-a42e-566d-8c88-3f32aadfb113")
 	)
 	(label "D36"
-		(at 584.2 469.9 180)
+		(at 579.12 469.9 180)
 		(effects
 			(font
 				(size 1 1)
@@ -13822,16 +13800,6 @@
 			(justify right bottom)
 		)
 		(uuid "df91981e-4e02-5f0c-9107-2c5b40cd767c")
-	)
-	(label "+5V_DUE"
-		(at 584.2 449.58 180)
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify right bottom)
-		)
-		(uuid "e08f5cad-157a-553e-b33f-54d4ad53de2c")
 	)
 	(label "D36"
 		(at 473.71 411.48 180)
@@ -15841,7 +15809,7 @@
 				)
 			)
 		)
-		(property "Note" "range pull-down: low = +/-5 V (value assumed)"
+		(property "Note" "range pull-down: low = +/-5 V (bom.txt PULL RESISTORS: 0.31 V worst low)"
 			(at 30.48 238.76 0)
 			(hide yes)
 			(show_name no)
@@ -20703,7 +20671,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_Coaxial:BNC_Amphenol_B6252HB-NPP3G-50_Horizontal"
+		(property "Footprint" "afe:BNC_Kinghelm_KH-BNC50-3511_Horizontal"
 			(at 35.56 160.02 0)
 			(hide yes)
 			(show_name no)
@@ -22874,7 +22842,7 @@
 	)
 	(symbol
 		(lib_id "Connector_Generic:Conn_02x18_Odd_Even")
-		(at 591.82 469.9 0)
+		(at 586.74 469.9 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -22884,7 +22852,7 @@
 		(dnp no)
 		(uuid "50a61ff0-c444-5468-84a1-5b66f129227a")
 		(property "Reference" "J10"
-			(at 591.82 443.992 0)
+			(at 586.74 443.992 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22894,7 +22862,7 @@
 			)
 		)
 		(property "Value" "XIO0"
-			(at 591.82 446.532 0)
+			(at 586.74 446.532 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22904,7 +22872,7 @@
 			)
 		)
 		(property "Footprint" "afe:PinSocket_2x18_P2.54mm_Vertical_DueXIO"
-			(at 591.82 469.9 0)
+			(at 586.74 469.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22915,7 +22883,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 591.82 469.9 0)
+			(at 586.74 469.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22926,7 +22894,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 591.82 469.9 0)
+			(at 586.74 469.9 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22936,7 +22904,7 @@
 			)
 		)
 		(property "LCSC" ""
-			(at 591.82 469.9 0)
+			(at 586.74 469.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22947,7 +22915,7 @@
 			)
 		)
 		(property "MPN" ""
-			(at 591.82 469.9 0)
+			(at 586.74 469.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22958,7 +22926,7 @@
 			)
 		)
 		(property "Fitted by" "owner"
-			(at 591.82 469.9 0)
+			(at 586.74 469.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22969,7 +22937,7 @@
 			)
 		)
 		(property "Note" "generic Mega stacking header, owner-fitted"
-			(at 591.82 469.9 0)
+			(at 586.74 469.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -23192,7 +23160,7 @@
 				)
 			)
 		)
-		(property "Note" "range pull-down: low = +/-5 V (value assumed)"
+		(property "Note" "range pull-down: low = +/-5 V (bom.txt PULL RESISTORS: 0.31 V worst low)"
 			(at 452.12 243.84 0)
 			(hide yes)
 			(show_name no)
@@ -27741,7 +27709,7 @@
 				)
 			)
 		)
-		(property "Note" "ratio-switch pull-down (value assumed)"
+		(property "Note" "ratio-switch pull-down (bom.txt PULL RESISTORS)"
 			(at 624.84 330.2 0)
 			(hide yes)
 			(show_name no)
@@ -34073,7 +34041,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_Coaxial:BNC_Amphenol_B6252HB-NPP3G-50_Horizontal"
+		(property "Footprint" "afe:BNC_Kinghelm_KH-BNC50-3511_Horizontal"
 			(at 170.18 373.38 0)
 			(hide yes)
 			(show_name no)
@@ -36854,7 +36822,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_Coaxial:BNC_Amphenol_B6252HB-NPP3G-50_Horizontal"
+		(property "Footprint" "afe:BNC_Kinghelm_KH-BNC50-3511_Horizontal"
 			(at 454.66 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -37163,7 +37131,7 @@
 				)
 			)
 		)
-		(property "Note" "CS pull-up (placeholder value)"
+		(property "Note" "CS pull-up (bom.txt PULL RESISTORS)"
 			(at 480.06 411.48 0)
 			(hide yes)
 			(show_name no)
@@ -37191,7 +37159,7 @@
 	)
 	(symbol
 		(lib_id "Mechanical:MountingHole")
-		(at 619.76 454.66 0)
+		(at 612.14 454.66 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -37201,7 +37169,7 @@
 		(dnp no)
 		(uuid "fa5ddcce-e04f-5cee-97b2-cb1075fb8244")
 		(property "Reference" "MH1"
-			(at 619.76 443.992 0)
+			(at 612.14 443.992 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -37211,7 +37179,7 @@
 			)
 		)
 		(property "Value" "M3 standoff"
-			(at 619.76 446.532 0)
+			(at 612.14 446.532 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -37221,7 +37189,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3_ISO7380"
-			(at 619.76 454.66 0)
+			(at 612.14 454.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -37232,7 +37200,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 619.76 454.66 0)
+			(at 612.14 454.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -37243,7 +37211,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 619.76 454.66 0)
+			(at 612.14 454.66 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -37253,7 +37221,7 @@
 			)
 		)
 		(property "LCSC" ""
-			(at 619.76 454.66 0)
+			(at 612.14 454.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -37264,7 +37232,7 @@
 			)
 		)
 		(property "MPN" ""
-			(at 619.76 454.66 0)
+			(at 612.14 454.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -37275,7 +37243,7 @@
 			)
 		)
 		(property "Fitted by" "owner"
-			(at 619.76 454.66 0)
+			(at 612.14 454.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -37286,7 +37254,7 @@
 			)
 		)
 		(property "Note" "over the Due hole (96.52, 2.54)"
-			(at 619.76 454.66 0)
+			(at 612.14 454.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

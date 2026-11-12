@@ -5,6 +5,8 @@ which choices the simulations (`docs/afe-plan.md`, step 2) must settle.
 Budgets that need no datasheet are in `budget/afe_budget.py`
 (`python3 -I hardware/afe-proto/budget/afe_budget.py`). Part numbers are
 candidates until a simulation passes; stock and price are in `jlcpcb.md`.
+The circuit as built is the KiCad project in `../kicad/` (design FR-01,
+`design.py` and `DESIGN-01.md`), drawn from this file and the simulations.
 
 ## Facts the design is built on
 
@@ -15,10 +17,12 @@ candidates until a simulation passes; stock and price are in `jlcpcb.md`.
   high-impedance divider, at microamps (PW-1). The reference still routes
   to the AREF pin through the unfitted 0 ohm (PA-7). `afe.md` section 4.1
   and PW-1 say AREF is the sense point; that text needs correcting.
-- Hardware SPI is **not** on any edge header; the precision ADC and DAC use
-  a bit-banged bus on D33-D37 (`docs/due-header-table.md`).
-- Range-select and calibration-switch pins D38-D41 get external
-  pull-downs, so low is the safe state (+/-5 V, calibration off).
+- Hardware SPI is **not** on any edge header; the precision ADC uses a
+  bit-banged bus on D33-D36 (`docs/due-header-table.md`).
+- The range-select pins D38-D39 and the ratio-switch pin D40 get external
+  4.7k pull-downs, so low is the safe state (+/-5 V, ratio switch on the
+  AWG's Vmid); the ADC's chip select D36 is pulled up (`whatif/bom.md`,
+  "Control-pin pull resistors").
 - Precision resistors are 0.1 % at 25 ppm/K, the grade actually stocked
   (`docs/jlcpcb-parts.md`): SC-8 is 1 % (2026-11-11) and passes with it, and
   DF-3 after calibration is closed by one build-time trimmer per channel,
@@ -60,7 +64,7 @@ out -> Riso 22 -> ADC pin;  4.7 kohm bleed on the AFE 3.3 V rail
   on +/-5 V (the OPA354's 5 dB peak near 90 MHz).
 - Rnp 680 holds the clamp current of a 5 ns 30 V edge through C1 to
   6.2 mA (71 mA without it).
-- **A BAT54S (C7420333) at each ADC pin, after Riso**: pin 1 to ground,
+- **A BAT54S (C7420333, D5 and D6) at each ADC pin, after Riso**: pin 1 to ground,
   pin 3 on the ADC pin, pin 2 on the AFE +3.3 V_A (not the Due's 3.3 V,
   which would take 5.4 uA of a +12 V fault instead of 2 uA). Unpowered
   with +/-12 V on both inputs the pin stays at -0.13..0.26 V (-0.48 V
@@ -89,8 +93,8 @@ stage's Rg returns to a Vmid of the AWG's own:
 DAC0 --680--+-- OPA365 follower --+--Ra 953--+-- V+ --(OPA365, rails +3.3 / -2.07 V)-- out --49.9 ohm 0.1 %-- BNC
    330k to GND   (+3.3 V_A via its      |    Rb = 953 + 249||249 + 22 to GND
                   own BAT54S, 100 nF)   |    Rf = 953 + 249||249 + 22 with Cf 12 pF, out to V-; Rg 953, V- to AWG Vmid
-BNC --100k + 100k--+--100k-- AWG Vmid or 3.0 V (switched; sim/powercal's)     the ADS124S08 sense divider, 0.1 %, k = 1/3
-                   +-- ADS124S08 input
+BNC --100k--+--100k-- D --(TMUX1119)-- S1: 100k to AWG Vmid / S2: 3.0 V (VREF)   the ADS124S08 sense divider, 0.1 %, k = 1/2
+             +-- ADS124S08 input (tap; D is read too)
 AWG Vmid: 330k / 330k from +3.3 V_A, 12 pF at the tap -> OPA365 follower (own BAT54S, 100 nF), NO output capacitor
 out = (Rb/Ra) x (Vbuf - Vmid) = 1.153 x (Vbuf - Vmid);  Vbuf = Vdac x 330k / 330.68k
 ```
@@ -124,16 +128,17 @@ ADC's input.
   at 15 pF (target 50), and 45 deg holds to 30 pF at the buffer pin (loop
   break, worst over DAC level and rail). sim/loop's Middlebrook injection
   could not see a capacitive load at all (it read 77 deg at 1 nF).
-- **The precision ADC's sense divider** (k = 1/3: 100k + 100k from the BNC
-  to the tap, 100k from the tap to the far end, 0.1 %, the far end
-  switched between Vmid and 3.0 V; the ADS124S08 and its input protection
-  are the Calibration section's) loads the BNC with 300 kohm, 0.017 % of
-  amplitude into 50 ohm. The tap moves by 1/3 of the BNC swing. It sees
-  +0.54..+1.62 V (far end at Vmid) or +1.43..+2.50 V (at 3.0 V) at AW-8's
-  excursions, and -0.58..+2.76 V or +0.33..+3.67 V with the output forced
-  to +/-5 V powered (PR-4); unpowered -2.13..+3.67 V or -1.67..+1.67 V.
-  The divider limits none of these (`sim/awg/report.md` also gives the
-  k = 2/3 arrangement for comparison).
+- **The precision ADC's sense divider** (k = 1/2: 100k from the BNC to the
+  tap, 100k from the tap to the far end, 0.1 %, the far end switched
+  between the AWG's Vmid and 3.0 V; the ADS124S08 and its input protection
+  are the Calibration section's) loads the BNC with 200 kohm. Its cost in
+  amplitude into 50 ohm was simulated only for the earlier 300 kohm
+  divider (0.017 %, `sim/awg/report.md`) *(check at 200 kohm)*. The tap
+  moves by 1/2 of the BNC swing. It sees -0.048..+1.595 V (far end at
+  Vmid) or +0.637..+2.260 V (at 3.0 V) at AW-8's excursions, and
+  -1.688..+3.338 V or -1.003..+4.003 V with the output forced to +/-5 V
+  powered (PR-4); unpowered -2.848..+4.005 V or -2.500..+2.500 V
+  (`sim/powercal` C1-p). The divider limits none of these.
 - **The AWG's own Vmid, and its two conditions.** The scope's Vmid tap
   (2 x 330k, 10 uF, tau 1.65 s) starts in seconds, while DAC0 sits near
   3.3 V at reset: the output then runs to 2.6 V (AW-8 2.1 V), with this
@@ -315,9 +320,10 @@ Nothing is drawn from the Due's 3.3 V pin except the microamp Vmid sense
   stated stable range (0.1-22 uF with 10-500 mohm ESR). Its ESR is
   assumed at 30 mohm *(check)*: Yageo's data could not be fetched and its
   MLCC datasheets give no ESR. 100 nF + 10 uF through 1R || 1R || 1R also
-  sits inside that range and stays in the BOM unfitted; the 10 uF directly
-  (about 4 mohm) and through one 1R (1 ohm) do not. The REF30 (non-E) states no
-  range, and the BOM's C38423 is that grade (bom.md F-10). Ringing is not
+  sits inside that range, but the owner's cuts removed it from the BOM
+  (2026-11-11), so it has no footprint; the 10 uF directly (about 4 mohm)
+  and through one 1R (1 ohm) do not. The REF30 (non-E) states no range;
+  the BOM's REF3030EAIDBZR (C54120492) is the E grade, which does. Ringing is not
   simulated (encrypted model) *(check, VT)*.
 - Precision ADC (2026-11-11): **ADS124S08IPBSR** (C2870171, TQFP-32),
   AVDD and DVDD from +3.3 V_A (AVDD 330 nF minimum, DVDD 100 nF), PGA
@@ -331,15 +337,18 @@ Nothing is drawn from the Due's 3.3 V pin except the microamp Vmid sense
 - **BNC-tee calibration (PA-3, 2026-11-11), replacing the injection.** The
   AWG drives both scope inputs through a tee; the ADS124S08 reads the AWG
   on the BNC side through a 0.1 % 10 ppm/K divider, **100k to the tap and
-  100k to a far end (k = 1/2, 2026-11-11)** that one TMUX1119 (PA-4's ratio switch, SEL
-  pulled down: S1 the AWG's Vmid by default, S2 the buffered 3.0 V ladder
-  top) moves, so the ratio is measured at every calibration. The ADC reads
+  100k to a far end (k = 1/2, 2026-11-11)** that one TMUX1119 (U12, PA-4's
+  ratio switch, SEL on D40 pulled down: S1 the AWG's Vmid by default, S2
+  the REF3030E output, VREF, which is also the unbuffered ladder's top tap)
+  moves, so the ratio is measured at every calibration. The ADC reads
   the bottom node itself, so the switch's Ron and leakage are outside the
   ratio (C3-u). **The switch's pins are clamped**: one BAT54S (C7420333,
-  a die to ground and a die to +3.3 V_A) on the bottom node D and one on
-  S1, with **100k** (C394537) from the AWG's Vmid node to S1; S2 (the ladder top) needs
+  a die to ground and a die to +3.3 V_A: pin 1 GND, pin 3 the node, pin 2
+  +3.3 V_A) on the bottom node D (D7) and one on S1 (D8), with **100k**
+  (C394537) from the AWG's Vmid node to S1; S2 (the ladder top) needs
   none. The T-switches, the 249 ohm injection branch, their
-  decouplers and the D40/D41 pull-downs are gone; the injection rows
+  decouplers and the injection switches' D40/D41 pull-downs are gone (D40
+  now drives the ratio switch); the injection rows
   (C3-a..f and the SC-9 injection rows) are retired.
 - **The tee's fit share is 0.1 % on both ranges (owner, 2026-11-11).**
   With the ADC's INL referred to the AWG (whatif/tee's re-run), k = 1/3
@@ -356,7 +365,8 @@ Nothing is drawn from the Due's 3.3 V pin except the microamp Vmid sense
   by current limiting (owner ruling on PR-4, 2026-11-11). The TMUX1119's
   does not, so its pins are clamped: within 0.20 V of a rail against 0.5 V
   (ngspice, the clamp at its datasheet-maximum Vf, +3.3 V_A held at 0 V or
-  floating), 0.60 V without. The clamps sit on D and S1, never on the tap.
+  floating), 0.60 V without. The clamps (D7, D8) sit on D and S1, never on
+  the tap.
   With 100k to S1 the clamps lift the dead +3.3 V_A to 0.12 V at +1.8 V
   (0.31 V at +5 V; the 4.7k gave 0.80 V) against PR-3's 0.5 V (C1-r). D's
   leakage reaches it through Ron + 100k on S1, so at the datasheet bound
