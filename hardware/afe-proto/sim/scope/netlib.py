@@ -1,9 +1,11 @@
 """Netlist builders and ngspice plumbing for the scope-channel simulation (2b).
 Imported by run.py (python3 -I run.py puts this directory on sys.path)."""
-import os, re, subprocess, hashlib
+import os, re, subprocess, hashlib, sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..")))   # hardware/afe-proto, for simtools
+from simtools import netlib_common as _C
 NETD = os.path.join(HERE, "netlists")
 WORK = os.path.join(HERE, "work")
 WORK_REL = "../work"          # WORK as seen from NETD (both are siblings, so model paths keep their depth)
@@ -330,40 +332,22 @@ def header(p, title):
 DESD_MODEL = ".model DESD D(IS=1e-15 N=1 RS=5)\n"
 
 def write_net(name, text):
-    os.makedirs(NETD, exist_ok=True)
-    path = os.path.join(NETD, PFX + name + ".cir")
-    with open(path, "w") as f:
-        f.write(text if text.endswith("\n") else text + "\n")
-    return path
+    return _C.write_net(NETD, PFX, name, text)
 
 def run_ng(name, text, timeout=600):
     """Write netlists/<name>.cir and run ngspice -b with cwd = netlists (relative model paths)."""
-    os.makedirs(WORK, exist_ok=True)
-    path = write_net(name, text)
-    r = subprocess.run(["ngspice", "-b", os.path.basename(path)], cwd=NETD, capture_output=True,
-                       text=True, timeout=timeout)
-    return r.stdout + r.stderr
+    return _C.run_ng(NETD, WORK, PFX, name, text, timeout)
 
 def wr(name, key):
-    return f"{WORK_REL}/{PFX}{name}_{key}.dat"
+    return _C.wr(WORK_REL, PFX, name, key)
 
 def load(name, key, cols=None):
-    fn = os.path.join(WORK, f"{PFX}{name}_{key}.dat")
-    return np.loadtxt(fn)
+    return _C.load(WORK, PFX, name, key)
 
 def ngspice_version():
-    out = subprocess.run(["ngspice", "-v"], capture_output=True, text=True).stdout
-    for l in out.splitlines():
-        if "ngspice" in l.lower() and re.search(r"\d", l):
-            return l.strip()
-    return out.strip().splitlines()[0]
+    return _C.ngspice_version()
 
-def sha256(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        h.update(f.read())
-    return h.hexdigest()
-
+sha256 = _C.sha256
 
 def freq_metrics(f, h):
     """-3 dB point relative to the low-frequency gain (first point), peaking in dB."""

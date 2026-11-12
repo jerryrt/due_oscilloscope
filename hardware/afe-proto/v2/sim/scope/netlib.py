@@ -8,10 +8,12 @@ sha256 is checked by run.py against models/VENDOR_MODEL.sha256.  It is a SINGLE-
 which shares the TPH2502's die: nothing in it couples two channels, and its input stage is one PMOS pair with no
 rail-to-rail crossover.  Everything that depends on those two facts is marked in report.md.
 """
-import os, re, subprocess
+import os, re, subprocess, sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..", "..")))   # hardware/afe-proto, for simtools
+from simtools import netlib_common as _C
 NETD = os.path.join(HERE, "netlists")
 WORK = os.path.join(HERE, "work")
 WORK_REL = "../work"
@@ -161,32 +163,20 @@ def coupling(p):
 
 
 def write_net(name, text):
-    os.makedirs(NETD, exist_ok=True)
-    path = os.path.join(NETD, PFX + name + ".cir")
-    with open(path, "w") as f:
-        f.write(text if text.endswith("\n") else text + "\n")
-    return path
+    return _C.write_net(NETD, PFX, name, text)
 
 
 def run_ng(name, text, timeout=900):
-    os.makedirs(WORK, exist_ok=True)
-    path = write_net(name, text)
-    r = subprocess.run(["ngspice", "-b", os.path.basename(path)], cwd=NETD, capture_output=True, text=True,
-                       timeout=timeout)
-    return r.stdout + r.stderr
+    return _C.run_ng(NETD, WORK, PFX, name, text, timeout)
 
 
 def wr(name, key):
-    return f"{WORK_REL}/{PFX}{name}_{key}.dat"
+    return _C.wr(WORK_REL, PFX, name, key)
 
 
 def load(name, key):
-    return np.atleast_2d(np.loadtxt(os.path.join(WORK, f"{PFX}{name}_{key}.dat")))
+    return _C.load(WORK, PFX, name, key, atleast_2d=True)
 
 
 def ngspice_version():
-    out = subprocess.run(["ngspice", "-v"], capture_output=True, text=True).stdout
-    for l in out.splitlines():
-        if "ngspice" in l.lower() and re.search(r"\d", l):
-            return l.strip("* ").strip()
-    return out.strip()
+    return _C.ngspice_version(strip="* ")
