@@ -25,7 +25,7 @@ What each row looks at, so a pass is not read as more than it is:
          the channel's high-impedance copper; the generator is by the 5 V pad and far from every BNC; the reference
          and ladder are >= 10 mm from the generator; the channels' divider pads are >= 5 mm apart.
   LR-3   no via and at most 14 mm of track on the divider chain nets; no other non-GND top track within 0.6 mm.
-  LR-4   inverting nodes (AWG_INV, CH1_N, CH2_N): no via, no bottom copper, at most INV_MAX of track, no top ground
+  LR-4   the inverting node (AWG_INV): no via, no bottom copper, at most INV_MAX of track, no top ground
          copper (track or pour) within 0.5 mm; A0 / A1: top only, no via; Riso at the output pin; a 100 nF within
          DECOUP_MAX of each op-amp supply pin.
   LR-5   no sensitive copper within 10 mm of the generator or its flying capacitor.
@@ -61,7 +61,7 @@ BOARD = os.path.join(HERE, 'afe-proto.kicad_pcb')
 ZONE_PAD = 0.3            # mm round each analog courtyard
 HOP_MAX = 3.0             # LR-1 (spec lead's ruling): a bottom run is at most this long and 2 vias
 KEEPOUT = 10.0            # LR-5
-INV_MAX = 5.0             # LR-4 (spec lead): the inverting node is the shortest trace of its stage, mm of track, AWG_INV, CH1_N and CH2_N
+INV_MAX = 5.0             # LR-4 (spec lead): the inverting node is the shortest trace of its stage, mm of track (AWG_INV only)
 DECOUP_MAX = 3.0          # LR-4 (spec lead): each decoupling cap's supply pad to the IC supply pin, mm
 POUR_CLR = 0.5            # LR-4: top ground copper kept back from an inverting node
 GEN = ('U401', 'C402')    # LM27762 and its flying capacitor
@@ -79,7 +79,7 @@ BLOCK_HUNDREDS = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL
 XSENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AWG_S', '/AWG_I', '/AWG_INV', '/AWG_BIN', '/AREF',
          '/CH1_', '/CH2_')
 SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/CH1_N', '/CH2_N')
-INV_NODES = ('/AWG_INV', '/CH1_N', '/CH2_N')
+INV_NODES = ('/AWG_INV',)    # LR-4 (spec lead): op-amp inverting inputs only; v1's follower -IN is its output net (pins 1-2, 6-7 of U101, adjacent), and CH1_N/CH2_N are divider nodes governed by LR-3
 HIZ = ('CH1_N', 'CH1_NP', 'CH1_R1A', 'CH1_R2A', 'CH2_N', 'CH2_NP', 'CH2_R1A', 'CH2_R2A')   # LR-3 divider chain nets
 DIGITAL = ('/SDA1', '/SCL1')
 RAILS = ('/+3V3A', '/VNEG')                  # LR-6; consumers are the blocks AWG, SCOPE (ch1+ch2) and REFCAL
@@ -90,7 +90,7 @@ KELVIN = {'/VREF': dict(                                           # LR-8 (floor
     source=[('U501', '2'), ('C504', '1')],
     branches={'A precision readers': {'J602', 'R508'}, 'B ADS AIN0': {'U502', 'C503'},
               'C AWG offset': {'R307'}, 'D1 CH1 leg + sense tie': {'R104', 'R512'}, 'D2 CH2 leg': {'R515'}})}
-SUPPLY_PINS = (('U101', '8'), ('U301', '8'), ('U301', '4'))        # LR-4: op-amp supply pins that need a 100 nF
+SUPPLY_PINS = (('U101', '8'), ('U301', '8'), ('U301', '4'), ('U502', '8'), ('U501', '1'))   # a 100 nF within DECOUP_MAX: op-amps, ADS1115 VDD, REF3030E VIN (not the charge pump caps: LR-5; not the 10 uF branch filters)
 OUTPUT_RISO = (('R107', 'U101', '/CH1_OUT'), ('R207', 'U101', '/CH2_OUT'))
 CHANNELS = ((1, 'J101', 'R102', 'R106', 'R107', '7'), (2, 'J201', 'R202', 'R206', 'R207', '8'))   # n, BNC, R1, Rnp, Riso, J602 pad
 WANT_TP = [('/A1', 'CH1'), ('/A0', 'CH2'), ('/AWG_OUT', 'AWG'), ('/+5V_DUE', 'POWER'), ('/+5V_F', 'POWER'),
@@ -922,11 +922,8 @@ ARMS = [
     ('LR-4 via in A0', lr4, None, mut4_via_a0, '/A0: a via'),
     ('LR-4 bottom copper on A1', lr4, None, mut4_bot_a1, '/A1: bottom copper'),
     ('LR-4 via on AWG_INV', lr4, None, mut4_via_inv, 'AWG_INV: inverting node has a via'),
-    ('LR-4 via on CH1_N', lr4, None, mut4_via_ch1n, 'CH1_N: inverting node has a via'),
-    ('LR-4 bottom copper on CH2_N', lr4, None, mut4_bot_ch2n, 'CH2_N: inverting node has bottom'),
     ('LR-4 AWG_INV 16 mm long', lr4, None, mut4_long, 'AWG_INV: inverting node'),
     ('LR-4 pour near AWG_INV', lr4, None, mut4_pour, 'AWG_INV: top ground'),
-    ('LR-4 GND track near CH1_N', lr4, None, mut4_gndtrack, 'CH1_N: top ground'),
     ('LR-4 100 nF far from U301.8', lr4, None, mut4_decoup, 'U301.8'),
     ('LR-4 Riso far from the output pin', lr4, None, mut4_riso, 'R107'),
     ('LR-5 VREF track by the generator', lr5, None, mut5, '/VREF'),
