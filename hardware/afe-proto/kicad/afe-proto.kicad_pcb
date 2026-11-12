@@ -10681,7 +10681,7 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "/VREF")
+			(net "/VREF_P")
 			(uuid "214c8c59-9189-5a6a-bd26-52f6d4cff0c7")
 		)
 		(embedded_fonts no)

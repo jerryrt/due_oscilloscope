@@ -135,7 +135,7 @@ for ch, (r1, r2, r3, c1, c2, rnp, cnp, riso, dk, j) in SC.items():
     two(r1[0], '470k', n('IN'), n('R1A'), B, 'R101 (770k), part 1'); two(r1[1], '300k', n('R1A'), n('N'), B, 'R101, part 2')
     two(c1, '12p', n('IN'), n('N'), B, 'C101 across R101')
     two(r2[0], '470k', n('N'), n('R2A'), B, 'R201 (800k) to GND, part 1'); two(r2[1], '330k', n('R2A'), G, B, 'R201, part 2')
-    two(r3, '330k', n('N'), VREF if ch == 'CH1' else 'VREF_P', B, 'R3 to the REF3030E: the centre (CH2 takes the spur over the wall: R515, R516)')
+    two(r3, '330k', n('N'), 'VREF_P', B, 'R3 to the REF3030E: the centre (CH2 takes the spur over the wall: R515, R516)')
     two(c2, '30p', n('N'), G, B, 'C201')
     two(rnp, '680', n('N'), n('NP'), B, 'Rnp, clamp-current limit')
     two(cnp, '10p', n('NP'), G, B, 'Cnp: AN-1 with the TPH2502 (whatif/tph2502); a pole with Rnp at 23 MHz')

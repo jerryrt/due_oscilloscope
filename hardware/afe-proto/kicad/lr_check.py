@@ -79,6 +79,12 @@ BLOCK_HUNDREDS = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL
 XSENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AWG_S', '/AWG_I', '/AWG_INV', '/AWG_BIN', '/AREF',
          '/CH1_', '/CH2_')
 SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AREF', '/CH1_N', '/CH2_N')   # /AREF: a stub on the Due's ADC reference even with the 0 ohm unfitted
+# LM27762 (TI SNVSAF7C 7.4.1 p. 17, Fig. 7-5): 'connections through vias must be avoided'; the input and charge-pump output returns
+# meet at one point near the GND pin, COUT+/COUT- and the FB resistors' grounds return on short wide TOP copper to the thermal
+# pad; the island reaches the plane through the thermal pad's vias plus at most one at the GND pin. So these pump-side ground
+# pads need no via of their own. Named list only: any other part's missing via still fails (spec lead, from v2).
+GND_VIA_EXEMPT = {('C401', '2'), ('C402', '2'), ('C403', '2'), ('C404', '2'), ('C405', '2'), ('C406', '2'), ('C407', '2'),
+                  ('C408', '2'), ('C409', '2'), ('C410', '2'), ('R401', '2'), ('R403', '2'), ('R404', '2'), ('R405', '2')}
 INV_NODES = ('/AWG_INV',)    # LR-4 (spec lead): op-amp inverting inputs only; v1's follower -IN is its output net (pins 1-2, 6-7 of U101, adjacent), and CH1_N/CH2_N are divider nodes governed by LR-3
 HIZ = ('CH1_N', 'CH1_NP', 'CH1_R1A', 'CH1_R2A', 'CH2_N', 'CH2_NP', 'CH2_R1A', 'CH2_R2A')   # LR-3 divider chain nets
 DIGITAL = ('/SDA1', '/SCL1')
@@ -89,7 +95,7 @@ STAR_REQUIRED = {'/+3V3A': [('U401', '11'), ('C407', '1'), ('C408', '1')],      
 KELVIN = {'/VREF': dict(                                           # LR-8 (floorplan rows 'VREF branch A..D2')
     source=[('U501', '2'), ('C504', '1')],
     branches={'A precision readers': {'J602', 'R508'}, 'B ADS AIN0': {'U502', 'C503'},
-              'C AWG offset': {'R307'}, 'D1 CH1 leg + sense tie': {'R104', 'R512'}, 'D2 CH2 leg': {'R515'}})}
+              'C AWG offset': {'R307'}, 'D scope centring + sense tie': {'R512', 'R515'}})}
 SUPPLY_PINS = (('U101', '8'), ('U301', '8'), ('U301', '4'), ('U502', '8'), ('U501', '1'))   # a 100 nF within DECOUP_MAX: op-amps, ADS1115 VDD, REF3030E VIN (not the charge pump caps: LR-5; not the 10 uF branch filters)
 OUTPUT_RISO = (('R107', 'U101', '/CH1_OUT'), ('R207', 'U101', '/CH2_OUT'))
 CHANNELS = ((1, 'J101', 'R102', 'R106', 'R107', '7'), (2, 'J201', 'R202', 'R206', 'R207', '8'))   # n, BNC, R1, Rnp, Riso, J602 pad
@@ -312,6 +318,8 @@ def lr1(m):
     gp = [(k, v) for k, v in m.pads.items() if v['net'] == '/GND' and v['smd'] and '#' not in k[1]]
     used, nov = set(), []
     for k, v in sorted(gp):
+        if k in GND_VIA_EXEMPT:
+            continue
         cand = sorted((math.dist(v['c'], g), i) for i, g in enumerate(gv) if i not in used)
         if cand and cand[0][0] <= 3.0:
             used.add(cand[0][1])
@@ -866,7 +874,7 @@ def mut8_join(m):
 
 
 def mut8_join2(m):
-    join(m, '/VREF', ('R307', '1'), ('R104', '2'))
+    join(m, '/VREF', ('R307', '1'), ('R512', '2'))
 
 
 def mut9_ana(m):
@@ -947,7 +955,7 @@ ARMS = [
     ('LR-7 R304 far from the BNC', lr7, None, mut7_bt, 'R304'),
     ('LR-7 BNC shell not on ground', lr7, None, mut7_shell, 'shell'),
     ('LR-8 ladder and ADS share VREF copper', lr8, prep_connected_vref, mut8_join, 'serves'),
-    ('LR-8 AWG offset and CH1 leg share copper', lr8, prep_connected_vref, mut8_join2, 'serves'),
+    ('LR-8 AWG offset and the scope branch share copper', lr8, prep_connected_vref, mut8_join2, 'serves'),
     ('LR-9 SDA1 through U101', lr9, None, mut9_ana, 'through U101'),
     ('LR-9 SCL1 inside the AWG fence', lr9, None, mut9_fence, 'analog fence'),
     ('LR-11 part out of its fence', lr11, prep_silk_tps, mut11_out, "'R201'"),

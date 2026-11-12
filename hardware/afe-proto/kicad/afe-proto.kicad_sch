@@ -4712,7 +4712,7 @@
 	)
 	(wire
 		(pts
-			(xy 742.95 45.72) (xy 745.49 45.72)
+			(xy 745.49 45.72) (xy 748.03 45.72)
 		)
 		(stroke
 			(width 0)
@@ -5382,7 +5382,7 @@
 	)
 	(wire
 		(pts
-			(xy 679.45 45.72) (xy 681.99 45.72)
+			(xy 681.99 45.72) (xy 684.53 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6232,7 +6232,7 @@
 	)
 	(wire
 		(pts
-			(xy 702.31 45.72) (xy 699.77 45.72)
+			(xy 704.85 45.72) (xy 702.31 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6312,7 +6312,7 @@
 	)
 	(wire
 		(pts
-			(xy 709.93 45.72) (xy 712.47 45.72)
+			(xy 712.47 45.72) (xy 715.01 45.72)
 		)
 		(stroke
 			(width 0)
@@ -6442,7 +6442,7 @@
 	)
 	(wire
 		(pts
-			(xy 735.33 45.72) (xy 732.79 45.72)
+			(xy 737.87 45.72) (xy 735.33 45.72)
 		)
 		(stroke
 			(width 0)
@@ -7062,7 +7062,7 @@
 	)
 	(wire
 		(pts
-			(xy 671.83 45.72) (xy 669.29 45.72)
+			(xy 674.37 45.72) (xy 671.83 45.72)
 		)
 		(stroke
 			(width 0)
@@ -7321,7 +7321,7 @@
 		(uuid "01c54a40-d2c4-5266-9c6c-4404b49dfffe")
 	)
 	(label "GND"
-		(at 745.49 45.72 0)
+		(at 748.03 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -7361,7 +7361,7 @@
 		(uuid "0653c001-107c-5485-8063-482fc63b6c4f")
 	)
 	(label "CH1_NP"
-		(at 732.79 45.72 180)
+		(at 735.33 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -8321,7 +8321,7 @@
 		(uuid "5ee48553-7b97-54ab-9f63-6a79b9b6dc8b")
 	)
 	(label "CH1_N"
-		(at 699.77 45.72 180)
+		(at 702.31 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -8620,7 +8620,7 @@
 		)
 		(uuid "79cebe5b-de5d-5ca5-a9e1-1e7d012fa0cd")
 	)
-	(label "VREF"
+	(label "VREF_P"
 		(at 651.51 45.72 0)
 		(effects
 			(font
@@ -8811,7 +8811,7 @@
 		(uuid "89365b90-6432-5c7f-92f9-fbee4ac965f2")
 	)
 	(label "CH1_N"
-		(at 669.29 45.72 180)
+		(at 671.83 45.72 180)
 		(effects
 			(font
 				(size 1 1)
@@ -9491,7 +9491,7 @@
 		(uuid "cfa4bc58-2000-5bb3-8455-1a5391dc6381")
 	)
 	(label "CH1_NP"
-		(at 712.47 45.72 0)
+		(at 715.01 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -9851,7 +9851,7 @@
 		(uuid "f84c0526-76c1-5173-8f6a-79ab58a6df1c")
 	)
 	(label "GND"
-		(at 681.99 45.72 0)
+		(at 684.53 45.72 0)
 		(effects
 			(font
 				(size 1 1)
@@ -14100,7 +14100,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 706.12 45.72 90)
+		(at 708.66 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14110,7 +14110,7 @@
 		(dnp no)
 		(uuid "51b8536b-db88-5491-a283-15bb10a3e320")
 		(property "Reference" "R106"
-			(at 706.12 35.052 0)
+			(at 708.66 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14120,7 +14120,7 @@
 			)
 		)
 		(property "Value" "680 1%"
-			(at 706.12 37.592 0)
+			(at 708.66 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14130,7 +14130,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 706.12 45.72 0)
+			(at 708.66 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14141,7 +14141,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 706.12 45.72 0)
+			(at 708.66 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14152,7 +14152,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 706.12 45.72 0)
+			(at 708.66 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14162,7 +14162,7 @@
 			)
 		)
 		(property "LCSC" "C23228"
-			(at 706.12 45.72 0)
+			(at 708.66 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14173,7 +14173,7 @@
 			)
 		)
 		(property "MPN" "UNI-ROYAL 0603WAF6800T5E"
-			(at 706.12 45.72 0)
+			(at 708.66 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14184,7 +14184,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 706.12 45.72 0)
+			(at 708.66 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14195,7 +14195,7 @@
 			)
 		)
 		(property "Note" "Rnp, clamp-current limit"
-			(at 706.12 45.72 0)
+			(at 708.66 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16012,7 +16012,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 675.64 45.72 90)
+		(at 678.18 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -16022,7 +16022,7 @@
 		(dnp no)
 		(uuid "6c91c0ce-75f7-5936-9bc6-54b1d0380060")
 		(property "Reference" "C102"
-			(at 675.64 35.052 0)
+			(at 678.18 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -16032,7 +16032,7 @@
 			)
 		)
 		(property "Value" "30p C0G"
-			(at 675.64 37.592 0)
+			(at 678.18 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -16042,7 +16042,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 675.64 45.72 0)
+			(at 678.18 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16053,7 +16053,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 675.64 45.72 0)
+			(at 678.18 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16064,7 +16064,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 675.64 45.72 0)
+			(at 678.18 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -16074,7 +16074,7 @@
 			)
 		)
 		(property "LCSC" "C1658"
-			(at 675.64 45.72 0)
+			(at 678.18 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16085,7 +16085,7 @@
 			)
 		)
 		(property "MPN" "FH 0603CG300J500NT"
-			(at 675.64 45.72 0)
+			(at 678.18 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16096,7 +16096,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 675.64 45.72 0)
+			(at 678.18 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16107,7 +16107,7 @@
 			)
 		)
 		(property "Note" "C201"
-			(at 675.64 45.72 0)
+			(at 678.18 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17309,7 +17309,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 739.14 45.72 90)
+		(at 741.68 45.72 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -17319,7 +17319,7 @@
 		(dnp no)
 		(uuid "88e4c127-4ad0-59b3-b353-bd82c4c93efe")
 		(property "Reference" "C105"
-			(at 739.14 35.052 0)
+			(at 741.68 35.052 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -17329,7 +17329,7 @@
 			)
 		)
 		(property "Value" "10p C0G"
-			(at 739.14 37.592 0)
+			(at 741.68 37.592 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -17339,7 +17339,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 739.14 45.72 0)
+			(at 741.68 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17350,7 +17350,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 739.14 45.72 0)
+			(at 741.68 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17361,7 +17361,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 739.14 45.72 0)
+			(at 741.68 45.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -17371,7 +17371,7 @@
 			)
 		)
 		(property "LCSC" "C1634"
-			(at 739.14 45.72 0)
+			(at 741.68 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17382,7 +17382,7 @@
 			)
 		)
 		(property "MPN" "Samsung CL10C100JB8NNNC"
-			(at 739.14 45.72 0)
+			(at 741.68 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17393,7 +17393,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 739.14 45.72 0)
+			(at 741.68 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17404,7 +17404,7 @@
 			)
 		)
 		(property "Note" "Cnp: AN-1 with the TPH2502 (whatif/tph2502); a pole with Rnp at 23 MHz"
-			(at 739.14 45.72 0)
+			(at 741.68 45.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

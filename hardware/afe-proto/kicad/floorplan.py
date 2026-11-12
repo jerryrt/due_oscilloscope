@@ -51,7 +51,7 @@ def row(net, frm, to, pt, lw, bridge, owner, note):
     C.append((net, frm, to, pt, lw, bridge, owner, note))
 
 
-row('+5V_DUE', 'EDGE', 'POWER', (40.6, 4.6), 'F 0.3', '', 'POWER', 'J601.5 (40.64, 2.54) north to R404/R403 side (38.1, 6.0) and on to R408')
+row('+5V_DUE', 'EDGE', 'POWER', (38.1, 4.6), 'F 0.3', '', 'POWER', 'J601.5 (38.10, 2.54: the 5 V pin of POWER0; x 40.64 is GND) north to R404/R403 side (38.1, 6.0) and on to R408')
 row('+3V3A to REFCAL', 'POWER', 'REFCAL', (44.5, 12.6), 'F 0.3', '', 'POWER up to the edge, REFCAL after', 'one trunk east to U501.1 and its caps; the ADS side (U502.8, C502, R509/R511, the clamps D501/D502: net P33_R) through BR7 over a VREF leg')
 row('+3V3A to AWG', 'POWER', 'AWG', (44.0, 5.0), 'F 0.2, strip lane y 0.55', '', 'POWER', 'lane east to the AWG riser (x 71.33), U301.8 and its 100 nF; own branch, never touches the quiet branch')
 row('+3V3A to SCOPE', 'POWER', 'SCOPE', (44.0, 24.5), 'F 0.2', 'BR5 over the quiet VREF trunk, BR6 over the A1 column', 'POWER up to the edge, SCOPE after', 'own branch from the OUT+ star (LR-6): out of POWER\'s east edge, north through REFCAL\'s west side to BR5 (62.0, 35.7), then BR6 (66.04, 35.7) to the dual V+ segment and the clamp rails (P33_U); shares no copper with the AWG or REF branches')
@@ -60,8 +60,7 @@ row('GND', 'all', 'all', 'plane', 'B.Cu pour, one piece', '', 'integrator', 'eve
 row('VREF branch A: precision readers', 'REFCAL', 'EDGE', (50.8, 4.6), 'F 0.2', '', 'REFCAL', 'U501 pin 2 to J602.1 (A7 pad, 50.8, 2.54) and the ladder top R508.2; Kelvin from the pin, own copper (LR-8)')
 row('VREF branch B: ADS AIN0', 'REFCAL', 'REFCAL', ('inside', ), 'F 0.2', '', 'REFCAL', 'U501 pin to U502.4 and C503; own copper (LR-8)')
 row('VREF branch C: AWG offset', 'REFCAL', 'AWG', (64.5, 1.35), 'F 0.2, strip lane y 1.35', '', 'REFCAL up to the edge, AWG after', 'U501 pin to the strip lane, east, riser x 71.33 to R307.1 (offset filter); own copper (LR-8)')
-row('VREF branch D1: scope CH1 leg + sense tie', 'REFCAL', 'SCOPE', (64.8, 46.6), 'F 0.2', '', 'REFCAL up to the edge, SCOPE after', 'CH1 leg R104 and the sense tie R512 (in REFCAL): quiet trunk x 62.8 north, y 46.6 east')
-row('VREF branch D2: scope CH2 leg', 'REFCAL', 'SCOPE', (64.5, 22.8), 'F 0.2', 'BR1 over A1, BR2 over A0', 'REFCAL up to the edge, SCOPE after', 'spur off the quiet trunk (62.8, 22.8) to BR1, BR2, R204.2 (VREF_P); crosses the wall, separate from the CH1 leg row above (LR-8)')
+row('VREF branch D: scope centring + sense tie', 'REFCAL', 'SCOPE', (64.5, 22.8), 'F 0.2', 'BR1 over A1, BR2 over A0', 'REFCAL up to the edge, SCOPE after', 'ONE quiet branch (the spec lead\'s first LR-8 reading): U501 pin to the sense tie R512 and out of the east edge at (64.5, 22.8) to the bridges R515 (A1) and R516 (A0); beyond them SCOPE feeds both R3 legs (R104 CH1, R204 CH2) from the net VREF_P. Replaces the earlier D1 (north trunk) and D2 rows: two legs made REFCAL unroutable on one layer')
 row('AREF', 'REFCAL', 'EDGE', (48.4, 36.0), 'F 0.2', '', 'REFCAL', 'R510.2 north x 48.4, west y 49.4 to J606.8 (23.876, 50.8); unfitted part')
 row('SCL', 'REFCAL', 'EDGE', (46.4, 36.0), 'F 0.2', '', 'REFCAL', 'U502.10 (net SCL1_A) through BR9 over a VREF leg, then north x 46.4, west y 47.5 to J606.10 (18.796, 50.8)')
 row('SDA', 'REFCAL', 'EDGE', (47.4, 36.0), 'F 0.2', '', 'REFCAL', 'U502.9 (net SDA1_A) through BR8 over a VREF leg, then north x 47.4, west y 48.5 to J606.9 (21.336, 50.8)')
