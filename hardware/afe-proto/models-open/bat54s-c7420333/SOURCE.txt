@@ -1,0 +1,5 @@
+Own model, fitted for this project to the vendor datasheet of BAT54S C7420333 (Zhuhai Hongjiacheng, "BAT54 THRU BAT54S" Rev 2.0).
+Datasheet: hardware/afe-proto/models/bat54s-c7420333/bat54s-c7420333.pdf (vendor file, git-ignored), fetched by tools/fetch_models.py from
+https://datasheet.lcsc.com/datasheet/pdf/34ea9f8d4a2e2e40eea56b51198e5fd8.pdf?productCode=C7420333 on 2026-11-11, sha256
+8c5fbf8f378ffcf628e234e1ba617c1708a65c5b1e8e796cb26e071058b9d143.  The fit and the points it uses are in the .lib header.
+Licence: CC BY-SA 4.0 (LICENSE).

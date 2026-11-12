@@ -1,0 +1,34 @@
+* BAT54S, Zhuhai Hongjiacheng (hongjiacheng), LCSC/JLCPCB C7420333: diode models fitted for this project.
+* Our own work, not a vendor model.  Licence: CC BY-SA 4.0 (LICENSE beside this file), (c) the project authors.
+*
+* Source: the vendor datasheet "BAT54 THRU BAT54S", Rev 2.0, 3 pages, fetched by tools/fetch_models.py
+* (models/manifest.json: bat54s-c7420333/bat54s-c7420333.pdf, sha256 8c5fbf8f...b9d143).  Only figures read from it
+* are used; every one is quoted below.
+*
+* Package (p1, Function Diagram, BAT54S): a series pair in SOT-23.  D1: anode pin 1, cathode pin 3.  D2: anode pin 3,
+* cathode pin 2.  Pin 3 is the common node (D1's cathode and D2's anode).  One die per .model below; a package is two.
+*
+* Electrical Characteristics (p2, Ta = 25 C), maximum forward voltage: 240 mV at 0.1 mA, 320 mV at 1 mA, 400 mV at
+* 10 mA, 500 mV at 30 mA, 1000 mV at 100 mA.  IR max 2.0 uA at VR = 25 V.  CT max 10 pF at VR = 1 V, 1 MHz.  trr max
+* 5 ns.  Ratings (p1): VRRM 30 V, IF(AV) 200 mA, IFSM 600 mA (8.3 ms), PD 200 mW, Tj 125 C, RthJA 500 C/W.
+*
+* Fig. 1 (typical, 25 C), digitised from a 250 dpi render of p2 (pixel trace of the right-hand curve, grid-calibrated):
+*   0.01 mA 153 mV, 0.1 mA 218, 1 mA 278, 2 mA 297, 5 mA 325, 10 mA 349, 50 mA 435, 70 mA 454, 100 mA 505,
+*   190 mA 612 (rows crossed by the curve labels dropped).  Reading error about +/-5 mV *(check)*.
+*
+* DBAT54S_TYP : least-squares fit to Fig. 1 at 25 C, 0.01-190 mA; worst residual 4.6 mV over that range.
+*               At 1 mA 277 mV, 10 mA 347, 20 mA ~375, 50 mA 430 mV.
+* DBAT54S_MAX : the datasheet maximum table, fitted so that the model is at or above every listed maximum from 0.1 to
+*               30 mA (the 100 mA / 1.0 V figure is a loose bound and is not fitted; the model gives 733 mV there).
+*               Excess over the table at most 11.8 mV (251 vs 240 mV at 0.1 mA; 320, 412, 500 mV at 1, 10, 30 mA).
+* Both: CJO set so that C(1 V) = 10 pF, the table maximum, with VJ 0.4 V and M 0.4 assumed (the datasheet gives no
+* grading coefficient) *(check)*; BV 30 V (VRRM).  Reverse leakage: IS gives nanoamps; the datasheet's 2 uA maximum at
+* 25 V is carried by the subcircuit BAT54S_LEAK (a 12.5 Mohm resistor across the junction, 25 V / 2 uA), for a
+* pessimistic bound where leakage matters.
+* Temperature: 25 C only.  Fig. 1's 100 C curve is about 80 mV lower at 1 mA (200 vs 278 mV) and is not modelled.
+.model DBAT54S_TYP D(IS=2.51e-8 N=1.015 RS=1.043 CJO=16.5p VJ=0.4 M=0.4 BV=30 IBV=2u TT=3n)
+.model DBAT54S_MAX D(IS=1.63e-8 N=1.120 RS=2.830 CJO=16.5p VJ=0.4 M=0.4 BV=30 IBV=2u TT=3n)
+.subckt BAT54S_LEAK a k params: typ=1
+D1 a k DBAT54S_TYP
+R1 a k 12.5Meg
+.ends BAT54S_LEAK

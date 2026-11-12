@@ -1,0 +1,8 @@
+Own model, built for this project from the vendor datasheet of the MCP6002 (Microchip DS20001733L, "MCP6001/1R/1U/2/4 1 MHz,
+Low-Power Op Amp"), because Microchip's SPICE macro model could not be retrieved by a plain download on 2026-11-11.
+Datasheet: hardware/afe-proto/models/mcp6002/mcp6002.pdf (vendor file, git-ignored), fetched by tools/fetch_models.py from
+https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP6001-1R-1U-2-4-1-MHz-Low-Power-Op-Amp-DS20001733L.pdf
+on 2026-11-11, sha256 4f879ab31115ecfa149dfea62073c9efdbc4beccbdfc3a8d7e10281f3877f8fb.  The figures used and the parts that are
+assumptions (the open-loop output resistance, which the datasheet does not give) are in the .lib header.
+The same subcircuit, reparameterised, stands in for the TLV9062 in whatif/lowcost-scope (fitted there to TI's model).
+Licence: CC BY-SA 4.0 (LICENSE).

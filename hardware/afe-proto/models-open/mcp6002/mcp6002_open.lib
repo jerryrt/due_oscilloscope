@@ -1,0 +1,56 @@
+* MCP6002 (Microchip, one half of the dual; LCSC/JLCPCB C7377 MCP6002T-I/SN): behavioural op-amp model for this project.
+* Our own work, not a vendor model.  Licence: CC BY-SA 4.0 (LICENSE beside this file), (c) the project authors.
+*
+* Why it exists: Microchip's SPICE macro model (DS20001733L section 5.1) could not be retrieved by a plain download
+* (every ww1.microchip.com path tried returned 403, 2026-11-11), so this model is built from datasheet figures only.
+* Source: Microchip DS20001733L, "MCP6001/1R/1U/2/4 1 MHz, Low-Power Op Amp", fetched by tools/fetch_models.py
+* (models/manifest.json: mcp6002/mcp6002.pdf, sha256 4f879ab3...877f8fb).  Every figure used is quoted here.
+*
+* Table figures (25 C, VDD 1.8-5.5 V): VOS +/-4.5 mV max (Note 1: +/-7 mV for date codes before Dec 2004); AOL 112 dB typ,
+*   88 dB min; GBWP 1.0 MHz typ; PM 90 deg typ (G = +1, CL 60 pF); SR 0.6 V/us typ; eni 28 nV/rtHz at 1 kHz, 6.1 uVpp
+*   0.1-10 Hz; ini 0.6 fA/rtHz; PSRR 86 dB typ (DC); CMRR 76 dB typ; ZCM 1e13 || 6 pF; ZDIFF 1e13 || 3 pF;
+*   ISC +/-6 mA (1.8 V), +/-23 mA (5.5 V) typ; IQ 100 uA typ, 170 max per amplifier; swing VDD - 25 mV (10 kohm).
+*   No channel-to-channel crosstalk figure and no open-loop output resistance is given.
+* Read from figures (by eye, about +/-10 % *(check)*):
+*   Fig. 2-11: phase -90 deg from ~30 Hz to ~300 kHz, about -85 deg at 1 MHz, -120 deg at ~2.5 MHz, -180 deg at ~7 MHz;
+*     unity gain near 1 MHz.  Modelled as the dominant pole (A0, GBW) plus a double pole at FP2 = 6 MHz: -109 deg at
+*     1 MHz (more pessimistic than the figure, PM 71 rather than 90), -135 at 2.5 MHz, -188 at 7 MHz.
+*   Fig. 2-10: PSRR 86 dB flat to ~100 Hz, falling 20 dB/decade to ~26 dB at 100 kHz: input-referred supply error
+*     PSRR0 x (1 + jf/FPS), PSRR0 = -86 dB, FPS = 100 Hz.
+*   Fig. 2-12: noise 28 nV/rtHz flat above ~3 kHz, ~100 nV at 10 Hz, ~1000 nV at 0.1 Hz: en = 28n x sqrt(1 + 130 Hz / f).
+*     (Not in this subcircuit: the simulation applies it as an input-referred density in post-processing.)
+*   Fig. 2-13: ISC at VDD 3.3 V about 15 mA (25 C), about 12.5 mA (85 C).  Fig. 2-14: output headroom about 35 mV per mA
+*     (35 ohm) near the rails.  Neither sets RO: the open-loop output resistance is a parameter (RO), bracketed by the user.
+* Supply: the load current is drawn from VDD (F source, both signs: an upper bound on supply modulation for a class-AB
+*   stage that sinks into VSS), plus IQ.  Output limited to the rails less 25 mV (B source); no current limit and no slew
+*   limit are modelled, so do not use it for large fast steps.  Input offset: none here (put a source in series).
+* Pins: +IN -IN VDD VSS OUT
+.subckt MCP6002_OPEN inp inm vdd vss out params: a0db=112 gbw=1e6 fp2=6e6 ro=300 psrrdb=86 fps=100 iq=100u vnom=3.3
+Ccmp inp vss 6p
+Ccmm inm vss 6p
+Cdif inp inm 3p
+* supply rejection: error source in series with +IN, a x (VDD - vnom) x (1 + jf/fps)
+Vnom vnr vss {vnom}
+Ep1 inp ip1 vdd vnr {10**(-psrrdb/20)}
+Eps vdc vss vdd vss 1
+Cps vdc cpm {1/(2*3.14159265*fps)}
+Vps cpm vss 0
+Hp2 ip1 ip2 Vps {10**(-psrrdb/20)}
+* dominant pole: gm 1 mS into R || C
+G1 vss n1 ip2 inm 1m
+R1 n1 vss {10**(a0db/20)/1m}
+C1 n1 vss {1m/(2*3.14159265*gbw)}
+* double pole at fp2
+E2 n2 vss n1 vss 1
+R2 n2 n3 1k
+C2 n3 vss {1/(2*3.14159265*fp2*1k)}
+E3 n4 vss n3 vss 1
+R3 n4 n5 1k
+C3 n5 vss {1/(2*3.14159265*fp2*1k)}
+* output: rail-limited voltage behind RO; supply current = load current + IQ
+B4 n6 vss V = max(min(V(n5), V(vdd,vss) - 0.025), 0.025)
+Ro n6 n7 {ro}
+Vsen n7 out 0
+Fsup vdd vss Vsen 1
+Iq vdd vss {iq}
+.ends MCP6002_OPEN

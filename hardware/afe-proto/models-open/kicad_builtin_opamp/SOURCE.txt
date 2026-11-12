@@ -1,0 +1,5 @@
+Source: /usr/share/kicad/symbols/Simulation_SPICE.sp, lines 10-31 (KiCad 10.0.8 package kicad-symbols), upstream https://gitlab.com/kicad/libraries/kicad-symbols
+Retrieval: copied from the locally installed package on 2026-11-11 (no download)
+sha256 of the whole source file Simulation_SPICE.sp: 093202ee7a2dd2446cdfe03107c273d14d5dc4bacac6e15a9e0320fa261a200d
+sha256 of kicad_builtin_opamp.lib (extracted lines 10-31, unmodified): be6b89762b5e3be4a8c15a165263131d59dc5086d644ff49038cef6b73752c37
+Licence: LICENSE (CC-BY-SA 4.0 with design exception, KiCad libraries) and the in-file line "Author Holger Vogt, Public Domain".
