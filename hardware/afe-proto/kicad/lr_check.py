@@ -79,12 +79,10 @@ BLOCK_HUNDREDS = {'1': 'CH1', '2': 'CH2', '3': 'AWG', '4': 'POWER', '5': 'REFCAL
 XSENS = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AWG_S', '/AWG_I', '/AWG_INV', '/AWG_BIN', '/AREF',
          '/CH1_', '/CH2_')
 SENSITIVE = ('/A0', '/A1', '/VREF', '/TAP', '/SNS', '/AWG_BNC', '/AREF', '/CH1_N', '/CH2_N')   # /AREF: a stub on the Due's ADC reference even with the 0 ohm unfitted
-# LM27762 (TI SNVSAF7C 7.4.1 p. 17, Fig. 7-5): 'connections through vias must be avoided'; the input and charge-pump output returns
-# meet at one point near the GND pin, COUT+/COUT- and the FB resistors' grounds return on short wide TOP copper to the thermal
-# pad; the island reaches the plane through the thermal pad's vias plus at most one at the GND pin. So these pump-side ground
-# pads need no via of their own. Named list only: any other part's missing via still fails (spec lead, from v2).
-GND_VIA_EXEMPT = {('C401', '2'), ('C402', '2'), ('C403', '2'), ('C404', '2'), ('C405', '2'), ('C406', '2'), ('C407', '2'),
-                  ('C408', '2'), ('C409', '2'), ('C410', '2'), ('R401', '2'), ('R403', '2'), ('R404', '2'), ('R405', '2')}
+# LM27762 ground island (TI SNVSAF7C 7.4.1 p. 17, Fig. 7-5: 'as close as possible', no numbers): the spec lead dropped the exemption
+# (relayed by the v2 session, to be confirmed): every SMD GND pad keeps a via of its own, a second at the output caps' ground pads
+# if it fits; the island rule is recorded as an LR-5 deviation with the PW-2 ripple test as the bench check.
+GND_VIA_EXEMPT = set()
 INV_NODES = ('/AWG_INV',)    # LR-4 (spec lead): op-amp inverting inputs only; v1's follower -IN is its output net (pins 1-2, 6-7 of U101, adjacent), and CH1_N/CH2_N are divider nodes governed by LR-3
 HIZ = ('CH1_N', 'CH1_NP', 'CH1_R1A', 'CH1_R2A', 'CH2_N', 'CH2_NP', 'CH2_R1A', 'CH2_R2A')   # LR-3 divider chain nets
 DIGITAL = ('/SDA1', '/SCL1')

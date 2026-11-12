@@ -5442,6 +5442,16 @@
 	)
 	(wire
 		(pts
+			(xy 814.07 73.66) (xy 816.61 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4e78ead5-d589-55d1-9afa-a23c875aeb11")
+	)
+	(wire
+		(pts
 			(xy 182.88 45.72) (xy 180.34 45.72)
 		)
 		(stroke
@@ -5819,6 +5829,16 @@
 			(type default)
 		)
 		(uuid "6c7ebbcd-a763-5975-9577-cab031223cf1")
+	)
+	(wire
+		(pts
+			(xy 806.45 73.66) (xy 803.91 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6ca03e13-e86a-59a0-a685-c0eca66f0123")
 	)
 	(wire
 		(pts
@@ -6252,7 +6272,7 @@
 	)
 	(wire
 		(pts
-			(xy 806.45 73.66) (xy 803.91 73.66)
+			(xy 450.85 114.3) (xy 448.31 114.3)
 		)
 		(stroke
 			(width 0)
@@ -6442,7 +6462,7 @@
 	)
 	(wire
 		(pts
-			(xy 444.5 114.3) (xy 444.5 116.84)
+			(xy 480.06 114.3) (xy 480.06 116.84)
 		)
 		(stroke
 			(width 0)
@@ -7162,7 +7182,7 @@
 	)
 	(wire
 		(pts
-			(xy 814.07 73.66) (xy 816.61 73.66)
+			(xy 458.47 114.3) (xy 461.01 114.3)
 		)
 		(stroke
 			(width 0)
@@ -7701,7 +7721,7 @@
 		(uuid "20c26a16-3f6f-53ca-8c31-d058de72cb03")
 	)
 	(label "VREF_R"
-		(at 816.61 73.66 0)
+		(at 461.01 114.3 0)
 		(effects
 			(font
 				(size 1 1)
@@ -7749,6 +7769,16 @@
 			(justify right bottom)
 		)
 		(uuid "2a6b25ca-4c26-52a5-998e-8c629766a1f2")
+	)
+	(label "VREF_Q"
+		(at 803.91 73.66 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "2b857862-be5c-51a6-b48b-9b38a752d467")
 	)
 	(label "+3V3A"
 		(at 353.06 91.44 270)
@@ -8760,8 +8790,8 @@
 		)
 		(uuid "7f626608-7fd5-5a4c-8cda-37bdad40d710")
 	)
-	(label "VREF_Q"
-		(at 803.91 73.66 180)
+	(label "VREF_S"
+		(at 448.31 114.3 180)
 		(effects
 			(font
 				(size 1 1)
@@ -9241,7 +9271,7 @@
 		(uuid "ac2ede0f-2a9d-5938-9422-71643f5aa976")
 	)
 	(label "A1"
-		(at 444.5 116.84 270)
+		(at 480.06 116.84 270)
 		(effects
 			(font
 				(size 1 1)
@@ -9579,6 +9609,16 @@
 			(justify right bottom)
 		)
 		(uuid "d31ce67b-2ad0-562d-8f67-4da68161b504")
+	)
+	(label "VREF_S"
+		(at 816.61 73.66 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify left bottom)
+		)
+		(uuid "d443761c-8ede-513c-9d50-1ba9b280c3ab")
 	)
 	(label "AWG_BPL"
 		(at 74.93 157.48 0)
@@ -11933,7 +11973,7 @@
 				)
 			)
 		)
-		(property "Note" "SCOPE agent: VREF_P reaches the CH1 R3 leg over the A0 horizontal, part 1 of 2 (A0 and A1 close the north half of the fence)"
+		(property "Note" "SCOPE agent: VREF_P reaches the CH1 R3 leg over the A0 horizontal, part 1 of 2 (A0, the supply belt and A1 close the north half of the fence), part 1 of 3"
 			(at 774.7 73.66 0)
 			(hide yes)
 			(show_name no)
@@ -17511,7 +17551,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 810.26 73.66 90)
+		(at 454.66 114.3 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -17521,7 +17561,7 @@
 		(dnp no)
 		(uuid "866caffe-a991-5b48-a306-f88925da46f9")
 		(property "Reference" "R112"
-			(at 810.26 62.992 0)
+			(at 454.66 103.632 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -17531,7 +17571,7 @@
 			)
 		)
 		(property "Value" "0R 1%"
-			(at 810.26 65.532 0)
+			(at 454.66 106.172 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -17541,7 +17581,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 810.26 73.66 0)
+			(at 454.66 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17552,7 +17592,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 810.26 73.66 0)
+			(at 454.66 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17563,7 +17603,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 810.26 73.66 0)
+			(at 454.66 114.3 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -17573,7 +17613,7 @@
 			)
 		)
 		(property "LCSC" "C21189"
-			(at 810.26 73.66 0)
+			(at 454.66 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17584,7 +17624,7 @@
 			)
 		)
 		(property "MPN" "UNI-ROYAL 0603WAF0000T5E"
-			(at 810.26 73.66 0)
+			(at 454.66 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17595,7 +17635,7 @@
 			)
 		)
 		(property "Fitted by" "JLC"
-			(at 810.26 73.66 0)
+			(at 454.66 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17605,8 +17645,8 @@
 				)
 			)
 		)
-		(property "Note" "SCOPE agent: over the A1 horizontal, part 2 of 2: CH1 R3 (R104) hangs on VREF_R"
-			(at 810.26 73.66 0)
+		(property "Note" "SCOPE agent: over the A1 horizontal, part 3 of 3: CH1 R3 (R104) hangs on VREF_R"
+			(at 454.66 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19732,6 +19772,128 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 810.26 73.66 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "a634c7db-f98b-5167-a94a-349b8d0fb500")
+		(property "Reference" "R113"
+			(at 810.26 62.992 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "0R 1%"
+			(at 810.26 65.532 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 810.26 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 810.26 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 810.26 73.66 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C21189"
+			(at 810.26 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "UNI-ROYAL 0603WAF0000T5E"
+			(at 810.26 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Fitted by" "JLC"
+			(at 810.26 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Note" "SCOPE agent: over the supply belt (R110.2 -> R108 -> U101.8 -> U101 -> R107) inside fence 1, part 2 of 3"
+			(at 810.26 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "01f6fdcf-8c30-521e-8510-ac3daa3e7340")
+		)
+		(pin "2"
+			(uuid "bc280d06-7e89-5194-a842-4cef7976b1ef")
+		)
+		(instances
+			(project "afe-proto"
+				(path "/7d7eeb21-0f9a-5ff3-a2e8-058a18f22055"
+					(reference "R113")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 632.46 223.52 90)
 		(unit 1)
@@ -21440,7 +21602,7 @@
 				)
 			)
 		)
-		(property "Note" "bridge over a VREF leg: the ADS side of +3V3A (VDD, its 100 nF, the pull-ups, the clamps)"
+		(property "Note" "bridge over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps)"
 			(at 518.16 312.42 0)
 			(hide yes)
 			(show_name no)
@@ -22410,7 +22572,7 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 444.5 114.3 0)
+		(at 480.06 114.3 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -22420,7 +22582,7 @@
 		(dnp no)
 		(uuid "cbb3aee6-358b-5cef-bd0b-2ef3ba710953")
 		(property "Reference" "TP101"
-			(at 444.5 103.632 0)
+			(at 480.06 103.632 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22430,7 +22592,7 @@
 			)
 		)
 		(property "Value" "A1"
-			(at 444.5 106.172 0)
+			(at 480.06 106.172 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22440,7 +22602,7 @@
 			)
 		)
 		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
-			(at 444.5 114.3 0)
+			(at 480.06 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22451,7 +22613,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 444.5 114.3 0)
+			(at 480.06 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22462,7 +22624,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 444.5 114.3 0)
+			(at 480.06 114.3 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22472,7 +22634,7 @@
 			)
 		)
 		(property "LCSC" ""
-			(at 444.5 114.3 0)
+			(at 480.06 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22483,7 +22645,7 @@
 			)
 		)
 		(property "MPN" ""
-			(at 444.5 114.3 0)
+			(at 480.06 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22494,7 +22656,7 @@
 			)
 		)
 		(property "Fitted by" "none"
-			(at 444.5 114.3 0)
+			(at 480.06 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22505,7 +22667,7 @@
 			)
 		)
 		(property "Note" "ADC pin A1 (CH1), on the trace"
-			(at 444.5 114.3 0)
+			(at 480.06 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

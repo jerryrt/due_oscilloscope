@@ -171,8 +171,9 @@ two('C302', '100n', P33E, G, B, 'TPH2502 V+ pin')
 two('R109', '0Rb', P33A, 'P33_S', 'ch1', 'bridge over the quiet VREF trunk: the scope\'s own +3V3A branch from the star (LR-6), part 1 of 2')
 two('R110', '0Rb', 'P33_S', 'P33_U', 'ch1', 'bridge over the A1 column: the scope\'s +3V3A branch to the dual V+ and the clamps, part 2 of 2')
 two('R515', '0Rb', VREF, 'VREF_M', 'cal', 'wall bridge over A1 (the CH2 leg of VREF), part 1 of 2')
-two('R111', '0Rb', 'VREF_P', 'VREF_Q', 'ch1', 'SCOPE agent: VREF_P reaches the CH1 R3 leg over the A0 horizontal, part 1 of 2 (A0 and A1 close the north half of the fence)')
-two('R112', '0Rb', 'VREF_Q', 'VREF_R', 'ch1', 'SCOPE agent: over the A1 horizontal, part 2 of 2: CH1 R3 (R104) hangs on VREF_R')
+two('R111', '0Rb', 'VREF_P', 'VREF_Q', 'ch1', 'SCOPE agent: VREF_P reaches the CH1 R3 leg over the A0 horizontal, part 1 of 2 (A0, the supply belt and A1 close the north half of the fence), part 1 of 3')
+two('R113', '0Rb', 'VREF_Q', 'VREF_S', 'ch1', 'SCOPE agent: over the supply belt (R110.2 -> R108 -> U101.8 -> U101 -> R107) inside fence 1, part 2 of 3')
+two('R112', '0Rb', 'VREF_S', 'VREF_R', 'ch1', 'SCOPE agent: over the A1 horizontal, part 3 of 3: CH1 R3 (R104) hangs on VREF_R')
 two('R516', '0Rb', 'VREF_M', 'VREF_P', 'cal', 'wall bridge over A0 (the CH2 leg of VREF), part 2 of 2')
 two('C303', '100n', VN, G, B, 'TPH2502 V- pin (at the pin)')
 part('U301', 'TPH2502', {'1': 'AWG_SP', '2': 'AWG_SP', '3': G, '4': VN, '5': 'AWG_BIN', '6': 'AWG_INV', '7': 'AWG_OUT', '8': P33E}, B,
@@ -222,7 +223,7 @@ two('R509', '4.7k', 'SDA1_A', 'P33_R', B, 'I2C pull-up, SDA1 (the Due has none o
 two('R511', '4.7k', 'SCL1_A', 'P33_R', B, 'I2C pull-up, SCL1')
 # REFCAL's planar cut (the block agent's finding): the VREF tree (legs A south, D1 north, D2 east) splits the fence, and the ADS
 # straddles it. Three 0603 0 ohm bridges carry the nets that must cross: the ADS's +3V3A, SDA and SCL.
-two('R517', '0Rb', P33A, 'P33_R', B, 'bridge over a VREF leg: the ADS side of +3V3A (VDD, its 100 nF, the pull-ups, the clamps)')
+two('R517', '0Rb', P33A, 'P33_R', B, 'bridge over a VREF leg: the ADS side of +3V3A beyond it (VDD, its 100 nF, the pull-ups, the clamps)')
 two('R518', '0Rb', 'SDA1', 'SDA1_A', B, 'bridge over a VREF leg: SDA to the ADS')
 two('R519', '0Rb', 'SCL1', 'SCL1_A', B, 'bridge over a VREF leg: SCL to the ADS')
 
